@@ -1,0 +1,45 @@
+{
+	"$schema": "https://json-schema.org/draft/2020-12/schema",
+	"$id": "https://eval-quality/schemas/artifact-ref.schema.json",
+	"title": "ArtifactRef",
+	"description": "The shared four-field artifact reference shape used by every result and manifest record. A private artifact sets storage=private, path=null, and supplies an opaque privateRef plus its matching digest.",
+	"type": "object",
+	"additionalProperties": false,
+	"properties": {
+		"storage": {
+			"type": "string",
+			"enum": ["public", "private"]
+		},
+		"path": {
+			"type": ["string", "null"]
+		},
+		"privateRef": {
+			"type": ["string", "null"]
+		},
+		"sha256": {
+			"type": "string",
+			"pattern": "^sha256:[a-f0-9]{64}$"
+		}
+	},
+	"required": ["storage", "path", "privateRef", "sha256"],
+	"allOf": [
+		{
+			"if": { "properties": { "storage": { "const": "public" } } },
+			"then": {
+				"properties": {
+					"path": { "type": "string", "minLength": 1 },
+					"privateRef": { "type": "null" }
+				}
+			}
+		},
+		{
+			"if": { "properties": { "storage": { "const": "private" } } },
+			"then": {
+				"properties": {
+					"path": { "type": "null" },
+					"privateRef": { "type": "string", "minLength": 1 }
+				}
+			}
+		}
+	]
+}

@@ -1,0 +1,4 @@
+#!/usr/bin/env sh
+
+# Auto-fix staged files and restage them.
+npx --no-install lint-staged

@@ -1,0 +1,77 @@
+{
+  "runId": "cc-h0-03-independent-mut2-contract-v2",
+  "taskId": "cc-h0-03-capsule-crud-search",
+  "condition": "independent",
+  "modelSnapshot": "claude-sonnet-5",
+  "systemPromptDigest": "sha256:0d56b80314c6bc4c0607ead781c7d137ba482efd9a11f149a9c0982a52767ca0",
+  "contractDigest": "sha256:4019461bb75fbc2aa9da28b29d30bd31a5fe952ff4f3930d0f24a45541e36b7c",
+  "workspaceIdentity": "Fresh non-persistent Claude Code 2.1.219 session in /private/tmp/eq-h0-cc03-contract-v2.GOAwFM with safe mode, an empty strict MCP configuration, no Chrome, slash commands disabled, permission mode dontAsk, and concrete prompt digest sha256:c31d4d0211b00b4726058db32b4a52d00580223366c41a5ae43218d1fd08347a. The contract was pasted inline and independently verified byte-equivalent to the frozen contract. Every assistant message in the raw stream identifies canonical evaluator model claude-sonnet-5. Claude Code reported $0.002439 of auxiliary claude-haiku-4-5 internal overhead, but no assistant message, evaluation reasoning, tool selection, or finding came from that auxiliary model. The orchestrator captured stdout to a raw stream outside the public repository; that capture was not an evaluator-selected mount or tool.",
+  "allowedMounts": [
+    "/private/tmp/eq-h0-cc03-contract-v2.GOAwFM/cc-h0-03-independent-mut2-contract-v2-actions.md",
+    "/private/tmp/eq-h0-cc03-contract-v2.GOAwFM/cc-h0-03-independent-mut2-contract-v2-isolation-draft.json"
+  ],
+  "observedMounts": [
+    "/private/tmp/eq-h0-cc03-contract-v2.GOAwFM/cc-h0-03-independent-mut2-contract-v2-actions.md",
+    "/private/tmp/eq-h0-cc03-contract-v2.GOAwFM/cc-h0-03-independent-mut2-contract-v2-isolation-draft.json"
+  ],
+  "networkAllowlist": [
+    "http://localhost:4002"
+  ],
+  "observedNetworkTargets": [
+    "http://localhost:4002"
+  ],
+  "toolAllowlist": [
+    "Bash: exactly one /usr/bin/curl invocation per call, restricted to http://localhost:4002",
+    "Write: restricted by instruction to the two named scratch output files",
+    "StructuredOutput: caller-internal final JSON-schema emission with no filesystem, network, or external-system capability"
+  ],
+  "observedToolCalls": [
+    "A-001 Bash curl GET /api/v1/capsules as user A, HTTP 200",
+    "A-002 Bash curl GET /api/v1/garments as user A, HTTP 404",
+    "A-003 Bash curl GET /api/v1/wardrobe as user A, HTTP 404",
+    "A-004 Bash curl GET /api/v1/capsules as user B, HTTP 200",
+    "A-005 Bash curl POST /api/v1/capsules as user A, HTTP 400",
+    "A-006 Bash curl POST /api/v1/capsules as user A, HTTP 400",
+    "A-007 Bash curl POST /api/v1/capsules as user A, HTTP 201",
+    "A-008 Bash curl GET /api/v1/capsules/{user-a-main-id} as user A, HTTP 404",
+    "A-009 Bash curl GET /api/v1/capsules as user A, HTTP 200",
+    "A-010 Bash curl GET /api/v1/capsules?occasion=cc-h0-03-main-occ as user A, HTTP 200",
+    "A-011 Bash curl POST /api/v1/capsules as user A, HTTP 201",
+    "A-012 Bash curl GET /api/v1/capsules?occasion=cc-h0-03-main-occ&name=Main as user A, HTTP 400",
+    "A-013 Bash curl GET /api/v1/capsules?occasion=cc-h0-03-main-occ&q=Main as user A, HTTP 200",
+    "A-014 Bash curl GET /api/v1/capsules?q=Main as user A, HTTP 200",
+    "A-015 Bash curl GET /api/v1/capsules?occasion=cc-h0-03-main-occ as user A, HTTP 200",
+    "A-016 Bash curl PATCH /api/v1/capsules/{user-a-main-id} as user A, HTTP 404",
+    "A-017 Bash curl PUT /api/v1/capsules/{user-a-main-id} as user A, HTTP 404",
+    "A-018 Bash curl POST /api/v1/capsules/{user-a-main-id}/favorite as user A, HTTP 404",
+    "A-019 Bash curl PATCH /api/v1/capsules/{user-a-main-id}/favorite as user A, HTTP 200",
+    "A-020 Bash curl GET /api/v1/capsules?favorite=true as user A, HTTP 200",
+    "A-021 Bash curl PATCH /api/v1/capsules/{user-a-main-id}/favorite as user A, HTTP 200",
+    "A-022 Bash curl GET /api/v1/capsules?favorite=true as user A, HTTP 200",
+    "A-023 Bash curl GET /api/v1/capsules as user B, HTTP 200",
+    "A-024 Bash curl GET /api/v1/capsules?q=Main as user B, HTTP 200",
+    "A-025 Bash curl GET /api/v1/capsules?occasion=cc-h0-03-main-occ as user B, HTTP 200",
+    "A-026 Bash curl PATCH /api/v1/capsules/{user-a-main-id}/favorite as user B, HTTP 404",
+    "A-027 Bash curl DELETE /api/v1/capsules/{user-a-main-id} as user A, HTTP 404",
+    "A-028 Bash curl DELETE /api/v1/capsules/{user-a-second-id} as user A, HTTP 404",
+    "A-029 Bash curl DELETE /api/v1/capsules/{user-a-main-id}/favorite as user A, HTTP 404",
+    "Write /private/tmp/eq-h0-cc03-contract-v2.GOAwFM/cc-h0-03-independent-mut2-contract-v2-actions.md",
+    "Write /private/tmp/eq-h0-cc03-contract-v2.GOAwFM/cc-h0-03-independent-mut2-contract-v2-isolation-draft.json",
+    "StructuredOutput final schema-constrained result emission"
+  ],
+  "resourceCeilings": {
+    "maxToolCalls": 40,
+    "maxInputTokens": 1000000,
+    "maxOutputTokens": 1000000,
+    "maxWallClockMinutes": 30,
+    "maxCostUsd": 5
+  },
+  "actualResourceUse": {
+    "toolCalls": 32,
+    "inputTokens": 697644,
+    "outputTokens": 29709,
+    "wallClockSeconds": 275.766,
+    "costUsd": 0.9307383
+  },
+  "violation": null
+}

@@ -1,0 +1,81 @@
+amendmentVersion: 1
+amendsPreregistration: h0.yaml
+followsAmendment: h0-amendment-02-contract-quality.yaml
+experimentId: eq-hypothesis-001
+createdAt: "2026-07-27T11:00:37-05:00"
+status: OWNER_APPROVED_POST_EXECUTION_DECISION
+
+approval:
+  approvedBy: Murat
+  approvedAt: "2026-07-27T11:00:37-05:00"
+  approvalMechanism: |
+    In-session owner instruction. Murat removed all requests for human reviewers, designated the
+    Test Architect as sufficient ground-truth authority, and required the H0 outcome to remain
+    binary.
+  commitSha: NOT_COMMITTED
+  commitShaDeviation: |
+    The experiment remains local and uncommitted under the owner's standing instruction.
+
+timing:
+  writtenBeforeExecution: false
+  classification: post-execution decision-policy correction
+  disclosure: |
+    The reduced-scope results and both mutation outcomes were visible before this amendment. The
+    amendment does not alter a gate, threshold, metric, finding mapping, or raw artifact. It removes
+    the extra INCOMPLETE outcome introduced during execution and applies the original binary
+    decision rule from HYPOTHESIS_VALIDATION_PLAN.md section 1.
+
+groundTruthPolicy:
+  humanReviewerRequired: false
+  authority: Test Architect
+  safeguards:
+    - labels are sealed before condition results exist
+    - material and critical labels require reproducible oracle evidence
+    - evaluator conditions cannot access ground-truth labels
+    - subjective or unsupported labels are excluded
+  claimLimit: |
+    Results represent agent-established ground truth. They do not claim independent human
+    confirmation.
+
+binaryDecisionRule:
+  validated: every H0 gate passes
+  rejected: one or more H0 gates fail
+  incompleteAllowed: false
+  source: HYPOTHESIS_VALIDATION_PLAN.md section 1 and section 9
+
+frozenEvidence:
+  uniqueRealMaterialCatches:
+    observed: 0
+    required: 3
+    gatePassed: false
+  uniqueCatchSystemSpan:
+    observed: 0
+    required: 2
+    gatePassed: false
+  recall:
+    observed: 0.50
+    required: 0.80
+    gatePassed: false
+  isolationCompleteness:
+    observed: incomplete across the reduced-scope run
+    required: complete for every independent run
+    gatePassed: false
+  stability:
+    observed: single repetition
+    required: 0.90 across three repetitions
+    gatePassed: false
+
+decision:
+  h0: DARK-FACTORY REJECTED
+  rationale: |
+    H0 uses an all-gates rule. Multiple gates failed on the frozen evidence, including the primary
+    incremental-catch gate and recall. The controlled contract-quality intervention also showed
+    that oracle wording changed independent-evaluator recall while the isolation boundary remained
+    fixed. The evidence therefore does not justify a dark-factory advantage claim.
+  productConsequence: |
+    eval-quality cannot claim that isolation itself creates a dark-factory evaluation advantage.
+    Contract and oracle authoring remains the supported working direction.
+  externalValidityLimit: |
+    The run was reduced in task count, repetitions, system execution, and natural-defect coverage.
+    Rejection means the capability failed its required evidence bar. It does not prove that an
+    isolated evaluator can never add value in another design or population.

@@ -1,0 +1,59 @@
+{
+  "contractVersion": 1,
+  "taskId": "cc-h0-01-garment-upload-ownership",
+  "sourceSpecDigest": "sha256:6633ecdfbdc2ec992edd0076ac21b8f2f039d7fe38aa225a69ba0b7587e4f2e3",
+  "observableBehaviors": [
+    {
+      "id": "B-001",
+      "description": "An authenticated user can upload a garment image and it is stored associated with their account.",
+      "oracle": "Upload a garment as user A, then read it back via a list/get endpoint as user A. The uploaded garment must appear with matching metadata.",
+      "severity": "material"
+    },
+    {
+      "id": "B-002",
+      "description": "A different authenticated user cannot read or access another user's uploaded garment through any observable endpoint.",
+      "oracle": "Upload a garment as user A, then attempt to read/list/access it as user B. Must be denied (403/404) or simply absent from user B's results, never returned.",
+      "severity": "critical"
+    },
+    {
+      "id": "B-003",
+      "description": "An uploaded garment is retained and observable in a subsequent authenticated request, not ephemeral.",
+      "oracle": "After upload, a separate later request (new HTTP call) for the same user's garment list still shows the item.",
+      "severity": "material"
+    }
+  ],
+  "riskHypotheses": [
+    "Ownership scoping is implemented at the query layer inconsistently across read paths (list vs. get-by-id), so one path enforces it and another doesn't.",
+    "Retention/persistence is mocked or in-memory only during initial implementation and silently drops data on a fresh request."
+  ],
+  "permittedInterfaces": ["api"],
+  "forbiddenInputs": [
+    "original-spec",
+    "source-code",
+    "repository",
+    "builder-transcript",
+    "implementation-logs",
+    "comparator-results",
+    "human-labels"
+  ],
+  "testData": {
+    "setup": "Two distinct authenticated test-user accounts (A and B) provisioned in the couture-cast local/dev environment.",
+    "cleanup": "Delete any garment records created by user A or user B during evaluation."
+  },
+  "budgets": {
+    "maxToolCalls": 40,
+    "maxWallClockMinutes": 30,
+    "maxCostUsd": 5
+  },
+  "safetyLimits": [
+    "Only interact with the two provisioned test-user accounts.",
+    "Do not attempt to enumerate or access any account other than A and B."
+  ],
+  "requiredEvidence": [
+    "Full HTTP request/response transcript for every claim.",
+    "Any garment ID referenced in a finding must resolve to an actual observed API response, quoted verbatim in the evidence artifact."
+  ],
+  "gatePolicy": {
+    "allowedVerdicts": ["PASS", "CONCERNS", "FAIL"]
+  }
+}

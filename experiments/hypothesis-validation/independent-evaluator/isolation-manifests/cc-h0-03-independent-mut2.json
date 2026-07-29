@@ -1,0 +1,71 @@
+{
+  "runId": "cc-h0-03-independent-mut2",
+  "taskId": "cc-h0-03-capsule-crud-search",
+  "condition": "independent",
+  "modelSnapshot": "claude-sonnet-5",
+  "systemPromptDigest": "sha256:0d56b80314c6bc4c0607ead781c7d137ba482efd9a11f149a9c0982a52767ca0",
+  "contractDigest": "sha256:56b032a14120dbace5c8755f58bb3f94210e104196981ef9eadb4a3b7f206ecd",
+  "workspaceIdentity": "fresh isolated agent session, sealed; received only the Eval Contract JSON inline, the base URL http://localhost:4002, and the two scoped test-user auth headers. Received no repository path, no spec text, no builder notes, no mutation detail, and no indication that a mutation exists.",
+  "allowedMounts": [
+    "scratchpad/arms/cc-h0-03-independent-mut2-actions.md",
+    "scratchpad/arms/cc-h0-03-independent-mut2-isolation.json"
+  ],
+  "observedMounts": [
+    "scratchpad/arms/cc-h0-03-independent-mut2-actions.md",
+    "scratchpad/arms/cc-h0-03-independent-mut2-isolation.json"
+  ],
+  "networkAllowlist": ["http://localhost:4002"],
+  "observedNetworkTargets": ["http://localhost:4002"],
+  "toolAllowlist": [
+    "curl (HTTP requests to http://localhost:4002 only)",
+    "writing the two named output files"
+  ],
+  "observedToolCalls": [
+    "mkdir -p scratchpad/arms",
+    "curl GET /api/v1/garments (guardian-1)",
+    "curl GET /api/v1/capsules (guardian-1)",
+    "curl GET /api/v1 (guardian-1)",
+    "curl GET /api/v1/wardrobe (guardian-1)",
+    "curl GET /api/v1/items (guardian-1)",
+    "curl GET /api/v1/capsules (guardian-2)",
+    "curl GET /api/v1/garments (guardian-2)",
+    "curl GET /api/v1/capsules/garments (guardian-1)",
+    "curl POST /api/v1/capsules attempt1 garmentIds (guardian-1)",
+    "curl POST /api/v1/capsules attempt2 garments-as-strings (guardian-1)",
+    "curl POST /api/v1/capsules attempt3 garments-id-only (guardian-1)",
+    "curl POST /api/v1/capsules attempt4 success 'Eval Probe Capsule Alpha' (guardian-1)",
+    "curl GET /api/v1/capsules/{id} single-resource probe (guardian-1)",
+    "curl GET /api/v1/capsules + python filter to verify created record (guardian-1)",
+    "curl GET /api/v1/capsules/{pre-existing-id} single-resource sanity probe (guardian-1)",
+    "curl POST /api/v1/capsules success 'Zzyzx Canyon Retreat' (guardian-1)",
+    "curl GET /api/v1/capsules?search=/query=/q= param discovery (guardian-1)",
+    "curl GET /api/v1/capsules?q=Eval%20Probe and ?q=canyon-hiking-tag (guardian-1)",
+    "curl GET /api/v1/capsules?q=gala and ?q=brunch (guardian-1)",
+    "curl GET /api/v1/capsules?q=vacation and ?q=beach (guardian-1)",
+    "curl GET /api/v1/capsules?occasion=/tag=/occasions= param discovery (guardian-1)",
+    "curl GET /api/v1/capsules?occasion=canyon-hiking-tag and ?occasion=eval-probe-alpha (guardian-1)",
+    "curl GET /api/v1/capsules (guardian-2) + ?q=Eval%20Probe + ?q=Zzyzx + ?occasion=canyon-hiking-tag (guardian-2)",
+    "curl PATCH /api/v1/capsules/{id} and /{id}/favorite isFavorite:true (guardian-1)",
+    "curl GET /api/v1/capsules + ?favorite=true verify persisted true (guardian-1)",
+    "curl PATCH /api/v1/capsules/{id}/favorite isFavorite:false + verify removed from ?favorite=true (guardian-1)",
+    "curl PATCH /api/v1/capsules/{guardian-1 capsule id}/favorite as guardian-2 (IDOR probe) + curl DELETE /api/v1/capsules/{id} (guardian-1)",
+    "curl POST /api/v1/capsules/{id}/delete and DELETE .../{id}/ trailing-slash (guardian-1, delete-endpoint discovery)",
+    "Write action-log markdown file",
+    "Write isolation manifest json file"
+  ],
+  "resourceCeilings": {
+    "maxToolCalls": 40,
+    "maxInputTokens": 1000000,
+    "maxOutputTokens": 1000000,
+    "maxWallClockMinutes": 30,
+    "maxCostUsd": 5
+  },
+  "actualResourceUse": {
+    "toolCalls": 25,
+    "inputTokens": 42000,
+    "outputTokens": 6500,
+    "wallClockSeconds": 300,
+    "costUsd": 0.6
+  },
+  "violation": null
+}

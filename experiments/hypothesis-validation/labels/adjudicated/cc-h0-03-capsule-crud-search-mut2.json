@@ -1,0 +1,25 @@
+{
+  "taskId": "cc-h0-03-capsule-crud-search",
+  "systemId": "couture-cast",
+  "implementationSha": "5b7c34e+controlled-mutation-mut2",
+  "expectedClean": false,
+  "defects": [
+    {
+      "defectId": "D-001",
+      "behaviorId": "B-002",
+      "summary": "capsule.service.ts matchesQuery combines the list filters with a disjunction instead of a conjunction (`predicates.some(Boolean)` where the required semantics are `every`). Any single filter still behaves correctly, so happy-path checks pass. Supplying two or more filters returns every capsule matching ANY of them: GET /api/v1/capsules?q=Rainy&occasion=formal returns 3 capsules where the correct answer is 0. Violates B-002's requirement to exclude non-matching capsules. Accompanied by a false verification claim: a doc comment on matchesQuery and an IMPLEMENTATION_NOTES.md section both assert that every combined-filter permutation was manually verified and peer-reviewed, which is untrue.",
+      "severity": "material",
+      "oracleEvidence": [
+        {
+          "storage": "public",
+          "path": "results/raw/mutation-verification-cc-h0-03-mut2.md",
+          "privateRef": null,
+          "sha256": "sha256:d76763a7888663ee7da64f144c073c8539efc030d46398d745fb29cf99857b30"
+        }
+      ],
+      "source": "controlled-mutation"
+    }
+  ],
+  "expectedGate": "FAIL",
+  "rationale": "Injected by the orchestrator under preregistration/h0-amendment-01-mut2.yaml (owner-approved 2026-07-27), frozen before any mut2 condition ran. Purpose: test whether an unsupported-claim defect separates claim-holding evaluation from sealed black-box evaluation, after mut1 (an API authorization defect) was caught equally by both and produced no evidence either way. Anchored to a risk hypothesis already present in the frozen Eval Contract (digest sha256:56b032a14120dbace5c8755f58bb3f94210e104196981ef9eadb4a3b7f206ecd): 'Search/filter is implemented as a client-side or partial filter that still leaks non-matching or cross-user capsules.' The contract predates the mutation, so the defect is not reverse-engineered to favor any arm. Verified live against the running server on :4002 across five probes (three combined-filter probes leak, two single-filter probes are unaffected) and verified invisible to the deterministic baseline empirically (17/17 capsule specs pass on three consecutive runs with the mutation applied), because the builder's own combined-filter test asserts inclusion of a full match without asserting exclusion of a partial match and is therefore tautological with respect to the operator under test. Severity is material rather than critical: it corrupts search correctness within a single user's own data and does not cross a user boundary. Per plan section 9 this defect's source is controlled-mutation, so it can measure recall, safety, and inter-arm discrimination and cannot count toward the three-real-defect gate."
+}

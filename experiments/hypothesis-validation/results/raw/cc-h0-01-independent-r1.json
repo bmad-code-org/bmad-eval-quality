@@ -1,0 +1,18 @@
+{
+  "runId": "cc-h0-01-independent-r1",
+  "taskId": "cc-h0-01-garment-upload-ownership",
+  "condition": "independent",
+  "verdict": "PASS",
+  "findings": [
+    {"findingId": "F-001", "behaviorId": "B-001", "severity": "low", "summary": "Request field named 'image' but echoed back as 'imageUrl' in responses — cosmetic asymmetry, not a defect.", "actionIds": [], "evidenceArtifacts": []},
+    {"findingId": "F-002", "behaviorId": "B-002", "severity": "low", "summary": "Cross-user access correctly denied in every direction tried, including adversarial spoofing attempts (extra body fields, query-param overrides) — all rejected or ignored, no leakage.", "actionIds": [], "evidenceArtifacts": []},
+    {"findingId": "F-003", "behaviorId": "B-003", "severity": "low", "summary": "Garments persist across separate later requests for both test users, confirmed unchanged.", "actionIds": [], "evidenceArtifacts": []},
+    {"findingId": "F-004", "behaviorId": "B-001", "severity": "low", "summary": "Input validation is strict and well-behaved: non-URL strings, wrong types, javascript: scheme, and injection-style garment IDs all rejected cleanly with no stack-trace leakage.", "actionIds": [], "evidenceArtifacts": []},
+    {"findingId": "F-005", "behaviorId": "B-003", "severity": "low", "summary": "ENVIRONMENTAL, not a system defect: both test accounts already contained items neither created by this run, indicating the backing store is shared/persistent across evaluator runs reusing the same 2 seeded accounts. Ownership isolation between A and B still held throughout. Orchestrator note: this is expected — the same guardian-1/guardian-2 accounts were reused across the self-evaluator run and this independent run without cleanup between them, which the Eval Contract's cleanup step should address in a stricter future pass.", "actionIds": [], "evidenceArtifacts": []}
+  ],
+  "actionsArtifact": {"storage": "public", "path": "results/raw/cc-h0-01-independent-r1-actions.md", "privateRef": null, "sha256": "sha256:0000000000000000000000000000000000000000000000000000000000000"},
+  "resourceUse": {"toolCalls": 17, "inputTokens": 0, "outputTokens": 0, "wallClockSeconds": 150, "costUsd": 0},
+  "isolationManifestArtifact": {"storage": "public", "path": "results/raw/cc-h0-01-independent-r1-isolation.json", "privateRef": null, "sha256": "sha256:0000000000000000000000000000000000000000000000000000000000000"},
+  "invalidReason": null,
+  "note": "Fresh isolated agent context, no repo/spec/builder-transcript access — only the sealed Eval Contract, base URL, and the two test-account bearer tokens, matching the context boundary table. No material or critical findings. Zero unique catches for this task (consistent with ground truth: this task's implementation is genuinely clean)."
+}

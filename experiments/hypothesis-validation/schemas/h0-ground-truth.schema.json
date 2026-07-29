@@ -1,0 +1,63 @@
+{
+	"$schema": "https://json-schema.org/draft/2020-12/schema",
+	"$id": "https://eval-quality/schemas/h0-ground-truth.schema.json",
+	"title": "H0GroundTruth",
+	"description": "Adjudicated human label for one H0 implementation. Do not reveal clean status, defect IDs, or mutation details to any evaluator condition. Per HYPOTHESIS_VALIDATION_PLAN.md section 3.",
+	"type": "object",
+	"additionalProperties": false,
+	"properties": {
+		"taskId": { "type": "string", "minLength": 1 },
+		"systemId": { "type": "string", "minLength": 1 },
+		"implementationSha": { "type": "string", "minLength": 1 },
+		"expectedClean": { "type": "boolean" },
+		"defects": {
+			"type": "array",
+			"items": {
+				"type": "object",
+				"additionalProperties": false,
+				"properties": {
+					"defectId": { "type": "string", "pattern": "^D-[0-9]{3,}$" },
+					"behaviorId": { "type": "string", "pattern": "^B-[0-9]{3,}$" },
+					"summary": { "type": "string", "minLength": 1 },
+					"severity": {
+						"type": "string",
+						"enum": ["low", "material", "critical"]
+					},
+					"oracleEvidence": {
+						"type": "array",
+						"items": { "$ref": "artifact-ref.schema.json" }
+					},
+					"source": {
+						"type": "string",
+						"enum": ["natural", "controlled-mutation"]
+					}
+				},
+				"required": [
+					"defectId",
+					"behaviorId",
+					"summary",
+					"severity",
+					"oracleEvidence",
+					"source"
+				]
+			}
+		},
+		"expectedGate": { "type": "string", "enum": ["PASS", "CONCERNS", "FAIL"] },
+		"rationale": { "type": "string", "minLength": 1 }
+	},
+	"required": [
+		"taskId",
+		"systemId",
+		"implementationSha",
+		"expectedClean",
+		"defects",
+		"expectedGate",
+		"rationale"
+	],
+	"allOf": [
+		{
+			"if": { "properties": { "expectedClean": { "const": true } } },
+			"then": { "properties": { "defects": { "type": "array", "maxItems": 0 } } }
+		}
+	]
+}

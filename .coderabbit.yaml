@@ -1,0 +1,216 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+
+language: "en-US"
+early_access: false
+enable_free_tier: true
+
+reviews:
+  profile: chill
+  high_level_summary: false
+  high_level_summary_in_walkthrough: false
+  request_changes_workflow: false
+  review_status: false
+  review_details: false
+  commit_status: false
+  collapse_walkthrough: true
+  changed_files_summary: false
+  sequence_diagrams: false
+  estimate_code_review_effort: false
+  assess_linked_issues: false
+  related_issues: false
+  related_prs: false
+  poem: false
+  in_progress_fortune: false
+  suggested_labels: false
+  suggested_reviewers: false
+  enable_prompt_for_ai_agents: true
+
+  finishing_touches:
+    docstrings:
+      enabled: false
+    unit_tests:
+      enabled: false
+    autofix:
+      enabled: true
+
+  pre_merge_checks:
+    docstrings:
+      mode: "off"
+    title:
+      mode: warning
+      requirements: >-
+        Use a conventional-commit prefix and name the behavior, defect, or
+        engineering outcome. Do not use only an epic, story, or task number.
+    description:
+      mode: warning
+    issue_assessment:
+      mode: "off"
+
+  auto_review:
+    enabled: true
+    drafts: false
+    auto_incremental_review: true
+    base_branches:
+      - main
+
+  path_filters:
+    # Whitelist-first: review the publishable library and its delivery surfaces.
+    - ".coderabbit.yaml"
+    - ".github/**"
+    - ".husky/**"
+    - "src/**"
+    - "tests/**"
+    - "docs/**"
+    - "README.md"
+    - "CONTRIBUTING.md"
+    - "SECURITY.md"
+    - "package.json"
+    - "biome.json"
+    - "tsconfig.json"
+    - "tsconfig-build.json"
+    - "vitest.config.ts"
+    - ".gitleaks.toml"
+    - ".gitleaksignore"
+    - ".npmrc"
+    - ".nvmrc"
+
+    # Exclude generated output, local tooling, planning artifacts, and noise.
+    - "!node_modules/**"
+    - "!dist/**"
+    - "!coverage/**"
+    - "!package-lock.json"
+    - "!docs/.vitepress/cache/**"
+    - "!docs/.vitepress/dist/**"
+    - "!.agent/**"
+    - "!.agents/**"
+    - "!.claude/**"
+    - "!_bmad/**"
+    - "!_bmad-output/**"
+    - "!**/*.generated.*"
+    - "!**/*.min.js"
+    - "!**/*.png"
+    - "!**/*.jpg"
+    - "!**/*.jpeg"
+    - "!**/*.gif"
+    - "!**/*.svg"
+
+  path_instructions:
+    - path: "src/**/*.ts"
+      instructions: |
+        Public TypeScript library code. Enforce strict, explicit public types,
+        ESM and Node 20 compatibility, side-effect-free module loading, and the
+        zero-runtime-dependency policy. Preserve provider independence: core
+        evaluation logic must not depend directly on a vendor SDK. Prioritize
+        deterministic evidence over LLM judging. Flag hidden mutable state,
+        nondeterministic ordering, unbounded work, and transcript, credential, or
+        sensitive-data leakage.
+
+    - path: "src/{assertions,graders,trajectory}/**"
+      instructions: |
+        Evaluation and scoring logic is correctness-critical. Check score domains,
+        weight normalization, empty input, NaN and infinity handling, pass@k
+        formulas, ordering and tie rules, confidence semantics, first-error
+        attribution, and stable results for identical evidence. A successful final
+        answer must not erase unsupported reasoning or invalid tool use.
+
+    - path: "src/{runner,providers,reporting}/**"
+      instructions: |
+        Agent execution and evidence-boundary code. Treat prompts, transcripts,
+        tool results, and model responses as untrusted and potentially sensitive.
+        Review redaction, explicit persistence and external-transmission choices,
+        timeouts, cancellation, retries, concurrency, resource limits, partial
+        failures, and provider error normalization.
+
+    - path: "src/index.ts"
+      instructions: |
+        Public API barrel. Flag accidental export removal, unstable internal types
+        leaking into declarations, name collisions, and exports that are missing
+        corresponding package mappings, tests, or documentation.
+
+    - path: "tests/**/*.ts"
+      instructions: |
+        Vitest coverage for an evaluation library. Require focused behavior,
+        boundary, and failure-path tests. Control clocks, random values, ordering,
+        and provider responses so tests remain deterministic. For scoring logic,
+        include empty, malformed, adversarial, and repeated-trial cases. For
+        runner and provider logic, include timeout, cancellation, redaction, and
+        partial-response cases.
+
+    - path: "package.json"
+      instructions: |
+        npm publishing boundary. Check exports, files, types, entry points,
+        engines, scripts, peer dependencies, and built paths together. Flag new
+        runtime dependencies, Node 20 incompatibility, missing subpath exports,
+        or declarations and JavaScript that do not match `dist`.
+
+    - path: ".github/workflows/**"
+      instructions: |
+        GitHub Actions and release automation. Review least-privilege permissions,
+        fork safety, expression and shell injection, action pinning, downloaded
+        binary verification, npm provenance and token exposure, version
+        validation, publish ordering, tag and branch consistency, and recovery
+        from a partial release.
+
+    - path: ".gitleaks.toml"
+      instructions: |
+        Secret-scanning policy. Challenge broad allowlists and path exclusions,
+        especially exclusions covering tests, fixtures, Markdown, transcripts, or
+        evaluation evidence where realistic secrets can still be committed.
+
+    - path: ".npmrc"
+      instructions: |
+        Package installation and publication policy. Flag settings that weaken
+        dependency integrity, execute untrusted lifecycle scripts unexpectedly,
+        expose credentials, or diverge between local development, CI, and publish.
+
+    - path: "README.md"
+      instructions: |
+        Public project contract. Check commands, compatibility claims, package
+        status, module availability, and examples against implemented exports.
+        Clearly distinguish current behavior from roadmap behavior.
+
+    - path: "CONTRIBUTING.md"
+      instructions: |
+        Contributor and architecture policy. Check that commands, module layout,
+        exports, tests, documentation requirements, Node support, and release
+        process match the repository. Avoid prose-style comments unless wording
+        creates technical ambiguity.
+
+    - path: "docs/**"
+      instructions: |
+        Public usage documentation. Verify examples against public exports and
+        runtime behavior. Require API changes to update relevant examples, but
+        avoid subjective prose or formatting feedback.
+
+  tools:
+    biome:
+      enabled: true
+    actionlint:
+      enabled: true
+    zizmor:
+      enabled: true
+    gitleaks:
+      enabled: true
+    eslint:
+      enabled: false
+    markdownlint:
+      enabled: false
+    languagetool:
+      enabled: false
+
+chat:
+  auto_reply: true
+
+knowledge_base:
+  code_guidelines:
+    enabled: true
+    filePatterns:
+      - files: "CONTRIBUTING.md"
+        applyTo: "**/*"
+  learnings:
+    scope: local
+    approval_delay: 0
+
+issue_enrichment:
+  auto_enrich:
+    enabled: false

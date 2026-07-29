@@ -1,0 +1,36 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+
+# Environment and config
+.env
+.DS_Store
+
+# Logs
+*.log
+npm-debug.log*
+
+# Coverage
+/coverage
+
+# VitePress
+docs/.vitepress/cache
+docs/.vitepress/dist
+
+# BMAD installer state and module config (installer-managed dev tooling, not
+# part of the published library).
+_bmad/
+
+# Local decision-log sidecars generated next to the planning docs; not published.
+_bmad-output/**/.memlog.md
+
+# Local-only scratch and notes files.
+*.local.md
+
+# Local agent tooling / installed skills (not part of the published library)
+.claude/
+.agent/
+.agents/
+_bmad-output/planning-artifacts/research/

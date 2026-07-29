@@ -1,0 +1,213 @@
+amendmentVersion: 1
+amendsPreregistration: h0.yaml
+followsAmendment: h0-amendment-01-mut2.yaml
+experimentId: eq-hypothesis-001
+createdAt: "2026-07-27"
+status: OWNER_APPROVED
+
+approval:
+  approvedBy: Murat
+  approvedAt: "2026-07-27T10:17:48-05:00"
+  approvalMechanism: |
+    In-session explicit approval. The owner reviewed the prepared package summary and links for
+    amendment 02, contract v2, the unchanged live mutation, the model and launcher, the validation
+    result, and the unique run ID, then answered "yes" to the request to approve amendment 02 and
+    authorize launch of cc-h0-03-independent-mut2-contract-v2.
+  commitSha: NOT_COMMITTED
+  commitShaDeviation: |
+    The experiment owner's standing instruction keeps this research local and uncommitted.
+    This repeats the disclosed process deviation in h0-amendment-01-mut2.yaml. Owner approval
+    remains mandatory before the condition launches.
+
+writtenBeforeExecution: true
+writtenBeforeExecutionNote: |
+  This amendment and its strengthened Eval Contract were written before the contract-quality
+  condition ran. The only model call made during preparation was a tool-free availability probe
+  that returned READY from claude-sonnet-5. It had no system access and produced no scored evidence.
+
+changes:
+  gatesChanged: false
+  metricsChanged: false
+  thresholdsChanged: false
+  frozenPromptTemplateChanged: false
+  modelChanged: false
+  resourceCeilingsChanged: false
+  mutationChanged: false
+  groundTruthChanged: false
+  evaluatorVisibleChange: B-002 oracle only
+  resultSchemaChange: additive findingType discriminator
+
+rationale: |
+  The valid mut2 independent run missed D-001 because the frozen B-002 oracle required only a
+  single-filter probe. Both contextual arms caught D-001 after inspecting builder-side material
+  that pointed at filter composition. This round tests the mechanism directly. It strengthens the
+  oracle to require evidence that distinguishes full matches from partial matches when multiple
+  filters are supplied, then reruns only the sealed independent arm against the unchanged mutation.
+
+  The intervention is deliberately narrow. It does not name the mutation, the faulty operator, the
+  known leaking request, any existing capsule, the ground-truth defect ID, or the prior arm results.
+  The original spec digest, behavior description, risk hypotheses, prompt template, model, budgets,
+  interface, credentials, mutation, and ground truth remain unchanged.
+
+primaryQuestion: |
+  Does strengthening B-002's oracle to make filter composition observable cause a fresh sealed
+  independent evaluator to detect the existing material defect that the valid mut2 sealed run
+  missed?
+
+contracts:
+  original:
+    path: ../independent-evaluator/eval-contracts/cc-h0-03-capsule-crud-search.json
+    digest: "sha256:56b032a14120dbace5c8755f58bb3f94210e104196981ef9eadb4a3b7f206ecd"
+  strengthened:
+    path: ../independent-evaluator/eval-contracts/cc-h0-03-capsule-crud-search-contract-quality-v2.json
+    digest: "sha256:4019461bb75fbc2aa9da28b29d30bd31a5fe952ff4f3930d0f24a45541e36b7c"
+  controlledDiff: |
+    Exactly one JSON value changes: observableBehaviors[B-002].oracle. A byte-level diff was
+    reviewed during preparation and showed no other contract change.
+  strengthenedOracle: |
+    Filter composition is observable only when the test data distinguishes a capsule matching
+    every supplied filter from capsules matching only a strict subset. Evidence must exercise at
+    least two filters together and include both a full match and partial matches. A capsule belongs
+    in the composed result only when it satisfies every supplied filter; capsules satisfying only
+    a subset must be excluded.
+
+measurementCorrection:
+  findingType:
+    schemaPath: ../schemas/h0-run-result.schema.json
+    schemaDigest: "sha256:f030502a8dcb2d2550c6d0fa95b30aeb622c65603531bd0e9e13aa92becee9c1"
+    allowedValues:
+      - defect
+      - observation
+      - confirmation
+    treatment: |
+      Every finding in this round must carry findingType. Only defect findings enter the precision
+      denominator. Observations and positive confirmations remain visible without being counted as
+      alleged failures. The property is additive in the shared schema so prior schema-valid mut2
+      records remain valid.
+
+frozenControls:
+  taskId: cc-h0-03-capsule-crud-search
+  systemId: couture-cast
+  baseImplementationSha: 5b7c34e5dd4a95cfeff08929b0af687f2b71ebef
+  mutationId: mut2
+  mutationSource: controlled-mutation
+  mutationTargetBehaviorId: B-002
+  mutationTargetSeverity: material
+  servedAt: http://localhost:4002
+  mutationFileDigest: "sha256:750667deb8efe6fac5873058fa08e0f86899919f16d8241d4c6a11b08d46cfcd"
+  implementationNotesDigest: "sha256:f6ec750542ab68f5d66c328568fca7850aace1687634eaecf5be0a51b5f3a48d"
+  groundTruthPath: ../labels/adjudicated/cc-h0-03-capsule-crud-search-mut2.json
+  promptTemplate:
+    path: ../prompts/independent-evaluator/independent-evaluator-prompt-template.md
+    digest: "sha256:0d56b80314c6bc4c0607ead781c7d137ba482efd9a11f149a9c0982a52767ca0"
+  model: claude-sonnet-5
+  budgets:
+    maxToolCalls: 40
+    maxInputTokens: 1000000
+    maxOutputTokens: 1000000
+    maxWallClockMinutes: 30
+    maxCostUsd: 5
+
+preflightEvidence:
+  server:
+    checkedAt: "2026-07-27T10:00:45-05:00"
+    port: 4002
+    listening: true
+  worktree:
+    expectedModifiedPath: apps/api/src/modules/capsule/capsule.service.ts
+    expectedUntrackedPath: IMPLEMENTATION_NOTES.md
+    unexpectedChangesObserved: false
+  blackBox:
+    singleNameFilterCount: 1
+    singleOccasionFilterCount: 3
+    composedFilterCount: 4
+    correctComposedFilterCount: 0
+    observation: |
+      GET /api/v1/capsules?q=Rainy returns one capsule. GET with occasion=formal returns three.
+      GET with both filters returns all four partial matches under the unchanged OR mutation.
+      The prior ground-truth artifact recorded three leaked capsules before evaluator-created data
+      accumulated. The exact leaked count changed; the expected result and defect identity did not.
+  modelAvailability:
+    claudeCodeVersion: 2.1.219
+    model: claude-sonnet-5
+    result: READY
+    costUsd: 0.0091677
+    note: |
+      Claude Code 2.1.220 crashed locally in its macOS updater helper before contacting the model.
+      The installed 2.1.219 binary completed the tool-free probe with canonical model
+      claude-sonnet-5. This CLI-version fallback does not change the preregistered model snapshot.
+
+runPlan:
+  runId: cc-h0-03-independent-mut2-contract-v2
+  condition: independent
+  repetitions: 1
+  comparisonRunId: cc-h0-03-independent-mut2
+  doNotOverwrite: |
+    The comparison run is valid evidence and must remain unchanged. This round uses a distinct run
+    ID and distinct artifacts.
+  launch:
+    session: fresh non-persistent Claude Code session
+    workingDirectory: fresh scratch directory outside eval-quality
+    claudeCodeVersion: 2.1.219
+    model: claude-sonnet-5
+    safeMode: true
+    permissionMode: dontAsk
+    outputCapture: stream-json outside eval-quality
+  inputsAllowed:
+    - strengthened Eval Contract JSON pasted inline
+    - base URL http://localhost:4002
+    - guardian-1 and guardian-2 scoped test-token auth headers
+  inputsDenied:
+    - original-spec
+    - source-code
+    - repository
+    - builder-transcript
+    - implementation-logs
+    - comparator-results
+    - human-labels
+    - mutation-details
+    - prior run results
+    - eval-quality working tree
+  toolsAllowed:
+    - HTTP requests to http://localhost:4002
+    - writing the two named scratch output files
+  toolsDenied:
+    - filesystem reads
+    - git
+    - grep
+    - find
+    - ls
+    - web search
+    - network access outside http://localhost:4002
+  sealing: |
+    The arm returns structured behavior verdicts and findings. The orchestrator writes the H0 result
+    record and final isolation manifest, computes every SHA-256 digest, checks every artifact
+    reference, and validates all records with Ajv. The arm must not author its own scored result.
+
+outcomeRules:
+  causalSupport: |
+    Supported for this case if the run is valid and the arm emits a material defect finding for
+    B-002 backed by a request that supplies at least two filters together and response evidence that
+    capsules matching only a strict subset were returned. The finding must map to D-001. The task
+    verdict must be FAIL.
+  causalNotSupported: |
+    Not supported for this case if a valid run still misses D-001, lacks composed-filter evidence,
+    or produces a verdict other than FAIL.
+  invalid: |
+    Invalidate the run for any prohibited-input access, network target outside localhost:4002,
+    model mismatch, prompt-template mismatch, contract mismatch, budget breach, missing artifact,
+    digest mismatch, or schema-validation failure. An invalid run produces no causal conclusion.
+
+claimBoundary: |
+  This is a post-mut2 causal mechanism test using a controlled mutation and a deliberately improved
+  oracle. It cannot satisfy the H0 three-real-defect gate, create a unique catch for the original
+  frozen condition, or move H0 to DARK-FACTORY VALIDATED. A positive result supports the narrower
+  claim that contract and oracle authoring controlled recall for this case. Generalization still
+  requires more defects, tasks, and both systems.
+
+ownerGate:
+  requiredBeforeLaunch: true
+  approvalRecorded: true
+  nextAction: |
+    Recompute and verify the package checksum after recording this approval. Then launch
+    cc-h0-03-independent-mut2-contract-v2 with the frozen controls above.

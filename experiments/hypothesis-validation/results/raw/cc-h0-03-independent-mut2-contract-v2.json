@@ -1,0 +1,169 @@
+{
+  "runId": "cc-h0-03-independent-mut2-contract-v2",
+  "taskId": "cc-h0-03-capsule-crud-search",
+  "condition": "independent",
+  "verdict": "FAIL",
+  "findings": [
+    {
+      "findingId": "F-001",
+      "findingType": "confirmation",
+      "behaviorId": "B-001",
+      "severity": "material",
+      "summary": "Capsule creation from two garments with a name and occasion tag succeeds and is retrievable through the list endpoint with the same name, occasions, and garments.",
+      "actionIds": ["A-007", "A-009"],
+      "evidenceArtifacts": [
+        {
+          "storage": "public",
+          "path": "results/raw/cc-h0-03-independent-mut2-contract-v2-http-trace.jsonl",
+          "privateRef": null,
+          "sha256": "sha256:5cb3bb4e9c8fc2ebf30e265ed91e4e82157093731dbc9a2328c5d408c4e9e5a0"
+        },
+        {
+          "storage": "public",
+          "path": "results/raw/cc-h0-03-independent-mut2-contract-v2-actions.md",
+          "privateRef": null,
+          "sha256": "sha256:6a4664f9e3adec28fa5fb562411c9aafe5061d94707322b13ac0d9df0eb2bcad"
+        },
+        {
+          "storage": "public",
+          "path": "results/raw/cc-h0-03-independent-mut2-contract-v2-agent-output.json",
+          "privateRef": null,
+          "sha256": "sha256:7aa847aa6950c717d6b61813d75b7d9869d394d9ef0ce0c60a5b77df07ca9924"
+        }
+      ]
+    },
+    {
+      "findingId": "F-002",
+      "findingType": "defect",
+      "behaviorId": "B-002",
+      "severity": "material",
+      "summary": "Composed occasion and name-query filters do not intersect their matches. The response includes a capsule satisfying only the occasion filter alongside the capsule satisfying both filters, violating the oracle requirement that every returned capsule satisfy every supplied filter.",
+      "actionIds": ["A-013", "A-014", "A-015"],
+      "evidenceArtifacts": [
+        {
+          "storage": "public",
+          "path": "results/raw/cc-h0-03-independent-mut2-contract-v2-http-trace.jsonl",
+          "privateRef": null,
+          "sha256": "sha256:5cb3bb4e9c8fc2ebf30e265ed91e4e82157093731dbc9a2328c5d408c4e9e5a0"
+        },
+        {
+          "storage": "public",
+          "path": "results/raw/cc-h0-03-independent-mut2-contract-v2-actions.md",
+          "privateRef": null,
+          "sha256": "sha256:6a4664f9e3adec28fa5fb562411c9aafe5061d94707322b13ac0d9df0eb2bcad"
+        },
+        {
+          "storage": "public",
+          "path": "results/raw/cc-h0-03-independent-mut2-contract-v2-agent-output.json",
+          "privateRef": null,
+          "sha256": "sha256:7aa847aa6950c717d6b61813d75b7d9869d394d9ef0ce0c60a5b77df07ca9924"
+        }
+      ]
+    },
+    {
+      "findingId": "F-003",
+      "findingType": "confirmation",
+      "behaviorId": "B-003",
+      "severity": "low",
+      "summary": "Favorite mark and unmark operations round-trip correctly through the favorite endpoint and are reflected in the favorites-filtered read path.",
+      "actionIds": ["A-019", "A-020", "A-021", "A-022"],
+      "evidenceArtifacts": [
+        {
+          "storage": "public",
+          "path": "results/raw/cc-h0-03-independent-mut2-contract-v2-http-trace.jsonl",
+          "privateRef": null,
+          "sha256": "sha256:5cb3bb4e9c8fc2ebf30e265ed91e4e82157093731dbc9a2328c5d408c4e9e5a0"
+        },
+        {
+          "storage": "public",
+          "path": "results/raw/cc-h0-03-independent-mut2-contract-v2-actions.md",
+          "privateRef": null,
+          "sha256": "sha256:6a4664f9e3adec28fa5fb562411c9aafe5061d94707322b13ac0d9df0eb2bcad"
+        },
+        {
+          "storage": "public",
+          "path": "results/raw/cc-h0-03-independent-mut2-contract-v2-agent-output.json",
+          "privateRef": null,
+          "sha256": "sha256:7aa847aa6950c717d6b61813d75b7d9869d394d9ef0ce0c60a5b77df07ca9924"
+        }
+      ]
+    },
+    {
+      "findingId": "F-004",
+      "findingType": "confirmation",
+      "behaviorId": "B-004",
+      "severity": "critical",
+      "summary": "User A capsules are absent from User B list, name-query, and occasion-query results. User B also receives 404 when attempting to favorite a User A capsule by ID.",
+      "actionIds": ["A-023", "A-024", "A-025", "A-026"],
+      "evidenceArtifacts": [
+        {
+          "storage": "public",
+          "path": "results/raw/cc-h0-03-independent-mut2-contract-v2-http-trace.jsonl",
+          "privateRef": null,
+          "sha256": "sha256:5cb3bb4e9c8fc2ebf30e265ed91e4e82157093731dbc9a2328c5d408c4e9e5a0"
+        },
+        {
+          "storage": "public",
+          "path": "results/raw/cc-h0-03-independent-mut2-contract-v2-actions.md",
+          "privateRef": null,
+          "sha256": "sha256:6a4664f9e3adec28fa5fb562411c9aafe5061d94707322b13ac0d9df0eb2bcad"
+        },
+        {
+          "storage": "public",
+          "path": "results/raw/cc-h0-03-independent-mut2-contract-v2-agent-output.json",
+          "privateRef": null,
+          "sha256": "sha256:7aa847aa6950c717d6b61813d75b7d9869d394d9ef0ce0c60a5b77df07ca9924"
+        }
+      ]
+    },
+    {
+      "findingId": "F-005",
+      "findingType": "observation",
+      "behaviorId": "B-001",
+      "severity": "low",
+      "summary": "No capsule GET-by-ID or DELETE route was discoverable under the permitted API surface. The evaluator could retrieve created capsules through list, but cleanup attempts returned 404 and left two clearly named evaluation capsules in User A's account with favorite state reset to false.",
+      "actionIds": ["A-008", "A-027", "A-028", "A-029"],
+      "evidenceArtifacts": [
+        {
+          "storage": "public",
+          "path": "results/raw/cc-h0-03-independent-mut2-contract-v2-http-trace.jsonl",
+          "privateRef": null,
+          "sha256": "sha256:5cb3bb4e9c8fc2ebf30e265ed91e4e82157093731dbc9a2328c5d408c4e9e5a0"
+        },
+        {
+          "storage": "public",
+          "path": "results/raw/cc-h0-03-independent-mut2-contract-v2-actions.md",
+          "privateRef": null,
+          "sha256": "sha256:6a4664f9e3adec28fa5fb562411c9aafe5061d94707322b13ac0d9df0eb2bcad"
+        },
+        {
+          "storage": "public",
+          "path": "results/raw/cc-h0-03-independent-mut2-contract-v2-agent-output.json",
+          "privateRef": null,
+          "sha256": "sha256:7aa847aa6950c717d6b61813d75b7d9869d394d9ef0ce0c60a5b77df07ca9924"
+        }
+      ]
+    }
+  ],
+  "actionsArtifact": {
+    "storage": "public",
+    "path": "results/raw/cc-h0-03-independent-mut2-contract-v2-http-trace.jsonl",
+    "privateRef": null,
+    "sha256": "sha256:5cb3bb4e9c8fc2ebf30e265ed91e4e82157093731dbc9a2328c5d408c4e9e5a0"
+  },
+  "resourceUse": {
+    "toolCalls": 32,
+    "inputTokens": 697644,
+    "outputTokens": 29709,
+    "wallClockSeconds": 275.766,
+    "costUsd": 0.9307383
+  },
+  "isolationManifestArtifact": {
+    "storage": "public",
+    "path": "independent-evaluator/isolation-manifests/cc-h0-03-independent-mut2-contract-v2.json",
+    "privateRef": null,
+    "sha256": "sha256:b9a7a5f3398800e7e4fb68166bd7cc87bb12075f03184f15bbe8c12a183ee69e"
+  },
+  "invalidReason": null,
+  "note": "VALID CONTRACT-QUALITY RUN. F-002 maps to adjudicated D-001 through behavior B-002 and the same observable partial-match leak. The fresh sealed arm issued a composed-filter request, isolated each filter with single-filter controls, emitted FAIL, and therefore satisfies amendment 02's preregistered causal-support rule for this case. The prior valid sealed run with contract v1 emitted PASS and never supplied two filters together. The evaluator-visible intervention was B-002's oracle; the mutation, ground truth, task, prompt template, model, budgets, credentials, and API remained unchanged. This supports the narrow case-level claim that oracle authoring controlled recall here. It cannot count as an original frozen-condition unique catch, satisfy the three-real-defect H0 gate, or move H0 from INCOMPLETE. Finding types keep three confirmations and one low observation out of the defect precision denominator, yielding 1 correct defect finding from 1 alleged defect. Cleanup was attempted through the permitted API and failed because no DELETE route was exposed; two clearly named evaluation capsules remain and are documented in the exact trace. Every assistant message used claude-sonnet-5. Claude Code reported a small auxiliary Haiku internal overhead with no assistant message or evaluator action, disclosed in the isolation manifest."
+}

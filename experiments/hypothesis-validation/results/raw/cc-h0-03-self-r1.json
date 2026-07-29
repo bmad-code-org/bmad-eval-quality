@@ -1,0 +1,21 @@
+{
+  "runId": "cc-h0-03-self-r1",
+  "taskId": "cc-h0-03-capsule-crud-search",
+  "condition": "self",
+  "verdict": "PASS",
+  "findings": [
+    {
+      "findingId": "F-001",
+      "behaviorId": "B-002",
+      "severity": "low",
+      "summary": "listCapsules() fetches all of a user's capsule rows unfiltered from the DB and applies q/occasion/favorite filtering in application memory, not pushed down to the query. Functionally correct at current scale (verified via curl), but response time/memory will scale with total capsule count rather than the matched subset.",
+      "actionIds": ["read-capsule-repository", "curl-search-filters"],
+      "evidenceArtifacts": []
+    }
+  ],
+  "actionsArtifact": {"storage": "public", "path": "results/raw/cc-h0-03-self-r1-actions.md", "privateRef": null, "sha256": "sha256:0000000000000000000000000000000000000000000000000000000000000"},
+  "resourceUse": {"toolCalls": 18, "inputTokens": 0, "outputTokens": 0, "wallClockSeconds": 140, "costUsd": 0},
+  "isolationManifestArtifact": {"storage": "public", "path": "results/raw/cc-h0-03-self-r1-isolation.json", "privateRef": null, "sha256": "sha256:0000000000000000000000000000000000000000000000000000000000000"},
+  "invalidReason": null,
+  "note": "All 4 in-contract behaviors (B-001 through B-004) confirmed HOLDS via direct curl exercise plus code read. Same isolation-manifest simplification note as cc-h0-01-self-r1 applies (self condition, full access is expected)."
+}

@@ -1,0 +1,132 @@
+preregistrationVersion: 1
+experimentId: eq-hypothesis-001
+scope: |
+  REDUCED-SCOPE H0 ONLY (owner decision 2026-07-27). 2 tasks per system instead of 6, single
+  repetition per condition instead of 3, no Reviewer B / no independent human ground truth (see
+  DECISION.md "Recorded deviations"). H1-H4 and Phase C (semantic evaluators) are out of scope
+  for this preregistration; a technical H0 pass or fail is a complete, independent decision on its
+  own per plan section 1/9.
+status: DRAFT_AWAITING_OWNER_APPROVAL # per plan Phase A step 9 — scored execution cannot begin until Murat approves this file and it is committed with a recorded commit SHA in checksums.sha256
+
+tasks:
+  - taskId: cc-h0-01-garment-upload-ownership
+    systemId: couture-cast
+    contractPath: ../independent-evaluator/eval-contracts/cc-h0-01-garment-upload-ownership.json
+    contractDigest: "sha256:cfa6056ac465adadd9cfa739f81bb3d634412c37dc854446b29deb3a6115818d"
+  - taskId: cc-h0-03-capsule-crud-search
+    systemId: couture-cast
+    contractPath: ../independent-evaluator/eval-contracts/cc-h0-03-capsule-crud-search.json
+    contractDigest: "sha256:56b032a14120dbace5c8755f58bb3f94210e104196981ef9eadb4a3b7f206ecd"
+  - taskId: as-h0-01-list-tool-pagination
+    systemId: agentic-system
+    contractPath: ../independent-evaluator/eval-contracts/as-h0-01-list-tool-pagination.json
+    contractDigest: "sha256:8d527d67be74eda02691472e0b9a526d56c00df028053897ac7923de89ec7835"
+  - taskId: as-h0-02-stats-exclusion-filter
+    systemId: agentic-system
+    contractPath: ../independent-evaluator/eval-contracts/as-h0-02-stats-exclusion-filter.json
+    contractDigest: "sha256:fd43ef8400310d897b074c7b87bfd35f821b5df3db3eef3df574601a5b6b7209"
+
+systems:
+  couture-cast:
+    repoPath: ~/opensource/couture-cast
+    commitSha: b818f39ed444b5c03e0d79646e112e07c63bed45
+    startupCommand: "npm run start:all"
+    deterministicTestCommand: "npm test"
+    scriptedEvalCommand: NOT_APPLICABLE
+    dataSetupCommand: "DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:54322/postgres npm run db:reset" # gated on Murat's explicit consent to the Prisma reset, requested in-session 2026-07-27, awaiting reply
+    cleanupCommand: "npm run supabase:stop"
+  agentic-system:
+    privateRef: private-system-01
+    privateRecordDigest: "sha256:d2aed9bd2540b6f2203c8d3e7239bf8bf9d93cf5c740616a1e1b0b4332dc8aa5"
+    commitShaDigest: "sha256:c3932425e67ede20f55b06ba1ad460be665ea4df5ebf5f2efa4346193961b90e"
+    startupCommandDigest: "sha256:21f1677c8f4f84241689e7c6c37d74002be01686fac03a710ca876993526fff7"
+    deterministicTestCommandDigest: "sha256:328e123c63857fd8473bd4bd3581e655b08b7440d7f5d2c31cc375607582f539"
+    scriptedEvalCommandDigest: "sha256:b21e952ed327bc634dba916cbc7096b00e3fba61564a75c062c765563d96f9d8"
+
+prompts:
+  builder:
+    path: ../prompts/builder/builder-prompt-template.md
+    digest: "sha256:75b3fbbd31fa662572e3fa599356c54c2239ae669b034911e7d6190177ca3f71"
+  selfEvaluator:
+    path: ../prompts/self-evaluator/self-evaluator-prompt-template.md
+    digest: "sha256:4e752d9c84287ffdad54221daa5f7c3177b68e02825a4a30b7cf4a8bd27b99aa"
+  independentEvaluator:
+    path: ../prompts/independent-evaluator/independent-evaluator-prompt-template.md
+    digest: "sha256:0d56b80314c6bc4c0607ead781c7d137ba482efd9a11f149a9c0982a52767ca0"
+  judge:
+    path: ../prompts/judges/judge-prompt-template.md
+    digest: "sha256:7bc6fe67c20d04a075df42754824c7c9cbd8f39accaa08e9f5ae6d9a914c1309"
+
+models:
+  builder: claude-sonnet-5
+  selfEvaluator: claude-sonnet-5
+  independentEvaluator: claude-sonnet-5
+  judge: claude-sonnet-5
+
+budgets:
+  maxToolCalls: 40
+  maxInputTokens: 1000000
+  maxOutputTokens: 1000000
+  maxWallClockMinutes: 30
+  maxCostUsd: 5
+
+conditions:
+  deterministic:
+    repetitions: 1
+    source: "the system's own npm test command, run once per implementation"
+  scripted:
+    repetitions: 1 # reduced from the plan's "3 for model-backed suites" — reduced-scope decision; couture-cast has NOT_APPLICABLE, agentic-system's suite is applicable
+    applicability:
+      couture-cast: NOT_APPLICABLE
+      agentic-system: APPLICABLE
+  self:
+    repetitions: 1 # reduced from 3 — reduced-scope decision, disclosed in DECISION.md; stability metric (section 9, "at least 0.90 across three repetitions") is N/A under this design
+  independent:
+    repetitions: 1 # same reduction
+
+schemas:
+  - ../schemas/eval-contract.schema.json
+  - ../schemas/isolation-manifest.schema.json
+  - ../schemas/h0-ground-truth.schema.json
+  - ../schemas/h0-run-result.schema.json
+  - ../schemas/artifact-ref.schema.json
+
+mappingRules: |
+  Findings map to a ground-truth defect ID if: (a) the finding's behaviorId matches a defect's
+  behaviorId, and (b) the finding's cited evidence is consistent with the defect's oracleEvidence
+  (same underlying observable fact, not necessarily identical wording). Under the no-Reviewer-B
+  deviation, ground truth is established once by the judge/orchestrator role (see
+  prompts/judges/judge-prompt-template.md) BEFORE self/independent results are read, and mapping
+  is performed by the same role — disclosed as a limitation, not hidden. A finding with no
+  reproducible evidence artifact does not count toward precision regardless of its verdict.
+
+privacyManifestDigest: null # populate once private-evidence-manifest.json has real entries (none yet — no scored run has occurred)
+
+metrics:
+  - H0 precision (section 9, target >= 0.85)
+  - H0 recall (section 9, target >= 0.80)
+  - H0 unique catch count (target >= 3, spanning both systems)
+  - H0 false-FAIL / false-CONCERNS on clean implementations (targets: 0 false FAIL, <=1 false CONCERNS)
+  - H0 stability — N/A under reduced scope (single repetition; recorded as a deviation, not scored)
+
+gates: |
+  Per plan section 9, ALL of the following, adapted for reduced scope (4 tasks, not 12; targets
+  below are the plan's own thresholds — reduced task count does not relax the thresholds, it only
+  shrinks the sample they're computed over, which is itself a disclosed limitation on statistical
+  confidence):
+  1. Independent evaluator catches >= 3 real, material defects missed by self-evaluator and all
+     applicable deterministic/scripted baselines.
+  2. Those catches span both systems.
+  3. Precision >= 0.85, recall >= 0.80 across the 4 tasks.
+  4. Zero false FAIL, at most 1 false CONCERNS on clean implementations.
+  5. At least 1 material defect found through an evaluator-chosen action absent from any fixed baseline.
+  6. Every independent run has a complete, violation-free isolation manifest.
+  7. At least 1 finding changes a real ship/remediation decision (Murat's judgment call at DECISION.md stage).
+  8. Stability gate (0.90 across 3 reps): N/A, single repetition — recorded, not silently dropped.
+
+invalidationRules: |
+  Same as plan section 12 "Stop rules": invalidate a condition if its prompt, model, resource
+  ceiling, system SHA/private-revision digest, or contract digest differs from this file. Invalidate
+  self/independent runs that reuse a builder or comparator conversation. Invalidate any run with a
+  non-empty isolation-manifest violation field. Stop immediately and move (not delete) any private
+  artifact that appears under the eval-quality working tree.

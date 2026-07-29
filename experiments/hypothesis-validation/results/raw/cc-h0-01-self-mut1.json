@@ -1,0 +1,17 @@
+{
+  "runId": "cc-h0-01-self-mut1",
+  "taskId": "cc-h0-01-garment-upload-ownership",
+  "condition": "self",
+  "verdict": "FAIL",
+  "findings": [
+    {"findingId": "F-001", "behaviorId": "B-001", "severity": "material", "summary": "Upload-then-read-back works for the owner.", "actionIds": [], "evidenceArtifacts": []},
+    {"findingId": "F-002", "behaviorId": "B-002", "severity": "critical", "summary": "Get-by-id correctly enforces ownership (404 cross-user).", "actionIds": [], "evidenceArtifacts": []},
+    {"findingId": "F-003", "behaviorId": "B-002", "severity": "critical", "summary": "LIST endpoint does not scope by user at all -- findManyByUserId never uses its userId parameter. Verified live: both users' 60-item lists were identical and each contained the other's freshly-created garment. Read the exact broken line in wardrobe.repository.ts and quoted it.", "actionIds": [], "evidenceArtifacts": []},
+    {"findingId": "F-004", "behaviorId": "B-003", "severity": "material", "summary": "Persistence holds; separately noted AC2's 'retention policy' has no actual implementation (no expiry field/mechanism anywhere) -- same documentation-gap observation as the clean-round self-eval.", "actionIds": [], "evidenceArtifacts": []}
+  ],
+  "actionsArtifact": {"storage": "public", "path": "results/raw/cc-h0-01-self-mut1-actions.md", "privateRef": null, "sha256": "sha256:0000000000000000000000000000000000000000000000000000000000000"},
+  "resourceUse": {"toolCalls": 21, "inputTokens": 0, "outputTokens": 0, "wallClockSeconds": 131, "costUsd": 0},
+  "isolationManifestArtifact": {"storage": "public", "path": "results/raw/cc-h0-01-self-mut1-isolation.json", "privateRef": null, "sha256": "sha256:0000000000000000000000000000000000000000000000000000000000000"},
+  "invalidReason": null,
+  "note": "SELF-EVALUATOR ALSO CAUGHT THE MUTATION, correctly and precisely, including quoting the exact broken source line. This means D-001 is NOT a unique independent-evaluator catch under the H0 definition (detection in fewer than two of three self-evaluator reps required for uniqueness -- self caught it in its one rep). Honest, real result: this particular defect did not discriminate between the two conditions. Both were effective, likely because this self-evaluator prompt explicitly required actual black-box HTTP exercise, not just code review."
+}

@@ -1,0 +1,18 @@
+title = "gitleaks config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = """
+Narrowly scoped allowlist. Broad path exclusions (all markdown, docs, tests,
+fixtures, and test-data) have been removed so those files ARE scanned. Only
+machine-generated noise is exempt: dependency lockfile hashes and build/coverage
+output. If a synthetic example credential is ever added to a doc or test, exempt
+that specific value with a `regexes` entry rather than re-allowlisting a path.
+"""
+paths = [
+  '''package-lock\.json$''',
+  '''dist/.*''',
+  '''coverage/.*''',
+]

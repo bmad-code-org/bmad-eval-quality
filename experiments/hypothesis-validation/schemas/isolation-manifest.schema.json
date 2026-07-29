@@ -1,0 +1,88 @@
+{
+	"$schema": "https://json-schema.org/draft/2020-12/schema",
+	"$id": "https://eval-quality/schemas/isolation-manifest.schema.json",
+	"title": "IsolationManifest",
+	"description": "Per-run isolation audit for a self-evaluator or independent-evaluator condition. A non-empty violation field invalidates the run. Per HYPOTHESIS_VALIDATION_PLAN.md section 3.",
+	"type": "object",
+	"additionalProperties": false,
+	"properties": {
+		"runId": { "type": "string", "minLength": 1 },
+		"taskId": { "type": "string", "minLength": 1 },
+		"condition": {
+			"type": "string",
+			"description": "`self-review` is an additive local extension introduced by preregistration/h0-amendment-01-mut2.yaml for the exploratory review-style self-evaluator arm; the deviation is disclosed in that amendment. Additive only: no prior manifest is invalidated.",
+			"enum": ["self", "self-review", "independent"]
+		},
+		"modelSnapshot": { "type": "string", "minLength": 1 },
+		"systemPromptDigest": {
+			"type": "string",
+			"pattern": "^sha256:[a-f0-9]{64}$"
+		},
+		"contractDigest": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+		"workspaceIdentity": { "type": "string", "minLength": 1 },
+		"allowedMounts": { "type": "array", "items": { "type": "string" } },
+		"observedMounts": { "type": "array", "items": { "type": "string" } },
+		"networkAllowlist": { "type": "array", "items": { "type": "string" } },
+		"observedNetworkTargets": {
+			"type": "array",
+			"items": { "type": "string" }
+		},
+		"toolAllowlist": { "type": "array", "items": { "type": "string" } },
+		"observedToolCalls": { "type": "array", "items": { "type": "string" } },
+		"resourceCeilings": {
+			"type": "object",
+			"additionalProperties": false,
+			"properties": {
+				"maxToolCalls": { "type": "integer", "minimum": 1 },
+				"maxInputTokens": { "type": "integer", "minimum": 1 },
+				"maxOutputTokens": { "type": "integer", "minimum": 1 },
+				"maxWallClockMinutes": { "type": "number", "exclusiveMinimum": 0 },
+				"maxCostUsd": { "type": "number", "exclusiveMinimum": 0 }
+			},
+			"required": [
+				"maxToolCalls",
+				"maxInputTokens",
+				"maxOutputTokens",
+				"maxWallClockMinutes",
+				"maxCostUsd"
+			]
+		},
+		"actualResourceUse": {
+			"type": "object",
+			"additionalProperties": false,
+			"properties": {
+				"toolCalls": { "type": "integer", "minimum": 0 },
+				"inputTokens": { "type": "integer", "minimum": 0 },
+				"outputTokens": { "type": "integer", "minimum": 0 },
+				"wallClockSeconds": { "type": "number", "minimum": 0 },
+				"costUsd": { "type": "number", "minimum": 0 }
+			},
+			"required": [
+				"toolCalls",
+				"inputTokens",
+				"outputTokens",
+				"wallClockSeconds",
+				"costUsd"
+			]
+		},
+		"violation": { "type": ["string", "null"] }
+	},
+	"required": [
+		"runId",
+		"taskId",
+		"condition",
+		"modelSnapshot",
+		"systemPromptDigest",
+		"contractDigest",
+		"workspaceIdentity",
+		"allowedMounts",
+		"observedMounts",
+		"networkAllowlist",
+		"observedNetworkTargets",
+		"toolAllowlist",
+		"observedToolCalls",
+		"resourceCeilings",
+		"actualResourceUse",
+		"violation"
+	]
+}

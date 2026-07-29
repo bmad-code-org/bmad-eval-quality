@@ -1,0 +1,49 @@
+{
+  "runId": "cc-h0-03-self-review-mut2",
+  "taskId": "cc-h0-03-capsule-crud-search",
+  "condition": "self-review",
+  "modelSnapshot": "claude-sonnet-5",
+  "systemPromptDigest": "sha256:c74042b45e73f4db96e27db2ad4b2a72df8e362e7e793f9f2ca68596443db5c1",
+  "contractDigest": "sha256:56b032a14120dbace5c8755f58bb3f94210e104196981ef9eadb4a3b7f206ecd",
+  "workspaceIdentity": "fresh agent session with full builder context, review posture. Live exercise permitted but not mandated; the arm chose to exercise live on its own judgment, which the manifest records.",
+  "allowedMounts": [
+    "~/opensource/couture-cast-worktrees/cc-h0-03 (repository, spec, builder notes, test suite)",
+    "scratchpad/arms/cc-h0-03-self-review-mut2-actions.md"
+  ],
+  "observedMounts": [
+    "~/opensource/couture-cast-worktrees/cc-h0-03/apps/api/src/modules/capsule/*",
+    "~/opensource/couture-cast-worktrees/cc-h0-03/IMPLEMENTATION_NOTES.md",
+    "scratchpad/arms/cc-h0-03-self-review-mut2-actions.md"
+  ],
+  "networkAllowlist": ["http://localhost:4002"],
+  "observedNetworkTargets": ["http://localhost:4002"],
+  "toolAllowlist": ["read repository files", "git diff/status", "curl against http://localhost:4002", "run the deterministic test suite", "write the action log"],
+  "observedToolCalls": [
+    "git status / git diff (identified the uncommitted capsule.service.ts change as the diff under review)",
+    "read IMPLEMENTATION_NOTES.md (full)",
+    "read capsule.service.ts (full)",
+    "read capsule.service.spec.ts (full) -- identified the tautological combined-filter test",
+    "read capsule.controller.spec.ts (full) -- no combined-filter coverage",
+    "read capsule.repository.ts / controller.ts / contracts.ts",
+    "npx vitest run apps/api/src/modules/capsule (17 passed)",
+    "curl POST /api/v1/capsules x2 with disjoint name/occasion markers (guardian-1)",
+    "curl GET /api/v1/capsules?q=Zzq Alpha&occasion=zzq-occ-beta (guardian-1) -- COMBINED FILTER PROBE, exposed D-001",
+    "curl favorite round-trip and cross-user list/search (guardian-1, guardian-2)",
+    "write action log"
+  ],
+  "resourceCeilings": {
+    "maxToolCalls": 40,
+    "maxInputTokens": 1000000,
+    "maxOutputTokens": 1000000,
+    "maxWallClockMinutes": 30,
+    "maxCostUsd": 5
+  },
+  "actualResourceUse": {
+    "toolCalls": 18,
+    "inputTokens": 71000,
+    "outputTokens": 7200,
+    "wallClockSeconds": 198,
+    "costUsd": 0.58
+  },
+  "violation": null
+}

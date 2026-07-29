@@ -1,0 +1,38 @@
+{
+	"$schema": "https://json-schema.org/draft/2020-12/schema",
+	"$id": "https://eval-quality/schemas/private-evidence-manifest.schema.json",
+	"title": "PrivateEvidenceManifest",
+	"description": "Public-safe index of every private artifact referenced from this repository. Contains only opaque references, SHA-256 digests, artifact types, and public-safe run IDs. Never contains a private path, credential, or domain value.",
+	"type": "object",
+	"additionalProperties": false,
+	"properties": {
+		"manifestVersion": { "const": 1 },
+		"entries": {
+			"type": "array",
+			"items": {
+				"type": "object",
+				"additionalProperties": false,
+				"properties": {
+					"privateRef": { "type": "string", "minLength": 1 },
+					"sha256": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+					"artifactType": {
+						"type": "string",
+						"enum": [
+							"private-input-record",
+							"raw-trace",
+							"raw-result",
+							"human-label",
+							"implementation-patch",
+							"isolation-manifest",
+							"scripted-baseline-output",
+							"other"
+						]
+					},
+					"publicSafeRunId": { "type": ["string", "null"] }
+				},
+				"required": ["privateRef", "sha256", "artifactType", "publicSafeRunId"]
+			}
+		}
+	},
+	"required": ["manifestVersion", "entries"]
+}

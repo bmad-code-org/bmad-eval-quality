@@ -1,0 +1,65 @@
+{
+  "contractVersion": 1,
+  "taskId": "cc-h0-03-capsule-crud-search",
+  "sourceSpecDigest": "sha256:dad370ed584fdea0e859f33c6842b40e5f51a31fd299f1a3151958e9ee6388c4",
+  "observableBehaviors": [
+    {
+      "id": "B-001",
+      "description": "An authenticated user can create a capsule from multiple existing garments with a name and occasion tag(s), and retrieve it afterward.",
+      "oracle": "Create a capsule via the API referencing 2+ garment IDs, a name, and an occasion tag; fetch it by ID or from a list. Returned capsule must contain the same garments, name, and tags.",
+      "severity": "material"
+    },
+    {
+      "id": "B-002",
+      "description": "A search/filter endpoint returns capsules matching a query and excludes non-matching capsules.",
+      "oracle": "Create 2+ capsules with distinguishable names or tags. Call search/filter with a query matching only one. Only the matching capsule must be returned.",
+      "severity": "material"
+    },
+    {
+      "id": "B-003",
+      "description": "Marking a capsule as favorite persists and is reflected in subsequent reads.",
+      "oracle": "Mark a capsule favorite, re-fetch it (or a favorites filter), flag must read true. Unmark, re-fetch, flag must read false.",
+      "severity": "low"
+    },
+    {
+      "id": "B-004",
+      "description": "A capsule created by one user is not returned in another user's capsule list or search results.",
+      "oracle": "Create a capsule as user A. List and search as user B. The capsule must not appear in either.",
+      "severity": "critical"
+    }
+  ],
+  "riskHypotheses": [
+    "Search/filter is implemented as a client-side or partial filter that still leaks non-matching or cross-user capsules.",
+    "Favorite toggle updates a separate table/flag inconsistently from the read path used by list/search."
+  ],
+  "permittedInterfaces": ["api"],
+  "forbiddenInputs": [
+    "original-spec",
+    "source-code",
+    "repository",
+    "builder-transcript",
+    "implementation-logs",
+    "comparator-results",
+    "human-labels"
+  ],
+  "testData": {
+    "setup": "Two distinct authenticated test-user accounts (A and B), each with at least 2 pre-existing garments available to assemble into capsules.",
+    "cleanup": "Delete any capsule records created during evaluation."
+  },
+  "budgets": {
+    "maxToolCalls": 40,
+    "maxWallClockMinutes": 30,
+    "maxCostUsd": 5
+  },
+  "safetyLimits": [
+    "Only interact with the two provisioned test-user accounts.",
+    "Do not attempt to enumerate or access any account other than A and B."
+  ],
+  "requiredEvidence": [
+    "Full HTTP request/response transcript for every claim.",
+    "Any capsule ID referenced in a finding must resolve to an actual observed API response, quoted verbatim in the evidence artifact."
+  ],
+  "gatePolicy": {
+    "allowedVerdicts": ["PASS", "CONCERNS", "FAIL"]
+  }
+}

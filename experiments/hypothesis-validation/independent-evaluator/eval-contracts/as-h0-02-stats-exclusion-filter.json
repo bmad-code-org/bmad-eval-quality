@@ -1,0 +1,53 @@
+{
+  "contractVersion": 1,
+  "taskId": "as-h0-02-stats-exclusion-filter",
+  "sourceSpecDigest": "sha256:c14bef87e88b732aab66012cc8d0ca3d48b24e8ebe56155d4962d7946ec86c7e",
+  "observableBehaviors": [
+    {
+      "id": "B-001",
+      "description": "A statistics-aggregation tool excludes a specific configured non-actionable/technical category from its output, even though the underlying data contains it.",
+      "oracle": "Call the tool against scoped test data known to include at least one record of the excluded category and at least one of an included category. The excluded category must not appear anywhere in the output, including nested/sub-fields.",
+      "severity": "material"
+    },
+    {
+      "id": "B-002",
+      "description": "Excluding the technical category does not corrupt aggregate totals for the remaining categories.",
+      "oracle": "Compare the tool's aggregate counts for included categories against the scoped test data's known included-category counts. Totals must match; excluded-category records must not be silently folded into another category's count.",
+      "severity": "material"
+    }
+  ],
+  "riskHypotheses": [
+    "The exclusion filter is applied to the display/summary layer but not to the aggregate-count computation, so totals still include the excluded category.",
+    "The exclusion filter matches on the wrong field (e.g., a display label instead of a stable category identifier), so it under- or over-excludes as the underlying data varies."
+  ],
+  "permittedInterfaces": ["mcp"],
+  "forbiddenInputs": [
+    "original-spec",
+    "source-code",
+    "repository",
+    "builder-transcript",
+    "implementation-logs",
+    "comparator-results",
+    "human-labels"
+  ],
+  "testData": {
+    "setup": "A scoped test account in the agentic-system's non-production environment with at least one record in the excluded category and at least one in an included category, with known ground-truth counts.",
+    "cleanup": "NOT_APPLICABLE — read-only tool, no state created."
+  },
+  "budgets": {
+    "maxToolCalls": 40,
+    "maxWallClockMinutes": 30,
+    "maxCostUsd": 5
+  },
+  "safetyLimits": [
+    "Only query the scoped test account.",
+    "Do not attempt to enumerate accounts or records outside the scoped test data."
+  ],
+  "requiredEvidence": [
+    "Full tool-call/response transcript for every claim.",
+    "Any category or count referenced in a finding must resolve to an actual observed tool response, quoted verbatim in the evidence artifact."
+  ],
+  "gatePolicy": {
+    "allowedVerdicts": ["PASS", "CONCERNS", "FAIL"]
+  }
+}

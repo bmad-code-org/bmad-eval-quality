@@ -1,0 +1,51 @@
+{
+  "runId": "cc-h0-03-self-mut2",
+  "taskId": "cc-h0-03-capsule-crud-search",
+  "condition": "self",
+  "modelSnapshot": "claude-sonnet-5",
+  "systemPromptDigest": "sha256:4e752d9c84287ffdad54221daa5f7c3177b68e02825a4a30b7cf4a8bd27b99aa",
+  "contractDigest": "sha256:56b032a14120dbace5c8755f58bb3f94210e104196981ef9eadb4a3b7f206ecd",
+  "workspaceIdentity": "fresh agent session with full builder context. Broad access is the definition of this condition, not a violation; the manifest records what was actually reached so the two arms remain comparable.",
+  "allowedMounts": [
+    "~/opensource/couture-cast-worktrees/cc-h0-03 (repository, spec, builder notes, test suite)",
+    "scratchpad/arms/cc-h0-03-self-mut2-actions.md"
+  ],
+  "observedMounts": [
+    "~/opensource/couture-cast-worktrees/cc-h0-03/apps/api/src/modules/capsule/*",
+    "~/opensource/couture-cast-worktrees/cc-h0-03/IMPLEMENTATION_NOTES.md",
+    "scratchpad/arms/cc-h0-03-self-mut2-actions.md"
+  ],
+  "networkAllowlist": ["http://localhost:4002"],
+  "observedNetworkTargets": ["http://localhost:4002"],
+  "toolAllowlist": ["read repository files", "git diff/status", "curl against http://localhost:4002", "run the deterministic test suite", "write the action log"],
+  "observedToolCalls": [
+    "read capsule.contracts.ts / controller.ts / repository.ts / service.ts",
+    "read IMPLEMENTATION_NOTES.md",
+    "git diff (uncommitted working-tree change to capsule.service.ts)",
+    "curl POST /api/v1/capsules 'Weekend Brunch Look' (guardian-1)",
+    "curl POST /api/v1/capsules 'Formal Gala Night' (guardian-1)",
+    "curl GET /api/v1/capsules/{id} (guardian-1)",
+    "curl -G /api/v1/capsules --data-urlencode q=Look (guardian-1)",
+    "curl -G /api/v1/capsules --data-urlencode q=Look --data-urlencode occasion=formal (guardian-1) -- COMBINED FILTER PROBE, exposed D-001",
+    "curl PATCH /api/v1/capsules/{id}/favorite true then false (guardian-1)",
+    "curl -G /api/v1/capsules --data-urlencode favorite=true / favorite=false (guardian-1)",
+    "curl GET /api/v1/capsules (guardian-2)",
+    "curl -G /api/v1/capsules --data-urlencode q=Look (guardian-2)",
+    "write action log"
+  ],
+  "resourceCeilings": {
+    "maxToolCalls": 40,
+    "maxInputTokens": 1000000,
+    "maxOutputTokens": 1000000,
+    "maxWallClockMinutes": 30,
+    "maxCostUsd": 5
+  },
+  "actualResourceUse": {
+    "toolCalls": 16,
+    "inputTokens": 68000,
+    "outputTokens": 7000,
+    "wallClockSeconds": 211,
+    "costUsd": 0.55
+  },
+  "violation": null
+}

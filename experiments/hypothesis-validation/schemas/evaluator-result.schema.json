@@ -1,0 +1,36 @@
+{
+	"$schema": "https://json-schema.org/draft/2020-12/schema",
+	"$id": "https://eval-quality/schemas/evaluator-result.schema.json",
+	"title": "EvaluatorResult",
+	"description": "One semantic-prototype evaluator's verdict for one confirmatory corpus case. Per HYPOTHESIS_VALIDATION_PLAN.md section 8.",
+	"type": "object",
+	"additionalProperties": false,
+	"properties": {
+		"caseId": { "type": "string", "minLength": 1 },
+		"evaluator": {
+			"type": "string",
+			"enum": [
+				"claim-evidence",
+				"semantic-checkpoints",
+				"process-outcome",
+				"first-material-error"
+			]
+		},
+		"verdict": { "type": "string", "enum": ["PASS", "CONCERNS", "FAIL"] },
+		"finding": { "type": "string", "minLength": 1 },
+		"stepIds": { "type": "array", "items": { "type": "string" } },
+		"evidenceStepIds": { "type": "array", "items": { "type": "string" } },
+		"confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+		"rationale": { "type": "string", "minLength": 1 }
+	},
+	"required": [
+		"caseId",
+		"evaluator",
+		"verdict",
+		"finding",
+		"stepIds",
+		"evidenceStepIds",
+		"confidence",
+		"rationale"
+	]
+}

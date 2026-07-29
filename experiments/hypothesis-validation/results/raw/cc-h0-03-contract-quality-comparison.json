@@ -1,0 +1,66 @@
+{
+  "comparisonId": "cc-h0-03-mut2-contract-v1-v2",
+  "sealedAt": "2026-07-27T10:32:02-05:00",
+  "taskId": "cc-h0-03-capsule-crud-search",
+  "mutationId": "mut2",
+  "groundTruth": {
+    "path": "labels/adjudicated/cc-h0-03-capsule-crud-search-mut2.json",
+    "sha256": "sha256:90fcf5819beebe8ec1c5a98938d6a2966f38112ddf67ac3fd8ad8aabc5bf2675",
+    "defectId": "D-001",
+    "behaviorId": "B-002",
+    "severity": "material",
+    "source": "controlled-mutation"
+  },
+  "originalRun": {
+    "runId": "cc-h0-03-independent-mut2",
+    "resultPath": "results/raw/cc-h0-03-independent-mut2.json",
+    "resultSha256": "sha256:2150423cd28f4df82cb39438621253c32ba788146c10d0e2d253baf83ddf13fb",
+    "contractSha256": "sha256:56b032a14120dbace5c8755f58bb3f94210e104196981ef9eadb4a3b7f206ecd",
+    "verdict": "PASS",
+    "valid": true,
+    "composedFilterRequests": 0,
+    "detectedDefectIds": []
+  },
+  "contractQualityRun": {
+    "runId": "cc-h0-03-independent-mut2-contract-v2",
+    "resultPath": "results/raw/cc-h0-03-independent-mut2-contract-v2.json",
+    "resultSha256": "sha256:25f38fc67c43f595f009d505d31edc05a03ab4c8036aa505029a0f65191abd63",
+    "contractSha256": "sha256:4019461bb75fbc2aa9da28b29d30bd31a5fe952ff4f3930d0f24a45541e36b7c",
+    "verdict": "FAIL",
+    "valid": true,
+    "composedFilterRequests": 2,
+    "decisiveActionIds": ["A-013", "A-014", "A-015"],
+    "detectedDefectIds": ["D-001"]
+  },
+  "controlledIntervention": {
+    "evaluatorVisibleChange": "observableBehaviors[B-002].oracle only",
+    "unchanged": [
+      "task",
+      "source spec digest",
+      "mutation",
+      "ground truth",
+      "behavior description",
+      "risk hypotheses",
+      "prompt template",
+      "model snapshot",
+      "resource ceilings",
+      "credentials",
+      "API base URL"
+    ]
+  },
+  "findingMapping": {
+    "reviewer": "orchestrating Test Architect under the disclosed no-Reviewer-B deviation",
+    "findingId": "F-002",
+    "defectId": "D-001",
+    "correct": true,
+    "rationale": "The finding and ground truth both identify B-002 and the same observable failure: a composed occasion and name query returns a capsule satisfying only the occasion filter. Exact action evidence A-013, with single-filter controls A-014 and A-015, reproduces the adjudicated partial-match leak."
+  },
+  "caseMetrics": {
+    "defectPrecision": 1.0,
+    "d001RecallOriginalContract": 0.0,
+    "d001RecallStrengthenedContract": 1.0,
+    "causalSupportRuleSatisfied": true
+  },
+  "conclusion": "For this controlled case, strengthening the oracle changed the valid sealed result from PASS with no composed-filter action to FAIL with a correct material finding mapped to D-001. This satisfies amendment 02's causal-support rule.",
+  "claimBoundary": "This comparison demonstrates oracle-controlled recall for one controlled mutation in one task and one system. It does not create an original frozen-condition unique catch, satisfy the H0 real-defect gate, or establish generalization."
+}

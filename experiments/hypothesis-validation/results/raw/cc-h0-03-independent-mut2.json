@@ -1,0 +1,44 @@
+{
+  "runId": "cc-h0-03-independent-mut2",
+  "taskId": "cc-h0-03-capsule-crud-search",
+  "condition": "independent",
+  "verdict": "PASS",
+  "findings": [
+    {
+      "findingId": "F-001",
+      "behaviorId": "B-002",
+      "severity": "low",
+      "summary": "The name-search parameter q does not also match occasion tags; tag search requires the separate occasion parameter. Both parameters work correctly in isolation and neither leaks, so the evaluator judged the B-002 oracle satisfied and raised this only as a minor API-shape observation. GET /api/v1/capsules?q=vacation returned an empty set while ?occasion=vacation returned the ZephyrCove Getaway capsule tagged beach/vacation.",
+      "actionIds": ["curl-q-param-probes", "curl-occasion-param-probes"],
+      "evidenceArtifacts": [
+        {
+          "storage": "public",
+          "path": "results/raw/cc-h0-03-independent-mut2-actions.md",
+          "privateRef": null,
+          "sha256": "sha256:d61ef04323ddd7b5d323a247877a159313f00dbce304e8a7363b7955f8cda293"
+        }
+      ]
+    }
+  ],
+  "actionsArtifact": {
+    "storage": "public",
+    "path": "results/raw/cc-h0-03-independent-mut2-actions.md",
+    "privateRef": null,
+    "sha256": "sha256:d61ef04323ddd7b5d323a247877a159313f00dbce304e8a7363b7955f8cda293"
+  },
+  "resourceUse": {
+    "toolCalls": 25,
+    "inputTokens": 42000,
+    "outputTokens": 6500,
+    "wallClockSeconds": 300,
+    "costUsd": 0.6
+  },
+  "isolationManifestArtifact": {
+    "storage": "public",
+    "path": "independent-evaluator/isolation-manifests/cc-h0-03-independent-mut2.json",
+    "privateRef": null,
+    "sha256": "sha256:9ce379f014e2f77cc5503f822d3458469a0f3d96689463e74926db4148c480cb"
+  },
+  "invalidReason": null,
+  "note": "MISSED D-001. This is a FALSE PASS on a material defect, and the run is nonetheless VALID: isolation manifest clean (violation null, observed mounts limited to its own two output files, observed network limited to localhost:4002), 25 of 40 tool calls used, well inside every ceiling. The arm was diligent: it discovered the capsule schema by trial, discovered the q/occasion/favorite parameter names by probing, exercised create/retrieve, the favorite round-trip, cross-user list and search, an IDOR attempt on another user's capsule, and delete-endpoint discovery. Verified by grep over the full action log: it never once sent two filter parameters in the same request. B-002's oracle as frozen instructs a SINGLE-filter probe ('Call search/filter with a query matching only one'), and the arm executed that oracle faithfully and correctly. Behavior verdicts as returned: B-001 HOLDS, B-002 HOLDS (incorrect), B-003 HOLDS, B-004 HOLDS."
+}

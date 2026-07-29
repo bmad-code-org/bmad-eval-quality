@@ -1,0 +1,107 @@
+{
+	"$schema": "https://json-schema.org/draft/2020-12/schema",
+	"$id": "https://eval-quality/schemas/h0-run-result.schema.json",
+	"title": "H0RunResult",
+	"description": "One condition's result record for one H0 task run. Per HYPOTHESIS_VALIDATION_PLAN.md section 3.",
+	"type": "object",
+	"additionalProperties": false,
+	"properties": {
+		"runId": { "type": "string", "minLength": 1 },
+		"taskId": { "type": "string", "minLength": 1 },
+		"condition": {
+			"type": "string",
+			"description": "Plan section 3 fixes this enum to deterministic|scripted|self|independent. `self-review` is an additive local extension introduced by preregistration/h0-amendment-01-mut2.yaml for the exploratory review-style self-evaluator arm; the deviation is disclosed in that amendment. Additive only: no prior record is invalidated.",
+			"enum": [
+				"deterministic",
+				"scripted",
+				"self",
+				"self-review",
+				"independent"
+			]
+		},
+		"verdict": {
+			"type": "string",
+			"enum": ["PASS", "CONCERNS", "FAIL", "NOT_APPLICABLE"]
+		},
+		"findings": {
+			"type": "array",
+			"items": {
+				"type": "object",
+				"additionalProperties": false,
+				"properties": {
+					"findingId": { "type": "string", "pattern": "^F-[0-9]{3,}$" },
+					"findingType": {
+						"type": "string",
+						"enum": ["defect", "observation", "confirmation"],
+						"description": "Classifies a finding for metric treatment. Only `defect` findings enter the H0 precision denominator. `observation` records a non-defect API or evidence note. `confirmation` records evidence that a behavior holds. Added additively for the contract-quality round; preregistration/h0-amendment-02-contract-quality.yaml requires it on every finding emitted by that round while preserving validation of earlier records."
+					},
+					"behaviorId": { "type": "string", "pattern": "^B-[0-9]{3,}$" },
+					"severity": {
+						"type": "string",
+						"enum": ["low", "material", "critical"]
+					},
+					"summary": { "type": "string", "minLength": 1 },
+					"actionIds": { "type": "array", "items": { "type": "string" } },
+					"evidenceArtifacts": {
+						"type": "array",
+						"items": { "$ref": "artifact-ref.schema.json" }
+					}
+				},
+				"required": [
+					"findingId",
+					"behaviorId",
+					"severity",
+					"summary",
+					"actionIds",
+					"evidenceArtifacts"
+				]
+			}
+		},
+		"actionsArtifact": { "$ref": "artifact-ref.schema.json" },
+		"resourceUse": {
+			"type": "object",
+			"additionalProperties": false,
+			"properties": {
+				"toolCalls": { "type": "integer", "minimum": 0 },
+				"inputTokens": { "type": "integer", "minimum": 0 },
+				"outputTokens": { "type": "integer", "minimum": 0 },
+				"wallClockSeconds": { "type": "number", "minimum": 0 },
+				"costUsd": { "type": "number", "minimum": 0 }
+			},
+			"required": [
+				"toolCalls",
+				"inputTokens",
+				"outputTokens",
+				"wallClockSeconds",
+				"costUsd"
+			]
+		},
+		"isolationManifestArtifact": { "$ref": "artifact-ref.schema.json" },
+		"invalidReason": { "type": ["string", "null"] },
+		"note": {
+			"type": "string",
+			"description": "Optional orchestrator annotation on the run (limitations, simplifications, honest caveats). Added 2026-07-27: every pre-existing result record already carried this field, so under `additionalProperties: false` none of them validated. Declaring it is a schema correction, not a new convention."
+		}
+	},
+	"required": [
+		"runId",
+		"taskId",
+		"condition",
+		"verdict",
+		"findings",
+		"actionsArtifact",
+		"resourceUse",
+		"isolationManifestArtifact",
+		"invalidReason"
+	],
+	"allOf": [
+		{
+			"if": {
+				"not": { "properties": { "condition": { "const": "scripted" } } }
+			},
+			"then": {
+				"properties": { "verdict": { "enum": ["PASS", "CONCERNS", "FAIL"] } }
+			}
+		}
+	]
+}

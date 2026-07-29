@@ -1,0 +1,18 @@
+{
+  "runId": "cc-h0-03-independent-r1",
+  "taskId": "cc-h0-03-capsule-crud-search",
+  "condition": "independent",
+  "verdict": "PASS",
+  "findings": [
+    {"findingId": "F-001", "behaviorId": "B-001", "severity": "low", "summary": "Capsule creation with 2+ garments/name/tags succeeds and is retrievable via list with identical data.", "actionIds": [], "evidenceArtifacts": []},
+    {"findingId": "F-002", "behaviorId": "B-002", "severity": "low", "summary": "Search does case-insensitive substring matching on name; occasion filter also case-insensitive; both correctly exclude non-matching capsules.", "actionIds": [], "evidenceArtifacts": []},
+    {"findingId": "F-003", "behaviorId": "B-003", "severity": "low", "summary": "Favorite toggle persists correctly in both directions, reflected in favorite=true filtered reads.", "actionIds": [], "evidenceArtifacts": []},
+    {"findingId": "F-004", "behaviorId": "B-004", "severity": "low", "summary": "Cross-user isolation holds in both directions for list, search, AND the favorite-mutation endpoint (404, not a silent no-op or leak) — tested adversarially in both directions (A on B, B on A).", "actionIds": [], "evidenceArtifacts": []},
+    {"findingId": "F-005", "behaviorId": "B-001", "severity": "low", "summary": "Supporting robustness evidence, not a scored finding: validation correctly rejects <2 garments, empty/missing name, wrong-typed favorite value; auth correctly rejects missing/invalid tokens.", "actionIds": [], "evidenceArtifacts": []}
+  ],
+  "actionsArtifact": {"storage": "public", "path": "results/raw/cc-h0-03-independent-r1-actions.md", "privateRef": null, "sha256": "sha256:0000000000000000000000000000000000000000000000000000000000000"},
+  "resourceUse": {"toolCalls": 21, "inputTokens": 0, "outputTokens": 0, "wallClockSeconds": 160, "costUsd": 0},
+  "isolationManifestArtifact": {"storage": "public", "path": "results/raw/cc-h0-03-independent-r1-isolation.json", "privateRef": null, "sha256": "sha256:0000000000000000000000000000000000000000000000000000000000000"},
+  "invalidReason": null,
+  "note": "Severity note: the agent's own report tagged findings F-001/F-002/F-004 as material/critical in its raw JSON, but on review these describe the CORRECT/expected behavior holding (not a failure) — relabeled to low/informational here since H0 findings should represent problems, and this task's ground truth is clean. Zero unique catches (consistent with ground truth). Fresh isolated agent context, no repo/spec/builder-transcript access."
+}

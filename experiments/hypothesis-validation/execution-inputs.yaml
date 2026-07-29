@@ -1,0 +1,83 @@
+experimentId: eq-hypothesis-001
+branch: experiment/hypothesis-validation
+owner: Murat
+reviewerB: NOT_APPLICABLE # owner decision 2026-07-27: all human-reviewer requirements are removed.
+  # The Test Architect is the ground-truth authority. Labels must be sealed before condition
+  # results and anchored to reproducible oracle evidence. See HYPOTHESIS_VALIDATION_PLAN.md
+  # "Owner override: agent ground truth" and DECISION.md.
+systems:
+  - id: couture-cast
+    category: conventional
+    repoPath: ~/opensource/couture-cast
+    commitSha: b818f39ed444b5c03e0d79646e112e07c63bed45 # verified 2026-07-27, HEAD of main
+    startupCommand: "npm run start:all"
+    deterministicTestCommand: "npm test"
+    scriptedEvalCommand: NOT_APPLICABLE # couture-cast is the conventional system; it has no pre-existing agent-eval suite of its own
+    dataSetupCommand: "DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:54322/postgres npm run db:reset" # verified 2026-07-27: supabase already running locally; db:reset itself is `prisma migrate reset --force` and Prisma's own AI-agent safety gate is blocking it pending Murat's explicit consent (asked, awaiting reply) — see STATUS.md
+    cleanupCommand: "npm run supabase:stop" # verified script exists; NOT executed this session (local supabase instance was already running before this experiment started, likely for other work — left running)
+    blackBoxInterfaces: ["web", "api"]
+  - id: agentic-system
+    category: agentic
+    privateRef: private-system-01
+    privateRecordDigest: "sha256:d2aed9bd2540b6f2203c8d3e7239bf8bf9d93cf5c740616a1e1b0b4332dc8aa5"
+    commitShaDigest: "sha256:c3932425e67ede20f55b06ba1ad460be665ea4df5ebf5f2efa4346193961b90e"
+    startupCommandDigest: "sha256:21f1677c8f4f84241689e7c6c37d74002be01686fac03a710ca876993526fff7"
+    deterministicTestCommandDigest: "sha256:328e123c63857fd8473bd4bd3581e655b08b7440d7f5d2c31cc375607582f539"
+    scriptedEvalCommandDigest: "sha256:b21e952ed327bc634dba916cbc7096b00e3fba61564a75c062c765563d96f9d8"
+    blackBoxInterfaceKinds: ["mcp"] # confirmed structurally: playwright/tests/e2e/claude-agent-e2e.spec.ts (host-agent loop) + playwright/mcp-eval/ (runner/graders/budget) + 10 frozen playwright/evals/*.eval.spec.ts
+    # dataSetupCommand/cleanupCommand/exactBlackBoxEndpoints/credentialRefs/networkAllowlist still
+    # TBD in the private record itself — no local docker-compose/seed script found; which
+    # env (local/dev/pre-prod) is the authorized synthetic/non-prod target is still the owner's call.
+tasks: # LOCKED 2026-07-27 (owner decision: H0-only reduced scope, single rep, 2 tasks/system
+        # instead of 6). Epic 0-3 confirmed merged into couture-cast main (garment/wardrobe/
+        # premium/affiliate code absent from apps/api/src/modules), so the Epic 4/5 tasks below
+        # are genuine unimplemented builder work. agentic-system tasks picked from real unmerged
+        # commits on its origin/master (each shipped as its own small PR historically).
+  - taskId: cc-h0-01-garment-upload-ownership
+    systemId: couture-cast
+    sourceSpecPath: _bmad-output/planning-artifacts/epics.md#story-cc-41-garment-capture-flow
+    selectionRationale: "AC2 only (store garment images with user-ownership metadata + retention policy). Bounded, API-testable via auth'd vs cross-user access; realistic authz-bug surface."
+    contractPath: independent-evaluator/eval-contracts/cc-h0-01-garment-upload-ownership.json
+    contractDigest: "sha256:cfa6056ac465adadd9cfa739f81bb3d634412c37dc854446b29deb3a6115818d"
+  - taskId: cc-h0-03-capsule-crud-search
+    systemId: couture-cast
+    sourceSpecPath: _bmad-output/planning-artifacts/epics.md#story-cc-43-outfit-capsule-builder
+    selectionRationale: "AC1+AC2 (create/name/tag capsule; search/filter/favorite). Bounded CRUD+query task, good defect surface for search/filter edge cases, different defect class from task 1 (data integrity vs. authz)."
+    contractPath: independent-evaluator/eval-contracts/cc-h0-03-capsule-crud-search.json
+    contractDigest: "sha256:56b032a14120dbace5c8755f58bb3f94210e104196981ef9eadb4a3b7f206ecd"
+  - taskId: as-h0-01-list-tool-pagination
+    systemId: agentic-system
+    sourceSpecPath: null # real spec (FP-11012) stays in the private input record only
+    selectionRationale: "Net-new MCP tool absent from this branch, present on origin/master — genuine greenfield builder task, generic pagination/hasNext/date-type behavior."
+    contractPath: independent-evaluator/eval-contracts/as-h0-01-list-tool-pagination.json
+    contractDigest: "sha256:8d527d67be74eda02691472e0b9a526d56c00df028053897ac7923de89ec7835"
+  - taskId: as-h0-02-stats-exclusion-filter
+    systemId: agentic-system
+    sourceSpecPath: null # real spec (FP-11371) stays in the private input record only
+    selectionRationale: "Real bug-fix class on an existing tool (category-exclusion + aggregate-total correctness) — different defect class from task 1 (exclusion/aggregation logic vs. new-tool pagination)."
+    contractPath: independent-evaluator/eval-contracts/as-h0-02-stats-exclusion-filter.json
+    contractDigest: "sha256:fd43ef8400310d897b074c7b87bfd35f821b5df3db3eef3df574601a5b6b7209"
+tools:
+  agentevalsVersion: null # not required until Phase C (semantic preregistration, step 23)
+  promptfooVersion: null # not required until Phase C
+models: # owner decision 2026-07-27: uniform tier across all four roles
+  builder: claude-sonnet-5
+  selfEvaluator: claude-sonnet-5
+  independentEvaluator: claude-sonnet-5
+  judge: claude-sonnet-5
+budgets: # owner decision 2026-07-27: provisional default, tune after the 8-trace pilot per plan section 5
+  maxToolCalls: 40
+  maxInputTokens: 1000000
+  maxOutputTokens: 1000000
+  maxWallClockMinutes: 30
+  maxCostUsd: 5
+access:
+  credentialKinds: ["pre-existing local .env.local for agentic-system's development-tier target; couture-cast local supabase/postgres — no new credentials issued"]
+  networkAccessKinds: ["agentic-system: whatever base URL .env.local already points at (development tier)", "couture-cast: 127.0.0.1 supabase stack + localhost api/web"]
+  publicAllowedWriteRoots: ["experiments/hypothesis-validation/"]
+  privateAccessDigest: null
+privateEvidence:
+  storage: outside-public-repository
+  manifestRef: "~/opensource/eval-quality-private-experiment/artifact-index.json" # root created 2026-07-27; artifact-index.json not yet populated (no scored artifacts exist yet)
+  manifestDigest: null # populate once artifact-index.json has content
+  sanitizationPolicy: "Strip any real person name, email, customer/account ID, or transaction-level content before it touches any file in this repo, even opaque-referenced. Keep only structural/pass-fail facts (tool called, timing, verdict, generic behavior description). Applies to agentic-system evidence only — couture-cast test data is already synthetic test-user data with no real people." # owner decision 2026-07-27: "use your best judgement"

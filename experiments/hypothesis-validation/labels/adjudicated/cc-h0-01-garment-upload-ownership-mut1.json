@@ -1,0 +1,20 @@
+{
+  "taskId": "cc-h0-01-garment-upload-ownership",
+  "systemId": "couture-cast",
+  "implementationSha": "16224c1+controlled-mutation-mut1",
+  "expectedClean": false,
+  "defects": [
+    {
+      "defectId": "D-001",
+      "behaviorId": "B-002",
+      "summary": "wardrobe.repository.ts findManyByUserId() no longer filters by user_id (the `where: { user_id: userId }` clause was removed). GET /api/v1/wardrobe/garments now returns EVERY garment in the database for ANY authenticated user, regardless of who owns it. findByIdForUser (direct-by-id GET) is untouched and still correctly scoped — this is an asymmetric bug: one read path is broken, its sibling is fine.",
+      "severity": "critical",
+      "oracleEvidence": [
+        {"storage": "public", "path": "results/raw/mutation-verification-cc-h0-01.md", "privateRef": null, "sha256": "sha256:0000000000000000000000000000000000000000000000000000000000000"}
+      ],
+      "source": "controlled-mutation"
+    }
+  ],
+  "expectedGate": "FAIL",
+  "rationale": "Deliberately injected by the orchestrator (owner decision 2026-07-27, since all 4 naturally-produced builder implementations were clean and H0 needs defect-bearing cases per plan section 3/5). Chosen to match a risk hypothesis already written into the Eval Contract before this mutation existed ('Ownership scoping is implemented at the query layer inconsistently across read paths'), so it isn't reverse-engineered to favor a particular evaluator. Verified directly: curl as guardian-1 and curl as guardian-2 against GET /api/v1/wardrobe/garments now return byte-identical full result sets (all garments across all seeded users, including unrelated teen-1..teen-5 fixture data) — confirmed live against the running server. The existing deterministic test suite (12/12) still passes unmodified, because both wardrobe.controller.spec.ts and wardrobe.service.spec.ts use an in-memory fake/stub repository that never exercises this real Prisma query — this defect is invisible to the deterministic baseline by construction, which is exactly the scenario H0 is designed to probe (do self/independent evaluation catch what deterministic testing structurally cannot)."
+}

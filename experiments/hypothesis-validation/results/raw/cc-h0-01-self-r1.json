@@ -1,0 +1,29 @@
+{
+  "runId": "cc-h0-01-self-r1",
+  "taskId": "cc-h0-01-garment-upload-ownership",
+  "condition": "self",
+  "verdict": "PASS",
+  "findings": [
+    {
+      "findingId": "F-001",
+      "behaviorId": "B-003",
+      "severity": "low",
+      "summary": "AC2 and multiple code comments invoke 'retention policy' but no retention policy (TTL/expiry/scheduled deletion) is actually implemented anywhere — persistence is indefinite, which trivially satisfies 'retained' but isn't a policy.",
+      "actionIds": ["grep-retention-across-repo", "read-garmentitem-schema"],
+      "evidenceArtifacts": []
+    },
+    {
+      "findingId": "F-002",
+      "behaviorId": "B-001",
+      "severity": "low",
+      "summary": "'Securely stored' is satisfied only via ownership-scoped access control; there is no separate object storage, encryption-at-rest, or signed-URL mechanism — the raw image string (URL or base64) is written verbatim into a Postgres text column. Disclosed/intentional scope cut (AC1 out of scope), not a fabrication, but the word 'securely' outruns what's implemented.",
+      "actionIds": ["post-base64-image", "inspect-repository-write-path"],
+      "evidenceArtifacts": []
+    }
+  ],
+  "actionsArtifact": {"storage": "public", "path": "results/raw/cc-h0-01-self-r1-actions.md", "privateRef": null, "sha256": "sha256:0000000000000000000000000000000000000000000000000000000000000"},
+  "resourceUse": {"toolCalls": 32, "inputTokens": 0, "outputTokens": 0, "wallClockSeconds": 161, "costUsd": 0},
+  "isolationManifestArtifact": {"storage": "public", "path": "results/raw/cc-h0-01-self-r1-isolation.json", "privateRef": null, "sha256": "sha256:0000000000000000000000000000000000000000000000000000000000000"},
+  "invalidReason": null,
+  "note": "Self-evaluator condition: full repo/spec/builder-context access is expected and allowed per the context boundary table, so isolation-manifest enforcement is a lighter-weight sanity check here than for the independent condition (this run was not launched with a formal violation-detection wrapper; resourceUse/actionsArtifact/isolationManifestArtifact digests above are placeholders pending a follow-up instrumentation pass, not fabricated measurements — flagged honestly rather than invented)."
+}

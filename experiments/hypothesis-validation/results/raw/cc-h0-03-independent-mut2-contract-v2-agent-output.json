@@ -1,0 +1,146 @@
+{
+  "actionsPath": "/private/tmp/eq-h0-cc03-contract-v2.GOAwFM/cc-h0-03-independent-mut2-contract-v2-actions.md",
+  "behaviorVerdicts": [
+    {
+      "behaviorId": "B-001",
+      "status": "HOLDS",
+      "severity": "material",
+      "summary": "Creating a capsule with 2 garments, a name, and an occasion tag succeeds (201) and the same name/occasions/garments are returned verbatim when listing capsules afterward. No dedicated GET-by-ID route exists, so retrieval is only via the list endpoint, which the oracle permits.",
+      "actionIds": [
+        "A-007",
+        "A-009"
+      ]
+    },
+    {
+      "behaviorId": "B-002",
+      "status": "BROKEN",
+      "severity": "material",
+      "summary": "When two filters (occasion + q) are supplied together, a capsule matching only the occasion (a strict subset) is incorrectly included alongside the capsule matching both filters. Isolated single-filter baselines confirm each filter works correctly alone, proving the composed (AND) filtering logic is broken and leaks partial matches.",
+      "actionIds": [
+        "A-013",
+        "A-014",
+        "A-015"
+      ]
+    },
+    {
+      "behaviorId": "B-003",
+      "status": "HOLDS",
+      "severity": "low",
+      "summary": "Marking a capsule favorite via PATCH .../favorite persists and is reflected as isFavorite:true in a subsequent favorites-filtered read; unmarking flips it back to false and it disappears from the favorites-filtered read.",
+      "actionIds": [
+        "A-019",
+        "A-020",
+        "A-021",
+        "A-022"
+      ]
+    },
+    {
+      "behaviorId": "B-004",
+      "status": "HOLDS",
+      "severity": "critical",
+      "summary": "User A's capsules never appear in User B's plain list, q-filtered search, or occasion-filtered search. Additionally, User B attempting to mutate User A's capsule by direct ID (favorite toggle) receives 404 Capsule not found, confirming ownership scoping extends beyond list/search to direct-ID access as well.",
+      "actionIds": [
+        "A-023",
+        "A-024",
+        "A-025",
+        "A-026"
+      ]
+    }
+  ],
+  "cleanupCompleted": false,
+  "findings": [
+    {
+      "findingId": "F-001",
+      "findingType": "confirmation",
+      "behaviorId": "B-001",
+      "severity": "material",
+      "summary": "Capsule creation from 2+ garments with name and occasion tag works correctly and is retrievable via list.",
+      "actionIds": [
+        "A-007",
+        "A-009"
+      ],
+      "evidenceQuotes": [
+        "{\"data\":{\"id\":\"cms3dkbzo001tphozynshfxdw\",\"name\":\"CC-H0-03 Eval Capsule Main\",\"occasions\":[\"cc-h0-03-main-occ\"],\"garments\":[{\"id\":\"g-1\",\"name\":\"Denim Jacket\"},{\"id\":\"g-2\",\"name\":\"White Tee\"}],\"isFavorite\":false,...}}",
+        "\"data\":[{\"id\":\"cms3dkbzo001tphozynshfxdw\",\"name\":\"CC-H0-03 Eval Capsule Main\",\"occasions\":[\"cc-h0-03-main-occ\"],\"garments\":[{\"id\":\"g-1\",\"name\":\"Denim Jacket\"},{\"id\":\"g-2\",\"name\":\"White Tee\"}],\"isFavorite\":false,...}"
+      ]
+    },
+    {
+      "findingId": "F-002",
+      "findingType": "defect",
+      "behaviorId": "B-002",
+      "severity": "material",
+      "summary": "Composed filter (occasion + q) does not intersect matches: a capsule satisfying only the occasion filter (not the q filter) is included in the composed result, violating the oracle requirement that a capsule belongs in the composed result only when it satisfies every supplied filter.",
+      "actionIds": [
+        "A-013",
+        "A-014",
+        "A-015"
+      ],
+      "evidenceQuotes": [
+        "GET /api/v1/capsules?occasion=cc-h0-03-main-occ&q=Main -> {\"data\":[{\"id\":\"cms3dkoi0001xphoziogv7k8d\",\"name\":\"CC-H0-03 Eval Capsule Second\",...},{\"id\":\"cms3dkbzo001tphozynshfxdw\",\"name\":\"CC-H0-03 Eval Capsule Main\",...}]}",
+        "GET /api/v1/capsules?q=Main -> {\"data\":[{\"id\":\"cms3dkbzo001tphozynshfxdw\",\"name\":\"CC-H0-03 Eval Capsule Main\",...}]}",
+        "GET /api/v1/capsules?occasion=cc-h0-03-main-occ -> {\"data\":[{\"id\":\"cms3dkoi0001xphoziogv7k8d\",\"name\":\"CC-H0-03 Eval Capsule Second\",...},{\"id\":\"cms3dkbzo001tphozynshfxdw\",\"name\":\"CC-H0-03 Eval Capsule Main\",...}]}"
+      ]
+    },
+    {
+      "findingId": "F-003",
+      "findingType": "confirmation",
+      "behaviorId": "B-003",
+      "severity": "low",
+      "summary": "Favorite mark/unmark round-trips correctly through PATCH .../favorite and is reflected in the favorites-filtered read path both ways.",
+      "actionIds": [
+        "A-019",
+        "A-020",
+        "A-021",
+        "A-022"
+      ],
+      "evidenceQuotes": [
+        "{\"data\":{\"id\":\"cms3dkbzo001tphozynshfxdw\",...,\"isFavorite\":true,...}}",
+        "{\"data\":[{\"id\":\"cms3dkbzo001tphozynshfxdw\",...,\"isFavorite\":true,...},...]}",
+        "{\"data\":{\"id\":\"cms3dkbzo001tphozynshfxdw\",...,\"isFavorite\":false,...}}",
+        "{\"data\":[{\"id\":\"cms3breb70007phoz4ejlhrcv\",...},{\"id\":\"cms39ffbx0001phgmwt6snwdp\",...}]}"
+      ]
+    },
+    {
+      "findingId": "F-004",
+      "findingType": "confirmation",
+      "behaviorId": "B-004",
+      "severity": "critical",
+      "summary": "User A's capsules are never visible to User B via list, q-search, or occasion-search, and User B cannot mutate User A's capsule by direct ID (404 Capsule not found), confirming robust ownership scoping.",
+      "actionIds": [
+        "A-023",
+        "A-024",
+        "A-025",
+        "A-026"
+      ],
+      "evidenceQuotes": [
+        "GET /api/v1/capsules (as User B) -> {\"data\":[{\"id\":\"cms39j5es001bphgm35asjzb5\",\"name\":\"Bramblewick Autumn Set\",...}]}",
+        "GET /api/v1/capsules?q=Main (as User B) -> {\"data\":[]}",
+        "GET /api/v1/capsules?occasion=cc-h0-03-main-occ (as User B) -> {\"data\":[]}",
+        "PATCH /api/v1/capsules/cms3dkbzo001tphozynshfxdw/favorite (as User B) -> {\"message\":\"Capsule not found\",\"error\":\"Not Found\",\"statusCode\":404}"
+      ]
+    },
+    {
+      "findingId": "F-005",
+      "findingType": "observation",
+      "behaviorId": "B-001",
+      "severity": "low",
+      "summary": "No GET-by-ID or DELETE route exists for capsules under /api/v1/capsules; only list (with query filters) and PATCH .../favorite were discoverable. This limited cleanup: the two evaluation capsules could not be deleted via the API and remain in User A's account (favorite state reset to false).",
+      "actionIds": [
+        "A-008",
+        "A-027",
+        "A-028",
+        "A-029"
+      ],
+      "evidenceQuotes": [
+        "{\"message\":\"Cannot GET /api/v1/capsules/cms3dkbzo001tphozynshfxdw\",\"error\":\"Not Found\",\"statusCode\":404}",
+        "{\"message\":\"Cannot DELETE /api/v1/capsules/cms3dkbzo001tphozynshfxdw\",\"error\":\"Not Found\",\"statusCode\":404}"
+      ]
+    }
+  ],
+  "isolationDraftPath": "/private/tmp/eq-h0-cc03-contract-v2.GOAwFM/cc-h0-03-independent-mut2-contract-v2-isolation-draft.json",
+  "runId": "cc-h0-03-independent-mut2-contract-v2",
+  "toolCalls": 31,
+  "verdict": "FAIL",
+  "violation": null,
+  "wallClockSeconds": 300
+}

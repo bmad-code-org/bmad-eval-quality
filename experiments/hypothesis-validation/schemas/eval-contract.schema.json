@@ -1,0 +1,101 @@
+{
+	"$schema": "https://json-schema.org/draft/2020-12/schema",
+	"$id": "https://eval-quality/schemas/eval-contract.schema.json",
+	"title": "EvalContract",
+	"description": "Sealed, black-box-only behavior contract handed to the independent evaluator. Excludes original spec prose, repository paths, non-observable implementation detail, prescribed test steps, hidden defect/mutation detail, baseline results, and human labels. Per HYPOTHESIS_VALIDATION_PLAN.md section 3.",
+	"type": "object",
+	"additionalProperties": false,
+	"properties": {
+		"contractVersion": { "const": 1 },
+		"taskId": { "type": "string", "minLength": 1 },
+		"sourceSpecDigest": {
+			"type": "string",
+			"pattern": "^sha256:[a-f0-9]{64}$"
+		},
+		"observableBehaviors": {
+			"type": "array",
+			"minItems": 1,
+			"items": {
+				"type": "object",
+				"additionalProperties": false,
+				"properties": {
+					"id": { "type": "string", "pattern": "^B-[0-9]{3,}$" },
+					"description": { "type": "string", "minLength": 1 },
+					"oracle": { "type": "string", "minLength": 1 },
+					"severity": {
+						"type": "string",
+						"enum": ["low", "material", "critical"]
+					}
+				},
+				"required": ["id", "description", "oracle", "severity"]
+			}
+		},
+		"riskHypotheses": { "type": "array", "items": { "type": "string" } },
+		"permittedInterfaces": {
+			"type": "array",
+			"items": { "type": "string", "enum": ["web", "api", "cli", "mcp"] }
+		},
+		"forbiddenInputs": {
+			"type": "array",
+			"items": {
+				"type": "string",
+				"enum": [
+					"original-spec",
+					"source-code",
+					"repository",
+					"builder-transcript",
+					"implementation-logs",
+					"comparator-results",
+					"human-labels"
+				]
+			},
+			"contains": { "const": "original-spec" }
+		},
+		"testData": {
+			"type": "object",
+			"additionalProperties": false,
+			"properties": {
+				"setup": { "type": ["string", "null"] },
+				"cleanup": { "type": ["string", "null"] }
+			},
+			"required": ["setup", "cleanup"]
+		},
+		"budgets": {
+			"type": "object",
+			"additionalProperties": false,
+			"properties": {
+				"maxToolCalls": { "type": "integer", "minimum": 1 },
+				"maxWallClockMinutes": { "type": "number", "exclusiveMinimum": 0 },
+				"maxCostUsd": { "type": "number", "exclusiveMinimum": 0 }
+			},
+			"required": ["maxToolCalls", "maxWallClockMinutes", "maxCostUsd"]
+		},
+		"safetyLimits": { "type": "array", "items": { "type": "string" } },
+		"requiredEvidence": { "type": "array", "items": { "type": "string" } },
+		"gatePolicy": {
+			"type": "object",
+			"additionalProperties": false,
+			"properties": {
+				"allowedVerdicts": {
+					"type": "array",
+					"items": { "type": "string", "enum": ["PASS", "CONCERNS", "FAIL"] }
+				}
+			},
+			"required": ["allowedVerdicts"]
+		}
+	},
+	"required": [
+		"contractVersion",
+		"taskId",
+		"sourceSpecDigest",
+		"observableBehaviors",
+		"riskHypotheses",
+		"permittedInterfaces",
+		"forbiddenInputs",
+		"testData",
+		"budgets",
+		"safetyLimits",
+		"requiredEvidence",
+		"gatePolicy"
+	]
+}

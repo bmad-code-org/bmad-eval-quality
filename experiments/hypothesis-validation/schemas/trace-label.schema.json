@@ -1,0 +1,67 @@
+{
+	"$schema": "https://json-schema.org/draft/2020-12/schema",
+	"$id": "https://eval-quality/schemas/trace-label.schema.json",
+	"title": "TraceLabel",
+	"description": "One reviewer's (or the adjudicated) label for one semantic-corpus trace case. Per HYPOTHESIS_VALIDATION_PLAN.md section 6.",
+	"type": "object",
+	"additionalProperties": false,
+	"properties": {
+		"caseId": { "type": "string", "minLength": 1 },
+		"outcomeCorrect": { "type": "boolean" },
+		"evidenceCorrect": { "type": "boolean" },
+		"claims": {
+			"type": "array",
+			"items": {
+				"type": "object",
+				"additionalProperties": false,
+				"properties": {
+					"claim": { "type": "string", "minLength": 1 },
+					"status": {
+						"type": "string",
+						"enum": ["grounded", "unsupported", "contradicted", "not-checkable"]
+					},
+					"evidenceStepIds": { "type": "array", "items": { "type": "string" } }
+				},
+				"required": ["claim", "status", "evidenceStepIds"]
+			}
+		},
+		"pathSound": { "type": "boolean" },
+		"acceptedCheckpoints": {
+			"type": "array",
+			"items": {
+				"type": "object",
+				"additionalProperties": false,
+				"properties": {
+					"id": { "type": "string", "minLength": 1 },
+					"dependsOn": { "type": "array", "items": { "type": "string" } },
+					"satisfiedByStepIds": {
+						"type": "array",
+						"items": { "type": "string" }
+					}
+				},
+				"required": ["id", "dependsOn", "satisfiedByStepIds"]
+			}
+		},
+		"firstMaterialErrorStepId": { "type": ["string", "null"] },
+		"materialFailure": { "type": "boolean" },
+		"expectedGate": { "type": "string", "enum": ["PASS", "CONCERNS", "FAIL"] },
+		"severity": {
+			"type": "string",
+			"enum": ["none", "low", "material", "critical"]
+		},
+		"rationale": { "type": "string", "minLength": 1 }
+	},
+	"required": [
+		"caseId",
+		"outcomeCorrect",
+		"evidenceCorrect",
+		"claims",
+		"pathSound",
+		"acceptedCheckpoints",
+		"firstMaterialErrorStepId",
+		"materialFailure",
+		"expectedGate",
+		"severity",
+		"rationale"
+	]
+}

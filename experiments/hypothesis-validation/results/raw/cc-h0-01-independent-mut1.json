@@ -1,0 +1,16 @@
+{
+  "runId": "cc-h0-01-independent-mut1",
+  "taskId": "cc-h0-01-garment-upload-ownership",
+  "condition": "independent",
+  "verdict": "FAIL",
+  "findings": [
+    {"findingId": "F-001", "behaviorId": "B-001", "severity": "material", "summary": "Upload-then-read-back works for the uploading user.", "actionIds": [], "evidenceArtifacts": []},
+    {"findingId": "F-002", "behaviorId": "B-002", "severity": "critical", "summary": "LIST endpoint does not scope to the calling user: verified bidirectionally with freshly created, uniquely-marked garments that user B's list contains user A's garment and vice versa. Correctly noted that get-by-id is NOT affected (still 404s cross-user) -- an asymmetric bug, matched exactly.", "actionIds": [], "evidenceArtifacts": []},
+    {"findingId": "F-003", "behaviorId": "B-003", "severity": "material", "summary": "Persistence across separate later requests holds.", "actionIds": [], "evidenceArtifacts": []}
+  ],
+  "actionsArtifact": {"storage": "public", "path": "results/raw/cc-h0-01-independent-mut1-actions.md", "privateRef": null, "sha256": "sha256:0000000000000000000000000000000000000000000000000000000000000"},
+  "resourceUse": {"toolCalls": 9, "inputTokens": 0, "outputTokens": 0, "wallClockSeconds": 122, "costUsd": 0},
+  "isolationManifestArtifact": {"storage": "public", "path": "results/raw/cc-h0-01-independent-mut1-isolation.json", "privateRef": null, "sha256": "sha256:0000000000000000000000000000000000000000000000000000000000000"},
+  "invalidReason": null,
+  "note": "MATCHES GROUND TRUTH D-001 exactly, including correctly distinguishing that get-by-id is unaffected while list is broken. Bidirectional verification (both A-sees-B and B-sees-A) with freshly created uniquely-marked test data, not just noticing pre-existing shared fixture data. Fresh isolated agent context, no repo/spec/builder-transcript access. Whether this counts as a 'unique' catch depends on whether the self-evaluator (mutation round) also caught it -- pending that result."
+}

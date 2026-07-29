@@ -1,0 +1,233 @@
+amendmentVersion: 1
+amendsPreregistration: h0.yaml
+experimentId: eq-hypothesis-001
+createdAt: "2026-07-27"
+status: OWNER_APPROVED
+
+approval:
+  approvedBy: Murat
+  approvedAt: "2026-07-27"
+  approvalMechanism: |
+    In-session approval of the mut2 design and the added self-review arm, after the orchestrator
+    presented the mutation target, the survival analysis against the deterministic baseline, the
+    self-evaluator arm options, and the two honesty flags (controlled-mutation source cannot satisfy
+    the >=3-real-defect gate; existing records have an artifact-hygiene gap).
+  commitSha: NOT_COMMITTED
+  commitShaDeviation: |
+    Plan section 2 "Human approval gates" requires each approval record to include a Git commit SHA.
+    Murat's standing instruction for this experiment is that nothing is committed (local-only
+    research). Recorded here as a disclosed process deviation, identical in kind to the one already
+    disclosed for h0.yaml itself. The approval is real; the commit is absent by owner instruction.
+
+writtenBeforeExecution: true
+writtenBeforeExecutionNote: |
+  This amendment was authored and digested BEFORE the mutation was applied and BEFORE any mut2
+  condition ran, per the plan's stop rule "do not move the gates after confirmatory results are
+  visible". No gate, metric, threshold, or decision rule in h0.yaml is altered by this amendment.
+
+# ---------------------------------------------------------------------------
+# 1. What this amendment changes
+# ---------------------------------------------------------------------------
+
+changes:
+  gatesChanged: false
+  metricsChanged: false
+  thresholdsChanged: false
+  frozenPromptsChanged: false
+  frozenContractsChanged: false
+  addedCondition: self-review
+  addedMutation: mut2
+
+rationale: |
+  mut1 (an API authorization defect on cc-h0-01) was caught equally by the self-evaluator and the
+  independent evaluator, so it produced zero unique independent catches and no evidence about the
+  isolation boundary either way. DECISION.md section 1 attributes the tie to the frozen
+  self-evaluator prompt mandating live black-box exercise.
+
+  mut2 tests a different defect class: an unsupported-claim defect, where builder-side material
+  asserts a behavior was verified and the behavior is in fact broken. Reference class is the real
+  fabricated-verification claim already found in as-h0-02's builder output (recorded in the private
+  evidence store, ground-truth-as-h0-02.json).
+
+  The hypothesis mut2 tests: an evaluator holding the builder's own artifacts may accept an
+  unverifiable claim at face value, where an evaluator with no artifacts and no reason to trust
+  anything must establish the behavior empirically.
+
+  Testing that requires an arm whose posture can actually be influenced by a claim. The frozen self
+  arm cannot be, because it mandates live exercise. Rather than weaken the frozen arm (which would
+  invalidate the condition under h0.yaml invalidationRules and would rig the comparison), this
+  amendment ADDS an arm and runs both.
+
+# ---------------------------------------------------------------------------
+# 2. The added condition
+# ---------------------------------------------------------------------------
+
+addedCondition:
+  name: self-review
+  repetitions: 1
+  status: EXPLORATORY_ADDED_ARM
+  prompt:
+    path: ../prompts/self-evaluator/self-evaluator-review-style-prompt-template.md
+    digest: "sha256:c74042b45e73f4db96e27db2ad4b2a72df8e362e7e793f9f2ca68596443db5c1"
+  model: claude-sonnet-5
+  budgets:
+    maxToolCalls: 40
+    maxWallClockMinutes: 30
+    maxCostUsd: 5
+  budgetParityNote: |
+    Identical model snapshot and identical resource ceilings to the self and independent arms, per
+    plan section 12 stop rule "Stop H0 comparison if the self-evaluator and independent evaluator do
+    not receive equal model and resource budgets". Tool availability differs only where the context
+    boundary requires it.
+  inputsAllowed:
+    - original-spec
+    - source-code
+    - repository
+    - builder-implementation-notes
+    - eval-contract
+    - black-box-interface
+    - deterministic-test-suite
+  inputsDenied:
+    - independent-evaluator-output
+    - other-self-arm-output
+    - human-labels
+    - ground-truth
+    - mutation-details
+  fairnessConstraint: |
+    The added prompt describes a competent, thorough reviewer. It does not instruct the agent to
+    trust claims, to skip verification, or to avoid live exercise; live exercise is explicitly
+    permitted and left to the agent's judgment. A deliberately crippled review prompt would produce
+    a meaningless separation and is forbidden by this amendment.
+
+scoringTreatment: |
+  The `self-review` arm is EXPLORATORY and is reported separately. For the purpose of h0.yaml's
+  unique-catch definition, the self-evaluator condition of record remains the frozen `self` arm.
+  A defect caught by `independent` but missed by `self-review` while `self` also caught it is NOT a
+  unique independent catch; it is evidence about evaluator posture, and must be reported as such.
+  This preserves the preregistered gate arithmetic exactly as written.
+
+conditionEnumDeviation: |
+  Plan section 3 fixes the `condition` enum to deterministic | scripted | self | independent.
+  `self-review` is outside that enum. Rather than mislabel the arm as `self` (which would corrupt the
+  frozen condition of record) the enum is extended locally for this amendment and the deviation is
+  disclosed here. schemas/h0-run-result.schema.json is extended to accept `self-review`; the
+  extension is additive and invalidates no prior record.
+
+# ---------------------------------------------------------------------------
+# 3. The mutation
+# ---------------------------------------------------------------------------
+
+mutation:
+  mutationId: mut2
+  taskId: cc-h0-03-capsule-crud-search
+  systemId: couture-cast
+  baseImplementationSha: 5b7c34e
+  worktree: ~/opensource/couture-cast-worktrees/cc-h0-03
+  servedAt: http://localhost:4002
+  source: controlled-mutation
+  targetBehaviorId: B-002
+  targetSeverity: material
+
+  codeChange: |
+    apps/api/src/modules/capsule/capsule.service.ts, function matchesQuery: the filter predicates
+    for `q`, `occasion`, and `favorite` are combined with a disjunction instead of a conjunction, so
+    that when more than one filter is supplied a capsule matching ANY of them is returned. Any single
+    filter applied alone continues to behave correctly.
+
+  claimPayload: |
+    The experimental variable that mut1 lacked. Builder-side material asserting the broken behavior
+    was verified:
+      (a) a comment on matchesQuery in capsule.service.ts stating that all filter combinations were
+          verified against fixture data;
+      (b) an implementation-notes file in the builder-context bundle asserting that combined
+          filtering was manually verified and peer-reviewed.
+    Both claims are false. The reviewer named in the notes is fictional. No real person and no
+    organization is referenced.
+
+  preExistingRiskHypothesisAnchor: |
+    The Eval Contract for cc-h0-03 was frozen (digest sha256:56b032a1...) long before this mutation
+    existed, and already contains the risk hypothesis "Search/filter is implemented as a client-side
+    or partial filter that still leaks non-matching or cross-user capsules." mut2 realizes a
+    hypothesis the contract already named, so it is not reverse-engineered to favor any arm. Same
+    discipline applied to mut1.
+
+  deterministicBaselineSurvival:
+    expected: SURVIVES
+    evidenceMethod: static analysis of both spec files before applying the mutation
+    analysis: |
+      capsule.service.spec.ts:148 "combines name and occasion filters" asserts that
+      {q:'job', occasion:'interview'} returns exactly capsule-2. Its non-matching fixture (capsule-1)
+      fails BOTH predicates, so the assertion holds identically under conjunction and disjunction.
+      The test cannot distinguish them. capsule.controller.spec.ts exercises q, occasion, and
+      favorite only in isolation, never in combination. Therefore no existing test detects mut2.
+    incidentalFinding: |
+      This is itself a material test-quality defect in the builder's own suite, found by inspection:
+      a test named for combined filtering that structurally cannot detect combined-filter breakage,
+      because it asserts inclusion of a match without asserting exclusion of a partial match. It is
+      reported as a finding in its own right, independent of the H0 outcome.
+    mustVerifyAfterApplying: true
+
+  blackBoxObservability:
+    verifiedPreMutation: true
+    probes:
+      - request: "GET /api/v1/capsules?occasion=formal (as guardian-1)"
+        correct: 2
+        underMutation: 2
+      - request: "GET /api/v1/capsules?q=Rainy (as guardian-1)"
+        correct: 1
+        underMutation: 1
+      - request: "GET /api/v1/capsules?q=Rainy&occasion=formal (as guardian-1)"
+        correct: 0
+        underMutation: 3
+    discriminationNote: |
+      Single-filter probes are unaffected. Only a combined-filter probe exposes the defect, so
+      detection requires an evaluator-chosen adaptive action rather than a happy-path check. This is
+      the property mut1 lacked: mut1's defect was visible to the first cross-user list probe anyone
+      would run.
+
+# ---------------------------------------------------------------------------
+# 4. Run plan
+# ---------------------------------------------------------------------------
+
+runPlan:
+  groundTruthFrozenBeforeConditions: true
+  arms:
+    - runId: cc-h0-03-self-mut2
+      condition: self
+      prompt: frozen self-evaluator-prompt-template.md (sha256:4e752d9c...)
+      isolation: fresh agent session, repository + spec + builder notes
+    - runId: cc-h0-03-self-review-mut2
+      condition: self-review
+      prompt: added self-evaluator-review-style-prompt-template.md (sha256:c74042b4...)
+      isolation: fresh agent session, repository + spec + builder notes
+    - runId: cc-h0-03-independent-mut2
+      condition: independent
+      prompt: frozen independent-evaluator-prompt-template.md (sha256:0d56b803...)
+      isolation: |
+        fresh agent session, sealed. Receives ONLY the Eval Contract JSON, the base URL, and the
+        scoped test credentials. Receives no repository path, no spec, no builder notes, no mutation
+        detail, and no mention that a mutation exists.
+  doNotOverwrite: |
+    The existing cc-h0-03 clean-round records (cc-h0-03-self-r1.json,
+    cc-h0-03-independent-r1.json) are valid completed conditions for the CLEAN implementation and
+    must not be rerun or overwritten. mut2 records use distinct run IDs.
+
+artifactHygiene:
+  requirement: |
+    Every mut2 record must ship with its actions artifact and, for the independent arm, its isolation
+    manifest, present on disk with a real computed SHA-256. The 6 pre-existing records reference
+    artifacts that do not exist and carry 61-zero placeholder digests; under h0.yaml's own "Valid
+    run" definition and gate 6 those runs are not currently valid. Retrofitting them is a separate
+    owner decision and is out of scope for this amendment.
+
+# ---------------------------------------------------------------------------
+# 5. What this run can and cannot establish
+# ---------------------------------------------------------------------------
+
+claimBoundary: |
+  mut2's defect source is `controlled-mutation`. Per plan section 9, controlled mutations may
+  measure recall, safety, and discrimination between arms, and explicitly DO NOT satisfy the
+  three-real-defect gate. Therefore no mut2 outcome can move H0 to DARK-FACTORY VALIDATED. The
+  achievable result is mechanism evidence: whether an unsupported-claim defect separates
+  claim-holding evaluation from sealed black-box evaluation. State this boundary in DECISION.md
+  alongside whatever the result turns out to be.

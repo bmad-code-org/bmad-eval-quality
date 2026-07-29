@@ -1,0 +1,59 @@
+{
+  "contractVersion": 1,
+  "taskId": "as-h0-01-list-tool-pagination",
+  "sourceSpecDigest": "sha256:7ff24a996d4845ea446e87bd89b0419c59c35d6afcf9fb66042570995ea94741",
+  "observableBehaviors": [
+    {
+      "id": "B-001",
+      "description": "A list-retrieval tool returns a page of records along with an indicator of whether additional records exist beyond the current page.",
+      "oracle": "Call the tool on a scoped test query known to have more records than fit one page. The indicator must reflect 'more available' on the first page, and a follow-up call for the next page must return different records with an accurate end-of-list indicator once exhausted.",
+      "severity": "material"
+    },
+    {
+      "id": "B-002",
+      "description": "The tool handles an invalid or out-of-range pagination cursor safely rather than crashing or returning inconsistent data.",
+      "oracle": "Call the tool with a deliberately invalid cursor/page token. Must receive a well-formed error or an empty result, never a raw crash or a silently wrong page.",
+      "severity": "material"
+    },
+    {
+      "id": "B-003",
+      "description": "A recency/date-style field on a returned record reflects the underlying data consistently, not a placeholder or mismatched type.",
+      "oracle": "Inspect a returned record's date-like field across two calls; the value and its type must be internally consistent and parseable as a real date.",
+      "severity": "low"
+    }
+  ],
+  "riskHypotheses": [
+    "The end-of-list indicator is computed from page size alone rather than actual remaining-record count, producing a false 'more available' on the last page.",
+    "The date-style field is passed through from an upstream source in an inconsistent type across records."
+  ],
+  "permittedInterfaces": ["mcp"],
+  "forbiddenInputs": [
+    "original-spec",
+    "source-code",
+    "repository",
+    "builder-transcript",
+    "implementation-logs",
+    "comparator-results",
+    "human-labels"
+  ],
+  "testData": {
+    "setup": "A scoped test account in the agentic-system's non-production environment with enough underlying records to require at least two pages at the tool's default page size.",
+    "cleanup": "NOT_APPLICABLE — read-only tool, no state created."
+  },
+  "budgets": {
+    "maxToolCalls": 40,
+    "maxWallClockMinutes": 30,
+    "maxCostUsd": 5
+  },
+  "safetyLimits": [
+    "Only query the scoped test account.",
+    "Do not attempt to enumerate accounts or records outside the scoped test data."
+  ],
+  "requiredEvidence": [
+    "Full tool-call/response transcript for every claim.",
+    "Any record or cursor referenced in a finding must resolve to an actual observed tool response, quoted verbatim in the evidence artifact."
+  ],
+  "gatePolicy": {
+    "allowedVerdicts": ["PASS", "CONCERNS", "FAIL"]
+  }
+}
