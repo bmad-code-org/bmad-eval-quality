@@ -20,7 +20,7 @@ const css = readFileSync(
 )
 
 const OWNER = 'Murat Ozcan'
-const BLOB_BASE = 'https://github.com/muratkeremozcan/eval-quality/blob/main'
+const BLOB_BASE = 'https://github.com/bmad-code-org/bmad-eval-quality/blob/main'
 
 const DOCS = [
 	{
@@ -176,6 +176,7 @@ const buildPage = (doc) => {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="${escapeHtml(doc.lede)}">
+  <link rel="icon" href="data:,">
   <title>${escapeHtml(title)}</title>
   <style>
 ${css}

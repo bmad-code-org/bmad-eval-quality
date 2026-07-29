@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Write agent evals that know how to expose failures, then check whether those evals can actually catch known bugs.">
+  <link rel="icon" href="data:,">
   <title>eval-quality</title>
   <style>
 :root {
@@ -508,7 +509,7 @@ tbody tr:hover {
   <div class="layout">
     <aside class="sidebar" aria-label="Table of contents">
       <p class="toc-title">On this page</p>
-      <a class="toc-link depth-2" href="#what-each-part-provides">What each part provides</a><a class="toc-link depth-2" href="#behavioral-evaluation-contracts">Behavioral Evaluation Contracts</a><a class="toc-link depth-2" href="#how-eval-contract-strength-scoring-works">How Eval Contract strength scoring works</a><a class="toc-link depth-2" href="#using-it">Using it</a><a class="toc-link depth-2" href="#relationship-with-tea">Relationship with TEA</a><a class="toc-link depth-2" href="#evidence-and-limitations">Evidence and limitations</a><a class="toc-link depth-2" href="#where-known-defects-come-from">Where known defects come from</a><a class="toc-link depth-2" href="#held-out-defects">Held-out defects</a><a class="toc-link depth-2" href="#test-the-harness-before-trusting-the-score">Test the harness before trusting the score</a><a class="toc-link depth-2" href="#evaluator-isolation-is-a-control-not-the-product">Evaluator isolation is a control, not the product</a><a class="toc-link depth-2" href="#not-building-now">Not building now</a><a class="toc-link depth-2" href="#who-it-is-for">Who it is for</a><a class="toc-link depth-2" href="#development">Development</a><a class="toc-link depth-2" href="#contributing">Contributing</a><a class="toc-link depth-2" href="#security">Security</a><a class="toc-link depth-2" href="#license">License</a>
+      <a class="toc-link depth-2" href="#what-each-part-provides">What each part provides</a><a class="toc-link depth-2" href="#who-it-is-for">Who it is for</a><a class="toc-link depth-2" href="#behavioral-evaluation-contracts">Behavioral Evaluation Contracts</a><a class="toc-link depth-2" href="#how-eval-contract-strength-scoring-works">How Eval Contract strength scoring works</a><a class="toc-link depth-2" href="#using-it">Using it</a><a class="toc-link depth-2" href="#relationship-with-bmad-and-tea">Relationship with BMad and TEA</a><a class="toc-link depth-2" href="#evidence-and-limitations">Evidence and limitations</a><a class="toc-link depth-2" href="#not-building-now">Not building now</a><a class="toc-link depth-2" href="#development">Development</a><a class="toc-link depth-2" href="#contributing">Contributing</a><a class="toc-link depth-2" href="#security">Security</a><a class="toc-link depth-2" href="#license">License</a>
     </aside>
     <main class="paper">
       <header class="hero">
@@ -522,7 +523,7 @@ tbody tr:hover {
       </header>
       <details class="mobile-toc">
         <summary>On this page</summary>
-        <div class="mobile-toc-links"><a class="toc-link depth-2" href="#what-each-part-provides">What each part provides</a><a class="toc-link depth-2" href="#behavioral-evaluation-contracts">Behavioral Evaluation Contracts</a><a class="toc-link depth-2" href="#how-eval-contract-strength-scoring-works">How Eval Contract strength scoring works</a><a class="toc-link depth-2" href="#using-it">Using it</a><a class="toc-link depth-2" href="#relationship-with-tea">Relationship with TEA</a><a class="toc-link depth-2" href="#evidence-and-limitations">Evidence and limitations</a><a class="toc-link depth-2" href="#where-known-defects-come-from">Where known defects come from</a><a class="toc-link depth-2" href="#held-out-defects">Held-out defects</a><a class="toc-link depth-2" href="#test-the-harness-before-trusting-the-score">Test the harness before trusting the score</a><a class="toc-link depth-2" href="#evaluator-isolation-is-a-control-not-the-product">Evaluator isolation is a control, not the product</a><a class="toc-link depth-2" href="#not-building-now">Not building now</a><a class="toc-link depth-2" href="#who-it-is-for">Who it is for</a><a class="toc-link depth-2" href="#development">Development</a><a class="toc-link depth-2" href="#contributing">Contributing</a><a class="toc-link depth-2" href="#security">Security</a><a class="toc-link depth-2" href="#license">License</a></div>
+        <div class="mobile-toc-links"><a class="toc-link depth-2" href="#what-each-part-provides">What each part provides</a><a class="toc-link depth-2" href="#who-it-is-for">Who it is for</a><a class="toc-link depth-2" href="#behavioral-evaluation-contracts">Behavioral Evaluation Contracts</a><a class="toc-link depth-2" href="#how-eval-contract-strength-scoring-works">How Eval Contract strength scoring works</a><a class="toc-link depth-2" href="#using-it">Using it</a><a class="toc-link depth-2" href="#relationship-with-bmad-and-tea">Relationship with BMad and TEA</a><a class="toc-link depth-2" href="#evidence-and-limitations">Evidence and limitations</a><a class="toc-link depth-2" href="#not-building-now">Not building now</a><a class="toc-link depth-2" href="#development">Development</a><a class="toc-link depth-2" href="#contributing">Contributing</a><a class="toc-link depth-2" href="#security">Security</a><a class="toc-link depth-2" href="#license">License</a></div>
       </details>
       <article class="content"><p><strong>Write agent evals that know how to expose failures, then check whether those evals can actually catch known bugs.</strong></p>
 <blockquote>
@@ -564,6 +565,15 @@ confirm the specific error, and confirm no record was created.
 <li>CI integration</li>
 </ul>
 <p><a href="https://github.com/agentevals-dev/agentevals"><code>agentevals-dev/agentevals</code></a> and <a href="https://www.promptfoo.dev/">Promptfoo</a> are the candidate engines. <code>eval-quality</code> does not rebuild that layer.</p>
+<h2 id="who-it-is-for">Who it is for<a class="heading-anchor" href="#who-it-is-for" aria-label="Link to Who it is for">#</a></h2>
+<p>Teams shipping AI agents, coding skills, review bots, MCP-based assistants, or automated test-generation systems, and teams operating human-on-the-loop or dark-factory delivery.</p>
+<p>Use <code>eval-quality</code> when all three are true:</p>
+<ul>
+<li>An agent, skill, or model judgment is involved.</li>
+<li>A plausible-looking output can still be materially wrong.</li>
+<li>Observable evidence or probes can expose the wrong behavior.</li>
+</ul>
+<p>Deterministic work does not need it and already has cheaper, stronger evidence from unit, contract, E2E, performance, and mutation testing.</p>
 <h2 id="behavioral-evaluation-contracts">Behavioral Evaluation Contracts<a class="heading-anchor" href="#behavioral-evaluation-contracts" aria-label="Link to Behavioral Evaluation Contracts">#</a></h2>
 <p>A <strong>Behavioral Evaluation Contract</strong> is a versioned specification of the behaviors to probe, the evidence to collect, the negative cases to exercise, and the rules that decide whether the system passes or fails. <strong>Eval Contract</strong> is the shorthand used from here on. The individual checks inside it are <strong>oracles</strong>. The contract carries no prescribed action sequence; the evaluator chooses its own path.</p>
 <p>This is not a Pact or API contract, and the distinction matters if you arrived from contract testing:</p>
@@ -600,6 +610,7 @@ confirm the specific error, and confirm no record was created.
 <li><strong>Defect probes</strong>, where the behavior is simply wrong.</li>
 <li><strong>Gameability probes</strong>, where the behavior looks compliant while dodging the oracle&#39;s intent. A test that raises coverage while asserting nothing is the familiar version of this.</li>
 </ul>
+<p>Probes come from qualified historical defects or verified controlled mutations. The corpus separates a visible development set from an immutable sealed set for each scoring version.</p>
 <p>Every required oracle check resolves to exactly one state, and the state travels with the result, so &quot;the check reported&quot; is never sufficient on its own: <code>caught</code>, <code>missed</code>, <code>passed_clean_control</code>, <code>false_positive</code>, <code>abstained</code>, <code>oracle_error</code>, <code>infrastructure_error</code>, or <code>not_applicable</code>.</p>
 <p>A required oracle that missed, abstained, errored, or is absent prevents PASS, and a high overall score never overrides it. An infrastructure error or a failed environment pre-flight is not a behavioral result at all; it invalidates the run and is re-executed rather than scored.</p>
 <h2 id="using-it">Using it<a class="heading-anchor" href="#using-it" aria-label="Link to Using it">#</a></h2>
@@ -611,50 +622,20 @@ eval-quality preflight # verify the measurement environment before scoring
 eval-quality score     # seed known defects, report per-oracle outcomes
 </code></pre>
 <p>Commands are non-interactive by default, emit machine-readable output, and exit with a code reflecting the gate verdict. The library and CLI expose the same capabilities and produce the same versioned evidence artifact.</p>
-<h2 id="relationship-with-tea">Relationship with TEA<a class="heading-anchor" href="#relationship-with-tea" aria-label="Link to Relationship with TEA">#</a></h2>
+<h2 id="relationship-with-bmad-and-tea">Relationship with BMad and TEA<a class="heading-anchor" href="#relationship-with-bmad-and-tea" aria-label="Link to Relationship with BMad and TEA">#</a></h2>
 <p>The dependency runs one way.</p>
 <pre><code class="language-text">TEA → eval-quality
 </code></pre>
 <p>TEA is the reference authoring client. It reads BMad planning artifacts, notices eval-relevant work, drafts a contract, and calls this package. It is not co-installed, and <code>eval-quality</code> holds no knowledge of TEA, BMad, or any planning-artifact format.</p>
 <p>Any human, bot, CI job, skill, or other framework can author a contract and use <code>eval-quality</code> directly. The discipline still applies, because the compiler judges the artifact rather than trusting whoever produced it.</p>
+<p>Evaluator runs remain isolated to prevent builder-context leakage and preserve traceability. Stronger contract oracles produced the measured detection improvement.</p>
 <h2 id="evidence-and-limitations">Evidence and limitations<a class="heading-anchor" href="#evidence-and-limitations" aria-label="Link to Evidence and limitations">#</a></h2>
 <p>Holding the model, the budget, the system, and the defects fixed, and changing only how the Eval Contract was authored, sealed-evaluator detection moved from <strong>0.33 to 1.00</strong> across three naturally occurring defects, three repetitions per arm, 19 scored runs.</p>
-<p>Two of the three plainly authored contracts detected nothing at all. One of them observed the defective behaviour and recorded it as confirmation that the system handled the case well. The mechanism is visible in the transcripts rather than only in the score: the plainly authored contract never prescribed the probe that would expose the defect, and the disciplined one did, by construction.</p>
-<p>What that evidence does not support:</p>
-<ul>
-<li><strong>Neither experiment round cleared its preregistered gates.</strong> Round 1 is recorded <code>DARK-FACTORY REJECTED</code>. Round 2 block 1 is recorded <code>CONTRACT-DISCIPLINE NOT SUPPORTED</code> after failing one safety gate, on the block&#39;s only clean control, to a defect in the measurement harness rather than in a contract.</li>
-<li><strong>The sample is narrow.</strong> Three defects, one system, one model.</li>
-<li><strong>The decision was made at product-decision grade</strong>, on the mechanism evidence rather than on a passing gate. It is not a certification claim, and no further replication is planned.</li>
-</ul>
-<p>Recorded verdicts and evidence: <a href="https://github.com/muratkeremozcan/eval-quality/blob/main/experiments/hypothesis-validation/DECISION.md">DECISION.md</a>, <a href="https://github.com/muratkeremozcan/eval-quality/blob/main/experiments/hypothesis-validation/PHASE2-RESULTS.md">PHASE2-RESULTS.md</a>, <a href="https://github.com/muratkeremozcan/eval-quality/blob/main/experiments/hypothesis-validation/results/summary.md">results/summary.md</a>. Gates and protocol: <a href="https://github.com/muratkeremozcan/eval-quality/blob/main/experiments/hypothesis-validation/HYPOTHESIS_VALIDATION_PLAN.md">HYPOTHESIS_VALIDATION_PLAN.md</a>.</p>
-<h2 id="where-known-defects-come-from">Where known defects come from<a class="heading-anchor" href="#where-known-defects-come-from" aria-label="Link to Where known defects come from">#</a></h2>
-<p>Two sources, both requiring recorded evidence before a case counts:</p>
-<ul>
-<li><strong>History.</strong> The commit before a real bug fix is the case, and the fix&#39;s own test is the oracle.</li>
-<li><strong>Controlled mutation.</strong> A defect seeded deliberately against a real fix boundary, covering failure classes that never left a clean commit.</li>
-</ul>
-<p>A historical case is not automatically trustworthy. It qualifies only when it fails before the fix and passes after it:</p>
-<pre><code class="language-text">parent commit  → the fix&#39;s own test fails
-fix commit     → the fix&#39;s own test passes
-</code></pre>
-<p>Round 1 mined 18 fix commits and found 2 whose own tests already passed at the parent commit. A case earns ground-truth status through this check rather than through being mined.</p>
-<h2 id="held-out-defects">Held-out defects<a class="heading-anchor" href="#held-out-defects" aria-label="Link to Held-out defects">#</a></h2>
-<p>The probe corpus splits in two. A <strong>development set</strong> is visible to contract authors and used to improve the discipline. A <strong>sealed set</strong> is hidden and immutable for a given scoring version, and it produces the reported score.</p>
-<p>Revealing a sealed defect, repairing the contract, and rerunning against the same supposedly held-out case converts scoring into tutoring. A miss on the sealed set may inform the next version only after the current evaluation closes.</p>
-<h2 id="test-the-harness-before-trusting-the-score">Test the harness before trusting the score<a class="heading-anchor" href="#test-the-harness-before-trusting-the-score" aria-label="Link to Test the harness before trusting the score">#</a></h2>
-<p>Across both experiment rounds, every unintended defect was in the measurement layer rather than in the code under test: wrong response shapes, missing routes, a request-body-blind stub, a tautological test, two schemas that would not compile. The single safety gate that failed traced to a stub missing a wrapper key that the real client unwraps.</p>
-<p>So a scored run first passes a bounded environment pre-flight. It cannot prove an environment defect-free in general, and it does not try. It proves the specific paths the probe exercises: declared routes present and actually matched, request-body sensitivity where it applies, per-run state reset or immutable, known-clean control behavior, and the seeded fault as the only anomalous response in scope.</p>
-<p>A pre-flight failure invalidates the run. It is never read as a signal about the contract.</p>
-<h2 id="evaluator-isolation-is-a-control-not-the-product">Evaluator isolation is a control, not the product<a class="heading-anchor" href="#evaluator-isolation-is-a-control-not-the-product" aria-label="Link to Evaluator isolation is a control, not the product">#</a></h2>
-<p>The evaluator receives the sealed Eval Contract, scoped credentials and test data, allowlisted tools, and black-box access through the public UI, API, CLI, or MCP interface. It does not receive the original spec, the source code, the repository, the builder conversation, or implementation logs. Every run records an isolation manifest, and any prohibited-input access invalidates the run.</p>
-<p>This prevents context leakage and keeps evidence traceable. It is not where the advantage came from. A sealed evaluator&#39;s recall is bounded above by the oracles its contract supplies, and both rounds showed that isolation could not compensate for a missing oracle, from opposite failure directions.</p>
+<p>Both experiment rounds missed at least one preregistered gate. Round 1 recorded <code>DARK-FACTORY REJECTED</code>; round 2 block 1 recorded <code>CONTRACT-DISCIPLINE NOT SUPPORTED</code>. The sample covers three defects, one system, and one model. This supports a product-direction decision at narrow scale. Certification would require broader replication.</p>
+<p>Read the <a href="eval-quality-product-brief.html">product brief</a> for the product rationale, the <a href="eval-quality-prd.html">PRD</a> for build requirements, and <a href="eval-quality-adr-002.html">ADR-002</a> for the decision record. The experiment record includes the <a href="https://github.com/bmad-code-org/bmad-eval-quality/blob/main/experiments/hypothesis-validation/DECISION.md">round 1 verdict</a>, <a href="https://github.com/bmad-code-org/bmad-eval-quality/blob/main/experiments/hypothesis-validation/PHASE2-RESULTS.md">round 2 results</a>, <a href="https://github.com/bmad-code-org/bmad-eval-quality/blob/main/experiments/hypothesis-validation/results/summary.md">metric summary</a>, and <a href="https://github.com/bmad-code-org/bmad-eval-quality/blob/main/experiments/hypothesis-validation/HYPOTHESIS_VALIDATION_PLAN.md">protocol</a>.</p>
 <h2 id="not-building-now">Not building now<a class="heading-anchor" href="#not-building-now" aria-label="Link to Not building now">#</a></h2>
 <p>Deferred until the contract layer is in real use: claim-to-evidence lineage, semantic checkpoint scoring, process and outcome separation, and first material error attribution.</p>
 <p>Out of scope entirely: a new eval engine, a hosted service, a dashboard or GUI, multimodal evaluators, automatic prompt repair, and a generic judge-calibration platform.</p>
-<h2 id="who-it-is-for">Who it is for<a class="heading-anchor" href="#who-it-is-for" aria-label="Link to Who it is for">#</a></h2>
-<p>Teams shipping AI agents, coding skills, review bots, MCP-based assistants, or automated test-generation systems, and teams operating human-on-the-loop or dark-factory delivery.</p>
-<p>The test for whether this applies to a given piece of work is three-part. There is an agent, skill, or model judgment involved. A plausible-looking output can still be materially wrong. Observable evidence or probes exist that would expose the wrong behavior.</p>
-<p>Deterministic work does not need it and already has cheaper, stronger evidence from unit, contract, E2E, performance, and mutation testing.</p>
 <h2 id="development">Development<a class="heading-anchor" href="#development" aria-label="Link to Development">#</a></h2>
 <pre><code class="language-bash">npm install
 npm run validate         # typecheck + lint + docs check + test
@@ -664,11 +645,11 @@ npm run build:shareable  # render the planning artifacts to self-contained HTML
 </code></pre>
 <p><code>build:shareable</code> writes this README, the product brief, the PRD, and ADR-002 to <code>_bmad-output/shareable/</code> as standalone styled HTML for sharing outside the repo. Regenerate rather than hand-edit those files.</p>
 <h2 id="contributing">Contributing<a class="heading-anchor" href="#contributing" aria-label="Link to Contributing">#</a></h2>
-<p>See <a href="https://github.com/muratkeremozcan/eval-quality/blob/main/CONTRIBUTING.md">CONTRIBUTING.md</a> and our <a href="https://github.com/muratkeremozcan/eval-quality/blob/main/CODE_OF_CONDUCT.md">Code of Conduct</a>.</p>
+<p>See <a href="https://github.com/bmad-code-org/bmad-eval-quality/blob/main/CONTRIBUTING.md">CONTRIBUTING.md</a> and our <a href="https://github.com/bmad-code-org/bmad-eval-quality/blob/main/CODE_OF_CONDUCT.md">Code of Conduct</a>.</p>
 <h2 id="security">Security<a class="heading-anchor" href="#security" aria-label="Link to Security">#</a></h2>
-<p>See <a href="https://github.com/muratkeremozcan/eval-quality/blob/main/SECURITY.md">SECURITY.md</a>. Please do not open a public issue for vulnerabilities.</p>
+<p>See <a href="https://github.com/bmad-code-org/bmad-eval-quality/blob/main/SECURITY.md">SECURITY.md</a>. Please do not open a public issue for vulnerabilities.</p>
 <h2 id="license">License<a class="heading-anchor" href="#license" aria-label="Link to License">#</a></h2>
-<p>Apache-2.0 &copy; Murat Ozcan. See <a href="https://github.com/muratkeremozcan/eval-quality/blob/main/LICENSE">LICENSE</a>.</p>
+<p>Apache-2.0 &copy; Murat Ozcan. See <a href="https://github.com/bmad-code-org/bmad-eval-quality/blob/main/LICENSE">LICENSE</a>.</p>
 </article>
       <footer class="footer">Generated from README.md by scripts/build-shareable.mjs. Self-contained and print-ready. Do not hand-edit; regenerate instead.</footer>
     </main>

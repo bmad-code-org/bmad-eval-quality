@@ -53,6 +53,18 @@ An established engine provides:
 
 [`agentevals-dev/agentevals`](https://github.com/agentevals-dev/agentevals) and [Promptfoo](https://www.promptfoo.dev/) are the candidate engines. `eval-quality` does not rebuild that layer.
 
+## Who it is for
+
+Teams shipping AI agents, coding skills, review bots, MCP-based assistants, or automated test-generation systems, and teams operating human-on-the-loop or dark-factory delivery.
+
+Use `eval-quality` when all three are true:
+
+- An agent, skill, or model judgment is involved.
+- A plausible-looking output can still be materially wrong.
+- Observable evidence or probes can expose the wrong behavior.
+
+Deterministic work does not need it and already has cheaper, stronger evidence from unit, contract, E2E, performance, and mutation testing.
+
 ## Behavioral Evaluation Contracts
 
 A **Behavioral Evaluation Contract** is a versioned specification of the behaviors to probe, the evidence to collect, the negative cases to exercise, and the rules that decide whether the system passes or fails. **Eval Contract** is the shorthand used from here on. The individual checks inside it are **oracles**. The contract carries no prescribed action sequence; the evaluator chooses its own path.
@@ -79,6 +91,8 @@ Two probe classes go behind a contract, and a strong contract rejects both:
 - **Defect probes**, where the behavior is simply wrong.
 - **Gameability probes**, where the behavior looks compliant while dodging the oracle's intent. A test that raises coverage while asserting nothing is the familiar version of this.
 
+Probes come from qualified historical defects or verified controlled mutations. The corpus separates a visible development set from an immutable sealed set for each scoring version.
+
 Every required oracle check resolves to exactly one state, and the state travels with the result, so "the check reported" is never sufficient on its own: `caught`, `missed`, `passed_clean_control`, `false_positive`, `abstained`, `oracle_error`, `infrastructure_error`, or `not_applicable`.
 
 A required oracle that missed, abstained, errored, or is absent prevents PASS, and a high overall score never overrides it. An infrastructure error or a failed environment pre-flight is not a behavioral result at all; it invalidates the run and is re-executed rather than scored.
@@ -99,7 +113,7 @@ eval-quality score     # seed known defects, report per-oracle outcomes
 
 Commands are non-interactive by default, emit machine-readable output, and exit with a code reflecting the gate verdict. The library and CLI expose the same capabilities and produce the same versioned evidence artifact.
 
-## Relationship with TEA
+## Relationship with BMad and TEA
 
 The dependency runs one way.
 
@@ -111,69 +125,21 @@ TEA is the reference authoring client. It reads BMad planning artifacts, notices
 
 Any human, bot, CI job, skill, or other framework can author a contract and use `eval-quality` directly. The discipline still applies, because the compiler judges the artifact rather than trusting whoever produced it.
 
+Evaluator runs remain isolated to prevent builder-context leakage and preserve traceability. Stronger contract oracles produced the measured detection improvement.
+
 ## Evidence and limitations
 
 Holding the model, the budget, the system, and the defects fixed, and changing only how the Eval Contract was authored, sealed-evaluator detection moved from **0.33 to 1.00** across three naturally occurring defects, three repetitions per arm, 19 scored runs.
 
-Two of the three plainly authored contracts detected nothing at all. One of them observed the defective behaviour and recorded it as confirmation that the system handled the case well. The mechanism is visible in the transcripts rather than only in the score: the plainly authored contract never prescribed the probe that would expose the defect, and the disciplined one did, by construction.
+Both experiment rounds missed at least one preregistered gate. Round 1 recorded `DARK-FACTORY REJECTED`; round 2 block 1 recorded `CONTRACT-DISCIPLINE NOT SUPPORTED`. The sample covers three defects, one system, and one model. This supports a product-direction decision at narrow scale. Certification would require broader replication.
 
-What that evidence does not support:
-
-- **Neither experiment round cleared its preregistered gates.** Round 1 is recorded `DARK-FACTORY REJECTED`. Round 2 block 1 is recorded `CONTRACT-DISCIPLINE NOT SUPPORTED` after failing one safety gate, on the block's only clean control, to a defect in the measurement harness rather than in a contract.
-- **The sample is narrow.** Three defects, one system, one model.
-- **The decision was made at product-decision grade**, on the mechanism evidence rather than on a passing gate. It is not a certification claim, and no further replication is planned.
-
-Recorded verdicts and evidence: [DECISION.md](experiments/hypothesis-validation/DECISION.md), [PHASE2-RESULTS.md](experiments/hypothesis-validation/PHASE2-RESULTS.md), [results/summary.md](experiments/hypothesis-validation/results/summary.md). Gates and protocol: [HYPOTHESIS_VALIDATION_PLAN.md](experiments/hypothesis-validation/HYPOTHESIS_VALIDATION_PLAN.md).
-
-## Where known defects come from
-
-Two sources, both requiring recorded evidence before a case counts:
-
-- **History.** The commit before a real bug fix is the case, and the fix's own test is the oracle.
-- **Controlled mutation.** A defect seeded deliberately against a real fix boundary, covering failure classes that never left a clean commit.
-
-A historical case is not automatically trustworthy. It qualifies only when it fails before the fix and passes after it:
-
-```text
-parent commit  → the fix's own test fails
-fix commit     → the fix's own test passes
-```
-
-Round 1 mined 18 fix commits and found 2 whose own tests already passed at the parent commit. A case earns ground-truth status through this check rather than through being mined.
-
-## Held-out defects
-
-The probe corpus splits in two. A **development set** is visible to contract authors and used to improve the discipline. A **sealed set** is hidden and immutable for a given scoring version, and it produces the reported score.
-
-Revealing a sealed defect, repairing the contract, and rerunning against the same supposedly held-out case converts scoring into tutoring. A miss on the sealed set may inform the next version only after the current evaluation closes.
-
-## Test the harness before trusting the score
-
-Across both experiment rounds, every unintended defect was in the measurement layer rather than in the code under test: wrong response shapes, missing routes, a request-body-blind stub, a tautological test, two schemas that would not compile. The single safety gate that failed traced to a stub missing a wrapper key that the real client unwraps.
-
-So a scored run first passes a bounded environment pre-flight. It cannot prove an environment defect-free in general, and it does not try. It proves the specific paths the probe exercises: declared routes present and actually matched, request-body sensitivity where it applies, per-run state reset or immutable, known-clean control behavior, and the seeded fault as the only anomalous response in scope.
-
-A pre-flight failure invalidates the run. It is never read as a signal about the contract.
-
-## Evaluator isolation is a control, not the product
-
-The evaluator receives the sealed Eval Contract, scoped credentials and test data, allowlisted tools, and black-box access through the public UI, API, CLI, or MCP interface. It does not receive the original spec, the source code, the repository, the builder conversation, or implementation logs. Every run records an isolation manifest, and any prohibited-input access invalidates the run.
-
-This prevents context leakage and keeps evidence traceable. It is not where the advantage came from. A sealed evaluator's recall is bounded above by the oracles its contract supplies, and both rounds showed that isolation could not compensate for a missing oracle, from opposite failure directions.
+Read the [product brief](_bmad-output/planning-artifacts/briefs/brief-eval-quality-2026-07-17/brief.md) for the product rationale, the [PRD](_bmad-output/planning-artifacts/prds/prd-eval-quality-2026-07-17/prd.md) for build requirements, and [ADR-002](_bmad-output/planning-artifacts/architecture/architecture-eval-quality-2026-07-22/ADR-002-contract-authoring-discipline.md) for the decision record. The experiment record includes the [round 1 verdict](experiments/hypothesis-validation/DECISION.md), [round 2 results](experiments/hypothesis-validation/PHASE2-RESULTS.md), [metric summary](experiments/hypothesis-validation/results/summary.md), and [protocol](experiments/hypothesis-validation/HYPOTHESIS_VALIDATION_PLAN.md).
 
 ## Not building now
 
 Deferred until the contract layer is in real use: claim-to-evidence lineage, semantic checkpoint scoring, process and outcome separation, and first material error attribution.
 
 Out of scope entirely: a new eval engine, a hosted service, a dashboard or GUI, multimodal evaluators, automatic prompt repair, and a generic judge-calibration platform.
-
-## Who it is for
-
-Teams shipping AI agents, coding skills, review bots, MCP-based assistants, or automated test-generation systems, and teams operating human-on-the-loop or dark-factory delivery.
-
-The test for whether this applies to a given piece of work is three-part. There is an agent, skill, or model judgment involved. A plausible-looking output can still be materially wrong. Observable evidence or probes exist that would expose the wrong behavior.
-
-Deterministic work does not need it and already has cheaper, stronger evidence from unit, contract, E2E, performance, and mutation testing.
 
 ## Development
 

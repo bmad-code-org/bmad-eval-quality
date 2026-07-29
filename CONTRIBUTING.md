@@ -12,7 +12,7 @@ Thanks for your interest in contributing! `eval-quality` is a provider-agnostic 
 ### Initial Setup
 
 ```bash
-git clone https://github.com/muratkeremozcan/eval-quality.git
+git clone https://github.com/bmad-code-org/bmad-eval-quality.git
 cd eval-quality
 nvm use
 npm install

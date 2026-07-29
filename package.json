@@ -33,13 +33,13 @@
       "default": "./dist/index.js"
     }
   },
-  "homepage": "https://github.com/muratkeremozcan/eval-quality#readme",
+  "homepage": "https://github.com/bmad-code-org/bmad-eval-quality#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/muratkeremozcan/eval-quality.git"
+    "url": "git+https://github.com/bmad-code-org/bmad-eval-quality.git"
   },
   "bugs": {
-    "url": "https://github.com/muratkeremozcan/eval-quality/issues"
+    "url": "https://github.com/bmad-code-org/bmad-eval-quality/issues"
   },
   "publishConfig": {
     "access": "public"
