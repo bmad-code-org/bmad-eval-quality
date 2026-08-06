@@ -2,11 +2,11 @@
 
 ## At its core, `eval-quality` does three things
 
-1. **Compile** — Validate and normalize an eval spec into a machine-readable artifact.
+1. **Compile** : Validate and normalize an eval spec into a machine-readable artifact.
 
-2. **Seal** — Render the Markdown brief for the independent evaluator while hiding the planted bug and the scoring answer.
+2. **Seal** : Render the Markdown brief for the independent evaluator while hiding the planted bug and the scoring answer.
 
-3. **Score** — Compare the evaluator’s completed findings with the hidden bug signature to determine whether the bug was actually caught.
+3. **Score** : Compare the evaluator’s completed findings with the hidden bug signature to determine whether the bug was actually caught.
 
 ## What is the eval spec?
 
