@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="The measurement mechanics ADR-002 deferred: oracles, dominance, verdicts, corpus rotation, and schemas.">
+  <link rel="icon" href="data:,">
+  <title>ADR-003: Contract strength is a vector and a dominance rule</title>
+  <style>
+:root {
+	color-scheme: light;
+	--canvas: #f4f6fb;
+	--paper: #ffffff;
+	--ink: #182230;
+	--muted: #667085;
+	--line: #e4e7ec;
+	--brand: #3157d5;
+	--brand-deep: #243f9f;
+	--brand-soft: #eef2ff;
+	--accent: #087f6d;
+	--accent-soft: #eafaf6;
+	--code: #101828;
+	--shadow: 0 18px 50px rgba(16, 24, 40, 0.08);
+}
+
+* {
+	box-sizing: border-box;
+}
+html {
+	scroll-behavior: smooth;
+}
+body {
+	margin: 0;
+	background: var(--canvas);
+	color: var(--ink);
+	font-family:
+		Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI",
+		sans-serif;
+	font-size: 16px;
+	line-height: 1.72;
+	text-rendering: optimizeLegibility;
+}
+
+a {
+	color: var(--brand);
+	text-decoration-thickness: 1px;
+	text-underline-offset: 3px;
+}
+a:hover {
+	color: var(--brand-deep);
+}
+
+.topbar {
+	position: sticky;
+	top: 0;
+	z-index: 20;
+	border-bottom: 1px solid rgba(228, 231, 236, 0.9);
+	background: rgba(255, 255, 255, 0.92);
+	backdrop-filter: blur(14px);
+}
+
+.topbar-inner {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 24px;
+	max-width: 1280px;
+	min-height: 64px;
+	margin: 0 auto;
+	padding: 10px 28px;
+}
+
+.brand {
+	color: var(--ink);
+	font-size: 15px;
+	font-weight: 760;
+	letter-spacing: -0.01em;
+	text-decoration: none;
+	white-space: nowrap;
+}
+
+.brand-mark {
+	color: var(--brand);
+}
+.nav {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: flex-end;
+	gap: 6px;
+}
+.nav-link {
+	border-radius: 9px;
+	color: #475467;
+	font-size: 13px;
+	font-weight: 650;
+	padding: 6px 10px;
+	text-decoration: none;
+}
+.nav-link:hover,
+.nav-link.active {
+	background: var(--brand-soft);
+	color: var(--brand-deep);
+}
+
+.layout {
+	display: grid;
+	grid-template-columns: 248px minmax(0, 900px);
+	gap: 30px;
+	max-width: 1230px;
+	margin: 34px auto 70px;
+	padding: 0 28px;
+}
+
+.sidebar {
+	position: sticky;
+	top: 90px;
+	align-self: start;
+	max-height: calc(100vh - 112px);
+	overflow: auto;
+	padding: 4px 8px 20px 0;
+}
+
+.toc-title {
+	margin: 0 0 10px 10px;
+	color: #98a2b3;
+	font-size: 11px;
+	font-weight: 800;
+	letter-spacing: 0.12em;
+	text-transform: uppercase;
+}
+
+.toc-link {
+	display: block;
+	border-left: 2px solid transparent;
+	border-radius: 0 8px 8px 0;
+	color: #667085;
+	font-size: 13px;
+	line-height: 1.35;
+	margin: 1px 0;
+	padding: 6px 8px 6px 10px;
+	text-decoration: none;
+}
+.toc-link:hover {
+	border-left-color: var(--brand);
+	background: #fff;
+	color: var(--brand-deep);
+}
+.toc-link.depth-3 {
+	padding-left: 22px;
+	font-size: 12px;
+}
+.toc-link.depth-4 {
+	padding-left: 34px;
+	font-size: 12px;
+	color: var(--muted);
+}
+
+.paper {
+	min-width: 0;
+	overflow: hidden;
+	border: 1px solid rgba(228, 231, 236, 0.85);
+	border-radius: 18px;
+	background: var(--paper);
+	box-shadow: var(--shadow);
+}
+
+.hero {
+	border-bottom: 1px solid var(--line);
+	background: linear-gradient(145deg, #ffffff 20%, #f1f4ff 100%);
+	padding: 58px 64px 44px;
+}
+.eyebrow {
+	color: var(--brand);
+	font-size: 12px;
+	font-weight: 800;
+	letter-spacing: 0.13em;
+	text-transform: uppercase;
+}
+.hero h1 {
+	max-width: 760px;
+	margin: 12px 0 12px;
+	color: #101828;
+	font-size: clamp(34px, 5vw, 54px);
+	line-height: 1.08;
+	letter-spacing: -0.04em;
+}
+.lede {
+	max-width: 680px;
+	margin: 0;
+	color: #475467;
+	font-size: 18px;
+	line-height: 1.55;
+}
+.metadata {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	margin-top: 24px;
+}
+.pill {
+	display: inline-flex;
+	align-items: center;
+	min-height: 28px;
+	border: 1px solid #d0d5dd;
+	border-radius: 999px;
+	background: rgba(255, 255, 255, 0.8);
+	color: #475467;
+	font-size: 12px;
+	font-weight: 700;
+	padding: 3px 10px;
+}
+.pill.status {
+	border-color: #a9e4d7;
+	background: var(--accent-soft);
+	color: var(--accent);
+}
+
+.mobile-toc {
+	display: none;
+	margin: 26px 32px 0;
+}
+.mobile-toc summary {
+	color: var(--brand-deep);
+	cursor: pointer;
+	font-size: 14px;
+	font-weight: 750;
+}
+.mobile-toc-links {
+	margin-top: 10px;
+}
+
+.content {
+	padding: 24px 64px 64px;
+}
+.content h2,
+.content h3,
+.content h4 {
+	position: relative;
+	scroll-margin-top: 88px;
+	color: #101828;
+}
+.content h2 {
+	border-top: 1px solid var(--line);
+	margin: 52px 0 18px;
+	padding-top: 38px;
+	font-size: 29px;
+	line-height: 1.2;
+	letter-spacing: -0.025em;
+}
+.content h2:first-child {
+	border-top: 0;
+	margin-top: 14px;
+	padding-top: 12px;
+}
+.content h3 {
+	margin: 34px 0 12px;
+	font-size: 21px;
+	line-height: 1.3;
+	letter-spacing: -0.015em;
+}
+.content h4 {
+	margin: 28px 0 10px;
+	font-size: 17px;
+	line-height: 1.35;
+}
+.heading-anchor {
+	opacity: 0;
+	margin-left: 8px;
+	color: #98a2b3;
+	font-size: 0.72em;
+	font-weight: 500;
+	text-decoration: none;
+}
+.content h2:hover .heading-anchor,
+.content h3:hover .heading-anchor {
+	opacity: 1;
+}
+
+.content p {
+	margin: 0 0 18px;
+}
+.content strong {
+	color: #101828;
+}
+.content ul,
+.content ol {
+	margin: 0 0 20px;
+	padding-left: 26px;
+}
+.content li {
+	margin: 7px 0;
+	padding-left: 3px;
+}
+.content li::marker {
+	color: var(--brand);
+	font-weight: 750;
+}
+.content blockquote {
+	margin: 24px 0;
+	border-left: 4px solid var(--brand);
+	border-radius: 0 10px 10px 0;
+	background: var(--brand-soft);
+	color: #344054;
+	padding: 16px 20px;
+}
+.content blockquote p:last-child {
+	margin-bottom: 0;
+}
+.content hr {
+	height: 1px;
+	margin: 44px 0;
+	border: 0;
+	background: var(--line);
+}
+
+code {
+	border: 1px solid #e4e7ec;
+	border-radius: 5px;
+	background: #f8fafc;
+	color: #344054;
+	font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+	font-size: 0.88em;
+	padding: 0.14em 0.38em;
+}
+pre {
+	overflow: auto;
+	margin: 24px 0;
+	border: 1px solid #344054;
+	border-radius: 12px;
+	background: var(--code);
+	color: #e4e7ec;
+	line-height: 1.58;
+	padding: 20px 22px;
+}
+pre code {
+	border: 0;
+	background: transparent;
+	color: inherit;
+	font-size: 13px;
+	padding: 0;
+}
+
+.table-wrap {
+	overflow-x: auto;
+	margin: 24px 0 30px;
+	border: 1px solid var(--line);
+	border-radius: 12px;
+}
+table {
+	width: 100%;
+	border-collapse: collapse;
+	font-size: 14px;
+	line-height: 1.5;
+}
+th {
+	background: #f8fafc;
+	color: #344054;
+	font-size: 12px;
+	letter-spacing: 0.04em;
+	text-align: left;
+	text-transform: uppercase;
+}
+th,
+td {
+	border-bottom: 1px solid var(--line);
+	padding: 12px 14px;
+	vertical-align: top;
+}
+tr:last-child td {
+	border-bottom: 0;
+}
+tbody tr:hover {
+	background: #fafbff;
+}
+
+.footer {
+	border-top: 1px solid var(--line);
+	color: #98a2b3;
+	font-size: 12px;
+	padding: 24px 64px 30px;
+}
+
+@media (max-width: 920px) {
+	.layout {
+		display: block;
+		margin-top: 22px;
+		padding: 0 16px;
+	}
+	.sidebar {
+		display: none;
+	}
+	.mobile-toc {
+		display: block;
+	}
+	.hero {
+		padding: 46px 36px 34px;
+	}
+	.content {
+		padding: 20px 36px 48px;
+	}
+	.footer {
+		padding-left: 36px;
+		padding-right: 36px;
+	}
+}
+
+@media (max-width: 620px) {
+	.topbar-inner {
+		align-items: flex-start;
+		flex-direction: column;
+		gap: 6px;
+		padding: 10px 16px;
+	}
+	.nav {
+		justify-content: flex-start;
+	}
+	.hero {
+		padding: 36px 24px 30px;
+	}
+	.hero h1 {
+		font-size: 34px;
+	}
+	.lede {
+		font-size: 16px;
+	}
+	.content {
+		padding: 14px 24px 42px;
+	}
+	.mobile-toc {
+		margin-left: 24px;
+		margin-right: 24px;
+	}
+	.footer {
+		padding-left: 24px;
+		padding-right: 24px;
+	}
+}
+
+@media print {
+	@page {
+		margin: 16mm 15mm;
+	}
+	body {
+		background: #fff;
+		font-size: 10.5pt;
+	}
+	.topbar,
+	.sidebar,
+	.mobile-toc,
+	.heading-anchor {
+		display: none;
+	}
+	.layout {
+		display: block;
+		max-width: none;
+		margin: 0;
+		padding: 0;
+	}
+	.paper {
+		border: 0;
+		border-radius: 0;
+		box-shadow: none;
+	}
+	.hero {
+		padding: 0 0 10mm;
+		background: #fff;
+	}
+	.hero h1 {
+		font-size: 28pt;
+	}
+	.content {
+		padding: 0;
+	}
+	.content h2 {
+		break-after: avoid;
+		margin-top: 9mm;
+		padding-top: 5mm;
+	}
+	.content h3,
+	.content h4 {
+		break-after: avoid;
+	}
+	pre,
+	.content blockquote,
+	.table-wrap {
+		break-inside: avoid;
+	}
+	.table-wrap {
+		overflow: visible;
+	}
+	a {
+		color: inherit;
+		text-decoration: none;
+	}
+	.footer {
+		padding: 8mm 0 0;
+	}
+}
+
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="eval-quality-readme.html"><span class="brand-mark">eval</span>-quality</a>
+      <nav class="nav" aria-label="Companion documents"><a class="nav-link" href="eval-quality-readme.html">Overview</a><a class="nav-link" href="eval-quality-product-brief.html">Product brief</a><a class="nav-link" href="eval-quality-prd.html">PRD</a><a class="nav-link" href="eval-quality-architecture-spine.html">Architecture</a><a class="nav-link" href="eval-quality-adr-001.html">ADR-001</a><a class="nav-link" href="eval-quality-adr-002.html">ADR-002</a><a class="nav-link active" href="eval-quality-adr-003.html">ADR-003</a><a class="nav-link" href="eval-quality-adr-004.html">ADR-004</a><a class="nav-link" href="eval-quality-adr-005.html">ADR-005</a><a class="nav-link" href="eval-quality-adr-006.html">ADR-006</a><a class="nav-link" href="eval-quality-adr-007.html">ADR-007</a><a class="nav-link" href="eval-quality-adr-008.html">ADR-008</a><a class="nav-link" href="eval-quality-adr-009.html">ADR-009</a></nav>
+    </div>
+  </header>
+  <div class="layout">
+    <aside class="sidebar" aria-label="Table of contents">
+      <p class="toc-title">On this page</p>
+      <a class="toc-link depth-2" href="#status">Status</a><a class="toc-link depth-2" href="#context">Context</a><a class="toc-link depth-2" href="#decision">Decision</a><a class="toc-link depth-2" href="#consequences">Consequences</a>
+    </aside>
+    <main class="paper">
+      <header class="hero">
+        <div class="eyebrow">eval-quality · ADR-003</div>
+        <h1>ADR-003: Contract strength is a vector and a dominance rule</h1>
+        <p class="lede">The measurement mechanics ADR-002 deferred: oracles, dominance, verdicts, corpus rotation, and schemas.</p>
+        <div class="metadata">
+          <span class="pill status">accepted</span>
+          <span class="pill">Updated 2026-07-29</span>
+          <span class="pill">Owner: Murat Ozcan</span>
+        </div>
+      </header>
+      <details class="mobile-toc">
+        <summary>On this page</summary>
+        <div class="mobile-toc-links"><a class="toc-link depth-2" href="#status">Status</a><a class="toc-link depth-2" href="#context">Context</a><a class="toc-link depth-2" href="#decision">Decision</a><a class="toc-link depth-2" href="#consequences">Consequences</a></div>
+      </details>
+      <article class="content"><h1>ADR-003: Contract strength is a vector and a dominance rule, and the oracle is a structure</h1>
+<h2 id="status">Status<a class="heading-anchor" href="#status" aria-label="Link to Status">#</a></h2>
+<p>Accepted 2026-07-29. This is the formal architecture pass ADR-002 named under its own Status, and it
+closes the five items ADR-002 deferred to it: score formulas, weighting, thresholds, corpus rotation,
+and result schemas. It amends rather than supersedes ADR-002; every Decision item in ADR-002 stands
+except where ADR-004 corrects item 6.</p>
+<p>The enforceable form of these decisions is
+<code>ARCHITECTURE-SPINE.md</code> in this folder, where each appears as a numbered <code>AD</code> with the divergence it
+prevents and the rule downstream must follow. This ADR records what was decided and why; the spine is
+what implementations are checked against. <code>AD</code> references below point there.</p>
+<h2 id="context">Context<a class="heading-anchor" href="#context" aria-label="Link to Context">#</a></h2>
+<p>ADR-002 established what to build and deliberately left the measurement mechanics open, on the
+grounds that they are architecture rather than product direction. Two things forced them open at the
+same time.</p>
+<p>The first is that ADR-002&#39;s own build order starts with the Eval Contract compiler and the strength
+scorer, and neither can be specified without the deferred items. A compiler cannot enforce authoring
+discipline &quot;mechanically rather than leaving it to reviewer attention&quot; — ADR-002&#39;s phrase — while the
+oracle it inspects is a free-text string, which is what the experiments&#39; <code>eval-contract.schema.json</code>
+carries. A scorer cannot report contract strength without a defined comparison.</p>
+<p>The second is that the experiment corpus is stronger prior art than expected. Eight hand-written
+JSON Schema files under <code>experiments/hypothesis-validation/schemas/</code> validated the H0 population — ten
+condition records plus their ground-truth records and isolation manifests, per <code>STATUS.md</code> — and they
+already fix conventions this pass should ratify rather than reinvent: <code>sha256:</code>-prefixed digests,
+<code>additionalProperties: false</code> throughout, kebab-case enumeration values, at-least-three-digit
+identifier patterns, and explicit <code>null</code> over omitted keys.</p>
+<p>Corrected 2026-07-29 after external review: an earlier draft of this paragraph claimed the eight
+schemas &quot;carried 19 scored runs&quot;, which is false and was propagated into the PRD. The 19 scored
+repetitions are Phase 2 block 1, the arm that produced the 0.33-to-1.00 effect, and
+<code>PHASE2-RESULTS.md</code> places their corpus, harness, fixtures, contracts, and raw output in the private
+evidence root. So the conventions are ratified on the H0 population, which is a real and sufficient
+basis, and the measured effect is cited separately with its evidence held privately. The two are not
+the same body of work. This was the third unexercised claim this project has caught surviving multiple
+rounds, and it sits in the ADR that records the previous two.</p>
+<h2 id="decision">Decision<a class="heading-anchor" href="#decision" aria-label="Link to Decision">#</a></h2>
+<ol>
+<li><p><strong>An oracle is a structured expression plus a prose intent.</strong> Every oracle carries a <code>check</code>
+expression tree in a closed operator vocabulary and an <code>intent</code> prose field written for the sealed
+evaluator. This supersedes contract version 1&#39;s free-text oracle string by adding to it. (AD-3, AD-4.)</p>
+<blockquote>
+<p><strong>Amended 2026-07-29 by <a href="eval-quality-adr-005.html">ADR-005</a> Decision 1.</strong> This item
+originally made <code>check</code> &quot;the only field the compiler and scorer evaluate&quot; and <code>intent</code> &quot;never
+parsed&quot;. That relocated the measured mechanism into a field declared out of scope: the effect came
+from prose oracles a sealed evaluator read, so <code>caught</code> would have meant &quot;the author wrote an
+assertion that failed&quot;. Outcome state now resolves from the evaluator&#39;s ingested findings, <code>check</code>
+is a compile-time enforcement surface plus a recorded corroboration signal, both fields are
+required, and the discipline rules bind the pair.</p>
+<p><strong>Further amended by <a href="eval-quality-adr-006.html">ADR-006</a>.</strong> Requiring <code>check</code> was not viable as
+specified, because the addressing grammar was single-observation while four of the seven discipline
+rules are not. <code>check</code> operands now address observations through a declared interaction plan, and the
+operator set gained collection quantifiers. Without both, three of the five oracles in the first
+hand-written contract had no writable <code>check</code> and the contract could not compile.</p>
+</blockquote>
+</li>
+<li><p><strong>The five authoring rules are the closed oracle-category enumeration.</strong> Separate the success
+indicator from the response body, read the whole body, probe malformed and negative inputs, verify
+per record rather than by spot-check, and cross-check sibling parameters and sibling tools. These
+are ADR-002 Decision 1&#39;s rules, promoted from prose into the coverage taxonomy the compiler checks
+and the axis the scorer counts against. Relevance is computed from the contract&#39;s declared
+interface kind and declared response shape, and fails closed: where a declaration is missing, the
+rule applies and its absence is a recorded coverage gap, so under-declaring costs coverage instead
+of earning a clean result. (AD-20, AD-31.)</p>
+</li>
+<li><p><strong>Weighting is refused, not deferred.</strong> There is no weighted score, no percentage, and no
+severity-weighted composite. Severity is recorded data and never a multiplier. A weight invented
+here would have nothing to calibrate against, and the single number would outlive its caveat and
+become the thing people compare while the per-oracle diagnostics went unread — which contradicts
+the brief&#39;s own &quot;comparative diagnostics, never absolute verdicts&quot;. This supersedes the brief&#39;s
+&quot;an aggregate score summarizes them&quot; and the aggregate half of the PRD&#39;s dual
+aggregate-plus-per-clause gate; the per-clause half stands alone. (AD-7.)</p>
+<blockquote>
+<p><strong>Amended 2026-07-29 by <a href="eval-quality-adr-005.html">ADR-005</a> Decision 4.</strong> Refusing a
+severity-weighted strength score stands. This item over-reached in also keeping severity out of the
+gate, which left a missed critical behaviour and a missed cosmetic one producing an identical FAIL.
+Severity now routes between FAIL and CONCERNS against a policy-named floor, and remains barred from
+the dominance vector and from every composite.</p>
+</blockquote>
+</li>
+<li><p><strong>The formula is a partial order, stated precisely.</strong> Refusing a number does not remove the need
+for a formula; it makes the ordering the formula. Dominance is defined per probe class, treating
+every outcome state other than <code>caught</code> as a non-catch. Contract A dominates B when A is at least B
+in every class and strictly greater in at least one. A pair where neither dominates, or where one
+carries a probe class the other lacks, is reported rather than resolved. Canary probes stay out of
+the vector, because their non-detection indicts the corpus rather than the contract. (AD-7, AD-9.)</p>
+<blockquote>
+<p><strong>Amended 2026-07-29 by <a href="eval-quality-adr-005.html">ADR-005</a> Decision 3.</strong> Three
+corrections. The vector holds catch <em>rates</em> over unique qualified probe identifiers across a
+declared trial count, not raw counts, because the instrument behind the effect ran three repetitions
+per arm and raw counts let trial count masquerade as contract quality. The relation gained
+<code>equivalent</code>, since component-wise equality previously reported <code>incomparable</code> — which is what a
+stability check produces every time. And comparability is now its own key rather than the scoring
+version, so adding a probe narrows a comparison to the intersection instead of voiding every prior
+result.</p>
+</blockquote>
+</li>
+<li><p><strong>Thresholds are replaced by a precedence order over rules.</strong> No numeric threshold governs any
+verdict except one confidence bound named in the scoring policy. Conditions are evaluated in a
+fixed precedence and the first match wins. An invalidated run produces no verdict at all and records
+its reason. CONCERNS is the human-on-the-loop disposition the PRD requires. (AD-21, AD-6.)</p>
+<blockquote>
+<p><strong>Amended 2026-07-29 by <a href="eval-quality-adr-005.html">ADR-005</a> Decisions 2 and 4.</strong> The
+precedence order became a total table, because &quot;PASS otherwise&quot; gave a green gate to an ingested
+evaluator recommendation of FAIL and to evidence marked unavailable. A fourth verdict, WAIVED, makes
+a mostly-waived run distinguishable from one that caught everything. The exit codes changed: PASS,
+WAIVED, and CONCERNS all exit zero with <code>--strict</code> promoting CONCERNS to one, since exit one is
+indistinguishable from a crash and a fatal advisory gate attracts <code>|| true</code>, which discards FAIL with
+it. Faults now exit outside the verdict range.</p>
+</blockquote>
+</li>
+<li><p><strong>Outcome state carries the result, and the state set is closed</strong> — <code>caught</code>, <code>missed</code>,
+<code>passed-clean-control</code>, <code>false-positive</code>, <code>abstained</code>, <code>bypassed</code>, <code>oracle-error</code>, <code>judge-error</code>,
+<code>infrastructure-error</code>, <code>not-applicable</code>. Behavioural failures prevent PASS; the error states are not
+behavioural results at all and invalidate the run; no state does both. A run in which nothing
+resolved is invalid rather than a pass. <code>not-applicable</code> is legal only against a compiled waiver
+and is excluded from every count. (AD-6.)</p>
+<blockquote>
+<p><strong>Amended 2026-07-29, twice.</strong> <a href="eval-quality-adr-005.html">ADR-005</a> Decision 2 added
+<code>bypassed</code> to the behavioural failures, where the original list omitted it while calling it a
+non-catch. Hand-authoring the first evidence artifact then forced two more, recorded in
+<code>spike-worked-example/FINDINGS.md</code>: <code>confirmed</code>, for an oracle that correctly established correct
+behaviour on a probe whose defect lies elsewhere — the common case on any defect probe, which
+previously had no legal state and was being written as <code>passed-clean-control</code>; and <code>unreached</code>, for
+an oracle whose declared interaction steps the evaluator never produced. The set is twelve.</p>
+</blockquote>
+</li>
+<li><p><strong>Corpus rotation is additive and immutability is checked against a computed digest.</strong> A sealed set
+is immutable for its scoring version. A sealed-set miss informs the next version only after the
+current evaluation closes. Retiring a case into the development set creates a new scoring version
+rather than mutating the old one. Remediation is capped by the scoring policy, defaults to three
+revisions, is recorded in the evidence artifact, and exceeding it rejects the contract rather than
+averaging through it. (AD-12.)</p>
+<blockquote>
+<p><strong>Amended 2026-07-29 by <a href="eval-quality-adr-005.html">ADR-005</a> Decision 6.</strong> The cap is
+validated, not enforced. A digest detects changed bytes and cannot detect that unchanged probe
+content was revealed to its author and reused, and a caller who mints a fresh lineage resets the
+count. The package validates a presented chain and emits compliance evidence; the adopter owns
+enforcement, and the figure is recorded as caller-attested.</p>
+</blockquote>
+</li>
+<li><p><strong>Sealed corpora are resolved, never shipped.</strong> A public repository cannot hold a holdout: an
+in-tree case is readable by every contract author and ends up in training data. The package ships
+the mechanism and a visible development set; sealed sets are caller-owned, resolved through a port,
+and referenced by digest and opaque reference only. This also lets each adopter hold out their own
+real defects. (AD-8.)</p>
+</li>
+<li><p><strong>The result schemas are a closed artifact set, and each names its predecessor.</strong> Eval Contract,
+Rubric, Sealed Evaluator Brief, Sealed Run Record, Isolation Manifest, Probe, Artifact Reference,
+Private Artifact Manifest, Pre-flight Verdict, Scoring Policy, and Evidence Artifact. The Sealed Run
+Record succeeds the experiments&#39; run-result schema and keeps its condition arm, findings, action-log
+reference, resource use, and invalidation reason. The experiments&#39; evaluator-result schema belongs to
+the deferred semantic layer and its name is not reused for something else. (AD-24.)</p>
+<blockquote>
+<p><strong>Amended 2026-07-29 by <a href="eval-quality-adr-005.html">ADR-005</a> Decision 7.</strong> The set is no
+longer closed by count, and an Evaluator Configuration artifact joined it — without one, the
+evaluator configuration digest in the scoring version had no artifact to be computed from, so the
+identity was caller-asserted by proxy. What the spine fixes instead is the stage-signature table,
+with exactly one owning stage per artifact; the inventory itself is provisional.</p>
+</blockquote>
+</li>
+<li><p><strong>Version identity is computed, not asserted.</strong> Three identities: an integer <code>schemaVersion</code> per
+artifact, package SemVer for code, and a scoring version computed as a digest over the tuple of
+contract schema version, corpus digest, fixture digest, evaluator configuration digest, and scoring
+policy digest. The scoring version is never caller-supplied; only the run identifier is. A
+caller-supplied version string would let the same label span a mutated corpus and would silently
+defeat sealed-set immutability. All digests use one canonical computation, since two implementations
+that hash differently make every score incomparable. (AD-11, AD-27.)</p>
+<blockquote>
+<p><strong>Amended 2026-07-29 by <a href="eval-quality-adr-005.html">ADR-005</a> Decisions 5 and 8.</strong> &quot;Never
+caller-supplied; only the run identifier is&quot; was false for three of the five inputs: the corpus,
+fixture, and evaluator configuration digests all derive from caller-supplied material, so the
+identity is computed over attested inputs and every artifact now says which. The composition also
+changed from a concatenated mixed-type tuple to a domain-separated canonical object, because the
+integer contract schema version had no defined string form and two conforming scorers could compute
+different versions from identical inputs.</p>
+</blockquote>
+</li>
+<li><p><strong>Zod is the schema source of truth, with the published JSON Schema proven rather than assumed.</strong>
+Verified on 2026-07-29: Zod 4.4.3 exports a refined schema silently, dropping the constraint, with
+no warning and a zero exit status. A drift check that compares generated output against committed
+output cannot detect that loss. So every constraint that must bind a non-TypeScript consumer is
+carried into the published file and covered by a negative fixture test asserting the <em>published</em>
+schema rejects a violating input. That test, not the generator&#39;s settings, is the guard. (AD-13.)</p>
+<blockquote>
+<p><strong>Amended 2026-07-29 by <a href="eval-quality-adr-005.html">ADR-005</a> Decision 8.</strong> A negative
+fixture alone does not prove the intended constraint caused the rejection: a reject-all schema
+passes every negative fixture, and a fixture violating three constraints stays rejected after one
+silently vanishes. Each negative case is now a single mutation of a valid positive fixture,
+asserting the expected validator keyword and instance path.</p>
+</blockquote>
+</li>
+<li><p><strong>Prior-art conventions are ratified, including kebab-case enumerations.</strong> The eight experiment
+schemas carry exactly one non-kebab-case enumeration value, <code>NOT_APPLICABLE</code> in the verdict enum at
+<code>h0-run-result.schema.json:24</code>; every other enumeration across the eight files is kebab-case. (An
+earlier draft claimed zero, corrected 2026-07-29 after external review; the conclusion is unchanged
+but the absolute was wrong, and the verdict enum&#39;s uppercase register is preserved deliberately.)
+The outcome states are therefore spelled in kebab-case, which renames the PRD&#39;s
+<code>passed_clean_control</code> and its siblings. Prior art authored and schema-validated across the H0
+population is the stronger precedent, and one published vocabulary with two casing rules would
+drift. The PRD is corrected to match rather than the schemas bent to it.</p>
+</li>
+</ol>
+<h2 id="consequences">Consequences<a class="heading-anchor" href="#consequences" aria-label="Link to Consequences">#</a></h2>
+<ul>
+<li>ADR-002&#39;s suggested build order is not buildable as written and is corrected in ADR-004. Scoring
+consumes an ingested run record and a pre-flight verdict, and the scoring version needs the fixture
+digest that pre-flight produces, so scoring cannot precede either.</li>
+<li>Contract strength can be compared but not ranked. Two contracts frequently come back
+<code>incomparable</code>, and that is the intended answer rather than a gap to close later. Anyone wanting a
+leaderboard number will find the artifact deliberately unhelpful.</li>
+<li>The oracle decision moves real cost onto the authoring client. A structured <code>check</code> tree is harder
+to write than a sentence, and TEA absorbs that cost. The compensation is that the discipline becomes
+checkable by machine against the artifact rather than trusted in whoever wrote it, which is what
+makes the product usable outside BMad at all.</li>
+<li>Choosing Zod for developer ergonomics costs a proven-export obligation the prior art did not have.
+The eight hand-written schemas expressed conditional and containment constraints natively; those
+constraints now survive only because a fixture suite asserts they do.</li>
+<li>Twelve decisions here were reviewed by five independent lenses before acceptance, which produced
+roughly one hundred findings and reversed several earlier drafts of this pass. The reviews are
+preserved under <code>reviews/</code> in this folder. What they did not resolve is anything requiring live use:
+whether the five discipline rules are the right five, and whether the relevance conditions fire
+usefully on real contracts, are answerable only by authoring contracts against real systems.</li>
+</ul>
+</article>
+      <footer class="footer">Generated from ADR-003-measurement-mechanics.md by scripts/build-shareable.mjs. Self-contained and print-ready. Do not hand-edit; regenerate instead.</footer>
+    </main>
+  </div>
+</body>
+</html>

@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Seventeen ways two conforming implementations disagreed, one of which scored a perfect catch rate off evidence the system was correct.">
+  <link rel="icon" href="data:,">
+  <title>ADR-009: The adversarial gate's determinacy corrections, and the read-back brief joins the owed set</title>
+  <style>
+:root {
+	color-scheme: light;
+	--canvas: #f4f6fb;
+	--paper: #ffffff;
+	--ink: #182230;
+	--muted: #667085;
+	--line: #e4e7ec;
+	--brand: #3157d5;
+	--brand-deep: #243f9f;
+	--brand-soft: #eef2ff;
+	--accent: #087f6d;
+	--accent-soft: #eafaf6;
+	--code: #101828;
+	--shadow: 0 18px 50px rgba(16, 24, 40, 0.08);
+}
+
+* {
+	box-sizing: border-box;
+}
+html {
+	scroll-behavior: smooth;
+}
+body {
+	margin: 0;
+	background: var(--canvas);
+	color: var(--ink);
+	font-family:
+		Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI",
+		sans-serif;
+	font-size: 16px;
+	line-height: 1.72;
+	text-rendering: optimizeLegibility;
+}
+
+a {
+	color: var(--brand);
+	text-decoration-thickness: 1px;
+	text-underline-offset: 3px;
+}
+a:hover {
+	color: var(--brand-deep);
+}
+
+.topbar {
+	position: sticky;
+	top: 0;
+	z-index: 20;
+	border-bottom: 1px solid rgba(228, 231, 236, 0.9);
+	background: rgba(255, 255, 255, 0.92);
+	backdrop-filter: blur(14px);
+}
+
+.topbar-inner {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 24px;
+	max-width: 1280px;
+	min-height: 64px;
+	margin: 0 auto;
+	padding: 10px 28px;
+}
+
+.brand {
+	color: var(--ink);
+	font-size: 15px;
+	font-weight: 760;
+	letter-spacing: -0.01em;
+	text-decoration: none;
+	white-space: nowrap;
+}
+
+.brand-mark {
+	color: var(--brand);
+}
+.nav {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: flex-end;
+	gap: 6px;
+}
+.nav-link {
+	border-radius: 9px;
+	color: #475467;
+	font-size: 13px;
+	font-weight: 650;
+	padding: 6px 10px;
+	text-decoration: none;
+}
+.nav-link:hover,
+.nav-link.active {
+	background: var(--brand-soft);
+	color: var(--brand-deep);
+}
+
+.layout {
+	display: grid;
+	grid-template-columns: 248px minmax(0, 900px);
+	gap: 30px;
+	max-width: 1230px;
+	margin: 34px auto 70px;
+	padding: 0 28px;
+}
+
+.sidebar {
+	position: sticky;
+	top: 90px;
+	align-self: start;
+	max-height: calc(100vh - 112px);
+	overflow: auto;
+	padding: 4px 8px 20px 0;
+}
+
+.toc-title {
+	margin: 0 0 10px 10px;
+	color: #98a2b3;
+	font-size: 11px;
+	font-weight: 800;
+	letter-spacing: 0.12em;
+	text-transform: uppercase;
+}
+
+.toc-link {
+	display: block;
+	border-left: 2px solid transparent;
+	border-radius: 0 8px 8px 0;
+	color: #667085;
+	font-size: 13px;
+	line-height: 1.35;
+	margin: 1px 0;
+	padding: 6px 8px 6px 10px;
+	text-decoration: none;
+}
+.toc-link:hover {
+	border-left-color: var(--brand);
+	background: #fff;
+	color: var(--brand-deep);
+}
+.toc-link.depth-3 {
+	padding-left: 22px;
+	font-size: 12px;
+}
+.toc-link.depth-4 {
+	padding-left: 34px;
+	font-size: 12px;
+	color: var(--muted);
+}
+
+.paper {
+	min-width: 0;
+	overflow: hidden;
+	border: 1px solid rgba(228, 231, 236, 0.85);
+	border-radius: 18px;
+	background: var(--paper);
+	box-shadow: var(--shadow);
+}
+
+.hero {
+	border-bottom: 1px solid var(--line);
+	background: linear-gradient(145deg, #ffffff 20%, #f1f4ff 100%);
+	padding: 58px 64px 44px;
+}
+.eyebrow {
+	color: var(--brand);
+	font-size: 12px;
+	font-weight: 800;
+	letter-spacing: 0.13em;
+	text-transform: uppercase;
+}
+.hero h1 {
+	max-width: 760px;
+	margin: 12px 0 12px;
+	color: #101828;
+	font-size: clamp(34px, 5vw, 54px);
+	line-height: 1.08;
+	letter-spacing: -0.04em;
+}
+.lede {
+	max-width: 680px;
+	margin: 0;
+	color: #475467;
+	font-size: 18px;
+	line-height: 1.55;
+}
+.metadata {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	margin-top: 24px;
+}
+.pill {
+	display: inline-flex;
+	align-items: center;
+	min-height: 28px;
+	border: 1px solid #d0d5dd;
+	border-radius: 999px;
+	background: rgba(255, 255, 255, 0.8);
+	color: #475467;
+	font-size: 12px;
+	font-weight: 700;
+	padding: 3px 10px;
+}
+.pill.status {
+	border-color: #a9e4d7;
+	background: var(--accent-soft);
+	color: var(--accent);
+}
+
+.mobile-toc {
+	display: none;
+	margin: 26px 32px 0;
+}
+.mobile-toc summary {
+	color: var(--brand-deep);
+	cursor: pointer;
+	font-size: 14px;
+	font-weight: 750;
+}
+.mobile-toc-links {
+	margin-top: 10px;
+}
+
+.content {
+	padding: 24px 64px 64px;
+}
+.content h2,
+.content h3,
+.content h4 {
+	position: relative;
+	scroll-margin-top: 88px;
+	color: #101828;
+}
+.content h2 {
+	border-top: 1px solid var(--line);
+	margin: 52px 0 18px;
+	padding-top: 38px;
+	font-size: 29px;
+	line-height: 1.2;
+	letter-spacing: -0.025em;
+}
+.content h2:first-child {
+	border-top: 0;
+	margin-top: 14px;
+	padding-top: 12px;
+}
+.content h3 {
+	margin: 34px 0 12px;
+	font-size: 21px;
+	line-height: 1.3;
+	letter-spacing: -0.015em;
+}
+.content h4 {
+	margin: 28px 0 10px;
+	font-size: 17px;
+	line-height: 1.35;
+}
+.heading-anchor {
+	opacity: 0;
+	margin-left: 8px;
+	color: #98a2b3;
+	font-size: 0.72em;
+	font-weight: 500;
+	text-decoration: none;
+}
+.content h2:hover .heading-anchor,
+.content h3:hover .heading-anchor {
+	opacity: 1;
+}
+
+.content p {
+	margin: 0 0 18px;
+}
+.content strong {
+	color: #101828;
+}
+.content ul,
+.content ol {
+	margin: 0 0 20px;
+	padding-left: 26px;
+}
+.content li {
+	margin: 7px 0;
+	padding-left: 3px;
+}
+.content li::marker {
+	color: var(--brand);
+	font-weight: 750;
+}
+.content blockquote {
+	margin: 24px 0;
+	border-left: 4px solid var(--brand);
+	border-radius: 0 10px 10px 0;
+	background: var(--brand-soft);
+	color: #344054;
+	padding: 16px 20px;
+}
+.content blockquote p:last-child {
+	margin-bottom: 0;
+}
+.content hr {
+	height: 1px;
+	margin: 44px 0;
+	border: 0;
+	background: var(--line);
+}
+
+code {
+	border: 1px solid #e4e7ec;
+	border-radius: 5px;
+	background: #f8fafc;
+	color: #344054;
+	font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+	font-size: 0.88em;
+	padding: 0.14em 0.38em;
+}
+pre {
+	overflow: auto;
+	margin: 24px 0;
+	border: 1px solid #344054;
+	border-radius: 12px;
+	background: var(--code);
+	color: #e4e7ec;
+	line-height: 1.58;
+	padding: 20px 22px;
+}
+pre code {
+	border: 0;
+	background: transparent;
+	color: inherit;
+	font-size: 13px;
+	padding: 0;
+}
+
+.table-wrap {
+	overflow-x: auto;
+	margin: 24px 0 30px;
+	border: 1px solid var(--line);
+	border-radius: 12px;
+}
+table {
+	width: 100%;
+	border-collapse: collapse;
+	font-size: 14px;
+	line-height: 1.5;
+}
+th {
+	background: #f8fafc;
+	color: #344054;
+	font-size: 12px;
+	letter-spacing: 0.04em;
+	text-align: left;
+	text-transform: uppercase;
+}
+th,
+td {
+	border-bottom: 1px solid var(--line);
+	padding: 12px 14px;
+	vertical-align: top;
+}
+tr:last-child td {
+	border-bottom: 0;
+}
+tbody tr:hover {
+	background: #fafbff;
+}
+
+.footer {
+	border-top: 1px solid var(--line);
+	color: #98a2b3;
+	font-size: 12px;
+	padding: 24px 64px 30px;
+}
+
+@media (max-width: 920px) {
+	.layout {
+		display: block;
+		margin-top: 22px;
+		padding: 0 16px;
+	}
+	.sidebar {
+		display: none;
+	}
+	.mobile-toc {
+		display: block;
+	}
+	.hero {
+		padding: 46px 36px 34px;
+	}
+	.content {
+		padding: 20px 36px 48px;
+	}
+	.footer {
+		padding-left: 36px;
+		padding-right: 36px;
+	}
+}
+
+@media (max-width: 620px) {
+	.topbar-inner {
+		align-items: flex-start;
+		flex-direction: column;
+		gap: 6px;
+		padding: 10px 16px;
+	}
+	.nav {
+		justify-content: flex-start;
+	}
+	.hero {
+		padding: 36px 24px 30px;
+	}
+	.hero h1 {
+		font-size: 34px;
+	}
+	.lede {
+		font-size: 16px;
+	}
+	.content {
+		padding: 14px 24px 42px;
+	}
+	.mobile-toc {
+		margin-left: 24px;
+		margin-right: 24px;
+	}
+	.footer {
+		padding-left: 24px;
+		padding-right: 24px;
+	}
+}
+
+@media print {
+	@page {
+		margin: 16mm 15mm;
+	}
+	body {
+		background: #fff;
+		font-size: 10.5pt;
+	}
+	.topbar,
+	.sidebar,
+	.mobile-toc,
+	.heading-anchor {
+		display: none;
+	}
+	.layout {
+		display: block;
+		max-width: none;
+		margin: 0;
+		padding: 0;
+	}
+	.paper {
+		border: 0;
+		border-radius: 0;
+		box-shadow: none;
+	}
+	.hero {
+		padding: 0 0 10mm;
+		background: #fff;
+	}
+	.hero h1 {
+		font-size: 28pt;
+	}
+	.content {
+		padding: 0;
+	}
+	.content h2 {
+		break-after: avoid;
+		margin-top: 9mm;
+		padding-top: 5mm;
+	}
+	.content h3,
+	.content h4 {
+		break-after: avoid;
+	}
+	pre,
+	.content blockquote,
+	.table-wrap {
+		break-inside: avoid;
+	}
+	.table-wrap {
+		overflow: visible;
+	}
+	a {
+		color: inherit;
+		text-decoration: none;
+	}
+	.footer {
+		padding: 8mm 0 0;
+	}
+}
+
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="eval-quality-readme.html"><span class="brand-mark">eval</span>-quality</a>
+      <nav class="nav" aria-label="Companion documents"><a class="nav-link" href="eval-quality-readme.html">Overview</a><a class="nav-link" href="eval-quality-product-brief.html">Product brief</a><a class="nav-link" href="eval-quality-prd.html">PRD</a><a class="nav-link" href="eval-quality-architecture-spine.html">Architecture</a><a class="nav-link" href="eval-quality-adr-001.html">ADR-001</a><a class="nav-link" href="eval-quality-adr-002.html">ADR-002</a><a class="nav-link" href="eval-quality-adr-003.html">ADR-003</a><a class="nav-link" href="eval-quality-adr-004.html">ADR-004</a><a class="nav-link" href="eval-quality-adr-005.html">ADR-005</a><a class="nav-link" href="eval-quality-adr-006.html">ADR-006</a><a class="nav-link" href="eval-quality-adr-007.html">ADR-007</a><a class="nav-link" href="eval-quality-adr-008.html">ADR-008</a><a class="nav-link active" href="eval-quality-adr-009.html">ADR-009</a></nav>
+    </div>
+  </header>
+  <div class="layout">
+    <aside class="sidebar" aria-label="Table of contents">
+      <p class="toc-title">On this page</p>
+      <a class="toc-link depth-2" href="#status">Status</a><a class="toc-link depth-2" href="#context">Context</a><a class="toc-link depth-2" href="#decision">Decision</a><a class="toc-link depth-2" href="#consequences">Consequences</a><a class="toc-link depth-2" href="#alternatives-considered">Alternatives considered</a>
+    </aside>
+    <main class="paper">
+      <header class="hero">
+        <div class="eyebrow">eval-quality · ADR-009</div>
+        <h1>ADR-009: The adversarial gate's determinacy corrections, and the read-back brief joins the owed set</h1>
+        <p class="lede">Seventeen ways two conforming implementations disagreed, one of which scored a perfect catch rate off evidence the system was correct.</p>
+        <div class="metadata">
+          <span class="pill status">accepted</span>
+          <span class="pill">Updated 2026-07-29</span>
+          <span class="pill">Owner: Murat Ozcan</span>
+        </div>
+      </header>
+      <details class="mobile-toc">
+        <summary>On this page</summary>
+        <div class="mobile-toc-links"><a class="toc-link depth-2" href="#status">Status</a><a class="toc-link depth-2" href="#context">Context</a><a class="toc-link depth-2" href="#decision">Decision</a><a class="toc-link depth-2" href="#consequences">Consequences</a><a class="toc-link depth-2" href="#alternatives-considered">Alternatives considered</a></div>
+      </details>
+      <article class="content"><h1>ADR-009: The adversarial gate&#39;s determinacy corrections, and the read-back brief joins the owed set</h1>
+<h2 id="status">Status<a class="heading-anchor" href="#status" aria-label="Link to Status">#</a></h2>
+<p>Accepted 2026-07-29. Enforced by spine revision 6: AD-5 gains three failure codes and back-citations from
+every commanding AD, AD-40 gains a response-side operand and an operand precedence rule, AD-6 admits
+<code>not-applicable</code> for an unexercised probe, and AD-16&#39;s derived reference vocabulary is withdrawn for
+temporal pairs into <strong>Owed to the calibration re-run</strong> item 2. Amends ADR-006&#39;s interaction-plan claims and
+extends ADR-008&#39;s owed set.</p>
+<h2 id="context">Context<a class="heading-anchor" href="#context" aria-label="Link to Context">#</a></h2>
+<p>Revision 5 was written to answer round 3, and it did. Two adversarial reviewers were then run against
+revision 5 itself, under one instruction: construct two implementations that obey every rule to the letter
+and still produce different bytes from the same input. Between them they produced seventeen such pairs,
+every one of which reproduced against the spine text. That is a different class of finding from the four
+previous rounds, which mostly found claims that were false. These findings are about claims that are true
+and insufficient — rules that determine nothing.</p>
+<p>Two of the seventeen were introduced by revision 5 rather than inherited, and both are the same mistake in
+different places: a fix written into one paragraph without re-reading the paragraph it depends on.</p>
+<p><strong>AD-40 enumerated a discriminating condition it then required to do something the enumeration forbids.</strong>
+The grammar was operation, input binding, and optional ordering — three selectors over what was <em>sent</em> —
+and the qualification rule two paragraphs later demanded the same condition &quot;name the response channel or
+at least two channels&quot;. Under the grammar as written a condition can only say which call was made, so a
+probe seeding a 500 on a malformed title is satisfied by the observation in which the system correctly
+returned 400. A finding about an unrelated defect that cites that observation resolves <code>caught</code>. That is a
+catch rate of 1.00 read off the evidence that the system behaved correctly — which is the exact failure
+this AD was created to close, arriving through the field created to close it. Read the other way, no
+condition can name a channel at all, every signature fails corpus qualification, and AD-6 invalidates
+every run.</p>
+<p><strong>AD-5&#39;s registry was cited by nothing.</strong> The rule says an AD imposing a compile-time check cites the
+literal code. Counting all seventeen revision-5 codes across the document, thirteen occurred exactly once —
+inside the table. The <code>Cited by</code> column asserted citations the named ADs did not contain, and three
+commanded checks had no code at all.</p>
+<p>The remaining findings are inherited underspecification the previous rounds did not reach: structural
+containment left undefined over quantifier-bound variables, <code>covers-by-key</code> left undetermined over empty
+collections one paragraph after the identical hazard was fixed for quantifiers, input-binding literals and
+matchers sharing an untagged value space, path templates compared as strings, and the two required operands
+of a finding left unranked against each other.</p>
+<p>One finding is not underspecification and cannot be fixed by writing more precisely.</p>
+<h2 id="decision">Decision<a class="heading-anchor" href="#decision" aria-label="Link to Decision">#</a></h2>
+<p>Seven corrections close, and one opens.</p>
+<p><strong>1. The discriminating condition is a selector plus a response predicate, and the predicate reuses AD-4.</strong>
+The selector stays AD-39&#39;s tagged grammar duplicated corpus-side; the predicate is an expression in AD-4&#39;s
+closed operator vocabulary over AD-26&#39;s response channels, rooted at the selected observation rather than
+at a step identifier. Reusing AD-4 rather than defining a probe-side relation language avoids maintaining a
+second set of degenerate cases, and AD-4&#39;s are already fixed and fixtured. Probe-side rooting preserves the
+contract independence that ADR-008 established.</p>
+<p><strong>2. Cited identifiers govern the witness match; quotation audits it.</strong> AD-23 requires both operands and
+revision 5 never ranked them, which left a finding citing <code>o1</code> while quoting text from <code>o2</code> resolving
+<code>missed</code>, <code>caught</code>, or invalid depending on which sentence of AD-40 an implementer read. The match resolves
+over identifiers alone. Quoted evidence that appears in no cited observation invalidates the run as an
+AD-32 declared-versus-observed inconsistency, because a finding whose own operands disagree is evidence
+about the reporting path rather than about the system. Quotation-containment survives for one purpose,
+re-deriving detection from records predating the identifier requirement, and such a result is recorded as
+reconstructed rather than measured.</p>
+<p><strong>3. A probe is exercised only by the evaluator, and an unexercised probe resolves <code>not-applicable</code>.</strong>
+Harness baselines and calls the record shows never completing do not count, because counting them made a
+probe the evaluator never touched score <code>missed</code> and fail a strict build — punishing the contract for the
+evaluator&#39;s path choice, which ADR-006 removed one level down. <code>not-applicable</code> is chosen over <code>unreached</code>
+because AD-21 treats <code>unreached</code> as an evidence condition about a <em>declared step</em>, and over leaving the
+check stateless because AD-6&#39;s state set is closed. AD-6&#39;s waiver restriction on <code>not-applicable</code> is
+amended to name this second case explicitly rather than widened.</p>
+<p><strong>4. Operation resolution erases parameter names, and colliding operations fail compilation.</strong> A corpus
+signature on <code>/notes/{id}</code> binds a contract declaring <code>/notes/{noteId}</code>, since parameter naming is the
+contract-local choice ADR-008 moved the signature off. Two operations colliding after erasure fail under
+the new <code>duplicate-operation-signature</code> rather than binding by inventory order.</p>
+<p><strong>5. Containment is computed after quantifier substitution.</strong> The literal reading rejects the canonical
+per-record oracle, which is the shape AD-4 admitted quantifiers for.</p>
+<p><strong>6. <code>covers-by-key</code> fails closed on its degenerate cases</strong>, on the doctrine AD-4 already states one
+paragraph above: two empty collections resolve false rather than vacuously true.</p>
+<p><strong>7. Literals and matchers are tagged.</strong> <code>{ &quot;literal&quot;: … }</code> and <code>{ &quot;matcher&quot;: … }</code>, because the untagged
+form gave the string <code>type-violating</code> no unambiguous spelling and propagated into AD-40.</p>
+<p><strong>8. Open: a direction cannot distinguish two observations of one operation without disclosing their
+order.</strong> AD-39 makes the temporal clause part of a step&#39;s selection predicate and AD-16 derives the
+evaluator-facing phrase from that predicate. Rendering the clause puts the ordering on the brief, which is
+the leak AD-39 relies on AD-16 to prevent; omitting it collapses the baseline read and the read-back into
+one phrase, which is the ADR-006 ambiguity AD-16 exists to resolve; reorder-invariance forbids a positional
+escape. Read after write is the only case AD-39 admits the clause for and one of AD-20&#39;s seven rules, so
+this is not an edge. It is recorded in <strong>Owed to the calibration re-run</strong> item 2 with the shape of a fix —
+a relational phrasing naming the data dependency without the sequence, or an explicit finding that
+read-back costs a bounded ordering disclosure — and AD-39&#39;s no-ordering claim is limited to briefs whose
+oracles need no temporal disambiguation.</p>
+<h2 id="consequences">Consequences<a class="heading-anchor" href="#consequences" aria-label="Link to Consequences">#</a></h2>
+<p><strong>The gate condition does not move.</strong> ADR-008 already put both halves behind the calibration re-run, so
+nothing here changes what is build-ready: nothing was, and nothing is. What changes is whether the re-run&#39;s
+output would have meant anything. Under revision 5 the catch rate was computable as 1.00 by construction,
+which is the measurement the re-run exists to produce.</p>
+<p><strong>Item 2&#39;s scope grows and its difficulty is now visible.</strong> It previously held template design and the
+brief-side scripting audit, both of which read as unwritten work. It now holds a case with no known
+satisfiable answer, and the honest reading is that the reference vocabulary needs its own ADR after the
+re-run rather than before it.</p>
+<p><strong>Two of seventeen were self-inflicted, and the pattern is worth naming.</strong> Both came from editing one
+paragraph without re-reading its dependency, which is also what produced revision 5&#39;s AD-13 contradiction
+and its stale &quot;first epic&quot; references. Revision-scale edits to this document need a dependency pass, not
+just a rubric pass.</p>
+<h2 id="alternatives-considered">Alternatives considered<a class="heading-anchor" href="#alternatives-considered" aria-label="Link to Alternatives considered">#</a></h2>
+<p><strong>A separate probe-side relation language for the discriminating condition.</strong> Keeps corpus and contract
+grammars independent, which has some appeal given how hard ADR-008 worked to decouple them. Rejected
+because independence was needed for <em>identifiers</em>, not for relations: a second vocabulary means a second
+set of degenerate-operand answers, and AD-4 spent two revisions getting the first set right.</p>
+<p><strong>Quotation-primary matching.</strong> Attractive because quotation is what makes a match auditable and what the
+historical records carry. Rejected because it lets a finding score a catch off an observation it never
+claimed to rely on, which is a weaker version of the fabrication AD-32 already declares as a trust class.</p>
+<p><strong>Fixing the read-back vocabulary in place, by deriving from operation and input binding only.</strong> Rejected
+as a decision because it is a claim about prose an evaluator reads, and this architecture has spent three
+rounds learning that such claims are measured rather than asserted. Recorded as owed instead.</p>
+</article>
+      <footer class="footer">Generated from ADR-009-adversarial-gate-corrections.md by scripts/build-shareable.mjs. Self-contained and print-ready. Do not hand-edit; regenerate instead.</footer>
+    </main>
+  </div>
+</body>
+</html>

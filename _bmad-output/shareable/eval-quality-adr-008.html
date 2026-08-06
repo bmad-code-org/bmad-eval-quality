@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Three reviewers falsified the one sentence the previous split rested on, and the other half stops claiming to be finished too.">
+  <link rel="icon" href="data:,">
+  <title>ADR-008: The compile half is owed a calibration re-run; no half is epic-ready</title>
+  <style>
+:root {
+	color-scheme: light;
+	--canvas: #f4f6fb;
+	--paper: #ffffff;
+	--ink: #182230;
+	--muted: #667085;
+	--line: #e4e7ec;
+	--brand: #3157d5;
+	--brand-deep: #243f9f;
+	--brand-soft: #eef2ff;
+	--accent: #087f6d;
+	--accent-soft: #eafaf6;
+	--code: #101828;
+	--shadow: 0 18px 50px rgba(16, 24, 40, 0.08);
+}
+
+* {
+	box-sizing: border-box;
+}
+html {
+	scroll-behavior: smooth;
+}
+body {
+	margin: 0;
+	background: var(--canvas);
+	color: var(--ink);
+	font-family:
+		Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI",
+		sans-serif;
+	font-size: 16px;
+	line-height: 1.72;
+	text-rendering: optimizeLegibility;
+}
+
+a {
+	color: var(--brand);
+	text-decoration-thickness: 1px;
+	text-underline-offset: 3px;
+}
+a:hover {
+	color: var(--brand-deep);
+}
+
+.topbar {
+	position: sticky;
+	top: 0;
+	z-index: 20;
+	border-bottom: 1px solid rgba(228, 231, 236, 0.9);
+	background: rgba(255, 255, 255, 0.92);
+	backdrop-filter: blur(14px);
+}
+
+.topbar-inner {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 24px;
+	max-width: 1280px;
+	min-height: 64px;
+	margin: 0 auto;
+	padding: 10px 28px;
+}
+
+.brand {
+	color: var(--ink);
+	font-size: 15px;
+	font-weight: 760;
+	letter-spacing: -0.01em;
+	text-decoration: none;
+	white-space: nowrap;
+}
+
+.brand-mark {
+	color: var(--brand);
+}
+.nav {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: flex-end;
+	gap: 6px;
+}
+.nav-link {
+	border-radius: 9px;
+	color: #475467;
+	font-size: 13px;
+	font-weight: 650;
+	padding: 6px 10px;
+	text-decoration: none;
+}
+.nav-link:hover,
+.nav-link.active {
+	background: var(--brand-soft);
+	color: var(--brand-deep);
+}
+
+.layout {
+	display: grid;
+	grid-template-columns: 248px minmax(0, 900px);
+	gap: 30px;
+	max-width: 1230px;
+	margin: 34px auto 70px;
+	padding: 0 28px;
+}
+
+.sidebar {
+	position: sticky;
+	top: 90px;
+	align-self: start;
+	max-height: calc(100vh - 112px);
+	overflow: auto;
+	padding: 4px 8px 20px 0;
+}
+
+.toc-title {
+	margin: 0 0 10px 10px;
+	color: #98a2b3;
+	font-size: 11px;
+	font-weight: 800;
+	letter-spacing: 0.12em;
+	text-transform: uppercase;
+}
+
+.toc-link {
+	display: block;
+	border-left: 2px solid transparent;
+	border-radius: 0 8px 8px 0;
+	color: #667085;
+	font-size: 13px;
+	line-height: 1.35;
+	margin: 1px 0;
+	padding: 6px 8px 6px 10px;
+	text-decoration: none;
+}
+.toc-link:hover {
+	border-left-color: var(--brand);
+	background: #fff;
+	color: var(--brand-deep);
+}
+.toc-link.depth-3 {
+	padding-left: 22px;
+	font-size: 12px;
+}
+.toc-link.depth-4 {
+	padding-left: 34px;
+	font-size: 12px;
+	color: var(--muted);
+}
+
+.paper {
+	min-width: 0;
+	overflow: hidden;
+	border: 1px solid rgba(228, 231, 236, 0.85);
+	border-radius: 18px;
+	background: var(--paper);
+	box-shadow: var(--shadow);
+}
+
+.hero {
+	border-bottom: 1px solid var(--line);
+	background: linear-gradient(145deg, #ffffff 20%, #f1f4ff 100%);
+	padding: 58px 64px 44px;
+}
+.eyebrow {
+	color: var(--brand);
+	font-size: 12px;
+	font-weight: 800;
+	letter-spacing: 0.13em;
+	text-transform: uppercase;
+}
+.hero h1 {
+	max-width: 760px;
+	margin: 12px 0 12px;
+	color: #101828;
+	font-size: clamp(34px, 5vw, 54px);
+	line-height: 1.08;
+	letter-spacing: -0.04em;
+}
+.lede {
+	max-width: 680px;
+	margin: 0;
+	color: #475467;
+	font-size: 18px;
+	line-height: 1.55;
+}
+.metadata {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	margin-top: 24px;
+}
+.pill {
+	display: inline-flex;
+	align-items: center;
+	min-height: 28px;
+	border: 1px solid #d0d5dd;
+	border-radius: 999px;
+	background: rgba(255, 255, 255, 0.8);
+	color: #475467;
+	font-size: 12px;
+	font-weight: 700;
+	padding: 3px 10px;
+}
+.pill.status {
+	border-color: #a9e4d7;
+	background: var(--accent-soft);
+	color: var(--accent);
+}
+
+.mobile-toc {
+	display: none;
+	margin: 26px 32px 0;
+}
+.mobile-toc summary {
+	color: var(--brand-deep);
+	cursor: pointer;
+	font-size: 14px;
+	font-weight: 750;
+}
+.mobile-toc-links {
+	margin-top: 10px;
+}
+
+.content {
+	padding: 24px 64px 64px;
+}
+.content h2,
+.content h3,
+.content h4 {
+	position: relative;
+	scroll-margin-top: 88px;
+	color: #101828;
+}
+.content h2 {
+	border-top: 1px solid var(--line);
+	margin: 52px 0 18px;
+	padding-top: 38px;
+	font-size: 29px;
+	line-height: 1.2;
+	letter-spacing: -0.025em;
+}
+.content h2:first-child {
+	border-top: 0;
+	margin-top: 14px;
+	padding-top: 12px;
+}
+.content h3 {
+	margin: 34px 0 12px;
+	font-size: 21px;
+	line-height: 1.3;
+	letter-spacing: -0.015em;
+}
+.content h4 {
+	margin: 28px 0 10px;
+	font-size: 17px;
+	line-height: 1.35;
+}
+.heading-anchor {
+	opacity: 0;
+	margin-left: 8px;
+	color: #98a2b3;
+	font-size: 0.72em;
+	font-weight: 500;
+	text-decoration: none;
+}
+.content h2:hover .heading-anchor,
+.content h3:hover .heading-anchor {
+	opacity: 1;
+}
+
+.content p {
+	margin: 0 0 18px;
+}
+.content strong {
+	color: #101828;
+}
+.content ul,
+.content ol {
+	margin: 0 0 20px;
+	padding-left: 26px;
+}
+.content li {
+	margin: 7px 0;
+	padding-left: 3px;
+}
+.content li::marker {
+	color: var(--brand);
+	font-weight: 750;
+}
+.content blockquote {
+	margin: 24px 0;
+	border-left: 4px solid var(--brand);
+	border-radius: 0 10px 10px 0;
+	background: var(--brand-soft);
+	color: #344054;
+	padding: 16px 20px;
+}
+.content blockquote p:last-child {
+	margin-bottom: 0;
+}
+.content hr {
+	height: 1px;
+	margin: 44px 0;
+	border: 0;
+	background: var(--line);
+}
+
+code {
+	border: 1px solid #e4e7ec;
+	border-radius: 5px;
+	background: #f8fafc;
+	color: #344054;
+	font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+	font-size: 0.88em;
+	padding: 0.14em 0.38em;
+}
+pre {
+	overflow: auto;
+	margin: 24px 0;
+	border: 1px solid #344054;
+	border-radius: 12px;
+	background: var(--code);
+	color: #e4e7ec;
+	line-height: 1.58;
+	padding: 20px 22px;
+}
+pre code {
+	border: 0;
+	background: transparent;
+	color: inherit;
+	font-size: 13px;
+	padding: 0;
+}
+
+.table-wrap {
+	overflow-x: auto;
+	margin: 24px 0 30px;
+	border: 1px solid var(--line);
+	border-radius: 12px;
+}
+table {
+	width: 100%;
+	border-collapse: collapse;
+	font-size: 14px;
+	line-height: 1.5;
+}
+th {
+	background: #f8fafc;
+	color: #344054;
+	font-size: 12px;
+	letter-spacing: 0.04em;
+	text-align: left;
+	text-transform: uppercase;
+}
+th,
+td {
+	border-bottom: 1px solid var(--line);
+	padding: 12px 14px;
+	vertical-align: top;
+}
+tr:last-child td {
+	border-bottom: 0;
+}
+tbody tr:hover {
+	background: #fafbff;
+}
+
+.footer {
+	border-top: 1px solid var(--line);
+	color: #98a2b3;
+	font-size: 12px;
+	padding: 24px 64px 30px;
+}
+
+@media (max-width: 920px) {
+	.layout {
+		display: block;
+		margin-top: 22px;
+		padding: 0 16px;
+	}
+	.sidebar {
+		display: none;
+	}
+	.mobile-toc {
+		display: block;
+	}
+	.hero {
+		padding: 46px 36px 34px;
+	}
+	.content {
+		padding: 20px 36px 48px;
+	}
+	.footer {
+		padding-left: 36px;
+		padding-right: 36px;
+	}
+}
+
+@media (max-width: 620px) {
+	.topbar-inner {
+		align-items: flex-start;
+		flex-direction: column;
+		gap: 6px;
+		padding: 10px 16px;
+	}
+	.nav {
+		justify-content: flex-start;
+	}
+	.hero {
+		padding: 36px 24px 30px;
+	}
+	.hero h1 {
+		font-size: 34px;
+	}
+	.lede {
+		font-size: 16px;
+	}
+	.content {
+		padding: 14px 24px 42px;
+	}
+	.mobile-toc {
+		margin-left: 24px;
+		margin-right: 24px;
+	}
+	.footer {
+		padding-left: 24px;
+		padding-right: 24px;
+	}
+}
+
+@media print {
+	@page {
+		margin: 16mm 15mm;
+	}
+	body {
+		background: #fff;
+		font-size: 10.5pt;
+	}
+	.topbar,
+	.sidebar,
+	.mobile-toc,
+	.heading-anchor {
+		display: none;
+	}
+	.layout {
+		display: block;
+		max-width: none;
+		margin: 0;
+		padding: 0;
+	}
+	.paper {
+		border: 0;
+		border-radius: 0;
+		box-shadow: none;
+	}
+	.hero {
+		padding: 0 0 10mm;
+		background: #fff;
+	}
+	.hero h1 {
+		font-size: 28pt;
+	}
+	.content {
+		padding: 0;
+	}
+	.content h2 {
+		break-after: avoid;
+		margin-top: 9mm;
+		padding-top: 5mm;
+	}
+	.content h3,
+	.content h4 {
+		break-after: avoid;
+	}
+	pre,
+	.content blockquote,
+	.table-wrap {
+		break-inside: avoid;
+	}
+	.table-wrap {
+		overflow: visible;
+	}
+	a {
+		color: inherit;
+		text-decoration: none;
+	}
+	.footer {
+		padding: 8mm 0 0;
+	}
+}
+
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="eval-quality-readme.html"><span class="brand-mark">eval</span>-quality</a>
+      <nav class="nav" aria-label="Companion documents"><a class="nav-link" href="eval-quality-readme.html">Overview</a><a class="nav-link" href="eval-quality-product-brief.html">Product brief</a><a class="nav-link" href="eval-quality-prd.html">PRD</a><a class="nav-link" href="eval-quality-architecture-spine.html">Architecture</a><a class="nav-link" href="eval-quality-adr-001.html">ADR-001</a><a class="nav-link" href="eval-quality-adr-002.html">ADR-002</a><a class="nav-link" href="eval-quality-adr-003.html">ADR-003</a><a class="nav-link" href="eval-quality-adr-004.html">ADR-004</a><a class="nav-link" href="eval-quality-adr-005.html">ADR-005</a><a class="nav-link" href="eval-quality-adr-006.html">ADR-006</a><a class="nav-link" href="eval-quality-adr-007.html">ADR-007</a><a class="nav-link active" href="eval-quality-adr-008.html">ADR-008</a><a class="nav-link" href="eval-quality-adr-009.html">ADR-009</a></nav>
+    </div>
+  </header>
+  <div class="layout">
+    <aside class="sidebar" aria-label="Table of contents">
+      <p class="toc-title">On this page</p>
+      <a class="toc-link depth-2" href="#status">Status</a><a class="toc-link depth-2" href="#context">Context</a><a class="toc-link depth-2" href="#decision">Decision</a><a class="toc-link depth-2" href="#consequences">Consequences</a><a class="toc-link depth-2" href="#alternatives-considered">Alternatives considered</a><a class="toc-link depth-2" href="#closure-2026-07-30">Closure — 2026-07-30</a>
+    </aside>
+    <main class="paper">
+      <header class="hero">
+        <div class="eyebrow">eval-quality · ADR-008</div>
+        <h1>ADR-008: The compile half is owed a calibration re-run; no half is epic-ready</h1>
+        <p class="lede">Three reviewers falsified the one sentence the previous split rested on, and the other half stops claiming to be finished too.</p>
+        <div class="metadata">
+          <span class="pill status">accepted</span>
+          <span class="pill">Updated 2026-07-29</span>
+          <span class="pill">Owner: Murat Ozcan</span>
+        </div>
+      </header>
+      <details class="mobile-toc">
+        <summary>On this page</summary>
+        <div class="mobile-toc-links"><a class="toc-link depth-2" href="#status">Status</a><a class="toc-link depth-2" href="#context">Context</a><a class="toc-link depth-2" href="#decision">Decision</a><a class="toc-link depth-2" href="#consequences">Consequences</a><a class="toc-link depth-2" href="#alternatives-considered">Alternatives considered</a><a class="toc-link depth-2" href="#closure-2026-07-30">Closure — 2026-07-30</a></div>
+      </details>
+      <article class="content"><h1>ADR-008: The compile half is owed to a calibration re-run; no half is epic-ready</h1>
+<h2 id="status">Status<a class="heading-anchor" href="#status" aria-label="Link to Status">#</a></h2>
+<p>Accepted 2026-07-29. Enforced by spine revision 5: a new <strong>Owed to the calibration re-run</strong> section records
+three open compile-side defects, AD-38 withdraws stage one&#39;s readiness claim and adds <code>seal</code> to stage one,
+AD-31&#39;s publication target moves off the worked example, and AD-40&#39;s grammar citation, determinism hedge,
+and missing finding-side operand are all corrected. Amends ADR-007&#39;s central claim.</p>
+<h2 id="context">Context<a class="heading-anchor" href="#context" aria-label="Link to Context">#</a></h2>
+<p>Round 3 put four reviewers against spine revision 4 and produced 24 findings. <strong>All four said do not
+build.</strong> That is the fourth consecutive do-not-build, and the first one that blocks <code>compile</code> — the half
+ADR-007 declared a build substrate eight hours earlier. The triage in <code>reviews/triage-round-three.md</code>
+reduces the 24 to ten root causes, six of them compile-side and four of those critical. Round 2&#39;s
+distribution was the mirror image, and acting on that distribution is what ADR-007 did.</p>
+<p>ADR-007 rested on one sentence: <code>compile</code> &quot;is the half that matches the measured 0.33-to-1.00 effect&quot;.
+Three reviewers falsified it independently, from three lenses, by three unrelated routes.</p>
+<ul>
+<li><strong>The corpus does not compile.</strong> Every contract in the block that produced the measured effect declares
+an MCP tool interface. AD-10 places <code>mcp</code> outside v0 and revision 4 added the blocking AD-5 class that
+made the rejection real for the first time. Verified against all twenty contracts. Meanwhile AD-3
+requires its generator templates to be &quot;calibrated against the experiments&#39; actual disciplined
+contracts&quot; and AD-31 takes interface kind as a predicate input, so the half that matches the measured
+claim rejects the measured claim on the first field it reads. Compounding it, AD-38&#39;s stage one omitted
+<code>seal</code> — the stage that emits the generated prose AD-3 calls the load-bearing artifact.</li>
+<li><strong>The payload does not fit.</strong> Two reviewers extracted the real disciplined oracles and classified them
+against AD-3&#39;s five closed fields, from two different corpora, and both found the differentiator has no
+field. In one, the only clean single-variable intervention in the whole record moved a sealed run from
+PASS with zero composed-filter actions to FAIL with the seeded defect detected, and its causal content
+is two evidence-and-population preconditions. In the other, six of twelve disciplined behaviours carry a
+negative-sufficiency clause and zero of six plain ones do. Neither class has a slot, and neither can
+live in author commentary without reopening the free-prose channel AD-3 exists to close.</li>
+<li><strong>The half does not close.</strong> AD-38 puts AD-31 in stage one; AD-31 is published by being exercised
+against the worked example; the worked example may only be regenerated from the reference reducer; the
+reducer is score-side Owed items 1 through 3, which no epic may touch. A closed cycle, and it backed a
+<em>blocking</em> compile error.</li>
+</ul>
+<p>Three further facts weighed on the decision. Revision 4&#39;s own headline environmental fix failed open: the
+npm control it added filters resolution while CI runs <code>npm ci</code>, reproduced by installing a 0.59-day-old
+package from a lockfile under an active <code>min-release-age=7</code>. Two of revision 4&#39;s other new calibration
+claims turned out to cite evidence that does not exist — AD-5&#39;s scripted arm was never run, and AD-40&#39;s
+blinded human adjudication belongs to a different experiment on a different system. And the effect the
+whole architecture cites as settled carries a preregistered block decision of <strong>CONTRACT-DISCIPLINE NOT
+SUPPORTED</strong>, which the experiment record discloses honestly and which no architecture document mentioned.</p>
+<h2 id="decision">Decision<a class="heading-anchor" href="#decision" aria-label="Link to Decision">#</a></h2>
+<p><strong>Do to <code>compile</code> what ADR-007 did to <code>score</code>, and stop claiming either half is ready.</strong></p>
+<p>Seven root causes have concrete named fixes and are closed in revision 5: the AD-31 cycle, the scripting
+boundary&#39;s missing codes and missing predicates, the reference-set and <code>covers-by-key</code> grammar gaps, the
+npm and licence failures, the closed-object convention&#39;s rejection of arbitrary JSON, AD-10&#39;s sensitivity
+predicate, and the uncited measurement qualifications.</p>
+<p><strong>One is not a specification gap, and it is recorded open.</strong> Whether AD-3&#39;s structured direction, rendered
+through a generator, still carries what made the measured contracts win is not answerable in prose. Four
+rounds of prose review did not raise it; two reviewers who went to the calibration data raised it
+immediately and independently. It is recorded as <strong>Owed to the calibration re-run</strong> item 1, with the shape
+of the fix named — an evidence-precondition dimension and an insufficient-evidence condition, carried on
+the brief, exempt from the alignment predicate — and with no pretence that naming a shape settles it. The
+generator&#39;s templates and the brief-side scripting audit are recorded as item 2 because they are
+downstream of the field set. <strong>No epic touches <code>compile</code> until item 1 closes.</strong></p>
+<p><strong>The gate is a re-run, not a review.</strong> Express the disciplined oracles in AD-3&#39;s structure, implement the
+generator, emit prose, and put generated and hand-written prose in front of a sealed evaluator against the
+same defect-bearing revisions. This is a replication with one variable changed, against a frozen arm, and
+both lens-A reviewers estimated it in half a day. If generated prose scores materially below hand-written
+disciplined prose, revision 4 traded the measured effect for a computable predicate and the trade is
+visible in a number.</p>
+<p><strong>v0 stays <code>api</code>-only, and AD-3 now says what it is actually calibrated against.</strong> The measured contracts
+are transcribed into API-shaped fixtures and the templates are calibrated against that translation, stated
+plainly. A transcription is not the measured artifact, so nothing establishes that the effect survives the
+interface change; that cost is recorded as Owed item 3 rather than implied. Bringing <code>mcp</code> into v0 needs a
+channel model for text-shaped responses — the real responses are unstructured markdown with no collection
+a quantifier can range over — and stays in Deferred with the design question named.</p>
+<p><strong>AD-40 keeps its shape and loses its hedge.</strong> Two reviewers built the mapping and ran it; both confirmed
+the fix direction, and one reproduced the earlier round&#39;s human adjudication exactly on the real trace,
+naming the same decisive action and the same leaked record. So the mapping commits to a deterministic
+witness match, its false premise is deleted, the residual trust moves to AD-32&#39;s caller-attested class
+alongside AD-12&#39;s remediation cap, and the match is recorded as <strong>committed but unvalidated</strong> until a run
+exists whose records preserve the evidence. The signature is rerooted in transport identity because its
+cited grammar was unsatisfiable three ways. Findings gain both operands the mapping needs: cited
+observation identifiers for the match, verbatim quoted evidence for auditability and for re-deriving
+detection against historical records.</p>
+<p><strong>A third structural principle joins the spine&#39;s other two.</strong> An AD may not cite calibration against
+evidence that does not exist. Three did, and all three are corrected.</p>
+<h2 id="consequences">Consequences<a class="heading-anchor" href="#consequences" aria-label="Link to Consequences">#</a></h2>
+<p>There is no first epic. Revision 4&#39;s was <code>compile</code>, and the sequencing now runs through two experiments
+instead: the AD-3 calibration re-run, which gates <code>compile</code>, and the AD-21/AD-31/AD-33/AD-40 reference
+implementation, which gates <code>score</code>. Neither needs an epic and the first does not block the second.</p>
+<p>The cheapest decisive experiment turned out to be already available, which no reviewer noticed. The real
+corpus splits by interface kind: all of phase 2 is <code>mcp</code>, but the three <code>cc-h0-*</code> contracts — including
+the v1/v2 pair that is the whole evidential basis of Owed item 1 — declare <code>api</code>. The calibration re-run
+can be performed today, on a contract v0 can compile, without deciding the MCP question first.</p>
+<p><code>AD-31</code>&#39;s fixture corpus is the one piece of the compile half that can be built immediately and is worth
+building first, because if a satisfaction predicate turns out to need an outcome state, the split is drawn
+in the wrong place again and the answer is worse than this ADR says.</p>
+<p>The product&#39;s claim gets weaker for the second revision running. Revision 4 withdrew an unfalsifiable
+catch rate; revision 5 withdraws &quot;this half matches the measured effect&quot;. Both withdrawals are gains in
+the product&#39;s own terms, and the pattern is worth naming: every round that went to the primary sources
+found an architecture citing evidence it had not checked. The three corrected citations in this revision
+were all introduced by revisions that had passed their own review.</p>
+<h2 id="alternatives-considered">Alternatives considered<a class="heading-anchor" href="#alternatives-considered" aria-label="Link to Alternatives considered">#</a></h2>
+<p><strong>Close all ten root causes in prose as revision 5 and run a round 4.</strong> Rejected, and ADR-007 already
+wrote the rejection: &quot;Three revisions have followed exactly this shape and each produced a new set of
+criticals in the score half.&quot; That reasoning was accepted for <code>score</code> on the strength of three data
+points. Round 3 supplies the fourth, in <code>compile</code>, and consistency requires applying the same rule to the
+same evidence. A fifth prose revision would cost the same as the re-run and inform less.</p>
+<p><strong>Stop writing architecture entirely and let both experiments write revision 5.</strong> Rejected for the reason
+ADR-007 rejected its mirror image: seven of the ten root causes are genuine specification gaps with named
+fixes, several of them — the npm control, the licence gate, the missing AD-5 codes — are things a builder
+would otherwise get wrong on day one, and two change the contract schema, which the re-run would have to
+guess at. Closing them now costs little and makes the re-run&#39;s inputs well defined.</p>
+<p><strong>Bring <code>mcp</code> into v0 so the calibration corpus compiles.</strong> Rejected for v0, though it is the most honest
+answer to the interface problem and one reviewer argued for it directly. It is not an enum entry: text-
+shaped responses need a channel model, and AD-4&#39;s quantifiers need an answer for text before per-record
+verification means anything on that interface. That is grammar work of the same size as the rest of this
+revision, and it would be undertaken to make a calibration corpus compile while the calibration itself is
+already performable on the <code>api</code> contracts. Deferred with the design question stated rather than dropped.</p>
+<p><strong>Keep AD-40&#39;s determinism hedge.</strong> Rejected as stated and preserved in substance. The hedge&#39;s reason was
+false, and declining determinism does not protect the number from the one trust the architecture cannot
+discharge — it only leaves two implementers free to build two different mappings, which is round 2&#39;s worst
+finding one level down. What survives is the honest half: the match is unvalidated because no run
+preserved the evidence, and the block-2 replication is named as the dependency.</p>
+<h2 id="closure-2026-07-30">Closure — 2026-07-30<a class="heading-anchor" href="#closure-2026-07-30" aria-label="Link to Closure — 2026-07-30">#</a></h2>
+<p>ADR-008 remains the historical reason the compile half stopped. Its named exit condition has now been
+executed rather than reviewed again.</p>
+<p>The missing local-only mut2 arm was reconstructed from base <code>5b7c34e</code>, reproduced its recorded
+black-box behavior, and ran under a pre-registered three-arm design with three valid repetitions per arm
+and a reducer of at least two catches. The hand-written v2 positive control, prose generated from
+AD-3&#39;s current fields, and generation augmented with an evidence precondition each issued composed
+queries and detected the seeded defect in 3 of 3 repetitions.</p>
+<p>The predetermined generated-current-fields branch applies. Owed item 1 closes without adding an
+evidence-precondition dimension; the generator is part of the product; <code>seal</code> joins the stage-one epic
+order. The generated-template and brief-audit work becomes explicit <code>seal</code> acceptance work rather than
+a pre-epic gate. The API transcription corpus remains a disclosed scope limit, not a blocker.</p>
+<p>Spine revision 9 therefore restores <code>compile</code> and <code>seal</code> to epic-ready status. <code>score</code> remains withheld
+on the reference implementation items ADR-007 identified. This closure changes no claim about general
+replication of the historical 0.33-to-1.00 effect.</p>
+</article>
+      <footer class="footer">Generated from ADR-008-compile-half-owed-to-calibration.md by scripts/build-shareable.mjs. Self-contained and print-ready. Do not hand-edit; regenerate instead.</footer>
+    </main>
+  </div>
+</body>
+</html>

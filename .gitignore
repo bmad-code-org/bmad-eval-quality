@@ -47,3 +47,6 @@ _bmad-output/**/reviews/round-2-verbatim/
 .agent/
 .agents/
 _bmad-output/planning-artifacts/research/
+
+# do not gitignore the following files
+!/_bmad-output/shareable
