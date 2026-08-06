@@ -1,6 +1,6 @@
 # `eval-quality`
 
-## At its core, `eval-quality` does three things
+### At its core, `eval-quality` does three things
 
 1. **Compile** : Validate and normalize an eval spec into a machine-readable artifact.
 
@@ -8,7 +8,7 @@
 
 3. **Score** : Compare the evaluator’s completed findings with the hidden bug signature to determine whether the bug was actually caught.
 
-## What is the eval spec?
+### What is the eval spec?
 
 It is the test.
 
@@ -38,9 +38,9 @@ A weak eval checks only the response and misses the bug.
 
 A strong eval checks the response **and** persistence, so it catches the bug.
 
-## Caveman version
+### Caveman version
 
-> **Write the eval. Hide the bug. See if the eval catches it.**
+**Write the eval. Hide the bug. See if the eval catches it.**
 
 ## Elaboration
 
