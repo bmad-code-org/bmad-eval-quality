@@ -24,6 +24,16 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Lint architecture spine
+        run: npm run lint:spine
+
+      - name: Test spine linter
+        run: pip install pytest && python -m pytest scripts/spine-lint/tests -q
+
       - name: Test
         run: npm run test
 

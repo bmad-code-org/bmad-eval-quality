@@ -1,0 +1,72 @@
+{
+  "schemaVersion": 1,
+  "runId": "spike-run-0001",
+  "contractDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000002",
+  "sealedBriefDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000003",
+  "evaluatorConfigurationDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000004",
+  "conditionArm": "independent",
+  "trialIndex": 1,
+  "evaluatorRecommendation": "FAIL",
+  "oracleDispositions": [
+    { "oracleId": "O-001", "disposition": "violated", "note": "Update reported success; the independent read returned the old title." },
+    { "oracleId": "O-002", "disposition": "held", "note": "Status and ok agreed on every successful call." },
+    { "oracleId": "O-003", "disposition": "held", "note": "The update response carried all five fields and no diagnostic alongside the success flag." },
+    { "oracleId": "O-004", "disposition": "held", "note": "Every note in the collection carried all five fields." },
+    { "oracleId": "O-005", "disposition": "held", "note": "A tags value of the wrong type was rejected with 400 and ok false." }
+  ],
+  "findings": [
+    {
+      "findingId": "F-001",
+      "findingType": "defect",
+      "oracleId": "O-001",
+      "probeId": "P-001",
+      "behaviorId": "B-001",
+      "severity": "critical",
+      "confidence": 0.95,
+      "provenance": "evaluator-chosen",
+      "summary": "PATCH /notes/n-1 returned 200 with ok true and the new title 'Revised', but a subsequent GET /notes/n-1 returned the original title 'Original'. The update response was not backed by a write.",
+      "observationIds": ["obs-003", "obs-004"],
+      "evidenceArtifacts": [
+        { "kind": "action-log", "reference": "opaque:spike-actions-0001", "digest": "sha256:0000000000000000000000000000000000000000000000000000000000000005", "visibility": "private" }
+      ]
+    },
+    {
+      "findingId": "F-002",
+      "findingType": "confirmation",
+      "oracleId": "O-002",
+      "probeId": "P-001",
+      "behaviorId": "B-002",
+      "severity": "material",
+      "confidence": 0.99,
+      "provenance": "baseline",
+      "summary": "Status 200 agreed with ok true on every successful call observed.",
+      "observationIds": ["obs-001", "obs-003"],
+      "evidenceArtifacts": []
+    },
+    {
+      "findingId": "F-003",
+      "findingType": "observation",
+      "oracleId": null,
+      "probeId": "P-001",
+      "behaviorId": null,
+      "severity": "low",
+      "confidence": 0.8,
+      "provenance": "evaluator-chosen",
+      "summary": "PATCH accepts an unknown field 'colour' and echoes it back in the note payload. No oracle in the contract addresses unknown-field handling, so this is filed uncited.",
+      "observationIds": ["obs-005"],
+      "evidenceArtifacts": []
+    }
+  ],
+  "observations": [
+    { "observationId": "obs-001", "operationId": "get-note", "provenance": "baseline", "callInputs": { "id": "n-1" }, "responseStatus": 200, "responseBody": { "ok": true, "note": { "id": "n-1", "title": "Original", "body": "b", "tags": ["t"], "updatedAt": "2026-07-29T10:00:00Z" } } },
+    { "observationId": "obs-002", "operationId": "list-notes", "provenance": "baseline", "callInputs": {}, "responseStatus": 200, "responseBody": { "ok": true, "notes": [] } },
+    { "observationId": "obs-003", "operationId": "patch-note", "provenance": "evaluator-chosen", "callInputs": { "id": "n-1", "title": "Revised" }, "responseStatus": 200, "responseBody": { "ok": true, "note": { "id": "n-1", "title": "Revised", "body": "b", "tags": ["t"], "updatedAt": "2026-07-29T10:05:00Z" } } },
+    { "observationId": "obs-004", "operationId": "get-note", "provenance": "evaluator-chosen", "callInputs": { "id": "n-1" }, "responseStatus": 200, "responseBody": { "ok": true, "note": { "id": "n-1", "title": "Original", "body": "b", "tags": ["t"], "updatedAt": "2026-07-29T10:00:00Z" } } },
+    { "observationId": "obs-005", "operationId": "patch-note", "provenance": "evaluator-chosen", "callInputs": { "id": "n-2", "colour": "red" }, "responseStatus": 200, "responseBody": { "ok": true, "note": { "id": "n-2", "title": "Second", "body": "b2", "tags": [], "updatedAt": "2026-07-29T10:06:00Z", "colour": "red" } } }
+  ],
+  "judgeResults": [],
+  "actionsArtifact": { "kind": "action-log", "reference": "opaque:spike-actions-0001", "digest": "sha256:0000000000000000000000000000000000000000000000000000000000000005", "visibility": "private" },
+  "resourceUse": { "toolCalls": 5, "inputTokens": 8100, "outputTokens": 1400, "wallClockSeconds": 62.5, "costUsd": 0.04 },
+  "isolationManifestArtifact": { "kind": "isolation-manifest", "reference": "opaque:spike-manifest-0001", "digest": "sha256:0000000000000000000000000000000000000000000000000000000000000006", "visibility": "private" },
+  "invalidReason": null
+}

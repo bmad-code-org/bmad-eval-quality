@@ -15,6 +15,10 @@ npm-debug.log*
 # Coverage
 /coverage
 
+# Python bytecode from scripts/spine-lint
+__pycache__/
+*.pyc
+
 # VitePress
 docs/.vitepress/cache
 docs/.vitepress/dist
@@ -28,6 +32,15 @@ _bmad-output/**/.memlog.md
 
 # Local-only scratch and notes files.
 *.local.md
+
+# Shareable HTML is build output. `npm run build:shareable` regenerates it from
+# the planning markdown, and no workflow publishes it from the repository.
+_bmad-output/shareable/
+
+# Verbatim reviewer reports. The triage and reconcile records beside them carry
+# the findings, the verification log, and the dispositions actually applied.
+_bmad-output/**/reviews/review-*.md
+_bmad-output/**/reviews/round-2-verbatim/
 
 # Local agent tooling / installed skills (not part of the published library)
 .claude/

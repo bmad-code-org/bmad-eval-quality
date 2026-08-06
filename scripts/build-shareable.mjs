@@ -47,12 +47,89 @@ const DOCS = [
 		lede: 'Current requirements VFR-1 through VFR-8, with the original engine proposal retained for traceability.',
 	},
 	{
+		out: 'eval-quality-architecture-spine.html',
+		nav: 'Architecture',
+		source:
+			'_bmad-output/planning-artifacts/architecture/architecture-eval-quality-2026-07-29/ARCHITECTURE-SPINE.md',
+		title: 'Architecture Spine: eval-quality',
+		lede: 'Forty invariants that keep independently built units from diverging — and two sections recording what four review rounds proved cannot be settled in prose.',
+	},
+	{
+		out: 'eval-quality-adr-001.html',
+		nav: 'ADR-001',
+		source:
+			'_bmad-output/planning-artifacts/architecture/architecture-eval-quality-2026-07-22/ADR-001-evaluator-isolation-boundary.md',
+		title:
+			'ADR-001: An isolated black-box evaluator is the source of advantage',
+		lede: 'The superseded isolation-as-differentiator decision, kept so the chain resolves and the discarded alternative stays discarded.',
+	},
+	{
 		out: 'eval-quality-adr-002.html',
 		nav: 'ADR-002',
 		source:
 			'_bmad-output/planning-artifacts/architecture/architecture-eval-quality-2026-07-22/ADR-002-contract-authoring-discipline.md',
 		title: 'ADR-002: Contract-and-oracle authoring discipline is the product',
 		lede: 'The recorded decision, its consequences, and the build order.',
+	},
+	{
+		out: 'eval-quality-adr-003.html',
+		nav: 'ADR-003',
+		source:
+			'_bmad-output/planning-artifacts/architecture/architecture-eval-quality-2026-07-29/ADR-003-measurement-mechanics.md',
+		title: 'ADR-003: Contract strength is a vector and a dominance rule',
+		lede: 'The measurement mechanics ADR-002 deferred: oracles, dominance, verdicts, corpus rotation, and schemas.',
+	},
+	{
+		out: 'eval-quality-adr-004.html',
+		nav: 'ADR-004',
+		source:
+			'_bmad-output/planning-artifacts/architecture/architecture-eval-quality-2026-07-29/ADR-004-execution-boundary.md',
+		title: 'ADR-004: eval-quality executes nothing',
+		lede: 'Why no engine supplies the runner, and where the execution boundary actually falls.',
+	},
+	{
+		out: 'eval-quality-adr-005.html',
+		nav: 'ADR-005',
+		source:
+			'_bmad-output/planning-artifacts/architecture/architecture-eval-quality-2026-07-29/ADR-005-review-round-corrections.md',
+		title: "ADR-005: The evaluator's findings measure detection",
+		lede: 'What four independent external reviews changed, and why the spine stopped freezing what it could not yet decide.',
+	},
+	{
+		out: 'eval-quality-adr-006.html',
+		nav: 'ADR-006',
+		source:
+			'_bmad-output/planning-artifacts/architecture/architecture-eval-quality-2026-07-29/ADR-006-interaction-plan.md',
+		title:
+			'ADR-006: An oracle addresses observations through a declared interaction plan',
+		lede: 'Why the first hand-written contract did not compile, and how to fix it without reintroducing the scripted arm.',
+	},
+	{
+		out: 'eval-quality-adr-007.html',
+		nav: 'ADR-007',
+		source:
+			'_bmad-output/planning-artifacts/architecture/architecture-eval-quality-2026-07-29/ADR-007-compile-score-split.md',
+		title:
+			'ADR-007: Compile is a build substrate; score is owed a reference implementation',
+		lede: 'Why the catch rate was 1.00 by construction, and why half the architecture stops claiming to be finished. Amended by ADR-008.',
+	},
+	{
+		out: 'eval-quality-adr-008.html',
+		nav: 'ADR-008',
+		source:
+			'_bmad-output/planning-artifacts/architecture/architecture-eval-quality-2026-07-29/ADR-008-compile-half-owed-to-calibration.md',
+		title:
+			'ADR-008: The compile half is owed a calibration re-run; no half is epic-ready',
+		lede: 'Three reviewers falsified the one sentence the previous split rested on, and the other half stops claiming to be finished too.',
+	},
+	{
+		out: 'eval-quality-adr-009.html',
+		nav: 'ADR-009',
+		source:
+			'_bmad-output/planning-artifacts/architecture/architecture-eval-quality-2026-07-29/ADR-009-adversarial-gate-corrections.md',
+		title:
+			"ADR-009: The adversarial gate's determinacy corrections, and the read-back brief joins the owed set",
+		lede: 'Seventeen ways two conforming implementations disagreed, one of which scored a perfect catch rate off evidence the system was correct.',
 	},
 ]
 
