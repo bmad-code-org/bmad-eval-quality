@@ -1,8 +1,8 @@
 # eval-quality
 
-**Write agent evals that know how to expose failures, then check whether those evals can actually catch known bugs.**
+**Compile disciplined agent eval contracts, then check whether those contracts can catch known bugs.**
 
-> **Status: under active development, not yet published.** The product direction is decided. The library, the CLI, and the contract-strength scorer are not implemented yet. What the experiments did and did not show is in [Evidence and limitations](#evidence-and-limitations), including two preregistered verdicts that did not pass.
+> **Status: architecture signed off, implementation not started, package not yet published.** The compile-and-seal half is epic-ready after Gate C and Gate D; contract-strength scoring still depends on its reference reducer. What the experiments did and did not show is in [Evidence and limitations](#evidence-and-limitations), including two preregistered verdicts that did not pass.
 
 An agent can produce an answer that reads as correct and is materially wrong. An eval can make the same mistake.
 
@@ -40,18 +40,20 @@ product spec
 - the contract compiler
 - the environment pre-flight
 - Eval Contract strength scoring
-- versioned evidence output and PASS / CONCERNS / FAIL governance
+- versioned evidence output and PASS / WAIVED / CONCERNS / FAIL governance
 
-An established engine provides:
+The caller provides:
 
-- agent execution
-- trace ingestion and standard assertions
+- execution of its chosen agent, harness, or person
 - repeated trials
 - cost accounting
-- reports
-- CI integration
+- the live system and environment-probe implementation
+- a sealed run record returned for ingestion
 
-[`agentevals-dev/agentevals`](https://github.com/agentevals-dev/agentevals) and [Promptfoo](https://www.promptfoo.dev/) are the candidate engines. `eval-quality` does not rebuild that layer.
+`eval-quality` executes nothing: it never spawns a process, calls a model, drives a system under test,
+or invokes a judge. Its pure stages are compile, seal, ingest, pre-flight, score, and emit. Engine
+integration is a later adapter behind a port, not a v0 dependency. See
+[ADR-004](_bmad-output/planning-artifacts/architecture/architecture-eval-quality-2026-07-29/ADR-004-execution-boundary.md).
 
 ## Who it is for
 
@@ -93,7 +95,10 @@ Two probe classes go behind a contract, and a strong contract rejects both:
 
 Probes come from qualified historical defects or verified controlled mutations. The corpus separates a visible development set from an immutable sealed set for each scoring version.
 
-Every required oracle check resolves to exactly one state, and the state travels with the result, so "the check reported" is never sufficient on its own: `caught`, `missed`, `passed_clean_control`, `false_positive`, `abstained`, `oracle_error`, `infrastructure_error`, or `not_applicable`.
+Every required oracle check resolves to exactly one state, and the state travels with the result, so
+"the check reported" is never sufficient on its own: `caught`, `confirmed`, `missed`,
+`passed-clean-control`, `false-positive`, `abstained`, `bypassed`, `unreached`, `oracle-error`,
+`judge-error`, `infrastructure-error`, or `not-applicable`.
 
 A required oracle that missed, abstained, errored, or is absent prevents PASS, and a high overall score never overrides it. An infrastructure error or a failed environment pre-flight is not a behavioral result at all; it invalidates the run and is re-executed rather than scored.
 
@@ -108,7 +113,7 @@ The **CLI** wraps the same library for callers that cannot import TypeScript: CI
 ```bash
 eval-quality compile   # validate a contract against the authoring discipline
 eval-quality preflight # verify the measurement environment before scoring
-eval-quality score     # seed known defects, report per-oracle outcomes
+eval-quality score     # score an ingested run record, report per-oracle outcomes
 ```
 
 Commands are non-interactive by default, emit machine-readable output, and exit with a code reflecting the gate verdict. The library and CLI expose the same capabilities and produce the same versioned evidence artifact.
@@ -131,9 +136,21 @@ Evaluator runs remain isolated to prevent builder-context leakage and preserve t
 
 Holding the model, the budget, the system, and the defects fixed, and changing only how the Eval Contract was authored, sealed-evaluator detection moved from **0.33 to 1.00** across three naturally occurring defects, three repetitions per arm, 19 scored runs.
 
-Both experiment rounds missed at least one preregistered gate. Round 1 recorded `DARK-FACTORY REJECTED`; round 2 block 1 recorded `CONTRACT-DISCIPLINE NOT SUPPORTED`. The sample covers three defects, one system, and one model. This supports a product-direction decision at narrow scale. Certification would require broader replication.
+Both experiment rounds missed at least one preregistered gate. Round 1 recorded `DARK-FACTORY REJECTED`; round 2 block 1 recorded `CONTRACT-DISCIPLINE NOT SUPPORTED`, failing one gate of five on a single unreplicated clean control. The separation comes from two of the three defects, since both arms detected the third in every repetition, and both separating cases carry a recorded measurement-layer confound. The sample covers three defects, one system, and one model. This supports a product-direction decision at narrow scale. Certification would require broader replication.
 
-Read the [product brief](_bmad-output/planning-artifacts/briefs/brief-eval-quality-2026-07-17/brief.md) for the product rationale, the [PRD](_bmad-output/planning-artifacts/prds/prd-eval-quality-2026-07-17/prd.md) for build requirements, and [ADR-002](_bmad-output/planning-artifacts/architecture/architecture-eval-quality-2026-07-22/ADR-002-contract-authoring-discipline.md) for the decision record. The experiment record includes the [round 1 verdict](experiments/hypothesis-validation/DECISION.md), [round 2 results](experiments/hypothesis-validation/PHASE2-RESULTS.md), [metric summary](experiments/hypothesis-validation/results/summary.md), and [protocol](experiments/hypothesis-validation/HYPOTHESIS_VALIDATION_PLAN.md).
+Read the [product brief](_bmad-output/planning-artifacts/briefs/brief-eval-quality-2026-07-17/brief.md) for the product rationale and the [PRD](_bmad-output/planning-artifacts/prds/prd-eval-quality-2026-07-17/prd.md) for build requirements. The experiment record includes the [round 1 verdict](experiments/hypothesis-validation/DECISION.md), [round 2 results](experiments/hypothesis-validation/PHASE2-RESULTS.md), [metric summary](experiments/hypothesis-validation/results/summary.md), and [protocol](experiments/hypothesis-validation/HYPOTHESIS_VALIDATION_PLAN.md).
+
+## Architecture status
+
+The [architecture spine](_bmad-output/planning-artifacts/architecture/architecture-eval-quality-2026-07-29/ARCHITECTURE-SPINE.md) is **split by pipeline half. The compile-and-seal half is epic-ready; the score half is not.** Gate C closed at zero blocking authoring points and 14 of 14 declaration-only predicates. Gate D's generated-current-fields arm matched the hand-written positive control at 3 of 3 seeded-defect catches, so `seal` joins the stage-one order without adding an evidence-precondition field.
+
+Contract strength scoring has been open since [ADR-007](_bmad-output/planning-artifacts/architecture/architecture-eval-quality-2026-07-29/ADR-007-compile-score-split.md): three rounds of external review established that the catch rate was 1.00 by construction, because nothing matched a finding to the defect its probe seeded. That input now exists and the mapping that reads it is owed to a reference implementation.
+
+Contract compilation was declared ready in ADR-007 and a fourth review withdrew that claim in [ADR-008](_bmad-output/planning-artifacts/architecture/architecture-eval-quality-2026-07-29/ADR-008-compile-half-owed-to-calibration.md). The named calibration is now complete. The absent local-only mut2 arm was reconstructed from its recorded base, reproduced its prior black-box behavior, and ran under a pre-registered three-arm, three-repetition design. All three arms composed filters and detected the seeded defect in every valid repetition. This closes the calibration gate narrowly; it does not generalize the historical 0.33-to-1.00 effect beyond one behavior and one controlled mutation.
+
+Both are documented as defects rather than dressed as decisions, because four rounds have shown that a confidently worded revision is the thing that goes wrong here.
+
+The decision record, in order: [ADR-001](_bmad-output/planning-artifacts/architecture/architecture-eval-quality-2026-07-22/ADR-001-evaluator-isolation-boundary.md) on evaluator isolation, [ADR-002](_bmad-output/planning-artifacts/architecture/architecture-eval-quality-2026-07-22/ADR-002-contract-authoring-discipline.md) on why authoring discipline is the product, [ADR-003](_bmad-output/planning-artifacts/architecture/architecture-eval-quality-2026-07-29/ADR-003-measurement-mechanics.md) on measurement mechanics, [ADR-004](_bmad-output/planning-artifacts/architecture/architecture-eval-quality-2026-07-29/ADR-004-execution-boundary.md) on why this package executes nothing, [ADR-005](_bmad-output/planning-artifacts/architecture/architecture-eval-quality-2026-07-29/ADR-005-review-round-corrections.md) and [ADR-006](_bmad-output/planning-artifacts/architecture/architecture-eval-quality-2026-07-29/ADR-006-interaction-plan.md) on what review and hand-authoring corrected, [ADR-007](_bmad-output/planning-artifacts/architecture/architecture-eval-quality-2026-07-29/ADR-007-compile-score-split.md) on the split, [ADR-008](_bmad-output/planning-artifacts/architecture/architecture-eval-quality-2026-07-29/ADR-008-compile-half-owed-to-calibration.md) on why the other half stopped claiming to be finished too, and [ADR-009](_bmad-output/planning-artifacts/architecture/architecture-eval-quality-2026-07-29/ADR-009-adversarial-gate-corrections.md) on the seventeen places where two conforming implementations still disagreed. Review triage lives in [`reviews/`](_bmad-output/planning-artifacts/architecture/architecture-eval-quality-2026-07-29/reviews/).
 
 ## Not building now
 
@@ -151,7 +168,7 @@ npm run lint:fix         # auto-fix with Biome
 npm run build:shareable  # render the planning artifacts to self-contained HTML
 ```
 
-`build:shareable` writes this README, the product brief, the PRD, and ADR-002 to `_bmad-output/shareable/` as standalone styled HTML for sharing outside the repo. Regenerate rather than hand-edit those files.
+`build:shareable` renders this README, the product brief, the PRD, the architecture spine, and all nine ADRs to `_bmad-output/shareable/` as standalone styled HTML for sharing outside the repo. Regenerate rather than hand-edit those files. Mermaid diagrams render as code blocks there, which is a known limitation.
 
 ## Contributing
 

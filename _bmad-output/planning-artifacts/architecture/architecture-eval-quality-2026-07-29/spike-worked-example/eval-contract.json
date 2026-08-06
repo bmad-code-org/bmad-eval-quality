@@ -1,0 +1,184 @@
+{
+  "schemaVersion": 1,
+  "contractId": "notes-api-v1",
+  "sourceSpecDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000001",
+  "linkage": [
+    { "scheme": "spike", "id": "REQ-NOTES-1" },
+    { "scheme": "spike-risk", "id": "RISK-SILENT-WRITE" }
+  ],
+  "permittedInterfaces": [
+    {
+      "logicalId": "notes-api",
+      "kind": "api",
+      "operations": [
+        {
+          "operationId": "get-note",
+          "method": "GET",
+          "path": "/notes/{id}",
+          "requestShape": {
+            "requiredKeys": [],
+            "permittedKeys": ["id"],
+            "types": { "id": "string" }
+          }
+        },
+        {
+          "operationId": "patch-note",
+          "method": "PATCH",
+          "path": "/notes/{id}",
+          "requestShape": {
+            "requiredKeys": ["id"],
+            "permittedKeys": ["id", "title", "body", "tags"],
+            "types": { "id": "string", "title": "string", "body": "string", "tags": "array" }
+          }
+        },
+        {
+          "operationId": "list-notes",
+          "method": "GET",
+          "path": "/notes",
+          "requestShape": { "requiredKeys": [], "permittedKeys": [], "types": {} }
+        }
+      ],
+      "responseShape": {
+        "requiredKeys": ["ok"],
+        "permittedKeys": ["ok", "note", "notes", "error"],
+        "types": { "ok": "boolean", "note": "object", "notes": "array", "error": "string" },
+        "successIndicator": "/ok",
+        "channelRoles": { "/ok": "success-indicator", "/error": "diagnostic", "/note": "payload", "/notes": "collection" },
+        "collectionLocations": ["/notes"]
+      },
+      "volatilePointers": ["/note/updatedAt"]
+    }
+  ],
+  "siblingGroups": {
+    "operations": [["get-note", "list-notes"]],
+    "parameters": [["title", "body"]]
+  },
+  "interactionPlan": [
+    { "stepId": "baseline-read", "operationId": "get-note", "inputBinding": { "id": "n-1" } },
+    { "stepId": "write", "operationId": "patch-note", "inputBinding": { "id": "n-1", "title": { "matcher": "any" } } },
+    { "stepId": "read-back", "operationId": "get-note", "inputBinding": { "id": "n-1" }, "after": "write" },
+    { "stepId": "collection", "operationId": "list-notes", "inputBinding": {} },
+    { "stepId": "malformed-write", "operationId": "patch-note", "inputBinding": { "id": "n-1", "tags": { "matcher": "type-violating" } } }
+  ],
+  "behaviors": [
+    {
+      "id": "B-001",
+      "description": "A PATCH reporting success has persisted the change.",
+      "severity": "critical",
+      "oracles": ["O-001"]
+    },
+    {
+      "id": "B-002",
+      "description": "The success indicator agrees with the transport status and excludes a diagnostic.",
+      "severity": "material",
+      "oracles": ["O-002", "O-003"]
+    },
+    {
+      "id": "B-003",
+      "description": "Every note in a collection response is complete, not only the first.",
+      "severity": "material",
+      "oracles": ["O-004"]
+    },
+    {
+      "id": "B-004",
+      "description": "A malformed PATCH body is rejected rather than silently accepted.",
+      "severity": "low",
+      "oracles": ["O-005"]
+    }
+  ],
+  "oracles": [
+    {
+      "id": "O-001",
+      "rule": "state-change-read-back",
+      "intent": "Change a note's title through the update operation, then read that note back through the separate read operation and confirm the stored title is the new one. Do not accept the update operation's own response as evidence that it persisted: that response can be generated from a value that was never written. The read must be an independent call.",
+      "check": {
+        "op": "equality",
+        "operands": [
+          { "pointer": "/interactions/read-back/response-body/note/title" },
+          { "pointer": "/interactions/write/call-inputs/title" }
+        ]
+      },
+      "polarity": "expects-hold"
+    },
+    {
+      "id": "O-002",
+      "rule": "success-indicator-separation",
+      "intent": "Confirm the body's ok flag agrees with the transport status. A body claiming success under a failing status is a defect, and so is the reverse.",
+      "check": {
+        "op": "all",
+        "operands": [
+          { "op": "equality", "operands": [{ "pointer": "/interactions/write/response-status" }, { "literal": 200 }] },
+          { "op": "equality", "operands": [{ "pointer": "/interactions/write/response-body/ok" }, { "literal": true }] }
+        ]
+      },
+      "polarity": "expects-hold"
+    },
+    {
+      "id": "O-003",
+      "rule": "whole-body",
+      "intent": "Confirm a successful response carries no diagnostic field alongside the success flag, and that the note payload carries all five fields rather than only the ones the caller happened to change.",
+      "check": {
+        "op": "all",
+        "operands": [
+          { "op": "absence", "operands": [{ "pointer": "/interactions/write/response-body/error" }] },
+          {
+            "op": "shape",
+            "operands": [
+              { "pointer": "/interactions/write/response-body/note" },
+              { "literal": { "requiredKeys": ["id", "title", "body", "tags", "updatedAt"] } }
+            ]
+          }
+        ]
+      },
+      "polarity": "expects-hold"
+    },
+    {
+      "id": "O-004",
+      "rule": "per-record",
+      "intent": "Confirm EVERY note in the collection carries all five fields, not merely the first. Check each element.",
+      "check": {
+        "op": "for-all",
+        "collection": { "pointer": "/interactions/collection/response-body/notes" },
+        "predicate": {
+          "op": "shape",
+          "operands": [
+            { "pointer": "@/" },
+            { "literal": { "requiredKeys": ["id", "title", "body", "tags", "updatedAt"] } }
+          ]
+        }
+      },
+      "polarity": "expects-hold"
+    },
+    {
+      "id": "O-005",
+      "rule": "malformed-input",
+      "intent": "Send a PATCH whose tags field is a string rather than an array, and confirm it is rejected with status 400 and ok false rather than accepted with a 200.",
+      "check": {
+        "op": "all",
+        "operands": [
+          { "op": "equality", "operands": [{ "pointer": "/interactions/malformed-write/response-status" }, { "literal": 400 }] },
+          { "op": "equality", "operands": [{ "pointer": "/interactions/malformed-write/response-body/ok" }, { "literal": false }] }
+        ]
+      },
+      "polarity": "expects-hold"
+    }
+  ],
+  "rubrics": [],
+  "forbiddenInputs": [
+    "original-spec",
+    "source-code",
+    "repository",
+    "builder-transcript",
+    "implementation-logs",
+    "comparator-results",
+    "human-labels"
+  ],
+  "testData": {
+    "setup": "Seed exactly three notes with ids n-1, n-2, n-3, each with all five fields populated.",
+    "cleanup": "Delete all notes created or modified during the run."
+  },
+  "budgets": { "maxToolCalls": 40, "maxWallClockMinutes": 10, "maxCostUsd": 1.0 },
+  "safetyLimits": ["No request to any host other than the mapped notes-api target."],
+  "requiredEvidence": ["Request and response pair for every call, in order."],
+  "strictMode": true
+}

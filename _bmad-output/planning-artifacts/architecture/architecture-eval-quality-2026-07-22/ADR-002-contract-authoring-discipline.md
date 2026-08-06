@@ -3,7 +3,8 @@ id: ADR-002
 title: Eval Contract and oracle authoring discipline is the product; isolation is a delivery property
 status: accepted
 date: 2026-07-27
-supersedes: ADR-001 (dark-factory / isolation-as-differentiator framing, recorded only in .memlog.md)
+supersedes: ADR-001
+amended-by: ADR-003, ADR-004
 ---
 
 # ADR-002: Eval Contract and oracle authoring discipline is the product
@@ -19,6 +20,14 @@ Accepted, 2026-07-27. Decided by the product owner without running the preregist
 statistical rerun; see Consequences for why that is not a gap in this decision. This ADR was
 authored during experiment close-out rather than through the formal architecture workflow; a
 future formally architected revision may restate it, with this text as its basis.
+
+**Amended 2026-07-29 by the formal architecture pass** anticipated in the paragraph above:
+[ARCHITECTURE-SPINE.md](../architecture-eval-quality-2026-07-29/ARCHITECTURE-SPINE.md), recorded as
+[ADR-003](../architecture-eval-quality-2026-07-29/ADR-003-measurement-mechanics.md), which closes the
+five items deferred under Implementation, and
+[ADR-004](../architecture-eval-quality-2026-07-29/ADR-004-execution-boundary.md), which corrects
+Decision item 6 and the build order below. Everything else in this ADR stands. ADR-001 is now a
+document in this folder rather than memlog entries only.
 
 ## Context
 
@@ -80,9 +89,14 @@ rather than further validation.
    point.
 5. **The four semantic-evaluator hypotheses are deferred**, not built now. They rank below
    Eval Contract authoring discipline and stay out of scope until that discipline is in real use.
-6. **Existing open-source eval engines remain the execution substrate** (runner, trace ingestion,
-   standard assertions, repeated runs, reports, CI integration). `eval-quality` owns methodology,
-   contract authoring, Eval Contract strength scoring, and governance; it does not build a competing engine.
+6. ~~**Existing open-source eval engines remain the execution substrate** (runner, trace ingestion,
+   standard assertions, repeated runs, reports, CI integration).~~ **Corrected 2026-07-29 by
+   [ADR-004](../architecture-eval-quality-2026-07-29/ADR-004-execution-boundary.md): no engine supplies
+   the runner, because the engine named for the role scores pre-recorded traces, executes nothing, and
+   is Python-only.** `eval-quality` executes nothing either: the caller runs its own agent against a
+   sealed brief and returns a run record for ingestion. v0 depends on no engine; integration becomes a
+   v0.1 adapter behind a port. `eval-quality` owns methodology, contract authoring, Eval Contract
+   strength scoring, and governance; it does not build a competing engine.
 7. **`eval-quality` ships as its own repository and package**, decided 2026-07-28. A typed library is
    the primary surface and a CLI wraps it, so other tools, bots, skills, and CI jobs can reach the
    same capabilities without importing TypeScript. It is not a subfolder of another framework, since
@@ -115,20 +129,29 @@ rather than further validation.
 ## Implementation
 
 Only implementation is left; nothing about what to build is open. Suggested order,
-cheapest-value-first:
+cheapest-value-first.
+
+> **Superseded 2026-07-29 by [ADR-004](../architecture-eval-quality-2026-07-29/ADR-004-execution-boundary.md)
+> item 7.** The order below is not buildable as written: scoring consumes an ingested run record and the
+> fixture digest that pre-flight produces, so it cannot precede either. The corrected order is contract
+> compiler, then sealing and brief emission, then run-record ingestion, then pre-flight, then the strength
+> scorer, then evidence emission and CI reporting. The intent — the compiler first, semantic hypotheses
+> last — is unchanged.
 
 1. **VFR-2, the Eval Contract compiler.** A schema and authoring flow for TEA to produce a sealed
    contract under the discipline, with the three enforcement classes (structural error, scored
    coverage gap, validated N/A). This is the measured product, so it comes before any evaluator
    runtime.
 2. **VFR-7, Eval Contract strength scoring.** Seed a known defect class behind a contract, run it, and
-   report per-oracle outcomes before any aggregate score. Probes qualify through the
+   report per-oracle outcomes ~~before any aggregate score~~ (ADR-003: there is no aggregate score;
+   strength is a vector compared by dominance). Probes qualify through the
    fail-before/pass-after check, and the corpus splits into a development set and a sealed set.
 3. **Bounded environment pre-flight**, per Decision item 2, since a scored run is only as trustworthy
    as the fixture underneath it.
 4. **VFR-1** as an advisory, non-gate-authoritative recommendation.
 5. **VFR-3 through VFR-6**: isolated workspace, adaptive evaluation, governed evidence output, and
-   reuse of an existing engine's runner, trace, and report machinery through public extension points.
+   ~~reuse of an existing engine's runner, trace, and report machinery through public extension points~~
+   (ADR-004: no engine dependency in v0; the caller supplies execution and returns a run record).
    Isolation is plumbing here rather than the headline.
 6. **VFR-8, the CLI over the library.** It wraps what steps 1 through 3 already expose, so it follows
    them. The library surface it wraps does not follow them: step 1's contract schema and typed API are
@@ -136,7 +159,10 @@ cheapest-value-first:
    schema after the internals harden is the expensive order.
 
 Formulas, weighting, thresholds, corpus rotation, and result schemas are for the formal architecture
-pass described under Status. Do not restart the four deferred semantic hypotheses before steps 1
+pass described under Status. **All five are closed as of 2026-07-29** in
+[ADR-003](../architecture-eval-quality-2026-07-29/ADR-003-measurement-mechanics.md): dominance over
+outcome-state vectors as the formula, weighting refused outright, verdict by rule precedence instead of
+a threshold, additive rotation with caller-resolved sealed sets, and a closed eleven-artifact set. Do not restart the four deferred semantic hypotheses before steps 1
 through 3 are in real use; that ordering is part of this decision rather than a separate open
 question.
 

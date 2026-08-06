@@ -1,7 +1,7 @@
 {
   "name": "eval-quality",
   "version": "0.0.0",
-  "description": "Agent evaluation for the reasoning path, not just the output. A provider-agnostic harness that scores an agent's trajectory - tool use, faithfulness, grounding - as evidence, not a benchmark number.",
+  "description": "Compile disciplined Behavioral Evaluation Contracts and score their ability to catch known defects.",
   "author": "Murat Ozcan",
   "license": "Apache-2.0",
   "private": false,
@@ -16,9 +16,9 @@
     "agent",
     "agent-eval",
     "llm",
-    "llm-as-judge",
-    "trajectory",
-    "reasoning",
+    "behavioral-contract",
+    "oracle",
+    "contract-strength",
     "testing",
     "ai"
   ],
@@ -45,7 +45,7 @@
     "access": "public"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=22.20.0"
   },
   "scripts": {
     "prepare": "command -v husky >/dev/null 2>&1 && husky || exit 0",
@@ -56,10 +56,12 @@
     "lint:fix": "biome check --write .",
     "format": "biome format --write .",
     "check:docs": "node scripts/check-docs.mjs",
+    "lint:spine": "python3 scripts/spine-lint/lint_spine.py --workspace _bmad-output/planning-artifacts/architecture/architecture-eval-quality-2026-07-29 --registry-ad 5 --workspace-root . --fail-on high",
+    "test:spine-lint": "uv run --with pytest pytest scripts/spine-lint/tests -q",
     "build:shareable": "node scripts/build-shareable.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
-    "validate": "npm run typecheck && npm run lint && npm run check:docs && npm run test",
+    "validate": "npm run typecheck && npm run lint && npm run check:docs && npm run lint:spine && npm run test",
     "prepack": "npm run clean && npm run build"
   },
   "devDependencies": {

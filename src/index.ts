@@ -1,14 +1,13 @@
-// eval-quality - agent evaluation for the reasoning path, not just the output.
+// eval-quality - compile disciplined eval contracts and score known-defect detection.
 //
-// Barrel export. Modules land here as the engine is built:
-//   runner      - drive an agent (provider-agnostic) and capture the transcript
-//   assertions  - the Expect.* DSL (tool calls, sequence, params, performance)
-//   graders     - deterministic-first, judge-second pipeline; pass@k aggregation
-//   trajectory  - the differentiator: faithfulness / grounding / path quality /
-//                 process-vs-outcome judging / reference-trajectory scoring
-//   reporting   - evidence artifacts (summary + machine-readable result)
+// Barrel export. Modules land here along the artifact pipeline:
+//   compile    - validate Behavioral Evaluation Contracts and discipline coverage
+//   seal       - emit deterministic evaluator briefs
+//   ingest     - validate caller-produced run records and isolation manifests
+//   preflight  - reduce caller-provided environment observations
+//   score      - derive per-oracle outcomes and contract-strength vectors
+//   emit       - produce versioned evidence artifacts
 //
-// Design intent: agent-eval is an EVIDENCE SOURCE, not a benchmark. The output
-// is meant to feed a ship / don't-ship decision, not just a score.
+// The package executes nothing: it never runs an agent, judge, or system under test.
 
 export const VERSION = '0.0.0'

@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "runId": "spike-run-0001",
+  "scoringVersion": "sha256:0000000000000000000000000000000000000000000000000000000000000009",
+  "comparabilityKey": "sha256:000000000000000000000000000000000000000000000000000000000000000a",
+  "mode": "contract-scoring",
+  "contractVerdict": "CONCERNS",
+  "exitCode": 0,
+  "verdictBasis": [
+    "contract caught the seeded critical defect on its only defect probe",
+    "one unsatisfied coverage gap at material severity: sibling-cross-check",
+    "trials below declared minimum: 1 completed, 3 declared"
+  ],
+  "systemRecommendationRecorded": "FAIL",
+  "systemRecommendationNote": "Expected in contract-scoring mode: the probe is knowingly defective, so a system-directed FAIL is an input rather than a signal about the contract. Not promoted to a verdict.",
+  "callerAttestedInputs": ["corpusDigest", "fixtureDigest", "evaluatorConfigurationDigest"],
+  "trials": { "declaredMinimum": 3, "completed": 1, "invalidatedAttempts": [] },
+  "outcomes": [
+    { "oracleId": "O-001", "probeId": "P-001", "state": "caught", "severity": "critical", "disposition": "violated", "resolvedFrom": "F-001", "corroboration": "agrees" },
+    { "oracleId": "O-002", "probeId": "P-001", "state": "confirmed", "severity": "material", "disposition": "held", "resolvedFrom": "F-002", "corroboration": "agrees" },
+    { "oracleId": "O-003", "probeId": "P-001", "state": "confirmed", "severity": "material", "disposition": "held", "resolvedFrom": null, "corroboration": "agrees" },
+    { "oracleId": "O-004", "probeId": "P-001", "state": "confirmed", "severity": "material", "disposition": "held", "resolvedFrom": null, "corroboration": "agrees" },
+    { "oracleId": "O-005", "probeId": "P-001", "state": "confirmed", "severity": "low", "disposition": "held", "resolvedFrom": null, "corroboration": "agrees" }
+  ],
+  "uncitedFindings": ["F-003"],
+  "coverageGaps": [
+    { "rule": "sibling-cross-check", "relevancePredicate": "siblingGroups.parameters non-empty", "satisfactionPredicate": "an oracle whose intent and check address both members of a declared parameter group", "satisfied": false, "severity": "material" }
+  ],
+  "strength": {
+    "denominator": "unique qualified probe identifiers exercised per class, across 1 completed trial",
+    "vector": { "defect": { "caught": 1, "exercised": 1, "rate": 1.0 } },
+    "rawCounts": { "defect": { "caught": 1, "exercised": 1 } },
+    "comparable": false,
+    "note": "Single probe, single trial. Below the declared minimum of 3, so the vector is reported and explicitly non-comparable rather than silently compared."
+  },
+  "remediation": { "revisionCount": 0, "cap": 3, "capSource": "caller-attested" }
+}

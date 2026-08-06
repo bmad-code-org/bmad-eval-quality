@@ -1,0 +1,156 @@
+{
+  "runDate": "2026-07-30",
+  "evaluator": "GPT-5.6 Sol",
+  "reducer": "at least two seeded-defect catches in three valid repetitions",
+  "trials": [
+    {
+      "trialId": "arm1-r1",
+      "valid": true,
+      "actions": [
+        "GET /api/v1/capsules -> 6 capsules",
+        "GET /api/v1/capsules?q=Capsule -> Weekend Brunch Capsule, Formal Gala Capsule",
+        "GET /api/v1/capsules?occasion=casual -> Rainy Day, Weekend Brunch Capsule",
+        "GET /api/v1/capsules?q=Capsule&occasion=casual -> Rainy Day, Weekend Brunch Capsule, Formal Gala Capsule"
+      ],
+      "composedFilterAction": true,
+      "seededDefectDetected": true,
+      "finding": "Only Weekend Brunch Capsule satisfies both filters; the q-only and occasion-only partial matches were also returned."
+    },
+    {
+      "trialId": "arm1-r2",
+      "valid": true,
+      "actions": [
+        "GET /api/v1/capsules -> 6 capsules",
+        "GET /api/v1/capsules?q=Capsule -> Weekend Brunch Capsule, Formal Gala Capsule",
+        "GET /api/v1/capsules?occasion=casual -> Rainy Day, Weekend Brunch Capsule",
+        "GET /api/v1/capsules?q=Capsule&occasion=casual -> Rainy Day, Weekend Brunch Capsule, Formal Gala Capsule"
+      ],
+      "composedFilterAction": true,
+      "seededDefectDetected": true,
+      "finding": "Combined filters use union behavior; two capsules satisfying only one filter were included."
+    },
+    {
+      "trialId": "arm1-r3",
+      "valid": true,
+      "actions": [
+        "GET /api/v1/capsules -> 6 capsules",
+        "GET /api/v1/capsules?q=Capsule -> Weekend Brunch Capsule, Formal Gala Capsule",
+        "GET /api/v1/capsules?occasion=formal -> Formal Gala Capsule, Quokkabird Wedding Set",
+        "GET /api/v1/capsules?q=Capsule&occasion=formal -> Weekend Brunch Capsule, Formal Gala Capsule, Quokkabird Wedding Set"
+      ],
+      "composedFilterAction": true,
+      "seededDefectDetected": true,
+      "finding": "The composed response included a q-only and an occasion-only partial match."
+    },
+    {
+      "trialId": "arm2-r1",
+      "valid": true,
+      "actions": [
+        "GET /api/v1/capsules -> 6 capsules",
+        "GET /api/v1/capsules?q=ZephyrCove -> ZephyrCove Getaway",
+        "GET /api/v1/capsules?occasion=formal -> 2 capsules",
+        "GET /api/v1/capsules?favorite=true -> Rainy Day",
+        "GET /api/v1/capsules?favorite=false -> 5 capsules",
+        "GET /api/v1/capsules?q=Rainy&occasion=rainy&favorite=true -> Rainy Day",
+        "GET /api/v1/capsules?q=ZephyrCove&occasion=wedding -> ZephyrCove Getaway, Quokkabird Wedding Set"
+      ],
+      "composedFilterAction": true,
+      "seededDefectDetected": true,
+      "finding": "The composed query returned two capsules, each satisfying only one supplied filter."
+    },
+    {
+      "trialId": "arm2-r2",
+      "valid": true,
+      "actions": [
+        "GET /api/v1/capsules -> 6 capsules",
+        "GET /api/v1/capsules?q=ZephyrCove -> ZephyrCove Getaway",
+        "GET /api/v1/capsules?q=Quokkabird -> Quokkabird Wedding Set",
+        "GET /api/v1/capsules?occasion=rainy -> Rainy Day",
+        "GET /api/v1/capsules?favorite=true -> Rainy Day",
+        "GET /api/v1/capsules?q=Rainy&occasion=rainy&favorite=true -> Rainy Day",
+        "GET /api/v1/capsules?q=ZephyrCove&occasion=wedding -> ZephyrCove Getaway, Quokkabird Wedding Set"
+      ],
+      "composedFilterAction": true,
+      "seededDefectDetected": true,
+      "finding": "The composed query returned two capsules, each satisfying only one supplied filter."
+    },
+    {
+      "trialId": "arm2-r3",
+      "valid": true,
+      "validityCorrection": "The evaluator set valid=false because it found a non-matching capsule. Under the preregistered rule that is the scored defect, not an infrastructure or isolation invalidation; the orchestrator therefore records this repetition as valid without rerunning it.",
+      "actions": [
+        "GET /api/v1/capsules -> 6 capsules",
+        "GET /api/v1/capsules?q=ZephyrCove -> ZephyrCove Getaway",
+        "GET /api/v1/capsules?q=padded -> Padded Name Test",
+        "GET /api/v1/capsules?occasion=formal -> 2 capsules",
+        "GET /api/v1/capsules?favorite=true -> Rainy Day",
+        "GET /api/v1/capsules?q=Rainy&occasion=casual&favorite=true -> Rainy Day, Weekend Brunch Capsule",
+        "GET /api/v1/capsules?q=NoSuchCapsuleXYZ -> empty"
+      ],
+      "composedFilterAction": true,
+      "seededDefectDetected": true,
+      "finding": "Weekend Brunch Capsule matched only occasion=casual and failed q=Rainy and favorite=true."
+    },
+    {
+      "trialId": "arm3-r1",
+      "valid": true,
+      "actions": [
+        "GET /api/v1/capsules -> 6 capsules",
+        "GET /api/v1/capsules?q=Capsule&occasion=formal -> 3 capsules including two partial matches",
+        "GET /api/v1/capsules?occasion=casual&favorite=true -> Rainy Day, Weekend Brunch Capsule",
+        "GET /api/v1/capsules?q=Capsule&occasion=formal&favorite=false -> 5 capsules; one full match"
+      ],
+      "composedFilterAction": true,
+      "seededDefectDetected": true,
+      "finding": "Multiple composed queries returned capsules satisfying only strict subsets."
+    },
+    {
+      "trialId": "arm3-r2",
+      "valid": true,
+      "actions": [
+        "GET /api/v1/capsules -> 6 capsules",
+        "GET /api/v1/capsules?q=Capsule -> 2 capsules",
+        "GET /api/v1/capsules?occasion=formal -> 2 capsules",
+        "GET /api/v1/capsules?q=Capsule&occasion=formal -> 3 capsules including two partial matches",
+        "GET /api/v1/capsules?q=Rainy&occasion=casual&favorite=true -> Rainy Day, Weekend Brunch Capsule"
+      ],
+      "composedFilterAction": true,
+      "seededDefectDetected": true,
+      "finding": "Composed filtering returned q-only, occasion-only, and favorite-false partial matches."
+    },
+    {
+      "trialId": "arm3-r3",
+      "valid": true,
+      "actions": [
+        "GET /api/v1/capsules -> 6 capsules",
+        "GET /api/v1/capsules?q=Capsule&occasion=formal&favorite=false -> 5 capsules; one full match",
+        "GET /api/v1/capsules?q=ZephyrCove&occasion=formal -> 3 capsules; no full match",
+        "GET /api/v1/capsules?q=Rainy&occasion=casual&favorite=true -> Rainy Day, Weekend Brunch Capsule"
+      ],
+      "composedFilterAction": true,
+      "seededDefectDetected": true,
+      "finding": "Every composed probe exposed union semantics and strict-subset leakage."
+    }
+  ],
+  "armResults": {
+    "arm1": {
+      "validRepetitions": 3,
+      "composedFilterActions": 3,
+      "seededDefectCatches": 3,
+      "reducerResult": "detects"
+    },
+    "arm2": {
+      "validRepetitions": 3,
+      "composedFilterActions": 3,
+      "seededDefectCatches": 3,
+      "reducerResult": "detects"
+    },
+    "arm3": {
+      "validRepetitions": 3,
+      "composedFilterActions": 3,
+      "seededDefectCatches": 3,
+      "reducerResult": "detects"
+    }
+  },
+  "predeterminedBranch": "arm2-detects"
+}

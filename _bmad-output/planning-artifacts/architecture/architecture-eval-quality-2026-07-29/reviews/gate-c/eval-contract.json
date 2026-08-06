@@ -1,0 +1,504 @@
+{
+  "schemaVersion": 1,
+  "contractId": "exports-api-v1",
+  "sourceSpecDigest": "sha256:00000000000000000000000000000000000000000000000000000000000000c1",
+  "linkage": [
+    { "scheme": "gate-c", "id": "REQ-EXPORT-1" },
+    { "scheme": "gate-c-risk", "id": "RISK-RETRACTED-LEAK" },
+    { "scheme": "gate-c-risk", "id": "RISK-PHANTOM-JOB" }
+  ],
+  "permittedInterfaces": [
+    {
+      "logicalId": "exports-api",
+      "kind": "api",
+      "operations": [
+        {
+          "operationId": "submit-export",
+          "method": "POST",
+          "pathTemplate": "/exports",
+          "stateChangeMarker": true,
+          "requestShape": {
+            "path": { "requiredKeys": [], "permittedKeys": [], "types": {} },
+            "query": { "requiredKeys": [], "permittedKeys": [], "types": {} },
+            "header": {
+              "requiredKeys": [],
+              "permittedKeys": ["Idempotency-Key"],
+              "types": { "Idempotency-Key": "string" }
+            },
+            "body": {
+              "requiredKeys": ["datasetId", "filters"],
+              "permittedKeys": ["datasetId", "filters"],
+              "types": { "datasetId": "string", "filters": "object" }
+            }
+          },
+          "responseDescriptor": {
+            "requiredKeys": ["jobId", "state", "statusPath", "submittedFilters"],
+            "permittedKeys": ["jobId", "state", "statusPath", "submittedFilters", "error"],
+            "types": {
+              "jobId": "string",
+              "state": "string",
+              "statusPath": "string",
+              "submittedFilters": "object",
+              "error": "string"
+            },
+            "successIndicator": "/state",
+            "channelRoles": {
+              "/state": "success-indicator",
+              "/error": "diagnostic",
+              "/jobId": "payload",
+              "/statusPath": "payload",
+              "/submittedFilters": "payload"
+            }
+          },
+          "volatilePointers": ["/jobId"]
+        },
+        {
+          "operationId": "get-export",
+          "method": "GET",
+          "pathTemplate": "/exports/{jobId}",
+          "stateChangeMarker": false,
+          "requestShape": {
+            "path": {
+              "requiredKeys": ["jobId"],
+              "permittedKeys": ["jobId"],
+              "types": { "jobId": "string" }
+            },
+            "query": { "requiredKeys": [], "permittedKeys": [], "types": {} },
+            "header": { "requiredKeys": [], "permittedKeys": [], "types": {} },
+            "body": { "requiredKeys": [], "permittedKeys": [], "types": {} }
+          },
+          "responseDescriptor": {
+            "requiredKeys": ["jobId", "state", "submittedFilters"],
+            "permittedKeys": [
+              "jobId", "state", "submittedFilters", "rowCount", "completedAt",
+              "failureReason", "error"
+            ],
+            "types": {
+              "jobId": "string",
+              "state": "string",
+              "submittedFilters": "object",
+              "rowCount": "number",
+              "completedAt": "string",
+              "failureReason": "string",
+              "error": "string"
+            },
+            "successIndicator": "/state",
+            "channelRoles": {
+              "/state": "success-indicator",
+              "/error": "diagnostic",
+              "/failureReason": "diagnostic",
+              "/jobId": "payload",
+              "/submittedFilters": "payload",
+              "/rowCount": "payload",
+              "/completedAt": "payload"
+            }
+          },
+          "volatilePointers": ["/completedAt", "/jobId"]
+        },
+        {
+          "operationId": "list-export-rows",
+          "method": "GET",
+          "pathTemplate": "/exports/{jobId}/rows",
+          "stateChangeMarker": false,
+          "requestShape": {
+            "path": {
+              "requiredKeys": ["jobId"],
+              "permittedKeys": ["jobId"],
+              "types": { "jobId": "string" }
+            },
+            "query": {
+              "requiredKeys": [],
+              "permittedKeys": ["cursor", "limit"],
+              "types": { "cursor": "string", "limit": "number" }
+            },
+            "header": { "requiredKeys": [], "permittedKeys": [], "types": {} },
+            "body": { "requiredKeys": [], "permittedKeys": [], "types": {} }
+          },
+          "responseDescriptor": {
+            "requiredKeys": ["rows"],
+            "permittedKeys": ["rows", "nextCursor", "error"],
+            "types": {
+              "rows": "array",
+              "nextCursor": "string",
+              "error": "string"
+            },
+            "successIndicator": "/rows",
+            "channelRoles": {
+              "/rows": "collection",
+              "/nextCursor": "payload",
+              "/error": "diagnostic"
+            },
+            "collectionLocations": [
+              {
+                "pointer": "/rows",
+                "expectedCardinality": { "mode": "page-bounded", "max": 20 },
+                "referenceSet": "expected-export-rows"
+              }
+            ]
+          },
+          "volatilePointers": ["/nextCursor"]
+        }
+      ]
+    }
+  ],
+  "referenceSets": {
+    "expected-export-rows": {
+      "keys": ["id"],
+      "members": [
+        { "id": "r-001" }, { "id": "r-002" }, { "id": "r-003" }, { "id": "r-004" },
+        { "id": "r-005" }, { "id": "r-006" }, { "id": "r-007" }, { "id": "r-008" },
+        { "id": "r-009" }, { "id": "r-010" }, { "id": "r-011" }, { "id": "r-012" },
+        { "id": "r-013" }, { "id": "r-014" }, { "id": "r-015" }, { "id": "r-016" },
+        { "id": "r-017" }, { "id": "r-018" }, { "id": "r-019" }, { "id": "r-020" }
+      ],
+      "note": "Truncated to the first twenty members for readability; the seeded set holds 97."
+    }
+  },
+  "siblingGroups": {
+    "operations": [["get-export", "list-export-rows"]],
+    "parameters": [["cursor", "limit"]]
+  },
+  "interactionPlan": [
+    {
+      "stepId": "submit",
+      "operationId": "submit-export",
+      "inputBinding": {
+        "body": {
+          "datasetId": { "literal": "ds-7" },
+          "filters": { "matcher": "any" }
+        }
+      }
+    },
+    {
+      "stepId": "poll",
+      "operationId": "get-export",
+      "inputBinding": { "path": { "jobId": { "matcher": "any" } } },
+      "after": "submit"
+    },
+    {
+      "stepId": "first-page",
+      "operationId": "list-export-rows",
+      "inputBinding": {
+        "path": { "jobId": { "matcher": "any" } },
+        "query": { "limit": { "literal": 20 } }
+      },
+      "after": "submit"
+    },
+    {
+      "stepId": "malformed-submit",
+      "operationId": "submit-export",
+      "inputBinding": {
+        "body": {
+          "datasetId": { "literal": "ds-7" },
+          "filters": { "matcher": "type-violating" }
+        }
+      }
+    },
+    {
+      "stepId": "unknown-job-read",
+      "operationId": "get-export",
+      "inputBinding": { "path": { "jobId": { "literal": "job-does-not-exist" } } }
+    },
+    {
+      "stepId": "unknown-job-rows",
+      "operationId": "list-export-rows",
+      "inputBinding": { "path": { "jobId": { "literal": "job-does-not-exist" } } }
+    }
+  ],
+  "behaviors": [
+    {
+      "id": "B-001",
+      "description": "A submitted export job is retrievable with the filters it was submitted with.",
+      "severity": "critical",
+      "observableSuccessCriterion": "An independent read of the job resource returns the job with submittedFilters equal to the filters the submit call carried.",
+      "requirementIds": ["REQ-EXPORT-1"],
+      "riskIds": ["RISK-PHANTOM-JOB"],
+      "oracles": ["O-001"]
+    },
+    {
+      "id": "B-002",
+      "description": "The job state agrees with the transport status and no diagnostic accompanies a live job.",
+      "severity": "material",
+      "observableSuccessCriterion": "The poll response carries transport status 200, a state drawn from the declared closed set, and no error or failureReason field.",
+      "requirementIds": ["REQ-EXPORT-1"],
+      "riskIds": ["RISK-PHANTOM-JOB"],
+      "oracles": ["O-002", "O-003"]
+    },
+    {
+      "id": "B-003",
+      "description": "No retracted row appears in an export page.",
+      "severity": "critical",
+      "observableSuccessCriterion": "Every element of a returned page carries no retractedAt field, and a page that examined no rows does not count as satisfying this.",
+      "requirementIds": ["REQ-EXPORT-1"],
+      "riskIds": ["RISK-RETRACTED-LEAK"],
+      "oracles": ["O-004"]
+    },
+    {
+      "id": "B-004",
+      "description": "Every row in a page is complete and belongs to the expected result set.",
+      "severity": "material",
+      "observableSuccessCriterion": "Every element of a returned page carries all four declared row fields and its id is a member of the declared reference set.",
+      "requirementIds": ["REQ-EXPORT-1"],
+      "riskIds": ["RISK-RETRACTED-LEAK"],
+      "oracles": ["O-005", "O-006"]
+    },
+    {
+      "id": "B-005",
+      "description": "A malformed submit body is rejected rather than accepted.",
+      "severity": "material",
+      "observableSuccessCriterion": "The malformed submit responds with transport status 400 and carries an error field.",
+      "requirementIds": ["REQ-EXPORT-1"],
+      "riskIds": ["RISK-PHANTOM-JOB"],
+      "oracles": ["O-007"]
+    },
+    {
+      "id": "B-006",
+      "description": "Sibling operations reject an unknown job identifier the same way.",
+      "severity": "low",
+      "observableSuccessCriterion": "Both the job read and the rows read respond 404 with an error field for an identifier no job carries.",
+      "requirementIds": ["REQ-EXPORT-1"],
+      "riskIds": ["RISK-PHANTOM-JOB"],
+      "oracles": ["O-008"]
+    }
+  ],
+  "oracles": [
+    {
+      "id": "O-001",
+      "rule": "state-change-read-back",
+      "direction": {
+        "evidenceTargets": [
+          "/interactions/poll/response-body/submittedFilters",
+          "/interactions/submit/call-inputs/body/filters"
+        ],
+        "relation": "deep-equality",
+        "polarity": "expects-hold",
+        "scope": "One submitted job, read through the separate job-read operation rather than through the submit response.",
+        "negativeDomain": "A job resource that echoes filters it was never given, or that reports a job identifier the submit call did not return."
+      },
+      "check": {
+        "op": "deep-equality",
+        "operands": [
+          { "pointer": "/interactions/poll/response-body/submittedFilters" },
+          { "pointer": "/interactions/submit/call-inputs/body/filters" }
+        ]
+      },
+      "polarity": "expects-hold"
+    },
+    {
+      "id": "O-002",
+      "rule": "success-indicator-separation",
+      "direction": {
+        "evidenceTargets": [
+          "/interactions/poll/response-status",
+          "/interactions/poll/response-body/state"
+        ],
+        "relation": "all",
+        "polarity": "expects-hold",
+        "scope": "The transport status and the body's own state field on one poll of a live job.",
+        "negativeDomain": "A body reporting a live state under a failing transport status, or a 200 carrying a state outside the declared set."
+      },
+      "check": {
+        "op": "all",
+        "operands": [
+          {
+            "op": "equality",
+            "operands": [
+              { "pointer": "/interactions/poll/response-status" },
+              { "literal": 200 }
+            ]
+          },
+          {
+            "op": "set-membership",
+            "operands": [
+              { "pointer": "/interactions/poll/response-body/state" },
+              { "literal": ["queued", "running", "succeeded", "failed"] }
+            ]
+          }
+        ]
+      },
+      "polarity": "expects-hold"
+    },
+    {
+      "id": "O-003",
+      "rule": "whole-body",
+      "direction": {
+        "evidenceTargets": [
+          "/interactions/poll/response-body/error",
+          "/interactions/poll/response-body/failureReason",
+          "/interactions/poll/response-body/jobId"
+        ],
+        "relation": "all",
+        "polarity": "expects-hold",
+        "scope": "The whole poll body, not only the state field.",
+        "negativeDomain": "A response carrying a live state alongside a diagnostic field, or omitting the job identifier it is a response about."
+      },
+      "check": {
+        "op": "all",
+        "operands": [
+          { "op": "absence", "operands": [{ "pointer": "/interactions/poll/response-body/error" }] },
+          { "op": "absence", "operands": [{ "pointer": "/interactions/poll/response-body/failureReason" }] },
+          { "op": "existence", "operands": [{ "pointer": "/interactions/poll/response-body/jobId" }] }
+        ]
+      },
+      "polarity": "expects-hold"
+    },
+    {
+      "id": "O-004",
+      "rule": "per-record",
+      "direction": {
+        "evidenceTargets": ["/interactions/first-page/response-body/rows/retractedAt"],
+        "relation": "not",
+        "polarity": "expects-hold",
+        "scope": "Every element of the returned page.",
+        "negativeDomain": "A page that includes a retracted row, and a page that is empty or missing, which examines nothing and must not certify."
+      },
+      "check": {
+        "op": "not",
+        "operands": [
+          {
+            "op": "for-any",
+            "collection": { "pointer": "/interactions/first-page/response-body/rows" },
+            "predicate": {
+              "op": "existence",
+              "operands": [{ "pointer": "@/retractedAt" }]
+            }
+          }
+        ]
+      },
+      "polarity": "expects-hold"
+    },
+    {
+      "id": "O-005",
+      "rule": "per-record",
+      "direction": {
+        "evidenceTargets": ["/interactions/first-page/response-body/rows"],
+        "relation": "for-all",
+        "polarity": "expects-hold",
+        "scope": "Every element of the returned page, not the first.",
+        "negativeDomain": "A page whose first element is complete and whose later elements are not."
+      },
+      "check": {
+        "op": "for-all",
+        "collection": { "pointer": "/interactions/first-page/response-body/rows" },
+        "predicate": {
+          "op": "shape",
+          "operands": [
+            { "pointer": "@/" },
+            { "literal": { "requiredKeys": ["id", "datasetId", "capturedAt", "payload"] } }
+          ]
+        }
+      },
+      "polarity": "expects-hold"
+    },
+    {
+      "id": "O-006",
+      "rule": "omission-and-completeness",
+      "direction": {
+        "evidenceTargets": ["/interactions/first-page/response-body/rows"],
+        "relation": "for-all",
+        "polarity": "expects-hold",
+        "scope": "One page of a larger result set, reconciled against the declared reference set by the injection form rather than the bijection, since a page never equals the set.",
+        "negativeDomain": "A page returning an identifier no expected row carries, which is a fabricated or leaked record."
+      },
+      "check": {
+        "op": "for-all",
+        "collection": { "pointer": "/interactions/first-page/response-body/rows" },
+        "predicate": {
+          "op": "set-membership",
+          "operands": [
+            { "pointer": "@/id" },
+            { "referenceSet": "expected-export-rows" }
+          ]
+        }
+      },
+      "polarity": "expects-hold"
+    },
+    {
+      "id": "O-007",
+      "rule": "malformed-input",
+      "direction": {
+        "evidenceTargets": [
+          "/interactions/malformed-submit/response-status",
+          "/interactions/malformed-submit/response-body/error"
+        ],
+        "relation": "all",
+        "polarity": "expects-hold",
+        "scope": "One submit whose filters field violates its declared type.",
+        "negativeDomain": "A malformed submit accepted with a 202 and a job identifier, which creates a job from input the server could not have understood."
+      },
+      "check": {
+        "op": "all",
+        "operands": [
+          {
+            "op": "equality",
+            "operands": [
+              { "pointer": "/interactions/malformed-submit/response-status" },
+              { "literal": 400 }
+            ]
+          },
+          { "op": "existence", "operands": [{ "pointer": "/interactions/malformed-submit/response-body/error" }] }
+        ]
+      },
+      "polarity": "expects-hold"
+    },
+    {
+      "id": "O-008",
+      "rule": "sibling-cross-check",
+      "direction": {
+        "evidenceTargets": [
+          "/interactions/unknown-job-read/response-status",
+          "/interactions/unknown-job-rows/response-status"
+        ],
+        "relation": "all",
+        "polarity": "expects-hold",
+        "scope": "The two sibling operations that both take a job identifier, given an identifier no job carries.",
+        "negativeDomain": "One sibling returning 404 while the other returns 200 with an empty page, which is the asymmetry this rule exists to find."
+      },
+      "check": {
+        "op": "all",
+        "operands": [
+          {
+            "op": "equality",
+            "operands": [
+              { "pointer": "/interactions/unknown-job-read/response-status" },
+              { "literal": 404 }
+            ]
+          },
+          {
+            "op": "equality",
+            "operands": [
+              { "pointer": "/interactions/unknown-job-rows/response-status" },
+              { "literal": 404 }
+            ]
+          },
+          {
+            "op": "equality",
+            "operands": [
+              { "pointer": "/interactions/unknown-job-read/response-status" },
+              { "pointer": "/interactions/unknown-job-rows/response-status" }
+            ]
+          }
+        ]
+      },
+      "polarity": "expects-hold"
+    }
+  ],
+  "rubrics": [],
+  "forbiddenInputs": [
+    "original-spec",
+    "source-code",
+    "repository",
+    "builder-transcript",
+    "implementation-logs",
+    "comparator-results",
+    "human-labels"
+  ],
+  "testData": {
+    "setup": "Seed dataset ds-7 with 100 rows matching the declared filters, of which exactly 3 carry a retractedAt timestamp. No export job exists at run start.",
+    "cleanup": "Delete every export job created during the run and reset the retractedAt flags."
+  },
+  "budgets": { "maxToolCalls": 60, "maxWallClockMinutes": 15, "maxCostUsd": 1.5 },
+  "safetyLimits": ["No request to any host other than the mapped exports-api target."],
+  "requiredEvidence": ["Request and response pair for every call, in order, including every poll attempt."],
+  "strictMode": true
+}
