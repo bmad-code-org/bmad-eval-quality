@@ -1,8 +1,50 @@
-# eval-quality
+# `eval-quality`
+
+## At its core, `eval-quality` does three things
+
+1. **Compile** — Validate and normalize an eval spec into a machine-readable artifact.
+
+2. **Seal** — Render the Markdown brief for the independent evaluator while hiding the planted bug and the scoring answer.
+
+3. **Score** — Compare the evaluator’s completed findings with the hidden bug signature to determine whether the bug was actually caught.
+
+## What is the eval spec?
+
+It is the test.
+
+More precisely, it is the evaluator’s instructions for how to expose a failure and what evidence counts as finding it.
+
+It defines:
+
+* the behavior being evaluated;
+* the probes the evaluator should perform;
+* the evidence it should inspect;
+* the negative behavior it must rule out;
+* the oracle that determines pass or fail.
+
+For example:
+
+> Send malformed input.
+> Confirm the request fails.
+> Inspect the full response body.
+> Confirm the expected error.
+> Verify that no record was created.
+
+The planted bug might be:
+
+> The API returns the correct error but still creates the record.
+
+A weak eval checks only the response and misses the bug.
+
+A strong eval checks the response **and** persistence, so it catches the bug.
+
+## Caveman version
+
+> **Write the eval. Hide the bug. See if the eval catches it.**
+
+## Elaboration
 
 **Compile disciplined agent eval contracts, then check whether those contracts can catch known bugs.**
-
-> **Status: architecture signed off, implementation not started, package not yet published.** The compile-and-seal half is epic-ready after Gate C and Gate D; contract-strength scoring still depends on its reference reducer. What the experiments did and did not show is in [Evidence and limitations](#evidence-and-limitations), including two preregistered verdicts that did not pass.
 
 An agent can produce an answer that reads as correct and is materially wrong. An eval can make the same mistake.
 
