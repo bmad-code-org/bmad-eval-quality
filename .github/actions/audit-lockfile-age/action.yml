@@ -1,0 +1,36 @@
+name: 'Audit lockfile publication age'
+description: >
+  Runs scripts/audit-lockfile-age.mjs before `npm ci` and asserts its printed effective clock is
+  within 24h of the runner's real time, so a clock-parsing bug in the script cannot silently make
+  every entry look permanently "old enough" (or make the audit itself look like it never ran).
+
+inputs:
+  lockfile:
+    description: 'Path to the package-lock.json to audit.'
+    required: false
+    default: 'package-lock.json'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Audit lockfile publication age
+      shell: bash
+      run: |
+        set +e
+        output="$(node scripts/audit-lockfile-age.mjs --lockfile "${{ inputs.lockfile }}")"
+        exit_status=$?
+        set -e
+        echo "$output"
+        effective_clock="$(printf '%s\n' "$output" | sed -n 's/^Effective clock: //p')"
+        if [ -z "$effective_clock" ]; then
+          echo "audit did not print an effective clock line" >&2
+          exit 1
+        fi
+        node -e "
+          const eff = new Date(process.argv[1]).getTime();
+          if (Number.isNaN(eff)) { console.error('effective clock is unparseable: ' + process.argv[1]); process.exit(1); }
+          const driftHours = Math.abs(Date.now() - eff) / 3600000;
+          if (driftHours > 24) { console.error('effective clock drifted ' + driftHours.toFixed(2) + 'h from real time (date -u)'); process.exit(1); }
+          console.log('effective clock ok: drift ' + driftHours.toFixed(2) + 'h from date -u');
+        " "$effective_clock"
+        exit $exit_status
