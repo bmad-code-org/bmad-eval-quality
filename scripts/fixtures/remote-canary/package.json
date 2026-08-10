@@ -1,0 +1,8 @@
+{
+  "name": "remote-canary-fixture",
+  "version": "0.0.0",
+  "private": true,
+  "dependencies": {
+    "is-number": "https://github.com/jonschlinkert/is-number/archive/98e8ff1da1a89f93d1397a24d7413ed15421c139.tar.gz"
+  }
+}

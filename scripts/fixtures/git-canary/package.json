@@ -1,0 +1,8 @@
+{
+  "name": "git-canary-fixture",
+  "version": "0.0.0",
+  "private": true,
+  "dependencies": {
+    "is-number": "github:jonschlinkert/is-number#98e8ff1da1a89f93d1397a24d7413ed15421c139"
+  }
+}

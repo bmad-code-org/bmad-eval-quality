@@ -4,8 +4,12 @@ on:
   pull_request:
     branches: [main]
 
+env:
+  NPM_VERSION: "11.18.0"
+
 jobs:
-  lint-typecheck-test:
+  validate-and-build:
+    name: Node 24 (validate + build)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -15,27 +19,222 @@ jobs:
           node-version-file: ".nvmrc"
           cache: "npm"
 
+      - name: Assert npm 11.18.0
+        run: |
+          npm i -g npm@${{ env.NPM_VERSION }}
+          actual="$(npm --version)"
+          if [ "$actual" != "${{ env.NPM_VERSION }}" ]; then
+            echo "expected npm ${{ env.NPM_VERSION }}, got $actual" >&2
+            exit 1
+          fi
+
+      - name: Audit lockfile publication age
+        run: |
+          set +e
+          output="$(node scripts/audit-lockfile-age.mjs)"
+          exit_status=$?
+          set -e
+          echo "$output"
+          effective_clock="$(printf '%s\n' "$output" | sed -n 's/^Effective clock: //p')"
+          if [ -z "$effective_clock" ]; then
+            echo "audit did not print an effective clock line" >&2
+            exit 1
+          fi
+          node -e "
+            const eff = new Date(process.argv[1]).getTime();
+            if (Number.isNaN(eff)) { console.error('effective clock is unparseable: ' + process.argv[1]); process.exit(1); }
+            const driftHours = Math.abs(Date.now() - eff) / 3600000;
+            if (driftHours > 24) { console.error('effective clock drifted ' + driftHours.toFixed(2) + 'h from real time (date -u)'); process.exit(1); }
+            console.log('effective clock ok: drift ' + driftHours.toFixed(2) + 'h from date -u');
+          " "$effective_clock"
+          exit $exit_status
+
       - name: Install dependencies
         run: npm ci
 
-      - name: Lint
-        run: npm run lint
-
-      - name: Typecheck
-        run: npm run typecheck
+      - name: Licence scan
+        run: node scripts/check-licenses.mjs
 
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
-      - name: Lint architecture spine
-        run: npm run lint:spine
-
       - name: Test spine linter
         run: pip install pytest && python -m pytest scripts/spine-lint/tests -q
+
+      - name: Validate (typecheck, lint, check:docs, lint:spine, test)
+        run: npm run validate
+
+      - name: Build
+        run: npm run build
+
+  floor:
+    name: Node 22.20.0 (floor)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22.20.0"
+          cache: "npm"
+
+      - name: Assert npm 11.18.0
+        run: |
+          npm i -g npm@${{ env.NPM_VERSION }}
+          actual="$(npm --version)"
+          if [ "$actual" != "${{ env.NPM_VERSION }}" ]; then
+            echo "expected npm ${{ env.NPM_VERSION }}, got $actual" >&2
+            exit 1
+          fi
+
+      - name: Audit lockfile publication age
+        run: |
+          set +e
+          output="$(node scripts/audit-lockfile-age.mjs)"
+          exit_status=$?
+          set -e
+          echo "$output"
+          effective_clock="$(printf '%s\n' "$output" | sed -n 's/^Effective clock: //p')"
+          if [ -z "$effective_clock" ]; then
+            echo "audit did not print an effective clock line" >&2
+            exit 1
+          fi
+          node -e "
+            const eff = new Date(process.argv[1]).getTime();
+            if (Number.isNaN(eff)) { console.error('effective clock is unparseable: ' + process.argv[1]); process.exit(1); }
+            const driftHours = Math.abs(Date.now() - eff) / 3600000;
+            if (driftHours > 24) { console.error('effective clock drifted ' + driftHours.toFixed(2) + 'h from real time (date -u)'); process.exit(1); }
+            console.log('effective clock ok: drift ' + driftHours.toFixed(2) + 'h from date -u');
+          " "$effective_clock"
+          exit $exit_status
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
 
       - name: Test
         run: npm run test
 
-      - name: Build
-        run: npm run build
+  canary-age:
+    name: "Canary: lockfile age audit fails on a young entry"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: ".nvmrc"
+          cache: "npm"
+
+      - name: Assert npm 11.18.0
+        run: |
+          npm i -g npm@${{ env.NPM_VERSION }}
+          actual="$(npm --version)"
+          if [ "$actual" != "${{ env.NPM_VERSION }}" ]; then
+            echo "expected npm ${{ env.NPM_VERSION }}, got $actual" >&2
+            exit 1
+          fi
+
+      - name: Assert the audit fails, naming the fixture's young entry
+        run: |
+          set +e
+          published="$(npm view zod@4.4.3 time --json | node -e '
+            let raw = "";
+            process.stdin.on("data", (c) => { raw += c })
+            process.stdin.on("end", () => { console.log(JSON.parse(raw)["4.4.3"]) })
+          ')"
+          pinned_now="$(node -e "
+            const p = new Date(process.argv[1]);
+            p.setUTCDate(p.getUTCDate() + 1);
+            console.log(p.toISOString());
+          " "$published")"
+          echo "zod@4.4.3 published $published; pinning audit clock to $pinned_now"
+          output="$(node scripts/audit-lockfile-age.mjs --lockfile scripts/fixtures/age-canary/package-lock.json --now "$pinned_now" 2>&1)"
+          exit_status=$?
+          set -e
+          echo "$output"
+          if [ $exit_status -eq 0 ]; then
+            echo "expected the audit to fail (age-window policy reason), but it passed" >&2
+            exit 1
+          fi
+          echo "$output" | grep -q "zod@4.4.3" || { echo "audit failed for the wrong reason (did not name zod@4.4.3)" >&2; exit 1; }
+          echo "canary passed: audit correctly failed naming zod@4.4.3"
+
+  canary-git:
+    name: "Canary: npm ci blocks a git dependency"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: ".nvmrc"
+          cache: "npm"
+
+      - name: Assert npm 11.18.0
+        run: |
+          npm i -g npm@${{ env.NPM_VERSION }}
+          actual="$(npm --version)"
+          if [ "$actual" != "${{ env.NPM_VERSION }}" ]; then
+            echo "expected npm ${{ env.NPM_VERSION }}, got $actual" >&2
+            exit 1
+          fi
+
+      - name: Copy the live root policy into the fixture (project .npmrc is not inherited across directories)
+        run: cp "$GITHUB_WORKSPACE/.npmrc" scripts/fixtures/git-canary/.npmrc
+
+      - name: Assert npm ci is blocked for the git-dependency policy reason
+        working-directory: scripts/fixtures/git-canary
+        run: |
+          set +e
+          output="$(npm ci 2>&1)"
+          exit_status=$?
+          set -e
+          echo "$output"
+          if [ $exit_status -eq 0 ]; then
+            echo "expected npm ci to fail (git dependencies blocked), but it succeeded" >&2
+            exit 1
+          fi
+          echo "$output" | grep -q "EALLOWGIT" || { echo "npm ci failed for the wrong reason (expected EALLOWGIT)" >&2; exit 1; }
+          echo "canary passed: npm ci correctly blocked the git dependency (EALLOWGIT)"
+
+  canary-remote:
+    name: "Canary: npm ci blocks a remote-tarball dependency"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: ".nvmrc"
+          cache: "npm"
+
+      - name: Assert npm 11.18.0
+        run: |
+          npm i -g npm@${{ env.NPM_VERSION }}
+          actual="$(npm --version)"
+          if [ "$actual" != "${{ env.NPM_VERSION }}" ]; then
+            echo "expected npm ${{ env.NPM_VERSION }}, got $actual" >&2
+            exit 1
+          fi
+
+      - name: Copy the live root policy into the fixture (project .npmrc is not inherited across directories)
+        run: cp "$GITHUB_WORKSPACE/.npmrc" scripts/fixtures/remote-canary/.npmrc
+
+      - name: Assert npm ci is blocked for the remote-tarball policy reason
+        working-directory: scripts/fixtures/remote-canary
+        run: |
+          set +e
+          output="$(npm ci 2>&1)"
+          exit_status=$?
+          set -e
+          echo "$output"
+          if [ $exit_status -eq 0 ]; then
+            echo "expected npm ci to fail (remote-tarball dependencies blocked), but it succeeded" >&2
+            exit 1
+          fi
+          echo "$output" | grep -q "EALLOWREMOTE" || { echo "npm ci failed for the wrong reason (expected EALLOWREMOTE)" >&2; exit 1; }
+          echo "canary passed: npm ci correctly blocked the remote-tarball dependency (EALLOWREMOTE)"
