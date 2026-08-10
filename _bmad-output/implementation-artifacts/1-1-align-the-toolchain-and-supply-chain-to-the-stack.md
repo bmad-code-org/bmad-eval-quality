@@ -49,10 +49,10 @@ so that every subsequent story builds on the verified dependency graph and the l
 - [x] Task 5: Housekeeping verification (AC: 1)
   - [x] Confirm `package.json` description and keywords carry no runner/assertion-DSL/grader/trajectory language (current text is already correct; verify rather than rewrite)
   - [x] Confirm the `src/index.ts` barrel comment matches the compile-and-seal product (already rewritten; verify)
-- [ ] Task 6: Prove the whole gate (AC: 1-6)
+- [x] Task 6: Prove the whole gate (AC: 1-6)
   - [x] `npm run validate` green locally on Node 24
-  - [ ] Open a PR (pr-checks triggers on `pull_request` to main only; a bare branch push runs nothing) and confirm every new job passes (Node 24 validate+build, floor job, age audit, licence scan, npm assertions) and every canary fails for its asserted reason
-  - [ ] Exercise the publish guard once by manual dispatch with the repository variable unset and confirm the guard step fails before any install
+  - [x] Open a PR (pr-checks triggers on `pull_request` to main only; a bare branch push runs nothing) and confirm every new job passes (Node 24 validate+build, floor job, age audit, licence scan, npm assertions) and every canary fails for its asserted reason
+  - [x] Exercise the publish guard once by manual dispatch with the repository variable unset and confirm the guard step fails before any install
   - [x] Record resolved versions and the lock-entry count in the Dev Agent Record (the spine's verified figure of 124 entries is historical, from 2026-07-29 before TypeScript 7 and Zod entered the graph; a fresh resolve of this story's pin set lands around 156, dominated by TS 7's ~20 platform binaries; treat large deviations from ~156, not from 124, as a resolution anomaly)
 
 ## Dev Notes
@@ -157,6 +157,8 @@ Claude Sonnet 5 (claude-sonnet-5)
 - `scripts/check-licenses.mjs` and `scripts/audit-lockfile-age.mjs` were exercised against synthetic red-path fixtures (nested-dependency GPL violation, AND/OR/WITH/missing licence shapes, an unfetchable package name, and a real package pinned young via `--now`) before being pointed at the real lockfile; all reds correctly failed with the right reason, then the real lockfile passed clean.
 - Canary shell logic (age/git/remote) was dry-run locally under `bash` byte-for-byte matching the workflow's embedded scripts, against the actual `scripts/fixtures/*` fixtures, before being committed: `EALLOWGIT` and `EALLOWREMOTE` are npm's real error codes for the git/remote-blocked cases, confirmed by execution, not assumed.
 - `npm run validate` (typecheck, lint, check:docs, lint:spine, test) and `npm run build` are green locally on Node 24.18.0 / npm 11.18.0. `npm run test:spine-lint` (45 pytest cases) also green.
+- Live CI proof, PR #6 (`feat/epic1-story1` -> `main`, https://github.com/bmad-code-org/bmad-eval-quality/pull/6): all 6 checks passed - gitleaks, `Node 24 (validate + build)`, `Node 22.20.0 (floor)`, and all three canaries (`Canary: lockfile age audit fails on a young entry`, `Canary: npm ci blocks a git dependency`, `Canary: npm ci blocks a remote-tarball dependency`). PR squash-merged to `main`.
+- Publish guard proof: dispatched `publish.yml` off `main` (run 31439285309) with the `PUBLICATION_UNBLOCKED` repository variable unset. The `Publication guard (AD-18)` step failed at position 1 of 13 - before checkout, npm setup, or any install step ran - with the exact message "Publication is blocked: the AD-18 intellectual-property question is not yet resolved in writing." Confirms manual `workflow_dispatch` alone does not bypass the guard.
 
 ### Completion Notes List
 
@@ -184,4 +186,4 @@ Claude Sonnet 5 (claude-sonnet-5)
 
 ## Change Log
 
-- 2026-08-10: Implemented Tasks 1-5 (dependency pins, TS 7 migration, CI supply-chain hardening with two new audit scripts and three canary jobs, publish.yml guard). `npm run validate` and `npm run build` green locally on Node 24. Task 6's live-CI proof (open PR, exercise publish guard) in progress.
+- 2026-08-10: Implemented Tasks 1-6. Dependency pins, TS 7 migration, CI supply-chain hardening (two new audit scripts, three canary jobs), and publish.yml's AD-18 guard. `npm run validate` and `npm run build` green locally on Node 24. Opened PR #6, all 6 checks passed live on GitHub Actions, squash-merged to `main`. Dispatched `publish.yml` off `main` and confirmed the AD-18 guard blocks it before any install. All acceptance criteria satisfied; story ready for review.
