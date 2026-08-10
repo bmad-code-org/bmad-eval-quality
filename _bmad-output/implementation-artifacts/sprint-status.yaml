@@ -49,7 +49,7 @@ story_location: _bmad-output/implementation-artifacts
 
 development_status:
   epic-1: in-progress
-  1-1-align-the-toolchain-and-supply-chain-to-the-stack: in-progress
+  1-1-align-the-toolchain-and-supply-chain-to-the-stack: review
   1-2-canonical-digest-computation-and-the-hashed-artifact-value-domain: backlog
   1-3-the-eval-contract-schema-declarations-operand-grammar-and-plan-grammar: backlog
   1-4-the-remaining-interchange-artifact-schemas: backlog

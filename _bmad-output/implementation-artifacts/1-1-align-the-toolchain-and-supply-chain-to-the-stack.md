@@ -4,7 +4,7 @@ baseline_commit: 75b956dea2658dc51149176d297e02d8ded7a78d
 
 # Story 1.1: Align the toolchain and supply chain to the Stack
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 
