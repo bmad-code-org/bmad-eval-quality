@@ -4,7 +4,7 @@ baseline_commit: 75b956dea2658dc51149176d297e02d8ded7a78d
 
 # Story 1.1: Align the toolchain and supply chain to the Stack
 
-Status: review
+Status: done
 
 ## Story
 
@@ -182,7 +182,15 @@ An independent Claude Code peer session reviewed the merged PR #6 by execution (
 - **L7:** see the `--noUncheckedSideEffectImports` debug-log entry above.
 - **L1 (AC-2 wording says the age audit runs "before every `npm ci`" and all three canaries run "a real `npm ci`"):** both are deliberate, documented deviations (canary-age's subject is the audit script, not `npm ci`; canary-git/remote don't need the age audit to prove a git/remote block) - noted here since the skill restricts which story sections this workflow may edit and the Acceptance Criteria text itself is not one of them.
 
-All fixes re-verified: `npm run validate` and `npm run build` green; `check-licenses.mjs`/`audit-lockfile-age.mjs` still pass clean (155 entries) against the real lockfile; every canary (age/git/remote/licence) dry-run locally reproduces the exact CI shell logic byte-for-byte. Held locally on branch `fix/story-1-1-review-findings` per explicit instruction (not pushed yet, not merged) so it can be reviewed locally before going up as its own PR.
+All fixes re-verified: `npm run validate` and `npm run build` green; `check-licenses.mjs`/`audit-lockfile-age.mjs` still pass clean (155 entries) against the real lockfile; every canary (age/git/remote/licence) dry-run locally reproduces the exact CI shell logic byte-for-byte.
+
+PR #9 (`fix/story-1-1-review-findings` -> `main`): all 8 CI checks passed (gitleaks, Node 24, floor, four canaries including the new `canary-licence`). Squash-merged. A conflict with `main` (dependabot's `#7` had independently bumped the same `actions/checkout`/`setup-node` occurrences from `@v4` to the tag `@v7`, which this PR had already SHA-pinned) was resolved by keeping the SHA-pinned versions - the same v7, just pinned precisely - and re-verified green before merging.
+
+PR #10 (`docs/learning-path` -> `main`, the new `_bmad-output/project-knowledge/learning-path-step-by-step.md`): all 8 checks passed, clean merge, no conflicts. Squash-merged.
+
+Fresh `npm ci` + `npm run validate` on the final merged `main` (commit `577e0b3`): green.
+
+Also merged to `main` during this session, outside Story 1.1's own acceptance criteria (a separate infra request in the same working session): PR #8 adds `.github/workflows/pr-gate.yml`, an event-driven single-status CI gate (ported from an adjacent project), and PR #7 is dependabot's routine action-version bump. Neither changes anything this story's ACs cover; noted here only because both landed on `main` between PR #6 and PR #9/#10 and are visible in the commit log.
 
 ### Completion Notes List
 
@@ -222,4 +230,6 @@ All fixes re-verified: `npm run validate` and `npm run build` green; `check-lice
 ## Change Log
 
 - 2026-08-10: Implemented Tasks 1-6. Dependency pins, TS 7 migration, CI supply-chain hardening (two new audit scripts, three canary jobs), and publish.yml's AD-18 guard. `npm run validate` and `npm run build` green locally on Node 24. Opened PR #6, all 6 checks passed live on GitHub Actions, squash-merged to `main`. Dispatched `publish.yml` off `main` and confirmed the AD-18 guard blocks it before any install. All acceptance criteria satisfied; story ready for review.
-- 2026-08-10: Addressed a peer code review of merged PR #6 (2 High, 8 Medium, 7 Low findings, all execution-verified). Fixed both High findings (a silent-no-op entry-point bug in both audit scripts; the missing licence-gate canary) and all 8 Medium findings (scoped-package dependency-path resolution, `--window-days` validation, unparseable-timestamp handling, aliased-dependency lookup, a wrong-reason canary pass, off-registry `resolved` validation, inconsistent action pinning, and an overclaimed local-publish-bypass fix now backed by npm trusted publishing). Fixed 6 of 7 Low findings (fetch timeout, non-retryable-4xx handling, composite-action extraction, `link` entry filtering, `.npmrc` completeness assertion, an `--showConfig` trace note); the 7th is a documented, deliberate AC-wording note. Held on branch `fix/story-1-1-review-findings`, not yet pushed, pending local review.
+- 2026-08-10: Addressed a peer code review of merged PR #6 (2 High, 8 Medium, 7 Low findings, all execution-verified). Fixed both High findings (a silent-no-op entry-point bug in both audit scripts; the missing licence-gate canary) and all 8 Medium findings (scoped-package dependency-path resolution, `--window-days` validation, unparseable-timestamp handling, aliased-dependency lookup, a wrong-reason canary pass, off-registry `resolved` validation, inconsistent action pinning, and an overclaimed local-publish-bypass fix now backed by npm trusted publishing). Fixed 6 of 7 Low findings (fetch timeout, non-retryable-4xx handling, composite-action extraction, `link` entry filtering, `.npmrc` completeness assertion, an `--showConfig` trace note); the 7th is a documented, deliberate AC-wording note. Opened PR #9, all 8 checks passed, resolved one merge conflict against a concurrent dependabot bump (kept the SHA pins), squash-merged to `main`.
+- 2026-08-10: Added `_bmad-output/project-knowledge/learning-path-step-by-step.md` (PR #10, all 8 checks passed, clean merge, squash-merged to `main`) - a fast-path companion doc to this story file, following the couture-cast learning-path template.
+- 2026-08-10: Fresh `npm ci` + `npm run validate` on final merged `main` (commit `577e0b3`) green. Story complete; status set to `done`.
