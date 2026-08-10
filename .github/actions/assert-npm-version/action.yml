@@ -1,0 +1,26 @@
+name: 'Assert npm version'
+description: >
+  Installs an exact global npm version and asserts `npm --version` prints exactly that, before any
+  dependency install. Single source of truth for the pin, so pr-checks.yml and publish.yml cannot
+  drift the way they did before this action existed (one hardcoded, one via env.NPM_VERSION).
+
+inputs:
+  version:
+    description: 'Exact npm version to install and assert (no ranges).'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Assert npm ${{ inputs.version }}
+      shell: bash
+      run: |
+        # The global npm upgrade itself runs via the runner's bundled npm, outside the project
+        # directory; it is exempt from this repo's own age-audit/licence policies and is not the
+        # subject of the assertion below - only the *result* (npm --version) is.
+        npm i -g npm@${{ inputs.version }}
+        actual="$(npm --version)"
+        if [ "$actual" != "${{ inputs.version }}" ]; then
+          echo "expected npm ${{ inputs.version }}, got $actual" >&2
+          exit 1
+        fi

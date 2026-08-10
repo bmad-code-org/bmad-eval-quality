@@ -10,6 +10,7 @@
 //   node scripts/check-licenses.mjs [--lockfile <path>]
 
 import { readFile } from 'node:fs/promises'
+import { pathToFileURL } from 'node:url'
 
 const ALLOWLIST = new Set([
 	'MIT',
@@ -19,6 +20,8 @@ const ALLOWLIST = new Set([
 	'BSD-3-Clause',
 	'0BSD',
 ])
+
+const REGISTRY_PREFIX = 'https://registry.npmjs.org/'
 
 function parseArgs(argv) {
 	const args = { lockfile: 'package-lock.json' }
@@ -106,13 +109,24 @@ function licenseStringOf(meta) {
 
 // Resolves how npm's hoisting algorithm would look up dependency `name` starting from the package
 // at `fromPath`: its own node_modules first, then each ancestor's, ending at the root.
+//
+// Must split on "/node_modules/" boundaries, not bare "/": a scoped package's path
+// (node_modules/@scope/name) has three segments per nesting level, not two, so striding by two
+// undershoots every scoped ancestor and never reaches the root scope "". That silently drops the
+// dependency edge for anything nested under a scoped package - including every @biomejs/cli-*
+// platform binary, exactly the case AD-25 calls out - and findDependencyPath falls back to the raw
+// lockfile key instead of the real require-chain.
 function ancestorScopesOf(pkgPath) {
 	if (pkgPath === '') return ['']
-	const segments = pkgPath.split('/')
-	const scopes = [pkgPath]
-	for (let i = segments.length - 2; i >= 0; i -= 2) {
-		scopes.push(segments.slice(0, i).join('/'))
+	const scopes = []
+	let scope = pkgPath
+	for (;;) {
+		scopes.push(scope)
+		const boundary = scope.lastIndexOf('/node_modules/')
+		if (boundary === -1) break
+		scope = scope.slice(0, boundary)
 	}
+	scopes.push('')
 	return scopes
 }
 
@@ -180,18 +194,41 @@ function findDependencyPath(packages, edges, targetPath) {
 
 export function checkLicenses(lockfile) {
 	const packages = lockfile.packages ?? {}
-	const entries = Object.entries(packages).filter(([pkgPath]) => pkgPath !== '')
+	// A `link: true` entry is a workspace symlink, not an installed artifact with its own licence -
+	// audit-lockfile-age.mjs already excludes these; this script should agree instead of flagging a
+	// symlink for a `license` field it was never going to have.
+	const entries = Object.entries(packages).filter(
+		([pkgPath, meta]) => pkgPath !== '' && !meta.link,
+	)
 
 	const violations = []
 	for (const [pkgPath, meta] of entries) {
-		const license = licenseStringOf(meta)
-		if (!isAllowed(license)) {
+		const name = meta.name ?? pkgPath.split('node_modules/').pop()
+		const version = meta.version ?? '(unknown)'
+
+		// A lockfile edit could relabel a package's `license` field while `resolved` (or `npm ci`
+		// itself) still pulls the tarball from somewhere else entirely. Validating the self-reported
+		// licence string without also pinning `resolved` to the real registry would validate the
+		// wrong artifact and pass a substituted package.
+		if (
+			!(
+				typeof meta.resolved === 'string' &&
+				meta.resolved.startsWith(REGISTRY_PREFIX)
+			)
+		) {
 			violations.push({
 				path: pkgPath,
-				name: meta.name ?? pkgPath.split('node_modules/').pop(),
-				version: meta.version ?? '(unknown)',
-				license,
+				name,
+				version,
+				license: meta.license ?? null,
+				reason: `resolved=${JSON.stringify(meta.resolved)} is not the npm registry`,
 			})
+			continue
+		}
+
+		const license = licenseStringOf(meta)
+		if (!isAllowed(license)) {
+			violations.push({ path: pkgPath, name, version, license })
 		}
 	}
 
@@ -224,14 +261,17 @@ async function main() {
 	)
 	for (const v of violations) {
 		console.error(
-			`  - ${v.name}@${v.version}: license=${JSON.stringify(v.license)}`,
+			`  - ${v.name}@${v.version}: license=${JSON.stringify(v.license)}${v.reason ? ` (${v.reason})` : ''}`,
 		)
 		console.error(`    dependency path: ${v.dependencyPath}`)
 	}
 	process.exitCode = 1
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+// pathToFileURL percent-encodes the same way import.meta.url does (spaces, non-ASCII, etc.); a raw
+// `file://${process.argv[1]}` template comparison silently mismatches on such paths, so main() never
+// runs and the script exits 0 with no output - a gate switched off, not merely idle.
+if (import.meta.url === pathToFileURL(process.argv[1]).href) {
 	main().catch((err) => {
 		console.error(err.stack ?? String(err))
 		process.exitCode = 1
