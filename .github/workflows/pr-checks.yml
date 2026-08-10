@@ -11,43 +11,20 @@ jobs:
   validate-and-build:
     name: Node 24 (validate + build)
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version-file: ".nvmrc"
           cache: "npm"
 
-      - name: Assert npm 11.18.0
-        run: |
-          npm i -g npm@${{ env.NPM_VERSION }}
-          actual="$(npm --version)"
-          if [ "$actual" != "${{ env.NPM_VERSION }}" ]; then
-            echo "expected npm ${{ env.NPM_VERSION }}, got $actual" >&2
-            exit 1
-          fi
+      - uses: ./.github/actions/assert-npm-version
+        with:
+          version: ${{ env.NPM_VERSION }}
 
-      - name: Audit lockfile publication age
-        run: |
-          set +e
-          output="$(node scripts/audit-lockfile-age.mjs)"
-          exit_status=$?
-          set -e
-          echo "$output"
-          effective_clock="$(printf '%s\n' "$output" | sed -n 's/^Effective clock: //p')"
-          if [ -z "$effective_clock" ]; then
-            echo "audit did not print an effective clock line" >&2
-            exit 1
-          fi
-          node -e "
-            const eff = new Date(process.argv[1]).getTime();
-            if (Number.isNaN(eff)) { console.error('effective clock is unparseable: ' + process.argv[1]); process.exit(1); }
-            const driftHours = Math.abs(Date.now() - eff) / 3600000;
-            if (driftHours > 24) { console.error('effective clock drifted ' + driftHours.toFixed(2) + 'h from real time (date -u)'); process.exit(1); }
-            console.log('effective clock ok: drift ' + driftHours.toFixed(2) + 'h from date -u');
-          " "$effective_clock"
-          exit $exit_status
+      - uses: ./.github/actions/audit-lockfile-age
 
       - name: Install dependencies
         run: npm ci
@@ -55,7 +32,7 @@ jobs:
       - name: Licence scan
         run: node scripts/check-licenses.mjs
 
-      - uses: actions/setup-python@v7
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
         with:
           python-version: "3.12"
 
@@ -71,43 +48,20 @@ jobs:
   floor:
     name: Node 22.20.0 (floor)
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: "22.20.0"
           cache: "npm"
 
-      - name: Assert npm 11.18.0
-        run: |
-          npm i -g npm@${{ env.NPM_VERSION }}
-          actual="$(npm --version)"
-          if [ "$actual" != "${{ env.NPM_VERSION }}" ]; then
-            echo "expected npm ${{ env.NPM_VERSION }}, got $actual" >&2
-            exit 1
-          fi
+      - uses: ./.github/actions/assert-npm-version
+        with:
+          version: ${{ env.NPM_VERSION }}
 
-      - name: Audit lockfile publication age
-        run: |
-          set +e
-          output="$(node scripts/audit-lockfile-age.mjs)"
-          exit_status=$?
-          set -e
-          echo "$output"
-          effective_clock="$(printf '%s\n' "$output" | sed -n 's/^Effective clock: //p')"
-          if [ -z "$effective_clock" ]; then
-            echo "audit did not print an effective clock line" >&2
-            exit 1
-          fi
-          node -e "
-            const eff = new Date(process.argv[1]).getTime();
-            if (Number.isNaN(eff)) { console.error('effective clock is unparseable: ' + process.argv[1]); process.exit(1); }
-            const driftHours = Math.abs(Date.now() - eff) / 3600000;
-            if (driftHours > 24) { console.error('effective clock drifted ' + driftHours.toFixed(2) + 'h from real time (date -u)'); process.exit(1); }
-            console.log('effective clock ok: drift ' + driftHours.toFixed(2) + 'h from date -u');
-          " "$effective_clock"
-          exit $exit_status
+      - uses: ./.github/actions/audit-lockfile-age
 
       - name: Install dependencies
         run: npm ci
@@ -121,22 +75,18 @@ jobs:
   canary-age:
     name: "Canary: lockfile age audit fails on a young entry"
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version-file: ".nvmrc"
           cache: "npm"
 
-      - name: Assert npm 11.18.0
-        run: |
-          npm i -g npm@${{ env.NPM_VERSION }}
-          actual="$(npm --version)"
-          if [ "$actual" != "${{ env.NPM_VERSION }}" ]; then
-            echo "expected npm ${{ env.NPM_VERSION }}, got $actual" >&2
-            exit 1
-          fi
+      - uses: ./.github/actions/assert-npm-version
+        with:
+          version: ${{ env.NPM_VERSION }}
 
       - name: Assert the audit fails, naming the fixture's young entry
         run: |
@@ -160,31 +110,38 @@ jobs:
             echo "expected the audit to fail (age-window policy reason), but it passed" >&2
             exit 1
           fi
-          echo "$output" | grep -q "zod@4.4.3" || { echo "audit failed for the wrong reason (did not name zod@4.4.3)" >&2; exit 1; }
-          echo "canary passed: audit correctly failed naming zod@4.4.3"
+          # Match the age-specific line, not a bare "zod@4.4.3" substring: the unfetchable-metadata
+          # branch (a registry outage, say) prints the byte-identical "zod@4.4.3 (node_modules/zod)"
+          # shape and would otherwise pass this canary for the wrong reason.
+          echo "$output" | grep -q "published inside the 7-day window" || { echo "audit failed for the wrong reason (no age-window violation reported)" >&2; exit 1; }
+          echo "$output" | grep -q "zod@4.4.3 published" || { echo "audit failed for the wrong reason (did not name zod@4.4.3 as published/young)" >&2; exit 1; }
+          echo "canary passed: audit correctly failed naming zod@4.4.3 as published inside the age window"
 
   canary-git:
     name: "Canary: npm ci blocks a git dependency"
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version-file: ".nvmrc"
           cache: "npm"
 
-      - name: Assert npm 11.18.0
-        run: |
-          npm i -g npm@${{ env.NPM_VERSION }}
-          actual="$(npm --version)"
-          if [ "$actual" != "${{ env.NPM_VERSION }}" ]; then
-            echo "expected npm ${{ env.NPM_VERSION }}, got $actual" >&2
-            exit 1
-          fi
+      - uses: ./.github/actions/assert-npm-version
+        with:
+          version: ${{ env.NPM_VERSION }}
 
       - name: Copy the live root policy into the fixture (project .npmrc is not inherited across directories)
-        run: cp "$GITHUB_WORKSPACE/.npmrc" scripts/fixtures/git-canary/.npmrc
+        run: |
+          cp "$GITHUB_WORKSPACE/.npmrc" scripts/fixtures/git-canary/.npmrc
+          # The canary is only meaningful if the copied policy actually carries every line the real
+          # .npmrc is supposed to have; a truncated or misnamed copy would silently narrow what this
+          # canary (and the real `npm ci`) enforce.
+          for key in allow-git=none allow-remote=none min-release-age=7 save-exact=true; do
+            grep -qF "$key" scripts/fixtures/git-canary/.npmrc || { echo "copied .npmrc is missing '$key'" >&2; exit 1; }
+          done
 
       - name: Assert npm ci is blocked for the git-dependency policy reason
         working-directory: scripts/fixtures/git-canary
@@ -204,25 +161,28 @@ jobs:
   canary-remote:
     name: "Canary: npm ci blocks a remote-tarball dependency"
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version-file: ".nvmrc"
           cache: "npm"
 
-      - name: Assert npm 11.18.0
-        run: |
-          npm i -g npm@${{ env.NPM_VERSION }}
-          actual="$(npm --version)"
-          if [ "$actual" != "${{ env.NPM_VERSION }}" ]; then
-            echo "expected npm ${{ env.NPM_VERSION }}, got $actual" >&2
-            exit 1
-          fi
+      - uses: ./.github/actions/assert-npm-version
+        with:
+          version: ${{ env.NPM_VERSION }}
 
       - name: Copy the live root policy into the fixture (project .npmrc is not inherited across directories)
-        run: cp "$GITHUB_WORKSPACE/.npmrc" scripts/fixtures/remote-canary/.npmrc
+        run: |
+          cp "$GITHUB_WORKSPACE/.npmrc" scripts/fixtures/remote-canary/.npmrc
+          # The canary is only meaningful if the copied policy actually carries every line the real
+          # .npmrc is supposed to have; a truncated or misnamed copy would silently narrow what this
+          # canary (and the real `npm ci`) enforce.
+          for key in allow-git=none allow-remote=none min-release-age=7 save-exact=true; do
+            grep -qF "$key" scripts/fixtures/remote-canary/.npmrc || { echo "copied .npmrc is missing '$key'" >&2; exit 1; }
+          done
 
       - name: Assert npm ci is blocked for the remote-tarball policy reason
         working-directory: scripts/fixtures/remote-canary
@@ -238,3 +198,32 @@ jobs:
           fi
           echo "$output" | grep -q "EALLOWREMOTE" || { echo "npm ci failed for the wrong reason (expected EALLOWREMOTE)" >&2; exit 1; }
           echo "canary passed: npm ci correctly blocked the remote-tarball dependency (EALLOWREMOTE)"
+
+  canary-licence:
+    name: "Canary: licence scan fails on a disallowed licence"
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version-file: ".nvmrc"
+
+      - name: Assert the scan fails, naming the disallowed licence and the exact dependency path
+        run: |
+          set +e
+          output="$(node scripts/check-licenses.mjs --lockfile scripts/fixtures/licence-canary/package-lock.json 2>&1)"
+          exit_status=$?
+          set -e
+          echo "$output"
+          if [ $exit_status -eq 0 ]; then
+            echo "expected the scan to fail (licence-allowlist policy reason), but it passed" >&2
+            exit 1
+          fi
+          echo "$output" | grep -q "gpl-violator@1.0.0" || { echo "scan failed for the wrong reason (did not name gpl-violator@1.0.0)" >&2; exit 1; }
+          # The fixture nests the violation behind a scoped parent on purpose: this is also the
+          # regression lock for the ancestor-walk bug that used to lose the dependency path for every
+          # scoped package (e.g. all 8 @biomejs/cli-* platform binaries).
+          echo "$output" | grep -q "dependency path: licence-canary-fixture > @fixture-scope/parent > gpl-violator" || { echo "scan did not report the correct dependency path through the scoped parent" >&2; exit 1; }
+          echo "canary passed: licence scan correctly failed naming gpl-violator with the right dependency path"

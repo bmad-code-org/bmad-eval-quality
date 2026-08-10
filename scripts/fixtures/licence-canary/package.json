@@ -1,0 +1,9 @@
+{
+  "name": "licence-canary-fixture",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Not installable and never run through npm ci - check-licenses.mjs reads package-lock.json directly and needs no install, so this fixture pair only has to be internally consistent, not resolvable on the real registry.",
+  "dependencies": {
+    "@fixture-scope/parent": "1.0.0"
+  }
+}
