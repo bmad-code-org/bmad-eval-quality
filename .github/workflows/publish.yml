@@ -32,6 +32,19 @@ jobs:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
+      # AD-18: publication is blocked by a mechanism, not policy prose. `workflow_dispatch` alone is
+      # not the guard - anyone with dispatch access could otherwise trigger a real publish. This step
+      # is the guard: it fails before any other step until the repository variable below is set,
+      # which happens only once the work-related intellectual-property question is resolved in
+      # writing.
+      - name: Publication guard (AD-18)
+        run: |
+          if [ "${{ vars.PUBLICATION_UNBLOCKED }}" != "true" ]; then
+            echo "Publication is blocked: the AD-18 intellectual-property question is not yet resolved in writing." >&2
+            echo "Set the repository variable PUBLICATION_UNBLOCKED=true once it is, then re-run this workflow." >&2
+            exit 1
+          fi
+
       - name: Checkout code
         uses: actions/checkout@v4
         with:
@@ -43,6 +56,36 @@ jobs:
           node-version-file: '.nvmrc'
           cache: 'npm'
           registry-url: 'https://registry.npmjs.org'
+
+      - name: Assert npm 11.18.0
+        run: |
+          npm i -g npm@11.18.0
+          actual="$(npm --version)"
+          if [ "$actual" != "11.18.0" ]; then
+            echo "expected npm 11.18.0, got $actual" >&2
+            exit 1
+          fi
+
+      - name: Audit lockfile publication age
+        run: |
+          set +e
+          output="$(node scripts/audit-lockfile-age.mjs)"
+          exit_status=$?
+          set -e
+          echo "$output"
+          effective_clock="$(printf '%s\n' "$output" | sed -n 's/^Effective clock: //p')"
+          if [ -z "$effective_clock" ]; then
+            echo "audit did not print an effective clock line" >&2
+            exit 1
+          fi
+          node -e "
+            const eff = new Date(process.argv[1]).getTime();
+            if (Number.isNaN(eff)) { console.error('effective clock is unparseable: ' + process.argv[1]); process.exit(1); }
+            const driftHours = Math.abs(Date.now() - eff) / 3600000;
+            if (driftHours > 24) { console.error('effective clock drifted ' + driftHours.toFixed(2) + 'h from real time (date -u)'); process.exit(1); }
+            console.log('effective clock ok: drift ' + driftHours.toFixed(2) + 'h from date -u');
+          " "$effective_clock"
+          exit $exit_status
 
       - name: Install dependencies
         run: npm ci --no-audit --no-fund
@@ -104,6 +147,9 @@ jobs:
         run: npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          # Only this step sets this; prepublishOnly (scripts/assert-publish-authorized.mjs) refuses
+          # to publish without it, closing the bypass where a token-holder runs `npm publish` locally.
+          EVAL_QUALITY_PUBLISH_AUTHORIZED: 'true'
 
       - name: Verify publish
         if: steps.version.outputs.skip != 'true'

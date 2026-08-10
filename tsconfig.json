@@ -5,7 +5,7 @@
 		"target": "esnext",
 		"module": "ESNext",
 		"moduleResolution": "Bundler",
-		"baseUrl": "./",
+		"types": ["node"],
 		"resolveJsonModule": true,
 		"allowImportingTsExtensions": true,
 		"noEmit": true,

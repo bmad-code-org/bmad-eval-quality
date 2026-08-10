@@ -62,16 +62,23 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "validate": "npm run typecheck && npm run lint && npm run check:docs && npm run lint:spine && npm run test",
-    "prepack": "npm run clean && npm run build"
+    "prepack": "npm run clean && npm run build",
+    "prepublishOnly": "node scripts/assert-publish-authorized.mjs"
+  },
+  "dependencies": {
+    "zod": "4.4.3"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.3.13",
-    "@types/node": "^22.10.0",
-    "husky": "^9.1.7",
-    "lint-staged": "^16.4.0",
+    "@biomejs/biome": "2.5.5",
+    "@types/node": "22.20.1",
+    "husky": "9.1.7",
+    "lint-staged": "16.4.0",
     "marked": "18.0.7",
-    "typescript": "^5.9.3",
-    "vitest": "^3.2.4"
+    "typescript": "7.0.2",
+    "vitest": "4.1.10"
+  },
+  "overrides": {
+    "vite": "7.3.1"
   },
   "lint-staged": {
     "*.{ts,js,json}": [
