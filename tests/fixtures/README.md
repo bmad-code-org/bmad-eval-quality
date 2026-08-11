@@ -42,9 +42,19 @@ must be decoded as UTF-8 **fatally**: a non-fatal decode substitutes U+FFFD for
 a producer's WTF-8-encoded lone surrogate and digests the corrupted text
 cleanly. A leading UTF-8 BOM is content, not framing, and fails JSON syntax.
 
-Fault codes: the four value-domain violations throw
-`non-canonicalizable-value`; input that does not parse at all (malformed JSON
+Structure is bounded: nesting deeper than 1024 levels is rejected as a domain
+violation, so no conformant implementation ever needs unbounded recursion (and
+none may crash untyped on hostile nesting).
+
+Fault codes: `non-canonicalizable-value` covers AD-28's four enumerated
+violations (non-finite number, unsafe integer, lone surrogate, duplicate
+object key) **and** every other way a value can fail the hashed-artifact
+domain — nesting beyond the depth bound, and for in-memory producers: cycles,
+non-plain objects or arrays, `toJSON` carriers, accessor/non-enumerable/
+symbol-keyed properties, array holes and non-index properties, `undefined`,
+functions, bigints, symbols. Input that does not parse at all (malformed JSON
 syntax, bytes that fail fatal UTF-8 decoding) throws `schema-parse-failure`.
+No other code exists.
 
 ## Digest forms
 
@@ -53,9 +63,12 @@ hex characters, over the RFC 8785 canonical UTF-8 bytes.
 
 - **Composite** digests hash a domain-separated tagged object — never a
   concatenation: `{"protocol":"eval-quality/composite/v1", ...named fields}`.
-  A field named `protocol` is rejected rather than silently overriding the tag.
+  A field named `protocol` is rejected rather than silently overriding the tag,
+  and an empty fields object is rejected rather than minting a degenerate
+  tag-only digest.
 - **Directory** digests hash
   `{"protocol":"eval-quality/directory/v1","members":{<path>:<sha256: digest>}}`.
+  An empty members object and an empty-string member path are rejected.
   "Ordered by path" means JCS key order, i.e. UTF-16 **code-unit** order — which
   disagrees with the UTF-8 byte order `git` and `sort` produce for
   supplementary-plane paths; the `directory-code-unit-path-order` vector pins
@@ -74,6 +87,8 @@ hex characters, over the RFC 8785 canonical UTF-8 bytes.
 - `negative-vectors.json` — `rawText` documents that must be rejected, with the
   `expectedFault` code. Raw text is carried as an escaped JSON string because a
   document with duplicate keys cannot itself round-trip through a JSON parser.
+  Violations appear both top-level and nested: rejection must not depend on
+  where in the document the offending value sits.
 - `byte-vectors.json` — byte-level inputs carried as lowercase hex (`inputHex`),
   because a JSON string field cannot hold invalid UTF-8. `reject` entries must
   fail with `expectedFault`; `digest` entries are `digestBytes` goldens over the
@@ -91,8 +106,17 @@ the two JCS rules — and spot-checked by hand with `shasum -a 256`.
 forbidden**: a fixture whose expected output was produced by the code under
 test is a snapshot test proving the implementation agrees with itself, which is
 zero evidence against the cross-implementation divergence these vectors exist
-to prevent. To verify the frozen values:
+to prevent. The same independence discipline covers rejections: `--check` also
+verifies that every negative and byte-reject vector is rejected by the Python
+implementation, not only by the TypeScript code under test. The deriver's
+docstring records why Python's `repr()` digits and ECMAScript's
+`Number::toString` digits are the same shortest-round-trip digits. To verify
+the frozen values:
 
 ```sh
 python3 tests/fixtures/derive_vectors.py --check
 ```
+
+Fixture files are pure ASCII on disk (`\uXXXX` escapes, never literal
+non-ASCII): a literal precomposed character such as U+FB33 would silently
+change under any NFC-normalizing tool and corrupt the frozen contract.

@@ -73,5 +73,25 @@
 		"name": "malformed-truncated-literal",
 		"rawText": "nul",
 		"expectedFault": "schema-parse-failure"
+	},
+	{
+		"name": "nested-duplicate-keys",
+		"rawText": "{\"outer\":[{\"a\":1,\"a\":2}]}",
+		"expectedFault": "non-canonicalizable-value"
+	},
+	{
+		"name": "nested-unsafe-integer",
+		"rawText": "{\"scores\":[[9007199254740993]]}",
+		"expectedFault": "non-canonicalizable-value"
+	},
+	{
+		"name": "nested-lone-surrogate-value",
+		"rawText": "{\"deep\":{\"s\":\"\\ud800\"}}",
+		"expectedFault": "non-canonicalizable-value"
+	},
+	{
+		"name": "leading-zero-number",
+		"rawText": "[01]",
+		"expectedFault": "schema-parse-failure"
 	}
 ]

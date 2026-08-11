@@ -11,6 +11,21 @@ TypeScript code under test. Plain `json.dumps(sort_keys=True)` is NOT
 JCS-conformant (Python sorts by code point and renders 1e-07 style exponents),
 which is why both rules are implemented by hand below.
 
+`--check` also verifies every negative and byte-reject vector is rejected by
+this second implementation, so the rejection contract is not certified solely
+by the TypeScript code under test. (The fault *code* mapping is TypeScript's to
+prove; this script proves the input is rejected at all.)
+
+Why trusting repr() is sound: since CPython 3.1, repr() of a float returns the
+shortest decimal string that round-trips to the same binary64 value (David
+Gay / Grisu-style, documented in the CPython 3.1 release notes), and ECMA-262
+Number::toString(x, 10) specifies exactly the same shortest-round-trip digits
+(ECMA-262 §6.1.6.1.20, the k/s/n decomposition). Two shortest-round-trip
+representations of the same binary64 value carry identical digits by
+definition — only the exponent/point formatting differs, which es_number()
+reformats per ECMA-262. `--check` additionally re-verifies every frozen vector,
+so a divergence would surface as a mismatch, not stay hidden.
+
 Usage:
     python3 derive_vectors.py --check   # verify frozen fixtures match this derivation
     python3 derive_vectors.py --fill    # rewrite expected fields (authoring time only)
@@ -130,8 +145,81 @@ def load(name):
 
 
 def save(name, data):
-    text = json.dumps(data, indent='\t', ensure_ascii=False) + '\n'
+    # ensure_ascii keeps fixtures pure ASCII on disk: a literal precomposed
+    # character (e.g. U+FB33) would silently change under any NFC-normalizing
+    # tool, corrupting the frozen contract.
+    text = json.dumps(data, indent='\t', ensure_ascii=True) + '\n'
     (FIXTURES / name).write_text(text, encoding='utf-8')
+
+
+class Rejected(Exception):
+    pass
+
+
+def _walk_strings(value):
+    if isinstance(value, str):
+        yield value
+    elif isinstance(value, list):
+        for item in value:
+            yield from _walk_strings(item)
+    elif isinstance(value, dict):
+        for key, item in value.items():
+            yield key
+            yield from _walk_strings(item)
+
+
+def python_rejects(raw_text):
+    """Independent rejection check over a raw JSON document.
+
+    Mirrors the value-domain rules with Python's own machinery: duplicate keys
+    via object_pairs_hook, unsafe integers on the digits, non-finite and
+    integer-valued-unsafe floats, lone surrogates after unescaping, and
+    malformed syntax. Returns True when this implementation rejects the input.
+    """
+
+    def pairs_hook(pairs):
+        keys = [key for key, _ in pairs]
+        if len(keys) != len(set(keys)):
+            raise Rejected('duplicate object key')
+        return dict(pairs)
+
+    def check_int(literal):
+        value = int(literal)
+        if abs(value) > SAFE_INTEGER_MAX:
+            raise Rejected(f'unsafe integer literal: {literal}')
+        return value
+
+    def check_float(literal):
+        value = float(literal)
+        if not math.isfinite(value):
+            raise Rejected(f'non-finite literal: {literal}')
+        if value == int(value) and abs(value) > SAFE_INTEGER_MAX:
+            raise Rejected(f'unsafe integer-valued literal: {literal}')
+        return value
+
+    try:
+        document = json.loads(
+            raw_text,
+            object_pairs_hook=pairs_hook,
+            parse_int=check_int,
+            parse_float=check_float,
+            parse_constant=lambda name: (_ for _ in ()).throw(Rejected(name)),
+        )
+    except (Rejected, ValueError):
+        return True
+    for text in _walk_strings(document):
+        if any(0xD800 <= ord(ch) <= 0xDFFF for ch in text):
+            return True
+    return False
+
+
+def python_rejects_bytes(data):
+    """Byte-level counterpart: fatal UTF-8 decode, then the text-level check."""
+    try:
+        text = data.decode('utf-8')
+    except UnicodeDecodeError:
+        return True
+    return python_rejects(text)
 
 
 def derive_all():
@@ -164,10 +252,21 @@ def check():
                 print(f'MISMATCH {file_name} :: {vector["name"]} :: {field}')
                 print(f'  frozen:  {frozen!r}')
                 print(f'  derived: {expected!r}')
+    for vector in load('negative-vectors.json'):
+        if not python_rejects(vector['rawText']):
+            failures += 1
+            print(f'NOT REJECTED negative-vectors.json :: {vector["name"]}')
+    for vector in load('byte-vectors.json')['reject']:
+        if not python_rejects_bytes(bytes.fromhex(vector['inputHex'])):
+            failures += 1
+            print(f'NOT REJECTED byte-vectors.json :: {vector["name"]}')
     if failures:
         print(f'{failures} mismatch(es)')
         return 1
-    print('all frozen expected values match the independent derivation')
+    print(
+        'all frozen expected values match the independent derivation; '
+        'all negative and byte-reject vectors are rejected independently'
+    )
     return 0
 
 

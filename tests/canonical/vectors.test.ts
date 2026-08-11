@@ -9,11 +9,11 @@ import {
 	digestDirectory,
 } from '../../src/core/canonical/digest.ts'
 import { scanJson } from '../../src/core/canonical/scan-json.ts'
-import { RuntimeFault } from '../../src/core/schemas/faults.ts'
 import byteVectorsJson from '../fixtures/byte-vectors.json'
 import compositeVectorsJson from '../fixtures/composite-vectors.json'
 import negativeVectorsJson from '../fixtures/negative-vectors.json'
 import positiveVectorsJson from '../fixtures/positive-vectors.json'
+import { bytesToHex, faultOf, hexToBytes } from './helpers.ts'
 
 interface PositiveVector {
 	name: string
@@ -67,22 +67,6 @@ const byteVectors = byteVectorsJson as {
 const compositeVectors = compositeVectorsJson as unknown as {
 	composite: CompositeVector[]
 	directory: DirectoryVector[]
-}
-
-const hexToBytes = (hex: string): Uint8Array =>
-	Uint8Array.from(hex.match(/../g) ?? [], (pair) => Number.parseInt(pair, 16))
-
-const bytesToHex = (bytes: Uint8Array): string =>
-	Buffer.from(bytes).toString('hex')
-
-const faultOf = (fn: () => unknown): RuntimeFault => {
-	try {
-		fn()
-	} catch (error) {
-		if (error instanceof RuntimeFault) return error
-		throw error
-	}
-	throw new Error('expected a RuntimeFault to be thrown')
 }
 
 describe('fixture presence', () => {

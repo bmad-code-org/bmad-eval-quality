@@ -1,18 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { assertHashedArtifactValue } from '../../src/core/canonical/value-domain.ts'
-import { RuntimeFault } from '../../src/core/schemas/faults.ts'
+import {
+	assertHashedArtifactValue,
+	MAX_NESTING_DEPTH,
+} from '../../src/core/canonical/value-domain.ts'
+import { faultOf } from './helpers.ts'
 
 const PATH = 'artifacts/value.json'
-
-const faultOf = (fn: () => unknown): RuntimeFault => {
-	try {
-		fn()
-	} catch (error) {
-		if (error instanceof RuntimeFault) return error
-		throw error
-	}
-	throw new Error('expected a RuntimeFault to be thrown')
-}
 
 describe('assertHashedArtifactValue: accepted values', () => {
 	const cases: Array<[name: string, value: unknown]> = [
@@ -63,6 +56,36 @@ describe('assertHashedArtifactValue: rejected values (non-canonicalizable-value)
 		['an object with a non-plain prototype', Object.create({ inherited: 1 })],
 		['a plain object carrying toJSON', toJsonCarrier],
 		['a cyclic object', cyclic],
+		['an Array subclass', new (class extends Array {})(0)],
+		['an array carrying toJSON', Object.assign([1, 2], { toJSON: () => 'x' })],
+		[
+			'an array with an own non-index property',
+			Object.assign([1, 2], { note: 'x' }),
+		],
+		// biome-ignore lint/suspicious/noSparseArray: the hole is the test subject
+		['a sparse array', [1, , 2]],
+		[
+			'an object with a non-enumerable own property',
+			Object.defineProperty({ a: 1 }, 'hidden', {
+				value: 2,
+				enumerable: false,
+			}),
+		],
+		[
+			'an object with a symbol-keyed own property',
+			Object.assign({ a: 1 }, { [Symbol('s')]: 2 }),
+		],
+		[
+			'an object with an accessor property (TOCTOU channel)',
+			Object.defineProperty({ a: 1 }, 'b', {
+				get: () => Number.NaN,
+				enumerable: true,
+			}),
+		],
+		[
+			'an array with an accessor element (TOCTOU channel)',
+			Object.defineProperty([1], 0, { get: () => Number.NaN }),
+		],
 		['undefined', undefined],
 		['undefined nested in an array', [1, undefined]],
 		['a function', () => 1],
@@ -77,4 +100,18 @@ describe('assertHashedArtifactValue: rejected values (non-canonicalizable-value)
 			expect(fault.artifactPath).toBe(PATH)
 		})
 	}
+
+	it('rejects nesting beyond MAX_NESTING_DEPTH as a typed fault, never a RangeError', () => {
+		let value: unknown = 1
+		for (let i = 0; i <= MAX_NESTING_DEPTH; i++) value = [value]
+		const fault = faultOf(() => assertHashedArtifactValue(value, PATH))
+		expect(fault.code).toBe('non-canonicalizable-value')
+		expect(fault.message).toContain('nesting depth')
+	})
+
+	it('accepts nesting at exactly MAX_NESTING_DEPTH', () => {
+		let value: unknown = 1
+		for (let i = 0; i < MAX_NESTING_DEPTH; i++) value = [value]
+		expect(() => assertHashedArtifactValue(value, PATH)).not.toThrow()
+	})
 })

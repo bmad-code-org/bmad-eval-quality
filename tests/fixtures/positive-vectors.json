@@ -121,9 +121,9 @@
 	},
 	{
 		"name": "string-escapes",
-		"rawText": "\"\\u0001\\b\\t\\n\\f\\r\\\"\\\\\\/é😀\"",
+		"rawText": "\"\\u0001\\b\\t\\n\\f\\r\\\"\\\\\\/\u00e9\ud83d\ude00\"",
 		"rawTextPermutations": [],
-		"expectedCanonicalText": "\"\\u0001\\b\\t\\n\\f\\r\\\"\\\\/é😀\"",
+		"expectedCanonicalText": "\"\\u0001\\b\\t\\n\\f\\r\\\"\\\\/\u00e9\ud83d\ude00\"",
 		"expectedCanonicalHex": "225c75303030315c625c745c6e5c665c725c225c5c2fc3a9f09f988022",
 		"expectedDigest": "sha256:17c58d787cab42001c4fee56e9919eb70d85ce11865b033aaf254f5b401fdcc2"
 	},
@@ -141,27 +141,41 @@
 	{
 		"name": "key-sort-code-unit-not-code-point",
 		"rawText": "{\"\\ufb33\":2,\"\\ud83d\\ude00\":1}",
-		"rawTextPermutations": ["{\"\\ud83d\\ude00\":1,\"\\ufb33\":2}"],
-		"expectedCanonicalText": "{\"😀\":1,\"דּ\":2}",
+		"rawTextPermutations": [
+			"{\"\\ud83d\\ude00\":1,\"\\ufb33\":2}"
+		],
+		"expectedCanonicalText": "{\"\ud83d\ude00\":1,\"\ufb33\":2}",
 		"expectedCanonicalHex": "7b22f09f9880223a312c22efacb3223a327d",
 		"expectedDigest": "sha256:2aa3f5086e32bb90ce39c508a6f40fd72e792684f130d0f3b896ea191368f1e3"
 	},
 	{
 		"name": "key-sort-case-and-prefix",
 		"rawText": "{\"b\":2,\"a\":1,\"ab\":3,\"A\":4}",
-		"rawTextPermutations": ["{\"A\":4,\"ab\":3,\"a\":1,\"b\":2}"],
+		"rawTextPermutations": [
+			"{\"A\":4,\"ab\":3,\"a\":1,\"b\":2}"
+		],
 		"expectedCanonicalText": "{\"A\":4,\"a\":1,\"ab\":3,\"b\":2}",
 		"expectedCanonicalHex": "7b2241223a342c2261223a312c226162223a332c2262223a327d",
 		"expectedDigest": "sha256:ba14679d33c54440cc3647fb5e9fa4af36feeec15633e1bececd22bfb158913e"
 	},
 	{
 		"name": "repository-decimals-structure",
-		"rawText": "{\"scores\":[0.95,0.99,0.8,0.04,62.5],\"label\":\"répétition\",\"ok\":true,\"none\":null}",
+		"rawText": "{\"scores\":[0.95,0.99,0.8,0.04,62.5],\"label\":\"r\u00e9p\u00e9tition\",\"ok\":true,\"none\":null}",
 		"rawTextPermutations": [
-			"{\"none\":null,\"ok\":true,\"label\":\"répétition\",\"scores\":[0.95,0.99,0.8,0.04,62.5]}"
+			"{\"none\":null,\"ok\":true,\"label\":\"r\u00e9p\u00e9tition\",\"scores\":[0.95,0.99,0.8,0.04,62.5]}"
 		],
-		"expectedCanonicalText": "{\"label\":\"répétition\",\"none\":null,\"ok\":true,\"scores\":[0.95,0.99,0.8,0.04,62.5]}",
+		"expectedCanonicalText": "{\"label\":\"r\u00e9p\u00e9tition\",\"none\":null,\"ok\":true,\"scores\":[0.95,0.99,0.8,0.04,62.5]}",
 		"expectedCanonicalHex": "7b226c6162656c223a2272c3a970c3a9746974696f6e222c226e6f6e65223a6e756c6c2c226f6b223a747275652c2273636f726573223a5b302e39352c302e39392c302e382c302e30342c36322e355d7d",
 		"expectedDigest": "sha256:968cd9b6dfac38722a59aa700f40c97039fef9e182b4a978904b471e60501b75"
+	},
+	{
+		"name": "proto-key-is-plain-data",
+		"rawText": "{\"__proto__\":1,\"a\":2}",
+		"rawTextPermutations": [
+			"{\"a\":2,\"__proto__\":1}"
+		],
+		"expectedCanonicalText": "{\"__proto__\":1,\"a\":2}",
+		"expectedCanonicalHex": "7b225f5f70726f746f5f5f223a312c2261223a327d",
+		"expectedDigest": "sha256:0c4b7a2b4e04ba308e5674b61f20266799172c87f78917e58b19408cbce2121a"
 	}
 ]

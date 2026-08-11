@@ -4,7 +4,7 @@ baseline_commit: 9f27301
 
 # Story 1.2: Canonical digest computation and the hashed-artifact value domain
 
-Status: review
+Status: done
 
 ## Story
 
@@ -59,6 +59,28 @@ so that two independent implementations never compute different digests from ide
   - [x] `npm run validate` and `npm run build` green locally on Node 24
   - [x] Open a PR to `main` (pr-checks triggers on `pull_request` only) and confirm all eight checks pass: gitleaks, Node 24 validate+build, Node 22.20.0 floor, and the four canaries (age, git, remote, licence). No workflow file should need to change in this story; if one does, stop and re-check the approach
   - [x] Record in the Dev Agent Record: the chosen composite protocol tag, module layout, integer-spelling disposition, the string-carriage convention for large integers and exact decimals (the schema-side declared formats consume it in Stories 1.3–1.4), the directory-path-order semantics (UTF-16 code-unit, not byte order), the syntax-fault disposition (`schema-parse-failure` for malformed input), and the exact digest values of the repository decimals
+
+### Review Findings
+
+Adversarial code review 2026-08-11 (Blind Hunter + Edge Case Hunter + Acceptance Auditor; 1 finding dismissed as a recorded deliberate decision):
+
+- [x] [Review][Patch] (high) Accessor-property TOCTOU: validate-then-serialize reads every property twice, so a getter can pass validation and hand `serialize` a different (e.g. non-finite) value, which `JSON.stringify` renders as `null` and digests silently [src/core/canonical/canonicalize.ts:10, src/core/canonical/value-domain.ts:70]
+- [x] [Review][Patch] (high) Arrays are exempt from the non-plain-object and `toJSON` checks: `Array` subclasses and arrays carrying `toJSON` canonicalize silently instead of throwing `non-canonicalizable-value` [src/core/canonical/value-domain.ts:58]
+- [x] [Review][Patch] (medium) Own enumerable non-index properties on arrays are silently dropped rather than rejected [src/core/canonical/value-domain.ts:59]
+- [x] [Review][Patch] (medium) Non-enumerable and symbol-keyed own properties are silently omitted from validation and serialization rather than rejected [src/core/canonical/value-domain.ts:70]
+- [x] [Review][Patch] (medium) Unbounded recursion in scanner, validator, and serializer lets deeply nested input escape as an untyped `RangeError` instead of a typed fault [src/core/canonical/scan-json.ts:83, src/core/canonical/value-domain.ts:18, src/core/canonical/canonicalize.ts:14]
+- [x] [Review][Patch] (medium) No committed bytes/text-to-digest entry point: "callers holding raw bytes never call bare `JSON.parse`" is enforced by convention only; `digestArtifact(JSON.parse(text))` type-checks and silently misses lexical violations [src/core/canonical/digest.ts:17]
+- [x] [Review][Patch] (medium) `digestComposite({})`, `digestDirectory({})`, and empty-string member paths are accepted, minting degenerate digests no decision or vector pins [src/core/canonical/digest.ts:27]
+- [x] [Review][Patch] (low) `scanNumber` runs `BigInt` over unbounded digit strings before any length sanity check (minor DoS lever) [src/core/canonical/scan-json.ts:272]
+- [x] [Review][Patch] (low) Leading-zero literals are rejected only by accident of trailing-content handling, producing misleading diagnostics (`[01]` → "expected ',' or ']'") [src/core/canonical/scan-json.ts:245]
+- [x] [Review][Patch] (low) `derive_vectors.py --check` verifies only positive/digest vectors; negative and byte-reject vectors are verified solely against the implementation under test [tests/fixtures/derive_vectors.py]
+- [x] [Review][Patch] (low) All negative vectors are top-level; no nested-context rejection or `__proto__` behavior is pinned in the language-neutral contract fixtures [tests/fixtures/negative-vectors.json]
+- [x] [Review][Patch] (low) Fixtures README says the "four value-domain violations" throw `non-canonicalizable-value`, but the actual thrower set is broader (cycles, non-plain objects, `toJSON`, `undefined`, …) [tests/fixtures/README.md]
+- [x] [Review][Patch] (low) `faultOf` test helper is copy-pasted in three suites plus an open-coded variant in a fourth [tests/canonical/vectors.test.ts:78]
+- [x] [Review][Patch] (low) `hexToBytes` silently tolerates odd-length or non-hex fixture input, feeding truncated/zero bytes into the scanner [tests/canonical/vectors.test.ts:72]
+- [x] [Review][Patch] (low) `RuntimeFault` discards the underlying cause (`decodeUtf8` swallows the `TextDecoder` error's position info) [src/core/schemas/faults.ts:13, src/core/canonical/scan-json.ts:27]
+- [x] [Review][Patch] (low) Literal precomposed U+FB33/emoji committed in a test and a fixture despite the recorded escape-only intent; an NFC-normalizing tool would corrupt them [tests/canonical/canonicalize.test.ts, tests/fixtures/composite-vectors.json]
+- [x] [Review][Patch] (low) The Python deriver asserts `repr()`/ECMAScript shortest-round-trip digit agreement as fact without recorded justification [tests/fixtures/derive_vectors.py]
 
 ## Dev Notes
 
@@ -168,6 +190,17 @@ Decisions settled by construction (per Dev Notes "Decisions this story settles")
 
 Implementation followed red-green-refactor per task: failing tests written and confirmed red before each module landed; every fault path asserts the literal machine code and the carried artifact path.
 
+Decisions added by the 2026-08-11 adversarial code review (all review patches applied):
+
+11. **Nesting depth bound.** `MAX_NESTING_DEPTH = 1024` (exported from `value-domain.ts`) is part of the value domain: the scanner, the in-memory validator, and the serializer all reject deeper nesting with `non-canonicalizable-value`, so hostile nesting can never escape as an untyped `RangeError`. Recorded in the fixtures README as part of the published contract.
+12. **Plain-data property discipline.** Objects and arrays admit only enumerable, data (non-accessor), string-keyed own properties; arrays must have prototype `Array.prototype`, no `toJSON`, no holes, and no non-index properties. Accessors are the TOCTOU channel (a getter can hand the serializer a value validation never saw); non-enumerable and symbol-keyed properties would be silently dropped. The serializer additionally re-asserts the scalar domain at emit time, so even an introspection-defeating Proxy cannot get an unvalidated scalar into the canonical bytes.
+13. **Raw-input digest entry point.** `digestJson(input, artifactPath)` composes `scanJson` + `digestArtifact` so callers holding raw text or bytes have a first-class path that cannot miss lexical violations; `digestArtifact(JSON.parse(text))` remains the misuse the docs warn against.
+14. **Degenerate digest inputs rejected.** `digestComposite({})`, `digestDirectory({})`, and empty-string member paths throw `TypeError` (caller programming error, consistent with the protocol-collision rule; no fault code minted). Rejecting now is reversible — relaxing later cannot break frozen digests, while legalizing empties now would mint digests that are hard to retract.
+15. **Independent rejection verification.** `derive_vectors.py --check` now also asserts every negative and byte-reject vector is rejected by the Python implementation (duplicate keys, unsafe integers on the digits, non-finite and integer-valued-unsafe floats, lone surrogates, fatal UTF-8), closing the self-agreement gap for rejections. The deriver's docstring records why Python `repr()` and ECMAScript `Number::toString` produce identical shortest-round-trip digits.
+16. **Fixtures are pure ASCII on disk.** All fixture files use `\uXXXX` escapes (the deriver's `save()` enforces `ensure_ascii`); a literal precomposed U+FB33 would silently NFC-decompose under a normalizing tool. Test sources use escapes for the same reason.
+17. **Scanner hardening.** Leading-zero literals are named as such (`leading zero in number`) instead of surfacing as misleading structural errors; integer literals longer than 16 digits are rejected by inspection before any BigInt conversion; `RuntimeFault` accepts an options bag with `cause`, and the fatal-decode fault carries the platform `TextDecoder` error as its cause.
+18. **Fault-code semantics documented.** `non-canonicalizable-value` covers AD-28's four enumerated violations plus every other hashed-artifact-domain failure (depth, cycles, non-plain structure, `toJSON`, accessor/hidden properties, `undefined`/function/bigint/symbol); the fixtures README states the full thrower set for second implementers. Still exactly two codes.
+
 ### File List
 
 New files:
@@ -183,6 +216,7 @@ New files:
 - `tests/canonical/canonicalize.test.ts`
 - `tests/canonical/digest.test.ts`
 - `tests/canonical/vectors.test.ts`
+- `tests/canonical/helpers.ts` (added by review: shared `faultOf`/`hexToBytes`/`bytesToHex`)
 - `tests/fixtures/README.md`
 - `tests/fixtures/derive_vectors.py`
 - `tests/fixtures/positive-vectors.json`
@@ -195,8 +229,13 @@ Modified files (story tracking only):
 - `_bmad-output/implementation-artifacts/1-2-canonical-digest-computation-and-the-hashed-artifact-value-domain.md`
 - `_bmad-output/implementation-artifacts/sprint-status.yaml`
 
+Modified by review remediation:
+
+- `biome.json` (targeted `!tests/fixtures/*.json` exclusion — the Story 1.1 `!scripts/fixtures` precedent — so Biome does not fight the deriver's fixture formatting)
+
 No workflow, manifest, pin, or `src/index.ts` barrel changes.
 
 ## Change Log
 
+- 2026-08-11: Adversarial code review (Blind Hunter + Edge Case Hunter + Acceptance Auditor) — 17 patch findings, all applied: plain-data property discipline (accessors, hidden/symbol properties, array subclasses/toJSON/holes rejected), serialize-time scalar re-assertion closing the getter/Proxy TOCTOU channel, 1024-level nesting bound in all three walkers, `digestJson` raw-input entry point, degenerate composite/directory inputs rejected, scanner hardening (leading-zero diagnostics, digit-length fast path, fault `cause`), second-language rejection verification and nested/`__proto__` vectors, pure-ASCII fixtures, shared test helpers. 180 tests green; `npm run validate` + `npm run build` pass. Status → done.
 - 2026-08-11: Story 1.2 implemented — in-house RFC 8785 canonicalizer, AD-36 value domain (lexical + in-memory layers), typed faults `non-canonicalizable-value`/`schema-parse-failure`, artifact/bytes/composite/directory digests with frozen protocol tags, and independently derived cross-language golden vectors (152 tests green, `npm run validate` + `npm run build` pass on Node 24).

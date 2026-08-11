@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { canonicalize } from '../../src/core/canonical/canonicalize.ts'
-import { RuntimeFault } from '../../src/core/schemas/faults.ts'
+import { faultOf } from './helpers.ts'
 
 const PATH = 'artifacts/canonical.json'
 
@@ -69,11 +69,14 @@ describe('canonicalize: key sorting by UTF-16 code unit', () => {
 		expect(canonicalText({ b: 2, a: 1, ab: 3 })).toBe('{"a":1,"ab":3,"b":2}')
 	})
 
-	it('sorts the surrogate-pair key 😀 before the BMP key דּ (code-unit order, not code-point)', () => {
-		// U+1F600 is D83D DE00 in UTF-16; D83D < FB33 (dalet with dagesh), so 😀
-		// sorts first even though its code point is larger. Escapes, not literals:
-		// the precomposed U+FB33 must not silently decompose in source.
-		expect(canonicalText({ דּ: 2, '😀': 1 })).toBe('{"😀":1,"דּ":2}')
+	it('sorts the surrogate-pair key U+1F600 before the BMP key U+FB33 (code-unit order, not code-point)', () => {
+		// U+1F600 is D83D DE00 in UTF-16; D83D < FB33 (dalet with dagesh), so the
+		// emoji sorts first even though its code point is larger. Escapes, not
+		// literals: a precomposed U+FB33 literal would silently NFC-decompose
+		// under any normalizing tool.
+		expect(canonicalText({ '\ufb33': 2, '\ud83d\ude00': 1 })).toBe(
+			'{"\ud83d\ude00":1,"\ufb33":2}',
+		)
 	})
 
 	it('produces identical bytes for two insertion orders', () => {
@@ -93,14 +96,26 @@ describe('canonicalize: value-domain enforcement', () => {
 	]
 	for (const [name, value] of cases) {
 		it(`throws non-canonicalizable-value for ${name}`, () => {
-			try {
-				canonicalize(value, PATH)
-				throw new Error('expected a RuntimeFault')
-			} catch (error) {
-				if (!(error instanceof RuntimeFault)) throw error
-				expect(error.code).toBe('non-canonicalizable-value')
-				expect(error.artifactPath).toBe(PATH)
-			}
+			const fault = faultOf(() => canonicalize(value, PATH))
+			expect(fault.code).toBe('non-canonicalizable-value')
+			expect(fault.artifactPath).toBe(PATH)
 		})
 	}
+
+	it('never digests a value the validation pass did not see (lying Proxy)', () => {
+		// The proxy answers the validation read with 1 and every later read with
+		// NaN. Introspection-based validation cannot detect this, so the
+		// serializer re-asserts the scalar domain at emit time — without it,
+		// JSON.stringify(NaN) would silently write the literal null.
+		let reads = 0
+		const target = { a: 1 }
+		const lying = new Proxy(target, {
+			get: (obj, key, receiver) => {
+				if (key === 'a') return ++reads === 1 ? 1 : Number.NaN
+				return Reflect.get(obj, key, receiver)
+			},
+		})
+		const fault = faultOf(() => canonicalize(lying, PATH))
+		expect(fault.code).toBe('non-canonicalizable-value')
+	})
 })

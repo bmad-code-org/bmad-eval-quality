@@ -1,18 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { scanJson } from '../../src/core/canonical/scan-json.ts'
-import { RuntimeFault } from '../../src/core/schemas/faults.ts'
+import { MAX_NESTING_DEPTH } from '../../src/core/canonical/value-domain.ts'
+import { faultOf } from './helpers.ts'
 
 const PATH = 'artifacts/scan.json'
-
-const faultOf = (fn: () => unknown): RuntimeFault => {
-	try {
-		fn()
-	} catch (error) {
-		if (error instanceof RuntimeFault) return error
-		throw error
-	}
-	throw new Error('expected a RuntimeFault to be thrown')
-}
 
 describe('scanJson: valid input', () => {
 	it('parses a structured document', () => {
@@ -86,6 +77,25 @@ describe('scanJson: value-domain violations (non-canonicalizable-value)', () => 
 			expect(fault.artifactPath).toBe(PATH)
 		})
 	}
+
+	it('rejects a huge integer literal without paying BigInt over every digit', () => {
+		const fault = faultOf(() => scanJson('9'.repeat(1_000_000), PATH))
+		expect(fault.code).toBe('non-canonicalizable-value')
+	})
+
+	it('rejects nesting beyond MAX_NESTING_DEPTH as a typed fault, never a RangeError', () => {
+		const depth = MAX_NESTING_DEPTH + 1
+		const rawText = '['.repeat(depth) + ']'.repeat(depth)
+		const fault = faultOf(() => scanJson(rawText, PATH))
+		expect(fault.code).toBe('non-canonicalizable-value')
+		expect(fault.message).toContain('nesting depth')
+	})
+
+	it('accepts nesting at exactly MAX_NESTING_DEPTH', () => {
+		const rawText =
+			'['.repeat(MAX_NESTING_DEPTH) + ']'.repeat(MAX_NESTING_DEPTH)
+		expect(Array.isArray(scanJson(rawText, PATH))).toBe(true)
+	})
 })
 
 describe('scanJson: input that does not parse (schema-parse-failure)', () => {
@@ -97,6 +107,8 @@ describe('scanJson: input that does not parse (schema-parse-failure)', () => {
 		['a truncated literal', 'nul'],
 		['an unescaped control character in a string', '"\u0001"'],
 		['a leading-zero number', '01'],
+		['a leading-zero number inside a structure', '[01]'],
+		['a negative leading-zero number', '-01'],
 		['a bare apostrophe string', "'a'"],
 	]
 	for (const [name, rawText] of textCases) {
@@ -123,5 +135,15 @@ describe('scanJson: input that does not parse (schema-parse-failure)', () => {
 		const bom = new Uint8Array([0xef, 0xbb, 0xbf, 0x7b, 0x7d])
 		const fault = faultOf(() => scanJson(bom, PATH))
 		expect(fault.code).toBe('schema-parse-failure')
+	})
+
+	it('names the leading-zero defect instead of a misleading structural error', () => {
+		const fault = faultOf(() => scanJson('[01]', PATH))
+		expect(fault.message).toContain('leading zero')
+	})
+
+	it('carries the platform decode error as the fault cause', () => {
+		const fault = faultOf(() => scanJson(new Uint8Array([0xff]), PATH))
+		expect(fault.cause).toBeInstanceOf(Error)
 	})
 })

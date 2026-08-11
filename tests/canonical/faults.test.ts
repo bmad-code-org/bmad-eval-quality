@@ -25,4 +25,15 @@ describe('RuntimeFault', () => {
 		expect(fault.code).toBe('schema-parse-failure')
 		expect(fault.artifactPath).toBe('artifacts/broken.json')
 	})
+
+	it('carries an optional cause so the platform error is not discarded', () => {
+		const cause = new Error('decoder position 3')
+		const fault = new RuntimeFault(
+			'schema-parse-failure',
+			'artifacts/broken.json',
+			'input is not valid UTF-8',
+			{ cause },
+		)
+		expect(fault.cause).toBe(cause)
+	})
 })

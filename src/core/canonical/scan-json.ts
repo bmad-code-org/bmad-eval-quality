@@ -1,4 +1,5 @@
 import { RuntimeFault } from '../schemas/faults.ts'
+import { MAX_NESTING_DEPTH } from './value-domain.ts'
 
 // Lexical pre-parse validation (AD-36). `JSON.parse` keeps the last duplicate
 // key, accepts lone-surrogate escapes, and silently rounds unsafe integers —
@@ -24,11 +25,12 @@ function decodeUtf8(bytes: Uint8Array, artifactPath: string): string {
 		return new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(
 			bytes,
 		)
-	} catch {
+	} catch (error) {
 		throw new RuntimeFault(
 			'schema-parse-failure',
 			artifactPath,
 			'input is not valid UTF-8',
+			{ cause: error },
 		)
 	}
 }
@@ -40,6 +42,7 @@ const isDigit = (ch: string | undefined): boolean =>
 
 class Scanner {
 	private position = 0
+	private depth = 0
 
 	constructor(
 		private readonly text: string,
@@ -112,13 +115,23 @@ class Scanner {
 		return value
 	}
 
+	// Depth is bounded so hostile nesting rejects with the typed fault instead
+	// of escaping as a bare RangeError from the recursive descent.
+	private enterNesting(): void {
+		if (++this.depth > MAX_NESTING_DEPTH) {
+			this.domain(`nesting depth exceeds ${MAX_NESTING_DEPTH}`)
+		}
+	}
+
 	private scanObject(): Record<string, unknown> {
+		this.enterNesting()
 		this.position++ // consume {
 		const result: Record<string, unknown> = {}
 		const seenKeys = new Set<string>()
 		this.skipWhitespace()
 		if (this.text[this.position] === '}') {
 			this.position++
+			this.depth--
 			return result
 		}
 		for (;;) {
@@ -151,6 +164,7 @@ class Scanner {
 			}
 			if (next === '}') {
 				this.position++
+				this.depth--
 				return result
 			}
 			this.syntax("expected ',' or '}' in object")
@@ -158,11 +172,13 @@ class Scanner {
 	}
 
 	private scanArray(): unknown[] {
+		this.enterNesting()
 		this.position++ // consume [
 		const result: unknown[] = []
 		this.skipWhitespace()
 		if (this.text[this.position] === ']') {
 			this.position++
+			this.depth--
 			return result
 		}
 		for (;;) {
@@ -176,6 +192,7 @@ class Scanner {
 			}
 			if (next === ']') {
 				this.position++
+				this.depth--
 				return result
 			}
 			this.syntax("expected ',' or ']' in array")
@@ -244,6 +261,8 @@ class Scanner {
 		if (this.text[this.position] === '-') this.position++
 		if (this.text[this.position] === '0') {
 			this.position++
+			if (isDigit(this.text[this.position]))
+				this.syntax('leading zero in number')
 		} else if (isDigit(this.text[this.position])) {
 			while (isDigit(this.text[this.position])) this.position++
 		} else {
@@ -268,10 +287,12 @@ class Scanner {
 		}
 		const literal = this.text.slice(start, this.position)
 		if (integerSyntax) {
-			// Compared on the digits: JSON.parse would round 9007199254740993 invisibly.
-			const parsed = BigInt(literal)
-			const magnitude = parsed < 0n ? -parsed : parsed
-			if (magnitude > SAFE_INTEGER_MAX) {
+			// Compared on the digits: JSON.parse would round 9007199254740993
+			// invisibly. 2^53 - 1 has 16 digits, so anything longer is unsafe by
+			// inspection — checked first so a multi-megabyte literal never pays
+			// (or weaponizes) an arbitrary-precision BigInt conversion.
+			const digits = literal[0] === '-' ? literal.slice(1) : literal
+			if (digits.length > 16 || BigInt(digits) > SAFE_INTEGER_MAX) {
 				this.domain(`integer literal outside the safe range: ${literal}`)
 			}
 		}

@@ -6,7 +6,9 @@ import {
 	digestBytes,
 	digestComposite,
 	digestDirectory,
+	digestJson,
 } from '../../src/core/canonical/digest.ts'
+import { faultOf } from './helpers.ts'
 
 const PATH = 'artifacts/digest.json'
 const DIGEST_FORM = /^sha256:[0-9a-f]{64}$/
@@ -35,6 +37,24 @@ describe('digestArtifact', () => {
 			label: 'répétition 😀',
 		}
 		expect(digestArtifact(value, PATH)).toBe(digestArtifact(value, PATH))
+	})
+})
+
+describe('digestJson', () => {
+	it('digests raw text through the lexical scanner', () => {
+		expect(digestJson('{"b":2,"a":1}', PATH)).toBe(
+			digestArtifact({ a: 1, b: 2 }, PATH),
+		)
+		expect(digestJson(new TextEncoder().encode('{"a":1}'), PATH)).toBe(
+			digestArtifact({ a: 1 }, PATH),
+		)
+	})
+
+	it('catches lexical violations bare JSON.parse would silently miss', () => {
+		const duplicate = faultOf(() => digestJson('{"A":1,"A":2}', PATH))
+		expect(duplicate.code).toBe('non-canonicalizable-value')
+		const rounded = faultOf(() => digestJson('9007199254740993', PATH))
+		expect(rounded.code).toBe('non-canonicalizable-value')
 	})
 })
 
@@ -68,6 +88,10 @@ describe('digestComposite', () => {
 		expect(() => digestComposite({ protocol: 'x' }, PATH)).toThrow(TypeError)
 	})
 
+	it('rejects an empty fields object instead of minting a degenerate digest', () => {
+		expect(() => digestComposite({}, PATH)).toThrow(TypeError)
+	})
+
 	it('exposes the frozen protocol tag', () => {
 		expect(COMPOSITE_PROTOCOL_TAG).toBe('eval-quality/composite/v1')
 		expect(DIRECTORY_PROTOCOL_TAG).toBe('eval-quality/directory/v1')
@@ -97,6 +121,13 @@ describe('digestDirectory', () => {
 			PATH,
 		)
 		expect(forward).toBe(reversed)
+	})
+
+	it('rejects an empty members object and an empty member path', () => {
+		expect(() => digestDirectory({}, PATH)).toThrow(TypeError)
+		expect(() => digestDirectory({ '': memberDigest('a') }, PATH)).toThrow(
+			TypeError,
+		)
 	})
 
 	it('rejects a member value that is not a sha256: digest string', () => {

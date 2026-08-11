@@ -38,10 +38,10 @@
 		{
 			"name": "directory-code-unit-path-order",
 			"members": {
-				"vectors/דּ.json": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
-				"vectors/😀.json": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+				"vectors/\ufb33.json": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+				"vectors/\ud83d\ude00.json": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
 			},
-			"expectedCanonicalText": "{\"members\":{\"vectors/😀.json\":\"sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee\",\"vectors/דּ.json\":\"sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd\"},\"protocol\":\"eval-quality/directory/v1\"}",
+			"expectedCanonicalText": "{\"members\":{\"vectors/\ud83d\ude00.json\":\"sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee\",\"vectors/\ufb33.json\":\"sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd\"},\"protocol\":\"eval-quality/directory/v1\"}",
 			"expectedCanonicalHex": "7b226d656d62657273223a7b22766563746f72732ff09f98802e6a736f6e223a227368613235363a65656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565222c22766563746f72732fefacb32e6a736f6e223a227368613235363a64646464646464646464646464646464646464646464646464646464646464646464646464646464646464646464646464646464646464646464646464646464227d2c2270726f746f636f6c223a226576616c2d7175616c6974792f6469726563746f72792f7631227d",
 			"expectedDigest": "sha256:e6a8f6698123b77eea0800103e7be645a9afccf1f5e0f32191ca9cb1ab2ac4fb"
 		}

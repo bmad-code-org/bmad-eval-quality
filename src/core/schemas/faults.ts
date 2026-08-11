@@ -10,8 +10,13 @@ export class RuntimeFault extends Error {
 	readonly code: RuntimeFaultCode
 	readonly artifactPath: string
 
-	constructor(code: RuntimeFaultCode, artifactPath: string, detail: string) {
-		super(`${code} in ${artifactPath}: ${detail}`)
+	constructor(
+		code: RuntimeFaultCode,
+		artifactPath: string,
+		detail: string,
+		options?: { cause?: unknown },
+	) {
+		super(`${code} in ${artifactPath}: ${detail}`, options)
 		this.name = 'RuntimeFault'
 		this.code = code
 		this.artifactPath = artifactPath
