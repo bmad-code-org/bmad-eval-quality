@@ -55,9 +55,9 @@ so that two independent implementations never compute different digests from ide
   - [x] Tests enumerate the fixture arrays programmatically (one parametrized test per vector entry), never cherry-pick named vectors — a committed vector that no test exercises is silently dead, the same fail-open shape as an unwired gate
   - [x] Determinism test: canonicalize and digest the same values twice and across permuted insertion orders, asserting byte-identical output (this is the story-appropriate analogue of NFR9's permutation family; the full observation-array family still binds nothing until Epics 2–3)
   - [x] Unit tests for every fault path asserting the fault's `code` is literally `non-canonicalizable-value` or `schema-parse-failure` (whichever that path owes) and the artifact path is carried — plus fault tests for the in-memory silent-coercion paths (`Date`, `Map`, `toJSON` carrier, cyclic object, `undefined`, `bigint`)
-- [ ] Task 7: Prove the gate (AC: 6)
+- [x] Task 7: Prove the gate (AC: 6)
   - [x] `npm run validate` and `npm run build` green locally on Node 24
-  - [ ] Open a PR to `main` (pr-checks triggers on `pull_request` only) and confirm all eight checks pass: gitleaks, Node 24 validate+build, Node 22.20.0 floor, and the four canaries (age, git, remote, licence). No workflow file should need to change in this story; if one does, stop and re-check the approach
+  - [x] Open a PR to `main` (pr-checks triggers on `pull_request` only) and confirm all eight checks pass: gitleaks, Node 24 validate+build, Node 22.20.0 floor, and the four canaries (age, git, remote, licence). No workflow file should need to change in this story; if one does, stop and re-check the approach
   - [x] Record in the Dev Agent Record: the chosen composite protocol tag, module layout, integer-spelling disposition, the string-carriage convention for large integers and exact decimals (the schema-side declared formats consume it in Stories 1.3–1.4), the directory-path-order semantics (UTF-16 code-unit, not byte order), the syntax-fault disposition (`schema-parse-failure` for malformed input), and the exact digest values of the repository decimals
 
 ## Dev Notes
