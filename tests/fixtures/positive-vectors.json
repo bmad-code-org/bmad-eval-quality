@@ -1,0 +1,167 @@
+[
+	{
+		"name": "decimal-0.95",
+		"rawText": "0.95",
+		"rawTextPermutations": [],
+		"expectedCanonicalText": "0.95",
+		"expectedCanonicalHex": "302e3935",
+		"expectedDigest": "sha256:22fa3ce4995af8d96fcd771f0e1f5d74d8a98f36c3eec8e95bdf7524926b0141"
+	},
+	{
+		"name": "decimal-0.99",
+		"rawText": "0.99",
+		"rawTextPermutations": [],
+		"expectedCanonicalText": "0.99",
+		"expectedCanonicalHex": "302e3939",
+		"expectedDigest": "sha256:b45898ec08623bcb9a13a8656cf546137cd5aaf7526fc3eb83e4a3f3b8e4b924"
+	},
+	{
+		"name": "decimal-0.8",
+		"rawText": "0.8",
+		"rawTextPermutations": [],
+		"expectedCanonicalText": "0.8",
+		"expectedCanonicalHex": "302e38",
+		"expectedDigest": "sha256:1e9d7c27c8bbc8ddf0055c93e064a62fa995d177fee28cc8fa949bc8a4db06f4"
+	},
+	{
+		"name": "decimal-0.04",
+		"rawText": "0.04",
+		"rawTextPermutations": [],
+		"expectedCanonicalText": "0.04",
+		"expectedCanonicalHex": "302e3034",
+		"expectedDigest": "sha256:a888fe9e2469182b8e3e3bca241d3189dc144349bc2d0ac64c56c444276e9763"
+	},
+	{
+		"name": "decimal-62.5",
+		"rawText": "62.5",
+		"rawTextPermutations": [],
+		"expectedCanonicalText": "62.5",
+		"expectedCanonicalHex": "36322e35",
+		"expectedDigest": "sha256:bff1c57ce1058197ad064590893a945a6729b9a15769d826f422128eabb6438d"
+	},
+	{
+		"name": "one-point-zero-canonicalizes-to-1",
+		"rawText": "1.0",
+		"rawTextPermutations": [],
+		"expectedCanonicalText": "1",
+		"expectedCanonicalHex": "31",
+		"expectedDigest": "sha256:6b86b273ff34fce19d6b804eff5a3f5747ada4eaa22f1d49c01e52ddb7875b4b"
+	},
+	{
+		"name": "negative-zero-canonicalizes-to-0",
+		"rawText": "-0",
+		"rawTextPermutations": [],
+		"expectedCanonicalText": "0",
+		"expectedCanonicalHex": "30",
+		"expectedDigest": "sha256:5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9"
+	},
+	{
+		"name": "exponent-1e-7",
+		"rawText": "1e-7",
+		"rawTextPermutations": [],
+		"expectedCanonicalText": "1e-7",
+		"expectedCanonicalHex": "31652d37",
+		"expectedDigest": "sha256:5b33e02f2c5103a05d32f6ba9cb058294452bfbf393967f68bb30c1bdcbbab22"
+	},
+	{
+		"name": "smallest-denormal-5e-324",
+		"rawText": "5e-324",
+		"rawTextPermutations": [],
+		"expectedCanonicalText": "5e-324",
+		"expectedCanonicalHex": "35652d333234",
+		"expectedDigest": "sha256:c46e7ca1be4c8734f373a56530787288fa2058d73d07855e9247e949f811a42a"
+	},
+	{
+		"name": "exponent-threshold-0.000001",
+		"rawText": "0.000001",
+		"rawTextPermutations": [],
+		"expectedCanonicalText": "0.000001",
+		"expectedCanonicalHex": "302e303030303031",
+		"expectedDigest": "sha256:159fb29a827ad04b260aa6c8ab6d8637f8f2b38af5c4f3cb49d6a21205e040f8"
+	},
+	{
+		"name": "safe-integer-max-9007199254740991",
+		"rawText": "9007199254740991",
+		"rawTextPermutations": [],
+		"expectedCanonicalText": "9007199254740991",
+		"expectedCanonicalHex": "39303037313939323534373430393931",
+		"expectedDigest": "sha256:f40b423c2dd95ff2b2f027e22208f438cf7242862e5e746860e697308c9add26"
+	},
+	{
+		"name": "safe-integer-min-negative",
+		"rawText": "-9007199254740991",
+		"rawTextPermutations": [],
+		"expectedCanonicalText": "-9007199254740991",
+		"expectedCanonicalHex": "2d39303037313939323534373430393931",
+		"expectedDigest": "sha256:4c933a456bb8f2e9894b2d0b26480439cd72d52fb8a27cbf8fd7f323f22c7815"
+	},
+	{
+		"name": "empty-object",
+		"rawText": "{}",
+		"rawTextPermutations": [],
+		"expectedCanonicalText": "{}",
+		"expectedCanonicalHex": "7b7d",
+		"expectedDigest": "sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+	},
+	{
+		"name": "empty-array",
+		"rawText": "[]",
+		"rawTextPermutations": [],
+		"expectedCanonicalText": "[]",
+		"expectedCanonicalHex": "5b5d",
+		"expectedDigest": "sha256:4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+	},
+	{
+		"name": "empty-string",
+		"rawText": "\"\"",
+		"rawTextPermutations": [],
+		"expectedCanonicalText": "\"\"",
+		"expectedCanonicalHex": "2222",
+		"expectedDigest": "sha256:12ae32cb1ec02d01eda3581b127c1fee3b0dc53572ed6baf239721a03d82e126"
+	},
+	{
+		"name": "string-escapes",
+		"rawText": "\"\\u0001\\b\\t\\n\\f\\r\\\"\\\\\\/é😀\"",
+		"rawTextPermutations": [],
+		"expectedCanonicalText": "\"\\u0001\\b\\t\\n\\f\\r\\\"\\\\/é😀\"",
+		"expectedCanonicalHex": "225c75303030315c625c745c6e5c665c725c225c5c2fc3a9f09f988022",
+		"expectedDigest": "sha256:17c58d787cab42001c4fee56e9919eb70d85ce11865b033aaf254f5b401fdcc2"
+	},
+	{
+		"name": "key-order-invariance",
+		"rawText": "{\"a\":1,\"b\":[2,3],\"c\":{\"d\":true}}",
+		"rawTextPermutations": [
+			"{\"c\":{\"d\":true},\"b\":[2,3],\"a\":1}",
+			"{\"b\":[2,3],\"a\":1,\"c\":{\"d\":true}}"
+		],
+		"expectedCanonicalText": "{\"a\":1,\"b\":[2,3],\"c\":{\"d\":true}}",
+		"expectedCanonicalHex": "7b2261223a312c2262223a5b322c335d2c2263223a7b2264223a747275657d7d",
+		"expectedDigest": "sha256:99d3eff5368f3ca065d48eefd6e51af13b193cee2dd54bba7ae495b346a00e59"
+	},
+	{
+		"name": "key-sort-code-unit-not-code-point",
+		"rawText": "{\"\\ufb33\":2,\"\\ud83d\\ude00\":1}",
+		"rawTextPermutations": ["{\"\\ud83d\\ude00\":1,\"\\ufb33\":2}"],
+		"expectedCanonicalText": "{\"😀\":1,\"דּ\":2}",
+		"expectedCanonicalHex": "7b22f09f9880223a312c22efacb3223a327d",
+		"expectedDigest": "sha256:2aa3f5086e32bb90ce39c508a6f40fd72e792684f130d0f3b896ea191368f1e3"
+	},
+	{
+		"name": "key-sort-case-and-prefix",
+		"rawText": "{\"b\":2,\"a\":1,\"ab\":3,\"A\":4}",
+		"rawTextPermutations": ["{\"A\":4,\"ab\":3,\"a\":1,\"b\":2}"],
+		"expectedCanonicalText": "{\"A\":4,\"a\":1,\"ab\":3,\"b\":2}",
+		"expectedCanonicalHex": "7b2241223a342c2261223a312c226162223a332c2262223a327d",
+		"expectedDigest": "sha256:ba14679d33c54440cc3647fb5e9fa4af36feeec15633e1bececd22bfb158913e"
+	},
+	{
+		"name": "repository-decimals-structure",
+		"rawText": "{\"scores\":[0.95,0.99,0.8,0.04,62.5],\"label\":\"répétition\",\"ok\":true,\"none\":null}",
+		"rawTextPermutations": [
+			"{\"none\":null,\"ok\":true,\"label\":\"répétition\",\"scores\":[0.95,0.99,0.8,0.04,62.5]}"
+		],
+		"expectedCanonicalText": "{\"label\":\"répétition\",\"none\":null,\"ok\":true,\"scores\":[0.95,0.99,0.8,0.04,62.5]}",
+		"expectedCanonicalHex": "7b226c6162656c223a2272c3a970c3a9746974696f6e222c226e6f6e65223a6e756c6c2c226f6b223a747275652c2273636f726573223a5b302e39352c302e39392c302e382c302e30342c36322e355d7d",
+		"expectedDigest": "sha256:968cd9b6dfac38722a59aa700f40c97039fef9e182b4a978904b471e60501b75"
+	}
+]
