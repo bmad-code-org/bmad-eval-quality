@@ -18,7 +18,8 @@
 			"!.agents",
 			"!docs",
 			"!experiments",
-			"!scripts/fixtures"
+			"!scripts/fixtures",
+			"!tests/fixtures/*.json"
 		]
 	},
 	"formatter": {

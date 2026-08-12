@@ -1,0 +1,133 @@
+{
+	"composite": [
+		{
+			"name": "composite-two-member-digests",
+			"fields": {
+				"contract": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+				"run": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+			},
+			"expectedCanonicalText": "{\"contract\":\"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"protocol\":\"eval-quality/composite/v1\",\"run\":\"sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\"}",
+			"expectedCanonicalHex": "7b22636f6e7472616374223a227368613235363a61616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161222c2270726f746f636f6c223a226576616c2d7175616c6974792f636f6d706f736974652f7631222c2272756e223a227368613235363a62626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262227d",
+			"expectedDigest": "sha256:15d82488b47ba795970aea5a366b37f37813bf57aca56d9aea789c1e797798e5"
+		},
+		{
+			"name": "composite-mixed-fields",
+			"fields": {
+				"kind": "sealed-set",
+				"members": [
+					"sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+				],
+				"count": 1
+			},
+			"expectedCanonicalText": "{\"count\":1,\"kind\":\"sealed-set\",\"members\":[\"sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\"],\"protocol\":\"eval-quality/composite/v1\"}",
+			"expectedCanonicalHex": "7b22636f756e74223a312c226b696e64223a227365616c65642d736574222c226d656d62657273223a5b227368613235363a63636363636363636363636363636363636363636363636363636363636363636363636363636363636363636363636363636363636363636363636363636363225d2c2270726f746f636f6c223a226576616c2d7175616c6974792f636f6d706f736974652f7631227d",
+			"expectedDigest": "sha256:6ed60bfbf2648f57d5f9296300483522b90b5ed681d9408f9a88ecbf2fa3848f"
+		}
+	],
+	"directory": [
+		{
+			"name": "directory-two-members",
+			"members": {
+				"a.json": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+				"b/c.json": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+			},
+			"expectedCanonicalText": "{\"members\":{\"a.json\":\"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"b/c.json\":\"sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\"},\"protocol\":\"eval-quality/directory/v1\"}",
+			"expectedCanonicalHex": "7b226d656d62657273223a7b22612e6a736f6e223a227368613235363a61616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161222c22622f632e6a736f6e223a227368613235363a62626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262227d2c2270726f746f636f6c223a226576616c2d7175616c6974792f6469726563746f72792f7631227d",
+			"expectedDigest": "sha256:24298ce6dc46681f0ec2b9a8483fb15cf433ecc4f6bfe62cc9bc462787ba645d"
+		},
+		{
+			"name": "directory-code-unit-path-order",
+			"members": {
+				"vectors/\ufb33.json": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+				"vectors/\ud83d\ude00.json": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+			},
+			"expectedCanonicalText": "{\"members\":{\"vectors/\ud83d\ude00.json\":\"sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee\",\"vectors/\ufb33.json\":\"sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd\"},\"protocol\":\"eval-quality/directory/v1\"}",
+			"expectedCanonicalHex": "7b226d656d62657273223a7b22766563746f72732ff09f98802e6a736f6e223a227368613235363a65656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565222c22766563746f72732fefacb32e6a736f6e223a227368613235363a64646464646464646464646464646464646464646464646464646464646464646464646464646464646464646464646464646464646464646464646464646464227d2c2270726f746f636f6c223a226576616c2d7175616c6974792f6469726563746f72792f7631227d",
+			"expectedDigest": "sha256:e6a8f6698123b77eea0800103e7be645a9afccf1f5e0f32191ca9cb1ab2ac4fb"
+		}
+	],
+	"compositeReject": [
+		{
+			"name": "composite-empty-fields",
+			"fields": {},
+			"reason": "composite requires at least one field"
+		},
+		{
+			"name": "composite-protocol-collision",
+			"fields": {
+				"protocol": "x"
+			},
+			"reason": "fields must not carry a protocol member"
+		}
+	],
+	"directoryReject": [
+		{
+			"name": "directory-empty-members",
+			"members": {},
+			"reason": "directory requires at least one member"
+		},
+		{
+			"name": "directory-empty-path",
+			"members": {
+				"": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+			},
+			"reason": "member path must not be empty"
+		},
+		{
+			"name": "directory-malformed-digest",
+			"members": {
+				"a.json": "not-a-digest"
+			},
+			"reason": "member value must match sha256: + 64 lowercase hex"
+		},
+		{
+			"name": "directory-uppercase-digest",
+			"members": {
+				"a.json": "sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+			},
+			"reason": "digest hex must be lowercase"
+		},
+		{
+			"name": "directory-absolute-path",
+			"members": {
+				"/a.json": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+			},
+			"reason": "member path must be relative"
+		},
+		{
+			"name": "directory-dot-segment",
+			"members": {
+				"./a.json": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+			},
+			"reason": "no . segments"
+		},
+		{
+			"name": "directory-dotdot-segment",
+			"members": {
+				"../a.json": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+			},
+			"reason": "no .. segments"
+		},
+		{
+			"name": "directory-empty-segment",
+			"members": {
+				"a//b.json": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+			},
+			"reason": "no empty segments"
+		},
+		{
+			"name": "directory-backslash-path",
+			"members": {
+				"a\\b.json": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+			},
+			"reason": "forward slashes only"
+		},
+		{
+			"name": "directory-trailing-slash",
+			"members": {
+				"a.json/": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+			},
+			"reason": "no trailing slash"
+		}
+	]
+}

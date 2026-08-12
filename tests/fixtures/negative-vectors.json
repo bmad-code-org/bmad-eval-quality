@@ -1,0 +1,102 @@
+[
+	{
+		"name": "unsafe-integer-9007199254740993",
+		"rawText": "9007199254740993",
+		"expectedFault": "non-canonicalizable-value"
+	},
+	{
+		"name": "unsafe-negative-integer",
+		"rawText": "-9007199254740993",
+		"expectedFault": "non-canonicalizable-value"
+	},
+	{
+		"name": "two-pow-53-exactly-9007199254740992",
+		"rawText": "9007199254740992",
+		"expectedFault": "non-canonicalizable-value"
+	},
+	{
+		"name": "unsafe-integer-fraction-spelling",
+		"rawText": "9007199254740993.0",
+		"expectedFault": "non-canonicalizable-value"
+	},
+	{
+		"name": "unsafe-integer-exponent-spelling",
+		"rawText": "9.007199254740993e15",
+		"expectedFault": "non-canonicalizable-value"
+	},
+	{
+		"name": "integer-valued-1e21",
+		"rawText": "1e21",
+		"expectedFault": "non-canonicalizable-value"
+	},
+	{
+		"name": "overflow-1e999",
+		"rawText": "1e999",
+		"expectedFault": "non-canonicalizable-value"
+	},
+	{
+		"name": "duplicate-keys-literal",
+		"rawText": "{\"A\":1,\"A\":2}",
+		"expectedFault": "non-canonicalizable-value"
+	},
+	{
+		"name": "duplicate-keys-escaped",
+		"rawText": "{\"A\":1,\"\\u0041\":2}",
+		"expectedFault": "non-canonicalizable-value"
+	},
+	{
+		"name": "lone-surrogate-string-value",
+		"rawText": "\"\\ud800\"",
+		"expectedFault": "non-canonicalizable-value"
+	},
+	{
+		"name": "lone-surrogate-object-key",
+		"rawText": "{\"\\udead\":1}",
+		"expectedFault": "non-canonicalizable-value"
+	},
+	{
+		"name": "malformed-unterminated-object",
+		"rawText": "{",
+		"expectedFault": "schema-parse-failure"
+	},
+	{
+		"name": "malformed-trailing-comma",
+		"rawText": "{\"a\":1,}",
+		"expectedFault": "schema-parse-failure"
+	},
+	{
+		"name": "malformed-trailing-content",
+		"rawText": "{} {}",
+		"expectedFault": "schema-parse-failure"
+	},
+	{
+		"name": "malformed-truncated-literal",
+		"rawText": "nul",
+		"expectedFault": "schema-parse-failure"
+	},
+	{
+		"name": "nested-duplicate-keys",
+		"rawText": "{\"outer\":[{\"a\":1,\"a\":2}]}",
+		"expectedFault": "non-canonicalizable-value"
+	},
+	{
+		"name": "nested-unsafe-integer",
+		"rawText": "{\"scores\":[[9007199254740993]]}",
+		"expectedFault": "non-canonicalizable-value"
+	},
+	{
+		"name": "nested-lone-surrogate-value",
+		"rawText": "{\"deep\":{\"s\":\"\\ud800\"}}",
+		"expectedFault": "non-canonicalizable-value"
+	},
+	{
+		"name": "leading-zero-number",
+		"rawText": "[01]",
+		"expectedFault": "schema-parse-failure"
+	},
+	{
+		"name": "nesting-beyond-1024",
+		"rawText": "[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]",
+		"expectedFault": "non-canonicalizable-value"
+	}
+]
