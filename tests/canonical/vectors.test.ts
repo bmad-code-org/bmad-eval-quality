@@ -58,6 +58,18 @@ interface DirectoryVector {
 	expectedDigest: string
 }
 
+interface CompositeRejectVector {
+	name: string
+	fields: Record<string, unknown>
+	reason: string
+}
+
+interface DirectoryRejectVector {
+	name: string
+	members: Record<string, string>
+	reason: string
+}
+
 const positiveVectors = positiveVectorsJson as PositiveVector[]
 const negativeVectors = negativeVectorsJson as NegativeVector[]
 const byteVectors = byteVectorsJson as {
@@ -67,6 +79,8 @@ const byteVectors = byteVectorsJson as {
 const compositeVectors = compositeVectorsJson as unknown as {
 	composite: CompositeVector[]
 	directory: DirectoryVector[]
+	compositeReject: CompositeRejectVector[]
+	directoryReject: DirectoryRejectVector[]
 }
 
 describe('fixture presence', () => {
@@ -79,6 +93,43 @@ describe('fixture presence', () => {
 		expect(byteVectors.digest.length).toBeGreaterThan(0)
 		expect(compositeVectors.composite.length).toBeGreaterThan(0)
 		expect(compositeVectors.directory.length).toBeGreaterThan(0)
+		expect(compositeVectors.compositeReject.length).toBeGreaterThan(0)
+		expect(compositeVectors.directoryReject.length).toBeGreaterThan(0)
+	})
+
+	// Deleting a single required vector would otherwise pass CI silently — the
+	// same fail-open shape as an empty fixture array, one level up. These names
+	// are the AC5-mandated set.
+	it('contains every AC5-required vector by name', () => {
+		const positiveNames = new Set(positiveVectors.map((vector) => vector.name))
+		for (const name of [
+			'decimal-0.95',
+			'decimal-0.99',
+			'decimal-0.8',
+			'decimal-0.04',
+			'decimal-62.5',
+			'one-point-zero-canonicalizes-to-1',
+			'negative-zero-canonicalizes-to-0',
+			'safe-integer-max-9007199254740991',
+			'key-order-invariance',
+			'key-sort-code-unit-not-code-point',
+		]) {
+			expect(positiveNames, `missing positive vector ${name}`).toContain(name)
+		}
+		const negativeNames = new Set(negativeVectors.map((vector) => vector.name))
+		for (const name of [
+			'unsafe-integer-9007199254740993',
+			'two-pow-53-exactly-9007199254740992',
+			'integer-valued-1e21',
+			'overflow-1e999',
+			'duplicate-keys-literal',
+			'duplicate-keys-escaped',
+			'lone-surrogate-string-value',
+			'lone-surrogate-object-key',
+			'nesting-beyond-1024',
+		]) {
+			expect(negativeNames, `missing negative vector ${name}`).toContain(name)
+		}
 	})
 })
 
@@ -92,6 +143,13 @@ describe('positive canonicalization vectors', () => {
 			expect(bytesToHex(bytes)).toBe(vector.expectedCanonicalHex)
 			expect(new TextDecoder().decode(bytes)).toBe(vector.expectedCanonicalText)
 			expect(digestArtifact(value, vector.name)).toBe(vector.expectedDigest)
+			// The same document routed through the bytes entry path — the path a
+			// real artifact file takes (Uint8Array → fatal decode → scan → digest).
+			const fromBytes = scanJson(
+				new TextEncoder().encode(vector.rawText),
+				vector.name,
+			)
+			expect(digestArtifact(fromBytes, vector.name)).toBe(vector.expectedDigest)
 			for (const permutation of vector.rawTextPermutations) {
 				const permuted = scanJson(permutation, vector.name)
 				expect(bytesToHex(canonicalize(permuted, vector.name))).toBe(
@@ -157,6 +215,20 @@ describe('composite-digest vectors', () => {
 			expect(new TextDecoder().decode(bytes)).toBe(vector.expectedCanonicalText)
 			expect(digestDirectory(vector.members, vector.name)).toBe(
 				vector.expectedDigest,
+			)
+		})
+	}
+	for (const vector of compositeVectors.compositeReject) {
+		it(vector.name, () => {
+			expect(() => digestComposite(vector.fields, vector.name)).toThrow(
+				TypeError,
+			)
+		})
+	}
+	for (const vector of compositeVectors.directoryReject) {
+		it(vector.name, () => {
+			expect(() => digestDirectory(vector.members, vector.name)).toThrow(
+				TypeError,
 			)
 		})
 	}

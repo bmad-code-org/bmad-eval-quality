@@ -36,7 +36,7 @@ describe('scanJson: valid input', () => {
 	})
 
 	it('decodes paired surrogate escapes', () => {
-		expect(scanJson('"\\ud83d\\ude00"', PATH)).toBe('😀')
+		expect(scanJson('"\\ud83d\\ude00"', PATH)).toBe('\ud83d\ude00')
 	})
 
 	it('keeps __proto__ as an own property, never a prototype mutation', () => {

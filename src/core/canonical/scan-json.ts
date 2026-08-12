@@ -40,6 +40,9 @@ const SAFE_INTEGER_MAX = 2n ** 53n - 1n
 const isDigit = (ch: string | undefined): boolean =>
 	ch !== undefined && ch >= '0' && ch <= '9'
 
+const isAlphanumeric = (ch: string | undefined): boolean =>
+	ch !== undefined && /[A-Za-z0-9]/.test(ch)
+
 class Scanner {
 	private position = 0
 	private depth = 0
@@ -112,6 +115,11 @@ class Scanner {
 			this.syntax(`invalid literal, expected ${literal}`)
 		}
 		this.position += literal.length
+		// Name the defect: "truex" is an invalid literal, not a structural error
+		// at the next comma or bracket.
+		if (isAlphanumeric(this.text[this.position])) {
+			this.syntax(`invalid literal starting with ${literal}`)
+		}
 		return value
 	}
 
@@ -284,6 +292,9 @@ class Scanner {
 			if (!isDigit(this.text[this.position]))
 				this.syntax('expected digits in exponent')
 			while (isDigit(this.text[this.position])) this.position++
+		}
+		if (isAlphanumeric(this.text[this.position])) {
+			this.syntax('invalid number')
 		}
 		const literal = this.text.slice(start, this.position)
 		if (integerSyntax) {

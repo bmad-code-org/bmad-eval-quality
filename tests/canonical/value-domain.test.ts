@@ -17,7 +17,7 @@ describe('assertHashedArtifactValue: accepted values', () => {
 		['the smallest denormal', 5e-324],
 		['an empty object, array, and string', [{}, [], '']],
 		['a null-prototype object', Object.assign(Object.create(null), { a: 1 })],
-		['a well-formed surrogate pair', '😀'],
+		['a well-formed surrogate pair', '\ud83d\ude00'],
 	]
 	for (const [name, value] of cases) {
 		it(`accepts ${name}`, () => {

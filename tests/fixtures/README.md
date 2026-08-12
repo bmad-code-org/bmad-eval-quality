@@ -15,9 +15,11 @@ the fixtures are designed to be consumed without it.
    so `0.000001` stays plain).
 2. **Object keys** sort by UTF-16 code unit — never by code point, never
    locale- or normalization-aware. The `key-sort-code-unit-not-code-point`
-   vector pins this: the surrogate-pair key `😀` (U+1F600, UTF-16 `D83D DE00`)
-   sorts **before** the BMP key `דּ` (U+FB33) because `D83D < FB33`, even though
-   `1F600 > FB33` by code point.
+   vector pins this: the surrogate-pair key U+1F600 (UTF-16 `D83D DE00`)
+   sorts **before** the BMP key U+FB33 (Hebrew dalet with dagesh) because
+   `D83D < FB33`, even though `1F600 > FB33` by code point. (Code points are
+   named, not shown as glyphs: a rendered U+FB33 in prose is exactly the
+   character an NFC-normalizing tool silently decomposes.)
 
 ## Dead branch: the ≥ 1e21 exponent rendering
 
@@ -68,11 +70,18 @@ hex characters, over the RFC 8785 canonical UTF-8 bytes.
   tag-only digest.
 - **Directory** digests hash
   `{"protocol":"eval-quality/directory/v1","members":{<path>:<sha256: digest>}}`.
-  An empty members object and an empty-string member path are rejected.
-  "Ordered by path" means JCS key order, i.e. UTF-16 **code-unit** order — which
-  disagrees with the UTF-8 byte order `git` and `sort` produce for
-  supplementary-plane paths; the `directory-code-unit-path-order` vector pins
-  the discriminating case (the `😀` path sorts before the `דּ` path).
+  An empty members object is rejected. Member paths must arrive in one
+  canonical spelling: relative, forward-slash separated, with no empty, `.`,
+  or `..` segments (so no leading/trailing/doubled slashes and no
+  backslashes) — two producers naming the same file `a` and `./a` must not
+  mint different digests. Unicode normalization is deliberately **not**
+  applied to paths (nothing in this contract is normalization-aware); a
+  producer whose filesystem reports NFD spellings (macOS) must emit the
+  spelling it intends, byte-for-byte. "Ordered by path" means JCS key order,
+  i.e. UTF-16 **code-unit** order — which disagrees with the UTF-8 byte order
+  `git` and `sort` produce for supplementary-plane paths; the
+  `directory-code-unit-path-order` vector pins the discriminating case (the
+  U+1F600 path sorts before the U+FB33 path).
 
 ## Fixture schema
 
@@ -95,7 +104,16 @@ hex characters, over the RFC 8785 canonical UTF-8 bytes.
   raw bytes.
 - `composite-vectors.json` — `composite` entries carry the named `fields` of a
   composite digest; `directory` entries carry `members` as path → digest.
-  Expected values are over the full tagged object shown above.
+  Expected values are over the full tagged object shown above. `compositeReject`
+  and `directoryReject` entries are caller inputs a conformant implementation
+  must refuse (empty inputs, a `protocol` field collision, malformed member
+  digests, non-canonical member paths) — these are programming errors, not
+  artifact faults, so no fault code applies; each entry carries a human-readable
+  `reason`.
+
+The `nesting-beyond-1024` negative vector pins the depth bound of the value
+domain; a conformant implementation rejects the 1025-deep document and accepts
+1024 (the bound is on nesting levels, root container = level 1).
 
 ## Expected values are independently derived, then frozen
 
@@ -116,6 +134,12 @@ the frozen values:
 ```sh
 python3 tests/fixtures/derive_vectors.py --check
 ```
+
+CI runs this via `npm run validate` (the `check:vectors` script), so the
+forbidden regeneration cannot pass the gates unnoticed. `--check` also
+re-derives every `rawTextPermutations` entry independently, and `--fill`
+refuses to rewrite the frozen fields unless given `--force` (and then reports
+every field it changes).
 
 Fixture files are pure ASCII on disk (`\uXXXX` escapes, never literal
 non-ASCII): a literal precomposed character such as U+FB33 would silently

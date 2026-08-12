@@ -48,10 +48,41 @@ export function digestComposite(
 	if (Object.hasOwn(fields, 'protocol')) {
 		throw new TypeError('composite fields must not carry a "protocol" member')
 	}
+	// The spread snapshots each field once into a fresh plain object, so the
+	// canonicalizer digests exactly what was read here.
 	return digestArtifact(
 		{ protocol: COMPOSITE_PROTOCOL_TAG, ...fields },
 		artifactPath,
 	)
+}
+
+// Member paths must arrive in one canonical spelling: relative, forward-slash,
+// no empty/dot/dot-dot segments. Two producers naming the same file "a" and
+// "./a" would otherwise mint different digests with no fault raised. Unicode
+// normalization is deliberately NOT applied (the canonicalizer is never
+// normalization-aware); emitting NFC vs NFD spellings is the producer's
+// responsibility, and the fixtures README says so.
+function assertMemberPath(path: string): void {
+	if (path === '') {
+		throw new TypeError('directory member path must not be empty')
+	}
+	if (path.includes('\\')) {
+		throw new TypeError(
+			`directory member path must use forward slashes: ${JSON.stringify(path)}`,
+		)
+	}
+	if (path.startsWith('/')) {
+		throw new TypeError(
+			`directory member path must be relative: ${JSON.stringify(path)}`,
+		)
+	}
+	for (const segment of path.split('/')) {
+		if (segment === '' || segment === '.' || segment === '..') {
+			throw new TypeError(
+				`directory member path not in canonical form: ${JSON.stringify(path)}`,
+			)
+		}
+	}
 }
 
 // A directory digest is a composite over its members ordered by path. Members
@@ -67,17 +98,18 @@ export function digestDirectory(
 		throw new TypeError('directory requires at least one member')
 	}
 	for (const [path, digest] of entries) {
-		if (path === '') {
-			throw new TypeError('directory member path must not be empty')
-		}
+		assertMemberPath(path)
 		if (!DIGEST_FORM.test(digest)) {
 			throw new TypeError(
 				`directory member ${JSON.stringify(path)} is not a sha256: digest`,
 			)
 		}
 	}
+	// Digest the snapshot read above, not the caller's object: a getter or
+	// Proxy could otherwise answer the canonicalizer's read with a value the
+	// DIGEST_FORM check never saw.
 	return digestArtifact(
-		{ protocol: DIRECTORY_PROTOCOL_TAG, members },
+		{ protocol: DIRECTORY_PROTOCOL_TAG, members: Object.fromEntries(entries) },
 		artifactPath,
 	)
 }

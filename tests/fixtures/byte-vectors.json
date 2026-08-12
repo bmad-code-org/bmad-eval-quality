@@ -19,6 +19,21 @@
 			"name": "overlong-encoding-c0-80",
 			"inputHex": "22c08022",
 			"expectedFault": "schema-parse-failure"
+		},
+		{
+			"name": "truncated-two-byte-sequence",
+			"inputHex": "c3",
+			"expectedFault": "schema-parse-failure"
+		},
+		{
+			"name": "truncated-three-byte-sequence-in-string",
+			"inputHex": "22e28222",
+			"expectedFault": "schema-parse-failure"
+		},
+		{
+			"name": "cesu8-encoded-surrogate-pair",
+			"inputHex": "22eda0bdedb88022",
+			"expectedFault": "schema-parse-failure"
 		}
 	],
 	"digest": [

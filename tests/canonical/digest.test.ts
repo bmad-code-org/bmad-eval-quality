@@ -34,7 +34,7 @@ describe('digestArtifact', () => {
 	it('is deterministic across repeated calls', () => {
 		const value = {
 			scores: [0.95, 0.99, 0.8, 0.04, 62.5],
-			label: 'répétition 😀',
+			label: 'r\u00e9p\u00e9tition \ud83d\ude00',
 		}
 		expect(digestArtifact(value, PATH)).toBe(digestArtifact(value, PATH))
 	})
@@ -127,6 +127,41 @@ describe('digestDirectory', () => {
 		expect(() => digestDirectory({}, PATH)).toThrow(TypeError)
 		expect(() => digestDirectory({ '': memberDigest('a') }, PATH)).toThrow(
 			TypeError,
+		)
+	})
+
+	it('rejects non-canonical member path spellings', () => {
+		for (const path of [
+			'/a.json',
+			'./a.json',
+			'../a.json',
+			'a//b.json',
+			'a\\b.json',
+			'a.json/',
+		]) {
+			expect(
+				() => digestDirectory({ [path]: memberDigest('a') }, PATH),
+				`path ${JSON.stringify(path)} should be rejected`,
+			).toThrow(TypeError)
+		}
+	})
+
+	it('digests the members snapshot it validated, not a re-readable object', () => {
+		// The getter answers the validation read with a well-formed digest and
+		// would answer any second read with garbage; the snapshot means there is
+		// no second read.
+		let reads = 0
+		const members = Object.defineProperty(
+			{} as Record<string, string>,
+			'a.json',
+			{
+				get: () => (++reads === 1 ? memberDigest('a') : 'garbage'),
+				enumerable: true,
+				configurable: true,
+			},
+		)
+		expect(digestDirectory(members, PATH)).toBe(
+			digestDirectory({ 'a.json': memberDigest('a') }, PATH),
 		)
 	})
 

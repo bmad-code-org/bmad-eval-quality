@@ -82,6 +82,32 @@ Adversarial code review 2026-08-11 (Blind Hunter + Edge Case Hunter + Acceptance
 - [x] [Review][Patch] (low) Literal precomposed U+FB33/emoji committed in a test and a fixture despite the recorded escape-only intent; an NFC-normalizing tool would corrupt them [tests/canonical/canonicalize.test.ts, tests/fixtures/composite-vectors.json]
 - [x] [Review][Patch] (low) The Python deriver asserts `repr()`/ECMAScript shortest-round-trip digit agreement as fact without recorded justification [tests/fixtures/derive_vectors.py]
 
+Round-1 dismissed finding, for the audit trail: "digestComposite/digestDirectory throw untyped TypeError for data-dependent failures" — dismissed because the `TypeError`s are caller programming errors by recorded decision (Dev Agent Record items 3 and 14); minting a third fault code would violate AC 4's "no other code is minted".
+
+Adversarial code review round 2, 2026-08-11 (same three layers, on the remediated diff; 19 patches applied, 1 deferred, 1 dismissed):
+
+- [x] [Review][Patch] (high) Round-1 TOCTOU fix re-asserted scalars only: a lying Proxy could still substitute a non-plain object (`Date` → `{}`) or a lone-surrogate key on the serializer's second read — verified by execution [src/core/canonical/canonicalize.ts]
+- [x] [Review][Patch] (medium) `derive_vectors.py --check` — the independence gate — ran nowhere in CI; the forbidden regeneration move would have passed all eight checks [package.json]
+- [x] [Review][Patch] (medium) `digestDirectory` validated `DIGEST_FORM` on a first read and digested a second read of the caller's object [src/core/canonical/digest.ts]
+- [x] [Review][Patch] (medium) Directory member path *form* was unpinned: `./a`, `/a`, `a//b`, backslashes, and trailing slashes were accepted as distinct members [src/core/canonical/digest.ts]
+- [x] [Review][Patch] (low) `--fill` could silently rewrite every frozen expected value with no guard [tests/fixtures/derive_vectors.py]
+- [x] [Review][Patch] (low) Composite/directory rejection rules existed only in TypeScript tests, not in the language-neutral fixtures or the Python mirror [tests/fixtures/composite-vectors.json]
+- [x] [Review][Patch] (low) The 1024 depth bound was README prose with no fixture vector pinning it [tests/fixtures/negative-vectors.json]
+- [x] [Review][Patch] (low) `rawTextPermutations` were never independently re-derived by `--check` [tests/fixtures/derive_vectors.py]
+- [x] [Review][Patch] (low) `python_rejects` counted any bare `ValueError` as an independent rejection (wrong-reason pass) [tests/fixtures/derive_vectors.py]
+- [x] [Review][Patch] (low) The deriver's recursive string walk would crash with `RecursionError` on deep documents instead of reporting rejection [tests/fixtures/derive_vectors.py]
+- [x] [Review][Patch] (low) No positive golden vector exercised the bytes entry path (`Uint8Array` → fatal decode → scan → digest) [tests/canonical/vectors.test.ts]
+- [x] [Review][Patch] (low) Deleting a single AC5-required vector would pass CI silently; only fully empty arrays were guarded [tests/canonical/vectors.test.ts]
+- [x] [Review][Patch] (low) Byte-reject vectors omitted truncated multibyte sequences and CESU-8 [tests/fixtures/byte-vectors.json]
+- [x] [Review][Patch] (low) The named-diagnostic standard was applied only to leading zeros; `truex`/`1x` still surfaced as misleading structural errors [src/core/canonical/scan-json.ts]
+- [x] [Review][Patch] (low) Literal non-ASCII characters remained in test sources despite the recorded escape-only decision [tests/canonical/*.test.ts]
+- [x] [Review][Patch] (low) The fixtures README carried the NFC-decomposed corruption of the very glyph its escape-only rule warns about; prose now names code points instead of rendering them [tests/fixtures/README.md]
+- [x] [Review][Patch] (low) The round-1 dismissed finding was unidentifiable from the story file; now recorded above [this file]
+- [x] [Review][Patch] (low) Stale "152 tests" counts and "Story 2 Task" mislabels in the learning-path doc and Debug Log [_bmad-output/project-knowledge/learning-path-step-by-step.md]
+- [x] [Review][Patch] (low) Dev Agent Record File List omitted files this branch modifies [this file]
+- [x] [Review][Defer] (low) Digest-path traversal cost is unmeasured (descriptor allocation per property) [src/core/canonical/canonicalize.ts] — deferred: the fused single-pass serializer already halved traversals; no NFR binds digest throughput before Epic 6, measurement recorded in deferred-work
+- Dismissed (1): "story pre-certifies this review" — status was set to `done` per the review workflow's own completion rule after round 1; this optional round 2 re-opened and re-verified it, and the Change Log records both rounds.
+
 ## Dev Notes
 
 ### Why this story exists, and why second
@@ -163,8 +189,8 @@ claude-fable-5 (Claude Fable 5)
 
 ### Debug Log References
 
-- `npm run validate` green on Node 24 (typecheck, lint, check:docs, lint:spine, test — 152 tests across 7 files); `npm run build` green.
-- `python3 tests/fixtures/derive_vectors.py --check` verifies every frozen expected value against the independent Python derivation.
+- `npm run validate` green on Node 24 (typecheck, lint, check:docs, lint:spine, check:vectors, test — 201 tests across 7 files after two review rounds); `npm run build` green.
+- `python3 tests/fixtures/derive_vectors.py --check` (also run in CI via the `check:vectors` script) verifies every frozen expected value — including every `rawTextPermutations` entry — against the independent Python derivation, and verifies every negative, byte-reject, and composite/directory-reject vector is rejected independently.
 - Spot cross-check with a third source: `printf '0.95' | shasum -a 256` and `printf '{"a":1,"b":[2,3],"c":{"d":true}}' | shasum -a 256` match the fixtures.
 
 ### Completion Notes List
@@ -201,6 +227,15 @@ Decisions added by the 2026-08-11 adversarial code review (all review patches ap
 17. **Scanner hardening.** Leading-zero literals are named as such (`leading zero in number`) instead of surfacing as misleading structural errors; integer literals longer than 16 digits are rejected by inspection before any BigInt conversion; `RuntimeFault` accepts an options bag with `cause`, and the fatal-decode fault carries the platform `TextDecoder` error as its cause.
 18. **Fault-code semantics documented.** `non-canonicalizable-value` covers AD-28's four enumerated violations plus every other hashed-artifact-domain failure (depth, cycles, non-plain structure, `toJSON`, accessor/hidden properties, `undefined`/function/bigint/symbol); the fixtures README states the full thrower set for second implementers. Still exactly two codes.
 
+Decisions added by review round 2 (all round-2 patches applied):
+
+19. **Single-pass canonicalization.** Validation is fused into serialization: one ownKeys/descriptor snapshot per object, values emitted from descriptor `.value` (never a second `[[Get]]`), keys validated on the same snapshot they are emitted from. The round-1 two-pass design re-asserted scalars but left object substitution and key substitution open; a single read closes the whole TOCTOU class by construction. `assertHashedArtifactValue` remains the standalone in-memory validation layer (Task 3); the canonicalizer no longer depends on it for safety, which also halves digest-path traversals.
+20. **Directory member path form.** Paths must be relative, forward-slash separated, with no empty/`.`/`..` segments; backslashes rejected; violations throw `TypeError`. Unicode normalization is deliberately not applied (nothing in the contract is normalization-aware); NFC-vs-NFD spelling is the producer's responsibility, stated in the README. Members are digested from the validated snapshot (`Object.fromEntries` of the entries read once).
+21. **Independence gate in CI.** `check:vectors` (`python3 tests/fixtures/derive_vectors.py --check`) runs inside `npm run validate`, so both CI jobs execute it. This deviates from Dev Notes' "package.json needs at most a no-op" expectation, deliberately: an unwired gate fails open, the same lesson Story 1.1 recorded. `--fill` now requires `--force` and reports each rewritten field.
+22. **Rejection contract in fixtures.** `compositeReject`/`directoryReject` sections pin the caller-input rules (empties, `protocol` collision, malformed digests, non-canonical paths) language-neutrally; the Python deriver mirrors the same rules and `--check` verifies them, alongside the `nesting-beyond-1024` depth vector, truncated-multibyte and CESU-8 byte-reject vectors, byte-path positive coverage, and an AC5 required-vector-name presence test.
+23. **Scanner diagnostics name the defect.** Trailing alphanumerics after a literal or number (`truex`, `1x`, `0x1`) fault as invalid literal/number rather than misleading structural errors, extending the round-1 leading-zero fix to the whole pattern.
+24. **Escape-only applies to prose and test sources too.** All `tests/canonical` sources are pure ASCII (`\uXXXX` escapes); the fixtures README names code points (U+FB33, U+1F600) instead of rendering glyphs, because the rendered dalet-with-dagesh in the README had already been NFC-decomposed by tooling — the exact corruption the rule exists to prevent.
+
 ### File List
 
 New files:
@@ -232,10 +267,13 @@ Modified files (story tracking only):
 Modified by review remediation:
 
 - `biome.json` (targeted `!tests/fixtures/*.json` exclusion — the Story 1.1 `!scripts/fixtures` precedent — so Biome does not fight the deriver's fixture formatting)
+- `package.json` (round 2: `check:vectors` script added and wired into `validate` — a deliberate, recorded deviation from "at most a no-op", per decision 21)
+- `_bmad-output/project-knowledge/learning-path-step-by-step.md` (pre-existing Step 2 content on this branch; review rounds fixed its stale test count and story labels)
 
-No workflow, manifest, pin, or `src/index.ts` barrel changes.
+No workflow, pin, or `src/index.ts` barrel changes.
 
 ## Change Log
 
+- 2026-08-11: Adversarial code review round 2 (on the remediated branch) — 19 patches applied, 1 deferred, 1 dismissed. Headline: validation fused into serialization as a single descriptor-snapshot pass, closing the object/key TOCTOU residue round 1 left open (verified by execution before the fix); the Python independence check wired into CI via `check:vectors`; directory member path form pinned (relative, forward-slash, no dot segments, normalization explicitly the producer's responsibility); rejection contract made language-neutral (`compositeReject`/`directoryReject`, depth vector, truncated/CESU-8 byte vectors); `--fill` guarded behind `--force`. 201 tests green; `npm run validate` + `npm run build` pass. Status remains `done`.
 - 2026-08-11: Adversarial code review (Blind Hunter + Edge Case Hunter + Acceptance Auditor) — 17 patch findings, all applied: plain-data property discipline (accessors, hidden/symbol properties, array subclasses/toJSON/holes rejected), serialize-time scalar re-assertion closing the getter/Proxy TOCTOU channel, 1024-level nesting bound in all three walkers, `digestJson` raw-input entry point, degenerate composite/directory inputs rejected, scanner hardening (leading-zero diagnostics, digit-length fast path, fault `cause`), second-language rejection verification and nested/`__proto__` vectors, pure-ASCII fixtures, shared test helpers. 180 tests green; `npm run validate` + `npm run build` pass. Status → done.
 - 2026-08-11: Story 1.2 implemented — in-house RFC 8785 canonicalizer, AD-36 value domain (lexical + in-memory layers), typed faults `non-canonicalizable-value`/`schema-parse-failure`, artifact/bytes/composite/directory digests with frozen protocol tags, and independently derived cross-language golden vectors (152 tests green, `npm run validate` + `npm run build` pass on Node 24).

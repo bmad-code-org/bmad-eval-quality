@@ -284,7 +284,7 @@ Story reference:
 Cross-links:
 
 - Builds directly on Step 1's CI gates: the same `pr-checks.yml` `validate-and-build` job now also runs
-  this story's 152 tests, and no workflow file changed to make room for them.
+  this story's tests (201 after the two review rounds), and no workflow file changed to make room for them.
 - Stories 1.3-1.5 (schema declarations) consume this step's value-domain rule and string-carriage
   convention for large integers and exact decimals; they express in Zod what this step enforces at
   runtime.
@@ -312,19 +312,19 @@ Sequence to follow:
 
 Task owner map:
 
-- Story 2 Task 1 step 1 owner: define the typed AD-28 fault in `src/core/schemas/faults.ts`
-- Story 2 Task 2 step 1 owner: lexical pre-parse scanner (duplicate keys, unsafe integers, lone
+- Story 1.2 Task 1 step 1 owner: define the typed AD-28 fault in `src/core/schemas/faults.ts`
+- Story 1.2 Task 2 step 1 owner: lexical pre-parse scanner (duplicate keys, unsafe integers, lone
   surrogates, fatal UTF-8 decode) in `src/core/canonical/scan-json.ts`
-- Story 2 Task 3 step 1 owner: in-memory value-domain validation (non-finite/unsafe numbers, non-plain
+- Story 1.2 Task 3 step 1 owner: in-memory value-domain validation (non-finite/unsafe numbers, non-plain
   objects, cycles) in `src/core/canonical/value-domain.ts`
-- Story 2 Task 4 step 1 owner: the RFC 8785 canonical serializer in `src/core/canonical/canonicalize.ts`
-- Story 2 Task 5 step 1 owner: artifact/bytes/composite/directory digest functions in
+- Story 1.2 Task 4 step 1 owner: the RFC 8785 canonical serializer in `src/core/canonical/canonicalize.ts`
+- Story 1.2 Task 5 step 1 owner: artifact/bytes/composite/directory digest functions in
   `src/core/canonical/digest.ts`
-- Story 2 Task 6 step 1 owner: cross-language golden vectors in `tests/fixtures/*.json`
-- Story 2 Task 6 step 2 owner: the independent second-language derivation in
+- Story 1.2 Task 6 step 1 owner: cross-language golden vectors in `tests/fixtures/*.json`
+- Story 1.2 Task 6 step 2 owner: the independent second-language derivation in
   `tests/fixtures/derive_vectors.py`
-- Story 2 Task 6 step 3 owner: the fixture contract documentation in `tests/fixtures/README.md`
-- Story 2 Task 6 step 4 owner: the parametrized vector test suite in `tests/canonical/vectors.test.ts`
+- Story 1.2 Task 6 step 3 owner: the fixture contract documentation in `tests/fixtures/README.md`
+- Story 1.2 Task 6 step 4 owner: the parametrized vector test suite in `tests/canonical/vectors.test.ts`
 
 Current repo note:
 

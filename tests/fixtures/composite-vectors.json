@@ -45,5 +45,89 @@
 			"expectedCanonicalHex": "7b226d656d62657273223a7b22766563746f72732ff09f98802e6a736f6e223a227368613235363a65656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565222c22766563746f72732fefacb32e6a736f6e223a227368613235363a64646464646464646464646464646464646464646464646464646464646464646464646464646464646464646464646464646464646464646464646464646464227d2c2270726f746f636f6c223a226576616c2d7175616c6974792f6469726563746f72792f7631227d",
 			"expectedDigest": "sha256:e6a8f6698123b77eea0800103e7be645a9afccf1f5e0f32191ca9cb1ab2ac4fb"
 		}
+	],
+	"compositeReject": [
+		{
+			"name": "composite-empty-fields",
+			"fields": {},
+			"reason": "composite requires at least one field"
+		},
+		{
+			"name": "composite-protocol-collision",
+			"fields": {
+				"protocol": "x"
+			},
+			"reason": "fields must not carry a protocol member"
+		}
+	],
+	"directoryReject": [
+		{
+			"name": "directory-empty-members",
+			"members": {},
+			"reason": "directory requires at least one member"
+		},
+		{
+			"name": "directory-empty-path",
+			"members": {
+				"": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+			},
+			"reason": "member path must not be empty"
+		},
+		{
+			"name": "directory-malformed-digest",
+			"members": {
+				"a.json": "not-a-digest"
+			},
+			"reason": "member value must match sha256: + 64 lowercase hex"
+		},
+		{
+			"name": "directory-uppercase-digest",
+			"members": {
+				"a.json": "sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+			},
+			"reason": "digest hex must be lowercase"
+		},
+		{
+			"name": "directory-absolute-path",
+			"members": {
+				"/a.json": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+			},
+			"reason": "member path must be relative"
+		},
+		{
+			"name": "directory-dot-segment",
+			"members": {
+				"./a.json": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+			},
+			"reason": "no . segments"
+		},
+		{
+			"name": "directory-dotdot-segment",
+			"members": {
+				"../a.json": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+			},
+			"reason": "no .. segments"
+		},
+		{
+			"name": "directory-empty-segment",
+			"members": {
+				"a//b.json": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+			},
+			"reason": "no empty segments"
+		},
+		{
+			"name": "directory-backslash-path",
+			"members": {
+				"a\\b.json": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+			},
+			"reason": "forward slashes only"
+		},
+		{
+			"name": "directory-trailing-slash",
+			"members": {
+				"a.json/": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+			},
+			"reason": "no trailing slash"
+		}
 	]
 }

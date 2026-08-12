@@ -27,8 +27,13 @@ reformats per ECMA-262. `--check` additionally re-verifies every frozen vector,
 so a divergence would surface as a mismatch, not stay hidden.
 
 Usage:
-    python3 derive_vectors.py --check   # verify frozen fixtures match this derivation
-    python3 derive_vectors.py --fill    # rewrite expected fields (authoring time only)
+    python3 derive_vectors.py --check           # verify frozen fixtures match this derivation
+    python3 derive_vectors.py --fill --force    # rewrite expected fields (authoring time only)
+
+`--check` runs in CI via `npm run validate` (the `check:vectors` script), so
+the forbidden regeneration move cannot sail through the gates unnoticed.
+`--fill` refuses to run without `--force` and reports every field it changes:
+one unguarded command must not be able to silently rewrite the frozen contract.
 
 Regenerating expected values from `src/core` output is forbidden: that would
 turn the golden vectors into snapshot tests that only prove the implementation
@@ -39,6 +44,7 @@ import argparse
 import hashlib
 import json
 import math
+import re
 import sys
 from decimal import Decimal
 from pathlib import Path
@@ -156,16 +162,29 @@ class Rejected(Exception):
     pass
 
 
-def _walk_strings(value):
-    if isinstance(value, str):
-        yield value
-    elif isinstance(value, list):
-        for item in value:
-            yield from _walk_strings(item)
-    elif isinstance(value, dict):
-        for key, item in value.items():
-            yield key
-            yield from _walk_strings(item)
+MAX_NESTING_DEPTH = 1024  # must match src/core/canonical/value-domain.ts
+
+
+def _domain_violation(document):
+    """Iterative post-parse walk: lone surrogates anywhere, nesting beyond the
+    published 1024 bound. Iterative on purpose — a recursive walk would hit
+    Python's own recursion limit before reaching the contract's bound."""
+    stack = [(document, 1)]
+    while stack:
+        value, level = stack.pop()
+        if isinstance(value, str):
+            if any(0xD800 <= ord(ch) <= 0xDFFF for ch in value):
+                return True
+        elif isinstance(value, (list, dict)):
+            if level > MAX_NESTING_DEPTH:
+                return True
+            items = value if isinstance(value, list) else value.items()
+            for item in items:
+                if isinstance(value, dict):
+                    key, item = item
+                    stack.append((key, level))
+                stack.append((item, level + 1))
+    return False
 
 
 def python_rejects(raw_text):
@@ -205,12 +224,13 @@ def python_rejects(raw_text):
             parse_float=check_float,
             parse_constant=lambda name: (_ for _ in ()).throw(Rejected(name)),
         )
-    except (Rejected, ValueError):
+    # Named exceptions only: a blanket ValueError would let an incidental
+    # Python bug rubber-stamp a vector as "rejected" for the wrong reason.
+    # RecursionError is a genuine rejection: the depth-bound vector overruns
+    # Python's recursion limit exactly as it overruns the published bound.
+    except (Rejected, json.JSONDecodeError, RecursionError):
         return True
-    for text in _walk_strings(document):
-        if any(0xD800 <= ord(ch) <= 0xDFFF for ch in text):
-            return True
-    return False
+    return _domain_violation(document)
 
 
 def python_rejects_bytes(data):
@@ -222,10 +242,37 @@ def python_rejects_bytes(data):
     return python_rejects(text)
 
 
+SAFE_MEMBER_DIGEST = re.compile(r'^sha256:[0-9a-f]{64}$')
+
+
+def composite_rejects(fields):
+    """Mirror of digestComposite's caller-input rules (TypeError side)."""
+    return len(fields) == 0 or 'protocol' in fields
+
+
+def directory_rejects(members):
+    """Mirror of digestDirectory's member-path and digest-form rules."""
+    if len(members) == 0:
+        return True
+    for path, digest in members.items():
+        if path == '' or '\\' in path or path.startswith('/'):
+            return True
+        if any(seg in ('', '.', '..') for seg in path.split('/')):
+            return True
+        if not SAFE_MEMBER_DIGEST.match(digest):
+            return True
+    return False
+
+
 def derive_all():
     """Yield (file, vector, derived-expected-fields) triples for every golden vector."""
     for vector in load('positive-vectors.json'):
         yield 'positive-vectors.json', vector, derive_from_value(json.loads(vector['rawText']))
+        # Permutations must independently derive to the same frozen bytes —
+        # otherwise permutation equivalence is certified only by the
+        # implementation under test.
+        for permutation in vector.get('rawTextPermutations', []):
+            yield 'positive-vectors.json', vector, derive_from_value(json.loads(permutation))
     byte_vectors = load('byte-vectors.json')
     for vector in byte_vectors['digest']:
         yield (
@@ -260,6 +307,15 @@ def check():
         if not python_rejects_bytes(bytes.fromhex(vector['inputHex'])):
             failures += 1
             print(f'NOT REJECTED byte-vectors.json :: {vector["name"]}')
+    composite_vectors = load('composite-vectors.json')
+    for vector in composite_vectors.get('compositeReject', []):
+        if not composite_rejects(vector['fields']):
+            failures += 1
+            print(f'NOT REJECTED composite-vectors.json :: {vector["name"]}')
+    for vector in composite_vectors.get('directoryReject', []):
+        if not directory_rejects(vector['members']):
+            failures += 1
+            print(f'NOT REJECTED composite-vectors.json :: {vector["name"]}')
     if failures:
         print(f'{failures} mismatch(es)')
         return 1
@@ -279,7 +335,11 @@ def fill():
 
     def rederive(file_name, vectors, derive):
         for vector in vectors:
-            vector.update(derive(vector))
+            derived = derive(vector)
+            for field, expected in derived.items():
+                if vector.get(field) != expected:
+                    print(f'REWRITING {file_name} :: {vector["name"]} :: {field}')
+            vector.update(derived)
 
     rederive(
         'positive-vectors.json',
@@ -311,8 +371,15 @@ def main():
     mode = parser.add_mutually_exclusive_group(required=True)
     mode.add_argument('--check', action='store_true')
     mode.add_argument('--fill', action='store_true')
+    parser.add_argument('--force', action='store_true')
     args = parser.parse_args()
     if args.fill:
+        if not args.force:
+            print(
+                'refusing to rewrite frozen expected values without --force; '
+                'the fixtures are a frozen contract (see README)'
+            )
+            return 1
         fill()
         return 0
     return check()

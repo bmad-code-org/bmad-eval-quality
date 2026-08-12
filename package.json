@@ -61,7 +61,8 @@
     "build:shareable": "node scripts/build-shareable.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
-    "validate": "npm run typecheck && npm run lint && npm run check:docs && npm run lint:spine && npm run test",
+    "check:vectors": "python3 tests/fixtures/derive_vectors.py --check",
+    "validate": "npm run typecheck && npm run lint && npm run check:docs && npm run lint:spine && npm run check:vectors && npm run test",
     "prepack": "npm run clean && npm run build",
     "prepublishOnly": "node scripts/assert-publish-authorized.mjs"
   },

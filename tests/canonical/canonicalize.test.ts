@@ -55,12 +55,12 @@ describe('canonicalize: structure', () => {
 	it('escapes strings with JSON.stringify semantics', () => {
 		expect(canonicalText('\b\t\n\f\r"\\')).toBe('"\\b\\t\\n\\f\\r\\"\\\\"')
 		expect(canonicalText('\u0001')).toBe('"\\u0001"')
-		expect(canonicalText('é😀')).toBe('"é😀"')
+		expect(canonicalText('\u00e9\ud83d\ude00')).toBe('"\u00e9\ud83d\ude00"')
 	})
 
 	it('encodes to UTF-8 bytes, not a JS string', () => {
-		// "é" is C3 A9 in UTF-8, wrapped in quotes (22).
-		expect(canonicalHex('é')).toBe('22c3a922')
+		// U+00E9 is C3 A9 in UTF-8, wrapped in quotes (22).
+		expect(canonicalHex('\u00e9')).toBe('22c3a922')
 	})
 })
 
@@ -102,11 +102,10 @@ describe('canonicalize: value-domain enforcement', () => {
 		})
 	}
 
-	it('never digests a value the validation pass did not see (lying Proxy)', () => {
-		// The proxy answers the validation read with 1 and every later read with
-		// NaN. Introspection-based validation cannot detect this, so the
-		// serializer re-asserts the scalar domain at emit time — without it,
-		// JSON.stringify(NaN) would silently write the literal null.
+	it('emits exactly what it validated: a get-lying Proxy cannot split the reads', () => {
+		// Validation is fused into serialization as one descriptor-snapshot read,
+		// so a get trap that answers later reads differently has no later read to
+		// answer: values come from the descriptor, and [[Get]] never fires twice.
 		let reads = 0
 		const target = { a: 1 }
 		const lying = new Proxy(target, {
@@ -115,6 +114,46 @@ describe('canonicalize: value-domain enforcement', () => {
 				return Reflect.get(obj, key, receiver)
 			},
 		})
+		expect(new TextDecoder().decode(canonicalize(lying, PATH))).toBe('{"a":1}')
+	})
+
+	it('validates keys on the same snapshot it emits (ownKeys-lying Proxy)', () => {
+		// A Proxy that reports a lone-surrogate key faults: the key check runs
+		// against the single ownKeys read the emitter uses.
+		const lying = new Proxy(
+			{},
+			{
+				ownKeys: () => ['\ud800'],
+				getOwnPropertyDescriptor: () => ({
+					value: 1,
+					enumerable: true,
+					writable: true,
+					configurable: true,
+				}),
+			},
+		)
+		const fault = faultOf(() => canonicalize(lying, PATH))
+		expect(fault.code).toBe('non-canonicalizable-value')
+	})
+
+	it('rejects a substituted non-plain object: a Date can never silently become {}', () => {
+		// The descriptor read hands the serializer a Date; the fused pass checks
+		// prototype plainness on the value it is about to emit, not on a value an
+		// earlier traversal saw.
+		const lying = new Proxy(
+			{ a: 1 },
+			{
+				getOwnPropertyDescriptor: (obj, key) =>
+					key === 'a'
+						? {
+								value: new Date(0),
+								enumerable: true,
+								writable: true,
+								configurable: true,
+							}
+						: Object.getOwnPropertyDescriptor(obj, key),
+			},
+		)
 		const fault = faultOf(() => canonicalize(lying, PATH))
 		expect(fault.code).toBe('non-canonicalizable-value')
 	})
