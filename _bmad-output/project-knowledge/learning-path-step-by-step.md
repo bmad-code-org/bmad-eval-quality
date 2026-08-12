@@ -2,7 +2,9 @@
 
 Updated: 2026-08-11. Added Step 2 (Canonical digest computation and the hashed-artifact value domain)
 for Story 1.2: the in-house RFC 8785 canonicalizer, the two-layer AD-36 value-domain check, the AD-28
-fault codes, the digest forms, and the independently derived cross-language golden vectors.
+fault codes, the digest forms, and the independently derived cross-language golden vectors. Revised the
+same day after two adversarial review rounds: validation is now fused into serialization as a single
+pass, and the Python derivation check runs in CI.
 
 ## How to use this
 
@@ -230,10 +232,22 @@ Key takeaways:
    The two rules an implementer in any language gets wrong are pinned exactly: numbers render via
    native ECMAScript `Number.prototype.toString` (shortest round-trip digits, never hand-rolled), and
    object keys sort by UTF-16 code unit, never by code point and never through
-   `localeCompare`/`Intl`/`.normalize()`. A golden vector proves the difference: the surrogate-pair key
-   `😀` sorts before the BMP key `דּ` (U+FB33) because its UTF-16 lead unit `D83D` is numerically
-   smaller, even though its Unicode code point is larger.
-2. **The numeric value domain is enforced in two separate layers, not one.** A hashed artifact only
+   `localeCompare`/`Intl`/`.normalize()`. A golden vector proves the difference: the surrogate-pair
+   key U+1F600 sorts before the BMP key U+FB33 because its UTF-16 lead unit `D83D` is numerically
+   smaller, even though its Unicode code point is larger. (Code points are named, not rendered as
+   glyphs, here and in the fixtures README: a rendered U+FB33 is exactly the character a
+   normalization-happy tool silently decomposes - which actually happened to the README before review
+   round 2 caught it.)
+2. **Validate exactly what you emit - one read, one pass.** The canonicalizer does not validate the
+   value first and serialize it second. Two passes mean two reads, and a getter or a lying Proxy can
+   answer the second read with a value the first read never saw (review round 1 proved a `NaN`
+   smuggled that way digests silently as `null`; round 2 proved a substituted `Date` digests as
+   `{}`). So the serializer takes one ownKeys/descriptor snapshot per object, validates keys, values,
+   plainness, depth, and cycles on that snapshot, and emits from the same snapshot. There is no
+   second read to lie to. `assertHashedArtifactValue` in `value-domain.ts` remains as a standalone
+   validator for callers that want a check without bytes; the canonicalizer no longer depends on it
+   for safety.
+3. **The numeric value domain is enforced in two separate layers, not one.** A hashed artifact only
    ever admits finite binary64 numbers, with integer values additionally restricted to the
    safe-integer range (|n| ≤ 2^53 − 1). `JSON.parse` cannot be trusted to detect a violation of that
    rule: it silently rounds `9007199254740993` to `9007199254740992` and silently keeps the last of two
@@ -241,34 +255,49 @@ Key takeaways:
    itself, comparing unsafe-integer literals on their digits and duplicate keys on their unescaped
    strings, before anything is handed to a parser. A second, in-memory layer (`value-domain.ts`)
    catches the same class of violation in values already built in memory (a `Date`, a `Map`, a cyclic
-   object) where there is no raw text left to scan.
-3. **Byte-level input decoding must be fatal, not lenient.** When an artifact arrives as raw bytes,
+   object, an accessor or hidden property, an array subclass) where there is no raw text left to
+   scan. Structure itself is bounded too: nesting deeper than 1024 levels rejects with the typed
+   fault in every layer, so hostile input can never escape as a bare `RangeError`.
+4. **Byte-level input decoding must be fatal, not lenient.** When an artifact arrives as raw bytes,
    decoding uses `TextDecoder('utf-8', { fatal: true })`. Node's default, non-fatal decode silently
    replaces an invalid byte sequence with the replacement character U+FFFD - so a producer that
    (incorrectly) writes a lone surrogate as WTF-8 bytes would get those bytes silently repaired and
    digested cleanly, with no error and no evidence anything was wrong. Fatal decoding turns that into a
-   `schema-parse-failure` instead of a silent, undetectable divergence.
-4. **Exactly two fault codes, and only because they have a real thrower.** `non-canonicalizable-value`
-   covers the four value-domain violations (non-finite number, unsafe integer, lone surrogate,
-   duplicate key); `schema-parse-failure` covers input that never parses at all (malformed JSON syntax,
-   or a fatal UTF-8 decode failure). No other fault code from the architecture's registry is
-   pre-declared here - a registry entry with no code path that actually throws it is dead vocabulary,
-   and the next story that needs a new code adds it when it has a real thrower.
-5. **Digests are always `sha256:` plus 64 lowercase hex, over canonical bytes - never a
+   `schema-parse-failure` instead of a silent, undetectable divergence. Callers holding raw text or
+   bytes use `digestJson`, which routes through the scanner; `digestArtifact(JSON.parse(text))` is the
+   misuse this API exists to make unnecessary.
+5. **Exactly two fault codes, and only because they have a real thrower.** `non-canonicalizable-value`
+   covers AD-28's four enumerated violations (non-finite number, unsafe integer, lone surrogate,
+   duplicate key) and every other way a value can fail the hashed-artifact domain (depth, cycles,
+   non-plain structure, accessor/hidden properties, `undefined`, functions, bigints, symbols);
+   `schema-parse-failure` covers input that never parses at all (malformed JSON syntax, or a fatal
+   UTF-8 decode failure). No other fault code from the architecture's registry is pre-declared here -
+   a registry entry with no code path that actually throws it is dead vocabulary, and the next story
+   that needs a new code adds it when it has a real thrower.
+6. **Digests are always `sha256:` plus 64 lowercase hex, over canonical bytes - never a
    concatenation.** A composite digest (used to bind several other digests together, e.g. a contract
    plus a run) hashes a domain-separated tagged object -
    `{"protocol":"eval-quality/composite/v1", ...named fields}` - never string concatenation, which
    would let two different field splits collide on the same hash. A directory digest is the same idea
    one level up: `{"protocol":"eval-quality/directory/v1","members":{<path>: <digest>}}`, and "ordered
    by path" means the same UTF-16 code-unit order as everything else, which is not the same order
-   `git` or a Unix `sort` would produce for a path containing a supplementary-plane character.
-6. **A golden vector is only as trustworthy as its independent origin.** Every expected canonical byte
-   sequence and digest in `tests/fixtures/` was computed by a second implementation - a committed,
-   from-scratch Python script (`tests/fixtures/derive_vectors.py`) that reimplements the same two JCS
-   rules independently - and spot-checked by hand with `shasum -a 256`, never by running the TypeScript
-   code under test and pasting its output back as the "expected" value. A fixture produced that way
-   would only prove the implementation agrees with itself, which is exactly zero evidence against the
-   cross-language divergence this whole story exists to prevent.
+   `git` or a Unix `sort` would produce for a path containing a supplementary-plane character. Member
+   paths must arrive in one canonical spelling (relative, forward-slash, no empty/`.`/`..` segments) -
+   otherwise two producers naming the same file `a` and `./a` would mint different digests with no
+   fault raised. Degenerate inputs (empty fields, empty members, a `protocol` field collision) are
+   rejected as caller errors rather than minting digests that would be hard to retract later.
+7. **A golden vector is only as trustworthy as its independent origin - and the check must run in
+   CI.** Every expected canonical byte sequence and digest in `tests/fixtures/` was computed by a
+   second implementation - a committed, from-scratch Python script
+   (`tests/fixtures/derive_vectors.py`) that reimplements the same two JCS rules independently - and
+   spot-checked by hand with `shasum -a 256`, never by running the TypeScript code under test and
+   pasting its output back as the "expected" value. A fixture produced that way would only prove the
+   implementation agrees with itself, which is exactly zero evidence against the cross-language
+   divergence this whole story exists to prevent. Review round 2 applied Step 1's own lesson to this
+   gate: `derive_vectors.py --check` originally ran only when a human remembered, so it is now the
+   `check:vectors` script inside `npm run validate` and runs in both CI jobs. It also verifies the
+   negative and reject vectors are rejected by the Python side, and `--fill` (which rewrites the
+   frozen values) refuses to run without `--force`.
 
 Story/Task mapping:
 
@@ -284,7 +313,9 @@ Story reference:
 Cross-links:
 
 - Builds directly on Step 1's CI gates: the same `pr-checks.yml` `validate-and-build` job now also runs
-  this story's tests (201 after the two review rounds), and no workflow file changed to make room for them.
+  this story's tests (201 after the two review rounds) plus the `check:vectors` Python derivation
+  check, and no workflow file changed to make room for them - the one wiring change lives in
+  `package.json`'s `validate` script.
 - Stories 1.3-1.5 (schema declarations) consume this step's value-domain rule and string-carriage
   convention for large integers and exact decimals; they express in Zod what this step enforces at
   runtime.
@@ -299,11 +330,13 @@ Sequence to follow:
    scanner; the comments at each `domain(...)` and `syntax(...)` call explain which of the two fault
    codes fires and why.
 4. Read `src/core/canonical/value-domain.ts` - the in-memory counterpart, same two fault-code split,
-   different input shape (JS values instead of raw text).
-5. Read `src/core/canonical/canonicalize.ts` - the actual RFC 8785 serializer; note it calls
-   `assertHashedArtifactValue` (Task 3) before it ever serializes anything.
-6. Read `src/core/canonical/digest.ts` - the four digest functions and the two frozen protocol tag
-   constants.
+   different input shape (JS values instead of raw text). The canonicalizer imports its scalar checks
+   and the depth constant; the full `assertHashedArtifactValue` walk is the standalone validator.
+5. Read `src/core/canonical/canonicalize.ts` - the actual RFC 8785 serializer; note that validation
+   is fused into serialization (one ownKeys/descriptor snapshot per object, emitted from the same
+   read), and the file comment explains why a second traversal would reopen the TOCTOU channel.
+6. Read `src/core/canonical/digest.ts` - the five digest functions (including `digestJson` for raw
+   input) and the two frozen protocol tag constants.
 7. Read `tests/fixtures/derive_vectors.py` - the independent second implementation that produced every
    frozen expected value; run `python3 tests/fixtures/derive_vectors.py --check` to see it re-verify
    them.
@@ -325,6 +358,7 @@ Task owner map:
   `tests/fixtures/derive_vectors.py`
 - Story 1.2 Task 6 step 3 owner: the fixture contract documentation in `tests/fixtures/README.md`
 - Story 1.2 Task 6 step 4 owner: the parametrized vector test suite in `tests/canonical/vectors.test.ts`
+- Story 1.2 Task 6 step 5 owner: shared test helpers (`faultOf`, strict `hexToBytes`) in `tests/canonical/helpers.ts`
 
 Current repo note:
 
@@ -345,16 +379,17 @@ Architecture diagram:
 ```mermaid
 flowchart TD
   SCAN["scan-json.ts<br/>lexical scanner over raw text"]
-  DOMAIN["value-domain.ts<br/>in-memory value-domain check"]
+  DOMAIN["value-domain.ts<br/>standalone in-memory validator + shared scalar checks"]
   FAULT["faults.ts<br/>RuntimeFault: non-canonicalizable-value / schema-parse-failure"]
-  CANON["canonicalize.ts<br/>RFC 8785 serializer to UTF-8 bytes"]
-  DIGEST["digest.ts<br/>sha256: + 64 hex over canonical bytes"]
+  CANON["canonicalize.ts<br/>single-pass validate + serialize to UTF-8 bytes"]
+  DIGEST["digest.ts<br/>sha256: + 64 hex; digestJson routes raw input through the scanner"]
   FIXTURES["tests/fixtures/*.json<br/>independently derived golden vectors"]
-  DERIVE["derive_vectors.py<br/>second-language derivation, --check"]
+  DERIVE["derive_vectors.py<br/>second-language derivation; --check runs in CI via check:vectors"]
 
   SCAN --> FAULT
   DOMAIN --> FAULT
-  DOMAIN --> CANON
+  DOMAIN -->|scalar checks + depth bound| CANON
+  SCAN -->|digestJson| DIGEST
   CANON --> DIGEST
   DERIVE --> FIXTURES
   FIXTURES --> CANON
