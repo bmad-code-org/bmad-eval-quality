@@ -1,3 +1,4 @@
+/** JSON to bytes */
 import { RuntimeFault } from '../schemas/faults.ts'
 import {
 	assertDomainNumber,

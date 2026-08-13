@@ -1,3 +1,4 @@
+/** same checks for values already in memory */
 import { RuntimeFault } from '../schemas/faults.ts'
 
 // AD-36: a hashed artifact admits only finite binary64 numbers, integers within

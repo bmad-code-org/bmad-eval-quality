@@ -1,3 +1,4 @@
+/** the five digest functions. */
 import { createHash } from 'node:crypto'
 import { canonicalize } from './canonicalize.ts'
 import { scanJson } from './scan-json.ts'

@@ -1,3 +1,4 @@
+/** reads raw text, catches what JSON.parse hides */
 import { RuntimeFault } from '../schemas/faults.ts'
 import { MAX_NESTING_DEPTH } from './value-domain.ts'
 

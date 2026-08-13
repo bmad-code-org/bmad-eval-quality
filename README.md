@@ -3,9 +3,7 @@
 ### At its core, `eval-quality` does three things
 
 1. **Compile** : Validate and normalize an eval spec into a machine-readable artifact.
-
 2. **Seal** : Render the Markdown brief for the independent evaluator while hiding the planted bug and the scoring answer.
-
 3. **Score** : Compare the evaluator’s completed findings with the hidden bug signature to determine whether the bug was actually caught.
 
 ### What is the eval spec?
@@ -16,11 +14,11 @@ More precisely, it is the evaluator’s instructions for how to expose a failure
 
 It defines:
 
-* the behavior being evaluated;
-* the probes the evaluator should perform;
-* the evidence it should inspect;
-* the negative behavior it must rule out;
-* the oracle that determines pass or fail.
+- the behavior being evaluated;
+- the probes the evaluator should perform;
+- the evidence it should inspect;
+- the negative behavior it must rule out;
+- the oracle that determines pass or fail.
 
 For example:
 
@@ -73,6 +71,8 @@ product spec
   → per-oracle evidence and a gate decision
 ```
 
+
+
 ## What each part provides
 
 `eval-quality` provides:
@@ -107,20 +107,11 @@ Use `eval-quality` when all three are true:
 - A plausible-looking output can still be materially wrong.
 - Observable evidence or probes can expose the wrong behavior.
 
-Deterministic work does not need it and already has cheaper, stronger evidence from unit, contract, E2E, performance, and mutation testing.
+Deterministic work does not need it and already has cheaper, stronger evidence from unit, integration, contract, E2E and performance testing.
 
 ## Behavioral Evaluation Contracts
 
 A **Behavioral Evaluation Contract** is a versioned specification of the behaviors to probe, the evidence to collect, the negative cases to exercise, and the rules that decide whether the system passes or fails. **Eval Contract** is the shorthand used from here on. The individual checks inside it are **oracles**. The contract carries no prescribed action sequence; the evaluator chooses its own path.
-
-This is not a Pact or API contract, and the distinction matters if you arrived from contract testing:
-
-| Pact / API contract | Behavioral Evaluation Contract |
-| --- | --- |
-| An agreement between a consumer and a provider | An agreement between intended behavior and its evaluator |
-| Defines request and response interactions | Defines probes, evidence, and verdict rules |
-| Detects integration incompatibility | Detects behavioral and evaluation blind spots |
-| Verified against a provider | Scored against known defects and gaming cases |
 
 The authoring discipline is a small set of rules that survived the experiments: separate the success indicator from the body, read the whole body, probe malformed and negative inputs, verify per record, and cross-check sibling parameters and sibling tools.
 
@@ -192,7 +183,7 @@ Contract compilation was declared ready in ADR-007 and a fourth review withdrew 
 
 Both are documented as defects rather than dressed as decisions, because four rounds have shown that a confidently worded revision is the thing that goes wrong here.
 
-The decision record, in order: [ADR-001](_bmad-output/planning-artifacts/architecture/architecture-eval-quality-2026-07-22/ADR-001-evaluator-isolation-boundary.md) on evaluator isolation, [ADR-002](_bmad-output/planning-artifacts/architecture/architecture-eval-quality-2026-07-22/ADR-002-contract-authoring-discipline.md) on why authoring discipline is the product, [ADR-003](_bmad-output/planning-artifacts/architecture/architecture-eval-quality-2026-07-29/ADR-003-measurement-mechanics.md) on measurement mechanics, [ADR-004](_bmad-output/planning-artifacts/architecture/architecture-eval-quality-2026-07-29/ADR-004-execution-boundary.md) on why this package executes nothing, [ADR-005](_bmad-output/planning-artifacts/architecture/architecture-eval-quality-2026-07-29/ADR-005-review-round-corrections.md) and [ADR-006](_bmad-output/planning-artifacts/architecture/architecture-eval-quality-2026-07-29/ADR-006-interaction-plan.md) on what review and hand-authoring corrected, [ADR-007](_bmad-output/planning-artifacts/architecture/architecture-eval-quality-2026-07-29/ADR-007-compile-score-split.md) on the split, [ADR-008](_bmad-output/planning-artifacts/architecture/architecture-eval-quality-2026-07-29/ADR-008-compile-half-owed-to-calibration.md) on why the other half stopped claiming to be finished too, and [ADR-009](_bmad-output/planning-artifacts/architecture/architecture-eval-quality-2026-07-29/ADR-009-adversarial-gate-corrections.md) on the seventeen places where two conforming implementations still disagreed. Review triage lives in [`reviews/`](_bmad-output/planning-artifacts/architecture/architecture-eval-quality-2026-07-29/reviews/).
+The decision record, in order: [ADR-001](_bmad-output/planning-artifacts/architecture/architecture-eval-quality-2026-07-22/ADR-001-evaluator-isolation-boundary.md) on evaluator isolation, [ADR-002](_bmad-output/planning-artifacts/architecture/architecture-eval-quality-2026-07-22/ADR-002-contract-authoring-discipline.md) on why authoring discipline is the product, [ADR-003](_bmad-output/planning-artifacts/architecture/architecture-eval-quality-2026-07-29/ADR-003-measurement-mechanics.md) on measurement mechanics, [ADR-004](_bmad-output/planning-artifacts/architecture/architecture-eval-quality-2026-07-29/ADR-004-execution-boundary.md) on why this package executes nothing, [ADR-005](_bmad-output/planning-artifacts/architecture/architecture-eval-quality-2026-07-29/ADR-005-review-round-corrections.md) and [ADR-006](_bmad-output/planning-artifacts/architecture/architecture-eval-quality-2026-07-29/ADR-006-interaction-plan.md) on what review and hand-authoring corrected, [ADR-007](_bmad-output/planning-artifacts/architecture/architecture-eval-quality-2026-07-29/ADR-007-compile-score-split.md) on the split, [ADR-008](_bmad-output/planning-artifacts/architecture/architecture-eval-quality-2026-07-29/ADR-008-compile-half-owed-to-calibration.md) on why the other half stopped claiming to be finished too, and [ADR-009](_bmad-output/planning-artifacts/architecture/architecture-eval-quality-2026-07-29/ADR-009-adversarial-gate-corrections.md) on the seventeen places where two conforming implementations still disagreed. Review triage lives in `[reviews/](_bmad-output/planning-artifacts/architecture/architecture-eval-quality-2026-07-29/reviews/)`.
 
 ## Not building now
 
