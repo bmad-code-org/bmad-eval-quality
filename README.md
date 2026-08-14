@@ -71,8 +71,6 @@ product spec
   → per-oracle evidence and a gate decision
 ```
 
-
-
 ## What each part provides
 
 `eval-quality` provides:

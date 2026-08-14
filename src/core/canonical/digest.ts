@@ -1,5 +1,6 @@
 /** the five digest functions. */
 import { createHash } from 'node:crypto'
+import { DIGEST_FORM } from '../schemas/primitives.ts'
 import { canonicalize } from './canonicalize.ts'
 import { scanJson } from './scan-json.ts'
 
@@ -10,8 +11,6 @@ import { scanJson } from './scan-json.ts'
 
 export const COMPOSITE_PROTOCOL_TAG = 'eval-quality/composite/v1'
 export const DIRECTORY_PROTOCOL_TAG = 'eval-quality/directory/v1'
-
-const DIGEST_FORM = /^sha256:[0-9a-f]{64}$/
 
 const render = (bytes: Uint8Array): string =>
 	`sha256:${createHash('sha256').update(bytes).digest('hex')}`
