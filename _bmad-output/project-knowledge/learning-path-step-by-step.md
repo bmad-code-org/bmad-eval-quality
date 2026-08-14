@@ -7,6 +7,7 @@ Short version here. The long reasoning lives in the code comments each step poin
 | ---: | -------------------------------------------------------------------------------- |
 |    1 | Lock down dependencies. Prove the CI gates really block bad ones.                 |
 |    2 | One way to turn JSON into bytes, one way to hash it, so two codebases agree.      |
+|    3 | What a contract author may write down, and what the schema lets through on purpose. |
 
 Adding a step: follow `learning-path-template.md`.
 
@@ -129,4 +130,78 @@ flowchart TD
   DERIVE --> FIXTURES
   FIXTURES --> CANON
   FIXTURES --> DIGEST
+```
+
+## Step 3: the Eval Contract schema
+
+**What:** the whole Eval Contract written once in Zod: what an author declares, the check expression
+grammar, and the plan of interaction steps.
+
+**Why:** every later epic reads these declarations and decides whether a contract is any good. This
+step decides what can be said at all. A field missing here is a rule nobody can ever check, and a
+shape spelled two ways is two products.
+
+**Rules:**
+
+- If a later epic has an error code for a bad shape, the schema accepts that shape. Rejecting it here
+  swaps a named error for a nameless parse failure and deletes a test someone else owes.
+- One exception, chosen by the epic: operator arity. `equality` takes exactly two operands.
+- "Not set" is written `null`, never a missing key. Missing, empty, and filled are three answers.
+- Every object is strict. Six maps are keyed by the author's own words; each is named in the code.
+- `JsonValue` is the only place the caller's own keys are allowed.
+- Three pointer spellings, three regexes: rooted at a step, relative to a quantifier's element, and
+  plain into one response descriptor.
+- Binding values are tagged, `{"literal": …}` or `{"matcher": "any"}`. The untagged form cannot be
+  written down at all.
+- Name every shape that is shared or refers to itself. An unnamed one exports as `__schema0`, a
+  number that shifts as soon as anything else changes. Never add `.describe()` to a named shape at a
+  use site; that wraps it and brings `__schema0` straight back.
+- Prefer a plain Zod feature over `.refine()`. Refinements vanish from the published JSON Schema;
+  `.describe()` text survives. Whatever a refinement still enforces goes in `constraint-ledger.ts`
+  with the exact place to put it back and the JSON Schema version that fix is written for.
+
+**Read in this order:**
+
+1. `src/core/schemas/primitives.ts`: identifiers, digests, dates, and the `JsonValue` container.
+2. `src/core/schemas/pointer.ts`: the three spellings and who may use each.
+3. `src/core/schemas/expression.ts`: the operand union and the sixteen check forms.
+4. `src/core/schemas/interface.ts`: operations, request channels, response descriptors.
+5. `src/core/schemas/plan.ts`: a step selects observations; it never gives instructions.
+6. `src/core/schemas/eval-contract.ts`: everything above, assembled.
+7. `src/core/schemas/constraint-ledger.ts`: what the export cannot carry, as data.
+8. `tests/schemas/ad5-admissions.test.ts`: one test per error code, proving the shape still parses.
+9. `tests/schemas/fixtures/gate-c-contract.ts`: the only hand-written contract, and the twelve places
+   it had to change.
+
+**Watch out:**
+
+- A reject test asserts the exact issue path and code. "It failed" would also pass on a typo.
+- The old worked example fails three of its five checks on purpose. Do not repair it.
+- `z.record` keyed by an enum demands every member, so the four channels are a plain object.
+- `DIGEST_FORM` moved here from `digest.ts`. `core/` may import `core/schemas`, never the reverse.
+
+**Story:** `_bmad-output/implementation-artifacts/1-3-the-eval-contract-schema-declarations-operand-grammar-and-plan-grammar.md`
+
+```mermaid
+flowchart TD
+  PRIM["primitives.ts<br/>ids, digests, JsonValue"]
+  PTR["pointer.ts<br/>three spellings"]
+  EXPR["expression.ts<br/>operands + check tree"]
+  IFACE["interface.ts<br/>operations, descriptors"]
+  PLAN["plan.ts<br/>steps as selectors"]
+  PARTS["oracle.ts, rubric.ts,<br/>waiver.ts, reference-set.ts"]
+  CONTRACT["eval-contract.ts<br/>the whole contract"]
+  LEDGER["constraint-ledger.ts<br/>what the export drops"]
+
+  PRIM --> PTR
+  PRIM --> EXPR
+  PTR --> EXPR
+  PTR --> IFACE
+  PRIM --> PLAN
+  EXPR --> PARTS
+  IFACE --> CONTRACT
+  PLAN --> CONTRACT
+  PARTS --> CONTRACT
+  EXPR --> LEDGER
+  PLAN --> LEDGER
 ```
