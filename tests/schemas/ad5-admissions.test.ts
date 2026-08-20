@@ -9,7 +9,10 @@
 // Operator arity is the one deliberate exception, and the epic chose it.
 
 import { describe, expect, it } from 'vitest'
+import { z } from 'zod'
+import { INTERCHANGE_ARTIFACTS } from '../../src/core/schemas/artifact.ts'
 import { EvalContract } from '../../src/core/schemas/eval-contract.ts'
+import { ARTIFACT_ACCEPT_FIXTURES } from './fixtures/artifact-fixtures.ts'
 import { populatedContract } from './fixtures/relevance-contracts.ts'
 
 const admits = (mutate: (contract: any) => void): void => {
@@ -372,6 +375,213 @@ describe('cross-field rules with no AD-5 code, unenforced in v0 by decision', ()
 		admits((contract) => {
 			contract.parentDigest = null
 			contract.revisionCount = 3
+		})
+	})
+})
+
+// Story 1.4 extends the list above. Each entry is a rule some AD states, that
+// no AD-5 code names, and that no schema over ONE artifact can decide. Most of
+// them because they compare two artifacts, and the rest because the operand
+// they read is prose. They are named here rather than silently dropped, so a
+// later epic adds a code deliberately instead of discovering the hole.
+describe('cross-artifact and cross-field rules this story leaves unenforced', () => {
+	const admitsArtifact = (
+		artifact: keyof typeof INTERCHANGE_ARTIFACTS,
+		mutate: (subject: any) => void,
+	): void => {
+		const subject = structuredClone(
+			ARTIFACT_ACCEPT_FIXTURES[artifact],
+		) as unknown
+		mutate(subject)
+		const result = INTERCHANGE_ARTIFACTS[artifact].schema.safeParse(subject)
+		expect(result.error?.issues ?? []).toEqual([])
+		expect(result.success).toBe(true)
+	}
+
+	// 1. AD-23 makes a missing disposition an AD-21 invalidating condition, so
+	//    the schema admits the shape and ingest fires the rung.
+	it('admits a run record whose dispositions omit a required oracle', () => {
+		admitsArtifact('sealed-run-record', (record) => {
+			record.oracleDispositions = []
+		})
+	})
+
+	// 2. One disposition per required oracle, not two.
+	it('admits two dispositions naming one oracle', () => {
+		admitsArtifact('sealed-run-record', (record) => {
+			record.oracleDispositions.push(
+				structuredClone(record.oracleDispositions[0]),
+			)
+		})
+	})
+
+	// 3. A citation is checked against the observations at ingest, not here.
+	it('admits a finding citing an observation no observation declares', () => {
+		admitsArtifact('sealed-run-record', (record) => {
+			record.findings[0].observationIds = ['obs-does-not-exist']
+		})
+	})
+
+	// 4. ADR-009 Decision 2: "cited identifiers govern the witness match;
+	//    quotation audits it." Quoted text appearing in no cited observation is
+	//    an AD-32 declared-versus-observed inconsistency at ingest.
+	it('admits a defect whose quotation appears in none of its cited observations', () => {
+		admitsArtifact('sealed-run-record', (record) => {
+			record.findings[0].quotedEvidence = [
+				{ quote: 'text that appears in no observation', channel: 'stdout' },
+			]
+		})
+	})
+
+	// 5. AD-17 requires one judge call scoring all named rubric criteria.
+	it('admits a judge result citing an undeclared criterion, and a second call', () => {
+		admitsArtifact('sealed-run-record', (record) => {
+			record.judgeResults.push({
+				rubricId: 'R-999',
+				criterionId: 'RC-999',
+				score: 1,
+				note: null,
+			})
+		})
+	})
+
+	// 6. AD-16 makes an exceeded allowlist a violation recorded at ingest.
+	it('admits a manifest whose observations exceed every allowlist', () => {
+		admitsArtifact('isolation-manifest', (manifest) => {
+			manifest.observedMounts = ['/etc', '/home']
+			manifest.observedNetworkTargets = ['example.invalid']
+			manifest.observedToolCalls = ['shell']
+		})
+	})
+
+	// 7. AD-32 requires these digests to agree between two artifacts, and a
+	//    schema cannot see two artifacts at once.
+	it('admits a run record whose digests disagree with the manifest fixture', () => {
+		admitsArtifact('sealed-run-record', (record) => {
+			record.evaluatorConfigurationDigest = `sha256:${'f'.repeat(64)}`
+			record.contractDigest = `sha256:${'e'.repeat(64)}`
+		})
+	})
+
+	// 8. AD-8: "a manifest digest is never a trusted label." The core recomputes
+	//    from resolved bytes and a mismatch is an AD-28 `digest-mismatch` fault.
+	it('admits a manifest entry whose digest matches no resolved bytes', () => {
+		admitsArtifact('private-artifact-manifest', (manifest) => {
+			manifest.entries[0].digest = `sha256:${'d'.repeat(64)}`
+		})
+	})
+
+	// 9. The per-class entry carries `caught`, `exercised`, and `rate`, and their
+	//    arithmetic is the scorer's.
+	it('admits a strength rate disagreeing with its own numerator and denominator', () => {
+		admitsArtifact('evidence-artifact', (artifact) => {
+			artifact.strength.vector.defect = { caught: 0, exercised: 4, rate: 1 }
+		})
+	})
+
+	// 10. AD-7 excludes clean controls from the vector and AD-9 fixes their legal
+	//     states at two, so the scorer reads the pair. No AD-5 code names the
+	//     contradiction in either direction.
+	it('admits a defect-class probe declaring itself clean, and one seeding nothing', () => {
+		admitsArtifact('probe', (probe) => {
+			probe.expectedClean = true
+			probe.defects = []
+		})
+		admitsArtifact('probe', (probe) => {
+			probe.probeClass = 'defect'
+			probe.expectedClean = false
+			probe.defects = []
+		})
+	})
+
+	// 11. `Operation.operationId` is scoped to a `PermittedInterface`, and
+	//     `duplicate-operation-signature` covers method plus path template only.
+	it('admits observations whose operation identifiers collide across interfaces', () => {
+		admitsArtifact('sealed-run-record', (record) => {
+			for (const observation of record.observations) {
+				observation.operationId = 'get-note'
+			}
+		})
+	})
+
+	// 12. AD-18. Unenforceable over opaque strings; it is in the constraint
+	//     ledger as not expressible and enforced by the publication guard.
+	it('admits an artifact carrying something shaped like a credential', () => {
+		admitsArtifact('evaluator-configuration', (configuration) => {
+			configuration.toolInventory = ['http?api_key=sk-live-0000000000']
+			configuration.evaluatorIdentity = 'evaluator@example.invalid'
+		})
+		admitsArtifact('private-artifact-manifest', (manifest) => {
+			manifest.entries[0].privateRef = '/Users/someone/private/trace.jsonl'
+		})
+	})
+
+	// 13. AD-9: "An unqualified probe cannot enter a sealed set." With the
+	//     qualification record deferred, nothing catches one: not this schema,
+	//     not an AD-5 code, not an AD-21 rung. The accepted cost of that
+	//     deferral, named rather than dropped.
+	it('admits a probe carrying no qualification record at all', () => {
+		const probe = structuredClone(ARTIFACT_ACCEPT_FIXTURES.probe) as any
+		expect(Object.keys(probe)).not.toContain('qualification')
+		expect(INTERCHANGE_ARTIFACTS.probe.schema.safeParse(probe).success).toBe(
+			true,
+		)
+	})
+
+	// 14. AD-9 puts the behaviour on the probe, the prior art puts one on each
+	//     defect, and this story carries both.
+	it("admits a probe whose behaviour disagrees with its defect's behaviour", () => {
+		admitsArtifact('probe', (probe) => {
+			probe.behaviorId = 'B-001'
+			probe.defects[0].behaviorId = 'B-002'
+		})
+	})
+
+	// 15. AD-17: "must retain evidence contradicting the leading verdict." No
+	//     field on any artifact decides it; `evidenceDisclosure` declares the two
+	//     caller-stated conditions and this is not one of them.
+	it('admits a truncated record that discloses nothing about disconfirming evidence', () => {
+		admitsArtifact('sealed-run-record', (record) => {
+			record.evidenceDisclosure = {
+				truncationBound: 1,
+				reportedIncomplete: false,
+			}
+			record.observations = []
+		})
+	})
+
+	// 16. Already on Story 1.3's list. Confirmed here rather than assumed: this
+	//     story declares no new keyed shape descriptor, so no new instance of the
+	//     rule escapes it.
+	it('declares no new required-versus-permitted key descriptor', () => {
+		for (const [key, entry] of Object.entries(INTERCHANGE_ARTIFACTS)) {
+			if (key === 'eval-contract') continue
+			const document = JSON.stringify(
+				z.toJSONSchema(entry.schema, { io: 'input' }),
+			)
+			expect(document, key).not.toContain('permittedKeys')
+			expect(document, key).not.toContain('requiredKeys')
+		}
+	})
+	// 17. AD-21 assigns an exit code per verdict: PASS, WAIVED, and CONCERNS exit
+	//     zero and FAIL exits two. Both fields sit on one artifact, so a
+	//     refinement could compare them, but a refinement is dropped from the
+	//     published schema and the CLI is the thing that actually exits.
+	it('admits an evidence artifact whose exit code contradicts its verdict', () => {
+		admitsArtifact('evidence-artifact', (artifact) => {
+			artifact.productionVerdict = 'FAIL'
+			artifact.exitCode = 0
+		})
+	})
+
+	// 18. AD-6 requires each invalidated attempt's reason; nothing makes the
+	//     attempt numbers a set. Two attempts numbered 2 parse.
+	it('admits invalidated attempts sharing one attempt number', () => {
+		admitsArtifact('evidence-artifact', (artifact) => {
+			artifact.trials.invalidatedAttempts = [
+				{ attempt: 2, reason: 'port fault during probing' },
+				{ attempt: 2, reason: 'a second, differently numbered thing' },
+			]
 		})
 	})
 })

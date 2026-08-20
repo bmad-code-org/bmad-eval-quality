@@ -1,4 +1,8 @@
 /** the constraints the published JSON Schema cannot carry unaided. */
+import {
+	INTERCHANGE_ARTIFACTS,
+	type InterchangeArtifactKey,
+} from './artifact.ts'
 import { TUPLE_ARITY } from './expression.ts'
 import { BINDING_CHANNEL_NON_EMPTY } from './plan.ts'
 import type { JsonValue } from './primitives.ts'
@@ -30,15 +34,32 @@ export type ConstraintDisposition =
 
 /**
  * Where in the exported document the entry applies. Zod emits no `$id` and
- * puts the root schema inline rather than in `$defs`, so "the contract itself"
+ * puts the root schema inline rather than in `$defs`, so "the artifact itself"
  * and "a shared definition" are two different addresses and the difference has
  * to be structural. Spelling both as a name would leave Story 1.5 needing
  * out-of-band knowledge to resolve one of them, which is the defect this
  * address exists to remove.
+ *
+ * Every address names its `artifact`. That was omissible while `EvalContract`
+ * was the only root. With twelve roots it is not: Story 1.5 resolves an entry
+ * by its stated address and never by searching, so the moment two artifacts
+ * carried the same rule the resolution would silently pick the wrong document.
+ * Story 1.5 reads `location.artifact` to choose one.
+ *
+ * This module imports `artifact.ts` and therefore sits downstream of all twelve
+ * schema modules, so no module under `src/core/schemas/` may import this file.
+ * The existing direction is the correct one, with `plan.ts` exporting
+ * `BINDING_CHANNEL_NON_EMPTY` to the ledger. A future author reaching the other
+ * way for a stable identifier closes the loop and breaks module load for every
+ * artifact.
  */
 export type ConstraintLocation =
-	| { readonly kind: 'root' }
-	| { readonly kind: 'definition'; readonly name: string }
+	| { readonly kind: 'root'; readonly artifact: InterchangeArtifactKey }
+	| {
+			readonly kind: 'definition'
+			readonly artifact: InterchangeArtifactKey
+			readonly name: string
+	  }
 
 export type ConstraintLedgerEntry = {
 	/** stable identifier; Story 1.5 cites this, never the prose. */
@@ -65,7 +86,11 @@ const arityEntries: readonly ConstraintLedgerEntry[] = Object.entries(
 	TUPLE_ARITY,
 ).map(([op, arity]) => ({
 	id: `operator-arity-${op}`,
-	location: { kind: 'definition', name: 'Expression' },
+	location: {
+		kind: 'definition',
+		artifact: 'eval-contract',
+		name: 'Expression',
+	},
 	branch: op,
 	field: 'operands',
 	statement: `\`${op}\` takes exactly ${arity} operand${arity === 1 ? '' : 's'}.`,
@@ -87,7 +112,11 @@ const arityEntries: readonly ConstraintLedgerEntry[] = Object.entries(
  */
 const operandTypeEntry: ConstraintLedgerEntry = {
 	id: 'operator-operand-types',
-	location: { kind: 'definition', name: 'Expression' },
+	location: {
+		kind: 'definition',
+		artifact: 'eval-contract',
+		name: 'Expression',
+	},
 	branch: null,
 	field: null,
 	statement:
@@ -99,11 +128,73 @@ const operandTypeEntry: ConstraintLedgerEntry = {
 	},
 }
 
+// One entry per lineage-bearing artifact, so eleven and not twelve. The
+// registry's `carriesLineage` flag is the filter, and `ArtifactReference`
+// carries no `parentDigest` for the address to resolve against. Generated from
+// the registry the way the arity entries are generated from `TUPLE_ARITY`,
+// because a hand-written twelfth entry is a bug and a hand-written eleven is
+// drift.
+//
+// Two of the eleven are union-rooted: `Probe` on `expectedClean` and
+// `EvidenceArtifact` on `mode`. A union root exports
+// `{ $schema, oneOf, description }` with no `properties` object. The resolver
+// that walks these addresses therefore needs a union fallback that requires the
+// field in every branch, which is what the entry means: the lineage fields are
+// spread into each branch, so the biconditional binds both.
+const lineageEntries: readonly ConstraintLedgerEntry[] = Object.entries(
+	INTERCHANGE_ARTIFACTS,
+)
+	.filter(([, entry]) => entry.carriesLineage)
+	.map(([key]) => ({
+		id: `lineage-${key}`,
+		location: { kind: 'root', artifact: key as InterchangeArtifactKey },
+		branch: null,
+		field: 'parentDigest',
+		statement:
+			'`parentDigest` is null if and only if `revisionCount` is 0 (AD-29).',
+		disposition: {
+			kind: 'not-expressible',
+			reason:
+				'A cross-field rule. Encoding it as a Zod refinement would make it invisible to every non-TypeScript consumer and turn it into a Story 1.5 differential disagreement, so it is stated in the field description instead and left to the reader that validates a presented chain.',
+		},
+	}))
+
+// AD-18's prohibition, on the two artifacts it binds hardest. Neither is
+// expressible: both carry opaque caller strings, and no pattern separates an
+// opaque handle from a credential pasted into one.
+const secretsProhibitionEntries: readonly ConstraintLedgerEntry[] = (
+	[
+		[
+			'private-artifact-manifest',
+			'A private-artifact manifest never contains a private path, credential, or domain value (AD-18).',
+		],
+		[
+			'evaluator-configuration',
+			'An evaluator configuration carries no credential, token, real name, email address, account identifier, or transaction content in its identity, its tool inventory, its permission inventory, or its decoding parameters (AD-18).',
+		],
+	] as const
+).map(([artifact, statement]) => ({
+	id: `secrets-prohibition-${artifact}`,
+	location: { kind: 'root', artifact },
+	branch: null,
+	field: null,
+	statement,
+	disposition: {
+		kind: 'not-expressible',
+		reason:
+			'The fields this binds are opaque caller strings by AD-8 and AD-24, and no schema over an opaque string distinguishes a resolvable handle from a secret pasted into one. Expressing it would require a pattern that also rejects legitimate opaque references. It is stated in each artifact description and enforced by review and by the AD-18 publication guard, which is a mechanism rather than a schema.',
+	},
+}))
+
 export const CONSTRAINT_LEDGER: readonly ConstraintLedgerEntry[] = [
 	...arityEntries,
 	{
 		id: BINDING_CHANNEL_NON_EMPTY,
-		location: { kind: 'definition', name: 'InputBindingChannel' },
+		location: {
+			kind: 'definition',
+			artifact: 'eval-contract',
+			name: 'InputBindingChannel',
+		},
 		branch: null,
 		field: null,
 		statement:
@@ -116,7 +207,11 @@ export const CONSTRAINT_LEDGER: readonly ConstraintLedgerEntry[] = [
 	},
 	{
 		id: 'json-value-numeric-domain',
-		location: { kind: 'definition', name: 'JsonValue' },
+		location: {
+			kind: 'definition',
+			artifact: 'eval-contract',
+			name: 'JsonValue',
+		},
 		branch: null,
 		field: null,
 		statement:
@@ -128,19 +223,8 @@ export const CONSTRAINT_LEDGER: readonly ConstraintLedgerEntry[] = [
 		},
 	},
 	operandTypeEntry,
-	{
-		id: 'lineage-root-biconditional',
-		location: { kind: 'root' },
-		branch: null,
-		field: 'parentDigest',
-		statement:
-			'`parentDigest` is null if and only if `revisionCount` is 0 (AD-29).',
-		disposition: {
-			kind: 'not-expressible',
-			reason:
-				'A cross-field rule. Encoding it as a Zod refinement would make it invisible to every non-TypeScript consumer and turn it into a Story 1.5 differential disagreement, so it is stated in the field description instead and left to the reader that validates a presented chain.',
-		},
-	},
+	...lineageEntries,
+	...secretsProhibitionEntries,
 ]
 
 export const constraintLedgerEntry = (

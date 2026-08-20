@@ -1,35 +1,43 @@
 import { describe, expect, it } from 'vitest'
 import { z } from 'zod'
+import { INTERCHANGE_ARTIFACTS } from '../../src/core/schemas/artifact.ts'
 import {
 	CONSTRAINT_LEDGER,
 	type ConstraintLedgerEntry,
 	constraintLedgerEntry,
 } from '../../src/core/schemas/constraint-ledger.ts'
-import { EvalContract } from '../../src/core/schemas/eval-contract.ts'
 import {
 	RELATION_VOCABULARY,
 	TUPLE_ARITY,
 } from '../../src/core/schemas/expression.ts'
 import { BINDING_CHANNEL_NON_EMPTY } from '../../src/core/schemas/plan.ts'
 
-const exported = z.toJSONSchema(EvalContract, { io: 'input' }) as Record<
-	string,
-	any
->
+// One document per interchange artifact, because an address that names an
+// artifact and resolves against a different one resolves nothing.
+const documents = Object.fromEntries(
+	Object.entries(INTERCHANGE_ARTIFACTS).map(([key, entry]) => [
+		key,
+		z.toJSONSchema(entry.schema, { io: 'input' }) as Record<string, any>,
+	]),
+)
+
+const exported = documents['eval-contract'] as Record<string, any>
 
 /**
- * Resolves a ledger entry the way Story 1.5 must: by its stated `shape`,
- * `branch`, and `field`, never by searching the document. A helper that hunts
- * for the branch would pass even when the entry's address is unresolvable,
- * which is the whole thing this is here to prove.
+ * Resolves a ledger entry the way Story 1.5 must: by its stated `artifact`,
+ * `kind`, `branch`, and `field`, never by searching the document. A helper that
+ * hunts for the branch would pass even when the entry's address is
+ * unresolvable, which is the whole thing this is here to prove.
  */
 const resolve = (entry: ConstraintLedgerEntry): any => {
-	// No special case and no out-of-band knowledge: the entry says whether it
-	// means the document root or a named definition, so this reads it.
+	// No special case and no out-of-band knowledge: the entry names its artifact
+	// and says whether it means that document's root or a named definition.
+	const document = documents[entry.location.artifact]
+	if (!document) return undefined
 	const definition =
 		entry.location.kind === 'root'
-			? exported
-			: exported.$defs?.[entry.location.name]
+			? document
+			: document.$defs?.[entry.location.name]
 	if (!definition) return undefined
 	const target =
 		entry.branch === null
@@ -38,7 +46,27 @@ const resolve = (entry: ConstraintLedgerEntry): any => {
 					(candidate: any) => candidate.properties?.op?.const === entry.branch,
 				)
 	if (!target || entry.field === null) return target
-	return target.properties?.[entry.field]
+	if (target.properties) return target.properties[entry.field]
+	// The union fallback. Two lineage-bearing artifacts are union-rooted, and a
+	// union root exports `{ $schema, oneOf, description }` with no `properties`
+	// object at all. `oneOf` rather than `anyOf` is deliberate: all three union
+	// roots are `z.discriminatedUnion`, which exports `oneOf`, while a plain
+	// `z.union` exports `anyOf`. Both keywords appear in this file, since
+	// the arity walk reads `Expression.oneOf` and the additionalProperties test
+	// reads `JsonValue.anyOf`. Keying on `anyOf` would resolve nothing for the
+	// two artifacts the fallback exists for, and would fail silently.
+	//
+	// Presence in EVERY branch is the guard, which is faithful to what a lineage
+	// entry means: the fields are spread into each branch, so the biconditional
+	// binds both. The branches then carry the same schema object by
+	// construction rather than by coincidence, so returning the first branch's
+	// copy is arbitrary and safe, and a deep comparison would buy nothing.
+	const branches: any[] | undefined = target.oneOf
+	if (!Array.isArray(branches) || branches.length === 0) return undefined
+	const copies = branches.map(
+		(branch) => branch.properties?.[entry.field as string],
+	)
+	return copies.every((copy) => copy !== undefined) ? copies[0] : undefined
 }
 
 describe('the constraint ledger', () => {
@@ -59,15 +87,49 @@ describe('the constraint ledger', () => {
 		}
 	})
 
-	// Roughly four entry classes: arity, the binding-channel minimum, the AD-36
-	// numeric domain, and the lineage biconditional. A ledger much larger than
-	// this is a signal the schema over-refined.
-	it('holds one arity entry per tuple-carrying form and three besides', () => {
+	// Five entry classes: arity, the binding-channel minimum, the AD-36 numeric
+	// domain, the operand-type declaration, and, new in this story, one lineage
+	// biconditional per lineage-bearing artifact plus AD-18's two secrets
+	// prohibitions. A ledger much larger than this is a signal the schema
+	// over-refined.
+	it('holds one arity entry per tuple-carrying form, one lineage entry per carrier, and four besides', () => {
 		const arityEntries = CONSTRAINT_LEDGER.filter((entry) =>
 			entry.id.startsWith('operator-arity-'),
 		)
 		expect(arityEntries).toHaveLength(Object.keys(TUPLE_ARITY).length)
-		expect(CONSTRAINT_LEDGER).toHaveLength(arityEntries.length + 4)
+		const lineageCarriers = Object.values(INTERCHANGE_ARTIFACTS).filter(
+			(artifact) => artifact.carriesLineage,
+		)
+		expect(lineageCarriers).toHaveLength(11)
+		expect(CONSTRAINT_LEDGER).toHaveLength(
+			arityEntries.length + 3 + lineageCarriers.length + 2,
+		)
+	})
+
+	// Eleven, not twelve. The twelfth artifact carries no `parentDigest` for the
+	// address to resolve against, so filtering the registry is what keeps the
+	// ledger honest; a hand-written twelfth entry is a bug.
+	it('generates one lineage entry per carrier, and none for the reference shape', () => {
+		const lineageIds = CONSTRAINT_LEDGER.filter((entry) =>
+			entry.id.startsWith('lineage-'),
+		).map((entry) => entry.id)
+		expect(lineageIds).toHaveLength(11)
+		expect(lineageIds).not.toContain('lineage-artifact-reference')
+		for (const [key, artifact] of Object.entries(INTERCHANGE_ARTIFACTS)) {
+			expect(lineageIds.includes(`lineage-${key}`), key).toBe(
+				artifact.carriesLineage,
+			)
+		}
+	})
+
+	// Every address names its artifact, or Story 1.5 resolves an entry against
+	// whichever document it happens to hold.
+	it('names an artifact on every address', () => {
+		for (const entry of CONSTRAINT_LEDGER) {
+			expect(Object.keys(INTERCHANGE_ARTIFACTS), entry.id).toContain(
+				entry.location.artifact,
+			)
+		}
 	})
 
 	it.each(Object.entries(TUPLE_ARITY))(
@@ -105,8 +167,12 @@ describe('the constraint ledger', () => {
 
 	it.each([
 		'json-value-numeric-domain',
-		'lineage-root-biconditional',
+		'lineage-eval-contract',
+		'lineage-probe',
+		'lineage-evidence-artifact',
 		'operator-operand-types',
+		'secrets-prohibition-private-artifact-manifest',
+		'secrets-prohibition-evaluator-configuration',
 	])('marks %s not-expressible with a reason', (id) => {
 		const entry = constraintLedgerEntry(id)
 		expect(entry?.disposition.kind).toBe('not-expressible')
@@ -119,11 +185,17 @@ describe('the premises the ledger rests on, verified against the export', () => 
 	// no stable address, which is the reason JsonValue is hand-rolled rather than
 	// built on z.json().
 	it('names every shared definition', () => {
+		// `RubricBody` joins the set in Story 1.4: AC 13 gives the shared body a
+		// `.meta({ id })` so it does not collide with the published `Rubric`
+		// artifact under a generated positional name, and it stays reachable from
+		// the contract. The AC 2 lineage refactor adds nothing here, which is one
+		// reason the spread was chosen over a nested object.
 		expect(Object.keys(exported.$defs).sort()).toEqual([
 			'Expression',
 			'InputBindingChannel',
 			'JsonValue',
 			'Operand',
+			'RubricBody',
 		])
 	})
 
@@ -177,13 +249,63 @@ describe('the premises the ledger rests on, verified against the export', () => 
 		}
 	})
 
-	it('resolves the two not-expressible entries to a real place as well', () => {
+	it('resolves the not-expressible entries to a real place as well', () => {
 		expect(resolve(constraintLedgerEntry('json-value-numeric-domain')!)).toBe(
 			exported.$defs.JsonValue,
 		)
+		// Retargeted from the retired `lineage-root-biconditional`: with twelve
+		// roots the bare `{ kind: 'root' }` address was ambiguous, so the entry is
+		// now one of eleven named per artifact.
+		expect(resolve(constraintLedgerEntry('lineage-eval-contract')!)).toEqual(
+			exported.properties.parentDigest,
+		)
 		expect(
-			resolve(constraintLedgerEntry('lineage-root-biconditional')!),
-		).toEqual(exported.properties.parentDigest)
+			resolve(
+				constraintLedgerEntry('secrets-prohibition-evaluator-configuration')!,
+			),
+		).toBe(documents['evaluator-configuration'])
+	})
+
+	// The two union-rooted carriers are exactly why `resolve` needs a fallback:
+	// a union root exports no `properties` object, so the address would return
+	// `undefined` and the "resolves at the address it states" assertion above
+	// would go red for reasons that have nothing to do with the constraint.
+	it.each(['lineage-probe', 'lineage-evidence-artifact'])(
+		'%s resolves through the union fallback, in every branch',
+		(id) => {
+			const entry = constraintLedgerEntry(id)!
+			const document = documents[entry.location.artifact] as Record<string, any>
+			expect(document.properties).toBeUndefined()
+			expect(document.oneOf.length).toBeGreaterThan(1)
+			for (const branch of document.oneOf) {
+				expect(branch.properties.parentDigest).toBeDefined()
+			}
+			expect(resolve(entry)).toEqual(document.oneOf[0].properties.parentDigest)
+		},
+	)
+
+	// The fallback must require the field in EVERY branch, or it silently
+	// certifies an address that resolves in one branch and nowhere else.
+	it('refuses a union address whose field is missing from one branch', () => {
+		const entry = constraintLedgerEntry('lineage-probe')!
+		const document = documents[entry.location.artifact] as Record<string, any>
+		const pristine = document.oneOf
+		document.oneOf = [
+			pristine[0],
+			{
+				...pristine[1],
+				properties: Object.fromEntries(
+					Object.entries(pristine[1].properties).filter(
+						([name]) => name !== 'parentDigest',
+					),
+				),
+			},
+		]
+		try {
+			expect(resolve(entry)).toBeUndefined()
+		} finally {
+			document.oneOf = pristine
+		}
 	})
 
 	it('drops the binding-channel check entirely', () => {

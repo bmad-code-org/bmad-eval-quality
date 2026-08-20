@@ -1,6 +1,7 @@
 /** the Eval Contract: every declaration AD-19 requires, in one shape. */
 import { z } from 'zod'
 import { PermittedInterface } from './interface.ts'
+import { lineageFields } from './lineage.ts'
 import { Oracle } from './oracle.ts'
 import { InteractionStep } from './plan.ts'
 import {
@@ -26,6 +27,19 @@ export const ExternalLink = z.strictObject({
 })
 
 /**
+ * AD-19's three severity levels, exported so they are spelled once. Story 1.3
+ * spelled them inline on `Behavior` because it was the only site; Story 1.4
+ * adds five more: a finding, a seeded defect, an outcome, a coverage gap, and
+ * the scoring policy's floor. Six copies of one closed vocabulary is the drift
+ * the Consistency Conventions warn about. Naming it changes no exported byte:
+ * an enum carrying no `.meta({ id })` inlines at each use site exactly as the
+ * literal did.
+ */
+export const SEVERITY_LEVELS = ['low', 'material', 'critical'] as const
+
+export const Severity = z.enum(SEVERITY_LEVELS)
+
+/**
  * Coin flip (c), settled: linkage lives per behaviour. The code decides it —
  * `missing-requirement-linkage` fires when "a behaviour declares no requirement
  * or risk identifier", and a contract-level array cannot make that predicate
@@ -35,7 +49,7 @@ export const ExternalLink = z.strictObject({
 export const Behavior = z.strictObject({
 	id: BehaviorId,
 	description: z.string(),
-	severity: z.enum(['low', 'material', 'critical']),
+	severity: Severity,
 	observableSuccessCriterion: z
 		.string()
 		.nullable()
@@ -80,6 +94,9 @@ export const FORBIDDEN_INPUT_FLOOR = [
 
 export const ForbiddenInput = z.enum(FORBIDDEN_INPUT_FLOOR)
 
+/** the seven members as a type, so `forbiddenInputAccounting` can key by them. */
+export type ForbiddenInput = (typeof FORBIDDEN_INPUT_FLOOR)[number]
+
 /**
  * A sibling group's minimum membership. AD-19 permits "an explicit empty
  * sibling group", which is read here as the empty group *list*: a group of one
@@ -109,20 +126,14 @@ export const Budgets = z.strictObject({
 
 export const EvalContract = z
 	.strictObject({
-		schemaVersion: z
-			.int()
-			.min(1)
-			.describe(
-				'AD-11 requires an integer under this exact name. Deliberately not `z.literal(1)`: the literal exports as `{"type":"number","const":1}`, losing `integer` for a non-TypeScript consumer, and it would turn a version-2 artifact into an anonymous schema-parse failure instead of AD-28\'s dedicated `schema-version-mismatch` fault. Version equality belongs to the reader that throws that fault.',
-			),
+		// AD-11's `schemaVersion` and AD-29's lineage pair, spread from the leaf
+		// module the other ten lineage-bearing artifacts spread from. The three
+		// descriptions moved verbatim: they are published constraint statements and
+		// rewriting them changes the export bytes. Spread rather than nested, so
+		// this artifact's shape and every Story 1.3 reject fixture that names
+		// `['schemaVersion']` or `['parentDigest']` as an issue path are unchanged.
+		...lineageFields,
 		contractId: Identifier,
-		parentDigest: Digest.nullable().describe(
-			'AD-29 lineage. `null` if and only if `revisionCount` is 0. That biconditional is stated here rather than refined: a refinement is silently dropped from the published schema, so a non-TypeScript consumer would never see it, and the constraint ledger records it as not expressible.',
-		),
-		revisionCount: z
-			.int()
-			.min(0)
-			.describe("AD-29: one greater than the parent artifact's."),
 		sourceSpecDigest: Digest.nullable().describe(
 			'AD-18 permits a digest where the content is forbidden, so the contract may name the specification it was authored against without carrying it.',
 		),

@@ -130,15 +130,24 @@ export const Operation = z.strictObject({
 	volatilePointers: z.array(DescriptorPointer),
 })
 
+/**
+ * AD-19's four interface kinds, exported so they are spelled once. The sealed
+ * evaluator brief carries interface identity without the operation inventory
+ * (AD-16), so it needs this vocabulary and must not mint a second copy of it.
+ * Naming the array changes no exported byte: an enum carrying no
+ * `.meta({ id })` inlines at each use site exactly as the literal did.
+ */
+export const INTERFACE_KINDS = ['api', 'web', 'cli', 'mcp'] as const
+
+export const InterfaceKind = z.enum(INTERFACE_KINDS)
+
 export const PermittedInterface = z.strictObject({
 	logicalId: Identifier.describe(
 		"AD-35: a logical identifier for the interface, never a URL, host, or port. Mapping it to a target is the caller's, outside the contract.",
 	),
-	kind: z
-		.enum(['api', 'web', 'cli', 'mcp'])
-		.describe(
-			'All four kinds are admitted so `unsupported-interface-kind` stays fireable. v0 supports `api`; the other three fail compilation under that code rather than failing to parse.',
-		),
+	kind: InterfaceKind.describe(
+		'All four kinds are admitted so `unsupported-interface-kind` stays fireable. v0 supports `api`; the other three fail compilation under that code rather than failing to parse.',
+	),
 	operations: z
 		.array(Operation)
 		.describe(
