@@ -1,5 +1,7 @@
-/** the rubric body a contract embeds. */
+/** the rubric body a contract embeds, and the published Rubric artifact. */
+
 import { z } from 'zod'
+import { lineageFields } from './lineage.ts'
 import { InteractionPointer } from './pointer.ts'
 import { RubricCriterionId, RubricId } from './primitives.ts'
 
@@ -51,26 +53,51 @@ export const RubricCriterion = z.strictObject({
  * plus `schemaVersion`, lineage, and its prior-art declaration; the rubric is
  * defined once and split rather than twice.
  */
-export const RubricBody = z.strictObject({
-	id: RubricId,
-	scaleLevels: z
-		.array(ScaleLevel)
-		.nullable()
-		.describe(
-			'`null` and `[]` are both the unanchored shape `rubric-unanchored` fires on, and both must parse.',
-		),
-	failureModePenalties: z
-		.array(FailureModePenalty)
-		.nullable()
-		.describe(
-			'Missing named penalties is `rubric-unanchored`, not a parse failure.',
-		),
-	maxLength: z
-		.int()
-		.min(1)
-		.nullable()
-		.describe(
-			'An unbounded length is `null`, which is one of the three shapes `rubric-unanchored` fires on.',
-		),
-	criteria: z.array(RubricCriterion),
-})
+export const RubricBody = z
+	.strictObject({
+		id: RubricId,
+		scaleLevels: z
+			.array(ScaleLevel)
+			.nullable()
+			.describe(
+				'`null` and `[]` are both the unanchored shape `rubric-unanchored` fires on, and both must parse.',
+			),
+		failureModePenalties: z
+			.array(FailureModePenalty)
+			.nullable()
+			.describe(
+				'Missing named penalties is `rubric-unanchored`, not a parse failure.',
+			),
+		maxLength: z
+			.int()
+			.min(1)
+			.nullable()
+			.describe(
+				'An unbounded length is `null`, which is one of the three shapes `rubric-unanchored` fires on.',
+			),
+		criteria: z.array(RubricCriterion),
+	})
+	.meta({
+		id: 'RubricBody',
+		description:
+			"The embeddable rubric body. Named so the shared body has a stable `$defs` key distinct from the published `Rubric` artifact, which is this body plus `schemaVersion` and AD-29 lineage; without the name the two collide in Story 1.5's drift check under a generated positional name.",
+	})
+
+/**
+ * The published Rubric artifact. Story 1.3 split the rubric deliberately rather
+ * than defining it twice, so this is the body spread flat plus AD-11's version
+ * and AD-29's lineage. The criteria, scale levels, and failure-mode penalties
+ * are not re-spelled here and must not be.
+ */
+export const Rubric = z
+	.strictObject({
+		...RubricBody.shape,
+		...lineageFields,
+	})
+	.meta({
+		id: 'Rubric',
+		description:
+			"A published rubric, with no prior art: the experiments' evaluator-result and trace-label schemas belong to the deferred semantic layer and their names are not reused. AD-22's compile checks cover anchored scale levels, named failure-mode penalties, a bounded length, and the prohibition on scoring reasoning prose. All four fire under `rubric-unanchored`, `rubric-evidence-unreachable`, and `rubric-scores-reasoning-prose` at compile time, so every shape those codes fire on parses here.",
+	})
+
+export type Rubric = z.infer<typeof Rubric>

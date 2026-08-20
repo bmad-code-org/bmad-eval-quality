@@ -77,6 +77,22 @@ export const UnsignedDecimalString = z
 		'The decimal-string format restricted to non-negative values, for quantities where a negative has no meaning.',
 	)
 
+// Strictly positive: either a non-zero integer part, or a zero integer part with
+// a non-zero digit somewhere in the fraction. Spelled without a negative
+// lookahead on purpose. JSON Schema's `pattern` is ECMA-262 and would accept
+// one, but several non-JavaScript validators compile patterns with engines that
+// have no lookahead at all, and AD-13 publishes this schema for exactly those
+// consumers. The alternation costs a few characters and works everywhere.
+export const POSITIVE_DECIMAL_STRING_PATTERN =
+	/^([1-9][0-9]*(\.[0-9]+)?|0\.[0-9]*[1-9][0-9]*)$/
+
+export const PositiveDecimalString = z
+	.string()
+	.regex(POSITIVE_DECIMAL_STRING_PATTERN)
+	.describe(
+		"The decimal-string format restricted to values greater than zero, for a ceiling where zero is not a ceiling. This is what carries the prior art's `exclusiveMinimum: 0` across AD-36's move of money from a JSON number to a string; without it that bound would be silently dropped by the retyping.",
+	)
+
 // Consistency Conventions: dates are RFC 3339 in UTC. z.iso.datetime() with no
 // options accepts a trailing "Z" and rejects a numeric offset, which is exactly
 // the convention; { offset: true } would accept both.

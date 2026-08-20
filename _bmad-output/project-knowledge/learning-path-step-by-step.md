@@ -8,6 +8,7 @@ Short version here. The long reasoning lives in the code comments each step poin
 |    1 | Lock down dependencies. Prove the CI gates really block bad ones.                 |
 |    2 | One way to turn JSON into bytes, one way to hash it, so two codebases agree.      |
 |    3 | What a contract author may write down, and what the schema lets through on purpose. |
+|    4 | The other eleven artifacts, so every file crossing the boundary has a shape.       |
 
 Adding a step: follow `learning-path-template.md`.
 
@@ -204,4 +205,93 @@ flowchart TD
   PARTS --> CONTRACT
   EXPR --> LEDGER
   PLAN --> LEDGER
+```
+
+## Step 4: the other eleven artifacts
+
+**What:** the remaining eleven interchange artifacts written in Zod, one file each, plus one registry
+listing all twelve.
+
+**Why:** step 3 typed the file going in. Everything else crossing the boundary, the run record the
+caller sends back, the isolation audit, the scored result, had no shape at all. A field missing here
+is a rule a later epic cannot read, and an artifact with no schema is a caller guessing.
+
+**Rules:**
+
+- Twelve artifacts, one closed list, in `artifact.ts`. Nothing generates that list and nothing under
+  `core/schemas/` imports it.
+- `schemaVersion`, `parentDigest`, and `revisionCount` live in `lineage.ts` and are spread into
+  eleven artifacts. Spread, never nested: a spread adds no shared definition to the export.
+- `lineage.ts` and `verdict.ts` are leaves on purpose. Put them in `artifact.ts` and the imports form
+  a loop that crashes on load with an error naming a file you never edited.
+- `ArtifactReference` is the one artifact with no version and no lineage. It sits inside others, so
+  versioning it would add a key to every finding for nobody.
+- Where the old schema said "if this, then that", the new one is a union of branches. That is why a
+  defect finding must quote its evidence and the other two kinds need not.
+- One vocabulary, one home. Severity, interface kind, and the seven forbidden inputs come from the
+  file that already held them. A second copy drifts.
+- One state, one spelling. If a field-level `null` already says "absent", the object under it may not
+  say the same thing again with every member null.
+- Money is a string everywhere, including the isolation manifest. Seconds stay a number. A ceiling
+  that must be above zero needs its own string format, or retyping a number silently drops the bound.
+- Every ledger entry names its artifact, because with twelve roots "the root" points at nothing. A
+  union at the top has no `properties`, so the resolver reads every branch and gives up if one lacks
+  the field.
+
+**Read in this order:**
+
+1. `src/core/schemas/lineage.ts` and `verdict.ts`: two leaves, read them first.
+2. `src/core/schemas/artifact-reference.ts`: the smallest union, and the no-lineage exemption.
+3. `src/core/schemas/sealed-run-record.ts`: the biggest one, and the finding union.
+4. `src/core/schemas/isolation-manifest.ts`: the generated forbidden-input accounting.
+5. `src/core/schemas/probe.ts` and `evidence-artifact.ts`: the other two top-level unions.
+6. `src/core/schemas/sealed-evaluator-brief.ts`: the one artifact defined by what it keeps out.
+7. `src/core/schemas/artifact.ts`: the twelve, as data.
+8. `src/core/schemas/constraint-ledger.ts`: addresses now name an artifact.
+9. `tests/schemas/artifact-registry.test.ts`: the audits that walk all twelve.
+10. `tests/schemas/fixtures/worked-example-artifacts.ts`: the old chain, and its 60 and 19 failures.
+
+**Watch out:**
+
+- The old worked example fails in 79 places. That is the record. Do not repair it.
+- `RubricBody` now shows up in the contract's exported definitions. That is deliberate.
+- `EvidenceArtifact` is the scored output. `evidenceArtifacts` on a finding is a list of references.
+  Two different things one word apart.
+- `EvaluatorConfiguration` rejects a `trialIndex` key on purpose, and a test proves the rejection.
+  Here a missing field is the requirement, not an oversight.
+- `responseHeaders` is a name-to-value map while `responseBody` is the open container. A pointer
+  reaches into the headers by name, so a bare number there would address nothing; a body may be a
+  bare number and still be a body.
+- Every fixture is listed in an exported array that a test asserts is complete. A fixture nothing
+  imports proves nothing, and one shipped that way before review caught it.
+- Eighteen rules are named as unenforced in `ad5-admissions.test.ts`. Most compare two artifacts, and
+  one schema cannot see two artifacts at once.
+
+**Story:** `_bmad-output/implementation-artifacts/1-4-the-remaining-interchange-artifact-schemas.md`
+
+```mermaid
+flowchart TD
+  LIN["lineage.ts<br/>version + parent + revision"]
+  VER["verdict.ts<br/>4 verdicts, 3 recommendations"]
+  REF["artifact-reference.ts<br/>public or private"]
+  IN["sealed-run-record.ts<br/>isolation-manifest.ts<br/>evaluator-configuration.ts"]
+  CORPUS["probe.ts<br/>preflight-verdict.ts"]
+  OUT["evidence-artifact.ts<br/>scoring-policy.ts"]
+  BRIEF["sealed-evaluator-brief.ts<br/>rubric.ts"]
+  REG["artifact.ts<br/>the twelve, as data"]
+  LEDGER["constraint-ledger.ts<br/>addresses name an artifact"]
+
+  LIN --> IN
+  LIN --> CORPUS
+  LIN --> OUT
+  LIN --> BRIEF
+  VER --> IN
+  VER --> OUT
+  REF --> IN
+  REF --> CORPUS
+  IN --> REG
+  CORPUS --> REG
+  OUT --> REG
+  BRIEF --> REG
+  REG --> LEDGER
 ```

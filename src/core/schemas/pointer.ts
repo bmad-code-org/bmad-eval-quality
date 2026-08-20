@@ -2,24 +2,82 @@
 import { z } from 'zod'
 import { IDENTIFIER_CHARSET_SOURCE } from './primitives.ts'
 
+/**
+ * AD-26's closed channel vocabulary, in AD-26's own order. Order matters
+ * because enum order lands in the export and Story 1.5's drift check pins
+ * whatever ships. Story 1.3 held these only as private regex fragments; the
+ * Sealed Run Record's quoted evidence names a channel, so the vocabulary gets
+ * one exported home instead of a second spelling beside the pattern.
+ */
+export const EVIDENCE_CHANNELS = [
+	'response-body',
+	'response-headers',
+	'response-status',
+	'call-inputs',
+	'stdout',
+	'stderr',
+	'exit-code',
+] as const
+
+export type EvidenceChannelName = (typeof EVIDENCE_CHANNELS)[number]
+
+export const EvidenceChannel = z.enum(EVIDENCE_CHANNELS).meta({
+	id: 'EvidenceChannel',
+	description:
+		"AD-26's closed evidence channel vocabulary. The same seven the interaction-rooted pointer addresses; a channel outside this set is a syntax error rather than an unreachable-evidence finding.",
+})
+
+/**
+ * AD-19's four transport channels. `call-inputs` alone has no declared
+ * structure to resolve against, which is the defect AD-26 records revision 3
+ * carrying, so the channel is mandatory after `call-inputs` rather than
+ * optional.
+ */
+export const TRANSPORT_CHANNELS = ['path', 'query', 'header', 'body'] as const
+
+export type TransportChannelName = (typeof TRANSPORT_CHANNELS)[number]
+
+export const TransportChannel = z.enum(TRANSPORT_CHANNELS).meta({
+	id: 'TransportChannel',
+	description:
+		"AD-19's four transport channels. They are the segment `call-inputs` takes before its tail, and the four keys an observation's recorded call inputs are keyed by.",
+})
+
+// The pattern is not rebuilt from the flat seven. It rests on a three-way
+// partition the enum does not carry: channels that take an RFC 6901 tail,
+// scalar channels that take none, and `call-inputs`, which takes a transport
+// segment first. So the partition is spelled by naming its members, typed
+// against the enum so a typo fails the typecheck, and the pattern's structure
+// stays hand-written. A test asserts the partition is disjoint and exhaustive
+// over the enum and that every member appears in the pattern source.
+//
+// A status code and an exit code are scalars, so a pointer into one addresses
+// nothing and is a syntax error rather than an unreachable-evidence finding.
+export const TAIL_BEARING_CHANNELS = [
+	'response-body',
+	'response-headers',
+	'stdout',
+	'stderr',
+] as const satisfies readonly EvidenceChannelName[]
+
+export const SCALAR_CHANNELS = [
+	'response-status',
+	'exit-code',
+] as const satisfies readonly EvidenceChannelName[]
+
+export const TRANSPORT_ROOTED_CHANNEL =
+	'call-inputs' as const satisfies EvidenceChannelName
+
 // An RFC 6901 reference token: any character but "/" and "~", plus the two
 // escapes. A token may be empty, which is RFC 6901's spelling for a key that is
 // the empty string.
 const TOKEN = '(?:[^/~]|~[01])*'
 const TAIL = `(?:/${TOKEN})*`
 
-// AD-26's closed channel vocabulary, split by whether a tail is meaningful.
-// A status code and an exit code are scalars, so a pointer into one addresses
-// nothing and is a syntax error rather than an unreachable-evidence finding.
-const CHANNELS_WITH_TAIL = 'response-body|response-headers|stdout|stderr'
-const SCALAR_CHANNELS = 'response-status|exit-code'
-// AD-19's four transport channels. `call-inputs` alone has no declared
-// structure to resolve against, which is the defect AD-26 records revision 3
-// carrying, so the channel is mandatory rather than optional.
-const TRANSPORT_CHANNELS = 'path|query|header|body'
+const alternation = (members: readonly string[]): string => members.join('|')
 
 export const INTERACTION_POINTER_PATTERN = new RegExp(
-	`^/interactions/${IDENTIFIER_CHARSET_SOURCE}/(?:(?:${CHANNELS_WITH_TAIL})${TAIL}|(?:${SCALAR_CHANNELS})|call-inputs/(?:${TRANSPORT_CHANNELS})${TAIL})$`,
+	`^/interactions/${IDENTIFIER_CHARSET_SOURCE}/(?:(?:${alternation(TAIL_BEARING_CHANNELS)})${TAIL}|(?:${alternation(SCALAR_CHANNELS)})|${TRANSPORT_ROOTED_CHANNEL}/(?:${alternation(TRANSPORT_CHANNELS)})${TAIL})$`,
 )
 
 export const BOUND_ELEMENT_POINTER_PATTERN = new RegExp(`^@(?:/${TOKEN})+$`)
