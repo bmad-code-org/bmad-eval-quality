@@ -32,6 +32,15 @@ jobs:
       - name: Licence scan
         run: node scripts/check-licenses.mjs
 
+      # Named so a red build says which gate failed; `npm run validate` runs
+      # them again inside the validate step, which is deliberate redundancy
+      # rather than the only wiring.
+      - name: Published schema drift check (byte-exact against schemas/)
+        run: npm run check:schemas
+
+      - name: AD-5 failure-code registry check (FAILURE_CODES vs the spine table)
+        run: npm run check:ad5-registry
+
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
         with:
           python-version: "3.12"
@@ -39,7 +48,10 @@ jobs:
       - name: Test spine linter
         run: pip install pytest && python -m pytest scripts/spine-lint/tests -q
 
-      - name: Validate (typecheck, lint, check:docs, lint:spine, test)
+      - name: Shareable export check (current, and canonical repository URL)
+        run: npm run check:shareable
+
+      - name: Validate (typecheck, lint, check:docs, check:shareable, lint:spine, check:vectors, check:schemas, check:ad5-registry, test)
         run: npm run validate
 
       - name: Build
@@ -65,6 +77,17 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      # The two type-stripped scripts run here as well as on Node 24. `build`
+      # goes through tsc and `test` through Vite's transform, so neither
+      # exercises Node's own type stripper; without these steps the declared
+      # engines floor is unproven for exactly the files that depend on it, and
+      # a contributor on 22.20.0 would be the first to find out.
+      - name: Published schema drift check (byte-exact against schemas/)
+        run: npm run check:schemas
+
+      - name: AD-5 failure-code registry check (FAILURE_CODES vs the spine table)
+        run: npm run check:ad5-registry
 
       - name: Build
         run: npm run build
@@ -227,3 +250,213 @@ jobs:
           # scoped package (e.g. all 8 @biomejs/cli-* platform binaries).
           echo "$output" | grep -q "dependency path: licence-canary-fixture > @fixture-scope/parent > gpl-violator" || { echo "scan did not report the correct dependency path through the scoped parent" >&2; exit 1; }
           echo "canary passed: licence scan correctly failed naming gpl-violator with the right dependency path"
+
+  canary-schema-drift:
+    name: "Canary: drift check fails on a mutated byte and on an orphan"
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version-file: ".nvmrc"
+          cache: "npm"
+
+      - uses: ./.github/actions/assert-npm-version
+        with:
+          version: ${{ env.NPM_VERSION }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      # The gate this repository already paid for twice: a check that never
+      # blocks anything protects nothing. `check:schemas` is the only thing
+      # standing between the Zod source and a committed export that no longer
+      # matches it, so it is proven to block, for the stated reason, rather
+      # than assumed to.
+      - name: Assert the drift check fails on a single mutated byte
+        run: |
+          set +e
+          printf 'x' >> schemas/scoring-policy.schema.json
+          output="$(npm run --silent check:schemas 2>&1)"
+          exit_status=$?
+          set -e
+          git checkout -- schemas/scoring-policy.schema.json
+          echo "$output"
+          if [ $exit_status -eq 0 ]; then
+            echo "expected the drift check to fail on a mutated byte, but it passed" >&2
+            exit 1
+          fi
+          # Match the drift line specifically: a missing-file or unexpected-entry
+          # failure would also exit non-zero and would pass a bare exit-code test
+          # for the wrong reason.
+          echo "$output" | grep -q "scoring-policy.schema.json: drift at byte offset" || { echo "check failed for the wrong reason (no byte-offset drift reported)" >&2; exit 1; }
+          echo "canary passed: drift check correctly failed naming the differing byte offset"
+
+      - name: Assert the drift check fails on a file no registry key names
+        run: |
+          set +e
+          printf '{}' > schemas/orphan.schema.json
+          output="$(npm run --silent check:schemas 2>&1)"
+          exit_status=$?
+          set -e
+          rm -f schemas/orphan.schema.json
+          echo "$output"
+          if [ $exit_status -eq 0 ]; then
+            echo "expected the drift check to fail on an orphan file, but it passed" >&2
+            exit 1
+          fi
+          echo "$output" | grep -q "orphan.schema.json: present on disk but no registry key names it" || { echo "check failed for the wrong reason (did not name the orphan)" >&2; exit 1; }
+          echo "canary passed: drift check correctly failed naming the orphan file"
+
+      # Regeneration is the repair every failure message above names, so the
+      # repair is proven to be a fixed point rather than assumed to be one.
+      - name: Assert generate then check is a fixed point
+        run: |
+          npm run --silent generate:schemas > /dev/null
+          git diff --exit-code -- schemas/ || { echo "generate:schemas rewrote the committed export; the two are out of step" >&2; exit 1; }
+          npm run --silent check:schemas
+          echo "canary passed: generate:schemas reproduces the committed bytes exactly"
+
+  canary-ad5-registry:
+    name: "Canary: AD-5 registry check fails on a dropped and on a reordered code"
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version-file: ".nvmrc"
+          cache: "npm"
+
+      - uses: ./.github/actions/assert-npm-version
+        with:
+          version: ${{ env.NPM_VERSION }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      # The epic's standing prohibition is that the failure-code enumeration
+      # must not be hand-maintained beside AD-5's table. That prohibition is
+      # only mechanical if the check that enforces it demonstrably blocks.
+      - name: Assert the registry check fails when a code is dropped
+        run: |
+          set +e
+          node -e "
+            const fs = require('node:fs');
+            const path = 'src/core/failure-codes.ts';
+            const source = fs.readFileSync(path, 'utf8');
+            const dropped = source.replace(\"\t'waiver-incomplete',\n\", '');
+            if (dropped === source) { console.error('fixture setup failed: waiver-incomplete not found'); process.exit(1) }
+            fs.writeFileSync(path, dropped);
+          "
+          output="$(npm run --silent check:ad5-registry 2>&1)"
+          exit_status=$?
+          set -e
+          git checkout -- src/core/failure-codes.ts
+          echo "$output"
+          if [ $exit_status -eq 0 ]; then
+            echo "expected the registry check to fail on a dropped code, but it passed" >&2
+            exit 1
+          fi
+          echo "$output" | grep -q "waiver-incomplete\` is in the AD-5 table but missing from src/core/failure-codes.ts" || { echo "check failed for the wrong reason (did not name the dropped code)" >&2; exit 1; }
+          echo "canary passed: registry check correctly failed naming the dropped code"
+
+      - name: Assert the registry check fails when two codes are transposed
+        run: |
+          set +e
+          node -e "
+            const fs = require('node:fs');
+            const path = 'src/core/failure-codes.ts';
+            const source = fs.readFileSync(path, 'utf8');
+            const pair = \"\t'rubric-unanchored',\n\t'rubric-evidence-unreachable',\n\";
+            if (!source.includes(pair)) { console.error('fixture setup failed: the pair was not found in order'); process.exit(1) }
+            fs.writeFileSync(path, source.replace(pair, \"\t'rubric-evidence-unreachable',\n\t'rubric-unanchored',\n\"));
+          "
+          output="$(npm run --silent check:ad5-registry 2>&1)"
+          exit_status=$?
+          set -e
+          git checkout -- src/core/failure-codes.ts
+          echo "$output"
+          if [ $exit_status -eq 0 ]; then
+            echo "expected the registry check to fail on transposed codes, but it passed" >&2
+            exit 1
+          fi
+          # Set equality still holds after a transposition, so only the order
+          # comparison can catch this. Matching the order line specifically is
+          # what keeps this canary from passing on a set-equality failure.
+          echo "$output" | grep -q "order mismatch at position" || { echo "check failed for the wrong reason (no order mismatch reported)" >&2; exit 1; }
+          echo "canary passed: registry check correctly failed naming the order mismatch"
+
+  canary-shareable:
+    name: "Canary: shareable check fails on a stale export and on a legacy URL"
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version-file: ".nvmrc"
+          cache: "npm"
+
+      - uses: ./.github/actions/assert-npm-version
+        with:
+          version: ${{ env.NPM_VERSION }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      # The export is the copy that leaves the repository, and it went stale
+      # once already. `check:shareable` is the only thing standing between a
+      # changed source document and a shared HTML file that no longer matches
+      # it, so it is proven to block, for the stated reason, rather than
+      # assumed to.
+      - name: Assert the shareable check fails on a stale export
+        run: |
+          set +e
+          printf 'x' >> _bmad-output/shareable/eval-quality-security.html
+          output="$(npm run --silent check:shareable 2>&1)"
+          exit_status=$?
+          set -e
+          git checkout -- _bmad-output/shareable/eval-quality-security.html
+          echo "$output"
+          if [ $exit_status -eq 0 ]; then
+            echo "expected the shareable check to fail on a stale page, but it passed" >&2
+            exit 1
+          fi
+          # Match the staleness line specifically: a missing-file or orphan
+          # failure would also exit non-zero and would pass a bare exit-code
+          # test for the wrong reason.
+          echo "$output" | grep -q "eval-quality-security.html: stale at byte offset" || { echo "check failed for the wrong reason (no byte-offset staleness reported)" >&2; exit 1; }
+          echo "canary passed: shareable check correctly failed naming the differing byte offset"
+
+      - name: Assert the shareable check fails on a legacy repository URL
+        run: |
+          set +e
+          sed -i 's|https://github.com/bmad-code-org/bmad-eval-quality|https://github.com/muratkeremozcan/eval-quality|' _bmad-output/shareable/eval-quality-readme.html
+          output="$(npm run --silent check:shareable 2>&1)"
+          exit_status=$?
+          set -e
+          git checkout -- _bmad-output/shareable/eval-quality-readme.html
+          echo "$output"
+          if [ $exit_status -eq 0 ]; then
+            echo "expected the shareable check to fail on a legacy repository URL, but it passed" >&2
+            exit 1
+          fi
+          # Rewriting the URL also makes the page stale, so the staleness line
+          # fires too. Matching the canonical-URL line is what keeps this canary
+          # from passing on staleness alone.
+          echo "$output" | grep -q "is not the canonical https://github.com/bmad-code-org/bmad-eval-quality" || { echo "check failed for the wrong reason (no legacy-URL violation reported)" >&2; exit 1; }
+          echo "canary passed: shareable check correctly failed naming the legacy repository URL"
+
+      # Regeneration is the repair every failure message above names, so the
+      # repair is proven to be a fixed point rather than assumed to be one.
+      - name: Assert build then check is a fixed point
+        run: |
+          npm run --silent build:shareable > /dev/null
+          git diff --exit-code -- _bmad-output/shareable/ || { echo "build:shareable rewrote the committed export; the two are out of step" >&2; exit 1; }
+          npm run --silent check:shareable
+          echo "canary passed: build:shareable reproduces the committed bytes exactly"

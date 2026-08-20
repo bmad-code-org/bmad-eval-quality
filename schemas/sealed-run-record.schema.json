@@ -1,0 +1,875 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:eval-quality:schema:sealed-run-record",
+  "type": "object",
+  "properties": {
+    "schemaVersion": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9007199254740991,
+      "description": "AD-11 requires an integer under this exact name. Deliberately not `z.literal(1)`: the literal exports as `{\"type\":\"number\",\"const\":1}`, losing `integer` for a non-TypeScript consumer, and it would turn a version-2 artifact into an anonymous schema-parse failure instead of AD-28's dedicated `schema-version-mismatch` fault. Version equality belongs to the reader that throws that fault."
+    },
+    "parentDigest": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "description": "AD-27 digest: \"sha256:\" plus 64 lowercase hexadecimal characters."
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "AD-29 lineage. `null` if and only if `revisionCount` is 0. That biconditional is stated here rather than refined: a refinement is silently dropped from the published schema, so a non-TypeScript consumer would never see it, and the constraint ledger records it as not expressible."
+    },
+    "revisionCount": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991,
+      "description": "AD-29: one greater than the parent artifact's."
+    },
+    "runId": {
+      "type": "string",
+      "minLength": 1,
+      "description": "An opaque caller label. Carried over from the prior art unchanged."
+    },
+    "conditionArm": {
+      "type": "string",
+      "minLength": 1,
+      "description": "An opaque caller label with no product semantics, per AD-24. The prior art's five-member enum does not survive, and its own extension history is the reason: an enum a local amendment had to widen once for `self-review` will be widened again."
+    },
+    "trialIndex": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9007199254740991,
+      "description": "Which trial this record is. AD-24 excludes the trial index from the Evaluator Configuration \"so trials pool into one scoring version\", which requires it somewhere else, and a Sealed Run Record is the only artifact carrying exactly one trial. One-based, matching the only instance that exists. AD-6's aggregate of trial count, invalidated attempts, and each attempt's reason is the Evidence Artifact's; asking one run to report its siblings is what no stage signature can do."
+    },
+    "contractDigest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "description": "AD-27 digest: \"sha256:\" plus 64 lowercase hexadecimal characters."
+    },
+    "sealedBriefDigest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "description": "AD-27 digest: \"sha256:\" plus 64 lowercase hexadecimal characters."
+    },
+    "evaluatorConfigurationDigest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "description": "A bare digest rather than an `ArtifactReference`, and required on both this record and the isolation manifest. AD-32 requires the two to *agree*, and an `ArtifactReference` on one side against a bare digest on the other makes the comparison lopsided; AD-2 already has ingest receiving the Evaluator Configuration as its own input, so nothing needs resolving through a reference. The agreement itself is a cross-artifact rule no schema can see."
+    },
+    "evaluatorRecommendation": {
+      "$ref": "#/$defs/EvaluatorRecommendation"
+    },
+    "oracleDispositions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "oracleId": {
+            "type": "string",
+            "pattern": "^O-[0-9]{3,}$"
+          },
+          "disposition": {
+            "type": "string",
+            "enum": [
+              "held",
+              "violated",
+              "not-attempted"
+            ]
+          },
+          "observationIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+              "description": "A kebab-case slug. Excludes \"/\" and \"~\" so an identifier can be embedded in an interaction-rooted pointer without escaping."
+            },
+            "description": "Required and permitted to be empty. AD-33 requires \"every disposition citing supporting observations, and an unsupported disposition invalidating cross-artifact agreement rather than being believed\", so an unsupported disposition has to stay representable for the scorer to invalidate it. That one disposition exists per required oracle is likewise not refined: AD-23 makes a missing disposition an AD-21 invalidating condition, so the schema admits the shape and ingest fires the rung."
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "oracleId",
+          "disposition",
+          "observationIds",
+          "note"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Finding"
+      }
+    },
+    "observations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "observationId": {
+            "type": "string",
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+            "description": "A kebab-case slug. Excludes \"/\" and \"~\" so an identifier can be embedded in an interaction-rooted pointer without escaping."
+          },
+          "operationId": {
+            "type": "string",
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+            "description": "The operation this observation exercised. `Operation.operationId` is scoped to a `PermittedInterface`, so two interfaces may declare the same one; that collision is a cross-artifact rule with no AD-5 code, since `duplicate-operation-signature` covers method plus path template only, and it is left to ingest."
+          },
+          "provenance": {
+            "type": "string",
+            "enum": [
+              "baseline",
+              "evaluator-chosen"
+            ],
+            "description": "AD-23: `baseline` for a pre-canned or deterministic test, `evaluator-chosen` for an action the evaluator selected. The distinction is the one the product's central finding rests on: what a sealed evaluator detects beyond the pre-canned baseline. It lives on the observation, never on the finding."
+          },
+          "callInputs": {
+            "type": "object",
+            "properties": {
+              "path": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "propertyNames": {
+                      "type": "string"
+                    },
+                    "additionalProperties": {
+                      "$ref": "#/$defs/JsonValue"
+                    }
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "query": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "propertyNames": {
+                      "type": "string"
+                    },
+                    "additionalProperties": {
+                      "$ref": "#/$defs/JsonValue"
+                    }
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "header": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "propertyNames": {
+                      "type": "string"
+                    },
+                    "additionalProperties": {
+                      "$ref": "#/$defs/JsonValue"
+                    }
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "body": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "propertyNames": {
+                      "type": "string"
+                    },
+                    "additionalProperties": {
+                      "$ref": "#/$defs/JsonValue"
+                    }
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "path",
+              "query",
+              "header",
+              "body"
+            ],
+            "additionalProperties": false
+          },
+          "responseBody": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/JsonValue"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "AD-26's `response-body` channel. The null branch is redundant against the value container, which already admits `null`; it is kept so all ten observation fields read the same way, and it means \"no body observed\" and \"a body that was JSON null\" are indistinguishable here, which is an accepted cost of one uniform spelling."
+          },
+          "responseHeaders": {
+            "anyOf": [
+              {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {
+                  "$ref": "#/$defs/JsonValue"
+                }
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "A name-to-value map, not the open value container. AD-26 gives `response-headers` a tail, so a pointer resolves INTO this channel; a scalar here would leave `/interactions/x/response-headers/Content-Type` addressing nothing. That is the difference from `responseBody`, where a scalar or an array is a legitimate body and the open container is correct."
+          },
+          "responseStatus": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Deliberately not bounded to a protocol range. A negative status is meaningless and excluded, but the upper end is left open: AD-19 declares four interface kinds and v0 rejects three of them at compile time under `unsupported-interface-kind`, so bounding this to HTTP would encode a protocol assumption the artifact outlives. `null` where the channel does not apply."
+          },
+          "stdout": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "stderr": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "exitCode": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Signed on purpose, unlike `responseStatus`: a process terminated by a signal is conventionally reported as a negative code, and this field records what was observed rather than what is tidy."
+          }
+        },
+        "required": [
+          "observationId",
+          "operationId",
+          "provenance",
+          "callInputs",
+          "responseBody",
+          "responseHeaders",
+          "responseStatus",
+          "stdout",
+          "stderr",
+          "exitCode"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "judgeResults": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "rubricId": {
+            "type": "string",
+            "pattern": "^R-[0-9]{3,}$"
+          },
+          "criterionId": {
+            "type": "string",
+            "pattern": "^RC-[0-9]{3,}$"
+          },
+          "score": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "An integer, because AD-22 puts the scale on the rubric's own anchored levels and `ScaleLevel.level` is already `z.int()`; no second scale is minted here. `null` is the shape AD-6's `judge-error` fires on, so it must parse. That the criterion is one the cited rubric declares, and that a conforming record shows one judge call scoring all named criteria, are AD-17 cross-artifact rules a schema over one artifact cannot see."
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "rubricId",
+          "criterionId",
+          "score",
+          "note"
+        ],
+        "additionalProperties": false
+      },
+      "description": "Empty is legal: a contract with no rubric produces no judge call."
+    },
+    "actionsArtifact": {
+      "$ref": "#/$defs/ArtifactReference"
+    },
+    "isolationManifestArtifact": {
+      "$ref": "#/$defs/ArtifactReference"
+    },
+    "resourceUse": {
+      "type": "object",
+      "properties": {
+        "toolCalls": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "inputTokens": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "outputTokens": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "wallClockSeconds": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Stays a number where money becomes a string: a measured duration is not currency, and the worked example's 62.5 is an exact binary64 inside AD-36's value domain."
+        },
+        "costUsd": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)(\\.[0-9]+)?$",
+          "description": "Money, so AD-36 carries it as a string in a declared format. The prior art's number does not survive; an AD-24 divergence."
+        }
+      },
+      "required": [
+        "toolCalls",
+        "inputTokens",
+        "outputTokens",
+        "wallClockSeconds",
+        "costUsd"
+      ],
+      "additionalProperties": false
+    },
+    "evidenceDisclosure": {
+      "type": "object",
+      "properties": {
+        "truncationBound": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "AD-17 requires truncation to be \"deterministic, disclosed with its bound\". `null` is untruncated. The unit is left to the caller and stated rather than encoded, following the `RubricBody.maxLength` precedent Story 1.3 set for AD-22's equally unitless \"bounded length\". The over-truncated condition compares this bound against the evidence carried in this same artifact, which is why the disclosure and the evidence travel together."
+        },
+        "reportedIncomplete": {
+          "type": "boolean",
+          "description": "AD-17: \"a case that cannot be bounded without discarding disconfirming material is reported incomplete\". This is the operand AD-21's incomplete condition reads. The remaining two conditions read no field here: unavailable is an `ArtifactReference` that does not resolve through the corpus port, and internally inconsistent is AD-32's cross-artifact agreement check. AD-17's \"must retain evidence contradicting the leading verdict\" is decidable by none of them and is recorded as unenforced in v0."
+        }
+      },
+      "required": [
+        "truncationBound",
+        "reportedIncomplete"
+      ],
+      "additionalProperties": false
+    },
+    "invalidReason": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "parentDigest",
+    "revisionCount",
+    "runId",
+    "conditionArm",
+    "trialIndex",
+    "contractDigest",
+    "sealedBriefDigest",
+    "evaluatorConfigurationDigest",
+    "evaluatorRecommendation",
+    "oracleDispositions",
+    "findings",
+    "observations",
+    "judgeResults",
+    "actionsArtifact",
+    "isolationManifestArtifact",
+    "resourceUse",
+    "evidenceDisclosure",
+    "invalidReason"
+  ],
+  "additionalProperties": false,
+  "description": "One sealed evaluator trial, as the caller presents it. Succeeds the prior-art `h0-run-result` schema per AD-24, keeping its run identifier, condition arm, findings, action-log reference, resource use, invalidation reason, evaluator recommendation as a closed enum, and per-finding confidence on a declared scale. Divergences: `condition` is demoted to the opaque `conditionArm`, `verdict` becomes `evaluatorRecommendation` without `NOT_APPLICABLE`, money is a decimal string, and `taskId`, `note`, and per-finding `actionIds` do not survive: the contract is pinned by `contractDigest`, an unstructured orchestrator annotation is the free-prose channel the Conventions close everywhere else, and two citation vocabularies on one finding is the ambiguity ADR-009 removed. Two constructions are deliberately absent and each is owed to an open item: the run MODE, which AD-21 requires to be fixed before ingest and to enter AD-11's identity inputs rather than appearing first in the evidence artifact (Owed item 4), and observation ORDERING, which ADR-006 forbids reading off array position (Owed item 2). Both arrive as additive `schemaVersion` bumps under AD-11.",
+  "$defs": {
+    "EvaluatorRecommendation": {
+      "type": "string",
+      "enum": [
+        "PASS",
+        "CONCERNS",
+        "FAIL"
+      ],
+      "description": "The evaluator's own recommendation, ingested and never promoted to a verdict in contract-scoring mode. AD-24 requires a closed enum; the prior art's `NOT_APPLICABLE` is dropped with the `scripted` arm it belonged to. Consequence recorded here because it closes a rung: AD-21's Invalid condition for \"an unrecognised evaluator recommendation value\" is unreachable for a schema-valid artifact, since an unrecognised value fails to parse and becomes an AD-28 `schema-parse-failure` fault, and a fault never becomes a verdict. The Epic 6 ingest story either validates this field leniently and maps an unrecognised value to that rung, or accepts that the rung fires only as a fault."
+    },
+    "Finding": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "findingType": {
+              "type": "string",
+              "const": "defect"
+            },
+            "findingId": {
+              "type": "string",
+              "pattern": "^F-[0-9]{3,}$"
+            },
+            "oracleId": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^O-[0-9]{3,}$"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The oracle this finding answers. Nullable because AD-23 is explicit that \"a finding citing no oracle is retained as an uncited finding rather than discarded\", and it is often the evaluator-chosen detection the AD exists to preserve. The carve-out is oracle-only and is deliberately not extended to `probeId`."
+            },
+            "probeId": {
+              "type": "string",
+              "pattern": "^P-[0-9]{3,}$",
+              "description": "Required, unlike `oracleId`. AD-23 carves out the no-oracle case and nothing else; a finding arises during some probe's run, so citing the probe is always possible, and AD-7's per-class vector cannot attribute a finding that names no probe."
+            },
+            "behaviorId": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^B-[0-9]{3,}$"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The behaviour at issue, where the finding names one. `null` for a finding that answers no declared behaviour, which is the same case `oracleId: null` records."
+            },
+            "severity": {
+              "type": "string",
+              "enum": [
+                "low",
+                "material",
+                "critical"
+              ]
+            },
+            "summary": {
+              "type": "string",
+              "minLength": 1
+            },
+            "confidence": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1,
+              "description": "AD-24 requires per-finding confidence \"on a declared scale\" and declares no scale, so the closed unit interval is declared here: 0 through 1 inclusive. It exports `minimum` and `maximum` natively, and it is the same scale the scoring policy's `confidenceThreshold` uses, or AD-21's \"a finding whose confidence falls below the policy threshold\" would compare two different scales."
+            },
+            "observationIds": {
+              "minItems": 1,
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                "description": "A kebab-case slug. Excludes \"/\" and \"~\" so an identifier can be embedded in an interaction-rooted pointer without escaping."
+              },
+              "description": "Tightened to at least one on this branch, which is AD-23's \"additionally\" expressed structurally: a defect claim citing no witness is what AD-40 calls an invalidating declared-versus-observed inconsistency, and the minimum is the half of that rule a schema can carry."
+            },
+            "evidenceArtifacts": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/ArtifactReference"
+              },
+              "description": "References to the evidence this finding rests on. Nothing to do with this package's `EvidenceArtifact`, which is the scored output `emit` owns: two unrelated things one word apart, named here so a reader does not reach for the wrong type."
+            },
+            "quotedEvidence": {
+              "minItems": 1,
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "quote": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "The evaluator's verbatim quotation, per AD-23. Non-empty: an empty quotation quotes nothing, no AD-5 code names the condition, and under the admit-rule's second clause the schema is therefore the enforcement point. That this text appears in at least one of the finding's cited observations is NOT checked here; it is an AD-32 declared-versus-observed inconsistency that invalidates at ingest, and ADR-009 Decision 2 settles the precedence: \"cited identifiers govern the witness match; quotation audits it.\""
+                  },
+                  "channel": {
+                    "$ref": "#/$defs/EvidenceChannel"
+                  }
+                },
+                "required": [
+                  "quote",
+                  "channel"
+                ],
+                "additionalProperties": false
+              },
+              "description": "Required and non-empty on this branch alone, per AD-23. Only `defect` findings enter a detection measure, and a detection claim with no quotation is the shape AD-40 records revision 4 having no way to match."
+            }
+          },
+          "required": [
+            "findingType",
+            "findingId",
+            "oracleId",
+            "probeId",
+            "behaviorId",
+            "severity",
+            "summary",
+            "confidence",
+            "observationIds",
+            "evidenceArtifacts",
+            "quotedEvidence"
+          ],
+          "additionalProperties": false,
+          "description": "A claimed defect. The only finding type that enters a detection measure under AD-23, and the only one carrying required quoted evidence."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "findingType": {
+              "type": "string",
+              "const": "observation"
+            },
+            "findingId": {
+              "type": "string",
+              "pattern": "^F-[0-9]{3,}$"
+            },
+            "oracleId": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^O-[0-9]{3,}$"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The oracle this finding answers. Nullable because AD-23 is explicit that \"a finding citing no oracle is retained as an uncited finding rather than discarded\", and it is often the evaluator-chosen detection the AD exists to preserve. The carve-out is oracle-only and is deliberately not extended to `probeId`."
+            },
+            "probeId": {
+              "type": "string",
+              "pattern": "^P-[0-9]{3,}$",
+              "description": "Required, unlike `oracleId`. AD-23 carves out the no-oracle case and nothing else; a finding arises during some probe's run, so citing the probe is always possible, and AD-7's per-class vector cannot attribute a finding that names no probe."
+            },
+            "behaviorId": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^B-[0-9]{3,}$"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The behaviour at issue, where the finding names one. `null` for a finding that answers no declared behaviour, which is the same case `oracleId: null` records."
+            },
+            "severity": {
+              "type": "string",
+              "enum": [
+                "low",
+                "material",
+                "critical"
+              ]
+            },
+            "summary": {
+              "type": "string",
+              "minLength": 1
+            },
+            "confidence": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1,
+              "description": "AD-24 requires per-finding confidence \"on a declared scale\" and declares no scale, so the closed unit interval is declared here: 0 through 1 inclusive. It exports `minimum` and `maximum` natively, and it is the same scale the scoring policy's `confidenceThreshold` uses, or AD-21's \"a finding whose confidence falls below the policy threshold\" would compare two different scales."
+            },
+            "observationIds": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                "description": "A kebab-case slug. Excludes \"/\" and \"~\" so an identifier can be embedded in an interaction-rooted pointer without escaping."
+              },
+              "description": "The observations this finding relies on. Declared on every branch, not only on `defect`: AD-23's word is *additionally*, which is a floor on `defect` rather than a prohibition on the other two, and the architecture's own worked record carries observation identifiers on a `confirmation` and on an `observation` finding. A defect-only field would turn those into `unrecognized_keys` failures for no AD reason. That a cited identifier matches a declared observation is a cross-artifact rule with no AD-5 code and is left to ingest."
+            },
+            "evidenceArtifacts": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/ArtifactReference"
+              },
+              "description": "References to the evidence this finding rests on. Nothing to do with this package's `EvidenceArtifact`, which is the scored output `emit` owns: two unrelated things one word apart, named here so a reader does not reach for the wrong type."
+            }
+          },
+          "required": [
+            "findingType",
+            "findingId",
+            "oracleId",
+            "probeId",
+            "behaviorId",
+            "severity",
+            "summary",
+            "confidence",
+            "observationIds",
+            "evidenceArtifacts"
+          ],
+          "additionalProperties": false,
+          "description": "A non-defect note about the interface or the evidence. Carries no quoted evidence requirement and never enters a detection measure."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "findingType": {
+              "type": "string",
+              "const": "confirmation"
+            },
+            "findingId": {
+              "type": "string",
+              "pattern": "^F-[0-9]{3,}$"
+            },
+            "oracleId": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^O-[0-9]{3,}$"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The oracle this finding answers. Nullable because AD-23 is explicit that \"a finding citing no oracle is retained as an uncited finding rather than discarded\", and it is often the evaluator-chosen detection the AD exists to preserve. The carve-out is oracle-only and is deliberately not extended to `probeId`."
+            },
+            "probeId": {
+              "type": "string",
+              "pattern": "^P-[0-9]{3,}$",
+              "description": "Required, unlike `oracleId`. AD-23 carves out the no-oracle case and nothing else; a finding arises during some probe's run, so citing the probe is always possible, and AD-7's per-class vector cannot attribute a finding that names no probe."
+            },
+            "behaviorId": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^B-[0-9]{3,}$"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The behaviour at issue, where the finding names one. `null` for a finding that answers no declared behaviour, which is the same case `oracleId: null` records."
+            },
+            "severity": {
+              "type": "string",
+              "enum": [
+                "low",
+                "material",
+                "critical"
+              ]
+            },
+            "summary": {
+              "type": "string",
+              "minLength": 1
+            },
+            "confidence": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1,
+              "description": "AD-24 requires per-finding confidence \"on a declared scale\" and declares no scale, so the closed unit interval is declared here: 0 through 1 inclusive. It exports `minimum` and `maximum` natively, and it is the same scale the scoring policy's `confidenceThreshold` uses, or AD-21's \"a finding whose confidence falls below the policy threshold\" would compare two different scales."
+            },
+            "observationIds": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                "description": "A kebab-case slug. Excludes \"/\" and \"~\" so an identifier can be embedded in an interaction-rooted pointer without escaping."
+              },
+              "description": "The observations this finding relies on. Declared on every branch, not only on `defect`: AD-23's word is *additionally*, which is a floor on `defect` rather than a prohibition on the other two, and the architecture's own worked record carries observation identifiers on a `confirmation` and on an `observation` finding. A defect-only field would turn those into `unrecognized_keys` failures for no AD reason. That a cited identifier matches a declared observation is a cross-artifact rule with no AD-5 code and is left to ingest."
+            },
+            "evidenceArtifacts": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/ArtifactReference"
+              },
+              "description": "References to the evidence this finding rests on. Nothing to do with this package's `EvidenceArtifact`, which is the scored output `emit` owns: two unrelated things one word apart, named here so a reader does not reach for the wrong type."
+            }
+          },
+          "required": [
+            "findingType",
+            "findingId",
+            "oracleId",
+            "probeId",
+            "behaviorId",
+            "severity",
+            "summary",
+            "confidence",
+            "observationIds",
+            "evidenceArtifacts"
+          ],
+          "additionalProperties": false,
+          "description": "A record that a behaviour held. AD-6 resolves it to `confirmed`, the state revision 3 added after `passed-clean-control` was being misused for it."
+        }
+      ]
+    },
+    "ArtifactReference": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "storage": {
+              "type": "string",
+              "const": "public"
+            },
+            "path": {
+              "type": "string",
+              "minLength": 1
+            },
+            "privateRef": {
+              "type": "null"
+            },
+            "digest": {
+              "type": "string",
+              "pattern": "^sha256:[0-9a-f]{64}$",
+              "description": "AD-27 digest: \"sha256:\" plus 64 lowercase hexadecimal characters."
+            }
+          },
+          "required": [
+            "storage",
+            "path",
+            "privateRef",
+            "digest"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "storage": {
+              "type": "string",
+              "const": "private"
+            },
+            "path": {
+              "type": "null"
+            },
+            "privateRef": {
+              "type": "string",
+              "minLength": 1,
+              "description": "An opaque handle resolved through the corpus port under AD-8, never a filesystem path and never a URL. AD-18 forbids a private path from entering any artifact, and this is the field a caller would otherwise reach for."
+            },
+            "digest": {
+              "type": "string",
+              "pattern": "^sha256:[0-9a-f]{64}$",
+              "description": "AD-27 digest: \"sha256:\" plus 64 lowercase hexadecimal characters."
+            }
+          },
+          "required": [
+            "storage",
+            "path",
+            "privateRef",
+            "digest"
+          ],
+          "additionalProperties": false
+        }
+      ],
+      "description": "A reference to an artifact, public by path or private by opaque handle. Succeeds the prior-art `artifact-ref` schema per AD-24, with its two `if`/`then` branches re-expressed as a discriminated union per AD-13 and its `sha256` field renamed to `digest` against the shared AD-27 primitive. Alone among the twelve interchange artifacts this one carries NO `schemaVersion` and NO AD-29 lineage: it is a reference shape embedded inside other artifacts rather than one that crosses the package boundary alone, so versioning it would add a key to every finding and every manifest entry for no reader. It is in the inventory because it is published, not because it is exchanged; the exemption is asserted by a test against the registry's `carriesLineage` flag."
+    },
+    "EvidenceChannel": {
+      "type": "string",
+      "enum": [
+        "response-body",
+        "response-headers",
+        "response-status",
+        "call-inputs",
+        "stdout",
+        "stderr",
+        "exit-code"
+      ],
+      "description": "AD-26's closed evidence channel vocabulary. The same seven the interaction-rooted pointer addresses; a channel outside this set is a syntax error rather than an unreachable-evidence finding."
+    },
+    "JsonValue": {
+      "description": "AD-36 value domain. Every number is a finite IEEE 754 double-precision value, and every integer lies in the safe-integer range; a larger integer, and any value needing exact decimal semantics such as money, is carried as a string in its own declared format. JSON Schema cannot express finiteness, so this restriction is stated rather than encoded: producers are told the rule here instead of discovering it through a digest mismatch, and the canonical scanner rejects a violating value before any parse.",
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "number"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        },
+        {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/JsonValue"
+          }
+        },
+        {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          }
+        }
+      ]
+    }
+  }
+}

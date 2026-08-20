@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Repository setup, the quality gates a change has to clear, and how contributions are reviewed.">
+  <link rel="icon" href="data:,">
+  <title>Contributing to eval-quality</title>
+  <style>
+:root {
+	color-scheme: light;
+	--canvas: #f4f6fb;
+	--paper: #ffffff;
+	--ink: #182230;
+	--muted: #667085;
+	--line: #e4e7ec;
+	--brand: #3157d5;
+	--brand-deep: #243f9f;
+	--brand-soft: #eef2ff;
+	--accent: #087f6d;
+	--accent-soft: #eafaf6;
+	--code: #101828;
+	--shadow: 0 18px 50px rgba(16, 24, 40, 0.08);
+}
+
+* {
+	box-sizing: border-box;
+}
+html {
+	scroll-behavior: smooth;
+}
+body {
+	margin: 0;
+	background: var(--canvas);
+	color: var(--ink);
+	font-family:
+		Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI",
+		sans-serif;
+	font-size: 16px;
+	line-height: 1.72;
+	text-rendering: optimizeLegibility;
+}
+
+a {
+	color: var(--brand);
+	text-decoration-thickness: 1px;
+	text-underline-offset: 3px;
+}
+a:hover {
+	color: var(--brand-deep);
+}
+
+.topbar {
+	position: sticky;
+	top: 0;
+	z-index: 20;
+	border-bottom: 1px solid rgba(228, 231, 236, 0.9);
+	background: rgba(255, 255, 255, 0.92);
+	backdrop-filter: blur(14px);
+}
+
+.topbar-inner {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 24px;
+	max-width: 1280px;
+	min-height: 64px;
+	margin: 0 auto;
+	padding: 10px 28px;
+}
+
+.brand {
+	color: var(--ink);
+	font-size: 15px;
+	font-weight: 760;
+	letter-spacing: -0.01em;
+	text-decoration: none;
+	white-space: nowrap;
+}
+
+.brand-mark {
+	color: var(--brand);
+}
+.nav {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: flex-end;
+	gap: 6px;
+}
+.nav-link {
+	border-radius: 9px;
+	color: #475467;
+	font-size: 13px;
+	font-weight: 650;
+	padding: 6px 10px;
+	text-decoration: none;
+}
+.nav-link:hover,
+.nav-link.active {
+	background: var(--brand-soft);
+	color: var(--brand-deep);
+}
+
+.layout {
+	display: grid;
+	grid-template-columns: 248px minmax(0, 900px);
+	gap: 30px;
+	max-width: 1230px;
+	margin: 34px auto 70px;
+	padding: 0 28px;
+}
+
+/* Pages with no headings (the licence text) drop the empty sidebar column. */
+.layout.no-toc {
+	grid-template-columns: minmax(0, 900px);
+	justify-content: center;
+	max-width: 960px;
+}
+
+.sidebar {
+	position: sticky;
+	top: 90px;
+	align-self: start;
+	max-height: calc(100vh - 112px);
+	overflow: auto;
+	padding: 4px 8px 20px 0;
+}
+
+.toc-title {
+	margin: 0 0 10px 10px;
+	color: #98a2b3;
+	font-size: 11px;
+	font-weight: 800;
+	letter-spacing: 0.12em;
+	text-transform: uppercase;
+}
+
+.toc-link {
+	display: block;
+	border-left: 2px solid transparent;
+	border-radius: 0 8px 8px 0;
+	color: #667085;
+	font-size: 13px;
+	line-height: 1.35;
+	margin: 1px 0;
+	padding: 6px 8px 6px 10px;
+	text-decoration: none;
+}
+.toc-link:hover {
+	border-left-color: var(--brand);
+	background: #fff;
+	color: var(--brand-deep);
+}
+.toc-link.depth-3 {
+	padding-left: 22px;
+	font-size: 12px;
+}
+.toc-link.depth-4 {
+	padding-left: 34px;
+	font-size: 12px;
+	color: var(--muted);
+}
+
+.paper {
+	min-width: 0;
+	overflow: hidden;
+	border: 1px solid rgba(228, 231, 236, 0.85);
+	border-radius: 18px;
+	background: var(--paper);
+	box-shadow: var(--shadow);
+}
+
+.hero {
+	border-bottom: 1px solid var(--line);
+	background: linear-gradient(145deg, #ffffff 20%, #f1f4ff 100%);
+	padding: 58px 64px 44px;
+}
+.eyebrow {
+	color: var(--brand);
+	font-size: 12px;
+	font-weight: 800;
+	letter-spacing: 0.13em;
+	text-transform: uppercase;
+}
+.hero h1 {
+	max-width: 760px;
+	margin: 12px 0 12px;
+	color: #101828;
+	font-size: clamp(34px, 5vw, 54px);
+	line-height: 1.08;
+	letter-spacing: -0.04em;
+}
+.lede {
+	max-width: 680px;
+	margin: 0;
+	color: #475467;
+	font-size: 18px;
+	line-height: 1.55;
+}
+.metadata {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	margin-top: 24px;
+}
+.pill {
+	display: inline-flex;
+	align-items: center;
+	min-height: 28px;
+	border: 1px solid #d0d5dd;
+	border-radius: 999px;
+	background: rgba(255, 255, 255, 0.8);
+	color: #475467;
+	font-size: 12px;
+	font-weight: 700;
+	padding: 3px 10px;
+}
+.pill.status {
+	border-color: #a9e4d7;
+	background: var(--accent-soft);
+	color: var(--accent);
+}
+
+.mobile-toc {
+	display: none;
+	margin: 26px 32px 0;
+}
+.mobile-toc summary {
+	color: var(--brand-deep);
+	cursor: pointer;
+	font-size: 14px;
+	font-weight: 750;
+}
+.mobile-toc-links {
+	margin-top: 10px;
+}
+
+.content {
+	padding: 24px 64px 64px;
+}
+.content h2,
+.content h3,
+.content h4 {
+	position: relative;
+	scroll-margin-top: 88px;
+	color: #101828;
+}
+.content h2 {
+	border-top: 1px solid var(--line);
+	margin: 52px 0 18px;
+	padding-top: 38px;
+	font-size: 29px;
+	line-height: 1.2;
+	letter-spacing: -0.025em;
+}
+.content h2:first-child {
+	border-top: 0;
+	margin-top: 14px;
+	padding-top: 12px;
+}
+.content h3 {
+	margin: 34px 0 12px;
+	font-size: 21px;
+	line-height: 1.3;
+	letter-spacing: -0.015em;
+}
+.content h4 {
+	margin: 28px 0 10px;
+	font-size: 17px;
+	line-height: 1.35;
+}
+.heading-anchor {
+	opacity: 0;
+	margin-left: 8px;
+	color: #98a2b3;
+	font-size: 0.72em;
+	font-weight: 500;
+	text-decoration: none;
+}
+.content h2:hover .heading-anchor,
+.content h3:hover .heading-anchor {
+	opacity: 1;
+}
+
+.content p {
+	margin: 0 0 18px;
+}
+.content strong {
+	color: #101828;
+}
+.content ul,
+.content ol {
+	margin: 0 0 20px;
+	padding-left: 26px;
+}
+.content li {
+	margin: 7px 0;
+	padding-left: 3px;
+}
+.content li::marker {
+	color: var(--brand);
+	font-weight: 750;
+}
+.content blockquote {
+	margin: 24px 0;
+	border-left: 4px solid var(--brand);
+	border-radius: 0 10px 10px 0;
+	background: var(--brand-soft);
+	color: #344054;
+	padding: 16px 20px;
+}
+.content blockquote p:last-child {
+	margin-bottom: 0;
+}
+.content hr {
+	height: 1px;
+	margin: 44px 0;
+	border: 0;
+	background: var(--line);
+}
+
+code {
+	border: 1px solid #e4e7ec;
+	border-radius: 5px;
+	background: #f8fafc;
+	color: #344054;
+	font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+	font-size: 0.88em;
+	padding: 0.14em 0.38em;
+}
+pre {
+	overflow: auto;
+	margin: 24px 0;
+	border: 1px solid #344054;
+	border-radius: 12px;
+	background: var(--code);
+	color: #e4e7ec;
+	line-height: 1.58;
+	padding: 20px 22px;
+}
+pre code {
+	border: 0;
+	background: transparent;
+	color: inherit;
+	font-size: 13px;
+	padding: 0;
+}
+
+/*
+ * A link the export could not render as a sibling page. It still points at the
+ * repository, so it is marked rather than left to look like every other link:
+ * a recipient without access would otherwise meet an unexplained 404.
+ */
+.repo-link::after {
+	content: " \2197";
+	color: var(--muted);
+	font-size: 0.85em;
+	text-decoration: none;
+}
+
+/* Verbatim fixed-width text; the licence must not be reflowed into paragraphs. */
+.plain-text {
+	margin: 0;
+	border: 0;
+	border-radius: 0;
+	background: transparent;
+	color: var(--ink);
+	font-size: 13px;
+	padding: 0;
+	white-space: pre-wrap;
+	word-break: break-word;
+}
+.plain-text code {
+	color: inherit;
+	font-size: inherit;
+}
+
+.table-wrap {
+	overflow-x: auto;
+	margin: 24px 0 30px;
+	border: 1px solid var(--line);
+	border-radius: 12px;
+}
+table {
+	width: 100%;
+	border-collapse: collapse;
+	font-size: 14px;
+	line-height: 1.5;
+}
+th {
+	background: #f8fafc;
+	color: #344054;
+	font-size: 12px;
+	letter-spacing: 0.04em;
+	text-align: left;
+	text-transform: uppercase;
+}
+th,
+td {
+	border-bottom: 1px solid var(--line);
+	padding: 12px 14px;
+	vertical-align: top;
+}
+tr:last-child td {
+	border-bottom: 0;
+}
+tbody tr:hover {
+	background: #fafbff;
+}
+
+.footer {
+	border-top: 1px solid var(--line);
+	color: #98a2b3;
+	font-size: 12px;
+	padding: 24px 64px 30px;
+}
+
+@media (max-width: 920px) {
+	.layout {
+		display: block;
+		margin-top: 22px;
+		padding: 0 16px;
+	}
+	.sidebar {
+		display: none;
+	}
+	.mobile-toc {
+		display: block;
+	}
+	.hero {
+		padding: 46px 36px 34px;
+	}
+	.content {
+		padding: 20px 36px 48px;
+	}
+	.footer {
+		padding-left: 36px;
+		padding-right: 36px;
+	}
+}
+
+@media (max-width: 620px) {
+	.topbar-inner {
+		align-items: flex-start;
+		flex-direction: column;
+		gap: 6px;
+		padding: 10px 16px;
+	}
+	.nav {
+		justify-content: flex-start;
+	}
+	.hero {
+		padding: 36px 24px 30px;
+	}
+	.hero h1 {
+		font-size: 34px;
+	}
+	.lede {
+		font-size: 16px;
+	}
+	.content {
+		padding: 14px 24px 42px;
+	}
+	.mobile-toc {
+		margin-left: 24px;
+		margin-right: 24px;
+	}
+	.footer {
+		padding-left: 24px;
+		padding-right: 24px;
+	}
+}
+
+@media print {
+	@page {
+		margin: 16mm 15mm;
+	}
+	body {
+		background: #fff;
+		font-size: 10.5pt;
+	}
+	.topbar,
+	.sidebar,
+	.mobile-toc,
+	.heading-anchor {
+		display: none;
+	}
+	.layout {
+		display: block;
+		max-width: none;
+		margin: 0;
+		padding: 0;
+	}
+	.paper {
+		border: 0;
+		border-radius: 0;
+		box-shadow: none;
+	}
+	.hero {
+		padding: 0 0 10mm;
+		background: #fff;
+	}
+	.hero h1 {
+		font-size: 28pt;
+	}
+	.content {
+		padding: 0;
+	}
+	.content h2 {
+		break-after: avoid;
+		margin-top: 9mm;
+		padding-top: 5mm;
+	}
+	.content h3,
+	.content h4 {
+		break-after: avoid;
+	}
+	pre,
+	.content blockquote,
+	.table-wrap {
+		break-inside: avoid;
+	}
+	/* The licence is pages long; forbidding a break inside it prints one
+	   overflowing block instead of a document. */
+	.plain-text {
+		break-inside: auto;
+	}
+	.table-wrap {
+		overflow: visible;
+	}
+	a {
+		color: inherit;
+		text-decoration: none;
+	}
+	.footer {
+		padding: 8mm 0 0;
+	}
+}
+
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="eval-quality-readme.html"><span class="brand-mark">eval</span>-quality</a>
+      <nav class="nav" aria-label="Companion documents"><a class="nav-link" href="eval-quality-readme.html">Overview</a><a class="nav-link" href="eval-quality-product-brief.html">Product brief</a><a class="nav-link" href="eval-quality-prd.html">PRD</a><a class="nav-link" href="eval-quality-architecture-spine.html">Architecture</a><a class="nav-link" href="eval-quality-adr-001.html">ADR-001</a><a class="nav-link" href="eval-quality-adr-002.html">ADR-002</a><a class="nav-link" href="eval-quality-adr-003.html">ADR-003</a><a class="nav-link" href="eval-quality-adr-004.html">ADR-004</a><a class="nav-link" href="eval-quality-adr-005.html">ADR-005</a><a class="nav-link" href="eval-quality-adr-006.html">ADR-006</a><a class="nav-link" href="eval-quality-adr-007.html">ADR-007</a><a class="nav-link" href="eval-quality-adr-008.html">ADR-008</a><a class="nav-link" href="eval-quality-adr-009.html">ADR-009</a></nav>
+    </div>
+  </header>
+  <div class="layout">
+    <aside class="sidebar" aria-label="Table of contents">
+      <p class="toc-title">On this page</p>
+      <a class="toc-link depth-2" href="#getting-started">Getting Started</a><a class="toc-link depth-3" href="#prerequisites">Prerequisites</a><a class="toc-link depth-3" href="#initial-setup">Initial Setup</a><a class="toc-link depth-3" href="#quick-development-commands">Quick Development Commands</a><a class="toc-link depth-2" href="#architecture-constraints">Architecture Constraints</a><a class="toc-link depth-2" href="#adding-a-module">Adding a Module</a><a class="toc-link depth-2" href="#code-standards">Code Standards</a><a class="toc-link depth-2" href="#submitting-changes">Submitting Changes</a><a class="toc-link depth-3" href="#commit-message-format">Commit Message Format</a><a class="toc-link depth-3" href="#code-review-process">Code Review Process</a><a class="toc-link depth-2" href="#release-process">Release Process</a><a class="toc-link depth-2" href="#community-support">Community &amp; Support</a>
+    </aside>
+    <main class="paper">
+      <header class="hero">
+        <div class="eyebrow">eval-quality · Contributing</div>
+        <h1>Contributing to eval-quality</h1>
+        <p class="lede">Repository setup, the quality gates a change has to clear, and how contributions are reviewed.</p>
+        <div class="metadata">
+          <span class="pill">Owner: Murat Ozcan</span>
+        </div>
+      </header>
+      <details class="mobile-toc">
+        <summary>On this page</summary>
+        <div class="mobile-toc-links"><a class="toc-link depth-2" href="#getting-started">Getting Started</a><a class="toc-link depth-3" href="#prerequisites">Prerequisites</a><a class="toc-link depth-3" href="#initial-setup">Initial Setup</a><a class="toc-link depth-3" href="#quick-development-commands">Quick Development Commands</a><a class="toc-link depth-2" href="#architecture-constraints">Architecture Constraints</a><a class="toc-link depth-2" href="#adding-a-module">Adding a Module</a><a class="toc-link depth-2" href="#code-standards">Code Standards</a><a class="toc-link depth-2" href="#submitting-changes">Submitting Changes</a><a class="toc-link depth-3" href="#commit-message-format">Commit Message Format</a><a class="toc-link depth-3" href="#code-review-process">Code Review Process</a><a class="toc-link depth-2" href="#release-process">Release Process</a><a class="toc-link depth-2" href="#community-support">Community &amp; Support</a></div>
+      </details>
+      <article class="content"><p>Thanks for your interest in contributing! <code>eval-quality</code> is a provider-agnostic agent-evaluation library, distributed as a single npm package with per-module subpath exports.</p>
+<h2 id="getting-started">Getting Started<a class="heading-anchor" href="#getting-started" aria-label="Link to Getting Started">#</a></h2>
+<h3 id="prerequisites">Prerequisites<a class="heading-anchor" href="#prerequisites" aria-label="Link to Prerequisites">#</a></h3>
+<ul>
+<li>Node.js (version specified in <code>.nvmrc</code>)</li>
+<li>npm</li>
+</ul>
+<h3 id="initial-setup">Initial Setup<a class="heading-anchor" href="#initial-setup" aria-label="Link to Initial Setup">#</a></h3>
+<pre><code class="language-bash">git clone https://github.com/bmad-code-org/bmad-eval-quality.git
+cd eval-quality
+nvm use
+npm install
+
+# Verify the setup
+npm run validate
+</code></pre>
+<h3 id="quick-development-commands">Quick Development Commands<a class="heading-anchor" href="#quick-development-commands" aria-label="Link to Quick Development Commands">#</a></h3>
+<pre><code class="language-bash">npm run validate    # typecheck + lint + test
+npm run build       # emit to dist/
+npm run lint:fix    # auto-fix with Biome
+npm run format      # format with Biome
+npm run test        # run vitest once
+npm run test:watch  # vitest in watch mode
+</code></pre>
+<h2 id="architecture-constraints">Architecture Constraints<a class="heading-anchor" href="#architecture-constraints" aria-label="Link to Architecture Constraints">#</a></h2>
+<ul>
+<li><strong>Provider-agnostic core.</strong> The runner and judge talk to model providers through thin adapters. Nothing in the core grader pipeline should hard-depend on a single vendor&#39;s SDK; provider SDKs are optional peer dependencies behind an adapter interface.</li>
+<li><strong>Evidence, not benchmarks.</strong> A grader&#39;s job is to produce evidence that feeds a ship / don&#39;t-ship decision, with a numeric score and a pass/fail, not a leaderboard number.</li>
+<li><strong>Deterministic-first.</strong> Prefer deterministic assertions (tool calls, params, sequence, grounding checks) over LLM-judge calls; the judge is the expensive, last-resort layer.</li>
+<li><strong>Non-determinism is measured, not hidden.</strong> Use <code>trials</code> + pass@k to measure flakiness; do not use retries to paper over it.</li>
+</ul>
+<h2 id="adding-a-module">Adding a Module<a class="heading-anchor" href="#adding-a-module" aria-label="Link to Adding a Module">#</a></h2>
+<p>Each module follows the same shape:</p>
+<pre><code>src/&lt;module&gt;.ts        # implementation + exported types
+tests/&lt;module&gt;.test.ts # vitest unit tests
+docs/&lt;module&gt;.md       # usage docs with real examples
+</code></pre>
+<ol>
+<li><p><strong>Implement</strong> in <code>src/&lt;module&gt;.ts</code>. Export explicit types; keep side effects out of module scope.</p>
+</li>
+<li><p><strong>Add a subpath export</strong> in <code>package.json</code>:</p>
+<pre><code class="language-json">&quot;./&lt;module&gt;&quot;: {
+  &quot;types&quot;: &quot;./dist/&lt;module&gt;.d.ts&quot;,
+  &quot;default&quot;: &quot;./dist/&lt;module&gt;.js&quot;
+}
+</code></pre>
+</li>
+<li><p><strong>Re-export from the barrel</strong> in <code>src/index.ts</code>.</p>
+</li>
+<li><p><strong>Add tests</strong> in <code>tests/&lt;module&gt;.test.ts</code>.</p>
+</li>
+<li><p><strong>Document</strong> it in <code>docs/&lt;module&gt;.md</code> and add a row to the README module table.</p>
+</li>
+</ol>
+<h2 id="code-standards">Code Standards<a class="heading-anchor" href="#code-standards" aria-label="Link to Code Standards">#</a></h2>
+<ul>
+<li><strong>Strict typing</strong>: explicit return types, no <code>any</code> in <code>src</code>.</li>
+<li><strong>Functional style</strong>: pure functions, minimal shared state.</li>
+<li><strong>No new runtime dependencies</strong> without discussion first. Provider SDKs are peer dependencies, not direct dependencies.</li>
+</ul>
+<h2 id="submitting-changes">Submitting Changes<a class="heading-anchor" href="#submitting-changes" aria-label="Link to Submitting Changes">#</a></h2>
+<ol>
+<li><strong>Keep PRs focused</strong>: one module or fix per PR.</li>
+<li><strong>Tests required</strong>: add or update coverage for any behavior change.</li>
+<li><strong>Docs required</strong>: update the relevant <code>docs/*.md</code> and the README table for any public API change.</li>
+<li><strong>CI must pass</strong>: <code>pr-checks.yml</code> (lint / typecheck / build / test) and <code>gitleaks-check.yml</code> must be green.</li>
+<li><strong>No breaking changes</strong> to existing exports unless discussed and documented.</li>
+</ol>
+<h3 id="commit-message-format">Commit Message Format<a class="heading-anchor" href="#commit-message-format" aria-label="Link to Commit Message Format">#</a></h3>
+<pre><code>type: brief description
+
+Detailed explanation if needed
+</code></pre>
+<p>Types: <code>feat</code>, <code>fix</code>, <code>docs</code>, <code>refactor</code>, <code>test</code>, <code>chore</code>.</p>
+<h3 id="code-review-process">Code Review Process<a class="heading-anchor" href="#code-review-process" aria-label="Link to Code Review Process">#</a></h3>
+<p>All PRs require at least one maintainer review before merge. CI must be green.</p>
+<h2 id="release-process">Release Process<a class="heading-anchor" href="#release-process" aria-label="Link to Release Process">#</a></h2>
+<p>Releases are cut via the &quot;Publish Package&quot; GitHub Actions workflow (<code>workflow_dispatch</code>): it bumps the version, builds, publishes to npm, tags the release, and opens a PR with the version bump back to <code>main</code>.</p>
+<h2 id="community-support">Community &amp; Support<a class="heading-anchor" href="#community-support" aria-label="Link to Community &amp; Support">#</a></h2>
+<ul>
+<li><strong>Issues</strong>: report bugs and request features via GitHub Issues.</li>
+<li><strong>Security</strong>: see <a href="eval-quality-security.html">SECURITY.md</a> - do not open a public issue for vulnerabilities.</li>
+</ul>
+<p>Thank you for contributing to eval-quality!</p>
+</article>
+      <footer class="footer">Generated from CONTRIBUTING.md by scripts/build-shareable.mjs. Self-contained and print-ready. Do not hand-edit; regenerate instead.</footer>
+    </main>
+  </div>
+</body>
+</html>

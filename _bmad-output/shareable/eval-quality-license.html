@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="The full licence text this package is distributed under.">
+  <link rel="icon" href="data:,">
+  <title>Apache License 2.0</title>
+  <style>
+:root {
+	color-scheme: light;
+	--canvas: #f4f6fb;
+	--paper: #ffffff;
+	--ink: #182230;
+	--muted: #667085;
+	--line: #e4e7ec;
+	--brand: #3157d5;
+	--brand-deep: #243f9f;
+	--brand-soft: #eef2ff;
+	--accent: #087f6d;
+	--accent-soft: #eafaf6;
+	--code: #101828;
+	--shadow: 0 18px 50px rgba(16, 24, 40, 0.08);
+}
+
+* {
+	box-sizing: border-box;
+}
+html {
+	scroll-behavior: smooth;
+}
+body {
+	margin: 0;
+	background: var(--canvas);
+	color: var(--ink);
+	font-family:
+		Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI",
+		sans-serif;
+	font-size: 16px;
+	line-height: 1.72;
+	text-rendering: optimizeLegibility;
+}
+
+a {
+	color: var(--brand);
+	text-decoration-thickness: 1px;
+	text-underline-offset: 3px;
+}
+a:hover {
+	color: var(--brand-deep);
+}
+
+.topbar {
+	position: sticky;
+	top: 0;
+	z-index: 20;
+	border-bottom: 1px solid rgba(228, 231, 236, 0.9);
+	background: rgba(255, 255, 255, 0.92);
+	backdrop-filter: blur(14px);
+}
+
+.topbar-inner {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 24px;
+	max-width: 1280px;
+	min-height: 64px;
+	margin: 0 auto;
+	padding: 10px 28px;
+}
+
+.brand {
+	color: var(--ink);
+	font-size: 15px;
+	font-weight: 760;
+	letter-spacing: -0.01em;
+	text-decoration: none;
+	white-space: nowrap;
+}
+
+.brand-mark {
+	color: var(--brand);
+}
+.nav {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: flex-end;
+	gap: 6px;
+}
+.nav-link {
+	border-radius: 9px;
+	color: #475467;
+	font-size: 13px;
+	font-weight: 650;
+	padding: 6px 10px;
+	text-decoration: none;
+}
+.nav-link:hover,
+.nav-link.active {
+	background: var(--brand-soft);
+	color: var(--brand-deep);
+}
+
+.layout {
+	display: grid;
+	grid-template-columns: 248px minmax(0, 900px);
+	gap: 30px;
+	max-width: 1230px;
+	margin: 34px auto 70px;
+	padding: 0 28px;
+}
+
+/* Pages with no headings (the licence text) drop the empty sidebar column. */
+.layout.no-toc {
+	grid-template-columns: minmax(0, 900px);
+	justify-content: center;
+	max-width: 960px;
+}
+
+.sidebar {
+	position: sticky;
+	top: 90px;
+	align-self: start;
+	max-height: calc(100vh - 112px);
+	overflow: auto;
+	padding: 4px 8px 20px 0;
+}
+
+.toc-title {
+	margin: 0 0 10px 10px;
+	color: #98a2b3;
+	font-size: 11px;
+	font-weight: 800;
+	letter-spacing: 0.12em;
+	text-transform: uppercase;
+}
+
+.toc-link {
+	display: block;
+	border-left: 2px solid transparent;
+	border-radius: 0 8px 8px 0;
+	color: #667085;
+	font-size: 13px;
+	line-height: 1.35;
+	margin: 1px 0;
+	padding: 6px 8px 6px 10px;
+	text-decoration: none;
+}
+.toc-link:hover {
+	border-left-color: var(--brand);
+	background: #fff;
+	color: var(--brand-deep);
+}
+.toc-link.depth-3 {
+	padding-left: 22px;
+	font-size: 12px;
+}
+.toc-link.depth-4 {
+	padding-left: 34px;
+	font-size: 12px;
+	color: var(--muted);
+}
+
+.paper {
+	min-width: 0;
+	overflow: hidden;
+	border: 1px solid rgba(228, 231, 236, 0.85);
+	border-radius: 18px;
+	background: var(--paper);
+	box-shadow: var(--shadow);
+}
+
+.hero {
+	border-bottom: 1px solid var(--line);
+	background: linear-gradient(145deg, #ffffff 20%, #f1f4ff 100%);
+	padding: 58px 64px 44px;
+}
+.eyebrow {
+	color: var(--brand);
+	font-size: 12px;
+	font-weight: 800;
+	letter-spacing: 0.13em;
+	text-transform: uppercase;
+}
+.hero h1 {
+	max-width: 760px;
+	margin: 12px 0 12px;
+	color: #101828;
+	font-size: clamp(34px, 5vw, 54px);
+	line-height: 1.08;
+	letter-spacing: -0.04em;
+}
+.lede {
+	max-width: 680px;
+	margin: 0;
+	color: #475467;
+	font-size: 18px;
+	line-height: 1.55;
+}
+.metadata {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	margin-top: 24px;
+}
+.pill {
+	display: inline-flex;
+	align-items: center;
+	min-height: 28px;
+	border: 1px solid #d0d5dd;
+	border-radius: 999px;
+	background: rgba(255, 255, 255, 0.8);
+	color: #475467;
+	font-size: 12px;
+	font-weight: 700;
+	padding: 3px 10px;
+}
+.pill.status {
+	border-color: #a9e4d7;
+	background: var(--accent-soft);
+	color: var(--accent);
+}
+
+.mobile-toc {
+	display: none;
+	margin: 26px 32px 0;
+}
+.mobile-toc summary {
+	color: var(--brand-deep);
+	cursor: pointer;
+	font-size: 14px;
+	font-weight: 750;
+}
+.mobile-toc-links {
+	margin-top: 10px;
+}
+
+.content {
+	padding: 24px 64px 64px;
+}
+.content h2,
+.content h3,
+.content h4 {
+	position: relative;
+	scroll-margin-top: 88px;
+	color: #101828;
+}
+.content h2 {
+	border-top: 1px solid var(--line);
+	margin: 52px 0 18px;
+	padding-top: 38px;
+	font-size: 29px;
+	line-height: 1.2;
+	letter-spacing: -0.025em;
+}
+.content h2:first-child {
+	border-top: 0;
+	margin-top: 14px;
+	padding-top: 12px;
+}
+.content h3 {
+	margin: 34px 0 12px;
+	font-size: 21px;
+	line-height: 1.3;
+	letter-spacing: -0.015em;
+}
+.content h4 {
+	margin: 28px 0 10px;
+	font-size: 17px;
+	line-height: 1.35;
+}
+.heading-anchor {
+	opacity: 0;
+	margin-left: 8px;
+	color: #98a2b3;
+	font-size: 0.72em;
+	font-weight: 500;
+	text-decoration: none;
+}
+.content h2:hover .heading-anchor,
+.content h3:hover .heading-anchor {
+	opacity: 1;
+}
+
+.content p {
+	margin: 0 0 18px;
+}
+.content strong {
+	color: #101828;
+}
+.content ul,
+.content ol {
+	margin: 0 0 20px;
+	padding-left: 26px;
+}
+.content li {
+	margin: 7px 0;
+	padding-left: 3px;
+}
+.content li::marker {
+	color: var(--brand);
+	font-weight: 750;
+}
+.content blockquote {
+	margin: 24px 0;
+	border-left: 4px solid var(--brand);
+	border-radius: 0 10px 10px 0;
+	background: var(--brand-soft);
+	color: #344054;
+	padding: 16px 20px;
+}
+.content blockquote p:last-child {
+	margin-bottom: 0;
+}
+.content hr {
+	height: 1px;
+	margin: 44px 0;
+	border: 0;
+	background: var(--line);
+}
+
+code {
+	border: 1px solid #e4e7ec;
+	border-radius: 5px;
+	background: #f8fafc;
+	color: #344054;
+	font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+	font-size: 0.88em;
+	padding: 0.14em 0.38em;
+}
+pre {
+	overflow: auto;
+	margin: 24px 0;
+	border: 1px solid #344054;
+	border-radius: 12px;
+	background: var(--code);
+	color: #e4e7ec;
+	line-height: 1.58;
+	padding: 20px 22px;
+}
+pre code {
+	border: 0;
+	background: transparent;
+	color: inherit;
+	font-size: 13px;
+	padding: 0;
+}
+
+/*
+ * A link the export could not render as a sibling page. It still points at the
+ * repository, so it is marked rather than left to look like every other link:
+ * a recipient without access would otherwise meet an unexplained 404.
+ */
+.repo-link::after {
+	content: " \2197";
+	color: var(--muted);
+	font-size: 0.85em;
+	text-decoration: none;
+}
+
+/* Verbatim fixed-width text; the licence must not be reflowed into paragraphs. */
+.plain-text {
+	margin: 0;
+	border: 0;
+	border-radius: 0;
+	background: transparent;
+	color: var(--ink);
+	font-size: 13px;
+	padding: 0;
+	white-space: pre-wrap;
+	word-break: break-word;
+}
+.plain-text code {
+	color: inherit;
+	font-size: inherit;
+}
+
+.table-wrap {
+	overflow-x: auto;
+	margin: 24px 0 30px;
+	border: 1px solid var(--line);
+	border-radius: 12px;
+}
+table {
+	width: 100%;
+	border-collapse: collapse;
+	font-size: 14px;
+	line-height: 1.5;
+}
+th {
+	background: #f8fafc;
+	color: #344054;
+	font-size: 12px;
+	letter-spacing: 0.04em;
+	text-align: left;
+	text-transform: uppercase;
+}
+th,
+td {
+	border-bottom: 1px solid var(--line);
+	padding: 12px 14px;
+	vertical-align: top;
+}
+tr:last-child td {
+	border-bottom: 0;
+}
+tbody tr:hover {
+	background: #fafbff;
+}
+
+.footer {
+	border-top: 1px solid var(--line);
+	color: #98a2b3;
+	font-size: 12px;
+	padding: 24px 64px 30px;
+}
+
+@media (max-width: 920px) {
+	.layout {
+		display: block;
+		margin-top: 22px;
+		padding: 0 16px;
+	}
+	.sidebar {
+		display: none;
+	}
+	.mobile-toc {
+		display: block;
+	}
+	.hero {
+		padding: 46px 36px 34px;
+	}
+	.content {
+		padding: 20px 36px 48px;
+	}
+	.footer {
+		padding-left: 36px;
+		padding-right: 36px;
+	}
+}
+
+@media (max-width: 620px) {
+	.topbar-inner {
+		align-items: flex-start;
+		flex-direction: column;
+		gap: 6px;
+		padding: 10px 16px;
+	}
+	.nav {
+		justify-content: flex-start;
+	}
+	.hero {
+		padding: 36px 24px 30px;
+	}
+	.hero h1 {
+		font-size: 34px;
+	}
+	.lede {
+		font-size: 16px;
+	}
+	.content {
+		padding: 14px 24px 42px;
+	}
+	.mobile-toc {
+		margin-left: 24px;
+		margin-right: 24px;
+	}
+	.footer {
+		padding-left: 24px;
+		padding-right: 24px;
+	}
+}
+
+@media print {
+	@page {
+		margin: 16mm 15mm;
+	}
+	body {
+		background: #fff;
+		font-size: 10.5pt;
+	}
+	.topbar,
+	.sidebar,
+	.mobile-toc,
+	.heading-anchor {
+		display: none;
+	}
+	.layout {
+		display: block;
+		max-width: none;
+		margin: 0;
+		padding: 0;
+	}
+	.paper {
+		border: 0;
+		border-radius: 0;
+		box-shadow: none;
+	}
+	.hero {
+		padding: 0 0 10mm;
+		background: #fff;
+	}
+	.hero h1 {
+		font-size: 28pt;
+	}
+	.content {
+		padding: 0;
+	}
+	.content h2 {
+		break-after: avoid;
+		margin-top: 9mm;
+		padding-top: 5mm;
+	}
+	.content h3,
+	.content h4 {
+		break-after: avoid;
+	}
+	pre,
+	.content blockquote,
+	.table-wrap {
+		break-inside: avoid;
+	}
+	/* The licence is pages long; forbidding a break inside it prints one
+	   overflowing block instead of a document. */
+	.plain-text {
+		break-inside: auto;
+	}
+	.table-wrap {
+		overflow: visible;
+	}
+	a {
+		color: inherit;
+		text-decoration: none;
+	}
+	.footer {
+		padding: 8mm 0 0;
+	}
+}
+
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="eval-quality-readme.html"><span class="brand-mark">eval</span>-quality</a>
+      <nav class="nav" aria-label="Companion documents"><a class="nav-link" href="eval-quality-readme.html">Overview</a><a class="nav-link" href="eval-quality-product-brief.html">Product brief</a><a class="nav-link" href="eval-quality-prd.html">PRD</a><a class="nav-link" href="eval-quality-architecture-spine.html">Architecture</a><a class="nav-link" href="eval-quality-adr-001.html">ADR-001</a><a class="nav-link" href="eval-quality-adr-002.html">ADR-002</a><a class="nav-link" href="eval-quality-adr-003.html">ADR-003</a><a class="nav-link" href="eval-quality-adr-004.html">ADR-004</a><a class="nav-link" href="eval-quality-adr-005.html">ADR-005</a><a class="nav-link" href="eval-quality-adr-006.html">ADR-006</a><a class="nav-link" href="eval-quality-adr-007.html">ADR-007</a><a class="nav-link" href="eval-quality-adr-008.html">ADR-008</a><a class="nav-link" href="eval-quality-adr-009.html">ADR-009</a></nav>
+    </div>
+  </header>
+  <div class="layout no-toc">
+    <main class="paper">
+      <header class="hero">
+        <div class="eyebrow">eval-quality · Licence</div>
+        <h1>Apache License 2.0</h1>
+        <p class="lede">The full licence text this package is distributed under.</p>
+        <div class="metadata">
+          <span class="pill">Owner: Murat Ozcan</span>
+        </div>
+      </header>
+      <article class="content"><pre class="plain-text"><code>                                 Apache License
+                           Version 2.0, January 2004
+                        http://www.apache.org/licenses/
+
+TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
+
+1.  Definitions.
+
+    &quot;License&quot; shall mean the terms and conditions for use, reproduction,
+    and distribution as defined by Sections 1 through 9 of this document.
+
+    &quot;Licensor&quot; shall mean the copyright owner or entity authorized by
+    the copyright owner that is granting the License.
+
+    &quot;Legal Entity&quot; shall mean the union of the acting entity and all
+    other entities that control, are controlled by, or are under common
+    control with that entity. For the purposes of this definition,
+    &quot;control&quot; means (i) the power, direct or indirect, to cause the
+    direction or management of such entity, whether by contract or
+    otherwise, or (ii) ownership of fifty percent (50%) or more of the
+    outstanding shares, or (iii) beneficial ownership of such entity.
+
+    &quot;You&quot; (or &quot;Your&quot;) shall mean an individual or Legal Entity
+    exercising permissions granted by this License.
+
+    &quot;Source&quot; form shall mean the preferred form for making modifications,
+    including but not limited to software source code, documentation
+    source, and configuration files.
+
+    &quot;Object&quot; form shall mean any form resulting from mechanical
+    transformation or translation of a Source form, including but
+    not limited to compiled object code, generated documentation,
+    and conversions to other media types.
+
+    &quot;Work&quot; shall mean the work of authorship, whether in Source or
+    Object form, made available under the License, as indicated by a
+    copyright notice that is included in or attached to the work
+    (an example is provided in the Appendix below).
+
+    &quot;Derivative Works&quot; shall mean any work, whether in Source or Object
+    form, that is based on (or derived from) the Work and for which the
+    editorial revisions, annotations, elaborations, or other modifications
+    represent, as a whole, an original work of authorship. For the purposes
+    of this License, Derivative Works shall not include works that remain
+    separable from, or merely link (or bind by name) to the interfaces of,
+    the Work and Derivative Works thereof.
+
+    &quot;Contribution&quot; shall mean any work of authorship, including
+    the original version of the Work and any modifications or additions
+    to that Work or Derivative Works thereof, that is intentionally
+    submitted to the Licensor for inclusion in the Work by the copyright owner
+    or by an individual or Legal Entity authorized to submit on behalf of
+    the copyright owner. For the purposes of this definition, &quot;submitted&quot;
+    means any form of electronic, verbal, or written communication sent
+    to the Licensor or its representatives, including but not limited to
+    communication on electronic mailing lists, source code control systems,
+    and issue tracking systems that are managed by, or on behalf of, the
+    Licensor for the purpose of discussing and improving the Work, but
+    excluding communication that is conspicuously marked or otherwise
+    designated in writing by the copyright owner as &quot;Not a Contribution.&quot;
+
+    &quot;Contributor&quot; shall mean Licensor and any individual or Legal Entity
+    on behalf of whom a Contribution has been received by the Licensor and
+    subsequently incorporated within the Work.
+
+2.  Grant of Copyright License. Subject to the terms and conditions of
+    this License, each Contributor hereby grants to You a perpetual,
+    worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+    copyright license to reproduce, prepare Derivative Works of,
+    publicly display, publicly perform, sublicense, and distribute the
+    Work and such Derivative Works in Source or Object form.
+
+3.  Grant of Patent License. Subject to the terms and conditions of
+    this License, each Contributor hereby grants to You a perpetual,
+    worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+    (except as stated in this section) patent license to make, have made,
+    use, offer to sell, sell, import, and otherwise transfer the Work,
+    where such license applies only to those patent claims licensable
+    by such Contributor that are necessarily infringed by their
+    Contribution(s) alone or by combination of their Contribution(s)
+    with the Work to which such Contribution(s) was submitted. If You
+    institute patent litigation against any entity (including a
+    cross-claim or counterclaim in a lawsuit) alleging that the Work
+    or a Contribution incorporated within the Work constitutes direct
+    or contributory patent infringement, then any patent licenses
+    granted to You under this License for that Work shall terminate
+    as of the date such litigation is filed.
+
+4.  Redistribution. You may reproduce and distribute copies of the
+    Work or Derivative Works thereof in any medium, with or without
+    modifications, and in Source or Object form, provided that You
+    meet the following conditions:
+
+    (a) You must give any other recipients of the Work or
+    Derivative Works a copy of this License; and
+
+    (b) You must cause any modified files to carry prominent notices
+    stating that You changed the files; and
+
+    (c) You must retain, in the Source form of any Derivative Works
+    that You distribute, all copyright, patent, trademark, and
+    attribution notices from the Source form of the Work,
+    excluding those notices that do not pertain to any part of
+    the Derivative Works; and
+
+    (d) If the Work includes a &quot;NOTICE&quot; text file as part of its
+    distribution, then any Derivative Works that You distribute must
+    include a readable copy of the attribution notices contained
+    within such NOTICE file, excluding any notices that do not
+    pertain to any part of the Derivative Works, in at least one
+    of the following places: within a NOTICE text file distributed
+    as part of the Derivative Works; within the Source form or
+    documentation, if provided along with the Derivative Works; or,
+    within a display generated by the Derivative Works, if and
+    wherever such third-party notices normally appear. The contents
+    of the NOTICE file are for informational purposes only and
+    do not modify the License. You may add Your own attribution
+    notices within Derivative Works that You distribute, alongside
+    or as an addendum to the NOTICE text from the Work, provided
+    that such additional attribution notices cannot be construed
+    as modifying the License.
+
+    You may add Your own copyright statement to Your modifications and
+    may provide additional or different license terms and conditions
+    for use, reproduction, or distribution of Your modifications, or
+    for any such Derivative Works as a whole, provided Your use,
+    reproduction, and distribution of the Work otherwise complies with
+    the conditions stated in this License.
+
+5.  Submission of Contributions. Unless You explicitly state otherwise,
+    any Contribution intentionally submitted for inclusion in the Work
+    by You to the Licensor shall be under the terms and conditions of
+    this License, without any additional terms or conditions.
+    Notwithstanding the above, nothing herein shall supersede or modify
+    the terms of any separate license agreement you may have executed
+    with Licensor regarding such Contributions.
+
+6.  Trademarks. This License does not grant permission to use the trade
+    names, trademarks, service marks, or product names of the Licensor,
+    except as required for reasonable and customary use in describing the
+    origin of the Work and reproducing the content of the NOTICE file.
+
+7.  Disclaimer of Warranty. Unless required by applicable law or
+    agreed to in writing, Licensor provides the Work (and each
+    Contributor provides its Contributions) on an &quot;AS IS&quot; BASIS,
+    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+    implied, including, without limitation, any warranties or conditions
+    of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A
+    PARTICULAR PURPOSE. You are solely responsible for determining the
+    appropriateness of using or redistributing the Work and assume any
+    risks associated with Your exercise of permissions under this License.
+
+8.  Limitation of Liability. In no event and under no legal theory,
+    whether in tort (including negligence), contract, or otherwise,
+    unless required by applicable law (such as deliberate and grossly
+    negligent acts) or agreed to in writing, shall any Contributor be
+    liable to You for damages, including any direct, indirect, special,
+    incidental, or consequential damages of any character arising as a
+    result of this License or out of the use or inability to use the
+    Work (including but not limited to damages for loss of goodwill,
+    work stoppage, computer failure or malfunction, or any and all
+    other commercial damages or losses), even if such Contributor
+    has been advised of the possibility of such damages.
+
+9.  Accepting Warranty or Additional Liability. While redistributing
+    the Work or Derivative Works thereof, You may choose to offer,
+    and charge a fee for, acceptance of support, warranty, indemnity,
+    or other liability obligations and/or rights consistent with this
+    License. However, in accepting such obligations, You may act only
+    on Your own behalf and on Your sole responsibility, not on behalf
+    of any other Contributor, and only if You agree to indemnify,
+    defend, and hold each Contributor harmless for any liability
+    incurred by, or claims asserted against, such Contributor by reason
+    of your accepting any such warranty or additional liability.
+
+END OF TERMS AND CONDITIONS
+
+Copyright 2026 Murat Ozcan
+
+Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+</code></pre></article>
+      <footer class="footer">Generated from LICENSE by scripts/build-shareable.mjs. Self-contained and print-ready. Do not hand-edit; regenerate instead.</footer>
+    </main>
+  </div>
+</body>
+</html>

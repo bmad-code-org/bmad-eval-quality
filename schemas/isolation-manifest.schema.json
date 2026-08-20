@@ -1,0 +1,394 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:eval-quality:schema:isolation-manifest",
+  "type": "object",
+  "properties": {
+    "schemaVersion": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9007199254740991,
+      "description": "AD-11 requires an integer under this exact name. Deliberately not `z.literal(1)`: the literal exports as `{\"type\":\"number\",\"const\":1}`, losing `integer` for a non-TypeScript consumer, and it would turn a version-2 artifact into an anonymous schema-parse failure instead of AD-28's dedicated `schema-version-mismatch` fault. Version equality belongs to the reader that throws that fault."
+    },
+    "parentDigest": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "description": "AD-27 digest: \"sha256:\" plus 64 lowercase hexadecimal characters."
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "AD-29 lineage. `null` if and only if `revisionCount` is 0. That biconditional is stated here rather than refined: a refinement is silently dropped from the published schema, so a non-TypeScript consumer would never see it, and the constraint ledger records it as not expressible."
+    },
+    "revisionCount": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991,
+      "description": "AD-29: one greater than the parent artifact's."
+    },
+    "runId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "contractId": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+      "description": "The prior art's `taskId`, renamed. \"Task\" is experiment vocabulary with no product meaning, and the manifest keeps an identifier because it is the artifact `core/ingest` matches against a run; the run record and the probe pin what they describe by digest instead."
+    },
+    "conditionArm": {
+      "type": "string",
+      "minLength": 1,
+      "description": "An opaque caller label with no product semantics, per AD-24. The prior art's three-member enum does not survive, on the same reasoning as the run record's."
+    },
+    "modelSnapshot": {
+      "type": "string",
+      "minLength": 1
+    },
+    "systemPromptDigest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "description": "AD-27 digest: \"sha256:\" plus 64 lowercase hexadecimal characters."
+    },
+    "contractDigest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "description": "AD-27 digest: \"sha256:\" plus 64 lowercase hexadecimal characters."
+    },
+    "evaluatorConfigurationDigest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "description": "Added by this story and absent from the prior art. AD-32 requires this digest to agree between the manifest and the run record, which was previously an agreement rule asserted over two fields that did not exist. Required and non-nullable on both, which is what makes the substitution cost two contradictions rather than one omission. The agreement itself is a cross-artifact rule no schema can see."
+    },
+    "workspaceIdentity": {
+      "type": "string",
+      "minLength": 1
+    },
+    "allowedMounts": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "observedMounts": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Observed mounts, network targets, and tool calls exceeding their allowlist is a violation AD-16 has `core/ingest` record; it is a cross-field rule with no AD-5 code and the schema admits it."
+    },
+    "networkAllowlist": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "observedNetworkTargets": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "toolAllowlist": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "observedToolCalls": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "resourceCeilings": {
+      "type": "object",
+      "properties": {
+        "maxToolCalls": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "maxInputTokens": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "maxOutputTokens": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "maxWallClockMinutes": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "description": "The prior art's `exclusiveMinimum: 0`, kept. A ceiling of zero minutes is not a ceiling, it is a run that may not happen, and the manifest records what the harness actually enforced."
+        },
+        "maxCostUsd": {
+          "type": "string",
+          "pattern": "^([1-9][0-9]*(\\.[0-9]+)?|0\\.[0-9]*[1-9][0-9]*)$",
+          "description": "Money, so AD-36 carries it as a string. The prior art's number does not survive; an AD-24 divergence, and the reason Decision 18's universal value domain converts the manifest too and not only the run record. The retyping keeps the prior art's `exclusiveMinimum: 0` rather than dropping it: `UnsignedDecimalString` would admit \"0\", which is the bound the prior art spent a keyword excluding."
+        }
+      },
+      "required": [
+        "maxToolCalls",
+        "maxInputTokens",
+        "maxOutputTokens",
+        "maxWallClockMinutes",
+        "maxCostUsd"
+      ],
+      "additionalProperties": false
+    },
+    "actualResourceUse": {
+      "type": "object",
+      "properties": {
+        "toolCalls": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "inputTokens": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "outputTokens": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "wallClockSeconds": {
+          "type": "number",
+          "minimum": 0
+        },
+        "costUsd": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)(\\.[0-9]+)?$",
+          "description": "The decimal-string format restricted to non-negative values, for quantities where a negative has no meaning."
+        }
+      },
+      "required": [
+        "toolCalls",
+        "inputTokens",
+        "outputTokens",
+        "wallClockSeconds",
+        "costUsd"
+      ],
+      "additionalProperties": false
+    },
+    "forbiddenInputAccounting": {
+      "type": "object",
+      "properties": {
+        "original-spec": {
+          "type": "object",
+          "properties": {
+            "withheld": {
+              "type": "boolean"
+            },
+            "note": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "withheld",
+            "note"
+          ],
+          "additionalProperties": false
+        },
+        "source-code": {
+          "type": "object",
+          "properties": {
+            "withheld": {
+              "type": "boolean"
+            },
+            "note": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "withheld",
+            "note"
+          ],
+          "additionalProperties": false
+        },
+        "repository": {
+          "type": "object",
+          "properties": {
+            "withheld": {
+              "type": "boolean"
+            },
+            "note": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "withheld",
+            "note"
+          ],
+          "additionalProperties": false
+        },
+        "builder-transcript": {
+          "type": "object",
+          "properties": {
+            "withheld": {
+              "type": "boolean"
+            },
+            "note": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "withheld",
+            "note"
+          ],
+          "additionalProperties": false
+        },
+        "implementation-logs": {
+          "type": "object",
+          "properties": {
+            "withheld": {
+              "type": "boolean"
+            },
+            "note": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "withheld",
+            "note"
+          ],
+          "additionalProperties": false
+        },
+        "comparator-results": {
+          "type": "object",
+          "properties": {
+            "withheld": {
+              "type": "boolean"
+            },
+            "note": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "withheld",
+            "note"
+          ],
+          "additionalProperties": false
+        },
+        "human-labels": {
+          "type": "object",
+          "properties": {
+            "withheld": {
+              "type": "boolean"
+            },
+            "note": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "withheld",
+            "note"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "original-spec",
+        "source-code",
+        "repository",
+        "builder-transcript",
+        "implementation-logs",
+        "comparator-results",
+        "human-labels"
+      ],
+      "additionalProperties": false,
+      "description": "The field AD-16 adds and the prior art lacks: \"the isolation manifest's required fields \u2026 account for each forbidden input by name\". Seven keys, generated from `FORBIDDEN_INPUT_FLOOR` so the floor has one home."
+    },
+    "violation": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "The sixteenth of the prior art's sixteen required members, and the one that is not a description of the run: a non-null violation invalidates it. AD-16 says the schema is \"seeded from the prior art's fifteen\"; the prior art's `required` array has sixteen. Settled by construction: the fifteen are the fields describing the run and this is the invalidation outcome. All sixteen are carried."
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "parentDigest",
+    "revisionCount",
+    "runId",
+    "contractId",
+    "conditionArm",
+    "modelSnapshot",
+    "systemPromptDigest",
+    "contractDigest",
+    "evaluatorConfigurationDigest",
+    "workspaceIdentity",
+    "allowedMounts",
+    "observedMounts",
+    "networkAllowlist",
+    "observedNetworkTargets",
+    "toolAllowlist",
+    "observedToolCalls",
+    "resourceCeilings",
+    "actualResourceUse",
+    "forbiddenInputAccounting",
+    "violation"
+  ],
+  "additionalProperties": false,
+  "description": "The per-run isolation audit. Succeeds the prior-art `isolation-manifest` schema per AD-24, carrying all sixteen of its required members plus `evaluatorConfigurationDigest`, `forbiddenInputAccounting`, and AD-29's lineage; `taskId` becomes `contractId`, `condition` is demoted to an opaque `conditionArm`, and money in both resource shapes becomes a decimal string. An absent, unparseable, incomplete, or violating manifest invalidates the run under AD-16 and never downgrades a verdict; a schema rejection is the correct expression of unparseable and incomplete, so nothing is admitted for their sake, and the violating case is `core/ingest`'s."
+}

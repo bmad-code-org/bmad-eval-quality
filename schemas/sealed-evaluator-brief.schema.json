@@ -1,0 +1,266 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:eval-quality:schema:sealed-evaluator-brief",
+  "type": "object",
+  "properties": {
+    "schemaVersion": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9007199254740991,
+      "description": "AD-11 requires an integer under this exact name. Deliberately not `z.literal(1)`: the literal exports as `{\"type\":\"number\",\"const\":1}`, losing `integer` for a non-TypeScript consumer, and it would turn a version-2 artifact into an anonymous schema-parse failure instead of AD-28's dedicated `schema-version-mismatch` fault. Version equality belongs to the reader that throws that fault."
+    },
+    "parentDigest": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "description": "AD-27 digest: \"sha256:\" plus 64 lowercase hexadecimal characters."
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "AD-29 lineage. `null` if and only if `revisionCount` is 0. That biconditional is stated here rather than refined: a refinement is silently dropped from the published schema, so a non-TypeScript consumer would never see it, and the constraint ledger records it as not expressible."
+    },
+    "revisionCount": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991,
+      "description": "AD-29: one greater than the parent artifact's."
+    },
+    "contractDigest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "description": "Binds this brief to the contract it seals. The brief carries no contract identifier of its own and no identity field at all: every artifact that refers to a brief does so by `sealedBriefDigest`, so an identifier would be a second name nothing reads."
+    },
+    "behaviors": {
+      "minItems": 1,
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^B-[0-9]{3,}$"
+          },
+          "description": {
+            "type": "string"
+          },
+          "severity": {
+            "type": "string",
+            "enum": [
+              "low",
+              "material",
+              "critical"
+            ]
+          },
+          "observableSuccessCriterion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "AD-19: what observable condition means this behaviour was met, which is not the nominated success indicator of any one operation. `null` is the shape `no-observable-success-criterion` fires on, and that code fires on exactly this condition and never on an empty oracle list."
+          },
+          "requirementLinks": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "scheme": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "id": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "scheme",
+                "id"
+              ],
+              "additionalProperties": false
+            },
+            "description": "Coin flip (c), settled: requirement and risk linkage lives per behaviour rather than at contract level, because `missing-requirement-linkage` fires when \"a behaviour declares no requirement or risk identifier\" and a contract-level array cannot make that predicate decidable per behaviour. Empty is legal, and both link arrays empty is exactly what the code fires on; a schema demanding non-empty makes it fire never."
+          },
+          "riskLinks": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "scheme": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "id": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "scheme",
+                "id"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "oracles": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^O-[0-9]{3,}$"
+            },
+            "description": "Identifiers of the oracles this behaviour is discharged by. Deliberately not refined against the contract's declared oracles: no AD-5 code names a behaviour citing an undeclared oracle, so under AC 8's named exception that rule is unenforced in v0 rather than silently pushed into the schema."
+          }
+        },
+        "required": [
+          "id",
+          "description",
+          "severity",
+          "observableSuccessCriterion",
+          "requirementLinks",
+          "riskLinks",
+          "oracles"
+        ],
+        "additionalProperties": false
+      },
+      "description": "The contract's behaviours, carried through unchanged. At least one, on the contract's own reasoning: a brief with no behaviour directs nothing."
+    },
+    "directions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "oracleId": {
+            "type": "string",
+            "pattern": "^O-[0-9]{3,}$"
+          },
+          "text": {
+            "type": "string",
+            "minLength": 1,
+            "description": "The generated prose. `seal` renders each evidence target as a descriptive reference derived from the step's operation and selection predicate, such as \"the response you obtained when you sent an invalid identifier\", never as the step identifier itself; the mapping from step to phrase is one-way. It never carries a prescribed action sequence."
+          }
+        },
+        "required": [
+          "oracleId",
+          "text"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "permittedInterfaces": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "logicalId": {
+            "type": "string",
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+            "description": "AD-35 binds the brief as it binds the contract: a logical interface identifier only, never a URL, host, or port. The brief is the artifact that actually reaches the executing caller, so a URL leaking onto it defeats the mapping AD-35 keeps outside the package."
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "api",
+              "web",
+              "cli",
+              "mcp"
+            ]
+          }
+        },
+        "required": [
+          "logicalId",
+          "kind"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "scopedResources": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "reference": {
+            "type": "string",
+            "minLength": 1
+          },
+          "kind": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "reference",
+          "kind"
+        ],
+        "additionalProperties": false
+      },
+      "description": "AD-16's scoped resource references. Not nullable here, unlike on the contract: absent-versus-explicitly-empty is an AD-31 grading of a CALLER declaration, and this artifact is generated by `seal`, which always knows the answer. No scoped reference may resolve to a forbidden input; that resolution is `scoped-reference-resolves-forbidden` at compile time and is not a schema check."
+    },
+    "budgets": {
+      "type": "object",
+      "properties": {
+        "maxToolCalls": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "maxWallClockMinutes": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "maxCostUsd": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)(\\.[0-9]+)?$",
+          "description": "Money, so AD-36 carries it as a string in a declared format rather than as a JSON number. Constrained to the unsigned form: a negative ceiling is not a ceiling."
+        }
+      },
+      "required": [
+        "maxToolCalls",
+        "maxWallClockMinutes",
+        "maxCostUsd"
+      ],
+      "additionalProperties": false,
+      "description": "The contract's declared ceilings, carried because AD-16 says the caller who executes needs the ceilings the isolation manifest reports against. The manifest's own `resourceCeilings` is a different shape and a different concern: this is a declaration, that is a record of what the harness enforced."
+    },
+    "safetyLimits": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "probeStepBound": {
+      "anyOf": [
+        {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "AD-16's declared bound on enumerated probe steps, carried through from the contract. The brief-side scripting audit reads it after generation; that audit and its AD-5 code are Epic 2's."
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "parentDigest",
+    "revisionCount",
+    "contractDigest",
+    "behaviors",
+    "directions",
+    "permittedInterfaces",
+    "scopedResources",
+    "budgets",
+    "safetyLimits",
+    "probeStepBound"
+  ],
+  "additionalProperties": false,
+  "description": "The sealed evaluator brief, with no prior art. AD-16 fixes what it carries: the contract's behaviours, the generated evaluator-facing directions of AD-3, permitted interfaces, and scoped resource references, plus budgets and safety limits. It also fixes what the brief never carries: author commentary, the interaction plan, or the plan's step identifiers, and never a prescribed action sequence. Those exclusions are structural rather than conventional: this object is strict, so a brief carrying `interactionPlan`, `commentary`, or a `stepId` fails with `unrecognized_keys`, and the story asserts each one as a reject fixture rather than assuming it from strictness. It carries no identity field of its own, because every artifact that refers to it does so by digest."
+}

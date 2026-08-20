@@ -1,0 +1,155 @@
+// The mutant generator's own tests (Story 1.5, AC 9): a handful of
+// hand-checked mutants asserted against the keyword they target, so the
+// generator is not trusted on its own say-so, plus the determinism guarantee
+// that makes the corpus a pure function of the schemas and the fixtures.
+
+import { describe, expect, it } from 'vitest'
+import { generationOf, seedsOf } from './corpus.ts'
+import { generateMutants } from './mutant-generator.ts'
+import { publishedDocumentOf, publishedValidatorOf } from './validator.ts'
+
+// Whichever test calls `generationOf('eval-contract')` first pays the whole
+// cold-cache generation, measured at about 1.1 s here and CPU-bound. Vitest's
+// 5 s default leaves roughly a 4x margin on a shared runner, so the tests that
+// touch eval-contract carry the same named budget the differential and sweep
+// files already use, rather than being the suite's accidental timing canaries.
+const GENERATION_TIMEOUT_MS = 120_000
+
+const mutantFor = (
+	key: Parameters<typeof generationOf>[0],
+	occurrencePointer: string,
+	suffix = '',
+) =>
+	generationOf(key).mutants.find(
+		(mutant) =>
+			mutant.id ===
+			(suffix === '' ? occurrencePointer : `${occurrencePointer}#${suffix}`),
+	)
+
+describe('hand-checked mutants, one per mutation family', () => {
+	it('violates a pattern with a string of the right type', () => {
+		const mutant = mutantFor(
+			'artifact-reference',
+			'/oneOf/0/properties/digest/pattern',
+		)
+		expect(mutant).toBeDefined()
+		const digest = (mutant!.value as any).digest
+		expect(typeof digest).toBe('string')
+		expect(digest).not.toMatch(/^sha256:[0-9a-f]{64}$/)
+		expect(mutant?.instancePointer).toBe('/digest')
+	})
+
+	it('deletes exactly the named key for a required-member mutant', () => {
+		const mutant = mutantFor('scoring-policy', '/required', 'policyId')
+		expect(mutant).toBeDefined()
+		expect((mutant!.value as any).policyId).toBeUndefined()
+		expect((mutant!.value as any).severityFloor).toBeDefined()
+	})
+
+	it(
+		'builds the one-operand equality the injected minItems rejects',
+		() => {
+			const mutant = mutantFor(
+				'eval-contract',
+				'/$defs/Expression/oneOf/0/properties/operands/minItems',
+			)
+			expect(mutant).toBeDefined()
+			expect(mutant?.keyword).toBe('minItems')
+			const validate = publishedValidatorOf('eval-contract')
+			expect(validate(mutant?.value)).toBe(false)
+			expect(
+				(validate.errors ?? []).some(
+					(error) =>
+						error.keyword === 'minItems' &&
+						error.instancePath === mutant?.instancePointer,
+				),
+			).toBe(true)
+		},
+		GENERATION_TIMEOUT_MS,
+	)
+
+	it('builds the empty channel map the injected minProperties rejects', () => {
+		const mutant = mutantFor(
+			'eval-contract',
+			'/$defs/InputBindingChannel/minProperties',
+		)
+		expect(mutant).toBeDefined()
+		const validate = publishedValidatorOf('eval-contract')
+		expect(validate(mutant?.value)).toBe(false)
+		expect(
+			(validate.errors ?? []).some(
+				(error) => error.keyword === 'minProperties',
+			),
+		).toBe(true)
+	})
+
+	it('displaces a numeric bound by one', () => {
+		const mutant = mutantFor(
+			'scoring-policy',
+			'/properties/minimumTrialCount/minimum',
+		)
+		expect(mutant).toBeDefined()
+		expect((mutant!.value as any).minimumTrialCount).toBe(0)
+	})
+
+	it('adds one undeclared key against additionalProperties: false', () => {
+		const mutant = mutantFor('scoring-policy', '/additionalProperties')
+		expect(mutant).toBeDefined()
+		expect((mutant!.value as any)['zz-undeclared']).toBeDefined()
+	})
+
+	// The boolean discriminator has no rejected single-violation mutant — the
+	// flipped boolean is the sibling branch's discriminator — so its pairing is
+	// a witness accepted intact and rejected once the const is deleted.
+	it('pairs the boolean oneOf discriminator with an accepted flip witness', () => {
+		const mutant = mutantFor(
+			'probe',
+			'/oneOf/0/properties/expectedClean/const',
+			'flip',
+		)
+		expect(mutant).toBeDefined()
+		expect(publishedValidatorOf('probe')(mutant?.value)).toBe(true)
+	})
+
+	it('rejects every non-flip mutant with the intact document', () => {
+		const validate = publishedValidatorOf('scoring-policy')
+		const { mutants } = generationOf('scoring-policy')
+		expect(mutants.length).toBeGreaterThan(20)
+		for (const mutant of mutants) {
+			if (mutant.id.endsWith('#flip')) continue
+			expect(validate(mutant.value), mutant.id).toBe(false)
+		}
+	})
+})
+
+describe('determinism: no randomness, no clock', () => {
+	it('produces byte-identical output across two runs', () => {
+		const document = publishedDocumentOf('probe')
+		const seeds = seedsOf('probe')
+		const validate = publishedValidatorOf('probe')
+		const first = generateMutants(document, seeds, validate)
+		const second = generateMutants(document, seeds, validate)
+		expect(JSON.stringify(second.mutants)).toBe(JSON.stringify(first.mutants))
+		expect(JSON.stringify(second.witnesses)).toBe(
+			JSON.stringify(first.witnesses),
+		)
+		expect([...second.unreachable]).toEqual([...first.unreachable])
+	})
+})
+
+describe('witnesses are valid instances, on both sides of the differential', () => {
+	it(
+		'emits accepted witnesses for the fifteen unfixtured Expression branches',
+		() => {
+			const { witnesses } = generationOf('eval-contract')
+			const expressionWitnesses = witnesses.filter((witness) =>
+				witness.id.startsWith('witness/$defs/Expression/oneOf/'),
+			)
+			expect(expressionWitnesses.length).toBeGreaterThanOrEqual(15)
+			const validate = publishedValidatorOf('eval-contract')
+			for (const witness of expressionWitnesses)
+				expect(validate(witness.value), witness.id).toBe(true)
+		},
+		GENERATION_TIMEOUT_MS,
+	)
+})

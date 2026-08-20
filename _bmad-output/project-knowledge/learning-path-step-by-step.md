@@ -9,6 +9,7 @@ Short version here. The long reasoning lives in the code comments each step poin
 |    2 | One way to turn JSON into bytes, one way to hash it, so two codebases agree.      |
 |    3 | What a contract author may write down, and what the schema lets through on purpose. |
 |    4 | The other eleven artifacts, so every file crossing the boundary has a shape.       |
+|    5 | Publish the schemas as JSON Schema files and prove them equivalent to the Zod source. |
 
 Adding a step: follow `learning-path-template.md`.
 
@@ -18,7 +19,7 @@ Adding a step: follow `learning-path-template.md`.
 gate on purpose.
 
 **Why:** this repo's supply-chain gates had already failed open twice. A gate that never blocks
-anything looks like protection but is not. Everything built later sits on these dependencies.
+anything protects nothing. Everything built later sits on these dependencies.
 
 **Rules:**
 
@@ -78,7 +79,7 @@ breaks. Real example: JavaScript reads `9007199254740993` as `9007199254740992`.
 **Rules:**
 
 - Written here, no library. An unchecked hashing library is a supply-chain risk.
-- Sort keys by UTF-16 code unit. Emoji sort before some normal letters. Looks wrong, is right.
+- Sort keys by UTF-16 code unit. Emoji sort before some normal letters, which looks wrong and is correct.
 - Let JavaScript print the numbers. Never hand-roll number formatting.
 - Check and write in one pass. Read an object twice and a sneaky object can hand back something else
   the second time. This really happened: a hidden `NaN` came out as `null`.
@@ -228,10 +229,10 @@ is a rule a later epic cannot read, and an artifact with no schema is a caller g
   versioning it would add a key to every finding for nobody.
 - Where the old schema said "if this, then that", the new one is a union of branches. That is why a
   defect finding must quote its evidence and the other two kinds need not.
-- One vocabulary, one home. Severity, interface kind, and the seven forbidden inputs come from the
-  file that already held them. A second copy drifts.
-- One state, one spelling. If a field-level `null` already says "absent", the object under it may not
-  say the same thing again with every member null.
+- Severity, interface kind, and the seven forbidden inputs come from the file that already held
+  them. A second copy drifts.
+- If a field-level `null` already says "absent", the object under it may not say the same thing
+  again with every member null.
 - Money is a string everywhere, including the isolation manifest. Seconds stay a number. A ceiling
   that must be above zero needs its own string format, or retyping a number silently drops the bound.
 - Every ledger entry names its artifact, because with twelve roots "the root" points at nothing. A
@@ -294,4 +295,74 @@ flowchart TD
   OUT --> REG
   BRIEF --> REG
   REG --> LEDGER
+```
+
+## Step 5: the published export and its four checks
+
+**What:** twelve committed `schemas/*.schema.json` files built by one pure function, and four checks
+that prove them equivalent to the Zod source, constraint by constraint.
+
+**Why:** a non-TypeScript consumer only sees the JSON Schema files. A constraint living only in a
+Zod refinement would be invisible to them, and nothing would notice. The four checks make that class
+of silence a red build.
+
+**Rules:**
+
+- One builder, `publish.ts`, downstream of everything. Nothing under `core/schemas/` imports it.
+- `$id` is a URN, `urn:eval-quality:schema:{key}`. A URL would promise a document nothing serves.
+- The constraint ledger drives every injection by its stated address. An address that does not
+  resolve throws; it never warns.
+- The committed files are pure ASCII, 2-space indent, one trailing newline. The drift check compares
+  bytes, so the serialisation is fixed in one shared function.
+- The drift check has no `--write`. A gate that can repair what it checks is not a gate.
+- Four checks, three homes: rejection suite, differential, and mutation sweep are pure and live in
+  Vitest; only the byte drift check reads disk, so only it is a script.
+- The validator is ajv 8, third-party on purpose: it independently reported the arity hole the
+  ledger repairs. `strict` on, `strictTypes` off, `date-time` registered always-true, no ajv-formats.
+- The mutant corpus is generated, not hand-written: measured kill rate by hand was one keyword in ten.
+- Unkillable keywords are exempted by computed rule, never by a hand list, and survivors, unreachable,
+  and exempt are asserted equal three ways. Measured on this pin: 1,949 occurrences, 168 exempt.
+- Pin a census exactly, never with a floor. A floor cannot see a walk that stopped walking.
+- Every gate gets a canary that proves it blocks, for the stated reason.
+- `FAILURE_CODES` is parsed against the AD-5 table on every validate, so nobody hand-maintains the
+  enumeration beside it.
+
+**Read in this order:**
+
+1. `src/core/schemas/publish.ts`: the builder, the injection, the serialiser.
+2. `scripts/generate-schemas.ts` and `scripts/check-schemas.ts`: the writer and the byte gate.
+3. `src/core/failure-codes.ts` and `scripts/check-ad5-registry.ts`: the AD-5 binding.
+4. `tests/schemas/publish.test.ts`: `$id`, `$defs` naming, the loud failures.
+5. `tests/schemas/published/keyword-occurrences.ts`: what counts as a keyword, and the exemption rule.
+6. `tests/schemas/published/mutant-generator.ts`: the schema-directed corpus.
+7. `tests/schemas/published/differential.test.ts` and `keyword-mutation.test.ts`: checks three and four.
+
+**Watch out:** ajv reports `schemaPath` relative to the `$defs` entry an error occurred in, not the
+document root; Zod exports `type` beside every `const` and `enum`, which makes those `type`s
+undeletable-by-proof and therefore exempt; and deleting an injected arity keyword makes ajv strict
+refuse to compile, which the sweep counts separately rather than as a pass.
+
+**Story:** `_bmad-output/implementation-artifacts/1-5-the-published-json-schema-export-and-its-four-ci-checks.md`
+
+```mermaid
+flowchart TD
+  ZOD["the twelve Zod schemas"]
+  LEDGER["constraint-ledger.ts<br/>13 inject + 15 not-expressible"]
+  PUB["publish.ts<br/>build + inject + serialise"]
+  FILES["schemas/*.schema.json<br/>committed, ASCII"]
+  DRIFT["check-schemas.ts<br/>byte-exact drift gate"]
+  REJ["published-rejection.test.ts<br/>112 cases, keyword + path"]
+  GEN["mutant-generator.ts<br/>~2,250 generated mutants"]
+  DIFF["differential.test.ts<br/>zod verdict == ajv verdict"]
+  SWEEP["keyword-mutation.test.ts<br/>delete every keyword, demand a flip"]
+
+  ZOD --> PUB
+  LEDGER --> PUB
+  PUB --> FILES
+  PUB --> DRIFT
+  FILES --> DRIFT
+  PUB --> REJ
+  PUB --> GEN
+  GEN --> DIFF
+  GEN --> SWEEP
 ```

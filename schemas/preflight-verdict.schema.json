@@ -1,0 +1,114 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:eval-quality:schema:preflight-verdict",
+  "type": "object",
+  "properties": {
+    "schemaVersion": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9007199254740991,
+      "description": "AD-11 requires an integer under this exact name. Deliberately not `z.literal(1)`: the literal exports as `{\"type\":\"number\",\"const\":1}`, losing `integer` for a non-TypeScript consumer, and it would turn a version-2 artifact into an anonymous schema-parse failure instead of AD-28's dedicated `schema-version-mismatch` fault. Version equality belongs to the reader that throws that fault."
+    },
+    "parentDigest": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "description": "AD-27 digest: \"sha256:\" plus 64 lowercase hexadecimal characters."
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "AD-29 lineage. `null` if and only if `revisionCount` is 0. That biconditional is stated here rather than refined: a refinement is silently dropped from the published schema, so a non-TypeScript consumer would never see it, and the constraint ledger records it as not expressible."
+    },
+    "revisionCount": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991,
+      "description": "AD-29: one greater than the parent artifact's."
+    },
+    "runId": {
+      "type": "string",
+      "minLength": 1,
+      "description": "An opaque caller label."
+    },
+    "fixtureDigest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "description": "Required, not nullable. AD-10 makes the fixture digest a required field of the verdict, and AD-11 names it as one of the scoring version's five inputs, so an absent one leaves the scoring version uncomputable."
+    },
+    "passed": {
+      "type": "boolean"
+    },
+    "checks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "interface-present",
+              "input-sensitivity",
+              "state-reset",
+              "clean-control",
+              "seeded-faults-scoped",
+              "seeded-fault-fired"
+            ]
+          },
+          "operationId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                "description": "A kebab-case slug. Excludes \"/\" and \"~\" so an identifier can be embedded in an interaction-rooted pointer without escaping."
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Nullable because AD-10 scopes input sensitivity and state reset per operation and interface presence per interface, so a check that is not per-operation has nothing to name here."
+          },
+          "outcome": {
+            "type": "string",
+            "enum": [
+              "satisfied",
+              "failed",
+              "exempt"
+            ],
+            "description": "`exempt` exists because AD-10 says \"an operation declaring no inputs in any channel is exempt and records the exemption\", and an exemption with no spelling is an exemption nobody records. That a failed pre-flight invalidates the run, and that a sensitivity witness resolving `insufficient-evidence` fails rather than passes, are AD-10 semantics for `core/preflight` in Epic 6; the schema carries the outcome and refines nothing."
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "kind",
+          "operationId",
+          "outcome",
+          "note"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "parentDigest",
+    "revisionCount",
+    "runId",
+    "fixtureDigest",
+    "passed",
+    "checks"
+  ],
+  "additionalProperties": false,
+  "description": "The pre-flight verdict: a pure function of the observations the environment-probe port returned, with no prior art. AD-10 bounds it to a closed list of check kinds, all six transcribed from that AD's own prose, and requires the fixture digest as a required field. Probing a fixture is not executing the system under test, and a failed pre-flight invalidates the run rather than becoming a contract verdict."
+}

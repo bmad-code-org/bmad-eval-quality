@@ -1,0 +1,148 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:eval-quality:schema:rubric",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^R-[0-9]{3,}$"
+    },
+    "scaleLevels": {
+      "anyOf": [
+        {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "level": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991,
+                "description": "The ordinal this level sits at. Deliberately unbounded and not checked for duplicates: no AD-5 code names either, so both are left to the compiler in v0 alongside the other cross-field rules."
+              },
+              "anchor": {
+                "type": "string",
+                "description": "The observable condition that anchors this level. AD-22 calls an unanchored scale a compile-time failure under `rubric-unanchored`, so the anchor is a declared field rather than a convention."
+              }
+            },
+            "required": [
+              "level",
+              "anchor"
+            ],
+            "additionalProperties": false
+          }
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "`null` and `[]` are both the unanchored shape `rubric-unanchored` fires on, and both must parse."
+    },
+    "failureModePenalties": {
+      "anyOf": [
+        {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "description": {
+                "type": "string",
+                "description": "AD-22 requires named failure-mode penalties and states no magnitude. None is invented here: a penalty weight would be a scoring semantic this story has no authority to mint, and AD-7 keeps weighted composites out of the reported result. Story 6.3 owns AD-22's compile checks and is where a magnitude would arrive if one is ever needed."
+              }
+            },
+            "required": [
+              "name",
+              "description"
+            ],
+            "additionalProperties": false
+          }
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Missing named penalties is `rubric-unanchored`, not a parse failure."
+    },
+    "maxLength": {
+      "anyOf": [
+        {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "An unbounded length is `null`, which is one of the three shapes `rubric-unanchored` fires on."
+    },
+    "criteria": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^RC-[0-9]{3,}$"
+          },
+          "text": {
+            "type": "string",
+            "description": "A criterion scoring chain-of-thought or stated-reasoning prose fails compilation under `rubric-scores-reasoning-prose`, so such a criterion must stay representable here."
+          },
+          "evidence": {
+            "type": "string",
+            "pattern": "^\\/interactions\\/[a-z0-9]+(?:-[a-z0-9]+)*\\/(?:(?:response-body|response-headers|stdout|stderr)(?:\\/(?:[^/~]|~[01])*)*|(?:response-status|exit-code)|call-inputs\\/(?:path|query|header|body)(?:\\/(?:[^/~]|~[01])*)*)$",
+            "description": "Where the criterion is answerable from. A pointer that resolves nowhere is `rubric-evidence-unreachable`, a compile-time code, and is deliberately not a schema rejection."
+          }
+        },
+        "required": [
+          "id",
+          "text",
+          "evidence"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "schemaVersion": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9007199254740991,
+      "description": "AD-11 requires an integer under this exact name. Deliberately not `z.literal(1)`: the literal exports as `{\"type\":\"number\",\"const\":1}`, losing `integer` for a non-TypeScript consumer, and it would turn a version-2 artifact into an anonymous schema-parse failure instead of AD-28's dedicated `schema-version-mismatch` fault. Version equality belongs to the reader that throws that fault."
+    },
+    "parentDigest": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "description": "AD-27 digest: \"sha256:\" plus 64 lowercase hexadecimal characters."
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "AD-29 lineage. `null` if and only if `revisionCount` is 0. That biconditional is stated here rather than refined: a refinement is silently dropped from the published schema, so a non-TypeScript consumer would never see it, and the constraint ledger records it as not expressible."
+    },
+    "revisionCount": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991,
+      "description": "AD-29: one greater than the parent artifact's."
+    }
+  },
+  "required": [
+    "id",
+    "scaleLevels",
+    "failureModePenalties",
+    "maxLength",
+    "criteria",
+    "schemaVersion",
+    "parentDigest",
+    "revisionCount"
+  ],
+  "additionalProperties": false,
+  "description": "A published rubric, with no prior art: the experiments' evaluator-result and trace-label schemas belong to the deferred semantic layer and their names are not reused. AD-22's compile checks cover anchored scale levels, named failure-mode penalties, a bounded length, and the prohibition on scoring reasoning prose. All four fire under `rubric-unanchored`, `rubric-evidence-unreachable`, and `rubric-scores-reasoning-prose` at compile time, so every shape those codes fire on parses here."
+}

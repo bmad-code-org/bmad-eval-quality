@@ -1,0 +1,978 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="The binary H0 verdict, gate by gate, and the evaluator-pack decision it left untouched.">
+  <link rel="icon" href="data:,">
+  <title>Experiment decisions: the round 1 verdict</title>
+  <style>
+:root {
+	color-scheme: light;
+	--canvas: #f4f6fb;
+	--paper: #ffffff;
+	--ink: #182230;
+	--muted: #667085;
+	--line: #e4e7ec;
+	--brand: #3157d5;
+	--brand-deep: #243f9f;
+	--brand-soft: #eef2ff;
+	--accent: #087f6d;
+	--accent-soft: #eafaf6;
+	--code: #101828;
+	--shadow: 0 18px 50px rgba(16, 24, 40, 0.08);
+}
+
+* {
+	box-sizing: border-box;
+}
+html {
+	scroll-behavior: smooth;
+}
+body {
+	margin: 0;
+	background: var(--canvas);
+	color: var(--ink);
+	font-family:
+		Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI",
+		sans-serif;
+	font-size: 16px;
+	line-height: 1.72;
+	text-rendering: optimizeLegibility;
+}
+
+a {
+	color: var(--brand);
+	text-decoration-thickness: 1px;
+	text-underline-offset: 3px;
+}
+a:hover {
+	color: var(--brand-deep);
+}
+
+.topbar {
+	position: sticky;
+	top: 0;
+	z-index: 20;
+	border-bottom: 1px solid rgba(228, 231, 236, 0.9);
+	background: rgba(255, 255, 255, 0.92);
+	backdrop-filter: blur(14px);
+}
+
+.topbar-inner {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 24px;
+	max-width: 1280px;
+	min-height: 64px;
+	margin: 0 auto;
+	padding: 10px 28px;
+}
+
+.brand {
+	color: var(--ink);
+	font-size: 15px;
+	font-weight: 760;
+	letter-spacing: -0.01em;
+	text-decoration: none;
+	white-space: nowrap;
+}
+
+.brand-mark {
+	color: var(--brand);
+}
+.nav {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: flex-end;
+	gap: 6px;
+}
+.nav-link {
+	border-radius: 9px;
+	color: #475467;
+	font-size: 13px;
+	font-weight: 650;
+	padding: 6px 10px;
+	text-decoration: none;
+}
+.nav-link:hover,
+.nav-link.active {
+	background: var(--brand-soft);
+	color: var(--brand-deep);
+}
+
+.layout {
+	display: grid;
+	grid-template-columns: 248px minmax(0, 900px);
+	gap: 30px;
+	max-width: 1230px;
+	margin: 34px auto 70px;
+	padding: 0 28px;
+}
+
+/* Pages with no headings (the licence text) drop the empty sidebar column. */
+.layout.no-toc {
+	grid-template-columns: minmax(0, 900px);
+	justify-content: center;
+	max-width: 960px;
+}
+
+.sidebar {
+	position: sticky;
+	top: 90px;
+	align-self: start;
+	max-height: calc(100vh - 112px);
+	overflow: auto;
+	padding: 4px 8px 20px 0;
+}
+
+.toc-title {
+	margin: 0 0 10px 10px;
+	color: #98a2b3;
+	font-size: 11px;
+	font-weight: 800;
+	letter-spacing: 0.12em;
+	text-transform: uppercase;
+}
+
+.toc-link {
+	display: block;
+	border-left: 2px solid transparent;
+	border-radius: 0 8px 8px 0;
+	color: #667085;
+	font-size: 13px;
+	line-height: 1.35;
+	margin: 1px 0;
+	padding: 6px 8px 6px 10px;
+	text-decoration: none;
+}
+.toc-link:hover {
+	border-left-color: var(--brand);
+	background: #fff;
+	color: var(--brand-deep);
+}
+.toc-link.depth-3 {
+	padding-left: 22px;
+	font-size: 12px;
+}
+.toc-link.depth-4 {
+	padding-left: 34px;
+	font-size: 12px;
+	color: var(--muted);
+}
+
+.paper {
+	min-width: 0;
+	overflow: hidden;
+	border: 1px solid rgba(228, 231, 236, 0.85);
+	border-radius: 18px;
+	background: var(--paper);
+	box-shadow: var(--shadow);
+}
+
+.hero {
+	border-bottom: 1px solid var(--line);
+	background: linear-gradient(145deg, #ffffff 20%, #f1f4ff 100%);
+	padding: 58px 64px 44px;
+}
+.eyebrow {
+	color: var(--brand);
+	font-size: 12px;
+	font-weight: 800;
+	letter-spacing: 0.13em;
+	text-transform: uppercase;
+}
+.hero h1 {
+	max-width: 760px;
+	margin: 12px 0 12px;
+	color: #101828;
+	font-size: clamp(34px, 5vw, 54px);
+	line-height: 1.08;
+	letter-spacing: -0.04em;
+}
+.lede {
+	max-width: 680px;
+	margin: 0;
+	color: #475467;
+	font-size: 18px;
+	line-height: 1.55;
+}
+.metadata {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	margin-top: 24px;
+}
+.pill {
+	display: inline-flex;
+	align-items: center;
+	min-height: 28px;
+	border: 1px solid #d0d5dd;
+	border-radius: 999px;
+	background: rgba(255, 255, 255, 0.8);
+	color: #475467;
+	font-size: 12px;
+	font-weight: 700;
+	padding: 3px 10px;
+}
+.pill.status {
+	border-color: #a9e4d7;
+	background: var(--accent-soft);
+	color: var(--accent);
+}
+
+.mobile-toc {
+	display: none;
+	margin: 26px 32px 0;
+}
+.mobile-toc summary {
+	color: var(--brand-deep);
+	cursor: pointer;
+	font-size: 14px;
+	font-weight: 750;
+}
+.mobile-toc-links {
+	margin-top: 10px;
+}
+
+.content {
+	padding: 24px 64px 64px;
+}
+.content h2,
+.content h3,
+.content h4 {
+	position: relative;
+	scroll-margin-top: 88px;
+	color: #101828;
+}
+.content h2 {
+	border-top: 1px solid var(--line);
+	margin: 52px 0 18px;
+	padding-top: 38px;
+	font-size: 29px;
+	line-height: 1.2;
+	letter-spacing: -0.025em;
+}
+.content h2:first-child {
+	border-top: 0;
+	margin-top: 14px;
+	padding-top: 12px;
+}
+.content h3 {
+	margin: 34px 0 12px;
+	font-size: 21px;
+	line-height: 1.3;
+	letter-spacing: -0.015em;
+}
+.content h4 {
+	margin: 28px 0 10px;
+	font-size: 17px;
+	line-height: 1.35;
+}
+.heading-anchor {
+	opacity: 0;
+	margin-left: 8px;
+	color: #98a2b3;
+	font-size: 0.72em;
+	font-weight: 500;
+	text-decoration: none;
+}
+.content h2:hover .heading-anchor,
+.content h3:hover .heading-anchor {
+	opacity: 1;
+}
+
+.content p {
+	margin: 0 0 18px;
+}
+.content strong {
+	color: #101828;
+}
+.content ul,
+.content ol {
+	margin: 0 0 20px;
+	padding-left: 26px;
+}
+.content li {
+	margin: 7px 0;
+	padding-left: 3px;
+}
+.content li::marker {
+	color: var(--brand);
+	font-weight: 750;
+}
+.content blockquote {
+	margin: 24px 0;
+	border-left: 4px solid var(--brand);
+	border-radius: 0 10px 10px 0;
+	background: var(--brand-soft);
+	color: #344054;
+	padding: 16px 20px;
+}
+.content blockquote p:last-child {
+	margin-bottom: 0;
+}
+.content hr {
+	height: 1px;
+	margin: 44px 0;
+	border: 0;
+	background: var(--line);
+}
+
+code {
+	border: 1px solid #e4e7ec;
+	border-radius: 5px;
+	background: #f8fafc;
+	color: #344054;
+	font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+	font-size: 0.88em;
+	padding: 0.14em 0.38em;
+}
+pre {
+	overflow: auto;
+	margin: 24px 0;
+	border: 1px solid #344054;
+	border-radius: 12px;
+	background: var(--code);
+	color: #e4e7ec;
+	line-height: 1.58;
+	padding: 20px 22px;
+}
+pre code {
+	border: 0;
+	background: transparent;
+	color: inherit;
+	font-size: 13px;
+	padding: 0;
+}
+
+/*
+ * A link the export could not render as a sibling page. It still points at the
+ * repository, so it is marked rather than left to look like every other link:
+ * a recipient without access would otherwise meet an unexplained 404.
+ */
+.repo-link::after {
+	content: " \2197";
+	color: var(--muted);
+	font-size: 0.85em;
+	text-decoration: none;
+}
+
+/* Verbatim fixed-width text; the licence must not be reflowed into paragraphs. */
+.plain-text {
+	margin: 0;
+	border: 0;
+	border-radius: 0;
+	background: transparent;
+	color: var(--ink);
+	font-size: 13px;
+	padding: 0;
+	white-space: pre-wrap;
+	word-break: break-word;
+}
+.plain-text code {
+	color: inherit;
+	font-size: inherit;
+}
+
+.table-wrap {
+	overflow-x: auto;
+	margin: 24px 0 30px;
+	border: 1px solid var(--line);
+	border-radius: 12px;
+}
+table {
+	width: 100%;
+	border-collapse: collapse;
+	font-size: 14px;
+	line-height: 1.5;
+}
+th {
+	background: #f8fafc;
+	color: #344054;
+	font-size: 12px;
+	letter-spacing: 0.04em;
+	text-align: left;
+	text-transform: uppercase;
+}
+th,
+td {
+	border-bottom: 1px solid var(--line);
+	padding: 12px 14px;
+	vertical-align: top;
+}
+tr:last-child td {
+	border-bottom: 0;
+}
+tbody tr:hover {
+	background: #fafbff;
+}
+
+.footer {
+	border-top: 1px solid var(--line);
+	color: #98a2b3;
+	font-size: 12px;
+	padding: 24px 64px 30px;
+}
+
+@media (max-width: 920px) {
+	.layout {
+		display: block;
+		margin-top: 22px;
+		padding: 0 16px;
+	}
+	.sidebar {
+		display: none;
+	}
+	.mobile-toc {
+		display: block;
+	}
+	.hero {
+		padding: 46px 36px 34px;
+	}
+	.content {
+		padding: 20px 36px 48px;
+	}
+	.footer {
+		padding-left: 36px;
+		padding-right: 36px;
+	}
+}
+
+@media (max-width: 620px) {
+	.topbar-inner {
+		align-items: flex-start;
+		flex-direction: column;
+		gap: 6px;
+		padding: 10px 16px;
+	}
+	.nav {
+		justify-content: flex-start;
+	}
+	.hero {
+		padding: 36px 24px 30px;
+	}
+	.hero h1 {
+		font-size: 34px;
+	}
+	.lede {
+		font-size: 16px;
+	}
+	.content {
+		padding: 14px 24px 42px;
+	}
+	.mobile-toc {
+		margin-left: 24px;
+		margin-right: 24px;
+	}
+	.footer {
+		padding-left: 24px;
+		padding-right: 24px;
+	}
+}
+
+@media print {
+	@page {
+		margin: 16mm 15mm;
+	}
+	body {
+		background: #fff;
+		font-size: 10.5pt;
+	}
+	.topbar,
+	.sidebar,
+	.mobile-toc,
+	.heading-anchor {
+		display: none;
+	}
+	.layout {
+		display: block;
+		max-width: none;
+		margin: 0;
+		padding: 0;
+	}
+	.paper {
+		border: 0;
+		border-radius: 0;
+		box-shadow: none;
+	}
+	.hero {
+		padding: 0 0 10mm;
+		background: #fff;
+	}
+	.hero h1 {
+		font-size: 28pt;
+	}
+	.content {
+		padding: 0;
+	}
+	.content h2 {
+		break-after: avoid;
+		margin-top: 9mm;
+		padding-top: 5mm;
+	}
+	.content h3,
+	.content h4 {
+		break-after: avoid;
+	}
+	pre,
+	.content blockquote,
+	.table-wrap {
+		break-inside: avoid;
+	}
+	/* The licence is pages long; forbidding a break inside it prints one
+	   overflowing block instead of a document. */
+	.plain-text {
+		break-inside: auto;
+	}
+	.table-wrap {
+		overflow: visible;
+	}
+	a {
+		color: inherit;
+		text-decoration: none;
+	}
+	.footer {
+		padding: 8mm 0 0;
+	}
+}
+
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="eval-quality-readme.html"><span class="brand-mark">eval</span>-quality</a>
+      <nav class="nav" aria-label="Companion documents"><a class="nav-link" href="eval-quality-readme.html">Overview</a><a class="nav-link" href="eval-quality-product-brief.html">Product brief</a><a class="nav-link" href="eval-quality-prd.html">PRD</a><a class="nav-link" href="eval-quality-architecture-spine.html">Architecture</a><a class="nav-link" href="eval-quality-adr-001.html">ADR-001</a><a class="nav-link" href="eval-quality-adr-002.html">ADR-002</a><a class="nav-link" href="eval-quality-adr-003.html">ADR-003</a><a class="nav-link" href="eval-quality-adr-004.html">ADR-004</a><a class="nav-link" href="eval-quality-adr-005.html">ADR-005</a><a class="nav-link" href="eval-quality-adr-006.html">ADR-006</a><a class="nav-link" href="eval-quality-adr-007.html">ADR-007</a><a class="nav-link" href="eval-quality-adr-008.html">ADR-008</a><a class="nav-link" href="eval-quality-adr-009.html">ADR-009</a></nav>
+    </div>
+  </header>
+  <div class="layout">
+    <aside class="sidebar" aria-label="Table of contents">
+      <p class="toc-title">On this page</p>
+      <a class="toc-link depth-2" href="#section-1-h0-verdict-independent-black-box-evaluation">1. H0 verdict (independent black-box evaluation)</a><a class="toc-link depth-2" href="#section-1a-mut2-round-the-unsupported-claim-mutation">1a. mut2 round — the unsupported-claim mutation</a><a class="toc-link depth-3" href="#product-implication-worth-carrying-forward">Product implication worth carrying forward</a><a class="toc-link depth-3" href="#real-non-injected-findings-produced-by-this-round">Real (non-injected) findings produced by this round</a><a class="toc-link depth-2" href="#section-1b-contract-quality-round-the-mechanism-reproduced-under-a-stronger-oracle">1b. Contract-quality round: the mechanism reproduced under a stronger oracle</a><a class="toc-link depth-2" href="#section-2-evaluator-pack-decision">2. Evaluator-pack decision</a><a class="toc-link depth-2" href="#failed-hypotheses">Failed hypotheses</a><a class="toc-link depth-2" href="#recorded-deviations-from-hypothesis-validation-plan-md">Recorded deviations from HYPOTHESIS_VALIDATION_PLAN.md</a><a class="toc-link depth-3" href="#section-2026-07-27-binary-decision-correction">2026-07-27: Binary decision correction</a><a class="toc-link depth-3" href="#section-2026-07-27-agent-only-ground-truth">2026-07-27: Agent-only ground truth</a><a class="toc-link depth-3" href="#section-2026-07-27-added-self-review-arm-and-the-condition-enum-extension">2026-07-27: Added self-review arm and the condition enum extension</a><a class="toc-link depth-3" href="#section-2026-07-27-two-additive-schema-corrections">2026-07-27: Two additive schema corrections</a>
+    </aside>
+    <main class="paper">
+      <header class="hero">
+        <div class="eyebrow">eval-quality · Round 1 verdict</div>
+        <h1>Experiment decisions: the round 1 verdict</h1>
+        <p class="lede">The binary H0 verdict, gate by gate, and the evaluator-pack decision it left untouched.</p>
+        <div class="metadata">
+          <span class="pill">Owner: Murat Ozcan</span>
+        </div>
+      </header>
+      <details class="mobile-toc">
+        <summary>On this page</summary>
+        <div class="mobile-toc-links"><a class="toc-link depth-2" href="#section-1-h0-verdict-independent-black-box-evaluation">1. H0 verdict (independent black-box evaluation)</a><a class="toc-link depth-2" href="#section-1a-mut2-round-the-unsupported-claim-mutation">1a. mut2 round — the unsupported-claim mutation</a><a class="toc-link depth-3" href="#product-implication-worth-carrying-forward">Product implication worth carrying forward</a><a class="toc-link depth-3" href="#real-non-injected-findings-produced-by-this-round">Real (non-injected) findings produced by this round</a><a class="toc-link depth-2" href="#section-1b-contract-quality-round-the-mechanism-reproduced-under-a-stronger-oracle">1b. Contract-quality round: the mechanism reproduced under a stronger oracle</a><a class="toc-link depth-2" href="#section-2-evaluator-pack-decision">2. Evaluator-pack decision</a><a class="toc-link depth-2" href="#failed-hypotheses">Failed hypotheses</a><a class="toc-link depth-2" href="#recorded-deviations-from-hypothesis-validation-plan-md">Recorded deviations from HYPOTHESIS_VALIDATION_PLAN.md</a><a class="toc-link depth-3" href="#section-2026-07-27-binary-decision-correction">2026-07-27: Binary decision correction</a><a class="toc-link depth-3" href="#section-2026-07-27-agent-only-ground-truth">2026-07-27: Agent-only ground truth</a><a class="toc-link depth-3" href="#section-2026-07-27-added-self-review-arm-and-the-condition-enum-extension">2026-07-27: Added self-review arm and the condition enum extension</a><a class="toc-link depth-3" href="#section-2026-07-27-two-additive-schema-corrections">2026-07-27: Two additive schema corrections</a></div>
+      </details>
+      <article class="content"><p>Status: <code>H0_SCORED</code>. The binary H0 verdict is <code>DARK-FACTORY REJECTED</code>. The evaluator-pack decision
+remains untouched because Phase C never entered scope.</p>
+<h2 id="section-1-h0-verdict-independent-black-box-evaluation">1. H0 verdict (independent black-box evaluation)<a class="heading-anchor" href="#section-1-h0-verdict-independent-black-box-evaluation" aria-label="Link to 1. H0 verdict (independent black-box evaluation)">#</a></h2>
+<p><strong>DARK-FACTORY REJECTED.</strong> H0 uses the all-gates decision rule in
+<code>HYPOTHESIS_VALIDATION_PLAN.md</code>: every gate must pass for validation. Multiple frozen gates failed,
+including the primary incremental-catch gate and recall. The original plan defines no third H0
+outcome. Owner instruction on 2026-07-27 removed the temporary <code>INCOMPLETE</code> classification and
+restored the binary rule.</p>
+<p>The run remains reduced in task count, repetitions, live system coverage, and natural-defect
+coverage. Those limitations narrow external validity. They do not convert failed gates into a pass.
+This verdict means the evidence does not justify a dark-factory advantage claim.</p>
+<p><strong>Evidence used for the decision:</strong></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Task</th>
+<th>System</th>
+<th>Ground truth</th>
+<th>Self-eval</th>
+<th>Independent-eval</th>
+<th>Unique catch?</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>cc-h0-01 (clean round)</td>
+<td>couture-cast</td>
+<td>clean</td>
+<td>PASS</td>
+<td>PASS</td>
+<td>n/a (clean)</td>
+</tr>
+<tr>
+<td>cc-h0-01 (mutated round, D-001 injected)</td>
+<td>couture-cast</td>
+<td>1 critical defect (B-002, list endpoint leaks all users&#39; garments)</td>
+<td><strong>FAIL — caught it</strong></td>
+<td><strong>FAIL — caught it</strong></td>
+<td><strong>No.</strong> Self-eval caught it in its one rep, so per the H0 definition (uniqueness requires detection in fewer than 2 of 3 self-eval reps) this defect does not count as an independent-only catch.</td>
+</tr>
+<tr>
+<td>cc-h0-03 (clean round)</td>
+<td>couture-cast</td>
+<td>clean</td>
+<td>PASS</td>
+<td>PASS</td>
+<td>n/a (clean)</td>
+</tr>
+<tr>
+<td>cc-h0-03 (mutated round, D-001 injected)</td>
+<td>couture-cast</td>
+<td>1 material defect (B-002, combined filters use OR instead of AND)</td>
+<td><strong>FAIL — caught it</strong> (and <code>self-review</code> arm also caught it)</td>
+<td><strong>PASS — MISSED it</strong></td>
+<td><strong>No.</strong> Inverse of mut1: the sealed evaluator produced a false PASS on a valid run. See section 1a.</td>
+</tr>
+<tr>
+<td>as-h0-01</td>
+<td>agentic-system</td>
+<td>clean (code-level; live black-box eval never ran)</td>
+<td>not run</td>
+<td>not run</td>
+<td>blocked</td>
+</tr>
+<tr>
+<td>as-h0-02</td>
+<td>agentic-system</td>
+<td>clean (code-level; live black-box eval never ran)</td>
+<td>not run</td>
+<td>not run</td>
+<td>blocked</td>
+</tr>
+</tbody></table>
+</div><p><strong>Mutation attempts on the agentic-system side:</strong> two were tried directly against the code (a
+whitelist-exclusion gap on as-h0-02, an off-by-one page-boundary bug on as-h0-01). Both were
+caught immediately by the existing deterministic test suite and were reverted rather than kept —
+they would not have qualified as &quot;missed by deterministic baseline&quot; regardless of what a live
+evaluator found. This is itself informative: both agentic-system implementations have unusually
+thorough builder-written tests for the specific edge cases their own specs called out.</p>
+<p><strong>Final tally against the section 9 gates:</strong> 0 of the required ≥3 unique real material catches,
+0 systems represented in a unique catch where 2 are required, and recall of 0.50 where 0.80 is
+required. Isolation evidence is incomplete across the reduced-scope run, and stability was never
+measured across three repetitions. H0 fails.</p>
+<p><strong>One genuinely useful finding that came out of this regardless:</strong> when a self-evaluator is
+explicitly instructed to exercise the system live (not just review code), it performed on par with
+independent evaluation on the one material defect tested here. That&#39;s a real, disclosed result about
+<em>prompt design</em> mattering more than the isolation boundary for at least this defect class — worth
+carrying into any future eval-quality methodology work, independent of what H0 ultimately decides.</p>
+<p>The decision is frozen by
+<code>preregistration/h0-decision-amendment-03-binary-closure.yaml</code>. Future experiments may test a new
+population under a new preregistration. They cannot retroactively change this result.</p>
+<h2 id="section-1a-mut2-round-the-unsupported-claim-mutation">1a. mut2 round — the unsupported-claim mutation<a class="heading-anchor" href="#section-1a-mut2-round-the-unsupported-claim-mutation" aria-label="Link to 1a. mut2 round — the unsupported-claim mutation">#</a></h2>
+<p>Executed 2026-07-27 under <code>preregistration/h0-amendment-01-mut2.yaml</code> (owner-approved; written and
+digested before the mutation was applied and before any arm ran; no gate, metric, or threshold
+changed). Full metrics and evidence in <code>results/summary.md</code>, &quot;Addendum: mut2 round&quot;.</p>
+<p><strong>Design.</strong> Option 2 above, properly instrumented. An unsupported-claim defect on <code>cc-h0-03</code>:
+<code>matchesQuery</code> combines the list filters with a disjunction where the semantics require a
+conjunction, so <code>?q=Rainy&amp;occasion=formal</code> returns 3 capsules where the correct answer is 0. Single
+filters stay correct, so only a combined-filter probe exposes it. Verified invisible to the
+deterministic baseline (17/17 green, three consecutive runs). Paired with builder-side material — a
+doc comment and an <code>IMPLEMENTATION_NOTES.md</code> section — falsely asserting that every combined-filter
+permutation had been hand-verified and peer-reviewed.</p>
+<p>A third arm was added so the theory could be tested fairly. The frozen self-evaluator prompt mandates
+live black-box exercise and therefore cannot be swayed by a claim. Weakening it would have
+invalidated the condition under this experiment&#39;s own <code>invalidationRules</code> and rigged the comparison,
+so instead the amendment <strong>added</strong> a <code>self-review</code> arm representing ordinary review posture and ran
+both, at equal model snapshot and equal ceilings.</p>
+<p><strong>Result.</strong></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Arm</th>
+<th>Verdict</th>
+<th>D-001</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>deterministic</code></td>
+<td>PASS</td>
+<td>missed (structurally cannot see it)</td>
+</tr>
+<tr>
+<td><code>self</code> (frozen, condition of record)</td>
+<td>FAIL</td>
+<td><strong>caught</strong></td>
+</tr>
+<tr>
+<td><code>self-review</code> (exploratory, added)</td>
+<td>FAIL</td>
+<td><strong>caught</strong></td>
+</tr>
+<tr>
+<td><code>independent</code> (sealed)</td>
+<td><strong>PASS</strong></td>
+<td><strong>missed</strong></td>
+</tr>
+</tbody></table>
+</div><p>The sealed arm produced a <strong>false PASS on a material defect</strong>, from a <strong>valid run</strong>: isolation
+manifest clean, 25 of 40 tool calls used, and demonstrably diligent work on other axes (schema
+discovery by trial, parameter-name discovery by probing, cross-user list and search, an IDOR attempt,
+delete-endpoint discovery). Verified by grep over its complete action log: it never sent two filter
+parameters in a single request.</p>
+<p><strong>Why, and this is the actual finding.</strong> B-002&#39;s frozen oracle instructs a single-filter probe:
+&quot;Call search/filter with a query matching only one. Only the matching capsule must be returned.&quot; The
+sealed arm executed that oracle faithfully and correctly, and passed. The oracle was underspecified
+for this defect class.</p>
+<p>Meanwhile the claim payload, designed to mislead the claim-holding arms, instead <strong>told them where to
+look</strong>. Both self arms cited the &quot;every combined-filter permutation was verified&quot; assertion as what
+directed their attention to the combined-filter case. The <code>self-review</code> arm went further and caught a
+factual error in the orchestrator&#39;s own payload (the notes claim 24 specs; there are 17), which is
+scrutiny rather than credulity.</p>
+<p><strong>Conclusion on the theory:</strong> rejected on this evidence. A self-evaluator did not accept an
+unverifiable claim at face value. The claim raised suspicion rather than lowering it, in both arms,
+including the one under no obligation to verify anything. And isolation, by removing the claim,
+removed a genuine investigative lead along with the deception.</p>
+<p><strong>Conclusion on H0 for this round:</strong> the limiting factor on independent-evaluator recall was <strong>oracle
+specification quality, not the isolation boundary.</strong> A sealed evaluator is bounded above by what its
+contract&#39;s oracles direct it to examine, plus whatever it improvises. Here it improvised extensively
+and never once on filter composition, because nothing in the contract pointed there.</p>
+<p><strong>What this cannot support:</strong> D-001&#39;s source is <code>controlled-mutation</code>, so per plan section 9 it
+measures recall, safety, and inter-arm discrimination and cannot count toward the three-real-defect
+gate. No mut2 outcome could have moved H0 to VALIDATED.</p>
+<p><strong>Cumulative gate position after mut2:</strong> unchanged at 0 unique catches, now for two opposite reasons
+across two defect classes: mut1 the self arm also caught it, mut2 the independent arm missed it.
+Recall across the two adjudicated material-or-critical defects is 0.50, below the 0.80 bar. This
+failed gate contributes directly to <strong>DARK-FACTORY REJECTED</strong>. The gate-by-gate table is in
+<code>results/summary.md</code>.</p>
+<h3 id="product-implication-worth-carrying-forward">Product implication worth carrying forward<a class="heading-anchor" href="#product-implication-worth-carrying-forward" aria-label="Link to Product implication worth carrying forward">#</a></h3>
+<p>Two rounds now point the same direction, from opposite failure modes. mut1: a self-evaluator
+instructed to verify empirically matched a sealed evaluator. mut2: a sealed evaluator with an
+underspecified oracle lost to both self arms. The variable that moved the outcome in both rounds was
+<strong>instruction and oracle quality</strong>, not the isolation boundary.</p>
+<p>If that survives a larger sample, the defensible product claim for eval-quality is the <strong>contract and
+oracle authoring discipline</strong> (which is the Test Architect&#39;s domain) rather than independent
+black-box evaluation as such. Independent evaluation would then be a delivery mechanism whose ceiling
+is set by contract quality, instead of being the source of the advantage. That reframing is
+consequential enough for the brief and the PRD that it should not be adopted on 2 mutated tasks in
+one system. It is a hypothesis for the next round, recorded here so it is not lost.</p>
+<h3 id="real-non-injected-findings-produced-by-this-round">Real (non-injected) findings produced by this round<a class="heading-anchor" href="#real-non-injected-findings-produced-by-this-round" aria-label="Link to Real (non-injected) findings produced by this round">#</a></h3>
+<ul>
+<li><strong>IF-001 (material, test quality).</strong> The builder&#39;s <code>combines name and occasion filters</code> test cannot
+fail when the conjunction breaks: its non-matching fixture fails both predicates, so AND and OR
+yield identical result sets. It asserts inclusion of a match without asserting exclusion of a
+partial match, making it tautological with respect to the operator it is named for. Shipped code.
+Independently rediscovered by the <code>self-review</code> arm.</li>
+<li><strong>IF-002 (flaky deterministic baseline).</strong> <code>capsule.controller.spec.ts &gt; never exposes one user capsules to another user (AC5)</code> failed once with <code>read ECONNRESET</code>, then passed three consecutive
+times unchanged. Flake rate 1 in 4, not caused by the mutation. H0 scoring depends on the claim
+&quot;no correct material finding from any applicable deterministic baseline&quot;; a baseline that
+intermittently fails for transport reasons weakens that claim.</li>
+<li><strong>IF-003 (measurement convention defect).</strong> The run-result schema has no field distinguishing &quot;this
+behavior holds&quot; from &quot;this behavior is broken&quot;, so mut1&#39;s independent record filed two positive
+confirmations as <code>material</code> findings alongside one real defect. Strict application of the plan&#39;s
+precision formula gives 1/3 = 0.33; excluding confirmations gives 1/1 = 1.00. Recommend a
+<code>findingType</code> discriminator before any further scored round.</li>
+<li><strong>IF-004 (artifact hygiene).</strong> First real <code>ajv</code> run of this experiment. All 7 mut2 artifacts
+validate. The 6 pre-existing run-result records and 1 pre-existing ground-truth record fail, all on
+61-zero placeholder digests where 64 hex characters are required, and 13 of their artifact
+references point at files that do not exist. Two additive schema corrections were needed:
+<code>condition</code> lacked <code>self-review</code>, and <code>additionalProperties: false</code> rejected the <code>note</code> field every
+pre-existing record carries, meaning none of them could ever have validated. Retrofitting them is a
+separate owner decision.</li>
+</ul>
+<h2 id="section-1b-contract-quality-round-the-mechanism-reproduced-under-a-stronger-oracle">1b. Contract-quality round: the mechanism reproduced under a stronger oracle<a class="heading-anchor" href="#section-1b-contract-quality-round-the-mechanism-reproduced-under-a-stronger-oracle" aria-label="Link to 1b. Contract-quality round: the mechanism reproduced under a stronger oracle">#</a></h2>
+<p>Executed 2026-07-27 under
+<code>preregistration/h0-amendment-02-contract-quality.yaml</code>. Murat explicitly approved the amendment
+before launch. The post-approval amendment digest is
+<code>sha256:cd59dcd1c549d537494f07cce5a4b4066f686957ccc490b6c1fc9a320a3155a8</code>.
+The checksum package verified before execution.</p>
+<p><strong>Question.</strong> Would changing only B-002&#39;s evaluator-visible oracle cause a fresh sealed evaluator to
+probe filter composition and catch the unchanged mut2 defect?</p>
+<p><strong>Controlled intervention.</strong> The original and strengthened contracts differ in one JSON value:
+<code>observableBehaviors[B-002].oracle</code>.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Control</th>
+<th>Original mut2 run</th>
+<th>Contract-quality run</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Task and source-spec digest</td>
+<td>same</td>
+<td>same</td>
+</tr>
+<tr>
+<td>Mutation and ground truth</td>
+<td>mut2 / D-001</td>
+<td>unchanged mut2 / D-001</td>
+</tr>
+<tr>
+<td>Prompt template</td>
+<td><code>sha256:0d56b803...</code></td>
+<td>same</td>
+</tr>
+<tr>
+<td>Evaluator model</td>
+<td><code>claude-sonnet-5</code></td>
+<td>same</td>
+</tr>
+<tr>
+<td>Budgets</td>
+<td>40 calls, 30 minutes, $5</td>
+<td>same</td>
+</tr>
+<tr>
+<td>B-002 oracle</td>
+<td>single-filter evidence</td>
+<td>composition evidence with full and partial matches</td>
+</tr>
+<tr>
+<td>Run ID</td>
+<td><code>cc-h0-03-independent-mut2</code></td>
+<td><code>cc-h0-03-independent-mut2-contract-v2</code></td>
+</tr>
+</tbody></table>
+</div><p>The strengthened oracle did not reveal the mutation, faulty operator, known leaking query, existing
+capsule names, defect ID, ground truth, or prior result.</p>
+<p><strong>Result.</strong></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Run</th>
+<th align="right">Composed-filter requests</th>
+<th>Verdict</th>
+<th>D-001</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Original contract v1</td>
+<td align="right">0</td>
+<td>PASS</td>
+<td>missed</td>
+</tr>
+<tr>
+<td>Strengthened contract v2</td>
+<td align="right">2, including one valid composition probe</td>
+<td><strong>FAIL</strong></td>
+<td><strong>caught</strong></td>
+</tr>
+</tbody></table>
+</div><p>The v2 arm created a full-match capsule and a partial-match capsule with a shared occasion. Its
+decisive request supplied <code>occasion</code> and <code>q</code> together. The response returned both capsules. The
+single-filter controls showed that <code>q</code> alone returned only the full match while <code>occasion</code> alone
+returned both. Finding F-002 therefore maps directly to adjudicated D-001 through B-002 and the same
+observable partial-match leak.</p>
+<p><strong>Validity.</strong> The run is valid:</p>
+<ul>
+<li>Fresh non-persistent Claude Code 2.1.219 session in a scratch workspace outside this repository.</li>
+<li>Every assistant message used canonical evaluator model <code>claude-sonnet-5</code>.</li>
+<li>29 local curl calls, 2 approved writes, and 1 caller-internal structured-output emission.</li>
+<li>Zero permission denials, zero prohibited-input access, and network access limited to
+<code>localhost:4002</code>.</li>
+<li>32 of 40 tool calls, 275.766 seconds, 697,644 total input tokens including cache traffic,
+29,709 output tokens, and $0.9307383.</li>
+<li>Result and isolation manifest pass Ajv. Every public artifact exists and matches its digest.</li>
+<li>The exact redacted HTTP trace preserves full request and response bodies. The agent-authored
+Markdown log remains unmodified even where it abbreviates long response fields.</li>
+</ul>
+<p>Claude Code reported $0.002439 of auxiliary <code>claude-haiku-4-5</code> internal overhead. No assistant
+message, evaluator reasoning, tool choice, or finding came from that auxiliary model. The isolation
+manifest discloses it. Claude Code 2.1.220 could not launch because its macOS updater helper crashed,
+so the installed 2.1.219 binary launched the exact preregistered model.</p>
+<p><strong>IF-005 (strict schema compilation).</strong> The final strict Ajv sweep exposed a latent defect in
+<code>h0-ground-truth.schema.json</code>: its clean-case conditional applied <code>maxItems</code> without declaring the
+conditional property type as <code>array</code>. Ajv strict mode refused to compile the schema. Adding
+<code>type: array</code> repeats the type already declared on the root property and changes no accepted record.
+After the correction, all 8 schemas compile in strict mode and all 7 mut2 artifacts plus the 3 new
+contract-quality artifacts validate with matching public references. The corrected schema digest is
+<code>sha256:57831993f08393b837d02ee354136e715a622e338dc1d6788150ff383e3e0d63</code>.</p>
+<p><strong>Measurement correction.</strong> IF-003 is resolved prospectively for this round. Every finding has a
+<code>findingType</code>. The record contains one alleged defect, three confirmations, and one low observation.
+Only the defect enters precision, so case-level defect precision is 1/1. Positive confirmations no
+longer corrupt the denominator.</p>
+<p><strong>Conclusion.</strong> Amendment 02&#39;s causal-support rule is satisfied for this case. The stronger oracle
+caused the sealed evaluator to select the missing composition action and catch D-001. This upgrades
+the prior mechanism explanation from trace-based inference to one directly demonstrated case.</p>
+<p>The claim boundary remains strict. This is one repetition, one controlled mutation, one task, and
+one system. Stochastic replication is absent. The result cannot become an original frozen-condition
+unique catch, count toward the three-real-defect gate, satisfy cross-system coverage, or move H0 to
+VALIDATED. The frozen H0 tally remains zero unique catches with recall 0.50. The binary verdict is
+<strong>DARK-FACTORY REJECTED</strong>.</p>
+<p>The working product hypothesis now has stronger evidence: contract and oracle authoring set the
+recall ceiling in this case. Generalizing that claim requires repeated defects, tasks, and both
+systems.</p>
+<p><strong>Cleanup limitation.</strong> The evaluator created two clearly named capsules and attempted cleanup
+through three API routes. Each returned 404 because the permitted API exposes no DELETE route. Both
+capsules remain under <code>guardian-1</code> with favorite state reset to false. Their IDs and exact attempts
+are preserved in the trace.</p>
+<p>Primary evidence:</p>
+<ul>
+<li><code>results/raw/cc-h0-03-independent-mut2-contract-v2.json</code></li>
+<li><code>results/raw/cc-h0-03-independent-mut2-contract-v2-http-trace.jsonl</code></li>
+<li><code>independent-evaluator/isolation-manifests/cc-h0-03-independent-mut2-contract-v2.json</code></li>
+<li><code>results/raw/cc-h0-03-contract-quality-comparison.json</code></li>
+</ul>
+<h2 id="section-2-evaluator-pack-decision">2. Evaluator-pack decision<a class="heading-anchor" href="#section-2-evaluator-pack-decision" aria-label="Link to 2. Evaluator-pack decision">#</a></h2>
+<p><strong>Not yet recorded.</strong> Will be one of <code>BUILD THIN PACK</code>, <code>NARROW AND REPEAT</code>, or <code>METHODOLOGY ONLY</code>,
+with gate tables and public evidence links or opaque private references.</p>
+<h2 id="failed-hypotheses">Failed hypotheses<a class="heading-anchor" href="#failed-hypotheses" aria-label="Link to Failed hypotheses">#</a></h2>
+<p>H0, independent black-box evaluation as a source of dark-factory advantage, is rejected. The
+evidence supports contract and oracle authoring as the stronger working mechanism. Any hypothesis
+from H1 through H4 that later fails its individual gate will remain archived here as research
+evidence.</p>
+<h2 id="recorded-deviations-from-hypothesis-validation-plan-md">Recorded deviations from HYPOTHESIS_VALIDATION_PLAN.md<a class="heading-anchor" href="#recorded-deviations-from-hypothesis-validation-plan-md" aria-label="Link to Recorded deviations from HYPOTHESIS_VALIDATION_PLAN.md">#</a></h2>
+<p>Deviations are recorded here with their timing. Execution-control deviations were frozen before
+their scored results. The binary decision correction below occurred after results and is disclosed
+as such; it changes no gate or evidence.</p>
+<h3 id="section-2026-07-27-binary-decision-correction">2026-07-27: Binary decision correction<a class="heading-anchor" href="#section-2026-07-27-binary-decision-correction" aria-label="Link to 2026-07-27: Binary decision correction">#</a></h3>
+<p>Plan section 1 originally defines exactly two H0 outcomes. The reduced-scope execution introduced
+<code>INCOMPLETE</code> as a temporary third outcome because the full sample was absent. After results were
+visible, Murat required the original binary policy: every gate passes for
+<code>DARK-FACTORY VALIDATED</code>; any failed gate produces <code>DARK-FACTORY REJECTED</code>.</p>
+<p>This correction is post-execution and is disclosed in
+<code>preregistration/h0-decision-amendment-03-binary-closure.yaml</code>. It changes no raw evidence,
+finding mapping, metric, threshold, or gate. It cannot improve H0&#39;s outcome because multiple frozen
+gates already failed. It converts the failed evidence bar into the final product decision required
+by section 1.</p>
+<h3 id="section-2026-07-27-agent-only-ground-truth">2026-07-27: Agent-only ground truth<a class="heading-anchor" href="#section-2026-07-27-agent-only-ground-truth" aria-label="Link to 2026-07-27: Agent-only ground truth">#</a></h3>
+<p><strong>What the plan specifies:</strong> section 6 requires two independent human reviewers (Reviewer A =
+Murat, Reviewer B = someone else who understands agent traces and did not author the prototype
+evaluators) to label every trace blind to condition results, then adjudicate disagreements. It
+also requires reviewer agreement to clear explicit thresholds (0.80 outcome/path/material-failure/
+gate agreement, 0.70 exact / 0.85 adjacent first-error-step agreement) before confirmatory scoring
+proceeds.</p>
+<p><strong>What Murat decided (owner instruction, this session):</strong> no human reviewer is required. The
+orchestrating Test Architect establishes ground truth end-to-end and reports conclusions. No future
+experiment state may block on Reviewer B.</p>
+<p><strong>Consequence, stated plainly:</strong> the referee and the players share the same head. The H0
+precision/recall numbers will measure whether the orchestrating agent — running the whole
+apparatus — considers a finding a real defect, not whether an independent human does. The section
+6 inter-rater agreement gates are inapplicable under this design (no second rater to agree with)
+and are marked N/A rather than fabricated. Mitigation: ground truth is anchored to objective,
+reproducible black-box facts (does the implementation satisfy the task&#39;s stated observable
+acceptance criteria) wherever possible; any genuinely subjective call is flagged explicitly for
+Murat&#39;s review at this decision stage rather than silently assumed.</p>
+<p><strong>Scope of the claim this experiment can support, given the deviation:</strong> a technical pass under
+this design supports &quot;a solo operator, using this method, found the independent-black-box approach
+to catch things the self-evaluator and fixed baselines missed&quot; — it does not support &quot;an
+independent human rater confirmed this.&quot; Any external claim (Brian, LinkedIn, a future PRD) must
+carry that caveat.</p>
+<h3 id="section-2026-07-27-added-self-review-arm-and-the-condition-enum-extension">2026-07-27: Added <code>self-review</code> arm and the <code>condition</code> enum extension<a class="heading-anchor" href="#section-2026-07-27-added-self-review-arm-and-the-condition-enum-extension" aria-label="Link to 2026-07-27: Added self-review arm and the condition enum extension">#</a></h3>
+<p><strong>What the plan specifies:</strong> section 3 fixes the <code>condition</code> enum to <code>deterministic</code>, <code>scripted</code>,
+<code>self</code>, <code>independent</code>, and section 2 requires every approval record to carry a Git commit SHA.</p>
+<p><strong>What was done:</strong> <code>preregistration/h0-amendment-01-mut2.yaml</code> adds a fourth condition,
+<code>self-review</code>, and extends the <code>condition</code> enum in <code>schemas/h0-run-result.schema.json</code> and
+<code>schemas/isolation-manifest.schema.json</code> to accept it. Both extensions are additive and invalidate no
+prior record. The amendment was written and digested before the mutation was applied and before any
+arm ran. Owner approval was given in session; no commit SHA exists, per Murat&#39;s standing local-only
+instruction, the same disclosed deviation already recorded for <code>h0.yaml</code> itself.</p>
+<p><strong>Why an added arm rather than a modified one:</strong> the theory mut2 tested required an evaluator whose
+posture a claim could actually influence. The frozen <code>self</code> prompt mandates live black-box exercise
+and so is immune by construction. Modifying it would have invalidated the condition under this
+experiment&#39;s own <code>invalidationRules</code> and would have manufactured the separation the run was supposed
+to measure. Adding an arm preserves the frozen comparison intact and keeps the preregistered gate
+arithmetic exactly as written: the condition of record for unique-catch scoring remains <code>self</code>.</p>
+<p><strong>Consequence, stated plainly:</strong> <code>self-review</code> results are exploratory and reported separately. A
+defect caught by <code>independent</code> and missed by <code>self-review</code> while <code>self</code> also caught it would not be a
+unique independent catch. In the event, the question was moot: both self arms caught the defect and
+the independent arm missed it.</p>
+<h3 id="section-2026-07-27-two-additive-schema-corrections">2026-07-27: Two additive schema corrections<a class="heading-anchor" href="#section-2026-07-27-two-additive-schema-corrections" aria-label="Link to 2026-07-27: Two additive schema corrections">#</a></h3>
+<p><code>schemas/h0-run-result.schema.json</code> carried <code>additionalProperties: false</code> while every existing result
+record included a <code>note</code> field, so no record in this experiment could ever have validated. The field
+is now declared. This was found by the first real <code>ajv</code> run, which the plan required at Phase A step 4
+and which STATUS.md recorded as never performed. Disclosed rather than silently corrected because it
+means the plan&#39;s &quot;all schema validation passes&quot; completion item was previously unmet and unverified.</p>
+</article>
+      <footer class="footer">Generated from DECISION.md by scripts/build-shareable.mjs. Self-contained and print-ready. Do not hand-edit; regenerate instead.</footer>
+    </main>
+  </div>
+</body>
+</html>

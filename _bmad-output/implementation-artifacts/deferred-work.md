@@ -1,11 +1,20 @@
-- source_spec: `_bmad-output/implementation-artifacts/spec-condense-readme.md`
-  summary: Make shareable evidence links usable for unauthenticated recipients while the repository is private.
-  evidence: The generated HTML is self-contained for the four companion documents, while evidence, contribution, security, and license links require access to the private GitHub repository.
+# Deferred work
 
-- source_spec: `_bmad-output/implementation-artifacts/spec-condense-readme.md`
-  summary: Add validation that shareable HTML is current and contains the canonical repository URL.
-  evidence: The current documentation check excludes generated shareable HTML, so stale exports or legacy repository URLs can pass validation.
+Nothing is deferred. Epic 1 closes with an empty ledger.
 
-- source_spec: `_bmad-output/implementation-artifacts/1-2-canonical-digest-computation-and-the-hashed-artifact-value-domain.md`
-  summary: Measure digest-path throughput over large observation/score arrays and decide whether the per-property descriptor allocation in the fused canonicalizer needs optimization.
-  evidence: Code review round 2 (2026-08-11) noted the canonical digest path allocates a descriptor object per property with no measurement; the fused single-pass serializer already halved traversals, and no NFR binds digest throughput before Epic 6, so measurement was deferred rather than optimized blind.
+Four items were carried here and all four were closed on 2026-08-20. Each one's reasoning lives with
+the work rather than in this file, which is a queue and not a record:
+
+- Shareable HTML links usable without repository access, and validation that the export is current
+  and canonical: `spec-condense-readme.md`, "Follow-up hardening, closed 2026-08-20".
+- Digest-path throughput over large observation and score arrays: story 1.2, Completion Notes
+  decision 25. Measured, and closed with no code change.
+- Amortising the generated mutant corpus: story 1.5, Review Findings. Cached, and the cost claim
+  corrected by measurement.
+
+## How to use this file
+
+An entry belongs here only when the work cannot be done in the pass that found it and the decision
+to defer is deliberate. Give it a `source_spec`, a one-line `summary`, and the `evidence` a later
+reader needs to pick it up cold. When it is done, delete the entry and record the outcome in the
+source spec.

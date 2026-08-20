@@ -62,7 +62,12 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "check:vectors": "python3 tests/fixtures/derive_vectors.py --check",
-    "validate": "npm run typecheck && npm run lint && npm run check:docs && npm run lint:spine && npm run check:vectors && npm run test",
+    "generate:schemas": "node scripts/generate-schemas.ts",
+    "check:schemas": "node scripts/check-schemas.ts",
+    "check:ad5-registry": "node scripts/check-ad5-registry.ts",
+    "check:shareable": "node scripts/check-shareable.mjs",
+    "bench:digest": "node scripts/bench-digest.ts",
+    "validate": "npm run typecheck && npm run lint && npm run check:docs && npm run check:shareable && npm run lint:spine && npm run check:vectors && npm run check:schemas && npm run check:ad5-registry && npm run test",
     "prepack": "npm run clean && npm run build",
     "prepublishOnly": "node scripts/assert-publish-authorized.mjs"
   },
@@ -72,6 +77,7 @@
   "devDependencies": {
     "@biomejs/biome": "2.5.7",
     "@types/node": "22.20.1",
+    "ajv": "8.20.0",
     "husky": "9.1.7",
     "lint-staged": "16.4.0",
     "marked": "18.0.9",
