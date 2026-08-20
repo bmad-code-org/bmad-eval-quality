@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:eval-quality:schema:artifact-reference",
+  "oneOf": [
+    {
+      "type": "object",
+      "properties": {
+        "storage": {
+          "type": "string",
+          "const": "public"
+        },
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "privateRef": {
+          "type": "null"
+        },
+        "digest": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "description": "AD-27 digest: \"sha256:\" plus 64 lowercase hexadecimal characters."
+        }
+      },
+      "required": [
+        "storage",
+        "path",
+        "privateRef",
+        "digest"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "storage": {
+          "type": "string",
+          "const": "private"
+        },
+        "path": {
+          "type": "null"
+        },
+        "privateRef": {
+          "type": "string",
+          "minLength": 1,
+          "description": "An opaque handle resolved through the corpus port under AD-8, never a filesystem path and never a URL. AD-18 forbids a private path from entering any artifact, and this is the field a caller would otherwise reach for."
+        },
+        "digest": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "description": "AD-27 digest: \"sha256:\" plus 64 lowercase hexadecimal characters."
+        }
+      },
+      "required": [
+        "storage",
+        "path",
+        "privateRef",
+        "digest"
+      ],
+      "additionalProperties": false
+    }
+  ],
+  "description": "A reference to an artifact, public by path or private by opaque handle. Succeeds the prior-art `artifact-ref` schema per AD-24, with its two `if`/`then` branches re-expressed as a discriminated union per AD-13 and its `sha256` field renamed to `digest` against the shared AD-27 primitive. Alone among the twelve interchange artifacts this one carries NO `schemaVersion` and NO AD-29 lineage: it is a reference shape embedded inside other artifacts rather than one that crosses the package boundary alone, so versioning it would add a key to every finding and every manifest entry for no reader. It is in the inventory because it is published, not because it is exchanged; the exemption is asserted by a test against the registry's `carriesLineage` flag."
+}

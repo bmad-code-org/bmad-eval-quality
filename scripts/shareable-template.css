@@ -102,6 +102,13 @@ a:hover {
 	padding: 0 28px;
 }
 
+/* Pages with no headings (the licence text) drop the empty sidebar column. */
+.layout.no-toc {
+	grid-template-columns: minmax(0, 900px);
+	justify-content: center;
+	max-width: 960px;
+}
+
 .sidebar {
 	position: sticky;
 	top: 90px;
@@ -331,6 +338,35 @@ pre code {
 	padding: 0;
 }
 
+/*
+ * A link the export could not render as a sibling page. It still points at the
+ * repository, so it is marked rather than left to look like every other link:
+ * a recipient without access would otherwise meet an unexplained 404.
+ */
+.repo-link::after {
+	content: " \2197";
+	color: var(--muted);
+	font-size: 0.85em;
+	text-decoration: none;
+}
+
+/* Verbatim fixed-width text; the licence must not be reflowed into paragraphs. */
+.plain-text {
+	margin: 0;
+	border: 0;
+	border-radius: 0;
+	background: transparent;
+	color: var(--ink);
+	font-size: 13px;
+	padding: 0;
+	white-space: pre-wrap;
+	word-break: break-word;
+}
+.plain-text code {
+	color: inherit;
+	font-size: inherit;
+}
+
 .table-wrap {
 	overflow-x: auto;
 	margin: 24px 0 30px;
@@ -475,6 +511,11 @@ tbody tr:hover {
 	.content blockquote,
 	.table-wrap {
 		break-inside: avoid;
+	}
+	/* The licence is pages long; forbidding a break inside it prints one
+	   overflowing block instead of a document. */
+	.plain-text {
+		break-inside: auto;
 	}
 	.table-wrap {
 		overflow: visible;

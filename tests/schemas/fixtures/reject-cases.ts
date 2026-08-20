@@ -12,6 +12,31 @@ export type RejectCase = {
 	readonly mutate: (contract: any) => void
 	readonly issuePath: readonly (string | number)[]
 	readonly issueCode: string
+	/**
+	 * The JSON Schema validation keyword the published schema must report for
+	 * this mutation (AD-13: "the test asserts the expected validator keyword and
+	 * instance path"). Derived by running ajv against the published document,
+	 * the way the 79 worked-example issues were derived, never predicted.
+	 */
+	readonly keyword: string
+	/**
+	 * The RFC 6901 pointer into the instance, in the validator's spelling
+	 * (ajv 8 names the field `instancePath`; `dataPath` is the stale ajv 6
+	 * name). Asserted by containment in the error set, not as the single
+	 * error: a sixteen-branch `oneOf` reports every branch's failure.
+	 */
+	readonly instancePath: string
+	/**
+	 * The discriminating half of the reported error, for the keywords that name
+	 * a member rather than a location. `required` and `additionalProperties`
+	 * both report at the PARENT object, so `(keyword, instancePath)` alone does
+	 * not say which key was dropped or added, and a mutation of a different
+	 * member of the same object would satisfy the pair. `propertyNames` is the
+	 * same shape. Required for exactly those three keywords, asserted in
+	 * `tests/schemas/published/published-rejection.test.ts`, and derived by
+	 * running ajv like every other field here.
+	 */
+	readonly errorParams?: Readonly<Record<string, string>>
 	/** set where one mutation legitimately produces more than one issue. */
 	readonly issueCount?: number
 }
@@ -35,6 +60,8 @@ export const REJECT_CASES: readonly RejectCase[] = [
 		},
 		issuePath: ['schemaVersion'],
 		issueCode: 'too_small',
+		keyword: 'minimum',
+		instancePath: '/schemaVersion',
 	},
 	{
 		id: 'schema-version-not-an-integer',
@@ -44,6 +71,8 @@ export const REJECT_CASES: readonly RejectCase[] = [
 		},
 		issuePath: ['schemaVersion'],
 		issueCode: 'invalid_type',
+		keyword: 'type',
+		instancePath: '/schemaVersion',
 	},
 	{
 		id: 'contract-id-outside-the-charset',
@@ -53,6 +82,8 @@ export const REJECT_CASES: readonly RejectCase[] = [
 		},
 		issuePath: ['contractId'],
 		issueCode: 'invalid_format',
+		keyword: 'pattern',
+		instancePath: '/contractId',
 	},
 	{
 		id: 'parent-digest-malformed',
@@ -63,6 +94,8 @@ export const REJECT_CASES: readonly RejectCase[] = [
 		},
 		issuePath: ['parentDigest'],
 		issueCode: 'invalid_format',
+		keyword: 'pattern',
+		instancePath: '/parentDigest',
 	},
 	{
 		id: 'behaviors-empty',
@@ -72,6 +105,8 @@ export const REJECT_CASES: readonly RejectCase[] = [
 		},
 		issuePath: ['behaviors'],
 		issueCode: 'too_small',
+		keyword: 'minItems',
+		instancePath: '/behaviors',
 	},
 	{
 		id: 'behavior-id-underpadded',
@@ -81,6 +116,8 @@ export const REJECT_CASES: readonly RejectCase[] = [
 		},
 		issuePath: ['behaviors', 0, 'id'],
 		issueCode: 'invalid_format',
+		keyword: 'pattern',
+		instancePath: '/behaviors/0/id',
 	},
 	{
 		id: 'severity-outside-the-closed-set',
@@ -90,6 +127,8 @@ export const REJECT_CASES: readonly RejectCase[] = [
 		},
 		issuePath: ['behaviors', 0, 'severity'],
 		issueCode: 'invalid_value',
+		keyword: 'enum',
+		instancePath: '/behaviors/0/severity',
 	},
 	{
 		id: 'requirement-link-untyped',
@@ -99,6 +138,8 @@ export const REJECT_CASES: readonly RejectCase[] = [
 		},
 		issuePath: ['behaviors', 0, 'requirementLinks', 0],
 		issueCode: 'invalid_type',
+		keyword: 'type',
+		instancePath: '/behaviors/0/requirementLinks/0',
 	},
 	{
 		id: 'interface-kind-outside-the-four',
@@ -108,6 +149,8 @@ export const REJECT_CASES: readonly RejectCase[] = [
 		},
 		issuePath: ['permittedInterfaces', 0, 'kind'],
 		issueCode: 'invalid_value',
+		keyword: 'enum',
+		instancePath: '/permittedInterfaces/0/kind',
 	},
 	{
 		id: 'method-lowercased',
@@ -117,6 +160,8 @@ export const REJECT_CASES: readonly RejectCase[] = [
 		},
 		issuePath: ['permittedInterfaces', 0, 'operations', 0, 'method'],
 		issueCode: 'invalid_value',
+		keyword: 'enum',
+		instancePath: '/permittedInterfaces/0/operations/0/method',
 	},
 	{
 		id: 'path-template-colon-spelling',
@@ -126,6 +171,8 @@ export const REJECT_CASES: readonly RejectCase[] = [
 		},
 		issuePath: ['permittedInterfaces', 0, 'operations', 1, 'pathTemplate'],
 		issueCode: 'invalid_format',
+		keyword: 'pattern',
+		instancePath: '/permittedInterfaces/0/operations/1/pathTemplate',
 	},
 	{
 		id: 'request-channel-missing',
@@ -142,6 +189,9 @@ export const REJECT_CASES: readonly RejectCase[] = [
 			'header',
 		],
 		issueCode: 'invalid_type',
+		keyword: 'required',
+		instancePath: '/permittedInterfaces/0/operations/0/requestShape',
+		errorParams: { missingProperty: 'header' },
 	},
 	{
 		id: 'descriptor-type-outside-the-json-type-names',
@@ -159,6 +209,9 @@ export const REJECT_CASES: readonly RejectCase[] = [
 			'id',
 		],
 		issueCode: 'invalid_value',
+		keyword: 'enum',
+		instancePath:
+			'/permittedInterfaces/0/operations/0/responseDescriptor/types/id',
 	},
 	{
 		id: 'channel-role-key-not-a-pointer',
@@ -176,6 +229,10 @@ export const REJECT_CASES: readonly RejectCase[] = [
 			'ok',
 		],
 		issueCode: 'invalid_key',
+		keyword: 'propertyNames',
+		instancePath:
+			'/permittedInterfaces/0/operations/0/responseDescriptor/channelRoles',
+		errorParams: { propertyName: 'ok' },
 	},
 	{
 		id: 'channel-role-outside-the-four',
@@ -194,6 +251,9 @@ export const REJECT_CASES: readonly RejectCase[] = [
 			'/ok',
 		],
 		issueCode: 'invalid_value',
+		keyword: 'enum',
+		instancePath:
+			'/permittedInterfaces/0/operations/0/responseDescriptor/channelRoles/~1ok',
 	},
 	{
 		id: 'success-indicator-in-the-wrong-spelling',
@@ -210,6 +270,9 @@ export const REJECT_CASES: readonly RejectCase[] = [
 			'successIndicator',
 		],
 		issueCode: 'invalid_format',
+		keyword: 'pattern',
+		instancePath:
+			'/permittedInterfaces/0/operations/0/responseDescriptor/successIndicator',
 	},
 	{
 		id: 'expected-cardinality-mode-outside-the-three',
@@ -234,6 +297,9 @@ export const REJECT_CASES: readonly RejectCase[] = [
 			'mode',
 		],
 		issueCode: 'invalid_union',
+		keyword: 'const',
+		instancePath:
+			'/permittedInterfaces/0/operations/1/responseDescriptor/collectionLocations/0/expectedCardinality/mode',
 	},
 	{
 		id: 'expected-cardinality-bound-negative',
@@ -258,6 +324,9 @@ export const REJECT_CASES: readonly RejectCase[] = [
 			'count',
 		],
 		issueCode: 'too_small',
+		keyword: 'minimum',
+		instancePath:
+			'/permittedInterfaces/0/operations/1/responseDescriptor/collectionLocations/0/expectedCardinality/count',
 	},
 	{
 		id: 'reference-set-without-keys',
@@ -267,6 +336,8 @@ export const REJECT_CASES: readonly RejectCase[] = [
 		},
 		issuePath: ['referenceSets', 'expected-things', 'keys'],
 		issueCode: 'too_small',
+		keyword: 'minItems',
+		instancePath: '/referenceSets/expected-things/keys',
 	},
 	{
 		id: 'reference-set-member-not-an-object',
@@ -276,6 +347,8 @@ export const REJECT_CASES: readonly RejectCase[] = [
 		},
 		issuePath: ['referenceSets', 'expected-things', 'members', 0],
 		issueCode: 'invalid_type',
+		keyword: 'type',
+		instancePath: '/referenceSets/expected-things/members/0',
 	},
 	{
 		id: 'sibling-group-of-one',
@@ -285,6 +358,8 @@ export const REJECT_CASES: readonly RejectCase[] = [
 		},
 		issuePath: ['siblingGroups', 'operations', 0],
 		issueCode: 'too_small',
+		keyword: 'minItems',
+		instancePath: '/siblingGroups/operations/0',
 	},
 	{
 		id: 'binding-channel-empty-map',
@@ -294,6 +369,8 @@ export const REJECT_CASES: readonly RejectCase[] = [
 		},
 		issuePath: ['interactionPlan', 0, 'inputBinding', 'query'],
 		issueCode: 'custom',
+		keyword: 'minProperties',
+		instancePath: '/interactionPlan/0/inputBinding/query',
 	},
 	{
 		id: 'binding-value-untagged',
@@ -303,6 +380,8 @@ export const REJECT_CASES: readonly RejectCase[] = [
 		},
 		issuePath: ['interactionPlan', 0, 'inputBinding', 'body', 'name'],
 		issueCode: 'invalid_union',
+		keyword: 'anyOf',
+		instancePath: '/interactionPlan/0/inputBinding/body/name',
 	},
 	{
 		id: 'matcher-outside-the-two',
@@ -312,6 +391,8 @@ export const REJECT_CASES: readonly RejectCase[] = [
 		},
 		issuePath: ['interactionPlan', 0, 'inputBinding', 'body', 'name'],
 		issueCode: 'invalid_union',
+		keyword: 'anyOf',
+		instancePath: '/interactionPlan/0/inputBinding/body/name',
 	},
 	{
 		id: 'operator-arity-under',
@@ -321,6 +402,8 @@ export const REJECT_CASES: readonly RejectCase[] = [
 		},
 		issuePath: ['oracles', 0, 'check', 'operands'],
 		issueCode: 'too_small',
+		keyword: 'minItems',
+		instancePath: '/oracles/0/check/operands',
 	},
 	{
 		id: 'operator-arity-over',
@@ -332,6 +415,8 @@ export const REJECT_CASES: readonly RejectCase[] = [
 		},
 		issuePath: ['oracles', 0, 'check', 'operands'],
 		issueCode: 'too_big',
+		keyword: 'items',
+		instancePath: '/oracles/0/check/operands',
 	},
 	{
 		id: 'operator-outside-the-vocabulary',
@@ -341,6 +426,8 @@ export const REJECT_CASES: readonly RejectCase[] = [
 		},
 		issuePath: ['oracles', 0, 'check', 'op'],
 		issueCode: 'invalid_union',
+		keyword: 'const',
+		instancePath: '/oracles/0/check/op',
 	},
 	{
 		id: 'relation-outside-the-vocabulary',
@@ -350,6 +437,8 @@ export const REJECT_CASES: readonly RejectCase[] = [
 		},
 		issuePath: ['oracles', 0, 'direction', 'relation'],
 		issueCode: 'invalid_value',
+		keyword: 'enum',
+		instancePath: '/oracles/0/direction/relation',
 	},
 	{
 		id: 'polarity-outside-the-two',
@@ -359,6 +448,8 @@ export const REJECT_CASES: readonly RejectCase[] = [
 		},
 		issuePath: ['oracles', 0, 'polarity'],
 		issueCode: 'invalid_value',
+		keyword: 'enum',
+		instancePath: '/oracles/0/polarity',
 	},
 	{
 		id: 'evidence-target-in-the-bound-element-spelling',
@@ -368,6 +459,8 @@ export const REJECT_CASES: readonly RejectCase[] = [
 		},
 		issuePath: ['oracles', 0, 'direction', 'evidenceTargets', 0],
 		issueCode: 'invalid_format',
+		keyword: 'pattern',
+		instancePath: '/oracles/0/direction/evidenceTargets/0',
 	},
 	{
 		id: 'rubric-criterion-id-underpadded',
@@ -377,6 +470,8 @@ export const REJECT_CASES: readonly RejectCase[] = [
 		},
 		issuePath: ['rubrics', 0, 'criteria', 0, 'id'],
 		issueCode: 'invalid_format',
+		keyword: 'pattern',
+		instancePath: '/rubrics/0/criteria/0/id',
 	},
 	{
 		id: 'rubric-max-length-zero',
@@ -386,6 +481,8 @@ export const REJECT_CASES: readonly RejectCase[] = [
 		},
 		issuePath: ['rubrics', 0, 'maxLength'],
 		issueCode: 'too_small',
+		keyword: 'minimum',
+		instancePath: '/rubrics/0/maxLength',
 	},
 	{
 		id: 'rubric-evidence-in-the-descriptor-spelling',
@@ -395,6 +492,8 @@ export const REJECT_CASES: readonly RejectCase[] = [
 		},
 		issuePath: ['rubrics', 0, 'criteria', 0, 'evidence'],
 		issueCode: 'invalid_format',
+		keyword: 'pattern',
+		instancePath: '/rubrics/0/criteria/0/evidence',
 	},
 	{
 		id: 'waiver-expiry-with-an-offset',
@@ -404,6 +503,8 @@ export const REJECT_CASES: readonly RejectCase[] = [
 		},
 		issuePath: ['waivers', 0, 'expiresAt'],
 		issueCode: 'invalid_format',
+		keyword: 'pattern',
+		instancePath: '/waivers/0/expiresAt',
 	},
 	{
 		id: 'waiver-part-omitted-rather-than-nulled',
@@ -413,6 +514,9 @@ export const REJECT_CASES: readonly RejectCase[] = [
 		},
 		issuePath: ['waivers', 0, 'approval'],
 		issueCode: 'invalid_type',
+		keyword: 'required',
+		instancePath: '/waivers/0',
+		errorParams: { missingProperty: 'approval' },
 	},
 	{
 		id: 'forbidden-input-outside-the-seven',
@@ -423,6 +527,8 @@ export const REJECT_CASES: readonly RejectCase[] = [
 		},
 		issuePath: ['forbiddenInputs', 1],
 		issueCode: 'invalid_value',
+		keyword: 'enum',
+		instancePath: '/forbiddenInputs/1',
 	},
 	{
 		id: 'money-as-a-number',
@@ -432,6 +538,8 @@ export const REJECT_CASES: readonly RejectCase[] = [
 		},
 		issuePath: ['budgets', 'maxCostUsd'],
 		issueCode: 'invalid_type',
+		keyword: 'type',
+		instancePath: '/budgets/maxCostUsd',
 	},
 	{
 		id: 'money-negative',
@@ -442,6 +550,8 @@ export const REJECT_CASES: readonly RejectCase[] = [
 		},
 		issuePath: ['budgets', 'maxCostUsd'],
 		issueCode: 'invalid_format',
+		keyword: 'pattern',
+		instancePath: '/budgets/maxCostUsd',
 	},
 	{
 		id: 'money-with-an-exponent',
@@ -451,6 +561,8 @@ export const REJECT_CASES: readonly RejectCase[] = [
 		},
 		issuePath: ['budgets', 'maxCostUsd'],
 		issueCode: 'invalid_format',
+		keyword: 'pattern',
+		instancePath: '/budgets/maxCostUsd',
 	},
 	{
 		id: 'probe-step-bound-negative',
@@ -460,6 +572,8 @@ export const REJECT_CASES: readonly RejectCase[] = [
 		},
 		issuePath: ['probeStepBound'],
 		issueCode: 'too_small',
+		keyword: 'minimum',
+		instancePath: '/probeStepBound',
 	},
 	{
 		id: 'scoped-resource-reference-empty',
@@ -469,6 +583,8 @@ export const REJECT_CASES: readonly RejectCase[] = [
 		},
 		issuePath: ['scopedResources', 0, 'reference'],
 		issueCode: 'too_small',
+		keyword: 'minLength',
+		instancePath: '/scopedResources/0/reference',
 	},
 	{
 		id: 'unrecognized-contract-key',
@@ -478,6 +594,9 @@ export const REJECT_CASES: readonly RejectCase[] = [
 		},
 		issuePath: [],
 		issueCode: 'unrecognized_keys',
+		keyword: 'additionalProperties',
+		instancePath: '',
+		errorParams: { additionalProperty: 'strictMode' },
 	},
 	{
 		id: 'unrecognized-oracle-key',
@@ -487,6 +606,9 @@ export const REJECT_CASES: readonly RejectCase[] = [
 		},
 		issuePath: ['oracles', 0],
 		issueCode: 'unrecognized_keys',
+		keyword: 'additionalProperties',
+		instancePath: '/oracles/0',
+		errorParams: { additionalProperty: 'rule' },
 	},
 	{
 		id: 'omitted-nullable-key',
@@ -496,5 +618,8 @@ export const REJECT_CASES: readonly RejectCase[] = [
 		},
 		issuePath: ['sourceSpecDigest'],
 		issueCode: 'invalid_type',
+		keyword: 'required',
+		instancePath: '',
+		errorParams: { missingProperty: 'sourceSpecDigest' },
 	},
 ]

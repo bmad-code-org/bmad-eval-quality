@@ -1,0 +1,1971 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:eval-quality:schema:eval-contract",
+  "type": "object",
+  "properties": {
+    "schemaVersion": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9007199254740991,
+      "description": "AD-11 requires an integer under this exact name. Deliberately not `z.literal(1)`: the literal exports as `{\"type\":\"number\",\"const\":1}`, losing `integer` for a non-TypeScript consumer, and it would turn a version-2 artifact into an anonymous schema-parse failure instead of AD-28's dedicated `schema-version-mismatch` fault. Version equality belongs to the reader that throws that fault."
+    },
+    "parentDigest": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "description": "AD-27 digest: \"sha256:\" plus 64 lowercase hexadecimal characters."
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "AD-29 lineage. `null` if and only if `revisionCount` is 0. That biconditional is stated here rather than refined: a refinement is silently dropped from the published schema, so a non-TypeScript consumer would never see it, and the constraint ledger records it as not expressible."
+    },
+    "revisionCount": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991,
+      "description": "AD-29: one greater than the parent artifact's."
+    },
+    "contractId": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+      "description": "A kebab-case slug. Excludes \"/\" and \"~\" so an identifier can be embedded in an interaction-rooted pointer without escaping."
+    },
+    "sourceSpecDigest": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "description": "AD-27 digest: \"sha256:\" plus 64 lowercase hexadecimal characters."
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "AD-18 permits a digest where the content is forbidden, so the contract may name the specification it was authored against without carrying it."
+    },
+    "behaviors": {
+      "minItems": 1,
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^B-[0-9]{3,}$"
+          },
+          "description": {
+            "type": "string"
+          },
+          "severity": {
+            "type": "string",
+            "enum": [
+              "low",
+              "material",
+              "critical"
+            ]
+          },
+          "observableSuccessCriterion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "AD-19: what observable condition means this behaviour was met, which is not the nominated success indicator of any one operation. `null` is the shape `no-observable-success-criterion` fires on, and that code fires on exactly this condition and never on an empty oracle list."
+          },
+          "requirementLinks": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "scheme": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "id": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "scheme",
+                "id"
+              ],
+              "additionalProperties": false
+            },
+            "description": "Coin flip (c), settled: requirement and risk linkage lives per behaviour rather than at contract level, because `missing-requirement-linkage` fires when \"a behaviour declares no requirement or risk identifier\" and a contract-level array cannot make that predicate decidable per behaviour. Empty is legal, and both link arrays empty is exactly what the code fires on; a schema demanding non-empty makes it fire never."
+          },
+          "riskLinks": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "scheme": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "id": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "scheme",
+                "id"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "oracles": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^O-[0-9]{3,}$"
+            },
+            "description": "Identifiers of the oracles this behaviour is discharged by. Deliberately not refined against the contract's declared oracles: no AD-5 code names a behaviour citing an undeclared oracle, so under AC 8's named exception that rule is unenforced in v0 rather than silently pushed into the schema."
+          }
+        },
+        "required": [
+          "id",
+          "description",
+          "severity",
+          "observableSuccessCriterion",
+          "requirementLinks",
+          "riskLinks",
+          "oracles"
+        ],
+        "additionalProperties": false
+      },
+      "description": "US spelling, matching the prior art and both hand-authored contracts. A contract with no behaviour declares nothing to evaluate."
+    },
+    "oracles": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^O-[0-9]{3,}$"
+          },
+          "direction": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "evidenceTargets": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "pattern": "^\\/interactions\\/[a-z0-9]+(?:-[a-z0-9]+)*\\/(?:(?:response-body|response-headers|stdout|stderr)(?:\\/(?:[^/~]|~[01])*)*|(?:response-status|exit-code)|call-inputs\\/(?:path|query|header|body)(?:\\/(?:[^/~]|~[01])*)*)$",
+                      "description": "AD-26 interaction-rooted pointer: \"/interactions/{stepId}/\" followed by one channel of the closed vocabulary. `call-inputs` takes one of the four transport channels as its next segment; `response-status` and `exit-code` take no tail. Syntax only: whether the step exists and whether the evidence is reachable are compile-time checks, not schema checks."
+                    },
+                    "description": "Interaction-rooted pointers only. AD-3 computes containment after quantifier substitution, so a target is always fully rooted and the bound-element spelling never appears here."
+                  },
+                  "relation": {
+                    "type": "string",
+                    "enum": [
+                      "equality",
+                      "deep-equality",
+                      "containment",
+                      "existence",
+                      "absence",
+                      "regex",
+                      "set-membership",
+                      "ordering",
+                      "count-tolerance",
+                      "shape",
+                      "covers-by-key",
+                      "all",
+                      "any",
+                      "not",
+                      "for-all",
+                      "for-any"
+                    ],
+                    "description": "Drawn from AD-4's full sixteen-member vocabulary \u2014 eleven operators, three connectives, two quantifiers \u2014 not the operators alone."
+                  },
+                  "polarity": {
+                    "type": "string",
+                    "enum": [
+                      "expects-hold",
+                      "expects-violation"
+                    ],
+                    "description": "Coin flip (a), settled: polarity is declared twice, here and on the oracle. AD-3 names it as one of the three axes the alignment predicate binds and AD-33 gives every check one, so declaring it once makes the alignment predicate vacuous on a third of its content. Duplication is what makes drift detectable, and the drift is deliberately not refined away: `direction-check-misaligned` needs the disagreement to stay representable."
+                  },
+                  "scope": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "description": "Evaluator-facing, and exempt from the alignment predicate, which binds evidence targets, relation, and polarity only."
+                  },
+                  "negativeDomain": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "description": "Evaluator-facing and exempt from alignment. `seal` renders it as an unordered set so the brief is byte-identical under reordering."
+                  }
+                },
+                "required": [
+                  "evidenceTargets",
+                  "relation",
+                  "polarity",
+                  "scope",
+                  "negativeDomain"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "`null` is half of what `oracle-missing-channel` fires on, so it must parse."
+          },
+          "check": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/Expression"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "`null` is the other half of `oracle-missing-channel`."
+          },
+          "polarity": {
+            "type": "string",
+            "enum": [
+              "expects-hold",
+              "expects-violation"
+            ],
+            "description": "AD-33: every check declares one polarity, and it lives at oracle level rather than inside the expression tree. Required and explicit rather than defaulted to `expects-hold`: a Zod default diverges input and output mode and the explicit-null convention forbids implicit absence."
+          },
+          "commentary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "AD-3's author documentation. No predicate reads it and `seal` never emits it, because a channel the evaluator reads and no predicate audits is the free-prose channel AD-3 exists to close."
+          }
+        },
+        "required": [
+          "id",
+          "direction",
+          "check",
+          "polarity",
+          "commentary"
+        ],
+        "additionalProperties": false
+      },
+      "description": "No minimum. AD-19 is explicit that `no-observable-success-criterion` \"never fires on an empty oracle list\", so an empty list must parse."
+    },
+    "rubrics": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/RubricBody"
+      },
+      "description": "Empty is legal: a zero-rubric contract compiles clean."
+    },
+    "waivers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^W-[0-9]{3,}$"
+          },
+          "rule": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The AD-20 discipline rule this waiver names. An opaque string rather than an enum: AD-20 enumerates seven rules in prose and assigns them no identifiers, and minting them here would invent a vocabulary Epic 5 has to match."
+          },
+          "rationale": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "condition": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "A machine-checkable context condition. AD-5 requires one \"where one exists\", so `null` here is a complete waiver rather than an incomplete one."
+          },
+          "approval": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "expiresAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+                "description": "RFC 3339 timestamp in UTC. A numeric offset is not accepted."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "rule",
+          "rationale",
+          "condition",
+          "approval",
+          "expiresAt"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "permittedInterfaces": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "logicalId": {
+            "type": "string",
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+            "description": "AD-35: a logical identifier for the interface, never a URL, host, or port. Mapping it to a target is the caller's, outside the contract."
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "api",
+              "web",
+              "cli",
+              "mcp"
+            ],
+            "description": "All four kinds are admitted so `unsupported-interface-kind` stays fireable. v0 supports `api`; the other three fail compilation under that code rather than failing to parse."
+          },
+          "operations": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "operationId": {
+                  "type": "string",
+                  "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                  "description": "A kebab-case slug. Excludes \"/\" and \"~\" so an identifier can be embedded in an interaction-rooted pointer without escaping."
+                },
+                "method": {
+                  "type": "string",
+                  "enum": [
+                    "GET",
+                    "HEAD",
+                    "POST",
+                    "PUT",
+                    "PATCH",
+                    "DELETE",
+                    "OPTIONS"
+                  ]
+                },
+                "pathTemplate": {
+                  "type": "string",
+                  "pattern": "^(?:\\/(?:[^/{}:]|\\{[A-Za-z0-9_-]+\\})*)+$",
+                  "description": "A path template whose parameters are spelled `{name}` in braces. The `:name` spelling is rejected: AD-40 resolves a defect signature by comparing method and path template, and that comparison is not implementable against an unstated syntax."
+                },
+                "stateChangeMarker": {
+                  "type": "boolean",
+                  "description": "AD-19: whether the operation is intended to change state. AD-20 rule 7 relevance reads it, and AD-10 selects the sensitivity channel by it. Both values are legal and neither is a default."
+                },
+                "requestShape": {
+                  "type": "object",
+                  "properties": {
+                    "path": {
+                      "type": "object",
+                      "properties": {
+                        "requiredKeys": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        },
+                        "permittedKeys": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "description": "The closed set of keys the shape admits. Deliberately not refined to be a superset of `requiredKeys`: no AD-5 code names that contradiction, so it joins the cross-field rules left to the compiler in v0. There is no spelling for \"these keys are required and extras are unconstrained\" \u2014 AD-4 calls the descriptor closed, so an open mode would be a different grammar."
+                        },
+                        "types": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "additionalProperties": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "string",
+                                  "number",
+                                  "boolean",
+                                  "object",
+                                  "array",
+                                  "null"
+                                ]
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "description": "Caller-keyed by plain key name, never by pointer: the descriptor-relative pointer spelling does not apply to these keys and must not be extended to them by analogy. A missing key means \"not declared\"; an explicit `null` value means \"declared, type not stated\"."
+                        }
+                      },
+                      "required": [
+                        "requiredKeys",
+                        "permittedKeys",
+                        "types"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "query": {
+                      "type": "object",
+                      "properties": {
+                        "requiredKeys": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        },
+                        "permittedKeys": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "description": "The closed set of keys the shape admits. Deliberately not refined to be a superset of `requiredKeys`: no AD-5 code names that contradiction, so it joins the cross-field rules left to the compiler in v0. There is no spelling for \"these keys are required and extras are unconstrained\" \u2014 AD-4 calls the descriptor closed, so an open mode would be a different grammar."
+                        },
+                        "types": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "additionalProperties": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "string",
+                                  "number",
+                                  "boolean",
+                                  "object",
+                                  "array",
+                                  "null"
+                                ]
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "description": "Caller-keyed by plain key name, never by pointer: the descriptor-relative pointer spelling does not apply to these keys and must not be extended to them by analogy. A missing key means \"not declared\"; an explicit `null` value means \"declared, type not stated\"."
+                        }
+                      },
+                      "required": [
+                        "requiredKeys",
+                        "permittedKeys",
+                        "types"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "header": {
+                      "type": "object",
+                      "properties": {
+                        "requiredKeys": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        },
+                        "permittedKeys": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "description": "The closed set of keys the shape admits. Deliberately not refined to be a superset of `requiredKeys`: no AD-5 code names that contradiction, so it joins the cross-field rules left to the compiler in v0. There is no spelling for \"these keys are required and extras are unconstrained\" \u2014 AD-4 calls the descriptor closed, so an open mode would be a different grammar."
+                        },
+                        "types": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "additionalProperties": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "string",
+                                  "number",
+                                  "boolean",
+                                  "object",
+                                  "array",
+                                  "null"
+                                ]
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "description": "Caller-keyed by plain key name, never by pointer: the descriptor-relative pointer spelling does not apply to these keys and must not be extended to them by analogy. A missing key means \"not declared\"; an explicit `null` value means \"declared, type not stated\"."
+                        }
+                      },
+                      "required": [
+                        "requiredKeys",
+                        "permittedKeys",
+                        "types"
+                      ],
+                      "additionalProperties": false,
+                      "description": "AD-18: a header channel declaration names a header and its type and never carries a credential value."
+                    },
+                    "body": {
+                      "type": "object",
+                      "properties": {
+                        "requiredKeys": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        },
+                        "permittedKeys": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "description": "The closed set of keys the shape admits. Deliberately not refined to be a superset of `requiredKeys`: no AD-5 code names that contradiction, so it joins the cross-field rules left to the compiler in v0. There is no spelling for \"these keys are required and extras are unconstrained\" \u2014 AD-4 calls the descriptor closed, so an open mode would be a different grammar."
+                        },
+                        "types": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "additionalProperties": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "string",
+                                  "number",
+                                  "boolean",
+                                  "object",
+                                  "array",
+                                  "null"
+                                ]
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "description": "Caller-keyed by plain key name, never by pointer: the descriptor-relative pointer spelling does not apply to these keys and must not be extended to them by analogy. A missing key means \"not declared\"; an explicit `null` value means \"declared, type not stated\"."
+                        }
+                      },
+                      "required": [
+                        "requiredKeys",
+                        "permittedKeys",
+                        "types"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "path",
+                    "query",
+                    "header",
+                    "body"
+                  ],
+                  "additionalProperties": false
+                },
+                "responseDescriptor": {
+                  "type": "object",
+                  "properties": {
+                    "requiredKeys": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "description": "No minimum of two anywhere in this shape: AD-20 rule 2 relevance is \"the descriptor declares more than one pointer\", so a one-pointer descriptor must parse in order to be the irrelevant case."
+                    },
+                    "permittedKeys": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    },
+                    "types": {
+                      "type": "object",
+                      "propertyNames": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "additionalProperties": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "enum": [
+                              "string",
+                              "number",
+                              "boolean",
+                              "object",
+                              "array",
+                              "null"
+                            ]
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "description": "Caller-keyed by plain key name, never by pointer: this is the shape where that trap bites, since `requiredKeys` sits beside a pointer-keyed `channelRoles` and a pointer-valued `successIndicator`, and the descriptor-relative spelling must not be extended here by analogy. A missing key means \"not declared\"; an explicit `null` value means \"declared, type not stated\", which is AD-31's enumerated indeterminate descriptor state and the shape `quantifier-over-non-collection` reads."
+                    },
+                    "successIndicator": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "pattern": "^(?:\\/(?:[^/~]|~[01])*)*$",
+                          "description": "A plain RFC 6901 pointer into one operation's response descriptor. It resolves through the operation an interaction step names, never through the interaction root. A request or response shape's descriptor keys are plain key names rather than pointers, so this spelling does not apply there. The empty string is admitted and carries RFC 6901's own meaning, the whole document: as a nominated success indicator it says success is visible in the response taken as a whole rather than at any one key, and as a channel-role key it assigns a role to the whole body."
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "AD-20 rule 1 relevance reads this as its first conjunct, so `null` must stay representable."
+                    },
+                    "channelRoles": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string",
+                            "pattern": "^(?:\\/(?:[^/~]|~[01])*)*$",
+                            "description": "A plain RFC 6901 pointer into one operation's response descriptor. It resolves through the operation an interaction step names, never through the interaction root. A request or response shape's descriptor keys are plain key names rather than pointers, so this spelling does not apply there. The empty string is admitted and carries RFC 6901's own meaning, the whole document: as a nominated success indicator it says success is visible in the response taken as a whole rather than at any one key, and as a channel-role key it assigns a role to the whole body."
+                          },
+                          "additionalProperties": {
+                            "type": "string",
+                            "enum": [
+                              "success-indicator",
+                              "diagnostic",
+                              "payload",
+                              "collection"
+                            ]
+                          }
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "Caller-keyed, and expected to be partial: a missing key means \"no role declared for that pointer\". AD-31 grades absent and explicitly empty differently, so `null`, `{}`, and a populated map are three distinct answers. Deliberately not refined to require a role for every descriptor key: no AD-5 code names that rule, the AD-31 predicates degrade gracefully on partial roles, and a refinement buys nothing an export can carry."
+                    },
+                    "collectionLocations": {
+                      "anyOf": [
+                        {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "pointer": {
+                                "type": "string",
+                                "pattern": "^(?:\\/(?:[^/~]|~[01])*)*$",
+                                "description": "A plain RFC 6901 pointer into one operation's response descriptor. It resolves through the operation an interaction step names, never through the interaction root. A request or response shape's descriptor keys are plain key names rather than pointers, so this spelling does not apply there. The empty string is admitted and carries RFC 6901's own meaning, the whole document: as a nominated success indicator it says success is visible in the response taken as a whole rather than at any one key, and as a channel-role key it assigns a role to the whole body."
+                              },
+                              "expectedCardinality": {
+                                "oneOf": [
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "mode": {
+                                        "type": "string",
+                                        "const": "exact"
+                                      },
+                                      "count": {
+                                        "type": "integer",
+                                        "minimum": 0,
+                                        "maximum": 9007199254740991
+                                      }
+                                    },
+                                    "required": [
+                                      "mode",
+                                      "count"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "mode": {
+                                        "type": "string",
+                                        "const": "at-most"
+                                      },
+                                      "max": {
+                                        "type": "integer",
+                                        "minimum": 0,
+                                        "maximum": 9007199254740991
+                                      }
+                                    },
+                                    "required": [
+                                      "mode",
+                                      "max"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "mode": {
+                                        "type": "string",
+                                        "const": "page-bounded"
+                                      },
+                                      "max": {
+                                        "type": "integer",
+                                        "minimum": 0,
+                                        "maximum": 9007199254740991
+                                      }
+                                    },
+                                    "required": [
+                                      "mode",
+                                      "max"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                ]
+                              },
+                              "referenceSet": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                                    "description": "A kebab-case slug. Excludes \"/\" and \"~\" so an identifier can be embedded in an interaction-rooted pointer without escaping."
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "AD-20 rule 6 is relevant when a declared collection location names a reference set, so `null` is the shape that makes the rule irrelevant and must stay representable."
+                              }
+                            },
+                            "required": [
+                              "pointer",
+                              "expectedCardinality",
+                              "referenceSet"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "AD-20 rule 4 relevance reads this, and AD-31 grades an absent declaration and an explicit empty one differently, so `null` and `[]` are distinct answers."
+                    }
+                  },
+                  "required": [
+                    "requiredKeys",
+                    "permittedKeys",
+                    "types",
+                    "successIndicator",
+                    "channelRoles",
+                    "collectionLocations"
+                  ],
+                  "additionalProperties": false
+                },
+                "volatilePointers": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "pattern": "^(?:\\/(?:[^/~]|~[01])*)*$",
+                    "description": "A plain RFC 6901 pointer into one operation's response descriptor. It resolves through the operation an interaction step names, never through the interaction root. A request or response shape's descriptor keys are plain key names rather than pointers, so this spelling does not apply there. The empty string is admitted and carries RFC 6901's own meaning, the whole document: as a nominated success indicator it says success is visible in the response taken as a whole rather than at any one key, and as a channel-role key it assigns a role to the whole body."
+                  }
+                }
+              },
+              "required": [
+                "operationId",
+                "method",
+                "pathTemplate",
+                "stateChangeMarker",
+                "requestShape",
+                "responseDescriptor",
+                "volatilePointers"
+              ],
+              "additionalProperties": false
+            },
+            "description": "No uniqueness constraint: two operations colliding on method plus path template after parameter-name erasure is `duplicate-operation-signature`, a coded compile-time error, and a schema that deduped them would delete it."
+          }
+        },
+        "required": [
+          "logicalId",
+          "kind",
+          "operations"
+        ],
+        "additionalProperties": false
+      },
+      "description": "AD-35: logical identifiers only. No entry here is ever a URL, a host, or a port."
+    },
+    "referenceSets": {
+      "anyOf": [
+        {
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+            "description": "A kebab-case slug. Excludes \"/\" and \"~\" so an identifier can be embedded in an interaction-rooted pointer without escaping."
+          },
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "keys": {
+                "minItems": 1,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "description": "The key names members are compared on. A reference set with no keys names nothing to compare, and no AD-5 code fires on it, so the schema is the enforcement point."
+              },
+              "members": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "propertyNames": {
+                    "type": "string"
+                  },
+                  "additionalProperties": {
+                    "$ref": "#/$defs/JsonValue"
+                  }
+                },
+                "description": "Objects carrying at least the declared keys. That they do is deliberately not refined: no AD-5 code names it, and a refinement would be invisible to a non-TypeScript consumer and become a differential disagreement in Story 1.5."
+              },
+              "commentary": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "Author documentation. Named `commentary` rather than the Gate C fixture's `note` so Epic 2 has one word to exclude from the sealed brief, matching the oracle field of the same name. No predicate reads it."
+              }
+            },
+            "required": [
+              "keys",
+              "members",
+              "commentary"
+            ],
+            "additionalProperties": false
+          }
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Caller-keyed by reference-set identifier. AD-31 grades an absent declaration and an explicit empty one differently, so `null`, `{}`, and a populated map are three distinct answers."
+    },
+    "siblingGroups": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "operations": {
+              "type": "array",
+              "items": {
+                "minItems": 2,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                  "description": "A kebab-case slug. Excludes \"/\" and \"~\" so an identifier can be embedded in an interaction-rooted pointer without escaping."
+                }
+              }
+            },
+            "parameters": {
+              "type": "array",
+              "items": {
+                "minItems": 2,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            }
+          },
+          "required": [
+            "operations",
+            "parameters"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "AD-20 rule 5 relevance reads this. `null` is absent, `{ \"operations\": [], \"parameters\": [] }` is the explicit empty answer AD-19 calls a declaration, and a populated group makes the rule relevant."
+    },
+    "interactionPlan": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "stepId": {
+            "type": "string",
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+            "description": "A kebab-case slug. Excludes \"/\" and \"~\" so an identifier can be embedded in an interaction-rooted pointer without escaping."
+          },
+          "operationId": {
+            "type": "string",
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+            "description": "A kebab-case slug. Excludes \"/\" and \"~\" so an identifier can be embedded in an interaction-rooted pointer without escaping."
+          },
+          "inputBinding": {
+            "type": "object",
+            "properties": {
+              "path": {
+                "$ref": "#/$defs/InputBindingChannel"
+              },
+              "query": {
+                "$ref": "#/$defs/InputBindingChannel"
+              },
+              "header": {
+                "$ref": "#/$defs/InputBindingChannel"
+              },
+              "body": {
+                "$ref": "#/$defs/InputBindingChannel"
+              }
+            },
+            "required": [
+              "path",
+              "query",
+              "header",
+              "body"
+            ],
+            "additionalProperties": false
+          },
+          "after": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                "description": "A kebab-case slug. Excludes \"/\" and \"~\" so an identifier can be embedded in an interaction-rooted pointer without escaping."
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The temporal clause: the identifier of an earlier step, or `null`. That the named step carries no clause of its own is AD-39's one-level bound, which fires `nested-temporal-clause` at compile time and is deliberately not enforced here \u2014 a named deviation from the epic's acceptance criteria of record, taken so the code keeps a shape to fire on."
+          }
+        },
+        "required": [
+          "stepId",
+          "operationId",
+          "inputBinding",
+          "after"
+        ],
+        "additionalProperties": false
+      },
+      "description": "No maximum and no bound on `after` chains. `plan-exceeds-scripting-bound` needs the sixty-four-pair and eight-chain plans representable, and Story 4.3 owns the graph predicate. An empty plan is the cheapest `unreachable-check-evidence` fixture."
+    },
+    "scopedResources": {
+      "anyOf": [
+        {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "reference": {
+                "type": "string",
+                "minLength": 1
+              },
+              "kind": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "reference",
+              "kind"
+            ],
+            "additionalProperties": false
+          }
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Absent, empty, and populated are three distinct answers. A reference at all is what `scoped-reference-resolves-forbidden` fires on."
+    },
+    "forbiddenInputs": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "original-spec",
+          "source-code",
+          "repository",
+          "builder-transcript",
+          "implementation-logs",
+          "comparator-results",
+          "human-labels"
+        ]
+      },
+      "description": "A list short of the seven is `forbidden-input-floor-incomplete`, a coded compile-time error, so a short list must parse."
+    },
+    "testData": {
+      "type": "object",
+      "properties": {
+        "setup": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "cleanup": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "setup",
+        "cleanup"
+      ],
+      "additionalProperties": false
+    },
+    "budgets": {
+      "type": "object",
+      "properties": {
+        "maxToolCalls": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "maxWallClockMinutes": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "maxCostUsd": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)(\\.[0-9]+)?$",
+          "description": "Money, so AD-36 carries it as a string in a declared format rather than as a JSON number. Constrained to the unsigned form: a negative ceiling is not a ceiling."
+        }
+      },
+      "required": [
+        "maxToolCalls",
+        "maxWallClockMinutes",
+        "maxCostUsd"
+      ],
+      "additionalProperties": false
+    },
+    "safetyLimits": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "requiredEvidence": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "probeStepBound": {
+      "anyOf": [
+        {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "AD-16's declared bound on enumerated probe steps, which the brief-side scripting audit reads. No AD gives it a home and the Configuration convention's policy-artifact list omits it, so it lands here beside the other ceilings. The AD-5 code that audit fires is Epic 2's to mint alongside its only thrower."
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "parentDigest",
+    "revisionCount",
+    "contractId",
+    "sourceSpecDigest",
+    "behaviors",
+    "oracles",
+    "rubrics",
+    "waivers",
+    "permittedInterfaces",
+    "referenceSets",
+    "siblingGroups",
+    "interactionPlan",
+    "scopedResources",
+    "forbiddenInputs",
+    "testData",
+    "budgets",
+    "safetyLimits",
+    "requiredEvidence",
+    "probeStepBound"
+  ],
+  "additionalProperties": false,
+  "description": "The Eval Contract. Succeeds the prior-art `eval-contract` schema per AD-24. It carries every declaration AD-19 requires so that AD-31's fourteen relevance and satisfaction predicates are decidable from declarations alone. Sensitivity witnesses (AD-10) are deliberately absent in this version; adding them is an additive `schemaVersion` bump under AD-11, recorded in the field's own description when it arrives.",
+  "$defs": {
+    "Expression": {
+      "description": "A `check` expression tree over AD-4's closed vocabulary, discriminated on `op`. Exports as a `oneOf` of sixteen branches, each identified by its `op` const; a constraint ledger entry names a branch by that const rather than by position.",
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "op": {
+              "type": "string",
+              "const": "equality"
+            },
+            "operands": {
+              "type": "array",
+              "prefixItems": [
+                {
+                  "$ref": "#/$defs/Operand"
+                },
+                {
+                  "$ref": "#/$defs/Operand"
+                }
+              ],
+              "description": "Two operands, each legally a pointer or a literal. Every position admits the full operand union on purpose. AD-26 makes a reference-set operand outside its three legal positions \u2014 `covers-by-key`'s expected operand, and the set operand of `set-membership` or `containment` \u2014 fail compilation under `malformed-operator-expression`, which only stays fireable if the other positions admit it. Epic 4 enforces the legality stated here; the schema does not narrow it.",
+              "minItems": 2,
+              "items": false
+            }
+          },
+          "required": [
+            "op",
+            "operands"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "op": {
+              "type": "string",
+              "const": "deep-equality"
+            },
+            "operands": {
+              "type": "array",
+              "prefixItems": [
+                {
+                  "$ref": "#/$defs/Operand"
+                },
+                {
+                  "$ref": "#/$defs/Operand"
+                }
+              ],
+              "description": "Two operands, each legally a pointer or a literal. Every position admits the full operand union on purpose. AD-26 makes a reference-set operand outside its three legal positions \u2014 `covers-by-key`'s expected operand, and the set operand of `set-membership` or `containment` \u2014 fail compilation under `malformed-operator-expression`, which only stays fireable if the other positions admit it. Epic 4 enforces the legality stated here; the schema does not narrow it.",
+              "minItems": 2,
+              "items": false
+            }
+          },
+          "required": [
+            "op",
+            "operands"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "op": {
+              "type": "string",
+              "const": "containment"
+            },
+            "operands": {
+              "type": "array",
+              "prefixItems": [
+                {
+                  "$ref": "#/$defs/Operand"
+                },
+                {
+                  "$ref": "#/$defs/Operand"
+                }
+              ],
+              "description": "Two operands: the container is legally a pointer, and the set is legally a pointer, a literal, or a reference set. Every position admits the full operand union on purpose. AD-26 makes a reference-set operand outside its three legal positions \u2014 `covers-by-key`'s expected operand, and the set operand of `set-membership` or `containment` \u2014 fail compilation under `malformed-operator-expression`, which only stays fireable if the other positions admit it. Epic 4 enforces the legality stated here; the schema does not narrow it.",
+              "minItems": 2,
+              "items": false
+            }
+          },
+          "required": [
+            "op",
+            "operands"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "op": {
+              "type": "string",
+              "const": "existence"
+            },
+            "operands": {
+              "type": "array",
+              "prefixItems": [
+                {
+                  "$ref": "#/$defs/Operand"
+                }
+              ],
+              "description": "One operand, legally a pointer. Every position admits the full operand union on purpose. AD-26 makes a reference-set operand outside its three legal positions \u2014 `covers-by-key`'s expected operand, and the set operand of `set-membership` or `containment` \u2014 fail compilation under `malformed-operator-expression`, which only stays fireable if the other positions admit it. Epic 4 enforces the legality stated here; the schema does not narrow it.",
+              "minItems": 1,
+              "items": false
+            }
+          },
+          "required": [
+            "op",
+            "operands"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "op": {
+              "type": "string",
+              "const": "absence"
+            },
+            "operands": {
+              "type": "array",
+              "prefixItems": [
+                {
+                  "$ref": "#/$defs/Operand"
+                }
+              ],
+              "description": "One operand, legally a pointer. Every position admits the full operand union on purpose. AD-26 makes a reference-set operand outside its three legal positions \u2014 `covers-by-key`'s expected operand, and the set operand of `set-membership` or `containment` \u2014 fail compilation under `malformed-operator-expression`, which only stays fireable if the other positions admit it. Epic 4 enforces the legality stated here; the schema does not narrow it.",
+              "minItems": 1,
+              "items": false
+            }
+          },
+          "required": [
+            "op",
+            "operands"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "op": {
+              "type": "string",
+              "const": "regex"
+            },
+            "operands": {
+              "type": "array",
+              "prefixItems": [
+                {
+                  "$ref": "#/$defs/Operand"
+                }
+              ],
+              "description": "One operand, legally a pointer. Every position admits the full operand union on purpose. AD-26 makes a reference-set operand outside its three legal positions \u2014 `covers-by-key`'s expected operand, and the set operand of `set-membership` or `containment` \u2014 fail compilation under `malformed-operator-expression`, which only stays fireable if the other positions admit it. Epic 4 enforces the legality stated here; the schema does not narrow it.",
+              "minItems": 1,
+              "items": false
+            },
+            "pattern": {
+              "type": "string",
+              "pattern": "^\\^[\\s\\S]*\\$$",
+              "description": "An ECMA-262 pattern, fully anchored: it begins with \"^\" and ends with \"$\". A named field rather than a `{ literal }` operand, so Epic 4's backreference and lookbehind check has one place to look instead of a JsonValue that may hold anything. The check is positional and is wrong in both directions. It admits patterns that are not anchored, such as the alternation \"^a|b$\" or a trailing \"$\" that is escaped; those are Epic 4's, alongside backreferences and lookbehind. It also rejects patterns that are anchored but wrapped in a group, such as \"(^a$)\" \u2014 write \"^(?:a|b)$\" rather than \"(?:^a$|^b$)\" and the form accepts it. Deciding anchoring properly requires parsing the pattern, which no JSON Schema keyword can express."
+            }
+          },
+          "required": [
+            "op",
+            "operands",
+            "pattern"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "op": {
+              "type": "string",
+              "const": "set-membership"
+            },
+            "operands": {
+              "type": "array",
+              "prefixItems": [
+                {
+                  "$ref": "#/$defs/Operand"
+                },
+                {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "referenceSet": {
+                          "type": "string",
+                          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                          "description": "A plain identifier. Deliberately not an enum of the contract's declared reference sets and deliberately not refined against them: an identifier the contract does not declare is `unresolved-reference-set`, a coded compile-time error, and a schema that rejected it would convert that code into an anonymous parse fault."
+                        }
+                      },
+                      "required": [
+                        "referenceSet"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "literal": {
+                          "minItems": 1,
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/$defs/JsonValue"
+                          },
+                          "description": "Coin flip (b), settled: a literal set operand is admitted alongside the reference-set form, and is constrained to a non-empty array because `set-membership` against an empty set is unfalsifiable authoring rather than an observation about the world. This is the one deliberately narrowed operand position in the grammar; the cost is that `{ \"literal\": [] }` and a `{ \"pointer\" }` in this position are schema rejections rather than `malformed-operator-expression`."
+                        }
+                      },
+                      "required": [
+                        "literal"
+                      ],
+                      "additionalProperties": false
+                    }
+                  ]
+                }
+              ],
+              "description": "Two operands: the value is legally a pointer, and the set is a reference set or a non-empty literal array. The set position is the one place the schema does narrow, and coin flip (b) records what that costs. Every position admits the full operand union on purpose. AD-26 makes a reference-set operand outside its three legal positions \u2014 `covers-by-key`'s expected operand, and the set operand of `set-membership` or `containment` \u2014 fail compilation under `malformed-operator-expression`, which only stays fireable if the other positions admit it. Epic 4 enforces the legality stated here; the schema does not narrow it.",
+              "minItems": 2,
+              "items": false
+            }
+          },
+          "required": [
+            "op",
+            "operands"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "op": {
+              "type": "string",
+              "const": "ordering"
+            },
+            "operands": {
+              "type": "array",
+              "prefixItems": [
+                {
+                  "$ref": "#/$defs/Operand"
+                }
+              ],
+              "description": "One operand, legally a pointer to a collection. Every position admits the full operand union on purpose. AD-26 makes a reference-set operand outside its three legal positions \u2014 `covers-by-key`'s expected operand, and the set operand of `set-membership` or `containment` \u2014 fail compilation under `malformed-operator-expression`, which only stays fireable if the other positions admit it. Epic 4 enforces the legality stated here; the schema does not narrow it.",
+              "minItems": 1,
+              "items": false
+            },
+            "key": {
+              "type": "string",
+              "minLength": 1
+            },
+            "order": {
+              "type": "string",
+              "enum": [
+                "ascending",
+                "descending"
+              ]
+            }
+          },
+          "required": [
+            "op",
+            "operands",
+            "key",
+            "order"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "op": {
+              "type": "string",
+              "const": "count-tolerance"
+            },
+            "operands": {
+              "type": "array",
+              "prefixItems": [
+                {
+                  "$ref": "#/$defs/Operand"
+                }
+              ],
+              "description": "One operand, legally a pointer to a collection. Every position admits the full operand union on purpose. AD-26 makes a reference-set operand outside its three legal positions \u2014 `covers-by-key`'s expected operand, and the set operand of `set-membership` or `containment` \u2014 fail compilation under `malformed-operator-expression`, which only stays fireable if the other positions admit it. Epic 4 enforces the legality stated here; the schema does not narrow it.",
+              "minItems": 1,
+              "items": false
+            },
+            "expected": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991,
+              "description": "The expected element count. Non-negative: a negative count is not a count, and no AD-5 code fires on one, so the schema is the enforcement point."
+            },
+            "tolerance": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991,
+              "description": "The permitted deviation from `expected`, non-negative for the same reason. When `relative` is declared the tolerance is read as whole percentage points, which is stated because AD-4 supplies no value space for the magnitude and Epic 3 inherits the semantics. An integer therefore cannot express a fractional relative tolerance such as 2.5 percent; widening the value space later is an additive `schemaVersion` bump under AD-11, and was not taken here because it would export as a bare `type: \"number\"` and cost a constraint ledger entry for a case no declaration needs yet."
+            },
+            "relative": {
+              "type": "boolean",
+              "description": "AD-4: the tolerance is absolute unless this flag is declared. Required and explicit rather than defaulted, because a Zod default diverges input and output mode and drops the key from the exported `required` list."
+            }
+          },
+          "required": [
+            "op",
+            "operands",
+            "expected",
+            "tolerance",
+            "relative"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "op": {
+              "type": "string",
+              "const": "shape"
+            },
+            "operands": {
+              "type": "array",
+              "prefixItems": [
+                {
+                  "$ref": "#/$defs/Operand"
+                }
+              ],
+              "description": "One operand, legally a pointer. Every position admits the full operand union on purpose. AD-26 makes a reference-set operand outside its three legal positions \u2014 `covers-by-key`'s expected operand, and the set operand of `set-membership` or `containment` \u2014 fail compilation under `malformed-operator-expression`, which only stays fireable if the other positions admit it. Epic 4 enforces the legality stated here; the schema does not narrow it.",
+              "minItems": 1,
+              "items": false
+            },
+            "descriptor": {
+              "type": "object",
+              "properties": {
+                "requiredKeys": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "permittedKeys": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "description": "The closed set of keys the shape admits. Deliberately not refined to be a superset of `requiredKeys`: no AD-5 code names that contradiction, so it joins the cross-field rules left to the compiler in v0. There is no spelling for \"these keys are required and extras are unconstrained\" \u2014 AD-4 calls the descriptor closed, so an open mode would be a different grammar."
+                },
+                "types": {
+                  "type": "object",
+                  "propertyNames": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "additionalProperties": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "enum": [
+                          "string",
+                          "number",
+                          "boolean",
+                          "object",
+                          "array",
+                          "null"
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "description": "Caller-keyed by plain key name, never by pointer: the descriptor-relative pointer spelling does not apply to these keys and must not be extended to them by analogy. A missing key means \"not declared\"; an explicit `null` value means \"declared, type not stated\"."
+                }
+              },
+              "required": [
+                "requiredKeys",
+                "permittedKeys",
+                "types"
+              ],
+              "additionalProperties": false,
+              "description": "AD-4: a closed descriptor, never an embedded JSON Schema. Typing it as a named field is what makes that structural, and it is a deliberate divergence from the Gate C fixture's `{ \"literal\": { \u2026 } }` spelling, where any JSON could sit."
+            }
+          },
+          "required": [
+            "op",
+            "operands",
+            "descriptor"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "op": {
+              "type": "string",
+              "const": "covers-by-key"
+            },
+            "operands": {
+              "type": "array",
+              "prefixItems": [
+                {
+                  "$ref": "#/$defs/Operand"
+                },
+                {
+                  "$ref": "#/$defs/Operand"
+                }
+              ],
+              "description": "Two operands: `expected` is legally a reference set, and `actual` is legally a pointer to a collection. Every position admits the full operand union on purpose. AD-26 makes a reference-set operand outside its three legal positions \u2014 `covers-by-key`'s expected operand, and the set operand of `set-membership` or `containment` \u2014 fail compilation under `malformed-operator-expression`, which only stays fireable if the other positions admit it. Epic 4 enforces the legality stated here; the schema does not narrow it.",
+              "minItems": 2,
+              "items": false
+            },
+            "expectedKey": {
+              "type": "string",
+              "minLength": 1
+            },
+            "actualKey": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "op",
+            "operands",
+            "expectedKey",
+            "actualKey"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "op": {
+              "type": "string",
+              "const": "not"
+            },
+            "operands": {
+              "type": "array",
+              "prefixItems": [
+                {
+                  "$ref": "#/$defs/Expression"
+                }
+              ],
+              "description": "One nested expression rather than an operand. A connective composes the tree; it never addresses evidence itself.",
+              "minItems": 1,
+              "items": false
+            }
+          },
+          "required": [
+            "op",
+            "operands"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "op": {
+              "type": "string",
+              "const": "all"
+            },
+            "operands": {
+              "minItems": 2,
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/Expression"
+              },
+              "description": "Two or more nested expressions rather than operands. The minimum is settled here because AD-4 leaves connective arity unstated: zero operands would certify vacuously and one is the identity."
+            }
+          },
+          "required": [
+            "op",
+            "operands"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "op": {
+              "type": "string",
+              "const": "any"
+            },
+            "operands": {
+              "minItems": 2,
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/Expression"
+              },
+              "description": "Two or more nested expressions rather than operands, for the same reason `all` carries the same minimum."
+            }
+          },
+          "required": [
+            "op",
+            "operands"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "op": {
+              "type": "string",
+              "const": "for-all"
+            },
+            "collection": {
+              "$ref": "#/$defs/Operand"
+            },
+            "predicate": {
+              "$ref": "#/$defs/Expression"
+            }
+          },
+          "required": [
+            "op",
+            "collection",
+            "predicate"
+          ],
+          "additionalProperties": false,
+          "description": "`collection` is legally a pointer to a collection, and `predicate` is the expression each bound element is tested against, addressed by the `@/` pointer spelling. A quantifier inside the predicate is structurally admitted so `quantifier-nesting-exceeded` keeps a shape to fire on. Every position admits the full operand union on purpose. AD-26 makes a reference-set operand outside its three legal positions \u2014 `covers-by-key`'s expected operand, and the set operand of `set-membership` or `containment` \u2014 fail compilation under `malformed-operator-expression`, which only stays fireable if the other positions admit it. Epic 4 enforces the legality stated here; the schema does not narrow it."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "op": {
+              "type": "string",
+              "const": "for-any"
+            },
+            "collection": {
+              "$ref": "#/$defs/Operand"
+            },
+            "predicate": {
+              "$ref": "#/$defs/Expression"
+            }
+          },
+          "required": [
+            "op",
+            "collection",
+            "predicate"
+          ],
+          "additionalProperties": false,
+          "description": "`collection` is legally a pointer to a collection, and `predicate` is the expression each bound element is tested against, addressed by the `@/` pointer spelling. Every position admits the full operand union on purpose. AD-26 makes a reference-set operand outside its three legal positions \u2014 `covers-by-key`'s expected operand, and the set operand of `set-membership` or `containment` \u2014 fail compilation under `malformed-operator-expression`, which only stays fireable if the other positions admit it. Epic 4 enforces the legality stated here; the schema does not narrow it."
+        }
+      ]
+    },
+    "Operand": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "pointer": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^\\/interactions\\/[a-z0-9]+(?:-[a-z0-9]+)*\\/(?:(?:response-body|response-headers|stdout|stderr)(?:\\/(?:[^/~]|~[01])*)*|(?:response-status|exit-code)|call-inputs\\/(?:path|query|header|body)(?:\\/(?:[^/~]|~[01])*)*)$",
+                  "description": "AD-26 interaction-rooted pointer: \"/interactions/{stepId}/\" followed by one channel of the closed vocabulary. `call-inputs` takes one of the four transport channels as its next segment; `response-status` and `exit-code` take no tail. Syntax only: whether the step exists and whether the evidence is reachable are compile-time checks, not schema checks."
+                },
+                {
+                  "type": "string",
+                  "pattern": "^@(?:\\/(?:[^/~]|~[01])*)+$",
+                  "description": "AD-26 bound-element pointer: \"@/\" plus an RFC 6901 tail, addressing the element a quantifier binds. Bare \"@/\" addresses the element itself. That it appears only inside a quantifier is a compile-time check (Story 4.1), not a schema check."
+                }
+              ]
+            }
+          },
+          "required": [
+            "pointer"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "literal": {
+              "$ref": "#/$defs/JsonValue"
+            }
+          },
+          "required": [
+            "literal"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "referenceSet": {
+              "type": "string",
+              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+              "description": "A plain identifier. Deliberately not an enum of the contract's declared reference sets and deliberately not refined against them: an identifier the contract does not declare is `unresolved-reference-set`, a coded compile-time error, and a schema that rejected it would convert that code into an anonymous parse fault."
+            }
+          },
+          "required": [
+            "referenceSet"
+          ],
+          "additionalProperties": false
+        }
+      ],
+      "description": "One of the three operand forms, each a single-keyed object. Named so the published schema carries it once as a shared definition rather than inlining it at seventeen use sites. Which forms are legal in which position is declared on each operator's own `operands`, never narrowed here."
+    },
+    "JsonValue": {
+      "description": "AD-36 value domain. Every number is a finite IEEE 754 double-precision value, and every integer lies in the safe-integer range; a larger integer, and any value needing exact decimal semantics such as money, is carried as a string in its own declared format. JSON Schema cannot express finiteness, so this restriction is stated rather than encoded: producers are told the rule here instead of discovering it through a digest mismatch, and the canonical scanner rejects a violating value before any parse.",
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "number"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        },
+        {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/JsonValue"
+          }
+        },
+        {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          }
+        }
+      ]
+    },
+    "RubricBody": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^R-[0-9]{3,}$"
+        },
+        "scaleLevels": {
+          "anyOf": [
+            {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "level": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991,
+                    "description": "The ordinal this level sits at. Deliberately unbounded and not checked for duplicates: no AD-5 code names either, so both are left to the compiler in v0 alongside the other cross-field rules."
+                  },
+                  "anchor": {
+                    "type": "string",
+                    "description": "The observable condition that anchors this level. AD-22 calls an unanchored scale a compile-time failure under `rubric-unanchored`, so the anchor is a declared field rather than a convention."
+                  }
+                },
+                "required": [
+                  "level",
+                  "anchor"
+                ],
+                "additionalProperties": false
+              }
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "`null` and `[]` are both the unanchored shape `rubric-unanchored` fires on, and both must parse."
+        },
+        "failureModePenalties": {
+          "anyOf": [
+            {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "description": {
+                    "type": "string",
+                    "description": "AD-22 requires named failure-mode penalties and states no magnitude. None is invented here: a penalty weight would be a scoring semantic this story has no authority to mint, and AD-7 keeps weighted composites out of the reported result. Story 6.3 owns AD-22's compile checks and is where a magnitude would arrive if one is ever needed."
+                  }
+                },
+                "required": [
+                  "name",
+                  "description"
+                ],
+                "additionalProperties": false
+              }
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Missing named penalties is `rubric-unanchored`, not a parse failure."
+        },
+        "maxLength": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "An unbounded length is `null`, which is one of the three shapes `rubric-unanchored` fires on."
+        },
+        "criteria": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^RC-[0-9]{3,}$"
+              },
+              "text": {
+                "type": "string",
+                "description": "A criterion scoring chain-of-thought or stated-reasoning prose fails compilation under `rubric-scores-reasoning-prose`, so such a criterion must stay representable here."
+              },
+              "evidence": {
+                "type": "string",
+                "pattern": "^\\/interactions\\/[a-z0-9]+(?:-[a-z0-9]+)*\\/(?:(?:response-body|response-headers|stdout|stderr)(?:\\/(?:[^/~]|~[01])*)*|(?:response-status|exit-code)|call-inputs\\/(?:path|query|header|body)(?:\\/(?:[^/~]|~[01])*)*)$",
+                "description": "Where the criterion is answerable from. A pointer that resolves nowhere is `rubric-evidence-unreachable`, a compile-time code, and is deliberately not a schema rejection."
+              }
+            },
+            "required": [
+              "id",
+              "text",
+              "evidence"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "id",
+        "scaleLevels",
+        "failureModePenalties",
+        "maxLength",
+        "criteria"
+      ],
+      "additionalProperties": false,
+      "description": "The embeddable rubric body. Named so the shared body has a stable `$defs` key distinct from the published `Rubric` artifact, which is this body plus `schemaVersion` and AD-29 lineage; without the name the two collide in Story 1.5's drift check under a generated positional name."
+    },
+    "InputBindingChannel": {
+      "anyOf": [
+        {
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "minLength": 1
+          },
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "literal": {
+                    "$ref": "#/$defs/JsonValue"
+                  }
+                },
+                "required": [
+                  "literal"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "matcher": {
+                    "type": "string",
+                    "enum": [
+                      "any",
+                      "type-violating"
+                    ]
+                  }
+                },
+                "required": [
+                  "matcher"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          }
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "A parameter-name-to-binding-value map, or `null` for a channel this step binds nothing in. An empty map is rejected: `null` is the only spelling for unbound. That rejection is a Zod check and does not survive the export, so the constraint ledger carries it for injection on the object branch.",
+      "minProperties": 1
+    }
+  }
+}

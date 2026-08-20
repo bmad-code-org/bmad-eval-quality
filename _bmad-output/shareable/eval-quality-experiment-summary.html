@@ -1,0 +1,1074 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Quotas, exclusions, deviations, and every preregistered metric from the reduced-scope pass.">
+  <link rel="icon" href="data:,">
+  <title>H0 results summary</title>
+  <style>
+:root {
+	color-scheme: light;
+	--canvas: #f4f6fb;
+	--paper: #ffffff;
+	--ink: #182230;
+	--muted: #667085;
+	--line: #e4e7ec;
+	--brand: #3157d5;
+	--brand-deep: #243f9f;
+	--brand-soft: #eef2ff;
+	--accent: #087f6d;
+	--accent-soft: #eafaf6;
+	--code: #101828;
+	--shadow: 0 18px 50px rgba(16, 24, 40, 0.08);
+}
+
+* {
+	box-sizing: border-box;
+}
+html {
+	scroll-behavior: smooth;
+}
+body {
+	margin: 0;
+	background: var(--canvas);
+	color: var(--ink);
+	font-family:
+		Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI",
+		sans-serif;
+	font-size: 16px;
+	line-height: 1.72;
+	text-rendering: optimizeLegibility;
+}
+
+a {
+	color: var(--brand);
+	text-decoration-thickness: 1px;
+	text-underline-offset: 3px;
+}
+a:hover {
+	color: var(--brand-deep);
+}
+
+.topbar {
+	position: sticky;
+	top: 0;
+	z-index: 20;
+	border-bottom: 1px solid rgba(228, 231, 236, 0.9);
+	background: rgba(255, 255, 255, 0.92);
+	backdrop-filter: blur(14px);
+}
+
+.topbar-inner {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 24px;
+	max-width: 1280px;
+	min-height: 64px;
+	margin: 0 auto;
+	padding: 10px 28px;
+}
+
+.brand {
+	color: var(--ink);
+	font-size: 15px;
+	font-weight: 760;
+	letter-spacing: -0.01em;
+	text-decoration: none;
+	white-space: nowrap;
+}
+
+.brand-mark {
+	color: var(--brand);
+}
+.nav {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: flex-end;
+	gap: 6px;
+}
+.nav-link {
+	border-radius: 9px;
+	color: #475467;
+	font-size: 13px;
+	font-weight: 650;
+	padding: 6px 10px;
+	text-decoration: none;
+}
+.nav-link:hover,
+.nav-link.active {
+	background: var(--brand-soft);
+	color: var(--brand-deep);
+}
+
+.layout {
+	display: grid;
+	grid-template-columns: 248px minmax(0, 900px);
+	gap: 30px;
+	max-width: 1230px;
+	margin: 34px auto 70px;
+	padding: 0 28px;
+}
+
+/* Pages with no headings (the licence text) drop the empty sidebar column. */
+.layout.no-toc {
+	grid-template-columns: minmax(0, 900px);
+	justify-content: center;
+	max-width: 960px;
+}
+
+.sidebar {
+	position: sticky;
+	top: 90px;
+	align-self: start;
+	max-height: calc(100vh - 112px);
+	overflow: auto;
+	padding: 4px 8px 20px 0;
+}
+
+.toc-title {
+	margin: 0 0 10px 10px;
+	color: #98a2b3;
+	font-size: 11px;
+	font-weight: 800;
+	letter-spacing: 0.12em;
+	text-transform: uppercase;
+}
+
+.toc-link {
+	display: block;
+	border-left: 2px solid transparent;
+	border-radius: 0 8px 8px 0;
+	color: #667085;
+	font-size: 13px;
+	line-height: 1.35;
+	margin: 1px 0;
+	padding: 6px 8px 6px 10px;
+	text-decoration: none;
+}
+.toc-link:hover {
+	border-left-color: var(--brand);
+	background: #fff;
+	color: var(--brand-deep);
+}
+.toc-link.depth-3 {
+	padding-left: 22px;
+	font-size: 12px;
+}
+.toc-link.depth-4 {
+	padding-left: 34px;
+	font-size: 12px;
+	color: var(--muted);
+}
+
+.paper {
+	min-width: 0;
+	overflow: hidden;
+	border: 1px solid rgba(228, 231, 236, 0.85);
+	border-radius: 18px;
+	background: var(--paper);
+	box-shadow: var(--shadow);
+}
+
+.hero {
+	border-bottom: 1px solid var(--line);
+	background: linear-gradient(145deg, #ffffff 20%, #f1f4ff 100%);
+	padding: 58px 64px 44px;
+}
+.eyebrow {
+	color: var(--brand);
+	font-size: 12px;
+	font-weight: 800;
+	letter-spacing: 0.13em;
+	text-transform: uppercase;
+}
+.hero h1 {
+	max-width: 760px;
+	margin: 12px 0 12px;
+	color: #101828;
+	font-size: clamp(34px, 5vw, 54px);
+	line-height: 1.08;
+	letter-spacing: -0.04em;
+}
+.lede {
+	max-width: 680px;
+	margin: 0;
+	color: #475467;
+	font-size: 18px;
+	line-height: 1.55;
+}
+.metadata {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	margin-top: 24px;
+}
+.pill {
+	display: inline-flex;
+	align-items: center;
+	min-height: 28px;
+	border: 1px solid #d0d5dd;
+	border-radius: 999px;
+	background: rgba(255, 255, 255, 0.8);
+	color: #475467;
+	font-size: 12px;
+	font-weight: 700;
+	padding: 3px 10px;
+}
+.pill.status {
+	border-color: #a9e4d7;
+	background: var(--accent-soft);
+	color: var(--accent);
+}
+
+.mobile-toc {
+	display: none;
+	margin: 26px 32px 0;
+}
+.mobile-toc summary {
+	color: var(--brand-deep);
+	cursor: pointer;
+	font-size: 14px;
+	font-weight: 750;
+}
+.mobile-toc-links {
+	margin-top: 10px;
+}
+
+.content {
+	padding: 24px 64px 64px;
+}
+.content h2,
+.content h3,
+.content h4 {
+	position: relative;
+	scroll-margin-top: 88px;
+	color: #101828;
+}
+.content h2 {
+	border-top: 1px solid var(--line);
+	margin: 52px 0 18px;
+	padding-top: 38px;
+	font-size: 29px;
+	line-height: 1.2;
+	letter-spacing: -0.025em;
+}
+.content h2:first-child {
+	border-top: 0;
+	margin-top: 14px;
+	padding-top: 12px;
+}
+.content h3 {
+	margin: 34px 0 12px;
+	font-size: 21px;
+	line-height: 1.3;
+	letter-spacing: -0.015em;
+}
+.content h4 {
+	margin: 28px 0 10px;
+	font-size: 17px;
+	line-height: 1.35;
+}
+.heading-anchor {
+	opacity: 0;
+	margin-left: 8px;
+	color: #98a2b3;
+	font-size: 0.72em;
+	font-weight: 500;
+	text-decoration: none;
+}
+.content h2:hover .heading-anchor,
+.content h3:hover .heading-anchor {
+	opacity: 1;
+}
+
+.content p {
+	margin: 0 0 18px;
+}
+.content strong {
+	color: #101828;
+}
+.content ul,
+.content ol {
+	margin: 0 0 20px;
+	padding-left: 26px;
+}
+.content li {
+	margin: 7px 0;
+	padding-left: 3px;
+}
+.content li::marker {
+	color: var(--brand);
+	font-weight: 750;
+}
+.content blockquote {
+	margin: 24px 0;
+	border-left: 4px solid var(--brand);
+	border-radius: 0 10px 10px 0;
+	background: var(--brand-soft);
+	color: #344054;
+	padding: 16px 20px;
+}
+.content blockquote p:last-child {
+	margin-bottom: 0;
+}
+.content hr {
+	height: 1px;
+	margin: 44px 0;
+	border: 0;
+	background: var(--line);
+}
+
+code {
+	border: 1px solid #e4e7ec;
+	border-radius: 5px;
+	background: #f8fafc;
+	color: #344054;
+	font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+	font-size: 0.88em;
+	padding: 0.14em 0.38em;
+}
+pre {
+	overflow: auto;
+	margin: 24px 0;
+	border: 1px solid #344054;
+	border-radius: 12px;
+	background: var(--code);
+	color: #e4e7ec;
+	line-height: 1.58;
+	padding: 20px 22px;
+}
+pre code {
+	border: 0;
+	background: transparent;
+	color: inherit;
+	font-size: 13px;
+	padding: 0;
+}
+
+/*
+ * A link the export could not render as a sibling page. It still points at the
+ * repository, so it is marked rather than left to look like every other link:
+ * a recipient without access would otherwise meet an unexplained 404.
+ */
+.repo-link::after {
+	content: " \2197";
+	color: var(--muted);
+	font-size: 0.85em;
+	text-decoration: none;
+}
+
+/* Verbatim fixed-width text; the licence must not be reflowed into paragraphs. */
+.plain-text {
+	margin: 0;
+	border: 0;
+	border-radius: 0;
+	background: transparent;
+	color: var(--ink);
+	font-size: 13px;
+	padding: 0;
+	white-space: pre-wrap;
+	word-break: break-word;
+}
+.plain-text code {
+	color: inherit;
+	font-size: inherit;
+}
+
+.table-wrap {
+	overflow-x: auto;
+	margin: 24px 0 30px;
+	border: 1px solid var(--line);
+	border-radius: 12px;
+}
+table {
+	width: 100%;
+	border-collapse: collapse;
+	font-size: 14px;
+	line-height: 1.5;
+}
+th {
+	background: #f8fafc;
+	color: #344054;
+	font-size: 12px;
+	letter-spacing: 0.04em;
+	text-align: left;
+	text-transform: uppercase;
+}
+th,
+td {
+	border-bottom: 1px solid var(--line);
+	padding: 12px 14px;
+	vertical-align: top;
+}
+tr:last-child td {
+	border-bottom: 0;
+}
+tbody tr:hover {
+	background: #fafbff;
+}
+
+.footer {
+	border-top: 1px solid var(--line);
+	color: #98a2b3;
+	font-size: 12px;
+	padding: 24px 64px 30px;
+}
+
+@media (max-width: 920px) {
+	.layout {
+		display: block;
+		margin-top: 22px;
+		padding: 0 16px;
+	}
+	.sidebar {
+		display: none;
+	}
+	.mobile-toc {
+		display: block;
+	}
+	.hero {
+		padding: 46px 36px 34px;
+	}
+	.content {
+		padding: 20px 36px 48px;
+	}
+	.footer {
+		padding-left: 36px;
+		padding-right: 36px;
+	}
+}
+
+@media (max-width: 620px) {
+	.topbar-inner {
+		align-items: flex-start;
+		flex-direction: column;
+		gap: 6px;
+		padding: 10px 16px;
+	}
+	.nav {
+		justify-content: flex-start;
+	}
+	.hero {
+		padding: 36px 24px 30px;
+	}
+	.hero h1 {
+		font-size: 34px;
+	}
+	.lede {
+		font-size: 16px;
+	}
+	.content {
+		padding: 14px 24px 42px;
+	}
+	.mobile-toc {
+		margin-left: 24px;
+		margin-right: 24px;
+	}
+	.footer {
+		padding-left: 24px;
+		padding-right: 24px;
+	}
+}
+
+@media print {
+	@page {
+		margin: 16mm 15mm;
+	}
+	body {
+		background: #fff;
+		font-size: 10.5pt;
+	}
+	.topbar,
+	.sidebar,
+	.mobile-toc,
+	.heading-anchor {
+		display: none;
+	}
+	.layout {
+		display: block;
+		max-width: none;
+		margin: 0;
+		padding: 0;
+	}
+	.paper {
+		border: 0;
+		border-radius: 0;
+		box-shadow: none;
+	}
+	.hero {
+		padding: 0 0 10mm;
+		background: #fff;
+	}
+	.hero h1 {
+		font-size: 28pt;
+	}
+	.content {
+		padding: 0;
+	}
+	.content h2 {
+		break-after: avoid;
+		margin-top: 9mm;
+		padding-top: 5mm;
+	}
+	.content h3,
+	.content h4 {
+		break-after: avoid;
+	}
+	pre,
+	.content blockquote,
+	.table-wrap {
+		break-inside: avoid;
+	}
+	/* The licence is pages long; forbidding a break inside it prints one
+	   overflowing block instead of a document. */
+	.plain-text {
+		break-inside: auto;
+	}
+	.table-wrap {
+		overflow: visible;
+	}
+	a {
+		color: inherit;
+		text-decoration: none;
+	}
+	.footer {
+		padding: 8mm 0 0;
+	}
+}
+
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="eval-quality-readme.html"><span class="brand-mark">eval</span>-quality</a>
+      <nav class="nav" aria-label="Companion documents"><a class="nav-link" href="eval-quality-readme.html">Overview</a><a class="nav-link" href="eval-quality-product-brief.html">Product brief</a><a class="nav-link" href="eval-quality-prd.html">PRD</a><a class="nav-link" href="eval-quality-architecture-spine.html">Architecture</a><a class="nav-link" href="eval-quality-adr-001.html">ADR-001</a><a class="nav-link" href="eval-quality-adr-002.html">ADR-002</a><a class="nav-link" href="eval-quality-adr-003.html">ADR-003</a><a class="nav-link" href="eval-quality-adr-004.html">ADR-004</a><a class="nav-link" href="eval-quality-adr-005.html">ADR-005</a><a class="nav-link" href="eval-quality-adr-006.html">ADR-006</a><a class="nav-link" href="eval-quality-adr-007.html">ADR-007</a><a class="nav-link" href="eval-quality-adr-008.html">ADR-008</a><a class="nav-link" href="eval-quality-adr-009.html">ADR-009</a></nav>
+    </div>
+  </header>
+  <div class="layout">
+    <aside class="sidebar" aria-label="Table of contents">
+      <p class="toc-title">On this page</p>
+      <a class="toc-link depth-2" href="#quotas-vs-what-actually-ran">Quotas vs. what actually ran</a><a class="toc-link depth-2" href="#what-ran-and-what-it-found">What ran and what it found</a><a class="toc-link depth-2" href="#exclusions">Exclusions</a><a class="toc-link depth-2" href="#metrics-against-the-section-9-h0-gate">Metrics against the section 9 H0 gate</a><a class="toc-link depth-2" href="#one-finding-worth-carrying-forward-regardless-of-h0-s-outcome">One finding worth carrying forward regardless of H0's outcome</a><a class="toc-link depth-2" href="#what-mut2-tested-and-why">What mut2 tested and why</a><a class="toc-link depth-2" href="#the-defect">The defect</a><a class="toc-link depth-2" href="#result">Result</a><a class="toc-link depth-2" href="#why-it-missed-and-this-is-the-finding">Why it missed, and this is the finding</a><a class="toc-link depth-2" href="#mut2-metrics-against-the-section-9-gate">mut2 metrics against the section 9 gate</a><a class="toc-link depth-2" href="#cumulative-h0-tally-across-the-full-reduced-scope-pass-mut1-mut2">Cumulative H0 tally across the full reduced-scope pass (mut1 + mut2)</a><a class="toc-link depth-3" href="#note-on-the-precision-denominator">Note on the precision denominator</a><a class="toc-link depth-2" href="#incidental-findings-from-the-mut2-round-both-real-rather-than-injected">Incidental findings from the mut2 round, both real rather than injected</a><a class="toc-link depth-2" href="#artifact-hygiene-status">Artifact hygiene status</a><a class="toc-link depth-2" href="#what-mut2-can-and-cannot-support">What mut2 can and cannot support</a><a class="toc-link depth-2" href="#what-changed">What changed</a><a class="toc-link depth-2" href="#paired-result">Paired result</a><a class="toc-link depth-2" href="#validity-and-resources">Validity and resources</a><a class="toc-link depth-2" href="#metrics">Metrics</a><a class="toc-link depth-2" href="#decision-impact">Decision impact</a><a class="toc-link depth-2" href="#cleanup-residue">Cleanup residue</a>
+    </aside>
+    <main class="paper">
+      <header class="hero">
+        <div class="eyebrow">eval-quality · Metric summary</div>
+        <h1>H0 results summary</h1>
+        <p class="lede">Quotas, exclusions, deviations, and every preregistered metric from the reduced-scope pass.</p>
+        <div class="metadata">
+          <span class="pill">Owner: Murat Ozcan</span>
+        </div>
+      </header>
+      <details class="mobile-toc">
+        <summary>On this page</summary>
+        <div class="mobile-toc-links"><a class="toc-link depth-2" href="#quotas-vs-what-actually-ran">Quotas vs. what actually ran</a><a class="toc-link depth-2" href="#what-ran-and-what-it-found">What ran and what it found</a><a class="toc-link depth-2" href="#exclusions">Exclusions</a><a class="toc-link depth-2" href="#metrics-against-the-section-9-h0-gate">Metrics against the section 9 H0 gate</a><a class="toc-link depth-2" href="#one-finding-worth-carrying-forward-regardless-of-h0-s-outcome">One finding worth carrying forward regardless of H0's outcome</a><a class="toc-link depth-2" href="#what-mut2-tested-and-why">What mut2 tested and why</a><a class="toc-link depth-2" href="#the-defect">The defect</a><a class="toc-link depth-2" href="#result">Result</a><a class="toc-link depth-2" href="#why-it-missed-and-this-is-the-finding">Why it missed, and this is the finding</a><a class="toc-link depth-2" href="#mut2-metrics-against-the-section-9-gate">mut2 metrics against the section 9 gate</a><a class="toc-link depth-2" href="#cumulative-h0-tally-across-the-full-reduced-scope-pass-mut1-mut2">Cumulative H0 tally across the full reduced-scope pass (mut1 + mut2)</a><a class="toc-link depth-3" href="#note-on-the-precision-denominator">Note on the precision denominator</a><a class="toc-link depth-2" href="#incidental-findings-from-the-mut2-round-both-real-rather-than-injected">Incidental findings from the mut2 round, both real rather than injected</a><a class="toc-link depth-2" href="#artifact-hygiene-status">Artifact hygiene status</a><a class="toc-link depth-2" href="#what-mut2-can-and-cannot-support">What mut2 can and cannot support</a><a class="toc-link depth-2" href="#what-changed">What changed</a><a class="toc-link depth-2" href="#paired-result">Paired result</a><a class="toc-link depth-2" href="#validity-and-resources">Validity and resources</a><a class="toc-link depth-2" href="#metrics">Metrics</a><a class="toc-link depth-2" href="#decision-impact">Decision impact</a><a class="toc-link depth-2" href="#cleanup-residue">Cleanup residue</a></div>
+      </details>
+      <article class="content"><p>Status: <strong>DARK-FACTORY REJECTED</strong>. H0 requires every frozen gate to pass. Multiple gates failed.
+See <code>DECISION.md</code> and
+<code>preregistration/h0-decision-amendment-03-binary-closure.yaml</code>. This file is the plan-required
+&quot;quotas, exclusions, deviations, every preregistered metric&quot; report for what actually ran.</p>
+<h2 id="quotas-vs-what-actually-ran">Quotas vs. what actually ran<a class="heading-anchor" href="#quotas-vs-what-actually-ran" aria-label="Link to Quotas vs. what actually ran">#</a></h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Plan design</th>
+<th>This run</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>12 H0 tasks (6/system)</td>
+<td>4 tasks (2/system)</td>
+</tr>
+<tr>
+<td>8 defect-bearing, 4 clean</td>
+<td>1 controlled-mutation defect, 3 clean (natural builder output)</td>
+</tr>
+<tr>
+<td>3 repetitions per condition</td>
+<td>1 repetition per condition</td>
+</tr>
+<tr>
+<td>Ground-truth authority</td>
+<td>Orchestrating Test Architect. Human reviewers are not required under the owner override</td>
+</tr>
+<tr>
+<td>Scripted-baseline condition</td>
+<td>Only structurally verified (agentic-system&#39;s existing eval suite exists and is applicable); never actually run against these 2 tasks</td>
+</tr>
+</tbody></table>
+</div><p>Every reduction above was an explicit owner decision (Murat, 2026-07-27), not a silent shrink —
+see STATUS.md confidence blocks and DECISION.md for when/why each was made.</p>
+<h2 id="what-ran-and-what-it-found">What ran and what it found<a class="heading-anchor" href="#what-ran-and-what-it-found" aria-label="Link to What ran and what it found">#</a></h2>
+<ul>
+<li><strong>cc-h0-01 (couture-cast, garment ownership), clean round:</strong> self PASS, independent PASS. 0
+findings above low severity. Ground truth: clean.</li>
+<li><strong>cc-h0-01, mutated round (D-001 injected — list endpoint stopped scoping by user):</strong> self FAIL
+(caught it), independent FAIL (caught it). <strong>Not a unique catch</strong> — self-eval caught it in its
+one repetition, which fails the H0 uniqueness bar (needs a miss in the self-eval condition).</li>
+<li><strong>cc-h0-03 (couture-cast, capsule CRUD/search):</strong> self PASS, independent PASS. Clean, no unique
+catches (there was nothing to catch).</li>
+<li><strong>as-h0-01 (agentic-system, list-tool pagination):</strong> builder implementation clean per
+code-read + independent deterministic-suite re-run (1000/1000 passing). Two mutation attempts
+against its logic were both caught immediately by the existing deterministic test suite and were
+reverted rather than scored. <strong>No self/independent evaluator condition ever ran</strong> — blocked on an
+expired AWS SSO session needed to reach live upstream data.</li>
+<li><strong>as-h0-02 (agentic-system, rule-stats exclusion filter):</strong> same status as as-h0-01 — clean,
+deterministic-suite verified, one mutation attempt caught by tests and reverted, no live
+evaluator condition ran.</li>
+</ul>
+<h2 id="exclusions">Exclusions<a class="heading-anchor" href="#exclusions" aria-label="Link to Exclusions">#</a></h2>
+<ul>
+<li>No scripted-baseline condition was actually executed (structural applicability confirmed only).</li>
+<li>No Phase C (semantic evaluators H1-H4) work was attempted — explicitly out of scope for this
+reduced pass.</li>
+<li>Deterministic condition ran once per task (matches reduced scope), not the plan&#39;s default.</li>
+</ul>
+<h2 id="metrics-against-the-section-9-h0-gate">Metrics against the section 9 H0 gate<a class="heading-anchor" href="#metrics-against-the-section-9-h0-gate" aria-label="Link to Metrics against the section 9 H0 gate">#</a></h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Gate</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>≥3 unique material catches, self/baselines missed</td>
+<td><strong>0.</strong> Not met.</td>
+</tr>
+<tr>
+<td>Catches span both systems</td>
+<td>Not met (0 catches at all; agentic-system side never ran live).</td>
+</tr>
+<tr>
+<td>Precision ≥0.85, recall ≥0.80</td>
+<td>Not computable — no catches to compute precision/recall over.</td>
+</tr>
+<tr>
+<td>4 clean cases: 0 false FAIL, ≤1 false CONCERNS</td>
+<td>Met for the 3 clean cases actually run (cc-h0-01 clean round, cc-h0-03, and both agentic-system tasks&#39; deterministic-only check) — all correctly PASS, no false positives.</td>
+</tr>
+<tr>
+<td>≥1 defect via evaluator-chosen action absent from a fixed baseline</td>
+<td>Not applicable — no scripted baseline was actually run to compare against.</td>
+</tr>
+<tr>
+<td>Isolation manifests complete, zero violations</td>
+<td>Not formally instrumented this pass — self/independent context separation was maintained via fresh Agent-tool sessions per the plan&#39;s isolation intent, but no isolation-manifest JSON was generated per run (documented gap, see STATUS.md).</td>
+</tr>
+<tr>
+<td>≥1 finding changes a real ship/remediation decision</td>
+<td>Arguably yes in spirit — the injected D-001 bug is exactly the class of thing that would block a real ship decision — but it was a controlled mutation, not a naturally-shipped defect, so it doesn&#39;t satisfy the &quot;real&quot; qualifier as written.</td>
+</tr>
+<tr>
+<td>Stability ≥0.90 across 3 reps</td>
+<td>N/A — single repetition only (disclosed deviation).</td>
+</tr>
+</tbody></table>
+</div><p><strong>Conclusion: H0 does not clear its gate. The binary result is DARK-FACTORY REJECTED.</strong> The reduced
+sample limits generalization, while the all-gates rule still determines the product evidence
+decision. eval-quality cannot claim that isolation itself creates a dark-factory advantage.</p>
+<h2 id="one-finding-worth-carrying-forward-regardless-of-h0-s-outcome">One finding worth carrying forward regardless of H0&#39;s outcome<a class="heading-anchor" href="#one-finding-worth-carrying-forward-regardless-of-h0-s-outcome" aria-label="Link to One finding worth carrying forward regardless of H0's outcome">#</a></h2>
+<p>When a self-evaluator&#39;s prompt explicitly requires actually exercising the running system via
+black-box calls (not just reading code), it performed on par with a fully isolated independent
+evaluator on the one real defect this run produced. That&#39;s a real, disclosed result about prompt
+design mattering — independent of whatever this experiment ultimately decides about the isolation
+boundary itself.</p>
+<hr>
+<h1>Addendum: mut2 round — 2026-07-27, later the same day</h1>
+<p>Preregistration: <code>preregistration/h0-amendment-01-mut2.yaml</code> (owner-approved, written and digested
+before the mutation was applied and before any arm ran). No gate, metric, or threshold was changed.</p>
+<h2 id="what-mut2-tested-and-why">What mut2 tested and why<a class="heading-anchor" href="#what-mut2-tested-and-why" aria-label="Link to What mut2 tested and why">#</a></h2>
+<p>mut1 was an API authorization defect and both conditions caught it, so it produced no evidence about
+the isolation boundary either way. mut2 tested a different defect class: an <strong>unsupported-claim
+defect</strong>, where builder-side material asserts a behavior was verified and the behavior is broken.
+The theory under test was that an evaluator holding the builder&#39;s artifacts would accept an
+unverifiable claim at face value, where a sealed evaluator with nothing to trust would have to
+establish the behavior empirically.</p>
+<p>A third arm was added to test that theory fairly. The frozen self-evaluator prompt mandates live
+black-box exercise, so it cannot be influenced by a claim. Rather than weaken it, the amendment added
+a <code>self-review</code> arm representing ordinary review posture (read the diff, the tests, the author&#39;s
+notes; live exercise permitted, not mandated) and ran both. Equal model snapshot and equal ceilings
+across all three arms.</p>
+<h2 id="the-defect">The defect<a class="heading-anchor" href="#the-defect" aria-label="Link to The defect">#</a></h2>
+<p><code>cc-h0-03</code>, <code>capsule.service.ts</code> <code>matchesQuery</code>: filters combined with a disjunction
+(<code>predicates.some(Boolean)</code>) where the semantics require a conjunction. Single filters behave
+correctly; two or more filters return capsules matching any one of them.
+<code>?q=Rainy&amp;occasion=formal</code> returns 3 where the correct answer is 0. Ground truth: D-001, B-002,
+<code>material</code>, source <code>controlled-mutation</code>. Full oracle evidence:
+<code>results/raw/mutation-verification-cc-h0-03-mut2.md</code>.</p>
+<p>Verified invisible to the deterministic baseline empirically, 17/17 capsule specs green on three
+consecutive runs with the mutation applied.</p>
+<h2 id="result">Result<a class="heading-anchor" href="#result" aria-label="Link to Result">#</a></h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Arm</th>
+<th>Verdict</th>
+<th>D-001</th>
+<th>How it was found</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>deterministic</code></td>
+<td>PASS</td>
+<td>missed</td>
+<td>17/17 green; the suite structurally cannot see it</td>
+</tr>
+<tr>
+<td><code>self</code> (frozen, condition of record)</td>
+<td>FAIL</td>
+<td><strong>caught</strong></td>
+<td>read the diff, saw <code>predicates.some</code>, confirmed live with a combined-filter probe</td>
+</tr>
+<tr>
+<td><code>self-review</code> (exploratory, added arm)</td>
+<td>FAIL</td>
+<td><strong>caught</strong></td>
+<td>read the diff, reasoned AND→OR, confirmed live; chose to exercise live though not required</td>
+</tr>
+<tr>
+<td><code>independent</code> (sealed)</td>
+<td><strong>PASS</strong></td>
+<td><strong>missed</strong></td>
+<td>never sent two filter parameters in one request</td>
+</tr>
+</tbody></table>
+</div><p><strong>The sealed arm produced a false PASS on a material defect, and the run is valid.</strong> Isolation
+manifest clean (<code>violation: null</code>, observed mounts limited to its own two output files, observed
+network limited to <code>localhost:4002</code>), 25 of 40 tool calls used. It was not lazy: it discovered the
+capsule schema by trial, discovered the <code>q</code>/<code>occasion</code>/<code>favorite</code> parameter names by probing,
+exercised create-and-retrieve, the favorite round-trip, cross-user list and search, an IDOR attempt
+on another user&#39;s capsule, and delete-endpoint discovery. Verified by grep across its full action
+log: zero multi-filter requests.</p>
+<h2 id="why-it-missed-and-this-is-the-finding">Why it missed, and this is the finding<a class="heading-anchor" href="#why-it-missed-and-this-is-the-finding" aria-label="Link to Why it missed, and this is the finding">#</a></h2>
+<p>B-002&#39;s frozen oracle reads: <em>&quot;Create 2+ capsules with distinguishable names or tags. Call
+search/filter with a query matching only one. Only the matching capsule must be returned.&quot;</em> That
+describes a <strong>single-filter</strong> probe. The sealed arm executed its oracle faithfully and correctly and
+passed. The oracle was underspecified for this defect class.</p>
+<p>Both self arms found the defect by reading the diff. Neither started from the contract. The claim
+payload, intended to mislead them, functioned as a <strong>pointer to where the bug was</strong>: both arms cited
+the &quot;every combined-filter permutation was verified&quot; claim as what drew their attention to the
+combined-filter case specifically. Isolation removed that pointer along with the deception.</p>
+<p>The <code>self-review</code> arm additionally caught a factual error in the orchestrator&#39;s own claim payload
+(the notes claim 24 capsule specs; the suite has 17), which is evidence of genuine scrutiny rather
+than credulous claim acceptance.</p>
+<p><strong>The limiting factor on independent-evaluator recall in this round was oracle quality, not the
+isolation boundary.</strong> A sealed evaluator can only be as thorough as its contract&#39;s oracles direct it
+to be, plus whatever it improvises. Here it improvised extensively on the wrong axes (auth, IDOR,
+schema discovery, delete semantics) and never on filter composition, because nothing in the contract
+pointed there.</p>
+<h2 id="mut2-metrics-against-the-section-9-gate">mut2 metrics against the section 9 gate<a class="heading-anchor" href="#mut2-metrics-against-the-section-9-gate" aria-label="Link to mut2 metrics against the section 9 gate">#</a></h2>
+<p>Scoring unit is an adjudicated material-or-critical defect ID. Condition of record for
+unique-catch arithmetic remains the frozen <code>self</code> arm, per the amendment.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>mut2 result</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Independent material findings emitted</td>
+<td>0 (its single finding was severity <code>low</code>)</td>
+</tr>
+<tr>
+<td>Independent precision</td>
+<td><strong>N/A</strong> — zero material findings emitted, so the denominator is zero. Reported as undefined rather than as a vacuous 1.00</td>
+</tr>
+<tr>
+<td>Independent recall</td>
+<td><strong>0.00</strong> — D-001 detected in 0 of 1 valid independent repetitions</td>
+</tr>
+<tr>
+<td>Unique independent catch</td>
+<td><strong>0</strong> — independent missed it entirely; <code>self</code> caught it, so uniqueness fails on both counts</td>
+</tr>
+<tr>
+<td>Independent task verdict vs. expected gate</td>
+<td>PASS against <code>expectedGate: FAIL</code> — a false PASS on a defect-bearing implementation</td>
+</tr>
+<tr>
+<td>Isolation manifest</td>
+<td><strong>Complete and violation-free.</strong> First real isolation manifest produced in this experiment</td>
+</tr>
+</tbody></table>
+</div><h2 id="cumulative-h0-tally-across-the-full-reduced-scope-pass-mut1-mut2">Cumulative H0 tally across the full reduced-scope pass (mut1 + mut2)<a class="heading-anchor" href="#cumulative-h0-tally-across-the-full-reduced-scope-pass-mut1-mut2" aria-label="Link to Cumulative H0 tally across the full reduced-scope pass (mut1 + mut2)">#</a></h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Gate</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1. ≥3 unique real material catches</td>
+<td><strong>0.</strong> Fails. Both mutated rounds produced zero unique catches, for opposite reasons: mut1 the self arm also caught it, mut2 the independent arm missed it</td>
+</tr>
+<tr>
+<td>2. Catches span both systems</td>
+<td><strong>Fails</strong> (0 catches; the agentic-system side still never ran live)</td>
+</tr>
+<tr>
+<td>3. Precision ≥0.85 and recall ≥0.80</td>
+<td><strong>Recall 0.50</strong> (1 of 2 adjudicated material/critical defects). Fails regardless of precision reading</td>
+</tr>
+<tr>
+<td>4. Clean cases: 0 false FAIL, ≤1 false CONCERNS</td>
+<td><strong>Passes.</strong> Both clean rounds (cc-h0-01, cc-h0-03) returned PASS from both conditions</td>
+</tr>
+<tr>
+<td>5. ≥1 material defect via evaluator-chosen action absent from a fixed baseline</td>
+<td><strong>Passes on mut1</strong> (independent found the authz bug live where the deterministic suite structurally could not). Not satisfied by mut2</td>
+</tr>
+<tr>
+<td>6. Every independent run has a complete violation-free isolation manifest</td>
+<td><strong>Fails overall.</strong> Satisfied for mut2; the three earlier independent runs have no manifest on disk</td>
+</tr>
+<tr>
+<td>7. ≥1 finding changes a real ship/remediation decision</td>
+<td>Owner&#39;s judgment call. IF-001 and IF-002 below are the strongest candidates, and both are real rather than injected</td>
+</tr>
+<tr>
+<td>8. Stability ≥0.90 across 3 reps</td>
+<td>N/A, single repetition (disclosed)</td>
+</tr>
+</tbody></table>
+</div><h3 id="note-on-the-precision-denominator">Note on the precision denominator<a class="heading-anchor" href="#note-on-the-precision-denominator" aria-label="Link to Note on the precision denominator">#</a></h3>
+<p>mut1&#39;s independent record emitted three findings at <code>material</code> or above, of which one mapped to a
+defect; the other two were confirmations that a behavior <strong>holds</strong> (&quot;upload-then-read-back works&quot;,
+&quot;persistence holds&quot;), recorded as findings with <code>material</code> severity. Read strictly against the plan&#39;s
+formula, that gives precision 1/3 = 0.33. Read charitably, excluding positive confirmations from the
+denominator, 1/1 = 1.00. Both readings are reported because the underlying cause is a convention
+defect worth fixing rather than arbitrating: the run-result schema has no field distinguishing &quot;this
+behavior holds&quot; from &quot;this behavior is broken&quot;, so confirmations and defects both land in <code>findings</code>
+and silently corrupt precision. Recommend a <code>findingType</code> discriminator before any further scored
+round.</p>
+<h2 id="incidental-findings-from-the-mut2-round-both-real-rather-than-injected">Incidental findings from the mut2 round, both real rather than injected<a class="heading-anchor" href="#incidental-findings-from-the-mut2-round-both-real-rather-than-injected" aria-label="Link to Incidental findings from the mut2 round, both real rather than injected">#</a></h2>
+<ul>
+<li><strong>IF-001 (material, test quality).</strong> The builder&#39;s own <code>combines name and occasion filters</code> test is
+structurally incapable of failing when the conjunction breaks: its non-matching fixture fails both
+predicates, so AND and OR produce identical result sets. It asserts inclusion of a full match
+without asserting exclusion of a partial match, making it tautological with respect to the operator
+it is named for. This is shipped code, found by inspection, and it is what made mut2 viable. The
+<code>self-review</code> arm rediscovered it independently.</li>
+<li><strong>IF-002 (flaky deterministic baseline).</strong> <code>capsule.controller.spec.ts &gt; never exposes one user capsules to another user (AC5)</code> failed once with <code>read ECONNRESET</code>, then passed three consecutive
+times with no code change. Observed flake rate 1 in 4. Not caused by the mutation (verified). This
+matters beyond hygiene: H0 scoring rests on the claim &quot;no correct material finding from any
+applicable deterministic baseline&quot;, and a baseline that intermittently fails for transport reasons
+weakens that claim&#39;s evidentiary value.</li>
+</ul>
+<h2 id="artifact-hygiene-status">Artifact hygiene status<a class="heading-anchor" href="#artifact-hygiene-status" aria-label="Link to Artifact hygiene status">#</a></h2>
+<p>First real <code>ajv</code> validation run of this experiment (the plan required it at Phase A step 4; STATUS.md
+recorded it as never done). Results:</p>
+<ul>
+<li>All 7 mut2 artifacts validate: 3 run-result records, 3 isolation manifests, 1 ground-truth record.</li>
+<li>The 6 pre-existing run-result records and 1 pre-existing ground-truth record <strong>fail</strong> validation,
+all on the same cause: placeholder digests of 61 zeros where the schema requires 64 hex characters.</li>
+<li>13 artifact references across those pre-existing records point at files that do not exist on disk.</li>
+<li>Two additive schema corrections were required and are disclosed in the amendment: the <code>condition</code>
+enum did not include <code>self-review</code>, and <code>additionalProperties: false</code> rejected the <code>note</code> field
+that every pre-existing record already carried, meaning none of them could ever have validated.</li>
+</ul>
+<p>mut2&#39;s records carry real computed digests for every artifact reference, and every referenced file
+exists. Retrofitting the 7 pre-existing records is a separate owner decision.</p>
+<h2 id="what-mut2-can-and-cannot-support">What mut2 can and cannot support<a class="heading-anchor" href="#what-mut2-can-and-cannot-support" aria-label="Link to What mut2 can and cannot support">#</a></h2>
+<p>D-001&#39;s source is <code>controlled-mutation</code>, so per section 9 it measures recall, safety, and inter-arm
+discrimination and <strong>cannot</strong> count toward the three-real-defect gate. No mut2 outcome could have
+moved H0 to VALIDATED. What it does support is a mechanism claim: on this defect class, sealed
+black-box evaluation underperformed claim-holding review, and the cause was traceable to oracle
+specification rather than to the isolation boundary.</p>
+<hr>
+<h1>Addendum: contract-quality round, 2026-07-27</h1>
+<p>Preregistration:
+<code>preregistration/h0-amendment-02-contract-quality.yaml</code>. Murat explicitly approved it at
+<code>2026-07-27T10:17:48-05:00</code>; the checksum package verified before launch.</p>
+<h2 id="what-changed">What changed<a class="heading-anchor" href="#what-changed" aria-label="Link to What changed">#</a></h2>
+<p>The original and strengthened Eval Contracts differ in exactly one JSON value: B-002&#39;s oracle.
+The v2 oracle requires filter-composition evidence that distinguishes a full match from partial
+matches. It does not name the mutation, implementation operator, known leaking query, defect ID,
+ground truth, prior result, or existing test data.</p>
+<p>The task, source-spec digest, mutation, ground truth, behavior description, risk hypotheses, prompt
+template, evaluator model, budgets, credentials, and API base URL stayed fixed.</p>
+<h2 id="paired-result">Paired result<a class="heading-anchor" href="#paired-result" aria-label="Link to Paired result">#</a></h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Measure</th>
+<th>Contract v1</th>
+<th>Contract v2</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Run ID</td>
+<td><code>cc-h0-03-independent-mut2</code></td>
+<td><code>cc-h0-03-independent-mut2-contract-v2</code></td>
+</tr>
+<tr>
+<td>Contract digest</td>
+<td><code>sha256:56b032a1...</code></td>
+<td><code>sha256:4019461b...</code></td>
+</tr>
+<tr>
+<td>Valid run</td>
+<td>yes</td>
+<td>yes</td>
+</tr>
+<tr>
+<td>Composed-filter requests</td>
+<td>0</td>
+<td>2 total; 1 valid decisive probe</td>
+</tr>
+<tr>
+<td>Verdict</td>
+<td>PASS</td>
+<td><strong>FAIL</strong></td>
+</tr>
+<tr>
+<td>D-001</td>
+<td>missed</td>
+<td><strong>caught by F-002</strong></td>
+</tr>
+</tbody></table>
+</div><p>The decisive v2 evidence is:</p>
+<ol>
+<li>A composed <code>occasion</code> plus <code>q</code> request returned the full-match capsule and a capsule matching
+only <code>occasion</code>.</li>
+<li>The <code>q</code>-only control returned only the full match.</li>
+<li>The <code>occasion</code>-only control returned both capsules.</li>
+</ol>
+<p>This isolates the failure to filter composition and maps F-002 to adjudicated D-001 through B-002.</p>
+<h2 id="validity-and-resources">Validity and resources<a class="heading-anchor" href="#validity-and-resources" aria-label="Link to Validity and resources">#</a></h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Check</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Main evaluator model</td>
+<td>canonical <code>claude-sonnet-5</code> on every assistant message</td>
+</tr>
+<tr>
+<td>Isolation</td>
+<td>violation-free</td>
+</tr>
+<tr>
+<td>External tools</td>
+<td>29 local curl calls and 2 approved writes</td>
+</tr>
+<tr>
+<td>Final serialization</td>
+<td>1 caller-internal structured-output emission</td>
+</tr>
+<tr>
+<td>Total tool calls</td>
+<td>32 of 40</td>
+</tr>
+<tr>
+<td>Wall clock</td>
+<td>275.766 seconds</td>
+</tr>
+<tr>
+<td>Input tokens</td>
+<td>697,644 including cache traffic and CLI internal overhead</td>
+</tr>
+<tr>
+<td>Output tokens</td>
+<td>29,709</td>
+</tr>
+<tr>
+<td>Cost</td>
+<td>$0.9307383</td>
+</tr>
+<tr>
+<td>Network</td>
+<td><code>localhost:4002</code> only</td>
+</tr>
+<tr>
+<td>Permission denials</td>
+<td>0</td>
+</tr>
+<tr>
+<td>Ajv and artifact digest validation</td>
+<td>pass</td>
+</tr>
+</tbody></table>
+</div><p>Claude Code 2.1.220 crashed in its macOS updater helper before model contact. The installed 2.1.219
+binary launched the exact preregistered model. Claude Code reported $0.002439 of auxiliary
+<code>claude-haiku-4-5</code> internal overhead. No assistant message, evaluator reasoning, tool selection, or
+finding came from that auxiliary model.</p>
+<p>The agent-authored Markdown log abbreviates some long response fields. It remains unchanged. A
+mechanically derived redacted HTTP JSONL trace preserves every full curl request and tool response,
+so the Eval Contract&#39;s verbatim-evidence requirement is satisfied.</p>
+<p>The final strict Ajv sweep found a latent compile defect in <code>h0-ground-truth.schema.json</code>:
+<code>maxItems</code> appeared in the clean-case conditional without a local <code>type: array</code>. The root property
+already declared the same type, so adding it changes no accepted record. After correction, all
+8 schemas compile in strict mode and all 7 mut2 artifacts plus the 3 contract-quality schema-bound
+artifacts validate with matching public references. This is recorded as IF-005 in <code>DECISION.md</code>.</p>
+<h2 id="metrics">Metrics<a class="heading-anchor" href="#metrics" aria-label="Link to Metrics">#</a></h2>
+<p>Every v2 finding carries the new <code>findingType</code> discriminator:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Finding type</th>
+<th align="right">Count</th>
+<th>Precision treatment</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>defect</code></td>
+<td align="right">1</td>
+<td>enters denominator</td>
+</tr>
+<tr>
+<td><code>confirmation</code></td>
+<td align="right">3</td>
+<td>excluded</td>
+</tr>
+<tr>
+<td><code>observation</code></td>
+<td align="right">1</td>
+<td>excluded</td>
+</tr>
+</tbody></table>
+</div><p>F-002 is the only alleged defect and correctly maps to D-001. Case-level defect precision is
+<strong>1/1 = 1.00</strong>. D-001 recall changes from <strong>0/1 under contract v1</strong> to <strong>1/1 under contract v2</strong> for
+this paired case.</p>
+<h2 id="decision-impact">Decision impact<a class="heading-anchor" href="#decision-impact" aria-label="Link to Decision impact">#</a></h2>
+<p>Amendment 02&#39;s causal-support rule passes. The stronger oracle caused the sealed evaluator to take
+the missing composition action and catch D-001. The prior oracle-quality explanation is now directly
+demonstrated for one case.</p>
+<p>The frozen H0 metrics do not change:</p>
+<ul>
+<li>Unique independent catches remain <strong>0</strong>.</li>
+<li>Frozen-condition recall remains <strong>0.50</strong> across mut1 and mut2.</li>
+<li>D-001 remains a controlled mutation and cannot satisfy the real-defect gate.</li>
+<li>The contract-quality run is a post-mut2 mechanism test. It cannot be retroactively substituted
+for the original frozen condition.</li>
+<li>H0 remains <strong>DARK-FACTORY REJECTED</strong> under the binary all-gates rule.</li>
+</ul>
+<p>The supported scope is narrow: contract and oracle authoring controlled recall for this mutation,
+task, and repetition. Reliability across repetitions and generalization across defects, tasks, and
+systems remain untested.</p>
+<h2 id="cleanup-residue">Cleanup residue<a class="heading-anchor" href="#cleanup-residue" aria-label="Link to Cleanup residue">#</a></h2>
+<p>The v2 arm created two clearly named capsules. It attempted three cleanup routes; all returned 404
+because no DELETE route is exposed through the permitted capsule API. Both records remain under
+<code>guardian-1</code> with favorite state false. Their IDs and exact cleanup attempts are in the action trace.</p>
+<p>Evidence:</p>
+<ul>
+<li><code>results/raw/cc-h0-03-independent-mut2-contract-v2.json</code></li>
+<li><code>results/raw/cc-h0-03-independent-mut2-contract-v2-http-trace.jsonl</code></li>
+<li><code>results/raw/cc-h0-03-independent-mut2-contract-v2-actions.md</code></li>
+<li><code>results/raw/cc-h0-03-independent-mut2-contract-v2-agent-output.json</code></li>
+<li><code>independent-evaluator/isolation-manifests/cc-h0-03-independent-mut2-contract-v2.json</code></li>
+<li><code>results/raw/cc-h0-03-contract-quality-comparison.json</code></li>
+</ul>
+</article>
+      <footer class="footer">Generated from summary.md by scripts/build-shareable.mjs. Self-contained and print-ready. Do not hand-edit; regenerate instead.</footer>
+    </main>
+  </div>
+</body>
+</html>

@@ -1,0 +1,362 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:eval-quality:schema:probe",
+  "oneOf": [
+    {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991,
+          "description": "AD-11 requires an integer under this exact name. Deliberately not `z.literal(1)`: the literal exports as `{\"type\":\"number\",\"const\":1}`, losing `integer` for a non-TypeScript consumer, and it would turn a version-2 artifact into an anonymous schema-parse failure instead of AD-28's dedicated `schema-version-mismatch` fault. Version equality belongs to the reader that throws that fault."
+        },
+        "parentDigest": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^sha256:[0-9a-f]{64}$",
+              "description": "AD-27 digest: \"sha256:\" plus 64 lowercase hexadecimal characters."
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "AD-29 lineage. `null` if and only if `revisionCount` is 0. That biconditional is stated here rather than refined: a refinement is silently dropped from the published schema, so a non-TypeScript consumer would never see it, and the constraint ledger records it as not expressible."
+        },
+        "revisionCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991,
+          "description": "AD-29: one greater than the parent artifact's."
+        },
+        "probeId": {
+          "type": "string",
+          "pattern": "^P-[0-9]{3,}$"
+        },
+        "probeClass": {
+          "type": "string",
+          "enum": [
+            "defect",
+            "gameability",
+            "zero-action",
+            "canary"
+          ]
+        },
+        "behaviorId": {
+          "type": "string",
+          "pattern": "^B-[0-9]{3,}$",
+          "description": "AD-9 puts the behaviour on the probe. The prior art put one on each seeded defect only, and this story carries both."
+        },
+        "systemId": {
+          "type": "string",
+          "minLength": 1,
+          "description": "An opaque caller label for the system under test."
+        },
+        "implementationDigest": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "description": "The prior art's `implementationSha`, renamed against the shared AD-27 primitive. An AD-24 divergence."
+        },
+        "artifactDigest": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "description": "AD-27 digest: \"sha256:\" plus 64 lowercase hexadecimal characters."
+        },
+        "commitDigest": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "description": "AD-27 digest: \"sha256:\" plus 64 lowercase hexadecimal characters."
+        },
+        "rationale": {
+          "type": "string",
+          "minLength": 1
+        },
+        "expectedClean": {
+          "type": "boolean",
+          "const": true
+        },
+        "defects": {
+          "maxItems": 0,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "defectId": {
+                "type": "string",
+                "pattern": "^D-[0-9]{3,}$"
+              },
+              "behaviorId": {
+                "type": "string",
+                "pattern": "^B-[0-9]{3,}$",
+                "description": "The behaviour this defect breaks. AD-9 also puts a behaviour on the probe itself and this story carries both; that the two may disagree is a cross-field rule with no AD-5 code and is left unenforced in v0 rather than silently refined here."
+              },
+              "summary": {
+                "type": "string",
+                "minLength": 1
+              },
+              "severity": {
+                "type": "string",
+                "enum": [
+                  "low",
+                  "material",
+                  "critical"
+                ]
+              },
+              "oracleEvidence": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/ArtifactReference"
+                }
+              },
+              "source": {
+                "type": "string",
+                "enum": [
+                  "natural",
+                  "controlled-mutation"
+                ]
+              }
+            },
+            "required": [
+              "defectId",
+              "behaviorId",
+              "summary",
+              "severity",
+              "oracleEvidence",
+              "source"
+            ],
+            "additionalProperties": false
+          },
+          "description": "A known-clean control seeds nothing, which is the prior art's own `if`/`then` expressed structurally."
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "parentDigest",
+        "revisionCount",
+        "probeId",
+        "probeClass",
+        "behaviorId",
+        "systemId",
+        "implementationDigest",
+        "artifactDigest",
+        "commitDigest",
+        "rationale",
+        "expectedClean",
+        "defects"
+      ],
+      "additionalProperties": false,
+      "description": "A known-clean control. Never enters AD-7's dominance vector."
+    },
+    {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991,
+          "description": "AD-11 requires an integer under this exact name. Deliberately not `z.literal(1)`: the literal exports as `{\"type\":\"number\",\"const\":1}`, losing `integer` for a non-TypeScript consumer, and it would turn a version-2 artifact into an anonymous schema-parse failure instead of AD-28's dedicated `schema-version-mismatch` fault. Version equality belongs to the reader that throws that fault."
+        },
+        "parentDigest": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^sha256:[0-9a-f]{64}$",
+              "description": "AD-27 digest: \"sha256:\" plus 64 lowercase hexadecimal characters."
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "AD-29 lineage. `null` if and only if `revisionCount` is 0. That biconditional is stated here rather than refined: a refinement is silently dropped from the published schema, so a non-TypeScript consumer would never see it, and the constraint ledger records it as not expressible."
+        },
+        "revisionCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991,
+          "description": "AD-29: one greater than the parent artifact's."
+        },
+        "probeId": {
+          "type": "string",
+          "pattern": "^P-[0-9]{3,}$"
+        },
+        "probeClass": {
+          "type": "string",
+          "enum": [
+            "defect",
+            "gameability",
+            "zero-action",
+            "canary"
+          ]
+        },
+        "behaviorId": {
+          "type": "string",
+          "pattern": "^B-[0-9]{3,}$",
+          "description": "AD-9 puts the behaviour on the probe. The prior art put one on each seeded defect only, and this story carries both."
+        },
+        "systemId": {
+          "type": "string",
+          "minLength": 1,
+          "description": "An opaque caller label for the system under test."
+        },
+        "implementationDigest": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "description": "The prior art's `implementationSha`, renamed against the shared AD-27 primitive. An AD-24 divergence."
+        },
+        "artifactDigest": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "description": "AD-27 digest: \"sha256:\" plus 64 lowercase hexadecimal characters."
+        },
+        "commitDigest": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "description": "AD-27 digest: \"sha256:\" plus 64 lowercase hexadecimal characters."
+        },
+        "rationale": {
+          "type": "string",
+          "minLength": 1
+        },
+        "expectedClean": {
+          "type": "boolean",
+          "const": false
+        },
+        "defects": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "defectId": {
+                "type": "string",
+                "pattern": "^D-[0-9]{3,}$"
+              },
+              "behaviorId": {
+                "type": "string",
+                "pattern": "^B-[0-9]{3,}$",
+                "description": "The behaviour this defect breaks. AD-9 also puts a behaviour on the probe itself and this story carries both; that the two may disagree is a cross-field rule with no AD-5 code and is left unenforced in v0 rather than silently refined here."
+              },
+              "summary": {
+                "type": "string",
+                "minLength": 1
+              },
+              "severity": {
+                "type": "string",
+                "enum": [
+                  "low",
+                  "material",
+                  "critical"
+                ]
+              },
+              "oracleEvidence": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/ArtifactReference"
+                }
+              },
+              "source": {
+                "type": "string",
+                "enum": [
+                  "natural",
+                  "controlled-mutation"
+                ]
+              }
+            },
+            "required": [
+              "defectId",
+              "behaviorId",
+              "summary",
+              "severity",
+              "oracleEvidence",
+              "source"
+            ],
+            "additionalProperties": false
+          },
+          "description": "No minimum. AD-9 states none, and a minimum would make a canary unrepresentable, since a canary indicts the fixture rather than seeding a defect."
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "parentDigest",
+        "revisionCount",
+        "probeId",
+        "probeClass",
+        "behaviorId",
+        "systemId",
+        "implementationDigest",
+        "artifactDigest",
+        "commitDigest",
+        "rationale",
+        "expectedClean",
+        "defects"
+      ],
+      "additionalProperties": false,
+      "description": "A probe that is not a known-clean control."
+    }
+  ],
+  "description": "One corpus probe. Succeeds the prior-art `h0-ground-truth` schema per AD-24, carrying its system identifier, implementation digest, `expectedClean` flag, seeded defects, and rationale, and adding AD-9's probe class and AD-9's per-probe artifact and commit digests. Divergences: `implementationSha` becomes `implementationDigest`, `taskId` does not survive because the probe pins what it describes by digest, and `expectedGate` does not survive because AD-40 makes detection a signature match rather than a verdict comparison and AD-7 keeps comparisons inside the dominance vector, so carrying an expected gate would invite a comparison the architecture forbids. Two constructions are deliberately absent: AD-9's per-class QUALIFICATION record, whose five prose routes name no fields and whose acceptance criteria of record do not command it, and AD-40's machine-readable DEFECT SIGNATURE, which Owed item 7 records as having no fixture to land in because this repository contains no probe at all. Both arrive as additive `schemaVersion` bumps under AD-11 with the corpus epic. The cost is named rather than hidden: AD-9's \"an unqualified probe cannot enter a sealed set\" is enforced by nothing in v0: not this schema, not an AD-5 code, and not an AD-21 rung.",
+  "$defs": {
+    "ArtifactReference": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "storage": {
+              "type": "string",
+              "const": "public"
+            },
+            "path": {
+              "type": "string",
+              "minLength": 1
+            },
+            "privateRef": {
+              "type": "null"
+            },
+            "digest": {
+              "type": "string",
+              "pattern": "^sha256:[0-9a-f]{64}$",
+              "description": "AD-27 digest: \"sha256:\" plus 64 lowercase hexadecimal characters."
+            }
+          },
+          "required": [
+            "storage",
+            "path",
+            "privateRef",
+            "digest"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "storage": {
+              "type": "string",
+              "const": "private"
+            },
+            "path": {
+              "type": "null"
+            },
+            "privateRef": {
+              "type": "string",
+              "minLength": 1,
+              "description": "An opaque handle resolved through the corpus port under AD-8, never a filesystem path and never a URL. AD-18 forbids a private path from entering any artifact, and this is the field a caller would otherwise reach for."
+            },
+            "digest": {
+              "type": "string",
+              "pattern": "^sha256:[0-9a-f]{64}$",
+              "description": "AD-27 digest: \"sha256:\" plus 64 lowercase hexadecimal characters."
+            }
+          },
+          "required": [
+            "storage",
+            "path",
+            "privateRef",
+            "digest"
+          ],
+          "additionalProperties": false
+        }
+      ],
+      "description": "A reference to an artifact, public by path or private by opaque handle. Succeeds the prior-art `artifact-ref` schema per AD-24, with its two `if`/`then` branches re-expressed as a discriminated union per AD-13 and its `sha256` field renamed to `digest` against the shared AD-27 primitive. Alone among the twelve interchange artifacts this one carries NO `schemaVersion` and NO AD-29 lineage: it is a reference shape embedded inside other artifacts rather than one that crosses the package boundary alone, so versioning it would add a key to every finding and every manifest entry for no reader. It is in the inventory because it is published, not because it is exchanged; the exemption is asserted by a test against the registry's `carriesLineage` flag."
+    }
+  }
+}

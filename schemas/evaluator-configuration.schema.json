@@ -1,0 +1,199 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:eval-quality:schema:evaluator-configuration",
+  "type": "object",
+  "properties": {
+    "schemaVersion": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9007199254740991,
+      "description": "AD-11 requires an integer under this exact name. Deliberately not `z.literal(1)`: the literal exports as `{\"type\":\"number\",\"const\":1}`, losing `integer` for a non-TypeScript consumer, and it would turn a version-2 artifact into an anonymous schema-parse failure instead of AD-28's dedicated `schema-version-mismatch` fault. Version equality belongs to the reader that throws that fault."
+    },
+    "parentDigest": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "description": "AD-27 digest: \"sha256:\" plus 64 lowercase hexadecimal characters."
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "AD-29 lineage. `null` if and only if `revisionCount` is 0. That biconditional is stated here rather than refined: a refinement is silently dropped from the published schema, so a non-TypeScript consumer would never see it, and the constraint ledger records it as not expressible."
+    },
+    "revisionCount": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991,
+      "description": "AD-29: one greater than the parent artifact's."
+    },
+    "sealedBriefDigest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "description": "AD-27 digest: \"sha256:\" plus 64 lowercase hexadecimal characters."
+    },
+    "evaluatorIdentity": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Opaque, and named so by AD-24. AD-18 excludes credentials, tokens, real names, email addresses, account identifiers, and transaction content from every artifact; no schema over an opaque string enforces that, so the prohibition is stated and recorded in the constraint ledger as not expressible."
+    },
+    "modelSnapshot": {
+      "type": "string",
+      "minLength": 1
+    },
+    "systemPromptDigest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "description": "AD-27 digest: \"sha256:\" plus 64 lowercase hexadecimal characters."
+    },
+    "decodingParameters": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/JsonValue"
+      },
+      "description": "AD-24's \"decoding and sampling parameters\", carried in the value container under the caller's own keys rather than as a minted enum of temperature and top-p. AD-2 forbids provider or model SDK knowledge in this package, so a closed parameter vocabulary would be knowledge the package is not allowed to have. `JsonObjectValue` sits inside AD-36's value domain, which matters because this artifact's digest enters the scoring version. One field, not two: \"decoding and sampling parameters\" is one concern under two words, and splitting it would draw a boundary no AD draws. Caller-keyed, but inside the value container rather than a control map, so it does not join the Conventions' caller-keyed list."
+    },
+    "toolInventory": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "AD-18 binds this field and `permissionInventory` hardest: a tool and permission inventory is exactly where a caller would paste an API key. The prohibition is not expressible over opaque strings and is recorded in the ledger."
+    },
+    "permissionInventory": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "budgets": {
+      "type": "object",
+      "properties": {
+        "maxToolCalls": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "maxWallClockMinutes": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "maxCostUsd": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)(\\.[0-9]+)?$",
+          "description": "Money, so AD-36 carries it as a string in a declared format rather than as a JSON number. Constrained to the unsigned form: a negative ceiling is not a ceiling."
+        }
+      },
+      "required": [
+        "maxToolCalls",
+        "maxWallClockMinutes",
+        "maxCostUsd"
+      ],
+      "additionalProperties": false
+    },
+    "seed": {
+      "anyOf": [
+        {
+          "type": "integer",
+          "minimum": -9007199254740991,
+          "maximum": 9007199254740991
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "AD-24's \"seed where supported\". \"Where supported\" is spelled `null`; an omitted key is not the convention."
+    },
+    "judgeConfiguration": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "modelSnapshot": {
+              "type": "string",
+              "minLength": 1
+            },
+            "systemPromptDigest": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^sha256:[0-9a-f]{64}$",
+                  "description": "AD-27 digest: \"sha256:\" plus 64 lowercase hexadecimal characters."
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "`null` for a judge configured with no system prompt of its own. This is the only nullable member: the absent-judge state belongs to the field above, not to this shape."
+            }
+          },
+          "required": [
+            "modelSnapshot",
+            "systemPromptDigest"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "`null` where no judge is configured, which is the ordinary case for a contract declaring no rubric."
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "parentDigest",
+    "revisionCount",
+    "sealedBriefDigest",
+    "evaluatorIdentity",
+    "modelSnapshot",
+    "systemPromptDigest",
+    "decodingParameters",
+    "toolInventory",
+    "permissionInventory",
+    "budgets",
+    "seed",
+    "judgeConfiguration"
+  ],
+  "additionalProperties": false,
+  "description": "The evaluator's configuration, a first-class published artifact with no prior art. AD-24 fixes its field list: the sealed-brief digest, opaque evaluator identity, model snapshot, system-prompt digest, decoding and sampling parameters, tool and permission inventory, budgets, seed where supported, and judge configuration, \"with the trial index deliberately excluded so trials pool into one scoring version\". That exclusion is a requirement rather than an omission: because this object is strict, a `trialIndex` key fails with `unrecognized_keys` at the root, and a test asserts exactly that. The trial index lives on the Sealed Run Record instead. Ingest computes this artifact's digest and invalidates the run when it is absent or incomplete.",
+  "$defs": {
+    "JsonValue": {
+      "description": "AD-36 value domain. Every number is a finite IEEE 754 double-precision value, and every integer lies in the safe-integer range; a larger integer, and any value needing exact decimal semantics such as money, is carried as a string in its own declared format. JSON Schema cannot express finiteness, so this restriction is stated rather than encoded: producers are told the rule here instead of discovering it through a digest mismatch, and the canonical scanner rejects a violating value before any parse.",
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "number"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        },
+        {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/JsonValue"
+          }
+        },
+        {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          }
+        }
+      ]
+    }
+  }
+}

@@ -20,6 +20,12 @@ export type ArtifactRejectCase = {
 	readonly mutate: (artifact: any) => void
 	readonly issuePath: readonly (string | number)[]
 	readonly issueCode: string
+	/** the validator keyword the published schema must report; see `RejectCase.keyword`. */
+	readonly keyword: string
+	/** the RFC 6901 instance pointer in ajv 8's spelling; see `RejectCase.instancePath`. */
+	readonly instancePath: string
+	/** the discriminating error params for parent-reporting keywords; see `RejectCase.errorParams`. */
+	readonly errorParams?: Readonly<Record<string, string>>
 	/** set where one mutation legitimately produces more than one issue. */
 	readonly issueCount?: number
 }
@@ -36,6 +42,8 @@ export const ARTIFACT_REJECT_CASES: readonly ArtifactRejectCase[] = [
 		},
 		issuePath: ['digest'],
 		issueCode: 'invalid_format',
+		keyword: 'pattern',
+		instancePath: '/digest',
 	},
 	{
 		id: 'reference-public-path-empty',
@@ -46,6 +54,8 @@ export const ARTIFACT_REJECT_CASES: readonly ArtifactRejectCase[] = [
 		},
 		issuePath: ['path'],
 		issueCode: 'too_small',
+		keyword: 'minLength',
+		instancePath: '/path',
 	},
 	{
 		id: 'reference-public-carries-private-ref',
@@ -57,6 +67,8 @@ export const ARTIFACT_REJECT_CASES: readonly ArtifactRejectCase[] = [
 		},
 		issuePath: ['privateRef'],
 		issueCode: 'invalid_type',
+		keyword: 'type',
+		instancePath: '/privateRef',
 	},
 	{
 		id: 'reference-storage-outside-the-two',
@@ -67,6 +79,8 @@ export const ARTIFACT_REJECT_CASES: readonly ArtifactRejectCase[] = [
 		},
 		issuePath: ['storage'],
 		issueCode: 'invalid_union',
+		keyword: 'const',
+		instancePath: '/storage',
 	},
 
 	// ---- private-artifact-manifest -----------------------------------------
@@ -79,6 +93,8 @@ export const ARTIFACT_REJECT_CASES: readonly ArtifactRejectCase[] = [
 		},
 		issuePath: ['entries', 0, 'privateRef'],
 		issueCode: 'too_small',
+		keyword: 'minLength',
+		instancePath: '/entries/0/privateRef',
 	},
 	{
 		id: 'manifest-kind-outside-the-eight',
@@ -89,6 +105,8 @@ export const ARTIFACT_REJECT_CASES: readonly ArtifactRejectCase[] = [
 		},
 		issuePath: ['entries', 0, 'artifactKind'],
 		issueCode: 'invalid_value',
+		keyword: 'enum',
+		instancePath: '/entries/0/artifactKind',
 	},
 	{
 		id: 'manifest-sanitization-policy-empty',
@@ -100,6 +118,8 @@ export const ARTIFACT_REJECT_CASES: readonly ArtifactRejectCase[] = [
 		},
 		issuePath: ['entries', 0, 'sanitizationPolicy'],
 		issueCode: 'too_small',
+		keyword: 'minLength',
+		instancePath: '/entries/0/sanitizationPolicy',
 	},
 	{
 		id: 'manifest-schema-version-below-one',
@@ -110,6 +130,8 @@ export const ARTIFACT_REJECT_CASES: readonly ArtifactRejectCase[] = [
 		},
 		issuePath: ['schemaVersion'],
 		issueCode: 'too_small',
+		keyword: 'minimum',
+		instancePath: '/schemaVersion',
 	},
 
 	// ---- sealed-run-record --------------------------------------------------
@@ -122,6 +144,8 @@ export const ARTIFACT_REJECT_CASES: readonly ArtifactRejectCase[] = [
 		},
 		issuePath: ['runId'],
 		issueCode: 'too_small',
+		keyword: 'minLength',
+		instancePath: '/runId',
 	},
 	{
 		id: 'record-trial-index-zero',
@@ -132,6 +156,8 @@ export const ARTIFACT_REJECT_CASES: readonly ArtifactRejectCase[] = [
 		},
 		issuePath: ['trialIndex'],
 		issueCode: 'too_small',
+		keyword: 'minimum',
+		instancePath: '/trialIndex',
 	},
 	{
 		id: 'record-recommendation-not-applicable',
@@ -143,6 +169,8 @@ export const ARTIFACT_REJECT_CASES: readonly ArtifactRejectCase[] = [
 		},
 		issuePath: ['evaluatorRecommendation'],
 		issueCode: 'invalid_value',
+		keyword: 'enum',
+		instancePath: '/evaluatorRecommendation',
 	},
 	{
 		id: 'record-finding-id-underpadded',
@@ -153,6 +181,8 @@ export const ARTIFACT_REJECT_CASES: readonly ArtifactRejectCase[] = [
 		},
 		issuePath: ['findings', 0, 'findingId'],
 		issueCode: 'invalid_format',
+		keyword: 'pattern',
+		instancePath: '/findings/0/findingId',
 	},
 	{
 		id: 'record-confidence-above-one',
@@ -163,6 +193,8 @@ export const ARTIFACT_REJECT_CASES: readonly ArtifactRejectCase[] = [
 		},
 		issuePath: ['findings', 0, 'confidence'],
 		issueCode: 'too_big',
+		keyword: 'maximum',
+		instancePath: '/findings/0/confidence',
 	},
 	{
 		id: 'record-defect-quoted-evidence-empty',
@@ -173,6 +205,8 @@ export const ARTIFACT_REJECT_CASES: readonly ArtifactRejectCase[] = [
 		},
 		issuePath: ['findings', 0, 'quotedEvidence'],
 		issueCode: 'too_small',
+		keyword: 'minItems',
+		instancePath: '/findings/0/quotedEvidence',
 	},
 	{
 		id: 'record-quoted-channel-outside-the-seven',
@@ -183,6 +217,8 @@ export const ARTIFACT_REJECT_CASES: readonly ArtifactRejectCase[] = [
 		},
 		issuePath: ['findings', 0, 'quotedEvidence', 0, 'channel'],
 		issueCode: 'invalid_value',
+		keyword: 'enum',
+		instancePath: '/findings/0/quotedEvidence/0/channel',
 	},
 	{
 		id: 'record-disposition-outside-the-three',
@@ -193,6 +229,8 @@ export const ARTIFACT_REJECT_CASES: readonly ArtifactRejectCase[] = [
 		},
 		issuePath: ['oracleDispositions', 0, 'disposition'],
 		issueCode: 'invalid_value',
+		keyword: 'enum',
+		instancePath: '/oracleDispositions/0/disposition',
 	},
 	{
 		id: 'record-provenance-outside-the-two',
@@ -203,6 +241,8 @@ export const ARTIFACT_REJECT_CASES: readonly ArtifactRejectCase[] = [
 		},
 		issuePath: ['observations', 0, 'provenance'],
 		issueCode: 'invalid_value',
+		keyword: 'enum',
+		instancePath: '/observations/0/provenance',
 	},
 	{
 		id: 'record-response-status-not-an-integer',
@@ -213,6 +253,8 @@ export const ARTIFACT_REJECT_CASES: readonly ArtifactRejectCase[] = [
 		},
 		issuePath: ['observations', 0, 'responseStatus'],
 		issueCode: 'invalid_type',
+		keyword: 'type',
+		instancePath: '/observations/0/responseStatus',
 	},
 	{
 		id: 'record-cost-as-a-number',
@@ -223,6 +265,8 @@ export const ARTIFACT_REJECT_CASES: readonly ArtifactRejectCase[] = [
 		},
 		issuePath: ['resourceUse', 'costUsd'],
 		issueCode: 'invalid_type',
+		keyword: 'type',
+		instancePath: '/resourceUse/costUsd',
 	},
 	{
 		id: 'record-cost-negative',
@@ -233,6 +277,8 @@ export const ARTIFACT_REJECT_CASES: readonly ArtifactRejectCase[] = [
 		},
 		issuePath: ['resourceUse', 'costUsd'],
 		issueCode: 'invalid_format',
+		keyword: 'pattern',
+		instancePath: '/resourceUse/costUsd',
 	},
 	{
 		id: 'record-wall-clock-negative',
@@ -243,6 +289,8 @@ export const ARTIFACT_REJECT_CASES: readonly ArtifactRejectCase[] = [
 		},
 		issuePath: ['resourceUse', 'wallClockSeconds'],
 		issueCode: 'too_small',
+		keyword: 'minimum',
+		instancePath: '/resourceUse/wallClockSeconds',
 	},
 	{
 		id: 'record-truncation-bound-negative',
@@ -253,6 +301,8 @@ export const ARTIFACT_REJECT_CASES: readonly ArtifactRejectCase[] = [
 		},
 		issuePath: ['evidenceDisclosure', 'truncationBound'],
 		issueCode: 'too_small',
+		keyword: 'minimum',
+		instancePath: '/evidenceDisclosure/truncationBound',
 	},
 
 	{
@@ -265,6 +315,8 @@ export const ARTIFACT_REJECT_CASES: readonly ArtifactRejectCase[] = [
 		},
 		issuePath: ['findings', 0, 'findingType'],
 		issueCode: 'invalid_union',
+		keyword: 'const',
+		instancePath: '/findings/0/findingType',
 	},
 	{
 		id: 'record-confidence-below-zero',
@@ -276,6 +328,8 @@ export const ARTIFACT_REJECT_CASES: readonly ArtifactRejectCase[] = [
 		},
 		issuePath: ['findings', 0, 'confidence'],
 		issueCode: 'too_small',
+		keyword: 'minimum',
+		instancePath: '/findings/0/confidence',
 	},
 	{
 		id: 'record-response-status-negative',
@@ -286,6 +340,8 @@ export const ARTIFACT_REJECT_CASES: readonly ArtifactRejectCase[] = [
 		},
 		issuePath: ['observations', 0, 'responseStatus'],
 		issueCode: 'too_small',
+		keyword: 'minimum',
+		instancePath: '/observations/0/responseStatus',
 	},
 	{
 		id: 'record-response-headers-scalar',
@@ -297,6 +353,8 @@ export const ARTIFACT_REJECT_CASES: readonly ArtifactRejectCase[] = [
 		},
 		issuePath: ['observations', 0, 'responseHeaders'],
 		issueCode: 'invalid_type',
+		keyword: 'type',
+		instancePath: '/observations/0/responseHeaders',
 	},
 
 	// ---- isolation-manifest -------------------------------------------------
@@ -309,6 +367,8 @@ export const ARTIFACT_REJECT_CASES: readonly ArtifactRejectCase[] = [
 		},
 		issuePath: ['resourceCeilings', 'maxToolCalls'],
 		issueCode: 'too_small',
+		keyword: 'minimum',
+		instancePath: '/resourceCeilings/maxToolCalls',
 	},
 	{
 		id: 'manifest-wall-clock-ceiling-zero',
@@ -320,6 +380,8 @@ export const ARTIFACT_REJECT_CASES: readonly ArtifactRejectCase[] = [
 		},
 		issuePath: ['resourceCeilings', 'maxWallClockMinutes'],
 		issueCode: 'too_small',
+		keyword: 'exclusiveMinimum',
+		instancePath: '/resourceCeilings/maxWallClockMinutes',
 	},
 	{
 		id: 'manifest-cost-ceiling-zero',
@@ -331,6 +393,8 @@ export const ARTIFACT_REJECT_CASES: readonly ArtifactRejectCase[] = [
 		},
 		issuePath: ['resourceCeilings', 'maxCostUsd'],
 		issueCode: 'invalid_format',
+		keyword: 'pattern',
+		instancePath: '/resourceCeilings/maxCostUsd',
 	},
 	{
 		id: 'manifest-cost-ceiling-zero-with-fraction',
@@ -342,6 +406,8 @@ export const ARTIFACT_REJECT_CASES: readonly ArtifactRejectCase[] = [
 		},
 		issuePath: ['resourceCeilings', 'maxCostUsd'],
 		issueCode: 'invalid_format',
+		keyword: 'pattern',
+		instancePath: '/resourceCeilings/maxCostUsd',
 	},
 	{
 		id: 'manifest-ceiling-cost-as-a-number',
@@ -353,6 +419,8 @@ export const ARTIFACT_REJECT_CASES: readonly ArtifactRejectCase[] = [
 		},
 		issuePath: ['resourceCeilings', 'maxCostUsd'],
 		issueCode: 'invalid_type',
+		keyword: 'type',
+		instancePath: '/resourceCeilings/maxCostUsd',
 	},
 	{
 		id: 'manifest-accounting-extra-member',
@@ -366,6 +434,9 @@ export const ARTIFACT_REJECT_CASES: readonly ArtifactRejectCase[] = [
 		},
 		issuePath: ['forbiddenInputAccounting'],
 		issueCode: 'unrecognized_keys',
+		keyword: 'additionalProperties',
+		instancePath: '/forbiddenInputAccounting',
+		errorParams: { additionalProperty: 'golden-answers' },
 	},
 	{
 		id: 'manifest-contract-id-outside-the-charset',
@@ -376,6 +447,8 @@ export const ARTIFACT_REJECT_CASES: readonly ArtifactRejectCase[] = [
 		},
 		issuePath: ['contractId'],
 		issueCode: 'invalid_format',
+		keyword: 'pattern',
+		instancePath: '/contractId',
 	},
 
 	// ---- evaluator-configuration -------------------------------------------
@@ -388,6 +461,8 @@ export const ARTIFACT_REJECT_CASES: readonly ArtifactRejectCase[] = [
 		},
 		issuePath: ['evaluatorIdentity'],
 		issueCode: 'too_small',
+		keyword: 'minLength',
+		instancePath: '/evaluatorIdentity',
 	},
 	{
 		id: 'configuration-seed-not-an-integer',
@@ -398,6 +473,8 @@ export const ARTIFACT_REJECT_CASES: readonly ArtifactRejectCase[] = [
 		},
 		issuePath: ['seed'],
 		issueCode: 'invalid_type',
+		keyword: 'type',
+		instancePath: '/seed',
 	},
 	{
 		id: 'configuration-budget-cost-malformed',
@@ -408,6 +485,8 @@ export const ARTIFACT_REJECT_CASES: readonly ArtifactRejectCase[] = [
 		},
 		issuePath: ['budgets', 'maxCostUsd'],
 		issueCode: 'invalid_format',
+		keyword: 'pattern',
+		instancePath: '/budgets/maxCostUsd',
 	},
 
 	// ---- probe --------------------------------------------------------------
@@ -420,6 +499,8 @@ export const ARTIFACT_REJECT_CASES: readonly ArtifactRejectCase[] = [
 		},
 		issuePath: ['probeId'],
 		issueCode: 'invalid_format',
+		keyword: 'pattern',
+		instancePath: '/probeId',
 	},
 	{
 		id: 'probe-class-outside-the-four',
@@ -430,6 +511,8 @@ export const ARTIFACT_REJECT_CASES: readonly ArtifactRejectCase[] = [
 		},
 		issuePath: ['probeClass'],
 		issueCode: 'invalid_value',
+		keyword: 'enum',
+		instancePath: '/probeClass',
 	},
 	{
 		id: 'probe-defect-source-outside-the-two',
@@ -440,6 +523,8 @@ export const ARTIFACT_REJECT_CASES: readonly ArtifactRejectCase[] = [
 		},
 		issuePath: ['defects', 0, 'source'],
 		issueCode: 'invalid_value',
+		keyword: 'enum',
+		instancePath: '/defects/0/source',
 	},
 	{
 		id: 'probe-implementation-digest-malformed',
@@ -451,6 +536,8 @@ export const ARTIFACT_REJECT_CASES: readonly ArtifactRejectCase[] = [
 		},
 		issuePath: ['implementationDigest'],
 		issueCode: 'invalid_format',
+		keyword: 'pattern',
+		instancePath: '/implementationDigest',
 	},
 
 	{
@@ -463,6 +550,8 @@ export const ARTIFACT_REJECT_CASES: readonly ArtifactRejectCase[] = [
 		},
 		issuePath: ['expectedClean'],
 		issueCode: 'invalid_union',
+		keyword: 'const',
+		instancePath: '/expectedClean',
 	},
 
 	// ---- preflight-verdict --------------------------------------------------
@@ -475,6 +564,9 @@ export const ARTIFACT_REJECT_CASES: readonly ArtifactRejectCase[] = [
 		},
 		issuePath: ['fixtureDigest'],
 		issueCode: 'invalid_type',
+		keyword: 'required',
+		instancePath: '',
+		errorParams: { missingProperty: 'fixtureDigest' },
 	},
 	{
 		id: 'preflight-check-kind-outside-the-six',
@@ -485,6 +577,8 @@ export const ARTIFACT_REJECT_CASES: readonly ArtifactRejectCase[] = [
 		},
 		issuePath: ['checks', 0, 'kind'],
 		issueCode: 'invalid_value',
+		keyword: 'enum',
+		instancePath: '/checks/0/kind',
 	},
 	{
 		id: 'preflight-outcome-outside-the-three',
@@ -495,6 +589,8 @@ export const ARTIFACT_REJECT_CASES: readonly ArtifactRejectCase[] = [
 		},
 		issuePath: ['checks', 0, 'outcome'],
 		issueCode: 'invalid_value',
+		keyword: 'enum',
+		instancePath: '/checks/0/outcome',
 	},
 
 	// ---- scoring-policy -----------------------------------------------------
@@ -508,6 +604,8 @@ export const ARTIFACT_REJECT_CASES: readonly ArtifactRejectCase[] = [
 		},
 		issuePath: ['confidenceThreshold'],
 		issueCode: 'too_big',
+		keyword: 'maximum',
+		instancePath: '/confidenceThreshold',
 	},
 	{
 		id: 'policy-minimum-trial-count-zero',
@@ -518,6 +616,8 @@ export const ARTIFACT_REJECT_CASES: readonly ArtifactRejectCase[] = [
 		},
 		issuePath: ['minimumTrialCount'],
 		issueCode: 'too_small',
+		keyword: 'minimum',
+		instancePath: '/minimumTrialCount',
 	},
 	{
 		id: 'policy-re-execution-cap-negative',
@@ -528,6 +628,8 @@ export const ARTIFACT_REJECT_CASES: readonly ArtifactRejectCase[] = [
 		},
 		issuePath: ['reExecutionCap'],
 		issueCode: 'too_small',
+		keyword: 'minimum',
+		instancePath: '/reExecutionCap',
 	},
 	{
 		id: 'policy-severity-floor-outside-the-three',
@@ -538,6 +640,8 @@ export const ARTIFACT_REJECT_CASES: readonly ArtifactRejectCase[] = [
 		},
 		issuePath: ['severityFloor'],
 		issueCode: 'invalid_value',
+		keyword: 'enum',
+		instancePath: '/severityFloor',
 	},
 
 	{
@@ -550,6 +654,8 @@ export const ARTIFACT_REJECT_CASES: readonly ArtifactRejectCase[] = [
 		},
 		issuePath: ['confidenceThreshold'],
 		issueCode: 'too_small',
+		keyword: 'minimum',
+		instancePath: '/confidenceThreshold',
 	},
 
 	// ---- evidence-artifact --------------------------------------------------
@@ -562,6 +668,8 @@ export const ARTIFACT_REJECT_CASES: readonly ArtifactRejectCase[] = [
 		},
 		issuePath: ['outcomes', 0, 'state'],
 		issueCode: 'invalid_value',
+		keyword: 'enum',
+		instancePath: '/outcomes/0/state',
 	},
 	{
 		id: 'evidence-corroboration-outside-the-three',
@@ -572,6 +680,8 @@ export const ARTIFACT_REJECT_CASES: readonly ArtifactRejectCase[] = [
 		},
 		issuePath: ['outcomes', 0, 'corroboration'],
 		issueCode: 'invalid_value',
+		keyword: 'enum',
+		instancePath: '/outcomes/0/corroboration',
 	},
 	{
 		id: 'evidence-introduction-condition-outside-the-one',
@@ -583,6 +693,8 @@ export const ARTIFACT_REJECT_CASES: readonly ArtifactRejectCase[] = [
 		},
 		issuePath: ['outcomes', 0, 'checkResolution', 'introductionCondition'],
 		issueCode: 'invalid_value',
+		keyword: 'enum',
+		instancePath: '/outcomes/0/checkResolution/introductionCondition',
 	},
 	{
 		id: 'evidence-rate-above-one',
@@ -593,6 +705,8 @@ export const ARTIFACT_REJECT_CASES: readonly ArtifactRejectCase[] = [
 		},
 		issuePath: ['strength', 'vector', 'defect', 'rate'],
 		issueCode: 'too_big',
+		keyword: 'maximum',
+		instancePath: '/strength/vector/defect/rate',
 	},
 	{
 		id: 'evidence-basis-outside-the-two',
@@ -604,6 +718,8 @@ export const ARTIFACT_REJECT_CASES: readonly ArtifactRejectCase[] = [
 		},
 		issuePath: ['strength', 'basis'],
 		issueCode: 'invalid_value',
+		keyword: 'enum',
+		instancePath: '/strength/basis',
 	},
 	{
 		id: 'evidence-strength-vector-carries-canary',
@@ -615,6 +731,9 @@ export const ARTIFACT_REJECT_CASES: readonly ArtifactRejectCase[] = [
 		},
 		issuePath: ['strength', 'vector'],
 		issueCode: 'unrecognized_keys',
+		keyword: 'additionalProperties',
+		instancePath: '/strength/vector',
+		errorParams: { additionalProperty: 'canary' },
 	},
 	{
 		id: 'evidence-cap-source-not-caller-attested',
@@ -626,6 +745,8 @@ export const ARTIFACT_REJECT_CASES: readonly ArtifactRejectCase[] = [
 		},
 		issuePath: ['remediation', 'capSource'],
 		issueCode: 'invalid_value',
+		keyword: 'const',
+		instancePath: '/remediation/capSource',
 	},
 	{
 		id: 'evidence-invalidated-attempt-reason-empty',
@@ -636,6 +757,8 @@ export const ARTIFACT_REJECT_CASES: readonly ArtifactRejectCase[] = [
 		},
 		issuePath: ['trials', 'invalidatedAttempts', 0, 'reason'],
 		issueCode: 'too_small',
+		keyword: 'minLength',
+		instancePath: '/trials/invalidatedAttempts/0/reason',
 	},
 	{
 		id: 'evidence-exit-code-not-an-integer',
@@ -646,6 +769,8 @@ export const ARTIFACT_REJECT_CASES: readonly ArtifactRejectCase[] = [
 		},
 		issuePath: ['exitCode'],
 		issueCode: 'invalid_type',
+		keyword: 'type',
+		instancePath: '/exitCode',
 	},
 
 	{
@@ -658,6 +783,8 @@ export const ARTIFACT_REJECT_CASES: readonly ArtifactRejectCase[] = [
 		},
 		issuePath: ['mode'],
 		issueCode: 'invalid_union',
+		keyword: 'const',
+		instancePath: '/mode',
 	},
 	{
 		id: 'evidence-rate-below-zero',
@@ -668,6 +795,8 @@ export const ARTIFACT_REJECT_CASES: readonly ArtifactRejectCase[] = [
 		},
 		issuePath: ['strength', 'vector', 'defect', 'rate'],
 		issueCode: 'too_small',
+		keyword: 'minimum',
+		instancePath: '/strength/vector/defect/rate',
 	},
 	{
 		id: 'evidence-verdict-basis-empty-member',
@@ -679,6 +808,8 @@ export const ARTIFACT_REJECT_CASES: readonly ArtifactRejectCase[] = [
 		},
 		issuePath: ['verdictBasis', 0],
 		issueCode: 'too_small',
+		keyword: 'minLength',
+		instancePath: '/verdictBasis/0',
 	},
 
 	// ---- sealed-evaluator-brief --------------------------------------------
@@ -691,6 +822,8 @@ export const ARTIFACT_REJECT_CASES: readonly ArtifactRejectCase[] = [
 		},
 		issuePath: ['behaviors'],
 		issueCode: 'too_small',
+		keyword: 'minItems',
+		instancePath: '/behaviors',
 	},
 	{
 		id: 'brief-interface-kind-outside-the-four',
@@ -701,6 +834,8 @@ export const ARTIFACT_REJECT_CASES: readonly ArtifactRejectCase[] = [
 		},
 		issuePath: ['permittedInterfaces', 0, 'kind'],
 		issueCode: 'invalid_value',
+		keyword: 'enum',
+		instancePath: '/permittedInterfaces/0/kind',
 	},
 	{
 		id: 'brief-direction-text-empty',
@@ -711,6 +846,8 @@ export const ARTIFACT_REJECT_CASES: readonly ArtifactRejectCase[] = [
 		},
 		issuePath: ['directions', 0, 'text'],
 		issueCode: 'too_small',
+		keyword: 'minLength',
+		instancePath: '/directions/0/text',
 	},
 	{
 		id: 'brief-probe-step-bound-negative',
@@ -721,6 +858,8 @@ export const ARTIFACT_REJECT_CASES: readonly ArtifactRejectCase[] = [
 		},
 		issuePath: ['probeStepBound'],
 		issueCode: 'too_small',
+		keyword: 'minimum',
+		instancePath: '/probeStepBound',
 	},
 
 	// ---- rubric -------------------------------------------------------------
@@ -733,6 +872,8 @@ export const ARTIFACT_REJECT_CASES: readonly ArtifactRejectCase[] = [
 		},
 		issuePath: ['id'],
 		issueCode: 'invalid_format',
+		keyword: 'pattern',
+		instancePath: '/id',
 	},
 	{
 		id: 'rubric-max-length-zero',
@@ -743,6 +884,8 @@ export const ARTIFACT_REJECT_CASES: readonly ArtifactRejectCase[] = [
 		},
 		issuePath: ['maxLength'],
 		issueCode: 'too_small',
+		keyword: 'minimum',
+		instancePath: '/maxLength',
 	},
 	{
 		id: 'rubric-criterion-evidence-not-a-pointer',
@@ -753,5 +896,7 @@ export const ARTIFACT_REJECT_CASES: readonly ArtifactRejectCase[] = [
 		},
 		issuePath: ['criteria', 0, 'evidence'],
 		issueCode: 'invalid_format',
+		keyword: 'pattern',
+		instancePath: '/criteria/0/evidence',
 	},
 ]

@@ -4,12 +4,17 @@
  * outside the repo. Regenerate rather than hand-edit: the previous exports were
  * authored by hand and went stale the moment the product direction changed.
  *
- * Usage: npm run build:shareable
+ * Every in-repo link a rendered page carries resolves inside the export, so a
+ * recipient without repository access can follow the evidence, contribution,
+ * security, and licence links instead of hitting a GitHub 404. Whatever cannot be
+ * rendered (a directory, say) is marked in the page and reported on stdout.
+ *
+ * Usage: npm run build:shareable, checked by npm run check:shareable
  */
 
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { basename, dirname, join, posix } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 import { marked } from 'marked'
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
@@ -20,8 +25,14 @@ const css = readFileSync(
 )
 
 const OWNER = 'Murat Ozcan'
-const BLOB_BASE = 'https://github.com/bmad-code-org/bmad-eval-quality/blob/main'
+export const REPO_URL = 'https://github.com/bmad-code-org/bmad-eval-quality'
+const BLOB_BASE = `${REPO_URL}/blob/main`
 
+/**
+ * The companion set: the documents that carry the argument, and the only ones
+ * the top navigation lists. Everything in APPENDIX is reachable from a link in
+ * one of these rather than from the nav bar.
+ */
 const DOCS = [
 	{
 		out: 'eval-quality-readme.html',
@@ -133,6 +144,76 @@ const DOCS = [
 	},
 ]
 
+/**
+ * The appendix set: every remaining in-repo document the companion pages link to.
+ * They are rendered so a recipient without access to the private repository can
+ * still follow the evidence, contribution, security, and licence links instead of
+ * landing on a GitHub 404. They stay out of the top navigation because they are
+ * reference material, not part of the reading order.
+ */
+const APPENDIX = [
+	{
+		out: 'eval-quality-contributing.html',
+		nav: 'Contributing',
+		source: 'CONTRIBUTING.md',
+		title: 'Contributing to eval-quality',
+		lede: 'Repository setup, the quality gates a change has to clear, and how contributions are reviewed.',
+	},
+	{
+		out: 'eval-quality-code-of-conduct.html',
+		nav: 'Code of Conduct',
+		source: 'CODE_OF_CONDUCT.md',
+		title: 'Code of Conduct',
+		lede: 'The conduct expected of maintainers, contributors, and users of this project.',
+	},
+	{
+		out: 'eval-quality-security.html',
+		nav: 'Security',
+		source: 'SECURITY.md',
+		title: 'Security Policy',
+		lede: 'How to report a vulnerability privately, and what response to expect.',
+	},
+	{
+		out: 'eval-quality-license.html',
+		nav: 'Licence',
+		source: 'LICENSE',
+		title: 'Apache License 2.0',
+		lede: 'The full licence text this package is distributed under.',
+		plain: true,
+	},
+	{
+		out: 'eval-quality-experiment-decision.html',
+		nav: 'Round 1 verdict',
+		source: 'experiments/hypothesis-validation/DECISION.md',
+		title: 'Experiment decisions: the round 1 verdict',
+		lede: 'The binary H0 verdict, gate by gate, and the evaluator-pack decision it left untouched.',
+	},
+	{
+		out: 'eval-quality-experiment-phase-2.html',
+		nav: 'Round 2 results',
+		source: 'experiments/hypothesis-validation/PHASE2-RESULTS.md',
+		title: 'Phase 2 block 1: contract-authoring discipline',
+		lede: 'What the second round measured once authoring discipline became the treatment.',
+	},
+	{
+		out: 'eval-quality-experiment-summary.html',
+		nav: 'Metric summary',
+		source: 'experiments/hypothesis-validation/results/summary.md',
+		title: 'H0 results summary',
+		lede: 'Quotas, exclusions, deviations, and every preregistered metric from the reduced-scope pass.',
+	},
+	{
+		out: 'eval-quality-experiment-protocol.html',
+		nav: 'Protocol',
+		source: 'experiments/hypothesis-validation/HYPOTHESIS_VALIDATION_PLAN.md',
+		title: 'Hypothesis Validation Plan',
+		lede: 'The preregistered protocol both experiment rounds ran under, closed and superseded by ADR-002.',
+	},
+]
+
+/** Every page the export writes; link rewriting resolves against this set. */
+const PAGES = [...DOCS, ...APPENDIX]
+
 const escapeHtml = (value) =>
 	value
 		.replace(/&/g, '&amp;')
@@ -185,20 +266,23 @@ const renderTocLinks = (headings) =>
 
 /**
  * A shared HTML file cannot follow repo-relative markdown paths. Links between the
- * exported documents become sibling .html links; every other in-repo link becomes an
- * absolute URL, which resolves once the repository is published.
+ * exported documents become sibling .html links; anything the export does not render
+ * falls back to an absolute repository URL, which only resolves for a recipient who
+ * has access to the repository. Those fallbacks are reported by the caller and marked
+ * in the page, so a private-repo 404 is never presented as an ordinary link.
  */
 const rewriteLink = (href, sourceDir) => {
-	if (/^(https?:|mailto:|#)/.test(href)) return href
+	if (/^(https?:|mailto:|#)/.test(href)) return { href, repoOnly: false }
 	const [path, hash = ''] = href.split('#')
-	if (!path) return href
+	if (!path) return { href, repoOnly: false }
 	const repoPath = posix.normalize(posix.join(sourceDir, path))
-	const sibling = DOCS.find((doc) => doc.source === repoPath)
-	if (sibling) return `${sibling.out}${hash ? `#${hash}` : ''}`
-	return `${BLOB_BASE}/${repoPath}${hash ? `#${hash}` : ''}`
+	const suffix = hash ? `#${hash}` : ''
+	const sibling = PAGES.find((doc) => doc.source === repoPath)
+	if (sibling) return { href: `${sibling.out}${suffix}`, repoOnly: false }
+	return { href: `${BLOB_BASE}/${repoPath}${suffix}`, repoOnly: true, repoPath }
 }
 
-const buildRenderer = (headings, sourceDir) => {
+const buildRenderer = (headings, sourceDir, repoOnlyLinks) => {
 	const renderer = new marked.Renderer()
 	renderer.heading = ({ tokens, depth }) => {
 		const text = marked.parseInline(tokens.map((t) => t.raw).join(''))
@@ -212,9 +296,17 @@ const buildRenderer = (headings, sourceDir) => {
 		return `<h${depth} id="${id}">${text}${anchor}</h${depth}>\n`
 	}
 	renderer.link = (token) => {
-		const href = rewriteLink(token.href, sourceDir)
-		const title = token.title ? ` title="${escapeHtml(token.title)}"` : ''
-		return `<a href="${escapeHtml(href)}"${title}>${renderer.parser.parseInline(token.tokens)}</a>`
+		const { href, repoOnly, repoPath } = rewriteLink(token.href, sourceDir)
+		if (repoOnly) repoOnlyLinks.push(repoPath)
+		// The tooltip is the only warning a reader gets before a 404, so it is set
+		// here rather than left to the author of the source markdown.
+		const title = repoOnly
+			? ' title="Requires access to the eval-quality repository"'
+			: token.title
+				? ` title="${escapeHtml(token.title)}"`
+				: ''
+		const cls = repoOnly ? ' class="repo-link"' : ''
+		return `<a href="${escapeHtml(href)}"${cls}${title}>${renderer.parser.parseInline(token.tokens)}</a>`
 	}
 	renderer.table = (token) => {
 		const html = marked.Renderer.prototype.table.call(renderer, token)
@@ -223,7 +315,7 @@ const buildRenderer = (headings, sourceDir) => {
 	return renderer
 }
 
-const buildPage = (doc) => {
+const buildPage = (doc, repoOnlyLinks = []) => {
 	const raw = readFileSync(join(repoRoot, doc.source), 'utf8')
 	const { data, body } = parseFrontmatter(raw)
 	const title = doc.title ?? data.title ?? basename(doc.source)
@@ -234,10 +326,29 @@ const buildPage = (doc) => {
 	const withoutH1 = body.replace(/^#\s+.*\n+/, '')
 	const headings = []
 	const sourceDir = posix.dirname(doc.source)
-	const content = marked.parse(withoutH1, {
-		renderer: buildRenderer(headings, sourceDir),
-	})
+	// LICENSE is fixed-width plain text, not markdown: rendering it through marked
+	// would reflow the Apache boilerplate into paragraphs and change what the licence
+	// looks like. It is emitted verbatim and earns no table of contents.
+	const content = doc.plain
+		? `<pre class="plain-text"><code>${escapeHtml(raw)}</code></pre>`
+		: marked.parse(withoutH1, {
+				renderer: buildRenderer(headings, sourceDir, repoOnlyLinks),
+			})
 	const toc = renderTocLinks(headings)
+	const sidebar = toc
+		? `<aside class="sidebar" aria-label="Table of contents">
+      <p class="toc-title">On this page</p>
+      ${toc}
+    </aside>
+    `
+		: ''
+	const mobileToc = toc
+		? `<details class="mobile-toc">
+        <summary>On this page</summary>
+        <div class="mobile-toc-links">${toc}</div>
+      </details>
+      `
+		: ''
 
 	const pills = [
 		status ? `<span class="pill status">${escapeHtml(status)}</span>` : '',
@@ -266,12 +377,8 @@ ${css}
       <nav class="nav" aria-label="Companion documents">${renderNav(doc.out)}</nav>
     </div>
   </header>
-  <div class="layout">
-    <aside class="sidebar" aria-label="Table of contents">
-      <p class="toc-title">On this page</p>
-      ${toc}
-    </aside>
-    <main class="paper">
+  <div class="layout${toc ? '' : ' no-toc'}">
+    ${sidebar}<main class="paper">
       <header class="hero">
         <div class="eyebrow">eval-quality · ${escapeHtml(doc.nav)}</div>
         <h1>${escapeHtml(title)}</h1>
@@ -280,11 +387,7 @@ ${css}
           ${pills}
         </div>
       </header>
-      <details class="mobile-toc">
-        <summary>On this page</summary>
-        <div class="mobile-toc-links">${toc}</div>
-      </details>
-      <article class="content">${content}</article>
+      ${mobileToc}<article class="content">${content}</article>
       <footer class="footer">Generated from ${escapeHtml(basename(doc.source))} by scripts/build-shareable.mjs. Self-contained and print-ready. Do not hand-edit; regenerate instead.</footer>
     </main>
   </div>
@@ -293,9 +396,35 @@ ${css}
 `
 }
 
-mkdirSync(outDir, { recursive: true })
-for (const doc of DOCS) {
-	writeFileSync(join(outDir, doc.out), buildPage(doc), 'utf8')
-	console.log(`build-shareable: _bmad-output/shareable/${doc.out}`)
+/** Absolute path to the directory the export is written to. */
+export const SHAREABLE_DIR = outDir
+
+/**
+ * Renders every page in memory. `build:shareable` writes the result and
+ * `check:shareable` compares it against what is committed, so the writer and the
+ * checker can never disagree about what the export is supposed to contain.
+ */
+export const renderAll = () => {
+	const repoOnly = []
+	const pages = new Map(PAGES.map((doc) => [doc.out, buildPage(doc, repoOnly)]))
+	return { pages, repoOnlyLinks: [...new Set(repoOnly)].sort() }
 }
-console.log(`build-shareable: ${DOCS.length} file(s) written`)
+
+const invokedDirectly =
+	process.argv[1] !== undefined &&
+	pathToFileURL(process.argv[1]).href === import.meta.url
+
+if (invokedDirectly) {
+	const { pages, repoOnlyLinks } = renderAll()
+	mkdirSync(outDir, { recursive: true })
+	for (const [out, html] of pages) {
+		writeFileSync(join(outDir, out), html, 'utf8')
+		console.log(`build-shareable: _bmad-output/shareable/${out}`)
+	}
+	for (const path of repoOnlyLinks) {
+		console.log(
+			`build-shareable: still needs repository access (marked in the page): ${path}`,
+		)
+	}
+	console.log(`build-shareable: ${pages.size} file(s) written`)
+}

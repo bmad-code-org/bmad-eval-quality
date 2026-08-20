@@ -105,7 +105,7 @@ Adversarial code review round 2, 2026-08-11 (same three layers, on the remediate
 - [x] [Review][Patch] (low) The round-1 dismissed finding was unidentifiable from the story file; now recorded above [this file]
 - [x] [Review][Patch] (low) Stale "152 tests" counts and "Story 2 Task" mislabels in the learning-path doc and Debug Log [_bmad-output/project-knowledge/learning-path-step-by-step.md]
 - [x] [Review][Patch] (low) Dev Agent Record File List omitted files this branch modifies [this file]
-- [x] [Review][Defer] (low) Digest-path traversal cost is unmeasured (descriptor allocation per property) [src/core/canonical/canonicalize.ts] — deferred: the fused single-pass serializer already halved traversals; no NFR binds digest throughput before Epic 6, measurement recorded in deferred-work
+- [x] [Review][Defer] (low) Digest-path traversal cost is unmeasured (descriptor allocation per property) [src/core/canonical/canonicalize.ts] — measured on 2026-08-20 and closed with no code change; see decision 25 and `scripts/bench-digest.ts`
 - Dismissed (1): "story pre-certifies this review" — status was set to `done` per the review workflow's own completion rule after round 1; this optional round 2 re-opened and re-verified it, and the Change Log records both rounds.
 
 ## Dev Notes
@@ -236,6 +236,53 @@ Decisions added by review round 2 (all round-2 patches applied):
 23. **Scanner diagnostics name the defect.** Trailing alphanumerics after a literal or number (`truex`, `1x`, `0x1`) fault as invalid literal/number rather than misleading structural errors, extending the round-1 leading-zero fix to the whole pattern.
 24. **Escape-only applies to prose and test sources too.** All `tests/canonical` sources are pure ASCII (`\uXXXX` escapes); the fixtures README names code points (U+FB33, U+1F600) instead of rendering glyphs, because the rendered dalet-with-dagesh in the README had already been NFC-decomposed by tooling — the exact corruption the rule exists to prevent.
 
+Decision added when the round-2 deferral was measured and closed (2026-08-20):
+
+25. **The descriptor allocation stays.** Round 2 deferred "digest-path traversal cost is unmeasured"
+    rather than optimizing blind. `scripts/bench-digest.ts` (`npm run bench:digest`) is that
+    measurement. It times three serializers over observation and score arrays: the shipped `fused`
+    path, a `keyed` variant with identical output and identical domain assertions that reads values
+    back through `[[Get]]` after `Object.keys` instead of snapshotting descriptors, and
+    `JSON.stringify` as a floor. The two canonical variants are asserted to produce the same digest
+    before any number is reported, because an A/B over two different outputs prices nothing.
+
+    On an Apple M4 Pro, Node v24.19.0, median of seven trials:
+
+    | payload | canonical bytes | own properties | fused | keyed | stringify | throughput | descriptor share |
+    | --- | --- | --- | --- | --- | --- | --- | --- |
+    | observations x100 | 41,551 | 2,777 | 1.12 ms | 0.39 ms | 0.05 ms | 37 MB/s | 65% |
+    | observations x1000 | 419,356 | 27,752 | 8.65 ms | 3.90 ms | 0.61 ms | 49 MB/s | 55% |
+    | observations x10000 | 4,233,406 | 277,502 | 83.69 ms | 34.18 ms | 5.22 ms | 51 MB/s | 59% |
+    | scores x1000 | 111,336 | 7,002 | 1.71 ms | 0.92 ms | 0.17 ms | 65 MB/s | 46% |
+    | scores x10000 | 1,113,316 | 70,002 | 19.12 ms | 9.81 ms | 1.82 ms | 58 MB/s | 49% |
+    | scores x100000 | 11,133,192 | 700,002 | 212.79 ms | 109.60 ms | 19.38 ms | 52 MB/s | 49% |
+
+    The finding was right that the allocation is not free: descriptor snapshotting is 46% to 65% of
+    the digest path, and the path runs at roughly 50 MB/s of canonical output. It is still not
+    worth removing, for two reasons.
+
+    The first is that the only thing that removes it is the second `[[Get]]`. `keyed` is the
+    optimization, and `keyed` is decision 19 reverted: an accessor or a lying Proxy answering the
+    emit-time read differently from the validation read is precisely the TOCTOU channel the fused
+    pass was written to close. Buying 50% of a digest back by reopening it is not a trade this
+    system makes, and no cheaper safe route exists. A frozen-object fast path does not work either,
+    since `Object.isFrozen` does not rule out a getter, and proving there is no getter is what
+    reading the descriptors does.
+
+    The second is that the absolute numbers do not bind anything. Ten thousand observations is
+    already an unrealistic sealed run record, and it digests in 84 ms. No NFR constrains digest
+    throughput before Epic 6, and when one arrives it will be stated in artifacts per second against
+    a real corpus, not in descriptor allocations.
+
+    One safe micro-optimization was measured and rejected on its own evidence: dropping the
+    `Object.entries(descriptors)` pair arrays and indexing the descriptor object by key, holding the
+    snapshot fixed, ran 65.1 ms against 63.2 ms on the 10,000-observation payload. The pair arrays
+    are not the cost; `Object.getOwnPropertyDescriptors` itself is.
+
+    The benchmark is deliberately not in `npm run validate`. A throughput number is a property of
+    the machine that produced it, and a gate on one is a flake generator. Re-run it when the
+    question comes up again, and record what it said.
+
 ### File List
 
 New files:
@@ -273,6 +320,12 @@ Modified by review remediation:
 No workflow, pin, or `src/index.ts` barrel changes.
 
 ## Change Log
+
+- 2026-08-20: The round-2 deferral is closed. Digest-path throughput was measured with a new
+  `scripts/bench-digest.ts` (`npm run bench:digest`) rather than optimized blind, and the per-property
+  descriptor allocation is kept: it is 46% to 65% of the path, but the only variant that removes it
+  reads values back through a second `[[Get]]`, which is the TOCTOU channel decision 19 exists to
+  close. Decision 25 records the numbers and the reasoning. No change to `src/core/canonical/`.
 
 - 2026-08-11: Adversarial code review round 2 (on the remediated branch) — 19 patches applied, 1 deferred, 1 dismissed. Headline: validation fused into serialization as a single descriptor-snapshot pass, closing the object/key TOCTOU residue round 1 left open (verified by execution before the fix); the Python independence check wired into CI via `check:vectors`; directory member path form pinned (relative, forward-slash, no dot segments, normalization explicitly the producer's responsibility); rejection contract made language-neutral (`compositeReject`/`directoryReject`, depth vector, truncated/CESU-8 byte vectors); `--fill` guarded behind `--force`. 201 tests green; `npm run validate` + `npm run build` pass. Status remains `done`.
 - 2026-08-11: Adversarial code review (Blind Hunter + Edge Case Hunter + Acceptance Auditor) — 17 patch findings, all applied: plain-data property discipline (accessors, hidden/symbol properties, array subclasses/toJSON/holes rejected), serialize-time scalar re-assertion closing the getter/Proxy TOCTOU channel, 1024-level nesting bound in all three walkers, `digestJson` raw-input entry point, degenerate composite/directory inputs rejected, scanner hardening (leading-zero diagnostics, digit-length fast path, fault `cause`), second-language rejection verification and nested/`__proto__` vectors, pure-ASCII fixtures, shared test helpers. 180 tests green; `npm run validate` + `npm run build` pass. Status → done.

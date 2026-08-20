@@ -1,0 +1,1229 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:eval-quality:schema:evidence-artifact",
+  "oneOf": [
+    {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991,
+          "description": "AD-11 requires an integer under this exact name. Deliberately not `z.literal(1)`: the literal exports as `{\"type\":\"number\",\"const\":1}`, losing `integer` for a non-TypeScript consumer, and it would turn a version-2 artifact into an anonymous schema-parse failure instead of AD-28's dedicated `schema-version-mismatch` fault. Version equality belongs to the reader that throws that fault."
+        },
+        "parentDigest": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^sha256:[0-9a-f]{64}$",
+              "description": "AD-27 digest: \"sha256:\" plus 64 lowercase hexadecimal characters."
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "AD-29 lineage. `null` if and only if `revisionCount` is 0. That biconditional is stated here rather than refined: a refinement is silently dropped from the published schema, so a non-TypeScript consumer would never see it, and the constraint ledger records it as not expressible."
+        },
+        "revisionCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991,
+          "description": "AD-29: one greater than the parent artifact's."
+        },
+        "runId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "scoringVersion": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "description": "AD-11: computed by the scorer over the five named inputs below and never caller-supplied."
+        },
+        "scoringVersionInputs": {
+          "type": "object",
+          "properties": {
+            "contractSchemaVersion": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "corpusDigest": {
+              "type": "string",
+              "pattern": "^sha256:[0-9a-f]{64}$",
+              "description": "AD-27 digest: \"sha256:\" plus 64 lowercase hexadecimal characters."
+            },
+            "fixtureDigest": {
+              "type": "string",
+              "pattern": "^sha256:[0-9a-f]{64}$",
+              "description": "AD-27 digest: \"sha256:\" plus 64 lowercase hexadecimal characters."
+            },
+            "evaluatorConfigurationDigest": {
+              "type": "string",
+              "pattern": "^sha256:[0-9a-f]{64}$",
+              "description": "AD-27 digest: \"sha256:\" plus 64 lowercase hexadecimal characters."
+            },
+            "scoringPolicyDigest": {
+              "type": "string",
+              "pattern": "^sha256:[0-9a-f]{64}$",
+              "description": "AD-27 digest: \"sha256:\" plus 64 lowercase hexadecimal characters."
+            }
+          },
+          "required": [
+            "contractSchemaVersion",
+            "corpusDigest",
+            "fixtureDigest",
+            "evaluatorConfigurationDigest",
+            "scoringPolicyDigest"
+          ],
+          "additionalProperties": false
+        },
+        "comparabilityKey": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "description": "AD-7's declared key: the scoring policy digest plus the corpus digest restricted to the probes both results cover. Deliberately weaker than the scoring version, so adding a probe narrows a comparison rather than voiding every prior result."
+        },
+        "excludedProbeIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^P-[0-9]{3,}$"
+          },
+          "description": "The probes a narrowed comparison excluded, per AD-7. Empty is the ordinary case."
+        },
+        "exitCode": {
+          "type": "integer",
+          "minimum": -9007199254740991,
+          "maximum": 9007199254740991,
+          "description": "AD-21's exit code for the verdict this artifact carries. Recorded rather than derived at read time so the artifact and the process agree."
+        },
+        "verdictBasis": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "Every condition that fired, in AD-21 terms. Free text by design: the rungs are prose in AD-21 and assigning them identifiers would be minting a vocabulary that AD has not. Each member is non-empty, on the same reasoning that `InvalidatedAttempt.reason` is: a condition that names itself with nothing has not been recorded. An empty array is legal and is what a PASS with no firing condition carries."
+        },
+        "callerAttestedInputs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "contractSchemaVersion",
+              "corpusDigest",
+              "fixtureDigest",
+              "evaluatorConfigurationDigest",
+              "scoringPolicyDigest"
+            ]
+          },
+          "description": "Which of the five scoring-version inputs were caller-attested rather than computed by this package. An enum over the five key names rather than free strings, because AD-32 requires the artifact to state *which* inputs were attested and an unconstrained string cannot be checked against anything. AD-11 names three of the five as caller-attested; the enum admits any subset so a stricter or looser integration stays representable."
+        },
+        "trials": {
+          "type": "object",
+          "properties": {
+            "declaredMinimum": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "completed": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "invalidatedAttempts": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "attempt": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 9007199254740991
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "AD-6 requires each attempt's reason. Non-empty: a reason that says nothing is not a reason, no AD-5 code names the condition, and the schema is therefore the enforcement point."
+                  }
+                },
+                "required": [
+                  "attempt",
+                  "reason"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "declaredMinimum",
+            "completed",
+            "invalidatedAttempts"
+          ],
+          "additionalProperties": false
+        },
+        "outcomes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "oracleId": {
+                "type": "string",
+                "pattern": "^O-[0-9]{3,}$"
+              },
+              "probeId": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^P-[0-9]{3,}$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "state": {
+                "type": "string",
+                "enum": [
+                  "caught",
+                  "confirmed",
+                  "missed",
+                  "passed-clean-control",
+                  "false-positive",
+                  "abstained",
+                  "bypassed",
+                  "unreached",
+                  "oracle-error",
+                  "judge-error",
+                  "infrastructure-error",
+                  "not-applicable"
+                ],
+                "description": "AD-6's closed twelve, assigned by AD-33. `not-applicable` is excluded from every count and is legal in exactly two cases: against an unexpired waiver, and against a probe AD-40 records as unexercised."
+              },
+              "severity": {
+                "type": "string",
+                "enum": [
+                  "low",
+                  "material",
+                  "critical"
+                ]
+              },
+              "disposition": {
+                "type": "string",
+                "enum": [
+                  "held",
+                  "violated",
+                  "not-attempted"
+                ],
+                "description": "The evaluator's own statement, carried through from the run record's dispositions rather than re-derived. One vocabulary, spelled once, in the artifact the caller produces."
+              },
+              "resolvedFrom": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^F-[0-9]{3,}$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "The finding this outcome resolved from, or `null` where no finding was cited. A finding citing no oracle is recorded in `uncitedFindings` rather than discarded or forced into a state."
+              },
+              "corroboration": {
+                "type": "string",
+                "enum": [
+                  "agrees",
+                  "disagrees",
+                  "not-evaluable"
+                ],
+                "description": "AD-33's closed three. `not-evaluable` and AD-4's `insufficient-evidence` are DIFFERENT conditions and AD-33 forbids merging them: `not-evaluable` means the expression never ran, while `insufficient-evidence` means it ran to completion and found nothing to examine. That is why both vocabularies appear on one outcome, this field and `checkResolution`, rather than collapsing into one."
+              },
+              "selectedObservationIds": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                  "description": "A kebab-case slug. Excludes \"/\" and \"~\" so an identifier can be embedded in an interaction-rooted pointer without escaping."
+                },
+                "description": "The cited observation identifiers AD-40 names as \"what the witness match resolves against and what AD-33 records on the outcome\". Recorded now rather than deferred: Owed item 2 is about selection DETERMINISM, meaning a monotonic sequence and a declared selector cardinality, which is a different question from whether the selection is recorded."
+              },
+              "checkResolution": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/CheckResolution"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "The oracle's `check` tree as it resolved, per AD-4. `null` for an oracle whose check never ran, which is the `not-evaluable` corroboration case; the two fields are read together and neither substitutes for the other."
+              }
+            },
+            "required": [
+              "oracleId",
+              "probeId",
+              "state",
+              "severity",
+              "disposition",
+              "resolvedFrom",
+              "corroboration",
+              "selectedObservationIds",
+              "checkResolution"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "uncitedFindings": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^F-[0-9]{3,}$"
+          },
+          "description": "Findings citing no oracle, retained rather than discarded or forced into a state, per AD-33. Discarding them would hide exactly the evaluator-chosen detection AD-23 exists to preserve."
+        },
+        "coverageGaps": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "rule": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Opaque and deliberately not an enum, for the reason `Waiver.rule` is opaque: AD-20 enumerates its seven discipline rules in prose and assigns them no identifiers, so an enum here would be this story minting the vocabulary AD-20 declined to."
+              },
+              "relevancePredicate": {
+                "type": "string",
+                "minLength": 1
+              },
+              "satisfactionPredicate": {
+                "type": "string",
+                "minLength": 1
+              },
+              "satisfied": {
+                "type": "boolean"
+              },
+              "severity": {
+                "type": "string",
+                "enum": [
+                  "low",
+                  "material",
+                  "critical"
+                ]
+              }
+            },
+            "required": [
+              "rule",
+              "relevancePredicate",
+              "satisfactionPredicate",
+              "satisfied",
+              "severity"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "strength": {
+          "type": "object",
+          "properties": {
+            "denominator": {
+              "type": "string",
+              "minLength": 1,
+              "description": "AD-7 requires the denominator to be named in the artifact \"so two consumers cannot derive two different recalls\"."
+            },
+            "basis": {
+              "type": "string",
+              "enum": [
+                "measured",
+                "reconstructed"
+              ],
+              "description": "AD-40 forbids pooling a containment-reconstructed detection with a measured catch rate. Without this field the two are identical on disk and pooling is the default reading."
+            },
+            "vector": {
+              "type": "object",
+              "properties": {
+                "defect": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "caught": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991
+                        },
+                        "exercised": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991
+                        },
+                        "rate": {
+                          "anyOf": [
+                            {
+                              "type": "number",
+                              "minimum": 0,
+                              "maximum": 1
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Nullable because `exercised` may be zero and a rate over an empty denominator is undefined rather than zero. There is no separate `rawCounts` block: AD-7 wants raw counts recorded alongside the rate so a consumer can recompute, and this entry already carries both; a second copy is one more thing to disagree with itself. That `rate` equals `caught` over `exercised` is a cross-field rule with no AD-5 code and is left to the scorer."
+                        }
+                      },
+                      "required": [
+                        "caught",
+                        "exercised",
+                        "rate"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "gameability": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "caught": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991
+                        },
+                        "exercised": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991
+                        },
+                        "rate": {
+                          "anyOf": [
+                            {
+                              "type": "number",
+                              "minimum": 0,
+                              "maximum": 1
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Nullable because `exercised` may be zero and a rate over an empty denominator is undefined rather than zero. There is no separate `rawCounts` block: AD-7 wants raw counts recorded alongside the rate so a consumer can recompute, and this entry already carries both; a second copy is one more thing to disagree with itself. That `rate` equals `caught` over `exercised` is a cross-field rule with no AD-5 code and is left to the scorer."
+                        }
+                      },
+                      "required": [
+                        "caught",
+                        "exercised",
+                        "rate"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "zero-action": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "caught": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991
+                        },
+                        "exercised": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991
+                        },
+                        "rate": {
+                          "anyOf": [
+                            {
+                              "type": "number",
+                              "minimum": 0,
+                              "maximum": 1
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Nullable because `exercised` may be zero and a rate over an empty denominator is undefined rather than zero. There is no separate `rawCounts` block: AD-7 wants raw counts recorded alongside the rate so a consumer can recompute, and this entry already carries both; a second copy is one more thing to disagree with itself. That `rate` equals `caught` over `exercised` is a cross-field rule with no AD-5 code and is left to the scorer."
+                        }
+                      },
+                      "required": [
+                        "caught",
+                        "exercised",
+                        "rate"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "defect",
+                "gameability",
+                "zero-action"
+              ],
+              "additionalProperties": false
+            },
+            "comparable": {
+              "type": "boolean",
+              "description": "AD-21: a run that resolved `unreached` or completed fewer trials than the policy's declared minimum marks the vector non-comparable rather than silently comparing it."
+            },
+            "note": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "denominator",
+            "basis",
+            "vector",
+            "comparable",
+            "note"
+          ],
+          "additionalProperties": false
+        },
+        "remediation": {
+          "type": "object",
+          "properties": {
+            "revisionCount": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991,
+              "description": "AD-12's REMEDIATION count, meaning how many times the contract was revised in response to results, and NOT AD-29's lineage `revisionCount` at the root of this artifact. The two are distinguished only by nesting, so both descriptions say so."
+            },
+            "cap": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "capSource": {
+              "type": "string",
+              "const": "caller-attested",
+              "description": "A literal because AD-12 states the package validates the cap rather than enforcing it. There is no second legal value, and inventing one would claim an enforcement the architecture disclaims."
+            },
+            "lineageChain": {
+              "type": "object",
+              "properties": {
+                "lengthConsistent": {
+                  "type": "boolean"
+                },
+                "noRepeatedDigest": {
+                  "type": "boolean"
+                },
+                "noGap": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "lengthConsistent",
+                "noRepeatedDigest",
+                "noGap"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "revisionCount",
+            "cap",
+            "capSource",
+            "lineageChain"
+          ],
+          "additionalProperties": false
+        },
+        "mode": {
+          "type": "string",
+          "const": "production"
+        },
+        "productionVerdict": {
+          "$ref": "#/$defs/Verdict"
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "parentDigest",
+        "revisionCount",
+        "runId",
+        "scoringVersion",
+        "scoringVersionInputs",
+        "comparabilityKey",
+        "excludedProbeIds",
+        "exitCode",
+        "verdictBasis",
+        "callerAttestedInputs",
+        "trials",
+        "outcomes",
+        "uncitedFindings",
+        "coverageGaps",
+        "strength",
+        "remediation",
+        "mode",
+        "productionVerdict"
+      ],
+      "additionalProperties": false,
+      "description": "Production mode: the verdict is about the system under test, and an ingested evaluator recommendation promotes as AD-21's ladder describes."
+    },
+    {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991,
+          "description": "AD-11 requires an integer under this exact name. Deliberately not `z.literal(1)`: the literal exports as `{\"type\":\"number\",\"const\":1}`, losing `integer` for a non-TypeScript consumer, and it would turn a version-2 artifact into an anonymous schema-parse failure instead of AD-28's dedicated `schema-version-mismatch` fault. Version equality belongs to the reader that throws that fault."
+        },
+        "parentDigest": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^sha256:[0-9a-f]{64}$",
+              "description": "AD-27 digest: \"sha256:\" plus 64 lowercase hexadecimal characters."
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "AD-29 lineage. `null` if and only if `revisionCount` is 0. That biconditional is stated here rather than refined: a refinement is silently dropped from the published schema, so a non-TypeScript consumer would never see it, and the constraint ledger records it as not expressible."
+        },
+        "revisionCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991,
+          "description": "AD-29: one greater than the parent artifact's."
+        },
+        "runId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "scoringVersion": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "description": "AD-11: computed by the scorer over the five named inputs below and never caller-supplied."
+        },
+        "scoringVersionInputs": {
+          "type": "object",
+          "properties": {
+            "contractSchemaVersion": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "corpusDigest": {
+              "type": "string",
+              "pattern": "^sha256:[0-9a-f]{64}$",
+              "description": "AD-27 digest: \"sha256:\" plus 64 lowercase hexadecimal characters."
+            },
+            "fixtureDigest": {
+              "type": "string",
+              "pattern": "^sha256:[0-9a-f]{64}$",
+              "description": "AD-27 digest: \"sha256:\" plus 64 lowercase hexadecimal characters."
+            },
+            "evaluatorConfigurationDigest": {
+              "type": "string",
+              "pattern": "^sha256:[0-9a-f]{64}$",
+              "description": "AD-27 digest: \"sha256:\" plus 64 lowercase hexadecimal characters."
+            },
+            "scoringPolicyDigest": {
+              "type": "string",
+              "pattern": "^sha256:[0-9a-f]{64}$",
+              "description": "AD-27 digest: \"sha256:\" plus 64 lowercase hexadecimal characters."
+            }
+          },
+          "required": [
+            "contractSchemaVersion",
+            "corpusDigest",
+            "fixtureDigest",
+            "evaluatorConfigurationDigest",
+            "scoringPolicyDigest"
+          ],
+          "additionalProperties": false
+        },
+        "comparabilityKey": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "description": "AD-7's declared key: the scoring policy digest plus the corpus digest restricted to the probes both results cover. Deliberately weaker than the scoring version, so adding a probe narrows a comparison rather than voiding every prior result."
+        },
+        "excludedProbeIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^P-[0-9]{3,}$"
+          },
+          "description": "The probes a narrowed comparison excluded, per AD-7. Empty is the ordinary case."
+        },
+        "exitCode": {
+          "type": "integer",
+          "minimum": -9007199254740991,
+          "maximum": 9007199254740991,
+          "description": "AD-21's exit code for the verdict this artifact carries. Recorded rather than derived at read time so the artifact and the process agree."
+        },
+        "verdictBasis": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "Every condition that fired, in AD-21 terms. Free text by design: the rungs are prose in AD-21 and assigning them identifiers would be minting a vocabulary that AD has not. Each member is non-empty, on the same reasoning that `InvalidatedAttempt.reason` is: a condition that names itself with nothing has not been recorded. An empty array is legal and is what a PASS with no firing condition carries."
+        },
+        "callerAttestedInputs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "contractSchemaVersion",
+              "corpusDigest",
+              "fixtureDigest",
+              "evaluatorConfigurationDigest",
+              "scoringPolicyDigest"
+            ]
+          },
+          "description": "Which of the five scoring-version inputs were caller-attested rather than computed by this package. An enum over the five key names rather than free strings, because AD-32 requires the artifact to state *which* inputs were attested and an unconstrained string cannot be checked against anything. AD-11 names three of the five as caller-attested; the enum admits any subset so a stricter or looser integration stays representable."
+        },
+        "trials": {
+          "type": "object",
+          "properties": {
+            "declaredMinimum": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "completed": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "invalidatedAttempts": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "attempt": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 9007199254740991
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "AD-6 requires each attempt's reason. Non-empty: a reason that says nothing is not a reason, no AD-5 code names the condition, and the schema is therefore the enforcement point."
+                  }
+                },
+                "required": [
+                  "attempt",
+                  "reason"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "declaredMinimum",
+            "completed",
+            "invalidatedAttempts"
+          ],
+          "additionalProperties": false
+        },
+        "outcomes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "oracleId": {
+                "type": "string",
+                "pattern": "^O-[0-9]{3,}$"
+              },
+              "probeId": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^P-[0-9]{3,}$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "state": {
+                "type": "string",
+                "enum": [
+                  "caught",
+                  "confirmed",
+                  "missed",
+                  "passed-clean-control",
+                  "false-positive",
+                  "abstained",
+                  "bypassed",
+                  "unreached",
+                  "oracle-error",
+                  "judge-error",
+                  "infrastructure-error",
+                  "not-applicable"
+                ],
+                "description": "AD-6's closed twelve, assigned by AD-33. `not-applicable` is excluded from every count and is legal in exactly two cases: against an unexpired waiver, and against a probe AD-40 records as unexercised."
+              },
+              "severity": {
+                "type": "string",
+                "enum": [
+                  "low",
+                  "material",
+                  "critical"
+                ]
+              },
+              "disposition": {
+                "type": "string",
+                "enum": [
+                  "held",
+                  "violated",
+                  "not-attempted"
+                ],
+                "description": "The evaluator's own statement, carried through from the run record's dispositions rather than re-derived. One vocabulary, spelled once, in the artifact the caller produces."
+              },
+              "resolvedFrom": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^F-[0-9]{3,}$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "The finding this outcome resolved from, or `null` where no finding was cited. A finding citing no oracle is recorded in `uncitedFindings` rather than discarded or forced into a state."
+              },
+              "corroboration": {
+                "type": "string",
+                "enum": [
+                  "agrees",
+                  "disagrees",
+                  "not-evaluable"
+                ],
+                "description": "AD-33's closed three. `not-evaluable` and AD-4's `insufficient-evidence` are DIFFERENT conditions and AD-33 forbids merging them: `not-evaluable` means the expression never ran, while `insufficient-evidence` means it ran to completion and found nothing to examine. That is why both vocabularies appear on one outcome, this field and `checkResolution`, rather than collapsing into one."
+              },
+              "selectedObservationIds": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                  "description": "A kebab-case slug. Excludes \"/\" and \"~\" so an identifier can be embedded in an interaction-rooted pointer without escaping."
+                },
+                "description": "The cited observation identifiers AD-40 names as \"what the witness match resolves against and what AD-33 records on the outcome\". Recorded now rather than deferred: Owed item 2 is about selection DETERMINISM, meaning a monotonic sequence and a declared selector cardinality, which is a different question from whether the selection is recorded."
+              },
+              "checkResolution": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/CheckResolution"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "The oracle's `check` tree as it resolved, per AD-4. `null` for an oracle whose check never ran, which is the `not-evaluable` corroboration case; the two fields are read together and neither substitutes for the other."
+              }
+            },
+            "required": [
+              "oracleId",
+              "probeId",
+              "state",
+              "severity",
+              "disposition",
+              "resolvedFrom",
+              "corroboration",
+              "selectedObservationIds",
+              "checkResolution"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "uncitedFindings": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^F-[0-9]{3,}$"
+          },
+          "description": "Findings citing no oracle, retained rather than discarded or forced into a state, per AD-33. Discarding them would hide exactly the evaluator-chosen detection AD-23 exists to preserve."
+        },
+        "coverageGaps": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "rule": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Opaque and deliberately not an enum, for the reason `Waiver.rule` is opaque: AD-20 enumerates its seven discipline rules in prose and assigns them no identifiers, so an enum here would be this story minting the vocabulary AD-20 declined to."
+              },
+              "relevancePredicate": {
+                "type": "string",
+                "minLength": 1
+              },
+              "satisfactionPredicate": {
+                "type": "string",
+                "minLength": 1
+              },
+              "satisfied": {
+                "type": "boolean"
+              },
+              "severity": {
+                "type": "string",
+                "enum": [
+                  "low",
+                  "material",
+                  "critical"
+                ]
+              }
+            },
+            "required": [
+              "rule",
+              "relevancePredicate",
+              "satisfactionPredicate",
+              "satisfied",
+              "severity"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "strength": {
+          "type": "object",
+          "properties": {
+            "denominator": {
+              "type": "string",
+              "minLength": 1,
+              "description": "AD-7 requires the denominator to be named in the artifact \"so two consumers cannot derive two different recalls\"."
+            },
+            "basis": {
+              "type": "string",
+              "enum": [
+                "measured",
+                "reconstructed"
+              ],
+              "description": "AD-40 forbids pooling a containment-reconstructed detection with a measured catch rate. Without this field the two are identical on disk and pooling is the default reading."
+            },
+            "vector": {
+              "type": "object",
+              "properties": {
+                "defect": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "caught": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991
+                        },
+                        "exercised": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991
+                        },
+                        "rate": {
+                          "anyOf": [
+                            {
+                              "type": "number",
+                              "minimum": 0,
+                              "maximum": 1
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Nullable because `exercised` may be zero and a rate over an empty denominator is undefined rather than zero. There is no separate `rawCounts` block: AD-7 wants raw counts recorded alongside the rate so a consumer can recompute, and this entry already carries both; a second copy is one more thing to disagree with itself. That `rate` equals `caught` over `exercised` is a cross-field rule with no AD-5 code and is left to the scorer."
+                        }
+                      },
+                      "required": [
+                        "caught",
+                        "exercised",
+                        "rate"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "gameability": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "caught": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991
+                        },
+                        "exercised": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991
+                        },
+                        "rate": {
+                          "anyOf": [
+                            {
+                              "type": "number",
+                              "minimum": 0,
+                              "maximum": 1
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Nullable because `exercised` may be zero and a rate over an empty denominator is undefined rather than zero. There is no separate `rawCounts` block: AD-7 wants raw counts recorded alongside the rate so a consumer can recompute, and this entry already carries both; a second copy is one more thing to disagree with itself. That `rate` equals `caught` over `exercised` is a cross-field rule with no AD-5 code and is left to the scorer."
+                        }
+                      },
+                      "required": [
+                        "caught",
+                        "exercised",
+                        "rate"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "zero-action": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "caught": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991
+                        },
+                        "exercised": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991
+                        },
+                        "rate": {
+                          "anyOf": [
+                            {
+                              "type": "number",
+                              "minimum": 0,
+                              "maximum": 1
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Nullable because `exercised` may be zero and a rate over an empty denominator is undefined rather than zero. There is no separate `rawCounts` block: AD-7 wants raw counts recorded alongside the rate so a consumer can recompute, and this entry already carries both; a second copy is one more thing to disagree with itself. That `rate` equals `caught` over `exercised` is a cross-field rule with no AD-5 code and is left to the scorer."
+                        }
+                      },
+                      "required": [
+                        "caught",
+                        "exercised",
+                        "rate"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "defect",
+                "gameability",
+                "zero-action"
+              ],
+              "additionalProperties": false
+            },
+            "comparable": {
+              "type": "boolean",
+              "description": "AD-21: a run that resolved `unreached` or completed fewer trials than the policy's declared minimum marks the vector non-comparable rather than silently comparing it."
+            },
+            "note": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "denominator",
+            "basis",
+            "vector",
+            "comparable",
+            "note"
+          ],
+          "additionalProperties": false
+        },
+        "remediation": {
+          "type": "object",
+          "properties": {
+            "revisionCount": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991,
+              "description": "AD-12's REMEDIATION count, meaning how many times the contract was revised in response to results, and NOT AD-29's lineage `revisionCount` at the root of this artifact. The two are distinguished only by nesting, so both descriptions say so."
+            },
+            "cap": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "capSource": {
+              "type": "string",
+              "const": "caller-attested",
+              "description": "A literal because AD-12 states the package validates the cap rather than enforcing it. There is no second legal value, and inventing one would claim an enforcement the architecture disclaims."
+            },
+            "lineageChain": {
+              "type": "object",
+              "properties": {
+                "lengthConsistent": {
+                  "type": "boolean"
+                },
+                "noRepeatedDigest": {
+                  "type": "boolean"
+                },
+                "noGap": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "lengthConsistent",
+                "noRepeatedDigest",
+                "noGap"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "revisionCount",
+            "cap",
+            "capSource",
+            "lineageChain"
+          ],
+          "additionalProperties": false
+        },
+        "mode": {
+          "type": "string",
+          "const": "contract-scoring"
+        },
+        "contractVerdict": {
+          "$ref": "#/$defs/Verdict"
+        },
+        "systemRecommendationRecorded": {
+          "description": "The evaluator's recommendation about the SYSTEM, recorded and never promoted. On a knowingly defective probe a system-directed FAIL is an input rather than a signal about the contract.",
+          "$ref": "#/$defs/EvaluatorRecommendation"
+        },
+        "systemRecommendationNote": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "parentDigest",
+        "revisionCount",
+        "runId",
+        "scoringVersion",
+        "scoringVersionInputs",
+        "comparabilityKey",
+        "excludedProbeIds",
+        "exitCode",
+        "verdictBasis",
+        "callerAttestedInputs",
+        "trials",
+        "outcomes",
+        "uncitedFindings",
+        "coverageGaps",
+        "strength",
+        "remediation",
+        "mode",
+        "contractVerdict",
+        "systemRecommendationRecorded",
+        "systemRecommendationNote"
+      ],
+      "additionalProperties": false,
+      "description": "Contract-scoring mode: the verdict is about the contract, and the evaluator's recommendation about the system is recorded beside it rather than promoted."
+    }
+  ],
+  "description": "The scored output, owned by `emit` per AD-24, with no prior art; `score` produces the outcome and verdict values it serializes. The two modes are separate branches because AD-21 requires that the production verdict and the contract verdict never share a field. This expresses that settled sentence and no more: Owed item 4's remaining half stays open, namely mode being fixed before ingest and entering AD-11's identity inputs rather than appearing first here; and the Sealed Run Record still carries no mode.",
+  "$defs": {
+    "CheckResolution": {
+      "description": "One node of an oracle's `check` tree as it resolved. AD-4's resolution is three-valued rather than two, and the introduction vocabulary has exactly one member because AD-4 closes the introduction set at one: an empty collection. `null` where the resolution is not `insufficient-evidence`. A leaf carries an empty `children` array.",
+      "type": "object",
+      "properties": {
+        "resolution": {
+          "type": "string",
+          "enum": [
+            "true",
+            "false",
+            "insufficient-evidence"
+          ]
+        },
+        "introductionCondition": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": [
+                "empty-collection"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "children": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/CheckResolution"
+          }
+        }
+      },
+      "required": [
+        "resolution",
+        "introductionCondition",
+        "children"
+      ],
+      "additionalProperties": false
+    },
+    "Verdict": {
+      "type": "string",
+      "enum": [
+        "PASS",
+        "WAIVED",
+        "CONCERNS",
+        "FAIL"
+      ],
+      "description": "AD-21's four verdicts. Uppercase is one of the two named exceptions to the lowercase kebab-case enum convention. Exit codes are AD-21's and belong to the CLI rather than to this value: PASS, WAIVED, and CONCERNS exit zero and FAIL exits two."
+    },
+    "EvaluatorRecommendation": {
+      "type": "string",
+      "enum": [
+        "PASS",
+        "CONCERNS",
+        "FAIL"
+      ],
+      "description": "The evaluator's own recommendation, ingested and never promoted to a verdict in contract-scoring mode. AD-24 requires a closed enum; the prior art's `NOT_APPLICABLE` is dropped with the `scripted` arm it belonged to. Consequence recorded here because it closes a rung: AD-21's Invalid condition for \"an unrecognised evaluator recommendation value\" is unreachable for a schema-valid artifact, since an unrecognised value fails to parse and becomes an AD-28 `schema-parse-failure` fault, and a fault never becomes a verdict. The Epic 6 ingest story either validates this field leniently and maps an unrecognised value to that rung, or accepts that the rung fires only as a fault."
+    }
+  }
+}

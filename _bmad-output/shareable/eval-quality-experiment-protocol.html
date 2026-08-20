@@ -1,0 +1,1444 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="The preregistered protocol both experiment rounds ran under, closed and superseded by ADR-002.">
+  <link rel="icon" href="data:,">
+  <title>Hypothesis Validation Plan</title>
+  <style>
+:root {
+	color-scheme: light;
+	--canvas: #f4f6fb;
+	--paper: #ffffff;
+	--ink: #182230;
+	--muted: #667085;
+	--line: #e4e7ec;
+	--brand: #3157d5;
+	--brand-deep: #243f9f;
+	--brand-soft: #eef2ff;
+	--accent: #087f6d;
+	--accent-soft: #eafaf6;
+	--code: #101828;
+	--shadow: 0 18px 50px rgba(16, 24, 40, 0.08);
+}
+
+* {
+	box-sizing: border-box;
+}
+html {
+	scroll-behavior: smooth;
+}
+body {
+	margin: 0;
+	background: var(--canvas);
+	color: var(--ink);
+	font-family:
+		Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI",
+		sans-serif;
+	font-size: 16px;
+	line-height: 1.72;
+	text-rendering: optimizeLegibility;
+}
+
+a {
+	color: var(--brand);
+	text-decoration-thickness: 1px;
+	text-underline-offset: 3px;
+}
+a:hover {
+	color: var(--brand-deep);
+}
+
+.topbar {
+	position: sticky;
+	top: 0;
+	z-index: 20;
+	border-bottom: 1px solid rgba(228, 231, 236, 0.9);
+	background: rgba(255, 255, 255, 0.92);
+	backdrop-filter: blur(14px);
+}
+
+.topbar-inner {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 24px;
+	max-width: 1280px;
+	min-height: 64px;
+	margin: 0 auto;
+	padding: 10px 28px;
+}
+
+.brand {
+	color: var(--ink);
+	font-size: 15px;
+	font-weight: 760;
+	letter-spacing: -0.01em;
+	text-decoration: none;
+	white-space: nowrap;
+}
+
+.brand-mark {
+	color: var(--brand);
+}
+.nav {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: flex-end;
+	gap: 6px;
+}
+.nav-link {
+	border-radius: 9px;
+	color: #475467;
+	font-size: 13px;
+	font-weight: 650;
+	padding: 6px 10px;
+	text-decoration: none;
+}
+.nav-link:hover,
+.nav-link.active {
+	background: var(--brand-soft);
+	color: var(--brand-deep);
+}
+
+.layout {
+	display: grid;
+	grid-template-columns: 248px minmax(0, 900px);
+	gap: 30px;
+	max-width: 1230px;
+	margin: 34px auto 70px;
+	padding: 0 28px;
+}
+
+/* Pages with no headings (the licence text) drop the empty sidebar column. */
+.layout.no-toc {
+	grid-template-columns: minmax(0, 900px);
+	justify-content: center;
+	max-width: 960px;
+}
+
+.sidebar {
+	position: sticky;
+	top: 90px;
+	align-self: start;
+	max-height: calc(100vh - 112px);
+	overflow: auto;
+	padding: 4px 8px 20px 0;
+}
+
+.toc-title {
+	margin: 0 0 10px 10px;
+	color: #98a2b3;
+	font-size: 11px;
+	font-weight: 800;
+	letter-spacing: 0.12em;
+	text-transform: uppercase;
+}
+
+.toc-link {
+	display: block;
+	border-left: 2px solid transparent;
+	border-radius: 0 8px 8px 0;
+	color: #667085;
+	font-size: 13px;
+	line-height: 1.35;
+	margin: 1px 0;
+	padding: 6px 8px 6px 10px;
+	text-decoration: none;
+}
+.toc-link:hover {
+	border-left-color: var(--brand);
+	background: #fff;
+	color: var(--brand-deep);
+}
+.toc-link.depth-3 {
+	padding-left: 22px;
+	font-size: 12px;
+}
+.toc-link.depth-4 {
+	padding-left: 34px;
+	font-size: 12px;
+	color: var(--muted);
+}
+
+.paper {
+	min-width: 0;
+	overflow: hidden;
+	border: 1px solid rgba(228, 231, 236, 0.85);
+	border-radius: 18px;
+	background: var(--paper);
+	box-shadow: var(--shadow);
+}
+
+.hero {
+	border-bottom: 1px solid var(--line);
+	background: linear-gradient(145deg, #ffffff 20%, #f1f4ff 100%);
+	padding: 58px 64px 44px;
+}
+.eyebrow {
+	color: var(--brand);
+	font-size: 12px;
+	font-weight: 800;
+	letter-spacing: 0.13em;
+	text-transform: uppercase;
+}
+.hero h1 {
+	max-width: 760px;
+	margin: 12px 0 12px;
+	color: #101828;
+	font-size: clamp(34px, 5vw, 54px);
+	line-height: 1.08;
+	letter-spacing: -0.04em;
+}
+.lede {
+	max-width: 680px;
+	margin: 0;
+	color: #475467;
+	font-size: 18px;
+	line-height: 1.55;
+}
+.metadata {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	margin-top: 24px;
+}
+.pill {
+	display: inline-flex;
+	align-items: center;
+	min-height: 28px;
+	border: 1px solid #d0d5dd;
+	border-radius: 999px;
+	background: rgba(255, 255, 255, 0.8);
+	color: #475467;
+	font-size: 12px;
+	font-weight: 700;
+	padding: 3px 10px;
+}
+.pill.status {
+	border-color: #a9e4d7;
+	background: var(--accent-soft);
+	color: var(--accent);
+}
+
+.mobile-toc {
+	display: none;
+	margin: 26px 32px 0;
+}
+.mobile-toc summary {
+	color: var(--brand-deep);
+	cursor: pointer;
+	font-size: 14px;
+	font-weight: 750;
+}
+.mobile-toc-links {
+	margin-top: 10px;
+}
+
+.content {
+	padding: 24px 64px 64px;
+}
+.content h2,
+.content h3,
+.content h4 {
+	position: relative;
+	scroll-margin-top: 88px;
+	color: #101828;
+}
+.content h2 {
+	border-top: 1px solid var(--line);
+	margin: 52px 0 18px;
+	padding-top: 38px;
+	font-size: 29px;
+	line-height: 1.2;
+	letter-spacing: -0.025em;
+}
+.content h2:first-child {
+	border-top: 0;
+	margin-top: 14px;
+	padding-top: 12px;
+}
+.content h3 {
+	margin: 34px 0 12px;
+	font-size: 21px;
+	line-height: 1.3;
+	letter-spacing: -0.015em;
+}
+.content h4 {
+	margin: 28px 0 10px;
+	font-size: 17px;
+	line-height: 1.35;
+}
+.heading-anchor {
+	opacity: 0;
+	margin-left: 8px;
+	color: #98a2b3;
+	font-size: 0.72em;
+	font-weight: 500;
+	text-decoration: none;
+}
+.content h2:hover .heading-anchor,
+.content h3:hover .heading-anchor {
+	opacity: 1;
+}
+
+.content p {
+	margin: 0 0 18px;
+}
+.content strong {
+	color: #101828;
+}
+.content ul,
+.content ol {
+	margin: 0 0 20px;
+	padding-left: 26px;
+}
+.content li {
+	margin: 7px 0;
+	padding-left: 3px;
+}
+.content li::marker {
+	color: var(--brand);
+	font-weight: 750;
+}
+.content blockquote {
+	margin: 24px 0;
+	border-left: 4px solid var(--brand);
+	border-radius: 0 10px 10px 0;
+	background: var(--brand-soft);
+	color: #344054;
+	padding: 16px 20px;
+}
+.content blockquote p:last-child {
+	margin-bottom: 0;
+}
+.content hr {
+	height: 1px;
+	margin: 44px 0;
+	border: 0;
+	background: var(--line);
+}
+
+code {
+	border: 1px solid #e4e7ec;
+	border-radius: 5px;
+	background: #f8fafc;
+	color: #344054;
+	font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+	font-size: 0.88em;
+	padding: 0.14em 0.38em;
+}
+pre {
+	overflow: auto;
+	margin: 24px 0;
+	border: 1px solid #344054;
+	border-radius: 12px;
+	background: var(--code);
+	color: #e4e7ec;
+	line-height: 1.58;
+	padding: 20px 22px;
+}
+pre code {
+	border: 0;
+	background: transparent;
+	color: inherit;
+	font-size: 13px;
+	padding: 0;
+}
+
+/*
+ * A link the export could not render as a sibling page. It still points at the
+ * repository, so it is marked rather than left to look like every other link:
+ * a recipient without access would otherwise meet an unexplained 404.
+ */
+.repo-link::after {
+	content: " \2197";
+	color: var(--muted);
+	font-size: 0.85em;
+	text-decoration: none;
+}
+
+/* Verbatim fixed-width text; the licence must not be reflowed into paragraphs. */
+.plain-text {
+	margin: 0;
+	border: 0;
+	border-radius: 0;
+	background: transparent;
+	color: var(--ink);
+	font-size: 13px;
+	padding: 0;
+	white-space: pre-wrap;
+	word-break: break-word;
+}
+.plain-text code {
+	color: inherit;
+	font-size: inherit;
+}
+
+.table-wrap {
+	overflow-x: auto;
+	margin: 24px 0 30px;
+	border: 1px solid var(--line);
+	border-radius: 12px;
+}
+table {
+	width: 100%;
+	border-collapse: collapse;
+	font-size: 14px;
+	line-height: 1.5;
+}
+th {
+	background: #f8fafc;
+	color: #344054;
+	font-size: 12px;
+	letter-spacing: 0.04em;
+	text-align: left;
+	text-transform: uppercase;
+}
+th,
+td {
+	border-bottom: 1px solid var(--line);
+	padding: 12px 14px;
+	vertical-align: top;
+}
+tr:last-child td {
+	border-bottom: 0;
+}
+tbody tr:hover {
+	background: #fafbff;
+}
+
+.footer {
+	border-top: 1px solid var(--line);
+	color: #98a2b3;
+	font-size: 12px;
+	padding: 24px 64px 30px;
+}
+
+@media (max-width: 920px) {
+	.layout {
+		display: block;
+		margin-top: 22px;
+		padding: 0 16px;
+	}
+	.sidebar {
+		display: none;
+	}
+	.mobile-toc {
+		display: block;
+	}
+	.hero {
+		padding: 46px 36px 34px;
+	}
+	.content {
+		padding: 20px 36px 48px;
+	}
+	.footer {
+		padding-left: 36px;
+		padding-right: 36px;
+	}
+}
+
+@media (max-width: 620px) {
+	.topbar-inner {
+		align-items: flex-start;
+		flex-direction: column;
+		gap: 6px;
+		padding: 10px 16px;
+	}
+	.nav {
+		justify-content: flex-start;
+	}
+	.hero {
+		padding: 36px 24px 30px;
+	}
+	.hero h1 {
+		font-size: 34px;
+	}
+	.lede {
+		font-size: 16px;
+	}
+	.content {
+		padding: 14px 24px 42px;
+	}
+	.mobile-toc {
+		margin-left: 24px;
+		margin-right: 24px;
+	}
+	.footer {
+		padding-left: 24px;
+		padding-right: 24px;
+	}
+}
+
+@media print {
+	@page {
+		margin: 16mm 15mm;
+	}
+	body {
+		background: #fff;
+		font-size: 10.5pt;
+	}
+	.topbar,
+	.sidebar,
+	.mobile-toc,
+	.heading-anchor {
+		display: none;
+	}
+	.layout {
+		display: block;
+		max-width: none;
+		margin: 0;
+		padding: 0;
+	}
+	.paper {
+		border: 0;
+		border-radius: 0;
+		box-shadow: none;
+	}
+	.hero {
+		padding: 0 0 10mm;
+		background: #fff;
+	}
+	.hero h1 {
+		font-size: 28pt;
+	}
+	.content {
+		padding: 0;
+	}
+	.content h2 {
+		break-after: avoid;
+		margin-top: 9mm;
+		padding-top: 5mm;
+	}
+	.content h3,
+	.content h4 {
+		break-after: avoid;
+	}
+	pre,
+	.content blockquote,
+	.table-wrap {
+		break-inside: avoid;
+	}
+	/* The licence is pages long; forbidding a break inside it prints one
+	   overflowing block instead of a document. */
+	.plain-text {
+		break-inside: auto;
+	}
+	.table-wrap {
+		overflow: visible;
+	}
+	a {
+		color: inherit;
+		text-decoration: none;
+	}
+	.footer {
+		padding: 8mm 0 0;
+	}
+}
+
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="eval-quality-readme.html"><span class="brand-mark">eval</span>-quality</a>
+      <nav class="nav" aria-label="Companion documents"><a class="nav-link" href="eval-quality-readme.html">Overview</a><a class="nav-link" href="eval-quality-product-brief.html">Product brief</a><a class="nav-link" href="eval-quality-prd.html">PRD</a><a class="nav-link" href="eval-quality-architecture-spine.html">Architecture</a><a class="nav-link" href="eval-quality-adr-001.html">ADR-001</a><a class="nav-link" href="eval-quality-adr-002.html">ADR-002</a><a class="nav-link" href="eval-quality-adr-003.html">ADR-003</a><a class="nav-link" href="eval-quality-adr-004.html">ADR-004</a><a class="nav-link" href="eval-quality-adr-005.html">ADR-005</a><a class="nav-link" href="eval-quality-adr-006.html">ADR-006</a><a class="nav-link" href="eval-quality-adr-007.html">ADR-007</a><a class="nav-link" href="eval-quality-adr-008.html">ADR-008</a><a class="nav-link" href="eval-quality-adr-009.html">ADR-009</a></nav>
+    </div>
+  </header>
+  <div class="layout">
+    <aside class="sidebar" aria-label="Table of contents">
+      <p class="toc-title">On this page</p>
+      <a class="toc-link depth-2" href="#section-1-decision-this-plan-must-produce">1. Decision this plan must produce</a><a class="toc-link depth-3" href="#document-boundary">Document boundary</a><a class="toc-link depth-3" href="#owner-override-agent-ground-truth">Owner override: agent ground truth</a><a class="toc-link depth-3" href="#corpus-and-ground-truth-revised-2026-07-27">Corpus and ground truth, revised 2026-07-27</a><a class="toc-link depth-3" href="#active-hypothesis-revised-2026-07-27">Active hypothesis, revised 2026-07-27</a><a class="toc-link depth-2" href="#section-2-decisions-already-made">2. Decisions already made</a><a class="toc-link depth-2" href="#agent-execution-contract">Agent execution contract</a><a class="toc-link depth-3" href="#start-location-and-primary-agent">Start location and primary agent</a><a class="toc-link depth-3" href="#where-couture-cast-fits">Where Couture Cast fits</a><a class="toc-link depth-3" href="#public-and-private-evidence-boundary">Public and private evidence boundary</a><a class="toc-link depth-3" href="#recommended-role-assignment">Recommended role assignment</a><a class="toc-link depth-3" href="#required-owner-inputs">Required owner inputs</a><a class="toc-link depth-3" href="#confidence-and-preflight-gate">Confidence and preflight gate</a><a class="toc-link depth-3" href="#state-and-resume-protocol">State and resume protocol</a><a class="toc-link depth-3" href="#owner-approval-gates">Owner approval gates</a><a class="toc-link depth-2" href="#section-3-hypotheses">3. Hypotheses</a><a class="toc-link depth-3" href="#h0-independent-black-box-evaluation">H0: Independent black-box evaluation</a><a class="toc-link depth-3" href="#h1-claim-to-evidence-lineage">H1: Claim-to-evidence lineage</a><a class="toc-link depth-3" href="#h2-semantic-checkpoints">H2: Semantic checkpoints</a><a class="toc-link depth-3" href="#h3-process-and-outcome-separation">H3: Process and outcome separation</a><a class="toc-link depth-3" href="#h4-first-material-error-attribution">H4: First material error attribution</a><a class="toc-link depth-3" href="#h0-experiment-protocol">H0 experiment protocol</a><a class="toc-link depth-3" href="#h0-ground-truth">H0 ground truth</a><a class="toc-link depth-3" href="#h0-run-result">H0 run result</a><a class="toc-link depth-2" href="#section-4-repository-layout-to-create-during-execution">4. Repository layout to create during execution</a><a class="toc-link depth-2" href="#section-5-corpus">5. Corpus</a><a class="toc-link depth-3" href="#pilot-corpus">Pilot corpus</a><a class="toc-link depth-3" href="#confirmatory-corpus">Confirmatory corpus</a><a class="toc-link depth-3" href="#manifest-fields">Manifest fields</a><a class="toc-link depth-2" href="#section-6-agent-ground-truth">6. Agent ground truth</a><a class="toc-link depth-2" href="#section-7-semantic-baseline-execution">7. Semantic baseline execution</a><a class="toc-link depth-2" href="#section-8-prototype-rules">8. Prototype rules</a><a class="toc-link depth-2" href="#section-9-metrics-and-preregistered-gates">9. Metrics and preregistered gates</a><a class="toc-link depth-3" href="#h0-independent-evaluator-gate">H0 independent-evaluator gate</a><a class="toc-link depth-3" href="#capability-metrics">Capability metrics</a><a class="toc-link depth-3" href="#semantic-evaluator-pack-gate">Semantic evaluator-pack gate</a><a class="toc-link depth-2" href="#section-10-market-confirmation-after-a-technical-pass">10. Market confirmation after a technical pass</a><a class="toc-link depth-2" href="#section-11-execution-checklist">11. Execution checklist</a><a class="toc-link depth-3" href="#phase-a-preflight-and-h0-preregistration">Phase A: Preflight and H0 preregistration</a><a class="toc-link depth-3" href="#phase-b-h0-execution-and-decision">Phase B: H0 execution and decision</a><a class="toc-link depth-3" href="#phase-c-semantic-evaluator-experiment">Phase C: Semantic evaluator experiment</a><a class="toc-link depth-3" href="#phase-d-confirmation-and-document-update">Phase D: Confirmation and document update</a><a class="toc-link depth-3" href="#completion-checklist">Completion checklist</a><a class="toc-link depth-2" href="#section-12-stop-rules">12. Stop rules</a><a class="toc-link depth-2" href="#section-13-handoff-prompt">13. Handoff prompt</a>
+    </aside>
+    <main class="paper">
+      <header class="hero">
+        <div class="eyebrow">eval-quality · Protocol</div>
+        <h1>Hypothesis Validation Plan</h1>
+        <p class="lede">The preregistered protocol both experiment rounds ran under, closed and superseded by ADR-002.</p>
+        <div class="metadata">
+          <span class="pill status">closed — superseded by ADR-002</span>
+          <span class="pill">Updated 2026-07-27</span>
+          <span class="pill">Owner: Murat Ozcan</span>
+        </div>
+      </header>
+      <details class="mobile-toc">
+        <summary>On this page</summary>
+        <div class="mobile-toc-links"><a class="toc-link depth-2" href="#section-1-decision-this-plan-must-produce">1. Decision this plan must produce</a><a class="toc-link depth-3" href="#document-boundary">Document boundary</a><a class="toc-link depth-3" href="#owner-override-agent-ground-truth">Owner override: agent ground truth</a><a class="toc-link depth-3" href="#corpus-and-ground-truth-revised-2026-07-27">Corpus and ground truth, revised 2026-07-27</a><a class="toc-link depth-3" href="#active-hypothesis-revised-2026-07-27">Active hypothesis, revised 2026-07-27</a><a class="toc-link depth-2" href="#section-2-decisions-already-made">2. Decisions already made</a><a class="toc-link depth-2" href="#agent-execution-contract">Agent execution contract</a><a class="toc-link depth-3" href="#start-location-and-primary-agent">Start location and primary agent</a><a class="toc-link depth-3" href="#where-couture-cast-fits">Where Couture Cast fits</a><a class="toc-link depth-3" href="#public-and-private-evidence-boundary">Public and private evidence boundary</a><a class="toc-link depth-3" href="#recommended-role-assignment">Recommended role assignment</a><a class="toc-link depth-3" href="#required-owner-inputs">Required owner inputs</a><a class="toc-link depth-3" href="#confidence-and-preflight-gate">Confidence and preflight gate</a><a class="toc-link depth-3" href="#state-and-resume-protocol">State and resume protocol</a><a class="toc-link depth-3" href="#owner-approval-gates">Owner approval gates</a><a class="toc-link depth-2" href="#section-3-hypotheses">3. Hypotheses</a><a class="toc-link depth-3" href="#h0-independent-black-box-evaluation">H0: Independent black-box evaluation</a><a class="toc-link depth-3" href="#h1-claim-to-evidence-lineage">H1: Claim-to-evidence lineage</a><a class="toc-link depth-3" href="#h2-semantic-checkpoints">H2: Semantic checkpoints</a><a class="toc-link depth-3" href="#h3-process-and-outcome-separation">H3: Process and outcome separation</a><a class="toc-link depth-3" href="#h4-first-material-error-attribution">H4: First material error attribution</a><a class="toc-link depth-3" href="#h0-experiment-protocol">H0 experiment protocol</a><a class="toc-link depth-3" href="#h0-ground-truth">H0 ground truth</a><a class="toc-link depth-3" href="#h0-run-result">H0 run result</a><a class="toc-link depth-2" href="#section-4-repository-layout-to-create-during-execution">4. Repository layout to create during execution</a><a class="toc-link depth-2" href="#section-5-corpus">5. Corpus</a><a class="toc-link depth-3" href="#pilot-corpus">Pilot corpus</a><a class="toc-link depth-3" href="#confirmatory-corpus">Confirmatory corpus</a><a class="toc-link depth-3" href="#manifest-fields">Manifest fields</a><a class="toc-link depth-2" href="#section-6-agent-ground-truth">6. Agent ground truth</a><a class="toc-link depth-2" href="#section-7-semantic-baseline-execution">7. Semantic baseline execution</a><a class="toc-link depth-2" href="#section-8-prototype-rules">8. Prototype rules</a><a class="toc-link depth-2" href="#section-9-metrics-and-preregistered-gates">9. Metrics and preregistered gates</a><a class="toc-link depth-3" href="#h0-independent-evaluator-gate">H0 independent-evaluator gate</a><a class="toc-link depth-3" href="#capability-metrics">Capability metrics</a><a class="toc-link depth-3" href="#semantic-evaluator-pack-gate">Semantic evaluator-pack gate</a><a class="toc-link depth-2" href="#section-10-market-confirmation-after-a-technical-pass">10. Market confirmation after a technical pass</a><a class="toc-link depth-2" href="#section-11-execution-checklist">11. Execution checklist</a><a class="toc-link depth-3" href="#phase-a-preflight-and-h0-preregistration">Phase A: Preflight and H0 preregistration</a><a class="toc-link depth-3" href="#phase-b-h0-execution-and-decision">Phase B: H0 execution and decision</a><a class="toc-link depth-3" href="#phase-c-semantic-evaluator-experiment">Phase C: Semantic evaluator experiment</a><a class="toc-link depth-3" href="#phase-d-confirmation-and-document-update">Phase D: Confirmation and document update</a><a class="toc-link depth-3" href="#completion-checklist">Completion checklist</a><a class="toc-link depth-2" href="#section-12-stop-rules">12. Stop rules</a><a class="toc-link depth-2" href="#section-13-handoff-prompt">13. Handoff prompt</a></div>
+      </details>
+      <article class="content"><h1>eval-quality Hypothesis Validation Plan</h1>
+<p><strong>Closed 2026-07-27.</strong> Both decisions below are recorded without running the preregistered block-2
+rerun; see <code>_bmad-output/planning-artifacts/architecture/architecture-eval-quality-2026-07-22/ADR-002-contract-authoring-discipline.md</code>
+for the decision and its build order. The document below is
+preserved as the execution authority that produced the evidence, not as an open plan. Where it says a
+decision is pending or the PRD is blocked, the ADR controls.</p>
+<h2 id="section-1-decision-this-plan-must-produce">1. Decision this plan must produce<a class="heading-anchor" href="#section-1-decision-this-plan-must-produce" aria-label="Link to 1. Decision this plan must produce">#</a></h2>
+<p>This plan makes two independent product decisions:</p>
+<ol>
+<li>Whether an isolated, black-box evaluator agent adds material release evidence for human-on-the-loop and dark-factory software delivery.</li>
+<li>Whether <code>eval-quality</code> should ship semantic evaluators on top of an established agent evaluation engine.</li>
+</ol>
+<p>The full runner, provider adapter, assertion DSL, pass@k, cost accounting, reporting, CLI, and CI machinery will come from an existing open-source engine. <code>eval-quality</code> will use public extension points. It will not duplicate that machinery.</p>
+<p><code>eval-quality</code> is the single product name. It covers the agents, rules, methodology, governance, and any semantic evaluator pack that earns its way through this experiment. The former name &quot;AE&quot; is retired.</p>
+<p><code>DECISION.md</code> records a verdict for the independent-evaluator hypothesis:</p>
+<ol>
+<li><strong>DARK-FACTORY VALIDATED:</strong> The isolated evaluator passes the H0 gate. eval-quality may advance independent black-box evaluation to design-partner validation.</li>
+<li><strong>DARK-FACTORY REJECTED:</strong> H0 fails. TEA may still support conventional eval best practices, but eval-quality cannot claim a dark-factory advantage.</li>
+</ol>
+<p>It also records one evaluator-pack decision:</p>
+<ol>
+<li><strong>BUILD THIN PACK:</strong> At least two evaluator hypotheses pass every required gate. Package only the evaluators that passed. Keep the existing engine underneath.</li>
+<li><strong>NARROW AND REPEAT:</strong> Exactly one evaluator hypothesis passes. Run a second confirmatory corpus for that evaluator. Do not publish production library code yet.</li>
+<li><strong>METHODOLOGY ONLY:</strong> No evaluator hypothesis passes, or the overall safety gate fails. Keep <code>eval-quality</code> as the agents, rules, methodology, and governance layer over existing tools. Leave prototype code under <code>experiments/</code> as research evidence.</li>
+</ol>
+<p>The implementation PRD remains blocked until both decisions are recorded.</p>
+<h3 id="document-boundary">Document boundary<a class="heading-anchor" href="#document-boundary" aria-label="Link to Document boundary">#</a></h3>
+<p>This document is the execution authority for the research phase. The Eval Contract, isolation boundary, agent roles, and result schemas below are experimental controls. They are provisional and may be changed or rejected by the evidence.</p>
+<p>A product ADR is intentionally deferred. Write product architecture only after H0 and the semantic evaluator decision are recorded and the brief and PRD are revised. No ADR is required to execute this plan.</p>
+<h3 id="owner-override-agent-ground-truth">Owner override: agent ground truth<a class="heading-anchor" href="#owner-override-agent-ground-truth" aria-label="Link to Owner override: agent ground truth">#</a></h3>
+<p>On 2026-07-27, the experiment owner removed every requirement to recruit or wait for human
+reviewers. The Test Architect is the ground-truth authority for H0 and the semantic experiment.
+Ground truth must still be frozen before condition results, anchored to reproducible oracle
+evidence, and isolated from evaluator outputs. Later references to Reviewer A, Reviewer B, human
+reviewers, reviewer agreement, or human labeling are superseded by this section. No experiment
+state may block on a human-reviewer input.</p>
+<p>The decision rule remains binary and unchanged. Every H0 gate must pass for
+<code>DARK-FACTORY VALIDATED</code>; any failed gate produces <code>DARK-FACTORY REJECTED</code>.</p>
+<h3 id="corpus-and-ground-truth-revised-2026-07-27">Corpus and ground truth, revised 2026-07-27<a class="heading-anchor" href="#corpus-and-ground-truth-revised-2026-07-27" aria-label="Link to Corpus and ground truth, revised 2026-07-27">#</a></h3>
+<p>Ground truth comes from version-control history rather than from an adjudicated rating. Each case is
+the commit immediately before a bug fix, and the fix&#39;s own test set is the oracle: the test must fail
+on assertions at the parent commit and pass once the fix is applied. Defect existence is therefore
+mechanical, the adjudicated source is <code>natural</code> by construction, and no second rater is required.</p>
+<p>Four qualification filters apply, in order. A case must be <strong>usable</strong> (its test fails at the parent
+and passes with the fix, and resolves its imports at the parent), <strong>material</strong> (the fix changes
+behaviour rather than a comment, type alias, or description string), <strong>observable</strong> (probing the
+public interface at parent and at fix yields different responses), and <strong>judgeable</strong> (a contract can
+state the expected behaviour without naming the defect, and an evaluator can reach a verdict from the
+interface alone). Judgeability is the filter most easily missed: a defect can be plainly observable in
+a diff and still be impossible for a sealed evaluator to judge without being handed the answer.</p>
+<p>The environment for a scored run must be hermetic and must satisfy <strong>declared invariants for the
+interfaces the probe exercises</strong>, since no pre-flight can prove an environment defect-free in
+general. Before any arm launches, exercise every tool the contract can reach and confirm the only
+anomalous response is the seeded one. Treat every unexplained anomaly as a harness defect until
+proven otherwise. Both executed rounds lost evidence to measurement-layer defects, and block 1&#39;s
+false-FAIL gate originated there. The round-1 gates failed or went unmet for separate reasons:
+reduced sample, an underspecified oracle, blocked live access to the second system, and missing
+isolation instrumentation.</p>
+<h3 id="active-hypothesis-revised-2026-07-27">Active hypothesis, revised 2026-07-27<a class="heading-anchor" href="#active-hypothesis-revised-2026-07-27" aria-label="Link to Active hypothesis, revised 2026-07-27">#</a></h3>
+<p>H0 as written is closed and its result is disputed in the same breath: the scored round could not
+have reached <code>DARK-FACTORY VALIDATED</code>, because gate 1 requires defects whose source is <code>natural</code> and
+that corpus contained none. Read that outcome as <strong>untested</strong>, not as refuted.</p>
+<p>The active hypothesis is <strong>contract-authoring discipline</strong>: at equal model, budget, and black-box
+access, a contract authored under oracle discipline causes a sealed evaluator to detect materially
+more naturally occurring defects than a contract authored plainly from the same description. The only
+manipulated variable is the authoring method. Evaluator isolation is held constant across arms rather
+than tested, and reported as a delivery property.</p>
+<p>The primary metric is <strong>contract detection rate</strong>, the share of qualified natural defects whose
+oracles cause the sealed evaluator to take the action that exposes the defect, reported per defect
+class and across repetitions. Secondary metrics are diagnosis depth, verdict stability, and false
+FAIL rate against fixed-code controls.</p>
+<p>Block 1 ran on 2026-07-27 over 19 sealed repetitions across 3 cases. Pooled detection was 0.33 for
+plainly authored contracts and 1.00 for discipline-authored contracts, with 3 of 3 verdict stability
+and zero isolation violations. Four of five gates passed. The safety gate failed on a harness defect
+that produced the block&#39;s only false FAIL, so the block does not support the hypothesis under its own
+all-gates rule and does not refute it either. The semantic hypotheses H1 through H4 rank below
+replication of this result.</p>
+<h2 id="section-2-decisions-already-made">2. Decisions already made<a class="heading-anchor" href="#section-2-decisions-already-made" aria-label="Link to 2. Decisions already made">#</a></h2>
+<ul>
+<li>Use <a href="https://github.com/agentevals-dev/agentevals">agentevals-dev/agentevals</a> as the primary engine. It already provides local execution, OpenTelemetry trace ingestion, golden sets, CI gates, reports, and custom evaluators in any language.</li>
+<li>Use <a href="https://www.promptfoo.dev/">Promptfoo</a> as the independent baseline comparator.</li>
+<li>Pin the exact engine versions, judge model snapshot, prompts, and configuration in the experiment commit before scored execution begins.</li>
+<li>Use the strongest reasonable baseline configuration for each tool. A weak baseline would invalidate the comparison.</li>
+<li>Use the same traces, judge model snapshot, and temperature across both baselines and the prototypes wherever the tools allow it.</li>
+<li>A Python engine is acceptable. TypeScript and JavaScript evaluators remain first-class through the engine&#39;s custom evaluator protocol.</li>
+<li>Prototype through public extension points. Do not fork an engine during this experiment.</li>
+<li>Grounding means support from evidence the agent observed. It does not establish that the evidence itself is true. Outcome correctness and evidence correctness must be labeled separately.</li>
+<li>Longest common subsequence does not model a partial order. Semantic checkpoints must use an accepted-path set or an explicit dependency graph.</li>
+<li>TEA creates a sealed Eval Contract from the product spec before implementation. The evaluator agent receives the contract and black-box interfaces. It receives no original spec, source code, repository, builder transcript, or implementation logs.</li>
+<li>The Eval Contract contains behavior goals, risk hypotheses, oracles, constraints, permitted interfaces, test-data rules, budgets, and evidence requirements. It contains no prescribed action sequence.</li>
+<li>The evaluator chooses its own actions at runtime. Pre-canned tests remain baseline evidence rather than the independent evaluator&#39;s execution model.</li>
+<li>Treat the Eval Contract and isolation rules as experiment controls. They do not establish production architecture.</li>
+</ul>
+<h2 id="agent-execution-contract">Agent execution contract<a class="heading-anchor" href="#agent-execution-contract" aria-label="Link to Agent execution contract">#</a></h2>
+<p>An agent receiving this document must start here. It must not begin scored execution from the checklist alone.</p>
+<h3 id="start-location-and-primary-agent">Start location and primary agent<a class="heading-anchor" href="#start-location-and-primary-agent" aria-label="Link to Start location and primary agent">#</a></h3>
+<p>Run the experiment from <code>~/opensource/eval-quality</code>. This repository is the orchestration home and owns public-safe preregistration, schemas, prompts, normalized traces, labels, results, and decisions. Private inputs and evidence remain in the owner-controlled private store. Do not start the orchestration session inside a system-under-test repository.</p>
+<p>Use this launch sequence:</p>
+<ol>
+<li>Open a fresh agent session with <code>~/opensource/eval-quality</code> as its working directory.</li>
+<li>Invoke <code>$bmad-tea</code> to make the BMad Test Architect the experiment orchestrator.</li>
+<li>Give the Test Architect the handoff prompt in section 13.</li>
+<li>Start at Phase A, step 1. If <code>experiments/hypothesis-validation/STATUS.md</code> exists, resume only its single next action.</li>
+<li>Stop for Murat&#39;s approval at both preregistration gates.</li>
+</ol>
+<p>The first chat instruction can be copied exactly:</p>
+<pre><code class="language-text">$bmad-tea
+
+Execute HYPOTHESIS_VALIDATION_PLAN.md as the experiment orchestrator. Work from the eval-quality repository. Start with Phase A. Use Couture Cast as the conventional system under test. Resolve the owner-approved private system through the opaque ID agentic-system and the owner-controlled private input record. Keep all private values and evidence outside this repository. Do not begin scored work until both input records and the H0 preregistration are complete and Murat approves them.
+</code></pre>
+<p>The Test Architect owns the experiment from preflight through decision. It delegates bounded scaffold, adapter, baseline, and prototype implementation tasks to BMad Dev. BMad Dev must not orchestrate the experiment or change its hypotheses, labels, gates, and decision rules. Each independent-evaluator condition uses a fresh generic agent because any agent that has read the product spec or repository has already violated the isolation boundary.</p>
+<h3 id="where-couture-cast-fits">Where Couture Cast fits<a class="heading-anchor" href="#where-couture-cast-fits" aria-label="Link to Where Couture Cast fits">#</a></h3>
+<p>Use <code>~/opensource/couture-cast</code> as the first H0 system under test. It fills the conventional application slot. Its current recommendation implementation is deterministic. The planned LLM layer does not make the current codebase an agentic system.</p>
+<p>Discovery evidence recorded on 2026-07-22:</p>
+<ul>
+<li>Repository commit observed during planning: <code>d85ef5faca1b59fd303720c80af706c2818a5305</code>. The orchestrator must record the actual immutable SHA used by the experiment.</li>
+<li>Black-box surfaces: web application and HTTP API.</li>
+<li>Candidate startup command from <code>package.json</code>: <code>npm run start:all</code>.</li>
+<li>Candidate deterministic commands from <code>package.json</code>: <code>npm test</code> and <code>npm run test:pw-local</code>.</li>
+<li>Product and task sources include <code>_bmad-output/project-knowledge/couturecast_brief.md</code> and the planning and implementation artifacts under <code>_bmad-output/</code>.</li>
+</ul>
+<p>These commands are discovery candidates. Phase A verifies setup, cleanup, safety, prerequisites, and exact commands before any run. The builder works in a dedicated Couture Cast checkout or worktree. The independent evaluator receives only a running allowlisted web or API interface, scoped test data, and the sealed Eval Contract. It never receives the Couture Cast path or checkout.</p>
+<p>Couture Cast alone cannot satisfy H0. The second slot is already owner-approved and uses the public identifier <code>agentic-system</code>. Its identity, repository, commands, task sources, and evidence remain in an owner-controlled private record outside this repository. Before H0 approval, the Test Architect verifies that it exposes current agentic or probabilistic behavior, has six suitable implementation tasks, provides a stable black-box interface, and can preserve complete evidence. Propose a replacement only if preflight proves that the approved system cannot satisfy those requirements.</p>
+<p>For H1 through H4, &quot;Couture Cast traces&quot; means complete traces produced by coding agents while implementing or evaluating Couture Cast tasks. It does not mean end-user application telemetry. The second semantic corpus source is complete structured execution traces from <code>agentic-system</code>. The Test Architect verifies trace completeness, diversity, retention permission, and sanitization before admitting either source.</p>
+<h3 id="public-and-private-evidence-boundary">Public and private evidence boundary<a class="heading-anchor" href="#public-and-private-evidence-boundary" aria-label="Link to Public and private evidence boundary">#</a></h3>
+<p>This repository is public. The experiment may use an owner-approved private system locally while preserving a strict publication boundary.</p>
+<p>The public repository may contain:</p>
+<ul>
+<li>Generic system IDs such as <code>agentic-system</code>.</li>
+<li>Hypotheses, schemas, rubrics, gates, and public-safe Eval Contracts.</li>
+<li>Opaque private references, SHA-256 digests, aggregate metrics, and sanitized findings.</li>
+<li>Synthetic or explicitly approved trace examples.</li>
+</ul>
+<p>The owner-controlled private evidence store contains:</p>
+<ul>
+<li>The private system identity, repository path, immutable revision, commands, and task-source locations.</li>
+<li>Credentials, network details, private specifications, system prompts, and test-data configuration.</li>
+<li>Raw traces, raw results, private labels, implementation patches, and any artifact containing private source or domain data.</li>
+</ul>
+<p>Never place a private artifact anywhere under the <code>eval-quality</code> working tree, including an untracked or gitignored path. Local execution is permitted from an adjacent owner-controlled workspace. Public manifests link to private evidence with an opaque <code>privateRef</code> and a SHA-256 digest. An opaque reference must reveal nothing about the system or organization.</p>
+<p>Sensitive exact values are intentionally absent from public files. Scored execution is permitted when the Test Architect verifies the complete private record and records matching opaque references and digests. A missing private value, inaccessible artifact, or digest mismatch blocks execution.</p>
+<h3 id="recommended-role-assignment">Recommended role assignment<a class="heading-anchor" href="#recommended-role-assignment" aria-label="Link to Recommended role assignment">#</a></h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Role</th>
+<th>Recommended agent</th>
+<th>Responsibility</th>
+<th>Forbidden actions</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Experiment owner</td>
+<td>Murat</td>
+<td>Supplies systems and access, approves preregistration, accepts the final decision</td>
+<td>Must not change gates after scored results are visible</td>
+</tr>
+<tr>
+<td>Experiment orchestrator</td>
+<td>BMad Test Architect</td>
+<td>Owns risk analysis, Eval Contracts, rubric, preregistration, isolation, ground-truth workflow, scoring, and <code>DECISION.md</code></td>
+<td>Must not serve as the independent evaluator after reading the original specs</td>
+</tr>
+<tr>
+<td>Implementation worker</td>
+<td>BMad Dev</td>
+<td>Creates the experiment scaffold, adapters, normalization shim, and evaluator prototypes from bounded tasks</td>
+<td>Must not alter hypotheses, gates, labels, or decision rules</td>
+</tr>
+<tr>
+<td>Builder condition</td>
+<td>BMad Dev or another coding agent</td>
+<td>Implements each H0 task with the original spec and repository</td>
+<td>Must not receive hidden defects, evaluator output, or adjudicated labels</td>
+</tr>
+<tr>
+<td>Self-evaluator condition</td>
+<td>Fresh agent run with builder context</td>
+<td>Evaluates the implementation with the Eval Contract, original spec, repository, and builder context</td>
+<td>Must not receive independent-evaluator output or human labels</td>
+</tr>
+<tr>
+<td>Independent-evaluator condition</td>
+<td>Fresh generic agent in an isolated context</td>
+<td>Evaluates only the sealed Eval Contract through black-box interfaces</td>
+<td>Must not receive the original spec, codebase, repository, builder context, comparator output, or human labels</td>
+</tr>
+<tr>
+<td>Ground-truth authority</td>
+<td>Test Architect</td>
+<td>Establishes and seals ground truth before evaluator results exist</td>
+<td>Must anchor labels to reproducible oracle evidence and remain blind to later condition results</td>
+</tr>
+</tbody></table>
+</div><p>Use separate conversations, processes, and workspaces for the builder, self-evaluator, and independent-evaluator conditions. A fresh prompt inside a shared conversation is not isolated.</p>
+<h3 id="required-owner-inputs">Required owner inputs<a class="heading-anchor" href="#required-owner-inputs" aria-label="Link to Required owner inputs">#</a></h3>
+<p>Before creating scored artifacts, the orchestrator must collect and record:</p>
+<ol>
+<li>The two public system IDs, plus repository paths and immutable commit SHAs in the appropriate public or private record.</li>
+<li>Startup, deterministic-test, scripted agent-eval, test-data setup, and cleanup commands for each system. A scripted command may be <code>NOT_APPLICABLE</code> when no pre-existing suite exists.</li>
+<li>Six candidate implementation tasks per system, with stable task IDs and source spec paths.</li>
+<li>The black-box UI, API, CLI, or MCP interface kinds permitted for each system. Exact private endpoints stay in the private record.</li>
+<li>Scoped credentials, synthetic test data, safety limits, and network allowlists. Exact private values stay in the private record.</li>
+<li>Builder, self-evaluator, independent-evaluator, and judge model snapshots.</li>
+<li>Token, tool-call, wall-clock, and cost ceilings for every agent condition.</li>
+<li>Confirmation that the Test Architect is the ground-truth authority.</li>
+<li>The experiment branch and the directories the agents may modify.</li>
+<li>Exact <code>agentevals-dev/agentevals</code> and Promptfoo versions for the semantic experiment.</li>
+<li>The exact revision, configuration, prompts, and model snapshot for every applicable pre-existing scripted agent-eval baseline.</li>
+</ol>
+<p>Record public-safe values in <code>experiments/hypothesis-validation/execution-inputs.yaml</code>. Record sensitive values in the owner-controlled private input record outside this repository. Never invent a missing endpoint, command, credential, schema, repository path, or task. If a required value cannot be discovered from the public repositories, the private record, or owner-provided evidence, set the status to <code>BLOCKED_INPUT</code> and ask the owner one concrete question.</p>
+<p>Minimum shape:</p>
+<pre><code class="language-yaml">experimentId: eq-hypothesis-001
+branch: experiment/hypothesis-validation
+owner: Murat
+reviewerB: null
+systems:
+  - id: couture-cast
+    category: conventional
+    repoPath: ~/opensource/couture-cast
+    commitSha: null
+    startupCommand: null
+    deterministicTestCommand: null
+    scriptedEvalCommand: null
+    dataSetupCommand: null
+    cleanupCommand: null
+    blackBoxInterfaces: []
+  - id: agentic-system
+    category: agentic
+    privateRef: private-system-01
+    privateRecordDigest: null
+    commitShaDigest: null
+    startupCommandDigest: null
+    deterministicTestCommandDigest: null
+    scriptedEvalCommandDigest: null
+    blackBoxInterfaceKinds: []
+tasks:
+  - taskId: null
+    systemId: null
+    sourceSpecPath: null
+    selectionRationale: null
+tools:
+  agentevalsVersion: null
+  promptfooVersion: null
+models:
+  builder: null
+  selfEvaluator: null
+  independentEvaluator: null
+  judge: null
+budgets:
+  maxToolCalls: null
+  maxInputTokens: null
+  maxOutputTokens: null
+  maxWallClockMinutes: null
+  maxCostUsd: null
+access:
+  credentialKinds: []
+  networkAccessKinds: []
+  publicAllowedWriteRoots: []
+  privateAccessDigest: null
+privateEvidence:
+  storage: outside-public-repository
+  manifestRef: null
+  manifestDigest: null
+  sanitizationPolicy: null
+</code></pre>
+<p>Null required public values block scored execution. For <code>agentic-system</code>, the public digests and opaque references must be populated and must match a complete private record. Sensitive exact values stay absent from this YAML.</p>
+<p>The owner-controlled private input record uses this minimum shape. Values represented by angle-bracket placeholders are required unless the field explicitly permits <code>NOT_APPLICABLE</code>:</p>
+<pre><code class="language-yaml">recordVersion: 1
+publicSystemId: agentic-system
+privateRef: private-system-01
+approval:
+  ownerApproved: true
+  approvedPurpose: eval-quality-hypothesis-validation
+system:
+  identity: &lt;private-name&gt;
+  repoPath: &lt;absolute-private-path&gt;
+  commitSha: &lt;immutable-revision&gt;
+  startupCommand: &lt;command&gt;
+  deterministicTestCommand: &lt;command&gt;
+  dataSetupCommand: &lt;command&gt;
+  cleanupCommand: &lt;command&gt;
+  exactBlackBoxEndpoints: []
+scriptedBaseline:
+  status: &lt;APPLICABLE-or-NOT_APPLICABLE&gt;
+  workspacePath: &lt;absolute-private-path-or-NOT_APPLICABLE&gt;
+  revision: &lt;immutable-revision-or-NOT_APPLICABLE&gt;
+  command: &lt;command-or-NOT_APPLICABLE&gt;
+  configPaths: []
+  promptPaths: []
+  modelSnapshot: &lt;snapshot-or-NOT_APPLICABLE&gt;
+tasks:
+  - taskId: &lt;public-safe-id&gt;
+    sourceSpecPath: &lt;absolute-private-path&gt;
+    selectionRationale: &lt;private-rationale&gt;
+access:
+  credentialRefs: []
+  networkAllowlist: []
+  allowedWriteRoots: []
+privateEvidence:
+  root: &lt;absolute-path-outside-eval-quality&gt;
+  artifactIndexPath: &lt;absolute-private-path&gt;
+</code></pre>
+<p>Hash the complete private record after each approved change. Put only that digest and the opaque <code>privateRef</code> in the public execution inputs. The private artifact index maps every opaque artifact reference to its actual local path and digest.</p>
+<h3 id="confidence-and-preflight-gate">Confidence and preflight gate<a class="heading-anchor" href="#confidence-and-preflight-gate" aria-label="Link to Confidence and preflight gate">#</a></h3>
+<p>Before generating an Eval Contract, test adapter, schema, or evaluator, the orchestrator records this block in <code>STATUS.md</code>:</p>
+<pre><code class="language-text">Confidence: &lt;1-10&gt;
+Rationale: &lt;public evidence paths, opaque private references and digests, or observed interface kinds&gt;
+Unknowns:
+- &lt;specific unknown&gt;
+</code></pre>
+<ul>
+<li>Confidence 7 or higher permits execution.</li>
+<li>Confidence 5 or 6 permits scaffolding while every assumption remains visible in <code>STATUS.md</code>. Scored execution stays blocked.</li>
+<li>Confidence below 5 requires <code>BLOCKED_INPUT</code>. Ask the owner to resolve the most important unknown.</li>
+</ul>
+<h3 id="state-and-resume-protocol">State and resume protocol<a class="heading-anchor" href="#state-and-resume-protocol" aria-label="Link to State and resume protocol">#</a></h3>
+<p><code>STATUS.md</code> is the resume authority. It contains the current state, completed artifacts with hashes, invalid runs, open questions, and exactly one next action.</p>
+<p>Allowed states are:</p>
+<ol>
+<li><code>PREFLIGHT</code></li>
+<li><code>BLOCKED_INPUT</code></li>
+<li><code>SCAFFOLDED</code></li>
+<li><code>H0_PREREGISTRATION_REVIEW</code></li>
+<li><code>H0_RUNNING</code></li>
+<li><code>H0_SCORED</code></li>
+<li><code>SEMANTIC_PILOT</code></li>
+<li><code>SEMANTIC_PREREGISTRATION_REVIEW</code></li>
+<li><code>SEMANTIC_RUNNING</code></li>
+<li><code>TECHNICAL_DECISION_RECORDED</code></li>
+<li><code>MARKET_CONFIRMATION</code></li>
+<li><code>COMPLETE</code></li>
+</ol>
+<p>On resume, read <code>STATUS.md</code>, verify every recorded file and digest, and perform only its next action. Never rerun or overwrite a valid completed condition without recording a new run ID and reason.</p>
+<h3 id="owner-approval-gates">Owner approval gates<a class="heading-anchor" href="#owner-approval-gates" aria-label="Link to Owner approval gates">#</a></h3>
+<p>The orchestrator must stop for owner approval twice:</p>
+<ol>
+<li><strong>H0 approval:</strong> task IDs, Eval Contracts, prompts, models, resource ceilings, isolation controls, ground-truth rubric, and H0 gates are frozen before any H0 scored condition runs.</li>
+<li><strong>Semantic approval:</strong> corpus IDs, adjudicated labels, baseline configurations, prototype versions, prompts, models, thresholds, and semantic gates are frozen before confirmatory execution.</li>
+</ol>
+<p>Each approval record includes <code>approvedBy</code>, <code>approvedAt</code>, the Git commit SHA, and a SHA-256 digest file. An agent may prepare these records. Only the experiment owner may approve them.</p>
+<h2 id="section-3-hypotheses">3. Hypotheses<a class="heading-anchor" href="#section-3-hypotheses" aria-label="Link to 3. Hypotheses">#</a></h2>
+<h3 id="h0-independent-black-box-evaluation">H0: Independent black-box evaluation<a class="heading-anchor" href="#h0-independent-black-box-evaluation" aria-label="Link to H0: Independent black-box evaluation">#</a></h3>
+<p>An evaluator agent isolated from the original spec, codebase, and builder context can use a sealed Eval Contract plus black-box access to find material failures missed by builder self-evaluation and all applicable fixed or pre-canned tests. It can do this without unsafe false rejections.</p>
+<h3 id="h1-claim-to-evidence-lineage">H1: Claim-to-evidence lineage<a class="heading-anchor" href="#h1-claim-to-evidence-lineage" aria-label="Link to H1: Claim-to-evidence lineage">#</a></h3>
+<p>A claim-level evaluator can identify material unsupported claims that the two baselines allow to pass. Every finding must identify the claim and the supporting or missing trace evidence.</p>
+<h3 id="h2-semantic-checkpoints">H2: Semantic checkpoints<a class="heading-anchor" href="#h2-semantic-checkpoints" aria-label="Link to H2: Semantic checkpoints">#</a></h3>
+<p>A checkpoint evaluator can accept valid alternate trajectories while rejecting trajectories that skip a required dependency, use invalid evidence, or take a materially unsound action. Checkpoints are represented as an accepted-path set or a dependency graph. Literal sequence matching is only a baseline.</p>
+<h3 id="h3-process-and-outcome-separation">H3: Process and outcome separation<a class="heading-anchor" href="#h3-process-and-outcome-separation" aria-label="Link to H3: Process and outcome separation">#</a></h3>
+<p>A two-axis classification can distinguish correct outcome with unsound process, incorrect outcome with sound process, and ordinary correct or incorrect runs. It passes only if it changes the diagnosis or remediation beyond what the baselines already provide.</p>
+<h3 id="h4-first-material-error-attribution">H4: First material error attribution<a class="heading-anchor" href="#h4-first-material-error-attribution" aria-label="Link to H4: First material error attribution">#</a></h3>
+<p>An attribution evaluator can identify the earliest trace event that materially caused a later failure. The output must name the event, causal explanation, downstream effects, and confidence.</p>
+<h3 id="h0-experiment-protocol">H0 experiment protocol<a class="heading-anchor" href="#h0-experiment-protocol" aria-label="Link to H0 experiment protocol">#</a></h3>
+<p>Use 12 implementation tasks across two systems under test, with 6 tasks per system. One system must expose agentic or probabilistic product behavior. The other must be a conventional UI, API, or CLI application or service. This separation tests the two product hypotheses without confusing the builder agent with an AI-agent product. The set contains 8 defect-bearing implementations and 4 clean implementations. At least 4 defect-bearing cases must come from defects naturally produced during implementation. Controlled mutations may supply the remaining cases.</p>
+<p>Use Couture Cast for the conventional system unless preflight proves it cannot meet the protocol. Resolve and verify the owner-approved <code>agentic-system</code> from the private input record during Phase A. Its identity remains outside this repository.</p>
+<p>The roles are distinct:</p>
+<ul>
+<li>The <strong>builder agent</strong> implements the task.</li>
+<li>The <strong>system under test</strong> is the resulting product behavior. It may be agentic or conventional.</li>
+<li>The <strong>independent evaluator agent</strong> investigates the running system after implementation.</li>
+</ul>
+<p>Each Eval Contract must validate against <code>schemas/eval-contract.schema.json</code> and contain at least:</p>
+<pre><code class="language-json">{
+  &quot;contractVersion&quot;: 1,
+  &quot;taskId&quot;: &quot;h0-couture-cast-01&quot;,
+  &quot;sourceSpecDigest&quot;: &quot;sha256:&lt;digest&gt;&quot;,
+  &quot;observableBehaviors&quot;: [
+    {
+      &quot;id&quot;: &quot;B-001&quot;,
+      &quot;description&quot;: &quot;externally observable expected behavior&quot;,
+      &quot;oracle&quot;: &quot;how the evaluator can decide whether it occurred&quot;,
+      &quot;severity&quot;: &quot;material&quot;
+    }
+  ],
+  &quot;riskHypotheses&quot;: [],
+  &quot;permittedInterfaces&quot;: [],
+  &quot;forbiddenInputs&quot;: [
+    &quot;original-spec&quot;,
+    &quot;source-code&quot;,
+    &quot;repository&quot;,
+    &quot;builder-transcript&quot;,
+    &quot;implementation-logs&quot;,
+    &quot;comparator-results&quot;,
+    &quot;human-labels&quot;
+  ],
+  &quot;testData&quot;: {
+    &quot;setup&quot;: null,
+    &quot;cleanup&quot;: null
+  },
+  &quot;budgets&quot;: {
+    &quot;maxToolCalls&quot;: 0,
+    &quot;maxWallClockMinutes&quot;: 0,
+    &quot;maxCostUsd&quot;: 0
+  },
+  &quot;safetyLimits&quot;: [],
+  &quot;requiredEvidence&quot;: [],
+  &quot;gatePolicy&quot;: {
+    &quot;allowedVerdicts&quot;: [&quot;PASS&quot;, &quot;CONCERNS&quot;, &quot;FAIL&quot;]
+  }
+}
+</code></pre>
+<p>The contract excludes original spec prose, repository paths, architecture and implementation details that are not externally observable requirements, prescribed test steps, hidden defect or mutation details, baseline results, and human labels.</p>
+<p>Apply this context boundary:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Input</th>
+<th>Builder</th>
+<th>Self-evaluator</th>
+<th>Independent evaluator</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Original product spec</td>
+<td>Allowed</td>
+<td>Allowed</td>
+<td>Denied</td>
+</tr>
+<tr>
+<td>Source code and repository</td>
+<td>Allowed</td>
+<td>Allowed</td>
+<td>Denied</td>
+</tr>
+<tr>
+<td>Builder conversation and implementation logs</td>
+<td>Allowed</td>
+<td>Allowed</td>
+<td>Denied</td>
+</tr>
+<tr>
+<td>Sealed Eval Contract</td>
+<td>Denied during H0</td>
+<td>Allowed</td>
+<td>Allowed</td>
+</tr>
+<tr>
+<td>Public black-box interfaces</td>
+<td>Allowed</td>
+<td>Allowed</td>
+<td>Allowed</td>
+</tr>
+<tr>
+<td>Scoped synthetic test data</td>
+<td>Allowed</td>
+<td>Allowed</td>
+<td>Allowed</td>
+</tr>
+<tr>
+<td>Comparator outputs</td>
+<td>Denied</td>
+<td>Denied</td>
+<td>Denied</td>
+</tr>
+<tr>
+<td>Human labels and hidden defects</td>
+<td>Denied</td>
+<td>Denied</td>
+<td>Denied</td>
+</tr>
+</tbody></table>
+</div><p>Each independent run must validate against <code>schemas/isolation-manifest.schema.json</code>. The manifest records the run ID, task ID, condition, model snapshot, system-prompt digest, contract digest, workspace identity, allowed mounts, observed mounts, network allowlist, observed network targets, tool allowlist, observed tool calls, resource ceilings, actual resource use, and any violation. A non-empty violation field invalidates the run.</p>
+<p>For each task:</p>
+<ol>
+<li>TEA reads the product spec and creates the Eval Contract before implementation begins.</li>
+<li>Freeze the contract and record its SHA-256 digest.</li>
+<li>The builder agent receives the original spec, repository, and normal implementation tools.</li>
+<li>Run the existing deterministic suite as baseline A.</li>
+<li>Run each applicable pre-existing scripted agent-eval suite as baseline B. Freeze its revision, scenarios, prompts, models, configuration, and thresholds before hidden defect status or scored output is visible. Repeat a model-backed suite three times. Record <code>NOT_APPLICABLE</code> before execution when a system has no such suite.</li>
+<li>Run a self-evaluator as baseline C in three fresh repetitions. It receives the Eval Contract plus the original spec, repository, builder transcript, and implementation context.</li>
+<li>Run the independent evaluator in three fresh repetitions. It receives only the Eval Contract, scoped test data, and black-box access through the public UI, API, CLI, or MCP interface.</li>
+<li>Give every self-evaluator and independent-evaluator repetition the same model snapshot and the same maximum tool-call count, token limits, wall-clock limit, and cost ceiling. Their tool availability differs only where the context boundary requires it. Preserve a scripted suite&#39;s native frozen configuration and report any budget difference.</li>
+<li>Run the evaluators in separate workspaces. Audit every mounted path and tool permission. Any prohibited-input access invalidates the run.</li>
+<li>The Test Architect establishes and seals the real defect set before evaluator results exist.</li>
+<li>Preserve every action trace and evidence artifact for comparison. Private artifacts remain in the private evidence store and receive opaque references and digests in the public manifest.</li>
+</ol>
+<p>The Eval Contract is a projection of required behavior. The independent evaluator has no access to the original product spec or implementation context. Its actions remain adaptive because the contract describes goals and oracles rather than steps.</p>
+<h3 id="h0-ground-truth">H0 ground truth<a class="heading-anchor" href="#h0-ground-truth" aria-label="Link to H0 ground truth">#</a></h3>
+<p>The Test Architect labels each implementation before deterministic, scripted, self-evaluator, or independent-evaluator results exist. Preserve the label, its oracle evidence, and the sealed adjudicated record in the appropriate evidence store.</p>
+<p>Each H0 label validates against <code>schemas/h0-ground-truth.schema.json</code> and contains:</p>
+<pre><code class="language-json">{
+  &quot;taskId&quot;: &quot;h0-couture-cast-01&quot;,
+  &quot;systemId&quot;: &quot;couture-cast&quot;,
+  &quot;implementationSha&quot;: &quot;&lt;commit-sha&gt;&quot;,
+  &quot;expectedClean&quot;: false,
+  &quot;defects&quot;: [
+    {
+      &quot;defectId&quot;: &quot;D-001&quot;,
+      &quot;behaviorId&quot;: &quot;B-001&quot;,
+      &quot;summary&quot;: &quot;observable failure&quot;,
+      &quot;severity&quot;: &quot;material&quot;,
+      &quot;oracleEvidence&quot;: [
+        {
+          &quot;storage&quot;: &quot;public&quot;,
+          &quot;path&quot;: &quot;results/raw/oracle-observation.json&quot;,
+          &quot;privateRef&quot;: null,
+          &quot;sha256&quot;: &quot;sha256:&lt;digest&gt;&quot;
+        }
+      ],
+      &quot;source&quot;: &quot;natural&quot;
+    }
+  ],
+  &quot;expectedGate&quot;: &quot;FAIL&quot;,
+  &quot;rationale&quot;: &quot;evidence-based explanation&quot;
+}
+</code></pre>
+<p>Allowed defect sources are <code>natural</code> and <code>controlled-mutation</code>. A clean implementation has an empty <code>defects</code> array and <code>expectedClean: true</code>. Do not reveal clean status, defect IDs, or mutation details to any evaluator condition.</p>
+<p>Before condition execution, reproduce every material or critical defect through its declared
+black-box oracle. A clean label requires all material observable behaviors to pass their declared
+oracles. If a label lacks reproducible evidence, repair the oracle or replace the case before
+condition execution.</p>
+<h3 id="h0-run-result">H0 run result<a class="heading-anchor" href="#h0-run-result" aria-label="Link to H0 run result">#</a></h3>
+<p>Every condition emits one record that validates against <code>schemas/h0-run-result.schema.json</code>:</p>
+<pre><code class="language-json">{
+  &quot;runId&quot;: &quot;h0-couture-cast-01-independent-r1&quot;,
+  &quot;taskId&quot;: &quot;h0-couture-cast-01&quot;,
+  &quot;condition&quot;: &quot;independent&quot;,
+  &quot;verdict&quot;: &quot;FAIL&quot;,
+  &quot;findings&quot;: [
+    {
+      &quot;findingId&quot;: &quot;F-001&quot;,
+      &quot;behaviorId&quot;: &quot;B-001&quot;,
+      &quot;severity&quot;: &quot;material&quot;,
+      &quot;summary&quot;: &quot;observed failure&quot;,
+      &quot;actionIds&quot;: [&quot;A-004&quot;],
+      &quot;evidenceArtifacts&quot;: [
+        {
+          &quot;storage&quot;: &quot;public&quot;,
+          &quot;path&quot;: &quot;results/raw/h0-couture-cast-01-independent-r1.json&quot;,
+          &quot;privateRef&quot;: null,
+          &quot;sha256&quot;: &quot;sha256:&lt;digest&gt;&quot;
+        }
+      ]
+    }
+  ],
+  &quot;actionsArtifact&quot;: {
+    &quot;storage&quot;: &quot;public&quot;,
+    &quot;path&quot;: &quot;results/raw/h0-couture-cast-01-independent-actions.jsonl&quot;,
+    &quot;privateRef&quot;: null,
+    &quot;sha256&quot;: &quot;sha256:&lt;digest&gt;&quot;
+  },
+  &quot;resourceUse&quot;: {
+    &quot;toolCalls&quot;: 0,
+    &quot;inputTokens&quot;: 0,
+    &quot;outputTokens&quot;: 0,
+    &quot;wallClockSeconds&quot;: 0,
+    &quot;costUsd&quot;: 0
+  },
+  &quot;isolationManifestArtifact&quot;: {
+    &quot;storage&quot;: &quot;public&quot;,
+    &quot;path&quot;: &quot;independent-evaluator/isolation-manifests/h0-couture-cast-01-independent-r1.json&quot;,
+    &quot;privateRef&quot;: null,
+    &quot;sha256&quot;: &quot;sha256:&lt;digest&gt;&quot;
+  },
+  &quot;invalidReason&quot;: null
+}
+</code></pre>
+<p>The <code>condition</code> enum contains <code>deterministic</code>, <code>scripted</code>, <code>self</code>, and <code>independent</code>. A scripted record may use verdict <code>NOT_APPLICABLE</code> only when that status was frozen during preregistration.</p>
+<p>Every artifact link uses the same four-field shape shown above. A private artifact sets <code>storage</code> to <code>private</code>, <code>path</code> to <code>null</code>, and supplies an opaque <code>privateRef</code> and matching digest.</p>
+<p>After all condition outputs are sealed, reviewers map findings to adjudicated defect IDs. A unique independent catch requires a correct mapping to a material or critical defect, no correct material finding from any applicable deterministic or scripted baseline, and detection in fewer than two of three self-evaluator repetitions. Unsupported or duplicate findings count against precision.</p>
+<h2 id="section-4-repository-layout-to-create-during-execution">4. Repository layout to create during execution<a class="heading-anchor" href="#section-4-repository-layout-to-create-during-execution" aria-label="Link to 4. Repository layout to create during execution">#</a></h2>
+<p>Create this structure on the experiment branch:</p>
+<pre><code class="language-text">experiments/hypothesis-validation/
+  README.md
+  STATUS.md
+  execution-inputs.yaml
+  private-evidence-manifest.json
+  rubric.md
+  preregistration/
+    h0.yaml
+    semantic.yaml
+    checksums.sha256
+  schemas/
+    artifact-ref.schema.json
+    eval-contract.schema.json
+    isolation-manifest.schema.json
+    private-evidence-manifest.schema.json
+    h0-ground-truth.schema.json
+    h0-run-result.schema.json
+    trace-label.schema.json
+    evaluator-result.schema.json
+  prompts/
+    builder/
+    self-evaluator/
+    independent-evaluator/
+    judges/
+  independent-evaluator/
+    specs/
+    eval-contracts/
+    implementations/
+    deterministic-baseline/
+    scripted-baseline/
+    self-evaluation/
+    black-box-evaluation/
+    isolation-manifests/
+  corpus/
+    manifest.jsonl
+    pilot/
+    confirmatory/
+  labels/
+    h0/
+      reviewer-a/
+      reviewer-b/
+      adjudicated/
+    reviewer-a/
+    reviewer-b/
+    adjudicated/
+  baselines/
+    agentevals/
+    promptfoo/
+  evaluators/
+    claim-evidence/
+    semantic-checkpoints/
+    process-outcome/
+    first-material-error/
+  results/
+    raw/
+    summary.md
+  DECISION.md
+</code></pre>
+<p><code>README.md</code> contains public-safe installation, validation, and orchestration commands. Sensitive commands stay in the private input record. <code>STATUS.md</code> implements the state and resume protocol. <code>private-evidence-manifest.json</code> contains only opaque references, SHA-256 digests, artifact types, and public-safe run IDs. <code>preregistration/h0.yaml</code> freezes H0 task IDs, contracts, conditions, prompts, models, resource budgets, metrics, and gates before H0 execution. <code>preregistration/semantic.yaml</code> freezes corpus IDs, labels, engine versions, baseline configurations, prototypes, prompts, thresholds, and gates before semantic confirmatory execution. <code>DECISION.md</code> records both decisions with links to public artifacts or opaque private references and deviations.</p>
+<h2 id="section-5-corpus">5. Corpus<a class="heading-anchor" href="#section-5-corpus" aria-label="Link to 5. Corpus">#</a></h2>
+<h3 id="pilot-corpus">Pilot corpus<a class="heading-anchor" href="#pilot-corpus" aria-label="Link to Pilot corpus">#</a></h3>
+<p>Use 8 traces to develop the rubric, normalize tool inputs, configure the baselines, and tune prototypes. Pilot traces never count toward the decision metrics.</p>
+<h3 id="confirmatory-corpus">Confirmatory corpus<a class="heading-anchor" href="#confirmatory-corpus" aria-label="Link to Confirmatory corpus">#</a></h3>
+<p>Use 48 locked traces from at least two agent execution sources. Source one is coding-agent traces captured while agents work on Couture Cast. Source two is complete execution traces from the owner-approved <code>agentic-system</code>. Both sources must provide complete structured traces, sufficient real runs, materially different domains or agent stacks, permission to use the data for this experiment, and a reliable sanitization process. Private traces remain in the private evidence store. If either source fails these criteria, the Test Architect proposes a replacement in <code>preregistration/semantic.yaml</code> and the experiment owner approves it before labeling.</p>
+<p>The corpus must contain 8 cases in each stratum:</p>
+<ol>
+<li>Correct outcome with grounded claims and a sound path.</li>
+<li>Correct outcome with at least one material unsupported claim.</li>
+<li>Incorrect outcome caused by bad or stale observed evidence, with an otherwise sound process.</li>
+<li>Incorrect outcome caused by an unsound process.</li>
+<li>Valid alternate path that differs materially from the reference path.</li>
+<li>Cascading failure with a human-identifiable first material error.</li>
+</ol>
+<p>At least 24 of the 48 traces must come from real agent runs. Controlled mutations may fill the remaining cases. Each of the two systems must contribute at least 20 traces. No single task template may contribute more than 4 traces.</p>
+<h3 id="manifest-fields">Manifest fields<a class="heading-anchor" href="#manifest-fields" aria-label="Link to Manifest fields">#</a></h3>
+<p>Each line in <code>corpus/manifest.jsonl</code> contains:</p>
+<pre><code class="language-json">{
+  &quot;caseId&quot;: &quot;eq-001&quot;,
+  &quot;system&quot;: &quot;couture-cast&quot;,
+  &quot;taskId&quot;: &quot;stable-task-id&quot;,
+  &quot;stratum&quot;: &quot;unsupported-claim&quot;,
+  &quot;source&quot;: &quot;real&quot;,
+  &quot;traceArtifact&quot;: {
+    &quot;storage&quot;: &quot;public&quot;,
+    &quot;path&quot;: &quot;corpus/confirmatory/eq-001.json&quot;,
+    &quot;privateRef&quot;: null,
+    &quot;sha256&quot;: &quot;sha256:&lt;digest&gt;&quot;
+  },
+  &quot;containsSensitiveData&quot;: false
+}
+</code></pre>
+<p>For a private trace, set <code>storage</code> to <code>private</code>, set <code>path</code> to <code>null</code>, and use an opaque <code>privateRef</code> plus its digest. Remove secrets and personal data before any trace enters this repository.</p>
+<h2 id="section-6-agent-ground-truth">6. Agent ground truth<a class="heading-anchor" href="#section-6-agent-ground-truth" aria-label="Link to 6. Agent ground truth">#</a></h2>
+<p>The Test Architect labels every confirmatory trace before baseline or prototype results exist.
+Each label must cite reproducible trace evidence. The labeling context must not contain condition
+results.</p>
+<p>Each label records:</p>
+<pre><code class="language-json">{
+  &quot;caseId&quot;: &quot;eq-001&quot;,
+  &quot;outcomeCorrect&quot;: true,
+  &quot;evidenceCorrect&quot;: true,
+  &quot;claims&quot;: [
+    {
+      &quot;claim&quot;: &quot;normalized claim text&quot;,
+      &quot;status&quot;: &quot;grounded&quot;,
+      &quot;evidenceStepIds&quot;: [&quot;step-4&quot;]
+    }
+  ],
+  &quot;pathSound&quot;: true,
+  &quot;acceptedCheckpoints&quot;: [
+    {
+      &quot;id&quot;: &quot;cp-2&quot;,
+      &quot;dependsOn&quot;: [&quot;cp-1&quot;],
+      &quot;satisfiedByStepIds&quot;: [&quot;step-4&quot;]
+    }
+  ],
+  &quot;firstMaterialErrorStepId&quot;: null,
+  &quot;materialFailure&quot;: false,
+  &quot;expectedGate&quot;: &quot;PASS&quot;,
+  &quot;severity&quot;: &quot;none&quot;,
+  &quot;rationale&quot;: &quot;short evidence-based explanation&quot;
+}
+</code></pre>
+<p>Allowed claim statuses are <code>grounded</code>, <code>unsupported</code>, <code>contradicted</code>, and <code>not-checkable</code>. Allowed severity values are <code>none</code>, <code>low</code>, <code>material</code>, and <code>critical</code>.</p>
+<p>Resolve ambiguous labels by replaying the trace evidence against the frozen rubric. Keep public-safe
+labels in <code>labels/adjudicated/</code> and private labels in the private evidence store. If the evidence
+cannot support a deterministic label, replace the trace before condition execution. Do not tune the
+rubric against prototype results.</p>
+<p>Commit public-safe labels and their SHA-256 digest before running the scored baselines or prototypes.
+Freeze private labels in the private evidence store and commit only their opaque references and
+digests.</p>
+<h2 id="section-7-semantic-baseline-execution">7. Semantic baseline execution<a class="heading-anchor" href="#section-7-semantic-baseline-execution" aria-label="Link to 7. Semantic baseline execution">#</a></h2>
+<p>For each tool:</p>
+<ol>
+<li>Pin the exact version.</li>
+<li>Record public-safe installation and run commands in the experiment <code>README.md</code>. Keep sensitive commands in the private input record.</li>
+<li>Map the full trace into the richest supported native format.</li>
+<li>Configure every relevant built-in trajectory, tool, argument, sequence, outcome, and judge-based check.</li>
+<li>Tune prompts and thresholds only on the 8 pilot traces.</li>
+<li>Freeze configuration in <code>preregistration/semantic.yaml</code>.</li>
+<li>Run all 48 confirmatory traces.</li>
+<li>Save raw machine-readable output without manual correction in the appropriate public or private evidence store.</li>
+</ol>
+<p>A baseline miss means both tools emit PASS or emit no material finding for a ground-truth-labeled material or critical failure.</p>
+<h2 id="section-8-prototype-rules">8. Prototype rules<a class="heading-anchor" href="#section-8-prototype-rules" aria-label="Link to 8. Prototype rules">#</a></h2>
+<p>Build only the four custom evaluators. A small trace-normalization shim is allowed. The shim may translate schemas. It may not execute agents, call providers on behalf of a runner, aggregate pass@k, implement a general assertion DSL, create a general report system, or replace CI gating.</p>
+<p>Tune prototypes only on the pilot corpus. Freeze evaluator code, prompts, model snapshot, and thresholds before confirmatory execution. Run every judge-backed evaluator three times against every applicable confirmatory case to measure stability.</p>
+<p>Every evaluator result must contain:</p>
+<pre><code class="language-json">{
+  &quot;caseId&quot;: &quot;eq-001&quot;,
+  &quot;evaluator&quot;: &quot;claim-evidence&quot;,
+  &quot;verdict&quot;: &quot;CONCERNS&quot;,
+  &quot;finding&quot;: &quot;material unsupported claim&quot;,
+  &quot;stepIds&quot;: [&quot;step-4&quot;],
+  &quot;evidenceStepIds&quot;: [],
+  &quot;confidence&quot;: 0.91,
+  &quot;rationale&quot;: &quot;short evidence-based explanation&quot;
+}
+</code></pre>
+<h2 id="section-9-metrics-and-preregistered-gates">9. Metrics and preregistered gates<a class="heading-anchor" href="#section-9-metrics-and-preregistered-gates" aria-label="Link to 9. Metrics and preregistered gates">#</a></h2>
+<h3 id="h0-independent-evaluator-gate">H0 independent-evaluator gate<a class="heading-anchor" href="#h0-independent-evaluator-gate" aria-label="Link to H0 independent-evaluator gate">#</a></h3>
+<p>For H0, the scoring unit is an adjudicated material or critical defect ID. Normalize deterministic-test failures and applicable scripted-suite findings into the H0 run-result schema before scoring. Mask the condition name while reviewers map findings to defect IDs.</p>
+<ul>
+<li><strong>H0 precision:</strong> Correct independent-evaluator material findings mapped to a material or critical defect ID, divided by all material findings emitted by the independent evaluator.</li>
+<li><strong>H0 recall:</strong> Material or critical defect IDs detected in at least two of three valid independent-evaluator repetitions, divided by all adjudicated material or critical defect IDs.</li>
+<li><strong>H0 unique catch:</strong> A defect ID detected in at least two of three independent-evaluator repetitions, with no catch from any applicable deterministic or scripted baseline and detection in fewer than two of three self-evaluator repetitions.</li>
+<li><strong>H0 real defect:</strong> A defect whose adjudicated source is <code>natural</code>. Controlled mutations may measure recall and safety. They do not satisfy the three-real-defect gate.</li>
+<li><strong>Valid run:</strong> A run with a matching preregistration record, matching prompt and contract digests, complete artifacts, and no isolation violation.</li>
+<li><strong>H0 stability:</strong> Percentage of tasks receiving the same verdict in all three independent-evaluator repetitions.</li>
+<li><strong>H0 task verdict:</strong> The majority verdict across three valid repetitions. Report every dissenting repetition separately.</li>
+</ul>
+<p>All conditions must pass:</p>
+<ol>
+<li>The independent evaluator catches at least 3 real, material defects missed by the self-evaluator and all applicable deterministic or scripted baselines.</li>
+<li>Those unique catches span both systems under test.</li>
+<li>Precision is at least 0.85 and recall is at least 0.80 across the 12 tasks.</li>
+<li>At the H0 task-verdict level, the 4 clean implementations receive zero false FAIL verdicts and at most 1 false CONCERNS verdict.</li>
+<li>At least 1 material defect is found through an evaluator-chosen action that no pre-canned baseline executed.</li>
+<li>Every independent run has a complete isolation manifest and zero prohibited-input accesses.</li>
+<li>At least 1 finding changes a real ship decision or materially changes remediation.</li>
+<li>Independent-evaluator verdict stability is at least 0.90 across three repetitions per task.</li>
+</ol>
+<p>Record cost, latency, token use, and tool calls for every model-backed scripted suite, the self-evaluator, and the independent evaluator. These are diagnostic metrics for the first experiment. They are not pass/fail thresholds until real operating data exists.</p>
+<h3 id="capability-metrics">Capability metrics<a class="heading-anchor" href="#capability-metrics" aria-label="Link to Capability metrics">#</a></h3>
+<ul>
+<li><strong>Precision:</strong> Correct material findings divided by all material findings emitted.</li>
+<li><strong>Recall:</strong> Correctly detected ground-truth-labeled material failures divided by all applicable material failures.</li>
+<li><strong>Incremental catches:</strong> Material or critical failures missed by both baselines and correctly found by the prototype.</li>
+<li><strong>False rejection:</strong> A grounded, sound, valid case receiving CONCERNS or FAIL.</li>
+<li><strong>Stability:</strong> Percentage of cases receiving the same verdict across all three repeated judge runs.</li>
+<li><strong>Attribution accuracy:</strong> Exact and adjacent-step agreement with the adjudicated first material error.</li>
+</ul>
+<h3 id="semantic-evaluator-pack-gate">Semantic evaluator-pack gate<a class="heading-anchor" href="#semantic-evaluator-pack-gate" aria-label="Link to Semantic evaluator-pack gate">#</a></h3>
+<p>All conditions must pass:</p>
+<ol>
+<li>At least 3 real, material failures missed by both baselines are caught by the prototypes.</li>
+<li>The incremental catches span at least 2 hypotheses and both trace-source systems.</li>
+<li>Precision is at least 0.85 for every evaluator proposed for packaging.</li>
+<li>Recall is at least 0.80 on the applicable cases for every evaluator proposed for packaging.</li>
+<li>There are zero false FAIL verdicts on grounded, sound, or valid alternate cases.</li>
+<li>There is at most 1 false CONCERNS verdict across those valid cases.</li>
+<li>Judge-backed verdict stability is at least 0.90 across three runs.</li>
+<li>H4 reaches at least 0.70 exact first-error agreement and 0.85 adjacent-step agreement if H4 is proposed for packaging.</li>
+<li>At least 1 finding changes a real ship decision or materially changes the remediation chosen by the agent owner.</li>
+<li>Every passing evaluator runs through a public extension point of the selected engine. No engine fork is required.</li>
+</ol>
+<p>An evaluator that misses its individual precision, recall, stability, or false-rejection bar is excluded even if the overall experiment passes.</p>
+<h2 id="section-10-market-confirmation-after-a-technical-pass">10. Market confirmation after a technical pass<a class="heading-anchor" href="#section-10-market-confirmation-after-a-technical-pass" aria-label="Link to 10. Market confirmation after a technical pass">#</a></h2>
+<p>A technical pass proves incremental measurement value. It does not prove product demand.</p>
+<p>Before production packaging, show the evidence reports to practitioners from at least 5 organizations and complete at least 8 sessions. At least 3 organizations must make a costly commitment: provide traces, allocate engineering time, or run a design-partner pilot. Statements of interest without a commitment do not pass this gate.</p>
+<p>Record the sessions and decision in <code>results/summary.md</code>. Remove identifying details when required.</p>
+<h2 id="section-11-execution-checklist">11. Execution checklist<a class="heading-anchor" href="#section-11-execution-checklist" aria-label="Link to 11. Execution checklist">#</a></h2>
+<p>Complete these phases in order. The role in parentheses owns the step.</p>
+<h3 id="phase-a-preflight-and-h0-preregistration">Phase A: Preflight and H0 preregistration<a class="heading-anchor" href="#phase-a-preflight-and-h0-preregistration" aria-label="Link to Phase A: Preflight and H0 preregistration">#</a></h3>
+<ol>
+<li><strong>Read state</strong> (Test Architect): Read this document and <code>STATUS.md</code> if it exists. Create <code>STATUS.md</code> with state <code>PREFLIGHT</code> when absent.</li>
+<li><strong>Resolve inputs</strong> (Test Architect): Inspect Couture Cast read-only and populate its verified SHA, commands, interfaces, and candidate tasks. Obtain the private input record for the owner-approved <code>agentic-system</code>, verify its digest, and populate only public-safe references and digests in <code>execution-inputs.yaml</code>. Record the confidence block. Stop at <code>BLOCKED_INPUT</code> when required public or private values remain unresolved or confidence is below 5.</li>
+<li><strong>Verify systems</strong> (Test Architect): Check out the recorded SHAs. Execute each startup, deterministic-test, applicable scripted-eval, setup, and cleanup command once. Save public-safe output under <code>results/raw/preflight/</code>. Save private output in the private evidence store and add its opaque reference and digest to <code>private-evidence-manifest.json</code>.</li>
+<li><strong>Create scaffold</strong> (BMad Dev): Create the section 4 directory structure and JSON Schemas. Validate every example record in this document against its schema.</li>
+<li><strong>Select H0 tasks</strong> (Test Architect): Choose six tasks per system. Record task ID, source spec, system, interface, expected risk, and selection rationale. Do not label tasks as clean or defective for evaluator agents.</li>
+<li><strong>Create Eval Contracts</strong> (Test Architect): Compile, validate, freeze, and hash one contract per task before its builder run begins.</li>
+<li><strong>Freeze conditions</strong> (Test Architect): Save public-safe builder, self-evaluator, independent-evaluator, and judge prompts under <code>prompts/</code>. Freeze each applicable scripted baseline revision, scenarios, prompts, models, configuration, and thresholds. Keep private prompts in the private evidence store. Record public digests, model snapshots, resource ceilings, and <code>NOT_APPLICABLE</code> decisions.</li>
+<li><strong>Write H0 preregistration</strong> (Test Architect): Create <code>preregistration/h0.yaml</code> with task IDs, contract digests, prompt digests, system SHA or private revision digest, model snapshots, deterministic and scripted baseline configurations, budgets, schemas, mapping rules, privacy manifest digest, metrics, gates, and invalidation rules.</li>
+<li><strong>Approve H0</strong> (Experiment owner): Review the full H0 package. Add approval metadata, commit it, and record the commit SHA in <code>preregistration/checksums.sha256</code>. Scored H0 execution cannot begin before this step.</li>
+</ol>
+<h3 id="phase-b-h0-execution-and-decision">Phase B: H0 execution and decision<a class="heading-anchor" href="#phase-b-h0-execution-and-decision" aria-label="Link to Phase B: H0 execution and decision">#</a></h3>
+<ol start="10">
+<li><strong>Build implementations</strong> (Builder agent): Run each task in a separate builder context. Preserve the implementation SHA, builder prompt, transcript, model, resource use, and command output in the appropriate evidence store. Do not expose Eval Contracts or hidden cases to the builder.</li>
+<li><strong>Complete the case mix</strong> (Test Architect): Inventory naturally produced defects. Add controlled mutations only when required to reach eight defect-bearing and four clean implementations. Preserve mutation patches outside evaluator workspaces. Private-system patches remain in the private evidence store.</li>
+<li><strong>Freeze H0 ground truth</strong> (Test Architect): Label all implementations before condition results exist. Reproduce material defects through their black-box oracles, validate the records, and record their digests. Commit public-safe records. Keep private records outside this repository.</li>
+<li><strong>Run deterministic condition</strong> (BMad Dev): Execute the frozen deterministic command against every implementation. Normalize output into H0 run-result records.</li>
+<li><strong>Run scripted baseline condition</strong> (BMad Dev): Execute every applicable frozen pre-existing scripted agent-eval suite against each preregistered implementation. Run model-backed suites three times. Normalize findings into H0 run-result records and preserve unmodified native output.</li>
+<li><strong>Run self-evaluator condition</strong> (Fresh contextual agent): Create three fresh repetitions per task with the allowed self-evaluator inputs. Save complete action traces and results. Do not reuse builder or comparator conversations.</li>
+<li><strong>Run independent condition</strong> (Fresh generic agent): Create three sealed repetitions per task. Verify each isolation manifest before launch, then expose only the Eval Contract, scoped test resources, and black-box interfaces. Save complete action traces and results.</li>
+<li><strong>Seal H0 outputs</strong> (Test Architect): Validate every result and manifest, calculate digests, identify invalid runs, and lock raw outputs before mapping findings. Verify every private artifact against <code>private-evidence-manifest.json</code>.</li>
+<li><strong>Map and score H0</strong> (Test Architect): Mask condition names, map findings to adjudicated defect IDs through the sealed oracle evidence, resolve ambiguous mappings by evidence replay, and calculate every H0 metric and gate.</li>
+<li><strong>Record H0 decision</strong> (Test Architect): Add DARK-FACTORY VALIDATED or DARK-FACTORY REJECTED to <code>DECISION.md</code>, with a gate-by-gate table, evidence links or opaque references, invalid runs, deviations, and resource diagnostics. Set state <code>H0_SCORED</code>.</li>
+</ol>
+<p>H0 and H1 through H4 are independent decisions. Continue to Phase C after either H0 outcome unless the experiment owner explicitly stops the remaining research.</p>
+<h3 id="phase-c-semantic-evaluator-experiment">Phase C: Semantic evaluator experiment<a class="heading-anchor" href="#phase-c-semantic-evaluator-experiment" aria-label="Link to Phase C: Semantic evaluator experiment">#</a></h3>
+<ol start="20">
+<li><strong>Assemble corpus</strong> (Test Architect): Reuse eligible H0 traces and collect the remainder of the 8 pilot and 48 confirmatory traces. Validate every public or private manifest entry and quota.</li>
+<li><strong>Calibrate rubric</strong> (Test Architect): Label the pilot, resolve ambiguity through evidence replay, revise <code>rubric.md</code>, and freeze the rubric. Pilot cases never enter confirmatory metrics.</li>
+<li><strong>Freeze confirmatory labels</strong> (Test Architect): Label and seal all 48 confirmatory traces before baseline or prototype results exist. Validate and hash every label. Commit public-safe labels. Keep private labels in the private evidence store with opaque references and digests.</li>
+<li><strong>Configure baselines</strong> (BMad Dev plus Test Architect): Configure <code>agentevals-dev/agentevals</code> and Promptfoo using only pilot data. Save exact versions, commands, prompts, thresholds, and configuration.</li>
+<li><strong>Build prototypes</strong> (BMad Dev): Build H1 through H4 and the permitted normalization shim through public extension points. Tune only on pilot data. Save code and prompt digests.</li>
+<li><strong>Write semantic preregistration</strong> (Test Architect): Create <code>preregistration/semantic.yaml</code> with corpus IDs, label digest, private manifest digest, baseline configurations, prototype digests, judge snapshot, prompts, resource budgets, metrics, gates, and run order.</li>
+<li><strong>Approve semantic experiment</strong> (Experiment owner): Review, approve, commit, and record the semantic preregistration SHA and digest. Confirmatory execution cannot begin before this step.</li>
+<li><strong>Run semantic baselines</strong> (BMad Dev): Run both frozen baselines on all confirmatory traces and save unmodified machine-readable output in the appropriate public or private evidence store.</li>
+<li><strong>Run semantic prototypes</strong> (BMad Dev): Run frozen prototypes on the same traces. Run every judge-backed evaluator three times. Save all raw output and resource use in the appropriate evidence store.</li>
+<li><strong>Score semantic gates</strong> (Test Architect): Validate outputs and calculate results by hypothesis, stratum, and system. Exclude invalid runs and report why they were invalid.</li>
+<li><strong>Record evaluator-pack decision</strong> (Test Architect): Add BUILD THIN PACK, NARROW AND REPEAT, or METHODOLOGY ONLY to <code>DECISION.md</code>, with gate tables and public evidence links or opaque private references. Set state <code>TECHNICAL_DECISION_RECORDED</code>.</li>
+</ol>
+<h3 id="phase-d-confirmation-and-document-update">Phase D: Confirmation and document update<a class="heading-anchor" href="#phase-d-confirmation-and-document-update" aria-label="Link to Phase D: Confirmation and document update">#</a></h3>
+<ol start="31">
+<li><strong>Run market confirmation</strong> (Experiment owner): Complete section 10 only for capabilities that passed technically. Record sessions, commitments, and the demand decision.</li>
+<li><strong>Update planning documents</strong> (PM or product owner): Revise the brief and PRD to contain only validated claims and authorized scope. Create product architecture and ADRs after this revision.</li>
+<li><strong>Close the experiment</strong> (Test Architect): Verify the completion checklist below, set state <code>COMPLETE</code>, and commit <code>STATUS.md</code>, <code>results/summary.md</code>, and <code>DECISION.md</code>.</li>
+</ol>
+<h3 id="completion-checklist">Completion checklist<a class="heading-anchor" href="#completion-checklist" aria-label="Link to Completion checklist">#</a></h3>
+<p>The experiment is complete only when all applicable items exist and validate:</p>
+<ul>
+<li><input disabled="" type="checkbox"> <code>execution-inputs.yaml</code> contains no unresolved public values, and every required private value has a verified opaque reference and digest.</li>
+<li><input disabled="" type="checkbox"> Both preregistration approvals include commit SHAs and digests.</li>
+<li><input disabled="" type="checkbox"> All schema validation passes.</li>
+<li><input disabled="" type="checkbox"> Every scored run has raw output, prompt and model identity, resource use, and a valid manifest in the appropriate evidence store.</li>
+<li><input disabled="" type="checkbox"> Ground-truth labels preserve reproducible oracle evidence and were sealed before condition results.</li>
+<li><input disabled="" type="checkbox"> An authorized reviewer can recompute H0 and semantic metrics from the public artifacts plus verified private evidence.</li>
+<li><input disabled="" type="checkbox"> Every private artifact has an opaque public reference and matching digest, and no private artifact exists under the public repository working tree.</li>
+<li><input disabled="" type="checkbox"> <code>results/summary.md</code> reports quotas, exclusions, deviations, and every preregistered metric.</li>
+<li><input disabled="" type="checkbox"> <code>DECISION.md</code> contains both technical decisions or an explicit owner-approved reason one was stopped.</li>
+<li><input disabled="" type="checkbox"> Failed hypotheses remain archived as research evidence.</li>
+<li><input disabled="" type="checkbox"> The brief and PRD have been revised after the recorded decisions.</li>
+</ul>
+<h2 id="section-12-stop-rules">12. Stop rules<a class="heading-anchor" href="#section-12-stop-rules" aria-label="Link to 12. Stop rules">#</a></h2>
+<ul>
+<li>Stop at <code>BLOCKED_INPUT</code> when a required input is missing or confidence is below 5. Do not fabricate the missing value.</li>
+<li>Stop at <code>BLOCKED_INPUT</code> when the owner-controlled private input record is unavailable, incomplete, inaccessible, or inconsistent with its public digest.</li>
+<li>Stop scored execution when either required owner approval is absent.</li>
+<li>Invalidate a condition if its prompt, model, resource ceiling, system SHA, contract digest, or configuration differs from preregistration.</li>
+<li>Invalidate self-evaluator or independent-evaluator runs that reuse a builder or comparator conversation.</li>
+<li>Stop scoring when an artifact fails its JSON Schema or digest check.</li>
+<li>Stop immediately if a private artifact appears anywhere under the public repository working tree. Move it to the private evidence store, verify that it never entered Git history, and update the manifest before continuing.</li>
+<li>Stop and repair the corpus if a trace lacks enough evidence for reproducible ground-truth labeling.</li>
+<li>Stop and repair the rubric if a ground-truth label lacks reproducible evidence under section 6.</li>
+<li>Stop the engine comparison if either baseline received a materially weaker trace or judge configuration.</li>
+<li>Invalidate an H0 run if the independent evaluator can access the original spec, repository, source code, builder transcript, or implementation logs.</li>
+<li>Stop H0 comparison if the self-evaluator and independent evaluator do not receive equal model and resource budgets.</li>
+<li>Stop prototype work if it expands into a runner, provider layer, assertion framework, reporting framework, or CI engine.</li>
+<li>Record extension-point limitations as findings. Do not treat them as permission to build a new engine during this experiment.</li>
+<li>Do not move the gates after confirmatory results are visible. Any changed gate requires a new corpus and a new preregistration.</li>
+<li>Do not update the brief, PRD, or product architecture with a capability claim before its decision is recorded.</li>
+</ul>
+<h2 id="section-13-handoff-prompt">13. Handoff prompt<a class="heading-anchor" href="#section-13-handoff-prompt" aria-label="Link to 13. Handoff prompt">#</a></h2>
+<p>Give another agent this repository and the following instruction:</p>
+<pre><code class="language-text">Act as the experiment orchestrator for eval-quality.
+
+Work from ~/opensource/eval-quality. Invoke the BMad Test Architect with $bmad-tea. Read HYPOTHESIS_VALIDATION_PLAN.md in full and treat it as the execution authority. Read experiments/hypothesis-validation/STATUS.md if it exists and resume from its single recorded next action. Otherwise begin at Phase A, step 1.
+
+Use the BMad Test Architect role for orchestration and evidence decisions. Delegate scaffold and prototype implementation to BMad Dev. Launch every H0 independent-evaluator condition as a fresh generic agent with only the sealed Eval Contract, allowlisted test resources, and black-box system access.
+
+Use ~/opensource/couture-cast as the conventional H0 system under test. Inspect it read-only during preflight, verify its current SHA and commands, and select six candidate tasks. Resolve the already approved private system through the opaque ID agentic-system and the owner-controlled private input record. If that record is unavailable, stop at BLOCKED_INPUT and ask Murat for it. Do not reveal the private system&#39;s identity or details in this repository. Use complete agentic-system execution traces as the second semantic source.
+
+Do not change hypotheses, sample quotas, metrics, gates, or stop rules. Do not invent missing repository paths, commands, interfaces, credentials, schemas, tasks, or budgets. Keep every private artifact outside the eval-quality working tree. Record only opaque references, digests, sanitized findings, and aggregate results publicly. Record confidence and stop at BLOCKED_INPUT when the plan requires owner input. Stop at both owner approval gates.
+
+Keep STATUS.md current after every completed step. Preserve raw artifacts, prompts, versions, digests, invalid runs, and deviations. Continue until both technical decisions are recorded or an explicit stop condition blocks progress.
+</code></pre>
+</article>
+      <footer class="footer">Generated from HYPOTHESIS_VALIDATION_PLAN.md by scripts/build-shareable.mjs. Self-contained and print-ready. Do not hand-edit; regenerate instead.</footer>
+    </main>
+  </div>
+</body>
+</html>
