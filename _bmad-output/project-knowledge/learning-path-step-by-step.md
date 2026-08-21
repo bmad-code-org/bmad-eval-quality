@@ -3,6 +3,39 @@
 One step per finished story. Jump to the one you need.
 Short version here. The long reasoning lives in the code comments each step points at.
 
+**Big picture:** this project builds the artifacts a sealed evaluator needs to grade a system under
+test honestly. An author writes a contract stating what to check; this library turns that contract
+into a brief telling the evaluator what to compare, without ever showing it the interaction plan (the
+step order, the step ids, the scripted call sequence). Sealed on purpose, so the verdict comes from
+reasoning over evidence, not from matching a script. The library itself never runs anyone: executing
+the system under test and the sealed evaluator is the caller's job, shown in the diagram below.
+Everything below is one piece of what the library produces: canonical bytes so two codebases agree on
+a hash (Step 2), the contract schema (Steps 3 to 5), and, starting at Step 6, the code that turns a
+contract's checks into the prose the sealed evaluator reads.
+
+```mermaid
+flowchart TD
+  AUTHOR(["Contract Author<br/>writes the Eval Contract"])
+  CALLER(["The caller<br/>runs a trial: executes the system under test<br/>and the sealed evaluator, supplies the probe port"])
+  SUT(["The system under test<br/>performs the interaction plan"])
+  JUDGE(["The sealed evaluator<br/>reads only the generated brief,<br/>chooses its own probes, files findings"])
+  CI(["CI pipeline<br/>dependency, licence, and schema-drift gates"])
+  CONSUMER(["Non-TypeScript consumer<br/>reads schemas/*.schema.json only"])
+
+  subgraph EQ["eval-quality (this library, pure functions only)"]
+    LIB["Eval Contract schema, canonical digest,<br/>seal (Step 6), verdict resolution, schema publish"]
+  end
+
+  AUTHOR -- writes --> LIB
+  CALLER -- "calls: seal, validate, resolve verdict" --> LIB
+  LIB -- "Sealed Evaluator Brief" --> JUDGE
+  CALLER -- executes --> SUT
+  CALLER -- executes --> JUDGE
+  JUDGE -- "findings, inside the sealed run record the caller submits" --> LIB
+  LIB -- "published schemas/*.schema.json" --> CONSUMER
+  CI -- "blocks a bad dependency or a schema-file drift" --> LIB
+```
+
 | Step | What it does                                                                     |
 | ---: | -------------------------------------------------------------------------------- |
 |    1 | Lock down dependencies. Prove the CI gates really block bad ones.                 |
@@ -10,6 +43,7 @@ Short version here. The long reasoning lives in the code comments each step poin
 |    3 | What a contract author may write down, and what the schema lets through on purpose. |
 |    4 | The other eleven artifacts, so every file crossing the boundary has a shape.       |
 |    5 | Publish the schemas as JSON Schema files and prove them equivalent to the Zod source. |
+|    6 | Turn a declared direction into evaluator prose that names the call without naming the step. |
 
 Adding a step: follow `learning-path-template.md`.
 
@@ -365,4 +399,76 @@ flowchart TD
   PUB --> GEN
   GEN --> DIFF
   GEN --> SWEEP
+```
+
+## Step 6: the direction-prose generator
+
+**What:** turn one oracle's declared direction (evidence targets, relation, polarity, scope, negative
+domain) into the prose that becomes a `BriefDirection`'s `text`.
+
+**Why:** the sealed evaluator never sees the interaction plan or a step's identifier, only this
+prose. It has to say which call an evidence target came from without naming the step. Two
+observations of one operation that render the same sentence are indistinguishable to it. Real
+example: "the id value you sent to the create endpoint, compared with its id field from the read
+endpoint, is asserted to be equal" names two calls and what to compare between them, and names no
+step.
+
+**Rules:**
+
+- A pointer resolves to a phrase, never to a step id.
+- The channel decides whether the phrase says obtained or sent. Drop it and O-001's two targets read
+  alike.
+- A malformed input always says so. That is AD-16's own worked example.
+- Two steps that would render the same phrase escalate through a fixed ladder: generic, then the
+  binding's kind, then its literal value, then a method and path description.
+- A temporal read-back pair renders as one relational phrase. Rendering each side on its own and
+  joining them puts the two steps in an order the evaluator can read off.
+- Five relation-template families: quantifiers, connectives, presence, comparison, and the six
+  remaining structural operators. `not` gets its own skeleton; a shared affirmative one tells the
+  evaluator the opposite of the declared claim.
+- `scope` and `negativeDomain` are author text. The generator frames them in a sentence and never
+  splits or reorders them. `null` drops the clause instead of printing the word.
+- Determinism is proven by permutation. A repeat call cannot catch a tie-break that is stable within
+  one process.
+
+**Read in this order:**
+
+1. `src/core/seal/plan-index.ts`: resolves a pointer to its step and operation. Nothing about
+   reachability; that is Epic 4's.
+2. `src/core/seal/derived-reference.ts`: the phrase vocabulary, the escalation ladder, and the
+   temporal-pair grouping.
+3. `src/core/seal/direction-prose.ts`: the five relation families, assembled into one string.
+4. `tests/schemas/fixtures/gate-c-contract.ts`: the primary fixture, already in the tree.
+5. `tests/seal/fixtures.ts`: what Gate C does not carry, including the Gate D reconstruction and the
+   create-then-read-back pair.
+
+**Watch out:**
+
+- The ladder's fourth rung is computed from the shared operation, so every sibling on that operation
+  gets the same text and it can never break a tie. Reaching it throws.
+- `response-body`, `stdout` and `stderr` all render `its {field} field`, and a `call-inputs` pointer
+  carrying a tail drops its transport channel, so two different targets can still read alike. Both
+  are open findings on story 2.1.
+- The suite is green and does not prove the rules above. Mutating the sent-versus-obtained wording,
+  the pair order, the binding-key sort and the clause order each leaves all 63 tests passing.
+- `gateCContract` is declared `satisfies EvalContract`, and the type TypeScript infers for it
+  afterward does not assign to `PermittedInterface[]`. `tests/seal/fixtures.ts` casts once through
+  `unknown`; `z.array(PermittedInterface).parse` gives the same type and validates.
+
+**Story:** `_bmad-output/implementation-artifacts/2-1-the-direction-prose-generator.md`
+
+```mermaid
+flowchart TD
+  PLANIDX["plan-index.ts<br/>pointer -> step + operation"]
+  DERIVED["derived-reference.ts<br/>phrase vocabulary + escalation"]
+  PROSE["direction-prose.ts<br/>five relation families"]
+  GATEC["gate-c-contract.ts<br/>the primary fixture"]
+  SEALFIX["tests/seal/fixtures.ts<br/>what Gate C does not carry"]
+  TESTS["tests/seal/*.test.ts<br/>sweeps + permutation"]
+
+  PLANIDX --> DERIVED
+  DERIVED --> PROSE
+  PROSE --> TESTS
+  GATEC --> TESTS
+  SEALFIX --> TESTS
 ```

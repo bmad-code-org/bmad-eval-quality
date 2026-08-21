@@ -36,6 +36,8 @@ export const Direction = z.strictObject({
 		),
 })
 
+export type Direction = z.infer<typeof Direction>
+
 export const Oracle = z.strictObject({
 	id: OracleId,
 	direction: Direction.nullable().describe(

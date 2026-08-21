@@ -69,3 +69,5 @@ export const InteractionStep = z.strictObject({
 		"The temporal clause: the identifier of an earlier step, or `null`. That the named step carries no clause of its own is AD-39's one-level bound, which fires `nested-temporal-clause` at compile time and is deliberately not enforced here — a named deviation from the epic's acceptance criteria of record, taken so the code keeps a shape to fire on.",
 	),
 })
+
+export type InteractionStep = z.infer<typeof InteractionStep>
