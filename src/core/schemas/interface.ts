@@ -130,6 +130,8 @@ export const Operation = z.strictObject({
 	volatilePointers: z.array(DescriptorPointer),
 })
 
+export type Operation = z.infer<typeof Operation>
+
 /**
  * AD-19's four interface kinds, exported so they are spelled once. The sealed
  * evaluator brief carries interface identity without the operation inventory
@@ -154,3 +156,5 @@ export const PermittedInterface = z.strictObject({
 			'No uniqueness constraint: two operations colliding on method plus path template after parameter-name erasure is `duplicate-operation-signature`, a coded compile-time error, and a schema that deduped them would delete it.',
 		),
 })
+
+export type PermittedInterface = z.infer<typeof PermittedInterface>

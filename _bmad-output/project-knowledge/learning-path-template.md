@@ -21,6 +21,15 @@ mermaid diagram
 
 Then add one row to the table at the top of the file.
 
+## Big picture
+
+The file opens with one short paragraph, above the step table, framing what the whole project is
+for, followed by one C4-style system-context diagram: this library as one box, and every external
+actor around it (who authors input, who calls the library, who it hands artifacts to). Write both
+once; revisit only if the project's own external actors change, not when a step is added. A step's
+own diagram stays at component level, file to file, same as always; the context diagram is the one
+place the whole system's outside boundary gets drawn, so do not repeat it per step.
+
 ## Writing rules
 
 Write it the way you would say it out loud to someone at a whiteboard.
@@ -31,6 +40,9 @@ Write it the way you would say it out loud to someone at a whiteboard.
   belongs in a code comment and the bullet just points at the file.
 - Say the problem in real terms. "JavaScript loses digits above 2^53" beats "the numeric value
   domain is enforced in two layers".
+- When a step's own mechanism is abstract, give `Why` one concrete worked example, the way Step 2
+  does ("JavaScript reads 9007199254740993 as 9007199254740992"). Skip it when the step is already
+  concrete without one; do not force an example onto every step.
 - Keep exact paths, numbers, fault codes, and security rules as they are.
 - Name code points (U+FB33), never paste the character. Tools silently rewrite pasted glyphs.
 - No em dashes or ` - ` joining clauses. Use a period, colon, or semicolon.

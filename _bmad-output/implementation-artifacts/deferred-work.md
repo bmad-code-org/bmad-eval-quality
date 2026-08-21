@@ -1,9 +1,14 @@
 # Deferred work
 
-Nothing is deferred. Epic 1 closes with an empty ledger.
+No items are currently open.
 
-Four items were carried here and all four were closed on 2026-08-20. Each one's reasoning lives with
-the work rather than in this file, which is a queue and not a record:
+Story 2.1 carried one item, closed on 2026-08-21: `groupResolvedTargets`'s chain-collapse logic
+dropped legal disjoint pairings for after-chains of four or more steps. The fix and its reasoning
+live in `2-1-the-direction-prose-generator.md`'s Decision log.
+
+Epic 1 itself closed with an empty ledger. Four items were carried here and all four were closed on
+2026-08-20. Each one's reasoning lives with the work rather than in this file, which is a queue and not
+a record:
 
 - Shareable HTML links usable without repository access, and validation that the export is current
   and canonical: `spec-condense-readme.md`, "Follow-up hardening, closed 2026-08-20".
