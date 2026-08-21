@@ -56,8 +56,8 @@ development_status:
   1-5-the-published-json-schema-export-and-its-four-ci-checks: done
   
   epic-2: in-progress
-  2-1-the-direction-prose-generator: in-progress
-  2-2-brief-assembly-exclusions-and-canonical-ordering: backlog
+  2-1-the-direction-prose-generator: done
+  2-2-brief-assembly-exclusions-and-canonical-ordering: review
   2-3-the-emitted-brief-scripting-audit: backlog
   
   epic-3: backlog

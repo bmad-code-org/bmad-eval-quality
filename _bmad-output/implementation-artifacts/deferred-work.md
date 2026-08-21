@@ -1,6 +1,10 @@
 # Deferred work
 
-No items are currently open.
+Story 2.2 carried two items, both closed on 2026-08-21 by
+`spec-harden-seal-exclusion-guarantee.md`. The fixes and their reasoning live
+in `spec-2-2-brief-assembly-exclusions-and-canonical-ordering.md`'s Spec
+Change Log: the module-boundary guard's file list and `seal()`'s missing
+runtime self-validation.
 
 Story 2.1 carried one item, closed on 2026-08-21: `groupResolvedTargets`'s chain-collapse logic
 dropped legal disjoint pairings for after-chains of four or more steps. The fix and its reasoning
@@ -21,5 +25,7 @@ a record:
 
 An entry belongs here only when the work cannot be done in the pass that found it and the decision
 to defer is deliberate. Give it a `source_spec`, a one-line `summary`, and the `evidence` a later
-reader needs to pick it up cold. When it is done, delete the entry and record the outcome in the
-source spec.
+reader needs to pick it up cold. When it is done, delete the entry itself; a terse pointer to where
+the outcome and reasoning live (the source spec) may stay in the closure prose above, the way every
+closure on record here already does it, so a later reader is not left to guess what was once open.
+The rule is about the entry, not about erasing that something was once open.

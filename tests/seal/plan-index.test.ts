@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs'
+import { readdirSync, readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { InteractionPointer } from '../../src/core/schemas/pointer.ts'
 import {
@@ -239,9 +239,13 @@ describe('resolveStep / resolveOperation', () => {
 // ES modules expose no runtime reflection over their own import graph, and
 // adding a new `scripts/check-*.ts` for one two-line assertion would need a
 // new `npm run validate` entry this story's own scope (AC 5) rules out. Kept
-// here, in `tests/seal/`, as the pragmatic middle ground: extended to cover
-// all three `core/seal/` files (the gap patch 12's review found, since the
-// prior version checked only `plan-index.ts`), and reading each file's
+// here, in `tests/seal/`, as the pragmatic middle ground: driven by
+// `readdirSync` over `src/core/seal/` rather than a hand-written file list
+// (patch 12's review found the prior version checked only `plan-index.ts`,
+// and story 2.2's own fix of hand-extending the array to four files repeated
+// the same defect the guard's purpose already disclaims: "the whole
+// directory, not a fixed list"; the next file landing in `core/seal/` is
+// scanned automatically with no test edit required), and reading each file's
 // `import ... from '...'` specifiers precisely rather than a blanket
 // substring search over the whole file, so a comment merely mentioning
 // "compile" cannot produce a false positive and an import specifier is what
@@ -250,17 +254,18 @@ describe('resolveStep / resolveOperation', () => {
 // only, and Epic 4 has not built `core/compile/` at all yet, so there is
 // nothing for a schema module to import from it today.
 describe('module boundary', () => {
-	it('none of the three core/seal/ modules imports from a not-yet-built core/compile/, directly or via its own import specifiers', () => {
-		const files = [
-			'plan-index.ts',
-			'derived-reference.ts',
-			'direction-prose.ts',
-		]
+	it('none of the core/seal/ modules imports from a not-yet-built core/compile/, directly or via its own import specifiers', () => {
+		const sealDir = new URL('../../src/core/seal/', import.meta.url)
+		// `withFileTypes` + `isFile()` rather than a bare name-based filter, so a
+		// hypothetical future subdirectory whose name happens to end in `.ts`
+		// (e.g. a nested `fixtures.ts/` directory) can't reach `readFileSync`
+		// and throw `EISDIR`.
+		const files = readdirSync(sealDir, { withFileTypes: true })
+			.filter((entry) => entry.isFile() && entry.name.endsWith('.ts'))
+			.map((entry) => entry.name)
+		expect(files.length).toBeGreaterThan(0)
 		for (const file of files) {
-			const source = readFileSync(
-				new URL(`../../src/core/seal/${file}`, import.meta.url),
-				'utf-8',
-			)
+			const source = readFileSync(new URL(file, sealDir), 'utf-8')
 			const specifiers = [...source.matchAll(/from\s+['"]([^'"]+)['"]/g)].map(
 				(match) => match[1],
 			)

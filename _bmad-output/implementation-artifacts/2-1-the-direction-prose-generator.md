@@ -7,7 +7,7 @@ baseline_commit: 267bb03c7abb7e299503d8e93107d2f08694ca19
 
 # Story 2.1: The direction-prose generator
 
-Status: in-review
+Status: done
 
 ## Story
 
