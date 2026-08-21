@@ -131,6 +131,7 @@
       "description": "The contract's behaviours, carried through unchanged. At least one, on the contract's own reasoning: a brief with no behaviour directs nothing."
     },
     "directions": {
+      "minItems": 1,
       "type": "array",
       "items": {
         "type": "object",
@@ -150,7 +151,8 @@
           "text"
         ],
         "additionalProperties": false
-      }
+      },
+      "description": "AD-3's generated evaluator-facing directions, one per discharged oracle. At least one, on the same reasoning as `behaviors` above: a brief with no direction verifies nothing."
     },
     "permittedInterfaces": {
       "type": "array",

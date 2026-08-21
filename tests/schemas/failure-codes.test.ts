@@ -7,12 +7,12 @@ import { describe, expect, it } from 'vitest'
 import { FAILURE_CODES } from '../../src/core/failure-codes.ts'
 
 describe('FAILURE_CODES, the single source for every later consumer', () => {
-	// Twenty is also pinned, mechanically, by scripts/check-ad5-registry.ts
+	// Twenty-one is also pinned, mechanically, by scripts/check-ad5-registry.ts
 	// under `npm run validate`, which parses the spine's AD-5 table and asserts
 	// set and order equality; a code added there must land in
 	// src/core/failure-codes.ts, and this count then moves with both.
-	it('carries exactly the twenty AD-5 codes', () => {
-		expect(FAILURE_CODES).toHaveLength(20)
+	it('carries exactly the twenty-one AD-5 codes', () => {
+		expect(FAILURE_CODES).toHaveLength(21)
 	})
 
 	it('carries no duplicate', () => {

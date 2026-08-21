@@ -44,6 +44,7 @@ flowchart TD
 |    4 | The other eleven artifacts, so every file crossing the boundary has a shape.       |
 |    5 | Publish the schemas as JSON Schema files and prove them equivalent to the Zod source. |
 |    6 | Turn a declared direction into evaluator prose that names the call without naming the step. |
+|    7 | Catch sequencing prose an author smuggled into free text, after the brief is generated. |
 
 Adding a step: follow `learning-path-template.md`.
 
@@ -471,4 +472,58 @@ flowchart TD
   PROSE --> TESTS
   GATEC --> TESTS
   SEALFIX --> TESTS
+```
+
+## Step 7: the emitted-brief scripting audit
+
+**What:** a pure function, `auditBriefScripting`, that reads an already-assembled `SealedEvaluatorBrief`
+and throws if any one direction's generated `text` carries more sequencing/transition markers than the
+contract's declared `probeStepBound`.
+
+**Why:** the declaration-side graph predicate over the interaction plan (a later epic) reads the plan
+structure; it never reads generated prose. An author's own free `scope`/`negativeDomain` text is the one
+channel that can still smuggle a scripted "do this, then this" sequence past that predicate, since Step
+6's own generator never emits that vocabulary itself. This audit runs after generation, over the
+finished brief, to catch exactly that.
+
+**Rules:**
+
+- `probeStepBound: null` means no bound was declared; the audit passes vacuously. `0` is a legal, strict
+  bound: no marker of any kind is permitted.
+- The bound applies per direction, never summed across the brief. An enumerated path is something a
+  reader reconstructs from one direction's own narrated claim.
+- The marker set: `then`, `before`, `after`, `subsequently`, `next`, `finally`, `afterward` (and
+  `afterwards`), plus a numbered-list marker (`1.`, `2)`, ...), case-insensitive and whole-word.
+- A numbered-list marker only counts inside real list context: it has to open a line, follow a
+  newline, or follow a sentence-ending mark plus a space. That anchor keeps ordinary numeric prose
+  like "Rule 12." from counting as a step.
+- Bare ordinals (`first`, `second`, ...) are excluded on purpose: `gateCContract`'s own shipped "not the
+  first" already uses "first" as a position word, in accepted author prose.
+- Only `directions[].text` is scanned, never `behaviors`, `scopedResources`, or `safetyLimits`. Widening
+  that scan is a flagged, deferred judgment call for a later story.
+- It throws `StructuralFailure`, a compile-time-class failure carrying an AD-5 code (the twenty-first
+  the registry now carries).
+- Which direction's failure surfaces first, when more than one violates, is only as deterministic as
+  `directions`' own array order; the audit does not hunt for every violation in one pass.
+
+**Read in this order:**
+
+1. `src/core/failure-codes.ts`: the twenty-one-code tuple and the new `StructuralFailure` class beside it.
+2. `src/core/seal/scripting-audit.ts`: the marker pattern, the per-direction count, the throw.
+3. `tests/seal/scripting-audit.test.ts`: the accept/reject fixtures and the permutation test.
+
+**Watch out:** the story's own regression fixture cites "O-004" for the "not the first" text; that text
+is actually O-005's `scope` in `tests/schemas/fixtures/gate-c-contract.ts`, and the test targets O-005
+directly.
+
+**Story:** `_bmad-output/implementation-artifacts/2-3-the-emitted-brief-scripting-audit.md`
+
+```mermaid
+flowchart TD
+  CODES["failure-codes.ts<br/>21st AD-5 code + StructuralFailure"]
+  AUDIT["scripting-audit.ts<br/>marker pattern + per-direction bound check"]
+  TESTS["tests/seal/scripting-audit.test.ts<br/>accept/reject fixtures + permutation"]
+
+  CODES --> AUDIT
+  AUDIT --> TESTS
 ```
