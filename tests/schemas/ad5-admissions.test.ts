@@ -1,4 +1,4 @@
-// The walk of AD-5's twenty codes, plus AD-28's schema-version-mismatch fault.
+// The walk of AD-5's twenty-one codes, plus AD-28's schema-version-mismatch fault.
 //
 // The rule: where AD-5 gives the compiler a literal code, the schema ADMITS the
 // shape and Epic 4 or Epic 5 rejects it. A schema tightened past a code does not
@@ -298,6 +298,19 @@ describe('AD-5 code walk — every coded shape stays representable', () => {
 		admits((contract) => {
 			contract.rubrics[0].criteria[0].text =
 				'Score the quality of the reasoning the agent stated before answering.'
+		})
+	})
+
+	// This code's enforcement point is Story 2.3's post-generation
+	// `auditBriefScripting`, over the emitted `SealedEvaluatorBrief`, not
+	// `compile` over the contract — but the same walk applies: `scope` and
+	// `negativeDomain` are opaque author-facing strings with no content
+	// constraint, so the contract schema admits sequencing vocabulary here too,
+	// and the audit (not this schema) is what rejects it once generated.
+	it('brief-exceeds-scripting-bound: a direction scope/negativeDomain carrying sequencing vocabulary parses; the post-generation brief audit rejects it, not the contract schema', () => {
+		admits((contract) => {
+			contract.oracles[0].direction.scope =
+				'First send the request, then read the response, and finally confirm the record.'
 		})
 	})
 

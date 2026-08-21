@@ -26,6 +26,8 @@ export const BriefDirection = z.strictObject({
 		),
 })
 
+export type BriefDirection = z.infer<typeof BriefDirection>
+
 /**
  * Interface identity only, with no operation inventory. AD-16 says "permitted
  * interfaces" and AD-5's graph predicate names "exhaustive operation
@@ -55,7 +57,12 @@ export const SealedEvaluatorBrief = z
 			.describe(
 				"The contract's behaviours, carried through unchanged. At least one, on the contract's own reasoning: a brief with no behaviour directs nothing.",
 			),
-		directions: z.array(BriefDirection),
+		directions: z
+			.array(BriefDirection)
+			.min(1)
+			.describe(
+				"AD-3's generated evaluator-facing directions, one per discharged oracle. At least one, on the same reasoning as `behaviors` above: a brief with no direction verifies nothing.",
+			),
 		permittedInterfaces: z.array(BriefInterface),
 		scopedResources: z
 			.array(ScopedResource)

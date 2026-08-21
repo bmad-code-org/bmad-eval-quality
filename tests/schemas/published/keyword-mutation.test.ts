@@ -118,7 +118,7 @@ const CENSUS_BY_DOCUMENT: Readonly<Record<string, number>> = {
 	probe: 119,
 	rubric: 51,
 	'scoring-policy': 29,
-	'sealed-evaluator-brief': 97,
+	'sealed-evaluator-brief': 98,
 	'sealed-run-record': 287,
 }
 
@@ -132,7 +132,7 @@ const CENSUS_BY_KEYWORD: Readonly<Record<string, number>> = {
 	items: 110,
 	maxItems: 1,
 	maximum: 97,
-	minItems: 22,
+	minItems: 23,
 	minLength: 81,
 	minProperties: 1,
 	minimum: 99,
@@ -144,7 +144,7 @@ const CENSUS_BY_KEYWORD: Readonly<Record<string, number>> = {
 	type: 873,
 }
 
-const CENSUS_TOTAL = 1949
+const CENSUS_TOTAL = 1950
 
 describe('the occurrence walk descends, so the sweep cannot pass hollow', () => {
 	it('finds the full census across the twelve documents', () => {
@@ -158,7 +158,9 @@ describe('the occurrence walk descends, so the sweep cannot pass hollow', () => 
 			for (const occurrence of occurrences)
 				byKeyword[occurrence.keyword] = (byKeyword[occurrence.keyword] ?? 0) + 1
 		}
-		// measured 2026-08-20, and each of the three is independently load-bearing:
+		// measured 2026-08-20, re-measured 2026-08-21 after `SealedEvaluatorBrief.directions`
+		// gained `.min(1)` (one new `minItems` occurrence, `sealed-evaluator-brief`
+		// 97 to 98, total 1949 to 1950), and each of the three is independently load-bearing:
 		// the per-document map catches a document dropping out of the walk, the
 		// per-keyword map catches one keyword's descent being removed, and the
 		// total catches an arithmetic slip in either.
