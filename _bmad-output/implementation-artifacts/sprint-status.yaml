@@ -55,10 +55,10 @@ development_status:
   1-4-the-remaining-interchange-artifact-schemas: done
   1-5-the-published-json-schema-export-and-its-four-ci-checks: done
   
-  epic-2: in-progress
-  2-1-the-direction-prose-generator: in-progress
-  2-2-brief-assembly-exclusions-and-canonical-ordering: backlog
-  2-3-the-emitted-brief-scripting-audit: review
+  epic-2: done
+  2-1-the-direction-prose-generator: done
+  2-2-brief-assembly-exclusions-and-canonical-ordering:  done
+  2-3-the-emitted-brief-scripting-audit:  done
   
   epic-3: backlog
   3-1-scalar-operators-over-the-evidence-domain: backlog
