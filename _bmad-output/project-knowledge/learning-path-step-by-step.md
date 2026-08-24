@@ -12,8 +12,9 @@ step order, the step ids, the scripted call sequence). Sealed on purpose, so the
 reasoning over evidence. The library itself never runs anyone: executing
 the system under test and the sealed evaluator is the caller's job, shown in the diagram below.
 Everything below is one piece of what the library produces: canonical bytes so two codebases agree on
-a hash (Step 2), the contract schema (Steps 3 to 5), and, starting at Step 6, the code that turns a
-contract's checks into the prose the sealed evaluator reads.
+a hash (Step 2), the contract schema (Steps 3 to 5), the prose a sealed evaluator reads in place of
+the interaction plan (Steps 6 to 8), and, starting at Step 9, the code that resolves a contract's own
+checks against observed evidence to `true`, `false`, or `insufficient-evidence`.
 
 ```mermaid
 flowchart TD
@@ -49,6 +50,7 @@ flowchart TD
 |    7 | epic2-story2 | Assemble the sealed brief: only what AD-16 permits, everything else sorted or excluded. |
 |    8 | epic2-story3 | Catch sequencing prose an author smuggled into free text, after the brief is generated. |
 |    9 | epic3-story1 | Ten pure operators over resolved evidence: equality, membership, regex, and shape, fully specified. |
+|   10 | epic3-story2 | Connectives, quantifiers, and the empty-collection rule so equivalent spellings agree on empty evidence. |
 
 Adding a step: follow `learning-path-template.md`.
 
@@ -669,4 +671,72 @@ flowchart TD
   POLICY --> OPS
   FAULTS --> OPS
   OPS --> TESTS
+```
+
+## Step 10 (epic3-story2): connectives, quantifiers, and three-valued resolution
+
+**What:** `resolveCheck`, the tree-walker that turns an `Expression` into a `CheckResolutionValue`:
+`notOf`/`allOf`/`anyOf` for the three connectives, `resolveQuantifier` for `for-all`/`for-any`, and one
+uniform empty-collection check applied before every leaf operator runs.
+
+**Why:** Story 3.1's ten operators only decide one node. The soft-delete pair is why three-valued
+resolution exists: `for-all(page, absence(@/retractedAt))` and
+`not(for-any(page, existence(@/retractedAt)))` say the same thing, and over an empty page one used to
+certify while the other failed closed. Both now resolve `insufficient-evidence`, so an empty
+collection never reads as a clean pass.
+
+**Rules:**
+
+- The empty-collection check runs on every operand of every operator, including a `{ literal: [] }`
+  one: there is no spelling in this grammar for "this may legitimately be empty."
+- `all` keeps a genuine `false` decisive even next to an `insufficient-evidence` sibling. `any` is
+  weaker than plain OR: one `insufficient-evidence` sibling beats a `true` one.
+- `not(insufficient-evidence)` is `insufficient-evidence`, under both polarities.
+- A quantifier's `collection` is collection-typed by definition: `ABSENT`, or a non-array type
+  mismatch, both resolve `insufficient-evidence`, never a thrown fault.
+- A node that resolves `insufficient-evidence` by folding its children, not by tripping the condition
+  itself, carries `introductionCondition: null`. The child that actually tripped it still carries the
+  condition, one level down.
+- `boundElement` is `ABSENT` outside any quantifier, never `null`: a bound element can legitimately be
+  JSON `null` itself, and only a third value tells the two apart.
+- `covers-by-key` has no operator yet; that branch throws a plain `Error` naming Story 3.3, never a
+  `RuntimeFault` — a gap in this dispatch table, not a fact about the evidence.
+- Real pointer resolution, including `@/`, is not built here: `ResolveOperand` and
+  `PointerDenotesCollection` are the two capabilities this module takes as parameters instead.
+
+**Read in this order:**
+
+1. `src/core/schemas/evidence-artifact.ts`: `CheckResolutionValue`, the shape this whole module
+   produces.
+2. `src/core/evaluate/resolution.ts`: `operandDenotesEmptyCollection`, `notOf`/`allOf`/`anyOf`,
+   `resolveQuantifier`, `resolveNode`, `resolveCheck`.
+3. `tests/evaluate/fixtures/stub-resolver.ts`: the test-only pointer walker these tests resolve
+   against; never shipped from `src/`.
+4. `tests/evaluate/resolution.test.ts`: the soft-delete three-way agreement, the empty-collection
+   cases, and every RuntimeFault-propagates-through-a-connective case.
+
+**Watch out:**
+
+- This step never reads `polarity` and never produces an `OutcomeState`. `abstained` and the rest of
+  AD-6's states are score-side, a later epic.
+- The stub resolver in the tests is deliberately small and ad hoc. It is not a preview of Story 4.1's
+  real addressing grammar and is not asserted to match it beyond what these fixtures need.
+
+**Story:** `_bmad-output/implementation-artifacts/3-2-connectives-quantifiers-and-three-valued-resolution.md`
+
+```mermaid
+flowchart TD
+  OPS["operators.ts (Step 9)<br/>ten two-valued operators"]
+  CAP["ResolveOperand + PointerDenotesCollection<br/>injected capabilities; Story 4.1 implements for real"]
+  RES["resolution.ts<br/>notOf, allOf, anyOf, resolveQuantifier, resolveNode"]
+  OUT["CheckResolutionValue<br/>evidence-artifact.ts, this module's output"]
+  STUB["tests/evaluate/fixtures/stub-resolver.ts<br/>test-only pointer walker"]
+  TESTS["tests/evaluate/resolution.test.ts<br/>soft-delete agreement + empty-collection cases"]
+
+  OPS --> RES
+  CAP -- parameters --> RES
+  RES --> OUT
+  STUB -. test-only implementation of .-> CAP
+  STUB --> TESTS
+  RES --> TESTS
 ```

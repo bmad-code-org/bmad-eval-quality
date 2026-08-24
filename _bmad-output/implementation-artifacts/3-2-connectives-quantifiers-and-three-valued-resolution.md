@@ -7,7 +7,7 @@ baseline_commit: f3ff75e9ed6454c275fdc284acf2ad9ee7900257
 
 # Story 3.2: Connectives, quantifiers, and three-valued resolution
 
-Status: ready-for-dev
+Status: in-review
 
 ## Story
 
@@ -62,6 +62,10 @@ populates it" — this story is that population, for every node except `covers-b
    adds no new field and no new fault code, because propagation itself never faults — every one of AD-4's
    propagation rules below is a total function over three closed inputs, and the only fault surface this
    story's code touches is `regexMatch`'s own, already-shipped one, propagated undecorated.
+6. **A bound on tree recursion depth, quantifier fan-out, or total evaluated-node count.** Recorded during
+   review, not at creation — see Decision 12. `resolveNode` relies on the JS call stack for depth; no
+   evidence-artifact size or evaluation-cost limit exists anywhere in this codebase yet for this story to
+   reuse or extend.
 
 **Purity (AD-1), unchanged from Story 3.1.** Synchronous, deterministic, pure. No filesystem, network,
 clock, subprocess, randomness.
@@ -451,28 +455,28 @@ Story 3.1's own AC 7 convention, never inventing an unrelated tree where a real 
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: preflight (AC 8)
-  - [ ] Run `npm run check:docs` and `npm test`; record the baseline test count before the first edit.
-- [ ] Task 2: module scaffold and the injected capabilities (AC 1, AC 2)
-  - [ ] `src/core/evaluate/resolution.ts`: `ResolveOperand`, `PointerDenotesCollection` types.
-- [ ] Task 3: the empty-collection introduction condition (AC 3)
-  - [ ] `operandDenotesEmptyCollection`, applied uniformly to every operand of every leaf and quantifier
+- [x] Task 1: preflight (AC 8)
+  - [x] Run `npm run check:docs` and `npm test`; record the baseline test count before the first edit.
+- [x] Task 2: module scaffold and the injected capabilities (AC 1, AC 2)
+  - [x] `src/core/evaluate/resolution.ts`: `ResolveOperand`, `PointerDenotesCollection` types.
+- [x] Task 3: the empty-collection introduction condition (AC 3)
+  - [x] `operandDenotesEmptyCollection`, applied uniformly to every operand of every leaf and quantifier
         node.
-- [ ] Task 4: connective propagation (AC 4)
-  - [ ] `notOf`, `allOf`, `anyOf`.
-- [ ] Task 5: quantifier propagation and bound-element threading (AC 5)
-  - [ ] `resolveQuantifier` for `for-all`/`for-any`.
-- [ ] Task 6: `resolveCheck` and the leaf dispatch table (AC 6)
-  - [ ] `resolveNode`, dispatching all sixteen `op` values (ten Story 3.1 operators, three connectives,
+- [x] Task 4: connective propagation (AC 4)
+  - [x] `notOf`, `allOf`, `anyOf`.
+- [x] Task 5: quantifier propagation and bound-element threading (AC 5)
+  - [x] `resolveQuantifier` for `for-all`/`for-any`.
+- [x] Task 6: `resolveCheck` and the leaf dispatch table (AC 6)
+  - [x] `resolveNode`, dispatching all sixteen `op` values (ten Story 3.1 operators, three connectives,
         two quantifiers, one explicit `covers-by-key` gap); `resolveCheck` as the public entry point.
-- [ ] Task 7: fixtures and tests (AC 7, AC 8)
-  - [ ] `tests/evaluate/resolution.test.ts` (plus a stub-resolver fixture file if warranted).
-- [ ] Task 8: the gate (AC 8)
-  - [ ] `npm run validate` green.
-- [ ] Task 9: record
-  - [ ] `_bmad-output/project-knowledge/learning-path-step-by-step.md`: one new row, following
+- [x] Task 7: fixtures and tests (AC 7, AC 8)
+  - [x] `tests/evaluate/resolution.test.ts` (plus a stub-resolver fixture file if warranted).
+- [x] Task 8: the gate (AC 8)
+  - [x] `npm run validate` green.
+- [x] Task 9: record
+  - [x] `_bmad-output/project-knowledge/learning-path-step-by-step.md`: one new row, following
         `learning-path-template.md`'s exact shape, after `dev-story` marks this story done.
-  - [ ] Dev Agent Record: measured counts, any decision that moved from this story's default.
+  - [x] Dev Agent Record: measured counts, any decision that moved from this story's default.
 
 ## Decisions taken during story creation
 
@@ -592,6 +596,61 @@ architecture revision), proceed unless the user amends one; record the outcome i
    with a fixture so a future reader does not mistake the permanent `deepEquality`-against-`{ literal: []
    }` non-`true` result for an oversight.
 
+## Decisions taken during review
+
+A peer code review of this story's implementation surfaced five points the spec is silent on. Per this
+project's standing convention (settle ambiguities in the story or the code, record the reasoning, do not
+escalate to a new architecture revision), each is settled here with its downstream consequence rather than
+looped back as `bad_spec`.
+
+8. **`ResolveOperand`'s `boundElement` parameter is typed `ResolvedValue` (`JsonValue | typeof ABSENT`),
+   not `JsonValue | null`.** `JsonValue` already includes `null`, so the original two-value union could
+   not distinguish "outside any quantifier's predicate" from "bound to a JSON `null` element" — the exact
+   ambiguity `ABSENT` exists to prevent for pointer resolution (`resolved-value.ts`'s own doc comment: "`null`
+   is itself a valid `JsonValue` and must stay distinguishable"). `resolveCheck` now passes `ABSENT` as the
+   root call's binding state; `resolveQuantifier` passes the real (possibly-`null`) bound element once
+   inside a predicate. Considered and rejected: a `{ bound: JsonValue } | null` wrapper — it would also
+   work, but introduces a second sentinel-shaped type when this module already has one. **Consequence:**
+   every `boundElement` parameter across `resolveNode`, `resolveSingleOperand`, `resolveEqualityLike`,
+   `resolveQuantifier`, and the public `ResolveOperand` type is `ResolvedValue`; a conforming
+   `ResolveOperand` implementation (including Story 4.1's) must treat `boundElement === ABSENT` as "not
+   inside a quantifier," never `boundElement === null`.
+9. **A connective or quantifier node whose `resolution` is `insufficient-evidence` purely by folding its
+   children carries `introductionCondition: null`, not the condition string.** AD-4 defines exactly one
+   introduction condition, and it fires only at the leaf/quantifier-collection operand where the
+   empty-collection check actually trips; a parent that resolves `insufficient-evidence` because a child did
+   is reporting a fold, not a second firing of that condition. The child that tripped it still carries the
+   condition, reachable via `children`. `CheckResolutionValue`'s own doc comment ("`null` where the
+   resolution is not `insufficient-evidence`") is imprecise by omission here, but that comment lives in
+   `core/schemas/evidence-artifact.ts`, out of this story's scope to edit. **Consequence:** the four
+   propagation sites (`not`, `all`, `any`, `resolveQuantifier`) each get a one-line comment stating this
+   reading; a test pins `introductionCondition: null` on a propagated, non-leaf `insufficient-evidence` node.
+10. **Two more permanent limitations fall out of Decision 1's uniform reading, the same class Decision 7
+    names for `{ literal: [] }`.** A `count-tolerance` node asserting `expected: 0` over a genuinely empty
+    collection can never resolve `true` — the empty-collection interception fires first — so "assert this
+    page has exactly zero rows" is not satisfiable anywhere in this grammar. And `existence` over a pointer
+    resolving to a present-but-empty array resolves `insufficient-evidence`, not `true`, even though
+    `existence` asks about presence rather than element count, because the operand itself denotes an empty
+    collection before `existence` is called. Both are correct consequences of the already-adopted uniform
+    rule, not new gaps. **Consequence:** a one-line comment near `operandDenotesEmptyCollection` names both;
+    no behavior changes.
+11. **A type-mismatched quantifier `collection` operand is indistinguishable, in the evidence artifact,
+    from a genuinely empty collection or an absent, declared-collection-typed one.** Decision 4 already
+    settles that all three resolve `insufficient-evidence`/`empty-collection` rather than throwing; left
+    unstated there is that this collapses three distinct causes onto AD-4's one introduction-condition value.
+    A second condition value to separate them would be a schema change, out of this story's scope.
+    **Consequence:** `resolveQuantifier`'s "one guard covers three cases" comment gets a line noting the
+    collapse is deliberate, and names the schema-edit precondition for ever separating them.
+12. **This story adds no bound on tree recursion depth, quantifier fan-out, or total evaluated-node
+    count.** `resolveNode` relies on the JS call stack for depth; Story 3.1's `regexMatchStepBudget`
+    bounds only its own operator's pattern-matching cost, not tree shape. This is a real,
+    previously-unstated gap, but inventing a bound now would mean guessing at a number and a failure code
+    with no fault-registry entry to hold it (no new `RuntimeFaultCode`, per this story's stated scope), and
+    no story or ADR yet owns evidence-size/evaluation-cost limits generally. **Consequence:** AC 1's "what
+    this story does not build" list gets a sixth point naming this gap explicitly; a future story — not yet
+    identified, likely the first one that needs to bound evidence-artifact size or evaluation cost,
+    plausibly alongside a scoring-policy field analogous to `regexMatchStepBudget` — inherits it.
+
 ## Dev Notes
 
 ### Read these files before writing anything
@@ -665,11 +724,157 @@ architecture revision), proceed unless the user amends one; record the outcome i
 
 ### Agent Model Used
 
+Claude Sonnet 5 (claude-sonnet-5).
+
 ### Debug Log References
+
+- Baseline before the first edit: `npm run check:docs` → 53 files OK; `npm test` → 34 test files,
+  1441 tests passed.
+- First gate (before review): `npm run validate` all green; `npm test` → 35 test files, 1482 tests
+  (+41, exactly `resolution.test.ts`'s own count).
+- Mutation check on `allOf`: reordering its two `.some()` checks (testing
+  `insufficient-evidence` before `false`) was applied temporarily and reverted; it broke two tests
+  (the "false stays decisive" fixture and the grounded O-002 false-with-empty-sibling fixture),
+  confirming the propagation tests exercise the real branch order rather than passing vacuously.
+- Peer code review (blind hunter, edge-case hunter, verification gap, acceptance auditor layers)
+  found six mutation-proved findings and 22 additional patch-level items; the coordinator triaged all
+  of them, settling five as Decisions 8–12 (recorded in the story's own "Decisions taken during
+  review" section) and the rest as direct patches (P1–P22, P24; P21 explicitly skipped as a judgment
+  call, not a defect; P23 not used).
+- Final gate after the review-round fixes: `npm run validate` all green; `npm test` → 35 test files,
+  1493 tests (+11 over the pre-review 1482: `resolution.test.ts` grew from 41 to 52 tests;
+  `operators.test.ts`'s own count unchanged, only its budget constant became an import).
+- Mutation check on Decision 8's downstream `anyOperandEmpty` (P19): temporarily changed its
+  `.some()` to `.every()`. 11 tests failed, including every test built on the now-asymmetric
+  `INSUFFICIENT_NODE` fixture (`literalEquals([], 1)`), confirming the P19 fixture fix actually
+  proves "one empty operand is sufficient" rather than passing vacuously under the old symmetric
+  `literalEquals([], [])` fixture. Reverted.
+- Manual checks (outside the test suite, via `tsx`) confirmed P16's runtime exhaustiveness guard
+  throws a named error for an out-of-union `op` rather than returning `undefined`, and P13's stub
+  resolver throws on a pointer that does not match the interaction-pointer shape at all.
 
 ### Completion Notes List
 
+- Implemented `src/core/evaluate/resolution.ts` exactly per the story's ACs: `ResolveOperand` /
+  `PointerDenotesCollection` (AC 2), `operandDenotesEmptyCollection` applied uniformly across every
+  operand of every leaf and quantifier node (AC 3, Decision 1), `notOf`/`allOf`/`anyOf` (AC 4),
+  `resolveQuantifier` (AC 5), and `resolveNode`/`resolveCheck` dispatching all sixteen `op` values
+  (AC 6).
+- One deliberate, documented adaptation from the story's own illustrative code: `Resolution` is
+  declared as `CheckResolutionValue['resolution']` rather than a second, independently spelled
+  string-literal union, so the two cannot drift. This is a transparent alias with an identical
+  resulting type; no semantic change from what AC 4's code block specifies.
+- `resolveNode`'s single-operand leaves (`existence`, `absence`, `regex`, `ordering`,
+  `count-tolerance`, `shape`) and the `equality`/`deep-equality` pair each factor through a small
+  private helper (`resolveSingleOperand`, `resolveEqualityLike`) to avoid repeating the
+  resolve-then-check-emptiness-then-call sequence six times by hand; `containment` and
+  `set-membership` stay inline because each carries its own array-narrowing guard with different
+  conditions (Decision-backed in AC 6).
+- Test-only stub resolver added at `tests/evaluate/fixtures/stub-resolver.ts` (warranted: reused
+  across every `describe` block in `resolution.test.ts`), per AC 2/AC 8: a small ad hoc RFC-6901-ish
+  pointer walker, never shipped from `src/`, explicitly not asserted to match Story 4.1's eventual
+  real addressing grammar beyond what these fixtures need. It resolves `{ literal }` operands to
+  themselves, `{ referenceSet }` operands against a caller-supplied flat array (a simplification: the
+  real `gateCContract` reference-set members are `{ id }` objects, but nothing in this story's own
+  scope specifies how a resolver flattens them, so the stub is free to supply whatever shape makes
+  `set-membership`'s and `covers-by-key`'s contracts satisfiable), and `@/…` bound-element pointers
+  against the currently-bound element.
+- `tests/evaluate/resolution.test.ts`: 52 tests covering every AC 7 point, including a "grounded in
+  gateCContract and expression-nodes.ts shapes" sub-suite for the `all`/`any` propagation cases (using
+  O-002, O-003, and `expression-nodes.ts`'s canonical `any` shape) alongside the hand-authored
+  literal-equality truth table, per AC 7 point 1's grounding instruction. No fixture was invented
+  where a real oracle shape already existed to reuse (O-002 through O-006 all appear).
+- No decision in the story's "Decisions taken during story creation" section needed to move from its
+  stated default; all seven were implemented as written.
+- No `core/schemas/` edit, no spine edit, no new `RuntimeFaultCode`, `src/index.ts` untouched: all
+  confirmed by the final `npm run validate` (`check:shareable`/`lint:spine`/`check:schemas`/
+  `check:ad5-registry` all report no-ops, exactly as the story predicted).
+
+**Review-round fixes (Decisions 8–12, patches P1–P22, P24):**
+
+- Decision 8: `ResolveOperand`'s and every internal `boundElement` parameter's type changed from
+  `JsonValue | null` to `ResolvedValue`; `resolveCheck` now passes `ABSENT` as the root binding state
+  instead of `null`. The stub resolver's own `@/…` branch follows suit (`boundElement === ABSENT`,
+  not `=== null`), since a quantifier-bound element can legitimately itself be JSON `null`.
+- Decision 9: `not`, `all`, `any` in `resolveNode`, and `resolveQuantifier`'s own return, each gained
+  a one-line comment stating `introductionCondition: null` there is a fold, not a firing; a dedicated
+  test pins this on `all(TRUE_NODE, INSUFFICIENT_NODE)`.
+- Decision 10: a comment near `operandDenotesEmptyCollection` names the two permanent consequences
+  (an unsatisfiable `count-tolerance(expected: 0)` over a genuinely empty collection, and `existence`
+  over a present-but-empty array reading `insufficient-evidence` rather than `true`). No behavior
+  change; nothing to test beyond what already existed.
+- Decision 11: `resolveQuantifier`'s "one guard covers three cases" comment now states the collapse
+  onto one `empty-collection` value is deliberate and names the schema-edit precondition for
+  separating them.
+- P1–P3: added dispatch-reaching tests that were missing (deep-equality vs equality, ordering /
+  count-tolerance over a real non-empty collection, regex resolving to an actual boolean plus a
+  budget-threading test through `resolveCheck` itself, not just the operator).
+- P4/P10: one test asserts a full nested `CheckResolutionValue` via `toEqual` (proving `children`
+  isn't flattened) and additionally calls `CheckResolution.parse` on the same result (proving the
+  produced shape validates against the real schema); a separate test asserts `all`/`any` preserve
+  operand order in `children`.
+- P5: added `all`/`any` fault-propagation cases with the throwing node placed after a decisive
+  sibling, and corrected the `all` case's own "never short-circuiting" comment to state this holds
+  over resolutions, not over faults (`.map()` still stops at the first throw).
+- P6: the "absent, declared-collection-typed page" soft-delete fixture now uses a
+  `pointerDenotesCollection` that answers `false` for every pointer, so it actually proves Decision
+  3's unconditional rule instead of merely "consulted the predicate and got true."
+- P7: every fault-propagation test now asserts `instanceof RuntimeFault`, `.code`, and
+  `.artifactPath` via a shared `assertBudgetExhausted` helper, matching AC 8's stated convention.
+- P8: renamed `invalidRegexOverPointer`/`invalidRegexOverBoundElement` to
+  `nestedQuantifierRegexOverPointer`/`nestedQuantifierRegexOverBoundElement` (the pattern is
+  syntactically valid; it trips the structural nested-quantifier gate, not a compile failure); added
+  a separate case using `'^([a$'` to exercise `operator-cannot-accept-operand`, the other regex fault
+  code.
+- P9: a comment on the O-006 quantifier test states its flat-string reference-set members pin
+  dispatch wiring only, not the real `{ id }`-object member shape Story 4.1's resolver must reconcile.
+- P11: added a mixed-fold quantifier test (one `true`, one `insufficient-evidence`, one `false`
+  child) and a nested-quantifier test proving the inner quantifier's `collection` operand resolves
+  against the outer bound element before its own loop starts.
+- P12: moved the "a conforming `PointerDenotesCollection` must return `false` for `@/…`" reasoning
+  from the stub resolver's own doc comment into `PointerDenotesCollection`'s JSDoc in
+  `resolution.ts`, where the contract actually lives.
+- P13: the stub resolver now throws on a pointer that fails to match the interaction-pointer shape
+  at all, rather than silently resolving `ABSENT`; a well-formed pointer whose stepId or tail simply
+  has no evidence still resolves `ABSENT`, unchanged.
+- P14: added explicit `instanceof Error` assertions to the two array-narrowing guard plain-Error
+  tests, matching the covers-by-key test's own convention.
+- P15: both array-narrowing guard error messages now name an unresolved reference set
+  (`unresolved-reference-set` slipping past compilation) as a second possible cause alongside a
+  resolver integration bug.
+- P16: `resolveNode`'s switch gained a `default` case with a `const exhaustiveCheck: never = expression`
+  guard, throwing a named error for an out-of-union `op` instead of returning `undefined`.
+- P17: the stub resolver's `walkPointer` now checks `Object.hasOwn` before every index, so a segment
+  like `__proto__` reads as absent instead of an inherited property.
+- P18: replaced `makeConstantResolver(42)` in the two array-narrowing guard tests with a new
+  `makeResolverWithMisbehavingReferenceSet` helper that misbehaves only at the one guarded
+  `{ referenceSet }` position, leaving the other operand an ordinary value.
+- P19: `INSUFFICIENT_NODE` changed from `literalEquals([], [])` to `literalEquals([], 1)`, so the
+  fixture actually demonstrates that one empty operand is sufficient (mutation-verified: see Debug
+  Log).
+- P20: removed the standalone `CONNECTIVE_MINIMUM_ARITY === 2` runtime assertion (it duplicated
+  `expression.test.ts` and would not fail if `allOf`/`anyOf`'s vacuous-array reading changed);
+  replaced with a comment stating the assumption, per AC 4's own ask.
+- P22: added `DEFAULT_REGEX_MATCH_STEP_BUDGET` to `stub-resolver.ts`, imported by both
+  `resolution.test.ts` and `operators.test.ts` in place of their separately-spelled `1_000_000`
+  literals.
+- P24: this File List now includes `sprint-status.yaml`, omitted from the first pass.
+- P21, P23: no change (P21 is a judgment call the reviewer flagged as acceptable, not a defect; P23
+  was not assigned to this story).
+
 ### File List
+
+- `src/core/evaluate/resolution.ts` (new, then edited during the review round: Decisions 8–11, P12,
+  P15, P16)
+- `tests/evaluate/resolution.test.ts` (new, then substantially expanded during the review round: 41
+  to 52 tests, P1–P11, P14, P19, P20, P22)
+- `tests/evaluate/fixtures/stub-resolver.ts` (new, then edited during the review round: Decision 8,
+  P12, P13, P17, P18, P22)
+- `tests/evaluate/operators.test.ts` (edited during the review round: P22, its own
+  `regexMatchStepBudget` local constant replaced with the shared import)
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` (edited: Story 3.2 marked `done`)
+- `_bmad-output/project-knowledge/learning-path-step-by-step.md` (edited: Step 10 row + section,
+  rewritten once more after the review round to describe the final code, P25–P27)
 
 ## Suggested Review Order
 
