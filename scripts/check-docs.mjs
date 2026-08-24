@@ -9,6 +9,7 @@ import { join } from 'node:path'
 const ROOTS = [
 	'README.md',
 	'_bmad-output/planning-artifacts',
+	'_bmad-output/project-knowledge',
 	'experiments/hypothesis-validation/README.md',
 	'experiments/hypothesis-validation/HYPOTHESIS_VALIDATION_PLAN.md',
 ]

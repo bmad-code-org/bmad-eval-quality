@@ -60,13 +60,13 @@ development_status:
   2-2-brief-assembly-exclusions-and-canonical-ordering:  done
   2-3-the-emitted-brief-scripting-audit:  done
   
-  epic-3: in-progress
+  epic-3: done
   3-1-scalar-operators-over-the-evidence-domain: done
   3-2-connectives-quantifiers-and-three-valued-resolution: done
   3-3-covers-by-key-as-a-bijection: done
   
-  epic-4: backlog
-  4-1-pointer-resolution-and-reachability: backlog
+  epic-4: in-progress
+  4-1-pointer-resolution-and-reachability: done
   4-2-the-ad-5-registry-as-code-and-the-structural-compile-checks: backlog
   4-3-the-scripting-bound-graph-predicate-and-its-adversarial-fixtures: backlog
   4-4-stages-as-pure-plan-and-reduce-pairs-with-one-orchestration-layer: backlog

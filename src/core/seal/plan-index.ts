@@ -38,10 +38,18 @@ const isEvidenceChannel = (value: string): value is EvidenceChannelName =>
 const isTransportChannel = (value: string): value is TransportChannelName =>
 	(TRANSPORT_CHANNELS as readonly string[]).includes(value)
 
-const decodeToken = (token: string): string =>
+/**
+ * Exported for Story 4.1's reuse: the real addressing-grammar resolver
+ * (`core/evaluate/evidence-resolution.ts`) decodes a bound-element
+ * pointer's own tail and a declared collection-location pointer's tail with
+ * these same two functions. A second private copy would be exactly the
+ * drift this codebase's own conventions warn against
+ * (`IDENTIFIER_CHARSET_SOURCE`'s own precedent).
+ */
+export const decodeToken = (token: string): string =>
 	token.replace(/~1/g, '/').replace(/~0/g, '~')
 
-const decodeTail = (tailSource: string): readonly string[] =>
+export const decodeTail = (tailSource: string): readonly string[] =>
 	tailSource === '' ? [] : tailSource.slice(1).split('/').map(decodeToken)
 
 /**
