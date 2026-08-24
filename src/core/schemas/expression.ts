@@ -8,10 +8,9 @@ import {
 	KeyName,
 } from './primitives.ts'
 
-// AD-26: each operand form is a single-keyed object, and the reference-set form
-// carries nothing else. A two-key and a one-key spelling produce schemas that
-// reject each other's contracts, which is why the key count is fixed here
-// rather than left to the author.
+// AD-26: each operand form is a single-keyed object, and the reference-set
+// form carries nothing else. Enforced structurally: a two-key spelling would
+// validate against more than one operand form.
 export const PointerOperand = z.strictObject({ pointer: EvidencePointer })
 export const LiteralOperand = z.strictObject({ literal: JsonValue })
 export const ReferenceSetOperand = z.strictObject({
@@ -39,11 +38,10 @@ export type Operand =
 	| { literal: JsonValue }
 	| { referenceSet: string }
 
-// Coin flip (b), settled: the literal-array set operand is admitted, because
-// AD-26 states where the *reference-set* operand is legal and states no
-// prohibition on a literal, and the Gate C contract's state oracle needs the
-// four-value enum ["queued","running","succeeded","failed"], which is not a
-// collection location and has no business being a declared reference set.
+// Coin flip (b), settled: AD-26 restricts only the *reference-set* operand's
+// legal positions and is silent on literals, and Gate C's state oracle needs
+// the four-value enum ["queued","running","succeeded","failed"], which has no
+// business being a declared reference set.
 export const LiteralSetOperand = z.strictObject({
 	literal: z
 		.array(JsonValue)
@@ -87,11 +85,10 @@ export const QUANTIFIER_NAMES = ['for-all', 'for-any'] as const
 
 /**
  * The sixteen-member vocabulary a direction's relation is drawn from. AD-3
- * fixes it as "AD-4's operator set", which is all sixteen: seven of the Gate C
- * contract's eight oracles declare `all`, `not`, or `for-all` as the relation —
- * only O-001, whose relation is `deep-equality`, is a bare operator — so typing
- * this to the eleven operators alone fails the primary accept fixture on seven
- * of eight.
+ * fixes it as "AD-4's operator set", read as all sixteen: seven of the eight
+ * Gate C oracles declare `all`, `not`, or `for-all` as their relation (only
+ * O-001 is a bare operator, `deep-equality`), so narrowing this to the eleven
+ * operators alone would fail the primary accept fixture on seven of eight.
  */
 export const RELATION_VOCABULARY = [
 	...OPERATOR_NAMES,
@@ -103,30 +100,11 @@ export const Relation = z.enum(RELATION_VOCABULARY)
 
 export type Relation = z.infer<typeof Relation>
 
-// AD-4 calls the regex dialect "always fully anchored" and gives a code only
-// for backreferences and lookbehind, so anchoring is the schema's half and the
-// rejected constructs are Epic 4's. Anchoring is a native pattern and exports;
-// a backreference check is not expressible in JSON Schema and is not attempted
-// here.
-//
-// This form checks the first and last character and nothing more, which is not
-// the same as proving the pattern is fully anchored. It is wrong in both
-// directions and both are recorded, because only one of them is harmless.
-//
-// Too permissive, verified on the pin: `^a|b$` parses as `(^a)|(b$)` and
-// passes, and `^foo\$` ends in an escaped dollar and passes while matching any
-// string that starts with `foo$`. Those join backreferences and lookbehind as
-// Epic 4's, which is the admit-rule working as intended.
-//
-// Too strict, also verified: `(?:^a$)` and `(^a$)` are rejected although both
-// are fully anchored ECMA-262. That direction is the one that costs something —
-// a legal contract becomes an anonymous `schema-parse-failure` rather than a
-// coded error, which is the conversion AC 8 exists to prevent. It is accepted
-// rather than fixed because the epic's acceptance criteria assign anchoring to
-// the schema and require it natively and exportably, and deciding anchoring
-// properly needs a regex parser that does not belong in a schema and would not
-// export. The workaround is exact and costs an author nothing: write
-// `^(?:a|b)$` rather than `(?:^a$|^b$)`.
+// AD-4 calls the regex dialect "always fully anchored" and codes only
+// backreferences and lookbehind, so anchoring is the schema's half; the
+// rejected constructs are Epic 4's. See `AnchoredPattern`'s description for
+// the verified false-accept and false-reject cases this positional check
+// produces.
 export const ANCHORING_RESIDUAL =
 	'positional check: admits an unanchored alternation, rejects an anchored pattern wrapped in a group'
 export const ANCHORED_PATTERN_FORM = /^\^[\s\S]*\$$/
@@ -140,20 +118,21 @@ export const AnchoredPattern = z
 
 /**
  * The minimum operand count for `all` and `any`, settled here because AD-4
- * leaves the connective arities unstated. Zero operands makes `all` certify
- * vacuously, which is the fail-open shape AD-4's three-valued resolution exists
- * to prevent; one operand is the identity, and two spellings of one tree defeat
- * the structural containment AD-3's alignment predicate computes.
+ * leaves connective arity unstated. Zero would certify vacuously, the
+ * fail-open shape AD-4's three-valued resolution guards against; one is the
+ * identity; and two spellings of one tree would defeat the structural
+ * containment AD-3's alignment predicate computes, hence a floor of two.
  */
 export const CONNECTIVE_MINIMUM_ARITY = 2
 
 /**
  * Every expression form whose operands are a fixed-length tuple, with its
- * arity. `not` is here because its single operand is a nested expression rather
- * than an operand; `all`, `any`, `for-all`, and `for-any` are not, because
- * their operand counts are variable or their operands are named fields.
+ * arity. `not` is here because its one operand is a nested `Expression`, not
+ * the `Operand` union; `all`, `any`, `for-all`, and `for-any` are excluded
+ * because their operand counts are variable or their operands are named
+ * fields.
  *
- * The constraint ledger is built from this table so the two cannot drift, and a
+ * The constraint ledger is built from this table so the two cannot drift; a
  * test asserts each entry against what the schema actually rejects.
  */
 export const TUPLE_ARITY = {
@@ -206,21 +185,20 @@ export type Expression =
 	| { op: 'for-any'; collection: Operand; predicate: Expression }
 
 /**
- * `check` is a recursive discriminated union on `op`. Operator arity is
- * enforced here as fixed-length tuples, which is the one deliberate exception
- * to the admit-rule and the epic's choice rather than this story's: AD-13
- * verified the constraint injection specifically for arity. The consequence for
- * Story 4.2 is that `malformed-operator-expression`'s arity limb is
- * schema-covered in v0, and its live limbs are the rejected regex constructs
- * and the operand-type violations the schema deliberately does not narrow.
+ * `check` is a recursive discriminated union on `op`. Arity is enforced here
+ * as fixed-length tuples, the one deliberate exception to the admit-rule and
+ * the epic's own choice: AD-13 verified constraint injection specifically for
+ * arity. So `malformed-operator-expression`'s arity limb is schema-covered in
+ * v0; its live limbs are the rejected regex constructs and the operand-type
+ * violations the schema deliberately does not narrow.
  *
- * Declared before its members so the members may reference it; the lazy body
- * runs after module initialization, by which time they exist.
+ * Declared before its members so they can reference it; the lazy body runs
+ * after module initialization, by which time they exist.
  *
- * Carries `.meta({ id })` for the same reason `JsonValue` does, and it is not
- * optional. Without it the tree exports as the generated `$defs.__schema0`,
- * which pins a positional name into Story 1.5's drift check and leaves the
- * constraint ledger's twelve arity entries with no stable address to name.
+ * Carries `.meta({ id })` for the same reason `JsonValue` does: without it
+ * the tree exports as a generated `$defs.__schema0`, pinning a positional
+ * name into Story 1.5's drift check and leaving the ledger's twelve arity
+ * entries with no stable address.
  */
 export const Expression: z.ZodType<Expression> = z
 	.lazy(() =>
@@ -251,13 +229,12 @@ export const Expression: z.ZodType<Expression> = z
 
 // AD-4 requires each operator to declare "a fixed arity and operand types in
 // the published schema". Arity is structural, as fixed-length tuples; operand
-// types cannot be, because narrowing a position would delete
+// types cannot be, since narrowing a position would delete
 // `malformed-operator-expression`'s operand-type limb. So the types are
 // *declared* here, in text that survives the export, and Epic 4 enforces what
-// the text says. A ledger entry records that split. This is the same treatment
-// AD-36's numeric domain gets on `JsonValue`, and for the same reason: a
-// requirement to express something in the published schema is not satisfied by
-// a note in an implementation artifact.
+// the text says. AD-36's numeric domain gets the same treatment on
+// `JsonValue`, for the same reason: a requirement to express something in the
+// published schema isn't satisfied by a note in an implementation artifact.
 const ADMIT_RULE =
 	"Every position admits the full operand union on purpose. AD-26 makes a reference-set operand outside its three legal positions — `covers-by-key`'s expected operand, and the set operand of `set-membership` or `containment` — fail compilation under `malformed-operator-expression`, which only stays fireable if the other positions admit it. Epic 4 enforces the legality stated here; the schema does not narrow it."
 
@@ -325,11 +302,11 @@ const SetMembership = z.strictObject({
 		),
 })
 
-// Arity settled here (Decision 7): a collection pointer plus a named key and a
-// named order. The pairwise reading — pointer a precedes pointer b — was
-// considered and rejected, because Epic 3 inherits the semantics and the
-// pairwise form cannot express "this page is sorted by capturedAt", which is
-// the only thing AD-4 says `ordering` is for.
+// Arity settled here (Decision 7): a collection pointer plus a named key and
+// a named order. A pairwise reading (pointer a precedes pointer b) was
+// considered and rejected: it cannot express "this page is sorted by
+// capturedAt," the only thing AD-4 says `ordering` is for, and Epic 3
+// inherits that semantics.
 const Ordering = z.strictObject({
 	op: z.literal('ordering'),
 	operands: z

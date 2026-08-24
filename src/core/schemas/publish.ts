@@ -14,8 +14,8 @@ import {
 // constraint ledger. No module under `src/core/schemas/` may import it: the
 // reverse edge closes an import cycle and fails at module load with a
 // temporal-dead-zone ReferenceError. It is pure (AD-1): no filesystem, network,
-// clock, or randomness, and it never imports a validator — the runtime
-// dependency set stays Zod alone, and the validator is a development dependency
+// clock, or randomness, and it never imports a validator. The runtime
+// dependency set stays Zod alone; the validator is a development dependency
 // reachable only from `tests/` and `scripts/`.
 
 /**
@@ -36,10 +36,10 @@ const unresolved = (entry: ConstraintLedgerEntry, segment: string): Error =>
 	)
 
 /**
- * Applies one `inject` ledger entry to a document, resolving the address
- * exactly as `resolve()` in `tests/schemas/constraint-ledger.test.ts` does —
- * by the stated `artifact`, `kind`, `branch`, and `field`, never by searching —
- * and failing loudly on any segment that does not resolve.
+ * Applies one `inject` ledger entry to a document. Resolves the address
+ * exactly as `resolve()` in `tests/schemas/constraint-ledger.test.ts` does: by
+ * the stated `artifact`, `kind`, `branch`, and `field`, never by searching.
+ * Fails loudly on any segment that does not resolve.
  */
 type SchemaNode = Record<string, unknown>
 
@@ -111,10 +111,9 @@ export const injectConstraint = (
 		)
 	// The union fallback, kept for parity with the resolver of record: a
 	// union-rooted shape exports `{ $schema, oneOf, description }` with no
-	// `properties` object, and the field is spread into every branch. For
-	// injection the keywords land on every branch's copy — the copies are equal
-	// by construction, but aliasing is neither guaranteed nor excluded, and
-	// assigning to one copy of several would inject into a single branch and
+	// `properties` object, and the field is spread into every branch. The copies
+	// are equal by construction, but aliasing is neither guaranteed nor
+	// excluded, so assigning to just one would inject into a single branch and
 	// silently skip the rest.
 	const field = entry.field
 	const targetBranches = Array.isArray(target.oneOf)
@@ -166,9 +165,8 @@ export const publishedDocument = (
 	}) as Record<string, unknown>
 	// Cloned before injection so mutation never reaches objects Zod may retain
 	// or share across toJSONSchema calls. structuredClone preserves aliasing
-	// WITHIN the cloned graph — two sites aliased in the export stay aliased in
-	// the clone — which is why the injector below dedupes its sites by identity
-	// rather than relying on the clone to separate them.
+	// within the cloned graph, which `injectConstraint`'s identity-based dedup
+	// (above) depends on.
 	const { $schema, ...rest } = structuredClone(exported)
 	const document: Record<string, unknown> = {
 		$schema,
@@ -196,8 +194,8 @@ export const publishedDocuments = (): Record<
  * AC 3's exact serialisation, shared by the generator and the drift check so
  * the two cannot disagree about bytes: 2-space indent, one trailing newline,
  * and every code unit above U+007F escaped as `\uXXXX` so the committed files
- * are pure ASCII — the same rule the test fixtures follow, and one byte-level
- * encoding variable removed from a byte-exact comparison.
+ * are pure ASCII. The test fixtures follow the same rule, which removes one
+ * byte-level encoding variable from a byte-exact comparison.
  */
 export const serializePublishedDocument = (
 	document: Record<string, unknown>,

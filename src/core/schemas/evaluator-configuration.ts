@@ -5,14 +5,12 @@ import { lineageFields } from './lineage.ts'
 import { Digest, JsonObjectValue } from './primitives.ts'
 
 /**
- * AD-17's judge configuration. The no-judge state has one spelling, the
- * field-level `null` on `judgeConfiguration`. `modelSnapshot` is therefore
- * required and non-nullable here: a configured judge is some model, and letting
- * it be `null` would make `{ modelSnapshot: null, systemPromptDigest: null }` a
- * second way to say "no judge" that no reader could tell from the first.
- *
- * `systemPromptDigest` stays nullable because it records a different state: a
- * judge invoked with no system prompt of its own is still a configured judge.
+ * AD-17's judge configuration. `modelSnapshot` is required and non-nullable
+ * here because the no-judge state is spelled once, as `null` on
+ * `judgeConfiguration` itself; letting this field be `null` too would create a
+ * second, indistinguishable way to say "no judge". `systemPromptDigest` stays
+ * nullable: a judge invoked with no system prompt of its own is still
+ * configured.
  */
 export const JudgeConfiguration = z.strictObject({
 	modelSnapshot: z.string().min(1),

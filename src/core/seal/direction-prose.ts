@@ -1,21 +1,20 @@
 /**
  * The relation-keyed template (AC 3): turns one oracle's `Direction` into the
- * `text` of one `BriefDirection`. It composes four things in one fixed
- * non-imperative order: the derived evidence-target references of
- * `derived-reference.ts`, the relation's own verb phrase, the declared
- * polarity, and the author-written `scope` and `negativeDomain`. Each part is
- * lightly shaped into a standalone sentence (trimmed, capitalized at its
- * leading letter, given exactly one terminal punctuation mark); the author's
- * own words are never split, reordered, or otherwise rewritten.
+ * `text` of one `BriefDirection`. It composes, in one fixed order, the
+ * derived evidence-target references (`derived-reference.ts`), the relation's
+ * verb phrase, the declared polarity, and the author-written `scope` and
+ * `negativeDomain`. Each part is shaped into a standalone sentence (trimmed,
+ * capitalized, one terminal mark); the author's own words are never split,
+ * reordered, or rewritten.
  */
 import type { Polarity, Relation } from '../schemas/expression.ts'
 import type { Direction } from '../schemas/oracle.ts'
 import { renderEvidenceReferences } from './derived-reference.ts'
 import type { PlanIndex } from './plan-index.ts'
 
-// Uppercases only the first alphabetic character found, leaving everything
-// else in the text untouched, so a `scope`/`negativeDomain` string an author
-// wrote lowercase still reads as its own sentence once joined after another.
+// Uppercases only the first letter found, so an author-written `scope` or
+// `negativeDomain` string that starts lowercase still reads as its own
+// sentence once joined after another.
 function capitalizeFirst(text: string): string {
 	const match = /[a-zA-Z]/.exec(text)
 	if (match === null) return text
@@ -30,10 +29,9 @@ const ensureSentence = (text: string): string => {
 	return /[.!?]$/.test(capitalized) ? capitalized : `${capitalized}.`
 }
 
-// Universal versus existential framing, kept distinct from each other.
-// `for-all` and `for-any` carry no nested predicate on `Direction`; that lives
-// on `check`, which this story does not read. So the claim names the
-// quantification itself and says nothing about a condition it cannot see.
+// `for-all`/`for-any` carry no nested predicate on `Direction`; that lives on
+// `check`, which this story does not read. So the claim names the
+// quantification itself, saying nothing about a condition it cannot see.
 function quantifierClaim(
 	relation: 'for-all' | 'for-any',
 	evidence: string,
@@ -43,9 +41,8 @@ function quantifierClaim(
 		: `At least one element reachable through ${evidence} is asserted to meet the declared condition.`
 }
 
-// Connectives get their own family, and `not` its own skeleton. A shared
-// affirmative skeleton over `not` would tell the sealed evaluator the opposite
-// of the declared claim (Decision 10).
+// A shared affirmative skeleton over `not` would tell the sealed evaluator
+// the opposite of the declared claim (Decision 10).
 function connectiveClaim(
 	relation: 'all' | 'any' | 'not',
 	evidence: string,
@@ -83,11 +80,9 @@ function comparisonClaim(
 	}
 }
 
-// The remaining six structural operators share one skeleton, parameterised by
-// the relation's own name so the rendered text still says which relation is
-// asserted. Typed to exactly these six, not the full sixteen-member `Relation`
-// union, so a future addition to `RELATION_VOCABULARY` fails to compile here
-// instead of silently falling through to this generic skeleton.
+// Typed to exactly these six, not the full sixteen-member `Relation` union,
+// so a future addition to `RELATION_VOCABULARY` fails to compile here instead
+// of silently falling through to this generic skeleton.
 type StructuralRelation =
 	| 'regex'
 	| 'set-membership'
@@ -130,29 +125,22 @@ function renderPolarityClause(polarity: Polarity): string {
 }
 
 // `negativeDomain` is author-written, evaluator-facing free text (Decision 2).
-// It is not spliced onto its framing sentence verbatim: any trailing
-// terminator the author already wrote is stripped first, since the text
-// becomes the subject of a larger sentence here rather than standing alone
-// (an author-terminated string would otherwise read "...did not return. is
-// treated as a defect.", a mid-sentence period followed by a lowercase
-// clause). The words themselves are never split, reordered, or rewritten
-// beyond that trim and the leading-letter capitalization `ensureSentence`
-// applies uniformly to every clause.
+// Any trailing terminator the author already wrote is stripped first, since
+// the text becomes the subject of a larger sentence rather than standing
+// alone: an author-terminated string would otherwise read "...did not
+// return. is treated as a defect." (a mid-sentence period followed by a
+// lowercase clause).
 function renderNegativeDomainClause(negativeDomain: string): string {
 	const trimmed = negativeDomain.trim().replace(/[.!?]+$/, '')
 	return `${trimmed} is treated as a defect.`
 }
 
 /**
- * `Direction.evidenceTargets` carries no minimum length in the schema, but an
- * empty array is a should-never-happen precondition violation here: AD-3's
- * alignment predicate requires every declared evidence target to appear in
- * `check`, so a direction reaching `seal` with none is not a shape a compiled
- * contract produces, and rendering it degenerates (a doubled space where the
- * evidence clause should be, a subjectless connective sentence). Throws the
- * same precondition-violation `TypeError` this story already uses for other
- * should-never-happen shapes (a duplicate `stepId`, an unresolvable pointer)
- * rather than rendering that degenerate text.
+ * An empty `evidenceTargets` array is a should-never-happen precondition
+ * violation, not a shape a compiled contract produces (AD-3's alignment
+ * predicate requires every declared evidence target to appear in `check`).
+ * Throws the same precondition-violation `TypeError` as this story's other
+ * should-never-happen shapes.
  */
 export function renderDirectionText(
 	direction: Direction,
@@ -168,11 +156,10 @@ export function renderDirectionText(
 		ensureSentence(renderRelationClaim(direction.relation, evidence)),
 		ensureSentence(renderPolarityClause(direction.polarity)),
 	]
-	// `null` and an empty string both drop the clause. The schema admits `''`
-	// as a value distinct from `null`, with no minimum length, and AC 3
-	// requires `null` to drop its clause "rather than rendering... an empty
-	// sentence". An empty string that passed the `!== null` check alone would
-	// render exactly that.
+	// `null` and `''` both drop the clause: the schema allows `''` as distinct
+	// from `null` with no minimum length, and AC 3 requires `null` to drop its
+	// clause rather than render an empty sentence. Checking `!== null` alone
+	// would still render that empty sentence for `''`.
 	if (direction.scope !== null && direction.scope.trim() !== '') {
 		parts.push(ensureSentence(direction.scope))
 	}

@@ -3,18 +3,9 @@ import { z } from 'zod'
 import { Digest } from './primitives.ts'
 
 /**
- * Succeeds the prior-art `artifact-ref`, whose four fields carried two
- * `if`/`then` branches. AD-13 re-expresses a conditional prior-art constraint
- * as a discriminated union, so the published shape changes from `if`/`then` to
- * `oneOf`.
- *
- * Both branches keep every prior-art key so the correspondence stays readable.
- * The inapplicable member is `z.null()` instead of omitted, following the
+ * Both branches keep every prior-art key so the correspondence stays readable;
+ * the inapplicable member is `z.null()` rather than omitted, following the
  * explicit-`null` convention for a branch where the key has no value.
- *
- * The prior art's field name `sha256` becomes `digest`: one shared `Digest`
- * primitive and one field name, with a byte-identical value form, since the
- * prior art's own values already begin with `sha256:`. An AD-24 divergence.
  */
 export const ArtifactReference = z
 	.discriminatedUnion('storage', [

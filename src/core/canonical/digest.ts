@@ -6,7 +6,7 @@ import { scanJson } from './scan-json.ts'
 
 // AD-27 digest computation. node:crypto is the one permitted builtin in core/
 // (AD-1: digesting is deterministic; there is deliberately no digest port).
-// No artifact carries its own digest — digests live only in referring
+// No artifact carries its own digest: digests live only in referring
 // artifacts, so there is no self-exclusion rule here.
 
 export const COMPOSITE_PROTOCOL_TAG = 'eval-quality/composite/v1'
@@ -23,10 +23,9 @@ export function digestBytes(bytes: Uint8Array): string {
 	return render(bytes)
 }
 
-// The entry point for raw hashed-artifact text or bytes: lexical scan first,
-// then digest. Bare JSON.parse would silently keep the last duplicate key and
-// round unsafe integers, so callers holding raw input use this — never
-// digestArtifact(JSON.parse(text)).
+// Entry point for raw hashed-artifact text or bytes: scans lexically first
+// (see scan-json.ts for why), then digests. Callers holding raw input use
+// this, never digestArtifact(JSON.parse(text)).
 export function digestJson(
 	input: Uint8Array | string,
 	artifactPath: string,
@@ -35,7 +34,7 @@ export function digestJson(
 }
 
 // A composite digest is a digest over a domain-separated tagged object with
-// named fields — never a concatenation of member strings.
+// named fields, never a concatenation of member strings.
 export function digestComposite(
 	fields: Record<string, unknown>,
 	artifactPath: string,
@@ -87,8 +86,8 @@ function assertMemberPath(path: string): void {
 
 // A directory digest is a composite over its members ordered by path. Members
 // nest under a fixed "members" field so a path can never collide with the
-// protocol tag; canonical key sorting orders them by path automatically —
-// which means UTF-16 code-unit order, not the UTF-8 byte order git produces.
+// protocol tag; canonical key sorting orders them by path automatically:
+// UTF-16 code-unit order, not the UTF-8 byte order git produces.
 export function digestDirectory(
 	members: Record<string, string>,
 	artifactPath: string,

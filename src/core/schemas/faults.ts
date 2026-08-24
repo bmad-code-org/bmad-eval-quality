@@ -1,20 +1,13 @@
-// Runtime fault registry (AD-28): thrown, typed errors carrying a stable machine
-// code and the path of the artifact that produced them. Disjoint from AD-5's
-// compile-time code registry — the two share at most this base shape, never a
-// code table. Only codes with a genuine thrower belong here.
+// Runtime fault registry (AD-28): thrown, typed errors carrying a stable
+// machine code and the artifact path that produced them. Disjoint from AD-5's
+// compile-time registry; they share only this base shape, never a code table.
 //
-// This is NOT a full mirror of AD-28's table the way `FAILURE_CODES`
-// (`core/failure-codes.ts`) mirrors AD-5's: `FAILURE_CODES` holds all
-// twenty-one AD-5 codes in table order, which is what lets
-// `scripts/check-ad5-registry.ts` assert set-and-order equality against the
-// spine. `RUNTIME_FAULT_CODES` holds only the codes with a genuine thrower, by
-// this file's own header rule above — four of AD-28's ten table rows as of
-// this story. A future `check:ad28-registry` analog could therefore only
-// assert a subset relationship (every member here spells a real AD-28 row
-// correctly), never full set-and-order equality — a materially weaker check
-// than `check-ad5-registry.ts` performs. Building that checker is real,
-// separate scope, not taken on here; there is no `check:ad28-registry` script
-// today, unlike AD-5's `check:ad5-registry`.
+// Unlike `FAILURE_CODES` (core/failure-codes.ts), which mirrors all
+// twenty-one AD-5 codes so `scripts/check-ad5-registry.ts` can assert
+// set-and-order equality against the spine, this table holds only codes with
+// a genuine thrower: four of AD-28's ten rows as of this story. A future
+// `check:ad28-registry` script could only assert a subset relationship, and
+// none exists yet.
 export const RUNTIME_FAULT_CODES = [
 	'non-canonicalizable-value',
 	'schema-parse-failure',

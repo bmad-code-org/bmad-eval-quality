@@ -22,9 +22,8 @@ const reject = (artifactPath: string, detail: string): never => {
 	throw new RuntimeFault('non-canonicalizable-value', artifactPath, detail)
 }
 
-// Scalar checks are exported so the serializer can re-assert them at emit time:
-// an accessor or a lying Proxy could hand the second traversal a value the
-// first one never saw.
+// Exported so canonicalize.ts can re-run these scalar checks at emit time, in
+// the single traversal that closes the TOCTOU gap described there.
 export function assertDomainNumber(
 	value: number,
 	artifactPath: string,
@@ -133,10 +132,9 @@ function visit(
 	ancestors.delete(value)
 }
 
-// Serialization reads plain data properties only. Accessors can return a
-// different value on the serializer's second read (TOCTOU), and non-enumerable
-// or symbol-keyed properties would be silently omitted — both are the silent
-// two-implementations-disagree class, so all of them reject.
+// Accessors, non-enumerable properties, and symbol-keyed properties are all
+// rejected outright; canonicalize.ts explains why (the TOCTOU channel a
+// second read reopens).
 function assertOwnPropertiesArePlainData(
 	value: object,
 	artifactPath: string,

@@ -4,11 +4,10 @@ import { Identifier, JsonValue, KeyName } from './primitives.ts'
 
 /**
  * AD-39: input-binding values are tagged and never share a value space. The
- * untagged spelling made `{ "title": "type-violating" }` mean the matcher to
- * one implementation and the string to another, gave the literal string
- * `type-violating` no spelling at all, and flipped a witness match between
- * `caught` and `missed` on one record. The schema is where the untagged form
- * dies: it is unrepresentable.
+ * untagged spelling let `{ "title": "type-violating" }` mean the matcher to
+ * one implementation and the literal string to another, and flipped a witness
+ * match between `caught` and `missed` on one record; that form is
+ * unrepresentable here.
  */
 export const BindingValue = z.union([
 	z.strictObject({ literal: JsonValue }),
@@ -18,14 +17,13 @@ export const BindingValue = z.union([
 /** the constraint identifier the ledger carries for the check below. */
 export const BINDING_CHANNEL_NON_EMPTY = 'binding-channel-non-empty'
 
-// Caller-keyed: the keys are the author's own parameter names. `{}` is rejected
-// because a binding channel has one spelling for "this channel binds nothing"
-// and it is `null` — unlike a request-shape channel, where an empty triple
-// genuinely means "declared, no keys". No AD-5 code fires on an empty binding
-// map, so under the admit-rule's second clause the schema is the enforcement
-// point. The check is not natively expressible in Zod and is dropped from the
-// export, so it is carried in the constraint ledger for injection as
-// `minProperties: 1`.
+// Caller-keyed: the keys are the author's own parameter names. `{}` is
+// rejected because a binding channel has exactly one spelling for "binds
+// nothing": `null`. A request-shape channel's empty triple, by contrast,
+// means "declared, no keys." No AD-5 code fires on an empty binding map, so
+// the schema is the enforcement point here, under the admit-rule's second
+// clause. See `BindingChannel` below for how the check reaches the constraint
+// ledger.
 const BindingChannelMap = z
 	.record(KeyName, BindingValue)
 	.refine((entries) => Object.keys(entries).length > 0, {
@@ -57,9 +55,10 @@ export const InputBinding = z.strictObject({
 
 /**
  * AD-39: a step is a selector over observations the evaluator produced, never
- * an instruction. Its selection predicate is spelled as its two members on the
- * step itself — the input binding and the temporal clause — matching the only
- * hand-authored contract rather than nesting them under a further key.
+ * an instruction. Its selection predicate is spelled as its two members, the
+ * input binding and the temporal clause, directly on the step itself,
+ * matching the only hand-authored contract rather than nesting them under a
+ * further key.
  */
 export const InteractionStep = z.strictObject({
 	stepId: Identifier,

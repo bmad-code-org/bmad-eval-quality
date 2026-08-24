@@ -1,10 +1,9 @@
 /**
  * The derived-reference vocabulary (AD-16, AC 2). Renders an evidence-target
- * pointer, or a temporally-paired two of them, as a descriptive reference to
- * the step's operation and selection predicate, never to the step's own
- * identifier. Pointers resolved through a `PlanIndex` go in and a phrase comes
- * out. That is Task 4's own deliverable, kept apart from `plan-index.ts`'s
- * resolving and from `direction-prose.ts`'s relation templates.
+ * pointer, or a temporally-paired pair, as a description of the step's
+ * operation and selection predicate; the step's own identifier never appears.
+ * Resolves pointers through a `PlanIndex` into a phrase, kept apart from
+ * `plan-index.ts`'s resolving and `direction-prose.ts`'s relation templates.
  */
 import type { Operation } from '../schemas/interface.ts'
 import type { InteractionStep } from '../schemas/plan.ts'
@@ -18,8 +17,8 @@ import {
 } from './plan-index.ts'
 
 // InputBinding's four channels share one value shape, so indexing through
-// InteractionStep names it without adding a fifth schema type alias. AC 1
-// scopes this story's one core/schemas/ edit to exactly the four named aliases.
+// InteractionStep names it without a fifth schema type alias (AC 1 scopes
+// this story's core/schemas/ edit to exactly these four aliases).
 type BindingValue = NonNullable<InteractionStep['inputBinding']['path']>[string]
 
 type ResolvedTarget = {
@@ -53,23 +52,20 @@ function joinWithAnd(items: readonly string[]): string {
 // ---- operation identity (AC 2, point 3, first bullet) -----------------
 
 // Humanizing a kebab-case operationId is injective on distinct ids, and
-// `buildPlanIndex` already throws on a duplicate `operationId` across
-// interfaces, so two different resolved operations never share this phrase.
-// `method` and `pathTemplate` are never printed anywhere in this module,
-// because AD-16 withholds the operation inventory from the brief on purpose.
+// `buildPlanIndex` already rejects a duplicate `operationId` across
+// interfaces, so two resolved operations never share this phrase. `method`
+// and `pathTemplate` are never printed here: AD-16 withholds the operation
+// inventory from the brief.
 function operationReference(operation: Operation): string {
 	return `the ${operation.operationId.split('-').join(' ')} endpoint`
 }
 
 // ---- the binding clause and its escalation (AC 2, point 3) ------------
 
-// Three rungs, not four. `generic`, then the discriminating binding kind,
-// then the literal value. A fourth rung computed from `method`/`pathTemplate`
-// was tried and removed: it is identical for every sibling on one operation,
-// and mutation testing confirmed it adds zero disambiguating power the
-// `literal` rung had not already found. `renderStepReference` throws once
-// `literal` fails to disambiguate, rather than reaching for a rung that
-// cannot help.
+// Three rungs, not four: generic, then binding kind, then literal value. A
+// fourth rung computed from `method`/`pathTemplate` was tried and removed: it
+// is identical for every sibling on one operation, and mutation testing found
+// it added no disambiguating power beyond `literal`.
 type EscalationLevel = 'generic' | 'kind' | 'literal'
 
 const ESCALATION_LEVELS: readonly EscalationLevel[] = [
@@ -91,9 +87,9 @@ const TRANSPORT_ORDER: readonly TransportChannelName[] = [
 	'body',
 ]
 
-// Sorted by transport channel, in a fixed structural order, and then by key
-// name. So this never depends on a binding map's own insertion order, which is
-// the determinism concern AC 5's permutation family names.
+// Sorted by transport channel in fixed order, then by key name, so this
+// never depends on a binding map's insertion order (AC 5's permutation
+// determinism concern).
 function bindingEntries(step: InteractionStep): readonly TransportEntry[] {
 	const entries: TransportEntry[] = []
 	for (const transportChannel of TRANSPORT_ORDER) {
@@ -107,10 +103,10 @@ function bindingEntries(step: InteractionStep): readonly TransportEntry[] {
 	return entries
 }
 
-// The transport channel is part of the rendered name as well as the sort key.
-// Two bindings can share a parameter name across channels (path.id and
-// query.id), and without the channel qualifier both render as "the supplied
-// id", which is identical text hiding two different bindings in one clause.
+// The transport channel is part of the rendered name as well as the sort
+// key: two bindings can share a parameter name across channels (path.id and
+// query.id), and without the qualifier both would render as "the supplied
+// id", hiding two different bindings behind identical text.
 function entryName(entry: TransportEntry): string {
 	return `${entry.transportChannel} ${entry.key}`
 }
@@ -120,12 +116,11 @@ function isTypeViolating(value: BindingValue): boolean {
 }
 
 // Recursively sorts object keys before stringifying, matching
-// `canonicalize.ts`'s own key-sorting rule (AD-27: object keys sort by UTF-16
-// code unit, which is what the default string comparison `.sort()` uses on
-// this project's identifiers). Two contracts whose only difference is the
-// declared key order of one literal-valued binding share one canonical digest
-// under `canonicalize.ts`; without this, they would render different
-// evaluator-facing prose from that one identical digest.
+// `canonicalize.ts`'s own key-sorting rule (AD-27: UTF-16 code unit order,
+// which is what this project's default `.sort()` already does). Two
+// contracts differing only in one literal binding's declared key order share
+// one canonical digest under `canonicalize.ts`; without this, they would
+// render different prose from that one identical digest.
 function canonicalizeForDisplay(value: unknown): unknown {
 	if (Array.isArray(value)) return value.map(canonicalizeForDisplay)
 	if (value !== null && typeof value === 'object') {
@@ -144,10 +139,10 @@ function formatLiteral(literal: unknown): string {
 	return JSON.stringify(canonicalizeForDisplay(literal))
 }
 
-// Base rendering (AC 2). `type-violating` always names the input as malformed.
+// Base rendering (AC 2): `type-violating` always names the input malformed.
 // `any` and, at the 'generic' level, `literal` share the same generic wording
-// on purpose. The escalation ladder below is what tells them apart once two
-// steps would otherwise collide.
+// on purpose; the escalation ladder below tells them apart once two steps
+// would otherwise collide.
 function renderBindingValue(
 	entry: TransportEntry,
 	level: EscalationLevel,
@@ -165,19 +160,17 @@ function renderBindingValue(
 	return `the ${name} ${formatLiteral(entry.value.literal)}`
 }
 
-// Every declared binding key escalates together, not only "the discriminating
-// one": narrowing to just whichever key would disambiguate a collision would
-// make the amount of detail shown for one step depend on what other steps
-// happen to collide with it elsewhere, which is its own asymmetric-
-// information problem. Disclosing one already-named step's own bound
-// parameter names is not the operation inventory AD-16 withholds; that
-// withholding is about which other calls exist, not what fields the one call
-// under discussion carries.
+// Every declared binding key escalates together, not only the discriminating
+// one: narrowing to whichever key disambiguates a collision would make one
+// step's shown detail depend on what other steps happen to collide with it
+// elsewhere. Naming a step's own bound parameter keys is not the operation
+// inventory AD-16 withholds; that scope is which other calls exist, not this
+// call's own fields.
 //
-// A type-violating binding is the semantically salient one (it is what the
-// oracle referencing this step is usually about), so when one is present the
-// clause names only that, matching AD-16's own worked example ("when you sent
-// an invalid identifier" mentions nothing else the request carried).
+// A type-violating binding is the semantically salient one (usually what the
+// referencing oracle is about), so when one is present the clause names only
+// that, matching AD-16's worked example ("when you sent an invalid
+// identifier" names nothing else the request carried).
 function bindingClause(
 	step: InteractionStep,
 	level: EscalationLevel,
@@ -190,15 +183,14 @@ function bindingClause(
 }
 
 // The binding clause is parenthesized rather than comma-joined onto the
-// operation reference. A step reference can itself be joined with other
-// phrases at a higher level, by `joinWithAnd` or by a temporal pair's
-// "compared with", and `bindingClause` already carries its own internal ", and"
-// separators when a step binds more than one parameter. Comma-joining a second
-// layer on top of that produces indistinguishable comma soup once two or more
-// such phrases are joined. Parenthesizing sets the binding detail off
-// structurally, so the outer join stays recoverable. It is neutral for
-// `renderStepReference`'s Set-based distinctness check below, which compares
-// whole strings and does not care where the parentheses fall.
+// operation reference: a step reference can itself be joined with other
+// phrases at a higher level (`joinWithAnd`, or a temporal pair's "compared
+// with"), and `bindingClause` already carries its own internal ", and"
+// separators. A second comma layer on top of that produces indistinguishable
+// comma soup once two or more phrases are joined; parenthesizing sets the
+// binding detail off structurally so the outer join stays recoverable. This
+// is neutral for the Set-based distinctness check below, which compares whole
+// strings regardless of where the parentheses fall.
 function stepReferenceAtLevel(
 	step: InteractionStep,
 	operation: Operation,
@@ -214,22 +206,17 @@ function stepReferenceAtLevel(
  * generic, then the discriminating binding key and its kind, then the literal
  * value, until every step in `siblings` renders distinctly.
  *
- * `siblings` is direction-scoped: the caller passes the set of steps the
+ * `siblings` is direction-scoped: the caller passes only the steps the
  * current direction's own resolved evidence targets reference that share this
- * operation, not every step in the whole plan that happens to share it.
- * AD-16's own cited rationale for the derived-reference vocabulary is "a
- * direction over two observations of one operation could not say which is
- * which", scoped to one direction. Requiring distinctness against steps a
- * direction never mentions would reject a perfectly renderable direction
- * because of an unrelated collision elsewhere in the plan, which gets worse as
- * the plan grows.
+ * operation, not every step in the plan that shares it (AD-16). Requiring
+ * distinctness against steps a direction never mentions would reject an
+ * otherwise renderable direction over an unrelated collision elsewhere in the
+ * plan.
  *
- * If two siblings still render identically once every rung has been tried,
- * meaning an irreducible collision the declared structure does not
- * distinguish within this direction's own referenced steps, this throws the
+ * If two siblings still render identically after every rung, this throws the
  * same precondition-violation `TypeError` `buildPlanIndex` throws on a
- * duplicate `stepId`, rather than silently returning a phrase two different
- * steps would share.
+ * duplicate `stepId`, rather than returning a phrase two different steps
+ * would share.
  */
 export function renderStepReference(
 	step: InteractionStep,
@@ -270,14 +257,13 @@ function siblingsByOperation(
 // ---- the channel framing (AC 2, point 2) -------------------------------
 
 // An empty string is `TOKEN_SOURCE`'s own legal spelling for a zero-length
-// key, which RFC 6901 admits, but it names no field worth naming. Filtered
-// out rather than spliced in verbatim, which would otherwise produce a blank
-// name ("its  field") or a stray "." in a multi-segment path. When more than
-// one named segment remains, the full path renders joined by "." (for example
-// "a.id") rather than only the last segment, so two structurally different
-// nested pointers sharing one leaf field name (`.../a/id` and `.../b/id`)
-// never collapse to the same phrase. The common single-segment case is
-// unaffected.
+// key (RFC 6901 admits it), but it names no field worth naming, so it is
+// filtered out rather than spliced in verbatim, which would otherwise produce
+// a blank name ("its  field") or a stray "." in a multi-segment path. When
+// more than one named segment remains, the full path renders joined by "."
+// (e.g. "a.id") rather than only the last segment, so two nested pointers
+// sharing one leaf field name (`.../a/id` and `.../b/id`) never collapse to
+// the same phrase.
 function fieldPath(tail: readonly string[]): string | null {
 	const named = tail.filter((token) => token !== '')
 	return named.length === 0 ? null : named.join('.')
@@ -299,9 +285,8 @@ function localTargetPhrase(target: EvidenceTarget): string {
 				)
 			}
 			// The transport channel is named here too, not only in the no-tail
-			// fallback below. Two call-inputs targets on different transport
-			// channels sharing a parameter name (path.id, query.id) must not
-			// collapse to the same phrase.
+			// fallback below: same path.id / query.id collision `entryName`
+			// above guards against.
 			return field !== null
 				? `the ${target.transportChannel} ${field} value you sent`
 				: `the ${target.transportChannel} you sent`
@@ -315,9 +300,9 @@ function localTargetPhrase(target: EvidenceTarget): string {
 				? `its ${field} header`
 				: 'the response headers you obtained'
 		case 'stdout':
-			// Distinguished from response-body's "field" wording, and from
-			// stderr below, so two different channels naming the same field on
-			// one step never render identical text.
+			// Distinguished from response-body's "field" wording and from
+			// stderr below, so two channels naming the same field never render
+			// identical text.
 			return field !== null
 				? `the ${field} field of its standard output`
 				: 'the standard output you obtained'
@@ -342,25 +327,23 @@ function fullTargetPhrase(
 	return `${local} ${preposition} ${stepRef}`
 }
 
-// Encoded as a JSON array, not a `/`-joined string. A `/`-join conflates a tail
-// token containing a literal `/` (reachable via the RFC 6901 `~1` escape, e.g.
-// tail `['a/b']`) with an equivalent multi-segment tail (`['a', 'b']`). Both
-// join to the same `".../a/b"` string and produce a false tie in
-// `sentFirstOrder` below. `JSON.stringify` keeps the array boundary the join
-// collapses.
+// Encoded as a JSON array rather than a `/`-joined string: a `/`-join would
+// conflate a tail token containing a literal `/` (reachable via the RFC 6901
+// `~1` escape, e.g. `['a/b']`) with an equivalent multi-segment tail (`['a',
+// 'b']`). Both would join to the same `".../a/b"` string, producing a false
+// tie in `sentFirstOrder` below.
 function channelSignature(target: EvidenceTarget): string {
 	return JSON.stringify([target.channel, target.transportChannel, target.tail])
 }
 
-// A total order over one pair, independent of which was passed first. Rank by
-// channel kind, where call-inputs ("sent") ranks before any "obtained" channel,
-// then by the pointer's own channel signature, then by each side's own derived
-// step reference. That last rung fires only on a genuine signature tie, such as
-// the same field name read from two different `after`-linked steps' response
-// bodies. It never degenerates to argument order, because two different steps
-// always render two different references: identical same-operation siblings
+// A total order over one pair, independent of which was passed first: rank by
+// channel kind (call-inputs, "sent", ranks before any "obtained" channel),
+// then by channel signature, then by each side's derived step reference. That
+// last rung fires only on a genuine signature tie, such as the same field
+// name read from two different `after`-linked steps' response bodies. It
+// never degenerates to argument order: identical same-operation siblings
 // throw in `renderStepReference` before reaching here, and two different
-// operations always humanize to two different names. So every rung is
+// operations always humanize to two different names, so every rung stays
 // content-derived.
 function sentFirstOrder(
 	a: ResolvedTarget,
@@ -400,23 +383,16 @@ type PhraseGroup =
 	  }
 
 // AC 4: two evidence targets whose steps are declared in an `after`
-// relationship render as one relational phrase rather than two independent
-// ones, so concatenation never discloses which step came first. A same-step
-// group of targets (AC 2's other multi-target case) is a `single` group
-// regardless of `after`, and a step referenced together with more than one
-// target from a temporally-linked partner falls back to `single` groups too.
-// This story's fixtures never need the relational phrase for that shape, and
-// forcing it would guess at which target on each side pairs with which.
+// relationship render as one relational phrase, so concatenation never
+// discloses which step came first. A same-step multi-target group stays
+// `single` regardless of `after`; forcing a pair there would guess at which
+// target on each side pairs with which.
 //
-// Pairing is resolved from sorted step ids and sorted candidate lists, never
-// from discovery order over `resolved` (whose order is `evidenceTargets`'
-// own declaration order): a predecessor referenced by more than one
-// successor (AD-39's one-level bound admits two steps naming the same
-// `after` target) can pair with only one of them, and the winner is chosen
-// by the successor's own `stepId` sorting first, a fixed content-derived
-// tie-break, so the same predecessor always pairs with the same successor
-// and the losing successor always renders as its own `single` group,
-// regardless of which order the direction's `evidenceTargets` name them in.
+// Pairing is resolved from sorted step ids, never from discovery order over
+// `resolved`, so it stays permutation-invariant: when a predecessor is named
+// by more than one successor (AD-39 admits this), the winner is the successor
+// whose own stepId sorts first, and the losing successor renders as its own
+// `single` group.
 function groupResolvedTargets(
 	resolved: readonly ResolvedTarget[],
 ): readonly PhraseGroup[] {
@@ -451,43 +427,19 @@ function groupResolvedTargets(
 		if (winner !== undefined) chosenSuccessorOf.set(predecessorId, winner)
 	}
 
-	// A step appears in at most one relational-phrase group. A chain (a's
-	// chosen successor is b, and b's own chosen successor is c) would
-	// otherwise use `b` twice, once as a's successor and once as c's
-	// predecessor. `chosenSuccessorOf`, read as predecessor -> chosen
-	// successor, has out-degree and in-degree at most one per step (a step
-	// names at most one `after` predecessor, and wins at most one
-	// predecessor's selection), so it is always a disjoint union of simple
-	// chains. `chosenAsSuccessor` (every value in the full, uncollapsed map)
-	// identifies each chain's non-root members, so the walk below starts only
-	// at true roots, never mid-chain.
+	// `chosenSuccessorOf` maps each predecessor to at most one chosen
+	// successor, and each successor wins at most one predecessor, so it is a
+	// disjoint union of simple chains (or cycles, on a malformed `after`
+	// graph). Walking only from steps absent from `chosenAsSuccessor` therefore
+	// starts at true chain roots and can never enter a cycle, since every
+	// cycle node is by construction someone's chosen successor.
 	//
-	// Walking a chain root-to-tail and pairing every other edge -- (1st, 2nd),
-	// then (3rd, 4th), and so on, with a leftover final step rendering alone --
-	// is the general form of the single-link collapse this used to hard-code.
-	// A one-link chain (a -> b) still collapses to exactly one pair, as before.
-	// A longer chain no longer drops its trailing links: `c -> d` in `a -> b ->
-	// c -> d` used to vanish because voiding *every* key that was also a value
-	// discarded `c`'s own entry along with `b`'s, even though `c` was free once
-	// `b` was consumed by `a`. Walking from the root and re-entering the map at
-	// each pair's own successor (`chosenSuccessorOf.get(second)`, not
-	// `second`'s position in the original chain) reclaims exactly the links a
-	// fixed root still has available, and nothing this function has already
-	// used. `pairedAway` collects each pair's second half so the final loop
-	// below skips rendering it standalone, playing the same role
-	// `chosenAsSuccessor` played before this walk existed, now scoped to the
-	// links actually emitted as pairs rather than every link in the original
-	// graph.
-	//
-	// The walk cannot loop forever even on a malformed, schema-legal `after`
-	// graph (a cycle, or a step naming itself): `chosenSuccessorOf` is
-	// injective (each successor step has exactly one `after` value, so it can
-	// win at most one predecessor's selection), which makes it a disjoint union
-	// of simple chains and simple cycles. Every node on a cycle, self-loop
-	// included, is by definition someone's chosen successor, so it is always in
-	// `chosenAsSuccessor` and the root-finding loop below never starts a walk
-	// there; only genuine chain roots (in-degree zero) start one, and a chain
-	// has no cycle to loop back into.
+	// Each root is walked and paired every other link: (1st, 2nd), (3rd, 4th),
+	// and so on, with a leftover final step left to render alone. This
+	// generalizes a single-link collapse this function used to hard-code,
+	// which silently dropped a chain's trailing links (`c -> d` in `a -> b ->
+	// c -> d` vanished along with `b`). `pairedAway` marks each pair's second
+	// half so the final loop below skips rendering it standalone.
 	const chosenAsSuccessor = new Set(chosenSuccessorOf.values())
 	const pairPartnerOf = new Map<string, string>()
 	const pairedAway = new Set<string>()
@@ -506,7 +458,7 @@ function groupResolvedTargets(
 
 	const groups: PhraseGroup[] = []
 	for (const stepId of stepIds) {
-		// Rendered as part of its predecessor's pair below, not on its own.
+		// Rendered as part of its predecessor's pair elsewhere in this loop.
 		if (pairedAway.has(stepId)) continue
 		const list = byStep.get(stepId)
 		if (list === undefined) continue
@@ -540,10 +492,9 @@ function renderPhraseGroup(group: PhraseGroup, siblingsOf: SiblingsOf): string {
 		first.operation,
 		siblingsOf(first.operation.operationId),
 	)
-	// Sorted, so a same-step group's own multi-target order is
-	// permutation-invariant exactly like the top-level join below. In
-	// declaration order, permuting `evidenceTargets` changes which field is
-	// named first here.
+	// Sorted, so a same-step group's field order is permutation-invariant like
+	// the top-level join below; in declaration order, permuting
+	// `evidenceTargets` would change which field is named first here.
 	const locals = group.resolved
 		.map((entry) => localTargetPhrase(entry.target))
 		.sort()
@@ -552,18 +503,16 @@ function renderPhraseGroup(group: PhraseGroup, siblingsOf: SiblingsOf): string {
 
 /**
  * Renders every evidence target a direction declares as one canonically
- * ordered, order-independent reference clause. Byte-identical under a
- * permutation of `evidenceTargets`, of the `PlanIndex`'s `interactionPlan`,
- * and of its `permittedInterfaces`: every phrase this function builds comes
- * from Map-keyed lookups and structural properties of the pointer/step/
- * operation triad, never from array position, and the final join sorts its
- * phrases before joining rather than following declaration or discovery order.
+ * ordered, order-independent reference clause: byte-identical under any
+ * permutation of `evidenceTargets`, the `PlanIndex`'s `interactionPlan`, or
+ * its `permittedInterfaces`. Every phrase comes from Map-keyed lookups and
+ * structural properties of the pointer/step/operation triad, never array
+ * position, and the final join sorts phrases before joining.
  *
- * A repeated pointer is deduplicated before resolving. It conveys no
- * additional information, and left in place it would push its step out of the
- * "exactly one target" shape the AC 4 temporal pairing requires, silently
- * disabling the relational phrase for an otherwise-valid pair while also
- * duplicating the phrase itself.
+ * A repeated pointer is deduplicated before resolving: left in place, it
+ * would push its step out of the "exactly one target" shape AC 4's temporal
+ * pairing requires, silently disabling the relational phrase for an
+ * otherwise-valid pair.
  */
 export function renderEvidenceReferences(
 	pointers: readonly string[],

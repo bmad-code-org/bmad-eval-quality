@@ -2,9 +2,8 @@
 import { z } from 'zod'
 
 /**
- * AD-21's four, uppercase. Every other enumeration in this package is lowercase
- * kebab-case; the verdicts and the HTTP method are the two exceptions the
- * Consistency Conventions name.
+ * The other named exception to this package's lowercase kebab-case enum
+ * convention is the HTTP method.
  */
 export const VERDICTS = ['PASS', 'WAIVED', 'CONCERNS', 'FAIL'] as const
 
@@ -15,11 +14,8 @@ export const Verdict = z.enum(VERDICTS).meta({
 })
 
 /**
- * AD-24 requires a closed enum for the evaluator's own recommendation. It is
- * the verdict vocabulary minus `WAIVED`, so it reuses the uppercase exception
- * instead of adding a third one. The prior art's `NOT_APPLICABLE` does not
- * survive: it was legal only for the `scripted` condition arm, which has no
- * successor in this architecture.
+ * The verdict vocabulary minus `WAIVED`, reusing the uppercase exception
+ * rather than adding a third one.
  */
 export const EVALUATOR_RECOMMENDATIONS = ['PASS', 'CONCERNS', 'FAIL'] as const
 

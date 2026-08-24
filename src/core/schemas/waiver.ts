@@ -7,11 +7,8 @@ import { Rfc3339Utc, WaiverId } from './primitives.ts'
  * machine-checkable context condition where one exists, the recorded approval,
  * and an RFC 3339 expiry. Every part except the identifier is a required key
  * with a nullable value, so an incomplete waiver stays representable and
- * `waiver-incomplete` keeps a shape to fire on.
- *
- * One clarification the fixture author needs: because AD-5 qualifies the
- * condition with "where one exists", `condition: null` is a *complete* waiver.
- * `null` on any of the other four is incomplete.
+ * `waiver-incomplete` keeps a shape to fire on. (`condition`'s own nullability
+ * is explained where it's declared below.)
  */
 export const Waiver = z.strictObject({
 	id: WaiverId,
