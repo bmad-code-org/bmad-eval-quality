@@ -36,20 +36,20 @@ flowchart TD
   CI -- "blocks a bad dependency or a schema-file drift" --> LIB
 ```
 
-| Step | What it does                                                                     |
-| ---: | -------------------------------------------------------------------------------- |
-|    1 | Lock down dependencies. Prove the CI gates really block bad ones.                 |
-|    2 | One way to turn JSON into bytes, one way to hash it, so two codebases agree.      |
-|    3 | What a contract author may write down, and what the schema lets through on purpose. |
-|    4 | The other eleven artifacts, so every file crossing the boundary has a shape.       |
-|    5 | Publish the schemas as JSON Schema files and prove them equivalent to the Zod source. |
-|    6 | Turn a declared direction into evaluator prose that names the call without naming the step. |
-|    7 | Catch sequencing prose an author smuggled into free text, after the brief is generated. |
-|    8 | Ten pure operators over resolved evidence: equality, membership, regex, and shape, fully specified. |
+| Step | Epic-Story | What it does                                                                     |
+| ---: | :--- | -------------------------------------------------------------------------------- |
+|    1 | epic1-story1 | Lock down dependencies. Prove the CI gates really block bad ones.                 |
+|    2 | epic1-story2 | One way to turn JSON into bytes, one way to hash it, so two codebases agree.      |
+|    3 | epic1-story3 | What a contract author may write down, and what the schema lets through on purpose. |
+|    4 | epic1-story4 | The other eleven artifacts, so every file crossing the boundary has a shape.       |
+|    5 | epic1-story5 | Publish the schemas as JSON Schema files and prove them equivalent to the Zod source. |
+|    6 | epic2-story1 | Turn a declared direction into evaluator prose that names the call without naming the step. |
+|    7 | epic2-story3 | Catch sequencing prose an author smuggled into free text, after the brief is generated. |
+|    8 | epic3-story1 | Ten pure operators over resolved evidence: equality, membership, regex, and shape, fully specified. |
 
 Adding a step: follow `learning-path-template.md`.
 
-## Step 1: dependencies and CI gates
+## Step 1 (epic1-story1): dependencies and CI gates
 
 **What:** exact versions in `package.json`, two audit scripts, and a CI job per gate that breaks the
 gate on purpose.
@@ -104,7 +104,7 @@ flowchart TD
   PRCHECKS --> PUBLISH
 ```
 
-## Step 2: canonical bytes and digests
+## Step 2 (epic1-story2): canonical bytes and digests
 
 **What:** turn any JSON value into one exact byte string, then SHA-256 those bytes.
 
@@ -170,7 +170,7 @@ flowchart TD
   FIXTURES --> DIGEST
 ```
 
-## Step 3: the Eval Contract schema
+## Step 3 (epic1-story3): the Eval Contract schema
 
 **What:** the whole Eval Contract written once in Zod: what an author declares, the check expression
 grammar, and the plan of interaction steps.
@@ -244,7 +244,7 @@ flowchart TD
   PLAN --> LEDGER
 ```
 
-## Step 4: the other eleven artifacts
+## Step 4 (epic1-story4): the other eleven artifacts
 
 **What:** the remaining eleven interchange artifacts written in Zod, one file each, plus one registry
 listing all twelve.
@@ -332,7 +332,7 @@ flowchart TD
   REG --> LEDGER
 ```
 
-## Step 5: the published export and its four checks
+## Step 5 (epic1-story5): the published export and its four checks
 
 **What:** twelve committed `schemas/*.schema.json` files built by one pure function, and four checks
 that prove them equivalent to the Zod source, constraint by constraint.
@@ -402,7 +402,7 @@ flowchart TD
   GEN --> SWEEP
 ```
 
-## Step 6: the direction-prose generator
+## Step 6 (epic2-story1): the direction-prose generator
 
 **What:** turn one oracle's declared direction (evidence targets, relation, polarity, scope, negative
 domain) into the prose that becomes a `BriefDirection`'s `text`.
@@ -474,7 +474,7 @@ flowchart TD
   SEALFIX --> TESTS
 ```
 
-## Step 7: the emitted-brief scripting audit
+## Step 7 (epic2-story3): the emitted-brief scripting audit
 
 **What:** a pure function, `auditBriefScripting`, that reads an already-assembled `SealedEvaluatorBrief`
 and throws if any one direction's generated `text` carries more sequencing/transition markers than the
@@ -528,7 +528,7 @@ flowchart TD
   AUDIT --> TESTS
 ```
 
-## Step 8: scalar operators over the evidence domain
+## Step 8 (epic3-story1): scalar operators over the evidence domain
 
 **What:** ten pure functions (`equality`, `deepEquality`, `containment`, `existence`, `absence`,
 `regexMatch`, `setMembership`, `ordering`, `countTolerance`, `shape`), each taking already-resolved

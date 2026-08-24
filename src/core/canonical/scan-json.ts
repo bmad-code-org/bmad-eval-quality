@@ -2,10 +2,8 @@
 import { RuntimeFault } from '../schemas/faults.ts'
 import { MAX_NESTING_DEPTH } from './value-domain.ts'
 
-// Lexical pre-parse validation (AD-36). `JSON.parse` keeps the last duplicate
-// key, accepts lone-surrogate escapes, and silently rounds unsafe integers —
-// so hashed-artifact input is scanned from raw text, and callers holding raw
-// bytes never call bare `JSON.parse`. Domain violations throw
+// Lexical pre-parse validation (AD-36): hashed-artifact input is scanned from
+// raw text, never handed to bare `JSON.parse`. Domain violations throw
 // `non-canonicalizable-value`; input that does not parse at all (malformed
 // syntax, bytes that fail fatal UTF-8 decoding) throws `schema-parse-failure`.
 export function scanJson(
@@ -21,7 +19,7 @@ function decodeUtf8(bytes: Uint8Array, artifactPath: string): string {
 	try {
 		// fatal: a non-fatal decode substitutes U+FFFD for invalid sequences (a
 		// producer's WTF-8-encoded lone surrogate would digest cleanly). ignoreBOM
-		// keeps a leading U+FEFF in the text, where it fails JSON syntax below —
+		// keeps a leading U+FEFF in the text, where it fails JSON syntax below;
 		// silently stripping it would let two implementations disagree on the same bytes.
 		return new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(
 			bytes,
@@ -116,16 +114,15 @@ class Scanner {
 			this.syntax(`invalid literal, expected ${literal}`)
 		}
 		this.position += literal.length
-		// Name the defect: "truex" is an invalid literal, not a structural error
-		// at the next comma or bracket.
+		// Rejects "truex" here as an invalid literal, not as a structural error
+		// surfacing later at the next comma or bracket.
 		if (isAlphanumeric(this.text[this.position])) {
 			this.syntax(`invalid literal starting with ${literal}`)
 		}
 		return value
 	}
 
-	// Depth is bounded so hostile nesting rejects with the typed fault instead
-	// of escaping as a bare RangeError from the recursive descent.
+	// See MAX_NESTING_DEPTH in value-domain.ts for why this is bounded.
 	private enterNesting(): void {
 		if (++this.depth > MAX_NESTING_DEPTH) {
 			this.domain(`nesting depth exceeds ${MAX_NESTING_DEPTH}`)
@@ -301,8 +298,8 @@ class Scanner {
 		if (integerSyntax) {
 			// Compared on the digits: JSON.parse would round 9007199254740993
 			// invisibly. 2^53 - 1 has 16 digits, so anything longer is unsafe by
-			// inspection — checked first so a multi-megabyte literal never pays
-			// (or weaponizes) an arbitrary-precision BigInt conversion.
+			// inspection. Checked first so a multi-megabyte literal never pays (or
+			// weaponizes) an arbitrary-precision BigInt conversion.
 			const digits = literal[0] === '-' ? literal.slice(1) : literal
 			if (digits.length > 16 || BigInt(digits) > SAFE_INTEGER_MAX) {
 				this.domain(`integer literal outside the safe range: ${literal}`)

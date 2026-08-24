@@ -4,9 +4,9 @@ import { lineageFields } from './lineage.ts'
 import { Digest, Identifier } from './primitives.ts'
 
 /**
- * Transcribed from AD-10's own prose. The AD bounds the verdict to a closed
- * list of checks and names each one, so a member AD-10 does not name would be
- * this story minting pre-flight semantics it has no authority over.
+ * Transcribed from AD-10's own prose, which bounds the verdict to a closed,
+ * named list of checks; a member it does not name would be this story minting
+ * pre-flight semantics it has no authority over.
  */
 export const PREFLIGHT_CHECK_KINDS = [
 	'interface-present',

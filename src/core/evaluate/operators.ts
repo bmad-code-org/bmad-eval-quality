@@ -1,18 +1,11 @@
 /**
  * AD-4's ten scalar and structural operators over the resolved-value domain.
- * `covers-by-key` (the eleventh operator) is Story 3.3's; the three
- * connectives, the two quantifiers, and the three-valued
- * `insufficient-evidence` wrapper are Story 3.2's. Every function here is
- * two-valued (`boolean`), pure, synchronous, and total over its declared
- * inputs (AD-1) — no operator here decides `insufficient-evidence`, per AD-4's
- * own framing of that value as an invariant over operands the wrapper applies,
- * not a rule an operator computes about itself.
- *
- * Every function's last parameter is `artifactPath: string`, uniformly, even
- * on functions that never throw: a per-function-different arity would cost
- * Story 3.2's resolution layer a dispatch table instead of one calling
- * convention. The five that never throw name it `_artifactPath`, which this
- * repository's Biome config treats as intentionally unused.
+ * `covers-by-key` is Story 3.3's; the connectives, quantifiers, and the
+ * `insufficient-evidence` wrapper are Story 3.2's, which never decide it
+ * themselves (AD-4). Every function takes `artifactPath: string` last, even
+ * when unused, so Story 3.2's resolver dispatches through one calling
+ * convention instead of a per-function arity table. The five that never
+ * throw name it `_artifactPath`; Biome treats that prefix as unused.
  */
 import { digestArtifact } from '../canonical/digest.ts'
 import { RuntimeFault } from '../schemas/faults.ts'
@@ -23,11 +16,8 @@ import type {
 } from '../schemas/primitives.ts'
 import { ABSENT, type ResolvedValue } from './resolved-value.ts'
 
-// The six-member JSON-type vocabulary, computed once and reused everywhere a
-// runtime value's kind decides a branch: `equality`'s type-mismatch check
-// (AC 3) and `shape`'s per-key declared-type check (AC 6) both need exactly
-// this mapping, and a second hand-rolled copy would be the same drift the
-// Consistency Conventions exist to prevent.
+// Shared JSON-type vocabulary: `equality`'s type-mismatch check (AC 3) and
+// `shape`'s declared-type check (AC 6) need this exact mapping, kept once.
 type JsonKind = 'string' | 'number' | 'boolean' | 'null' | 'array' | 'object'
 
 function jsonKind(value: JsonValue): JsonKind {
@@ -41,14 +31,10 @@ function isPlainObject(value: JsonValue): value is JsonObject {
 	return value !== null && typeof value === 'object' && !Array.isArray(value)
 }
 
-// Structural (canonical-JSON) equality, shared by every operator that cannot
-// answer with `===`: `equality`'s compound branch, `deepEquality`
-// unconditionally, and the element matching `containment` and `setMembership`
-// both need against elements that are not guaranteed scalar. `digestArtifact`
-// throws `RuntimeFault('non-canonicalizable-value', …)` on a value this
-// project's value domain rejects (AD-36); that is let propagate undecorated
-// everywhere this helper is called; see AC 3's Decision 2 for why that is the
-// correct signal rather than a caught `false`.
+// Structural (canonical-JSON) equality, shared by `equality`'s compound
+// branch, `deepEquality`, and element matching in `containment` and
+// `setMembership`. `digestArtifact` throws on a domain-rejected value
+// (AD-36); left to propagate here. See Decision 2 for the reasoning.
 function structurallyEqual(
 	a: JsonValue,
 	b: JsonValue,
@@ -61,8 +47,7 @@ function structurallyEqual(
 // AC 3 — identity family
 // ---------------------------------------------------------------------------
 
-/** `false` if `value === ABSENT`, else `true`. AD-26: reads only whether
- * resolution happened, never what it produced — `null` is present. */
+/** Reads only whether resolution happened; `null` counts as present (AD-26). */
 export function existence(
 	value: ResolvedValue,
 	_artifactPath: string,
@@ -76,14 +61,9 @@ export function absence(value: ResolvedValue, _artifactPath: string): boolean {
 }
 
 /**
- * A three-way, cost-ordered branch (AC 3 Decision 2, adopted after four
- * rejected drafts): a genuine type mismatch resolves `false` with no digest
- * call; a matching scalar type compares with `===`; only a matching
- * **compound** type (`array` with `array`, `object` with `object`) reaches
- * `digestArtifact`, the one case with no cheaper way to answer. The `ABSENT`
- * guard runs before all three branches — `ABSENT` is a JS `symbol`, and
- * letting it reach `digestArtifact` would fault instead of resolving AD-26's
- * required `false`.
+ * Cost-ordered: the `ABSENT` guard runs before any digest call, since
+ * `ABSENT` is a JS `symbol` and `digestArtifact` faults on symbols. Only a
+ * matching compound type reaches structural comparison (Decision 2).
  */
 export function equality(
 	a: ResolvedValue,
@@ -101,13 +81,9 @@ export function equality(
 }
 
 /**
- * "Structural over canonical JSON per AD-27, never serialization-based."
- * `false` if either operand is `ABSENT`, checked first for the same reason as
- * `equality`'s guard. Otherwise unconditionally structural — no scalar fast
- * path, since structural comparison is this operator's entire purpose.
- * `digestArtifact`'s `RuntimeFault('non-canonicalizable-value', …)` propagates
- * undecorated: a node whose operand cannot be canonicalized is unevaluable,
- * not "not equal".
+ * Unconditionally structural (AD-27): the whole point of deep comparison.
+ * `ABSENT` is guarded first, same reason as `equality`'s. A canonicalization
+ * fault propagates undecorated: an unevaluable operand, not a false match.
  */
 export function deepEquality(
 	a: ResolvedValue,
@@ -123,10 +99,8 @@ export function deepEquality(
 // ---------------------------------------------------------------------------
 
 /**
- * `false` if `value === ABSENT` — correct only when `value`'s own pointer is
- * not itself declared collection-typed; Story 3.2 owns telling the two cases
- * apart (AC 1). Otherwise `true` iff `set` contains an element structurally
- * (canonical-JSON) equal to `value`.
+ * `false` on `ABSENT` is correct only when `value`'s pointer is not itself
+ * collection-typed; Story 3.2 disambiguates the two cases (AC 1).
  */
 export function setMembership(
 	value: ResolvedValue,
@@ -138,29 +112,11 @@ export function setMembership(
 }
 
 /**
- * `candidate: ResolvedValue | JsonValue[]` because `Containment`'s schema
- * operand 1 is the general `Operand` union: a `{ pointer }`/`{ literal }`
- * candidate resolves to a single `ResolvedValue`, a `{ referenceSet }`
- * candidate resolves to the contract's declared members, a `JsonValue[]`.
- * `container`'s own `false`-on-`ABSENT` handling is likewise subject to AC 1's
- * absent-collection-typed boundary note. This construction is this story's
- * least-grounded piece (Decision 3): no AD, ADR, or fixture states
- * `containment`'s comparison algorithm.
+ * `candidate: ResolvedValue | JsonValue[]` because `Containment`'s operand
+ * can resolve to either a single value or a `referenceSet`'s member array.
  *
- * **A documented, un-fixed collision:** an array-shaped `{ literal }`
- * candidate and a resolved `{ referenceSet }` candidate both resolve to the
- * identical runtime shape, `JsonValue[]` — this function cannot tell "check
- * whether the array itself is present as one element of `container`" from
- * "check whether `container` is a superset of this set", and always takes the
- * latter (subset) reading whenever `candidate` is an array. So
- * `containment([[1, 2], [3, 4]], [1, 2], path)` resolves `false` even though
- * `[1, 2]` is literally an element of the container, because an array-shaped
- * candidate is always read as a set to reconcile against, never as a single
- * element to search for. This is the concrete case Decision 3's
- * "least-grounded piece" flag refers to; it is not fixed here, because fixing
- * it would need operand *provenance* (was this array a `{ literal }` or a
- * resolved `{ referenceSet }`?) that this function structurally cannot see —
- * the same class of limitation AC 3's Decision 2 names for `equality`.
+ * An array-shaped `candidate` is always read as a subset check, never as a
+ * single element to search for. Known, accepted limitation (Decision 3).
  */
 export function containment(
 	container: ResolvedValue,
@@ -169,9 +125,7 @@ export function containment(
 ): boolean {
 	if (container === ABSENT) return false
 	if (Array.isArray(candidate)) {
-		// Came from a resolved reference set: require `container` to also be an
-		// array, else a type mismatch; otherwise set-of-expected-members ⊆
-		// container by canonical-JSON element equality.
+		// referenceSet path: requires container to also be an array.
 		if (!Array.isArray(container)) return false
 		return candidate.every((expectedMember) =>
 			container.some((element) =>
@@ -189,9 +143,8 @@ export function containment(
 			structurallyEqual(element, candidate, artifactPath),
 		)
 	}
-	// Object container, or any scalar container: a type mismatch. An object's
-	// key presence is already `existence`'s job via a pointer straight at the
-	// key; `containment` does not duplicate it.
+	// Object or scalar container: type mismatch. Key presence belongs to
+	// `existence` via a direct pointer; `containment` does not duplicate it.
 	return false
 }
 
@@ -199,44 +152,27 @@ export function containment(
 // AC 5 — regexMatch
 // ---------------------------------------------------------------------------
 
-// A backslash-escaped character pair, e.g. `\+`, `\d`, `\[`, `\]`. Neutralized
-// to a single inert placeholder — not a metacharacter, not a bracket, not a
-// paren — BEFORE character-class stripping runs (below) and before either
-// gate tier ever sees the pattern. Order matters and is load-bearing: an
-// escaped bracket or paren must stop looking like a real delimiter before
-// `CHARACTER_CLASS_CONTENTS` or the paren scan runs, or an escaped `[`/`]`
-// can swallow a real, dangerous group into a character class and hide it from
-// both tiers entirely (the unsafe direction — see `regexMatch`'s own comment
-// on `stripped`). One escape pass serves every consumer below; there is
-// deliberately no second, narrower escape-strip anywhere else in this file.
+// A backslash-escaped character pair (`\+`, `\d`, `\[`, `\]`, …), neutralized
+// to a single inert placeholder before `CHARACTER_CLASS_CONTENTS` runs. See
+// the ordering note on `stripped` below.
 const ESCAPED_CHARACTER_PAIR = /\\./g
 
-// Character-class contents stripped after escape-neutralization, so a literal
-// `+`/`*`/`?`/`[`/`]` inside `[...]` (escaped or not) is never mistaken for a
-// quantifier or a class delimiter by either tier below.
+// Character-class contents, stripped after escape-neutralization so a
+// literal `+`/`*`/`?`/`[`/`]` inside `[...]` is never read as a quantifier.
 const CHARACTER_CLASS_CONTENTS = /\[[^\]]*\]/g
 
-// A group's own non-capturing/lookaround marker (`?:`, `?=`, `?!`, `?<name>`,
-// `?<=`, `?<!`), stripped from a group's captured contents before that
-// content is scanned for a quantifier character. Without this, the bare `?`
-// every `(?:…)` opens with would read as a quantifier of its own and flag an
-// entirely ordinary construct such as `(?:GET|POST)+` as a nested-quantifier
-// shape, when nothing inside it actually repeats.
+// Strips a group's own `?:`/`?=`/`?!`/`?<name>` marker first, or the bare `?`
+// would misread as a quantifier and false-flag `(?:GET|POST)+` as nested.
 const GROUP_MARKER_PREFIX = /^\?(?:[:=!]|<[=!]?[^>]*>)/
 
 const CONTENT_QUANTIFIER_CHARACTER = /[*+?{]/
 const TRAILING_QUANTIFIER = /^(?:[*+?]|\{\d+(?:,\d*)?\})/
 
 /**
- * A simple parenthesis-matching pass, not a full parse (modeled on
- * `ANCHORED_PATTERN_FORM`'s own precedent): for every `(...)`/`(?:...)` group
- * in the escape-neutralized, character-class-stripped source, true iff the
- * group's own contents contain a quantifier character AND the group itself is
- * immediately followed by one — the shape that makes the group's own
- * repetition compound with its interior repetition (`(a+)+`, `(a*)*`, …).
- * No backslash can survive into `strippedPattern`: escape-neutralization runs
- * before this is ever called (`regexMatch`'s own `stripped`), so this scan
- * needs no escape-awareness of its own for finding real parens.
+ * Cheap structural paren-matching pass, modeled on `ANCHORED_PATTERN_FORM`'s
+ * precedent. True iff a `(...)`/`(?:...)` group's contents hold a quantifier
+ * character and the group itself is immediately followed by one: `(a+)+`,
+ * `(a*)*`, and similar catastrophic-backtracking shapes.
  */
 function hasNestedQuantifier(strippedPattern: string): boolean {
 	const groupStarts: number[] = []
@@ -267,13 +203,9 @@ function hasNestedQuantifier(strippedPattern: string): boolean {
 const QUANTIFIER_MARKER = /[*+?]|\{\d+(?:,\d*)?\}/g
 
 /**
- * `false` if `value === ABSENT` or `value` is not a string (type mismatch, no
- * coercion). Pattern validity is checked here (`AnchoredPattern` only checks
- * the first and last character), matching is native `RegExp` in full, and the
- * match-step budget is a two-tier static gate: structural, unconditional
- * rejection of a nested-quantifier shape, then a linear character-class-aware
- * estimate. Neither tier depends on `value.length` for the first tier; see
- * AC 5 and Decision 4 for why a dynamic engine-step count is never attempted.
+ * `false` if `value === ABSENT` or not a string. Pattern validity is checked
+ * here; the match-step budget is a two-tier static gate. See AC 5 and
+ * Decision 4 in the story file for the design rationale.
  */
 export function regexMatch(
 	value: ResolvedValue,
@@ -295,15 +227,9 @@ export function regexMatch(
 		)
 	}
 
-	// Escape-neutralize FIRST, character-class-strip SECOND. Reordered after a
-	// review round found the original class-first order unsafe: for a pattern
-	// like `^\[(a+)+\]$`, stripping classes on the raw pattern sees the `[` of
-	// the escaped `\[`, greedily consumes through to the `]` of the escaped
-	// `\]` at the end, and swallows the real `(a+)+` nested-quantifier group
-	// into what it thinks is one big character class — hiding it from both
-	// tiers below and letting `compiled.test` hang on catastrophic
-	// backtracking. Escape-neutralizing first means no backslash, and
-	// therefore no escaped bracket, survives to confuse the class strip.
+	// Escape-neutralize before stripping character classes: neutralizing first
+	// keeps an escaped bracket from hiding a real nested-quantifier group from
+	// both tiers below and letting the regex hang.
 	const stripped = pattern
 		.replace(ESCAPED_CHARACTER_PAIR, '_')
 		.replace(CHARACTER_CLASS_CONTENTS, '[]')
@@ -326,8 +252,7 @@ export function regexMatch(
 		)
 	}
 
-	// The original, unstripped pattern — the character-class stripping is an
-	// estimation-only transform, never used for matching.
+	// The unstripped pattern; stripping only feeds the step estimate above.
 	return compiled.test(value)
 }
 
@@ -336,13 +261,8 @@ export function regexMatch(
 // ---------------------------------------------------------------------------
 
 /**
- * `false` if `collection === ABSENT` or is not an array. A one-element (or
- * shorter) array is vacuously `true`. For each adjacent pair, both must be
- * plain objects carrying `key` as an own key and both values must be the same
- * JSON scalar type (`number` or `string`); any element failing this is a type
- * mismatch and the whole node is `false`. Comparison is non-strict (ties
- * permitted) and, for strings, plain `<=`/`>=` — UTF-16 code-unit order, never
- * locale-aware, matching AD-27's canonical key-sorting basis.
+ * Comparison is non-strict: ties are allowed. String comparison is plain
+ * `<=`/`>=` (UTF-16 code-unit order), matching AD-27's key-sorting basis.
  */
 export function ordering(
 	collection: ResolvedValue,
@@ -382,12 +302,9 @@ export function ordering(
 }
 
 /**
- * `false` if `collection === ABSENT` or is not an array. This function never
- * special-cases an *empty* array as anything but a legitimate zero count —
- * Story 3.2's wrapper intercepts before this function is ever called on a
- * genuinely empty collection (AC 1). The allowed deviation is compared
- * unrounded: `actual` is always an integer, so `<=` against a possibly-
- * fractional exact deviation needs no rounding to be correct (Decision 5).
+ * An empty array is a legitimate zero count, never special-cased; Story 3.2's
+ * wrapper intercepts before this runs on a genuinely empty collection. The
+ * allowed deviation is compared unrounded (Decision 5).
  */
 export function countTolerance(
 	collection: ResolvedValue,
@@ -403,13 +320,9 @@ export function countTolerance(
 }
 
 /**
- * `false` if `value === ABSENT` or is not a plain object. Then: every
- * `requiredKeys` member is an own key of `value`; every own key of `value` is
- * a member of `permittedKeys` (the closed set alone, never unioned with
- * `requiredKeys` — Decision 6, so a self-contradictory descriptor is
- * unsatisfiable rather than repaired); and for every key present in both
- * `value` and a non-`null` `descriptor.types` entry, `value[key]`'s runtime
- * JSON type equals the declared one.
+ * The closed set is `permittedKeys` alone, never unioned with `requiredKeys`:
+ * a self-contradictory descriptor is unsatisfiable rather than repaired
+ * (Decision 6).
  */
 export function shape(
 	value: ResolvedValue,
@@ -424,7 +337,7 @@ export function shape(
 		if (!descriptor.permittedKeys.includes(ownKey)) return false
 	}
 	for (const [key, declaredType] of Object.entries(descriptor.types)) {
-		// `null` in the type map means "declared, type not stated" — skipped.
+		// `null` in the type map means declared but type not stated: skip it.
 		if (declaredType === null) continue
 		if (!Object.hasOwn(value, key)) continue
 		const actual = value[key] as JsonValue

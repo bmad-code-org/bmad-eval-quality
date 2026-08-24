@@ -6,10 +6,10 @@ import { lineageFields } from './lineage.ts'
 import { BehaviorId, DefectId, Digest, ProbeId } from './primitives.ts'
 
 /**
- * AD-9's closed four, exactly one per probe. In scope even though the rest of
- * AD-9 is not, because AD-7's strength vector is keyed by probe class and those
- * keys need a vocabulary. AD-7's exclusion rule reads directly off this field
- * and `expectedClean`: canary probes and clean controls never enter the vector.
+ * AD-9's closed four, one per probe, in scope because AD-7's strength vector
+ * is keyed by probe class and needs this vocabulary. AD-7's exclusion rule
+ * reads directly off this field and `expectedClean`: canary probes and clean
+ * controls never enter the vector.
  */
 export const PROBE_CLASSES = [
 	'defect',
@@ -32,11 +32,9 @@ export const Defect = z.strictObject({
 	source: z.enum(['natural', 'controlled-mutation']),
 })
 
-// Common to both branches of the `expectedClean` union. AD-9's `artifactDigest`
-// and `commitDigest`, which AD-9 states as "All carry artifact and commit
-// digests", are read as per-probe and placed at the root. That matches the
-// prior art's record-level `implementationSha` and costs one spelling instead
-// of five.
+// Shared by both branches of the `expectedClean` union. AD-9's per-probe
+// `artifactDigest` and `commitDigest` sit at the root here, matching the prior
+// art's record-level `implementationSha`: one spelling instead of five.
 const probeCommonFields = {
 	...lineageFields,
 	probeId: ProbeId,
@@ -58,12 +56,12 @@ const probeCommonFields = {
 
 /**
  * The prior art's `expectedClean` conditional, re-expressed as a discriminated
- * union per AD-13. A boolean literal discriminator parses on this pin,
- * verified.
+ * union per AD-13 (a boolean literal discriminator parses on this pin,
+ * verified).
  *
- * `expectedClean: true` identifies a clean control, which is what AD-9 says the
- * boolean is for: "ratifying the prior art's record-level field rather than
- * adding a fifth class".
+ * `expectedClean: true` marks a clean control: AD-9's reason for the boolean
+ * is "ratifying the prior art's record-level field rather than adding a fifth
+ * class".
  */
 export const Probe = z
 	.discriminatedUnion('expectedClean', [

@@ -5,23 +5,21 @@ import { lineageFields } from './lineage.ts'
 import { Identifier } from './primitives.ts'
 
 /**
- * No prior art. A published artifact instead of constants in a function,
- * because the Consistency Conventions are explicit: "the default policy ships
- * as a published artifact referenced by digest rather than as constants in a
- * function, so 'the default' has an identity and a no-op edit cannot move a
- * scoring version."
+ * No prior art. A published artifact rather than constants in a function, per
+ * the Consistency Conventions: "the default policy ships as a published
+ * artifact referenced by digest rather than as constants in a function, so
+ * 'the default' has an identity and a no-op edit cannot move a scoring
+ * version."
  *
- * This shape carries no `.default()` and no default value anywhere. The
- * defaults AD-6 and AD-12 name are recorded in the field descriptions as what
- * the published default artifact carries. Putting them in the schema would give
- * "the default" a second home with no digest, and `.default()` also diverges
- * the input-mode and output-mode exports by dropping the key from `required` in
- * input mode only.
+ * No `.default()` and no default value anywhere. AD-6 and AD-12's defaults
+ * live only in the field descriptions, as what the published default artifact
+ * carries; `.default()` would also diverge the input-mode and output-mode
+ * exports by dropping the key from `required` in input mode only.
  *
- * `strictMode` and `corpusLocation` are not fields here. The Conventions list
- * them alongside the policy as "explicit arguments **or** an explicit policy
- * artifact"; AD-14 fixes strict mode as a CLI flag and AD-8 puts the corpus
- * behind `CorpusPort`, so adding either here would give one concern two homes.
+ * `strictMode` and `corpusLocation` are not fields here, though the
+ * Conventions list them alongside the policy as alternative explicit inputs:
+ * AD-14 fixes strict mode as a CLI flag and AD-8 puts the corpus behind
+ * `CorpusPort`, so adding either here would give one concern two homes.
  */
 export const ScoringPolicy = z
 	.strictObject({

@@ -5,15 +5,9 @@ import { lineageFields } from './lineage.ts'
 import { InteractionPointer } from './pointer.ts'
 import { RubricCriterionId, RubricId } from './primitives.ts'
 
-// AD-22 says "anchored scale levels" and supplies no shape, so this one is
-// minted here rather than inherited, which Decision 9 says to record: an
-// ordinal plus the observable condition that anchors it, and nothing more.
-// Two consequences are left unenforced in v0 on purpose, because no AD-5 code
-// names either and AC 10 prefers the compiler to a refinement: `level` is
-// unbounded and unordered, so a negative level and two levels sharing an
-// ordinal both parse. `rubric-unanchored` fires on a missing anchor, not on a
-// duplicate ordinal, so a later epic adds a code deliberately rather than
-// discovering the hole.
+// AD-22 requires anchored scale levels but supplies no shape. Minted here as
+// an ordinal plus its anchor condition, nothing more (Decision 9); see the
+// field descriptions below for what stays unenforced in v0 and why.
 export const ScaleLevel = z.strictObject({
 	level: z
 		.int()
@@ -49,9 +43,8 @@ export const RubricCriterion = z.strictObject({
 })
 
 /**
- * The embeddable body. Story 1.4's published `Rubric` artifact is this body
- * plus `schemaVersion`, lineage, and its prior-art declaration; the rubric is
- * defined once and split rather than twice.
+ * The embeddable rubric body: Story 1.4's published `Rubric` artifact adds
+ * `schemaVersion`, lineage, and a prior-art declaration on top of this.
  */
 export const RubricBody = z
 	.strictObject({
@@ -84,10 +77,8 @@ export const RubricBody = z
 	})
 
 /**
- * The published Rubric artifact. Story 1.3 split the rubric deliberately rather
- * than defining it twice, so this is the body spread flat plus AD-11's version
- * and AD-29's lineage. The criteria, scale levels, and failure-mode penalties
- * are not re-spelled here and must not be.
+ * The published Rubric artifact (Story 1.3): `RubricBody` above, spread flat,
+ * plus AD-11's version and AD-29's lineage.
  */
 export const Rubric = z
 	.strictObject({

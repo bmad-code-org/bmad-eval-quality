@@ -2,10 +2,9 @@
 import type { JsonValue } from '../schemas/primitives.ts'
 
 /**
- * AD-26: "A pointer that does not resolve yields the distinct value `absent`,
- * which is not `null`." A unique symbol, not a string literal or `null`
- * itself, so it can never collide with a legitimately resolved JSON value —
- * `null` is itself a valid `JsonValue` and a distinct outcome from `absent`.
+ * AD-26: a pointer that fails to resolve yields the symbol `ABSENT`, not
+ * `null` or a string literal, since `null` is itself a valid `JsonValue` and
+ * must stay distinguishable from a value that never resolved.
  */
 export const ABSENT: unique symbol = Symbol('absent')
 

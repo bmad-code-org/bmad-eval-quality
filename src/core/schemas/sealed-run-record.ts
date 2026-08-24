@@ -20,10 +20,9 @@ import {
 import { EvaluatorRecommendation } from './verdict.ts'
 
 /**
- * AD-23's verbatim quotation, carried with the channel it came from. Both parts
- * are required on a `defect` finding, because a quotation with no channel
- * cannot be audited against the observation it claims to come from, and
- * auditing it is the job ADR-009 Decision 2 gives it.
+ * AD-23's verbatim quotation, paired with the channel it came from: a
+ * quotation with no channel cannot be audited against its source observation
+ * (ADR-009 Decision 2).
  */
 export const QuotedEvidence = z.strictObject({
 	quote: z
@@ -35,10 +34,9 @@ export const QuotedEvidence = z.strictObject({
 	channel: EvidenceChannel,
 })
 
-// Common to all three finding branches, spread instead of shared as a base
-// object: AD-13 wants each exported file self-contained, and a spread adds no
-// `$defs` entry, so the three branches export as three complete shapes a
-// non-TypeScript consumer can read without following a reference.
+// Spread into each finding branch rather than shared as a base object: a
+// spread adds no `$defs` entry, so each branch exports as a complete shape a
+// non-TypeScript consumer can read without following a reference (AD-13).
 const findingCommonFields = {
 	findingId: FindingId,
 	oracleId: OracleId.nullable().describe(
@@ -72,12 +70,10 @@ const findingCommonFields = {
 }
 
 /**
- * AD-23 requires that "every `defect` finding **additionally** carries the
- * identifiers of the observations it relies on and its verbatim quoted evidence
- * with that evidence's channel, both schema-required". A nullable field on a
- * flat shape cannot express "required on one kind and not the others". A
- * discriminated union can, and AD-13 names that restructuring as the house
- * treatment for a conditional.
+ * `defect` findings additionally require observation identifiers and quoted
+ * evidence (AD-23). A nullable field can't express "required on this branch
+ * only", so this is a discriminated union, the house treatment for a
+ * conditional (AD-13).
  */
 export const Finding = z
 	.discriminatedUnion('findingType', [
@@ -121,9 +117,8 @@ export const Finding = z
 	.meta({ id: 'Finding' })
 
 /**
- * AD-23 requires "one disposition per required oracle — the evaluator's own
- * statement of held, violated, or not-attempted". The vocabulary is AD-23's own
- * three words.
+ * AD-23 requires one disposition per required oracle: held, violated, or
+ * not-attempted. The three words are AD-23's own vocabulary.
  */
 export const ORACLE_DISPOSITIONS = [
 	'held',
@@ -145,18 +140,15 @@ export const OracleDisposition = z.strictObject({
 })
 
 /**
- * The four transport channels an observation's call inputs are keyed by. The
- * worked example's flat `callInputs: { id: "n-1" }` does not survive: AD-26
- * fixes that "under `call-inputs` the next segment is one of the four transport
- * channels", and against a flat map the pointer
- * `/interactions/write/call-inputs/body/title` resolves against nothing.
+ * The four transport channels an observation's call inputs are keyed by. A
+ * flat map, as in the worked example, breaks pointer addressing: AD-26 keys
+ * `call-inputs` by transport channel, so a pointer like
+ * `/interactions/write/call-inputs/body/title` needs that segment to resolve
+ * against.
  *
- * A four-key strict object instead of a record over the transport enum, for the
- * reason `RequestShape` and `InputBinding` are: a record over an enum key
- * demands every member at parse time, and every real observation binds a
- * subset. Each channel's value is a caller-keyed object inside the value
- * container, so it does not join the Conventions' caller-keyed list of control
- * maps.
+ * A four-key strict object rather than a record over the transport enum, for
+ * the same reason as `RequestShape` and `InputBinding`: a record demands every
+ * enum member at parse time, but every real observation binds only a subset.
  */
 export const ObservedCallInputs = z.strictObject({
 	path: JsonObjectValue.nullable(),
@@ -169,9 +161,8 @@ export const ObservedCallInputs = z.strictObject({
  * One ingested observation, carrying AD-26's closed channel set so every
  * pointer in the addressing grammar has something to resolve against.
  *
- * Observation ordering is deliberately absent and is owed to Owed item 2.
- * ADR-006 forbids using array position as an ordering, and the fix is a
- * monotonic sequence, which is not a field this story can guess at. It arrives
+ * Observation ordering is deliberately absent (Owed item 2): ADR-006 forbids
+ * using array position as ordering, and the fix, a monotonic sequence, arrives
  * as an additive `schemaVersion` bump under AD-11.
  */
 export const Observation = z.strictObject({
@@ -241,10 +232,10 @@ export const ResourceUse = z.strictObject({
 })
 
 /**
- * AD-21's FAIL rung reads "evidence that is incomplete, over-truncated,
- * unavailable, or internally inconsistent under AD-17" against fields no
- * artifact declared. Two of the four are caller statements and land here on the
- * record the caller produces. The other two are derived and declared nowhere.
+ * AD-21's FAIL rung reads on evidence that is incomplete, over-truncated,
+ * unavailable, or internally inconsistent (AD-17), but no artifact declares
+ * those fields. Two of the four are caller statements and land here; the other
+ * two are derived and declared nowhere.
  */
 export const EvidenceDisclosure = z.strictObject({
 	truncationBound: z

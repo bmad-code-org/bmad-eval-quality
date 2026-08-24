@@ -7,14 +7,12 @@ import { Digest, Identifier, OracleId } from './primitives.ts'
 
 /**
  * AD-3's generated evaluator-facing direction, keyed by the oracle it belongs
- * to. Oracle identifiers reach the evaluator and step identifiers do not. AD-23
- * requires every finding to cite its oracle and the evaluator writes the
- * findings, so it has to have seen the oracle identifiers; AD-16's prohibition
- * names step identifiers specifically.
+ * to. The evaluator sees oracle identifiers but never step identifiers: AD-23
+ * requires every finding to cite its oracle, and AD-16 specifically bars step
+ * identifiers from reaching it.
  *
- * No `behaviorId`: `Behavior.oracles` is an array, so two behaviours may cite
- * one oracle and a single behaviour identifier on a direction cannot be
- * truthful.
+ * No `behaviorId`: `Behavior.oracles` is an array, so two behaviours can cite
+ * one oracle and a single behaviour id on a direction would not be truthful.
  */
 export const BriefDirection = z.strictObject({
 	oracleId: OracleId,
@@ -29,14 +27,12 @@ export const BriefDirection = z.strictObject({
 export type BriefDirection = z.infer<typeof BriefDirection>
 
 /**
- * Interface identity only, with no operation inventory. AD-16 says "permitted
- * interfaces" and AD-5's graph predicate names "exhaustive operation
- * inventories" as a scripting shape, so shipping the inventory here would hand
- * the evaluator the action list AD-39 keeps from it, one artifact over from
- * where the predicate looks. Withholding it costs nothing on this repository's
- * own evidence: the independent-evaluator isolation manifest records that arm
- * discovering a search parameter by trying `?search=`, `?query=`, and `?q=` in
- * turn, and that arm detected the defect.
+ * Interface identity only, no operation inventory: shipping one would hand the
+ * evaluator the action list AD-39 keeps from it, one artifact over from where
+ * AD-5's scripting-shape predicate looks. Withholding it costs nothing in
+ * practice: the isolation manifest records an arm finding a search parameter
+ * by trying `?search=`, `?query=`, and `?q=` in turn, and that arm still
+ * caught the defect.
  */
 export const BriefInterface = z.strictObject({
 	logicalId: Identifier.describe(
