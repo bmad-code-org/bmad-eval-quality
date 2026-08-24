@@ -62,7 +62,7 @@ development_status:
   
   epic-3: in-progress
   3-1-scalar-operators-over-the-evidence-domain: done
-  3-2-connectives-quantifiers-and-three-valued-resolution: ready-for-dev
+  3-2-connectives-quantifiers-and-three-valued-resolution: done
   3-3-covers-by-key-as-a-bijection: backlog
   
   epic-4: backlog

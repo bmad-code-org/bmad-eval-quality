@@ -13,6 +13,7 @@ import {
 } from '../../src/core/evaluate/operators.ts'
 import { ABSENT } from '../../src/core/evaluate/resolved-value.ts'
 import { faultOf } from '../canonical/helpers.ts'
+import { DEFAULT_REGEX_MATCH_STEP_BUDGET } from './fixtures/stub-resolver.ts'
 
 const PATH = 'artifacts/evaluate.json'
 
@@ -255,12 +256,9 @@ describe('setMembership', () => {
 })
 
 describe('regexMatch', () => {
-	// Matches the published default artifact's regexMatchStepBudget (AC 2),
-	// raised from 10000 to 1_000_000 after a review round: the estimate scales
-	// with the observed string's length, which the contract author does not
-	// control, so a low ceiling let an ordinary long SUT response fault where
-	// it should resolve false.
-	const DEFAULT_BUDGET = 1_000_000
+	// P22: shared with resolution.test.ts rather than spelled independently
+	// here; see DEFAULT_REGEX_MATCH_STEP_BUDGET's own doc comment.
+	const DEFAULT_BUDGET = DEFAULT_REGEX_MATCH_STEP_BUDGET
 
 	// Reused from expression-nodes.ts's own regex fixture shape.
 	it('matches an ordinary anchored pattern (accept and reject)', () => {
