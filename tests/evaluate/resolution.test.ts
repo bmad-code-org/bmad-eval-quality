@@ -1311,6 +1311,25 @@ describe('a RuntimeFault from a nested regexMatch propagates undecorated through
 	})
 })
 
+describe("resolveNode's out-of-union op guard (P16)", () => {
+	it('throws a plain Error, never a RuntimeFault, naming the offending op, for an op outside the closed union', () => {
+		const check = { op: 'not-an-op', operands: [] } as unknown as Expression
+		const error = plainErrorOf(() => resolve(check))
+		expect(error.message).toContain('unrecognized expression.op')
+		expect(error.message).toContain('not-an-op')
+	})
+
+	it("throws for op: 'constructor', an Object.prototype property name, not Object.prototype.constructor itself", () => {
+		// The regression this guards against: operatorHandlers is a plain
+		// object, so a naive `operatorHandlers[op]` lookup finds the inherited
+		// Object constructor for this exact op value instead of undefined.
+		const check = { op: 'constructor', operands: [] } as unknown as Expression
+		const error = plainErrorOf(() => resolve(check))
+		expect(error.message).toContain('unrecognized expression.op')
+		expect(error.message).toContain('constructor')
+	})
+})
+
 describe('a type-mismatch quantifier collection resolves insufficient-evidence, never a thrown fault (Decision 4, AC 7 point 11)', () => {
 	it('for-all whose collection operand resolves to a plain object', () => {
 		const check: Expression = {

@@ -710,7 +710,8 @@ Claude Sonnet 5 (claude-sonnet-5), via Claude Code.
   distinct-keys test, the keyless-extra-row regression tests, and the 4 key-domain tests)
 - `tests/evaluate/resolution.test.ts` (edited: `populatedContract` import, `findPopulatedCheck` helper,
   dispatch-gap block replaced with the real dispatch fixtures; post-review added the two
-  asymmetric-emptiness fixtures)
+  asymmetric-emptiness fixtures, plus, from CodeRabbit's PR review, two out-of-union-op dispatch tests
+  (`'not-an-op'`, `'constructor'`) pinning P16's guard and the `Object.hasOwn` fix directly)
 - `_bmad-output/project-knowledge/learning-path-step-by-step.md` (edited: Step 11 added, Step 10's stale
   bullet corrected; post-review corrected Step 11's own bijection-proof bullet)
 - `_bmad-output/implementation-artifacts/sprint-status.yaml` (edited: `3-3-covers-by-key-as-a-bijection`
