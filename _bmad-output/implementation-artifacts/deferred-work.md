@@ -1,9 +1,32 @@
 # Deferred work
 
-One item is currently open (below, under "How to use this file"): the `in-review`/`review`
-status-vocabulary drift between epic-2 story files and `sprint-status.yaml`'s documented vocabulary.
-It stays open because fixing it means changing the BMad skill's own routing keywords, out of any one
-story's scope.
+No items are currently open under "How to use this file." The list below records how each
+past item closed.
+
+The `in-review`/`review` status-vocabulary drift between story files' own `Status:` line and
+`sprint-status.yaml`'s `development_status` field was investigated on 2026-08-24 and found to be by
+design, not closed by rule change: the two fields are owned by different mechanisms for different
+purposes (the story file's `Status:` is the BMad build skill's own internal routing state, which
+includes the transient `in-review`; `sprint-status.yaml`'s `development_status` is a coarser
+human-facing tracker that was only ever designed to distinguish in-progress/awaiting-review/done),
+the same dual-vocabulary shape already normalized here for the `Status: done` /
+`development_status: review` pairing, and nothing in the codebase cross-validates the two fields.
+
+`regexMatchStepBudget` being unvalidated where `resolveCheck`/`regexMatch` consume it was
+investigated on 2026-08-24 and found to be by design: `ScoringPolicy.regexMatchStepBudget`
+(`core/schemas/scoring-policy.ts`) is already `z.int().min(1)`, a guard that shipped in Story 3.1
+before the deferring story (3.2) was even written, forecloses the `NaN`/negative/non-integer failure
+modes at the only place a `ScoringPolicy` is ever constructed, and matches this codebase's own
+convention of validating numeric policy fields once at the schema boundary with no re-validation at
+downstream consumers.
+
+`evaluatePointerReachability`'s root-collection carve-out never checking a literal array index
+against the declared collection's own `expectedCardinality` was closed on 2026-08-24: the carve-out
+in `src/core/compile/reachability.ts` now resolves the actual `CollectionLocation` and returns
+unreachable when the index is at or past its bound (`exact.count`, or `at-most`/`page-bounded`'s
+`max`), the same treatment Decision 8 already gives `stdout`/`stderr`. The fix and its reasoning live
+in that function's own comment, with `tests/compile/reachability.test.ts`'s new fixture 38b covering
+all three `expectedCardinality` modes both in-bounds and out-of-bounds.
 
 Story 2.3 carried three items, all closed on 2026-08-21 in the same pass a second-round peer review
 found them trivially fixable rather than genuinely deferrable: `SealedEvaluatorBrief.directions`
@@ -21,6 +44,10 @@ runtime self-validation.
 Story 2.1 carried one item, closed on 2026-08-21: `groupResolvedTargets`'s chain-collapse logic
 dropped legal disjoint pairings for after-chains of four or more steps. The fix and its reasoning
 live in `2-1-the-direction-prose-generator.md`'s Decision log.
+
+The `check-docs.mjs` ROOTS gap (carried from Story 3.2) was closed on 2026-08-24: `_bmad-output/project-knowledge`
+was added to `ROOTS` alongside `_bmad-output/planning-artifacts`, raising the checked-file count from 53 to 55
+with no new failures.
 
 Epic 1 itself closed with an empty ledger. Four items were carried here and all four were closed on
 2026-08-20. Each one's reasoning lives with the work rather than in this file, which is a queue and not
@@ -42,6 +69,7 @@ the outcome and reasoning live (the source spec) may stay in the closure prose a
 closure on record here already does it, so a later reader is not left to guess what was once open.
 The rule is about the entry, not about erasing that something was once open.
 
+<<<<<<< Updated upstream
 - source_spec: `_bmad-output/implementation-artifacts/2-3-the-emitted-brief-scripting-audit.md`
   summary: Story files' `Status:` line uses `in-review` (this story and `2-1-the-direction-prose-generator.md`), a value `sprint-status.yaml`'s own documented vocabulary does not recognize (it documents `backlog`/`ready-for-dev`/`in-progress`/`review`/`done`, no `in-review`).
   evidence: `sprint-status.yaml`'s STATUS DEFINITIONS header lists only `review`, never `in-review`, but both epic-2 stories written so far use `in-review` in their own `Status:` line; the drift is pre-existing (introduced by Story 2.1, not this story) and worth a single terminology decision so future stories don't keep choosing between the two. Left open: fixing it means changing the BMad skill's own routing keywords, out of a story's scope.
@@ -53,3 +81,6 @@ The rule is about the entry, not about erasing that something was once open.
 - source_spec: `_bmad-output/implementation-artifacts/3-2-connectives-quantifiers-and-three-valued-resolution.md`
   summary: `regexMatchStepBudget` is never validated where `resolveCheck`/`regexMatch` consume it — a `NaN`, negative, or non-integer budget is silently accepted and disables or corrupts the budget gate rather than failing loudly.
   evidence: `src/core/evaluate/resolution.ts:446`-area threading and `regexMatch`'s own `estimatedSteps > matchStepBudget` comparison read `NaN` as always-false, so a malformed budget value never trips the fault it exists to guard. Validation belongs on the scoring-policy schema upstream of this story (`core/schemas/scoring-policy.ts`), out of this story's own scope (no `core/schemas/` edit), but it interacts with this story's own budget threading and is worth a single validation pass at the source.
+=======
+(No entries are currently open.)
+>>>>>>> Stashed changes

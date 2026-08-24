@@ -52,6 +52,7 @@ flowchart TD
 |    9 | epic3-story1 | Ten pure operators over resolved evidence: equality, membership, regex, and shape, fully specified. |
 |   10 | epic3-story2 | Connectives, quantifiers, and the empty-collection rule so equivalent spellings agree on empty evidence. |
 |   11 | epic3-story3 | `covers-by-key`, the closed vocabulary's one relational operator: a bijection so omission, padding, and extras all fail. |
+|   12 | epic4-story1 | The real pointer walk (RFC 6901, `@/`), and the two compile-time checks that catch an unreachable pointer before evaluation. |
 
 Adding a step: follow `learning-path-template.md`.
 
@@ -815,4 +816,81 @@ flowchart TD
   FIX --> RESTESTS
   OPS --> OPTESTS
   RES --> RESTESTS
+```
+
+## Step 12 (epic4-story1): pointer resolution and reachability
+
+**What:** the real `ResolveOperand`/`PointerDenotesCollection` pair (`makeResolveOperand`,
+`makePointerDenotesCollection`), replacing Step 10's test-only stub, plus two compile-time checks
+(`checkBoundElementScope`, `checkEvidenceReachability`) that catch an unreachable or misplaced pointer
+before a sealed evaluator ever runs.
+
+**Why:** Step 10 took pointer resolution as an injected capability and never built it. This step is
+that build: one walk of RFC 6901 tails, including the bound-element `@/` form, shared by the runtime
+resolver and, through the same array-index grammar, the compile-time reachability check. Both now read
+one oracle's `check` expression identically, which is this story's whole point.
+
+**Rules:**
+
+- One walk, `walkTail`, and `plan-index.ts`'s own `decodeToken`/`decodeTail` are exported rather than
+  copied, so the interaction pointer's tail and a declared collection location's own pointer decode the
+  same way.
+- Bare `@/` needs its own decode path, `decodeBoundElementTail`: feeding `pointer.slice(1)` straight into
+  `decodeTail` produces one empty-string token instead of zero, and would look up the wrong key.
+- Every map lookup (`referenceSets`, `stepObservations`) guards with `Object.hasOwn` before indexing.
+  `constructor` is a legal identifier, and a plain index on a missing key silently returns
+  `Object.prototype.constructor` instead of `ABSENT`.
+- Reachability checks `requiredKeys ∪ permittedKeys`, never `permittedKeys` alone, so an already-accepted
+  authoring gap (permitted keys not covering required ones) can't reject a field the descriptor's own
+  required list already promises.
+- A field the descriptor declares a definite scalar type blocks further descent; an undeclared or
+  type-not-stated field stays permissive, since nothing rules descent out.
+- `stdout`/`stderr` reject any non-empty tail outright: the schema types both as bare strings
+  unconditionally, so a tail into either is provably always absent, not merely unchecked.
+- Both checks throw on the first violation and name the exact operand position
+  (`.check.predicate.operands[0]`), matching the one existing `StructuralFailure` thrower's fail-fast shape.
+- `@/` outside any quantifier's predicate fails the same code a reference-set operand outside its three
+  legal positions already uses: no dedicated AD-5 code exists for it, and the two are the same shape.
+
+**Read in this order:**
+
+1. `src/core/seal/plan-index.ts`: `decodeToken`/`decodeTail`, now exported.
+2. `src/core/evaluate/evidence-resolution.ts`: `walkTail`, `decodeBoundElementTail`, `makeResolveOperand`,
+   `makePointerDenotesCollection`.
+3. `src/core/compile/reachability.ts`: the shared tree walk, `checkBoundElementScope`,
+   `evaluatePointerReachability`, `checkEvidenceReachability`.
+4. `tests/evaluate/evidence-resolution.test.ts`: the RFC 6901 edge cases (escaped keys,
+   `__proto__`/`constructor`, non-canonical indices) and the resolver/collection-predicate fixtures.
+5. `tests/compile/reachability.test.ts`: the two whole-fixture regressions, the negative mutation
+   fixtures, and the parity matrix against `makeResolveOperand`'s own walk.
+
+**Watch out:**
+
+- Two `ResolveOperand` implementations coexist by design: Step 10's stub for dispatch-logic tests, this
+  story's real one for addressing-grammar tests and eventual score-side use. `resolution.test.ts`/
+  `operators.test.ts` were not migrated.
+- Nothing wires either check, or this resolver, into a `compile()` entry point yet. Both ship as
+  standalone, independently callable functions a future orchestrator composes.
+- Recursion depth on the check-tree walk is unbounded, the same inherited, unfixed gap Story 3.2 already
+  recorded for `resolution.ts`'s identically-shaped walk.
+- The root-collection carve-out accepts any canonical array index; it never checks that index against
+  the collection's own declared `expectedCardinality`. Filed in `deferred-work.md`, headed for Story 4.2.
+
+**Story:** `_bmad-output/implementation-artifacts/4-1-pointer-resolution-and-reachability.md`
+
+```mermaid
+flowchart TD
+  PLANIDX["plan-index.ts<br/>decodeToken/decodeTail, now exported"]
+  RES["resolution.ts (Step 10)<br/>ResolveOperand/PointerDenotesCollection contract"]
+  EVIDRES["evidence-resolution.ts<br/>walkTail, makeResolveOperand,<br/>makePointerDenotesCollection"]
+  REACH["compile/reachability.ts<br/>checkBoundElementScope,<br/>checkEvidenceReachability"]
+  RESTESTS["evidence-resolution.test.ts<br/>RFC 6901 edge cases"]
+  REACHTESTS["reachability.test.ts<br/>regressions + parity matrix"]
+
+  PLANIDX --> EVIDRES
+  RES -- satisfies --> EVIDRES
+  EVIDRES --> REACH
+  EVIDRES --> RESTESTS
+  REACH --> REACHTESTS
+  EVIDRES --> REACHTESTS
 ```

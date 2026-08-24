@@ -199,6 +199,8 @@ export const Observation = z.strictObject({
 		),
 })
 
+export type Observation = z.infer<typeof Observation>
+
 /**
  * AD-17: judge results arrive inside the sealed run record and the package
  * never calls a judge.
