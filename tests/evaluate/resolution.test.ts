@@ -7,6 +7,7 @@ import type { JsonValue } from '../../src/core/schemas/primitives.ts'
 import { faultOf } from '../canonical/helpers.ts'
 import { VALID_NODES } from '../schemas/fixtures/expression-nodes.ts'
 import { gateCContract } from '../schemas/fixtures/gate-c-contract.ts'
+import { populatedContract } from '../schemas/fixtures/relevance-contracts.ts'
 import {
 	DEFAULT_REGEX_MATCH_STEP_BUDGET,
 	makeResolverWithMisbehavingReferenceSet,
@@ -25,6 +26,23 @@ const findCheck = (oracleId: string): Expression => {
 	)
 	if (!oracle)
 		throw new Error(`fixture setup: gateCContract has no oracle ${oracleId}`)
+	return oracle.check
+}
+
+// AC 4: populatedContract's O-001 is this codebase's one real covers-by-key
+// check tree (referenceSet: 'expected-things' against
+// /interactions/list/response-body/items, both keys 'id'); every dispatch
+// fixture below reuses it, varying only the stub resolver's evidence and
+// referenceSets maps.
+const findPopulatedCheck = (oracleId: string): Expression => {
+	const oracle = populatedContract.oracles.find(
+		(candidate) => candidate.id === oracleId,
+	)
+	if (!oracle) {
+		throw new Error(
+			`fixture setup: populatedContract has no oracle ${oracleId}`,
+		)
+	}
 	return oracle.check
 }
 
@@ -798,21 +816,259 @@ describe('ABSENT on a { pointer } operand: collection-typed vs not (AC 3, Decisi
 	})
 })
 
-describe('the covers-by-key dispatch gap (Decision 5, AC 7 point 7)', () => {
-	it('throws a plain Error naming Story 3.3, never a RuntimeFault', () => {
-		const check: Expression = {
-			op: 'covers-by-key',
-			operands: [
-				{ referenceSet: 'expected-export-rows' },
-				{ pointer: '/interactions/first-page/response-body/rows' },
-			],
-			expectedKey: 'id',
-			actualKey: 'id',
-		}
-		const error = plainErrorOf(() => resolve(check))
+describe('the real covers-by-key dispatch branch (AC 3, AC 4, Decision 1, Decision 2, Decision 7)', () => {
+	const coversByKeyCheck = findPopulatedCheck('O-001')
+
+	const resolveCoversByKey = (
+		resolver: ReturnType<typeof makeStubResolver>,
+		pointerDenotesCollection = noneCollectionTyped,
+	) =>
+		resolveCheck(
+			coversByKeyCheck,
+			resolver,
+			pointerDenotesCollection,
+			DEFAULT_BUDGET,
+			PATH,
+		)
+
+	it('resolves true when expected and actual agree on id, in any order (positive)', () => {
+		const resolver = makeStubResolver(
+			{
+				list: {
+					'response-body': {
+						items: [{ id: 't-3' }, { id: 't-1' }, { id: 't-2' }],
+					},
+				},
+			},
+			{ 'expected-things': [{ id: 't-1' }, { id: 't-2' }, { id: 't-3' }] },
+		)
+		expect(resolveCoversByKey(resolver).resolution).toBe('true')
+	})
+
+	it('resolves false when actual carries a strict subset of expected (missing/omission)', () => {
+		const resolver = makeStubResolver(
+			{
+				list: {
+					'response-body': { items: [{ id: 't-1' }, { id: 't-2' }] },
+				},
+			},
+			{ 'expected-things': [{ id: 't-1' }, { id: 't-2' }, { id: 't-3' }] },
+		)
+		expect(resolveCoversByKey(resolver).resolution).toBe('false')
+	})
+
+	it('resolves false on the historical [n-1, n-1, n-1] duplicate-padding shape', () => {
+		const resolver = makeStubResolver(
+			{
+				list: {
+					'response-body': {
+						items: [{ id: 't-1' }, { id: 't-1' }, { id: 't-1' }],
+					},
+				},
+			},
+			{ 'expected-things': [{ id: 't-1' }, { id: 't-2' }, { id: 't-3' }] },
+		)
+		expect(resolveCoversByKey(resolver).resolution).toBe('false')
+	})
+
+	it('resolves false when actual carries every expected id plus one distinct extra (unexpected)', () => {
+		const resolver = makeStubResolver(
+			{
+				list: {
+					'response-body': {
+						items: [{ id: 't-1' }, { id: 't-2' }, { id: 't-3' }, { id: 't-4' }],
+					},
+				},
+			},
+			{ 'expected-things': [{ id: 't-1' }, { id: 't-2' }, { id: 't-3' }] },
+		)
+		expect(resolveCoversByKey(resolver).resolution).toBe('false')
+	})
+
+	it('resolves false when two different actual records share one id value (duplicate-key, distinct from padding)', () => {
+		const resolver = makeStubResolver(
+			{
+				list: {
+					'response-body': {
+						items: [
+							{ id: 't-1', label: 'a' },
+							{ id: 't-1', label: 'b' },
+						],
+					},
+				},
+			},
+			{ 'expected-things': [{ id: 't-1' }, { id: 't-2' }] },
+		)
+		expect(resolveCoversByKey(resolver).resolution).toBe('false')
+	})
+
+	it("resolves insufficient-evidence over two genuinely empty collections (empty-set), never coversByKey's own vacuous-true answer", () => {
+		// coversByKey([], [], ...) itself returns true (operators.test.ts's own
+		// direct unit test pins that): a vacuous bijection is a correct answer
+		// for the pure function, which has no insufficient-evidence to return.
+		// Here resolveNode's own genuine-empty-array interception fires first,
+		// so the dispatch-level answer differs. Both are stated explicitly, in
+		// their own test files, so neither reads as contradicting the other.
+		const resolver = makeStubResolver(
+			{ list: { 'response-body': { items: [] } } },
+			{ 'expected-things': [] },
+		)
+		expect(resolveCoversByKey(resolver)).toEqual({
+			resolution: 'insufficient-evidence',
+			introductionCondition: 'empty-collection',
+			children: [],
+		})
+	})
+
+	it('resolves false when expected resolves ABSENT, an undeclared referenceSet identifier (Decision 1)', () => {
+		const resolver = makeStubResolver(
+			{ list: { 'response-body': { items: [{ id: 't-1' }] } } },
+			{}, // 'expected-things' undeclared: makeStubResolver's own `?? ABSENT` fallback.
+		)
+		expect(resolveCoversByKey(resolver).resolution).toBe('false')
+	})
+
+	// The load-bearing contrast fixture (AC 4 point 8): the identical
+	// collection-typed-ABSENT shape the "ABSENT on a { pointer } operand"
+	// describe block above pins for `existence`, which resolves
+	// insufficient-evidence there. covers-by-key resolves false instead
+	// (Decision 1), even though the pointer is declared collection-typed here
+	// too — proving the AD-4 override is unconditional, not merely a case
+	// where pointerDenotesCollection happens to answer false.
+	it("resolves false when actual resolves ABSENT, even though its pointer is declared collection-typed (Decision 1, contrast with existence's insufficient-evidence answer above)", () => {
+		const resolver = makeStubResolver(
+			{ list: { 'response-body': {} } },
+			{ 'expected-things': [{ id: 't-1' }] },
+		)
+		const collectionTyped = makeStubPointerDenotesCollection([
+			'/interactions/list/response-body/items',
+		])
+		expect(resolveCoversByKey(resolver, collectionTyped).resolution).toBe(
+			'false',
+		)
+	})
+
+	it('resolves false when actual resolves to a non-array, non-ABSENT value (type mismatch, Decision 2)', () => {
+		const resolver = makeStubResolver(
+			{ list: { 'response-body': { items: 'not-an-array' } } },
+			{ 'expected-things': [{ id: 't-1' }] },
+		)
+		expect(resolveCoversByKey(resolver).resolution).toBe('false')
+	})
+
+	it('excludes an actual element missing actualKey from the match index, reading an otherwise-matching expected element as omitted', () => {
+		const resolver = makeStubResolver(
+			{
+				list: {
+					'response-body': {
+						items: [{ notId: 't-1' }, { id: 't-2' }],
+					},
+				},
+			},
+			{ 'expected-things': [{ id: 't-1' }, { id: 't-2' }] },
+		)
+		expect(resolveCoversByKey(resolver).resolution).toBe('false')
+	})
+
+	it("resolves false when an expected element is missing expectedKey, via that element's own failed lookup", () => {
+		const resolver = makeStubResolver(
+			{
+				list: {
+					'response-body': { items: [{ id: 't-1' }, { id: 't-2' }] },
+				},
+			},
+			{ 'expected-things': [{ notId: 't-1' }, { id: 't-2' }] },
+		)
+		expect(resolveCoversByKey(resolver).resolution).toBe('false')
+	})
+
+	it("throws a plain Error, never a RuntimeFault, when the expected operand's array-narrowing guard trips on a non-array, non-ABSENT resolved value (Decision 3)", () => {
+		const misbehavingResolver = makeResolverWithMisbehavingReferenceSet(
+			{ list: { 'response-body': { items: [{ id: 't-1' }] } } },
+			{},
+			'expected-things',
+			42,
+		)
+		const error = plainErrorOf(() =>
+			resolveCheck(
+				coversByKeyCheck,
+				misbehavingResolver,
+				noneCollectionTyped,
+				DEFAULT_BUDGET,
+				PATH,
+			),
+		)
 		expect(error).toBeInstanceOf(Error)
 		expect(error).not.toBeInstanceOf(RuntimeFault)
-		expect(error.message).toContain('Story 3.3')
+		expect(error.message).toContain('covers-by-key')
+	})
+
+	it('the guard fires even when actual is genuinely empty (Decision 7): the guard outranks emptiness', () => {
+		const misbehavingResolver = makeResolverWithMisbehavingReferenceSet(
+			{ list: { 'response-body': { items: [] } } },
+			{},
+			'expected-things',
+			42,
+		)
+		const error = plainErrorOf(() =>
+			resolveCheck(
+				coversByKeyCheck,
+				misbehavingResolver,
+				noneCollectionTyped,
+				DEFAULT_BUDGET,
+				PATH,
+			),
+		)
+		expect(error).toBeInstanceOf(Error)
+		expect(error).not.toBeInstanceOf(RuntimeFault)
+	})
+
+	it('a malformed actual outranks a genuinely empty expected (Decision 7): resolves false, never insufficient-evidence', () => {
+		const resolver = makeStubResolver(
+			{ list: { 'response-body': { items: 'not-an-array' } } },
+			{ 'expected-things': [] },
+		)
+		expect(resolveCoversByKey(resolver).resolution).toBe('false')
+	})
+
+	it('an ABSENT expected outranks a genuinely empty actual (Decision 7): resolves false, never insufficient-evidence', () => {
+		const resolver = makeStubResolver(
+			{ list: { 'response-body': { items: [] } } },
+			{}, // 'expected-things' undeclared -> ABSENT.
+		)
+		expect(resolveCoversByKey(resolver).resolution).toBe('false')
+	})
+
+	it('an ABSENT actual outranks a genuinely empty expected (Decision 7): resolves false, never insufficient-evidence', () => {
+		const resolver = makeStubResolver(
+			{ list: { 'response-body': {} } },
+			{ 'expected-things': [] },
+		)
+		expect(resolveCoversByKey(resolver).resolution).toBe('false')
+	})
+
+	it('a genuinely empty actual against a non-empty, well-formed expected resolves insufficient-evidence (Decision 7, the asymmetric single-empty-operand case)', () => {
+		const resolver = makeStubResolver(
+			{ list: { 'response-body': { items: [] } } },
+			{ 'expected-things': [{ id: 't-1' }] },
+		)
+		expect(resolveCoversByKey(resolver)).toEqual({
+			resolution: 'insufficient-evidence',
+			introductionCondition: 'empty-collection',
+			children: [],
+		})
+	})
+
+	it('a genuinely empty expected against a non-empty, well-formed actual resolves insufficient-evidence (Decision 7, the mirror asymmetric case)', () => {
+		const resolver = makeStubResolver(
+			{ list: { 'response-body': { items: [{ id: 't-1' }] } } },
+			{ 'expected-things': [] },
+		)
+		expect(resolveCoversByKey(resolver)).toEqual({
+			resolution: 'insufficient-evidence',
+			introductionCondition: 'empty-collection',
+			children: [],
+		})
 	})
 })
 
@@ -1052,6 +1308,25 @@ describe('a RuntimeFault from a nested regexMatch propagates undecorated through
 		expect(fault).toBeInstanceOf(RuntimeFault)
 		expect(fault.code).toBe('operator-cannot-accept-operand')
 		expect(fault.artifactPath).toBe(PATH)
+	})
+})
+
+describe("resolveNode's out-of-union op guard (P16)", () => {
+	it('throws a plain Error, never a RuntimeFault, naming the offending op, for an op outside the closed union', () => {
+		const check = { op: 'not-an-op', operands: [] } as unknown as Expression
+		const error = plainErrorOf(() => resolve(check))
+		expect(error.message).toContain('unrecognized expression.op')
+		expect(error.message).toContain('not-an-op')
+	})
+
+	it("throws for op: 'constructor', an Object.prototype property name, not Object.prototype.constructor itself", () => {
+		// The regression this guards against: operatorHandlers is a plain
+		// object, so a naive `operatorHandlers[op]` lookup finds the inherited
+		// Object constructor for this exact op value instead of undefined.
+		const check = { op: 'constructor', operands: [] } as unknown as Expression
+		const error = plainErrorOf(() => resolve(check))
+		expect(error.message).toContain('unrecognized expression.op')
+		expect(error.message).toContain('constructor')
 	})
 })
 

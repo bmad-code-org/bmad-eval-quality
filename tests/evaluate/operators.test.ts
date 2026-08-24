@@ -3,6 +3,7 @@ import {
 	absence,
 	containment,
 	countTolerance,
+	coversByKey,
 	deepEquality,
 	equality,
 	existence,
@@ -12,6 +13,7 @@ import {
 	shape,
 } from '../../src/core/evaluate/operators.ts'
 import { ABSENT } from '../../src/core/evaluate/resolved-value.ts'
+import type { JsonValue } from '../../src/core/schemas/primitives.ts'
 import { faultOf } from '../canonical/helpers.ts'
 import { DEFAULT_REGEX_MATCH_STEP_BUDGET } from './fixtures/stub-resolver.ts'
 
@@ -592,5 +594,168 @@ describe('shape', () => {
 		expect(shape([1, 2, 3], descriptor, PATH)).toBe(false)
 		expect(shape('not-an-object', descriptor, PATH)).toBe(false)
 		expect(shape(null, descriptor, PATH)).toBe(false)
+	})
+})
+
+describe('coversByKey', () => {
+	// Grounded in populatedContract's O-001 shape: both sides keyed on 'id'.
+	it('resolves true when expected and actual agree on id, in any order (positive)', () => {
+		const expected = [{ id: 't-1' }, { id: 't-2' }, { id: 't-3' }]
+		const actual = [{ id: 't-3' }, { id: 't-1' }, { id: 't-2' }]
+		expect(coversByKey(expected, actual, 'id', 'id', PATH)).toBe(true)
+	})
+
+	it('resolves false when actual carries a strict subset of expected (missing/omission)', () => {
+		const expected = [{ id: 't-1' }, { id: 't-2' }, { id: 't-3' }]
+		const actual = [{ id: 't-1' }, { id: 't-2' }]
+		expect(coversByKey(expected, actual, 'id', 'id', PATH)).toBe(false)
+	})
+
+	it('resolves false on the historical [n-1, n-1, n-1] duplicate-padding shape', () => {
+		// actual repeats t-1 to match expected's cardinality while omitting
+		// t-2 and t-3 entirely. Caught by the duplicate-actualKey guard before
+		// the loop over expected ever starts.
+		const expected = [{ id: 't-1' }, { id: 't-2' }, { id: 't-3' }]
+		const actual = [{ id: 't-1' }, { id: 't-1' }, { id: 't-1' }]
+		expect(coversByKey(expected, actual, 'id', 'id', PATH)).toBe(false)
+	})
+
+	it('resolves false when actual carries every expected id plus one distinct extra (unexpected)', () => {
+		const expected = [{ id: 't-1' }, { id: 't-2' }]
+		const actual = [{ id: 't-1' }, { id: 't-2' }, { id: 't-3' }]
+		expect(coversByKey(expected, actual, 'id', 'id', PATH)).toBe(false)
+	})
+
+	it('resolves false when two different actual records share one id value (duplicate-key, distinct from padding)', () => {
+		// Distinguished from the padding case above: these two records are not
+		// identical repeats, just colliding on the compared key. Same code path.
+		const expected = [{ id: 't-1' }, { id: 't-2' }]
+		const actual = [
+			{ id: 't-1', label: 'a' },
+			{ id: 't-1', label: 'b' },
+		]
+		expect(coversByKey(expected, actual, 'id', 'id', PATH)).toBe(false)
+	})
+
+	// This is the pure function's own answer for two empty collections: a
+	// vacuous bijection is a correct true, and it has no insufficient-evidence
+	// to return. resolution.test.ts's dispatch-level fixture for the identical
+	// shape asserts insufficient-evidence instead — that is resolveNode's own
+	// genuine-empty-array interception firing before this function ever runs,
+	// not a contradiction of this expectation.
+	it('resolves true for two empty collections (empty-set), a vacuous bijection at the pure-function level', () => {
+		expect(coversByKey([], [], 'id', 'id', PATH)).toBe(true)
+	})
+
+	it('resolves false when expected is ABSENT', () => {
+		expect(coversByKey(ABSENT, [{ id: 't-1' }], 'id', 'id', PATH)).toBe(false)
+	})
+
+	it('resolves false when actual is ABSENT', () => {
+		expect(coversByKey([{ id: 't-1' }], ABSENT, 'id', 'id', PATH)).toBe(false)
+	})
+
+	it('resolves false when actual is a string (type mismatch)', () => {
+		expect(coversByKey([{ id: 't-1' }], 'not-an-array', 'id', 'id', PATH)).toBe(
+			false,
+		)
+	})
+
+	it('resolves false when actual is a plain object (type mismatch)', () => {
+		expect(coversByKey([{ id: 't-1' }], { id: 't-1' }, 'id', 'id', PATH)).toBe(
+			false,
+		)
+	})
+
+	it('matches on differently-named keys: expectedKey and actualKey need not be the same string', () => {
+		const expected = [{ itemId: 't-1' }, { itemId: 't-2' }]
+		const actual = [{ id: 't-2' }, { id: 't-1' }]
+		expect(coversByKey(expected, actual, 'itemId', 'id', PATH)).toBe(true)
+	})
+
+	it('resolves false when an actual element missing actualKey stands in for an otherwise-matching expected element (the expected element is never found)', () => {
+		const expected: JsonValue[] = [{ id: 't-1' }, { id: 't-2' }]
+		const actual: JsonValue[] = [{ notId: 't-1' }, { id: 't-2' }]
+		expect(coversByKey(expected, actual, 'id', 'id', PATH)).toBe(false)
+	})
+
+	it('resolves false when actual has a keyless extra row beyond a fully-matched expected set (an unmatched row must still count as unexpected, not vanish from the cardinality check)', () => {
+		const expected: JsonValue[] = [{ id: 't-1' }]
+		const actual: JsonValue[] = [{ id: 't-1' }, { notId: 'extra' }]
+		expect(coversByKey(expected, actual, 'id', 'id', PATH)).toBe(false)
+	})
+
+	it('resolves false when actual has two keyless extra rows beyond a fully-matched expected set (each unmatched row is its own distinct slot, not deduplicated)', () => {
+		const expected: JsonValue[] = [{ id: 't-1' }]
+		const actual: JsonValue[] = [
+			{ id: 't-1' },
+			{ notId: 'extra-a' },
+			{ notId: 'extra-b' },
+		]
+		expect(coversByKey(expected, actual, 'id', 'id', PATH)).toBe(false)
+	})
+
+	it("resolves false when an expected element is missing expectedKey, via that element's own failed lookup", () => {
+		const expected: JsonValue[] = [{ notId: 't-1' }, { id: 't-2' }]
+		const actual: JsonValue[] = [{ id: 't-1' }, { id: 't-2' }]
+		expect(coversByKey(expected, actual, 'id', 'id', PATH)).toBe(false)
+	})
+
+	it('is pure and deterministic: repeat calls agree, and actual element order never changes the boolean result', () => {
+		const expected = [{ id: 't-1' }, { id: 't-2' }, { id: 't-3' }]
+		const actual = [{ id: 't-2' }, { id: 't-3' }, { id: 't-1' }]
+		expect(coversByKey(expected, actual, 'id', 'id', PATH)).toBe(true)
+		expect(coversByKey(expected, actual, 'id', 'id', PATH)).toBe(true)
+		expect(coversByKey(expected, [...actual].reverse(), 'id', 'id', PATH)).toBe(
+			true,
+		)
+
+		// Order does not matter for a false (omission) verdict either, even
+		// though it can change which specific element reads as unmatched.
+		const shortActual = [{ id: 't-1' }, { id: 't-2' }]
+		expect(coversByKey(expected, shortActual, 'id', 'id', PATH)).toBe(false)
+		expect(
+			coversByKey(expected, [...shortActual].reverse(), 'id', 'id', PATH),
+		).toBe(false)
+	})
+
+	it('matches on structural key values (arrays and objects), not just scalars', () => {
+		const expected: JsonValue[] = [{ id: [1, 2, { nested: true }] }]
+		const actual: JsonValue[] = [{ id: [1, 2, { nested: true }] }]
+		expect(coversByKey(expected, actual, 'id', 'id', PATH)).toBe(true)
+	})
+
+	it('does not match key values that differ only in type, even with the same printed form', () => {
+		const expected: JsonValue[] = [{ id: 5 }]
+		const actual: JsonValue[] = [{ id: '5' }]
+		expect(coversByKey(expected, actual, 'id', 'id', PATH)).toBe(false)
+	})
+
+	it('reads a key named "__proto__" as an ordinary own property, not the prototype slot', () => {
+		// Computed-property syntax, deliberately: a literal `{ __proto__: 't-1' }`
+		// sets the object's prototype instead of creating an own property named
+		// "__proto__", which would test the wrong thing entirely.
+		const expected: JsonValue[] = [{ ['__proto__']: 't-1' }]
+		const actual: JsonValue[] = [{ ['__proto__']: 't-1' }]
+		expect(coversByKey(expected, actual, '__proto__', '__proto__', PATH)).toBe(
+			true,
+		)
+	})
+
+	it('reads a key named "constructor" as an ordinary own property, not the inherited function', () => {
+		const expected: JsonValue[] = [{ constructor: 't-1' }]
+		const actual: JsonValue[] = [{ constructor: 't-1' }]
+		expect(
+			coversByKey(expected, actual, 'constructor', 'constructor', PATH),
+		).toBe(true)
+	})
+
+	it('ignores an inherited "constructor" property: an element with no own key still reads as missing it', () => {
+		// {} has no own `constructor`, only Object.prototype's. Object.hasOwn
+		// must say so, or this would read as every element matching every
+		// other element on the same inherited value.
+		expect(coversByKey([{}], [{}], 'constructor', 'constructor', PATH)).toBe(
+			false,
+		)
 	})
 })
