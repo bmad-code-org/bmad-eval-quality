@@ -3,11 +3,11 @@ import { z } from 'zod'
 import { IDENTIFIER_CHARSET_SOURCE } from './primitives.ts'
 
 /**
- * AD-26's closed channel vocabulary, in AD-26's own order. Order matters
- * because enum order lands in the export and Story 1.5's drift check pins
- * whatever ships. Story 1.3 held these only as private regex fragments; the
- * Sealed Run Record's quoted evidence names a channel, so the vocabulary gets
- * one exported home instead of a second spelling beside the pattern.
+ * AD-26's closed channel vocabulary, in AD-26's own order: order matters
+ * because enum order lands in the export, and Story 1.5's drift check pins
+ * whatever ships. Story 1.3 held these only as private regex fragments; they
+ * are exported here because the Sealed Run Record's quoted evidence needs to
+ * name a channel by one shared spelling.
  */
 export const EVIDENCE_CHANNELS = [
 	'response-body',
@@ -29,9 +29,8 @@ export const EvidenceChannel = z.enum(EVIDENCE_CHANNELS).meta({
 
 /**
  * AD-19's four transport channels. `call-inputs` alone has no declared
- * structure to resolve against, which is the defect AD-26 records revision 3
- * carrying, so the channel is mandatory after `call-inputs` rather than
- * optional.
+ * structure to resolve against (the defect AD-26 revision 3 records), so a
+ * transport channel is mandatory immediately after it.
  */
 export const TRANSPORT_CHANNELS = ['path', 'query', 'header', 'body'] as const
 
@@ -46,13 +45,12 @@ export const TransportChannel = z.enum(TRANSPORT_CHANNELS).meta({
 // The pattern is not rebuilt from the flat seven. It rests on a three-way
 // partition the enum does not carry: channels that take an RFC 6901 tail,
 // scalar channels that take none, and `call-inputs`, which takes a transport
-// segment first. So the partition is spelled by naming its members, typed
-// against the enum so a typo fails the typecheck, and the pattern's structure
-// stays hand-written. A test asserts the partition is disjoint and exhaustive
-// over the enum and that every member appears in the pattern source.
+// segment first. The partition is spelled by naming its members and typing
+// them against the enum, so a typo fails the typecheck; a test asserts it
+// stays disjoint and exhaustive over the enum.
 //
-// A status code and an exit code are scalars, so a pointer into one addresses
-// nothing and is a syntax error rather than an unreachable-evidence finding.
+// A status code and an exit code are scalars, so a pointer into one is a
+// syntax error rather than an unreachable-evidence finding.
 export const TAIL_BEARING_CHANNELS = [
 	'response-body',
 	'response-headers',

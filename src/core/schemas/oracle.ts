@@ -5,10 +5,9 @@ import { InteractionPointer } from './pointer.ts'
 import { OracleId } from './primitives.ts'
 
 /**
- * AD-3's five direction fields. This is the channel the sealed evaluator reads,
- * generated into prose by `seal`; it is structured rather than free prose
- * because alignment against `check` has to be a computation over two declared
- * structures.
+ * AD-3's five direction fields: the channel the sealed evaluator reads,
+ * generated into prose by `seal`. Structured rather than free prose because
+ * alignment against `check` is a computation over two declared structures.
  */
 export const Direction = z.strictObject({
 	evidenceTargets: z

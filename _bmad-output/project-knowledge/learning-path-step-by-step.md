@@ -38,19 +38,21 @@ flowchart TD
   CI -- "blocks a bad dependency or a schema-file drift" --> LIB
 ```
 
-| Step | What it does                                                                     |
-| ---: | -------------------------------------------------------------------------------- |
-|    1 | Lock down dependencies. Prove the CI gates really block bad ones.                 |
-|    2 | One way to turn JSON into bytes, one way to hash it, so two codebases agree.      |
-|    3 | What a contract author may write down, and what the schema lets through on purpose. |
-|    4 | The other eleven artifacts, so every file crossing the boundary has a shape.       |
-|    5 | Publish the schemas as JSON Schema files and prove them equivalent to the Zod source. |
-|    6 | Turn a declared direction into evaluator prose that names the call without naming the step. |
-|    7 | Assemble the sealed brief: only what AD-16 permits, everything else sorted or excluded.       |
+| Step | Epic-Story | What it does                                                                     |
+| ---: | :--- | -------------------------------------------------------------------------------- |
+|    1 | epic1-story1 | Lock down dependencies. Prove the CI gates really block bad ones.                 |
+|    2 | epic1-story2 | One way to turn JSON into bytes, one way to hash it, so two codebases agree.      |
+|    3 | epic1-story3 | What a contract author may write down, and what the schema lets through on purpose. |
+|    4 | epic1-story4 | The other eleven artifacts, so every file crossing the boundary has a shape.       |
+|    5 | epic1-story5 | Publish the schemas as JSON Schema files and prove them equivalent to the Zod source. |
+|    6 | epic2-story1 | Turn a declared direction into evaluator prose that names the call without naming the step. |
+|    7 | epic2-story2 | Assemble the sealed brief: only what AD-16 permits, everything else sorted or excluded. |
+|    8 | epic2-story3 | Catch sequencing prose an author smuggled into free text, after the brief is generated. |
+|    9 | epic3-story1 | Ten pure operators over resolved evidence: equality, membership, regex, and shape, fully specified. |
 
 Adding a step: follow `learning-path-template.md`.
 
-## Step 1: dependencies and CI gates
+## Step 1 (epic1-story1): dependencies and CI gates
 
 **What:** exact versions in `package.json`, two audit scripts, and a CI job per gate that breaks the
 gate on purpose.
@@ -105,7 +107,7 @@ flowchart TD
   PRCHECKS --> PUBLISH
 ```
 
-## Step 2: canonical bytes and digests
+## Step 2 (epic1-story2): canonical bytes and digests
 
 **What:** turn any JSON value into one exact byte string, then SHA-256 those bytes.
 
@@ -171,7 +173,7 @@ flowchart TD
   FIXTURES --> DIGEST
 ```
 
-## Step 3: the Eval Contract schema
+## Step 3 (epic1-story3): the Eval Contract schema
 
 **What:** the whole Eval Contract written once in Zod: what an author declares, the check expression
 grammar, and the plan of interaction steps.
@@ -247,7 +249,7 @@ flowchart TD
   PLAN --> LEDGER
 ```
 
-## Step 4: the other eleven artifacts
+## Step 4 (epic1-story4): the other eleven artifacts
 
 **What:** the remaining eleven interchange artifacts written in Zod, one file each, plus one registry
 listing all twelve.
@@ -337,7 +339,7 @@ flowchart TD
   REG --> LEDGER
 ```
 
-## Step 5: the published export and its four checks
+## Step 5 (epic1-story5): the published export and its four checks
 
 **What:** twelve committed `schemas/*.schema.json` files built by one pure function, and four checks
 that prove them equivalent to the Zod source, constraint by constraint.
@@ -410,7 +412,7 @@ flowchart TD
   GEN --> SWEEP
 ```
 
-## Step 6: the direction-prose generator
+## Step 6 (epic2-story1): the direction-prose generator
 
 **What:** turn one oracle's declared direction (evidence targets, relation, polarity, scope, negative
 domain) into the prose that becomes a `BriefDirection`'s `text`.
@@ -482,7 +484,7 @@ flowchart TD
   SEALFIX --> TESTS
 ```
 
-## Step 7: brief assembly, exclusions, and canonical ordering
+## Step 7 (epic2-story2): brief assembly, exclusions, and canonical ordering
 
 **What:** `seal(contract)` walks every oracle, renders one `BriefDirection` per oracle using Step 6's
 prose generator, then assembles the `SealedEvaluatorBrief`: only the fields AD-16 permits, with
@@ -539,4 +541,132 @@ flowchart TD
   PROSE --> SEAL
   SEAL --> BRIEF
   BRIEF --> TESTS
+```
+
+## Step 8 (epic2-story3): the emitted-brief scripting audit
+
+**What:** a pure function, `auditBriefScripting`, that reads an already-assembled `SealedEvaluatorBrief`
+and throws if any one direction's generated `text` carries more sequencing/transition markers than the
+contract's declared `probeStepBound`.
+
+**Why:** the declaration-side graph predicate over the interaction plan (a later epic) reads the plan
+structure; it never reads generated prose. An author's own free `scope`/`negativeDomain` text is the one
+channel that can still smuggle a scripted "do this, then this" sequence past that predicate, since Step
+6's own generator never emits that vocabulary itself. This audit runs after generation, over the
+finished brief, to catch exactly that.
+
+**Rules:**
+
+- `probeStepBound: null` means no bound was declared; the audit passes vacuously. `0` is a legal, strict
+  bound: no marker of any kind is permitted.
+- The bound applies per direction, never summed across the brief. An enumerated path is something a
+  reader reconstructs from one direction's own narrated claim.
+- The marker set: `then`, `before`, `after`, `subsequently`, `next`, `finally`, `afterward` (and
+  `afterwards`), plus a numbered-list marker (`1.`, `2)`, ...), case-insensitive and whole-word.
+- A numbered-list marker only counts inside real list context: it has to open a line, follow a
+  newline, or follow a sentence-ending mark plus a space. That anchor keeps ordinary numeric prose
+  like "Rule 12." from counting as a step.
+- Bare ordinals (`first`, `second`, ...) are excluded on purpose: `gateCContract`'s own shipped "not the
+  first" already uses "first" as a position word, in accepted author prose.
+- Only `directions[].text` is scanned, never `behaviors`, `scopedResources`, or `safetyLimits`. Widening
+  that scan is a flagged, deferred judgment call for a later story.
+- It throws `StructuralFailure`, a compile-time-class failure carrying an AD-5 code (the twenty-first
+  the registry now carries).
+- Which direction's failure surfaces first, when more than one violates, is only as deterministic as
+  `directions`' own array order; the audit does not hunt for every violation in one pass.
+
+**Read in this order:**
+
+1. `src/core/failure-codes.ts`: the twenty-one-code tuple and the new `StructuralFailure` class beside it.
+2. `src/core/seal/scripting-audit.ts`: the marker pattern, the per-direction count, the throw.
+3. `tests/seal/scripting-audit.test.ts`: the accept/reject fixtures and the permutation test.
+
+**Watch out:** the story's own regression fixture cites "O-004" for the "not the first" text; that text
+is actually O-005's `scope` in `tests/schemas/fixtures/gate-c-contract.ts`, and the test targets O-005
+directly.
+
+**Story:** `_bmad-output/implementation-artifacts/2-3-the-emitted-brief-scripting-audit.md`
+
+```mermaid
+flowchart TD
+  CODES["failure-codes.ts<br/>21st AD-5 code + StructuralFailure"]
+  AUDIT["scripting-audit.ts<br/>marker pattern + per-direction bound check"]
+  TESTS["tests/seal/scripting-audit.test.ts<br/>accept/reject fixtures + permutation"]
+
+  CODES --> AUDIT
+  AUDIT --> TESTS
+```
+
+## Step 9 (epic3-story1): scalar operators over the evidence domain
+
+**What:** ten pure functions (`equality`, `deepEquality`, `containment`, `existence`, `absence`,
+`regexMatch`, `setMembership`, `ordering`, `countTolerance`, `shape`), each taking already-resolved
+evidence values and returning a plain `boolean`.
+
+**Why:** two implementations of one oracle's `check` must land on the same answer for every node, or
+the scoring model can't be trusted. This step nails that down operator by operator: what counts as
+equal, what counts as contained, what a regex match-step budget actually bounds. Real example:
+compare `9007199254740993` against an ordinary number and it just resolves `false`, the same as any
+other wrong answer, never a crash. Only comparing two objects or two arrays ever risks one. That
+keeps a broken system under test's bad number from crashing the whole run.
+
+**Rules:**
+
+- Every operator takes a `ResolvedValue` (`JsonValue | ABSENT`), never a `{pointer}`/`{literal}`/
+  `{referenceSet}` operand. Resolving those is a later epic's job.
+- `ABSENT` is a unique symbol, never `null`. `existence` reads false against it, `absence` true, and
+  every comparison false, even absent-against-absent.
+- `equality` reaches structural comparison (`digestArtifact`) only when both operands are the same
+  compound kind. Every other input, including a domain-violating scalar, resolves without ever
+  canonicalizing. `deepEquality` is unconditionally structural, so it can throw
+  `non-canonicalizable-value` where `equality` on the same inputs would just resolve `false`.
+- `regexMatch`'s step budget is a static two-tier gate, never a live step count: reject any
+  nested-quantifier shape outright, then bound a linear, character-class-aware estimate against the
+  declared budget.
+- Strip escaped characters before stripping character classes. Getting that order backward once let
+  an escaped bracket hide a real nested-quantifier group from both gate tiers, and the regex hung with
+  no fault thrown.
+- `shape`'s closed set is `permittedKeys` alone: a required key missing from it makes the descriptor
+  unsatisfiable.
+- `ordering`, `countTolerance`, and any operand that may denote a collection resolve `false` on a bare
+  `ABSENT`. That answer is correct only when the operand is not itself declared collection-typed; the
+  next story's wrapper handles the other case.
+- Every function's last parameter is `artifactPath: string`, even on the five that never throw (named
+  `_artifactPath`), so every operator shares one calling convention.
+
+**Read in this order:**
+
+1. `src/core/evaluate/resolved-value.ts`: the `ABSENT` sentinel and `ResolvedValue`.
+2. `src/core/evaluate/operators.ts`: the ten functions.
+3. `src/core/schemas/scoring-policy.ts`: `regexMatchStepBudget`, the field `regexMatch` reads.
+4. `src/core/schemas/faults.ts`: the two new runtime fault codes, `RUNTIME_FAULT_CODES`.
+5. `tests/evaluate/operators.test.ts`: every operator's accept, reject, and absent-operand case.
+
+**Watch out:**
+
+- This story's ten operators are two-valued. Three-valued `insufficient-evidence` resolution, the
+  connectives, and the quantifiers are the next story's; nothing here decides that value.
+- `RUNTIME_FAULT_CODES` is not a full AD-28 mirror the way `FAILURE_CODES` mirrors AD-5: it only lists
+  codes with a genuine thrower, four of AD-28's ten rows. Nothing automates a cross-check against the
+  spine table yet.
+- The budget gate still can't see everything: a quantified overlapping alternation like `(?:a|a)+`
+  passes both tiers and can still hang. Catching it needs a real parser, so it's left as a named gap.
+  The default budget is 1,000,000, so ordinary-length evidence text doesn't fault on length alone, but
+  that also means the linear tier does almost no real work day to day; the structural
+  nested-quantifier check above is the actual backstop.
+
+**Story:** `_bmad-output/implementation-artifacts/3-1-scalar-operators-over-the-evidence-domain.md`
+
+```mermaid
+flowchart TD
+  RESOLVED["resolved-value.ts<br/>ABSENT + ResolvedValue"]
+  OPS["operators.ts<br/>ten pure functions"]
+  POLICY["scoring-policy.ts<br/>regexMatchStepBudget"]
+  FAULTS["faults.ts<br/>budget-exhausted, operator-cannot-accept-operand"]
+  TESTS["tests/evaluate/operators.test.ts<br/>accept + reject + absent per operator"]
+
+  RESOLVED --> OPS
+  POLICY --> OPS
+  FAULTS --> OPS
+  OPS --> TESTS
 ```

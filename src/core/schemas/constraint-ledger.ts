@@ -9,20 +9,18 @@ import type { JsonValue } from './primitives.ts'
 
 /**
  * The JSON Schema dialect an injected keyword belongs to. Named rather than
- * assumed, because the same keyword means different things across dialects and
- * one of them fails silently and totally: `items: false` bounds a tuple only
- * beside 2020-12's `prefixItems`, while under draft-7 a tuple exports as
- * `items: [...]`, so injecting `items: false` there overwrites the tuple and
- * every operand list in the published schema rejects everything. Story 1.5
- * chooses the export target and reads this before injecting.
+ * assumed: `items: false` bounds a tuple only beside 2020-12's `prefixItems`,
+ * but under draft-7 a tuple exports as `items: [...]`, so the same injection
+ * there overwrites the tuple and every operand list rejects everything. Story
+ * 1.5 reads this before injecting.
  */
 export type JsonSchemaDialect = 'draft-2020-12'
 
 /**
- * What Story 1.5 does with an entry: either inject these JSON Schema keywords
- * at the named location, or record that the constraint is not expressible and
- * why. There is no third disposition, because a constraint with neither is a
- * constraint nobody is accountable for.
+ * What Story 1.5 does with an entry: inject these JSON Schema keywords at the
+ * named location, or record that the constraint is not expressible and why.
+ * No third disposition: an entry with neither is a constraint nobody is
+ * accountable for.
  */
 export type ConstraintDisposition =
 	| {
@@ -34,24 +32,20 @@ export type ConstraintDisposition =
 
 /**
  * Where in the exported document the entry applies. Zod emits no `$id` and
- * puts the root schema inline rather than in `$defs`, so "the artifact itself"
- * and "a shared definition" are two different addresses and the difference has
- * to be structural. Spelling both as a name would leave Story 1.5 needing
- * out-of-band knowledge to resolve one of them, which is the defect this
- * address exists to remove.
+ * inlines the root schema rather than putting it in `$defs`, so "the artifact
+ * itself" and "a shared definition" are structurally different addresses, not
+ * just two names; spelling both as a name would leave Story 1.5 needing
+ * out-of-band knowledge to tell them apart.
  *
- * Every address names its `artifact`. That was omissible while `EvalContract`
- * was the only root. With twelve roots it is not: Story 1.5 resolves an entry
- * by its stated address and never by searching, so the moment two artifacts
- * carried the same rule the resolution would silently pick the wrong document.
- * Story 1.5 reads `location.artifact` to choose one.
+ * Every address names its `artifact`. Omissible while `EvalContract` was the
+ * only root, but with twelve roots two artifacts can carry the same rule, so
+ * `location.artifact` is what Story 1.5 reads to pick the right one instead of
+ * searching.
  *
- * This module imports `artifact.ts` and therefore sits downstream of all twelve
- * schema modules, so no module under `src/core/schemas/` may import this file.
- * The existing direction is the correct one, with `plan.ts` exporting
- * `BINDING_CHANNEL_NON_EMPTY` to the ledger. A future author reaching the other
- * way for a stable identifier closes the loop and breaks module load for every
- * artifact.
+ * This module imports `artifact.ts` and sits downstream of all twelve schema
+ * modules, so no module under `src/core/schemas/` may import this file;
+ * `plan.ts` exports `BINDING_CHANNEL_NON_EMPTY` to the ledger rather than the
+ * reverse, and importing the other way would create a circular module load.
  */
 export type ConstraintLocation =
 	| { readonly kind: 'root'; readonly artifact: InterchangeArtifactKey }
@@ -77,11 +71,11 @@ export type ConstraintLedgerEntry = {
 	readonly disposition: ConstraintDisposition
 }
 
-// Verified on the pin: z.tuple([a, b]) exports `prefixItems` alone — no
-// minItems, no maxItems, no items — so the published schema accepts the
+// Verified on the pin: z.tuple([a, b]) exports `prefixItems` alone (no
+// minItems, maxItems, or items), so the published schema accepts the
 // one-operand and three-operand `equality` that Zod rejects. Arity is the one
-// deliberate exception to the admit-rule and is therefore the one place the
-// export has to be repaired rather than relaxed.
+// deliberate exception to the admit-rule, so it is the one place the export
+// must be repaired rather than relaxed.
 const arityEntries: readonly ConstraintLedgerEntry[] = Object.entries(
 	TUPLE_ARITY,
 ).map(([op, arity]) => ({
@@ -104,11 +98,11 @@ const arityEntries: readonly ConstraintLedgerEntry[] = Object.entries(
 /**
  * AD-4 requires each operator to declare its operand types in the published
  * schema. Arity is structural and repaired by the entries above; per-position
- * operand *types* cannot be, because narrowing a position would delete
+ * operand *types* cannot be, since narrowing a position would delete
  * `malformed-operator-expression`'s operand-type limb along with the fixture
- * Story 4.2 owes for it. The declaration therefore lives in the description on
- * each operator's `operands`, which survives the export, and the enforcement is
- * Epic 4's. Recorded here so the split is a decision rather than an omission.
+ * Story 4.2 owes for it. The declaration instead lives in each operator's
+ * `operands` description, which survives the export; enforcement is Epic 4's.
+ * Recorded here so the split is a decision, not an omission.
  */
 const operandTypeEntry: ConstraintLedgerEntry = {
 	id: 'operator-operand-types',
@@ -128,19 +122,17 @@ const operandTypeEntry: ConstraintLedgerEntry = {
 	},
 }
 
-// One entry per lineage-bearing artifact, so eleven and not twelve. The
+// One entry per lineage-bearing artifact, so eleven and not twelve: the
 // registry's `carriesLineage` flag is the filter, and `ArtifactReference`
 // carries no `parentDigest` for the address to resolve against. Generated from
-// the registry the way the arity entries are generated from `TUPLE_ARITY`,
-// because a hand-written twelfth entry is a bug and a hand-written eleven is
-// drift.
+// the registry the way the arity entries are generated from `TUPLE_ARITY`: a
+// hand-written twelfth entry would be a bug, a hand-written eleven is drift.
 //
 // Two of the eleven are union-rooted: `Probe` on `expectedClean` and
-// `EvidenceArtifact` on `mode`. A union root exports
-// `{ $schema, oneOf, description }` with no `properties` object. The resolver
-// that walks these addresses therefore needs a union fallback that requires the
-// field in every branch, which is what the entry means: the lineage fields are
-// spread into each branch, so the biconditional binds both.
+// `EvidenceArtifact` on `mode`. A union root exports `{ $schema, oneOf,
+// description }` with no `properties` object, so the resolver needs a union
+// fallback requiring the field in every branch: the lineage fields are spread
+// into each branch, so the biconditional binds both.
 const lineageEntries: readonly ConstraintLedgerEntry[] = Object.entries(
 	INTERCHANGE_ARTIFACTS,
 )

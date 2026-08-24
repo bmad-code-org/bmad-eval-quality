@@ -40,11 +40,9 @@ export const SEVERITY_LEVELS = ['low', 'material', 'critical'] as const
 export const Severity = z.enum(SEVERITY_LEVELS)
 
 /**
- * Coin flip (c), settled: linkage lives per behaviour. The code decides it —
- * `missing-requirement-linkage` fires when "a behaviour declares no requirement
- * or risk identifier", and a contract-level array cannot make that predicate
- * decidable per behaviour. The Gate C fixture's contract-level `linkage` array
- * does not survive.
+ * Coin flip (c), settled: linkage lives per behaviour rather than at contract
+ * level. See `requirementLinks` below for why; the Gate C fixture's
+ * contract-level `linkage` array does not survive that decision.
  */
 export const Behavior = z.strictObject({
 	id: BehaviorId,

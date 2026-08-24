@@ -3,15 +3,15 @@ import { z } from 'zod'
 import { JsonObjectValue, KeyName } from './primitives.ts'
 
 /**
- * AD-19 fixes members as objects rather than scalars because `covers-by-key`
+ * AD-19 fixes members as objects rather than scalars: `covers-by-key`
  * compares on named keys, and a `set-membership` operand against the same set
- * reads the single named key — so one declared form serves both operators and
- * the injection form of AD-20's rule 6 needs no second field.
+ * reads the single named key, so one declared form serves both operators and
+ * needs no second field for AD-20's rule 6 injection form.
  *
- * Members are `JsonValue` objects, which is the Consistency Conventions' own
- * placement of them: the value container is named for "expression literals,
- * declared reference-set members, and every ingested response body". That is
- * why they are not a seventh caller-keyed control map.
+ * Members are `JsonValue` objects per the Consistency Conventions' placement
+ * of them under "expression literals, declared reference-set members, and
+ * every ingested response body", which is why they are not a seventh
+ * caller-keyed control map.
  */
 export const ReferenceSetDeclaration = z.strictObject({
 	keys: z

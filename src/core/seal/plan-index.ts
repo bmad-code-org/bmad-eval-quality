@@ -11,9 +11,8 @@ import {
 } from '../schemas/pointer.ts'
 import { IDENTIFIER_CHARSET_SOURCE } from '../schemas/primitives.ts'
 
-// An RFC 6901 reference token, spelled again here because pointer.ts keeps its
-// own TOKEN/TAIL fragments private. This is the generic RFC 6901 grammar, so
-// respelling it costs nothing. IDENTIFIER_CHARSET_SOURCE and the channel
+// An RFC 6901 reference token, respelled here because pointer.ts keeps its
+// own TOKEN/TAIL fragments private. IDENTIFIER_CHARSET_SOURCE and the channel
 // partition below are project vocabulary, so those are imported rather than
 // respelled.
 const TOKEN_SOURCE = '(?:[^/~]|~[01])*'
@@ -21,16 +20,13 @@ const TAIL_SOURCE = `(?:/${TOKEN_SOURCE})*`
 
 const alternation = (members: readonly string[]): string => members.join('|')
 
-// Mirrors `pointer.ts`'s own `INTERACTION_POINTER_PATTERN` structure exactly:
-// the same three-branch partition into tail-bearing channels, scalar channels
-// that take no tail at all, and `call-inputs` plus a mandatory transport
-// channel and its own tail. A flatter grammar that let every channel take a
-// tail once accepted `/interactions/poll/response-status/oops` (a schema
-// reject: `response-status` is scalar) and silently discarded the bogus
-// trailing segment rather than rejecting the pointer, so two implementations
-// disagreed about what "the same pointer" even is. Named capture groups
-// replace positional indices, removing the fragile dependency on
-// `IDENTIFIER_CHARSET_SOURCE` staying free of its own capturing groups.
+// Mirrors `pointer.ts`'s own `INTERACTION_POINTER_PATTERN` three-branch
+// partition rather than a flatter grammar: a flatter version once silently
+// accepted `/interactions/poll/response-status/oops` (a schema reject) by
+// discarding the bogus trailing segment instead of rejecting the pointer.
+// Named capture groups replace positional indices, avoiding a fragile
+// dependency on `IDENTIFIER_CHARSET_SOURCE` staying free of its own capturing
+// groups.
 const EVIDENCE_TARGET_PATTERN = new RegExp(
 	`^/interactions/(?<stepId>${IDENTIFIER_CHARSET_SOURCE})/(?:(?<tailBearingChannel>${alternation(TAIL_BEARING_CHANNELS)})(?<tailBearingTail>${TAIL_SOURCE})|(?<scalarChannel>${alternation(SCALAR_CHANNELS)})|${TRANSPORT_ROOTED_CHANNEL}/(?<transportChannel>${alternation(TRANSPORT_CHANNELS)})(?<callInputsTail>${TAIL_SOURCE}))$`,
 )
@@ -66,10 +62,7 @@ export type EvidenceTarget = {
  * `pointer.ts`) into its step id, channel, transport channel, and tail, using
  * the schema's own channel partition so this accepts exactly what
  * `InteractionPointer.safeParse` accepts. A should-never-happen precondition
- * violation throws `TypeError` per `digest.ts`'s precedent (Decision 4):
- * nothing upstream of this story guarantees the pointer is well-formed, since
- * `compile`'s reachability enforcement does not exist yet, and this is not an
- * AD-28 fault because no code in that registry names this condition.
+ * violation throws `TypeError`, per `digest.ts`'s precedent (Decision 4).
  */
 export function parseEvidenceTarget(pointer: string): EvidenceTarget {
 	const groups = EVIDENCE_TARGET_PATTERN.exec(pointer)?.groups
@@ -128,11 +121,9 @@ export function parseEvidenceTarget(pointer: string): EvidenceTarget {
 }
 
 /**
- * Resolves a step id to its declared step, an operation id to its declared
- * operation, and (Task 4's escalation) every step in the plan naming a given
- * operation. It answers which step and operation a pointer names, and nothing
- * about reachability or channel typing. The general addressing-grammar resolver
- * is Epic 4's (Decision 3).
+ * What a pointer names: step, operation, and (Task 4's escalation) every step
+ * naming a given operation. Says nothing about reachability or channel
+ * typing; the general addressing-grammar resolver is Epic 4's (Decision 3).
  */
 export type PlanIndex = {
 	stepOf: (stepId: string) => InteractionStep | undefined
@@ -141,15 +132,10 @@ export type PlanIndex = {
 }
 
 /**
- * Builds the index once over the whole plan and interface set. Both schemas
- * admit collisions on purpose: `interactionPlan` carries no uniqueness
- * refinement on `stepId`, and `PermittedInterface.operations` declines one so
- * `duplicate-operation-signature` keeps a shape to fire on. A first-wins or
- * last-wins index would therefore make this story's output depend on array
- * order, which is the determinism defect AC 5's permutation family exists to
- * catch. So a duplicate `stepId`, or a duplicate `operationId` across the given
- * interfaces, throws the same precondition-violation `TypeError` at index-build
- * time (Decision 4).
+ * Builds the index once over the whole plan and interface set. Neither
+ * schema enforces `stepId`/`operationId` uniqueness, so a duplicate throws
+ * here rather than resolving first-wins or last-wins and making the index
+ * depend on array order (Decision 4).
  */
 export function buildPlanIndex(
 	interactionPlan: readonly InteractionStep[],
@@ -189,13 +175,11 @@ export function buildPlanIndex(
 
 /**
  * Resolves a step id through the index or throws. Split from `stepOf` so the
- * index itself stays a plain lookup (`| undefined`, per `noUncheckedIndexedAccess`)
- * while callers that need "resolved or precondition-violated" get one function
- * to call rather than repeating the `undefined` check. Not a `RuntimeFault`:
- * nothing upstream of this story (`compile`'s reachability enforcement,
- * `unreachable-check-evidence`) guarantees every evidence-target pointer
- * resolves against the given plan yet, and no AD-28 code names this condition
- * (Decision 4).
+ * index itself stays a plain lookup (`| undefined`, per
+ * `noUncheckedIndexedAccess`) while callers needing "resolved or
+ * precondition-violated" get one function instead of repeating the
+ * `undefined` check. A should-never-happen precondition violation, not a
+ * `RuntimeFault` (Decision 4).
  */
 export function resolveStep(index: PlanIndex, stepId: string): InteractionStep {
 	const step = index.stepOf(stepId)

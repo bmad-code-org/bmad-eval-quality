@@ -13,10 +13,9 @@ import { OracleDispositionValue } from './sealed-run-record.ts'
 import { EvaluatorRecommendation, Verdict } from './verdict.ts'
 
 /**
- * AD-6's closed twelve. Exported so a later story walks the list instead of
- * re-spelling it, and asserted at twelve by a test: AD-6 says the set "stays
- * closed at twelve", so adding a thirteenth member means amending that AD
- * first.
+ * AD-6's closed twelve. Exported so a later story can walk the list directly,
+ * and asserted at twelve by a test: AD-6 says the set "stays closed at
+ * twelve", so adding a thirteenth member means amending that AD first.
  */
 export const OUTCOME_STATES = [
 	'caught',
@@ -53,11 +52,10 @@ export type CheckResolutionValue = {
 /**
  * AD-4 requires that "each node's resolution and, where it is
  * `insufficient-evidence`, the introduction condition that fired, are recorded
- * in the evidence". A single verdict per oracle erases the distinction the
- * three-valued resolution carries, so the record mirrors the oracle's own
- * `check` tree. Self-referential, so it carries `.meta({ id })` or it
- * exports as a positional `__schema0` that Story 1.5's drift check would pin.
- * Epic 3 populates it.
+ * in the evidence". A single verdict per oracle would erase that distinction,
+ * so the record mirrors the oracle's own `check` tree. Self-referential, so
+ * it carries `.meta({ id })`; without it the tree exports as a positional
+ * `__schema0` that Story 1.5's drift check would pin. Epic 3 populates it.
  */
 export const CheckResolution: z.ZodType<CheckResolutionValue> = z
 	.lazy(() =>
@@ -74,18 +72,17 @@ export const CheckResolution: z.ZodType<CheckResolutionValue> = z
 	})
 
 /**
- * AD-11's five named inputs, transcribed. Carrying only the resulting digest
- * would leave a reader unable to recompute it or see what was compared, and
- * carrying the five discharges AD-8's "a result references a sealed set … by
- * digest and opaque reference, never by content or path."
+ * AD-11's five named inputs, transcribed. The resulting digest alone would
+ * leave a reader unable to recompute it or see what was compared; carrying
+ * all five discharges AD-8's requirement that a result reference a sealed set
+ * "by digest and opaque reference, never by content or path."
  *
- * These five key names are the canonical field names of AD-11's
- * domain-separated object, and Epic 6 computes the scoring version over this
- * shape rather than a parallel one. AD-11 chose a named object over a
- * concatenated tuple because revision 1 "let two conforming scorers compute
- * different versions from identical inputs". If the scorer hashes one spelling
- * and this artifact publishes another, the published pre-image does not
- * reproduce the published digest, and the field is worse than absent.
+ * These five key names are AD-11's own field names for its domain-separated
+ * object, and Epic 6 computes the scoring version over this shape. AD-11
+ * chose a named object over a concatenated tuple because revision 1 let "two
+ * conforming scorers compute different versions from identical inputs": if
+ * the scorer hashes one spelling and this artifact publishes another, the
+ * published pre-image never reproduces the published digest.
  */
 export const SCORING_VERSION_INPUT_NAMES = [
 	'contractSchemaVersion',
@@ -213,11 +210,11 @@ export const Strength = z.strictObject({
 
 /**
  * AD-12's three named checks, transcribed from the same sentence the field
- * comes from: the package "validates a caller-presented lineage chain — length
- * consistent with the declared revision, no repeated digest, no gap — and emits
- * evidence of compliance." A single boolean would tell a reader that a chain
- * failed and not which of three ways, on an artifact whose purpose is to be
- * read. AD-21's FAIL rung reads the conjunction.
+ * comes from: the package "validates a caller-presented lineage chain (length
+ * consistent with the declared revision, no repeated digest, no gap) and
+ * emits evidence of compliance." A single boolean would tell a reader a chain
+ * failed without saying which of three ways, on an artifact whose purpose is
+ * to be read. AD-21's FAIL rung reads the conjunction.
  */
 export const LineageChain = z.strictObject({
 	lengthConsistent: z.boolean(),
@@ -286,10 +283,9 @@ const evidenceCommonFields = {
 }
 
 /**
- * The two modes are a discriminated union because AD-21 says the two verdicts
- * never share a field. Read literally that is a structural requirement, and a
- * union carries it: no shape holds a production verdict and a contract verdict
- * at once, and neither mode has a field it can read as the other's.
+ * A discriminated union, because AD-21 requires that no shape hold a
+ * production verdict and a contract verdict at once, with neither mode able
+ * to read a field as the other's.
  */
 export const EvidenceArtifact = z
 	.discriminatedUnion('mode', [

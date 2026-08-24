@@ -5,10 +5,9 @@ import { lineageFields } from './lineage.ts'
 import { Digest } from './primitives.ts'
 
 /**
- * The prior art's eight `artifactType` members, ratified unchanged under the
- * name `artifactKind`. The rename is an AD-24 divergence and nothing more. The
- * value space is the prior art's, member for member, so an existing manifest
- * entry re-keys without re-classifying.
+ * The prior art's eight `artifactType` members, ratified unchanged as
+ * `artifactKind` (AD-24 rename only). An existing entry re-keys without
+ * re-classifying.
  */
 export const PRIVATE_ARTIFACT_KINDS = [
 	'private-input-record',

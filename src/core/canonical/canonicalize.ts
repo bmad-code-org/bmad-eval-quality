@@ -8,15 +8,15 @@ import {
 
 // RFC 8785 (JCS) canonical serialization, written in-house per AD-27. Numbers
 // render per ECMAScript Number::toString (native JSON.stringify on individual
-// numbers IS the JCS algorithm — no hand-rolled Ryū), object keys sort by
+// numbers IS the JCS algorithm; no hand-rolled Ryū needed), object keys sort by
 // UTF-16 code unit, strings use JSON.stringify escaping, arrays keep order,
 // no insignificant whitespace. The digest is over these UTF-8 bytes.
 //
 // Validation is fused into serialization as ONE traversal: every key, value,
 // and structure check runs against a single ownKeys/descriptor snapshot, and
 // exactly what was validated is what gets emitted. A second traversal would
-// reopen the TOCTOU channel — an accessor or lying Proxy answering the
-// emit-time read differently than the validation read — so there is none.
+// reopen the TOCTOU channel (an accessor or lying Proxy answering the
+// emit-time read differently than the validation read), so there is none.
 export function canonicalize(value: unknown, artifactPath: string): Uint8Array {
 	return new TextEncoder().encode(
 		serialize(value, artifactPath, '$', new Set(), 0),
@@ -72,7 +72,7 @@ function serialize(
 			fault(artifactPath, `non-plain array at ${location}`)
 		}
 		// One property-table read; elements come from descriptor values, never a
-		// second [[Get]]. A toJSON carrier surfaces as a non-index key (own) —
+		// second [[Get]]. A toJSON carrier surfaces as a non-index key (own);
 		// the prototype check rules out an inherited one.
 		const descriptors = Object.getOwnPropertyDescriptors(object)
 		if (Object.getOwnPropertySymbols(descriptors).length > 0) {
@@ -147,7 +147,7 @@ function serialize(
 			// property its function value faults in the recursion below.
 			properties.push([key, descriptor.value])
 		}
-		// Plain < on JS strings compares UTF-16 code units, the required order —
+		// Plain < on JS strings compares UTF-16 code units, the required order:
 		// never localeCompare, never Intl, never .normalize().
 		properties.sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
 		rendered = `{${properties

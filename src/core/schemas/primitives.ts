@@ -1,11 +1,10 @@
 /** shared primitive shapes: identifiers, digests, dates, and the value container. */
 import { z } from 'zod'
 
-// One shared identifier charset, fixed here rather than per field, because
-// pointer spelling 1 embeds it: a step identifier carrying "/" or "~" would
-// make `/interactions/{stepId}/…` undecidable as a regex. Both hand-authored
-// contracts spell every identifier as a kebab slug and no AD constrains them,
-// so the slug is ratified rather than invented.
+// Fixed here rather than per field: pointer spelling 1 depends on this exact
+// charset, and a second copy per field is a drift risk. The kebab-slug shape
+// matches both hand-authored contracts though no AD requires it, so it is
+// ratified rather than invented.
 const IDENTIFIER_SOURCE = '[a-z0-9]+(?:-[a-z0-9]+)*'
 
 export const IDENTIFIER_PATTERN = new RegExp(`^${IDENTIFIER_SOURCE}$`)
@@ -56,10 +55,9 @@ export const Digest = z
 	.regex(DIGEST_FORM)
 	.describe('AD-27 digest: "sha256:" plus 64 lowercase hexadecimal characters.')
 
-// AD-36 carries money and out-of-range integers as strings in a declared
-// format. The format is declared here rather than left to the field, because an
-// undeclared "declared format" is the same unshaped-declaration defect the
-// value spaces of AD-19 were added to close.
+// AD-36's declared format lives here rather than on the field: an undeclared
+// "declared format" is the same unshaped-declaration defect AD-19's value
+// spaces were added to close.
 export const DECIMAL_STRING_PATTERN = /^-?(0|[1-9][0-9]*)(\.[0-9]+)?$/
 export const UNSIGNED_DECIMAL_STRING_PATTERN = /^(0|[1-9][0-9]*)(\.[0-9]+)?$/
 
@@ -77,12 +75,10 @@ export const UnsignedDecimalString = z
 		'The decimal-string format restricted to non-negative values, for quantities where a negative has no meaning.',
 	)
 
-// Strictly positive: either a non-zero integer part, or a zero integer part with
-// a non-zero digit somewhere in the fraction. Spelled without a negative
-// lookahead on purpose. JSON Schema's `pattern` is ECMA-262 and would accept
-// one, but several non-JavaScript validators compile patterns with engines that
-// have no lookahead at all, and AD-13 publishes this schema for exactly those
-// consumers. The alternation costs a few characters and works everywhere.
+// Spelled as an alternation rather than a negative lookahead on purpose: JSON
+// Schema's `pattern` is ECMA-262 and would accept a lookahead, but several of
+// the non-JavaScript validators AD-13 also publishes this schema for compile
+// patterns with no lookahead support at all.
 export const POSITIVE_DECIMAL_STRING_PATTERN =
 	/^([1-9][0-9]*(\.[0-9]+)?|0\.[0-9]*[1-9][0-9]*)$/
 
@@ -110,9 +106,8 @@ export const JsonTypeName = z.enum([
 	'null',
 ])
 
-// A declared key name in a request shape, a response descriptor, or a
-// reference-set key list. Plain caller-supplied text; only emptiness is
-// excluded, since an empty key name names nothing.
+// A declared key name: used in a request shape, a response descriptor, or a
+// reference-set key list. Plain caller-supplied text.
 export const KeyName = z.string().min(1)
 
 export type JsonValue =
@@ -123,17 +118,15 @@ export type JsonValue =
 	| JsonValue[]
 	| { [key: string]: JsonValue }
 
-// The single named value container of the Consistency Conventions: the one
-// shape whose keys belong to the caller rather than to this project, and
-// therefore the one place `additionalProperties` is schema-valued rather than
-// false.
+// The one shape whose keys belong to the caller rather than to this project,
+// so `additionalProperties` is schema-valued rather than false here alone.
 //
-// Hand-rolled with z.lazy rather than z.json() deliberately. z.json() exports
-// as `$defs.JsonValue = { "$ref": "#/$defs/__schema0" }` plus a generated
-// `__schema0`, which pins a generated name into Story 1.5's drift check, and
-// its description lands at each use site as a sibling of `$ref` instead of on
-// the shared definition. AD-36 requires the numeric restriction to be
-// *expressed* in the published schema, so it has to land on the definition.
+// Hand-rolled with z.lazy rather than z.json(): z.json() exports as
+// `$defs.JsonValue = { "$ref": "#/$defs/__schema0" }` plus a generated
+// `__schema0`, which pins a generated name into Story 1.5's drift check and
+// pushes the description to each use site as a sibling of `$ref` instead of
+// onto the shared definition. AD-36 needs the numeric restriction expressed on
+// the definition itself.
 export const JsonValue: z.ZodType<JsonValue> = z
 	.lazy(() =>
 		z.union([
@@ -151,18 +144,12 @@ export const JsonValue: z.ZodType<JsonValue> = z
 			'AD-36 value domain. Every number is a finite IEEE 754 double-precision value, and every integer lies in the safe-integer range; a larger integer, and any value needing exact decimal semantics such as money, is carried as a string in its own declared format. JSON Schema cannot express finiteness, so this restriction is stated rather than encoded: producers are told the rule here instead of discovering it through a digest mismatch, and the canonical scanner rejects a violating value before any parse.',
 	})
 
-// AD-4 spells `shape`'s descriptor as "required keys, permitted keys, and
-// per-key JSON type, never an embedded JSON Schema", and AD-19 spells a request
-// channel with the same three parts. One definition serves both: two spellings
-// of one triple is the drift the Conventions exist to prevent, and the null
-// type value reads the same way in each — the key is declared and its type is
-// not. The `types` map is caller-keyed; its keys are plain key names, never
-// pointers.
 /**
- * The per-key JSON type map, spelled once. A request channel, a response
- * descriptor, and `shape`'s descriptor all carry one, and a second spelling of
- * it is the drift the Conventions exist to prevent. Each use site adds its own
- * description; `.describe()` returns a new schema and never mutates this one.
+ * AD-4's `shape` descriptor and AD-19's request channel both need "required
+ * keys, permitted keys, and per-key JSON type, never an embedded JSON Schema";
+ * spelled once here so two copies of one triple don't drift apart. Caller-keyed
+ * by plain key name, never by pointer. `.describe()` returns a new schema
+ * rather than mutating this one, so each use site can add its own description.
  */
 export const KeyTypeMap = z
 	.record(KeyName, JsonTypeName.nullable())

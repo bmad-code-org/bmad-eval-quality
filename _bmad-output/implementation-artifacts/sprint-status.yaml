@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-08-10
-last_updated: 2026-08-21
+last_updated: 2026-08-24
 project: evalcore
 project_key: NOKEY
 tracking_system: file-system
@@ -55,14 +55,14 @@ development_status:
   1-4-the-remaining-interchange-artifact-schemas: done
   1-5-the-published-json-schema-export-and-its-four-ci-checks: done
   
-  epic-2: in-progress
+  epic-2: done
   2-1-the-direction-prose-generator: done
-  2-2-brief-assembly-exclusions-and-canonical-ordering: review
-  2-3-the-emitted-brief-scripting-audit: backlog
+  2-2-brief-assembly-exclusions-and-canonical-ordering:  done
+  2-3-the-emitted-brief-scripting-audit:  done
   
-  epic-3: backlog
-  3-1-scalar-operators-over-the-evidence-domain: backlog
-  3-2-connectives-quantifiers-and-three-valued-resolution: backlog
+  epic-3: in-progress
+  3-1-scalar-operators-over-the-evidence-domain: done
+  3-2-connectives-quantifiers-and-three-valued-resolution: ready-for-dev
   3-3-covers-by-key-as-a-bijection: backlog
   
   epic-4: backlog

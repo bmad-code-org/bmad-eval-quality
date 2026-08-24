@@ -3,31 +3,25 @@ import { z } from 'zod'
 import { Digest } from './primitives.ts'
 
 /**
- * The three fields every lineage-bearing artifact carries. `EvalContract`
- * spelled all three flat at its root in Story 1.3; spelling them again across
- * eleven more artifacts is the drift the Consistency Conventions warn about, so
- * they are lifted here and spread into each artifact.
+ * The three fields every lineage-bearing artifact carries, lifted here instead
+ * of respelling them at each of eleven artifacts (the drift the Consistency
+ * Conventions warn against) and spread into each one.
  *
- * This module imports zod and primitives.ts and nothing else, and it must stay
- * that way. It cannot be merged into `artifact.ts`: that file imports all
- * twelve schema modules to build the registry, every one of those modules
- * imports this object, and one file holding both closes an import cycle. The
- * failure is `ReferenceError: Cannot access 'X' before initialization` at
- * module load, a temporal-dead-zone error thrown by whichever artifact module a
- * test happens to import first, with no visible connection to the lineage
- * fields.
+ * This module must keep importing only zod and primitives.ts. `artifact.ts`
+ * imports all twelve schema modules to build the registry, and every one of
+ * those imports this object; merging the two closes an import cycle, which
+ * fails as a temporal-dead-zone `ReferenceError` at module load with no
+ * visible link to lineage.
  *
- * Spread instead of nested, for two reasons. Nesting would change
- * `EvalContract`'s shape and invalidate the Story 1.3 reject fixtures that name
- * `['schemaVersion']` and `['parentDigest']` as issue paths. And AD-13 requires
- * each exported file to be self-contained with shared shapes duplicated into
- * local definitions, so a `$defs` entry shared across eleven files buys nothing
- * the export can keep. Verified on the pin: a spread object literal adds no
- * `$defs` entry.
+ * Spread rather than nested: nesting would change `EvalContract`'s shape and
+ * break the Story 1.3 reject fixtures that name `['schemaVersion']` and
+ * `['parentDigest']` as issue paths, and AD-13 requires each exported file to
+ * stay self-contained, so a shared `$defs` entry buys nothing (verified on the
+ * pin: a spread object literal adds none).
  *
- * Two of the eleven have discriminated-union roots (`Probe` on `expectedClean`,
- * `EvidenceArtifact` on `mode`). The spread lands inside every branch, since a
- * union has no property bag to spread into and the attempt is a type error.
+ * The two artifacts with discriminated-union roots (`Probe`, `EvidenceArtifact`)
+ * take the spread inside every branch, since a union has no property bag at
+ * its root to spread into.
  */
 export const lineageFields = {
 	schemaVersion: z

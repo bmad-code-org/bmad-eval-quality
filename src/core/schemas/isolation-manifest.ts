@@ -10,12 +10,11 @@ import {
 } from './primitives.ts'
 
 /**
- * The harness's record of what it actually enforced, and deliberately not
- * `Budgets`. `Budgets` is the contract's three-key declared ceiling that AD-16
- * puts on the brief so the executing caller knows what it may spend. This is
- * the isolation harness's record of the ceilings it imposed, and it carries the
- * two token counts the contract never declares. One shape for both would make a
- * declaration and an observation the same field.
+ * The harness's record of what it actually enforced, deliberately not
+ * `Budgets`: `Budgets` is the contract's three-key declared ceiling that AD-16
+ * puts on the brief so the caller knows what it may spend, while this carries
+ * the two token counts the contract never declares. One shape for both would
+ * conflate a declaration with an observation.
  */
 export const ResourceCeilings = z.strictObject({
 	maxToolCalls: z.int().min(1),
@@ -51,25 +50,26 @@ export const ForbiddenInputAccounting = z.strictObject({
 	note: z.string().nullable(),
 })
 
-// Generated from FORBIDDEN_INPUT_FLOOR, for the reason the constraint ledger
-// generates its arity entries from TUPLE_ARITY: a hand-written second list of
-// the seven is drift waiting to happen, and AD-16 makes an incomplete floor a
-// coded compile-time failure because the list has one home.
+// Generated from FORBIDDEN_INPUT_FLOOR, the same reason the constraint ledger
+// generates its arity entries from TUPLE_ARITY: a hand-written second list is
+// drift waiting to happen, and AD-16 makes an incomplete floor a coded
+// compile-time failure because the list has one home.
 //
-// Declared after the shape it references, and cast so the seven literal keys
+// Declared after the shape it references and cast so the seven literal keys
 // survive into `z.infer`: `Object.fromEntries` alone widens to an index
-// signature and a typed accept fixture stops catching a missing member.
+// signature, which would stop a typed accept fixture from catching a missing
+// member.
 const accountingShape = Object.fromEntries(
 	FORBIDDEN_INPUT_FLOOR.map((member) => [member, ForbiddenInputAccounting]),
 ) as Record<ForbiddenInput, typeof ForbiddenInputAccounting>
 
 /**
- * A strict object instead of `z.record(ForbiddenInput, …)`. The record spelling
- * does demand every enum member at parse time, but that totality is a
- * parse-time behaviour: the export carries `propertyNames` plus a schema-valued
- * `additionalProperties` and never a `required` array, so the constraint would
- * be invisible to the non-TypeScript consumer AD-13 protects. The same
- * reasoning made `RequestShape` a four-key object.
+ * A strict object rather than `z.record(ForbiddenInput, …)`: the record does
+ * demand every enum member at parse time, but only as TypeScript behaviour.
+ * Its export carries `propertyNames` plus a schema-valued
+ * `additionalProperties` but never a `required` array, so the constraint
+ * would be invisible to the non-TypeScript consumer AD-13 protects, the same
+ * reasoning behind `RequestShape`'s four-key object.
  */
 export const ForbiddenInputAccountingMap = z.strictObject(accountingShape)
 

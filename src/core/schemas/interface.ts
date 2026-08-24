@@ -17,10 +17,9 @@ export const ChannelRole = z.enum([
 ])
 
 /**
- * AD-19's closed mode set. `page-bounded` is what makes the injection form of
- * AD-20's rule 6 the required satisfaction and the bijection an error; without
- * the mode the predicate is a coin toss between two forms that report opposite
- * outcomes on one contract.
+ * AD-19's closed mode set. `page-bounded` is what makes AD-20 rule 6's
+ * injection form the required satisfaction and its bijection form an error,
+ * rather than a coin toss between two forms with opposite outcomes.
  */
 export const ExpectedCardinality = z.discriminatedUnion('mode', [
 	z.strictObject({ mode: z.literal('exact'), count: z.int().min(0) }),
@@ -37,11 +36,10 @@ export const CollectionLocation = z.strictObject({
 })
 
 /**
- * AD-19's per-operation closed response descriptor. Per operation rather than
- * per interface: one interface-wide union descriptor is vacuous in the ordinary
- * multi-shape case, since operations returning a job resource, a page of rows,
- * and an error share no required key, which left rule 2 with no truthful
- * denominator.
+ * AD-19's closed response descriptor, scoped per operation rather than per
+ * interface: an interface-wide union is vacuous in the ordinary multi-shape
+ * case, since a job resource, a page of rows, and an error share no required
+ * key, leaving rule 2 no truthful denominator.
  */
 export const ResponseDescriptor = z.strictObject({
 	requiredKeys: z
@@ -71,15 +69,15 @@ export const ResponseDescriptor = z.strictObject({
 })
 
 /**
- * AD-19's four transport channels. Spelled as a four-key strict object rather
+ * AD-19's four transport channels, spelled as a four-key strict object rather
  * than a record over a channel enum: a record over an enum key demands every
  * member at parse time, and `z.partialRecord` accepts the partial only by
  * reintroducing the omitted-key spelling the Consistency Conventions ban.
  *
- * Each channel is a declared triple rather than nullable, because a request
- * channel's "declared, no keys" state already has a spelling — an empty
- * required list, an empty permitted list, and an empty type map — unlike an
- * input-binding channel, where that state is indistinguishable from unused.
+ * Each channel is a declared triple rather than nullable: a request channel's
+ * "declared, no keys" state already has a spelling (an empty required list,
+ * an empty permitted list, an empty type map), unlike an input-binding
+ * channel, where that state is indistinguishable from unused.
  */
 export const RequestShape = z.strictObject({
 	path: KeyedShapeDescriptor,
@@ -101,12 +99,12 @@ export const HttpMethod = z.enum([
 	'OPTIONS',
 ])
 
-// AD-19: parameters are spelled `{name}` in braces and nothing else, because
-// AD-40 compares templates as literal segments plus parameter positions and two
-// implementations must not disagree over whether `/notes/{id}` and `/notes/:id`
-// are one template. A colon is excluded from a literal segment so the `:name`
-// spelling is a syntax error rather than a literal segment that happens to
-// start with a colon.
+// AD-19: parameters are spelled `{name}` in braces only, because AD-40
+// compares templates as literal segments plus parameter positions, and two
+// implementations must not disagree over whether `/notes/{id}` and
+// `/notes/:id` are one template. A colon is excluded from a literal segment,
+// so `:name` is a syntax error rather than a segment that merely starts with
+// one.
 export const PATH_TEMPLATE_PATTERN = /^(?:\/(?:[^/{}:]|\{[A-Za-z0-9_-]+\})*)+$/
 
 export const PathTemplate = z
@@ -133,11 +131,11 @@ export const Operation = z.strictObject({
 export type Operation = z.infer<typeof Operation>
 
 /**
- * AD-19's four interface kinds, exported so they are spelled once. The sealed
- * evaluator brief carries interface identity without the operation inventory
- * (AD-16), so it needs this vocabulary and must not mint a second copy of it.
- * Naming the array changes no exported byte: an enum carrying no
- * `.meta({ id })` inlines at each use site exactly as the literal did.
+ * AD-19's four interface kinds, exported once so nothing else respells them:
+ * the sealed evaluator brief carries interface identity without the operation
+ * inventory (AD-16) and needs this vocabulary. Naming the array changes no
+ * exported byte, since an enum with no `.meta({ id })` inlines at each use
+ * site exactly as the literal did.
  */
 export const INTERFACE_KINDS = ['api', 'web', 'cli', 'mcp'] as const
 
