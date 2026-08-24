@@ -7,7 +7,7 @@ baseline_commit: 8d84e6836dd86aac460921d039adf29e5a8ad7a7
 
 # Story 4.1: Pointer resolution and reachability
 
-Status: in-review
+Status: done
 
 ## Story
 
