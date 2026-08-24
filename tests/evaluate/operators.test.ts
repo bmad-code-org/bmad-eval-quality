@@ -255,7 +255,12 @@ describe('setMembership', () => {
 })
 
 describe('regexMatch', () => {
-	const DEFAULT_BUDGET = 10000
+	// Matches the published default artifact's regexMatchStepBudget (AC 2),
+	// raised from 10000 to 1_000_000 after a review round: the estimate scales
+	// with the observed string's length, which the contract author does not
+	// control, so a low ceiling let an ordinary long SUT response fault where
+	// it should resolve false.
+	const DEFAULT_BUDGET = 1_000_000
 
 	// Reused from expression-nodes.ts's own regex fixture shape.
 	it('matches an ordinary anchored pattern (accept and reject)', () => {
@@ -325,6 +330,35 @@ describe('regexMatch', () => {
 		const value = 'x'.repeat(2000)
 		expect(regexMatch(value, '^[+*?]{1,3}$', 5000, PATH)).toBe(false)
 		expect(() => regexMatch(value, '^[+*?]{1,3}$', 5000, PATH)).not.toThrow()
+	})
+
+	it('neutralizes escapes BEFORE stripping character classes, so an escaped bracket cannot hide a real nested-quantifier group', () => {
+		// Regression for a review-round-found unsafe defect: stripping character
+		// classes on the raw pattern would see the "[" of the escaped "\[",
+		// greedily consume through to the "]" of the escaped "\]" at the end,
+		// and swallow the real "(a+)+" nested-quantifier group into what it
+		// mistook for one big character class — hiding it from both tiers and
+		// letting compiled.test hang on catastrophic backtracking. Escape-
+		// neutralizing first means the structural tier sees the real group and
+		// throws unconditionally, exactly as it would for the unescaped shape.
+		const fault = faultOf(() =>
+			regexMatch('a', '^\\[(a+)+\\]$', 1_000_000, PATH),
+		)
+		expect(fault.code).toBe('budget-exhausted')
+		expect(fault.artifactPath).toBe(PATH)
+	})
+
+	it('still resolves the documented character-class residual to the smaller, correct estimate now that escapes are neutralized first', () => {
+		// "^[a\]b+]$" is a single class matching one of a/]/b/+, with no real
+		// quantifier anywhere — the "+" is a class member, not a repetition.
+		// Escape-neutralizing before the class strip means the escaped "]" no
+		// longer confuses the class boundary, so this now estimates 1 * length
+		// (50), not the inflated 2 * length (100) an escape-blind strip would
+		// have produced; either way this fixture proves the smaller, correct
+		// estimate is what the implementation actually computes.
+		const value = 'x'.repeat(50)
+		expect(() => regexMatch(value, '^[a\\]b+]$', 60, PATH)).not.toThrow()
+		expect(regexMatch(value, '^[a\\]b+]$', 60, PATH)).toBe(false)
 	})
 
 	it('does not read an escaped quantifier-look-alike as a real quantifier in the structural tier', () => {

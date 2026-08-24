@@ -438,15 +438,38 @@ regexMatch(value: ResolvedValue, pattern: string, matchStepBudget: number, artif
   is an estimation-only transform, never used for matching).
 
   This construction is modeled on `expression.ts`'s own `ANCHORED_PATTERN_FORM` precedent: a cheap,
-  documented, deliberately imperfect check rather than a full parser, with its accepted residual named
-  rather than hidden. Two residuals, both accepted: a technically-safe-but-suspicious nested-quantifier
-  pattern (e.g. `(a+)+` against a short, always-terminating input) is rejected unconditionally even
-  though it would not actually hang — conservative, and the safe direction to be wrong in; and the
-  character-class strip is itself approximate (a class containing an escaped `]`, e.g. `[\]+]`, can
-  confuse the simple strip regex) — accepted for the same reason `ANCHORED_PATTERN_FORM`'s own
-  positional check is accepted, a cheap, stated, fixture-proven imperfection rather than a full parse
-  that "does not belong in a schema and would not export," here does not belong in a hand-rolled
-  step-budget gate and is disproportionate to build.
+  documented, deliberately imperfect check rather than a full parser, with its accepted residuals named
+  rather than hidden. **Only the first of the three residuals below is safe-direction; the "conservative"
+  framing does not extend to the other two, and a post-implementation review round corrected an earlier
+  draft of this text that implied otherwise.**
+
+  1. A technically-safe-but-suspicious nested-quantifier pattern (e.g. `(a+)+` against a short,
+     always-terminating input) is rejected unconditionally even though it would not actually hang —
+     conservative, and the one residual that is genuinely the safe direction to be wrong in: it only ever
+     rejects something safe, never admits something dangerous.
+  2. The character-class strip is itself approximate (a class containing an escaped `]`, e.g. `[\]+]`,
+     could confuse a naive strip regex run directly against the raw pattern) — accepted for the same
+     reason `ANCHORED_PATTERN_FORM`'s own positional check is accepted, a cheap, stated, fixture-proven
+     imperfection rather than a full parse. **This one is not safe-direction on its own**: a review round
+     found that stripping character classes before neutralizing backslash escapes let an escaped bracket
+     swallow a real, dangerous group into what the strip mistook for a character class (`^\[(a+)+\]$`
+     hid `(a+)+` entirely, reaching neither gate tier and hanging on `compiled.test`). The implementation
+     fixes this by neutralizing every backslash-escaped pair to an inert placeholder **before** the
+     character-class strip runs, closing the unsafe direction; the residual that remains after that
+     reordering is milder and stays on the safe side, illustrated by `^[a\]b+]$` at a candidate length of
+     50: the escaped `]` no longer confuses the strip at all once escapes are neutralized first, so this
+     specific case now computes the exact correct estimate (50) rather than an inflated conservative one.
+  3. **A third residual, documentation-only, added by the same review round: a quantified overlapping
+     alternation inside a group, such as `^(?:a|a)+$`, is invisible to both tiers.** The group's content
+     contains no quantifier *character* (only a bare alternation), so the structural tier does not fire;
+     the linear tier counts no quantifier markers either, so its estimate stays tiny regardless of input
+     length; native `RegExp.test` then hangs on it exactly as `(a+)+` would. This is deliberately not
+     caught structurally: the obvious heuristic — flag any quantified group containing a top-level `|` —
+     would reject the already-required `^(?:GET|POST)+$` fixture (an ordinary, safe, non-overlapping
+     alternation), and correctly telling overlapping from non-overlapping alternation needs a real
+     parser, which this gate deliberately is not. Accepted as a stated, known gap rather than chased with
+     a heuristic that would trade a false negative here for false positives on ordinary patterns
+     elsewhere.
 
 ### AC 6 — Structural-family operators: `ordering`, `countTolerance`, `shape`
 
@@ -684,6 +707,72 @@ default). All nine addressed below.
       updated to match and to record the correction. `npm run check:docs`, `npm run lint:spine`,
       `npm run build:shareable` re-run; `npm run check:shareable` confirmed green.
 
+A second, independent fresh-session review of the committed diff, run against the running code with
+direct timing reproduction rather than reasoning alone. Four findings, all fixed below.
+
+- [x] [Review][Patch] **BLOCKING.** **`CHARACTER_CLASS_CONTENTS` ran on the raw pattern, before escape
+      handling — the unsafe direction of the same root cause the second review round's escape-blindness
+      finding was in the safe direction on.** For `^\[(a+)+\]$`, the class-strip regex saw the `[` of the
+      escaped `\[`, greedily consumed through to the `]` of the escaped `\]` at the end, and swallowed
+      the real `(a+)+` nested-quantifier group into what it mistook for one character class — hiding it
+      from both gate tiers entirely and letting `compiled.test` hang on catastrophic backtracking.
+      Reproduced directly, under a hard subprocess timeout rather than trusted from the report: the
+      pre-fix ordering, given the adversarial input `` `[${'a'.repeat(28)}X` `` against
+      `^\[(a+)+\]$`, took **~3.9s** and returned `false` (would grow further with input length, no
+      abort possible — this function is synchronous). Fixed exactly as prototyped: escape-neutralize
+      first (`ESCAPED_CHARACTER_PAIR` replaced with an inert `'_'` placeholder), character-class-strip
+      second, one combined `stripped` computation feeding both tiers. Verified the fix, same
+      subprocess-timeout method, same adversarial input: **1ms**, `budget-exhausted` thrown. With no
+      backslash able to survive into `hasNestedQuantifier` or the linear count after this reordering,
+      the now-dead escape-handling was removed from three places: the `if (character === '\\')` branch
+      in `hasNestedQuantifier`'s paren scan, the `.replace(ESCAPED_CHARACTER_PAIR, '')` on `contents`
+      inside it, and the separate `quantifierCountSource` line in `regexMatch` — one escape pass instead
+      of three. Two fixtures added to `tests/evaluate/operators.test.ts`: `^\[(a+)+\]$` now throws
+      `budget-exhausted` (the previously-hidden shape is caught); `^[a\]b+]$` at length 50 under budget
+      60 does not throw, and — verified directly rather than assumed — now resolves the exact correct
+      estimate (50, since the pattern is a single zero-quantifier character class once the escaped `]`
+      no longer confuses the boundary) rather than the previously-documented inflated conservative one
+      (100). Every fixture from the prior two rounds re-run and confirmed unchanged (68 tests, none
+      moved), matching the finding's own "prototyped and verified" claim.
+- [x] [Review][Patch] MEDIUM. **Documentation gap, not a code bug, correctly flagged as such: a
+      quantified overlapping alternation with no quantifier character inside the group, e.g.
+      `^(?:a|a)+$`, is invisible to both gate tiers** (no quantifier character for the structural tier
+      to find, no quantifier marker for the linear tier to count) and hangs `RegExp.test` exactly as
+      `(a+)+` would. Not chased structurally, per the finding's own instruction: the obvious heuristic —
+      flag any quantified group containing a top-level `|` — would reject the already-required
+      `^(?:GET|POST)+$` fixture, and correctly distinguishing overlapping from non-overlapping
+      alternation needs a real parser, disproportionate to this gate. Fixed as documentation only: AC 5
+      now names three residuals instead of two, explicitly scoping the "safe direction" claim to only
+      the first of them (the earlier "both accepted... the safe direction to be wrong in" framing was
+      corrected, since finding 1 above and this residual are not safe-direction), and Decision 4's own
+      cross-reference updated to match. No fixture added for the hang itself, per the finding's own
+      instruction — it costs over a second and the prose already documents the gap precisely.
+- [x] [Review][Decision] **The linear-tier estimate scales with the observed string's length, which the
+      contract author does not control, so the published default of 10000 let an ordinary long SUT
+      response (over 10000 characters, any pattern) or a single-quantifier pattern against a response
+      over 5000 characters turn a would-be `false` into an invalidating fault.** Settled by construction
+      per this project's standing convention: the published default raised from `10000` to `1000000`.
+      Recorded reasoning: the "step" figure is a synthetic linear proxy over pattern complexity ×
+      observed length, never measured engine time, and native `RegExp` executes a non-nested-quantifier
+      pattern (one that already passed the structural tier) near-instantly regardless of length — so
+      raising this ceiling does not reduce real safety. The structural tier's nested-quantifier rejection
+      is unconditional and independent of this value; it remains the real backstop regardless of the
+      budget's magnitude. The new default comfortably covers ordinary evidence sizes (a single-quantifier
+      pattern against a ~488KB string, or five quantifiers against a ~163KB string) while still bounding
+      genuinely extreme cases. Applied: `scoring-policy.ts`'s `.describe()` text (value and rationale),
+      `artifact-fixtures.ts:485`, and `tests/evaluate/operators.test.ts`'s local `DEFAULT_BUDGET` all
+      updated to `1000000` / `1_000_000`; `schemas/scoring-policy.schema.json` regenerated and
+      `npm run check:schemas` confirmed green; the `keyword-mutation.test.ts` census re-measured
+      directly and confirmed unchanged (`scoring-policy: 32`, total `1953`, as predicted — same
+      keywords, only the describe string's byte content changed).
+- [x] [Review][Decision] **`RUNTIME_FAULT_CODES` has no runtime consumer beyond its own type derivation,
+      as of this story** — a real, low-severity observation, already a named, deliberate tradeoff under
+      Decision 9. Not reverted to a plain union: the array form mirrors `FAILURE_CODES`'s established
+      shape ahead of a not-yet-built `check:ad28-registry` analog, the same order-of-operations already
+      shipped for the compile-time registry (`FAILURE_CODES` predates `check-ad5-registry.ts`, per Story
+      1.5). Decision 9 gained one sentence naming this explicitly, so the tradeoff is recorded rather
+      than left implicit.
+
 ## Decisions taken during story creation
 
 Each is settled with a stated default and its downstream consequence. Per this project's standing
@@ -784,7 +873,9 @@ architecture revision), proceed unless the user amends one; record the outcome i
    unconditionally, before any numeric estimate runs at all; only patterns that pass the structural check
    reach the linear estimate, which is a defensible bound for the shapes that remain. Modeled directly on
    `ANCHORED_PATTERN_FORM`'s own precedent in this codebase: a cheap, documented, deliberately imperfect
-   check with both residual directions named rather than hidden (AC 5). **Consequence:** the formula, the
+   check with its accepted residuals named rather than hidden (AC 5 names three, only one of them
+   genuinely safe-direction — corrected there after a review round found the original two-residual,
+   both-safe framing was wrong). **Consequence:** the formula, the
    nested-quantifier scan, and the default budget value (10000) are this story's own construction,
    recorded here rather than sourced from any spine text, because none exists.
 5. **`countTolerance`'s relative deviation is compared unrounded.** Rounding either direction (floor or
@@ -826,7 +917,14 @@ architecture revision), proceed unless the user amends one; record the outcome i
    cross-check is added (there is no `check:ad28-registry` script, unlike AD-5's
    `scripts/check-ad5-registry.ts`); building one is real, separate scope — a new CI script, not an
    operator implementation — and is named here as a candidate for whichever future story next touches
-   this registry, not taken on by this one.
+   this registry, not taken on by this one. **A second review round noted, correctly, that as of this
+   story `RUNTIME_FAULT_CODES` has no runtime consumer anywhere in `src`, `tests`, or `scripts` beyond
+   the `RuntimeFaultCode` type derivation on the line directly below it — a plain union would express
+   that with less code, and the array form's own justification (mirroring a not-yet-built registry
+   check) has nothing to check against yet.** Accepted as-is rather than reverted: the same order-of-
+   operations already shipped for `FAILURE_CODES` (data-derived ahead of `check-ad5-registry.ts`
+   existing, per Story 1.5), so this is the established shape for a code registry in this codebase, not
+   a premature abstraction invented here. The tradeoff is named explicitly rather than left implicit.
 10. **Module placement (`core/evaluate/`, not `core/score/` or `core/compile/`) rests primarily on the
     Capability → Architecture Map, not on the "No epic touches `score`" sentence alone.** That sentence,
     read as a blanket directory-placement rule, proves too much: it would also forbid Epic 4's own
@@ -994,6 +1092,23 @@ Claude Sonnet 5 (claude-sonnet-5), via Claude Code.
   equality/deepEquality, 1 containment collision fixture, 2 regexMatch escape-handling fixtures, 1
   ordering tie fixture, 1 shape compound/boolean type-mismatch fixture, 1 shape optional-typed-key-
   absent fixture).
+- **Third review round (BLOCKING finding), reproduced under a hard subprocess timeout before and after
+  the fix, not trusted from the report.** Pre-fix ordering, adversarial input
+  `` `[${'a'.repeat(28)}X` `` against `^\[(a+)+\]$`: **~3.9s**, returned `false` (no throw — the real
+  nested-quantifier group was hidden inside what the class-strip regex mistook for a character class).
+  Same input, same pattern, fix applied (escape-neutralize before character-class-strip): **1ms**,
+  threw `budget-exhausted`. Every one of the 68 then-existing `tests/evaluate/` fixtures re-run after
+  the reorder and confirmed unchanged (none moved), matching the finding's own "prototyped and
+  verified" claim.
+- `npm run generate:schemas` after raising `regexMatchStepBudget`'s default to `1000000`: only
+  `schemas/scoring-policy.schema.json` changed (one field's describe-text value); `npm run check:schemas`
+  green. Keyword-mutation census re-measured directly a third time: identical to both prior
+  measurements (`scoring-policy: 32`, total `1953`) — confirms the census is driven by keyword shape,
+  not by a described numeric value.
+- Final `npm run validate` after all four third-round fixes: typecheck, lint, check:docs,
+  check:shareable, lint:spine, check:vectors, check:schemas, check:ad5-registry all green; `test` →
+  33 test files, **1419 tests passed** (1417 + 2 new: the escaped-bracket nested-quantifier fixture and
+  the residual-still-correct-after-reordering fixture, both in `regexMatch`'s describe block).
 
 ### Completion Notes List
 
@@ -1024,6 +1139,14 @@ Claude Sonnet 5 (claude-sonnet-5), via Claude Code.
 - The AD-28 table now carries ten rows (nine existing plus `operator-cannot-accept-operand`);
   `RUNTIME_FAULT_CODES` carries four of them (the ones with a genuine thrower), matching Decision 9's
   own stated count.
+- **The two-tier gate's escape-handling order (neutralize backslash escapes, then strip character
+  classes) is load-bearing, not stylistic.** The reverse order — character-class-stripping the raw
+  pattern before any escape-awareness exists — is an actual ReDoS bypass, not a cosmetic imprecision:
+  an escaped bracket can hide a real nested-quantifier group from both gate tiers entirely. This
+  surfaced only in a second, independent review round after the first round's escape-stripping fix
+  (round two) accidentally preserved the unsafe ordering while fixing a different, narrower
+  escape-blindness bug. `hasNestedQuantifier` no longer needs its own escape-awareness at all: with
+  escape-neutralization run once, up front, in `regexMatch`, no backslash ever reaches the paren scan.
 
 ### File List
 

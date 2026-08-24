@@ -199,8 +199,21 @@ export function containment(
 // AC 5 — regexMatch
 // ---------------------------------------------------------------------------
 
-// Character-class contents stripped first so a literal `+`/`*`/`?` inside
-// `[...]` is never mistaken for a quantifier by either tier below.
+// A backslash-escaped character pair, e.g. `\+`, `\d`, `\[`, `\]`. Neutralized
+// to a single inert placeholder — not a metacharacter, not a bracket, not a
+// paren — BEFORE character-class stripping runs (below) and before either
+// gate tier ever sees the pattern. Order matters and is load-bearing: an
+// escaped bracket or paren must stop looking like a real delimiter before
+// `CHARACTER_CLASS_CONTENTS` or the paren scan runs, or an escaped `[`/`]`
+// can swallow a real, dangerous group into a character class and hide it from
+// both tiers entirely (the unsafe direction — see `regexMatch`'s own comment
+// on `stripped`). One escape pass serves every consumer below; there is
+// deliberately no second, narrower escape-strip anywhere else in this file.
+const ESCAPED_CHARACTER_PAIR = /\\./g
+
+// Character-class contents stripped after escape-neutralization, so a literal
+// `+`/`*`/`?`/`[`/`]` inside `[...]` (escaped or not) is never mistaken for a
+// quantifier or a class delimiter by either tier below.
 const CHARACTER_CLASS_CONTENTS = /\[[^\]]*\]/g
 
 // A group's own non-capturing/lookaround marker (`?:`, `?=`, `?!`, `?<name>`,
@@ -214,31 +227,21 @@ const GROUP_MARKER_PREFIX = /^\?(?:[:=!]|<[=!]?[^>]*>)/
 const CONTENT_QUANTIFIER_CHARACTER = /[*+?{]/
 const TRAILING_QUANTIFIER = /^(?:[*+?]|\{\d+(?:,\d*)?\})/
 
-// A backslash-escaped character pair, e.g. `\+` or `\d`. Stripped before
-// testing a string for a quantifier *character*, because an escaped `+`/`*`/
-// `?`/`{` is a literal character, not a metacharacter, and
-// `CONTENT_QUANTIFIER_CHARACTER`/`QUANTIFIER_MARKER` cannot otherwise tell the
-// two apart. This mirrors the escape-awareness the paren-matching scan below
-// already has for finding real group delimiters; here it is content, not
-// delimiters, that need the same treatment.
-const ESCAPED_CHARACTER_PAIR = /\\./g
-
 /**
  * A simple parenthesis-matching pass, not a full parse (modeled on
  * `ANCHORED_PATTERN_FORM`'s own precedent): for every `(...)`/`(?:...)` group
- * in the character-class-stripped source, true iff the group's own contents
- * contain a quantifier character AND the group itself is immediately followed
- * by one — the shape that makes the group's own repetition compound with its
- * interior repetition (`(a+)+`, `(a*)*`, …).
+ * in the escape-neutralized, character-class-stripped source, true iff the
+ * group's own contents contain a quantifier character AND the group itself is
+ * immediately followed by one — the shape that makes the group's own
+ * repetition compound with its interior repetition (`(a+)+`, `(a*)*`, …).
+ * No backslash can survive into `strippedPattern`: escape-neutralization runs
+ * before this is ever called (`regexMatch`'s own `stripped`), so this scan
+ * needs no escape-awareness of its own for finding real parens.
  */
 function hasNestedQuantifier(strippedPattern: string): boolean {
 	const groupStarts: number[] = []
 	for (let index = 0; index < strippedPattern.length; index++) {
 		const character = strippedPattern[index]
-		if (character === '\\') {
-			index++ // an escaped character is never a group delimiter
-			continue
-		}
 		if (character === '(') {
 			groupStarts.push(index)
 			continue
@@ -249,7 +252,6 @@ function hasNestedQuantifier(strippedPattern: string): boolean {
 			const contents = strippedPattern
 				.slice(start + 1, index)
 				.replace(GROUP_MARKER_PREFIX, '')
-				.replace(ESCAPED_CHARACTER_PAIR, '')
 			const following = strippedPattern.slice(index + 1)
 			if (
 				CONTENT_QUANTIFIER_CHARACTER.test(contents) &&
@@ -293,7 +295,18 @@ export function regexMatch(
 		)
 	}
 
-	const stripped = pattern.replace(CHARACTER_CLASS_CONTENTS, '[]')
+	// Escape-neutralize FIRST, character-class-strip SECOND. Reordered after a
+	// review round found the original class-first order unsafe: for a pattern
+	// like `^\[(a+)+\]$`, stripping classes on the raw pattern sees the `[` of
+	// the escaped `\[`, greedily consumes through to the `]` of the escaped
+	// `\]` at the end, and swallows the real `(a+)+` nested-quantifier group
+	// into what it thinks is one big character class — hiding it from both
+	// tiers below and letting `compiled.test` hang on catastrophic
+	// backtracking. Escape-neutralizing first means no backslash, and
+	// therefore no escaped bracket, survives to confuse the class strip.
+	const stripped = pattern
+		.replace(ESCAPED_CHARACTER_PAIR, '_')
+		.replace(CHARACTER_CLASS_CONTENTS, '[]')
 
 	if (hasNestedQuantifier(stripped)) {
 		throw new RuntimeFault(
@@ -303,13 +316,8 @@ export function regexMatch(
 		)
 	}
 
-	// Escaped-character pairs are stripped before counting, for the same reason
-	// as the structural tier above: an escaped quantifier-look-alike is a
-	// literal character and must not inflate the estimate.
-	const quantifierCountSource = stripped.replace(ESCAPED_CHARACTER_PAIR, '')
 	const estimatedSteps =
-		(1 + (quantifierCountSource.match(QUANTIFIER_MARKER)?.length ?? 0)) *
-		value.length
+		(1 + (stripped.match(QUANTIFIER_MARKER)?.length ?? 0)) * value.length
 	if (estimatedSteps > matchStepBudget) {
 		throw new RuntimeFault(
 			'budget-exhausted',

@@ -62,7 +62,10 @@ export const ScoringPolicy = z
 				'AD-4: "a match-step budget from the scoring policy whose breach is a fault, not an outcome ' +
 					'state." The budget bounds a pure, static, pre-execution complexity estimate over the ' +
 					'declared pattern and the candidate string length, never a literal engine-internal step ' +
-					'count. The published default artifact carries 10000.',
+					'count, and that length is whatever the system under test returned, which the contract ' +
+					'author does not control. The structural nested-quantifier rejection stays unconditional ' +
+					'and independent of this value, so a generous ceiling here does not weaken that real ' +
+					'backstop. The published default artifact carries 1000000.',
 			),
 	})
 	.meta({
