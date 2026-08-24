@@ -61,7 +61,7 @@ development_status:
   2-3-the-emitted-brief-scripting-audit:  done
   
   epic-3: in-progress
-  3-1-scalar-operators-over-the-evidence-domain: review
+  3-1-scalar-operators-over-the-evidence-domain: done
   3-2-connectives-quantifiers-and-three-valued-resolution: backlog
   3-3-covers-by-key-as-a-bijection: backlog
   

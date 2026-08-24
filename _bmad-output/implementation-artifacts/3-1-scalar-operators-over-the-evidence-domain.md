@@ -549,7 +549,7 @@ rule is unconditional: `absent` is never equal to itself). Beyond that baseline:
    pointer-to-pointer scalar comparisons), as the shape to hand-construct resolved-value inputs
    against, matching Story 2.3's precedent of grounding accept fixtures in this same contract's real
    oracles, never inventing unrelated ones. Beyond that, cases specific to Decision 2's final
-   design (these two functions are no longer identical, so both need coverage, never one shared set):
+   design (these two functions are no longer identical, so each needs its own coverage):
    - **Both:** a scalar-vs-compound pair (e.g. a number against an object) resolves `false`; two
      structurally **identical** compound values (same-shaped objects or arrays with equal content)
      resolve `true`; two same-shaped but structurally **different** compound values resolve `false`.
