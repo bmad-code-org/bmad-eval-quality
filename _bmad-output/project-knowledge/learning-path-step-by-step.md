@@ -45,6 +45,7 @@ flowchart TD
 |    5 | Publish the schemas as JSON Schema files and prove them equivalent to the Zod source. |
 |    6 | Turn a declared direction into evaluator prose that names the call without naming the step. |
 |    7 | Catch sequencing prose an author smuggled into free text, after the brief is generated. |
+|    8 | Ten pure operators over resolved evidence: equality, membership, regex, and shape, fully specified. |
 
 Adding a step: follow `learning-path-template.md`.
 
@@ -526,4 +527,71 @@ flowchart TD
 
   CODES --> AUDIT
   AUDIT --> TESTS
+```
+
+## Step 8: scalar operators over the evidence domain
+
+**What:** ten pure functions (`equality`, `deepEquality`, `containment`, `existence`, `absence`,
+`regexMatch`, `setMembership`, `ordering`, `countTolerance`, `shape`), each taking already-resolved
+evidence values and returning a plain `boolean`.
+
+**Why:** two implementations of one oracle's `check` expression must resolve every node identically,
+or the whole scoring model is untrustworthy. This step is where that gets nailed down operator by
+operator: what counts as equal, what counts as contained, and what a regex match-step budget actually
+bounds. Real example: `equality` only reaches structural comparison when both operands are the same
+compound kind; a domain-violating scalar like an unsafe-range integer resolves `false` against an
+ordinary number without ever touching canonicalization, so a misbehaving system under test cannot
+turn a detected defect into an invalidating fault.
+
+**Rules:**
+
+- Every operator takes a `ResolvedValue` (`JsonValue | ABSENT`), never a `{pointer}`/`{literal}`/
+  `{referenceSet}` operand. Resolving those is a later epic's job.
+- `ABSENT` is a unique symbol, never `null`. `existence` reads false against it, `absence` true, and
+  every comparison false, even absent-against-absent.
+- `equality` reaches structural comparison (`digestArtifact`) only when both operands are the same
+  compound kind. Every other input, including a domain-violating scalar, resolves without ever
+  canonicalizing. `deepEquality` is unconditionally structural, so it can throw
+  `non-canonicalizable-value` where `equality` on the same inputs would just resolve `false`.
+- `regexMatch`'s step budget is a static two-tier gate, never a live step count: reject any
+  nested-quantifier shape outright, then bound a linear, character-class-aware estimate against the
+  declared budget.
+- `shape`'s closed set is `permittedKeys` alone. A required key absent from it makes the descriptor
+  unsatisfiable rather than repaired.
+- `ordering`, `countTolerance`, and any operand that may denote a collection resolve `false` on a bare
+  `ABSENT`. That answer is correct only when the operand is not itself declared collection-typed; the
+  next story's wrapper handles the other case.
+- Every function's last parameter is `artifactPath: string`, even on the five that never throw (named
+  `_artifactPath`), so every operator shares one calling convention.
+
+**Read in this order:**
+
+1. `src/core/evaluate/resolved-value.ts`: the `ABSENT` sentinel and `ResolvedValue`.
+2. `src/core/evaluate/operators.ts`: the ten functions.
+3. `src/core/schemas/scoring-policy.ts`: `regexMatchStepBudget`, the field `regexMatch` reads.
+4. `src/core/schemas/faults.ts`: the two new runtime fault codes, `RUNTIME_FAULT_CODES`.
+5. `tests/evaluate/operators.test.ts`: every operator's accept, reject, and absent-operand case.
+
+**Watch out:**
+
+- This story's ten operators are two-valued. Three-valued `insufficient-evidence` resolution, the
+  connectives, and the quantifiers are the next story's; nothing here decides that value.
+- `RUNTIME_FAULT_CODES` is not a full AD-28 mirror the way `FAILURE_CODES` mirrors AD-5: it only lists
+  codes with a genuine thrower, four of AD-28's ten rows. Nothing automates a cross-check against the
+  spine table yet.
+
+**Story:** `_bmad-output/implementation-artifacts/3-1-scalar-operators-over-the-evidence-domain.md`
+
+```mermaid
+flowchart TD
+  RESOLVED["resolved-value.ts<br/>ABSENT + ResolvedValue"]
+  OPS["operators.ts<br/>ten pure functions"]
+  POLICY["scoring-policy.ts<br/>regexMatchStepBudget"]
+  FAULTS["faults.ts<br/>budget-exhausted, operator-cannot-accept-operand"]
+  TESTS["tests/evaluate/operators.test.ts<br/>accept + reject + absent per operator"]
+
+  RESOLVED --> OPS
+  POLICY --> OPS
+  FAULTS --> OPS
+  OPS --> TESTS
 ```

@@ -411,11 +411,12 @@ imports `core/schemas` only. Nothing imports `cli/`.
   | `schema-version-mismatch` | a reader meets a `schemaVersion` other than the one it accepts | AD-11 |
   | `non-canonicalizable-value` | a hashed artifact carries a non-finite number, an unsafe integer, a lone surrogate, or a duplicate object key | AD-36, AD-27 |
   | `digest-mismatch` | bytes resolved through the corpus port do not match the manifest digest | AD-8 |
-  | `budget-exhausted` | an evaluation budget or safety limit is reached | AD-1, AD-19 |
+  | `budget-exhausted` | an evaluation budget or safety limit is reached | AD-1, AD-4, AD-19 |
   | `port-failure` | a caller-supplied port implementation throws or rejects | AD-28 |
   | `port-contract-violation` | a port returns a partial success, an in-band error value, or an artifact failing boundary validation | AD-28, AD-37 |
   | `forbidden-target` | the probe port is directed at a target AD-35's default-deny policy excludes, including on redirect | AD-35 |
   | `aborted` | an abort signal is honoured mid-flight | AD-28, AD-37 |
+  | `operator-cannot-accept-operand` | an operator receives an operand value or expression parameter it cannot accept | AD-4 |
 
   Adding a class is an amendment to this AD and to no other, and **an AD that commands a thrown fault without adding a code here is a defect in that AD** — the same audit rule AD-5 carries for compile-time codes, stated here so the two registries stay symmetric and neither becomes the other's dumping ground. The two vocabularies are disjoint: a compile-time failure is a structural error that emits no artifact, and a fault is thrown. AD-21 assigns exit codes outside the verdict range to faults, and the published enumeration is generated from this table. A port performs no retries and no back-off; re-execution is decided under AD-6's trial and cap rules. Every port method accepts an abort signal and must honour it. The orchestration layer validates every artifact crossing a port boundary in both directions before handing it to `core/`, and a port fault during probing or ingest is an invalidating condition under AD-21 rather than a behavioural result. Ports are implemented by the caller; the reference adapters are conveniences, never a required path, and conformance is defined by AD-37 rather than by reading this rule.
 

@@ -55,11 +55,20 @@ export const ScoringPolicy = z
 			.describe(
 				"AD-12's remediation cap. The published default artifact carries 3. AD-12 states the package validates rather than enforces it, which is why the Evidence Artifact records the cap's source as caller-attested.",
 			),
+		regexMatchStepBudget: z
+			.int()
+			.min(1)
+			.describe(
+				'AD-4: "a match-step budget from the scoring policy whose breach is a fault, not an outcome ' +
+					'state." The budget bounds a pure, static, pre-execution complexity estimate over the ' +
+					'declared pattern and the candidate string length, never a literal engine-internal step ' +
+					'count. The published default artifact carries 10000.',
+			),
 	})
 	.meta({
 		id: 'ScoringPolicy',
 		description:
-			'The scoring policy, with no prior art. It carries the severity floor, confidence threshold, minimum trial count, re-execution cap, and remediation cap that AD-6, AD-12, and AD-21 read, and its digest is one of the five named inputs to AD-11\'s scoring version. It is a published artifact rather than a set of constants so that "the default" has an identity a result can name by digest.',
+			'The scoring policy, with no prior art. It carries the severity floor, confidence threshold, minimum trial count, re-execution cap, remediation cap, and a regex match-step budget that AD-6, AD-12, AD-4, and AD-21 read, and its digest is one of the five named inputs to AD-11\'s scoring version. It is a published artifact rather than a set of constants so that "the default" has an identity a result can name by digest.',
 	})
 
 export type ScoringPolicy = z.infer<typeof ScoringPolicy>
