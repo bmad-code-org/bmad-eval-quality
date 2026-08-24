@@ -2,6 +2,8 @@
 
 One step per finished story. Jump to the one you need.
 Short version here. The long reasoning lives in the code comments each step points at.
+`AD-N` below cites decision N in the architecture spine (`ARCHITECTURE-SPINE.md`, grep for the
+number); the rule it's attached to is the short version of that decision's reasoning.
 
 **Big picture:** this project builds the artifacts a sealed evaluator needs to grade a system under
 test honestly. An author writes a contract stating what to check; this library turns that contract
@@ -23,7 +25,7 @@ flowchart TD
   CONSUMER(["Non-TypeScript consumer<br/>reads schemas/*.schema.json only"])
 
   subgraph EQ["eval-quality (this library, pure functions only)"]
-    LIB["Eval Contract schema, canonical digest,<br/>seal (Step 6), verdict resolution, schema publish"]
+    LIB["Eval Contract schema, canonical digest,<br/>seal (Step 7), verdict resolution, schema publish"]
   end
 
   AUTHOR -- writes --> LIB
@@ -44,8 +46,9 @@ flowchart TD
 |    4 | epic1-story4 | The other eleven artifacts, so every file crossing the boundary has a shape.       |
 |    5 | epic1-story5 | Publish the schemas as JSON Schema files and prove them equivalent to the Zod source. |
 |    6 | epic2-story1 | Turn a declared direction into evaluator prose that names the call without naming the step. |
-|    7 | epic2-story3 | Catch sequencing prose an author smuggled into free text, after the brief is generated. |
-|    8 | epic3-story1 | Ten pure operators over resolved evidence: equality, membership, regex, and shape, fully specified. |
+|    7 | epic2-story2 | Assemble the sealed brief: only what AD-16 permits, everything else sorted or excluded. |
+|    8 | epic2-story3 | Catch sequencing prose an author smuggled into free text, after the brief is generated. |
+|    9 | epic3-story1 | Ten pure operators over resolved evidence: equality, membership, regex, and shape, fully specified. |
 
 Adding a step: follow `learning-path-template.md`.
 
@@ -183,7 +186,9 @@ shape spelled two ways is two products.
 
 - If a later epic has an error code for a bad shape, the schema accepts that shape. Rejecting it here
   swaps a named error for a nameless parse failure and deletes a test someone else owes.
-- One exception, chosen by the epic: operator arity. `equality` takes exactly two operands.
+- One exception to that rule: operand count is still enforced here. `equality` takes exactly two
+  operands, and the schema rejects a third operand itself, without waiting on a later epic's error
+  code.
 - "Not set" is written `null`, never a missing key. Missing, empty, and filled are three answers.
 - Every object is strict. Six maps are keyed by the author's own words; each is named in the code.
 - `JsonValue` is the only place the caller's own keys are allowed.
@@ -270,7 +275,8 @@ is a rule a later epic cannot read, and an artifact with no schema is a caller g
 - If a field-level `null` already says "absent", the object under it may not say the same thing
   again with every member null.
 - Money is a string everywhere, including the isolation manifest. Seconds stay a number. A ceiling
-  that must be above zero needs its own string format, or retyping a number silently drops the bound.
+  that must stay above zero needs its own string format: a plain `number` field can't carry that
+  constraint, so typing the ceiling as a number would silently drop the above-zero requirement.
 - Every ledger entry names its artifact, because with twelve roots "the root" points at nothing. A
   union at the top has no `properties`, so the resolver reads every branch and gives up if one lacks
   the field.
@@ -295,6 +301,7 @@ is a rule a later epic cannot read, and an artifact with no schema is a caller g
 - `EvidenceArtifact` is the scored output. `evidenceArtifacts` on a finding is a list of references.
   Two different things one word apart.
 - `EvaluatorConfiguration` rejects a `trialIndex` key on purpose, and a test proves the rejection.
+  A missing field here is the requirement itself; don't add it back in.
 - `responseHeaders` is a name-to-value map while `responseBody` is the open container. A pointer
   reaches into the headers by name, so a bare number there would address nothing; a body may be a
   bare number and still be a body.
@@ -349,15 +356,18 @@ of silence a red build.
   resolve throws; it never warns.
 - The committed files are pure ASCII, 2-space indent, one trailing newline. The drift check compares
   bytes, so the serialisation is fixed in one shared function.
-- The drift check has no `--write`. A gate that can repair what it checks is not a gate.
+- The drift check has no `--write`. If it could fix the file it is checking, a broken build would
+  get silently patched and pass.
 - Four checks, three homes: rejection suite, differential, and mutation sweep are pure and live in
   Vitest; only the byte drift check reads disk, so only it is a script.
 - The validator is ajv 8, third-party on purpose: it independently reported the arity hole the
   ledger repairs. `strict` on, `strictTypes` off, `date-time` registered always-true, no ajv-formats.
-- The mutant corpus is generated, not hand-written: measured kill rate by hand was one keyword in ten.
+- The mutant corpus is generated. A hand-written attempt was tried first and measured a kill rate
+  of one keyword in ten.
 - Unkillable keywords are exempted by computed rule, never by a hand list, and survivors, unreachable,
   and exempt are asserted equal three ways. Measured on this pin: 1,949 occurrences, 168 exempt.
-- Pin a census exactly, never with a floor. A floor cannot see a walk that stopped walking.
+- Pin the counts (occurrences, exempt, survivors) exactly. A floor ("at least N") lets the count
+  quietly drop and still pass; only an exact match catches coverage that stopped growing.
 - Every gate gets a canary that proves it blocks, for the stated reason.
 - `FAILURE_CODES` is parsed against the AD-5 table on every validate, so nobody hand-maintains the
   enumeration beside it.
@@ -372,10 +382,10 @@ of silence a red build.
 6. `tests/schemas/published/mutant-generator.ts`: the schema-directed corpus.
 7. `tests/schemas/published/differential.test.ts` and `keyword-mutation.test.ts`: checks three and four.
 
-**Watch out:** ajv reports `schemaPath` relative to the `$defs` entry an error occurred in, not the
-document root; Zod exports `type` beside every `const` and `enum`, which makes those `type`s
-undeletable-by-proof and therefore exempt; and deleting an injected arity keyword makes ajv strict
-refuse to compile, which the sweep counts separately rather than as a pass.
+**Watch out:** ajv anchors a reported `schemaPath` to the `$defs` entry where the error occurred.
+Zod exports `type` beside every `const` and `enum`, which makes those `type`s undeletable-by-proof
+and therefore exempt. Deleting an injected arity keyword makes ajv strict refuse to compile, which
+the sweep tracks as its own outcome, separate from a pass.
 
 **Story:** `_bmad-output/implementation-artifacts/1-5-the-published-json-schema-export-and-its-four-ci-checks.md`
 
@@ -428,7 +438,7 @@ step.
   remaining structural operators. `not` gets its own skeleton; a shared affirmative one tells the
   evaluator the opposite of the declared claim.
 - `scope` and `negativeDomain` are author text. The generator frames them in a sentence and never
-  splits or reorders them. `null` drops the clause instead of printing the word.
+  splits or reorders them. `null` drops the clause; it never prints the word.
 - Determinism is proven by permutation. A repeat call cannot catch a tie-break that is stable within
   one process.
 
@@ -474,7 +484,66 @@ flowchart TD
   SEALFIX --> TESTS
 ```
 
-## Step 7 (epic2-story3): the emitted-brief scripting audit
+## Step 7 (epic2-story2): brief assembly, exclusions, and canonical ordering
+
+**What:** `seal(contract)` walks every oracle, renders one `BriefDirection` per oracle using Step 6's
+prose generator, then assembles the `SealedEvaluatorBrief`: only the fields AD-16 permits, with
+unordered arrays sorted to a fixed key.
+
+**Why:** Step 6 renders one oracle's prose. Nothing yet walked a whole contract and produced the
+artifact the evaluator actually reads. Most of the brief's content must come out byte-identical no
+matter how the contract's arrays were declared; `behaviors` and `contractDigest` are the two
+deliberate exceptions, covered below.
+
+**Rules:**
+
+- Assemble only what `SealedEvaluatorBrief` declares. It is `strictObject`, so excluding commentary,
+  the interaction plan, and every step identifier is structural: the type has no slot for them.
+  Nobody has to remember to filter them out.
+- `permittedInterfaces` is a per-element map: it drops each interface's operation inventory before
+  the brief sees it. Only the interface's identity crosses.
+- Four fields have no meaningful order in the contract (`directions`, `permittedInterfaces`,
+  `scopedResources`, `safetyLimits`): sort each by its natural key. A duplicate key throws. Sort
+  stability is not a guarantee, so byte-identity cannot lean on it.
+- `behaviors` is the one array kept in contract order. Its order is meaningful, so it is not folded
+  into the sort rule above.
+- `contractDigest` hashes the literal input, so reordering the contract's arrays legitimately changes
+  it even though the rest of the brief stays byte-identical. Lineage sits outside the guarantee for
+  the same reason: it is not derived from array content at all.
+- `negativeDomain`'s own "canonical sorted order" language is satisfied vacuously: one string, one
+  member, nothing to sort. Closed here: no invented structure needed to make the sort mean anything.
+- Copy `behaviors` and `budgets` in. Do not alias them to the source contract, or a caller mutating
+  the contract after `seal()` returns would silently mutate the "sealed" brief too.
+
+**Read in this order:**
+
+1. `src/core/seal/seal.ts`: the whole function.
+2. `src/core/schemas/sealed-evaluator-brief.ts`: what the brief is allowed to carry.
+3. `src/core/schemas/interface.ts`: why `permittedInterfaces` needs a per-element map.
+4. `tests/seal/seal.test.ts`: the sort, duplicate-key, reorder, and reject-fixture tests.
+
+**Watch out:** a test that hashes or diffs the whole brief object across reorderings will never pass;
+only the content fields are asserted byte-identical, `contractDigest` is not one of them.
+Forbidden-input exclusion here comes from the schema's `strictObject` shape. `seal()` performs no
+such check itself.
+
+**Story:** `_bmad-output/implementation-artifacts/spec-2-2-brief-assembly-exclusions-and-canonical-ordering.md`
+
+```mermaid
+flowchart TD
+  CONTRACT["EvalContract<br/>oracles, behaviors, interfaces, budgets"]
+  PROSE["direction-prose.ts (Step 6)<br/>one BriefDirection.text per oracle"]
+  SEAL["seal.ts<br/>assemble + sort + digest"]
+  BRIEF["SealedEvaluatorBrief<br/>strictObject, exclusion is structural"]
+  TESTS["tests/seal/seal.test.ts<br/>sort order, duplicate keys, reorder, reject fixtures"]
+
+  CONTRACT --> SEAL
+  PROSE --> SEAL
+  SEAL --> BRIEF
+  BRIEF --> TESTS
+```
+
+## Step 8 (epic2-story3): the emitted-brief scripting audit
 
 **What:** a pure function, `auditBriefScripting`, that reads an already-assembled `SealedEvaluatorBrief`
 and throws if any one direction's generated `text` carries more sequencing/transition markers than the
@@ -528,7 +597,7 @@ flowchart TD
   AUDIT --> TESTS
 ```
 
-## Step 8 (epic3-story1): scalar operators over the evidence domain
+## Step 9 (epic3-story1): scalar operators over the evidence domain
 
 **What:** ten pure functions (`equality`, `deepEquality`, `containment`, `existence`, `absence`,
 `regexMatch`, `setMembership`, `ordering`, `countTolerance`, `shape`), each taking already-resolved
