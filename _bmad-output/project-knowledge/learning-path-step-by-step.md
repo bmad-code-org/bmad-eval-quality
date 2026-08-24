@@ -51,6 +51,7 @@ flowchart TD
 |    8 | epic2-story3 | Catch sequencing prose an author smuggled into free text, after the brief is generated. |
 |    9 | epic3-story1 | Ten pure operators over resolved evidence: equality, membership, regex, and shape, fully specified. |
 |   10 | epic3-story2 | Connectives, quantifiers, and the empty-collection rule so equivalent spellings agree on empty evidence. |
+|   11 | epic3-story3 | `covers-by-key`, the closed vocabulary's one relational operator: a bijection so omission, padding, and extras all fail. |
 
 Adding a step: follow `learning-path-template.md`.
 
@@ -699,8 +700,8 @@ collection never reads as a clean pass.
   condition, one level down.
 - `boundElement` is `ABSENT` outside any quantifier, never `null`: a bound element can legitimately be
   JSON `null` itself, and only a third value tells the two apart.
-- `covers-by-key` has no operator yet; that branch throws a plain `Error` naming Story 3.3, never a
-  `RuntimeFault` — a gap in this dispatch table, not a fact about the evidence.
+- `covers-by-key` had no operator at this point; that branch threw a plain `Error` naming Story 3.3.
+  Story 3.3 (Step 11) fills it in.
 - Real pointer resolution, including `@/`, is not built here: `ResolveOperand` and
   `PointerDenotesCollection` are the two capabilities this module takes as parameters instead.
 
@@ -739,4 +740,79 @@ flowchart TD
   STUB -. test-only implementation of .-> CAP
   STUB --> TESTS
   RES --> TESTS
+```
+
+## Step 11 (epic3-story3): covers-by-key, the last operator
+
+**What:** `coversByKey`, the closed vocabulary's eleventh and final operator: a bijection between a
+contract-declared `expected` reference set and an observed `actual` collection, matched on named keys.
+Plus the real `resolveNode` dispatch branch that replaces Step 10's throwing stub.
+
+**Why:** AD-20's completeness rule needed to catch three failure shapes in one check: a response
+omitting a seeded record, one padded with duplicates to fake the right count, and one carrying
+unexpected extras. An injection alone catches omission only. The historical `[n-1, n-1, n-1]` bug
+(padding one record to hide two missing ones) is why this has to be a true bijection, not the weaker
+check an earlier spine revision first stated.
+
+**Rules:**
+
+- Cardinality is never checked separately. `actualByKey` starts with exactly one entry per `actual`
+  element, including a synthetic slot for one missing its key, so `actualByKey.size === 0` after the
+  match loop already means every `actual` element got claimed: the whole bijection condition, not an
+  approximation of it.
+- `ABSENT` on either operand resolves `false`, not `insufficient-evidence`: the one AD-4 exception to
+  Step 10's general empty-collection rule, stated explicitly for this operator because a wholly missing
+  collection is a detected defect, not an empty examination.
+- Only a genuinely empty array (both operands present, one or both length zero) trips the ordinary
+  `insufficient-evidence` path, and `resolveNode` intercepts that before `coversByKey` ever runs.
+- A non-array `actual` resolves `false` inside `coversByKey` itself, the same type-mismatch rule every
+  other operator already applies.
+- A duplicate `actualKey` value resolves `false` the moment a second element claims an
+  already-populated map entry. A duplicate `expectedKey` value is assumed compile-time-prevented but
+  fails the same way if it ever occurs.
+- An `expected` element missing its named key fails its own lookup directly, no dedicated branch needed.
+  An `actual` element missing its named key still claims a slot in the match index, a synthetic
+  un-claimable one, so a keyless extra row counts against cardinality instead of vanishing from it.
+- The dispatch branch's three special cases fire in a fixed order: the `expected`-operand
+  array-narrowing guard first (a resolver bug, not a data outcome), then `ABSENT`/malformed-`actual` as
+  a decisive `false`, then genuine emptiness last. A higher tier always outranks a lower one on the
+  other operand.
+
+**Read in this order:**
+
+1. `src/core/evaluate/operators.ts`: `keyValueOf`, `coversByKey`.
+2. `src/core/evaluate/resolution.ts`: `resolveCoversByKeyNode`, one entry in the `operatorHandlers`
+   dispatch table `resolveNode` looks up by `op` (this story also replaced the whole file's switch with
+   that table; every other operator moved into its own same-shaped handler alongside it).
+3. `tests/schemas/fixtures/relevance-contracts.ts`: `populatedContract`'s O-001, the one real
+   `covers-by-key` check tree this story's dispatch fixtures reuse.
+4. `tests/evaluate/operators.test.ts`: `coversByKey`'s own positive, missing, duplicate, unexpected,
+   duplicate-key, and empty-set cases.
+5. `tests/evaluate/resolution.test.ts`: the same six cases at dispatch level, plus the guard and the
+   three-tier precedence fixtures.
+
+**Watch out:**
+
+- `coversByKey([], [], ...)` returns `true` on its own: a vacuous bijection is a correct pure-function
+  answer with no `insufficient-evidence` to return. Only `resolveNode`'s dispatch wraps that same case
+  as `insufficient-evidence`. Both are stated side by side in their own test files so neither reads as
+  contradicting the other.
+- `operatorHandlers` is a plain object, so it inherits `Object.prototype`; `resolveNode` checks
+  `Object.hasOwn` before the lookup so `op: 'constructor'` still throws instead of silently resolving
+  to `Object` itself.
+
+**Story:** `_bmad-output/implementation-artifacts/3-3-covers-by-key-as-a-bijection.md`
+
+```mermaid
+flowchart TD
+  OPS["operators.ts (Step 9)<br/>keyValueOf, coversByKey"]
+  RES["resolution.ts (Step 10)<br/>the 'covers-by-key' dispatch branch"]
+  FIX["relevance-contracts.ts<br/>populatedContract's O-001, the one real check tree"]
+  OPTESTS["operators.test.ts<br/>positive, missing, duplicate, unexpected, duplicate-key, empty-set"]
+  RESTESTS["resolution.test.ts<br/>same six cases at dispatch level + guard + precedence"]
+
+  OPS --> RES
+  FIX --> RESTESTS
+  OPS --> OPTESTS
+  RES --> RESTESTS
 ```

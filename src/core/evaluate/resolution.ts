@@ -1,7 +1,7 @@
 /**
  * AD-4's connectives, quantifiers, and three-valued resolution: the tree-walker
  * that turns an `Expression` into one `CheckResolutionValue`. Leaf operators are
- * Story 3.1's (`operators.ts`); `covers-by-key` is Story 3.3's. Operand
+ * Story 3.1's and Story 3.3's `covers-by-key` (`operators.ts`). Operand
  * resolution, every pointer form including the bound-element `@/` form, is Story
  * 4.1's. `ResolveOperand` and `PointerDenotesCollection` are the consumer-side
  * contract it satisfies.
@@ -12,6 +12,7 @@ import {
 	absence,
 	containment,
 	countTolerance,
+	coversByKey,
 	deepEquality,
 	equality,
 	existence,
@@ -237,6 +238,346 @@ function resolveEqualityLike(
 	return booleanResult(evaluate(a, b, ctx.artifactPath))
 }
 
+// One handler per `Expression['op']`, narrowed to that variant so a handler's
+// body reads exactly like the switch case it replaces. Keyed lookup in
+// `operatorHandlers` below is what used to be the switch's case labels.
+type OperatorHandler<Op extends Expression['op']> = (
+	expression: Extract<Expression, { op: Op }>,
+	boundElement: ResolvedValue,
+	ctx: ResolutionContext,
+) => CheckResolutionValue
+
+function resolveNotNode(
+	expression: Extract<Expression, { op: 'not' }>,
+	boundElement: ResolvedValue,
+	ctx: ResolutionContext,
+): CheckResolutionValue {
+	const [child] = expression.operands
+	const resolved = resolveNode(child, boundElement, ctx)
+	return {
+		resolution: notOf(resolved.resolution),
+		// Decision 9: a fold, not a firing — `resolved` still carries the
+		// condition if it is the one that tripped it.
+		introductionCondition: null,
+		children: [resolved],
+	}
+}
+
+// Shared by `all` and `any`, which differ only in the fold they apply.
+function resolveConnective(
+	expression: Extract<Expression, { op: 'all' | 'any' }>,
+	fold: (children: Resolution[]) => Resolution,
+	boundElement: ResolvedValue,
+	ctx: ResolutionContext,
+): CheckResolutionValue {
+	// Total, never short-circuiting, over resolutions: every operand is
+	// recursed into before folding, whatever an earlier one resolved. This does
+	// NOT hold over faults (P5): `.map()` still stops at the first operand
+	// whose own resolution throws, so a later operand's fault is never reached
+	// once an earlier one throws. "Total" is about not skipping a resolved
+	// child's evaluation to short-circuit the fold, not about running every
+	// operand past a thrown fault.
+	const children = expression.operands.map((operand) =>
+		resolveNode(operand, boundElement, ctx),
+	)
+	return {
+		resolution: fold(children.map((child) => child.resolution)),
+		// Decision 9: a fold. The tripped child, if any, carries the condition
+		// itself, in `children`.
+		introductionCondition: null,
+		children,
+	}
+}
+
+function resolveAllNode(
+	expression: Extract<Expression, { op: 'all' }>,
+	boundElement: ResolvedValue,
+	ctx: ResolutionContext,
+): CheckResolutionValue {
+	return resolveConnective(expression, allOf, boundElement, ctx)
+}
+
+function resolveAnyNode(
+	expression: Extract<Expression, { op: 'any' }>,
+	boundElement: ResolvedValue,
+	ctx: ResolutionContext,
+): CheckResolutionValue {
+	return resolveConnective(expression, anyOf, boundElement, ctx)
+}
+
+function resolveQuantifierNode(
+	expression: Extract<Expression, { op: 'for-all' | 'for-any' }>,
+	boundElement: ResolvedValue,
+	ctx: ResolutionContext,
+): CheckResolutionValue {
+	return resolveQuantifier(
+		expression.op,
+		expression.collection,
+		expression.predicate,
+		boundElement,
+		ctx,
+	)
+}
+
+function resolveCoversByKeyNode(
+	expression: Extract<Expression, { op: 'covers-by-key' }>,
+	boundElement: ResolvedValue,
+	ctx: ResolutionContext,
+): CheckResolutionValue {
+	const [expectedOperand, actualOperand] = expression.operands
+	const { expectedKey, actualKey } = expression
+	const expectedResolved = ctx.resolveOperand(
+		expectedOperand,
+		boundElement,
+		ctx.artifactPath,
+	)
+	const actualResolved = ctx.resolveOperand(
+		actualOperand,
+		boundElement,
+		ctx.artifactPath,
+	)
+	// Decision 3: checked first and unconditionally, before anything else
+	// looks at `actual`. A malformed `expected` is a resolver integration bug,
+	// never a data outcome, and must never be masked by whatever `actual`
+	// resolved to, including a benign empty collection.
+	if (expectedResolved !== ABSENT && !Array.isArray(expectedResolved)) {
+		throw new Error(
+			"covers-by-key's expected-operand guard: a reference-set operand " +
+				'must resolve to ABSENT or an array, which the schema guarantees. ' +
+				'The injected ResolveOperand returned something else — either a ' +
+				'resolver integration bug, or an unresolved reference set that ' +
+				'slipped past compilation (unresolved-reference-set); this guard ' +
+				'cannot tell the two apart.',
+		)
+	}
+	// Decision 7: genuine emptiness (AD-4's "two empty collections" case,
+	// generalized to a single empty operand per the uniform reading Story 3.2
+	// already established) applies only once both operands are confirmed
+	// ordinary, present collections. ABSENT on either side, or a malformed
+	// `actual`, is a decisive `false` (Decision 1, Decision 2) and must
+	// outrank emptiness: the same priority `allOf` already gives a decisive
+	// `false` child over an `insufficient-evidence` sibling elsewhere in this
+	// file. Delegating straight to `coversByKey` for those two cases keeps the
+	// check single-sourced: the function already implements both as its own
+	// top guards, this code only routes around them.
+	const bothPresentArrays =
+		expectedResolved !== ABSENT &&
+		actualResolved !== ABSENT &&
+		Array.isArray(actualResolved)
+	if (
+		bothPresentArrays &&
+		(expectedResolved.length === 0 || actualResolved.length === 0)
+	) {
+		return emptyCollectionResult()
+	}
+	return booleanResult(
+		coversByKey(
+			expectedResolved,
+			actualResolved,
+			expectedKey,
+			actualKey,
+			ctx.artifactPath,
+		),
+	)
+}
+
+function resolveEqualityNode(
+	expression: Extract<Expression, { op: 'equality' }>,
+	boundElement: ResolvedValue,
+	ctx: ResolutionContext,
+): CheckResolutionValue {
+	return resolveEqualityLike(expression.operands, equality, boundElement, ctx)
+}
+
+function resolveDeepEqualityNode(
+	expression: Extract<Expression, { op: 'deep-equality' }>,
+	boundElement: ResolvedValue,
+	ctx: ResolutionContext,
+): CheckResolutionValue {
+	return resolveEqualityLike(
+		expression.operands,
+		deepEquality,
+		boundElement,
+		ctx,
+	)
+}
+
+function resolveContainmentNode(
+	expression: Extract<Expression, { op: 'containment' }>,
+	boundElement: ResolvedValue,
+	ctx: ResolutionContext,
+): CheckResolutionValue {
+	const [containerOperand, candidateOperand] = expression.operands
+	const container = ctx.resolveOperand(
+		containerOperand,
+		boundElement,
+		ctx.artifactPath,
+	)
+	const candidate = ctx.resolveOperand(
+		candidateOperand,
+		boundElement,
+		ctx.artifactPath,
+	)
+	if (
+		anyOperandEmpty(
+			[
+				{ operand: containerOperand, resolved: container },
+				{ operand: candidateOperand, resolved: candidate },
+			],
+			ctx.pointerDenotesCollection,
+		)
+	) {
+		return emptyCollectionResult()
+	}
+	// The array-narrowing guard applies only to a `{ referenceSet }` candidate.
+	// A `{ pointer }` or `{ literal }` candidate legally resolves to a scalar
+	// (the stdout/stderr substring shape), and `containment` already handles
+	// both shapes.
+	if ('referenceSet' in candidateOperand && !Array.isArray(candidate)) {
+		throw new Error(
+			"containment's referenceSet-candidate guard: a { referenceSet } " +
+				'operand must resolve to an array, which the schema guarantees. ' +
+				'The injected ResolveOperand returned something else — either a ' +
+				'resolver integration bug, or an unresolved reference set that ' +
+				'slipped past compilation (unresolved-reference-set); this guard ' +
+				'cannot tell the two apart.',
+		)
+	}
+	return booleanResult(containment(container, candidate, ctx.artifactPath))
+}
+
+function resolveExistenceNode(
+	expression: Extract<Expression, { op: 'existence' }>,
+	boundElement: ResolvedValue,
+	ctx: ResolutionContext,
+): CheckResolutionValue {
+	const [operand] = expression.operands
+	return resolveSingleOperand(operand, boundElement, ctx, (resolved) =>
+		existence(resolved, ctx.artifactPath),
+	)
+}
+
+function resolveAbsenceNode(
+	expression: Extract<Expression, { op: 'absence' }>,
+	boundElement: ResolvedValue,
+	ctx: ResolutionContext,
+): CheckResolutionValue {
+	const [operand] = expression.operands
+	return resolveSingleOperand(operand, boundElement, ctx, (resolved) =>
+		absence(resolved, ctx.artifactPath),
+	)
+}
+
+function resolveRegexNode(
+	expression: Extract<Expression, { op: 'regex' }>,
+	boundElement: ResolvedValue,
+	ctx: ResolutionContext,
+): CheckResolutionValue {
+	const [operand] = expression.operands
+	const { pattern } = expression
+	return resolveSingleOperand(operand, boundElement, ctx, (resolved) =>
+		regexMatch(resolved, pattern, ctx.regexMatchStepBudget, ctx.artifactPath),
+	)
+}
+
+function resolveSetMembershipNode(
+	expression: Extract<Expression, { op: 'set-membership' }>,
+	boundElement: ResolvedValue,
+	ctx: ResolutionContext,
+): CheckResolutionValue {
+	const [valueOperand, setOperand] = expression.operands
+	const value = ctx.resolveOperand(valueOperand, boundElement, ctx.artifactPath)
+	const resolvedSet = ctx.resolveOperand(
+		setOperand,
+		boundElement,
+		ctx.artifactPath,
+	)
+	if (
+		anyOperandEmpty(
+			[
+				{ operand: valueOperand, resolved: value },
+				{ operand: setOperand, resolved: resolvedSet },
+			],
+			ctx.pointerDenotesCollection,
+		)
+	) {
+		return emptyCollectionResult()
+	}
+	// The set position needs the `JsonValue[]` the schema already guarantees
+	// here. Narrow at runtime so a broken resolver fails loudly.
+	if (!Array.isArray(resolvedSet)) {
+		throw new Error(
+			"set-membership's set-operand guard: its SetOperand position must " +
+				'resolve to an array, which the schema guarantees. The injected ' +
+				'ResolveOperand returned something else — either a resolver ' +
+				'integration bug, or an unresolved reference set that slipped past ' +
+				'compilation (unresolved-reference-set); this guard cannot tell the ' +
+				'two apart.',
+		)
+	}
+	return booleanResult(setMembership(value, resolvedSet, ctx.artifactPath))
+}
+
+function resolveOrderingNode(
+	expression: Extract<Expression, { op: 'ordering' }>,
+	boundElement: ResolvedValue,
+	ctx: ResolutionContext,
+): CheckResolutionValue {
+	const [operand] = expression.operands
+	const { key, order } = expression
+	return resolveSingleOperand(operand, boundElement, ctx, (resolved) =>
+		ordering(resolved, key, order, ctx.artifactPath),
+	)
+}
+
+function resolveCountToleranceNode(
+	expression: Extract<Expression, { op: 'count-tolerance' }>,
+	boundElement: ResolvedValue,
+	ctx: ResolutionContext,
+): CheckResolutionValue {
+	const [operand] = expression.operands
+	const { expected, tolerance, relative } = expression
+	return resolveSingleOperand(operand, boundElement, ctx, (resolved) =>
+		countTolerance(resolved, expected, tolerance, relative, ctx.artifactPath),
+	)
+}
+
+function resolveShapeNode(
+	expression: Extract<Expression, { op: 'shape' }>,
+	boundElement: ResolvedValue,
+	ctx: ResolutionContext,
+): CheckResolutionValue {
+	const [operand] = expression.operands
+	const { descriptor } = expression
+	return resolveSingleOperand(operand, boundElement, ctx, (resolved) =>
+		shape(resolved, descriptor, ctx.artifactPath),
+	)
+}
+
+// One entry per `Expression['op']`; the mapped type below fails to compile if
+// an op is missing or misassigned, since each key demands the handler typed
+// for exactly that variant. That check covers the closed union at compile
+// time; it cannot see an out-of-union op arriving at runtime, which is what
+// the guard in `resolveNode` is for.
+const operatorHandlers: { [Op in Expression['op']]: OperatorHandler<Op> } = {
+	not: resolveNotNode,
+	all: resolveAllNode,
+	any: resolveAnyNode,
+	'for-all': resolveQuantifierNode,
+	'for-any': resolveQuantifierNode,
+	'covers-by-key': resolveCoversByKeyNode,
+	equality: resolveEqualityNode,
+	'deep-equality': resolveDeepEqualityNode,
+	containment: resolveContainmentNode,
+	existence: resolveExistenceNode,
+	absence: resolveAbsenceNode,
+	regex: resolveRegexNode,
+	'set-membership': resolveSetMembershipNode,
+	ordering: resolveOrderingNode,
+	'count-tolerance': resolveCountToleranceNode,
+	shape: resolveShapeNode,
+}
+
 /**
  * The recursive worker behind `resolveCheck`. Every `RuntimeFault` a leaf
  * operator throws (only `regexMatch`'s two, currently) propagates undecorated;
@@ -247,219 +588,24 @@ function resolveNode(
 	boundElement: ResolvedValue,
 	ctx: ResolutionContext,
 ): CheckResolutionValue {
-	switch (expression.op) {
-		case 'not': {
-			const [child] = expression.operands
-			const resolved = resolveNode(child, boundElement, ctx)
-			return {
-				resolution: notOf(resolved.resolution),
-				// Decision 9: a fold, not a firing — `resolved` still carries the
-				// condition if it is the one that tripped it.
-				introductionCondition: null,
-				children: [resolved],
-			}
-		}
-		case 'all': {
-			// Total, never short-circuiting, over resolutions: every operand is
-			// recursed into before folding, whatever an earlier one resolved. This
-			// does NOT hold over faults (P5): `.map()` still stops at the first
-			// operand whose own resolution throws, so a later operand's fault is
-			// never reached once an earlier one throws. "Total" is about not
-			// skipping a resolved child's evaluation to short-circuit the fold, not
-			// about running every operand past a thrown fault.
-			const children = expression.operands.map((operand) =>
-				resolveNode(operand, boundElement, ctx),
-			)
-			return {
-				resolution: allOf(children.map((child) => child.resolution)),
-				// Decision 9: a fold. The tripped child, if any, carries the
-				// condition itself, in `children`.
-				introductionCondition: null,
-				children,
-			}
-		}
-		case 'any': {
-			const children = expression.operands.map((operand) =>
-				resolveNode(operand, boundElement, ctx),
-			)
-			return {
-				resolution: anyOf(children.map((child) => child.resolution)),
-				// Decision 9: a fold, same reasoning as `all` above.
-				introductionCondition: null,
-				children,
-			}
-		}
-		case 'for-all':
-		case 'for-any':
-			return resolveQuantifier(
-				expression.op,
-				expression.collection,
-				expression.predicate,
-				boundElement,
-				ctx,
-			)
-		case 'covers-by-key':
-			// Decision 5: a gap in this dispatch table, never a condition over the
-			// evidence, so a plain Error and no RuntimeFault. Story 3.3 replaces
-			// this branch.
-			throw new Error(
-				"'covers-by-key' has no operator implementation yet. Story 3.3 " +
-					'builds it; resolveCheck should never be handed this node before ' +
-					'then.',
-			)
-		case 'equality':
-			return resolveEqualityLike(
-				expression.operands,
-				equality,
-				boundElement,
-				ctx,
-			)
-		case 'deep-equality':
-			return resolveEqualityLike(
-				expression.operands,
-				deepEquality,
-				boundElement,
-				ctx,
-			)
-		case 'containment': {
-			const [containerOperand, candidateOperand] = expression.operands
-			const container = ctx.resolveOperand(
-				containerOperand,
-				boundElement,
-				ctx.artifactPath,
-			)
-			const candidate = ctx.resolveOperand(
-				candidateOperand,
-				boundElement,
-				ctx.artifactPath,
-			)
-			if (
-				anyOperandEmpty(
-					[
-						{ operand: containerOperand, resolved: container },
-						{ operand: candidateOperand, resolved: candidate },
-					],
-					ctx.pointerDenotesCollection,
-				)
-			) {
-				return emptyCollectionResult()
-			}
-			// The array-narrowing guard applies only to a `{ referenceSet }`
-			// candidate. A `{ pointer }` or `{ literal }` candidate legally resolves
-			// to a scalar (the stdout/stderr substring shape), and `containment`
-			// already handles both shapes.
-			if ('referenceSet' in candidateOperand && !Array.isArray(candidate)) {
-				throw new Error(
-					"containment's referenceSet-candidate guard: a { referenceSet } " +
-						'operand must resolve to an array, which the schema guarantees. ' +
-						'The injected ResolveOperand returned something else — either a ' +
-						'resolver integration bug, or an unresolved reference set that ' +
-						'slipped past compilation (unresolved-reference-set); this guard ' +
-						'cannot tell the two apart.',
-				)
-			}
-			return booleanResult(containment(container, candidate, ctx.artifactPath))
-		}
-		case 'existence': {
-			const [operand] = expression.operands
-			return resolveSingleOperand(operand, boundElement, ctx, (resolved) =>
-				existence(resolved, ctx.artifactPath),
-			)
-		}
-		case 'absence': {
-			const [operand] = expression.operands
-			return resolveSingleOperand(operand, boundElement, ctx, (resolved) =>
-				absence(resolved, ctx.artifactPath),
-			)
-		}
-		case 'regex': {
-			const [operand] = expression.operands
-			const { pattern } = expression
-			return resolveSingleOperand(operand, boundElement, ctx, (resolved) =>
-				regexMatch(
-					resolved,
-					pattern,
-					ctx.regexMatchStepBudget,
-					ctx.artifactPath,
-				),
-			)
-		}
-		case 'set-membership': {
-			const [valueOperand, setOperand] = expression.operands
-			const value = ctx.resolveOperand(
-				valueOperand,
-				boundElement,
-				ctx.artifactPath,
-			)
-			const resolvedSet = ctx.resolveOperand(
-				setOperand,
-				boundElement,
-				ctx.artifactPath,
-			)
-			if (
-				anyOperandEmpty(
-					[
-						{ operand: valueOperand, resolved: value },
-						{ operand: setOperand, resolved: resolvedSet },
-					],
-					ctx.pointerDenotesCollection,
-				)
-			) {
-				return emptyCollectionResult()
-			}
-			// The set position needs the `JsonValue[]` the schema already
-			// guarantees here. Narrow at runtime so a broken resolver fails loudly.
-			if (!Array.isArray(resolvedSet)) {
-				throw new Error(
-					"set-membership's set-operand guard: its SetOperand position must " +
-						'resolve to an array, which the schema guarantees. The injected ' +
-						'ResolveOperand returned something else — either a resolver ' +
-						'integration bug, or an unresolved reference set that slipped ' +
-						'past compilation (unresolved-reference-set); this guard cannot ' +
-						'tell the two apart.',
-				)
-			}
-			return booleanResult(setMembership(value, resolvedSet, ctx.artifactPath))
-		}
-		case 'ordering': {
-			const [operand] = expression.operands
-			const { key, order } = expression
-			return resolveSingleOperand(operand, boundElement, ctx, (resolved) =>
-				ordering(resolved, key, order, ctx.artifactPath),
-			)
-		}
-		case 'count-tolerance': {
-			const [operand] = expression.operands
-			const { expected, tolerance, relative } = expression
-			return resolveSingleOperand(operand, boundElement, ctx, (resolved) =>
-				countTolerance(
-					resolved,
-					expected,
-					tolerance,
-					relative,
-					ctx.artifactPath,
-				),
-			)
-		}
-		case 'shape': {
-			const [operand] = expression.operands
-			const { descriptor } = expression
-			return resolveSingleOperand(operand, boundElement, ctx, (resolved) =>
-				shape(resolved, descriptor, ctx.artifactPath),
-			)
-		}
-		default: {
-			// Runtime exhaustiveness guard (P16): `expression` is typed `never` here
-			// because every union member has its own case above. Reachable only from
-			// an out-of-union node (unvalidated input, or a future schema version) —
-			// fails loudly with the offending `op` rather than returning `undefined`
-			// and crashing obscurely at the call site.
-			const exhaustiveCheck: never = expression
-			throw new Error(
-				`resolveNode: unrecognized expression.op ${JSON.stringify((exhaustiveCheck as Expression).op)}`,
-			)
-		}
+	// `operatorHandlers` is keyed by the closed `Expression['op']` union, so its
+	// declared type has no `undefined` branch — TypeScript trusts every key is
+	// present. That trust does not bind the runtime: an out-of-union `op`
+	// (unvalidated input, or a future schema version) is where the old switch's
+	// `default` was reachable from, and is what the guard below still has to
+	// catch. `Object.hasOwn` matters here, not just a truthy check: a plain
+	// object literal inherits `Object.prototype`, so `op: 'constructor'` would
+	// otherwise resolve to `Object` itself and slip past an `if (!handler)`
+	// check silently.
+	if (!Object.hasOwn(operatorHandlers, expression.op)) {
+		throw new Error(
+			`resolveNode: unrecognized expression.op ${JSON.stringify((expression as { op?: unknown }).op)}`,
+		)
 	}
+	const handler = operatorHandlers[expression.op] as OperatorHandler<
+		Expression['op']
+	>
+	return handler(expression, boundElement, ctx)
 }
 
 /**
