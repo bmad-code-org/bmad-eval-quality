@@ -7,7 +7,7 @@ Short version here. The long reasoning lives in the code comments each step poin
 test honestly. An author writes a contract stating what to check; this library turns that contract
 into a brief telling the evaluator what to compare, without ever showing it the interaction plan (the
 step order, the step ids, the scripted call sequence). Sealed on purpose, so the verdict comes from
-reasoning over evidence, not from matching a script. The library itself never runs anyone: executing
+reasoning over evidence. The library itself never runs anyone: executing
 the system under test and the sealed evaluator is the caller's job, shown in the diagram below.
 Everything below is one piece of what the library produces: canonical bytes so two codebases agree on
 a hash (Step 2), the contract schema (Steps 3 to 5), and, starting at Step 6, the code that turns a
@@ -45,6 +45,7 @@ flowchart TD
 |    5 | Publish the schemas as JSON Schema files and prove them equivalent to the Zod source. |
 |    6 | Turn a declared direction into evaluator prose that names the call without naming the step. |
 |    7 | Catch sequencing prose an author smuggled into free text, after the brief is generated. |
+|    8 | Ten pure operators over resolved evidence: equality, membership, regex, and shape, fully specified. |
 
 Adding a step: follow `learning-path-template.md`.
 
@@ -294,7 +295,6 @@ is a rule a later epic cannot read, and an artifact with no schema is a caller g
 - `EvidenceArtifact` is the scored output. `evidenceArtifacts` on a finding is a list of references.
   Two different things one word apart.
 - `EvaluatorConfiguration` rejects a `trialIndex` key on purpose, and a test proves the rejection.
-  Here a missing field is the requirement, not an oversight.
 - `responseHeaders` is a name-to-value map while `responseBody` is the open container. A pointer
   reaches into the headers by name, so a bare number there would address nothing; a body may be a
   bare number and still be a body.
@@ -526,4 +526,78 @@ flowchart TD
 
   CODES --> AUDIT
   AUDIT --> TESTS
+```
+
+## Step 8: scalar operators over the evidence domain
+
+**What:** ten pure functions (`equality`, `deepEquality`, `containment`, `existence`, `absence`,
+`regexMatch`, `setMembership`, `ordering`, `countTolerance`, `shape`), each taking already-resolved
+evidence values and returning a plain `boolean`.
+
+**Why:** two implementations of one oracle's `check` must land on the same answer for every node, or
+the scoring model can't be trusted. This step nails that down operator by operator: what counts as
+equal, what counts as contained, what a regex match-step budget actually bounds. Real example:
+compare `9007199254740993` against an ordinary number and it just resolves `false`, the same as any
+other wrong answer, never a crash. Only comparing two objects or two arrays ever risks one. That
+keeps a broken system under test's bad number from crashing the whole run.
+
+**Rules:**
+
+- Every operator takes a `ResolvedValue` (`JsonValue | ABSENT`), never a `{pointer}`/`{literal}`/
+  `{referenceSet}` operand. Resolving those is a later epic's job.
+- `ABSENT` is a unique symbol, never `null`. `existence` reads false against it, `absence` true, and
+  every comparison false, even absent-against-absent.
+- `equality` reaches structural comparison (`digestArtifact`) only when both operands are the same
+  compound kind. Every other input, including a domain-violating scalar, resolves without ever
+  canonicalizing. `deepEquality` is unconditionally structural, so it can throw
+  `non-canonicalizable-value` where `equality` on the same inputs would just resolve `false`.
+- `regexMatch`'s step budget is a static two-tier gate, never a live step count: reject any
+  nested-quantifier shape outright, then bound a linear, character-class-aware estimate against the
+  declared budget.
+- Strip escaped characters before stripping character classes. Getting that order backward once let
+  an escaped bracket hide a real nested-quantifier group from both gate tiers, and the regex hung with
+  no fault thrown.
+- `shape`'s closed set is `permittedKeys` alone: a required key missing from it makes the descriptor
+  unsatisfiable.
+- `ordering`, `countTolerance`, and any operand that may denote a collection resolve `false` on a bare
+  `ABSENT`. That answer is correct only when the operand is not itself declared collection-typed; the
+  next story's wrapper handles the other case.
+- Every function's last parameter is `artifactPath: string`, even on the five that never throw (named
+  `_artifactPath`), so every operator shares one calling convention.
+
+**Read in this order:**
+
+1. `src/core/evaluate/resolved-value.ts`: the `ABSENT` sentinel and `ResolvedValue`.
+2. `src/core/evaluate/operators.ts`: the ten functions.
+3. `src/core/schemas/scoring-policy.ts`: `regexMatchStepBudget`, the field `regexMatch` reads.
+4. `src/core/schemas/faults.ts`: the two new runtime fault codes, `RUNTIME_FAULT_CODES`.
+5. `tests/evaluate/operators.test.ts`: every operator's accept, reject, and absent-operand case.
+
+**Watch out:**
+
+- This story's ten operators are two-valued. Three-valued `insufficient-evidence` resolution, the
+  connectives, and the quantifiers are the next story's; nothing here decides that value.
+- `RUNTIME_FAULT_CODES` is not a full AD-28 mirror the way `FAILURE_CODES` mirrors AD-5: it only lists
+  codes with a genuine thrower, four of AD-28's ten rows. Nothing automates a cross-check against the
+  spine table yet.
+- The budget gate still can't see everything: a quantified overlapping alternation like `(?:a|a)+`
+  passes both tiers and can still hang. Catching it needs a real parser, so it's left as a named gap.
+  The default budget is 1,000,000, so ordinary-length evidence text doesn't fault on length alone, but
+  that also means the linear tier does almost no real work day to day; the structural
+  nested-quantifier check above is the actual backstop.
+
+**Story:** `_bmad-output/implementation-artifacts/3-1-scalar-operators-over-the-evidence-domain.md`
+
+```mermaid
+flowchart TD
+  RESOLVED["resolved-value.ts<br/>ABSENT + ResolvedValue"]
+  OPS["operators.ts<br/>ten pure functions"]
+  POLICY["scoring-policy.ts<br/>regexMatchStepBudget"]
+  FAULTS["faults.ts<br/>budget-exhausted, operator-cannot-accept-operand"]
+  TESTS["tests/evaluate/operators.test.ts<br/>accept + reject + absent per operator"]
+
+  RESOLVED --> OPS
+  POLICY --> OPS
+  FAULTS --> OPS
+  OPS --> TESTS
 ```

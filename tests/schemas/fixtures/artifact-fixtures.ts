@@ -482,6 +482,7 @@ export const scoringPolicyFixture: ScoringPolicy = {
 	minimumTrialCount: 3,
 	reExecutionCap: 2,
 	remediationCap: 3,
+	regexMatchStepBudget: 1000000,
 }
 
 const evidenceCommon = {
