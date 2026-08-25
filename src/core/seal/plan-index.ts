@@ -139,23 +139,36 @@ export type PlanIndex = {
 	stepsUsing: (operationId: string) => readonly InteractionStep[]
 }
 
+export type PlanIndexOptions = {
+	duplicateIds?: 'throw' | 'unresolved'
+}
+
 /**
  * Builds the index once over the whole plan and interface set. Neither
- * schema enforces `stepId`/`operationId` uniqueness, so a duplicate throws
- * here rather than resolving first-wins or last-wins and making the index
- * depend on array order (Decision 4).
+ * schema enforces `stepId`/`operationId` uniqueness. Strict callers keep the
+ * default throw instead of resolving by array order. Standalone structural
+ * checks can select `unresolved`, which removes every ambiguous identifier
+ * from lookup while preserving all unambiguous entries.
  */
 export function buildPlanIndex(
 	interactionPlan: readonly InteractionStep[],
 	permittedInterfaces: readonly PermittedInterface[],
+	options: PlanIndexOptions = {},
 ): PlanIndex {
+	const duplicateIds = options.duplicateIds ?? 'throw'
 	const steps = new Map<string, InteractionStep>()
+	const duplicateStepIds = new Set<string>()
 	const stepsByOperation = new Map<string, InteractionStep[]>()
 	for (const step of interactionPlan) {
-		if (steps.has(step.stepId)) {
-			throw new TypeError(`duplicate interaction step id: ${step.stepId}`)
+		if (steps.has(step.stepId) || duplicateStepIds.has(step.stepId)) {
+			if (duplicateIds === 'throw') {
+				throw new TypeError(`duplicate interaction step id: ${step.stepId}`)
+			}
+			steps.delete(step.stepId)
+			duplicateStepIds.add(step.stepId)
+		} else {
+			steps.set(step.stepId, step)
 		}
-		steps.set(step.stepId, step)
 		const group = stepsByOperation.get(step.operationId)
 		if (group === undefined) {
 			stepsByOperation.set(step.operationId, [step])
@@ -164,14 +177,23 @@ export function buildPlanIndex(
 		}
 	}
 	const operations = new Map<string, Operation>()
+	const duplicateOperationIds = new Set<string>()
 	for (const iface of permittedInterfaces) {
 		for (const operation of iface.operations) {
-			if (operations.has(operation.operationId)) {
-				throw new TypeError(
-					`duplicate operation id across permitted interfaces: ${operation.operationId}`,
-				)
+			if (
+				operations.has(operation.operationId) ||
+				duplicateOperationIds.has(operation.operationId)
+			) {
+				if (duplicateIds === 'throw') {
+					throw new TypeError(
+						`duplicate operation id across permitted interfaces: ${operation.operationId}`,
+					)
+				}
+				operations.delete(operation.operationId)
+				duplicateOperationIds.add(operation.operationId)
+			} else {
+				operations.set(operation.operationId, operation)
 			}
-			operations.set(operation.operationId, operation)
 		}
 	}
 	return {

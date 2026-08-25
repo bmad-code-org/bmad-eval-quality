@@ -206,6 +206,24 @@ describe('buildPlanIndex', () => {
 			TypeError,
 		)
 	})
+
+	it('can mark duplicate step and operation IDs unresolved for total structural checks', () => {
+		const firstStep = gateCInteractionPlan[0]
+		const firstInterface = gateCPermittedInterfaces[0]
+		if (firstStep === undefined || firstInterface === undefined) {
+			throw new Error('fixture missing a step or interface')
+		}
+		const index = buildPlanIndex(
+			[...gateCInteractionPlan, firstStep],
+			[...gateCPermittedInterfaces, firstInterface],
+			{ duplicateIds: 'unresolved' },
+		)
+		expect(index.stepOf(firstStep.stepId)).toBeUndefined()
+		const firstOperation = firstInterface.operations[0]
+		if (firstOperation === undefined)
+			throw new Error('fixture missing operation')
+		expect(index.operationOf(firstOperation.operationId)).toBeUndefined()
+	})
 })
 
 describe('resolveStep / resolveOperation', () => {

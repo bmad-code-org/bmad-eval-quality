@@ -1,7 +1,7 @@
 # Deferred work
 
-No items are currently open under "How to use this file." The list below records how each
-past item closed.
+Five items are currently open under "How to use this file." The prose above that section records
+how past items closed.
 
 The `in-review`/`review` status-vocabulary drift between story files' own `Status:` line and
 `sprint-status.yaml`'s `development_status` field was investigated on 2026-08-24 and found to be by
@@ -69,18 +69,22 @@ the outcome and reasoning live (the source spec) may stay in the closure prose a
 closure on record here already does it, so a later reader is not left to guess what was once open.
 The rule is about the entry, not about erasing that something was once open.
 
-<<<<<<< Updated upstream
-- source_spec: `_bmad-output/implementation-artifacts/2-3-the-emitted-brief-scripting-audit.md`
-  summary: Story files' `Status:` line uses `in-review` (this story and `2-1-the-direction-prose-generator.md`), a value `sprint-status.yaml`'s own documented vocabulary does not recognize (it documents `backlog`/`ready-for-dev`/`in-progress`/`review`/`done`, no `in-review`).
-  evidence: `sprint-status.yaml`'s STATUS DEFINITIONS header lists only `review`, never `in-review`, but both epic-2 stories written so far use `in-review` in their own `Status:` line; the drift is pre-existing (introduced by Story 2.1, not this story) and worth a single terminology decision so future stories don't keep choosing between the two. Left open: fixing it means changing the BMad skill's own routing keywords, out of a story's scope.
+- source_spec: `_bmad-output/implementation-artifacts/4-2-the-ad-5-registry-as-code-and-the-structural-compile-checks.md`
+  summary: AD-16's `forbidden-input-floor-incomplete` and `scoped-reference-resolves-forbidden` codes have no thrower anywhere in `src/`, and no epic currently owns closing that gap.
+  evidence: AD-16 binds "brief emission, ingest, isolation-manifest validation," never "compiler," so Epic 4 (which names exactly AD-26, AD-5, AD-28, AD-34, AD-39) correctly excludes it; FR7's own coverage-map row assigns AD-16 to Epic 2 alone, but Epic 2 is already `done` in `sprint-status.yaml` with neither code implemented. Story 4.2's own AC 1 named this gap explicitly but, by this project's standing convention against widening an already-scoped story, did not file it here — filed now so a later reader is not left to guess what was once open.
 
-- source_spec: `_bmad-output/implementation-artifacts/3-2-connectives-quantifiers-and-three-valued-resolution.md`
-  summary: `scripts/check-docs.mjs`'s `ROOTS` list never covers `_bmad-output/project-knowledge`, so edits to `learning-path-step-by-step.md` pass `check:docs` unchecked.
-  evidence: `check-docs.mjs:9-14` lists `README.md`, `_bmad-output/planning-artifacts`, and two `experiments/` files as its roots; the learning-path doc under `_bmad-output/project-knowledge` is outside all of them. Story 3.2's own Debug Log cites "check:docs → 53 files OK" as covering its learning-path edit, but that count never included the file. Pre-existing tooling gap, surfaced incidentally by this story's own code review.
+- source_spec: `_bmad-output/implementation-artifacts/4-2-the-ad-5-registry-as-code-and-the-structural-compile-checks.md`
+  summary: No compile-check tree walk (Story 4.1's `reachability.ts`, Story 4.2's `expression-legality.ts` and `oracle-alignment.ts`) caps recursion depth over nested `not`/`all`/`any` expressions, so an adversarially deep `check` tree crashes with an uncaught stack-overflow `RangeError` instead of a coded `StructuralFailure`.
+  evidence: `expression-legality.ts`'s `walkExpression` and `oracle-alignment.ts`'s `collectTargets` both recurse once per nested connective with no depth guard, generalizing the identical unguarded shape already present in Story 4.1's `reachability.ts`; no AD-4/AD-5 code names a nesting-depth-exceeded failure for connectives (only `quantifier-nesting-exceeded` is bounded), so today the only failure mode for excessive connective nesting is an uncoded engine crash.
 
-- source_spec: `_bmad-output/implementation-artifacts/3-2-connectives-quantifiers-and-three-valued-resolution.md`
-  summary: `regexMatchStepBudget` is never validated where `resolveCheck`/`regexMatch` consume it — a `NaN`, negative, or non-integer budget is silently accepted and disables or corrupts the budget gate rather than failing loudly.
-  evidence: `src/core/evaluate/resolution.ts:446`-area threading and `regexMatch`'s own `estimatedSteps > matchStepBudget` comparison read `NaN` as always-false, so a malformed budget value never trips the fault it exists to guard. Validation belongs on the scoring-policy schema upstream of this story (`core/schemas/scoring-policy.ts`), out of this story's own scope (no `core/schemas/` edit), but it interacts with this story's own budget threading and is worth a single validation pass at the source.
-=======
-(No entries are currently open.)
->>>>>>> Stashed changes
+- source_spec: `_bmad-output/implementation-artifacts/4-2-the-ad-5-registry-as-code-and-the-structural-compile-checks.md`
+  summary: Strict `buildPlanIndex` callers can still throw a raw uncaught `TypeError` on a schema-legal contract where two `permittedInterfaces` entries declare the same `operationId`.
+  evidence: `core/schemas/sealed-run-record.ts:171` states that `Operation.operationId` is scoped to one `PermittedInterface`, so two interfaces may declare the same one. Story 4.2's `checkQuantifierOverNonCollection` and `checkUndeclaredMandatoryInput` now select the index's duplicate-tolerant `unresolved` mode, which keeps those standalone checks total. Story 4.1's compile checks and other strict callers still use the default throw, and the contract grammar still has no interface identifier on an interaction step with which to disambiguate the operation. That remaining cross-artifact design gap stays open here.
+
+- source_spec: `_bmad-output/implementation-artifacts/4-2-the-ad-5-registry-as-code-and-the-structural-compile-checks.md`
+  summary: `checkOracleAlignment`'s relation-containment check (Decision 2) degenerates to near-vacuous whenever `direction.relation` names a connective or quantifier op, since almost any non-trivial `check` tree contains that op somewhere; no fixture demonstrates whether a genuine connective-relation mismatch is actually caught.
+  evidence: seven of the eight oracles in the shipped `gateCContract` fixture declare `relation: 'all'`, `'not'`, or `'for-all'` rather than a leaf operator; `ops.has(direction.relation)` (`oracle-alignment.ts`) passes as soon as that op name appears anywhere in the tree, with no requirement that it structurally correspond to the direction's own evidence targets. AC 7's own fixture 12 only exercises the leaf-operator case (`relation: 'existence'`).
+
+- source_spec: `_bmad-output/implementation-artifacts/4-2-the-ad-5-registry-as-code-and-the-structural-compile-checks.md`
+  summary: `checkQuantifierOverNonCollection` silently skips a nested quantifier's own bound-element-relative (`@`-prefixed) `collection` pointer instead of substituting it against the enclosing quantifier's bound element, so a nested quantifier over an actual scalar field goes structurally undetected.
+  evidence: `expression-legality.ts`'s `checkQuantifierOverNonCollection` returns early whenever `collection.pointer.startsWith('@')`; `oracle-alignment.ts`'s `substitutePointer` already solves the identical substitution problem for direction/check alignment but is not reused here. Decision 3 documents the check's `response-body`-channel scoping but never mentions this `@`-prefix narrowing, so it is undocumented as well as unenforced. `checkQuantifierNesting` permits one level of quantifier nesting, so the gap is reachable under today's own admitted grammar.

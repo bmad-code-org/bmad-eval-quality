@@ -53,6 +53,7 @@ flowchart TD
 |   10 | epic3-story2 | Connectives, quantifiers, and the empty-collection rule so equivalent spellings agree on empty evidence. |
 |   11 | epic3-story3 | `covers-by-key`, the closed vocabulary's one relational operator: a bijection so omission, padding, and extras all fail. |
 |   12 | epic4-story1 | The real pointer walk (RFC 6901, `@/`), and the two compile-time checks that catch an unreachable pointer before evaluation. |
+|   13 | epic4-story2 | Twelve more AD-5 codes: quantifier substitution, operand-kind legality, the interface inventory, and waiver completeness. |
 
 Adding a step: follow `learning-path-template.md`.
 
@@ -893,4 +894,98 @@ flowchart TD
   EVIDRES --> RESTESTS
   REACH --> REACHTESTS
   EVIDRES --> REACHTESTS
+```
+
+## Step 13 (epic4-story2): the AD-5 registry as code, twelve more compile-time checks
+
+**What:** five new modules, thirteen new functions, covering twelve of AD-5's twenty-one codes:
+per-behaviour declarations (`declarations.ts`), an oracle's direction against its check
+(`oracle-alignment.ts`), the rest of the `check`-tree legality rules (`expression-legality.ts`), the
+interface and interaction-plan inventory (`interface-inventory.ts`), and waiver completeness
+(`waivers.ts`).
+
+**Why:** Step 12 built the shared pointer walk and reachability. This step is everything else a
+`check` tree, an oracle, an interface list, or a waiver can get wrong on its own: one place per AD-5
+code, so two compilers can't invent two different answers for it.
+
+**Rules:**
+
+- `direction-check-misaligned` computes containment *after* substituting a quantifier's `@/…`
+  pointers against its own `collection` pointer, never over the raw operand text. `@/status` inside
+  `for-all(collection: /items, …)` only becomes `/items/status`, a target a direction can name, once
+  substituted. Skipping this step makes the containment check reject every oracle the quantifier
+  syntax exists to make writable.
+- The substitution is plain string concatenation, never decode-then-re-encode: the raw text after
+  `@` is already valid RFC 6901 escaping, so appending it onto a rooted pointer stays valid with no
+  round trip.
+- `direction.relation` containment reads as "appears anywhere in `check`'s set of `op` values." AD-3
+  says `check` "may be stronger" than the direction, so a relation matching a connective's inner
+  operand still counts, even when it isn't `check`'s own root op.
+- One shared tree walk, `walkExpression`, backs all five `expression-legality.ts` checks, the same
+  DRY shape Step 12's `reachability.ts` already uses between its own two checks, widened here to also
+  report an operand's op, position, and the live quantifier-nesting depth.
+- Operand-kind legality per `(op, position)` is transcribed straight from `expression.ts`'s own doc
+  comments. The schema admits every operand kind everywhere on purpose (AD-26 needs a reference set
+  representable outside its three legal spots so `malformed-operator-expression` stays fireable), so
+  the compiler is the only place that can reject a wrong kind.
+- `quantifier-over-non-collection` only reads the `response-body` channel, matching AD-5's own wording
+  ("the invoked operation's response descriptor"); every other channel stays permissive by design.
+- `duplicate-operation-signature` compares every operation across every permitted interface as one
+  flat list: AD-40 resolves a defect signature against the whole inventory, and a caller invoking two
+  interfaces against one target can still get an ambiguous response.
+- `checkRegexConstructs` scans the pattern text for a backreference or a lookbehind. It doesn't parse
+  the pattern, so either spelling appearing inside a character class can fool it, the same
+  imperfection `AnchoredPattern`'s own anchoring check already carries.
+- No ordering exists among these thirteen functions, or against Step 12's two: each is independently
+  correct for the one code it names, and a contract invalid under two codes at once reports whichever
+  a caller reaches first. One orchestration layer is a later story's job.
+
+**Read in this order:**
+
+1. `src/core/compile/declarations.ts`: `checkRequirementLinkage`, `checkObservableSuccessCriterion`.
+2. `src/core/compile/oracle-alignment.ts`: `substitutePointer`, `collectTargets`, `checkOracleChannel`,
+   `checkOracleAlignment`.
+3. `src/core/compile/expression-legality.ts`: the shared `walkExpression`, `checkOperandLegality`,
+   `checkRegexConstructs`, `checkQuantifierNesting`, `checkQuantifierOverNonCollection`,
+   `checkReferenceSetResolution`.
+4. `src/core/compile/interface-inventory.ts`: `checkInterfaceKind`,
+   `checkDuplicateOperationSignature`, `checkUndeclaredMandatoryInput`.
+5. `src/core/compile/waivers.ts`: `checkWaiverCompleteness`.
+6. `tests/compile/oracle-alignment.test.ts`: `gateCContract`'s O-004, the load-bearing proof that
+   substitution is necessary at all (its direction target appears nowhere as raw text in its check).
+
+**Watch out:**
+
+- Two functions can legitimately disagree with each other about which code fires first on one
+  operand (`checkOperandLegality` and `checkReferenceSetResolution` on a `{ referenceSet }` operand
+  that is both illegal-position and undeclared). Neither coordinates with the other by design.
+- `checkUndeclaredMandatoryInput` takes no `strict` parameter and always enforces; whether it is even
+  called is a future orchestrator's decision.
+- AD-16's forbidden-input-floor and scoped-reference codes have no thrower anywhere in `src/` yet.
+  A pre-existing Epic 2 gap, named in this story's own AC 1 and left for a later story: closing it is
+  out of Epic 4's stated scope.
+
+**Story:** `_bmad-output/implementation-artifacts/4-2-the-ad-5-registry-as-code-and-the-structural-compile-checks.md`
+
+```mermaid
+flowchart TD
+  DECL["declarations.ts<br/>checkRequirementLinkage,<br/>checkObservableSuccessCriterion"]
+  ORACLE["oracle-alignment.ts<br/>checkOracleChannel,<br/>checkOracleAlignment (post-substitution)"]
+  EXPR["expression-legality.ts<br/>shared walkExpression +<br/>five checks"]
+  IFACE["interface-inventory.ts<br/>checkInterfaceKind,<br/>checkDuplicateOperationSignature,<br/>checkUndeclaredMandatoryInput"]
+  WAIVER["waivers.ts<br/>checkWaiverCompleteness"]
+  EVIDRES2["evidence-resolution.ts (Step 12)<br/>makePointerDenotesCollection"]
+  PLANIDX2["plan-index.ts (Step 12)<br/>buildPlanIndex, parseEvidenceTarget"]
+
+  PLANIDX2 --> EXPR
+  PLANIDX2 --> IFACE
+  EVIDRES2 --> EXPR
+
+  subgraph NOTE["no ordering among these five modules, or against Step 12's two"]
+    DECL
+    ORACLE
+    EXPR
+    IFACE
+    WAIVER
+  end
 ```

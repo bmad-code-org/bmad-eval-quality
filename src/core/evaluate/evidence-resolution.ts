@@ -144,7 +144,7 @@ function tokensEqual(a: readonly string[], b: readonly string[]): boolean {
 /**
  * Only `response-body` can ever answer `true` (AD-19: `collectionLocations`
  * is the only declared-collection surface, scoped to the body alone). The
- * `PlanIndex` builds lazily, on first call. A contract can carry a
+ * `PlanIndex` builds lazily on first call unless the caller supplies one. A contract can carry a
  * schema-admitted duplicate step or operation id, and building the index at
  * construction time would throw before this function ever runs. A `@/`
  * pointer, an undeclared step, and an undeclared operation all answer
@@ -155,8 +155,9 @@ function tokensEqual(a: readonly string[], b: readonly string[]): boolean {
  */
 export function makePointerDenotesCollection(
 	contract: EvalContract,
+	providedIndex?: PlanIndex,
 ): PointerDenotesCollection {
-	let index: PlanIndex | undefined
+	let index = providedIndex
 	const getIndex = (): PlanIndex => {
 		index ??= buildPlanIndex(
 			contract.interactionPlan,
