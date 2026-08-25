@@ -1,12 +1,8 @@
-// The walk of AD-5's twenty-one codes, plus AD-28's schema-version-mismatch fault.
-//
-// The rule: where AD-5 gives the compiler a literal code, the schema ADMITS the
-// shape and Epic 4 or Epic 5 rejects it. A schema tightened past a code does not
-// make the product safer — it converts a coded, artifact-path-carrying
-// structural error into an anonymous schema-parse-failure fault, and the two
-// vocabularies are disjoint.
-//
-// Operator arity is the one deliberate exception, and the epic chose it.
+// Walks AD-5's twenty-one codes plus AD-28's schema-version-mismatch fault.
+// Rule: where AD-5 gives the compiler a literal code, the schema admits the
+// shape and Epic 4 or Epic 5 rejects it; tightening past a code would convert
+// a coded, artifact-path-carrying structural error into an anonymous
+// schema-parse-failure fault. Operator arity is the one deliberate exception.
 
 import { describe, expect, it } from 'vitest'
 import { z } from 'zod'
@@ -302,11 +298,10 @@ describe('AD-5 code walk — every coded shape stays representable', () => {
 	})
 
 	// This code's enforcement point is Story 2.3's post-generation
-	// `auditBriefScripting`, over the emitted `SealedEvaluatorBrief`, not
-	// `compile` over the contract — but the same walk applies: `scope` and
-	// `negativeDomain` are opaque author-facing strings with no content
-	// constraint, so the contract schema admits sequencing vocabulary here too,
-	// and the audit (not this schema) is what rejects it once generated.
+	// `auditBriefScripting` over the emitted brief, not `compile` over the
+	// contract. `scope`/`negativeDomain` are opaque author-facing strings with
+	// no content constraint, so the contract schema admits sequencing
+	// vocabulary here; the audit rejects it once generated.
 	it('brief-exceeds-scripting-bound: a direction scope/negativeDomain carrying sequencing vocabulary parses; the post-generation brief audit rejects it, not the contract schema', () => {
 		admits((contract) => {
 			contract.oracles[0].direction.scope =
@@ -331,9 +326,7 @@ describe('operator arity — the one deliberate exception, recorded', () => {
 
 describe('cross-field rules with no AD-5 code, unenforced in v0 by decision', () => {
 	// AC 8's named exception: "where no code exists the schema enforces" collides
-	// with "prefer pushing cross-field rules to the compiler". These are named
-	// rather than silently dropped, so a later epic adds a code deliberately
-	// instead of discovering the hole.
+	// with "prefer pushing cross-field rules to the compiler".
 	it('admits a behaviour naming an oracle identifier no oracle declares', () => {
 		admits((contract) => {
 			contract.behaviors[0].oracles = ['O-999']
@@ -392,11 +385,10 @@ describe('cross-field rules with no AD-5 code, unenforced in v0 by decision', ()
 	})
 })
 
-// Story 1.4 extends the list above. Each entry is a rule some AD states, that
-// no AD-5 code names, and that no schema over ONE artifact can decide. Most of
-// them because they compare two artifacts, and the rest because the operand
-// they read is prose. They are named here rather than silently dropped, so a
-// later epic adds a code deliberately instead of discovering the hole.
+// Story 1.4 extends the list above: rules some AD states that no AD-5 code
+// names and no schema over ONE artifact can decide, mostly because they
+// compare two artifacts. Named here rather than silently dropped, so a later
+// epic adds a code deliberately instead of discovering the hole.
 describe('cross-artifact and cross-field rules this story leaves unenforced', () => {
 	const admitsArtifact = (
 		artifact: keyof typeof INTERCHANGE_ARTIFACTS,

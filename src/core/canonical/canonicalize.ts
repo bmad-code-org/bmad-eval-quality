@@ -6,17 +6,15 @@ import {
 	MAX_NESTING_DEPTH,
 } from './value-domain.ts'
 
-// RFC 8785 (JCS) canonical serialization, written in-house per AD-27. Numbers
-// render per ECMAScript Number::toString (native JSON.stringify on individual
-// numbers IS the JCS algorithm; no hand-rolled Ryū needed), object keys sort by
-// UTF-16 code unit, strings use JSON.stringify escaping, arrays keep order,
-// no insignificant whitespace. The digest is over these UTF-8 bytes.
+// RFC 8785 (JCS) canonical serialization, written in-house per AD-27; native
+// JSON.stringify on individual numbers already implements JCS's number
+// algorithm, so no hand-rolled Ryū is needed.
 //
-// Validation is fused into serialization as ONE traversal: every key, value,
-// and structure check runs against a single ownKeys/descriptor snapshot, and
-// exactly what was validated is what gets emitted. A second traversal would
-// reopen the TOCTOU channel (an accessor or lying Proxy answering the
-// emit-time read differently than the validation read), so there is none.
+// Validation is fused into serialization as one traversal over a single
+// ownKeys/descriptor snapshot, so exactly what was validated is what gets
+// emitted. A second traversal would reopen the TOCTOU channel: an accessor or
+// lying Proxy could answer the emit-time read differently than the
+// validation read.
 export function canonicalize(value: unknown, artifactPath: string): Uint8Array {
 	return new TextEncoder().encode(
 		serialize(value, artifactPath, '$', new Set(), 0),
@@ -40,8 +38,8 @@ function serialize(
 			return value ? 'true' : 'false'
 		case 'number':
 			assertDomainNumber(value, artifactPath, location)
-			// Individual scalars only: whole-value JSON.stringify drops undefined
-			// properties, honours toJSON, and does not sort keys.
+			// Whole-value JSON.stringify would drop undefined properties, honour
+			// toJSON, and skip key sorting, so this runs per scalar instead.
 			return JSON.stringify(value)
 		case 'string':
 			assertDomainString(value, artifactPath, location)

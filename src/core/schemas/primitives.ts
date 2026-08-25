@@ -118,15 +118,12 @@ export type JsonValue =
 	| JsonValue[]
 	| { [key: string]: JsonValue }
 
-// The one shape whose keys belong to the caller rather than to this project,
-// so `additionalProperties` is schema-valued rather than false here alone.
-//
-// Hand-rolled with z.lazy rather than z.json(): z.json() exports as
-// `$defs.JsonValue = { "$ref": "#/$defs/__schema0" }` plus a generated
-// `__schema0`, which pins a generated name into Story 1.5's drift check and
-// pushes the description to each use site as a sibling of `$ref` instead of
-// onto the shared definition. AD-36 needs the numeric restriction expressed on
-// the definition itself.
+// The one shape whose keys belong to the caller, so `additionalProperties` is
+// schema-valued rather than false here alone. Hand-rolled with z.lazy rather
+// than z.json(): the latter exports a generated `$defs` ref name that Story
+// 1.5's drift check would pin and that separates the description from the
+// shared definition, and AD-36 needs the numeric restriction on the
+// definition itself.
 export const JsonValue: z.ZodType<JsonValue> = z
 	.lazy(() =>
 		z.union([
@@ -146,10 +143,10 @@ export const JsonValue: z.ZodType<JsonValue> = z
 
 /**
  * AD-4's `shape` descriptor and AD-19's request channel both need "required
- * keys, permitted keys, and per-key JSON type, never an embedded JSON Schema";
- * spelled once here so two copies of one triple don't drift apart. Caller-keyed
- * by plain key name, never by pointer. `.describe()` returns a new schema
- * rather than mutating this one, so each use site can add its own description.
+ * keys, permitted keys, and per-key JSON type, never an embedded JSON
+ * Schema"; spelled once here so two copies of one triple don't drift apart.
+ * `.describe()` returns a new schema rather than mutating this one, so each
+ * use site can add its own description.
  */
 export const KeyTypeMap = z
 	.record(KeyName, JsonTypeName.nullable())

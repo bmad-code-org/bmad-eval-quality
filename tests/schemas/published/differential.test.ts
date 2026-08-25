@@ -16,12 +16,10 @@ import { corpusOf, generationOf, rejectInstancesOf, seedsOf } from './corpus.ts'
 import { pointerMatchesSchemaPath } from './keyword-occurrences.ts'
 import { publishedDocumentOf, publishedValidatorOf } from './validator.ts'
 
-// One named budget rather than a bare literal repeated per call site, matching
-// `SWEEP_TIMEOUT_MS` in keyword-mutation.test.ts. It applies to the corpus
-// tests too: whichever test calls `generationOf('eval-contract')` first pays
-// the whole cold-cache generation, measured at about 1.1 s here and CPU-bound,
-// so leaving those on Vitest's 5 s default puts checks three and four one busy
-// runner away from going red for a timing reason rather than a schema one.
+// One named budget rather than a bare literal, matching `SWEEP_TIMEOUT_MS` in
+// keyword-mutation.test.ts. Whichever test calls `generationOf('eval-contract')`
+// first pays the whole cold-cache generation (~1.1 s, CPU-bound); Vitest's 5 s
+// default risks a timing failure rather than a schema one on a busy runner.
 const CORPUS_TIMEOUT_MS = 120_000
 
 describe('the corpus itself, so a hollow differential cannot pass', () => {
@@ -44,18 +42,16 @@ describe('the corpus itself, so a hollow differential cannot pass', () => {
 		CORPUS_TIMEOUT_MS,
 	)
 
-	// The generator never emits a non-finite number, and every member survives a
-	// JSON round trip byte-identically — the AD-36 numeric-domain restraint the
-	// ledger's `json-value-numeric-domain` entry demands of this check.
+	// The generator never emits a non-finite number, and every member survives
+	// a JSON round trip byte-identically: the AD-36 numeric-domain restraint the
+	// ledger's `json-value-numeric-domain` entry demands.
 	it.each(INTERCHANGE_ARTIFACT_KEYS)(
 		'%s corpus is JSON-clean: finite numbers, lossless round trip',
 		(key) => {
-			// NaN and Infinity stringify to null, so a lossless round trip is the
-			// finiteness proof; the deliberate just-outside-safe-range integers the
-			// `maximum` mutants use sit on exact binary64 values and survive too.
-			// toStrictEqual, not toEqual: toEqual ignores undefined-valued
-			// properties, so `{ a: undefined }` would pass although it is not
-			// JSON-representable.
+			// NaN and Infinity stringify to null, so a lossless round trip proves
+			// finiteness; the `maximum` mutants' near-max-safe integers survive too.
+			// toStrictEqual, not toEqual, which would silently ignore an
+			// undefined-valued property.
 			for (const member of corpusOf(key)) {
 				expect(
 					JSON.parse(JSON.stringify(member.value)),
@@ -111,8 +107,8 @@ describe('check three: the differential over generated inputs', () => {
 		expect(validate(nulled)).toBe(true)
 	})
 
-	// Cross-field rules are not-expressible and not enforced by Zod either, so
-	// they must produce no disagreement — confirmed rather than assumed, as the
+	// Cross-field rules aren't expressible or enforced by Zod either, so they
+	// must produce no disagreement: confirmed here, not merely assumed, as the
 	// ledger's lineage entries demand.
 	it('accepts a broken lineage biconditional on both sides', () => {
 		const validate = publishedValidatorOf('eval-contract')
@@ -171,19 +167,15 @@ describe('each injected ledger entry is paired with its own fixture (AD-13)', ()
 		return pointer
 	}
 
-	// A corpus that happens to cover them is not the same as a pairing that is
-	// asserted: for every injected keyword of every entry, the corpus member
-	// BUILT to violate that occurrence is rejected with that keyword, at that
-	// member's own instance path and at the entry's stated schema address.
+	// A corpus that happens to cover an entry is not the same as a pairing that
+	// is asserted: for every injected keyword, the corpus member BUILT to
+	// violate that occurrence must be rejected with that keyword, at its own
+	// instance path and the entry's stated schema address.
 	//
-	// Both halves are required. `pointerMatchesSchemaPath` reads ajv's
-	// def-relative `schemaPath` and documents one residual slack — two `$defs`
-	// entries sharing an internal path are indistinguishable from `schemaPath`
-	// alone — which it contains by requiring every call site to pin the instance
-	// path as well. This is the call site AD-13's pairing requirement rests on,
-	// so it pins it: the witness is looked up by `occurrencePointer` rather than
-	// found by scanning, and its `instancePointer` is asserted against the
-	// reported `instancePath`.
+	// `pointerMatchesSchemaPath` reads ajv's def-relative `schemaPath`, which
+	// has one residual slack (two `$defs` entries sharing an internal path are
+	// indistinguishable from `schemaPath` alone); pinning the instance path too
+	// closes it. This is the call site AD-13's pairing requirement rests on.
 	it.each(injectEntries)(
 		'$id has the fixture built for each of its injected keywords, rejected at its address',
 		(entry) => {

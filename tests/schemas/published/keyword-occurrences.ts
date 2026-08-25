@@ -1,9 +1,9 @@
-// One enumeration of mutable keyword occurrences, shared by the keyword-
-// mutation sweep (AC 8) and the mutant generator (AC 9), so the two checks
-// cannot disagree about what a "keyword occurrence" is; and one computed
-// exemption rule for the occurrences that are structurally unkillable, so the
-// exempt set is derived from the document rather than from a committed list a
-// schema change could quietly outgrow.
+// One enumeration of mutable keyword occurrences, shared by the
+// keyword-mutation sweep (AC 8) and the mutant generator (AC 9), so the two
+// checks cannot disagree about what a "keyword occurrence" is. One computed
+// exemption rule for occurrences that are structurally unkillable, derived
+// from the document rather than a committed list a schema change could
+// quietly outgrow.
 
 /** an RFC 6901 token, escaped. */
 export const escapeToken = (token: string): string =>
@@ -21,22 +21,22 @@ export const resolvePointer = (document: unknown, pointer: string): unknown => {
 }
 
 /**
- * Ajv reports `schemaPath` relative to the closest schema resource — an error
- * inside `$defs/Expression` arrives as `#/oneOf/0/...`, never as
- * `#/$defs/Expression/oneOf/0/...` — so an occurrence pointer matches a
+ * Ajv reports `schemaPath` relative to the closest schema resource: an error
+ * inside `$defs/Expression` arrives as `#/oneOf/0/...`, never
+ * `#/$defs/Expression/oneOf/0/...`. So an occurrence pointer matches a
  * reported path when the path is its def-relative suffix and the stripped
  * prefix is exactly one `$defs` entry (or empty, for root occurrences).
  *
- * Two tightenings, because a bare suffix rule over-matches: the fragment is
- * percent-decoded (ajv URI-encodes `schemaPath` while occurrence pointers are
- * raw JSON Pointers), and a def-relative reading is accepted only when the
- * same relative path names nothing at the document root — a root error such
- * as `#/oneOf/0/minItems` must not falsely witness
- * `/$defs/Foo/oneOf/0/minItems`. Residual slack, documented rather than
- * hidden: two `$defs` entries sharing an internal path are indistinguishable
- * from `schemaPath` alone; every call site also pins the instance path, and
- * no such collision exists in the current export (the three-way equality
- * checks would surface one as an unreachable/exempt mismatch).
+ * Two tightenings against a bare suffix rule over-matching: the fragment is
+ * percent-decoded (ajv URI-encodes `schemaPath`; occurrence pointers are raw
+ * JSON Pointers), and a def-relative reading is accepted only when the same
+ * relative path names nothing at the document root, so a root error like
+ * `#/oneOf/0/minItems` can't falsely witness `/$defs/Foo/oneOf/0/minItems`.
+ *
+ * Residual slack: two `$defs` entries sharing an internal path are
+ * indistinguishable from `schemaPath` alone. Every call site also pins the
+ * instance path, which closes it; no such collision exists in the current
+ * export.
  */
 export const pointerMatchesSchemaPath = (
 	document: Record<string, unknown>,
@@ -54,9 +54,9 @@ export const pointerMatchesSchemaPath = (
 	if (!occurrencePointer.endsWith(relative)) return false
 	const prefix = occurrencePointer.slice(0, -relative.length)
 	if (!/^\/\$defs\/[^/]+$/.test(prefix)) return false
-	// conservative: when the relative path is ambiguous between the root and a
-	// def, refuse the def reading — a wrongly refused genuine match surfaces as
-	// an unreachable-vs-exempt inequality, never as a silent false witness
+	// conservative: when the relative path is ambiguous between root and def,
+	// refuse the def reading. A wrongly refused match surfaces as an
+	// unreachable-vs-exempt inequality, never as a silent false witness.
 	return resolvePointer(document, relative) === undefined
 }
 
@@ -70,11 +70,11 @@ export type KeywordOccurrence = {
 
 /**
  * Everything that is not a keyword occurrence: identity and annotation keys,
- * plus the two container maps whose member names are field names rather than
- * keywords — a walk that treated `properties` names as keywords would try to
- * delete a field called `type` from an artifact and report nonsense, and
- * deleting a whole `properties` object is a multi-violation mutation, which is
- * the shape AD-13's per-constraint proof rule forbids.
+ * plus the two container maps whose member names are field names, not
+ * keywords (treating `properties` names as keywords would try to delete a
+ * field called `type` and report nonsense; deleting the whole `properties`
+ * object is a multi-violation mutation, which AD-13's per-constraint rule
+ * forbids).
  */
 export const EXCLUDED_KEYS: ReadonlySet<string> = new Set([
 	'$schema',
@@ -143,11 +143,10 @@ const deepEqual = (a: unknown, b: unknown): boolean =>
 	JSON.stringify(a) === JSON.stringify(b)
 
 /**
- * The `$defs` names whose definition is the universal-JSON acceptor: `anyOf`
- * over string, number, boolean, null, array of itself, and object of itself —
- * the Consistency Conventions' named exception. Such a subschema admits every
- * JSON instance, so no mutant can violate any keyword inside it and no
- * deletion inside it changes a verdict.
+ * The `$defs` names whose definition is the universal-JSON acceptor (`anyOf`
+ * over string, number, boolean, null, array of itself, object of itself: the
+ * Consistency Conventions' named exception). Such a subschema admits every
+ * JSON instance, so no deletion inside it can change a verdict.
  */
 export const universalAcceptorDefs = (
 	document: Record<string, unknown>,
@@ -190,8 +189,8 @@ const PRIMITIVE_OF: Record<string, (value: unknown) => boolean> = {
 /**
  * The computed exempt set: occurrences whose deletion can change no verdict,
  * derived from the document by rule and never hand-listed. Both AC 8's
- * survivor list and AC 9's unreachable list are asserted equal to this —
- * a survivor outside it is a missing fixture, and an exempt occurrence that
+ * survivor list and AC 9's unreachable list are asserted equal to this: a
+ * survivor outside it is a missing fixture, and an exempt occurrence that
  * becomes killable means a schema changed under the exemption.
  */
 export const exemptOccurrencePointers = (
@@ -208,11 +207,10 @@ export const exemptOccurrencePointers = (
 		typeof (value as { $ref?: unknown }).$ref === 'string' &&
 		acceptors.has((value as { $ref: string }).$ref.replace('#/$defs/', ''))
 	// 6. A subschema reached only through the universal acceptor's admission:
-	//    a node carrying nothing but an `anyOf` in which one branch is the bare
-	//    `{ "$ref": "#/$defs/JsonValue" }` admits every instance (the nullable
-	//    value container, e.g. `responseBody`), so the `anyOf` and everything
-	//    inside its sibling branches constrain nothing. This is AC 8's rule 1
-	//    "or inside a subschema reached only through a $ref to it", computed.
+	//    a node carrying nothing but an `anyOf` where one branch is the bare
+	//    `{ "$ref": "#/$defs/JsonValue" }` admits every instance (e.g. the
+	//    nullable `responseBody` container), so nothing inside it constrains
+	//    anything. AC 8's rule 1, computed.
 	const vacuousUnionPrefixes: string[] = []
 	const findVacuousUnions = (node: unknown, pointer: string): void => {
 		if (node === null || typeof node !== 'object' || Array.isArray(node)) return
@@ -294,12 +292,10 @@ export const exemptOccurrencePointers = (
 			exempt.add(occurrence.pointer)
 			continue
 		}
-		// 7. An `items` subschema under `maxItems: 0`, and the `items` keyword
-		//    itself on such a node: the array must be empty for the node to admit
-		//    anything (the clean-control probe's `defects`), so no element ever
-		//    exists for the item schema to constrain and deleting any of it
-		//    changes no verdict. Computed like the others; a Story 1.5
-		//    construction recorded in the story's Dev Agent Record.
+		// 7. An `items` subschema under `maxItems: 0`, and `items` itself on such
+		//    a node: the array must be empty (e.g. the clean-control probe's
+		//    `defects`), so no element ever exists for the item schema to
+		//    constrain. Story 1.5 construction, computed like the others.
 		const deadItems = (nodePointer: string): boolean => {
 			const holder = resolvePointer(document, nodePointer) as
 				| Record<string, unknown>
@@ -347,13 +343,12 @@ export const exemptOccurrencePointers = (
 			continue
 		}
 		// 5. A `type` made redundant by a sibling `const` or `enum` whose every
-		//    member is of the stated type. Zod exports `z.literal` and `z.enum`
-		//    with both keys, and any instance the type rejects is already rejected
-		//    by the const or enum, so the deletion changes no verdict. This clause
-		//    is a Story 1.5 construction: AC 8 named four rules, the sweep found
-		//    87 such occurrences surviving outside them, and the pinned decision
-		//    rule says to settle the gap here and record it rather than reopen the
-		//    architecture. Computed from the document like the other four.
+		//    member is of the stated type: Zod exports both keys together, and
+		//    any instance the type would reject is already rejected by the const
+		//    or enum, so deleting `type` changes no verdict. Story 1.5
+		//    construction: AC 8 named four rules, the sweep found 87 occurrences
+		//    outside them, settled here per the pinned decision rule rather than
+		//    reopening the architecture.
 		if (occurrence.keyword === 'type' && typeof value === 'string') {
 			const admits = PRIMITIVE_OF[value]
 			const members: unknown[] | undefined =

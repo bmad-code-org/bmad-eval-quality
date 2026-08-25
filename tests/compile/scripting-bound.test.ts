@@ -251,16 +251,14 @@ describe('checkScriptingBound: plan-exceeds-scripting-bound', () => {
 	})
 
 	it('fixture 20: two distinct steps sharing one stepId, each with a different valid anchor, count as two separate pairs rather than merging into one three-node component (review finding: graph nodes are keyed by array position, not stepId)', () => {
-		// Four genuine, uniquely-identified pairs contribute disjointPairCount=4
-		// on their own (== DISJOINT_PAIR_MAX, legal by itself, matching fixture
-		// 18). Two more steps, both spelled `dup-child` (schema-legal: `stepId`
-		// carries no uniqueness constraint), each anchor to a distinct root
-		// (`anchor-1`, `anchor-2`). Un-merged, those add two more disjoint
-		// pairs (total 6, over the bound: throws). If the two `dup-child` nodes
-		// wrongly collapsed into one graph node keyed by the string "dup-child",
-		// the scan would instead find one three-node component
-		// {anchor-1, dup-child, anchor-2} — size 3, not counted as a pair — and
-		// the total would stay at 4, incorrectly passing.
+		// Four genuine, uniquely-identified pairs alone give disjointPairCount=4
+		// (== DISJOINT_PAIR_MAX, legal, matching fixture 18). Two more steps,
+		// both spelled `dup-child` (schema-legal: `stepId` carries no uniqueness
+		// constraint), anchor to distinct roots and add two more disjoint pairs
+		// unmerged, for a total of 6 (over the bound: throws). If the two
+		// `dup-child` nodes wrongly collapsed into one graph node, the scan
+		// would instead find one three-node component, not a pair, and the
+		// total would incorrectly stay at 4.
 		const plan = [
 			...Array.from({ length: 4 }, (_, index) => [
 				step(`pair-${index + 1}a`, null),
@@ -279,13 +277,12 @@ describe('checkScriptingBound: plan-exceeds-scripting-bound', () => {
 	})
 
 	it('fixture 21: one three-node component alongside four genuine two-step pairs does not throw (review finding: pins disjointPairCount at exactly size === 2, catching a regression to size >= 2)', () => {
-		// Four genuine pairs alone sit at disjointPairCount=4 (== DISJOINT_PAIR_MAX,
-		// legal). Adding one three-node component (one anchor, two children,
-		// all uniquely identified — no stepId duplication involved here) must
-		// leave the count at 4, not 5: a component of size 3 is not a disjoint
-		// *pair*. A regression from `size === 2` to `size >= 2` would count it
-		// and push the total to 5, over the bound, throwing where this fixture
-		// requires no throw.
+		// Four genuine pairs alone give disjointPairCount=4 (== DISJOINT_PAIR_MAX,
+		// legal). Adding a three-node component (one anchor, two children, no
+		// stepId duplication) must leave the count at 4: a component of size 3
+		// is not a disjoint pair. A regression from `size === 2` to
+		// `size >= 2` would count it, pushing the total to 5 and wrongly
+		// throwing.
 		const plan = [
 			...Array.from({ length: 4 }, (_, index) => [
 				step(`pair-${index + 1}a`, null),

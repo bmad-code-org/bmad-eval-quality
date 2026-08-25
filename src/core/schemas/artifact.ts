@@ -30,18 +30,12 @@ type InterchangeArtifactEntry = {
 
 /**
  * The Structural Seed's inventory, closed at twelve, held as data: the
- * prior-art test and the constraint ledger's lineage-entry generation both
- * read it.
+ * prior-art test, the constraint ledger's lineage-entry generation, and
+ * Story 1.5's export walk all read it instead of a second hard-coded list.
  *
- * This module only consumes: it imports the twelve, but nothing under
- * `src/core/schemas/` imports it back, which is why the lineage fields live
- * in `lineage.ts` instead. All twelve modules import those fields, so holding
- * them here too would close an import cycle: a temporal-dead-zone
- * `ReferenceError` at module load, from whichever artifact module loaded
- * first.
- *
- * Story 1.5 walks this registry to decide what to export, writing no second
- * list, the same way it consumes `CONSTRAINT_LEDGER`.
+ * Lineage fields live in `lineage.ts`, not here, because all twelve schema
+ * modules import them; importing this registry back from any of those would
+ * close a circular import.
  */
 export const INTERCHANGE_ARTIFACTS = {
 	'eval-contract': {

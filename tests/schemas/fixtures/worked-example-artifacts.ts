@@ -1,22 +1,20 @@
-// The spike worked example, re-checked and NOT repaired. ADR-006 names it as
-// the architecture's only end-to-end evidence, so its two sealed artifacts are
-// transcribed here verbatim and checked against the settled shapes. What they
-// fail, and why, IS the record: only some of the failures are the retractions
-// the spine already carries, and repairing the artifact would delete the
-// evidence that the shapes and the worked chain disagree.
+// The spike worked example, re-checked and NOT repaired (ADR-006: the
+// architecture's only end-to-end evidence). Its two sealed artifacts are
+// transcribed here verbatim; what they fail, and why, IS the record, so
+// repairing the artifact would delete the evidence that the shapes and the
+// worked chain disagree.
 //
-// Transcribed in-memory rather than read from disk, per AD-30: `core/` is
-// tested only with in-memory artifact fixtures and no test performs filesystem
-// I/O at runtime. Pure ASCII, as the sources are.
+// Transcribed in-memory rather than read from disk (AD-30: `core/` uses only
+// in-memory fixtures, no filesystem I/O at runtime). Pure ASCII, as the
+// sources are.
 //
 // Source: _bmad-output/planning-artifacts/architecture/
 //         architecture-eval-quality-2026-07-29/spike-worked-example/
 //
-// These two are the named exception to the one-issue rule the per-constraint
-// reject corpus holds to: that rule governs single-constraint mutations and
-// cannot hold for a document that fails many ways at once. The full expected
-// issue list is asserted instead, so a shape change anywhere shows up here as a
-// changed list rather than as a still-green "did not parse".
+// These two are the named exception to the reject corpus's one-issue rule: a
+// document that fails many ways at once asserts its full expected issue list
+// instead, so a shape change anywhere shows up as a changed list rather than a
+// still-green "did not parse".
 
 export type WorkedExampleIssue = {
 	readonly path: readonly (string | number)[]
@@ -233,16 +231,12 @@ export const workedExampleSealedRunRecord: unknown = {
 }
 
 /**
- * Its sixty issues. Known failures, each one a real divergence rather than a
- * transcription slip: absent `parentDigest` and `revisionCount`; dispositions
- * carrying no `observationIds`, which AD-33 now requires; a finding-level
- * `provenance`, which AD-23 puts on the observation; the
- * `{ kind, reference, digest, visibility }` artifact-reference shape, which the
- * prior-art four-field union replaced; a defect finding with no
- * `quotedEvidence`, which AD-23 makes schema-required; the flat `callInputs`
- * map AD-26 records as revision 3's defect; observations missing the three
- * process channels and carrying no `responseHeaders` map at all; `resourceUse.costUsd` as a number;
- * and no `evidenceDisclosure` at all.
+ * Its sixty issues, each a real divergence rather than a transcription slip:
+ * absent lineage; dispositions missing `observationIds` (AD-33); finding-level
+ * `provenance` instead of observation-level (AD-23); the old four-field
+ * artifact-reference shape; a defect finding with no `quotedEvidence` (AD-23);
+ * the flat `callInputs` map (AD-26); missing process channels; `costUsd` as a
+ * number; no `evidenceDisclosure`.
  */
 export const WORKED_EXAMPLE_RECORD_ISSUES: readonly WorkedExampleIssue[] = [
 	{ path: ['parentDigest'], code: 'invalid_type' },
@@ -424,14 +418,13 @@ export const workedExampleEvidenceArtifact: unknown = {
 }
 
 /**
- * Its nineteen issues. `mode`, `contractVerdict`, `verdictBasis`, `trials`, and
- * `callerAttestedInputs` all parse unchanged, which is the half of the record
- * worth keeping. What fails: absent lineage; the scoring version carried as a
- * bare digest with none of AD-11's five named inputs; no `excludedProbeIds`;
- * outcomes with neither `selectedObservationIds` nor `checkResolution`;
- * `strength` with no `basis` and a one-key vector; the `rawCounts` block this
- * story drops as a second copy of what the vector already carries; and
- * remediation with no `lineageChain`.
+ * Its nineteen issues. `mode`, `contractVerdict`, `verdictBasis`, `trials`,
+ * and `callerAttestedInputs` parse unchanged. What fails: absent lineage; the
+ * scoring version as a bare digest missing AD-11's five named inputs; no
+ * `excludedProbeIds`; outcomes with neither `selectedObservationIds` nor
+ * `checkResolution`; `strength` with no `basis` and a one-key vector;
+ * `rawCounts` (dropped as a duplicate of the vector); remediation with no
+ * `lineageChain`.
  */
 export const WORKED_EXAMPLE_EVIDENCE_ISSUES: readonly WorkedExampleIssue[] = [
 	{ path: ['parentDigest'], code: 'invalid_type' },

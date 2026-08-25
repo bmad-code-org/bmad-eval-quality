@@ -226,12 +226,10 @@ describe('the Consistency Conventions, extended rather than restarted', () => {
 				if (seen.has(path)) return
 				seen.add(path)
 				// A record inside the value container is not a caller-keyed control
-				// map: Story 1.3 settled that for reference-set members on the same
+				// map: Story 1.3 settled this for reference-set members on the same
 				// reasoning, since the Conventions place "expression literals,
 				// declared reference-set members, and every ingested response body"
-				// in the container by name. Those are exactly the records whose value
-				// schema is JsonValue, so they are excluded by their value rather
-				// than by their path.
+				// in the container by name.
 				const valuedByJsonValue =
 					node.additionalProperties?.$ref === '#/$defs/JsonValue'
 				if (node.propertyNames !== undefined && !valuedByJsonValue) {
@@ -251,10 +249,6 @@ describe('the Consistency Conventions, extended rather than restarted', () => {
 			}
 			walk(document, '')
 		}
-		// The three fields a reader might mistake for new caller-keyed maps,
-		// `decodingParameters`, `responseBody`, and `responseHeaders`, are
-		// JsonValue-typed and therefore excluded above; `forbiddenInputAccounting`
-		// is a seven-key strict object and never had `propertyNames` at all.
 		expect(offenders).toEqual([])
 	})
 

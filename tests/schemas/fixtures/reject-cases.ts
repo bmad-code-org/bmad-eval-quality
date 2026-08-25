@@ -1,8 +1,7 @@
-// One reject fixture per constraint the schema itself enforces. Each is the
-// `everything populated` accept fixture mutated to violate exactly one
-// constraint, and each names the Zod issue path and code it must produce —
-// never a bare "did not parse", because a gate that cannot be shown to fail is
-// a gate that fails open.
+// One reject fixture per constraint the schema enforces: the `everything
+// populated` accept fixture mutated to violate exactly one constraint, with
+// the Zod issue path and code it must produce. Never a bare "did not parse":
+// a gate that can't be shown to fail is a gate that fails open.
 
 export type RejectCase = {
 	readonly id: string
@@ -12,29 +11,19 @@ export type RejectCase = {
 	readonly mutate: (contract: any) => void
 	readonly issuePath: readonly (string | number)[]
 	readonly issueCode: string
-	/**
-	 * The JSON Schema validation keyword the published schema must report for
-	 * this mutation (AD-13: "the test asserts the expected validator keyword and
-	 * instance path"). Derived by running ajv against the published document,
-	 * the way the 79 worked-example issues were derived, never predicted.
-	 */
+	/** the JSON Schema keyword the published schema must report (AD-13); derived by running ajv, never predicted. */
 	readonly keyword: string
 	/**
-	 * The RFC 6901 pointer into the instance, in the validator's spelling
-	 * (ajv 8 names the field `instancePath`; `dataPath` is the stale ajv 6
-	 * name). Asserted by containment in the error set, not as the single
-	 * error: a sixteen-branch `oneOf` reports every branch's failure.
+	 * The RFC 6901 instance pointer, in ajv 8's spelling (`instancePath`, not
+	 * the stale ajv 6 `dataPath`). Asserted by containment, since a
+	 * sixteen-branch `oneOf` reports every branch's failure.
 	 */
 	readonly instancePath: string
 	/**
-	 * The discriminating half of the reported error, for the keywords that name
-	 * a member rather than a location. `required` and `additionalProperties`
-	 * both report at the PARENT object, so `(keyword, instancePath)` alone does
-	 * not say which key was dropped or added, and a mutation of a different
-	 * member of the same object would satisfy the pair. `propertyNames` is the
-	 * same shape. Required for exactly those three keywords, asserted in
-	 * `tests/schemas/published/published-rejection.test.ts`, and derived by
-	 * running ajv like every other field here.
+	 * `required`, `additionalProperties`, and `propertyNames` report at the
+	 * PARENT object, so `(keyword, instancePath)` alone can't say which member
+	 * was mutated; this field discriminates. Required for exactly those three
+	 * keywords (asserted in published-rejection.test.ts).
 	 */
 	readonly errorParams?: Readonly<Record<string, string>>
 	/** set where one mutation legitimately produces more than one issue. */

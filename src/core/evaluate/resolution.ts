@@ -25,12 +25,11 @@ import { ABSENT, type ResolvedValue } from './resolved-value.ts'
 
 /**
  * Resolves one operand to its evidence value. `boundElement` is the element a
- * quantifier currently has bound, `ABSENT` outside any predicate — not `null`
- * (Decision 8): `JsonValue` already includes `null`, so only a third, distinct
- * value can tell "no active binding" apart from "bound to a JSON `null`
- * element." It is the only state `resolveCheck` threads through, so a `@/…`
- * operand has something to resolve against. Interpreting that form belongs to
- * AD-26's addressing grammar in Story 4.1; this type only fixes its shape.
+ * quantifier currently has bound, `ABSENT` outside any predicate: not `null`
+ * (Decision 8), since `JsonValue` already includes `null` and only a third,
+ * distinct value can tell "no active binding" apart from "bound to a JSON
+ * `null` element." Interpreting the `@/…` form itself belongs to AD-26's
+ * addressing grammar in Story 4.1; this type only fixes its shape.
  */
 export type ResolveOperand = (
 	operand: Operand,
@@ -160,7 +159,7 @@ function resolveQuantifier(
 ): CheckResolutionValue {
 	// Resolved once, before the loop, against whatever `boundElement` was
 	// already in scope (an outer quantifier's element if nested, `ABSENT` at
-	// the root) — never against an element this quantifier's own loop below
+	// the root): never against an element this quantifier's own loop below
 	// has not bound yet.
 	const collection = ctx.resolveOperand(
 		collectionOperand,
@@ -174,7 +173,7 @@ function resolveQuantifier(
 	) {
 		// One guard, three cases: ABSENT (Decision 3), a non-array type mismatch
 		// (Decision 4), and a genuinely empty array. All three collapse onto the
-		// same `empty-collection` value (Decision 11) — the evidence artifact
+		// same `empty-collection` value (Decision 11): the evidence artifact
 		// cannot tell which of the three fired. Separating them would need a
 		// second introduction-condition value, a schema change out of scope here.
 		return emptyCollectionResult()
@@ -256,7 +255,7 @@ function resolveNotNode(
 	const resolved = resolveNode(child, boundElement, ctx)
 	return {
 		resolution: notOf(resolved.resolution),
-		// Decision 9: a fold, not a firing — `resolved` still carries the
+		// Decision 9: a fold, not a firing. `resolved` still carries the
 		// condition if it is the one that tripped it.
 		introductionCondition: null,
 		children: [resolved],
@@ -271,12 +270,9 @@ function resolveConnective(
 	ctx: ResolutionContext,
 ): CheckResolutionValue {
 	// Total, never short-circuiting, over resolutions: every operand is
-	// recursed into before folding, whatever an earlier one resolved. This does
-	// NOT hold over faults (P5): `.map()` still stops at the first operand
-	// whose own resolution throws, so a later operand's fault is never reached
-	// once an earlier one throws. "Total" is about not skipping a resolved
-	// child's evaluation to short-circuit the fold, not about running every
-	// operand past a thrown fault.
+	// recursed into before folding, whatever an earlier one resolved. Not
+	// total over faults (P5): `.map()` still stops at the first operand whose
+	// own resolution throws, so a later operand's fault is never reached.
 	const children = expression.operands.map((operand) =>
 		resolveNode(operand, boundElement, ctx),
 	)
@@ -351,15 +347,12 @@ function resolveCoversByKeyNode(
 		)
 	}
 	// Decision 7: genuine emptiness (AD-4's "two empty collections" case,
-	// generalized to a single empty operand per the uniform reading Story 3.2
-	// already established) applies only once both operands are confirmed
-	// ordinary, present collections. ABSENT on either side, or a malformed
-	// `actual`, is a decisive `false` (Decision 1, Decision 2) and must
-	// outrank emptiness: the same priority `allOf` already gives a decisive
-	// `false` child over an `insufficient-evidence` sibling elsewhere in this
-	// file. Delegating straight to `coversByKey` for those two cases keeps the
-	// check single-sourced: the function already implements both as its own
-	// top guards, this code only routes around them.
+	// generalized to a single empty operand) applies only once both operands
+	// are confirmed ordinary, present collections; ABSENT or a malformed
+	// `actual` is a decisive `false` (Decision 1, Decision 2) that must
+	// outrank emptiness. Delegating to `coversByKey` for those two cases keeps
+	// the check single-sourced: it already implements both as its own top
+	// guards.
 	const bothPresentArrays =
 		expectedResolved !== ABSENT &&
 		actualResolved !== ABSENT &&
@@ -588,15 +581,12 @@ function resolveNode(
 	boundElement: ResolvedValue,
 	ctx: ResolutionContext,
 ): CheckResolutionValue {
-	// `operatorHandlers` is keyed by the closed `Expression['op']` union, so its
-	// declared type has no `undefined` branch — TypeScript trusts every key is
-	// present. That trust does not bind the runtime: an out-of-union `op`
-	// (unvalidated input, or a future schema version) is where the old switch's
-	// `default` was reachable from, and is what the guard below still has to
-	// catch. `Object.hasOwn` matters here, not just a truthy check: a plain
+	// `operatorHandlers` is keyed by the closed `Expression['op']` union, so
+	// TypeScript sees no `undefined` branch. That does not bind the runtime:
+	// an out-of-union `op` (unvalidated input, or a future schema version) is
+	// what this guard catches. `Object.hasOwn`, not a truthy check: a plain
 	// object literal inherits `Object.prototype`, so `op: 'constructor'` would
-	// otherwise resolve to `Object` itself and slip past an `if (!handler)`
-	// check silently.
+	// otherwise resolve to `Object` itself and slip past silently.
 	if (!Object.hasOwn(operatorHandlers, expression.op)) {
 		throw new Error(
 			`resolveNode: unrecognized expression.op ${JSON.stringify((expression as { op?: unknown }).op)}`,

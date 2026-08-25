@@ -1,12 +1,11 @@
 // Check one of four (Story 1.5, AC 5): the rejection suite run against the
 // published schema. AD-13: "every negative case is a valid positive fixture
 // mutated to violate exactly one target constraint, and the test asserts the
-// expected validator keyword and instance path." The Zod-side suites keep
-// asserting Zod issue paths and codes; this file is the published-schema half
-// of the same corpus.
+// expected validator keyword and instance path." This is the published-schema
+// half of the corpus the Zod-side suites already assert.
 //
 // Containment, not a single error, on purpose: with `allErrors: true` a
-// one-operand `equality` produces well over two hundred errors because
+// one-operand `equality` produces well over two hundred errors, since
 // `Expression` exports as a sixteen-branch `oneOf` and every branch reports
 // its own failure. The Zod-side "exactly one issue" rule is a Zod-side rule.
 
@@ -58,9 +57,9 @@ const PUBLISHED_REJECT_CASES: readonly {
 /**
  * The three keywords that report at the PARENT of the member they are about:
  * `required` names the dropped key, `additionalProperties` the added one, and
- * `propertyNames` the offending name, all in `params` rather than in
- * `instancePath`. For these, `(keyword, instancePath)` alone does not say which
- * member the mutation touched, so `errorParams` is required and asserted.
+ * `propertyNames` the offending name, all in `params`, not `instancePath`. So
+ * `(keyword, instancePath)` alone can't say which member was touched, which is
+ * why `errorParams` is required and asserted for these three.
  */
 const PARENT_REPORTING = new Set([
 	'required',
@@ -93,11 +92,10 @@ describe('the reject corpus, run against the published documents', () => {
 		expect(new Set(ids).size).toBe(ids.length)
 	})
 
-	// The published half must land where the Zod half lands. Containment inside
-	// an error set that can exceed two hundred entries is otherwise satisfiable
-	// by a coincidence from an unrelated `oneOf` branch, and this binds the two
-	// halves of one case together: the reported location is the location the
-	// mutation actually touched, not merely somewhere in the document.
+	// The published half must land where the Zod half lands. Containment alone,
+	// inside an error set that can exceed two hundred entries, is otherwise
+	// satisfiable by coincidence from an unrelated `oneOf` branch; this binds
+	// the reported location to the location the mutation actually touched.
 	it.each(PUBLISHED_REJECT_CASES)(
 		'$artifact/$id reports where its Zod issue path points',
 		({ keyword, instancePath, issuePath, id }) => {
@@ -208,16 +206,15 @@ describe('every accept fixture validates clean against its own published documen
 	})
 
 	// Twenty-five listings, nineteen distinct instances: six of the branch and
-	// probe-class fixtures ARE the artifact's accept fixture, by object identity
-	// rather than by resemblance (`accept/probe` is both `probe-class/defect`
-	// and `probe/seeded`, `probe-class/zero-action` is `probe/clean-control`,
-	// and `accept/artifact-reference`, `accept/evidence-artifact` and
+	// probe-class fixtures ARE the artifact's accept fixture, by object
+	// identity (`accept/probe` is both `probe-class/defect` and
+	// `probe/seeded`; `probe-class/zero-action` is `probe/clean-control`; and
+	// `accept/artifact-reference`, `accept/evidence-artifact`, and
 	// `accept/eval-contract` each appear once more under a branch or relevance
-	// id). `seedsOf` in corpus.ts dedupes by identity for exactly this reason;
-	// this list deliberately does not, so that every declared id is exercised
-	// under its own name. The distinct count is pinned so the enumeration cannot
-	// be read as broader coverage than it is, and so a fixture quietly collapsing
-	// into an alias of another shows up here.
+	// id). `seedsOf` in corpus.ts dedupes by identity; this list deliberately
+	// doesn't, so every declared id is exercised under its own name. The
+	// distinct count is pinned so a fixture quietly collapsing into an alias
+	// of another shows up here.
 	it('covers nineteen distinct instances behind those twenty-five ids', () => {
 		expect(
 			new Set(PUBLISHED_ACCEPT_FIXTURES.map((entry) => entry.value)).size,

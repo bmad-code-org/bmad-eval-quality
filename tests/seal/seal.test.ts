@@ -3,29 +3,25 @@ import { canonicalize } from '../../src/core/canonical/canonicalize.ts'
 import { EvalContract } from '../../src/core/schemas/eval-contract.ts'
 import { DIGEST_FORM } from '../../src/core/schemas/primitives.ts'
 import { SealedEvaluatorBrief } from '../../src/core/schemas/sealed-evaluator-brief.ts'
-import { seal } from '../../src/core/seal/seal.ts'
+import { seal, validateAssembledBrief } from '../../src/core/seal/seal.ts'
+import type { SealStage } from '../../src/core/stage-contracts.ts'
 import { gateCContract } from '../schemas/fixtures/gate-c-contract.ts'
 import { populatedContract } from '../schemas/fixtures/relevance-contracts.ts'
 
 // Re-derived through the schema's own `.parse()` rather than typed directly
 // as `EvalContract`, matching `tests/seal/fixtures.ts`'s established pattern:
-// `gateCContract`/`populatedContract` are declared `{...} satisfies
-// EvalContract`, and TypeScript's inference over a `permittedInterfaces[].
-// operations` array of dissimilar response/request shapes produces a
-// narrower per-literal union than `EvalContract`'s own `Record<string,
-// JsonTypeName | null>` fields, which fails a direct structural check with a
-// spurious error unrelated to this story. `.parse()` re-derives the type from
-// the schema definition instead and sidesteps the gap while also proving the
-// contract used below is itself schema-valid.
+// TypeScript's inference over a `permittedInterfaces[].operations` array of
+// dissimilar shapes is narrower than `EvalContract`'s own fields and fails a
+// spurious structural check. `.parse()` sidesteps that and proves the
+// contract is schema-valid.
 const sealableGateCContract = EvalContract.parse(gateCContract)
 const sealablePopulatedContract = EvalContract.parse(populatedContract)
 
 const decode = (bytes: Uint8Array): string => new TextDecoder().decode(bytes)
 
-// Only the fields the epic's byte-identical guarantee covers — never
+// Only the fields the epic's byte-identical guarantee covers: never
 // `contractDigest` or the lineage fields, which correctly track the literal
-// input rather than the reorder-invariant content (see the story's Design
-// Notes).
+// input, not the reorder-invariant content (see the story's Design Notes).
 function contentFieldsOf(brief: SealedEvaluatorBrief) {
 	const {
 		behaviors,
@@ -102,10 +98,9 @@ describe('seal: full-contract assembly', () => {
 		)
 		// A direct assertion, not only an incidental byte-identity check: the
 		// content-fields comparisons elsewhere pass regardless of whether this
-		// value is correct, since they only compare two `seal()` outputs
-		// against each other. `populatedContract.probeStepBound` is 8 —
-		// non-null, so this also proves the non-null case, not just null carry-
-		// through.
+		// value is correct, since they only compare two `seal()` outputs against
+		// each other. `populatedContract.probeStepBound` is 8, non-null, so this
+		// also proves the non-null case, not just null carry-through.
 		expect(brief.probeStepBound).toBe(sealablePopulatedContract.probeStepBound)
 		expect(brief.probeStepBound).toBe(8)
 	})
@@ -294,17 +289,13 @@ describe('seal: empty scopedResources carry-through', () => {
 
 describe('seal: internal self-validation', () => {
 	it("round-trips seal()'s own output through SealedEvaluatorBrief.safeParse() successfully and unchanged", () => {
-		// A positive-path sanity check only. It exercises seal()'s internal
-		// SealedEvaluatorBrief.parse() call with an already-valid assembled
-		// brief, so it cannot distinguish that call being present from its
-		// absence: deleting seal()'s entire try/catch/parse and replacing it
-		// with a bare `return brief` still passes this exact test, since only
-		// already-valid input is exercised here. The internal .parse() call's
-		// behavior on a hypothetically-invalid assembled brief isn't
-		// independently testable today without mocking (against this
-		// project's no-mock convention) or an artificial internal-corruption
-		// seam: the same gap this spec's own I/O matrix "Hypothetical internal
-		// corruption" row already documents and accepts.
+		// A positive-path sanity check only: exercising seal()'s internal
+		// SealedEvaluatorBrief.parse() call with already-valid input cannot
+		// distinguish that call being present from a bare `return brief`. Its
+		// behavior on a hypothetically-invalid assembled brief needs mocking
+		// (against this project's no-mock convention) or a corruption seam,
+		// neither of which exists; the gap is documented in the spec's own I/O
+		// matrix ("Hypothetical internal corruption").
 		const brief = seal(sealableGateCContract)
 		const result = SealedEvaluatorBrief.safeParse(brief)
 		expect(result.success).toBe(true)
@@ -313,6 +304,70 @@ describe('seal: internal self-validation', () => {
 		// `.default()`: the parsed value is structurally identical to the
 		// input, not merely schema-valid.
 		expect(result.data).toEqual(brief)
+	})
+
+	// Story 4.4 (AC 1 item 2): `seal()`'s own internal call is now
+	// `validateAssembledBrief`, exported for exactly this purpose: a direct
+	// invalid-assembled-brief regression the positive-path test above cannot
+	// provide, closing the gap that test's own comment names.
+	it('validateAssembledBrief rejects an invalid assembled value with a TypeError carrying the ZodError cause', () => {
+		const invalid = { ...seal(sealableGateCContract), commentary: 'leaked' }
+		expect(() => validateAssembledBrief(invalid)).toThrow(TypeError)
+		try {
+			validateAssembledBrief(invalid)
+			throw new Error('expected validateAssembledBrief to throw')
+		} catch (error) {
+			expect(error).toBeInstanceOf(TypeError)
+			expect((error as TypeError).cause).toBeDefined()
+		}
+	})
+
+	it('validateAssembledBrief returns the parsed brief unchanged on a valid value', () => {
+		const brief = seal(sealableGateCContract)
+		expect(validateAssembledBrief(brief)).toEqual(brief)
+	})
+
+	// The excess-key rejection above carries an empty Zod issue path, so it
+	// only ever exercises the "(root)" fallback. These two reach a nested
+	// path, which is what actually formats an array index as a bracket and an
+	// object key as a dotted segment; without them a regression that swapped
+	// the two would ship unnoticed.
+	it('names a nested failing field with the array index bracketed and the object key dotted', () => {
+		const invalid = structuredClone(seal(sealableGateCContract)) as {
+			directions: { text: string }[]
+		}
+		const first = invalid.directions[0]
+		if (first === undefined) throw new Error('fixture setup failed')
+		first.text = ''
+		expect(() => validateAssembledBrief(invalid)).toThrow(
+			/first at "directions\[0\]\.text"/,
+		)
+	})
+
+	it('names a failing array element by its bracketed index alone when the element is not an object', () => {
+		const invalid = structuredClone(seal(sealableGateCContract)) as {
+			safetyLimits: unknown[]
+		}
+		if (invalid.safetyLimits.length === 0) {
+			throw new Error('fixture setup failed')
+		}
+		invalid.safetyLimits[0] = 42
+		expect(() => validateAssembledBrief(invalid)).toThrow(
+			/first at "safetyLimits\[0\]"/,
+		)
+	})
+})
+
+// Story 4.4, AC 4: a type-level assignment proving the existing `seal`
+// implementation conforms to `stage-contracts.ts`'s `SealStage` shape. The
+// assignment itself is the compile-time proof (this would fail `npm run
+// typecheck` if `seal`'s signature ever drifted from `SealStage`), and the
+// call through the typed alias below is a runtime sanity check that the
+// conformance type didn't quietly narrow behavior.
+describe('seal: conforms to the SealStage conformance type (AD-34, AC 4)', () => {
+	it('assigns to SealStage and produces the same result called through that type', () => {
+		const stage: SealStage = seal
+		expect(stage(sealableGateCContract)).toEqual(seal(sealableGateCContract))
 	})
 })
 

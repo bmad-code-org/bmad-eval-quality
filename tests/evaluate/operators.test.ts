@@ -92,11 +92,12 @@ describe('equality', () => {
 		expect(equality([1, 2, 3], [1, 2, 4], PATH)).toBe(false)
 	})
 
-	// Decision 2's adopted design, proving Draft 3's and Draft 4's defects both
-	// stay closed. MAX_SAFE_INTEGER + 1 (2^53) is exactly representable as a
-	// double — no precision is lost forming the literal — but
-	// Number.isSafeInteger rejects it, so value-domain.ts's assertDomainNumber
-	// still faults on it, exactly as it would on a large server-generated ID.
+	// Decision 2's adopted design, closing both Draft 3's and Draft 4's
+	// defects. MAX_SAFE_INTEGER + 1 (2^53) is exactly representable as a
+	// double, so forming the literal loses no precision, but
+	// Number.isSafeInteger rejects it and value-domain.ts's
+	// assertDomainNumber faults on it, exactly as it would a large
+	// server-generated ID.
 	it('does not throw on a same-kind scalar pair carrying a domain violation (Draft 3 stays closed)', () => {
 		const unsafeInteger = Number.MAX_SAFE_INTEGER + 1
 		expect(() => equality(unsafeInteger, 200, PATH)).not.toThrow()
@@ -212,9 +213,9 @@ describe('containment', () => {
 	it('pins the documented literal-vs-referenceSet collision: an array-shaped candidate is always read as a subset check, never as a single element to find', () => {
 		// [1, 2] is literally an element of the container, but because the
 		// candidate is an array it is read as a set to reconcile against
-		// (Decision 3's flagged, undecidable-from-here ambiguity), not as a
-		// single element to search for — so this resolves false even though an
-		// element-search reading would resolve true.
+		// (Decision 3's flagged, undecidable-from-here ambiguity). This
+		// resolves false even though an element-search reading would resolve
+		// true.
 		expect(
 			containment(
 				[
@@ -333,14 +334,14 @@ describe('regexMatch', () => {
 	})
 
 	it('neutralizes escapes BEFORE stripping character classes, so an escaped bracket cannot hide a real nested-quantifier group', () => {
-		// Regression for a review-round-found unsafe defect: stripping character
-		// classes on the raw pattern would see the "[" of the escaped "\[",
-		// greedily consume through to the "]" of the escaped "\]" at the end,
-		// and swallow the real "(a+)+" nested-quantifier group into what it
-		// mistook for one big character class — hiding it from both tiers and
-		// letting compiled.test hang on catastrophic backtracking. Escape-
-		// neutralizing first means the structural tier sees the real group and
-		// throws unconditionally, exactly as it would for the unescaped shape.
+		// Regression for a review-round defect: stripping character classes on
+		// the raw pattern would see the escaped "\[", greedily consume through
+		// to the escaped "\]" at the end, and swallow the real "(a+)+"
+		// nested-quantifier group into what it mistook for one big character
+		// class, hiding it from both tiers and letting compiled.test hang on
+		// catastrophic backtracking. Escape-neutralizing first means the
+		// structural tier sees the real group and throws unconditionally, as
+		// it would for the unescaped shape.
 		const fault = faultOf(() =>
 			regexMatch('a', '^\\[(a+)+\\]$', 1_000_000, PATH),
 		)
@@ -350,12 +351,11 @@ describe('regexMatch', () => {
 
 	it('still resolves the documented character-class residual to the smaller, correct estimate now that escapes are neutralized first', () => {
 		// "^[a\]b+]$" is a single class matching one of a/]/b/+, with no real
-		// quantifier anywhere — the "+" is a class member, not a repetition.
-		// Escape-neutralizing before the class strip means the escaped "]" no
-		// longer confuses the class boundary, so this now estimates 1 * length
-		// (50), not the inflated 2 * length (100) an escape-blind strip would
-		// have produced; either way this fixture proves the smaller, correct
-		// estimate is what the implementation actually computes.
+		// quantifier: the "+" is a class member, not a repetition.
+		// Escape-neutralizing before the class strip keeps the escaped "]"
+		// from confusing the class boundary, so this estimates 1 * length (50)
+		// rather than the inflated 2 * length (100) an escape-blind strip
+		// would produce.
 		const value = 'x'.repeat(50)
 		expect(() => regexMatch(value, '^[a\\]b+]$', 60, PATH)).not.toThrow()
 		expect(regexMatch(value, '^[a\\]b+]$', 60, PATH)).toBe(false)
@@ -410,8 +410,8 @@ describe('ordering', () => {
 	})
 
 	it('permits ties: non-strict comparison, not strict < / >', () => {
-		// Proof this matters: changing the operator's own <=/>= to strict </>
-		// makes this fail where the function should resolve true.
+		// Changing the operator's own <=/>= to strict </> would make this
+		// fail where it should resolve true.
 		const tiedStrings = [
 			{ id: 'r-1', capturedAt: '2026-01-02T00:00:00Z' },
 			{ id: 'r-2', capturedAt: '2026-01-02T00:00:00Z' },
@@ -535,7 +535,7 @@ describe('shape', () => {
 			types: {},
 		}
 		// Satisfies requiredKeys (both present), but 'secret' is not in the
-		// closed permittedKeys set — unsatisfiable by construction.
+		// closed permittedKeys set: unsatisfiable by construction.
 		expect(() =>
 			shape({ id: 'x', secret: 'y' }, contradictory, PATH),
 		).not.toThrow()
@@ -574,8 +574,8 @@ describe('shape', () => {
 			permittedKeys: ['id'],
 			types: { id: 'string' as const },
 		}
-		// 'id' is not required, and is omitted here — the per-key type check
-		// must never fire against a key value does not carry at all.
+		// 'id' is not required, and is omitted here: the per-key type check
+		// must never fire against a key the value does not carry at all.
 		expect(shape({}, optionallyTyped, PATH)).toBe(true)
 	})
 
@@ -638,11 +638,10 @@ describe('coversByKey', () => {
 	})
 
 	// This is the pure function's own answer for two empty collections: a
-	// vacuous bijection is a correct true, and it has no insufficient-evidence
-	// to return. resolution.test.ts's dispatch-level fixture for the identical
-	// shape asserts insufficient-evidence instead — that is resolveNode's own
-	// genuine-empty-array interception firing before this function ever runs,
-	// not a contradiction of this expectation.
+	// vacuous bijection is a correct true, with no insufficient-evidence to
+	// return. resolution.test.ts's dispatch-level fixture for the identical
+	// shape asserts insufficient-evidence instead, because resolveNode's own
+	// genuine-empty-array interception fires before this function ever runs.
 	it('resolves true for two empty collections (empty-set), a vacuous bijection at the pure-function level', () => {
 		expect(coversByKey([], [], 'id', 'id', PATH)).toBe(true)
 	})

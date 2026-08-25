@@ -9,10 +9,10 @@ import { generateMutants } from './mutant-generator.ts'
 import { publishedDocumentOf, publishedValidatorOf } from './validator.ts'
 
 // Whichever test calls `generationOf('eval-contract')` first pays the whole
-// cold-cache generation, measured at about 1.1 s here and CPU-bound. Vitest's
-// 5 s default leaves roughly a 4x margin on a shared runner, so the tests that
-// touch eval-contract carry the same named budget the differential and sweep
-// files already use, rather than being the suite's accidental timing canaries.
+// cold-cache generation (~1.1 s, CPU-bound); Vitest's 5 s default leaves
+// roughly a 4x margin on a shared runner. Same named budget the differential
+// and sweep files use, so these tests aren't the suite's accidental timing
+// canaries.
 const GENERATION_TIMEOUT_MS = 120_000
 
 const mutantFor = (
@@ -98,9 +98,9 @@ describe('hand-checked mutants, one per mutation family', () => {
 		expect((mutant!.value as any)['zz-undeclared']).toBeDefined()
 	})
 
-	// The boolean discriminator has no rejected single-violation mutant — the
-	// flipped boolean is the sibling branch's discriminator — so its pairing is
-	// a witness accepted intact and rejected once the const is deleted.
+	// The boolean discriminator has no rejected single-violation mutant (the
+	// flipped boolean is the sibling branch's discriminator), so its pairing is
+	// a witness: accepted intact, rejected once the const is deleted.
 	it('pairs the boolean oneOf discriminator with an accepted flip witness', () => {
 		const mutant = mutantFor(
 			'probe',

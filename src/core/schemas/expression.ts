@@ -185,15 +185,12 @@ export type Expression =
 	| { op: 'for-any'; collection: Operand; predicate: Expression }
 
 /**
- * `check` is a recursive discriminated union on `op`. Arity is enforced here
- * as fixed-length tuples, the one deliberate exception to the admit-rule and
- * the epic's own choice: AD-13 verified constraint injection specifically for
- * arity. So `malformed-operator-expression`'s arity limb is schema-covered in
- * v0; its live limbs are the rejected regex constructs and the operand-type
+ * `check` is a recursive discriminated union on `op`. Arity is enforced as
+ * fixed-length tuples, the one deliberate exception to the admit-rule (AD-13
+ * verified constraint injection specifically for arity), so
+ * `malformed-operator-expression`'s arity limb is schema-covered in v0; its
+ * live limbs are the rejected regex constructs and the operand-type
  * violations the schema deliberately does not narrow.
- *
- * Declared before its members so they can reference it; the lazy body runs
- * after module initialization, by which time they exist.
  *
  * Carries `.meta({ id })` for the same reason `JsonValue` does: without it
  * the tree exports as a generated `$defs.__schema0`, pinning a positional
@@ -230,11 +227,11 @@ export const Expression: z.ZodType<Expression> = z
 // AD-4 requires each operator to declare "a fixed arity and operand types in
 // the published schema". Arity is structural, as fixed-length tuples; operand
 // types cannot be, since narrowing a position would delete
-// `malformed-operator-expression`'s operand-type limb. So the types are
-// *declared* here, in text that survives the export, and Epic 4 enforces what
-// the text says. AD-36's numeric domain gets the same treatment on
-// `JsonValue`, for the same reason: a requirement to express something in the
-// published schema isn't satisfied by a note in an implementation artifact.
+// `malformed-operator-expression`'s operand-type limb. The types are
+// therefore declared here in text that survives the export, and Epic 4
+// enforces what the text says. AD-36's numeric domain gets the same
+// treatment on `JsonValue`: a note in an implementation artifact does not
+// satisfy a requirement to express something in the published schema.
 const ADMIT_RULE =
 	"Every position admits the full operand union on purpose. AD-26 makes a reference-set operand outside its three legal positions — `covers-by-key`'s expected operand, and the set operand of `set-membership` or `containment` — fail compilation under `malformed-operator-expression`, which only stays fireable if the other positions admit it. Epic 4 enforces the legality stated here; the schema does not narrow it."
 

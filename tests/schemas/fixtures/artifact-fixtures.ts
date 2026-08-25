@@ -1,10 +1,8 @@
-// One accept fixture per interchange artifact, each typed against its own
-// schema so a re-spelling fails the typecheck before it reaches a test, plus
-// one positive fixture per branch of every discriminated union. Coverage is not
-// measured on this pin: `@vitest/coverage-v8` is not installed and zero new
-// dependencies are allowed, so every branch is instead exercised by a named
-// fixture, which is why the enumeration is asserted complete rather than
-// trusted.
+// One accept fixture per interchange artifact, typed against its own schema
+// so a re-spelling fails the typecheck before it reaches a test, plus one
+// positive fixture per branch of every discriminated union. Branch coverage
+// isn't measured by tooling (no `@vitest/coverage-v8`), so the fixture
+// enumeration is asserted complete instead.
 
 import type { ArtifactReference } from '../../../src/core/schemas/artifact-reference.ts'
 import type { EvaluatorConfiguration } from '../../../src/core/schemas/evaluator-configuration.ts'
@@ -66,9 +64,9 @@ export const privateArtifactManifestFixture: PrivateArtifactManifest = {
 			privateRef: 'opaque:spike-labels-0001',
 			digest: digestOf(7),
 			artifactKind: 'human-label',
-			// Both nullable members exercised on the second entry: `null` spells
-			// "belongs to no single run" and "no sanitization applied", and neither
-			// state may be reachable only by omitting a key.
+			// Both nullable members exercised here: `null` spells "belongs to no
+			// single run" and "no sanitization applied"; neither is reachable by
+			// omitting the key.
 			publicSafeRunId: null,
 			sanitizationPolicy: null,
 		},
@@ -163,9 +161,9 @@ export const sealedRunRecordFixture: SealedRunRecord = {
 			note: null,
 		},
 		{
-			// AD-33 requires an unsupported disposition to stay representable so the
-			// scorer can invalidate it rather than believe it, which is why the
-			// identifier list is required and permitted to be empty.
+			// AD-33: an unsupported disposition stays representable so the scorer
+			// can invalidate it; the identifier list is therefore required but may
+			// be empty.
 			oracleId: 'O-003',
 			disposition: 'not-attempted',
 			observationIds: [],
@@ -296,8 +294,8 @@ export const isolationManifestFixture: IsolationManifest = {
 		'builder-transcript': withheld,
 		'implementation-logs': withheld,
 		'comparator-results': withheld,
-		// AD-16 makes a prohibited input an invalidating condition at ingest, not a
-		// parse failure, so `withheld: false` has to parse.
+		// AD-16 treats a prohibited input as an invalidating condition caught at
+		// ingest; the schema itself still has to parse `withheld: false`.
 		'human-labels': {
 			withheld: false,
 			note: 'A label file was mounted read-only and is disclosed here.',
@@ -362,10 +360,9 @@ export const cleanControlProbe: Probe = {
 	parentDigest: null,
 	revisionCount: 0,
 	probeId: 'P-002',
-	// `zero-action` rather than `defect`: a `defect` class beside
-	// `expectedClean: true` is a contradiction the scorer reads off the pair, and
-	// it belongs in the unenforced-in-v0 admissions rather than in an accept
-	// fixture.
+	// probeClass is `zero-action` here: `defect` paired with
+	// `expectedClean: true` is a contradiction the scorer reads off the pair,
+	// which belongs among the unenforced-in-v0 admissions.
 	probeClass: 'zero-action',
 	expectedClean: true,
 	behaviorId: 'B-001',
@@ -377,7 +374,7 @@ export const cleanControlProbe: Probe = {
 	defects: [],
 }
 
-// A canary indicts the fixture rather than seeding a defect, which is why the
+// A canary indicts the fixture without seeding a defect, which is why the
 // `expectedClean: false` branch carries no minimum on `defects`.
 export const canaryProbe: Probe = {
 	...seededProbe,
@@ -449,9 +446,9 @@ export const preflightVerdictFixture: PreflightVerdict = {
 }
 
 /**
- * The state the artifact exists to report. AD-10 makes a failed pre-flight
- * invalidate the run rather than become a contract verdict, so the failing
- * shape has to parse as readily as the passing one, and nothing was parsing it.
+ * The state the artifact exists to report. AD-10: a failed pre-flight
+ * invalidates the run instead of becoming a contract verdict, so the failing
+ * shape must parse as readily as the passing one.
  */
 export const failingPreflightVerdict: PreflightVerdict = {
 	...preflightVerdictFixture,
@@ -591,11 +588,9 @@ const evidenceCommon = {
 	'mode' | 'productionVerdict' | 'exitCode'
 >
 
-// AD-21 fixes the exit code per verdict: PASS, WAIVED, and CONCERNS exit zero
-// and FAIL exits two. `exitCode` therefore cannot sit in the shared block, and
-// a fixture pairing FAIL with zero would contradict the rule `verdict.ts`
-// states. The agreement itself is a cross-field rule the schema admits, and it
-// is on the unenforced-in-v0 list.
+// AD-21 fixes the exit code per verdict (PASS/WAIVED/CONCERNS exit zero, FAIL
+// exits two), so `exitCode` can't sit in the shared block. The cross-field
+// agreement itself is unenforced-in-v0.
 export const productionEvidenceArtifact: EvidenceArtifact = {
 	...evidenceCommon,
 	exitCode: 2,
@@ -700,10 +695,9 @@ export const ARTIFACT_ACCEPT_FIXTURES = {
  * schema and that the count matches the branch count read off the schemas.
  */
 /**
- * Probe-class coverage, enumerated so no class value ships unparsed. AD-9 closes
- * the set at four, and AD-7 reads two of them, `canary` and a clean control, as
- * the exclusions from the strength vector; a class no test parses is a class
- * nobody has checked, and `canaryProbe` was exactly that.
+ * Probe-class coverage, enumerated so no class value ships unparsed. AD-9
+ * closes the set at four; AD-7 excludes `canary` and the clean control from
+ * the strength vector.
  */
 export const PROBE_CLASS_FIXTURES = [
 	{ id: 'probe-class/defect', probeClass: 'defect', value: seededProbe },

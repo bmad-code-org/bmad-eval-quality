@@ -81,16 +81,12 @@ describe('AC 3: the Gate D Arm 2 reconstruction (content-equivalence, not a gold
 				gateDReconstruction.permittedInterfaces,
 			),
 		)
-		// The operation named via the derived-reference vocabulary.
 		expect(text).toContain('search capsules')
-		// The universal-quantification framing `for-all` implies.
 		expect(text).toMatch(/every element/i)
-		// `negativeDomain`, framed as a defect (capitalized at its leading letter).
 		expect(text).toContain(
 			'A returned capsule that does not satisfy the supplied query',
 		)
 		expect(text).toContain('is treated as a defect')
-		// scope, inserted with only its leading letter shaped.
 		expect(text).toContain('One search/filter endpoint response')
 	})
 })

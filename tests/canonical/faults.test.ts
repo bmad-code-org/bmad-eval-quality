@@ -1,5 +1,35 @@
 import { describe, expect, it } from 'vitest'
-import { RuntimeFault } from '../../src/core/schemas/faults.ts'
+import {
+	RUNTIME_FAULT_CODES,
+	RuntimeFault,
+} from '../../src/core/schemas/faults.ts'
+
+describe('RUNTIME_FAULT_CODES: the complete AD-28 registry', () => {
+	it('holds all ten codes, in the architecture table order, each unique', () => {
+		expect(RUNTIME_FAULT_CODES).toEqual([
+			'schema-parse-failure',
+			'schema-version-mismatch',
+			'non-canonicalizable-value',
+			'digest-mismatch',
+			'budget-exhausted',
+			'port-failure',
+			'port-contract-violation',
+			'forbidden-target',
+			'aborted',
+			'operator-cannot-accept-operand',
+		])
+		expect(new Set(RUNTIME_FAULT_CODES).size).toBe(RUNTIME_FAULT_CODES.length)
+	})
+
+	it.each(RUNTIME_FAULT_CODES)(
+		'constructs a RuntimeFault carrying code %s',
+		(code) => {
+			const fault = new RuntimeFault(code, 'artifacts/example.json', 'detail')
+			expect(fault.code).toBe(code)
+			expect(fault).toBeInstanceOf(Error)
+		},
+	)
+})
 
 describe('RuntimeFault', () => {
 	it('is a thrown Error carrying a stable machine code and the artifact path', () => {

@@ -65,9 +65,11 @@
     "generate:schemas": "node scripts/generate-schemas.ts",
     "check:schemas": "node scripts/check-schemas.ts",
     "check:ad5-registry": "node scripts/check-ad5-registry.ts",
+    "check:ad28-registry": "node scripts/check-ad28-registry.ts",
+    "check:layers": "node scripts/check-dependency-direction.ts",
     "check:shareable": "node scripts/check-shareable.mjs",
     "bench:digest": "node scripts/bench-digest.ts",
-    "validate": "npm run typecheck && npm run lint && npm run check:docs && npm run check:shareable && npm run lint:spine && npm run check:vectors && npm run check:schemas && npm run check:ad5-registry && npm run test",
+    "validate": "npm run typecheck && npm run lint && npm run check:docs && npm run check:shareable && npm run lint:spine && npm run check:vectors && npm run check:schemas && npm run check:ad5-registry && npm run check:ad28-registry && npm run check:layers && npm run test",
     "prepack": "npm run clean && npm run build",
     "prepublishOnly": "node scripts/assert-publish-authorized.mjs"
   },

@@ -10,13 +10,9 @@ import type { InteractionStep } from '../schemas/plan.ts'
 import { buildPlanIndex, type PlanIndex } from '../seal/plan-index.ts'
 
 /**
- * A step's declared temporal parent, resolved permissively: `after` is a
- * bare `Identifier`, unvalidated against the plan's own step ids at the
- * schema level. A dangling `after` (naming no declared step, including one
- * made unresolvable by a duplicate id) resolves to `undefined`, the same
- * treatment as a genuinely absent clause (Decision 4). Both checks below
- * re-run this resolution on a parent's own `after` too, so a parent with a
- * dangling clause of its own reads as carrying none.
+ * A dangling `after` (naming no declared step, including one made
+ * unresolvable by a duplicate id) resolves to `undefined`, the same as a
+ * genuinely absent clause (Decision 4).
  */
 function parentOf(
 	step: InteractionStep,

@@ -72,17 +72,12 @@ export const CheckResolution: z.ZodType<CheckResolutionValue> = z
 	})
 
 /**
- * AD-11's five named inputs, transcribed. The resulting digest alone would
- * leave a reader unable to recompute it or see what was compared; carrying
- * all five discharges AD-8's requirement that a result reference a sealed set
- * "by digest and opaque reference, never by content or path."
- *
- * These five key names are AD-11's own field names for its domain-separated
- * object, and Epic 6 computes the scoring version over this shape. AD-11
- * chose a named object over a concatenated tuple because revision 1 let "two
- * conforming scorers compute different versions from identical inputs": if
- * the scorer hashes one spelling and this artifact publishes another, the
- * published pre-image never reproduces the published digest.
+ * AD-11's five named inputs, transcribed so a reader can recompute the
+ * digest and see what was compared (AD-8's "by digest and opaque reference,
+ * never by content or path"). Named object rather than a concatenated tuple:
+ * revision 1 let two conforming scorers compute different versions from
+ * identical inputs if they hashed a different ordering. Epic 6 computes the
+ * scoring version over this shape.
  */
 export const SCORING_VERSION_INPUT_NAMES = [
 	'contractSchemaVersion',

@@ -1,4 +1,3 @@
-import { readdirSync, readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { InteractionPointer } from '../../src/core/schemas/pointer.ts'
 import {
@@ -246,51 +245,8 @@ describe('resolveStep / resolveOperation', () => {
 	})
 })
 
-// A structural boundary check, not a `core/` logic test: AD-30's in-memory-
-// fixtures-only convention protects `core/`'s pure FUNCTIONS from filesystem
-// and network I/O so scoring stays deterministic and fast, and this asserts a
-// fact about the SOURCE TEXT itself (an architectural import boundary) rather
-// than exercising any of `core/seal/`'s runtime behavior: the same category
-// as a lint rule, which this project already runs as `biome check` rather
-// than as an in-memory unit test. There is no way to answer "does this module
-// import from core/compile" without reading its source text somehow, since
-// ES modules expose no runtime reflection over their own import graph, and
-// adding a new `scripts/check-*.ts` for one two-line assertion would need a
-// new `npm run validate` entry this story's own scope (AC 5) rules out. Kept
-// here, in `tests/seal/`, as the pragmatic middle ground: driven by
-// `readdirSync` over `src/core/seal/` rather than a hand-written file list
-// (patch 12's review found the prior version checked only `plan-index.ts`,
-// and story 2.2's own fix of hand-extending the array to four files repeated
-// the same defect the guard's purpose already disclaims: "the whole
-// directory, not a fixed list"; the next file landing in `core/seal/` is
-// scanned automatically with no test edit required), and reading each file's
-// `import ... from '...'` specifiers precisely rather than a blanket
-// substring search over the whole file, so a comment merely mentioning
-// "compile" cannot produce a false positive and an import specifier is what
-// is actually checked. Full transitive resolution through `../schemas/*` is
-// not attempted: the Structural Seed states `core/` imports `core/schemas`
-// only, and Epic 4 has not built `core/compile/` at all yet, so there is
-// nothing for a schema module to import from it today.
-describe('module boundary', () => {
-	it('none of the core/seal/ modules imports from a not-yet-built core/compile/, directly or via its own import specifiers', () => {
-		const sealDir = new URL('../../src/core/seal/', import.meta.url)
-		// `withFileTypes` + `isFile()` rather than a bare name-based filter, so a
-		// hypothetical future subdirectory whose name happens to end in `.ts`
-		// (e.g. a nested `fixtures.ts/` directory) can't reach `readFileSync`
-		// and throw `EISDIR`.
-		const files = readdirSync(sealDir, { withFileTypes: true })
-			.filter((entry) => entry.isFile() && entry.name.endsWith('.ts'))
-			.map((entry) => entry.name)
-		expect(files.length).toBeGreaterThan(0)
-		for (const file of files) {
-			const source = readFileSync(new URL(file, sealDir), 'utf-8')
-			const specifiers = [...source.matchAll(/from\s+['"]([^'"]+)['"]/g)].map(
-				(match) => match[1],
-			)
-			expect(specifiers.length).toBeGreaterThan(0)
-			for (const specifier of specifiers) {
-				expect(specifier).not.toMatch(/core\/compile/)
-			}
-		}
-	})
-})
+// The old filesystem-backed `core/seal/` -> `core/compile/` guard that lived
+// here is gone: it regex-matched the literal substring "core/compile" and
+// missed the normal relative import spelling real code uses. Story 4.4's
+// `npm run check:layers` (`scripts/dependency-direction.ts`) supersedes it,
+// parsing every file under `src/` and enforcing the whole layer graph.

@@ -25,7 +25,7 @@ describe('the Gate C contract as the primary accept fixture', () => {
 			),
 		)
 		// Typing `relation` to the eleven operators alone would fail these. The
-		// story context said six of eight; the contract carries seven of eight —
+		// story context said six of eight; the contract carries seven of eight:
 		// O-001 is the only one whose relation is a bare operator.
 		expect(nonOperatorRelations).toHaveLength(7)
 		expect(parsed.oracles).toHaveLength(8)

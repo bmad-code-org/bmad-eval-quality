@@ -10,21 +10,18 @@ import {
 	type ConstraintLedgerEntry,
 } from './constraint-ledger.ts'
 
-// This module sits downstream of all twelve schema modules and of the
-// constraint ledger. No module under `src/core/schemas/` may import it: the
-// reverse edge closes an import cycle and fails at module load with a
-// temporal-dead-zone ReferenceError. It is pure (AD-1): no filesystem, network,
-// clock, or randomness, and it never imports a validator. The runtime
-// dependency set stays Zod alone; the validator is a development dependency
-// reachable only from `tests/` and `scripts/`.
+// Downstream of every schema module and the constraint ledger; no module
+// under `src/core/schemas/` may import it back, or the cycle fails at load
+// with a temporal-dead-zone ReferenceError. Pure (AD-1): no filesystem,
+// network, clock, randomness, or validator import, so the runtime dependency
+// stays Zod alone.
 
 /**
- * The synthesised `$id`. A URN rather than an `https://` locator: every
- * document is self-contained with only local `#/$defs/...` references, so the
- * base never needs to resolve, and a URL would promise a retrievable document
- * nothing serves. The version is deliberately absent: `schemaVersion` is an
- * in-band field, and AD-11's additive-bump discipline keeps the identifier
- * stable across bumps.
+ * A URN rather than an `https://` locator: every document is self-contained
+ * with local `#/$defs/...` references only, so the base never needs to
+ * resolve. The version is deliberately absent: `schemaVersion` is the in-band
+ * field, and AD-11's additive-bump discipline keeps this identifier stable
+ * across bumps.
  */
 export const publishedSchemaId = (key: InterchangeArtifactKey): string =>
 	`urn:eval-quality:schema:${key}`
@@ -36,10 +33,10 @@ const unresolved = (entry: ConstraintLedgerEntry, segment: string): Error =>
 	)
 
 /**
- * Applies one `inject` ledger entry to a document. Resolves the address
- * exactly as `resolve()` in `tests/schemas/constraint-ledger.test.ts` does: by
- * the stated `artifact`, `kind`, `branch`, and `field`, never by searching.
- * Fails loudly on any segment that does not resolve.
+ * Resolves the address exactly as `resolve()` in
+ * `tests/schemas/constraint-ledger.test.ts` does: by the stated `artifact`,
+ * `kind`, `branch`, and `field`, never by searching. Fails loudly on any
+ * segment that does not resolve.
  */
 type SchemaNode = Record<string, unknown>
 
@@ -150,12 +147,11 @@ export const injectConstraint = (
 }
 
 /**
- * The one pure builder (AD-13). Output mode, because the published schemas
- * describe artifacts as consumers receive them; Story 1.4 asserts all twelve
- * export byte-identically in both modes, so this is a statement of intent
- * rather than a change of bytes. Zod emits no `$id` at any level, so it is
- * synthesised here, second after `$schema`, with Zod's own key order unchanged
- * after it.
+ * The one pure builder (AD-13): output mode, because published schemas
+ * describe artifacts as consumers receive them, though Story 1.4 asserts all
+ * twelve export byte-identically in both modes either way. Zod emits no
+ * `$id` at any level, so it is synthesised here, second after `$schema`,
+ * with Zod's own key order unchanged after it.
  */
 export const publishedDocument = (
 	key: InterchangeArtifactKey,

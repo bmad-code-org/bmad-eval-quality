@@ -1,13 +1,11 @@
-// One reject fixture per constraint the schema itself enforces, following the
-// `RejectCase` shape Story 1.3 set. Each is an accept fixture mutated to
-// violate exactly one constraint, and each names the Zod issue path and code it
-// must produce, never a bare "did not parse": a case that asserts only failure
-// stays green when the schema starts rejecting for the wrong reason.
+// One reject fixture per constraint the schema enforces, following the
+// `RejectCase` shape from Story 1.3: an accept fixture mutated to violate
+// exactly one constraint, asserting the Zod issue path and code rather than a
+// bare "did not parse" (which stays green when the schema rejects for the
+// wrong reason).
 //
-// Constraints the schema deliberately does not enforce are not here: where AD-5
-// gives the compiler a literal code the schema admits the shape, and where a
-// rule is cross-artifact it is recorded in `ad5-admissions.test.ts` with an
-// admission test instead.
+// Constraints the schema deliberately does not enforce live in
+// `ad5-admissions.test.ts` instead (AD-5).
 
 import type { InterchangeArtifactKey } from '../../../src/core/schemas/artifact.ts'
 

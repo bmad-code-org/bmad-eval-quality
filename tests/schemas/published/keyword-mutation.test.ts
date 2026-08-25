@@ -1,14 +1,14 @@
 // Check four of four (Story 1.5, AC 8): the keyword-mutation sweep. For every
-// mutable keyword occurrence in every published document: delete it, recompile,
-// and require at least one corpus member to change verdict. A keyword whose
-// removal changes nothing is a keyword no fixture protects.
+// mutable keyword occurrence in every published document: delete it,
+// recompile, and require at least one corpus member to change verdict. A
+// keyword whose removal changes nothing is a keyword no fixture protects.
 //
-// The structurally unkillable occurrences are exempted by computed rule, never
-// by a hand list, and BOTH the survivor list and the generator's unreachable
-// list are asserted EQUAL to that computed set. Equality is the point: a
-// survivor outside the set is a missing fixture, and an exempt occurrence that
-// becomes killable means a schema changed under the exemption — either way the
-// check fails, which is what stops the exemption from widening into a hole.
+// Structurally unkillable occurrences are exempted by computed rule, never a
+// hand list. Both the survivor list and the generator's unreachable list are
+// asserted EQUAL to that computed set: a survivor outside it is a missing
+// fixture, and an exempt occurrence that becomes killable means a schema
+// changed under the exemption. Either way the check fails, which is what
+// stops the exemption widening into a hole.
 
 import { Ajv2020 } from 'ajv/dist/2020.js'
 import { describe, expect, it } from 'vitest'
@@ -63,10 +63,10 @@ const sweep = (
 		delete holder[occurrence.keyword]
 		let validate: ReturnType<Ajv2020['compile']>
 		try {
-			// A fresh instance per mutation, per AC 10; `allErrors: false` because
-			// only the verdict is read here. `strict` stays on: a deletion that
-			// produces a document ajv's strict mode refuses is reported as
-			// uncompilable and counted separately — it is not a pass.
+			// A fresh instance per mutation (AC 10); `allErrors: false` because only
+			// the verdict is read here. `strict` stays on, so a deletion ajv's strict
+			// mode refuses is reported uncompilable and counted separately, not as a
+			// pass.
 			validate = new Ajv2020({
 				...VALIDATOR_OPTIONS,
 				allErrors: false,
@@ -97,16 +97,12 @@ const sweep = (
 	return { survivors, uncompilable, occurrenceCount: occurrences.length }
 }
 
-// AC 8's census, pinned exactly rather than by a floor. A floor cannot see a
-// narrowed walk: dropping `propertyNames` from the walk's descent list removes
-// 28 occurrences, and every other assertion in this file recomputes happily
-// against the smaller set — the keyword-set equality still holds because
-// `propertyNames` is recorded before descent, and the three-way
-// survivors/unreachable/exempt equality is self-consistent at any size. The
-// exact figures are as safe to pin as the schemas themselves, because
-// `schemas/` is already compared byte for byte by `npm run check:schemas`: a
-// change that moves these numbers cannot reach main without regenerating the
-// committed documents in the same commit.
+// AC 8's census, pinned exactly rather than by a floor: a floor can't catch a
+// narrowed walk (e.g. dropping `propertyNames` from descent silently removes
+// 28 occurrences while every other assertion here still passes). Pinning is
+// safe because `schemas/` is already compared byte for byte by
+// `npm run check:schemas`, so these numbers can't drift without regenerating
+// the committed documents in the same commit.
 const CENSUS_BY_DOCUMENT: Readonly<Record<string, number>> = {
 	'artifact-reference': 21,
 	'eval-contract': 668,
@@ -158,10 +154,8 @@ describe('the occurrence walk descends, so the sweep cannot pass hollow', () => 
 			for (const occurrence of occurrences)
 				byKeyword[occurrence.keyword] = (byKeyword[occurrence.keyword] ?? 0) + 1
 		}
-		// measured 2026-08-20, re-measured 2026-08-21 after `SealedEvaluatorBrief.directions`
-		// gained `.min(1)` (one new `minItems` occurrence, `sealed-evaluator-brief`
-		// 97 to 98, total 1949 to 1950), and each of the three is independently load-bearing:
-		// the per-document map catches a document dropping out of the walk, the
+		// Each of the three checks is independently load-bearing: the
+		// per-document map catches a document dropping out of the walk, the
 		// per-keyword map catches one keyword's descent being removed, and the
 		// total catches an arithmetic slip in either.
 		expect(byDocument).toEqual(CENSUS_BY_DOCUMENT)
@@ -178,11 +172,11 @@ describe('the occurrence walk descends, so the sweep cannot pass hollow', () => 
 
 describe('check four: delete every keyword occurrence and require a verdict change', () => {
 	// Deleting an injected arity keyword leaves `prefixItems` beside the other
-	// half of the repair, which ajv's strictTuples refuses to compile — the
-	// same third-party signal that caught the original arity hole. Those
-	// deletions are therefore uncompilable rather than survivors, and the set
-	// is asserted exactly so nothing else can hide in it. Their fixtures are
-	// asserted through the ledger-pairing test in differential.test.ts.
+	// half of the repair, which ajv's strictTuples refuses to compile: the same
+	// third-party signal that caught the original arity hole. Those deletions
+	// are uncompilable, not survivors, and the set is asserted exactly so
+	// nothing else can hide in it. Fixtures for them are asserted in
+	// differential.test.ts.
 	const expectedUncompilable = (key: string): string[] => {
 		const pointers: string[] = []
 		for (const entry of CONSTRAINT_LEDGER) {

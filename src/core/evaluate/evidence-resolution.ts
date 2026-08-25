@@ -107,10 +107,8 @@ function channelRoot(
  * The `ResolveOperand`. `stepObservations` holds one already-selected
  * `Observation` per interaction step; `referenceSets` mirrors the contract's
  * declared reference sets by identifier. Both maps are looked up with
- * `Object.hasOwn`. `Identifier`'s charset admits `constructor`, and a plain
- * object's missing `constructor` key resolves to `Object.prototype.constructor`
- * through the prototype chain. `??` or plain bracket access would return that
- * inherited value silently, so `Object.hasOwn` catches the miss first.
+ * `Object.hasOwn`: `Identifier`'s charset admits `constructor`, the same
+ * prototype-chain gotcha `walkTail` guards against.
  */
 export function makeResolveOperand(
 	stepObservations: Readonly<Record<string, Observation>>,
@@ -144,14 +142,11 @@ function tokensEqual(a: readonly string[], b: readonly string[]): boolean {
 /**
  * Only `response-body` can ever answer `true` (AD-19: `collectionLocations`
  * is the only declared-collection surface, scoped to the body alone). The
- * `PlanIndex` builds lazily on first call unless the caller supplies one. A contract can carry a
- * schema-admitted duplicate step or operation id, and building the index at
- * construction time would throw before this function ever runs. A `@/`
- * pointer, an undeclared step, and an undeclared operation all answer
- * `false` here. This calls `stepOf` and `operationOf`, which return
- * `undefined` on a miss; `resolveStep` and `resolveOperation` throw on that
- * same miss, which would break the always-returns-a-boolean contract this
- * function needs.
+ * `PlanIndex` builds lazily on first call unless the caller supplies one,
+ * since a schema-admitted duplicate step or operation id would make building
+ * it eagerly throw before this function ever runs. Uses `stepOf`/`operationOf`
+ * rather than `resolveStep`/`resolveOperation`: those throw on a miss, which
+ * would break this function's always-returns-a-boolean contract.
  */
 export function makePointerDenotesCollection(
 	contract: EvalContract,

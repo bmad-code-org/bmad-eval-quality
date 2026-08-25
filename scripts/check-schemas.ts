@@ -1,15 +1,12 @@
 // The byte-exact drift check (AD-13, check two): rebuilds all twelve published
-// documents in memory through the pure builder, serialises them through the
-// exact rules the generator uses, and compares the result byte for byte
-// against the committed `schemas/*.schema.json`. Plugs the hole where the Zod
-// source and the committed export drift apart silently — a consumer would then
-// validate against constraints the package no longer enforces.
+// documents through the pure builder and compares them byte for byte against
+// the committed `schemas/*.schema.json`, so a consumer never validates against
+// constraints the package no longer enforces.
 //
-// This is the one check that reads the filesystem, which is why it is a script
-// rather than a Vitest test (AD-30 forbids tests filesystem I/O outside a
-// temporary directory). It never rewrites a file and has no --write flag on
-// purpose: a check that can silently repair what it is checking is not a gate.
-// Regeneration is `npm run generate:schemas`.
+// The one check that reads the filesystem (AD-30 forbids test filesystem I/O
+// outside a temp directory, so this is a script, not a Vitest test). It never
+// rewrites a file, on purpose: a check that can repair what it checks is not
+// a gate. Regeneration is `npm run generate:schemas`.
 //
 // Usage:
 //   npm run check:schemas
@@ -28,15 +25,10 @@ const directory = new URL('../schemas/', import.meta.url)
 const failures: string[] = []
 
 // Anything in schemas/ the registry does not name is drift too: an orphan
-// schema file, an editor backup, a stray note, or a nested directory would
-// otherwise ship or linger unchecked beside the twelve real documents.
-//
-// Dot-prefixed entries are the one exception, and they are skipped rather than
-// reported. `.gitignore` already covers `.DS_Store`, which macOS creates in any
-// directory a Finder window has visited; failing on it would redden
-// `npm run validate` for a file the repository does not track, with no visible
-// cause, and `npm run generate:schemas` — the repair every message here names —
-// deliberately removes only `*.schema.json` and so cannot clear it.
+// file, an editor backup, or a nested directory would otherwise linger
+// unchecked. Dot-prefixed entries are the exception (skipped, not reported):
+// `.gitignore` already covers `.DS_Store`, and `generate:schemas` only ever
+// removes `*.schema.json`, so it could never clear one anyway.
 const expected = new Set(
 	INTERCHANGE_ARTIFACT_KEYS.map((key) => `${key}.schema.json`),
 )
@@ -76,11 +68,9 @@ try {
 }
 
 for (const key of INTERCHANGE_ARTIFACT_KEYS) {
-	// The builder throws a worded diagnosis when a ledger address stops
-	// resolving, naming the entry and the segment that failed. Unguarded, that
-	// message reaches the terminal as an unhandled rejection and a Node stack
-	// instead of as this gate's own report, which is the one failure mode the
-	// injector's error text was written for.
+	// The builder throws a worded diagnosis naming the entry and segment that
+	// failed when a ledger address stops resolving; unguarded, it would surface
+	// as an unhandled rejection and a Node stack instead of this gate's report.
 	let rebuilt: Buffer
 	try {
 		rebuilt = Buffer.from(

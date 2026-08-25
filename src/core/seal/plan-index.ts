@@ -39,12 +39,10 @@ const isTransportChannel = (value: string): value is TransportChannelName =>
 	(TRANSPORT_CHANNELS as readonly string[]).includes(value)
 
 /**
- * Exported for Story 4.1's reuse: the real addressing-grammar resolver
- * (`core/evaluate/evidence-resolution.ts`) decodes a bound-element
- * pointer's own tail and a declared collection-location pointer's tail with
- * these same two functions. A second private copy would be exactly the
- * drift this codebase's own conventions warn against
- * (`IDENTIFIER_CHARSET_SOURCE`'s own precedent).
+ * Exported for Story 4.1's reuse: `core/evaluate/evidence-resolution.ts`
+ * decodes pointer tails with these same two functions, avoiding a second
+ * private copy (the drift `IDENTIFIER_CHARSET_SOURCE`'s own precedent warns
+ * against).
  */
 export const decodeToken = (token: string): string =>
 	token.replace(/~1/g, '/').replace(/~0/g, '~')
@@ -53,10 +51,9 @@ export const decodeTail = (tailSource: string): readonly string[] =>
 	tailSource === '' ? [] : tailSource.slice(1).split('/').map(decodeToken)
 
 /**
- * One evidence target, resolved locally to its step id and channel. The channel
- * is what decides whether the rendered phrase says "the response you obtained"
- * or "the value you sent" (AC 2), and the tail names the field at issue when
- * the pointer carries one.
+ * One evidence target, resolved locally to its step id and channel. The
+ * channel decides whether the rendered phrase says "the response you
+ * obtained" or "the value you sent" (AC 2).
  */
 export type EvidenceTarget = {
 	stepId: string
@@ -206,9 +203,8 @@ export function buildPlanIndex(
 /**
  * Resolves a step id through the index or throws. Split from `stepOf` so the
  * index itself stays a plain lookup (`| undefined`, per
- * `noUncheckedIndexedAccess`) while callers needing "resolved or
- * precondition-violated" get one function instead of repeating the
- * `undefined` check. A should-never-happen precondition violation, not a
+ * `noUncheckedIndexedAccess`) while callers get one function instead of
+ * repeating the `undefined` check. A precondition violation, not a
  * `RuntimeFault` (Decision 4).
  */
 export function resolveStep(index: PlanIndex, stepId: string): InteractionStep {

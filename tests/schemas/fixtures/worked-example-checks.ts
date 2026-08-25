@@ -13,9 +13,8 @@ type WorkedExampleCheck = {
 	readonly parses: boolean
 	readonly finding: string
 	/**
-	 * For a failing check, the exact issues it must produce. A bare "did not
-	 * parse" would stay green if the grammar broke somewhere else entirely, and
-	 * the recorded finding would quietly stop being true.
+	 * For a failing check, the exact issues it must produce; a bare "did not
+	 * parse" would stay green even if the grammar broke elsewhere.
 	 */
 	readonly issues?: readonly {
 		readonly path: readonly (string | number)[]

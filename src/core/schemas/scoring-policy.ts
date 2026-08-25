@@ -5,21 +5,13 @@ import { lineageFields } from './lineage.ts'
 import { Identifier } from './primitives.ts'
 
 /**
- * No prior art. A published artifact rather than constants in a function, per
- * the Consistency Conventions: "the default policy ships as a published
- * artifact referenced by digest rather than as constants in a function, so
- * 'the default' has an identity and a no-op edit cannot move a scoring
- * version."
- *
- * No `.default()` and no default value anywhere. AD-6 and AD-12's defaults
- * live only in the field descriptions, as what the published default artifact
- * carries; `.default()` would also diverge the input-mode and output-mode
- * exports by dropping the key from `required` in input mode only.
- *
- * `strictMode` and `corpusLocation` are not fields here, though the
- * Conventions list them alongside the policy as alternative explicit inputs:
- * AD-14 fixes strict mode as a CLI flag and AD-8 puts the corpus behind
- * `CorpusPort`, so adding either here would give one concern two homes.
+ * A published artifact rather than constants, per the Consistency
+ * Conventions, so "the default" has an identity a no-op edit cannot move.
+ * No `.default()` anywhere: it would diverge the input- and output-mode
+ * exports by dropping the key from `required` only in input mode. `strictMode`
+ * and `corpusLocation` are deliberately absent: AD-14 fixes strict mode as a
+ * CLI flag and AD-8 puts the corpus behind `CorpusPort`, so either would give
+ * one concern two homes.
  */
 export const ScoringPolicy = z
 	.strictObject({

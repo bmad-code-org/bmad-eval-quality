@@ -192,7 +192,7 @@ describe('the exact serialisation (AC 3), asserted independently of the drift ch
 
 	// The escape branch provably fires: eval-contract's descriptions quote ADs
 	// verbatim, em dashes included, so its serialisation must carry the \u2014
-	// escape sequence — an escaper reduced to the identity fails here.
+	// escape sequence. An escaper reduced to the identity fails here.
 	it('escapes the em dash in eval-contract as \\u2014', () => {
 		const serialized = serializePublishedDocument(documents['eval-contract'])
 		expect(serialized).toContain('\\u2014')
@@ -366,10 +366,10 @@ describe('the ledger drives the injection, by stated address (AC 2)', () => {
 		).toThrowError(/not "inject"/)
 	})
 
-	// The union-root fallback is unreachable by every current ledger entry — no
-	// inject entry addresses a field on a union-rooted definition — so its
-	// every-copy semantics are driven here with a fabricated document, or the
-	// path ships untested until the first entry that needs it.
+	// The union-root fallback is unreachable by every current ledger entry (no
+	// inject entry addresses a field on a union-rooted definition), so its
+	// every-copy semantics are driven here with a fabricated document; otherwise
+	// the path ships untested until the first entry that needs it.
 	describe('the union-root fallback, driven with a fabricated document', () => {
 		const fallbackEntry: ConstraintLedgerEntry = {
 			id: 'fabricated-union-fallback',

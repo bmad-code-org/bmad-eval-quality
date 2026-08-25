@@ -42,15 +42,11 @@ export const TransportChannel = z.enum(TRANSPORT_CHANNELS).meta({
 		"AD-19's four transport channels. They are the segment `call-inputs` takes before its tail, and the four keys an observation's recorded call inputs are keyed by.",
 })
 
-// The pattern is not rebuilt from the flat seven. It rests on a three-way
-// partition the enum does not carry: channels that take an RFC 6901 tail,
-// scalar channels that take none, and `call-inputs`, which takes a transport
-// segment first. The partition is spelled by naming its members and typing
-// them against the enum, so a typo fails the typecheck; a test asserts it
-// stays disjoint and exhaustive over the enum.
-//
-// A status code and an exit code are scalars, so a pointer into one is a
-// syntax error rather than an unreachable-evidence finding.
+// The three-way partition (tail-bearing, scalar, transport-rooted) is spelled
+// out and typed against the enum rather than rebuilt from it, so a typo fails
+// the typecheck; a test asserts it stays disjoint and exhaustive. A status or
+// exit code is scalar, so a pointer into one is a syntax error rather than an
+// unreachable-evidence finding.
 export const TAIL_BEARING_CHANNELS = [
 	'response-body',
 	'response-headers',

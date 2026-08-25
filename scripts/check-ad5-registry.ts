@@ -1,15 +1,10 @@
-// Binds `src/core/failure-codes.ts` to the AD-5 code table it transcribes.
-// Plugs the hole the epic's standing prohibition names: a hand-maintained
-// failure-code enumeration drifting beside the spine's table, where one side
-// gains a code, loses one, or reorders, and no gate notices. Parses the first
-// column of the code table between the `### AD-5 ` and `### AD-6 ` headings
-// and asserts set and order equality against `FAILURE_CODES`, reporting every
-// code present on one side and absent from the other.
+// Binds `src/core/failure-codes.ts` to the AD-5 code table it transcribes,
+// asserting set and order equality so the two cannot drift silently.
 //
 // Reading a planning artifact from a script does not violate AD-15: AD-15
 // binds the package, whose published `files` are `dist`, `README.md`, and
-// `LICENSE`, and `scripts/check-docs.mjs` already reads
-// `_bmad-output/planning-artifacts` under `npm run validate`.
+// `LICENSE`, and `scripts/check-docs.mjs` already reads planning artifacts
+// under `npm run validate`.
 //
 // Usage:
 //   node scripts/check-ad5-registry.ts
@@ -24,11 +19,9 @@ const SPINE_WORKSPACE =
 	'_bmad-output/planning-artifacts/architecture/architecture-eval-quality-2026-07-29'
 const SPINE_PATH = `${SPINE_WORKSPACE}/ARCHITECTURE-SPINE.md`
 
-// The workspace directory is dated, and `package.json`'s `lint:spine` names the
-// same one. Two hardcoded copies of a path that moves is how one of them goes
-// stale unnoticed, so the duplication is made mechanical: re-dating the
-// workspace fails here with the mismatch named rather than leaving this script
-// reading a directory the linter no longer lints.
+// The workspace directory is dated, matching package.json's `lint:spine`. The
+// duplication is checked mechanically here so a re-dated workspace fails
+// loudly instead of leaving this script silently checking a stale directory.
 let manifest: string
 try {
 	manifest = await readFile(new URL('../package.json', import.meta.url), 'utf8')
@@ -85,14 +78,9 @@ const lines = section.split('\n')
 const parsed: string[] = []
 const unparsedRows: string[] = []
 const extraTables: string[] = []
-// Tables are read by POSITION rather than by column name. Row one of a table is
-// its header and row two its separator, whatever they are called: matching the
-// header on the literal word "Code" turns a cosmetic rename or a bolded cell
-// into a red build, while a second table inside AD-5 whose first cell happens
-// to be a backticked kebab slug would otherwise be absorbed into the code list
-// with no signal at all — the silent direction, and the one this script exists
-// to prevent. Only the FIRST table in the section carries codes; a second one
-// is reported rather than read.
+// Rows are matched by position, not by header text, so a cosmetic rename
+// can't silently break parsing. Only the first table in the section carries
+// codes; a second table's rows are reported as a finding, not merged in.
 let fenced = false
 let tableIndex = -1
 let rowInTable = -1
@@ -120,8 +108,8 @@ for (const line of lines) {
 		continue
 	}
 	const code = ROW_PATTERN.exec(line)?.[1]
-	// A data row that fails ROW_PATTERN — a bolded cell, a mis-backticked code —
-	// must not be silently skipped: a silently skipped 21st code is exactly the
+	// A row that fails ROW_PATTERN (a bolded cell, a mis-backticked code) is
+	// reported rather than skipped: a silently dropped code is the exact
 	// drift this script exists to catch.
 	if (code === undefined) unparsedRows.push(trimmed)
 	else parsed.push(code)

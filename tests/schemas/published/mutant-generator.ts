@@ -1,19 +1,16 @@
 // The schema-directed mutant generator (AC 9 of Story 1.5). Walks a published
 // document alongside every positive fixture and, for each mutable keyword
 // occurrence reachable from those fixtures, produces one instance that
-// violates that keyword and, as far as it can, nothing else. One generated
-// corpus serves both the differential check and the keyword-mutation sweep:
-// the pairing is what makes the sweep decidable, because deleting keyword K is
-// expected to make exactly the instance built to violate K start passing.
+// violates that keyword and, as far as it can, nothing else. Deleting keyword
+// K is expected to make exactly the instance built to violate K start
+// passing, which is what makes the keyword-mutation sweep decidable.
 //
-// Two mutations share a vocabulary and run in opposite directions: the sweep
-// mutates the SCHEMA (deletes a keyword occurrence), this generator mutates
-// the INSTANCE (produces a value the intact keyword rejects).
+// The sweep mutates the SCHEMA (deletes a keyword occurrence); this generator
+// mutates the INSTANCE (produces a value the intact keyword rejects).
 //
-// Deterministic on purpose: no Math.random, no clock. Every choice is a fixed
-// candidate order or a value derived from the schema itself, so the corpus is
-// a pure function of the schemas and the fixtures and two runs produce
-// byte-identical inputs. Pure: no filesystem access (AD-30).
+// Deterministic on purpose: no Math.random, no clock, no filesystem access
+// (AD-30). Every choice is a fixed candidate order or a value derived from the
+// schema itself, so two runs produce byte-identical output.
 
 import { Ajv2020, type ValidateFunction } from 'ajv/dist/2020.js'
 import {
@@ -41,15 +38,15 @@ export type MutantGeneration = {
 	/**
 	 * Valid instances synthesised for union branches and empty containers no
 	 * fixture populates, each verified accepted by the intact document. They
-	 * join the corpus so a schema deletion that NARROWS the document — deleting
-	 * `prefixItems` beside `items: false` turns the branch into one that admits
-	 * nothing — has an accepted member to flip.
+	 * join the corpus so a schema deletion that NARROWS the document (e.g.
+	 * deleting `prefixItems` beside `items: false`) has an accepted member to
+	 * flip.
 	 */
 	readonly witnesses: readonly { id: string; value: unknown }[]
 	/**
 	 * Occurrences for which no mutant could be produced. Asserted equal to the
-	 * computed exempt set — not a subset and not merely non-empty. Silent
-	 * truncation would make a partial sweep read as a complete one.
+	 * computed exempt set, not merely a subset or non-empty: silent truncation
+	 * would make a partial sweep read as a complete one.
 	 */
 	readonly unreachable: ReadonlySet<string>
 }
@@ -153,17 +150,15 @@ export const generateMutants = (
 	})()
 
 	// Internal navigation compiles: branch-match tests and violating-value
-	// searches. `strict: false` here on purpose — these wrappers slice nodes out
-	// of context and only guide where to mutate; the four checks themselves run
-	// on the full documents under the recorded option set.
+	// searches. `strict: false` here on purpose, since these wrappers slice
+	// nodes out of context and only guide where to mutate; the four checks
+	// themselves run on the full documents under the recorded option set.
 	const nodeValidators = new Map<string, ValidateFunction>()
 	const validatorAt = (pointer: string): ValidateFunction => {
 		const cached = nodeValidators.get(pointer)
 		if (cached) return cached
 		const node = resolvePointer(document, pointer)
 		const compiled = new Ajv2020({
-			// the shared option set, with strict relaxed: these wrappers slice
-			// nodes out of context and only guide where to mutate
 			...VALIDATOR_OPTIONS,
 			strict: false,
 		}).compile(
@@ -181,16 +176,15 @@ export const generateMutants = (
 	// ---- schema-directed synthesis ------------------------------------------
 	// Best-effort valid example of a subschema, used to descend into union
 	// branches no fixture takes and into empty containers. Returns FAIL when a
-	// constraint cannot be satisfied from the pools; the occurrences beneath it
-	// then surface in the unreachable report instead of being silently skipped.
+	// constraint can't be satisfied from the pools; occurrences beneath it then
+	// surface in the unreachable report instead of being silently skipped.
 	//
 	// Known unhandled keywords: `multipleOf`, `exclusiveMaximum`, `maxLength`,
-	// `maxProperties`, and `patternProperties` — none occur in the current
-	// export (the census in keyword-mutation.test.ts enumerates what does). If
-	// one appears, a synthesized value may violate it; the violating synthetic
-	// is then dropped by the keep-criterion and the failure surfaces later as a
-	// confusing exempt-set inequality, so extend this synthesiser first when
-	// that inequality names a subtree carrying one of these keywords.
+	// `maxProperties`, `patternProperties` (none occur in the current export;
+	// the census in keyword-mutation.test.ts enumerates what does). A
+	// synthesized value violating one of these is dropped by the keep-criterion
+	// and surfaces later as a confusing exempt-set inequality, so extend this
+	// synthesiser first when that happens.
 	const FAIL = Symbol('unsynthesisable')
 	const synthesize = (
 		node: any,
@@ -234,12 +228,10 @@ export const generateMutants = (
 					node.exclusiveMinimum !== undefined
 						? node.exclusiveMinimum + 1
 						: (node.minimum ?? 0)
-				// Clamping DOWN to `maximum` would produce a value violating the very
-				// lower bound it was derived from, and a synthetic that violates its
-				// own subschema is worse than none: it is dropped by the keep
-				// criterion later and its occurrences resurface as an exempt-set
-				// inequality pointing at the wrong subtree. Report it unsynthesisable
-				// instead, which lands in the unreachable report where it belongs.
+				// Clamping DOWN to `maximum` would violate the lower bound it was
+				// derived from; a synthetic that violates its own subschema is worse
+				// than none, since it's silently dropped later and resurfaces as a
+				// confusing exempt-set inequality. Report unsynthesisable instead.
 				if (node.maximum !== undefined && node.maximum < value) return FAIL
 				return value
 			}
@@ -313,12 +305,11 @@ export const generateMutants = (
 	// Two passes, first conforming location wins per schema node. Pass one
 	// walks only what the fixtures actually contain, so every site backed by a
 	// real instance is claimed before synthesis is allowed anywhere; pass two
-	// fills the remainder — union branches no fixture takes and empty
-	// containers — from synthesised values. Without the ordering, a synthetic
-	// context can claim a shared definition first and plant its mutants inside
-	// a subtree that some other constraint already rejects. The per-path stack
-	// is the recursion guard for the self-referential definitions (Expression,
-	// JsonValue, CheckResolution).
+	// fills the remainder (union branches no fixture takes, empty containers)
+	// from synthesised values. Without this ordering, a synthetic context could
+	// claim a shared definition first and plant mutants inside a subtree some
+	// other constraint already rejects. The per-path stack guards recursion for
+	// the self-referential definitions (Expression, JsonValue, CheckResolution).
 	const sites = new Map<string, Site>()
 	const witnesses: { id: string; value: unknown }[] = []
 	const witnessed = new Set<string>()
@@ -378,10 +369,10 @@ export const generateMutants = (
 				if (!synthetic) return
 				// A branch no fixture takes is still reachable: descend on a
 				// synthesised branch instance planted at the same location, so a
-				// keyword inside it gets a real mutant rather than a silent skip.
-				// The planted valid instance also joins the corpus as a witness,
-				// because a deletion can NARROW a branch (prefixItems beside
-				// items: false) and only an accepted member can flip on that.
+				// keyword inside it gets a real mutant, not a silent skip. The
+				// planted instance also joins the corpus as a witness, because a
+				// deletion can NARROW a branch (`prefixItems` beside `items: false`)
+				// and only an accepted member can flip on that.
 				const example = synthesize(resolvePointer(document, branchPointer), [])
 				if (example === FAIL) return
 				// `witnessed` is marked only on acceptance: a synthetic planted into
@@ -415,8 +406,8 @@ export const generateMutants = (
 			node.items !== undefined &&
 			node.items !== false &&
 			node.prefixItems === undefined &&
-			// maxItems: 0 makes the item schema dead code — no element can exist
-			// for it to constrain — so it is skipped here and exempted by rule.
+			// maxItems: 0 makes the item schema dead code (no element can exist for
+			// it to constrain), so it's skipped here and exempted by rule.
 			node.maxItems !== 0 &&
 			Array.isArray(value)
 		) {
@@ -520,9 +511,9 @@ export const generateMutants = (
 	/**
 	 * Keeps a candidate only when the full document rejects it, the rejection
 	 * carries the target occurrence, and no sibling keyword at the same schema
-	 * node also fired at the same instance location — the "and nothing else"
-	 * half, which is what keeps a `type` beside a `const` out of the corpus and
-	 * therefore in the unreachable report, where the exemption rule expects it.
+	 * node also fired at the same instance location: the "and nothing else"
+	 * half, which keeps a `type` beside a `const` out of the corpus and in the
+	 * unreachable report, where the exemption rule expects it.
 	 */
 	const tryCandidate = (
 		occurrence: { pointer: string; keyword: string; nodePointer: string },
@@ -661,14 +652,14 @@ export const generateMutants = (
 						break
 					}
 				// A boolean `const` discriminating a two-branch `oneOf` admits no
-				// rejected single-violation mutant: the only other boolean is the
-				// sibling branch's discriminator, so the flipped instance is accepted
-				// through that branch. The keyword is still killable — deleting it
-				// collapses the two branches and the flipped instance then matches
-				// both, failing `oneOf` — so the honest pairing is a witness whose
-				// verdict changes on deletion: accepted intact, rejected without the
-				// const. Verified here by compiling the deletion, so a schema change
-				// that breaks the collapse surfaces as unreachable rather than as a
+				// rejected single-violation mutant: the only other boolean value is
+				// the sibling branch's discriminator, so the flipped instance is
+				// accepted through that branch. The keyword is still killable:
+				// deleting it collapses the two branches, so the flipped instance
+				// then matches both and fails `oneOf`. The honest pairing is
+				// therefore a witness whose verdict changes on deletion (accepted
+				// intact, rejected without the const), verified here by compiling
+				// the deletion so a broken collapse surfaces as unreachable, not a
 				// silent pass.
 				if (!emitted && typeof raw === 'boolean') {
 					const flipped = plant(!raw)
@@ -841,7 +832,7 @@ export const generateMutants = (
 					emit(occurrence, '', plant([...value, true]), at, exact)
 					break
 				}
-				// dead item schema under maxItems: 0 — exempt by rule, nothing to pair
+				// dead item schema under maxItems: 0, exempt by rule, nothing to pair
 				if (node.maxItems === 0) break
 				if (!Array.isArray(value)) break
 				const bad = violating(occurrence.pointer)
