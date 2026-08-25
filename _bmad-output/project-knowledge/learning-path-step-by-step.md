@@ -54,6 +54,7 @@ flowchart TD
 |   11 | epic3-story3 | `covers-by-key`, the closed vocabulary's one relational operator: a bijection so omission, padding, and extras all fail. |
 |   12 | epic4-story1 | The real pointer walk (RFC 6901, `@/`), and the two compile-time checks that catch an unreachable pointer before evaluation. |
 |   13 | epic4-story2 | Twelve more AD-5 codes: quantifier substitution, operand-kind legality, the interface inventory, and waiver completeness. |
+|   14 | epic4-story3 | The last two stage-one AD-5 codes: a graph predicate over the interaction plan, bounding depth, width, shared anchors, disjoint pairs, and step count. |
 
 Adding a step: follow `learning-path-template.md`.
 
@@ -988,4 +989,63 @@ flowchart TD
     IFACE
     WAIVER
   end
+```
+
+## Step 14 (epic4-story3): the last two stage-one AD-5 codes, a graph predicate over the interaction plan
+
+**What:** one new module, `scripting-bound.ts`, two functions: `checkNestedTemporalClause` (a
+step's `after` names a step that itself has an `after`) and `checkScriptingBound` (five metrics
+over the plan's `after` edges: depth, width, shared anchors, disjoint pairs, step count).
+
+**Why:** `InteractionStep.after` chains to any depth in the schema on purpose (Story 1.3's
+deliberate deviation), so the schema alone can't stop a scripted plan in disguise. AD-39's two
+adversarial shapes each beat one single-dimension check: an eight-step chain nests past the
+one-level bound, caught by the depth check. Sixty-four independent `write`/`read` pairs are each
+exactly one level deep, so depth misses them; the disjoint-pair count catches them. Width guards a
+third shape, one step anchoring too many children, that neither example needs.
+
+**Rules:**
+
+- One pass over `after` builds three views at once: the one-hop nesting test, each anchor's child
+  count, and an undirected adjacency map for a connected-component scan (disjoint pairs). No
+  recursion, no memoization.
+- At a fixed one-level bound, the one-hop nesting test also catches every cycle: a cycle needs
+  each member's parent to carry its own `after`, and the one-hop test trips on the first member it
+  visits. No separate cycle detection needed.
+- Four numeric bounds (`WIDTH_MAX=2`, `SHARED_ANCHOR_MAX=2`, `DISJOINT_PAIR_MAX=4`,
+  `STEP_COUNT_MAX=16`), each an exclusive ceiling, set against this repo's own two whole-contract
+  fixtures as the accept floor and the epic's two adversarial shapes as the reject ceiling. No
+  calibration corpus exists yet to derive them more precisely.
+- A dangling `after` (naming no declared step, including one made unresolvable by a duplicate id)
+  resolves to "no clause" in both checks, the same permissive default `undeclared-mandatory-input`
+  already set for operation ids.
+- `checkNestedTemporalClause` and `checkScriptingBound`'s depth dimension are independent,
+  non-coordinating checks. Both fire on a nested chain; neither depends on the other having run.
+- `computeGraphMetrics`'s internal maps key every graph node on each step's array position.
+  `stepId` carries no schema-level uniqueness, so two distinct steps sharing one id would
+  otherwise merge into one adjacency entry and corrupt the width/shared-anchor/disjoint-pair
+  counts (found in review, fixture 20 pins it).
+
+**Read in this order:**
+
+1. `src/core/compile/scripting-bound.ts`: `parentOf`, `computeGraphMetrics`,
+   `checkNestedTemporalClause`, `checkScriptingBound`.
+2. `tests/compile/scripting-bound.test.ts`: the width/shared-anchor/disjoint-pair/step-count
+   boundary pairs, each proving exactly-at-bound passes and one-past throws.
+
+**Watch out:**
+
+- `plan-exceeds-scripting-bound`'s `artifactPath` is always `EvalContract.interactionPlan`, the
+  whole plan, never one step; `nested-temporal-clause`'s is per-step.
+- No orchestrating entry point or ordering guarantee exists yet between this and Story 4.2's
+  fifteen checks. That's Story 4.4's job.
+
+**Story:** `_bmad-output/implementation-artifacts/4-3-the-scripting-bound-graph-predicate-and-its-adversarial-fixtures.md`
+
+```mermaid
+flowchart TD
+  BOUND["scripting-bound.ts<br/>checkNestedTemporalClause,<br/>checkScriptingBound"]
+  PLANIDX3["plan-index.ts (Step 12)<br/>buildPlanIndex"]
+
+  PLANIDX3 --> BOUND
 ```
