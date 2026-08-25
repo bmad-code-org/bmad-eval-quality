@@ -4,12 +4,13 @@ import {
 	checkScriptingBound,
 } from '../../src/core/compile/scripting-bound.ts'
 import { EvalContract } from '../../src/core/schemas/eval-contract.ts'
+import type { InteractionStep } from '../../src/core/schemas/plan.ts'
 import { gateCContract } from '../schemas/fixtures/gate-c-contract.ts'
 import { populatedContract } from '../schemas/fixtures/relevance-contracts.ts'
 import { structuralFailureOf } from './helpers.ts'
 
 /** A minimal step: unbound on every channel, naming `list-things` (populatedContract's own second operation) so only the graph shape (`stepId`/`after`) is under test. */
-function step(stepId: string, after: string | null): any {
+function step(stepId: string, after: string | null): InteractionStep {
 	return {
 		stepId,
 		operationId: 'list-things',
@@ -18,8 +19,8 @@ function step(stepId: string, after: string | null): any {
 	}
 }
 
-/** `populatedContract`, cloned, with its `interactionPlan` replaced by a custom graph shape. */
-function contractWithPlan(plan: readonly any[]): any {
+/** `populatedContract`, cloned, with its `interactionPlan` replaced by a custom graph shape. Real types throughout: `InteractionStep.stepId` carries no uniqueness constraint, so a duplicate-`stepId` fixture (fixture 20) stays expressible without `any`. */
+function contractWithPlan(plan: InteractionStep[]): EvalContract {
 	const contract = structuredClone(populatedContract) as any
 	contract.interactionPlan = plan
 	return contract
