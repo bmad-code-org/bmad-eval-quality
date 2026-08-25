@@ -2,21 +2,20 @@ import { describe, expect, it } from 'vitest'
 import {
 	checkOracleAlignment,
 	checkOracleChannel,
+	substitutePointer,
 } from '../../src/core/compile/oracle-alignment.ts'
-import { StructuralFailure } from '../../src/core/failure-codes.ts'
 import { EvalContract } from '../../src/core/schemas/eval-contract.ts'
 import { gateCContract } from '../schemas/fixtures/gate-c-contract.ts'
 import { populatedContract } from '../schemas/fixtures/relevance-contracts.ts'
+import { structuralFailureOf } from './helpers.ts'
 
-function structuralFailureOf(fn: () => void): StructuralFailure {
-	try {
-		fn()
-	} catch (error) {
-		if (error instanceof StructuralFailure) return error
-		throw error
-	}
-	throw new Error('expected a StructuralFailure to be thrown')
-}
+describe('substitutePointer', () => {
+	it('resolves bare @/ to the bound element without a trailing slash', () => {
+		expect(
+			substitutePointer('@/', '/interactions/list/response-body/items'),
+		).toBe('/interactions/list/response-body/items')
+	})
+})
 
 describe('checkOracleChannel: oracle-missing-channel', () => {
 	it('fixture 8: passes with no throw against populatedContract and gateCContract', () => {
@@ -91,6 +90,43 @@ describe('checkOracleAlignment: direction-check-misaligned', () => {
 			'/interactions/list/response-body/items/children/id',
 		]
 		contract.oracles[0].direction.relation = 'existence'
+		contract.oracles[0].check = {
+			op: 'for-all',
+			collection: { pointer: '/interactions/list/response-body/items' },
+			predicate: {
+				op: 'for-any',
+				collection: { pointer: '@/children' },
+				predicate: { op: 'existence', operands: [{ pointer: '@/id' }] },
+			},
+		}
+		expect(() => checkOracleAlignment(contract)).not.toThrow()
+	})
+
+	it.each(['for-all', 'all', 'not'])(
+		"relation %s genuinely absent from a check naming only 'for-any' and 'existence' still throws, proving containment isn't vacuous for a connective/quantifier relation",
+		(relation) => {
+			const contract = structuredClone(populatedContract) as any
+			contract.oracles[0].direction.evidenceTargets = [
+				'/interactions/list/response-body/items/id',
+			]
+			contract.oracles[0].direction.relation = relation
+			contract.oracles[0].check = {
+				op: 'for-any',
+				collection: { pointer: '/interactions/list/response-body/items' },
+				predicate: { op: 'existence', operands: [{ pointer: '@/id' }] },
+			}
+			const failure = structuralFailureOf(() => checkOracleAlignment(contract))
+			expect(failure.code).toBe('direction-check-misaligned')
+			expect(failure.artifactPath).toMatch(/\.direction\.relation$/)
+		},
+	)
+
+	it("relation 'for-any' genuinely present, nested one level inside 'for-all', does not throw", () => {
+		const contract = structuredClone(populatedContract) as any
+		contract.oracles[0].direction.evidenceTargets = [
+			'/interactions/list/response-body/items/children/id',
+		]
+		contract.oracles[0].direction.relation = 'for-any'
 		contract.oracles[0].check = {
 			op: 'for-all',
 			collection: { pointer: '/interactions/list/response-body/items' },

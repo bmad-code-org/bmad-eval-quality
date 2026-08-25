@@ -3,7 +3,6 @@
  * reference-set resolution. Each check reports the first structural failure.
  */
 import { digestArtifact } from '../canonical/digest.ts'
-import { makePointerDenotesCollection } from '../evaluate/evidence-resolution.ts'
 import { StructuralFailure } from '../failure-codes.ts'
 import type { EvalContract } from '../schemas/eval-contract.ts'
 import type { Expression, Operand, SetOperand } from '../schemas/expression.ts'
@@ -13,6 +12,7 @@ import {
 	type PlanIndex,
 	parseEvidenceTarget,
 } from '../seal/plan-index.ts'
+import { substitutePointer } from './oracle-alignment.ts'
 
 // Shared expression traversal.
 
@@ -360,46 +360,90 @@ const NON_COLLECTION_TYPES: ReadonlySet<string> = new Set(
 )
 
 /**
- * Checks response-body collection pointers whose operation and type resolve.
- * A declared non-array type overrides `collectionLocations`.
+ * Substitutes a quantifier's `@`-prefixed `collection` pointer against the
+ * bound element its enclosing quantifier already opened, so a nested
+ * quantifier's own collection resolves to an absolute pointer rather than
+ * being skipped. Mirrors `oracle-alignment.ts`'s `collectTargets`.
  */
+function forEachQuantifierCollection(
+	expr: Expression,
+	boundElementRoot: string | null,
+	path: string,
+	visit: (pointer: string, path: string) => void,
+): void {
+	switch (expr.op) {
+		case 'not':
+			forEachQuantifierCollection(
+				expr.operands[0],
+				boundElementRoot,
+				`${path}.operands[0]`,
+				visit,
+			)
+			return
+		case 'all':
+		case 'any':
+			expr.operands.forEach((child, index) => {
+				forEachQuantifierCollection(
+					child,
+					boundElementRoot,
+					`${path}.operands[${index}]`,
+					visit,
+				)
+			})
+			return
+		case 'for-all':
+		case 'for-any': {
+			const { collection } = expr
+			const collectionPointer =
+				'pointer' in collection
+					? substitutePointer(collection.pointer, boundElementRoot)
+					: null
+			if (collectionPointer !== null && !collectionPointer.startsWith('@'))
+				visit(collectionPointer, `${path}.collection`)
+			forEachQuantifierCollection(
+				expr.predicate,
+				collectionPointer,
+				`${path}.predicate`,
+				visit,
+			)
+			return
+		}
+		default:
+			return
+	}
+}
+
+/** Checks response-body collection pointers, after bound-element substitution. */
 export function checkQuantifierOverNonCollection(contract: EvalContract): void {
 	const index: PlanIndex = buildPlanIndex(
 		contract.interactionPlan,
 		contract.permittedInterfaces,
 		{ duplicateIds: 'unresolved' },
 	)
-	const denotesCollection = makePointerDenotesCollection(contract, index)
 	forEachOracleCheck(contract, (check, oracleId) => {
-		walkExpression(check, 0, 'check', {
-			onQuantifier: (expr, path) => {
-				const { collection } = expr
-				if (!('pointer' in collection) || collection.pointer.startsWith('@'))
-					return
-				const target = parseEvidenceTarget(collection.pointer)
-				if (target.channel !== 'response-body') return
-				const step = index.stepOf(target.stepId)
-				if (step === undefined) return
-				const operation = index.operationOf(step.operationId)
-				if (operation === undefined) return
-				const firstToken = target.tail.length === 1 ? target.tail[0] : undefined
-				const declaredType =
-					firstToken === undefined
-						? undefined
-						: operation.responseDescriptor.types[firstToken]
-				if (
-					declaredType !== undefined &&
-					declaredType !== null &&
-					NON_COLLECTION_TYPES.has(declaredType)
-				) {
-					throw new StructuralFailure(
-						'quantifier-over-non-collection',
-						`EvalContract.oracles[id=${oracleId}].${path}.collection`,
-						`"${collection.pointer}" is declared "${declaredType}" by operation "${operation.operationId}", not a collection (AD-4)`,
-					)
-				}
-				if (denotesCollection(collection.pointer)) return
-			},
+		forEachQuantifierCollection(check, null, 'check', (pointer, path) => {
+			const target = parseEvidenceTarget(pointer)
+			if (target.channel !== 'response-body') return
+			const step = index.stepOf(target.stepId)
+			if (step === undefined) return
+			const operation = index.operationOf(step.operationId)
+			if (operation === undefined) return
+			const firstToken = target.tail.length === 1 ? target.tail[0] : undefined
+			const declaredType =
+				firstToken === undefined
+					? undefined
+					: operation.responseDescriptor.types[firstToken]
+			if (
+				declaredType !== undefined &&
+				declaredType !== null &&
+				NON_COLLECTION_TYPES.has(declaredType)
+			) {
+				throw new StructuralFailure(
+					'quantifier-over-non-collection',
+					`EvalContract.oracles[id=${oracleId}].${path}`,
+					`"${pointer}" is declared "${declaredType}" by operation "${operation.operationId}", not a collection (AD-4)`,
+				)
+			}
 		})
 	})
 }

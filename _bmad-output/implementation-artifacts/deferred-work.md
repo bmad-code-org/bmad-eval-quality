@@ -1,7 +1,48 @@
 # Deferred work
 
-Five items are currently open under "How to use this file." The prose above that section records
-how past items closed.
+No items are currently open under "How to use this file." The list below records how each
+past item closed.
+
+All five items Story 4.2's own step-04 review opened were closed the same day, 2026-08-25, once
+pushed on rather than left queued:
+
+- **AD-16's two forbidden-input checks had no thrower.** Closed in `src/core/compile/forbidden-
+  inputs.ts`. `checkForbiddenInputFloor` checks all seven mandatory floor members, and
+  `checkScopedResourceReferences` rejects any populated scoped resource list, matching the schema's
+  declared failure shape. `tests/compile/forbidden-inputs.test.ts` covers every floor member plus
+  null, empty, and populated scoped resources.
+- **Unbounded recursion depth over nested `not`/`all`/`any` expressions.** Closed as out of v0's
+  stated scope, not as unaddressed: the spine states plainly, twice, that "the package treats a
+  caller as a possibly-buggy integration, not as an adversary," that an adversarial trust model
+  "would require independent attestation or a runner boundary the package owns," ruled out for v0 by
+  ADR-004, and that "upgrading the trust model is a spine amendment, not a hardening exercise." A
+  stack-depth guard against an adversarially deep `check` tree is exactly that hardening; it is not
+  this or any other v0 story's work to add quietly. Revisit only alongside an actual trust-model
+  change.
+- **`buildPlanIndex`/`parseEvidenceTarget` could throw a raw `TypeError` on a schema-legal duplicate
+  `operationId`.** Closed: `plan-index.ts`'s `buildPlanIndex` now takes a `duplicateIds: 'throw' |
+  'unresolved'` option (default `'throw'`, preserving every existing strict caller); Story 4.2's two
+  new checks already selected `'unresolved'`, and `reachability.ts`'s `checkEvidenceReachability` now
+  does too, so every `core/compile/` caller is total against this schema-legal shape. Its own
+  `evaluatePointerReachability` already handled an unresolved step or operation gracefully as
+  `unreachable`, so this was a one-line extension of infrastructure already proven correct, not a new
+  design. `tests/seal/plan-index.test.ts` covers the option directly.
+- **`checkOracleAlignment`'s relation-containment read as near-vacuous for a connective/quantifier
+  relation, with nothing proving otherwise.** Closed by demonstration, not by redesign: the "appears
+  anywhere in check" semantics are AD-3's own stated rule ("check may be stronger than the
+  direction"), not an oversight, so the fix was closing the missing-fixture gap the entry actually
+  named. `tests/compile/oracle-alignment.test.ts` now asserts `direction.relation` set to `for-all`,
+  `all`, or `not` against a check naming only `for-any`/`existence` still throws — proving the
+  containment check is not vacuous, it correctly rejects a relation that is genuinely absent even
+  among several other connective/quantifier ops — alongside a positive case where the relation is
+  genuinely present, nested one level down.
+- **`checkQuantifierOverNonCollection` silently skipped a nested quantifier's own `@`-prefixed
+  collection pointer.** Closed: it now walks with the same bound-element substitution
+  `oracle-alignment.ts`'s `collectTargets` already threads for direction/check alignment (that file's
+  `substitutePointer` is now exported for this reuse), so a nested quantifier's own collection
+  pointer resolves to an absolute one before its declared type is checked, rather than being skipped.
+  `tests/compile/expression-legality.test.ts` covers both the general substitution case and the bare
+  `@/` special case.
 
 The `in-review`/`review` status-vocabulary drift between story files' own `Status:` line and
 `sprint-status.yaml`'s `development_status` field was investigated on 2026-08-24 and found to be by
@@ -69,22 +110,4 @@ the outcome and reasoning live (the source spec) may stay in the closure prose a
 closure on record here already does it, so a later reader is not left to guess what was once open.
 The rule is about the entry, not about erasing that something was once open.
 
-- source_spec: `_bmad-output/implementation-artifacts/4-2-the-ad-5-registry-as-code-and-the-structural-compile-checks.md`
-  summary: AD-16's `forbidden-input-floor-incomplete` and `scoped-reference-resolves-forbidden` codes have no thrower anywhere in `src/`, and no epic currently owns closing that gap.
-  evidence: AD-16 binds "brief emission, ingest, isolation-manifest validation," never "compiler," so Epic 4 (which names exactly AD-26, AD-5, AD-28, AD-34, AD-39) correctly excludes it; FR7's own coverage-map row assigns AD-16 to Epic 2 alone, but Epic 2 is already `done` in `sprint-status.yaml` with neither code implemented. Story 4.2's own AC 1 named this gap explicitly but, by this project's standing convention against widening an already-scoped story, did not file it here — filed now so a later reader is not left to guess what was once open.
-
-- source_spec: `_bmad-output/implementation-artifacts/4-2-the-ad-5-registry-as-code-and-the-structural-compile-checks.md`
-  summary: No compile-check tree walk (Story 4.1's `reachability.ts`, Story 4.2's `expression-legality.ts` and `oracle-alignment.ts`) caps recursion depth over nested `not`/`all`/`any` expressions, so an adversarially deep `check` tree crashes with an uncaught stack-overflow `RangeError` instead of a coded `StructuralFailure`.
-  evidence: `expression-legality.ts`'s `walkExpression` and `oracle-alignment.ts`'s `collectTargets` both recurse once per nested connective with no depth guard, generalizing the identical unguarded shape already present in Story 4.1's `reachability.ts`; no AD-4/AD-5 code names a nesting-depth-exceeded failure for connectives (only `quantifier-nesting-exceeded` is bounded), so today the only failure mode for excessive connective nesting is an uncoded engine crash.
-
-- source_spec: `_bmad-output/implementation-artifacts/4-2-the-ad-5-registry-as-code-and-the-structural-compile-checks.md`
-  summary: Strict `buildPlanIndex` callers can still throw a raw uncaught `TypeError` on a schema-legal contract where two `permittedInterfaces` entries declare the same `operationId`.
-  evidence: `core/schemas/sealed-run-record.ts:171` states that `Operation.operationId` is scoped to one `PermittedInterface`, so two interfaces may declare the same one. Story 4.2's `checkQuantifierOverNonCollection` and `checkUndeclaredMandatoryInput` now select the index's duplicate-tolerant `unresolved` mode, which keeps those standalone checks total. Story 4.1's compile checks and other strict callers still use the default throw, and the contract grammar still has no interface identifier on an interaction step with which to disambiguate the operation. That remaining cross-artifact design gap stays open here.
-
-- source_spec: `_bmad-output/implementation-artifacts/4-2-the-ad-5-registry-as-code-and-the-structural-compile-checks.md`
-  summary: `checkOracleAlignment`'s relation-containment check (Decision 2) degenerates to near-vacuous whenever `direction.relation` names a connective or quantifier op, since almost any non-trivial `check` tree contains that op somewhere; no fixture demonstrates whether a genuine connective-relation mismatch is actually caught.
-  evidence: seven of the eight oracles in the shipped `gateCContract` fixture declare `relation: 'all'`, `'not'`, or `'for-all'` rather than a leaf operator; `ops.has(direction.relation)` (`oracle-alignment.ts`) passes as soon as that op name appears anywhere in the tree, with no requirement that it structurally correspond to the direction's own evidence targets. AC 7's own fixture 12 only exercises the leaf-operator case (`relation: 'existence'`).
-
-- source_spec: `_bmad-output/implementation-artifacts/4-2-the-ad-5-registry-as-code-and-the-structural-compile-checks.md`
-  summary: `checkQuantifierOverNonCollection` silently skips a nested quantifier's own bound-element-relative (`@`-prefixed) `collection` pointer instead of substituting it against the enclosing quantifier's bound element, so a nested quantifier over an actual scalar field goes structurally undetected.
-  evidence: `expression-legality.ts`'s `checkQuantifierOverNonCollection` returns early whenever `collection.pointer.startsWith('@')`; `oracle-alignment.ts`'s `substitutePointer` already solves the identical substitution problem for direction/check alignment but is not reused here. Decision 3 documents the check's `response-body`-channel scoping but never mentions this `@`-prefix narrowing, so it is undocumented as well as unenforced. `checkQuantifierNesting` permits one level of quantifier nesting, so the gap is reachable under today's own admitted grammar.
+(No entries are currently open.)

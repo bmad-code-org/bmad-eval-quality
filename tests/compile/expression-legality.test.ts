@@ -6,20 +6,10 @@ import {
 	checkReferenceSetResolution,
 	checkRegexConstructs,
 } from '../../src/core/compile/expression-legality.ts'
-import { StructuralFailure } from '../../src/core/failure-codes.ts'
 import { EvalContract } from '../../src/core/schemas/eval-contract.ts'
 import { gateCContract } from '../schemas/fixtures/gate-c-contract.ts'
 import { populatedContract } from '../schemas/fixtures/relevance-contracts.ts'
-
-function structuralFailureOf(fn: () => void): StructuralFailure {
-	try {
-		fn()
-	} catch (error) {
-		if (error instanceof StructuralFailure) return error
-		throw error
-	}
-	throw new Error('expected a StructuralFailure to be thrown')
-}
+import { structuralFailureOf } from './helpers.ts'
 
 describe('all five checks: positive whole-fixture regression', () => {
 	it('fixture 16: all five checks pass with no throw against populatedContract and gateCContract', () => {
@@ -366,6 +356,51 @@ describe('checkQuantifierOverNonCollection: quantifier-over-non-collection', () 
 			op: 'for-all',
 			collection: { pointer: '/interactions/create/response-body/notAField' },
 			predicate: { op: 'existence', operands: [{ pointer: '@/x' }] },
+		}
+		expect(() => checkQuantifierOverNonCollection(contract)).not.toThrow()
+	})
+
+	it("a nested quantifier's own @-prefixed collection substitutes against its enclosing bound element and still throws on a scalar", () => {
+		const contract = structuredClone(populatedContract) as any
+		contract.permittedInterfaces[0].operations[0].responseDescriptor.types.name =
+			'string'
+		contract.oracles[0].check = {
+			op: 'for-all',
+			collection: { pointer: '/interactions/create/response-body' },
+			predicate: {
+				op: 'for-any',
+				collection: { pointer: '@/name' },
+				predicate: { op: 'existence', operands: [{ pointer: '@/x' }] },
+			},
+		}
+		const failure = structuralFailureOf(() =>
+			checkQuantifierOverNonCollection(contract),
+		)
+		expect(failure.code).toBe('quantifier-over-non-collection')
+		expect(failure.artifactPath).toContain('predicate.collection')
+		expect(failure.message).toContain('/interactions/create/response-body/name')
+	})
+
+	it('a top-level relative collection stays available to the bound-scope check', () => {
+		const contract = structuredClone(populatedContract) as any
+		contract.oracles[0].check = {
+			op: 'for-all',
+			collection: { pointer: '@/items' },
+			predicate: { op: 'existence', operands: [{ pointer: '@/id' }] },
+		}
+		expect(() => checkQuantifierOverNonCollection(contract)).not.toThrow()
+	})
+
+	it('a nested relative collection with no pointer binding stays available to operand checks', () => {
+		const contract = structuredClone(populatedContract) as any
+		contract.oracles[0].check = {
+			op: 'for-all',
+			collection: { literal: [] },
+			predicate: {
+				op: 'for-any',
+				collection: { pointer: '@/items' },
+				predicate: { op: 'existence', operands: [{ pointer: '@/x' }] },
+			},
 		}
 		expect(() => checkQuantifierOverNonCollection(contract)).not.toThrow()
 	})
