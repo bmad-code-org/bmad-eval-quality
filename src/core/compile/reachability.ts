@@ -294,6 +294,7 @@ export function checkEvidenceReachability(contract: EvalContract): void {
 		index ??= buildPlanIndex(
 			contract.interactionPlan,
 			contract.permittedInterfaces,
+			{ duplicateIds: 'unresolved' },
 		)
 		const result = evaluatePointerReachability(site.pointer, index)
 		if (!result.reachable) {

@@ -3,6 +3,47 @@
 No items are currently open under "How to use this file." The list below records how each
 past item closed.
 
+All five items Story 4.2's own step-04 review opened were closed the same day, 2026-08-25, once
+pushed on rather than left queued:
+
+- **AD-16's two forbidden-input checks had no thrower.** Closed in `src/core/compile/forbidden-
+  inputs.ts`. `checkForbiddenInputFloor` checks all seven mandatory floor members, and
+  `checkScopedResourceReferences` rejects any populated scoped resource list, matching the schema's
+  declared failure shape. `tests/compile/forbidden-inputs.test.ts` covers every floor member plus
+  null, empty, and populated scoped resources.
+- **Unbounded recursion depth over nested `not`/`all`/`any` expressions.** Closed as out of v0's
+  stated scope, not as unaddressed: the spine states plainly, twice, that "the package treats a
+  caller as a possibly-buggy integration, not as an adversary," that an adversarial trust model
+  "would require independent attestation or a runner boundary the package owns," ruled out for v0 by
+  ADR-004, and that "upgrading the trust model is a spine amendment, not a hardening exercise." A
+  stack-depth guard against an adversarially deep `check` tree is exactly that hardening; it is not
+  this or any other v0 story's work to add quietly. Revisit only alongside an actual trust-model
+  change.
+- **`buildPlanIndex`/`parseEvidenceTarget` could throw a raw `TypeError` on a schema-legal duplicate
+  `operationId`.** Closed: `plan-index.ts`'s `buildPlanIndex` now takes a `duplicateIds: 'throw' |
+  'unresolved'` option (default `'throw'`, preserving every existing strict caller); Story 4.2's two
+  new checks already selected `'unresolved'`, and `reachability.ts`'s `checkEvidenceReachability` now
+  does too, so every `core/compile/` caller is total against this schema-legal shape. Its own
+  `evaluatePointerReachability` already handled an unresolved step or operation gracefully as
+  `unreachable`, so this was a one-line extension of infrastructure already proven correct, not a new
+  design. `tests/seal/plan-index.test.ts` covers the option directly.
+- **`checkOracleAlignment`'s relation-containment read as near-vacuous for a connective/quantifier
+  relation, with nothing proving otherwise.** Closed by demonstration, not by redesign: the "appears
+  anywhere in check" semantics are AD-3's own stated rule ("check may be stronger than the
+  direction"), not an oversight, so the fix was closing the missing-fixture gap the entry actually
+  named. `tests/compile/oracle-alignment.test.ts` now asserts `direction.relation` set to `for-all`,
+  `all`, or `not` against a check naming only `for-any`/`existence` still throws — proving the
+  containment check is not vacuous, it correctly rejects a relation that is genuinely absent even
+  among several other connective/quantifier ops — alongside a positive case where the relation is
+  genuinely present, nested one level down.
+- **`checkQuantifierOverNonCollection` silently skipped a nested quantifier's own `@`-prefixed
+  collection pointer.** Closed: it now walks with the same bound-element substitution
+  `oracle-alignment.ts`'s `collectTargets` already threads for direction/check alignment (that file's
+  `substitutePointer` is now exported for this reuse), so a nested quantifier's own collection
+  pointer resolves to an absolute one before its declared type is checked, rather than being skipped.
+  `tests/compile/expression-legality.test.ts` covers both the general substitution case and the bare
+  `@/` special case.
+
 The `in-review`/`review` status-vocabulary drift between story files' own `Status:` line and
 `sprint-status.yaml`'s `development_status` field was investigated on 2026-08-24 and found to be by
 design, not closed by rule change: the two fields are owned by different mechanisms for different
@@ -69,18 +110,4 @@ the outcome and reasoning live (the source spec) may stay in the closure prose a
 closure on record here already does it, so a later reader is not left to guess what was once open.
 The rule is about the entry, not about erasing that something was once open.
 
-<<<<<<< Updated upstream
-- source_spec: `_bmad-output/implementation-artifacts/2-3-the-emitted-brief-scripting-audit.md`
-  summary: Story files' `Status:` line uses `in-review` (this story and `2-1-the-direction-prose-generator.md`), a value `sprint-status.yaml`'s own documented vocabulary does not recognize (it documents `backlog`/`ready-for-dev`/`in-progress`/`review`/`done`, no `in-review`).
-  evidence: `sprint-status.yaml`'s STATUS DEFINITIONS header lists only `review`, never `in-review`, but both epic-2 stories written so far use `in-review` in their own `Status:` line; the drift is pre-existing (introduced by Story 2.1, not this story) and worth a single terminology decision so future stories don't keep choosing between the two. Left open: fixing it means changing the BMad skill's own routing keywords, out of a story's scope.
-
-- source_spec: `_bmad-output/implementation-artifacts/3-2-connectives-quantifiers-and-three-valued-resolution.md`
-  summary: `scripts/check-docs.mjs`'s `ROOTS` list never covers `_bmad-output/project-knowledge`, so edits to `learning-path-step-by-step.md` pass `check:docs` unchecked.
-  evidence: `check-docs.mjs:9-14` lists `README.md`, `_bmad-output/planning-artifacts`, and two `experiments/` files as its roots; the learning-path doc under `_bmad-output/project-knowledge` is outside all of them. Story 3.2's own Debug Log cites "check:docs → 53 files OK" as covering its learning-path edit, but that count never included the file. Pre-existing tooling gap, surfaced incidentally by this story's own code review.
-
-- source_spec: `_bmad-output/implementation-artifacts/3-2-connectives-quantifiers-and-three-valued-resolution.md`
-  summary: `regexMatchStepBudget` is never validated where `resolveCheck`/`regexMatch` consume it — a `NaN`, negative, or non-integer budget is silently accepted and disables or corrupts the budget gate rather than failing loudly.
-  evidence: `src/core/evaluate/resolution.ts:446`-area threading and `regexMatch`'s own `estimatedSteps > matchStepBudget` comparison read `NaN` as always-false, so a malformed budget value never trips the fault it exists to guard. Validation belongs on the scoring-policy schema upstream of this story (`core/schemas/scoring-policy.ts`), out of this story's own scope (no `core/schemas/` edit), but it interacts with this story's own budget threading and is worth a single validation pass at the source.
-=======
 (No entries are currently open.)
->>>>>>> Stashed changes
