@@ -1,9 +1,11 @@
 /**
  * AD-28's shared port contract shape: the one asynchronous method signature
  * every port implements, plus the smallest structural parser interface
- * `invokePort` needs for two-way boundary validation. No concrete port or
- * adapter lives here: Story 6.1 owns `CorpusPort`, `EnvironmentProbePort`,
- * `ClockPort`, `FileSystemPort`, their adapters, and their conformance suite.
+ * `invokePort` needs for two-way boundary validation. No concrete port lives
+ * here. `CorpusPort`, `EnvironmentProbePort`, `ClockPort`, and
+ * `FileSystemPort` each sit in their own file beside this one and read
+ * `PortMethod` from it; their adapters are under `adapters/` and the
+ * conformance suite that checks an adapter against AD-37 is under `testing/`.
  *
  * Deliberately no Zod import: `BoundaryParser` is structural, so a Zod
  * schema satisfies it without making `ports/` depend on the runtime

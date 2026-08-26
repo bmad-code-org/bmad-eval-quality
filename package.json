@@ -31,6 +31,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./conformance": {
+      "types": "./dist/testing/index.d.ts",
+      "default": "./dist/testing/index.js"
     }
   },
   "homepage": "https://github.com/bmad-code-org/bmad-eval-quality#readme",
@@ -60,6 +64,7 @@
     "test:spine-lint": "uv run --with pytest pytest scripts/spine-lint/tests -q",
     "build:shareable": "node scripts/build-shareable.mjs",
     "test": "vitest run",
+    "test:conformance": "vitest run tests/adapters tests/testing",
     "test:watch": "vitest",
     "check:vectors": "python3 tests/fixtures/derive_vectors.py --check",
     "generate:schemas": "node scripts/generate-schemas.ts",

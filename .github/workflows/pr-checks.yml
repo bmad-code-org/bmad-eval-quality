@@ -59,6 +59,9 @@ jobs:
       - name: Shareable export check (current, and canonical repository URL)
         run: npm run check:shareable
 
+      - name: Port conformance suite (every shipped adapter plus the in-repository probe subject)
+        run: npm run test:conformance
+
       - name: Validate (typecheck, lint, check:docs, check:shareable, lint:spine, check:vectors, check:schemas, check:ad5-registry, check:ad28-registry, check:ad31-table, check:layers, test)
         run: npm run validate
 
@@ -107,6 +110,9 @@ jobs:
 
       - name: Test
         run: npm run test
+
+      - name: Port conformance suite (every shipped adapter plus the in-repository probe subject)
+        run: npm run test:conformance
 
   canary-age:
     name: "Canary: lockfile age audit fails on a young entry"

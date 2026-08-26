@@ -194,7 +194,7 @@ Out of scope entirely: a new eval engine, a hosted service, a dashboard or GUI, 
 
 ```bash
 npm install
-npm run validate            # typecheck, lint, docs, spine, vectors, schemas, registries, AD-31 table, tests
+npm run validate            # typecheck, lint, docs, shareable, spine, vectors, schemas, registries, AD-31 table, layers, tests
 npm run build               # emit to dist/
 npm run lint:fix            # auto-fix with Biome
 npm run generate:schemas    # rebuild schemas/*.schema.json from the Zod source
@@ -203,6 +203,7 @@ npm run check:ad5-registry  # fail if the failure-code list drifts from the AD-5
 npm run generate:ad31-table # rebuild docs/ad31-coverage-predicates.generated.md from the predicates
 npm run check:ad31-table    # fail if the committed AD-31 table differs from the builder by one byte
 npm run build:shareable     # render the planning artifacts to self-contained HTML
+npm run test:conformance    # run the published port conformance suite against every shipped adapter
 ```
 
 `schemas/` holds the twelve published JSON Schema documents, generated from the Zod definitions and
@@ -212,6 +213,25 @@ asserting the validator keyword and instance path for every negative fixture, a 
 comparing Zod's verdict against a third-party validator's over a generated corpus, and a
 keyword-mutation sweep that deletes each published constraint and requires some fixture to notice.
 Edit the Zod schema and regenerate; never hand-edit a file under `schemas/`.
+
+The `eval-quality/conformance` subpath publishes the port boundary: the four port types, the message
+shapes they carry, and an executable conformance suite. An adapter is conforming when
+`runCorpusPortConformance`, `runClockPortConformance`, `runFileSystemPortConformance`, or
+`runEnvironmentProbePortConformance` returns a report whose `passed` is true, which is the definition
+rather than a paraphrase of one; each returns a report instead of asserting, so the suite carries no
+test framework and runs under whichever one you already use.
+
+```ts
+import { runCorpusPortConformance, type CorpusPort } from 'eval-quality/conformance'
+```
+
+The suite drives a subject through four scenarios and checks six assertions per port method: a
+mechanism failure is a typed fault, exactly one underlying call happens on success and on failure, an
+aborted signal rejects promptly, an in-band error value is thrown rather than returned, and a
+successful call returns a response the published schema accepts. The environment-probe port adds
+thirteen more from AD-35's default-deny target policy. `npm run test:conformance` runs the suite
+against the three adapters this package ships and against an in-repository probe subject that exists
+only as the suite's own subject.
 
 `docs/ad31-coverage-predicates.generated.md` holds AD-31's published predicate table, emitted from
 the seven relevance predicates and their seven satisfaction twins run over a hand-authored contract
