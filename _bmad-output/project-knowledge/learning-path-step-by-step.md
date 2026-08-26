@@ -57,6 +57,7 @@ flowchart TD
 |   14 | epic4-story3 | The last two stage-one AD-5 codes: a graph predicate over the interaction plan, bounding depth, width, shared anchors, disjoint pairs, and step count. |
 |   15 | epic4-story4 | One entry point that runs all 19 checks in a fixed order, one place that awaits, and a script that enforces which layer may import which. |
 |   16 | epic5-story1 | Seven yes/no predicates deciding which discipline rules a contract has to satisfy, read from its declarations alone. |
+|   17 | epic5-story2 | Seven more predicates asking whether an oracle really reads each place a rule applies, so under-declaring costs coverage. |
 
 Adding a step: follow `learning-path-template.md`.
 
@@ -1188,4 +1189,81 @@ flowchart TD
   IFACE --> REL
   POINTER --> REL
   REL -.names the predicate for.-> GAP
+```
+
+## Step 17 (epic5-story2): does the contract actually check it?
+
+**What:** `core/coverage/satisfaction.ts` answers the second half of each discipline rule. For every
+place a rule applies, is there an oracle that really reads it? The answer comes from the
+declarations plus each oracle's direction and check.
+
+**Why:** Step 16 said which rules a contract has to satisfy. That flags nothing on its own: a
+contract can be relevant on all seven and still check nothing. These seven predicates walk every
+site and demand a witness. Say an operation declares required response keys `id` and `ok`. If no
+single oracle names both of them at one step, rule 2 is a gap, even though the contract does have an
+oracle pointed at that step.
+
+**Rules:**
+
+- Satisfaction is "for every site, some oracle". Universal over sites, existential over oracles. A
+  contract-level "some oracle somewhere" would let one well-declared operation cover another's gap.
+- A rule with no site is satisfied for free, and the reason says so: `NO_RELEVANT_SITE`. So
+  `satisfied` alone never tells you enough. Read the reason with it.
+- A contract that declares no operation gets nothing for free. Six rules answer not satisfied, with
+  `NO_OPERATION_WITNESS`.
+- A declared pointer is `/ok`. An evidence target is `/interactions/create/response-body/ok`. Join
+  them by pasting the prefix on the front; both spellings escape the same way, so no re-encoding.
+- "Addresses" means names it or goes inside it, so `/items/0/id` addresses `/items`. Rule 4 is the
+  one exception: a quantifier's collection has to equal the declared location exactly.
+- Both channels have to read it. The direction names the pointer and the check reads it. One alone
+  is no witness.
+- Rule 2's whole-body oracle is the oracle that covers the whole body. No label is read: the schema
+  deleted `oracles[].rule` on purpose, so an author cannot mark their own homework.
+- Rule 7 needs the write pointer and the read pointer inside one expression node. Two `existence`
+  calls under one `all` assert two facts and relate them to nothing.
+- Nothing throws, same as Step 16. A gap gets recorded and the artifact still ships.
+
+**Read in this order:**
+
+1. `src/core/coverage/satisfaction.ts`: the pointer join and the check walk at the top, then the
+   seven predicates, then the map and the aggregate.
+2. `src/core/coverage/rules.ts`: `satisfactionPredicateId`, the twin of the relevance one.
+3. `tests/coverage/fixtures/satisfaction-contracts.ts`: the one contract where all seven rules
+   apply and all seven are satisfied. Its header says which oracle witnesses which rule.
+4. `tests/coverage/satisfaction.test.ts`: fixtures 59 to 129, against the truth table in the story.
+5. `tests/coverage/rules.test.ts`: fixtures 130 and 131, pinning that no relevance name ever equals
+   a satisfaction name.
+
+**Watch out:**
+
+- A fixture asserting only `satisfied: true` can pass because the rule stopped having a site. Every
+  positive here asserts its reason too.
+- `structuredClone` keeps shared references, the same trap as Step 16. The fixture builds several
+  transport channels from one object, so a test replaces the whole channel; writing through one
+  changes several.
+- Still nothing calls these. `compile` is untouched. A gap record needs a severity and no
+  declaration maps a rule to one, so that is story 5.3.
+- `relevance.ts` is untouched on purpose. Fixture 67 pins that both halves agree on which rules have
+  no site at all.
+
+**Story:** `_bmad-output/implementation-artifacts/5-2-the-seven-satisfaction-predicates.md`
+
+```mermaid
+flowchart TD
+  RULES["core/coverage/rules.ts<br/>satisfactionPredicateId"]
+  REL["core/coverage/relevance.ts<br/>which rules apply"]
+  SAT["core/coverage/satisfaction.ts<br/>7 predicates, evaluateSatisfaction"]
+  ORACLE["core/schemas/oracle.ts<br/>direction, check"]
+  EXPR["core/schemas/expression.ts<br/>the check tree"]
+  PLANIDX["core/seal/plan-index.ts<br/>stepsUsing, operationOf"]
+  ALIGN["core/compile/oracle-alignment.ts<br/>substitutePointer"]
+  GAP["core/schemas/evidence-artifact.ts<br/>CoverageGap, filled in story 5.3"]
+
+  RULES --> SAT
+  ORACLE --> SAT
+  EXPR --> SAT
+  PLANIDX --> SAT
+  ALIGN --> SAT
+  REL -.agree on which rules have no site.-> SAT
+  SAT -.names the predicate for.-> GAP
 ```

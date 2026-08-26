@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest'
 import {
 	DISCIPLINE_RULES,
 	relevancePredicateId,
+	satisfactionPredicateId,
 } from '../../src/core/coverage/rules.ts'
 
 // The distinct `oracles[].rule` values the Gate C contract carried, in its own
@@ -23,6 +24,17 @@ const RELEVANCE_PREDICATE_IDS = [
 	'sibling-cross-check-relevance',
 	'omission-and-completeness-relevance',
 	'state-change-read-back-relevance',
+] as const
+
+// The satisfaction half, as literals for the same reason.
+const SATISFACTION_PREDICATE_IDS = [
+	'success-indicator-separation-satisfaction',
+	'whole-body-satisfaction',
+	'malformed-input-satisfaction',
+	'per-record-satisfaction',
+	'sibling-cross-check-satisfaction',
+	'omission-and-completeness-satisfaction',
+	'state-change-read-back-satisfaction',
 ] as const
 
 const GATE_C_RULES = [
@@ -51,5 +63,22 @@ describe('the discipline-rule identifiers', () => {
 		// Sets, since the tuple is in AD-20's order and the Gate C oracle list is
 		// in its own.
 		expect(new Set(DISCIPLINE_RULES)).toEqual(new Set(GATE_C_RULES))
+	})
+
+	it('130. carry a satisfaction predicate identifier apiece', () => {
+		const predicates = DISCIPLINE_RULES.map(satisfactionPredicateId)
+		expect(new Set(predicates).size).toBe(7)
+		expect(predicates).toEqual([...SATISFACTION_PREDICATE_IDS])
+	})
+
+	it('131. never spell a relevance identifier the same as a satisfaction one', () => {
+		// A `CoverageGap` carries both for one rule, so an overlap would make the
+		// two fields indistinguishable.
+		const relevance = new Set(DISCIPLINE_RULES.map(relevancePredicateId))
+		const satisfaction = new Set(DISCIPLINE_RULES.map(satisfactionPredicateId))
+		for (const predicate of satisfaction) {
+			expect(relevance.has(predicate), predicate).toBe(false)
+		}
+		expect(new Set([...relevance, ...satisfaction]).size).toBe(14)
 	})
 })
