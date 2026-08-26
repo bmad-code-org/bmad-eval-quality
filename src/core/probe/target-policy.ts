@@ -253,6 +253,13 @@ export function parseAddress(address: string): ParsedAddress {
 	const zoneAt = unbracketed.indexOf('%')
 	const zoned = zoneAt !== -1
 	const bare = zoned ? unbracketed.slice(0, zoneAt) : unbracketed
+	if (zoned) {
+		// An empty zone (`fe80::1%`) and a repeated one (`fe80::1%eth0%extra`)
+		// are malformed. Dropping either would let a spelling no stack accepts
+		// match an authorization naming the bare address.
+		const zone = unbracketed.slice(zoneAt + 1)
+		if (zone.length === 0 || zone.includes('%')) return UNPARSEABLE
+	}
 	if (bare.length === 0) return UNPARSEABLE
 	if (!bare.includes(':')) {
 		// A zone identifier on an IPv4 literal is not an address on any stack,
@@ -403,5 +410,12 @@ export function isSafeMethod(
 	authorization: ProbeTargetAuthorization,
 	method: string,
 ): boolean {
-	return authorization.safeMethods.some((safe: string) => safe === method)
+	// Membership in both lists. `safeMethods` is declared without a subset
+	// refinement (AC 3), so a mapping may mark a method safe that it never
+	// authorized; answering `true` there would let a differential select a
+	// method `evaluateTarget` goes on to deny.
+	return (
+		authorization.methods.some((allowed: string) => allowed === method) &&
+		authorization.safeMethods.some((safe: string) => safe === method)
+	)
 }

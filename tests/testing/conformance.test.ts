@@ -258,12 +258,18 @@ describe('the shared six: one mutant per assertion flips exactly its own id (fix
 		])
 	})
 
-	it('fixture 49: ignoring the abort signal flips only prompt-abort, within abortBudgetMs', async () => {
-		const started = Date.now()
-		expect(await corpusFailures({ ignoreAbort: true }, 100)).toEqual([
-			'resolve/prompt-abort',
-		])
-		expect(Date.now() - started).toBeLessThan(2000)
+	it('fixture 49: ignoring the abort signal flips only prompt-abort, on the budget', async () => {
+		// No wall-clock threshold: a CI scheduling pause would fail it while
+		// `prompt-abort` is correct. That the run settles at all is the evidence
+		// the budget fired, since the subject's call never settles on its own.
+		const report = await runCorpusPortConformance(
+			syntheticSubject(corpusShapes, { ignoreAbort: true }, 50),
+		)
+		expect(failedIds(report)).toEqual(['resolve/prompt-abort'])
+		const abort = report.outcomes.find(
+			(outcome) => outcome.id === 'resolve/prompt-abort',
+		)
+		expect(abort?.detail).toContain('50ms after the signal aborted')
 	})
 
 	it('fixture 50: rejecting an abort with port-failure rather than aborted flips only prompt-abort', async () => {

@@ -156,6 +156,11 @@ describe('parseAddress and classifyAddress: the classes AD-35 names (fixtures 1-
 			'127.0.0.1%eth0',
 			'::ffff:127.0.0.1%eth0',
 			'2606:2800:220:1:248:1893:25c8:1946%eth0',
+			// An empty zone and a repeated one are malformed. Dropping either
+			// would let a spelling no stack accepts match an authorization
+			// naming the bare address.
+			'fe80::1%',
+			'fe80::1%eth0%extra',
 		]
 		for (const spelling of spellings) {
 			expect(classifyAddress(spelling)).toBe('unparseable')
@@ -396,7 +401,7 @@ describe('evaluateTarget: AD-35 default-deny, one step at a time (fixtures 21-40
 		expect(!decision.allowed && decision.reason).toBe('port-not-authorized')
 	})
 
-	it('fixture 40: isSafeMethod is false for an authorized-but-unsafe method and for an empty safeMethods', () => {
+	it('fixture 40: isSafeMethod requires membership in both lists', () => {
 		const both = authorization({
 			methods: ['GET', 'POST'],
 			safeMethods: ['GET'],
@@ -404,5 +409,16 @@ describe('evaluateTarget: AD-35 default-deny, one step at a time (fixtures 21-40
 		expect(isSafeMethod(both, 'GET')).toBe(true)
 		expect(isSafeMethod(both, 'POST')).toBe(false)
 		expect(isSafeMethod(authorization({ safeMethods: [] }), 'GET')).toBe(false)
+		// The schema carries no subset refinement (AC 3), so a mapping can mark
+		// a method safe that it never authorized. Answering `true` there would
+		// let a differential pick a method evaluateTarget goes on to deny.
+		const contradictory = authorization({
+			methods: ['GET'],
+			safeMethods: ['POST'],
+		})
+		expect(isSafeMethod(contradictory, 'POST')).toBe(false)
+		expect(outcomeOf(policyOf(contradictory), target({ method: 'POST' }))).toBe(
+			'method-not-authorized',
+		)
 	})
 })

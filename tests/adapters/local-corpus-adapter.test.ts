@@ -126,6 +126,26 @@ describe('the shipped corpus adapter (fixtures 77-82)', () => {
 		)
 	})
 
+	it('fixture 96: a corpus root of "/" still resolves a file beneath it', async () => {
+		// `relative`, never a prefix compare. A root of `/` makes the prefix
+		// `//`, which no valid absolute path starts with, so a prefix check
+		// rejects every file under a filesystem-root corpus.
+		let seen = ''
+		const mechanism: CorpusMechanism = async (resolvedPath) => {
+			seen = resolvedPath
+			return new Uint8Array([4, 2])
+		}
+		const port = createLocalCorpusAdapter({ root: '/', mechanism })
+		const relativeRef = join(root, 'one.bin').replace(/^\//, '')
+		const response = await port.resolve({ privateRef: relativeRef }, signal)
+		expect(new Uint8Array(response.bytes)).toEqual(new Uint8Array([4, 2]))
+		expect(seen).toBe(join(root, 'one.bin'))
+		// The escape check still refuses a traversal out of that root.
+		expectPortFailure(
+			await thrownBy(port.resolve({ privateRef: '../etc/passwd' }, signal)),
+		)
+	})
+
 	it('fixture 82: the response echoes the requested privateRef', async () => {
 		const port = createLocalCorpusAdapter({ root })
 		const response = await port.resolve({ privateRef: 'one.bin' }, signal)

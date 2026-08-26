@@ -52,6 +52,8 @@ describe('the in-repository probe subject (fixtures 85-88)', () => {
 					path: '/ok',
 					method: 'GET',
 					host: SUBJECT_HOSTS.authorized,
+					headers: {},
+					body: undefined,
 					maxResponseBytes: 1024,
 					signal: new AbortController().signal,
 				})
@@ -101,6 +103,50 @@ describe('the in-repository probe subject (fixtures 85-88)', () => {
 			)
 		expect(thrown).toBeInstanceOf(RuntimeFault)
 		expect((thrown as RuntimeFault).code).toBe('budget-exhausted')
+	})
+
+	it('fixture 94: the request channels reach the wire', async () => {
+		// Without this the channels feed nothing but the byte budget, and a
+		// body-sensitivity differential would observe the same empty request as
+		// a body-free probe.
+		const port = createProbeSubjectAdapter({
+			policy: buildSubjectPolicy(server.port),
+			targets: buildSubjectTargets(server.port),
+			resolveAddress: subjectResolveAddress,
+		})
+		const subject = createProbeSubject(server)
+		const observed = await port.probe(
+			subject.echoRequest,
+			new AbortController().signal,
+		)
+		expect(observed.status).toBe(200)
+		expect(observed.body.kind).toBe('json')
+		const echoed =
+			observed.body.kind === 'json'
+				? (observed.body.value as Record<string, unknown>)
+				: {}
+		expect(echoed.url).toBe('/echo?season=2')
+		expect(echoed.declared).toBe('yes')
+		expect(echoed.body).toBe('{"probe":true}')
+		// The declared header channel never rewrites the name the policy and TLS
+		// were checked against.
+		expect(echoed.host).toBe(SUBJECT_HOSTS.authorized)
+	})
+
+	it('fixture 95: a relative redirect Location is resolved against the current target', async () => {
+		const port = createProbeSubjectAdapter({
+			policy: buildSubjectPolicy(server.port),
+			targets: buildSubjectTargets(server.port),
+			resolveAddress: subjectResolveAddress,
+		})
+		const subject = createProbeSubject(server)
+		// `new URL('/ok')` throws with no base, which would surface as a
+		// transport failure rather than a followed and revalidated hop.
+		const observed = await port.probe(
+			subject.relativeRedirectRequest,
+			new AbortController().signal,
+		)
+		expect(observed.status).toBe(200)
 	})
 
 	it('fixture 92: a request past maxRequestBytes is capped before any hop', async () => {

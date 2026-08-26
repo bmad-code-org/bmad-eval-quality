@@ -39,6 +39,14 @@ async function raceAbort(
 	responsePath: string,
 	call: Promise<unknown>,
 ): Promise<unknown> {
+	if (signal.aborted) {
+		throw new RuntimeFault(
+			'aborted',
+			responsePath,
+			'the signal aborted before the raced work began',
+			{ cause: signal.reason },
+		)
+	}
 	let listener: (() => void) | undefined
 	try {
 		const aborted = new Promise<never>((_resolve, reject) => {
@@ -125,7 +133,21 @@ export async function runPortMethod<Request, Response>(
 		)
 	}
 
-	if (postcheck !== undefined) await postcheck(parsedRequest.data)
+	// Raced too: `postcheck` does its own I/O (a `realpath` pair, for the corpus
+	// adapter), and an abort during that work has to reject rather than wait.
+	if (postcheck !== undefined) {
+		try {
+			await raceAbort(signal, responsePath, postcheck(parsedRequest.data))
+		} catch (error) {
+			if (error instanceof RuntimeFault) throw error
+			throw new RuntimeFault(
+				'port-failure',
+				responsePath,
+				'a post-call check threw or rejected',
+				{ cause: error },
+			)
+		}
+	}
 
 	// 4. A partial result or an in-band error object fails here like any other
 	// schema mismatch. That is why every mechanism returns `unknown`: give it a

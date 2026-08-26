@@ -1,6 +1,6 @@
 /** AD-8's corpus port over a caller-supplied root directory. */
 import { readFile, realpath } from 'node:fs/promises'
-import { posix, resolve, sep } from 'node:path'
+import { isAbsolute, posix, relative, resolve, sep } from 'node:path'
 import { RuntimeFault } from '../core/schemas/faults.ts'
 import type { CorpusPort } from '../ports/corpus-port.ts'
 import { corpusResolveParsers } from '../ports/corpus-port.ts'
@@ -62,7 +62,14 @@ async function assertInsideRoot(
 			{ cause: error },
 		)
 	}
-	if (realTarget !== realRoot && !realTarget.startsWith(`${realRoot}${sep}`)) {
+	// `relative`, never a prefix compare: a root of `/` makes the prefix `//`,
+	// which no valid target starts with, so a prefix check rejects every file
+	// under a filesystem-root corpus.
+	const inside = relative(realRoot, realTarget)
+	if (
+		inside !== '' &&
+		(isAbsolute(inside) || inside === '..' || inside.startsWith(`..${sep}`))
+	) {
 		throw escaped(privateRef, 'resolves outside the corpus root')
 	}
 }

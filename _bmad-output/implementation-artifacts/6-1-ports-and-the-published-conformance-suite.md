@@ -1790,12 +1790,54 @@ transcription it did not do.
 **Baseline note:** local `main` is stale at `95ed961`, so `git diff main` bundles PR #32. `HEAD` is
 `531217b` and `git diff HEAD` is this story's true surface.
 
+### CodeRabbit Review Record
+
+A second automated pass on PR #33. **Seven findings: six fixed, one taken a different way.** Each
+fix was verified by re-running the mutation that exposed it.
+
+1. **Major. The request channels never reached the wire.** `nodeHttpMechanism` sent only `Host` and
+   ended with no body, so `parsed.channels` fed the byte budget and nothing else. A
+   body-sensitivity differential would have observed the same empty request as a body-free probe,
+   which makes AD-10's `input-sensitivity` check unimplementable. `renderRequest` now renders the
+   path parameters, the query string, the headers, and a `json` body, and the mechanism writes
+   them. `Host` is applied last so a declared header channel cannot rewrite the name the policy and
+   TLS were checked against, and `maxRequestBytes` now measures the rendered form. **New fixture
+   94** asserts all four channels arrive against an `/echo` route. Neither the story review nor the
+   code review caught this.
+2. **Major. A relative redirect `Location` threw.** `new URL('/ok')` with no base throws, and the
+   throw propagated out of `validate` into `runPortMethod`'s catch, so the adapter reported
+   `port-failure` for a redirect RFC 9110 permits and that it should have followed and revalidated.
+   Now resolved against the current target. **New fixture 95**, with a `/redirect-relative` route.
+3. **Minor. A corpus root of `/` rejected every file beneath it**, because `${realRoot}${sep}` is
+   `//` and no absolute path starts with that. Now `relative(realRoot, realTarget)`, refusing only
+   an absolute result or one starting `..`. **New fixture 96** asserts both halves.
+4. **Minor. `postcheck` ran outside the abort race.** An abort during the corpus adapter's
+   `realpath` pair would have waited for that work and returned a response. `postcheck` now goes
+   through `raceAbort`, and `raceAbort` rejects immediately when the signal is already aborted.
+   Left unasserted: a `realpath` pair completes in microseconds, so a fixture racing it would be
+   timing-dependent, which AD-30 calls a defect rather than something to quarantine.
+5. **Minor. An empty or repeated IPv6 zone suffix was accepted.** `fe80::1%` parsed as a valid
+   link-local address, so a spelling no stack accepts matched an authorization naming the bare
+   address. Both spellings now return `unparseable` and both are in fixture 16.
+6. **Minor. Fixture 49 read the wall clock**, so a CI scheduling pause could fail it while
+   `prompt-abort` was correct. The threshold is removed rather than replaced with fake timers: the
+   subject's call never settles on its own, so the run settling at all is the evidence, and the
+   fixture asserts the outcome's detail names the budget.
+7. **Minor, taken differently. `safeMethods` is still not refined to a subset of `methods`.** AC 3
+   records that decision: runtime configuration rather than a compiled artifact, no AD-5 code names
+   the contradiction, and it joins the cross-field rules this repository states rather than
+   encodes, matching `KeyedShapeDescriptor.permittedKeys`. The operational trap is real, so it is
+   closed at the decision point instead: **`isSafeMethod` now requires membership in both lists**,
+   so a differential can never select a method `evaluateTarget` goes on to deny. That makes AC 3's
+   own claim that "the two never contradict at a decision point" true rather than asserted.
+   Fixture 40 covers it.
+
 **AC 14, measured on the post-#32 tree:** `check:layers` **73** files / 0 violations (72 expected;
 see deviation 1), `check:schemas` 12, `check:ad5-registry` 21, `check:ad28-registry` 10,
 `check:ad31-table` 19 contracts / 28 cells, `check:docs` 55, `check:shareable` 21, `npm run test`
-**61 files / 2268 tests**. `check:layers` is 73 against a stated 72 (deviation 1). The test total is
-2265 as the story predicts, plus three fixtures the code review required: fixture 20a (finding 6),
-fixture 92 (finding 3), and fixture 93 (finding 7). File count is unchanged at 61.
+**61 files / 2271 tests**. `check:layers` is 73 against a stated 72 (deviation 1). The test total is
+2265 as the story predicts, plus six fixtures the two reviews required: 20a, 92, and 93 from the
+peer code review, and 94, 95, and 96 from CodeRabbit. File count is unchanged at 61.
 
 **Known gaps after review.** Findings 4 and 10 are fixed and unasserted: both are unreachable
 through the shipped fixture server, one needing two authorizations for a single interface and the

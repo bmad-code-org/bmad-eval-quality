@@ -98,9 +98,12 @@ export type Hop = {
 	/** the address the policy validated. The hostname travels in `host`. */
 	readonly address: string
 	readonly port: number
+	/** already carries the rendered path parameters and query string. */
 	readonly path: string
 	readonly method: string
 	readonly host: string
+	readonly headers: Record<string, string>
+	readonly body: string | undefined
 	readonly maxResponseBytes: number
 	readonly signal: AbortSignal
 }
@@ -128,7 +131,18 @@ export const nodeHttpMechanism: ProbeMechanism = (hop) =>
 				port: hop.port,
 				path: hop.path,
 				method: hop.method,
-				headers: { host: hop.host },
+				// `host` last so a declared header can never rewrite the name TLS
+				// and the policy were checked against.
+				headers: {
+					...hop.headers,
+					...(hop.body === undefined
+						? {}
+						: {
+								'content-type': 'application/json',
+								'content-length': String(Buffer.byteLength(hop.body)),
+							}),
+					host: hop.host,
+				},
 				signal: hop.signal,
 			},
 			(response) => {
@@ -173,8 +187,46 @@ export const nodeHttpMechanism: ProbeMechanism = (hop) =>
 			},
 		)
 		clientRequest.on('error', reject)
+		if (hop.body !== undefined) clientRequest.write(hop.body)
 		clientRequest.end()
 	})
+
+/**
+ * The request's four channels, rendered onto the wire. Without this the
+ * channels reach nothing but the byte budget, and a body-sensitivity
+ * differential would observe the same empty request as a body-free probe.
+ */
+function renderRequest(parsed: ProbeRequest): {
+	readonly path: string
+	readonly headers: Record<string, string>
+	readonly body: string | undefined
+} {
+	let path = parsed.pathTemplate
+	for (const [name, value] of Object.entries(parsed.channels.path)) {
+		path = path.replaceAll(
+			`{${name}}`,
+			encodeURIComponent(
+				typeof value === 'string' ? value : JSON.stringify(value),
+			),
+		)
+	}
+	const query = Object.entries(parsed.channels.query)
+		.map(
+			([name, value]) =>
+				`${encodeURIComponent(name)}=${encodeURIComponent(
+					typeof value === 'string' ? value : JSON.stringify(value),
+				)}`,
+		)
+		.join('&')
+	return {
+		path: query.length > 0 ? `${path}?${query}` : path,
+		headers: { ...parsed.channels.header },
+		body:
+			parsed.channels.body.kind === 'json'
+				? JSON.stringify(parsed.channels.body.value)
+				: undefined,
+	}
+}
 
 /** RFC 9110 joining. `set-cookie` is dropped: a joined one is a value no consumer can split back. */
 function flattenHeaders(
@@ -250,8 +302,9 @@ export function createProbeSubjectAdapter(options: {
 				`no target is mapped for interface "${parsed.interfaceId}"`,
 			)
 		}
+		const rendered = renderRequest(parsed)
 		let current = target
-		let path = parsed.pathTemplate
+		let path = rendered.path
 		let validated = validate(parsed, current)
 		let redirects = 0
 
@@ -260,7 +313,7 @@ export function createProbeSubjectAdapter(options: {
 		// prevent. Measured on the wire form of the channels the request
 		// carries, before the first hop, so an oversize request costs no I/O.
 		const requestBytes = new TextEncoder().encode(
-			JSON.stringify(parsed.channels),
+			`${rendered.path}${JSON.stringify(rendered.headers)}${rendered.body ?? ''}`,
 		).byteLength
 
 		while (true) {
@@ -281,6 +334,8 @@ export function createProbeSubjectAdapter(options: {
 				path,
 				method: parsed.method,
 				host: current.host,
+				headers: rendered.headers,
+				body: rendered.body,
 				maxResponseBytes: authorization.maxResponseBytes,
 				signal,
 			})
@@ -311,7 +366,13 @@ export function createProbeSubjectAdapter(options: {
 					`the chain passed maxRedirects (${authorization.maxRedirects})`,
 				)
 			}
-			const next = new URL(String(location))
+			// A relative `Location` is legal per RFC 9110 and `new URL` throws on
+			// one without a base, which `runPortMethod` would report as a
+			// transport failure rather than following and revalidating the hop.
+			const next = new URL(
+				String(location),
+				`${current.scheme}://${current.host}:${current.port}`,
+			)
 			current = {
 				scheme: next.protocol.replace(':', ''),
 				host: next.hostname,
@@ -412,6 +473,31 @@ export function startFixtureServer(): Promise<{
 					location: `http://denied-redirect.test:${port}/ok`,
 				})
 				response.end()
+				return
+			}
+			if (path === '/redirect-relative') {
+				// A relative Location, which RFC 9110 permits and `new URL` refuses
+				// without a base.
+				response.writeHead(302, { location: '/ok' })
+				response.end()
+				return
+			}
+			if (path === '/echo') {
+				response.writeHead(200, { 'content-type': 'application/json' })
+				let received = ''
+				incoming.on('data', (chunk: Buffer) => {
+					received += chunk.toString('utf8')
+				})
+				incoming.on('end', () => {
+					response.end(
+						JSON.stringify({
+							url: incoming.url,
+							declared: incoming.headers['x-declared'] ?? null,
+							host: incoming.headers.host,
+							body: received.length > 0 ? received : null,
+						}),
+					)
+				})
 				return
 			}
 			if (path === '/redirect-twice') {
@@ -576,7 +662,11 @@ const IN_BAND_HOP = {
  */
 export function createProbeSubject(server: {
 	readonly port: number
-}): ProbeSubject & { readonly oversizeUtf8Request: ProbeRequest } {
+}): ProbeSubject & {
+	readonly oversizeUtf8Request: ProbeRequest
+	readonly relativeRedirectRequest: ProbeRequest
+	readonly echoRequest: ProbeRequest
+} {
 	const policy = buildSubjectPolicy(server.port)
 	const targets = buildSubjectTargets(server.port)
 	const request = (
@@ -647,6 +737,16 @@ export function createProbeSubject(server: {
 		oversizeResponseRequest: request('oversize', '/oversize'),
 		slowRequest: request('slow', '/slow'),
 		oversizeUtf8Request: request('oversize-utf8', '/oversize-utf8'),
+		relativeRedirectRequest: request('redirect-relative', '/redirect-relative'),
+		echoRequest: {
+			...request('echo', '/echo', 'GET'),
+			channels: {
+				path: {},
+				query: { season: 2 },
+				header: { 'x-declared': 'yes' },
+				body: { kind: 'json', value: { probe: true } },
+			},
+		},
 		faultingRequest: request('faulting', '/fault'),
 	}
 }
