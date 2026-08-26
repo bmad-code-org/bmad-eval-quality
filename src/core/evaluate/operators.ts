@@ -379,9 +379,11 @@ function keyValueOf(
  * goes uncounted), and the `expected` loop deletes one entry per match. A
  * final `actualByKey.size === 0` is the bijection condition itself, since the
  * map's starting size already equals `actual`'s cardinality (Decision 6). A
- * duplicate `actualKey` fails when a second element claims an
- * already-emptied slot; a duplicate `expectedKey` is assumed
- * compile-time-prevented (Decision 4) but fails the same way if it occurs.
+ * duplicate `actualKey` fails immediately, at construction, because the
+ * second element finds its slot already occupied; a duplicate `expectedKey`
+ * is assumed compile-time-prevented (Decision 4), but if it occurs it fails
+ * later, at lookup, because the second occurrence finds its slot already
+ * deleted by the first.
  */
 export function coversByKey(
 	expected: JsonValue[] | typeof ABSENT,

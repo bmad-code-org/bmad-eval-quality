@@ -33,9 +33,10 @@ type InterchangeArtifactEntry = {
  * prior-art test, the constraint ledger's lineage-entry generation, and
  * Story 1.5's export walk all read it instead of a second hard-coded list.
  *
- * Lineage fields live in `lineage.ts`, not here, because all twelve schema
- * modules import them; importing this registry back from any of those would
- * close a circular import.
+ * Lineage fields live in `lineage.ts`, not here, because eleven of the twelve
+ * schema modules import them (every entry but `artifact-reference`, the one
+ * with `carriesLineage: false`); importing this registry back from any of
+ * those would close a circular import.
  */
 export const INTERCHANGE_ARTIFACTS = {
 	'eval-contract': {
