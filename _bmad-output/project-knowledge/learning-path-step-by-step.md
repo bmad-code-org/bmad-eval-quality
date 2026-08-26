@@ -56,6 +56,7 @@ flowchart TD
 |   13 | epic4-story2 | Twelve more AD-5 codes: quantifier substitution, operand-kind legality, the interface inventory, and waiver completeness. |
 |   14 | epic4-story3 | The last two stage-one AD-5 codes: a graph predicate over the interaction plan, bounding depth, width, shared anchors, disjoint pairs, and step count. |
 |   15 | epic4-story4 | One entry point that runs all 19 checks in a fixed order, one place that awaits, and a script that enforces which layer may import which. |
+|   16 | epic5-story1 | Seven yes/no predicates deciding which discipline rules a contract has to satisfy, read from its declarations alone. |
 
 Adding a step: follow `learning-path-template.md`.
 
@@ -1121,4 +1122,70 @@ flowchart TD
   GATE -.enforces.-> APPC
   GATE -.enforces.-> CORE
   GATE -.enforces.-> IP
+```
+
+## Step 16 (epic5-story1): what a discipline rule applies to
+
+**What:** `core/coverage/rules.ts` names AD-20's seven discipline rules. `core/coverage/relevance.ts`
+answers one question per rule: does this contract have to satisfy it? The answer comes from
+declarations only.
+
+**Why:** "rule 6 does not apply here" is worth nothing when the contract's author is the one saying
+so. The Gate C contract put a `rule` label on every oracle and the schema deleted it, because
+reading that label back would turn fourteen decision procedures into self-assessment. These
+predicates read the declarations, so a contract that declares almost nothing comes out relevant on
+almost everything and under-declaring costs coverage.
+
+**Rules:**
+
+- Seven identifiers, minted once, spelled the way the Gate C contract spelled them. `Waiver.rule`
+  and `CoverageGap.rule` are opaque strings, so this is the only thing joining a gap to a waiver.
+- A predicate name is derived from its rule as `${rule}-relevance`, so a new rule arrives with one.
+- A missing declaration makes the rule relevant. An explicitly empty one answers it.
+  `collectionLocations: null` fires rule 4; `[]` does not.
+- `successIndicator` has two spellings, so `null` there is absence and rule 1 fires.
+- The empty pointer `''` is RFC 6901's whole document, a real answer. The check compares against
+  `null`, so an empty indicator still counts as nominated.
+- A contract declaring no operation makes all six operation-scoped rules relevant. That is the shape
+  the design is built to catch.
+- No predicate reads an oracle, a plan step, a waiver, a rubric, or a severity. Five fixtures delete
+  each and assert the seven verdicts hold.
+- Rule 5 reads `siblingGroups` at contract level. The operation list has no part in it.
+- Nothing throws and nothing blocks. A coverage gap is recorded and the artifact still ships.
+
+**Read in this order:**
+
+1. `src/core/coverage/rules.ts`: the seven identifiers and the derived predicate name.
+2. `src/core/coverage/relevance.ts`: seven predicates, then the map and the aggregate.
+3. `tests/schemas/fixtures/relevance-contracts.ts`: the three contracts every fixture clones, one
+   per declaration state.
+4. `tests/coverage/relevance.test.ts`: 56 numbered fixtures, checked against the truth table in the
+   story.
+5. `tests/coverage/rules.test.ts`: the vocabulary pinned against the Gate C contract's spellings.
+
+**Watch out:**
+
+- `structuredClone` keeps shared references. All four transport channels of the absent contract come
+  from one object, so a test replaces a whole channel; writing through one changes all four.
+- Nothing calls these predicates yet. `core/compile/compile.ts` is untouched, because a gap record
+  needs a satisfaction verdict and that is Story 5.2.
+- One verdict covers the whole contract. One operation's missing declaration and another's present
+  one land on the same answer, so Story 5.2 has to keep them apart.
+
+**Story:** `_bmad-output/implementation-artifacts/5-1-the-seven-relevance-predicates.md`
+
+```mermaid
+flowchart TD
+  RULES["core/coverage/rules.ts<br/>DISCIPLINE_RULES, relevancePredicateId"]
+  REL["core/coverage/relevance.ts<br/>7 predicates, evaluateRelevance"]
+  CONTRACT["core/schemas/eval-contract.ts<br/>contract-level declarations"]
+  IFACE["core/schemas/interface.ts<br/>Operation"]
+  POINTER["core/schemas/pointer.ts<br/>TRANSPORT_CHANNELS"]
+  GAP["core/schemas/evidence-artifact.ts<br/>CoverageGap, filled in story 5.2"]
+
+  RULES --> REL
+  CONTRACT --> REL
+  IFACE --> REL
+  POINTER --> REL
+  REL -.names the predicate for.-> GAP
 ```
