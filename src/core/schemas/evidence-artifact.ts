@@ -158,6 +158,9 @@ export const CoverageGap = z.strictObject({
 	severity: Severity,
 })
 
+/** the record as a type, so `core/coverage/` names it without importing Zod. */
+export type CoverageGap = z.infer<typeof CoverageGap>
+
 export const ClassStrength = z.strictObject({
 	caught: z.int().min(0),
 	exercised: z.int().min(0),

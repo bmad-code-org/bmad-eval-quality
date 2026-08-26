@@ -65,7 +65,7 @@ development_status:
   3-2-connectives-quantifiers-and-three-valued-resolution: done
   3-3-covers-by-key-as-a-bijection: done
   
-  epic-4: in-progress
+  epic-4: done
   4-1-pointer-resolution-and-reachability: done
   4-2-the-ad-5-registry-as-code-and-the-structural-compile-checks: done
   4-3-the-scripting-bound-graph-predicate-and-its-adversarial-fixtures: done
@@ -74,7 +74,7 @@ development_status:
   epic-5: in-progress
   5-1-the-seven-relevance-predicates: done
   5-2-the-seven-satisfaction-predicates: done
-  5-3-the-contract-fixture-corpus-and-the-regenerated-table: backlog
+  5-3-the-contract-fixture-corpus-and-the-regenerated-table: review
   
   epic-6: backlog
   6-1-ports-and-the-published-conformance-suite: backlog
