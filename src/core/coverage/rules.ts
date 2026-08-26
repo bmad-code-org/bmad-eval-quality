@@ -19,3 +19,7 @@ export type DisciplineRule = (typeof DISCIPLINE_RULES)[number]
 /** `relevancePredicate` on a coverage-gap record. Derived, so a new rule arrives with one. */
 export const relevancePredicateId = (rule: DisciplineRule): string =>
 	`${rule}-relevance`
+
+/** `satisfactionPredicate` on a coverage-gap record. Derived, like its relevance twin. */
+export const satisfactionPredicateId = (rule: DisciplineRule): string =>
+	`${rule}-satisfaction`
