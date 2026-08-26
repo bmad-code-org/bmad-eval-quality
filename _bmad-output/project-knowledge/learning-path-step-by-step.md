@@ -59,6 +59,7 @@ flowchart TD
 |   16 | epic5-story1 | Seven yes/no predicates deciding which discipline rules a contract has to satisfy, read from its declarations alone. |
 |   17 | epic5-story2 | Seven more predicates asking whether an oracle really reads each place a rule applies, so under-declaring costs coverage. |
 |   18 | epic5-story3 | Nineteen hand-written contracts and a generator that emits the published predicate table from the same predicates the library ships. |
+|   19 | epic6-story1 | Four ports, three adapters, a default-deny rule for which address a probe may reach, and a suite an outside adapter author can run against their own code. |
 
 Adding a step: follow `learning-path-template.md`.
 
@@ -1348,4 +1349,103 @@ flowchart TD
   TABLE --> CHECK
   GEN --> DOC
   DOC -.byte for byte.-> CHECK
+```
+## Step 19 (epic6-story1): ports, adapters, and a suite you can run
+
+**What:** four port types, three adapters that implement them, a pure rule deciding which network
+address a probe is allowed to reach, and a conformance suite published as
+`eval-quality/conformance` that hands an adapter author back a report.
+
+**Why:** someone writing an adapter outside this repo has no way to know if it is right. The prose
+says "call the underlying thing exactly once" and nothing checks it. An adapter that quietly retries
+once on failure looks the same as a correct one until a probe fires twice at the system under test
+and the state-reset check reads a value the first call already changed. Run the suite and that
+adapter fails on a named line.
+
+**Rules:**
+
+- The suite hands back a report. It cannot import the consumer's test runner, so `testing/` may not
+  import an external module or a Node builtin at all.
+- The suite never sees `core/probe/`. A suite sharing the subject's own decision procedure would
+  pass any subject that shared it too.
+- Every mechanism returns `unknown`. Give it a precise type and the adapter can build its response
+  from a value it already holds, so the response check can never fail.
+- Six assertions per port method, each id prefixed by the method name. Two of them count calls,
+  because a retry shows up on failure and not on success.
+- The adapters race the abort signal and `invokePort` does not. A mechanism that never settles makes
+  `invokePort` never settle, and an adapter is the thing that has to fix that.
+- Every spelling of one address reduces to a single string before anything is compared. `127.0.0.1`
+  and `::ffff:127.0.0.1` are one address; compare the text and you get two.
+- Reducing two spellings to one string widens the allowlist, so only the IPv4-mapped form does it.
+  `::127.0.0.1` is classified as loopback and still denied against an entry naming `127.0.0.1`.
+- `metadata` is decided before `link-local` and `private`. `169.254.169.254` sits inside
+  `169.254.0.0/16`, and calling it link-local hides the one denial an operator has to read.
+- Seven denial reasons, one fault code. A denied target throws `forbidden-target` and a cap throws
+  `budget-exhausted`. One says the contract aimed somewhere forbidden, the other says an allowed
+  target answered too much or too slowly.
+- A 500 is an observation. Throw on it and every seeded fault the pre-flight watches for goes
+  invisible.
+
+**Read in this order:**
+
+1. `src/core/schemas/port-messages.ts`: the request and response shape of every port method.
+2. `src/core/schemas/probe-policy.ts`: one authorized target, as data. No field has a default,
+   because a missing cap is an unbounded cap.
+3. `src/core/probe/target-policy.ts`: `parseAddress` reduces a spelling to one form and names its
+   class; `evaluateTarget` walks interface, scheme, host, port, address, method in that order.
+4. `src/ports/*.ts`: four port types, each a method signature plus the two parsers its boundary
+   needs. `environment-probe-port.ts` carries the four rules an implementation has to follow.
+5. `src/adapters/port-boundary.ts`: the five steps every adapter method runs, in one place.
+6. `src/adapters/*-adapter.ts`: the three shipped adapters, each a factory over a mechanism you can
+   swap out.
+7. `src/testing/conformance.ts`: the six shared assertions and the report shape.
+8. `src/testing/probe-conformance.ts`: thirteen more, for the probe port only.
+9. `tests/adapters/probe-subject.ts`: a real loopback server and the adapter that talks to it.
+10. `tests/testing/conformance.test.ts`: one broken subject per assertion, each proving that
+    assertion can actually fail.
+
+**Watch out:**
+
+- The probe adapter lives under `tests/`, which `tsconfig-build.json` excludes, so no network
+  adapter reaches `dist/`. That is the only reading under which AD-2 and AD-37 both hold.
+- `ports/` may not import Zod. The port files pull schema objects from `core/schemas` and use each
+  name in both type and value position, so a plain `import` is right there; `import type` breaks the
+  parser export.
+- A layer may import itself. A cross-layer edge the graph does not draw is still forbidden, so
+  nothing may import `cli/` or `testing/`.
+- The fixture server binds port 0 and reads the port back. A fixed port collides under parallel
+  workers and the failure looks like a policy bug.
+- A byte cap counts bytes. `setEncoding('utf8')` and `body.length` count UTF-16 code units, so a
+  256-byte cap lets 768 bytes of three-byte characters through.
+- Editing `README.md` makes `_bmad-output/shareable/` stale. Run `npm run build:shareable`.
+
+**Story:** `_bmad-output/implementation-artifacts/6-1-ports-and-the-published-conformance-suite.md`
+
+```mermaid
+flowchart TD
+  MSG["core/schemas/port-messages.ts<br/>request and response shapes"]
+  POL["core/schemas/probe-policy.ts<br/>one authorized target"]
+  TP["core/probe/target-policy.ts<br/>parseAddress, evaluateTarget"]
+  PORT["ports/port.ts<br/>PortMethod, BoundaryParser"]
+  PORTS["ports/*-port.ts<br/>4 port types + parser pairs"]
+  PB["adapters/port-boundary.ts<br/>the 5 steps"]
+  AD["adapters/*-adapter.ts<br/>clock, file system, corpus"]
+  CONF["testing/conformance.ts<br/>6 shared assertions"]
+  PROBE["testing/probe-conformance.ts<br/>13 AD-35 assertions"]
+  IDX["testing/index.ts<br/>eval-quality/conformance"]
+  SUBJ["tests/adapters/probe-subject.ts<br/>loopback server + adapter"]
+
+  MSG --> PORTS
+  PORT --> PORTS
+  POL --> TP
+  PORTS --> PB
+  PB --> AD
+  PORTS --> CONF
+  CONF --> PROBE
+  CONF --> IDX
+  PROBE --> IDX
+  PB --> SUBJ
+  TP --> SUBJ
+  AD --> CONF
+  SUBJ --> PROBE
 ```

@@ -29,6 +29,7 @@ const SELF: Record<Layer, string> = {
 	ports: 'src/ports/alpha.ts',
 	application: 'src/application/alpha.ts',
 	adapters: 'src/adapters/alpha.ts',
+	testing: 'src/testing/alpha.ts',
 	cli: 'src/cli/alpha.ts',
 	root: 'src/index.ts',
 }
@@ -39,24 +40,38 @@ const OTHER: Record<Layer, string> = {
 	ports: 'src/ports/beta.ts',
 	application: 'src/application/beta.ts',
 	adapters: 'src/adapters/beta.ts',
+	testing: 'src/testing/beta.ts',
 	cli: 'src/cli/beta.ts',
 	root: 'src/index.ts', // root is exactly one file; never used as a same-layer target
 }
 
 const LAYERS = Object.keys(SELF) as Layer[]
 
-// The exact allowed-edge graph AC 6 states (items 1-7), transcribed
-// independently of `isAllowedEdge` so this test asserts the specification
-// rather than the implementation checking itself. Absence of a target layer
-// is a prohibition: no set contains `cli` (item 6, "nothing may import
-// cli/") or `root` (nothing imports `src/index.ts` back).
+// The allowed-edge graph AC 6 states (items 1-7) plus Story 6.1 AC 10's
+// `testing` layer, written from those texts and not from `isAllowedEdge`, so
+// this test asserts the specification and not the implementation checking
+// itself.
+//
+// The self-edges are the one part no AC spells out. AC 10 says nothing about
+// `application -> application` or `cli -> cli`; those cells come from Story
+// 6.1's reading of the spine, which draws one node per layer and states that
+// an import inside a node is a same-layer dependency. For those five cells
+// this map and `isAllowedEdge` encode one idea written twice, which is the
+// honest consequence of settling the ambiguity in the story. `root` is left
+// out: it is a single file, so its self-edge is unconstructible and the
+// generated matrix skips that cell.
+//
+// Absence of a cross-layer target is a prohibition: no set contains `cli`
+// (item 6, "nothing may import cli/"), `testing` (nothing may import the
+// published suite), or `root` (nothing imports `src/index.ts` back).
 const ALLOWED: Record<Layer, ReadonlySet<Layer>> = {
 	'core-schemas': new Set<Layer>(['core-schemas', 'core']),
 	core: new Set<Layer>(['core', 'core-schemas']),
-	ports: new Set<Layer>(['core-schemas']),
-	application: new Set<Layer>(['core', 'core-schemas', 'ports']),
-	adapters: new Set<Layer>(['ports', 'core-schemas']),
-	cli: new Set<Layer>(['application', 'adapters']),
+	ports: new Set<Layer>(['ports', 'core-schemas']),
+	application: new Set<Layer>(['application', 'core', 'core-schemas', 'ports']),
+	adapters: new Set<Layer>(['adapters', 'ports', 'core-schemas']),
+	testing: new Set<Layer>(['testing', 'ports', 'core-schemas']),
+	cli: new Set<Layer>(['cli', 'application', 'adapters']),
 	root: new Set<Layer>(['application', 'core-schemas']),
 }
 
@@ -643,6 +658,43 @@ describe('dependency-direction: ports/ declares shapes and imports no external m
 			expect(scanSources(files)).toEqual([])
 		},
 	)
+})
+
+describe('dependency-direction: the published conformance suite is framework-free (Story 6.1 AC 10)', () => {
+	it('fixture 90: src/testing/ importing vitest, node:http, or zod is a violation naming AC 10\u2019s rule', () => {
+		for (const specifier of ['vitest', 'node:http', 'zod']) {
+			const files = new Map([
+				['src/testing/x.ts', `import { x } from '${specifier}'\n`],
+			])
+			const violations = scanSources(files)
+			expect(violations).toHaveLength(1)
+			expect(violations[0]?.specifier).toBe(specifier)
+			expect(violations[0]?.rule).toBe(
+				'testing/ may import ports/ and core/schemas only; the published conformance suite may not import a test framework, an external module, or a Node builtin',
+			)
+		}
+	})
+
+	it('fixture 91: src/testing/ importing adapters/, application/, or core/probe/ is a violation', () => {
+		const targets = [
+			'src/adapters/y.ts',
+			'src/application/y.ts',
+			'src/core/probe/y.ts',
+		]
+		for (const target of targets) {
+			const importer = 'src/testing/x.ts'
+			const specifier = relSpecifier(importer, target)
+			const files = twoFileMap(
+				importer,
+				`import { value } from '${specifier}'\n`,
+				target,
+			)
+			const violations = scanSources(files)
+			expect(violations).toHaveLength(1)
+			expect(violations[0]?.file).toBe(importer)
+			expect(violations[0]?.specifier).toBe(specifier)
+		}
+	})
 })
 
 describe('dependency-direction: ambient clock and random globals under core/ (AD-1)', () => {

@@ -76,8 +76,8 @@ development_status:
   5-2-the-seven-satisfaction-predicates: done
   5-3-the-contract-fixture-corpus-and-the-regenerated-table: review
   
-  epic-6: backlog
-  6-1-ports-and-the-published-conformance-suite: backlog
+  epic-6: in-progress
+  6-1-ports-and-the-published-conformance-suite: review
   6-2-pre-flight-as-plan-observation-and-pure-verdict: backlog
   6-3-rubric-compilation-under-checked-rules: backlog
   6-4-artifact-immutability-and-lineage-enforcement: backlog

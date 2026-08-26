@@ -26,6 +26,7 @@ export type Layer =
 	| 'ports'
 	| 'application'
 	| 'adapters'
+	| 'testing'
 	| 'cli'
 	| 'root'
 
@@ -42,6 +43,7 @@ const LAYER_LABELS: Record<Layer, string> = {
 	ports: 'ports/',
 	application: 'application/',
 	adapters: 'adapters/',
+	testing: 'testing/',
 	cli: 'cli/',
 	root: 'src/index.ts',
 }
@@ -54,18 +56,28 @@ export function classifyLayer(file: string): Layer | undefined {
 	if (file.startsWith('src/ports/')) return 'ports'
 	if (file.startsWith('src/application/')) return 'application'
 	if (file.startsWith('src/adapters/')) return 'adapters'
+	if (file.startsWith('src/testing/')) return 'testing'
 	if (file.startsWith('src/cli/')) return 'cli'
 	return undefined
 }
 
 /**
- * The dependency-direction graph (Structural Seed, AC 1 item 7): `core` and
- * `core-schemas` are one graph node for same-layer-import purposes; the
- * prohibition governs dependencies leaving `core`, not submodules inside it
- * importing each other. Absence of an edge is itself a prohibition, which is
- * how "nothing may import cli/" falls out with no special case.
+ * The dependency-direction graph (Structural Seed, AC 1 item 7). Every layer
+ * in the spine's diagram is one node, and an import between two files inside
+ * one node is an intra-node dependency, never an arrow. The spine states that
+ * reading for `core/` ("a same-layer dependency ... stays permitted exactly as
+ * the single-node diagram already draws it"), and its per-layer sentences
+ * bound what each layer may import *outside itself*. `ports/` grew a second
+ * file in Story 6.1 and `testing/` was born with three, so the rule is stated
+ * once here. Absence of a cross-layer edge is still a prohibition, which is
+ * how "nothing may import cli/" and "nothing may import testing/" both fall
+ * out with no special case.
  */
 function isAllowedEdge(from: Layer, to: Layer): boolean {
+	// `root` is a single file, so its self-edge is unconstructible and the
+	// specification's transcribed map does not grant one. Excluding it keeps the
+	// two in step on the one cell the generated matrix skips.
+	if (from === to) return from !== 'root'
 	switch (from) {
 		case 'core-schemas':
 		case 'core':
@@ -75,6 +87,8 @@ function isAllowedEdge(from: Layer, to: Layer): boolean {
 		case 'application':
 			return to === 'core' || to === 'core-schemas' || to === 'ports'
 		case 'adapters':
+			return to === 'ports' || to === 'core-schemas'
+		case 'testing':
 			return to === 'ports' || to === 'core-schemas'
 		case 'cli':
 			return to === 'application' || to === 'adapters'
@@ -194,9 +208,12 @@ function isCreateHashOnlyClause(clauseTokens: readonly Token[]): boolean {
  * Applies the external-module allowlist. AC 6 scopes its allowlist to
  * `core/`; `ports/` generalizes AC 5's "no Zod in ports/" to every external
  * module, since it holds declared shapes only and has no legitimate need for
- * a runtime library or Node builtin. `adapters/` and `cli/` are deliberately
- * unrestricted: an adapter's whole purpose is reaching the I/O mechanism its
- * port describes.
+ * a runtime library or Node builtin. `testing/` is restricted the same way,
+ * for a different reason: AD-37's conformance suite is published to adapter
+ * authors, so an imported test framework would either promote a devDependency
+ * to a runtime one or fail to load for every adopter who uses a different
+ * runner. `adapters/` and `cli/` are deliberately unrestricted: an adapter's
+ * whole purpose is reaching the I/O mechanism its port describes.
  */
 function checkExternalSpecifier(
 	file: string,
@@ -222,6 +239,15 @@ function checkExternalSpecifier(
 			line,
 			specifier,
 			rule: 'ports/ may import core/schemas only; it declares shapes and may not import an external module or Node builtin',
+		})
+		return
+	}
+	if (layer === 'testing') {
+		violations.push({
+			file,
+			line,
+			specifier,
+			rule: 'testing/ may import ports/ and core/schemas only; the published conformance suite may not import a test framework, an external module, or a Node builtin',
 		})
 		return
 	}
