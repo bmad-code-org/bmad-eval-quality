@@ -1362,6 +1362,68 @@ once on failure looks the same as a correct one until a probe fires twice at the
 and the state-reset check reads a value the first call already changed. Run the suite and that
 adapter fails on a named line.
 
+**The shape, in call order:**
+
+```text
+           CLI (driving adapter; Story 6.5, not built yet)
+                             |
+                             v
+         +-----------------------------------------------+
+         |  core/ + application/                         |
+         |  the hexagon. core/ is pure and synchronous,  |
+         |  and application/ is the only layer that      |
+         |  awaits a port                                |
+         +-----------------------------------------------+
+                             |
+                             v
+         +------------------------------------------------+
+         |  ports/                                        |
+         |  CorpusPort              ClockPort             |
+         |  FileSystemPort          EnvironmentProbePort  |
+         |  a method signature and two parsers each.      |
+         |  no logic, no zod, no Node builtins            |
+         +------------------------------------------------+
+                             |
+             +---------------+---------------+
+             |                               |
+             v                               v
+   +----------------------+      +------------------------------+
+   |  adapters/ (driven)  |      |  an adapter written outside  |
+   |  system-clock        |      |  this repository             |
+   |  node-file-system    |      +------------------------------+
+   |  local-corpus        |
+   +----------------------+
+             |                               |
+             v                               v
+     clock, filesystem              someone else's store
+```
+
+The suite is the piece a plain ports-and-adapters drawing has no room for, because it sits outside
+the call path entirely and drives whatever claims to implement a port:
+
+```text
+   +-----------------------------------------------+
+   |  testing/   the conformance suite             |
+   |  published as eval-quality/conformance        |
+   |  returns a report and imports no test runner  |
+   +-----------------------------------------------+
+                        |
+                        |  4 subjects per port method,
+                        |  4 scenarios, 6 outcomes each
+                        v
+        anything that claims to implement a port
+                        |
+       +----------------+----------------+
+       |                |                |
+       v                v                v
+  the 3 shipped    probe-subject    an adapter written
+  adapters         (under tests/,   outside this
+                   run by CI)       repository
+```
+
+`invokePort` goes through the same suite as a subject, on purpose. It passes five of the six and
+fails `prompt-abort`, which is the one place an adapter has to do more than the generic seam does.
+
 **Rules:**
 
 - The suite hands back a report. It cannot import the consumer's test runner, so `testing/` may not
