@@ -204,6 +204,24 @@ const definedPointers = (node: CheckNode): readonly string[] =>
 	node.operandPointers.filter((pointer): pointer is string => pointer !== null)
 
 /**
+ * The three derived views the predicates read. `evaluateSatisfaction` builds
+ * one and passes it down, so seven predicates do not each rebuild the plan
+ * index and re-walk every check tree. A predicate called on its own builds its
+ * own, which is what every per-rule fixture does.
+ */
+export type SatisfactionContext = {
+	readonly operations: readonly Operation[]
+	readonly index: PlanIndex
+	readonly oracles: readonly OracleView[]
+}
+
+const contextOf = (contract: EvalContract): SatisfactionContext => ({
+	operations: operationsOf(contract),
+	index: planIndexOf(contract),
+	oracles: oracleViewsOf(contract),
+})
+
+/**
  * Rule 1: for every operation its relevance predicate fires on, some oracle's
  * direction and check both address that operation's success indicator and a
  * pointer whose declared role is something other than `success-indicator`,
@@ -212,12 +230,11 @@ const definedPointers = (node: CheckNode): readonly string[] =>
  */
 export function successIndicatorSeparationSatisfaction(
 	contract: EvalContract,
+	context: SatisfactionContext = contextOf(contract),
 ): SatisfactionVerdict {
 	const rule = 'success-indicator-separation'
-	const operations = operationsOf(contract)
+	const { operations, index, oracles } = context
 	if (operations.length === 0) return verdict(rule, false, NO_OPERATION_WITNESS)
-	const index = planIndexOf(contract)
-	const oracles = oracleViewsOf(contract)
 	let sites = 0
 	for (const operation of operations) {
 		const { successIndicator, channelRoles } = operation.responseDescriptor
@@ -283,12 +300,11 @@ export function successIndicatorSeparationSatisfaction(
  */
 export function wholeBodySatisfaction(
 	contract: EvalContract,
+	context: SatisfactionContext = contextOf(contract),
 ): SatisfactionVerdict {
 	const rule = 'whole-body'
-	const operations = operationsOf(contract)
+	const { operations, index, oracles } = context
 	if (operations.length === 0) return verdict(rule, false, NO_OPERATION_WITNESS)
-	const index = planIndexOf(contract)
-	const oracles = oracleViewsOf(contract)
 	let sites = 0
 	for (const operation of operations) {
 		const required = [...new Set(operation.responseDescriptor.requiredKeys)]
@@ -349,12 +365,11 @@ const bindsTypeViolating = (step: InteractionStep): boolean =>
  */
 export function malformedInputSatisfaction(
 	contract: EvalContract,
+	context: SatisfactionContext = contextOf(contract),
 ): SatisfactionVerdict {
 	const rule = 'malformed-input'
-	const operations = operationsOf(contract)
+	const { operations, index, oracles } = context
 	if (operations.length === 0) return verdict(rule, false, NO_OPERATION_WITNESS)
-	const index = planIndexOf(contract)
-	const oracles = oracleViewsOf(contract)
 	let sites = 0
 	for (const operation of operations) {
 		if (!declaresRequestKey(operation)) continue
@@ -394,12 +409,11 @@ export function malformedInputSatisfaction(
  */
 export function perRecordSatisfaction(
 	contract: EvalContract,
+	context: SatisfactionContext = contextOf(contract),
 ): SatisfactionVerdict {
 	const rule = 'per-record'
-	const operations = operationsOf(contract)
+	const { operations, index, oracles } = context
 	if (operations.length === 0) return verdict(rule, false, NO_OPERATION_WITNESS)
-	const index = planIndexOf(contract)
-	const oracles = oracleViewsOf(contract)
 	let sites = 0
 	for (const operation of operations) {
 		const { collectionLocations } = operation.responseDescriptor
@@ -446,6 +460,7 @@ export function perRecordSatisfaction(
  */
 export function siblingCrossCheckSatisfaction(
 	contract: EvalContract,
+	context: SatisfactionContext = contextOf(contract),
 ): SatisfactionVerdict {
 	const rule = 'sibling-cross-check'
 	const groups = contract.siblingGroups
@@ -456,8 +471,7 @@ export function siblingCrossCheckSatisfaction(
 			'the contract declares no sibling groups, so no group is declared to cross-check',
 		)
 	}
-	const index = planIndexOf(contract)
-	const oracles = oracleViewsOf(contract)
+	const { index, oracles } = context
 	let sites = 0
 	for (const group of groups.operations) {
 		sites += 1
@@ -551,12 +565,11 @@ function reconciles(
  */
 export function omissionAndCompletenessSatisfaction(
 	contract: EvalContract,
+	context: SatisfactionContext = contextOf(contract),
 ): SatisfactionVerdict {
 	const rule = 'omission-and-completeness'
-	const operations = operationsOf(contract)
+	const { operations, index, oracles } = context
 	if (operations.length === 0) return verdict(rule, false, NO_OPERATION_WITNESS)
-	const index = planIndexOf(contract)
-	const oracles = oracleViewsOf(contract)
 	let sites = 0
 	for (const operation of operations) {
 		const { collectionLocations } = operation.responseDescriptor
@@ -632,12 +645,11 @@ const relates = (
  */
 export function stateChangeReadBackSatisfaction(
 	contract: EvalContract,
+	context: SatisfactionContext = contextOf(contract),
 ): SatisfactionVerdict {
 	const rule = 'state-change-read-back'
-	const operations = operationsOf(contract)
+	const { operations, index, oracles } = context
 	if (operations.length === 0) return verdict(rule, false, NO_OPERATION_WITNESS)
-	const index = planIndexOf(contract)
-	const oracles = oracleViewsOf(contract)
 	let sites = 0
 	for (const operation of operations) {
 		if (!operation.stateChangeMarker) continue
@@ -677,6 +689,7 @@ export function stateChangeReadBackSatisfaction(
 export const SATISFACTION_PREDICATES: {
 	readonly [Rule in DisciplineRule]: (
 		contract: EvalContract,
+		context?: SatisfactionContext,
 	) => SatisfactionVerdict
 } = {
 	'success-indicator-separation': successIndicatorSeparationSatisfaction,
@@ -692,5 +705,8 @@ export const SATISFACTION_PREDICATES: {
 export function evaluateSatisfaction(
 	contract: EvalContract,
 ): readonly SatisfactionVerdict[] {
-	return DISCIPLINE_RULES.map((rule) => SATISFACTION_PREDICATES[rule](contract))
+	const context = contextOf(contract)
+	return DISCIPLINE_RULES.map((rule) =>
+		SATISFACTION_PREDICATES[rule](contract, context),
+	)
 }

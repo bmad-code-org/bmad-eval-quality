@@ -2173,6 +2173,14 @@ and nothing else; the nineteenth is noted below.
 | L11 | Low | AC 7's per-cell reason claims for `gateCContract` were asserted by nothing. Fixtures 62 and 63 assert booleans and 66 asserts non-emptiness. | Fixture 150, which asserts gateC's rule 1 and rule 5 reasons verbatim, the two cells AC 7 spends a paragraph on and pre-implementation finding 8 corrected. The reviewer's own suggested regression (reversing the interface order) turned out to be a no-op, since `gateCContract` declares one interface; reversing the flattened operation inventory instead fails 124 and 150, so 150 does pin the claim. |
 | L12 | Low | The File List named the learning-path document as edited before it was, and Task 9's sprint-status subtask was unchecked while `sprint-status.yaml` already read `review`. | Both closed by finishing Task 9 in this pass: Step 17 is written and the subtasks are ticked. |
 
+#### CodeRabbit, on pull request #31
+
+One finding, graded trivial by the tool itself, addressed rather than declined.
+
+| # | Severity | Finding | Resolution |
+| --- | --- | --- | --- |
+| CR1 | Nitpick | `evaluateSatisfaction` built the plan index seven times and walked every oracle's check tree seven times for one contract, because each of the seven predicates called `planIndexOf` and `oracleViewsOf` itself. Correct, and bounded by contract size, so no verdict was ever wrong. | A `SatisfactionContext` of the three derived views, built once by `evaluateSatisfaction` and threaded through a **default parameter** on each predicate. Exported call signatures are unchanged, so every per-rule fixture still calls `predicate(contract)` and builds its own context; the mapped type gains the optional second parameter so the aggregate can pass one. Both paths were already covered: the whole-contract fixtures exercise the shared context and every per-rule fixture exercises the default. Considered and rejected: the reviewer's sketch of an optional parameter each caller constructs, which widens what a caller has to know for no measured gain, and declining the finding outright, which leaves a 7x traversal in the module Story 5.3 regenerates a CI table from. **Third deviation from the AC code blocks**, in AC 3 and AC 5. |
+
 Re-run after the fixes, and the numbers AC 9 states are updated by the nineteen added fixtures:
 
 - `npm run validate` end to end and `npm run build` both pass.
