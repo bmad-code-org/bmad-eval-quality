@@ -1362,34 +1362,67 @@ once on failure looks the same as a correct one until a probe fires twice at the
 and the state-reset check reads a value the first call already changed. Run the suite and that
 adapter fails on a named line.
 
-**The shape, in call order.** Solid arrows are the call path; the dotted ones are the suite, which
-sits outside that path and drives anything claiming to implement a port. That last part is what a
-plain ports-and-adapters drawing has no room for.
+**The shape, in call order:**
 
-```mermaid
-flowchart TD
-  CLI["CLI, the driving adapter<br/>Story 6.5, not built yet"]
-  CORE["core/ + application/<br/>the hexagon. core/ is pure and synchronous;<br/>application/ is the only layer that awaits a port"]
-  PORTS["ports/<br/>CorpusPort, ClockPort, FileSystemPort, EnvironmentProbePort<br/>one signature and two parsers each. no logic, no zod, no Node builtins"]
-  SHIPPED["adapters/, the driven side<br/>system-clock, node-file-system, local-corpus"]
-  YOURS["an adapter written<br/>outside this repository"]
-  OUT1["clock, filesystem"]
-  OUT2["someone else's store"]
-  SUITE["testing/<br/>published as eval-quality/conformance<br/>returns a report, imports no test runner"]
-  SUBJ["tests/adapters/probe-subject.ts<br/>loopback server, exercised by CI"]
-  IP["application/invoke-port.ts"]
-
-  CLI -- "constructs, then calls" --> CORE
-  CORE -- "calls through" --> PORTS
-  PORTS -- "implemented by" --> SHIPPED
-  PORTS -- "implemented by" --> YOURS
-  SHIPPED --> OUT1
-  YOURS --> OUT2
-  SUITE -. "4 subjects per method, 4 scenarios, 6 outcomes" .-> SHIPPED
-  SUITE -. "drives" .-> YOURS
-  SUITE -. "drives" .-> SUBJ
-  SUITE -. "fixture 54: passes 5 of 6, fails prompt-abort" .-> IP
+```text
+           CLI (driving adapter; Story 6.5, not built yet)
+                             |
+                             v
+         +-----------------------------------------------+
+         |  core/ + application/                         |
+         |  the hexagon. core/ is pure and synchronous,  |
+         |  and application/ is the only layer that      |
+         |  awaits a port                                |
+         +-----------------------------------------------+
+                             |
+                             v
+         +------------------------------------------------+
+         |  ports/                                        |
+         |  CorpusPort              ClockPort             |
+         |  FileSystemPort          EnvironmentProbePort  |
+         |  a method signature and two parsers each.      |
+         |  no logic, no zod, no Node builtins            |
+         +------------------------------------------------+
+                             |
+             +---------------+---------------+
+             |                               |
+             v                               v
+   +----------------------+      +------------------------------+
+   |  adapters/ (driven)  |      |  an adapter written outside  |
+   |  system-clock        |      |  this repository             |
+   |  node-file-system    |      +------------------------------+
+   |  local-corpus        |
+   +----------------------+
+             |                               |
+             v                               v
+     clock, filesystem              someone else's store
 ```
+
+The suite is the piece a plain ports-and-adapters drawing has no room for, because it sits outside
+the call path entirely and drives whatever claims to implement a port:
+
+```text
+   +-----------------------------------------------+
+   |  testing/   the conformance suite             |
+   |  published as eval-quality/conformance        |
+   |  returns a report and imports no test runner  |
+   +-----------------------------------------------+
+                        |
+                        |  4 subjects per port method,
+                        |  4 scenarios, 6 outcomes each
+                        v
+        anything that claims to implement a port
+                        |
+       +----------------+----------------+
+       |                |                |
+       v                v                v
+  the 3 shipped    probe-subject    an adapter written
+  adapters         (under tests/,   outside this
+                   run by CI)       repository
+```
+
+`invokePort` goes through the same suite as a subject, on purpose. It passes five of the six and
+fails `prompt-abort`, which is the one place an adapter has to do more than the generic seam does.
 
 **Rules:**
 
