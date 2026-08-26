@@ -19,11 +19,9 @@ export const BINDING_CHANNEL_NON_EMPTY = 'binding-channel-non-empty'
 
 // Caller-keyed: the keys are the author's own parameter names. `{}` is
 // rejected because a binding channel has exactly one spelling for "binds
-// nothing": `null`. A request-shape channel's empty triple, by contrast,
+// nothing" (`null`), unlike a request-shape channel's empty triple, which
 // means "declared, no keys." No AD-5 code fires on an empty binding map, so
-// the schema is the enforcement point here, under the admit-rule's second
-// clause. See `BindingChannel` below for how the check reaches the constraint
-// ledger.
+// the schema is the enforcement point, under the admit-rule's second clause.
 const BindingChannelMap = z
 	.record(KeyName, BindingValue)
 	.refine((entries) => Object.keys(entries).length > 0, {

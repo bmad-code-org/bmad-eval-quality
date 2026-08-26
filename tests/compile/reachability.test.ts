@@ -70,11 +70,9 @@ describe('positive regression: zero false positives against already-shipped chec
 		expect(() =>
 			checkBoundElementScope(EvalContract.parse(gateCContract)),
 		).not.toThrow()
-		// gateCContract's O-004 (not(for-any(page, existence(@/retractedAt))))
-		// is this codebase's real worked example of "@/" used correctly inside
-		// a quantifier; O-005's shape(@/) and O-006's set-membership(@/…, …)
-		// are two more, each a different "@/" shape inside a different
-		// quantifier form.
+		// gateCContract's O-004, O-005, and O-006 each use a different "@/"
+		// shape inside a different quantifier form, so this exercises real
+		// usage rather than only synthetic cases.
 	})
 })
 
@@ -311,8 +309,7 @@ describe('checkEvidenceReachability: unreachable-check-evidence', () => {
 
 	// Review finding: `visitExpression`'s `set-membership` case is special-cased
 	// to visit only `operands[0]`, unlike every other tuple-shaped op. No other
-	// fixture exercises that branch, so a regression there (visiting the wrong
-	// operand, or skipping it) would go undetected without this.
+	// fixture exercises that branch.
 	it('review finding: set-membership walks operands[0]: an unreachable pointer there throws', () => {
 		const contract = structuredClone(populatedContract) as any
 		contract.oracles[0].check = {
@@ -373,12 +370,11 @@ describe('checkBoundElementScope: malformed-operator-expression', () => {
 		expect(failure.code).toBe('malformed-operator-expression')
 	})
 
-	// Review finding: the base-case complement to fixture 44. Fixture 44 proves
-	// a *nested* quantifier's "collection" may legally inherit the outer bound
-	// element. This proves a *top-level* quantifier's own "collection", with
-	// nothing enclosing it, is NOT itself inside quantifier scope: `insideQuantifier`
-	// starts `false` at the root, and `visitExpression`'s for-all/for-any branch
-	// visits `collection` at that same, still-`false` value.
+	// Review finding: complements fixture 44, which shows a nested quantifier's
+	// "collection" may inherit the outer bound element. Here, at the root,
+	// `insideQuantifier` starts `false` and `visitExpression`'s for-all/for-any
+	// branch visits `collection` at that same value, so a top-level
+	// quantifier's own "collection" is never itself inside quantifier scope.
 	it('review finding: a top-level quantifier (nothing enclosing it) whose own "collection" carries a "@/" pointer throws', () => {
 		const contract = structuredClone(populatedContract) as any
 		contract.oracles[0].check = {
@@ -393,10 +389,7 @@ describe('checkBoundElementScope: malformed-operator-expression', () => {
 		expect(failure.code).toBe('malformed-operator-expression')
 	})
 
-	// Review finding: `visitExpression`'s `set-membership` case is special-cased
-	// to visit only `operands[0]`, unlike every other tuple-shaped op. No other
-	// fixture exercises that branch, so a regression there (visiting the wrong
-	// operand, or skipping it) would go undetected without this.
+	// Same special-cased set-membership branch as above (checkEvidenceReachability).
 	it('review finding: set-membership walks operands[0]: a "@/" pointer there outside any quantifier throws', () => {
 		const contract = structuredClone(populatedContract) as any
 		contract.oracles[0].check = {

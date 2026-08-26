@@ -21,10 +21,9 @@ export function checkOracleChannel(contract: EvalContract): void {
 }
 
 /**
- * Resolves a bound-element pointer against its enclosing collection.
- * Keep the RFC 6901 tail encoded. Bare `@/` refers to the bound element.
- * Exported for `expression-legality.ts`'s `checkQuantifierOverNonCollection`,
- * which reuses it for the same substitution on a nested quantifier.
+ * Bare `@/` refers to the bound element; the RFC 6901 tail stays encoded.
+ * Exported for `checkQuantifierOverNonCollection` in expression-legality.ts,
+ * which reuses it for a nested quantifier's own substitution.
  */
 export function substitutePointer(
 	pointer: string,

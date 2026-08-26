@@ -3,25 +3,19 @@ import { z } from 'zod'
 import { Digest } from './primitives.ts'
 
 /**
- * The three fields every lineage-bearing artifact carries, lifted here instead
- * of respelling them at each of eleven artifacts (the drift the Consistency
- * Conventions warn against) and spread into each one.
+ * The three fields every lineage-bearing artifact carries, lifted here so
+ * eleven artifacts spread it instead of respelling it (the drift the
+ * Consistency Conventions warn against).
  *
- * This module must keep importing only zod and primitives.ts. `artifact.ts`
- * imports all twelve schema modules to build the registry, and every one of
- * those imports this object; merging the two closes an import cycle, which
- * fails as a temporal-dead-zone `ReferenceError` at module load with no
- * visible link to lineage.
+ * This module imports only zod and primitives.ts: `artifact.ts` imports all
+ * twelve schema modules including this one, so importing `artifact.ts` back
+ * from here would close a circular import.
  *
- * Spread rather than nested: nesting would change `EvalContract`'s shape and
- * break the Story 1.3 reject fixtures that name `['schemaVersion']` and
- * `['parentDigest']` as issue paths, and AD-13 requires each exported file to
- * stay self-contained, so a shared `$defs` entry buys nothing (verified on the
- * pin: a spread object literal adds none).
- *
- * The two artifacts with discriminated-union roots (`Probe`, `EvidenceArtifact`)
- * take the spread inside every branch, since a union has no property bag at
- * its root to spread into.
+ * Spread rather than nested, so `EvalContract`'s shape and the Story 1.3
+ * reject fixtures naming `['schemaVersion']`/`['parentDigest']` stay
+ * unchanged; the two discriminated-union artifacts (`Probe`,
+ * `EvidenceArtifact`) spread it inside every branch instead, since a union
+ * has no root property bag.
  */
 export const lineageFields = {
 	schemaVersion: z

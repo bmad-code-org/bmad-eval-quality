@@ -27,13 +27,11 @@ export const ExternalLink = z.strictObject({
 })
 
 /**
- * AD-19's three severity levels, exported so they are spelled once. Story 1.3
- * spelled them inline on `Behavior` because it was the only site; Story 1.4
- * adds five more: a finding, a seeded defect, an outcome, a coverage gap, and
- * the scoring policy's floor. Six copies of one closed vocabulary is the drift
- * the Consistency Conventions warn about. Naming it changes no exported byte:
- * an enum carrying no `.meta({ id })` inlines at each use site exactly as the
- * literal did.
+ * AD-19's three severity levels, exported so they are spelled once (six
+ * copies across the finding, seeded defect, outcome, coverage gap, and
+ * scoring-policy-floor sites would be the drift the Consistency Conventions
+ * warn about). Naming it changes no exported byte: an enum with no
+ * `.meta({ id })` inlines at each use site exactly as the literal did.
  */
 export const SEVERITY_LEVELS = ['low', 'material', 'critical'] as const
 
@@ -124,12 +122,11 @@ export const Budgets = z.strictObject({
 
 export const EvalContract = z
 	.strictObject({
-		// AD-11's `schemaVersion` and AD-29's lineage pair, spread from the leaf
-		// module the other ten lineage-bearing artifacts spread from. The three
-		// descriptions moved verbatim: they are published constraint statements and
-		// rewriting them changes the export bytes. Spread rather than nested, so
-		// this artifact's shape and every Story 1.3 reject fixture that names
-		// `['schemaVersion']` or `['parentDigest']` as an issue path are unchanged.
+		// AD-11's schemaVersion and AD-29's lineage pair, spread from the leaf
+		// module every lineage-bearing artifact spreads from; the descriptions
+		// moved verbatim since rewriting them would change the export bytes.
+		// Spread rather than nested, so this shape and the Story 1.3 reject
+		// fixtures naming `['schemaVersion']` or `['parentDigest']` stay unchanged.
 		...lineageFields,
 		contractId: Identifier,
 		sourceSpecDigest: Digest.nullable().describe(

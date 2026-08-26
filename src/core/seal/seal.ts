@@ -1,18 +1,13 @@
 /**
  * `seal`: walks a compiled `EvalContract`'s oracles to assemble the
  * `SealedEvaluatorBrief` AD-16 describes, making its isolation boundary
- * structural rather than conventional. Pure and deterministic (AD-1: the core
- * is pure, no filesystem/network/clock/randomness. AD-2: eval-quality never
- * executes an evaluator, agent, judge, or the system under test): no
- * filesystem, network, clock, randomness, model call, or evaluator
- * execution. Reuses Story 2.1's `buildPlanIndex`/`renderDirectionText` for the
- * generated prose and `digestArtifact` for `contractDigest`; never
- * re-implements rendering or hashing locally. Before returning, also
- * runtime-validates the fully-assembled brief via `SealedEvaluatorBrief.parse()`,
- * so AD-16's exclusion guarantee has a runtime backstop, not only TypeScript's
- * compile-time excess-property check on the return literal.
+ * structural rather than conventional. Pure per AD-1/AD-2: no filesystem,
+ * network, clock, randomness, model call, or evaluator execution. Reuses
+ * Story 2.1's `buildPlanIndex`/`renderDirectionText` for the generated prose
+ * and `digestArtifact` for `contractDigest`; never reimplements rendering or
+ * hashing locally. Before returning, `validateAssembledBrief` gives AD-16's
+ * exclusion guarantee a runtime backstop; see that function for why.
  */
-import { ZodError, core as zodCore } from 'zod'
 import { digestArtifact } from '../canonical/digest.ts'
 import type { EvalContract } from '../schemas/eval-contract.ts'
 import { SealedEvaluatorBrief } from '../schemas/sealed-evaluator-brief.ts'
@@ -29,8 +24,8 @@ const CONTRACT_ARTIFACT_PATH = 'EvalContract'
  * enforces no uniqueness on `oracle.id`, `permittedInterface.logicalId`, or
  * `scopedResource.reference`, so a duplicate is a real possibility and
  * sort-stability alone would otherwise silently break byte-identity under
- * contract-step reordering. Same precondition-violation convention
- * `plan-index.ts`'s duplicate-`stepId`/`operationId` guard already uses.
+ * contract-step reordering. This is the same precondition-violation
+ * convention `plan-index.ts`'s duplicate-`stepId`/`operationId` guard uses.
  */
 function sortedByKey<T>(
 	items: readonly T[],
@@ -58,10 +53,9 @@ export function seal(contract: EvalContract): SealedEvaluatorBrief {
 		contract.permittedInterfaces,
 	)
 
-	// One `renderDirectionText` call per oracle. A `null` direction reaching
-	// here is a precondition violation (a compiled contract's oracles must
-	// carry a non-null direction by the time `seal` reads them) — throw, never
-	// filter or skip.
+	// A `null` direction reaching here is a precondition violation: a
+	// compiled contract's oracles must carry a non-null direction by the
+	// time `seal` reads them. Throw, never filter or skip.
 	const directions = contract.oracles.map((oracle) => {
 		if (oracle.direction === null) {
 			throw new TypeError(
@@ -87,34 +81,32 @@ export function seal(contract: EvalContract): SealedEvaluatorBrief {
 	// brief field's non-nullable schema.
 	const scopedResources = contract.scopedResources ?? []
 
-	// Explicitly typed (not just inferred) so TypeScript's excess-property
-	// check still runs against this literal, exactly as it did on the prior
-	// bare `return {...}`: assigning an object literal to an explicitly-typed
-	// binding triggers the same check as returning it from a typed function.
+	// Explicitly typed, not just inferred, so TypeScript's excess-property
+	// check still runs against this literal: assigning an object literal to
+	// an explicitly-typed binding triggers the same check as returning it
+	// from a typed function.
 	const brief: SealedEvaluatorBrief = {
-		// `seal` owns these two fields for `SealedEvaluatorBrief` per AD-24/
-		// AD-29: this call mints a fresh artifact, never a revision of a prior
-		// brief. `seal` is pure and stateless (AD-12: no lineage tracking
-		// across invocations) and takes no "prior brief" argument, so the only
-		// artifact it can honestly produce is a lineage root — `parentDigest`
-		// null, `revisionCount` 0 — independent of the contract's own lineage,
-		// which is a different artifact's history. `schemaVersion` is the
-		// brief schema's current version.
+		// `seal` owns these two fields per AD-24/AD-29: this call mints a
+		// fresh artifact, never a revision of a prior brief. `seal` is pure
+		// and stateless with no "prior brief" argument (AD-12), so the only
+		// honest artifact is a lineage root: `parentDigest` null,
+		// `revisionCount` 0, independent of the contract's own lineage.
+		// `schemaVersion` is the brief schema's current version.
 		schemaVersion: 1,
 		parentDigest: null,
 		revisionCount: 0,
 		// A plain digest of the literal input: two differently-ordered
-		// contracts necessarily digest differently, by construction. That is
-		// correct, not a bug — see the story's Design Notes for why this field
-		// sits outside the byte-identical-under-reordering guarantee the rest
-		// of the brief carries.
+		// contracts necessarily digest differently, by construction (see the
+		// story's Design Notes for why this field sits outside the
+		// byte-identical-under-reordering guarantee the rest of the brief
+		// carries).
 		contractDigest: digestArtifact(contract, CONTRACT_ARTIFACT_PATH),
-		// Carried through in contract order, unsorted — its own schema doc
-		// calls it "carried through unchanged", unlike the other arrays below.
-		// Copied rather than aliased, like every other field here: the brief
-		// must not keep sharing structure with the input, or a caller mutating
-		// `contract.behaviors` after `seal()` returns would silently mutate the
-		// "sealed" brief too.
+		// Carried through in contract order, unsorted: its own schema doc
+		// calls it "carried through unchanged," unlike the arrays below.
+		// Copied rather than aliased, like every field here, since the brief
+		// must not keep sharing structure with the input, or a caller
+		// mutating `contract.behaviors` after `seal()` returns would
+		// silently mutate the "sealed" brief too.
 		behaviors: [...contract.behaviors],
 		directions: sortedByKey(directions, (d) => d.oracleId, 'oracleId'),
 		permittedInterfaces: sortedByKey(
@@ -135,33 +127,53 @@ export function seal(contract: EvalContract): SealedEvaluatorBrief {
 		probeStepBound: contract.probeStepBound,
 	}
 
-	// AD-16's isolation boundary rests on this brief carrying only its
-	// declared fields. Until now the only enforcement was the compile-time
-	// excess-property check above, which only ever protects this one literal;
-	// a future non-literal construction path (an `as` cast, a spread, a
-	// refactor to build the object incrementally) would have no backstop.
-	// `seal()` is the sole package-boundary-artifact-minting function in
-	// `core/` today (Epic 6's publish surface, the next layer that could
-	// re-check the brief, is still backlog; see this story's Design Notes),
-	// so this self-validation is scoped to `seal()` only, not extended to
-	// every `core/` function. A `ZodError` here never escapes as itself: it
-	// is rethrown as `TypeError`, matching this file's own precondition-
-	// violation convention, and never mints a new AD-28 fault code.
-	try {
-		return SealedEvaluatorBrief.parse(brief)
-	} catch (error) {
-		if (error instanceof ZodError) {
-			const issueCount = error.issues.length
-			const firstIssue = error.issues[0]
-			const firstPath = firstIssue ? zodCore.toDotPath(firstIssue.path) : ''
-			throw new TypeError(
-				`seal() assembled a brief that failed SealedEvaluatorBrief validation: ${issueCount} issue${issueCount === 1 ? '' : 's'}, first at "${firstPath === '' ? '(root)' : firstPath}"`,
-				{ cause: error },
-			)
+	return validateAssembledBrief(brief)
+}
+
+/**
+ * The runtime backstop behind AD-16's exclusion guarantee. TypeScript's
+ * compile-time excess-property check protects only `seal()`'s current
+ * return literal; a future non-literal construction path (an `as` cast, a
+ * spread, an incremental build) would otherwise have no backstop. Reads only
+ * the `safeParse` result shape, so `core/schemas` stays the sole Zod
+ * boundary and a rejection becomes a `TypeError` (this file's
+ * precondition-violation convention) with no `ZodError` import to test
+ * against.
+ *
+ * Scoped to `seal()`, the one function in `core/` minting a package-boundary
+ * artifact today. Exported so a regression test can drive the rejection path
+ * directly.
+ */
+export function validateAssembledBrief(brief: unknown): SealedEvaluatorBrief {
+	const result = SealedEvaluatorBrief.safeParse(brief)
+	if (result.success) return result.data
+	const issueCount = result.error.issues.length
+	const firstIssue = result.error.issues[0]
+	const firstPath = firstIssue ? dotPath(firstIssue.path) : ''
+	throw new TypeError(
+		`seal() assembled a brief that failed SealedEvaluatorBrief validation: ${issueCount} issue${issueCount === 1 ? '' : 's'}, first at "${firstPath === '' ? '(root)' : firstPath}"`,
+		{ cause: result.error },
+	)
+}
+
+/**
+ * Formats a Zod issue path for the message above, mirroring zod's own
+ * `core.toDotPath` branch by branch without importing it: a word-shaped
+ * segment joins with `.`; a numeric, symbol, or non-identifier segment is
+ * bracketed. The mirror holds even at the edges, so a segment that is
+ * word-shaped but starts with a digit stays unbracketed here exactly as zod
+ * leaves it.
+ */
+function dotPath(path: readonly PropertyKey[]): string {
+	const segments: string[] = []
+	for (const segment of path) {
+		if (typeof segment === 'number') segments.push(`[${segment}]`)
+		else if (typeof segment === 'symbol' || /[^\w$]/.test(segment)) {
+			segments.push(`[${JSON.stringify(String(segment))}]`)
+		} else {
+			if (segments.length > 0) segments.push('.')
+			segments.push(segment)
 		}
-		// Defensive fallback, unreachable today: no schema in
-		// `SealedEvaluatorBrief`'s chain uses a custom refine, transform, or
-		// async validation, so `.parse()` above can only ever throw `ZodError`.
-		throw error
 	}
+	return segments.join('')
 }

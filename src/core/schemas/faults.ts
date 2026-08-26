@@ -2,16 +2,22 @@
 // machine code and the artifact path that produced them. Disjoint from AD-5's
 // compile-time registry; they share only this base shape, never a code table.
 //
-// Unlike `FAILURE_CODES` (core/failure-codes.ts), which mirrors all
-// twenty-one AD-5 codes so `scripts/check-ad5-registry.ts` can assert
-// set-and-order equality against the spine, this table holds only codes with
-// a genuine thrower: four of AD-28's ten rows as of this story. A future
-// `check:ad28-registry` script could only assert a subset relationship, and
-// none exists yet.
+// The complete normative ten-code AD-28 table, in the spine's exact order.
+// `scripts/check-ad28-registry.ts` asserts this tuple stays set- and order-
+// equal to that table under `npm run validate` (mirroring
+// `scripts/check-ad5-registry.ts` for `FAILURE_CODES`). A code with no
+// thrower yet is not a defect: AD-28 fixes the registry independently of
+// implementation order, exactly as AD-5 does for `FAILURE_CODES`.
 export const RUNTIME_FAULT_CODES = [
-	'non-canonicalizable-value',
 	'schema-parse-failure',
+	'schema-version-mismatch',
+	'non-canonicalizable-value',
+	'digest-mismatch',
 	'budget-exhausted',
+	'port-failure',
+	'port-contract-violation',
+	'forbidden-target',
+	'aborted',
 	'operator-cannot-accept-operand',
 ] as const
 

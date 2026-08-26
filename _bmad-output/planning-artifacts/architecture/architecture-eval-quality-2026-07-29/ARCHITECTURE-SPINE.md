@@ -147,8 +147,18 @@ flowchart TD
   PORTS --> SCHEMAS
 ```
 
-`core/` imports `core/schemas` and nothing else — not `ports/`, not `adapters/`, not `cli/`. `ports/`
-imports `core/schemas` only. Nothing imports `cli/`.
+`core/` imports `core/schemas` and nothing else outside itself — not `ports/`, not `adapters/`, not
+`cli/`. The `CORE` node in the diagram above is the whole `core/` subtree, `core/schemas` included: an
+import between two modules inside that one node — `core/compile/` reading `core/evaluate/`,
+`core/seal/` reading `core/compile/`, either reading `core/schemas` — is a same-layer dependency and
+stays permitted exactly as the single-node diagram already draws it. The prohibition binds
+dependencies leaving `core/` for `ports/`, `application/`, `adapters/`, or `cli/`, and direct external
+or Node-builtin dependencies outside the two named exceptions (`zod` from `core/schemas`, `createHash`
+from `node:crypto` in `src/core/canonical/digest.ts`) — never a submodule of `core/` importing another.
+Story 4.4's dependency-direction checker enforces exactly this reading; a later amendment that wants
+`core/`'s submodules treated as separate layers must pair that stricter rule with the refactor it would
+require, not encode it against the current single-node tree. `ports/` imports `core/schemas` only.
+Nothing imports `cli/`.
 
 ### AD-1 — The core is pure; impurity enters only through a port
 
@@ -462,7 +472,7 @@ imports `core/schemas` only. Nothing imports `cli/`.
 
 - **Binds:** `core/`, `application/`, `ports/`, CLI, VFR-8
 - **Prevents:** two incompatible published library surfaces for the same primary integration surface — one where a stage is async and takes ports, one where it is sync over resolved artifacts — which differ in signature, imports, error paths, and test boundaries
-- **Rule:** a stage needing external observation is a pure synchronous pair: a plan function from artifacts to a request description, and a reduce function from that plan plus observations to the next artifact. `core/` contains only such functions and imports `core/schemas` alone. `application/` is the only layer that imports both `core/` and `ports/`, is the only place a port is awaited, holds no decision logic, and validates artifacts in both directions per AD-28. Both the library's public surface and the CLI sit on `application/`, so there is one published shape rather than two. This generalizes the plan-and-reduce split AD-10 already requires of pre-flight instead of leaving it as one stage's local pattern.
+- **Rule:** a stage needing external observation is a pure synchronous pair: a plan function from artifacts to a request description, and a reduce function from that plan plus observations to the next artifact. `core/` contains only such functions and imports `core/schemas` alone from outside itself, on the same single-`core`-graph-node reading the dependency-direction rule above states: a stage in one `core/` submodule reading a pure helper in another remains a same-layer import and does not violate this sentence. `application/` is the only layer that imports both `core/` and `ports/`, is the only place a port is awaited, holds no decision logic, and validates artifacts in both directions per AD-28. Both the library's public surface and the CLI sit on `application/`, so there is one published shape rather than two. This generalizes the plan-and-reduce split AD-10 already requires of pre-flight instead of leaving it as one stage's local pattern.
 
 ### AD-35 — The probe port is a policed network boundary with default-deny targets
 

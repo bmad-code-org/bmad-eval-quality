@@ -55,10 +55,10 @@ const literalEquals = (a: JsonValue, b: JsonValue): Expression => ({
 })
 const TRUE_NODE = literalEquals(1, 1)
 const FALSE_NODE = literalEquals(1, 2)
-// Only the first operand denotes an empty collection (P19): the second, `1`,
-// is an ordinary non-empty scalar, so this genuinely pins the asymmetric
-// `.some()` semantics — a symmetric `literalEquals([], [])` would not
-// distinguish "checks every operand" from "checks only one."
+// Only the first operand denotes an empty collection (P19); the second, `1`,
+// is an ordinary non-empty scalar. This pins the asymmetric `.some()`
+// semantics: a symmetric `literalEquals([], [])` would not distinguish
+// checking every operand from checking only one.
 const INSUFFICIENT_NODE = literalEquals([], 1)
 
 const noneCollectionTyped = makeStubPointerDenotesCollection([])
@@ -147,10 +147,9 @@ describe('notOf/allOf/anyOf propagation (AC 4)', () => {
 
 	// AC 4's last bullet: CONNECTIVE_MINIMUM_ARITY (expression.ts) keeps
 	// allOf/anyOf from ever folding an empty array, so allOf([]) (`true`) and
-	// anyOf([]) (`false`) are unreachable in practice. Stated here rather than
-	// left an unstated assumption (P20: expression.test.ts already asserts the
-	// constant's value; re-asserting it here would not fail if allOf/anyOf's
-	// own vacuous-array reading changed).
+	// anyOf([]) (`false`) are unreachable in practice (P20: expression.test.ts
+	// asserts the constant's value directly; re-asserting it here would not
+	// catch a regression to allOf/anyOf's own vacuous-array reading).
 
 	it("a node that resolves insufficient-evidence purely by propagation carries introductionCondition: null, not the tripped leaf's own condition (Decision 9)", () => {
 		const result = resolve({
@@ -499,13 +498,13 @@ describe('the soft-delete agreement pair (AC 5, AD-4 worked example)', () => {
 		).toBe('insufficient-evidence')
 	})
 
-	// P6: `pointerDenotesCollection` here is `noneCollectionTyped` — a
-	// predicate that answers `false` for every pointer — precisely so this
-	// case proves Decision 3's UNCONDITIONAL rule: a quantifier's `collection`
-	// is treated as collection-typed on ABSENT regardless of what the
-	// predicate says, and is never even consulted. A predicate that happened
-	// to answer `true` here would only prove "consulted and got true," not
-	// "never consulted at all."
+	// P6: `pointerDenotesCollection` here is `noneCollectionTyped`, which
+	// answers false for every pointer, so this case proves Decision 3's
+	// unconditional rule: a quantifier's `collection` is treated as
+	// collection-typed on ABSENT regardless of what the predicate says, and
+	// the predicate is never even consulted. A predicate that happened to
+	// answer true here would only prove it was consulted and got true, not
+	// that it was never consulted.
 	it('agree (both insufficient-evidence) on an absent, declared-collection-typed page (Decision 3)', () => {
 		const resolver = makeStubResolver(
 			{ 'first-page': { 'response-body': {} } },
@@ -524,14 +523,12 @@ describe('the soft-delete agreement pair (AC 5, AD-4 worked example)', () => {
 
 describe('a quantifier over a reference-set-backed predicate (O-006 shape)', () => {
 	const check = findCheck('O-006') // for-all(page, set-membership(@/id, {referenceSet}))
-	// P9: this fixture's stub reference-set members are flat id strings
-	// (['r-001', ...]), while the real gate-c-contract.ts fixture declares
-	// referenceSets['expected-export-rows'] as { keys: ['id'], members: [{ id:
-	// 'r-001' }, ...] } — objects. This test pins the dispatch wiring
-	// (set-membership reached correctly through a quantifier's bound element)
-	// only, not the member shape a real resolver returns: Story 4.1's
-	// resolver decides how a reference set's declared member shape gets
-	// compared against @/id.
+	// P9: this fixture's stub reference-set members are flat id strings,
+	// while the real gate-c-contract.ts fixture declares them as objects
+	// ({ id: 'r-001' }, ...). This test pins only the dispatch wiring, that
+	// set-membership is reached correctly through a quantifier's bound
+	// element; Story 4.1's resolver decides how a reference set's declared
+	// member shape gets compared against @/id.
 	const referenceSets = { 'expected-export-rows': ['r-001', 'r-002', 'r-003'] }
 
 	it('resolves true when every id is a member', () => {
@@ -649,7 +646,7 @@ describe('quantifier fold correctness (P11)', () => {
 		// against an already-rebound inner element instead of the still-in-scope
 		// outer one, `@/innerRows` would find no such key on `{ id: 'a' }`,
 		// resolve ABSENT, and trip the empty-collection condition for every
-		// outer element — insufficient-evidence, not true.
+		// outer element, giving insufficient-evidence instead of true.
 		const result = resolveCheck(
 			check,
 			resolver,
@@ -904,11 +901,10 @@ describe('the real covers-by-key dispatch branch (AC 3, AC 4, Decision 1, Decisi
 
 	it("resolves insufficient-evidence over two genuinely empty collections (empty-set), never coversByKey's own vacuous-true answer", () => {
 		// coversByKey([], [], ...) itself returns true (operators.test.ts's own
-		// direct unit test pins that): a vacuous bijection is a correct answer
-		// for the pure function, which has no insufficient-evidence to return.
-		// Here resolveNode's own genuine-empty-array interception fires first,
-		// so the dispatch-level answer differs. Both are stated explicitly, in
-		// their own test files, so neither reads as contradicting the other.
+		// direct unit test): a vacuous bijection is a correct answer for the
+		// pure function, which has no insufficient-evidence to return. Here
+		// resolveNode's own empty-array interception fires first, so the
+		// dispatch-level answer differs; neither contradicts the other.
 		const resolver = makeStubResolver(
 			{ list: { 'response-body': { items: [] } } },
 			{ 'expected-things': [] },
@@ -930,11 +926,11 @@ describe('the real covers-by-key dispatch branch (AC 3, AC 4, Decision 1, Decisi
 
 	// The load-bearing contrast fixture (AC 4 point 8): the identical
 	// collection-typed-ABSENT shape the "ABSENT on a { pointer } operand"
-	// describe block above pins for `existence`, which resolves
-	// insufficient-evidence there. covers-by-key resolves false instead
-	// (Decision 1), even though the pointer is declared collection-typed here
-	// too — proving the AD-4 override is unconditional, not merely a case
-	// where pointerDenotesCollection happens to answer false.
+	// block above pins as insufficient-evidence for `existence`. covers-by-key
+	// resolves false instead (Decision 1), even though the pointer is
+	// declared collection-typed here too, proving the AD-4 override is
+	// unconditional rather than a case where pointerDenotesCollection
+	// happens to answer false.
 	it("resolves false when actual resolves ABSENT, even though its pointer is declared collection-typed (Decision 1, contrast with existence's insufficient-evidence answer above)", () => {
 		const resolver = makeStubResolver(
 			{ list: { 'response-body': {} } },
@@ -1181,7 +1177,7 @@ describe('a RuntimeFault from a nested regexMatch propagates undecorated through
 	// Structural-tier trigger: unconditional, regardless of the observed
 	// string's length or the declared budget. Named for what actually trips it
 	// (P8): syntactically valid, but a nested-quantifier shape the structural
-	// gate rejects outright — not a compile failure.
+	// gate rejects outright, not a compile failure.
 	const nestedQuantifierRegexOverPointer: Expression = {
 		op: 'regex',
 		operands: [{ pointer: '/interactions/x/response-body/value' }],
@@ -1320,9 +1316,9 @@ describe("resolveNode's out-of-union op guard (P16)", () => {
 	})
 
 	it("throws for op: 'constructor', an Object.prototype property name, not Object.prototype.constructor itself", () => {
-		// The regression this guards against: operatorHandlers is a plain
-		// object, so a naive `operatorHandlers[op]` lookup finds the inherited
-		// Object constructor for this exact op value instead of undefined.
+		// operatorHandlers is a plain object, so a naive `operatorHandlers[op]`
+		// lookup would find the inherited Object constructor for this exact op
+		// value instead of undefined.
 		const check = { op: 'constructor', operands: [] } as unknown as Expression
 		const error = plainErrorOf(() => resolve(check))
 		expect(error.message).toContain('unrecognized expression.op')

@@ -664,8 +664,18 @@ short of the thing whose fidelity the whole calibration argument turns on. Revis
   CORE --&gt; SCHEMAS
   PORTS --&gt; SCHEMAS
 </code></pre>
-<p><code>core/</code> imports <code>core/schemas</code> and nothing else — not <code>ports/</code>, not <code>adapters/</code>, not <code>cli/</code>. <code>ports/</code>
-imports <code>core/schemas</code> only. Nothing imports <code>cli/</code>.</p>
+<p><code>core/</code> imports <code>core/schemas</code> and nothing else outside itself — not <code>ports/</code>, not <code>adapters/</code>, not
+<code>cli/</code>. The <code>CORE</code> node in the diagram above is the whole <code>core/</code> subtree, <code>core/schemas</code> included: an
+import between two modules inside that one node — <code>core/compile/</code> reading <code>core/evaluate/</code>,
+<code>core/seal/</code> reading <code>core/compile/</code>, either reading <code>core/schemas</code> — is a same-layer dependency and
+stays permitted exactly as the single-node diagram already draws it. The prohibition binds
+dependencies leaving <code>core/</code> for <code>ports/</code>, <code>application/</code>, <code>adapters/</code>, or <code>cli/</code>, and direct external
+or Node-builtin dependencies outside the two named exceptions (<code>zod</code> from <code>core/schemas</code>, <code>createHash</code>
+from <code>node:crypto</code> in <code>src/core/canonical/digest.ts</code>) — never a submodule of <code>core/</code> importing another.
+Story 4.4&#39;s dependency-direction checker enforces exactly this reading; a later amendment that wants
+<code>core/</code>&#39;s submodules treated as separate layers must pair that stricter rule with the refactor it would
+require, not encode it against the current single-node tree. <code>ports/</code> imports <code>core/schemas</code> only.
+Nothing imports <code>cli/</code>.</p>
 <h3 id="ad-1-the-core-is-pure-impurity-enters-only-through-a-port">AD-1 — The core is pure; impurity enters only through a port<a class="heading-anchor" href="#ad-1-the-core-is-pure-impurity-enters-only-through-a-port" aria-label="Link to AD-1 — The core is pure; impurity enters only through a port">#</a></h3>
 <ul>
 <li><strong>Binds:</strong> all modules</li>
@@ -1118,7 +1128,7 @@ never computed against an interface-wide union and never against permitted keys.
 <ul>
 <li><strong>Binds:</strong> <code>core/</code>, <code>application/</code>, <code>ports/</code>, CLI, VFR-8</li>
 <li><strong>Prevents:</strong> two incompatible published library surfaces for the same primary integration surface — one where a stage is async and takes ports, one where it is sync over resolved artifacts — which differ in signature, imports, error paths, and test boundaries</li>
-<li><strong>Rule:</strong> a stage needing external observation is a pure synchronous pair: a plan function from artifacts to a request description, and a reduce function from that plan plus observations to the next artifact. <code>core/</code> contains only such functions and imports <code>core/schemas</code> alone. <code>application/</code> is the only layer that imports both <code>core/</code> and <code>ports/</code>, is the only place a port is awaited, holds no decision logic, and validates artifacts in both directions per AD-28. Both the library&#39;s public surface and the CLI sit on <code>application/</code>, so there is one published shape rather than two. This generalizes the plan-and-reduce split AD-10 already requires of pre-flight instead of leaving it as one stage&#39;s local pattern.</li>
+<li><strong>Rule:</strong> a stage needing external observation is a pure synchronous pair: a plan function from artifacts to a request description, and a reduce function from that plan plus observations to the next artifact. <code>core/</code> contains only such functions and imports <code>core/schemas</code> alone from outside itself, on the same single-<code>core</code>-graph-node reading the dependency-direction rule above states: a stage in one <code>core/</code> submodule reading a pure helper in another remains a same-layer import and does not violate this sentence. <code>application/</code> is the only layer that imports both <code>core/</code> and <code>ports/</code>, is the only place a port is awaited, holds no decision logic, and validates artifacts in both directions per AD-28. Both the library&#39;s public surface and the CLI sit on <code>application/</code>, so there is one published shape rather than two. This generalizes the plan-and-reduce split AD-10 already requires of pre-flight instead of leaving it as one stage&#39;s local pattern.</li>
 </ul>
 <h3 id="ad-35-the-probe-port-is-a-policed-network-boundary-with-default-deny-targets">AD-35 — The probe port is a policed network boundary with default-deny targets<a class="heading-anchor" href="#ad-35-the-probe-port-is-a-policed-network-boundary-with-default-deny-targets" aria-label="Link to AD-35 — The probe port is a policed network boundary with default-deny targets">#</a></h3>
 <ul>

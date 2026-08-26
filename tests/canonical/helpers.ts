@@ -1,8 +1,7 @@
 import { RuntimeFault } from '../../src/core/schemas/faults.ts'
 
 // Shared across the canonical suites so assertion behavior cannot drift
-// between copies: returns the thrown RuntimeFault, rethrows anything else,
-// and fails loudly when nothing throws.
+// between copies.
 export const faultOf = (fn: () => unknown): RuntimeFault => {
 	try {
 		fn()
@@ -13,8 +12,8 @@ export const faultOf = (fn: () => unknown): RuntimeFault => {
 	throw new Error('expected a RuntimeFault to be thrown')
 }
 
-// Fixture hex is a frozen contract: tolerate nothing. An odd length or a
-// non-hex character means a corrupted vector, not data to coerce.
+// Fixture hex is a frozen contract: reject anything malformed rather than
+// coerce it.
 export const hexToBytes = (hex: string): Uint8Array => {
 	if (!/^(?:[0-9a-f]{2})*$/.test(hex)) {
 		throw new Error(

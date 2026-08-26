@@ -351,18 +351,9 @@ export function shape(
 // ---------------------------------------------------------------------------
 
 /**
- * Reads `key` off `element` if `element` is a plain object carrying it as an
- * own property; `ABSENT` otherwise (not present, or `element` is not an
- * object at all). `Object.hasOwn` guards the lookup so a key like
- * `__proto__` reads as missing rather than as an inherited property (same
- * guard Story 3.2's stub resolver applies for the same reason). AD-4: "An
- * element missing the named key resolves false rather than erroring." This
- * function is why: it never throws, and `coversByKey` below never
- * special-cases its `ABSENT` result. On the `expected` side, such an element
- * fails its own lookup directly. On the `actual` side, it still has to claim
- * a slot in the match index (a synthetic one, since it has no real digest to
- * claim under) so a keyless extra row still counts against the cardinality
- * check rather than silently vanishing from it (Decision 5).
+ * Own-property lookup only, so a key like `__proto__` reads as missing
+ * rather than inherited. Returns `ABSENT`, never throws (AD-4: a missing key
+ * resolves `false`, not an error).
  */
 function keyValueOf(
 	element: JsonValue,
@@ -377,42 +368,22 @@ function keyValueOf(
 
 /**
  * AD-4's bijection: equal cardinality and a distinct `actual` match per
- * `expected` element on the named keys. `expected` is typed `JsonValue[] |
- * typeof ABSENT`, not the wider `ResolvedValue` `actual` takes: its operand
- * form is a reference set only (`CoversByKey`'s own schema description), so a
- * conforming resolver returns one of exactly these two shapes, and
- * `resolveNode`'s own dispatch guards the third case (Decision 3).
+ * `expected` element on the named keys. `ABSENT` on either side resolves
+ * `false`, including a fully-missing `actual` collection: AD-4 calls that "a
+ * detected defect, not an empty examination," overriding the general
+ * empty-collection invariant for this operator alone (Decision 1). A
+ * non-array `actual` is an ordinary type mismatch, also `false` (Decision 2).
  *
- * `ABSENT` on either side resolves `false`: AD-26's ordinary rule, applied
- * here even though `actual`'s pointer is always collection-typed. AD-4's own
- * covers-by-key text calls a fully missing collection "a detected defect and
- * not an empty examination" and states this resolution directly, overriding
- * what the general empty-collection invariant would otherwise say for a
- * collection-typed `ABSENT` pointer (Decision 1). Only a genuinely empty
- * array still trips that invariant, and `resolveNode` intercepts it before
- * this function ever runs (matching Story 3.2's Decision 6).
- *
- * A non-array `actual` (a type mismatch) resolves `false` too: AD-26's
- * ordinary type-mismatch rule. It is checked here, not at the dispatch
- * layer, because `actual`'s operand form is an ordinary pointer, the same
- * self-contained shape `containment` already uses for its own `container`
- * parameter (Decision 2).
- *
- * Cardinality is never checked separately: `actualByKey` starts with exactly
- * one entry per `actual` element (a real digest, or a synthetic per-index
- * slot for a keyless one, so nothing is left uncounted), and the `expected`
- * loop deletes exactly one entry per element that finds a match. A final
- * `actualByKey.size === 0` therefore means every `actual` element was
- * claimed by exactly one `expected` element: the bijection condition itself,
- * not an approximation of it (Decision 6). This is not "an injective map
- * between finite sets is automatically surjective" (false in general); what
- * makes it work here is that the map's starting size already equals
- * `actual`'s own cardinality. A duplicate `actualKey` value is caught the
- * moment a second element tries to claim an already-populated digest
- * ("response-side duplicate keys resolve false", AD-4); a duplicate
- * `expectedKey` value is not separately checked (assumed
- * compile-time-prevented, Decision 4) but fails the same way if it ever
- * occurs, since its second lookup finds the entry already deleted.
+ * Cardinality is never checked separately: `actualByKey` starts with one
+ * entry per `actual` element (a synthetic slot for a keyless one, so nothing
+ * goes uncounted), and the `expected` loop deletes one entry per match. A
+ * final `actualByKey.size === 0` is the bijection condition itself, since the
+ * map's starting size already equals `actual`'s cardinality (Decision 6). A
+ * duplicate `actualKey` fails immediately, at construction, because the
+ * second element finds its slot already occupied; a duplicate `expectedKey`
+ * is assumed compile-time-prevented (Decision 4), but if it occurs it fails
+ * later, at lookup, because the second occurrence finds its slot already
+ * deleted by the first.
  */
 export function coversByKey(
 	expected: JsonValue[] | typeof ABSENT,

@@ -40,8 +40,8 @@ export function digestComposite(
 	artifactPath: string,
 ): string {
 	if (Object.keys(fields).length === 0) {
-		// Rejected rather than minting a degenerate tag-only digest; relaxing this
-		// later cannot break frozen digests, but legalizing empties now would.
+		// Empty composites are rejected: relaxing this later can't break frozen
+		// digests, but legalizing it now would be irreversible.
 		throw new TypeError('composite requires at least one field')
 	}
 	if (Object.hasOwn(fields, 'protocol')) {
@@ -58,9 +58,9 @@ export function digestComposite(
 // Member paths must arrive in one canonical spelling: relative, forward-slash,
 // no empty/dot/dot-dot segments. Two producers naming the same file "a" and
 // "./a" would otherwise mint different digests with no fault raised. Unicode
-// normalization is deliberately NOT applied (the canonicalizer is never
-// normalization-aware); emitting NFC vs NFD spellings is the producer's
-// responsibility, and the fixtures README says so.
+// normalization is deliberately not applied (the canonicalizer is never
+// normalization-aware); NFC vs NFD spelling is the producer's responsibility
+// per the fixtures README.
 function assertMemberPath(path: string): void {
 	if (path === '') {
 		throw new TypeError('directory member path must not be empty')

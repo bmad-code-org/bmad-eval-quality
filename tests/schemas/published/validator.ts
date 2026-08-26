@@ -11,26 +11,22 @@ import type { InterchangeArtifactKey } from '../../../src/core/schemas/artifact.
 import { publishedDocuments } from '../../../src/core/schemas/publish.ts'
 
 /**
- * Each flag with its reason, so a future author does not silence a genuine
+ * Each flag with its reason, so a future author doesn't silence a genuine
  * finding by widening the wrong one:
  *
- * - `strict: true` stays on. Ajv's strict mode independently reproduced AD-13's
- *   predicted arity defect against the uninjected export, and `strictTuples`
- *   (part of strict) is the standing check that catches it again if a future
- *   export ships a bare `prefixItems`.
- * - `strictTypes: false` is required. The `minProperties: 1` injection lands at
- *   the root of `InputBindingChannel`, which exports as
- *   `{ anyOf: [objectBranch, { type: "null" }] }` and carries no `type` of its
- *   own; ajv's style opinion reports `missing type "object" for keyword
- *   "minProperties"`. The schema is correct — `minProperties` is ignored on a
- *   non-object instance, which is exactly why the ledger addresses the
- *   definition root.
- * - `formats: { 'date-time': true }` registers the format as always-true. The
- *   constraint is carried by the exported `pattern` (RFC 3339 UTC: trailing
- *   `Z` accepted, numeric offset rejected), so this silences ajv's
- *   unknown-format complaint without weakening anything. `ajv-formats` is
+ * - `strict: true` stays on: it independently reproduced AD-13's predicted
+ *   arity defect against the uninjected export, and `strictTuples` (part of
+ *   strict) catches it again if a future export ships a bare `prefixItems`.
+ * - `strictTypes: false` is required: the `minProperties: 1` injection lands
+ *   on `InputBindingChannel`'s root, which exports as
+ *   `{ anyOf: [objectBranch, { type: "null" }] }` with no `type` of its own,
+ *   so ajv's style opinion reports `missing type "object" for keyword
+ *   "minProperties"` on a schema that is correct as written.
+ * - `formats: { 'date-time': true }` registers the format as always-true: the
+ *   constraint is already carried by the exported `pattern` (RFC 3339 UTC),
+ *   so this only silences ajv's unknown-format complaint. `ajv-formats` is
  *   deliberately not added (Decision 6): its `date-time` accepts numeric
- *   offsets and would manufacture a differential disagreement with Zod.
+ *   offsets and would manufacture a disagreement with Zod.
  */
 export const VALIDATOR_OPTIONS: Options = {
 	strict: true,
@@ -39,19 +35,16 @@ export const VALIDATOR_OPTIONS: Options = {
 }
 
 /**
- * Compiles one document on a fresh instance, with `allErrors: true` because
- * every consumer of this function reads the error set rather than only the
- * verdict. A fresh instance per call rather than one shared registry: the
- * synthesised `$id`s are unique across the twelve so either would work, and a
- * fresh instance is what the callers that compile variants of one document
- * need anyway.
+ * Compiles one document on a fresh instance, with `allErrors: true` since
+ * every consumer reads the error set, not just the verdict. Fresh per call,
+ * not a shared registry: callers that compile variants of one document need
+ * that anyway.
  *
- * The two call sites that deviate from `VALIDATOR_OPTIONS` do so deliberately
- * and both spread it rather than restating it: the mutation sweep drops to
- * `allErrors: false` because it reads only the verdict, and the generator's
- * internal navigation compiles relax `strict` because they slice nodes out of
- * context. Neither belongs behind this function, which is why it takes no
- * options rather than carrying a parameter nothing passes.
+ * The two call sites that deviate from `VALIDATOR_OPTIONS` spread it rather
+ * than restate it: the mutation sweep drops to `allErrors: false` (verdict
+ * only), and the generator's internal navigation relaxes `strict` (slices
+ * nodes out of context). Neither belongs behind this function, so it takes no
+ * options parameter.
  */
 export const compileDocument = (
 	document: Record<string, unknown>,

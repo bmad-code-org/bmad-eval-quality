@@ -47,20 +47,13 @@ const resolve = (entry: ConstraintLedgerEntry): any => {
 				)
 	if (!target || entry.field === null) return target
 	if (target.properties) return target.properties[entry.field]
-	// The union fallback. Two lineage-bearing artifacts are union-rooted, and a
-	// union root exports `{ $schema, oneOf, description }` with no `properties`
-	// object at all. `oneOf` rather than `anyOf` is deliberate: all three union
-	// roots are `z.discriminatedUnion`, which exports `oneOf`, while a plain
-	// `z.union` exports `anyOf`. Both keywords appear in this file, since
-	// the arity walk reads `Expression.oneOf` and the additionalProperties test
-	// reads `JsonValue.anyOf`. Keying on `anyOf` would resolve nothing for the
-	// two artifacts the fallback exists for, and would fail silently.
-	//
-	// Presence in EVERY branch is the guard, which is faithful to what a lineage
-	// entry means: the fields are spread into each branch, so the biconditional
-	// binds both. The branches then carry the same schema object by
-	// construction rather than by coincidence, so returning the first branch's
-	// copy is arbitrary and safe, and a deep comparison would buy nothing.
+	// The union fallback: the two lineage-bearing union-rooted artifacts export
+	// no `properties` object, only `oneOf` (all three union roots are
+	// `z.discriminatedUnion`; keying on `anyOf` would resolve nothing for them
+	// and fail silently). Presence in EVERY branch is the guard, since the
+	// lineage fields are spread into each branch by construction, so the
+	// branches carry the same schema object and returning the first copy is
+	// safe.
 	const branches: any[] | undefined = target.oneOf
 	if (!Array.isArray(branches) || branches.length === 0) return undefined
 	const copies = branches.map(
@@ -226,11 +219,10 @@ describe('the premises the ledger rests on, verified against the export', () => 
 		},
 	)
 
-	// The other direction. Every test above walks TUPLE_ARITY outward, and the
-	// count test compares the ledger against TUPLE_ARITY, so both would stay
-	// green if TUPLE_ARITY itself drifted from the union — a seventeenth
-	// tuple-carrying operator would ship as an unbounded array in the published
-	// schema with nothing failing. This walks the export back to the ledger.
+	// The other direction: every test above walks TUPLE_ARITY outward, so both
+	// would stay green if TUPLE_ARITY itself drifted from the union (a
+	// seventeenth tuple-carrying operator would ship unbounded, unnoticed).
+	// This walks the export back to the ledger instead.
 	it('has a ledger entry for every tuple the export actually contains', () => {
 		const branches: any[] = exported.$defs.Expression.oneOf
 		expect(branches).toHaveLength(RELATION_VOCABULARY.length)
@@ -325,7 +317,7 @@ describe('the premises the ledger rests on, verified against the export', () => 
 		expect(definition).toBeDefined()
 		expect(definition.description).toContain('IEEE 754 double-precision')
 		expect(definition.description).toContain('safe-integer range')
-		// Once, on the definition — not duplicated at every use site, which is
+		// Once, on the definition, not duplicated at every use site: that is
 		// where a z.json()-based container would have put it.
 		const occurrences =
 			JSON.stringify(exported).split('AD-36 value domain').length

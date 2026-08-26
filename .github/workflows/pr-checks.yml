@@ -51,7 +51,7 @@ jobs:
       - name: Shareable export check (current, and canonical repository URL)
         run: npm run check:shareable
 
-      - name: Validate (typecheck, lint, check:docs, check:shareable, lint:spine, check:vectors, check:schemas, check:ad5-registry, test)
+      - name: Validate (typecheck, lint, check:docs, check:shareable, lint:spine, check:vectors, check:schemas, check:ad5-registry, check:ad28-registry, check:layers, test)
         run: npm run validate
 
       - name: Build
@@ -379,6 +379,84 @@ jobs:
           exit_status=$?
           set -e
           git checkout -- src/core/failure-codes.ts
+          echo "$output"
+          if [ $exit_status -eq 0 ]; then
+            echo "expected the registry check to fail on transposed codes, but it passed" >&2
+            exit 1
+          fi
+          # Set equality still holds after a transposition, so only the order
+          # comparison can catch this. Matching the order line specifically is
+          # what keeps this canary from passing on a set-equality failure.
+          echo "$output" | grep -q "order mismatch at position" || { echo "check failed for the wrong reason (no order mismatch reported)" >&2; exit 1; }
+          echo "canary passed: registry check correctly failed naming the order mismatch"
+
+  canary-ad28-registry:
+    name: "Canary: AD-28 registry check fails on a dropped and on a reordered code"
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version-file: ".nvmrc"
+          cache: "npm"
+
+      - uses: ./.github/actions/assert-npm-version
+        with:
+          version: ${{ env.NPM_VERSION }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      # AD-28 publishes a normative runtime fault registry, so the tuple in
+      # `src/core/schemas/faults.ts` must not be hand-maintained beside it.
+      # That prohibition is only mechanical if the check that enforces it
+      # demonstrably blocks. `tests/architecture/ad28-registry.test.ts` proves
+      # the same detection logic in-process; this job proves the shipped
+      # command exits nonzero and names the drift.
+      - name: Assert the registry check fails when a code is dropped
+        run: |
+          set +e
+          node -e "
+            const fs = require('node:fs');
+            const path = 'src/core/schemas/faults.ts';
+            const source = fs.readFileSync(path, 'utf8');
+            const dropped = source.replace(\"\t'aborted',\n\", '');
+            if (dropped === source) { console.error('fixture setup failed: aborted not found'); process.exit(1) }
+            fs.writeFileSync(path, dropped);
+          "
+          output="$(npm run --silent check:ad28-registry 2>&1)"
+          exit_status=$?
+          set -e
+          git checkout -- src/core/schemas/faults.ts
+          echo "$output"
+          if [ $exit_status -eq 0 ]; then
+            echo "expected the registry check to fail on a dropped code, but it passed" >&2
+            exit 1
+          fi
+          echo "$output" | grep -q "aborted\` is in the AD-28 table but missing from src/core/schemas/faults.ts" || { echo "check failed for the wrong reason (did not name the dropped code)" >&2; exit 1; }
+          echo "canary passed: registry check correctly failed naming the dropped code"
+
+      - name: Assert the registry check fails when two codes are transposed
+        run: |
+          set +e
+          node -e "
+            const fs = require('node:fs');
+            const path = 'src/core/schemas/faults.ts';
+            const source = fs.readFileSync(path, 'utf8');
+            const pair = \"\t'port-failure',\n\t'port-contract-violation',\n\";
+            if (!source.includes(pair)) { console.error('fixture setup failed: the pair was not found in order'); process.exit(1) }
+            fs.writeFileSync(path, source.replace(pair, \"\t'port-contract-violation',\n\t'port-failure',\n\"));
+          "
+          output="$(npm run --silent check:ad28-registry 2>&1)"
+          exit_status=$?
+          set -e
+          git checkout -- src/core/schemas/faults.ts
           echo "$output"
           if [ $exit_status -eq 0 ]; then
             echo "expected the registry check to fail on transposed codes, but it passed" >&2

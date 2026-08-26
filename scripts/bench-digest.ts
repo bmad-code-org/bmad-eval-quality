@@ -1,32 +1,24 @@
-// Digest-path throughput measurement (story 1.2, review round 2 follow-up).
-//
-// Round 2 flagged that the fused canonicalizer allocates a property descriptor
-// per property — `Object.getOwnPropertyDescriptors` on every object, then
-// `Object.entries` over the result — and that nobody had measured what that
-// costs. The finding was deferred rather than optimized, on the grounds that
-// optimizing an unmeasured path is how correct code becomes wrong code. This
-// script is the measurement.
+// Digest-path throughput measurement (story 1.2, review round 2 follow-up):
+// prices what the fused canonicalizer's per-property descriptor snapshot
+// costs. The finding was deferred rather than optimized unmeasured.
 //
 // Three serializers run over the same payloads:
 //
-//   fused      the shipped path: one descriptor snapshot per object, values read
-//              from `descriptor.value`, structure and domain checks on that same
-//              snapshot. This is what closes the TOCTOU channel, and it is the
-//              only variant that is safe against an accessor or a lying Proxy.
-//   keyed      identical output and identical domain assertions, but values read
-//              through `[[Get]]` after `Object.keys`. Not adoptable: a second
-//              read is exactly the channel the fused pass was written to close.
-//              It exists here only to price the descriptor allocation.
-//   stringify  `JSON.stringify` with no ordering, no validation, and no safety.
-//              A floor, not an alternative: it does not produce JCS output.
+//   fused      shipped path: one descriptor snapshot per object, values read
+//              from it. Closes the TOCTOU channel against an accessor or a
+//              lying Proxy.
+//   keyed      same output and domain assertions, but reads values through
+//              `[[Get]]` after `Object.keys` (a second read, so not
+//              adoptable). Exists only to price the descriptor allocation.
+//   stringify  `JSON.stringify` with no ordering or validation; a floor, not
+//              an alternative, since it isn't JCS output.
 //
-// `fused` minus `keyed` is the descriptor allocation's share of the digest path.
-// The digests of `fused` and `keyed` are asserted equal before any number is
-// reported, because an A/B over two different outputs prices nothing.
+// `fused` minus `keyed` is the descriptor allocation's share. Their digests
+// are asserted equal before any number is reported, so the comparison prices
+// one output, not two different ones.
 //
 // Not wired into `npm run validate`: a throughput number is a property of the
-// machine that produced it, and a gate on one is a flake generator. Run it when
-// the question comes up again, and record what it said.
+// machine that produced it, and a gate on one is a flake generator.
 //
 // Usage:
 //   npm run bench:digest
@@ -50,7 +42,7 @@ if (!Number.isInteger(TRIALS) || TRIALS < 3) {
 }
 
 // ---------------------------------------------------------------------------
-// Payloads, shaped after the real artifacts rather than after a microbenchmark.
+// Payloads, shaped after the real artifacts.
 // ---------------------------------------------------------------------------
 
 /** One observation, field for field as `SealedRunRecord['observations'][number]`. */
@@ -243,8 +235,7 @@ for (const payload of PAYLOADS) {
 			canonicalBytes = bytes.length
 			reference = digestOf(bytes)
 		}
-		// `stringify` is a floor, not an alternative: its output is not JCS and is
-		// not expected to match. `keyed` is only a valid comparison if it does.
+		// keyed must match fused's digest; stringify isn't JCS and isn't checked.
 		if (variant.label === 'keyed' && digestOf(bytes) !== reference) {
 			console.error(
 				`bench-digest: the keyed variant disagreed with the fused one on ${payload.label}; the comparison prices nothing and is aborted`,

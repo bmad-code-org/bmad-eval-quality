@@ -81,12 +81,12 @@ describe('spelling 3 — descriptor-relative', () => {
 		expect(DescriptorPointer.safeParse(pointer).success).toBe(false)
 	})
 
-	// Recorded rather than enforced: an interaction-rooted pointer is also a
-	// syntactically legal RFC 6901 pointer, so the wrong-direction reject in this
-	// spelling only exists for the bound-element form. A response body may
-	// legitimately carry an `interactions` key, so excluding that prefix here
-	// would reject correct contracts. Whether a descriptor pointer resolves
-	// anywhere is Epic 4's reachability check.
+	// Recorded rather than enforced: an interaction-rooted pointer is also
+	// syntactically legal RFC 6901, so this reject only exists for the
+	// bound-element form; a response body may legitimately carry an
+	// `interactions` key, and excluding that prefix would reject correct
+	// contracts. Whether a descriptor pointer resolves anywhere is Epic 4's
+	// reachability check.
 	it('cannot reject an interaction-rooted pointer, and that is deliberate', () => {
 		expect(
 			DescriptorPointer.safeParse('/interactions/x/response-body').success,

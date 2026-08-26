@@ -71,9 +71,9 @@ describe('canonicalize: key sorting by UTF-16 code unit', () => {
 
 	it('sorts the surrogate-pair key U+1F600 before the BMP key U+FB33 (code-unit order, not code-point)', () => {
 		// U+1F600 is D83D DE00 in UTF-16; D83D < FB33 (dalet with dagesh), so the
-		// emoji sorts first even though its code point is larger. Escapes, not
-		// literals: a precomposed U+FB33 literal would silently NFC-decompose
-		// under any normalizing tool.
+		// emoji sorts first even though its code point is larger. Written as
+		// escapes because a precomposed U+FB33 literal would silently
+		// NFC-decompose under any normalizing tool.
 		expect(canonicalText({ '\ufb33': 2, '\ud83d\ude00': 1 })).toBe(
 			'{"\ud83d\ude00":1,"\ufb33":2}',
 		)

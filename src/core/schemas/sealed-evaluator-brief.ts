@@ -7,12 +7,10 @@ import { Digest, Identifier, OracleId } from './primitives.ts'
 
 /**
  * AD-3's generated evaluator-facing direction, keyed by the oracle it belongs
- * to. The evaluator sees oracle identifiers but never step identifiers: AD-23
- * requires every finding to cite its oracle, and AD-16 specifically bars step
- * identifiers from reaching it.
- *
- * No `behaviorId`: `Behavior.oracles` is an array, so two behaviours can cite
- * one oracle and a single behaviour id on a direction would not be truthful.
+ * to. The evaluator sees oracle identifiers but never step identifiers
+ * (AD-23 requires citing the oracle; AD-16 bars step identifiers), and
+ * carries no `behaviorId`: `Behavior.oracles` is an array, so two behaviours
+ * can cite one oracle and a single id here would not be truthful.
  */
 export const BriefDirection = z.strictObject({
 	oracleId: OracleId,
@@ -27,12 +25,11 @@ export const BriefDirection = z.strictObject({
 export type BriefDirection = z.infer<typeof BriefDirection>
 
 /**
- * Interface identity only, no operation inventory: shipping one would hand the
- * evaluator the action list AD-39 keeps from it, one artifact over from where
- * AD-5's scripting-shape predicate looks. Withholding it costs nothing in
- * practice: the isolation manifest records an arm finding a search parameter
- * by trying `?search=`, `?query=`, and `?q=` in turn, and that arm still
- * caught the defect.
+ * Interface identity only, no operation inventory: shipping one would hand
+ * the evaluator the action list AD-39 withholds, one artifact over from
+ * where AD-5's scripting-shape predicate looks. Withholding it costs nothing
+ * in practice: an isolation-manifest arm found a search parameter by trying
+ * `?search=`, `?query=`, and `?q=` in turn, and still caught the defect.
  */
 export const BriefInterface = z.strictObject({
 	logicalId: Identifier.describe(

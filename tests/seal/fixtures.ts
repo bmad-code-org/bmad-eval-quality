@@ -1,12 +1,7 @@
-// Fixtures AC 5 asks for beyond `gateCContract`: the Gate D Arm 2
-// reconstruction (AC 3), the create-then-read-back temporal pair (AC 4), a
-// direction with `scope` and `negativeDomain` both `null`, and a step binding
-// nothing in any channel. Each is a small, schema-shaped `Direction` plus the
-// `interactionPlan`/`permittedInterfaces` slice `PlanIndex` needs, per AC 5's
-// own "a full contract is not required if the pieces are independently
-// constructible" note. Every hand-authored fixture below is proven
-// schema-valid at module load time by `validateContractSlice`, so a future
-// schema tightening surfaces here rather than drifting silently.
+// Fixtures beyond `gateCContract`, per AC 5's "a full contract is not
+// required if the pieces are independently constructible" note. Each is a
+// small, schema-shaped `Direction` plus the `interactionPlan`/
+// `permittedInterfaces` slice `PlanIndex` needs.
 import { z } from 'zod'
 import {
 	type Operation,
@@ -17,22 +12,13 @@ import { InteractionStep } from '../../src/core/schemas/plan.ts'
 import { gateCContract } from '../schemas/fixtures/gate-c-contract.ts'
 import { populatedContract } from '../schemas/fixtures/relevance-contracts.ts'
 
-// `gateCContract` and `populatedContract` are declared as
-// `{...} satisfies EvalContract`, which checks full structural compatibility
-// with complete contextual typing at that declaration site and passes
-// cleanly. That check is what makes them schema-valid fixtures in the first
-// place. The *static type* TypeScript records for the expression afterward is
-// a different thing. For a `permittedInterfaces[].operations` array whose
-// elements declare different response/request keys (get-export carries
-// `rowCount`, submit-export does not), inference without a contextual type
-// produces a narrower union of each operation's own literal shape instead of
-// the declared `Operation` shape. Checking that union against `Operation`'s
-// `Record<string, JsonTypeName | null>` fields then fails with a spurious
-// "possibly undefined" complaint, a TypeScript limitation with a union of
-// dissimilar object literals against an index-signature-typed field. Rather
-// than casting around it, the schema's own `.parse()` re-derives the type from
-// the schema definition instead of from the expression's inferred type, which
-// sidesteps the whole inference gap and validates the value at the same time.
+// `gateCContract`/`populatedContract` type-check via `satisfies EvalContract`
+// at their own declaration site, but TypeScript's inferred type for a
+// `permittedInterfaces[].operations` array with dissimilar element shapes
+// (get-export carries `rowCount`, submit-export does not) is narrower than
+// `Operation` and fails a spurious "possibly undefined" check downstream.
+// Re-parsing through the schema sidesteps the inference gap and validates in
+// one step.
 export const gateCInteractionPlan: readonly InteractionStep[] = z
 	.array(InteractionStep)
 	.parse(gateCContract.interactionPlan)
@@ -47,11 +33,9 @@ export const populatedPermittedInterfaces: readonly PermittedInterface[] = z
 	.array(PermittedInterface)
 	.parse(populatedContract.permittedInterfaces)
 
-// A factory, not a shared object: several fixtures below reuse this shape
-// across more than one request channel, and a single shared mutable object
-// referenced from every one of them would let a mutation in one place bleed
-// into all the others through aliasing. A fresh object per call costs nothing
-// here.
+// A factory rather than a shared object: several fixtures below reuse this
+// shape, and one shared mutable object would let a mutation in one place
+// bleed into the others through aliasing.
 function emptyChannel(): {
 	requiredKeys: string[]
 	permittedKeys: string[]
@@ -86,9 +70,8 @@ function readOperation(operationId: string, pathTemplate: string): Operation {
 
 // Validates one hand-authored fixture's constituent pieces against their own
 // schemas, called once per fixture below at module load time. A schema
-// tightening that would reject one of these fixtures now fails loudly, here,
-// rather than drifting silently until some later story's test happens to
-// notice.
+// tightening that would reject a fixture fails loudly here, not silently
+// later.
 function validateContractSlice(slice: {
 	interactionPlan: readonly InteractionStep[]
 	permittedInterfaces: readonly PermittedInterface[]
@@ -102,15 +85,10 @@ function validateContractSlice(slice: {
 }
 
 // ---- AC 3: the Gate D Arm 2 reconstruction -----------------------------
-//
-// Arm 2's declared direction and generated prose (reviews/gate-d/PREREGISTRATION.md):
-// evidence targets the filter request and returned capsule collection;
-// relation "every returned capsule satisfies the supplied query" (a `for-all`
-// under the finalized sixteen-member vocabulary); polarity expects-hold;
-// scope "one search/filter endpoint response"; negative domain "a returned
-// capsule that does not satisfy the supplied query". Content-equivalence
-// only (Decision 1): the spike's own "relation" field is prose, not one of
-// the sixteen enum values, so this is not a byte-identical golden string.
+// Source: Arm 2's declared direction (reviews/gate-d/PREREGISTRATION.md).
+// Content-equivalence only (Decision 1): the spike's "relation" field is
+// prose, not one of the sixteen enum values, so this is not a byte-identical
+// golden string.
 export const gateDReconstruction: {
 	interactionPlan: readonly InteractionStep[]
 	permittedInterfaces: readonly PermittedInterface[]
@@ -400,12 +378,11 @@ export const irreducibleCollisionPair: {
 }
 validateContractSlice(irreducibleCollisionPair)
 
-// ---- a temporal pair whose two targets share the same channel, transport
-// channel, and tail (both read a "status" field from a response body). This is
-// the genuine-signature-tie case `channelSignature`/`sentFirstOrder` must still
-// order deterministically instead of falling back to argument order.
-// The two steps call two different operations, so their derived references
-// differ even though their channel signatures tie exactly.
+// ---- a temporal pair sharing channel, transport channel, and tail (both
+// read a "status" field from a response body): the genuine channel-signature
+// tie case `channelSignature`/`sentFirstOrder` must still order
+// deterministically. The two steps call different operations, so their
+// derived references still differ even though the signatures tie exactly.
 export const sameFieldTemporalPair: {
 	interactionPlan: readonly InteractionStep[]
 	permittedInterfaces: readonly PermittedInterface[]
@@ -553,16 +530,12 @@ export const threeStepSharedAfter: {
 }
 validateContractSlice(threeStepSharedAfter)
 
-// ---- a 3-step linear after chain: step-b names step-a, and step-c names
-// step-b. `step-b` is both someone's chosen successor (step-a's) and itself
-// a predecessor with its own chosen successor (step-c). That is exactly the
-// shape a code-review pass found `groupResolvedTargets` dropping entirely:
-// `step-b` was skipped as an already-claimed successor before its own entry as
-// a predecessor was ever read, so `step-c` was never paired and never rendered
-// standalone either. AD-39 bounds a temporal clause to naming a step that
-// itself carries none, so a compiled contract never declares this shape. The
-// fixture exists to prove the renderer degrades safely, one pair plus one
-// standalone step with nothing dropped, and makes no claim that the shape is
+// ---- a 3-step linear after chain: step-b names step-a, step-c names step-b.
+// Regression fixture for a code-review-found bug where `groupResolvedTargets`
+// dropped step-c entirely (step-b consumed as a successor before its own
+// predecessor entry was ever read). AD-39 bounds a temporal clause to a step
+// carrying none itself, so a compiled contract never declares this shape; the
+// fixture only proves the renderer degrades safely, not that the shape is
 // legal input.
 export const linearAfterChain: {
 	interactionPlan: readonly InteractionStep[]
@@ -615,12 +588,11 @@ export const linearAfterChain: {
 validateContractSlice(linearAfterChain)
 
 // ---- a 4-step linear after chain: step-2 names step-1, step-3 names step-2,
-// step-4 names step-3. Even length, so the chain divides into two disjoint
-// pairs with nothing left standalone: (step-1, step-2) and (step-3, step-4).
-// This is the shape `deferred-work.md` recorded against `linearAfterChain`'s
-// own three-step fixture above: `step-2` is consumed as `step-1`'s partner,
-// but `step-3`/`step-4` is a legal second pairing once `step-2` is spoken for,
-// not a second-and-onward chain member that must fall back to standalone.
+// step-4 names step-3. Even length, so it forms two disjoint pairs with
+// nothing standalone: (step-1, step-2), (step-3, step-4). Recorded in
+// `deferred-work.md` against `linearAfterChain` above: once step-2 is spoken
+// for, step-3/step-4 is a legal second pairing, not a chain remainder forced
+// to standalone.
 export const fourStepAfterChain: {
 	interactionPlan: readonly InteractionStep[]
 	permittedInterfaces: readonly PermittedInterface[]

@@ -140,15 +140,13 @@ export const OracleDisposition = z.strictObject({
 })
 
 /**
- * The four transport channels an observation's call inputs are keyed by. A
- * flat map, as in the worked example, breaks pointer addressing: AD-26 keys
- * `call-inputs` by transport channel, so a pointer like
+ * A flat map would break pointer addressing: AD-26 keys `call-inputs` by
+ * transport channel, so a pointer like
  * `/interactions/write/call-inputs/body/title` needs that segment to resolve
- * against.
- *
- * A four-key strict object rather than a record over the transport enum, for
- * the same reason as `RequestShape` and `InputBinding`: a record demands every
- * enum member at parse time, but every real observation binds only a subset.
+ * against. A four-key strict object rather than a record over the transport
+ * enum, for the same reason as `RequestShape` and `InputBinding`: a record
+ * demands every enum member at parse time, but a real observation binds only
+ * a subset.
  */
 export const ObservedCallInputs = z.strictObject({
 	path: JsonObjectValue.nullable(),

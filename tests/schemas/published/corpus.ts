@@ -2,8 +2,7 @@
 // fixture Story 1.4 committed, every hand-written reject case, and the
 // generated mutant corpus, in one deterministic list per artifact. One corpus
 // serves both the differential check (AC 7) and the keyword-mutation sweep
-// (AC 8), which is what makes the sweep tractable and the differential inputs
-// meaningful rather than arbitrary.
+// (AC 8), which is what makes the sweep tractable.
 
 import type { InterchangeArtifactKey } from '../../../src/core/schemas/artifact.ts'
 import {
@@ -20,10 +19,10 @@ import { publishedDocumentOf, publishedValidatorOf } from './validator.ts'
 export type Seed = { readonly id: string; readonly value: unknown }
 
 /**
- * Every positive fixture belonging to one artifact. Seeded from every one of
- * them, not one per artifact: a keyword inside a union branch the primary
- * fixture does not take is unreachable from that fixture alone, and Story 1.4
- * supplied the branch coverage exactly for this.
+ * Every positive fixture belonging to one artifact, not just the primary one:
+ * a keyword inside a union branch the primary fixture doesn't take is
+ * unreachable from that fixture alone (Story 1.4 supplies the branch
+ * coverage).
  */
 export const seedsOf = (key: InterchangeArtifactKey): readonly Seed[] => {
 	const seeds: Seed[] = [
@@ -95,31 +94,17 @@ export type CorpusMember = Seed & {
 const corpusCache = new Map<InterchangeArtifactKey, readonly CorpusMember[]>()
 
 /**
- * The full differential/mutation corpus for one artifact, computed once per run.
+ * The full differential/mutation corpus for one artifact, computed once per
+ * run and cached: an uncached call re-mutates every hand-written reject
+ * instance and rebuilds ~2,248 generated mutants for nothing, since nothing
+ * about the corpus changes between calls (measured: 3 ms cached total vs.
+ * 2,331 ms to generate).
  *
- * Cached for the same reason `generationOf` is: the differential check walks the
- * corpus once per artifact for the validator agreement test and again for the
- * ledger pairing test, and each uncached call re-cloned and re-mutated every
- * hand-written reject instance and rebuilt a wrapper object for all ~2,248
- * generated mutants. Nothing about the corpus changes between calls.
+ * Members are SHARED, not per-call copies; a caller that mutates one must
+ * `structuredClone` it first, matching how `seedsOf` already behaves.
  *
- * Do not expect this to show up in the suite's wall clock. Assembling all twelve
- * corpora measured at 3 ms total, against 2,331 ms to generate the mutants they
- * are assembled from and roughly 32 s for the four published-schema test files.
- * The cache is here because repeating work that cannot change is wrong, not
- * because it was the cost anyone should optimise next.
- *
- * The members are therefore SHARED, not per-call copies. A caller that needs to
- * mutate one must `structuredClone` it first, which is what the differential
- * tests already do for their hand-built cases. This matches how `seedsOf`
- * already behaved: it hands back the fixture constants themselves.
- *
- * This does not amortise across test FILES. Vitest isolates modules per file, so
- * `differential.test.ts`, `keyword-mutation.test.ts`, and
- * `mutant-generator.test.ts` each still build their own generation. Sharing one
- * across files would take `isolate: false` on the whole suite, which trades a
- * real isolation guarantee for a startup cost, and is not a trade worth making
- * here.
+ * Does not amortise across test files: Vitest isolates modules per file, so
+ * each of the three published-schema test files builds its own generation.
  */
 export const corpusOf = (
 	key: InterchangeArtifactKey,

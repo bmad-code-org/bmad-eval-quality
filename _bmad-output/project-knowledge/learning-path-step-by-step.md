@@ -55,6 +55,7 @@ flowchart TD
 |   12 | epic4-story1 | The real pointer walk (RFC 6901, `@/`), and the two compile-time checks that catch an unreachable pointer before evaluation. |
 |   13 | epic4-story2 | Twelve more AD-5 codes: quantifier substitution, operand-kind legality, the interface inventory, and waiver completeness. |
 |   14 | epic4-story3 | The last two stage-one AD-5 codes: a graph predicate over the interaction plan, bounding depth, width, shared anchors, disjoint pairs, and step count. |
+|   15 | epic4-story4 | One entry point that runs all 19 checks in a fixed order, one place that awaits, and a script that enforces which layer may import which. |
 
 Adding a step: follow `learning-path-template.md`.
 
@@ -1048,4 +1049,76 @@ flowchart TD
   PLANIDX3["plan-index.ts (Step 12)<br/>buildPlanIndex"]
 
   PLANIDX3 --> BOUND
+```
+
+## Step 15 (epic4-story4): one compile entry point, one place that awaits, one layer gate
+
+**What:** `core/compile/compile.ts` calls all 19 checks in a fixed order.
+`application/compile.ts` parses unknown input and hands it to that stage.
+`application/invoke-port.ts` is the only function in the package that awaits.
+`npm run check:layers` reads every file under `src/` and fails if one imports across a forbidden
+layer edge.
+
+**Why:** before this story, 19 checks existed and nothing called them together, so which failure a
+bad contract reported depended on which check the caller happened to run. The layer rules had the
+same problem: the architecture said `core/` may not import `ports/`, and the only thing enforcing it
+was a test that searched `core/seal/` for the text "core/compile" (a spelling real imports never
+use).
+
+**Rules:**
+
+- Check order is AD-5 registry order, and compile stops at the first failure. Registry order is the
+  only published stable order everyone already shares.
+- Three checks share the code `malformed-operator-expression`, so they run in a fixed suborder:
+  bound-element scope, operand legality, regex constructs.
+- Strict mode defaults to true at the application boundary and is a required boolean in the core
+  signature, so core behavior never reads an environment variable or a config file.
+- `application/compile.ts` catches nothing. A `StructuralFailure` stays a `StructuralFailure`; it
+  never becomes a runtime fault or an in-band result value.
+- `invokePort` calls the port once, validates the request going out and the response coming back,
+  and never retries. A `RuntimeFault` the port threw comes back as the same object; anything else
+  becomes `port-failure`, or `aborted` if the signal aborted first.
+- Compile and seal stay single synchronous functions. AD-34 splits a stage into plan and reduce only
+  when it needs an outside observation, and neither of these does.
+- `check:layers` parses with TypeScript's own tokenizer, so a comment or a string mentioning
+  "await" is not a finding. It fails closed: an import it cannot read is reported as a violation.
+- `core/` submodules may import each other. The diagram draws `core` as one node, so
+  `core/seal/` reading `core/compile/` is a same-layer import; the prohibition is about leaving
+  `core/`.
+- Two registries now have a drift gate against the architecture document: `check:ad5-registry` for
+  failure codes, `check:ad28-registry` for runtime fault codes.
+
+**Read in this order:**
+
+1. `src/core/compile/compile.ts`: the 19 calls, in order.
+2. `src/application/compile.ts`: parse, default strict to true, delegate.
+3. `src/application/invoke-port.ts`: the seven numbered steps of a port call.
+4. `scripts/dependency-direction.ts`: `classifyLayer`, `isAllowedEdge`, `scanFile`.
+5. `tests/architecture/dependency-direction.test.ts`: every allowed and forbidden edge, written from
+   the story text, so the test does not check the checker against itself.
+
+**Watch out:**
+
+- Wiring all 19 checks into one pipeline surfaced that `populatedContract`'s own `scopedResources`
+  trips a Story 4.2 stub check. Whole-contract tests clear that field first, via
+  `cleanPopulatedContract()` in `tests/compile/helpers.ts`.
+- Six of the ten runtime fault codes have no thrower yet. AD-28 fixes the registry independently of
+  when each producing stage lands.
+- `src/index.ts` is untouched. Story 6.5 publishes the library and CLI surface.
+
+**Story:** `_bmad-output/implementation-artifacts/4-4-stages-as-pure-plan-and-reduce-pairs-with-one-orchestration-layer.md`
+
+```mermaid
+flowchart TD
+  APPC["application/compile.ts<br/>parse, default strict, delegate"]
+  CORE["core/compile/compile.ts<br/>19 checks, fixed order"]
+  IP["application/invoke-port.ts<br/>the only await"]
+  PORT["ports/port.ts<br/>PortMethod, BoundaryParser"]
+  GATE["check:layers<br/>scripts/dependency-direction.ts"]
+
+  APPC --> CORE
+  IP --> PORT
+  GATE -.enforces.-> APPC
+  GATE -.enforces.-> CORE
+  GATE -.enforces.-> IP
 ```

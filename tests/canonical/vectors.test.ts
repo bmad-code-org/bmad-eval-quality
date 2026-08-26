@@ -84,7 +84,7 @@ const compositeVectors = compositeVectorsJson as unknown as {
 }
 
 describe('fixture presence', () => {
-	// An empty fixture array would pass every loop silently — the same
+	// An empty fixture array would pass every loop silently: the same
 	// fail-open shape as an unwired gate.
 	it('loads non-empty vector sets', () => {
 		expect(positiveVectors.length).toBeGreaterThan(0)
@@ -97,7 +97,7 @@ describe('fixture presence', () => {
 		expect(compositeVectors.directoryReject.length).toBeGreaterThan(0)
 	})
 
-	// Deleting a single required vector would otherwise pass CI silently — the
+	// Deleting a single required vector would otherwise pass CI silently: the
 	// same fail-open shape as an empty fixture array, one level up. These names
 	// are the AC5-mandated set.
 	it('contains every AC5-required vector by name', () => {
@@ -143,7 +143,7 @@ describe('positive canonicalization vectors', () => {
 			expect(bytesToHex(bytes)).toBe(vector.expectedCanonicalHex)
 			expect(new TextDecoder().decode(bytes)).toBe(vector.expectedCanonicalText)
 			expect(digestArtifact(value, vector.name)).toBe(vector.expectedDigest)
-			// The same document routed through the bytes entry path — the path a
+			// The same document routed through the bytes entry path: the path a
 			// real artifact file takes (Uint8Array → fatal decode → scan → digest).
 			const fromBytes = scanJson(
 				new TextEncoder().encode(vector.rawText),

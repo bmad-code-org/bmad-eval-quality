@@ -1,14 +1,13 @@
-// The Gate C export-API contract, re-spelled to the settled schema. It is the
-// only contract ever hand-authored against architecture revision 9, it predates
-// this schema, and it is therefore the only evidence the grammar expresses what
-// the discipline rules require. An accept fixture written by reading the schema
-// would prove only that the schema agrees with itself.
+// The Gate C export-API contract, re-spelled to the settled schema. It
+// predates the schema and is the only contract ever hand-authored against
+// architecture revision 9, so it's the only evidence the grammar expresses
+// what the discipline rules require.
 //
 // Source: _bmad-output/planning-artifacts/architecture/
 //         architecture-eval-quality-2026-07-29/reviews/gate-c/eval-contract.json
 //
-// Every re-spelling is enumerated in RESPELLINGS below. Each one is a place the
-// schema and the only hand-authored contract disagreed.
+// Every re-spelling below (RESPELLINGS) is a place the schema and the
+// hand-authored contract disagreed.
 
 import type { EvalContract } from '../../../src/core/schemas/eval-contract.ts'
 

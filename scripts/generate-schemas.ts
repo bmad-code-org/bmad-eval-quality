@@ -1,9 +1,7 @@
 // Writes the published JSON Schema export to `schemas/{key}.schema.json` for
-// all twelve interchange artifacts, and nothing else. A thin I/O wrapper over
-// the pure builder in `src/core/schemas/publish.ts` (AD-1 keeps the builder
-// itself free of filesystem work); the byte-exact rules live beside the builder
-// in `serializePublishedDocument` so this writer and the drift check
-// (`scripts/check-schemas.ts`) cannot disagree about bytes.
+// all twelve interchange artifacts. A thin I/O wrapper over the pure builder
+// in `publish.ts` (AD-1); serialization rules live there too, so this writer
+// and `check-schemas.ts`'s drift check cannot disagree about bytes.
 //
 // Usage:
 //   npm run generate:schemas
@@ -21,11 +19,11 @@ import {
 } from '../src/core/schemas/publish.ts'
 
 const directory = new URL('../schemas/', import.meta.url)
-// Filesystem paths for anything built from a name READ FROM DISK. `new URL` is
-// safe for the twelve registry keys, which are kebab slugs, but a name
-// containing `#` or `?` truncates there — `a#b.schema.json` resolves to the
-// path `schemas/a` — and `%2F` throws ERR_INVALID_FILE_URL_PATH. Removing the
-// wrong path is not a mistake a cleanup step gets to make.
+// Filesystem paths for anything built from a name read from disk. `new URL`
+// is safe for the twelve kebab-slug registry keys, but a name containing `#`
+// or `?` truncates there (`a#b.schema.json` resolves to `schemas/a`) and
+// `%2F` throws ERR_INVALID_FILE_URL_PATH. A cleanup step can't afford to
+// remove the wrong path.
 const directoryPath = fileURLToPath(directory)
 await mkdir(directory, { recursive: true })
 for (const key of INTERCHANGE_ARTIFACT_KEYS) {
@@ -49,11 +47,10 @@ for (const key of INTERCHANGE_ARTIFACT_KEYS) {
 }
 
 // A removed registry key must not strand its old file: check-schemas would
-// fail on the orphan forever while its documented repair is this very script.
-// Only regular *.schema.json files are removed — anything else in schemas/ is
-// not this script's to delete, and the drift check reports it instead. The
-// `isFile` guard matters as much as the suffix: `rm` without `recursive`
-// throws on a directory, which would abort the run part way through.
+// fail on the orphan forever, and this script is the documented repair. Only
+// regular `*.schema.json` files are removed; the `isFile` guard matters as
+// much as the suffix, since `rm` without `recursive` throws on a directory
+// and would abort the run part way through.
 const expected = new Set(
 	INTERCHANGE_ARTIFACT_KEYS.map((key) => `${key}.schema.json`),
 )

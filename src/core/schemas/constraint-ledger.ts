@@ -16,12 +16,7 @@ import type { JsonValue } from './primitives.ts'
  */
 export type JsonSchemaDialect = 'draft-2020-12'
 
-/**
- * What Story 1.5 does with an entry: inject these JSON Schema keywords at the
- * named location, or record that the constraint is not expressible and why.
- * No third disposition: an entry with neither is a constraint nobody is
- * accountable for.
- */
+/** No third disposition: an entry with neither is a constraint nobody is accountable for. */
 export type ConstraintDisposition =
 	| {
 			readonly kind: 'inject'
@@ -31,21 +26,16 @@ export type ConstraintDisposition =
 	| { readonly kind: 'not-expressible'; readonly reason: string }
 
 /**
- * Where in the exported document the entry applies. Zod emits no `$id` and
- * inlines the root schema rather than putting it in `$defs`, so "the artifact
- * itself" and "a shared definition" are structurally different addresses, not
- * just two names; spelling both as a name would leave Story 1.5 needing
- * out-of-band knowledge to tell them apart.
+ * Where in the exported document the entry applies. Zod inlines the root
+ * schema and emits no `$id`, so "the artifact itself" and "a shared
+ * definition" are structurally different addresses, not just two names.
  *
- * Every address names its `artifact`. Omissible while `EvalContract` was the
- * only root, but with twelve roots two artifacts can carry the same rule, so
- * `location.artifact` is what Story 1.5 reads to pick the right one instead of
- * searching.
+ * Every address names its `artifact`: with twelve roots, two artifacts can
+ * carry the same rule, so `location.artifact` picks the right one.
  *
- * This module imports `artifact.ts` and sits downstream of all twelve schema
- * modules, so no module under `src/core/schemas/` may import this file;
- * `plan.ts` exports `BINDING_CHANNEL_NON_EMPTY` to the ledger rather than the
- * reverse, and importing the other way would create a circular module load.
+ * This module sits downstream of all twelve schema modules; none of them may
+ * import it back, which is why `plan.ts` exports `BINDING_CHANNEL_NON_EMPTY`
+ * to the ledger rather than the reverse.
  */
 export type ConstraintLocation =
 	| { readonly kind: 'root'; readonly artifact: InterchangeArtifactKey }
@@ -96,13 +86,12 @@ const arityEntries: readonly ConstraintLedgerEntry[] = Object.entries(
 }))
 
 /**
- * AD-4 requires each operator to declare its operand types in the published
- * schema. Arity is structural and repaired by the entries above; per-position
- * operand *types* cannot be, since narrowing a position would delete
- * `malformed-operator-expression`'s operand-type limb along with the fixture
- * Story 4.2 owes for it. The declaration instead lives in each operator's
- * `operands` description, which survives the export; enforcement is Epic 4's.
- * Recorded here so the split is a decision, not an omission.
+ * AD-4 requires operand types in the published schema. Arity is structural
+ * and repaired above; per-position operand types cannot be, since narrowing
+ * a position would delete `malformed-operator-expression`'s operand-type limb
+ * (Story 4.2's fixture). The declaration lives instead in each operator's
+ * `operands` description; enforcement is Epic 4's. Recorded here so the split
+ * is a decision, not an omission.
  */
 const operandTypeEntry: ConstraintLedgerEntry = {
 	id: 'operator-operand-types',
@@ -122,17 +111,16 @@ const operandTypeEntry: ConstraintLedgerEntry = {
 	},
 }
 
-// One entry per lineage-bearing artifact, so eleven and not twelve: the
-// registry's `carriesLineage` flag is the filter, and `ArtifactReference`
-// carries no `parentDigest` for the address to resolve against. Generated from
-// the registry the way the arity entries are generated from `TUPLE_ARITY`: a
-// hand-written twelfth entry would be a bug, a hand-written eleven is drift.
+// One entry per lineage-bearing artifact (eleven, not twelve): the registry's
+// `carriesLineage` flag is the filter, since `ArtifactReference` carries no
+// `parentDigest` to resolve against. Generated from the registry the way
+// arity entries are generated from `TUPLE_ARITY`, so a hand-written count
+// cannot drift.
 //
-// Two of the eleven are union-rooted: `Probe` on `expectedClean` and
-// `EvidenceArtifact` on `mode`. A union root exports `{ $schema, oneOf,
-// description }` with no `properties` object, so the resolver needs a union
-// fallback requiring the field in every branch: the lineage fields are spread
-// into each branch, so the biconditional binds both.
+// Two of the eleven are union-rooted (`Probe` on `expectedClean`,
+// `EvidenceArtifact` on `mode`): a union root exports no `properties` object,
+// so the lineage fields are spread into every branch to keep the
+// biconditional binding both.
 const lineageEntries: readonly ConstraintLedgerEntry[] = Object.entries(
 	INTERCHANGE_ARTIFACTS,
 )

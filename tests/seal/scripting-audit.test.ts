@@ -16,11 +16,9 @@ import {
 } from './fixtures.ts'
 
 /**
- * Assembles a minimal, schema-valid `SealedEvaluatorBrief` around given
- * directions, validated by `.parse` at call time (AC 4: "validated by
- * `SealedEvaluatorBrief.parse(...)`... mirroring `tests/seal/fixtures.ts`'s
- * own `validateContractSlice` pattern"). Every field but `directions` and
- * `probeStepBound` is filler the audit never reads.
+ * Minimal schema-valid `SealedEvaluatorBrief`, validated by `.parse` at call
+ * time (AC 4). Every field but `directions` and `probeStepBound` is filler
+ * the audit never reads.
  */
 function minimalBrief(
 	directions: readonly BriefDirection[],
@@ -71,15 +69,10 @@ const gateCDirections: BriefDirection[] = gateCContract.oracles.map(
 const gateCAcceptBrief = minimalBrief(gateCDirections, null)
 
 // ---- AC 4 point 2: the "not the first" regression, at a strict bound -------
-// The story's own AC 4 point 2 cites this as "gateCContract's own O-004
-// negative domain" at line ~310. Line 310 of the fixture file is actually
-// O-005's `scope` field (O-004's own `scope` reads "Every element of the
-// returned page." with no "not the first"; O-004 carries no such text in
-// either field). The oracle that actually carries the quoted text — real,
-// already-shipped author prose using "first" as a data-position adjective,
-// not a step marker — is O-005, so this fixture is built from O-005's own
-// rendered direction rather than the story's mis-cited oracle id. Settled
-// here by construction, per this project's standing default.
+// The story cites this as O-004's negative domain, but the actual carrier is
+// O-005's scope field (O-004's own scope has no "not the first" text).
+// Settled here by construction rather than escalated (project standing
+// default).
 const o005Direction = gateCDirections.find(
 	(direction) => direction.oracleId === 'O-005',
 )
@@ -104,10 +97,9 @@ const populatedDirection: BriefDirection = {
 const populatedBoundBrief = minimalBrief([populatedDirection], 8)
 
 // ---- AC 4 point 4: hand-authored word-vocabulary reject fixture ------------
-// Verified directly against SEQUENCE_MARKER_PATTERN (not trusted from the
-// story's own restated count): `then` and `finally` match, `First` is
-// excluded as a bare ordinal (Decision 4) — two markers, exceeding a bound
-// of 1.
+// Verified against SEQUENCE_MARKER_PATTERN directly, not the story's own
+// restated count: `then` and `finally` match; `First` is excluded as a bare
+// ordinal (Decision 4). Two markers, exceeding a bound of 1.
 const wordVocabularyReject: BriefDirection = {
 	oracleId: 'O-999',
 	text: 'The check is asserted to hold. First send the request, then read the response, and finally confirm the record.',

@@ -1,12 +1,11 @@
 /**
- * Two compile-time structural checks over an EvalContract's oracle trees:
- * `malformed-operator-expression` (a `@/` bound-element pointer may appear
- * only inside a quantifier's predicate) and `unreachable-check-evidence`
- * (an interaction-rooted pointer the declared interfaces cannot produce).
- * Both walk every oracle's `check` tree once and throw `StructuralFailure`
- * on the first violation, matching `auditBriefScripting`'s fail-fast
- * convention. `evaluatePointerReachability` is exported separately as the
- * non-throwing per-pointer core, for reuse and for direct testing.
+ * Two compile-time checks over an EvalContract's oracle trees:
+ * `malformed-operator-expression` (a `@/` bound-element pointer outside any
+ * quantifier's predicate) and `unreachable-check-evidence` (a pointer the
+ * declared interfaces cannot produce). Both throw `StructuralFailure` on the
+ * first violation, matching `auditBriefScripting`'s fail-fast convention.
+ * `evaluatePointerReachability` is exported separately as the non-throwing
+ * per-pointer core, for reuse and direct testing.
  */
 import { ARRAY_INDEX_PATTERN } from '../evaluate/evidence-resolution.ts'
 import { StructuralFailure } from '../failure-codes.ts'
@@ -72,8 +71,6 @@ function visitExpression(
 			return
 		case 'for-all':
 		case 'for-any':
-			// `collection` resolves in whatever scope is already open. Only
-			// `predicate` opens a new quantifier scope.
 			visitOperand(
 				expression.collection,
 				`${path}.collection`,
@@ -140,10 +137,8 @@ const unreachable = (reason: string): ReachabilityResult => ({
 	reason,
 })
 
-// Every JsonTypeName value except the two compound types, `object` and
-// `array`, is a scalar. Widened to `ReadonlySet<string>` so
-// `.has(declaredType)` below, where `declaredType` is a plain `string`,
-// still typechecks.
+// Every JsonTypeName value except `object` and `array` is scalar. Widened
+// to `ReadonlySet<string>` so `.has(declaredType)` below still typechecks.
 const SCALAR_TYPES: ReadonlySet<string> = new Set(
 	JsonTypeName.options.filter((name) => name !== 'object' && name !== 'array'),
 )
@@ -211,12 +206,10 @@ export function evaluatePointerReachability(
 		}
 		const { requiredKeys, permittedKeys, types, collectionLocations } =
 			operation.responseDescriptor
-		// A root-declared collection (`pointer: ''`, the response body itself
-		// is the array) indexes directly, bypassing the key check below:
-		// requiredKeys/permittedKeys name object fields.
-		// Its expectedCardinality bounds the array size (`exact` is the true
-		// count; `at-most`/`page-bounded` is an upper bound), so an index at
-		// or past it is unreachable.
+		// A root-declared collection (`pointer: ''`) indexes directly, bypassing
+		// the key check below. `expectedCardinality` bounds the array size
+		// (`exact` is the true count; `at-most`/`page-bounded` is an upper
+		// bound), so an index at or past it is unreachable.
 		const rootCollection = collectionLocations?.find(
 			(location) => location.pointer === '',
 		)
