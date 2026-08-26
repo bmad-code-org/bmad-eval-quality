@@ -58,6 +58,7 @@ flowchart TD
 |   15 | epic4-story4 | One entry point that runs all 19 checks in a fixed order, one place that awaits, and a script that enforces which layer may import which. |
 |   16 | epic5-story1 | Seven yes/no predicates deciding which discipline rules a contract has to satisfy, read from its declarations alone. |
 |   17 | epic5-story2 | Seven more predicates asking whether an oracle really reads each place a rule applies, so under-declaring costs coverage. |
+|   18 | epic5-story3 | Nineteen hand-written contracts and a generator that emits the published predicate table from the same predicates the library ships. |
 
 Adding a step: follow `learning-path-template.md`.
 
@@ -1266,4 +1267,85 @@ flowchart TD
   ALIGN --> SAT
   REL -.agree on which rules have no site.-> SAT
   SAT -.names the predicate for.-> GAP
+```
+## Step 18 (epic5-story3): the table is generated output
+
+**What:** nineteen hand-written contracts covering all seven rules in all four declaration states, a
+pure builder that runs the fourteen predicates over them and renders a markdown document, and a
+byte-exact drift check in CI.
+
+**Why:** a table of predicates kept by hand goes stale the day someone renames a predicate, and
+nothing notices. Here the document is generated from the same functions the library ships, so a rule
+that stops being covered fails the build. The worked example in this repo is the proof: it has
+disagreed with the code for months and no check ever said so.
+
+**Rules:**
+
+- Four declaration states: absent, explicitly empty, witnessed, unwitnessed. Seven rules times four
+  states is twenty-eight cells.
+- Absent and unwitnessed both answer relevant and not satisfied. The reason is what tells them
+  apart, so every fixture asserts the reason.
+- Not relevant plus not satisfied is impossible. A rule that applies nowhere is satisfied for free,
+  so the fourth combination has no contract and the document says so.
+- Nineteen contracts fill twenty-eight cells, because two rules can read the same declaration.
+- A corpus contract does not have to compile. Two of the nineteen do not: an empty operation list
+  means the plan names operations nothing declares.
+- The builder throws on an unfilled cell. Four checks: unique ids, every cell resolves, every cell
+  filled exactly once, and every cell's contract really produces the verdicts it claims.
+- The generator writes bytes; the checker rebuilds and compares. Neither can drift from the other,
+  because both call one function.
+- CI mutates a predicate name and asserts the check fails. A hand-kept table would survive that.
+- Nothing calls the predicates from `compile`. A gap never blocks, so wiring it into a stage that
+  throws would read as if it did.
+
+**Read in this order:**
+
+1. `src/core/coverage/coverage.ts`: `evaluateCoverage` pairs the two verdict arrays into gap
+   records; `coverageSeverity` takes the highest declared behaviour severity.
+2. `src/core/coverage/table.ts`: the four states, the verdict pair each one asserts, the four
+   diagnoses, and the renderer.
+3. `tests/coverage/fixtures/corpus.ts`: the nineteen contracts and the twenty-eight-cell index.
+   Every contract is one small change to the Step 17 seed.
+4. `scripts/generate-ad31-table.ts` and `scripts/check-ad31-table.ts`: write, and compare.
+5. `docs/ad31-coverage-predicates.generated.md`: the output. 133 matrix rows, 18 gap rows.
+6. `tests/coverage/corpus.test.ts`, `coverage.test.ts`, `table.test.ts`: fixtures 151 to 231.
+
+**Watch out:**
+
+- Do not import `core/compile/` into `table.ts`. `core/canonical/scan-json.ts` uses a constructor
+  parameter property, which Node's type stripper rejects, so both scripts would die at load.
+- `core/` outside `core/schemas/` may not import Zod, not even as a type. The `CoverageGap` and
+  `Severity` type aliases live in the schema files for that reason.
+- The corpus lives under `tests/`, so it never ships in `dist`. Both scripts import from `tests/`,
+  which is new in this repo and allowed.
+- Editing `README.md` makes `_bmad-output/shareable/` stale. Run `npm run build:shareable`.
+- One conjunct in `evaluateCoverage` cannot be caught by any test, because the case it guards
+  cannot happen today. It stays, with a comment saying which fixture would catch a change.
+
+**Story:** `_bmad-output/implementation-artifacts/5-3-the-contract-fixture-corpus-and-the-regenerated-table.md`
+
+```mermaid
+flowchart TD
+  REL["core/coverage/relevance.ts<br/>7 relevance predicates"]
+  SAT["core/coverage/satisfaction.ts<br/>7 satisfaction predicates"]
+  RULES["core/coverage/rules.ts<br/>the 14 predicate names"]
+  COV["core/coverage/coverage.ts<br/>evaluateCoverage, coverageSeverity"]
+  TABLE["core/coverage/table.ts<br/>coveragePredicateTable"]
+  CORPUS["tests/coverage/fixtures/corpus.ts<br/>19 contracts, 28 cells"]
+  GEN["scripts/generate-ad31-table.ts<br/>writes"]
+  CHECK["scripts/check-ad31-table.ts<br/>compares"]
+  DOC["docs/ad31-coverage-predicates.generated.md"]
+
+  REL --> COV
+  SAT --> COV
+  RULES --> COV
+  COV --> TABLE
+  REL --> TABLE
+  SAT --> TABLE
+  CORPUS --> GEN
+  CORPUS --> CHECK
+  TABLE --> GEN
+  TABLE --> CHECK
+  GEN --> DOC
+  DOC -.byte for byte.-> CHECK
 ```

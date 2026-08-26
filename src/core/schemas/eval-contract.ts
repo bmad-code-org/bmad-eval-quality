@@ -37,6 +37,9 @@ export const SEVERITY_LEVELS = ['low', 'material', 'critical'] as const
 
 export const Severity = z.enum(SEVERITY_LEVELS)
 
+/** the three levels as a type, so a derived severity is declared once. */
+export type Severity = (typeof SEVERITY_LEVELS)[number]
+
 /**
  * Coin flip (c), settled: linkage lives per behaviour rather than at contract
  * level. See `requirementLinks` below for why; the Gate C fixture's

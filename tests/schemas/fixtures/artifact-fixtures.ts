@@ -552,9 +552,8 @@ const evidenceCommon = {
 	coverageGaps: [
 		{
 			rule: 'sibling-cross-check',
-			relevancePredicate: 'siblingGroups.parameters non-empty',
-			satisfactionPredicate:
-				'an oracle whose intent and check address both members of a declared parameter group',
+			relevancePredicate: 'sibling-cross-check-relevance',
+			satisfactionPredicate: 'sibling-cross-check-satisfaction',
 			satisfied: false,
 			severity: 'material',
 		},

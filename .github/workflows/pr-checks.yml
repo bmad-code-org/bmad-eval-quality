@@ -4,6 +4,9 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: read
+
 env:
   NPM_VERSION: "11.18.0"
 
@@ -14,6 +17,8 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
 
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
@@ -41,6 +46,9 @@ jobs:
       - name: AD-5 failure-code registry check (FAILURE_CODES vs the spine table)
         run: npm run check:ad5-registry
 
+      - name: AD-31 coverage predicate table drift check (byte-exact against docs/)
+        run: npm run check:ad31-table
+
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
         with:
           python-version: "3.12"
@@ -51,7 +59,7 @@ jobs:
       - name: Shareable export check (current, and canonical repository URL)
         run: npm run check:shareable
 
-      - name: Validate (typecheck, lint, check:docs, check:shareable, lint:spine, check:vectors, check:schemas, check:ad5-registry, check:ad28-registry, check:layers, test)
+      - name: Validate (typecheck, lint, check:docs, check:shareable, lint:spine, check:vectors, check:schemas, check:ad5-registry, check:ad28-registry, check:ad31-table, check:layers, test)
         run: npm run validate
 
       - name: Build
@@ -63,6 +71,8 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
 
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
@@ -89,6 +99,9 @@ jobs:
       - name: AD-5 failure-code registry check (FAILURE_CODES vs the spine table)
         run: npm run check:ad5-registry
 
+      - name: AD-31 coverage predicate table drift check (byte-exact against docs/)
+        run: npm run check:ad31-table
+
       - name: Build
         run: npm run build
 
@@ -101,6 +114,8 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
 
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
@@ -146,6 +161,8 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
 
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
@@ -187,6 +204,8 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
 
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
@@ -228,6 +247,8 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
 
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
@@ -257,6 +278,8 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
 
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
@@ -325,6 +348,8 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
 
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
@@ -394,8 +419,6 @@ jobs:
     name: "Canary: AD-28 registry check fails on a dropped and on a reordered code"
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    permissions:
-      contents: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
@@ -468,12 +491,84 @@ jobs:
           echo "$output" | grep -q "order mismatch at position" || { echo "check failed for the wrong reason (no order mismatch reported)" >&2; exit 1; }
           echo "canary passed: registry check correctly failed naming the order mismatch"
 
+  canary-ad31-table:
+    name: "Canary: AD-31 table check fails on a mutated byte and on a changed predicate"
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version-file: ".nvmrc"
+          cache: "npm"
+
+      - uses: ./.github/actions/assert-npm-version
+        with:
+          version: ${{ env.NPM_VERSION }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Assert the table check fails on a single mutated byte
+        run: |
+          set +e
+          printf 'x' >> docs/ad31-coverage-predicates.generated.md
+          output="$(npm run --silent check:ad31-table 2>&1)"
+          exit_status=$?
+          set -e
+          git checkout -- docs/ad31-coverage-predicates.generated.md
+          echo "$output"
+          if [ $exit_status -eq 0 ]; then
+            echo "expected the table check to fail on a mutated byte, but it passed" >&2
+            exit 1
+          fi
+          # Match the drift line specifically: a missing-file failure also exits
+          # non-zero and would pass a bare exit-code test for the wrong reason.
+          echo "$output" | grep -q "ad31-coverage-predicates.generated.md: drift at byte offset" || { echo "check failed for the wrong reason (no byte-offset drift reported)" >&2; exit 1; }
+          echo "canary passed: table check correctly failed naming the differing byte offset"
+
+      # The canary that proves AD-31's central claim: the table is emitted by
+      # the implemented predicates rather than kept beside them. A byte
+      # mutation alone would pass under a hand-maintained table.
+      - name: Assert the table check fails when a predicate identifier changes
+        run: |
+          set +e
+          sed -i "s|\${rule}-relevance\`|\${rule}-relevance-x\`|" src/core/coverage/rules.ts
+          output="$(npm run --silent check:ad31-table 2>&1)"
+          exit_status=$?
+          set -e
+          git checkout -- src/core/coverage/rules.ts
+          echo "$output"
+          if [ $exit_status -eq 0 ]; then
+            echo "expected the table check to fail on a changed predicate identifier, but it passed" >&2
+            exit 1
+          fi
+          echo "$output" | grep -q "ad31-coverage-predicates.generated.md: drift at byte offset" || { echo "check failed for the wrong reason (no byte-offset drift reported)" >&2; exit 1; }
+          echo "canary passed: the committed table moves with the predicates that emit it"
+
+      # Regeneration is the repair every failure message above names, so the
+      # repair is proven to be a fixed point rather than assumed to be one.
+      - name: Assert generate then check is a fixed point
+        run: |
+          npm run --silent generate:ad31-table > /dev/null
+          # `git status --porcelain`, because `git diff` reports no untracked
+          # file: a generator writing to a path the check does not read would
+          # leave the committed document intact and pass a diff test.
+          [ -z "$(git status --porcelain -- docs/)" ] || { echo "generate:ad31-table left docs/ dirty; the writer and the check are out of step" >&2; git status --porcelain -- docs/ >&2; exit 1; }
+          npm run --silent check:ad31-table
+          echo "canary passed: generate:ad31-table reproduces the committed bytes exactly"
+
   canary-shareable:
     name: "Canary: shareable check fails on a stale export and on a legacy URL"
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
 
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
