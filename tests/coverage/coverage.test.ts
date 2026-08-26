@@ -19,6 +19,8 @@ import {
 } from '../../src/core/coverage/satisfaction.ts'
 import { EvalContract } from '../../src/core/schemas/eval-contract.ts'
 import { CoverageGap } from '../../src/core/schemas/evidence-artifact.ts'
+import { gateCContract } from '../schemas/fixtures/gate-c-contract.ts'
+import { RELEVANCE_CONTRACTS } from '../schemas/fixtures/relevance-contracts.ts'
 import { CORPUS_CELLS, CORPUS_CONTRACTS } from './fixtures/corpus.ts'
 import { satisfiedContract } from './fixtures/satisfaction-contracts.ts'
 
@@ -312,9 +314,20 @@ describe('the two functions as functions', () => {
 		}
 	})
 
-	it('212. throws on no corpus contract, including the one with no operations', () => {
-		for (const contract of CORPUS_CONTRACTS) {
+	it('212. is total over every contract fixture in the repository, not just the corpus', () => {
+		// Every fixture from 192 on already runs `evaluateCoverage` across the
+		// corpus, so "throws on no corpus contract" is free. These four are the
+		// contracts nothing else here reaches.
+		const outside = [
+			...RELEVANCE_CONTRACTS.map((entry) => EvalContract.parse(entry.contract)),
+			EvalContract.parse(gateCContract),
+		]
+		expect(outside).toHaveLength(4)
+		for (const contract of outside) {
 			expect(() => evaluateCoverage(contract)).not.toThrow()
+			for (const record of evaluateCoverage(contract)) {
+				expect(() => CoverageGap.parse(record)).not.toThrow()
+			}
 		}
 	})
 })

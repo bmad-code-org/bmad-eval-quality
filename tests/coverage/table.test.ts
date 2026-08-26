@@ -5,30 +5,53 @@
 
 import { describe, expect, it } from 'vitest'
 import { evaluateCoverage } from '../../src/core/coverage/coverage.ts'
-import { DISCIPLINE_RULES } from '../../src/core/coverage/rules.ts'
+import { evaluateRelevance } from '../../src/core/coverage/relevance.ts'
+import {
+	DISCIPLINE_RULES,
+	type DisciplineRule,
+} from '../../src/core/coverage/rules.ts'
+import { evaluateSatisfaction } from '../../src/core/coverage/satisfaction.ts'
 import {
 	type CoverageCell,
 	coveragePredicateTable,
 	DECLARATION_STATES,
 } from '../../src/core/coverage/table.ts'
-import type { EvalContract } from '../../src/core/schemas/eval-contract.ts'
+import { EvalContract } from '../../src/core/schemas/eval-contract.ts'
+import { DescriptorPointer } from '../../src/core/schemas/pointer.ts'
 import { CORPUS_CELLS, CORPUS_CONTRACTS } from './fixtures/corpus.ts'
 
-const document = coveragePredicateTable(CORPUS_CONTRACTS, CORPUS_CELLS)
-const lines = document.split('\n')
+// Built on first use, not at import: a corpus the builder rejects would
+// otherwise collapse all of these into one load error, and fixture 236, which
+// asserts that very diagnosis, would never run.
+let built: string | undefined
+const documentOf = (): string => {
+	built ??= coveragePredicateTable(CORPUS_CONTRACTS, CORPUS_CELLS)
+	return built
+}
+const linesOf = (): readonly string[] => documentOf().split('\n')
 
-/** The rows of the table under one heading, separator and header dropped. */
-const rowsUnder = (heading: string): readonly string[] => {
-	const start = lines.indexOf(heading)
+/** Every `| ` line under one heading, header row and separator included. */
+const linesUnder = (
+	source: readonly string[],
+	heading: string,
+): readonly string[] => {
+	const start = source.indexOf(heading)
 	if (start === -1) throw new Error(`the document carries no ${heading}`)
 	const rows: string[] = []
-	for (const line of lines.slice(start + 1)) {
+	for (const line of source.slice(start + 1)) {
 		if (line.startsWith('## ')) break
 		if (line.startsWith('| ')) rows.push(line)
 	}
-	// The header row and the `| --- |` separator are not data.
-	return rows.slice(2)
+	return rows
 }
+
+/** The rows of the table under one heading, separator and header dropped. */
+const rowsUnder = (heading: string): readonly string[] =>
+	linesUnder(linesOf(), heading).slice(2)
+
+/** The header row under one heading, as cells. */
+const headerUnder = (heading: string): readonly string[] =>
+	cellsOf(linesUnder(linesOf(), heading)[0] ?? '')
 
 const cellsOf = (row: string): readonly string[] =>
 	row
@@ -51,13 +74,13 @@ const cellsWith = (
 
 describe('the document as bytes', () => {
 	it('213. ends with exactly one newline and carries no trailing whitespace', () => {
-		expect(document.endsWith('\n')).toBe(true)
-		expect(document.endsWith('\n\n')).toBe(false)
-		expect(lines.filter((line) => /\s$/.test(line))).toStrictEqual([])
+		expect(documentOf().endsWith('\n')).toBe(true)
+		expect(documentOf().endsWith('\n\n')).toBe(false)
+		expect(linesOf().filter((line) => /\s$/.test(line))).toStrictEqual([])
 	})
 
 	it('214. is entirely ASCII, so no locale or editor can move a byte', () => {
-		const outside = [...document].filter((character) => {
+		const outside = [...documentOf()].filter((character) => {
 			const point = character.codePointAt(0) ?? 0
 			return character !== '\n' && (point < 0x20 || point > 0x7e)
 		})
@@ -65,16 +88,16 @@ describe('the document as bytes', () => {
 	})
 
 	it('215. carries no two adjacent blank lines', () => {
-		for (const [index, line] of lines.entries()) {
+		for (const [index, line] of linesOf().entries()) {
 			if (index === 0) continue
-			expect(`${index}: ${line === '' && lines[index - 1] === ''}`).toBe(
+			expect(`${index}: ${line === '' && linesOf()[index - 1] === ''}`).toBe(
 				`${index}: false`,
 			)
 		}
 	})
 
 	it('216. carries the four expected headings, in order', () => {
-		expect(lines.filter((line) => line.startsWith('## '))).toStrictEqual([
+		expect(linesOf().filter((line) => line.startsWith('## '))).toStrictEqual([
 			'## The fourteen predicates',
 			'## Declaration-state coverage',
 			'## Coverage gaps',
@@ -152,7 +175,7 @@ describe('what each section renders', () => {
 describe('the builder as a function', () => {
 	it('221. building twice returns identical strings', () => {
 		expect(coveragePredicateTable(CORPUS_CONTRACTS, CORPUS_CELLS)).toBe(
-			document,
+			documentOf(),
 		)
 	})
 
@@ -161,30 +184,21 @@ describe('the builder as a function', () => {
 			[...CORPUS_CONTRACTS].reverse(),
 			CORPUS_CELLS,
 		)
-		expect(permuted).not.toBe(document)
+		expect(permuted).not.toBe(documentOf())
 		// The two tables ordered by DISCIPLINE_RULES and DECLARATION_STATES alone.
 		const permutedLines = permuted.split('\n')
-		const rowsIn = (source: readonly string[], heading: string) => {
-			const start = source.indexOf(heading)
-			const rows: string[] = []
-			for (const line of source.slice(start + 1)) {
-				if (line.startsWith('## ')) break
-				if (line.startsWith('| ')) rows.push(line)
-			}
-			return rows
-		}
 		for (const heading of [
 			'## The fourteen predicates',
 			'## Declaration-state coverage',
 		]) {
-			expect(rowsIn(permutedLines, heading)).toStrictEqual(
-				rowsIn(lines, heading),
+			expect(linesUnder(permutedLines, heading)).toStrictEqual(
+				linesUnder(linesOf(), heading),
 			)
 		}
 		// The two ordered by `contracts` move together.
 		for (const heading of ['## Coverage gaps', '## The full matrix']) {
-			const before = rowsIn(lines, heading)
-			const after = rowsIn(permutedLines, heading)
+			const before = linesUnder(linesOf(), heading)
+			const after = linesUnder(permutedLines, heading)
 			expect(after).not.toStrictEqual(before)
 			expect([...after].sort()).toStrictEqual([...before].sort())
 		}
@@ -274,36 +288,33 @@ describe('the four diagnoses', () => {
 })
 
 describe('what the renderer escapes and what it must never carry', () => {
-	it('228. a contract identifier carrying a pipe is escaped, and the row keeps its columns', () => {
-		const renamed: EvalContract = {
+	it('228. the schema forbids a pipe in a contract identifier, so a reason is the escape s only live input', () => {
+		// `contractId` is an `Identifier`, whose pattern excludes `|`, so no
+		// parseable contract can put one in the two identifier columns. Fixture
+		// 229 is the one that exercises the escape against a value the system
+		// can actually produce.
+		const parsed = EvalContract.safeParse({
 			...contractNamed('empty-channel-roles'),
 			contractId: 'empty|channel|roles',
-		}
-		const rendered = coveragePredicateTable(
-			CORPUS_CONTRACTS.map((contract) =>
-				contract.contractId === 'empty-channel-roles' ? renamed : contract,
-			),
-			CORPUS_CELLS.map((cell) =>
-				cell.contractId === 'empty-channel-roles'
-					? { ...cell, contractId: 'empty|channel|roles' }
-					: cell,
-			),
-		)
-		expect(rendered).toContain('`empty\\|channel\\|roles`')
-		const row = rendered
-			.split('\n')
-			.find((line) => line.includes('empty\\|channel\\|roles'))
-		expect(cellsOf(row ?? '')).toHaveLength(5)
+		})
+		expect(parsed.success).toBe(false)
+		expect(
+			parsed.error?.issues.some((issue) => issue.path.includes('contractId')),
+		).toBe(true)
+		// The reason column's own input is admissible, which is why the escape
+		// stays.
+		expect(DescriptorPointer.safeParse('/items|rows').success).toBe(true)
 	})
 
-	it('229. a satisfaction reason carrying a pipe is escaped the same way', () => {
+	it('229. a satisfaction reason carrying a pipe is escaped, and the cell reads back unescaped', () => {
 		const source = contractNamed('no-collection-quantifier')
 		const [create, list] = source.permittedInterfaces[0]?.operations ?? []
 		if (create === undefined || list === undefined) {
 			throw new Error('corpus contract lost an operation')
 		}
 		// The collection pointer reaches the reason verbatim, and rule 4's cell
-		// stays `unwitnessed`, so the swap pipes a reason without moving a cell.
+		// for this contract is `unwitnessed` either way, so the swap renders a
+		// piped reason without moving a cell.
 		const piped: EvalContract = {
 			...source,
 			permittedInterfaces: [
@@ -329,22 +340,24 @@ describe('what the renderer escapes and what it must never carry', () => {
 				},
 			],
 		}
+		const reason =
+			'no check quantifies over collection /items|rows of operation list-things'
 		const rendered = coveragePredicateTable(
 			CORPUS_CONTRACTS.map((contract) =>
 				contract.contractId === source.contractId ? piped : contract,
 			),
 			CORPUS_CELLS,
 		)
-		expect(rendered).toContain(
-			'no check quantifies over collection /items\\|rows of operation list-things',
-		)
-		expect(rendered).not.toContain(
-			'no check quantifies over collection /items|rows of operation list-things',
-		)
+		expect(rendered).toContain(reason.replace(/\|/g, '\\|'))
+		expect(rendered).not.toContain(reason)
 		const row = rendered
 			.split('\n')
 			.find((line) => line.includes('/items\\|rows'))
-		expect(cellsOf(row ?? '')).toHaveLength(7)
+		const cells = cellsOf(row ?? '')
+		expect(cells).toHaveLength(7)
+		// Un-escaping is reversible, which is what makes the escape lossless
+		// rather than merely present.
+		expect(cells[6]).toBe(reason)
 	})
 
 	it('230. the document carries nothing from the historical worked example', () => {
@@ -353,7 +366,7 @@ describe('what the renderer escapes and what it must never carry', () => {
 			'F-003',
 			'siblingGroups.parameters non-empty',
 		]) {
-			expect(document).not.toContain(marker)
+			expect(documentOf()).not.toContain(marker)
 		}
 	})
 
@@ -370,5 +383,133 @@ describe('what the renderer escapes and what it must never carry', () => {
 				return [cells[2], cells[3]]
 			}),
 		).toStrictEqual(expected)
+	})
+})
+
+describe('every rendered column, against the functions that produced it', () => {
+	// Fixtures 217 through 220 count rows and 231 pins two columns. Twelve of
+	// the fourteen data columns in the two large tables were unasserted, so a
+	// wrong document passed the whole gate after one regeneration.
+	const verdictFor = (contract: EvalContract, rule: DisciplineRule) => {
+		const index = DISCIPLINE_RULES.indexOf(rule)
+		const relevance = evaluateRelevance(contract)[index]
+		const satisfaction = evaluateSatisfaction(contract)[index]
+		if (relevance === undefined || satisfaction === undefined) {
+			throw new Error(`no verdict for ${rule}`)
+		}
+		return { relevance, satisfaction }
+	}
+
+	it('232. every gap row carries the record severity and the two verdict reasons', () => {
+		const expected = CORPUS_CONTRACTS.flatMap((contract) =>
+			evaluateCoverage(contract).map((record) => {
+				const rule = record.rule as DisciplineRule
+				const { relevance, satisfaction } = verdictFor(contract, rule)
+				return [
+					`\`${contract.contractId}\``,
+					`\`${rule}\``,
+					record.severity,
+					relevance.reason,
+					satisfaction.reason,
+				]
+			}),
+		)
+		expect(
+			rowsUnder('## Coverage gaps').map((row) => {
+				const cells = cellsOf(row)
+				return [cells[0], cells[1], cells[4], cells[5], cells[6]]
+			}),
+		).toStrictEqual(expected)
+	})
+
+	it('233. every matrix row carries the two verdicts, the gap flag, and both reasons', () => {
+		const expected = CORPUS_CONTRACTS.flatMap((contract) =>
+			DISCIPLINE_RULES.map((rule) => {
+				const { relevance, satisfaction } = verdictFor(contract, rule)
+				const yesNo = (value: boolean) => (value ? 'yes' : 'no')
+				return [
+					`\`${contract.contractId}\``,
+					`\`${rule}\``,
+					yesNo(relevance.relevant),
+					yesNo(satisfaction.satisfied),
+					yesNo(relevance.relevant && !satisfaction.satisfied),
+					relevance.reason,
+					satisfaction.reason,
+				]
+			}),
+		)
+		expect(rowsUnder('## The full matrix').map(cellsOf)).toStrictEqual(expected)
+	})
+
+	it('234. the four column headers and the fixed prose read as published', () => {
+		expect(headerUnder('## The fourteen predicates')).toStrictEqual([
+			'Rule',
+			'Relevance predicate',
+			'Satisfaction predicate',
+		])
+		expect(headerUnder('## Declaration-state coverage')).toStrictEqual([
+			'Rule',
+			'Absent',
+			'Explicitly empty',
+			'Witnessed',
+			'Unwitnessed',
+		])
+		expect(headerUnder('## Coverage gaps')).toStrictEqual([
+			'Contract',
+			'Rule',
+			'Relevance predicate',
+			'Satisfaction predicate',
+			'Severity',
+			'Why relevance fired',
+			'Why satisfaction failed',
+		])
+		expect(headerUnder('## The full matrix')).toStrictEqual([
+			'Contract',
+			'Rule',
+			'Relevant',
+			'Satisfied',
+			'Gap',
+			'Relevance reason',
+			'Satisfaction reason',
+		])
+		expect(linesOf()[0]).toBe('# AD-31 coverage predicates')
+		expect(documentOf()).toContain(
+			'Each cell names the corpus contract that occupies it.',
+		)
+		expect(documentOf()).toContain(
+			'relevance predicate answering `false` forces its satisfaction twin to answer `true`.',
+		)
+	})
+})
+
+describe('the two diagnoses a verdict pair cannot reach', () => {
+	it('235. an unwitnessed cell filled by its own absent occupant throws, since the two share a verdict pair', () => {
+		// Rule 2's absent occupant decides on `NO_OPERATION_WITNESS`. Pointing
+		// its unwitnessed cell at the same contract passes checks 1 through 4,
+		// because the pair is `relevant=true/satisfied=false` either way.
+		expect(() =>
+			coveragePredicateTable(
+				CORPUS_CONTRACTS,
+				CORPUS_CELLS.map((cell) =>
+					cell.rule === 'whole-body' && cell.state === 'unwitnessed'
+						? { ...cell, contractId: 'no-operation-inventory' }
+						: cell,
+				),
+			),
+		).toThrow(
+			'coveragePredicateTable: no-operation-inventory and no-operation-inventory both decide whole-body on',
+		)
+	})
+
+	it('236. a contract occupying no cell throws rather than renting seven matrix rows', () => {
+		const spare: EvalContract = {
+			...contractNamed('empty-channel-roles'),
+			contractId: 'occupies-nothing',
+		}
+		expect(() =>
+			coveragePredicateTable([...CORPUS_CONTRACTS, spare], CORPUS_CELLS),
+		).toThrow(
+			'coveragePredicateTable: occupies-nothing occupies no cell, so nothing states what it is in the corpus for',
+		)
 	})
 })

@@ -17,11 +17,13 @@ import {
 	CORPUS_CELLS,
 	CORPUS_CONTRACTS,
 } from '../tests/coverage/fixtures/corpus.ts'
+import {
+	AD31_TABLE_DIRECTORY,
+	AD31_TABLE_PATH,
+	AD31_TABLE_TARGET,
+} from './ad31-table-target.ts'
 
-const directory = new URL('../docs/', import.meta.url)
-const target = new URL('ad31-coverage-predicates.generated.md', directory)
-
-await mkdir(directory, { recursive: true })
+await mkdir(AD31_TABLE_DIRECTORY, { recursive: true })
 
 // Guarded: unguarded, the builder's diagnosis prints as a Node stack.
 let document: string
@@ -36,7 +38,9 @@ try {
 	process.exit(1)
 }
 
-await writeFile(target, document)
+await writeFile(AD31_TABLE_TARGET, document)
+// The path comes from the same constant `writeFile` used, so the line cannot
+// name a file this run did not write.
 console.log(
-	`generate-ad31-table: wrote docs/ad31-coverage-predicates.generated.md (${Buffer.byteLength(document)} bytes)`,
+	`generate-ad31-table: wrote ${AD31_TABLE_PATH} (${Buffer.byteLength(document)} bytes)`,
 )

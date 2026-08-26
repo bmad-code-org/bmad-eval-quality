@@ -1706,6 +1706,113 @@ fixture 225 needs a whole string to assert.
 
 ### Review Findings
 
+#### Adversarial code review, separate session
+
+One pass in a separate Claude Code session against the uncommitted working tree. It built a
+throwaway copy of `src/`, `tests/`, `scripts/` and the configs under its own scratchpad with
+`node_modules` symlinked, ran exact-string mutations against the new modules, and parsed the failing
+fixture numbers out of `npx vitest run tests/coverage --reporter=json`. Every finding it filed was a
+measured survivor. It applied nothing.
+
+Eight findings, all addressed here. Each repair was re-measured with the reviewer's own mutation.
+
+1. **High. Twelve of the fourteen data columns in the two large tables were asserted by no fixture.**
+   Only the gap table's two predicate columns were pinned, by fixture 231. The reviewer applied four
+   column mutations together, regenerated, and the whole gate passed on a document whose Gap column
+   read `no` in all 133 matrix rows while the predicates recorded eighteen gaps, and whose coverage
+   table headers read `absent`, `explicitly empty` rather than the published spellings. The drift
+   check only ever compared the committed bytes, so one regeneration laundered it.
+   **Fixed:** three new fixtures. 232 asserts every gap row's contract, rule, severity and two
+   reasons against `evaluateCoverage` and the two verdict families looked up independently; 233
+   asserts all seven matrix columns the same way, including the gap flag as
+   `relevant && !satisfied`; 234 asserts all four tables' header rows verbatim plus the title and
+   the two fixed prose lines. Re-measured: all fourteen of the reviewer's mutations now fail, 232
+   catching the six gap-row ones, 233 the five matrix ones, 234 the three prose and header ones.
+
+2. **Medium. The builder's verdict-agreement check cannot tell `absent` from `unwitnessed`.**
+   Both states are `{relevant: true, satisfied: false}` and check 4 compares booleans only, so the
+   reviewer swapped rule 1's two occupants and the coverage table rendered exactly inverted with all
+   four checks green.
+   **Partly fixed, and the remainder is recorded rather than claimed.** Check 5 now throws when a
+   rule's `absent` and `unwitnessed` occupants decide that rule on the same satisfaction reason,
+   which catches an unwitnessed cell filled by its own absent occupant (fixture 235). It does **not**
+   catch the reviewer's swap, and the first repair attempt was written believing it did; fixture 235
+   failed on the first run and is what caught the mistake. The builder cannot decide that case: its
+   only inputs are the contracts and the cell index, and separating a missing declaration from an
+   unwitnessed one needs either the rule-to-declaration vocabulary AD-20 declined to mint or a
+   grep over `satisfaction.ts`'s reason prose, which would make the builder throw whenever a
+   predicate reworded a reason. The swap is caught by corpus fixtures 158, 160, 167, 172 and 211,
+   which the reviewer verified, and `validate` runs `check:ad31-table` and `test` together, so no
+   swapped document can reach a commit. Recorded here rather than deferred.
+
+3. **Medium. The canary's fixed-point step passed vacuously if the two scripts' paths diverged, and
+   the generator reported a path it had not written to.** The filename was spelled twice as two
+   independent `new URL(...)` literals, and `git diff --exit-code -- docs/` does not report untracked
+   files. The reviewer pointed the generator at `...generated2.md` and the whole gate stayed green
+   with both files on disk and the success line naming the wrong one.
+   **Fixed:** `scripts/ad31-table-target.ts` spells the path once and both scripts import it; the
+   generator's success line derives its filename from the same constant `writeFile` used; and the
+   canary's third step is now `[ -z "$(git status --porcelain -- docs/)" ]`. Re-measured: an
+   untracked stray in `docs/` passes `git diff --exit-code` and fires the porcelain guard.
+
+4. **Low. Fixture 228 asserted an escape for an input the schema forbids.** `contractId` is an
+   `Identifier`, whose pattern excludes `|`, so no parseable contract can carry one in either
+   identifier column. **Fixed:** 228 now asserts that rejection, and asserts that
+   `DescriptorPointer` does admit `|`, which is what makes the reason column the escape's only live
+   input. `table.ts`'s comment on `cell` was corrected to say so and to cite fixture 229.
+
+5. **Low. `cellsOf`'s un-escape step was dead.** Deleting it failed nothing: both escape fixtures
+   asserted on the raw rendered line. **Fixed:** 229 now reads the un-escaped reason back out of
+   `cellsOf(row)[6]`, so reversibility is the claim rather than presence. Re-measured: deleting the
+   un-escape fails 229.
+
+6. **Low. Fixture 212 could not fail alone.** `evaluateCoverage` has no throw path, and a thrown
+   error failed thirteen fixtures at once because everything from 192 on already calls it across the
+   corpus. **Fixed:** 212 now asserts totality over the four contract fixtures nothing else in the
+   file reaches, the three `RELEVANCE_CONTRACTS` entries and `gateCContract`, and that their records
+   parse. Re-measured: a throw scoped to `exports-api-v1` fails 212 alone, as does one scoped to a
+   contract outside the corpus.
+
+7. **Low. The unfalsifiable conjunct was documented in one of the two places it appears.** The
+   reviewer confirmed the decision to keep `!relevant.relevant` in `evaluateCoverage` and the
+   comment naming fixture 168, and reproduced the Dev Agent Record's measurements independently.
+   `table.ts` carried the same conjunct in the matrix's gap column with no comment.
+   **Fixed:** one line there citing `coverage.ts`. The two `noUncheckedIndexedAccess` guards the
+   reviewer also measured as unfalsifiable need no comment, being forced by the compiler.
+
+8. **Low. A contract occupying no cell rendered silently**, adding seven matrix rows and 1530 bytes
+   with no throw. **Fixed:** check 6 throws naming the contract (fixture 236). Re-measured: removing
+   check 6 fails 236 alone.
+
+The reviewer also reported one reading note rather than a defect: `table.test.ts` built the document
+at import time, so a corpus the builder rejects collapsed all nineteen fixtures into a load error
+and fixture 223, which asserts that very diagnosis, never ran. Fixed in the same pass: the document
+is built on first use behind `documentOf()`.
+
+Verified with no finding, and worth keeping: the canary YAML and its `sed` quoting, which cannot pass
+vacuously because a non-matching `sed` leaves the check green and the step's own exit-code test
+fires; all four test helpers, whose silent-wrong versions each fail loudly; and the eight fixtures
+this story's own notes listed as likely-vacuous, each falsified with a measured mutation.
+
+**Fixture count.** AC 10 ends at 231 and AC 11 predicts 2155 tests. Five fixtures were added here,
+232 through 236, so the file ends at 236 and the suite reports **2160**. The count moved because a
+review found real holes, which is the sequence working as intended.
+
+#### CodeRabbit, on pull request #32
+
+**CR1. Minor, Security and Privacy.** `.github/workflows/pr-checks.yml` declared no `permissions:`
+block, so all eleven jobs ran with the default `GITHUB_TOKEN` scope, and the new `canary-ad31-table`
+job checked out with credentials persisted into `.git/config` while running `sed -i`, `npm ci` and
+`git checkout` over the tree. Backed by zizmor 1.29.0: `excessive-permissions` and `artipacked`.
+
+Fixed, and widened to the whole file for consistency. A workflow-level `permissions: contents: read`
+sits beside the existing `env:` block, and every one of the eleven checkouts now carries
+`persist-credentials: false`; ten did not before. Checked first: no job in the file pushes, fetches,
+posts a comment or a status, uploads an artifact, or reads a secret, and `setup-node`'s cache needs
+read alone. `canary-ad28-registry`'s job-level `permissions: contents: read` was removed as
+redundant once the workflow-level block covers it, so the file now declares its scope in exactly one
+place. `pr-gate.yml` and `publish.yml` are untouched and out of scope.
+
 ### File List
 
 New:
@@ -1718,6 +1825,7 @@ New:
 - `tests/coverage/table.test.ts`
 - `scripts/generate-ad31-table.ts`
 - `scripts/check-ad31-table.ts`
+- `scripts/ad31-table-target.ts` (code-review finding 3)
 - `docs/ad31-coverage-predicates.generated.md` (generated, committed)
 
 Edited:

@@ -22,12 +22,7 @@ import {
 	CORPUS_CELLS,
 	CORPUS_CONTRACTS,
 } from '../tests/coverage/fixtures/corpus.ts'
-
-const target = new URL(
-	'../docs/ad31-coverage-predicates.generated.md',
-	import.meta.url,
-)
-const name = 'docs/ad31-coverage-predicates.generated.md'
+import { AD31_TABLE_PATH, AD31_TABLE_TARGET } from './ad31-table-target.ts'
 
 // Guarded: unguarded, the builder's diagnosis surfaces as an unhandled
 // rejection and a Node stack.
@@ -48,9 +43,11 @@ try {
 
 let committed: Buffer
 try {
-	committed = await readFile(target)
+	committed = await readFile(AD31_TABLE_TARGET)
 } catch {
-	console.error(`${name}: missing; run \`npm run generate:ad31-table\``)
+	console.error(
+		`${AD31_TABLE_PATH}: missing; run \`npm run generate:ad31-table\``,
+	)
 	process.exit(1)
 }
 
@@ -65,7 +62,7 @@ if (!committed.equals(rebuilt)) {
 			buffer.subarray(Math.max(0, offset - 20), offset + 20).toString('utf8'),
 		)
 	console.error(
-		`${name}: drift at byte offset ${offset} ` +
+		`${AD31_TABLE_PATH}: drift at byte offset ${offset} ` +
 			`(committed ${committed.length} bytes, rebuilt ${rebuilt.length} bytes)\n` +
 			`  committed: ${windowOf(committed)}\n` +
 			`  rebuilt:   ${windowOf(rebuilt)}`,

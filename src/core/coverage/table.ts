@@ -49,7 +49,7 @@ export type CoverageCell = {
 	readonly contractId: string
 }
 
-/** `|` escaped: reasons are free text, and a broken table is still byte-stable, so the drift check would pass it. */
+/** `|` escaped: a reason is free text (fixture 229), and a broken table is still byte-stable, so the drift check would pass it. */
 const cell = (text: string): string => text.replace(/\|/g, '\\|')
 
 const row = (cells: readonly string[]): string =>
@@ -192,6 +192,34 @@ export function coveragePredicateTable(
 		}
 	}
 
+	// `absent` and `unwitnessed` share a verdict pair, so the check above passes
+	// with the two occupants swapped and the coverage table publishes each
+	// under the other's heading. The reason is what separates them.
+	for (const rule of DISCIPLINE_RULES) {
+		const absent = occupantOf(rule, 'absent')
+		const unwitnessed = occupantOf(rule, 'unwitnessed')
+		const absentReason = verdicts.get(absent)!.get(rule)!.satisfactionReason
+		const unwitnessedReason = verdicts
+			.get(unwitnessed)!
+			.get(rule)!.satisfactionReason
+		if (absentReason === unwitnessedReason) {
+			throw new Error(
+				`coveragePredicateTable: ${absent} and ${unwitnessed} both decide ${rule} on "${absentReason}", so the absent and unwitnessed cells are indistinguishable`,
+			)
+		}
+	}
+
+	// A contract occupying nothing still renders seven matrix rows, which reads
+	// as corpus coverage the cell index never claimed.
+	const occupying = new Set(cells.map((entry) => entry.contractId))
+	for (const contract of contracts) {
+		if (!occupying.has(contract.contractId)) {
+			throw new Error(
+				`coveragePredicateTable: ${contract.contractId} occupies no cell, so nothing states what it is in the corpus for`,
+			)
+		}
+	}
+
 	const predicateRows = DISCIPLINE_RULES.map((rule) => [
 		code(rule),
 		code(relevancePredicateId(rule)),
@@ -227,6 +255,8 @@ export function coveragePredicateTable(
 				code(rule),
 				yesNo(measured.relevant),
 				yesNo(measured.satisfied),
+				// `measured.relevant &&` is unfalsifiable for the reason
+				// `coverage.ts` gives at `evaluateCoverage`: fixture 168.
 				yesNo(measured.relevant && !measured.satisfied),
 				measured.relevanceReason,
 				measured.satisfactionReason,
