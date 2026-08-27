@@ -91,8 +91,11 @@ The caller provides:
 - a sealed run record returned for ingestion
 
 `eval-quality` executes nothing: it never spawns a process, calls a model, drives a system under test,
-or invokes a judge. Its pure stages are compile, seal, ingest, pre-flight, score, and emit. Engine
-integration is a later adapter behind a port, not a v0 dependency. See
+or invokes a judge. Its pure stages are compile, seal, ingest, pre-flight, score, and emit. Pre-flight
+probes the fixture through the environment-probe port, so a contract that declares a fixture reset
+needs the caller's probe policy to authorize that operation's method as well as the read methods
+every other pre-flight leg uses. Engine integration is a later adapter behind a port, not a v0
+dependency. See
 [ADR-004](_bmad-output/planning-artifacts/architecture/architecture-eval-quality-2026-07-29/ADR-004-execution-boundary.md).
 
 ## Who it is for

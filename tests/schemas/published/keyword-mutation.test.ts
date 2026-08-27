@@ -28,7 +28,7 @@ import {
 
 // The deletion sweep compiles the whole document once per occurrence, so the
 // per-artifact budget is explicit rather than left to Vitest's default: one
-// machine measured ~16 s for eval-contract's 668 occurrences, and CI runners
+// machine measured ~16 s for eval-contract's 725 occurrences, and CI runners
 // are slower.
 const SWEEP_TIMEOUT_MS = 240_000
 
@@ -38,7 +38,21 @@ type SweepResult = {
 	occurrenceCount: number
 }
 
+// Cached: the sweep compiles the document once per occurrence, and fixture 37
+// asks the same two documents the parameterised check already swept.
+const sweepCache = new Map<string, SweepResult>()
+
 const sweep = (
+	key: (typeof INTERCHANGE_ARTIFACT_KEYS)[number],
+): SweepResult => {
+	const cached = sweepCache.get(key)
+	if (cached !== undefined) return cached
+	const computed = computeSweep(key)
+	sweepCache.set(key, computed)
+	return computed
+}
+
+const computeSweep = (
 	key: (typeof INTERCHANGE_ARTIFACT_KEYS)[number],
 ): SweepResult => {
 	const document = publishedDocumentOf(key)
@@ -105,13 +119,13 @@ const sweep = (
 // the committed documents in the same commit.
 const CENSUS_BY_DOCUMENT: Readonly<Record<string, number>> = {
 	'artifact-reference': 21,
-	'eval-contract': 668,
+	'eval-contract': 725,
 	'evaluator-configuration': 69,
 	'evidence-artifact': 409,
 	'isolation-manifest': 134,
 	'preflight-verdict': 34,
 	'private-artifact-manifest': 31,
-	probe: 119,
+	probe: 381,
 	rubric: 51,
 	'scoring-policy': 32,
 	'sealed-evaluator-brief': 98,
@@ -119,28 +133,28 @@ const CENSUS_BY_DOCUMENT: Readonly<Record<string, number>> = {
 }
 
 const CENSUS_BY_KEYWORD: Readonly<Record<string, number>> = {
-	additionalProperties: 152,
-	anyOf: 117,
-	const: 34,
-	enum: 53,
+	additionalProperties: 193,
+	anyOf: 126,
+	const: 54,
+	enum: 56,
 	exclusiveMinimum: 1,
 	format: 1,
-	items: 110,
-	maxItems: 1,
-	maximum: 98,
-	minItems: 23,
-	minLength: 81,
+	items: 129,
+	maxItems: 2,
+	maximum: 100,
+	minItems: 39,
+	minLength: 89,
 	minProperties: 1,
-	minimum: 100,
-	oneOf: 8,
-	pattern: 135,
-	prefixItems: 12,
-	propertyNames: 19,
-	required: 133,
-	type: 874,
+	minimum: 102,
+	oneOf: 11,
+	pattern: 151,
+	prefixItems: 24,
+	propertyNames: 27,
+	required: 166,
+	type: 1000,
 }
 
-const CENSUS_TOTAL = 1953
+const CENSUS_TOTAL = 2272
 
 describe('the occurrence walk descends, so the sweep cannot pass hollow', () => {
 	it('finds the full census across the twelve documents', () => {
@@ -238,6 +252,26 @@ describe('check four: delete every keyword occurrence and require a verdict chan
 			expect(occurrenceCount, `${key}: occurrences swept`).toBe(
 				CENSUS_BY_DOCUMENT[key],
 			)
+		},
+		SWEEP_TIMEOUT_MS,
+	)
+})
+
+// AD-10's witnesses moved both documents: `eval-contract` gained
+// `WitnessInputs` and `probe` gained the whole expression grammar. Named as its
+// own fixture because the additions are the ones a missing reject case would
+// hide, and because it is the assertion Story 6.2's reject-case work is
+// accountable to.
+describe('the two documents Story 6.2 regenerated', () => {
+	it.each(['eval-contract', 'probe'] as const)(
+		'37. %s reports zero unprotected survivors after the witness additions',
+		(key) => {
+			const exempt = exemptOccurrencePointers(publishedDocumentOf(key))
+			const { survivors } = sweep(key)
+			expect(
+				survivors.filter((pointer) => !exempt.has(pointer)),
+				`${key}: keyword occurrences no fixture protects`,
+			).toEqual([])
 		},
 		SWEEP_TIMEOUT_MS,
 	)

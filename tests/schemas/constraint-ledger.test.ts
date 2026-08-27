@@ -85,11 +85,20 @@ describe('the constraint ledger', () => {
 	// biconditional per lineage-bearing artifact plus AD-18's two secrets
 	// prohibitions. A ledger much larger than this is a signal the schema
 	// over-refined.
-	it('holds one arity entry per tuple-carrying form, one lineage entry per carrier, and four besides', () => {
+	it('holds one arity entry per tuple-carrying form per expression-bearing document, one lineage entry per carrier, and four besides', () => {
 		const arityEntries = CONSTRAINT_LEDGER.filter((entry) =>
 			entry.id.startsWith('operator-arity-'),
 		)
-		expect(arityEntries).toHaveLength(Object.keys(TUPLE_ARITY).length)
+		// Two documents carry the expression grammar since AD-10's manifestation
+		// witness put one on `Defect`, and `publish.ts` filters injection by
+		// artifact, so each needs its own twelve.
+		const expressionBearing = new Set(
+			arityEntries.map((entry) => entry.location.artifact),
+		)
+		expect([...expressionBearing].sort()).toEqual(['eval-contract', 'probe'])
+		expect(arityEntries).toHaveLength(
+			Object.keys(TUPLE_ARITY).length * expressionBearing.size,
+		)
 		const lineageCarriers = Object.values(INTERCHANGE_ARTIFACTS).filter(
 			(artifact) => artifact.carriesLineage,
 		)
@@ -189,6 +198,7 @@ describe('the premises the ledger rests on, verified against the export', () => 
 			'JsonValue',
 			'Operand',
 			'RubricBody',
+			'WitnessInputs',
 		])
 	})
 

@@ -10,14 +10,27 @@ Every step uses exactly these headings, in this order:
 ```text
 ## Step N: title
 
+**In plain terms:** three to five lines, no repository vocabulary at all.
 **What:** one or two lines.
 **Why:** two to four lines. What breaks if this did not exist.
-**Rules:** up to nine bullets, one or two lines each. No paragraphs.
+**The shape:** optional. A mermaid diagram of the data flow, when the flow is the point.
 **Read in this order:** numbered file paths, one line each, saying what the file does.
-**Watch out:** optional. Repo state that will confuse a reader.
+mermaid diagram of the file graph
 **Story:** the implementation-artifact path.
-mermaid diagram
+
+### Reference
+
+**Rules:** up to nine bullets, one or two lines each. No paragraphs.
+**Watch out:** optional. Repo state that will confuse a reader.
 ```
+
+The narrative half comes first and reads top to bottom. `Rules` and `Watch out` are lookup material
+and sit under `### Reference` at the end, where a first-time reader can skip them.
+
+`In plain terms` is the one place jargon is completely banned: no file paths, no schema names, no AD
+numbers, no `core/` or `ports/`. Name a problem a person outside this project would recognise, then
+say what the code does about it. If a sentence needs a term the reader has to have already learned,
+it belongs in `What` or in a rule.
 
 Then add one row to the table at the top of the file.
 

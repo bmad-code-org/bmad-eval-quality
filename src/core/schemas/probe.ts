@@ -4,6 +4,7 @@ import { ArtifactReference } from './artifact-reference.ts'
 import { Severity } from './eval-contract.ts'
 import { lineageFields } from './lineage.ts'
 import { BehaviorId, DefectId, Digest, ProbeId } from './primitives.ts'
+import { ManifestationWitness } from './sensitivity-witness.ts'
 
 /**
  * AD-9's closed four, one per probe, in scope because AD-7's strength vector
@@ -30,6 +31,9 @@ export const Defect = z.strictObject({
 	severity: Severity,
 	oracleEvidence: z.array(ArtifactReference),
 	source: z.enum(['natural', 'controlled-mutation']),
+	manifestationWitness: ManifestationWitness.nullable().describe(
+		"AD-10: what pre-flight probes to observe this defect fire. `null` parses, so the prior art's six-field defect still round-trips, and pre-flight records a null witness as a **failed** `seeded-fault-fired` check rather than as an exemption. A seeded fault that cannot be observed to fire is the vacuous probe AD-40 resolves to `infrastructure-error`, and pre-flight is the one place where invalidating is the cheap outcome.",
+	),
 })
 
 // Shared by both branches of the `expectedClean` union. AD-9's per-probe

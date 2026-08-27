@@ -60,30 +60,22 @@ flowchart TD
 |   17 | epic5-story2 | Seven more predicates asking whether an oracle really reads each place a rule applies, so under-declaring costs coverage. |
 |   18 | epic5-story3 | Nineteen hand-written contracts and a generator that emits the published predicate table from the same predicates the library ships. |
 |   19 | epic6-story1 | Four ports, three adapters, a default-deny rule for which address a probe may reach, and a suite an outside adapter author can run against their own code. |
+|   20 | epic6-story2 | Probe the fixture before scoring it: witnesses the contract declares, one plan, one pure verdict, and a digest of what the fixture was. |
 
 Adding a step: follow `learning-path-template.md`.
 
 ## Step 1 (epic1-story1): dependencies and CI gates
+
+**In plain terms:** A build gate that never fails anything is a gate nobody notices is broken. This step pins every
+dependency to an exact version, adds two scripts that audit what actually got installed, and then
+deliberately breaks each gate in CI to prove it still catches things. A check nobody has seen fail
+is a check nobody knows works.
 
 **What:** exact versions in `package.json`, two audit scripts, and a CI job per gate that breaks the
 gate on purpose.
 
 **Why:** this repo's supply-chain gates had already failed open twice. A gate that never blocks
 anything protects nothing. Everything built later sits on these dependencies.
-
-**Rules:**
-
-- Pin exact versions. No `^`, no `~`. Tools too.
-- Keep Vite on 7.x. Vite 8 pulls in `lightningcss`, whose licence is not allowed.
-- Both audit scripts read `package-lock.json`, never `node_modules`. The lockfile lists packages for
-  every OS; `node_modules` only holds this machine's.
-- A package must be 7 days old. npm's own `min-release-age` checks new installs only, so a young
-  package already in the lockfile slips past it.
-- Six licences allowed: MIT, Apache-2.0, ISC, BSD-2-Clause, BSD-3-Clause, 0BSD.
-- Each gate has a canary job that feeds it a bad package and checks the **exact** error, like
-  `EALLOWGIT`. Checking only "it failed" would also pass on a typo.
-- Publishing stops before anything runs unless a repo variable is set. It stays unset until the
-  AD-18 licence question is answered.
 
 **Read in this order:**
 
@@ -94,12 +86,6 @@ anything protects nothing. Everything built later sits on these dependencies.
 4. `.github/workflows/publish.yml` and `scripts/assert-publish-authorized.mjs`: the publish block.
 5. `.github/actions/`: two shared actions, so the copies cannot drift apart again.
 6. `tsconfig.json` and `tsconfig-build.json`: TypeScript 7.
-
-**Watch out:** the git and remote canary fixtures are real installable packages, because their jobs
-run a real `npm ci`. The age and licence fixtures are only read as files, so they just need to be
-valid JSON.
-
-**Story:** `_bmad-output/implementation-artifacts/1-1-align-the-toolchain-and-supply-chain-to-the-stack.md`
 
 ```mermaid
 flowchart TD
@@ -118,31 +104,41 @@ flowchart TD
   PRCHECKS --> PUBLISH
 ```
 
+**Story:** `_bmad-output/implementation-artifacts/1-1-align-the-toolchain-and-supply-chain-to-the-stack.md`
+
+### Reference
+
+**Rules:**
+
+- Pin exact versions. No `^`, no `~`. Tools too.
+- Keep Vite on 7.x. Vite 8 pulls in `lightningcss`, whose licence is not allowed.
+- Both audit scripts read `package-lock.json`, never `node_modules`. The lockfile lists packages for
+  every OS; `node_modules` only holds this machine's.
+- A package must be 7 days old. npm's own `min-release-age` checks new installs only, so a young
+  package already in the lockfile slips past it.
+- Six licences allowed: MIT, Apache-2.0, ISC, BSD-2-Clause, BSD-3-Clause, 0BSD.
+- Each gate has a canary job that feeds it a bad package and checks the **exact** error, like
+  `EALLOWGIT`. Checking only "it failed" would also pass on a typo.
+- Publishing stops before anything runs unless a repo variable is set. It stays unset until the
+  AD-18 licence question is answered.
+
+**Watch out:** the git and remote canary fixtures are real installable packages, because their jobs
+run a real `npm ci`. The age and licence fixtures are only read as files, so they just need to be
+valid JSON.
+
 ## Step 2 (epic1-story2): canonical bytes and digests
+
+**In plain terms:** Two programs can hold the same data and write it out differently: keys in another order, different
+spacing, a long number quietly rounded off. Hash those two files and you get two fingerprints for
+one thing, and every comparison built on them is wrong. This step fixes one exact way to write any
+JSON value out as bytes and fingerprints those bytes, so anyone starting from the same data lands on
+the same answer.
 
 **What:** turn any JSON value into one exact byte string, then SHA-256 those bytes.
 
 **Why:** every version number, integrity check, and lineage link in this product is a digest. If our
 code and someone else's code turn the same JSON into different bytes, every comparison quietly
 breaks. Real example: JavaScript reads `9007199254740993` as `9007199254740992`.
-
-**Rules:**
-
-- Written here, no library. An unchecked hashing library is a supply-chain risk.
-- Sort keys by UTF-16 code unit. Emoji sort before some normal letters, which looks wrong and is correct.
-- Let JavaScript print the numbers. Never hand-roll number formatting.
-- Check and write in one pass. Read an object twice and a sneaky object can hand back something else
-  the second time. This really happened: a hidden `NaN` came out as `null`.
-- Numbers must be finite, and whole numbers stop at 2^53 − 1. Above that JavaScript loses digits.
-- Scan the raw text before parsing, and make bad UTF-8 throw. `JSON.parse` rounds big numbers and
-  drops duplicate keys without a word; the default decoder swaps bad bytes for `?` and hands you a
-  clean hash of wrong data.
-- Two error codes only: `non-canonicalizable-value` for a bad value, `schema-parse-failure` for text
-  that will not parse.
-- A digest is `sha256:` plus 64 hex characters. To combine digests, hash an object with named
-  fields. Never glue strings together.
-- Expected test values come from a Python script written from scratch. Running our own code and
-  saving its output would only prove the code agrees with itself.
 
 **Read in this order:**
 
@@ -154,15 +150,6 @@ breaks. Real example: JavaScript reads `9007199254740993` as `9007199254740992`.
 6. `src/core/canonical/digest.ts`: the five digest functions.
 7. `tests/fixtures/derive_vectors.py`: run `python3 tests/fixtures/derive_vectors.py --check`.
 8. `tests/canonical/vectors.test.ts`: every fixture runs as its own test.
-
-**Watch out:**
-
-- `src/index.ts` still exports only `VERSION`. Tests import from `src/core/canonical/` directly.
-- Only `core/schemas/` and `core/canonical/` exist so far.
-- The huge-number branch in `canonicalize.ts` is real code that no valid input can reach. The
-  safe-integer rule rejects those numbers first.
-
-**Story:** `_bmad-output/implementation-artifacts/1-2-canonical-digest-computation-and-the-hashed-artifact-value-domain.md`
 
 ```mermaid
 flowchart TD
@@ -184,7 +171,41 @@ flowchart TD
   FIXTURES --> DIGEST
 ```
 
+**Story:** `_bmad-output/implementation-artifacts/1-2-canonical-digest-computation-and-the-hashed-artifact-value-domain.md`
+
+### Reference
+
+**Rules:**
+
+- Written here, no library. An unchecked hashing library is a supply-chain risk.
+- Sort keys by UTF-16 code unit. Emoji sort before some normal letters, which looks wrong and is correct.
+- Let JavaScript print the numbers. Never hand-roll number formatting.
+- Check and write in one pass. Read an object twice and a sneaky object can hand back something else
+  the second time. This really happened: a hidden `NaN` came out as `null`.
+- Numbers must be finite, and whole numbers stop at 2^53 − 1. Above that JavaScript loses digits.
+- Scan the raw text before parsing, and make bad UTF-8 throw. `JSON.parse` rounds big numbers and
+  drops duplicate keys without a word; the default decoder swaps bad bytes for `?` and hands you a
+  clean hash of wrong data.
+- Two error codes only: `non-canonicalizable-value` for a bad value, `schema-parse-failure` for text
+  that will not parse.
+- A digest is `sha256:` plus 64 hex characters. To combine digests, hash an object with named
+  fields. Never glue strings together.
+- Expected test values come from a Python script written from scratch. Running our own code and
+  saving its output would only prove the code agrees with itself.
+
+**Watch out:**
+
+- `src/index.ts` still exports only `VERSION`. Tests import from `src/core/canonical/` directly.
+- Only `core/schemas/` and `core/canonical/` exist so far.
+- The huge-number branch in `canonicalize.ts` is real code that no valid input can reach. The
+  safe-integer rule rejects those numbers first.
+
 ## Step 3 (epic1-story3): the Eval Contract schema
+
+**In plain terms:** Someone has to write down what they want tested: which endpoints exist, what counts as a pass, what
+gets called in what order. This step defines the shape of that document, field by field, and what an
+author is allowed to say in it. Anything the form has no box for is a rule nobody downstream can
+ever check.
 
 **What:** the whole Eval Contract written once in Zod: what an author declares, the check expression
 grammar, and the plan of interaction steps.
@@ -192,27 +213,6 @@ grammar, and the plan of interaction steps.
 **Why:** every later epic reads these declarations and decides whether a contract is any good. This
 step decides what can be said at all. A field missing here is a rule nobody can ever check, and a
 shape spelled two ways is two products.
-
-**Rules:**
-
-- If a later epic has an error code for a bad shape, the schema accepts that shape. Rejecting it here
-  swaps a named error for a nameless parse failure and deletes a test someone else owes.
-- One exception to that rule: operand count is still enforced here. `equality` takes exactly two
-  operands, and the schema rejects a third operand itself, without waiting on a later epic's error
-  code.
-- "Not set" is written `null`, never a missing key. Missing, empty, and filled are three answers.
-- Every object is strict. Six maps are keyed by the author's own words; each is named in the code.
-- `JsonValue` is the only place the caller's own keys are allowed.
-- Three pointer spellings, three regexes: rooted at a step, relative to a quantifier's element, and
-  plain into one response descriptor.
-- Binding values are tagged, `{"literal": …}` or `{"matcher": "any"}`. The untagged form cannot be
-  written down at all.
-- Name every shape that is shared or refers to itself. An unnamed one exports as `__schema0`, a
-  number that shifts as soon as anything else changes. Never add `.describe()` to a named shape at a
-  use site; that wraps it and brings `__schema0` straight back.
-- Prefer a plain Zod feature over `.refine()`. Refinements vanish from the published JSON Schema;
-  `.describe()` text survives. Whatever a refinement still enforces goes in `constraint-ledger.ts`
-  with the exact place to put it back and the JSON Schema version that fix is written for.
 
 **Read in this order:**
 
@@ -226,15 +226,6 @@ shape spelled two ways is two products.
 8. `tests/schemas/ad5-admissions.test.ts`: one test per error code, proving the shape still parses.
 9. `tests/schemas/fixtures/gate-c-contract.ts`: the only hand-written contract, and the twelve places
    it had to change.
-
-**Watch out:**
-
-- A reject test asserts the exact issue path and code. "It failed" would also pass on a typo.
-- The old worked example fails three of its five checks on purpose. Do not repair it.
-- `z.record` keyed by an enum demands every member, so the four channels are a plain object.
-- `DIGEST_FORM` moved here from `digest.ts`. `core/` may import `core/schemas`, never the reverse.
-
-**Story:** `_bmad-output/implementation-artifacts/1-3-the-eval-contract-schema-declarations-operand-grammar-and-plan-grammar.md`
 
 ```mermaid
 flowchart TD
@@ -260,7 +251,44 @@ flowchart TD
   PLAN --> LEDGER
 ```
 
+**Story:** `_bmad-output/implementation-artifacts/1-3-the-eval-contract-schema-declarations-operand-grammar-and-plan-grammar.md`
+
+### Reference
+
+**Rules:**
+
+- If a later epic has an error code for a bad shape, the schema accepts that shape. Rejecting it here
+  swaps a named error for a nameless parse failure and deletes a test someone else owes.
+- One exception to that rule: operand count is still enforced here. `equality` takes exactly two
+  operands, and the schema rejects a third operand itself, without waiting on a later epic's error
+  code.
+- "Not set" is written `null`, never a missing key. Missing, empty, and filled are three answers.
+- Every object is strict. Six maps are keyed by the author's own words; each is named in the code.
+- `JsonValue` is the only place the caller's own keys are allowed.
+- Three pointer spellings, three regexes: rooted at a step, relative to a quantifier's element, and
+  plain into one response descriptor.
+- Binding values are tagged, `{"literal": …}` or `{"matcher": "any"}`. The untagged form cannot be
+  written down at all.
+- Name every shape that is shared or refers to itself. An unnamed one exports as `__schema0`, a
+  number that shifts as soon as anything else changes. Never add `.describe()` to a named shape at a
+  use site; that wraps it and brings `__schema0` straight back.
+- Prefer a plain Zod feature over `.refine()`. Refinements vanish from the published JSON Schema;
+  `.describe()` text survives. Whatever a refinement still enforces goes in `constraint-ledger.ts`
+  with the exact place to put it back and the JSON Schema version that fix is written for.
+
+**Watch out:**
+
+- A reject test asserts the exact issue path and code. "It failed" would also pass on a typo.
+- The old worked example fails three of its five checks on purpose. Do not repair it.
+- `z.record` keyed by an enum demands every member, so the four channels are a plain object.
+- `DIGEST_FORM` moved here from `digest.ts`. `core/` may import `core/schemas`, never the reverse.
+
 ## Step 4 (epic1-story4): the other eleven artifacts
+
+**In plain terms:** Step 3 shaped the document going in. Everything coming back out had no agreed shape at all: the
+record of what happened during a run, the audit of how it was kept isolated, the scored result. A
+caller sending one of those was guessing at the fields. This step writes down all eleven of them, one
+file each, and keeps a single list naming the full set.
 
 **What:** the remaining eleven interchange artifacts written in Zod, one file each, plus one registry
 listing all twelve.
@@ -268,29 +296,6 @@ listing all twelve.
 **Why:** step 3 typed the file going in. Everything else crossing the boundary, the run record the
 caller sends back, the isolation audit, the scored result, had no shape at all. A field missing here
 is a rule a later epic cannot read, and an artifact with no schema is a caller guessing.
-
-**Rules:**
-
-- Twelve artifacts, one closed list, in `artifact.ts`. Nothing generates that list and nothing under
-  `core/schemas/` imports it.
-- `schemaVersion`, `parentDigest`, and `revisionCount` live in `lineage.ts` and are spread into
-  eleven artifacts. Spread, never nested: a spread adds no shared definition to the export.
-- `lineage.ts` and `verdict.ts` are leaves on purpose. Put them in `artifact.ts` and the imports form
-  a loop that crashes on load with an error naming a file you never edited.
-- `ArtifactReference` is the one artifact with no version and no lineage. It sits inside others, so
-  versioning it would add a key to every finding for nobody.
-- Where the old schema said "if this, then that", the new one is a union of branches. That is why a
-  defect finding must quote its evidence and the other two kinds need not.
-- Severity, interface kind, and the seven forbidden inputs come from the file that already held
-  them. A second copy drifts.
-- If a field-level `null` already says "absent", the object under it may not say the same thing
-  again with every member null.
-- Money is a string everywhere, including the isolation manifest. Seconds stay a number. A ceiling
-  that must stay above zero needs its own string format: a plain `number` field can't carry that
-  constraint, so typing the ceiling as a number would silently drop the above-zero requirement.
-- Every ledger entry names its artifact, because with twelve roots "the root" points at nothing. A
-  union at the top has no `properties`, so the resolver reads every branch and gives up if one lacks
-  the field.
 
 **Read in this order:**
 
@@ -304,24 +309,6 @@ is a rule a later epic cannot read, and an artifact with no schema is a caller g
 8. `src/core/schemas/constraint-ledger.ts`: addresses now name an artifact.
 9. `tests/schemas/artifact-registry.test.ts`: the audits that walk all twelve.
 10. `tests/schemas/fixtures/worked-example-artifacts.ts`: the old chain, and its 60 and 19 failures.
-
-**Watch out:**
-
-- The old worked example fails in 79 places. That is the record. Do not repair it.
-- `RubricBody` now shows up in the contract's exported definitions. That is deliberate.
-- `EvidenceArtifact` is the scored output. `evidenceArtifacts` on a finding is a list of references.
-  Two different things one word apart.
-- `EvaluatorConfiguration` rejects a `trialIndex` key on purpose, and a test proves the rejection.
-  A missing field here is the requirement itself; don't add it back in.
-- `responseHeaders` is a name-to-value map while `responseBody` is the open container. A pointer
-  reaches into the headers by name, so a bare number there would address nothing; a body may be a
-  bare number and still be a body.
-- Every fixture is listed in an exported array that a test asserts is complete. A fixture nothing
-  imports proves nothing, and one shipped that way before review caught it.
-- Eighteen rules are named as unenforced in `ad5-admissions.test.ts`. Most compare two artifacts, and
-  one schema cannot see two artifacts at once.
-
-**Story:** `_bmad-output/implementation-artifacts/1-4-the-remaining-interchange-artifact-schemas.md`
 
 ```mermaid
 flowchart TD
@@ -350,7 +337,55 @@ flowchart TD
   REG --> LEDGER
 ```
 
+**Story:** `_bmad-output/implementation-artifacts/1-4-the-remaining-interchange-artifact-schemas.md`
+
+### Reference
+
+**Rules:**
+
+- Twelve artifacts, one closed list, in `artifact.ts`. Nothing generates that list and nothing under
+  `core/schemas/` imports it.
+- `schemaVersion`, `parentDigest`, and `revisionCount` live in `lineage.ts` and are spread into
+  eleven artifacts. Spread, never nested: a spread adds no shared definition to the export.
+- `lineage.ts` and `verdict.ts` are leaves on purpose. Put them in `artifact.ts` and the imports form
+  a loop that crashes on load with an error naming a file you never edited.
+- `ArtifactReference` is the one artifact with no version and no lineage. It sits inside others, so
+  versioning it would add a key to every finding for nobody.
+- Where the old schema said "if this, then that", the new one is a union of branches. That is why a
+  defect finding must quote its evidence and the other two kinds need not.
+- Severity, interface kind, and the seven forbidden inputs come from the file that already held
+  them. A second copy drifts.
+- If a field-level `null` already says "absent", the object under it may not say the same thing
+  again with every member null.
+- Money is a string everywhere, including the isolation manifest. Seconds stay a number. A ceiling
+  that must stay above zero needs its own string format: a plain `number` field can't carry that
+  constraint, so typing the ceiling as a number would silently drop the above-zero requirement.
+- Every ledger entry names its artifact, because with twelve roots "the root" points at nothing. A
+  union at the top has no `properties`, so the resolver reads every branch and gives up if one lacks
+  the field.
+
+**Watch out:**
+
+- The old worked example fails in 79 places. That is the record. Do not repair it.
+- `RubricBody` now shows up in the contract's exported definitions. That is deliberate.
+- `EvidenceArtifact` is the scored output. `evidenceArtifacts` on a finding is a list of references.
+  Two different things one word apart.
+- `EvaluatorConfiguration` rejects a `trialIndex` key on purpose, and a test proves the rejection.
+  A missing field here is the requirement itself; don't add it back in.
+- `responseHeaders` is a name-to-value map while `responseBody` is the open container. A pointer
+  reaches into the headers by name, so a bare number there would address nothing; a body may be a
+  bare number and still be a body.
+- Every fixture is listed in an exported array that a test asserts is complete. A fixture nothing
+  imports proves nothing, and one shipped that way before review caught it.
+- Eighteen rules are named as unenforced in `ad5-admissions.test.ts`. Most compare two artifacts, and
+  one schema cannot see two artifacts at once.
+
 ## Step 5 (epic1-story5): the published export and its four checks
+
+**In plain terms:** Anyone not writing TypeScript sees only the JSON Schema files this project publishes. A rule that
+lives in the TypeScript and fails to make it into those files is invisible to them, and nothing would
+ever point it out. This step generates the published files from the same source the library uses and
+adds four checks that compare the two rule by rule, so a rule that goes missing turns the build red.
 
 **What:** twelve committed `schemas/*.schema.json` files built by one pure function, and four checks
 that prove them equivalent to the Zod source, constraint by constraint.
@@ -358,6 +393,43 @@ that prove them equivalent to the Zod source, constraint by constraint.
 **Why:** a non-TypeScript consumer only sees the JSON Schema files. A constraint living only in a
 Zod refinement would be invisible to them, and nothing would notice. The four checks make that class
 of silence a red build.
+
+**Read in this order:**
+
+1. `src/core/schemas/publish.ts`: the builder, the injection, the serialiser.
+2. `scripts/generate-schemas.ts` and `scripts/check-schemas.ts`: the writer and the byte gate.
+3. `src/core/failure-codes.ts` and `scripts/check-ad5-registry.ts`: the AD-5 binding.
+4. `tests/schemas/publish.test.ts`: `$id`, `$defs` naming, the loud failures.
+5. `tests/schemas/published/keyword-occurrences.ts`: what counts as a keyword, and the exemption rule.
+6. `tests/schemas/published/mutant-generator.ts`: the schema-directed corpus.
+7. `tests/schemas/published/differential.test.ts` and `keyword-mutation.test.ts`: checks three and four.
+
+```mermaid
+flowchart TD
+  ZOD["the twelve Zod schemas"]
+  LEDGER["constraint-ledger.ts<br/>13 inject + 15 not-expressible"]
+  PUB["publish.ts<br/>build + inject + serialise"]
+  FILES["schemas/*.schema.json<br/>committed, ASCII"]
+  DRIFT["check-schemas.ts<br/>byte-exact drift gate"]
+  REJ["published-rejection.test.ts<br/>112 cases, keyword + path"]
+  GEN["mutant-generator.ts<br/>~2,250 generated mutants"]
+  DIFF["differential.test.ts<br/>zod verdict == ajv verdict"]
+  SWEEP["keyword-mutation.test.ts<br/>delete every keyword, demand a flip"]
+
+  ZOD --> PUB
+  LEDGER --> PUB
+  PUB --> FILES
+  PUB --> DRIFT
+  FILES --> DRIFT
+  PUB --> REJ
+  PUB --> GEN
+  GEN --> DIFF
+  GEN --> SWEEP
+```
+
+**Story:** `_bmad-output/implementation-artifacts/1-5-the-published-json-schema-export-and-its-four-ci-checks.md`
+
+### Reference
 
 **Rules:**
 
@@ -383,47 +455,17 @@ of silence a red build.
 - `FAILURE_CODES` is parsed against the AD-5 table on every validate, so nobody hand-maintains the
   enumeration beside it.
 
-**Read in this order:**
-
-1. `src/core/schemas/publish.ts`: the builder, the injection, the serialiser.
-2. `scripts/generate-schemas.ts` and `scripts/check-schemas.ts`: the writer and the byte gate.
-3. `src/core/failure-codes.ts` and `scripts/check-ad5-registry.ts`: the AD-5 binding.
-4. `tests/schemas/publish.test.ts`: `$id`, `$defs` naming, the loud failures.
-5. `tests/schemas/published/keyword-occurrences.ts`: what counts as a keyword, and the exemption rule.
-6. `tests/schemas/published/mutant-generator.ts`: the schema-directed corpus.
-7. `tests/schemas/published/differential.test.ts` and `keyword-mutation.test.ts`: checks three and four.
-
 **Watch out:** ajv anchors a reported `schemaPath` to the `$defs` entry where the error occurred.
 Zod exports `type` beside every `const` and `enum`, which makes those `type`s undeletable-by-proof
 and therefore exempt. Deleting an injected arity keyword makes ajv strict refuse to compile, which
 the sweep tracks as its own outcome, separate from a pass.
 
-**Story:** `_bmad-output/implementation-artifacts/1-5-the-published-json-schema-export-and-its-four-ci-checks.md`
-
-```mermaid
-flowchart TD
-  ZOD["the twelve Zod schemas"]
-  LEDGER["constraint-ledger.ts<br/>13 inject + 15 not-expressible"]
-  PUB["publish.ts<br/>build + inject + serialise"]
-  FILES["schemas/*.schema.json<br/>committed, ASCII"]
-  DRIFT["check-schemas.ts<br/>byte-exact drift gate"]
-  REJ["published-rejection.test.ts<br/>112 cases, keyword + path"]
-  GEN["mutant-generator.ts<br/>~2,250 generated mutants"]
-  DIFF["differential.test.ts<br/>zod verdict == ajv verdict"]
-  SWEEP["keyword-mutation.test.ts<br/>delete every keyword, demand a flip"]
-
-  ZOD --> PUB
-  LEDGER --> PUB
-  PUB --> FILES
-  PUB --> DRIFT
-  FILES --> DRIFT
-  PUB --> REJ
-  PUB --> GEN
-  GEN --> DIFF
-  GEN --> SWEEP
-```
-
 ## Step 6 (epic2-story1): the direction-prose generator
+
+**In plain terms:** The evaluator is told what to check and deliberately not told the script: no step names, no call
+order. So the instruction has to say something like "the id you sent to the create endpoint,
+compared with the id field the read endpoint gave back" without naming a single step. This step is
+the code that writes those sentences out of what the author declared.
 
 **What:** turn one oracle's declared direction (evidence targets, relation, polarity, scope, negative
 domain) into the prose that becomes a `BriefDirection`'s `text`.
@@ -434,6 +476,37 @@ observations of one operation that render the same sentence are indistinguishabl
 example: "the id value you sent to the create endpoint, compared with its id field from the read
 endpoint, is asserted to be equal" names two calls and what to compare between them, and names no
 step.
+
+**Read in this order:**
+
+1. `src/core/seal/plan-index.ts`: resolves a pointer to its step and operation. Nothing about
+   reachability; that is Epic 4's.
+2. `src/core/seal/derived-reference.ts`: the phrase vocabulary, the escalation ladder, and the
+   temporal-pair grouping.
+3. `src/core/seal/direction-prose.ts`: the five relation families, assembled into one string.
+4. `tests/schemas/fixtures/gate-c-contract.ts`: the primary fixture, already in the tree.
+5. `tests/seal/fixtures.ts`: what Gate C does not carry, including the Gate D reconstruction and the
+   create-then-read-back pair.
+
+```mermaid
+flowchart TD
+  PLANIDX["plan-index.ts<br/>pointer -> step + operation"]
+  DERIVED["derived-reference.ts<br/>phrase vocabulary + escalation"]
+  PROSE["direction-prose.ts<br/>five relation families"]
+  GATEC["gate-c-contract.ts<br/>the primary fixture"]
+  SEALFIX["tests/seal/fixtures.ts<br/>what Gate C does not carry"]
+  TESTS["tests/seal/*.test.ts<br/>sweeps + permutation"]
+
+  PLANIDX --> DERIVED
+  DERIVED --> PROSE
+  PROSE --> TESTS
+  GATEC --> TESTS
+  SEALFIX --> TESTS
+```
+
+**Story:** `_bmad-output/implementation-artifacts/2-1-the-direction-prose-generator.md`
+
+### Reference
 
 **Rules:**
 
@@ -453,17 +526,6 @@ step.
 - Determinism is proven by permutation. A repeat call cannot catch a tie-break that is stable within
   one process.
 
-**Read in this order:**
-
-1. `src/core/seal/plan-index.ts`: resolves a pointer to its step and operation. Nothing about
-   reachability; that is Epic 4's.
-2. `src/core/seal/derived-reference.ts`: the phrase vocabulary, the escalation ladder, and the
-   temporal-pair grouping.
-3. `src/core/seal/direction-prose.ts`: the five relation families, assembled into one string.
-4. `tests/schemas/fixtures/gate-c-contract.ts`: the primary fixture, already in the tree.
-5. `tests/seal/fixtures.ts`: what Gate C does not carry, including the Gate D reconstruction and the
-   create-then-read-back pair.
-
 **Watch out:**
 
 - The ladder's fourth rung is computed from the shared operation, so every sibling on that operation
@@ -477,25 +539,12 @@ step.
   afterward does not assign to `PermittedInterface[]`. `tests/seal/fixtures.ts` casts once through
   `unknown`; `z.array(PermittedInterface).parse` gives the same type and validates.
 
-**Story:** `_bmad-output/implementation-artifacts/2-1-the-direction-prose-generator.md`
-
-```mermaid
-flowchart TD
-  PLANIDX["plan-index.ts<br/>pointer -> step + operation"]
-  DERIVED["derived-reference.ts<br/>phrase vocabulary + escalation"]
-  PROSE["direction-prose.ts<br/>five relation families"]
-  GATEC["gate-c-contract.ts<br/>the primary fixture"]
-  SEALFIX["tests/seal/fixtures.ts<br/>what Gate C does not carry"]
-  TESTS["tests/seal/*.test.ts<br/>sweeps + permutation"]
-
-  PLANIDX --> DERIVED
-  DERIVED --> PROSE
-  PROSE --> TESTS
-  GATEC --> TESTS
-  SEALFIX --> TESTS
-```
-
 ## Step 7 (epic2-story2): brief assembly, exclusions, and canonical ordering
+
+**In plain terms:** Step 6 writes one sentence. This step walks the whole document, writes one per rule, and packs them
+into the single briefing the evaluator actually receives, carrying only the fields it is allowed to
+see. It also sorts everything that has no meaningful order, so two authors who listed the same
+things in a different order get byte-for-byte the same briefing.
 
 **What:** `seal(contract)` walks every oracle, renders one `BriefDirection` per oracle using Step 6's
 prose generator, then assembles the `SealedEvaluatorBrief`: only the fields AD-16 permits, with
@@ -505,6 +554,31 @@ unordered arrays sorted to a fixed key.
 artifact the evaluator actually reads. Most of the brief's content must come out byte-identical no
 matter how the contract's arrays were declared; `behaviors` and `contractDigest` are the two
 deliberate exceptions, covered below.
+
+**Read in this order:**
+
+1. `src/core/seal/seal.ts`: the whole function.
+2. `src/core/schemas/sealed-evaluator-brief.ts`: what the brief is allowed to carry.
+3. `src/core/schemas/interface.ts`: why `permittedInterfaces` needs a per-element map.
+4. `tests/seal/seal.test.ts`: the sort, duplicate-key, reorder, and reject-fixture tests.
+
+```mermaid
+flowchart TD
+  CONTRACT["EvalContract<br/>oracles, behaviors, interfaces, budgets"]
+  PROSE["direction-prose.ts (Step 6)<br/>one BriefDirection.text per oracle"]
+  SEAL["seal.ts<br/>assemble + sort + digest"]
+  BRIEF["SealedEvaluatorBrief<br/>strictObject, exclusion is structural"]
+  TESTS["tests/seal/seal.test.ts<br/>sort order, duplicate keys, reorder, reject fixtures"]
+
+  CONTRACT --> SEAL
+  PROSE --> SEAL
+  SEAL --> BRIEF
+  BRIEF --> TESTS
+```
+
+**Story:** `_bmad-output/implementation-artifacts/spec-2-2-brief-assembly-exclusions-and-canonical-ordering.md`
+
+### Reference
 
 **Rules:**
 
@@ -526,35 +600,18 @@ deliberate exceptions, covered below.
 - Copy `behaviors` and `budgets` in. Do not alias them to the source contract, or a caller mutating
   the contract after `seal()` returns would silently mutate the "sealed" brief too.
 
-**Read in this order:**
-
-1. `src/core/seal/seal.ts`: the whole function.
-2. `src/core/schemas/sealed-evaluator-brief.ts`: what the brief is allowed to carry.
-3. `src/core/schemas/interface.ts`: why `permittedInterfaces` needs a per-element map.
-4. `tests/seal/seal.test.ts`: the sort, duplicate-key, reorder, and reject-fixture tests.
-
 **Watch out:** a test that hashes or diffs the whole brief object across reorderings will never pass;
 only the content fields are asserted byte-identical, `contractDigest` is not one of them.
 Forbidden-input exclusion here comes from the schema's `strictObject` shape. `seal()` performs no
 such check itself.
 
-**Story:** `_bmad-output/implementation-artifacts/spec-2-2-brief-assembly-exclusions-and-canonical-ordering.md`
-
-```mermaid
-flowchart TD
-  CONTRACT["EvalContract<br/>oracles, behaviors, interfaces, budgets"]
-  PROSE["direction-prose.ts (Step 6)<br/>one BriefDirection.text per oracle"]
-  SEAL["seal.ts<br/>assemble + sort + digest"]
-  BRIEF["SealedEvaluatorBrief<br/>strictObject, exclusion is structural"]
-  TESTS["tests/seal/seal.test.ts<br/>sort order, duplicate keys, reorder, reject fixtures"]
-
-  CONTRACT --> SEAL
-  PROSE --> SEAL
-  SEAL --> BRIEF
-  BRIEF --> TESTS
-```
-
 ## Step 8 (epic2-story3): the emitted-brief scripting audit
+
+**In plain terms:** The evaluator is supposed to work out its own approach, so the briefing must not smuggle in a
+step-by-step script. The generated sentences never do that on their own, but an author's free-text
+notes get copied through, and "first do this, then do that" fits in a notes field. This step reads
+the finished briefing and rejects it when one instruction carries more sequencing language than the
+author said it would.
 
 **What:** a pure function, `auditBriefScripting`, that reads an already-assembled `SealedEvaluatorBrief`
 and throws if any one direction's generated `text` carries more sequencing/transition markers than the
@@ -565,6 +622,26 @@ structure; it never reads generated prose. An author's own free `scope`/`negativ
 channel that can still smuggle a scripted "do this, then this" sequence past that predicate, since Step
 6's own generator never emits that vocabulary itself. This audit runs after generation, over the
 finished brief, to catch exactly that.
+
+**Read in this order:**
+
+1. `src/core/failure-codes.ts`: the twenty-one-code tuple and the new `StructuralFailure` class beside it.
+2. `src/core/seal/scripting-audit.ts`: the marker pattern, the per-direction count, the throw.
+3. `tests/seal/scripting-audit.test.ts`: the accept/reject fixtures and the permutation test.
+
+```mermaid
+flowchart TD
+  CODES["failure-codes.ts<br/>21st AD-5 code + StructuralFailure"]
+  AUDIT["scripting-audit.ts<br/>marker pattern + per-direction bound check"]
+  TESTS["tests/seal/scripting-audit.test.ts<br/>accept/reject fixtures + permutation"]
+
+  CODES --> AUDIT
+  AUDIT --> TESTS
+```
+
+**Story:** `_bmad-output/implementation-artifacts/2-3-the-emitted-brief-scripting-audit.md`
+
+### Reference
 
 **Rules:**
 
@@ -586,29 +663,16 @@ finished brief, to catch exactly that.
 - Which direction's failure surfaces first, when more than one violates, is only as deterministic as
   `directions`' own array order; the audit does not hunt for every violation in one pass.
 
-**Read in this order:**
-
-1. `src/core/failure-codes.ts`: the twenty-one-code tuple and the new `StructuralFailure` class beside it.
-2. `src/core/seal/scripting-audit.ts`: the marker pattern, the per-direction count, the throw.
-3. `tests/seal/scripting-audit.test.ts`: the accept/reject fixtures and the permutation test.
-
 **Watch out:** the story's own regression fixture cites "O-004" for the "not the first" text; that text
 is actually O-005's `scope` in `tests/schemas/fixtures/gate-c-contract.ts`, and the test targets O-005
 directly.
 
-**Story:** `_bmad-output/implementation-artifacts/2-3-the-emitted-brief-scripting-audit.md`
-
-```mermaid
-flowchart TD
-  CODES["failure-codes.ts<br/>21st AD-5 code + StructuralFailure"]
-  AUDIT["scripting-audit.ts<br/>marker pattern + per-direction bound check"]
-  TESTS["tests/seal/scripting-audit.test.ts<br/>accept/reject fixtures + permutation"]
-
-  CODES --> AUDIT
-  AUDIT --> TESTS
-```
-
 ## Step 9 (epic3-story1): scalar operators over the evidence domain
+
+**In plain terms:** "Did the response match?" sounds like one question and is really ten: equal, contains, exists,
+matches this pattern, is sorted, is roughly this many, and so on. Two people implementing those ten
+differently will score the same run differently. This step pins each one down exactly, including what
+happens when the value is garbage, which is a plain "no" and never a crash.
 
 **What:** ten pure functions (`equality`, `deepEquality`, `containment`, `existence`, `absence`,
 `regexMatch`, `setMembership`, `ordering`, `countTolerance`, `shape`), each taking already-resolved
@@ -620,6 +684,32 @@ equal, what counts as contained, what a regex match-step budget actually bounds.
 compare `9007199254740993` against an ordinary number and it just resolves `false`, the same as any
 other wrong answer, never a crash. Only comparing two objects or two arrays ever risks one. That
 keeps a broken system under test's bad number from crashing the whole run.
+
+**Read in this order:**
+
+1. `src/core/evaluate/resolved-value.ts`: the `ABSENT` sentinel and `ResolvedValue`.
+2. `src/core/evaluate/operators.ts`: the ten functions.
+3. `src/core/schemas/scoring-policy.ts`: `regexMatchStepBudget`, the field `regexMatch` reads.
+4. `src/core/schemas/faults.ts`: the two new runtime fault codes, `RUNTIME_FAULT_CODES`.
+5. `tests/evaluate/operators.test.ts`: every operator's accept, reject, and absent-operand case.
+
+```mermaid
+flowchart TD
+  RESOLVED["resolved-value.ts<br/>ABSENT + ResolvedValue"]
+  OPS["operators.ts<br/>ten pure functions"]
+  POLICY["scoring-policy.ts<br/>regexMatchStepBudget"]
+  FAULTS["faults.ts<br/>budget-exhausted, operator-cannot-accept-operand"]
+  TESTS["tests/evaluate/operators.test.ts<br/>accept + reject + absent per operator"]
+
+  RESOLVED --> OPS
+  POLICY --> OPS
+  FAULTS --> OPS
+  OPS --> TESTS
+```
+
+**Story:** `_bmad-output/implementation-artifacts/3-1-scalar-operators-over-the-evidence-domain.md`
+
+### Reference
 
 **Rules:**
 
@@ -645,14 +735,6 @@ keeps a broken system under test's bad number from crashing the whole run.
 - Every function's last parameter is `artifactPath: string`, even on the five that never throw (named
   `_artifactPath`), so every operator shares one calling convention.
 
-**Read in this order:**
-
-1. `src/core/evaluate/resolved-value.ts`: the `ABSENT` sentinel and `ResolvedValue`.
-2. `src/core/evaluate/operators.ts`: the ten functions.
-3. `src/core/schemas/scoring-policy.ts`: `regexMatchStepBudget`, the field `regexMatch` reads.
-4. `src/core/schemas/faults.ts`: the two new runtime fault codes, `RUNTIME_FAULT_CODES`.
-5. `tests/evaluate/operators.test.ts`: every operator's accept, reject, and absent-operand case.
-
 **Watch out:**
 
 - This story's ten operators are two-valued. Three-valued `insufficient-evidence` resolution, the
@@ -666,23 +748,12 @@ keeps a broken system under test's bad number from crashing the whole run.
   that also means the linear tier does almost no real work day to day; the structural
   nested-quantifier check above is the actual backstop.
 
-**Story:** `_bmad-output/implementation-artifacts/3-1-scalar-operators-over-the-evidence-domain.md`
-
-```mermaid
-flowchart TD
-  RESOLVED["resolved-value.ts<br/>ABSENT + ResolvedValue"]
-  OPS["operators.ts<br/>ten pure functions"]
-  POLICY["scoring-policy.ts<br/>regexMatchStepBudget"]
-  FAULTS["faults.ts<br/>budget-exhausted, operator-cannot-accept-operand"]
-  TESTS["tests/evaluate/operators.test.ts<br/>accept + reject + absent per operator"]
-
-  RESOLVED --> OPS
-  POLICY --> OPS
-  FAULTS --> OPS
-  OPS --> TESTS
-```
-
 ## Step 10 (epic3-story2): connectives, quantifiers, and three-valued resolution
+
+**In plain terms:** Real checks combine the simple ones: not this, all of these, any of these, and "for every item in
+the list". The trap is an empty list. "Every item passed" is trivially true of nothing, and so is "no
+item failed", so an empty response certifies itself. This step adds a third answer beside yes and no,
+meaning "there was nothing here to look at", so an empty result stops reading as a clean pass.
 
 **What:** `resolveCheck`, the tree-walker that turns an `Expression` into a `CheckResolutionValue`:
 `notOf`/`allOf`/`anyOf` for the three connectives, `resolveQuantifier` for `for-all`/`for-any`, and one
@@ -693,6 +764,38 @@ resolution exists: `for-all(page, absence(@/retractedAt))` and
 `not(for-any(page, existence(@/retractedAt)))` say the same thing, and over an empty page one used to
 certify while the other failed closed. Both now resolve `insufficient-evidence`, so an empty
 collection never reads as a clean pass.
+
+**Read in this order:**
+
+1. `src/core/schemas/evidence-artifact.ts`: `CheckResolutionValue`, the shape this whole module
+   produces.
+2. `src/core/evaluate/resolution.ts`: `operandDenotesEmptyCollection`, `notOf`/`allOf`/`anyOf`,
+   `resolveQuantifier`, `resolveNode`, `resolveCheck`.
+3. `tests/evaluate/fixtures/stub-resolver.ts`: the test-only pointer walker these tests resolve
+   against; never shipped from `src/`.
+4. `tests/evaluate/resolution.test.ts`: the soft-delete three-way agreement, the empty-collection
+   cases, and every RuntimeFault-propagates-through-a-connective case.
+
+```mermaid
+flowchart TD
+  OPS["operators.ts (Step 9)<br/>ten two-valued operators"]
+  CAP["ResolveOperand + PointerDenotesCollection<br/>injected capabilities; Story 4.1 implements for real"]
+  RES["resolution.ts<br/>notOf, allOf, anyOf, resolveQuantifier, resolveNode"]
+  OUT["CheckResolutionValue<br/>evidence-artifact.ts, this module's output"]
+  STUB["tests/evaluate/fixtures/stub-resolver.ts<br/>test-only pointer walker"]
+  TESTS["tests/evaluate/resolution.test.ts<br/>soft-delete agreement + empty-collection cases"]
+
+  OPS --> RES
+  CAP -- parameters --> RES
+  RES --> OUT
+  STUB -. test-only implementation of .-> CAP
+  STUB --> TESTS
+  RES --> TESTS
+```
+
+**Story:** `_bmad-output/implementation-artifacts/3-2-connectives-quantifiers-and-three-valued-resolution.md`
+
+### Reference
 
 **Rules:**
 
@@ -713,17 +816,6 @@ collection never reads as a clean pass.
 - Real pointer resolution, including `@/`, is not built here: `ResolveOperand` and
   `PointerDenotesCollection` are the two capabilities this module takes as parameters instead.
 
-**Read in this order:**
-
-1. `src/core/schemas/evidence-artifact.ts`: `CheckResolutionValue`, the shape this whole module
-   produces.
-2. `src/core/evaluate/resolution.ts`: `operandDenotesEmptyCollection`, `notOf`/`allOf`/`anyOf`,
-   `resolveQuantifier`, `resolveNode`, `resolveCheck`.
-3. `tests/evaluate/fixtures/stub-resolver.ts`: the test-only pointer walker these tests resolve
-   against; never shipped from `src/`.
-4. `tests/evaluate/resolution.test.ts`: the soft-delete three-way agreement, the empty-collection
-   cases, and every RuntimeFault-propagates-through-a-connective case.
-
 **Watch out:**
 
 - This step never reads `polarity` and never produces an `OutcomeState`. `abstained` and the rest of
@@ -731,26 +823,12 @@ collection never reads as a clean pass.
 - The stub resolver in the tests is deliberately small and ad hoc. It is not a preview of Story 4.1's
   real addressing grammar and is not asserted to match it beyond what these fixtures need.
 
-**Story:** `_bmad-output/implementation-artifacts/3-2-connectives-quantifiers-and-three-valued-resolution.md`
-
-```mermaid
-flowchart TD
-  OPS["operators.ts (Step 9)<br/>ten two-valued operators"]
-  CAP["ResolveOperand + PointerDenotesCollection<br/>injected capabilities; Story 4.1 implements for real"]
-  RES["resolution.ts<br/>notOf, allOf, anyOf, resolveQuantifier, resolveNode"]
-  OUT["CheckResolutionValue<br/>evidence-artifact.ts, this module's output"]
-  STUB["tests/evaluate/fixtures/stub-resolver.ts<br/>test-only pointer walker"]
-  TESTS["tests/evaluate/resolution.test.ts<br/>soft-delete agreement + empty-collection cases"]
-
-  OPS --> RES
-  CAP -- parameters --> RES
-  RES --> OUT
-  STUB -. test-only implementation of .-> CAP
-  STUB --> TESTS
-  RES --> TESTS
-```
-
 ## Step 11 (epic3-story3): covers-by-key, the last operator
+
+**In plain terms:** Checking that a list came back complete is harder than counting it. A response can drop a record, or
+duplicate one record to keep the count looking right, or slip in something nobody asked for. This
+step matches what was expected against what came back one to one, on named fields, so all three of
+those fail. The padding trick is not hypothetical; it happened here.
 
 **What:** `coversByKey`, the closed vocabulary's eleventh and final operator: a bijection between a
 contract-declared `expected` reference set and an observed `actual` collection, matched on named keys.
@@ -761,6 +839,37 @@ omitting a seeded record, one padded with duplicates to fake the right count, an
 unexpected extras. An injection alone catches omission only. The historical `[n-1, n-1, n-1]` bug
 (padding one record to hide two missing ones) is why this has to be a true bijection, not the weaker
 check an earlier spine revision first stated.
+
+**Read in this order:**
+
+1. `src/core/evaluate/operators.ts`: `keyValueOf`, `coversByKey`.
+2. `src/core/evaluate/resolution.ts`: `resolveCoversByKeyNode`, one entry in the `operatorHandlers`
+   dispatch table `resolveNode` looks up by `op` (this story also replaced the whole file's switch with
+   that table; every other operator moved into its own same-shaped handler alongside it).
+3. `tests/schemas/fixtures/relevance-contracts.ts`: `populatedContract`'s O-001, the one real
+   `covers-by-key` check tree this story's dispatch fixtures reuse.
+4. `tests/evaluate/operators.test.ts`: `coversByKey`'s own positive, missing, duplicate, unexpected,
+   duplicate-key, and empty-set cases.
+5. `tests/evaluate/resolution.test.ts`: the same six cases at dispatch level, plus the guard and the
+   three-tier precedence fixtures.
+
+```mermaid
+flowchart TD
+  OPS["operators.ts (Step 9)<br/>keyValueOf, coversByKey"]
+  RES["resolution.ts (Step 10)<br/>the 'covers-by-key' dispatch branch"]
+  FIX["relevance-contracts.ts<br/>populatedContract's O-001, the one real check tree"]
+  OPTESTS["operators.test.ts<br/>positive, missing, duplicate, unexpected, duplicate-key, empty-set"]
+  RESTESTS["resolution.test.ts<br/>same six cases at dispatch level + guard + precedence"]
+
+  OPS --> RES
+  FIX --> RESTESTS
+  OPS --> OPTESTS
+  RES --> RESTESTS
+```
+
+**Story:** `_bmad-output/implementation-artifacts/3-3-covers-by-key-as-a-bijection.md`
+
+### Reference
 
 **Rules:**
 
@@ -786,19 +895,6 @@ check an earlier spine revision first stated.
   a decisive `false`, then genuine emptiness last. A higher tier always outranks a lower one on the
   other operand.
 
-**Read in this order:**
-
-1. `src/core/evaluate/operators.ts`: `keyValueOf`, `coversByKey`.
-2. `src/core/evaluate/resolution.ts`: `resolveCoversByKeyNode`, one entry in the `operatorHandlers`
-   dispatch table `resolveNode` looks up by `op` (this story also replaced the whole file's switch with
-   that table; every other operator moved into its own same-shaped handler alongside it).
-3. `tests/schemas/fixtures/relevance-contracts.ts`: `populatedContract`'s O-001, the one real
-   `covers-by-key` check tree this story's dispatch fixtures reuse.
-4. `tests/evaluate/operators.test.ts`: `coversByKey`'s own positive, missing, duplicate, unexpected,
-   duplicate-key, and empty-set cases.
-5. `tests/evaluate/resolution.test.ts`: the same six cases at dispatch level, plus the guard and the
-   three-tier precedence fixtures.
-
 **Watch out:**
 
 - `coversByKey([], [], ...)` returns `true` on its own: a vacuous bijection is a correct pure-function
@@ -809,23 +905,12 @@ check an earlier spine revision first stated.
   `Object.hasOwn` before the lookup so `op: 'constructor'` still throws instead of silently resolving
   to `Object` itself.
 
-**Story:** `_bmad-output/implementation-artifacts/3-3-covers-by-key-as-a-bijection.md`
-
-```mermaid
-flowchart TD
-  OPS["operators.ts (Step 9)<br/>keyValueOf, coversByKey"]
-  RES["resolution.ts (Step 10)<br/>the 'covers-by-key' dispatch branch"]
-  FIX["relevance-contracts.ts<br/>populatedContract's O-001, the one real check tree"]
-  OPTESTS["operators.test.ts<br/>positive, missing, duplicate, unexpected, duplicate-key, empty-set"]
-  RESTESTS["resolution.test.ts<br/>same six cases at dispatch level + guard + precedence"]
-
-  OPS --> RES
-  FIX --> RESTESTS
-  OPS --> OPTESTS
-  RES --> RESTESTS
-```
-
 ## Step 12 (epic4-story1): pointer resolution and reachability
+
+**In plain terms:** A check has to say where in the response to look, and it says it as a path: the id field of the thing
+the read call returned. Something has to actually walk that path. This step builds that walk, and
+then reuses it before anything runs, to catch a path pointing somewhere the response was never going
+to have.
 
 **What:** the real `ResolveOperand`/`PointerDenotesCollection` pair (`makeResolveOperand`,
 `makePointerDenotesCollection`), replacing Step 10's test-only stub, plus two compile-time checks
@@ -836,6 +921,39 @@ before a sealed evaluator ever runs.
 that build: one walk of RFC 6901 tails, including the bound-element `@/` form, shared by the runtime
 resolver and, through the same array-index grammar, the compile-time reachability check. Both now read
 one oracle's `check` expression identically, which is this story's whole point.
+
+**Read in this order:**
+
+1. `src/core/seal/plan-index.ts`: `decodeToken`/`decodeTail`, now exported.
+2. `src/core/evaluate/evidence-resolution.ts`: `walkTail`, `decodeBoundElementTail`, `makeResolveOperand`,
+   `makePointerDenotesCollection`.
+3. `src/core/compile/reachability.ts`: the shared tree walk, `checkBoundElementScope`,
+   `evaluatePointerReachability`, `checkEvidenceReachability`.
+4. `tests/evaluate/evidence-resolution.test.ts`: the RFC 6901 edge cases (escaped keys,
+   `__proto__`/`constructor`, non-canonical indices) and the resolver/collection-predicate fixtures.
+5. `tests/compile/reachability.test.ts`: the two whole-fixture regressions, the negative mutation
+   fixtures, and the parity matrix against `makeResolveOperand`'s own walk.
+
+```mermaid
+flowchart TD
+  PLANIDX["plan-index.ts<br/>decodeToken/decodeTail, now exported"]
+  RES["resolution.ts (Step 10)<br/>ResolveOperand/PointerDenotesCollection contract"]
+  EVIDRES["evidence-resolution.ts<br/>walkTail, makeResolveOperand,<br/>makePointerDenotesCollection"]
+  REACH["compile/reachability.ts<br/>checkBoundElementScope,<br/>checkEvidenceReachability"]
+  RESTESTS["evidence-resolution.test.ts<br/>RFC 6901 edge cases"]
+  REACHTESTS["reachability.test.ts<br/>regressions + parity matrix"]
+
+  PLANIDX --> EVIDRES
+  RES -- satisfies --> EVIDRES
+  EVIDRES --> REACH
+  EVIDRES --> RESTESTS
+  REACH --> REACHTESTS
+  EVIDRES --> REACHTESTS
+```
+
+**Story:** `_bmad-output/implementation-artifacts/4-1-pointer-resolution-and-reachability.md`
+
+### Reference
 
 **Rules:**
 
@@ -859,18 +977,6 @@ one oracle's `check` expression identically, which is this story's whole point.
 - `@/` outside any quantifier's predicate fails the same code a reference-set operand outside its three
   legal positions already uses: no dedicated AD-5 code exists for it, and the two are the same shape.
 
-**Read in this order:**
-
-1. `src/core/seal/plan-index.ts`: `decodeToken`/`decodeTail`, now exported.
-2. `src/core/evaluate/evidence-resolution.ts`: `walkTail`, `decodeBoundElementTail`, `makeResolveOperand`,
-   `makePointerDenotesCollection`.
-3. `src/core/compile/reachability.ts`: the shared tree walk, `checkBoundElementScope`,
-   `evaluatePointerReachability`, `checkEvidenceReachability`.
-4. `tests/evaluate/evidence-resolution.test.ts`: the RFC 6901 edge cases (escaped keys,
-   `__proto__`/`constructor`, non-canonical indices) and the resolver/collection-predicate fixtures.
-5. `tests/compile/reachability.test.ts`: the two whole-fixture regressions, the negative mutation
-   fixtures, and the parity matrix against `makeResolveOperand`'s own walk.
-
 **Watch out:**
 
 - Two `ResolveOperand` implementations coexist by design: Step 10's stub for dispatch-logic tests, this
@@ -883,26 +989,13 @@ one oracle's `check` expression identically, which is this story's whole point.
 - The root-collection carve-out accepts any canonical array index; it never checks that index against
   the collection's own declared `expectedCardinality`. Filed in `deferred-work.md`, headed for Story 4.2.
 
-**Story:** `_bmad-output/implementation-artifacts/4-1-pointer-resolution-and-reachability.md`
-
-```mermaid
-flowchart TD
-  PLANIDX["plan-index.ts<br/>decodeToken/decodeTail, now exported"]
-  RES["resolution.ts (Step 10)<br/>ResolveOperand/PointerDenotesCollection contract"]
-  EVIDRES["evidence-resolution.ts<br/>walkTail, makeResolveOperand,<br/>makePointerDenotesCollection"]
-  REACH["compile/reachability.ts<br/>checkBoundElementScope,<br/>checkEvidenceReachability"]
-  RESTESTS["evidence-resolution.test.ts<br/>RFC 6901 edge cases"]
-  REACHTESTS["reachability.test.ts<br/>regressions + parity matrix"]
-
-  PLANIDX --> EVIDRES
-  RES -- satisfies --> EVIDRES
-  EVIDRES --> REACH
-  EVIDRES --> RESTESTS
-  REACH --> REACHTESTS
-  EVIDRES --> REACHTESTS
-```
-
 ## Step 13 (epic4-story2): the AD-5 registry as code, twelve more compile-time checks
+
+**In plain terms:** Most of what goes wrong with one of these documents goes wrong before anything is run: a rule
+pointing at nothing, a check whose stated intent disagrees with what it actually tests, one endpoint
+declared twice, an exemption with no reason attached. This step is twelve of those checks, each
+living in exactly one place, so two implementations cannot disagree about what a given mistake is
+called.
 
 **What:** five new modules, thirteen new functions, covering twelve of AD-5's twenty-one codes:
 per-behaviour declarations (`declarations.ts`), an oracle's direction against its check
@@ -913,6 +1006,47 @@ interface and interaction-plan inventory (`interface-inventory.ts`), and waiver 
 **Why:** Step 12 built the shared pointer walk and reachability. This step is everything else a
 `check` tree, an oracle, an interface list, or a waiver can get wrong on its own: one place per AD-5
 code, so two compilers can't invent two different answers for it.
+
+**Read in this order:**
+
+1. `src/core/compile/declarations.ts`: `checkRequirementLinkage`, `checkObservableSuccessCriterion`.
+2. `src/core/compile/oracle-alignment.ts`: `substitutePointer`, `collectTargets`, `checkOracleChannel`,
+   `checkOracleAlignment`.
+3. `src/core/compile/expression-legality.ts`: the shared `walkExpression`, `checkOperandLegality`,
+   `checkRegexConstructs`, `checkQuantifierNesting`, `checkQuantifierOverNonCollection`,
+   `checkReferenceSetResolution`.
+4. `src/core/compile/interface-inventory.ts`: `checkInterfaceKind`,
+   `checkDuplicateOperationSignature`, `checkUndeclaredMandatoryInput`.
+5. `src/core/compile/waivers.ts`: `checkWaiverCompleteness`.
+6. `tests/compile/oracle-alignment.test.ts`: `gateCContract`'s O-004, the load-bearing proof that
+   substitution is necessary at all (its direction target appears nowhere as raw text in its check).
+
+```mermaid
+flowchart TD
+  DECL["declarations.ts<br/>checkRequirementLinkage,<br/>checkObservableSuccessCriterion"]
+  ORACLE["oracle-alignment.ts<br/>checkOracleChannel,<br/>checkOracleAlignment (post-substitution)"]
+  EXPR["expression-legality.ts<br/>shared walkExpression +<br/>five checks"]
+  IFACE["interface-inventory.ts<br/>checkInterfaceKind,<br/>checkDuplicateOperationSignature,<br/>checkUndeclaredMandatoryInput"]
+  WAIVER["waivers.ts<br/>checkWaiverCompleteness"]
+  EVIDRES2["evidence-resolution.ts (Step 12)<br/>makePointerDenotesCollection"]
+  PLANIDX2["plan-index.ts (Step 12)<br/>buildPlanIndex, parseEvidenceTarget"]
+
+  PLANIDX2 --> EXPR
+  PLANIDX2 --> IFACE
+  EVIDRES2 --> EXPR
+
+  subgraph NOTE["no ordering among these five modules, or against Step 12's two"]
+    DECL
+    ORACLE
+    EXPR
+    IFACE
+    WAIVER
+  end
+```
+
+**Story:** `_bmad-output/implementation-artifacts/4-2-the-ad-5-registry-as-code-and-the-structural-compile-checks.md`
+
+### Reference
 
 **Rules:**
 
@@ -946,20 +1080,6 @@ code, so two compilers can't invent two different answers for it.
   correct for the one code it names, and a contract invalid under two codes at once reports whichever
   a caller reaches first. One orchestration layer is a later story's job.
 
-**Read in this order:**
-
-1. `src/core/compile/declarations.ts`: `checkRequirementLinkage`, `checkObservableSuccessCriterion`.
-2. `src/core/compile/oracle-alignment.ts`: `substitutePointer`, `collectTargets`, `checkOracleChannel`,
-   `checkOracleAlignment`.
-3. `src/core/compile/expression-legality.ts`: the shared `walkExpression`, `checkOperandLegality`,
-   `checkRegexConstructs`, `checkQuantifierNesting`, `checkQuantifierOverNonCollection`,
-   `checkReferenceSetResolution`.
-4. `src/core/compile/interface-inventory.ts`: `checkInterfaceKind`,
-   `checkDuplicateOperationSignature`, `checkUndeclaredMandatoryInput`.
-5. `src/core/compile/waivers.ts`: `checkWaiverCompleteness`.
-6. `tests/compile/oracle-alignment.test.ts`: `gateCContract`'s O-004, the load-bearing proof that
-   substitution is necessary at all (its direction target appears nowhere as raw text in its check).
-
 **Watch out:**
 
 - Two functions can legitimately disagree with each other about which code fires first on one
@@ -971,32 +1091,13 @@ code, so two compilers can't invent two different answers for it.
   A pre-existing Epic 2 gap, named in this story's own AC 1 and left for a later story: closing it is
   out of Epic 4's stated scope.
 
-**Story:** `_bmad-output/implementation-artifacts/4-2-the-ad-5-registry-as-code-and-the-structural-compile-checks.md`
-
-```mermaid
-flowchart TD
-  DECL["declarations.ts<br/>checkRequirementLinkage,<br/>checkObservableSuccessCriterion"]
-  ORACLE["oracle-alignment.ts<br/>checkOracleChannel,<br/>checkOracleAlignment (post-substitution)"]
-  EXPR["expression-legality.ts<br/>shared walkExpression +<br/>five checks"]
-  IFACE["interface-inventory.ts<br/>checkInterfaceKind,<br/>checkDuplicateOperationSignature,<br/>checkUndeclaredMandatoryInput"]
-  WAIVER["waivers.ts<br/>checkWaiverCompleteness"]
-  EVIDRES2["evidence-resolution.ts (Step 12)<br/>makePointerDenotesCollection"]
-  PLANIDX2["plan-index.ts (Step 12)<br/>buildPlanIndex, parseEvidenceTarget"]
-
-  PLANIDX2 --> EXPR
-  PLANIDX2 --> IFACE
-  EVIDRES2 --> EXPR
-
-  subgraph NOTE["no ordering among these five modules, or against Step 12's two"]
-    DECL
-    ORACLE
-    EXPR
-    IFACE
-    WAIVER
-  end
-```
-
 ## Step 14 (epic4-story3): the last two stage-one AD-5 codes, a graph predicate over the interaction plan
+
+**In plain terms:** An author can hand the evaluator a script without ever writing "step one, step two", just by chaining
+calls so each waits on the last. The schema allows chaining on purpose, so the schema cannot be what
+stops this. This step measures the shape of the call plan five different ways at once, because each
+single measure has a disguise that beats it: a long chain hides from a width check, and sixty-four
+independent pairs hide from a depth check.
 
 **What:** one new module, `scripting-bound.ts`, two functions: `checkNestedTemporalClause` (a
 step's `after` names a step that itself has an `after`) and `checkScriptingBound` (five metrics
@@ -1008,6 +1109,25 @@ adversarial shapes each beat one single-dimension check: an eight-step chain nes
 one-level bound, caught by the depth check. Sixty-four independent `write`/`read` pairs are each
 exactly one level deep, so depth misses them; the disjoint-pair count catches them. Width guards a
 third shape, one step anchoring too many children, that neither example needs.
+
+**Read in this order:**
+
+1. `src/core/compile/scripting-bound.ts`: `parentOf`, `computeGraphMetrics`,
+   `checkNestedTemporalClause`, `checkScriptingBound`.
+2. `tests/compile/scripting-bound.test.ts`: the width/shared-anchor/disjoint-pair/step-count
+   boundary pairs, each proving exactly-at-bound passes and one-past throws.
+
+```mermaid
+flowchart TD
+  BOUND["scripting-bound.ts<br/>checkNestedTemporalClause,<br/>checkScriptingBound"]
+  PLANIDX3["plan-index.ts (Step 12)<br/>buildPlanIndex"]
+
+  PLANIDX3 --> BOUND
+```
+
+**Story:** `_bmad-output/implementation-artifacts/4-3-the-scripting-bound-graph-predicate-and-its-adversarial-fixtures.md`
+
+### Reference
 
 **Rules:**
 
@@ -1031,13 +1151,6 @@ third shape, one step anchoring too many children, that neither example needs.
   otherwise merge into one adjacency entry and corrupt the width/shared-anchor/disjoint-pair
   counts (found in review, fixture 20 pins it).
 
-**Read in this order:**
-
-1. `src/core/compile/scripting-bound.ts`: `parentOf`, `computeGraphMetrics`,
-   `checkNestedTemporalClause`, `checkScriptingBound`.
-2. `tests/compile/scripting-bound.test.ts`: the width/shared-anchor/disjoint-pair/step-count
-   boundary pairs, each proving exactly-at-bound passes and one-past throws.
-
 **Watch out:**
 
 - `plan-exceeds-scripting-bound`'s `artifactPath` is always `EvalContract.interactionPlan`, the
@@ -1045,17 +1158,13 @@ third shape, one step anchoring too many children, that neither example needs.
 - No orchestrating entry point or ordering guarantee exists yet between this and Story 4.2's
   fifteen checks. That's Story 4.4's job.
 
-**Story:** `_bmad-output/implementation-artifacts/4-3-the-scripting-bound-graph-predicate-and-its-adversarial-fixtures.md`
-
-```mermaid
-flowchart TD
-  BOUND["scripting-bound.ts<br/>checkNestedTemporalClause,<br/>checkScriptingBound"]
-  PLANIDX3["plan-index.ts (Step 12)<br/>buildPlanIndex"]
-
-  PLANIDX3 --> BOUND
-```
-
 ## Step 15 (epic4-story4): one compile entry point, one place that awaits, one layer gate
+
+**In plain terms:** Nineteen separate checks existed and nothing ran them together, so which complaint you got about a
+bad document depended on which check the caller happened to call. This step gives them one entry
+point and one fixed order. It also puts every call that waits on the outside world into a single
+function, and adds a script that reads every source file and fails when one reaches across a boundary
+the architecture forbids.
 
 **What:** `core/compile/compile.ts` calls all 19 checks in a fixed order.
 `application/compile.ts` parses unknown input and hands it to that stage.
@@ -1068,6 +1177,34 @@ bad contract reported depended on which check the caller happened to run. The la
 same problem: the architecture said `core/` may not import `ports/`, and the only thing enforcing it
 was a test that searched `core/seal/` for the text "core/compile" (a spelling real imports never
 use).
+
+**Read in this order:**
+
+1. `src/core/compile/compile.ts`: the 19 calls, in order.
+2. `src/application/compile.ts`: parse, default strict to true, delegate.
+3. `src/application/invoke-port.ts`: the seven numbered steps of a port call.
+4. `scripts/dependency-direction.ts`: `classifyLayer`, `isAllowedEdge`, `scanFile`.
+5. `tests/architecture/dependency-direction.test.ts`: every allowed and forbidden edge, written from
+   the story text, so the test does not check the checker against itself.
+
+```mermaid
+flowchart TD
+  APPC["application/compile.ts<br/>parse, default strict, delegate"]
+  CORE["core/compile/compile.ts<br/>19 checks, fixed order"]
+  IP["application/invoke-port.ts<br/>the only await"]
+  PORT["ports/port.ts<br/>PortMethod, BoundaryParser"]
+  GATE["check:layers<br/>scripts/dependency-direction.ts"]
+
+  APPC --> CORE
+  IP --> PORT
+  GATE -.enforces.-> APPC
+  GATE -.enforces.-> CORE
+  GATE -.enforces.-> IP
+```
+
+**Story:** `_bmad-output/implementation-artifacts/4-4-stages-as-pure-plan-and-reduce-pairs-with-one-orchestration-layer.md`
+
+### Reference
 
 **Rules:**
 
@@ -1092,15 +1229,6 @@ use).
 - Two registries now have a drift gate against the architecture document: `check:ad5-registry` for
   failure codes, `check:ad28-registry` for runtime fault codes.
 
-**Read in this order:**
-
-1. `src/core/compile/compile.ts`: the 19 calls, in order.
-2. `src/application/compile.ts`: parse, default strict to true, delegate.
-3. `src/application/invoke-port.ts`: the seven numbered steps of a port call.
-4. `scripts/dependency-direction.ts`: `classifyLayer`, `isAllowedEdge`, `scanFile`.
-5. `tests/architecture/dependency-direction.test.ts`: every allowed and forbidden edge, written from
-   the story text, so the test does not check the checker against itself.
-
 **Watch out:**
 
 - Wiring all 19 checks into one pipeline surfaced that `populatedContract`'s own `scopedResources`
@@ -1110,24 +1238,12 @@ use).
   when each producing stage lands.
 - `src/index.ts` is untouched. Story 6.5 publishes the library and CLI surface.
 
-**Story:** `_bmad-output/implementation-artifacts/4-4-stages-as-pure-plan-and-reduce-pairs-with-one-orchestration-layer.md`
-
-```mermaid
-flowchart TD
-  APPC["application/compile.ts<br/>parse, default strict, delegate"]
-  CORE["core/compile/compile.ts<br/>19 checks, fixed order"]
-  IP["application/invoke-port.ts<br/>the only await"]
-  PORT["ports/port.ts<br/>PortMethod, BoundaryParser"]
-  GATE["check:layers<br/>scripts/dependency-direction.ts"]
-
-  APPC --> CORE
-  IP --> PORT
-  GATE -.enforces.-> APPC
-  GATE -.enforces.-> CORE
-  GATE -.enforces.-> IP
-```
-
 ## Step 16 (epic5-story1): what a discipline rule applies to
+
+**In plain terms:** Seven quality rules apply to some documents and not others. Letting the author declare which ones
+apply turns the whole thing into self-assessment, which is why the earlier draft's "this rule does
+not apply here" label was deleted. This step works the answer out from what the author declared they
+were testing, so declaring less makes more rules apply.
 
 **What:** `core/coverage/rules.ts` names AD-20's seven discipline rules. `core/coverage/relevance.ts`
 answers one question per rule: does this contract have to satisfy it? The answer comes from
@@ -1138,6 +1254,36 @@ so. The Gate C contract put a `rule` label on every oracle and the schema delete
 reading that label back would turn fourteen decision procedures into self-assessment. These
 predicates read the declarations, so a contract that declares almost nothing comes out relevant on
 almost everything and under-declaring costs coverage.
+
+**Read in this order:**
+
+1. `src/core/coverage/rules.ts`: the seven identifiers and the derived predicate name.
+2. `src/core/coverage/relevance.ts`: seven predicates, then the map and the aggregate.
+3. `tests/schemas/fixtures/relevance-contracts.ts`: the three contracts every fixture clones, one
+   per declaration state.
+4. `tests/coverage/relevance.test.ts`: 56 numbered fixtures, checked against the truth table in the
+   story.
+5. `tests/coverage/rules.test.ts`: the vocabulary pinned against the Gate C contract's spellings.
+
+```mermaid
+flowchart TD
+  RULES["core/coverage/rules.ts<br/>DISCIPLINE_RULES, relevancePredicateId"]
+  REL["core/coverage/relevance.ts<br/>7 predicates, evaluateRelevance"]
+  CONTRACT["core/schemas/eval-contract.ts<br/>contract-level declarations"]
+  IFACE["core/schemas/interface.ts<br/>Operation"]
+  POINTER["core/schemas/pointer.ts<br/>TRANSPORT_CHANNELS"]
+  GAP["core/schemas/evidence-artifact.ts<br/>CoverageGap, filled in story 5.2"]
+
+  RULES --> REL
+  CONTRACT --> REL
+  IFACE --> REL
+  POINTER --> REL
+  REL -.names the predicate for.-> GAP
+```
+
+**Story:** `_bmad-output/implementation-artifacts/5-1-the-seven-relevance-predicates.md`
+
+### Reference
 
 **Rules:**
 
@@ -1156,16 +1302,6 @@ almost everything and under-declaring costs coverage.
 - Rule 5 reads `siblingGroups` at contract level. The operation list has no part in it.
 - Nothing throws and nothing blocks. A coverage gap is recorded and the artifact still ships.
 
-**Read in this order:**
-
-1. `src/core/coverage/rules.ts`: the seven identifiers and the derived predicate name.
-2. `src/core/coverage/relevance.ts`: seven predicates, then the map and the aggregate.
-3. `tests/schemas/fixtures/relevance-contracts.ts`: the three contracts every fixture clones, one
-   per declaration state.
-4. `tests/coverage/relevance.test.ts`: 56 numbered fixtures, checked against the truth table in the
-   story.
-5. `tests/coverage/rules.test.ts`: the vocabulary pinned against the Gate C contract's spellings.
-
 **Watch out:**
 
 - `structuredClone` keeps shared references. All four transport channels of the absent contract come
@@ -1175,25 +1311,12 @@ almost everything and under-declaring costs coverage.
 - One verdict covers the whole contract. One operation's missing declaration and another's present
   one land on the same answer, so Story 5.2 has to keep them apart.
 
-**Story:** `_bmad-output/implementation-artifacts/5-1-the-seven-relevance-predicates.md`
-
-```mermaid
-flowchart TD
-  RULES["core/coverage/rules.ts<br/>DISCIPLINE_RULES, relevancePredicateId"]
-  REL["core/coverage/relevance.ts<br/>7 predicates, evaluateRelevance"]
-  CONTRACT["core/schemas/eval-contract.ts<br/>contract-level declarations"]
-  IFACE["core/schemas/interface.ts<br/>Operation"]
-  POINTER["core/schemas/pointer.ts<br/>TRANSPORT_CHANNELS"]
-  GAP["core/schemas/evidence-artifact.ts<br/>CoverageGap, filled in story 5.2"]
-
-  RULES --> REL
-  CONTRACT --> REL
-  IFACE --> REL
-  POINTER --> REL
-  REL -.names the predicate for.-> GAP
-```
-
 ## Step 17 (epic5-story2): does the contract actually check it?
+
+**In plain terms:** Knowing a rule applies says nothing about whether anyone followed it. A document can be on the hook
+for all seven rules and check none of them. This step visits every place a rule applies and looks for
+a check that genuinely reads it. If an endpoint promises to return an id and an ok flag, and no single
+check looks at both, that is a gap, even though checks exist.
 
 **What:** `core/coverage/satisfaction.ts` answers the second half of each discipline rule. For every
 place a rule applies, is there an oracle that really reads it? The answer comes from the
@@ -1204,6 +1327,41 @@ contract can be relevant on all seven and still check nothing. These seven predi
 site and demand a witness. Say an operation declares required response keys `id` and `ok`. If no
 single oracle names both of them at one step, rule 2 is a gap, even though the contract does have an
 oracle pointed at that step.
+
+**Read in this order:**
+
+1. `src/core/coverage/satisfaction.ts`: the pointer join and the check walk at the top, then the
+   seven predicates, then the map and the aggregate.
+2. `src/core/coverage/rules.ts`: `satisfactionPredicateId`, the twin of the relevance one.
+3. `tests/coverage/fixtures/satisfaction-contracts.ts`: the one contract where all seven rules
+   apply and all seven are satisfied. Its header says which oracle witnesses which rule.
+4. `tests/coverage/satisfaction.test.ts`: fixtures 59 to 129, against the truth table in the story.
+5. `tests/coverage/rules.test.ts`: fixtures 130 and 131, pinning that no relevance name ever equals
+   a satisfaction name.
+
+```mermaid
+flowchart TD
+  RULES["core/coverage/rules.ts<br/>satisfactionPredicateId"]
+  REL["core/coverage/relevance.ts<br/>which rules apply"]
+  SAT["core/coverage/satisfaction.ts<br/>7 predicates, evaluateSatisfaction"]
+  ORACLE["core/schemas/oracle.ts<br/>direction, check"]
+  EXPR["core/schemas/expression.ts<br/>the check tree"]
+  PLANIDX["core/seal/plan-index.ts<br/>stepsUsing, operationOf"]
+  ALIGN["core/compile/oracle-alignment.ts<br/>substitutePointer"]
+  GAP["core/schemas/evidence-artifact.ts<br/>CoverageGap, filled in story 5.3"]
+
+  RULES --> SAT
+  ORACLE --> SAT
+  EXPR --> SAT
+  PLANIDX --> SAT
+  ALIGN --> SAT
+  REL -.agree on which rules have no site.-> SAT
+  SAT -.names the predicate for.-> GAP
+```
+
+**Story:** `_bmad-output/implementation-artifacts/5-2-the-seven-satisfaction-predicates.md`
+
+### Reference
 
 **Rules:**
 
@@ -1225,17 +1383,6 @@ oracle pointed at that step.
   calls under one `all` assert two facts and relate them to nothing.
 - Nothing throws, same as Step 16. A gap gets recorded and the artifact still ships.
 
-**Read in this order:**
-
-1. `src/core/coverage/satisfaction.ts`: the pointer join and the check walk at the top, then the
-   seven predicates, then the map and the aggregate.
-2. `src/core/coverage/rules.ts`: `satisfactionPredicateId`, the twin of the relevance one.
-3. `tests/coverage/fixtures/satisfaction-contracts.ts`: the one contract where all seven rules
-   apply and all seven are satisfied. Its header says which oracle witnesses which rule.
-4. `tests/coverage/satisfaction.test.ts`: fixtures 59 to 129, against the truth table in the story.
-5. `tests/coverage/rules.test.ts`: fixtures 130 and 131, pinning that no relevance name ever equals
-   a satisfaction name.
-
 **Watch out:**
 
 - A fixture asserting only `satisfied: true` can pass because the rule stopped having a site. Every
@@ -1248,28 +1395,12 @@ oracle pointed at that step.
 - `relevance.ts` is untouched on purpose. Fixture 67 pins that both halves agree on which rules have
   no site at all.
 
-**Story:** `_bmad-output/implementation-artifacts/5-2-the-seven-satisfaction-predicates.md`
-
-```mermaid
-flowchart TD
-  RULES["core/coverage/rules.ts<br/>satisfactionPredicateId"]
-  REL["core/coverage/relevance.ts<br/>which rules apply"]
-  SAT["core/coverage/satisfaction.ts<br/>7 predicates, evaluateSatisfaction"]
-  ORACLE["core/schemas/oracle.ts<br/>direction, check"]
-  EXPR["core/schemas/expression.ts<br/>the check tree"]
-  PLANIDX["core/seal/plan-index.ts<br/>stepsUsing, operationOf"]
-  ALIGN["core/compile/oracle-alignment.ts<br/>substitutePointer"]
-  GAP["core/schemas/evidence-artifact.ts<br/>CoverageGap, filled in story 5.3"]
-
-  RULES --> SAT
-  ORACLE --> SAT
-  EXPR --> SAT
-  PLANIDX --> SAT
-  ALIGN --> SAT
-  REL -.agree on which rules have no site.-> SAT
-  SAT -.names the predicate for.-> GAP
-```
 ## Step 18 (epic5-story3): the table is generated output
+
+**In plain terms:** A table of which rules are covered, kept by hand, goes stale the first time someone renames something,
+and nothing says a word. This step writes nineteen small documents covering every rule in every state,
+generates the published table from the very code the library ships, and fails the build when the
+committed table and the generated one differ by a byte.
 
 **What:** nineteen hand-written contracts covering all seven rules in all four declaration states, a
 pure builder that runs the fourteen predicates over them and renders a markdown document, and a
@@ -1279,25 +1410,6 @@ byte-exact drift check in CI.
 nothing notices. Here the document is generated from the same functions the library ships, so a rule
 that stops being covered fails the build. The worked example in this repo is the proof: it has
 disagreed with the code for months and no check ever said so.
-
-**Rules:**
-
-- Four declaration states: absent, explicitly empty, witnessed, unwitnessed. Seven rules times four
-  states is twenty-eight cells.
-- Absent and unwitnessed both answer relevant and not satisfied. The reason is what tells them
-  apart, so every fixture asserts the reason.
-- Not relevant plus not satisfied is impossible. A rule that applies nowhere is satisfied for free,
-  so the fourth combination has no contract and the document says so.
-- Nineteen contracts fill twenty-eight cells, because two rules can read the same declaration.
-- A corpus contract does not have to compile. Two of the nineteen do not: an empty operation list
-  means the plan names operations nothing declares.
-- The builder throws on an unfilled cell. Four checks: unique ids, every cell resolves, every cell
-  filled exactly once, and every cell's contract really produces the verdicts it claims.
-- The generator writes bytes; the checker rebuilds and compares. Neither can drift from the other,
-  because both call one function.
-- CI mutates a predicate name and asserts the check fails. A hand-kept table would survive that.
-- Nothing calls the predicates from `compile`. A gap never blocks, so wiring it into a stage that
-  throws would read as if it did.
 
 **Read in this order:**
 
@@ -1310,20 +1422,6 @@ disagreed with the code for months and no check ever said so.
 4. `scripts/generate-ad31-table.ts` and `scripts/check-ad31-table.ts`: write, and compare.
 5. `docs/ad31-coverage-predicates.generated.md`: the output. 133 matrix rows, 18 gap rows.
 6. `tests/coverage/corpus.test.ts`, `coverage.test.ts`, `table.test.ts`: fixtures 151 to 231.
-
-**Watch out:**
-
-- Do not import `core/compile/` into `table.ts`. `core/canonical/scan-json.ts` uses a constructor
-  parameter property, which Node's type stripper rejects, so both scripts would die at load.
-- `core/` outside `core/schemas/` may not import Zod, not even as a type. The `CoverageGap` and
-  `Severity` type aliases live in the schema files for that reason.
-- The corpus lives under `tests/`, so it never ships in `dist`. Both scripts import from `tests/`,
-  which is new in this repo and allowed.
-- Editing `README.md` makes `_bmad-output/shareable/` stale. Run `npm run build:shareable`.
-- One conjunct in `evaluateCoverage` cannot be caught by any test, because the case it guards
-  cannot happen today. It stays, with a comment saying which fixture would catch a change.
-
-**Story:** `_bmad-output/implementation-artifacts/5-3-the-contract-fixture-corpus-and-the-regenerated-table.md`
 
 ```mermaid
 flowchart TD
@@ -1350,7 +1448,49 @@ flowchart TD
   GEN --> DOC
   DOC -.byte for byte.-> CHECK
 ```
+
+**Story:** `_bmad-output/implementation-artifacts/5-3-the-contract-fixture-corpus-and-the-regenerated-table.md`
+
+### Reference
+
+**Rules:**
+
+- Four declaration states: absent, explicitly empty, witnessed, unwitnessed. Seven rules times four
+  states is twenty-eight cells.
+- Absent and unwitnessed both answer relevant and not satisfied. The reason is what tells them
+  apart, so every fixture asserts the reason.
+- Not relevant plus not satisfied is impossible. A rule that applies nowhere is satisfied for free,
+  so the fourth combination has no contract and the document says so.
+- Nineteen contracts fill twenty-eight cells, because two rules can read the same declaration.
+- A corpus contract does not have to compile. Two of the nineteen do not: an empty operation list
+  means the plan names operations nothing declares.
+- The builder throws on an unfilled cell. Four checks: unique ids, every cell resolves, every cell
+  filled exactly once, and every cell's contract really produces the verdicts it claims.
+- The generator writes bytes; the checker rebuilds and compares. Neither can drift from the other,
+  because both call one function.
+- CI mutates a predicate name and asserts the check fails. A hand-kept table would survive that.
+- Nothing calls the predicates from `compile`. A gap never blocks, so wiring it into a stage that
+  throws would read as if it did.
+
+**Watch out:**
+
+- Do not import `core/compile/` into `table.ts`. `core/canonical/scan-json.ts` uses a constructor
+  parameter property, which Node's type stripper rejects, so both scripts would die at load.
+- `core/` outside `core/schemas/` may not import Zod, not even as a type. The `CoverageGap` and
+  `Severity` type aliases live in the schema files for that reason.
+- The corpus lives under `tests/`, so it never ships in `dist`. Both scripts import from `tests/`,
+  which is new in this repo and allowed.
+- Editing `README.md` makes `_bmad-output/shareable/` stale. Run `npm run build:shareable`.
+- One conjunct in `evaluateCoverage` cannot be caught by any test, because the case it guards
+  cannot happen today. It stays, with a comment saying which fixture would catch a change.
+
 ## Step 19 (epic6-story1): ports, adapters, and a suite you can run
+
+**In plain terms:** Anything this package touches outside itself goes through a narrow, named opening: a clock, the
+filesystem, the network. That keeps the logic testable with fakes. But someone writing their own plug
+for one of those openings has no way to tell whether they got it right, and "call the underlying thing
+exactly once" is prose that nothing enforces. This step ships a suite they can run against their own
+code, which tells them by name which rule they broke.
 
 **What:** four port types, three adapters that implement them, a pure rule deciding which network
 address a probe is allowed to reach, and a conformance suite published as
@@ -1424,30 +1564,6 @@ the call path entirely and drives whatever claims to implement a port:
 `invokePort` goes through the same suite as a subject, on purpose. It passes five of the six and
 fails `prompt-abort`, which is the one place an adapter has to do more than the generic seam does.
 
-**Rules:**
-
-- The suite hands back a report. It cannot import the consumer's test runner, so `testing/` may not
-  import an external module or a Node builtin at all.
-- The suite never sees `core/probe/`. A suite sharing the subject's own decision procedure would
-  pass any subject that shared it too.
-- Every mechanism returns `unknown`. Give it a precise type and the adapter can build its response
-  from a value it already holds, so the response check can never fail.
-- Six assertions per port method, each id prefixed by the method name. Two of them count calls,
-  because a retry shows up on failure and not on success.
-- The adapters race the abort signal and `invokePort` does not. A mechanism that never settles makes
-  `invokePort` never settle, and an adapter is the thing that has to fix that.
-- Every spelling of one address reduces to a single string before anything is compared. `127.0.0.1`
-  and `::ffff:127.0.0.1` are one address; compare the text and you get two.
-- Reducing two spellings to one string widens the allowlist, so only the IPv4-mapped form does it.
-  `::127.0.0.1` is classified as loopback and still denied against an entry naming `127.0.0.1`.
-- `metadata` is decided before `link-local` and `private`. `169.254.169.254` sits inside
-  `169.254.0.0/16`, and calling it link-local hides the one denial an operator has to read.
-- Seven denial reasons, one fault code. A denied target throws `forbidden-target` and a cap throws
-  `budget-exhausted`. One says the contract aimed somewhere forbidden, the other says an allowed
-  target answered too much or too slowly.
-- A 500 is an observation. Throw on it and every seeded fault the pre-flight watches for goes
-  invisible.
-
 **Read in this order:**
 
 1. `src/core/schemas/port-messages.ts`: the request and response shape of every port method.
@@ -1465,23 +1581,6 @@ fails `prompt-abort`, which is the one place an adapter has to do more than the 
 9. `tests/adapters/probe-subject.ts`: a real loopback server and the adapter that talks to it.
 10. `tests/testing/conformance.test.ts`: one broken subject per assertion, each proving that
     assertion can actually fail.
-
-**Watch out:**
-
-- The probe adapter lives under `tests/`, which `tsconfig-build.json` excludes, so no network
-  adapter reaches `dist/`. That is the only reading under which AD-2 and AD-37 both hold.
-- `ports/` may not import Zod. The port files pull schema objects from `core/schemas` and use each
-  name in both type and value position, so a plain `import` is right there; `import type` breaks the
-  parser export.
-- A layer may import itself. A cross-layer edge the graph does not draw is still forbidden, so
-  nothing may import `cli/` or `testing/`.
-- The fixture server binds port 0 and reads the port back. A fixed port collides under parallel
-  workers and the failure looks like a policy bug.
-- A byte cap counts bytes. `setEncoding('utf8')` and `body.length` count UTF-16 code units, so a
-  256-byte cap lets 768 bytes of three-byte characters through.
-- Editing `README.md` makes `_bmad-output/shareable/` stale. Run `npm run build:shareable`.
-
-**Story:** `_bmad-output/implementation-artifacts/6-1-ports-and-the-published-conformance-suite.md`
 
 ```mermaid
 flowchart TD
@@ -1511,3 +1610,177 @@ flowchart TD
   AD --> CONF
   SUBJ --> PROBE
 ```
+
+**Story:** `_bmad-output/implementation-artifacts/6-1-ports-and-the-published-conformance-suite.md`
+
+### Reference
+
+**Rules:**
+
+- The suite hands back a report. It cannot import the consumer's test runner, so `testing/` may not
+  import an external module or a Node builtin at all.
+- The suite never sees `core/probe/`. A suite sharing the subject's own decision procedure would
+  pass any subject that shared it too.
+- Every mechanism returns `unknown`. Give it a precise type and the adapter can build its response
+  from a value it already holds, so the response check can never fail.
+- Six assertions per port method, each id prefixed by the method name. Two of them count calls,
+  because a retry shows up on failure and not on success.
+- The adapters race the abort signal and `invokePort` does not. A mechanism that never settles makes
+  `invokePort` never settle, and an adapter is the thing that has to fix that.
+- Every spelling of one address reduces to a single string before anything is compared. `127.0.0.1`
+  and `::ffff:127.0.0.1` are one address; compare the text and you get two.
+- Reducing two spellings to one string widens the allowlist, so only the IPv4-mapped form does it.
+  `::127.0.0.1` is classified as loopback and still denied against an entry naming `127.0.0.1`.
+- `metadata` is decided before `link-local` and `private`. `169.254.169.254` sits inside
+  `169.254.0.0/16`, and calling it link-local hides the one denial an operator has to read.
+- Seven denial reasons, one fault code. A denied target throws `forbidden-target` and a cap throws
+  `budget-exhausted`. One says the contract aimed somewhere forbidden, the other says an allowed
+  target answered too much or too slowly.
+- A 500 is an observation. Throw on it and every seeded fault the pre-flight watches for goes
+  invisible.
+
+**Watch out:**
+
+- The probe adapter lives under `tests/`, which `tsconfig-build.json` excludes, so no network
+  adapter reaches `dist/`. That is the only reading under which AD-2 and AD-37 both hold.
+- `ports/` may not import Zod. The port files pull schema objects from `core/schemas` and use each
+  name in both type and value position, so a plain `import` is right there; `import type` breaks the
+  parser export.
+- A layer may import itself. A cross-layer edge the graph does not draw is still forbidden, so
+  nothing may import `cli/` or `testing/`.
+- The fixture server binds port 0 and reads the port back. A fixed port collides under parallel
+  workers and the failure looks like a policy bug.
+- A byte cap counts bytes. `setEncoding('utf8')` and `body.length` count UTF-16 code units, so a
+  256-byte cap lets 768 bytes of three-byte characters through.
+- Editing `README.md` makes `_bmad-output/shareable/` stale. Run `npm run build:shareable`.
+
+## Step 20 (epic6-story2): pre-flight as plan, observation, and pure verdict
+
+**In plain terms:** before you trust a test rig, prove the rig works. Send it the same request
+twice with two different ids and check the two answers differ the way the contract said they would.
+If it hands back the same record both times, it was never reading the id, and every test that
+passed against it proved nothing. That is the check this step adds, and it runs before anything is
+scored: fail it and the run is thrown away instead of being written down as a result.
+
+**What:** three new contract declarations (a sensitivity witness per operation, a manifestation
+witness per seeded defect, one fixture reset), the compile checks that make them honest, a pure plan
+that turns them into probe requests, and a pure reducer that turns the answers into a verdict plus a
+digest of what the fixture was.
+
+**Why:** the only false gate this project ever recorded came from a broken fixture. The system under
+test ignored the identifier in the URL and returned the same record for every read, so every oracle
+passed and the run scored clean. Nothing in the pipeline asked whether the fixture could tell two
+inputs apart. Pre-flight asks first: send two reads with different identifiers, check the declared
+relation holds between the two answers, and invalidate the run when it does not.
+
+**The shape:**
+
+```mermaid
+flowchart TD
+  IN["contract + probes"]
+  PLANOUT["PreflightPlan<br/>legs + checks + reference sets"]
+  PORT["ports/environment-probe-port.ts<br/>probe"]
+  OBS["observations<br/>one per leg, keyed by probeId"]
+  OUT["PreflightVerdict<br/>passed + checks + fixtureDigest"]
+
+  subgraph pure["core/preflight: no await, no clock, no observation"]
+    PLAN["planPreflight"]
+    RED["reducePreflight"]
+  end
+
+  subgraph awaits["application/: the only layer that awaits a port"]
+    APP["runPreflight"]
+  end
+
+  IN --> PLAN
+  PLAN --> PLANOUT
+  PLANOUT --> APP
+  APP -->|one leg at a time| PORT
+  PORT --> OBS
+  OBS --> RED
+  PLANOUT --> RED
+  RED --> OUT
+```
+
+**Read in this order:**
+
+1. `src/core/schemas/sensitivity-witness.ts`: the three declarations and the inputs shape they share.
+2. `src/core/compile/sensitivity-witness.ts`: the three checks, each assigned to an existing failure
+   code because the registry is closed at twenty-one.
+3. `src/core/compile/expression-legality.ts`: the enumerator now walks witness relations too.
+4. `src/core/preflight/projection.ts`: what "the fixture" means, and the digest over it.
+5. `src/core/preflight/witness-evidence.ts`: one leg as the observation shape the resolver reads.
+6. `src/core/preflight/plan.ts`: which legs to send, in what order, and every check to answer.
+7. `src/core/preflight/reduce.ts`: the six check kinds and when each is satisfied, failed, or exempt.
+8. `src/application/preflight.ts`: parse, plan, await each leg in order, reduce, parse the verdict.
+9. `tests/preflight/fixtures/observations.ts`: the four-operation contract every pre-flight test
+   reads.
+
+```mermaid
+flowchart TD
+  SW["core/schemas/sensitivity-witness.ts<br/>witnesses + fixture reset"]
+  IFACE["core/schemas/interface.ts<br/>Operation.sensitivityWitness"]
+  PROBE["core/schemas/probe.ts<br/>Defect.manifestationWitness"]
+  EC["core/schemas/eval-contract.ts<br/>EvalContract.fixtureReset"]
+  CHK["core/compile/sensitivity-witness.ts<br/>declared, legality, leg ids"]
+  EL["core/compile/expression-legality.ts<br/>enumerator over witness relations"]
+  PROJ["core/preflight/projection.ts<br/>prune volatile, fixture digest"]
+  WE["core/preflight/witness-evidence.ts<br/>leg as Observation"]
+  PLAN["core/preflight/plan.ts<br/>legs + checks"]
+  RED["core/preflight/reduce.ts<br/>the six check kinds"]
+  APP["application/preflight.ts<br/>the one place that awaits"]
+  PORT["ports/environment-probe-port.ts<br/>probe"]
+
+  SW --> IFACE
+  SW --> PROBE
+  SW --> EC
+  IFACE --> CHK
+  EC --> CHK
+  IFACE --> EL
+  CHK --> PLAN
+  PROJ --> WE
+  WE --> RED
+  PLAN --> RED
+  PROJ --> RED
+  PLAN --> APP
+  RED --> APP
+  PORT --> APP
+```
+
+**Story:** `_bmad-output/implementation-artifacts/6-2-pre-flight-as-plan-observation-and-pure-verdict.md`
+
+### Reference
+
+**Rules:**
+
+- Every operation that declares a request key declares a witness. One that declares none is exempt,
+  and the exemption is recorded as a check.
+- The witness varies one channel: `body` where the operation changes state, `path` or `query` where
+  it does not. All four channels are validated, so a header credential fails compilation.
+- The relation is an ordinary AD-4 expression over two synthetic step ids, so the whole resolver is
+  reused and nothing in `core/evaluate/` changes.
+- A leg id shares one namespace with interaction-plan step ids. A collision makes a pointer resolve
+  against the wrong answer, so it fails compilation.
+- The two legs must differ on the channel they vary. A pair that sends the same thing twice
+  differentiates nothing.
+- A relation resolving `insufficient-evidence` fails. A check that examined nothing has established
+  nothing.
+- The digest covers `{ legId, interfaceId, operationId, status, body }` minus declared volatile
+  fields, sorted by leg id, so arrival order cannot change it. Headers are outside it: no declaration
+  can mark a header volatile, so a fixture echoing a request id would never look immutable.
+- `clean-control` reads only the control legs. AD-10's own example is two 404s from a good fixture.
+- The two seeded-fault checks are disjoint: one reads only clean legs, the other only the fault leg.
+  Fold them together and one answer maps to no outcome the schema can spell.
+
+**Watch out:**
+
+- `port-messages.ts` reads `HttpMethod` from `interface.ts`, and `interface.ts` now reads the
+  witness, so the two body unions moved to `probe-body.ts`. Import them from there and the cycle
+  stays broken.
+- A manifestation witness asks whether a seeded fault fired in the fixture. AD-40's defect signature
+  matches a finding against an observation, and it has not arrived yet.
+- The published probe schema carries the whole expression grammar now, so the constraint ledger holds
+  twelve arity entries per document, twenty-four in all.
+- `src/index.ts` may import `application/` and `core/schemas` only, so the plan-and-reduce pair is
+  off the barrel.
+- Editing `README.md` makes `_bmad-output/shareable/` stale. Run `npm run build:shareable`.

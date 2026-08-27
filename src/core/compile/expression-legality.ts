@@ -6,6 +6,7 @@ import { digestArtifact } from '../canonical/digest.ts'
 import { StructuralFailure } from '../failure-codes.ts'
 import type { EvalContract } from '../schemas/eval-contract.ts'
 import type { Expression, Operand, SetOperand } from '../schemas/expression.ts'
+import type { Operation } from '../schemas/interface.ts'
 import { JsonTypeName } from '../schemas/primitives.ts'
 import {
 	buildPlanIndex,
@@ -135,13 +136,54 @@ function walkExpression(
 	}
 }
 
-function forEachOracleCheck(
+/**
+ * One expression the contract declares, with the artifact path of its root and
+ * whatever it needs to resolve a pointer. An oracle check resolves a step
+ * through the interaction plan. A witness relation roots at a leg id, and
+ * `checkWitnessLegIdentifiers` keeps a leg id out of the plan, so a witness site
+ * carries its own operation.
+ */
+type ExpressionSite = {
+	readonly expression: Expression
+	readonly artifactPath: string
+	readonly witnessScope: {
+		readonly operation: Operation
+		readonly legIds: readonly string[]
+	} | null
+}
+
+/**
+ * Every expression the contract declares, oracle checks first and then each
+ * operation's sensitivity witness. Generalized from an oracle-only enumerator
+ * in Story 6.2: a witness relation that escaped these five checks would be a
+ * declaration that looks checked and is not, which is the defect class AD-10
+ * exists to catch.
+ */
+function forEachContractExpression(
 	contract: EvalContract,
-	visit: (check: Expression, oracleId: string) => void,
+	visit: (site: ExpressionSite) => void,
 ): void {
 	contract.oracles.forEach((oracle) => {
 		if (oracle.check === null) return
-		visit(oracle.check, oracle.id)
+		visit({
+			expression: oracle.check,
+			artifactPath: `EvalContract.oracles[id=${oracle.id}].check`,
+			witnessScope: null,
+		})
+	})
+	contract.permittedInterfaces.forEach((iface, interfaceIndex) => {
+		iface.operations.forEach((operation, operationIndex) => {
+			const witness = operation.sensitivityWitness
+			if (witness === null) return
+			visit({
+				expression: witness.relation,
+				artifactPath: `EvalContract.permittedInterfaces[${interfaceIndex}].operations[${operationIndex}].sensitivityWitness.relation`,
+				witnessScope: {
+					operation,
+					legIds: witness.legs.map((leg) => leg.legId),
+				},
+			})
+		})
 	})
 }
 
@@ -194,8 +236,8 @@ const artifactKey = (key: string): string =>
 
 /** Checks each operator's operands against its position-specific constraints. */
 export function checkOperandLegality(contract: EvalContract): void {
-	forEachOracleCheck(contract, (check, oracleId) => {
-		walkExpression(check, 0, 'check', {
+	forEachContractExpression(contract, (site) => {
+		walkExpression(site.expression, 0, '', {
 			onOperand: (operand, op, position, path) => {
 				const legal = OPERAND_LEGALITY[op]?.[String(position)]
 				if (legal === undefined) return
@@ -203,7 +245,7 @@ export function checkOperandLegality(contract: EvalContract): void {
 				if (!legal.has(kind)) {
 					throw new StructuralFailure(
 						'malformed-operator-expression',
-						`EvalContract.oracles[id=${oracleId}].${path}`,
+						`${site.artifactPath}${path}`,
 						`"${op}" does not accept a ${kind} operand at position ${position} (AD-4, AD-26)`,
 					)
 				}
@@ -215,7 +257,7 @@ export function checkOperandLegality(contract: EvalContract): void {
 				) {
 					throw new StructuralFailure(
 						'malformed-operator-expression',
-						`EvalContract.oracles[id=${oracleId}].${path}`,
+						`${site.artifactPath}${path}`,
 						'"ordering" accepts observed output only, never call-inputs (AD-4)',
 					)
 				}
@@ -309,14 +351,14 @@ function regexRejection(pattern: string): string | null {
 
 /** Rejects invalid regexes, partial anchors, backreferences, and lookbehind. */
 export function checkRegexConstructs(contract: EvalContract): void {
-	forEachOracleCheck(contract, (check, oracleId) => {
-		walkExpression(check, 0, 'check', {
+	forEachContractExpression(contract, (site) => {
+		walkExpression(site.expression, 0, '', {
 			onRegex: (pattern, path) => {
 				const rejection = regexRejection(pattern)
 				if (rejection !== null) {
 					throw new StructuralFailure(
 						'malformed-operator-expression',
-						`EvalContract.oracles[id=${oracleId}].${path}.pattern`,
+						`${site.artifactPath}${path}.pattern`,
 						`regex pattern "${pattern}" ${rejection}, a rejected construct (AD-4)`,
 					)
 				}
@@ -329,13 +371,13 @@ export function checkRegexConstructs(contract: EvalContract): void {
 
 /** Rejects nested quantifiers and covers-by-key inside a quantifier. */
 export function checkQuantifierNesting(contract: EvalContract): void {
-	forEachOracleCheck(contract, (check, oracleId) => {
-		walkExpression(check, 0, 'check', {
+	forEachContractExpression(contract, (site) => {
+		walkExpression(site.expression, 0, '', {
 			onQuantifier: (_expr, path, quantifierDepth) => {
 				if (quantifierDepth >= 1) {
 					throw new StructuralFailure(
 						'quantifier-nesting-exceeded',
-						`EvalContract.oracles[id=${oracleId}].${path}`,
+						`${site.artifactPath}${path}`,
 						"a quantifier appears inside another quantifier's predicate; quantifiers may not nest more than one level (AD-4)",
 					)
 				}
@@ -344,7 +386,7 @@ export function checkQuantifierNesting(contract: EvalContract): void {
 				if (quantifierDepth >= 1) {
 					throw new StructuralFailure(
 						'quantifier-nesting-exceeded',
-						`EvalContract.oracles[id=${oracleId}].${path}`,
+						`${site.artifactPath}${path}`,
 						"covers-by-key appears inside a quantifier's predicate, where it may never nest (AD-4)",
 					)
 				}
@@ -420,13 +462,27 @@ export function checkQuantifierOverNonCollection(contract: EvalContract): void {
 		contract.permittedInterfaces,
 		{ duplicateIds: 'unresolved' },
 	)
-	forEachOracleCheck(contract, (check, oracleId) => {
-		forEachQuantifierCollection(check, null, 'check', (pointer, path) => {
+	// A leg-rooted pointer cannot resolve through the plan index: a leg id
+	// colliding with a step id is itself a compile failure. Without the
+	// witness-scoped lookup below, this check silently no-ops on every legal
+	// witness, and the generalized enumerator buys four checks out of five.
+	const operationFor = (
+		site: ExpressionSite,
+		stepId: string,
+	): Operation | undefined => {
+		const scope = site.witnessScope
+		if (scope !== null) {
+			return scope.legIds.includes(stepId) ? scope.operation : undefined
+		}
+		const step = index.stepOf(stepId)
+		if (step === undefined) return undefined
+		return index.operationOf(step.operationId)
+	}
+	forEachContractExpression(contract, (site) => {
+		forEachQuantifierCollection(site.expression, null, '', (pointer, path) => {
 			const target = parseEvidenceTarget(pointer)
 			if (target.channel !== 'response-body') return
-			const step = index.stepOf(target.stepId)
-			if (step === undefined) return
-			const operation = index.operationOf(step.operationId)
+			const operation = operationFor(site, target.stepId)
 			if (operation === undefined) return
 			const firstToken = target.tail.length === 1 ? target.tail[0] : undefined
 			const declaredType =
@@ -440,7 +496,7 @@ export function checkQuantifierOverNonCollection(contract: EvalContract): void {
 			) {
 				throw new StructuralFailure(
 					'quantifier-over-non-collection',
-					`EvalContract.oracles[id=${oracleId}].${path}`,
+					`${site.artifactPath}${path}`,
 					`"${pointer}" is declared "${declaredType}" by operation "${operation.operationId}", not a collection (AD-4)`,
 				)
 			}
@@ -457,15 +513,15 @@ export function checkQuantifierOverNonCollection(contract: EvalContract): void {
 export function checkReferenceSetResolution(contract: EvalContract): void {
 	const declared = contract.referenceSets ?? {}
 	const isDeclared = (id: string): boolean => Object.hasOwn(declared, id)
-	forEachOracleCheck(contract, (check, oracleId) => {
+	forEachContractExpression(contract, (site) => {
 		const reject = (id: string, path: string): void => {
 			throw new StructuralFailure(
 				'unresolved-reference-set',
-				`EvalContract.oracles[id=${oracleId}].${path}`,
+				`${site.artifactPath}${path}`,
 				`referenceSet "${id}" is not declared on the contract (AD-26)`,
 			)
 		}
-		walkExpression(check, 0, 'check', {
+		walkExpression(site.expression, 0, '', {
 			onOperand: (operand, _op, _position, path) => {
 				if ('referenceSet' in operand && !isDeclared(operand.referenceSet)) {
 					reject(operand.referenceSet, path)

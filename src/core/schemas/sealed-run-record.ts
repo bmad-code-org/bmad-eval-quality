@@ -197,6 +197,8 @@ export const Observation = z.strictObject({
 		),
 })
 
+export type ObservedCallInputs = z.infer<typeof ObservedCallInputs>
+
 export type Observation = z.infer<typeof Observation>
 
 /**

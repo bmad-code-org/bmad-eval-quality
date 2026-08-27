@@ -65,6 +65,7 @@ function readOperation(operationId: string, pathTemplate: string): Operation {
 			collectionLocations: null,
 		},
 		volatilePointers: [],
+		sensitivityWitness: null,
 	}
 }
 
@@ -189,6 +190,7 @@ export const createThenReadBack: {
 						collectionLocations: null,
 					},
 					volatilePointers: ['/id'],
+					sensitivityWitness: null,
 				},
 				readOperation('read-widget', '/widgets/{widgetId}'),
 			],
@@ -510,6 +512,7 @@ export const threeStepSharedAfter: {
 						collectionLocations: null,
 					},
 					volatilePointers: ['/id'],
+					sensitivityWitness: null,
 				},
 				readOperation('read-one', '/ones/{id}'),
 				readOperation('read-two', '/twos/{id}'),
@@ -765,6 +768,7 @@ export const reverseAfterPair: {
 						collectionLocations: null,
 					},
 					volatilePointers: [],
+					sensitivityWitness: null,
 				},
 			],
 		},
@@ -860,6 +864,7 @@ export const outOfOrderBindingKeys: {
 						collectionLocations: null,
 					},
 					volatilePointers: [],
+					sensitivityWitness: null,
 				},
 			],
 		},

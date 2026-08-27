@@ -529,6 +529,7 @@ export const generateMutants = (
 						document,
 						occurrence.pointer,
 						error.schemaPath,
+						error.instancePath,
 					) && error.instancePath === evidence.instancePointer
 				)
 			return (
@@ -549,7 +550,12 @@ export const generateMutants = (
 				(error) =>
 					error.instancePath === evidence.instancePointer &&
 					siblingPointers.some((pointer) =>
-						pointerMatchesSchemaPath(document, pointer, error.schemaPath),
+						pointerMatchesSchemaPath(
+							document,
+							pointer,
+							error.schemaPath,
+							error.instancePath,
+						),
 					),
 			)
 			if (dirty) return false

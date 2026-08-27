@@ -327,7 +327,7 @@ export const evaluatorConfigurationFixture: EvaluatorConfiguration = {
 	},
 }
 
-const seededDefect: Extract<
+export const seededDefect: Extract<
 	Probe,
 	{ expectedClean: false }
 >['defects'][number] = {
@@ -337,6 +337,29 @@ const seededDefect: Extract<
 	severity: 'critical',
 	oracleEvidence: [publicArtifactReference],
 	source: 'controlled-mutation',
+	manifestationWitness: {
+		legId: 'patch-note-fault',
+		interfaceId: 'notes-api',
+		operationId: 'patch-note',
+		inputs: {
+			path: { noteId: 'n-1' },
+			query: {},
+			header: {},
+			body: { kind: 'json', value: { title: 'updated' } },
+		},
+		relation: {
+			op: 'not',
+			operands: [
+				{
+					op: 'equality',
+					operands: [
+						{ pointer: '/interactions/patch-note-fault/response-body/title' },
+						{ literal: 'updated' },
+					],
+				},
+			],
+		},
+	},
 }
 
 export const seededProbe: Probe = {

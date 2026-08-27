@@ -21,6 +21,10 @@ import {
 	publishedSchemaId,
 	serializePublishedDocument,
 } from '../../src/core/schemas/publish.ts'
+import {
+	pointerMatchesSchemaPath,
+	rootReadingCouldProduce,
+} from './published/keyword-occurrences.ts'
 
 const documents = publishedDocuments()
 
@@ -97,13 +101,13 @@ describe('the twelve published documents (AC 1)', () => {
 		// that silently stops walking is the failure this lock exists to catch.
 		expect(walked).toEqual({
 			'artifact-reference': 0,
-			'eval-contract': 5,
+			'eval-contract': 6,
 			'evaluator-configuration': 1,
 			'evidence-artifact': 3,
 			'isolation-manifest': 0,
 			'preflight-verdict': 0,
 			'private-artifact-manifest': 0,
-			probe: 1,
+			probe: 5,
 			rubric: 0,
 			'scoring-policy': 0,
 			'sealed-evaluator-brief': 0,
@@ -150,7 +154,7 @@ describe('the twelve published documents (AC 1)', () => {
 	})
 
 	// The whole delta between the raw output-mode export and the published
-	// document is `$id` plus the thirteen injections and nothing else, which is
+	// document is `$id` plus the twenty-five injections and nothing else, which is
 	// also the proof that every not-expressible entry injects nothing.
 	it.each(INTERCHANGE_ARTIFACT_KEYS)(
 		'%s differs from the raw export by $id and its inject entries alone',
@@ -201,11 +205,11 @@ describe('the exact serialisation (AC 3), asserted independently of the drift ch
 })
 
 describe('the ledger drives the injection, by stated address (AC 2)', () => {
-	// This 13/15 split is also pinned in differential.test.ts ("walks all
-	// thirteen inject entries") and arithmetically in constraint-ledger.test.ts;
-	// a ledger change updates all three together.
-	it('has thirteen inject entries to act on, and fifteen not-expressible left alone', () => {
-		expect(INJECT_ENTRIES).toHaveLength(13)
+	// This 25/15 split is also pinned in differential.test.ts ("walks all
+	// twenty-five inject entries") and arithmetically in
+	// constraint-ledger.test.ts; a ledger change updates all three together.
+	it('has twenty-five inject entries to act on, and fifteen not-expressible left alone', () => {
+		expect(INJECT_ENTRIES).toHaveLength(25)
 		expect(CONSTRAINT_LEDGER.length - INJECT_ENTRIES.length).toBe(15)
 	})
 
@@ -462,5 +466,85 @@ describe('the ledger drives the injection, by stated address (AC 2)', () => {
 				/fabricated-duplicate-branch.*2 oneOf branches/,
 			)
 		})
+	})
+})
+
+/**
+ * `pointerMatchesSchemaPath` tells a `$defs` reading of an ajv `schemaPath`
+ * apart from a root reading by asking whether the root reading could have
+ * produced an error at the reported instance path. AD-10's shapes made that
+ * ambiguity ordinary rather than hypothetical: `$defs/WitnessInputs` opens with
+ * the same `type`, `required`, and `additionalProperties` the eval-contract
+ * root carries, and `$defs/Expression/oneOf/*` shadows the probe root's own
+ * union.
+ *
+ * Exercised directly here rather than only through a twenty-second sweep, so a
+ * later edit to the applicator table fails on a named line.
+ */
+describe('the schema-path reading that disambiguates a $def from the root', () => {
+	it.each([
+		// [relative schema path, instance path, the root reading is possible]
+		['/additionalProperties', '', true],
+		['/additionalProperties', '/permittedInterfaces/0/operations/0', false],
+		['/required', '', true],
+		['/type', '/behaviors', false],
+		['/properties/behaviors/type', '/behaviors', true],
+		['/properties/behaviors/type', '/oracles', false],
+		['/properties/behaviors/items/required', '/behaviors/0', true],
+		['/properties/behaviors/items/required', '/behaviors', false],
+		// a composition step stays at the same instance node, index or not
+		['/oneOf', '', true],
+		['/oneOf/0/properties/expectedClean/const', '/expectedClean', true],
+		['/oneOf/0/properties/expectedClean/const', '/defects/0/x/op', false],
+		['/anyOf/1/type', '', true],
+		// propertyNames reports at the object, not at the key
+		[
+			'/properties/referenceSets/anyOf/0/propertyNames/pattern',
+			'/referenceSets',
+			true,
+		],
+		// a schema-valued additionalProperties descends one unnamed token
+		['/additionalProperties/type', '/anything', true],
+		['/additionalProperties/type', '', false],
+		// an unrecognised applicator widens rather than narrows
+		['/contains/type', '/whatever/deep/path', true],
+	])(
+		'reads %s at %s as root-possible: %s',
+		(relative, instancePath, expected) => {
+			expect(
+				rootReadingCouldProduce(relative as string, instancePath as string),
+			).toBe(expected)
+		},
+	)
+
+	// The two readings of one path, told apart only by the instance path. This
+	// is the pair that had no reachable mutant before the fix.
+	it('accepts the $defs reading of a path the root also names, and only for a deep instance', () => {
+		const document = documents['eval-contract'] as Record<string, unknown>
+		expect(document.additionalProperties).toBe(false)
+		expect(
+			pointerMatchesSchemaPath(
+				document,
+				'/$defs/WitnessInputs/additionalProperties',
+				'#/additionalProperties',
+				'/permittedInterfaces/0/operations/0/sensitivityWitness/legs/0/inputs',
+			),
+		).toBe(true)
+		expect(
+			pointerMatchesSchemaPath(
+				document,
+				'/$defs/WitnessInputs/additionalProperties',
+				'#/additionalProperties',
+				'',
+			),
+		).toBe(false)
+		expect(
+			pointerMatchesSchemaPath(
+				document,
+				'/additionalProperties',
+				'#/additionalProperties',
+				'',
+			),
+		).toBe(true)
 	})
 })

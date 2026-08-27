@@ -488,6 +488,54 @@ export const gateCContract = {
 						collectionLocations: null,
 					},
 					volatilePointers: ['/jobId'],
+					sensitivityWitness: {
+						witnessId: 'submit-export-sensitivity',
+						channel: 'body',
+						legs: [
+							{
+								legId: 'submit-witness-a',
+								inputs: {
+									path: {},
+									query: {},
+									header: {},
+									body: {
+										kind: 'json',
+										value: { datasetId: 'ds-1', filters: { region: 'eu' } },
+									},
+								},
+							},
+							{
+								legId: 'submit-witness-b',
+								inputs: {
+									path: {},
+									query: {},
+									header: {},
+									body: {
+										kind: 'json',
+										value: { datasetId: 'ds-2', filters: { region: 'us' } },
+									},
+								},
+							},
+						],
+						relation: {
+							op: 'not',
+							operands: [
+								{
+									op: 'deep-equality',
+									operands: [
+										{
+											pointer:
+												'/interactions/submit-witness-a/response-body/submittedFilters',
+										},
+										{
+											pointer:
+												'/interactions/submit-witness-b/response-body/submittedFilters',
+										},
+									],
+								},
+							],
+						},
+					},
 				},
 				{
 					operationId: 'get-export',
@@ -537,6 +585,48 @@ export const gateCContract = {
 						collectionLocations: null,
 					},
 					volatilePointers: ['/completedAt', '/jobId'],
+					sensitivityWitness: {
+						witnessId: 'get-export-sensitivity',
+						channel: 'path',
+						legs: [
+							{
+								legId: 'get-export-witness-a',
+								inputs: {
+									path: { jobId: 'job-a' },
+									query: {},
+									header: {},
+									body: { kind: 'absent' },
+								},
+							},
+							{
+								legId: 'get-export-witness-b',
+								inputs: {
+									path: { jobId: 'job-b' },
+									query: {},
+									header: {},
+									body: { kind: 'absent' },
+								},
+							},
+						],
+						relation: {
+							op: 'not',
+							operands: [
+								{
+									op: 'deep-equality',
+									operands: [
+										{
+											pointer:
+												'/interactions/get-export-witness-a/response-body/jobId',
+										},
+										{
+											pointer:
+												'/interactions/get-export-witness-b/response-body/jobId',
+										},
+									],
+								},
+							],
+						},
+					},
 				},
 				{
 					operationId: 'list-export-rows',
@@ -576,6 +666,48 @@ export const gateCContract = {
 						],
 					},
 					volatilePointers: ['/nextCursor'],
+					sensitivityWitness: {
+						witnessId: 'list-export-rows-sensitivity',
+						channel: 'query',
+						legs: [
+							{
+								legId: 'list-rows-witness-a',
+								inputs: {
+									path: { jobId: 'job-a' },
+									query: { limit: 1 },
+									header: {},
+									body: { kind: 'absent' },
+								},
+							},
+							{
+								legId: 'list-rows-witness-b',
+								inputs: {
+									path: { jobId: 'job-a' },
+									query: { limit: 2 },
+									header: {},
+									body: { kind: 'absent' },
+								},
+							},
+						],
+						relation: {
+							op: 'not',
+							operands: [
+								{
+									op: 'deep-equality',
+									operands: [
+										{
+											pointer:
+												'/interactions/list-rows-witness-a/response-body/rows',
+										},
+										{
+											pointer:
+												'/interactions/list-rows-witness-b/response-body/rows',
+										},
+									],
+								},
+							],
+						},
+					},
 				},
 			],
 		},
@@ -715,4 +847,5 @@ export const gateCContract = {
 		'Request and response pair for every call, in order, including every poll attempt.',
 	],
 	probeStepBound: null,
+	fixtureReset: null,
 } satisfies EvalContract
