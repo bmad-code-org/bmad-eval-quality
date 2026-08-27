@@ -1,6 +1,6 @@
 /**
  * The tokenizer behind `check:layers` and `check:lineage` (Story 6.4, AC 11
- * cases 51 through 55). A derailed tokenizer makes both gates report fewer
+ * cases 52 through 58). A derailed tokenizer makes both gates report fewer
  * findings, which their "finds nothing in the real tree" cases cannot see.
  */
 
@@ -19,7 +19,7 @@ const identifiers = (source: string): string[] =>
 		.map((token) => token.text)
 
 describe('scanTokens', () => {
-	// 51. Raw `scan()` reads the closing brace of `${…}` as a block brace, then
+	// 52. Raw `scan()` reads the closing brace of `${…}` as a block brace, then
 	// the template's tail as code, so the closing backtick opens a second
 	// template and swallows the rest of the file.
 	it('reads code after a template with a substitution', () => {
@@ -28,7 +28,7 @@ describe('scanTokens', () => {
 		).toEqual(['a', 'b', 'o', 'after'])
 	})
 
-	// 52
+	// 53
 	it('reads code after nested, tagged, and brace-bearing substitutions', () => {
 		expect(
 			identifiers('const a = `${`inner ${b}`} t`\nconst after = 1\n'),
@@ -50,27 +50,26 @@ describe('scanTokens', () => {
 		])
 	})
 
-	// 53. A backtick inside a regex literal opens a template that runs to end of
-	// file, and everything after it reads as template text. The scanner reaches
-	// EOF, so only the unterminated check catches it.
+	// 54. A literal running to end of file leaves every token after its opening
+	// quote reading as literal text.
 	it('throws on an unterminated literal', () => {
 		expect(() => scanTokens('const a = `runs to the end\n')).toThrow(
 			/unterminated literal at offset/,
 		)
-		expect(() =>
-			scanTokens('const re = /`/\nrecord.parentDigest = d\n'),
-		).toThrow(/unterminated literal at offset/)
+		expect(() => scanTokens('const a = "runs to the end\n')).toThrow(
+			/unterminated literal at offset/,
+		)
 	})
 
-	// 54. A `#` inside a regex literal makes the raw scanner emit a zero-width
-	// token forever. Without the progress guard both gates run out of heap.
+	// 55. A bare `#` makes the raw scanner emit a zero-width token forever.
+	// Without the progress guard both gates run out of heap.
 	it('throws on a token that makes no progress', () => {
-		expect(() => scanTokens('const r = /^#/\n')).toThrow(
+		expect(() => scanTokens('const x = # 1\n')).toThrow(
 			/made no progress at offset/,
 		)
 	})
 
-	// 55. `lineOf` reports the line a violation is on, and both gates print it.
+	// 56. `lineOf` reports the line a violation is on, and both gates print it.
 	// A token at column 0 is the boundary the binary search gets wrong.
 	it('reports the line of a token at column 0', () => {
 		const source = 'const a = 1\nparentDigest = 2\n'
@@ -78,5 +77,45 @@ describe('scanTokens', () => {
 		expect(lineOf(starts, 0)).toBe(1)
 		expect(lineOf(starts, source.indexOf('parentDigest'))).toBe(2)
 		expect(lineOf(starts, source.length - 1)).toBe(2)
+	})
+
+	// 57. A slash is division or a regex depending on the token before it. Left
+	// to the raw scanner every regex body leaks into the stream as code, which
+	// is where `#`, a backtick, an escaped slash and `{` each derailed a gate.
+	it('tells a regex from division by the previous token', () => {
+		expect(identifiers('const r = /^#/\nconst after = 1\n')).toEqual([
+			'r',
+			'after',
+		])
+		expect(identifiers('const r = /`/\nconst after = 1\n')).toEqual([
+			'r',
+			'after',
+		])
+		expect(
+			identifiers("const s = `${p.replace(/^\\//, '')}`\nconst after = 1\n"),
+		).toEqual(['s', 'p', 'replace', 'after'])
+		// `src/core/evaluate/operators.ts` carries this one, and the brace
+		// inside it shifted depth for every line after it.
+		expect(identifiers('const q = /[*+?{]/\nconst after = 1\n')).toEqual([
+			'q',
+			'after',
+		])
+		expect(identifiers('const d = a / b\nconst e = (a) / b / c\n')).toEqual([
+			'd',
+			'a',
+			'b',
+			'e',
+			'a',
+			'b',
+			'c',
+		])
+	})
+
+	// 58. The backstop for a desync neither other guard sees: a stream ending
+	// with an unbalanced brace or an open template.
+	it('throws when the stream ends unbalanced', () => {
+		expect(() => scanTokens('function f() {\n')).toThrow(
+			/ended with brace depth/,
+		)
 	})
 })

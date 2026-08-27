@@ -2,22 +2,24 @@
 //
 // TypeScript 7.0.2 ships no in-process parser, and spawning the native `tsgo`
 // binary is too slow for a lint gate, so `createScanner` is the surface left.
+// Two of its context-dependent decisions belong to the parser, and `scanTokens`
+// makes them:
 //
-// Raw `scan()` derails on a template literal with a substitution: it returns
-// the closing `}` of `${…}` as a `CloseBraceToken`, reads the template's tail
-// as code, and the closing backtick then opens a second template that swallows
-// the rest of the file. `scanTokens` re-scans that brace as a template
-// continuation, which is what the real parser does.
+// A slash is division or the start of a regex depending on what came before.
+// Left alone, every regex body leaks into the stream as code: `/^#/` emits a
+// zero-width token forever, a backtick opens a template that runs to end of
+// file, `\/` opens a line comment that eats the rest of its line, and `{`
+// inside a character class shifts brace depth for every line after it. The
+// re-scan below decides it the way the parser does, from the previous token.
 //
-// Two shapes the raw scanner reads wrongly, both of which throw here rather
-// than returning a stream a gate would trust. A `#` inside a regex literal
-// makes it emit a zero-width token forever, caught by the no-progress check. A
-// backtick inside a regex literal opens a template that runs to end of file,
-// caught by the unterminated check, because deciding slash-versus-regex needs
-// the parser's own context.
+// The closing `}` of a template substitution is a brace or a template
+// continuation. Left alone the template's tail reads as code and its closing
+// backtick opens a second template, so the file's whole tail is fiction.
 //
-// Two routes stay invisible to any token scanner and are the caller's problem:
-// a key built at runtime (`o['parent' + 'Digest']`) and one parsed out of JSON.
+// Three guards catch what is left: a token that makes no progress, an
+// unterminated literal, and a stream that ends with an unbalanced brace or an
+// open template. Each throws with an offset instead of returning a stream a
+// gate would trust.
 
 import {
 	computeLineStarts,
@@ -32,6 +34,27 @@ export type Token = {
 	readonly start: number
 }
 
+/** Token kinds that can end an expression, so a following `/` is division. */
+const ENDS_EXPRESSION = new Set<number>([
+	SyntaxKind.Identifier,
+	SyntaxKind.NumericLiteral,
+	SyntaxKind.BigIntLiteral,
+	SyntaxKind.StringLiteral,
+	SyntaxKind.NoSubstitutionTemplateLiteral,
+	SyntaxKind.TemplateTail,
+	SyntaxKind.RegularExpressionLiteral,
+	SyntaxKind.CloseParenToken,
+	SyntaxKind.CloseBracketToken,
+	SyntaxKind.CloseBraceToken,
+	SyntaxKind.ThisKeyword,
+	SyntaxKind.SuperKeyword,
+	SyntaxKind.TrueKeyword,
+	SyntaxKind.FalseKeyword,
+	SyntaxKind.NullKeyword,
+	SyntaxKind.PlusPlusToken,
+	SyntaxKind.MinusMinusToken,
+])
+
 export function scanTokens(source: string): Token[] {
 	const scanner = createScanner(/* skipTrivia */ true, undefined, source)
 	const tokens: Token[] = []
@@ -39,9 +62,17 @@ export function scanTokens(source: string): Token[] {
 	const templates: number[] = []
 	let depth = 0
 	let previousEnd = -1
+	let previousKind = -1
 	while (true) {
 		let kind = scanner.scan()
 		if (kind === SyntaxKind.EndOfFile) break
+		if (
+			(kind === SyntaxKind.SlashToken ||
+				kind === SyntaxKind.SlashEqualsToken) &&
+			!ENDS_EXPRESSION.has(previousKind)
+		) {
+			kind = scanner.reScanSlashToken()
+		}
 		const end = scanner.getTokenEnd()
 		if (end === previousEnd) {
 			throw new Error(
@@ -67,12 +98,18 @@ export function scanTokens(source: string): Token[] {
 			}
 		}
 		if (kind === SyntaxKind.TemplateHead) templates.push(depth)
+		previousKind = kind
 		tokens.push({
 			kind,
 			text: scanner.getTokenText(),
 			value: scanner.getTokenValue(),
 			start: scanner.getTokenStart(),
 		})
+	}
+	if (depth !== 0 || templates.length > 0) {
+		throw new Error(
+			`token scan ended with brace depth ${depth} and ${templates.length} open template(s); the stream desynced somewhere in this file`,
+		)
 	}
 	return tokens
 }

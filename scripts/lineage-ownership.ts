@@ -61,8 +61,52 @@ const TYPE_DECLARERS = new Set<number>([
 	SyntaxKind.InterfaceKeyword,
 ])
 
+/**
+ * What a type annotation puts after the colon. A member given one of these
+ * declares a shape and mints nothing.
+ */
+const TYPE_VALUES = new Set([
+	'string',
+	'number',
+	'boolean',
+	'unknown',
+	'any',
+	'never',
+	'void',
+	'object',
+	'symbol',
+	'bigint',
+	'Array',
+	'ReadonlyArray',
+	'Record',
+	'readonly',
+])
+
 /** Where a bare `parentDigest` or `revisionCount` token sits. */
 type Enclosure = 'value-literal' | 'type-literal' | 'read'
+
+/**
+ * True when the token at `index` starts a member of the literal around it.
+ * Biome writes TS type members newline-separated with no separator and often
+ * behind `readonly`, so a line break counts alongside `{`, `,` and `;`.
+ */
+function opensMember(
+	tokens: readonly Token[],
+	lines: readonly number[],
+	index: number,
+): boolean {
+	const previous = tokens[index - 1]
+	if (previous === undefined) return false
+	if (
+		previous.kind === SyntaxKind.OpenBraceToken ||
+		previous.kind === SyntaxKind.CommaToken ||
+		previous.kind === SyntaxKind.SemicolonToken ||
+		previous.kind === SyntaxKind.ReadonlyKeyword
+	) {
+		return true
+	}
+	return (lines[index - 1] ?? 0) < (lines[index] ?? 0)
+}
 
 /**
  * Walks back to the nearest unmatched opening bracket. A `{` is a literal, and
@@ -70,7 +114,11 @@ type Enclosure = 'value-literal' | 'type-literal' | 'read'
  * literal. A `{` a binder introduced is a destructuring pattern, and a `(` or
  * `[` reached first is a parameter list or an index; both are reads.
  */
-function enclosureOf(tokens: readonly Token[], index: number): Enclosure {
+function enclosureOf(
+	tokens: readonly Token[],
+	lines: readonly number[],
+	index: number,
+): Enclosure {
 	let braces = 0
 	let parens = 0
 	let brackets = 0
@@ -86,7 +134,14 @@ function enclosureOf(tokens: readonly Token[], index: number): Enclosure {
 		} else if (kind === SyntaxKind.OpenBraceToken && braces-- === 0) {
 			const before = tokens[i - 1]?.kind ?? -1
 			if (BINDERS.has(before)) return 'read'
-			if (before === SyntaxKind.ColonToken) return 'type-literal'
+			// A `{` after a colon is a type annotation, unless the name before
+			// that colon is itself a member: `lineage: { parentDigest: null }`
+			// is a nested value.
+			if (before === SyntaxKind.ColonToken) {
+				return opensMember(tokens, lines, i - 2)
+					? 'value-literal'
+					: 'type-literal'
+			}
 			return declaresType(tokens, i) ? 'type-literal' : 'value-literal'
 		}
 	}
@@ -121,6 +176,7 @@ function declaresType(tokens: readonly Token[], open: number): boolean {
  */
 function writeKind(
 	tokens: readonly Token[],
+	lines: readonly number[],
 	index: number,
 ): 'assignment' | 'literal' | 'type' | undefined {
 	const next = tokens[index + 1]?.kind
@@ -133,16 +189,10 @@ function writeKind(
 	) {
 		return undefined
 	}
-	// A member opens a literal or follows a comma. `return revisionCount }` and
-	// `[parentDigest, x]` are uses of a name already bound elsewhere.
-	const previous = tokens[index - 1]?.kind
-	if (
-		previous !== SyntaxKind.OpenBraceToken &&
-		previous !== SyntaxKind.CommaToken
-	) {
-		return undefined
-	}
-	switch (enclosureOf(tokens, index)) {
+	// `return revisionCount }` and `[parentDigest, x]` use a name bound
+	// elsewhere, so only a member start reaches the enclosure walk.
+	if (!opensMember(tokens, lines, index)) return undefined
+	switch (enclosureOf(tokens, lines, index)) {
 		case 'value-literal':
 			return 'literal'
 		case 'type-literal':
@@ -152,6 +202,17 @@ function writeKind(
 	}
 }
 
+/**
+ * True when this member is the shape rule 4 looks for: a field given a value.
+ * A shorthand binds a name and an annotation declares a shape, so neither can
+ * stand in for the write the AD-24 table says a module owes.
+ */
+function mints(tokens: readonly Token[], index: number): boolean {
+	if (tokens[index + 1]?.kind !== SyntaxKind.ColonToken) return false
+	const value = tokens[index + 2]
+	return value !== undefined && !TYPE_VALUES.has(value.value)
+}
+
 function scanFile(
 	file: string,
 	source: string,
@@ -159,13 +220,14 @@ function scanFile(
 ): Set<string> {
 	const tokens = scanTokens(source)
 	const lineStarts = computeLineStarts(source)
+	const lines = tokens.map((token) => lineOf(lineStarts, token.start))
 	const permitted = isPermitted(file)
 	const written = new Set<string>()
 
 	for (let i = 0; i < tokens.length; i++) {
 		const token = tokens[i]
 		if (token === undefined) continue
-		const line = lineOf(lineStarts, token.start)
+		const line = lines[i] ?? 1
 
 		// A string spelling a lineage field reaches it through a computed key, a
 		// bracket assignment, `Object.defineProperty`, or `Reflect.set`. All four
@@ -187,11 +249,11 @@ function scanFile(
 		if (token.kind !== SyntaxKind.Identifier) continue
 
 		if (LINEAGE_FIELDS.has(token.value)) {
-			const kind = writeKind(tokens, i)
+			const kind = writeKind(tokens, lines, i)
 			if (kind === undefined) continue
-			// A type position declares the field and mints nothing, so it never
-			// satisfies the missing-write rule below.
-			if (kind !== 'type') written.add(token.value)
+			if (kind === 'assignment' || (kind === 'literal' && mints(tokens, i))) {
+				written.add(token.value)
+			}
 			if (permitted) continue
 			violations.push({
 				file,

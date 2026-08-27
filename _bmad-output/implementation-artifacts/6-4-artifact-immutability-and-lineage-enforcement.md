@@ -53,8 +53,8 @@ vocabulary that says which of three ways a chain failed.
 | `tests/lineage/stage-table.test.ts` | test | cases 1 through 10 |
 | `tests/lineage/freeze.test.ts` | test | cases 11 through 15 |
 | `tests/lineage/chain.test.ts` | test | cases 16 through 40 |
-| `tests/architecture/lineage-ownership.test.ts` | test | cases 41 through 50 |
-| `tests/architecture/token-scan.test.ts` | test | cases 51 through 55 |
+| `tests/architecture/lineage-ownership.test.ts` | test | cases 41 through 51 |
+| `tests/architecture/token-scan.test.ts` | test | cases 52 through 58 |
 
 **Edited files:**
 
@@ -626,9 +626,11 @@ and any file in `LINEAGE_WRITER_MODULES`. It reports five things:
    `revisionCount` followed by **any assignment operator** (`=` through `&&=`, the whole
    `FirstAssignment`–`LastAssignment` range) is an in-place assignment, which is AD-29's literal
    subject. The same identifier is a declaration when it **opens a member** of an object or type
-   literal: the token before it is `{` or `,` and the token after it is `:`, `,` or `}`. A read
-   through a dot (`parent.revisionCount + 1`) is neither, and so is a name bound by a destructuring
-   and used later, which is how `emit` will read the two fields.
+   literal and the token after it is `:`, `,` or `}`. A member opens after `{`, `,`, `;`,
+   `readonly`, or a line break, because this repository's formatter writes type members
+   newline-separated with no separator. A read through a dot (`parent.revisionCount + 1`) is
+   neither, and so is a name bound by a destructuring and used later, which is how `emit` will read
+   the two fields.
 2. **A string spelling a lineage field outside the permitted paths.** A computed key
    (`{ ['parentDigest']: d }`), a bracket assignment, `Object.defineProperty`, and `Reflect.set` all
    reach the field through a string and are indistinguishable at this level, so any of them is
@@ -638,12 +640,13 @@ and any file in `LINEAGE_WRITER_MODULES`. It reports five things:
    call, the import, and an aliased import (`import { reviseArtifact as mint }`), which a call-site
    rule alone would miss.
 4. **A missing write inside the allowlist.** Every `LINEAGE_WRITER_MODULES` file **that is present
-   in the input map** must contain both fields as **value** positions. Deleting `parentDigest: null`
-   from `seal.ts` would otherwise pass every check in the repository. A type position declares the
-   field and mints nothing, so it never satisfies this rule even though rule 1 still reports it;
-   without that split, one type annotation naming both fields lets a gutted writer module through.
-   The "present in the map" clause is what keeps the synthetic-source-map cases writable; without it
-   every one of them gains four spurious violations.
+   in the input map** must contain both fields in the shape that mints: the field, a `:`, and a
+   value that is not a type name. Deleting `parentDigest: null` from `seal.ts` would otherwise pass
+   every check in the repository. Rule 1 still reports a shorthand and a type member; neither counts
+   here, because neither mints, and a gutted writer module can otherwise pass on one type
+   annotation, one destructured parameter, or one type literal reached through `<…>`. The "present
+   in the map" clause is what keeps the synthetic-source-map cases writable; without it every one of
+   them gains four spurious violations.
 5. **An allowlist entry with no file, on a whole-tree scan.** The wrapper passes `wholeTree: true`
    and a synthetic map passes `false`; on a whole-tree scan an unmatched entry is a violation, which
    is what catches a rename that silently empties the allowlist. Decision 10.
@@ -651,9 +654,11 @@ and any file in `LINEAGE_WRITER_MODULES`. It reports five things:
 **Which literal a member sits in is decided by the nearest unmatched opening bracket**, found by a
 bounded backward walk. A `{` introduced by `const`, `let`, `var`, or `import` is a binding pattern
 and its names are reads. A `(` or `[` reached first is a parameter list or an index, also a read. A
-`{` preceded by `:`, or one whose statement carries `type` or `interface`, is a type literal.
+`{` whose statement carries `type` or `interface` is a type literal, and so is one preceded by `:`
+**unless the name before that colon is itself a member**: `lineage: { parentDigest: null }` is a
+nested value, and reading it as a type would fail a writer module that nested its own two fields.
 Anything else is a value literal. An unresolved shape within the window is reported, which is the
-branch a parameter list longer than the window reaches; case 50.
+branch a parameter list longer than the window reaches; case 51.
 
 **A type literal is reported and does not count as minting.** `type X = { revisionCount: number }`
 in an unpermitted file is a violation, because a type redeclaring a lineage field outside
@@ -667,9 +672,9 @@ implied away: a key built at runtime (`o['parent' + 'Digest']`) and one parsed o
 destructured parameter carries no token-level marker separating it from an object-literal argument,
 so it is reported; case 48 records that too.
 
-The tokenizer throws on the two source shapes it cannot read: a token that makes no progress, and
-an unterminated literal. The second is what stops a backtick inside a regex literal from opening a
-template that swallows the rest of a file and leaves both gates blind past that point.
+The tokenizer's own contract is that it refuses rather than guesses. It decides regex-versus-division
+the way the parser does and throws on three shapes it cannot read: a token that makes no progress,
+an unterminated literal, and a stream that ends with an unbalanced brace or an open template.
 
 **`scripts/check-lineage-ownership.ts`** is the wrapper: `discoverSourceFiles` →
 `scanLineageWrites(files, { wholeTree: true })` → one sorted `console.error` per violation in the
@@ -704,7 +709,7 @@ Nothing else in the file changes. `CompileOptions`, `CompileStage`, `SealStage`,
 
 ### AC 11: tests
 
-Fifty-five numbered cases across five files. Every rule is verified by reverting it locally and
+Fifty-eight numbered cases across five files. Every rule is verified by reverting it locally and
 confirming that exact test goes red; a case that stays green under a reverted rule pins nothing.
 
 **`tests/lineage/stage-table.test.ts`:**
@@ -790,8 +795,8 @@ confirming that exact test goes red; a case that stays green under a reverted ru
 41. A write in each of the three permitted classes produces no violation.
 42. A write in an unpermitted file produces one violation per field, naming the field and the line.
 43. An allowlist file present in the map and missing one field produces one violation; missing both
-    produces two; and a file whose only mention of both fields is a type annotation still owes both
-    writes.
+    produces two; and a file whose only mention of both fields is a type annotation, a destructured
+    parameter, a generic argument, or an `extends` clause still owes both writes.
 44. An allowlist entry absent from a whole-tree scan produces one violation, and the same entry
     absent from a synthetic map does not.
 45. `reviseArtifact` called, imported, and imported under an alias each produce one violation.
@@ -800,23 +805,30 @@ confirming that exact test goes red; a case that stays green under a reverted ru
     produce one violation.
 48. Reads produce nothing: a dotted read, a dotted read inside an object literal, a destructuring
     binding, a parameter annotation, a name bound by a destructuring and used later, and a named
-    import. A type alias produces one violation, and so does a destructured parameter.
+    import. A type alias produces one violation, and so does a destructured parameter; the
+    newline-separated and `readonly`-prefixed forms this repository's formatter writes produce two.
 49. A real-tree scan through `discoverSourceFiles` returns zero violations.
-50. A parameter list longer than the lookback window reaches the fail-closed fallback and reports.
+50. A nested value literal (`lineage: { parentDigest: null }`) reads as a value in both directions:
+    reported in an unpermitted file, and satisfying the minting rule in a writer module.
+51. A parameter list longer than the lookback window reaches the fail-closed fallback and reports.
 
 **`tests/architecture/token-scan.test.ts`** — the shared tokenizer, which two gates now depend on
 and which neither can test on its own, because a derailed tokenizer produces *fewer* findings and a
 "finds nothing in the real tree" case cannot see that:
 
-51. Code after a template with one substitution is still tokenized.
-52. The same for a nested template, a tagged template, an object literal inside `${}`, and a `"}"`
+52. Code after a template with one substitution is still tokenized.
+53. The same for a nested template, a tagged template, an object literal inside `${}`, and a `"}"`
     string inside `${}`. Deleting the `depth--` branch must make the object-literal arm go red.
-53. An unterminated literal throws with the offset, including the backtick-inside-a-regex shape that
-    reaches end of file and so slips past the no-progress guard.
-54. A source that makes the raw scanner emit a zero-width token forever throws with the offset.
+54. An unterminated literal throws with the offset, for a template and for a string.
+55. A source that makes the raw scanner emit a zero-width token forever throws with the offset.
     Reverting this guard hangs the file rather than failing it, which is the point.
-55. `lineOf` reports the right line for a token at column 0, the boundary its binary search gets
+56. `lineOf` reports the right line for a token at column 0, the boundary its binary search gets
     wrong and the number both gates print on every violation.
+57. A regex is told from division by the token before the slash: `/^#/`, a backtick, an escaped
+    slash inside a template substitution, and `/[*+?{]/` all tokenize as regexes, while `a / b` and
+    `(a) / b / c` stay division.
+58. A stream ending with an unbalanced brace throws. This is the backstop for a desync neither
+    other guard sees.
 
 ### AC 12: docs
 
@@ -846,7 +858,7 @@ Filled from actual command output.
 | Check | Before | After |
 | --- | --- | --- |
 | `npm run validate` | passes | passes |
-| `npm run test` | 68 files / 2563 tests | 73 files / 2621 tests |
+| `npm run test` | 68 files / 2563 tests | 73 files / 2624 tests |
 | `npm run check:layers` | 83 files, 0 violations | 86 files, 0 violations |
 | `npm run check:lineage` | does not exist | 86 files, 0 violations |
 | `npm run check:schemas` | 12 documents match | 12 documents match, byte-identical |
@@ -1027,12 +1039,19 @@ been scanning truncated streams since Story 6.1: with a template-bearing file, a
 placed after it was invisible. On an injected corpus the new scanner's findings are a strict
 superset of the old one's, 70 against 0 on the templates-then-forbidden-import case.
 
-Two limits are documented in that module rather than hidden. A `#` inside a regex literal makes the
-raw scanner emit a zero-width token forever, so `scanTokens` throws with the offset; without the
-guard both gates run out of heap. And a backtick inside a regex literal still opens a template,
-because deciding slash-versus-regex needs the parser's own context, so a file carrying one is
-scanned blind past that point. No file under `src/` has either shape today, and cases 50 through 53
-are what stop the tokenizer regressing silently.
+The first draft of that module documented two limits instead of closing them, and a second peer
+round showed the documentation was the defect. Every one of them — `#`, a backtick, an escaped
+slash, a `{` inside a character class — is the same root cause: the scanner cannot tell division
+from a regex, so each regex body leaks its characters into the stream as code. `src/core/evaluate/
+operators.ts:168` carries `/[*+?{]/`, and that brace shifted brace depth for every line after it on
+a file both gates scan. A regex inside a template substitution went further and silently swallowed
+the rest of its file, so a lineage write after one was invisible.
+
+`scanTokens` now decides regex-versus-division the way the parser does, from the previous token, and
+196 repository files tokenize clean where five used to throw. Three guards remain as backstops and
+each throws with an offset: a token that makes no progress, an unterminated literal, and a stream
+ending with an unbalanced brace or an open template. Cases 52 through 58 are what stop the tokenizer
+regressing silently.
 
 **14. The scanner's reach is set by how a lineage field can actually be set, not by one token shape.**
 The first draft matched an identifier followed by a colon. That misses every compound and logical
@@ -1397,6 +1416,45 @@ the caller at any of the four freeze sites.
 
 **Mutation coverage from this round:** eight more rules reverted one at a time with the expected
 case going red each time, which brings the story's total to 45.
+
+### Round two
+
+The peer re-ran its own round-one fixtures against the fixed tree, confirmed all eight closed, and
+found six more. Two were HIGH and one of those was live in the repository.
+
+1. **A regex inside a template substitution silently blinded both gates for the rest of a file**
+   (HIGH). Traced token by token: `/^\//` leaks its escaped slash, the following `//` opens a line
+   comment that eats to end of line, the substitution's `}` is then re-scanned as a template tail
+   that swallows the next block, and whether the file eventually throws or goes quiet is luck about
+   where the swallow lands. A lineage write after such a line returned nothing. The unterminated
+   guard caught only the subset that happened to end in an unterminated literal.
+2. **`src/core/evaluate/operators.ts:168` desynced the tokenizer on the real tree** (HIGH).
+   `/[*+?{]/` emits its brace as an `OpenBraceToken`, so brace depth ran +1 from that line to end of
+   file on a file both gates scan. Nothing was lost yet, and the property case 53 pins was already
+   false on the repository.
+
+   One change closes both, and it is the root cause of every derail the story had documented as a
+   limit: `scanTokens` re-scans a slash whose previous token cannot end an expression. Measured
+   after: 196 repository files tokenize clean where five threw, `a / b` still reads as division, and
+   every file satisfies an end-of-stream balance invariant that `operators.ts` did not. That
+   invariant is now the third guard.
+3. **Rule 4 was still satisfiable by a module that mints nothing** (MEDIUM). A destructured
+   parameter, a type literal inside `Array<…>`, and one inside an `extends` clause each let a gutted
+   `seal.ts` pass, because all three classify as declarations and declarations fed the count. The
+   count now takes the minting shape: field, colon, a value that is not a type name.
+4. **A nested value literal read as a type** (MEDIUM). `lineage: { parentDigest: null }` classified
+   as a type position, so a writer module that nested its two fields under a sub-object would have
+   failed its own gate with the wrong reason on the line. A `{` after a colon is a type only when
+   the name before that colon is not itself a member.
+5. **The type rule missed this repository's own formatting** (MEDIUM). Requiring `{` or `,` before a
+   member start, which is how round one's false-positive cure was written, meant a type whose
+   members are newline-separated and `readonly`-prefixed scanned to nothing — including
+   `chain.ts`'s own `LineageFields` block. A member start now also follows `;`, `readonly`, and a
+   line break.
+6. **The unterminated guard's refusal set was wider than its header described** (LOW), and moot once
+   the re-scan landed: every shape it had been refusing now tokenizes.
+
+Six more rules mutation-verified, which brings the story's total to 51.
 
 ## Dev Agent Record
 

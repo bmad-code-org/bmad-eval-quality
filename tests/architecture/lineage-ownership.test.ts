@@ -1,5 +1,5 @@
 /**
- * AD-29's ownership scanner (Story 6.4, AC 11 cases 41 through 50). Synthetic
+ * AD-29's ownership scanner (Story 6.4, AC 11 cases 41 through 51). Synthetic
  * source maps for the rules, one real-tree scan at the end, the same shape
  * `dependency-direction.test.ts` uses.
  */
@@ -57,15 +57,32 @@ describe('the lineage-ownership scanner', () => {
 		const none = synthetic({ [SEAL]: 'export const seal = () => 1\n' })
 		expect(none).toHaveLength(2)
 
-		// A type position declares the field and mints nothing, so it cannot
-		// stand in for the write the table says this module owes.
-		const typeOnly = synthetic({
-			[SEAL]:
-				'function lineageOf(x: { parentDigest: string | null; revisionCount: number }) {\n\treturn x\n}\n',
-		})
+		// Four shapes that name both fields and mint neither, so none of them
+		// stands in for the write the table says this module owes.
+		const owed = (source: string) =>
+			synthetic({ [SEAL]: source })
+				.filter((each) => each.rule.includes('writes none'))
+				.map((each) => each.subject)
+				.sort()
+		const both = ['parentDigest', 'revisionCount']
 		expect(
-			typeOnly.filter((each) => each.rule.includes('writes none')),
-		).toHaveLength(2)
+			owed(
+				'function lineageOf(x: { parentDigest: string | null; revisionCount: number }) {\n\treturn x\n}\n',
+			),
+		).toEqual(both)
+		expect(
+			owed('export function seal({ parentDigest, revisionCount }) {}\n'),
+		).toEqual(both)
+		expect(
+			owed(
+				'function f(rows: Array<{ parentDigest: string, revisionCount: number }>) {}\n',
+			),
+		).toEqual(both)
+		expect(
+			owed(
+				'function g<T extends { parentDigest: string, revisionCount: number }>(x: T) {}\n',
+			),
+		).toEqual(both)
 	})
 
 	// 44
@@ -150,6 +167,20 @@ describe('the lineage-ownership scanner', () => {
 		expect(
 			subjects({ [OTHER]: 'type Row = { revisionCount: number }\n' }),
 		).toEqual(['revisionCount'])
+		// The formats this repository's own formatter writes: members separated
+		// by a line break, often behind `readonly`.
+		expect(
+			subjects({
+				[OTHER]:
+					'type Row = {\n\treadonly parentDigest: string | null\n\treadonly revisionCount: number\n}\n',
+			}),
+		).toEqual(['parentDigest', 'revisionCount'])
+		expect(
+			subjects({
+				[OTHER]:
+					'interface Row {\n\tparentDigest: string | null\n\trevisionCount: number\n}\n',
+			}),
+		).toEqual(['parentDigest', 'revisionCount'])
 		// A destructured parameter carries no marker separating it from an
 		// object literal argument, so it stays reported.
 		expect(
@@ -159,7 +190,25 @@ describe('the lineage-ownership scanner', () => {
 		).toEqual(['parentDigest'])
 	})
 
-	// 50. The bounded backward walk gives up and reports, which is the stated
+	// 50. A `{` after a colon is a type annotation, unless the name before that
+	// colon is itself a member. Without the second half a writer module nesting
+	// its two fields under a sub-object would fail its own gate.
+	it('reads a nested value literal as a value', () => {
+		const nested =
+			'const brief = {\n\tlineage: { parentDigest: null, revisionCount: 0 },\n}\n'
+		expect(subjects({ [OTHER]: nested })).toEqual([
+			'parentDigest',
+			'revisionCount',
+		])
+		expect(
+			synthetic({
+				[SEAL]: nested,
+				[REDUCE]: 'const b = { parentDigest: null, revisionCount: 0 }\n',
+			}),
+		).toEqual([])
+	})
+
+	// 51. The bounded backward walk gives up and reports, which is the stated
 	// fail-closed fallback and the only branch a long parameter list reaches.
 	it('reports a field it cannot place within the lookback window', () => {
 		const filler = Array.from({ length: 400 }, (_, i) => `a${i}: number`).join(
