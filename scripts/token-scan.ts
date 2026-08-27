@@ -79,13 +79,16 @@ const CONTROL_HEADS = new Set<number>([
 	SyntaxKind.WithKeyword,
 ])
 
-/** A `{` after one of these is an object or type literal; anywhere else it opens a block. */
+/**
+ * A `{` after one of these is an object or type literal; anywhere else it opens
+ * a block. `=>` is deliberately absent: an arrow's braces are always a body,
+ * and an object-literal body needs parentheses, which `(` already covers.
+ */
 const LITERAL_HEADS = new Set<number>([
 	SyntaxKind.OpenParenToken,
 	SyntaxKind.CommaToken,
 	SyntaxKind.ColonToken,
 	SyntaxKind.OpenBracketToken,
-	SyntaxKind.EqualsGreaterThanToken,
 	SyntaxKind.ReturnKeyword,
 	SyntaxKind.QuestionToken,
 	SyntaxKind.ExtendsKeyword,
@@ -94,9 +97,13 @@ const LITERAL_HEADS = new Set<number>([
 	SyntaxKind.AmpersandToken,
 ])
 
-const opensLiteral = (kind: number): boolean =>
-	LITERAL_HEADS.has(kind) ||
-	(kind >= SyntaxKind.FirstAssignment && kind <= SyntaxKind.LastAssignment)
+/** Where a statement can begin, which is where a label can. */
+const STATEMENT_BOUNDARIES = new Set<number>([
+	-1,
+	SyntaxKind.SemicolonToken,
+	SyntaxKind.OpenBraceToken,
+	SyntaxKind.CloseBraceToken,
+])
 
 export function scanTokens(source: string): Token[] {
 	const scanner = createScanner(/* skipTrivia */ true, undefined, source)
@@ -111,7 +118,20 @@ export function scanTokens(source: string): Token[] {
 	let depth = 0
 	let previousEnd = -1
 	let previousKind = -1
+	let beforePreviousKind = -1
+	let thirdPreviousKind = -1
 	let previousEnds = false
+
+	/**
+	 * True when the `:` just scanned labels a statement. A label needs an
+	 * identifier at statement position, so a ternary's `g :` and a member's
+	 * `a :` inside an open literal are both excluded.
+	 */
+	const labelColon = (): boolean =>
+		previousKind === SyntaxKind.ColonToken &&
+		beforePreviousKind === SyntaxKind.Identifier &&
+		STATEMENT_BOUNDARIES.has(thirdPreviousKind) &&
+		blockBraces[blockBraces.length - 1] !== false
 	while (true) {
 		let kind = scanner.scan()
 		if (kind === SyntaxKind.EndOfFile) break
@@ -136,12 +156,26 @@ export function scanTokens(source: string): Token[] {
 		previousEnd = end
 		let ends = ENDS_EXPRESSION.has(kind)
 		if (kind === SyntaxKind.OpenParenToken) {
-			controlParens.push(CONTROL_HEADS.has(previousKind))
+			// `p.catch(f)` is a call and `for await (…)` is a statement, so the
+			// token before the keyword decides both.
+			controlParens.push(
+				(CONTROL_HEADS.has(previousKind) &&
+					beforePreviousKind !== SyntaxKind.DotToken) ||
+					(previousKind === SyntaxKind.AwaitKeyword &&
+						beforePreviousKind === SyntaxKind.ForKeyword),
+			)
 		} else if (kind === SyntaxKind.CloseParenToken) {
 			if (controlParens.pop() === true) ends = false
 		} else if (kind === SyntaxKind.OpenBraceToken) {
 			depth++
-			blockBraces.push(!opensLiteral(previousKind))
+			blockBraces.push(
+				!(
+					(LITERAL_HEADS.has(previousKind) ||
+						(previousKind >= SyntaxKind.FirstAssignment &&
+							previousKind <= SyntaxKind.LastAssignment)) &&
+					!labelColon()
+				),
+			)
 		} else if (kind === SyntaxKind.CloseBraceToken) {
 			if (templates[templates.length - 1] === depth) {
 				kind = scanner.reScanTemplateToken(/* isTaggedTemplate */ false)
@@ -158,6 +192,8 @@ export function scanTokens(source: string): Token[] {
 		// A postfix `!` inherits: `x! / 2` is division, `!/re/.test(s)` is a
 		// regex, and the token before the `!` is what separates them.
 		if (kind === SyntaxKind.ExclamationToken) ends = previousEnds
+		thirdPreviousKind = beforePreviousKind
+		beforePreviousKind = previousKind
 		previousKind = kind
 		previousEnds = ends
 		tokens.push({

@@ -1,6 +1,6 @@
 /**
  * The tokenizer behind `check:layers` and `check:lineage` (Story 6.4, AC 11
- * cases 52 through 58). A derailed tokenizer makes both gates report fewer
+ * cases 52 through 59). A derailed tokenizer makes both gates report fewer
  * findings, which their "finds nothing in the real tree" cases cannot see.
  */
 
@@ -126,6 +126,63 @@ describe('scanTokens', () => {
 		])
 		// A type keyword ends an expression, so an `as` clause divides.
 		expect(identifiers('const q = y as number / 2\n')).toEqual(['q', 'y'])
+	})
+
+	// 59. The brace and paren stacks decide which `}` closes a block and which
+	// `)` closes a statement, and four shapes turn on the token before the one
+	// they read. None is live under `src/` today, and each leaked a regex body
+	// into the stream or read a division as a regex.
+	it('reads an arrow body, a label, `for await`, and a method named like a keyword', () => {
+		// An arrow's braces are always a body; an object-literal body needs
+		// parentheses.
+		expect(identifiers('const f = () => { g() }\n/re/.test(s)\n')).toEqual([
+			'f',
+			'g',
+			'test',
+			's',
+		])
+		expect(identifiers('const f = () => ({ a: 1 })\n')).toEqual(['f', 'a'])
+		// A labelled block is a block; a ternary's object arm and a nested
+		// member are literals, and both end an expression.
+		expect(identifiers('outer: { g() }\n/re/.test(s)\n')).toEqual([
+			'outer',
+			'g',
+			'test',
+			's',
+		])
+		expect(identifiers('const o = f ? g : { b: 1 }\n/re/.test(s)\n')).toEqual([
+			'o',
+			'f',
+			'g',
+			'b',
+			're',
+			'test',
+			's',
+		])
+		expect(identifiers('const o = { a: { b: 1 } }\n/re/.test(s)\n')).toEqual([
+			'o',
+			'a',
+			'b',
+			're',
+			'test',
+			's',
+		])
+		// A member's `{` inside an open literal is a literal, whatever precedes
+		// its name. Read as a label it would open a block, and the `/` after its
+		// `}` would start a regex that swallows the rest of the line.
+		expect(identifiers('const o = { a: { b: 1 } / 2 }\n')).toEqual([
+			'o',
+			'a',
+			'b',
+		])
+		// `for await` heads a statement; `p.catch(f)` is a call.
+		expect(identifiers('for await (const a of b) /re/.test(s)\n')).toEqual([
+			'a',
+			'b',
+			'test',
+			's',
+		])
+		expect(identifiers('const q = p.catch(f) / 2\n')).toEqual(['q', 'p', 'f'])
 	})
 
 	// 58. The backstop for a desync neither other guard sees: a stream ending

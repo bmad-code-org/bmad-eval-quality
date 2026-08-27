@@ -54,7 +54,7 @@ vocabulary that says which of three ways a chain failed.
 | `tests/lineage/freeze.test.ts` | test | cases 11 through 15 |
 | `tests/lineage/chain.test.ts` | test | cases 16 through 40 |
 | `tests/architecture/lineage-ownership.test.ts` | test | cases 41 through 51 |
-| `tests/architecture/token-scan.test.ts` | test | cases 52 through 58 |
+| `tests/architecture/token-scan.test.ts` | test | cases 52 through 59 |
 
 **Edited files:**
 
@@ -712,7 +712,7 @@ Nothing else in the file changes. `CompileOptions`, `CompileStage`, `SealStage`,
 
 ### AC 11: tests
 
-Fifty-eight numbered cases across five files. Every rule is verified by reverting it locally and
+Fifty-nine numbered cases across five files. Every rule is verified by reverting it locally and
 confirming that exact test goes red; a case that stays green under a reverted rule pins nothing.
 
 **`tests/lineage/stage-table.test.ts`:**
@@ -840,6 +840,9 @@ and which neither can test on its own, because a derailed tokenizer produces *fe
     carries is a regex; and a type keyword ends an expression, so `y as number / 2` divides.
 58. A stream ending with an unbalanced brace throws. This is the backstop for a desync neither
     other guard sees.
+59. The four shapes that turn on the token before the one being read: an arrow's braces are a body
+    and not a literal; a labelled block is a block while a ternary's object arm and a nested member
+    are literals; `for await` heads a statement; and `p.catch(f)` is a call rather than one.
 
 ### AC 12: docs
 
@@ -871,7 +874,7 @@ Filled from actual command output.
 | Check | Before | After |
 | --- | --- | --- |
 | `npm run validate` | passes | passes |
-| `npm run test` | 68 files / 2563 tests | 73 files / 2624 tests |
+| `npm run test` | 68 files / 2563 tests | 73 files / 2625 tests |
 | `npm run check:layers` | 83 files, 0 violations | 86 files, 0 violations |
 | `npm run check:lineage` | does not exist | 86 files, 0 violations |
 | `npm run check:schemas` | 12 documents match | 12 documents match, byte-identical |
@@ -1492,6 +1495,27 @@ A third pass over the round-two fixes. Both directions the peer was asked to att
    the same change.
 
 Eight more rules mutation-verified, 59 total.
+
+### Round four
+
+A fourth pass over the bracket stacks the third round introduced. Four survived, all latent: no file
+under `src/` carries any of them today, which is what the 196-file clean scan showed and what kept
+them out of the merged gate's behaviour.
+
+`=>` was in the literal-head set, so an arrow's block body was read as an object literal and a regex
+on the next line leaked into the stream as code. An arrow body is always a block; an object-literal
+body needs parentheses, which the `(` head already covers. A labelled block was read as a literal
+from its colon, so a label needs an identifier at statement position and an enclosing brace that is
+not itself an open literal. `for await (…)` was not recognised as a statement head, because the
+token before the paren is `await`. And a control keyword used as a property name was: `p.catch(f) / 2`
+marked its `)` a statement close and read the division as a regex that ran off the line. The last two
+share one fix, on the token before the keyword.
+
+Twenty-five shapes now read correctly, including a class body, a `do`/`while`, a `switch` block, a
+`try`/`catch`, an arrow returning a parenthesised object, and every shape from the earlier rounds.
+Six more rules mutation-verified, 65 total. One of the six needed a fixture that makes the
+classification observable rather than merely correct: `const o = { a: { b: 1 } / 2 }`, where reading
+the inner member as a label opens a block and turns the `/` into a regex.
 
 ### CodeRabbit
 
