@@ -34,7 +34,10 @@ export type Token = {
 	readonly start: number
 }
 
-/** Token kinds that can end an expression, so a following `/` is division. */
+/**
+ * Token kinds that can end an expression, so a following `/` is division. The
+ * type keywords are here for an `as` clause: `y as number / 2` is division.
+ */
 const ENDS_EXPRESSION = new Set<number>([
 	SyntaxKind.Identifier,
 	SyntaxKind.NumericLiteral,
@@ -53,23 +56,69 @@ const ENDS_EXPRESSION = new Set<number>([
 	SyntaxKind.NullKeyword,
 	SyntaxKind.PlusPlusToken,
 	SyntaxKind.MinusMinusToken,
+	SyntaxKind.NumberKeyword,
+	SyntaxKind.StringKeyword,
+	SyntaxKind.BooleanKeyword,
+	SyntaxKind.AnyKeyword,
+	SyntaxKind.UnknownKeyword,
+	SyntaxKind.ObjectKeyword,
+	SyntaxKind.SymbolKeyword,
+	SyntaxKind.BigIntKeyword,
+	SyntaxKind.NeverKeyword,
+	SyntaxKind.VoidKeyword,
+	SyntaxKind.UndefinedKeyword,
+	SyntaxKind.ConstKeyword,
 ])
+
+/** A `(` after one of these heads a statement, so its `)` ends no expression. */
+const CONTROL_HEADS = new Set<number>([
+	SyntaxKind.IfKeyword,
+	SyntaxKind.WhileKeyword,
+	SyntaxKind.ForKeyword,
+	SyntaxKind.CatchKeyword,
+	SyntaxKind.WithKeyword,
+])
+
+/** A `{` after one of these is an object or type literal; anywhere else it opens a block. */
+const LITERAL_HEADS = new Set<number>([
+	SyntaxKind.OpenParenToken,
+	SyntaxKind.CommaToken,
+	SyntaxKind.ColonToken,
+	SyntaxKind.OpenBracketToken,
+	SyntaxKind.EqualsGreaterThanToken,
+	SyntaxKind.ReturnKeyword,
+	SyntaxKind.QuestionToken,
+	SyntaxKind.ExtendsKeyword,
+	SyntaxKind.LessThanToken,
+	SyntaxKind.BarToken,
+	SyntaxKind.AmpersandToken,
+])
+
+const opensLiteral = (kind: number): boolean =>
+	LITERAL_HEADS.has(kind) ||
+	(kind >= SyntaxKind.FirstAssignment && kind <= SyntaxKind.LastAssignment)
 
 export function scanTokens(source: string): Token[] {
 	const scanner = createScanner(/* skipTrivia */ true, undefined, source)
 	const tokens: Token[] = []
 	// Brace depth at each open template's substitution, innermost last.
 	const templates: number[] = []
+	// Whether each open `(` heads a statement and each open `{` opens a block,
+	// innermost last. A statement's `)` and a block's `}` end no expression, so
+	// a `/` after either starts a regex.
+	const controlParens: boolean[] = []
+	const blockBraces: boolean[] = []
 	let depth = 0
 	let previousEnd = -1
 	let previousKind = -1
+	let previousEnds = false
 	while (true) {
 		let kind = scanner.scan()
 		if (kind === SyntaxKind.EndOfFile) break
 		if (
 			(kind === SyntaxKind.SlashToken ||
 				kind === SyntaxKind.SlashEqualsToken) &&
-			!ENDS_EXPRESSION.has(previousKind)
+			!previousEnds
 		) {
 			kind = scanner.reScanSlashToken()
 		}
@@ -85,20 +134,32 @@ export function scanTokens(source: string): Token[] {
 			)
 		}
 		previousEnd = end
-		if (kind === SyntaxKind.OpenBraceToken) {
+		let ends = ENDS_EXPRESSION.has(kind)
+		if (kind === SyntaxKind.OpenParenToken) {
+			controlParens.push(CONTROL_HEADS.has(previousKind))
+		} else if (kind === SyntaxKind.CloseParenToken) {
+			if (controlParens.pop() === true) ends = false
+		} else if (kind === SyntaxKind.OpenBraceToken) {
 			depth++
+			blockBraces.push(!opensLiteral(previousKind))
 		} else if (kind === SyntaxKind.CloseBraceToken) {
 			if (templates[templates.length - 1] === depth) {
 				kind = scanner.reScanTemplateToken(/* isTaggedTemplate */ false)
 				if (kind === SyntaxKind.TemplateTail) templates.pop()
+				ends = ENDS_EXPRESSION.has(kind)
 			} else {
-				// A brace closing a real block or object literal. Drop this and a
-				// later `}` is misread as a template continuation.
+				// A brace closing a real block or literal. Drop this and a later
+				// `}` is misread as a template continuation.
 				depth--
+				if (blockBraces.pop() === true) ends = false
 			}
 		}
 		if (kind === SyntaxKind.TemplateHead) templates.push(depth)
+		// A postfix `!` inherits: `x! / 2` is division, `!/re/.test(s)` is a
+		// regex, and the token before the `!` is what separates them.
+		if (kind === SyntaxKind.ExclamationToken) ends = previousEnds
 		previousKind = kind
+		previousEnds = ends
 		tokens.push({
 			kind,
 			text: scanner.getTokenText(),

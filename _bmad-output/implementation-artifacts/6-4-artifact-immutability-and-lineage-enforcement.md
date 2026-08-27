@@ -641,12 +641,14 @@ and any file in `LINEAGE_WRITER_MODULES`. It reports five things:
    rule alone would miss.
 4. **A missing write inside the allowlist.** Every `LINEAGE_WRITER_MODULES` file **that is present
    in the input map** must contain both fields in the shape that mints: the field, a `:`, and a
-   value that is not a type name. Deleting `parentDigest: null` from `seal.ts` would otherwise pass
-   every check in the repository. Rule 1 still reports a shorthand and a type member; neither counts
-   here, because neither mints, and a gutted writer module can otherwise pass on one type
-   annotation, one destructured parameter, or one type literal reached through `<…>`. The "present
-   in the map" clause is what keeps the synthetic-source-map cases writable; without it every one of
-   them gains four spurious violations.
+   value literal around it. Deleting `parentDigest: null` from `seal.ts` would otherwise pass every
+   check in the repository. Rule 1 still reports a shorthand and a type member; neither counts here,
+   because neither mints, and a gutted writer module can otherwise pass on one type annotation, one
+   destructured parameter, or one type literal reached through `<…>` or `extends`. The enclosure
+   decides it and the value token does not: a denylist of type names cannot be completed, since an
+   alias, a branded type, and a literal type all read like values. The "present in the map" clause
+   is what keeps the synthetic-source-map cases writable; without it every one of them gains four
+   spurious violations.
 5. **An allowlist entry with no file, on a whole-tree scan.** The wrapper passes `wholeTree: true`
    and a synthetic map passes `false`; on a whole-tree scan an unmatched entry is a violation, which
    is what catches a rename that silently empties the allowlist. Decision 10.
@@ -654,9 +656,10 @@ and any file in `LINEAGE_WRITER_MODULES`. It reports five things:
 **Which literal a member sits in is decided by the nearest unmatched opening bracket**, found by a
 bounded backward walk. A `{` introduced by `const`, `let`, `var`, or `import` is a binding pattern
 and its names are reads. A `(` or `[` reached first is a parameter list or an index, also a read. A
-`{` whose statement carries `type` or `interface` is a type literal, and so is one preceded by `:`
-**unless the name before that colon is itself a member**: `lineage: { parentDigest: null }` is a
-nested value, and reading it as a type would fail a writer module that nested its own two fields.
+`{` after `<` or `extends`, or whose statement carries `type` or `interface`, is a type literal.
+A `{` after a colon is a type literal too **unless the name before that colon is itself a member of
+a value literal**: `lineage: { parentDigest: null }` is a nested value and so is a ternary's right
+arm, while `brief: { parentDigest: Digest }` in a parameter list and `const a: { … }` are shapes.
 Anything else is a value literal. An unresolved shape within the window is reported, which is the
 branch a parameter list longer than the window reaches; case 51.
 
@@ -798,7 +801,8 @@ confirming that exact test goes red; a case that stays green under a reverted ru
 42. A write in an unpermitted file produces one violation per field, naming the field and the line.
 43. An allowlist file present in the map and missing one field produces one violation; missing both
     produces two; and a file whose only mention of both fields is a type annotation, a destructured
-    parameter, a generic argument, or an `extends` clause still owes both writes.
+    parameter, a generic argument, an `extends` clause, or a wrapped parameter annotation still owes
+    both writes, whatever the names on the right of the colons.
 44. An allowlist entry absent from a whole-tree scan produces one violation, and the same entry
     absent from a synthetic map does not.
 45. `reviseArtifact` called, imported, and imported under an alias each produce one violation.
@@ -807,11 +811,13 @@ confirming that exact test goes red; a case that stays green under a reverted ru
     backtick-quoted key each produce one violation.
 48. Reads produce nothing: a dotted read, a dotted read inside an object literal, a destructuring
     binding, a parameter annotation, a name bound by a destructuring and used later, and a named
-    import. A type alias produces one violation, and so does a destructured parameter; the
-    newline-separated and `readonly`-prefixed forms this repository's formatter writes produce two.
+    import. A type alias produces one violation, a variable's own annotation is a type position, and
+    a destructured parameter is reported; the newline-separated and `readonly`-prefixed forms this
+    repository's formatter writes produce two.
 49. A real-tree scan through `discoverSourceFiles` returns zero violations.
 50. A nested value literal (`lineage: { parentDigest: null }`) reads as a value in both directions:
-    reported in an unpermitted file, and satisfying the minting rule in a writer module.
+    reported in an unpermitted file, and satisfying the minting rule in a writer module. A ternary's
+    right arm is a value too, in both the inline and the wrapped form.
 51. A parameter list longer than the lookback window reaches the fail-closed fallback and reports.
 
 **`tests/architecture/token-scan.test.ts`** — the shared tokenizer, which two gates now depend on
@@ -828,7 +834,10 @@ and which neither can test on its own, because a derailed tokenizer produces *fe
     wrong and the number both gates print on every violation.
 57. A regex is told from division by the token before the slash: `/^#/`, a backtick, an escaped
     slash inside a template substitution, and `/[*+?{]/` all tokenize as regexes, while `a / b` and
-    `(a) / b / c` stay division.
+    `(a) / b / c` stay division. A statement's `)` and a block's `}` end no expression, so
+    `if (x) /re/` and `function f() {}` followed by a regex are regexes; a postfix `!` inherits the
+    token before it, so `a! / b / c` divides while the prefix `!/re/` this repository already
+    carries is a regex; and a type keyword ends an expression, so `y as number / 2` divides.
 58. A stream ending with an unbalanced brace throws. This is the backstop for a desync neither
     other guard sees.
 
@@ -1459,6 +1468,30 @@ found six more. Two were HIGH and one of those was live in the repository.
    the re-scan landed: every shape it had been refusing now tokenizes.
 
 Six more rules mutation-verified, which brings the story's total to 51.
+
+### Round three
+
+A third pass over the round-two fixes. Both directions the peer was asked to attack gave way.
+
+1. **The slash re-scan read four shapes wrongly, one of them silently** (HIGH). A regex after a
+   statement's `)` or a block's `}` leaked its body into the stream as code (`if (x) /re/.test(s)`,
+   `function f() {}` followed by a regex). A postfix `!` was not in the expression-ending set, so
+   `const q = a! / b / c` read `/ b /` as a regex and swallowed `b` with no guard firing. And a type
+   keyword in an `as` clause was not either, so `y as number / 2` threw. `scanTokens` now carries a
+   parallel stack per `(` and per `{` recording whether it heads a statement or opens a block, the
+   `!` inherits the token before it, and the TypeScript primitive keywords joined the set. All
+   eighteen shapes the peer named now read correctly, `a / b` and `f(a) / b` included, and the
+   prefix `!/re/` already in `src/core/canonical/scan-json.ts` still reads as a regex.
+2. **Rule 4 was passable four more ways, and a ternary's value arm read as a type** (HIGH). The
+   `TYPE_VALUES` denylist was the mistake: an alias, a branded type, and a literal type all read
+   like values, and `null` and `0` cannot be denied because they are the real minting shape. The
+   round-two line-break clause also made a wrapped parameter annotation look like a member. `mints`
+   now asks only for a colon and leaves the decision to the enclosure, which gained `<` and
+   `extends` as type heads and now resolves a colon's left-hand name by walking its own enclosure
+   rather than by asking whether it opens a member. That closed all four bypasses and the ternary in
+   the same change.
+
+Eight more rules mutation-verified, 59 total.
 
 ### CodeRabbit
 

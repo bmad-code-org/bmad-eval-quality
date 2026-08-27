@@ -83,6 +83,23 @@ describe('the lineage-ownership scanner', () => {
 				'function g<T extends { parentDigest: string, revisionCount: number }>(x: T) {}\n',
 			),
 		).toEqual(both)
+		// The same four under names no denylist of type keywords would catch,
+		// and under this repository's own parameter wrapping.
+		expect(
+			owed(
+				'function f(x: Array<{ parentDigest: null, revisionCount: 0 }>) {}\n',
+			),
+		).toEqual(both)
+		expect(
+			owed(
+				'function f(x: Array<{ parentDigest: Digest, revisionCount: Natural }>) {}\n',
+			),
+		).toEqual(both)
+		expect(
+			owed(
+				'export function seal(\n\tbrief: { parentDigest: Digest | null; revisionCount: Natural },\n) {}\n',
+			),
+		).toEqual(both)
 	})
 
 	// 44
@@ -184,6 +201,13 @@ describe('the lineage-ownership scanner', () => {
 					'interface Row {\n\tparentDigest: string | null\n\trevisionCount: number\n}\n',
 			}),
 		).toEqual(['parentDigest', 'revisionCount'])
+		// A variable's own annotation is a type position, and the name before
+		// its colon is a binding rather than a member.
+		expect(
+			synthetic({ [OTHER]: 'const a: { parentDigest: string } = x\n' }).map(
+				(each) => each.rule.includes('type position'),
+			),
+		).toEqual([true])
 		// A destructured parameter carries no marker separating it from an
 		// object literal argument, so it stays reported.
 		expect(
@@ -209,6 +233,22 @@ describe('the lineage-ownership scanner', () => {
 				[REDUCE]: 'const b = { parentDigest: null, revisionCount: 0 }\n',
 			}),
 		).toEqual([])
+		// A ternary's middle arm also sits before a colon, and its right arm is
+		// a value.
+		for (const ternary of [
+			'const brief = flag ? base : { parentDigest: null, revisionCount: 0 }\n',
+			'const brief = flag\n\t? base\n\t: { parentDigest: null, revisionCount: 0 }\n',
+		]) {
+			expect(subjects({ [OTHER]: ternary })).toEqual([
+				'parentDigest',
+				'revisionCount',
+			])
+			expect(
+				synthetic({ [OTHER]: ternary }).every((each) =>
+					each.rule.includes('literal position'),
+				),
+			).toBe(true)
+		}
 	})
 
 	// 51. The bounded backward walk gives up and reports, which is the stated

@@ -61,25 +61,10 @@ const TYPE_DECLARERS = new Set<number>([
 	SyntaxKind.InterfaceKeyword,
 ])
 
-/**
- * What a type annotation puts after the colon. A member given one of these
- * declares a shape and mints nothing.
- */
-const TYPE_VALUES = new Set([
-	'string',
-	'number',
-	'boolean',
-	'unknown',
-	'any',
-	'never',
-	'void',
-	'object',
-	'symbol',
-	'bigint',
-	'Array',
-	'ReadonlyArray',
-	'Record',
-	'readonly',
+/** A `{` after one of these is a type literal wherever it appears. */
+const TYPE_HEADS = new Set<number>([
+	SyntaxKind.LessThanToken,
+	SyntaxKind.ExtendsKeyword,
 ])
 
 /** Where a bare `parentDigest` or `revisionCount` token sits. */
@@ -134,11 +119,14 @@ function enclosureOf(
 		} else if (kind === SyntaxKind.OpenBraceToken && braces-- === 0) {
 			const before = tokens[i - 1]?.kind ?? -1
 			if (BINDERS.has(before)) return 'read'
+			if (TYPE_HEADS.has(before)) return 'type-literal'
 			// A `{` after a colon is a type annotation, unless the name before
-			// that colon is itself a member: `lineage: { parentDigest: null }`
-			// is a nested value.
+			// that colon is itself a member of a value literal:
+			// `lineage: { parentDigest: null }` is a nested value, while
+			// `brief: { parentDigest: Digest }` in a parameter list is a shape.
 			if (before === SyntaxKind.ColonToken) {
-				return opensMember(tokens, lines, i - 2)
+				if (BINDERS.has(tokens[i - 3]?.kind ?? -1)) return 'type-literal'
+				return enclosureOf(tokens, lines, i - 2) === 'value-literal'
 					? 'value-literal'
 					: 'type-literal'
 			}
@@ -203,14 +191,15 @@ function writeKind(
 }
 
 /**
- * True when this member is the shape rule 4 looks for: a field given a value.
- * A shorthand binds a name and an annotation declares a shape, so neither can
- * stand in for the write the AD-24 table says a module owes.
+ * True when this member is the shape rule 4 looks for: a field given a value
+ * inside a value literal. A shorthand binds a name and every type position
+ * declares a shape, so neither can stand in for the write the AD-24 table says
+ * a module owes. The enclosure decides it, since a denylist of type names
+ * cannot be completed: an alias, a branded type, and a literal type all read
+ * like values.
  */
 function mints(tokens: readonly Token[], index: number): boolean {
-	if (tokens[index + 1]?.kind !== SyntaxKind.ColonToken) return false
-	const value = tokens[index + 2]
-	return value !== undefined && !TYPE_VALUES.has(value.value)
+	return tokens[index + 1]?.kind === SyntaxKind.ColonToken
 }
 
 function scanFile(

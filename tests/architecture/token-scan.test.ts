@@ -109,6 +109,23 @@ describe('scanTokens', () => {
 			'b',
 			'c',
 		])
+		// A statement's `)` and a block's `}` end no expression, so a slash
+		// after either opens a regex.
+		expect(identifiers('if (x) /re/.test(s)\n')).toEqual(['x', 'test', 's'])
+		expect(identifiers('function f() {}\n/re/.test(s)\n')).toEqual([
+			'f',
+			'test',
+			's',
+		])
+		// A postfix `!` inherits the token before it; a prefix `!` does not, and
+		// `src/core/canonical/scan-json.ts` carries the prefix form.
+		expect(identifiers('const q = a! / b / c\n')).toEqual(['q', 'a', 'b', 'c'])
+		expect(identifiers('if (!/^[0-9]{4}$/.test(h)) {}\n')).toEqual([
+			'test',
+			'h',
+		])
+		// A type keyword ends an expression, so an `as` clause divides.
+		expect(identifiers('const q = y as number / 2\n')).toEqual(['q', 'y'])
 	})
 
 	// 58. The backstop for a desync neither other guard sees: a stream ending
