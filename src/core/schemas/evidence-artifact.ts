@@ -220,6 +220,9 @@ export const LineageChain = z.strictObject({
 	noGap: z.boolean(),
 })
 
+/** Exported for `core/lineage/chain.ts`, which computes these three. */
+export type LineageChain = z.infer<typeof LineageChain>
+
 export const Remediation = z.strictObject({
 	revisionCount: z
 		.int()

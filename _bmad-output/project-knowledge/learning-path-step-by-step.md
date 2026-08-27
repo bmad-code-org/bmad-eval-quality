@@ -62,6 +62,7 @@ flowchart TD
 |   19 | epic6-story1 | Four ports, three adapters, a default-deny rule for which address a probe may reach, and a suite an outside adapter author can run against their own code. |
 |   20 | epic6-story2 | Probe the fixture before scoring it: witnesses the contract declares, one plan, one pure verdict, and a digest of what the fixture was. |
 |   21 | epic6-story3 | Four checks that reject a rubric a judge could not answer honestly: an unanchored scale, an unbounded length, unnamed penalties, a reused id, evidence that resolves nowhere, and wording that asks the judge to grade the model's own reasoning. |
+|   22 | epic6-story4 | Every artifact comes back frozen, a new version is a new artifact naming its parent's hash, and a build check names which stage may write those fields. |
 
 Adding a step: follow `learning-path-template.md`.
 
@@ -1863,3 +1864,100 @@ flowchart TD
 - `compile.ts` runs 26 checks now. Step 15 says 19 because that was the count when it was written.
 - Editing a `.describe()` string moves the published schema. Adding one moves the keyword census too,
   and then every new occurrence needs a reject case.
+
+## Step 22 (epic6-story4): artifacts are frozen, and history is a chain
+
+**In plain terms:** if you keep editing one file, every save throws away the version before it, and
+later nobody can say what changed. This step makes every file the library hands you read-only the
+moment you get it. A new version is a new file carrying the hash of the one it came from and a
+counter one higher. A build check fails if code anywhere else in the project sets those two fields.
+
+**What:** a deep freeze at the four places an artifact leaves the library, a reader for a history
+someone hands you, a constructor for the next version, a table of which stage owns which artifact,
+and a new gate, `npm run check:lineage`.
+
+**Why:** anyone holding an artifact could edit it and keep the same name. Before this step,
+`const brief = seal(contract); brief.directions[0].text = 'looks better'` succeeded quietly, and the
+brief's hash matched nothing that had been sealed. Now that line throws a `TypeError`. The reader
+answers the three questions an evidence file has to carry: is the history the length it claims, does
+any hash appear twice, is there a gap.
+
+**The shape:**
+
+```mermaid
+flowchart LR
+  ROOT["artifact<br/>revisionCount 0<br/>parentDigest null"]
+  R1["revision<br/>revisionCount 1<br/>parentDigest = hash of root"]
+  R2["revision<br/>revisionCount 2<br/>parentDigest = hash of r1"]
+  ROOT --> R1 --> R2
+  R2 -.-> READ["validateLineageChain<br/>lengthConsistent / noRepeatedDigest / noGap"]
+```
+
+**Read in this order:**
+
+1. `src/core/lineage/freeze.ts`: 32 lines. The deep freeze, and why it skips a `Date`, a `Map`,
+   and a byte array.
+2. `src/core/lineage/chain.ts`: the nine finding codes at the top, then `CHECK_PROJECTION`, then the
+   reader, then `reviseArtifact` at the bottom.
+3. `src/core/lineage/stage-table.ts`: six stages, what each takes, what each owns, and which two
+   modules may write the version fields.
+4. `scripts/lineage-ownership.ts`: the five rules the build check applies to every file under
+   `src/`.
+5. `tests/lineage/chain.test.ts`: one accept case, then one reject case per code, in code order.
+
+```mermaid
+flowchart TD
+  FREEZE["core/lineage/freeze.ts<br/>freezeArtifact"]
+  CHAIN["core/lineage/chain.ts<br/>validateLineageChain, reviseArtifact"]
+  TABLE["core/lineage/stage-table.ts<br/>who owns what"]
+  SEAL["core/seal/seal.ts"]
+  REDUCE["core/preflight/reduce.ts"]
+  APP["application/compile.ts<br/>application/preflight.ts"]
+  SCAN["scripts/lineage-ownership.ts<br/>npm run check:lineage"]
+
+  SEAL --> FREEZE
+  REDUCE --> FREEZE
+  APP --> FREEZE
+  CHAIN --> FREEZE
+  TABLE --> SCAN
+  SCAN -.->|reads every file under src/| SEAL
+  SCAN -.-> REDUCE
+```
+
+**Story:** `_bmad-output/implementation-artifacts/6-4-artifact-immutability-and-lineage-enforcement.md`
+
+### Reference
+
+**Rules:**
+
+- Every artifact the library returns is deep-frozen. Writing to one throws a `TypeError`.
+- A revision is a new artifact carrying its parent's hash and a count one higher.
+- `parentDigest` is null exactly when `revisionCount` is 0. The published schema cannot say this, so
+  the reader does.
+- Two artifacts with the same parent hash, the same count, and different content are a conflict. The
+  reader names both hashes and stops there.
+- The reader returns findings. It throws only for a `schemaVersion` it does not accept and for a
+  value that cannot be hashed.
+- Nine finding codes, each mapped onto exactly one of the three booleans an evidence file carries.
+  The remediation cap is the one code mapped onto none.
+- Six stages, one owned output each, and one producer per artifact. `seal` and `preflight` are the
+  two that write version fields today.
+- `npm run check:lineage` fails the build when any other file sets those fields, by assignment, by
+  object literal, by string key, or by calling `reviseArtifact`.
+- Findings come out in the same order whatever order you hand the chain in.
+
+**Watch out:**
+
+- The reader wants whole artifacts. Hand it three fields stripped out of one, the hashes stop
+  matching, and it reports a gap in a chain that is sound.
+- Two identical members produce two findings at one address. That tie is real and the sort keeps it
+  stable.
+- A type alias naming `revisionCount` outside `src/core/schemas/` trips the check. That is
+  deliberate: the tokenizer cannot tell a type from an object literal, and a lineage field
+  redeclared elsewhere is worth a look.
+- `src/core/schemas/evidence-artifact.ts` has a second `revisionCount` nested inside `Remediation`.
+  It counts how often a contract was revised after results, and it is a different field.
+- The tokenizer both build checks share throws on the two source shapes it cannot read: a regex
+  containing `#`, and a regex containing a backtick. Neither exists under `src/` today.
+- A key built at runtime or parsed out of JSON reaches a lineage field with the check silent. No
+  token scanner can see either.

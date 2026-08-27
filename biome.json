@@ -63,6 +63,16 @@
 			}
 		},
 		{
+			"includes": ["tests/architecture/token-scan.test.ts"],
+			"linter": {
+				"rules": {
+					"suspicious": {
+						"noTemplateCurlyInString": "off"
+					}
+				}
+			}
+		},
+		{
 			"includes": ["tests/**/*.ts"],
 			"linter": {
 				"rules": {

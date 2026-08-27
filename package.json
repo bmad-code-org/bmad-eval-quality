@@ -74,9 +74,10 @@
     "generate:ad31-table": "node scripts/generate-ad31-table.ts",
     "check:ad31-table": "node scripts/check-ad31-table.ts",
     "check:layers": "node scripts/check-dependency-direction.ts",
+    "check:lineage": "node scripts/check-lineage-ownership.ts",
     "check:shareable": "node scripts/check-shareable.mjs",
     "bench:digest": "node scripts/bench-digest.ts",
-    "validate": "npm run typecheck && npm run lint && npm run check:docs && npm run check:shareable && npm run lint:spine && npm run check:vectors && npm run check:schemas && npm run check:ad5-registry && npm run check:ad28-registry && npm run check:ad31-table && npm run check:layers && npm run test",
+    "validate": "npm run typecheck && npm run lint && npm run check:docs && npm run check:shareable && npm run lint:spine && npm run check:vectors && npm run check:schemas && npm run check:ad5-registry && npm run check:ad28-registry && npm run check:ad31-table && npm run check:layers && npm run check:lineage && npm run test",
     "prepack": "npm run clean && npm run build",
     "prepublishOnly": "node scripts/assert-publish-authorized.mjs"
   },

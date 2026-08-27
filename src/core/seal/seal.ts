@@ -9,6 +9,7 @@
  * exclusion guarantee a runtime backstop; see that function for why.
  */
 import { digestArtifact } from '../canonical/digest.ts'
+import { freezeArtifact } from '../lineage/freeze.ts'
 import type { EvalContract } from '../schemas/eval-contract.ts'
 import { SealedEvaluatorBrief } from '../schemas/sealed-evaluator-brief.ts'
 import { renderDirectionText } from './direction-prose.ts'
@@ -127,7 +128,9 @@ export function seal(contract: EvalContract): SealedEvaluatorBrief {
 		probeStepBound: contract.probeStepBound,
 	}
 
-	return validateAssembledBrief(brief)
+	// The parse returns Zod's own deep clone, so the freeze lands on the
+	// brief the caller receives and leaves the contract it was built from alone.
+	return freezeArtifact(validateAssembledBrief(brief))
 }
 
 /**

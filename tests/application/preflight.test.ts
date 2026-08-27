@@ -2,46 +2,20 @@
  * `runPreflight` (Story 6.2): the one place a pre-flight probe is awaited. The
  * port is a hand-written fake; no network, no clock, no real adapter (AD-30).
  */
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { runPreflight } from '../../src/application/preflight.ts'
 import { StructuralFailure } from '../../src/core/failure-codes.ts'
 import { RuntimeFault } from '../../src/core/schemas/faults.ts'
-import type {
-	ProbeObservation,
-	ProbeRequest,
-} from '../../src/core/schemas/port-messages.ts'
 import { PreflightVerdict } from '../../src/core/schemas/preflight-verdict.ts'
 import { Probe as ProbeSchema } from '../../src/core/schemas/probe.ts'
-import type { PortMethod } from '../../src/ports/port.ts'
 import {
 	contractDraft,
-	jsonBody,
 	parseContract,
 	preflightContract,
 	probeDraft,
 	seededProbe,
 } from '../preflight/fixtures/observations.ts'
-
-/** echoes the request, with the body the leg id is registered for. */
-const BODIES: Readonly<Record<string, ProbeObservation['body']>> = {
-	'create-a': jsonBody({ id: 'x-1', ok: true, echo: 'alpha' }),
-	'create-b': jsonBody({ id: 'x-2', ok: true, echo: 'beta' }),
-	'read-a': jsonBody({ id: 't-1', value: 'alpha' }),
-	'read-b': jsonBody({ id: 't-2', value: 'beta' }),
-	'list-a': jsonBody({ items: [{ id: 'r-1' }] }),
-	'list-b': jsonBody({ items: [{ id: 'r-1' }, { id: 'r-2' }] }),
-	'fault-leg': jsonBody({ items: [{ id: 'r-1', broken: true }] }),
-}
-
-const echoPort = () =>
-	vi.fn<PortMethod<ProbeRequest, ProbeObservation>>(async (request) => ({
-		probeId: request.probeId,
-		interfaceId: request.interfaceId,
-		operationId: request.operationId,
-		status: 200,
-		headers: {},
-		body: BODIES[request.probeId] ?? jsonBody({ id: 't-1', value: 'alpha' }),
-	}))
+import { echoPort } from '../preflight/fixtures/probe-port.ts'
 
 const run = (overrides: Partial<Parameters<typeof runPreflight>[0]> = {}) =>
 	runPreflight({

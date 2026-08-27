@@ -205,6 +205,7 @@ npm run lint:fix            # auto-fix with Biome
 npm run generate:schemas    # rebuild schemas/*.schema.json from the Zod source
 npm run check:schemas       # fail if the committed schemas differ from the source by one byte
 npm run check:ad5-registry  # fail if the failure-code list drifts from the AD-5 table
+npm run check:lineage       # fail if a module outside the stage table writes an artifact's lineage fields
 npm run generate:ad31-table # rebuild docs/ad31-coverage-predicates.generated.md from the predicates
 npm run check:ad31-table    # fail if the committed AD-31 table differs from the builder by one byte
 npm run build:shareable     # render the planning artifacts to self-contained HTML
@@ -218,6 +219,11 @@ asserting the validator keyword and instance path for every negative fixture, a 
 comparing Zod's verdict against a third-party validator's over a generated corpus, and a
 keyword-mutation sweep that deletes each published constraint and requires some fixture to notice.
 Edit the Zod schema and regenerate; never hand-edit a file under `schemas/`.
+
+Every artifact the library hands back is deep-frozen, so an attempt to edit one in place throws.
+A revision is minted as a new artifact carrying its parent's digest
+and a revision count one greater, and `check:lineage` fails the build when a module the AD-24 stage
+table does not name as that artifact's producer writes either field.
 
 The `eval-quality/conformance` subpath publishes the port boundary: the four port types, the message
 shapes they carry, and an executable conformance suite. An adapter is conforming when

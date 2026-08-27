@@ -3,8 +3,10 @@
  * two stage implementations, `compile` and `seal`; two generic types record
  * the conditional plan/reduce pair for a later stage that needs one.
  *
- * This is not AD-24's complete six-stage input/output/owner/lineage table:
- * Story 6.4 owns that. These two conformance types become two of its inputs.
+ * AD-24's six-stage input/output/owner/lineage table lives in
+ * `core/lineage/stage-table.ts`. This file holds the stage *shapes* TypeScript
+ * checks an implementation against; that one holds the *table* AD-24 fixes.
+ * Neither imports the other.
  */
 import type { EvalContract } from './schemas/eval-contract.ts'
 import type { SealedEvaluatorBrief } from './schemas/sealed-evaluator-brief.ts'

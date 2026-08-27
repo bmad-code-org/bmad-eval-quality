@@ -1,24 +1,21 @@
-// Reusable TypeScript-aware AST scanner and layer-rule evaluator for AC 6:
-// mechanically enforced dependency direction. Pure and synchronous, with no
-// filesystem I/O (`check-dependency-direction.ts` reads the repository);
+// Layer-rule evaluator for AC 6: mechanically enforced dependency direction.
+// Pure and synchronous, with no filesystem I/O
+// (`check-dependency-direction.ts` reads the repository);
 // `dependency-direction.test.ts` calls `scanSources` against both synthetic
 // and real source maps, so one function backs both.
 //
-// TypeScript 7.0.2 (the pinned Go-ported "tsgo" rewrite) no longer ships an
-// in-process parser; the only surface left is `typescript/unstable/ast`'s
-// `createScanner`, the same tokenizer the real parser uses. A full parse
-// would require spawning the native `tsgo` binary, too slow for a lint gate
-// or in-memory tests. This scanner is therefore a token-sequence-anchored
-// walk over that tokenizer's output, not a blind text regex: every construct
-// AC 6 names is a short, fixed token shape, and an unresolved shape is
-// reported rather than skipped (fail-closed).
+// Tokenizing is `token-scan.ts`'s job. Every construct AC 6 names is a short,
+// fixed token shape over that stream, and an unresolved shape is reported
+// (fail-closed).
 
 import { posix } from 'node:path'
+import { SyntaxKind } from 'typescript/unstable/ast'
 import {
 	computeLineStarts,
-	createScanner,
-	SyntaxKind,
-} from 'typescript/unstable/ast'
+	lineOf,
+	scanTokens,
+	type Token,
+} from './token-scan.ts'
 
 export type Layer =
 	| 'core-schemas'
@@ -120,42 +117,6 @@ function resolveRelative(
 		return { ok: true, resolved: `${joined}/index.ts` }
 	}
 	return { ok: false, error: 'unresolved' }
-}
-
-type Token = {
-	readonly kind: number
-	readonly text: string
-	readonly value: string
-	readonly start: number
-}
-
-function tokenize(source: string): Token[] {
-	const scanner = createScanner(/* skipTrivia */ true, undefined, source)
-	const tokens: Token[] = []
-	while (true) {
-		const kind = scanner.scan()
-		if (kind === SyntaxKind.EndOfFile) break
-		tokens.push({
-			kind,
-			text: scanner.getTokenText(),
-			value: scanner.getTokenValue(),
-			start: scanner.getTokenStart(),
-		})
-	}
-	return tokens
-}
-
-function lineOf(lineStarts: readonly number[], pos: number): number {
-	// Binary search for the last line-start at or before `pos`; 1-indexed for
-	// human-readable reporting.
-	let low = 0
-	let high = lineStarts.length - 1
-	while (low < high) {
-		const mid = (low + high + 1) >> 1
-		if ((lineStarts[mid] ?? 0) <= pos) low = mid
-		else high = mid - 1
-	}
-	return low + 1
 }
 
 /** Statement-starting keywords that can never appear mid-clause inside an `import`/`export` clause: a bounded-scan abort signal, so a re-export search never runs past its own statement into unrelated code. */
@@ -529,7 +490,7 @@ function scanFile(
 		})
 		return
 	}
-	const tokens = tokenize(source)
+	const tokens = scanTokens(source)
 	const lineStarts = computeLineStarts(source)
 	const purityScoped = layer === 'core' || layer === 'core-schemas'
 

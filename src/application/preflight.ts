@@ -7,6 +7,7 @@
  * A failed pre-flight is a verdict and a failed probe is a fault, so a
  * `RuntimeFault` from a leg propagates.
  */
+import { freezeArtifact } from '../core/lineage/freeze.ts'
 import { planPreflight } from '../core/preflight/plan.ts'
 import { reducePreflight } from '../core/preflight/reduce.ts'
 import { EvalContract } from '../core/schemas/eval-contract.ts'
@@ -90,5 +91,7 @@ export async function runPreflight(
 			{ cause: parsedVerdict.error },
 		)
 	}
-	return parsedVerdict.data
+	// Frozen again here: `safeParse` returns a fresh object, so the core
+	// stage's freeze does not survive boundary validation.
+	return freezeArtifact(parsedVerdict.data)
 }
