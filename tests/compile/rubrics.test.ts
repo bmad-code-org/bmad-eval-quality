@@ -423,8 +423,13 @@ describe('checkRubricEvidenceReachability: rubric-evidence-unreachable', () => {
 			})
 		})
 		expect(oracleFailure.code).toBe('unreachable-check-evidence')
-		const reasonOf = (thrown: { message: string }) =>
-			thrown.message.slice(thrown.message.indexOf(`"${pointer}" `))
+		const reasonOf = (thrown: { message: string }) => {
+			const at = thrown.message.indexOf(`"${pointer}" `)
+			// Without this, a missing marker slices at -1 and the comparison
+			// below passes on one matching character.
+			expect(at).toBeGreaterThanOrEqual(0)
+			return thrown.message.slice(at)
+		}
 		expect(reasonOf(failure)).toBe(reasonOf(oracleFailure))
 	})
 

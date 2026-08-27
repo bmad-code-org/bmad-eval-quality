@@ -191,6 +191,11 @@ describe('compile: one reused negative mutation reaches each of the 26 wired fun
 			}, true),
 		)
 		expect(failure.code).toBe('undeclared-mandatory-input')
+		// Case 11 fires the same code from a different site, so the path is what
+		// separates the two.
+		expect(failure.artifactPath).toBe(
+			'EvalContract.permittedInterfaces[0].operations[0]',
+		)
 	})
 
 	it('13 checkOracleChannel: oracle-missing-channel', () => {

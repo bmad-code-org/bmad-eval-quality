@@ -118,7 +118,7 @@ The authoring discipline is a small set of rules that survived the experiments: 
 
 A compiler enforces these rules mechanically against the contract artifact, in three classes. Structural errors fail compilation. Coverage gaps score down without blocking. A waived pattern is allowed when it records the named rule, a rationale, a machine-checkable condition, and the approval.
 
-Rubrics compile under the same discipline: an anchored scale, a bounded length, named failure-mode penalties, unique rubric and criterion identifiers, every criterion stating a question, and every criterion's evidence pointer resolving against the declared interfaces. Authored rubric text that asks a judge to grade the subject's own stated reasoning fails a closed-vocabulary check over the wording.
+Rubrics compile under the same discipline: an anchored scale, a bounded length, named failure-mode penalties, rubric identifiers unique across the contract and criterion identifiers unique inside their own rubric, every criterion stating a question, and every criterion's evidence pointer resolving against the declared interfaces. Authored rubric text that asks a judge to grade the subject's own stated reasoning fails a closed-vocabulary check over the wording.
 
 ## How Eval Contract strength scoring works
 
