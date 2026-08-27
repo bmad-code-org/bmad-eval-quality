@@ -126,10 +126,13 @@ describe('each injected ledger entry is paired with its own fixture (AD-13)', ()
 		(entry) => entry.disposition.kind === 'inject',
 	)
 
-	// The count of thirteen is also pinned in publish.test.ts ("has thirteen
-	// inject entries") and arithmetically in constraint-ledger.test.ts.
-	it('walks all thirteen inject entries', () => {
-		expect(injectEntries).toHaveLength(13)
+	// The count of twenty-five is also pinned in publish.test.ts ("has
+	// twenty-five inject entries") and arithmetically in
+	// constraint-ledger.test.ts. Twelve arity entries per artifact carrying the
+	// expression grammar, `eval-contract` and now `probe`, plus the
+	// binding-channel minimum.
+	it('walks all twenty-five inject entries', () => {
+		expect(injectEntries).toHaveLength(25)
 	})
 
 	/** the entry's stated address as an occurrence pointer in its document. */
@@ -203,6 +206,7 @@ describe('each injected ledger entry is paired with its own fixture (AD-13)', ()
 								publishedDocumentOf(entry.location.artifact),
 								keywordPointer,
 								error.schemaPath,
+								error.instancePath,
 							),
 					)
 				})

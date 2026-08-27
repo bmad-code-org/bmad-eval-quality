@@ -32,6 +32,8 @@ export const PreflightCheck = z.strictObject({
 	note: z.string().nullable(),
 })
 
+export type PreflightCheck = z.infer<typeof PreflightCheck>
+
 export const PreflightVerdict = z
 	.strictObject({
 		...lineageFields,

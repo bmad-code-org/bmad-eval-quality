@@ -555,18 +555,26 @@ describe('cross-artifact and cross-field rules this story leaves unenforced', ()
 		})
 	})
 
-	// 16. Already on Story 1.3's list. Confirmed here rather than assumed: this
-	//     story declares no new keyed shape descriptor, so no new instance of the
-	//     rule escapes it.
-	it('declares no new required-versus-permitted key descriptor', () => {
+	// 16. Already on Story 1.3's list. Asserted as an exact census rather than a
+	//     skip list: AD-10's manifestation witness put the expression grammar on
+	//     `Defect`, and `shape`'s descriptor travels with it, so the same
+	//     unenforced rule now has a second document carrying it. The set is
+	//     pinned in both directions, so a third document acquiring a descriptor,
+	//     or either of these two losing one, fails here.
+	it('carries the keyed shape descriptor in exactly the two documents that declare an expression', () => {
+		const carriers: string[] = []
 		for (const [key, entry] of Object.entries(INTERCHANGE_ARTIFACTS)) {
-			if (key === 'eval-contract') continue
 			const document = JSON.stringify(
 				z.toJSONSchema(entry.schema, { io: 'input' }),
 			)
-			expect(document, key).not.toContain('permittedKeys')
-			expect(document, key).not.toContain('requiredKeys')
+			const carriesRequired = document.includes('requiredKeys')
+			const carriesPermitted = document.includes('permittedKeys')
+			// The pair is one descriptor, so one without the other would mean a new
+			// half-shape rather than the descriptor this rule is about.
+			expect(carriesPermitted, key).toBe(carriesRequired)
+			if (carriesRequired) carriers.push(key)
 		}
+		expect(carriers.sort()).toEqual(['eval-contract', 'probe'])
 	})
 	// 17. AD-21 assigns an exit code per verdict: PASS, WAIVED, and CONCERNS exit
 	//     zero and FAIL exits two. Both fields sit on one artifact, so a

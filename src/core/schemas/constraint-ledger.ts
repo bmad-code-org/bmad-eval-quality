@@ -66,24 +66,38 @@ export type ConstraintLedgerEntry = {
 // one-operand and three-operand `equality` that Zod rejects. Arity is the one
 // deliberate exception to the admit-rule, so it is the one place the export
 // must be repaired rather than relaxed.
-const arityEntries: readonly ConstraintLedgerEntry[] = Object.entries(
-	TUPLE_ARITY,
-).map(([op, arity]) => ({
-	id: `operator-arity-${op}`,
-	location: {
-		kind: 'definition',
-		artifact: 'eval-contract',
-		name: 'Expression',
-	},
-	branch: op,
-	field: 'operands',
-	statement: `\`${op}\` takes exactly ${arity} operand${arity === 1 ? '' : 's'}.`,
-	disposition: {
-		kind: 'inject',
-		dialect: 'draft-2020-12',
-		keywords: { minItems: arity, items: false },
-	},
-}))
+// AD-10's manifestation witness put an `Expression` on `Defect`, so the same
+// twelve tuples export into `probe.schema.json` too. `publish.ts` filters
+// injection by `entry.location.artifact`, so an eval-contract-addressed entry
+// repairs nothing there: both artifacts need their own twelve.
+// The eval-contract ids keep their original `operator-arity-<op>` spelling. An
+// entry id is a stable citation (`constraintLedgerEntry` looks one up by it), so
+// renaming twelve of them for symmetry would break every existing reference and
+// buy nothing.
+const ARITY_ARTIFACTS = ['eval-contract', 'probe'] as const
+
+const arityEntries: readonly ConstraintLedgerEntry[] = ARITY_ARTIFACTS.flatMap(
+	(artifact) =>
+		Object.entries(TUPLE_ARITY).map(([op, arity]) => ({
+			id:
+				artifact === 'eval-contract'
+					? `operator-arity-${op}`
+					: `operator-arity-${artifact}-${op}`,
+			location: {
+				kind: 'definition' as const,
+				artifact,
+				name: 'Expression',
+			},
+			branch: op,
+			field: 'operands',
+			statement: `\`${op}\` takes exactly ${arity} operand${arity === 1 ? '' : 's'}.`,
+			disposition: {
+				kind: 'inject' as const,
+				dialect: 'draft-2020-12' as const,
+				keywords: { minItems: arity, items: false },
+			},
+		})),
+)
 
 /**
  * AD-4 requires operand types in the published schema. Arity is structural

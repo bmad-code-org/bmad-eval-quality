@@ -832,6 +832,65 @@
                     "pattern": "^(?:\\/(?:[^/~]|~[01])*)*$",
                     "description": "A plain RFC 6901 pointer into one operation's response descriptor. It resolves through the operation an interaction step names, never through the interaction root. A request or response shape's descriptor keys are plain key names rather than pointers, so this spelling does not apply there. The empty string is admitted and carries RFC 6901's own meaning, the whole document: as a nominated success indicator it says success is visible in the response taken as a whole rather than at any one key, and as a channel-role key it assigns a role to the whole body."
                   }
+                },
+                "sensitivityWitness": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "witnessId": {
+                          "type": "string",
+                          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                          "description": "A kebab-case slug. Excludes \"/\" and \"~\" so an identifier can be embedded in an interaction-rooted pointer without escaping."
+                        },
+                        "channel": {
+                          "type": "string",
+                          "enum": [
+                            "path",
+                            "query",
+                            "body"
+                          ]
+                        },
+                        "legs": {
+                          "minItems": 2,
+                          "maxItems": 2,
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "legId": {
+                                "type": "string",
+                                "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                                "description": "A kebab-case slug. Excludes \"/\" and \"~\" so an identifier can be embedded in an interaction-rooted pointer without escaping."
+                              },
+                              "inputs": {
+                                "$ref": "#/$defs/WitnessInputs"
+                              }
+                            },
+                            "required": [
+                              "legId",
+                              "inputs"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "relation": {
+                          "$ref": "#/$defs/Expression"
+                        }
+                      },
+                      "required": [
+                        "witnessId",
+                        "channel",
+                        "legs",
+                        "relation"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "AD-10, mandatory per declared operation rather than per interface. `null` is legal only for an operation declaring no keys in any request channel; AD-10 exempts that operation and requires the exemption to be recorded, which pre-flight does as an `exempt` check. An input-bearing operation declaring `null` fails a strict compilation under `undeclared-mandatory-input`, alongside the other declaration-completeness check that code already gates."
                 }
               },
               "required": [
@@ -841,7 +900,8 @@
                 "stateChangeMarker",
                 "requestShape",
                 "responseDescriptor",
-                "volatilePointers"
+                "volatilePointers",
+                "sensitivityWitness"
               ],
               "additionalProperties": false
             },
@@ -1146,6 +1206,44 @@
         }
       ],
       "description": "AD-16's declared bound on enumerated probe steps, which the brief-side scripting audit reads. No AD gives it a home and the Configuration convention's policy-artifact list omits it, so it lands here beside the other ceilings. The AD-5 code that audit fires is Epic 2's to mint alongside its only thrower."
+    },
+    "fixtureReset": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "legId": {
+              "type": "string",
+              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+              "description": "A kebab-case slug. Excludes \"/\" and \"~\" so an identifier can be embedded in an interaction-rooted pointer without escaping."
+            },
+            "interfaceId": {
+              "type": "string",
+              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+              "description": "A kebab-case slug. Excludes \"/\" and \"~\" so an identifier can be embedded in an interaction-rooted pointer without escaping."
+            },
+            "operationId": {
+              "type": "string",
+              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+              "description": "A kebab-case slug. Excludes \"/\" and \"~\" so an identifier can be embedded in an interaction-rooted pointer without escaping."
+            },
+            "inputs": {
+              "$ref": "#/$defs/WitnessInputs"
+            }
+          },
+          "required": [
+            "legId",
+            "interfaceId",
+            "operationId",
+            "inputs"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "AD-10's per-run state reset, declared as the operation that performs it, so the reset is one more probe leg through the environment-probe port. `null` selects AD-10's repeated-read immutability branch, which is also the check that catches a volatile response field the contract failed to declare."
     }
   },
   "required": [
@@ -1168,10 +1266,11 @@
     "budgets",
     "safetyLimits",
     "requiredEvidence",
-    "probeStepBound"
+    "probeStepBound",
+    "fixtureReset"
   ],
   "additionalProperties": false,
-  "description": "The Eval Contract. Succeeds the prior-art `eval-contract` schema per AD-24. It carries every declaration AD-19 requires so that AD-31's fourteen relevance and satisfaction predicates are decidable from declarations alone. Sensitivity witnesses (AD-10) are deliberately absent in this version; adding them is an additive `schemaVersion` bump under AD-11, recorded in the field's own description when it arrives.",
+  "description": "The Eval Contract. Succeeds the prior-art `eval-contract` schema per AD-24. It carries every declaration AD-19 requires so that AD-31's fourteen relevance and satisfaction predicates are decidable from declarations alone. AD-10's sensitivity witnesses arrived in this version, on each operation, as the additive `schemaVersion` bump AD-11 requires; the bump is recorded in each new field's own description, since no reader in this version declares an expected version constant to compare against.",
   "$defs": {
     "Expression": {
       "description": "A `check` expression tree over AD-4's closed vocabulary, discriminated on `op`. Exports as a `oneOf` of sixteen branches, each identified by its `op` const; a constraint ledger entry names a branch by that const rather than by position.",
@@ -1918,6 +2017,81 @@
       ],
       "additionalProperties": false,
       "description": "The embeddable rubric body. Named so the shared body has a stable `$defs` key distinct from the published `Rubric` artifact, which is this body plus `schemaVersion` and AD-29 lineage; without the name the two collide in Story 1.5's drift check under a generated positional name."
+    },
+    "WitnessInputs": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          }
+        },
+        "query": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          }
+        },
+        "header": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "minLength": 1
+          },
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "body": {
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "const": "json"
+                },
+                "value": {
+                  "$ref": "#/$defs/JsonValue"
+                }
+              },
+              "required": [
+                "kind",
+                "value"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "const": "absent"
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "additionalProperties": false
+            }
+          ]
+        }
+      },
+      "required": [
+        "path",
+        "query",
+        "header",
+        "body"
+      ],
+      "additionalProperties": false,
+      "description": "One probe leg's supplied inputs, keyed by AD-19 transport channel, in the spelling the environment-probe port accepts. Shared by both witness kinds and by the fixture reset, so the export carries it once."
     },
     "InputBindingChannel": {
       "anyOf": [

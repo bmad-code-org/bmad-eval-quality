@@ -14,6 +14,7 @@ import {
 } from './primitives.ts'
 import { ReferenceSetDeclaration } from './reference-set.ts'
 import { RubricBody } from './rubric.ts'
+import { FixtureReset } from './sensitivity-witness.ts'
 import { Waiver } from './waiver.ts'
 
 /**
@@ -191,11 +192,14 @@ export const EvalContract = z
 			.describe(
 				"AD-16's declared bound on enumerated probe steps, which the brief-side scripting audit reads. No AD gives it a home and the Configuration convention's policy-artifact list omits it, so it lands here beside the other ceilings. The AD-5 code that audit fires is Epic 2's to mint alongside its only thrower.",
 			),
+		fixtureReset: FixtureReset.nullable().describe(
+			"AD-10's per-run state reset, declared as the operation that performs it, so the reset is one more probe leg through the environment-probe port. `null` selects AD-10's repeated-read immutability branch, which is also the check that catches a volatile response field the contract failed to declare.",
+		),
 	})
 	.meta({
 		id: 'EvalContract',
 		description:
-			"The Eval Contract. Succeeds the prior-art `eval-contract` schema per AD-24. It carries every declaration AD-19 requires so that AD-31's fourteen relevance and satisfaction predicates are decidable from declarations alone. Sensitivity witnesses (AD-10) are deliberately absent in this version; adding them is an additive `schemaVersion` bump under AD-11, recorded in the field's own description when it arrives.",
+			"The Eval Contract. Succeeds the prior-art `eval-contract` schema per AD-24. It carries every declaration AD-19 requires so that AD-31's fourteen relevance and satisfaction predicates are decidable from declarations alone. AD-10's sensitivity witnesses arrived in this version, on each operation, as the additive `schemaVersion` bump AD-11 requires; the bump is recorded in each new field's own description, since no reader in this version declares an expected version constant to compare against.",
 	})
 
 export type EvalContract = z.infer<typeof EvalContract>

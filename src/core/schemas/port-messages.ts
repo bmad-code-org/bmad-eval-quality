@@ -2,6 +2,9 @@
 import { z } from 'zod'
 import { HttpMethod, PathTemplate } from './interface.ts'
 import { Identifier, JsonValue, KeyName, Rfc3339Utc } from './primitives.ts'
+import { ProbeObservedBody, ProbeRequestBody } from './probe-body.ts'
+
+export { ProbeObservedBody, ProbeRequestBody } from './probe-body.ts'
 
 // AD-8: the corpus port resolves an opaque reference to bytes from a
 // caller-owned location. It does not check the digest: AD-8 puts digest
@@ -50,24 +53,6 @@ export const FileWriteResponse = z.strictObject({
 	path: z.string().min(1),
 	byteLength: z.int().min(0),
 })
-
-/**
- * A request body and an observed body are both tagged. AD-28 exists to stop
- * two adapter authors resolving one boundary differently, and an untagged
- * `JsonValue` cannot tell a JSON string response from a `text/html` one,
- * because `JsonValue` accepts a bare string. `absent` is its own branch,
- * since `null` is itself a legal JSON body.
- */
-export const ProbeRequestBody = z.discriminatedUnion('kind', [
-	z.strictObject({ kind: z.literal('json'), value: JsonValue }),
-	z.strictObject({ kind: z.literal('absent') }),
-])
-
-export const ProbeObservedBody = z.discriminatedUnion('kind', [
-	z.strictObject({ kind: z.literal('json'), value: JsonValue }),
-	z.strictObject({ kind: z.literal('text'), value: z.string() }),
-	z.strictObject({ kind: z.literal('absent') }),
-])
 
 /**
  * AD-35: the request names a logical interface identifier and never a URL,
@@ -131,7 +116,5 @@ export type FileReadRequest = z.infer<typeof FileReadRequest>
 export type FileReadResponse = z.infer<typeof FileReadResponse>
 export type FileWriteRequest = z.infer<typeof FileWriteRequest>
 export type FileWriteResponse = z.infer<typeof FileWriteResponse>
-export type ProbeRequestBody = z.infer<typeof ProbeRequestBody>
-export type ProbeObservedBody = z.infer<typeof ProbeObservedBody>
 export type ProbeRequest = z.infer<typeof ProbeRequest>
 export type ProbeObservation = z.infer<typeof ProbeObservation>

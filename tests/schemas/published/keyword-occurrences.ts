@@ -21,6 +21,69 @@ export const resolvePointer = (document: unknown, pointer: string): unknown => {
 }
 
 /**
+ * The applicator steps that move an error one level down the instance, and
+ * what token they add. A composition keyword (`anyOf`, `not`, `propertyNames`,
+ * …) stays at the same instance node, so it adds nothing.
+ */
+const INSTANCE_DESCENT: Readonly<Record<string, 'named' | 'wildcard'>> = {
+	properties: 'named',
+	prefixItems: 'named',
+	patternProperties: 'wildcard',
+	items: 'wildcard',
+	additionalProperties: 'wildcard',
+}
+
+const STAYS_PUT: ReadonlySet<string> = new Set([
+	'anyOf',
+	'oneOf',
+	'allOf',
+	'not',
+	'if',
+	'then',
+	'else',
+	'propertyNames',
+	'$defs',
+	'definitions',
+])
+
+/**
+ * Whether a schema path read against the document root could have produced an
+ * error at `instancePath`. The last step is the keyword that failed and moves
+ * nothing; each earlier applicator step contributes one instance token, named
+ * where the schema path names it and wildcard where it does not. An unknown
+ * step gives up and answers `true`, so an unrecognised keyword widens the
+ * match rather than silently deleting one.
+ */
+export const rootReadingCouldProduce = (
+	relative: string,
+	instancePath: string,
+): boolean => {
+	const steps = relative === '' ? [] : relative.slice(1).split('/')
+	const implied: (string | null)[] = []
+	for (let index = 0; index < steps.length - 1; index++) {
+		const step = steps[index] as string
+		const descent = INSTANCE_DESCENT[step]
+		if (descent === 'named') {
+			implied.push(steps[++index] ?? null)
+			continue
+		}
+		if (descent === 'wildcard') {
+			if (step === 'patternProperties') index++
+			implied.push(null)
+			continue
+		}
+		if (!STAYS_PUT.has(step)) return true
+		const next = steps[index + 1]
+		if (next !== undefined && /^\d+$/.test(next)) index++
+	}
+	const actual = instancePath === '' ? [] : instancePath.slice(1).split('/')
+	if (actual.length !== implied.length) return false
+	return implied.every(
+		(token, index) => token === null || token === actual[index],
+	)
+}
+
+/**
  * Ajv reports `schemaPath` relative to the closest schema resource: an error
  * inside `$defs/Expression` arrives as `#/oneOf/0/...`, never
  * `#/$defs/Expression/oneOf/0/...`. So an occurrence pointer matches a
@@ -29,9 +92,16 @@ export const resolvePointer = (document: unknown, pointer: string): unknown => {
  *
  * Two tightenings against a bare suffix rule over-matching: the fragment is
  * percent-decoded (ajv URI-encodes `schemaPath`; occurrence pointers are raw
- * JSON Pointers), and a def-relative reading is accepted only when the same
- * relative path names nothing at the document root, so a root error like
- * `#/oneOf/0/minItems` can't falsely witness `/$defs/Foo/oneOf/0/minItems`.
+ * JSON Pointers), and a reading is accepted only when the error's instance
+ * path is one that reading could have produced.
+ *
+ * That instance-path test is what tells the two readings apart when the same
+ * relative path names a node under both. AD-10's witnesses made that ordinary
+ * rather than hypothetical: `$defs/WitnessInputs` opens with the same `type`,
+ * `required`, and `additionalProperties` the eval-contract root carries, and
+ * `$defs/Expression/oneOf/*` shadows the probe root's own union. Refusing the
+ * def reading outright, as this did before, left five occurrences with no
+ * reachable mutant.
  *
  * Residual slack: two `$defs` entries sharing an internal path are
  * indistinguishable from `schemaPath` alone. Every call site also pins the
@@ -42,6 +112,7 @@ export const pointerMatchesSchemaPath = (
 	document: Record<string, unknown>,
 	occurrencePointer: string,
 	schemaPath: string,
+	instancePath?: string,
 ): boolean => {
 	const fragment = schemaPath.startsWith('#') ? schemaPath.slice(1) : schemaPath
 	let relative: string
@@ -50,14 +121,17 @@ export const pointerMatchesSchemaPath = (
 	} catch {
 		relative = fragment
 	}
-	if (occurrencePointer === relative) return true
+	const rootReading =
+		instancePath === undefined ||
+		rootReadingCouldProduce(relative, instancePath)
+	if (occurrencePointer === relative) return rootReading
 	if (!occurrencePointer.endsWith(relative)) return false
 	const prefix = occurrencePointer.slice(0, -relative.length)
 	if (!/^\/\$defs\/[^/]+$/.test(prefix)) return false
-	// conservative: when the relative path is ambiguous between root and def,
-	// refuse the def reading. A wrongly refused match surfaces as an
-	// unreachable-vs-exempt inequality, never as a silent false witness.
-	return resolvePointer(document, relative) === undefined
+	// The def reading is unambiguous when the relative path names nothing at
+	// the root, and is still the right one when the root reading could not have
+	// produced an error at this instance path.
+	return resolvePointer(document, relative) === undefined || !rootReading
 }
 
 export type KeywordOccurrence = {

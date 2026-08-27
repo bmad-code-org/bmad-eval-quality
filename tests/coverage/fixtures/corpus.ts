@@ -185,10 +185,24 @@ const unnamedReferenceSet = variant('unnamed-reference-set', {
 	),
 })
 
-/** Rule 7: `false` is the marker's other legal value, and its explicit answer. */
+/**
+ * Rule 7: `false` is the marker's other legal value, and its explicit answer.
+ *
+ * The witness goes with the marker. AD-10 selects the differential channel by
+ * exactly this field, and `create-thing`'s only declared input channel is
+ * `body`, which is illegal once the marker is false; moving the witness to
+ * `query` instead would leave both legs supplying the same empty query, which
+ * is a pair that differentiates nothing. `null` is the truthful answer for an
+ * operation whose declared inputs AD-10 can express no witness over, and this
+ * corpus compiles under `strict: false`, where the declaration check that would
+ * otherwise demand one does not run.
+ */
 const noStateChangeMarker = variant('no-state-change-marker', {
 	permittedInterfaces: withOperations(
-		withOperation(createThing, { stateChangeMarker: false }),
+		withOperation(createThing, {
+			stateChangeMarker: false,
+			sensitivityWitness: null,
+		}),
 		listThings,
 	),
 })

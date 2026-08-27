@@ -7,6 +7,7 @@ import {
 	KeyName,
 	KeyTypeMap,
 } from './primitives.ts'
+import { SensitivityWitness } from './sensitivity-witness.ts'
 
 /** AD-19's closed four-member set, declared per pointer the descriptor names. */
 export const ChannelRole = z.enum([
@@ -126,6 +127,9 @@ export const Operation = z.strictObject({
 	requestShape: RequestShape,
 	responseDescriptor: ResponseDescriptor,
 	volatilePointers: z.array(DescriptorPointer),
+	sensitivityWitness: SensitivityWitness.nullable().describe(
+		'AD-10, mandatory per declared operation rather than per interface. `null` is legal only for an operation declaring no keys in any request channel; AD-10 exempts that operation and requires the exemption to be recorded, which pre-flight does as an `exempt` check. An input-bearing operation declaring `null` fails a strict compilation under `undeclared-mandatory-input`, alongside the other declaration-completeness check that code already gates.',
+	),
 })
 
 export type Operation = z.infer<typeof Operation>

@@ -210,15 +210,48 @@ describe('the Consistency Conventions, extended rather than restarted', () => {
 	})
 
 	// A caller-keyed control map exports `propertyNames` plus a schema-valued
-	// `additionalProperties`. Story 1.3 named exactly six and this story adds
-	// none: `decodingParameters`, `responseBody`, and `responseHeaders` are
-	// JsonValue-typed rather than caller-keyed control maps, and
-	// `forbiddenInputAccounting` is a seven-key strict object. Stated as a test
-	// rather than left inferable.
-	it('adds no seventh caller-keyed control map', () => {
-		const offenders: string[] = []
+	// `additionalProperties`. Story 1.3 named six such DECLARATIONS on the
+	// contract: `KeyTypeMap` (the `types` triple of a request channel, a
+	// response descriptor, and a `shape` descriptor), `channelRoles`,
+	// `referenceSets`, and `InputBindingChannel`. `decodingParameters`,
+	// `responseBody`, and `responseHeaders` are JsonValue-typed rather than
+	// caller-keyed, and `forbiddenInputAccounting` is a seven-key strict object.
+	//
+	// AD-10 added the seventh declaration, `WitnessInputs.header`, string-valued
+	// because a header value is a string at the boundary, and carried the
+	// `shape` operator's descriptor into a second document with the rest of the
+	// expression grammar.
+	//
+	// The census below counts ADDRESSES, not declarations, which is why
+	// eval-contract lists ten for seven declarations: `KeyTypeMap` is reached at
+	// six of them, once per request channel plus the response descriptor plus
+	// the `shape` descriptor. Pinned in both directions, so a genuinely new
+	// caller-keyed map still fails here rather than being absorbed by a widened
+	// skip list.
+	const CALLER_KEYED_CONTROL_MAPS: Readonly<Record<string, readonly string[]>> =
+		{
+			'eval-contract': [
+				'/properties/permittedInterfaces/items/properties/operations/items/properties/requestShape/properties/path/properties/types',
+				'/properties/permittedInterfaces/items/properties/operations/items/properties/requestShape/properties/query/properties/types',
+				'/properties/permittedInterfaces/items/properties/operations/items/properties/requestShape/properties/header/properties/types',
+				'/properties/permittedInterfaces/items/properties/operations/items/properties/requestShape/properties/body/properties/types',
+				'/properties/permittedInterfaces/items/properties/operations/items/properties/responseDescriptor/properties/types',
+				'/properties/permittedInterfaces/items/properties/operations/items/properties/responseDescriptor/properties/channelRoles/anyOf/0',
+				'/properties/referenceSets/anyOf/0',
+				'/$defs/Expression/oneOf/9/properties/descriptor/properties/types',
+				'/$defs/WitnessInputs/properties/header',
+				'/$defs/InputBindingChannel/anyOf/0',
+			],
+			probe: [
+				'/$defs/WitnessInputs/properties/header',
+				'/$defs/Expression/oneOf/9/properties/descriptor/properties/types',
+			],
+		}
+
+	it('carries a caller-keyed control map only at the addresses named here', () => {
+		const found: Record<string, string[]> = {}
 		for (const [key, entry] of Object.entries(INTERCHANGE_ARTIFACTS)) {
-			if (key === 'eval-contract') continue
+			const offenders: string[] = []
 			const document = documentOf(entry.schema)
 			const seen = new Set<string>()
 			const walk = (node: any, path: string): void => {
@@ -233,7 +266,7 @@ describe('the Consistency Conventions, extended rather than restarted', () => {
 				const valuedByJsonValue =
 					node.additionalProperties?.$ref === '#/$defs/JsonValue'
 				if (node.propertyNames !== undefined && !valuedByJsonValue) {
-					offenders.push(`${key}${path}`)
+					offenders.push(path)
 				}
 				for (const [name, child] of Object.entries(node)) {
 					if (name === '$defs' || name === 'properties') {
@@ -248,8 +281,9 @@ describe('the Consistency Conventions, extended rather than restarted', () => {
 				}
 			}
 			walk(document, '')
+			if (offenders.length > 0) found[key] = offenders
 		}
-		expect(offenders).toEqual([])
+		expect(found).toEqual(CALLER_KEYED_CONTROL_MAPS)
 	})
 
 	// `.default()` diverges the input-mode and output-mode exports by dropping

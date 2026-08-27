@@ -8,7 +8,10 @@
  * `malformed-operator-expression` trio (`checkBoundElementScope`,
  * `checkOperandLegality`, `checkRegexConstructs`) keeps that suborder so
  * their shared result stays deterministic. `checkUndeclaredMandatoryInput`
- * runs only when `options.strict` is true (AD-4).
+ * runs only when `options.strict` is true (AD-4), and AD-10's
+ * `checkSensitivityWitnessDeclared` joins it there because it fires the same
+ * code; the other two witness checks fire different codes and run
+ * unconditionally, after the registry order, since AD-5 names no rung for them.
  */
 
 import type { EvalContract } from '../schemas/eval-contract.ts'
@@ -42,6 +45,11 @@ import {
 	checkNestedTemporalClause,
 	checkScriptingBound,
 } from './scripting-bound.ts'
+import {
+	checkSensitivityWitnessDeclared,
+	checkWitnessLegality,
+	checkWitnessLegIdentifiers,
+} from './sensitivity-witness.ts'
 import { checkWaiverCompleteness } from './waivers.ts'
 
 export function compile(
@@ -58,7 +66,10 @@ export function compile(
 	checkQuantifierNesting(contract)
 	checkReferenceSetResolution(contract)
 	checkDuplicateOperationSignature(contract)
-	if (options.strict) checkUndeclaredMandatoryInput(contract)
+	if (options.strict) {
+		checkUndeclaredMandatoryInput(contract)
+		checkSensitivityWitnessDeclared(contract)
+	}
 	checkOracleChannel(contract)
 	checkOracleAlignment(contract)
 	checkInterfaceKind(contract)
@@ -67,5 +78,13 @@ export function compile(
 	checkForbiddenInputFloor(contract)
 	checkScopedResourceReferences(contract)
 	checkWaiverCompleteness(contract)
+	// Identifiers before legality, which is the reverse of the order the story
+	// named. A duplicated or plan-colliding leg id makes the legality check's
+	// question ("does the relation address both legs?") unanswerable, so
+	// legality-first reports an unreachable-evidence failure on a contract whose
+	// actual defect is the collision, and every identifier fixture would need a
+	// second mutation to reach its own code.
+	checkWitnessLegIdentifiers(contract)
+	checkWitnessLegality(contract)
 	return contract
 }

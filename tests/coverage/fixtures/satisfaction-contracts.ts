@@ -294,6 +294,42 @@ export const satisfiedContract = {
 						collectionLocations: [],
 					},
 					volatilePointers: ['/id'],
+					sensitivityWitness: {
+						witnessId: 'create-thing-sensitivity',
+						channel: 'body',
+						legs: [
+							{
+								legId: 'create-witness-a',
+								inputs: {
+									path: {},
+									query: {},
+									header: {},
+									body: { kind: 'json', value: { name: 'alpha' } },
+								},
+							},
+							{
+								legId: 'create-witness-b',
+								inputs: {
+									path: {},
+									query: {},
+									header: {},
+									body: { kind: 'json', value: { name: 'beta' } },
+								},
+							},
+						],
+						relation: {
+							op: 'not',
+							operands: [
+								{
+									op: 'deep-equality',
+									operands: [
+										{ pointer: '/interactions/create-witness-a/response-body' },
+										{ pointer: '/interactions/create-witness-b/response-body' },
+									],
+								},
+							],
+						},
+					},
 				},
 				{
 					operationId: 'list-things',
@@ -328,6 +364,42 @@ export const satisfiedContract = {
 						],
 					},
 					volatilePointers: [],
+					sensitivityWitness: {
+						witnessId: 'list-things-sensitivity',
+						channel: 'query',
+						legs: [
+							{
+								legId: 'list-witness-a',
+								inputs: {
+									path: {},
+									header: {},
+									query: { limit: 1 },
+									body: { kind: 'absent' },
+								},
+							},
+							{
+								legId: 'list-witness-b',
+								inputs: {
+									path: {},
+									header: {},
+									query: { limit: 2 },
+									body: { kind: 'absent' },
+								},
+							},
+						],
+						relation: {
+							op: 'not',
+							operands: [
+								{
+									op: 'deep-equality',
+									operands: [
+										{ pointer: '/interactions/list-witness-a/response-body' },
+										{ pointer: '/interactions/list-witness-b/response-body' },
+									],
+								},
+							],
+						},
+					},
 				},
 			],
 		},
@@ -413,4 +485,5 @@ export const satisfiedContract = {
 	],
 	requiredEvidence: ['Request and response pair for every call, in order.'],
 	probeStepBound: 8,
+	fixtureReset: null,
 } satisfies EvalContract

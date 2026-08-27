@@ -60,6 +60,7 @@ export const absentContract = {
 						collectionLocations: null,
 					},
 					volatilePointers: [],
+					sensitivityWitness: null,
 				},
 			],
 		},
@@ -74,6 +75,7 @@ export const absentContract = {
 	safetyLimits: [],
 	requiredEvidence: [],
 	probeStepBound: null,
+	fixtureReset: null,
 } satisfies EvalContract
 
 /** every axis in its explicitly-empty state: the declaration is present and empty. */
@@ -100,6 +102,7 @@ export const explicitlyEmptyContract = {
 						collectionLocations: [],
 					},
 					volatilePointers: [],
+					sensitivityWitness: null,
 				},
 			],
 		},
@@ -212,6 +215,42 @@ export const populatedContract = {
 						collectionLocations: null,
 					},
 					volatilePointers: ['/id'],
+					sensitivityWitness: {
+						witnessId: 'create-thing-sensitivity',
+						channel: 'body',
+						legs: [
+							{
+								legId: 'create-witness-a',
+								inputs: {
+									path: {},
+									query: {},
+									header: {},
+									body: { kind: 'json', value: { name: 'alpha' } },
+								},
+							},
+							{
+								legId: 'create-witness-b',
+								inputs: {
+									path: {},
+									query: {},
+									header: {},
+									body: { kind: 'json', value: { name: 'beta' } },
+								},
+							},
+						],
+						relation: {
+							op: 'not',
+							operands: [
+								{
+									op: 'deep-equality',
+									operands: [
+										{ pointer: '/interactions/create-witness-a/response-body' },
+										{ pointer: '/interactions/create-witness-b/response-body' },
+									],
+								},
+							],
+						},
+					},
 				},
 				{
 					operationId: 'list-things',
@@ -246,6 +285,48 @@ export const populatedContract = {
 						],
 					},
 					volatilePointers: [],
+					sensitivityWitness: {
+						witnessId: 'list-things-sensitivity',
+						channel: 'query',
+						legs: [
+							{
+								legId: 'list-witness-a',
+								inputs: {
+									path: {},
+									query: { limit: 1 },
+									header: {},
+									body: { kind: 'absent' },
+								},
+							},
+							{
+								legId: 'list-witness-b',
+								inputs: {
+									path: {},
+									query: { limit: 2 },
+									header: {},
+									body: { kind: 'absent' },
+								},
+							},
+						],
+						relation: {
+							op: 'not',
+							operands: [
+								{
+									op: 'deep-equality',
+									operands: [
+										{
+											pointer:
+												'/interactions/list-witness-a/response-body/items',
+										},
+										{
+											pointer:
+												'/interactions/list-witness-b/response-body/items',
+										},
+									],
+								},
+							],
+						},
+					},
 				},
 			],
 		},
@@ -309,6 +390,7 @@ export const populatedContract = {
 	],
 	requiredEvidence: ['Request and response pair for every call, in order.'],
 	probeStepBound: 8,
+	fixtureReset: null,
 } satisfies EvalContract
 
 export const RELEVANCE_CONTRACTS = [

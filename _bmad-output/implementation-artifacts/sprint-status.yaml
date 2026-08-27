@@ -78,7 +78,7 @@ development_status:
   
   epic-6: in-progress
   6-1-ports-and-the-published-conformance-suite: review
-  6-2-pre-flight-as-plan-observation-and-pure-verdict: backlog
+  6-2-pre-flight-as-plan-observation-and-pure-verdict: ready-for-dev
   6-3-rubric-compilation-under-checked-rules: backlog
   6-4-artifact-immutability-and-lineage-enforcement: backlog
   6-5-the-library-and-cli-surface: backlog

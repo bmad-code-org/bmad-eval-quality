@@ -26,8 +26,9 @@ export type SealStage = (contract: EvalContract) => SealedEvaluatorBrief
 /**
  * A stage's pure planning half: artifacts in, a request description out.
  * AD-34 makes this pair conditional on a stage needing external observation.
- * Compile and seal need none, so neither implements this; pre-flight
- * (Story 6.2) is the first concrete consumer.
+ * Compile and seal need none, so neither implements this; pre-flight does, and
+ * `core/preflight/plan.ts` and `core/preflight/reduce.ts` are the pair that
+ * satisfies these two types.
  */
 export type PlanStage<InputArtifact, RequestDescription> = (
 	input: InputArtifact,

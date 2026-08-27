@@ -115,6 +115,48 @@
                   "natural",
                   "controlled-mutation"
                 ]
+              },
+              "manifestationWitness": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "legId": {
+                        "type": "string",
+                        "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                        "description": "A kebab-case slug. Excludes \"/\" and \"~\" so an identifier can be embedded in an interaction-rooted pointer without escaping."
+                      },
+                      "interfaceId": {
+                        "type": "string",
+                        "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                        "description": "A kebab-case slug. Excludes \"/\" and \"~\" so an identifier can be embedded in an interaction-rooted pointer without escaping."
+                      },
+                      "operationId": {
+                        "type": "string",
+                        "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                        "description": "A kebab-case slug. Excludes \"/\" and \"~\" so an identifier can be embedded in an interaction-rooted pointer without escaping."
+                      },
+                      "inputs": {
+                        "$ref": "#/$defs/WitnessInputs"
+                      },
+                      "relation": {
+                        "$ref": "#/$defs/Expression"
+                      }
+                    },
+                    "required": [
+                      "legId",
+                      "interfaceId",
+                      "operationId",
+                      "inputs",
+                      "relation"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "AD-10: what pre-flight probes to observe this defect fire. `null` parses, so the prior art's six-field defect still round-trips, and pre-flight records a null witness as a **failed** `seeded-fault-fired` check rather than as an exemption. A seeded fault that cannot be observed to fire is the vacuous probe AD-40 resolves to `infrastructure-error`, and pre-flight is the one place where invalidating is the cheap outcome."
               }
             },
             "required": [
@@ -123,7 +165,8 @@
               "summary",
               "severity",
               "oracleEvidence",
-              "source"
+              "source",
+              "manifestationWitness"
             ],
             "additionalProperties": false
           },
@@ -260,6 +303,48 @@
                   "natural",
                   "controlled-mutation"
                 ]
+              },
+              "manifestationWitness": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "legId": {
+                        "type": "string",
+                        "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                        "description": "A kebab-case slug. Excludes \"/\" and \"~\" so an identifier can be embedded in an interaction-rooted pointer without escaping."
+                      },
+                      "interfaceId": {
+                        "type": "string",
+                        "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                        "description": "A kebab-case slug. Excludes \"/\" and \"~\" so an identifier can be embedded in an interaction-rooted pointer without escaping."
+                      },
+                      "operationId": {
+                        "type": "string",
+                        "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                        "description": "A kebab-case slug. Excludes \"/\" and \"~\" so an identifier can be embedded in an interaction-rooted pointer without escaping."
+                      },
+                      "inputs": {
+                        "$ref": "#/$defs/WitnessInputs"
+                      },
+                      "relation": {
+                        "$ref": "#/$defs/Expression"
+                      }
+                    },
+                    "required": [
+                      "legId",
+                      "interfaceId",
+                      "operationId",
+                      "inputs",
+                      "relation"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "AD-10: what pre-flight probes to observe this defect fire. `null` parses, so the prior art's six-field defect still round-trips, and pre-flight records a null witness as a **failed** `seeded-fault-fired` check rather than as an exemption. A seeded fault that cannot be observed to fire is the vacuous probe AD-40 resolves to `infrastructure-error`, and pre-flight is the one place where invalidating is the cheap outcome."
               }
             },
             "required": [
@@ -268,7 +353,8 @@
               "summary",
               "severity",
               "oracleEvidence",
-              "source"
+              "source",
+              "manifestationWitness"
             ],
             "additionalProperties": false
           },
@@ -357,6 +443,709 @@
         }
       ],
       "description": "A reference to an artifact, public by path or private by opaque handle. Succeeds the prior-art `artifact-ref` schema per AD-24, with its two `if`/`then` branches re-expressed as a discriminated union per AD-13 and its `sha256` field renamed to `digest` against the shared AD-27 primitive. Alone among the twelve interchange artifacts this one carries NO `schemaVersion` and NO AD-29 lineage: it is a reference shape embedded inside other artifacts rather than one that crosses the package boundary alone, so versioning it would add a key to every finding and every manifest entry for no reader. It is in the inventory because it is published, not because it is exchanged; the exemption is asserted by a test against the registry's `carriesLineage` flag."
+    },
+    "WitnessInputs": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          }
+        },
+        "query": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          }
+        },
+        "header": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "minLength": 1
+          },
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "body": {
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "const": "json"
+                },
+                "value": {
+                  "$ref": "#/$defs/JsonValue"
+                }
+              },
+              "required": [
+                "kind",
+                "value"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "const": "absent"
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "additionalProperties": false
+            }
+          ]
+        }
+      },
+      "required": [
+        "path",
+        "query",
+        "header",
+        "body"
+      ],
+      "additionalProperties": false,
+      "description": "One probe leg's supplied inputs, keyed by AD-19 transport channel, in the spelling the environment-probe port accepts. Shared by both witness kinds and by the fixture reset, so the export carries it once."
+    },
+    "JsonValue": {
+      "description": "AD-36 value domain. Every number is a finite IEEE 754 double-precision value, and every integer lies in the safe-integer range; a larger integer, and any value needing exact decimal semantics such as money, is carried as a string in its own declared format. JSON Schema cannot express finiteness, so this restriction is stated rather than encoded: producers are told the rule here instead of discovering it through a digest mismatch, and the canonical scanner rejects a violating value before any parse.",
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "number"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        },
+        {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/JsonValue"
+          }
+        },
+        {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          }
+        }
+      ]
+    },
+    "Expression": {
+      "description": "A `check` expression tree over AD-4's closed vocabulary, discriminated on `op`. Exports as a `oneOf` of sixteen branches, each identified by its `op` const; a constraint ledger entry names a branch by that const rather than by position.",
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "op": {
+              "type": "string",
+              "const": "equality"
+            },
+            "operands": {
+              "type": "array",
+              "prefixItems": [
+                {
+                  "$ref": "#/$defs/Operand"
+                },
+                {
+                  "$ref": "#/$defs/Operand"
+                }
+              ],
+              "description": "Two operands, each legally a pointer or a literal. Every position admits the full operand union on purpose. AD-26 makes a reference-set operand outside its three legal positions \u2014 `covers-by-key`'s expected operand, and the set operand of `set-membership` or `containment` \u2014 fail compilation under `malformed-operator-expression`, which only stays fireable if the other positions admit it. Epic 4 enforces the legality stated here; the schema does not narrow it.",
+              "minItems": 2,
+              "items": false
+            }
+          },
+          "required": [
+            "op",
+            "operands"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "op": {
+              "type": "string",
+              "const": "deep-equality"
+            },
+            "operands": {
+              "type": "array",
+              "prefixItems": [
+                {
+                  "$ref": "#/$defs/Operand"
+                },
+                {
+                  "$ref": "#/$defs/Operand"
+                }
+              ],
+              "description": "Two operands, each legally a pointer or a literal. Every position admits the full operand union on purpose. AD-26 makes a reference-set operand outside its three legal positions \u2014 `covers-by-key`'s expected operand, and the set operand of `set-membership` or `containment` \u2014 fail compilation under `malformed-operator-expression`, which only stays fireable if the other positions admit it. Epic 4 enforces the legality stated here; the schema does not narrow it.",
+              "minItems": 2,
+              "items": false
+            }
+          },
+          "required": [
+            "op",
+            "operands"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "op": {
+              "type": "string",
+              "const": "containment"
+            },
+            "operands": {
+              "type": "array",
+              "prefixItems": [
+                {
+                  "$ref": "#/$defs/Operand"
+                },
+                {
+                  "$ref": "#/$defs/Operand"
+                }
+              ],
+              "description": "Two operands: the container is legally a pointer, and the set is legally a pointer, a literal, or a reference set. Every position admits the full operand union on purpose. AD-26 makes a reference-set operand outside its three legal positions \u2014 `covers-by-key`'s expected operand, and the set operand of `set-membership` or `containment` \u2014 fail compilation under `malformed-operator-expression`, which only stays fireable if the other positions admit it. Epic 4 enforces the legality stated here; the schema does not narrow it.",
+              "minItems": 2,
+              "items": false
+            }
+          },
+          "required": [
+            "op",
+            "operands"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "op": {
+              "type": "string",
+              "const": "existence"
+            },
+            "operands": {
+              "type": "array",
+              "prefixItems": [
+                {
+                  "$ref": "#/$defs/Operand"
+                }
+              ],
+              "description": "One operand, legally a pointer. Every position admits the full operand union on purpose. AD-26 makes a reference-set operand outside its three legal positions \u2014 `covers-by-key`'s expected operand, and the set operand of `set-membership` or `containment` \u2014 fail compilation under `malformed-operator-expression`, which only stays fireable if the other positions admit it. Epic 4 enforces the legality stated here; the schema does not narrow it.",
+              "minItems": 1,
+              "items": false
+            }
+          },
+          "required": [
+            "op",
+            "operands"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "op": {
+              "type": "string",
+              "const": "absence"
+            },
+            "operands": {
+              "type": "array",
+              "prefixItems": [
+                {
+                  "$ref": "#/$defs/Operand"
+                }
+              ],
+              "description": "One operand, legally a pointer. Every position admits the full operand union on purpose. AD-26 makes a reference-set operand outside its three legal positions \u2014 `covers-by-key`'s expected operand, and the set operand of `set-membership` or `containment` \u2014 fail compilation under `malformed-operator-expression`, which only stays fireable if the other positions admit it. Epic 4 enforces the legality stated here; the schema does not narrow it.",
+              "minItems": 1,
+              "items": false
+            }
+          },
+          "required": [
+            "op",
+            "operands"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "op": {
+              "type": "string",
+              "const": "regex"
+            },
+            "operands": {
+              "type": "array",
+              "prefixItems": [
+                {
+                  "$ref": "#/$defs/Operand"
+                }
+              ],
+              "description": "One operand, legally a pointer. Every position admits the full operand union on purpose. AD-26 makes a reference-set operand outside its three legal positions \u2014 `covers-by-key`'s expected operand, and the set operand of `set-membership` or `containment` \u2014 fail compilation under `malformed-operator-expression`, which only stays fireable if the other positions admit it. Epic 4 enforces the legality stated here; the schema does not narrow it.",
+              "minItems": 1,
+              "items": false
+            },
+            "pattern": {
+              "type": "string",
+              "pattern": "^\\^[\\s\\S]*\\$$",
+              "description": "An ECMA-262 pattern, fully anchored: it begins with \"^\" and ends with \"$\". A named field rather than a `{ literal }` operand, so Epic 4's backreference and lookbehind check has one place to look instead of a JsonValue that may hold anything. The check is positional and is wrong in both directions. It admits patterns that are not anchored, such as the alternation \"^a|b$\" or a trailing \"$\" that is escaped; those are Epic 4's, alongside backreferences and lookbehind. It also rejects patterns that are anchored but wrapped in a group, such as \"(^a$)\" \u2014 write \"^(?:a|b)$\" rather than \"(?:^a$|^b$)\" and the form accepts it. Deciding anchoring properly requires parsing the pattern, which no JSON Schema keyword can express."
+            }
+          },
+          "required": [
+            "op",
+            "operands",
+            "pattern"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "op": {
+              "type": "string",
+              "const": "set-membership"
+            },
+            "operands": {
+              "type": "array",
+              "prefixItems": [
+                {
+                  "$ref": "#/$defs/Operand"
+                },
+                {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "referenceSet": {
+                          "type": "string",
+                          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                          "description": "A plain identifier. Deliberately not an enum of the contract's declared reference sets and deliberately not refined against them: an identifier the contract does not declare is `unresolved-reference-set`, a coded compile-time error, and a schema that rejected it would convert that code into an anonymous parse fault."
+                        }
+                      },
+                      "required": [
+                        "referenceSet"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "literal": {
+                          "minItems": 1,
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/$defs/JsonValue"
+                          },
+                          "description": "Coin flip (b), settled: a literal set operand is admitted alongside the reference-set form, and is constrained to a non-empty array because `set-membership` against an empty set is unfalsifiable authoring rather than an observation about the world. This is the one deliberately narrowed operand position in the grammar; the cost is that `{ \"literal\": [] }` and a `{ \"pointer\" }` in this position are schema rejections rather than `malformed-operator-expression`."
+                        }
+                      },
+                      "required": [
+                        "literal"
+                      ],
+                      "additionalProperties": false
+                    }
+                  ]
+                }
+              ],
+              "description": "Two operands: the value is legally a pointer, and the set is a reference set or a non-empty literal array. The set position is the one place the schema does narrow, and coin flip (b) records what that costs. Every position admits the full operand union on purpose. AD-26 makes a reference-set operand outside its three legal positions \u2014 `covers-by-key`'s expected operand, and the set operand of `set-membership` or `containment` \u2014 fail compilation under `malformed-operator-expression`, which only stays fireable if the other positions admit it. Epic 4 enforces the legality stated here; the schema does not narrow it.",
+              "minItems": 2,
+              "items": false
+            }
+          },
+          "required": [
+            "op",
+            "operands"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "op": {
+              "type": "string",
+              "const": "ordering"
+            },
+            "operands": {
+              "type": "array",
+              "prefixItems": [
+                {
+                  "$ref": "#/$defs/Operand"
+                }
+              ],
+              "description": "One operand, legally a pointer to a collection. Every position admits the full operand union on purpose. AD-26 makes a reference-set operand outside its three legal positions \u2014 `covers-by-key`'s expected operand, and the set operand of `set-membership` or `containment` \u2014 fail compilation under `malformed-operator-expression`, which only stays fireable if the other positions admit it. Epic 4 enforces the legality stated here; the schema does not narrow it.",
+              "minItems": 1,
+              "items": false
+            },
+            "key": {
+              "type": "string",
+              "minLength": 1
+            },
+            "order": {
+              "type": "string",
+              "enum": [
+                "ascending",
+                "descending"
+              ]
+            }
+          },
+          "required": [
+            "op",
+            "operands",
+            "key",
+            "order"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "op": {
+              "type": "string",
+              "const": "count-tolerance"
+            },
+            "operands": {
+              "type": "array",
+              "prefixItems": [
+                {
+                  "$ref": "#/$defs/Operand"
+                }
+              ],
+              "description": "One operand, legally a pointer to a collection. Every position admits the full operand union on purpose. AD-26 makes a reference-set operand outside its three legal positions \u2014 `covers-by-key`'s expected operand, and the set operand of `set-membership` or `containment` \u2014 fail compilation under `malformed-operator-expression`, which only stays fireable if the other positions admit it. Epic 4 enforces the legality stated here; the schema does not narrow it.",
+              "minItems": 1,
+              "items": false
+            },
+            "expected": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991,
+              "description": "The expected element count. Non-negative: a negative count is not a count, and no AD-5 code fires on one, so the schema is the enforcement point."
+            },
+            "tolerance": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991,
+              "description": "The permitted deviation from `expected`, non-negative for the same reason. When `relative` is declared the tolerance is read as whole percentage points, which is stated because AD-4 supplies no value space for the magnitude and Epic 3 inherits the semantics. An integer therefore cannot express a fractional relative tolerance such as 2.5 percent; widening the value space later is an additive `schemaVersion` bump under AD-11, and was not taken here because it would export as a bare `type: \"number\"` and cost a constraint ledger entry for a case no declaration needs yet."
+            },
+            "relative": {
+              "type": "boolean",
+              "description": "AD-4: the tolerance is absolute unless this flag is declared. Required and explicit rather than defaulted, because a Zod default diverges input and output mode and drops the key from the exported `required` list."
+            }
+          },
+          "required": [
+            "op",
+            "operands",
+            "expected",
+            "tolerance",
+            "relative"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "op": {
+              "type": "string",
+              "const": "shape"
+            },
+            "operands": {
+              "type": "array",
+              "prefixItems": [
+                {
+                  "$ref": "#/$defs/Operand"
+                }
+              ],
+              "description": "One operand, legally a pointer. Every position admits the full operand union on purpose. AD-26 makes a reference-set operand outside its three legal positions \u2014 `covers-by-key`'s expected operand, and the set operand of `set-membership` or `containment` \u2014 fail compilation under `malformed-operator-expression`, which only stays fireable if the other positions admit it. Epic 4 enforces the legality stated here; the schema does not narrow it.",
+              "minItems": 1,
+              "items": false
+            },
+            "descriptor": {
+              "type": "object",
+              "properties": {
+                "requiredKeys": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "permittedKeys": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "description": "The closed set of keys the shape admits. Deliberately not refined to be a superset of `requiredKeys`: no AD-5 code names that contradiction, so it joins the cross-field rules left to the compiler in v0. There is no spelling for \"these keys are required and extras are unconstrained\" \u2014 AD-4 calls the descriptor closed, so an open mode would be a different grammar."
+                },
+                "types": {
+                  "type": "object",
+                  "propertyNames": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "additionalProperties": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "enum": [
+                          "string",
+                          "number",
+                          "boolean",
+                          "object",
+                          "array",
+                          "null"
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "description": "Caller-keyed by plain key name, never by pointer: the descriptor-relative pointer spelling does not apply to these keys and must not be extended to them by analogy. A missing key means \"not declared\"; an explicit `null` value means \"declared, type not stated\"."
+                }
+              },
+              "required": [
+                "requiredKeys",
+                "permittedKeys",
+                "types"
+              ],
+              "additionalProperties": false,
+              "description": "AD-4: a closed descriptor, never an embedded JSON Schema. Typing it as a named field is what makes that structural, and it is a deliberate divergence from the Gate C fixture's `{ \"literal\": { \u2026 } }` spelling, where any JSON could sit."
+            }
+          },
+          "required": [
+            "op",
+            "operands",
+            "descriptor"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "op": {
+              "type": "string",
+              "const": "covers-by-key"
+            },
+            "operands": {
+              "type": "array",
+              "prefixItems": [
+                {
+                  "$ref": "#/$defs/Operand"
+                },
+                {
+                  "$ref": "#/$defs/Operand"
+                }
+              ],
+              "description": "Two operands: `expected` is legally a reference set, and `actual` is legally a pointer to a collection. Every position admits the full operand union on purpose. AD-26 makes a reference-set operand outside its three legal positions \u2014 `covers-by-key`'s expected operand, and the set operand of `set-membership` or `containment` \u2014 fail compilation under `malformed-operator-expression`, which only stays fireable if the other positions admit it. Epic 4 enforces the legality stated here; the schema does not narrow it.",
+              "minItems": 2,
+              "items": false
+            },
+            "expectedKey": {
+              "type": "string",
+              "minLength": 1
+            },
+            "actualKey": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "op",
+            "operands",
+            "expectedKey",
+            "actualKey"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "op": {
+              "type": "string",
+              "const": "not"
+            },
+            "operands": {
+              "type": "array",
+              "prefixItems": [
+                {
+                  "$ref": "#/$defs/Expression"
+                }
+              ],
+              "description": "One nested expression rather than an operand. A connective composes the tree; it never addresses evidence itself.",
+              "minItems": 1,
+              "items": false
+            }
+          },
+          "required": [
+            "op",
+            "operands"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "op": {
+              "type": "string",
+              "const": "all"
+            },
+            "operands": {
+              "minItems": 2,
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/Expression"
+              },
+              "description": "Two or more nested expressions rather than operands. The minimum is settled here because AD-4 leaves connective arity unstated: zero operands would certify vacuously and one is the identity."
+            }
+          },
+          "required": [
+            "op",
+            "operands"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "op": {
+              "type": "string",
+              "const": "any"
+            },
+            "operands": {
+              "minItems": 2,
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/Expression"
+              },
+              "description": "Two or more nested expressions rather than operands, for the same reason `all` carries the same minimum."
+            }
+          },
+          "required": [
+            "op",
+            "operands"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "op": {
+              "type": "string",
+              "const": "for-all"
+            },
+            "collection": {
+              "$ref": "#/$defs/Operand"
+            },
+            "predicate": {
+              "$ref": "#/$defs/Expression"
+            }
+          },
+          "required": [
+            "op",
+            "collection",
+            "predicate"
+          ],
+          "additionalProperties": false,
+          "description": "`collection` is legally a pointer to a collection, and `predicate` is the expression each bound element is tested against, addressed by the `@/` pointer spelling. A quantifier inside the predicate is structurally admitted so `quantifier-nesting-exceeded` keeps a shape to fire on. Every position admits the full operand union on purpose. AD-26 makes a reference-set operand outside its three legal positions \u2014 `covers-by-key`'s expected operand, and the set operand of `set-membership` or `containment` \u2014 fail compilation under `malformed-operator-expression`, which only stays fireable if the other positions admit it. Epic 4 enforces the legality stated here; the schema does not narrow it."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "op": {
+              "type": "string",
+              "const": "for-any"
+            },
+            "collection": {
+              "$ref": "#/$defs/Operand"
+            },
+            "predicate": {
+              "$ref": "#/$defs/Expression"
+            }
+          },
+          "required": [
+            "op",
+            "collection",
+            "predicate"
+          ],
+          "additionalProperties": false,
+          "description": "`collection` is legally a pointer to a collection, and `predicate` is the expression each bound element is tested against, addressed by the `@/` pointer spelling. Every position admits the full operand union on purpose. AD-26 makes a reference-set operand outside its three legal positions \u2014 `covers-by-key`'s expected operand, and the set operand of `set-membership` or `containment` \u2014 fail compilation under `malformed-operator-expression`, which only stays fireable if the other positions admit it. Epic 4 enforces the legality stated here; the schema does not narrow it."
+        }
+      ]
+    },
+    "Operand": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "pointer": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^\\/interactions\\/[a-z0-9]+(?:-[a-z0-9]+)*\\/(?:(?:response-body|response-headers|stdout|stderr)(?:\\/(?:[^/~]|~[01])*)*|(?:response-status|exit-code)|call-inputs\\/(?:path|query|header|body)(?:\\/(?:[^/~]|~[01])*)*)$",
+                  "description": "AD-26 interaction-rooted pointer: \"/interactions/{stepId}/\" followed by one channel of the closed vocabulary. `call-inputs` takes one of the four transport channels as its next segment; `response-status` and `exit-code` take no tail. Syntax only: whether the step exists and whether the evidence is reachable are compile-time checks, not schema checks."
+                },
+                {
+                  "type": "string",
+                  "pattern": "^@(?:\\/(?:[^/~]|~[01])*)+$",
+                  "description": "AD-26 bound-element pointer: \"@/\" plus an RFC 6901 tail, addressing the element a quantifier binds. Bare \"@/\" addresses the element itself. That it appears only inside a quantifier is a compile-time check (Story 4.1), not a schema check."
+                }
+              ]
+            }
+          },
+          "required": [
+            "pointer"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "literal": {
+              "$ref": "#/$defs/JsonValue"
+            }
+          },
+          "required": [
+            "literal"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "referenceSet": {
+              "type": "string",
+              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+              "description": "A plain identifier. Deliberately not an enum of the contract's declared reference sets and deliberately not refined against them: an identifier the contract does not declare is `unresolved-reference-set`, a coded compile-time error, and a schema that rejected it would convert that code into an anonymous parse fault."
+            }
+          },
+          "required": [
+            "referenceSet"
+          ],
+          "additionalProperties": false
+        }
+      ],
+      "description": "One of the three operand forms, each a single-keyed object. Named so the published schema carries it once as a shared definition rather than inlining it at seventeen use sites. Which forms are legal in which position is declared on each operator's own `operands`, never narrowed here."
     }
   }
 }
