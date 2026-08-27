@@ -12,6 +12,12 @@
  * `checkSensitivityWitnessDeclared` joins it there because it fires the same
  * code; the other two witness checks fire different codes and run
  * unconditionally, after the registry order, since AD-5 names no rung for them.
+ *
+ * `checkRubricIdentifiers` fires `rubric-unanchored` but runs ahead of
+ * `checkRubricReasoningProse`, which outranks it in the registry. A duplicated
+ * rubric or criterion id makes every `rubrics[id=...]` path the other three
+ * rubric checks emit address two things, so identifiers are settled before any
+ * of them reports.
  */
 
 import type { EvalContract } from '../schemas/eval-contract.ts'
@@ -41,6 +47,12 @@ import {
 	checkBoundElementScope,
 	checkEvidenceReachability,
 } from './reachability.ts'
+import {
+	checkRubricAnchoring,
+	checkRubricEvidenceReachability,
+	checkRubricIdentifiers,
+	checkRubricReasoningProse,
+} from './rubrics.ts'
 import {
 	checkNestedTemporalClause,
 	checkScriptingBound,
@@ -75,6 +87,10 @@ export function compile(
 	checkInterfaceKind(contract)
 	checkNestedTemporalClause(contract)
 	checkScriptingBound(contract)
+	checkRubricIdentifiers(contract)
+	checkRubricReasoningProse(contract)
+	checkRubricAnchoring(contract)
+	checkRubricEvidenceReachability(contract)
 	checkForbiddenInputFloor(contract)
 	checkScopedResourceReferences(contract)
 	checkWaiverCompleteness(contract)

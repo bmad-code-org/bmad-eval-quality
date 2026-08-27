@@ -43,7 +43,7 @@ describe('compile: positive whole-contract regression', () => {
 	})
 })
 
-describe('compile: one reused negative mutation reaches each of the 19 wired functions, in registry order', () => {
+describe('compile: one reused negative mutation reaches each of the 26 wired functions, in call order', () => {
 	it('1 checkRequirementLinkage: missing-requirement-linkage', () => {
 		const failure = structuralFailureOf(() =>
 			compileClean((c) => {
@@ -181,7 +181,24 @@ describe('compile: one reused negative mutation reaches each of the 19 wired fun
 		expect(failure.code).toBe('undeclared-mandatory-input')
 	})
 
-	it('12 checkOracleChannel: oracle-missing-channel', () => {
+	// Story 6.2 wired this and the two witness checks at the end of the file
+	// without census cases, so the describe above claimed to enumerate every
+	// wired function while covering 19 of 22. Cases 12, 25, and 26 close that.
+	it('12 checkSensitivityWitnessDeclared: undeclared-mandatory-input, only when strict is true', () => {
+		const failure = structuralFailureOf(() =>
+			compileClean((c) => {
+				c.permittedInterfaces[0].operations[0].sensitivityWitness = null
+			}, true),
+		)
+		expect(failure.code).toBe('undeclared-mandatory-input')
+		// Case 11 fires the same code from a different site, so the path is what
+		// separates the two.
+		expect(failure.artifactPath).toBe(
+			'EvalContract.permittedInterfaces[0].operations[0]',
+		)
+	})
+
+	it('13 checkOracleChannel: oracle-missing-channel', () => {
 		const failure = structuralFailureOf(() =>
 			compileClean((c) => {
 				c.oracles[0].direction = null
@@ -190,7 +207,7 @@ describe('compile: one reused negative mutation reaches each of the 19 wired fun
 		expect(failure.code).toBe('oracle-missing-channel')
 	})
 
-	it('13 checkOracleAlignment: direction-check-misaligned', () => {
+	it('14 checkOracleAlignment: direction-check-misaligned', () => {
 		const failure = structuralFailureOf(() =>
 			compileClean((c) => {
 				c.oracles[0].direction.relation = 'existence'
@@ -199,7 +216,7 @@ describe('compile: one reused negative mutation reaches each of the 19 wired fun
 		expect(failure.code).toBe('direction-check-misaligned')
 	})
 
-	it('14 checkInterfaceKind: unsupported-interface-kind', () => {
+	it('15 checkInterfaceKind: unsupported-interface-kind', () => {
 		const failure = structuralFailureOf(() =>
 			compileClean((c) => {
 				c.permittedInterfaces[0].kind = 'web'
@@ -208,7 +225,7 @@ describe('compile: one reused negative mutation reaches each of the 19 wired fun
 		expect(failure.code).toBe('unsupported-interface-kind')
 	})
 
-	it('15 checkNestedTemporalClause: nested-temporal-clause', () => {
+	it('16 checkNestedTemporalClause: nested-temporal-clause', () => {
 		const failure = structuralFailureOf(() =>
 			compileClean((c) => {
 				c.interactionPlan.push({
@@ -225,9 +242,9 @@ describe('compile: one reused negative mutation reaches each of the 19 wired fun
 	// Widens the existing two-step plan instead of replacing it (unlike
 	// `scripting-bound.test.ts`'s own direct-call fixtures), so oracle O-001's
 	// `check` still resolves against the `list` step and this mutation reaches
-	// checkScriptingBound (position 16) instead of checkEvidenceReachability
+	// checkScriptingBound (position 17) instead of checkEvidenceReachability
 	// (position 3).
-	it('16 checkScriptingBound: plan-exceeds-scripting-bound (width)', () => {
+	it('17 checkScriptingBound: plan-exceeds-scripting-bound (width)', () => {
 		const failure = structuralFailureOf(() =>
 			compileClean((c) => {
 				c.interactionPlan = [
@@ -251,7 +268,45 @@ describe('compile: one reused negative mutation reaches each of the 19 wired fun
 		expect(failure.code).toBe('plan-exceeds-scripting-bound')
 	})
 
-	it('17 checkForbiddenInputFloor: forbidden-input-floor-incomplete', () => {
+	it('18 checkRubricIdentifiers: rubric-unanchored', () => {
+		const failure = structuralFailureOf(() =>
+			compileClean((c) => {
+				c.rubrics.push(structuredClone(c.rubrics[0]))
+			}),
+		)
+		expect(failure.code).toBe('rubric-unanchored')
+		expect(failure.artifactPath).toBe('EvalContract.rubrics[1].id')
+	})
+
+	it('19 checkRubricReasoningProse: rubric-scores-reasoning-prose', () => {
+		const failure = structuralFailureOf(() =>
+			compileClean((c) => {
+				c.rubrics[0].criteria[0].text = 'Grade the reasoning in the response.'
+			}),
+		)
+		expect(failure.code).toBe('rubric-scores-reasoning-prose')
+	})
+
+	it('20 checkRubricAnchoring: rubric-unanchored', () => {
+		const failure = structuralFailureOf(() =>
+			compileClean((c) => {
+				c.rubrics[0].maxLength = null
+			}),
+		)
+		expect(failure.code).toBe('rubric-unanchored')
+	})
+
+	it('21 checkRubricEvidenceReachability: rubric-evidence-unreachable', () => {
+		const failure = structuralFailureOf(() =>
+			compileClean((c) => {
+				c.rubrics[0].criteria[0].evidence =
+					'/interactions/no-such-step/response-body/items'
+			}),
+		)
+		expect(failure.code).toBe('rubric-evidence-unreachable')
+	})
+
+	it('22 checkForbiddenInputFloor: forbidden-input-floor-incomplete', () => {
 		const failure = structuralFailureOf(() =>
 			compileClean((c) => {
 				c.forbiddenInputs = ['original-spec']
@@ -260,7 +315,7 @@ describe('compile: one reused negative mutation reaches each of the 19 wired fun
 		expect(failure.code).toBe('forbidden-input-floor-incomplete')
 	})
 
-	it('18 checkScopedResourceReferences: scoped-reference-resolves-forbidden', () => {
+	it('23 checkScopedResourceReferences: scoped-reference-resolves-forbidden', () => {
 		const failure = structuralFailureOf(() =>
 			compileClean((c) => {
 				c.scopedResources = [
@@ -271,7 +326,7 @@ describe('compile: one reused negative mutation reaches each of the 19 wired fun
 		expect(failure.code).toBe('scoped-reference-resolves-forbidden')
 	})
 
-	it('19 checkWaiverCompleteness: waiver-incomplete', () => {
+	it('24 checkWaiverCompleteness: waiver-incomplete', () => {
 		const failure = structuralFailureOf(() =>
 			compileClean((c) => {
 				c.waivers[0].rule = null
@@ -279,10 +334,34 @@ describe('compile: one reused negative mutation reaches each of the 19 wired fun
 		)
 		expect(failure.code).toBe('waiver-incomplete')
 	})
+
+	it('25 checkWitnessLegIdentifiers: malformed-operator-expression', () => {
+		const failure = structuralFailureOf(() =>
+			compileClean((c) => {
+				const witness =
+					c.permittedInterfaces[0].operations[0].sensitivityWitness
+				witness.legs[1].legId = witness.legs[0].legId
+			}),
+		)
+		expect(failure.code).toBe('malformed-operator-expression')
+	})
+
+	it('26 checkWitnessLegality: malformed-operator-expression', () => {
+		const failure = structuralFailureOf(() =>
+			compileClean((c) => {
+				const witness =
+					c.permittedInterfaces[0].operations[0].sensitivityWitness
+				witness.legs[1].inputs.body = structuredClone(
+					witness.legs[0].inputs.body,
+				)
+			}),
+		)
+		expect(failure.code).toBe('malformed-operator-expression')
+	})
 })
 
 describe('compile: multi-defect registry-order precedence', () => {
-	it('a contract violating both check 1 and check 19 reports check 1 (missing-requirement-linkage), the earlier registry position', () => {
+	it('a contract violating both check 1 and check 24 reports check 1 (missing-requirement-linkage), the earlier registry position', () => {
 		const failure = structuralFailureOf(() =>
 			compileClean((c) => {
 				c.behaviors[0].requirementLinks = []
@@ -350,7 +429,7 @@ describe('compile: the three malformed-operator-expression subchecks pin their o
 })
 
 describe('compile: the Story 4.3 nested-chain fixture, through orchestration', () => {
-	it('reports nested-temporal-clause (position 15), before checkScriptingBound (position 16) is ever reached', () => {
+	it('reports nested-temporal-clause (position 16), before checkScriptingBound (position 17) is ever reached', () => {
 		const failure = structuralFailureOf(() =>
 			compileClean((c) => {
 				// Preserves `create`/`list` (oracle O-001's check depends on

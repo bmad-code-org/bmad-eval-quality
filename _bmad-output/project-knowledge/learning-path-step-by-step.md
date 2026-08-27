@@ -55,12 +55,13 @@ flowchart TD
 |   12 | epic4-story1 | The real pointer walk (RFC 6901, `@/`), and the two compile-time checks that catch an unreachable pointer before evaluation. |
 |   13 | epic4-story2 | Twelve more AD-5 codes: quantifier substitution, operand-kind legality, the interface inventory, and waiver completeness. |
 |   14 | epic4-story3 | The last two stage-one AD-5 codes: a graph predicate over the interaction plan, bounding depth, width, shared anchors, disjoint pairs, and step count. |
-|   15 | epic4-story4 | One entry point that runs all 19 checks in a fixed order, one place that awaits, and a script that enforces which layer may import which. |
+|   15 | epic4-story4 | One entry point that wired the 19 checks that existed then into a fixed order, one place that awaits, and a script that enforces which layer may import which. |
 |   16 | epic5-story1 | Seven yes/no predicates deciding which discipline rules a contract has to satisfy, read from its declarations alone. |
 |   17 | epic5-story2 | Seven more predicates asking whether an oracle really reads each place a rule applies, so under-declaring costs coverage. |
 |   18 | epic5-story3 | Nineteen hand-written contracts and a generator that emits the published predicate table from the same predicates the library ships. |
 |   19 | epic6-story1 | Four ports, three adapters, a default-deny rule for which address a probe may reach, and a suite an outside adapter author can run against their own code. |
 |   20 | epic6-story2 | Probe the fixture before scoring it: witnesses the contract declares, one plan, one pure verdict, and a digest of what the fixture was. |
+|   21 | epic6-story3 | Four checks that reject a rubric a judge could not answer honestly: an unanchored scale, an unbounded length, unnamed penalties, a reused id, evidence that resolves nowhere, and wording that asks the judge to grade the model's own reasoning. |
 
 Adding a step: follow `learning-path-template.md`.
 
@@ -1166,7 +1167,7 @@ point and one fixed order. It also puts every call that waits on the outside wor
 function, and adds a script that reads every source file and fails when one reaches across a boundary
 the architecture forbids.
 
-**What:** `core/compile/compile.ts` calls all 19 checks in a fixed order.
+**What:** `core/compile/compile.ts` wired the 19 checks that existed then into one fixed order. Step 21 has the current count.
 `application/compile.ts` parses unknown input and hands it to that stage.
 `application/invoke-port.ts` is the only function in the package that awaits.
 `npm run check:layers` reads every file under `src/` and fails if one imports across a forbidden
@@ -1784,3 +1785,81 @@ flowchart TD
 - `src/index.ts` may import `application/` and `core/schemas` only, so the plan-and-reduce pair is
   off the barrel.
 - Editing `README.md` makes `_bmad-output/shareable/` stale. Run `npm run build:shareable`.
+
+## Step 21 (epic6-story3): rubric compilation under checked rules
+
+**In plain terms:** a rubric is the scoring sheet you hand a grader. If the sheet says "score this 1
+to 5" and never says what a 3 looks like, two graders give two answers and neither is wrong. If it
+asks whether the model's reasoning was sound, the grader ends up scoring a story the model told
+about itself. This step checks the sheet before anyone grades with it and refuses the ones that
+cannot be answered honestly.
+
+**What:** four compile-time checks over the rubrics a contract carries. They reject a scale with no
+anchors, an unbounded answer length, unnamed penalties, a repeated rubric or criterion id, a
+criterion pointing at evidence the declared interfaces never produce, and wording that asks the
+grader to score stated reasoning.
+
+**Why:** a rubric asking a question nothing can answer still produces a number, and that number
+looks like a measurement. Concretely: "does the list carry every expected identifier?" points at
+`/interactions/list/response-body/items` and the grader can go look. "Is the answer well justified?"
+against a scale whose only level reads "good" gives the grader nothing to compare, so the score it
+returns is the grader's mood. Both compiled before this step.
+
+**Read in this order:**
+
+1. `src/core/compile/rubrics.ts`: the four checks, top to bottom in the order they run.
+2. `src/core/schemas/rubric.ts`: the shapes each check reads, and the field descriptions saying which
+   broken shapes the schema admits on purpose so the compiler can name them.
+3. `src/core/compile/compile.ts`: where the four sit in the fixed order, and why the identifier check
+   jumps its rung.
+4. `tests/compile/rubrics.test.ts`: 36 numbered cases, the eight accept cases first.
+
+```mermaid
+flowchart TD
+  SCHEMA["core/schemas/rubric.ts<br/>parses every broken shape"]
+  IDS["checkRubricIdentifiers<br/>rubric-unanchored"]
+  PROSE["checkRubricReasoningProse<br/>rubric-scores-reasoning-prose"]
+  ANCHOR["checkRubricAnchoring<br/>rubric-unanchored"]
+  EVID["checkRubricEvidenceReachability<br/>rubric-evidence-unreachable"]
+  REACH["core/compile/reachability.ts<br/>evaluatePointerReachability"]
+  PIPE["core/compile/compile.ts<br/>26 checks, fixed order"]
+
+  SCHEMA --> IDS --> PROSE --> ANCHOR --> EVID
+  EVID --> REACH
+  IDS -.-> PIPE
+  PROSE -.-> PIPE
+  ANCHOR -.-> PIPE
+  EVID -.-> PIPE
+```
+
+**Story:** `_bmad-output/implementation-artifacts/6-3-rubric-compilation-under-checked-rules.md`
+
+### Reference
+
+**Rules:**
+
+- A scale needs at least one level, and every level needs an anchor: a condition you can observe.
+- Ordinals must be distinct. Sign, size, and gaps are free, so `-2` to `2` and `1, 3, 5` both pass.
+- `maxLength` must be set. `null` means unbounded and fails.
+- At least one failure-mode penalty, each with a name that is not blank.
+- A criterion must state a question. Blank text fails.
+- Rubric ids are unique across the contract; criterion ids are unique inside their rubric. A judge
+  score cites both, so the pair is what has to be unique.
+- Criterion evidence goes through the same reachability walk an oracle check uses, so the two codes
+  give the same reason for the same broken pointer.
+- Wording naming a reasoner's account of its own thinking fails: chain of thought, train of thought,
+  thought process, thinking process, internal or inner monologue, self-explanation, reasoning,
+  rationale. Scanned in criterion text, scale anchors, and penalty names and descriptions.
+- A contract with no rubrics compiles clean, and so does a rubric with no criteria.
+
+**Watch out:**
+
+- The reasoning check reads wording. A paraphrase that avoids the vocabulary compiles, and "Explain
+  why the answer was chosen" is one of them.
+- `explanation`, `thinking`, `scratchpad`, `deliberation`, and `justify` are excluded on purpose:
+  each names an ordinary thing in an API contract, and a compile error has no waiver path.
+- A criterion rooted at `stdout` compiles on an `api`-kind contract that can never produce one.
+  `unreachable-check-evidence` has the same gap, and both share one implementation.
+- `compile.ts` runs 26 checks now. Step 15 says 19 because that was the count when it was written.
+- Editing a `.describe()` string moves the published schema. Adding one moves the keyword census too,
+  and then every new occurrence needs a reject case.
