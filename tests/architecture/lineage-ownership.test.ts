@@ -143,6 +143,9 @@ describe('the lineage-ownership scanner', () => {
 		expect(subjects({ [OTHER]: 'o[`parentDigest`] = d\n' })).toEqual([
 			'parentDigest',
 		])
+		expect(
+			subjects({ [OTHER]: 'Reflect.set(o, "revisionCount", 1)\n' }),
+		).toEqual(['revisionCount'])
 	})
 
 	// 48. The scanner passes over a read and reports a type alias.

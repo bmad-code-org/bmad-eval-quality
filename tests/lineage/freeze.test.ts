@@ -111,17 +111,23 @@ describe('the four wired sites', () => {
 		expect(Object.isFrozen(observations[0])).toBe(false)
 	})
 
-	it('the application compile() returns a frozen contract', () => {
-		const contract = compile(structuredClone(gateCContract))
+	it('the application compile() returns a frozen contract and freezes nothing else', () => {
+		const input = structuredClone(gateCContract) as { behaviors: unknown[] }
+		const contract = compile(input)
 		rejectsWrite(() => {
 			;(contract as { contractId: string }).contractId = 'leaked'
 		})
+		expect(Object.isFrozen(input)).toBe(false)
+		expect(Object.isFrozen(input.behaviors)).toBe(false)
+		expect(Object.isFrozen(input.behaviors[0])).toBe(false)
 	})
 
-	it('runPreflight() returns a frozen verdict', async () => {
+	it('runPreflight() returns a frozen verdict and freezes nothing else', async () => {
+		const contract = EvalContract.parse(gateCContract)
+		const probes = [structuredClone(seededProbe)]
 		const verdict = await runPreflight({
 			contract: preflightContract,
-			probes: [seededProbe],
+			probes,
 			runId: 'run-1',
 			port: { probe: echoPort() },
 			signal: new AbortController().signal,
@@ -129,6 +135,10 @@ describe('the four wired sites', () => {
 		rejectsWrite(() => {
 			;(verdict as { runId: string }).runId = 'leaked'
 		})
+		expect(Object.isFrozen(probes)).toBe(false)
+		expect(Object.isFrozen(probes[0])).toBe(false)
+		expect(Object.isFrozen(contract)).toBe(false)
+		expect(Object.isFrozen(preflightContract)).toBe(false)
 	})
 
 	// 15. `seal` assembles a brief whose members alias the caller's contract.

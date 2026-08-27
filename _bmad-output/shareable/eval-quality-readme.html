@@ -720,10 +720,13 @@ asserting the validator keyword and instance path for every negative fixture, a 
 comparing Zod&#39;s verdict against a third-party validator&#39;s over a generated corpus, and a
 keyword-mutation sweep that deletes each published constraint and requires some fixture to notice.
 Edit the Zod schema and regenerate; never hand-edit a file under <code>schemas/</code>.</p>
-<p>Every artifact the library hands back is deep-frozen, so an attempt to edit one in place throws.
-A revision is minted as a new artifact carrying its parent&#39;s digest
-and a revision count one greater, and <code>check:lineage</code> fails the build when a module the AD-24 stage
-table does not name as that artifact&#39;s producer writes either field.</p>
+<p>Every artifact the library hands back is deep-frozen, so it cannot be changed in place. This package
+is ES modules, which are always strict, so an attempt throws a <code>TypeError</code> there; a sloppy-mode
+caller sees the write fail silently. A revision is minted as a new artifact carrying its parent&#39;s
+digest and a revision count one greater. <code>check:lineage</code> fails the build when a lineage field is
+written outside <code>src/core/schemas/</code>, <code>src/core/lineage/</code>, and the modules the AD-24 stage table
+names as that artifact&#39;s producer, which today are <code>src/core/seal/seal.ts</code> and
+<code>src/core/preflight/reduce.ts</code>.</p>
 <p>The <code>eval-quality/conformance</code> subpath publishes the port boundary: the four port types, the message
 shapes they carry, and an executable conformance suite. An adapter is conforming when
 <code>runCorpusPortConformance</code>, <code>runClockPortConformance</code>, <code>runFileSystemPortConformance</code>, or

@@ -744,8 +744,10 @@ confirming that exact test goes red; a case that stays green under a reverted ru
     a cycle.
 14. The four wired sites — `seal(...)`, `reducePreflight(...)`, `compile(...)` from
     `src/application/compile.ts`, and `await runPreflight(...)` — each return a frozen artifact,
-    asserted by a throwing write, one `it` per site. `runPreflight` uses the probe fake extracted to
-    `tests/preflight/fixtures/probe-port.ts`.
+    asserted by a throwing write, one `it` per site. Three of the four also assert that nothing the
+    caller still holds comes back frozen: `reduce`'s plan and observations, `compile`'s input and
+    its nested behaviors, and `runPreflight`'s contract and probes. `runPreflight` uses the probe
+    fake extracted to `tests/preflight/fixtures/probe-port.ts`.
 15. `seal(contract)` leaves the caller's contract untouched: `Object.isFrozen(contract.behaviors[0])`
     is false afterwards. Decision 5 is the argument; this case keeps it true.
 
@@ -801,8 +803,8 @@ confirming that exact test goes red; a case that stays green under a reverted ru
     absent from a synthetic map does not.
 45. `reviseArtifact` called, imported, and imported under an alias each produce one violation.
 46. `=`, `??=`, `+=`, and the shorthand form each produce one violation.
-47. A computed key, a bracket assignment, `Object.defineProperty`, and a backtick-quoted key each
-    produce one violation.
+47. A computed key, a bracket assignment, `Object.defineProperty`, `Reflect.set`, and a
+    backtick-quoted key each produce one violation.
 48. Reads produce nothing: a dotted read, a dotted read inside an object literal, a destructuring
     binding, a parameter annotation, a name bound by a destructuring and used later, and a named
     import. A type alias produces one violation, and so does a destructured parameter; the
@@ -838,9 +840,11 @@ and which neither can test on its own, because a derailed tokenizer produces *fe
 npm run check:lineage       # fail if a module outside the stage table writes an artifact's lineage fields
 ```
 
-and one new paragraph of two sentences after the `schemas/` paragraph, saying that every artifact
-the library returns is deep-frozen and that a revision is minted as a new artifact carrying its
-parent's digest. Two sentences; the mechanism lives in `freeze.ts` and `chain.ts`.
+and one new paragraph after the `schemas/` paragraph saying that every artifact the library returns
+is deep-frozen, that a revision is minted as a new artifact carrying its parent's digest, and which
+paths `check:lineage` permits. It names the strict-mode throw and the sloppy-mode silent failure
+separately, because the package is ES modules and a caller may not be. The mechanism lives in
+`freeze.ts` and `chain.ts`.
 
 Then `npm run build:shareable`, because editing `README.md` makes `_bmad-output/shareable/` stale
 and `check:shareable` fails the build. Stories 6.2 and 6.3 both hit this.
@@ -1455,6 +1459,27 @@ found six more. Two were HIGH and one of those was live in the repository.
    the re-scan landed: every shape it had been refusing now tokenizes.
 
 Six more rules mutation-verified, which brings the story's total to 51.
+
+### CodeRabbit
+
+Four actionable items on the pull request, one of which it marked addressed by the round-two commit
+before a human read it (the slash re-scan, which is finding 1 and 2 above). The other three are
+closed:
+
+- The README claimed every in-place edit throws. That holds for an ES module, which is always
+  strict, and a sloppy-mode caller sees the write fail silently instead. The paragraph now says
+  both.
+- The README described the scanner's allowlist as the AD-24 writer list alone, omitting
+  `src/core/schemas/` and `src/core/lineage/`. It now names all three and the two writer modules.
+- AC 9 rule 2 names `Reflect.set` and case 47 had no assertion for it. It does now.
+
+One nitpick taken: cases 14's `compile` and `runPreflight` arms now assert caller-input isolation
+alongside the frozen return, which is the same property the peer's round-one M3 added to the
+`reduce` arm.
+
+CodeRabbit's merge-risk note also observes that nothing from `core/lineage/` is reachable through
+the package exports. That is AC 1's stated scope: `src/index.ts` is untouched and Story 6.5 decides
+the barrel, with AC 13 carrying a `git diff --exit-code` row to keep it that way.
 
 ## Dev Agent Record
 

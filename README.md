@@ -220,10 +220,13 @@ comparing Zod's verdict against a third-party validator's over a generated corpu
 keyword-mutation sweep that deletes each published constraint and requires some fixture to notice.
 Edit the Zod schema and regenerate; never hand-edit a file under `schemas/`.
 
-Every artifact the library hands back is deep-frozen, so an attempt to edit one in place throws.
-A revision is minted as a new artifact carrying its parent's digest
-and a revision count one greater, and `check:lineage` fails the build when a module the AD-24 stage
-table does not name as that artifact's producer writes either field.
+Every artifact the library hands back is deep-frozen, so it cannot be changed in place. This package
+is ES modules, which are always strict, so an attempt throws a `TypeError` there; a sloppy-mode
+caller sees the write fail silently. A revision is minted as a new artifact carrying its parent's
+digest and a revision count one greater. `check:lineage` fails the build when a lineage field is
+written outside `src/core/schemas/`, `src/core/lineage/`, and the modules the AD-24 stage table
+names as that artifact's producer, which today are `src/core/seal/seal.ts` and
+`src/core/preflight/reduce.ts`.
 
 The `eval-quality/conformance` subpath publishes the port boundary: the four port types, the message
 shapes they carry, and an executable conformance suite. An adapter is conforming when
