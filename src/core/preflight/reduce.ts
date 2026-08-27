@@ -9,6 +9,7 @@
  */
 import { digestArtifact } from '../canonical/digest.ts'
 import { declaresNoRequestKeys } from '../declared-inputs.ts'
+import { freezeArtifact } from '../lineage/freeze.ts'
 import { RuntimeFault } from '../schemas/faults.ts'
 import type { ProbeObservation } from '../schemas/port-messages.ts'
 import type {
@@ -305,7 +306,7 @@ export const reducePreflight: ReduceStage<
 
 	const checks = plan.checks.map(reduceCheck)
 	const projections = [...states.values()].map((state) => state.projected)
-	return {
+	return freezeArtifact({
 		// A pre-flight verdict is an origin artifact; AD-29's revision machinery
 		// belongs to the story that revises one.
 		schemaVersion: 1,
@@ -315,5 +316,5 @@ export const reducePreflight: ReduceStage<
 		fixtureDigest: fixtureDigest(projections, PREFLIGHT_ARTIFACT_PATH),
 		passed: checks.every((entry) => entry.outcome !== 'failed'),
 		checks,
-	}
+	})
 }

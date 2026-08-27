@@ -9,6 +9,7 @@
  * synchronous function with no plan, reducer, promise, port, or `await`.
  */
 import { compile as compileContract } from '../core/compile/compile.ts'
+import { freezeArtifact } from '../core/lineage/freeze.ts'
 import { EvalContract } from '../core/schemas/eval-contract.ts'
 import { RuntimeFault } from '../core/schemas/faults.ts'
 
@@ -28,5 +29,7 @@ export function compile(
 	// `parsed.data` is Zod's own deep clone of `input` on success, so the
 	// returned contract shares no mutable state with the caller's object.
 	// Every failure below propagates unchanged: nothing here catches.
-	return compileContract(parsed.data, { strict: options?.strict ?? true })
+	return freezeArtifact(
+		compileContract(parsed.data, { strict: options?.strict ?? true }),
+	)
 }
