@@ -155,6 +155,49 @@ describe('main.ts at the process boundary', () => {
 		expect(first).toBe('#!/usr/bin/env node')
 	})
 
+	/**
+	 * A lockfile for the scratch consumer, carrying `zod`'s resolved URL and
+	 * integrity from this repository's own lockfile. `npm ci` populates the cache
+	 * with tarballs and never with packuments, so an `--offline` install that has
+	 * to resolve a range hits ENOTCACHED; one that reads a lockfile does not.
+	 */
+	function consumerLockfile(tarball: string): unknown {
+		const root = JSON.parse(
+			readFileSync(join(REPO, 'package-lock.json'), 'utf8'),
+		) as {
+			packages: Record<
+				string,
+				{ version: string; resolved: string; integrity: string }
+			>
+		}
+		const zod = root.packages['node_modules/zod']
+		if (zod === undefined)
+			throw new Error('zod is absent from package-lock.json')
+		return {
+			name: 'eval-quality-consumer',
+			version: '0.0.0',
+			lockfileVersion: 3,
+			requires: true,
+			packages: {
+				'': {
+					name: 'eval-quality-consumer',
+					version: '0.0.0',
+					dependencies: { 'eval-quality': `file:${tarball}` },
+				},
+				'node_modules/eval-quality': {
+					version: '0.0.0',
+					resolved: `file:${tarball}`,
+					dependencies: { zod: zod.version },
+				},
+				'node_modules/zod': {
+					version: zod.version,
+					resolved: zod.resolved,
+					integrity: zod.integrity,
+				},
+			},
+		}
+	}
+
 	describe('the packed and installed tarball', () => {
 		let stage: string | null = null
 		let shim = ''
@@ -191,9 +234,20 @@ describe('main.ts at the process boundary', () => {
 					2,
 				)}\n`,
 			)
-			// `--offline` holds NFR7's "no network beyond AD-37's loopback
-			// fixture server": an online install fetches `zod` from the
-			// registry. `npm ci` has warmed the cache, so it resolves locally.
+			// The consumer gets a lockfile naming `zod` with the resolved URL and
+			// integrity the repository's own lockfile already carries. Without
+			// it npm has to read the `zod` packument to resolve the range, and
+			// `npm ci` caches tarballs and never packuments, so `--offline`
+			// fails on a clean machine with ENOTCACHED.
+			//
+			// `--offline` itself holds NFR7's "no network beyond AD-37's
+			// loopback fixture server". It is the flag that proves the install
+			// performs no network I/O, so it stays and the resolution is made
+			// local instead.
+			writeFileSync(
+				join(consumer, 'package-lock.json'),
+				`${JSON.stringify(consumerLockfile(packed ?? ''), null, 2)}\n`,
+			)
 			npm(
 				[
 					'install',
