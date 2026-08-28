@@ -1,0 +1,43 @@
+@import '@fontsource/inter/400.css';
+@import '@fontsource/inter/600.css';
+@import '@fontsource/space-grotesk/700.css';
+@import '@fontsource/jetbrains-mono/400.css';
+
+:root {
+  --sl-font: 'Inter', system-ui, -apple-system, sans-serif;
+  --sl-font-heading: 'Space Grotesk', system-ui, sans-serif;
+  --sl-font-mono: 'JetBrains Mono', monospace;
+
+  --sl-color-accent-low: #1e293b;
+  --sl-color-accent: #3b82f6;
+  --sl-color-accent-high: #60a5fa;
+
+  --sl-color-bg: #0a0a0a;
+  --sl-color-bg-nav: #121212;
+  --sl-color-bg-sidebar: #0e0e0e;
+  --sl-color-bg-inline-code: #1e1e1e;
+
+  --sl-content-width: 75rem;
+}
+
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+  margin-top: 2rem;
+}
+
+.card-grid > div,
+.card-grid > section {
+  background: #141414;
+  border: 1px solid #262626;
+  border-radius: 0.75rem;
+  padding: 1.5rem;
+  transition: border-color 0.2s, transform 0.2s;
+}
+
+.card-grid > div:hover,
+.card-grid > section:hover {
+  border-color: #3b82f6;
+  transform: translateY(-2px);
+}

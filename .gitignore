@@ -3,6 +3,9 @@ node_modules/
 
 # Build outputs
 dist/
+build/
+website/node_modules/
+website/.astro/
 
 # Environment and config
 .env

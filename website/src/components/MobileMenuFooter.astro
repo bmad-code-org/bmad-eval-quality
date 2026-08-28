@@ -1,0 +1,19 @@
+---
+import SocialIcons from '@astrojs/starlight/components/SocialIcons.astro';
+import ThemeSelect from '@astrojs/starlight/components/ThemeSelect.astro';
+---
+
+<div class="mobile-menu-footer sl-flex">
+  <SocialIcons {...Astro.props} />
+  <ThemeSelect {...Astro.props} />
+</div>
+
+<style>
+  .mobile-menu-footer {
+    gap: 1rem;
+    padding: 1rem;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 1px solid var(--sl-color-gray-6);
+  }
+</style>

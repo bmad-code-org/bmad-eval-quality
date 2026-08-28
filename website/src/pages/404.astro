@@ -1,0 +1,11 @@
+---
+import StarlightPage from '@astrojs/starlight/components/StarlightPage.astro';
+import { getEntry, render } from 'astro:content';
+
+const entry = await getEntry('docs', '404');
+const { Content } = entry ? await render(entry) : { Content: null };
+---
+
+<StarlightPage frontmatter={{ title: entry?.data?.title || 'Page Not Found' } as any}>
+  {Content ? <Content /> : <div class="not-found"><h1>404</h1><p>Page not found</p></div>}
+</StarlightPage>
