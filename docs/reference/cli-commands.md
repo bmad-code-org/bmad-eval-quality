@@ -1,19 +1,17 @@
 ---
 title: "CLI Command Reference"
-description: "Reference guide for eval-quality CLI commands, arguments, and options."
+description: "CLI command line options, flags, and quality scripts."
 sidebar:
   order: 1
 ---
 
 # CLI Command Reference
 
-`bmad-eval-quality` provides command line utilities for compiling behavioral contracts, evaluating traces, and running validation suites.
+Command line utilities for `bmad-eval-quality`.
 
 ---
 
 ## `eval-quality`
-
-Primary CLI command for evaluation execution.
 
 ```bash
 eval-quality [options] <command>
@@ -22,7 +20,7 @@ eval-quality [options] <command>
 ### Commands
 
 #### `eval`
-Runs evaluation pass across a trace corpus.
+Runs an evaluation pass over a trace corpus.
 
 ```bash
 eval-quality eval --corpus <path-to-corpus>
@@ -30,7 +28,7 @@ eval-quality eval --corpus <path-to-corpus>
 
 **Options:**
 - `--corpus, -c <path>`: Path to trace corpus JSON file.
-- `--contract, -k <path>`: Path to specific contract schema file.
+- `--contract, -k <path>`: Path to contract schema file.
 - `--output, -o <format>`: Output format (`json`, `summary`, `table`).
 
 ---
@@ -39,8 +37,9 @@ eval-quality eval --corpus <path-to-corpus>
 
 ```bash
 npm run typecheck       # TypeScript type checking
-npm run lint            # Biome check & linting
-npm run test            # Vitest unit & integration tests
-npm run validate        # Full repository validation suite
-npm run check:docs      # Validate documentation links & integrity
+npm run lint            # Biome check and linting
+npm run test            # Vitest test suite
+npm run validate        # Full repository validation pass
+npm run docs:validate-links  # Internal link check
+npm run docs:build      # Build documentation site and AI context files
 ```

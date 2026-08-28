@@ -1,23 +1,23 @@
 ---
 title: "How to Author Behavioral Contracts"
-description: "Learn how to define, validate, and compile behavioral evaluation contracts for agent outputs and execution traces."
+description: "Define, validate, and compile behavioral evaluation contracts for agent execution traces."
 sidebar:
   order: 1
 ---
 
 # How to Author Behavioral Contracts
 
-Behavioral Evaluation Contracts define strict expectations over agent execution traces. This guide covers authoring contracts using Zod schemas and predicate predicates.
+Define behavioral expectations over agent execution traces using Zod schemas and evaluation predicates.
 
 ---
 
 ## Contract Schema Structure
 
-Contracts consist of four primary sections:
+Contracts consist of four sections:
 
 1. **Metadata**: Unique identifier, version, and ownership lineage.
 2. **Preconditions**: States that must hold prior to step execution.
-3. **Postconditions**: Invariants that must be satisfied after step execution.
+3. **Postconditions**: Invariants satisfied after step execution.
 4. **Behavioral Oracles**: Predicates that evaluate domain correctness.
 
 ```typescript
@@ -36,7 +36,7 @@ export const BehavioralContractSchema = z.object({
 
 ## Authoring Custom Predicates
 
-Predicates map trace step attributes to boolean assertions. 
+Predicates map trace step attributes to boolean assertions:
 
 ```typescript
 export const CheckNonEmptyOutput = (traceStep: any): boolean => {
@@ -48,7 +48,7 @@ export const CheckNonEmptyOutput = (traceStep: any): boolean => {
 
 ## Validating Contract Registries
 
-Validate that your authored contract conforms to registry requirements:
+Validate contract schema and registry alignment:
 
 ```bash
 npm run check:schemas

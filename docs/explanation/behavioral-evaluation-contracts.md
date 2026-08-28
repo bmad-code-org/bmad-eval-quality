@@ -7,21 +7,21 @@ sidebar:
 
 # Behavioral Evaluation Contracts
 
-A **Behavioral Evaluation Contract** is a formal specification that asserts behavioral invariants over agent execution traces.
+A **Behavioral Evaluation Contract** is a formal specification that asserts invariants over agent execution traces.
 
 ---
 
-## Why Behavioral Contracts?
+## Background
 
-Traditional software testing relies on deterministic inputs and static outputs. AI agents, however, operate stochastically over unstructured data.
+Deterministic unit tests check exact output values. AI agents operate stochastically over unstructured data.
 
-Standard string matching or regex assertions break down when agents format outputs differently while preserving semantic intent. Conversely, relying solely on LLM-as-a-judge introduces instability and high costs.
+String matching and regex break when agents reformat output while preserving intent. LLM-as-a-judge evaluations introduce flakiness and runtime cost.
 
-Behavioral Evaluation Contracts solve this problem by combining:
+Behavioral Evaluation Contracts combine three verification layers:
 
-1. **Precondition Constraints**: Validating input context, token bounds, and prompt integrity.
-2. **Execution Trajectory Invariants**: Monitoring intermediate reasoning steps and tool invocations.
-3. **Postcondition Oracles**: Rigorous structural, semantic, and boundary predicates.
+1. **Preconditions**: Validating input context, token bounds, and prompt integrity.
+2. **Trajectory Invariants**: Monitoring intermediate reasoning steps and tool invocations.
+3. **Postcondition Oracles**: Evaluating structural, semantic, and boundary predicates.
 
 ---
 
@@ -37,8 +37,8 @@ graph TD
 
 ---
 
-## Architectural Principles
+## Design Principles
 
-- **Separation of Concerns**: Contracts are independent of execution engines or LLM providers.
+- **Execution Separation**: Contracts run independently of execution engines and LLM providers.
 - **Reproducibility**: Identical trace corpora produce identical evaluation scores.
-- **Lineage Transparency**: Every contract predicate traces back to an Architectural Decision (AD).
+- **Lineage Tracing**: Every contract predicate traces back to an Architectural Decision (AD).
