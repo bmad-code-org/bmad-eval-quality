@@ -722,11 +722,8 @@ npx eval-quality preflight --contract contract.json \
 npx eval-quality --help                                        # the grammar and the exit codes
 </code></pre>
 <h3 id="single-pass-workflow-user-convenience">Single-Pass Workflow (User Convenience)<a class="heading-anchor" href="#single-pass-workflow-user-convenience" aria-label="Link to Single-Pass Workflow (User Convenience)">#</a></h3>
-<p>To run <code>compile</code>, <code>seal</code>, and <code>preflight</code> together in a single command, use the convenience runner script:</p>
-<pre><code class="language-bash">npm run eval -- --contract contract.json --out ./eval-out
-</code></pre>
-<p>Or include probe observations to run preflight in the same single step:</p>
-<pre><code class="language-bash">npm run eval -- --contract contract.json --probes probes.json --observations obs.json --out ./eval-out
+<p>To run <code>compile</code>, <code>seal</code>, and <code>preflight</code> together in a single command:</p>
+<pre><code class="language-bash">npx eval -- --contract contract.json --probes probes.json --observations obs.json --out ./eval-out
 </code></pre>
 <p>Every command is non-interactive: no prompt, no terminal check, and no behaviour that differs when
 stdin is a pipe. Each one is a single call into the library plus artifact serialization, so a

@@ -185,16 +185,10 @@ npx eval-quality --help                                        # the grammar and
 
 ### Single-Pass Workflow (User Convenience)
 
-To run `compile`, `seal`, and `preflight` together in a single command, use the convenience runner script:
+To run `compile`, `seal`, and `preflight` together in a single command:
 
 ```bash
-npm run eval -- --contract contract.json --out ./eval-out
-```
-
-Or include probe observations to run preflight in the same single step:
-
-```bash
-npm run eval -- --contract contract.json --probes probes.json --observations obs.json --out ./eval-out
+npx eval -- --contract contract.json --probes probes.json --observations obs.json --out ./eval-out
 ```
 
 Every command is non-interactive: no prompt, no terminal check, and no behaviour that differs when
