@@ -1,5 +1,5 @@
 /**
- * The relation-keyed template (AC 3): turns one oracle's `Direction` into the
+ * The relation-keyed template: turns one oracle's `Direction` into the
  * `text` of one `BriefDirection`. It composes, in one fixed order, the
  * derived evidence-target references (`derived-reference.ts`), the relation's
  * verb phrase, the declared polarity, and the author-written `scope` and
@@ -30,7 +30,7 @@ const ensureSentence = (text: string): string => {
 }
 
 // `for-all`/`for-any` carry no nested predicate on `Direction`; that lives on
-// `check`, which this story does not read. So the claim names the
+// `check`, which this module does not read. So the claim names the
 // quantification itself, saying nothing about a condition it cannot see.
 function quantifierClaim(
 	relation: 'for-all' | 'for-any',
@@ -42,7 +42,7 @@ function quantifierClaim(
 }
 
 // A shared affirmative skeleton over `not` would tell the sealed evaluator
-// the opposite of the declared claim (Decision 10).
+// the opposite of the declared claim.
 function connectiveClaim(
 	relation: 'all' | 'any' | 'not',
 	evidence: string,
@@ -124,7 +124,7 @@ function renderPolarityClause(polarity: Polarity): string {
 		: 'The declared polarity expects this relation to be a violation.'
 }
 
-// `negativeDomain` is author-written, evaluator-facing free text (Decision 2).
+// `negativeDomain` is author-written, evaluator-facing free text.
 // Any trailing terminator the author already wrote is stripped first, since
 // the text becomes the subject of a larger sentence rather than standing
 // alone: an author-terminated string would otherwise read "...did not
@@ -136,11 +136,14 @@ function renderNegativeDomainClause(negativeDomain: string): string {
 }
 
 /**
- * An empty `evidenceTargets` array is a should-never-happen precondition
- * violation, not a shape a compiled contract produces (AD-3's alignment
- * predicate requires every declared evidence target to appear in `check`).
- * Throws the same precondition-violation `TypeError` as this story's other
- * should-never-happen shapes.
+ * An empty `evidenceTargets` array reaches here on a contract that compiles
+ * clean: `core/schemas/oracle.ts` puts no `.min(1)` on the array, and AD-3's
+ * alignment predicate (`core/compile/oracle-alignment.ts`) is a universal
+ * over it, so an empty list is contained in any `check` vacuously. Rendering
+ * has nothing to name, so this throws the same precondition-violation
+ * `TypeError` as the other should-never-happen shapes in `core/seal/`, and
+ * `application/seal.ts` converts it to `RuntimeFault('schema-parse-failure')`
+ * at the boundary.
  */
 export function renderDirectionText(
 	direction: Direction,
@@ -148,7 +151,7 @@ export function renderDirectionText(
 ): string {
 	if (direction.evidenceTargets.length === 0) {
 		throw new TypeError(
-			'direction carries no evidenceTargets; a schema-valid Direction reaching seal always names at least one',
+			'direction carries no evidenceTargets; there is no observation for the generated prose to name',
 		)
 	}
 	const evidence = renderEvidenceReferences(direction.evidenceTargets, index)
@@ -157,8 +160,8 @@ export function renderDirectionText(
 		ensureSentence(renderPolarityClause(direction.polarity)),
 	]
 	// `null` and `''` both drop the clause: the schema allows `''` as distinct
-	// from `null` with no minimum length, and AC 3 requires `null` to drop its
-	// clause rather than render an empty sentence. Checking `!== null` alone
+	// from `null` with no minimum length, and an absent clause is omitted
+	// rather than rendered as an empty sentence. Checking `!== null` alone
 	// would still render that empty sentence for `''`.
 	if (direction.scope !== null && direction.scope.trim() !== '') {
 		parts.push(ensureSentence(direction.scope))

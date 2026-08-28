@@ -2,12 +2,8 @@
  * AD-31's published predicate table, emitted by the implemented predicates.
  * Pure, so the writer and the drift check cannot disagree about bytes, which
  * is `publish.ts`'s split. Its only input is the corpus argument, so the
- * worked example is unreachable from here (ARCHITECTURE-SPINE.md:455).
- *
- * Do not import `core/compile/` or `core/canonical/`:
- * `core/canonical/scan-json.ts:50` is a constructor parameter property, so
- * the first symptom is both scripts dying at load with
- * `ERR_UNSUPPORTED_TYPESCRIPT_SYNTAX`, which the typecheck does not catch.
+ * worked example is unreachable from here, which is what AD-31 requires:
+ * publication is exercised against a compile-side contract fixture corpus.
  */
 import type { EvalContract } from '../schemas/eval-contract.ts'
 import { evaluateCoverage } from './coverage.ts'

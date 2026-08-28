@@ -30,7 +30,7 @@ const BindingChannelMap = z
 	})
 
 // Named so the constraint ledger has one stable address for the non-empty
-// check rather than a path through four sibling channels, and so Story 1.5
+// check rather than a path through four sibling channels, and so the export
 // injects `minProperties` once on the shared definition.
 export const BindingChannel = BindingChannelMap.nullable().meta({
 	id: 'InputBindingChannel',
@@ -63,7 +63,7 @@ export const InteractionStep = z.strictObject({
 	operationId: Identifier,
 	inputBinding: InputBinding,
 	after: Identifier.nullable().describe(
-		"The temporal clause: the identifier of an earlier step, or `null`. That the named step carries no clause of its own is AD-39's one-level bound, which fires `nested-temporal-clause` at compile time and is deliberately not enforced here — a named deviation from the epic's acceptance criteria of record, taken so the code keeps a shape to fire on.",
+		"The temporal clause: the identifier of an earlier step, or `null`. That the named step carries no clause of its own is AD-39's one-level bound, which fires `nested-temporal-clause` at compile time and is deliberately not enforced here, so the code keeps a shape to fire on.",
 	),
 })
 

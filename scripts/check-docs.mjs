@@ -60,6 +60,7 @@ const failures = []
 
 for (const file of files) {
 	const original = readFileSync(file, 'utf8')
+	if (original === '') continue
 	const lines = original.split('\n')
 	const structural = checkFrontmatter(lines)
 	const repaired = `${fixWhitespace(lines).join('\n')}\n`

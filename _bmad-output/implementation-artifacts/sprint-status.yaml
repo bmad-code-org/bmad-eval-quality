@@ -81,4 +81,4 @@ development_status:
   6-2-pre-flight-as-plan-observation-and-pure-verdict: done
   6-3-rubric-compilation-under-checked-rules: done
   6-4-artifact-immutability-and-lineage-enforcement: review
-  6-5-the-library-and-cli-surface: backlog
+  6-5-the-library-and-cli-surface: review

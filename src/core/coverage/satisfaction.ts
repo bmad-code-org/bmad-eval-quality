@@ -3,10 +3,10 @@
  * declarations and the structured direction and `check` pair. No run record,
  * no probe, no outcome state.
  *
- * Each rule quantifies over the sites its relevance predicate fires on (Story
- * 5.1 Decision 5): satisfaction holds when every site is witnessed. A site
- * whose declaration is absent has no witness, so under-declaration costs
- * coverage. A rule firing on no site holds vacuously.
+ * Each rule quantifies over the sites its relevance predicate fires on:
+ * satisfaction holds when every site is witnessed. A site whose declaration is
+ * absent has no witness, so under-declaration costs coverage. A rule firing on
+ * no site holds vacuously.
  *
  * Nothing here throws, matching `relevance.ts`: a coverage gap is recorded and
  * the artifact still ships (AD-5), so there is no failure code.
@@ -46,11 +46,11 @@ const verdict = (
 	reason,
 })
 
-/** Decision 3: the rule fires on no site, so the universal over its sites holds. */
+/** The rule fires on no site, so the universal over its sites holds. */
 export const NO_RELEVANT_SITE =
 	'the rule is relevant for no site, so satisfaction holds vacuously'
 
-/** Decision 4: a contract declaring no operation leaves six of the rules an absent site. */
+/** A contract declaring no operation leaves six of the rules an absent site. */
 export const NO_OPERATION_WITNESS =
 	'the contract declares no operation, so the site this rule fires on has no declaration to witness'
 
@@ -58,7 +58,7 @@ export const NO_OPERATION_WITNESS =
 const operationsOf = (contract: EvalContract): readonly Operation[] =>
 	contract.permittedInterfaces.flatMap((declared) => declared.operations)
 
-/** Decision 13: `unresolved` never throws; a duplicate identifier resolves to nothing. */
+/** `unresolved` never throws; a duplicate identifier resolves to nothing. */
 const planIndexOf = (contract: EvalContract): PlanIndex =>
 	buildPlanIndex(contract.interactionPlan, contract.permittedInterfaces, {
 		duplicateIds: 'unresolved',
@@ -77,7 +77,7 @@ const encodeToken = (token: string): string =>
 /** Everything one step produced or was given. */
 const stepRoot = (stepId: string): string => `/interactions/${stepId}`
 
-/** Decision 5: a descriptor pointer read at one step, spelled interaction-rooted. */
+/** A descriptor pointer read at one step, spelled interaction-rooted. */
 const bodyPointer = (stepId: string, descriptorPointer: string): string =>
 	`/interactions/${stepId}/response-body${descriptorPointer}`
 
@@ -225,8 +225,8 @@ const contextOf = (contract: EvalContract): SatisfactionContext => ({
  * Rule 1: for every operation its relevance predicate fires on, some oracle's
  * direction and check both address that operation's success indicator and a
  * pointer whose declared role is something other than `success-indicator`,
- * read at one step. Decision 7: an operation whose only other roled pointers
- * are themselves indicators is a site with no witness.
+ * read at one step. An operation whose only other roled pointers are themselves
+ * indicators is a site with no witness.
  */
 export function successIndicatorSeparationSatisfaction(
 	contract: EvalContract,
@@ -404,8 +404,8 @@ export function malformedInputSatisfaction(
  * Rule 4: every declared collection location is the collection of some
  * quantifier, read at a step invoking its operation. The comparison is
  * equality: a quantifier one level inside a declared collection ranges over
- * something else. Decision 10 admits both quantifiers, since `not(for-any P)`
- * is the idiomatic spelling of "no element satisfies P".
+ * something else. Both quantifiers are admitted, since `not(for-any P)` is the
+ * idiomatic spelling of "no element satisfies P".
  */
 export function perRecordSatisfaction(
 	contract: EvalContract,
@@ -455,8 +455,8 @@ export function perRecordSatisfaction(
  * Rule 5: every declared sibling group has an oracle whose direction and check
  * both address two of its members. An operation member is addressed through a
  * step that invokes it; a parameter member through a `call-inputs` pointer on
- * any transport channel. Members are deduplicated first (Decision 14), since
- * `SiblingGroups` carries no uniqueness constraint.
+ * any transport channel. Members are deduplicated first, since `SiblingGroups`
+ * carries no uniqueness constraint.
  */
 export function siblingCrossCheckSatisfaction(
 	contract: EvalContract,
@@ -640,7 +640,7 @@ const relates = (
  * Rule 7: for every operation declaring `stateChangeMarker: true`, some check
  * node relates a pointer under a step invoking it to a pointer under the
  * response body of a later step whose operation changes no state and whose
- * temporal clause names the write. Decision 9 requires one node: two unrelated
+ * temporal clause names the write. One node carries the relation: two unrelated
  * assertions under one `all` read nothing back.
  */
 export function stateChangeReadBackSatisfaction(

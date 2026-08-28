@@ -6,13 +6,13 @@ import { InteractionPointer } from './pointer.ts'
 import { RubricCriterionId, RubricId } from './primitives.ts'
 
 // AD-22 requires anchored scale levels but supplies no shape. Minted here as
-// an ordinal plus its anchor condition, nothing more (Decision 9); see the
-// field descriptions below for what stays unenforced in v0 and why.
+// an ordinal plus its anchor condition, nothing more; see the field
+// descriptions below for what stays unenforced in v0 and why.
 export const ScaleLevel = z.strictObject({
 	level: z
 		.int()
 		.describe(
-			'The ordinal this level sits at. Story 6.3 settled both halves of what the schema left open: a repeated ordinal fails under `rubric-unanchored`, since two levels at one ordinal make the ordinal address two anchors, and magnitude, sign, ordering, and contiguity stay free, because a scale running -2 to 2 or 1, 3, 5 is an ordinary authoring choice.',
+			'The ordinal this level sits at. A repeated ordinal is the one half the compiler closes, failing under `rubric-unanchored`, since two levels at one ordinal make the ordinal address two anchors. Magnitude, sign, ordering, and contiguity stay free everywhere, because a scale running -2 to 2 or 1, 3, 5 is an ordinary authoring choice.',
 		),
 	anchor: z
 		.string()
@@ -26,7 +26,7 @@ export const FailureModePenalty = z.strictObject({
 	description: z
 		.string()
 		.describe(
-			"AD-22 requires named failure-mode penalties and states no magnitude. None is invented here: a penalty weight would be a scoring semantic no story below `score` has authority to mint, and AD-7 keeps weighted composites out of the reported result. Story 6.3 shipped AD-22's compile checks and declined to mint one, so a penalty carries a name and a description and nothing else.",
+			"AD-22 requires named failure-mode penalties and states no magnitude. None is invented here: a penalty weight would be a scoring semantic no module below `score` has authority to mint, and AD-7 keeps weighted composites out of the reported result. AD-22's compile checks ship without one, so a penalty carries a name and a description and nothing else.",
 		),
 })
 
@@ -43,7 +43,7 @@ export const RubricCriterion = z.strictObject({
 })
 
 /**
- * The embeddable rubric body: Story 1.4's published `Rubric` artifact adds
+ * The embeddable rubric body: the published `Rubric` artifact below adds
  * `schemaVersion`, lineage, and a prior-art declaration on top of this.
  */
 export const RubricBody = z
@@ -73,14 +73,14 @@ export const RubricBody = z
 	.meta({
 		id: 'RubricBody',
 		description:
-			"The embeddable rubric body. Named so the shared body has a stable `$defs` key distinct from the published `Rubric` artifact, which is this body plus `schemaVersion` and AD-29 lineage; without the name the two collide in Story 1.5's drift check under a generated positional name.",
+			'The embeddable rubric body. Named so the shared body has a stable `$defs` key distinct from the published `Rubric` artifact, which is this body plus `schemaVersion` and AD-29 lineage; without the name the two collide in the published-schema drift check under a generated positional name.',
 	})
 
 export type RubricBody = z.infer<typeof RubricBody>
 
 /**
- * The published Rubric artifact (Story 1.3): `RubricBody` above, spread flat,
- * plus AD-11's version and AD-29's lineage.
+ * The published Rubric artifact: `RubricBody` above, spread flat, plus
+ * AD-11's version and AD-29's lineage.
  */
 export const Rubric = z
 	.strictObject({

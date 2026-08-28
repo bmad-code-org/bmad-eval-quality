@@ -1,11 +1,11 @@
 /**
  * AD-4's eleven scalar, structural, and relational operators over the
  * resolved-value domain. The connectives, quantifiers, and the
- * `insufficient-evidence` wrapper are Story 3.2's, which never decide any of
- * them itself (AD-4). Every function takes `artifactPath: string` last, even
- * when unused, so Story 3.2's resolver dispatches through one calling
- * convention instead of a per-function arity table. The five that never
- * throw name it `_artifactPath`; Biome treats that prefix as unused.
+ * `insufficient-evidence` wrapper live in `resolution.ts`; nothing here
+ * decides any of them (AD-4). Every function takes `artifactPath: string`
+ * last, even when unused, so that resolver dispatches through one calling
+ * convention. The five that never throw name it `_artifactPath`; Biome
+ * treats that prefix as unused.
  */
 import { digestArtifact } from '../canonical/digest.ts'
 import { RuntimeFault } from '../schemas/faults.ts'
@@ -16,8 +16,8 @@ import type {
 } from '../schemas/primitives.ts'
 import { ABSENT, type ResolvedValue } from './resolved-value.ts'
 
-// Shared JSON-type vocabulary: `equality`'s type-mismatch check (AC 3) and
-// `shape`'s declared-type check (AC 6) need this exact mapping, kept once.
+// Shared JSON-type vocabulary: `equality`'s type-mismatch check and `shape`'s
+// declared-type check need this exact mapping, kept once.
 type JsonKind = 'string' | 'number' | 'boolean' | 'null' | 'array' | 'object'
 
 function jsonKind(value: JsonValue): JsonKind {
@@ -34,7 +34,8 @@ function isPlainObject(value: JsonValue): value is JsonObject {
 // Structural (canonical-JSON) equality, shared by `equality`'s compound
 // branch, `deepEquality`, and element matching in `containment` and
 // `setMembership`. `digestArtifact` throws on a domain-rejected value
-// (AD-36); left to propagate here. See Decision 2 for the reasoning.
+// (AD-36); left to propagate here, since an unevaluable operand has no
+// comparison result to report.
 function structurallyEqual(
 	a: JsonValue,
 	b: JsonValue,
@@ -44,7 +45,7 @@ function structurallyEqual(
 }
 
 // ---------------------------------------------------------------------------
-// AC 3 — identity family
+// the identity family
 // ---------------------------------------------------------------------------
 
 /** Reads only whether resolution happened; `null` counts as present (AD-26). */
@@ -63,7 +64,8 @@ export function absence(value: ResolvedValue, _artifactPath: string): boolean {
 /**
  * Cost-ordered: the `ABSENT` guard runs before any digest call, since
  * `ABSENT` is a JS `symbol` and `digestArtifact` faults on symbols. Only a
- * matching compound type reaches structural comparison (Decision 2).
+ * matching compound type reaches structural comparison, so a scalar operand
+ * never inherits the digest path's fault surface.
  */
 export function equality(
 	a: ResolvedValue,
@@ -95,12 +97,13 @@ export function deepEquality(
 }
 
 // ---------------------------------------------------------------------------
-// AC 4 — membership family
+// the membership family
 // ---------------------------------------------------------------------------
 
 /**
  * `false` on `ABSENT` is correct only when `value`'s pointer is not itself
- * collection-typed; Story 3.2 disambiguates the two cases (AC 1).
+ * collection-typed; the resolver in `resolution.ts` disambiguates the two
+ * cases before calling in here.
  */
 export function setMembership(
 	value: ResolvedValue,
@@ -116,7 +119,9 @@ export function setMembership(
  * can resolve to either a single value or a `referenceSet`'s member array.
  *
  * An array-shaped `candidate` is always read as a subset check, never as a
- * single element to search for. Known, accepted limitation (Decision 3).
+ * single element to search for: this function receives resolved values only,
+ * so it cannot tell a `{ literal }` array from a resolved `{ referenceSet }`.
+ * Known, accepted limitation.
  */
 export function containment(
 	container: ResolvedValue,
@@ -149,7 +154,7 @@ export function containment(
 }
 
 // ---------------------------------------------------------------------------
-// AC 5 — regexMatch
+// regexMatch
 // ---------------------------------------------------------------------------
 
 // A backslash-escaped character pair (`\+`, `\d`, `\[`, `\]`, …), neutralized
@@ -204,8 +209,10 @@ const QUANTIFIER_MARKER = /[*+?]|\{\d+(?:,\d*)?\}/g
 
 /**
  * `false` if `value === ABSENT` or not a string. Pattern validity is checked
- * here; the match-step budget is a two-tier static gate. See AC 5 and
- * Decision 4 in the story file for the design rationale.
+ * here; the match-step budget is a two-tier static gate, structural
+ * nested-quantifier rejection then a linear estimate. The gate stays static
+ * because AD-1 keeps this function synchronous and pure, and native `RegExp`
+ * exposes no step counter to read.
  */
 export function regexMatch(
 	value: ResolvedValue,
@@ -257,7 +264,7 @@ export function regexMatch(
 }
 
 // ---------------------------------------------------------------------------
-// AC 6 — structural family
+// the structural family
 // ---------------------------------------------------------------------------
 
 /**
@@ -302,9 +309,11 @@ export function ordering(
 }
 
 /**
- * An empty array is a legitimate zero count, never special-cased; Story 3.2's
- * wrapper intercepts before this runs on a genuinely empty collection. The
- * allowed deviation is compared unrounded (Decision 5).
+ * An empty array is a legitimate zero count, never special-cased; the
+ * resolver in `resolution.ts` intercepts before this runs on a genuinely
+ * empty collection. The allowed deviation is compared unrounded: `actual` is
+ * an integer, so `<=` against a fractional deviation is already exact, and
+ * rounding either direction would move the declared boundary.
  */
 export function countTolerance(
 	collection: ResolvedValue,
@@ -321,8 +330,10 @@ export function countTolerance(
 
 /**
  * The closed set is `permittedKeys` alone, never unioned with `requiredKeys`:
- * a self-contradictory descriptor is unsatisfiable rather than repaired
- * (Decision 6).
+ * a self-contradictory descriptor is unsatisfiable rather than repaired.
+ * `requiredKeys ⊆ permittedKeys` is unrefined in
+ * `core/schemas/primitives.ts` and closed by no compile-time check, so a key
+ * that is required and not permitted reaches here and fails every value.
  */
 export function shape(
 	value: ResolvedValue,
@@ -347,7 +358,7 @@ export function shape(
 }
 
 // ---------------------------------------------------------------------------
-// AC 3 — covers-by-key
+// covers-by-key
 // ---------------------------------------------------------------------------
 
 /**
@@ -371,19 +382,22 @@ function keyValueOf(
  * `expected` element on the named keys. `ABSENT` on either side resolves
  * `false`, including a fully-missing `actual` collection: AD-4 calls that "a
  * detected defect, not an empty examination," overriding the general
- * empty-collection invariant for this operator alone (Decision 1). A
- * non-array `actual` is an ordinary type mismatch, also `false` (Decision 2).
+ * empty-collection invariant for this operator alone. A non-array `actual` is
+ * an operand type this operator does not accept, which AD-4 assigns to
+ * `malformed-operator-expression`; `core/compile/expression-legality.ts`
+ * checks the operand *form* under that code and leaves this position's
+ * declared type unchecked, so a non-array reaching here resolves `false`.
  *
  * Cardinality is never checked separately: `actualByKey` starts with one
  * entry per `actual` element (a synthetic slot for a keyless one, so nothing
  * goes uncounted), and the `expected` loop deletes one entry per match. A
  * final `actualByKey.size === 0` is the bijection condition itself, since the
- * map's starting size already equals `actual`'s cardinality (Decision 6). A
- * duplicate `actualKey` fails immediately, at construction, because the
- * second element finds its slot already occupied; a duplicate `expectedKey`
- * is assumed compile-time-prevented (Decision 4), but if it occurs it fails
- * later, at lookup, because the second occurrence finds its slot already
- * deleted by the first.
+ * map's starting size already equals `actual`'s cardinality. A duplicate
+ * `actualKey` fails immediately, at construction, because the second element
+ * finds its slot already occupied; a duplicate `expectedKey` is assumed
+ * prevented at compile time under `malformed-operator-expression`, but if it
+ * occurs it fails later, at lookup, because the second occurrence finds its
+ * slot already deleted by the first.
  */
 export function coversByKey(
 	expected: JsonValue[] | typeof ABSENT,

@@ -39,10 +39,9 @@ const isTransportChannel = (value: string): value is TransportChannelName =>
 	(TRANSPORT_CHANNELS as readonly string[]).includes(value)
 
 /**
- * Exported for Story 4.1's reuse: `core/evaluate/evidence-resolution.ts`
- * decodes pointer tails with these same two functions, avoiding a second
- * private copy (the drift `IDENTIFIER_CHARSET_SOURCE`'s own precedent warns
- * against).
+ * Exported so `core/evaluate/evidence-resolution.ts` decodes pointer tails
+ * with these same two functions, avoiding a second private copy (the drift
+ * `IDENTIFIER_CHARSET_SOURCE`'s own precedent warns against).
  */
 export const decodeToken = (token: string): string =>
 	token.replace(/~1/g, '/').replace(/~0/g, '~')
@@ -53,7 +52,7 @@ export const decodeTail = (tailSource: string): readonly string[] =>
 /**
  * One evidence target, resolved locally to its step id and channel. The
  * channel decides whether the rendered phrase says "the response you
- * obtained" or "the value you sent" (AC 2).
+ * obtained" or "the value you sent".
  */
 export type EvidenceTarget = {
 	stepId: string
@@ -67,7 +66,7 @@ export type EvidenceTarget = {
  * `pointer.ts`) into its step id, channel, transport channel, and tail, using
  * the schema's own channel partition so this accepts exactly what
  * `InteractionPointer.safeParse` accepts. A should-never-happen precondition
- * violation throws `TypeError`, per `digest.ts`'s precedent (Decision 4).
+ * violation throws `TypeError`, per `digest.ts`'s precedent.
  */
 export function parseEvidenceTarget(pointer: string): EvidenceTarget {
 	const groups = EVIDENCE_TARGET_PATTERN.exec(pointer)?.groups
@@ -126,9 +125,11 @@ export function parseEvidenceTarget(pointer: string): EvidenceTarget {
 }
 
 /**
- * What a pointer names: step, operation, and (Task 4's escalation) every step
- * naming a given operation. Says nothing about reachability or channel
- * typing; the general addressing-grammar resolver is Epic 4's (Decision 3).
+ * What a pointer names: step, operation, and every step naming a given
+ * operation, which `derived-reference.ts`'s escalation needs. Says nothing
+ * about reachability or channel typing; the general addressing-grammar
+ * resolver lives in `core/evaluate/evidence-resolution.ts` and reachability
+ * in `core/compile/reachability.ts`.
  */
 export type PlanIndex = {
 	stepOf: (stepId: string) => InteractionStep | undefined
@@ -205,7 +206,7 @@ export function buildPlanIndex(
  * index itself stays a plain lookup (`| undefined`, per
  * `noUncheckedIndexedAccess`) while callers get one function instead of
  * repeating the `undefined` check. A precondition violation, not a
- * `RuntimeFault` (Decision 4).
+ * `RuntimeFault`.
  */
 export function resolveStep(index: PlanIndex, stepId: string): InteractionStep {
 	const step = index.stepOf(stepId)

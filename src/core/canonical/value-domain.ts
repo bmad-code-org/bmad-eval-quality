@@ -3,8 +3,8 @@ import { RuntimeFault } from '../schemas/faults.ts'
 
 // AD-36: a hashed artifact admits only finite binary64 numbers, integers within
 // the safe range, well-formed strings, and plain acyclic JSON structure. Larger
-// integers and exact decimals travel as strings with declared formats
-// (Stories 1.3-1.4); this layer enforces the numeric domain.
+// integers and exact decimals travel as strings with the declared formats in
+// `core/schemas/primitives.ts`; this layer enforces the numeric domain.
 
 // Structure bound, part of the value domain: nesting deeper than this rejects
 // with the typed fault, so pathological input can never escape as a bare

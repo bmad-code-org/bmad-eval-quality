@@ -77,7 +77,7 @@
               "failed",
               "exempt"
             ],
-            "description": "`exempt` exists because AD-10 says \"an operation declaring no inputs in any channel is exempt and records the exemption\", and an exemption with no spelling is an exemption nobody records. That a failed pre-flight invalidates the run, and that a sensitivity witness resolving `insufficient-evidence` fails rather than passes, are AD-10 semantics for `core/preflight` in Epic 6; the schema carries the outcome and refines nothing."
+            "description": "`exempt` exists because AD-10 says \"an operation declaring no inputs in any channel is exempt and records the exemption\", and an exemption with no spelling is an exemption nobody records. That a failed pre-flight invalidates the run, and that a sensitivity witness resolving `insufficient-evidence` fails rather than passes, are AD-10 semantics for `core/preflight`; the schema carries the outcome and refines nothing."
           },
           "note": {
             "anyOf": [

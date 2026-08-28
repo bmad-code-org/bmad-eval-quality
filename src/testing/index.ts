@@ -2,9 +2,10 @@
  * The `eval-quality/conformance` subpath: what an outside adapter author needs
  * to implement a port and check the implementation.
  *
- * The boundary vocabulary is published here because `src/index.ts` belongs to
- * Story 6.5 and an adapter author cannot implement `CorpusPort` without the
- * type. 6.5 decides whether the root barrel carries it too.
+ * The boundary vocabulary is published here because this subpath is where AD-37
+ * puts the conformance definition an adapter author reads, and that author
+ * cannot implement `CorpusPort` without the type. The root barrel does not
+ * carry it.
  *
  * Type re-exports use `export type`; `biome.json` sets
  * `style.useExportType: "error"`.

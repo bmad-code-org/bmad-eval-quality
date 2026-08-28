@@ -289,7 +289,7 @@
               "rule": {
                 "type": "string",
                 "minLength": 1,
-                "description": "Opaque and deliberately not an enum, for the reason `Waiver.rule` is opaque: AD-20 enumerates its seven discipline rules in prose and assigns them no identifiers, so an enum here would be this story minting the vocabulary AD-20 declined to."
+                "description": "Opaque and deliberately not an enum, for the reason `Waiver.rule` is opaque: AD-20 enumerates its seven discipline rules in prose and assigns them no identifiers, so an enum here would be this schema minting the vocabulary AD-20 declined to."
               },
               "relevancePredicate": {
                 "type": "string",
@@ -862,7 +862,7 @@
               "rule": {
                 "type": "string",
                 "minLength": 1,
-                "description": "Opaque and deliberately not an enum, for the reason `Waiver.rule` is opaque: AD-20 enumerates its seven discipline rules in prose and assigns them no identifiers, so an enum here would be this story minting the vocabulary AD-20 declined to."
+                "description": "Opaque and deliberately not an enum, for the reason `Waiver.rule` is opaque: AD-20 enumerates its seven discipline rules in prose and assigns them no identifiers, so an enum here would be this schema minting the vocabulary AD-20 declined to."
               },
               "relevancePredicate": {
                 "type": "string",
@@ -1223,7 +1223,7 @@
         "CONCERNS",
         "FAIL"
       ],
-      "description": "The evaluator's own recommendation, ingested and never promoted to a verdict in contract-scoring mode. AD-24 requires a closed enum; the prior art's `NOT_APPLICABLE` is dropped with the `scripted` arm it belonged to. Consequence recorded here because it closes a rung: AD-21's Invalid condition for \"an unrecognised evaluator recommendation value\" is unreachable for a schema-valid artifact, since an unrecognised value fails to parse and becomes an AD-28 `schema-parse-failure` fault, and a fault never becomes a verdict. The Epic 6 ingest story either validates this field leniently and maps an unrecognised value to that rung, or accepts that the rung fires only as a fault."
+      "description": "The evaluator's own recommendation, ingested and never promoted to a verdict in contract-scoring mode. AD-24 requires a closed enum; the prior art's `NOT_APPLICABLE` is dropped with the `scripted` arm it belonged to. Consequence recorded here because it closes a rung: AD-21's Invalid condition for \"an unrecognised evaluator recommendation value\" is unreachable for a schema-valid artifact, since an unrecognised value fails to parse and becomes an AD-28 `schema-parse-failure` fault, and a fault never becomes a verdict. An ingesting reader either validates this field leniently and maps an unrecognised value to that rung, or accepts that the rung fires only as a fault."
     }
   }
 }

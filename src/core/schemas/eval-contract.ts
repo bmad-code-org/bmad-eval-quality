@@ -65,7 +65,7 @@ export const Behavior = z.strictObject({
 	oracles: z
 		.array(OracleId)
 		.describe(
-			"Identifiers of the oracles this behaviour is discharged by. Deliberately not refined against the contract's declared oracles: no AD-5 code names a behaviour citing an undeclared oracle, so under AC 8's named exception that rule is unenforced in v0 rather than silently pushed into the schema.",
+			"Identifiers of the oracles this behaviour is discharged by. Deliberately not refined against the contract's declared oracles: no AD-5 code names a behaviour citing an undeclared oracle, so it joins the cross-field rules with no code, unenforced in v0 rather than silently pushed into the schema.",
 		),
 })
 
@@ -129,8 +129,8 @@ export const EvalContract = z
 		// AD-11's schemaVersion and AD-29's lineage pair, spread from the leaf
 		// module every lineage-bearing artifact spreads from; the descriptions
 		// moved verbatim since rewriting them would change the export bytes.
-		// Spread rather than nested, so this shape and the Story 1.3 reject
-		// fixtures naming `['schemaVersion']` or `['parentDigest']` stay unchanged.
+		// Spread rather than nested, so this shape and the reject fixtures
+		// naming `['schemaVersion']` or `['parentDigest']` stay unchanged.
 		...lineageFields,
 		contractId: Identifier,
 		sourceSpecDigest: Digest.nullable().describe(
@@ -168,7 +168,7 @@ export const EvalContract = z
 		interactionPlan: z
 			.array(InteractionStep)
 			.describe(
-				'No maximum and no bound on `after` chains. `plan-exceeds-scripting-bound` needs the sixty-four-pair and eight-chain plans representable, and Story 4.3 owns the graph predicate. An empty plan is the cheapest `unreachable-check-evidence` fixture.',
+				'No maximum and no bound on `after` chains. `plan-exceeds-scripting-bound` needs the sixty-four-pair and eight-chain plans representable, and the compiler owns the graph predicate. An empty plan is the cheapest `unreachable-check-evidence` fixture.',
 			),
 		scopedResources: z
 			.array(ScopedResource)
@@ -190,7 +190,7 @@ export const EvalContract = z
 			.min(0)
 			.nullable()
 			.describe(
-				"AD-16's declared bound on enumerated probe steps, which the brief-side scripting audit reads. No AD gives it a home and the Configuration convention's policy-artifact list omits it, so it lands here beside the other ceilings. The AD-5 code that audit fires is Epic 2's to mint alongside its only thrower.",
+				"AD-16's declared bound on enumerated probe steps, which the brief-side scripting audit reads. No AD gives it a home and the Configuration convention's policy-artifact list omits it, so it lands here beside the other ceilings. The AD-5 code that audit fires is `brief-exceeds-scripting-bound`.",
 			),
 		fixtureReset: FixtureReset.nullable().describe(
 			"AD-10's per-run state reset, declared as the operation that performs it, so the reset is one more probe leg through the environment-probe port. `null` selects AD-10's repeated-read immutability branch, which is also the check that catches a volatile response field the contract failed to declare.",

@@ -1,10 +1,10 @@
 // Binds `src/core/failure-codes.ts` to the AD-5 code table it transcribes,
 // asserting set and order equality so the two cannot drift silently.
 //
-// Reading a planning artifact from a script does not violate AD-15: AD-15
-// binds the package, whose published `files` are `dist`, `README.md`, and
-// `LICENSE`, and `scripts/check-docs.mjs` already reads planning artifacts
-// under `npm run validate`.
+// Reading a design document from a script does not violate AD-15: AD-15 binds
+// the package, whose published `files` are `dist`, `schemas`, `corpus`,
+// `README.md`, and `LICENSE`, and `scripts/` never enters the tarball.
+// `npm run check:boundary` enforces that boundary over exactly those files.
 //
 // Usage:
 //   node scripts/check-ad5-registry.ts
@@ -19,28 +19,48 @@ const SPINE_WORKSPACE =
 	'_bmad-output/planning-artifacts/architecture/architecture-eval-quality-2026-07-29'
 const SPINE_PATH = `${SPINE_WORKSPACE}/ARCHITECTURE-SPINE.md`
 
-// The workspace directory is dated, matching package.json's `lint:spine`. The
-// duplication is checked mechanically here so a re-dated workspace fails
-// loudly instead of leaving this script silently checking a stale directory.
-let manifest: string
+// The workspace directory is dated, matching `lint_spine.py`'s
+// `DEFAULT_WORKSPACE`. The duplication is checked mechanically here so a
+// re-dated workspace fails loudly instead of leaving this script silently
+// checking a stale directory. The linter holds the value because npm
+// publishes the whole `scripts` map and this path may not ride into a
+// consumer's `node_modules`.
+let linter: string
 try {
-	manifest = await readFile(new URL('../package.json', import.meta.url), 'utf8')
+	linter = await readFile(
+		new URL('./spine-lint/lint_spine.py', import.meta.url),
+		'utf8',
+	)
 } catch (error) {
 	console.error(
-		`check-ad5-registry: could not read package.json: ${
+		`check-ad5-registry: could not read scripts/spine-lint/lint_spine.py: ${
 			error instanceof Error ? error.message : String(error)
 		}`,
 	)
 	process.exit(1)
 }
-const lintSpine = (JSON.parse(manifest).scripts as Record<string, string>)[
-	'lint:spine'
-]
-if (lintSpine === undefined || !lintSpine.includes(SPINE_WORKSPACE)) {
+// Two assertions rather than a substring search. A bare `includes` over a
+// 550-line file is satisfied by any surviving mention of the path (a comment,
+// a docstring, a changelog line) while the constant itself points somewhere
+// else, which is the drift this check exists to catch.
+const declaredWorkspace = /^DEFAULT_WORKSPACE = "([^"]+)"$/m.exec(linter)?.[1]
+if (declaredWorkspace !== SPINE_WORKSPACE) {
 	console.error(
-		`check-ad5-registry: package.json's \`lint:spine\` does not name ${SPINE_WORKSPACE}, so this script and the spine linter disagree about which architecture workspace is current`,
+		`check-ad5-registry: lint_spine.py declares DEFAULT_WORKSPACE = ${
+			declaredWorkspace === undefined
+				? '(no top-level assignment matched)'
+				: `"${declaredWorkspace}"`
+		}, not "${SPINE_WORKSPACE}", so this script and the spine linter disagree about which architecture workspace is current`,
 	)
-	console.error(`  lint:spine: ${lintSpine ?? '<absent>'}`)
+	process.exit(1)
+}
+// The constant only binds the linter if `--workspace` still defaults to it;
+// a flag re-pointed at a literal would leave the assertion above passing over
+// a value nothing reads.
+if (!/"--workspace",\s*default=DEFAULT_WORKSPACE/.test(linter)) {
+	console.error(
+		"check-ad5-registry: lint_spine.py's --workspace flag no longer defaults to DEFAULT_WORKSPACE, so the constant this script agrees with is not the workspace the linter reads",
+	)
 	process.exit(1)
 }
 

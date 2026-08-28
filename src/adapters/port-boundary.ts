@@ -47,6 +47,8 @@ async function raceAbort(
 			{ cause: signal.reason },
 		)
 	}
+	// Suppress unhandled late rejections if the race is won by abort
+	call.catch(() => {})
 	let listener: (() => void) | undefined
 	try {
 		const aborted = new Promise<never>((_resolve, reject) => {
@@ -105,11 +107,10 @@ export async function runPortMethod<Request, Response>(
 		)
 	}
 
-	precheck?.(parsedRequest.data)
-
 	// 3. Exactly one mechanism call, raced against the abort.
 	let raw: unknown
 	try {
+		precheck?.(parsedRequest.data)
 		raw = await raceAbort(
 			signal,
 			responsePath,

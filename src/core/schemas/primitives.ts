@@ -20,9 +20,9 @@ export const Identifier = z
 	)
 
 // All eight Consistency-Conventions prefixes are defined here even though this
-// artifact uses five: Story 1.4 imports P-, D-, and F- for the Probe, Evidence
-// Artifact, and finding shapes rather than re-spelling the quantifier, and a
-// second spelling of `{3,}` is exactly the drift the convention names.
+// artifact uses five: the Probe, Evidence Artifact, and finding shapes import
+// P-, D-, and F- rather than re-spelling the quantifier, and a second spelling
+// of `{3,}` is exactly the drift the convention names.
 const prefixedIdentifier = (prefix: string): RegExp =>
 	new RegExp(`^${prefix}-[0-9]{3,}$`)
 
@@ -44,10 +44,9 @@ export const FindingId = z.string().regex(FINDING_ID_PATTERN)
 export const RubricId = z.string().regex(RUBRIC_ID_PATTERN)
 export const RubricCriterionId = z.string().regex(RUBRIC_CRITERION_ID_PATTERN)
 
-// AD-27's rendered digest form. Story 1.2 held this privately in
-// core/canonical/digest.ts; it moves here so the schema and the digest
-// functions share one spelling, and core/ imports core/schemas rather than the
-// reverse.
+// AD-27's rendered digest form. It lives here rather than privately in
+// core/canonical/digest.ts so the schema and the digest functions share one
+// spelling, and core/ imports core/schemas rather than the reverse.
 export const DIGEST_FORM = /^sha256:[0-9a-f]{64}$/
 
 export const Digest = z
@@ -120,9 +119,9 @@ export type JsonValue =
 
 // The one shape whose keys belong to the caller, so `additionalProperties` is
 // schema-valued rather than false here alone. Hand-rolled with z.lazy rather
-// than z.json(): the latter exports a generated `$defs` ref name that Story
-// 1.5's drift check would pin and that separates the description from the
-// shared definition, and AD-36 needs the numeric restriction on the
+// than z.json(): the latter exports a generated `$defs` ref name that the
+// published-schema drift check would pin and that separates the description
+// from the shared definition, and AD-36 needs the numeric restriction on the
 // definition itself.
 export const JsonValue: z.ZodType<JsonValue> = z
 	.lazy(() =>

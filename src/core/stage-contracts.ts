@@ -1,7 +1,7 @@
 /**
- * AD-34's stage-shape vocabulary. Two conformance types cover this story's
- * two stage implementations, `compile` and `seal`; two generic types record
- * the conditional plan/reduce pair for a later stage that needs one.
+ * AD-34's stage-shape vocabulary. Two conformance types pin the exact shapes
+ * of `compile` and `seal`; two generic types record the conditional
+ * plan/reduce pair, which `preflight` implements.
  *
  * AD-24's six-stage input/output/owner/lineage table lives in
  * `core/lineage/stage-table.ts`. This file holds the stage *shapes* TypeScript

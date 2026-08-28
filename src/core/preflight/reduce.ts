@@ -34,7 +34,7 @@ export type PreflightObservations = {
 
 /**
  * AD-10 names no threshold, and this is the one the repository already speaks:
- * Story 6.1's conformance suite ships `probe/observe-anomalous-status`, and
+ * the published conformance suite ships `probe/observe-anomalous-status`, and
  * `ProbeObservation.status` is bounded to 100-599 at the port, so HTTP is
  * already assumed at that boundary.
  */
@@ -107,8 +107,21 @@ export const reducePreflight: ReduceStage<
 	PreflightVerdict
 > = (plan, { observations }) => {
 	const byProbeId = new Map<string, ProbeObservation>()
-	for (const observation of observations)
+	for (const observation of observations) {
+		// A repeated `probeId` is a broken echo: `ProbeRequest.probeId` comes
+		// back unchanged by contract, so two observations claiming one leg means
+		// the port answered a request nobody made. Left as a last-write-wins
+		// `Map` it would also make the verdict depend on array order, which is
+		// the class AD-30's permutation family exists to catch.
+		if (byProbeId.has(observation.probeId)) {
+			throw new RuntimeFault(
+				'port-contract-violation',
+				PREFLIGHT_ARTIFACT_PATH,
+				`two observations echoed the probe id "${observation.probeId}", so one leg was answered twice`,
+			)
+		}
 		byProbeId.set(observation.probeId, observation)
+	}
 
 	const states = new Map<string, LegState>()
 	for (const leg of plan.legs) {
@@ -307,8 +320,8 @@ export const reducePreflight: ReduceStage<
 	const checks = plan.checks.map(reduceCheck)
 	const projections = [...states.values()].map((state) => state.projected)
 	return freezeArtifact({
-		// A pre-flight verdict is an origin artifact; AD-29's revision machinery
-		// belongs to the story that revises one.
+		// A pre-flight verdict is an origin artifact, so AD-29's lineage fields
+		// carry their origin values.
 		schemaVersion: 1,
 		parentDigest: null,
 		revisionCount: 0,

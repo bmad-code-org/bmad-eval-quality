@@ -5,8 +5,8 @@ import { Digest, Identifier } from './primitives.ts'
 
 /**
  * Transcribed from AD-10's own prose, which bounds the verdict to a closed,
- * named list of checks; a member it does not name would be this story minting
- * pre-flight semantics it has no authority over.
+ * named list of checks; a member it does not name would be this schema
+ * minting pre-flight semantics it has no authority over.
  */
 export const PREFLIGHT_CHECK_KINDS = [
 	'interface-present',
@@ -27,7 +27,7 @@ export const PreflightCheck = z.strictObject({
 	outcome: z
 		.enum(['satisfied', 'failed', 'exempt'])
 		.describe(
-			'`exempt` exists because AD-10 says "an operation declaring no inputs in any channel is exempt and records the exemption", and an exemption with no spelling is an exemption nobody records. That a failed pre-flight invalidates the run, and that a sensitivity witness resolving `insufficient-evidence` fails rather than passes, are AD-10 semantics for `core/preflight` in Epic 6; the schema carries the outcome and refines nothing.',
+			'`exempt` exists because AD-10 says "an operation declaring no inputs in any channel is exempt and records the exemption", and an exemption with no spelling is an exemption nobody records. That a failed pre-flight invalidates the run, and that a sensitivity witness resolving `insufficient-evidence` fails rather than passes, are AD-10 semantics for `core/preflight`; the schema carries the outcome and refines nothing.',
 		),
 	note: z.string().nullable(),
 })

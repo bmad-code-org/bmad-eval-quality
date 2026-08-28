@@ -2,17 +2,26 @@
  * `runPreflight` (Story 6.2): the one place a pre-flight probe is awaited. The
  * port is a hand-written fake; no network, no clock, no real adapter (AD-30).
  */
-import { describe, expect, it } from 'vitest'
-import { runPreflight } from '../../src/application/preflight.ts'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import type { Diagnostic } from '../../src/application/diagnostics.ts'
+import {
+	preflightFromObservations,
+	runPreflight,
+} from '../../src/application/preflight.ts'
 import { StructuralFailure } from '../../src/core/failure-codes.ts'
+import * as planModule from '../../src/core/preflight/plan.ts'
+import { planPreflight } from '../../src/core/preflight/plan.ts'
+import * as reduceModule from '../../src/core/preflight/reduce.ts'
 import { RuntimeFault } from '../../src/core/schemas/faults.ts'
 import { PreflightVerdict } from '../../src/core/schemas/preflight-verdict.ts'
 import { Probe as ProbeSchema } from '../../src/core/schemas/probe.ts'
 import {
 	contractDraft,
+	observationsFor,
 	parseContract,
 	preflightContract,
 	probeDraft,
+	satisfiedPatches,
 	seededProbe,
 } from '../preflight/fixtures/observations.ts'
 import { echoPort } from '../preflight/fixtures/probe-port.ts'
@@ -155,5 +164,166 @@ describe('runPreflight: the boundary and the verdict', () => {
 		expect(fault.code).toBe('schema-parse-failure')
 		expect(fault.artifactPath).toBe('Probe')
 		expect(ProbeSchema.safeParse(draft).success).toBe(false)
+	})
+})
+
+/**
+ * `preflightFromObservations` (Story 6.5): the same verdict for a caller who
+ * probed by some other means. Nothing here awaits.
+ */
+
+/** the plan the fixture contract and its one seeded probe produce. */
+const fixturePlan = () =>
+	planPreflight({
+		contract: preflightContract,
+		probes: [seededProbe],
+		runId: 'run-1',
+	})
+
+/** one observation per planned leg, bodies that satisfy every check. */
+const fullObservations = () => {
+	const legs = fixturePlan().legs
+	return observationsFor(legs, satisfiedPatches(legs))
+}
+
+const fromObservations = (
+	overrides: Partial<Parameters<typeof preflightFromObservations>[0]> = {},
+) =>
+	preflightFromObservations({
+		contract: preflightContract,
+		probes: [seededProbe],
+		runId: 'run-1',
+		observations: fullObservations(),
+		...overrides,
+	})
+
+const syncFaultOf = (act: () => unknown): RuntimeFault => {
+	let thrown: unknown
+	try {
+		act()
+	} catch (error) {
+		thrown = error
+	}
+	expect(thrown).toBeInstanceOf(RuntimeFault)
+	return thrown as RuntimeFault
+}
+
+describe('preflightFromObservations: the boundary parses', () => {
+	it('case 105: throws schema-parse-failure naming EvalContract on an unparseable contract', () => {
+		const fault = syncFaultOf(() =>
+			fromObservations({ contract: { not: 'a contract' } as never }),
+		)
+		expect(fault.code).toBe('schema-parse-failure')
+		expect(fault.artifactPath).toBe('EvalContract')
+	})
+
+	it('case 106: throws schema-parse-failure naming Probe on an unparseable probe', () => {
+		const draft = probeDraft()
+		draft.probeId = 'not-a-probe-id'
+		const fault = syncFaultOf(() => fromObservations({ probes: [draft] }))
+		expect(fault.code).toBe('schema-parse-failure')
+		expect(fault.artifactPath).toBe('Probe')
+		expect(ProbeSchema.safeParse(draft).success).toBe(false)
+	})
+
+	it('case 107: throws schema-parse-failure naming ProbeObservation on an unparseable observation', () => {
+		const fault = syncFaultOf(() =>
+			fromObservations({ observations: [{ probeId: 'read-a' } as never] }),
+		)
+		expect(fault.code).toBe('schema-parse-failure')
+		expect(fault.artifactPath).toBe('ProbeObservation')
+	})
+
+	// The outbound parse, reached without touching `src/`: `planPreflight`
+	// takes `runId` as a plain string and carries it into the verdict, where
+	// `PreflightVerdict.runId` is `.min(1)`.
+	it('case 108: throws schema-parse-failure naming PreflightVerdict when the reduced verdict fails its schema', () => {
+		const fault = syncFaultOf(() => fromObservations({ runId: '' }))
+		expect(fault.code).toBe('schema-parse-failure')
+		expect(fault.artifactPath).toBe('PreflightVerdict')
+	})
+})
+
+describe('preflightFromObservations: the verdict and the stream', () => {
+	afterEach(() => {
+		vi.restoreAllMocks()
+	})
+
+	it('case 109: returns a frozen verdict', () => {
+		const verdict = fromObservations()
+		expect(Object.isFrozen(verdict)).toBe(true)
+		expect(Object.isFrozen(verdict.checks)).toBe(true)
+		expect(PreflightVerdict.safeParse(verdict).success).toBe(true)
+	})
+
+	it('case 110: calls planPreflight before reducePreflight, once each', () => {
+		const planSpy = vi.spyOn(planModule, 'planPreflight')
+		const reduceSpy = vi.spyOn(reduceModule, 'reducePreflight')
+		const observations = fullObservations()
+		planSpy.mockClear()
+		reduceSpy.mockClear()
+
+		// Called directly: `fromObservations` builds its default observations
+		// through `planPreflight`, which would show up as a second call.
+		preflightFromObservations({
+			contract: preflightContract,
+			probes: [seededProbe],
+			runId: 'run-1',
+			observations,
+		})
+
+		expect(planSpy).toHaveBeenCalledTimes(1)
+		expect(reduceSpy).toHaveBeenCalledTimes(1)
+		const planOrder = planSpy.mock.invocationCallOrder[0] as number
+		const reduceOrder = reduceSpy.mock.invocationCallOrder[0] as number
+		expect(planOrder).toBeLessThan(reduceOrder)
+		// The reducer reads the plan the planner produced, so the order is the
+		// data dependency and not just a sequence.
+		expect(reduceSpy.mock.calls[0]?.[0]).toBe(planSpy.mock.results[0]?.value)
+	})
+
+	// The fixture is fully observed on purpose: `invokePort` either returns an
+	// observation or throws, so `runPreflight` can never emit the
+	// "no observation" line and a partially observed fixture would compare two
+	// streams that differ by construction.
+	it('case 111: emits the same diagnostic stream as runPreflight over a fully observed fixture', async () => {
+		const awaited: Diagnostic[] = []
+		const handed: Diagnostic[] = []
+		const observations = fullObservations()
+		expect(observations).toHaveLength(PLANNED_LEG_IDS.length)
+
+		const awaitedVerdict = await run({ sink: (line) => awaited.push(line) })
+		const handedVerdict = fromObservations({
+			observations,
+			sink: (line) => handed.push(line),
+		})
+
+		expect(handed).toEqual(awaited)
+		expect(handed.map((line) => line.message)).toContain(
+			`reduced ${PLANNED_LEG_IDS.length} leg(s): passed`,
+		)
+		expect(handedVerdict).toEqual(awaitedVerdict)
+	})
+
+	// A partial array is a verdict, not a fault: the per-leg lookup in
+	// `reducePreflight` skips a leg with no observation, and the checks that
+	// named it fail.
+	it('case 112: a partial observation array gives a failed verdict', () => {
+		const withoutReadB = fullObservations().filter(
+			(observation) => observation.probeId !== 'read-b',
+		)
+		const verdict = fromObservations({ observations: withoutReadB })
+
+		expect(verdict.passed).toBe(false)
+		const failed = verdict.checks.filter((check) => check.outcome === 'failed')
+		expect(failed.map((check) => check.kind)).toEqual([
+			'interface-present',
+			'input-sensitivity',
+		])
+		for (const check of failed) {
+			expect(check.operationId).toBe('read-thing')
+			expect(check.note).toContain('read-b')
+			expect(check.note).toContain('no observation')
+		}
 	})
 })

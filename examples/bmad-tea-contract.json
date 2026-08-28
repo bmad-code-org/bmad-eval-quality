@@ -1,0 +1,54 @@
+{
+	"schemaVersion": 1,
+	"metadata": {
+		"title": "bmad-tea Fragment Selection Evaluation Contract",
+		"description": "Evaluates whether bmad-tea selects the mandatory Playwright knowledge fragment while excluding mobile fragments.",
+		"author": "Murat K Ozcan",
+		"version": "1.0.0"
+	},
+	"permittedInterfaces": [
+		{
+			"logicalId": "bmad-tea-knowledge",
+			"kind": "cli"
+		}
+	],
+	"behaviors": [
+		{
+			"id": "BEHAVIOR-001",
+			"description": "bmad-tea selects playwright-utils-mandate.md and avoids mobile-test-strategy.md for Playwright tasks.",
+			"severity": "critical",
+			"observableSuccessCriterion": "The loaded knowledge set contains playwright-utils-mandate.md and omits mobile-test-strategy.md.",
+			"oracles": ["ORACLE-001"],
+			"requirementLinks": [
+				{
+					"scheme": "local",
+					"id": "REQ-TEA-KNOWLEDGE"
+				}
+			],
+			"riskLinks": [
+				{
+					"scheme": "local-risk",
+					"id": "RISK-TEA-MISROUTING"
+				}
+			]
+		}
+	],
+	"oracles": [
+		{
+			"id": "ORACLE-001",
+			"kind": "presence",
+			"targetInterface": "bmad-tea-knowledge",
+			"description": "Verifies mandatory fragment presence and excluded fragment absence.",
+			"predicate": {
+				"type": "contains",
+				"expected": "playwright-utils-mandate.md"
+			}
+		}
+	],
+	"rubrics": [],
+	"budgets": {
+		"maxToolCalls": 10,
+		"maxWallClockMinutes": 2,
+		"maxCostUsd": "0.10"
+	}
+}

@@ -20,6 +20,7 @@
 			"!experiments",
 			"!scripts/fixtures",
 			"!schemas",
+			"!corpus",
 			"!tests/fixtures/*.json"
 		]
 	},

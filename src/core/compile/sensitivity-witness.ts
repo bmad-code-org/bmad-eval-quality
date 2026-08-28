@@ -327,9 +327,9 @@ export function checkWitnessLegIdentifiers(contract: EvalContract): void {
 		})
 	})
 	// The fixture reset is one more leg through the same port, so its id sits in
-	// the same namespace. AD-10 names no defect for the collision and the story
-	// table omitted the row; it is added here because two legs sharing a `probeId`
-	// would make the reducer read one leg's observation for the other.
+	// the same namespace. AD-10 names no defect for the collision; the check is
+	// added here because two legs sharing a `probeId` would make the reducer read
+	// one leg's observation for the other.
 	const reset = contract.fixtureReset
 	if (reset !== null)
 		claim(reset.legId, 'the fixture reset', 'EvalContract.fixtureReset.legId')

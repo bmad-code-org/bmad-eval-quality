@@ -550,7 +550,7 @@ tbody tr:hover {
   <div class="layout">
     <aside class="sidebar" aria-label="Table of contents">
       <p class="toc-title">On this page</p>
-      <a class="toc-link depth-3" href="#eval-quality-does-three-things">eval-quality does three things</a><a class="toc-link depth-3" href="#what-is-the-eval-spec">What is the eval spec?</a><a class="toc-link depth-3" href="#caveman-version">Caveman version</a><a class="toc-link depth-2" href="#elaboration">Elaboration</a><a class="toc-link depth-2" href="#what-each-part-provides">What each part provides</a><a class="toc-link depth-2" href="#who-it-is-for">Who it is for</a><a class="toc-link depth-2" href="#behavioral-evaluation-contracts">Behavioral Evaluation Contracts</a><a class="toc-link depth-2" href="#how-eval-contract-strength-scoring-works">How Eval Contract strength scoring works</a><a class="toc-link depth-2" href="#using-it">Using it</a><a class="toc-link depth-2" href="#relationship-with-bmad-and-tea">Relationship with BMad and TEA</a><a class="toc-link depth-2" href="#evidence-and-limitations">Evidence and limitations</a><a class="toc-link depth-2" href="#architecture-status">Architecture status</a><a class="toc-link depth-2" href="#not-building-now">Not building now</a><a class="toc-link depth-2" href="#development">Development</a><a class="toc-link depth-2" href="#contributing">Contributing</a><a class="toc-link depth-2" href="#security">Security</a><a class="toc-link depth-2" href="#license">License</a>
+      <a class="toc-link depth-3" href="#eval-quality-does-four-things">eval-quality does four things</a><a class="toc-link depth-3" href="#what-is-the-eval-spec">What is the eval spec?</a><a class="toc-link depth-3" href="#caveman-summary">Caveman summary</a><a class="toc-link depth-2" href="#key-concepts">Key Concepts</a><a class="toc-link depth-3" href="#how-they-fit-together">How They Fit Together</a><a class="toc-link depth-2" href="#elaboration">Elaboration</a><a class="toc-link depth-2" href="#what-each-part-provides">What each part provides</a><a class="toc-link depth-2" href="#who-it-is-for">Who it is for</a><a class="toc-link depth-2" href="#behavioral-evaluation-contracts">Behavioral Evaluation Contracts</a><a class="toc-link depth-2" href="#how-eval-contract-strength-scoring-works">How Eval Contract strength scoring works</a><a class="toc-link depth-2" href="#using-it">Using it</a><a class="toc-link depth-3" href="#what-the-cli-commands-do">What the CLI Commands Do</a><a class="toc-link depth-3" href="#single-pass-workflow-user-convenience">Single-Pass Workflow (User Convenience)</a><a class="toc-link depth-2" href="#relationship-with-bmad-and-tea">Relationship with BMad and TEA</a><a class="toc-link depth-3" href="#real-world-walkthrough-testing-a-bmad-tea-knowledge-harness">Real-World Walkthrough: Testing a bmad-tea Knowledge Harness</a><a class="toc-link depth-2" href="#evidence-and-limitations">Evidence and limitations</a><a class="toc-link depth-2" href="#architecture-status">Architecture status</a><a class="toc-link depth-2" href="#not-building-now">Not building now</a><a class="toc-link depth-2" href="#development">Development</a><a class="toc-link depth-2" href="#contributing">Contributing</a><a class="toc-link depth-2" href="#security">Security</a><a class="toc-link depth-2" href="#license">License</a>
     </aside>
     <main class="paper">
       <header class="hero">
@@ -564,12 +564,13 @@ tbody tr:hover {
       </header>
       <details class="mobile-toc">
         <summary>On this page</summary>
-        <div class="mobile-toc-links"><a class="toc-link depth-3" href="#eval-quality-does-three-things">eval-quality does three things</a><a class="toc-link depth-3" href="#what-is-the-eval-spec">What is the eval spec?</a><a class="toc-link depth-3" href="#caveman-version">Caveman version</a><a class="toc-link depth-2" href="#elaboration">Elaboration</a><a class="toc-link depth-2" href="#what-each-part-provides">What each part provides</a><a class="toc-link depth-2" href="#who-it-is-for">Who it is for</a><a class="toc-link depth-2" href="#behavioral-evaluation-contracts">Behavioral Evaluation Contracts</a><a class="toc-link depth-2" href="#how-eval-contract-strength-scoring-works">How Eval Contract strength scoring works</a><a class="toc-link depth-2" href="#using-it">Using it</a><a class="toc-link depth-2" href="#relationship-with-bmad-and-tea">Relationship with BMad and TEA</a><a class="toc-link depth-2" href="#evidence-and-limitations">Evidence and limitations</a><a class="toc-link depth-2" href="#architecture-status">Architecture status</a><a class="toc-link depth-2" href="#not-building-now">Not building now</a><a class="toc-link depth-2" href="#development">Development</a><a class="toc-link depth-2" href="#contributing">Contributing</a><a class="toc-link depth-2" href="#security">Security</a><a class="toc-link depth-2" href="#license">License</a></div>
+        <div class="mobile-toc-links"><a class="toc-link depth-3" href="#eval-quality-does-four-things">eval-quality does four things</a><a class="toc-link depth-3" href="#what-is-the-eval-spec">What is the eval spec?</a><a class="toc-link depth-3" href="#caveman-summary">Caveman summary</a><a class="toc-link depth-2" href="#key-concepts">Key Concepts</a><a class="toc-link depth-3" href="#how-they-fit-together">How They Fit Together</a><a class="toc-link depth-2" href="#elaboration">Elaboration</a><a class="toc-link depth-2" href="#what-each-part-provides">What each part provides</a><a class="toc-link depth-2" href="#who-it-is-for">Who it is for</a><a class="toc-link depth-2" href="#behavioral-evaluation-contracts">Behavioral Evaluation Contracts</a><a class="toc-link depth-2" href="#how-eval-contract-strength-scoring-works">How Eval Contract strength scoring works</a><a class="toc-link depth-2" href="#using-it">Using it</a><a class="toc-link depth-3" href="#what-the-cli-commands-do">What the CLI Commands Do</a><a class="toc-link depth-3" href="#single-pass-workflow-user-convenience">Single-Pass Workflow (User Convenience)</a><a class="toc-link depth-2" href="#relationship-with-bmad-and-tea">Relationship with BMad and TEA</a><a class="toc-link depth-3" href="#real-world-walkthrough-testing-a-bmad-tea-knowledge-harness">Real-World Walkthrough: Testing a bmad-tea Knowledge Harness</a><a class="toc-link depth-2" href="#evidence-and-limitations">Evidence and limitations</a><a class="toc-link depth-2" href="#architecture-status">Architecture status</a><a class="toc-link depth-2" href="#not-building-now">Not building now</a><a class="toc-link depth-2" href="#development">Development</a><a class="toc-link depth-2" href="#contributing">Contributing</a><a class="toc-link depth-2" href="#security">Security</a><a class="toc-link depth-2" href="#license">License</a></div>
       </details>
-      <article class="content"><h3 id="eval-quality-does-three-things"><code>eval-quality</code> does three things<a class="heading-anchor" href="#eval-quality-does-three-things" aria-label="Link to eval-quality does three things">#</a></h3>
+      <article class="content"><h3 id="eval-quality-does-four-things"><code>eval-quality</code> does four things<a class="heading-anchor" href="#eval-quality-does-four-things" aria-label="Link to eval-quality does four things">#</a></h3>
 <ol>
-<li><strong>Compile</strong>: validate and normalize an eval spec into a machine-readable artifact.</li>
-<li><strong>Seal</strong>: render the Markdown brief for the independent evaluator while hiding the planted bug and the scoring answer.</li>
+<li><strong>Compile</strong>: validate and normalize an eval contract into a machine-readable artifact.</li>
+<li><strong>Seal</strong>: render the brief for the independent evaluator while hiding the planted bug and scoring answer.</li>
+<li><strong>Preflight</strong>: verify baseline environment readiness and probe reachability before running an evaluator.</li>
 <li><strong>Score</strong>: compare the evaluator’s completed findings with the hidden bug signature to determine whether the bug was actually caught.</li>
 </ol>
 <h3 id="what-is-the-eval-spec">What is the eval spec?<a class="heading-anchor" href="#what-is-the-eval-spec" aria-label="Link to What is the eval spec?">#</a></h3>
@@ -597,10 +598,43 @@ Verify that no record was created.</p>
 </blockquote>
 <p>A weak eval checks only the response and misses the bug.</p>
 <p>A strong eval checks the response <strong>and</strong> persistence, so it catches the bug.</p>
-<h3 id="caveman-version">Caveman version<a class="heading-anchor" href="#caveman-version" aria-label="Link to Caveman version">#</a></h3>
-<p><strong>Write the eval. Hide the bug. See if the eval catches it.</strong></p>
+<h3 id="caveman-summary">Caveman summary<a class="heading-anchor" href="#caveman-summary" aria-label="Link to Caveman summary">#</a></h3>
+<p>Write the eval. Hide the bug. See if the eval catches it.</p>
+<h2 id="key-concepts">Key Concepts<a class="heading-anchor" href="#key-concepts" aria-label="Link to Key Concepts">#</a></h2>
+<p>Understanding <code>eval-quality</code> requires three core artifacts:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Concept</th>
+<th>What it is</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Contract</strong> (<code>eval-contract.json</code>)</td>
+<td>The test specification defining expected behaviors, oracles (checks), permitted tools, and evidence rules.</td>
+<td>&quot;Verify API rejects invalid JWT and creates zero database records.&quot;</td>
+</tr>
+<tr>
+<td><strong>Probe</strong> (<code>probe.json</code>)</td>
+<td>A diagnostic request sent to the environment to test baseline state, reachability, or fault injection.</td>
+<td>A request sending an expired token to <code>/api/v1/resource</code>.</td>
+</tr>
+<tr>
+<td><strong>Observation</strong> (<code>observation.json</code>)</td>
+<td>The empirical response evidence recorded when a probe is executed against the environment.</td>
+<td><code>{ responseStatus: 401, responseBody: { error: &quot;token_expired&quot; } }</code></td>
+</tr>
+</tbody></table>
+</div><h3 id="how-they-fit-together">How They Fit Together<a class="heading-anchor" href="#how-they-fit-together" aria-label="Link to How They Fit Together">#</a></h3>
+<pre><code class="language-text">┌────────────────────────┐      ┌────────────────────────┐      ┌────────────────────────┐
+│     Eval Contract      │      │         Probe          │      │      Observation       │
+│  (The Specification)   │ ───► │ (Diagnostic Request)   │ ───► │   (Empirical Result)   │
+│  &quot;What should happen&quot;  │      │  &quot;Send malformed JWT&quot;  │      │   &quot;Got 401, 0 records&quot; │
+└────────────────────────┘      └────────────────────────┘      └────────────────────────┘
+</code></pre>
 <h2 id="elaboration">Elaboration<a class="heading-anchor" href="#elaboration" aria-label="Link to Elaboration">#</a></h2>
-<p><strong>Compile disciplined agent eval contracts, then check whether those contracts can catch known bugs.</strong></p>
+<p>Compile disciplined agent eval contracts, then check whether those contracts can catch known bugs.</p>
 <p>An agent can produce an answer that reads as correct and is materially wrong. An eval can make the same mistake.</p>
 <p>Weak oracle:</p>
 <pre><code class="language-text">Check malformed input is handled correctly.
@@ -610,7 +644,7 @@ Verify that no record was created.</p>
 <pre><code class="language-text">Send malformed input. Verify the request fails, inspect the full response body,
 confirm the specific error, and confirm no record was created.
 </code></pre>
-<p>A passing eval says little when the contract never asked for the probe that would expose the failure. So the first thing worth testing is whether the eval can catch a failure you already know about.</p>
+<p>A passing eval says little when the contract never asked for the probe that would expose the failure. Testing whether the eval can catch a failure you already know about is the first check worth running.</p>
 <pre><code class="language-text">product spec
   → Behavioral Evaluation Contract
   → known defect or gameability probe
@@ -657,7 +691,7 @@ dependency. See
 <p>A compiler enforces these rules mechanically against the contract artifact, in three classes. Structural errors fail compilation. Coverage gaps score down without blocking. A waived pattern is allowed when it records the named rule, a rationale, a machine-checkable condition, and the approval.</p>
 <p>Rubrics compile under the same discipline: an anchored scale, a bounded length, named failure-mode penalties, rubric identifiers unique across the contract and criterion identifiers unique inside their own rubric, every criterion stating a question, and every criterion&#39;s evidence pointer resolving against the declared interfaces. Authored rubric text that asks a judge to grade the subject&#39;s own stated reasoning fails a closed-vocabulary check over the wording.</p>
 <h2 id="how-eval-contract-strength-scoring-works">How Eval Contract strength scoring works<a class="heading-anchor" href="#how-eval-contract-strength-scoring-works" aria-label="Link to How Eval Contract strength scoring works">#</a></h2>
-<p>Do not trust a contract because it looks thorough. Put a known defect behind it, run the evaluator, and ask whether the contract&#39;s oracles caused the defect to be caught.</p>
+<p>Do not trust a contract because it looks thorough. Put a known defect behind it, run the evaluator, and check whether the contract&#39;s oracles caused the defect to be caught.</p>
 <p>Two probe classes go behind a contract, and a strong contract rejects both:</p>
 <ul>
 <li><strong>Defect probes</strong>, where the behavior is simply wrong.</li>
@@ -673,11 +707,86 @@ dependency. See
 <p><code>eval-quality</code> is its own repository and package, not a plugin inside another framework.</p>
 <p>The <strong>library</strong> is the primary surface. It exports the contract schema, the oracle vocabulary, the compiler, the scorer, the pre-flight, and the evidence types. The published typed schema is what lets coding agents author contracts correctly by default, which is how the discipline scales beyond the people who went looking for the tool.</p>
 <p>The <strong>CLI</strong> wraps the same library for callers that cannot import TypeScript: CI jobs, GitHub Actions, PR-review and unit-test bots, other frameworks&#39; skills, and any agent permitted to run a shell command.</p>
-<pre><code class="language-bash">eval-quality compile   # validate a contract against the authoring discipline
-eval-quality preflight # verify the measurement environment before scoring
-eval-quality score     # score an ingested run record, report per-oracle outcomes
+<h3 id="what-the-cli-commands-do">What the CLI Commands Do<a class="heading-anchor" href="#what-the-cli-commands-do" aria-label="Link to What the CLI Commands Do">#</a></h3>
+<ul>
+<li><strong><code>compile</code></strong>: Typechecks an authored <code>eval-contract.json</code>. Verifies that all behaviors, oracles, rubrics, and sensitivity witnesses comply with structural and authoring rules.</li>
+<li><strong><code>seal</code></strong>: Generates a <code>sealed-evaluator-brief.json</code> by stripping secret defect signatures, planted answers, and author commentary. The brief carries only the directions and safety bounds the evaluator needs.</li>
+<li><strong><code>preflight</code></strong>: Runs before launching an expensive LLM run. Sends probe requests to verify environment baseline readiness and probe reachability. Halts early with exit code <code>3</code> if the environment is unready.</li>
+<li><strong><code>run</code></strong>: Scores a completed run by ingesting evidence records and evaluating oracles to compute a deterministic verdict (<code>PASS</code>, <code>CONCERNS</code>, <code>FAIL</code>).</li>
+</ul>
+<pre><code class="language-bash">npx eval-quality compile --in contract.json                    # compile a contract against the authoring discipline
+npx eval-quality seal --in contract.json --out ./run           # compile, then emit the sealed evaluator brief
+npx eval-quality preflight --contract contract.json \
+  --probes probes.json --observations observations.json \
+  --run-id 2026-08-27-a --out ./run                            # reduce probe observations to a pre-flight verdict
+npx eval-quality --help                                        # the grammar and the exit codes
 </code></pre>
-<p>Commands are non-interactive by default, emit machine-readable output, and exit with a code reflecting the gate verdict. The library and CLI expose the same capabilities and produce the same versioned evidence artifact.</p>
+<h3 id="single-pass-workflow-user-convenience">Single-Pass Workflow (User Convenience)<a class="heading-anchor" href="#single-pass-workflow-user-convenience" aria-label="Link to Single-Pass Workflow (User Convenience)">#</a></h3>
+<p>To run <code>compile</code>, <code>seal</code>, and <code>preflight</code> together in a single command, use the convenience runner script:</p>
+<pre><code class="language-bash">npm run eval -- --contract contract.json --out ./eval-out
+</code></pre>
+<p>Or include probe observations to run preflight in the same single step:</p>
+<pre><code class="language-bash">npm run eval -- --contract contract.json --probes probes.json --observations obs.json --out ./eval-out
+</code></pre>
+<p>Every command is non-interactive: no prompt, no terminal check, and no behaviour that differs when
+stdin is a pipe. Each one is a single call into the library plus artifact serialization, so a
+capability reachable one way is reachable the other.</p>
+<p><strong>Input and output.</strong> An input flag left out reads stdin, and <code>-</code> names stdin explicitly; at most one
+input may be <code>-</code>. Without <code>--out</code> the artifact goes to stdout, so a command composes with a pipe.
+An <code>--out</code> ending in <code>.json</code> is a file path; anything else is a directory, and the artifact is
+written to <code>&lt;target&gt;/&lt;kind&gt;.json</code> where <code>kind</code> is <code>eval-contract</code>, <code>sealed-evaluator-brief</code>, or
+<code>preflight-verdict</code>. Diagnostics and errors go to stderr, always, so stdout carries the artifact
+alone.</p>
+<p><strong>Exit codes.</strong></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Exit Code</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>0</code></td>
+<td>success, and every verdict other than FAIL or a promoted CONCERNS</td>
+</tr>
+<tr>
+<td><code>1</code></td>
+<td>CONCERNS promoted by <code>--strict</code></td>
+</tr>
+<tr>
+<td><code>2</code></td>
+<td>FAIL</td>
+</tr>
+<tr>
+<td><code>3</code></td>
+<td>invalid: a pre-flight verdict that did not pass</td>
+</tr>
+<tr>
+<td><code>4</code></td>
+<td>structural failure</td>
+</tr>
+<tr>
+<td><code>5</code></td>
+<td>runtime fault</td>
+</tr>
+<tr>
+<td><code>64</code></td>
+<td>usage error</td>
+</tr>
+</tbody></table>
+</div><p>Codes 1 and 2 report a scored verdict. Scoring ships in a later release, so no command here reaches
+either yet, and <code>--strict</code> changes no code this binary produces. The flag and the two codes are part
+of the published contract, so they are documented now and wired now.</p>
+<p><code>--strict</code> is the gate-promotion flag and is accepted on every command. <code>--strict-inputs</code> and
+<code>--no-strict-inputs</code> are a different switch: they set the compiler&#39;s input strictness, which is on
+by default.</p>
+<p><strong>The published JSON Schema.</strong> A consumer that does not read TypeScript validates against the
+twelve generated documents, published at the <code>eval-quality/schemas/*</code> subpath:</p>
+<pre><code class="language-ts">import spec from &#39;eval-quality/schemas/eval-contract.schema.json&#39; with { type: &#39;json&#39; }
+</code></pre>
+<p>The import attribute is required: ESM on Node 22 and 24 both throw <code>ERR_IMPORT_ATTRIBUTE_MISSING</code>
+without it. The development corpus ships the same way, at <code>eval-quality/corpus/dev/</code>, so an adopter
+can read real compiled contracts and one compiled-and-sealed pair without cloning this repository.</p>
 <h2 id="relationship-with-bmad-and-tea">Relationship with BMad and TEA<a class="heading-anchor" href="#relationship-with-bmad-and-tea" aria-label="Link to Relationship with BMad and TEA">#</a></h2>
 <p>The dependency runs one way: TEA uses <code>eval-quality</code>, and <code>eval-quality</code> knows nothing about TEA.</p>
 <pre><code class="language-mermaid">graph LR
@@ -686,12 +795,20 @@ eval-quality score     # score an ingested run record, report per-oracle outcome
 <p>TEA is the reference authoring client. It reads BMad planning artifacts, notices eval-relevant work, drafts a contract, and calls this package. It is not co-installed, and <code>eval-quality</code> holds no knowledge of TEA, BMad, or any planning-artifact format.</p>
 <p>Any human, bot, CI job, skill, or other framework can author a contract and use <code>eval-quality</code> directly. The discipline still applies, because the compiler judges the artifact rather than trusting whoever produced it.</p>
 <p>Evaluator runs remain isolated to prevent builder-context leakage and preserve traceability. Stronger contract oracles produced the measured detection improvement.</p>
+<h3 id="real-world-walkthrough-testing-a-bmad-tea-knowledge-harness">Real-World Walkthrough: Testing a <code>bmad-tea</code> Knowledge Harness<a class="heading-anchor" href="#real-world-walkthrough-testing-a-bmad-tea-knowledge-harness" aria-label="Link to Real-World Walkthrough: Testing a bmad-tea Knowledge Harness">#</a></h3>
+<ol>
+<li>Author an <code>eval-contract.json</code> declaring required knowledge step files (e.g. <code>playwright-utils-mandate.md</code>).</li>
+<li>Run <code>eval-quality compile --in contract.json</code> to validate contract structure and discipline rules.</li>
+<li>Run <code>eval-quality seal --in contract.json --out ./run</code> to generate <code>sealed-evaluator-brief.json</code>.</li>
+<li>Pass <code>sealed-evaluator-brief.json</code> to <code>bmad-tea</code> to execute the task without seeing answer keys.</li>
+<li>Ingest the returned run record and execute <code>eval-quality run</code> to score knowledge selection accuracy.</li>
+</ol>
 <h2 id="evidence-and-limitations">Evidence and limitations<a class="heading-anchor" href="#evidence-and-limitations" aria-label="Link to Evidence and limitations">#</a></h2>
 <p>Holding the model, the budget, the system, and the defects fixed, and changing only how the Eval Contract was authored, sealed-evaluator detection moved from <strong>0.33 to 1.00</strong> across three naturally occurring defects, three repetitions per arm, 19 scored runs.</p>
 <p>Both experiment rounds missed at least one preregistered gate. Round 1 recorded <code>DARK-FACTORY REJECTED</code>; round 2 block 1 recorded <code>CONTRACT-DISCIPLINE NOT SUPPORTED</code>, failing one gate of five on a single unreplicated clean control. The separation comes from two of the three defects, since both arms detected the third in every repetition, and both separating cases carry a recorded measurement-layer confound. The sample covers three defects, one system, and one model. This supports a product-direction decision at narrow scale. Certification would require broader replication.</p>
 <p>Read the <a href="eval-quality-product-brief.html">product brief</a> for the product rationale and the <a href="eval-quality-prd.html">PRD</a> for build requirements. The experiment record includes the <a href="eval-quality-experiment-decision.html">round 1 verdict</a>, <a href="eval-quality-experiment-phase-2.html">round 2 results</a>, <a href="eval-quality-experiment-summary.html">metric summary</a>, and <a href="eval-quality-experiment-protocol.html">protocol</a>.</p>
 <h2 id="architecture-status">Architecture status<a class="heading-anchor" href="#architecture-status" aria-label="Link to Architecture status">#</a></h2>
-<p>The <a href="eval-quality-architecture-spine.html">architecture spine</a> is <strong>split by pipeline half. The compile-and-seal half is epic-ready; the score half is not.</strong> Gate C closed at zero blocking authoring points and 14 of 14 declaration-only predicates. Gate D&#39;s generated-current-fields arm matched the hand-written positive control at 3 of 3 seeded-defect catches, so <code>seal</code> joins the stage-one order without adding an evidence-precondition field.</p>
+<p>The <a href="eval-quality-architecture-spine.html">architecture spine</a> is split by pipeline half: the compile-and-seal half is epic-ready, while the score half is not. Gate C closed at zero blocking authoring points and 14 of 14 declaration-only predicates. Gate D&#39;s generated-current-fields arm matched the hand-written positive control at 3 of 3 seeded-defect catches, so <code>seal</code> joins the stage-one order without adding an evidence-precondition field.</p>
 <p>Contract strength scoring has been open since <a href="eval-quality-adr-007.html">ADR-007</a>: three rounds of external review established that the catch rate was 1.00 by construction, because nothing matched a finding to the defect its probe seeded. That input now exists and the mapping that reads it is owed to a reference implementation.</p>
 <p>Contract compilation was declared ready in ADR-007 and a fourth review withdrew that claim in <a href="eval-quality-adr-008.html">ADR-008</a>. The named calibration is now complete. The absent local-only mut2 arm was reconstructed from its recorded base, reproduced its prior black-box behavior, and ran under a pre-registered three-arm, three-repetition design. All three arms composed filters and detected the seeded defect in every valid repetition. This closes the calibration gate narrowly; it does not generalize the historical 0.33-to-1.00 effect beyond one behavior and one controlled mutation.</p>
 <p>Both are documented as defects rather than dressed as decisions, because four rounds have shown that a confidently worded revision is the thing that goes wrong here.</p>
@@ -701,15 +818,19 @@ eval-quality score     # score an ingested run record, report per-oracle outcome
 <p>Out of scope entirely: a new eval engine, a hosted service, a dashboard or GUI, multimodal evaluators, automatic prompt repair, and a generic judge-calibration platform.</p>
 <h2 id="development">Development<a class="heading-anchor" href="#development" aria-label="Link to Development">#</a></h2>
 <pre><code class="language-bash">npm install
-npm run validate            # typecheck, lint, docs, shareable, spine, vectors, schemas, registries, AD-31 table, layers, tests
+npm run validate            # typecheck, lint, docs, shareable, spine, vectors, schemas, registries, AD-31 table, layers, lineage, boundary, corpus, tests with coverage
 npm run build               # emit to dist/
 npm run lint:fix            # auto-fix with Biome
+npm run test:coverage       # run the suite and fail below AD-30&#39;s 90 percent statement and branch floor on core/
 npm run generate:schemas    # rebuild schemas/*.schema.json from the Zod source
 npm run check:schemas       # fail if the committed schemas differ from the source by one byte
 npm run check:ad5-registry  # fail if the failure-code list drifts from the AD-5 table
 npm run check:lineage       # fail if a module outside the stage table writes an artifact&#39;s lineage fields
+npm run check:boundary      # fail if anything the tarball carries references the planning system that produced it
 npm run generate:ad31-table # rebuild docs/ad31-coverage-predicates.generated.md from the predicates
 npm run check:ad31-table    # fail if the committed AD-31 table differs from the builder by one byte
+npm run generate:dev-corpus # rebuild corpus/dev/ from the contract fixtures through the shipped compile and seal
+npm run check:corpus        # fail if the committed corpus differs from the builder by one byte
 npm run build:shareable     # render the planning artifacts to self-contained HTML
 npm run test:conformance    # run the published port conformance suite against every shipped adapter
 </code></pre>
@@ -754,7 +875,7 @@ rather than hand-edit it.</p>
 <h2 id="security">Security<a class="heading-anchor" href="#security" aria-label="Link to Security">#</a></h2>
 <p>See <a href="eval-quality-security.html">SECURITY.md</a>. Please do not open a public issue for vulnerabilities.</p>
 <h2 id="license">License<a class="heading-anchor" href="#license" aria-label="Link to License">#</a></h2>
-<p>Apache-2.0 &copy; Murat Ozcan. See <a href="eval-quality-license.html">LICENSE</a>.</p>
+<p>Apache-2.0 © Murat Ozcan. See <a href="eval-quality-license.html">LICENSE</a>.</p>
 </article>
       <footer class="footer">Generated from README.md by scripts/build-shareable.mjs. Self-contained and print-ready. Do not hand-edit; regenerate instead.</footer>
     </main>

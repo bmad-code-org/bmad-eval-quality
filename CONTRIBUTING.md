@@ -16,6 +16,7 @@ git clone https://github.com/bmad-code-org/bmad-eval-quality.git
 cd eval-quality
 nvm use
 npm install
+npm run hooks:install   # install the pre-commit hooks
 
 # Verify the setup
 npm run validate

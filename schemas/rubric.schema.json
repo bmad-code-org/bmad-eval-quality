@@ -18,7 +18,7 @@
                 "type": "integer",
                 "minimum": -9007199254740991,
                 "maximum": 9007199254740991,
-                "description": "The ordinal this level sits at. Story 6.3 settled both halves of what the schema left open: a repeated ordinal fails under `rubric-unanchored`, since two levels at one ordinal make the ordinal address two anchors, and magnitude, sign, ordering, and contiguity stay free, because a scale running -2 to 2 or 1, 3, 5 is an ordinary authoring choice."
+                "description": "The ordinal this level sits at. A repeated ordinal is the one half the compiler closes, failing under `rubric-unanchored`, since two levels at one ordinal make the ordinal address two anchors. Magnitude, sign, ordering, and contiguity stay free everywhere, because a scale running -2 to 2 or 1, 3, 5 is an ordinary authoring choice."
               },
               "anchor": {
                 "type": "string",
@@ -51,7 +51,7 @@
               },
               "description": {
                 "type": "string",
-                "description": "AD-22 requires named failure-mode penalties and states no magnitude. None is invented here: a penalty weight would be a scoring semantic no story below `score` has authority to mint, and AD-7 keeps weighted composites out of the reported result. Story 6.3 shipped AD-22's compile checks and declined to mint one, so a penalty carries a name and a description and nothing else."
+                "description": "AD-22 requires named failure-mode penalties and states no magnitude. None is invented here: a penalty weight would be a scoring semantic no module below `score` has authority to mint, and AD-7 keeps weighted composites out of the reported result. AD-22's compile checks ship without one, so a penalty carries a name and a description and nothing else."
               }
             },
             "required": [

@@ -102,9 +102,9 @@ export type Relation = z.infer<typeof Relation>
 
 // AD-4 calls the regex dialect "always fully anchored" and codes only
 // backreferences and lookbehind, so anchoring is the schema's half; the
-// rejected constructs are Epic 4's. See `AnchoredPattern`'s description for
-// the verified false-accept and false-reject cases this positional check
-// produces.
+// rejected constructs are the compiler's. See `AnchoredPattern`'s
+// description for the verified false-accept and false-reject cases this
+// positional check produces.
 export const ANCHORING_RESIDUAL =
 	'positional check: admits an unanchored alternation, rejects an anchored pattern wrapped in a group'
 export const ANCHORED_PATTERN_FORM = /^\^[\s\S]*\$$/
@@ -113,7 +113,7 @@ export const AnchoredPattern = z
 	.string()
 	.regex(ANCHORED_PATTERN_FORM)
 	.describe(
-		'An ECMA-262 pattern, fully anchored: it begins with "^" and ends with "$". A named field rather than a `{ literal }` operand, so Epic 4\'s backreference and lookbehind check has one place to look instead of a JsonValue that may hold anything. The check is positional and is wrong in both directions. It admits patterns that are not anchored, such as the alternation "^a|b$" or a trailing "$" that is escaped; those are Epic 4\'s, alongside backreferences and lookbehind. It also rejects patterns that are anchored but wrapped in a group, such as "(^a$)" — write "^(?:a|b)$" rather than "(?:^a$|^b$)" and the form accepts it. Deciding anchoring properly requires parsing the pattern, which no JSON Schema keyword can express.',
+		'An ECMA-262 pattern, fully anchored: it begins with "^" and ends with "$". A named field rather than a `{ literal }` operand, so the compiler\'s backreference and lookbehind check has one place to look instead of a JsonValue that may hold anything. The check is positional and is wrong in both directions. It admits patterns that are not anchored, such as the alternation "^a|b$" or a trailing "$" that is escaped; those are the compiler\'s, alongside backreferences and lookbehind. It also rejects patterns that are anchored but wrapped in a group, such as "(^a$)" — write "^(?:a|b)$" rather than "(?:^a$|^b$)" and the form accepts it. Deciding anchoring properly requires parsing the pattern, which no JSON Schema keyword can express.',
 	)
 
 /**
@@ -194,8 +194,8 @@ export type Expression =
  *
  * Carries `.meta({ id })` for the same reason `JsonValue` does: without it
  * the tree exports as a generated `$defs.__schema0`, pinning a positional
- * name into Story 1.5's drift check and leaving the ledger's twelve arity
- * entries with no stable address.
+ * name into the published-schema drift check and leaving the ledger's twelve
+ * arity entries with no stable address.
  */
 export const Expression: z.ZodType<Expression> = z
 	.lazy(() =>
@@ -228,12 +228,12 @@ export const Expression: z.ZodType<Expression> = z
 // the published schema". Arity is structural, as fixed-length tuples; operand
 // types cannot be, since narrowing a position would delete
 // `malformed-operator-expression`'s operand-type limb. The types are
-// therefore declared here in text that survives the export, and Epic 4
+// therefore declared here in text that survives the export, and the compiler
 // enforces what the text says. AD-36's numeric domain gets the same
-// treatment on `JsonValue`: a note in an implementation artifact does not
-// satisfy a requirement to express something in the published schema.
+// treatment on `JsonValue`: a note in an internal document does not satisfy
+// a requirement to express something in the published schema.
 const ADMIT_RULE =
-	"Every position admits the full operand union on purpose. AD-26 makes a reference-set operand outside its three legal positions — `covers-by-key`'s expected operand, and the set operand of `set-membership` or `containment` — fail compilation under `malformed-operator-expression`, which only stays fireable if the other positions admit it. Epic 4 enforces the legality stated here; the schema does not narrow it."
+	"Every position admits the full operand union on purpose. AD-26 makes a reference-set operand outside its three legal positions — `covers-by-key`'s expected operand, and the set operand of `set-membership` or `containment` — fail compilation under `malformed-operator-expression`, which only stays fireable if the other positions admit it. Compilation enforces the legality stated here; the schema does not narrow it."
 
 const operandTypes = (statement: string): string => `${statement} ${ADMIT_RULE}`
 
@@ -299,11 +299,11 @@ const SetMembership = z.strictObject({
 		),
 })
 
-// Arity settled here (Decision 7): a collection pointer plus a named key and
-// a named order. A pairwise reading (pointer a precedes pointer b) was
-// considered and rejected: it cannot express "this page is sorted by
-// capturedAt," the only thing AD-4 says `ordering` is for, and Epic 3
-// inherits that semantics.
+// Arity settled here: a collection pointer plus a named key and a named
+// order. A pairwise reading (pointer a precedes pointer b) was considered and
+// rejected: it cannot express "this page is sorted by capturedAt," the only
+// thing AD-4 says `ordering` is for, and `core/evaluate` inherits that
+// semantics.
 const Ordering = z.strictObject({
 	op: z.literal('ordering'),
 	operands: z
@@ -328,7 +328,7 @@ const CountTolerance = z.strictObject({
 		.int()
 		.min(0)
 		.describe(
-			'The permitted deviation from `expected`, non-negative for the same reason. When `relative` is declared the tolerance is read as whole percentage points, which is stated because AD-4 supplies no value space for the magnitude and Epic 3 inherits the semantics. An integer therefore cannot express a fractional relative tolerance such as 2.5 percent; widening the value space later is an additive `schemaVersion` bump under AD-11, and was not taken here because it would export as a bare `type: "number"` and cost a constraint ledger entry for a case no declaration needs yet.',
+			'The permitted deviation from `expected`, non-negative for the same reason. When `relative` is declared the tolerance is read as whole percentage points, which is stated because AD-4 supplies no value space for the magnitude and any reader that resolves this check inherits the semantics. An integer therefore cannot express a fractional relative tolerance such as 2.5 percent; widening the value space later is an additive `schemaVersion` bump under AD-11, and was not taken here because it would export as a bare `type: "number"` and cost a constraint ledger entry for a case no declaration needs yet.',
 		),
 	relative: z
 		.boolean()
@@ -391,8 +391,8 @@ const Any = z.strictObject({
 
 // A quantifier inside a quantifier, and `covers-by-key` inside one, are both
 // structurally admitted on purpose. A quantifier-free predicate type would be
-// elegant and would delete `quantifier-nesting-exceeded` from Epic 4 along with
-// its fixture.
+// elegant and would delete `quantifier-nesting-exceeded` from the compiler
+// along with its fixture.
 const ForAll = z
 	.strictObject({
 		op: z.literal('for-all'),

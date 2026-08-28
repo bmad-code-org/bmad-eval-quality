@@ -27,7 +27,7 @@ export const ResourceCeilings = z.strictObject({
 			"The prior art's `exclusiveMinimum: 0`, kept. A ceiling of zero minutes is not a ceiling, it is a run that may not happen, and the manifest records what the harness actually enforced.",
 		),
 	maxCostUsd: PositiveDecimalString.describe(
-		"Money, so AD-36 carries it as a string. The prior art's number does not survive; an AD-24 divergence, and the reason Decision 18's universal value domain converts the manifest too and not only the run record. The retyping keeps the prior art's `exclusiveMinimum: 0` rather than dropping it: `UnsignedDecimalString` would admit \"0\", which is the bound the prior art spent a keyword excluding.",
+		"Money, so AD-36 carries it as a string. The prior art's number does not survive; an AD-24 divergence, and the reason AD-36's exact-decimal rule reaches the manifest as well as the run record. The retyping keeps the prior art's `exclusiveMinimum: 0` rather than dropping it: `UnsignedDecimalString` would admit \"0\", which is the bound the prior art spent a keyword excluding.",
 	),
 })
 
@@ -90,7 +90,7 @@ export const IsolationManifest = z
 		systemPromptDigest: Digest,
 		contractDigest: Digest,
 		evaluatorConfigurationDigest: Digest.describe(
-			'Added by this story and absent from the prior art. AD-32 requires this digest to agree between the manifest and the run record, which was previously an agreement rule asserted over two fields that did not exist. Required and non-nullable on both, which is what makes the substitution cost two contradictions rather than one omission. The agreement itself is a cross-artifact rule no schema can see.',
+			'Added here and absent from the prior art. AD-32 requires this digest to agree between the manifest and the run record, which was previously an agreement rule asserted over two fields that did not exist. Required and non-nullable on both, which is what makes the substitution cost two contradictions rather than one omission. The agreement itself is a cross-artifact rule no schema can see.',
 		),
 		workspaceIdentity: z.string().min(1),
 		allowedMounts: z.array(z.string()),

@@ -23,12 +23,12 @@ export const ReferenceSetDeclaration = z.strictObject({
 	members: z
 		.array(JsonObjectValue)
 		.describe(
-			'Objects carrying at least the declared keys. That they do is deliberately not refined: no AD-5 code names it, and a refinement would be invisible to a non-TypeScript consumer and become a differential disagreement in Story 1.5.',
+			'Objects carrying at least the declared keys. That they do is deliberately not refined: no AD-5 code names it, and a refinement would be invisible to a non-TypeScript consumer and become a disagreement in the published-schema differential check.',
 		),
 	commentary: z
 		.string()
 		.nullable()
 		.describe(
-			"Author documentation. Named `commentary` rather than the Gate C fixture's `note` so Epic 2 has one word to exclude from the sealed brief, matching the oracle field of the same name. No predicate reads it.",
+			"Author documentation. Named `commentary` rather than the Gate C fixture's `note` so the sealed brief has one word to exclude, matching the oracle field of the same name. No predicate reads it.",
 		),
 })

@@ -71,13 +71,13 @@ export const SealedEvaluatorBrief = z
 			.min(0)
 			.nullable()
 			.describe(
-				"AD-16's declared bound on enumerated probe steps, carried through from the contract. The brief-side scripting audit reads it after generation; that audit and its AD-5 code are Epic 2's.",
+				"AD-16's declared bound on enumerated probe steps, carried through from the contract. The brief-side scripting audit reads it after generation and fires `brief-exceeds-scripting-bound` on any single direction whose rendered text carries more markers than the bound; counts are never summed across directions.",
 			),
 	})
 	.meta({
 		id: 'SealedEvaluatorBrief',
 		description:
-			"The sealed evaluator brief, with no prior art. AD-16 fixes what it carries: the contract's behaviours, the generated evaluator-facing directions of AD-3, permitted interfaces, and scoped resource references, plus budgets and safety limits. It also fixes what the brief never carries: author commentary, the interaction plan, or the plan's step identifiers, and never a prescribed action sequence. Those exclusions are structural rather than conventional: this object is strict, so a brief carrying `interactionPlan`, `commentary`, or a `stepId` fails with `unrecognized_keys`, and the story asserts each one as a reject fixture rather than assuming it from strictness. It carries no identity field of its own, because every artifact that refers to it does so by digest.",
+			"The sealed evaluator brief, with no prior art. AD-16 fixes what it carries: the contract's behaviours, the generated evaluator-facing directions of AD-3, permitted interfaces, and scoped resource references, plus budgets and safety limits. It also fixes what the brief never carries: author commentary, the interaction plan, or the plan's step identifiers, and never a prescribed action sequence. Those exclusions are structural rather than conventional: this object is strict, so a brief carrying `interactionPlan`, `commentary`, or a `stepId` fails with `unrecognized_keys`, and each of the three has its own reject fixture rather than resting on strictness alone. It carries no identity field of its own, because every artifact that refers to it does so by digest.",
 	})
 
 export type SealedEvaluatorBrief = z.infer<typeof SealedEvaluatorBrief>

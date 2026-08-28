@@ -1,5 +1,5 @@
 /**
- * The derived-reference vocabulary (AD-16, AC 2). Renders an evidence-target
+ * The derived-reference vocabulary (AD-16). Renders an evidence-target
  * pointer, or a temporally-paired pair, as a description of the step's
  * operation and selection predicate; the step's own identifier never appears.
  * Resolves pointers through a `PlanIndex` into a phrase, kept apart from
@@ -17,8 +17,8 @@ import {
 } from './plan-index.ts'
 
 // InputBinding's four channels share one value shape, so indexing through
-// InteractionStep names it without a fifth schema type alias (AC 1 scopes
-// this story's core/schemas/ edit to exactly these four aliases).
+// InteractionStep names it without adding a fifth type alias to
+// `core/schemas/`.
 type BindingValue = NonNullable<InteractionStep['inputBinding']['path']>[string]
 
 type ResolvedTarget = {
@@ -49,7 +49,7 @@ function joinWithAnd(items: readonly string[]): string {
 	return `${[first, ...middle].join(', ')}, and ${last}`
 }
 
-// ---- operation identity (AC 2, point 3, first bullet) -----------------
+// ---- operation identity -----------------------------------------------
 
 // Humanizing a kebab-case operationId is injective on distinct ids, and
 // `buildPlanIndex` already rejects a duplicate `operationId` across
@@ -60,7 +60,7 @@ function operationReference(operation: Operation): string {
 	return `the ${operation.operationId.split('-').join(' ')} endpoint`
 }
 
-// ---- the binding clause and its escalation (AC 2, point 3) ------------
+// ---- the binding clause and its escalation ----------------------------
 
 // Three rungs: generic, binding kind, literal value. A fourth rung computed
 // from `method`/`pathTemplate` was tried and removed: it is identical for
@@ -88,8 +88,8 @@ const TRANSPORT_ORDER: readonly TransportChannelName[] = [
 ]
 
 // Sorted by transport channel in fixed order, then by key name, so this
-// never depends on a binding map's insertion order (AC 5's permutation
-// determinism concern).
+// never depends on a binding map's insertion order and the rendered prose
+// stays permutation-invariant.
 function bindingEntries(step: InteractionStep): readonly TransportEntry[] {
 	const entries: TransportEntry[] = []
 	for (const transportChannel of TRANSPORT_ORDER) {
@@ -136,7 +136,7 @@ function formatLiteral(literal: unknown): string {
 	return JSON.stringify(canonicalizeForDisplay(literal))
 }
 
-// Base rendering (AC 2): `type-violating` always names the input malformed.
+// Base rendering: `type-violating` always names the input malformed.
 // `any` and, at the 'generic' level, `literal` share the same generic wording
 // on purpose; the escalation ladder below tells them apart once two steps
 // would otherwise collide.
@@ -193,8 +193,8 @@ function stepReferenceAtLevel(
 }
 
 /**
- * Escalates in the order AC 2 declares until every step in `siblings`
- * renders distinctly.
+ * Escalates through `ESCALATION_LEVELS` in order until every step in
+ * `siblings` renders distinctly.
  *
  * `siblings` is direction-scoped: the caller passes only the steps the
  * current direction's own resolved evidence targets share this operation
@@ -241,7 +241,7 @@ function siblingsByOperation(
 	return map
 }
 
-// ---- the channel framing (AC 2, point 2) -------------------------------
+// ---- the channel framing ----------------------------------------------
 
 // An empty token is RFC 6901's legal spelling for a zero-length key but
 // names no field worth naming, so it is filtered out rather than spliced in
@@ -354,7 +354,7 @@ function sentFirstOrder(
 	return referenceA <= referenceB ? [a, b] : [b, a]
 }
 
-// ---- grouping: same-step multi-target directions and the AC 4 temporal pair --
+// ---- grouping: same-step targets and the temporal pair ----------------
 
 type PhraseGroup =
 	| { readonly kind: 'single'; readonly resolved: readonly ResolvedTarget[] }
@@ -364,11 +364,11 @@ type PhraseGroup =
 			readonly b: ResolvedTarget
 	  }
 
-// AC 4: two evidence targets whose steps are declared in an `after`
-// relationship render as one relational phrase, so concatenation never
-// discloses which step came first. A same-step multi-target group stays
-// `single` regardless of `after`; forcing a pair there would guess at which
-// target on each side pairs with which.
+// Two evidence targets whose steps are declared in an `after` relationship
+// render as one relational phrase, so concatenation never discloses which
+// step came first. A same-step multi-target group stays `single` regardless
+// of `after`; forcing a pair there would guess at which target on each side
+// pairs with which.
 //
 // Pairing is resolved from sorted step ids, never from discovery order over
 // `resolved`, so it stays permutation-invariant: when a predecessor is named
@@ -490,9 +490,8 @@ function renderPhraseGroup(group: PhraseGroup, siblingsOf: SiblingsOf): string {
  * position.
  *
  * A repeated pointer is deduplicated first: left in place it would push its
- * step out of the "exactly one target" shape AC 4's temporal pairing
- * requires, silently disabling the relational phrase for an otherwise-valid
- * pair.
+ * step out of the "exactly one target" shape temporal pairing requires,
+ * silently disabling the relational phrase for an otherwise-valid pair.
  */
 export function renderEvidenceReferences(
 	pointers: readonly string[],
