@@ -1,5 +1,14 @@
 # `eval-quality`
 
+**[Documentation](https://bmad-code-org.github.io/bmad-eval-quality/)** ·
+[Getting started](https://bmad-code-org.github.io/bmad-eval-quality/tutorials/getting-started/) ·
+[CLI reference](https://bmad-code-org.github.io/bmad-eval-quality/reference/cli-commands/) ·
+[npm](https://www.npmjs.com/package/eval-quality)
+
+```bash
+npx eval-quality --help
+```
+
 ### `eval-quality` does three things
 
 1. **Compile**: validate and normalize an eval contract into a machine-readable artifact.
