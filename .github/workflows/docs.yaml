@@ -21,8 +21,9 @@ on:
       - 'package.json'
       - '.github/workflows/docs.yaml'
 
-# The deploy job holds `pages: write` and `id-token: write`; the build job
-# needs neither, and reads the Pages settings with `pages: read`.
+# The deploy job holds `pages: write` and `id-token: write`. The build job
+# needs neither and reads no Pages settings, so a pull request builds the site
+# on a repository where Pages has never been enabled.
 permissions:
   contents: read
 
@@ -39,7 +40,6 @@ jobs:
     timeout-minutes: 15
     permissions:
       contents: read
-      pages: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
@@ -64,28 +64,28 @@ jobs:
           npm ci
           npm --prefix website ci
 
-      - name: Configure Pages
-        id: pages
-        uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6
-
-      # An undefined step output expands to the empty string, which is how the
-      # first version of this workflow shipped a `SITE_URL` that configured
-      # nothing. Fail loudly instead.
-      - name: Assert the Pages base URL resolved
+      # Derived rather than read back from the Pages API. `configure-pages`
+      # calls `GET /repos/{owner}/{repo}/pages`, which 404s until someone
+      # enables Pages in repository settings, and it 404s on every pull request
+      # too, so a build that only needs the base path cannot depend on it.
+      # `https://<owner>.github.io/<repo>` is what Pages serves for a project
+      # site, and this is the same value `website/src/lib/site-url.mjs` falls
+      # back to; computing it here keeps it visible in the log.
+      - name: Resolve the Pages base URL
         run: |
-          [ -n "${{ steps.pages.outputs.base_url }}" ] || { echo "actions/configure-pages produced no base_url; SITE_URL would be empty and the site would build against the wrong base path" >&2; exit 1; }
-          echo "base_url=${{ steps.pages.outputs.base_url }}"
+          SITE_URL="https://${GITHUB_REPOSITORY%%/*}.github.io/${GITHUB_REPOSITORY##*/}"
+          [ "$SITE_URL" != "https://.github.io/" ] || { echo "GITHUB_REPOSITORY was empty; SITE_URL would build the site against the wrong base path" >&2; exit 1; }
+          echo "SITE_URL=$SITE_URL" >> "$GITHUB_ENV"
+          echo "SITE_URL=$SITE_URL"
 
       - name: Validate documentation links
         run: npm run docs:validate-links
 
-      # `base_url` is the origin plus the project path. `origin` is the host
-      # alone, and feeding that here collapses `base` from `/bmad-eval-quality/`
-      # to `/`, which breaks every asset URL and every rewritten link.
+      # SITE_URL is the origin plus the project path. The origin alone collapses
+      # `base` from `/bmad-eval-quality/` to `/`, which breaks every asset URL
+      # and every rewritten link.
       - name: Build documentation site
         run: npm run docs:build
-        env:
-          SITE_URL: ${{ steps.pages.outputs.base_url }}
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5
