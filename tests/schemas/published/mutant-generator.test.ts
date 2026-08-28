@@ -134,7 +134,10 @@ describe('determinism: no randomness, no clock', () => {
 			JSON.stringify(first.witnesses),
 		)
 		expect([...second.unreachable]).toEqual([...first.unreachable])
-	})
+		// Two full generations over the probe document, and the coverage run
+		// instruments every one of them. Measured at 4.1s locally under v8
+		// coverage, and it exceeded the 5s default on a CI runner.
+	}, 30000)
 })
 
 describe('witnesses are valid instances, on both sides of the differential', () => {

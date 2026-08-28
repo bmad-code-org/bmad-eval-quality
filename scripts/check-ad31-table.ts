@@ -22,14 +22,21 @@ import {
 	CORPUS_CELLS,
 	CORPUS_CONTRACTS,
 } from '../tests/coverage/fixtures/corpus.ts'
-import { AD31_TABLE_PATH, AD31_TABLE_TARGET } from './ad31-table-target.ts'
+import {
+	AD31_TABLE_FRONTMATTER,
+	AD31_TABLE_PATH,
+	AD31_TABLE_TARGET,
+} from './ad31-table-target.ts'
 
 // Guarded: unguarded, the builder's diagnosis surfaces as an unhandled
 // rejection and a Node stack.
 let rebuilt: Buffer
 try {
 	rebuilt = Buffer.from(
-		coveragePredicateTable(CORPUS_CONTRACTS, CORPUS_CELLS),
+		`${AD31_TABLE_FRONTMATTER}${coveragePredicateTable(
+			CORPUS_CONTRACTS,
+			CORPUS_CELLS,
+		)}`,
 		'utf8',
 	)
 } catch (error) {

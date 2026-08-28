@@ -62,11 +62,40 @@ jobs:
       - name: Port conformance suite (every shipped adapter plus the in-repository probe subject)
         run: npm run test:conformance
 
-      - name: Validate (typecheck, lint, check:docs, check:shareable, lint:spine, check:vectors, check:schemas, check:ad5-registry, check:ad28-registry, check:ad31-table, check:layers, test)
-        run: npm run validate
+      # The documentation site's lockfile is a second resolved graph, and
+      # `npm --prefix website ci` reads no project `.npmrc` from the root, so
+      # AD-25 and the age policy have to be applied to it explicitly.
+      - name: Website dependency audit (lockfile age and AD-25 licences)
+        run: npm run check:website-deps
 
+      # Every command line the documentation shows is executed. Exit 64 means
+      # the documented command or flag does not exist.
+      - name: Documented CLI invocations
+        run: npm run check:doc-invocations
+
+      # CI only, and deliberately outside `npm run validate`: this is the one
+      # check that queries the npm advisory database, and `validate` has to
+      # stay runnable with no network. Both lockfiles are audited because the
+      # documentation site resolves its own graph. `--omit=dev` would exempt
+      # almost everything here, since every root dependency but `zod` is a dev
+      # dependency, so the level is the filter and the scope is everything.
+      - name: Known-vulnerability audit (advisory DB, CI only)
+        run: |
+          npm audit --audit-level=high
+          npm --prefix website audit --audit-level=high
+
+      # Before the two steps that run the suite. The published-surface cases
+      # resolve `dist/` through the `exports` map and skip with a clear message
+      # when it is absent, so an unbuilt tree would turn eight of them into a
+      # silent skip inside a green gate.
       - name: Build
         run: npm run build
+
+      # `npm run validate` ends in `test:coverage`, so the AD-30/NFR7 floor is
+      # already enforced here. A separate coverage step beside this one would
+      # run the whole suite twice in one job for nothing.
+      - name: Validate (typecheck, lint, check:docs, check:doc-invocations, check:shareable, lint:spine, check:vectors, check:schemas, check:ad5-registry, check:ad28-registry, check:ad31-table, check:layers, check:lineage, check:boundary, check:corpus, check:website-deps, and the AD-30/NFR7 coverage floor via test:coverage)
+        run: npm run validate
 
   floor:
     name: Node 22.20.0 (floor)
@@ -91,11 +120,12 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # The two type-stripped scripts run here as well as on Node 24. `build`
+      # Every type-stripped script runs here as well as on Node 24. `build`
       # goes through tsc and `test` through Vite's transform, so neither
       # exercises Node's own type stripper; without these steps the declared
       # engines floor is unproven for exactly the files that depend on it, and
-      # a contributor on 22.20.0 would be the first to find out.
+      # a contributor on 22.20.0 would be the first to find out. Adding a
+      # `node scripts/*.ts` command to `validate` means adding it here too.
       - name: Published schema drift check (byte-exact against schemas/)
         run: npm run check:schemas
 
@@ -105,11 +135,22 @@ jobs:
       - name: AD-31 coverage predicate table drift check (byte-exact against docs/)
         run: npm run check:ad31-table
 
+      - name: AD-15 package-boundary check (src/, corpus/, and the published manifest fields)
+        run: npm run check:boundary
+
+      - name: Dev corpus drift check (byte-exact against corpus/)
+        run: npm run check:corpus
+
       - name: Build
         run: npm run build
 
-      - name: Test
-        run: npm run test
+      # Replaces the plain `npm run test` step: the floor job never runs
+      # `npm run validate`, so a coverage step added only to the Node 24 job
+      # would run the floor twice there and zero times on the declared engines
+      # floor, which is the job AD-30's last sentence is about. Measured:
+      # `npm run test` 42 s, `vitest run --coverage` 63 s.
+      - name: Test with the AD-30 coverage floor
+        run: npm run test:coverage
 
       - name: Port conformance suite (every shipped adapter plus the in-repository probe subject)
         run: npm run test:conformance
@@ -566,6 +607,238 @@ jobs:
           [ -z "$(git status --porcelain -- docs/)" ] || { echo "generate:ad31-table left docs/ dirty; the writer and the check are out of step" >&2; git status --porcelain -- docs/ >&2; exit 1; }
           npm run --silent check:ad31-table
           echo "canary passed: generate:ad31-table reproduces the committed bytes exactly"
+
+  canary-coverage:
+    name: "Canary: the coverage floor blocks when it is not met"
+    runs-on: ubuntu-latest
+    # One seeded coverage run at roughly a minute, plus `npm ci` and `build`.
+    # The restore is asserted with `git diff` rather than a second suite run.
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version-file: ".nvmrc"
+          cache: "npm"
+
+      - uses: ./.github/actions/assert-npm-version
+        with:
+          version: ${{ env.NPM_VERSION }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      # The suite's published-surface cases read `dist/` and skip without it.
+      - name: Build
+        run: npm run build
+
+      # The threshold value is only half the floor; the other half is the set it
+      # is measured over. Widening `coverage.include` to `src/**` would let
+      # well-tested adapters carry a thin core and still clear 90%, and the
+      # seeded-threshold step below would not notice. AD-30's floor is over
+      # `core/`, so the measured set is gated here rather than assumed.
+      - name: Assert the coverage floor is measured over src/core/ alone
+        run: |
+          grep -q "include: \['src/core/\*\*'\]" vitest.config.ts || { echo "vitest.config.ts no longer declares coverage.include as ['src/core/**']; AD-30's floor is over core/ specifically, and a widened set would let an adapter mask a thin core" >&2; grep -n "include:" vitest.config.ts >&2; exit 1; }
+          echo "canary passed: the coverage floor is still measured over src/core/ alone"
+
+      # AD-30's floor is enforced by vitest's own thresholds, so the thing to
+      # prove is that the threshold blocks. `vitest.config.ts` is TypeScript,
+      # so the edit is `sed -i` the way the AD-31 canary does it.
+      - name: Assert the coverage run fails when the threshold is not met
+        run: |
+          set +e
+          sed -i "s|statements: 90|statements: 100|" vitest.config.ts
+          git diff --quiet -- vitest.config.ts && { echo "the seeded threshold edit was a no-op; vitest.config.ts no longer carries 'statements: 90' for the sed to raise" >&2; exit 1; }
+          output="$(npm run --silent test:coverage 2>&1)"
+          exit_status=$?
+          set -e
+          git checkout -- vitest.config.ts
+          echo "$output"
+          if [ $exit_status -eq 0 ]; then
+            echo "expected the coverage run to fail below the threshold, but it passed" >&2
+            exit 1
+          fi
+          # Name the axis the seed actually raised. A bare "does not meet global
+          # threshold" carries no axis at all, so a branches-line failure under an
+          # untouched statements floor would pass this canary for the wrong reason.
+          # So would a syntax error in the config, which also exits non-zero.
+          echo "$output" | grep -q "Coverage for statements .* does not meet global threshold (100%)" || { echo "check failed for the wrong reason (no statements-axis violation against the seeded 100% floor)" >&2; exit 1; }
+          echo "canary passed: the coverage threshold blocks and names the statements axis"
+
+      # What the step above actually needs to claim is that its seed was undone,
+      # and `git diff` says that in milliseconds. Re-running the suite to prove
+      # a green tree would be the fifth full coverage run of one pull request,
+      # after `validate-and-build`, `floor`, and this job's own seeded run.
+      - name: Assert the seeded config was restored
+        run: git diff --exit-code -- vitest.config.ts
+
+  canary-boundary:
+    name: "Canary: the package-boundary check fails on a seeded reference"
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version-file: ".nvmrc"
+          cache: "npm"
+
+      - uses: ./.github/actions/assert-npm-version
+        with:
+          version: ${{ env.NPM_VERSION }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      # AD-15 had no enforcement at all until this check existed, so it is
+      # proven to block, for the stated reason, rather than assumed to.
+      - name: Assert the boundary check fails on a seeded source reference
+        run: |
+          set +e
+          sed -i "1i // Story 9.9 seeded this line" src/core/failure-codes.ts
+          output="$(npm run --silent check:boundary 2>&1)"
+          exit_status=$?
+          set -e
+          git checkout -- src/core/failure-codes.ts
+          echo "$output"
+          if [ $exit_status -eq 0 ]; then
+            echo "expected the boundary check to fail on a seeded reference, but it passed" >&2
+            exit 1
+          fi
+          # Match the file and the pattern name: a discovery failure also exits
+          # non-zero and would pass a bare exit-code test for the wrong reason.
+          echo "$output" | grep -q "src/core/failure-codes.ts:1 \[story\]" || { echo "check failed for the wrong reason (no seeded violation reported)" >&2; exit 1; }
+          echo "canary passed: boundary check correctly failed naming the file and the pattern"
+
+      # The manifest is scanned as three synthetic entries, and the package's
+      # own URL coordinates are exempt, so the seed goes into `description`.
+      - name: Assert the boundary check fails on a seeded manifest reference
+        run: |
+          set +e
+          node -e 'const fs=require("fs");const p=JSON.parse(fs.readFileSync("package.json","utf8"));p.description="TEA drafts a contract and calls this package.";fs.writeFileSync("package.json",JSON.stringify(p,null,2)+"\n")'
+          output="$(npm run --silent check:boundary 2>&1)"
+          exit_status=$?
+          set -e
+          git checkout -- package.json
+          echo "$output"
+          if [ $exit_status -eq 0 ]; then
+            echo "expected the boundary check to fail on a seeded manifest reference, but it passed" >&2
+            exit 1
+          fi
+          echo "$output" | grep -q "package.json#description:1 \[TEA\]" || { echo "check failed for the wrong reason (no manifest violation reported)" >&2; exit 1; }
+          echo "canary passed: boundary check reaches the published manifest fields"
+
+      # The third arm of the scanned set. `corpus/` ships in the tarball beside
+      # `dist/`, and the walk that reaches it is separate from the `src/` one,
+      # so a regression in it would leave both steps above green. Seeded a
+      # directory deep, because a walk that stopped at `corpus/` itself would
+      # still find a file in the root.
+      - name: Assert the boundary check fails on a seeded corpus reference
+        run: |
+          set +e
+          printf 'Seeded by the boundary canary: _bmad-output/planning-artifacts is not published.\n' > corpus/dev/boundary-canary.md
+          output="$(npm run --silent check:boundary 2>&1)"
+          exit_status=$?
+          set -e
+          rm -f corpus/dev/boundary-canary.md
+          echo "$output"
+          if [ $exit_status -eq 0 ]; then
+            echo "expected the boundary check to fail on a seeded corpus reference, but it passed" >&2
+            exit 1
+          fi
+          echo "$output" | grep -q "corpus/dev/boundary-canary.md:1 \[_bmad-output\]" || { echo "check failed for the wrong reason (the corpus walk did not report the seeded file and pattern)" >&2; exit 1; }
+          echo "canary passed: boundary check reaches files under corpus/"
+
+      - name: Assert the restored tree is clean
+        run: npm run --silent check:boundary
+
+  canary-dev-corpus:
+    name: "Canary: the corpus check fails on a mutated byte and on a changed seed"
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version-file: ".nvmrc"
+          cache: "npm"
+
+      - uses: ./.github/actions/assert-npm-version
+        with:
+          version: ${{ env.NPM_VERSION }}
+
+      # Every step below restores its seed with `git checkout -- corpus/…` and
+      # reads `git status --porcelain -- corpus/`. Both are meaningless while
+      # the generated corpus is untracked: under `set -e` the restore aborts
+      # with a bare pathspec error and the fixed-point step trips over `??
+      # corpus/`. Committing the directory is the fix, so say that rather than
+      # leaving the job to report it as a git usage error three steps later.
+      - name: Assert the generated corpus is committed
+        run: |
+          git ls-files --error-unmatch corpus/dev/index.json > /dev/null 2>&1 || { echo "corpus/ is not tracked by git; the generated corpus must be committed for this canary to mean anything, since every step below restores its seed with 'git checkout -- corpus/...' and asserts on 'git status --porcelain -- corpus/'" >&2; exit 1; }
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Assert the corpus check fails on a single mutated byte
+        run: |
+          set +e
+          printf 'x' >> corpus/dev/index.json
+          output="$(npm run --silent check:corpus 2>&1)"
+          exit_status=$?
+          set -e
+          git checkout -- corpus/dev/index.json
+          echo "$output"
+          if [ $exit_status -eq 0 ]; then
+            echo "expected the corpus check to fail on a mutated byte, but it passed" >&2
+            exit 1
+          fi
+          # Match the drift line specifically: a missing-file failure also exits
+          # non-zero and would pass a bare exit-code test for the wrong reason.
+          echo "$output" | grep -q "corpus/dev/index.json: drift at byte offset" || { echo "check failed for the wrong reason (no byte-offset drift reported)" >&2; exit 1; }
+          echo "canary passed: corpus check correctly failed naming the differing byte offset"
+
+      # The canary that proves the corpus is emitted rather than kept beside
+      # the code: changing the seed the corpus is generated *from* must move
+      # the committed bytes.
+      - name: Assert the corpus check fails when the seed contract changes
+        run: |
+          set +e
+          sed -i "s|A created thing is readable back in the list of things.|A created thing is readable back in the list.|" tests/coverage/fixtures/satisfaction-contracts.ts
+          git diff --quiet -- tests/coverage/fixtures/satisfaction-contracts.ts && { echo "the seed edit was a no-op" >&2; exit 1; }
+          output="$(npm run --silent check:corpus 2>&1)"
+          exit_status=$?
+          set -e
+          git checkout -- tests/coverage/fixtures/satisfaction-contracts.ts
+          echo "$output"
+          if [ $exit_status -eq 0 ]; then
+            echo "expected the corpus check to fail on a changed seed, but it passed" >&2
+            exit 1
+          fi
+          echo "$output" | grep -q "drift at byte offset" || { echo "check failed for the wrong reason (no byte-offset drift reported)" >&2; exit 1; }
+          echo "canary passed: the committed corpus moves with the fixtures that emit it"
+
+      # Regeneration is the repair every failure message above names, so the
+      # repair is proven to be a fixed point rather than assumed to be one.
+      - name: Assert generate then check is a fixed point
+        run: |
+          npm run --silent generate:dev-corpus > /dev/null
+          # `git status --porcelain`, because `git diff` reports no untracked
+          # file: a generator writing to a path the check does not read would
+          # leave the committed corpus intact and pass a diff test.
+          [ -z "$(git status --porcelain -- corpus/)" ] || { echo "generate:dev-corpus left corpus/ dirty; the writer and the check are out of step" >&2; git status --porcelain -- corpus/ >&2; exit 1; }
+          npm run --silent check:corpus
+          echo "canary passed: generate:dev-corpus reproduces the committed bytes exactly"
 
   canary-shareable:
     name: "Canary: shareable check fails on a stale export and on a legacy URL"

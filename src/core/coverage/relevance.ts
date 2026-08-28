@@ -42,7 +42,7 @@ const plural = (count: number, noun: string): string =>
 const operationsOf = (contract: EvalContract): readonly Operation[] =>
 	contract.permittedInterfaces.flatMap((declared) => declared.operations)
 
-/** Decision 10: a contract declaring no operation leaves six of the rules nothing to read. */
+/** A contract declaring no operation leaves six of the rules nothing to read. */
 export const NO_OPERATION =
 	'the contract declares no operation, so the declaration this rule reads is absent'
 
@@ -227,9 +227,8 @@ export function siblingCrossCheckRelevance(
 
 /**
  * Rule 6: a declared collection location names a reference set. The site is
- * `collectionLocations` alone (Decision 8), so an explicitly empty list stays
- * an answer. A location naming an identifier the contract does not declare
- * still names one.
+ * `collectionLocations` alone, so an explicitly empty list stays an answer. A
+ * location naming an identifier the contract does not declare still names one.
  */
 export function omissionAndCompletenessRelevance(
 	contract: EvalContract,

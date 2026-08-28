@@ -46,7 +46,7 @@
         "behaviorId": {
           "type": "string",
           "pattern": "^B-[0-9]{3,}$",
-          "description": "AD-9 puts the behaviour on the probe. The prior art put one on each seeded defect only, and this story carries both."
+          "description": "AD-9 puts the behaviour on the probe. The prior art put one on each seeded defect only, and this schema carries both."
         },
         "systemId": {
           "type": "string",
@@ -89,7 +89,7 @@
               "behaviorId": {
                 "type": "string",
                 "pattern": "^B-[0-9]{3,}$",
-                "description": "The behaviour this defect breaks. AD-9 also puts a behaviour on the probe itself and this story carries both; that the two may disagree is a cross-field rule with no AD-5 code and is left unenforced in v0 rather than silently refined here."
+                "description": "The behaviour this defect breaks. AD-9 also puts a behaviour on the probe itself and this schema carries both; that the two may disagree is a cross-field rule with no AD-5 code and is left unenforced in v0 rather than silently refined here."
               },
               "summary": {
                 "type": "string",
@@ -235,7 +235,7 @@
         "behaviorId": {
           "type": "string",
           "pattern": "^B-[0-9]{3,}$",
-          "description": "AD-9 puts the behaviour on the probe. The prior art put one on each seeded defect only, and this story carries both."
+          "description": "AD-9 puts the behaviour on the probe. The prior art put one on each seeded defect only, and this schema carries both."
         },
         "systemId": {
           "type": "string",
@@ -277,7 +277,7 @@
               "behaviorId": {
                 "type": "string",
                 "pattern": "^B-[0-9]{3,}$",
-                "description": "The behaviour this defect breaks. AD-9 also puts a behaviour on the probe itself and this story carries both; that the two may disagree is a cross-field rule with no AD-5 code and is left unenforced in v0 rather than silently refined here."
+                "description": "The behaviour this defect breaks. AD-9 also puts a behaviour on the probe itself and this schema carries both; that the two may disagree is a cross-field rule with no AD-5 code and is left unenforced in v0 rather than silently refined here."
               },
               "summary": {
                 "type": "string",
@@ -380,7 +380,7 @@
       "description": "A probe that is not a known-clean control."
     }
   ],
-  "description": "One corpus probe. Succeeds the prior-art `h0-ground-truth` schema per AD-24, carrying its system identifier, implementation digest, `expectedClean` flag, seeded defects, and rationale, and adding AD-9's probe class and AD-9's per-probe artifact and commit digests. Divergences: `implementationSha` becomes `implementationDigest`, `taskId` does not survive because the probe pins what it describes by digest, and `expectedGate` does not survive because AD-40 makes detection a signature match rather than a verdict comparison and AD-7 keeps comparisons inside the dominance vector, so carrying an expected gate would invite a comparison the architecture forbids. Two constructions are deliberately absent: AD-9's per-class QUALIFICATION record, whose five prose routes name no fields and whose acceptance criteria of record do not command it, and AD-40's machine-readable DEFECT SIGNATURE, which Owed item 7 records as having no fixture to land in because this repository contains no probe at all. Both arrive as additive `schemaVersion` bumps under AD-11 with the corpus epic. The cost is named rather than hidden: AD-9's \"an unqualified probe cannot enter a sealed set\" is enforced by nothing in v0: not this schema, not an AD-5 code, and not an AD-21 rung.",
+  "description": "One corpus probe. Succeeds the prior-art `h0-ground-truth` schema per AD-24, carrying its system identifier, implementation digest, `expectedClean` flag, seeded defects, and rationale, and adding AD-9's probe class and AD-9's per-probe artifact and commit digests. Divergences: `implementationSha` becomes `implementationDigest`, `taskId` does not survive because the probe pins what it describes by digest, and `expectedGate` does not survive because AD-40 makes detection a signature match rather than a verdict comparison and AD-7 keeps comparisons inside the dominance vector, so carrying an expected gate would invite a comparison the architecture forbids. Two constructions are deliberately absent: AD-9's per-class QUALIFICATION record, whose five prose routes name no fields and whose acceptance criteria of record do not command it, and AD-40's machine-readable DEFECT SIGNATURE, which Owed item 7 records as having no fixture to land in because this repository contains no probe at all. Both arrive as additive `schemaVersion` bumps under AD-11 once a corpus exists to carry them. The cost is named rather than hidden: AD-9's \"an unqualified probe cannot enter a sealed set\" is enforced by nothing in v0: not this schema, not an AD-5 code, and not an AD-21 rung.",
   "$defs": {
     "ArtifactReference": {
       "oneOf": [
@@ -571,7 +571,7 @@
                   "$ref": "#/$defs/Operand"
                 }
               ],
-              "description": "Two operands, each legally a pointer or a literal. Every position admits the full operand union on purpose. AD-26 makes a reference-set operand outside its three legal positions \u2014 `covers-by-key`'s expected operand, and the set operand of `set-membership` or `containment` \u2014 fail compilation under `malformed-operator-expression`, which only stays fireable if the other positions admit it. Epic 4 enforces the legality stated here; the schema does not narrow it.",
+              "description": "Two operands, each legally a pointer or a literal. Every position admits the full operand union on purpose. AD-26 makes a reference-set operand outside its three legal positions \u2014 `covers-by-key`'s expected operand, and the set operand of `set-membership` or `containment` \u2014 fail compilation under `malformed-operator-expression`, which only stays fireable if the other positions admit it. Compilation enforces the legality stated here; the schema does not narrow it.",
               "minItems": 2,
               "items": false
             }
@@ -599,7 +599,7 @@
                   "$ref": "#/$defs/Operand"
                 }
               ],
-              "description": "Two operands, each legally a pointer or a literal. Every position admits the full operand union on purpose. AD-26 makes a reference-set operand outside its three legal positions \u2014 `covers-by-key`'s expected operand, and the set operand of `set-membership` or `containment` \u2014 fail compilation under `malformed-operator-expression`, which only stays fireable if the other positions admit it. Epic 4 enforces the legality stated here; the schema does not narrow it.",
+              "description": "Two operands, each legally a pointer or a literal. Every position admits the full operand union on purpose. AD-26 makes a reference-set operand outside its three legal positions \u2014 `covers-by-key`'s expected operand, and the set operand of `set-membership` or `containment` \u2014 fail compilation under `malformed-operator-expression`, which only stays fireable if the other positions admit it. Compilation enforces the legality stated here; the schema does not narrow it.",
               "minItems": 2,
               "items": false
             }
@@ -627,7 +627,7 @@
                   "$ref": "#/$defs/Operand"
                 }
               ],
-              "description": "Two operands: the container is legally a pointer, and the set is legally a pointer, a literal, or a reference set. Every position admits the full operand union on purpose. AD-26 makes a reference-set operand outside its three legal positions \u2014 `covers-by-key`'s expected operand, and the set operand of `set-membership` or `containment` \u2014 fail compilation under `malformed-operator-expression`, which only stays fireable if the other positions admit it. Epic 4 enforces the legality stated here; the schema does not narrow it.",
+              "description": "Two operands: the container is legally a pointer, and the set is legally a pointer, a literal, or a reference set. Every position admits the full operand union on purpose. AD-26 makes a reference-set operand outside its three legal positions \u2014 `covers-by-key`'s expected operand, and the set operand of `set-membership` or `containment` \u2014 fail compilation under `malformed-operator-expression`, which only stays fireable if the other positions admit it. Compilation enforces the legality stated here; the schema does not narrow it.",
               "minItems": 2,
               "items": false
             }
@@ -652,7 +652,7 @@
                   "$ref": "#/$defs/Operand"
                 }
               ],
-              "description": "One operand, legally a pointer. Every position admits the full operand union on purpose. AD-26 makes a reference-set operand outside its three legal positions \u2014 `covers-by-key`'s expected operand, and the set operand of `set-membership` or `containment` \u2014 fail compilation under `malformed-operator-expression`, which only stays fireable if the other positions admit it. Epic 4 enforces the legality stated here; the schema does not narrow it.",
+              "description": "One operand, legally a pointer. Every position admits the full operand union on purpose. AD-26 makes a reference-set operand outside its three legal positions \u2014 `covers-by-key`'s expected operand, and the set operand of `set-membership` or `containment` \u2014 fail compilation under `malformed-operator-expression`, which only stays fireable if the other positions admit it. Compilation enforces the legality stated here; the schema does not narrow it.",
               "minItems": 1,
               "items": false
             }
@@ -677,7 +677,7 @@
                   "$ref": "#/$defs/Operand"
                 }
               ],
-              "description": "One operand, legally a pointer. Every position admits the full operand union on purpose. AD-26 makes a reference-set operand outside its three legal positions \u2014 `covers-by-key`'s expected operand, and the set operand of `set-membership` or `containment` \u2014 fail compilation under `malformed-operator-expression`, which only stays fireable if the other positions admit it. Epic 4 enforces the legality stated here; the schema does not narrow it.",
+              "description": "One operand, legally a pointer. Every position admits the full operand union on purpose. AD-26 makes a reference-set operand outside its three legal positions \u2014 `covers-by-key`'s expected operand, and the set operand of `set-membership` or `containment` \u2014 fail compilation under `malformed-operator-expression`, which only stays fireable if the other positions admit it. Compilation enforces the legality stated here; the schema does not narrow it.",
               "minItems": 1,
               "items": false
             }
@@ -702,14 +702,14 @@
                   "$ref": "#/$defs/Operand"
                 }
               ],
-              "description": "One operand, legally a pointer. Every position admits the full operand union on purpose. AD-26 makes a reference-set operand outside its three legal positions \u2014 `covers-by-key`'s expected operand, and the set operand of `set-membership` or `containment` \u2014 fail compilation under `malformed-operator-expression`, which only stays fireable if the other positions admit it. Epic 4 enforces the legality stated here; the schema does not narrow it.",
+              "description": "One operand, legally a pointer. Every position admits the full operand union on purpose. AD-26 makes a reference-set operand outside its three legal positions \u2014 `covers-by-key`'s expected operand, and the set operand of `set-membership` or `containment` \u2014 fail compilation under `malformed-operator-expression`, which only stays fireable if the other positions admit it. Compilation enforces the legality stated here; the schema does not narrow it.",
               "minItems": 1,
               "items": false
             },
             "pattern": {
               "type": "string",
               "pattern": "^\\^[\\s\\S]*\\$$",
-              "description": "An ECMA-262 pattern, fully anchored: it begins with \"^\" and ends with \"$\". A named field rather than a `{ literal }` operand, so Epic 4's backreference and lookbehind check has one place to look instead of a JsonValue that may hold anything. The check is positional and is wrong in both directions. It admits patterns that are not anchored, such as the alternation \"^a|b$\" or a trailing \"$\" that is escaped; those are Epic 4's, alongside backreferences and lookbehind. It also rejects patterns that are anchored but wrapped in a group, such as \"(^a$)\" \u2014 write \"^(?:a|b)$\" rather than \"(?:^a$|^b$)\" and the form accepts it. Deciding anchoring properly requires parsing the pattern, which no JSON Schema keyword can express."
+              "description": "An ECMA-262 pattern, fully anchored: it begins with \"^\" and ends with \"$\". A named field rather than a `{ literal }` operand, so the compiler's backreference and lookbehind check has one place to look instead of a JsonValue that may hold anything. The check is positional and is wrong in both directions. It admits patterns that are not anchored, such as the alternation \"^a|b$\" or a trailing \"$\" that is escaped; those are the compiler's, alongside backreferences and lookbehind. It also rejects patterns that are anchored but wrapped in a group, such as \"(^a$)\" \u2014 write \"^(?:a|b)$\" rather than \"(?:^a$|^b$)\" and the form accepts it. Deciding anchoring properly requires parsing the pattern, which no JSON Schema keyword can express."
             }
           },
           "required": [
@@ -768,7 +768,7 @@
                   ]
                 }
               ],
-              "description": "Two operands: the value is legally a pointer, and the set is a reference set or a non-empty literal array. The set position is the one place the schema does narrow, and coin flip (b) records what that costs. Every position admits the full operand union on purpose. AD-26 makes a reference-set operand outside its three legal positions \u2014 `covers-by-key`'s expected operand, and the set operand of `set-membership` or `containment` \u2014 fail compilation under `malformed-operator-expression`, which only stays fireable if the other positions admit it. Epic 4 enforces the legality stated here; the schema does not narrow it.",
+              "description": "Two operands: the value is legally a pointer, and the set is a reference set or a non-empty literal array. The set position is the one place the schema does narrow, and coin flip (b) records what that costs. Every position admits the full operand union on purpose. AD-26 makes a reference-set operand outside its three legal positions \u2014 `covers-by-key`'s expected operand, and the set operand of `set-membership` or `containment` \u2014 fail compilation under `malformed-operator-expression`, which only stays fireable if the other positions admit it. Compilation enforces the legality stated here; the schema does not narrow it.",
               "minItems": 2,
               "items": false
             }
@@ -793,7 +793,7 @@
                   "$ref": "#/$defs/Operand"
                 }
               ],
-              "description": "One operand, legally a pointer to a collection. Every position admits the full operand union on purpose. AD-26 makes a reference-set operand outside its three legal positions \u2014 `covers-by-key`'s expected operand, and the set operand of `set-membership` or `containment` \u2014 fail compilation under `malformed-operator-expression`, which only stays fireable if the other positions admit it. Epic 4 enforces the legality stated here; the schema does not narrow it.",
+              "description": "One operand, legally a pointer to a collection. Every position admits the full operand union on purpose. AD-26 makes a reference-set operand outside its three legal positions \u2014 `covers-by-key`'s expected operand, and the set operand of `set-membership` or `containment` \u2014 fail compilation under `malformed-operator-expression`, which only stays fireable if the other positions admit it. Compilation enforces the legality stated here; the schema does not narrow it.",
               "minItems": 1,
               "items": false
             },
@@ -831,7 +831,7 @@
                   "$ref": "#/$defs/Operand"
                 }
               ],
-              "description": "One operand, legally a pointer to a collection. Every position admits the full operand union on purpose. AD-26 makes a reference-set operand outside its three legal positions \u2014 `covers-by-key`'s expected operand, and the set operand of `set-membership` or `containment` \u2014 fail compilation under `malformed-operator-expression`, which only stays fireable if the other positions admit it. Epic 4 enforces the legality stated here; the schema does not narrow it.",
+              "description": "One operand, legally a pointer to a collection. Every position admits the full operand union on purpose. AD-26 makes a reference-set operand outside its three legal positions \u2014 `covers-by-key`'s expected operand, and the set operand of `set-membership` or `containment` \u2014 fail compilation under `malformed-operator-expression`, which only stays fireable if the other positions admit it. Compilation enforces the legality stated here; the schema does not narrow it.",
               "minItems": 1,
               "items": false
             },
@@ -845,7 +845,7 @@
               "type": "integer",
               "minimum": 0,
               "maximum": 9007199254740991,
-              "description": "The permitted deviation from `expected`, non-negative for the same reason. When `relative` is declared the tolerance is read as whole percentage points, which is stated because AD-4 supplies no value space for the magnitude and Epic 3 inherits the semantics. An integer therefore cannot express a fractional relative tolerance such as 2.5 percent; widening the value space later is an additive `schemaVersion` bump under AD-11, and was not taken here because it would export as a bare `type: \"number\"` and cost a constraint ledger entry for a case no declaration needs yet."
+              "description": "The permitted deviation from `expected`, non-negative for the same reason. When `relative` is declared the tolerance is read as whole percentage points, which is stated because AD-4 supplies no value space for the magnitude and any reader that resolves this check inherits the semantics. An integer therefore cannot express a fractional relative tolerance such as 2.5 percent; widening the value space later is an additive `schemaVersion` bump under AD-11, and was not taken here because it would export as a bare `type: \"number\"` and cost a constraint ledger entry for a case no declaration needs yet."
             },
             "relative": {
               "type": "boolean",
@@ -875,7 +875,7 @@
                   "$ref": "#/$defs/Operand"
                 }
               ],
-              "description": "One operand, legally a pointer. Every position admits the full operand union on purpose. AD-26 makes a reference-set operand outside its three legal positions \u2014 `covers-by-key`'s expected operand, and the set operand of `set-membership` or `containment` \u2014 fail compilation under `malformed-operator-expression`, which only stays fireable if the other positions admit it. Epic 4 enforces the legality stated here; the schema does not narrow it.",
+              "description": "One operand, legally a pointer. Every position admits the full operand union on purpose. AD-26 makes a reference-set operand outside its three legal positions \u2014 `covers-by-key`'s expected operand, and the set operand of `set-membership` or `containment` \u2014 fail compilation under `malformed-operator-expression`, which only stays fireable if the other positions admit it. Compilation enforces the legality stated here; the schema does not narrow it.",
               "minItems": 1,
               "items": false
             },
@@ -957,7 +957,7 @@
                   "$ref": "#/$defs/Operand"
                 }
               ],
-              "description": "Two operands: `expected` is legally a reference set, and `actual` is legally a pointer to a collection. Every position admits the full operand union on purpose. AD-26 makes a reference-set operand outside its three legal positions \u2014 `covers-by-key`'s expected operand, and the set operand of `set-membership` or `containment` \u2014 fail compilation under `malformed-operator-expression`, which only stays fireable if the other positions admit it. Epic 4 enforces the legality stated here; the schema does not narrow it.",
+              "description": "Two operands: `expected` is legally a reference set, and `actual` is legally a pointer to a collection. Every position admits the full operand union on purpose. AD-26 makes a reference-set operand outside its three legal positions \u2014 `covers-by-key`'s expected operand, and the set operand of `set-membership` or `containment` \u2014 fail compilation under `malformed-operator-expression`, which only stays fireable if the other positions admit it. Compilation enforces the legality stated here; the schema does not narrow it.",
               "minItems": 2,
               "items": false
             },
@@ -1067,7 +1067,7 @@
             "predicate"
           ],
           "additionalProperties": false,
-          "description": "`collection` is legally a pointer to a collection, and `predicate` is the expression each bound element is tested against, addressed by the `@/` pointer spelling. A quantifier inside the predicate is structurally admitted so `quantifier-nesting-exceeded` keeps a shape to fire on. Every position admits the full operand union on purpose. AD-26 makes a reference-set operand outside its three legal positions \u2014 `covers-by-key`'s expected operand, and the set operand of `set-membership` or `containment` \u2014 fail compilation under `malformed-operator-expression`, which only stays fireable if the other positions admit it. Epic 4 enforces the legality stated here; the schema does not narrow it."
+          "description": "`collection` is legally a pointer to a collection, and `predicate` is the expression each bound element is tested against, addressed by the `@/` pointer spelling. A quantifier inside the predicate is structurally admitted so `quantifier-nesting-exceeded` keeps a shape to fire on. Every position admits the full operand union on purpose. AD-26 makes a reference-set operand outside its three legal positions \u2014 `covers-by-key`'s expected operand, and the set operand of `set-membership` or `containment` \u2014 fail compilation under `malformed-operator-expression`, which only stays fireable if the other positions admit it. Compilation enforces the legality stated here; the schema does not narrow it."
         },
         {
           "type": "object",
@@ -1089,7 +1089,7 @@
             "predicate"
           ],
           "additionalProperties": false,
-          "description": "`collection` is legally a pointer to a collection, and `predicate` is the expression each bound element is tested against, addressed by the `@/` pointer spelling. Every position admits the full operand union on purpose. AD-26 makes a reference-set operand outside its three legal positions \u2014 `covers-by-key`'s expected operand, and the set operand of `set-membership` or `containment` \u2014 fail compilation under `malformed-operator-expression`, which only stays fireable if the other positions admit it. Epic 4 enforces the legality stated here; the schema does not narrow it."
+          "description": "`collection` is legally a pointer to a collection, and `predicate` is the expression each bound element is tested against, addressed by the `@/` pointer spelling. Every position admits the full operand union on purpose. AD-26 makes a reference-set operand outside its three legal positions \u2014 `covers-by-key`'s expected operand, and the set operand of `set-membership` or `containment` \u2014 fail compilation under `malformed-operator-expression`, which only stays fireable if the other positions admit it. Compilation enforces the legality stated here; the schema does not narrow it."
         }
       ]
     },
@@ -1108,7 +1108,7 @@
                 {
                   "type": "string",
                   "pattern": "^@(?:\\/(?:[^/~]|~[01])*)+$",
-                  "description": "AD-26 bound-element pointer: \"@/\" plus an RFC 6901 tail, addressing the element a quantifier binds. Bare \"@/\" addresses the element itself. That it appears only inside a quantifier is a compile-time check (Story 4.1), not a schema check."
+                  "description": "AD-26 bound-element pointer: \"@/\" plus an RFC 6901 tail, addressing the element a quantifier binds. Bare \"@/\" addresses the element itself. That it appears only inside a quantifier is a compile-time check, not a schema check."
                 }
               ]
             }

@@ -15,7 +15,7 @@ export const Waiver = z.strictObject({
 		.string()
 		.nullable()
 		.describe(
-			'The AD-20 discipline rule this waiver names. An opaque string rather than an enum: AD-20 enumerates seven rules in prose and assigns them no identifiers, and minting them here would invent a vocabulary Epic 5 has to match.',
+			'The AD-20 discipline rule this waiver names. An opaque string rather than an enum: AD-20 enumerates seven rules in prose and assigns them no identifiers, and minting them here would invent a vocabulary that AD-20 enforcement would then have to match.',
 		),
 	rationale: z.string().nullable(),
 	condition: z

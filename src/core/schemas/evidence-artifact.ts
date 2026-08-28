@@ -13,9 +13,9 @@ import { OracleDispositionValue } from './sealed-run-record.ts'
 import { EvaluatorRecommendation, Verdict } from './verdict.ts'
 
 /**
- * AD-6's closed twelve. Exported so a later story can walk the list directly,
- * and asserted at twelve by a test: AD-6 says the set "stays closed at
- * twelve", so adding a thirteenth member means amending that AD first.
+ * AD-6's closed twelve. Exported so a later reader can walk the list
+ * directly, and asserted at twelve by a test: AD-6 says the set "stays closed
+ * at twelve", so adding a thirteenth member means amending that AD first.
  */
 export const OUTCOME_STATES = [
 	'caught',
@@ -55,7 +55,8 @@ export type CheckResolutionValue = {
  * in the evidence". A single verdict per oracle would erase that distinction,
  * so the record mirrors the oracle's own `check` tree. Self-referential, so
  * it carries `.meta({ id })`; without it the tree exports as a positional
- * `__schema0` that Story 1.5's drift check would pin. Epic 3 populates it.
+ * `__schema0` that the published-schema drift check would pin.
+ * `core/evaluate/resolution.ts` populates it.
  */
 export const CheckResolution: z.ZodType<CheckResolutionValue> = z
 	.lazy(() =>
@@ -76,8 +77,8 @@ export const CheckResolution: z.ZodType<CheckResolutionValue> = z
  * digest and see what was compared (AD-8's "by digest and opaque reference,
  * never by content or path"). Named object rather than a concatenated tuple:
  * revision 1 let two conforming scorers compute different versions from
- * identical inputs if they hashed a different ordering. Epic 6 computes the
- * scoring version over this shape.
+ * identical inputs if they hashed a different ordering. The scorer computes
+ * the scoring version over this shape.
  */
 export const SCORING_VERSION_INPUT_NAMES = [
 	'contractSchemaVersion',
@@ -150,7 +151,7 @@ export const CoverageGap = z.strictObject({
 		.string()
 		.min(1)
 		.describe(
-			'Opaque and deliberately not an enum, for the reason `Waiver.rule` is opaque: AD-20 enumerates its seven discipline rules in prose and assigns them no identifiers, so an enum here would be this story minting the vocabulary AD-20 declined to.',
+			'Opaque and deliberately not an enum, for the reason `Waiver.rule` is opaque: AD-20 enumerates its seven discipline rules in prose and assigns them no identifiers, so an enum here would be this schema minting the vocabulary AD-20 declined to.',
 		),
 	relevancePredicate: z.string().min(1),
 	satisfactionPredicate: z.string().min(1),

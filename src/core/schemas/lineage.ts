@@ -11,11 +11,10 @@ import { Digest } from './primitives.ts'
  * twelve schema modules including this one, so importing `artifact.ts` back
  * from here would close a circular import.
  *
- * Spread rather than nested, so `EvalContract`'s shape and the Story 1.3
- * reject fixtures naming `['schemaVersion']`/`['parentDigest']` stay
- * unchanged; the two discriminated-union artifacts (`Probe`,
- * `EvidenceArtifact`) spread it inside every branch instead, since a union
- * has no root property bag.
+ * Spread rather than nested, so `EvalContract`'s shape and the reject
+ * fixtures naming `['schemaVersion']`/`['parentDigest']` stay unchanged; the
+ * two discriminated-union artifacts (`Probe`, `EvidenceArtifact`) spread it
+ * inside every branch instead, since a union has no root property bag.
  */
 export const lineageFields = {
 	schemaVersion: z

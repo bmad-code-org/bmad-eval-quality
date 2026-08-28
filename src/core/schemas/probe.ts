@@ -25,7 +25,7 @@ export const ProbeClass = z.enum(PROBE_CLASSES)
 export const Defect = z.strictObject({
 	defectId: DefectId,
 	behaviorId: BehaviorId.describe(
-		'The behaviour this defect breaks. AD-9 also puts a behaviour on the probe itself and this story carries both; that the two may disagree is a cross-field rule with no AD-5 code and is left unenforced in v0 rather than silently refined here.',
+		'The behaviour this defect breaks. AD-9 also puts a behaviour on the probe itself and this schema carries both; that the two may disagree is a cross-field rule with no AD-5 code and is left unenforced in v0 rather than silently refined here.',
 	),
 	summary: z.string().min(1),
 	severity: Severity,
@@ -44,7 +44,7 @@ const probeCommonFields = {
 	probeId: ProbeId,
 	probeClass: ProbeClass,
 	behaviorId: BehaviorId.describe(
-		'AD-9 puts the behaviour on the probe. The prior art put one on each seeded defect only, and this story carries both.',
+		'AD-9 puts the behaviour on the probe. The prior art put one on each seeded defect only, and this schema carries both.',
 	),
 	systemId: z
 		.string()
@@ -96,7 +96,7 @@ export const Probe = z
 	.meta({
 		id: 'Probe',
 		description:
-			"One corpus probe. Succeeds the prior-art `h0-ground-truth` schema per AD-24, carrying its system identifier, implementation digest, `expectedClean` flag, seeded defects, and rationale, and adding AD-9's probe class and AD-9's per-probe artifact and commit digests. Divergences: `implementationSha` becomes `implementationDigest`, `taskId` does not survive because the probe pins what it describes by digest, and `expectedGate` does not survive because AD-40 makes detection a signature match rather than a verdict comparison and AD-7 keeps comparisons inside the dominance vector, so carrying an expected gate would invite a comparison the architecture forbids. Two constructions are deliberately absent: AD-9's per-class QUALIFICATION record, whose five prose routes name no fields and whose acceptance criteria of record do not command it, and AD-40's machine-readable DEFECT SIGNATURE, which Owed item 7 records as having no fixture to land in because this repository contains no probe at all. Both arrive as additive `schemaVersion` bumps under AD-11 with the corpus epic. The cost is named rather than hidden: AD-9's \"an unqualified probe cannot enter a sealed set\" is enforced by nothing in v0: not this schema, not an AD-5 code, and not an AD-21 rung.",
+			"One corpus probe. Succeeds the prior-art `h0-ground-truth` schema per AD-24, carrying its system identifier, implementation digest, `expectedClean` flag, seeded defects, and rationale, and adding AD-9's probe class and AD-9's per-probe artifact and commit digests. Divergences: `implementationSha` becomes `implementationDigest`, `taskId` does not survive because the probe pins what it describes by digest, and `expectedGate` does not survive because AD-40 makes detection a signature match rather than a verdict comparison and AD-7 keeps comparisons inside the dominance vector, so carrying an expected gate would invite a comparison the architecture forbids. Two constructions are deliberately absent: AD-9's per-class QUALIFICATION record, whose five prose routes name no fields and whose acceptance criteria of record do not command it, and AD-40's machine-readable DEFECT SIGNATURE, which Owed item 7 records as having no fixture to land in because this repository contains no probe at all. Both arrive as additive `schemaVersion` bumps under AD-11 once a corpus exists to carry them. The cost is named rather than hidden: AD-9's \"an unqualified probe cannot enter a sealed set\" is enforced by nothing in v0: not this schema, not an AD-5 code, and not an AD-21 rung.",
 	})
 
 export type Probe = z.infer<typeof Probe>

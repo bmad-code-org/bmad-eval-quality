@@ -3,7 +3,10 @@
 Mechanical decision-integrity checks over `ARCHITECTURE-SPINE.md`. The authoritative copy of this
 script lives here, in the tracked tree, because the copies installed under `.claude/`, `.agent/` and
 `.agents/skills/bmad-architecture/scripts/` are gitignored as local agent tooling and cannot run in
-continuous integration. Keep all four byte-identical; `npm run lint:spine` runs this one.
+continuous integration. Keep them byte-identical apart from `DEFAULT_WORKSPACE`, which is the one
+line this copy carries and the skill copies do not: npm publishes the whole `scripts` map, so the
+architecture run folder lives here instead of in a `package.json` script value. `npm run lint:spine`
+runs this one.
 
 ## Why the three cross-reference rules exist
 

@@ -1,10 +1,10 @@
 /**
  * AD-4's connectives, quantifiers, and three-valued resolution: the tree-walker
- * that turns an `Expression` into one `CheckResolutionValue`. Leaf operators are
- * Story 3.1's and Story 3.3's `covers-by-key` (`operators.ts`). Operand
- * resolution, every pointer form including the bound-element `@/` form, is Story
- * 4.1's. `ResolveOperand` and `PointerDenotesCollection` are the consumer-side
- * contract it satisfies.
+ * that turns an `Expression` into one `CheckResolutionValue`. Leaf operators,
+ * `covers-by-key` included, live in `operators.ts`. Operand resolution, every
+ * pointer form including the bound-element `@/` form, is injected;
+ * `evidence-resolution.ts` supplies it, and `ResolveOperand` and
+ * `PointerDenotesCollection` are the consumer-side contract it satisfies.
  */
 import type { CheckResolutionValue } from '../schemas/evidence-artifact.ts'
 import type { Expression, Operand } from '../schemas/expression.ts'
@@ -25,11 +25,11 @@ import { ABSENT, type ResolvedValue } from './resolved-value.ts'
 
 /**
  * Resolves one operand to its evidence value. `boundElement` is the element a
- * quantifier currently has bound, `ABSENT` outside any predicate: not `null`
- * (Decision 8), since `JsonValue` already includes `null` and only a third,
- * distinct value can tell "no active binding" apart from "bound to a JSON
- * `null` element." Interpreting the `@/…` form itself belongs to AD-26's
- * addressing grammar in Story 4.1; this type only fixes its shape.
+ * quantifier currently has bound, `ABSENT` outside any predicate: not `null`,
+ * since `JsonValue` already includes `null` and only a third, distinct value
+ * can tell "no active binding" apart from "bound to a JSON `null` element."
+ * Interpreting the `@/…` form itself belongs to AD-26's addressing grammar in
+ * `evidence-resolution.ts`; this type only fixes its shape.
  */
 export type ResolveOperand = (
 	operand: Operand,
@@ -39,10 +39,11 @@ export type ResolveOperand = (
 
 /**
  * Whether a `{ pointer }` operand's declared response descriptor types it as a
- * collection (AD-4's absent-collection-typed rule, `ARCHITECTURE-SPINE.md:191`).
- * Consulted only when `resolveOperand` returns `ABSENT` for a `{ pointer }`
- * operand; every other operand form is exempt (Decision 3). Takes the bare
- * pointer string, since only that branch of the union ever calls it. A
+ * collection: AD-4 counts such a pointer resolving `absent` as an empty
+ * collection for the `insufficient-evidence` invariant. Consulted only when
+ * `resolveOperand` returns `ABSENT` for a `{ pointer }` operand; every other
+ * operand form is exempt. Takes the bare pointer string, since only that
+ * branch of the union ever calls it. A
  * conforming implementation must return `false` for any bound-element (`@/…`)
  * pointer: this predicate is called unconditionally for every `{ pointer }`
  * operand including `@/…` ones, and a `true` answer there would break the
@@ -59,10 +60,10 @@ type ResolutionContext = {
 
 /**
  * AD-4's one closed introduction condition, checked per operand and applied
- * uniformly (Decision 1): the resolved value and its operand are the only inputs.
+ * uniformly: the resolved value and its operand are the only inputs.
  *
- * Two permanent consequences of that uniform reading, same class as Decision
- * 7's `{ literal: [] }` case (Decision 10): a `count-tolerance` node asserting
+ * Two permanent consequences of that uniform reading, the same class as a
+ * `{ literal: [] }` operand tripping it: a `count-tolerance` node asserting
  * `expected: 0` over a genuinely empty collection can never resolve `true`,
  * because this interception fires first; and `existence` over a pointer
  * resolving to a present-but-empty array resolves `insufficient-evidence`, not
@@ -75,10 +76,10 @@ function operandDenotesEmptyCollection(
 ): boolean {
 	if (Array.isArray(resolved) && resolved.length === 0) return true
 	if (resolved !== ABSENT) return false
-	// Only a `{ pointer }` operand can carry a declared collection type
-	// (Decision 3). `{ literal }` never resolves ABSENT, and an ABSENT
-	// `{ referenceSet }` means `unresolved-reference-set` slipped past
-	// compilation, which this story assumes cannot happen.
+	// Only a `{ pointer }` operand can carry a declared collection type.
+	// `{ literal }` never resolves ABSENT, and an ABSENT `{ referenceSet }`
+	// means `unresolved-reference-set` slipped past compilation, which this
+	// module assumes cannot happen.
 	return 'pointer' in operand && pointerDenotesCollection(operand.pointer)
 }
 
@@ -98,8 +99,8 @@ function booleanResult(result: boolean): CheckResolutionValue {
 	}
 }
 
-// Decision 6: checked across every operand before any operator runs, so the
-// interception replaces a leaf's own two-valued answer outright.
+// Checked across every operand before any operator runs, so the interception
+// replaces a leaf's own two-valued answer outright.
 function anyOperandEmpty(
 	pairs: readonly { operand: Operand; resolved: ResolvedValue }[],
 	pointerDenotesCollection: PointerDenotesCollection,
@@ -146,8 +147,8 @@ function anyOf(children: Resolution[]): Resolution {
 /**
  * A quantifier's `collection` field resolves through the same
  * `resolveOperand`/`pointerDenotesCollection` pair as any other operand, with one
- * exception (Decision 3): `ABSENT` here is unconditionally an empty collection
- * and `pointerDenotesCollection` is never consulted. A `collection` field is a
+ * exception: `ABSENT` here is unconditionally an empty collection and
+ * `pointerDenotesCollection` is never consulted. A `collection` field is a
  * collection by definition, so there is nothing to disambiguate.
  */
 function resolveQuantifier(
@@ -171,11 +172,11 @@ function resolveQuantifier(
 		!Array.isArray(collection) ||
 		collection.length === 0
 	) {
-		// One guard, three cases: ABSENT (Decision 3), a non-array type mismatch
-		// (Decision 4), and a genuinely empty array. All three collapse onto the
-		// same `empty-collection` value (Decision 11): the evidence artifact
-		// cannot tell which of the three fired. Separating them would need a
-		// second introduction-condition value, a schema change out of scope here.
+		// One guard, three cases: ABSENT, a non-array type mismatch, and a
+		// genuinely empty array. All three collapse onto the same
+		// `empty-collection` value: the evidence artifact cannot tell which of the
+		// three fired. Separating them would need a second introduction-condition
+		// value, a schema change out of scope here.
 		return emptyCollectionResult()
 	}
 	const children = collection.map((element) =>
@@ -185,9 +186,9 @@ function resolveQuantifier(
 	return {
 		resolution:
 			op === 'for-all' ? allOf(childResolutions) : anyOf(childResolutions),
-		// Decision 9: null even when the fold below reads insufficient-evidence.
-		// This node did not trip the empty-collection condition itself; a child
-		// did, and still carries it, reachable through `children`.
+		// Null even when the fold below reads insufficient-evidence. This node did
+		// not trip the empty-collection condition itself; a child did, and still
+		// carries it, reachable through `children`.
 		introductionCondition: null,
 		children,
 	}
@@ -255,8 +256,8 @@ function resolveNotNode(
 	const resolved = resolveNode(child, boundElement, ctx)
 	return {
 		resolution: notOf(resolved.resolution),
-		// Decision 9: a fold, not a firing. `resolved` still carries the
-		// condition if it is the one that tripped it.
+		// A fold, not a firing. `resolved` still carries the condition if it is
+		// the one that tripped it.
 		introductionCondition: null,
 		children: [resolved],
 	}
@@ -278,8 +279,8 @@ function resolveConnective(
 	)
 	return {
 		resolution: fold(children.map((child) => child.resolution)),
-		// Decision 9: a fold. The tripped child, if any, carries the condition
-		// itself, in `children`.
+		// A fold. The tripped child, if any, carries the condition itself, in
+		// `children`.
 		introductionCondition: null,
 		children,
 	}
@@ -332,10 +333,10 @@ function resolveCoversByKeyNode(
 		boundElement,
 		ctx.artifactPath,
 	)
-	// Decision 3: checked first and unconditionally, before anything else
-	// looks at `actual`. A malformed `expected` is a resolver integration bug,
-	// never a data outcome, and must never be masked by whatever `actual`
-	// resolved to, including a benign empty collection.
+	// Checked first and unconditionally, before anything else looks at
+	// `actual`. A malformed `expected` is a resolver integration bug, never a
+	// data outcome, and must never be masked by whatever `actual` resolved to,
+	// including a benign empty collection.
 	if (expectedResolved !== ABSENT && !Array.isArray(expectedResolved)) {
 		throw new Error(
 			"covers-by-key's expected-operand guard: a reference-set operand " +
@@ -346,13 +347,15 @@ function resolveCoversByKeyNode(
 				'cannot tell the two apart.',
 		)
 	}
-	// Decision 7: genuine emptiness (AD-4's "two empty collections" case,
-	// generalized to a single empty operand) applies only once both operands
-	// are confirmed ordinary, present collections; ABSENT or a malformed
-	// `actual` is a decisive `false` (Decision 1, Decision 2) that must
-	// outrank emptiness. Delegating to `coversByKey` for those two cases keeps
-	// the check single-sourced: it already implements both as its own top
-	// guards.
+	// Genuine emptiness (AD-4's "two empty collections" case, generalized to a
+	// single empty operand) applies only once both operands are confirmed
+	// ordinary, present collections. An ABSENT `actual` is AD-26's decisive
+	// `false` over a pointer that did not resolve; a non-array `actual` is an
+	// operand type `covers-by-key` does not accept, which AD-4 assigns to
+	// `malformed-operator-expression` and which resolves `false` here because
+	// no compile-time check covers this position. Both outrank emptiness.
+	// Delegating to `coversByKey` for those two cases keeps the check
+	// single-sourced: it already implements both as its own top guards.
 	const bothPresentArrays =
 		expectedResolved !== ABSENT &&
 		actualResolved !== ABSENT &&
@@ -601,7 +604,8 @@ function resolveNode(
 /**
  * The public entry point. Walks `expression` and produces one
  * `CheckResolutionValue`, exactly what `Outcome.checkResolution` needs,
- * unmodified. `boundElement` starts `ABSENT` at the root (Decision 8).
+ * unmodified. `boundElement` starts `ABSENT` at the root, where no quantifier
+ * has bound anything yet.
  */
 export function resolveCheck(
 	expression: Expression,

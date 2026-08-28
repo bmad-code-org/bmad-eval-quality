@@ -94,12 +94,11 @@ export function compile(
 	checkForbiddenInputFloor(contract)
 	checkScopedResourceReferences(contract)
 	checkWaiverCompleteness(contract)
-	// Identifiers before legality, which is the reverse of the order the story
-	// named. A duplicated or plan-colliding leg id makes the legality check's
-	// question ("does the relation address both legs?") unanswerable, so
-	// legality-first reports an unreachable-evidence failure on a contract whose
-	// actual defect is the collision, and every identifier fixture would need a
-	// second mutation to reach its own code.
+	// Identifiers before legality. A duplicated or plan-colliding leg id makes
+	// the legality check's question ("does the relation address both legs?")
+	// unanswerable, so legality-first reports an unreachable-evidence failure on
+	// a contract whose actual defect is the collision, and every identifier
+	// fixture would need a second mutation to reach its own code.
 	checkWitnessLegIdentifiers(contract)
 	checkWitnessLegality(contract)
 	return contract

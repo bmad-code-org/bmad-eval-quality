@@ -1,7 +1,8 @@
 /**
  * AD-31 coverage gaps: relevance fired and satisfaction failed. A satisfied
  * rule gets no record, since AD-21 reads `coverageGaps` as the gap list.
- * Nothing throws; a gap never blocks compilation (ARCHITECTURE-SPINE.md:251).
+ * Nothing throws; AD-5 emits the artifact with the gap recorded, and only a
+ * structural error blocks compilation.
  */
 import {
 	type EvalContract,

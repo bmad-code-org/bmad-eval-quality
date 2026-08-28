@@ -45,11 +45,16 @@ const isAlphanumeric = (ch: string | undefined): boolean =>
 class Scanner {
 	private position = 0
 	private depth = 0
+	// Assigned in the body: Node's type stripping refuses a constructor
+	// parameter property, and every script importing this module through
+	// `digest.ts` would die at load with `ERR_UNSUPPORTED_TYPESCRIPT_SYNTAX`.
+	private readonly text: string
+	private readonly artifactPath: string
 
-	constructor(
-		private readonly text: string,
-		private readonly artifactPath: string,
-	) {}
+	constructor(text: string, artifactPath: string) {
+		this.text = text
+		this.artifactPath = artifactPath
+	}
 
 	scanDocument(): unknown {
 		this.skipWhitespace()

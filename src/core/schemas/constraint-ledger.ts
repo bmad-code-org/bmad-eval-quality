@@ -11,8 +11,8 @@ import type { JsonValue } from './primitives.ts'
  * The JSON Schema dialect an injected keyword belongs to. Named rather than
  * assumed: `items: false` bounds a tuple only beside 2020-12's `prefixItems`,
  * but under draft-7 a tuple exports as `items: [...]`, so the same injection
- * there overwrites the tuple and every operand list rejects everything. Story
- * 1.5 reads this before injecting.
+ * there overwrites the tuple and every operand list rejects everything.
+ * `publish.ts` reads this before injecting.
  */
 export type JsonSchemaDialect = 'draft-2020-12'
 
@@ -46,7 +46,7 @@ export type ConstraintLocation =
 	  }
 
 export type ConstraintLedgerEntry = {
-	/** stable identifier; Story 1.5 cites this, never the prose. */
+	/** stable identifier; callers cite this, never the prose. */
 	readonly id: string
 	readonly location: ConstraintLocation
 	/**
@@ -102,10 +102,10 @@ const arityEntries: readonly ConstraintLedgerEntry[] = ARITY_ARTIFACTS.flatMap(
 /**
  * AD-4 requires operand types in the published schema. Arity is structural
  * and repaired above; per-position operand types cannot be, since narrowing
- * a position would delete `malformed-operator-expression`'s operand-type limb
- * (Story 4.2's fixture). The declaration lives instead in each operator's
- * `operands` description; enforcement is Epic 4's. Recorded here so the split
- * is a decision, not an omission.
+ * a position would delete `malformed-operator-expression`'s operand-type
+ * limb. The declaration lives instead in each operator's `operands`
+ * description; enforcement is the compiler's. Recorded here so the split is a
+ * decision, not an omission.
  */
 const operandTypeEntry: ConstraintLedgerEntry = {
 	id: 'operator-operand-types',
@@ -121,7 +121,7 @@ const operandTypeEntry: ConstraintLedgerEntry = {
 	disposition: {
 		kind: 'not-expressible',
 		reason:
-			"Narrowing a tuple position in the schema would convert AD-26's \"a reference-set operand in any position other than the three named above fails under `malformed-operator-expression`\" into an anonymous schema-parse failure, deleting that code's operand-type limb. AD-4 still requires the types to be *expressed* in the published schema, and a ledger entry is not an expression, so each branch's `operands` carries the legality in its description — the same treatment AD-36's numeric domain gets on JsonValue. Consequence for Epic 4: the operand-type limb of `malformed-operator-expression` is entirely its own, with no schema-side partial coverage to rely on.",
+			"Narrowing a tuple position in the schema would convert AD-26's \"a reference-set operand in any position other than the three named above fails under `malformed-operator-expression`\" into an anonymous schema-parse failure, deleting that code's operand-type limb. AD-4 still requires the types to be *expressed* in the published schema, and a ledger entry is not an expression, so each branch's `operands` carries the legality in its description — the same treatment AD-36's numeric domain gets on JsonValue. Consequence for the compiler: the operand-type limb of `malformed-operator-expression` is entirely its own, with no schema-side partial coverage to rely on.",
 	},
 }
 
@@ -149,7 +149,7 @@ const lineageEntries: readonly ConstraintLedgerEntry[] = Object.entries(
 		disposition: {
 			kind: 'not-expressible',
 			reason:
-				'A cross-field rule. Encoding it as a Zod refinement would make it invisible to every non-TypeScript consumer and turn it into a Story 1.5 differential disagreement, so it is stated in the field description instead and left to the reader that validates a presented chain.',
+				'A cross-field rule. Encoding it as a Zod refinement would make it invisible to every non-TypeScript consumer and turn it into a disagreement in the published-schema differential check, so it is stated in the field description instead and left to the reader that validates a presented chain.',
 		},
 	}))
 
@@ -213,7 +213,7 @@ export const CONSTRAINT_LEDGER: readonly ConstraintLedgerEntry[] = [
 		disposition: {
 			kind: 'not-expressible',
 			reason:
-				"JSON Schema cannot express finiteness, and re-walking the value container in Zod would buy nothing an export can carry — Story 1.2's lexical scanner already rejects 1e999 and unsafe integers before any parse. AD-36 requires the restriction to be *expressed* in the published schema and a ledger entry is not an expression, so the domain statement lives in JsonValue's own description, which lands once on the shared definition. Consequence for Story 1.5: its differential check must not generate non-finite or unsafe-integer literals inside JsonValue and call the result a disagreement.",
+				"JSON Schema cannot express finiteness, and re-walking the value container in Zod would buy nothing an export can carry — the lexical scanner in `core/canonical/scan-json.ts` already rejects 1e999 and unsafe integers before any parse. AD-36 requires the restriction to be *expressed* in the published schema and a ledger entry is not an expression, so the domain statement lives in JsonValue's own description, which lands once on the shared definition. Consequence for the published-schema differential check: it must not generate non-finite or unsafe-integer literals inside JsonValue and call the result a disagreement.",
 		},
 	},
 	operandTypeEntry,

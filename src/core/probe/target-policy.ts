@@ -411,9 +411,9 @@ export function isSafeMethod(
 	method: string,
 ): boolean {
 	// Membership in both lists. `safeMethods` is declared without a subset
-	// refinement (AC 3), so a mapping may mark a method safe that it never
-	// authorized; answering `true` there would let a differential select a
-	// method `evaluateTarget` goes on to deny.
+	// refinement, so a mapping may mark a method safe that it never authorized;
+	// answering `true` there would let a differential select a method
+	// `evaluateTarget` goes on to deny.
 	return (
 		authorization.methods.some((allowed: string) => allowed === method) &&
 		authorization.safeMethods.some((safe: string) => safe === method)

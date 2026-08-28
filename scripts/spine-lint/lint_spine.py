@@ -512,9 +512,19 @@ def lint(text: str, registry_ad: int | None = None, roots: list[Path] | None = N
     }
 
 
+# The architecture run folder this repository lints. It lives here because npm
+# publishes the whole `scripts` map into every consumer's `node_modules`, and a
+# planning-artifact path may not ride along. This is the one line in which this
+# copy differs from the gitignored skill copies the README names.
+DEFAULT_WORKSPACE = "_bmad-output/planning-artifacts/architecture/architecture-eval-quality-2026-07-29"
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="Lint an architecture spine for mechanical integrity.")
-    ap.add_argument("--workspace", required=True, help="run folder containing ARCHITECTURE-SPINE.md")
+    ap.add_argument(
+        "--workspace", default=DEFAULT_WORKSPACE,
+        help="run folder containing ARCHITECTURE-SPINE.md (default: %(default)s)",
+    )
     ap.add_argument("-o", "--output", help="write JSON here instead of stdout")
     ap.add_argument(
         "--registry-ad", type=int,

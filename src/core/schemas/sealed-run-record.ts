@@ -245,7 +245,7 @@ export const EvidenceDisclosure = z.strictObject({
 		.min(0)
 		.nullable()
 		.describe(
-			'AD-17 requires truncation to be "deterministic, disclosed with its bound". `null` is untruncated. The unit is left to the caller and stated rather than encoded, following the `RubricBody.maxLength` precedent Story 1.3 set for AD-22\'s equally unitless "bounded length". The over-truncated condition compares this bound against the evidence carried in this same artifact, which is why the disclosure and the evidence travel together.',
+			'AD-17 requires truncation to be "deterministic, disclosed with its bound". `null` is untruncated. The unit is left to the caller and stated rather than encoded, following the `RubricBody.maxLength` precedent for AD-22\'s equally unitless "bounded length". The over-truncated condition compares this bound against the evidence carried in this same artifact, which is why the disclosure and the evidence travel together.',
 		),
 	reportedIncomplete: z
 		.boolean()

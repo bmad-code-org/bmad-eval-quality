@@ -154,10 +154,9 @@ type ExpressionSite = {
 
 /**
  * Every expression the contract declares, oracle checks first and then each
- * operation's sensitivity witness. Generalized from an oracle-only enumerator
- * in Story 6.2: a witness relation that escaped these five checks would be a
- * declaration that looks checked and is not, which is the defect class AD-10
- * exists to catch.
+ * operation's sensitivity witness. Generalized from an oracle-only enumerator:
+ * a witness relation that escaped these five checks would be a declaration that
+ * looks checked and is not, which is the defect class AD-10 exists to catch.
  */
 function forEachContractExpression(
 	contract: EvalContract,

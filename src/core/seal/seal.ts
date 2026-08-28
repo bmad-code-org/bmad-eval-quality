@@ -3,8 +3,8 @@
  * `SealedEvaluatorBrief` AD-16 describes, making its isolation boundary
  * structural rather than conventional. Pure per AD-1/AD-2: no filesystem,
  * network, clock, randomness, model call, or evaluator execution. Reuses
- * Story 2.1's `buildPlanIndex`/`renderDirectionText` for the generated prose
- * and `digestArtifact` for `contractDigest`; never reimplements rendering or
+ * `buildPlanIndex`/`renderDirectionText` for the generated prose and
+ * `digestArtifact` for `contractDigest`; never reimplements rendering or
  * hashing locally. Before returning, `validateAssembledBrief` gives AD-16's
  * exclusion guarantee a runtime backstop; see that function for why.
  */
@@ -15,8 +15,8 @@ import { SealedEvaluatorBrief } from '../schemas/sealed-evaluator-brief.ts'
 import { renderDirectionText } from './direction-prose.ts'
 import { buildPlanIndex } from './plan-index.ts'
 
-// Every artifact this story digests wholesale, so one stable label serves
-// every call regardless of which contract is being sealed.
+// `seal` digests the contract whole, so one stable label serves every call
+// regardless of which contract is being sealed.
 const CONTRACT_ARTIFACT_PATH = 'EvalContract'
 
 /**
@@ -97,10 +97,10 @@ export function seal(contract: EvalContract): SealedEvaluatorBrief {
 		parentDigest: null,
 		revisionCount: 0,
 		// A plain digest of the literal input: two differently-ordered
-		// contracts necessarily digest differently, by construction (see the
-		// story's Design Notes for why this field sits outside the
-		// byte-identical-under-reordering guarantee the rest of the brief
-		// carries).
+		// contracts necessarily digest differently, by construction. This
+		// field sits outside the byte-identical-under-reordering guarantee the
+		// rest of the brief carries, since it tracks the literal contract that
+		// was sealed.
 		contractDigest: digestArtifact(contract, CONTRACT_ARTIFACT_PATH),
 		// Carried through in contract order, unsorted: its own schema doc
 		// calls it "carried through unchanged," unlike the arrays below.

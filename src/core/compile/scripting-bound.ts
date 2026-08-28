@@ -12,7 +12,7 @@ import { buildPlanIndex, type PlanIndex } from '../seal/plan-index.ts'
 /**
  * A dangling `after` (naming no declared step, including one made
  * unresolvable by a duplicate id) resolves to `undefined`, the same as a
- * genuinely absent clause (Decision 4).
+ * genuinely absent clause.
  */
 function parentOf(
 	step: InteractionStep,
@@ -52,8 +52,12 @@ export function checkNestedTemporalClause(contract: EvalContract): void {
 /**
  * Bounds are exclusive ceilings: a metric sitting exactly at its bound is
  * legal. Each is set against this codebase's own two whole-contract
- * fixtures as the accept floor and the two epic-mandated adversarial shapes
- * as the reject ceiling (Decision 1).
+ * fixtures as the accept floor and AD-39's two counterexample plans as the
+ * reject ceiling: the eight-step single-root chain and the sixty-four
+ * independent `write-N`/`read-N` pairs, which AD-39 records as passing a
+ * depth bound alone. AD-5 mandates one authored reject fixture per shape
+ * this predicate rejects, and `tests/compile/scripting-bound.test.ts`
+ * carries them.
  */
 const WIDTH_MAX = 2 // gateCContract's own submit -> {poll, first-page} sits exactly here.
 const SHARED_ANCHOR_MAX = 2 // twice gateCContract's own shared-anchor count of 1 (no real fixture reaches 2).
@@ -70,15 +74,15 @@ type GraphMetrics = {
 
 /**
  * One pass over the plan's `after` edges, building three views at once: the
- * one-hop nesting test (shared with `checkNestedTemporalClause`, Decision 2),
- * each anchor's child count (width, shared anchors), and an undirected
- * adjacency map for the connected-component scan below (disjoint pairs).
- * O(n) in the step count.
+ * one-hop nesting test (shared with `checkNestedTemporalClause`), each
+ * anchor's child count (width, shared anchors), and an undirected adjacency
+ * map for the connected-component scan below (disjoint pairs). O(n) in the
+ * step count.
  *
  * Every internal map is keyed by each step's array position. `stepId` is
  * schema-legal to duplicate, so keying on it would merge two distinct
  * steps sharing an id into one adjacency entry and corrupt
- * `maxWidth`/`sharedAnchorCount`/`disjointPairCount` (Decision 6).
+ * `maxWidth`/`sharedAnchorCount`/`disjointPairCount`.
  */
 function computeGraphMetrics(
 	plan: readonly InteractionStep[],

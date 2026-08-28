@@ -1,0 +1,35 @@
+---
+import Search from '@astrojs/starlight/components/Search.astro'
+import SiteTitle from '@astrojs/starlight/components/SiteTitle.astro'
+import SocialIcons from '@astrojs/starlight/components/SocialIcons.astro'
+import ThemeSelect from '@astrojs/starlight/components/ThemeSelect.astro'
+import Banner from './Banner.astro'
+---
+
+<Banner />
+<div class="header-content sl-flex">
+  <div class="sl-flex">
+    <SiteTitle {...Astro.props} />
+  </div>
+  <div class="sl-flex">
+    <Search {...Astro.props} />
+  </div>
+  <div class="sl-flex right-group">
+    <SocialIcons {...Astro.props} />
+    <ThemeSelect {...Astro.props} />
+  </div>
+</div>
+
+<style>
+  .header-content {
+    gap: var(--sl-nav-gap);
+    justify-content: space-between;
+    align-items: center;
+    height: 100%;
+    padding: 0.5rem 1rem;
+  }
+  .right-group {
+    gap: 1rem;
+    align-items: center;
+  }
+</style>

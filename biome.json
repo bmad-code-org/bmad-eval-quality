@@ -20,7 +20,13 @@
 			"!experiments",
 			"!scripts/fixtures",
 			"!schemas",
-			"!tests/fixtures/*.json"
+			"!corpus",
+			"!tests/fixtures/*.json",
+			"!website/node_modules",
+			"!website/.astro",
+			"!website/package.json",
+			"!website/package-lock.json",
+			"!build"
 		]
 	},
 	"formatter": {
@@ -41,6 +47,17 @@
 		}
 	},
 	"overrides": [
+		{
+			"includes": ["**/*.astro"],
+			"linter": {
+				"rules": {
+					"correctness": {
+						"noUnusedImports": "off",
+						"noUnusedVariables": "off"
+					}
+				}
+			}
+		},
 		{
 			"includes": ["**/*.d.ts"],
 			"linter": {

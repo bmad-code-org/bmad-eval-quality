@@ -63,6 +63,7 @@ flowchart TD
 |   20 | epic6-story2 | Probe the fixture before scoring it: witnesses the contract declares, one plan, one pure verdict, and a digest of what the fixture was. |
 |   21 | epic6-story3 | Four checks that reject a rubric a judge could not answer honestly: an unanchored scale, an unbounded length, unnamed penalties, a reused id, evidence that resolves nowhere, and wording that asks the judge to grade the model's own reasoning. |
 |   22 | epic6-story4 | Every artifact comes back frozen, a new version is a new artifact naming its parent's hash, and a build check names which stage may write those fields. |
+|   23 | epic6-story5 | A command you can run in a shell, a package that actually ships its schemas and examples, a build check that keeps this project's own paperwork out of what people install, and the first real coverage number. |
 
 Adding a step: follow `learning-path-template.md`.
 
@@ -1961,3 +1962,95 @@ flowchart TD
   containing `#`, and a regex containing a backtick. Neither exists under `src/` today.
 - A key built at runtime or parsed out of JSON reaches a lineage field with the check silent. No
   token scanner can see either.
+
+## Step 23 (epic6-story5): a command to run, and a package that ships what it promises
+
+**In plain terms:** everything before this step was a library. To use it you had to write TypeScript
+and import it. That rules out most of the people who want it: a build server, a script, a bot
+reviewing a pull request. This step adds a command you can type. It also fixes the thing nobody
+notices until they install a package and find half of it missing, and adds a build check that stops
+the team's internal paperwork from shipping to strangers.
+
+**What:** three commands, `compile`, `seal`, and `preflight`, a `bin` entry so `npx eval-quality`
+works, four new places in the package other people can import from, a check that fails the build on
+in-house references, a small corpus of example contracts, and a measured coverage floor.
+
+**Why:** three of the four things the package was supposed to publish were missing. There was no
+command, the generated schemas never left the repository, and there was no example corpus. A
+consumer who could not read TypeScript had nothing. Separately, 136 lines under `src/` mentioned
+things like "Story 6.3" and "Epic 4", and comments ship, so `npm install eval-quality` handed you
+someone else's sprint notes.
+
+**The shape:**
+
+```mermaid
+flowchart LR
+  ARGV["argv"] --&gt; P["arguments.ts&lt;br/&gt;argv in, one value out"]
+  P --&gt; R["run.ts&lt;br/&gt;read, one library call, serialize"]
+  R --&gt; APP["application/&lt;br/&gt;compile | seal | preflight"]
+  APP --&gt; S["serialize.ts&lt;br/&gt;canonical bytes"]
+  S --&gt; OUT["stdout or --out"]
+  R --&gt; E["exit-codes.ts&lt;br/&gt;0 1 2 3 4 5 64"]
+```
+
+**Read in this order:**
+
+1. `src/cli/arguments.ts`: turns argv into one value. Reads no file, resolves no path.
+2. `src/cli/exit-codes.ts`: seven numbers and what each means. One function, total.
+3. `src/cli/run.ts`: the three commands. Every effect arrives as a function it was handed.
+4. `src/cli/main.ts`: the only file that touches `process` or a stream.
+5. `src/application/index.ts`: why the barrel exists at all, which is the import rules.
+6. `scripts/package-boundary.ts`: the twelve things a shipped file may not say.
+7. `corpus/dev/README.md`: what the example set has, and what it is missing and why.
+
+```mermaid
+flowchart TD
+  CLI["src/cli/*"] --&gt; APP["src/application/index.ts"]
+  APP --&gt; CORE["src/core/*"]
+  ROOT["src/index.ts"] --&gt; APP
+  ADAPT["src/adapters/index.ts"]
+  GEN["scripts/generate-dev-corpus.ts"] --&gt; APP
+  GEN --&gt; CORPUS["corpus/dev/"]
+  SCAN["scripts/package-boundary.ts&lt;br/&gt;npm run check:boundary"] -.-&gt;|reads every shipped file| CLI
+  SCAN -.-&gt; CORPUS
+```
+
+**Story:** `_bmad-output/implementation-artifacts/6-5-the-library-and-cli-surface.md`
+
+### Reference
+
+**Rules:**
+
+- A command reads its input, makes one library call, serializes the result, and stops. It decides
+  nothing.
+- Leave an input flag off and it reads stdin. Leave `--out` off and the artifact goes to stdout, so
+  the command works in a pipe.
+- `--out` ending in `.json` is a file. Anything else is a directory and the file gets named after
+  the artifact.
+- The artifact goes to stdout. Everything else goes to stderr, always.
+- Exit codes: 0 fine, 1 a promoted warning, 2 a failure, 3 the environment check did not pass, 4 the
+  contract is malformed, 5 something threw, 64 you typed the command wrong.
+- `--strict` promotes a warning to a failure. `--strict-inputs` is a different switch and controls
+  how picky the compiler is.
+- A shipped file may not name a story, an epic, an acceptance criterion, a task, a decision, or a
+  planning document. `npm run check:boundary` fails the build if one does.
+- The package publishes five entry points: the library, `./adapters`, `./conformance`,
+  `./schemas/*`, and `./corpus/*`.
+- Ninety percent of `core/` has to be covered by tests, statements and branches. It measures 96.85
+  and 92.25.
+
+**Watch out:**
+
+- `src/cli/` may import `src/application/` and `src/adapters/` and nothing else. That one rule is
+  why `src/application/index.ts` exists.
+- `npm pack` deletes `dist/` before it runs. Any test that packs needs `--ignore-scripts`, or it
+  pulls the floor out from under a test running beside it.
+- `import.meta.resolve` will happily resolve a file that does not exist. Use
+  `createRequire(...).resolve` when you mean to check.
+- A JSON file imported in ESM needs `with { type: 'json' }` or Node throws.
+- The example corpus is missing two of the three things the architecture asks for. Probes need a
+  scorer, and the scorer is not written. `corpus/dev/README.md` says so out loud.
+- `--strict` and codes 1 and 2 are wired and documented, and nothing reaches them yet, because
+  scoring ships later.
+- The documentation site is generated from `docs/`, and `npm run check:doc-invocations` runs every
+  fenced CLI line in it against the built binary.

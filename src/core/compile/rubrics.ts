@@ -81,8 +81,8 @@ export function checkRubricIdentifiers(contract: EvalContract): void {
 
 // AD-17 forbids scoring chain-of-thought or stated-reasoning prose. Nothing in
 // the schema declares which channel carries reasoning, so this check reads
-// wording, the same trade `auditBriefScripting` made in Story 2.3. The
-// alternative was a rung with no throw site.
+// wording, the same trade `auditBriefScripting` makes. The alternative was a
+// rung with no throw site.
 //
 // A term earns a place only when it has no ordinary sense in an API contract.
 // A compile-time code has no waiver path, so a term that fires on legal

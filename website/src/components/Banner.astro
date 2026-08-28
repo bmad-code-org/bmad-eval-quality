@@ -1,0 +1,25 @@
+---
+// Banner component for AI documentation notification
+import { getSiteUrl } from '../lib/site-url.mjs'
+
+const siteUrl = getSiteUrl()
+---
+
+<div class="ai-banner">
+  <span>🤖 <strong>AI-Optimized Docs:</strong> Plain text context available at <a href={`${siteUrl}/llms-full.txt`}><code>/llms-full.txt</code></a></span>
+</div>
+
+<style>
+  .ai-banner {
+    background: #1e293b;
+    color: #94a3b8;
+    font-size: 0.85rem;
+    padding: 0.4rem 1rem;
+    text-align: center;
+    border-bottom: 1px solid #334155;
+  }
+  .ai-banner a {
+    color: #60a5fa;
+    text-decoration: underline;
+  }
+</style>

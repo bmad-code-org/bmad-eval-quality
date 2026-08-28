@@ -8,6 +8,9 @@
   "main": "dist/index.js",
   "module": "dist/index.js",
   "types": "dist/index.d.ts",
+  "bin": {
+    "eval-quality": "dist/cli/main.js"
+  },
   "type": "module",
   "keywords": [
     "eval",
@@ -24,6 +27,8 @@
   ],
   "files": [
     "dist",
+    "schemas",
+    "corpus",
     "README.md",
     "LICENSE"
   ],
@@ -32,10 +37,17 @@
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     },
+    "./adapters": {
+      "types": "./dist/adapters/index.d.ts",
+      "default": "./dist/adapters/index.js"
+    },
     "./conformance": {
       "types": "./dist/testing/index.d.ts",
       "default": "./dist/testing/index.js"
-    }
+    },
+    "./schemas/*": "./schemas/*",
+    "./corpus/*": "./corpus/*",
+    "./package.json": "./package.json"
   },
   "homepage": "https://github.com/bmad-code-org/bmad-eval-quality#readme",
   "repository": {
@@ -52,7 +64,7 @@
     "node": ">=22.20.0"
   },
   "scripts": {
-    "prepare": "command -v husky >/dev/null 2>&1 && husky || exit 0",
+    "hooks:install": "husky",
     "build": "tsc -p tsconfig-build.json",
     "clean": "rm -rf dist",
     "typecheck": "tsc --noEmit -p tsconfig.json",
@@ -60,10 +72,12 @@
     "lint:fix": "biome check --write .",
     "format": "biome format --write .",
     "check:docs": "node scripts/check-docs.mjs",
-    "lint:spine": "python3 scripts/spine-lint/lint_spine.py --workspace _bmad-output/planning-artifacts/architecture/architecture-eval-quality-2026-07-29 --registry-ad 5 --workspace-root . --fail-on high",
+    "check:doc-invocations": "node scripts/check-doc-invocations.mjs",
+    "lint:spine": "python3 scripts/spine-lint/lint_spine.py --registry-ad 5 --workspace-root . --fail-on high",
     "test:spine-lint": "uv run --with pytest pytest scripts/spine-lint/tests -q",
     "build:shareable": "node scripts/build-shareable.mjs",
     "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
     "test:conformance": "vitest run tests/adapters tests/testing",
     "test:watch": "vitest",
     "check:vectors": "python3 tests/fixtures/derive_vectors.py --check",
@@ -75,9 +89,19 @@
     "check:ad31-table": "node scripts/check-ad31-table.ts",
     "check:layers": "node scripts/check-dependency-direction.ts",
     "check:lineage": "node scripts/check-lineage-ownership.ts",
+    "check:boundary": "node scripts/check-package-boundary.ts",
+    "generate:dev-corpus": "node scripts/generate-dev-corpus.ts",
+    "check:corpus": "node scripts/check-dev-corpus.ts",
+    "check:website-deps": "node scripts/audit-lockfile-age.mjs --lockfile website/package-lock.json && node scripts/check-licenses.mjs --lockfile website/package-lock.json",
     "check:shareable": "node scripts/check-shareable.mjs",
     "bench:digest": "node scripts/bench-digest.ts",
-    "validate": "npm run typecheck && npm run lint && npm run check:docs && npm run check:shareable && npm run lint:spine && npm run check:vectors && npm run check:schemas && npm run check:ad5-registry && npm run check:ad28-registry && npm run check:ad31-table && npm run check:layers && npm run check:lineage && npm run test",
+    "docs:dev": "npm --prefix website run dev",
+    "docs:build": "node tools/build-docs.mjs",
+    "docs:preview": "npm --prefix website run preview",
+    "docs:validate-links": "node tools/validate-doc-links.js",
+    "release:prepare": "node scripts/release-prepare.mjs",
+    "release:publish": "gh workflow run publish.yml --ref main",
+    "validate": "npm run typecheck && npm run lint && npm run check:docs && npm run check:doc-invocations && npm run check:shareable && npm run lint:spine && npm run check:vectors && npm run check:schemas && npm run check:ad5-registry && npm run check:ad28-registry && npm run check:ad31-table && npm run check:layers && npm run check:lineage && npm run check:boundary && npm run check:corpus && npm run check:website-deps && npm run test:coverage",
     "prepack": "npm run clean && npm run build",
     "prepublishOnly": "node scripts/assert-publish-authorized.mjs"
   },
@@ -87,6 +111,7 @@
   "devDependencies": {
     "@biomejs/biome": "2.5.8",
     "@types/node": "22.20.1",
+    "@vitest/coverage-v8": "4.1.10",
     "ajv": "8.20.0",
     "husky": "9.1.7",
     "lint-staged": "16.4.0",
@@ -95,7 +120,7 @@
     "vitest": "4.1.10"
   },
   "overrides": {
-    "vite": "7.3.1"
+    "vite": "7.3.6"
   },
   "lint-staged": {
     "*.{ts,js,json}": [

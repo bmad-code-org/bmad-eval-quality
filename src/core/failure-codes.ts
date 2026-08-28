@@ -4,8 +4,8 @@
 // is reserved for Zod definitions. The compiler that emits these codes lives
 // in `core/compile/`, one directory over.
 //
-// `scripts/check-ad5-registry.ts` checks this tuple against AD-5's table in
-// ARCHITECTURE-SPINE.md under `npm run validate`; the tuple's own invariants
+// `scripts/check-ad5-registry.ts` checks this tuple against AD-5's own
+// registry table under `npm run validate`; the tuple's own invariants
 // (twenty-one members, unique, kebab-case) are locked in
 // tests/schemas/failure-codes.test.ts.
 export const FAILURE_CODES = [
@@ -39,8 +39,8 @@ export type FailureCode = (typeof FAILURE_CODES)[number]
  * compilation (or, for this code, the post-generation brief audit), since no
  * artifact is emitted. Mirrors AD-28's `RuntimeFault` shape (`code`,
  * `artifactPath`) without subclassing it, per the Consistency Conventions'
- * Errors row keeping the two registries disjoint. Lives beside
- * `FAILURE_CODES` since Story 4.2 reuses it for the other twenty codes.
+ * Errors row keeping the two registries disjoint. Lives beside `FAILURE_CODES`
+ * because every code in that registry is thrown through it.
  */
 export class StructuralFailure extends Error {
 	readonly code: FailureCode

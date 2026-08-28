@@ -4,8 +4,8 @@ import { IDENTIFIER_CHARSET_SOURCE } from './primitives.ts'
 
 /**
  * AD-26's closed channel vocabulary, in AD-26's own order: order matters
- * because enum order lands in the export, and Story 1.5's drift check pins
- * whatever ships. Story 1.3 held these only as private regex fragments; they
+ * because enum order lands in the export, and the published-schema drift
+ * check pins whatever ships. These were once private regex fragments; they
  * are exported here because the Sealed Run Record's quoted evidence needs to
  * name a channel by one shared spelling.
  */
@@ -99,7 +99,7 @@ export const BoundElementPointer = z
 	.string()
 	.regex(BOUND_ELEMENT_POINTER_PATTERN)
 	.describe(
-		'AD-26 bound-element pointer: "@/" plus an RFC 6901 tail, addressing the element a quantifier binds. Bare "@/" addresses the element itself. That it appears only inside a quantifier is a compile-time check (Story 4.1), not a schema check.',
+		'AD-26 bound-element pointer: "@/" plus an RFC 6901 tail, addressing the element a quantifier binds. Bare "@/" addresses the element itself. That it appears only inside a quantifier is a compile-time check, not a schema check.',
 	)
 
 /**

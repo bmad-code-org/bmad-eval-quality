@@ -11,19 +11,30 @@
 //
 // The package executes nothing: it never runs an agent, judge, or system under test.
 //
-// The dependency matrix lets this file import `application/` and `core/schemas`
-// and nothing else, so pre-flight's pure plan-and-reduce pair is not re-exported
-// here: `runPreflight` is the entry point, and the artifact types below are what
-// a caller reads off its result.
+// The dependency matrix grants this file two edges and no others: `root ->
+// application` and `root -> core-schemas`. So the layer barrel
+// `application/index.ts` is how everything else under `core/` is reached,
+// while the artifact types below come straight off `core/schemas` on the
+// second edge. The port vocabulary stays at the `eval-quality/conformance`
+// subpath, where AD-37 puts the conformance definition an adapter author
+// reads; the reference adapters stay at `eval-quality/adapters`.
 
-export {
-	type RunPreflightOptions,
-	runPreflight,
-} from './application/preflight.ts'
+export * from './application/index.ts'
+export type { ArtifactReference } from './core/schemas/artifact-reference.ts'
+export type { EvalContract } from './core/schemas/eval-contract.ts'
+export type { EvaluatorConfiguration } from './core/schemas/evaluator-configuration.ts'
+export type { EvidenceArtifact } from './core/schemas/evidence-artifact.ts'
+export type { IsolationManifest } from './core/schemas/isolation-manifest.ts'
 export type {
 	PreflightCheck,
 	PreflightVerdict,
 } from './core/schemas/preflight-verdict.ts'
+export type { PrivateArtifactManifest } from './core/schemas/private-artifact-manifest.ts'
+export type { Probe } from './core/schemas/probe.ts'
+export type { Rubric } from './core/schemas/rubric.ts'
+export type { ScoringPolicy } from './core/schemas/scoring-policy.ts'
+export type { SealedEvaluatorBrief } from './core/schemas/sealed-evaluator-brief.ts'
+export type { SealedRunRecord } from './core/schemas/sealed-run-record.ts'
 export type {
 	FixtureReset,
 	ManifestationWitness,

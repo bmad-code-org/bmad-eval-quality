@@ -30,7 +30,7 @@ export const PrivateArtifactEntry = z.strictObject({
 			'The opaque handle the corpus port resolves under AD-8. Only emptiness is excluded: an opaque reference with a shape this package understands would stop being opaque.',
 		),
 	digest: Digest.describe(
-		'The prior art\'s `sha256`, renamed against the shared AD-27 primitive (Decision 3); the value form is byte-identical. AD-8 is explicit that "a manifest digest is never a trusted label": the core recomputes the digest from the resolved bytes and a mismatch is an AD-28 `digest-mismatch` fault at ingest. That is a rule about resolved bytes, which a schema over a string cannot see, so it is recorded here and enforced nowhere in this file.',
+		'The prior art\'s `sha256`, renamed against the shared AD-27 primitive; the value form is byte-identical. AD-8 is explicit that "a manifest digest is never a trusted label": the core recomputes the digest from the resolved bytes and a mismatch is an AD-28 `digest-mismatch` fault at ingest. That is a rule about resolved bytes, which a schema over a string cannot see, so it is recorded here and enforced nowhere in this file.',
 	),
 	artifactKind: PrivateArtifactKind.describe(
 		"The prior art's `artifactType`, renamed and ratified with its eight members unchanged.",

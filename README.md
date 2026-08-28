@@ -2,9 +2,11 @@
 
 ### `eval-quality` does three things
 
-1. **Compile**: validate and normalize an eval spec into a machine-readable artifact.
-2. **Seal**: render the Markdown brief for the independent evaluator while hiding the planted bug and the scoring answer.
-3. **Score**: compare the evaluator’s completed findings with the hidden bug signature to determine whether the bug was actually caught.
+1. **Compile**: validate and normalize an eval contract into a machine-readable artifact.
+2. **Seal**: render the brief for the independent evaluator while hiding the planted bug and scoring answer.
+3. **Preflight**: verify baseline environment readiness and probe reachability before running an evaluator.
+
+Scoring is the next milestone: comparing the evaluator’s completed findings with the hidden bug signature to determine whether the bug was actually caught.
 
 ### What is the eval spec?
 
@@ -36,13 +38,33 @@ A weak eval checks only the response and misses the bug.
 
 A strong eval checks the response **and** persistence, so it catches the bug.
 
-### Caveman version
+### Caveman summary
 
-**Write the eval. Hide the bug. See if the eval catches it.**
+Write the eval. Hide the bug. See if the eval catches it.
+
+## Key Concepts
+
+Understanding `eval-quality` requires three core artifacts:
+
+| Concept | What it is | Example |
+| --- | --- | --- |
+| **Contract** (`eval-contract.json`) | The test specification defining expected behaviors, oracles (checks), permitted tools, and evidence rules. | "Verify API rejects invalid JWT and creates zero database records." |
+| **Probe** (`probe.json`) | A diagnostic request sent to the environment to test baseline state, reachability, or fault injection. | A request sending an expired token to `/api/v1/resource`. |
+| **Observation** (`observation.json`) | The empirical response evidence recorded when a probe is executed against the environment. | `{ responseStatus: 401, responseBody: { error: "token_expired" } }` |
+
+### How They Fit Together
+
+```text
+┌────────────────────────┐      ┌────────────────────────┐      ┌────────────────────────┐
+│     Eval Contract      │      │         Probe          │      │      Observation       │
+│  (The Specification)   │ ───► │ (Diagnostic Request)   │ ───► │   (Empirical Result)   │
+│  "What should happen"  │      │  "Send malformed JWT"  │      │   "Got 401, 0 records" │
+└────────────────────────┘      └────────────────────────┘      └────────────────────────┘
+```
 
 ## Elaboration
 
-**Compile disciplined agent eval contracts, then check whether those contracts can catch known bugs.**
+Compile disciplined agent eval contracts, then check whether those contracts can catch known bugs.
 
 An agent can produce an answer that reads as correct and is materially wrong. An eval can make the same mistake.
 
@@ -61,7 +83,7 @@ Send malformed input. Verify the request fails, inspect the full response body,
 confirm the specific error, and confirm no record was created.
 ```
 
-A passing eval says little when the contract never asked for the probe that would expose the failure. So the first thing worth testing is whether the eval can catch a failure you already know about.
+A passing eval says little when the contract never asked for the probe that would expose the failure. Testing whether the eval can catch a failure you already know about is the first check worth running.
 
 ```text
 product spec
@@ -79,8 +101,8 @@ product spec
 - the oracle vocabulary and authoring rules
 - the contract compiler
 - the environment pre-flight
-- Eval Contract strength scoring
-- versioned evidence output and PASS / WAIVED / CONCERNS / FAIL governance
+- Eval Contract strength scoring (next milestone)
+- versioned evidence output and PASS / WAIVED / CONCERNS / FAIL governance (next milestone)
 
 The caller provides:
 
@@ -91,8 +113,9 @@ The caller provides:
 - a sealed run record returned for ingestion
 
 `eval-quality` executes nothing: it never spawns a process, calls a model, drives a system under test,
-or invokes a judge. Its pure stages are compile, seal, ingest, pre-flight, score, and emit. Pre-flight
-probes the fixture through the environment-probe port, so a contract that declares a fixture reset
+or invokes a judge. Its pure stages are compile, seal, ingest, pre-flight, score, and emit; compile,
+seal, and pre-flight ship, and ingest, score, and emit are the next milestone. Pre-flight probes the
+fixture through the environment-probe port, so a contract that declares a fixture reset
 needs the caller's probe policy to authorize that operation's method as well as the read methods
 every other pre-flight leg uses. Engine integration is a later adapter behind a port, not a v0
 dependency. See
@@ -122,7 +145,7 @@ Rubrics compile under the same discipline: an anchored scale, a bounded length, 
 
 ## How Eval Contract strength scoring works
 
-Do not trust a contract because it looks thorough. Put a known defect behind it, run the evaluator, and ask whether the contract's oracles caused the defect to be caught.
+Do not trust a contract because it looks thorough. Put a known defect behind it, run the evaluator, and check whether the contract's oracles caused the defect to be caught.
 
 Two probe classes go behind a contract, and a strong contract rejects both:
 
@@ -142,17 +165,70 @@ A required oracle that missed, abstained, errored, or is absent prevents PASS, a
 
 `eval-quality` is its own repository and package, not a plugin inside another framework.
 
-The **library** is the primary surface. It exports the contract schema, the oracle vocabulary, the compiler, the scorer, the pre-flight, and the evidence types. The published typed schema is what lets coding agents author contracts correctly by default, which is how the discipline scales beyond the people who went looking for the tool.
+The **library** is the primary surface. It exports the contract schema, the oracle vocabulary, the compiler, the pre-flight, and the evidence types. The published typed schema is what lets coding agents author contracts correctly by default, which is how the discipline scales beyond the people who went looking for the tool.
 
 The **CLI** wraps the same library for callers that cannot import TypeScript: CI jobs, GitHub Actions, PR-review and unit-test bots, other frameworks' skills, and any agent permitted to run a shell command.
 
+### What the CLI Commands Do
+
+- **`compile`**: Typechecks an authored `eval-contract.json`. Verifies that all behaviors, oracles, rubrics, and sensitivity witnesses comply with structural and authoring rules.
+- **`seal`**: Generates a `sealed-evaluator-brief.json` by stripping secret defect signatures, planted answers, and author commentary. The brief carries only the directions and safety bounds the evaluator needs.
+- **`preflight`**: Reduces caller-supplied probe observations against the contract to verify environment baseline readiness and probe reachability. Halts early with exit code `3` if the environment is unready.
+
+### Running the CLI
+
+Every command runs through `npx` without installing anything:
+
 ```bash
-eval-quality compile   # validate a contract against the authoring discipline
-eval-quality preflight # verify the measurement environment before scoring
-eval-quality score     # score an ingested run record, report per-oracle outcomes
+npx eval-quality compile --in contract.json --out ./eval-out
+
+npx eval-quality seal --in contract.json --out ./eval-out
+
+npx eval-quality preflight --contract contract.json \
+  --probes probes.json --observations observations.json \
+  --run-id 2026-08-28-a --out ./eval-out
 ```
 
-Commands are non-interactive by default, emit machine-readable output, and exit with a code reflecting the gate verdict. The library and CLI expose the same capabilities and produce the same versioned evidence artifact.
+Every command is non-interactive: no prompt, no terminal check, and no behaviour that differs when
+stdin is a pipe. Each one is a single call into the library plus artifact serialization.
+
+**Input and output.** An input flag left out reads stdin, and `-` names stdin explicitly; at most one
+input may be `-`. Without `--out` the artifact goes to stdout, so a command composes with a pipe.
+An `--out` ending in `.json` is a file path; anything else is a directory, and the artifact is
+written to `<target>/<kind>.json` where `kind` is `eval-contract`, `sealed-evaluator-brief`, or
+`preflight-verdict`. Diagnostics and errors go to stderr, always, so stdout carries the artifact
+alone.
+
+**Exit codes.**
+
+| Exit Code | Meaning |
+| --- | --- |
+| `0` | success, and every verdict other than FAIL or a promoted CONCERNS |
+| `1` | CONCERNS promoted by `--strict` |
+| `2` | FAIL |
+| `3` | invalid: a pre-flight verdict that did not pass |
+| `4` | structural failure |
+| `5` | runtime fault |
+| `64` | usage error |
+
+Codes 1 and 2 report a scored verdict. Scoring ships in a later release, so no command here reaches
+either yet, and `--strict` changes no code this binary produces. The flag and the two codes are part
+of the published contract, so they are documented now and wired now.
+
+`--strict` is the gate-promotion flag and is accepted on every command. `--strict-inputs` and
+`--no-strict-inputs` are a different switch: they set the compiler's input strictness, which is on
+by default.
+
+**The published JSON Schema.** A consumer that does not read TypeScript validates against the
+twelve generated documents, published at the `eval-quality/schemas/*` subpath:
+
+```ts
+import spec from 'eval-quality/schemas/eval-contract.schema.json' with { type: 'json' }
+```
+
+The import attribute is required: ESM on Node 22 and 24 both throw `ERR_IMPORT_ATTRIBUTE_MISSING`
+without it. The development corpus ships the same way, at `eval-quality/corpus/dev/`, so an adopter
+can read real compiled contracts and one compiled-and-sealed pair without cloning this repository.
 
 ## Relationship with BMad and TEA
 
@@ -169,6 +245,12 @@ Any human, bot, CI job, skill, or other framework can author a contract and use 
 
 Evaluator runs remain isolated to prevent builder-context leakage and preserve traceability. Stronger contract oracles produced the measured detection improvement.
 
+### Real-World Walkthrough: Testing a `bmad-tea` Knowledge Harness
+1. Author an `eval-contract.json` declaring required knowledge step files (e.g. `playwright-utils-mandate.md`).
+2. Run `eval-quality compile --in contract.json` to validate contract structure and discipline rules.
+3. Run `eval-quality seal --in contract.json --out ./run` to generate `sealed-evaluator-brief.json`.
+4. Pass `sealed-evaluator-brief.json` to `bmad-tea` to execute the task without seeing answer keys.
+
 ## Evidence and limitations
 
 Holding the model, the budget, the system, and the defects fixed, and changing only how the Eval Contract was authored, sealed-evaluator detection moved from **0.33 to 1.00** across three naturally occurring defects, three repetitions per arm, 19 scored runs.
@@ -179,7 +261,7 @@ Read the [product brief](_bmad-output/planning-artifacts/briefs/brief-eval-quali
 
 ## Architecture status
 
-The [architecture spine](_bmad-output/planning-artifacts/architecture/architecture-eval-quality-2026-07-29/ARCHITECTURE-SPINE.md) is **split by pipeline half. The compile-and-seal half is epic-ready; the score half is not.** Gate C closed at zero blocking authoring points and 14 of 14 declaration-only predicates. Gate D's generated-current-fields arm matched the hand-written positive control at 3 of 3 seeded-defect catches, so `seal` joins the stage-one order without adding an evidence-precondition field.
+The [architecture spine](_bmad-output/planning-artifacts/architecture/architecture-eval-quality-2026-07-29/ARCHITECTURE-SPINE.md) is split by pipeline half: the compile-and-seal half is epic-ready, while the score half is not. Gate C closed at zero blocking authoring points and 14 of 14 declaration-only predicates. Gate D's generated-current-fields arm matched the hand-written positive control at 3 of 3 seeded-defect catches, so `seal` joins the stage-one order without adding an evidence-precondition field.
 
 Contract strength scoring has been open since [ADR-007](_bmad-output/planning-artifacts/architecture/architecture-eval-quality-2026-07-29/ADR-007-compile-score-split.md): three rounds of external review established that the catch rate was 1.00 by construction, because nothing matched a finding to the defect its probe seeded. That input now exists and the mapping that reads it is owed to a reference implementation.
 
@@ -199,15 +281,19 @@ Out of scope entirely: a new eval engine, a hosted service, a dashboard or GUI, 
 
 ```bash
 npm install
-npm run validate            # typecheck, lint, docs, shareable, spine, vectors, schemas, registries, AD-31 table, layers, tests
+npm run validate            # typecheck, lint, docs, shareable, spine, vectors, schemas, registries, AD-31 table, layers, lineage, boundary, corpus, tests with coverage
 npm run build               # emit to dist/
 npm run lint:fix            # auto-fix with Biome
+npm run test:coverage       # run the suite and fail below AD-30's 90 percent statement and branch floor on core/
 npm run generate:schemas    # rebuild schemas/*.schema.json from the Zod source
 npm run check:schemas       # fail if the committed schemas differ from the source by one byte
 npm run check:ad5-registry  # fail if the failure-code list drifts from the AD-5 table
 npm run check:lineage       # fail if a module outside the stage table writes an artifact's lineage fields
+npm run check:boundary      # fail if anything the tarball carries references the planning system that produced it
 npm run generate:ad31-table # rebuild docs/ad31-coverage-predicates.generated.md from the predicates
 npm run check:ad31-table    # fail if the committed AD-31 table differs from the builder by one byte
+npm run generate:dev-corpus # rebuild corpus/dev/ from the contract fixtures through the shipped compile and seal
+npm run check:corpus        # fail if the committed corpus differs from the builder by one byte
 npm run build:shareable     # render the planning artifacts to self-contained HTML
 npm run test:conformance    # run the published port conformance suite against every shipped adapter
 ```
@@ -266,4 +352,4 @@ See [SECURITY.md](SECURITY.md). Please do not open a public issue for vulnerabil
 
 ## License
 
-Apache-2.0 &copy; Murat Ozcan. See [LICENSE](LICENSE).
+Apache-2.0 © Murat Ozcan. See [LICENSE](LICENSE).

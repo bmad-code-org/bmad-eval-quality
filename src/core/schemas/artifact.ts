@@ -30,8 +30,9 @@ type InterchangeArtifactEntry = {
 
 /**
  * The Structural Seed's inventory, closed at twelve, held as data: the
- * prior-art test, the constraint ledger's lineage-entry generation, and
- * Story 1.5's export walk all read it instead of a second hard-coded list.
+ * prior-art test, the constraint ledger's lineage-entry generation, and the
+ * published-schema export walk all read it instead of a second hard-coded
+ * list.
  *
  * Lineage fields live in `lineage.ts`, not here, because eleven of the twelve
  * schema modules import them (every entry but `artifact-reference`, the one

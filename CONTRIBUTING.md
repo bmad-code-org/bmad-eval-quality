@@ -16,6 +16,7 @@ git clone https://github.com/bmad-code-org/bmad-eval-quality.git
 cd eval-quality
 nvm use
 npm install
+npm run hooks:install   # install the pre-commit hooks
 
 # Verify the setup
 npm run validate
@@ -91,9 +92,113 @@ Types: `feat`, `fix`, `docs`, `refactor`, `test`, `chore`.
 
 All PRs require at least one maintainer review before merge. CI must be green.
 
-## Release Process
+## Releasing
 
-Releases are cut via the "Publish Package" GitHub Actions workflow (`workflow_dispatch`): it bumps the version, builds, publishes to npm, tags the release, and opens a PR with the version bump back to `main`.
+A release is two steps with a human merge in between. The version is decided on a laptop and lands
+on `main` through an ordinary PR; the publish workflow then publishes whatever version `main`
+declares. Nothing in CI bumps a version or pushes to a branch, because the `protect-main` ruleset
+makes that impossible: a PR opened with `GITHUB_TOKEN` never triggers `pr-gate.yml`, so the
+required `gate` check never posts and the PR never merges.
+
+### 1. Cut the release PR
+
+From a clean checkout of `main` that matches `origin/main`:
+
+```bash
+npm run release:prepare -- patch    # or minor, major
+```
+
+The script bumps `package.json` and `package-lock.json` (`npm version --no-git-tag-version`), moves
+the `[Unreleased]` notes in `CHANGELOG.md` into a dated `[X.Y.Z]` section
+(`scripts/stamp-changelog.mjs`), commits `chore: release vX.Y.Z` on `release/vX.Y.Z`, pushes, and
+opens the PR against `main`. It refuses on a dirty tree, off `main`, when local `main` differs from
+`origin/main`, and when the tag, the branch, or the npm version already exists. Pass `--no-pr` to
+push without opening the PR.
+
+Write changelog entries under `[Unreleased]` in the PR that makes the change, so the release PR
+only moves them. If `[Unreleased]` is empty at release time the stamp is a no-op and the GitHub
+Release falls back to generated notes.
+
+Review the PR, wait for `gate`, merge it. Every merge here is a squash, so the release commit on
+`main` is the squash commit, and that is what gets tagged.
+
+### 2. Publish from main
+
+```bash
+npm run release:publish             # gh workflow run publish.yml --ref main
+```
+
+or Actions > Publish Package > Run workflow, branch `main`. The workflow takes no inputs. It:
+
+1. fails at the AD-18 guard unless the repository variable `PUBLICATION_UNBLOCKED` is `true`;
+2. checks out `main`, pins npm, audits lockfile age, runs `npm ci`;
+3. reads the version from `package.json` and resolves what already happened: refuses if tag
+   `vX.Y.Z` exists at a different commit, or if npm already has `X.Y.Z` published from a different
+   commit (`gitHead` on the registry manifest);
+4. runs `npm run validate` and `npm run build`;
+5. `npm publish --access public --provenance --tag latest` through the npm Trusted Publisher
+   (OIDC, no token), skipped when npm already has the version;
+6. polls the registry for up to two minutes until the version resolves;
+7. tags `github.sha` as `vX.Y.Z` (no `-f`), skipped when the tag already points there;
+8. creates the GitHub Release with the `[X.Y.Z]` section of `CHANGELOG.md` as the body, falling
+   back to `[Unreleased]`, then to generated notes; skipped when the Release exists.
+
+Re-running the workflow after a partial failure is the recovery path. The registry can accept a
+tarball and then fail the provenance upload, or the tag push can fail after the publish succeeded;
+each step above checks its own prior success, so a re-run finishes the release instead of dying on
+"tag already exists" or "cannot publish over existing version". Runs are serialized
+(`concurrency: publish`, no cancellation).
+
+### First publish
+
+The npm Trusted Publisher form lives under an existing package's settings
+(npmjs.com > Packages > `eval-quality` > Settings > Trusted Publisher), and as of the
+[current docs](https://docs.npmjs.com/trusted-publishers) there is no way to register one for a
+package the registry has never seen. Check that page first; if npm has added first-publish support
+since, configure the publisher and skip the token below. Otherwise the first version goes up once
+by hand:
+
+1. Pick the first version deliberately. `package.json` sits at `0.0.0`, so `release:prepare -- patch`
+   produces `0.0.1` and `minor` produces `0.1.0`. Cut and merge that PR as in step 1.
+2. On npmjs.com, create a granular access token: packages and scopes "Read and write", the
+   shortest expiry offered, IP allowlist if practical, bypass 2FA off. It has to cover all
+   packages, since an unpublished package cannot be selected.
+3. From a clean checkout of `main` at the merged release commit (`git rev-parse HEAD` must equal
+   what `gh pr view --json mergeCommit` reports; publishing from the release branch would record
+   a `gitHead` that is not on `main` and the workflow would refuse it):
+
+   ```bash
+   npm ci && npm run validate && npm run build
+   EVAL_QUALITY_PUBLISH_AUTHORIZED=true NODE_AUTH_TOKEN=<token> npm publish --access public --tag latest
+   ```
+
+   No `--provenance`: attestations need a CI identity. Every later release gets one.
+4. Revoke the token.
+5. Configure the Trusted Publisher: organization `bmad-code-org`, repository `bmad-eval-quality`,
+   workflow filename `publish.yml`, no environment.
+6. Run the publish workflow from `main`. It finds the version on npm with a matching `gitHead`,
+   skips the publish, and does the tag and Release.
+
+### Tag protection
+
+Tags `v*` should be immutable once pushed, like the "Release tags" ruleset on bmad-tea. Create it
+once with:
+
+```bash
+gh api --method POST repos/bmad-code-org/bmad-eval-quality/rulesets --input - <<'JSON'
+{
+  "name": "Release tags",
+  "target": "tag",
+  "enforcement": "active",
+  "conditions": { "ref_name": { "include": ["refs/tags/v*"], "exclude": [] } },
+  "rules": [{ "type": "deletion" }, { "type": "non_fast_forward" }, { "type": "update" }],
+  "bypass_actors": []
+}
+JSON
+```
+
+Creation stays allowed, which is all the workflow needs. A tag at the wrong commit is fixed by
+bumping the version and releasing again, never by moving the tag.
 
 ## Community & Support
 

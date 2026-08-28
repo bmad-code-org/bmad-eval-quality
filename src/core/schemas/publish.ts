@@ -148,10 +148,11 @@ export const injectConstraint = (
 
 /**
  * The one pure builder (AD-13): output mode, because published schemas
- * describe artifacts as consumers receive them, though Story 1.4 asserts all
- * twelve export byte-identically in both modes either way. Zod emits no
- * `$id` at any level, so it is synthesised here, second after `$schema`,
- * with Zod's own key order unchanged after it.
+ * describe artifacts as consumers receive them, though
+ * `tests/schemas/artifact-registry.test.ts` asserts all twelve export
+ * byte-identically in both modes either way. Zod emits no `$id` at any level,
+ * so it is synthesised here, second after `$schema`, with Zod's own key order
+ * unchanged after it.
  */
 export const publishedDocument = (
 	key: InterchangeArtifactKey,
@@ -187,8 +188,8 @@ export const publishedDocuments = (): Record<
 	) as Record<InterchangeArtifactKey, Record<string, unknown>>
 
 /**
- * AC 3's exact serialisation, shared by the generator and the drift check so
- * the two cannot disagree about bytes: 2-space indent, one trailing newline,
+ * The exact byte form of a published document, shared by the generator and the
+ * drift check so the two cannot disagree: 2-space indent, one trailing newline,
  * and every code unit above U+007F escaped as `\uXXXX` so the committed files
  * are pure ASCII. The test fixtures follow the same rule, which removes one
  * byte-level encoding variable from a byte-exact comparison.

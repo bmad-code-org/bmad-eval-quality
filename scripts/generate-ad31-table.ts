@@ -19,6 +19,7 @@ import {
 } from '../tests/coverage/fixtures/corpus.ts'
 import {
 	AD31_TABLE_DIRECTORY,
+	AD31_TABLE_FRONTMATTER,
 	AD31_TABLE_PATH,
 	AD31_TABLE_TARGET,
 } from './ad31-table-target.ts'
@@ -28,7 +29,10 @@ await mkdir(AD31_TABLE_DIRECTORY, { recursive: true })
 // Guarded: unguarded, the builder's diagnosis prints as a Node stack.
 let document: string
 try {
-	document = coveragePredicateTable(CORPUS_CONTRACTS, CORPUS_CELLS)
+	document = `${AD31_TABLE_FRONTMATTER}${coveragePredicateTable(
+		CORPUS_CONTRACTS,
+		CORPUS_CELLS,
+	)}`
 } catch (error) {
 	console.error(
 		`generate-ad31-table: the builder failed: ${
