@@ -10,6 +10,8 @@ body.
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-08-28
+
 ### Added
 
 - The library surface: `eval-quality` exports the contract schema, the oracle vocabulary, the
@@ -39,3 +41,4 @@ body.
 
 - The pre-flight reducer throws `port-contract-violation` on a repeated `probeId` instead of
   silently taking the last observation.
+
