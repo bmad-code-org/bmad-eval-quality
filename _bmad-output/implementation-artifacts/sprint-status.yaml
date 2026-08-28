@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-08-10
-last_updated: 2026-08-26
+last_updated: 2026-08-28
 project: evalcore
 project_key: NOKEY
 tracking_system: file-system
@@ -71,7 +71,7 @@ development_status:
   4-3-the-scripting-bound-graph-predicate-and-its-adversarial-fixtures: done
   4-4-stages-as-pure-plan-and-reduce-pairs-with-one-orchestration-layer: done
   
-  epic-5: in-progress
+  epic-5: done
   5-1-the-seven-relevance-predicates: done
   5-2-the-seven-satisfaction-predicates: done
   5-3-the-contract-fixture-corpus-and-the-regenerated-table: done
