@@ -171,8 +171,8 @@ The **CLI** wraps the same library for callers that cannot import TypeScript: CI
 
 - **`compile`**: Typechecks an authored `eval-contract.json`. Verifies that all behaviors, oracles, rubrics, and sensitivity witnesses comply with structural and authoring rules.
 - **`seal`**: Generates a `sealed-evaluator-brief.json` by stripping secret defect signatures, planted answers, and author commentary. The brief carries only the directions and safety bounds the evaluator needs.
-- **`preflight`**: Runs before launching an expensive LLM run. Sends probe requests to verify environment baseline readiness and probe reachability. Halts early with exit code `3` if the environment is unready.
-- **`run`**: Scores a completed run by ingesting evidence records and evaluating oracles to compute a deterministic verdict (`PASS`, `CONCERNS`, `FAIL`).
+- **`preflight`**: Reduces caller-supplied probe observations against the contract to verify environment baseline readiness and probe reachability. Halts early with exit code `3` if the environment is unready.
+- **`run`**: (Planned / Roadmap) Scores a completed run by ingesting evidence records and evaluating oracles to compute a deterministic verdict (`PASS`, `CONCERNS`, `FAIL`).
 
 ### Command Equivalents (`npx` vs `npm run`)
 
@@ -204,7 +204,7 @@ npm run eval -- --contract contract.json \
 npx eval-quality compile --in contract.json --out ./eval-out
 
 # npm run (In-Repo)
-npm run eval-quality compile --in contract.json --out ./eval-out
+npm run eval-quality compile -- --in contract.json --out ./eval-out
 ```
 
 #### 4. Seal Stage Only
@@ -213,7 +213,7 @@ npm run eval-quality compile --in contract.json --out ./eval-out
 npx eval-quality seal --in contract.json --out ./eval-out
 
 # npm run (In-Repo)
-npm run eval-quality seal --in contract.json --out ./eval-out
+npm run eval-quality seal -- --in contract.json --out ./eval-out
 ```
 
 #### 5. Preflight Stage Only

@@ -139,18 +139,16 @@ jobs:
         if: steps.version.outputs.skip != 'true'
         run: npm run build
 
-      - name: Create commit, tag, and release branch
+      - name: Create version commit and release branch
         if: steps.version.outputs.skip != 'true'
         env:
           NEW_VERSION: ${{ steps.version.outputs.new_version }}
           RELEASE_BRANCH: ${{ steps.version.outputs.release_branch }}
         run: |
           git add package.json package-lock.json
-          git commit -m "chore: bump version to $NEW_VERSION"
-          git tag -a "v$NEW_VERSION" -m "Release $NEW_VERSION"
-          git checkout -b "$RELEASE_BRANCH"
+          git commit -m "chore: bump version to $NEW_VERSION" || true
+          git checkout -B "$RELEASE_BRANCH"
           git push origin "$RELEASE_BRANCH"
-          git push origin "v$NEW_VERSION"
 
       - name: Publish to npmjs.org
         if: steps.version.outputs.skip != 'true'
@@ -166,6 +164,14 @@ jobs:
           # Trusted publishing is the actual credential-level control: nobody holds a long-lived npm
           # token to begin with, on a laptop or otherwise.
           EVAL_QUALITY_PUBLISH_AUTHORIZED: 'true'
+
+      - name: Create and push git tag
+        if: steps.version.outputs.skip != 'true'
+        env:
+          NEW_VERSION: ${{ steps.version.outputs.new_version }}
+        run: |
+          git tag -fa "v$NEW_VERSION" -m "Release $NEW_VERSION"
+          git push origin "v$NEW_VERSION"
 
       - name: Verify publish
         if: steps.version.outputs.skip != 'true'

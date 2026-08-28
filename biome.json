@@ -21,7 +21,10 @@
 			"!scripts/fixtures",
 			"!schemas",
 			"!corpus",
-			"!tests/fixtures/*.json"
+			"!tests/fixtures/*.json",
+			"!website",
+			"!build",
+			"!tools"
 		]
 	},
 	"formatter": {

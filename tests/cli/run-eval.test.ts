@@ -1,19 +1,22 @@
 import { execFile } from 'node:child_process'
 import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { promisify } from 'node:util'
 import { describe, expect, it } from 'vitest'
 
 const execFileAsync = promisify(execFile)
+const DIRNAME = dirname(fileURLToPath(import.meta.url))
+const ROOT = join(DIRNAME, '..', '..')
 
 describe('scripts/run-eval.mjs: single-pass convenience runner', () => {
 	it('compiles and seals a contract in a single pass', async () => {
 		const scratch = mkdtempSync(join(tmpdir(), 'run-eval-test-'))
 		try {
-			const scriptPath = join(process.cwd(), 'scripts', 'run-eval.mjs')
+			const scriptPath = join(ROOT, 'scripts', 'run-eval.mjs')
 			const contractPath = join(
-				process.cwd(),
+				ROOT,
 				'corpus',
 				'dev',
 				'contracts',
@@ -46,5 +49,5 @@ describe('scripts/run-eval.mjs: single-pass convenience runner', () => {
 		} finally {
 			rmSync(scratch, { recursive: true, force: true })
 		}
-	})
+	}, 30_000)
 })

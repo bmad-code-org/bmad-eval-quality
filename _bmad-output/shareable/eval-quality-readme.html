@@ -711,8 +711,8 @@ dependency. See
 <ul>
 <li><strong><code>compile</code></strong>: Typechecks an authored <code>eval-contract.json</code>. Verifies that all behaviors, oracles, rubrics, and sensitivity witnesses comply with structural and authoring rules.</li>
 <li><strong><code>seal</code></strong>: Generates a <code>sealed-evaluator-brief.json</code> by stripping secret defect signatures, planted answers, and author commentary. The brief carries only the directions and safety bounds the evaluator needs.</li>
-<li><strong><code>preflight</code></strong>: Runs before launching an expensive LLM run. Sends probe requests to verify environment baseline readiness and probe reachability. Halts early with exit code <code>3</code> if the environment is unready.</li>
-<li><strong><code>run</code></strong>: Scores a completed run by ingesting evidence records and evaluating oracles to compute a deterministic verdict (<code>PASS</code>, <code>CONCERNS</code>, <code>FAIL</code>).</li>
+<li><strong><code>preflight</code></strong>: Reduces caller-supplied probe observations against the contract to verify environment baseline readiness and probe reachability. Halts early with exit code <code>3</code> if the environment is unready.</li>
+<li><strong><code>run</code></strong>: (Planned / Roadmap) Scores a completed run by ingesting evidence records and evaluating oracles to compute a deterministic verdict (<code>PASS</code>, <code>CONCERNS</code>, <code>FAIL</code>).</li>
 </ul>
 <h3 id="command-equivalents-npx-vs-npm-run">Command Equivalents (<code>npx</code> vs <code>npm run</code>)<a class="heading-anchor" href="#command-equivalents-npx-vs-npm-run" aria-label="Link to Command Equivalents (npx vs npm run)">#</a></h3>
 <p>Every command is executable via <strong><code>npx</code></strong> (zero installation required) or via <strong><code>npm run</code></strong> (when working inside the repository):</p>
@@ -737,14 +737,14 @@ npm run eval -- --contract contract.json \
 npx eval-quality compile --in contract.json --out ./eval-out
 
 # npm run (In-Repo)
-npm run eval-quality compile --in contract.json --out ./eval-out
+npm run eval-quality compile -- --in contract.json --out ./eval-out
 </code></pre>
 <h4 id="section-4-seal-stage-only">4. Seal Stage Only<a class="heading-anchor" href="#section-4-seal-stage-only" aria-label="Link to 4. Seal Stage Only">#</a></h4>
 <pre><code class="language-bash"># npx (Zero-Install)
 npx eval-quality seal --in contract.json --out ./eval-out
 
 # npm run (In-Repo)
-npm run eval-quality seal --in contract.json --out ./eval-out
+npm run eval-quality seal -- --in contract.json --out ./eval-out
 </code></pre>
 <h4 id="section-5-preflight-stage-only">5. Preflight Stage Only<a class="heading-anchor" href="#section-5-preflight-stage-only" aria-label="Link to 5. Preflight Stage Only">#</a></h4>
 <pre><code class="language-bash"># npx (Zero-Install)

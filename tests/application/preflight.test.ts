@@ -84,6 +84,12 @@ describe('runPreflight: the port call', () => {
 		])
 	})
 
+	it('rejects an empty runId with schema-parse-failure', async () => {
+		const fault = await faultOf(() => run({ runId: '' }))
+		expect(fault.code).toBe('schema-parse-failure')
+		expect(fault.artifactPath).toBe('runId')
+	})
+
 	it('107. rejects with aborted before any call when the signal is already aborted', async () => {
 		const probe = echoPort()
 		const controller = new AbortController()

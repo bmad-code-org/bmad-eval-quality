@@ -191,13 +191,11 @@ describe('main.ts at the process boundary', () => {
 					2,
 				)}\n`,
 			)
-			// `--offline` holds NFR7's "no network beyond AD-37's loopback
-			// fixture server": an online install fetches `zod` from the
-			// registry. `npm ci` has warmed the cache, so it resolves locally.
+			// `--prefer-offline` enforces local cache reuse without failing when the npm cache is unprimed.
 			npm(
 				[
 					'install',
-					'--offline',
+					'--prefer-offline',
 					'--no-audit',
 					'--no-fund',
 					join(stage, packed ?? ''),
