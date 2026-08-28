@@ -5,7 +5,7 @@
 
 This plan states what must be true before `eval-quality` cuts its first release. Every item is a
 check someone can run from a clean clone and read the result of. Work that belongs after the
-release is collected in the last section.
+release is collected in the last two sections.
 
 ## 1. The surface v0 qualifies
 
@@ -41,7 +41,16 @@ One command chains every static and dynamic check the repository owns: `typechec
 Pass criterion: exit code 0 with no output on stderr from any link in the chain.
 
 This is the gate a release blocks on. Gates 2 through 6 below are the same checks run individually,
-listed separately because each one carries a v0 claim worth reading on its own.
+listed separately because each one carries a v0 claim worth reading on its own. Gates 7 and 8 are
+not in the chain: Gate 7 needs a build first, and Gate 8 needs code that does not exist yet.
+
+`check:doc-invocations` deserves a sentence of its own, because it exists for a defect that already
+happened. The documentation described a product this repository does not contain: a command that was
+never implemented, flags no parser accepts, and a scoring stage that has not been written. The check
+extracts every fenced `eval-quality ...` invocation from `README.md` and `docs/**`, runs each one
+against the built binary in a temporary directory, and fails on exit 64 or on a Node stack. Exit 64
+is the CLI's usage error, so a documented flag that does not exist fails the build. It skips with a
+clear message when `dist/cli/main.js` is absent.
 
 ## 3. Gate 2: tests and coverage
 
@@ -150,7 +159,73 @@ version and skips any step whose effect already exists, so a re-run after a part
 `CONTRIBUTING.md` carries the first-publish bootstrap, which matters here because `eval-quality` has
 never been published and npm's Trusted Publisher form only appears for a package that exists.
 
-## 8. CLI qualification against committed inputs
+## 8. Gate 7: the installed tarball
+
+```bash
+npm run build && npx vitest run tests/cli/main.test.ts
+```
+
+Every gate above this one runs from a clone. Gate 6 lists what a tarball would contain and never
+installs one, so nothing above proves that an adopter's install works. The block titled "the packed
+and installed tarball" in `tests/cli/main.test.ts` does. It packs with `--ignore-scripts` and
+`--pack-destination`, writes a scratch consumer whose lockfile carries `zod`'s resolved URL and
+integrity copied from this repository's own lockfile, installs with `--offline`, and runs
+`node_modules/.bin/eval-quality`.
+
+What it proves, and nothing else in the suite proves any of it:
+
+- The `bin` mapping resolves and npm's shim executes.
+- The executable bit is set. `tsc` writes `dist/cli/main.js` unexecutable and the install is what
+  fixes it, so the case asserts mode `0` on the built file and non-zero on the installed one.
+- The install performs no network I/O. `--offline` is the NFR7 assertion, and the hand-written
+  consumer lockfile is what lets it hold: without the resolved `zod` entry, npm reads a packument,
+  `npm ci` caches tarballs and never packuments, and `--offline` fails on a clean machine with
+  `ENOTCACHED`.
+- `corpus/` reached the tarball. The case reads a contract out of the install, so a corpus missing
+  from the tarball fails it.
+
+Pass criteria:
+
+- The installed shim prints the version, exits 0, and writes nothing to stderr.
+- `--help` from the installed binary contains the exit-code table compiled from `src/cli/render.ts`,
+  which is what pins the install to the tree the test ran against.
+- The installed binary exits 4 on a structural failure.
+
+The block skips with a clear message when `dist/` is absent, so `npm run build` comes first. Running
+`npm run test` without a build leaves this gate unexercised and green, which is why it is called out
+here as its own step.
+
+## 9. Gate 8: an outside adapter against the published conformance suite
+
+**This is the highest-value test still missing. Every other gate is a command to run; this one
+needs code written first.**
+
+AD-37's claim is that the published conformance suite is sufficient documentation for an outside
+implementer. Nothing in this repository tests that claim, because every port implementation here is
+ours and every one of them was written by someone who could read `src/ports/` and the tests. An
+adapter author outside this repository has `eval-quality/conformance` and the README, and no way to
+know whether that is enough.
+
+The gate: one minimal adapter written outside `src/adapters/`, importing from
+`eval-quality/conformance` and from nothing else in this package, passing its port's runner with no
+change to the suite.
+
+`ClockPort` is the cheapest subject. Its runner reports 6 outcomes, the smallest of the four, and a
+clock adapter has no I/O to arrange. The suite already ships at the `eval-quality/conformance`
+subpath, so the adapter is the only missing piece.
+
+Pass criteria:
+
+- The adapter lives outside `src/adapters/` and imports only `eval-quality/conformance`.
+- `runClockPortConformance` reports all 6 outcomes satisfied.
+- No change to `src/testing/**` was needed to make it pass. A change there is the finding: it means
+  the published suite was not sufficient, which is the thing AD-37 asserts.
+
+Whether this lands before or after the first publish is Murat's call. Before publish it qualifies
+AD-37's claim ahead of anyone relying on it. After publish it can be written against the real
+registry package, which is a stronger test of the same claim.
+
+## 10. CLI qualification against committed inputs
 
 The binary must work on the files this package publishes. Both commands below read inputs that ship
 in the tarball, so an adopter can reproduce them without cloning.
@@ -189,7 +264,7 @@ So v0 qualifies `preflight` through its test suite: `tests/preflight/plan.test.t
 runnable `preflight` example arrives with the corpus entry that publishes probes and observations as
 JSON.
 
-## 9. Exit criteria
+## 11. Exit criteria
 
 v0 ships when all of the following hold on a clean clone of the release commit:
 
@@ -198,22 +273,38 @@ v0 ships when all of the following hold on a clean clone of the release commit:
 3. `npm run check:boundary` reports 0 violations.
 4. `npm run check:corpus` reports no digest drift.
 5. `npm pack --dry-run` produces a tarball whose contents satisfy every `exports` and `bin` path.
-6. The `compile` and `seal` invocations in section 8 succeed against committed corpus files.
-7. `README.md` names the package as `eval-quality`, documents `compile`, `seal`, and `preflight`,
-   and claims no scoring behavior.
+6. `npm run build` then `npx vitest run tests/cli/main.test.ts` is green, so the packed tarball
+   installs offline and `node_modules/.bin/eval-quality` runs.
+7. The `compile` and `seal` invocations in section 10 succeed against committed corpus files.
+8. `npm run check:doc-invocations` reports 0 usage errors, so every documented invocation in
+   `README.md` and `docs/**` runs against the built binary.
+9. `README.md` names the package as `eval-quality` and documents `compile`, `seal`, and `preflight`.
 
-## 10. After v0
+Criterion 8 mechanizes the runnable half of what used to be one criterion. The other half is a human
+read and is listed separately here because it cannot be automated: **someone reads `README.md` and
+`docs/**` end to end and confirms they claim no scoring behavior.** A grep does not settle it. The
+defect this catches is prose that describes a working scorer in sentences that name no command.
 
-Harness integration comes first once v0 is out. `eval-quality` compiles behavioral contracts and
-checks the evidence a caller hands it. Producing that evidence is the harness's job, and the BMad
-test-architecture skills (`bmad-tea`) plus the `BMAD-METHOD` core workflows are the first harnesses
-positioned to do it. The work there is defining `eval-contract` documents for existing harnesses,
-starting with fragment selection across the test-architecture skills and the planted-defect
-`test-review` suite, then rolling forward through trace, NFR, ATDD, and test-design. That work lives
-in those repositories and depends on `eval-quality` only through its published entry points, so it
-can proceed against a released v0 with no further changes here.
+## 12. Entry criterion for v1: the first eval-contract authored elsewhere
 
-Production-system evaluation follows. An `EnvironmentProbePort` adapter aimed at an MCP server or an
+The first `eval-contract` written for `bmad-tea` is the first time anyone authors one against the
+published schema without this repository's fixtures at hand. Every contract that exists today was
+written by someone who could open `tests/`, read a passing fixture, and copy its shape. An author
+outside this repository has `schemas/eval-contract.schema.json`, the compiler's failure codes, and
+the corpus. The authoring discipline is the product, and this is the first test of it.
+
+Pass condition: one `eval-contract` document authored in the `bmad-tea` repository, against the
+published `eval-quality/schemas/*` subpath, compiling clean under `eval-quality compile` with no
+change to this package. A change needed here is the finding, and it names which part of the schema
+or which failure code did not carry enough information to author against.
+
+The subject is fragment selection across the test-architecture skills, then the planted-defect
+`test-review` suite. That work lives in those repositories and reaches this one only through its
+published entry points, so it proceeds against a released v0 with no further changes here.
+
+## 13. After v0
+
+Production-system evaluation is the work after that. An `EnvironmentProbePort` adapter aimed at an MCP server or an
 HTTP API would let `preflight` check target reachability, AD-35 target policy compliance, and input
 sensitivity against a live service; the conformance runner for that port already ships, so the
 adapter is the only missing piece. The full evaluation matrix waits on scoring, which v0 does not
