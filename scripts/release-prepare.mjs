@@ -14,7 +14,7 @@
 // --no-pr pushes the branch and prints the `gh pr create` command instead of running it.
 
 import { execFileSync } from 'node:child_process'
-import { readFileSync } from 'node:fs'
+import { readFileSync, writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
 const PACKAGE = 'eval-quality'
@@ -114,16 +114,37 @@ function preflight(bump) {
 	return { current, version, tag, releaseBranch, head }
 }
 
+const BARREL = 'src/index.ts'
+
+/**
+ * `src/index.ts` publishes the version as a constant, so bumping the manifest
+ * alone ships a `VERSION` one release behind. A test asserts the two agree,
+ * which catches it after the release branch exists; stamping it here means
+ * there is nothing to catch.
+ */
+function stampBarrelVersion(current, version) {
+	const source = readFileSync(BARREL, 'utf8')
+	const previous = `export const VERSION = '${current}'`
+	if (!source.includes(previous)) {
+		fail(`${BARREL} does not declare VERSION as '${current}'; bump it by hand`)
+	}
+	writeFileSync(
+		BARREL,
+		source.replace(previous, `export const VERSION = '${version}'`),
+	)
+}
+
 function main() {
 	const args = parseArgs(process.argv.slice(2))
 	const { current, version, tag, releaseBranch } = preflight(args.bump)
 	console.log(`release-prepare: ${current} -> ${version} on ${releaseBranch}`)
 
 	run('npm', ['version', version, '--no-git-tag-version'])
+	stampBarrelVersion(current, version)
 	run(process.execPath, [resolve('scripts/stamp-changelog.mjs')])
 
 	git('checkout', '-b', releaseBranch)
-	git('add', 'package.json', 'package-lock.json', 'CHANGELOG.md')
+	git('add', 'package.json', 'package-lock.json', 'CHANGELOG.md', BARREL)
 	git('commit', '--quiet', '-m', `chore: release ${tag}`)
 	run('git', ['push', '--set-upstream', 'origin', releaseBranch])
 
