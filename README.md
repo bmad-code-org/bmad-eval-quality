@@ -174,20 +174,35 @@ The **CLI** wraps the same library for callers that cannot import TypeScript: CI
 - **`preflight`**: Runs before launching an expensive LLM run. Sends probe requests to verify environment baseline readiness and probe reachability. Halts early with exit code `3` if the environment is unready.
 - **`run`**: Scores a completed run by ingesting evidence records and evaluating oracles to compute a deterministic verdict (`PASS`, `CONCERNS`, `FAIL`).
 
+### Published `npx` Commands (Zero-Install)
+
+Run the CLI binary directly without installing the package or cloning the repository:
+
 ```bash
-npx eval-quality compile --in contract.json                    # compile a contract against the authoring discipline
-npx eval-quality seal --in contract.json --out ./run           # compile, then emit the sealed evaluator brief
+# 1. Compile contract against authoring discipline rules
+npx eval-quality compile --in contract.json --out ./eval-out
+
+# 2. Compile & Seal in ONE step (single pass to emit sealed evaluator brief)
+npx eval-quality seal --in contract.json --out ./eval-out
+
+# 3. Preflight environment baseline check
 npx eval-quality preflight --contract contract.json \
   --probes probes.json --observations observations.json \
-  --run-id 2026-08-27-a --out ./run                            # reduce probe observations to a pre-flight verdict
-npx eval-quality --help                                        # the grammar and the exit codes
+  --run-id 2026-08-28-a --out ./eval-out
+
+# 4. CLI help
+npx eval-quality --help
 ```
 
-### Single-Pass Workflow (User Convenience)
+### Local Repository `npm run` Commands (In-Repo)
 
-To run `compile`, `seal`, and `preflight` together in a single command using the repository runner:
+When working inside the repository, use the single-pass convenience runner:
 
 ```bash
+# Compile and seal contract in one pass
+npm run eval -- --contract contract.json --out ./eval-out
+
+# Compile, seal, and preflight in one pass
 npm run eval -- --contract contract.json --probes probes.json --observations obs.json --out ./eval-out
 ```
 
