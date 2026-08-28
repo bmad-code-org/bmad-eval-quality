@@ -174,39 +174,59 @@ The **CLI** wraps the same library for callers that cannot import TypeScript: CI
 - **`preflight`**: Runs before launching an expensive LLM run. Sends probe requests to verify environment baseline readiness and probe reachability. Halts early with exit code `3` if the environment is unready.
 - **`run`**: Scores a completed run by ingesting evidence records and evaluating oracles to compute a deterministic verdict (`PASS`, `CONCERNS`, `FAIL`).
 
-### Published `npx` Commands (Zero-Install)
+### Command Equivalents (`npx` vs `npm run`)
 
-Run the CLI binary directly without installing the package or cloning the repository:
+Every command is executable via **`npx`** (zero installation required) or via **`npm run`** (when working inside the repository):
 
+#### 1. Single-Pass Workflow (Compile + Seal)
 ```bash
-# 1. Single-pass compile and seal in ONE command
+# npx (Zero-Install)
 npx eval-quality eval --contract contract.json --out ./eval-out
 
-# 2. Single-pass compile, seal, AND preflight environment check in ONE command
+# npm run (In-Repo)
+npm run eval -- --contract contract.json --out ./eval-out
+```
+
+#### 2. Single-Pass Workflow with Preflight (Compile + Seal + Preflight)
+```bash
+# npx (Zero-Install)
 npx eval-quality eval --contract contract.json \
   --probes probes.json --observations observations.json --out ./eval-out
 
-# 3. Individual stage commands
+# npm run (In-Repo)
+npm run eval -- --contract contract.json \
+  --probes probes.json --observations observations.json --out ./eval-out
+```
+
+#### 3. Compile Stage Only
+```bash
+# npx (Zero-Install)
 npx eval-quality compile --in contract.json --out ./eval-out
+
+# npm run (In-Repo)
+npm run eval-quality compile --in contract.json --out ./eval-out
+```
+
+#### 4. Seal Stage Only
+```bash
+# npx (Zero-Install)
 npx eval-quality seal --in contract.json --out ./eval-out
+
+# npm run (In-Repo)
+npm run eval-quality seal --in contract.json --out ./eval-out
+```
+
+#### 5. Preflight Stage Only
+```bash
+# npx (Zero-Install)
 npx eval-quality preflight --contract contract.json \
   --probes probes.json --observations observations.json \
   --run-id 2026-08-28-a --out ./eval-out
 
-# 4. CLI help
-npx eval-quality --help
-```
-
-### Local Repository `npm run` Commands (In-Repo)
-
-When working inside the repository, use the single-pass convenience runner:
-
-```bash
-# Compile and seal contract in one pass
-npm run eval -- --contract contract.json --out ./eval-out
-
-# Compile, seal, and preflight in one pass
-npm run eval -- --contract contract.json --probes probes.json --observations obs.json --out ./eval-out
+# npm run (In-Repo)
+npm run eval-quality preflight -- --contract contract.json \
+  --probes probes.json --observations observations.json \
+  --run-id 2026-08-28-a --out ./eval-out
 ```
 
 Every command is non-interactive: no prompt, no terminal check, and no behaviour that differs when
