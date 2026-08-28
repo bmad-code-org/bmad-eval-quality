@@ -1,9 +1,6 @@
 # `eval-quality`
 
-**[Documentation](https://bmad-code-org.github.io/bmad-eval-quality/)** ·
-[Getting started](https://bmad-code-org.github.io/bmad-eval-quality/tutorials/getting-started/) ·
-[CLI reference](https://bmad-code-org.github.io/bmad-eval-quality/reference/cli-commands/) ·
-[npm](https://www.npmjs.com/package/eval-quality)
+**[Documentation](https://bmad-code-org.github.io/bmad-eval-quality/)** 
 
 ```bash
 npx eval-quality --help
