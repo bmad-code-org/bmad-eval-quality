@@ -8,8 +8,8 @@
  * `process.exit` is called nowhere. Exiting truncates a pending stdout write,
  * and an artifact larger than a pipe buffer is the ordinary case here.
  */
-import { readFile, stat, writeFile } from 'node:fs/promises'
-import { join, resolve } from 'node:path'
+import { mkdir, readFile, stat, writeFile } from 'node:fs/promises'
+import { dirname, join, resolve } from 'node:path'
 import process from 'node:process'
 import { parseArguments } from './arguments.ts'
 import type { CommandOutcome } from './exit-codes.ts'
@@ -64,6 +64,11 @@ function environmentOf(version: string): RunEnvironment {
 		readInput: async (source) =>
 			source === null ? await readStdin() : await readFile(source, 'utf8'),
 		writeArtifact: async (path, body) => {
+			// A named `--out` that does not exist yet is an ordinary way to
+			// invoke this, and failing with a raw ENOENT dressed as a usage
+			// error helps nobody. Creating an output directory mutates no
+			// input.
+			await mkdir(dirname(path), { recursive: true })
 			await writeFile(path, body, 'utf8')
 		},
 		writeOut: (body) => {

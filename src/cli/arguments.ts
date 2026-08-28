@@ -182,6 +182,13 @@ function parseCommand(
 		.filter((key) => key !== 'in' && inputs[key] === undefined)
 		.map((key) => `--${key}`)
 	if (TAKES_RUN_ID[command] && runId === null) missing.push('--run-id')
+	// `PreflightVerdict.runId` is `z.string().min(1)`, which a run of spaces
+	// satisfies. It then renders as blank in every diagnostic line and names
+	// nothing a reader can correlate, so the argument surface refuses it here
+	// rather than the schema refusing what it declares legal.
+	if (runId !== null && runId.trim() === '') {
+		return usageError('--run-id must contain a non-whitespace character')
+	}
 	if (missing.length > 0) {
 		return usageError(`${command} requires ${missing.join(', ')}`)
 	}

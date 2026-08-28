@@ -311,3 +311,75 @@ adapter is the only missing piece. The full evaluation matrix waits on scoring, 
 include: a trial reducer, the qualified-probe dimensions `corpus/dev/README.md` records as absent,
 and the multi-run stability checks a release-candidate CI tier would need. Until scoring lands, CI
 stays at the single tier described above, which is `npm run validate` on every pull request.
+
+## 14. What remains, and why there is no epic 7 yet
+
+Stage one is complete. Compile, seal, and pre-flight ship, along with the published surface section 1
+describes, and epics 1 through 6 are that work. What is left splits into three kinds of work that
+look alike in a backlog and are not alike at all. The file states them separately because conflating
+them is how someone ends up writing epic 7 before the architecture can answer it.
+
+### 14.1 Release mechanics
+
+Operational steps, none of them an epic. Each is a command someone runs once.
+
+- **GitHub Pages is not enabled.** `gh api repos/bmad-code-org/bmad-eval-quality/pages` returns 404.
+  The docs deploy job will fail the first time it runs on `main`. The build job no longer depends on
+  the deploy job, so a failure there blocks nothing else.
+- **The tag ruleset does not exist.** `gh api repos/bmad-code-org/bmad-eval-quality/rulesets` lists
+  `protect-main` alone. Tags matching `refs/tags/v*` are unprotected. The `gh api` call that creates
+  the ruleset is in `CONTRIBUTING.md` and nobody has run it.
+- **The first-publish bootstrap has not been executed.** It is in `CONTRIBUTING.md`. npm's Trusted
+  Publisher form only appears for a package that exists, so the first publish is the manual one.
+- **The version to publish has not been chosen.** `package.json` carries `0.0.0`, so a patch release
+  produces `0.0.1`.
+
+### 14.2 v0 test work
+
+One item needs code written: **Gate 8, the outside adapter**. Every other gate in this file is a
+command that already runs against the tree as it stands. That is the whole of the remaining v0 test
+scope.
+
+### 14.3 The score half, blocked by the architecture
+
+`ARCHITECTURE-SPINE.md` closes its "Owed to the reference implementation" preamble with one sentence:
+"No epic touches `score` until these close." The seven items there are open defects, which is the
+section's own classification of them, and each one is verified. Story 6.4 closed half of item 6, the
+stage-signature table; the run-mode half of that item stayed open.
+
+1. **Repeated trials have no reducer**, and no stage signature consumes more than one run record. The
+   default three-trial minimum is therefore unreachable, so every scored run is permanently
+   below-minimum CONCERNS carrying a non-comparable strength vector.
+2. **Observation selection is ambiguous** and the temporal clause is unimplementable. Two conforming
+   scorers bind different evidence from one sealed record.
+3. **Cross-step resource identity and principal identity are inexpressible.** The two
+   critical-severity cross-user behaviours in the real corpus cannot be written down at all.
+4. **Mode separation is incomplete.** The same sealed artifact derives CONCERNS or FAIL depending on
+   which sentence a reader obeys. Those are two exit codes apart.
+5. **Uncited defect findings route nowhere** while being the product's own success metric under
+   SM-D4. An evaluator that discovers a genuine uncontemplated defect produces a line in an array and
+   exit code zero.
+6. **The run-mode source is absent.** Nothing names where a scored run's mode comes from.
+7. **The worked example is inconsistent** and must be regenerated from the reference reducer once one
+   exists. Hand-filled downstream values are forbidden, so it cannot be patched.
+
+### 14.4 The sequence before epic 7 can be written
+
+This is a sequence, and the order carries the argument.
+
+**First, the calibration re-run.** It is a separate owed section from the seven above.
+`ARCHITECTURE-SPINE.md:69` records ADR-009's exemption, "under which the calibration spike is the
+next unit of work and no review round is."
+
+**Then the reference implementation the spine prescribes**, quoting it: "implement AD-21, AD-31,
+AD-33, and AD-40 as pure reference functions with generated fixtures, run them against the worked
+chain plus synthetic records, and let the tables be output rather than promise." The spine records
+that four review rounds converged on this independently. It closes items 1, 2, 4, 5, and 7.
+
+**Item 3 is a separate decision.** It needs a grammar extension, a cycle-free captured-value matcher
+together with test-data bindings. That is an ADR, and no story can absorb it.
+
+Writing epic 7's stories today would mean an implementer picking one of three defensible readings of
+"across the declared trial count" unilaterally, and one of those readings is the retry anti-pattern
+AD-6 spends a paragraph forbidding. That is the exact failure mode the spine's four review rounds
+existed to stop.

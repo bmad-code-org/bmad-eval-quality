@@ -360,11 +360,16 @@ describe('main.ts at the process boundary', () => {
 			}
 		}, 60_000)
 
-		it('case 168: a missing --out directory is a usage error naming the path', (ctx) => {
+		it('case 168: a missing --out directory is created', (ctx) => {
 			if (!BUILT) return ctx.skip(NEEDS_BUILD)
 			const scratch = mkdtempSync(join(tmpdir(), 'eval-quality-path-'))
 			try {
-				const absentDirectory = join(scratch, 'no-such-run')
+				// `--out` names where output goes, and the caller naming a directory
+				// that does not exist yet is an ordinary way to invoke this. Creating
+				// it mutates no input. This case asserted a usage error until a
+				// reviewer read the ENOENT it produced: `eval-quality: usage: open
+				// "...": ENOENT` is a filesystem failure wearing a usage label.
+				const absentDirectory = join(scratch, 'no-such-run', 'nested')
 				const result = spawnSync(
 					process.execPath,
 					[
@@ -378,13 +383,47 @@ describe('main.ts at the process boundary', () => {
 					{ encoding: 'utf8' },
 				)
 
+				expect(result.status).toBe(EXIT_OK)
+				expect(result.stderr).toBe('')
+				expect(
+					readFileSync(
+						join(absentDirectory, 'sealed-evaluator-brief.json'),
+						'utf8',
+					),
+				).toContain('"schemaVersion"')
+			} finally {
+				rmSync(scratch, { recursive: true, force: true })
+			}
+		}, 60_000)
+
+		it('case 179: an --out path under a file is a usage error, never a stack', (ctx) => {
+			if (!BUILT) return ctx.skip(NEEDS_BUILD)
+			const scratch = mkdtempSync(join(tmpdir(), 'eval-quality-path-'))
+			try {
+				// The defect case 168 was written for, kept after 168 changed: a
+				// path the filesystem will not give us must still exit 64 with a
+				// named reason. Before that fix both of these printed a Node stack
+				// and exited 1, which AD-21 bars because 1 is inside the verdict
+				// range and a seal that produced no verdict may not land there.
+				const blocker = join(scratch, 'not-a-directory')
+				writeFileSync(blocker, 'this is a file\n')
+				const result = spawnSync(
+					process.execPath,
+					[
+						BUILT_MAIN,
+						'seal',
+						'--in',
+						CORPUS_CONTRACT,
+						'--out',
+						join(blocker, 'run'),
+					],
+					{ encoding: 'utf8' },
+				)
+
 				expect(result.status).toBe(EXIT_USAGE)
 				expect(result.stdout).toBe('')
 				expect(result.stderr).toContain('eval-quality: usage:')
-				expect(result.stderr).toContain(
-					join(absentDirectory, 'sealed-evaluator-brief.json'),
-				)
-				expect(result.stderr).toContain('ENOENT')
+				expect(result.stderr).toContain(blocker)
 				expect(result.stderr).not.toContain('node:internal')
 			} finally {
 				rmSync(scratch, { recursive: true, force: true })

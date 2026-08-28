@@ -112,8 +112,17 @@ jobs:
           NPM_HAS=false
           PUBLISHED="$(npm view "$PACKAGE@$VERSION" version 2>/dev/null || true)"
           if [ "$PUBLISHED" = "$VERSION" ]; then
+            # An absent gitHead is unverifiable, and unverifiable is refused
+            # rather than accepted. npm records no gitHead for a package
+            # published outside a git checkout, and a name someone else holds
+            # would otherwise let this run tag our commit as their release.
             GIT_HEAD="$(npm view "$PACKAGE@$VERSION" gitHead 2>/dev/null || true)"
-            if [ -n "$GIT_HEAD" ] && [ "$GIT_HEAD" != "$GITHUB_SHA" ]; then
+            if [ -z "$GIT_HEAD" ]; then
+              echo "$PACKAGE@$VERSION is on npm and records no gitHead, so the commit it was published from cannot be verified." >&2
+              echo "Refusing to tag or release against an unverifiable publication. Bump the version with release:prepare." >&2
+              exit 1
+            fi
+            if [ "$GIT_HEAD" != "$GITHUB_SHA" ]; then
               echo "$PACKAGE@$VERSION is on npm, published from $GIT_HEAD, and this run is at $GITHUB_SHA." >&2
               echo "Refusing to tag a commit npm did not publish. Bump the version with release:prepare." >&2
               exit 1
