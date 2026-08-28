@@ -1,6 +1,6 @@
 {
   "name": "eval-quality",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Compile disciplined Behavioral Evaluation Contracts and score their ability to catch known defects.",
   "author": "Murat Ozcan",
   "license": "Apache-2.0",
@@ -78,7 +78,7 @@
     "build:shareable": "node scripts/build-shareable.mjs",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
-    "test:conformance": "vitest run tests/adapters tests/testing",
+    "test:conformance": "npm run build && vitest run tests/adapters tests/testing tests/conformance",
     "test:watch": "vitest",
     "check:vectors": "python3 tests/fixtures/derive_vectors.py --check",
     "generate:schemas": "node scripts/generate-schemas.ts",

@@ -2171,7 +2171,7 @@ stands rather than as this story first left it.
 | Build | `npm run build` | exit 0; `dist/cli/main.js` carries `#!/usr/bin/env node` at byte 0 |
 | Documentation site | `npm run docs:build` | exit 0; 9 pages, 0 link issues |
 | Coverage | `npm run test:coverage` | statements 96.85% (2860/2953), branches 92.25% (1632/1769), functions 99.8% (517/518), lines 97.91% (2588/2643) |
-| Test census | `npm run test` | 85 files / 2814 tests, from the 73-file / 2625-test baseline |
+| Test census | `npm run test` | 86 files / 2817 tests, from the 73-file / 2625-test baseline |
 | Layers | `npm run check:layers` | 96 files scanned, 0 violations |
 | Lineage | `npm run check:lineage` | 96 files scanned, 0 violations |
 | Boundary | `npm run check:boundary` | first run 137 violations across 41 entries under eleven patterns; 0 now, across 173 entries (96 from `src/`, 12 from `schemas/`, 23 from `corpus/`, 42 synthetic manifest entries) |
@@ -2186,7 +2186,7 @@ stands rather than as this story first left it.
 | Docs link scan | `npm run check:docs` | 55 files OK |
 | Spine lint | `npm run lint:spine`, `npm run test:spine-lint` | zero findings; 45 pytest cases pass |
 | Shareable | `npm run check:shareable` | 21 pages match after `build:shareable` |
-| Conformance | `npm run test:conformance` | 53 tests pass |
+| Conformance | `npm run test:conformance` | 55 tests pass, including the outside adapter of Gate 8 |
 | Lint | `npx biome check .` | 252 files, zero findings, with `tools/` and `website/` in scope |
 | Pack contents | `npm pack --dry-run --ignore-scripts` | `LICENSE README.md corpus dist package.json schemas`, 230 files, 1,320,531 bytes unpacked |
 | Installed bin | case 92: pack into a temp copy, `npm install --offline`, run the shim | ran, 261 ms; prints `0.0.0`, exit 0, no `.tgz` in the repository |
@@ -2211,7 +2211,7 @@ criterion.** Its CI-name-string row cites `pr-checks.yml:65`; the `Validate` ste
 the `Build` step moved ahead of it and three checks were added. Its test-census row expects 84 files
 and 2789 tests against AC 17's 164 cases; the count is 85 files and 2814 tests, which is AC 17's 166
 cases plus the twelve added during the review rounds, plus the release process's own
-`tests/architecture/stamp-changelog.test.ts`. Its AD-31 row says "this story does not touch the
+`tests/architecture/stamp-changelog.test.ts` and Gate 8's cases 180 and 181. Its AD-31 row says "this story does not touch the
 table"; the table is unchanged, but the frontmatter that produces it moved, which the post-story
 section records.
 
@@ -2577,6 +2577,77 @@ version-type input.
 **The tag ruleset has not been created.** The command is documented; nobody has run it against the
 repository. Until someone does, tag protection is a documented intention rather than an enforced
 rule, and that is the one piece of the release rework that is not yet real.
+
+### Gate 8: an outside adapter, and what it found
+
+AD-37 claims the published conformance suite is sufficient documentation for an implementer who has
+only the `eval-quality/conformance` subpath and the README. Every port implementation here was
+written by someone who could read `src/ports/` and the internal tests, so nothing tested that claim.
+`tests/conformance/outside-clock-adapter.test.ts` now does, as cases 180 and 181: a minimal
+`ClockPort` written against the published surface alone, driven through `runClockPortConformance`,
+with a second case that reads its own source and asserts every import specifier is
+`eval-quality/conformance`, a `node:` builtin, or `vitest`. `npm run test:conformance` covers the
+directory.
+
+**It was written clean-room, and that was deliberate.** By the time this gate came up, this session
+had already read `src/ports/` and `src/testing/index.ts`, which disqualifies it as the subject. The
+adapter was written by an implementer whose reading was restricted to `README.md`, `dist/**`, and
+`package.json`'s `exports` map, with `src/`, `tests/`, and `_bmad-output/` off limits. It never
+opened any of them.
+
+**All six outcomes pass, and no change to `src/testing/**` was needed to make them pass.** The
+report reads `PASS clock conformance for "outside-clock-adapter": 6/6 assertions passed`, and the
+count is asserted against `CONFORMANCE_OUTCOME_COUNTS.clock` so the case follows the suite.
+
+**AD-37's claim does not hold as stated, and this is the finding the gate exists to produce.** Two
+of the six assertions require the subject to throw a fault carrying a *declared* code, and the
+vocabulary of declared codes is not reachable from the published subpath:
+
+- `dist/testing/index.d.ts` re-exports six types and four runners. It does not re-export
+  `RuntimeFault`, `RUNTIME_FAULT_CODES`, `RuntimeFaultCode`, or any fault view.
+- The README contains none of the strings `AD-28`, `RuntimeFault`, or `fault code`. Its only code
+  table is the CLI's exit codes.
+- The generated JSON Schemas carry none of the codes.
+- The failing message reads `carries no declared AD-28 code` — it names a decision record the
+  package does not ship, and lists no accepted value, so it says the author is wrong without saying
+  what right looks like.
+
+The list was recoverable only from `dist/core/schemas/faults.d.ts`, which ships in the tarball and
+which the `exports` map does not expose, so a consumer would have to open a path under
+`node_modules/eval-quality/dist/core/` by hand and still could not import the type through any
+supported specifier. The adapter therefore hand-rolls its own error class with magic strings
+`'aborted'`, `'port-failure'`, and `'port-contract-violation'`, and no published type would catch a
+typo in any of them.
+
+Two smaller frictions, both recorded and neither blocking: `ScenarioKind`'s four members
+(`'resolves' | 'fails' | 'in-band-error' | 'hangs'`) carry no doc comment and the README says only
+that the suite "drives a subject through four scenarios", so all four contracts were guessed — all
+three guesses held, and `in-band-error` was confirmed only by reading an assertion title off a red
+run. And `DEFAULT_ABORT_BUDGET_MS` is declared but not re-exported, which is harmless because its
+doc comment states the value.
+
+**The remedy is recorded and not applied**, because pass criterion 3 says a change to
+`src/testing/**` is itself the finding. `src/testing/index.ts` should re-export the fault
+vocabulary so an author can construct a conforming throw against a type, and the four `ScenarioKind`
+members should carry doc comments saying what each obliges the subject to do. A cheaper partial fix
+is to make the `carries no declared AD-28 code` detail enumerate the accepted codes. None of the
+three was made here.
+
+**What the surface got right**, recorded because a report of friction alone would be unbalanced:
+`PortSubject.build`'s comment about a fresh instance per scenario and counting the underlying
+mechanism rather than the port invocation is the single most useful line on the surface and
+prevented the obvious mistake; `abortBudgetMs` documents its default inline; and
+`formatConformanceReport`'s output named the method, the assertion, and the throw for each of three
+red outcomes, two of which were fixable from that text alone.
+
+### The published `VERSION` had drifted from the manifest
+
+Gate 8's run surfaced an unrelated red: case 156 asserts `VERSION` equals `package.json`'s
+`version`, and the manifest had moved to `0.1.0` while `src/index.ts` still read `'0.0.0'`. The
+constant is now `'0.1.0'` and the case is green. The case did its job, and the drift will recur on
+every release unless the release process stamps it: `scripts/release-prepare.mjs` bumps the manifest
+and does not touch the barrel. That script belongs to the release work, so the fix is named here
+rather than made.
 
 ### One CI-only flake, fixed where it fires
 
