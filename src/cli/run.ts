@@ -81,6 +81,10 @@ const EMITTED: Readonly<
 		kind: 'sealed-evaluator-brief',
 	},
 	preflight: { artifactPath: 'PreflightVerdict', kind: 'preflight-verdict' },
+	eval: {
+		artifactPath: 'SealedEvaluatorBrief',
+		kind: 'sealed-evaluator-brief',
+	},
 }
 
 /** The schema an input key deserializes into, for the parse fault's path. */
@@ -98,6 +102,8 @@ const USAGE = `Usage:
                                 [--strict-inputs | --no-strict-inputs] [--strict]
   eval-quality preflight         --contract <path> --probes <path> --observations <path>
                                  --run-id <id> [--out <target>] [--strict]
+  eval-quality eval              --contract <path> [--probes <path>] [--observations <path>]
+                                 [--run-id <id>] [--out <target>] [--strict]
   eval-quality --help | -h | help [<command>]
   eval-quality --version | -V`
 
@@ -129,6 +135,16 @@ const COMMAND_USAGE: Readonly<Record<Command, string>> = {
   --observations <path>    the observations to reduce over
   --run-id <id>            the run identifier the verdict is minted for
   --out <target>           a .json file path, or a directory taking preflight-verdict.json
+  --strict                 promote CONCERNS to exit 1`,
+	eval: `Usage:
+  eval-quality eval              --contract <path> [--probes <path>] [--observations <path>]
+                                 [--run-id <id>] [--out <target>] [--strict]
+
+  --contract <path>        the contract to compile and seal
+  --probes <path>          optional probe list for preflight
+  --observations <path>    optional observations for preflight
+  --run-id <id>            optional run identifier for preflight verdict
+  --out <target>           directory taking generated artifacts
   --strict                 promote CONCERNS to exit 1`,
 }
 
@@ -259,6 +275,9 @@ async function runCommand(
 	}
 
 	try {
+		if (command === 'eval') {
+			return await runEvalCommand(invocation, environment, application, out)
+		}
 		if (command === 'preflight') {
 			const verdict = await runPreflightCommand(
 				invocation,
@@ -327,4 +346,77 @@ async function runPreflightCommand(
 	})
 	await emitArtifact(environment, verdict, 'preflight', target)
 	return verdict
+}
+
+async function runEvalCommand(
+	invocation: Extract<ParsedInvocation, { kind: 'run' }>,
+	environment: RunEnvironment,
+	application: ApplicationFacade,
+	outDir: string | null,
+): Promise<RunResult> {
+	const { inputs, strictInputs, runId } = invocation
+	const contractSource = inputs.contract ?? inputs.in
+	const input = await readJson(environment, 'contract', contractSource)
+	const options = { strict: strictInputs }
+
+	const compiled = application.compile(input, options)
+	const sealed = application.seal(compiled, options)
+
+	const targetDir = outDir ?? '.'
+	const compiledTarget = outputPath(environment, targetDir, 'eval-contract')
+	const briefTarget = outputPath(
+		environment,
+		targetDir,
+		'sealed-evaluator-brief',
+	)
+
+	if (compiledTarget !== null) {
+		await environment.writeArtifact(
+			compiledTarget,
+			renderArtifact(compiled, 'EvalContract'),
+		)
+	}
+	if (briefTarget !== null) {
+		await environment.writeArtifact(
+			briefTarget,
+			renderArtifact(sealed, 'SealedEvaluatorBrief'),
+		)
+	}
+
+	if (inputs.probes !== undefined && inputs.observations !== undefined) {
+		const probes = (await readJson(
+			environment,
+			'probes',
+			inputs.probes,
+		)) as Probes
+		const observations = (await readJson(
+			environment,
+			'observations',
+			inputs.observations,
+		)) as Observations
+		const sink: DiagnosticSink = (diagnostic: Diagnostic) => {
+			environment.writeDiagnostic(renderDiagnostic(diagnostic))
+		}
+		const verdict = application.preflightFromObservations({
+			contract: compiled,
+			probes,
+			runId: runId ?? 'run-1',
+			observations,
+			sink,
+		})
+		const verdictTarget = outputPath(
+			environment,
+			targetDir,
+			'preflight-verdict',
+		)
+		if (verdictTarget !== null) {
+			await environment.writeArtifact(
+				verdictTarget,
+				renderArtifact(verdict, 'PreflightVerdict'),
+			)
+		}
+		return { outcome: { kind: 'preflight', passed: verdict.passed } }
+	}
+
+	return { outcome: { kind: 'artifact' } }
 }

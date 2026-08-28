@@ -5,7 +5,7 @@
  * as given and resolved by the caller.
  */
 
-export type Command = 'compile' | 'seal' | 'preflight'
+export type Command = 'compile' | 'seal' | 'preflight' | 'eval'
 
 /** The four input flags. Closed, so a usage error can name the flag set. */
 export type InputKey = 'in' | 'contract' | 'probes' | 'observations'
@@ -24,13 +24,19 @@ export type ParsedInvocation =
 			readonly strict: boolean
 	  }
 
-export const COMMANDS: readonly Command[] = ['compile', 'seal', 'preflight']
+export const COMMANDS: readonly Command[] = [
+	'compile',
+	'seal',
+	'preflight',
+	'eval',
+]
 
 /** The input flags each command takes, and which of them it requires. */
 const INPUT_KEYS: Readonly<Record<Command, readonly InputKey[]>> = {
 	compile: ['in'],
 	seal: ['in'],
 	preflight: ['contract', 'probes', 'observations'],
+	eval: ['contract', 'in', 'probes', 'observations'],
 }
 
 /** `--strict-inputs` is AD-4's compile mode; `preflight` has no compile step. */
@@ -38,6 +44,7 @@ const TAKES_STRICT_INPUTS: Readonly<Record<Command, boolean>> = {
 	compile: true,
 	seal: true,
 	preflight: false,
+	eval: true,
 }
 
 /** `--run-id` names the run a verdict is minted for, which only `preflight` does. */
@@ -45,6 +52,7 @@ const TAKES_RUN_ID: Readonly<Record<Command, boolean>> = {
 	compile: false,
 	seal: false,
 	preflight: true,
+	eval: false,
 }
 
 const STDIN = '-'
@@ -178,12 +186,18 @@ function parseCommand(
 		return usageError(`unknown flag "${token}" for ${command}`)
 	}
 
-	const missing = INPUT_KEYS[command]
-		.filter((key) => key !== 'in' && inputs[key] === undefined)
-		.map((key) => `--${key}`)
-	if (TAKES_RUN_ID[command] && runId === null) missing.push('--run-id')
-	if (missing.length > 0) {
-		return usageError(`${command} requires ${missing.join(', ')}`)
+	if (command === 'eval') {
+		if (inputs.contract === undefined && inputs.in === undefined) {
+			return usageError('eval requires --contract or --in')
+		}
+	} else {
+		const missing = INPUT_KEYS[command]
+			.filter((key) => key !== 'in' && inputs[key] === undefined)
+			.map((key) => `--${key}`)
+		if (TAKES_RUN_ID[command] && runId === null) missing.push('--run-id')
+		if (missing.length > 0) {
+			return usageError(`${command} requires ${missing.join(', ')}`)
+		}
 	}
 
 	// One stdin cannot serve two readers, so at most one input may be `-`.

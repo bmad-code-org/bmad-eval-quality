@@ -179,13 +179,16 @@ The **CLI** wraps the same library for callers that cannot import TypeScript: CI
 Run the CLI binary directly without installing the package or cloning the repository:
 
 ```bash
-# 1. Compile contract against authoring discipline rules
+# 1. Single-pass compile and seal in ONE command
+npx eval-quality eval --contract contract.json --out ./eval-out
+
+# 2. Single-pass compile, seal, AND preflight environment check in ONE command
+npx eval-quality eval --contract contract.json \
+  --probes probes.json --observations observations.json --out ./eval-out
+
+# 3. Individual stage commands
 npx eval-quality compile --in contract.json --out ./eval-out
-
-# 2. Compile & Seal in ONE step (single pass to emit sealed evaluator brief)
 npx eval-quality seal --in contract.json --out ./eval-out
-
-# 3. Preflight environment baseline check
 npx eval-quality preflight --contract contract.json \
   --probes probes.json --observations observations.json \
   --run-id 2026-08-28-a --out ./eval-out

@@ -716,13 +716,16 @@ dependency. See
 </ul>
 <h3 id="published-npx-commands-zero-install">Published <code>npx</code> Commands (Zero-Install)<a class="heading-anchor" href="#published-npx-commands-zero-install" aria-label="Link to Published npx Commands (Zero-Install)">#</a></h3>
 <p>Run the CLI binary directly without installing the package or cloning the repository:</p>
-<pre><code class="language-bash"># 1. Compile contract against authoring discipline rules
+<pre><code class="language-bash"># 1. Single-pass compile and seal in ONE command
+npx eval-quality eval --contract contract.json --out ./eval-out
+
+# 2. Single-pass compile, seal, AND preflight environment check in ONE command
+npx eval-quality eval --contract contract.json \
+  --probes probes.json --observations observations.json --out ./eval-out
+
+# 3. Individual stage commands
 npx eval-quality compile --in contract.json --out ./eval-out
-
-# 2. Compile &amp; Seal in ONE step (single pass to emit sealed evaluator brief)
 npx eval-quality seal --in contract.json --out ./eval-out
-
-# 3. Preflight environment baseline check
 npx eval-quality preflight --contract contract.json \
   --probes probes.json --observations observations.json \
   --run-id 2026-08-28-a --out ./eval-out
