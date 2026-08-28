@@ -78,7 +78,7 @@
     "build:shareable": "node scripts/build-shareable.mjs",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
-    "test:conformance": "vitest run tests/adapters tests/testing tests/conformance",
+    "test:conformance": "npm run build && vitest run tests/adapters tests/testing tests/conformance",
     "test:watch": "vitest",
     "check:vectors": "python3 tests/fixtures/derive_vectors.py --check",
     "generate:schemas": "node scripts/generate-schemas.ts",
