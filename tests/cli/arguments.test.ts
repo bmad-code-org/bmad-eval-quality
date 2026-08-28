@@ -6,7 +6,7 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import type { ParsedInvocation } from '../../src/cli/arguments.ts'
-import { parseArguments } from '../../src/cli/arguments.ts'
+import { COMMANDS, parseArguments } from '../../src/cli/arguments.ts'
 
 type RunInvocation = Extract<ParsedInvocation, { kind: 'run' }>
 type UsageError = Extract<ParsedInvocation, { kind: 'usage-error' }>
@@ -266,15 +266,17 @@ describe('cli arguments: the six usage-error shapes (cases 18-23)', () => {
 		expect(message).toContain('preflight')
 	})
 
+	// The expected list is derived from `COMMANDS`, so a command added there
+	// without reaching the usage message fails these two.
 	it('case 22: an unknown command names the token and the three commands', () => {
 		const { message } = parseUsageError(['compilee'])
 		expect(message).toContain('compilee')
-		expect(message).toContain('compile, seal, preflight')
+		expect(message).toContain(COMMANDS.join(', '))
 	})
 
 	it('case 23: an empty argv names the three commands it expected', () => {
 		const { message } = parseUsageError([])
-		expect(message).toContain('compile, seal, preflight')
+		expect(message).toContain(COMMANDS.join(', '))
 	})
 })
 

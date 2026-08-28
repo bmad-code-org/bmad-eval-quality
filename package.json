@@ -65,8 +65,6 @@
   },
   "scripts": {
     "hooks:install": "husky",
-    "eval-quality": "node dist/cli/main.js",
-    "eval": "node scripts/run-eval.mjs",
     "build": "tsc -p tsconfig-build.json",
     "clean": "rm -rf dist",
     "typecheck": "tsc --noEmit -p tsconfig.json",
@@ -74,6 +72,7 @@
     "lint:fix": "biome check --write .",
     "format": "biome format --write .",
     "check:docs": "node scripts/check-docs.mjs",
+    "check:doc-invocations": "node scripts/check-doc-invocations.mjs",
     "lint:spine": "python3 scripts/spine-lint/lint_spine.py --registry-ad 5 --workspace-root . --fail-on high",
     "test:spine-lint": "uv run --with pytest pytest scripts/spine-lint/tests -q",
     "build:shareable": "node scripts/build-shareable.mjs",
@@ -93,16 +92,16 @@
     "check:boundary": "node scripts/check-package-boundary.ts",
     "generate:dev-corpus": "node scripts/generate-dev-corpus.ts",
     "check:corpus": "node scripts/check-dev-corpus.ts",
+    "check:website-deps": "node scripts/audit-lockfile-age.mjs --lockfile website/package-lock.json && node scripts/check-licenses.mjs --lockfile website/package-lock.json",
     "check:shareable": "node scripts/check-shareable.mjs",
     "bench:digest": "node scripts/bench-digest.ts",
     "docs:dev": "npm --prefix website run dev",
     "docs:build": "node tools/build-docs.mjs",
     "docs:preview": "npm --prefix website run preview",
     "docs:validate-links": "node tools/validate-doc-links.js",
-    "release:patch": "gh workflow run publish.yml -f version_type=patch",
-    "release:minor": "gh workflow run publish.yml -f version_type=minor",
-    "release:major": "gh workflow run publish.yml -f version_type=major",
-    "validate": "npm run typecheck && npm run lint && npm run check:docs && npm run check:shareable && npm run lint:spine && npm run check:vectors && npm run check:schemas && npm run check:ad5-registry && npm run check:ad28-registry && npm run check:ad31-table && npm run check:layers && npm run check:lineage && npm run check:boundary && npm run check:corpus && npm run test:coverage",
+    "release:prepare": "node scripts/release-prepare.mjs",
+    "release:publish": "gh workflow run publish.yml --ref main",
+    "validate": "npm run typecheck && npm run lint && npm run check:docs && npm run check:doc-invocations && npm run check:shareable && npm run lint:spine && npm run check:vectors && npm run check:schemas && npm run check:ad5-registry && npm run check:ad28-registry && npm run check:ad31-table && npm run check:layers && npm run check:lineage && npm run check:boundary && npm run check:corpus && npm run check:website-deps && npm run test:coverage",
     "prepack": "npm run clean && npm run build",
     "prepublishOnly": "node scripts/assert-publish-authorized.mjs"
   },
@@ -121,7 +120,7 @@
     "vitest": "4.1.10"
   },
   "overrides": {
-    "vite": "7.3.1"
+    "vite": "7.3.6"
   },
   "lint-staged": {
     "*.{ts,js,json}": [

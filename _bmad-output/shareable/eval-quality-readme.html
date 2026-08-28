@@ -550,7 +550,7 @@ tbody tr:hover {
   <div class="layout">
     <aside class="sidebar" aria-label="Table of contents">
       <p class="toc-title">On this page</p>
-      <a class="toc-link depth-3" href="#eval-quality-does-four-things">eval-quality does four things</a><a class="toc-link depth-3" href="#what-is-the-eval-spec">What is the eval spec?</a><a class="toc-link depth-3" href="#caveman-summary">Caveman summary</a><a class="toc-link depth-2" href="#key-concepts">Key Concepts</a><a class="toc-link depth-3" href="#how-they-fit-together">How They Fit Together</a><a class="toc-link depth-2" href="#elaboration">Elaboration</a><a class="toc-link depth-2" href="#what-each-part-provides">What each part provides</a><a class="toc-link depth-2" href="#who-it-is-for">Who it is for</a><a class="toc-link depth-2" href="#behavioral-evaluation-contracts">Behavioral Evaluation Contracts</a><a class="toc-link depth-2" href="#how-eval-contract-strength-scoring-works">How Eval Contract strength scoring works</a><a class="toc-link depth-2" href="#using-it">Using it</a><a class="toc-link depth-3" href="#what-the-cli-commands-do">What the CLI Commands Do</a><a class="toc-link depth-3" href="#command-equivalents-npx-vs-npm-run">Command Equivalents (npx vs npm run)</a><a class="toc-link depth-4" href="#section-1-single-pass-workflow-compile-seal">1. Single-Pass Workflow (Compile + Seal)</a><a class="toc-link depth-4" href="#section-2-single-pass-workflow-with-preflight-compile-seal-preflight">2. Single-Pass Workflow with Preflight (Compile + Seal + Preflight)</a><a class="toc-link depth-4" href="#section-3-compile-stage-only">3. Compile Stage Only</a><a class="toc-link depth-4" href="#section-4-seal-stage-only">4. Seal Stage Only</a><a class="toc-link depth-4" href="#section-5-preflight-stage-only">5. Preflight Stage Only</a><a class="toc-link depth-2" href="#relationship-with-bmad-and-tea">Relationship with BMad and TEA</a><a class="toc-link depth-3" href="#real-world-walkthrough-testing-a-bmad-tea-knowledge-harness">Real-World Walkthrough: Testing a bmad-tea Knowledge Harness</a><a class="toc-link depth-2" href="#evidence-and-limitations">Evidence and limitations</a><a class="toc-link depth-2" href="#architecture-status">Architecture status</a><a class="toc-link depth-2" href="#not-building-now">Not building now</a><a class="toc-link depth-2" href="#development">Development</a><a class="toc-link depth-2" href="#contributing">Contributing</a><a class="toc-link depth-2" href="#security">Security</a><a class="toc-link depth-2" href="#license">License</a>
+      <a class="toc-link depth-3" href="#eval-quality-does-three-things">eval-quality does three things</a><a class="toc-link depth-3" href="#what-is-the-eval-spec">What is the eval spec?</a><a class="toc-link depth-3" href="#caveman-summary">Caveman summary</a><a class="toc-link depth-2" href="#key-concepts">Key Concepts</a><a class="toc-link depth-3" href="#how-they-fit-together">How They Fit Together</a><a class="toc-link depth-2" href="#elaboration">Elaboration</a><a class="toc-link depth-2" href="#what-each-part-provides">What each part provides</a><a class="toc-link depth-2" href="#who-it-is-for">Who it is for</a><a class="toc-link depth-2" href="#behavioral-evaluation-contracts">Behavioral Evaluation Contracts</a><a class="toc-link depth-2" href="#how-eval-contract-strength-scoring-works">How Eval Contract strength scoring works</a><a class="toc-link depth-2" href="#using-it">Using it</a><a class="toc-link depth-3" href="#what-the-cli-commands-do">What the CLI Commands Do</a><a class="toc-link depth-3" href="#running-the-cli">Running the CLI</a><a class="toc-link depth-2" href="#relationship-with-bmad-and-tea">Relationship with BMad and TEA</a><a class="toc-link depth-3" href="#real-world-walkthrough-testing-a-bmad-tea-knowledge-harness">Real-World Walkthrough: Testing a bmad-tea Knowledge Harness</a><a class="toc-link depth-2" href="#evidence-and-limitations">Evidence and limitations</a><a class="toc-link depth-2" href="#architecture-status">Architecture status</a><a class="toc-link depth-2" href="#not-building-now">Not building now</a><a class="toc-link depth-2" href="#development">Development</a><a class="toc-link depth-2" href="#contributing">Contributing</a><a class="toc-link depth-2" href="#security">Security</a><a class="toc-link depth-2" href="#license">License</a>
     </aside>
     <main class="paper">
       <header class="hero">
@@ -564,15 +564,15 @@ tbody tr:hover {
       </header>
       <details class="mobile-toc">
         <summary>On this page</summary>
-        <div class="mobile-toc-links"><a class="toc-link depth-3" href="#eval-quality-does-four-things">eval-quality does four things</a><a class="toc-link depth-3" href="#what-is-the-eval-spec">What is the eval spec?</a><a class="toc-link depth-3" href="#caveman-summary">Caveman summary</a><a class="toc-link depth-2" href="#key-concepts">Key Concepts</a><a class="toc-link depth-3" href="#how-they-fit-together">How They Fit Together</a><a class="toc-link depth-2" href="#elaboration">Elaboration</a><a class="toc-link depth-2" href="#what-each-part-provides">What each part provides</a><a class="toc-link depth-2" href="#who-it-is-for">Who it is for</a><a class="toc-link depth-2" href="#behavioral-evaluation-contracts">Behavioral Evaluation Contracts</a><a class="toc-link depth-2" href="#how-eval-contract-strength-scoring-works">How Eval Contract strength scoring works</a><a class="toc-link depth-2" href="#using-it">Using it</a><a class="toc-link depth-3" href="#what-the-cli-commands-do">What the CLI Commands Do</a><a class="toc-link depth-3" href="#command-equivalents-npx-vs-npm-run">Command Equivalents (npx vs npm run)</a><a class="toc-link depth-4" href="#section-1-single-pass-workflow-compile-seal">1. Single-Pass Workflow (Compile + Seal)</a><a class="toc-link depth-4" href="#section-2-single-pass-workflow-with-preflight-compile-seal-preflight">2. Single-Pass Workflow with Preflight (Compile + Seal + Preflight)</a><a class="toc-link depth-4" href="#section-3-compile-stage-only">3. Compile Stage Only</a><a class="toc-link depth-4" href="#section-4-seal-stage-only">4. Seal Stage Only</a><a class="toc-link depth-4" href="#section-5-preflight-stage-only">5. Preflight Stage Only</a><a class="toc-link depth-2" href="#relationship-with-bmad-and-tea">Relationship with BMad and TEA</a><a class="toc-link depth-3" href="#real-world-walkthrough-testing-a-bmad-tea-knowledge-harness">Real-World Walkthrough: Testing a bmad-tea Knowledge Harness</a><a class="toc-link depth-2" href="#evidence-and-limitations">Evidence and limitations</a><a class="toc-link depth-2" href="#architecture-status">Architecture status</a><a class="toc-link depth-2" href="#not-building-now">Not building now</a><a class="toc-link depth-2" href="#development">Development</a><a class="toc-link depth-2" href="#contributing">Contributing</a><a class="toc-link depth-2" href="#security">Security</a><a class="toc-link depth-2" href="#license">License</a></div>
+        <div class="mobile-toc-links"><a class="toc-link depth-3" href="#eval-quality-does-three-things">eval-quality does three things</a><a class="toc-link depth-3" href="#what-is-the-eval-spec">What is the eval spec?</a><a class="toc-link depth-3" href="#caveman-summary">Caveman summary</a><a class="toc-link depth-2" href="#key-concepts">Key Concepts</a><a class="toc-link depth-3" href="#how-they-fit-together">How They Fit Together</a><a class="toc-link depth-2" href="#elaboration">Elaboration</a><a class="toc-link depth-2" href="#what-each-part-provides">What each part provides</a><a class="toc-link depth-2" href="#who-it-is-for">Who it is for</a><a class="toc-link depth-2" href="#behavioral-evaluation-contracts">Behavioral Evaluation Contracts</a><a class="toc-link depth-2" href="#how-eval-contract-strength-scoring-works">How Eval Contract strength scoring works</a><a class="toc-link depth-2" href="#using-it">Using it</a><a class="toc-link depth-3" href="#what-the-cli-commands-do">What the CLI Commands Do</a><a class="toc-link depth-3" href="#running-the-cli">Running the CLI</a><a class="toc-link depth-2" href="#relationship-with-bmad-and-tea">Relationship with BMad and TEA</a><a class="toc-link depth-3" href="#real-world-walkthrough-testing-a-bmad-tea-knowledge-harness">Real-World Walkthrough: Testing a bmad-tea Knowledge Harness</a><a class="toc-link depth-2" href="#evidence-and-limitations">Evidence and limitations</a><a class="toc-link depth-2" href="#architecture-status">Architecture status</a><a class="toc-link depth-2" href="#not-building-now">Not building now</a><a class="toc-link depth-2" href="#development">Development</a><a class="toc-link depth-2" href="#contributing">Contributing</a><a class="toc-link depth-2" href="#security">Security</a><a class="toc-link depth-2" href="#license">License</a></div>
       </details>
-      <article class="content"><h3 id="eval-quality-does-four-things"><code>eval-quality</code> does four things<a class="heading-anchor" href="#eval-quality-does-four-things" aria-label="Link to eval-quality does four things">#</a></h3>
+      <article class="content"><h3 id="eval-quality-does-three-things"><code>eval-quality</code> does three things<a class="heading-anchor" href="#eval-quality-does-three-things" aria-label="Link to eval-quality does three things">#</a></h3>
 <ol>
 <li><strong>Compile</strong>: validate and normalize an eval contract into a machine-readable artifact.</li>
 <li><strong>Seal</strong>: render the brief for the independent evaluator while hiding the planted bug and scoring answer.</li>
 <li><strong>Preflight</strong>: verify baseline environment readiness and probe reachability before running an evaluator.</li>
-<li><strong>Score</strong>: compare the evaluator’s completed findings with the hidden bug signature to determine whether the bug was actually caught.</li>
 </ol>
+<p>Scoring is the next milestone: comparing the evaluator’s completed findings with the hidden bug signature to determine whether the bug was actually caught.</p>
 <h3 id="what-is-the-eval-spec">What is the eval spec?<a class="heading-anchor" href="#what-is-the-eval-spec" aria-label="Link to What is the eval spec?">#</a></h3>
 <p>It is the test.</p>
 <p>More precisely, it is the evaluator’s instructions for how to expose a failure and what evidence counts as finding it.</p>
@@ -658,8 +658,8 @@ confirm the specific error, and confirm no record was created.
 <li>the oracle vocabulary and authoring rules</li>
 <li>the contract compiler</li>
 <li>the environment pre-flight</li>
-<li>Eval Contract strength scoring</li>
-<li>versioned evidence output and PASS / WAIVED / CONCERNS / FAIL governance</li>
+<li>Eval Contract strength scoring (next milestone)</li>
+<li>versioned evidence output and PASS / WAIVED / CONCERNS / FAIL governance (next milestone)</li>
 </ul>
 <p>The caller provides:</p>
 <ul>
@@ -670,8 +670,9 @@ confirm the specific error, and confirm no record was created.
 <li>a sealed run record returned for ingestion</li>
 </ul>
 <p><code>eval-quality</code> executes nothing: it never spawns a process, calls a model, drives a system under test,
-or invokes a judge. Its pure stages are compile, seal, ingest, pre-flight, score, and emit. Pre-flight
-probes the fixture through the environment-probe port, so a contract that declares a fixture reset
+or invokes a judge. Its pure stages are compile, seal, ingest, pre-flight, score, and emit; compile,
+seal, and pre-flight ship, and ingest, score, and emit are the next milestone. Pre-flight probes the
+fixture through the environment-probe port, so a contract that declares a fixture reset
 needs the caller&#39;s probe policy to authorize that operation&#39;s method as well as the read methods
 every other pre-flight leg uses. Engine integration is a later adapter behind a port, not a v0
 dependency. See
@@ -705,61 +706,26 @@ dependency. See
 <p>A required oracle that missed, abstained, errored, or is absent prevents PASS, and a high overall score never overrides it. An infrastructure error or a failed environment pre-flight is not a behavioral result at all; it invalidates the run and is re-executed rather than scored.</p>
 <h2 id="using-it">Using it<a class="heading-anchor" href="#using-it" aria-label="Link to Using it">#</a></h2>
 <p><code>eval-quality</code> is its own repository and package, not a plugin inside another framework.</p>
-<p>The <strong>library</strong> is the primary surface. It exports the contract schema, the oracle vocabulary, the compiler, the scorer, the pre-flight, and the evidence types. The published typed schema is what lets coding agents author contracts correctly by default, which is how the discipline scales beyond the people who went looking for the tool.</p>
+<p>The <strong>library</strong> is the primary surface. It exports the contract schema, the oracle vocabulary, the compiler, the pre-flight, and the evidence types. The published typed schema is what lets coding agents author contracts correctly by default, which is how the discipline scales beyond the people who went looking for the tool.</p>
 <p>The <strong>CLI</strong> wraps the same library for callers that cannot import TypeScript: CI jobs, GitHub Actions, PR-review and unit-test bots, other frameworks&#39; skills, and any agent permitted to run a shell command.</p>
 <h3 id="what-the-cli-commands-do">What the CLI Commands Do<a class="heading-anchor" href="#what-the-cli-commands-do" aria-label="Link to What the CLI Commands Do">#</a></h3>
 <ul>
 <li><strong><code>compile</code></strong>: Typechecks an authored <code>eval-contract.json</code>. Verifies that all behaviors, oracles, rubrics, and sensitivity witnesses comply with structural and authoring rules.</li>
 <li><strong><code>seal</code></strong>: Generates a <code>sealed-evaluator-brief.json</code> by stripping secret defect signatures, planted answers, and author commentary. The brief carries only the directions and safety bounds the evaluator needs.</li>
 <li><strong><code>preflight</code></strong>: Reduces caller-supplied probe observations against the contract to verify environment baseline readiness and probe reachability. Halts early with exit code <code>3</code> if the environment is unready.</li>
-<li><strong><code>run</code></strong>: (Planned / Roadmap) Scores a completed run by ingesting evidence records and evaluating oracles to compute a deterministic verdict (<code>PASS</code>, <code>CONCERNS</code>, <code>FAIL</code>).</li>
 </ul>
-<h3 id="command-equivalents-npx-vs-npm-run">Command Equivalents (<code>npx</code> vs <code>npm run</code>)<a class="heading-anchor" href="#command-equivalents-npx-vs-npm-run" aria-label="Link to Command Equivalents (npx vs npm run)">#</a></h3>
-<p>Every command is executable via <strong><code>npx</code></strong> (zero installation required) or via <strong><code>npm run</code></strong> (when working inside the repository):</p>
-<h4 id="section-1-single-pass-workflow-compile-seal">1. Single-Pass Workflow (Compile + Seal)<a class="heading-anchor" href="#section-1-single-pass-workflow-compile-seal" aria-label="Link to 1. Single-Pass Workflow (Compile + Seal)">#</a></h4>
-<pre><code class="language-bash"># npx (Zero-Install)
-npx eval-quality eval --contract contract.json --out ./eval-out
+<h3 id="running-the-cli">Running the CLI<a class="heading-anchor" href="#running-the-cli" aria-label="Link to Running the CLI">#</a></h3>
+<p>Every command runs through <code>npx</code> without installing anything:</p>
+<pre><code class="language-bash">npx eval-quality compile --in contract.json --out ./eval-out
 
-# npm run (In-Repo)
-npm run eval -- --contract contract.json --out ./eval-out
-</code></pre>
-<h4 id="section-2-single-pass-workflow-with-preflight-compile-seal-preflight">2. Single-Pass Workflow with Preflight (Compile + Seal + Preflight)<a class="heading-anchor" href="#section-2-single-pass-workflow-with-preflight-compile-seal-preflight" aria-label="Link to 2. Single-Pass Workflow with Preflight (Compile + Seal + Preflight)">#</a></h4>
-<pre><code class="language-bash"># npx (Zero-Install)
-npx eval-quality eval --contract contract.json \
-  --probes probes.json --observations observations.json --out ./eval-out
-
-# npm run (In-Repo)
-npm run eval -- --contract contract.json \
-  --probes probes.json --observations observations.json --out ./eval-out
-</code></pre>
-<h4 id="section-3-compile-stage-only">3. Compile Stage Only<a class="heading-anchor" href="#section-3-compile-stage-only" aria-label="Link to 3. Compile Stage Only">#</a></h4>
-<pre><code class="language-bash"># npx (Zero-Install)
-npx eval-quality compile --in contract.json --out ./eval-out
-
-# npm run (In-Repo)
-npm run eval-quality compile -- --in contract.json --out ./eval-out
-</code></pre>
-<h4 id="section-4-seal-stage-only">4. Seal Stage Only<a class="heading-anchor" href="#section-4-seal-stage-only" aria-label="Link to 4. Seal Stage Only">#</a></h4>
-<pre><code class="language-bash"># npx (Zero-Install)
 npx eval-quality seal --in contract.json --out ./eval-out
 
-# npm run (In-Repo)
-npm run eval-quality seal -- --in contract.json --out ./eval-out
-</code></pre>
-<h4 id="section-5-preflight-stage-only">5. Preflight Stage Only<a class="heading-anchor" href="#section-5-preflight-stage-only" aria-label="Link to 5. Preflight Stage Only">#</a></h4>
-<pre><code class="language-bash"># npx (Zero-Install)
 npx eval-quality preflight --contract contract.json \
-  --probes probes.json --observations observations.json \
-  --run-id 2026-08-28-a --out ./eval-out
-
-# npm run (In-Repo)
-npm run eval-quality preflight -- --contract contract.json \
   --probes probes.json --observations observations.json \
   --run-id 2026-08-28-a --out ./eval-out
 </code></pre>
 <p>Every command is non-interactive: no prompt, no terminal check, and no behaviour that differs when
-stdin is a pipe. Each one is a single call into the library plus artifact serialization, so a
-capability reachable one way is reachable the other.</p>
+stdin is a pipe. Each one is a single call into the library plus artifact serialization.</p>
 <p><strong>Input and output.</strong> An input flag left out reads stdin, and <code>-</code> names stdin explicitly; at most one
 input may be <code>-</code>. Without <code>--out</code> the artifact goes to stdout, so a command composes with a pipe.
 An <code>--out</code> ending in <code>.json</code> is a file path; anything else is a directory, and the artifact is
@@ -830,7 +796,6 @@ can read real compiled contracts and one compiled-and-sealed pair without clonin
 <li>Run <code>eval-quality compile --in contract.json</code> to validate contract structure and discipline rules.</li>
 <li>Run <code>eval-quality seal --in contract.json --out ./run</code> to generate <code>sealed-evaluator-brief.json</code>.</li>
 <li>Pass <code>sealed-evaluator-brief.json</code> to <code>bmad-tea</code> to execute the task without seeing answer keys.</li>
-<li>Ingest the returned run record and execute <code>eval-quality run</code> to score knowledge selection accuracy.</li>
 </ol>
 <h2 id="evidence-and-limitations">Evidence and limitations<a class="heading-anchor" href="#evidence-and-limitations" aria-label="Link to Evidence and limitations">#</a></h2>
 <p>Holding the model, the budget, the system, and the defects fixed, and changing only how the Eval Contract was authored, sealed-evaluator detection moved from <strong>0.33 to 1.00</strong> across three naturally occurring defects, three repetitions per arm, 19 scored runs.</p>

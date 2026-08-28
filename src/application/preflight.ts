@@ -111,13 +111,6 @@ const closingLine = (legCount: number, passed: boolean): string =>
 export async function runPreflight(
 	options: RunPreflightOptions,
 ): Promise<PreflightVerdict> {
-	if (typeof options.runId !== 'string' || options.runId.trim() === '') {
-		throw new RuntimeFault(
-			'schema-parse-failure',
-			'runId',
-			'options.runId must be a non-empty string',
-		)
-	}
 	const { runId, port, signal, sink } = options
 	const parsedContract = parseContract(options.contract)
 	const parsedProbes = parseProbes(options.probes)
@@ -165,13 +158,6 @@ export async function runPreflight(
 export function preflightFromObservations(
 	options: PreflightFromObservationsOptions,
 ): PreflightVerdict {
-	if (typeof options.runId !== 'string' || options.runId.trim() === '') {
-		throw new RuntimeFault(
-			'schema-parse-failure',
-			'runId',
-			'options.runId must be a non-empty string',
-		)
-	}
 	const { runId, sink } = options
 	const parsedContract = parseContract(options.contract)
 	const parsedProbes = parseProbes(options.probes)

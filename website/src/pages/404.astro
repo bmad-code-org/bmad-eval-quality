@@ -1,9 +1,9 @@
 ---
-import StarlightPage from '@astrojs/starlight/components/StarlightPage.astro';
-import { getEntry, render } from 'astro:content';
+import { getEntry, render } from 'astro:content'
+import StarlightPage from '@astrojs/starlight/components/StarlightPage.astro'
 
-const entry = await getEntry('docs', '404');
-const { Content } = entry ? await render(entry) : { Content: null };
+const entry = await getEntry('docs', '404')
+const { Content } = entry ? await render(entry) : { Content: null }
 ---
 
 <StarlightPage frontmatter={{ title: entry?.data?.title || 'Page Not Found' } as any}>

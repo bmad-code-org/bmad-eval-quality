@@ -1,11 +1,12 @@
 # `eval-quality`
 
-### `eval-quality` does four things
+### `eval-quality` does three things
 
 1. **Compile**: validate and normalize an eval contract into a machine-readable artifact.
 2. **Seal**: render the brief for the independent evaluator while hiding the planted bug and scoring answer.
 3. **Preflight**: verify baseline environment readiness and probe reachability before running an evaluator.
-4. **Score**: compare the evaluator’s completed findings with the hidden bug signature to determine whether the bug was actually caught.
+
+Scoring is the next milestone: comparing the evaluator’s completed findings with the hidden bug signature to determine whether the bug was actually caught.
 
 ### What is the eval spec?
 
@@ -100,8 +101,8 @@ product spec
 - the oracle vocabulary and authoring rules
 - the contract compiler
 - the environment pre-flight
-- Eval Contract strength scoring
-- versioned evidence output and PASS / WAIVED / CONCERNS / FAIL governance
+- Eval Contract strength scoring (next milestone)
+- versioned evidence output and PASS / WAIVED / CONCERNS / FAIL governance (next milestone)
 
 The caller provides:
 
@@ -112,8 +113,9 @@ The caller provides:
 - a sealed run record returned for ingestion
 
 `eval-quality` executes nothing: it never spawns a process, calls a model, drives a system under test,
-or invokes a judge. Its pure stages are compile, seal, ingest, pre-flight, score, and emit. Pre-flight
-probes the fixture through the environment-probe port, so a contract that declares a fixture reset
+or invokes a judge. Its pure stages are compile, seal, ingest, pre-flight, score, and emit; compile,
+seal, and pre-flight ship, and ingest, score, and emit are the next milestone. Pre-flight probes the
+fixture through the environment-probe port, so a contract that declares a fixture reset
 needs the caller's probe policy to authorize that operation's method as well as the read methods
 every other pre-flight leg uses. Engine integration is a later adapter behind a port, not a v0
 dependency. See
@@ -163,7 +165,7 @@ A required oracle that missed, abstained, errored, or is absent prevents PASS, a
 
 `eval-quality` is its own repository and package, not a plugin inside another framework.
 
-The **library** is the primary surface. It exports the contract schema, the oracle vocabulary, the compiler, the scorer, the pre-flight, and the evidence types. The published typed schema is what lets coding agents author contracts correctly by default, which is how the discipline scales beyond the people who went looking for the tool.
+The **library** is the primary surface. It exports the contract schema, the oracle vocabulary, the compiler, the pre-flight, and the evidence types. The published typed schema is what lets coding agents author contracts correctly by default, which is how the discipline scales beyond the people who went looking for the tool.
 
 The **CLI** wraps the same library for callers that cannot import TypeScript: CI jobs, GitHub Actions, PR-review and unit-test bots, other frameworks' skills, and any agent permitted to run a shell command.
 
@@ -172,66 +174,23 @@ The **CLI** wraps the same library for callers that cannot import TypeScript: CI
 - **`compile`**: Typechecks an authored `eval-contract.json`. Verifies that all behaviors, oracles, rubrics, and sensitivity witnesses comply with structural and authoring rules.
 - **`seal`**: Generates a `sealed-evaluator-brief.json` by stripping secret defect signatures, planted answers, and author commentary. The brief carries only the directions and safety bounds the evaluator needs.
 - **`preflight`**: Reduces caller-supplied probe observations against the contract to verify environment baseline readiness and probe reachability. Halts early with exit code `3` if the environment is unready.
-- **`run`**: (Planned / Roadmap) Scores a completed run by ingesting evidence records and evaluating oracles to compute a deterministic verdict (`PASS`, `CONCERNS`, `FAIL`).
 
-### Command Equivalents (`npx` vs `npm run`)
+### Running the CLI
 
-Every command is executable via **`npx`** (zero installation required) or via **`npm run`** (when working inside the repository):
+Every command runs through `npx` without installing anything:
 
-#### 1. Single-Pass Workflow (Compile + Seal)
 ```bash
-# npx (Zero-Install)
-npx eval-quality eval --contract contract.json --out ./eval-out
-
-# npm run (In-Repo)
-npm run eval -- --contract contract.json --out ./eval-out
-```
-
-#### 2. Single-Pass Workflow with Preflight (Compile + Seal + Preflight)
-```bash
-# npx (Zero-Install)
-npx eval-quality eval --contract contract.json \
-  --probes probes.json --observations observations.json --out ./eval-out
-
-# npm run (In-Repo)
-npm run eval -- --contract contract.json \
-  --probes probes.json --observations observations.json --out ./eval-out
-```
-
-#### 3. Compile Stage Only
-```bash
-# npx (Zero-Install)
 npx eval-quality compile --in contract.json --out ./eval-out
 
-# npm run (In-Repo)
-npm run eval-quality compile -- --in contract.json --out ./eval-out
-```
-
-#### 4. Seal Stage Only
-```bash
-# npx (Zero-Install)
 npx eval-quality seal --in contract.json --out ./eval-out
 
-# npm run (In-Repo)
-npm run eval-quality seal -- --in contract.json --out ./eval-out
-```
-
-#### 5. Preflight Stage Only
-```bash
-# npx (Zero-Install)
 npx eval-quality preflight --contract contract.json \
-  --probes probes.json --observations observations.json \
-  --run-id 2026-08-28-a --out ./eval-out
-
-# npm run (In-Repo)
-npm run eval-quality preflight -- --contract contract.json \
   --probes probes.json --observations observations.json \
   --run-id 2026-08-28-a --out ./eval-out
 ```
 
 Every command is non-interactive: no prompt, no terminal check, and no behaviour that differs when
-stdin is a pipe. Each one is a single call into the library plus artifact serialization, so a
-capability reachable one way is reachable the other.
+stdin is a pipe. Each one is a single call into the library plus artifact serialization.
 
 **Input and output.** An input flag left out reads stdin, and `-` names stdin explicitly; at most one
 input may be `-`. Without `--out` the artifact goes to stdout, so a command composes with a pipe.
@@ -291,7 +250,6 @@ Evaluator runs remain isolated to prevent builder-context leakage and preserve t
 2. Run `eval-quality compile --in contract.json` to validate contract structure and discipline rules.
 3. Run `eval-quality seal --in contract.json --out ./run` to generate `sealed-evaluator-brief.json`.
 4. Pass `sealed-evaluator-brief.json` to `bmad-tea` to execute the task without seeing answer keys.
-5. Ingest the returned run record and execute `eval-quality run` to score knowledge selection accuracy.
 
 ## Evidence and limitations
 

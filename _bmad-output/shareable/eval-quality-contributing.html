@@ -550,7 +550,7 @@ tbody tr:hover {
   <div class="layout">
     <aside class="sidebar" aria-label="Table of contents">
       <p class="toc-title">On this page</p>
-      <a class="toc-link depth-2" href="#getting-started">Getting Started</a><a class="toc-link depth-3" href="#prerequisites">Prerequisites</a><a class="toc-link depth-3" href="#initial-setup">Initial Setup</a><a class="toc-link depth-3" href="#quick-development-commands">Quick Development Commands</a><a class="toc-link depth-2" href="#architecture-constraints">Architecture Constraints</a><a class="toc-link depth-2" href="#adding-a-module">Adding a Module</a><a class="toc-link depth-2" href="#code-standards">Code Standards</a><a class="toc-link depth-2" href="#submitting-changes">Submitting Changes</a><a class="toc-link depth-3" href="#commit-message-format">Commit Message Format</a><a class="toc-link depth-3" href="#code-review-process">Code Review Process</a><a class="toc-link depth-2" href="#release-process">Release Process</a><a class="toc-link depth-2" href="#community-support">Community &amp; Support</a>
+      <a class="toc-link depth-2" href="#getting-started">Getting Started</a><a class="toc-link depth-3" href="#prerequisites">Prerequisites</a><a class="toc-link depth-3" href="#initial-setup">Initial Setup</a><a class="toc-link depth-3" href="#quick-development-commands">Quick Development Commands</a><a class="toc-link depth-2" href="#architecture-constraints">Architecture Constraints</a><a class="toc-link depth-2" href="#adding-a-module">Adding a Module</a><a class="toc-link depth-2" href="#code-standards">Code Standards</a><a class="toc-link depth-2" href="#submitting-changes">Submitting Changes</a><a class="toc-link depth-3" href="#commit-message-format">Commit Message Format</a><a class="toc-link depth-3" href="#code-review-process">Code Review Process</a><a class="toc-link depth-2" href="#releasing">Releasing</a><a class="toc-link depth-3" href="#section-1-cut-the-release-pr">1. Cut the release PR</a><a class="toc-link depth-3" href="#section-2-publish-from-main">2. Publish from main</a><a class="toc-link depth-3" href="#first-publish">First publish</a><a class="toc-link depth-3" href="#tag-protection">Tag protection</a><a class="toc-link depth-2" href="#community-support">Community &amp; Support</a>
     </aside>
     <main class="paper">
       <header class="hero">
@@ -563,7 +563,7 @@ tbody tr:hover {
       </header>
       <details class="mobile-toc">
         <summary>On this page</summary>
-        <div class="mobile-toc-links"><a class="toc-link depth-2" href="#getting-started">Getting Started</a><a class="toc-link depth-3" href="#prerequisites">Prerequisites</a><a class="toc-link depth-3" href="#initial-setup">Initial Setup</a><a class="toc-link depth-3" href="#quick-development-commands">Quick Development Commands</a><a class="toc-link depth-2" href="#architecture-constraints">Architecture Constraints</a><a class="toc-link depth-2" href="#adding-a-module">Adding a Module</a><a class="toc-link depth-2" href="#code-standards">Code Standards</a><a class="toc-link depth-2" href="#submitting-changes">Submitting Changes</a><a class="toc-link depth-3" href="#commit-message-format">Commit Message Format</a><a class="toc-link depth-3" href="#code-review-process">Code Review Process</a><a class="toc-link depth-2" href="#release-process">Release Process</a><a class="toc-link depth-2" href="#community-support">Community &amp; Support</a></div>
+        <div class="mobile-toc-links"><a class="toc-link depth-2" href="#getting-started">Getting Started</a><a class="toc-link depth-3" href="#prerequisites">Prerequisites</a><a class="toc-link depth-3" href="#initial-setup">Initial Setup</a><a class="toc-link depth-3" href="#quick-development-commands">Quick Development Commands</a><a class="toc-link depth-2" href="#architecture-constraints">Architecture Constraints</a><a class="toc-link depth-2" href="#adding-a-module">Adding a Module</a><a class="toc-link depth-2" href="#code-standards">Code Standards</a><a class="toc-link depth-2" href="#submitting-changes">Submitting Changes</a><a class="toc-link depth-3" href="#commit-message-format">Commit Message Format</a><a class="toc-link depth-3" href="#code-review-process">Code Review Process</a><a class="toc-link depth-2" href="#releasing">Releasing</a><a class="toc-link depth-3" href="#section-1-cut-the-release-pr">1. Cut the release PR</a><a class="toc-link depth-3" href="#section-2-publish-from-main">2. Publish from main</a><a class="toc-link depth-3" href="#first-publish">First publish</a><a class="toc-link depth-3" href="#tag-protection">Tag protection</a><a class="toc-link depth-2" href="#community-support">Community &amp; Support</a></div>
       </details>
       <article class="content"><p>Thanks for your interest in contributing! <code>eval-quality</code> is a provider-agnostic agent-evaluation library, distributed as a single npm package with per-module subpath exports.</p>
 <h2 id="getting-started">Getting Started<a class="heading-anchor" href="#getting-started" aria-label="Link to Getting Started">#</a></h2>
@@ -642,8 +642,98 @@ Detailed explanation if needed
 <p>Types: <code>feat</code>, <code>fix</code>, <code>docs</code>, <code>refactor</code>, <code>test</code>, <code>chore</code>.</p>
 <h3 id="code-review-process">Code Review Process<a class="heading-anchor" href="#code-review-process" aria-label="Link to Code Review Process">#</a></h3>
 <p>All PRs require at least one maintainer review before merge. CI must be green.</p>
-<h2 id="release-process">Release Process<a class="heading-anchor" href="#release-process" aria-label="Link to Release Process">#</a></h2>
-<p>Releases are cut via the &quot;Publish Package&quot; GitHub Actions workflow (<code>workflow_dispatch</code>): it bumps the version, builds, publishes to npm, tags the release, and opens a PR with the version bump back to <code>main</code>.</p>
+<h2 id="releasing">Releasing<a class="heading-anchor" href="#releasing" aria-label="Link to Releasing">#</a></h2>
+<p>A release is two steps with a human merge in between. The version is decided on a laptop and lands
+on <code>main</code> through an ordinary PR; the publish workflow then publishes whatever version <code>main</code>
+declares. Nothing in CI bumps a version or pushes to a branch, because the <code>protect-main</code> ruleset
+makes that impossible: a PR opened with <code>GITHUB_TOKEN</code> never triggers <code>pr-gate.yml</code>, so the
+required <code>gate</code> check never posts and the PR never merges.</p>
+<h3 id="section-1-cut-the-release-pr">1. Cut the release PR<a class="heading-anchor" href="#section-1-cut-the-release-pr" aria-label="Link to 1. Cut the release PR">#</a></h3>
+<p>From a clean checkout of <code>main</code> that matches <code>origin/main</code>:</p>
+<pre><code class="language-bash">npm run release:prepare -- patch    # or minor, major
+</code></pre>
+<p>The script bumps <code>package.json</code> and <code>package-lock.json</code> (<code>npm version --no-git-tag-version</code>), moves
+the <code>[Unreleased]</code> notes in <code>CHANGELOG.md</code> into a dated <code>[X.Y.Z]</code> section
+(<code>scripts/stamp-changelog.mjs</code>), commits <code>chore: release vX.Y.Z</code> on <code>release/vX.Y.Z</code>, pushes, and
+opens the PR against <code>main</code>. It refuses on a dirty tree, off <code>main</code>, when local <code>main</code> differs from
+<code>origin/main</code>, and when the tag, the branch, or the npm version already exists. Pass <code>--no-pr</code> to
+push without opening the PR.</p>
+<p>Write changelog entries under <code>[Unreleased]</code> in the PR that makes the change, so the release PR
+only moves them. If <code>[Unreleased]</code> is empty at release time the stamp is a no-op and the GitHub
+Release falls back to generated notes.</p>
+<p>Review the PR, wait for <code>gate</code>, merge it. Every merge here is a squash, so the release commit on
+<code>main</code> is the squash commit, and that is what gets tagged.</p>
+<h3 id="section-2-publish-from-main">2. Publish from main<a class="heading-anchor" href="#section-2-publish-from-main" aria-label="Link to 2. Publish from main">#</a></h3>
+<pre><code class="language-bash">npm run release:publish             # gh workflow run publish.yml --ref main
+</code></pre>
+<p>or Actions &gt; Publish Package &gt; Run workflow, branch <code>main</code>. The workflow takes no inputs. It:</p>
+<ol>
+<li>fails at the AD-18 guard unless the repository variable <code>PUBLICATION_UNBLOCKED</code> is <code>true</code>;</li>
+<li>checks out <code>main</code>, pins npm, audits lockfile age, runs <code>npm ci</code>;</li>
+<li>reads the version from <code>package.json</code> and resolves what already happened: refuses if tag
+<code>vX.Y.Z</code> exists at a different commit, or if npm already has <code>X.Y.Z</code> published from a different
+commit (<code>gitHead</code> on the registry manifest);</li>
+<li>runs <code>npm run validate</code> and <code>npm run build</code>;</li>
+<li><code>npm publish --access public --provenance --tag latest</code> through the npm Trusted Publisher
+(OIDC, no token), skipped when npm already has the version;</li>
+<li>polls the registry for up to two minutes until the version resolves;</li>
+<li>tags <code>github.sha</code> as <code>vX.Y.Z</code> (no <code>-f</code>), skipped when the tag already points there;</li>
+<li>creates the GitHub Release with the <code>[X.Y.Z]</code> section of <code>CHANGELOG.md</code> as the body, falling
+back to <code>[Unreleased]</code>, then to generated notes; skipped when the Release exists.</li>
+</ol>
+<p>Re-running the workflow after a partial failure is the recovery path. The registry can accept a
+tarball and then fail the provenance upload, or the tag push can fail after the publish succeeded;
+each step above checks its own prior success, so a re-run finishes the release instead of dying on
+&quot;tag already exists&quot; or &quot;cannot publish over existing version&quot;. Runs are serialized
+(<code>concurrency: publish</code>, no cancellation).</p>
+<h3 id="first-publish">First publish<a class="heading-anchor" href="#first-publish" aria-label="Link to First publish">#</a></h3>
+<p>The npm Trusted Publisher form lives under an existing package&#39;s settings
+(npmjs.com &gt; Packages &gt; <code>eval-quality</code> &gt; Settings &gt; Trusted Publisher), and as of the
+<a href="https://docs.npmjs.com/trusted-publishers">current docs</a> there is no way to register one for a
+package the registry has never seen. Check that page first; if npm has added first-publish support
+since, configure the publisher and skip the token below. Otherwise the first version goes up once
+by hand:</p>
+<ol>
+<li><p>Pick the first version deliberately. <code>package.json</code> sits at <code>0.0.0</code>, so <code>release:prepare -- patch</code>
+produces <code>0.0.1</code> and <code>minor</code> produces <code>0.1.0</code>. Cut and merge that PR as in step 1.</p>
+</li>
+<li><p>On npmjs.com, create a granular access token: packages and scopes &quot;Read and write&quot;, the
+shortest expiry offered, IP allowlist if practical, bypass 2FA off. It has to cover all
+packages, since an unpublished package cannot be selected.</p>
+</li>
+<li><p>From a clean checkout of <code>main</code> at the merged release commit (<code>git rev-parse HEAD</code> must equal
+what <code>gh pr view --json mergeCommit</code> reports; publishing from the release branch would record
+a <code>gitHead</code> that is not on <code>main</code> and the workflow would refuse it):</p>
+<pre><code class="language-bash">npm ci &amp;&amp; npm run validate &amp;&amp; npm run build
+EVAL_QUALITY_PUBLISH_AUTHORIZED=true NODE_AUTH_TOKEN=&lt;token&gt; npm publish --access public --tag latest
+</code></pre>
+<p>No <code>--provenance</code>: attestations need a CI identity. Every later release gets one.</p>
+</li>
+<li><p>Revoke the token.</p>
+</li>
+<li><p>Configure the Trusted Publisher: organization <code>bmad-code-org</code>, repository <code>bmad-eval-quality</code>,
+workflow filename <code>publish.yml</code>, no environment.</p>
+</li>
+<li><p>Run the publish workflow from <code>main</code>. It finds the version on npm with a matching <code>gitHead</code>,
+skips the publish, and does the tag and Release.</p>
+</li>
+</ol>
+<h3 id="tag-protection">Tag protection<a class="heading-anchor" href="#tag-protection" aria-label="Link to Tag protection">#</a></h3>
+<p>Tags <code>v*</code> should be immutable once pushed, like the &quot;Release tags&quot; ruleset on bmad-tea. Create it
+once with:</p>
+<pre><code class="language-bash">gh api --method POST repos/bmad-code-org/bmad-eval-quality/rulesets --input - &lt;&lt;&#39;JSON&#39;
+{
+  &quot;name&quot;: &quot;Release tags&quot;,
+  &quot;target&quot;: &quot;tag&quot;,
+  &quot;enforcement&quot;: &quot;active&quot;,
+  &quot;conditions&quot;: { &quot;ref_name&quot;: { &quot;include&quot;: [&quot;refs/tags/v*&quot;], &quot;exclude&quot;: [] } },
+  &quot;rules&quot;: [{ &quot;type&quot;: &quot;deletion&quot; }, { &quot;type&quot;: &quot;non_fast_forward&quot; }, { &quot;type&quot;: &quot;update&quot; }],
+  &quot;bypass_actors&quot;: []
+}
+JSON
+</code></pre>
+<p>Creation stays allowed, which is all the workflow needs. A tag at the wrong commit is fixed by
+bumping the version and releasing again, never by moving the tag.</p>
 <h2 id="community-support">Community &amp; Support<a class="heading-anchor" href="#community-support" aria-label="Link to Community &amp; Support">#</a></h2>
 <ul>
 <li><strong>Issues</strong>: report bugs and request features via GitHub Issues.</li>

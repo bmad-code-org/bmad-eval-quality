@@ -62,6 +62,28 @@ jobs:
       - name: Port conformance suite (every shipped adapter plus the in-repository probe subject)
         run: npm run test:conformance
 
+      # The documentation site's lockfile is a second resolved graph, and
+      # `npm --prefix website ci` reads no project `.npmrc` from the root, so
+      # AD-25 and the age policy have to be applied to it explicitly.
+      - name: Website dependency audit (lockfile age and AD-25 licences)
+        run: npm run check:website-deps
+
+      # Every command line the documentation shows is executed. Exit 64 means
+      # the documented command or flag does not exist.
+      - name: Documented CLI invocations
+        run: npm run check:doc-invocations
+
+      # CI only, and deliberately outside `npm run validate`: this is the one
+      # check that queries the npm advisory database, and `validate` has to
+      # stay runnable with no network. Both lockfiles are audited because the
+      # documentation site resolves its own graph. `--omit=dev` would exempt
+      # almost everything here, since every root dependency but `zod` is a dev
+      # dependency, so the level is the filter and the scope is everything.
+      - name: Known-vulnerability audit (advisory DB, CI only)
+        run: |
+          npm audit --audit-level=high
+          npm --prefix website audit --audit-level=high
+
       # Before the two steps that run the suite. The published-surface cases
       # resolve `dist/` through the `exports` map and skip with a clear message
       # when it is absent, so an unbuilt tree would turn eight of them into a
@@ -72,7 +94,7 @@ jobs:
       # `npm run validate` ends in `test:coverage`, so the AD-30/NFR7 floor is
       # already enforced here. A separate coverage step beside this one would
       # run the whole suite twice in one job for nothing.
-      - name: Validate (typecheck, lint, check:docs, check:shareable, lint:spine, check:vectors, check:schemas, check:ad5-registry, check:ad28-registry, check:ad31-table, check:layers, check:lineage, check:boundary, check:corpus, and the AD-30/NFR7 coverage floor via test:coverage)
+      - name: Validate (typecheck, lint, check:docs, check:doc-invocations, check:shareable, lint:spine, check:vectors, check:schemas, check:ad5-registry, check:ad28-registry, check:ad31-table, check:layers, check:lineage, check:boundary, check:corpus, check:website-deps, and the AD-30/NFR7 coverage floor via test:coverage)
         run: npm run validate
 
   floor:

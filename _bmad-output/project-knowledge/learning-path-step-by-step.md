@@ -2052,3 +2052,5 @@ flowchart TD
   scorer, and the scorer is not written. `corpus/dev/README.md` says so out loud.
 - `--strict` and codes 1 and 2 are wired and documented, and nothing reaches them yet, because
   scoring ships later.
+- The documentation site is generated from `docs/`, and `npm run check:doc-invocations` runs every
+  fenced CLI line in it against the built binary.

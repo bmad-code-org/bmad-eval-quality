@@ -2160,28 +2160,37 @@ subagents: five for the AD-15 prose pass, one per source directory, and nine for
 
 ### Debug Log References
 
-Every number below is command output taken on the finished tree, not arithmetic.
+Every number below is command output taken on the finished tree, not arithmetic. The table was
+refilled after the post-story work recorded at the end of this file, so it measures the tree as it
+stands rather than as this story first left it.
 
 | Check | Command | Result |
 | --- | --- | --- |
-| Full gate | `npm run validate` | exit 0, all fifteen checks |
+| Full gate | `npm run validate` | exit 0, all eighteen checks |
+| Known vulnerabilities | `npm audit --audit-level=high`, `npm --prefix website audit --audit-level=high` | both exit 0; the package graph has one low finding left, the site graph none |
 | Build | `npm run build` | exit 0; `dist/cli/main.js` carries `#!/usr/bin/env node` at byte 0 |
+| Documentation site | `npm run docs:build` | exit 0; 9 pages, 0 link issues |
 | Coverage | `npm run test:coverage` | statements 96.85% (2860/2953), branches 92.25% (1632/1769), functions 99.8% (517/518), lines 97.91% (2588/2643) |
-| Test census | `npm run test` | 84 files / 2803 tests, from the 73-file / 2625-test baseline |
+| Test census | `npm run test` | 85 files / 2814 tests, from the 73-file / 2625-test baseline |
 | Layers | `npm run check:layers` | 96 files scanned, 0 violations |
 | Lineage | `npm run check:lineage` | 96 files scanned, 0 violations |
-| Boundary | `npm run check:boundary` | first run 137 violations across 41 entries under eleven patterns; 0 after the prose pass and after the twelfth pattern, across 153 entries (96 from `src/`, 23 from `corpus/`, 34 synthetic manifest entries) |
+| Boundary | `npm run check:boundary` | first run 137 violations across 41 entries under eleven patterns; 0 now, across 173 entries (96 from `src/`, 12 from `schemas/`, 23 from `corpus/`, 42 synthetic manifest entries) |
 | Corpus | `npm run check:corpus` | 23 committed corpus files match the builder byte for byte, and `corpus/` holds 23 files and nothing else |
 | Schemas | `npm run check:schemas` | 12 documents match after `generate:schemas` |
 | Schema delta | `git diff --stat schemas/` | 9 files, 61 insertions, 61 deletions, every changed line a `"description"` value |
-| Licences | `node scripts/check-licenses.mjs` | passed, 179 entries |
-| Lockfile age | `node scripts/audit-lockfile-age.mjs` | passed, 179 entries |
+| Licences, package | `node scripts/check-licenses.mjs` | passed under the package policy, 179 entries |
+| Licences, site | `node scripts/check-licenses.mjs --lockfile website/package-lock.json` | passed under the workspace policy, 557 entries, 14 optional `@img/sharp-*` entries tolerated by name |
+| Lockfile age, package | `node scripts/audit-lockfile-age.mjs` | passed, 179 entries |
+| Lockfile age, site | `node scripts/audit-lockfile-age.mjs --lockfile website/package-lock.json` | passed, 557 entries |
+| Documented invocations | `npm run check:doc-invocations` | 16 invocations across 10 doc files, 0 failures |
+| Docs link scan | `npm run check:docs` | 55 files OK |
 | Spine lint | `npm run lint:spine`, `npm run test:spine-lint` | zero findings; 45 pytest cases pass |
 | Shareable | `npm run check:shareable` | 21 pages match after `build:shareable` |
 | Conformance | `npm run test:conformance` | 53 tests pass |
-| Pack contents | `npm pack --dry-run --ignore-scripts` | `LICENSE README.md corpus dist package.json schemas`, 230 files, 1,309,698 bytes unpacked |
-| Installed bin | pack into a temp copy, `npm install --offline`, run the shim | prints `0.0.0`, exit 0, no `.tgz` in the repository |
-| AD-31 table | `git diff --exit-code -- docs/` | clean |
+| Lint | `npx biome check .` | 252 files, zero findings, with `tools/` and `website/` in scope |
+| Pack contents | `npm pack --dry-run --ignore-scripts` | `LICENSE README.md corpus dist package.json schemas`, 230 files, 1,320,531 bytes unpacked |
+| Installed bin | case 92: pack into a temp copy, `npm install --offline`, run the shim | ran, 261 ms; prints `0.0.0`, exit 0, no `.tgz` in the repository |
+| AD-31 table | `npm run check:ad31-table` | matches byte for byte, 19 corpus contracts, 28 cells |
 | Compile census | `tests/compile/compile.test.ts:46` | unchanged at 26 |
 
 The boundary census by pattern, from the scanner's own first run: `story` 60, `Decision n` 36,
@@ -2192,16 +2201,19 @@ plus its eighteen transitives, confirmed by diffing `package-lock.json`'s `packa
 The three canaries were each run locally before being written into the workflow, then each was
 re-run after review hardening, with its guard neutered to prove the guard is what makes it pass. The
 coverage canary emits `ERROR: Coverage for statements (96.85%) does not meet global threshold (100%)`
-while the suite still reports 2803 passed. The boundary canary's three seeds produce
+while the suite still reports 2814 passed. The boundary canary's three seeds produce
 `src/core/failure-codes.ts:1 [story]`, `package.json#description:1 [TEA]`, and
 `corpus/dev/boundary-canary.md:1 [_bmad-output]`. The corpus canary's seed change produces
 `corpus/dev/compile-seal-example/brief.json: drift at byte offset 74`.
 
-**Two rows of AC 19 are stale against the finished tree and are corrected here rather than in the
-criterion.** Its CI-name-string row cites `pr-checks.yml:65`; the `Validate` step is at `:75` after
-the `Build` step moved ahead of it. Its test-census row expects 84 files and 2789 tests against
-AC 17's 164 cases; the count is 84 files and 2803 tests against 178 cases, which is AC 17's 166 plus
-the twelve added during the review rounds below.
+**Three rows of AC 19 are stale against the finished tree and are corrected here rather than in the
+criterion.** Its CI-name-string row cites `pr-checks.yml:65`; the `Validate` step is at `:86` after
+the `Build` step moved ahead of it and three checks were added. Its test-census row expects 84 files
+and 2789 tests against AC 17's 164 cases; the count is 85 files and 2814 tests, which is AC 17's 166
+cases plus the twelve added during the review rounds, plus the release process's own
+`tests/architecture/stamp-changelog.test.ts`. Its AD-31 row says "this story does not touch the
+table"; the table is unchanged, but the frontmatter that produces it moved, which the post-story
+section records.
 
 ### Completion Notes List
 
@@ -2302,7 +2314,8 @@ committed case numbers breaks every reference to them; the collision is recorded
 `tests/application/seal.test.ts` (10), `tests/application/diagnostics.test.ts` (4),
 `tests/application/serialize.test.ts` (4), `tests/architecture/package-boundary.test.ts` (27),
 `tests/architecture/package-exports.test.ts` (14), `tests/architecture/dev-corpus.test.ts` (8).
-That is AC 17's 166 cases plus twelve the review rounds added, numbered 167 through 178.
+That is AC 17's 166 cases plus twelve the review rounds added, numbered 167 through 178. All 178
+survive the post-story work; none was renumbered, weakened, or removed.
 
 **Edited tests:** `tests/application/preflight.test.ts` (+8, cases 105 through 112).
 
@@ -2323,3 +2336,260 @@ files under `_bmad-output/shareable/`, and `_bmad-output/implementation-artifact
 
 `_bmad-output/project-knowledge/learning-path-step-by-step.md` is deliberately untouched; it is
 written after this record.
+
+**Added after the story, and owned by it**, because the post-story section below explains each:
+`scripts/check-doc-invocations.mjs` (wired as `check:doc-invocations`), `website/.npmrc`, the
+`check:website-deps` script, the twelfth AD-15 pattern, and `AD31_TABLE_FRONTMATTER` in
+`scripts/ad31-table-target.ts`. **Removed after the story:** `src/cli/`'s `eval` command,
+`scripts/run-eval.mjs`, `tests/cli/run-eval.test.ts`, `scripts/gen-satisfied-fixtures.ts`,
+`scripts/gen-test-fixtures.ts`, and the `eval`, `eval-quality`, `release:patch`, `release:minor`
+and `release:major` npm scripts.
+
+## Post-story additions and their review
+
+This story was implemented, reviewed three times, and handed off green. Nine commits then landed on
+the branch from a different tool, adding a documentation website, a `eval` subcommand, a release
+workflow rewrite, and two fixture scripts. Three sessions reviewed those commits and returned
+**twenty-nine findings, four of them critical**. Every one is closed. This section records what
+changed and why, because the tree no longer matches what the acceptance criteria above describe in
+four places, and a reader deserves to know which.
+
+### What the review found, and the shape of it
+
+The pattern across the nine commits was source moved and the test adjusted or abandoned behind it,
+rather than the reverse. Three instances, all in one commit:
+
+- **The `eval` command overwrote its own input, exit 0, silently.** Measured: a 16,549-byte contract
+  became 9,031 bytes with no diagnostic. `runCommand` derives the collision-check target from
+  `EMITTED[command].kind`, and `runEvalCommand` wrote three paths, so `eval-contract.json` and
+  `preflight-verdict.json` were unguarded; with no `--out` the check was skipped outright. This is
+  the defect the peer review closed as its first HIGH, reopened in the one command with no tests.
+- **Case 92's NFR7 assertion was removed.** `--offline` became `--prefer-offline` and the three
+  comment lines recording why the flag was load-bearing went with it. The two are not equivalents:
+  on an empty cache `--offline` fails `ENOTCACHED` naming the registry, while `--prefer-offline`
+  fetches silently. AC 17 says of that flag, "it is the flag that proves compliance rather than one
+  that hides a violation."
+- **A `runId` guard made the outbound AD-28 parse unreachable.** It added no rejection an empty run
+  id did not already get, its `.trim()` half refused a value the published `PreflightVerdict.runId`
+  accepts, its `artifactPath` was a field name where all thirty-seven other sites pass a schema
+  name, and its `typeof` half was unreachable from a typechecked caller. Case 108 went red and a new
+  unnumbered test was written beside it pinning the guard.
+
+A cross-model pass found the release blocker: **`npm run validate` could not pass on a clean
+checkout**, because `tests/architecture/package-exports.test.ts` resolved `dist/` at module load and
+CI built after validating. The eight `dist/`-reading cases now skip with a clear message when
+unbuilt, and every CI job that runs the suite builds first, so the skip is a local convenience and
+never a hole in the gate.
+
+### What was removed, and the criterion
+
+The criterion is AD-14's own sentence, the one Decision 4 already used to fix the command set: **a
+command exists where one orchestration call produces an interchange artifact to serialize.** `eval`
+made two calls, or three with probes and observations, and `application.seal` re-compiles
+internally, so the contract compiled twice. It also broke AC 11 rules 5, 6, and 9 — writing into the
+caller's working directory instead of stdout, skipping the collision check, and collapsing three
+artifacts onto one path when `--out` named a `.json` file. It hardcoded `runId: 'run-1'` while
+advertising a `--run-id` flag its own parser rejected. It had no tests, and it lives in
+`src/cli/`, which AD-30 excludes from the coverage floor, so nothing could have noticed.
+
+Removed with it: `scripts/run-eval.mjs`, a standalone single-pass runner duplicating `compile` and
+`seal`; `tests/cli/run-eval.test.ts`, which drove that script and never touched the subcommand; and
+`scripts/gen-satisfied-fixtures.ts` and `scripts/gen-test-fixtures.ts`, which were dead — in no npm
+script, in no CI job, imported by nothing, writing into a gitignored directory, with the first
+crashing on a clean checkout because it never created its output directory and emitting a
+`satisfied-obs.json` that reduces to `passed: false`.
+
+### The AD-31 frontmatter moved out of `core/`
+
+Astro Starlight page frontmatter had been prepended to `HEADER` in `src/core/coverage/table.ts`, a
+pure `core/` builder that emits a published document. It now lives in `scripts/ad31-table-target.ts`
+as `AD31_TABLE_FRONTMATTER`, prepended by both `generate-ad31-table.ts` and `check-ad31-table.ts`,
+so `docs/ad31-coverage-predicates.generated.md` is byte-identical and `core/` carries no rendering
+concern. `website/src/content.config.ts` went back to a plain `docsSchema()`: the `z.preprocess`
+shim that injected a title for that one file was redundant, and every docs entry carries its own
+`title`. All three `canary-ad31-table` steps were re-run and still discriminate.
+
+### Documentation, and a check that executes it
+
+The documentation site stays. `scripts/check-doc-invocations.mjs` executes every concrete command
+line the documentation shows and fails the gate when one exits 64, which is the CLI's usage error:
+the documented command or flag does not exist. It is wired as `check:doc-invocations`, inside
+`validate` and as its own named CI step. Two corrections were needed before it could mean anything:
+its bare-`eval-quality` spelling matched a rendered diagnostic line, so every documented sample of
+`eval-quality: <code>: <artifactPath>: <detail>` was executed as a command and reported a phantom
+failure; and a block introduced by a `Usage:` line is the binary's own grammar reproduced from
+`--help`, where `[--in <path>]` is optional-flag notation and the grammar wraps across lines. Both
+are skipped now, and the check also fails on a Node stack, so a binary that dies before it can
+decide anything is a failure rather than a silent pass. Verified in all three directions: the real
+tree passes at 16 invocations across 10 files, a seeded `--nope` fails naming the file and line, and
+a deliberately broken build fails instead of passing.
+
+### The documentation site under the package's own supply-chain policy
+
+`npm --prefix website ci` read no project `.npmrc`, because npm resolves one from the local prefix
+and does not inherit across directories — a fact this repository already knew, since two canary jobs
+in `pr-checks.yml` are named after it. Measured before the fix: `allow-git` and `allow-remote` both
+`all` against the root's `none`, `min-release-age` null against 7, `save-exact` false against true.
+The committed lockfile showed the consequence: 38 entries inside the seven-day window, including
+`rollup@4.63.1` and twenty-five platform binaries published about seven hours before the commit.
+
+`website/.npmrc` now carries the same four policies. `sharp` and the three OFL-1.1 `@fontsource`
+packages are out of `website/package.json`, the image service is `passthroughImageService()`, and the
+four faces load from Google Fonts. Every remaining dependency is pinned exact and the lockfile was
+regenerated under the policy: 539 entries to 509, and the age audit passes.
+
+**The AD-25 decision, settled by construction.** AD-25 binds the whole resolved graph, the
+documentation site included, so the site's lockfile is audited by `check:website-deps`, wired into
+`validate` and into `validate-and-build`. Two parts:
+
+1. **Three permissive licences join the allowlist globally: `BlueOak-1.0.0`, `CC0-1.0`, and
+   `Python-2.0`.** None carries a copyleft or attribution burden beyond MIT's. That is an amendment
+   to AD-25's list, recorded here rather than escalated. Nothing else was added, and LGPL was not.
+2. **Fourteen `@img/sharp-*` entries get a named, scoped tolerance, and not an allowlist entry.**
+   `astro@6.4.8` declares `sharp` in `optionalDependencies`, so it returns through Astro itself
+   whatever the site's own manifest says; npm records an optional dependency in the lockfile
+   regardless of `--omit`, and every documented `overrides` form either does nothing or produces a
+   lockfile `npm ci` refuses. `scripts/check-licenses.mjs` therefore tolerates an entry only when
+   all four hold: the lockfile under scan is the website's, the name starts with `@img/sharp-`, the
+   entry is `optional: true`, and `website/astro.config.mjs` still contains
+   `passthroughImageService`. The file is read on every run, so the tolerance dies the moment the
+   image service is turned back on — proven by flipping it and watching the fourteen return. The
+   tolerated names are printed in the success line so they stay visible, and the root lockfile gets
+   no tolerance of any kind.
+
+**Install scripts are now a declaration.** `website/package.json` carries an `allowScripts` block
+written by npm's own `approve-scripts` and `deny-scripts`: `esbuild` and `fsevents` true, `sharp`
+false. npm writes pinned `pkg@version` entries for an approval, so a version bump re-asks rather
+than inheriting consent silently; the esbuild entry is `esbuild@0.28.2` after the upgrade below.
+`npm --prefix website ci` prints no allow-scripts warning.
+
+### Known vulnerabilities, and two majors taken to clear them
+
+`npm audit` was outside every gate here, and both graphs carried a HIGH.
+
+**The site** reported six findings, two HIGH: an XSS in `astro <= 7.0.9`, and four libvips CVEs in
+`sharp < 0.35.0`. The fix is an Astro major, so `astro` went 6.4.8 to **7.2.4** and
+`@astrojs/starlight` 0.40.0 to **0.41.7**. Both versions were picked against `min-release-age=7`
+rather than by taking the newest: astro 7.2.4 published 2026-08-19 and starlight 0.41.7 published
+2026-08-05 both clear the cutoff, while astro 7.2.5 and starlight 0.41.8 are inside the window and
+were left alone. `@astrojs/markdown-remark` stays at 7.2.4, which satisfies Starlight's `^7.2.0`
+peer; `@astrojs/check`, `@astrojs/sitemap`, `typescript`, and `unist-util-visit` are unchanged.
+Nothing in `astro.config.mjs`, `content.config.ts`, the two rehype plugins, or the 404 page needed a
+change: `astro check` reports 0 errors, 0 warnings, 0 hints across 11 files, the site builds 9 pages
+with 0 link issues, the emitted HTML carries `/bmad-eval-quality/` on every asset and link, and the
+Google Fonts block is in the head with no `@fontsource` CSS bundled. The site graph now reports
+**0 vulnerabilities**. One deprecation warning survives, `markdown.rehypePlugins` in favour of
+`unified({...})` from `@astrojs/markdown-remark`; Astro 7 still honours the old form, and the
+migration is left as its own change.
+
+**The package** carried a HIGH of its own that nobody had reported: `vite`, pinned by the root
+`overrides` at 7.3.1, sits inside the advisory range `7.0.0 - 7.3.3` — a path traversal in the
+optimized-deps `.map` handling, two `server.fs.deny` bypasses, and an arbitrary file read over the
+dev-server WebSocket. The override moved to **7.3.6**, published 2026-06-25 so it clears the age
+policy, and accepted by vitest's `^7.0.0`. The package graph went from five findings, one HIGH, to
+one low. The suite is unchanged at 2814 passing.
+
+**A CI-only step now audits both graphs.** `npm audit --audit-level=high` for the package and
+`npm --prefix website audit --audit-level=high` for the site, in `validate-and-build` after the two
+lockfile audits, named "Known-vulnerability audit (advisory DB, CI only)". It stays out of
+`npm run validate` deliberately: it queries the npm advisory database, and `validate` has to remain
+runnable with no network. `--omit=dev` would exempt almost the whole graph here, since every root
+dependency but `zod` is a dev dependency, so the severity level is the filter and the scope is
+everything.
+
+### One licence policy became two, named
+
+Astro 7 depends on `vite ^8.0.13`, and vite 8 has `lightningcss` as a **hard** dependency, not an
+optional one. `lightningcss` and its eleven platform binaries are `MPL-2.0`. There is no override
+that removes a hard dependency, and going back to Astro 6 to avoid it would reinstate both HIGH
+advisories, which is the worse trade.
+
+So `scripts/check-licenses.mjs` carries two named policies, and its output says which one ran:
+
+- **The package policy** governs `package-lock.json`, the graph that reaches an adopter through the
+  tarball. AD-25's allowlist exactly as written, and no tolerance of any kind. `lightningcss` stays
+  out of it, which is what the root `overrides` pin on `vite` is for. Output:
+  `Licence scan passed (package policy: AD-25 allowlist): 179 entries, all allowlisted.`
+- **The workspace policy** governs `website/package-lock.json`: the package allowlist plus
+  `MPL-2.0`, plus the conditional `@img/sharp-*` tolerance. The justification is that nothing in
+  that graph is ever distributed — `website/package.json` is `"private": true`, `website/` appears
+  in no `files` entry, and `npm pack --dry-run` carries none of it. MPL-2.0 is file-level copyleft
+  binding a redistributor of the covered files, and the documentation site ships as static HTML
+  built from these tools. Output:
+  `Licence scan passed (workspace policy: package allowlist + MPL-2.0): 557 entries, all allowlisted, 14 optional @img/sharp-* entries tolerated ...`
+
+The split is visible rather than a widened allowlist precisely so the two can never be confused when
+reading CI output. The `@img/sharp-*` tolerance is still doing real work and is still conditional:
+`sharp` moved to 0.35.3 and its own package is Apache-2.0 now, but the `@img/sharp-libvips-*`
+binaries are still `LGPL-3.0-or-later` at 1.3.2. Flipping `passthroughImageService` to
+`sharpImageService` in `astro.config.mjs` brings all fourteen violations straight back, which is the
+proof that the tolerance dies with the condition it names.
+
+### `docs.yaml`
+
+It had `SITE_URL: ${{ steps.pages.outputs.origin }}` against a step id the file never defined, so the
+value was the empty string. It was inert, because the site's own fallback produced the right base
+path, and the trap was in the obvious fix: `origin` is the host alone, so wiring the missing step
+while keeping `.origin` collapses `base` from `/bmad-eval-quality/` to `/` and breaks every asset
+URL and every rewritten link. Proven both ways locally. The workflow now runs a real
+`actions/configure-pages` with `id: pages`, uses `base_url`, and fails the job loudly if that ever
+resolves empty again.
+
+Also: all four actions SHA-pinned with `# vN` comments, matching the convention every other workflow
+here already followed; `node-version-file: .nvmrc` against a floating `'22'` where `.nvmrc` says 24;
+`assert-npm-version` and `audit-lockfile-age` before the installs; both lockfiles in the npm cache
+key; `pages: write` and `id-token: write` moved to the deploy job; and a `pull_request` trigger with
+the deploy job made main-only, so a broken documentation build reddens the pull request that caused
+it. Before that it ran on `push` to main alone and could not gate a merge at all.
+
+The dangling `favicon: '/favicon.ico'` is gone: `website/public/` has never existed, so every page
+emitted a link that 404s, and Starlight's own default now applies. `docs/404.md` and
+`website/src/pages/404.astro` both stay: the page sources the markdown through
+`getEntry('docs', '404')`, and the higher-priority-route warning is the intended outcome.
+
+### Lint scope
+
+`biome.json` had gained `!website`, `!build`, and `!tools`, putting roughly nine hundred lines of new
+hand-written JavaScript outside `npm run lint`, which runs inside `validate`. `!build` is correct and
+stays. The other two are gone, narrowed to `website/node_modules`, `website/.astro`, and the two
+website manifests. That surfaced 24 errors, 10 warnings, and 11 infos across 15 files; all are fixed
+and `npx biome check .` is 252 files with zero findings. Two were real defects in
+`tools/validate-doc-links.js`, both assignment-in-condition loops, now `for` loops with the advance
+in the update clause. The dead `--write` flag is gone from the same file.
+
+One rule was scoped off rather than obeyed, and it is the only one: ten diagnostics were
+`noUnusedImports` and `noUnusedVariables` on `.astro` files. Every one is a false positive — Biome
+parses only the frontmatter fence and cannot see the template, and each flagged binding is used in
+the markup below it, so deleting them would break the site. `biome.json` has one override scoping
+those two rules off for `**/*.astro`.
+
+### The release process
+
+Reworked by a sibling session and recorded here because it changes how this package ships: the
+version bump now travels as a pull request rather than a direct push, the publish step is idempotent
+so a re-run against an already-released version is not a failure, `scripts/stamp-changelog.mjs`
+stamps the changelog with `tests/architecture/stamp-changelog.test.ts` behind it, `CONTRIBUTING.md`
+carries the command that creates the tag ruleset, and there is a first-publish bootstrap path for a
+package that has never been released. `npm run release:patch`, `release:minor`, and `release:major`
+are replaced by `release:prepare` and `release:publish`, because `publish.yml` no longer takes a
+version-type input.
+
+**The tag ruleset has not been created.** The command is documented; nobody has run it against the
+repository. Until someone does, tag protection is a documented intention rather than an enforced
+rule, and that is the one piece of the release rework that is not yet real.
+
+### One CI-only flake, fixed where it fires
+
+`tests/schemas/published/mutant-generator.test.ts`'s byte-identity case timed out at vitest's
+5000 ms default on the GitHub runner under coverage instrumentation, while taking 4.1 s locally. It
+carries an explicit `}, 30000)` now, matching the `}, 20000)` precedent in
+`tests/adapters/probe-subject.test.ts`. The case count is unchanged; a timeout is not a case.
+
+### Two untracked files
+
+`eval-quality-llm.txt` is generated by the documentation build and was sitting untracked in the
+repository root; it is deleted and `*-llm.txt` is gitignored. `.memlog.md` is untracked now rather
+than committed. Neither ever entered the tarball — `files` names `dist`, `schemas`, `corpus`,
+`README.md`, and `LICENSE` — but a generated file loose in the root is how a `git status --porcelain`
+gate starts reporting noise.
+

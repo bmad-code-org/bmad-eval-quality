@@ -1,46 +1,47 @@
-# Publishes eval-quality to npmjs.org.
-# Triggered manually: Actions > Publish Package > Run workflow > pick version type.
-# Bumps version, builds, publishes, tags, and opens a PR back to main.
+# Publishes eval-quality to npmjs.org from a release commit that is already on main.
+#
+# The version is decided before this runs: `npm run release:prepare -- patch|minor|major` on a
+# laptop bumps package.json, stamps CHANGELOG.md, and opens a `release/vX.Y.Z` PR that clears
+# `gate` and is merged by a human. Then Actions > Publish Package > Run workflow (from main). This
+# job publishes the version main declares, tags github.sha, and creates the GitHub Release. It
+# writes to no branch and takes no inputs.
+#
+# Every side-effecting step checks for its own earlier success, so a re-run after a partial failure
+# finishes the release instead of colliding with it: publish is skipped when npm already has the
+# version, the tag when it already points at github.sha, the Release when it already exists. A tag
+# at a different commit, or an npm version published from a different commit, is a refusal.
 #
 # Uses npm trusted publishing (OIDC), not a static NPM_TOKEN secret: npm 11.5.1+ exchanges this job's
 # GitHub Actions OIDC token for a short-lived publish credential automatically, so there is no
 # long-lived npm token sitting in repo secrets for a compromised workflow or dependency to exfiltrate,
 # and `npm publish --provenance` attaches a verifiable build-provenance attestation to the release.
-# One-time setup this workflow cannot do for you: on npmjs.org, package Settings > Publishing access >
-# add this exact repo (bmad-code-org/bmad-eval-quality) and this exact workflow file (publish.yml) as
-# a Trusted Publisher. Until that link exists, `npm publish` below fails with an auth error - which is
-# a safe failure mode, since the AD-18 guard already blocks every run before this point regardless.
+# One-time setup this workflow cannot do for you: on npmjs.org, package Settings > Trusted Publisher >
+# add this exact repo (bmad-code-org/bmad-eval-quality) and this exact workflow file (publish.yml).
+# Until that link exists, `npm publish` below fails with an auth error, which is a safe failure mode:
+# nothing has been tagged or released by then. CONTRIBUTING.md covers the first publish, which has
+# to happen before the Trusted Publisher form exists.
 
 name: Publish Package
 
 on:
   workflow_dispatch:
-    inputs:
-      version_type:
-        description: 'Version type to bump'
-        required: true
-        default: 'patch'
-        type: 'choice'
-        options:
-          - patch
-          - minor
-          - major
-          - custom
-      custom_version:
-        description: 'Custom version (if version_type is "custom")'
-        required: false
-        type: 'string'
+
+# One publish at a time, and a queued run waits rather than cancelling the one holding a half-done
+# release.
+concurrency:
+  group: publish
+  cancel-in-progress: false
 
 env:
   NPM_VERSION: "11.18.0"
+  PACKAGE: eval-quality
 
 permissions:
-  contents: write      # checkout + push branch/tag
-  pull-requests: write # create PR
-  id-token: write      # OIDC token for npm trusted publishing
+  contents: write # push the tag, create the Release
+  id-token: write # OIDC token for npm trusted publishing
 
 jobs:
-  build-and-publish:
+  publish:
     # Both conditions are defense in depth, neither is the AD-18 guard (the first step below is):
     # github.ref restricts this to the branch releases are cut from, github.repository stops a fork's
     # workflow_dispatch (forks can dispatch workflows present in their own copy) from ever reaching a
@@ -83,80 +84,60 @@ jobs:
       - name: Install dependencies
         run: npm ci --no-audit --no-fund
 
-      - name: Validate inputs
-        env:
-          VERSION_TYPE: ${{ github.event.inputs.version_type }}
-          CUSTOM_VERSION: ${{ github.event.inputs.custom_version }}
+      # Reads the version main declares and works out which side effects already happened. The
+      # refusals here are the two states a re-run must not paper over.
+      - name: Resolve release state
+        id: state
         run: |
-          if [[ "$VERSION_TYPE" == "custom" && -z "$CUSTOM_VERSION" ]]; then
-            echo "ERROR: custom_version must be provided when version_type=custom"
-            exit 1
-          fi
+          set -euo pipefail
+          VERSION="$(node -p 'require("./package.json").version')"
+          TAG="v$VERSION"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
 
-      - name: Configure git
-        run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-
-      - name: Calculate version
-        id: version
-        env:
-          VERSION_TYPE: ${{ github.event.inputs.version_type }}
-          CUSTOM_VERSION: ${{ github.event.inputs.custom_version }}
-        run: |
-          CURRENT_VERSION=$(npm pkg get version | tr -d '"')
-          echo "current_version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
-
-          if [[ "$VERSION_TYPE" == "custom" ]]; then
-            NEW_VERSION="$CUSTOM_VERSION"
-          else
-            IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT_VERSION"
-            PATCH_BASE="${PATCH%%-*}"
-            if [[ "$VERSION_TYPE" == "major" ]]; then
-              NEW_VERSION="$((MAJOR + 1)).0.0"
-            elif [[ "$VERSION_TYPE" == "minor" ]]; then
-              NEW_VERSION="$MAJOR.$((MINOR + 1)).0"
-            else
-              NEW_VERSION="$MAJOR.$MINOR.$((PATCH_BASE + 1))"
+          TAG_EXISTS=false
+          if git ls-remote --exit-code --tags origin "refs/tags/$TAG" >/dev/null; then
+            git fetch --quiet origin "refs/tags/${TAG}:refs/tags/${TAG}"
+            TAG_SHA="$(git rev-parse "refs/tags/$TAG^{commit}")"
+            if [ "$TAG_SHA" != "$GITHUB_SHA" ]; then
+              echo "Tag $TAG already exists at $TAG_SHA, and this run is at $GITHUB_SHA." >&2
+              echo "Refusing to publish a version whose tag points elsewhere. Bump the version with release:prepare, or move the tag by hand if it is wrong." >&2
+              exit 1
             fi
+            TAG_EXISTS=true
+            echo "Tag $TAG already points at $GITHUB_SHA; the tag step will be skipped."
           fi
+          echo "tag_exists=$TAG_EXISTS" >> "$GITHUB_OUTPUT"
 
-          if [[ "$NEW_VERSION" == "$CURRENT_VERSION" ]]; then
-            echo "Version is already $NEW_VERSION, nothing to do."
-            echo "skip=true" >> $GITHUB_OUTPUT
-            exit 0
+          NPM_HAS=false
+          PUBLISHED="$(npm view "$PACKAGE@$VERSION" version 2>/dev/null || true)"
+          if [ "$PUBLISHED" = "$VERSION" ]; then
+            GIT_HEAD="$(npm view "$PACKAGE@$VERSION" gitHead 2>/dev/null || true)"
+            if [ -n "$GIT_HEAD" ] && [ "$GIT_HEAD" != "$GITHUB_SHA" ]; then
+              echo "$PACKAGE@$VERSION is on npm, published from $GIT_HEAD, and this run is at $GITHUB_SHA." >&2
+              echo "Refusing to tag a commit npm did not publish. Bump the version with release:prepare." >&2
+              exit 1
+            fi
+            NPM_HAS=true
+            echo "$PACKAGE@$VERSION is already on npm; the publish step will be skipped."
           fi
-
-          npm version "$NEW_VERSION" --no-git-tag-version
-          echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
-          echo "release_branch=release/v$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "npm_has=$NPM_HAS" >> "$GITHUB_OUTPUT"
 
       - name: Run full validation suite
-        if: steps.version.outputs.skip != 'true'
         run: npm run validate
 
       - name: Build package
-        if: steps.version.outputs.skip != 'true'
         run: npm run build
 
-      - name: Create version commit and release branch
-        if: steps.version.outputs.skip != 'true'
-        env:
-          NEW_VERSION: ${{ steps.version.outputs.new_version }}
-          RELEASE_BRANCH: ${{ steps.version.outputs.release_branch }}
-        run: |
-          git add package.json package-lock.json
-          git commit -m "chore: bump version to $NEW_VERSION" || true
-          git checkout -B "$RELEASE_BRANCH"
-          git push origin "$RELEASE_BRANCH"
-
       - name: Publish to npmjs.org
-        if: steps.version.outputs.skip != 'true'
+        if: steps.state.outputs.npm_has != 'true'
         # --provenance requires the id-token: write permission (granted above) and a public package;
         # no NODE_AUTH_TOKEN - trusted publishing exchanges this job's OIDC token for a short-lived
         # npm credential automatically once the registry-side Trusted Publisher link exists (see the
-        # top-of-file comment).
-        run: npm publish --access public --provenance
+        # top-of-file comment). Nothing has been pushed or tagged yet, so a failure here leaves no
+        # partial state on GitHub; a failure after the registry accepted the tarball is what the
+        # re-run path above handles.
+        run: npm publish --access public --provenance --tag latest
         env:
           # Only this step sets this; prepublishOnly (scripts/assert-publish-authorized.mjs) raises
           # the bar against a token-holder running `npm publish` from a laptop, but it is a speed bump,
@@ -165,41 +146,80 @@ jobs:
           # token to begin with, on a laptop or otherwise.
           EVAL_QUALITY_PUBLISH_AUTHORIZED: 'true'
 
-      - name: Create and push git tag
-        if: steps.version.outputs.skip != 'true'
-        env:
-          NEW_VERSION: ${{ steps.version.outputs.new_version }}
-        run: |
-          git tag -fa "v$NEW_VERSION" -m "Release $NEW_VERSION"
-          git push origin "v$NEW_VERSION"
-
+      # Registry propagation is not instant. Bounded: two minutes, then fail rather than hang.
       - name: Verify publish
-        if: steps.version.outputs.skip != 'true'
         env:
-          NEW_VERSION: ${{ steps.version.outputs.new_version }}
+          VERSION: ${{ steps.state.outputs.version }}
         run: |
-          sleep 5
-          npm view "eval-quality@$NEW_VERSION" version && echo "Verified on npmjs.org"
+          set -euo pipefail
+          for attempt in $(seq 1 24); do
+            if [ "$(npm view "$PACKAGE@$VERSION" version 2>/dev/null || true)" = "$VERSION" ]; then
+              echo "Verified $PACKAGE@$VERSION on npmjs.org (attempt $attempt)."
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "$PACKAGE@$VERSION not visible on npmjs.org after 24 attempts." >&2
+          exit 1
 
+      # No -f: the state step already proved the tag is absent, and a tag that appears between the
+      # two steps is a real conflict, not something to overwrite.
+      - name: Create and push git tag
+        if: steps.state.outputs.tag_exists != 'true'
+        env:
+          TAG: ${{ steps.state.outputs.tag }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "$TAG" "$GITHUB_SHA" -m "Release $TAG"
+          git push origin "refs/tags/$TAG"
+
+      # Body comes from the CHANGELOG section release:prepare stamped, then from [Unreleased] if the
+      # stamp found nothing, then from GitHub's generated notes.
       - name: Create GitHub Release
-        if: steps.version.outputs.skip != 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NEW_VERSION: ${{ steps.version.outputs.new_version }}
+          TAG: ${{ steps.state.outputs.tag }}
+          VERSION: ${{ steps.state.outputs.version }}
         run: |
-          gh release create "v$NEW_VERSION" \
-            --title "v$NEW_VERSION" \
-            --generate-notes
-
-      - name: Create pull request
-        if: steps.version.outputs.skip != 'true'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NEW_VERSION: ${{ steps.version.outputs.new_version }}
-          RELEASE_BRANCH: ${{ steps.version.outputs.release_branch }}
-        run: |
-          gh pr create \
-            --base main \
-            --head "$RELEASE_BRANCH" \
-            --title "chore: release v$NEW_VERSION" \
-            --body "Bumps version to $NEW_VERSION. Auto-generated by the publish workflow."
+          set -euo pipefail
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release $TAG already exists; nothing to do."
+            exit 0
+          fi
+          has_release_notes() {
+            awk '
+              /^[[:space:]]*$/ { next }
+              /^[[:space:]]*-{3,}[[:space:]]*$/ { next }
+              { found = 1 }
+              END { exit found ? 0 : 1 }
+            ' <<< "$1"
+          }
+          BODY=$(awk -v ver="$VERSION" '
+            /^## / {
+              if (found) exit
+              if ($0 ~ ("^##[[:space:]]*\\[?[[:space:]]*v?" ver "[[:space:]]*\\]?([[:space:]]*-[[:space:]].*)?$")) found=1
+              next
+            }
+            found { print }
+          ' CHANGELOG.md)
+          if ! has_release_notes "$BODY"; then
+            BODY=$(awk '
+              /^##[[:space:]]*\[Unreleased\]/ { found=1; next }
+              /^## / {
+                if (found) exit
+                next
+              }
+              found { print }
+            ' CHANGELOG.md)
+            if has_release_notes "$BODY"; then
+              echo "::notice::No CHANGELOG.md entry for $TAG; using [Unreleased] notes"
+            fi
+          fi
+          if ! has_release_notes "$BODY"; then
+            echo "::warning::No CHANGELOG.md entry for $TAG; falling back to auto-generated notes"
+            gh release create "$TAG" --verify-tag --title "$TAG" --generate-notes
+          else
+            gh release create "$TAG" --verify-tag --title "$TAG" --notes "$BODY"
+          fi

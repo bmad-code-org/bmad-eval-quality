@@ -53,3 +53,8 @@ _bmad-output/planning-artifacts/research/
 
 # do not gitignore the following files
 !/_bmad-output/shareable
+
+# Repomix / LLM context dumps (hand-generated, embed planning artifacts)
+*-llm.txt
+repomix-output.*
+.memlog.md

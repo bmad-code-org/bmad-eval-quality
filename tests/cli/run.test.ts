@@ -18,7 +18,7 @@ import {
 	serializeArtifact,
 } from '../../src/application/index.ts'
 import type { ParsedInvocation } from '../../src/cli/arguments.ts'
-import { parseArguments } from '../../src/cli/arguments.ts'
+import { COMMANDS, parseArguments } from '../../src/cli/arguments.ts'
 import {
 	type CommandOutcome,
 	EXIT_CONCERNS_PROMOTED,
@@ -827,7 +827,8 @@ describe('run: help and version', () => {
 		const help = environment.out[0] as string
 		expect(help.endsWith('\n')).toBe(true)
 		expect(help).toContain('Usage:')
-		for (const command of ['compile', 'seal', 'preflight']) {
+		// Driven off `COMMANDS`, so a command missing from the grammar fails here.
+		for (const command of COMMANDS) {
 			expect(help).toContain(`eval-quality ${command}`)
 		}
 		expect(environment.diagnostics).toEqual([])
