@@ -131,7 +131,7 @@ state-reset null satisfied
 clean-control null satisfied
 ```
 
-Exit `0` means the verdict passed. Exit `3` means it did not. Drop an observation and the leg it belonged to reports `failed`, with the reason in the check's `note`.
+Exit `0` means the verdict passed. Exit `3` means it did not. Delete one observation and every check that depended on its leg reports `failed`, with the reason in each check's `note`.
 
 ---
 
