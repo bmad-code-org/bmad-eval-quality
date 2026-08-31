@@ -134,6 +134,34 @@ export const ARTIFACT_REJECT_CASES: readonly ArtifactRejectCase[] = [
 
 	// ---- sealed-run-record --------------------------------------------------
 	{
+		id: 'record-mode-absent',
+		artifact: 'sealed-run-record',
+		constraint: 'the run mode is required (AD-21, owed item 4)',
+		mutate: (record) => {
+			delete record.mode
+		},
+		issuePath: ['mode'],
+		// A missing key on an enum member resolves `undefined` against the two
+		// values, so Zod reports `invalid_value` where a missing string reports
+		// `invalid_type`. The published schema still reports `required`.
+		issueCode: 'invalid_value',
+		keyword: 'required',
+		instancePath: '',
+		errorParams: { missingProperty: 'mode' },
+	},
+	{
+		id: 'record-mode-outside-the-two',
+		artifact: 'sealed-run-record',
+		constraint: "the run mode is AD-21's production or contract-scoring",
+		mutate: (record) => {
+			record.mode = 'shadow'
+		},
+		issuePath: ['mode'],
+		issueCode: 'invalid_value',
+		keyword: 'enum',
+		instancePath: '/mode',
+	},
+	{
 		id: 'record-run-id-empty',
 		artifact: 'sealed-run-record',
 		constraint: 'an opaque caller label is non-empty',

@@ -28,6 +28,7 @@ import { Rubric, RubricBody } from '../../src/core/schemas/rubric.ts'
 import { SealedEvaluatorBrief } from '../../src/core/schemas/sealed-evaluator-brief.ts'
 import {
 	Finding,
+	RUN_MODES,
 	SealedRunRecord,
 } from '../../src/core/schemas/sealed-run-record.ts'
 import {
@@ -131,6 +132,46 @@ describe('the Evaluator Configuration, where a MISSING field is the requirement'
 		const issue = firstIssue(SealedRunRecord.safeParse(record))
 		expect(issue?.code).toBe('too_small')
 		expect(issue?.path).toEqual(['trialIndex'])
+	})
+})
+
+describe("the Sealed Run Record's run mode, owed item 4's first clause", () => {
+	it("carries AD-21's two modes and nothing else", () => {
+		expect(RUN_MODES).toEqual(['production', 'contract-scoring'])
+		for (const mode of RUN_MODES) {
+			const record = { ...clone(sealedRunRecordFixture), mode }
+			expect(SealedRunRecord.safeParse(record).error?.issues ?? []).toEqual([])
+		}
+	})
+
+	// The node type, not only a failing parse: `.default()` and `.catch()` both
+	// leave a record with no mode parsing successfully with a mode nobody
+	// declared, which is the relabelling the field exists to stop, and neither
+	// wrapper is visible from the outside except here.
+	it('wraps the enum in no default, optional, or catch', () => {
+		expect((SealedRunRecord.shape.mode as any).def.type).toBe('enum')
+	})
+
+	// AD-21 wants mode "fixed before ingest". A record presenting none fails to
+	// parse, which AD-28 makes a `schema-parse-failure` fault at exit code five;
+	// it is never an AD-21 rung and never an AD-5 code, since AD-5 is
+	// compile-time only and `compile` never sees a run record.
+	it('rejects a record presenting no mode', () => {
+		const record = clone(sealedRunRecordFixture) as any
+		delete record.mode
+		const issue = firstIssue(SealedRunRecord.safeParse(record))
+		expect(issue?.code).toBe('invalid_value')
+		expect(issue?.path).toEqual(['mode'])
+	})
+
+	// The evidence artifact spells its two branch discriminators as literals so
+	// a reader sees which branch is which. This is what stops the two spellings
+	// drifting apart.
+	it("agrees with the evidence artifact's two mode branches", () => {
+		const branches = EvidenceArtifact.options.map(
+			(branch: any) => branch.shape.mode.value,
+		)
+		expect(branches).toEqual([...RUN_MODES])
 	})
 })
 

@@ -82,10 +82,10 @@ describe('the reject corpus, run against the published documents', () => {
 	// drift here means a case was added on one side and not annotated. The 112
 	// total is also pinned in differential.test.ts ("carries every hand-written
 	// reject case").
-	it('enumerates all 112 cases exactly once', () => {
+	it('enumerates all 114 cases exactly once', () => {
 		expect(REJECT_CASES).toHaveLength(44)
-		expect(ARTIFACT_REJECT_CASES).toHaveLength(68)
-		expect(PUBLISHED_REJECT_CASES).toHaveLength(112)
+		expect(ARTIFACT_REJECT_CASES).toHaveLength(70)
+		expect(PUBLISHED_REJECT_CASES).toHaveLength(114)
 		const ids = PUBLISHED_REJECT_CASES.map(
 			(rejectCase) => `${rejectCase.artifact}/${rejectCase.id}`,
 		)

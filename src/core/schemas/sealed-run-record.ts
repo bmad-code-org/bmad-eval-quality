@@ -254,6 +254,22 @@ export const EvidenceDisclosure = z.strictObject({
 		),
 })
 
+/**
+ * AD-21's two modes, closed. In `production` the subject is the system under
+ * test; in `contract-scoring` the subject is the contract, the probe is
+ * knowingly defective, and a `caught` outcome is the contract succeeding.
+ *
+ * Declared on the record rather than on the evidence artifact because this is
+ * where mode is now fixed: AD-21 requires mode "fixed before ingest", and an
+ * evidence artifact is `emit`'s output, four stages past the only place a
+ * caller can supply one.
+ */
+export const RUN_MODES = ['production', 'contract-scoring'] as const
+
+export type RunModeValue = (typeof RUN_MODES)[number]
+
+export const RunMode = z.enum(RUN_MODES)
+
 export const SealedRunRecord = z
 	.strictObject({
 		...lineageFields,
@@ -269,6 +285,9 @@ export const SealedRunRecord = z
 			.describe(
 				"An opaque caller label with no product semantics, per AD-24. The prior art's five-member enum does not survive, and its own extension history is the reason: an enum a local amendment had to widen once for `self-review` will be widened again.",
 			),
+		mode: RunMode.describe(
+			'AD-21\'s run mode, supplied by the caller on the record and never derived, recomputed, or defaulted afterwards. AD-21 requires mode to be "fixed before ingest", and owed item 4 records what its absence costs: the same sealed run could be relabelled after ingest and scored under the same scoring version. Required rather than optional, which makes this a BREAKING `schemaVersion` bump under AD-11, whose rule is that "adding an optional field is a `schemaVersion` bump recorded in the field\'s own description; removing or retyping is breaking". A version-1 record carries no mode, and no default may repair one into a version-2 record, because a defaulted mode is the relabelling this field exists to stop. A record presenting no mode fails to parse, which AD-28 makes a `schema-parse-failure` fault rather than an AD-21 verdict or an AD-5 code, the same routing `evaluatorRecommendation` already records for an unrecognised value. This field is where mode is read from; the evidence artifact restates it and is never the source.',
+		),
 		trialIndex: z
 			.int()
 			.min(1)
@@ -298,7 +317,7 @@ export const SealedRunRecord = z
 	.meta({
 		id: 'SealedRunRecord',
 		description:
-			"One sealed evaluator trial, as the caller presents it. Succeeds the prior-art `h0-run-result` schema per AD-24, keeping its run identifier, condition arm, findings, action-log reference, resource use, invalidation reason, evaluator recommendation as a closed enum, and per-finding confidence on a declared scale. Divergences: `condition` is demoted to the opaque `conditionArm`, `verdict` becomes `evaluatorRecommendation` without `NOT_APPLICABLE`, money is a decimal string, and `taskId`, `note`, and per-finding `actionIds` do not survive: the contract is pinned by `contractDigest`, an unstructured orchestrator annotation is the free-prose channel the Conventions close everywhere else, and two citation vocabularies on one finding is the ambiguity ADR-009 removed. Two constructions are deliberately absent and each is owed to an open item: the run MODE, which AD-21 requires to be fixed before ingest and to enter AD-11's identity inputs rather than appearing first in the evidence artifact (Owed item 4), and observation ORDERING, which ADR-006 forbids reading off array position (Owed item 2). Both arrive as additive `schemaVersion` bumps under AD-11.",
+			"One sealed evaluator trial, as the caller presents it. Succeeds the prior-art `h0-run-result` schema per AD-24, keeping its run identifier, condition arm, findings, action-log reference, resource use, invalidation reason, evaluator recommendation as a closed enum, and per-finding confidence on a declared scale. Divergences: `condition` is demoted to the opaque `conditionArm`, `verdict` becomes `evaluatorRecommendation` without `NOT_APPLICABLE`, money is a decimal string, and `taskId`, `note`, and per-finding `actionIds` do not survive: the contract is pinned by `contractDigest`, an unstructured orchestrator annotation is the free-prose channel the Conventions close everywhere else, and two citation vocabularies on one finding is the ambiguity ADR-009 removed. The run MODE landed here as a required field under a breaking `schemaVersion` bump, which is where AD-21's \"fixed before ingest\" puts it; owed item 4's remaining clauses stay open, namely mode entering AD-11's identity inputs and the two assessment input types with their own ladders. Observation ORDERING stays deliberately absent, since ADR-006 forbids reading it off array position (Owed item 2), and arrives as its own `schemaVersion` bump under AD-11.",
 	})
 
 export type SealedRunRecord = z.infer<typeof SealedRunRecord>

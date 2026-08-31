@@ -1,9 +1,10 @@
 /**
  * AD-24's stage-signature table and AD-29's producer map, as data: six stages
- * with their inputs, their one owned output, and the lineage edge each writes;
- * twelve interchange artifacts with one producer apiece. The `check:lineage`
- * scanner derives its allowlist from `module`, so the registry import stays
- * type-only to keep zod off that gate's load path.
+ * with their artifact inputs, the non-artifact values they receive, their one
+ * owned output, and the lineage edge each writes; twelve interchange artifacts
+ * with one producer apiece. The `check:lineage` scanner derives its allowlist
+ * from `module`, so the registry import stays type-only to keep zod off that
+ * gate's load path.
  */
 import type { InterchangeArtifactKey } from '../schemas/artifact.ts'
 
@@ -34,6 +35,17 @@ export const INTERNAL_PRODUCTS = [
 export type InternalProduct = (typeof INTERNAL_PRODUCTS)[number]
 
 /**
+ * Values a stage reads at its boundary that the `inputs` column does not name.
+ * AD-24 writes the table in artifacts, and owed item 6 records the source of
+ * run mode as absent from it: a row naming `sealed-run-record` says which bytes
+ * arrive and leaves open which value fixes the run's mode. Closed rather than
+ * free text, so the column cannot become a notes field.
+ */
+export const STAGE_VALUE_INPUTS = ['mode'] as const
+
+export type StageValueInput = (typeof STAGE_VALUE_INPUTS)[number]
+
+/**
  * What a stage does to the two AD-29 fields on the artifact it owns. `mints`
  * covers a root and a revision alike, since both write the fields.
  */
@@ -44,6 +56,8 @@ export type ArtifactProducer = PipelineStage | 'caller' | 'embedded'
 
 export type StageSignature = {
 	readonly inputs: readonly (InterchangeArtifactKey | InternalProduct)[]
+	/** non-artifact values the stage receives; see STAGE_VALUE_INPUTS. */
+	readonly valueInputs: readonly StageValueInput[]
 	readonly owns: InterchangeArtifactKey | InternalProduct
 	/** the owned output's registry key; null when the output is internal. */
 	readonly ownsInterchange: InterchangeArtifactKey | null
@@ -55,6 +69,7 @@ export type StageSignature = {
 export const STAGE_SIGNATURES: Record<PipelineStage, StageSignature> = {
 	compile: {
 		inputs: ['eval-contract'],
+		valueInputs: [],
 		owns: 'eval-contract',
 		ownsInterchange: 'eval-contract',
 		// The caller authors the contract and its lineage; `compile` validates
@@ -65,6 +80,7 @@ export const STAGE_SIGNATURES: Record<PipelineStage, StageSignature> = {
 	},
 	seal: {
 		inputs: ['eval-contract'],
+		valueInputs: [],
 		owns: 'sealed-evaluator-brief',
 		ownsInterchange: 'sealed-evaluator-brief',
 		lineage: 'mints',
@@ -76,6 +92,11 @@ export const STAGE_SIGNATURES: Record<PipelineStage, StageSignature> = {
 			'isolation-manifest',
 			'evaluator-configuration',
 		],
+		// Mode arrives on the sealed run record and is named here because owed
+		// item 6 asks the table for the source of run mode. `ingest` is the last
+		// stage that may read it from the caller and the first that may reject
+		// its absence; no later stage derives, recomputes, or defaults it.
+		valueInputs: ['mode'],
 		owns: 'validated-observations',
 		ownsInterchange: null,
 		lineage: 'none',
@@ -85,6 +106,7 @@ export const STAGE_SIGNATURES: Record<PipelineStage, StageSignature> = {
 		// AD-34 splits the stage into `plan` and `reduce`; both halves' inputs
 		// are the stage's inputs, and only `reduce` returns an artifact.
 		inputs: ['eval-contract', 'probe', 'probe-plan', 'probe-observations'],
+		valueInputs: [],
 		owns: 'preflight-verdict',
 		ownsInterchange: 'preflight-verdict',
 		lineage: 'mints',
@@ -98,6 +120,7 @@ export const STAGE_SIGNATURES: Record<PipelineStage, StageSignature> = {
 			'preflight-verdict',
 			'scoring-policy',
 		],
+		valueInputs: [],
 		// AD-24: "score produces the outcome and verdict values emit
 		// serializes". Owed item 6 records that type as unnamed; this names it.
 		owns: 'scored-outcomes-and-verdict',
@@ -107,6 +130,7 @@ export const STAGE_SIGNATURES: Record<PipelineStage, StageSignature> = {
 	},
 	emit: {
 		inputs: ['scored-outcomes-and-verdict'],
+		valueInputs: [],
 		owns: 'evidence-artifact',
 		ownsInterchange: 'evidence-artifact',
 		lineage: 'mints',
