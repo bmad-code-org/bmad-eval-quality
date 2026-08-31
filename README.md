@@ -154,7 +154,8 @@ Rubrics compile under the same discipline: an anchored scale, a bounded length, 
 
 ## How Eval Contract strength scoring works
 
-Do not trust a contract because it looks thorough. Put a known defect behind it, run the evaluator, and check whether the contract's oracles caused the defect to be caught.
+This section describes the design; scoring is the next milestone, so nothing in this release
+computes it yet. Do not trust a contract because it looks thorough. Put a known defect behind it, run the evaluator, and check whether the contract's oracles caused the defect to be caught.
 
 Two probe classes go behind a contract, and a strong contract rejects both:
 
@@ -324,7 +325,8 @@ names as that artifact's producer, which today are `src/core/seal/seal.ts` and
 `src/core/preflight/reduce.ts`.
 
 The `eval-quality/conformance` subpath publishes the port boundary: the four port types, the message
-shapes they carry, and an executable conformance suite. An adapter is conforming when
+shapes they carry, the AD-28 `RUNTIME_FAULT_CODES` registry and `RuntimeFaultCode` type a conforming
+adapter throws against, and an executable conformance suite. An adapter is conforming when
 `runCorpusPortConformance`, `runClockPortConformance`, `runFileSystemPortConformance`, or
 `runEnvironmentProbePortConformance` returns a report whose `passed` is true, which is the definition
 rather than a paraphrase of one; each returns a report instead of asserting, so the suite carries no

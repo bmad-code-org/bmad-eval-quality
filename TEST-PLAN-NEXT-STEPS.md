@@ -8,9 +8,21 @@ check someone can run from a clean clone and read the result of. Work that belon
 release is collected in the last two sections.
 
 > [!NOTE]
-> **Qualification Execution Status (August 28, 2026):**
-> Gates 1 through 8 and Section 10 CLI qualification have been fully executed and verified (100% PASS).
-> Resume next work starting from **Section 9 (Gate 8 Outside Adapter)** / **Section 12 (v1 entry criteria)** / **Section 14 (Release mechanics & Architecture sequence)**.
+> **Qualification Execution Status (August 31, 2026):**
+> Gates 1 through 8, Section 10 CLI qualification, and Section 11 exit criteria have all been
+> executed and verified end to end (100% PASS) on a fresh dependency install. Gate 1's own stderr
+> criterion caught a real defect along the way: `biome.json` pinned schema `2.5.8` against an
+> installed `2.5.10` CLI, so `npm run lint` wrote a version-mismatch warning to stderr on every run.
+> Fixed.
+>
+> Section 14.1 release mechanics are further along than this section states: GitHub Pages is live,
+> the `Release tags` ruleset exists (created 2026-08-28), and `0.1.0` is published to npm. The one
+> item still open is the npm Trusted Publisher, which only configures from the npmjs.com web UI by
+> a package owner, not from a CLI a coding agent can drive.
+>
+> v0 qualification is complete. Resume next work from **Section 14.1's Trusted Publisher step**
+> (manual, npm-owner-only) or **Section 12 (v1 entry criteria)**, which proceeds in the `bmad-tea`
+> repository against this released v0.
 
 
 ## 1. The surface v0 qualifies
@@ -204,6 +216,14 @@ here as its own step.
 ## 9. Gate 8: an outside adapter against the published conformance suite
 
 > **Status:** VERIFIED PASS (2026-08-28 — Implemented and passing via `tests/conformance/outside-clock-adapter.test.ts`)
+>
+> **Finding closed (2026-08-31):** the gate passed in 2026-08-28 by hand-rolling the AD-28 fault
+> codes as string literals, because `src/testing/index.ts` did not re-export `RUNTIME_FAULT_CODES`
+> or `RuntimeFaultCode`, only the internal conformance runner imported them from `src/core/schemas/`.
+> That is exactly the finding this gate exists to surface: the published suite was not fully
+> self-sufficient. Fixed by exporting both from the `eval-quality/conformance` subpath;
+> `outside-clock-adapter.test.ts` now types its fault codes against the published
+> `RuntimeFaultCode` instead of a bare string, still importing from nothing but that subpath.
 
 AD-37's claim is that the published conformance suite is sufficient documentation for an outside
 implementer. Nothing in this repository tests that claim, because every port implementation here is
@@ -330,16 +350,21 @@ them is how someone ends up writing epic 7 before the architecture can answer it
 
 Operational steps, none of them an epic. Each is a command someone runs once.
 
-- **GitHub Pages is not enabled.** `gh api repos/bmad-code-org/bmad-eval-quality/pages` returns 404.
-  The docs deploy job will fail the first time it runs on `main`. The build job no longer depends on
-  the deploy job, so a failure there blocks nothing else.
-- **The tag ruleset does not exist.** `gh api repos/bmad-code-org/bmad-eval-quality/rulesets` lists
-  `protect-main` alone. Tags matching `refs/tags/v*` are unprotected. The `gh api` call that creates
-  the ruleset is in `CONTRIBUTING.md` and nobody has run it.
-- **The first-publish bootstrap has not been executed.** It is in `CONTRIBUTING.md`. npm's Trusted
-  Publisher form only appears for a package that exists, so the first publish is the manual one.
-- **The version to publish has not been chosen.** `package.json` carries `0.0.0`, so a patch release
-  produces `0.0.1`.
+> **Status (2026-08-31):** three of four are done. Verified live against the real repo and registry:
+> `gh api repos/bmad-code-org/bmad-eval-quality/pages` returns a live Pages site, `gh api
+> repos/bmad-code-org/bmad-eval-quality/rulesets` lists both `protect-main` and `Release tags`
+> (tag ruleset, created 2026-08-28), and `npm view eval-quality` resolves `0.1.0`. Only the Trusted
+> Publisher remains, and it is a one-time step on npmjs.com no CLI can drive.
+
+- ~~GitHub Pages is not enabled.~~ Live at the repo's Pages URL.
+- ~~The tag ruleset does not exist.~~ `Release tags` ruleset is active on `refs/tags/v*`.
+- ~~The first-publish bootstrap has not been executed.~~ `eval-quality@0.1.0` is published.
+- ~~The version to publish has not been chosen.~~ `0.1.0` shipped.
+- **The npm Trusted Publisher is still not configured.** `npm view eval-quality` shows the publish
+  came from a personal npm user (`muratkeremozcan`) with no provenance attestation, so every release
+  still needs a manual OTP and ships without SLSA provenance. Configure it from npmjs.com > Packages
+  > `eval-quality` > Settings > Trusted Publisher (organization `bmad-code-org`, repository
+  `bmad-eval-quality`, workflow `publish.yml`, no environment), per `CONTRIBUTING.md`.
 
 ### 14.2 v0 test work
 

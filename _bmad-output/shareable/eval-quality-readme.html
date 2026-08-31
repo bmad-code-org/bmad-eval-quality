@@ -698,7 +698,8 @@ dependency. See
 <p>A compiler enforces these rules mechanically against the contract artifact, in three classes. Structural errors fail compilation. Coverage gaps score down without blocking. A waived pattern is allowed when it records the named rule, a rationale, a machine-checkable condition, and the approval.</p>
 <p>Rubrics compile under the same discipline: an anchored scale, a bounded length, named failure-mode penalties, rubric identifiers unique across the contract and criterion identifiers unique inside their own rubric, every criterion stating a question, and every criterion&#39;s evidence pointer resolving against the declared interfaces. Authored rubric text that asks a judge to grade the subject&#39;s own stated reasoning fails a closed-vocabulary check over the wording.</p>
 <h2 id="how-eval-contract-strength-scoring-works">How Eval Contract strength scoring works<a class="heading-anchor" href="#how-eval-contract-strength-scoring-works" aria-label="Link to How Eval Contract strength scoring works">#</a></h2>
-<p>Do not trust a contract because it looks thorough. Put a known defect behind it, run the evaluator, and check whether the contract&#39;s oracles caused the defect to be caught.</p>
+<p>This section describes the design; scoring is the next milestone, so nothing in this release
+computes it yet. Do not trust a contract because it looks thorough. Put a known defect behind it, run the evaluator, and check whether the contract&#39;s oracles caused the defect to be caught.</p>
 <p>Two probe classes go behind a contract, and a strong contract rejects both:</p>
 <ul>
 <li><strong>Defect probes</strong>, where the behavior is simply wrong.</li>
@@ -849,7 +850,8 @@ written outside <code>src/core/schemas/</code>, <code>src/core/lineage/</code>, 
 names as that artifact&#39;s producer, which today are <code>src/core/seal/seal.ts</code> and
 <code>src/core/preflight/reduce.ts</code>.</p>
 <p>The <code>eval-quality/conformance</code> subpath publishes the port boundary: the four port types, the message
-shapes they carry, and an executable conformance suite. An adapter is conforming when
+shapes they carry, the AD-28 <code>RUNTIME_FAULT_CODES</code> registry and <code>RuntimeFaultCode</code> type a conforming
+adapter throws against, and an executable conformance suite. An adapter is conforming when
 <code>runCorpusPortConformance</code>, <code>runClockPortConformance</code>, <code>runFileSystemPortConformance</code>, or
 <code>runEnvironmentProbePortConformance</code> returns a report whose <code>passed</code> is true, which is the definition
 rather than a paraphrase of one; each returns a report instead of asserting, so the suite carries no

@@ -16,6 +16,7 @@ import {
 	CONFORMANCE_OUTCOME_COUNTS,
 	formatConformanceReport,
 	type PortSubject,
+	type RuntimeFaultCode,
 	runClockPortConformance,
 	type ScenarioKind,
 } from 'eval-quality/conformance'
@@ -24,15 +25,15 @@ import { describe, expect, it } from 'vitest'
 /**
  * AD-28's fault shape read structurally: a `code` and an `artifactPath`. The
  * suite sees faults from a possibly different copy of the package, so it cannot
- * use `instanceof`, and a bare `Error` does not satisfy it. The code has to be
- * one the package declares; the suite's abort assertion demands `aborted`
- * exactly, and a mechanism failure is a `port-failure`.
+ * use `instanceof`, and a bare `Error` does not satisfy it. `RuntimeFaultCode`,
+ * published on this same subpath, is what lets `code` below be checked against
+ * the declared registry instead of a hand-typed string.
  */
 class ClockFault extends Error {
-	readonly code: string
+	readonly code: RuntimeFaultCode
 	readonly artifactPath = 'clock/read'
 
-	constructor(code: string, detail: string) {
+	constructor(code: RuntimeFaultCode, detail: string) {
 		super(detail)
 		this.name = 'ClockFault'
 		this.code = code

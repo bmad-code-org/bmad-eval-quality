@@ -11,6 +11,8 @@
  * `style.useExportType: "error"`.
  */
 
+export type { RuntimeFaultCode } from '../core/schemas/faults.ts'
+export { RUNTIME_FAULT_CODES, RuntimeFault } from '../core/schemas/faults.ts'
 export type {
 	ClockReadRequest,
 	ClockReadResponse,
