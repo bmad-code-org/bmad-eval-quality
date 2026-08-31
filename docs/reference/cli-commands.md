@@ -2,7 +2,7 @@
 title: "CLI Reference"
 description: "Every command, flag, exit code, and export subpath the eval-quality package publishes."
 sidebar:
-  order: 1
+  order: 2
 ---
 
 # CLI Reference
@@ -132,7 +132,7 @@ The `.json` suffix is the whole classifier for `--out`, matched case-insensitive
 
 `--out` may not resolve to a file that is also an input. The check compares resolved paths and then asks the filesystem whether the two names reach the same file, which catches a symlink and a case-insensitive spelling that no string normalization would fold together. A collision exits `64`.
 
-Artifacts are written as one line of canonical JSON with sorted keys. That is the same serialization the digest is computed over, so what lands on stdout is what gets hashed.
+Artifacts are written as one line of RFC 8785 canonical JSON with sorted keys. The digest is computed over exactly that payload; the serializer appends a line terminator after it, which the digest does not cover.
 
 ---
 
@@ -230,7 +230,7 @@ The artifact types ship alongside them as type-only exports: `EvalContract`, `Se
 | --- | --- |
 | `corpus/dev/README.md` | what the corpus covers, and what it leaves out |
 | `corpus/dev/index.json` | every file, its kind, its digest, and the failure code for the three that fail |
-| `corpus/dev/contracts/` | nineteen contracts, one per discipline rule in each declaration state |
+| `corpus/dev/contracts/` | nineteen contracts, collectively covering each discipline rule in each declaration state |
 | `corpus/dev/compile-seal-example/contract.json` | one contract that compiles |
 | `corpus/dev/compile-seal-example/brief.json` | the brief `seal` produces from it |
 
