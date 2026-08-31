@@ -231,16 +231,18 @@ export const workedExampleSealedRunRecord: unknown = {
 }
 
 /**
- * Its sixty issues, each a real divergence rather than a transcription slip:
- * absent lineage; dispositions missing `observationIds` (AD-33); finding-level
- * `provenance` instead of observation-level (AD-23); the old four-field
- * artifact-reference shape; a defect finding with no `quotedEvidence` (AD-23);
- * the flat `callInputs` map (AD-26); missing process channels; `costUsd` as a
- * number; no `evidenceDisclosure`.
+ * Its sixty-one issues, each a real divergence rather than a transcription
+ * slip: absent lineage; no run `mode`, the field owed item 4 made required;
+ * dispositions missing `observationIds` (AD-33); finding-level `provenance`
+ * instead of observation-level (AD-23); the old four-field artifact-reference
+ * shape; a defect finding with no `quotedEvidence` (AD-23); the flat
+ * `callInputs` map (AD-26); missing process channels; `costUsd` as a number;
+ * no `evidenceDisclosure`.
  */
 export const WORKED_EXAMPLE_RECORD_ISSUES: readonly WorkedExampleIssue[] = [
 	{ path: ['parentDigest'], code: 'invalid_type' },
 	{ path: ['revisionCount'], code: 'invalid_type' },
+	{ path: ['mode'], code: 'invalid_value' },
 	{ path: ['oracleDispositions', 0, 'observationIds'], code: 'invalid_type' },
 	{ path: ['oracleDispositions', 1, 'observationIds'], code: 'invalid_type' },
 	{ path: ['oracleDispositions', 2, 'observationIds'], code: 'invalid_type' },

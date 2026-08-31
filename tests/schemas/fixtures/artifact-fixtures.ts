@@ -137,11 +137,19 @@ const emptyCallInputs: SealedRunRecord['observations'][number]['callInputs'] = {
 }
 
 export const sealedRunRecordFixture: SealedRunRecord = {
-	schemaVersion: 1,
+	// Version 2, and the bump is breaking: `mode` is required, so no version-1
+	// record parses. This fixture is the only place a Sealed Run Record version
+	// number is written down, which is what makes the bump visible.
+	schemaVersion: 2,
 	parentDigest: null,
 	revisionCount: 0,
 	runId: 'spike-run-0001',
 	conditionArm: 'independent',
+	// `contract-scoring`, not `production`: the record already recommends FAIL
+	// against a knowingly defective probe, and AD-21 makes that an input in this
+	// mode rather than a signal. The evidence fixture it pairs with is the
+	// contract-scoring branch.
+	mode: 'contract-scoring',
 	trialIndex: 1,
 	contractDigest: CONTRACT_DIGEST,
 	sealedBriefDigest: BRIEF_DIGEST,

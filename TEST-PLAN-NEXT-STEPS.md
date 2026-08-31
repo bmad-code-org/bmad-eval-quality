@@ -339,7 +339,7 @@ include: a trial reducer, the qualified-probe dimensions `corpus/dev/README.md` 
 and the multi-run stability checks a release-candidate CI tier would need. Until scoring lands, CI
 stays at the single tier described above, which is `npm run validate` on every pull request.
 
-## 14. What remains, and why there is no epic 7 yet
+## 14. What remains, and what epic 7 turned out to be
 
 Stage one is complete. Compile, seal, and pre-flight ship, along with the published surface section 1
 describes, and epics 1 through 6 are that work. What is left splits into three kinds of work that
@@ -395,23 +395,35 @@ stage-signature table; the run-mode half of that item stayed open.
 7. **The worked example is inconsistent** and must be regenerated from the reference reducer once one
    exists. Hand-filled downstream values are forbidden, so it cannot be patched.
 
-### 14.4 The sequence before epic 7 can be written
+### 14.4 The sequence epic 7 was written from
 
 This is a sequence, and the order carries the argument.
 
-**First, the calibration re-run.** It is a separate owed section from the seven above.
+> **Closed 2026-08-31.** Epic 7 is written and lives in
+> `_bmad-output/planning-artifacts/epics.md` as ten stories. The three paragraphs below are the
+> sequence it was derived from, kept because the order carries the argument and because a reader
+> checking the epic against the architecture needs it.
+
+**First, the calibration re-run. Done.** It is a separate owed section from the seven above.
 `ARCHITECTURE-SPINE.md:69` records ADR-009's exemption, "under which the calibration spike is the
-next unit of work and no review round is."
+next unit of work and no review round is." Gate D ran on 2026-07-30 under a pre-registered
+three-arm, three-repetition design and closed former calibration items 1 and 4, so the spike is
+behind us and the reference implementation is the next unit of work.
 
 **Then the reference implementation the spine prescribes**, quoting it: "implement AD-21, AD-31,
 AD-33, and AD-40 as pure reference functions with generated fixtures, run them against the worked
 chain plus synthetic records, and let the tables be output rather than promise." The spine records
 that four review rounds converged on this independently. It closes items 1, 2, 4, 5, and 7.
 
-**Item 3 is a separate decision.** It needs a grammar extension, a cycle-free captured-value matcher
-together with test-data bindings. That is an ADR, and no story can absorb it.
+**Item 3 is a separate decision, and it is settled in the story rather than in an ADR.** It needs a
+grammar extension, a cycle-free captured-value matcher together with test-data bindings. Story 7.3
+fixes it by construction and records the decision in its own acceptance criteria, ahead of Story 7.4
+because AD-40's pair-defect signatures are unexpressible without it.
 
-Writing epic 7's stories today would mean an implementer picking one of three defensible readings of
-"across the declared trial count" unilaterally, and one of those readings is the retry anti-pattern
-AD-6 spends a paragraph forbidding. That is the exact failure mode the spine's four review rounds
-existed to stop.
+The reading that had to be settled before any of this could be written is "across the declared trial
+count," which admits three defensible interpretations that disagree on identical data and one of
+which is the retry anti-pattern AD-6 spends a paragraph forbidding. Story 7.6 settles it: results
+reduce to one per `(probeId, trialIndex)` under a published aggregation, and the pass-if-any reading
+is rejected in the code with its rejection fixtured. Epic 7 delivers reference functions and their
+generated tables and nothing else; the shipped `score` and `emit` stages and their CLI surface are
+epic 8, writable once those tables exist.

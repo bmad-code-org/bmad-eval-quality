@@ -11,6 +11,7 @@ import {
 	PIPELINE_STAGES,
 	type PipelineStage,
 	STAGE_SIGNATURES,
+	STAGE_VALUE_INPUTS,
 	type StageSignature,
 } from '../../src/core/lineage/stage-table.ts'
 import {
@@ -147,5 +148,25 @@ describe('the AD-24 stage-signature table', () => {
 				expect(interchange.has(input) || internal.has(input)).toBe(true)
 			}
 		}
+	})
+
+	// 11. The value column is closed for the same reason `inputs` is: a free
+	// string would let the table name anything and prove nothing.
+	it('names every value input in the value vocabulary', () => {
+		const values = new Set<string>(STAGE_VALUE_INPUTS)
+		for (const stage of PIPELINE_STAGES) {
+			for (const value of STAGE_SIGNATURES[stage].valueInputs) {
+				expect(values.has(value), `${stage} valueInput ${value}`).toBe(true)
+			}
+		}
+	})
+
+	// 12. Owed item 6's own words: "the source of run mode is absent". One
+	// stage names it, and it is the stage AD-21 fixes mode before.
+	it('names mode on ingest and on no other stage', () => {
+		const naming = PIPELINE_STAGES.filter((stage) =>
+			STAGE_SIGNATURES[stage].valueInputs.includes('mode'),
+		)
+		expect(naming).toEqual(['ingest'])
 	})
 })

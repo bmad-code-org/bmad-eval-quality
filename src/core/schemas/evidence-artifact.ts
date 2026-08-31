@@ -317,7 +317,7 @@ export const EvidenceArtifact = z
 	.meta({
 		id: 'EvidenceArtifact',
 		description:
-			"The scored output, owned by `emit` per AD-24, with no prior art; `score` produces the outcome and verdict values it serializes. The two modes are separate branches because AD-21 requires that the production verdict and the contract verdict never share a field. This expresses that settled sentence and no more: Owed item 4's remaining half stays open, namely mode being fixed before ingest and entering AD-11's identity inputs rather than appearing first here; and the Sealed Run Record still carries no mode.",
+			"The scored output, owned by `emit` per AD-24, with no prior art; `score` produces the outcome and verdict values it serializes. The two modes are separate branches because AD-21 requires that the production verdict and the contract verdict never share a field. Mode is no longer first stated here: the Sealed Run Record now carries a required `mode`, where AD-21's \"fixed before ingest\" puts it, so this artifact restates a mode the sealed record already fixed and is never the source. Owed item 4's remaining clauses stay open, namely mode entering AD-11's identity inputs, the two assessment input types with their own ladders, and cross-mode comparison rejected.",
 	})
 
 export type EvidenceArtifact = z.infer<typeof EvidenceArtifact>

@@ -13,7 +13,9 @@ inputDocuments:
 
 This document decomposes the epic-ready compile-and-seal half of eval-quality v0 into implementable stories. The source of truth is ARCHITECTURE-SPINE.md revision 9 and EPIC-BRIEF.md; the PRD's VFR requirements govern product direction. Where this document and the spine disagree on a mechanic, the spine governs.
 
-**Scope boundary, stated once:** stage one is `compile` and `seal` (AD-38). The `score` half is not epic-ready. No story in this document touches `score`, the reference reducer, outcome-state assignment (AD-33), the dominance vector (AD-7), probe qualification (AD-9), or detection mapping (AD-40). Those wait on the seven items in the spine's *Owed to the reference implementation* section.
+**Scope boundary for Epics 1 through 6, stated once:** stage one is `compile` and `seal` (AD-38). No story in Epics 1 through 6 touches `score`, the reference reducer, outcome-state assignment (AD-33), the dominance vector (AD-7), probe qualification (AD-9), or detection mapping (AD-40). Those waited on the seven items in the spine's *Owed to the reference implementation* section. Epics 1 through 6 shipped as `eval-quality@0.1.0` and qualified under `TEST-PLAN-NEXT-STEPS.md`.
+
+**Scope boundary for Epic 7, which opens v1.** Epic 7 is the work that closes those seven items: pure reference functions with generated fixtures for AD-21, AD-33, and AD-40, run against the worked chain plus synthetic records, with the tables emitted rather than promised. It delivers reference implementations and their generated tables. It does not ship the `score` or `emit` stages or a `score` CLI command; `stage-table.ts` still carries `module: null` for both when the epic ends, and epic 8 is what fills them in. Two shipped surfaces do move: the generated AD-21 ladder carries an exit code and a `--strict` column because a ladder without them is not AD-21's table, and mode entering `ScoringVersionInputs` makes every scoring version computed before the epic non-comparable with every one after. Epic 7's own preamble states both.
 
 ## Requirements Inventory
 
@@ -22,7 +24,7 @@ This document decomposes the epic-ready compile-and-seal half of eval-quality v0
 FR1 (VFR-2): The compiler converts a behaviour input into a versioned Eval Contract, enforcing discipline in three classes: structural errors fail compilation, coverage gaps score down without blocking, validated N/A is allowed and recorded with rule, rationale, machine-checkable condition, approval, and RFC 3339 expiry.
 FR2 (VFR-2, AD-3): Every oracle carries a structured direction and a `check` expression; both are required. Alignment (evidence targets, relation, polarity contained in `check` after quantifier substitution) is a compile-time computation. Evaluator-facing prose is generated from the direction by `seal`, never authored free-form.
 FR3 (AD-4): One closed operator vocabulary (11 operators, 3 connectives, 2 quantifiers) with fixed arity, three-valued resolution (`true`, `false`, `insufficient-evidence` introduced only by an empty-collection operand), total non-absorbing propagation, and total (never short-circuiting) evaluation.
-FR4 (AD-5): One coded registry of compile-time failure codes (20 codes as of revision 9); every compile-time check cites a literal code; the published schema's failure-code enumeration is generated from the registry, never hand-maintained beside it.
+FR4 (AD-5): One coded registry of compile-time failure codes (21 codes as of revision 9, 23 after Story 7.3); every compile-time check cites a literal code; the published schema's failure-code enumeration is generated from the registry, never hand-maintained beside it.
 FR5 (AD-19): The contract declares enough for every predicate to be decidable: behaviours with severity and observable success criteria, requirement/risk linkage, operation inventory (closed method set, `{name}` path templates, state-change marker, request shape over four transport channels, per-operation response descriptor with channel roles, nominated success indicator, volatile pointers), sibling groups (explicit empty allowed), expected cardinality (`exact` | `at-most` | `page-bounded`), reference sets, and an interaction plan.
 FR6 (AD-20, AD-31): Seven discipline rules, closed by version; fourteen published relevance/satisfaction predicates run as decision procedures over declarations only, fail closed, and emit coverage-gap records naming the predicates that fired.
 FR7 (VFR-3, AD-16): The sealed brief carries behaviours, generated directions, interfaces, scoped resources, budgets, and safety limits. It never carries author commentary, the interaction plan, step identifiers, or any of the seven forbidden inputs (original spec, source code, repository, builder transcript, implementation logs, comparator results, human labels).
@@ -90,7 +92,35 @@ None. The product is a library and a non-interactive CLI; there is no UI surface
 | NFR9 | every epic's test strategy; first binds in Epics 2-3, when a stage first consumes an observation array |
 | NFR10 | already wired (`lint:spine` runs in CI); kept green by Epic 1 (Story 1.1) |
 
-Out of scope, recorded: VFR-7 scoring mechanics (score-side, owed), VFR-5 verdict derivation and emit (score-side), VFR-6 engine reuse (not in v0, no seam), VFR-1 detection (lives in the TEA client, outside this package).
+Out of scope for Epics 1 through 6, recorded: VFR-7 scoring mechanics (score-side, owed), VFR-5 verdict derivation and emit (score-side), VFR-6 engine reuse (not in v0, no seam), VFR-1 detection (lives in the TEA client, outside this package).
+
+### v1 requirements, added with Epic 7
+
+FR18 (AD-24, Owed 6, remaining half): the sealed run record carries a required mode supplied at ingest and never derived, which is the one half of the stage-signature item Story 6.4 left open.
+FR19 (AD-39, Owed 2): the run record carries a recorded monotonic sequence, every step declares its selector cardinality, and every outcome records the observation identifiers it was resolved against.
+FR20 (AD-19, Owed 3): input bindings admit a cycle-free captured-value matcher over an earlier step's scalar output and `testData` bindings for named principals and resources, under one set of cycle-free type-checked rules.
+FR21 (AD-40): a probe declares a defect signature rooted in transport identity, and detection is a deterministic witness match over cited observation identifiers with quotation audited against them.
+FR22 (AD-33, AD-6): outcome states are resolved by a total reference decision procedure whose enumerated table is generated from the procedure and covered by fixtures over the input space.
+FR23 (AD-7, Owed 1): `score` consumes a trial set, reduces to one result per probe under a published aggregation, and emits a rate vector under a four-valued dominance relation with no weighting.
+FR24 (AD-21, AD-11, Owed 4 and 5): production and contract scoring have separate input types and separate total ladders, mode enters version identity, cross-mode comparison is rejected, and an uncited defect finding has a rung in each mode.
+FR25 (Owed 7): the worked chain and its probe corpus entry are regenerated from the reference functions as a CI-checked command, with hand-filled downstream values forbidden.
+FR26 (AD-11, AD-13, NFR8): every interchange schema Epic 7 touches is bumped and republished with AD-13's four checks green in the story that touched it, and the epic's caller-facing breaks are disclosed once under pre-1.0 SemVer.
+
+| Requirement | Covered by |
+| --- | --- |
+| FR18 | Epic 7 (Story 7.1) |
+| FR19 | Epic 7 (Story 7.2) |
+| FR20 | Epic 7 (Story 7.3) |
+| FR21 | Epic 7 (Story 7.4) |
+| FR22 | Epic 7 (Story 7.5) |
+| FR23 | Epic 7 (Story 7.6) |
+| FR24 | Epic 7 (Stories 7.7, 7.8) |
+| FR25 | Epic 7 (Story 7.9) |
+| FR26 | Epic 7 (Stories 7.1-7.8 per-story bumps, Story 7.10 disclosure) |
+
+Also added with Epic 7: FR21 covers AD-9's per-class qualification record and the gate that rejects an unqualified probe, which the shipped probe schema records as enforced by nothing in v0.
+
+Still out of scope after Epic 7: the shipped `score` and `emit` stages and their CLI surface (epic 8), VFR-6 engine reuse, VFR-1 detection, and every entry in the spine's *Deferred* section.
 
 ## Epic List
 
@@ -100,6 +130,7 @@ Out of scope, recorded: VFR-7 scoring mechanics (score-side, owed), VFR-5 verdic
 - Epic 4: the addressing grammar and the compiler's structural checks (4 stories)
 - Epic 5: the discipline-rule predicates and their contract fixture corpus (3 stories)
 - Epic 6: ports, pre-flight, and the library and CLI surface (5 stories)
+- Epic 7: the score reference implementation (10 stories) — v1
 
 ## Epic 1: Zod schemas and the published JSON Schema export
 
@@ -474,3 +505,145 @@ So that a capability reachable one way and not the other cannot ship.
 **Given** AD-14 and AD-15,
 **When** the surface ships,
 **Then** each CLI command translates arguments into one orchestration call plus serialization, commands are non-interactive with machine-readable default output, inputs arrive by path or stdin and outputs go to a run-scoped directory with diagnostics on stderr, the package declares a `bin` entry and exports the library, the generated-schema subpath, the conformance-suite subpath, and the development corpus, `core/` reaches 90 percent statement and branch coverage on in-memory fixtures, and nothing references BMad, TEA, or planning artifacts.
+
+## Epic 7: the score reference implementation
+
+Implements AD-6, AD-7, AD-9, AD-11, AD-21, AD-23, AD-32, AD-33, AD-39's binding half, and AD-40. This is the epic the spine's *Owed to the reference implementation* section prescribes, quoted: "implement AD-21, AD-31, AD-33, and AD-40 as pure reference functions with generated fixtures, run them against the worked chain plus synthetic records, and let the tables be output rather than promise." Four consecutive review rounds converged on that step independently.
+
+**Why this epic is writable now, and what it may not do.** The spine's rule is "no epic touches `score` until these close," and this epic is the work that closes them. It delivers pure reference functions and the tables those functions emit. It does not ship the `score` or `emit` stages, a `score` CLI command, or any wiring of a verdict into a process exit: `src/core/lineage/stage-table.ts` carries `module: null` for `ingest`, `score`, and `emit` at the start of this epic and still does at the end. Epic 8 is what fills those in, and it becomes writable when this epic's tables exist.
+
+**Two things this epic does change on shipped surfaces, stated up front because the first draft of this preamble denied both.** The AD-21 ladder table it generates carries an exit code per rung and a column saying whether `--strict` promotes that rung, because a ladder without them is not the table AD-21 specifies; what stays in epic 8 is the CLI reading those columns, and `--strict` itself already ships at `src/cli/arguments.ts:104`. And mode entering AD-11's identity inputs changes `ScoringVersionInputs`, so every scoring version computed before this epic is non-comparable with every version after it. Story 7.10 states that break rather than letting a reader discover it.
+
+**AD-31 is absent from this epic on purpose.** Revision 9 freed AD-31's fourteen predicates to stage one by moving their publication target from the worked example to a compile-side contract fixture corpus, and Story 5.3 delivered that: `src/core/coverage/`, `scripts/generate-ad31-table.ts`, and `check:ad31-table` in `npm run validate`. The spine's quoted sentence predates the move. Re-opening AD-31 here would rebuild shipped work. AD-12 is likewise absent: its validated half shipped in `src/core/lineage/chain.ts` and nothing here adds to it.
+
+**AD-9 is in scope for one reason.** Its per-class qualification record is deliberately absent from the shipped probe schema, which names the cost plainly: "AD-9's 'an unqualified probe cannot enter a sealed set' is enforced by nothing in v0." AD-40's discriminating-condition rule is checked "at corpus qualification time," so the gate has to exist before Story 7.4's rule can fire. Story 7.4 builds both.
+
+**Owed-item coverage, stated with its one exception.** Item 6 is half closed already — Story 6.4 shipped the stage-signature table as `src/core/lineage/stage-table.ts`, and its `score` row names the outcome-and-verdict containing type. Only the run-mode half stayed open, and Story 7.1 closes that half and restates nothing else. Item 2 closes in 7.2, item 3 in 7.3, item 4 in 7.7, item 5 in 7.8, item 7 in 7.9.
+
+Item 1 closes only halfway here, and the epic says so rather than claiming a clean sweep. Its two verified halves are the missing reducer and the fact that no stage signature consumes more than one run record. Story 7.6 closes the first as a pure reference function. The second is a change to `score`'s row in the stage table, and `score` has `module: null` for the whole of this epic, so changing its declared inputs before anything reads them would put a signature in the table that no code satisfies. It lands in epic 8, in the same story that gives `score` a module. The reference reducer is what makes that change safe to write, which is the order the spine asks for.
+
+**Schema breaks travel with the story that causes them.** Five published interchange schemas change here: the sealed run record, the eval contract, the probe, the evidence artifact, and the sealed evaluator brief. The first four are each already annotated in shipped source as owing the change; the brief is the one the first draft of this epic missed, and Story 7.3 carries it, because AD-19 exists to stop a contract compiling while omitting fields the executing caller depends on and the brief is the only channel to that caller. Every story that touches a schema carries its own `schemaVersion` bump, its `npm run generate:schemas` regeneration, and AD-13's four checks in its own acceptance criteria, so no story depends on a later one to be releasable. Story 7.10 collects only what is genuinely epic-level: NFR8's caller-facing disclosure and the scoring-version non-comparability statement.
+
+**One spine edit is in scope, and it is a registry append.** AD-5's own rule is that "an AD that commands a compile-time check without adding a code here is a defect in that AD", and `scripts/check-ad5-registry.ts` asserts set *and* order equality between AD-5's table and `src/core/failure-codes.ts`. So the two codes Story 7.3 mints cannot land without two new rows in that table, and `npm run validate` fails until they do. Story 7.3 ships those rows in its own diff. That is a registry entry rather than a decision change: no AD's reasoning moves, and the spine's revision number does not.
+
+**Decisions recorded here rather than as spine amendments.** Owed item 3 says of the cross-step identity gap "That is an ADR, and no story can absorb it." Story 7.3 absorbs it and decides every open behaviour by construction rather than naming them as decisions someone else will make. Story 7.2's selector-ambiguity condition is routed to AD-21's Invalid rung rather than to an AD-5 code, because AD-5 is compile-time only and `compile` never sees a run record; AD-28's fault vocabulary is disjoint from AD-5's and does not cover it either. Story 7.8 mints a score-side gap record distinct from AD-31's `CoverageGap`, because AD-31's relevance is "computed from declarations only, never inferred from the oracles" and its record requires a relevance predicate and a satisfaction predicate a runtime-discovered gap has neither of. In each case the reasoning is the spine's own: a decision written where the work happens is checkable against a fixture.
+
+### Story 7.1: The run-mode source and the sealed run record's mode field
+
+As the run that can currently be relabelled after ingest,
+I want mode carried by the sealed record itself,
+So that the source of a scored run's mode is one named field rather than nothing.
+
+**Acceptance Criteria:**
+
+**Given** owed item 6's remaining half and the shipped stage table at `src/core/lineage/stage-table.ts`, which this story does not restate,
+**When** the run record schema is bumped,
+**Then** the sealed run record carries a required `mode` whose value space is exactly `production` and `contract-scoring`, the value is supplied by the caller at ingest and never derived, recomputed, or defaulted afterwards, a record with no mode fails ingest validation as a schema error rather than degrading a verdict, `stage-table.ts`'s `ingest` row names mode among its inputs, the `schemaVersion` bump is breaking under AD-11 because the field is required, `npm run generate:schemas` regenerates the published export, and AD-13's rejection, drift, differential, and keyword-mutation checks all pass with a fixture for the new constraint.
+
+### Story 7.2: A monotonic observation sequence and declared selector cardinality
+
+As the guarantee that one sealed record produces one selection,
+I want observation ordering recorded and selector cardinality declared,
+So that a first-match scorer and a last-match scorer cannot bind different evidence.
+
+**Acceptance Criteria:**
+
+**Given** a run record and an AD-39 step selector,
+**When** the reference selection procedure runs,
+**Then** every observation carries a required strictly-increasing integer `sequence` that ordering reads and array position is read nowhere, AD-39's one-level temporal clause resolves from that sequence alone with the story recording why causal predecessors are not required for a one-level clause and what would reopen them, a temporal clause whose anchor step declared `any` and matched several takes the lowest-sequence match with that rule stated in the criterion, every `InteractionStep` declares a selector cardinality from `exactly-one`, `at-most-one`, and `any`, the procedure is pure and returns the matched observation identifiers in sequence order with a result of `none`, `one`, or `several` and assigns no AD-6 outcome state, `several` under `exactly-one` or `at-most-one` is a named ambiguity condition routed to AD-21's Invalid rung with the routing registered by Story 7.7 and the reason recorded here, permuting the observation array leaves the returned identifiers identical under the NFR9 permutation fixture family, the `Observation` JSDoc in `src/core/schemas/sealed-run-record.ts` stops calling this an additive bump, both `schemaVersion` bumps are breaking under AD-11 because both fields are required, and `generate:schemas` plus AD-13's four checks pass.
+
+### Story 7.3: Captured-value matchers and test-data bindings
+
+As the two critical-severity cross-user behaviours the calibration corpus cannot express,
+I want a step bound to an earlier step's scalar output or to a named principal,
+So that persistence read-backs and act-as-A-read-as-B oracles can be written down at all.
+
+**Acceptance Criteria:**
+
+**Given** the shipped `BindingValue` at `src/core/schemas/plan.ts:12`, a closed two-member tagged union whose tagging exists because AD-39 records that an untagged spelling flipped a witness match between `caught` and `missed` on one record,
+**When** the grammar is extended,
+**Then** the union gains exactly two tagged members and no untagged form — `{ captured: <AD-26 pointer> }`, whose pointer is rooted at an earlier step under `/interactions/{stepId}/` and must resolve to a scalar, and `{ principal: <name> }`, a fourth binding kind so all four resolve through one path — the principal name is an opaque label the harness maps to an account, carrying no account identifier and no subject data so AD-18 does not bite on the first real contract, `TestData` gains `principals` and `resources` as named typed declarations carrying no values so AD-19's prohibition on credential values in declarations still holds, `TestData.resources` is declared disjoint from the shipped `scopedResources` with the story stating that AD-16's forbidden-input check reaches both and `scoped-reference-resolves-forbidden` fires on either, the sealed evaluator brief gains the declared principal names so the executing caller has the channel AD-19 exists to guarantee, `src/core/seal/derived-reference.ts` gains the two new escalation-ladder renderings with `captured` rendered as a derived reference to the earlier step and never as that step's identifier because AD-16 keeps step identifiers off the brief, binding order is a topological evaluation over the reference graph and then sequence order within a tier, type equality requires the captured scalar's JSON type to equal the referenced parameter's declared type with a mismatch failing compilation, a captured pointer resolving `absent` at score time makes the referencing step select `none` under AD-26's rule that absent is an observation, multiple candidate tuples resolve through Story 7.2's declared cardinality on the referenced step so the two ambiguities have one answer, a reference cycle fails compilation under a new AD-5 code `binding-cycle` and a captured pointer naming a channel the referenced operation's response descriptor does not declare fails under a second new code `captured-channel-undeclared`, both added to `src/core/failure-codes.ts` and to AD-5's table in the same diff at a named position so `check:ad5-registry`'s set-and-order equality holds, the published failure-code enumeration is regenerated from the table, and the eval-contract and sealed-brief `schemaVersion` bumps plus `generate:schemas` and AD-13's four checks all land in this story.
+
+### Story 7.4: The AD-40 defect signature, corpus qualification, and the witness match
+
+As the reason `missed` is reachable at all,
+I want detection proven by matching a finding to the defect its probe seeded,
+So that the catch rate stops being 1.00 by construction.
+
+**Acceptance Criteria:**
+
+**Given** the shipped probe schema, which records AD-9's qualification record and AD-40's defect signature as deliberately absent,
+**When** both land and the reference mapping runs,
+**Then** a non-canary probe carries a required AD-9 qualification record and a required defect signature of interface kind, home operation as method and path template, observable channel, and a discriminating condition that is an AD-39 selector paired with an AD-4 predicate over AD-26 response channels rooted at the selected observation, the probe-side selector admits `literal` and `matcher` only with a fixture rejecting the two members Story 7.3 adds contract-side because AD-40 forbids contract-relative identifiers in a sealed-corpus field, template resolution erases parameter names before comparing so `/notes/{id}` binds `/notes/{noteId}` and a post-erasure collision fails compilation under the shipped `duplicate-operation-signature`, corpus qualification rejects a condition naming neither the response channel nor at least two channels and an unqualified probe cannot enter a sealed set, the mapping is pure and returns per probe exactly one of `matched`, `manifested-unclaimed`, `unwitnessed-claim`, `unexercised`, and `vacuous` together with the cited observation identifiers and assigns no AD-6 outcome state, `unwitnessed-claim` is AD-32's declared-versus-observed inconsistency and covers both of its forms — a detection claim whose cited observations satisfy no discriminating condition, and quoted evidence appearing in no cited observation — because AD-40 makes both invalidating and neither is a contract failure, a probe is exercised only when the evaluator itself invoked the signature's home operation with harness baselines, fixture set-up, and aborted calls the record shows never completing all excluded, `vacuous` is the signature resolving `insufficient-evidence` against every observation of its home operation, a defect finding matching no seeded signature is returned as an unmapped finding and never as a catch, the containment procedure over quotation exists only for records predating the identifier requirement and its results are labelled reconstructed, the reversed-order `matched`-to-`manifested-unclaimed` flip is fixtured on a synthetic two-observation record because the worked chain is not evidence until Story 7.9 regenerates it, the `Probe` JSDoc stops calling the qualification record and the defect signature additive bumps, and the probe `schemaVersion` bump plus `generate:schemas` and AD-13's four checks land here.
+
+### Story 7.5: AD-33 as a total reference decision procedure with generated fixtures
+
+As the single scorer the two incompatible scorers of revision 1 collapsed into,
+I want every outcome state resolved by one total function whose table is output,
+So that an expression's resolution has one defined meaning across two implementations.
+
+**Acceptance Criteria:**
+
+**Given** ingested findings, per-oracle dispositions, Story 7.4's match result, Story 7.2's selection result, AD-4 three-valued check resolutions, probe class, `expectedClean`, waiver state, the judge-conduct state AD-17 records on ingest, and the evaluation-fault signal AD-26 raises for an impossible operator application,
+**When** the procedure runs,
+**Then** it is the only component that assigns an AD-6 state and it is total over the input space with reachability resolving before disposition, `manifested-unclaimed` resolves `missed`, `unexercised` resolves `not-applicable`, `vacuous` resolves `infrastructure-error`, `unwitnessed-claim` routes to AD-21's Invalid rung and never to `missed`, because AD-40 makes an unwitnessed detection claim evidence that the reporting path is broken and scoring it as a contract failure is two exit codes away from the truth, the last two declared inputs exist so `judge-error` and `oracle-error` are derivable at all, `bypassed` is decided here by construction as an oracle whose waiver was applied without its condition being met with the reasoning recorded in the story, every disposition cites supporting observations and an unsupported disposition invalidates cross-artifact agreement rather than being believed, every `check` declares one polarity with `expects-hold` as the default, a satisfied `zero-action` probe resolves `caught` and never `passed-clean-control`, a finding citing no oracle is recorded as an uncited finding and routed by Story 7.8, every outcome carries a corroboration value from `agrees`, `disagrees`, `not-evaluable` with a check resolving `insufficient-evidence` recording `disagrees` where a finding was filed and `agrees` where none was and never `not-evaluable`, the generated fixture set reaches all twelve AD-6 states at least once and covers every feasible pairwise combination of the declared inputs with the infeasible pairs enumerated and asserted infeasible, the achieved counts are pinned in a committed baseline file that CI compares against so a drop fails the build, and the table is emitted by the procedure in CI rather than asserted in a document.
+
+### Story 7.6: The trial-set reducer and the AD-7 rate vector
+
+As the three-trial minimum that is currently unreachable,
+I want a reference reducer over a trial set,
+So that the product's central output can be computed rather than described.
+
+**Acceptance Criteria:**
+
+**Given** several trials of one probe,
+**When** the reference reducer runs,
+**Then** it is a pure function over a trial set rather than a change to any stage's shipped signature, results reduce to one per `(probeId, trialIndex)` and then to one per probe by requiring the catch in a strict majority of valid trials with the scoring policy able to declare a different threshold, the pass-if-any reading is rejected in code with its rejection fixtured because it is the retry anti-pattern AD-6 forbids, an invalid trial leaves both numerator and denominator and is recorded with its reason, a tie is impossible under a strict majority and the reducer asserts that rather than leaving it open, the emitted vector holds per probe class the catch rate over unique qualified probe identifiers with raw counts and the trial count alongside and the denominator named in the artifact, the relation is four-valued with `incomparable` reachable, a contract missing a behaviour at or above the severity floor never dominates one that caught it, comparability is the scoring-policy digest plus the corpus digest restricted to the shared probes with excluded probes recorded, canary probes and clean controls never enter the vector, and a check over the emitted vector's schema asserts that no field carries a weight, a percentage, or a severity-weighted composite.
+
+### Story 7.7: Mode separation with two input types and two generated ladders
+
+As the two exit codes that currently depend on which sentence a reader obeys,
+I want production and contract scoring to have separate types and separate ladders,
+So that one sealed artifact cannot derive both CONCERNS and FAIL.
+
+**Acceptance Criteria:**
+
+**Given** Story 7.1's mode field and AD-21's incomplete separation,
+**When** the reference ladders run and their table is generated,
+**Then** `ProductionAssessment` and `ContractAssessment` are separate input types, mode is read from the sealed record and is added to `SCORING_VERSION_INPUT_NAMES` and `ScoringVersionInputs` as a sixth field so a relabelled run cannot rescore under the same scoring version, `callerAttestedInputs` is widened with it because a caller-supplied mode is caller-attested under AD-32 and the test pinning the count at five moves with it, the story records that AD-11's five-field sentence is superseded by owed item 4's "mode ... entering identity" and that this is the supersession the spine asked for rather than a drift, cross-mode comparison is rejected, the Invalid rung gains the two conditions this epic's own stories create — Story 7.2's selector ambiguity and Story 7.4's `unwitnessed-claim` — so AD-21's enumerated list stays closed and complete, no rung promotes an ingested evaluator recommendation in a mode whose own text forbids it, each ladder is a pure total function over outcome state, evidence-integrity state, evaluator recommendation, coverage condition, waiver state, remediation state, and pre-flight state with first-match precedence and PASS as a rung rather than an `otherwise`, the generated table carries per rung its verdict, its exit code from the closed set PASS zero, WAIVED zero, CONCERNS zero, FAIL two, invalid three, structural compile failure four, thrown fault five, and whether `--strict` promotes it, with a CONCERNS whose only firing conditions are evidence conditions never promoted, no CLI file and no `emit` module changes in this story, and the evidence-artifact `schemaVersion` bump plus `generate:schemas` and AD-13's four checks land here.
+
+### Story 7.8: A rung for uncited defect findings, and the record it writes
+
+As SM-D4, the differentiating result of the whole experiment,
+I want an evaluator-discovered defect that cites no oracle to move something,
+So that finding a genuine uncontemplated defect stops producing exit code zero.
+
+**Acceptance Criteria:**
+
+**Given** an ingested defect finding citing no oracle,
+**When** each ladder derives its verdict,
+**Then** production mode resolves at least CONCERNS, contract-scoring mode records an `UncitedFindingGap` on the contract-scoring branch of the evidence artifact carrying the finding identifier, its cited observation identifiers, its quoted evidence, and its severity, that record is deliberately distinct from AD-31's `CoverageGap` because AD-31 computes relevance from declarations only and its record requires a relevance and a satisfaction predicate this gap has neither of, with the distinction and its reasoning recorded in the story, the finding is retained under AD-23 rather than discarded or forced into an AD-6 state, the rung appears in both generated ladder tables, the fixture is a synthetic record rather than the existing worked chain because owed item 7 forbids treating that chain as evidence until Story 7.9 regenerates it, and the evidence-artifact `schemaVersion` bump plus `generate:schemas` and AD-13's four checks land here.
+
+### Story 7.9: Regenerate the worked chain and its probe corpus entry
+
+As the reader who cannot inspect P-001,
+I want the worked example regenerated from the reference functions,
+So that the chain demonstrates a score rather than a promise.
+
+**Acceptance Criteria:**
+
+**Given** the reference functions of Stories 7.1 through 7.8,
+**When** the chain is regenerated,
+**Then** the probe corpus carries P-001 with Story 7.4's qualification record and defect signature, the run record carries Story 7.1's mode and Story 7.2's sequence, the contract, brief, run record, and evidence artifact are all emitted as output with no hand-filled downstream value, the step previously recorded `confirmed`/`agrees` while matching zero observations resolves through the Story 7.5 procedure instead, the two steps that each matched two observations resolve through Story 7.2's declared cardinality, the response shape revision 9 invalidated is reissued from the current schema, Story 7.4's reversed-order flip is re-run against the regenerated chain so the synthetic fixture is joined by the real one, `spike-worked-example/FINDINGS.md` records which of its retractions this closes and which stand, and regeneration is a CI-checked command rather than a one-time edit.
+
+### Story 7.10: The epic's disclosed breaks and the non-comparability statement
+
+As every caller pinned to `0.1.x`,
+I want one place that states what this epic broke,
+So that a version bump is a disclosure rather than a surprise.
+
+**Acceptance Criteria:**
+
+**Given** the `schemaVersion` bumps Stories 7.1 through 7.8 each made,
+**When** the release notes are written,
+**Then** every caller-facing break is called out under NFR8's pre-1.0 SemVer rule naming the artifact, the field, and whether the change is additive or breaking, the five touched interchange schemas — sealed run record, eval contract, probe, evidence artifact, sealed evaluator brief — each appear with their new `schemaVersion`, the probe schema is added to the surfaces AD-11's disclosure sentence enumerates because it did not name one, the two new AD-5 codes and the regenerated failure-code enumeration are listed among those surfaces, the disclosure states plainly that a pre-bump record reaches a caller as a parse failure and never as AD-28's `schema-version-mismatch`, since `src/core/schemas/lineage.ts` deliberately keeps `schemaVersion` as `z.int().min(1)` and nothing compares versions, and the statement that mode entering `ScoringVersionInputs` makes every scoring version computed before this epic non-comparable with every version after it is written down rather than left silently true.

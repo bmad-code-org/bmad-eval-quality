@@ -2054,3 +2054,61 @@ flowchart TD
   scoring ships later.
 - The documentation site is generated from `docs/`, and `npm run check:doc-invocations` runs every
   fenced CLI line in it against the built binary.
+
+## Step 24 (epic7-story1): the run's mode, written down where it cannot be changed later
+
+**In plain terms:** a scored run is either grading a real system or grading a contract, and nothing
+in the record said which. The same sealed run could be labelled one way at ingest, scored, relabelled
+the other way, and scored again under the same version number. Both answers would look equally
+official. This step puts the label on the record itself, as a required field the caller fills in once.
+
+**What:** a two-value `mode` on the Sealed Run Record, a `valueInputs` column on the stage table so
+`ingest` names it as something it receives, and a breaking schema version bump.
+
+**Why:** the two modes disagree about what a good outcome is. In `production` a `caught` finding
+means the system is broken. In `contract-scoring` the probe is deliberately broken, so `caught` means
+the contract did its job. The same field reads two ways depending on the mode, and until now the
+first place mode appeared was the evidence artifact, four stages past the only place a caller can
+supply one.
+
+```mermaid
+flowchart LR
+  CALLER["caller<br/>writes mode on the record"] --> REC["sealed run record<br/>mode: production | contract-scoring"]
+  REC --> ING["ingest<br/>valueInputs: mode"]
+  ING --> SCORE["score"] --> EMIT["emit"] --> EV["evidence artifact<br/>restates the mode the record fixed"]
+```
+
+**Read in this order:**
+
+1. `src/core/schemas/sealed-run-record.ts`: `RUN_MODES`, then the `mode` field's description, which
+   says why the field is required.
+2. `src/core/lineage/stage-table.ts`: `STAGE_VALUE_INPUTS` and the new column. `ingest` is the only
+   row that names anything.
+3. `tests/schemas/fixtures/artifact-reject-cases.ts`: the two new cases, absent and out-of-vocabulary.
+
+**Story:** `_bmad-output/implementation-artifacts/7-1-the-run-mode-source-and-the-sealed-run-records-mode-field.md`
+
+### Reference
+
+**Rules:**
+
+- Two modes and no third: `production` and `contract-scoring`.
+- The caller supplies mode on the record. No stage derives it, recomputes it, or defaults it.
+- Required, so the bump is breaking. A version-1 record has no mode, and no default may invent one,
+  because a defaulted mode is the relabelling the field exists to stop.
+- A record with no mode fails to parse, which makes it a `schema-parse-failure` fault.
+- The stage table's `inputs` column lists artifacts. `valueInputs` lists the other things a stage
+  receives, and today that is one word.
+- The evidence artifact still carries mode. It restates what the record fixed.
+
+**Watch out:**
+
+- A missing enum key reports Zod `invalid_value`. Writing the test against `invalid_type` is the easy
+  mistake and it was made here first. The next required field will offer the same trap.
+- `npm run check:boundary` rejects the word "story" in shipped source, so a description cites the
+  owed item or the AD it comes from.
+- The worked example now fails in sixty-one recorded ways, up from sixty. That is expected. The
+  chain gets regenerated later in epic 7, and patching it by hand is forbidden.
+- `schemas/*.json` is generated. Edit the Zod and run `npm run generate:schemas`.
+- Mode is still outside the scoring version. Until it goes in, a relabelled run can still rescore
+  under the same version, and mode separation is what closes that.
