@@ -600,3 +600,22 @@ Tracking:
 | Date | Change |
 | --- | --- |
 | 2026-08-31 | Story created, implemented, and `npm run validate` green. Status: review. |
+
+## Decision 11: the record-versus-artifact mode agreement is named, not enforced
+
+Raised by CodeRabbit on PR #47: `SealedRunRecord.mode` is authoritative, `EvidenceArtifact`
+validates only its own mode, and no producer compares the two, so a `production` record can pair
+with a `contract-scoring` artifact.
+
+The finding is correct and the check does not belong in this story. `score` and `emit` both carry
+`module: null` in `src/core/lineage/stage-table.ts` for the whole of Epic 7, so no code holds both
+artifacts at once and there is nowhere to put a comparison that would ever run. `serializeArtifact`
+takes one artifact and never a pair. Writing the check against `unknown` at the serialization
+boundary would put a cross-artifact rule in an adapter, which AD-1 and AD-34 both forbid.
+
+What this story does instead is what `src/core/schemas/probe.ts` does for AD-9's unenforced
+qualification rule: name the cost in the schema description so a reader finds it, and give it an
+owner. Story 7.7's acceptance criteria now carry the rejection in both directions, because 7.7 is
+where a producer first reads mode off the record to choose a ladder. The vocabulary agreement that
+*can* be checked today is checked: `tests/schemas/artifacts.test.ts` asserts that `RUN_MODES` equals
+the evidence artifact's two branch discriminators, so the two spellings cannot drift apart.
