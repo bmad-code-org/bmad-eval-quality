@@ -131,7 +131,7 @@ state-reset null satisfied
 clean-control null satisfied
 ```
 
-Exit `0` means the verdict passed. Exit `3` means it did not. Delete one observation and every check that depended on its leg reports `failed`, with the reason in each check's `note`.
+Exit `0` means the verdict passed. Exit `3` means it did not. Delete one observation and the checks that read its leg report `failed`, with the reason in each check's `note`. `seeded-faults-scoped` is the exception: it asks whether a manifestation witness fires on a clean leg, and a leg with no observation cannot fire one, so a missing clean leg leaves that check `satisfied`.
 
 ---
 
