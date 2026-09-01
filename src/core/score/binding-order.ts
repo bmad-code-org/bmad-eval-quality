@@ -43,10 +43,21 @@ export type BindingOrder = {
 /**
  * Cyclic steps come back as data instead of an exception, matching
  * `selectObservations`'s own policy of reporting ambiguity rather than deciding
- * it. A compiled contract never reaches that list: `binding-cycle` rejects
- * every cycle carrying a capture edge and `nested-temporal-clause` every cycle
- * made of `after` edges alone, so the union graph is acyclic by the time any
- * record is scored.
+ * it. A compiled contract whose step ids are unique never reaches that list:
+ * `binding-cycle` rejects every cycle carrying a capture edge and
+ * `nested-temporal-clause` every cycle made of `after` edges alone, so the
+ * union graph is acyclic by the time any record is scored.
+ *
+ * The uniqueness clause is load-bearing. `checkNestedTemporalClause` resolves
+ * `after` through a plan index built with `duplicateIds: 'unresolved'`, which
+ * deletes a duplicated id and reads any clause naming it as dangling, while
+ * this function and `checkBindingCycle` both test against the raw declared-id
+ * set, where it is present. So a plan declaring one id twice can carry an
+ * `after` cycle those two disagree about, and its steps land here. Nothing
+ * downstream sees it: `seal` builds its own index with the default throwing
+ * option and rejects a duplicate id outright. Changing how
+ * `checkNestedTemporalClause` reads a duplicate is deliberate shipped
+ * behaviour and belongs to whoever owns that check.
  */
 export function bindingOrder(
 	interactionPlan: readonly InteractionStep[],

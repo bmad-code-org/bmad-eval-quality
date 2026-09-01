@@ -186,30 +186,67 @@ function formatLiteral(literal: unknown): string {
 //
 // `principal` tops out at the declared name, which AD-18 keeps an opaque label
 // and is therefore safe on the brief.
-function renderCaptured(
-	name: string,
-	pointer: string,
+// One or more entries of a step's clause that capture from the same earlier
+// step, rendered together so that step's phrase is expanded once. Expanding it
+// per entry made the clause's SIZE multiply down a capture chain: a step with k
+// entries pointing at its predecessor expanded that predecessor k times, and the
+// predecessor did the same to its own, so a sixteen-step chain with four keys a
+// link produced a phrase past V8's maximum string length. Grouping makes the
+// clause linear in keys and depth, and reads better besides.
+//
+// One residue is bounded rather than removed, and is stated so nobody has to
+// rediscover it. A step referencing several DISTINCT predecessors still expands
+// each of them, so a plan whose capture graph is a complete DAG unrolls once per
+// distinct path. `plan-exceeds-scripting-bound` caps a compiled plan at sixteen
+// steps, and the worst case at that cap measures 670 KB in 35 ms, which is
+// large for an artifact AD-16 keeps minimal and is neither slow nor fatal. The
+// shape needs a hand-authored complete DAG; the chain shape that produced the
+// unbounded phrase is now 2 KB.
+type CaptureGroup = {
+	readonly stepId: string
+	readonly entries: TransportEntry[]
+	readonly targets: EvidenceTarget[]
+}
+
+function renderCaptureGroup(
+	group: CaptureGroup,
 	level: EscalationLevel,
 	index: PlanIndex,
 	rendering: ReadonlySet<string>,
 ): string {
-	const local = `the ${name} you obtained earlier`
-	if (level !== 'literal') return local
-	const target = parseEvidenceTarget(pointer)
-	if (rendering.has(target.stepId)) return local
-	const step = index.stepOf(target.stepId)
+	const names = joinWithAnd(group.entries.map(entryName))
+	const locals = joinWithAnd(group.targets.map(localTargetPhrase))
+	const step = index.stepOf(group.stepId)
 	const operation =
 		step === undefined ? undefined : index.operationOf(step.operationId)
-	if (step === undefined || operation === undefined) return local
+	if (step === undefined || operation === undefined) {
+		return `the ${names} you obtained earlier`
+	}
 	const source = stepReferenceAtLevel(step, operation, level, index, rendering)
-	return `the ${name} you obtained as ${localTargetPhrase(target)} from ${source}`
+	return `the ${names} you obtained as ${locals} from ${source}`
 }
 
-function renderBindingValue(
+// Whether this entry expands into a group, or renders as the level-independent
+// phrase on its own.
+function expandableCapture(
 	entry: TransportEntry,
 	level: EscalationLevel,
 	index: PlanIndex,
 	rendering: ReadonlySet<string>,
+): EvidenceTarget | null {
+	if (level !== 'literal' || !('captured' in entry.value)) return null
+	const target = parseEvidenceTarget(entry.value.captured)
+	if (rendering.has(target.stepId)) return null
+	const step = index.stepOf(target.stepId)
+	if (step === undefined) return null
+	return index.operationOf(step.operationId) === undefined ? null : target
+}
+
+// Renders one entry on its own. Every captured entry that expands lands in a
+// group instead, so the arm here is the level-independent fallback.
+function renderBindingValue(
+	entry: TransportEntry,
+	level: EscalationLevel,
 ): string {
 	const name = entryName(entry)
 	const { value } = entry
@@ -225,7 +262,7 @@ function renderBindingValue(
 		return `the ${name} of the ${value.principal} account`
 	}
 	if ('captured' in value) {
-		return renderCaptured(name, value.captured, level, index, rendering)
+		return `the ${name} you obtained earlier`
 	}
 	if (level === 'kind') {
 		return `the stated ${name}`
@@ -251,7 +288,37 @@ function bindingClause(
 	if (entries.length === 0) return null
 	const malformed = entries.filter((entry) => isTypeViolating(entry.value))
 	const chosen = malformed.length > 0 ? malformed : entries
-	return `with ${joinWithAnd(chosen.map((entry) => renderBindingValue(entry, level, index, rendering)))}`
+	// Each expandable capture joins the group for the step it references, held
+	// at the position that step was first referenced from, so the clause's order
+	// still comes from `bindingEntries`'s sort rather than from a map's keys.
+	const slots: (TransportEntry | CaptureGroup)[] = []
+	const groups = new Map<string, CaptureGroup>()
+	for (const entry of chosen) {
+		const target = expandableCapture(entry, level, index, rendering)
+		if (target === null) {
+			slots.push(entry)
+			continue
+		}
+		const existing = groups.get(target.stepId)
+		if (existing !== undefined) {
+			existing.entries.push(entry)
+			existing.targets.push(target)
+			continue
+		}
+		const group: CaptureGroup = {
+			stepId: target.stepId,
+			entries: [entry],
+			targets: [target],
+		}
+		groups.set(target.stepId, group)
+		slots.push(group)
+	}
+	const phrases = slots.map((slot) =>
+		'stepId' in slot
+			? renderCaptureGroup(slot, level, index, rendering)
+			: renderBindingValue(slot, level),
+	)
+	return `with ${joinWithAnd(phrases)}`
 }
 
 // Parenthesized rather than comma-joined onto the operation reference: a

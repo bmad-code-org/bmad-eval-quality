@@ -823,4 +823,47 @@ response-body key an author happened to name the same as a step prints in the ph
 `localTargetPhrase` prints the pointer's tail. That is the author's own declared key rather than a
 plan identifier, and it is what every ordinary evidence target has always printed.
 
+**Round 3** — the same peer session re-verified both round-2 fixes against its own inputs, not the
+fixtures written for them: the two-link chain separates with no step identifier and both cycle
+shapes terminate on the first hop, and the four-step tier-order plan gives one answer under all
+twenty-four permutations. It found one more HIGH and one MEDIUM, both introduced by the round-2
+fixes.
+
+1. **HIGH — the on-path render guard bounded depth and not output size.** `bindingClause` expanded
+   the referenced step's whole phrase once per captured entry, so a step with k entries pointing at
+   one predecessor expanded it k times and the predecessor did the same to its own: cost and phrase
+   size both grew as k to the power of the chain depth. Measured on a sixteen-step contract at
+   `STEP_COUNT_MAX` that passes every plan-side check: three keys a link rendered 206,464,857
+   characters in 6.8 seconds, and four keys threw `RangeError: Invalid string length` after twenty.
+   Fixed at the clause, as the reviewer recommended: expandable captures are grouped by referenced
+   step id and each referenced step is expanded once, with the names and local phrases joined. The
+   same three inputs now render 1402, 1727, and 2026 characters in about a millisecond, and a
+   single-entry group renders byte-identically to the old phrase, so no pinned string moved. The
+   length-budget alternative was rejected on the reviewer's own argument: it reintroduces a weaker
+   form of the round-2 defect.
+2. **MEDIUM — the union-graph acyclicity claim holds only for unique step ids.**
+   `checkNestedTemporalClause` resolves `after` through an index built with
+   `duplicateIds: 'unresolved'`, which deletes a duplicated id and reads any clause naming it as
+   dangling; `bindingOrder` and `checkBindingCycle` test the raw declared-id set, where it is
+   present. So a plan declaring one id twice can carry an `after` cycle those two disagree about,
+   and its steps land in `cyclic`. Nothing downstream sees it, since `seal` builds its own index
+   with the default throwing option and rejects a duplicate id first. Taken as the documentation fix
+   the reviewer scoped: `binding-order.ts`'s JSDoc now states the precondition and names the
+   disagreement. `checkNestedTemporalClause`'s duplicate handling is deliberate shipped behaviour
+   from an earlier change and was left alone.
+
+One residue is bounded rather than removed, and recorded in the module and here. Grouping collapses
+several entries pointing at one predecessor; a step referencing several DISTINCT predecessors still
+expands each, so a capture graph that is a complete DAG unrolls once per distinct path. Measured at
+the sixteen-step cap: 670,757 characters in 35 milliseconds. Seventeen and eighteen steps double it
+each time and are both rejected by `checkScriptingBound`. Large for an artifact AD-16 keeps minimal,
+neither slow nor fatal, and it needs a hand-authored complete DAG to reach.
+
+The reviewer also closed four of its earlier suspicions with proofs rather than assertions: the
+union-graph acyclicity argument is proven for both the capture-edge and pure-`after` cases including
+the self-loop, the exactly-once partition across `tiers` and `cyclic` survives the second edge kind
+over 200,000 random plans with a duplicated id injected into a fifth of them, a dangling `after`
+imposes nothing, and the flat diamond is linear (forty captures from one predecessor render in a
+millisecond).
+
 ## Peer Review Record

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import type { Operation } from '../../src/core/schemas/interface.ts'
 import type { InteractionStep } from '../../src/core/schemas/plan.ts'
 import {
 	EVIDENCE_CHANNELS,
@@ -256,6 +257,119 @@ describe('renderStepReference: the escalation ladder and its injectivity', () =>
 				expect(phrase).not.toContain(step.stepId)
 			}
 		}
+	})
+
+	it('a step capturing several keys from one predecessor expands that predecessor once, so a chain stays linear', () => {
+		// Expanding per entry multiplied the clause's size down a capture chain:
+		// k entries pointing at one predecessor expanded it k times, and the
+		// predecessor did the same to its own, so a sixteen-step chain with four
+		// keys a link produced a phrase past V8's maximum string length. The
+		// bound asserted below is generous against the linear size and orders of
+		// magnitude under the old growth, which passed 200 MB at three keys.
+		const keys = ['k0', 'k1', 'k2', 'k3']
+		const channel = (permittedKeys: readonly string[]) => ({
+			requiredKeys: [],
+			permittedKeys: [...permittedKeys],
+			types: Object.fromEntries(
+				permittedKeys.map((key) => [key, 'string' as const]),
+			),
+		})
+		const operationOf = (operationId: string): Operation => ({
+			operationId,
+			method: 'POST',
+			pathTemplate: `/${operationId}`,
+			stateChangeMarker: false,
+			requestShape: {
+				path: channel(keys),
+				query: channel([]),
+				header: channel([]),
+				body: channel(['tag']),
+			},
+			responseDescriptor: {
+				requiredKeys: [],
+				permittedKeys: keys,
+				types: Object.fromEntries(keys.map((key) => [key, 'string' as const])),
+				successIndicator: null,
+				channelRoles: null,
+				collectionLocations: null,
+			},
+			volatilePointers: [],
+			sensitivityWitness: null,
+		})
+		const chained = (
+			stepId: string,
+			operationId: string,
+			from: string | null,
+		) => ({
+			stepId,
+			operationId,
+			inputBinding: {
+				path:
+					from === null
+						? null
+						: Object.fromEntries(
+								keys.map((key) => [
+									key,
+									{ captured: `/interactions/${from}/response-body/${key}` },
+								]),
+							),
+				query: null,
+				header: null,
+				body: from === null ? { tag: { literal: 'root' } } : null,
+			},
+			after: null,
+			cardinality: 'exactly-one' as const,
+		})
+		// Thirteen links plus the seed and the two probes: sixteen steps, exactly
+		// `plan-exceeds-scripting-bound`'s published cap.
+		const plan: InteractionStep[] = [chained('seed', 'seed-op', null)]
+		for (let link = 1; link <= 13; link += 1) {
+			plan.push(
+				chained(
+					`link-${link}`,
+					'mid-op',
+					link === 1 ? 'seed' : `link-${link - 1}`,
+				),
+			)
+		}
+		for (const [stepId, key] of [
+			['probe-first', 'k0'],
+			['probe-second', 'k1'],
+		] as const) {
+			plan.push({
+				stepId,
+				operationId: 'probe-op',
+				inputBinding: {
+					path: {
+						k0: { captured: `/interactions/link-13/response-body/${key}` },
+					},
+					query: null,
+					header: null,
+					body: null,
+				},
+				after: null,
+				cardinality: 'exactly-one',
+			})
+		}
+		const index = buildPlanIndex(plan, [
+			{
+				logicalId: 'chain-api',
+				kind: 'api',
+				operations: ['seed-op', 'mid-op', 'probe-op'].map(operationOf),
+			},
+		])
+		const first = resolveStep(index, 'probe-first')
+		const second = resolveStep(index, 'probe-second')
+		const operation = resolveOperation(index, 'probe-op')
+
+		const phrase = renderStepReference(first, operation, [first, second], index)
+		expect(phrase).not.toBe(
+			renderStepReference(second, operation, [first, second], index),
+		)
+		expect(phrase.length).toBeLessThan(10_000)
+		// The four keys of one link are named together and their predecessor is
+		// expanded once, which is what makes the size linear.
+		expect(phrase).toContain('path k0, path k1, path k2, and path k3')
 	})
 
 	it('a capture cycle driven straight into the renderer terminates on the on-path guard rather than recursing', () => {
