@@ -299,7 +299,7 @@ const contractLiteral = {
 	interactionPlan: [],
 	scopedResources: null,
 	forbiddenInputs: [],
-	testData: { setup: null, cleanup: null },
+	testData: { setup: null, cleanup: null, principals: null, resources: null },
 	budgets: { maxToolCalls: 0, maxWallClockMinutes: 0, maxCostUsd: '0' },
 	safetyLimits: [],
 	requiredEvidence: [],

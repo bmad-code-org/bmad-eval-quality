@@ -902,6 +902,33 @@ export const ARTIFACT_REJECT_CASES: readonly ArtifactRejectCase[] = [
 		instancePath: '/directions/0/text',
 	},
 	{
+		id: 'brief-principals-absent',
+		artifact: 'sealed-evaluator-brief',
+		constraint:
+			'the brief always answers which principals the caller provisions; `seal` knows the answer, so absent is not one of them (owed item 3)',
+		mutate: (brief) => {
+			delete brief.principals
+		},
+		issuePath: ['principals'],
+		issueCode: 'invalid_type',
+		keyword: 'required',
+		instancePath: '',
+		errorParams: { missingProperty: 'principals' },
+	},
+	{
+		id: 'brief-principal-name-not-an-identifier',
+		artifact: 'sealed-evaluator-brief',
+		constraint:
+			'a carried principal name is an identifier, and an opaque label at that (AD-18)',
+		mutate: (brief) => {
+			brief.principals = ['Owner Account']
+		},
+		issuePath: ['principals', 0],
+		issueCode: 'invalid_format',
+		keyword: 'pattern',
+		instancePath: '/principals/0',
+	},
+	{
 		id: 'brief-probe-step-bound-negative',
 		artifact: 'sealed-evaluator-brief',
 		constraint: "AD-16's probe-step bound is non-negative or explicit null",

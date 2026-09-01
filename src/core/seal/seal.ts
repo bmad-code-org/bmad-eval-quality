@@ -92,8 +92,10 @@ export function seal(contract: EvalContract): SealedEvaluatorBrief {
 		// and stateless with no "prior brief" argument (AD-12), so the only
 		// honest artifact is a lineage root: `parentDigest` null,
 		// `revisionCount` 0, independent of the contract's own lineage.
-		// `schemaVersion` is the brief schema's current version.
-		schemaVersion: 1,
+		// `schemaVersion` is the brief schema's current version; 2 since owed
+		// item 3 added `principals` as a required field, which AD-11 counts as
+		// a breaking change.
+		schemaVersion: 2,
 		parentDigest: null,
 		revisionCount: 0,
 		// A plain digest of the literal input: two differently-ordered
@@ -123,8 +125,11 @@ export function seal(contract: EvalContract): SealedEvaluatorBrief {
 		// Copied rather than aliased, for the same reason as `behaviors` above.
 		budgets: { ...contract.budgets },
 		// Sorted lexicographically; sort-key duplicates are impossible here
-		// since equal strings are interchangeable, so no duplicate guard.
+		// since equal strings are interchangeable, so no duplicate guard. The
+		// principal names are sorted the same way rather than through
+		// `sortedByKey`, for the same reason: there is no key to guard.
 		safetyLimits: [...contract.safetyLimits].sort(),
+		principals: Object.keys(contract.testData.principals ?? {}).sort(),
 		probeStepBound: contract.probeStepBound,
 	}
 

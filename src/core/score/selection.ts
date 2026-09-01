@@ -49,11 +49,17 @@ export type StepSelection = {
  * `sequence`, decided by this comparator alone.
  *
  * Matching on `operationId` alone, ignoring `step.inputBinding`, is a
- * deliberate scope boundary: resolving several candidate tuples by their
- * full input binding is Owed item 3's captured-value-matcher and
- * test-data-binding work. `tests/seal/fixtures.ts`'s `irreducibleCollisionPair`
- * is a concrete existing case left undisambiguated here: two steps sharing
- * one `operationId`, distinguishable only by input binding.
+ * deliberate scope boundary that stays: candidate-tuple resolution lives in
+ * `selectWithBindings` (`score/bindings.ts`), which wraps this function and
+ * filters its matches against the step's own resolved bindings. Splitting them
+ * keeps this function's permutation guarantee provable on its own.
+ *
+ * `tests/seal/fixtures.ts`'s `irreducibleCollisionPair` was once cited here as
+ * a case "distinguishable only by input binding". It is not: its two steps
+ * bind nothing in any channel, so a filter over zero bindings separates
+ * nothing and both stay `several` even with `selectWithBindings`. The pair
+ * that separates is `literalCollisionPair`, whose two steps bind one key to
+ * two different literals.
  */
 export function selectObservations(
 	step: InteractionStep,

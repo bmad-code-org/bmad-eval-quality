@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import type { InteractionStep } from '../../src/core/schemas/plan.ts'
 import {
 	EVIDENCE_CHANNELS,
 	TRANSPORT_CHANNELS,
@@ -13,6 +14,8 @@ import {
 	resolveStep,
 } from '../../src/core/seal/plan-index.ts'
 import {
+	capturedChainPair,
+	capturedCollisionPair,
 	createThenReadBack,
 	fiveStepAfterChain,
 	fourStepAfterChain,
@@ -22,6 +25,7 @@ import {
 	linearAfterChain,
 	literalCollisionPair,
 	outOfOrderBindingKeys,
+	principalCollisionPair,
 	reverseAfterPair,
 	sameFieldTemporalPair,
 	sameStepPair,
@@ -67,7 +71,7 @@ describe('renderStepReference: the escalation ladder and its injectivity', () =>
 			const siblings = gateCInteractionPlan.filter(
 				(other) => other.operationId === step.operationId,
 			)
-			return renderStepReference(step, operation, siblings)
+			return renderStepReference(step, operation, siblings, gateCIndex)
 		})
 		expect(new Set(phrases).size).toBe(gateCInteractionPlan.length)
 	})
@@ -77,11 +81,17 @@ describe('renderStepReference: the escalation ladder and its injectivity', () =>
 		const unknownJobRead = resolveStep(gateCIndex, 'unknown-job-read')
 		const operation = resolveOperation(gateCIndex, 'get-export')
 		const siblings = [poll, unknownJobRead]
-		const pollPhrase = renderStepReference(poll, operation, siblings)
+		const pollPhrase = renderStepReference(
+			poll,
+			operation,
+			siblings,
+			gateCIndex,
+		)
 		const unknownPhrase = renderStepReference(
 			unknownJobRead,
 			operation,
 			siblings,
+			gateCIndex,
 		)
 		expect(pollPhrase).not.toBe(unknownPhrase)
 		expect(pollPhrase).toContain('supplied path jobId')
@@ -94,7 +104,7 @@ describe('renderStepReference: the escalation ladder and its injectivity', () =>
 		// This is poll's real production scope: gateCContract never references
 		// poll and unknown-job-read together in one direction, so poll alone has
 		// no collision to escalate against.
-		const phrase = renderStepReference(poll, operation, [poll])
+		const phrase = renderStepReference(poll, operation, [poll], gateCIndex)
 		expect(phrase).toBe(
 			'the get export endpoint (with the supplied path jobId)',
 		)
@@ -110,8 +120,8 @@ describe('renderStepReference: the escalation ladder and its injectivity', () =>
 			throw new Error('fixture malformed')
 		const operation = resolveOperation(index, 'read-widget')
 		const siblings = [stepA, stepB]
-		const phraseA = renderStepReference(stepA, operation, siblings)
-		const phraseB = renderStepReference(stepB, operation, siblings)
+		const phraseA = renderStepReference(stepA, operation, siblings, index)
+		const phraseB = renderStepReference(stepB, operation, siblings, index)
 		expect(phraseA).not.toBe(phraseB)
 		expect(phraseA).toContain('widget-a')
 		expect(phraseB).toContain('widget-b')
@@ -127,12 +137,12 @@ describe('renderStepReference: the escalation ladder and its injectivity', () =>
 			throw new Error('fixture malformed')
 		const operation = resolveOperation(index, 'ping-service')
 		const siblings = [stepA, stepB]
-		expect(() => renderStepReference(stepA, operation, siblings)).toThrow(
-			TypeError,
-		)
-		expect(() => renderStepReference(stepB, operation, siblings)).toThrow(
-			TypeError,
-		)
+		expect(() =>
+			renderStepReference(stepA, operation, siblings, index),
+		).toThrow(TypeError)
+		expect(() =>
+			renderStepReference(stepB, operation, siblings, index),
+		).toThrow(TypeError)
 	})
 
 	it('a step binding nothing in any channel still renders, with the binding clause omitted', () => {
@@ -142,8 +152,207 @@ describe('renderStepReference: the escalation ladder and its injectivity', () =>
 		)
 		const step = resolveStep(index, 'ping')
 		const operation = resolveOperation(index, 'ping-service')
-		const phrase = renderStepReference(step, operation, [step])
+		const phrase = renderStepReference(step, operation, [step], index)
 		expect(phrase).toBe('the ping service endpoint')
+	})
+
+	it('two steps binding one key to different declared principals escalate one rung: the generic form collides, the kind rung names each principal', () => {
+		const index = buildPlanIndex(
+			principalCollisionPair.interactionPlan,
+			principalCollisionPair.permittedInterfaces,
+		)
+		const owner = resolveStep(index, 'read-as-owner')
+		const auditor = resolveStep(index, 'read-as-auditor')
+		const operation = resolveOperation(index, 'read-widget')
+		// The generic rung, reached by rendering one of them alone: what the two
+		// would share, and therefore what forces the escalation below.
+		expect(renderStepReference(owner, operation, [owner], index)).toBe(
+			'the read widget endpoint (with the supplied path widgetId)',
+		)
+		const siblings = [owner, auditor]
+		expect(renderStepReference(owner, operation, siblings, index)).toBe(
+			'the read widget endpoint (with the path widgetId of the owner account)',
+		)
+		expect(renderStepReference(auditor, operation, siblings, index)).toBe(
+			'the read widget endpoint (with the path widgetId of the auditor account)',
+		)
+	})
+
+	it('two steps capturing one key from different predecessors collide at the kind rung and escalate to the literal rung, where the captured-from operation and local phrase differ', () => {
+		const index = buildPlanIndex(
+			capturedCollisionPair.interactionPlan,
+			capturedCollisionPair.permittedInterfaces,
+		)
+		const primary = resolveStep(index, 'probe-primary')
+		const secondary = resolveStep(index, 'probe-secondary')
+		const operation = resolveOperation(index, 'read-widget')
+		const siblings = [primary, secondary]
+		const primaryPhrase = renderStepReference(
+			primary,
+			operation,
+			siblings,
+			index,
+		)
+		const secondaryPhrase = renderStepReference(
+			secondary,
+			operation,
+			siblings,
+			index,
+		)
+		// Flattening the top rung to a level-independent phrase leaves these two
+		// identical, which is what makes `renderStepReference` throw. Naming the
+		// captured-from operation alone is not enough either: the rung recurses
+		// one level into the predecessor, so its own binding clause is what
+		// separates two predecessors sharing an operation.
+		expect(primaryPhrase).not.toBe(secondaryPhrase)
+		expect(primaryPhrase).toBe(
+			'the read widget endpoint (with the path widgetId you obtained as its id field from the create alpha widget endpoint (with the supplied body title))',
+		)
+		expect(secondaryPhrase).toBe(
+			'the read widget endpoint (with the path widgetId you obtained as its id field from the create beta widget endpoint (with the supplied body title))',
+		)
+	})
+
+	it('a captured binding rendered at the literal rung names no step identifier, though its declared pointer carries one', () => {
+		const index = buildPlanIndex(
+			capturedCollisionPair.interactionPlan,
+			capturedCollisionPair.permittedInterfaces,
+		)
+		const primary = resolveStep(index, 'probe-primary')
+		const secondary = resolveStep(index, 'probe-secondary')
+		const operation = resolveOperation(index, 'read-widget')
+		const siblings = [primary, secondary]
+		const phrases = siblings.map((step) =>
+			renderStepReference(step, operation, siblings, index),
+		)
+		for (const phrase of phrases) {
+			for (const step of capturedCollisionPair.interactionPlan) {
+				expect(phrase).not.toContain(step.stepId)
+			}
+		}
+	})
+
+	it('a two-link capture chain follows the chain to where the links actually differ, rather than stopping one hop in', () => {
+		// Both mid steps call one operation and bind one key, so showing only the
+		// immediate predecessor renders the two probes identically and
+		// `renderStepReference` throws. The literal that separates them sits on
+		// the base steps, one link further back.
+		const index = buildPlanIndex(
+			capturedChainPair.interactionPlan,
+			capturedChainPair.permittedInterfaces,
+		)
+		const alpha = resolveStep(index, 'probe-alpha')
+		const beta = resolveStep(index, 'probe-beta')
+		const operation = resolveOperation(index, 'read-widget')
+		const siblings = [alpha, beta]
+
+		const alphaPhrase = renderStepReference(alpha, operation, siblings, index)
+		const betaPhrase = renderStepReference(beta, operation, siblings, index)
+		expect(alphaPhrase).not.toBe(betaPhrase)
+		expect(alphaPhrase).toContain('the body title "alpha"')
+		expect(betaPhrase).toContain('the body title "beta"')
+		for (const phrase of [alphaPhrase, betaPhrase]) {
+			for (const step of capturedChainPair.interactionPlan) {
+				expect(phrase).not.toContain(step.stepId)
+			}
+		}
+	})
+
+	it('a capture cycle driven straight into the renderer terminates on the on-path guard rather than recursing', () => {
+		// `binding-cycle` rejects both shapes at compile time, so `seal()` never
+		// meets one. The guard is what keeps this function total for a caller
+		// holding an uncompiled plan.
+		const [alphaWidget] = capturedChainPair.permittedInterfaces
+		if (alphaWidget === undefined) throw new Error('fixture malformed')
+		const cyclic: InteractionStep[] = [
+			{
+				stepId: 'loop-one',
+				operationId: 'read-widget',
+				inputBinding: {
+					path: {
+						widgetId: { captured: '/interactions/loop-two/response-body/id' },
+					},
+					query: null,
+					header: null,
+					body: null,
+				},
+				after: null,
+				cardinality: 'exactly-one',
+			},
+			{
+				stepId: 'loop-two',
+				operationId: 'read-widget',
+				inputBinding: {
+					path: {
+						widgetId: { captured: '/interactions/loop-one/response-body/id' },
+					},
+					query: null,
+					header: null,
+					body: null,
+				},
+				after: null,
+				cardinality: 'exactly-one',
+			},
+			{
+				stepId: 'loop-self',
+				operationId: 'read-widget',
+				inputBinding: {
+					path: {
+						widgetId: { captured: '/interactions/loop-self/response-body/id' },
+					},
+					query: null,
+					header: null,
+					body: null,
+				},
+				after: null,
+				cardinality: 'exactly-one',
+			},
+		]
+		const index = buildPlanIndex(cyclic, [alphaWidget])
+		const operation = resolveOperation(index, 'read-widget')
+		for (const stepId of ['loop-one', 'loop-two', 'loop-self']) {
+			const step = resolveStep(index, stepId)
+			expect(renderStepReference(step, operation, [step], index)).toBe(
+				'the read widget endpoint (with the supplied path widgetId)',
+			)
+		}
+	})
+
+	it('a captured pointer the index cannot resolve falls back to the kind phrase rather than throwing, whether the step or its operation is the piece missing', () => {
+		// `seal()` runs after `compile`, which rejects an unresolvable captured
+		// pointer, so both shapes here are reachable only by driving the renderer
+		// directly. The resolvable sibling keeps the pair distinct, so escalation
+		// still reaches the literal rung and the fallback is what actually renders.
+		const [widgetApi] = capturedCollisionPair.permittedInterfaces
+		if (widgetApi === undefined) throw new Error('fixture malformed')
+		const indexes = [
+			buildPlanIndex(
+				capturedCollisionPair.interactionPlan.filter(
+					(step) => step.stepId !== 'stash-secondary',
+				),
+				capturedCollisionPair.permittedInterfaces,
+			),
+			buildPlanIndex(capturedCollisionPair.interactionPlan, [
+				{
+					...widgetApi,
+					operations: widgetApi.operations.filter(
+						(operation) => operation.operationId !== 'create-beta-widget',
+					),
+				},
+			]),
+		]
+		for (const index of indexes) {
+			const primary = resolveStep(index, 'probe-primary')
+			const secondary = resolveStep(index, 'probe-secondary')
+			const operation = resolveOperation(index, 'read-widget')
+			const siblings = [primary, secondary]
+			expect(renderStepReference(secondary, operation, siblings, index)).toBe(
+				'the read widget endpoint (with the path widgetId you obtained earlier)',
+			)
+			expect(renderStepReference(primary, operation, siblings, index)).toBe(
+				'the read widget endpoint (with the path widgetId you obtained as its id field from the create alpha widget endpoint (with the supplied body title))',
+			)
+		}
 	})
 
 	it("bindingEntries sorts keys canonically regardless of declared order, matching canonicalize.ts's key-sorting rule", () => {
@@ -153,7 +362,7 @@ describe('renderStepReference: the escalation ladder and its injectivity', () =>
 		)
 		const step = resolveStep(index, 'submit-both')
 		const operation = resolveOperation(index, 'submit-multi')
-		const phrase = renderStepReference(step, operation, [step])
+		const phrase = renderStepReference(step, operation, [step], index)
 		const appleIndex = phrase.indexOf('apple')
 		const zebraIndex = phrase.indexOf('zebra')
 		expect(appleIndex).toBeGreaterThanOrEqual(0)

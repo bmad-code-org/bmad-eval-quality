@@ -220,11 +220,13 @@ describe('the Consistency Conventions, extended rather than restarted', () => {
 	// AD-10 added the seventh declaration, `WitnessInputs.header`, string-valued
 	// because a header value is a string at the boundary, and carried the
 	// `shape` operator's descriptor into a second document with the rest of the
-	// expression grammar.
+	// expression grammar. Owed item 3 added the eighth and ninth,
+	// `testData.principals` and `testData.resources`, each keyed by the author's
+	// own declared name so a duplicate declaration is unrepresentable.
 	//
 	// The census below counts ADDRESSES, not declarations, which is why
-	// eval-contract lists ten for seven declarations: `KeyTypeMap` is reached at
-	// six of them, once per request channel plus the response descriptor plus
+	// eval-contract lists twelve for nine declarations: `KeyTypeMap` is reached
+	// at six of them, once per request channel plus the response descriptor plus
 	// the `shape` descriptor. Pinned in both directions, so a genuinely new
 	// caller-keyed map still fails here rather than being absorbed by a widened
 	// skip list.
@@ -238,6 +240,8 @@ describe('the Consistency Conventions, extended rather than restarted', () => {
 				'/properties/permittedInterfaces/items/properties/operations/items/properties/responseDescriptor/properties/types',
 				'/properties/permittedInterfaces/items/properties/operations/items/properties/responseDescriptor/properties/channelRoles/anyOf/0',
 				'/properties/referenceSets/anyOf/0',
+				'/properties/testData/properties/principals/anyOf/0',
+				'/properties/testData/properties/resources/anyOf/0',
 				'/$defs/Expression/oneOf/9/properties/descriptor/properties/types',
 				'/$defs/WitnessInputs/properties/header',
 				'/$defs/InputBindingChannel/anyOf/0',

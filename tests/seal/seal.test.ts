@@ -7,6 +7,7 @@ import { seal, validateAssembledBrief } from '../../src/core/seal/seal.ts'
 import type { SealStage } from '../../src/core/stage-contracts.ts'
 import { gateCContract } from '../schemas/fixtures/gate-c-contract.ts'
 import { populatedContract } from '../schemas/fixtures/relevance-contracts.ts'
+import { capturedCollisionPair, principalCollisionPair } from './fixtures.ts'
 
 // Re-derived through the schema's own `.parse()` rather than typed directly
 // as `EvalContract`, matching `tests/seal/fixtures.ts`'s established pattern:
@@ -80,9 +81,9 @@ describe('seal: full-contract assembly', () => {
 		expect(brief).not.toHaveProperty('stepId')
 	})
 
-	it('mints a fresh lineage root: schemaVersion 1, parentDigest null, revisionCount 0', () => {
+	it('mints a fresh lineage root: schemaVersion 2, parentDigest null, revisionCount 0', () => {
 		const brief = seal(sealableGateCContract)
-		expect(brief.schemaVersion).toBe(1)
+		expect(brief.schemaVersion).toBe(2)
 		expect(brief.parentDigest).toBeNull()
 		expect(brief.revisionCount).toBe(0)
 	})
@@ -368,6 +369,134 @@ describe('seal: conforms to the SealStage conformance type (AD-34, AC 4)', () =>
 	it('assigns to SealStage and produces the same result called through that type', () => {
 		const stage: SealStage = seal
 		expect(stage(sealableGateCContract)).toEqual(seal(sealableGateCContract))
+	})
+})
+
+describe('seal: principals (owed item 3)', () => {
+	const withPrincipals = (
+		principals: Record<string, { kind: string }> | null,
+	): EvalContract =>
+		EvalContract.parse({
+			...sealablePopulatedContract,
+			testData: { ...sealablePopulatedContract.testData, principals },
+		})
+
+	// Declared in descending order, so a `seal()` that carried the map's own key
+	// order through would produce the reverse of this expectation.
+	it('carries exactly the declared principal names, sorted', () => {
+		const brief = seal(
+			withPrincipals({
+				owner: { kind: 'account' },
+				auditor: { kind: 'account' },
+				admin: { kind: 'account' },
+			}),
+		)
+		expect(brief.principals).toEqual(['admin', 'auditor', 'owner'])
+	})
+
+	it.each([null, {}])(
+		'renders %j principals as [], the brief field being non-nullable like scopedResources',
+		(principals) => {
+			expect(seal(withPrincipals(principals)).principals).toEqual([])
+		},
+	)
+
+	it('is permutation-invariant: two contracts declaring the same names in different key orders seal to the same array', () => {
+		const declared = seal(
+			withPrincipals({
+				owner: { kind: 'account' },
+				auditor: { kind: 'reader' },
+				admin: { kind: 'account' },
+			}),
+		)
+		const permuted = seal(
+			withPrincipals({
+				admin: { kind: 'account' },
+				owner: { kind: 'account' },
+				auditor: { kind: 'reader' },
+			}),
+		)
+		expect(permuted.principals).toEqual(declared.principals)
+		expect(declared.principals).toEqual(['admin', 'auditor', 'owner'])
+	})
+})
+
+describe('seal: the two new binding forms still carry no step identifier', () => {
+	// `populatedContract` supplies every declaration `seal()` reads apart from
+	// the plan, the interfaces, and the one direction that renders them, so a
+	// rendering-focused case states only those three.
+	function briefFromSlice(
+		slice: typeof principalCollisionPair,
+		evidenceTargets: readonly string[],
+		principals: Record<string, { kind: string }> | null,
+	): SealedEvaluatorBrief {
+		const [firstOracle] = sealablePopulatedContract.oracles
+		if (firstOracle === undefined) throw new Error('fixture missing an oracle')
+		return seal(
+			EvalContract.parse({
+				...sealablePopulatedContract,
+				interactionPlan: slice.interactionPlan,
+				permittedInterfaces: slice.permittedInterfaces,
+				testData: { ...sealablePopulatedContract.testData, principals },
+				oracles: [
+					{
+						...firstOracle,
+						direction: {
+							evidenceTargets,
+							relation: 'deep-equality',
+							polarity: 'expects-hold',
+							scope: null,
+							negativeDomain: null,
+						},
+					},
+				],
+			}),
+		)
+	}
+
+	function assertNoStepId(
+		brief: SealedEvaluatorBrief,
+		slice: typeof principalCollisionPair,
+	): void {
+		const bytes = decode(canonicalize(brief, 'brief'))
+		for (const step of slice.interactionPlan) {
+			expect(bytes).not.toContain(step.stepId)
+		}
+	}
+
+	it('a direction over two steps binding different principals renders each declared name and no step id', () => {
+		const brief = briefFromSlice(
+			principalCollisionPair,
+			[
+				'/interactions/read-as-owner/response-status',
+				'/interactions/read-as-auditor/response-status',
+			],
+			{ owner: { kind: 'account' }, auditor: { kind: 'account' } },
+		)
+		const [direction] = brief.directions
+		if (direction === undefined) throw new Error('expected one direction')
+		// The rendered names prove the exclusion below is not vacuous: escalation
+		// reached the rung that prints a binding detail at all.
+		expect(direction.text).toContain('of the owner account')
+		expect(direction.text).toContain('of the auditor account')
+		expect(brief.principals).toEqual(['auditor', 'owner'])
+		assertNoStepId(brief, principalCollisionPair)
+	})
+
+	it('a direction over two steps capturing from different predecessors renders the captured-from operations and no step id, though both declared pointers name their predecessor by id', () => {
+		const brief = briefFromSlice(
+			capturedCollisionPair,
+			[
+				'/interactions/probe-primary/response-body/value',
+				'/interactions/probe-secondary/response-body/value',
+			],
+			null,
+		)
+		const [direction] = brief.directions
+		if (direction === undefined) throw new Error('expected one direction')
+		expect(direction.text).toContain('create alpha widget endpoint')
+		expect(direction.text).toContain('create beta widget endpoint')
+		assertNoStepId(brief, capturedCollisionPair)
 	})
 })
 

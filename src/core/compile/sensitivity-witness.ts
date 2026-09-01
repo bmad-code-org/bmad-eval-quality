@@ -4,7 +4,7 @@
  * execute it, and that its leg identifiers are distinct from each other and
  * from every interaction-plan step.
  *
- * No new AD-5 code is minted. The registry is closed at twenty-one and
+ * No new AD-5 code is minted. The registry is closed at twenty-three and
  * `check:ad5-registry` pins it against the spine, so each defect below takes the
  * code that already names it. Two rows stretch that reading: a leg-id equality
  * and a leg-id/step-id collision are identifier collisions, and

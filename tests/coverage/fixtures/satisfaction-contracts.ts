@@ -478,6 +478,8 @@ export const satisfiedContract = {
 	testData: {
 		setup: 'Seed exactly three things with identifiers t-1, t-2, t-3.',
 		cleanup: 'Delete every thing created during the run.',
+		principals: null,
+		resources: null,
 	},
 	budgets: {
 		maxToolCalls: 20,

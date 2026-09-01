@@ -214,24 +214,26 @@ Nothing imports `cli/`.
 
 - **Binds:** compiler, every AD that defines a compile-time prohibition, VFR-2
 - **Prevents:** two compilers each inventing their own answer to what fails compilation, and an AD commanding a compile-time check that the registry does not list — which in revision 1 left the forbidden-input floor and the rubric penalty rule enforceable by one implementer and invisible to another
-- **Rule:** every compile-time failure has a stable code in this registry, and any AD imposing a compile-time check cites that literal code rather than describing a new one. **The codes are the registry; revision 4 wrote sixteen prose descriptions, called them a registry, and supplied no code at all, which left the Errors convention's stable-code requirement unsatisfiable and two implementations free to invent incompatible vocabularies.** Each code below is emitted by `compile` and carries the artifact path that produced it, per the Errors convention, with one named exception: `brief-exceeds-scripting-bound` is emitted by the post-generation brief-scripting audit AD-16 commands, not by `compile` itself, since it fires after `seal` has already generated the brief `compile` never sees. The artifact-path and Errors-convention half of this sentence still holds for that code exactly as for the other twenty.
+- **Rule:** every compile-time failure has a stable code in this registry, and any AD imposing a compile-time check cites that literal code rather than describing a new one. **The codes are the registry; revision 4 wrote sixteen prose descriptions, called them a registry, and supplied no code at all, which left the Errors convention's stable-code requirement unsatisfiable and two implementations free to invent incompatible vocabularies.** Each code below is emitted by `compile` and carries the artifact path that produced it, per the Errors convention, with one named exception: `brief-exceeds-scripting-bound` is emitted by the post-generation brief-scripting audit AD-16 commands, not by `compile` itself, since it fires after `seal` has already generated the brief `compile` never sees. The artifact-path and Errors-convention half of this sentence still holds for that code exactly as for the other twenty-two.
 
   | Code | Fires when | Cited by |
   | --- | --- | --- |
   | `missing-requirement-linkage` | a behaviour declares no requirement or risk identifier | AD-19 |
   | `no-observable-success-criterion` | a behaviour declares no observable success criterion | AD-19 |
-  | `unreachable-check-evidence` | an oracle's `check` addresses evidence unreachable through the declared interfaces | AD-19, AD-26 |
+  | `unreachable-check-evidence` | an oracle's `check` addresses evidence unreachable through the declared interfaces; or a captured input binding names a step, or a step's operation, the contract does not declare; or it addresses a response-body value the referenced operation declares no determinate scalar type for; or the captured and bound types are unequal, either one being indeterminate included | AD-19, AD-26 |
   | `malformed-operator-expression` | wrong arity, an operand type the operator does not accept, or a rejected regex construct | AD-4, AD-26 |
   | `quantifier-over-non-collection` | a quantifier's operand is typed a non-collection by the invoked operation's response descriptor | AD-4 |
   | `quantifier-nesting-exceeded` | a quantifier appears inside a quantifier, or `covers-by-key` appears inside one | AD-4 |
   | `unresolved-reference-set` | a reference-set operand names an identifier the contract does not declare | AD-26 |
   | `duplicate-operation-signature` | two declared operations share a method and path template after parameter-name erasure | AD-19, AD-40 |
-  | `undeclared-mandatory-input` | strict mode meets an input the contract did not declare | AD-4 |
+  | `undeclared-mandatory-input` | strict mode meets an input the contract did not declare, or a binding naming a principal it did not declare | AD-4 |
   | `oracle-missing-channel` | an oracle omits `check` or omits its structured direction | AD-3 |
   | `direction-check-misaligned` | the direction's evidence targets, relation, or polarity are not contained in `check` | AD-3, AD-31 |
   | `unsupported-interface-kind` | a declared interface kind is `web`, `cli`, or `mcp` | AD-10 |
   | `nested-temporal-clause` | a temporal clause names a step that carries one | AD-39 |
   | `plan-exceeds-scripting-bound` | the interaction plan violates the published graph predicate below | AD-39 |
+  | `binding-cycle` | a cycle over the capture and temporal-clause edges together that contains at least one captured input binding, a step capturing from itself included | AD-39 |
+  | `captured-channel-undeclared` | a captured input binding names any channel but `response-body`, the one channel a response descriptor declares structure for | AD-39, AD-26 |
   | `rubric-scores-reasoning-prose` | a criterion scores chain-of-thought or stated-reasoning prose | AD-17, AD-22 |
   | `rubric-unanchored` | an unanchored scale, unbounded length, or missing named failure-mode penalties | AD-22 |
   | `rubric-evidence-unreachable` | a criterion's evidence is unreachable through the declared interfaces | AD-22 |

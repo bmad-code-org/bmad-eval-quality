@@ -1,4 +1,4 @@
-// Walks AD-5's twenty-one codes plus AD-28's schema-version-mismatch fault.
+// Walks AD-5's twenty-three codes plus AD-28's schema-version-mismatch fault.
 // Rule: where AD-5 gives the compiler a literal code, the schema admits the
 // shape and Epic 4 or Epic 5 rejects it; tightening past a code would convert
 // a coded, artifact-path-carrying structural error into an anonymous
@@ -228,6 +228,44 @@ describe('AD-5 code walk — every coded shape stays representable', () => {
 				after: index === 0 ? null : `chain-${index}`,
 				cardinality: 'exactly-one',
 			}))
+		})
+	})
+
+	it('binding-cycle: a step capturing from its own response', () => {
+		admits((contract) => {
+			contract.interactionPlan[0].inputBinding.body.name = {
+				captured: '/interactions/create/response-body/id',
+			}
+		})
+	})
+
+	it('captured-channel-undeclared: a captured pointer on a non-body channel', () => {
+		admits((contract) => {
+			contract.interactionPlan[1].inputBinding.query.limit = {
+				captured: '/interactions/create/response-status',
+			}
+		})
+	})
+
+	it('unreachable-check-evidence: a captured scalar typed differently from the parameter it binds', () => {
+		admits((contract) => {
+			contract.interactionPlan[1].inputBinding.query.limit = {
+				captured: '/interactions/create/response-body/id',
+			}
+		})
+	})
+
+	it('undeclared-mandatory-input: a binding naming a principal testData.principals does not declare', () => {
+		admits((contract) => {
+			contract.interactionPlan[0].inputBinding.body.name = {
+				principal: 'ghost',
+			}
+		})
+	})
+
+	it('scoped-reference-resolves-forbidden: a declared test-data resource at all', () => {
+		admits((contract) => {
+			contract.testData.resources = { 'seed-manifest': { kind: 'fixture' } }
 		})
 	})
 

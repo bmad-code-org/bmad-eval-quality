@@ -43,7 +43,7 @@ describe('compile: positive whole-contract regression', () => {
 	})
 })
 
-describe('compile: one reused negative mutation reaches each of the 26 wired functions, in call order', () => {
+describe('compile: one reused negative mutation reaches each of the 29 wired functions, in call order', () => {
 	it('1 checkRequirementLinkage: missing-requirement-linkage', () => {
 		const failure = structuralFailureOf(() =>
 			compileClean((c) => {
@@ -79,7 +79,21 @@ describe('compile: one reused negative mutation reaches each of the 26 wired fun
 	// `malformed-operator-expression` (this story's AC 7 item 2): a bare "@/"
 	// pointer with no enclosing quantifier, distinct in shape from an illegal
 	// reference-set operand position or a rejected regex construct.
-	it('4 checkBoundElementScope: malformed-operator-expression (bound-element pointer with no enclosing quantifier)', () => {
+	it("4 checkCapturedReachability: unreachable-check-evidence (a captured scalar whose declared type is not the bound parameter's)", () => {
+		const failure = structuralFailureOf(() =>
+			compileClean((c) => {
+				c.interactionPlan[1].inputBinding.query.limit = {
+					captured: '/interactions/create/response-body/id',
+				}
+			}),
+		)
+		expect(failure.code).toBe('unreachable-check-evidence')
+		expect(failure.artifactPath).toContain(
+			'interactionPlan[stepId=list].inputBinding.query["limit"]',
+		)
+	})
+
+	it('5 checkBoundElementScope: malformed-operator-expression (bound-element pointer with no enclosing quantifier)', () => {
 		const failure = structuralFailureOf(() =>
 			compileClean((c) => {
 				c.oracles[0].check = { op: 'existence', operands: [{ pointer: '@/x' }] }
@@ -89,7 +103,7 @@ describe('compile: one reused negative mutation reaches each of the 26 wired fun
 		expect(failure.message).toContain('bound-element pointer')
 	})
 
-	it('5 checkOperandLegality: malformed-operator-expression (reference-set operand at an illegal position)', () => {
+	it('6 checkOperandLegality: malformed-operator-expression (reference-set operand at an illegal position)', () => {
 		const failure = structuralFailureOf(() =>
 			compileClean((c) => {
 				c.oracles[0].check = {
@@ -105,7 +119,7 @@ describe('compile: one reused negative mutation reaches each of the 26 wired fun
 		expect(failure.message).toContain('does not accept a referenceSet operand')
 	})
 
-	it('6 checkRegexConstructs: malformed-operator-expression (rejected backreference construct)', () => {
+	it('7 checkRegexConstructs: malformed-operator-expression (rejected backreference construct)', () => {
 		const failure = structuralFailureOf(() =>
 			compileClean((c) => {
 				c.oracles[0].check = {
@@ -119,7 +133,7 @@ describe('compile: one reused negative mutation reaches each of the 26 wired fun
 		expect(failure.message).toContain('rejected construct')
 	})
 
-	it('7 checkQuantifierOverNonCollection: quantifier-over-non-collection', () => {
+	it('8 checkQuantifierOverNonCollection: quantifier-over-non-collection', () => {
 		const failure = structuralFailureOf(() =>
 			compileClean((c) => {
 				c.oracles[0].check = {
@@ -132,7 +146,7 @@ describe('compile: one reused negative mutation reaches each of the 26 wired fun
 		expect(failure.code).toBe('quantifier-over-non-collection')
 	})
 
-	it('8 checkQuantifierNesting: quantifier-nesting-exceeded', () => {
+	it('9 checkQuantifierNesting: quantifier-nesting-exceeded', () => {
 		const failure = structuralFailureOf(() =>
 			compileClean((c) => {
 				c.oracles[0].check = {
@@ -149,7 +163,7 @@ describe('compile: one reused negative mutation reaches each of the 26 wired fun
 		expect(failure.code).toBe('quantifier-nesting-exceeded')
 	})
 
-	it('9 checkReferenceSetResolution: unresolved-reference-set', () => {
+	it('10 checkReferenceSetResolution: unresolved-reference-set', () => {
 		const failure = structuralFailureOf(() =>
 			compileClean((c) => {
 				c.oracles[0].check.operands[0] = { referenceSet: 'never-declared' }
@@ -158,7 +172,7 @@ describe('compile: one reused negative mutation reaches each of the 26 wired fun
 		expect(failure.code).toBe('unresolved-reference-set')
 	})
 
-	it('10 checkDuplicateOperationSignature: duplicate-operation-signature', () => {
+	it('11 checkDuplicateOperationSignature: duplicate-operation-signature', () => {
 		const failure = structuralFailureOf(() =>
 			compileClean((c) => {
 				const operations = c.permittedInterfaces[0].operations
@@ -172,7 +186,7 @@ describe('compile: one reused negative mutation reaches each of the 26 wired fun
 		expect(failure.code).toBe('duplicate-operation-signature')
 	})
 
-	it('11 checkUndeclaredMandatoryInput: undeclared-mandatory-input, only when strict is true', () => {
+	it('12 checkUndeclaredMandatoryInput: undeclared-mandatory-input, only when strict is true', () => {
 		const failure = structuralFailureOf(() =>
 			compileClean((c) => {
 				c.interactionPlan[0].inputBinding.body.undeclaredKey = { literal: 'x' }
@@ -184,7 +198,7 @@ describe('compile: one reused negative mutation reaches each of the 26 wired fun
 	// Story 6.2 wired this and the two witness checks at the end of the file
 	// without census cases, so the describe above claimed to enumerate every
 	// wired function while covering 19 of 22. Cases 12, 25, and 26 close that.
-	it('12 checkSensitivityWitnessDeclared: undeclared-mandatory-input, only when strict is true', () => {
+	it('13 checkSensitivityWitnessDeclared: undeclared-mandatory-input, only when strict is true', () => {
 		const failure = structuralFailureOf(() =>
 			compileClean((c) => {
 				c.permittedInterfaces[0].operations[0].sensitivityWitness = null
@@ -198,7 +212,7 @@ describe('compile: one reused negative mutation reaches each of the 26 wired fun
 		)
 	})
 
-	it('13 checkOracleChannel: oracle-missing-channel', () => {
+	it('14 checkOracleChannel: oracle-missing-channel', () => {
 		const failure = structuralFailureOf(() =>
 			compileClean((c) => {
 				c.oracles[0].direction = null
@@ -207,7 +221,7 @@ describe('compile: one reused negative mutation reaches each of the 26 wired fun
 		expect(failure.code).toBe('oracle-missing-channel')
 	})
 
-	it('14 checkOracleAlignment: direction-check-misaligned', () => {
+	it('15 checkOracleAlignment: direction-check-misaligned', () => {
 		const failure = structuralFailureOf(() =>
 			compileClean((c) => {
 				c.oracles[0].direction.relation = 'existence'
@@ -216,7 +230,7 @@ describe('compile: one reused negative mutation reaches each of the 26 wired fun
 		expect(failure.code).toBe('direction-check-misaligned')
 	})
 
-	it('15 checkInterfaceKind: unsupported-interface-kind', () => {
+	it('16 checkInterfaceKind: unsupported-interface-kind', () => {
 		const failure = structuralFailureOf(() =>
 			compileClean((c) => {
 				c.permittedInterfaces[0].kind = 'web'
@@ -225,7 +239,7 @@ describe('compile: one reused negative mutation reaches each of the 26 wired fun
 		expect(failure.code).toBe('unsupported-interface-kind')
 	})
 
-	it('16 checkNestedTemporalClause: nested-temporal-clause', () => {
+	it('17 checkNestedTemporalClause: nested-temporal-clause', () => {
 		const failure = structuralFailureOf(() =>
 			compileClean((c) => {
 				c.interactionPlan.push({
@@ -245,7 +259,7 @@ describe('compile: one reused negative mutation reaches each of the 26 wired fun
 	// `check` still resolves against the `list` step and this mutation reaches
 	// checkScriptingBound (position 17) instead of checkEvidenceReachability
 	// (position 3).
-	it('17 checkScriptingBound: plan-exceeds-scripting-bound (width)', () => {
+	it('18 checkScriptingBound: plan-exceeds-scripting-bound (width)', () => {
 		const failure = structuralFailureOf(() =>
 			compileClean((c) => {
 				c.interactionPlan = [
@@ -271,7 +285,35 @@ describe('compile: one reused negative mutation reaches each of the 26 wired fun
 		expect(failure.code).toBe('plan-exceeds-scripting-bound')
 	})
 
-	it('18 checkRubricIdentifiers: rubric-unanchored', () => {
+	it('19 checkBindingCycle: binding-cycle (a step capturing from its own response)', () => {
+		const failure = structuralFailureOf(() =>
+			compileClean((c) => {
+				c.interactionPlan[0].inputBinding.body.name = {
+					captured: '/interactions/create/response-body/id',
+				}
+			}),
+		)
+		expect(failure.code).toBe('binding-cycle')
+		expect(failure.artifactPath).toContain(
+			'interactionPlan[stepId=create].inputBinding.body["name"]',
+		)
+	})
+
+	it('20 checkCapturedChannel: captured-channel-undeclared (a captured pointer on response-status)', () => {
+		const failure = structuralFailureOf(() =>
+			compileClean((c) => {
+				c.interactionPlan[1].inputBinding.query.limit = {
+					captured: '/interactions/create/response-status',
+				}
+			}),
+		)
+		expect(failure.code).toBe('captured-channel-undeclared')
+		expect(failure.artifactPath).toContain(
+			'interactionPlan[stepId=list].inputBinding.query["limit"]',
+		)
+	})
+
+	it('21 checkRubricIdentifiers: rubric-unanchored', () => {
 		const failure = structuralFailureOf(() =>
 			compileClean((c) => {
 				c.rubrics.push(structuredClone(c.rubrics[0]))
@@ -281,7 +323,7 @@ describe('compile: one reused negative mutation reaches each of the 26 wired fun
 		expect(failure.artifactPath).toBe('EvalContract.rubrics[1].id')
 	})
 
-	it('19 checkRubricReasoningProse: rubric-scores-reasoning-prose', () => {
+	it('22 checkRubricReasoningProse: rubric-scores-reasoning-prose', () => {
 		const failure = structuralFailureOf(() =>
 			compileClean((c) => {
 				c.rubrics[0].criteria[0].text = 'Grade the reasoning in the response.'
@@ -290,7 +332,7 @@ describe('compile: one reused negative mutation reaches each of the 26 wired fun
 		expect(failure.code).toBe('rubric-scores-reasoning-prose')
 	})
 
-	it('20 checkRubricAnchoring: rubric-unanchored', () => {
+	it('23 checkRubricAnchoring: rubric-unanchored', () => {
 		const failure = structuralFailureOf(() =>
 			compileClean((c) => {
 				c.rubrics[0].maxLength = null
@@ -299,7 +341,7 @@ describe('compile: one reused negative mutation reaches each of the 26 wired fun
 		expect(failure.code).toBe('rubric-unanchored')
 	})
 
-	it('21 checkRubricEvidenceReachability: rubric-evidence-unreachable', () => {
+	it('24 checkRubricEvidenceReachability: rubric-evidence-unreachable', () => {
 		const failure = structuralFailureOf(() =>
 			compileClean((c) => {
 				c.rubrics[0].criteria[0].evidence =
@@ -309,7 +351,7 @@ describe('compile: one reused negative mutation reaches each of the 26 wired fun
 		expect(failure.code).toBe('rubric-evidence-unreachable')
 	})
 
-	it('22 checkForbiddenInputFloor: forbidden-input-floor-incomplete', () => {
+	it('25 checkForbiddenInputFloor: forbidden-input-floor-incomplete', () => {
 		const failure = structuralFailureOf(() =>
 			compileClean((c) => {
 				c.forbiddenInputs = ['original-spec']
@@ -318,7 +360,7 @@ describe('compile: one reused negative mutation reaches each of the 26 wired fun
 		expect(failure.code).toBe('forbidden-input-floor-incomplete')
 	})
 
-	it('23 checkScopedResourceReferences: scoped-reference-resolves-forbidden', () => {
+	it('26 checkScopedResourceReferences: scoped-reference-resolves-forbidden', () => {
 		const failure = structuralFailureOf(() =>
 			compileClean((c) => {
 				c.scopedResources = [
@@ -329,7 +371,7 @@ describe('compile: one reused negative mutation reaches each of the 26 wired fun
 		expect(failure.code).toBe('scoped-reference-resolves-forbidden')
 	})
 
-	it('24 checkWaiverCompleteness: waiver-incomplete', () => {
+	it('27 checkWaiverCompleteness: waiver-incomplete', () => {
 		const failure = structuralFailureOf(() =>
 			compileClean((c) => {
 				c.waivers[0].rule = null
@@ -338,7 +380,7 @@ describe('compile: one reused negative mutation reaches each of the 26 wired fun
 		expect(failure.code).toBe('waiver-incomplete')
 	})
 
-	it('25 checkWitnessLegIdentifiers: malformed-operator-expression', () => {
+	it('28 checkWitnessLegIdentifiers: malformed-operator-expression', () => {
 		const failure = structuralFailureOf(() =>
 			compileClean((c) => {
 				const witness =
@@ -349,7 +391,7 @@ describe('compile: one reused negative mutation reaches each of the 26 wired fun
 		expect(failure.code).toBe('malformed-operator-expression')
 	})
 
-	it('26 checkWitnessLegality: malformed-operator-expression', () => {
+	it('29 checkWitnessLegality: malformed-operator-expression', () => {
 		const failure = structuralFailureOf(() =>
 			compileClean((c) => {
 				const witness =
@@ -364,7 +406,7 @@ describe('compile: one reused negative mutation reaches each of the 26 wired fun
 })
 
 describe('compile: multi-defect registry-order precedence', () => {
-	it('a contract violating both check 1 and check 24 reports check 1 (missing-requirement-linkage), the earlier registry position', () => {
+	it('a contract violating both check 1 and check 27 reports check 1 (missing-requirement-linkage), the earlier registry position', () => {
 		const failure = structuralFailureOf(() =>
 			compileClean((c) => {
 				c.behaviors[0].requirementLinks = []

@@ -13,6 +13,11 @@
  * code; the other two witness checks fire different codes and run
  * unconditionally, after the registry order, since AD-5 names no rung for them.
  *
+ * `checkCapturedReachability` fires the shipped `unreachable-check-evidence`,
+ * so it runs at that code's own third rung, beside `checkEvidenceReachability`.
+ * Grouping it with the two codes owed item 3 added, at the inserted position
+ * below, would let a lower-ranked code win on a contract carrying both defects.
+ *
  * `checkRubricIdentifiers` fires `rubric-unanchored` but runs ahead of
  * `checkRubricReasoningProse`, which outranks it in the registry. A duplicated
  * rubric or criterion id makes every `rubrics[id=...]` path the other three
@@ -22,6 +27,11 @@
 
 import type { EvalContract } from '../schemas/eval-contract.ts'
 import type { CompileOptions } from '../stage-contracts.ts'
+import {
+	checkBindingCycle,
+	checkCapturedChannel,
+	checkCapturedReachability,
+} from './bindings.ts'
 import {
 	checkObservableSuccessCriterion,
 	checkRequirementLinkage,
@@ -71,6 +81,7 @@ export function compile(
 	checkRequirementLinkage(contract)
 	checkObservableSuccessCriterion(contract)
 	checkEvidenceReachability(contract)
+	checkCapturedReachability(contract)
 	checkBoundElementScope(contract)
 	checkOperandLegality(contract)
 	checkRegexConstructs(contract)
@@ -87,6 +98,8 @@ export function compile(
 	checkInterfaceKind(contract)
 	checkNestedTemporalClause(contract)
 	checkScriptingBound(contract)
+	checkBindingCycle(contract)
+	checkCapturedChannel(contract)
 	checkRubricIdentifiers(contract)
 	checkRubricReasoningProse(contract)
 	checkRubricAnchoring(contract)

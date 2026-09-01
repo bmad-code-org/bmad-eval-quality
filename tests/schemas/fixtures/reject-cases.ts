@@ -384,6 +384,65 @@ export const REJECT_CASES: readonly RejectCase[] = [
 		instancePath: '/interactionPlan/0/inputBinding/body/name',
 	},
 	{
+		id: 'captured-pointer-not-interaction-rooted',
+		constraint:
+			'a captured binding value carries an interaction-rooted pointer (AD-26, owed item 3)',
+		mutate: (contract) => {
+			contract.interactionPlan[0].inputBinding.body.name = {
+				captured: 'response-body/id',
+			}
+		},
+		// Zod resolves the union to the `captured` branch on the tag alone and
+		// reports the pattern failure inside it, one segment deeper than the
+		// untagged and wrong-matcher cases above, which reach no branch at all.
+		issuePath: [
+			'interactionPlan',
+			0,
+			'inputBinding',
+			'body',
+			'name',
+			'captured',
+		],
+		issueCode: 'invalid_format',
+		keyword: 'pattern',
+		instancePath: '/interactionPlan/0/inputBinding/body/name/captured',
+	},
+	{
+		id: 'captured-binding-carries-a-second-key',
+		constraint: 'a binding value carries exactly one tag (AD-39)',
+		mutate: (contract) => {
+			contract.interactionPlan[0].inputBinding.body.name = {
+				captured: '/interactions/create/response-body/id',
+				matcher: 'any',
+			}
+		},
+		issuePath: ['interactionPlan', 0, 'inputBinding', 'body', 'name'],
+		issueCode: 'invalid_union',
+		keyword: 'anyOf',
+		instancePath: '/interactionPlan/0/inputBinding/body/name',
+	},
+	{
+		id: 'principal-name-not-an-identifier',
+		constraint:
+			'a bound principal is named by an identifier (AD-18, owed item 3)',
+		mutate: (contract) => {
+			contract.interactionPlan[0].inputBinding.body.name = {
+				principal: 'Owner Account',
+			}
+		},
+		issuePath: [
+			'interactionPlan',
+			0,
+			'inputBinding',
+			'body',
+			'name',
+			'principal',
+		],
+		issueCode: 'invalid_format',
+		keyword: 'pattern',
+		instancePath: '/interactionPlan/0/inputBinding/body/name/principal',
+	},
+	{
 		id: 'cardinality-absent',
 		constraint: 'a step declares its selector cardinality (AD-39, owed item 2)',
 		mutate: (contract) => {
@@ -601,6 +660,78 @@ export const REJECT_CASES: readonly RejectCase[] = [
 		issueCode: 'too_small',
 		keyword: 'minLength',
 		instancePath: '/scopedResources/0/reference',
+	},
+	{
+		id: 'test-data-principals-absent',
+		constraint:
+			'test data declares its principals, or `null` (owed item 3, AD-19)',
+		mutate: (contract) => {
+			delete contract.testData.principals
+		},
+		issuePath: ['testData', 'principals'],
+		issueCode: 'invalid_type',
+		keyword: 'required',
+		instancePath: '/testData',
+		errorParams: { missingProperty: 'principals' },
+	},
+	{
+		id: 'test-data-resources-absent',
+		constraint: 'test data declares its resources, or `null` (owed item 3)',
+		mutate: (contract) => {
+			delete contract.testData.resources
+		},
+		issuePath: ['testData', 'resources'],
+		issueCode: 'invalid_type',
+		keyword: 'required',
+		instancePath: '/testData',
+		errorParams: { missingProperty: 'resources' },
+	},
+	{
+		id: 'test-data-principal-key-not-an-identifier',
+		constraint: 'a declared principal is keyed by an identifier',
+		mutate: (contract) => {
+			contract.testData.principals = { 'Owner Account': { kind: 'account' } }
+		},
+		issuePath: ['testData', 'principals', 'Owner Account'],
+		issueCode: 'invalid_key',
+		keyword: 'propertyNames',
+		instancePath: '/testData/principals',
+		errorParams: { propertyName: 'Owner Account' },
+	},
+	{
+		id: 'test-data-principal-kind-empty',
+		constraint: 'a declared principal states a kind',
+		mutate: (contract) => {
+			contract.testData.principals.owner.kind = ''
+		},
+		issuePath: ['testData', 'principals', 'owner', 'kind'],
+		issueCode: 'too_small',
+		keyword: 'minLength',
+		instancePath: '/testData/principals/owner/kind',
+	},
+	{
+		id: 'test-data-principal-carries-a-value',
+		constraint:
+			'a principal declaration names a kind and never a credential value (AD-18, AD-19)',
+		mutate: (contract) => {
+			contract.testData.principals.owner.token = 'secret'
+		},
+		issuePath: ['testData', 'principals', 'owner'],
+		issueCode: 'unrecognized_keys',
+		keyword: 'additionalProperties',
+		instancePath: '/testData/principals/owner',
+		errorParams: { additionalProperty: 'token' },
+	},
+	{
+		id: 'test-data-resource-kind-empty',
+		constraint: 'a declared test-data resource states a kind',
+		mutate: (contract) => {
+			contract.testData.resources = { seed: { kind: '' } }
+		},
+		issuePath: ['testData', 'resources', 'seed', 'kind'],
+		issueCode: 'too_small',
+		keyword: 'minLength',
+		instancePath: '/testData/resources/seed/kind',
 	},
 	{
 		id: 'unrecognized-contract-key',

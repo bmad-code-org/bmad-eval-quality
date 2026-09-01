@@ -2188,3 +2188,89 @@ flowchart TD
   `deferred-work.md`.
 - This story does not decide what a verdict does with a `several` result. It only names the
   condition. Wiring it to an actual outcome is a later story.
+
+## Step 26 (epic7-story3): binding a step to something the contract cannot know yet
+
+**In plain terms:** a plan step could only say "send this exact value" or "send anything." Neither
+writes down the two things real test suites do constantly. Creating a thing and then reading it back
+needs the id the server just made up, which nobody can hard-code. Checking that user A cannot read
+user B's data needs two different accounts, whose credentials never belong in a contract.
+
+**What:** two more shapes an input binding can take. `{ captured: <pointer> }` points at an earlier
+step's response field and binds whatever came back. `{ principal: <name> }` names a test account the
+contract declares by label only. `testData` gains `principals` and `resources`, both keyed by name
+and carrying no values. The sealed brief carries the declared principal names so the caller running
+the evaluation knows which accounts to set up.
+
+**Why:** the architecture listed both as open defects. A literal hard-codes a resource the evaluator
+never created; `any` matches unrelated reads. Neither expresses "the id from the POST you just did."
+And an account cannot be a literal, because credentials are banned from every artifact, nor an
+earlier step's output, because accounts are set up outside the run.
+
+**Read in this order:**
+
+1. `src/core/schemas/plan.ts`: the binding union, now four members, and the comment saying what each
+   one means.
+2. `src/core/schemas/eval-contract.ts`: `testData.principals` and `testData.resources`.
+3. `src/core/compile/bindings.ts`: the three compile-time checks over captured bindings.
+4. `src/core/score/binding-order.ts`: which steps must be resolved before which.
+5. `src/core/score/bindings.ts`: resolving a captured pointer, then filtering a step's candidate
+   observations by its own bindings.
+6. `tests/compile/bindings.test.ts` and `tests/score/bindings.test.ts`.
+
+```mermaid
+flowchart TD
+  PLAN["plan.ts<br/>captured + principal binding forms"]
+  TD["eval-contract.ts<br/>testData.principals / resources"]
+  COMPILE["compile/bindings.ts<br/>binding-cycle, captured-channel-undeclared,<br/>reachability + type equality"]
+  ORDER["score/binding-order.ts<br/>tiers: resolve dependencies first"]
+  SCORE["score/bindings.ts<br/>resolve captured value, filter candidates"]
+  BRIEF["sealed-evaluator-brief.ts<br/>declared principal names"]
+
+  PLAN --> COMPILE
+  TD --> COMPILE
+  PLAN --> ORDER
+  ORDER --> SCORE
+  COMPILE --> SCORE
+  TD --> BRIEF
+```
+
+**Story:** `_bmad-output/implementation-artifacts/7-3-captured-value-matchers-and-test-data-bindings.md`
+
+### Reference
+
+**Rules:**
+
+- A captured pointer may only address `response-body`. Every other channel fails compilation, because
+  the response descriptor describes the body and nothing else.
+- The captured field must be a declared scalar, one segment deep, and its declared type must equal the
+  type of the parameter it feeds. Anything else fails compilation.
+- An array index is not capturable: no declaration says what type an element has.
+- "Earlier" means earlier in the capture graph, which is a separate graph from the plan's `after`
+  clauses. A cycle across the two graphs together fails compilation under `binding-cycle`.
+- `binding-cycle` is decided with strongly connected components, so no edge ordering can hide a cycle.
+- Steps are resolved in tiers: everything a step captures from is resolved before it is. Within a
+  tier, declaration order.
+- At scoring time, a candidate observation only counts if its `sequence` is greater than the
+  observation each captured value came from. That is what makes "read after write" mean anything.
+- A captured pointer that resolves to nothing makes the step select `none`. Missing evidence counts
+  as an observation and the scoring carries on.
+- A step's candidates are now filtered by its own bindings: a literal must match the value actually
+  sent, a captured binding must match the resolved value, `any` and a principal only require the key
+  to be present, and `type-violating` requires the sent value's type to differ from the declared one.
+- A principal name is a label the harness maps to an account. It never carries a credential, an
+  account id, or anything about a real person.
+- Two new failure codes, `binding-cycle` and `captured-channel-undeclared`, bring the compile-time
+  registry to twenty-three. The registry table in the architecture document and the code list in
+  `failure-codes.ts` must stay in the same order.
+
+**Watch out:**
+
+- Two steps that differ only by which principal they name still cannot be told apart when scoring. A
+  sealed run record does not say which account the harness used. Closing that needs a field on the
+  observation, which is a later story; see `deferred-work.md`.
+- `testData.resources` can be declared and never compiles, exactly like `scopedResources`. Any
+  declared resource fails compilation today, because nothing can yet prove a reference is safe.
+- Ten review findings landed on this story after the first implementation was already green,
+  including a cycle check that missed real cycles depending on which edges happened to be walked
+  first. Randomized testing against a brute-force answer is what found it.

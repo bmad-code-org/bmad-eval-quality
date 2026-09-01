@@ -72,3 +72,64 @@ describe('checkScopedResourceReferences: scoped-reference-resolves-forbidden', (
 		expect(failure.message).toContain('the-original-spec')
 	})
 })
+
+// A scoped reference is forbidden wherever the contract writes it down, so the
+// same code fires on `testData.resources` as on `scopedResources`.
+describe('checkScopedResourceReferences: testData.resources', () => {
+	// `scopedResources` is read first, so it is cleared here to isolate the
+	// second address; the both-declared case below is what pins the precedence.
+	function contractWithResources(resources: unknown): any {
+		const contract = structuredClone(populatedContract) as any
+		contract.scopedResources = null
+		contract.testData.resources = resources
+		return contract
+	}
+
+	it.each([null, {}])('accepts %j declared resources', (resources) => {
+		expect(() =>
+			checkScopedResourceReferences(contractWithResources(resources)),
+		).not.toThrow()
+	})
+
+	it('rejects a populated resource map, addressing the entry by its caller key', () => {
+		const failure = structuralFailureOf(() =>
+			checkScopedResourceReferences(
+				contractWithResources({ 'seed-manifest': { kind: 'fixture' } }),
+			),
+		)
+		expect(failure.code).toBe('scoped-reference-resolves-forbidden')
+		expect(failure.artifactPath).toBe(
+			'EvalContract.testData.resources["seed-manifest"]',
+		)
+		expect(failure.message).toContain('seed-manifest')
+	})
+
+	it('reports the lexicographically first entry, so which resource is named never depends on the authored key order', () => {
+		const failure = structuralFailureOf(() =>
+			checkScopedResourceReferences(
+				contractWithResources({
+					'zzz-fixture': { kind: 'fixture' },
+					'aaa-fixture': { kind: 'fixture' },
+					'mmm-fixture': { kind: 'fixture' },
+				}),
+			),
+		)
+		expect(failure.artifactPath).toBe(
+			'EvalContract.testData.resources["aaa-fixture"]',
+		)
+	})
+
+	it('reports the scopedResources entry when a contract carries both, that list being read first', () => {
+		const contract = contractWithResources({
+			'aaa-fixture': { kind: 'fixture' },
+		})
+		contract.scopedResources = [{ reference: 'zzz-manifest', kind: 'fixture' }]
+		const failure = structuralFailureOf(() =>
+			checkScopedResourceReferences(contract),
+		)
+		expect(failure.artifactPath).toBe(
+			'EvalContract.scopedResources[0].reference',
+		)
+		expect(failure.message).toContain('zzz-manifest')
+	})
+})

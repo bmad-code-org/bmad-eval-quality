@@ -46,8 +46,19 @@ export function checkDuplicateOperationSignature(contract: EvalContract): void {
 }
 
 /**
- * Checks each binding key against its operation's request shape.
+ * Checks each binding key against its operation's request shape, and each
+ * `{ principal }` value against the contract's declared principals.
  * Steps with unresolved operation IDs belong to a separate cross-field rule.
+ *
+ * The two conditions share one code and are not the same predicate: the key
+ * case is an input the contract did not declare, the principal case has a
+ * declared key whose referenced name the contract did not declare. AD-5's row
+ * is widened to say so. Placing the principal case here rather than in a root
+ * Zod refinement is deliberate: a constraint reaching from
+ * `interactionPlan[].inputBinding` into `testData.principals` cannot survive
+ * the export, and the published-schema differential sweep synthesises a
+ * `{ principal }` union-branch witness naming no declared principal, which a
+ * refinement would reject and ajv would accept.
  */
 export function checkUndeclaredMandatoryInput(contract: EvalContract): void {
 	const index = buildPlanIndex(
@@ -55,6 +66,7 @@ export function checkUndeclaredMandatoryInput(contract: EvalContract): void {
 		contract.permittedInterfaces,
 		{ duplicateIds: 'unresolved' },
 	)
+	const principals = new Set(Object.keys(contract.testData.principals ?? {}))
 	for (const step of contract.interactionPlan) {
 		const operation = index.operationOf(step.operationId)
 		if (operation === undefined) continue
@@ -63,11 +75,24 @@ export function checkUndeclaredMandatoryInput(contract: EvalContract): void {
 			if (binding === null) continue
 			const { requiredKeys, permittedKeys } = operation.requestShape[channel]
 			for (const key of Object.keys(binding)) {
+				const path = `EvalContract.interactionPlan[stepId=${step.stepId}].inputBinding.${channel}[${JSON.stringify(key)}]`
 				if (!requiredKeys.includes(key) && !permittedKeys.includes(key)) {
 					throw new StructuralFailure(
 						'undeclared-mandatory-input',
-						`EvalContract.interactionPlan[stepId=${step.stepId}].inputBinding.${channel}[${JSON.stringify(key)}]`,
+						path,
 						`operation "${operation.operationId}" declares "${key}" in neither requiredKeys nor permittedKeys of its ${channel} channel (AD-4)`,
+					)
+				}
+				const value = binding[key]
+				if (
+					value !== undefined &&
+					'principal' in value &&
+					!principals.has(value.principal)
+				) {
+					throw new StructuralFailure(
+						'undeclared-mandatory-input',
+						path,
+						`binds the principal "${value.principal}", which testData.principals does not declare (AD-4, AD-19)`,
 					)
 				}
 			}
