@@ -1168,3 +1168,183 @@ export const capturedChainPair: {
 	],
 }
 validateContractSlice(capturedChainPair)
+
+// ---- generated capture-graph shapes for the render bound. Built by function
+// rather than declared, since the point of each is a size the budget has to
+// hold under, and the interesting cases run to hundreds of thousands of
+// characters of literal.
+
+const generatedChannel = (permittedKeys: readonly string[]) => ({
+	requiredKeys: [],
+	permittedKeys: [...permittedKeys],
+	types: Object.fromEntries(
+		permittedKeys.map((key) => [key, 'string' as const]),
+	),
+})
+
+const GENERATED_RESPONSE_KEYS = ['k0', 'k1'] as const
+
+function generatedOperation(
+	operationId: string,
+	pathKeys: readonly string[],
+	bodyKeys: readonly string[],
+): Operation {
+	return {
+		operationId,
+		method: 'POST',
+		pathTemplate: `/${operationId}`,
+		stateChangeMarker: false,
+		requestShape: {
+			path: generatedChannel(pathKeys),
+			query: generatedChannel([]),
+			header: generatedChannel([]),
+			body: generatedChannel(bodyKeys),
+		},
+		responseDescriptor: {
+			requiredKeys: [],
+			permittedKeys: [...GENERATED_RESPONSE_KEYS],
+			types: Object.fromEntries(
+				GENERATED_RESPONSE_KEYS.map((key) => [key, 'string' as const]),
+			),
+			successIndicator: null,
+			channelRoles: null,
+			collectionLocations: null,
+		},
+		volatilePointers: [],
+		sensitivityWitness: null,
+	}
+}
+
+const generatedStep = (
+	stepId: string,
+	operationId: string,
+	inputBinding: Partial<InteractionStep['inputBinding']>,
+): InteractionStep => ({
+	stepId,
+	operationId,
+	inputBinding: {
+		path: null,
+		query: null,
+		header: null,
+		body: null,
+		...inputBinding,
+	},
+	after: null,
+	cardinality: 'exactly-one',
+})
+
+/**
+ * `nodes` steps where each captures one key from every earlier one, plus two
+ * probe steps on one operation capturing the same key set off different
+ * response keys. The distinct-predecessor count doubles per level, which is the
+ * axis grouping does not close, and every node carries `literalKeys` literals
+ * of `literalLength` characters, which is the axis nothing bounds.
+ */
+export function completeCaptureDag(
+	nodes: number,
+	literalLength: number,
+	literalKeys: number,
+): {
+	interactionPlan: readonly InteractionStep[]
+	permittedInterfaces: readonly PermittedInterface[]
+} {
+	const bodyKeys = Array.from({ length: literalKeys }, (_, i) => `b${i}`)
+	const body = Object.fromEntries(
+		bodyKeys.map((key) => [key, { literal: 'x'.repeat(literalLength) }]),
+	)
+	const interactionPlan: InteractionStep[] = []
+	const operations: Operation[] = []
+	for (let node = 0; node < nodes; node += 1) {
+		const pathKeys = Array.from({ length: node }, (_, i) => `c${i}`)
+		interactionPlan.push(
+			generatedStep(`node-${node}`, `op-${node}`, {
+				path:
+					node === 0
+						? null
+						: Object.fromEntries(
+								pathKeys.map((key, i) => [
+									key,
+									{ captured: `/interactions/node-${i}/response-body/k0` },
+								]),
+							),
+				body,
+			}),
+		)
+		operations.push(generatedOperation(`op-${node}`, pathKeys, bodyKeys))
+	}
+	const topKeys = Array.from({ length: nodes }, (_, i) => `c${i}`)
+	for (const [stepId, responseKey] of [
+		['top-first', 'k0'],
+		['top-second', 'k1'],
+	] as const) {
+		interactionPlan.push(
+			generatedStep(stepId, 'op-top', {
+				path: Object.fromEntries(
+					topKeys.map((key, i) => [
+						key,
+						{
+							captured: `/interactions/node-${i}/response-body/${responseKey}`,
+						},
+					]),
+				),
+			}),
+		)
+	}
+	operations.push(generatedOperation('op-top', topKeys, []))
+	return {
+		interactionPlan,
+		permittedInterfaces: [{ logicalId: 'dag-api', kind: 'api', operations }],
+	}
+}
+
+/**
+ * Two siblings separated only two levels down, each also capturing from one
+ * unrelated bulk step. `a-bulk` sorts before `z-pick`, so the bulk group
+ * renders first; if it spends the render budget, the expansion that actually
+ * separates the pair is suppressed and they collide.
+ */
+export function unrelatedBulkPair(bulkLiteralLength: number): {
+	interactionPlan: readonly InteractionStep[]
+	permittedInterfaces: readonly PermittedInterface[]
+} {
+	const capture = (stepId: string) => ({
+		captured: `/interactions/${stepId}/response-body/k0`,
+	})
+	return {
+		interactionPlan: [
+			generatedStep('bulk', 'bulk-op', {
+				body: { blob: { literal: 'x'.repeat(bulkLiteralLength) } },
+			}),
+			generatedStep('deep-first', 'deep-op', {
+				body: { tag: { literal: 'ALPHA' } },
+			}),
+			generatedStep('deep-second', 'deep-op', {
+				body: { tag: { literal: 'BETA' } },
+			}),
+			generatedStep('pick-first', 'pick-op', {
+				path: { d: capture('deep-first') },
+			}),
+			generatedStep('pick-second', 'pick-op', {
+				path: { d: capture('deep-second') },
+			}),
+			generatedStep('read-first', 'read-op', {
+				path: { 'a-bulk': capture('bulk'), 'z-pick': capture('pick-first') },
+			}),
+			generatedStep('read-second', 'read-op', {
+				path: { 'a-bulk': capture('bulk'), 'z-pick': capture('pick-second') },
+			}),
+		],
+		permittedInterfaces: [
+			{
+				logicalId: 'bulk-api',
+				kind: 'api',
+				operations: [
+					generatedOperation('bulk-op', [], ['blob']),
+					generatedOperation('deep-op', [], ['tag']),
+					generatedOperation('pick-op', ['d'], []),
+					generatedOperation('read-op', ['a-bulk', 'z-pick'], []),
+				],
+			},
+		],
+	}
+}

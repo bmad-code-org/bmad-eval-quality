@@ -188,31 +188,76 @@ function formatLiteral(literal: unknown): string {
 // and is therefore safe on the brief.
 // One or more entries of a step's clause that capture from the same earlier
 // step, rendered together so that step's phrase is expanded once. Expanding it
-// per entry made the clause's SIZE multiply down a capture chain: a step with k
+// per entry made the clause's size multiply down a capture chain: a step with k
 // entries pointing at its predecessor expanded that predecessor k times, and the
 // predecessor did the same to its own, so a sixteen-step chain with four keys a
 // link produced a phrase past V8's maximum string length. Grouping makes the
-// clause linear in keys and depth, and reads better besides.
+// clause linear in keys and reads better besides.
 //
-// One residue is bounded rather than removed, and is stated so nobody has to
-// rediscover it. A step referencing several DISTINCT predecessors still expands
-// each of them, so a plan whose capture graph is a complete DAG unrolls once per
-// distinct path. `plan-exceeds-scripting-bound` caps a compiled plan at sixteen
-// steps, and the worst case at that cap measures 670 KB in 35 ms, which is
-// large for an artifact AD-16 keeps minimal and is neither slow nor fatal. The
-// shape needs a hand-authored complete DAG; the chain shape that produced the
-// unbounded phrase is now 2 KB.
+// Grouping alone bounds one axis of three, and the size is their product. The
+// other two are the number of DISTINCT predecessors a step references, which
+// doubles per level on a complete capture DAG, and the length of one step's own
+// clause text, which nothing bounds: `formatLiteral` prints a `JsonValue` with
+// no length cap and a binding channel is a record with a minimum of one entry
+// and no maximum. Measured on a sixteen-step complete DAG that passes every
+// plan-side check, the multiplier is 8,192, so a single 65,536-character
+// literal on the seed step, or two hundred ordinary forty-character ones,
+// reaches `RangeError: Invalid string length`.
+//
+// `budget` is what bounds all three at once. Each expansion spends the
+// characters it produced, and once the budget is gone a capture renders as the
+// level-independent phrase it already had. Every `stepReferenceAtLevel` call
+// from `renderStepReference` starts a fresh budget, so one sibling's expansion
+// never degrades another's and the distinctness test stays order-independent.
+//
+// The budget is charged after an expansion rather than before, so the bound is
+// the budget plus whatever one step's own clause text costs; a step binding a
+// single 200,000-character literal renders about 204,000. That is the point of
+// charging late: an expansion cannot be priced before its nested expansions are
+// known, and stopping the NEXT one is what keeps the product finite. Measured
+// on the sixteen-step complete DAG that reached `RangeError` before: 36 KB with
+// a minimal seed, 75 KB with two hundred forty-character literals, 135 KB with
+// a 65,536-character one, and, with a one-million-character literal on every one
+// of its fourteen nodes, 1,000,564. All in single-digit milliseconds. That last
+// row is the one that pins the bound: one literal's worth of overshoot rather
+// than fourteen, which is why the exhaustion test sits in the render pass below
+// rather than where the slots are built.
+//
+// A budget alone would couple things that have nothing to do with each other:
+// growing a literal on a step neither sibling references can starve the
+// expansion that separates them, so an unrelated field decides whether a
+// contract seals. `renderStepReference`'s retry at the ceiling is what removes
+// that, and it fires only when a collision came of a suppressed expansion. What
+// remains is the honest case: siblings the declared structure does not
+// distinguish still throw the precondition `TypeError`, which is the
+// pre-existing failure mode `deferred-work.md` already carries.
+// The ordinary limit, then the ceiling a starved render retries at. No
+// realistic contract reaches the first; only one that would otherwise fail to
+// render at all pays for the second.
+const RENDER_BUDGET_LIMITS = [100_000, 4_000_000] as const
+
+type RenderBudget = { remaining: number; spent: boolean }
+
+const newBudget = (limit: number): RenderBudget => ({
+	remaining: limit,
+	spent: false,
+})
+
 type CaptureGroup = {
 	readonly stepId: string
 	readonly entries: TransportEntry[]
 	readonly targets: EvidenceTarget[]
 }
 
+const unexpandedGroup = (group: CaptureGroup): string =>
+	`the ${joinWithAnd(group.entries.map(entryName))} you obtained earlier`
+
 function renderCaptureGroup(
 	group: CaptureGroup,
 	level: EscalationLevel,
 	index: PlanIndex,
 	rendering: ReadonlySet<string>,
+	budget: RenderBudget,
 ): string {
 	const names = joinWithAnd(group.entries.map(entryName))
 	const locals = joinWithAnd(group.targets.map(localTargetPhrase))
@@ -220,10 +265,28 @@ function renderCaptureGroup(
 	const operation =
 		step === undefined ? undefined : index.operationOf(step.operationId)
 	if (step === undefined || operation === undefined) {
-		return `the ${names} you obtained earlier`
+		return unexpandedGroup(group)
 	}
-	const source = stepReferenceAtLevel(step, operation, level, index, rendering)
+	const source = stepReferenceAtLevel(
+		step,
+		operation,
+		level,
+		index,
+		rendering,
+		budget,
+	)
+	// Charged after the fact, so a nested expansion pays before its parent does
+	// and an inner blowup is what stops the outer one.
+	budget.remaining -= source.length
 	return `the ${names} you obtained as ${locals} from ${source}`
+}
+
+// Records that an expansion was suppressed, which is what `renderStepReference`
+// reads before deciding whether a collision is worth retrying at the ceiling.
+function exhausted(budget: RenderBudget): boolean {
+	if (budget.remaining > 0) return false
+	budget.spent = true
+	return true
 }
 
 // Whether this entry expands into a group, or renders as the level-independent
@@ -233,8 +296,10 @@ function expandableCapture(
 	level: EscalationLevel,
 	index: PlanIndex,
 	rendering: ReadonlySet<string>,
+	budget: RenderBudget,
 ): EvidenceTarget | null {
 	if (level !== 'literal' || !('captured' in entry.value)) return null
+	if (exhausted(budget)) return null
 	const target = parseEvidenceTarget(entry.value.captured)
 	if (rendering.has(target.stepId)) return null
 	const step = index.stepOf(target.stepId)
@@ -283,6 +348,7 @@ function bindingClause(
 	level: EscalationLevel,
 	index: PlanIndex,
 	rendering: ReadonlySet<string>,
+	budget: RenderBudget,
 ): string | null {
 	const entries = bindingEntries(step)
 	if (entries.length === 0) return null
@@ -294,7 +360,7 @@ function bindingClause(
 	const slots: (TransportEntry | CaptureGroup)[] = []
 	const groups = new Map<string, CaptureGroup>()
 	for (const entry of chosen) {
-		const target = expandableCapture(entry, level, index, rendering)
+		const target = expandableCapture(entry, level, index, rendering, budget)
 		if (target === null) {
 			slots.push(entry)
 			continue
@@ -313,11 +379,16 @@ function bindingClause(
 		groups.set(target.stepId, group)
 		slots.push(group)
 	}
-	const phrases = slots.map((slot) =>
-		'stepId' in slot
-			? renderCaptureGroup(slot, level, index, rendering)
-			: renderBindingValue(slot, level),
-	)
+	// Tested here rather than while the slots are built: a clause commits to its
+	// groups in one pass and renders them in the next, so an entry-time test let
+	// every group of an already-committed clause render in full, and the bound
+	// grew by the group count rather than by one expansion.
+	const phrases = slots.map((slot) => {
+		if (!('stepId' in slot)) return renderBindingValue(slot, level)
+		return exhausted(budget)
+			? unexpandedGroup(slot)
+			: renderCaptureGroup(slot, level, index, rendering, budget)
+	})
 	return `with ${joinWithAnd(phrases)}`
 }
 
@@ -333,6 +404,7 @@ function stepReferenceAtLevel(
 	level: EscalationLevel,
 	index: PlanIndex,
 	rendering: ReadonlySet<string> = new Set(),
+	budget: RenderBudget = newBudget(RENDER_BUDGET_LIMITS[0]),
 ): string {
 	const base = operationReference(operation)
 	// The step being rendered joins the path before its own clause is built, so
@@ -342,6 +414,7 @@ function stepReferenceAtLevel(
 		level,
 		index,
 		new Set([...rendering, step.stepId]),
+		budget,
 	)
 	return clause === null ? base : `${base} (${clause})`
 }
@@ -365,13 +438,45 @@ export function renderStepReference(
 	siblings: readonly InteractionStep[],
 	index: PlanIndex,
 ): string {
-	for (const level of ESCALATION_LEVELS) {
-		const phrases = siblings.map((sibling) =>
-			stepReferenceAtLevel(sibling, operation, level, index),
-		)
-		if (new Set(phrases).size === phrases.length) {
-			return stepReferenceAtLevel(step, operation, level, index)
+	// Two passes over the ladder, at the ordinary budget and then at the ceiling.
+	// The retry fires only when every level collided AND some render had an
+	// expansion suppressed, which is what breaks the coupling the budget would
+	// otherwise introduce: without it, growing a literal on a step unrelated to
+	// either sibling can starve the expansion that separates them and make an
+	// otherwise-sealable contract throw. A collision with nothing suppressed is
+	// the declared structure's own tie, and a larger budget renders the same
+	// text, so that case leaves the loop rather than paying for a second pass.
+	for (const limit of RENDER_BUDGET_LIMITS) {
+		let starved = false
+		for (const level of ESCALATION_LEVELS) {
+			const rendered = siblings.map((sibling) => {
+				const budget = newBudget(limit)
+				return {
+					phrase: stepReferenceAtLevel(
+						sibling,
+						operation,
+						level,
+						index,
+						new Set(),
+						budget,
+					),
+					spent: budget.spent,
+				}
+			})
+			const phrases = rendered.map((entry) => entry.phrase)
+			if (new Set(phrases).size === phrases.length) {
+				return stepReferenceAtLevel(
+					step,
+					operation,
+					level,
+					index,
+					new Set(),
+					newBudget(limit),
+				)
+			}
+			if (rendered.some((entry) => entry.spent)) starved = true
 		}
+		if (!starved) break
 	}
 	throw new TypeError(
 		`two or more steps invoking operation "${operation.operationId}" that this direction references render to the same derived reference even fully escalated; the declared structure does not distinguish them`,
