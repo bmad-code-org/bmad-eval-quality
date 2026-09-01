@@ -175,6 +175,52 @@ describe("the Sealed Run Record's run mode, owed item 4's first clause", () => {
 	})
 })
 
+describe("the Sealed Run Record's observation sequence, owed item 2's fix", () => {
+	it('is a positive integer, wrapped in no default or optional', () => {
+		const ObservationSchema = (SealedRunRecord.shape.observations as any)
+			.element
+		expect(ObservationSchema.shape.sequence.def.type).toBe('number')
+		expect(ObservationSchema.shape.sequence.def.format).toBe('safeint')
+	})
+
+	it('rejects an observation presenting no sequence', () => {
+		const record = clone(sealedRunRecordFixture) as any
+		delete record.observations[0].sequence
+		const issue = firstIssue(SealedRunRecord.safeParse(record))
+		expect(issue?.code).toBe('invalid_type')
+		expect(issue?.path).toEqual(['observations', 0, 'sequence'])
+	})
+
+	it('rejects a sequence of zero or below', () => {
+		const record = clone(sealedRunRecordFixture) as any
+		record.observations[0].sequence = 0
+		const issue = firstIssue(SealedRunRecord.safeParse(record))
+		expect(issue?.code).toBe('too_small')
+		expect(issue?.path).toEqual(['observations', 0, 'sequence'])
+	})
+
+	// Uniqueness is schema-enforced (owed item 2) as a `.refine()` over the
+	// whole array: uniqueness of a nested field across sibling array items has
+	// no published-schema keyword, so this half of the constraint is Zod-only
+	// (`constraint-ledger.ts`'s `observation-sequence-unique` entry records
+	// why).
+	it('rejects two observations sharing one sequence', () => {
+		const record = clone(sealedRunRecordFixture) as any
+		record.observations[1].sequence = record.observations[0].sequence
+		const result = SealedRunRecord.safeParse(record)
+		expect(result.success).toBe(false)
+		const issue = result.error?.issues[0]
+		expect(issue?.code).toBe('custom')
+		expect(issue?.path).toEqual(['observations'])
+	})
+
+	it('accepts observations in any order, as long as every sequence is unique (array position is never read as ordering)', () => {
+		const record = clone(sealedRunRecordFixture) as any
+		record.observations = [...record.observations].reverse()
+		expect(SealedRunRecord.safeParse(record).error?.issues ?? []).toEqual([])
+	})
+})
+
 describe('the Sealed Evaluator Brief, whose exclusions are the point', () => {
 	// AD-16: the brief never carries author commentary, the interaction plan, or
 	// the plan's step identifiers. One reject fixture per excluded key, asserting

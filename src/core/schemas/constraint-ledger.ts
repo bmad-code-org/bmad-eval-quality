@@ -6,6 +6,7 @@ import {
 import { TUPLE_ARITY } from './expression.ts'
 import { BINDING_CHANNEL_NON_EMPTY } from './plan.ts'
 import type { JsonValue } from './primitives.ts'
+import { OBSERVATION_SEQUENCE_UNIQUE } from './sealed-run-record.ts'
 
 /**
  * The JSON Schema dialect an injected keyword belongs to. Named rather than
@@ -219,6 +220,19 @@ export const CONSTRAINT_LEDGER: readonly ConstraintLedgerEntry[] = [
 	operandTypeEntry,
 	...lineageEntries,
 	...secretsProhibitionEntries,
+	{
+		id: OBSERVATION_SEQUENCE_UNIQUE,
+		location: { kind: 'root', artifact: 'sealed-run-record' },
+		branch: null,
+		field: 'observations',
+		statement:
+			"Every observation's `sequence` is unique within the record (ADR-006, owed item 2).",
+		disposition: {
+			kind: 'not-expressible',
+			reason:
+				"Uniqueness of a nested field across sibling array items has no draft-2020-12 keyword: `uniqueItems` compares whole items structurally and nothing in the dialect can name one property path and require distinctness on it alone. Unlike the lineage biconditional above, this constraint IS enforced by Zod (a `.refine()` on `observations`), because owed item 2 requires it schema-enforced and the AD-13 differential corpus never manufactures two observations sharing a `sequence`: the generated mutant walk is keyword-driven (it perturbs one occurrence at a time) and never clones or duplicates an `observations` array item, since that field carries no `maxItems` for the generator's clone-to-exceed step to fire against. The gap is therefore real but inert against the corpus this repository generates, and is stated in `Observation.sequence`'s own description for a non-Zod consumer to reimplement. This safety argument holds only while `observations` carries no `maxItems`: adding one later starts the clone-to-exceed step firing against this field, and this entry must be re-verified then.",
+		},
+	},
 ]
 
 export const constraintLedgerEntry = (

@@ -64,6 +64,8 @@ flowchart TD
 |   21 | epic6-story3 | Four checks that reject a rubric a judge could not answer honestly: an unanchored scale, an unbounded length, unnamed penalties, a reused id, evidence that resolves nowhere, and wording that asks the judge to grade the model's own reasoning. |
 |   22 | epic6-story4 | Every artifact comes back frozen, a new version is a new artifact naming its parent's hash, and a build check names which stage may write those fields. |
 |   23 | epic6-story5 | A command you can run in a shell, a package that actually ships its schemas and examples, a build check that keeps this project's own paperwork out of what people install, and the first real coverage number. |
+|   24 | epic7-story1 | Put the run's mode on the record itself, a required field the caller sets once and nothing can change after. |
+|   25 | epic7-story2 | Give every observation a place in line, and let a step say how many matches it expects, so two scorers can't disagree about what matched. |
 
 Adding a step: follow `learning-path-template.md`.
 
@@ -2112,3 +2114,77 @@ flowchart LR
 - `schemas/*.json` is generated. Edit the Zod and run `npm run generate:schemas`.
 - Mode is still outside the scoring version. Until it goes in, a relabelled run can still rescore
   under the same version, and mode separation is what closes that.
+
+## Step 25 (epic7-story2): giving every observation a place in line
+
+**In plain terms:** if a step in the plan matched two different responses, which one counts? Nothing
+said, so a scorer that picks the first match and a scorer that picks the last match could grade the
+same run differently and both be "right." This step gives every observation a position, records how
+many matches a step actually expects, and writes down what to do when the count disagrees with that
+expectation.
+
+**What:** a required `sequence` number on every observation, unique within a record; a required
+`cardinality` on every plan step (`exactly-one`, `at-most-one`, or `any`); and one pure reference
+function that matches a step against the observations and reports `none`, `one`, or `several`, in
+sequence order.
+
+**Why:** the worked example already had two steps that each matched two observations, and a
+first-match reading and a last-match reading of it disagreed. `sequence` gives every observation a
+real position, so "which one happened first" has a real answer. `cardinality` gives every step a
+stated expectation, so a step that gets more matches than it declared is a named, reportable
+condition.
+
+**Read in this order:**
+
+1. `src/core/schemas/sealed-run-record.ts`: the `sequence` field and the record-wide uniqueness check.
+2. `src/core/schemas/plan.ts`: the `cardinality` field and its three values.
+3. `src/core/score/selection.ts`: `selectObservations`, the whole matching function, and
+   `resolveTemporalAnchor` built on top of it.
+4. `tests/score/selection.test.ts`: every match count, both cardinalities, and the permutation test
+   that proves array order is never read.
+
+```mermaid
+flowchart TD
+  SEQ["sealed-run-record.ts<br/>sequence: unique per record"]
+  CARD["plan.ts<br/>cardinality: exactly-one | at-most-one | any"]
+  SEL["selection.ts<br/>selectObservations, resolveTemporalAnchor"]
+  TESTS["tests/score/selection.test.ts<br/>match counts + permutation proof"]
+
+  SEQ --> SEL
+  CARD --> SEL
+  SEL --> TESTS
+```
+
+**Story:** `_bmad-output/implementation-artifacts/7-2-a-monotonic-observation-sequence-and-declared-selector-cardinality.md`
+
+### Reference
+
+**Rules:**
+
+- `sequence` only has to be unique, not contiguous and not starting at 1. `[5, 12, 40]` is a
+  perfectly valid record.
+- The matching function sorts a copy of the observations by `sequence` before it does anything else.
+  The array's own order is never read as meaning anything.
+- `several` matches under `exactly-one` or `at-most-one` comes back as data, for whoever reads the
+  result to act on.
+- `several` matches under `any` is expected. That cardinality exists precisely because a step
+  sometimes really does expect more than one match.
+- Resolving which observation a step's "after" clause points to reuses the same match function. If
+  the pointed-to step declared `any` and matched several, the earliest one by `sequence` wins.
+- One record holds exactly one trial's worth of observations, all one linear sequence with nothing
+  running in parallel, which is why a plain ordered number is enough here and a fuller causal graph
+  is not needed.
+- Matching only compares a step's `operationId` against an observation's `operationId`. Two steps
+  that share an operation and differ only in their input binding are not told apart here; that is
+  later work.
+
+**Watch out:**
+
+- `tests/seal/fixtures.ts`'s `irreducibleCollisionPair` is a real, still-open case: two steps sharing
+  one `operationId`, distinguishable only by their input binding. This story does not resolve it.
+- The published-schema census counters (`CENSUS_BY_DOCUMENT`, `CENSUS_BY_KEYWORD`, `CENSUS_TOTAL`,
+  and the reject-case-length counters) are hand-typed numbers copied across five test files. This
+  story added one more schema change to that list; it did not fix the duplication. See
+  `deferred-work.md`.
+- This story does not decide what a verdict does with a `several` result. It only names the
+  condition. Wiring it to an actual outcome is a later story.

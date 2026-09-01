@@ -17,6 +17,7 @@ const PATH = 'artifacts/evidence-resolution.json'
 function observation(overrides: Partial<Observation> = {}): Observation {
 	return {
 		observationId: 'obs-1',
+		sequence: 1,
 		operationId: 'op-1',
 		provenance: 'baseline',
 		callInputs: { path: null, query: null, header: null, body: null },

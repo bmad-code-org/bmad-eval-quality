@@ -502,6 +502,7 @@ describe('compile: rubric check precedence', () => {
 						body: null,
 					},
 					after: 'create',
+					cardinality: 'exactly-one',
 				})
 			}
 			c.rubrics.push(secondRubric('R-001', 'RC-002'))

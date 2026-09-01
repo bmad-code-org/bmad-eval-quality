@@ -80,12 +80,12 @@ describe('the constraint ledger', () => {
 		}
 	})
 
-	// Five entry classes: arity, the binding-channel minimum, the AD-36 numeric
-	// domain, the operand-type declaration, and, new in this story, one lineage
-	// biconditional per lineage-bearing artifact plus AD-18's two secrets
-	// prohibitions. A ledger much larger than this is a signal the schema
-	// over-refined.
-	it('holds one arity entry per tuple-carrying form per expression-bearing document, one lineage entry per carrier, and four besides', () => {
+	// Six entry classes: arity, the binding-channel minimum, the AD-36 numeric
+	// domain, the operand-type declaration, one lineage biconditional per
+	// lineage-bearing artifact plus AD-18's two secrets prohibitions, and the
+	// observation-sequence uniqueness gap (owed item 2). A ledger much larger
+	// than this is a signal the schema over-refined.
+	it('holds one arity entry per tuple-carrying form per expression-bearing document, one lineage entry per carrier, and five besides', () => {
 		const arityEntries = CONSTRAINT_LEDGER.filter((entry) =>
 			entry.id.startsWith('operator-arity-'),
 		)
@@ -104,7 +104,7 @@ describe('the constraint ledger', () => {
 		)
 		expect(lineageCarriers).toHaveLength(11)
 		expect(CONSTRAINT_LEDGER).toHaveLength(
-			arityEntries.length + 3 + lineageCarriers.length + 2,
+			arityEntries.length + 4 + lineageCarriers.length + 2,
 		)
 	})
 
@@ -175,6 +175,7 @@ describe('the constraint ledger', () => {
 		'operator-operand-types',
 		'secrets-prohibition-private-artifact-manifest',
 		'secrets-prohibition-evaluator-configuration',
+		'observation-sequence-unique',
 	])('marks %s not-expressible with a reason', (id) => {
 		const entry = constraintLedgerEntry(id)
 		expect(entry?.disposition.kind).toBe('not-expressible')

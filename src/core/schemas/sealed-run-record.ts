@@ -155,16 +155,25 @@ export const ObservedCallInputs = z.strictObject({
 	body: JsonObjectValue.nullable(),
 })
 
+/** the constraint identifier the ledger carries for the check below. */
+export const OBSERVATION_SEQUENCE_UNIQUE = 'observation-sequence-unique'
+
 /**
  * One ingested observation, carrying AD-26's closed channel set so every
  * pointer in the addressing grammar has something to resolve against.
  *
- * Observation ordering is deliberately absent (Owed item 2): ADR-006 forbids
- * using array position as ordering, and the fix, a monotonic sequence, arrives
- * as an additive `schemaVersion` bump under AD-11.
+ * `sequence` closes owed item 2: ADR-006 forbids using array position as
+ * ordering. A required, per-record-unique `sequence` is the total order a
+ * selector reads.
  */
 export const Observation = z.strictObject({
 	observationId: Identifier,
+	sequence: z
+		.int()
+		.positive()
+		.describe(
+			'The total order ADR-006 forbids reading off array position (owed item 2). A positive integer, unique across every observation in the same record: uniqueness is what a sorted-by-`sequence` read needs to be strictly increasing, so no separate monotonicity check is required. Neither starting at 1 nor contiguous is required across a record: only positivity and per-record uniqueness are enforced, so a record whose sequences are e.g. [5, 12, 40] is equally valid. Required rather than optional, which makes this a BREAKING `schemaVersion` bump under AD-11: adding an optional field is additive, and this field is not optional. A record with an absent or duplicated `sequence` fails to parse.',
+		),
 	operationId: Identifier.describe(
 		'The operation this observation exercised. `Operation.operationId` is scoped to a `PermittedInterface`, so two interfaces may declare the same one; that collision is a cross-artifact rule with no AD-5 code, since `duplicate-operation-signature` covers method plus path template only, and it is left to ingest.',
 	),
@@ -302,7 +311,25 @@ export const SealedRunRecord = z
 		evaluatorRecommendation: EvaluatorRecommendation,
 		oracleDispositions: z.array(OracleDisposition),
 		findings: z.array(Finding),
-		observations: z.array(Observation),
+		observations: z
+			.array(Observation)
+			.refine(
+				(observations) => {
+					const seen = new Set<number>()
+					for (const observation of observations) {
+						if (seen.has(observation.sequence)) return false
+						seen.add(observation.sequence)
+					}
+					return true
+				},
+				{
+					error:
+						"every observation's `sequence` is unique within the record (ADR-006, owed item 2); a duplicate leaves the total order the fix exists to supply ambiguous",
+				},
+			)
+			.describe(
+				'Per-observation `sequence` uniqueness is enforced here. The published JSON Schema dialect has no keyword for uniqueness of a nested field across array items, so this constraint is Zod-only: a non-Zod consumer must reimplement it, exactly as with any other cross-item invariant this dialect cannot state.',
+			),
 		judgeResults: z
 			.array(JudgeResult)
 			.describe(
@@ -317,7 +344,7 @@ export const SealedRunRecord = z
 	.meta({
 		id: 'SealedRunRecord',
 		description:
-			"One sealed evaluator trial, as the caller presents it. Succeeds the prior-art `h0-run-result` schema per AD-24, keeping its run identifier, condition arm, findings, action-log reference, resource use, invalidation reason, evaluator recommendation as a closed enum, and per-finding confidence on a declared scale. Divergences: `condition` is demoted to the opaque `conditionArm`, `verdict` becomes `evaluatorRecommendation` without `NOT_APPLICABLE`, money is a decimal string, and `taskId`, `note`, and per-finding `actionIds` do not survive: the contract is pinned by `contractDigest`, an unstructured orchestrator annotation is the free-prose channel the Conventions close everywhere else, and two citation vocabularies on one finding is the ambiguity ADR-009 removed. The run MODE landed here as a required field under a breaking `schemaVersion` bump, which is where AD-21's \"fixed before ingest\" puts it; owed item 4's remaining clauses stay open, namely mode entering AD-11's identity inputs and the two assessment input types with their own ladders. Observation ORDERING stays deliberately absent, since ADR-006 forbids reading it off array position (Owed item 2), and arrives as its own `schemaVersion` bump under AD-11.",
+			"One sealed evaluator trial, as the caller presents it. Succeeds the prior-art `h0-run-result` schema per AD-24, keeping its run identifier, condition arm, findings, action-log reference, resource use, invalidation reason, evaluator recommendation as a closed enum, and per-finding confidence on a declared scale. Divergences: `condition` is demoted to the opaque `conditionArm`, `verdict` becomes `evaluatorRecommendation` without `NOT_APPLICABLE`, money is a decimal string, and `taskId`, `note`, and per-finding `actionIds` do not survive: the contract is pinned by `contractDigest`, an unstructured orchestrator annotation is the free-prose channel the Conventions close everywhere else, and two citation vocabularies on one finding is the ambiguity ADR-009 removed. The run MODE landed here as a required field under a BREAKING `schemaVersion` bump, which is where AD-21's \"fixed before ingest\" puts it; owed item 4's remaining clauses stay open, namely mode entering AD-11's identity inputs and the two assessment input types with their own ladders. Observation ORDERING landed here too, under its own BREAKING `schemaVersion` bump: `sequence` is required and unique per record, closing owed item 2's ADR-006 gap, since array position was never a legal ordering.",
 	})
 
 export type SealedRunRecord = z.infer<typeof SealedRunRecord>

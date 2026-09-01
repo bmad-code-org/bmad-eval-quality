@@ -106,6 +106,7 @@ export const gateDReconstruction: {
 				body: null,
 			},
 			after: null,
+			cardinality: 'exactly-one',
 		},
 	],
 	permittedInterfaces: [
@@ -148,6 +149,7 @@ export const createThenReadBack: {
 				body: { title: { matcher: 'any' } },
 			},
 			after: null,
+			cardinality: 'exactly-one',
 		},
 		{
 			stepId: 'fetch',
@@ -159,6 +161,7 @@ export const createThenReadBack: {
 				body: null,
 			},
 			after: 'stash',
+			cardinality: 'exactly-one',
 		},
 	],
 	permittedInterfaces: [
@@ -253,6 +256,7 @@ export const bothFreeTextNull: {
 				body: null,
 			},
 			after: null,
+			cardinality: 'exactly-one',
 		},
 	],
 	permittedInterfaces: [
@@ -288,6 +292,7 @@ export const unboundStep: {
 			operationId: 'ping-service',
 			inputBinding: { path: null, query: null, header: null, body: null },
 			after: null,
+			cardinality: 'exactly-one',
 		},
 	],
 	permittedInterfaces: [
@@ -325,6 +330,7 @@ export const literalCollisionPair: {
 				body: null,
 			},
 			after: null,
+			cardinality: 'exactly-one',
 		},
 		{
 			stepId: 'read-b',
@@ -336,6 +342,7 @@ export const literalCollisionPair: {
 				body: null,
 			},
 			after: null,
+			cardinality: 'exactly-one',
 		},
 	],
 	permittedInterfaces: [
@@ -362,12 +369,14 @@ export const irreducibleCollisionPair: {
 			operationId: 'ping-service',
 			inputBinding: { path: null, query: null, header: null, body: null },
 			after: null,
+			cardinality: 'exactly-one',
 		},
 		{
 			stepId: 'ping-2',
 			operationId: 'ping-service',
 			inputBinding: { path: null, query: null, header: null, body: null },
 			after: null,
+			cardinality: 'exactly-one',
 		},
 	],
 	permittedInterfaces: [
@@ -401,6 +410,7 @@ export const sameFieldTemporalPair: {
 				body: null,
 			},
 			after: null,
+			cardinality: 'exactly-one',
 		},
 		{
 			stepId: 'observe-b',
@@ -412,6 +422,7 @@ export const sameFieldTemporalPair: {
 				body: null,
 			},
 			after: 'observe-a',
+			cardinality: 'exactly-one',
 		},
 	],
 	permittedInterfaces: [
@@ -459,6 +470,7 @@ export const threeStepSharedAfter: {
 				body: { title: { matcher: 'any' } },
 			},
 			after: null,
+			cardinality: 'exactly-one',
 		},
 		{
 			stepId: 'reader1',
@@ -470,6 +482,7 @@ export const threeStepSharedAfter: {
 				body: null,
 			},
 			after: 'base',
+			cardinality: 'exactly-one',
 		},
 		{
 			stepId: 'reader2',
@@ -481,6 +494,7 @@ export const threeStepSharedAfter: {
 				body: null,
 			},
 			after: 'base',
+			cardinality: 'exactly-one',
 		},
 	],
 	permittedInterfaces: [
@@ -551,18 +565,21 @@ export const linearAfterChain: {
 			operationId: 'chain-op-a',
 			inputBinding: { path: null, query: null, header: null, body: null },
 			after: null,
+			cardinality: 'exactly-one',
 		},
 		{
 			stepId: 'step-b',
 			operationId: 'chain-op-b',
 			inputBinding: { path: null, query: null, header: null, body: null },
 			after: 'step-a',
+			cardinality: 'exactly-one',
 		},
 		{
 			stepId: 'step-c',
 			operationId: 'chain-op-c',
 			inputBinding: { path: null, query: null, header: null, body: null },
 			after: 'step-b',
+			cardinality: 'exactly-one',
 		},
 	],
 	permittedInterfaces: [
@@ -607,24 +624,28 @@ export const fourStepAfterChain: {
 			operationId: 'chain-op-1',
 			inputBinding: { path: null, query: null, header: null, body: null },
 			after: null,
+			cardinality: 'exactly-one',
 		},
 		{
 			stepId: 'step-2',
 			operationId: 'chain-op-2',
 			inputBinding: { path: null, query: null, header: null, body: null },
 			after: 'step-1',
+			cardinality: 'exactly-one',
 		},
 		{
 			stepId: 'step-3',
 			operationId: 'chain-op-3',
 			inputBinding: { path: null, query: null, header: null, body: null },
 			after: 'step-2',
+			cardinality: 'exactly-one',
 		},
 		{
 			stepId: 'step-4',
 			operationId: 'chain-op-4',
 			inputBinding: { path: null, query: null, header: null, body: null },
 			after: 'step-3',
+			cardinality: 'exactly-one',
 		},
 	],
 	permittedInterfaces: [
@@ -671,6 +692,7 @@ export const fiveStepAfterChain: {
 			operationId: 'chain-op-5',
 			inputBinding: { path: null, query: null, header: null, body: null },
 			after: 'step-4',
+			cardinality: 'exactly-one',
 		},
 	],
 	permittedInterfaces: [
@@ -721,6 +743,7 @@ export const reverseAfterPair: {
 				body: null,
 			},
 			after: null,
+			cardinality: 'exactly-one',
 		},
 		{
 			stepId: 'apply',
@@ -732,6 +755,7 @@ export const reverseAfterPair: {
 				body: { title: { matcher: 'any' } },
 			},
 			after: 'observe',
+			cardinality: 'exactly-one',
 		},
 	],
 	permittedInterfaces: [
@@ -804,6 +828,7 @@ export const sharedKeyAcrossChannels: {
 				body: null,
 			},
 			after: null,
+			cardinality: 'exactly-one',
 		},
 	],
 	permittedInterfaces: [
@@ -833,6 +858,7 @@ export const outOfOrderBindingKeys: {
 				body: { zebra: { matcher: 'any' }, apple: { matcher: 'any' } },
 			},
 			after: null,
+			cardinality: 'exactly-one',
 		},
 	],
 	permittedInterfaces: [

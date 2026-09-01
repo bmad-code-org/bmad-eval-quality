@@ -759,6 +759,7 @@ export const gateCContract = {
 				},
 			},
 			after: null,
+			cardinality: 'exactly-one',
 		},
 		{
 			stepId: 'poll',
@@ -770,6 +771,7 @@ export const gateCContract = {
 				body: null,
 			},
 			after: 'submit',
+			cardinality: 'exactly-one',
 		},
 		{
 			stepId: 'first-page',
@@ -781,6 +783,7 @@ export const gateCContract = {
 				body: null,
 			},
 			after: 'submit',
+			cardinality: 'exactly-one',
 		},
 		{
 			stepId: 'malformed-submit',
@@ -795,6 +798,7 @@ export const gateCContract = {
 				},
 			},
 			after: null,
+			cardinality: 'exactly-one',
 		},
 		{
 			stepId: 'unknown-job-read',
@@ -806,6 +810,7 @@ export const gateCContract = {
 				body: null,
 			},
 			after: null,
+			cardinality: 'exactly-one',
 		},
 		{
 			stepId: 'unknown-job-rows',
@@ -817,6 +822,7 @@ export const gateCContract = {
 				body: null,
 			},
 			after: null,
+			cardinality: 'exactly-one',
 		},
 	],
 	scopedResources: null,

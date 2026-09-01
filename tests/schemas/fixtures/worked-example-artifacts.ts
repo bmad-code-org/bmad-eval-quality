@@ -231,13 +231,14 @@ export const workedExampleSealedRunRecord: unknown = {
 }
 
 /**
- * Its sixty-one issues, each a real divergence rather than a transcription
- * slip: absent lineage; no run `mode`, the field owed item 4 made required;
- * dispositions missing `observationIds` (AD-33); finding-level `provenance`
- * instead of observation-level (AD-23); the old four-field artifact-reference
- * shape; a defect finding with no `quotedEvidence` (AD-23); the flat
- * `callInputs` map (AD-26); missing process channels; `costUsd` as a number;
- * no `evidenceDisclosure`.
+ * Its sixty-six issues, each a real divergence rather than a transcription
+ * slip: absent lineage; no run `mode`, the field owed item 4 made required; no
+ * observation `sequence`, the field owed item 2 made required; dispositions
+ * missing `observationIds` (AD-33); finding-level `provenance` instead of
+ * observation-level (AD-23); the old four-field artifact-reference shape; a
+ * defect finding with no `quotedEvidence` (AD-23); the flat `callInputs` map
+ * (AD-26); missing process channels; `costUsd` as a number; no
+ * `evidenceDisclosure`.
  */
 export const WORKED_EXAMPLE_RECORD_ISSUES: readonly WorkedExampleIssue[] = [
 	{ path: ['parentDigest'], code: 'invalid_type' },
@@ -256,6 +257,7 @@ export const WORKED_EXAMPLE_RECORD_ISSUES: readonly WorkedExampleIssue[] = [
 	{ path: ['findings', 0], code: 'unrecognized_keys' },
 	{ path: ['findings', 1], code: 'unrecognized_keys' },
 	{ path: ['findings', 2], code: 'unrecognized_keys' },
+	{ path: ['observations', 0, 'sequence'], code: 'invalid_type' },
 	{ path: ['observations', 0, 'callInputs', 'path'], code: 'invalid_type' },
 	{ path: ['observations', 0, 'callInputs', 'query'], code: 'invalid_type' },
 	{ path: ['observations', 0, 'callInputs', 'header'], code: 'invalid_type' },
@@ -265,6 +267,7 @@ export const WORKED_EXAMPLE_RECORD_ISSUES: readonly WorkedExampleIssue[] = [
 	{ path: ['observations', 0, 'stdout'], code: 'invalid_type' },
 	{ path: ['observations', 0, 'stderr'], code: 'invalid_type' },
 	{ path: ['observations', 0, 'exitCode'], code: 'invalid_type' },
+	{ path: ['observations', 1, 'sequence'], code: 'invalid_type' },
 	{ path: ['observations', 1, 'callInputs', 'path'], code: 'invalid_type' },
 	{ path: ['observations', 1, 'callInputs', 'query'], code: 'invalid_type' },
 	{ path: ['observations', 1, 'callInputs', 'header'], code: 'invalid_type' },
@@ -273,6 +276,7 @@ export const WORKED_EXAMPLE_RECORD_ISSUES: readonly WorkedExampleIssue[] = [
 	{ path: ['observations', 1, 'stdout'], code: 'invalid_type' },
 	{ path: ['observations', 1, 'stderr'], code: 'invalid_type' },
 	{ path: ['observations', 1, 'exitCode'], code: 'invalid_type' },
+	{ path: ['observations', 2, 'sequence'], code: 'invalid_type' },
 	{ path: ['observations', 2, 'callInputs', 'path'], code: 'invalid_type' },
 	{ path: ['observations', 2, 'callInputs', 'query'], code: 'invalid_type' },
 	{ path: ['observations', 2, 'callInputs', 'header'], code: 'invalid_type' },
@@ -282,6 +286,7 @@ export const WORKED_EXAMPLE_RECORD_ISSUES: readonly WorkedExampleIssue[] = [
 	{ path: ['observations', 2, 'stdout'], code: 'invalid_type' },
 	{ path: ['observations', 2, 'stderr'], code: 'invalid_type' },
 	{ path: ['observations', 2, 'exitCode'], code: 'invalid_type' },
+	{ path: ['observations', 3, 'sequence'], code: 'invalid_type' },
 	{ path: ['observations', 3, 'callInputs', 'path'], code: 'invalid_type' },
 	{ path: ['observations', 3, 'callInputs', 'query'], code: 'invalid_type' },
 	{ path: ['observations', 3, 'callInputs', 'header'], code: 'invalid_type' },
@@ -291,6 +296,7 @@ export const WORKED_EXAMPLE_RECORD_ISSUES: readonly WorkedExampleIssue[] = [
 	{ path: ['observations', 3, 'stdout'], code: 'invalid_type' },
 	{ path: ['observations', 3, 'stderr'], code: 'invalid_type' },
 	{ path: ['observations', 3, 'exitCode'], code: 'invalid_type' },
+	{ path: ['observations', 4, 'sequence'], code: 'invalid_type' },
 	{ path: ['observations', 4, 'callInputs', 'path'], code: 'invalid_type' },
 	{ path: ['observations', 4, 'callInputs', 'query'], code: 'invalid_type' },
 	{ path: ['observations', 4, 'callInputs', 'header'], code: 'invalid_type' },

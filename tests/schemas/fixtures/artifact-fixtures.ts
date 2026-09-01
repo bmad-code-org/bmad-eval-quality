@@ -137,10 +137,11 @@ const emptyCallInputs: SealedRunRecord['observations'][number]['callInputs'] = {
 }
 
 export const sealedRunRecordFixture: SealedRunRecord = {
-	// Version 2, and the bump is breaking: `mode` is required, so no version-1
-	// record parses. This fixture is the only place a Sealed Run Record version
-	// number is written down, which is what makes the bump visible.
-	schemaVersion: 2,
+	// Version 3: `mode` (version 2) and now `sequence` (version 3) are both
+	// required, so neither a version-1 nor a version-2 record parses. This
+	// fixture is the only place a Sealed Run Record version number is written
+	// down, which is what makes each bump visible.
+	schemaVersion: 3,
 	parentDigest: null,
 	revisionCount: 0,
 	runId: 'spike-run-0001',
@@ -182,6 +183,7 @@ export const sealedRunRecordFixture: SealedRunRecord = {
 	observations: [
 		{
 			observationId: 'obs-001',
+			sequence: 1,
 			operationId: 'get-note',
 			provenance: 'baseline',
 			callInputs: { ...emptyCallInputs, path: { id: 'n-1' } },
@@ -197,6 +199,7 @@ export const sealedRunRecordFixture: SealedRunRecord = {
 		},
 		{
 			observationId: 'obs-003',
+			sequence: 2,
 			operationId: 'patch-note',
 			provenance: 'evaluator-chosen',
 			callInputs: {
@@ -213,6 +216,7 @@ export const sealedRunRecordFixture: SealedRunRecord = {
 		},
 		{
 			observationId: 'obs-004',
+			sequence: 3,
 			operationId: 'get-note',
 			provenance: 'evaluator-chosen',
 			callInputs: { ...emptyCallInputs, path: { id: 'n-1' } },
@@ -227,6 +231,7 @@ export const sealedRunRecordFixture: SealedRunRecord = {
 			// The three process channels, so every one of AD-26's seven has a
 			// populated instance somewhere in the corpus.
 			observationId: 'obs-005',
+			sequence: 4,
 			operationId: 'run-migration',
 			provenance: 'evaluator-chosen',
 			callInputs: { ...emptyCallInputs, query: { dryRun: true } },
