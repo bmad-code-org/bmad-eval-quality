@@ -725,7 +725,7 @@ Nothing imports <code>cli/</code>.</p>
 </li>
 <li><p><strong>Prevents:</strong> two compilers each inventing their own answer to what fails compilation, and an AD commanding a compile-time check that the registry does not list — which in revision 1 left the forbidden-input floor and the rubric penalty rule enforceable by one implementer and invisible to another</p>
 </li>
-<li><p><strong>Rule:</strong> every compile-time failure has a stable code in this registry, and any AD imposing a compile-time check cites that literal code rather than describing a new one. <strong>The codes are the registry; revision 4 wrote sixteen prose descriptions, called them a registry, and supplied no code at all, which left the Errors convention&#39;s stable-code requirement unsatisfiable and two implementations free to invent incompatible vocabularies.</strong> Each code below is emitted by <code>compile</code> and carries the artifact path that produced it, per the Errors convention, with one named exception: <code>brief-exceeds-scripting-bound</code> is emitted by the post-generation brief-scripting audit AD-16 commands, not by <code>compile</code> itself, since it fires after <code>seal</code> has already generated the brief <code>compile</code> never sees. The artifact-path and Errors-convention half of this sentence still holds for that code exactly as for the other twenty.</p>
+<li><p><strong>Rule:</strong> every compile-time failure has a stable code in this registry, and any AD imposing a compile-time check cites that literal code rather than describing a new one. <strong>The codes are the registry; revision 4 wrote sixteen prose descriptions, called them a registry, and supplied no code at all, which left the Errors convention&#39;s stable-code requirement unsatisfiable and two implementations free to invent incompatible vocabularies.</strong> Each code below is emitted by <code>compile</code> and carries the artifact path that produced it, per the Errors convention, with one named exception: <code>brief-exceeds-scripting-bound</code> is emitted by the post-generation brief-scripting audit AD-16 commands, not by <code>compile</code> itself, since it fires after <code>seal</code> has already generated the brief <code>compile</code> never sees. The artifact-path and Errors-convention half of this sentence still holds for that code exactly as for the other twenty-two.</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -746,7 +746,7 @@ Nothing imports <code>cli/</code>.</p>
 </tr>
 <tr>
 <td><code>unreachable-check-evidence</code></td>
-<td>an oracle&#39;s <code>check</code> addresses evidence unreachable through the declared interfaces</td>
+<td>an oracle&#39;s <code>check</code> addresses evidence unreachable through the declared interfaces; or a captured input binding names a step, or a step&#39;s operation, the contract does not declare; or it addresses a response-body value the referenced operation declares no determinate scalar type for; or the captured and bound types are unequal, either one being indeterminate included</td>
 <td>AD-19, AD-26</td>
 </tr>
 <tr>
@@ -776,7 +776,7 @@ Nothing imports <code>cli/</code>.</p>
 </tr>
 <tr>
 <td><code>undeclared-mandatory-input</code></td>
-<td>strict mode meets an input the contract did not declare</td>
+<td>strict mode meets an input the contract did not declare, or a binding naming a principal it did not declare</td>
 <td>AD-4</td>
 </tr>
 <tr>
@@ -803,6 +803,16 @@ Nothing imports <code>cli/</code>.</p>
 <td><code>plan-exceeds-scripting-bound</code></td>
 <td>the interaction plan violates the published graph predicate below</td>
 <td>AD-39</td>
+</tr>
+<tr>
+<td><code>binding-cycle</code></td>
+<td>a cycle over the capture and temporal-clause edges together that contains at least one captured input binding, a step capturing from itself included</td>
+<td>AD-39</td>
+</tr>
+<tr>
+<td><code>captured-channel-undeclared</code></td>
+<td>a captured input binding names any channel but <code>response-body</code>, the one channel a response descriptor declares structure for</td>
+<td>AD-39, AD-26</td>
 </tr>
 <tr>
 <td><code>rubric-scores-reasoning-prose</code></td>

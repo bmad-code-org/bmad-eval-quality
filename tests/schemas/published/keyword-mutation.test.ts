@@ -28,7 +28,7 @@ import {
 
 // The deletion sweep compiles the whole document once per occurrence, so the
 // per-artifact budget is explicit rather than left to Vitest's default: one
-// machine measured ~16 s for eval-contract's 727 occurrences, and CI runners
+// machine measured ~16 s for eval-contract's 761 occurrences, and CI runners
 // are slower.
 const SWEEP_TIMEOUT_MS = 240_000
 
@@ -119,7 +119,7 @@ const computeSweep = (
 // the committed documents in the same commit.
 const CENSUS_BY_DOCUMENT: Readonly<Record<string, number>> = {
 	'artifact-reference': 21,
-	'eval-contract': 727,
+	'eval-contract': 761,
 	'evaluator-configuration': 69,
 	'evidence-artifact': 409,
 	'isolation-manifest': 134,
@@ -128,33 +128,33 @@ const CENSUS_BY_DOCUMENT: Readonly<Record<string, number>> = {
 	probe: 381,
 	rubric: 51,
 	'scoring-policy': 32,
-	'sealed-evaluator-brief': 98,
+	'sealed-evaluator-brief': 102,
 	'sealed-run-record': 292,
 }
 
 const CENSUS_BY_KEYWORD: Readonly<Record<string, number>> = {
-	additionalProperties: 193,
-	anyOf: 126,
+	additionalProperties: 199,
+	anyOf: 128,
 	const: 54,
 	enum: 58,
 	exclusiveMinimum: 2,
 	format: 1,
-	items: 129,
+	items: 130,
 	maxItems: 2,
 	maximum: 101,
 	minItems: 39,
-	minLength: 89,
+	minLength: 91,
 	minProperties: 1,
 	minimum: 102,
 	oneOf: 11,
-	pattern: 151,
+	pattern: 156,
 	prefixItems: 24,
-	propertyNames: 27,
-	required: 166,
-	type: 1003,
+	propertyNames: 29,
+	required: 170,
+	type: 1019,
 }
 
-const CENSUS_TOTAL = 2279
+const CENSUS_TOTAL = 2317
 
 describe('the occurrence walk descends, so the sweep cannot pass hollow', () => {
 	it('finds the full census across the twelve documents', () => {

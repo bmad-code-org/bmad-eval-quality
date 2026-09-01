@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { compile } from '../../src/core/compile/compile.ts'
 import {
 	checkDuplicateOperationSignature,
 	checkInterfaceKind,
@@ -8,6 +9,7 @@ import { StructuralFailure } from '../../src/core/failure-codes.ts'
 import { EvalContract } from '../../src/core/schemas/eval-contract.ts'
 import { gateCContract } from '../schemas/fixtures/gate-c-contract.ts'
 import { populatedContract } from '../schemas/fixtures/relevance-contracts.ts'
+import { cleanPopulatedContract } from './helpers.ts'
 
 function structuralFailureOf(fn: () => void): StructuralFailure {
 	try {
@@ -206,5 +208,71 @@ describe('checkUndeclaredMandatoryInput: undeclared-mandatory-input', () => {
 		const contract = structuredClone(populatedContract) as any
 		contract.interactionPlan.push(structuredClone(contract.interactionPlan[0]))
 		expect(() => checkUndeclaredMandatoryInput(contract)).not.toThrow()
+	})
+})
+
+// Owed item 3's second condition under the same code: a declared key whose
+// `{ principal }` names a principal the contract never declared. AD-5's row is
+// widened to carry both, so each needs its own message and its own artifact
+// path.
+describe('checkUndeclaredMandatoryInput: the principal condition', () => {
+	it('throws on a { principal } naming a name testData.principals does not declare, addressing the binding site', () => {
+		const contract = structuredClone(populatedContract) as any
+		contract.interactionPlan[0].inputBinding.body.name = { principal: 'ghost' }
+		const failure = structuralFailureOf(() =>
+			checkUndeclaredMandatoryInput(contract),
+		)
+		expect(failure.code).toBe('undeclared-mandatory-input')
+		expect(failure.artifactPath).toBe(
+			'EvalContract.interactionPlan[stepId=create].inputBinding.body["name"]',
+		)
+		expect(failure.message).toContain('ghost')
+	})
+
+	it('does not throw on a { principal } naming a declared principal', () => {
+		const contract = structuredClone(populatedContract) as any
+		expect(contract.testData.principals).toHaveProperty('owner')
+		contract.interactionPlan[0].inputBinding.body.name = { principal: 'owner' }
+		expect(() => checkUndeclaredMandatoryInput(contract)).not.toThrow()
+	})
+
+	it.each([null, {}])(
+		'throws with %j declared principals, which declare no name for any binding to reach',
+		(principals) => {
+			const contract = structuredClone(populatedContract) as any
+			contract.testData.principals = principals
+			contract.interactionPlan[0].inputBinding.body.name = {
+				principal: 'owner',
+			}
+			expect(
+				structuralFailureOf(() => checkUndeclaredMandatoryInput(contract)).code,
+			).toBe('undeclared-mandatory-input')
+		},
+	)
+
+	it('reports the undeclared-key condition under its own message when a { principal } sits on an undeclared key, so widening the check did not shadow it', () => {
+		const contract = structuredClone(populatedContract) as any
+		contract.interactionPlan[0].inputBinding.body.undeclaredKey = {
+			principal: 'ghost',
+		}
+		const failure = structuralFailureOf(() =>
+			checkUndeclaredMandatoryInput(contract),
+		)
+		expect(failure.code).toBe('undeclared-mandatory-input')
+		expect(failure.artifactPath).toContain('["undeclaredKey"]')
+		expect(failure.message).toContain(
+			'in neither requiredKeys nor permittedKeys',
+		)
+		expect(failure.message).not.toContain('testData.principals')
+	})
+
+	it('is strict-gated like the key condition: compile rejects the undeclared principal under strict and accepts that exact contract under strict false', () => {
+		const contract = cleanPopulatedContract() as any
+		contract.interactionPlan[0].inputBinding.body.name = { principal: 'ghost' }
+		const parsed = EvalContract.parse(contract)
+		expect(
+			structuralFailureOf(() => compile(parsed, { strict: true })).code,
+		).toBe('undeclared-mandatory-input')
+		expect(() => compile(parsed, { strict: false })).not.toThrow()
 	})
 })

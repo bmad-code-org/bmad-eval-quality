@@ -897,3 +897,274 @@ export const outOfOrderBindingKeys: {
 	],
 }
 validateContractSlice(outOfOrderBindingKeys)
+
+// A create-shaped operation whose response declares the `id` a `{ captured }`
+// binding addresses. `readOperation` above declares no response key, so a
+// capture through it would address a field the operation never returns.
+function createOperation(operationId: string, pathTemplate: string): Operation {
+	return {
+		operationId,
+		method: 'POST',
+		pathTemplate,
+		stateChangeMarker: true,
+		requestShape: {
+			path: emptyChannel(),
+			query: emptyChannel(),
+			header: emptyChannel(),
+			body: {
+				requiredKeys: ['title'],
+				permittedKeys: ['title'],
+				types: { title: 'string' },
+			},
+		},
+		responseDescriptor: {
+			requiredKeys: ['id'],
+			permittedKeys: ['id'],
+			types: { id: 'string' },
+			successIndicator: '/id',
+			channelRoles: null,
+			collectionLocations: null,
+		},
+		volatilePointers: ['/id'],
+		sensitivityWitness: null,
+	}
+}
+
+// ---- two steps sharing an operation, each binding one key to a different
+// declared principal (owed item 3's `{ principal }` form). Both render "the
+// supplied path widgetId" at the generic level, so escalation must reach the
+// `kind` rung, where the declared name tells them apart. AD-18 keeps that name
+// an opaque label, which is what makes it safe to print on the brief.
+export const principalCollisionPair: {
+	interactionPlan: readonly InteractionStep[]
+	permittedInterfaces: readonly PermittedInterface[]
+} = {
+	interactionPlan: [
+		{
+			stepId: 'read-as-owner',
+			operationId: 'read-widget',
+			inputBinding: {
+				path: { widgetId: { principal: 'owner' } },
+				query: null,
+				header: null,
+				body: null,
+			},
+			after: null,
+			cardinality: 'exactly-one',
+		},
+		{
+			stepId: 'read-as-auditor',
+			operationId: 'read-widget',
+			inputBinding: {
+				path: { widgetId: { principal: 'auditor' } },
+				query: null,
+				header: null,
+				body: null,
+			},
+			after: null,
+			cardinality: 'exactly-one',
+		},
+	],
+	permittedInterfaces: [
+		{
+			logicalId: 'widget-api',
+			kind: 'api',
+			operations: [readOperation('read-widget', '/widgets/{widgetId}')],
+		},
+	],
+}
+validateContractSlice(principalCollisionPair)
+
+// ---- two steps sharing an operation, each capturing the same key from a
+// different predecessor step (owed item 3's `{ captured }` form). The `kind`
+// rung renders both "the path widgetId you obtained earlier", so escalation
+// must reach `literal`, where the referenced operation and the local phrase
+// differ. This is the pair that would have made `renderStepReference` throw had
+// the top rung been flattened to a level-independent phrase.
+//
+// Step ids share no substring with any operation identity here, on
+// `createThenReadBack`'s reasoning: it is what makes "the rendered text never
+// contains a step id" a non-vacuous assertion against the captured pointers,
+// which name their predecessor step by id in the declaration.
+export const capturedCollisionPair: {
+	interactionPlan: readonly InteractionStep[]
+	permittedInterfaces: readonly PermittedInterface[]
+} = {
+	interactionPlan: [
+		{
+			stepId: 'stash-primary',
+			operationId: 'create-alpha-widget',
+			inputBinding: {
+				path: null,
+				query: null,
+				header: null,
+				body: { title: { matcher: 'any' } },
+			},
+			after: null,
+			cardinality: 'exactly-one',
+		},
+		{
+			stepId: 'stash-secondary',
+			operationId: 'create-beta-widget',
+			inputBinding: {
+				path: null,
+				query: null,
+				header: null,
+				body: { title: { matcher: 'any' } },
+			},
+			after: null,
+			cardinality: 'exactly-one',
+		},
+		{
+			stepId: 'probe-primary',
+			operationId: 'read-widget',
+			inputBinding: {
+				path: {
+					widgetId: {
+						captured: '/interactions/stash-primary/response-body/id',
+					},
+				},
+				query: null,
+				header: null,
+				body: null,
+			},
+			after: null,
+			cardinality: 'exactly-one',
+		},
+		{
+			stepId: 'probe-secondary',
+			operationId: 'read-widget',
+			inputBinding: {
+				path: {
+					widgetId: {
+						captured: '/interactions/stash-secondary/response-body/id',
+					},
+				},
+				query: null,
+				header: null,
+				body: null,
+			},
+			after: null,
+			cardinality: 'exactly-one',
+		},
+	],
+	permittedInterfaces: [
+		{
+			logicalId: 'widget-api',
+			kind: 'api',
+			operations: [
+				createOperation('create-alpha-widget', '/alpha-widgets'),
+				createOperation('create-beta-widget', '/beta-widgets'),
+				readOperation('read-widget', '/widgets/{widgetId}'),
+			],
+		},
+	],
+}
+validateContractSlice(capturedCollisionPair)
+
+// ---- a two-link capture chain whose every link is genuinely distinguishable,
+// and only at the far end. Both mid steps call one operation and bind one key,
+// so the immediate predecessor of each probe renders identically; the literal
+// value that tells them apart sits one link further back, on the two base
+// steps. A render that showed only the immediate predecessor collided here and
+// threw out of `renderStepReference`, which is why the recursion follows the
+// chain as far as it goes rather than stopping at a fixed depth.
+export const capturedChainPair: {
+	interactionPlan: readonly InteractionStep[]
+	permittedInterfaces: readonly PermittedInterface[]
+} = {
+	interactionPlan: [
+		{
+			stepId: 'base-alpha',
+			operationId: 'create-alpha-widget',
+			inputBinding: {
+				path: null,
+				query: null,
+				header: null,
+				body: { title: { literal: 'alpha' } },
+			},
+			after: null,
+			cardinality: 'exactly-one',
+		},
+		{
+			stepId: 'base-beta',
+			operationId: 'create-alpha-widget',
+			inputBinding: {
+				path: null,
+				query: null,
+				header: null,
+				body: { title: { literal: 'beta' } },
+			},
+			after: null,
+			cardinality: 'exactly-one',
+		},
+		{
+			stepId: 'mid-alpha',
+			operationId: 'create-beta-widget',
+			inputBinding: {
+				path: null,
+				query: null,
+				header: null,
+				body: {
+					title: { captured: '/interactions/base-alpha/response-body/id' },
+				},
+			},
+			after: null,
+			cardinality: 'exactly-one',
+		},
+		{
+			stepId: 'mid-beta',
+			operationId: 'create-beta-widget',
+			inputBinding: {
+				path: null,
+				query: null,
+				header: null,
+				body: {
+					title: { captured: '/interactions/base-beta/response-body/id' },
+				},
+			},
+			after: null,
+			cardinality: 'exactly-one',
+		},
+		{
+			stepId: 'probe-alpha',
+			operationId: 'read-widget',
+			inputBinding: {
+				path: {
+					widgetId: { captured: '/interactions/mid-alpha/response-body/id' },
+				},
+				query: null,
+				header: null,
+				body: null,
+			},
+			after: null,
+			cardinality: 'exactly-one',
+		},
+		{
+			stepId: 'probe-beta',
+			operationId: 'read-widget',
+			inputBinding: {
+				path: {
+					widgetId: { captured: '/interactions/mid-beta/response-body/id' },
+				},
+				query: null,
+				header: null,
+				body: null,
+			},
+			after: null,
+			cardinality: 'exactly-one',
+		},
+	],
+	permittedInterfaces: [
+		{
+			logicalId: 'widget-api',
+			kind: 'api',
+			operations: [
+				createOperation('create-alpha-widget', '/alpha-widgets'),
+				createOperation('create-beta-widget', '/beta-widgets'),
+				readOperation('read-widget', '/widgets/{widgetId}'),
+			],
+		},
+	],
+}
+validateContractSlice(capturedChainPair)

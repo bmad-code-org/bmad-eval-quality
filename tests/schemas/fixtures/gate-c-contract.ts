@@ -840,6 +840,8 @@ export const gateCContract = {
 			'Seed dataset ds-7 with 100 rows matching the declared filters, of which exactly 3 carry a retractedAt timestamp. No export job exists at run start.',
 		cleanup:
 			'Delete every export job created during the run and reset the retractedAt flags.',
+		principals: null,
+		resources: null,
 	},
 	budgets: {
 		maxToolCalls: 60,

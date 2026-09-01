@@ -121,3 +121,31 @@ The rule is about the entry, not about erasing that something was once open.
     (7.1's AC 7 already followed it) and this story only extended it by one more schema change, so
     it is not this story's problem to fix, but every future schema change now has five places to
     update in lockstep and the risk compounds with each one.
+
+- source_spec: `7-3-captured-value-matchers-and-test-data-bindings.md`
+  summary: A sealed run record carries no field naming which principal the harness acted as, so
+    `selectWithBindings` cannot separate two steps that differ only in the principal they bind. The
+    observation-side principal label is the missing half of owed item 3's cross-user case.
+  evidence: `{ principal }` matching is presence-only by construction (`src/core/score/bindings.ts`,
+    `satisfiesBindings`): the contract declares a name, and the value behind it is provisioned by the
+    harness at runtime, which is the whole reason the binding exists rather than a literal. So two
+    steps binding `authorization` on one operation, one to `owner` and one to `other-user`, both
+    return `several` against a record that exercised both — which is exactly the act-as-A-read-as-B
+    shape the two critical-severity cross-user oracles need. Closing it means a new field on
+    `Observation` recording the principal label the harness used, which is a third breaking
+    `schemaVersion` bump this story's Boundaries exclude. The half this story owns is
+    expressibility: those oracles can now be written down at all, and their steps compile and seal.
+
+- source_spec: `7-3-captured-value-matchers-and-test-data-bindings.md`
+  summary: `seal` throws a bare `TypeError` when two steps in one direction render to the same
+    derived reference after full escalation. It should be a compile-time check reporting a coded
+    `StructuralFailure` with an artifact path, the way every other authoring fault does.
+  evidence: `renderStepReference` (`src/core/seal/derived-reference.ts`) throws a
+    precondition-violation `TypeError` on a tie, and nothing at compile time predicts it, so a
+    contract passing all twenty-three checks can still fail at seal time with a stack trace instead
+    of a code. `tests/seal/fixtures.ts`'s `irreducibleCollisionPair` is the shape that already did
+    this before owed item 3. Captured bindings widen it: two predecessors sharing one operation and
+    binding nothing make two siblings capturing from them irreducible too, which is a second way to
+    reach the same throw. Closing it means a compile check that runs the escalation ladder over
+    each direction's own sibling set and reports a coded failure, which is new scope rather than a
+    fix to what owed item 3 built.

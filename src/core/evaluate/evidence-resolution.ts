@@ -71,8 +71,11 @@ export function decodeBoundElementTail(pointer: string): readonly string[] {
  * can carry a tail even though they're bare strings; `walkTail` already
  * resolves any non-empty tail against a string to `ABSENT`, so no special
  * case is needed here.
+ *
+ * Exported so `core/score/bindings.ts` reads a captured pointer's channel off
+ * an observation through this one spelling, keeping the switch in one place.
  */
-function channelRoot(
+export function channelRoot(
 	observation: Observation,
 	target: EvidenceTarget,
 ): JsonValue {

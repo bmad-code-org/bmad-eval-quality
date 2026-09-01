@@ -1158,11 +1158,71 @@
               "type": "null"
             }
           ]
+        },
+        "principals": {
+          "anyOf": [
+            {
+              "type": "object",
+              "propertyNames": {
+                "type": "string",
+                "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                "description": "A kebab-case slug. Excludes \"/\" and \"~\" so an identifier can be embedded in an interaction-rooted pointer without escaping."
+              },
+              "additionalProperties": {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "kind"
+                ],
+                "additionalProperties": false
+              }
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Owed item 3: the principals a `{ principal }` input binding may name. Caller-keyed by name, which makes a duplicate declaration unrepresentable, and valueless, since AD-19 forbids a credential value in a declaration and AD-18 keeps the name an opaque label. `null`, `{}`, and a populated map are three distinct answers, on `referenceSets`' own reasoning. A binding naming a key absent here still parses; it fires `undeclared-mandatory-input` at compile time in strict mode, because a cross-subtree constraint reaching from `interactionPlan` into this field cannot survive the export."
+        },
+        "resources": {
+          "anyOf": [
+            {
+              "type": "object",
+              "propertyNames": {
+                "type": "string",
+                "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                "description": "A kebab-case slug. Excludes \"/\" and \"~\" so an identifier can be embedded in an interaction-rooted pointer without escaping."
+              },
+              "additionalProperties": {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "kind"
+                ],
+                "additionalProperties": false
+              }
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Test-data resources, declared the same way as `principals` above. Any entry fires `scoped-reference-resolves-forbidden` at compile time exactly as a `scopedResources` entry does: a resource the contract points the evaluator at is a scoped reference wherever it is written down (AD-16)."
         }
       },
       "required": [
         "setup",
-        "cleanup"
+        "cleanup",
+        "principals",
+        "resources"
       ],
       "additionalProperties": false
     },
@@ -2138,6 +2198,34 @@
                 },
                 "required": [
                   "matcher"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "captured": {
+                    "type": "string",
+                    "pattern": "^\\/interactions\\/[a-z0-9]+(?:-[a-z0-9]+)*\\/(?:(?:response-body|response-headers|stdout|stderr)(?:\\/(?:[^/~]|~[01])*)*|(?:response-status|exit-code)|call-inputs\\/(?:path|query|header|body)(?:\\/(?:[^/~]|~[01])*)*)$",
+                    "description": "AD-26 interaction-rooted pointer: \"/interactions/{stepId}/\" followed by one channel of the closed vocabulary. `call-inputs` takes one of the four transport channels as its next segment; `response-status` and `exit-code` take no tail. Syntax only: whether the step exists and whether the evidence is reachable are compile-time checks, not schema checks."
+                  }
+                },
+                "required": [
+                  "captured"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "principal": {
+                    "type": "string",
+                    "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                    "description": "A kebab-case slug. Excludes \"/\" and \"~\" so an identifier can be embedded in an interaction-rooted pointer without escaping."
+                  }
+                },
+                "required": [
+                  "principal"
                 ],
                 "additionalProperties": false
               }

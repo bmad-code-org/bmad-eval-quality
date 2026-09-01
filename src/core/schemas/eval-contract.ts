@@ -111,9 +111,28 @@ export const SiblingGroups = z.strictObject({
 	parameters: z.array(z.array(KeyName).min(SIBLING_GROUP_MINIMUM)),
 })
 
+/**
+ * A valueless test-data declaration, keyed by name. `kind` stays opaque for
+ * the reason `ScopedResource` above already records: no AD supplies a value
+ * space, and inventing one is the unshaped-declaration defect in reverse.
+ */
+const TestDataDeclaration = z.strictObject({ kind: z.string().min(1) })
+
 export const TestData = z.strictObject({
 	setup: z.string().nullable(),
 	cleanup: z.string().nullable(),
+	principals: z
+		.record(Identifier, TestDataDeclaration)
+		.nullable()
+		.describe(
+			"Owed item 3: the principals a `{ principal }` input binding may name. Caller-keyed by name, which makes a duplicate declaration unrepresentable, and valueless, since AD-19 forbids a credential value in a declaration and AD-18 keeps the name an opaque label. `null`, `{}`, and a populated map are three distinct answers, on `referenceSets`' own reasoning. A binding naming a key absent here still parses; it fires `undeclared-mandatory-input` at compile time in strict mode, because a cross-subtree constraint reaching from `interactionPlan` into this field cannot survive the export.",
+		),
+	resources: z
+		.record(Identifier, TestDataDeclaration)
+		.nullable()
+		.describe(
+			'Test-data resources, declared the same way as `principals` above. Any entry fires `scoped-reference-resolves-forbidden` at compile time exactly as a `scopedResources` entry does: a resource the contract points the evaluator at is a scoped reference wherever it is written down (AD-16).',
+		),
 })
 
 export const Budgets = z.strictObject({

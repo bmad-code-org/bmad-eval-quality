@@ -136,25 +136,138 @@ function formatLiteral(literal: unknown): string {
 	return JSON.stringify(canonicalizeForDisplay(literal))
 }
 
-// Base rendering: `type-violating` always names the input malformed.
-// `any` and, at the 'generic' level, `literal` share the same generic wording
-// on purpose; the escalation ladder below tells them apart once two steps
-// would otherwise collide.
+// Base rendering, one arm per tagged form. `type-violating` always names the
+// input malformed. `any` and, at the 'generic' level, every other form share
+// the same generic wording on purpose; the escalation ladder below tells them
+// apart once two steps would otherwise collide.
+//
+// `captured` escalates to a real derived reference at the 'literal' rung: the
+// local phrase for the pointer's channel and tail, then the referenced step
+// rendered through `stepReferenceAtLevel`, which is the same phrase
+// `fullTargetPhrase` already prints for an evidence target. Naming the
+// referenced OPERATION alone was tried and dropped: two predecessors sharing
+// one operation and one body key then render identically, so two siblings
+// capturing from them collide at every rung and `renderStepReference` throws
+// out of `seal()` on a contract that compiles clean. Recursing into the
+// predecessor separates them by its own binding clause. Two predecessors that
+// are themselves irreducible still tie, and the throw there is correct: the
+// declared structure does not distinguish them, which is the same answer
+// `irreducibleCollisionPair` already gets. That throw is a bare `TypeError`
+// rather than a coded failure, which is a pre-existing gap this widens; the
+// deferred-work entry names hoisting the collision check to compile time.
+//
+// It does NOT call `renderStepReference`, so none of that function's
+// constraints apply: no direction-scoped sibling list is consulted, so AD-16's
+// scoping stays intact, and there is no tie to throw on. A step identifier
+// never appears, which is the property AD-16 actually requires.
+//
+// `rendering` holds the steps already on the render path, and a capture back
+// into one of them falls back to the level-independent phrase. A fixed depth
+// bound was tried and dropped: at depth one, a two-link chain whose every link
+// is genuinely distinguishable still collides, because only the immediate
+// predecessor's binding shows and that is the half the two siblings share.
+// Following the chain as far as it goes is what separates them, and the
+// on-path set is what makes that terminate. Each recursion adds one step id, so
+// the depth is bounded by the plan; `plan-exceeds-scripting-bound` bounds that
+// too. Same guard the score module uses for an `after` chain, for the same
+// reason: `binding-cycle` rejects a capture cycle at compile time, so this only
+// covers a plan driven straight into the renderer.
+//
+// A pointer whose step or operation the index cannot resolve falls back to the
+// 'kind' phrase. `seal()` runs after `compile`, which rejects such a pointer
+// under `unreachable-check-evidence`, so this is a fallback for a
+// directly-driven caller and adds no throw path.
+//
+// One thing a grep for step identifiers will find and should not be surprised
+// by: `localTargetPhrase` prints the pointer's tail, and a response-body key
+// the author happened to name the same as a step prints with it. That is the
+// author's own declared key rather than a plan identifier, and it is what every
+// ordinary evidence target has always printed.
+//
+// `principal` tops out at the declared name, which AD-18 keeps an opaque label
+// and is therefore safe on the brief.
+// One or more entries of a step's clause that capture from the same earlier
+// step, rendered together so that step's phrase is expanded once. Expanding it
+// per entry made the clause's SIZE multiply down a capture chain: a step with k
+// entries pointing at its predecessor expanded that predecessor k times, and the
+// predecessor did the same to its own, so a sixteen-step chain with four keys a
+// link produced a phrase past V8's maximum string length. Grouping makes the
+// clause linear in keys and depth, and reads better besides.
+//
+// One residue is bounded rather than removed, and is stated so nobody has to
+// rediscover it. A step referencing several DISTINCT predecessors still expands
+// each of them, so a plan whose capture graph is a complete DAG unrolls once per
+// distinct path. `plan-exceeds-scripting-bound` caps a compiled plan at sixteen
+// steps, and the worst case at that cap measures 670 KB in 35 ms, which is
+// large for an artifact AD-16 keeps minimal and is neither slow nor fatal. The
+// shape needs a hand-authored complete DAG; the chain shape that produced the
+// unbounded phrase is now 2 KB.
+type CaptureGroup = {
+	readonly stepId: string
+	readonly entries: TransportEntry[]
+	readonly targets: EvidenceTarget[]
+}
+
+function renderCaptureGroup(
+	group: CaptureGroup,
+	level: EscalationLevel,
+	index: PlanIndex,
+	rendering: ReadonlySet<string>,
+): string {
+	const names = joinWithAnd(group.entries.map(entryName))
+	const locals = joinWithAnd(group.targets.map(localTargetPhrase))
+	const step = index.stepOf(group.stepId)
+	const operation =
+		step === undefined ? undefined : index.operationOf(step.operationId)
+	if (step === undefined || operation === undefined) {
+		return `the ${names} you obtained earlier`
+	}
+	const source = stepReferenceAtLevel(step, operation, level, index, rendering)
+	return `the ${names} you obtained as ${locals} from ${source}`
+}
+
+// Whether this entry expands into a group, or renders as the level-independent
+// phrase on its own.
+function expandableCapture(
+	entry: TransportEntry,
+	level: EscalationLevel,
+	index: PlanIndex,
+	rendering: ReadonlySet<string>,
+): EvidenceTarget | null {
+	if (level !== 'literal' || !('captured' in entry.value)) return null
+	const target = parseEvidenceTarget(entry.value.captured)
+	if (rendering.has(target.stepId)) return null
+	const step = index.stepOf(target.stepId)
+	if (step === undefined) return null
+	return index.operationOf(step.operationId) === undefined ? null : target
+}
+
+// Renders one entry on its own. Every captured entry that expands lands in a
+// group instead, so the arm here is the level-independent fallback.
 function renderBindingValue(
 	entry: TransportEntry,
 	level: EscalationLevel,
 ): string {
 	const name = entryName(entry)
-	if (isTypeViolating(entry.value)) {
-		return `a malformed ${name} value`
+	const { value } = entry
+	if ('matcher' in value) {
+		return value.matcher === 'type-violating'
+			? `a malformed ${name} value`
+			: `the supplied ${name}`
 	}
-	if (level === 'generic' || 'matcher' in entry.value) {
+	if (level === 'generic') {
 		return `the supplied ${name}`
+	}
+	if ('principal' in value) {
+		return `the ${name} of the ${value.principal} account`
+	}
+	if ('captured' in value) {
+		return `the ${name} you obtained earlier`
 	}
 	if (level === 'kind') {
 		return `the stated ${name}`
 	}
-	return `the ${name} ${formatLiteral(entry.value.literal)}`
+	return `the ${name} ${formatLiteral(value.literal)}`
 }
 
 // Every declared binding key escalates together: narrowing to only the
@@ -168,12 +281,44 @@ function renderBindingValue(
 function bindingClause(
 	step: InteractionStep,
 	level: EscalationLevel,
+	index: PlanIndex,
+	rendering: ReadonlySet<string>,
 ): string | null {
 	const entries = bindingEntries(step)
 	if (entries.length === 0) return null
 	const malformed = entries.filter((entry) => isTypeViolating(entry.value))
 	const chosen = malformed.length > 0 ? malformed : entries
-	return `with ${joinWithAnd(chosen.map((entry) => renderBindingValue(entry, level)))}`
+	// Each expandable capture joins the group for the step it references, held
+	// at the position that step was first referenced from, so the clause's order
+	// still comes from `bindingEntries`'s sort rather than from a map's keys.
+	const slots: (TransportEntry | CaptureGroup)[] = []
+	const groups = new Map<string, CaptureGroup>()
+	for (const entry of chosen) {
+		const target = expandableCapture(entry, level, index, rendering)
+		if (target === null) {
+			slots.push(entry)
+			continue
+		}
+		const existing = groups.get(target.stepId)
+		if (existing !== undefined) {
+			existing.entries.push(entry)
+			existing.targets.push(target)
+			continue
+		}
+		const group: CaptureGroup = {
+			stepId: target.stepId,
+			entries: [entry],
+			targets: [target],
+		}
+		groups.set(target.stepId, group)
+		slots.push(group)
+	}
+	const phrases = slots.map((slot) =>
+		'stepId' in slot
+			? renderCaptureGroup(slot, level, index, rendering)
+			: renderBindingValue(slot, level),
+	)
+	return `with ${joinWithAnd(phrases)}`
 }
 
 // Parenthesized rather than comma-joined onto the operation reference: a
@@ -186,9 +331,18 @@ function stepReferenceAtLevel(
 	step: InteractionStep,
 	operation: Operation,
 	level: EscalationLevel,
+	index: PlanIndex,
+	rendering: ReadonlySet<string> = new Set(),
 ): string {
 	const base = operationReference(operation)
-	const clause = bindingClause(step, level)
+	// The step being rendered joins the path before its own clause is built, so
+	// a self-capture falls back on the first hop.
+	const clause = bindingClause(
+		step,
+		level,
+		index,
+		new Set([...rendering, step.stepId]),
+	)
 	return clause === null ? base : `${base} (${clause})`
 }
 
@@ -209,13 +363,14 @@ export function renderStepReference(
 	step: InteractionStep,
 	operation: Operation,
 	siblings: readonly InteractionStep[],
+	index: PlanIndex,
 ): string {
 	for (const level of ESCALATION_LEVELS) {
 		const phrases = siblings.map((sibling) =>
-			stepReferenceAtLevel(sibling, operation, level),
+			stepReferenceAtLevel(sibling, operation, level, index),
 		)
 		if (new Set(phrases).size === phrases.length) {
-			return stepReferenceAtLevel(step, operation, level)
+			return stepReferenceAtLevel(step, operation, level, index)
 		}
 	}
 	throw new TypeError(
@@ -301,12 +456,14 @@ function localTargetPhrase(target: EvidenceTarget): string {
 function fullTargetPhrase(
 	resolved: ResolvedTarget,
 	siblingsOf: SiblingsOf,
+	index: PlanIndex,
 ): string {
 	const local = localTargetPhrase(resolved.target)
 	const stepRef = renderStepReference(
 		resolved.step,
 		resolved.operation,
 		siblingsOf(resolved.operation.operationId),
+		index,
 	)
 	const preposition = resolved.target.channel === 'call-inputs' ? 'to' : 'from'
 	return `${local} ${preposition} ${stepRef}`
@@ -331,6 +488,7 @@ function sentFirstOrder(
 	a: ResolvedTarget,
 	b: ResolvedTarget,
 	siblingsOf: SiblingsOf,
+	index: PlanIndex,
 ): readonly [ResolvedTarget, ResolvedTarget] {
 	const rank = (r: ResolvedTarget): number =>
 		r.target.channel === 'call-inputs' ? 0 : 1
@@ -345,11 +503,13 @@ function sentFirstOrder(
 		a.step,
 		a.operation,
 		siblingsOf(a.operation.operationId),
+		index,
 	)
 	const referenceB = renderStepReference(
 		b.step,
 		b.operation,
 		siblingsOf(b.operation.operationId),
+		index,
 	)
 	return referenceA <= referenceB ? [a, b] : [b, a]
 }
@@ -456,22 +616,27 @@ function groupResolvedTargets(
 	return groups
 }
 
-function renderPhraseGroup(group: PhraseGroup, siblingsOf: SiblingsOf): string {
+function renderPhraseGroup(
+	group: PhraseGroup,
+	siblingsOf: SiblingsOf,
+	index: PlanIndex,
+): string {
 	if (group.kind === 'temporal-pair') {
-		const [first, second] = sentFirstOrder(group.a, group.b, siblingsOf)
-		return `${fullTargetPhrase(first, siblingsOf)}, compared with ${fullTargetPhrase(second, siblingsOf)}`
+		const [first, second] = sentFirstOrder(group.a, group.b, siblingsOf, index)
+		return `${fullTargetPhrase(first, siblingsOf, index)}, compared with ${fullTargetPhrase(second, siblingsOf, index)}`
 	}
 	const first = group.resolved[0]
 	if (first === undefined) {
 		throw new TypeError('evidence-target group is empty')
 	}
 	if (group.resolved.length === 1) {
-		return fullTargetPhrase(first, siblingsOf)
+		return fullTargetPhrase(first, siblingsOf, index)
 	}
 	const stepRef = renderStepReference(
 		first.step,
 		first.operation,
 		siblingsOf(first.operation.operationId),
+		index,
 	)
 	// Sorted, so a same-step group's field order is permutation-invariant like
 	// the top-level join below; in declaration order, permuting
@@ -505,6 +670,8 @@ export function renderEvidenceReferences(
 	const siblingsOf: SiblingsOf = (operationId) =>
 		siblings.get(operationId) ?? []
 	const groups = groupResolvedTargets(resolved)
-	const phrases = groups.map((group) => renderPhraseGroup(group, siblingsOf))
+	const phrases = groups.map((group) =>
+		renderPhraseGroup(group, siblingsOf, index),
+	)
 	return joinWithAnd([...phrases].sort())
 }

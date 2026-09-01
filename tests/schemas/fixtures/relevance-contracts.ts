@@ -70,7 +70,7 @@ export const absentContract = {
 	interactionPlan: [],
 	scopedResources: null,
 	forbiddenInputs: [],
-	testData: { setup: null, cleanup: null },
+	testData: { setup: null, cleanup: null, principals: null, resources: null },
 	budgets: { maxToolCalls: 0, maxWallClockMinutes: 0, maxCostUsd: '0' },
 	safetyLimits: [],
 	requiredEvidence: [],
@@ -114,7 +114,7 @@ export const explicitlyEmptyContract = {
 
 /** every axis populated, so every relevance predicate fires. */
 export const populatedContract = {
-	schemaVersion: 2,
+	schemaVersion: 3,
 	contractId: 'populated-declarations',
 	parentDigest:
 		'sha256:0000000000000000000000000000000000000000000000000000000000000abc',
@@ -381,6 +381,8 @@ export const populatedContract = {
 	testData: {
 		setup: 'Seed exactly three things with identifiers t-1, t-2, t-3.',
 		cleanup: 'Delete every thing created during the run.',
+		principals: { owner: { kind: 'account' } },
+		resources: {},
 	},
 	budgets: {
 		maxToolCalls: 20,

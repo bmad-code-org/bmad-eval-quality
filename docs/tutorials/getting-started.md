@@ -108,7 +108,7 @@ An `--out` value ending in `.json` is a file path. Anything else is a directory,
 
 ## Step 3: Seal the contract into a brief
 
-`seal` compiles the same input and then reduces it to a `SealedEvaluatorBrief`. The [glossary](/reference/glossary/) lists all eleven fields it carries; the substantive ones are the behaviors, the permitted interfaces narrowed to `logicalId` and `kind`, the scoped resources, the budgets and limits, the probe step bound, one prose direction per oracle, and `contractDigest`. The oracle checks, the interaction plan, the reference sets, and the test data have no place in the brief's shape, so they never reach the evaluator. Comparing `contractDigest` across two briefs is what detects a rebound contract.
+`seal` compiles the same input and then reduces it to a `SealedEvaluatorBrief`. The [glossary](/reference/glossary/) lists all twelve fields it carries; the substantive ones are the behaviors, the permitted interfaces narrowed to `logicalId` and `kind`, the scoped resources, the declared principal names, the budgets and limits, the probe step bound, one prose direction per oracle, and `contractDigest`. The oracle checks, the interaction plan, the reference sets, and the rest of the test data have no place in the brief's shape, so they never reach the evaluator. Comparing `contractDigest` across two briefs is what detects a rebound contract.
 
 ```bash
 node dist/cli/main.js seal --in corpus/dev/compile-seal-example/contract.json | grep -o '"contractDigest":"[^"]*"'

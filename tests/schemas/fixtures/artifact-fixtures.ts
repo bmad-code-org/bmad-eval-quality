@@ -644,7 +644,7 @@ export const contractScoringEvidenceArtifact: EvidenceArtifact = {
 }
 
 export const sealedEvaluatorBriefFixture: SealedEvaluatorBrief = {
-	schemaVersion: 1,
+	schemaVersion: 2,
 	parentDigest: null,
 	revisionCount: 0,
 	contractDigest: CONTRACT_DIGEST,
@@ -668,6 +668,7 @@ export const sealedEvaluatorBriefFixture: SealedEvaluatorBrief = {
 	],
 	permittedInterfaces: [{ logicalId: 'notes-api', kind: 'api' }],
 	scopedResources: [{ reference: 'published-openapi', kind: 'document' }],
+	principals: ['owner'],
 	budgets: { maxToolCalls: 50, maxWallClockMinutes: 30, maxCostUsd: '5.00' },
 	safetyLimits: ['no destructive operations outside the workspace'],
 	probeStepBound: 8,

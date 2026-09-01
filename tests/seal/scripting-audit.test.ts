@@ -25,7 +25,7 @@ function minimalBrief(
 	probeStepBound: number | null,
 ): SealedEvaluatorBrief {
 	return SealedEvaluatorBrief.parse({
-		schemaVersion: 1,
+		schemaVersion: 2,
 		parentDigest: null,
 		revisionCount: 0,
 		contractDigest: digestOf(1),
@@ -44,6 +44,7 @@ function minimalBrief(
 		directions,
 		permittedInterfaces: [],
 		scopedResources: [],
+		principals: [],
 		budgets: { maxToolCalls: 0, maxWallClockMinutes: 0, maxCostUsd: '0' },
 		safetyLimits: [],
 		probeStepBound,

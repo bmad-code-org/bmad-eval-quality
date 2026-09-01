@@ -1,5 +1,6 @@
 /** the interaction plan: steps as selectors over observations. */
 import { z } from 'zod'
+import { InteractionPointer } from './pointer.ts'
 import { Identifier, JsonValue, KeyName } from './primitives.ts'
 
 /**
@@ -8,10 +9,42 @@ import { Identifier, JsonValue, KeyName } from './primitives.ts'
  * one implementation and the literal string to another, and flipped a witness
  * match between `caught` and `missed` on one record; that form is
  * unrepresentable here.
+ *
+ * Four members, one tag each. `{ literal }` writes the sent value down;
+ * `{ matcher: 'any' }` binds whatever was sent and `{ matcher: 'type-violating' }`
+ * binds a value whose JSON type differs from the operation's declared type for
+ * the key, which is how AD-31 rule 3's malformed-input behaviour is addressed.
+ *
+ * `{ captured }` addresses an earlier step's declared scalar output. Owed item
+ * 3: a `POST` returning a server-generated identifier followed by a `GET`
+ * proving persistence is unwritable with the first two, since a literal
+ * hard-codes a resource the evaluator never created and `any` matches
+ * unrelated reads. "Earlier" is earlier in the capture graph's own topological
+ * order, which `binding-cycle` makes exist. It is deliberately not AD-39's
+ * `after` clause: `nested-temporal-clause` already rejects every `after` cycle,
+ * so a capture forced to follow an `after` edge would leave `binding-cycle`
+ * unfireable. At score time the ordering is the record's `sequence`.
+ *
+ * `{ principal }` names a principal `testData.principals` declares. The two
+ * critical-severity cross-user behaviours (act as A, read as B, must be denied
+ * or absent) bind a step to an account that is neither a literal, since AD-19
+ * forbids credential values in declarations, nor an earlier step's output,
+ * since accounts are provisioned outside the observation stream. The name is
+ * an opaque label carrying no account identifier, credential, or subject data
+ * (AD-18). An undeclared name fires `undeclared-mandatory-input` in strict
+ * mode; a Zod refinement here would be a cross-subtree constraint the export
+ * cannot carry, and the published-schema differential sweep synthesises a
+ * union-branch witness that would expose the disagreement.
+ *
+ * A captured pointer resolves to a declared scalar with no transform applied,
+ * which keeps AD-4's ban on arithmetic, projection, and user-defined functions
+ * holding by construction: the grammar has no place to write one.
  */
 export const BindingValue = z.union([
 	z.strictObject({ literal: JsonValue }),
 	z.strictObject({ matcher: z.enum(['any', 'type-violating']) }),
+	z.strictObject({ captured: InteractionPointer }),
+	z.strictObject({ principal: Identifier }),
 ])
 
 /** the constraint identifier the ledger carries for the check below. */

@@ -1,4 +1,4 @@
-/** AD-5's twenty-one compile-time failure codes, as data, in the table's order. */
+/** AD-5's twenty-three compile-time failure codes, as data, in the table's order. */
 
 // This lives in `core/`, since it's a plain data tuple and `core/schemas/`
 // is reserved for Zod definitions. The compiler that emits these codes lives
@@ -6,7 +6,7 @@
 //
 // `scripts/check-ad5-registry.ts` checks this tuple against AD-5's own
 // registry table under `npm run validate`; the tuple's own invariants
-// (twenty-one members, unique, kebab-case) are locked in
+// (twenty-three members, unique, kebab-case) are locked in
 // tests/schemas/failure-codes.test.ts.
 export const FAILURE_CODES = [
 	'missing-requirement-linkage',
@@ -23,6 +23,8 @@ export const FAILURE_CODES = [
 	'unsupported-interface-kind',
 	'nested-temporal-clause',
 	'plan-exceeds-scripting-bound',
+	'binding-cycle',
+	'captured-channel-undeclared',
 	'rubric-scores-reasoning-prose',
 	'rubric-unanchored',
 	'rubric-evidence-unreachable',
