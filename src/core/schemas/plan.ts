@@ -58,7 +58,7 @@ export const InputBinding = z.strictObject({
  * bind different evidence. The contract now declares the rule per step.
  * `several` under `exactly-one`/`at-most-one` is a named ambiguity condition;
  * a reference function returns it as data. Routing that ambiguity to a
- * verdict rung is later work, not this declaration's. `any` is unrelated to
+ * verdict rung is later work. `any` is unrelated to
  * `BindingValue`'s `{ matcher: 'any' }` above: same string, different field,
  * no type-level collision. `ExpectedCardinality` (`interface.ts`) is a
  * second, unrelated reuse of the word for AD-20's response-collection

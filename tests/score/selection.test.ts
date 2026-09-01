@@ -61,7 +61,7 @@ describe('selectObservations', () => {
 		})
 	})
 
-	it('returns several under a single-valued cardinality when two or more match, as data rather than an error', () => {
+	it('returns several as data under a single-valued cardinality when two or more match', () => {
 		const result = selectObservations(step('get-note', 'exactly-one'), [
 			observation('obs-1', 1, 'get-note'),
 			observation('obs-2', 2, 'get-note'),
@@ -79,7 +79,7 @@ describe('selectObservations', () => {
 		expect(result.matchedObservationIds).toEqual(['obs-1', 'obs-2'])
 	})
 
-	it('returns several under `any` cardinality when several match, not an error condition', () => {
+	it('returns several under `any` cardinality when several match', () => {
 		const result = selectObservations(step('get-note', 'any'), [
 			observation('obs-1', 3, 'get-note'),
 			observation('obs-2', 1, 'get-note'),
@@ -101,9 +101,8 @@ describe('selectObservations', () => {
 	})
 
 	// NFR9: the same observations, permuted every which way, produce a
-	// byte-identical result. Exercised over every permutation of a small set
-	// rather than one hand-picked shuffle, so the invariant is proven and not
-	// merely illustrated.
+	// byte-identical result. Exercised over every permutation of a small set,
+	// which proves the invariant holds for all of them.
 	it('is permutation-invariant: every ordering of the same observations yields the identical result (NFR9)', () => {
 		const base = [
 			observation('obs-a', 1, 'get-note'),
@@ -130,10 +129,43 @@ describe('selectObservations', () => {
 		}
 	})
 
-	it('assigns no AD-6 outcome state: the result is match data, not a verdict', () => {
+	it('assigns no AD-6 outcome state: the result is match data', () => {
 		const result = selectObservations(step('get-note'), [])
 		expect(result).not.toHaveProperty('state')
 		expect(result).not.toHaveProperty('outcome')
+	})
+
+	// The schema layer enforces per-record sequence uniqueness, so this input
+	// shape never comes from a validated SealedRunRecord. The comparator's own
+	// observationId tie-break still resolves it, both cases here, so the
+	// function stays total and permutation-invariant against a hand-built
+	// array a caller assembled without going through schema validation.
+	it('breaks a tied sequence deterministically by observationId, regardless of array order', () => {
+		const tied = [
+			observation('obs-b', 1, 'get-note'),
+			observation('obs-a', 1, 'get-note'),
+		]
+		const result = selectObservations(step('get-note', 'any'), tied)
+		expect(result.matchedObservationIds).toEqual(['obs-a', 'obs-b'])
+		const reversed = selectObservations(
+			step('get-note', 'any'),
+			[...tied].reverse(),
+		)
+		expect(reversed).toEqual(result)
+	})
+
+	it('breaks a non-finite sequence deterministically by observationId, regardless of array order', () => {
+		const withNaN = [
+			observation('obs-b', Number.NaN, 'get-note'),
+			observation('obs-a', 1, 'get-note'),
+		]
+		const result = selectObservations(step('get-note', 'any'), withNaN)
+		expect(result.matchedObservationIds).toEqual(['obs-a', 'obs-b'])
+		const reversed = selectObservations(
+			step('get-note', 'any'),
+			[...withNaN].reverse(),
+		)
+		expect(reversed).toEqual(result)
 	})
 })
 
@@ -175,7 +207,7 @@ describe('resolveTemporalAnchor', () => {
 		})
 	})
 
-	it('leaves the clause unresolved when a single-valued anchor matched several: the ambiguity is not silently resolved by taking the lowest sequence', () => {
+	it('leaves the clause unresolved when a single-valued anchor matched several, unlike an `any`-cardinality anchor', () => {
 		const anchor = step('create-thing', 'exactly-one')
 		const resolution = resolveTemporalAnchor(anchor, [
 			observation('obs-1', 1, 'create-thing'),

@@ -41,15 +41,19 @@ export type StepSelection = {
  *
  * Sorts a copy; the input `observations` array is never mutated, and its own
  * order is never read as meaning anything (NFR9: a permutation of the same
- * observations yields byte-identical `matchedObservationIds`).
+ * observations yields byte-identical `matchedObservationIds`). The schema
+ * layer enforces per-record `sequence` uniqueness, so a real `SealedRunRecord`
+ * never presents a tie. `observationId` is the secondary sort key regardless:
+ * this function's own permutation invariance holds even against a hand-built
+ * or malformed `observations` array carrying a duplicate or non-finite
+ * `sequence`, decided by this comparator alone.
  *
  * Matching on `operationId` alone, ignoring `step.inputBinding`, is a
- * deliberate scope boundary here and not an oversight: resolving several
- * candidate tuples by their full input binding is Owed item 3's
- * captured-value-matcher and test-data-binding work, not this function's.
- * `tests/seal/fixtures.ts`'s `irreducibleCollisionPair` is a concrete
- * existing case left undisambiguated here: two steps sharing one
- * `operationId`, distinguishable only by input binding.
+ * deliberate scope boundary: resolving several candidate tuples by their
+ * full input binding is Owed item 3's captured-value-matcher and
+ * test-data-binding work. `tests/seal/fixtures.ts`'s `irreducibleCollisionPair`
+ * is a concrete existing case left undisambiguated here: two steps sharing
+ * one `operationId`, distinguishable only by input binding.
  */
 export function selectObservations(
 	step: InteractionStep,
@@ -57,7 +61,10 @@ export function selectObservations(
 ): StepSelection {
 	const matched = observations
 		.filter((observation) => observation.operationId === step.operationId)
-		.sort((a, b) => a.sequence - b.sequence)
+		.sort(
+			(a, b) =>
+				a.sequence - b.sequence || (a.observationId < b.observationId ? -1 : 1),
+		)
 	const matchedObservationIds = matched.map(
 		(observation) => observation.observationId,
 	)
@@ -72,8 +79,7 @@ export function selectObservations(
 
 /**
  * Resolves an `after` temporal clause to the single observation it denotes,
- * built from `selectObservations`'s own result over the anchor rather than a
- * second scan.
+ * built directly from `selectObservations`'s own result over the anchor.
  *
  * Takes the anchor step itself, already resolved from the dependent step's
  * `after` identifier (a one-line lookup against whichever declared plan the
@@ -106,7 +112,7 @@ export function resolveTemporalAnchor(
 	}
 	// `none`, or `several` under a single-valued cardinality: no single
 	// observation resolves. Reported as data; routing this to a verdict rung
-	// is later work, not this function's.
+	// is later work.
 	return {
 		resolved: false,
 		result: selection.result,
