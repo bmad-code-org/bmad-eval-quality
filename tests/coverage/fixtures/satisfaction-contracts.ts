@@ -426,6 +426,7 @@ export const satisfiedContract = {
 				body: { name: { matcher: 'any' } },
 			},
 			after: null,
+			cardinality: 'exactly-one',
 		},
 		{
 			stepId: 'list',
@@ -437,6 +438,7 @@ export const satisfiedContract = {
 				body: null,
 			},
 			after: 'create',
+			cardinality: 'exactly-one',
 		},
 		{
 			stepId: 'malformed-create',
@@ -448,6 +450,7 @@ export const satisfiedContract = {
 				body: { name: { matcher: 'type-violating' } },
 			},
 			after: null,
+			cardinality: 'exactly-one',
 		},
 		{
 			stepId: 'malformed-list',
@@ -459,6 +462,7 @@ export const satisfiedContract = {
 				body: null,
 			},
 			after: null,
+			cardinality: 'exactly-one',
 		},
 	],
 	scopedResources: null,

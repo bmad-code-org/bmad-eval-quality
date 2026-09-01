@@ -188,6 +188,7 @@ describe('AD-5 code walk — every coded shape stays representable', () => {
 				operationId: 'list-things',
 				inputBinding: { path: null, query: null, header: null, body: null },
 				after: 'list',
+				cardinality: 'exactly-one',
 			})
 		})
 	})
@@ -205,12 +206,14 @@ describe('AD-5 code walk — every coded shape stays representable', () => {
 						body: { name: { matcher: 'any' } },
 					},
 					after: null,
+					cardinality: 'exactly-one',
 				},
 				{
 					stepId: `read-${index + 1}`,
 					operationId: 'list-things',
 					inputBinding: { path: null, query: null, header: null, body: null },
 					after: `write-${index + 1}`,
+					cardinality: 'exactly-one',
 				},
 			]).flat()
 		})
@@ -223,6 +226,7 @@ describe('AD-5 code walk — every coded shape stays representable', () => {
 				operationId: 'list-things',
 				inputBinding: { path: null, query: null, header: null, body: null },
 				after: index === 0 ? null : `chain-${index}`,
+				cardinality: 'exactly-one',
 			}))
 		})
 	})

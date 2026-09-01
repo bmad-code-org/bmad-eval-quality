@@ -233,6 +233,7 @@ describe('compile: one reused negative mutation reaches each of the 26 wired fun
 					operationId: 'list-things',
 					inputBinding: { path: null, query: null, header: null, body: null },
 					after: 'list',
+					cardinality: 'exactly-one',
 				})
 			}),
 		)
@@ -255,12 +256,14 @@ describe('compile: one reused negative mutation reaches each of the 26 wired fun
 						operationId: 'list-things',
 						inputBinding: { path: null, query: null, header: null, body: null },
 						after: 'create',
+						cardinality: 'exactly-one',
 					},
 					{
 						stepId: 'extra-2',
 						operationId: 'list-things',
 						inputBinding: { path: null, query: null, header: null, body: null },
 						after: 'create',
+						cardinality: 'exactly-one',
 					},
 				]
 			}),
@@ -440,6 +443,7 @@ describe('compile: the Story 4.3 nested-chain fixture, through orchestration', (
 					operationId: 'list-things',
 					inputBinding: { path: null, query: null, header: null, body: null },
 					after: index === 0 ? 'list' : `chain-${index + 2}`,
+					cardinality: 'exactly-one',
 				}))
 				c.interactionPlan = [
 					c.interactionPlan[0],
@@ -458,6 +462,7 @@ describe('compile: the Story 4.3 nested-chain fixture, through orchestration', (
 			operationId: 'list-things',
 			inputBinding: { path: null, query: null, header: null, body: null },
 			after: index === 0 ? 'list' : `chain-${index + 2}`,
+			cardinality: 'exactly-one',
 		}))
 		contract.interactionPlan = [
 			contract.interactionPlan[0],
@@ -560,6 +565,7 @@ describe('compile: Story 4.3 graph behavior remains unchanged through orchestrat
 					operationId: 'list-things',
 					inputBinding: { path: null, query: null, header: null, body: null },
 					after: 'ghost-step-that-does-not-exist',
+					cardinality: 'exactly-one',
 				})
 			}),
 		).not.toThrow()
@@ -577,6 +583,7 @@ describe('compile: Story 4.3 graph behavior remains unchanged through orchestrat
 		operationId: 'list-things',
 		inputBinding: { path: null, query: null, header: null, body: null },
 		after,
+		cardinality: 'exactly-one' as const,
 	})
 	const appended = (extra: ReturnType<typeof step>[]) => (c: any) => {
 		c.interactionPlan = [...c.interactionPlan, ...extra]

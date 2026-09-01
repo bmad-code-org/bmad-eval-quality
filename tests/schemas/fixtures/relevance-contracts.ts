@@ -114,7 +114,7 @@ export const explicitlyEmptyContract = {
 
 /** every axis populated, so every relevance predicate fires. */
 export const populatedContract = {
-	schemaVersion: 1,
+	schemaVersion: 2,
 	contractId: 'populated-declarations',
 	parentDigest:
 		'sha256:0000000000000000000000000000000000000000000000000000000000000abc',
@@ -353,6 +353,7 @@ export const populatedContract = {
 				body: { name: { matcher: 'any' } },
 			},
 			after: null,
+			cardinality: 'exactly-one',
 		},
 		{
 			stepId: 'list',
@@ -364,6 +365,7 @@ export const populatedContract = {
 				body: null,
 			},
 			after: 'create',
+			cardinality: 'exactly-one',
 		},
 	],
 	scopedResources: [{ reference: 'seed-manifest', kind: 'fixture' }],

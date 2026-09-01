@@ -78,14 +78,14 @@ const pointerOf = (path: readonly (string | number)[]): string =>
 				.join('/')}`
 
 describe('the reject corpus, run against the published documents', () => {
-	// 44 against the Eval Contract plus 68 across the other eleven; a count
-	// drift here means a case was added on one side and not annotated. The 112
+	// 46 against the Eval Contract plus 72 across the other eleven; a count
+	// drift here means a case was added on one side and not annotated. The 118
 	// total is also pinned in differential.test.ts ("carries every hand-written
 	// reject case").
-	it('enumerates all 114 cases exactly once', () => {
-		expect(REJECT_CASES).toHaveLength(44)
-		expect(ARTIFACT_REJECT_CASES).toHaveLength(70)
-		expect(PUBLISHED_REJECT_CASES).toHaveLength(114)
+	it('enumerates all 118 cases exactly once', () => {
+		expect(REJECT_CASES).toHaveLength(46)
+		expect(ARTIFACT_REJECT_CASES).toHaveLength(72)
+		expect(PUBLISHED_REJECT_CASES).toHaveLength(118)
 		const ids = PUBLISHED_REJECT_CASES.map(
 			(rejectCase) => `${rejectCase.artifact}/${rejectCase.id}`,
 		)
@@ -124,7 +124,7 @@ describe('the reject corpus, run against the published documents', () => {
 			missing,
 			'parent-reporting cases with no discriminating params',
 		).toEqual([])
-		// nine today; a bare count would drift silently, so the set is derived
+		// eleven today; a bare count would drift silently, so the set is derived
 		expect(
 			PUBLISHED_REJECT_CASES.filter(
 				(rejectCase) => rejectCase.errorParams !== undefined,

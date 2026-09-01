@@ -205,12 +205,12 @@ describe('the exact serialisation (AC 3), asserted independently of the drift ch
 })
 
 describe('the ledger drives the injection, by stated address (AC 2)', () => {
-	// This 25/15 split is also pinned in differential.test.ts ("walks all
+	// This 25/16 split is also pinned in differential.test.ts ("walks all
 	// twenty-five inject entries") and arithmetically in
 	// constraint-ledger.test.ts; a ledger change updates all three together.
-	it('has twenty-five inject entries to act on, and fifteen not-expressible left alone', () => {
+	it('has twenty-five inject entries to act on, and sixteen not-expressible left alone', () => {
 		expect(INJECT_ENTRIES).toHaveLength(25)
-		expect(CONSTRAINT_LEDGER.length - INJECT_ENTRIES.length).toBe(15)
+		expect(CONSTRAINT_LEDGER.length - INJECT_ENTRIES.length).toBe(16)
 	})
 
 	it.each(INJECT_ENTRIES)(

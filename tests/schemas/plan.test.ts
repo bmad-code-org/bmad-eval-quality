@@ -3,6 +3,8 @@ import {
 	BindingValue,
 	InputBinding,
 	InteractionStep,
+	SELECTOR_CARDINALITIES,
+	SelectorCardinality,
 } from '../../src/core/schemas/plan.ts'
 
 const unbound = { path: null, query: null, header: null, body: null }
@@ -78,12 +80,31 @@ describe('the four-key binding container', () => {
 	})
 })
 
+describe('the declared selector cardinality', () => {
+	it('is the closed three-member set (AD-39, owed item 2)', () => {
+		expect(SELECTOR_CARDINALITIES).toEqual([
+			'exactly-one',
+			'at-most-one',
+			'any',
+		])
+	})
+
+	it.each(SELECTOR_CARDINALITIES)('accepts %s', (value) => {
+		expect(SelectorCardinality.safeParse(value).success).toBe(true)
+	})
+
+	it('rejects a value outside the three', () => {
+		expect(SelectorCardinality.safeParse('several').success).toBe(false)
+	})
+})
+
 describe('an interaction step', () => {
 	const step = {
 		stepId: 'read-back',
 		operationId: 'get-note',
 		inputBinding: { ...unbound, path: { id: { literal: 'n-1' } } },
 		after: 'write',
+		cardinality: 'exactly-one',
 	}
 
 	it('parses with a temporal clause', () => {
@@ -107,6 +128,22 @@ describe('an interaction step', () => {
 		const result = InteractionStep.safeParse({ ...step, stepId: 'read/back' })
 		expect(result.success).toBe(false)
 		expect(result.error?.issues[0]?.path).toEqual(['stepId'])
+	})
+
+	it('rejects an omitted cardinality: several matches is a named ambiguity condition, required per step', () => {
+		const { cardinality: _cardinality, ...withoutCardinality } = step
+		const result = InteractionStep.safeParse(withoutCardinality)
+		expect(result.success).toBe(false)
+		expect(result.error?.issues[0]?.path).toEqual(['cardinality'])
+	})
+
+	it('rejects a cardinality outside the three', () => {
+		const result = InteractionStep.safeParse({
+			...step,
+			cardinality: 'several',
+		})
+		expect(result.success).toBe(false)
+		expect(result.error?.issues[0]?.path).toEqual(['cardinality'])
 	})
 
 	// `nested-temporal-clause` is Epic 4's code, so the shape it fires on has to

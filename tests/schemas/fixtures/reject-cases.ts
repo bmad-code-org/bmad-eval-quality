@@ -384,6 +384,33 @@ export const REJECT_CASES: readonly RejectCase[] = [
 		instancePath: '/interactionPlan/0/inputBinding/body/name',
 	},
 	{
+		id: 'cardinality-absent',
+		constraint: 'a step declares its selector cardinality (AD-39, owed item 2)',
+		mutate: (contract) => {
+			delete contract.interactionPlan[0].cardinality
+		},
+		issuePath: ['interactionPlan', 0, 'cardinality'],
+		// A missing key on an enum member resolves `undefined` against the three
+		// values, so Zod reports `invalid_value` where a missing string reports
+		// `invalid_type` (the same trap `record-mode-absent` documents).
+		issueCode: 'invalid_value',
+		keyword: 'required',
+		instancePath: '/interactionPlan/0',
+		errorParams: { missingProperty: 'cardinality' },
+	},
+	{
+		id: 'cardinality-outside-the-three',
+		constraint:
+			'the closed cardinality set is exactly-one, at-most-one, and any',
+		mutate: (contract) => {
+			contract.interactionPlan[0].cardinality = 'many'
+		},
+		issuePath: ['interactionPlan', 0, 'cardinality'],
+		issueCode: 'invalid_value',
+		keyword: 'enum',
+		instancePath: '/interactionPlan/0/cardinality',
+	},
+	{
 		id: 'operator-arity-under',
 		constraint: 'covers-by-key takes exactly two operands',
 		mutate: (contract) => {

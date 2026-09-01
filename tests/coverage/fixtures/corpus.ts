@@ -298,6 +298,7 @@ const noTypeViolatingStep = variant('no-type-violating-step', {
 			body: { name: { matcher: 'any' } },
 		},
 		after: null,
+		cardinality: 'exactly-one',
 	}),
 })
 

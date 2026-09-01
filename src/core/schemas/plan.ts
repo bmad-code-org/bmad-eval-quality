@@ -52,6 +52,31 @@ export const InputBinding = z.strictObject({
 })
 
 /**
+ * AD-39's declared selector cardinality (owed item 2): what a step means when
+ * its selector matches more than one observation was not decided at the
+ * architecture layer, so a first-match scorer and a last-match scorer could
+ * bind different evidence. The contract now declares the rule per step.
+ * `several` under `exactly-one`/`at-most-one` is a named ambiguity condition;
+ * a reference function returns it as data. Routing that ambiguity to a
+ * verdict rung is later work. `any` is unrelated to
+ * `BindingValue`'s `{ matcher: 'any' }` above: same string, different field,
+ * no type-level collision. `ExpectedCardinality` (`interface.ts`) is a
+ * second, unrelated reuse of the word for AD-20's response-collection
+ * cardinality, and its `at-most` mode is a near-miss for `at-most-one` here;
+ * different type, different field, no collision, but easy to misread as the
+ * same declaration.
+ */
+export const SELECTOR_CARDINALITIES = [
+	'exactly-one',
+	'at-most-one',
+	'any',
+] as const
+
+export type SelectorCardinalityValue = (typeof SELECTOR_CARDINALITIES)[number]
+
+export const SelectorCardinality = z.enum(SELECTOR_CARDINALITIES)
+
+/**
  * AD-39: a step is a selector over observations the evaluator produced, never
  * an instruction. Its selection predicate is spelled as its two members, the
  * input binding and the temporal clause, directly on the step itself,
@@ -64,6 +89,9 @@ export const InteractionStep = z.strictObject({
 	inputBinding: InputBinding,
 	after: Identifier.nullable().describe(
 		"The temporal clause: the identifier of an earlier step, or `null`. That the named step carries no clause of its own is AD-39's one-level bound, which fires `nested-temporal-clause` at compile time and is deliberately not enforced here, so the code keeps a shape to fire on.",
+	),
+	cardinality: SelectorCardinality.describe(
+		"AD-39's declared selector cardinality (owed item 2): `exactly-one` or `at-most-one` when the step expects a single matching observation, `any` when several are legitimate. Several matches under `exactly-one`/`at-most-one` is the named ambiguity condition; a reference selection function returns it as data. Required rather than optional, which makes this a BREAKING `schemaVersion` bump under AD-11: adding an optional field is additive, and this field is not optional.",
 	),
 })
 

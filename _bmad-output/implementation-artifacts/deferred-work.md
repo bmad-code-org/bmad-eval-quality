@@ -110,4 +110,14 @@ the outcome and reasoning live (the source spec) may stay in the closure prose a
 closure on record here already does it, so a later reader is not left to guess what was once open.
 The rule is about the entry, not about erasing that something was once open.
 
-(No entries are currently open.)
+- source_spec: `7-2-a-monotonic-observation-sequence-and-declared-selector-cardinality.md`
+  summary: The published-schema census numbers (`CENSUS_BY_DOCUMENT`, `CENSUS_BY_KEYWORD`,
+    `CENSUS_TOTAL`, and the reject-case-length counters) are hand-maintained integer literals
+    duplicated across five test files, each cross-referencing the others in a comment; a shared
+    derived constant would remove the duplication.
+  evidence: Story 7.2's blind-hunter review layer confirmed the pattern spans
+    `tests/schemas/constraint-ledger.test.ts`, `publish.test.ts`, `differential.test.ts`,
+    `keyword-mutation.test.ts`, and `published-rejection.test.ts`. The pattern predates this story
+    (7.1's AC 7 already followed it) and this story only extended it by one more schema change, so
+    it is not this story's problem to fix, but every future schema change now has five places to
+    update in lockstep and the risk compounds with each one.

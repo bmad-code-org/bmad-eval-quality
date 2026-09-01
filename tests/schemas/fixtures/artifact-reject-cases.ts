@@ -382,6 +382,32 @@ export const ARTIFACT_REJECT_CASES: readonly ArtifactRejectCase[] = [
 		keyword: 'type',
 		instancePath: '/observations/0/responseHeaders',
 	},
+	{
+		id: 'record-sequence-absent',
+		artifact: 'sealed-run-record',
+		constraint:
+			'an observation carries a required sequence (ADR-006, owed item 2)',
+		mutate: (record) => {
+			delete record.observations[0].sequence
+		},
+		issuePath: ['observations', 0, 'sequence'],
+		issueCode: 'invalid_type',
+		keyword: 'required',
+		instancePath: '/observations/0',
+		errorParams: { missingProperty: 'sequence' },
+	},
+	{
+		id: 'record-sequence-not-positive',
+		artifact: 'sealed-run-record',
+		constraint: 'sequence is a positive integer',
+		mutate: (record) => {
+			record.observations[0].sequence = 0
+		},
+		issuePath: ['observations', 0, 'sequence'],
+		issueCode: 'too_small',
+		keyword: 'exclusiveMinimum',
+		instancePath: '/observations/0/sequence',
+	},
 
 	// ---- isolation-manifest -------------------------------------------------
 	{

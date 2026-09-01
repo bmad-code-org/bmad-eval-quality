@@ -1346,6 +1346,7 @@ describe('holes the implementation code review found', () => {
 					body: null,
 				},
 				after: 'list',
+				cardinality: 'exactly-one',
 			})
 			oracleNamed(mutant, 'O-006').check = {
 				op: 'containment',

@@ -64,6 +64,16 @@ export function evidenceOf(
 	const { body } = projected
 	return {
 		observationId: projected.legId,
+		// A synthetic, single-observation shape built fresh per leg and never
+		// collected alongside a sibling: pre-flight resolves one leg's witness
+		// relation at a time, so the schema's ordering and uniqueness concerns
+		// (owed item 2) have nothing to apply to here. Constant, since no reader
+		// of this value cares which leg it was. This stops being safe if
+		// pre-flight ever needs to assemble multiple legs' observations
+		// together: AD-40 already names such a future need, pair-defect signing
+		// across the monotonic sequence of owed item 2, so revisit this
+		// constant then.
+		sequence: 1,
 		operationId: projected.operationId,
 		provenance: 'baseline',
 		callInputs: callInputsOf(inputs),
