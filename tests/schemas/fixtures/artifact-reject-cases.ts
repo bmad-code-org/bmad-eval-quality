@@ -593,6 +593,121 @@ export const ARTIFACT_REJECT_CASES: readonly ArtifactRejectCase[] = [
 	},
 
 	{
+		id: 'probe-qualification-absent',
+		artifact: 'probe',
+		constraint:
+			"AD-9's qualification record is required on every probe, canaries included",
+		mutate: (probe) => {
+			delete probe.qualification
+		},
+		issuePath: ['qualification'],
+		issueCode: 'invalid_type',
+		keyword: 'required',
+		instancePath: '',
+		errorParams: { missingProperty: 'qualification' },
+	},
+	{
+		id: 'probe-qualification-route-outside-the-five',
+		artifact: 'probe',
+		constraint: "a qualification route is one of AD-9's five",
+		mutate: (probe) => {
+			probe.qualification.route = 'anecdotal'
+		},
+		issuePath: ['qualification', 'route'],
+		issueCode: 'invalid_union',
+		keyword: 'const',
+		instancePath: '/qualification/route',
+	},
+	{
+		id: 'probe-signature-selector-captured-binding',
+		artifact: 'probe',
+		constraint:
+			"a defect signature's selector admits literal and matcher bindings only; `{ captured }` names a step of one contract's plan and resolves nothing against another",
+		mutate: (probe) => {
+			probe.defectSignature.condition.selector.inputBinding.body.title = {
+				captured: '/interactions/write/response-body/id',
+			}
+		},
+		issuePath: [
+			'defectSignature',
+			'condition',
+			'selector',
+			'inputBinding',
+			'body',
+			'title',
+		],
+		issueCode: 'invalid_union',
+		keyword: 'anyOf',
+		instancePath: '/defectSignature/condition/selector/inputBinding/body/title',
+	},
+	{
+		id: 'probe-signature-selector-principal-binding',
+		artifact: 'probe',
+		constraint:
+			"a defect signature's selector admits literal and matcher bindings only; `{ principal }` names an entry of one contract's test data",
+		mutate: (probe) => {
+			probe.defectSignature.condition.selector.inputBinding.body.title = {
+				principal: 'owner',
+			}
+		},
+		issuePath: [
+			'defectSignature',
+			'condition',
+			'selector',
+			'inputBinding',
+			'body',
+			'title',
+		],
+		issueCode: 'invalid_union',
+		keyword: 'anyOf',
+		instancePath: '/defectSignature/condition/selector/inputBinding/body/title',
+	},
+	{
+		id: 'probe-signature-selector-channel-empty',
+		artifact: 'probe',
+		constraint:
+			'a declared selector channel names at least one parameter; an unbound channel is null',
+		mutate: (probe) => {
+			probe.defectSignature.condition.selector.inputBinding.body = {}
+		},
+		issuePath: [
+			'defectSignature',
+			'condition',
+			'selector',
+			'inputBinding',
+			'body',
+		],
+		issueCode: 'custom',
+		keyword: 'minProperties',
+		instancePath: '/defectSignature/condition/selector/inputBinding/body',
+	},
+	{
+		id: 'probe-signature-channel-outside-the-seven',
+		artifact: 'probe',
+		constraint: "an observable channel is one of AD-26's closed seven",
+		mutate: (probe) => {
+			probe.defectSignature.observableChannel = 'response-trailer'
+		},
+		issuePath: ['defectSignature', 'observableChannel'],
+		issueCode: 'invalid_value',
+		keyword: 'enum',
+		instancePath: '/defectSignature/observableChannel',
+	},
+	{
+		id: 'probe-signature-path-template-colon-spelled',
+		artifact: 'probe',
+		constraint:
+			'a path template spells parameters in braces; AD-40 compares templates as literal segments plus parameter positions and that comparison is not implementable against two syntaxes',
+		mutate: (probe) => {
+			probe.defectSignature.pathTemplate = '/notes/:id'
+		},
+		issuePath: ['defectSignature', 'pathTemplate'],
+		issueCode: 'invalid_format',
+		keyword: 'pattern',
+		instancePath: '/defectSignature/pathTemplate',
+	},
+
+	{
 		id: 'probe-expected-clean-outside-the-two',
 		artifact: 'probe',
 		constraint:

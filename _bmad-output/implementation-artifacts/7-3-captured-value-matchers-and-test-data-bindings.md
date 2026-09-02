@@ -2,7 +2,7 @@
 title: 'Captured-value matchers and test-data bindings'
 type: 'feature'
 created: '2026-09-01'
-status: 'in-progress'
+status: 'done'
 baseline_commit: '0d6d5b09e0afc5a695350de585418f7efba15d2c'
 review_loop_iteration: 3
 context: [

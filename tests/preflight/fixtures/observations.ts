@@ -51,6 +51,16 @@ export const inputsOf = (
 const digestOf = (ordinal: number): string =>
 	`sha256:${ordinal.toString(16).padStart(64, '0')}`
 
+// The recorded evidence every AD-9 qualification route rests on. One reference
+// serves all of them here: these fixtures exercise pre-flight, not the corpus
+// gate, so the evidence only has to parse.
+const probeEvidenceReference = {
+	storage: 'public' as const,
+	path: 'evidence/preflight-qualification.jsonl',
+	privateRef: null,
+	digest: digestOf(5),
+}
+
 const contractLiteral = {
 	schemaVersion: 1,
 	contractId: 'preflight-fixture',
@@ -342,7 +352,9 @@ export const operationNamed = (
 }
 
 const probeCommon = {
-	schemaVersion: 1,
+	// Version 2: AD-9's qualification record and AD-40's defect signature both
+	// landed as required fields.
+	schemaVersion: 2,
 	parentDigest: null,
 	revisionCount: 0,
 	probeClass: 'defect',
@@ -372,6 +384,50 @@ export const seededProbe: Probe = Probe.parse({
 	...probeCommon,
 	probeId: 'P-001',
 	expectedClean: false,
+	qualification: {
+		route: 'controlled-mutation',
+		mutationSource: 'hand-authored mutation of the list handler',
+		mutationOperator: 'constant-substitution',
+		targetArtifact: probeEvidenceReference,
+		expectedObservableFailure: 'every returned row reports broken',
+		baselinePassEvidence: probeEvidenceReference,
+		mutatedFailEvidence: probeEvidenceReference,
+		rollbackVerified: true,
+	},
+	defectSignature: {
+		interfaceKind: 'api',
+		method: 'GET',
+		pathTemplate: '/things',
+		observableChannel: 'response-body',
+		condition: {
+			selector: {
+				inputBinding: {
+					path: null,
+					query: { limit: { matcher: 'any' } },
+					header: null,
+					body: null,
+				},
+			},
+			predicate: {
+				op: 'all',
+				operands: [
+					{
+						op: 'equality',
+						operands: [
+							{ pointer: '/interactions/observed/response-status' },
+							{ literal: 200 },
+						],
+					},
+					{
+						op: 'existence',
+						operands: [
+							{ pointer: '/interactions/observed/response-body/items' },
+						],
+					},
+				],
+			},
+		},
+	},
 	defects: [
 		{
 			defectId: 'D-001',
@@ -396,6 +452,13 @@ export const cleanControlProbe: Probe = Probe.parse({
 	probeId: 'P-002',
 	probeClass: 'zero-action',
 	expectedClean: true,
+	qualification: {
+		route: 'clean-control',
+		baselinePassEvidence: probeEvidenceReference,
+		revisionCommitDigest: digestOf(4),
+		noKnownDefectStatement:
+			'The things interface carried no known defect at this revision.',
+	},
 	rationale: 'The unmutated implementation, carried as a known-clean control.',
 	defects: [],
 })

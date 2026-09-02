@@ -3,6 +3,7 @@ import {
 	INTERCHANGE_ARTIFACTS,
 	type InterchangeArtifactKey,
 } from './artifact.ts'
+import { PROBE_BINDING_CHANNEL_NON_EMPTY } from './defect-signature.ts'
 import { TUPLE_ARITY } from './expression.ts'
 import { BINDING_CHANNEL_NON_EMPTY } from './plan.ts'
 import type { JsonValue } from './primitives.ts'
@@ -231,6 +232,36 @@ export const CONSTRAINT_LEDGER: readonly ConstraintLedgerEntry[] = [
 			kind: 'not-expressible',
 			reason:
 				"Uniqueness of a nested field across sibling array items has no draft-2020-12 keyword: `uniqueItems` compares whole items structurally and nothing in the dialect can name one property path and require distinctness on it alone. Unlike the lineage biconditional above, this constraint IS enforced by Zod (a `.refine()` on `observations`), because owed item 2 requires it schema-enforced and the AD-13 differential corpus never manufactures two observations sharing a `sequence`: the generated mutant walk is keyword-driven (it perturbs one occurrence at a time) and never clones or duplicates an `observations` array item, since that field carries no `maxItems` for the generator's clone-to-exceed step to fire against. The gap is therefore real but inert against the corpus this repository generates, and is stated in `Observation.sequence`'s own description for a non-Zod consumer to reimplement. This safety argument holds only while `observations` carries no `maxItems`: adding one later starts the clone-to-exceed step firing against this field, and this entry must be re-verified then.",
+		},
+	},
+	{
+		id: 'defect-signature-required',
+		location: { kind: 'root', artifact: 'probe' },
+		branch: null,
+		field: null,
+		statement:
+			'Every probe that is not a known-clean control carries an AD-40 defect signature, except a probe whose class is `canary`, which carries `null`. AD-9\'s "an unqualified probe cannot enter a sealed set" and AD-9\'s route-per-class pairing are the same kind of rule and are enforced beside it.',
+		disposition: {
+			kind: 'not-expressible',
+			reason:
+				'A union-level `superRefine` is the only Zod spelling, and a refinement exports byte-identically, so Zod would reject a signature-less non-canary probe that ajv accepts. Unlike the observation-sequence entry above, that disagreement is not inert against the corpus this repository generates: the mutant generator manufactures the witness trivially from the accept fixture by nulling one field, and the published-schema differential check exists to fail on exactly such a disagreement. So the schema admits the shape and `qualifyProbe` (`core/score/qualification.ts`) returns a reason code, following `compile/interface-inventory.ts`, which put the declared-principal check in the compiler for the same reason. This argument holds only while the published export drops refinements: a Zod release that emitted a union-level refinement into the document, or a decision to inject a conditional here, makes the gate-side placement a choice rather than a necessity, and this entry must be re-verified then.',
+		},
+	},
+	{
+		id: PROBE_BINDING_CHANNEL_NON_EMPTY,
+		location: {
+			kind: 'definition',
+			artifact: 'probe',
+			name: 'ProbeInputBindingChannel',
+		},
+		branch: null,
+		field: null,
+		statement:
+			"A declared channel of a defect signature's selector names at least one parameter. An unbound channel is `null`, never `{}`. Inject at the definition root, exactly as the contract-side channel does: `minProperties` is ignored on a non-object instance, so it constrains the object branch and leaves the null branch alone.",
+		disposition: {
+			kind: 'inject',
+			dialect: 'draft-2020-12',
+			keywords: { minProperties: 1 },
 		},
 	},
 ]

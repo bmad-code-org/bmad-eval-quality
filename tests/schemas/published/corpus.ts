@@ -8,6 +8,7 @@ import type { InterchangeArtifactKey } from '../../../src/core/schemas/artifact.
 import {
 	ARTIFACT_ACCEPT_FIXTURES,
 	PROBE_CLASS_FIXTURES,
+	QUALIFICATION_ROUTE_FIXTURES,
 	UNION_BRANCH_FIXTURES,
 } from '../fixtures/artifact-fixtures.ts'
 import { ARTIFACT_REJECT_CASES } from '../fixtures/artifact-reject-cases.ts'
@@ -31,9 +32,16 @@ export const seedsOf = (key: InterchangeArtifactKey): readonly Seed[] => {
 	if (key === 'eval-contract')
 		for (const { name, contract } of RELEVANCE_CONTRACTS)
 			seeds.push({ id: `relevance/${name}`, value: contract })
-	if (key === 'probe')
+	if (key === 'probe') {
 		for (const fixture of PROBE_CLASS_FIXTURES)
 			seeds.push({ id: fixture.id, value: fixture.value })
+		// A second probe list, because AD-9's five routes do not sit one per
+		// class. Named here rather than left to the class list: a keyword
+		// reachable only through the fifth route's branch has no seed to flip
+		// otherwise, and the mutation sweep reports it as unprotected.
+		for (const fixture of QUALIFICATION_ROUTE_FIXTURES)
+			seeds.push({ id: fixture.id, value: fixture.value })
+	}
 	for (const fixture of UNION_BRANCH_FIXTURES)
 		if (fixture.artifact === key)
 			seeds.push({ id: fixture.id, value: fixture.value })

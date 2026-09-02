@@ -199,7 +199,10 @@ export function resolveCapturedBindings(
 // here rather than reached for in `core/evaluate`'s operator set: that set
 // resolves operands inside an oracle tree, and a binding filter is not an
 // oracle.
-function deepEquals(a: ResolvedValue, b: ResolvedValue): boolean {
+// Exported so the AD-40 probe-side selector follows these rules rather than
+// re-deriving them: two copies of a deep comparison that drift flip a witness
+// match silently.
+export function deepEquals(a: ResolvedValue, b: ResolvedValue): boolean {
 	if (a === ABSENT || b === ABSENT) return false
 	if (a === b) return true
 	if (Array.isArray(a) || Array.isArray(b)) {
@@ -221,7 +224,7 @@ function deepEquals(a: ResolvedValue, b: ResolvedValue): boolean {
 	)
 }
 
-function jsonTypeOf(value: JsonValue): string {
+export function jsonTypeOf(value: JsonValue): string {
 	if (value === null) return 'null'
 	if (Array.isArray(value)) return 'array'
 	return typeof value

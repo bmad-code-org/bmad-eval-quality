@@ -236,8 +236,8 @@ describe('the development corpus', () => {
 				/qualified-probe\s+dimensions\s+are\s+absent/,
 			],
 			[
-				'Owed items 1 and 7 are the reason',
-				/Owed\s+item 1[\s\S]*Owed\s+item 7/,
+				'Owed item 1 alone is the reason the probe dimensions are absent',
+				/qualified-probe\s+dimensions\s+are\s+absent[\s\S]*trial\s+reducer[\s\S]*Owed\s+item 1/,
 			],
 			[
 				"three of the end-to-end example's artifacts are absent, and hand-filling is forbidden",

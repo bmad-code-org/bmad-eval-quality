@@ -23,10 +23,11 @@ contract's strength is a separate thing this package does not ship.
 ## What is absent, and why
 
 **The qualified-probe dimensions are absent.** AD-38 asks for at least one qualified probe per
-probe class and per `expectedClean` state. Qualifying a probe needs a trial reducer, which Owed
-item 1 records as not yet built, and a defect signature for the probe, which Owed item 7 records as
-missing for the only probe this repository names. Both dimensions arrive with the stage that adds
-them.
+probe class and per `expectedClean` state. The probe schema now carries both halves qualification
+needs: AD-9's per-route qualification record and AD-40's machine-readable defect signature, with a
+corpus gate that admits a probe only when the two agree with its class. What is still missing is the
+trial reducer, which Owed item 1 records as not yet built, so a probe cannot yet be scored once
+admitted. The dimension arrives with the stage that adds it.
 
 **Three of the four artifacts in AD-38's end-to-end example are absent.** The example there is a
 sealed brief, a conforming sealed run record, an isolation manifest, and an evaluator

@@ -249,6 +249,11 @@ describe('the Consistency Conventions, extended rather than restarted', () => {
 			probe: [
 				'/$defs/WitnessInputs/properties/header',
 				'/$defs/Expression/oneOf/9/properties/descriptor/properties/types',
+				// AD-40's defect-signature selector, one address rather than
+				// eight: the channel carries its own `.meta({ id })` so the
+				// constraint ledger has somewhere to inject its minimum, which is
+				// the same treatment `InputBindingChannel` gets above.
+				'/$defs/ProbeInputBindingChannel/anyOf/0',
 			],
 		}
 

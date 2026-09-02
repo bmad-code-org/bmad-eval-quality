@@ -16,16 +16,29 @@ import {
 // lying Proxy could answer the emit-time read differently than the
 // validation read.
 export function canonicalize(value: unknown, artifactPath: string): Uint8Array {
-	return new TextEncoder().encode(
-		serialize(value, artifactPath, '$', new Set(), 0),
-	)
+	return new TextEncoder().encode(serialize(value, artifactPath))
 }
 
 const fault = (artifactPath: string, detail: string): never => {
 	throw new RuntimeFault('non-canonicalizable-value', artifactPath, detail)
 }
 
-function serialize(
+/**
+ * The RFC 8785 string form, exported because AD-40's quotation audit projects a
+ * structured evidence channel to text and asks for the quoted evidence as an
+ * exact substring of it. `canonicalize` returns a `Uint8Array` and `core/` may
+ * import no Node builtin, so decoding those bytes back is not available; the
+ * string is what already exists one call in.
+ *
+ * Two parameters, the same two `canonicalize` takes. The traversal state is
+ * seeded here and reachable nowhere else, so no caller can hand in a primed
+ * ancestor set or a depth that starts the AD-36 nesting guard part-spent.
+ */
+export function serialize(value: unknown, artifactPath: string): string {
+	return serializeNode(value, artifactPath, '$', new Set(), 0)
+}
+
+function serializeNode(
 	value: unknown,
 	artifactPath: string,
 	location: string,
@@ -107,7 +120,7 @@ function serialize(
 		}
 		rendered = `[${elements
 			.map((element, index) =>
-				serialize(
+				serializeNode(
 					element,
 					artifactPath,
 					`${location}[${index}]`,
@@ -151,7 +164,7 @@ function serialize(
 		rendered = `{${properties
 			.map(
 				([key, entry]) =>
-					`${JSON.stringify(key)}:${serialize(entry, artifactPath, `${location}.${key}`, ancestors, depth + 1)}`,
+					`${JSON.stringify(key)}:${serializeNode(entry, artifactPath, `${location}.${key}`, ancestors, depth + 1)}`,
 			)
 			.join(',')}}`
 	}

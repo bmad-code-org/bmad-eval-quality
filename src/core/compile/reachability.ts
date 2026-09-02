@@ -11,6 +11,7 @@ import { ARRAY_INDEX_PATTERN } from '../evaluate/evidence-resolution.ts'
 import { StructuralFailure } from '../failure-codes.ts'
 import type { EvalContract } from '../schemas/eval-contract.ts'
 import type { Expression, Operand } from '../schemas/expression.ts'
+import type { Operation } from '../schemas/interface.ts'
 import { JsonTypeName } from '../schemas/primitives.ts'
 import {
 	buildPlanIndex,
@@ -125,6 +126,55 @@ export function checkBoundElementScope(contract: EvalContract): void {
 	})
 }
 
+/** `checkBoundElementScope` over one bare `Expression`. */
+export function checkExpressionBoundElementScope(
+	expression: Expression,
+	artifactPath: string,
+): void {
+	visitExpression(expression, '', false, (site) => {
+		if (site.pointer.startsWith('@') && !site.insideQuantifier) {
+			throw new StructuralFailure(
+				'malformed-operator-expression',
+				`${artifactPath}${site.path}`,
+				`bound-element pointer "${site.pointer}" appears outside any quantifier's predicate; "@/" binds only inside a quantifier (AD-26)`,
+			)
+		}
+	})
+}
+
+/**
+ * Visits every `{ pointer }` operand of one bare `Expression`, which a
+ * probe-side legality pass needs for the rules a contract has no equivalent of:
+ * that every pointer roots at the reserved step identifier, and which evidence
+ * channels the condition actually names.
+ */
+export function forEachExpressionPointer(
+	expression: Expression,
+	visit: (pointer: string, path: string) => void,
+): void {
+	visitExpression(expression, '', false, (site) => {
+		visit(site.pointer, site.path)
+	})
+}
+
+/** `checkEvidenceReachability` over one bare `Expression` and one operation. */
+export function checkExpressionEvidenceReachability(
+	expression: Expression,
+	artifactPath: string,
+	operation: Operation,
+): void {
+	visitExpression(expression, '', false, (site) => {
+		const result = evaluateReachabilityAgainstOperation(site.pointer, operation)
+		if (!result.reachable) {
+			throw new StructuralFailure(
+				'unreachable-check-evidence',
+				`${artifactPath}${site.path}`,
+				`"${site.pointer}" ${result.reason}`,
+			)
+		}
+	})
+}
+
 // ---- unreachable-check-evidence ------------------------------------------
 
 type ReachabilityResult =
@@ -162,7 +212,11 @@ function descendsIntoDeclaredScalar(
 
 /**
  * Non-throwing core that `checkEvidenceReachability` wraps; also called
- * directly by tests.
+ * directly by tests. The two lines below are the whole of what ties this to a
+ * declared interaction plan; everything past them reads the operation alone,
+ * which is what `evaluateReachabilityAgainstOperation` exposes for a probe-side
+ * condition, whose one step identifier is reserved and resolves to the
+ * signature's home operation with no plan in sight.
  */
 export function evaluatePointerReachability(
 	pointer: string,
@@ -183,6 +237,22 @@ export function evaluatePointerReachability(
 			`names step "${target.stepId}", which names operation "${step.operationId}", not declared by any permitted interface`,
 		)
 	}
+	return evaluateReachabilityAgainstOperation(pointer, operation)
+}
+
+/**
+ * The same rules, against an operation the caller already resolved. Without
+ * this check a probe-side condition addressing an undeclared channel or key
+ * resolves absent, every comparison over it resolves `false`, and the probe
+ * reports its defect as never triggered — a silently passing run on a signature
+ * that was never writable.
+ */
+function evaluateReachabilityAgainstOperation(
+	pointer: string,
+	operation: Operation,
+): ReachabilityResult {
+	if (pointer.startsWith('@')) return reachable()
+	const target = parseEvidenceTarget(pointer)
 
 	if (target.channel === 'stdout' || target.channel === 'stderr') {
 		// stdout/stderr are always bare strings. A non-empty tail proves the
