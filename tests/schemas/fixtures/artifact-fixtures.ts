@@ -704,7 +704,7 @@ export const scoringPolicyFixture: ScoringPolicy = {
 }
 
 const evidenceCommon = {
-	schemaVersion: 1,
+	schemaVersion: 2,
 	parentDigest: null,
 	revisionCount: 0,
 	runId: 'spike-run-0001',
@@ -715,6 +715,12 @@ const evidenceCommon = {
 		fixtureDigest: digestOf(17),
 		evaluatorConfigurationDigest: EVALUATOR_CONFIGURATION_DIGEST,
 		scoringPolicyDigest: digestOf(20),
+		// Matches `sealedRunRecordFixture.mode` (also `contract-scoring`) and
+		// `contractScoringEvidenceArtifact`'s own branch discriminant below.
+		// `productionEvidenceArtifact` overrides this nested field to
+		// `'production'`, because the schema now rejects the two mode-carrying
+		// fields on one artifact disagreeing.
+		mode: 'contract-scoring',
 	},
 	comparabilityKey: digestOf(21),
 	excludedProbeIds: [] as string[],
@@ -726,6 +732,7 @@ const evidenceCommon = {
 		'corpusDigest',
 		'fixtureDigest',
 		'evaluatorConfigurationDigest',
+		'mode',
 	],
 	trials: {
 		declaredMinimum: 3,
@@ -813,6 +820,14 @@ const evidenceCommon = {
 // agreement itself is unenforced-in-v0.
 export const productionEvidenceArtifact: EvidenceArtifact = {
 	...evidenceCommon,
+	// `evidenceCommon.scoringVersionInputs.mode` is `'contract-scoring'`, which
+	// agrees with `contractScoringEvidenceArtifact` below but not with this
+	// branch's own `mode`: the schema now rejects the two disagreeing on one
+	// artifact, so this branch overrides the nested input to match.
+	scoringVersionInputs: {
+		...evidenceCommon.scoringVersionInputs,
+		mode: 'production',
+	},
 	exitCode: 2,
 	mode: 'production',
 	productionVerdict: 'FAIL',

@@ -37,7 +37,7 @@
         "scoringVersion": {
           "type": "string",
           "pattern": "^sha256:[0-9a-f]{64}$",
-          "description": "AD-11: computed by the scorer over the five named inputs below and never caller-supplied."
+          "description": "AD-11: computed by the scorer over the six named inputs below and never caller-supplied."
         },
         "scoringVersionInputs": {
           "type": "object",
@@ -66,6 +66,11 @@
               "type": "string",
               "pattern": "^sha256:[0-9a-f]{64}$",
               "description": "AD-27 digest: \"sha256:\" plus 64 lowercase hexadecimal characters."
+            },
+            "mode": {
+              "type": "string",
+              "const": "production",
+              "description": "Owed item 4's identity clause: mode enters AD-11's scoring version, superseding AD-11's five-field sentence. Read from the sealed run record, never re-derived, so two runs scored under one mode never collide with a version computed for the other."
             }
           },
           "required": [
@@ -73,7 +78,8 @@
             "corpusDigest",
             "fixtureDigest",
             "evaluatorConfigurationDigest",
-            "scoringPolicyDigest"
+            "scoringPolicyDigest",
+            "mode"
           ],
           "additionalProperties": false
         },
@@ -113,10 +119,11 @@
               "corpusDigest",
               "fixtureDigest",
               "evaluatorConfigurationDigest",
-              "scoringPolicyDigest"
+              "scoringPolicyDigest",
+              "mode"
             ]
           },
-          "description": "Which of the five scoring-version inputs were caller-attested rather than computed by this package. An enum over the five key names rather than free strings, because AD-32 requires the artifact to state *which* inputs were attested and an unconstrained string cannot be checked against anything. AD-11 names three of the five as caller-attested; the enum admits any subset so a stricter or looser integration stays representable."
+          "description": "Which of the six scoring-version inputs were caller-attested rather than computed by this package. An enum over the six key names rather than free strings, because AD-32 requires the artifact to state *which* inputs were attested and an unconstrained string cannot be checked against anything. AD-11 names three of the six as caller-attested; the enum admits any subset so a stricter or looser integration stays representable."
         },
         "trials": {
           "type": "object",
@@ -610,7 +617,7 @@
         "scoringVersion": {
           "type": "string",
           "pattern": "^sha256:[0-9a-f]{64}$",
-          "description": "AD-11: computed by the scorer over the five named inputs below and never caller-supplied."
+          "description": "AD-11: computed by the scorer over the six named inputs below and never caller-supplied."
         },
         "scoringVersionInputs": {
           "type": "object",
@@ -639,6 +646,11 @@
               "type": "string",
               "pattern": "^sha256:[0-9a-f]{64}$",
               "description": "AD-27 digest: \"sha256:\" plus 64 lowercase hexadecimal characters."
+            },
+            "mode": {
+              "type": "string",
+              "const": "contract-scoring",
+              "description": "Owed item 4's identity clause: mode enters AD-11's scoring version, superseding AD-11's five-field sentence. Read from the sealed run record, never re-derived, so two runs scored under one mode never collide with a version computed for the other."
             }
           },
           "required": [
@@ -646,7 +658,8 @@
             "corpusDigest",
             "fixtureDigest",
             "evaluatorConfigurationDigest",
-            "scoringPolicyDigest"
+            "scoringPolicyDigest",
+            "mode"
           ],
           "additionalProperties": false
         },
@@ -686,10 +699,11 @@
               "corpusDigest",
               "fixtureDigest",
               "evaluatorConfigurationDigest",
-              "scoringPolicyDigest"
+              "scoringPolicyDigest",
+              "mode"
             ]
           },
-          "description": "Which of the five scoring-version inputs were caller-attested rather than computed by this package. An enum over the five key names rather than free strings, because AD-32 requires the artifact to state *which* inputs were attested and an unconstrained string cannot be checked against anything. AD-11 names three of the five as caller-attested; the enum admits any subset so a stricter or looser integration stays representable."
+          "description": "Which of the six scoring-version inputs were caller-attested rather than computed by this package. An enum over the six key names rather than free strings, because AD-32 requires the artifact to state *which* inputs were attested and an unconstrained string cannot be checked against anything. AD-11 names three of the six as caller-attested; the enum admits any subset so a stricter or looser integration stays representable."
         },
         "trials": {
           "type": "object",
@@ -1165,7 +1179,7 @@
       "description": "Contract-scoring mode: the verdict is about the contract, and the evaluator's recommendation about the system is recorded beside it rather than promoted."
     }
   ],
-  "description": "The scored output, owned by `emit` per AD-24, with no prior art; `score` produces the outcome and verdict values it serializes. The two modes are separate branches because AD-21 requires that the production verdict and the contract verdict never share a field. Mode is no longer first stated here: the Sealed Run Record now carries a required `mode`, where AD-21's \"fixed before ingest\" puts it, so this artifact restates a mode the sealed record already fixed and is never the source. Owed item 4's remaining clauses stay open, namely mode entering AD-11's identity inputs, the two assessment input types with their own ladders, and cross-mode comparison rejected. The cost is named rather than hidden: nothing yet rejects a `production` record paired with a `contract-scoring` artifact or the reverse. That is a cross-artifact agreement under AD-32, and it has no home today because `score` and `emit` both carry `module: null` in the stage table, so no code holds both artifacts at once. It lands with the two assessment input types, which is where a producer first reads mode off the record to choose a ladder.",
+  "description": "The scored output, owned by `emit` per AD-24, with no prior art; `score` produces the outcome and verdict values it serializes. The two modes are separate branches because AD-21 requires that the production verdict and the contract verdict never share a field. Mode is no longer first stated here: the Sealed Run Record now carries a required `mode`, where AD-21's \"fixed before ingest\" puts it, so this artifact restates a mode the sealed record already fixed and is never the source. Owed item 4 is closed as of this schemaVersion: `mode` is `ScoringVersionInputs`'s sixth field, `core/score/ladder.ts` carries `ProductionAssessment`/`ContractAssessment` and their own total ladders, and `core/score/mode-agreement.ts` rejects a `production` record paired with a `contract-scoring` artifact in both directions as an AD-32 cross-artifact disagreement. That check is a hand-written function at the assembly boundary rather than a schema refinement, since no single schema sees both artifacts, and it has no caller yet because `score` and `emit` both carry `module: null` in the stage table.",
   "$defs": {
     "CheckResolution": {
       "description": "One node of an oracle's `check` tree as it resolved. AD-4's resolution is three-valued rather than two, and the introduction vocabulary has exactly one member because AD-4 closes the introduction set at one: an empty collection. `null` where the resolution is not `insufficient-evidence`. A leaf carries an empty `children` array.",

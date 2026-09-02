@@ -1419,9 +1419,10 @@ describe('the conjuncts the fixture set cannot reach', () => {
 // The trial-set reducer groups all twelve states into three vote categories,
 // so it legitimately names every one of them. The dominance comparator's
 // severity-floor override reads exactly one state literal, `'caught'`, and
-// names no other member of the closed twelve. Neither becomes a second
-// assigner: each only classifies or compares a state `resolveOutcome`
-// already assigned.
+// names no other member of the closed twelve. The AD-21 ladder classifies its
+// two behavioural-failure and invalidating-state groups plus the `unreached`
+// evidence condition, eight of the twelve. None becomes a second assigner:
+// each only classifies or compares a state `resolveOutcome` already assigned.
 const ALWAYS_NAMED = [
 	'src/core/schemas/evidence-artifact.ts',
 	'src/core/score/outcome.ts',
@@ -1430,11 +1431,27 @@ const ALWAYS_NAMED = [
 
 const STRENGTH_NAMED_STATES = ['caught']
 
+const LADDER_NAMED_STATES = [
+	'missed',
+	'abstained',
+	'bypassed',
+	'false-positive',
+	'unreached',
+	'oracle-error',
+	'judge-error',
+	'infrastructure-error',
+]
+
 const expectedNamingFilesFor = (state: string): readonly string[] =>
-	(STRENGTH_NAMED_STATES.includes(state)
-		? [...ALWAYS_NAMED, 'src/core/score/strength.ts']
-		: ALWAYS_NAMED
-	)
+	[
+		...ALWAYS_NAMED,
+		...(STRENGTH_NAMED_STATES.includes(state)
+			? ['src/core/score/strength.ts']
+			: []),
+		...(LADDER_NAMED_STATES.includes(state)
+			? ['src/core/score/ladder.ts']
+			: []),
+	]
 		.slice()
 		.sort()
 

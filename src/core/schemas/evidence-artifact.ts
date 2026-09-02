@@ -9,7 +9,11 @@ import {
 	OracleId,
 	ProbeId,
 } from './primitives.ts'
-import { OracleDispositionValue } from './sealed-run-record.ts'
+import {
+	OracleDispositionValue,
+	RunMode,
+	type RunModeValue,
+} from './sealed-run-record.ts'
 import { EvaluatorRecommendation, Verdict } from './verdict.ts'
 
 /**
@@ -73,12 +77,14 @@ export const CheckResolution: z.ZodType<CheckResolutionValue> = z
 	})
 
 /**
- * AD-11's five named inputs, transcribed so a reader can recompute the
- * digest and see what was compared (AD-8's "by digest and opaque reference,
- * never by content or path"). Named object rather than a concatenated tuple:
+ * AD-11's identity inputs, transcribed so a reader can recompute the digest
+ * and see what was compared (AD-8's "by digest and opaque reference, never
+ * by content or path"). Named object rather than a concatenated tuple:
  * revision 1 let two conforming scorers compute different versions from
  * identical inputs if they hashed a different ordering. The scorer computes
- * the scoring version over this shape.
+ * the scoring version over this shape. Six now, not five: `mode` is owed
+ * item 4's identity clause, superseding AD-11's original five-field
+ * sentence.
  */
 export const SCORING_VERSION_INPUT_NAMES = [
 	'contractSchemaVersion',
@@ -86,9 +92,13 @@ export const SCORING_VERSION_INPUT_NAMES = [
 	'fixtureDigest',
 	'evaluatorConfigurationDigest',
 	'scoringPolicyDigest',
+	'mode',
 ] as const
 
 export const ScoringVersionInputName = z.enum(SCORING_VERSION_INPUT_NAMES)
+
+const SCORING_VERSION_MODE_DESCRIPTION =
+	"Owed item 4's identity clause: mode enters AD-11's scoring version, superseding AD-11's five-field sentence. Read from the sealed run record, never re-derived, so two runs scored under one mode never collide with a version computed for the other."
 
 export const ScoringVersionInputs = z.strictObject({
 	contractSchemaVersion: z.int().min(1),
@@ -96,7 +106,25 @@ export const ScoringVersionInputs = z.strictObject({
 	fixtureDigest: Digest,
 	evaluatorConfigurationDigest: Digest,
 	scoringPolicyDigest: Digest,
+	mode: RunMode.describe(SCORING_VERSION_MODE_DESCRIPTION),
 })
+
+/**
+ * `scoringVersionInputs.mode` narrowed to the one value that agrees with
+ * `EvidenceArtifact`'s own branch discriminant (AD-11, AD-32), rather than a
+ * `.refine()` comparing the two fields. A refinement never exports, so the
+ * published document would keep admitting the disagreement, and the
+ * corpus-mutation generator synthesises witnesses for an untaken `oneOf`
+ * branch straight from that branch's own JSON Schema with no knowledge of a
+ * Zod-only cross-field rule -- verified: it produced two dozen genuine
+ * `zod=false published=true` disagreements this way. Narrowing the schema
+ * itself removes the gap at its source: a synthesised example for a
+ * `const`-typed field can only be that one value.
+ */
+const scoringVersionInputsFor = (mode: RunModeValue) =>
+	ScoringVersionInputs.extend({
+		mode: z.literal(mode).describe(SCORING_VERSION_MODE_DESCRIPTION),
+	})
 
 export const InvalidatedAttempt = z.strictObject({
 	attempt: z.int().min(1),
@@ -122,6 +150,9 @@ export const Trials = z.strictObject({
 	completed: z.int().min(0),
 	invalidatedAttempts: z.array(InvalidatedAttempt),
 })
+
+/** exported so the ladder names this shape without importing Zod. */
+export type Trials = z.infer<typeof Trials>
 
 export const Outcome = z.strictObject({
 	oracleId: OracleId,
@@ -261,7 +292,7 @@ const evidenceCommonFields = {
 	...lineageFields,
 	runId: z.string().min(1),
 	scoringVersion: Digest.describe(
-		'AD-11: computed by the scorer over the five named inputs below and never caller-supplied.',
+		'AD-11: computed by the scorer over the six named inputs below and never caller-supplied.',
 	),
 	scoringVersionInputs: ScoringVersionInputs,
 	comparabilityKey: Digest.describe(
@@ -285,7 +316,7 @@ const evidenceCommonFields = {
 	callerAttestedInputs: z
 		.array(ScoringVersionInputName)
 		.describe(
-			'Which of the five scoring-version inputs were caller-attested rather than computed by this package. An enum over the five key names rather than free strings, because AD-32 requires the artifact to state *which* inputs were attested and an unconstrained string cannot be checked against anything. AD-11 names three of the five as caller-attested; the enum admits any subset so a stricter or looser integration stays representable.',
+			'Which of the six scoring-version inputs were caller-attested rather than computed by this package. An enum over the six key names rather than free strings, because AD-32 requires the artifact to state *which* inputs were attested and an unconstrained string cannot be checked against anything. AD-11 names three of the six as caller-attested; the enum admits any subset so a stricter or looser integration stays representable.',
 		),
 	trials: Trials,
 	outcomes: z.array(Outcome),
@@ -309,6 +340,7 @@ export const EvidenceArtifact = z
 		z
 			.strictObject({
 				...evidenceCommonFields,
+				scoringVersionInputs: scoringVersionInputsFor('production'),
 				mode: z.literal('production'),
 				productionVerdict: Verdict,
 			})
@@ -318,6 +350,7 @@ export const EvidenceArtifact = z
 		z
 			.strictObject({
 				...evidenceCommonFields,
+				scoringVersionInputs: scoringVersionInputsFor('contract-scoring'),
 				mode: z.literal('contract-scoring'),
 				contractVerdict: Verdict,
 				systemRecommendationRecorded: EvaluatorRecommendation.describe(
@@ -332,7 +365,7 @@ export const EvidenceArtifact = z
 	.meta({
 		id: 'EvidenceArtifact',
 		description:
-			"The scored output, owned by `emit` per AD-24, with no prior art; `score` produces the outcome and verdict values it serializes. The two modes are separate branches because AD-21 requires that the production verdict and the contract verdict never share a field. Mode is no longer first stated here: the Sealed Run Record now carries a required `mode`, where AD-21's \"fixed before ingest\" puts it, so this artifact restates a mode the sealed record already fixed and is never the source. Owed item 4's remaining clauses stay open, namely mode entering AD-11's identity inputs, the two assessment input types with their own ladders, and cross-mode comparison rejected. The cost is named rather than hidden: nothing yet rejects a `production` record paired with a `contract-scoring` artifact or the reverse. That is a cross-artifact agreement under AD-32, and it has no home today because `score` and `emit` both carry `module: null` in the stage table, so no code holds both artifacts at once. It lands with the two assessment input types, which is where a producer first reads mode off the record to choose a ladder.",
+			'The scored output, owned by `emit` per AD-24, with no prior art; `score` produces the outcome and verdict values it serializes. The two modes are separate branches because AD-21 requires that the production verdict and the contract verdict never share a field. Mode is no longer first stated here: the Sealed Run Record now carries a required `mode`, where AD-21\'s "fixed before ingest" puts it, so this artifact restates a mode the sealed record already fixed and is never the source. Owed item 4 is closed as of this schemaVersion: `mode` is `ScoringVersionInputs`\'s sixth field, `core/score/ladder.ts` carries `ProductionAssessment`/`ContractAssessment` and their own total ladders, and `core/score/mode-agreement.ts` rejects a `production` record paired with a `contract-scoring` artifact in both directions as an AD-32 cross-artifact disagreement. That check is a hand-written function at the assembly boundary rather than a schema refinement, since no single schema sees both artifacts, and it has no caller yet because `score` and `emit` both carry `module: null` in the stage table.',
 	})
 
 export type EvidenceArtifact = z.infer<typeof EvidenceArtifact>

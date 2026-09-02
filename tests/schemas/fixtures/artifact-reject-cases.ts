@@ -1004,6 +1004,36 @@ export const ARTIFACT_REJECT_CASES: readonly ArtifactRejectCase[] = [
 		keyword: 'minLength',
 		instancePath: '/verdictBasis/0',
 	},
+	{
+		id: 'evidence-scoring-version-mode-absent',
+		artifact: 'evidence-artifact',
+		constraint:
+			"mode is ScoringVersionInputs's sixth field and required (owed item 4)",
+		mutate: (artifact) => {
+			delete artifact.scoringVersionInputs.mode
+		},
+		issuePath: ['scoringVersionInputs', 'mode'],
+		// A missing key on a literal member resolves `undefined` against it, so
+		// Zod reports `invalid_value` where a missing string reports
+		// `invalid_type` (the same trap Story 7.1's `record-mode-absent` names).
+		issueCode: 'invalid_value',
+		keyword: 'required',
+		instancePath: '/scoringVersionInputs',
+		errorParams: { missingProperty: 'mode' },
+	},
+	{
+		id: 'evidence-scoring-version-mode-disagrees-with-branch',
+		artifact: 'evidence-artifact',
+		constraint:
+			"scoringVersionInputs.mode agrees with the artifact's own mode discriminant (AD-11, AD-32); each branch narrows the nested field to that one literal rather than the closed two, so the sibling branch's own legal value is rejected here just as an arbitrary string would be",
+		mutate: (artifact) => {
+			artifact.scoringVersionInputs.mode = 'contract-scoring'
+		},
+		issuePath: ['scoringVersionInputs', 'mode'],
+		issueCode: 'invalid_value',
+		keyword: 'const',
+		instancePath: '/scoringVersionInputs/mode',
+	},
 
 	// ---- sealed-evaluator-brief --------------------------------------------
 	{

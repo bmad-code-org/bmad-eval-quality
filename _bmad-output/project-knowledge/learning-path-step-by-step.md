@@ -69,6 +69,8 @@ flowchart TD
 |   26 | epic7-story3 | Two more binding forms, so a step can name the id an earlier call returned or the test account it acts as, neither of which a contract author can write down. |
 |   27 | epic7-story4 | Make every probe declare how it earned its ground truth and where its seeded defect shows up, so a finding can be checked against the defect it claims to have found. |
 |   28 | epic7-story5 | One function that names each result, written as four ordered tables it prints to a checked-in document, so nobody can read the same run two ways. |
+|   29 | epic7-story6 | Fold a probe's repeated trial votes into one verdict by strict majority, then turn a qualified probe set into a rate vector and a four-valued dominance relation. |
+|   30 | epic7-story7 | Give production and contract-scoring their own verdict ladder, put mode in the scoring version's identity, and reject a run whose two artifacts disagree about which one it is. |
 
 Adding a step: follow `learning-path-template.md`.
 
@@ -2540,3 +2542,77 @@ flowchart TD
   `comparable` says one side's own vector is trustworthy at all, since AD-21 sets it to false
   on a below-minimum-trial or unreached-oracle run. A code review caught the comparator
   checking only the key, so a thin, unreliable side could still win a comparison outright.
+
+## Step 30 (epic7-story7): giving production and contract-scoring their own ladder
+
+**In plain terms:** the architecture wrote its verdict rules as one ladder, with a note that two of
+its rungs don't apply in scoring mode. That note describes two ladders sharing a page. A contract
+scoring a knowingly defective probe and a real system under test were landing on different verdicts
+from the same rungs, depending which paragraph you read.
+
+**What:** `resolveProductionVerdict` and `resolveContractVerdict`, two pure first-match-wins ladders
+over the same seven state categories, differing only from FAIL down. Production reads an ingested
+evaluator recommendation to pick a rung; contract-scoring only records it. `checkModeAgreement`
+rejects a run record and an evidence artifact that name different modes, either direction. `mode`
+joins `ScoringVersionInputs` as a sixth field, so a run relabelled after the fact can't rescore under
+its old identity.
+
+**Why:** nothing before this story derived a verdict at all; only the exit-code tail existed. Building
+it surfaced a third condition nobody had wired: `auditQuotation` (Step 27), shipped two stories ago
+with no caller. Two caps sound alike and measure different things: AD-6's re-execution cap bounds how
+many of a probe's attempts got invalidated and redone, AD-12's remediation cap bounds how many times
+the contract itself was revised. A first draft of this story's own spec used the wrong one, caught by
+a peer review before any code existed.
+
+**Read in this order:**
+
+1. `src/core/score/ladder.ts`: the seven-category input types, the two rule tables, `resolve`.
+2. `src/core/score/mode-agreement.ts`: the cross-artifact check, both directions.
+3. `src/core/score/ladder-table.ts` and `scripts/generate-ad21-table.ts`/`check-ad21-table.ts`: the
+   published table, generated the way Step 28's AD-33 table already is.
+4. `src/core/schemas/evidence-artifact.ts`: `mode` on `ScoringVersionInputs`, `schemaVersion` 1 to 2.
+5. `tests/score/ladder.test.ts` and `tests/score/fixtures/ladder-inputs.ts`: every rung, both ladders.
+
+```mermaid
+flowchart TD
+  RECORD["SealedRunRecord.mode (Step 24)"]
+  QUOTE["quotation.ts (Step 27)<br/>auditQuotation, no caller then"]
+  RESOLVE["outcome.ts (Step 28)<br/>OutcomeResolution per oracle"]
+  LADDER["ladder.ts<br/>two rule tables, resolve()"]
+  AGREE["mode-agreement.ts<br/>checkModeAgreement"]
+  TABLE["ladder-table.ts<br/>generated doc"]
+
+  RECORD --> AGREE
+  RESOLVE --> LADDER
+  QUOTE --> LADDER
+  LADDER --> AGREE
+  LADDER --> TABLE
+```
+
+**Story:** `_bmad-output/implementation-artifacts/7-7-mode-separation-with-two-input-types-and-two-generated-ladders.md`
+
+### Reference
+
+**Rules:**
+
+- `ProductionAssessment` and `ContractAssessment` carry a literal `mode` field, so one can't
+  structurally stand in for the other.
+- Invalid is one shared list for both ladders; only FAIL, CONCERNS, and WAIVED can diverge, and only
+  by whether a row reads the evaluator's recommendation.
+- Production reads the evaluator's recommendation to pick a rung; contract-scoring only records it.
+- A CONCERNS built only from a thin-measurement condition (short trial count, an unreached oracle)
+  stays at exit zero under `--strict`; anything else promotes to one.
+- The published table is generated from the same rule tables the ladders run against, the same
+  guarantee Step 28's table already gives AD-33.
+- `score` and `emit` still don't exist. Both ladders are built and tested with nobody calling them.
+
+**Watch out:**
+
+- AD-21's own spine text and the epic's acceptance criteria named only two of the three Invalid
+  conditions this story owed; the third (`auditQuotation`'s unwitnessed-quotation check) surfaced only
+  because a peer review of the spec cross-checked it against Step 27's own story file.
+- `Remediation.cap` (AD-12) and the scoring policy's `reExecutionCap` (AD-6) sound alike and measure
+  different things. A first draft of this story used the wrong one for the wrong rung.
+- A required oracle whose check never resolved, on an otherwise clean-looking run, used to fall
+  through both WAIVED and PASS. A review during development found it; the fix widened the Invalid
+  guard from "no check resolved" to "not every check resolved."

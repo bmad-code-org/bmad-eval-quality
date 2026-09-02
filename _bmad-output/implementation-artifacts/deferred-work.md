@@ -215,3 +215,19 @@ The rule is about the entry, not about erasing that something was once open.
     shared mutable state between the `invalidating` and `unvoted` branches, so there is no plausible
     interaction bug a mixed fixture would catch that the existing per-state-group fixtures don't
     already cover individually.
+
+## Deferred from: code review of 7-7-mode-separation-with-two-input-types-and-two-generated-ladders (2026-09-02)
+
+- source_spec: `7-7-mode-separation-with-two-input-types-and-two-generated-ladders.md`
+  summary: Nothing schema-enforces that `mode` appears in an `EvidenceArtifact`'s
+    `callerAttestedInputs`, even though `mode` (unlike the other four `ScoringVersionInputs` fields)
+    can only ever be caller-supplied and never re-derived by `score`.
+  evidence: `evidence-artifact.ts`'s own field description for `ScoringVersionInputs.mode` says it is
+    "read from the sealed run record, never re-derived," which makes omitting `mode` from
+    `callerAttestedInputs` always a misdeclaration under AD-32, not a possible-but-unusual one. No
+    reject case in `artifact-reject-cases.ts` exercises that omission. This is not new laxity this
+    story introduced: none of the other four `ScoringVersionInputs` fields are schema-enforced to
+    appear in `callerAttestedInputs` either, so fixing only `mode` would be inconsistent with the
+    other four. A focused pass across all five fields (which ones are structurally always
+    caller-attested vs. optionally computed by `score`, and enforcing the always-caller-attested ones)
+    is the right shape for closing this, not a one-field patch.

@@ -68,7 +68,7 @@ export const ScoringPolicy = z
 	.meta({
 		id: 'ScoringPolicy',
 		description:
-			'The scoring policy, with no prior art. It carries the severity floor, confidence threshold, catch threshold, minimum trial count, re-execution cap, remediation cap, and a regex match-step budget that AD-6, AD-7, AD-12, AD-4, and AD-21 read, and its digest is one of the five named inputs to AD-11\'s scoring version. It is a published artifact rather than a set of constants so that "the default" has an identity a result can name by digest.',
+			'The scoring policy, with no prior art. It carries the severity floor, confidence threshold, catch threshold, minimum trial count, re-execution cap, remediation cap, and a regex match-step budget that AD-6, AD-7, AD-12, AD-4, and AD-21 read, and its digest is one of the six named inputs to AD-11\'s scoring version. It is a published artifact rather than a set of constants so that "the default" has an identity a result can name by digest.',
 	})
 
 export type ScoringPolicy = z.infer<typeof ScoringPolicy>
