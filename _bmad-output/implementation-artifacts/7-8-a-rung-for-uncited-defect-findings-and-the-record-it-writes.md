@@ -370,21 +370,31 @@ escalated, recorded here rather than as a new spine revision or a checkpoint.
    references it, so a single new reachability path is enough to add the entry. Read off the actual
    `test:coverage` failure, not guessed, matching how every other pinned counter in this story was
    derived.
-3. **The two new reject cases' second entry combines the `observationIds` and `quotedEvidence` minimums
-   in one case rather than two.** The Boundaries text names exactly two new cases ("field absent,
-   `observationIds`/`quotedEvidence` empty"), and every other reject case in the corpus asserts exactly
-   one issue; `ArtifactRejectCase.issueCount` exists for a mutation that legitimately produces more than
-   one, and was otherwise unused anywhere in the corpus until this case. Both arrays are emptied in the
-   same mutation, `issueCount: 2`, and the asserted `issuePath`/`issueCode` are the first issue Zod
-   reports (`observationIds`), which is what the shared test harness checks by construction (`issues[0]`).
+3. **The Boundaries text's "two new reject cases" became three.** The Boundaries text names two
+   ("field absent, `observationIds`/`quotedEvidence` empty"), and a first pass combined the second into
+   one case emptying both arrays with `issueCount: 2`. Peer review round 1 (below) found this violates
+   AD-13's own per-constraint rule -- the asserted issue names only `observationIds`, so the
+   `quotedEvidence` minimum could vanish from the published document with this case still rejecting via
+   the other empty array, and `issueCount` had zero precedent anywhere in the 140-case corpus before this.
+   Split into `uncited-finding-gap-observation-ids-empty` and `uncited-finding-gap-quoted-evidence-empty`,
+   each a single-constraint mutation, matching every sibling case in the corpus.
 4. **The contract-scoring fixture's `uncitedFindingGaps` entry is a new synthetic finding (`F-004`),
-   not a re-tagged `F-003`.** `F-003` is already the corpus's uncited finding (`uncitedFindings: ['F-003']`),
-   but its `findingType` is `observation`, which carries no `quotedEvidence` at all -- exactly the I/O
-   matrix's "non-defect uncited finding" exclusion. Minting a distinct `defect`-shaped identifier keeps
-   the fixture internally honest about what `uncitedDefectFindingGaps` would actually produce, rather
-   than implying a cross-artifact link the fixture data does not establish (this repository's fixtures
-   are not assembled from one shared ingest pipeline; each artifact's fixture is authored to its own
-   schema, per Story 7.5's and 7.7's precedent).
+   not a re-tagged `F-003`, and `F-004` is added to the shared `uncitedFindings` array too.** `F-003` is
+   the corpus's other uncited finding, but its `findingType` is `observation`, which carries no
+   `quotedEvidence` at all -- exactly the I/O matrix's "non-defect uncited finding" exclusion. Minting a
+   distinct `defect`-shaped identifier keeps the fixture honest about what `uncitedDefectFindingGaps`
+   would actually produce. Peer review round 1 found the first pass stopped there and left `F-004` naming
+   nothing in `uncitedFindings` (`evidenceCommon`'s own bare-id field, which spans every finding type and
+   is a superset of the defect-only gap list by construction, per `uncitedFindingIds`'s implementation):
+   one fixture object claiming an uncited defect gap for a finding no other field of the same object
+   names. `uncitedFindings: ['F-003', 'F-004']` closes it; no pinned counter reads that array's length.
+5. **Peer review round 1** (an independent Claude Code session, Opus 5, given the diff and the spine
+   citations, asked to verify every claim against source) confirmed the schema, the score-side function,
+   the ladder row, and every pinned counter as correct, and found three real gaps, all fixed in this same
+   pass: the AC's own second half ("the same key present on a production-mode fixture ... is rejected") had
+   no test, closed by `tests/schemas/artifacts.test.ts`'s new `refuses uncitedFindingGaps on the production
+   branch`, mirroring the two existing `productionVerdict`/`contractVerdict` tests thirty lines above it;
+   items 3 and 4 above. Nothing was deferred.
 
 ## Verification
 
@@ -397,13 +407,14 @@ escalated, recorded here rather than as a new spine revision or a checkpoint.
   no drift (46 condition rows, 48 cases, up from 44/46 -- one new shared row across both ladders)
 - `npm run validate` -- green end to end: build, typecheck, lint, docs, doc-invocations, shareable,
   spine lint, vectors, schemas, AD-5/AD-28 registries, AD-31/AD-33/AD-21 tables, layers, lineage,
-  boundary, corpus, website-deps, and `test:coverage` (98 suite files, 3319 tests, 97%/92.56%
-  statements/branches, floor 90%)
+  boundary, corpus, website-deps, and `test:coverage` (98 suite files, 3323 tests, 97%/92.56%
+  statements/branches, floor 90% -- final count, after peer review round 1's three-case split and the
+  added production-branch rejection test)
 
 **Pinned counters moved, each read off the actual regenerated schema and test runs, never
 hand-computed:**
-- `ARTIFACT_REJECT_CASES` 85 → 87; `PUBLISHED_REJECT_CASES` 140 → 142 (`differential.test.ts`,
-  `published-rejection.test.ts`)
+- `ARTIFACT_REJECT_CASES` 85 → 88; `PUBLISHED_REJECT_CASES` 140 → 143 (`differential.test.ts`,
+  `published-rejection.test.ts`; three new cases, not two, per Decisions settled by construction item 3)
 - `WORKED_EXAMPLE_EVIDENCE_ISSUES` 19 → 20, new entry at the end (no `uncitedFindingGaps` on the
   transcribed worked example)
 - `CENSUS_BY_DOCUMENT['evidence-artifact']` 413 → 437; `CENSUS_BY_KEYWORD`: `additionalProperties`
@@ -437,12 +448,23 @@ hand-computed:**
   contradict AD-21's PASS clause (Design Notes).
   [`ladder.ts:496`](../../src/core/score/ladder.ts#L496)
 
-**The reject-fixture harness fix the peer review round found necessary**
+**The reject-fixture harness's third consumer**
 
 - The `seed` override on `ArtifactRejectCase`, and the third consumer
   (`published-rejection.test.ts`) the frozen spec did not name (Decisions settled by construction,
   item 1).
   [`artifact-reject-cases.ts:36`](../../tests/schemas/fixtures/artifact-reject-cases.ts#L36)
+
+**What peer review round 1 found**
+
+- The AC's own "rejected on the production branch" half, previously untested.
+  [`artifacts.test.ts:565`](../../tests/schemas/artifacts.test.ts#L565)
+
+- The two single-constraint reject cases the merged `issueCount: 2` case split into.
+  [`artifact-reject-cases.ts:1061`](../../tests/schemas/fixtures/artifact-reject-cases.ts#L1061)
+
+- `F-004` added to `uncitedFindings`, closing the fixture's own internal disagreement with itself.
+  [`artifact-fixtures.ts:785`](../../tests/schemas/fixtures/artifact-fixtures.ts#L785)
 
 **Peripherals**
 

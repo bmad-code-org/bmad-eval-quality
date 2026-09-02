@@ -777,7 +777,12 @@ const evidenceCommon = {
 			checkResolution: null,
 		},
 	],
-	uncitedFindings: ['F-003'],
+	// F-004 is the synthetic uncited defect finding `uncitedFindingGaps` below
+	// carries on the contract-scoring branch; listing it here too keeps this
+	// bare id list, which spans every finding type per its own description, in
+	// agreement with the richer defect-only record rather than naming a finding
+	// this artifact's own `uncitedFindingGaps` claims but this field omits.
+	uncitedFindings: ['F-003', 'F-004'],
 	coverageGaps: [
 		{
 			rule: 'sibling-cross-check',

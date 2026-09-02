@@ -1058,20 +1058,32 @@ export const ARTIFACT_REJECT_CASES: readonly ArtifactRejectCase[] = [
 		errorParams: { missingProperty: 'uncitedFindingGaps' },
 	},
 	{
-		id: 'uncited-finding-gap-citations-empty',
+		id: 'uncited-finding-gap-observation-ids-empty',
 		artifact: 'evidence-artifact',
 		constraint:
-			"a gap's observationIds and quotedEvidence are each non-empty, mirroring the defect finding's own tightened minimums (AD-23) it is read from",
+			"a gap's observationIds is non-empty, mirroring the defect finding's own tightened minimum (AD-23) it is read from",
 		seed: contractScoringEvidenceArtifact,
 		mutate: (artifact) => {
 			artifact.uncitedFindingGaps[0].observationIds = []
-			artifact.uncitedFindingGaps[0].quotedEvidence = []
 		},
 		issuePath: ['uncitedFindingGaps', 0, 'observationIds'],
 		issueCode: 'too_small',
 		keyword: 'minItems',
 		instancePath: '/uncitedFindingGaps/0/observationIds',
-		issueCount: 2,
+	},
+	{
+		id: 'uncited-finding-gap-quoted-evidence-empty',
+		artifact: 'evidence-artifact',
+		constraint:
+			"a gap's quotedEvidence is non-empty, mirroring the defect finding's own tightened minimum (AD-23) it is read from",
+		seed: contractScoringEvidenceArtifact,
+		mutate: (artifact) => {
+			artifact.uncitedFindingGaps[0].quotedEvidence = []
+		},
+		issuePath: ['uncitedFindingGaps', 0, 'quotedEvidence'],
+		issueCode: 'too_small',
+		keyword: 'minItems',
+		instancePath: '/uncitedFindingGaps/0/quotedEvidence',
 	},
 
 	// ---- sealed-evaluator-brief --------------------------------------------

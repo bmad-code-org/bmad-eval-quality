@@ -559,6 +559,20 @@ describe("the evidence artifact's vocabularies", () => {
 		expect(issue?.path).toEqual([])
 	})
 
+	// Owed item 5: the AC's second half, that the same key is rejected on the
+	// production branch, mirroring the two tests above for the same
+	// `unrecognized_keys`-in-both-directions reasoning.
+	it('refuses uncitedFindingGaps on the production branch', () => {
+		const issue = firstIssue(
+			EvidenceArtifact.safeParse({
+				...clone(productionEvidenceArtifact),
+				uncitedFindingGaps: [],
+			}),
+		)
+		expect(issue?.code).toBe('unrecognized_keys')
+		expect(issue?.path).toEqual([])
+	})
+
 	// WAIVED is the one member separating `Verdict` from
 	// `EvaluatorRecommendation`, and it was reject-tested only through the run
 	// record's `NOT_APPLICABLE` case. An evaluator never recommends a waiver.
