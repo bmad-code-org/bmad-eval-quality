@@ -444,14 +444,34 @@ const pairFeasible = (pair: ValuePair): boolean =>
 const FEASIBLE_PAIRS = ALL_PAIRS.filter(pairFeasible)
 
 /**
+ * Computes on first call and returns the same value after. Every builder below
+ * is pure over module constants, so a caller cannot tell memoization from
+ * recomputation; what it buys is that the covering array is built once per
+ * process. Under v8 coverage instrumentation the greedy build runs long enough
+ * that rebuilding it per call put two cases over vitest's five-second default.
+ */
+const once = <T>(build: () => T): (() => T) => {
+	let value: T | undefined
+	let built = false
+	return () => {
+		if (!built) {
+			value = build()
+			built = true
+		}
+		return value as T
+	}
+}
+
+/**
  * The pairs of domain values no tuple satisfying the constraints contains,
  * derived from the constraints themselves.
  */
-export const infeasiblePairs = (): readonly InfeasiblePair[] =>
+export const infeasiblePairs = once((): readonly InfeasiblePair[] =>
 	ALL_PAIRS.filter((pair) => !pairFeasible(pair)).map((pair) => ({
 		left: labelOf(pair.fieldA, pair.indexA),
 		right: labelOf(pair.fieldB, pair.indexB),
-	}))
+	})),
+)
 
 const pairsOf = (indices: Readonly<Indices>): readonly string[] =>
 	FEASIBLE_PAIRS.filter(
@@ -467,7 +487,7 @@ const pairsOf = (indices: Readonly<Indices>): readonly string[] =>
  * by the same rule. Ties keep the earlier candidate, so the output is fixed by
  * the declaration order alone.
  */
-export const pairwiseCases = (): readonly OutcomeInputs[] => {
+export const pairwiseCases = once((): readonly OutcomeInputs[] => {
 	const covered = new Set<string>()
 	const cases: OutcomeInputs[] = []
 	const countNew = (
@@ -531,7 +551,7 @@ export const pairwiseCases = (): readonly OutcomeInputs[] => {
 		cases.push(tupleOf(indices))
 	}
 	return cases
-}
+})
 
 /** The neutral tuple: no condition fires and the ladder falls to its final row. */
 export const NEUTRAL_INPUTS: OutcomeInputs = tupleOf(neutralIndices())
@@ -800,17 +820,18 @@ export const NEAR_MISS_PAIRS = [
 ] as const satisfies readonly NearMissPair[]
 
 /** The whole fixture set: the covering array, then the named cases. */
-export const fixtureCases = (): readonly OutcomeInputs[] => [
+export const fixtureCases = once((): readonly OutcomeInputs[] => [
 	...pairwiseCases(),
 	...RULE_WITNESS_CASES.map((entry) => entry.inputs),
-]
+])
 
 /** The pairs of domain values the constraints admit. */
-export const feasiblePairs = (): readonly InfeasiblePair[] =>
+export const feasiblePairs = once((): readonly InfeasiblePair[] =>
 	FEASIBLE_PAIRS.map((pair) => ({
 		left: labelOf(pair.fieldA, pair.indexA),
 		right: labelOf(pair.fieldB, pair.indexB),
-	}))
+	})),
+)
 
 export const pairKeyOf = (pair: InfeasiblePair): string =>
 	`${pair.left} & ${pair.right}`
