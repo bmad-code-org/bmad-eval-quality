@@ -27,6 +27,13 @@ export const ScoringPolicy = z
 			.describe(
 				'The same closed unit interval a finding\'s `confidence` uses. AD-21\'s "a finding whose confidence falls below the policy threshold" compares the two, and two different scales would make that comparison meaningless.',
 			),
+		catchThreshold: z
+			.number()
+			.min(0)
+			.max(1)
+			.describe(
+				'AD-7\'s trial-set reducer: a probe counts as caught only when its caught-trial count is strictly greater than this fraction of its valid-trial count, so an exact tie never counts as caught. The published default artifact carries 0.5, the pre-registered "at least two catches in three valid repetitions" read at a valid count of three. No `.default()`, on the same reasoning `confidenceThreshold` gives.',
+			),
 		minimumTrialCount: z
 			.int()
 			.min(1)
@@ -61,7 +68,7 @@ export const ScoringPolicy = z
 	.meta({
 		id: 'ScoringPolicy',
 		description:
-			'The scoring policy, with no prior art. It carries the severity floor, confidence threshold, minimum trial count, re-execution cap, remediation cap, and a regex match-step budget that AD-6, AD-12, AD-4, and AD-21 read, and its digest is one of the five named inputs to AD-11\'s scoring version. It is a published artifact rather than a set of constants so that "the default" has an identity a result can name by digest.',
+			'The scoring policy, with no prior art. It carries the severity floor, confidence threshold, catch threshold, minimum trial count, re-execution cap, remediation cap, and a regex match-step budget that AD-6, AD-7, AD-12, AD-4, and AD-21 read, and its digest is one of the five named inputs to AD-11\'s scoring version. It is a published artifact rather than a set of constants so that "the default" has an identity a result can name by digest.',
 	})
 
 export type ScoringPolicy = z.infer<typeof ScoringPolicy>

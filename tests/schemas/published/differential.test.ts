@@ -29,8 +29,8 @@ describe('the corpus itself, so a hollow differential cannot pass', () => {
 			0,
 		)
 		expect(total).toBe(REJECT_CASES.length + ARTIFACT_REJECT_CASES.length)
-		// the 55/81/136 corpus size is also pinned in published-rejection.test.ts
-		expect(total).toBe(136)
+		// the 55/83/138 corpus size is also pinned in published-rejection.test.ts
+		expect(total).toBe(138)
 	})
 
 	it.each(INTERCHANGE_ARTIFACT_KEYS)(

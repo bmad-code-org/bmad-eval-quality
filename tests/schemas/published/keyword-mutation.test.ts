@@ -127,7 +127,7 @@ const CENSUS_BY_DOCUMENT: Readonly<Record<string, number>> = {
 	'private-artifact-manifest': 31,
 	probe: 508,
 	rubric: 51,
-	'scoring-policy': 32,
+	'scoring-policy': 35,
 	'sealed-evaluator-brief': 102,
 	'sealed-run-record': 292,
 }
@@ -141,20 +141,20 @@ const CENSUS_BY_KEYWORD: Readonly<Record<string, number>> = {
 	format: 1,
 	items: 130,
 	maxItems: 2,
-	maximum: 101,
+	maximum: 102,
 	minItems: 39,
 	minLength: 102,
 	minProperties: 2,
-	minimum: 102,
+	minimum: 103,
 	oneOf: 13,
 	pattern: 161,
 	prefixItems: 24,
 	propertyNames: 30,
 	required: 186,
-	type: 1074,
+	type: 1075,
 }
 
-const CENSUS_TOTAL = 2444
+const CENSUS_TOTAL = 2447
 
 describe('the occurrence walk descends, so the sweep cannot pass hollow', () => {
 	it('finds the full census across the twelve documents', () => {

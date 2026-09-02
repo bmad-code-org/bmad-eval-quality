@@ -824,6 +824,32 @@ export const ARTIFACT_REJECT_CASES: readonly ArtifactRejectCase[] = [
 		keyword: 'minimum',
 		instancePath: '/confidenceThreshold',
 	},
+	{
+		id: 'policy-catch-threshold-above-one',
+		artifact: 'scoring-policy',
+		constraint:
+			'the catch threshold shares the same closed unit interval as the confidence threshold',
+		mutate: (policy) => {
+			policy.catchThreshold = 1.2
+		},
+		issuePath: ['catchThreshold'],
+		issueCode: 'too_big',
+		keyword: 'maximum',
+		instancePath: '/catchThreshold',
+	},
+	{
+		id: 'policy-catch-threshold-below-zero',
+		artifact: 'scoring-policy',
+		constraint:
+			'the catch threshold is bounded from below as well as above, like the confidence threshold',
+		mutate: (policy) => {
+			policy.catchThreshold = -0.5
+		},
+		issuePath: ['catchThreshold'],
+		issueCode: 'too_small',
+		keyword: 'minimum',
+		instancePath: '/catchThreshold',
+	},
 
 	// ---- evidence-artifact --------------------------------------------------
 	{
