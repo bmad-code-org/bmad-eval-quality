@@ -72,6 +72,177 @@
           "type": "string",
           "minLength": 1
         },
+        "qualification": {
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "route": {
+                  "type": "string",
+                  "const": "historical"
+                },
+                "failBeforeEvidence": {
+                  "description": "The recorded failure at the parent revision. AD-9 exists because 2 of 18 mined fix commits had a test that already passed at the parent, so this is the half that cannot be assumed.",
+                  "$ref": "#/$defs/ArtifactReference"
+                },
+                "passAfterEvidence": {
+                  "$ref": "#/$defs/ArtifactReference"
+                },
+                "fixCommitDigest": {
+                  "type": "string",
+                  "pattern": "^sha256:[0-9a-f]{64}$",
+                  "description": "The causally isolated fix boundary AD-9 requires the two evidence records to straddle."
+                },
+                "oracleStableAcrossRevisions": {
+                  "type": "boolean",
+                  "description": "AD-9 requires the oracle to be stable across both revisions. `false` parses and fails the gate: a route that cannot record its own unmet precondition cannot be audited, and the schema is not where AD-9's admission decision is made."
+                }
+              },
+              "required": [
+                "route",
+                "failBeforeEvidence",
+                "passAfterEvidence",
+                "fixCommitDigest",
+                "oracleStableAcrossRevisions"
+              ],
+              "additionalProperties": false,
+              "description": "A historical probe: a defect mined from a real fix boundary, seeded by reverting it."
+            },
+            {
+              "type": "object",
+              "properties": {
+                "route": {
+                  "type": "string",
+                  "const": "controlled-mutation"
+                },
+                "mutationSource": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "Where the mutation came from, in the corpus author's own terms. An opaque caller string, unrelated to `Defect.source`'s two-member enum, which records whether the defect is natural or introduced."
+                },
+                "mutationOperator": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "targetArtifact": {
+                  "$ref": "#/$defs/ArtifactReference"
+                },
+                "expectedObservableFailure": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "baselinePassEvidence": {
+                  "$ref": "#/$defs/ArtifactReference"
+                },
+                "mutatedFailEvidence": {
+                  "$ref": "#/$defs/ArtifactReference"
+                },
+                "rollbackVerified": {
+                  "type": "boolean",
+                  "description": "AD-9's verified rollback or cleanup. `false` parses and fails the gate, for the same reason `oracleStableAcrossRevisions` does."
+                }
+              },
+              "required": [
+                "route",
+                "mutationSource",
+                "mutationOperator",
+                "targetArtifact",
+                "expectedObservableFailure",
+                "baselinePassEvidence",
+                "mutatedFailEvidence",
+                "rollbackVerified"
+              ],
+              "additionalProperties": false,
+              "description": "A controlled mutation: a defect introduced by a named operator against a named artifact."
+            },
+            {
+              "type": "object",
+              "properties": {
+                "route": {
+                  "type": "string",
+                  "const": "gameability"
+                },
+                "degenerateResponse": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "The compliant-looking degenerate response, described rather than embedded: AD-8 forbids sealed-case content from entering any artifact."
+                },
+                "naiveOracleSatisfiedEvidence": {
+                  "$ref": "#/$defs/ArtifactReference"
+                },
+                "disciplinedOracleRejectedEvidence": {
+                  "$ref": "#/$defs/ArtifactReference"
+                }
+              },
+              "required": [
+                "route",
+                "degenerateResponse",
+                "naiveOracleSatisfiedEvidence",
+                "disciplinedOracleRejectedEvidence"
+              ],
+              "additionalProperties": false,
+              "description": "A gameability probe: the demonstration that a degenerate response satisfies a naive oracle and is rejected by a disciplined one."
+            },
+            {
+              "type": "object",
+              "properties": {
+                "route": {
+                  "type": "string",
+                  "const": "canary"
+                },
+                "indicts": {
+                  "type": "string",
+                  "enum": [
+                    "corpus",
+                    "fixture"
+                  ],
+                  "description": "AD-9's canary qualifies by demonstrating that non-detection indicts one of these two rather than the contract. Which one it indicts is the demonstration's own result and is recorded rather than left to the reader."
+                },
+                "nonDetectionEvidence": {
+                  "$ref": "#/$defs/ArtifactReference"
+                }
+              },
+              "required": [
+                "route",
+                "indicts",
+                "nonDetectionEvidence"
+              ],
+              "additionalProperties": false,
+              "description": "A canary: a probe whose non-detection is evidence about the instrument, never about the contract."
+            },
+            {
+              "type": "object",
+              "properties": {
+                "route": {
+                  "type": "string",
+                  "const": "clean-control"
+                },
+                "baselinePassEvidence": {
+                  "$ref": "#/$defs/ArtifactReference"
+                },
+                "revisionCommitDigest": {
+                  "type": "string",
+                  "pattern": "^sha256:[0-9a-f]{64}$",
+                  "description": "AD-27 digest: \"sha256:\" plus 64 lowercase hexadecimal characters."
+                },
+                "noKnownDefectStatement": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "AD-9 qualifies a clean control at \"a revision with no known defect in the probed interface\". No field can prove an absence, so the statement is recorded as an attestation under AD-32 and read as trust rather than as a computed fact."
+                }
+              },
+              "required": [
+                "route",
+                "baselinePassEvidence",
+                "revisionCommitDigest",
+                "noKnownDefectStatement"
+              ],
+              "additionalProperties": false,
+              "description": "A known-clean control: recorded baseline-pass evidence at a revision with no known defect in the probed interface."
+            }
+          ],
+          "description": "AD-9's qualification record: which of the five routes earned this probe its ground truth, and the evidence that route demands. Required on every branch and on every class, canaries included, because AD-9 closes with \"an unqualified probe cannot enter a sealed set\" and spells a route for all five kinds. That the route is compatible with this probe's class and `expectedClean` flag is a cross-field rule the export cannot carry; the corpus qualification gate enforces it and returns a reason code."
+        },
         "expectedClean": {
           "type": "boolean",
           "const": true
@@ -185,6 +356,7 @@
         "artifactDigest",
         "commitDigest",
         "rationale",
+        "qualification",
         "expectedClean",
         "defects"
       ],
@@ -260,6 +432,177 @@
         "rationale": {
           "type": "string",
           "minLength": 1
+        },
+        "qualification": {
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "route": {
+                  "type": "string",
+                  "const": "historical"
+                },
+                "failBeforeEvidence": {
+                  "description": "The recorded failure at the parent revision. AD-9 exists because 2 of 18 mined fix commits had a test that already passed at the parent, so this is the half that cannot be assumed.",
+                  "$ref": "#/$defs/ArtifactReference"
+                },
+                "passAfterEvidence": {
+                  "$ref": "#/$defs/ArtifactReference"
+                },
+                "fixCommitDigest": {
+                  "type": "string",
+                  "pattern": "^sha256:[0-9a-f]{64}$",
+                  "description": "The causally isolated fix boundary AD-9 requires the two evidence records to straddle."
+                },
+                "oracleStableAcrossRevisions": {
+                  "type": "boolean",
+                  "description": "AD-9 requires the oracle to be stable across both revisions. `false` parses and fails the gate: a route that cannot record its own unmet precondition cannot be audited, and the schema is not where AD-9's admission decision is made."
+                }
+              },
+              "required": [
+                "route",
+                "failBeforeEvidence",
+                "passAfterEvidence",
+                "fixCommitDigest",
+                "oracleStableAcrossRevisions"
+              ],
+              "additionalProperties": false,
+              "description": "A historical probe: a defect mined from a real fix boundary, seeded by reverting it."
+            },
+            {
+              "type": "object",
+              "properties": {
+                "route": {
+                  "type": "string",
+                  "const": "controlled-mutation"
+                },
+                "mutationSource": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "Where the mutation came from, in the corpus author's own terms. An opaque caller string, unrelated to `Defect.source`'s two-member enum, which records whether the defect is natural or introduced."
+                },
+                "mutationOperator": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "targetArtifact": {
+                  "$ref": "#/$defs/ArtifactReference"
+                },
+                "expectedObservableFailure": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "baselinePassEvidence": {
+                  "$ref": "#/$defs/ArtifactReference"
+                },
+                "mutatedFailEvidence": {
+                  "$ref": "#/$defs/ArtifactReference"
+                },
+                "rollbackVerified": {
+                  "type": "boolean",
+                  "description": "AD-9's verified rollback or cleanup. `false` parses and fails the gate, for the same reason `oracleStableAcrossRevisions` does."
+                }
+              },
+              "required": [
+                "route",
+                "mutationSource",
+                "mutationOperator",
+                "targetArtifact",
+                "expectedObservableFailure",
+                "baselinePassEvidence",
+                "mutatedFailEvidence",
+                "rollbackVerified"
+              ],
+              "additionalProperties": false,
+              "description": "A controlled mutation: a defect introduced by a named operator against a named artifact."
+            },
+            {
+              "type": "object",
+              "properties": {
+                "route": {
+                  "type": "string",
+                  "const": "gameability"
+                },
+                "degenerateResponse": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "The compliant-looking degenerate response, described rather than embedded: AD-8 forbids sealed-case content from entering any artifact."
+                },
+                "naiveOracleSatisfiedEvidence": {
+                  "$ref": "#/$defs/ArtifactReference"
+                },
+                "disciplinedOracleRejectedEvidence": {
+                  "$ref": "#/$defs/ArtifactReference"
+                }
+              },
+              "required": [
+                "route",
+                "degenerateResponse",
+                "naiveOracleSatisfiedEvidence",
+                "disciplinedOracleRejectedEvidence"
+              ],
+              "additionalProperties": false,
+              "description": "A gameability probe: the demonstration that a degenerate response satisfies a naive oracle and is rejected by a disciplined one."
+            },
+            {
+              "type": "object",
+              "properties": {
+                "route": {
+                  "type": "string",
+                  "const": "canary"
+                },
+                "indicts": {
+                  "type": "string",
+                  "enum": [
+                    "corpus",
+                    "fixture"
+                  ],
+                  "description": "AD-9's canary qualifies by demonstrating that non-detection indicts one of these two rather than the contract. Which one it indicts is the demonstration's own result and is recorded rather than left to the reader."
+                },
+                "nonDetectionEvidence": {
+                  "$ref": "#/$defs/ArtifactReference"
+                }
+              },
+              "required": [
+                "route",
+                "indicts",
+                "nonDetectionEvidence"
+              ],
+              "additionalProperties": false,
+              "description": "A canary: a probe whose non-detection is evidence about the instrument, never about the contract."
+            },
+            {
+              "type": "object",
+              "properties": {
+                "route": {
+                  "type": "string",
+                  "const": "clean-control"
+                },
+                "baselinePassEvidence": {
+                  "$ref": "#/$defs/ArtifactReference"
+                },
+                "revisionCommitDigest": {
+                  "type": "string",
+                  "pattern": "^sha256:[0-9a-f]{64}$",
+                  "description": "AD-27 digest: \"sha256:\" plus 64 lowercase hexadecimal characters."
+                },
+                "noKnownDefectStatement": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "AD-9 qualifies a clean control at \"a revision with no known defect in the probed interface\". No field can prove an absence, so the statement is recorded as an attestation under AD-32 and read as trust rather than as a computed fact."
+                }
+              },
+              "required": [
+                "route",
+                "baselinePassEvidence",
+                "revisionCommitDigest",
+                "noKnownDefectStatement"
+              ],
+              "additionalProperties": false,
+              "description": "A known-clean control: recorded baseline-pass evidence at a revision with no known defect in the probed interface."
+            }
+          ],
+          "description": "AD-9's qualification record: which of the five routes earned this probe its ground truth, and the evidence that route demands. Required on every branch and on every class, canaries included, because AD-9 closes with \"an unqualified probe cannot enter a sealed set\" and spells a route for all five kinds. That the route is compatible with this probe's class and `expectedClean` flag is a cross-field rule the export cannot carry; the corpus qualification gate enforces it and returns a reason code."
         },
         "expectedClean": {
           "type": "boolean",
@@ -359,6 +702,105 @@
             "additionalProperties": false
           },
           "description": "No minimum. AD-9 states none, and a minimum would make a canary unrepresentable, since a canary indicts the fixture rather than seeding a defect."
+        },
+        "defectSignature": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "interfaceKind": {
+                  "type": "string",
+                  "enum": [
+                    "api",
+                    "web",
+                    "cli",
+                    "mcp"
+                  ],
+                  "description": "The interface the seeded defect lives behind. All four kinds parse so `unsupported-interface-kind` stays fireable contract-side, and the qualification gate rejects every kind but `api`: `Operation` carries no interface kind and requires a method and a path template with no per-kind variation, so a `cli` or `mcp` signature would declare a meaningless `POST /path`."
+                },
+                "method": {
+                  "type": "string",
+                  "enum": [
+                    "GET",
+                    "HEAD",
+                    "POST",
+                    "PUT",
+                    "PATCH",
+                    "DELETE",
+                    "OPTIONS"
+                  ]
+                },
+                "pathTemplate": {
+                  "type": "string",
+                  "pattern": "^(?:\\/(?:[^/{}:]|\\{[A-Za-z0-9_-]+\\})*)+$",
+                  "description": "A path template whose parameters are spelled `{name}` in braces. The `:name` spelling is rejected: AD-40 resolves a defect signature by comparing method and path template, and that comparison is not implementable against an unstated syntax."
+                },
+                "observableChannel": {
+                  "description": "AD-26's channel the seeded defect manifests in. The qualification gate reads it: a condition passes only if its pointers name this channel, or name two channels with at least one response-side member. That rule exists to reject a condition collapsing to \"the evidence contains the string I sent\", which is satisfied by a finding that merely echoes its own input.",
+                  "$ref": "#/$defs/EvidenceChannel"
+                },
+                "condition": {
+                  "type": "object",
+                  "properties": {
+                    "selector": {
+                      "type": "object",
+                      "properties": {
+                        "inputBinding": {
+                          "type": "object",
+                          "properties": {
+                            "path": {
+                              "$ref": "#/$defs/ProbeInputBindingChannel"
+                            },
+                            "query": {
+                              "$ref": "#/$defs/ProbeInputBindingChannel"
+                            },
+                            "header": {
+                              "$ref": "#/$defs/ProbeInputBindingChannel"
+                            },
+                            "body": {
+                              "$ref": "#/$defs/ProbeInputBindingChannel"
+                            }
+                          },
+                          "required": [
+                            "path",
+                            "query",
+                            "header",
+                            "body"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "inputBinding"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "predicate": {
+                      "description": "An AD-4 expression over AD-26 response channels, every pointer rooted at the reserved step identifier `observed`. Legality is the corpus qualification gate's: an unchecked predicate admits `existence` over a literal, which is true of every observation and makes the catch rate 1.00 by construction.",
+                      "$ref": "#/$defs/Expression"
+                    }
+                  },
+                  "required": [
+                    "selector",
+                    "predicate"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "required": [
+                "interfaceKind",
+                "method",
+                "pathTemplate",
+                "observableChannel",
+                "condition"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "AD-40's machine-readable defect signature, declared on this branch alone: a clean control seeds nothing, so its branch has no signature to carry. Nullable rather than plain, because the one class that legitimately carries none is `canary`, and a union-level refinement expressing that is dropped from the published export, which would leave Zod rejecting a probe ajv accepts. The corpus qualification gate is the enforcement point and the constraint ledger records the gap; the shipped precedent is `compile/interface-inventory.ts`, which put the principal check in the compiler for the same reason."
         }
       },
       "required": [
@@ -373,14 +815,16 @@
         "artifactDigest",
         "commitDigest",
         "rationale",
+        "qualification",
         "expectedClean",
-        "defects"
+        "defects",
+        "defectSignature"
       ],
       "additionalProperties": false,
-      "description": "A probe that is not a known-clean control."
+      "description": "A probe that is not a known-clean control. The one branch AD-40 gives a defect signature."
     }
   ],
-  "description": "One corpus probe. Succeeds the prior-art `h0-ground-truth` schema per AD-24, carrying its system identifier, implementation digest, `expectedClean` flag, seeded defects, and rationale, and adding AD-9's probe class and AD-9's per-probe artifact and commit digests. Divergences: `implementationSha` becomes `implementationDigest`, `taskId` does not survive because the probe pins what it describes by digest, and `expectedGate` does not survive because AD-40 makes detection a signature match rather than a verdict comparison and AD-7 keeps comparisons inside the dominance vector, so carrying an expected gate would invite a comparison the architecture forbids. Two constructions are deliberately absent: AD-9's per-class QUALIFICATION record, whose five prose routes name no fields and whose acceptance criteria of record do not command it, and AD-40's machine-readable DEFECT SIGNATURE, which Owed item 7 records as having no fixture to land in because this repository contains no probe at all. Both arrive as additive `schemaVersion` bumps under AD-11 once a corpus exists to carry them. The cost is named rather than hidden: AD-9's \"an unqualified probe cannot enter a sealed set\" is enforced by nothing in v0: not this schema, not an AD-5 code, and not an AD-21 rung.",
+  "description": "One corpus probe. Succeeds the prior-art `h0-ground-truth` schema per AD-24, carrying its system identifier, implementation digest, `expectedClean` flag, seeded defects, and rationale, and adding AD-9's probe class and AD-9's per-probe artifact and commit digests. Divergences: `implementationSha` becomes `implementationDigest`, `taskId` does not survive because the probe pins what it describes by digest, and `expectedGate` does not survive because AD-40 makes detection a signature match rather than a verdict comparison and AD-7 keeps comparisons inside the dominance vector, so carrying an expected gate would invite a comparison the architecture forbids. Two constructions landed here together under one BREAKING `schemaVersion` bump: AD-9's per-class QUALIFICATION record, as a five-route tagged union required on every branch, and AD-40's machine-readable DEFECT SIGNATURE on the `expectedClean: false` branch, carrying the interface kind, the home operation as a method and a path template, the observable channel, and the discriminating condition. Both are required rather than optional, which is what makes the bump breaking under AD-11: every corpus written against version 1 fails to parse. What the schema still does not decide is stated rather than hidden. AD-9's \"an unqualified probe cannot enter a sealed set\" is a corpus-construction invariant enforced by the qualification gate in `core/score/qualification.ts`, not by this schema: all eight class-and-`expectedClean` pairings parse, a route incompatible with the pair parses, and a signature-less non-canary parses, each so the gate can return a reason code carrying an artifact path instead of an anonymous parse failure. The constraint ledger carries both gaps.",
   "$defs": {
     "ArtifactReference": {
       "oneOf": [
@@ -1146,6 +1590,67 @@
         }
       ],
       "description": "One of the three operand forms, each a single-keyed object. Named so the published schema carries it once as a shared definition rather than inlining it at seventeen use sites. Which forms are legal in which position is declared on each operator's own `operands`, never narrowed here."
+    },
+    "EvidenceChannel": {
+      "type": "string",
+      "enum": [
+        "response-body",
+        "response-headers",
+        "response-status",
+        "call-inputs",
+        "stdout",
+        "stderr",
+        "exit-code"
+      ],
+      "description": "AD-26's closed evidence channel vocabulary. The same seven the interaction-rooted pointer addresses; a channel outside this set is a syntax error rather than an unreachable-evidence finding."
+    },
+    "ProbeInputBindingChannel": {
+      "anyOf": [
+        {
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "minLength": 1
+          },
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "literal": {
+                    "$ref": "#/$defs/JsonValue"
+                  }
+                },
+                "required": [
+                  "literal"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "matcher": {
+                    "type": "string",
+                    "enum": [
+                      "any",
+                      "type-violating"
+                    ]
+                  }
+                },
+                "required": [
+                  "matcher"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          }
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "A parameter-name-to-binding-value map for one transport channel of a defect signature's selector, or `null` for a channel the selector binds nothing in. An empty map is rejected: `null` is the only spelling for unbound. Admits `{ literal }` and `{ matcher }` only; `{ captured }` and `{ principal }` are contract-local vocabulary and a corpus signature cannot carry either.",
+      "minProperties": 1
     }
   }
 }

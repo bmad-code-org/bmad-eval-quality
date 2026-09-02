@@ -26,12 +26,26 @@ const PARAMETER_SEGMENT_PATTERN = /\{[A-Za-z0-9_-]+\}/g
 const erase = (pathTemplate: string): string =>
 	pathTemplate.replace(PARAMETER_SEGMENT_PATTERN, '{}')
 
+/**
+ * The transport identity AD-40 resolves a defect signature against: the method
+ * and the path template with parameter names erased, so `/notes/{id}` and
+ * `/notes/{noteId}` share one signature. Takes the two fields rather than an
+ * `Operation`, since AD-40's corpus-side signature declares the same pair and
+ * must produce the same string from it or the comparison is not a comparison.
+ */
+export function operationSignature(operation: {
+	readonly method: string
+	readonly pathTemplate: string
+}): string {
+	return `${operation.method} ${erase(operation.pathTemplate)}`
+}
+
 /** Finds duplicate method and path signatures across the full inventory. */
 export function checkDuplicateOperationSignature(contract: EvalContract): void {
 	const seen = new Map<string, { logicalId: string; operation: Operation }>()
 	for (const iface of contract.permittedInterfaces) {
 		for (const operation of iface.operations) {
-			const signature = `${operation.method} ${erase(operation.pathTemplate)}`
+			const signature = operationSignature(operation)
 			const collision = seen.get(signature)
 			if (collision !== undefined) {
 				throw new StructuralFailure(

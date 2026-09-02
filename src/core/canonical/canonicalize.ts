@@ -25,12 +25,21 @@ const fault = (artifactPath: string, detail: string): never => {
 	throw new RuntimeFault('non-canonicalizable-value', artifactPath, detail)
 }
 
-function serialize(
+/**
+ * The RFC 8785 string form, exported because AD-40's quotation audit projects a
+ * structured evidence channel to text and asks for the quoted evidence as an
+ * exact substring of it. `canonicalize` returns a `Uint8Array` and `core/` may
+ * import no Node builtin, so decoding those bytes back is not available; the
+ * string is what already exists one call in. The three recursion parameters
+ * carry their root values as defaults, so an outside caller passes the same two
+ * arguments `canonicalize` takes.
+ */
+export function serialize(
 	value: unknown,
 	artifactPath: string,
-	location: string,
-	ancestors: Set<object>,
-	depth: number,
+	location = '$',
+	ancestors: Set<object> = new Set(),
+	depth = 0,
 ): string {
 	if (value === null) return 'null'
 	switch (typeof value) {

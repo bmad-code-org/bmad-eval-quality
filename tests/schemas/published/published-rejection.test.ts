@@ -17,6 +17,7 @@ import {
 import {
 	ARTIFACT_ACCEPT_FIXTURES,
 	PROBE_CLASS_FIXTURES,
+	QUALIFICATION_ROUTE_FIXTURES,
 	UNION_BRANCH_FIXTURES,
 } from '../fixtures/artifact-fixtures.ts'
 import { ARTIFACT_REJECT_CASES } from '../fixtures/artifact-reject-cases.ts'
@@ -78,14 +79,14 @@ const pointerOf = (path: readonly (string | number)[]): string =>
 				.join('/')}`
 
 describe('the reject corpus, run against the published documents', () => {
-	// 55 against the Eval Contract plus 74 across the other eleven; a count
-	// drift here means a case was added on one side and not annotated. The 129
+	// 55 against the Eval Contract plus 81 across the other eleven; a count
+	// drift here means a case was added on one side and not annotated. The 136
 	// total is also pinned in differential.test.ts ("carries every hand-written
 	// reject case").
-	it('enumerates all 129 cases exactly once', () => {
+	it('enumerates all 136 cases exactly once', () => {
 		expect(REJECT_CASES).toHaveLength(55)
-		expect(ARTIFACT_REJECT_CASES).toHaveLength(74)
-		expect(PUBLISHED_REJECT_CASES).toHaveLength(129)
+		expect(ARTIFACT_REJECT_CASES).toHaveLength(81)
+		expect(PUBLISHED_REJECT_CASES).toHaveLength(136)
 		const ids = PUBLISHED_REJECT_CASES.map(
 			(rejectCase) => `${rejectCase.artifact}/${rejectCase.id}`,
 		)
@@ -186,6 +187,11 @@ const PUBLISHED_ACCEPT_FIXTURES: readonly {
 		artifact: 'probe' as const,
 		value: fixture.value as unknown,
 	})),
+	...QUALIFICATION_ROUTE_FIXTURES.map((fixture) => ({
+		id: fixture.id,
+		artifact: 'probe' as const,
+		value: fixture.value as unknown,
+	})),
 	...UNION_BRANCH_FIXTURES.map((fixture) => ({
 		id: fixture.id,
 		artifact: fixture.artifact as InterchangeArtifactKey,
@@ -199,26 +205,30 @@ const PUBLISHED_ACCEPT_FIXTURES: readonly {
 ]
 
 describe('every accept fixture validates clean against its own published document', () => {
-	// twelve accepts, four probe classes, six union branches, three relevance
-	// contracts: the enumeration itself is asserted so none can go silently dead.
-	it('enumerates all twenty-five positives', () => {
-		expect(PUBLISHED_ACCEPT_FIXTURES).toHaveLength(12 + 4 + 6 + 3)
+	// twelve accepts, four probe classes, five qualification routes, six union
+	// branches, three relevance contracts: the enumeration itself is asserted so
+	// none can go silently dead.
+	it('enumerates all thirty positives', () => {
+		expect(PUBLISHED_ACCEPT_FIXTURES).toHaveLength(12 + 4 + 5 + 6 + 3)
 	})
 
-	// Twenty-five listings, nineteen distinct instances: six of the branch and
-	// probe-class fixtures ARE the artifact's accept fixture, by object
-	// identity (`accept/probe` is both `probe-class/defect` and
-	// `probe/seeded`; `probe-class/zero-action` is `probe/clean-control`; and
-	// `accept/artifact-reference`, `accept/evidence-artifact`, and
-	// `accept/eval-contract` each appear once more under a branch or relevance
-	// id). `seedsOf` in corpus.ts dedupes by identity; this list deliberately
-	// doesn't, so every declared id is exercised under its own name. The
-	// distinct count is pinned so a fixture quietly collapsing into an alias
-	// of another shows up here.
-	it('covers nineteen distinct instances behind those twenty-five ids', () => {
+	// Thirty listings, twenty distinct instances: ten of the branch,
+	// probe-class, and qualification-route fixtures ARE another listing's
+	// instance, by object identity (`accept/probe` is `probe-class/defect`,
+	// `probe/seeded`, and `probe-route/controlled-mutation`;
+	// `probe-class/zero-action` is `probe/clean-control` and
+	// `probe-route/clean-control`; the canary and gameability classes each
+	// reappear under their own route; and `accept/artifact-reference`,
+	// `accept/evidence-artifact`, and `accept/eval-contract` each appear once
+	// more under a branch or relevance id). The one instance the routes add is
+	// the historical probe, which no other list carries. `seedsOf` in corpus.ts
+	// dedupes by identity; this list deliberately doesn't, so every declared id
+	// is exercised under its own name. The distinct count is pinned so a fixture
+	// quietly collapsing into an alias of another shows up here.
+	it('covers twenty distinct instances behind those thirty ids', () => {
 		expect(
 			new Set(PUBLISHED_ACCEPT_FIXTURES.map((entry) => entry.value)).size,
-		).toBe(19)
+		).toBe(20)
 	})
 
 	it.each(PUBLISHED_ACCEPT_FIXTURES)(

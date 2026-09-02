@@ -107,7 +107,7 @@ describe('the twelve published documents (AC 1)', () => {
 			'isolation-manifest': 0,
 			'preflight-verdict': 0,
 			'private-artifact-manifest': 0,
-			probe: 5,
+			probe: 7,
 			rubric: 0,
 			'scoring-policy': 0,
 			'sealed-evaluator-brief': 0,
@@ -154,7 +154,7 @@ describe('the twelve published documents (AC 1)', () => {
 	})
 
 	// The whole delta between the raw output-mode export and the published
-	// document is `$id` plus the twenty-five injections and nothing else, which is
+	// document is `$id` plus the twenty-six injections and nothing else, which is
 	// also the proof that every not-expressible entry injects nothing.
 	it.each(INTERCHANGE_ARTIFACT_KEYS)(
 		'%s differs from the raw export by $id and its inject entries alone',
@@ -205,12 +205,12 @@ describe('the exact serialisation (AC 3), asserted independently of the drift ch
 })
 
 describe('the ledger drives the injection, by stated address (AC 2)', () => {
-	// This 25/16 split is also pinned in differential.test.ts ("walks all
-	// twenty-five inject entries") and arithmetically in
+	// This 26/17 split is also pinned in differential.test.ts ("walks all
+	// twenty-six inject entries") and arithmetically in
 	// constraint-ledger.test.ts; a ledger change updates all three together.
-	it('has twenty-five inject entries to act on, and sixteen not-expressible left alone', () => {
-		expect(INJECT_ENTRIES).toHaveLength(25)
-		expect(CONSTRAINT_LEDGER.length - INJECT_ENTRIES.length).toBe(16)
+	it('has twenty-six inject entries to act on, and seventeen not-expressible left alone', () => {
+		expect(INJECT_ENTRIES).toHaveLength(26)
+		expect(CONSTRAINT_LEDGER.length - INJECT_ENTRIES.length).toBe(17)
 	})
 
 	it.each(INJECT_ENTRIES)(

@@ -375,8 +375,60 @@ export const seededDefect: Extract<
 	},
 }
 
+/**
+ * AD-40's signature for the lost-update defect above: the update acknowledges
+ * with 200 and the echoed title is not the one that was sent. Every pointer
+ * roots at the reserved `observed` identifier, and the predicate names three
+ * channels, one of them the declared observable channel.
+ */
+const lostUpdateSignature: Extract<
+	Probe,
+	{ expectedClean: false }
+>['defectSignature'] = {
+	interfaceKind: 'api',
+	method: 'PATCH',
+	pathTemplate: '/notes/{id}',
+	observableChannel: 'response-body',
+	condition: {
+		selector: {
+			inputBinding: {
+				path: null,
+				query: null,
+				header: null,
+				body: { title: { matcher: 'any' } },
+			},
+		},
+		predicate: {
+			op: 'all',
+			operands: [
+				{
+					op: 'equality',
+					operands: [
+						{ pointer: '/interactions/observed/response-status' },
+						{ literal: 200 },
+					],
+				},
+				{
+					op: 'not',
+					operands: [
+						{
+							op: 'equality',
+							operands: [
+								{ pointer: '/interactions/observed/response-body/note/title' },
+								{ pointer: '/interactions/observed/call-inputs/body/title' },
+							],
+						},
+					],
+				},
+			],
+		},
+	},
+}
+
 export const seededProbe: Probe = {
-	schemaVersion: 1,
+	// Version 2: AD-9's qualification record and AD-40's defect signature both
+	// landed as required fields, so no version-1 probe parses.
+	schemaVersion: 2,
 	parentDigest: null,
 	revisionCount: 0,
 	probeId: 'P-001',
@@ -388,11 +440,23 @@ export const seededProbe: Probe = {
 	artifactDigest: digestOf(12),
 	commitDigest: digestOf(13),
 	rationale: 'A controlled mutation seeding a lost-update defect.',
+	qualification: {
+		route: 'controlled-mutation',
+		mutationSource: 'hand-authored mutation of the update handler',
+		mutationOperator: 'statement-deletion',
+		targetArtifact: publicArtifactReference,
+		expectedObservableFailure:
+			'the update acknowledges with 200 and the stored title is unchanged',
+		baselinePassEvidence: publicArtifactReference,
+		mutatedFailEvidence: privateArtifactReference,
+		rollbackVerified: true,
+	},
 	defects: [seededDefect],
+	defectSignature: lostUpdateSignature,
 }
 
 export const cleanControlProbe: Probe = {
-	schemaVersion: 1,
+	schemaVersion: 2,
 	parentDigest: null,
 	revisionCount: 0,
 	probeId: 'P-002',
@@ -407,17 +471,31 @@ export const cleanControlProbe: Probe = {
 	artifactDigest: digestOf(15),
 	commitDigest: digestOf(16),
 	rationale: 'The unmutated implementation, carried as a known-clean control.',
+	qualification: {
+		route: 'clean-control',
+		baselinePassEvidence: publicArtifactReference,
+		revisionCommitDigest: digestOf(16),
+		noKnownDefectStatement:
+			'The notes interface carried no known defect at this revision.',
+	},
 	defects: [],
 }
 
 // A canary indicts the fixture without seeding a defect, which is why the
-// `expectedClean: false` branch carries no minimum on `defects`.
+// `expectedClean: false` branch carries no minimum on `defects`, and why it is
+// the one class AD-40 exempts from carrying a signature.
 export const canaryProbe: Probe = {
 	...seededProbe,
 	probeId: 'P-003',
 	probeClass: 'canary',
 	rationale: 'A canary: no seeded defect, and never in the strength vector.',
+	qualification: {
+		route: 'canary',
+		indicts: 'fixture',
+		nonDetectionEvidence: publicArtifactReference,
+	},
 	defects: [],
+	defectSignature: null,
 }
 
 export const gameabilityProbe: Probe = {
@@ -426,6 +504,112 @@ export const gameabilityProbe: Probe = {
 	probeClass: 'gameability',
 	rationale:
 		'A probe whose defect is reachable by an evaluator that games the contract rather than exercising it.',
+	qualification: {
+		route: 'gameability',
+		degenerateResponse:
+			'a 200 carrying an empty note object, which a presence-only oracle accepts',
+		naiveOracleSatisfiedEvidence: publicArtifactReference,
+		disciplinedOracleRejectedEvidence: privateArtifactReference,
+	},
+	defectSignature: {
+		interfaceKind: 'api',
+		method: 'POST',
+		pathTemplate: '/notes',
+		observableChannel: 'response-body',
+		condition: {
+			selector: {
+				inputBinding: {
+					path: null,
+					query: null,
+					header: null,
+					body: { title: { matcher: 'any' } },
+				},
+			},
+			predicate: {
+				op: 'all',
+				operands: [
+					{
+						op: 'equality',
+						operands: [
+							{ pointer: '/interactions/observed/response-status' },
+							{ literal: 200 },
+						],
+					},
+					{
+						op: 'absence',
+						operands: [
+							{ pointer: '/interactions/observed/response-body/note/id' },
+						],
+					},
+				],
+			},
+		},
+	},
+}
+
+/**
+ * The fifth probe, carrying the one route no other fixture takes: a defect
+ * mined from a real fix boundary rather than introduced. It is the only fixture
+ * anywhere that sets `Defect.source` to `natural`, which is what the route
+ * depends on.
+ *
+ * Deliberately NOT in `PROBE_CLASS_FIXTURES`: that list is asserted to hold
+ * exactly one entry per probe class, so a fifth entry there fails on the class
+ * census rather than on anything this fixture is for.
+ */
+export const historicalProbe: Probe = {
+	...seededProbe,
+	probeId: 'P-005',
+	rationale: 'A defect mined from a real fix commit and reverted in place.',
+	qualification: {
+		route: 'historical',
+		failBeforeEvidence: publicArtifactReference,
+		passAfterEvidence: privateArtifactReference,
+		fixCommitDigest: digestOf(18),
+		oracleStableAcrossRevisions: true,
+	},
+	defects: [
+		{
+			...seededDefect,
+			defectId: 'D-002',
+			summary: 'The read handler returns 500 on a note that was deleted.',
+			source: 'natural',
+		},
+	],
+	defectSignature: {
+		interfaceKind: 'api',
+		method: 'GET',
+		pathTemplate: '/notes/{id}',
+		observableChannel: 'response-status',
+		condition: {
+			selector: {
+				inputBinding: {
+					path: { id: { matcher: 'any' } },
+					query: null,
+					header: null,
+					body: null,
+				},
+			},
+			predicate: {
+				op: 'all',
+				operands: [
+					{
+						op: 'equality',
+						operands: [
+							{ pointer: '/interactions/observed/response-status' },
+							{ literal: 500 },
+						],
+					},
+					{
+						op: 'existence',
+						operands: [
+							{ pointer: '/interactions/observed/response-body/error' },
+						],
+					},
+				],
+			},
+		},
+	},
 }
 
 export const preflightVerdictFixture: PreflightVerdict = {
@@ -747,6 +931,33 @@ export const PROBE_CLASS_FIXTURES = [
 		id: 'probe-class/gameability',
 		probeClass: 'gameability',
 		value: gameabilityProbe,
+	},
+] as const
+
+/**
+ * Qualification-route coverage, one fixture per AD-9 route, so no route ships
+ * unparsed and the keyword-mutation sweep has a seed for every branch of the
+ * union. A separate list from `PROBE_CLASS_FIXTURES` because that one is
+ * asserted to equal the closed class set exactly, and four classes carry five
+ * routes.
+ */
+export const QUALIFICATION_ROUTE_FIXTURES = [
+	{ id: 'probe-route/historical', route: 'historical', value: historicalProbe },
+	{
+		id: 'probe-route/controlled-mutation',
+		route: 'controlled-mutation',
+		value: seededProbe,
+	},
+	{
+		id: 'probe-route/gameability',
+		route: 'gameability',
+		value: gameabilityProbe,
+	},
+	{ id: 'probe-route/canary', route: 'canary', value: canaryProbe },
+	{
+		id: 'probe-route/clean-control',
+		route: 'clean-control',
+		value: cleanControlProbe,
 	},
 ] as const
 

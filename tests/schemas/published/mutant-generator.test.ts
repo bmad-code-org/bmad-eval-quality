@@ -6,7 +6,11 @@
 import { describe, expect, it } from 'vitest'
 import { generationOf, seedsOf } from './corpus.ts'
 import { generateMutants } from './mutant-generator.ts'
-import { publishedDocumentOf, publishedValidatorOf } from './validator.ts'
+import {
+	compileDocument,
+	publishedDocumentOf,
+	publishedValidatorOf,
+} from './validator.ts'
 
 // Whichever test calls `generationOf('eval-contract')` first pays the whole
 // cold-cache generation (~1.1 s, CPU-bound); Vitest's 5 s default leaves
@@ -98,17 +102,26 @@ describe('hand-checked mutants, one per mutation family', () => {
 		expect((mutant!.value as any)['zz-undeclared']).toBeDefined()
 	})
 
-	// The boolean discriminator has no rejected single-violation mutant (the
-	// flipped boolean is the sibling branch's discriminator), so its pairing is
-	// a witness: accepted intact, rejected once the const is deleted.
-	it('pairs the boolean oneOf discriminator with an accepted flip witness', () => {
-		const mutant = mutantFor(
-			'probe',
-			'/oneOf/0/properties/expectedClean/const',
-			'flip',
-		)
-		expect(mutant).toBeDefined()
-		expect(publishedValidatorOf('probe')(mutant?.value)).toBe(true)
+	// The boolean discriminator used to have no rejected single-violation
+	// mutant: with the two branches differing only in `defects`' maximum, the
+	// flipped boolean was the sibling branch's discriminator and the flipped
+	// instance validated through it, so the pairing had to be a flip witness
+	// (accepted intact, rejected once the const is deleted). AD-40's defect
+	// signature ended that: it sits on the seeding branch alone, so a clean
+	// control with `expectedClean` flipped to false is missing a required key
+	// and a seeded probe flipped to true carries an undeclared one. Both
+	// occurrences now carry an ordinary rejected mutant, and the flip pairing is
+	// gone rather than merely unused.
+	it('rejects the flipped oneOf discriminator outright, on both branches', () => {
+		const validate = publishedValidatorOf('probe')
+		for (const branch of [0, 1]) {
+			const mutant = mutantFor(
+				'probe',
+				`/oneOf/${branch}/properties/expectedClean/const`,
+			)
+			expect(mutant, `branch ${branch}`).toBeDefined()
+			expect(validate(mutant?.value), `branch ${branch}`).toBe(false)
+		}
 	})
 
 	it('rejects every non-flip mutant with the intact document', () => {
@@ -119,6 +132,60 @@ describe('hand-checked mutants, one per mutation family', () => {
 			if (mutant.id.endsWith('#flip')) continue
 			expect(validate(mutant.value), mutant.id).toBe(false)
 		}
+	})
+})
+
+// The flip pairing has no live document to fire on any more: `probe.schema.json`
+// carries the only two boolean `const`s in the twelve, and since AD-40's defect
+// signature landed on one branch alone both of them kill an ordinary mutant.
+// The generator's fallback is still correct and still general, so it is
+// exercised against the shape it exists for rather than deleted on the strength
+// of today's corpus.
+describe('the flip pairing, against the shape it exists for', () => {
+	// Two branches identical but for the discriminator, which is exactly the
+	// case with no rejected single-violation mutant: the flipped instance simply
+	// validates through the sibling branch.
+	const twoBranchBoolean: Record<string, unknown> = {
+		$schema: 'https://json-schema.org/draft/2020-12/schema',
+		$id: 'https://example.invalid/two-branch-boolean',
+		oneOf: [
+			{
+				type: 'object',
+				additionalProperties: false,
+				required: ['clean', 'label'],
+				properties: {
+					clean: { type: 'boolean', const: true },
+					label: { type: 'string', minLength: 1 },
+				},
+			},
+			{
+				type: 'object',
+				additionalProperties: false,
+				required: ['clean', 'label'],
+				properties: {
+					clean: { type: 'boolean', const: false },
+					label: { type: 'string', minLength: 1 },
+				},
+			},
+		],
+	}
+
+	it('pairs a boolean discriminator that admits no rejected mutant', () => {
+		const validate = compileDocument(twoBranchBoolean)
+		const seed = { id: 'accept/two-branch', value: { clean: true, label: 'a' } }
+		expect(validate(seed.value)).toBe(true)
+		const { mutants } = generateMutants(twoBranchBoolean, [seed], validate)
+		const flip = mutants.find(
+			(mutant) => mutant.id === '/oneOf/0/properties/clean/const#flip',
+		)
+		expect(flip).toBeDefined()
+		// Accepted intact, which is what makes it a witness rather than a mutant,
+		// and rejected once the const goes, which is what makes the keyword
+		// killable at all.
+		expect(validate(flip?.value)).toBe(true)
+		const collapsed = structuredClone(twoBranchBoolean) as any
+		delete collapsed.oneOf[0].properties.clean.const
+		expect(compileDocument(collapsed)(flip?.value)).toBe(false)
 	})
 })
 

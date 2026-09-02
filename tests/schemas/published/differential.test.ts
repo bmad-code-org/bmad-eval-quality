@@ -29,8 +29,8 @@ describe('the corpus itself, so a hollow differential cannot pass', () => {
 			0,
 		)
 		expect(total).toBe(REJECT_CASES.length + ARTIFACT_REJECT_CASES.length)
-		// the 55/74/129 corpus size is also pinned in published-rejection.test.ts
-		expect(total).toBe(129)
+		// the 55/81/136 corpus size is also pinned in published-rejection.test.ts
+		expect(total).toBe(136)
 	})
 
 	it.each(INTERCHANGE_ARTIFACT_KEYS)(
@@ -126,13 +126,14 @@ describe('each injected ledger entry is paired with its own fixture (AD-13)', ()
 		(entry) => entry.disposition.kind === 'inject',
 	)
 
-	// The count of twenty-five is also pinned in publish.test.ts ("has
-	// twenty-five inject entries") and arithmetically in
+	// The count of twenty-six is also pinned in publish.test.ts ("has
+	// twenty-six inject entries") and arithmetically in
 	// constraint-ledger.test.ts. Twelve arity entries per artifact carrying the
-	// expression grammar, `eval-contract` and now `probe`, plus the
-	// binding-channel minimum.
-	it('walks all twenty-five inject entries', () => {
-		expect(injectEntries).toHaveLength(25)
+	// expression grammar, `eval-contract` and now `probe`, plus a
+	// binding-channel minimum on each of those two artifacts: the contract's
+	// input binding, and the probe's defect-signature selector.
+	it('walks all twenty-six inject entries', () => {
+		expect(injectEntries).toHaveLength(26)
 	})
 
 	/** the entry's stated address as an occurrence pointer in its document. */

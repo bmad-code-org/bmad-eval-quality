@@ -6,6 +6,7 @@ import {
 	type ConstraintLedgerEntry,
 	constraintLedgerEntry,
 } from '../../src/core/schemas/constraint-ledger.ts'
+import { PROBE_BINDING_CHANNEL_NON_EMPTY } from '../../src/core/schemas/defect-signature.ts'
 import {
 	RELATION_VOCABULARY,
 	TUPLE_ARITY,
@@ -80,12 +81,14 @@ describe('the constraint ledger', () => {
 		}
 	})
 
-	// Six entry classes: arity, the binding-channel minimum, the AD-36 numeric
-	// domain, the operand-type declaration, one lineage biconditional per
-	// lineage-bearing artifact plus AD-18's two secrets prohibitions, and the
-	// observation-sequence uniqueness gap (owed item 2). A ledger much larger
-	// than this is a signal the schema over-refined.
-	it('holds one arity entry per tuple-carrying form per expression-bearing document, one lineage entry per carrier, and five besides', () => {
+	// Seven entry classes: arity, a binding-channel minimum on each of the two
+	// artifacts that declare one, the AD-36 numeric domain, the operand-type
+	// declaration, one lineage biconditional per lineage-bearing artifact plus
+	// AD-18's two secrets prohibitions, the observation-sequence uniqueness gap
+	// (owed item 2), and AD-40's signature-required rule, which the gate rather
+	// than the schema enforces. A ledger much larger than this is a signal the
+	// schema over-refined.
+	it('holds one arity entry per tuple-carrying form per expression-bearing document, one lineage entry per carrier, and six besides', () => {
 		const arityEntries = CONSTRAINT_LEDGER.filter((entry) =>
 			entry.id.startsWith('operator-arity-'),
 		)
@@ -103,8 +106,12 @@ describe('the constraint ledger', () => {
 			(artifact) => artifact.carriesLineage,
 		)
 		expect(lineageCarriers).toHaveLength(11)
+		// The literal 6 is the group that is neither arity, nor lineage, nor
+		// AD-18's two: the two binding-channel minimums, the numeric domain, the
+		// operand-type declaration, the observation-sequence gap, and AD-40's
+		// signature-required rule. The trailing 2 stays AD-18's pair.
 		expect(CONSTRAINT_LEDGER).toHaveLength(
-			arityEntries.length + 4 + lineageCarriers.length + 2,
+			arityEntries.length + 6 + lineageCarriers.length + 2,
 		)
 	})
 
@@ -157,6 +164,23 @@ describe('the constraint ledger', () => {
 		})
 	})
 
+	// The probe carries the same rule on AD-40's selector, and needs its own
+	// entry for the reason the arity entries need theirs: injection is filtered
+	// by artifact, so an eval-contract-addressed entry repairs nothing here.
+	it("injects minProperties for the defect signature's selector channel", () => {
+		const entry = constraintLedgerEntry(PROBE_BINDING_CHANNEL_NON_EMPTY)
+		expect(entry?.location).toEqual({
+			kind: 'definition',
+			artifact: 'probe',
+			name: 'ProbeInputBindingChannel',
+		})
+		expect(entry?.disposition).toEqual({
+			kind: 'inject',
+			dialect: 'draft-2020-12',
+			keywords: { minProperties: 1 },
+		})
+	})
+
 	// `items: false` bounds a tuple only beside 2020-12's `prefixItems`. Under
 	// draft-7 a tuple exports as `items: [...]`, where the same injection
 	// overwrites the tuple and the published schema rejects every operand list.
@@ -176,6 +200,7 @@ describe('the constraint ledger', () => {
 		'secrets-prohibition-private-artifact-manifest',
 		'secrets-prohibition-evaluator-configuration',
 		'observation-sequence-unique',
+		'defect-signature-required',
 	])('marks %s not-expressible with a reason', (id) => {
 		const entry = constraintLedgerEntry(id)
 		expect(entry?.disposition.kind).toBe('not-expressible')

@@ -24,6 +24,7 @@ import { IsolationManifest } from '../../src/core/schemas/isolation-manifest.ts'
 import { TRANSPORT_CHANNELS } from '../../src/core/schemas/pointer.ts'
 import { PreflightVerdict } from '../../src/core/schemas/preflight-verdict.ts'
 import { PROBE_CLASSES, Probe } from '../../src/core/schemas/probe.ts'
+import { QUALIFICATION_ROUTES } from '../../src/core/schemas/probe-qualification.ts'
 import { Rubric, RubricBody } from '../../src/core/schemas/rubric.ts'
 import { SealedEvaluatorBrief } from '../../src/core/schemas/sealed-evaluator-brief.ts'
 import {
@@ -42,6 +43,7 @@ import {
 	PROBE_CLASS_FIXTURES,
 	preflightVerdictFixture,
 	productionEvidenceArtifact,
+	QUALIFICATION_ROUTE_FIXTURES,
 	sealedEvaluatorBriefFixture,
 	sealedRunRecordFixture,
 	seededProbe,
@@ -414,6 +416,24 @@ describe("the probe's expectedClean union", () => {
 		expect(
 			PROBE_CLASS_FIXTURES.map((entry) => entry.probeClass).sort(),
 		).toEqual([...PROBE_CLASSES].sort())
+	})
+
+	// AD-9 spells five routes across four classes, so route coverage cannot ride
+	// on the class list. A route with no fixture is a union branch the published
+	// keyword sweep has no seed to flip, which it reports as an unprotected
+	// occurrence rather than as a missing fixture.
+	it.each(QUALIFICATION_ROUTE_FIXTURES)('$id parses', ({ route, value }) => {
+		const result = Probe.safeParse(value)
+		expect(result.error?.issues ?? []).toEqual([])
+		expect(
+			(value as { qualification: { route: string } }).qualification.route,
+		).toBe(route)
+	})
+
+	it('exercises every member of the closed route set', () => {
+		expect(QUALIFICATION_ROUTE_FIXTURES.map((entry) => entry.route)).toEqual([
+			...QUALIFICATION_ROUTES,
+		])
 	})
 })
 

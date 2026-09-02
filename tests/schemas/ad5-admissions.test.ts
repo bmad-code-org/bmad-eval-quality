@@ -533,6 +533,19 @@ describe('cross-artifact and cross-field rules this story leaves unenforced', ()
 		admitsArtifact('probe', (probe) => {
 			probe.expectedClean = true
 			probe.defects = []
+			// The clean-control branch is strict and declares no signature, so a
+			// flip that left the key behind would fail on `unrecognized_keys`
+			// rather than on the cross-field rule this admission is about.
+			delete probe.defectSignature
+			probe.qualification = {
+				route: 'clean-control',
+				// The accept fixture's route is `controlled-mutation`, which
+				// carries this field on every instance, so it is reused rather
+				// than rebuilt.
+				baselinePassEvidence: probe.qualification.baselinePassEvidence,
+				revisionCommitDigest: `sha256:${'b'.repeat(64)}`,
+				noKnownDefectStatement: 'no known defect at this revision',
+			}
 		})
 		admitsArtifact('probe', (probe) => {
 			probe.probeClass = 'defect'
@@ -563,16 +576,43 @@ describe('cross-artifact and cross-field rules this story leaves unenforced', ()
 		})
 	})
 
-	// 13. AD-9: "An unqualified probe cannot enter a sealed set." With the
-	//     qualification record deferred, nothing catches one: not this schema,
-	//     not an AD-5 code, not an AD-21 rung. The accepted cost of that
-	//     deferral, named rather than dropped.
-	it('admits a probe carrying no qualification record at all', () => {
-		const probe = structuredClone(ARTIFACT_ACCEPT_FIXTURES.probe) as any
-		expect(Object.keys(probe)).not.toContain('qualification')
-		expect(INTERCHANGE_ARTIFACTS.probe.schema.safeParse(probe).success).toBe(
-			true,
+	// 13. AD-9: "An unqualified probe cannot enter a sealed set." The record is
+	//     now required, so a probe carrying none fails to parse; what the schema
+	//     still cannot see is whether the route it declares is the one its class
+	//     and control status admit, and whether a probe that seeds a defect
+	//     carries the signature AD-40 needs to score it. Both are cross-field
+	//     rules the published export cannot carry, so the qualification gate
+	//     rejects them and the constraint ledger records the split. The
+	//     admission narrows rather than inverting: it moved from "nothing
+	//     catches an unqualified probe" to "the schema catches an absent record
+	//     and nothing else".
+	it('rejects a probe carrying no qualification record, and admits an incompatible one', () => {
+		const missing = structuredClone(ARTIFACT_ACCEPT_FIXTURES.probe) as any
+		delete missing.qualification
+		expect(INTERCHANGE_ARTIFACTS.probe.schema.safeParse(missing).success).toBe(
+			false,
 		)
+		// A canary route on a controlled-mutation probe: an illegal cell of the
+		// route table, and the schema has nothing to compare against.
+		admitsArtifact('probe', (probe) => {
+			probe.qualification = {
+				route: 'canary',
+				indicts: 'fixture',
+				nonDetectionEvidence: {
+					storage: 'public',
+					path: 'evidence/canary.jsonl',
+					privateRef: null,
+					digest: `sha256:${'c'.repeat(64)}`,
+				},
+			}
+		})
+		// A probe that seeds a defect and declares no signature to detect it
+		// with. AD-33 assigns an outcome only from a signature match, so this is
+		// unscoreable, and a union-level refinement saying so would be dropped
+		// from the published export.
+		admitsArtifact('probe', (probe) => {
+			probe.defectSignature = null
+		})
 	})
 
 	// 14. AD-9 puts the behaviour on the probe, the prior art puts one on each

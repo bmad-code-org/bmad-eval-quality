@@ -46,7 +46,12 @@ type Visitor = {
 	onRegex?: (pattern: string, path: string) => void
 }
 
-function walkExpression(
+/**
+ * The one expression walker in this package. Contract-free and a superset of
+ * the narrower walks the checks below need, so a probe-side legality pass
+ * reuses it rather than adding a fifth traversal that can drift from it.
+ */
+export function walkExpression(
 	expr: Expression,
 	quantifierDepth: number,
 	path: string,
@@ -233,33 +238,115 @@ const artifactKey = (key: string): string =>
 		? `.${key}`
 		: `[${JSON.stringify(key)}]`
 
+/**
+ * One operand's two position rules: the `OPERAND_LEGALITY` table, and the
+ * `ordering`-over-`call-inputs` rule that sits beside it. Both are decidable
+ * from the operand alone, so both cross over to a bare `Expression`.
+ */
+function checkOperandAtPosition(
+	operand: Operand,
+	op: OperandBearingOp,
+	position: OperandPosition,
+	artifactPath: string,
+): void {
+	const legal = OPERAND_LEGALITY[op]?.[String(position)]
+	if (legal === undefined) return
+	const kind = kindOf(operand)
+	if (!legal.has(kind)) {
+		throw new StructuralFailure(
+			'malformed-operator-expression',
+			artifactPath,
+			`"${op}" does not accept a ${kind} operand at position ${position} (AD-4, AD-26)`,
+		)
+	}
+	if (
+		op === 'ordering' &&
+		'pointer' in operand &&
+		!operand.pointer.startsWith('@') &&
+		parseEvidenceTarget(operand.pointer).channel === 'call-inputs'
+	) {
+		throw new StructuralFailure(
+			'malformed-operator-expression',
+			artifactPath,
+			'"ordering" accepts observed output only, never call-inputs (AD-4)',
+		)
+	}
+}
+
+/**
+ * `checkOperandLegality` over one bare `Expression`, minus the `covers-by-key`
+ * `expectedKey` uniqueness rule, which reads the contract's declared reference
+ * sets and has no probe-side form: a probe-side condition may carry no
+ * `{ referenceSet }` operand at all.
+ */
+export function checkExpressionOperandLegality(
+	expression: Expression,
+	artifactPath: string,
+): void {
+	walkExpression(expression, 0, '', {
+		onOperand: (operand, op, position, path) => {
+			checkOperandAtPosition(operand, op, position, `${artifactPath}${path}`)
+		},
+	})
+}
+
+/** `checkRegexConstructs` over one bare `Expression`. */
+export function checkExpressionRegexConstructs(
+	expression: Expression,
+	artifactPath: string,
+): void {
+	walkExpression(expression, 0, '', {
+		onRegex: (pattern, path) => {
+			const rejection = regexRejection(pattern)
+			if (rejection !== null) {
+				throw new StructuralFailure(
+					'malformed-operator-expression',
+					`${artifactPath}${path}.pattern`,
+					`regex pattern "${pattern}" ${rejection}, a rejected construct (AD-4)`,
+				)
+			}
+		},
+	})
+}
+
+/** `checkQuantifierNesting` over one bare `Expression`. */
+export function checkExpressionQuantifierNesting(
+	expression: Expression,
+	artifactPath: string,
+): void {
+	walkExpression(expression, 0, '', {
+		onQuantifier: (_expr, path, quantifierDepth) => {
+			if (quantifierDepth >= 1) {
+				throw new StructuralFailure(
+					'quantifier-nesting-exceeded',
+					`${artifactPath}${path}`,
+					"a quantifier appears inside another quantifier's predicate; quantifiers may not nest more than one level (AD-4)",
+				)
+			}
+		},
+		onCoversByKey: (_expr, path, quantifierDepth) => {
+			if (quantifierDepth >= 1) {
+				throw new StructuralFailure(
+					'quantifier-nesting-exceeded',
+					`${artifactPath}${path}`,
+					"covers-by-key appears inside a quantifier's predicate, where it may never nest (AD-4)",
+				)
+			}
+		},
+	})
+}
+
 /** Checks each operator's operands against its position-specific constraints. */
 export function checkOperandLegality(contract: EvalContract): void {
 	forEachContractExpression(contract, (site) => {
 		walkExpression(site.expression, 0, '', {
 			onOperand: (operand, op, position, path) => {
-				const legal = OPERAND_LEGALITY[op]?.[String(position)]
-				if (legal === undefined) return
-				const kind = kindOf(operand)
-				if (!legal.has(kind)) {
-					throw new StructuralFailure(
-						'malformed-operator-expression',
-						`${site.artifactPath}${path}`,
-						`"${op}" does not accept a ${kind} operand at position ${position} (AD-4, AD-26)`,
-					)
-				}
-				if (
-					op === 'ordering' &&
-					'pointer' in operand &&
-					!operand.pointer.startsWith('@') &&
-					parseEvidenceTarget(operand.pointer).channel === 'call-inputs'
-				) {
-					throw new StructuralFailure(
-						'malformed-operator-expression',
-						`${site.artifactPath}${path}`,
-						'"ordering" accepts observed output only, never call-inputs (AD-4)',
-					)
-				}
+				checkOperandAtPosition(
+					operand,
+					op,
+					position,
+					`${site.artifactPath}${path}`,
+				)
 			},
 			onCoversByKey: (expr) => {
 				const expected = expr.operands[0]
@@ -454,6 +541,61 @@ function forEachQuantifierCollection(
 	}
 }
 
+/**
+ * The check itself, against whatever resolves a step identifier to the
+ * operation that answers it. The contract path resolves through the plan index
+ * or the witness scope; a probe-side condition resolves the one reserved step
+ * identifier to the signature's home operation.
+ */
+function checkQuantifiersAgainst(
+	expression: Expression,
+	artifactPath: string,
+	operationFor: (stepId: string) => Operation | undefined,
+): void {
+	forEachQuantifierCollection(expression, null, '', (pointer, path) => {
+		const target = parseEvidenceTarget(pointer)
+		if (target.channel !== 'response-body') return
+		const operation = operationFor(target.stepId)
+		if (operation === undefined) return
+		const firstToken = target.tail.length === 1 ? target.tail[0] : undefined
+		const declaredType =
+			firstToken === undefined
+				? undefined
+				: operation.responseDescriptor.types[firstToken]
+		if (
+			declaredType !== undefined &&
+			declaredType !== null &&
+			NON_COLLECTION_TYPES.has(declaredType)
+		) {
+			throw new StructuralFailure(
+				'quantifier-over-non-collection',
+				`${artifactPath}${path}`,
+				`"${pointer}" is declared "${declaredType}" by operation "${operation.operationId}", not a collection (AD-4)`,
+			)
+		}
+	})
+}
+
+/**
+ * `checkQuantifierOverNonCollection` over one bare `Expression` rooted at a
+ * known set of step identifiers, all of which resolve to one operation. The
+ * `legIds` argument is load-bearing: omit it and the check silently no-ops on
+ * every expression, which is the trap the witness branch below already warns
+ * about. It reads the operation's declared response types, never its
+ * `collectionLocations`; a declared non-array type beats a contradictory
+ * collection location, and a re-derivation that read the other field would
+ * disagree with the compiler on a committed fixture.
+ */
+export function checkExpressionQuantifierOverNonCollection(
+	expression: Expression,
+	artifactPath: string,
+	scope: { readonly operation: Operation; readonly legIds: readonly string[] },
+): void {
+	checkQuantifiersAgainst(expression, artifactPath, (stepId) =>
+		scope.legIds.includes(stepId) ? scope.operation : undefined,
+	)
+}
+
 /** Checks response-body collection pointers, after bound-element substitution. */
 export function checkQuantifierOverNonCollection(contract: EvalContract): void {
 	const index: PlanIndex = buildPlanIndex(
@@ -478,28 +620,9 @@ export function checkQuantifierOverNonCollection(contract: EvalContract): void {
 		return index.operationOf(step.operationId)
 	}
 	forEachContractExpression(contract, (site) => {
-		forEachQuantifierCollection(site.expression, null, '', (pointer, path) => {
-			const target = parseEvidenceTarget(pointer)
-			if (target.channel !== 'response-body') return
-			const operation = operationFor(site, target.stepId)
-			if (operation === undefined) return
-			const firstToken = target.tail.length === 1 ? target.tail[0] : undefined
-			const declaredType =
-				firstToken === undefined
-					? undefined
-					: operation.responseDescriptor.types[firstToken]
-			if (
-				declaredType !== undefined &&
-				declaredType !== null &&
-				NON_COLLECTION_TYPES.has(declaredType)
-			) {
-				throw new StructuralFailure(
-					'quantifier-over-non-collection',
-					`${site.artifactPath}${path}`,
-					`"${pointer}" is declared "${declaredType}" by operation "${operation.operationId}", not a collection (AD-4)`,
-				)
-			}
-		})
+		checkQuantifiersAgainst(site.expression, site.artifactPath, (stepId) =>
+			operationFor(site, stepId),
+		)
 	})
 }
 

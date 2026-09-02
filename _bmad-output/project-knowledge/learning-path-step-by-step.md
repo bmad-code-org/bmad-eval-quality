@@ -66,6 +66,8 @@ flowchart TD
 |   23 | epic6-story5 | A command you can run in a shell, a package that actually ships its schemas and examples, a build check that keeps this project's own paperwork out of what people install, and the first real coverage number. |
 |   24 | epic7-story1 | Put the run's mode on the record itself, a required field the caller sets once and nothing can change after. |
 |   25 | epic7-story2 | Give every observation a place in line, and let a step say how many matches it expects, so two scorers can't disagree about what matched. |
+|   26 | epic7-story3 | Two more binding forms, so a step can name the id an earlier call returned or the test account it acts as, neither of which a contract author can write down. |
+|   27 | epic7-story4 | Make every probe declare how it earned its ground truth and where its seeded defect shows up, so a finding can be checked against the defect it claims to have found. |
 
 Adding a step: follow `learning-path-template.md`.
 
@@ -2274,3 +2276,100 @@ flowchart TD
 - Ten review findings landed on this story after the first implementation was already green,
   including a cycle check that missed real cycles depending on which edges happened to be walked
   first. Randomized testing against a brute-force answer is what found it.
+
+## Step 27 (epic7-story4): proving the finding is about the defect the probe seeded
+
+**In plain terms:** the scorer could see that an evaluator filed a finding and named a probe.
+It had no way to tell whether the finding was about the defect that probe actually seeded.
+Any finding on the right probe counted as a catch, so the catch rate came out 1.00 every time.
+
+**What:** two required declarations on every probe, and three functions that read them.
+A qualification record says how the probe earned its ground truth, in one of five forms.
+A defect signature says where the seeded defect lives (a method and a path template), which
+channel it shows up in, and the condition that tells it apart from correct behaviour.
+`qualifyProbe` decides whether a probe may enter a sealed set, `matchProbeWitness` decides what one
+run proved about one probe, and `auditQuotation` checks that a finding's quoted evidence appears in
+the observations it cites.
+
+**Why:** without the signature, an oracle that correctly confirmed an untouched behaviour and one
+that missed the seeded defect look identical to the scorer.
+Same disposition, no defect finding, same probe class, same reachability.
+The architecture calls this the worst defect any review of it produced, because a detection
+instrument that cannot record non-detection measures nothing.
+
+**Read in this order:**
+
+1. `src/core/schemas/probe-qualification.ts`: AD-9's five routes, one per kind of probe.
+2. `src/core/schemas/defect-signature.ts`: the signature, and the selector it carries.
+3. `src/core/schemas/probe.ts`: where both attach, and which probes owe which.
+4. `src/core/score/qualification.ts`: the nineteen ways a probe fails to qualify.
+5. `src/core/score/witness.ts`: the candidate partition and the six results.
+6. `src/core/score/quotation.ts`: the per-channel projection, and why nothing calls it yet.
+7. `tests/score/qualification.test.ts` and `tests/score/witness.test.ts`.
+
+```mermaid
+flowchart TD
+  QUAL["probe-qualification.ts<br/>five AD-9 routes"]
+  SIG["defect-signature.ts<br/>home operation, channel, condition"]
+  PROBE["probe.ts<br/>both required, schemaVersion 2"]
+  GATE["score/qualification.ts<br/>qualifyProbe, sealProbeSet<br/>19 failure codes"]
+  MATCH["score/witness.ts<br/>T/F/U partition, six results"]
+  QUOTE["score/quotation.ts<br/>auditQuotation, no caller in v0"]
+  NEXT["story 7.5<br/>AD-33 assigns the outcome state"]
+
+  QUAL --> PROBE
+  SIG --> PROBE
+  PROBE --> GATE
+  GATE --> MATCH
+  PROBE --> QUOTE
+  MATCH --> NEXT
+```
+
+**Story:** `_bmad-output/implementation-artifacts/7-4-the-ad-40-defect-signature-corpus-qualification-and-the-witness-match.md`
+
+### Reference
+
+**Rules:**
+
+- A signature names its defect's home by method and path template. Parameter names are erased before
+  comparing, so `/notes/{id}` and `/notes/{noteId}` are the same operation.
+- The condition's pointers are rooted at the fixed step id `observed`. Any other step id fails
+  qualification, which is what keeps a corpus signature usable against a contract it has never seen.
+- The probe-side binding admits `literal` and `matcher` only. `captured` and `principal` name things
+  a corpus author cannot know.
+- A probe is exercised when the evaluator itself invoked the home operation. `provenance:
+  'evaluator-chosen'` is the whole test; an aborted call never reaches the record at all.
+- The candidates are the home operation's evaluator-chosen observations whose inputs match the
+  selector.
+- Candidates are sorted by how the condition resolved on each: true, false, insufficient-evidence.
+- Six results, first match wins: `unexercised`, `unwitnessed-claim`, `matched`,
+  `manifested-unclaimed`, `not-triggered`, `vacuous`.
+- `not-triggered` is a sixth result the architecture's list of five had no room for. It covers the
+  common case where the probe ran and the seeded defect did not show up, which AD-6 calls
+  `confirmed`. Folding it into `vacuous` would invalidate the run.
+- `vacuous` keeps its narrow meaning: the condition examined nothing on any candidate.
+- A finding that claims detection and cites nothing satisfying the condition wins over a finding that
+  got it right. A run carrying a false claim cannot be scored at all.
+- A finding citing only observations of some other operation comes back as unmapped. It stays a
+  finding under AD-23 and is excluded from the catch count.
+- The verdict reads cited identifiers. Quotation is a separate audit that ships with no caller,
+  because the stage that invalidates on it does not exist yet.
+- A fault thrown by the evaluator leaves the function undecorated. A fault never becomes a verdict.
+- The gate is what makes the match safe to run. It rejects the operand shapes that make the shipped
+  evaluator throw, `{ referenceSet }` above all.
+- The probe schema is at version 2, and the bump is breaking because both fields are required.
+
+**Watch out:**
+
+- A condition can satisfy every gate rule and still be true of every correct response. `existence`
+  over a response key the contract already declares required is the example. The gate reads the
+  expression's structure, and closing that class needs the signature evaluated against a clean run,
+  which is pre-flight work.
+- A canary may carry seeded defects and nothing rejects it. Pre-flight then plans a
+  `seeded-fault-fired` check for each one, and records it failed, about a fault AD-9's canary route
+  makes no claim about.
+- Two of the gate's checks read the home operation's declarations. Qualifying with no contract in
+  hand reports `declarationChecksRan: false` and skips them, so the caller is told which two did not
+  run.
+- `src/application/preflight.ts` parses caller-supplied probes, so every corpus written before this
+  story fails to parse until it gains both fields.

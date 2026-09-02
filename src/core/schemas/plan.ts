@@ -40,9 +40,21 @@ import { Identifier, JsonValue, KeyName } from './primitives.ts'
  * which keeps AD-4's ban on arithmetic, projection, and user-defined functions
  * holding by construction: the grammar has no place to write one.
  */
+/**
+ * The first two members, named individually so the probe-side selector under
+ * AD-40 admits exactly these two and nothing else. Bare `export const` with no
+ * `.meta({ id })`: an id would collapse the branches to `$ref`s and mint new
+ * `$defs`, so the export stays byte-identical.
+ */
+export const LiteralBindingValue = z.strictObject({ literal: JsonValue })
+
+export const MatcherBindingValue = z.strictObject({
+	matcher: z.enum(['any', 'type-violating']),
+})
+
 export const BindingValue = z.union([
-	z.strictObject({ literal: JsonValue }),
-	z.strictObject({ matcher: z.enum(['any', 'type-violating']) }),
+	LiteralBindingValue,
+	MatcherBindingValue,
 	z.strictObject({ captured: InteractionPointer }),
 	z.strictObject({ principal: Identifier }),
 ])

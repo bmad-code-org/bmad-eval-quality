@@ -1,9 +1,11 @@
 /** a corpus probe: its class, its control status, and the defects it seeds. */
 import { z } from 'zod'
 import { ArtifactReference } from './artifact-reference.ts'
+import { DefectSignature } from './defect-signature.ts'
 import { Severity } from './eval-contract.ts'
 import { lineageFields } from './lineage.ts'
 import { BehaviorId, DefectId, Digest, ProbeId } from './primitives.ts'
+import { ProbeQualification } from './probe-qualification.ts'
 import { ManifestationWitness } from './sensitivity-witness.ts'
 
 /**
@@ -56,6 +58,9 @@ const probeCommonFields = {
 	artifactDigest: Digest,
 	commitDigest: Digest,
 	rationale: z.string().min(1),
+	qualification: ProbeQualification.describe(
+		'AD-9\'s qualification record: which of the five routes earned this probe its ground truth, and the evidence that route demands. Required on every branch and on every class, canaries included, because AD-9 closes with "an unqualified probe cannot enter a sealed set" and spells a route for all five kinds. That the route is compatible with this probe\'s class and `expectedClean` flag is a cross-field rule the export cannot carry; the corpus qualification gate enforces it and returns a reason code.',
+	),
 }
 
 /**
@@ -90,13 +95,18 @@ export const Probe = z
 					.describe(
 						'No minimum. AD-9 states none, and a minimum would make a canary unrepresentable, since a canary indicts the fixture rather than seeding a defect.',
 					),
+				defectSignature: DefectSignature.nullable().describe(
+					"AD-40's machine-readable defect signature, declared on this branch alone: a clean control seeds nothing, so its branch has no signature to carry. Nullable rather than plain, because the one class that legitimately carries none is `canary`, and a union-level refinement expressing that is dropped from the published export, which would leave Zod rejecting a probe ajv accepts. The corpus qualification gate is the enforcement point and the constraint ledger records the gap; the shipped precedent is `compile/interface-inventory.ts`, which put the principal check in the compiler for the same reason.",
+				),
 			})
-			.describe('A probe that is not a known-clean control.'),
+			.describe(
+				'A probe that is not a known-clean control. The one branch AD-40 gives a defect signature.',
+			),
 	])
 	.meta({
 		id: 'Probe',
 		description:
-			"One corpus probe. Succeeds the prior-art `h0-ground-truth` schema per AD-24, carrying its system identifier, implementation digest, `expectedClean` flag, seeded defects, and rationale, and adding AD-9's probe class and AD-9's per-probe artifact and commit digests. Divergences: `implementationSha` becomes `implementationDigest`, `taskId` does not survive because the probe pins what it describes by digest, and `expectedGate` does not survive because AD-40 makes detection a signature match rather than a verdict comparison and AD-7 keeps comparisons inside the dominance vector, so carrying an expected gate would invite a comparison the architecture forbids. Two constructions are deliberately absent: AD-9's per-class QUALIFICATION record, whose five prose routes name no fields and whose acceptance criteria of record do not command it, and AD-40's machine-readable DEFECT SIGNATURE, which Owed item 7 records as having no fixture to land in because this repository contains no probe at all. Both arrive as additive `schemaVersion` bumps under AD-11 once a corpus exists to carry them. The cost is named rather than hidden: AD-9's \"an unqualified probe cannot enter a sealed set\" is enforced by nothing in v0: not this schema, not an AD-5 code, and not an AD-21 rung.",
+			"One corpus probe. Succeeds the prior-art `h0-ground-truth` schema per AD-24, carrying its system identifier, implementation digest, `expectedClean` flag, seeded defects, and rationale, and adding AD-9's probe class and AD-9's per-probe artifact and commit digests. Divergences: `implementationSha` becomes `implementationDigest`, `taskId` does not survive because the probe pins what it describes by digest, and `expectedGate` does not survive because AD-40 makes detection a signature match rather than a verdict comparison and AD-7 keeps comparisons inside the dominance vector, so carrying an expected gate would invite a comparison the architecture forbids. Two constructions landed here together under one BREAKING `schemaVersion` bump: AD-9's per-class QUALIFICATION record, as a five-route tagged union required on every branch, and AD-40's machine-readable DEFECT SIGNATURE on the `expectedClean: false` branch, carrying the interface kind, the home operation as a method and a path template, the observable channel, and the discriminating condition. Both are required rather than optional, which is what makes the bump breaking under AD-11: every corpus written against version 1 fails to parse. What the schema still does not decide is stated rather than hidden. AD-9's \"an unqualified probe cannot enter a sealed set\" is a corpus-construction invariant enforced by the qualification gate in `core/score/qualification.ts`, not by this schema: all eight class-and-`expectedClean` pairings parse, a route incompatible with the pair parses, and a signature-less non-canary parses, each so the gate can return a reason code carrying an artifact path instead of an anonymous parse failure. The constraint ledger carries both gaps.",
 	})
 
 export type Probe = z.infer<typeof Probe>
