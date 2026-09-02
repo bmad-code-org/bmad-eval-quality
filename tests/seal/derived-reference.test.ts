@@ -17,6 +17,7 @@ import {
 import {
 	capturedChainPair,
 	capturedCollisionPair,
+	completeCaptureDag,
 	createThenReadBack,
 	fiveStepAfterChain,
 	fourStepAfterChain,
@@ -33,6 +34,7 @@ import {
 	sharedKeyAcrossChannels,
 	threeStepSharedAfter,
 	unboundStep,
+	unrelatedBulkPair,
 } from './fixtures.ts'
 
 const gateCIndex = buildPlanIndex(
@@ -370,6 +372,71 @@ describe('renderStepReference: the escalation ladder and its injectivity', () =>
 		// The four keys of one link are named together and their predecessor is
 		// expanded once, which is what makes the size linear.
 		expect(phrase).toContain('path k0, path k1, path k2, and path k3')
+	})
+
+	it('a complete capture DAG carrying a huge literal stays bounded, where the branching factor alone once reached V8s string limit', () => {
+		// Three axes set the size and only their product matters: keys per
+		// predecessor, distinct predecessors (which doubles per level on a
+		// complete DAG), and one step's own clause text, which nothing bounds
+		// since a literal is a `JsonValue` of any length. Grouping closed the
+		// first. The render budget closes the other two: this shape with a
+		// 65,536-character literal threw `RangeError: Invalid string length`
+		// before it.
+		const plan = completeCaptureDag(14, 65_536, 1)
+		const index = buildPlanIndex(plan.interactionPlan, plan.permittedInterfaces)
+		const first = resolveStep(index, 'top-first')
+		const second = resolveStep(index, 'top-second')
+		const operation = resolveOperation(index, 'op-top')
+
+		const phrase = renderStepReference(first, operation, [first, second], index)
+		// The budget is charged after an expansion, so the bound is the budget
+		// plus one step's own clause text, and that seed literal is 65,536 of it.
+		expect(phrase.length).toBeLessThan(400_000)
+		expect(phrase).not.toBe(
+			renderStepReference(second, operation, [first, second], index),
+		)
+	})
+
+	it('a literal on every node of the DAG overshoots by one clause, not by the group count', () => {
+		// A clause commits to its groups in one pass and renders them in the next,
+		// so testing the budget while the slots were built let every group of an
+		// already-committed clause render in full. The overshoot was then the
+		// group count times one step's text: fourteen million characters here,
+		// against the roughly one million the bound claims.
+		const plan = completeCaptureDag(14, 1_000_000, 1)
+		const index = buildPlanIndex(plan.interactionPlan, plan.permittedInterfaces)
+		const first = resolveStep(index, 'top-first')
+		const second = resolveStep(index, 'top-second')
+		const operation = resolveOperation(index, 'op-top')
+
+		const phrase = renderStepReference(first, operation, [first, second], index)
+		expect(phrase.length).toBeLessThan(1_100_000)
+		expect(phrase).not.toBe(
+			renderStepReference(second, operation, [first, second], index),
+		)
+	})
+
+	it('an unrelated literal does not decide whether a separable pair renders', () => {
+		// A budget alone couples the two: `a-bulk` sorts before `z-pick`, so the
+		// bulk group renders first and spends the budget, and the expansion that
+		// actually separates the pair is two levels down inside `z-pick`. Growing
+		// a literal on a step neither sibling references then flipped this from
+		// rendering to a `TypeError`. The retry at the ceiling is what removes it.
+		const build = (bulkLiteralLength: number) => {
+			const plan = unrelatedBulkPair(bulkLiteralLength)
+			const index = buildPlanIndex(
+				plan.interactionPlan,
+				plan.permittedInterfaces,
+			)
+			const first = resolveStep(index, 'read-first')
+			const second = resolveStep(index, 'read-second')
+			const operation = resolveOperation(index, 'read-op')
+			return renderStepReference(first, operation, [first, second], index)
+		}
+
+		// The control: a small literal leaves the separating expansion affordable.
+		expect(build(10)).toContain('ALPHA')
+		expect(build(150_000)).toContain('ALPHA')
 	})
 
 	it('a capture cycle driven straight into the renderer terminates on the on-path guard rather than recursing', () => {

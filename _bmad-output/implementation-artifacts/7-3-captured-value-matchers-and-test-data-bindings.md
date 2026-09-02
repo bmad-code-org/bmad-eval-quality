@@ -852,12 +852,8 @@ fixes.
    disagreement. `checkNestedTemporalClause`'s duplicate handling is deliberate shipped behaviour
    from an earlier change and was left alone.
 
-One residue is bounded rather than removed, and recorded in the module and here. Grouping collapses
-several entries pointing at one predecessor; a step referencing several DISTINCT predecessors still
-expands each, so a capture graph that is a complete DAG unrolls once per distinct path. Measured at
-the sixteen-step cap: 670,757 characters in 35 milliseconds. Seventeen and eighteen steps double it
-each time and are both rejected by `checkScriptingBound`. Large for an artifact AD-16 keeps minimal,
-neither slow nor fatal, and it needs a hand-authored complete DAG to reach.
+The residue grouping left was recorded here as bounded at 670 KB, and round 4 measured that claim
+false. It is corrected below.
 
 The reviewer also closed four of its earlier suspicions with proofs rather than assertions: the
 union-graph acyclicity argument is proven for both the capture-edge and pure-`after` cases including
@@ -865,5 +861,83 @@ the self-loop, the exactly-once partition across `tiers` and `cyclic` survives t
 over 200,000 random plans with a duplicated id injected into a fifth of them, a dangling `after`
 imposes nothing, and the flat diamond is linear (forty captures from one predecessor render in a
 millisecond).
+
+**Round 4** — the same peer session re-verified the grouping fix and attacked the bound this story
+had claimed for its residue. The chain shape is fixed (its own sixteen-step repro renders 1,422,
+1,747, and 2,046 characters at two, three, and four keys a link, each in about a millisecond, against
+1.4 MB, 206 MB, and a `RangeError` before), and the round-3 documentation fix is accurate as written.
+The claimed bound was wrong.
+
+1. **HIGH — the residue was neither bounded at 670 KB nor non-fatal.** Three axes set the phrase
+   size and only their product matters: keys per predecessor, the number of DISTINCT predecessors a
+   step references, and one step's own clause text. Grouping closed the first. The second doubles per
+   level on a complete capture DAG, measured at exactly 2^(n-1) and 8,192 at the sixteen-step cap.
+   The third is unbounded by construction: `formatLiteral` prints a `JsonValue` with no length cap
+   and a binding channel is a record with no maximum. So the same sixteen-step DAG reached
+   `RangeError: Invalid string length` with one 65,536-character literal on its seed, and 100 MB with
+   two hundred ordinary forty-character ones, every plan-side check passing. This story's own
+   "670 KB in 35 ms, neither slow nor fatal" was measured on a variant that branched one level lower;
+   the reviewer's own topology at the same cap measures twice that before any literal is added.
+   Fixed with the reviewer's recommended budget rather than its narrower alternative: a mutable
+   remaining-character count threads `stepReferenceAtLevel` to `bindingClause` to
+   `renderCaptureGroup`, each expansion spends what it produced, and `expandableCapture` returns
+   `null` once it is gone, so the entry falls back to the level-independent phrase that already
+   exists. Every `stepReferenceAtLevel` call from `renderStepReference` starts a fresh budget, so one
+   sibling's expansion never degrades another's and the distinctness test stays order-independent.
+   The budget is charged after an expansion rather than before, since an expansion cannot be priced
+   before its nested ones are known, so the bound is the budget plus one step's own clause text. The
+   six inputs that reached 100 MB and `RangeError` now measure 36 KB, 44 KB, 66 KB, 75 KB, 135 KB,
+   and 204 KB, all in single-digit milliseconds, and all six still separate their two siblings.
+
+The lesson this round is about the shape of the previous three rounds rather than about the code:
+each fix closed one axis and left the next one open, and the claim attached to each was a bound
+measured on the shape that had just been fixed. The budget is the first fix here that bounds a
+quantity rather than a shape, which is why it is the one that holds. Round 5 found the budget's own
+statement of itself was still one factor short, which is the same failure one level up.
+
+Its one cost is recorded rather than left to be found: past the budget, two siblings the declared
+structure genuinely separates can render alike and `renderStepReference` throws its precondition
+`TypeError`. That is the same failure mode `deferred-work.md` already carries for the irreducible
+case, and it is the better end of the trade against an unbounded phrase on the one artifact AD-16
+keeps minimal.
+
+**Round 5** — the same peer session re-verified the budget and attacked it on the four axes it was
+briefed to attack. R4-1 is fixed: no `RangeError` and no multi-second render at any contract size it
+could build, on any axis, and it reproduced this story's six measurements on its own construction of
+the plan. Two of the four attacks came back clean with evidence: `renderEvidenceReferences` is
+byte-identical over 400 runs with `evidenceTargets`, `interactionPlan`, and `permittedInterfaces`
+independently shuffled against a budget-saturating DAG, since the budget never crosses a
+`renderStepReference` boundary; and the fresh-budget-per-sibling property holds, so no phrase's
+distinctness is an artifact of what another sibling spent. It also closed the fourth-axis question as
+a negative result with three candidates measured rather than as a bare no: per-node clause text
+amplifies linearly, evidence targets per direction are flat at about eight characters each because
+`groupResolvedTargets` collapses same-step targets, and sibling count is linear and capped by the
+plan. The two remaining findings were both about the claim rather than a crash.
+
+1. **MEDIUM — the stated bound was understated by the group count.** `bindingClause` commits every
+   slot in one pass and renders them in the next, and the exhaustion test sat in the first pass, so a
+   clause that had already committed to G groups rendered all G however far past the budget it went.
+   The real overshoot was G times one step's clause text, fifteen at the sixteen-step cap: a
+   one-million-character literal on each of fourteen DAG nodes rendered 14,004,448 characters against
+   the roughly 1,100,000 the comment claimed. Fixed by moving the test into the render pass, which is
+   what makes the comment's own bound true. The same input now measures 1,000,564.
+2. **MEDIUM — an unrelated literal decided whether a separable pair could be sealed.** The
+   consequence this story had recorded in one sentence turned out to be worse than the sentence
+   said. The reviewer built it: seven steps, two siblings separated two levels down, each also
+   capturing from a bulk step neither of them is otherwise about. `a-bulk` sorts before `z-pick`, so
+   the bulk group renders first and spends the budget, and the expansion that actually separates the
+   pair is suppressed. Growing that bulk literal from 10 to 150,000 characters flipped the contract
+   from rendering cleanly to throwing, with a message asserting the declared structure does not
+   distinguish the two when it does. Fixed with the reviewer's recommendation:
+   `renderStepReference` walks the ladder twice, at the ordinary budget and then at a four-million
+   ceiling, and the retry fires only when every level collided AND some render had an expansion
+   suppressed. A collision with nothing suppressed is the declared structure's own tie and leaves the
+   loop, so a contract that renders keeps the tight bound and only one that would otherwise fail
+   pays for the larger phrase. Both halves of the reviewer's input now render, with the separating
+   literal present.
+
+What survives is the honest case, and it is unchanged: siblings the declared structure genuinely does
+not distinguish still throw the precondition `TypeError`, which is the pre-existing failure mode
+`deferred-work.md` already carries.
 
 ## Peer Review Record
