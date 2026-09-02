@@ -9,11 +9,7 @@ import {
 	OracleId,
 	ProbeId,
 } from './primitives.ts'
-import {
-	OracleDispositionValue,
-	RunMode,
-	type RunModeValue,
-} from './sealed-run-record.ts'
+import { OracleDispositionValue, RunMode } from './sealed-run-record.ts'
 import { EvaluatorRecommendation, Verdict } from './verdict.ts'
 
 /**
@@ -120,11 +116,23 @@ export const ScoringVersionInputs = z.strictObject({
  * `zod=false published=true` disagreements this way. Narrowing the schema
  * itself removes the gap at its source: a synthesised example for a
  * `const`-typed field can only be that one value.
+ *
+ * Two named consts rather than one generic builder: a `<M extends
+ * RunModeValue>(mode: M)` helper builds each schema correctly, but TypeScript
+ * fails to preserve the per-call-site literal through `EvidenceArtifact`'s
+ * `z.discriminatedUnion` inference, so a fixture assigning the wrong branch's
+ * `mode` here compiles instead of erroring. Two concrete literals close that
+ * gap by construction; there is nothing generic left for the checker to lose.
  */
-const scoringVersionInputsFor = (mode: RunModeValue) =>
-	ScoringVersionInputs.extend({
-		mode: z.literal(mode).describe(SCORING_VERSION_MODE_DESCRIPTION),
-	})
+const productionScoringVersionInputs = ScoringVersionInputs.extend({
+	mode: z.literal('production').describe(SCORING_VERSION_MODE_DESCRIPTION),
+})
+
+const contractScoringVersionInputs = ScoringVersionInputs.extend({
+	mode: z
+		.literal('contract-scoring')
+		.describe(SCORING_VERSION_MODE_DESCRIPTION),
+})
 
 export const InvalidatedAttempt = z.strictObject({
 	attempt: z.int().min(1),
@@ -340,7 +348,7 @@ export const EvidenceArtifact = z
 		z
 			.strictObject({
 				...evidenceCommonFields,
-				scoringVersionInputs: scoringVersionInputsFor('production'),
+				scoringVersionInputs: productionScoringVersionInputs,
 				mode: z.literal('production'),
 				productionVerdict: Verdict,
 			})
@@ -350,7 +358,7 @@ export const EvidenceArtifact = z
 		z
 			.strictObject({
 				...evidenceCommonFields,
-				scoringVersionInputs: scoringVersionInputsFor('contract-scoring'),
+				scoringVersionInputs: contractScoringVersionInputs,
 				mode: z.literal('contract-scoring'),
 				contractVerdict: Verdict,
 				systemRecommendationRecorded: EvaluatorRecommendation.describe(
