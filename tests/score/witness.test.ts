@@ -791,6 +791,20 @@ describe('quotation audits and never governs', () => {
 		).toEqual([])
 	})
 
+	// `findings` carries no ordering field, so the audit may not read its array
+	// position. Same family as the observation permutation fixtures above.
+	it('returns the same order whichever order the findings were filed in', () => {
+		const first = defectFinding(['obs-1'], { findingId: 'F-030', quote: '500' })
+		const second = defectFinding(['obs-1'], {
+			findingId: 'F-029',
+			quote: '502',
+		})
+		const forward = auditQuotation(recordOf(bothObservations, [first, second]))
+		const reversed = auditQuotation(recordOf(bothObservations, [second, first]))
+		expect(forward).toEqual(reversed)
+		expect(forward.map((entry) => entry.findingId)).toEqual(['F-029', 'F-030'])
+	})
+
 	it('does not feed the verdict: an unwitnessed quote still resolves matched', () => {
 		const record = recordOf(bothObservations, [
 			defectFinding(['obs-2'], { quote: 'a quote nothing carries' }),

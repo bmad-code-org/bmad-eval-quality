@@ -12,11 +12,12 @@ import {
 	publishedValidatorOf,
 } from './validator.ts'
 
-// Whichever test calls `generationOf('eval-contract')` first pays the whole
-// cold-cache generation (~1.1 s, CPU-bound); Vitest's 5 s default leaves
-// roughly a 4x margin on a shared runner. Same named budget the differential
-// and sweep files use, so these tests aren't the suite's accidental timing
-// canaries.
+// Whichever test calls `generationOf(key)` first for a given document pays that
+// document's whole cold-cache generation, which is CPU-bound and well past
+// Vitest's 5 s default on a shared runner once a document is large. Every test
+// that can be the first caller for its document carries this budget, so these
+// tests aren't the suite's accidental timing canaries. Same named budget the
+// differential and sweep files use.
 const GENERATION_TIMEOUT_MS = 120_000
 
 const mutantFor = (
@@ -112,17 +113,21 @@ describe('hand-checked mutants, one per mutation family', () => {
 	// and a seeded probe flipped to true carries an undeclared one. Both
 	// occurrences now carry an ordinary rejected mutant, and the flip pairing is
 	// gone rather than merely unused.
-	it('rejects the flipped oneOf discriminator outright, on both branches', () => {
-		const validate = publishedValidatorOf('probe')
-		for (const branch of [0, 1]) {
-			const mutant = mutantFor(
-				'probe',
-				`/oneOf/${branch}/properties/expectedClean/const`,
-			)
-			expect(mutant, `branch ${branch}`).toBeDefined()
-			expect(validate(mutant?.value), `branch ${branch}`).toBe(false)
-		}
-	})
+	it(
+		'rejects the flipped oneOf discriminator outright, on both branches',
+		() => {
+			const validate = publishedValidatorOf('probe')
+			for (const branch of [0, 1]) {
+				const mutant = mutantFor(
+					'probe',
+					`/oneOf/${branch}/properties/expectedClean/const`,
+				)
+				expect(mutant, `branch ${branch}`).toBeDefined()
+				expect(validate(mutant?.value), `branch ${branch}`).toBe(false)
+			}
+		},
+		GENERATION_TIMEOUT_MS,
+	)
 
 	it('rejects every non-flip mutant with the intact document', () => {
 		const validate = publishedValidatorOf('scoring-policy')

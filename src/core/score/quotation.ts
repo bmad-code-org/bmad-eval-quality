@@ -157,7 +157,15 @@ export function auditQuotation(
 			})
 		})
 	}
-	return unwitnessed
+	// `findings` carries no ordering field, so reading it in array order would
+	// make the result depend on a position NFR9 forbids reading. Sorted by
+	// finding identifier, then by the quotation's index within that finding,
+	// which is the one order the record itself declares.
+	return unwitnessed.sort(
+		(a, b) =>
+			(a.findingId < b.findingId ? -1 : a.findingId > b.findingId ? 1 : 0) ||
+			a.quoteIndex - b.quoteIndex,
+	)
 }
 
 export type ReconstructedDetection = {
