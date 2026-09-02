@@ -123,6 +123,38 @@ describe('resolveProductionVerdict / resolveContractVerdict', () => {
 		).toBe(true)
 	})
 
+	// Owed item 5: an uncited defect finding resolves at least CONCERNS in
+	// both ladders, verdictBasis names it, and it is strict-promotable (no
+	// severity-floor gate, unlike the two rows above it).
+	it('resolves an uncited defect finding to CONCERNS, strict-promotable, in both ladders', () => {
+		const body = {
+			...baseline(),
+			uncitedDefectFindings: [
+				{
+					findingId: 'finding-7',
+					observationIds: ['obs-1'],
+					quotedEvidence: [
+						{ quote: 'boom', channel: 'response-body' as const },
+					],
+					severity: 'low' as const,
+				},
+			],
+		}
+		for (const resolution of [
+			resolveProductionVerdict(productionOf(body)),
+			resolveContractVerdict(contractOf(body)),
+		]) {
+			expect(resolution.verdict).toBe('CONCERNS')
+			expect(resolution.strictPromotable).toBe(true)
+			expect(
+				resolution.basis.some(
+					(entry) =>
+						entry.includes('finding-7') && entry.includes('citing no oracle'),
+				),
+			).toBe(true)
+		}
+	})
+
 	// AD-21's WAIVED and PASS rungs each require "every required check
 	// resolved" in their own words. A required oracle whose check never ran at
 	// all can still land on a clean-looking outcome.ts state (`confirmed`, via

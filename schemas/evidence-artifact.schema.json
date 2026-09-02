@@ -1137,6 +1137,65 @@
         "contractVerdict": {
           "$ref": "#/$defs/Verdict"
         },
+        "uncitedFindingGaps": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "findingId": {
+                "type": "string",
+                "pattern": "^F-[0-9]{3,}$"
+              },
+              "observationIds": {
+                "minItems": 1,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                  "description": "A kebab-case slug. Excludes \"/\" and \"~\" so an identifier can be embedded in an interaction-rooted pointer without escaping."
+                }
+              },
+              "quotedEvidence": {
+                "minItems": 1,
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "quote": {
+                      "type": "string",
+                      "minLength": 1,
+                      "description": "The evaluator's verbatim quotation, per AD-23. Non-empty: an empty quotation quotes nothing, no AD-5 code names the condition, and under the admit-rule's second clause the schema is therefore the enforcement point. That this text appears in at least one of the finding's cited observations is NOT checked here; it is an AD-32 declared-versus-observed inconsistency that invalidates at ingest, and ADR-009 Decision 2 settles the precedence: \"cited identifiers govern the witness match; quotation audits it.\""
+                    },
+                    "channel": {
+                      "$ref": "#/$defs/EvidenceChannel"
+                    }
+                  },
+                  "required": [
+                    "quote",
+                    "channel"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "severity": {
+                "type": "string",
+                "enum": [
+                  "low",
+                  "material",
+                  "critical"
+                ]
+              }
+            },
+            "required": [
+              "findingId",
+              "observationIds",
+              "quotedEvidence",
+              "severity"
+            ],
+            "additionalProperties": false
+          },
+          "description": "Owed item 5's rung record, contract-scoring only: one entry per uncited `defect` finding, per `core/score/outcome.ts`'s `uncitedDefectFindingGaps`. Required, not optional, which makes this the `schemaVersion` 2 -> 3 BREAKING bump under AD-11: an empty array is legal and is what a run with no uncited defect finding carries, but the key itself must be present. Never on the production branch, where the ladder signal alone is enough and this key would fail `strictObject`'s `unrecognized_keys` rule."
+        },
         "systemRecommendationRecorded": {
           "description": "The evaluator's recommendation about the SYSTEM, recorded and never promoted. On a knowingly defective probe a system-directed FAIL is an input rather than a signal about the contract.",
           "$ref": "#/$defs/EvaluatorRecommendation"
@@ -1172,6 +1231,7 @@
         "remediation",
         "mode",
         "contractVerdict",
+        "uncitedFindingGaps",
         "systemRecommendationRecorded",
         "systemRecommendationNote"
       ],
@@ -1179,7 +1239,7 @@
       "description": "Contract-scoring mode: the verdict is about the contract, and the evaluator's recommendation about the system is recorded beside it rather than promoted."
     }
   ],
-  "description": "The scored output, owned by `emit` per AD-24, with no prior art; `score` produces the outcome and verdict values it serializes. The two modes are separate branches because AD-21 requires that the production verdict and the contract verdict never share a field. Mode is no longer first stated here: the Sealed Run Record now carries a required `mode`, where AD-21's \"fixed before ingest\" puts it, so this artifact restates a mode the sealed record already fixed and is never the source. Owed item 4 is closed as of this schemaVersion: `mode` is `ScoringVersionInputs`'s sixth field, `core/score/ladder.ts` carries `ProductionAssessment`/`ContractAssessment` and their own total ladders, and `core/score/mode-agreement.ts` rejects a `production` record paired with a `contract-scoring` artifact in both directions as an AD-32 cross-artifact disagreement. That check is a hand-written function at the assembly boundary rather than a schema refinement, since no single schema sees both artifacts, and it has no caller yet because `score` and `emit` both carry `module: null` in the stage table.",
+  "description": "The scored output, owned by `emit` per AD-24, with no prior art; `score` produces the outcome and verdict values it serializes. The two modes are separate branches because AD-21 requires that the production verdict and the contract verdict never share a field. Mode is no longer first stated here: the Sealed Run Record now carries a required `mode`, where AD-21's \"fixed before ingest\" puts it, so this artifact restates a mode the sealed record already fixed and is never the source. Owed item 4 is closed as of this schemaVersion: `mode` is `ScoringVersionInputs`'s sixth field, `core/score/ladder.ts` carries `ProductionAssessment`/`ContractAssessment` and their own total ladders, and `core/score/mode-agreement.ts` rejects a `production` record paired with a `contract-scoring` artifact in both directions as an AD-32 cross-artifact disagreement. That check is a hand-written function at the assembly boundary rather than a schema refinement, since no single schema sees both artifacts, and it has no caller yet because `score` and `emit` both carry `module: null` in the stage table. Owed item 5 is closed as of this schemaVersion too: the contract-scoring branch carries a required `uncitedFindingGaps`, and both ladders in `core/score/ladder.ts` gain a shared `uncited-defect-finding` CONCERNS row over `AssessmentCommon.uncitedDefectFindings`, so an ingested defect finding citing no oracle now resolves at least CONCERNS instead of routing nowhere.",
   "$defs": {
     "CheckResolution": {
       "description": "One node of an oracle's `check` tree as it resolved. AD-4's resolution is three-valued rather than two, and the introduction vocabulary has exactly one member because AD-4 closes the introduction set at one: an empty collection. `null` where the resolution is not `insufficient-evidence`. A leaf carries an empty `children` array.",
@@ -1229,6 +1289,19 @@
         "FAIL"
       ],
       "description": "AD-21's four verdicts. Uppercase is one of the two named exceptions to the lowercase kebab-case enum convention. Exit codes are AD-21's and belong to the CLI rather than to this value: PASS, WAIVED, and CONCERNS exit zero and FAIL exits two."
+    },
+    "EvidenceChannel": {
+      "type": "string",
+      "enum": [
+        "response-body",
+        "response-headers",
+        "response-status",
+        "call-inputs",
+        "stdout",
+        "stderr",
+        "exit-code"
+      ],
+      "description": "AD-26's closed evidence channel vocabulary. The same seven the interaction-rooted pointer addresses; a channel outside this set is a syntax error rather than an unreachable-evidence finding."
     },
     "EvaluatorRecommendation": {
       "type": "string",

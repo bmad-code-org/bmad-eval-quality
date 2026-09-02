@@ -103,7 +103,7 @@ describe('the twelve published documents (AC 1)', () => {
 			'artifact-reference': 0,
 			'eval-contract': 6,
 			'evaluator-configuration': 1,
-			'evidence-artifact': 3,
+			'evidence-artifact': 4,
 			'isolation-manifest': 0,
 			'preflight-verdict': 0,
 			'private-artifact-manifest': 0,

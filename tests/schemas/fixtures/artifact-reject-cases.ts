@@ -8,6 +8,7 @@
 // `ad5-admissions.test.ts` instead (AD-5).
 
 import type { InterchangeArtifactKey } from '../../../src/core/schemas/artifact.ts'
+import { contractScoringEvidenceArtifact } from './artifact-fixtures.ts'
 
 export type ArtifactRejectCase = {
 	readonly id: string
@@ -26,6 +27,13 @@ export type ArtifactRejectCase = {
 	readonly errorParams?: Readonly<Record<string, string>>
 	/** set where one mutation legitimately produces more than one issue. */
 	readonly issueCount?: number
+	/**
+	 * Overrides the accept fixture this case clones from, for a constraint that
+	 * exists only on a branch the registry's default accept seed
+	 * (`ARTIFACT_ACCEPT_FIXTURES[artifact]`) does not take. Both consumers read
+	 * `rejectCase.seed ?? ARTIFACT_ACCEPT_FIXTURES[artifact]`.
+	 */
+	readonly seed?: unknown
 }
 
 export const ARTIFACT_REJECT_CASES: readonly ArtifactRejectCase[] = [
@@ -1033,6 +1041,37 @@ export const ARTIFACT_REJECT_CASES: readonly ArtifactRejectCase[] = [
 		issueCode: 'invalid_value',
 		keyword: 'const',
 		instancePath: '/scoringVersionInputs/mode',
+	},
+	{
+		id: 'uncited-finding-gaps-absent',
+		artifact: 'evidence-artifact',
+		constraint:
+			"uncitedFindingGaps is required on the contract-scoring branch, the version-3 bump owed item 5 requires (AD-11); the registry's default accept seed is production-mode, so this case clones the contract-scoring seed instead",
+		seed: contractScoringEvidenceArtifact,
+		mutate: (artifact) => {
+			delete artifact.uncitedFindingGaps
+		},
+		issuePath: ['uncitedFindingGaps'],
+		issueCode: 'invalid_type',
+		keyword: 'required',
+		instancePath: '',
+		errorParams: { missingProperty: 'uncitedFindingGaps' },
+	},
+	{
+		id: 'uncited-finding-gap-citations-empty',
+		artifact: 'evidence-artifact',
+		constraint:
+			"a gap's observationIds and quotedEvidence are each non-empty, mirroring the defect finding's own tightened minimums (AD-23) it is read from",
+		seed: contractScoringEvidenceArtifact,
+		mutate: (artifact) => {
+			artifact.uncitedFindingGaps[0].observationIds = []
+			artifact.uncitedFindingGaps[0].quotedEvidence = []
+		},
+		issuePath: ['uncitedFindingGaps', 0, 'observationIds'],
+		issueCode: 'too_small',
+		keyword: 'minItems',
+		instancePath: '/uncitedFindingGaps/0/observationIds',
+		issueCount: 2,
 	},
 
 	// ---- sealed-evaluator-brief --------------------------------------------

@@ -28,6 +28,7 @@ import type {
 	CoverageGap,
 	LineageChain,
 	Trials,
+	UncitedFindingGap,
 } from '../schemas/evidence-artifact.ts'
 import type { EvidenceDisclosure } from '../schemas/sealed-run-record.ts'
 import type { EvaluatorRecommendation, Verdict } from '../schemas/verdict.ts'
@@ -93,12 +94,24 @@ export type FindingConfidence = {
 	readonly confidence: number
 }
 
-/** The seven category values, common to both modes; AD-21 is explicit the two verdicts "never share a field" beyond this. */
+/**
+ * The seven category values, common to both modes; AD-21 is explicit the two
+ * verdicts "never share a field" beyond this. `uncitedDefectFindings` sits in
+ * the "coverage condition" category: owed item 5 calls an uncited defect
+ * finding, in contract-scoring, "the strongest available evidence of a
+ * coverage gap".
+ */
 type AssessmentCommon = {
 	readonly outcomeState: OutcomeStateInputs
 	readonly evidenceIntegrity: EvidenceIntegrityInputs
 	readonly evaluatorRecommendation: EvaluatorRecommendation
 	readonly coverageGaps: readonly CoverageGap[]
+	/**
+	 * Owed item 5, per `outcome.ts`'s `uncitedDefectFindingGaps`. Only presence
+	 * and each entry's `findingId` are read below; the rest is carried for the
+	 * persisted record.
+	 */
+	readonly uncitedDefectFindings: readonly UncitedFindingGap[]
 	readonly findings: readonly FindingConfidence[]
 	readonly confidenceThreshold: number
 	/** AD-21's "remediation state": `Remediation.lineageChain`'s conjunction only, never `Remediation.cap` (AD-12's contract-revision cap). */
@@ -476,6 +489,19 @@ const CONCERNS_ROWS_SHARED: readonly LadderConditionRow[] = [
 					(finding) =>
 						`finding ${finding.findingId} confidence ${finding.confidence} below the policy threshold`,
 				),
+	},
+	{
+		id: 'uncited-defect-finding',
+		rung: 'CONCERNS',
+		guard: 'an ingested defect finding citing no oracle',
+		// No severity-floor gate, unlike the two rows above: an uncited defect
+		// finding is an evaluator already catching something real, not the
+		// possibly-harmless under-declared corner a floor exists to excuse.
+		evidenceCondition: false,
+		reasons: (inputs) =>
+			inputs.uncitedDefectFindings.map(
+				(gap) => `finding ${gap.findingId}: defect finding citing no oracle`,
+			),
 	},
 	{
 		id: 'below-minimum-trial-count',

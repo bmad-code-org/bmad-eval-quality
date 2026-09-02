@@ -9,7 +9,11 @@ import {
 	OracleId,
 	ProbeId,
 } from './primitives.ts'
-import { OracleDispositionValue, RunMode } from './sealed-run-record.ts'
+import {
+	OracleDispositionValue,
+	QuotedEvidence,
+	RunMode,
+} from './sealed-run-record.ts'
 import { EvaluatorRecommendation, Verdict } from './verdict.ts'
 
 /**
@@ -207,6 +211,29 @@ export const CoverageGap = z.strictObject({
 /** the record as a type, so `core/coverage/` names it without importing Zod. */
 export type CoverageGap = z.infer<typeof CoverageGap>
 
+/**
+ * Owed item 5's record for an ingested `defect` finding citing no oracle:
+ * AD-23 already retains the finding rather than discarding it, but nothing
+ * downstream consumed it until this `schemaVersion`. Mirrors `CoverageGap`'s
+ * shape and the `defect`-branch fields on `Finding` it is read from, but
+ * carries no relevance or satisfaction predicate: AD-31's coverage gap is a
+ * declaration AD-31 could not confirm was satisfied, while an uncited defect
+ * finding is a runtime observation an evaluator made outside every declared
+ * oracle, with no relevance predicate to name and no satisfaction predicate
+ * that failed. This is the version-3 bump: required, not optional, per owed
+ * item 5, so a producer that never emits it stops parsing rather than
+ * silently under-reporting the gap.
+ */
+export const UncitedFindingGap = z.strictObject({
+	findingId: FindingId,
+	observationIds: z.array(Identifier).min(1),
+	quotedEvidence: z.array(QuotedEvidence).min(1),
+	severity: Severity,
+})
+
+/** exported so `core/score/ladder.ts` names this shape without importing Zod. */
+export type UncitedFindingGap = z.infer<typeof UncitedFindingGap>
+
 export const ClassStrength = z.strictObject({
 	caught: z.int().min(0),
 	exercised: z.int().min(0),
@@ -361,6 +388,11 @@ export const EvidenceArtifact = z
 				scoringVersionInputs: contractScoringVersionInputs,
 				mode: z.literal('contract-scoring'),
 				contractVerdict: Verdict,
+				uncitedFindingGaps: z
+					.array(UncitedFindingGap)
+					.describe(
+						"Owed item 5's rung record, contract-scoring only: one entry per uncited `defect` finding, per `core/score/outcome.ts`'s `uncitedDefectFindingGaps`. Required, not optional, which makes this the `schemaVersion` 2 -> 3 BREAKING bump under AD-11: an empty array is legal and is what a run with no uncited defect finding carries, but the key itself must be present. Never on the production branch, where the ladder signal alone is enough and this key would fail `strictObject`'s `unrecognized_keys` rule.",
+					),
 				systemRecommendationRecorded: EvaluatorRecommendation.describe(
 					"The evaluator's recommendation about the SYSTEM, recorded and never promoted. On a knowingly defective probe a system-directed FAIL is an input rather than a signal about the contract.",
 				),
@@ -373,7 +405,7 @@ export const EvidenceArtifact = z
 	.meta({
 		id: 'EvidenceArtifact',
 		description:
-			'The scored output, owned by `emit` per AD-24, with no prior art; `score` produces the outcome and verdict values it serializes. The two modes are separate branches because AD-21 requires that the production verdict and the contract verdict never share a field. Mode is no longer first stated here: the Sealed Run Record now carries a required `mode`, where AD-21\'s "fixed before ingest" puts it, so this artifact restates a mode the sealed record already fixed and is never the source. Owed item 4 is closed as of this schemaVersion: `mode` is `ScoringVersionInputs`\'s sixth field, `core/score/ladder.ts` carries `ProductionAssessment`/`ContractAssessment` and their own total ladders, and `core/score/mode-agreement.ts` rejects a `production` record paired with a `contract-scoring` artifact in both directions as an AD-32 cross-artifact disagreement. That check is a hand-written function at the assembly boundary rather than a schema refinement, since no single schema sees both artifacts, and it has no caller yet because `score` and `emit` both carry `module: null` in the stage table.',
+			'The scored output, owned by `emit` per AD-24, with no prior art; `score` produces the outcome and verdict values it serializes. The two modes are separate branches because AD-21 requires that the production verdict and the contract verdict never share a field. Mode is no longer first stated here: the Sealed Run Record now carries a required `mode`, where AD-21\'s "fixed before ingest" puts it, so this artifact restates a mode the sealed record already fixed and is never the source. Owed item 4 is closed as of this schemaVersion: `mode` is `ScoringVersionInputs`\'s sixth field, `core/score/ladder.ts` carries `ProductionAssessment`/`ContractAssessment` and their own total ladders, and `core/score/mode-agreement.ts` rejects a `production` record paired with a `contract-scoring` artifact in both directions as an AD-32 cross-artifact disagreement. That check is a hand-written function at the assembly boundary rather than a schema refinement, since no single schema sees both artifacts, and it has no caller yet because `score` and `emit` both carry `module: null` in the stage table. Owed item 5 is closed as of this schemaVersion too: the contract-scoring branch carries a required `uncitedFindingGaps`, and both ladders in `core/score/ladder.ts` gain a shared `uncited-defect-finding` CONCERNS row over `AssessmentCommon.uncitedDefectFindings`, so an ingested defect finding citing no oracle now resolves at least CONCERNS instead of routing nowhere.',
 	})
 
 export type EvidenceArtifact = z.infer<typeof EvidenceArtifact>

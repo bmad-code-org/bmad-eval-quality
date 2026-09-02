@@ -704,7 +704,7 @@ export const scoringPolicyFixture: ScoringPolicy = {
 }
 
 const evidenceCommon = {
-	schemaVersion: 2,
+	schemaVersion: 3,
 	parentDigest: null,
 	revisionCount: 0,
 	runId: 'spike-run-0001',
@@ -839,6 +839,14 @@ export const contractScoringEvidenceArtifact: EvidenceArtifact = {
 	exitCode: 0,
 	mode: 'contract-scoring',
 	contractVerdict: 'CONCERNS',
+	uncitedFindingGaps: [
+		{
+			findingId: 'F-004',
+			observationIds: ['obs-005'],
+			quotedEvidence: [{ quote: 'colour', channel: 'response-body' }],
+			severity: 'low',
+		},
+	],
 	systemRecommendationRecorded: 'FAIL',
 	systemRecommendationNote:
 		'Expected in contract-scoring mode: the probe is knowingly defective, so a system-directed FAIL is an input rather than a signal about the contract.',

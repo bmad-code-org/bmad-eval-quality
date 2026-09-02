@@ -426,13 +426,14 @@ export const workedExampleEvidenceArtifact: unknown = {
 }
 
 /**
- * Its nineteen issues. `mode`, `contractVerdict`, `verdictBasis`, `trials`,
- * and `callerAttestedInputs` parse unchanged. What fails: absent lineage; the
+ * Its twenty issues. `mode`, `contractVerdict`, `verdictBasis`, `trials`, and
+ * `callerAttestedInputs` parse unchanged. What fails: absent lineage; the
  * scoring version as a bare digest missing AD-11's five named inputs; no
  * `excludedProbeIds`; outcomes with neither `selectedObservationIds` nor
  * `checkResolution`; `strength` with no `basis` and a one-key vector;
  * `rawCounts` (dropped as a duplicate of the vector); remediation with no
- * `lineageChain`.
+ * `lineageChain`; and, since Story 7.8, no `uncitedFindingGaps`, the
+ * required owed-item-5 record this contract-scoring artifact predates.
  */
 export const WORKED_EXAMPLE_EVIDENCE_ISSUES: readonly WorkedExampleIssue[] = [
 	{ path: ['parentDigest'], code: 'invalid_type' },
@@ -454,4 +455,5 @@ export const WORKED_EXAMPLE_EVIDENCE_ISSUES: readonly WorkedExampleIssue[] = [
 	{ path: ['strength', 'vector', 'zero-action'], code: 'invalid_type' },
 	{ path: ['strength'], code: 'unrecognized_keys' },
 	{ path: ['remediation', 'lineageChain'], code: 'invalid_type' },
+	{ path: ['uncitedFindingGaps'], code: 'invalid_type' },
 ]
