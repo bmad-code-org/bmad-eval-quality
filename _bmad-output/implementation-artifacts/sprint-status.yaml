@@ -87,9 +87,9 @@ development_status:
   7-1-the-run-mode-source-and-the-sealed-run-records-mode-field: done
   7-2-a-monotonic-observation-sequence-and-declared-selector-cardinality: done
   7-3-captured-value-matchers-and-test-data-bindings: done
-  7-4-the-ad-40-defect-signature-corpus-qualification-and-the-witness-match: review
-  7-5-ad-33-as-a-total-reference-decision-procedure-with-generated-fixtures: review
-  7-6-the-trial-set-reducer-and-the-ad-7-rate-vector: backlog
+  7-4-the-ad-40-defect-signature-corpus-qualification-and-the-witness-match: done
+  7-5-ad-33-as-a-total-reference-decision-procedure-with-generated-fixtures: done
+  7-6-the-trial-set-reducer-and-the-ad-7-rate-vector: review
   7-7-mode-separation-with-two-input-types-and-two-generated-ladders: backlog
   7-8-a-rung-for-uncited-defect-findings-and-the-record-it-writes: backlog
   7-9-regenerate-the-worked-chain-and-its-probe-corpus-entry: backlog

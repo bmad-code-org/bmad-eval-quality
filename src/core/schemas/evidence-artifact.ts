@@ -108,6 +108,9 @@ export const InvalidatedAttempt = z.strictObject({
 		),
 })
 
+/** exported so the trial-set reducer names this shape without importing Zod. */
+export type InvalidatedAttempt = z.infer<typeof InvalidatedAttempt>
+
 /**
  * AD-6: "Every artifact records its trial count, its invalidated attempts, and
  * each attempt's reason, including on a PASS." None of the three is nullable,
@@ -146,6 +149,9 @@ export const Outcome = z.strictObject({
 	),
 })
 
+/** exported so the dominance comparator names this shape without importing Zod. */
+export type Outcome = z.infer<typeof Outcome>
+
 export const CoverageGap = z.strictObject({
 	rule: z
 		.string()
@@ -175,6 +181,9 @@ export const ClassStrength = z.strictObject({
 		),
 })
 
+/** exported so the rate-vector builder names this shape without importing Zod. */
+export type ClassStrength = z.infer<typeof ClassStrength>
+
 /**
  * A fixed three-key object instead of a map keyed by probe class. AD-7 is
  * explicit that "canary probes and clean controls never enter the vector", so
@@ -185,6 +194,9 @@ export const StrengthVector = z.strictObject({
 	gameability: ClassStrength.nullable(),
 	'zero-action': ClassStrength.nullable(),
 })
+
+/** exported so the rate-vector builder names this shape without importing Zod. */
+export type StrengthVector = z.infer<typeof StrengthVector>
 
 export const Strength = z.strictObject({
 	denominator: z
@@ -206,6 +218,9 @@ export const Strength = z.strictObject({
 		),
 	note: z.string().nullable(),
 })
+
+/** exported so the dominance comparator names this shape without importing Zod. */
+export type Strength = z.infer<typeof Strength>
 
 /**
  * AD-12's three named checks, transcribed from the same sentence the field

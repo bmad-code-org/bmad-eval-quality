@@ -690,12 +690,13 @@ export const failingPreflightVerdict: PreflightVerdict = {
 }
 
 export const scoringPolicyFixture: ScoringPolicy = {
-	schemaVersion: 1,
+	schemaVersion: 2,
 	parentDigest: null,
 	revisionCount: 0,
 	policyId: 'default-policy',
 	severityFloor: 'material',
 	confidenceThreshold: 0.7,
+	catchThreshold: 0.5,
 	minimumTrialCount: 3,
 	reExecutionCap: 2,
 	remediationCap: 3,

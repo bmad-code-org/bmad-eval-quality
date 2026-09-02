@@ -1416,8 +1416,30 @@ describe('the conjuncts the fixture set cannot reach', () => {
 	})
 })
 
+// The trial-set reducer groups all twelve states into three vote categories,
+// so it legitimately names every one of them. The dominance comparator's
+// severity-floor override reads exactly one state literal, `'caught'`, and
+// names no other member of the closed twelve. Neither becomes a second
+// assigner: each only classifies or compares a state `resolveOutcome`
+// already assigned.
+const ALWAYS_NAMED = [
+	'src/core/schemas/evidence-artifact.ts',
+	'src/core/score/outcome.ts',
+	'src/core/score/reduce-trials.ts',
+]
+
+const STRENGTH_NAMED_STATES = ['caught']
+
+const expectedNamingFilesFor = (state: string): readonly string[] =>
+	(STRENGTH_NAMED_STATES.includes(state)
+		? [...ALWAYS_NAMED, 'src/core/score/strength.ts']
+		: ALWAYS_NAMED
+	)
+		.slice()
+		.sort()
+
 describe('the boundary the procedure holds', () => {
-	it('is the only module in the package that names an AD-6 state', () => {
+	it('names an AD-6 state only from the exact per-state module set, and resolveOutcome remains the only assigner', () => {
 		const repoRoot = fileURLToPath(new URL('../../', import.meta.url))
 		return discoverSourceFiles(repoRoot).then((files) => {
 			for (const state of OUTCOME_STATES) {
@@ -1425,10 +1447,7 @@ describe('the boundary the procedure holds', () => {
 					.filter(([, source]) => source.includes(`'${state}'`))
 					.map(([path]) => path)
 					.sort()
-				expect(naming, state).toEqual([
-					'src/core/schemas/evidence-artifact.ts',
-					'src/core/score/outcome.ts',
-				])
+				expect(naming, state).toEqual(expectedNamingFilesFor(state))
 			}
 		})
 	})
