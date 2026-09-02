@@ -68,6 +68,7 @@ flowchart TD
 |   25 | epic7-story2 | Give every observation a place in line, and let a step say how many matches it expects, so two scorers can't disagree about what matched. |
 |   26 | epic7-story3 | Two more binding forms, so a step can name the id an earlier call returned or the test account it acts as, neither of which a contract author can write down. |
 |   27 | epic7-story4 | Make every probe declare how it earned its ground truth and where its seeded defect shows up, so a finding can be checked against the defect it claims to have found. |
+|   28 | epic7-story5 | One function that names each result, written as four ordered tables it prints to a checked-in document, so nobody can read the same run two ways. |
 
 Adding a step: follow `learning-path-template.md`.
 
@@ -2373,3 +2374,88 @@ flowchart TD
   run.
 - `src/application/preflight.ts` parses caller-supplied probes, so every corpus written before this
   story fails to parse until it gains both fields.
+## Step 28 (epic7-story5): the one place a result gets its name
+
+**In plain terms:** after a test run, somebody has to say what each check actually proved.
+Did it catch the planted bug, miss it, or never get run at all?
+Every piece built so far refused to answer on purpose,
+so the twelve possible answers had nothing behind them producing one.
+This step is the one function that answers.
+It writes its own answer tables into a file the build checks character by character,
+so two people cannot read the same run two ways.
+
+**What:** `resolveOutcome`, a pure function over fifteen inputs, written as four ordered tables.
+Ten condition checks that all run and all report.
+Twenty state rules, first match wins.
+Two waiver rules that run after the state is picked.
+Eight agreement rules that run last.
+A script prints all four tables, the shape rules, and the fixture counts to
+`docs/ad33-outcome-decision.generated.md`, and a check compares that file byte for byte.
+
+**Why:** four of the twelve result names had no rule behind them anywhere in the codebase:
+`bypassed`, `abstained`, `judge-error`, and `oracle-error`.
+The order of the rules is the whole design, and a wrong order is a green build on a broken run.
+Put the waiver above the match and a waiver deletes a real catch.
+Put the examined-nothing rule below the did-not-fire rule
+and a check that looked at an empty list reports success.
+
+**Read in this order:**
+
+1. `src/core/score/outcome.ts`: the fifteen inputs, then the four tables, top to bottom.
+2. `src/core/score/outcome-table.ts`: turns those tables plus the fixture counts into markdown.
+3. `tests/score/fixtures/outcome-inputs.ts`: the input domains, seven shape rules, the case set.
+4. `tests/score/outcome.test.ts`: all twelve names reached, every rule fired, counts pinned.
+5. `scripts/generate-ad33-table.ts` and `scripts/check-ad33-table.ts`: write it, then guard it.
+6. `docs/ad33-outcome-decision.generated.md`: the printed result. Never edited by hand.
+
+```mermaid
+flowchart TD
+  IN["outcome.ts<br/>OutcomeInputs, fifteen fields"]
+  A["Stage A<br/>ten conditions, all report"]
+  B["Stage B<br/>twenty state rules, first match"]
+  C["Stage C<br/>two waiver rules"]
+  D["corroboration<br/>eight agreement rules"]
+  OUT["OutcomeResolution<br/>state, agreement, evidence read"]
+  TBL["outcome-table.ts"]
+  DOC["docs/ad33-outcome-decision.generated.md<br/>byte-compared in CI"]
+
+  IN --> A --> OUT
+  IN --> B --> C --> OUT
+  IN --> D --> OUT
+  B --> TBL
+  TBL --> DOC
+```
+
+**Story:** `_bmad-output/implementation-artifacts/7-5-ad-33-as-a-total-reference-decision-procedure-with-generated-fixtures.md`
+
+### Reference
+
+**Rules:**
+
+- Conditions run independently and every one that holds is reported.
+  A first-match list would let a broken judge hide a real regression.
+- `caught` needs the finding to map to the defect the probe seeded.
+  A finding on the right probe is not enough.
+- `missed` has one source: the seeded defect showed up and nobody filed it.
+- A check that examined an empty list is `abstained`,
+  decided above the did-not-fire rule and above the clean-control pass.
+- A waiver only touches `missed`.
+  It cannot waive a clean control and it cannot relabel an abstention.
+- An oracle whose steps all went unmatched is `unreached`,
+  unless a witness already proved otherwise, and never when the oracle declared no steps at all.
+- A disposition that claims a result and cites no observation is recorded as disagreement.
+- Agreement is a separate answer from the check's own three values.
+  `not-evaluable` means the check never ran; `insufficient-evidence` means it ran and found
+  nothing to look at.
+- The document is generated.
+  Rename a rule in the code, skip the regeneration, and CI fails.
+
+**Watch out:**
+
+- Two cells disagree with the epic's restatement of the architecture rule.
+  The architecture wins, and both cells are named in the story's decisions.
+- `probeSigned` is an input no rule reads.
+  It is there because the published table states the relation between a signature and a witness,
+  and a test pins that nothing reads it.
+- Two fields the function returns have no home on the evidence artifact yet,
+  so the WAIVED verdict cannot be derived from the artifact alone until the next story adds them.

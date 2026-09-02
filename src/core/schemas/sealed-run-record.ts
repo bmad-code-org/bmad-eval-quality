@@ -139,6 +139,8 @@ export const OracleDisposition = z.strictObject({
 	note: z.string().nullable(),
 })
 
+export type OracleDisposition = z.infer<typeof OracleDisposition>
+
 /**
  * A flat map would break pointer addressing: AD-26 keys `call-inputs` by
  * transport channel, so a pointer like

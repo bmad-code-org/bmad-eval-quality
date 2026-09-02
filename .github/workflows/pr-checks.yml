@@ -49,6 +49,9 @@ jobs:
       - name: AD-31 coverage predicate table drift check (byte-exact against docs/)
         run: npm run check:ad31-table
 
+      - name: AD-33 outcome decision table drift check (byte-exact against docs/)
+        run: npm run check:ad33-table
+
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
         with:
           python-version: "3.12"
@@ -94,7 +97,7 @@ jobs:
       # `npm run validate` ends in `test:coverage`, so the AD-30/NFR7 floor is
       # already enforced here. A separate coverage step beside this one would
       # run the whole suite twice in one job for nothing.
-      - name: Validate (typecheck, lint, check:docs, check:doc-invocations, check:shareable, lint:spine, check:vectors, check:schemas, check:ad5-registry, check:ad28-registry, check:ad31-table, check:layers, check:lineage, check:boundary, check:corpus, check:website-deps, and the AD-30/NFR7 coverage floor via test:coverage)
+      - name: Validate (typecheck, lint, check:docs, check:doc-invocations, check:shareable, lint:spine, check:vectors, check:schemas, check:ad5-registry, check:ad28-registry, check:ad31-table, check:ad33-table, check:layers, check:lineage, check:boundary, check:corpus, check:website-deps, and the AD-30/NFR7 coverage floor via test:coverage)
         run: npm run validate
 
   floor:
@@ -134,6 +137,9 @@ jobs:
 
       - name: AD-31 coverage predicate table drift check (byte-exact against docs/)
         run: npm run check:ad31-table
+
+      - name: AD-33 outcome decision table drift check (byte-exact against docs/)
+        run: npm run check:ad33-table
 
       - name: AD-15 package-boundary check (src/, corpus/, and the published manifest fields)
         run: npm run check:boundary
@@ -607,6 +613,118 @@ jobs:
           [ -z "$(git status --porcelain -- docs/)" ] || { echo "generate:ad31-table left docs/ dirty; the writer and the check are out of step" >&2; git status --porcelain -- docs/ >&2; exit 1; }
           npm run --silent check:ad31-table
           echo "canary passed: generate:ad31-table reproduces the committed bytes exactly"
+
+  canary-ad33-table:
+    name: "Canary: AD-33 table check fails on a mutated byte and on a renamed rule"
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version-file: ".nvmrc"
+          cache: "npm"
+
+      - uses: ./.github/actions/assert-npm-version
+        with:
+          version: ${{ env.NPM_VERSION }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Assert the table check fails on a single mutated byte
+        run: |
+          set +e
+          printf 'x' >> docs/ad33-outcome-decision.generated.md
+          output="$(npm run --silent check:ad33-table 2>&1)"
+          exit_status=$?
+          set -e
+          git checkout -- docs/ad33-outcome-decision.generated.md
+          echo "$output"
+          if [ $exit_status -eq 0 ]; then
+            echo "expected the table check to fail on a mutated byte, but it passed" >&2
+            exit 1
+          fi
+          # Match the drift line specifically: a missing-file failure also exits
+          # non-zero and would pass a bare exit-code test for the wrong reason.
+          echo "$output" | grep -q "ad33-outcome-decision.generated.md: drift at byte offset" || { echo "check failed for the wrong reason (no byte-offset drift reported)" >&2; exit 1; }
+          echo "canary passed: table check correctly failed naming the differing byte offset"
+
+      # The canary that proves AD-33's central claim: the published table is
+      # emitted by the decision procedure rather than kept beside it. A byte
+      # mutation alone would pass under a hand-maintained table.
+      - name: Assert the table check fails when a ladder rule identifier changes
+        run: |
+          sed -i "s|id: 'outcome-clear'|id: 'outcome-clear-renamed'|" src/core/score/outcome.ts
+          # A seed that changed nothing would make the assertion below blame the
+          # check for a sed target that has since moved.
+          # `git status --porcelain`, the same idiom the fixed-point step uses:
+          # `git diff` compares against the index, so an unrelated unstaged edit
+          # would mask a sed target that has moved.
+          if [ -n "$(git status --porcelain -- src/core/score/outcome.ts)" ]; then
+            :
+          else
+            echo "the seeded rename changed nothing; the sed target has moved" >&2
+            exit 1
+          fi
+          set +e
+          output="$(npm run --silent check:ad33-table 2>&1)"
+          exit_status=$?
+          set -e
+          git checkout -- src/core/score/outcome.ts
+          echo "$output"
+          if [ $exit_status -eq 0 ]; then
+            echo "expected the table check to fail on a renamed ladder rule, but it passed" >&2
+            exit 1
+          fi
+          echo "$output" | grep -q "ad33-outcome-decision.generated.md: drift at byte offset" || { echo "check failed for the wrong reason (no byte-offset drift reported)" >&2; exit 1; }
+          echo "canary passed: the committed table moves with the rules that emit it"
+
+      # The rename step proves the identifiers flow. This one proves the
+      # behaviour does: a guard that stops discriminating moves the census the
+      # document publishes, so the check fails even though every identifier,
+      # state and ordering is untouched. It fails through the at-least-one
+      # census floor rather than through a byte comparison, so the grep admits
+      # both messages.
+      - name: Assert the table check fails when a ladder guard stops discriminating
+        run: |
+          sed -i "s|=== 'zero-action'|=== 'gameability'|" src/core/score/outcome.ts
+          # `git status --porcelain`, the same idiom the fixed-point step uses:
+          # `git diff` compares against the index, so an unrelated unstaged edit
+          # would mask a sed target that has moved.
+          if [ -n "$(git status --porcelain -- src/core/score/outcome.ts)" ]; then
+            :
+          else
+            echo "the seeded guard mutation changed nothing; the sed target has moved" >&2
+            exit 1
+          fi
+          set +e
+          output="$(npm run --silent check:ad33-table 2>&1)"
+          exit_status=$?
+          set -e
+          git checkout -- src/core/score/outcome.ts
+          echo "$output"
+          if [ $exit_status -eq 0 ]; then
+            echo "expected the table check to fail on a mutated ladder guard, but it passed" >&2
+            exit 1
+          fi
+          echo "$output" | grep -qE "ad33-outcome-decision.generated.md: drift at byte offset|check-ad33-table: the builder failed" || { echo "check failed for the wrong reason (neither drift nor a builder diagnosis)" >&2; exit 1; }
+          echo "canary passed: the published census moves with the guards that decide it"
+
+      # Regeneration is the repair every failure message above names, so the
+      # repair is proven to be a fixed point rather than assumed to be one.
+      - name: Assert generate then check is a fixed point
+        run: |
+          npm run --silent generate:ad33-table > /dev/null
+          # `git status --porcelain`, because `git diff` reports no untracked
+          # file: a generator writing to a path the check does not read would
+          # leave the committed document intact and pass a diff test.
+          [ -z "$(git status --porcelain -- docs/)" ] || { echo "generate:ad33-table left docs/ dirty; the writer and the check are out of step" >&2; git status --porcelain -- docs/ >&2; exit 1; }
+          npm run --silent check:ad33-table
+          echo "canary passed: generate:ad33-table reproduces the committed bytes exactly"
 
   canary-coverage:
     name: "Canary: the coverage floor blocks when it is not met"
