@@ -203,10 +203,15 @@ function favoredMissesWhatOtherCaught(
 }
 
 /**
- * AD-7's four-valued dominance relation. `comparabilityKey` is checked before
- * any component-wise comparison runs; the severity-floor override runs only
- * against the side the raw comparison favoured, and only ever downgrades that
- * result to `incomparable`, never hands the win to the other side.
+ * AD-7's four-valued dominance relation. `comparabilityKey` and each side's
+ * own `strength.comparable` are checked before any component-wise comparison
+ * runs: a key mismatch means the two runs are not measuring a shared probe
+ * set, and `comparable: false` means AD-21 already marked that one side's own
+ * vector as thinner than the policy's declared minimum, so a `caught`/`rate`
+ * on it is not fit to decide a comparison either way. The severity-floor
+ * override runs only against the side the raw comparison favoured, and only
+ * ever downgrades that result to `incomparable`, never hands the win to the
+ * other side.
  */
 export function compareDominance(
 	a: ComparableResult,
@@ -214,6 +219,7 @@ export function compareDominance(
 	severityFloor: Severity,
 ): DominanceRelationValue {
 	if (a.comparabilityKey !== b.comparabilityKey) return 'incomparable'
+	if (!a.strength.comparable || !b.strength.comparable) return 'incomparable'
 	const raw = componentComparison(a.strength.vector, b.strength.vector)
 	if (
 		raw === 'a-dominates-b' &&

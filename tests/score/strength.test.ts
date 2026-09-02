@@ -179,11 +179,11 @@ describe('the ClassStrength and StrengthVector schemas carry no weight, percenta
 	})
 })
 
-const strengthOf = (vector: StrengthVector): Strength => ({
+const strengthOf = (vector: StrengthVector, comparable = true): Strength => ({
 	denominator: 'unique qualified probe identifiers exercised',
 	basis: 'measured',
 	vector,
-	comparable: true,
+	comparable,
 	note: null,
 })
 
@@ -210,9 +210,10 @@ const comparableOf = (
 	vector: StrengthVector,
 	outcomes: readonly Outcome[] = [],
 	comparabilityKey = KEY,
+	comparable = true,
 ): ComparableResult => ({
 	outcomes,
-	strength: strengthOf(vector),
+	strength: strengthOf(vector, comparable),
 	comparabilityKey,
 })
 
@@ -253,6 +254,23 @@ describe('compareDominance', () => {
 			OTHER_KEY,
 		)
 		expect(compareDominance(a, b, 'low')).toBe('incomparable')
+	})
+
+	it('is incomparable when the keys match but one side is not comparable', () => {
+		const a = comparableOf(
+			{ ...NULL_VECTOR, defect: { caught: 4, exercised: 4, rate: 1 } },
+			[],
+			KEY,
+			false,
+		)
+		const b = comparableOf(
+			{ ...NULL_VECTOR, defect: { caught: 0, exercised: 4, rate: 0 } },
+			[],
+			KEY,
+			true,
+		)
+		expect(compareDominance(a, b, 'low')).toBe('incomparable')
+		expect(compareDominance(b, a, 'low')).toBe('incomparable')
 	})
 
 	it('is incomparable when the two results share no non-null probe class', () => {
