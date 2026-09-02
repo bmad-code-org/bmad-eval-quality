@@ -2516,7 +2516,8 @@ flowchart TD
 - A vector's class key is `null` only when the qualified set has no probe of that class at all;
   a class with probes but none exercised is still a present, zero-valued entry.
 - Comparability is checked before anything else.
-  Two results with different comparability keys are `incomparable` with no component-wise check run.
+  Two results with different comparability keys are `incomparable` with no component-wise check run,
+  and so is either side whose own `strength.comparable` reads false.
 - A contract that missed a floor-or-above probe the other contract caught can never dominate,
   whatever the rest of its vector reads. The override can only downgrade the favored side to
   `incomparable`.
@@ -2534,3 +2535,8 @@ flowchart TD
 - The reducer's own vote type carries `state` alone.
   Severity for the dominance override is read separately, off each result's outcome list,
   because it has to survive per probe past the point where probes get folded into class counts.
+- `comparabilityKey` and `Strength.comparable` answer different questions,
+  and the comparator needs both. A matching key says two results cover the same probes;
+  `comparable` says one side's own vector is trustworthy at all, since AD-21 sets it to false
+  on a below-minimum-trial or unreached-oracle run. A code review caught the comparator
+  checking only the key, so a thin, unreliable side could still win a comparison outright.

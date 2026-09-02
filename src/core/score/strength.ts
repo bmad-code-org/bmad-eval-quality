@@ -8,7 +8,7 @@
  * class or trial outcome. `compareDominance` takes two already-computed
  * results and never re-derives a vector, reads a port, a corpus, or a clock;
  * comparability is checked first, and the severity-floor override can only
- * push the relation toward `incomparable`, never invert it.
+ * push the relation toward `incomparable`.
  */
 import { SEVERITY_LEVELS, type Severity } from '../schemas/eval-contract.ts'
 import type {
@@ -210,8 +210,7 @@ function favoredMissesWhatOtherCaught(
  * vector as thinner than the policy's declared minimum, so a `caught`/`rate`
  * on it is not fit to decide a comparison either way. The severity-floor
  * override runs only against the side the raw comparison favoured, and only
- * ever downgrades that result to `incomparable`, never hands the win to the
- * other side.
+ * ever downgrades that result to `incomparable`.
  */
 export function compareDominance(
 	a: ComparableResult,
