@@ -79,14 +79,14 @@ const pointerOf = (path: readonly (string | number)[]): string =>
 				.join('/')}`
 
 describe('the reject corpus, run against the published documents', () => {
-	// 55 against the Eval Contract plus 83 across the other eleven; a count
-	// drift here means a case was added on one side and not annotated. The 138
+	// 55 against the Eval Contract plus 85 across the other eleven; a count
+	// drift here means a case was added on one side and not annotated. The 140
 	// total is also pinned in differential.test.ts ("carries every hand-written
 	// reject case").
-	it('enumerates all 138 cases exactly once', () => {
+	it('enumerates all 140 cases exactly once', () => {
 		expect(REJECT_CASES).toHaveLength(55)
-		expect(ARTIFACT_REJECT_CASES).toHaveLength(83)
-		expect(PUBLISHED_REJECT_CASES).toHaveLength(138)
+		expect(ARTIFACT_REJECT_CASES).toHaveLength(85)
+		expect(PUBLISHED_REJECT_CASES).toHaveLength(140)
 		const ids = PUBLISHED_REJECT_CASES.map(
 			(rejectCase) => `${rejectCase.artifact}/${rejectCase.id}`,
 		)

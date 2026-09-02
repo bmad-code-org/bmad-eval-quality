@@ -447,19 +447,56 @@ describe("the evidence artifact's vocabularies", () => {
 	// "let two conforming scorers compute different versions from identical
 	// inputs". If the enum and the object disagree, the published pre-image does
 	// not reproduce the published digest.
-	it("keys callerAttestedInputs by exactly the scoring version's five fields", () => {
+	it("keys callerAttestedInputs by exactly the scoring version's six fields", () => {
 		expect(Object.keys(ScoringVersionInputs.shape)).toEqual([
 			...SCORING_VERSION_INPUT_NAMES,
 		])
-		expect(SCORING_VERSION_INPUT_NAMES).toHaveLength(5)
+		expect(SCORING_VERSION_INPUT_NAMES).toHaveLength(6)
 	})
 
-	it('rejects a caller-attested input that is not one of the five', () => {
+	it('rejects a caller-attested input that is not one of the six', () => {
 		const artifact = clone(contractScoringEvidenceArtifact) as any
 		artifact.callerAttestedInputs = ['scoringVersion']
 		const issue = firstIssue(EvidenceArtifact.safeParse(artifact))
 		expect(issue?.code).toBe('invalid_value')
 		expect(issue?.path).toEqual(['callerAttestedInputs', 0])
+	})
+
+	// scoringVersionInputs.mode agrees with the artifact's own mode
+	// discriminant (AD-11, AD-32) because each branch narrows the nested field
+	// to that one literal (`scoringVersionInputsFor` in `evidence-artifact.ts`)
+	// rather than leaving it the shared two-value enum: a `.refine()` was
+	// tried and dropped, because it never exports and the corpus-mutation
+	// generator synthesises a same-shape witness for the untaken `oneOf`
+	// branch straight from the published schema, with no way to know about a
+	// Zod-only cross-field rule.
+	it('rejects scoringVersionInputs.mode disagreeing with the production branch', () => {
+		const artifact = clone(productionEvidenceArtifact) as any
+		artifact.scoringVersionInputs.mode = 'contract-scoring'
+		const result = EvidenceArtifact.safeParse(artifact)
+		expect(result.success).toBe(false)
+		const issue = result.error?.issues[0]
+		expect(issue?.code).toBe('invalid_value')
+		expect(issue?.path).toEqual(['scoringVersionInputs', 'mode'])
+	})
+
+	it('rejects scoringVersionInputs.mode disagreeing with the contract-scoring branch', () => {
+		const artifact = clone(contractScoringEvidenceArtifact) as any
+		artifact.scoringVersionInputs.mode = 'production'
+		const result = EvidenceArtifact.safeParse(artifact)
+		expect(result.success).toBe(false)
+		const issue = result.error?.issues[0]
+		expect(issue?.code).toBe('invalid_value')
+		expect(issue?.path).toEqual(['scoringVersionInputs', 'mode'])
+	})
+
+	it('accepts scoringVersionInputs.mode agreeing with either branch', () => {
+		expect(EvidenceArtifact.safeParse(productionEvidenceArtifact).success).toBe(
+			true,
+		)
+		expect(
+			EvidenceArtifact.safeParse(contractScoringEvidenceArtifact).success,
+		).toBe(true)
 	})
 
 	// AD-7: "Canary probes and clean controls never enter the vector", so the

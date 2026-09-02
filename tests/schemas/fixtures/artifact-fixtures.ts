@@ -704,7 +704,7 @@ export const scoringPolicyFixture: ScoringPolicy = {
 }
 
 const evidenceCommon = {
-	schemaVersion: 1,
+	schemaVersion: 2,
 	parentDigest: null,
 	revisionCount: 0,
 	runId: 'spike-run-0001',
@@ -715,6 +715,13 @@ const evidenceCommon = {
 		fixtureDigest: digestOf(17),
 		evaluatorConfigurationDigest: EVALUATOR_CONFIGURATION_DIGEST,
 		scoringPolicyDigest: digestOf(20),
+		// The `satisfies` clause below checks this whole object against the
+		// production branch (minus `mode`/`productionVerdict`/`exitCode`), so this
+		// nested field has to be `'production'` too or that check fails on a
+		// literal-typed field with no exported name to blame. `contractScoringEvidenceArtifact`
+		// below overrides it to `'contract-scoring'`, because the schema now
+		// rejects the two mode-carrying fields on one artifact disagreeing.
+		mode: 'production' as const,
 	},
 	comparabilityKey: digestOf(21),
 	excludedProbeIds: [] as string[],
@@ -726,6 +733,7 @@ const evidenceCommon = {
 		'corpusDigest',
 		'fixtureDigest',
 		'evaluatorConfigurationDigest',
+		'mode',
 	],
 	trials: {
 		declaredMinimum: 3,
@@ -820,6 +828,14 @@ export const productionEvidenceArtifact: EvidenceArtifact = {
 
 export const contractScoringEvidenceArtifact: EvidenceArtifact = {
 	...evidenceCommon,
+	// `evidenceCommon.scoringVersionInputs.mode` is `'production'`, agreeing
+	// with `evidenceCommon`'s own `satisfies` check above but not with this
+	// branch's own `mode`: the schema rejects the two disagreeing on one
+	// artifact, so this branch overrides the nested input to match.
+	scoringVersionInputs: {
+		...evidenceCommon.scoringVersionInputs,
+		mode: 'contract-scoring',
+	},
 	exitCode: 0,
 	mode: 'contract-scoring',
 	contractVerdict: 'CONCERNS',
