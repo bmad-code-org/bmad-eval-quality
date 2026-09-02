@@ -52,7 +52,7 @@ npm run validate
 
 One command chains every static and dynamic check the repository owns: `typecheck`, `lint`,
 `check:docs`, `check:shareable`, `lint:spine`, `check:vectors`, `check:schemas`,
-`check:doc-invocations`, `check:ad5-registry`, `check:ad28-registry`, `check:ad31-table`,
+`check:doc-invocations`, `check:ad5-registry`, `check:ad28-registry`, `check:ad31-table`, `check:ad33-table`,
 `check:layers`, `check:lineage`, `check:boundary`, `check:corpus`, `check:website-deps`,
 `test:coverage`.
 

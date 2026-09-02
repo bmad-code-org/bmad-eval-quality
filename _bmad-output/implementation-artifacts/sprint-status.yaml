@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-08-10
-last_updated: 2026-09-01
+last_updated: 2026-09-02
 project: evalcore
 project_key: NOKEY
 tracking_system: file-system
@@ -88,7 +88,7 @@ development_status:
   7-2-a-monotonic-observation-sequence-and-declared-selector-cardinality: done
   7-3-captured-value-matchers-and-test-data-bindings: done
   7-4-the-ad-40-defect-signature-corpus-qualification-and-the-witness-match: review
-  7-5-ad-33-as-a-total-reference-decision-procedure-with-generated-fixtures: backlog
+  7-5-ad-33-as-a-total-reference-decision-procedure-with-generated-fixtures: review
   7-6-the-trial-set-reducer-and-the-ad-7-rate-vector: backlog
   7-7-mode-separation-with-two-input-types-and-two-generated-ladders: backlog
   7-8-a-rung-for-uncited-defect-findings-and-the-record-it-writes: backlog
