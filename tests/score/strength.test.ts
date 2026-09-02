@@ -235,6 +235,12 @@ describe('compareDominance', () => {
 		expect(DOMINANCE_RELATIONS).toContain(compareDominance(a, b, 'low'))
 	})
 
+	it('DOMINANCE_RELATIONS is exactly the four documented values, no more, no fewer', () => {
+		expect([...DOMINANCE_RELATIONS].sort()).toEqual(
+			['a-dominates-b', 'b-dominates-a', 'equivalent', 'incomparable'].sort(),
+		)
+	})
+
 	it('is incomparable when the comparabilityKeys differ, before any component-wise check', () => {
 		const a = comparableOf(
 			{ ...NULL_VECTOR, defect: { caught: 4, exercised: 4, rate: 1 } },

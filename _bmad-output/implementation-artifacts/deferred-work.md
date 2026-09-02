@@ -149,3 +149,69 @@ The rule is about the entry, not about erasing that something was once open.
     reach the same throw. Closing it means a compile check that runs the escalation ladder over
     each direction's own sibling set and reports a coded failure, which is new scope rather than a
     fix to what owed item 3 built.
+
+## Deferred from: code review of 7-6-the-trial-set-reducer-and-the-ad-7-rate-vector (2026-09-02)
+
+- source_spec: `7-6-the-trial-set-reducer-and-the-ad-7-rate-vector.md`
+  summary: `reduceTrialSet`'s per-vote grouping (`TRIAL_VOTE_STATE_OF[vote.state]`) has no runtime
+    guard against a state value outside the twelve `OUTCOME_STATES`; an unrecognized value falls
+    through both the `invalidating` and `unvoted` checks and is silently counted as a valid vote.
+  evidence: `src/core/score/reduce-trials.ts:98-105`. Unreachable today: `TrialVote['state']` is
+    typed to the closed `OutcomeStateValue` union and `reduce-trials.test.ts`'s "total over the
+    closed twelve" test catches `TRIAL_VOTE_STATES` drifting from `OUTCOME_STATES`. The gap is only
+    a future 13th state added to `OUTCOME_STATES` without a matching `TRIAL_VOTE_STATES` entry, or a
+    caller that bypasses the type system. Worth a defensive `default` branch (throw or assert) when
+    the reducer is actually wired to a caller in epic 8.
+
+- source_spec: `7-6-the-trial-set-reducer-and-the-ad-7-rate-vector.md`
+  summary: `atOrAboveFloor` compares two `SEVERITY_LEVELS.indexOf` results and returns `true` when
+    both `severity` and `floor` are absent from the array (`-1 >= -1`).
+  evidence: `src/core/score/strength.ts:165-166`. Unreachable through any typed call site:
+    `Severity` (`src/core/schemas/eval-contract.ts:37-42`) is a closed `z.enum` derived directly
+    from `SEVERITY_LEVELS`, so a genuinely unknown value can only arrive via a type-system bypass or
+    unvalidated external data.
+
+- source_spec: `7-6-the-trial-set-reducer-and-the-ad-7-rate-vector.md`
+  summary: `reduceTrialSet` never validates `catchThreshold` is within `[0, 1]`; an out-of-range or
+    `NaN` value is silently absorbed into the majority comparison instead of failing loudly.
+  evidence: `src/core/score/reduce-trials.ts:92-95,115`. `ScoringPolicy.catchThreshold` is
+    schema-validated to `.min(0).max(1)`, and this story's own Boundaries forbid wiring the reducer
+    into any caller until epic 8 (`stage-table.ts`'s `score` row stays `module: null`), so no
+    production caller can feed it a bad value yet. Revisit when epic 8 wires a caller.
+
+- source_spec: `7-6-the-trial-set-reducer-and-the-ad-7-rate-vector.md`
+  summary: `outcomesByProbeId` builds its map with plain `Map.set`, so two `Outcome` entries sharing
+    one `probeId` silently keep the last and drop the earlier one from the severity-floor scan.
+  evidence: `src/core/score/strength.ts:168-177`. `Outcome` is schema-only today; grep confirms no
+    production code constructs one yet (this story's own Decision 1), so the duplicate-`probeId`
+    case has no live caller. Worth an explicit guard (or an `Ask First` per this story's Boundaries)
+    whenever the epic 8 artifact-emission code starts building `outcomes` arrays for real.
+
+- source_spec: `7-6-the-trial-set-reducer-and-the-ad-7-rate-vector.md`
+  summary: `classStrengthOf` double-counts a probe's `exercised`/`caught` contribution if `admitted`
+    ever carries the same `probeId` twice within one class.
+  evidence: `src/core/score/strength.ts:75-93`. The story's own Code Map treats
+    `SealedProbeSet.admitted` as already carrying "AD-7's unique qualified probe identifiers," but no
+    schema or code in `src/core/` today enforces probe-id uniqueness across a corpus (no
+    probe-corpus schema exists yet) — the uniqueness this function relies on is inherited from
+    upstream qualification, not this story's own regression.
+
+- source_spec: `7-6-the-trial-set-reducer-and-the-ad-7-rate-vector.md`
+  summary: The severity-floor override in `compareDominance` only runs when the raw component-wise
+    comparison already favors a side (`a-dominates-b`/`b-dominates-a`); when it reads `equivalent`,
+    two contracts that each individually missed a different floor-or-above probe the other one
+    caught (an offsetting pattern across two classes) still resolve to `equivalent`, not
+    `incomparable`.
+  evidence: `src/core/score/strength.ts:211-230`. Matches the frozen spec exactly: Decision 9
+    explicitly scopes the override to "if the raw comparison reads a-dominates-b" and the Design
+    Notes text presumes "the side the raw comparison favoured," so this is not a defect against this
+    story's own frozen text. Flagging as a live gap in AD-7's equivalence semantics for whoever next
+    touches AD-7's rate vector, not a fix owed by this story.
+
+- source_spec: `7-6-the-trial-set-reducer-and-the-ad-7-rate-vector.md`
+  summary: `tests/score/fixtures/trial-set-cases.ts` has no fixture mixing an invalidating state
+    (e.g. `oracle-error`) with an unvoted state (e.g. `not-applicable`) in the same trial set.
+  evidence: Low value: `reduceTrialSet`'s `forEach` classifies each vote independently with no
+    shared mutable state between the `invalidating` and `unvoted` branches, so there is no plausible
+    interaction bug a mixed fixture would catch that the existing per-state-group fixtures don't
+    already cover individually.

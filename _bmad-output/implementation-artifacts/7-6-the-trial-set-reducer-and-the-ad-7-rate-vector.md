@@ -249,6 +249,45 @@ clean controls and the severity-floor override on the dominance relation.
 - Given the `StrengthVector`/`ClassStrength` schema, when audited, then no field carries a weight, a
   percentage, or a severity-weighted composite (`caught`, `exercised`, and a derived `rate` only).
 
+### Review Findings
+
+`git diff ba7a8c166376e521376a3dd8c0b4d857885d7365..HEAD`, full-spec `/bmad-code-review` (blind-hunter,
+edge-case-hunter, verification-gap, acceptance-auditor). Verification-gap and acceptance-auditor: clean,
+zero findings. `npm run test -- tests/score`: 9 files, 272 tests, green, matching the Dev Agent Record.
+
+- [x] [Review][Patch] `DOMINANCE_RELATIONS` has no exact-cardinality test, unlike this codebase's other
+  closed sets (`OUTCOME_STATES`, `PROBE_CLASSES`); only `toContain` is asserted, which would not catch a
+  silently added fifth relation value [tests/score/strength.test.ts:235] — fixed: added an exact-set
+  assertion beside the existing `toContain` check.
+- [x] [Review][Patch] Story doc has two `## Suggested Review Order` sections with different content (a
+  numbered list, and a later file:line-linked version) [7-6-the-trial-set-reducer-and-the-ad-7-rate-vector.md:422,552]
+  — fixed: the earlier section is retitled "Suggested Review Order (pre-review)" with a note that the
+  later, file:line-linked section supersedes it.
+- [x] [Review][Defer] `reduceTrialSet`'s per-state grouping has no runtime guard against an out-of-band
+  state value; falls through silently into a valid vote [src/core/score/reduce-trials.ts:98-105] —
+  deferred, pre-existing (type-safe today via the closed `OutcomeStateValue` union and a totality test;
+  unreachable until a caller exists)
+- [x] [Review][Defer] `atOrAboveFloor` returns true when both severity and floor are absent from
+  `SEVERITY_LEVELS` (`-1 >= -1`) [src/core/score/strength.ts:165-166] — deferred, pre-existing
+  (`Severity` is a closed `z.enum`, unreachable through any typed call site today)
+- [x] [Review][Defer] `reduceTrialSet` never validates `catchThreshold` is within `[0, 1]`
+  [src/core/score/reduce-trials.ts:92-95] — deferred, pre-existing (no caller exists yet; the function
+  stays unwired until epic 8 per this story's own boundary)
+- [x] [Review][Defer] `outcomesByProbeId` silently keeps the last entry on a duplicate `probeId`,
+  dropping the earlier `Outcome` from the severity-floor scan [src/core/score/strength.ts:168-177] —
+  deferred, pre-existing (`Outcome` is schema-only; no production code builds one yet)
+- [x] [Review][Defer] `classStrengthOf` double-counts a probe if `admitted` ever carries a duplicate
+  `probeId` within one class [src/core/score/strength.ts:75-93] — deferred, pre-existing (uniqueness is
+  inherited from upstream corpus qualification, not enforced anywhere in `src/core/` today)
+- [x] [Review][Defer] Severity-floor override only fires when the raw comparison already favors a side;
+  two contracts that each miss a different floor-or-above probe the other caught can still land on
+  `equivalent` rather than `incomparable` [src/core/score/strength.ts:211-230] — deferred, pre-existing
+  (Decision 9 explicitly scopes the override to the two dominance directions; matches frozen spec, worth
+  a note if AD-7 revisits equivalence semantics)
+- [x] [Review][Defer] No fixture mixes an invalidating state with an unvoted state in the same trial set
+  [tests/score/fixtures/trial-set-cases.ts] — deferred, pre-existing (low value: the reducer classifies
+  each vote independently, no cross-state interaction to exercise)
+
 ## Spec Change Log
 
 <!-- Empty until the first review loopback. -->
@@ -419,7 +458,10 @@ comparison favored, downgrade that result to `incomparable`.
 - `npm run check:boundary` -- expected: green
 - `npm run validate` -- expected: green end to end
 
-## Suggested Review Order
+## Suggested Review Order (pre-review)
+
+Superseded by the file:line-linked "Suggested Review Order" below, written after the Implementation
+Review Record pass. Kept for the record rather than deleted.
 
 1. `src/core/schemas/scoring-policy.ts` -- the one schema change, small and self-contained
 2. `src/core/score/reduce-trials.ts` + `tests/score/reduce-trials.test.ts` -- the reducer and its
