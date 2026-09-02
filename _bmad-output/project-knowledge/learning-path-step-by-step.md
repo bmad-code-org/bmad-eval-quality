@@ -2459,3 +2459,78 @@ flowchart TD
   and a test pins that nothing reads it.
 - Two fields the function returns have no home on the evidence artifact yet,
   so the WAIVED verdict cannot be derived from the artifact alone until the next story adds them.
+
+## Step 29 (epic7-story6): turning several trial outcomes into one probe result
+
+**In plain terms:** the architecture said a contract's catch rate comes from repeated trials, but
+nothing in the codebase said how three outcomes for one probe become one number.
+`caught, missed, missed` could mean 1/1, 0/1, or 1/3 depending on which reading you pick,
+and no reading had been chosen yet.
+
+**What:** `reduceTrialSet` folds one probe's trial votes into an exercised/caught verdict by strict
+majority. `buildStrengthVector` turns a qualified probe set's verdicts into AD-7's per-class rate
+vector, and `compareDominance` turns two vectors into a four-valued dominance relation.
+
+**Why:** the instrument behind the measured effect used a real threshold, two catches in three, but
+the architecture never generalized it: what happens at four trials, at an invalidated trial, at a
+probe nobody exercised. Guessing the general rule wrong, or picking "one catch anywhere counts"
+(the retry pattern the architecture spends a paragraph forbidding), would make a contract's number
+depend on how many times you happened to run it.
+
+**Read in this order:**
+
+1. `src/core/score/reduce-trials.ts`: the three-way state grouping, then `reduceTrialSet`.
+2. `tests/score/fixtures/trial-set-cases.ts`: the vote sequences the reducer is tested against.
+3. `tests/score/reduce-trials.test.ts`: majority, tie, invalidated trial, unexercised probe.
+4. `src/core/score/strength.ts`: the vector builder, then the dominance comparator.
+5. `tests/score/strength.test.ts`: exclusion, comparability, all four relation values.
+6. `src/core/schemas/scoring-policy.ts`: `catchThreshold`, the one new schema field.
+
+```mermaid
+flowchart TD
+  VOTE["reduce-trials.ts<br/>TrialVote, twelve states grouped"]
+  REDUCE["reduceTrialSet<br/>strict majority of valid trials"]
+  RESULT["TrialSetResult<br/>exercised, caught, per probe"]
+  BUILD["strength.ts<br/>buildStrengthVector"]
+  VEC["StrengthVector<br/>per class: caught, exercised, rate"]
+  CMP["compareDominance<br/>comparabilityKey, then rate, then severity floor"]
+  REL["DominanceRelationValue<br/>a/b-dominates, equivalent, incomparable"]
+
+  VOTE --> REDUCE --> RESULT --> BUILD --> VEC --> CMP --> REL
+```
+
+**Story:** `_bmad-output/implementation-artifacts/7-6-the-trial-set-reducer-and-the-ad-7-rate-vector.md`
+
+### Reference
+
+**Rules:**
+
+- Every one of the twelve outcome states lands in exactly one of three groups:
+  three invalidate a trial, two leave the probe unvoted without invalidating it, seven are counted votes.
+- A tie never counts as caught.
+  The threshold is a fraction of valid trials, so it generalizes past the pre-registered two-of-three.
+- A probe with zero valid trials contributes to neither the numerator nor the denominator,
+  the same treatment AD-7 already gives a probe the evaluator never exercised at all.
+- Canary probes and every clean control are excluded from the rate vector regardless of class or
+  outcome, checked as two separate conditions since a canary is not automatically a clean control.
+- A vector's class key is `null` only when the qualified set has no probe of that class at all;
+  a class with probes but none exercised is still a present, zero-valued entry.
+- Comparability is checked before anything else.
+  Two results with different comparability keys are `incomparable` with no component-wise check run.
+- A contract that missed a floor-or-above probe the other contract caught can never dominate,
+  whatever the rest of its vector reads. The override can only downgrade the favored side to
+  `incomparable`.
+
+**Watch out:**
+
+- `caughtCount > threshold * validCount` is not the same comparison as
+  `caughtCount / validCount > threshold`. Multiplying rounds `0.29 * 100` to `28.999999999999996`
+  under IEEE-754, which turns an exact tie into a false caught. Every first-draft fixture used `0.5`,
+  where that rounding never shows up, so nothing caught it until a review asked for a different
+  threshold; the fix compares by division.
+- Two vectors can tie on `rate` while disagreeing on the raw counts behind it (1/2 against 2/4).
+  The comparator resolves that combination to `incomparable`, the same value a no-shared-class
+  comparison already returns.
+- The reducer's own vote type carries `state` alone.
+  Severity for the dominance override is read separately, off each result's outcome list,
+  because it has to survive per probe past the point where probes get folded into class counts.
