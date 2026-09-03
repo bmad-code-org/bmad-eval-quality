@@ -101,7 +101,9 @@ const emptyChannel = {
 }
 
 export const gateCContract = {
-	schemaVersion: 1,
+	// 3, the version this contract's shape satisfies, matching the other two
+	// full-contract fixtures (`populatedContract`, `satisfiedContract`).
+	schemaVersion: 3,
 	contractId: 'exports-api-v1',
 	parentDigest: null,
 	revisionCount: 0,
