@@ -2689,3 +2689,87 @@ flowchart TD
   reuses `QuotedEvidence`, and that made an already-`.meta({id})`-tagged type (`EvidenceChannel`)
   reachable from this document for the first time. Every pinned counter in this story, this one
   included, was read off the actual regenerated schema and test run.
+
+## Step 32 (epic7-story9): regenerating the worked chain from the reference functions
+
+**In plain terms:** `spike-worked-example/` was hand-typed years before this epic's reference
+functions existed, and its own `FINDINGS.md` said so: a step matching zero observations was labelled
+`confirmed`/`agrees` anyway, two steps matching two observations had no declared cardinality, and the
+probe the run cites, `P-001`, was never defined. Patching those fields by hand would just be more
+hand-typing. This story runs the actual epic 7 functions over the chain's authored evidence and keeps
+whatever they return.
+
+**What:** `scripts/worked-example-target.ts` holds the only authored literals (the contract, the
+probe's declared signature and qualification, the run record's raw observations, dispositions and
+findings) and two exports: `buildWorkedExampleChain()`, a pure function returning the four artifacts
+plus the witness match and every per-step selection, and `buildWorkedExample()`, a thin renderer over
+it producing the five files as canonical JSON text. `generate:worked-example` writes them;
+`check:worked-example` rebuilds and byte-compares, the same fixed-point shape as
+`generate:dev-corpus`/`check:corpus`, minus that pair's directory-clear and orphan-sweep, because
+`FINDINGS.md`, `README.md` and `system-under-test.md` live in the same folder and are not generated.
+
+**Why:** everything downstream of the authored evidence is a function's return value: `seal` for the
+brief, `sealProbeSet` for probe admission, `selectWithBindings` for which observations a step actually
+matched, `resolveCheck` for every oracle's check resolution, `matchProbeWitness` for the detection
+match, `resolveOutcome` for every disposition and state, `resolveContractVerdict` for the verdict.
+Running the real functions changed the answer: the chain scores FAIL now; the hand-typed version read
+CONCERNS.
+
+**Read in this order:**
+
+1. `scripts/worked-example-target.ts`: `buildWorkedExampleChain`, the authored literals at the top,
+   the derivation calls below them.
+2. `scripts/generate-worked-example.ts`, `scripts/check-worked-example.ts`: the write/check pair.
+3. `tests/score/worked-example.test.ts`: the reversed-order flip and the FAIL verdict, asserted
+   directly against the built chain's values.
+4. `_bmad-output/planning-artifacts/architecture/architecture-eval-quality-2026-07-29/spike-worked-example/FINDINGS.md`:
+   which retraction defects close here.
+
+```mermaid
+flowchart TD
+  AUTH["worked-example-target.ts<br/>authored contract, probe, observations"]
+  SEAL["seal / sealProbeSet"]
+  SELECT["selectWithBindings / resolveCheck / matchProbeWitness"]
+  OUTCOME["resolveOutcome / resolveContractVerdict"]
+  FILES["5 generated files<br/>contract, brief, probe, run record, evidence artifact"]
+
+  AUTH --> SEAL --> FILES
+  AUTH --> SELECT --> OUTCOME --> FILES
+```
+
+**Story:** `_bmad-output/implementation-artifacts/7-9-regenerate-the-worked-chain-and-its-probe-corpus-entry.md`
+
+### Reference
+
+**Rules:**
+
+- The raw observations stay authored. There is no live system to run against, so only the *derived*
+  fields (dispositions, states, the verdict) are forbidden to hand-type; the evidence itself is
+  legitimately stipulated, the same way a probe's qualification record is authored and only the gate
+  that admits it (`sealProbeSet`) is computed.
+- `selectObservations` filters on operation id alone and returns `several` for every step sharing an
+  operation. The binding-aware selector, `selectWithBindings`, is what a step's temporal clause
+  (`after`) and its `cardinality` actually disambiguate against.
+- A defect signature's home operation has to be the operation whose observation actually
+  distinguishes the seeded defect. Homing it on the operation the defect superficially looks like
+  (the PATCH that returns a false-clean 200) rather than the one that reveals it (the follow-up GET)
+  makes the witness match `unwitnessed-claim` and the whole chain resolves Invalid, exit 3, no verdict
+  at all.
+- Regenerating an artifact against a schema that has since moved means bumping its *instance*
+  `schemaVersion` to the version that shipped, even though nothing in this story bumps a schema
+  itself.
+
+**Watch out:**
+
+- A re-indent step that reasons its way to "still byte-canonical" without checking is a drift check
+  that can bless reordered bytes: it rebuilds the same reordering it just wrote and compares clean.
+  `renderJson` now round-trips its own output back to canonical form and fails if that round-trip
+  changes anything.
+- A CI fixed-point canary that runs the generator once and asserts a clean `git status` passes for a
+  generator that writes nothing, on an already-clean tree. It needs to delete or mutate a tracked
+  output first, the same way a drift canary needs a mutated byte.
+- A spec's prediction of what a reference function will return is not evidence that it does. Two of
+  this story's three frozen acceptance criteria (an operator's resolution value, a verdict tier) were
+  wrong against the shipped code once it actually ran; both were corrected by construction, and
+  neither acceptance criterion was edited to match the wrong prediction.
+  included, was read off the actual regenerated schema and test run.

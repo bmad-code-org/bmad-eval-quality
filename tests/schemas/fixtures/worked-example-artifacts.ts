@@ -8,8 +8,18 @@
 // in-memory fixtures, no filesystem I/O at runtime). Pure ASCII, as the
 // sources are.
 //
-// Source: _bmad-output/planning-artifacts/architecture/
+// Source: the PRE-REGENERATION artifacts, at commit 46a5ba7, of
+//         _bmad-output/planning-artifacts/architecture/
 //         architecture-eval-quality-2026-07-29/spike-worked-example/
+//
+// That directory now holds the regenerated chain, emitted by
+// `npm run generate:worked-example` from the reference functions and checked
+// byte for byte by `npm run check:worked-example`, so these literals are no
+// longer a transcription of what is on disk. They are kept, and pinned at the
+// same 66 and 20 issues, because what they record is what the pre-epic-7
+// chain failed against the shipped shapes. Regeneration is what closed those
+// failures; deleting the record of them would delete the evidence that they
+// were real.
 //
 // These two are the named exception to the reject corpus's one-issue rule: a
 // document that fails many ways at once asserts its full expected issue list

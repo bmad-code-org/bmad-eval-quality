@@ -1,0 +1,88 @@
+{
+  "artifactDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000008",
+  "behaviorId": "B-001",
+  "commitDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000009",
+  "defectSignature": {
+    "condition": {
+      "predicate": {
+        "op": "equality",
+        "operands": [
+          {
+            "pointer": "/interactions/observed/response-body/note/title"
+          },
+          {
+            "literal": "Original"
+          }
+        ]
+      },
+      "selector": {
+        "inputBinding": {
+          "body": null,
+          "header": null,
+          "path": {
+            "id": {
+              "literal": "n-1"
+            }
+          },
+          "query": null
+        }
+      }
+    },
+    "interfaceKind": "api",
+    "method": "GET",
+    "observableChannel": "response-body",
+    "pathTemplate": "/notes/{id}"
+  },
+  "defects": [
+    {
+      "behaviorId": "B-001",
+      "defectId": "D-001",
+      "manifestationWitness": null,
+      "oracleEvidence": [
+        {
+          "digest": "sha256:000000000000000000000000000000000000000000000000000000000000000d",
+          "path": null,
+          "privateRef": "opaque:spike-defect-evidence",
+          "storage": "private"
+        }
+      ],
+      "severity": "critical",
+      "source": "controlled-mutation",
+      "summary": "PATCH /notes/{id} reports success and never writes; the response is generated from the in-memory object it declined to persist."
+    }
+  ],
+  "expectedClean": false,
+  "implementationDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000007",
+  "parentDigest": null,
+  "probeClass": "defect",
+  "probeId": "P-001",
+  "qualification": {
+    "baselinePassEvidence": {
+      "digest": "sha256:000000000000000000000000000000000000000000000000000000000000000b",
+      "path": null,
+      "privateRef": "opaque:spike-baseline-pass",
+      "storage": "private"
+    },
+    "expectedObservableFailure": "a later independent GET of the updated note returns the title the update replaced",
+    "mutatedFailEvidence": {
+      "digest": "sha256:000000000000000000000000000000000000000000000000000000000000000c",
+      "path": null,
+      "privateRef": "opaque:spike-mutated-fail",
+      "storage": "private"
+    },
+    "mutationOperator": "store-write-deletion",
+    "mutationSource": "the toy Notes API written for this spike, with the persistence call removed from the update handler",
+    "rollbackVerified": true,
+    "route": "controlled-mutation",
+    "targetArtifact": {
+      "digest": "sha256:000000000000000000000000000000000000000000000000000000000000000a",
+      "path": null,
+      "privateRef": "opaque:spike-notes-api-handler",
+      "storage": "private"
+    }
+  },
+  "rationale": "The seeded silent-write defect: PATCH validates, builds the updated note, returns it with ok true and status 200, and never persists it. Only an independent GET reveals the old value.",
+  "revisionCount": 0,
+  "schemaVersion": 2,
+  "systemId": "spike-notes-api"
+}
