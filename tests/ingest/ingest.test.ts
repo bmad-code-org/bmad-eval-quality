@@ -187,6 +187,20 @@ describe('the ingest stage', () => {
 		expect(ingest(record, cleanManifest, configuration).mode).toBe('production')
 	})
 
+	// `evaluatorRecommendation` is restated off the record the same way `mode`
+	// is, never derived or defaulted. The shipped fixture carries `FAIL`, so
+	// the case that proves the restatement has to present a different value.
+	it('restates the evaluatorRecommendation the record carries', () => {
+		const record: SealedRunRecord = {
+			...cleanRecord,
+			evaluatorRecommendation: 'CONCERNS',
+		}
+
+		expect(
+			ingest(record, cleanManifest, configuration).evaluatorRecommendation,
+		).toBe('CONCERNS')
+	})
+
 	// Ascending `sequence`, then `observationId`, matching `selectObservations`.
 	// The record here is deliberately one that could not parse: `sequence` is
 	// refined unique per record, so the tie-break is unreachable on real input and
@@ -288,7 +302,9 @@ describe('the ingest stage', () => {
 				occurrences: 2,
 			},
 		])
-		expect(LADDER_TARGETS['duplicate-record-identifier']).toBeNull()
+		expect(LADDER_TARGETS['duplicate-record-identifier']).toBe(
+			'duplicateRecordIdentifiers',
+		)
 	})
 
 	// Two repeated identifiers in one subject, presented out of order, so the
@@ -457,7 +473,7 @@ describe('the ingest stage', () => {
 				unresolvedObservationIds: ['obs-777', 'obs-888'],
 			},
 		])
-		expect(LADDER_TARGETS['dangling-citation']).toBeNull()
+		expect(LADDER_TARGETS['dangling-citation']).toBe('danglingCitations')
 	})
 
 	// One bad citation, cited twice, is one bad citation. The payload is what a
@@ -549,7 +565,9 @@ describe('the ingest stage', () => {
 				unresolvedObservationIds: ['obs-999'],
 			},
 		])
-		expect(LADDER_TARGETS['dangling-disposition-citation']).toBeNull()
+		expect(LADDER_TARGETS['dangling-disposition-citation']).toBe(
+			'danglingDispositionCitations',
+		)
 	})
 
 	// Two findings that are equal as far as this condition can see produce two
@@ -776,7 +794,9 @@ describe('the ingest stage', () => {
 				inputs: ['original-spec', 'source-code'],
 			},
 		])
-		expect(LADDER_TARGETS['forbidden-input-not-withheld']).toBeNull()
+		expect(LADDER_TARGETS['forbidden-input-not-withheld']).toBe(
+			'forbiddenInputsNotWithheld',
+		)
 	})
 
 	// Matrix row 7. One condition per field, each carrying both values, so a
@@ -810,7 +830,9 @@ describe('the ingest stage', () => {
 				manifestValue: `sha256:${'b'.repeat(64)}`,
 			},
 		])
-		expect(LADDER_TARGETS['cross-artifact-disagreement']).toBeNull()
+		expect(LADDER_TARGETS['cross-artifact-disagreement']).toBe(
+			'crossArtifactDisagreements',
+		)
 	})
 
 	// AD-24 and AD-11: the one scoring-version input this stage recomputes. The
@@ -835,7 +857,9 @@ describe('the ingest stage', () => {
 				computedDigest: CONFIGURATION_DIGEST,
 			},
 		])
-		expect(LADDER_TARGETS['evaluator-configuration-digest-mismatch']).toBeNull()
+		expect(LADDER_TARGETS['evaluator-configuration-digest-mismatch']).toBe(
+			'evaluatorConfigurationDigestMismatches',
+		)
 	})
 
 	// The record's declaration is the operand. Two artifacts agreeing on a
@@ -865,7 +889,9 @@ describe('the ingest stage', () => {
 		expect(result.conditions).toEqual([
 			{ kind: 'evaluator-configuration-absent' },
 		])
-		expect(LADDER_TARGETS['evaluator-configuration-absent']).toBeNull()
+		expect(LADDER_TARGETS['evaluator-configuration-absent']).toBe(
+			'evaluatorConfigurationAbsent',
+		)
 	})
 
 	// Matrix row 8.
@@ -897,7 +923,7 @@ describe('the ingest stage', () => {
 				criterionId: 'RC-003',
 			},
 		])
-		expect(LADDER_TARGETS['judge-result-unscored']).toBeNull()
+		expect(LADDER_TARGETS['judge-result-unscored']).toBe('judgeResultsUnscored')
 	})
 
 	// The rubric is the primary key and the criterion only breaks its ties, so
@@ -1086,10 +1112,10 @@ describe('the ingest stage', () => {
 		expect((thrown as RuntimeFault).code).toBe('non-canonicalizable-value')
 	})
 
-	// A condition with no rung still reaches the product, and the mapping still
-	// says `null`, so no basis line can ever claim a finding the condition is
-	// not.
-	it('exposes every rungless condition on the product with a null target', () => {
+	// Story 8.2 gave every condition kind a rung, so a condition that used to
+	// be rungless still reaches the product, and the mapping now names a real
+	// `EvidenceIntegrityInputs` field for it rather than `null`.
+	it('exposes every condition on the product with a real, non-null target', () => {
 		const record: SealedRunRecord = {
 			...cleanRecord,
 			evaluatorConfigurationDigest: `sha256:${'d'.repeat(64)}`,
@@ -1108,11 +1134,9 @@ describe('the ingest stage', () => {
 		}
 
 		const result = ingest(record, manifest, configuration)
-		const rungless = kindsOf(result.conditions).filter(
-			(kind) => LADDER_TARGETS[kind] === null,
-		)
+		const kinds = kindsOf(result.conditions)
 
-		expect(rungless).toEqual([
+		expect(kinds).toEqual([
 			'dangling-citation',
 			'forbidden-input-not-withheld',
 			'cross-artifact-disagreement',
@@ -1120,6 +1144,9 @@ describe('the ingest stage', () => {
 			'evaluator-configuration-digest-mismatch',
 			'judge-result-unscored',
 		])
+		expect(
+			kinds.every((kind) => typeof LADDER_TARGETS[kind] === 'string'),
+		).toBe(true)
 	})
 
 	// A caller has to be able to tell an invalid run from a crashed one, so

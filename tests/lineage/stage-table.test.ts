@@ -185,8 +185,9 @@ describe('the AD-24 stage-signature table', () => {
 			PIPELINE_STAGES.filter(
 				(stage) => STAGE_SIGNATURES[stage].module !== null,
 			),
-		).toEqual(['compile', 'seal', 'ingest', 'preflight'])
+		).toEqual(['compile', 'seal', 'ingest', 'preflight', 'score'])
 		expect(STAGE_SIGNATURES.ingest.module).toBe('src/core/ingest/ingest.ts')
+		expect(STAGE_SIGNATURES.score.module).toBe('src/core/score/score.ts')
 	})
 
 	// 14. Owed item 6's own words: "the source of run mode is absent". One

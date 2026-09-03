@@ -87,7 +87,17 @@ export const baseline = (): AssessmentBody => ({
 		overTruncated: false,
 		unavailable: false,
 		internallyInconsistent: false,
-		isolationViolation: null,
+		isolationViolation: [],
+		duplicateRecordIdentifiers: [],
+		danglingCitations: [],
+		danglingDispositionCitations: [],
+		forbiddenInputsNotWithheld: [],
+		crossArtifactDisagreements: [],
+		evaluatorConfigurationAbsent: [],
+		evaluatorConfigurationDigestMismatches: [],
+		judgeResultsUnscored: [],
+		operationIdentifierCollisions: [],
+		trialSetDisagreements: [],
 	},
 	evaluatorRecommendation: 'PASS',
 	coverageGaps: [],
@@ -155,7 +165,7 @@ const SHARED_OVERRIDES: readonly SharedOverride[] = [
 			...baseline(),
 			evidenceIntegrity: {
 				...baseline().evidenceIntegrity,
-				isolationViolation: 'network egress observed outside the mapping',
+				isolationViolation: ['network egress observed outside the mapping'],
 			},
 		}),
 	},
@@ -250,6 +260,156 @@ const SHARED_OVERRIDES: readonly SharedOverride[] = [
 			outcomeState: {
 				...baseline().outcomeState,
 				unwitnessedQuotations: [UNWITNESSED_QUOTATION],
+			},
+		}),
+	},
+	// Story 8.2's eight rungless conditions, each newly given a rung, plus the
+	// two score-computed conditions.
+	{
+		id: 'duplicate-record-identifier',
+		body: () => ({
+			...baseline(),
+			evidenceIntegrity: {
+				...baseline().evidenceIntegrity,
+				duplicateRecordIdentifiers: [
+					{
+						kind: 'duplicate-record-identifier',
+						subject: 'observation',
+						identifier: 'obs-1',
+						occurrences: 2,
+					},
+				],
+			},
+		}),
+	},
+	{
+		id: 'dangling-citation',
+		body: () => ({
+			...baseline(),
+			evidenceIntegrity: {
+				...baseline().evidenceIntegrity,
+				danglingCitations: [
+					{
+						kind: 'dangling-citation',
+						findingId: 'finding-1',
+						unresolvedObservationIds: ['obs-missing'],
+					},
+				],
+			},
+		}),
+	},
+	{
+		id: 'dangling-disposition-citation',
+		body: () => ({
+			...baseline(),
+			evidenceIntegrity: {
+				...baseline().evidenceIntegrity,
+				danglingDispositionCitations: [
+					{
+						kind: 'dangling-disposition-citation',
+						oracleId: 'oracle-1',
+						unresolvedObservationIds: ['obs-missing'],
+					},
+				],
+			},
+		}),
+	},
+	{
+		id: 'forbidden-input-not-withheld',
+		body: () => ({
+			...baseline(),
+			evidenceIntegrity: {
+				...baseline().evidenceIntegrity,
+				forbiddenInputsNotWithheld: [
+					{ kind: 'forbidden-input-not-withheld', inputs: ['human-labels'] },
+				],
+			},
+		}),
+	},
+	{
+		id: 'cross-artifact-disagreement',
+		body: () => ({
+			...baseline(),
+			evidenceIntegrity: {
+				...baseline().evidenceIntegrity,
+				crossArtifactDisagreements: [
+					{
+						kind: 'cross-artifact-disagreement',
+						field: 'runId',
+						recordValue: 'run-1',
+						manifestValue: 'run-2',
+					},
+				],
+			},
+		}),
+	},
+	{
+		id: 'evaluator-configuration-absent',
+		body: () => ({
+			...baseline(),
+			evidenceIntegrity: {
+				...baseline().evidenceIntegrity,
+				evaluatorConfigurationAbsent: [
+					{ kind: 'evaluator-configuration-absent' },
+				],
+			},
+		}),
+	},
+	{
+		id: 'evaluator-configuration-digest-mismatch',
+		body: () => ({
+			...baseline(),
+			evidenceIntegrity: {
+				...baseline().evidenceIntegrity,
+				evaluatorConfigurationDigestMismatches: [
+					{
+						kind: 'evaluator-configuration-digest-mismatch',
+						declaredDigest:
+							'sha256:0000000000000000000000000000000000000000000000000000000000000001',
+						computedDigest:
+							'sha256:0000000000000000000000000000000000000000000000000000000000000002',
+					},
+				],
+			},
+		}),
+	},
+	{
+		id: 'judge-result-unscored',
+		body: () => ({
+			...baseline(),
+			evidenceIntegrity: {
+				...baseline().evidenceIntegrity,
+				judgeResultsUnscored: [
+					{
+						kind: 'judge-result-unscored',
+						rubricId: 'R-001',
+						criterionId: 'RC-001',
+					},
+				],
+			},
+		}),
+	},
+	{
+		id: 'operation-identifier-collision',
+		body: () => ({
+			...baseline(),
+			evidenceIntegrity: {
+				...baseline().evidenceIntegrity,
+				operationIdentifierCollisions: [
+					'trial 1 observation obs-1: operationId "op-1" matches operations in 2 permittedInterfaces entries (iface-a, iface-b)',
+				],
+			},
+		}),
+	},
+	{
+		id: 'trial-set-field-disagreement',
+		body: () => ({
+			...baseline(),
+			evidenceIntegrity: {
+				...baseline().evidenceIntegrity,
+				trialSetDisagreements: [
+					'mode: trial 1 = "production", trial 2 = "contract-scoring"',
+				],
 			},
 		}),
 	},

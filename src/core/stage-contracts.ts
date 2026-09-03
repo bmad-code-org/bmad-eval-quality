@@ -1,8 +1,9 @@
 /**
  * AD-34's stage-shape vocabulary. Two conformance types pin the exact shapes
- * of `compile` and `seal`; three generic types cover the rest -- the
- * conditional plan/reduce pair, which `preflight` implements, and the ingest
- * shape, generic over the product it owns.
+ * of `compile` and `seal`; four generic types cover the rest -- the
+ * conditional plan/reduce pair, which `preflight` implements, `IngestStage`,
+ * generic over the one product it owns, and `ScoreStage`, generic over both
+ * the trial set's element type and the product it owns.
  *
  * AD-24's six-stage input/output/owner/lineage table lives in
  * `core/lineage/stage-table.ts`. This file holds the stage *shapes* TypeScript
@@ -12,8 +13,12 @@
 import type { EvalContract } from './schemas/eval-contract.ts'
 import type { EvaluatorConfiguration } from './schemas/evaluator-configuration.ts'
 import type { IsolationManifest } from './schemas/isolation-manifest.ts'
+import type { PreflightVerdict } from './schemas/preflight-verdict.ts'
+import type { Probe } from './schemas/probe.ts'
+import type { ScoringPolicy } from './schemas/scoring-policy.ts'
 import type { SealedEvaluatorBrief } from './schemas/sealed-evaluator-brief.ts'
 import type { SealedRunRecord } from './schemas/sealed-run-record.ts'
+import type { WaiverStateValue } from './score/outcome.ts'
 
 /** The core compile stage's one runtime option. Core behavior never depends on an implicit configuration source (AD-1), so this is required; `application/compile.ts` is the only caller that supplies a default. */
 export type CompileOptions = {
@@ -67,4 +72,28 @@ export type IngestStage<Product> = (
 	record: SealedRunRecord,
 	manifest: IsolationManifest | null,
 	configuration: EvaluatorConfiguration | null,
+) => Product
+
+/**
+ * The score stage: `STAGE_SIGNATURES.score`'s five declared artifact inputs,
+ * plus the two caller-supplied value parameters neither the trial set nor
+ * any declared input carries a source for (`score.ts`'s own Boundaries:
+ * `waiver` mirrors `outcome.ts:58-61`'s AD-5 expiry citation, and
+ * `evaluationFault` has no citation anywhere and is recorded as a genuine
+ * gap this parameter closes).
+ *
+ * Generic over both the trial set's element type and the owned product, for
+ * the same reason `IngestStage` is generic over its product: a concrete
+ * `ValidatedObservations` here would import `core/ingest/ingest.ts`, and a
+ * concrete `ScoredOutcomesAndVerdict` would import `core/score/score.ts`,
+ * either of which imports this file back to type itself.
+ */
+export type ScoreStage<Trials, Product> = (
+	contract: EvalContract,
+	trials: readonly Trials[],
+	probe: Probe,
+	preflightVerdict: PreflightVerdict,
+	policy: ScoringPolicy,
+	waiver: WaiverStateValue,
+	evaluationFault: boolean,
 ) => Product

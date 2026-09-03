@@ -88,15 +88,33 @@ export type TrialSetResult = {
  * A probe with zero voted trials is `exercised: false` and contributes
  * nothing to `ClassStrength`; `caught` is `false` in that case too, since a
  * majority over zero trials decides nothing.
+ *
+ * `catchThreshold` is checked against `ScoringPolicy.catchThreshold`'s own
+ * declared domain (`.min(0).max(1)`) and a `vote.state` outside the closed
+ * twelve is checked explicitly, rather than silently falling through into
+ * `votedStates.push`: both were reachable only through a type-system bypass
+ * while this reducer shipped with no caller, and now that `score.ts` calls
+ * it for real, a bypass is exactly the input this pure function must still
+ * answer without absorbing it silently.
  */
 export function reduceTrialSet(
 	votes: readonly TrialVote[],
 	catchThreshold: number,
 ): TrialSetResult {
+	if (!(catchThreshold >= 0 && catchThreshold <= 1)) {
+		throw new TypeError(
+			`reduceTrialSet: catchThreshold ${catchThreshold} is outside ScoringPolicy's declared 0..1 domain`,
+		)
+	}
 	const invalidatedAttempts: InvalidatedAttempt[] = []
 	const votedStates: OutcomeStateValue[] = []
 	votes.forEach((vote, index) => {
 		const group = TRIAL_VOTE_STATE_OF[vote.state]
+		if (group === undefined) {
+			throw new TypeError(
+				`reduceTrialSet: vote ${index + 1} carries an out-of-domain state "${vote.state}"`,
+			)
+		}
 		if (group === 'invalidating') {
 			invalidatedAttempts.push({ attempt: index + 1, reason: vote.state })
 			return

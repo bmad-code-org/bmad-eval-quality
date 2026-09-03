@@ -9,7 +9,10 @@ import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import { discoverSourceFiles } from '../../scripts/discover-source-files.ts'
-import { STAGE_SIGNATURES } from '../../src/core/lineage/stage-table.ts'
+import {
+	LINEAGE_WRITER_MODULES,
+	STAGE_SIGNATURES,
+} from '../../src/core/lineage/stage-table.ts'
 import {
 	CORROBORATION_VALUES,
 	OUTCOME_STATES,
@@ -1520,7 +1523,12 @@ describe('the boundary the procedure holds', () => {
 		})
 	})
 
+	// `score` has shipped a real module since Story 8.2, but its lineage edge
+	// stays `'none'`: it produces no interchange artifact and mints no AD-29
+	// `parentDigest`/`revisionCount` pair, so its module is absent from the
+	// allowlist `check:lineage` derives from `lineage: 'mints'` rows.
 	it('claims no lineage stage', () => {
-		expect(STAGE_SIGNATURES.score.module).toBeNull()
+		expect(STAGE_SIGNATURES.score.lineage).toBe('none')
+		expect(LINEAGE_WRITER_MODULES).not.toContain('src/core/score/score.ts')
 	})
 })

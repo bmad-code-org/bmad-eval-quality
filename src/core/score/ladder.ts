@@ -23,6 +23,12 @@
  * `EvaluatorRecommendation` cannot carry one, since an unrecognised value
  * fails to parse before either ladder runs.
  */
+// Type-only: `ingest/conditions.ts` already imports this module's own
+// `EvidenceIntegrityInputs`/`OutcomeStateInputs` the same way, and a
+// type-only pair between two `core/` modules is erased before either file's
+// runtime load path exists (`npm run check:layers` scopes same-layer
+// imports, not import direction).
+import type { IngestCondition } from '../ingest/conditions.ts'
 import { SEVERITY_LEVELS, type Severity } from '../schemas/eval-contract.ts'
 import type {
 	CoverageGap,
@@ -85,8 +91,60 @@ export type EvidenceIntegrityInputs = {
 	readonly overTruncated: boolean
 	readonly unavailable: boolean
 	readonly internallyInconsistent: boolean
-	/** AD-16's unaccounted-manifest Invalid condition: `IsolationManifest.violation`. */
-	readonly isolationViolation: string | null
+	/**
+	 * AD-16's unaccounted-manifest Invalid condition: `IsolationManifest.violation`.
+	 * Widened from a single nullable string to an array, matching
+	 * `ValidatedObservations.isolationViolation`'s shape (`ingest.ts:78`): empty
+	 * when nothing fired, one entry per offending value.
+	 */
+	readonly isolationViolation: readonly string[]
+	/**
+	 * Eight ingest conditions, each a structured payload `ingest` already
+	 * computed, `Extract`-typed against `IngestCondition` so a rename in
+	 * `ingest/conditions.ts` collapses the field's type to `never[]` rather
+	 * than silently reading a stale shape. Ascending `EvidenceIntegrityInputs`
+	 * field order matches `INGEST_CONDITION_KINDS`' declaration order.
+	 */
+	readonly duplicateRecordIdentifiers: readonly Extract<
+		IngestCondition,
+		{ kind: 'duplicate-record-identifier' }
+	>[]
+	readonly danglingCitations: readonly Extract<
+		IngestCondition,
+		{ kind: 'dangling-citation' }
+	>[]
+	readonly danglingDispositionCitations: readonly Extract<
+		IngestCondition,
+		{ kind: 'dangling-disposition-citation' }
+	>[]
+	readonly forbiddenInputsNotWithheld: readonly Extract<
+		IngestCondition,
+		{ kind: 'forbidden-input-not-withheld' }
+	>[]
+	readonly crossArtifactDisagreements: readonly Extract<
+		IngestCondition,
+		{ kind: 'cross-artifact-disagreement' }
+	>[]
+	readonly evaluatorConfigurationAbsent: readonly Extract<
+		IngestCondition,
+		{ kind: 'evaluator-configuration-absent' }
+	>[]
+	readonly evaluatorConfigurationDigestMismatches: readonly Extract<
+		IngestCondition,
+		{ kind: 'evaluator-configuration-digest-mismatch' }
+	>[]
+	readonly judgeResultsUnscored: readonly Extract<
+		IngestCondition,
+		{ kind: 'judge-result-unscored' }
+	>[]
+	/**
+	 * The two score-computed conditions, pre-rendered like `isolationViolation`
+	 * rather than structured: `score.ts` computes and renders both itself
+	 * (neither is an `IngestCondition`), so the ladder only needs to display
+	 * them.
+	 */
+	readonly operationIdentifierCollisions: readonly string[]
+	readonly trialSetDisagreements: readonly string[]
 }
 
 export type FindingConfidence = {
@@ -220,6 +278,12 @@ type LadderConditionRow = {
  * `invalidating-state`; both are still named explicitly so `verdictBasis`
  * carries the specific condition AD-21's spine prose never spelled out, not
  * only the generic state.
+ *
+ * Ten more rows follow: eight previously-rungless ingest conditions, each
+ * newly given a rung, plus two conditions `score.ts` itself computes and no
+ * `ingest` condition names -- an ambiguous `operationId` across
+ * `permittedInterfaces`, and a trial set disagreeing with itself on
+ * `mode` or `evaluatorRecommendation`.
  */
 const INVALID_ROWS: readonly LadderConditionRow[] = [
 	{
@@ -250,11 +314,9 @@ const INVALID_ROWS: readonly LadderConditionRow[] = [
 		guard: 'an unaccounted isolation manifest under AD-16',
 		evidenceCondition: false,
 		reasons: (inputs) =>
-			inputs.evidenceIntegrity.isolationViolation === null
-				? []
-				: [
-						`isolation manifest violation: ${inputs.evidenceIntegrity.isolationViolation}`,
-					],
+			inputs.evidenceIntegrity.isolationViolation.map(
+				(violation) => `isolation manifest violation: ${violation}`,
+			),
 	},
 	{
 		id: 're-execution-cap-breach',
@@ -344,6 +406,128 @@ const INVALID_ROWS: readonly LadderConditionRow[] = [
 			inputs.outcomeState.unwitnessedQuotations.map(
 				(quoted) =>
 					`finding ${quoted.findingId}: unwitnessed quotation on channel ${quoted.channel}`,
+			),
+	},
+	// Eight previously-rungless conditions, each newly given a rung here.
+	// `ingest` already shipped the detection; this is the first ladder row
+	// that reports it.
+	{
+		id: 'duplicate-record-identifier',
+		rung: 'invalid',
+		guard:
+			'the record uses one observation, finding, or oracle-disposition identifier twice',
+		evidenceCondition: false,
+		reasons: (inputs) =>
+			inputs.evidenceIntegrity.duplicateRecordIdentifiers.map(
+				(condition) =>
+					`duplicate ${condition.subject} identifier "${condition.identifier}" (${condition.occurrences} occurrences)`,
+			),
+	},
+	{
+		id: 'dangling-citation',
+		rung: 'invalid',
+		guard:
+			'a finding cites an observation identifier the record does not declare',
+		evidenceCondition: false,
+		reasons: (inputs) =>
+			inputs.evidenceIntegrity.danglingCitations.map(
+				(condition) =>
+					`finding ${condition.findingId} cites unresolved observation(s): ${condition.unresolvedObservationIds.join(', ')}`,
+			),
+	},
+	{
+		id: 'dangling-disposition-citation',
+		rung: 'invalid',
+		guard:
+			'an oracle disposition cites an observation identifier the record does not declare',
+		evidenceCondition: false,
+		reasons: (inputs) =>
+			inputs.evidenceIntegrity.danglingDispositionCitations.map(
+				(condition) =>
+					`oracle ${condition.oracleId} disposition cites unresolved observation(s): ${condition.unresolvedObservationIds.join(', ')}`,
+			),
+	},
+	{
+		id: 'forbidden-input-not-withheld',
+		rung: 'invalid',
+		guard: 'AD-16 forbidden input admitted rather than withheld',
+		evidenceCondition: false,
+		reasons: (inputs) =>
+			inputs.evidenceIntegrity.forbiddenInputsNotWithheld.flatMap((condition) =>
+				condition.inputs.map(
+					(input) => `forbidden input admitted rather than withheld: ${input}`,
+				),
+			),
+	},
+	{
+		id: 'cross-artifact-disagreement',
+		rung: 'invalid',
+		guard:
+			'the sealed run record and the isolation manifest disagree on a field AD-32 requires them to agree on',
+		evidenceCondition: false,
+		reasons: (inputs) =>
+			inputs.evidenceIntegrity.crossArtifactDisagreements.map(
+				(condition) =>
+					`record and manifest disagree on ${condition.field}: record "${condition.recordValue}", manifest "${condition.manifestValue}"`,
+			),
+	},
+	{
+		id: 'evaluator-configuration-absent',
+		rung: 'invalid',
+		guard: 'the evaluator configuration artifact is absent',
+		evidenceCondition: false,
+		reasons: (inputs) =>
+			inputs.evidenceIntegrity.evaluatorConfigurationAbsent.map(
+				() => 'evaluator configuration absent',
+			),
+	},
+	{
+		id: 'evaluator-configuration-digest-mismatch',
+		rung: 'invalid',
+		guard:
+			'the evaluator configuration digest the record declares does not recompute from the artifact',
+		evidenceCondition: false,
+		reasons: (inputs) =>
+			inputs.evidenceIntegrity.evaluatorConfigurationDigestMismatches.map(
+				(condition) =>
+					`evaluator configuration digest mismatch: declared "${condition.declaredDigest}", computed "${condition.computedDigest}"`,
+			),
+	},
+	{
+		id: 'judge-result-unscored',
+		rung: 'invalid',
+		guard: 'a judge result carries `score: null`',
+		evidenceCondition: false,
+		reasons: (inputs) =>
+			inputs.evidenceIntegrity.judgeResultsUnscored.map(
+				(condition) =>
+					`judge result unscored: rubric ${condition.rubricId} criterion ${condition.criterionId}`,
+			),
+	},
+	// The two score-computed conditions. Neither is an `IngestCondition`, so
+	// `score.ts` renders each entry itself and this row only adds the outer
+	// category label, following `isolation-manifest-violation`'s own
+	// double-wrap precedent above.
+	{
+		id: 'operation-identifier-collision',
+		rung: 'invalid',
+		guard:
+			"an observation's operationId matches an operation in more than one permittedInterfaces entry",
+		evidenceCondition: false,
+		reasons: (inputs) =>
+			inputs.evidenceIntegrity.operationIdentifierCollisions.map(
+				(collision) => `operation identifier collision: ${collision}`,
+			),
+	},
+	{
+		id: 'trial-set-field-disagreement',
+		rung: 'invalid',
+		guard:
+			'two trials in the same trial set disagree on `mode` or `evaluatorRecommendation`',
+		evidenceCondition: false,
+		reasons: (inputs) =>
+			inputs.evidenceIntegrity.trialSetDisagreements.map(
+				(disagreement) => `trial-set field disagreement: ${disagreement}`,
 			),
 	},
 ]

@@ -123,6 +123,243 @@ describe('resolveProductionVerdict / resolveContractVerdict', () => {
 		).toBe(true)
 	})
 
+	// Story 8.2's eight previously-rungless conditions, each newly given a
+	// rung, plus the two conditions score.ts computes itself. One case per
+	// new row, each asserting Invalid and the row's own basis wording.
+	it('resolves a duplicate-record-identifier condition to Invalid and names it', () => {
+		const body = {
+			...baseline(),
+			evidenceIntegrity: {
+				...baseline().evidenceIntegrity,
+				duplicateRecordIdentifiers: [
+					{
+						kind: 'duplicate-record-identifier' as const,
+						subject: 'observation' as const,
+						identifier: 'obs-1',
+						occurrences: 2,
+					},
+				],
+			},
+		}
+		const resolution = resolveProductionVerdict(productionOf(body))
+		expect(resolution.verdict).toBeNull()
+		expect(
+			resolution.basis.some(
+				(entry) => entry.includes('obs-1') && entry.includes('duplicate'),
+			),
+		).toBe(true)
+	})
+
+	it('resolves a dangling-citation condition to Invalid and names the finding', () => {
+		const body = {
+			...baseline(),
+			evidenceIntegrity: {
+				...baseline().evidenceIntegrity,
+				danglingCitations: [
+					{
+						kind: 'dangling-citation' as const,
+						findingId: 'finding-2',
+						unresolvedObservationIds: ['obs-missing'],
+					},
+				],
+			},
+		}
+		const resolution = resolveContractVerdict(contractOf(body))
+		expect(resolution.verdict).toBeNull()
+		expect(
+			resolution.basis.some(
+				(entry) => entry.includes('finding-2') && entry.includes('obs-missing'),
+			),
+		).toBe(true)
+	})
+
+	it('resolves a dangling-disposition-citation condition to Invalid and names the oracle', () => {
+		const body = {
+			...baseline(),
+			evidenceIntegrity: {
+				...baseline().evidenceIntegrity,
+				danglingDispositionCitations: [
+					{
+						kind: 'dangling-disposition-citation' as const,
+						oracleId: 'oracle-9',
+						unresolvedObservationIds: ['obs-missing'],
+					},
+				],
+			},
+		}
+		const resolution = resolveProductionVerdict(productionOf(body))
+		expect(resolution.verdict).toBeNull()
+		expect(resolution.basis.some((entry) => entry.includes('oracle-9'))).toBe(
+			true,
+		)
+	})
+
+	it('resolves a forbidden-input-not-withheld condition to Invalid, one basis line per input', () => {
+		const body = {
+			...baseline(),
+			evidenceIntegrity: {
+				...baseline().evidenceIntegrity,
+				forbiddenInputsNotWithheld: [
+					{
+						kind: 'forbidden-input-not-withheld' as const,
+						inputs: ['source-code' as const, 'human-labels' as const],
+					},
+				],
+			},
+		}
+		const resolution = resolveContractVerdict(contractOf(body))
+		expect(resolution.verdict).toBeNull()
+		expect(
+			resolution.basis.filter((entry) => entry.includes('forbidden input')),
+		).toHaveLength(2)
+	})
+
+	it('resolves a cross-artifact-disagreement condition to Invalid and names both values', () => {
+		const body = {
+			...baseline(),
+			evidenceIntegrity: {
+				...baseline().evidenceIntegrity,
+				crossArtifactDisagreements: [
+					{
+						kind: 'cross-artifact-disagreement' as const,
+						field: 'runId' as const,
+						recordValue: 'run-a',
+						manifestValue: 'run-b',
+					},
+				],
+			},
+		}
+		const resolution = resolveProductionVerdict(productionOf(body))
+		expect(resolution.verdict).toBeNull()
+		expect(
+			resolution.basis.some(
+				(entry) => entry.includes('run-a') && entry.includes('run-b'),
+			),
+		).toBe(true)
+	})
+
+	it('resolves an evaluator-configuration-absent condition to Invalid', () => {
+		const body = {
+			...baseline(),
+			evidenceIntegrity: {
+				...baseline().evidenceIntegrity,
+				evaluatorConfigurationAbsent: [
+					{ kind: 'evaluator-configuration-absent' as const },
+				],
+			},
+		}
+		const resolution = resolveContractVerdict(contractOf(body))
+		expect(resolution.verdict).toBeNull()
+		expect(
+			resolution.basis.some((entry) => entry.includes('configuration absent')),
+		).toBe(true)
+	})
+
+	it('resolves an evaluator-configuration-digest-mismatch condition to Invalid and names both digests', () => {
+		const body = {
+			...baseline(),
+			evidenceIntegrity: {
+				...baseline().evidenceIntegrity,
+				evaluatorConfigurationDigestMismatches: [
+					{
+						kind: 'evaluator-configuration-digest-mismatch' as const,
+						declaredDigest: 'sha256:declared',
+						computedDigest: 'sha256:computed',
+					},
+				],
+			},
+		}
+		const resolution = resolveProductionVerdict(productionOf(body))
+		expect(resolution.verdict).toBeNull()
+		expect(
+			resolution.basis.some(
+				(entry) =>
+					entry.includes('sha256:declared') &&
+					entry.includes('sha256:computed'),
+			),
+		).toBe(true)
+	})
+
+	it('resolves a judge-result-unscored condition to Invalid and names the criterion', () => {
+		const body = {
+			...baseline(),
+			evidenceIntegrity: {
+				...baseline().evidenceIntegrity,
+				judgeResultsUnscored: [
+					{
+						kind: 'judge-result-unscored' as const,
+						rubricId: 'R-002',
+						criterionId: 'RC-009',
+					},
+				],
+			},
+		}
+		const resolution = resolveContractVerdict(contractOf(body))
+		expect(resolution.verdict).toBeNull()
+		expect(
+			resolution.basis.some(
+				(entry) => entry.includes('R-002') && entry.includes('RC-009'),
+			),
+		).toBe(true)
+	})
+
+	it('resolves an operation-identifier-collision condition to Invalid', () => {
+		const body = {
+			...baseline(),
+			evidenceIntegrity: {
+				...baseline().evidenceIntegrity,
+				operationIdentifierCollisions: [
+					'observation obs-1: operationId "op-1" matches two interfaces',
+				],
+			},
+		}
+		const resolution = resolveProductionVerdict(productionOf(body))
+		expect(resolution.verdict).toBeNull()
+		expect(
+			resolution.basis.some((entry) =>
+				entry.includes('operation identifier collision'),
+			),
+		).toBe(true)
+	})
+
+	it('resolves a trial-set-field-disagreement condition to Invalid', () => {
+		const body = {
+			...baseline(),
+			evidenceIntegrity: {
+				...baseline().evidenceIntegrity,
+				trialSetDisagreements: [
+					'mode: trial 1 = "production", trial 2 = "contract-scoring"',
+				],
+			},
+		}
+		const resolution = resolveContractVerdict(contractOf(body))
+		expect(resolution.verdict).toBeNull()
+		expect(
+			resolution.basis.some((entry) =>
+				entry.includes('trial-set field disagreement'),
+			),
+		).toBe(true)
+	})
+
+	// isolationViolation is now an array: two entries render two basis lines,
+	// each still carrying the row's own "isolation manifest violation:"
+	// prefix.
+	it('renders one basis line per isolationViolation entry, in array order', () => {
+		const body = {
+			...baseline(),
+			evidenceIntegrity: {
+				...baseline().evidenceIntegrity,
+				isolationViolation: ['first violation', 'second violation'],
+			},
+		}
+		const resolution = resolveProductionVerdict(productionOf(body))
+		expect(resolution.verdict).toBeNull()
+		expect(resolution.basis).toEqual([
+			'isolation manifest violation: first violation',
+			'isolation manifest violation: second violation',
+		])
+	})
+
 	// Owed item 5: an uncited defect finding resolves at least CONCERNS in
 	// both ladders, verdictBasis names it, and it is strict-promotable (no
 	// severity-floor gate, unlike the two rows above it).
