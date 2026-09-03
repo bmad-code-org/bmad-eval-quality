@@ -100,7 +100,7 @@ export const STAGE_SIGNATURES: Record<PipelineStage, StageSignature> = {
 		owns: 'validated-observations',
 		ownsInterchange: null,
 		lineage: 'none',
-		module: null,
+		module: 'src/core/ingest/ingest.ts',
 	},
 	preflight: {
 		// AD-34 splits the stage into `plan` and `reduce`; both halves' inputs

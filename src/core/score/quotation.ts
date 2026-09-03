@@ -135,11 +135,16 @@ export function auditQuotation(
 	const unwitnessed: UnwitnessedQuotation[] = []
 	for (const finding of record.findings) {
 		if (finding.findingType !== 'defect') continue
-		const cited = finding.observationIds
+		// Deduplicated and sorted by identifier. `observationIds` is an array with
+		// no uniqueness refinement, so a finding may cite one observation twice,
+		// and carrying the citation array's order into `citedObservationIds` would
+		// put a position with no declared meaning on the payload.
+		const cited = [...new Set(finding.observationIds)]
 			.map((id) => byId.get(id))
 			.filter(
 				(observation): observation is Observation => observation !== undefined,
 			)
+			.sort((a, b) => (a.observationId < b.observationId ? -1 : 1))
 		const artifactPath = `SealedRunRecord.findings[findingId=${finding.findingId}]`
 		finding.quotedEvidence.forEach((quoted, quoteIndex) => {
 			const witnessed = cited.some((observation) =>

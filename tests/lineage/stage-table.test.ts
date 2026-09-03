@@ -2,6 +2,8 @@
  * AD-24's table as data (Story 6.4, AC 11 cases 1 through 10). These are the
  * invariants a table holds that a paragraph cannot.
  */
+import { existsSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import {
 	ARTIFACT_PRODUCERS,
@@ -161,7 +163,33 @@ describe('the AD-24 stage-signature table', () => {
 		}
 	})
 
-	// 12. Owed item 6's own words: "the source of run mode is absent". One
+	// 12. The `module` column is a path, and nothing checked it resolved. A row
+	// naming a file that was renamed or never written reads as a built stage and
+	// is what `check:lineage` derives its writer allowlist from.
+	it('names an existing file on every stage that declares a module', () => {
+		for (const stage of PIPELINE_STAGES) {
+			const module = STAGE_SIGNATURES[stage].module
+			if (module === null) continue
+			expect(
+				existsSync(fileURLToPath(new URL(`../../${module}`, import.meta.url))),
+				`${stage} module ${module}`,
+			).toBe(true)
+		}
+	})
+
+	// 13. Which stages are built is the table's own claim, and case 12 only
+	// checks the ones that claim it. Pinned as a set so a row losing its module,
+	// or a later stage gaining one, has to be written down here.
+	it('names a module on exactly the stages that are built', () => {
+		expect(
+			PIPELINE_STAGES.filter(
+				(stage) => STAGE_SIGNATURES[stage].module !== null,
+			),
+		).toEqual(['compile', 'seal', 'ingest', 'preflight'])
+		expect(STAGE_SIGNATURES.ingest.module).toBe('src/core/ingest/ingest.ts')
+	})
+
+	// 14. Owed item 6's own words: "the source of run mode is absent". One
 	// stage names it, and it is the stage AD-21 fixes mode before.
 	it('names mode on ingest and on no other stage', () => {
 		const naming = PIPELINE_STAGES.filter((stage) =>

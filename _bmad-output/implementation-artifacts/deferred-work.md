@@ -1,8 +1,8 @@
 # Deferred work
 
-Eleven items are open, listed under "How to use this file" and in the per-review sections following
-it. The prose immediately below records how each past item closed. Epic 7's reviews filed fifteen;
-this file's own closure narrative below accounts for the other four.
+Seventeen items are open, listed under "How to use this file" and in the per-review sections
+following it. The prose immediately below records how each past item closed. Epic 7's reviews
+filed fifteen; this file's own closure narrative below accounts for the other four.
 
 Story 7.10 opened five items and one of them closed the same day, 2026-09-03, wider than it was
 filed. The entry said two of epic 7's nine `schemaVersion` bumps carried no bump note in the driving
@@ -335,3 +335,92 @@ The rule is about the entry, not about erasing that something was once open.
     other four. A focused pass across all five fields (which ones are structurally always
     caller-attested vs. optionally computed by `score`, and enforcing the always-caller-attested ones)
     is the right shape for closing this, not a one-field patch.
+
+## Deferred from: story review of 8-1-the-ingest-stage-and-the-conditions-it-records (2026-09-03)
+
+Three cross-artifact rules name `core/ingest` in a shipped schema comment and cannot be computed
+from the three artifacts `STAGE_SIGNATURES.ingest` declares. They are routed here with owners
+during story creation rather than after implementation, because two peer reviews of the draft found
+the story silently assuming inputs the stage row does not carry.
+
+- source_spec: `8-1-the-ingest-stage-and-the-conditions-it-records.md`
+  summary: Two permitted interfaces declaring the same `operationId`, which
+    `src/core/schemas/sealed-run-record.ts:179-181` leaves to ingest, is unreachable there.
+  evidence: `PermittedInterface` lives on the eval contract
+    (`src/core/schemas/eval-contract.ts:174`), which is not among ingest's declared inputs
+    (`src/core/lineage/stage-table.ts:90-93`). `Observation` carries `operationId` with no interface
+    qualifier, so even given the contract ingest could name the ambiguous identifier and never the
+    two interfaces colliding on it. Owner: story 8.2, whose stage row already declares
+    `eval-contract` and whose `qualification.ts` work resolves an observation to an operation.
+
+- source_spec: `8-1-the-ingest-stage-and-the-conditions-it-records.md`
+  summary: AD-17's rule that a scored criterion is one the cited rubric declares, and that a
+    conforming record shows one judge call scoring all named criteria, has no owner in any stage row.
+  evidence: `src/core/schemas/sealed-run-record.ts:222-227` defers both to ingest. The record-decidable
+    half (`JudgeResult.score === null`, the shape AD-6's `judge-error` fires on) lands in story 8.1.
+    The rubric half needs the rubric artifact, and no row in `STAGE_SIGNATURES` declares `rubric` as
+    an input at all; `ARTIFACT_PRODUCERS` gives it to `caller` and nothing consumes it. Recorded with
+    no owner deliberately: assigning it to a story that cannot satisfy it is how a rule ships
+    unenforced. Settling it means either widening a stage row or accepting the gap in writing.
+
+- source_spec: `8-1-the-ingest-stage-and-the-conditions-it-records.md`
+  summary: `src/core/schemas/private-artifact-manifest.ts:31-34` says a digest mismatch "is an AD-28
+    `digest-mismatch` fault at ingest", and nothing computes it.
+  evidence: The rule needs bytes resolved through AD-8's corpus port. AD-8's own subject is "the core
+    recomputes every per-artifact digest from the resolved bytes" and AD-34 says `application/`
+    "holds no decision logic" and is only where a port is awaited, so the construction is a pure core
+    comparator called by the application layer that awaited the port. An earlier draft of story 8.1
+    argued the whole check belonged in `application/`, which overshot AD-8's subject. Owner: whichever
+    story first awaits that port. Naming 8.4 as "the first code to await the corpus port" was a
+    prediction rather than an observation, and AD-11 makes `ScoringVersionInputs.corpusDigest`
+    (`src/core/schemas/evidence-artifact.ts:105`) a required recomputation from resolved bytes on an
+    artifact `emit` owns, so 8.2 or 8.3 may reach the port first. Story 8.2 settles the owner in its
+    own decisions. `src/ports/corpus-port.ts` and `src/adapters/local-corpus-adapter.ts` both already
+    exist, so this is buildable inside epic 8 either way.
+
+## Deferred from: code review of 8-1-the-ingest-stage-and-the-conditions-it-records (2026-09-03)
+
+Three items the four review sessions raised against the implemented stage. Each was checked for
+buildability from the three artifacts `STAGE_SIGNATURES.ingest` declares before being routed; the
+rest of the review's findings were closed in the same pass.
+
+- source_spec: `8-1-the-ingest-stage-and-the-conditions-it-records.md`
+  summary: `IsolationManifest.violation` is `z.string().nullable()` with no `.min(1)`, so an empty
+    violation string parses, invalidates the run, and renders a basis entry that names nothing.
+  evidence: `src/core/schemas/isolation-manifest.ts:111-116` says "a non-null violation invalidates
+    it", so `core/ingest` cannot treat `''` as no violation without contradicting the field it
+    implements. `observedMounts`, `observedNetworkTargets`, and `observedToolCalls` are
+    `z.array(z.string())` with no element minimum either, so `['']` outside an allowlist renders
+    `mount outside allowlist: ` with nothing after the colon. The precedent for the fix is
+    `QuotedEvidence.quote` (`src/core/schemas/sealed-run-record.ts:27-34`), which carries `.min(1)`
+    with the argument spelled out: "an empty quotation quotes nothing, no AD-5 code names the
+    condition, and under the admit-rule's second clause the schema is therefore the enforcement
+    point." Tightening a shipped field is breaking under AD-11 and needs a `schemaVersion` bump,
+    which epic 8 states it makes nowhere, so no story in this epic can close it. Recorded with no
+    owner, on the same reasoning as AD-17's rubric half: naming a story that cannot satisfy it is
+    how a rule ships unenforced.
+
+- source_spec: `8-1-the-ingest-stage-and-the-conditions-it-records.md`
+  summary: `IsolationManifest.contractId`'s description promises a match `core/ingest` has no second
+    operand for.
+  evidence: `src/core/schemas/isolation-manifest.ts:80-82` reads "the manifest keeps an identifier
+    because it is the artifact `core/ingest` matches against a run; the run record and the probe pin
+    what they describe by digest instead." The sealed run record carries no `contractId`, so the
+    only artifact that could supply the second operand is the eval contract, which is not among
+    ingest's declared inputs. `AGREEMENT_FIELDS` compares `runId`, `contractDigest`, and
+    `evaluatorConfigurationDigest`, which is the match the two artifacts can actually support.
+    Owner: story 8.2, whose stage row already declares `eval-contract`. It settles whether the
+    identifier gains a real comparison or the description is corrected to name the digest match.
+
+- source_spec: `8-1-the-ingest-stage-and-the-conditions-it-records.md`
+  summary: Nothing checks that the isolation manifest handed to ingest is the artifact
+    `SealedRunRecord.isolationManifestArtifact` points at.
+  evidence: `ArtifactReference` carries a `digest` on both branches
+    (`src/core/schemas/artifact-reference.ts`), so the operand is on the record and the artifact is a
+    declared input, which is what made the evaluator configuration's recomputation buildable inside
+    story 8.1. This one is not the same case: no schema description names `core/ingest` as its
+    enforcement point, and AD-8's subject is "the core recomputes every per-artifact digest from the
+    resolved bytes", so the reference's digest is over stored bytes while `digestArtifact` over a
+    parsed object is a canonical-form digest. Comparing the two is only sound once the bytes are
+    resolved through the corpus port. Owner: whichever story first awaits that port, the same owner
+    the private-artifact digest carries, and the same story settles both together.
