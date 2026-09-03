@@ -564,6 +564,89 @@ describe('score: regressions and documented fallbacks beyond the frozen I/O Matr
 			basis: [],
 		})
 	})
+
+	// Guard #3 of this family: `SealedRunRecord.oracleDispositions` carries no
+	// uniqueness constraint on `oracleId`, and ingest's
+	// `duplicate-record-identifier` condition only advisory-flags a repeat,
+	// never rejects it. Two dispositions naming the same oracle is treated as
+	// ambiguous -- `disposition: null` -- rather than picking the array's
+	// first entry, which the existing `disposition-missing` row then reports
+	// exactly as it would for a genuinely absent disposition.
+	it('two dispositions naming the same oracle make the disposition ambiguous, firing disposition-missing', () => {
+		const result = scoreOf(baseContract, [
+			cleanTrial({
+				dispositions: [
+					{
+						oracleId: 'O-001',
+						disposition: 'held',
+						observationIds: ['obs-1'],
+						note: null,
+					},
+					{
+						oracleId: 'O-001',
+						disposition: 'violated',
+						observationIds: ['obs-1'],
+						note: null,
+					},
+				],
+			}),
+		])
+		expect(result.ladder.verdict).toBeNull()
+		expect(result.ladder.basis).toEqual([
+			'oracle O-001 is required and carries no disposition',
+		])
+	})
+
+	// Guard #4 of this family: `findingId` carries no uniqueness constraint
+	// either, so two findings can share the identifier `resolution.resolvedFrom`
+	// names, and picking either one's `.severity` would make the outcome
+	// depend on array order. A canary probe citing one defect finding against
+	// its designated oracle makes `canary-detected` resolve from that
+	// citation; a second, unrelated finding sharing the same `findingId` but
+	// a different severity, and neither severity, is used -- the outcome
+	// falls through to the behaviour-severity floor instead.
+	it('two findings sharing the resolvedFrom findingId fall back to the behaviour severity floor', () => {
+		const result = scoreOf(
+			baseContract,
+			[
+				cleanTrial({
+					findings: [
+						{
+							findingType: 'defect',
+							findingId: 'F-DUP',
+							oracleId: 'O-001',
+							probeId: canary.probeId,
+							behaviorId: 'B-001',
+							severity: 'critical',
+							summary: 'canary detected',
+							confidence: 0.9,
+							observationIds: ['obs-1'],
+							evidenceArtifacts: [],
+							quotedEvidence: [{ quote: 'ok', channel: 'response-status' }],
+						},
+						{
+							findingType: 'observation',
+							findingId: 'F-DUP',
+							oracleId: null,
+							probeId: canary.probeId,
+							behaviorId: null,
+							severity: 'material',
+							summary: 'unrelated finding sharing the same identifier',
+							confidence: 0.5,
+							observationIds: ['obs-1'],
+							evidenceArtifacts: [],
+						},
+					],
+				}),
+			],
+			canary,
+		)
+		const outcome = result.assessment.outcomeState.outcomes[0]
+		expect(outcome?.resolution.resolvedFrom).toBe('F-DUP')
+		// Neither finding's own severity (`critical`/`material`) is used;
+		// `B-001`'s declared severity (`low`, baseContract's own value) is.
+		expect(outcome?.severity).toBe('low')
+	})
 })
 
 describe('score: STAGE_SIGNATURES conformance', () => {

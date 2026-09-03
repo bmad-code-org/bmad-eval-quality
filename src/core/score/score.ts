@@ -459,8 +459,23 @@ export const score: ScoreStage<
 							policy.regexMatchStepBudget,
 							`EvalContract.oracles[id=${oracle.id}].check`,
 						)
+			// Every disposition this trial records for this oracle, not just
+			// the first: `SealedRunRecord.oracleDispositions` carries no
+			// uniqueness constraint on `oracleId`, and ingest's
+			// `duplicate-record-identifier` condition only advisory-flags a
+			// repeat, never rejects it, so two dispositions naming one oracle
+			// is a legal, ambiguous input. More than one match is treated as
+			// ambiguous -- `disposition: null` -- rather than silently
+			// picking the array's first entry, the same guard-rather-than-pick
+			// idiom `citedFinding` below already uses.
+			const matchingDispositions = trial.dispositions.filter(
+				(entry) => entry.oracleId === oracle.id,
+			)
+			const [onlyDisposition] = matchingDispositions
 			const disposition =
-				trial.dispositions.find((entry) => entry.oracleId === oracle.id) ?? null
+				matchingDispositions.length === 1 && onlyDisposition !== undefined
+					? onlyDisposition
+					: null
 			// Every defect finding this trial cites against this oracle, not
 			// just the first: two distinct findings citing the same oracle is
 			// schema-legal and not caught by ingest's `duplicate-record-identifier`
@@ -507,12 +522,26 @@ export const score: ScoreStage<
 				evaluationFault,
 			}
 			const resolution = resolveOutcome(inputs)
-			const severity =
+			// The same ambiguity guard as `disposition` and `citedFinding`
+			// above: `findingId` carries no uniqueness constraint either (also
+			// only advisory-flagged by `duplicate-record-identifier`, subject
+			// `'finding'`), so two findings sharing `resolution.resolvedFrom`
+			// is legal. Reading either one's `.severity` would make the
+			// outcome depend on array order; more than one match falls
+			// through to the same behaviour-severity floor a missing match
+			// already uses, rather than picking one arbitrarily.
+			const findingsResolvedFrom =
 				resolution.resolvedFrom === null
-					? severityOfBehaviourFor(contract, oracle.id)
-					: (trial.findings.find(
+					? []
+					: trial.findings.filter(
 							(finding) => finding.findingId === resolution.resolvedFrom,
-						)?.severity ?? severityOfBehaviourFor(contract, oracle.id))
+						)
+			const [onlyFindingResolvedFrom] = findingsResolvedFrom
+			const severity =
+				findingsResolvedFrom.length === 1 &&
+				onlyFindingResolvedFrom !== undefined
+					? onlyFindingResolvedFrom.severity
+					: severityOfBehaviourFor(contract, oracle.id)
 
 			allOutcomes.push({
 				oracleId: oracle.id,
