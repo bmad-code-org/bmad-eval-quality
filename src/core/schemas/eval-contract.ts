@@ -125,13 +125,13 @@ export const TestData = z.strictObject({
 		.record(Identifier, TestDataDeclaration)
 		.nullable()
 		.describe(
-			"Owed item 3: the principals a `{ principal }` input binding may name. Caller-keyed by name, which makes a duplicate declaration unrepresentable, and valueless, since AD-19 forbids a credential value in a declaration and AD-18 keeps the name an opaque label. `null`, `{}`, and a populated map are three distinct answers, on `referenceSets`' own reasoning. A binding naming a key absent here still parses; it fires `undeclared-mandatory-input` at compile time in strict mode, because a cross-subtree constraint reaching from `interactionPlan` into this field cannot survive the export.",
+			"Owed item 3: the principals a `{ principal }` input binding may name. Caller-keyed by name, which makes a duplicate declaration unrepresentable, and valueless, since AD-19 forbids a credential value in a declaration and AD-18 keeps the name an opaque label. `null`, `{}`, and a populated map are three distinct answers, on `referenceSets`' own reasoning. A binding naming a key absent here still parses; it fires `undeclared-mandatory-input` at compile time in strict mode, because a cross-subtree constraint reaching from `interactionPlan` into this field cannot survive the export. Required, not optional, which makes this and `resources` below together the eval contract's `schemaVersion` 2 -> 3 BREAKING bump under AD-11, whose rule is that \"adding an optional field is a `schemaVersion` bump recorded in the field's own description; removing or retyping is breaking\". `null` is the legal spelling for a contract declaring none, but `TestData` is a `strictObject` and the key itself must be present, so no version-2 contract parses.",
 		),
 	resources: z
 		.record(Identifier, TestDataDeclaration)
 		.nullable()
 		.describe(
-			'Test-data resources, declared the same way as `principals` above. Any entry fires `scoped-reference-resolves-forbidden` at compile time exactly as a `scopedResources` entry does: a resource the contract points the evaluator at is a scoped reference wherever it is written down (AD-16).',
+			"Test-data resources, declared the same way as `principals` above. Any entry fires `scoped-reference-resolves-forbidden` at compile time exactly as a `scopedResources` entry does: a resource the contract points the evaluator at is a scoped reference wherever it is written down (AD-16). Required on the same terms as `principals`, and the other half of the eval contract's `schemaVersion` 2 -> 3 BREAKING bump under AD-11: `null` is the empty spelling and the key is mandatory.",
 		),
 })
 

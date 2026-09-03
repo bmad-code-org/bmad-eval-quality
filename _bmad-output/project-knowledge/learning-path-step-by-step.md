@@ -2772,4 +2772,78 @@ flowchart TD
   this story's three frozen acceptance criteria (an operator's resolution value, a verdict tier) were
   wrong against the shipped code once it actually ran; both were corrected by construction, and
   neither acceptance criterion was edited to match the wrong prediction.
+
+## Step 33 (epic7-story10): one place that says what the epic broke
+
+**In plain terms:** Stories 7.1 through 7.8 each bumped a `schemaVersion` and left the bump note in
+the field's own description, which is where AD-11 says it belongs but not where a caller pinned to
+`0.1.x` would ever read it. Nothing before this story told a reader the release breaks nine times
+across six schemas, or that scoring versions from before this epic can never be compared against
+scoring versions from after it. This story is the last one in the epic and writes no code: it
+collects the disclosure into `CHANGELOG.md`, the one place already wired to become the GitHub Release
+body.
+
+**What:** One `### Changed` block under `CHANGELOG.md`'s `[Unreleased]` section, one bullet per
+schema, each stated as the artifact's net move from the version a `0.1.x` caller actually holds
+(three schemas were bumped twice inside the epic, so their disclosed number is the epic-wide jump,
+not the last story's increment) with every driving field named and marked BREAKING. Two runtime
+facts sit beside the bump list: the version number gates nothing in either direction today, so
+neither a stale nor a forward `schemaVersion` announces itself; and mode entering
+`ScoringVersionInputs` makes every scoring version computed before this epic non-comparable with
+every version after it. `ARCHITECTURE-SPINE.md`'s AD-11 sentence, which enumerates the caller-facing
+surface, gained the five interchange artifacts it had never named across nine prior spine revisions.
+
+**Why:** a five-item list looks complete right up until someone counts what actually has a
+`schemaVersion`. Deriving AD-11's surface from the schema registry itself, rather than trusting the
+sentence's own five nouns, is what found the other six.
+
+**Read in this order:**
+
+1. `CHANGELOG.md`'s `[Unreleased]` section: the bump list, the two runtime facts, the
+   non-comparability statement.
+2. `ARCHITECTURE-SPINE.md:291`: AD-11's amended sentence, now naming eleven of the twelve interchange
+   artifacts by the rule ("carries a `schemaVersion`") rather than by a hand-kept list.
+3. The `.describe()` calls on `ScoringVersionInputs.mode`, `Probe.qualification`,
+   `Probe.defectSignature`, and `ScoringPolicy.catchThreshold`: each now carries the bump note AD-11
+   requires and none previously had.
+
+```mermaid
+flowchart TD
+  BUMPS["9 schemaVersion bumps<br/>Stories 7.1-7.8, field .describe() only"]
+  CHANGELOG["CHANGELOG.md [Unreleased]<br/>net old to new per schema, both runtime facts"]
+  SPINE["ARCHITECTURE-SPINE.md AD-11<br/>surface list derived from the registry, eleven of twelve"]
+
+  BUMPS --> CHANGELOG
+  BUMPS --> SPINE
+```
+
+**Story:** `_bmad-output/implementation-artifacts/7-10-the-epics-disclosed-breaks-and-the-non-comparability-statement.md`
+
+### Reference
+
+**Rules:**
+
+- Disclose the version a `0.1.x` caller actually holds, not the last story's increment. Three
+  schemas moved twice inside the epic; disclosing either as "2 → 3" hides the bump that broke a
+  caller who was still on version 1.
+- "Every caller-facing break" is NFR8's actual text, not the five schemas one story's AC happens to
+  name. `ScoringPolicy` ships in the tarball as one of the twelve published JSON Schema documents and
+  broke the same way the other five did; leaving it out because one enumeration forgot it would still
+  be under-disclosing a real break.
+- A version number that nothing compares is silent in both directions. A pre-bump artifact fails on
+  its missing fields, not its number; a forward-version artifact with the right fields parses and
+  ships unnoticed. The repository's own dev corpus is the live example: twenty contracts, all
+  stamped `schemaVersion: 1`, all shaped to version 3, all in the tarball.
+
+**Watch out:**
+
+- A rule that says "recorded in the field's own description" is falsifiable per field, and it was
+  false for five of the epic's nine bumps until this story's review pass added the missing notes.
+  Trusting a rule's own text is not the same as checking every field it applies to.
+- The regenerated worked chain from Step 32 is itself an instance of the silent-forward-version gap
+  Step 32 already named as a rule to follow: its `eval-contract.json` was re-authored whole against
+  the version-3 schema but still stamps `schemaVersion: 1`, and `check:worked-example` cannot catch
+  it, because the same hardcoded `1` sits on both sides of the drift comparison. Filed to
+  `deferred-work.md` rather than fixed here, since fixing it touches a different story's shipped
+  files.
   included, was read off the actual regenerated schema and test run.
