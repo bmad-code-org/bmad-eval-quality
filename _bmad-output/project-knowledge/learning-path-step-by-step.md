@@ -3054,3 +3054,12 @@ flowchart TD
   score.test.ts`'s fixture keeps its one behaviour's severity below the policy's severity floor so
   those gaps populate `coverageGaps` without also firing the ladder's `coverage-gap-at-or-above-floor`
   row for a reason unrelated to what each case actually tests.
+- Four schema-legal duplicates -- two oracles sharing an id, two defect findings citing the same
+  oracle, two dispositions for the same oracle, two findings sharing a `resolvedFrom` identifier --
+  are each guarded to an ambiguous/floor value rather than picked by array order (`designatedState`,
+  `citedFinding`, `disposition`, resolved-`severity`). Two review passes found these one at a time;
+  a fifth lookup with the same shape is worth the same guard on sight, not another review round.
+- `remediationState` cannot call `validateLineageChain` on `[contract]` alone: that only self-validates
+  when `revisionCount` is 0, and fires `lineage-chain-inconsistent` on every ordinarily-revised
+  contract otherwise, since score is never handed the ancestor chain to check. It arrives declared
+  (a vacuous pass), on `disclosure`'s own precedent, until some future stage is handed a real chain.
