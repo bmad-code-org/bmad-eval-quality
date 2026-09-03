@@ -242,10 +242,11 @@ describe('the headline result the prose is built on', () => {
 	})
 })
 
-// The renderer, the emitted key set, and the cross-check against
-// `WORKED_EXAMPLE_FILES` otherwise rest on `npm run check:worked-example`
-// alone, which runs outside vitest. `brief.json` also lands here: it is the
-// only place the `seal` leg of the chain reaches an assertion.
+// The byte-level drift check rests on `npm run check:worked-example` alone,
+// which runs outside vitest. This is the only place the `seal` leg of the
+// chain reaches an assertion, and the only place every rendered file is
+// checked against the chain value it should equal, not just against valid
+// JSON.
 describe('the emitted file set', () => {
 	const files = buildWorkedExample()
 
@@ -257,14 +258,18 @@ describe('the emitted file set', () => {
 		)
 	})
 
-	it('renders each file as re-indented JSON that parses back to the artifact', () => {
+	it('renders each file as re-indented JSON that parses back to the exact artifact', () => {
+		const expectedByName: Record<string, unknown> = {
+			'eval-contract.json': chain.contract,
+			'brief.json': chain.brief,
+			'probe.json': chain.probe,
+			'sealed-run-record.json': chain.record,
+			'evidence-artifact.json': chain.artifact,
+		}
 		for (const [path, text] of files) {
 			expect(text.endsWith('\n'), path).toBe(true)
-			expect(() => JSON.parse(text) as unknown).not.toThrow()
+			const name = path.slice(`${WORKED_EXAMPLE_LABEL}/`.length)
+			expect(JSON.parse(text), path).toEqual(expectedByName[name])
 		}
-		const brief = JSON.parse(
-			files.get(`${WORKED_EXAMPLE_LABEL}/brief.json`) ?? '',
-		) as { readonly contractDigest?: unknown }
-		expect(brief.contractDigest).toBe(chain.brief.contractDigest)
 	})
 })

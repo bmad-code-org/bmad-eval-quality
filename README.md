@@ -291,7 +291,7 @@ Out of scope entirely: a new eval engine, a hosted service, a dashboard or GUI, 
 
 ```bash
 npm install
-npm run validate            # typecheck, lint, docs, shareable, spine, vectors, schemas, registries, AD-31 and AD-33 tables, layers, lineage, boundary, corpus, tests with coverage
+npm run validate            # typecheck, lint, docs, shareable, spine, vectors, schemas, registries, AD-31 and AD-33 tables, layers, lineage, boundary, corpus, worked chain, tests with coverage
 npm run build               # emit to dist/
 npm run lint:fix            # auto-fix with Biome
 npm run test:coverage       # run the suite and fail below AD-30's 90 percent statement and branch floor on core/
