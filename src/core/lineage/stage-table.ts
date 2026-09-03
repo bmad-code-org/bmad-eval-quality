@@ -40,8 +40,18 @@ export type InternalProduct = (typeof INTERNAL_PRODUCTS)[number]
  * run mode as absent from it: a row naming `sealed-run-record` says which bytes
  * arrive and leaves open which value fixes the run's mode. Closed rather than
  * free text, so the column cannot become a notes field.
+ *
+ * The three digests join `mode` for the same reason: they are exactly what
+ * this column exists for, "values a stage reads at its boundary that the
+ * inputs column does not name" -- `emit`'s three caller-attested AD-11
+ * digests have no artifact source anywhere in this pipeline.
  */
-export const STAGE_VALUE_INPUTS = ['mode'] as const
+export const STAGE_VALUE_INPUTS = [
+	'mode',
+	'corpusDigest',
+	'fixtureDigest',
+	'evaluatorConfigurationDigest',
+] as const
 
 export type StageValueInput = (typeof STAGE_VALUE_INPUTS)[number]
 
@@ -130,11 +140,15 @@ export const STAGE_SIGNATURES: Record<PipelineStage, StageSignature> = {
 	},
 	emit: {
 		inputs: ['scored-outcomes-and-verdict'],
-		valueInputs: [],
+		valueInputs: [
+			'corpusDigest',
+			'fixtureDigest',
+			'evaluatorConfigurationDigest',
+		],
 		owns: 'evidence-artifact',
 		ownsInterchange: 'evidence-artifact',
 		lineage: 'mints',
-		module: null,
+		module: 'src/core/emit/emit.ts',
 	},
 }
 

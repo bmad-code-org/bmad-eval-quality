@@ -12,6 +12,7 @@
  */
 import type { EvalContract } from './schemas/eval-contract.ts'
 import type { EvaluatorConfiguration } from './schemas/evaluator-configuration.ts'
+import type { EvidenceArtifact } from './schemas/evidence-artifact.ts'
 import type { IsolationManifest } from './schemas/isolation-manifest.ts'
 import type { PreflightVerdict } from './schemas/preflight-verdict.ts'
 import type { Probe } from './schemas/probe.ts'
@@ -97,3 +98,26 @@ export type ScoreStage<Trials, Product> = (
 	waiver: WaiverStateValue,
 	evaluationFault: boolean,
 ) => Product
+
+/**
+ * The emit stage: `STAGE_SIGNATURES.emit`'s one declared artifact input plus
+ * the three caller-attested AD-11 digests, minting the `EvidenceArtifact`
+ * neither `score` nor any earlier stage can construct alone. One generic
+ * parameter, not two: `EvidenceArtifact` is imported concretely here, the
+ * same way this file already imports several other concrete schema types
+ * above, so importing one more from the same directory opens no cycle;
+ * only the input (`ScoredOutcomesAndVerdict`, defined in
+ * `core/score/score.ts`) needs genericity, for the same import-cycle reason
+ * `IngestStage`/`ScoreStage` are generic over theirs.
+ *
+ * The three digests are plain `string` rather than a `Digest` type: no
+ * `core/schemas` module exports a bare TypeScript `Digest` type, only the
+ * Zod schema, and `EvidenceArtifact`'s own parse is where their AD-27 shape
+ * is actually enforced.
+ */
+export type EmitStage<Input> = (
+	scored: Input,
+	corpusDigest: string,
+	fixtureDigest: string,
+	evaluatorConfigurationDigest: string,
+) => EvidenceArtifact

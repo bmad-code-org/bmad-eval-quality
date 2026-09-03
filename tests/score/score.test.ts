@@ -158,6 +158,7 @@ const cleanObservation = (
 const cleanTrial = (
 	overrides: Partial<ValidatedObservations> = {},
 ): ValidatedObservations => ({
+	runId: 'run-1',
 	mode: 'production',
 	evaluatorRecommendation: 'PASS',
 	observations: [cleanObservation('obs-1', 1)],
@@ -219,6 +220,40 @@ describe('score: the I/O & Edge-Case Matrix', () => {
 			basis: [],
 		})
 		expect(result.assessment.mode).toBe('production')
+		// `emit`'s own view of this stage (Decision 1's eight widened fields):
+		// `runId`/`contract`/`policy`/`probe` are plain passthroughs, and the
+		// parallel `outcomes` array is built beside `assessment.outcomeState`'s
+		// narrower `ScoredOutcome[]` in the same loop, from the same locals --
+		// cross-checked here rather than assumed, since a wrong local (a stale
+		// `resolution`, a leaked previous oracle's `checkResolution`) would
+		// pass every assertion above and go undetected otherwise.
+		expect(result.runId).toBe('run-1')
+		expect(result.contract).toBe(baseContract)
+		expect(result.policy).toBe(policy)
+		expect(result.probe).toBe(qualifiedProbe)
+		expect(result.outcomes).toHaveLength(
+			result.assessment.outcomeState.outcomes.length,
+		)
+		result.outcomes.forEach((outcome, i) => {
+			const scored = result.assessment.outcomeState.outcomes[i]
+			if (scored === undefined) {
+				throw new Error(
+					'outcomes and outcomeState.outcomes must be index-aligned',
+				)
+			}
+			expect(outcome.oracleId).toBe(scored.oracleId)
+			expect(outcome.probeId).toBe(qualifiedProbe.probeId)
+			expect(outcome.severity).toBe(scored.severity)
+			expect(outcome.disposition).toBe('held')
+			expect(outcome.state).toBe(scored.resolution.state)
+			expect(outcome.resolvedFrom).toBe(scored.resolution.resolvedFrom)
+			expect(outcome.corroboration).toBe(scored.resolution.corroboration)
+			expect(outcome.selectedObservationIds).toEqual(
+				scored.resolution.selectedObservationIds,
+			)
+			expect(outcome.checkResolution !== null).toBe(scored.checkResolved)
+		})
+		expect(result.uncitedFindings).toEqual([])
 	})
 
 	// The trial set's own `mode` chooses `ContractAssessment` and
@@ -502,6 +537,10 @@ describe('score: regressions and documented fallbacks beyond the frozen I/O Matr
 		expect(result.assessment.evaluatorRecommendation).toBe('PASS')
 		expect(result.assessment.outcomeState.trials.completed).toBe(0)
 		expect(result.ladder.verdict).toBe('CONCERNS')
+		// Same fallback posture as `mode`/`evaluatorRecommendation` above: no
+		// first trial to read a `runId` off, so it flows as `''` rather than
+		// throwing or defaulting to a fabricated identifier.
+		expect(result.runId).toBe('')
 	})
 
 	// `designatedOracleIdOf` returns `null`, never throws, when the probe's

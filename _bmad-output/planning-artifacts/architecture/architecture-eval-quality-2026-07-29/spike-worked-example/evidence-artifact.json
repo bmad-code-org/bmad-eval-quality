@@ -2,7 +2,8 @@
   "callerAttestedInputs": [
     "corpusDigest",
     "fixtureDigest",
-    "evaluatorConfigurationDigest"
+    "evaluatorConfigurationDigest",
+    "mode"
   ],
   "comparabilityKey": "sha256:d4d03b4d153066086ea1c591944fc02d14f8a3fe3c89b0867279db8329fd85ea",
   "contractVerdict": "FAIL",

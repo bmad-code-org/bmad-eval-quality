@@ -1,5 +1,5 @@
 # generated: 2026-08-10
-# last_updated: 2026-08-31
+# last_updated: 2026-09-03
 # project: evalcore
 # project_key: NOKEY
 # tracking_system: file-system
@@ -96,8 +96,8 @@ development_status:
   7-10-the-epics-disclosed-breaks-and-the-non-comparability-statement: done
 
   epic-8: in-progress
-  8-1-the-ingest-stage-and-the-conditions-it-records: review
-  8-2-the-score-stage-over-a-trial-set: review
-  8-3-the-emit-stage-and-the-evidence-artifact-it-mints: backlog
+  8-1-the-ingest-stage-and-the-conditions-it-records: done
+  8-2-the-score-stage-over-a-trial-set: done
+  8-3-the-emit-stage-and-the-evidence-artifact-it-mints: review
   8-4-the-score-command-the-application-call-and-the-published-surface: backlog
   8-5-the-worked-chain-through-the-shipped-stages-and-the-release-disclosure: backlog

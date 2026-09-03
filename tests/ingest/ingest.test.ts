@@ -201,6 +201,18 @@ describe('the ingest stage', () => {
 		).toBe('CONCERNS')
 	})
 
+	// `runId` is restated off the record on the same terms as `mode` and
+	// `evaluatorRecommendation`: never derived, recomputed, or defaulted.
+	// `score.ts` reads it the same way (Story 8.2's own round-3 finding for
+	// `evaluatorRecommendation`, not repeated here).
+	it('restates the runId the record carries', () => {
+		const record: SealedRunRecord = { ...cleanRecord, runId: 'a-different-run' }
+
+		expect(ingest(record, cleanManifest, configuration).runId).toBe(
+			'a-different-run',
+		)
+	})
+
 	// Ascending `sequence`, then `observationId`, matching `selectObservations`.
 	// The record here is deliberately one that could not parse: `sequence` is
 	// refined unique per record, so the tie-break is unreachable on real input and

@@ -20,6 +20,7 @@ import { serializeArtifact } from '../src/application/serialize.ts'
 import { digestArtifact } from '../src/core/canonical/digest.ts'
 import { walkExpression } from '../src/core/compile/expression-legality.ts'
 import { evaluateCoverage } from '../src/core/coverage/coverage.ts'
+import { emit } from '../src/core/emit/emit.ts'
 import {
 	makePointerDenotesCollection,
 	makeResolveOperand,
@@ -32,7 +33,6 @@ import {
 	type CheckResolutionValue,
 	EvidenceArtifact,
 	type Outcome,
-	type StrengthVector,
 	type UncitedFindingGap,
 } from '../src/core/schemas/evidence-artifact.ts'
 import type {
@@ -71,8 +71,8 @@ import {
 } from '../src/core/score/qualification.ts'
 import { auditQuotation } from '../src/core/score/quotation.ts'
 import { reduceTrialSet } from '../src/core/score/reduce-trials.ts'
+import type { ScoredOutcomesAndVerdict } from '../src/core/score/score.ts'
 import type { StepSelection } from '../src/core/score/selection.ts'
-import { buildStrengthVector } from '../src/core/score/strength.ts'
 import {
 	type FindingMap,
 	mapFindings,
@@ -1327,11 +1327,6 @@ export function buildWorkedExampleChain(): WorkedExampleChain {
 		completed: votes.length,
 		invalidatedAttempts: [...reduced.invalidatedAttempts],
 	}
-	const trialCount = `${trials.completed} completed trial${trials.completed === 1 ? '' : 's'}`
-	const vector: StrengthVector = buildStrengthVector(
-		sealedProbes.admitted,
-		new Map([[probe.probeId, reduced]]),
-	)
 
 	const coverageGaps = evaluateCoverage(contract)
 	const uncitedGaps: readonly UncitedFindingGap[] =
@@ -1399,92 +1394,29 @@ export function buildWorkedExampleChain(): WorkedExampleChain {
 		)
 	}
 
-	const scoringVersionInputs = {
-		contractSchemaVersion: contract.schemaVersion,
-		// The three AD-11 inputs a caller attests. No artifact in this chain
-		// carries a corpus or fixture digest, so those stay caller-supplied; the
-		// evaluator configuration digest is read off the run record.
-		corpusDigest: digestPlaceholder(14),
-		fixtureDigest: digestPlaceholder(15),
-		evaluatorConfigurationDigest: record.evaluatorConfigurationDigest,
-		scoringPolicyDigest: digestArtifact(POLICY, 'ScoringPolicy'),
-		mode: 'contract-scoring' as const,
-	}
-
-	const unreachedOracles = scored.filter(
-		(outcome) => outcome.resolution.state === 'unreached',
-	)
-	const comparable =
-		trials.completed >= trials.declaredMinimum && unreachedOracles.length === 0
-	const strengthNote = [
-		`${sealedProbes.admitted.length} admitted probe over ${trialCount}.`,
-		trials.completed < trials.declaredMinimum
-			? `Below the declared minimum of ${trials.declaredMinimum}.`
-			: null,
-		unreachedOracles.length > 0
-			? `${unreachedOracles.map((outcome) => outcome.oracleId).join(', ')} resolved unreached.`
-			: null,
-		comparable ? null : 'The vector is reported and marked non-comparable.',
-	]
-		.filter((part) => part !== null)
-		.join(' ')
-
-	const artifact = {
-		schemaVersion: 3,
-		parentDigest: null,
-		revisionCount: 0,
+	// `emit` now builds scoringVersionInputs, comparabilityKey, strength, and
+	// the mode-discriminated artifact literal this hand-assembly used to build
+	// directly. The two placeholder digests are the same AD-11 caller-attested
+	// pair this chain always supplied: no artifact here carries a corpus or
+	// fixture digest, so both stay caller-supplied rather than derived.
+	const scoredOutcomesAndVerdict: ScoredOutcomesAndVerdict = {
+		assessment,
+		ladder,
 		runId: record.runId,
-		scoringVersion: digestArtifact(
-			scoringVersionInputs,
-			'ScoringVersionInputs',
-		),
-		scoringVersionInputs,
-		// AD-7's declared key: the scoring policy digest plus the corpus digest
-		// restricted to the probes a comparison covers. No corpus artifact
-		// exists here, so the admitted probe identifiers stand in that second
-		// position: they are the restriction the definition asks for, and both
-		// inputs are then real rather than the placeholder `corpusDigest`
-		// `scoringVersion` has to carry.
-		comparabilityKey: digestArtifact(
-			{
-				scoringPolicyDigest: scoringVersionInputs.scoringPolicyDigest,
-				probeIds: sealedProbes.admitted
-					.map((entry) => entry.probe.probeId)
-					.sort(),
-			},
-			'ComparabilityKey',
-		),
-		mode: 'contract-scoring' as const,
-		contractVerdict: ladder.verdict,
-		exitCode: ladder.exitCode,
-		verdictBasis: [...ladder.basis],
-		excludedProbeIds: sealedProbes.rejected.map((entry) => entry.probe.probeId),
-		callerAttestedInputs: [
-			'corpusDigest',
-			'fixtureDigest',
-			'evaluatorConfigurationDigest',
-		],
-		trials,
+		contract,
+		policy: POLICY,
+		probe,
+		sealedProbes,
+		trialSetResult: reduced,
 		outcomes,
 		uncitedFindings: [...uncitedFindingIds(record)],
-		uncitedFindingGaps: [...uncitedGaps],
-		coverageGaps: [...coverageGaps],
-		strength: {
-			denominator: `unique qualified probe identifiers exercised per class, across ${trialCount}`,
-			basis: witness.basis,
-			vector,
-			comparable,
-			note: strengthNote,
-		},
-		remediation: {
-			revisionCount: contract.revisionCount,
-			cap: POLICY.remediationCap,
-			capSource: 'caller-attested' as const,
-			lineageChain: lineage.checks,
-		},
-		systemRecommendationRecorded: record.evaluatorRecommendation,
-		systemRecommendationNote: SYSTEM_RECOMMENDATION_NOTE,
 	}
+	const artifact = emit(
+		scoredOutcomesAndVerdict,
+		digestPlaceholder(14),
+		digestPlaceholder(15),
+		record.evaluatorConfigurationDigest,
+	)
 
 	return {
 		contract,

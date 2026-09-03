@@ -668,7 +668,7 @@ confirm the specific error, and confirm no record was created.
 <code>src/core/score/strength.ts</code>, and no stage or command reaches them</li>
 <li>PASS / WAIVED / CONCERNS / FAIL governance: both verdict ladders are implemented and total in
 <code>src/core/score/ladder.ts</code>, and no command produces a verdict</li>
-<li>versioned evidence output (not built; <code>emit</code> is the one stage with no module)</li>
+<li>versioned evidence output: implemented in <code>src/core/emit/emit.ts</code>, and no command produces it</li>
 </ul>
 <p>The caller provides:</p>
 <ul>
@@ -679,12 +679,11 @@ confirm the specific error, and confirm no record was created.
 <li>a sealed run record returned for ingestion</li>
 </ul>
 <p><code>eval-quality</code> executes nothing: it never spawns a process, calls a model, drives a system under test,
-or invokes a judge. Its pure stages are compile, seal, ingest, pre-flight, score, and emit. Three of
-the six are reachable: compile, seal, and pre-flight, through the CLI and the library alike. <code>ingest</code>
-is built and exported nowhere, and so are the thirteen modules under <code>src/core/score/</code>. What <code>score</code>
-and <code>emit</code> lack is a stage: <code>src/core/lineage/stage-table.ts</code> carries <code>module: null</code> on those two
-rows and on no others, meaning no module yet writes their output. <code>emit</code> has no code at all. Pre-flight probes the
-fixture through the environment-probe port, so a contract that declares a fixture reset
+or invokes a judge. Its pure stages are compile, seal, ingest, pre-flight, score, and emit, and every
+one of them is built: <code>src/core/lineage/stage-table.ts</code> carries a real module on all six rows. Three
+are reachable through the CLI and the library alike: compile, seal, and pre-flight. <code>ingest</code>, <code>score</code>,
+and <code>emit</code> are built and exported nowhere, along with every other module under <code>src/core/score/</code> and
+<code>src/core/emit/</code>. Pre-flight probes the fixture through the environment-probe port, so a contract that declares a fixture reset
 needs the caller&#39;s probe policy to authorize that operation&#39;s method as well as the read methods
 every other pre-flight leg uses. Engine integration is a later adapter behind a port, not a v0
 dependency. See

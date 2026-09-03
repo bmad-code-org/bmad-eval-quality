@@ -106,13 +106,14 @@ describe('the AD-24 stage-signature table', () => {
 	})
 
 	// 7
-	it('exports the derived allowlist, which today is the two built minters', () => {
+	it('exports the derived allowlist, which today is the three built minters', () => {
 		expect(LINEAGE_WRITER_MODULES).toEqual(
 			deriveLineageWriterModules(STAGE_SIGNATURES),
 		)
 		expect(LINEAGE_WRITER_MODULES).toEqual([
 			'src/core/seal/seal.ts',
 			'src/core/preflight/reduce.ts',
+			'src/core/emit/emit.ts',
 		])
 	})
 
@@ -185,9 +186,10 @@ describe('the AD-24 stage-signature table', () => {
 			PIPELINE_STAGES.filter(
 				(stage) => STAGE_SIGNATURES[stage].module !== null,
 			),
-		).toEqual(['compile', 'seal', 'ingest', 'preflight', 'score'])
+		).toEqual(['compile', 'seal', 'ingest', 'preflight', 'score', 'emit'])
 		expect(STAGE_SIGNATURES.ingest.module).toBe('src/core/ingest/ingest.ts')
 		expect(STAGE_SIGNATURES.score.module).toBe('src/core/score/score.ts')
+		expect(STAGE_SIGNATURES.emit.module).toBe('src/core/emit/emit.ts')
 	})
 
 	// 14. Owed item 6's own words: "the source of run mode is absent". One

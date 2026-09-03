@@ -114,7 +114,7 @@ product spec
   `src/core/score/strength.ts`, and no stage or command reaches them
 - PASS / WAIVED / CONCERNS / FAIL governance: both verdict ladders are implemented and total in
   `src/core/score/ladder.ts`, and no command produces a verdict
-- versioned evidence output (not built; `emit` is the one stage with no module)
+- versioned evidence output: implemented in `src/core/emit/emit.ts`, and no command produces it
 
 The caller provides:
 
@@ -125,12 +125,11 @@ The caller provides:
 - a sealed run record returned for ingestion
 
 `eval-quality` executes nothing: it never spawns a process, calls a model, drives a system under test,
-or invokes a judge. Its pure stages are compile, seal, ingest, pre-flight, score, and emit. Three of
-the six are reachable: compile, seal, and pre-flight, through the CLI and the library alike. `ingest`
-is built and exported nowhere, and so are the thirteen modules under `src/core/score/`. What `score`
-and `emit` lack is a stage: `src/core/lineage/stage-table.ts` carries `module: null` on those two
-rows and on no others, meaning no module yet writes their output. `emit` has no code at all. Pre-flight probes the
-fixture through the environment-probe port, so a contract that declares a fixture reset
+or invokes a judge. Its pure stages are compile, seal, ingest, pre-flight, score, and emit, and every
+one of them is built: `src/core/lineage/stage-table.ts` carries a real module on all six rows. Three
+are reachable through the CLI and the library alike: compile, seal, and pre-flight. `ingest`, `score`,
+and `emit` are built and exported nowhere, along with every other module under `src/core/score/` and
+`src/core/emit/`. Pre-flight probes the fixture through the environment-probe port, so a contract that declares a fixture reset
 needs the caller's probe policy to authorize that operation's method as well as the read methods
 every other pre-flight leg uses. Engine integration is a later adapter behind a port, not a v0
 dependency. See
