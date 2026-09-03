@@ -1,7 +1,27 @@
 # Deferred work
 
-No items are currently open under "How to use this file." The list below records how each
-past item closed.
+Fifteen items are open, listed under "How to use this file" and in the per-review sections
+following it. The prose immediately below records how each past item closed. This sentence said
+"no items are currently open" while epic 7 filed fifteen of them; it is corrected here so a reader
+does not trust the header over the list.
+
+Story 7.10 opened five items and one of them closed the same day, 2026-09-03, wider than it was
+filed. The entry said two of epic 7's nine `schemaVersion` bumps carried no bump note in the driving
+field's own `.describe()`, which is where AD-11 says the record belongs. A recount against source
+found five: the eval contract's 2 -> 3 (`TestData.principals`, `TestData.resources`), the sealed
+brief's 1 -> 2 (`principals`), the evidence artifact's 1 -> 2 (`ScoringVersionInputs.mode`), the
+probe's 1 -> 2 (`qualification`, `defectSignature`), and the scoring policy's 1 -> 2
+(`catchThreshold`). All five now carry the note, and `schemas/eval-contract.schema.json`,
+`schemas/sealed-evaluator-brief.schema.json`, `schemas/evidence-artifact.schema.json`,
+`schemas/probe.schema.json`, and `schemas/scoring-policy.schema.json` are regenerated from them, so
+the same release's CHANGELOG claim that every bump is recorded in the field's own description is
+true of all nine. The entry's "no in-repo record" was also too strong for three of the five: the
+brief's bump is in a code comment at `src/core/seal/seal.ts:95-98`, and the probe's and the evidence
+artifact's are in their artifact-level `.meta` descriptions, which do export. The scoring policy was
+the only one with no record anywhere in its module. The edit is additive text on six existing
+`.describe()` calls, so no `schemaVersion` moved and no field changed shape; the reasoning lives in
+`7-10-the-epics-disclosed-breaks-and-the-non-comparability-statement.md`'s review record. The other
+four items Story 7.10 opened stay open below.
 
 All five items Story 4.2's own step-04 review opened were closed the same day, 2026-08-25, once
 pushed on rather than left queued:
@@ -231,10 +251,6 @@ The rule is about the entry, not about erasing that something was once open.
     other four. A focused pass across all five fields (which ones are structurally always
     caller-attested vs. optionally computed by `score`, and enforcing the always-caller-attested ones)
     is the right shape for closing this, not a one-field patch.
-
-- source_spec: `_bmad-output/implementation-artifacts/7-10-the-epics-disclosed-breaks-and-the-non-comparability-statement.md`
-  summary: Two of epic 7's nine `schemaVersion` bumps are not recorded in the driving field's own `.describe()`, which AD-11's rule requires, so those two version numbers are underivable from the repository.
-  evidence: AD-11 (`ARCHITECTURE-SPINE.md:291`) states the bump is "recorded in the field's own description". `SealedRunRecord.mode` and `.sequence`, `EvidenceArtifact.uncitedFindingGaps`, and `InteractionStep.cardinality` each do this. `TestData.principals` and `TestData.resources` (`src/core/schemas/eval-contract.ts:124-135`) and `SealedEvaluatorBrief.principals` (`src/core/schemas/sealed-evaluator-brief.ts:65-68`) do not, so the eval contract's 2->3 and the sealed brief's 1->2 have no in-repo record. The breaks themselves are real (all three are required keys of a `strictObject`, and `.nullable()` still requires the key); only the version note is missing. Closing it needs a `src/` edit and a `generate:schemas` regeneration, which Story 7.10's frozen Never clause forbids.
 
 - source_spec: `_bmad-output/implementation-artifacts/7-10-the-epics-disclosed-breaks-and-the-non-comparability-statement.md`
   summary: The regenerated spike worked example stamps `schemaVersion: 1` on a contract re-authored whole against the schema at 3, and that stale stamp propagates into the one scoring identity the repository publishes.

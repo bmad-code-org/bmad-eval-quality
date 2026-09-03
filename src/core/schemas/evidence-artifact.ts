@@ -98,7 +98,7 @@ export const SCORING_VERSION_INPUT_NAMES = [
 export const ScoringVersionInputName = z.enum(SCORING_VERSION_INPUT_NAMES)
 
 const SCORING_VERSION_MODE_DESCRIPTION =
-	"Owed item 4's identity clause: mode enters AD-11's scoring version, superseding AD-11's five-field sentence. Read from the sealed run record, never re-derived, so two runs scored under one mode never collide with a version computed for the other."
+	"Owed item 4's identity clause: mode enters AD-11's scoring version, superseding AD-11's five-field sentence. Read from the sealed run record, never re-derived, so two runs scored under one mode never collide with a version computed for the other. Required, not optional, which makes this the evidence artifact's `schemaVersion` 1 -> 2 BREAKING bump under AD-11, whose rule is that \"adding an optional field is a `schemaVersion` bump recorded in the field's own description; removing or retyping is breaking\". A version-1 artifact carries five scoring-version inputs where this one carries six, so it does not parse, and no version computed before the bump compares with one computed after it."
 
 export const ScoringVersionInputs = z.strictObject({
 	contractSchemaVersion: z.int().min(1),

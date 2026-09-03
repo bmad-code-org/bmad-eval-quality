@@ -4,7 +4,7 @@ type: 'feature'
 created: '2026-09-03'
 status: 'done'
 baseline_commit: '7210fa04da7ed313725bf0b7b568ca2e61981e5b'
-review_loop_iteration: 1
+review_loop_iteration: 2
 context: [
   '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-eval-quality-2026-07-29/ARCHITECTURE-SPINE.md',
   '{project-root}/_bmad-output/implementation-artifacts/epic-7-context.md',
@@ -64,7 +64,7 @@ surface.
   the same block. It is outside `epics.md`'s AC's named five and outside AD-11's current enumerated
   surface, but NFR8's plain text is "every caller-facing break," not a five-item list, and
   `ScoringPolicy` ships as one of the twelve published JSON Schema documents in the tarball
-  (`schemas/scoring-policy.schema.json`, disclosed as a surface in `CHANGELOG.md:27-28`), so it is
+  (`schemas/scoring-policy.schema.json`, disclosed as a surface in `CHANGELOG.md:118`), so it is
   caller-facing on the repository's own published definition. Settled by construction here rather
   than escalated: name it, with this paragraph's reasoning carried into the story's own decisions
   section.
@@ -144,7 +144,7 @@ decisions section rather than escalating it.
 - `epic-7-context.md:7` — the same non-comparability sentence, second citation.
 - `CHANGELOG.md:1-9` — header (points `npm run release:prepare` and the publish workflow at
   `[Unreleased]`); `:11` — the currently-empty `[Unreleased]` heading; `:13-43` — the `[0.1.0]`
-  section, the `### Added`/`### Changed`/`### Fixed` format to match; `:27-28` — the twelve published
+  section, the `### Added`/`### Changed`/`### Fixed` format to match; `:118` — the twelve published
   JSON Schema documents, the repository's own statement of what is caller-facing.
 - `.github/workflows/publish.yml:187,215-230` — the Release body is read from the CHANGELOG section
   `release:prepare` stamped and falls back to `[Unreleased]` when no tagged section exists
@@ -285,7 +285,7 @@ decisions section rather than escalating it.
   disclosing, then amended the enumeration for the probe alone, which leaves the next reader the same
   gap the AC is closing. The review also confirmed the `ScoringPolicy` argument itself is sound and
   strengthened its grounding: `schemas/scoring-policy.schema.json` is one of the twelve published
-  JSON Schema documents the tarball ships, disclosed as a caller-facing surface by `CHANGELOG.md:27-28`,
+  JSON Schema documents the tarball ships, disclosed as a caller-facing surface by `CHANGELOG.md:118`,
   so the claim rests on the repository's own published definition rather than on inference from NFR8's
   wording. **Amended:** the spine bullet, the Tasks item, and the AC now cover both nouns in the one
   sentence; the Design Note cites the published-schema fact. **Avoids:** disclosing a break under a
@@ -315,7 +315,7 @@ it.** NFR8 is "every caller-facing break," not the five-item list `epics.md`'s A
 this story; the PRD's fuller VFR-8 text names the caller-facing surface by category, not by an
 exhaustive enumeration that would exclude a policy object. The decisive fact is not an inference from
 NFR8's wording, though: `scoring-policy.schema.json` is one of the twelve generated JSON Schema
-documents the tarball ships, and `CHANGELOG.md:27-28` already published those twelve as part of the
+documents the tarball ships, and `CHANGELOG.md:118` already published those twelve as part of the
 `0.1.0` surface. A document the package publishes to callers and then breaks is a caller-facing
 break by the repository's own definition. Its Story 7.6 bump (`catchThreshold` required) is exactly
 as breaking as any of the five. Leaving it out because the AC's own enumeration happened not to name
@@ -395,6 +395,75 @@ the source that forced each.
    exhaustive-match consequence stay under `### Changed` and cross-reference. The disclosure is
    whole either way, and the heading a reader scans for a new code is `Added`.
 
+### Review round 2: an adversarial peer review of the finished commit, in two parallel layers
+
+All nine bumps re-derived from source, including the three double-bumped schemas, and all nine hold.
+Adversarial parses confirmed the three claims that turn on branch and nullability: a version-2
+*production* evidence artifact still parses under version 3 while the same document on the
+contract-scoring branch is rejected, and a production artifact carrying `uncitedFindingGaps` is
+rejected by `strictObject`; a clean control carrying a `defectSignature` is rejected; an eval
+contract omitting `testData.principals`/`resources` is rejected while both set to `null` parses.
+AD-11's amended sentence was diffed byte for byte against the old one: the first 1670 characters and
+the whole trailing clause are identical, the eleven names it enumerates map one-to-one onto the
+eleven `INTERCHANGE_ARTIFACTS` entries carrying `carriesLineage: true`, `artifact-reference` is the
+twelfth and its own `.meta` already states the exemption, and the spine's `revision` and `updated`
+frontmatter are untouched. Both facts the round-1 notes said were corrected mid-review check out
+against source. Ten further checks passed as written: ten runtime fault codes, twenty-three compile
+codes with exactly `binding-cycle` and `captured-channel-undeclared` added this epic, six
+`ScoringVersionInputs` fields with `mode` last, no CLI or `src/application` change since `v0.1.0`,
+the tautological `acceptedSchemaVersion` at `worked-example-target.ts:1341`, and all twenty version-1
+corpus contracts validating clean against the published version-3 `eval-contract.schema.json` under
+ajv.
+
+Seven findings, all fixed in this pass.
+
+7. **Five of the nine bumps had no note in the driving field's own `.describe()`, not two.** The
+   deferred-work entry named `TestData.principals`/`resources` and `SealedEvaluatorBrief.principals`
+   and stopped there. A recount against source added three more: `ScoringVersionInputs.mode`
+   (evidence artifact 1 -> 2), `Probe.qualification` and `Probe.defectSignature` (probe 1 -> 2), and
+   `ScoringPolicy.catchThreshold` (scoring policy 1 -> 2). Fixing only the two named would have left
+   this story's own CHANGELOG claim that every bump is "recorded in the field's own description"
+   false for three of nine, which is the exact defect the fix exists to close, so all five are
+   closed. Six `.describe()` calls gained additive text; `schemas/eval-contract.schema.json`,
+   `sealed-evaluator-brief.schema.json`, `evidence-artifact.schema.json`, `probe.schema.json`, and
+   `scoring-policy.schema.json` were regenerated from them. No `schemaVersion` moved and no field
+   changed shape.
+8. **The CHANGELOG's most checkable sentence was false.** "The only comparison in the package is
+   `readMembers` in `core/lineage/chain.ts`" misses `reviseArtifact` at `chain.ts:313`, which
+   compares a revision body's `schemaVersion` against its parent's, in the same file, two hundred
+   lines below the one the sentence cites. The conclusion survives and the sentence did not: it now
+   says "the only comparison against a version a reader expects", names `reviseArtifact` as AD-29's
+   mint-path guard, and records that it throws a `TypeError` and so belongs to neither code
+   registry.
+9. **The probe bullet read as though every non-clean probe must carry a signature.** `defectSignature`
+   is `DefectSignature.nullable()`: the key is required on the seeding branch and `null` is the legal
+   value a `canary` carries. The two neighbouring bullets disclose nullability explicitly, so the
+   silence here was the misleading half of an otherwise careful set. Stated now.
+10. **The sealed run record's uniqueness rule does not ship.** `sequence` uniqueness is a Zod
+    `.refine()`, which JSON Schema cannot express, so `schemas/sealed-run-record.schema.json`
+    publishes the field as a required positive integer and nothing more. A validator driven by the
+    published schema alone accepts a record with duplicate sequences that this package rejects. That
+    is a caller-facing fact about a shipped schema and the bullet now carries it.
+11. **The non-comparability bullet overreached.** "There is no named non-comparability signal" is
+    true of the version gap and false as written, since the artifact ships `comparabilityKey` and
+    `strength.comparable`. The bullet now says which axis it means and states plainly that neither
+    of those two reports a version mismatch.
+12. **`deferred-work.md`'s header said no items were open while fifteen were.** Corrected, with the
+    correction stated rather than silently applied, since the file's whole purpose is to be trusted
+    as a queue.
+13. **Four of this story's own `CHANGELOG.md` line citations were stale on the commit that wrote
+    them,** and the `:27-28` citation for the twelve published JSON Schema documents pointed at the
+    bullet this story's own eighty added lines pushed down. All eight references re-pointed.
+
+**Reported and deliberately not fixed.** `src/core/schemas/scoring-policy.ts` says five times that
+"the published default artifact carries" a value, and no such artifact ships: `package.json`'s
+`files` publishes `dist`, `schemas`, `corpus`, `README.md`, and `LICENSE`, and none holds a
+`ScoringPolicy` instance. The prose exports verbatim into `schemas/scoring-policy.schema.json`, so
+the tarball points a caller at a document that was never built. This is Story 1.4's recorded design
+intent, quoting the Consistency Conventions' "the default policy ships as a published artifact
+referenced by digest rather than as constants in a function", so closing it means either shipping
+that artifact or reversing that decision. Neither is a review fix and neither belongs to this story.
+
 ## Verification
 
 **Commands:**
@@ -429,16 +498,16 @@ and 92.64 percent branches. No `src/` file changed in either round.
   [`CHANGELOG.md:27`](../../CHANGELOG.md#L27)
 
 - The half a caller cannot infer: nothing compares the number, in either direction.
-  [`CHANGELOG.md:62`](../../CHANGELOG.md#L62)
+  [`CHANGELOG.md:67`](../../CHANGELOG.md#L67)
 
 - Scoring versions stop comparing, and a stale record fails without saying why.
-  [`CHANGELOG.md:78`](../../CHANGELOG.md#L78)
+  [`CHANGELOG.md:87`](../../CHANGELOG.md#L87)
 
 - The registry break: an exhaustive match over 21 codes stops being exhaustive.
-  [`CHANGELOG.md:84`](../../CHANGELOG.md#L84)
+  [`CHANGELOG.md:95`](../../CHANGELOG.md#L95)
 
 - What did not move, said aloud so the silence is not read as an omission.
-  [`CHANGELOG.md:88`](../../CHANGELOG.md#L88)
+  [`CHANGELOG.md:99`](../../CHANGELOG.md#L99)
 
 - The two new codes filed as additions, matching `[0.1.0]`'s Keep-a-Changelog sections.
   [`CHANGELOG.md:13`](../../CHANGELOG.md#L13)

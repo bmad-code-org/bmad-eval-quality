@@ -32,7 +32,7 @@ export const ScoringPolicy = z
 			.min(0)
 			.max(1)
 			.describe(
-				'AD-7\'s trial-set reducer: a probe counts as caught only when its caught-trial count is strictly greater than this fraction of its valid-trial count, so an exact tie never counts as caught. The published default artifact carries 0.5, the pre-registered "at least two catches in three valid repetitions" read at a valid count of three. No `.default()`, on the same reasoning `confidenceThreshold` gives.',
+				'AD-7\'s trial-set reducer: a probe counts as caught only when its caught-trial count is strictly greater than this fraction of its valid-trial count, so an exact tie never counts as caught. The published default artifact carries 0.5, the pre-registered "at least two catches in three valid repetitions" read at a valid count of three. No `.default()`, on the same reasoning `confidenceThreshold` gives. Required, not optional, which makes this the scoring policy\'s `schemaVersion` 1 -> 2 BREAKING bump under AD-11, whose rule is that "adding an optional field is a `schemaVersion` bump recorded in the field\'s own description; removing or retyping is breaking". With no default to fill it in, every version-1 policy document fails to parse.',
 			),
 		minimumTrialCount: z
 			.int()

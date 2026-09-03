@@ -35,7 +35,11 @@ body.
     derived, recomputed, or defaulted afterwards. Then `sequence` became required on every
     observation, so ordering is read from that field and never from array position. It must be a
     positive integer, unique within the record; it need not start at 1 and need not be contiguous,
-    so `[5, 12, 40]` is a valid set of sequences. Neither a version-1 nor a version-2 record parses.
+    so `[5, 12, 40]` is a valid set of sequences. Uniqueness is a cross-observation rule that JSON
+    Schema cannot express, so `schemas/sealed-run-record.schema.json` publishes `sequence` as a
+    required positive integer and nothing more: a validator driven by the published schema alone
+    accepts a record with duplicate sequences that this package rejects. Neither a version-1 nor a
+    version-2 record parses.
   - **BREAKING** eval contract **1 → 3**. `InteractionStep.cardinality` became required
     (`exactly-one`, `at-most-one`, `any`). Then `testData.principals` and `testData.resources`
     became required keys that accept `null`: a contract declaring neither writes `null` for both,
@@ -53,7 +57,9 @@ body.
     which is what stops any version-1 probe from parsing. AD-40's `defectSignature`, the
     machine-readable interface kind, home operation, observable channel, and discriminating
     condition, became required on the `expectedClean: false` branch only, and a clean control
-    carrying one is rejected.
+    carrying one is rejected. The key is what is mandatory there: `null` is a legal value and is
+    what a `canary` carries, since a canary's job is to indict the fixture and it seeds no defect
+    for a signature to describe.
   - **BREAKING** scoring policy **1 → 2**. `catchThreshold` became required: AD-7's trial-set reducer
     counts a probe as caught only when its caught-trial count is strictly greater than this fraction
     of its valid-trial count, so an exact tie never counts as caught. There is no schema default, so
@@ -63,9 +69,13 @@ body.
   announces itself as a version mismatch.** A pre-bump artifact is rejected for the required fields
   it lacks, and it surfaces as an ordinary schema parse failure; AD-28's `schema-version-mismatch`,
   the runtime-fault registry's dedicated code for exactly this, never fires on ingest. The reason is
-  that v0 ships no ingest-side version comparison at all: the only comparison in the package is
-  `readMembers` in `core/lineage/chain.ts`, which takes its `acceptedSchemaVersion` from the caller
-  and runs over artifacts that have already parsed. Both directions follow from that absence. An
+  that v0 ships no ingest-side version comparison at all. The only comparison against a version a
+  reader expects is `readMembers` in `core/lineage/chain.ts`, which takes its
+  `acceptedSchemaVersion` from the caller and runs over artifacts that have already parsed. The one
+  other comparison in the package, `reviseArtifact` in the same file, checks a revision body against
+  its own parent on AD-29's mint path and throws a `TypeError`, so it is a programmer-error guard in
+  neither code registry and never sees a caller's ingest. Both directions follow from that absence.
+  An
   artifact carrying a *higher* `schemaVersion` than the reader expects, but the right fields, parses
   and is accepted silently. So does a stale stamp in the other direction, and the package ships
   twenty live examples of it: the nineteen contracts under `corpus/dev/contracts/` and
@@ -79,8 +89,10 @@ body.
   inputs changes `ScoringVersionInputs`, so every scoring version computed before this release is
   non-comparable with every version after it. A stored version names five inputs where the current
   one names six, and `ScoringVersionInputs` is a closed object with no legacy branch, so a
-  five-input record surfaces as an unnamed parse failure; there is no named non-comparability
-  signal. Recompute before comparing anything against a stored version.
+  five-input record surfaces as an unnamed parse failure, with no signal naming the version gap as
+  the cause. The artifact's own `comparabilityKey` and `strength.comparable` are a different axis:
+  they say whether two results scored under the same version may be compared, and neither reports a
+  version mismatch. Recompute before comparing anything against a stored version.
 - **BREAKING: AD-5's compile-time failure-code registry moves from 21 entries to 23.** The two new
   codes are listed under **Added** above. This registry is one of the two code registries AD-11
   requires disclosed on release, and the enumeration is itself the caller-facing surface: an
