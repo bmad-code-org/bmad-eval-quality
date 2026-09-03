@@ -69,20 +69,29 @@ export type AgreementField = (typeof AGREEMENT_FIELDS)[number]
  * An identifier the record uses twice where everything downstream addresses by
  * it once.
  *
- * `observations` is the only array `SealedRunRecord` refines for uniqueness
- * (`sequence`), so two findings may share a `findingId` and two dispositions an
- * `oracleId`. Nothing downstream can then tell the pair apart: `verdictBasis`
- * names a finding by its identifier, `FindingConfidence` is keyed by it, and
- * `resolveOutcome` reads one disposition per oracle. Recorded rather than
+ * `SealedRunRecord` refines exactly one array for uniqueness, and it refines it
+ * on `sequence` rather than on an identifier, so all three of `observationId`,
+ * `findingId`, and `oracleId` may repeat in a record that parses. Nothing
+ * downstream can then tell the pair apart: `verdictBasis` names a finding by its
+ * identifier, `FindingConfidence` is keyed by it, `resolveOutcome` reads one
+ * disposition per oracle, and `auditQuotation` indexes observations into a `Map`
+ * keyed on `observationId`, which is last-write-wins. Recorded rather than
  * repaired, because choosing which of two entries an identifier means is not a
  * choice this stage can make.
  *
- * It is also what makes the product's `findings` and `dispositions` order
- * total in every record that does not carry this condition.
+ * The observation case is the one with teeth. A repeated `observationId` decides
+ * which body a quotation is checked against, so it changes whether a defect
+ * finding's evidence is witnessed at all, which is the AD-32
+ * declared-versus-observed property this stage exists to check. The other two
+ * change an order; this one changes an answer.
+ *
+ * It is also what makes the product's `findings` and `dispositions` order total,
+ * and `unwitnessedQuotations` a function of the record's content, in every
+ * record that does not carry this condition.
  */
 export type DuplicateRecordIdentifier = {
 	readonly kind: Extract<IngestConditionKind, 'duplicate-record-identifier'>
-	readonly subject: 'finding' | 'oracle-disposition'
+	readonly subject: 'observation' | 'finding' | 'oracle-disposition'
 	readonly identifier: string
 	readonly occurrences: number
 }

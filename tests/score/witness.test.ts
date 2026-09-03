@@ -825,6 +825,76 @@ describe('quotation audits and never governs', () => {
 		])
 	})
 
+	// `findings` has no uniqueness refinement, so two findings may share an
+	// identifier and each carry an unwitnessed quote at index 0. Those two tie on
+	// both halves of the declared key while being perfectly distinguishable, and
+	// the Invalid rung maps over this array to build `verdictBasis`, so a tie
+	// resolved by array position would put two byte-different evidence artifacts
+	// behind one record.
+	it('separates two quotes that tie on finding identifier and quote index', () => {
+		const first = defectFinding(['obs-2'], {
+			findingId: 'F-001',
+			quote: 'AAA-not-present',
+		})
+		const second = defectFinding(['obs-2'], {
+			findingId: 'F-001',
+			quote: 'BBB-not-present',
+		})
+		const forward = auditQuotation(recordOf(bothObservations, [first, second]))
+		const reversed = auditQuotation(recordOf(bothObservations, [second, first]))
+
+		expect(forward).toEqual(reversed)
+		expect(forward.map((entry) => entry.quote)).toEqual([
+			'AAA-not-present',
+			'BBB-not-present',
+		])
+	})
+
+	// `observations` is refined unique on `sequence`, not on `observationId`, so
+	// two observations may share one. Indexing them into a last-write-wins map
+	// would make the witness test a pick decided by array position, and the same
+	// record permuted would answer that the quote is witnessed and that it is
+	// not. AD-40's rule is "at least one observation satisfying the condition".
+	it('reads every observation sharing a cited identifier, not the last one', () => {
+		const carrying = (responseStatus: number, sequence: number) =>
+			observation({ observationId: 'obs-dup', sequence, responseStatus })
+		const withQuote = carrying(500, 1)
+		const without = carrying(404, 2)
+		const finding = defectFinding(['obs-dup'], {
+			findingId: 'F-040',
+			quote: '500',
+		})
+
+		const hitThenMiss = auditQuotation(
+			recordOf([withQuote, without], [finding]),
+		)
+		const missThenHit = auditQuotation(
+			recordOf([without, withQuote], [finding]),
+		)
+
+		expect(hitThenMiss).toEqual(missThenHit)
+		expect(hitThenMiss).toEqual([])
+	})
+
+	// The identifier list names what the finding cited, so it stays deduplicated
+	// even where two observations answer to one identifier and neither witnesses
+	// the quote.
+	it('names a cited identifier once even when two observations share it', () => {
+		const unwitnessed = auditQuotation(
+			recordOf(
+				[
+					observation({ observationId: 'obs-dup', sequence: 1 }),
+					observation({ observationId: 'obs-dup', sequence: 2 }),
+				],
+				[defectFinding(['obs-dup'], { findingId: 'F-041', quote: '500' })],
+			),
+		)
+
+		expect(unwitnessed.map((entry) => entry.citedObservationIds)).toEqual([
+			['obs-dup'],
+		])
+	})
+
 	it('does not feed the verdict: an unwitnessed quote still resolves matched', () => {
 		const record = recordOf(bothObservations, [
 			defectFinding(['obs-2'], { quote: 'a quote nothing carries' }),

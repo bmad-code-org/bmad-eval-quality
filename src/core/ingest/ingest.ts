@@ -150,9 +150,18 @@ export const ingest: IngestStage<ValidatedObservations> = (
 
 	// Prior to every other check: a record that uses one identifier twice cannot
 	// address its own entries, and every consumer downstream addresses by them.
-	// Reported before the conditions that name a `findingId` or an `oracleId`, so
-	// a reader meets the ambiguity before a condition that relies on it.
+	// Reported before the conditions that name one, so a reader meets the
+	// ambiguity before a condition that relies on it.
+	//
+	// Observations lead because a repeat there changes an answer rather than an
+	// order: `auditQuotation` indexes them into a `Map` keyed on `observationId`,
+	// so the last entry with a repeated identifier wins and decides which body a
+	// quotation is checked against.
 	for (const [subject, identifiers] of [
+		[
+			'observation',
+			record.observations.map((observation) => observation.observationId),
+		],
 		['finding', record.findings.map((finding) => finding.findingId)],
 		[
 			'oracle-disposition',

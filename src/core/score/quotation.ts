@@ -103,6 +103,9 @@ function quotationWitnessed(
 	return projected.includes(quoted.quote)
 }
 
+/** total over strings, so a tie is a genuine equality rather than a coin toss. */
+const order = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0)
+
 export type UnwitnessedQuotation = {
 	readonly findingId: string
 	/** the position of the quotation within the finding's own list. */
@@ -126,31 +129,39 @@ export type UnwitnessedQuotation = {
 export function auditQuotation(
 	record: Pick<SealedRunRecord, 'observations' | 'findings'>,
 ): readonly UnwitnessedQuotation[] {
-	const byId = new Map(
-		record.observations.map((observation) => [
-			observation.observationId,
-			observation,
-		]),
-	)
+	// Indexed to a list rather than a value. `observations` is refined unique on
+	// `sequence` and not on `observationId`, so two observations may share an
+	// identifier, and a last-write-wins map would turn the existential below into
+	// a pick decided by array position: one permutation of a record answers that
+	// a quotation is witnessed and the other that it is not. AD-40 states the
+	// rule as "at least one observation satisfying the condition", so a repeated
+	// identifier names both and the `.some` ranges over both.
+	const byId = new Map<string, Observation[]>()
+	for (const observation of record.observations) {
+		const sharing = byId.get(observation.observationId)
+		if (sharing === undefined) {
+			byId.set(observation.observationId, [observation])
+		} else {
+			sharing.push(observation)
+		}
+	}
 	const unwitnessed: UnwitnessedQuotation[] = []
 	for (const finding of record.findings) {
 		if (finding.findingType !== 'defect') continue
 		// Deduplicated and sorted by identifier. `observationIds` is an array with
 		// no uniqueness refinement, so a finding may cite one observation twice,
 		// and carrying the citation array's order into `citedObservationIds` would
-		// put a position with no declared meaning on the payload.
-		const cited = [...new Set(finding.observationIds)]
-			.map((id) => byId.get(id))
-			.filter(
-				(observation): observation is Observation => observation !== undefined,
-			)
-			.sort((a, b) =>
-				a.observationId < b.observationId
-					? -1
-					: a.observationId > b.observationId
-						? 1
-						: 0,
-			)
+		// put a position with no declared meaning on the payload. The identifier
+		// list stays deduplicated even where two observations share one: it names
+		// what the finding cited, not what resolved.
+		const citedObservationIds: string[] = []
+		const cited: Observation[] = []
+		for (const identifier of [...new Set(finding.observationIds)].sort(order)) {
+			const sharing = byId.get(identifier)
+			if (sharing === undefined) continue
+			citedObservationIds.push(identifier)
+			cited.push(...sharing)
+		}
 		const artifactPath = `SealedRunRecord.findings[findingId=${finding.findingId}]`
 		finding.quotedEvidence.forEach((quoted, quoteIndex) => {
 			const witnessed = cited.some((observation) =>
@@ -162,9 +173,7 @@ export function auditQuotation(
 				quoteIndex,
 				channel: quoted.channel,
 				quote: quoted.quote,
-				citedObservationIds: cited.map(
-					(observation) => observation.observationId,
-				),
+				citedObservationIds,
 			})
 		})
 	}
@@ -172,10 +181,29 @@ export function auditQuotation(
 	// make the result depend on a position NFR9 forbids reading. Sorted by
 	// finding identifier, then by the quotation's index within that finding,
 	// which is the one order the record itself declares.
+	//
+	// `findingId` and `quoteIndex` do not separate every pair: `findings` has no
+	// uniqueness refinement, so two findings may share an identifier and each
+	// carry an unwitnessed quote at index 0, and a stable sort would then fall
+	// back to the position this sort exists to stop reading. Unlike two entries
+	// that tie on everything, those two are distinguishable — different quote,
+	// different channel, two basis lines that say different things — so the key
+	// runs to the whole payload.
+	//
+	// `quote` is compared directly rather than through a joined key. It is free
+	// text and may contain any code point including U+0000, so no delimiter is
+	// below every character it can carry. `citedObservationIds` may be joined:
+	// its members are `Identifier`, whose lowest code point is U+002D.
 	return unwitnessed.sort(
 		(a, b) =>
-			(a.findingId < b.findingId ? -1 : a.findingId > b.findingId ? 1 : 0) ||
-			a.quoteIndex - b.quoteIndex,
+			order(a.findingId, b.findingId) ||
+			a.quoteIndex - b.quoteIndex ||
+			order(a.channel, b.channel) ||
+			order(a.quote, b.quote) ||
+			order(
+				a.citedObservationIds.join('\u0000'),
+				b.citedObservationIds.join('\u0000'),
+			),
 	)
 }
 

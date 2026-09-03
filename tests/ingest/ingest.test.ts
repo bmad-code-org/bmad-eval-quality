@@ -315,6 +315,90 @@ describe('the ingest stage', () => {
 		).toEqual(['F-001', 'F-002'])
 	})
 
+	// The repeat with teeth. A `Map` keyed on `observationId` is last-write-wins,
+	// so which body a quotation is checked against follows presentation order,
+	// and whether a defect finding's evidence is witnessed changes with it. Both
+	// permutations must report the ambiguity rather than answering differently.
+	it('reports a repeated observation identifier, whichever way it is presented', () => {
+		const carrying = (body: unknown, sequence: number): Observation => ({
+			...inertObservation('obs-dup', sequence),
+			responseBody: body as Observation['responseBody'],
+		})
+		const withNeedle = carrying({ note: 'needle' }, 1)
+		const without = carrying({ note: 'nothing' }, 2)
+		const finding = quotingFinding('F-100', 'obs-dup', [
+			{ quote: 'needle', channel: 'response-body' },
+		])
+
+		for (const observations of [
+			[withNeedle, without],
+			[without, withNeedle],
+		]) {
+			const record = SealedRunRecord.parse({
+				...cleanRecord,
+				observations,
+				findings: [finding],
+			})
+
+			expect(
+				conditionsOf(
+					ingest(record, cleanManifest, configuration).conditions,
+					'duplicate-record-identifier',
+				),
+			).toEqual([
+				{
+					kind: 'duplicate-record-identifier',
+					subject: 'observation',
+					identifier: 'obs-dup',
+					occurrences: 2,
+				},
+			])
+		}
+	})
+
+	// `occurrences` is a count and not a flag, so the case that holds it in place
+	// is one where the identifier appears more than twice.
+	it('counts every occurrence of a repeated identifier', () => {
+		const [defect] = cleanRecord.findings
+		if (defect === undefined) throw new Error('fixture')
+		const record: SealedRunRecord = {
+			...cleanRecord,
+			findings: [
+				defect,
+				{ ...defect, summary: 'the second F-001' },
+				{ ...defect, summary: 'the third F-001' },
+			],
+		}
+
+		expect(
+			conditionsOf(
+				ingest(record, cleanManifest, configuration).conditions,
+				'duplicate-record-identifier',
+			).map((condition) => condition.occurrences),
+		).toEqual([3])
+	})
+
+	// The condition sorts segment by segment, which is what the joined key's
+	// separator buys: `F-001` precedes `F-0011` because the first segment ends,
+	// and a separator above the identifier charset would order them the other
+	// way. Both identifiers are legal under `^F-[0-9]{3,}$`.
+	it('orders a prefix identifier before the one that extends it', () => {
+		const record: SealedRunRecord = {
+			...cleanRecord,
+			findings: [
+				citingFinding('F-0011', ['obs-aaa']),
+				citingFinding('F-001', ['obs-zzz']),
+			],
+		}
+
+		expect(
+			conditionsOf(
+				ingest(record, cleanManifest, configuration).conditions,
+				'dangling-citation',
+			).map((condition) => condition.findingId),
+		).toEqual(['F-001', 'F-0011'])
+	})
+
 	// A record that addresses each entry once says nothing, which is what makes
 	// the condition above a report of a defect rather than noise on every run.
 	it('says nothing about identifiers a well-formed record uses once', () => {
