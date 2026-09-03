@@ -1,13 +1,13 @@
 ---
 title: "Roadmap"
-description: "What ships today, what is written but unreachable, what is not built, and what the next release breaks."
+description: "What ships today, what is written but unreachable, and what the next release breaks."
 sidebar:
   order: 2
 ---
 
 # Roadmap
 
-The pipeline has six stages: `compile`, `seal`, `ingest`, `preflight`, `score`, and `emit`. They are in three different states, and the difference matters if you are deciding whether to adopt the package.
+The pipeline has six stages: `compile`, `seal`, `ingest`, `preflight`, `score`, and `emit`. They are in two different states, and the difference matters if you are deciding whether to adopt the package.
 
 ## Shipping today
 
@@ -17,9 +17,9 @@ Twelve JSON Schema documents ship under `eval-quality/schemas/*`, a nineteen-con
 
 ## Written, and reachable from nothing
 
-`ingest` and the whole scoring core are implemented, tested, and compiled into the published tarball. No export path reaches them. `src/index.ts` and `src/application/index.ts` name neither, and the CLI has three commands.
+`ingest`, `score`, `emit`, and the whole scoring core are implemented, tested, and compiled into the published tarball. No export path reaches them. `src/index.ts` and `src/application/index.ts` name none of the three, and the CLI has three commands.
 
-The functions came first because the spine fixed that as the way seven recorded defects in the score half would close: write the decision procedures as pure functions, and let their tables be output. They are unreachable because the stages that would call them, `score` and `emit`, are the two rows still carrying `module: null`, and filling those rows is the next epic's work. Two of those tables are published here: the the AD-21 verdict decision table at `/ad21-verdict-decisiongenerated/` and the the AD-33 outcome decision table at `/ad33-outcome-decisiongenerated/`. Both describe code that runs today and that you cannot call.
+The functions came first because the spine fixed that as the way seven recorded defects in the score half would close: write the decision procedures as pure functions, and let their tables be output. Every one of the six pipeline stages now names a module in the stage table. They stay unreachable because nothing yet wires `ingest`, `score`, and `emit` to a command or a library entry point; wiring that up is the next epic's work. Two of those tables are published here: the AD-21 verdict decision table at `/ad21-verdict-decisiongenerated/` and the AD-33 outcome decision table at `/ad33-outcome-decisiongenerated/`. Both describe code that runs today and that you cannot call.
 
 The covered ground:
 
@@ -29,14 +29,11 @@ The covered ground:
 - the trial-set reducer and the AD-7 rate vector with its four-valued dominance relation
 - probe qualification, captured-value bindings, and observation selection
 - `ingest`, which validates a sealed run record against its isolation manifest and evaluator configuration
-
-## Not built
-
-`emit`, the stage that mints the evidence artifact. Its schema is published and nothing writes one.
+- `emit`, which mints the `EvidenceArtifact` its own published schema describes
 
 ## Next
 
-Giving `score` and `emit` a module, and putting a `score` command and one library call on top of the three stages. The work is broken into five steps: `ingest`'s surface, the `score` stage over a trial set, `emit`, the command and the library entry, and regenerating the worked example through the shipped stages, which `npm run generate:worked-example` builds today from a composition written by hand.
+Putting a `score` command and one library call on top of the six stages, so `ingest`, `score`, and `emit` stop being unreachable from everything. The work is broken into five steps: `ingest`'s surface, the `score` stage over a trial set, `emit`, the command and the library entry, and regenerating the worked example through the shipped stages, which `npm run generate:worked-example` builds today from a composition written by hand.
 
 Exit codes 1 and 2 stay unreachable until that lands. No date is set.
 

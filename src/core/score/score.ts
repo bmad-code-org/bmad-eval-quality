@@ -42,9 +42,11 @@ import {
 	SEVERITY_LEVELS,
 	type Severity,
 } from '../schemas/eval-contract.ts'
+import type { Outcome } from '../schemas/evidence-artifact.ts'
 import type { Expression, Operand, SetOperand } from '../schemas/expression.ts'
 import type { Operation } from '../schemas/interface.ts'
 import type { Probe } from '../schemas/probe.ts'
+import type { ScoringPolicy } from '../schemas/scoring-policy.ts'
 import type { Observation } from '../schemas/sealed-run-record.ts'
 import type { EvaluatorRecommendation } from '../schemas/verdict.ts'
 import { buildPlanIndex } from '../seal/plan-index.ts'
@@ -68,26 +70,47 @@ import {
 	type OutcomeInputs,
 	resolveOutcome,
 	uncitedDefectFindingGaps,
+	uncitedFindingIds,
 } from './outcome.ts'
-import { resolveHomeOperation, sealProbeSet } from './qualification.ts'
+import {
+	resolveHomeOperation,
+	type SealedProbeSet,
+	sealProbeSet,
+} from './qualification.ts'
 import {
 	reduceTrialSet,
 	TRIAL_VOTE_STATES,
+	type TrialSetResult,
 	type TrialVote,
 } from './reduce-trials.ts'
 import type { StepSelection } from './selection.ts'
 import { mapFindings, matchProbeWitness, type SignedProbe } from './witness.ts'
 
 /**
- * `score`'s owned product: exactly the pairing AD-24 names, "the outcome and
- * verdict values emit serializes" -- the resolved assessment
- * `resolveProductionVerdict`/`resolveContractVerdict` consumed, and the
- * `LadderResolution` it returned. Not a new artifact: a plain TypeScript
- * type with no Zod schema, matching `ValidatedObservations`' precedent.
+ * `score`'s owned product: the assessment/ladder pairing AD-24 names, "the
+ * outcome and verdict values emit serializes", widened with eight more
+ * fields `emit` needs to mint an `EvidenceArtifact` and cannot re-derive from
+ * that pairing alone. Every one of the eight is a value this function
+ * already holds locally or already receives as a parameter; none is fetched
+ * anew, only carried one step further. Still not a new artifact: a plain
+ * TypeScript type with no Zod schema, matching `ValidatedObservations`'
+ * precedent.
  */
 export type ScoredOutcomesAndVerdict = {
 	readonly assessment: ProductionAssessment | ContractAssessment
 	readonly ladder: LadderResolution
+	/** the trial set's own run identifier, read off the first trial the same way `mode`/`evaluatorRecommendation` are. */
+	readonly runId: string
+	readonly contract: EvalContract
+	readonly policy: ScoringPolicy
+	readonly probe: Probe
+	readonly sealedProbes: SealedProbeSet
+	/** this probe's own AD-7 trial-set fold, keyed by `emit` under `probe.probeId` to build the strength vector. */
+	readonly trialSetResult: TrialSetResult
+	/** the full `EvidenceArtifact.outcomes` shape, a parallel array to `ScoredOutcome[]` above: `ScoredOutcome` carries `resolution` but not `disposition` or the raw `CheckResolution` tree this shape needs, so the two are not reconstructible from one another. */
+	readonly outcomes: readonly Outcome[]
+	/** every finding across every trial citing no oracle, per `outcome.ts`'s `uncitedFindingIds`. */
+	readonly uncitedFindings: readonly string[]
 }
 
 type FindingRecordPick = {
@@ -242,10 +265,14 @@ function operationIdentifierCollisionsOf(
 
 /**
  * The tenth new Invalid condition: a caller assembling a trial set from
- * records that disagree on `mode` or `evaluatorRecommendation`. Every trial
- * is compared against the first: a trial set is not a genuine set once one
- * trial's own value is picked as authoritative, regardless of which one, so
- * basis lines name every disagreeing pair.
+ * records that disagree on `mode`, `evaluatorRecommendation`, or `runId`.
+ * Every trial is compared against the first: a trial set is not a genuine
+ * set once one trial's own value is picked as authoritative, regardless of
+ * which one, so basis lines name every disagreeing pair. `runId` joined the
+ * other two once `ValidatedObservations` carried it: batching trials from
+ * two different runs into one trial set is the single most important
+ * cross-trial mixup this check exists to catch, and it read the same
+ * fallback posture as the other two without being compared like them.
  */
 function trialSetDisagreementsOf(
 	trials: readonly ValidatedObservations[],
@@ -263,6 +290,11 @@ function trialSetDisagreementsOf(
 		if (trial.evaluatorRecommendation !== first.evaluatorRecommendation) {
 			disagreements.push(
 				`evaluatorRecommendation: trial 1 = "${first.evaluatorRecommendation}", trial ${index + 1} = "${trial.evaluatorRecommendation}"`,
+			)
+		}
+		if (trial.runId !== first.runId) {
+			disagreements.push(
+				`runId: trial 1 = "${first.runId}", trial ${index + 1} = "${trial.runId}"`,
 			)
 		}
 	})
@@ -365,6 +397,11 @@ export const score: ScoreStage<
 	const judgeConduct = judgeConductOf(contract, trials)
 
 	const allOutcomes: ScoredOutcome[] = []
+	// The full `EvidenceArtifact.outcomes` shape, built alongside `allOutcomes`
+	// above in the same loop rather than derived from it after the fact: the
+	// two carry different fields from the same per-oracle locals and neither
+	// is reconstructible from the other.
+	const outcomes: Outcome[] = []
 	const votes: TrialVote[] = []
 
 	for (const trial of trials) {
@@ -550,6 +587,25 @@ export const score: ScoreStage<
 				checkResolved: inputs.checkResolution !== null,
 				resolution,
 			})
+			outcomes.push({
+				oracleId: oracle.id,
+				// Constant across every entry: one `score()` call scores exactly
+				// one probe.
+				probeId: probe.probeId,
+				state: resolution.state,
+				severity,
+				// `ORACLE_DISPOSITIONS`' third member, `'not-attempted'`, on a
+				// `null` local `disposition`: no disposition was recorded for
+				// this oracle, or the ambiguity guard above fired. Both mean
+				// "nothing was recorded", which is the honest reading of the
+				// one closed-three member that says so.
+				disposition:
+					disposition === null ? 'not-attempted' : disposition.disposition,
+				resolvedFrom: resolution.resolvedFrom,
+				corroboration: resolution.corroboration,
+				selectedObservationIds: [...resolution.selectedObservationIds],
+				checkResolution,
+			})
 
 			if (firstState === undefined) firstState = resolution.state
 			if (
@@ -608,6 +664,14 @@ export const score: ScoreStage<
 	)
 	const uncitedDefectFindings = trials.flatMap((trial) =>
 		uncitedDefectFindingGaps(recordPickOf(trial)),
+	)
+	// Every finding across every trial citing no oracle (`emit`'s own
+	// `uncitedFindings` field): broader than `uncitedDefectFindings` above
+	// (every finding type, not `defect` only) and thinner (an identifier
+	// only), per `outcome.ts`'s own doc comment on the two functions
+	// coexisting rather than one replacing the other.
+	const uncitedFindings = trials.flatMap((trial) =>
+		uncitedFindingIds(recordPickOf(trial)),
 	)
 	const coverageGaps = evaluateCoverage(contract)
 
@@ -673,6 +737,12 @@ export const score: ScoreStage<
 	const mode = firstTrial?.mode ?? 'production'
 	const evaluatorRecommendation: EvaluatorRecommendation =
 		firstTrial?.evaluatorRecommendation ?? 'PASS'
+	// Same posture as `mode`/`evaluatorRecommendation` above: read off the
+	// first trial, never derived or defaulted from anything richer. A caller
+	// supplying zero trials has no first value to read either; the empty
+	// string is the honest "no run identifier was presented" reading, on the
+	// same terms `below-minimum-trial-count` already reports the shortfall.
+	const runId = firstTrial?.runId ?? ''
 
 	const commonBody = {
 		outcomeState: {
@@ -713,7 +783,18 @@ export const score: ScoreStage<
 			mode: 'production',
 			...commonBody,
 		}
-		return { assessment, ladder: resolveProductionVerdict(assessment) }
+		return {
+			assessment,
+			ladder: resolveProductionVerdict(assessment),
+			runId,
+			contract,
+			policy,
+			probe,
+			sealedProbes,
+			trialSetResult: reduced,
+			outcomes,
+			uncitedFindings,
+		}
 	}
 	const assessment: ContractAssessment = {
 		mode: 'contract-scoring',
@@ -724,5 +805,16 @@ export const score: ScoreStage<
 		// than an invented note.
 		systemRecommendationNote: null,
 	}
-	return { assessment, ladder: resolveContractVerdict(assessment) }
+	return {
+		assessment,
+		ladder: resolveContractVerdict(assessment),
+		runId,
+		contract,
+		policy,
+		probe,
+		sealedProbes,
+		trialSetResult: reduced,
+		outcomes,
+		uncitedFindings,
+	}
 }

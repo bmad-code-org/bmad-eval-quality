@@ -158,6 +158,7 @@ const cleanObservation = (
 const cleanTrial = (
 	overrides: Partial<ValidatedObservations> = {},
 ): ValidatedObservations => ({
+	runId: 'run-1',
 	mode: 'production',
 	evaluatorRecommendation: 'PASS',
 	observations: [cleanObservation('obs-1', 1)],
@@ -219,6 +220,40 @@ describe('score: the I/O & Edge-Case Matrix', () => {
 			basis: [],
 		})
 		expect(result.assessment.mode).toBe('production')
+		// `emit`'s own view of this stage (Decision 1's eight widened fields):
+		// `runId`/`contract`/`policy`/`probe` are plain passthroughs, and the
+		// parallel `outcomes` array is built beside `assessment.outcomeState`'s
+		// narrower `ScoredOutcome[]` in the same loop, from the same locals --
+		// cross-checked here rather than assumed, since a wrong local (a stale
+		// `resolution`, a leaked previous oracle's `checkResolution`) would
+		// pass every assertion above and go undetected otherwise.
+		expect(result.runId).toBe('run-1')
+		expect(result.contract).toBe(baseContract)
+		expect(result.policy).toBe(policy)
+		expect(result.probe).toBe(qualifiedProbe)
+		expect(result.outcomes).toHaveLength(
+			result.assessment.outcomeState.outcomes.length,
+		)
+		result.outcomes.forEach((outcome, i) => {
+			const scored = result.assessment.outcomeState.outcomes[i]
+			if (scored === undefined) {
+				throw new Error(
+					'outcomes and outcomeState.outcomes must be index-aligned',
+				)
+			}
+			expect(outcome.oracleId).toBe(scored.oracleId)
+			expect(outcome.probeId).toBe(qualifiedProbe.probeId)
+			expect(outcome.severity).toBe(scored.severity)
+			expect(outcome.disposition).toBe('held')
+			expect(outcome.state).toBe(scored.resolution.state)
+			expect(outcome.resolvedFrom).toBe(scored.resolution.resolvedFrom)
+			expect(outcome.corroboration).toBe(scored.resolution.corroboration)
+			expect(outcome.selectedObservationIds).toEqual(
+				scored.resolution.selectedObservationIds,
+			)
+			expect(outcome.checkResolution !== null).toBe(scored.checkResolved)
+		})
+		expect(result.uncitedFindings).toEqual([])
 	})
 
 	// The trial set's own `mode` chooses `ContractAssessment` and
@@ -420,6 +455,33 @@ describe('score: the I/O & Edge-Case Matrix', () => {
 		expect(result.assessment.mode).toBe('production')
 	})
 
+	// `uncitedFindings` (broader, an identifier only) and `uncitedDefectFindings`
+	// (narrower, `defect`-only, the full gap record) coexist per `outcome.ts`'s
+	// own doc comment. A non-`defect` finding citing no oracle proves the two
+	// are computed separately, not one derived from the other's output.
+	it('a non-defect finding citing no oracle reaches uncitedFindings but not uncitedDefectFindings', () => {
+		const result = scoreOf(baseContract, [
+			cleanTrial({
+				findings: [
+					{
+						findingType: 'observation',
+						findingId: 'F-UNCITED',
+						oracleId: null,
+						probeId: qualifiedProbe.probeId,
+						behaviorId: null,
+						severity: 'material',
+						summary: 'an observation citing no oracle',
+						confidence: 0.5,
+						observationIds: ['obs-1'],
+						evidenceArtifacts: [],
+					},
+				],
+			}),
+		])
+		expect(result.uncitedFindings).toEqual(['F-UNCITED'])
+		expect(result.assessment.uncitedDefectFindings).toEqual([])
+	})
+
 	it('trials disagreeing on evaluatorRecommendation fire trial-set-field-disagreement naming both values', () => {
 		const result = scoreOf(baseContract, [
 			cleanTrial({ evaluatorRecommendation: 'PASS' }),
@@ -429,6 +491,24 @@ describe('score: the I/O & Edge-Case Matrix', () => {
 		expect(result.ladder.basis).toEqual([
 			'trial-set field disagreement: evaluatorRecommendation: trial 1 = "PASS", trial 2 = "FAIL"',
 		])
+	})
+
+	// `runId` joined `mode`/`evaluatorRecommendation` in this check the same
+	// story that widened `ValidatedObservations` to carry it: batching trials
+	// from two different runs into one trial set is the mixup this check
+	// exists to catch, and a caller can only assemble that by hand.
+	it('trials disagreeing on runId fire trial-set-field-disagreement naming both values', () => {
+		const result = scoreOf(baseContract, [
+			cleanTrial({ runId: 'run-1' }),
+			cleanTrial({ runId: 'run-2' }),
+		])
+		expect(result.ladder.verdict).toBeNull()
+		expect(result.ladder.basis).toEqual([
+			'trial-set field disagreement: runId: trial 1 = "run-1", trial 2 = "run-2"',
+		])
+		// The first trial's own runId still builds the one assessment a
+		// discriminated union requires.
+		expect(result.runId).toBe('run-1')
 	})
 })
 
@@ -502,6 +582,10 @@ describe('score: regressions and documented fallbacks beyond the frozen I/O Matr
 		expect(result.assessment.evaluatorRecommendation).toBe('PASS')
 		expect(result.assessment.outcomeState.trials.completed).toBe(0)
 		expect(result.ladder.verdict).toBe('CONCERNS')
+		// Same fallback posture as `mode`/`evaluatorRecommendation` above: no
+		// first trial to read a `runId` off, so it flows as `''` rather than
+		// throwing or defaulting to a fabricated identifier.
+		expect(result.runId).toBe('')
 	})
 
 	// `designatedOracleIdOf` returns `null`, never throws, when the probe's
@@ -595,6 +679,11 @@ describe('score: regressions and documented fallbacks beyond the frozen I/O Matr
 		expect(result.ladder.basis).toEqual([
 			'oracle O-001 is required and carries no disposition',
 		])
+		// Decision 4: a `null` local `disposition` -- ambiguous here -- reads
+		// as `'not-attempted'` on the widened `Outcome[]` array, the one member
+		// of the closed three that means "nothing was recorded".
+		expect(result.outcomes).toHaveLength(1)
+		expect(result.outcomes[0]?.disposition).toBe('not-attempted')
 	})
 
 	// Guard #4 of this family: `findingId` carries no uniqueness constraint

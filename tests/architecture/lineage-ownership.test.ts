@@ -10,7 +10,11 @@ import { scanLineageWrites } from '../../scripts/lineage-ownership.ts'
 
 const SEAL = 'src/core/seal/seal.ts'
 const REDUCE = 'src/core/preflight/reduce.ts'
-const OTHER = 'src/core/emit/emit.ts'
+const EMIT = 'src/core/emit/emit.ts'
+// A synthetic, never-allowlisted path standing in for "anywhere else". Not
+// `src/core/emit/emit.ts`: that module became a real named writer in Story
+// 8.3, so a fixture standing in for "not a writer" cannot use its path.
+const OTHER = 'src/core/emit/not-a-writer.ts'
 
 /** both fields written as object-literal properties, the form the tree uses. */
 const BOTH_WRITES =
@@ -104,7 +108,12 @@ describe('the lineage-ownership scanner', () => {
 
 	// 44
 	it('reports an allowlist entry with no file, on a whole-tree scan only', () => {
-		const files = new Map([[SEAL, BOTH_WRITES]])
+		// `EMIT` supplies a file so only `REDUCE` is genuinely missing from the
+		// three-member allowlist.
+		const files = new Map([
+			[SEAL, BOTH_WRITES],
+			[EMIT, BOTH_WRITES],
+		])
 		expect(scanLineageWrites(files, { wholeTree: false })).toEqual([])
 		const whole = scanLineageWrites(files, { wholeTree: true })
 		expect(whole).toHaveLength(1)

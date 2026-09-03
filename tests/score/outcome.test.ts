@@ -1475,8 +1475,12 @@ describe('the conjuncts the fixture set cannot reach', () => {
 // severity-floor override reads exactly one state literal, `'caught'`, and
 // names no other member of the closed twelve. The AD-21 ladder classifies its
 // two behavioural-failure and invalidating-state groups plus the `unreached`
-// evidence condition, eight of the twelve. None becomes a second assigner:
-// each only classifies or compares a state `resolveOutcome` already assigned.
+// evidence condition, eight of the twelve. `emit.ts` reads that same
+// `unreached` evidence condition, per Story 8.3's own Boundaries, to mark
+// `strength.comparable` false -- the identical "classify, never assign"
+// reading `ladder.ts` already has for the same state. None becomes a second
+// assigner: each only classifies or compares a state `resolveOutcome`
+// already assigned.
 const ALWAYS_NAMED = [
 	'src/core/schemas/evidence-artifact.ts',
 	'src/core/score/outcome.ts',
@@ -1496,6 +1500,8 @@ const LADDER_NAMED_STATES = [
 	'infrastructure-error',
 ]
 
+const EMIT_NAMED_STATES = ['unreached']
+
 const expectedNamingFilesFor = (state: string): readonly string[] =>
 	[
 		...ALWAYS_NAMED,
@@ -1505,6 +1511,7 @@ const expectedNamingFilesFor = (state: string): readonly string[] =>
 		...(LADDER_NAMED_STATES.includes(state)
 			? ['src/core/score/ladder.ts']
 			: []),
+		...(EMIT_NAMED_STATES.includes(state) ? ['src/core/emit/emit.ts'] : []),
 	]
 		.slice()
 		.sort()

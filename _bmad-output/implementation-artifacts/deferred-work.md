@@ -4,7 +4,12 @@ Eighteen items are open, listed under "How to use this file" and in the per-revi
 following it. The prose immediately below records how each past item closed. Epic 7's reviews
 filed fifteen; this file's own closure narrative below accounts for the other four. Story 8.2's
 review closed one Story-8.1-routed item (the operationId collision) and opened two of its own, a
-net gain of one over the seventeen story 8.1's reviews left open.
+net gain of one over the seventeen story 8.1's reviews left open. Story 8.3 closed both of Story
+8.2's own routed items (`checkModeAgreement` now called for real, `ScoredOutcomesAndVerdict`
+widened) and closed the comparator half of the private-artifact-manifest entry Story 8.1's review
+opened, reassigning that entry's port-awaiting half and the coupled `isolationManifestArtifact`
+entry to story 8.4 -- a net loss of two, and its own review opened one (the `qualifiedProbe` fixture's
+schema-invalid `probeId`), a net loss of one over the story's own start.
 
 Story 7.10 opened five items and one of them closed the same day, 2026-09-03, wider than it was
 filed. The entry said two of epic 7's nine `schemaVersion` bumps carried no bump note in the driving
@@ -361,18 +366,16 @@ the `operation-identifier-collision` Invalid row, resolving each observation's `
 
 - source_spec: `8-1-the-ingest-stage-and-the-conditions-it-records.md`
   summary: `src/core/schemas/private-artifact-manifest.ts:31-34` says a digest mismatch "is an AD-28
-    `digest-mismatch` fault at ingest", and nothing computes it.
-  evidence: The rule needs bytes resolved through AD-8's corpus port. AD-8's own subject is "the core
-    recomputes every per-artifact digest from the resolved bytes" and AD-34 says `application/`
-    "holds no decision logic" and is only where a port is awaited, so the construction is a pure core
-    comparator called by the application layer that awaited the port. An earlier draft of story 8.1
-    argued the whole check belonged in `application/`, which overshot AD-8's subject. Owner: story
-    8.3. Story 8.2 narrows this from its own earlier "8.2 or 8.3": `score`'s row declares no
-    `private-artifact-manifest` input and no corpus port, so it has no resolved bytes to recompute
-    against, and `ScoringVersionInputs.corpusDigest`
-    (`src/core/schemas/evidence-artifact.ts:105`) is a field `emit` constructs, which makes story
-    8.3 the buildable owner. `src/ports/corpus-port.ts` and `src/adapters/local-corpus-adapter.ts`
-    both already exist, so this is buildable once story 8.3 reaches it.
+    `digest-mismatch` fault at ingest", and nothing calls the comparator that checks it.
+  evidence: The pure half closed already: `checkPrivateArtifactManifestDigests`
+    (`src/core/emit/private-artifact-digest.ts`) takes a manifest and an already-resolved
+    `(privateRef -> digest)` map and throws on the first disagreement. What remains is the half that
+    resolves that map. AD-8's own subject is "the core recomputes every per-artifact digest from the
+    resolved bytes"; resolving a `privateRef` needs `CorpusPort.resolve`, an async port method, and
+    AD-34 says `application/` "holds no decision logic" and is only where a port is awaited, so the
+    comparator stays a pure `core/` function called by whichever `application/` code awaits the
+    port. `src/ports/corpus-port.ts` and `src/adapters/local-corpus-adapter.ts` both already exist,
+    so this is buildable once a story reaches it. Owner: story 8.4.
 
 ## Deferred from: code review of 8-1-the-ingest-stage-and-the-conditions-it-records (2026-09-03)
 
@@ -425,48 +428,10 @@ rest of the review's findings were closed in the same pass.
     enforcement point, and AD-8's subject is "the core recomputes every per-artifact digest from the
     resolved bytes", so the reference's digest is over stored bytes while `digestArtifact` over a
     parsed object is a canonical-form digest. Comparing the two is only sound once the bytes are
-    resolved through the corpus port. Owner: whichever story first awaits that port, the same owner
-    the private-artifact digest carries, and the same story settles both together.
+    resolved through the corpus port. Owner: story 8.4, alongside the private-artifact-manifest
+    entry's own port-awaiting half above; the same story settles both together.
 
 ## Deferred from: story review of 8-2-the-score-stage-over-a-trial-set (2026-09-03)
-
-Two items this story's own build routes forward, each because the real call needs an artifact no
-stage before `emit` holds.
-
-- source_spec: `8-2-the-score-stage-over-a-trial-set.md`
-  summary: `checkModeAgreement` (`src/core/score/mode-agreement.ts`) is still not called anywhere,
-    diverging from epics.md's own Story 8.2 acceptance-criteria wording: "the mode-specific
-    assessment type is chosen from the record's own `mode` with `checkModeAgreement` enforced
-    rather than merely exported."
-  evidence: `checkModeAgreement`'s signature takes `Pick<SealedRunRecord, 'mode'>` and
-    `Pick<EvidenceArtifact, 'mode'>`; `score.ts` produces no `EvidenceArtifact` (that artifact is
-    `emit`'s own product), so a real second argument does not exist yet inside this stage. `score.ts`
-    instead chooses `ProductionAssessment` vs `ContractAssessment` from the trial set's own `mode`
-    and stamps that value onto `ScoredOutcomesAndVerdict.assessment.mode`, and a new Invalid row,
-    `trial-set-field-disagreement`, catches a trial set that cannot even agree on its own `mode` or
-    `evaluatorRecommendation`. epics.md is not amended for this divergence; it is recorded here per
-    standing instruction, and the story's own Decision 4 carries the same reasoning. Owner: story
-    8.3, once `emit` holds a real `EvidenceArtifact` to compare the record's `mode` against.
-
-- source_spec: `8-2-the-score-stage-over-a-trial-set.md`
-  summary: `emit`'s declared input, `scored-outcomes-and-verdict` alone
-    (`src/core/lineage/stage-table.ts:131-138`), is too narrow for `emit` to construct
-    `EvidenceArtifact`'s other required fields: `strength` (needs `buildStrengthVector` over the
-    sealed probe set and the trial-set reducer's per-probe result), `uncitedFindings` (needs
-    `uncitedFindingIds` over each trial's own findings), `comparabilityKey`, `runId`,
-    `excludedProbeIds`, and the rest of `evidenceCommonFields`.
-  evidence: `ScoredOutcomesAndVerdict` (`src/core/score/score.ts`) is, per this story's own Design
-    Notes, "exactly the pairing of the assessment ... with the `LadderResolution`" AD-24's sentence
-    names -- the outcome and verdict values, nothing wider. `buildStrengthVector` and
-    `uncitedFindingIds` are two of the thirteen reference functions this story's Approach names, and
-    neither is called from `score.ts`: their results have no field to land in under that narrower
-    definition, and calling either only to discard the result would be dead code. Since
-    `STAGE_SIGNATURES.emit.inputs` names `scored-outcomes-and-verdict` as `emit`'s *only* input,
-    `emit` cannot itself re-derive `admitted: readonly QualifiedProbe[]` or a per-trial finding list
-    to call either function with. Owner: story 8.3. It either widens `ScoredOutcomesAndVerdict` to
-    carry what `emit` needs (the same kind of widening Decision 1 already used for the trial-set
-    shape, entirely inside `score.ts`'s own function signature rather than the stage-table registry)
-    or widens `emit`'s own declared inputs beyond `scored-outcomes-and-verdict`.
 
 - source_spec: `8-2-the-score-stage-over-a-trial-set.md`
   summary: `score.ts` never checks whether the same observation, finding, or oracle-disposition
@@ -480,3 +445,16 @@ stage before `emit` holds.
     worth its own new Invalid row (`trial-set-field-disagreement`). Closing this needs the same kind
     of new row, which is new scope beyond this story's frozen Boundaries & Constraints. Owner:
     unassigned -- whichever future story next touches `score.ts`'s trial-set handling.
+
+## Deferred from: story review of 8-3-the-emit-stage-and-the-evidence-artifact-it-mints (2026-09-03)
+
+- source_spec: `8-3-the-emit-stage-and-the-evidence-artifact-it-mints.md`
+  summary: `tests/score/fixtures/probe-witness.ts`'s shared `qualifiedProbe` fixture carries a
+    `probeId` ("PX-001") that does not match `ProbeId`'s own schema shape (`^P-[0-9]{3,}$`).
+  evidence: No suite before this story ever parsed `qualifiedProbe` through a Zod schema that
+    touches `probeId`, so the mismatch stayed latent. `tests/emit/emit.test.ts` is the first to parse
+    a result through `EvidenceArtifact` (the I/O Matrix's "artifact parses" clause) built from this
+    probe, and it works around the mismatch with a locally schema-valid override rather than fixing
+    the shared fixture, leaving the landmine for the next suite that parses through a schema touching
+    `probeId`. Owner: unassigned -- whichever future story next builds a schema-parsing test on top
+    of `qualifiedProbe`.
