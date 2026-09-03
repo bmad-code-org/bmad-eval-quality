@@ -80,21 +80,26 @@ const digestOf = (text: string): string =>
  * input unchanged (`STAGE_SIGNATURES.compile` is `carries-through`), so nothing
  * between the fixture literal and the byte on disk would notice a revised
  * contract wandering into the corpus.
+ *
+ * AD-29's origin values are the lineage pair alone. This check also required
+ * `schemaVersion === 1` until epic 7, and attributed that to AD-29, which says
+ * nothing about `schemaVersion`: its rule is about the parent digest and the
+ * revision count, and `core/lineage/chain.ts` likewise reads a root as
+ * `revisionCount === 0` with a null `parentDigest`. The conjunct dated from
+ * when every schema was still at version 1, and it conflated lineage origin
+ * with schema shape, so the corpus kept stamping 1 while `EvalContract` moved
+ * to 3. No version assertion replaces it: `schemaVersion` is `z.int().min(1)`
+ * with no literal, and `eval-contract.ts`'s own description records that no
+ * reader in this version declares an expected version constant to compare a
+ * stamp against.
  */
 function assertLineageRoot(contract: EvalContract): void {
-	if (
-		contract.schemaVersion === 1 &&
-		contract.parentDigest === null &&
-		contract.revisionCount === 0
-	) {
-		return
-	}
+	if (contract.parentDigest === null && contract.revisionCount === 0) return
 	throw new Error(
 		`contract "${contract.contractId}" is not a lineage root: the corpus ` +
 			'publishes authored origin artifacts, which AD-29 gives ' +
-			'`schemaVersion` 1, `parentDigest` null, and `revisionCount` 0, and ' +
-			`this one carries ${contract.schemaVersion}, ` +
-			`${JSON.stringify(contract.parentDigest)}, and ${contract.revisionCount}`,
+			'`parentDigest` null and `revisionCount` 0, and this one carries ' +
+			`${JSON.stringify(contract.parentDigest)} and ${contract.revisionCount}`,
 	)
 }
 
@@ -161,8 +166,8 @@ export function buildDevCorpus(
 		// admits. `compile` is `carries-through` for lineage and returns its
 		// input unchanged, so it normalizes nothing; the authored
 		// `schemaVersion`, `parentDigest`, and `revisionCount` reach disk as
-		// written, and `assertLineageRoot` is what holds them to AD-29's origin
-		// values.
+		// written, and `assertLineageRoot` is what holds the lineage pair to
+		// AD-29's origin values.
 		let text: string
 		let structuralFailure: string | undefined
 		try {
