@@ -31,10 +31,25 @@ const NON_VERDICT_OUTCOMES: readonly CommandOutcome[] = [
 	{ kind: 'usage-error' },
 ]
 
+/** `LADDER_EXIT_CODES`, restated: the base exit code each verdict's own rung carries before any `--strict` promotion is applied on top. */
+const BASE_EXIT_CODE: Record<'PASS' | 'WAIVED' | 'CONCERNS' | 'FAIL', number> =
+	{
+		PASS: EXIT_OK,
+		WAIVED: EXIT_OK,
+		CONCERNS: EXIT_OK,
+		FAIL: EXIT_FAIL,
+	}
+
+/** `strictPromotable` defaults `true`, `LadderResolution`'s own default for every rung but an evidence-only CONCERNS. */
 const verdictOutcome = (
-	verdict: 'PASS' | 'WAIVED' | 'CONCERNS' | 'FAIL',
-	evidenceConditionsOnly = false,
-): CommandOutcome => ({ kind: 'verdict', verdict, evidenceConditionsOnly })
+	verdict: 'PASS' | 'WAIVED' | 'CONCERNS' | 'FAIL' | null,
+	strictPromotable = true,
+): CommandOutcome => ({
+	kind: 'verdict',
+	verdict,
+	exitCode: verdict === null ? EXIT_INVALID : BASE_EXIT_CODE[verdict],
+	strictPromotable,
+})
 
 describe('cli exit codes: one case per outcome kind (cases 31-36)', () => {
 	it('case 31: artifact exits zero, outside the verdict range', () => {
@@ -114,14 +129,35 @@ describe('cli exit codes: four verdicts crossed with strict (cases 37-44)', () =
 
 describe('cli exit codes: the evidence-condition carve-out (cases 45-46)', () => {
 	it('case 45: a CONCERNS whose firing conditions are all evidence conditions is never promoted', () => {
-		expect(exitCodeFor(verdictOutcome('CONCERNS', true), STRICT)).toBe(EXIT_OK)
-		expect(exitCodeFor(verdictOutcome('CONCERNS', true), LAX)).toBe(EXIT_OK)
+		expect(exitCodeFor(verdictOutcome('CONCERNS', false), STRICT)).toBe(EXIT_OK)
+		expect(exitCodeFor(verdictOutcome('CONCERNS', false), LAX)).toBe(EXIT_OK)
 	})
 
 	it('case 46: the same CONCERNS with a non-evidence condition firing is promoted under --strict', () => {
-		expect(exitCodeFor(verdictOutcome('CONCERNS', false), STRICT)).toBe(
+		expect(exitCodeFor(verdictOutcome('CONCERNS', true), STRICT)).toBe(
 			EXIT_CONCERNS_PROMOTED,
 		)
+	})
+})
+
+describe('cli exit codes: the Invalid rung (Story 8.4)', () => {
+	it('the Invalid rung exits three regardless of --strict, and reaches the verdict range on neither side', () => {
+		expect(exitCodeFor(verdictOutcome(null), LAX)).toBe(EXIT_INVALID)
+		expect(exitCodeFor(verdictOutcome(null), STRICT)).toBe(EXIT_INVALID)
+		expect(VERDICT_RANGE).not.toContain(EXIT_INVALID)
+	})
+})
+
+describe('cli exit codes: the carried exit code is never recomputed from the verdict (Story 8.4)', () => {
+	it('an explicit exitCode that disagrees with the verdict-derived one is returned unchanged when strict promotion does not apply', () => {
+		const outcome: CommandOutcome = {
+			kind: 'verdict',
+			verdict: 'PASS',
+			exitCode: 99,
+			strictPromotable: true,
+		}
+		expect(exitCodeFor(outcome, LAX)).toBe(99)
+		expect(exitCodeFor(outcome, STRICT)).toBe(99)
 	})
 })
 

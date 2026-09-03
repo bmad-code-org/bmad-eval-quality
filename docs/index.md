@@ -45,19 +45,20 @@ Every term is defined in the [glossary](/reference/glossary/), and the twin-run 
 
 ## What eval-quality is
 
-`eval-quality` is a Node package and a command line binary, both published under the name `eval-quality`. It compiles a Behavioral Evaluation Contract into a checked artifact, seals a contract into a deterministic evaluator brief, and reduces probe observations into a preflight verdict.
+`eval-quality` is a Node package and a command line binary, both published under the name `eval-quality`. It compiles a Behavioral Evaluation Contract into a checked artifact, seals a contract into a deterministic evaluator brief, reduces probe observations into a preflight verdict, and scores a sealed run record into a versioned evidence artifact.
 
-The package executes nothing under evaluation. It never runs an agent, a judge, or a system under test. Compile, seal, and the verdict reduction are pure transformations over JSON artifacts. The one stage that reaches outward, `runPreflight`, does so through a port the caller supplies and implements.
+The package executes nothing under evaluation. It never runs an agent, a judge, or a system under test. Compile, seal, the verdict reduction, and the score chain are pure transformations over JSON artifacts. The two entry points that reach outward, `runPreflight` and `runScore`, do so through a port the caller supplies and implements.
 
 ---
 
-## The three commands
+## The four commands
 
 | Command | Inputs | Output | Job in the loop |
 | --- | --- | --- | --- |
 | `compile` | a contract | a compiled `EvalContract` | reject structurally invalid contracts and recognized discipline violations |
 | `seal` | a contract | a `SealedEvaluatorBrief` carrying the contract digest | hand the evaluator directions without the answers |
 | `preflight` | a contract, a probe list, observations, a run id | a `PreflightVerdict` | prove the environment is fit to be measured |
+| `score` | a sealed run record, a contract, a probe, a preflight verdict, a scoring policy | an `EvidenceArtifact` | compare completed findings against the hidden defect and mint the verdict |
 
 Every flag each command accepts is listed on the [CLI reference](/reference/cli-commands/).
 
@@ -65,17 +66,12 @@ Every flag each command accepts is listed on the [CLI reference](/reference/cli-
 
 ## What ships
 
-- **The three commands**, with seven exit codes and diagnostics on stderr.
+- **The four commands**, with seven exit codes and diagnostics on stderr.
 - **Twelve JSON Schema documents** under `schemas/`, reachable from a consumer at the `eval-quality/schemas/*` subpath. `schemas/eval-contract.schema.json` is the normative contract shape.
 - **A development corpus** under `corpus/dev/`: nineteen named contracts covering each discipline rule in each declaration state, plus one compiled-and-sealed pair. Reachable at the `eval-quality/corpus/*` subpath.
 - **Reference adapters** at `eval-quality/adapters` and a published port conformance suite at `eval-quality/conformance`.
 - **A production core behind a checked dependency direction.** `zod` is the package's sole production dependency.
-
----
-
-## What does not ship
-
-**Scoring is the comparison step of the loop.** No command and no library call computes contract strength, defect detection, or any other score, so the "did the evaluation catch it?" question is answered by hand today. The functions themselves are written and covered, in `src/core/score/`; no stage and no surface reach them yet. Exit codes 1 and 2 are reserved for a scored verdict, so nothing in this release reaches them, and `--strict` changes no exit code the binary produces today. The [roadmap](/explanation/roadmap/) records what ships, what is built but unreachable, and what is not built.
+- **Scoring.** The `score` command chains ingest, score, and emit, computes contract strength and defect detection, and exits with the ladder's own verdict code. Exit codes 1 and 2, reserved for a scored verdict, and `--strict`'s promotion are both reachable from this release. The [roadmap](/explanation/roadmap/) records what ships today, what is next, and what the next release breaks.
 
 ---
 

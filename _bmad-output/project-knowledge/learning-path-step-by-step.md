@@ -3138,3 +3138,73 @@ flowchart TD
   fetching is the calling layer's job, not this one's. The next step wires it up.
 - Don't assume the two files in `src/core/emit/` are both finished features just because they sit in
   the same folder -- only one of them has a caller today.
+
+## Step 37 (epic8-story4): the score command, at last
+
+**In plain terms:** the three previous steps built the report-writer, but nobody could call it from
+the command line or from another package. This step wires `ingest` -> `score` -> `emit` behind one
+new CLI command and one new library function. A caller now gets a real evidence artifact back.
+
+**What:** `src/application/score.ts`'s `runScore`, and the `score` command it sits behind. Reads
+eight inputs: a sealed run record, an isolation manifest, an evaluator configuration, a contract, a
+probe, a preflight verdict, a scoring policy, and an optional private-artifact manifest. Resolves
+two of them through the corpus port for a digest check, then calls the three stages in order and
+writes `evidence-artifact.json`.
+
+**Why:** the three stages existed and nothing called them outside a test. Two digest checks earlier
+steps left for whoever first awaited the corpus port from `application/` land here too, since this
+is that caller: each `--private-manifest` entry's digest, and the sealed run record's own
+isolation-manifest reference when it is a private one.
+
+```mermaid
+flowchart TD
+  INPUTS["8 inputs: record, manifest, configuration,<br/>contract, probe, preflight verdict, policy,<br/>optional private manifest"]
+  PORT["CorpusPort.resolve<br/>(two digest checks)"]
+  CHAIN["ingest -> score -> emit"]
+  ARTIFACT["evidence-artifact.json,<br/>or nothing on the Invalid rung"]
+  EXIT["process exit code,<br/>read off LadderResolution"]
+
+  INPUTS --> PORT --> CHAIN --> ARTIFACT --> EXIT
+```
+
+**Read in this order:**
+
+1. `src/application/score.ts`: the whole orchestration, top to bottom. Parse every input, run the
+   two digest checks, call the three stages, return.
+2. `src/cli/arguments.ts`: `score` joins the other three commands in every exhaustive table. Three of
+   its eight inputs are optional, which no earlier command needed a way to say.
+3. `src/cli/run.ts`: the dispatch gains an explicit `score` branch, plus a `--corpus-root` usage
+   check that runs before the call. A usage error is `cli/`'s own vocabulary; `application/` returns
+   verdicts and faults, not usage errors.
+4. `src/cli/main.ts`: the one place a `CorpusPort` gets built, from `--corpus-root`.
+5. `src/cli/exit-codes.ts`: the `'verdict'` outcome now carries the ladder's own `exitCode` and
+   `strictPromotable` straight through. No FAIL/CONCERNS logic gets recomputed locally.
+6. `tests/application/score.test.ts`: one case per row of the story's own edge-case table, over a
+   fixture chain reused from `tests/application/fixtures/score-fixtures.ts`.
+
+**Story:** `_bmad-output/implementation-artifacts/8-4-the-score-command-the-application-call-and-the-published-surface.md`
+
+### Reference
+
+**Rules:**
+
+- `score.ts` holds no decision logic. Every branch is a parse, a digest comparison, an await, or a
+  call into `ingest`/`score`/`emit`.
+- Both digest checks compare a digest over resolved bytes. A digest over a parsed object is a
+  different number, and it is not what a manifest's declared digest means.
+- On the Invalid rung (a null verdict), `emit` is skipped and nothing is written. There is no legal
+  `EvidenceArtifact` with a null verdict to write.
+- `waiver` and `evaluationFault`, the two values nothing upstream supplies, are fixed at `'none'` and
+  `false`, the same values the old hand-typed worked example already used for the identical gap.
+- The corpus digest has no artifact anywhere that carries it, so it arrives as its own required flag,
+  `--corpus-digest`, the same way `--run-id` already does for a value with no JSON file behind it.
+- The fixture digest is not a new flag. It is already sitting on the preflight verdict every score
+  call already takes, so it is read from there.
+
+**Watch out:**
+
+- `--corpus-root` is optional, even though a private reference needing it with no root given is a
+  usage error. The argument grammar cannot know a root is needed without reading the artifacts'
+  content, so that check happens once the files are actually read, not while parsing flags.
+- `src/` comments ban a story-local decision number and the word "story." The reasoning for a
+  choice made in a story lives in the story file and in plain-English code comments.

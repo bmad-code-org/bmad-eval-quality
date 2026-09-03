@@ -40,6 +40,19 @@ import {
 import { planPreflight } from '../../src/core/preflight/plan.ts'
 import type { ProbeObservation } from '../../src/core/schemas/port-messages.ts'
 import {
+	corpusDigestFixture,
+	evaluatorConfigurationFixture,
+	isolationManifestBytes,
+	isolationManifestFixtureForScore,
+	passingPreflightVerdictForScore,
+	privateArtifactManifestFixtureForScore,
+	privateEntryBytes,
+	scoreContractFixture,
+	scoreProbeFixture,
+	scoringPolicyFixtureForScore,
+	sealedRunRecordFixtureForScore,
+} from '../application/fixtures/score-fixtures.ts'
+import {
 	jsonBody,
 	observationsFor,
 	preflightContract,
@@ -74,22 +87,27 @@ type TestEnvironment = RunEnvironment & {
 	readonly writes: { path: string; body: string }[]
 	readonly out: string[]
 	readonly diagnostics: string[]
+	readonly corpusRoots: string[]
 }
 
+/** `corpusFiles` is keyed by `privateRef` alone: no case here needs two roots to disagree about one reference. */
 const environmentOf = (
 	files: Readonly<Record<string, string>> = {},
 	stdin = '',
 	aliases: readonly (readonly [string, string])[] = [],
+	corpusFiles: Readonly<Record<string, Uint8Array<ArrayBuffer>>> = {},
 ): TestEnvironment => {
 	const reads: (string | null)[] = []
 	const writes: { path: string; body: string }[] = []
 	const out: string[] = []
 	const diagnostics: string[] = []
+	const corpusRoots: string[] = []
 	return {
 		reads,
 		writes,
 		out,
 		diagnostics,
+		corpusRoots,
 		readInput: async (source) => {
 			reads.push(source)
 			if (source === null) return stdin
@@ -117,6 +135,23 @@ const environmentOf = (
 					(pair[0] === left && pair[1] === right) ||
 					(pair[0] === right && pair[1] === left),
 			),
+		// A hand-written fake, never the real adapter (AD-30): `corpusFiles`
+		// stands in for whatever bytes a `--corpus-root` would resolve to.
+		corpusPort: (root) => {
+			corpusRoots.push(root)
+			return {
+				resolve: async (request) => {
+					const bytes = corpusFiles[request.privateRef]
+					if (bytes === undefined) {
+						throw new Error(
+							`the fake corpus has no privateRef "${request.privateRef}"`,
+						)
+					}
+					return { privateRef: request.privateRef, bytes }
+				},
+			}
+		},
+		signal: new AbortController().signal,
 		version: '0.0.0-test',
 	}
 }
@@ -140,7 +175,7 @@ const invoke = async (
 	return { invocation, outcome, exit: exitOf(invocation, outcome) }
 }
 
-/** The three entry points, recorded. Cases 60 through 62 count these calls. */
+/** The four entry points, recorded. Cases 60 through 62 count these calls. */
 const facadeOf = (overrides: Partial<ApplicationFacade> = {}) => ({
 	compile: vi.fn(overrides.compile ?? APPLICATION.compile),
 	seal: vi.fn(overrides.seal ?? APPLICATION.seal),
@@ -148,6 +183,7 @@ const facadeOf = (overrides: Partial<ApplicationFacade> = {}) => ({
 		overrides.preflightFromObservations ??
 			APPLICATION.preflightFromObservations,
 	),
+	runScore: vi.fn(overrides.runScore ?? APPLICATION.runScore),
 })
 
 const CONTRACT_JSON = JSON.stringify(gateCContract)
@@ -247,6 +283,51 @@ const preflightDiagnostics = (
 		options.passed ? 'passed' : 'failed'
 	}`,
 ]
+
+/** The full set of `score` input files, all eight, keyed the way the CLI reads them. */
+const scoreFiles = (
+	overrides: Readonly<Record<string, string>> = {},
+): Record<string, string> => ({
+	'record.json': JSON.stringify(sealedRunRecordFixtureForScore),
+	'contract.json': JSON.stringify(scoreContractFixture),
+	'probe.json': JSON.stringify(scoreProbeFixture),
+	'preflight-verdict.json': JSON.stringify(passingPreflightVerdictForScore),
+	'policy.json': JSON.stringify(scoringPolicyFixtureForScore),
+	'isolation-manifest.json': JSON.stringify(isolationManifestFixtureForScore),
+	'evaluator-configuration.json': JSON.stringify(evaluatorConfigurationFixture),
+	'private-manifest.json': JSON.stringify(
+		privateArtifactManifestFixtureForScore,
+	),
+	...overrides,
+})
+
+const SCORE_ARGV = [
+	'score',
+	'--record',
+	'record.json',
+	'--contract',
+	'contract.json',
+	'--probe',
+	'probe.json',
+	'--preflight-verdict',
+	'preflight-verdict.json',
+	'--policy',
+	'policy.json',
+	'--isolation-manifest',
+	'isolation-manifest.json',
+	'--evaluator-configuration',
+	'evaluator-configuration.json',
+	'--corpus-digest',
+	corpusDigestFixture,
+	'--corpus-root',
+	'/corpus',
+] as const
+
+/** The bytes the fixture record's and manifest's `privateRef`s resolve to, keyed for `environmentOf`'s `corpusFiles` parameter. */
+const SCORE_CORPUS_FILES: Readonly<Record<string, Uint8Array<ArrayBuffer>>> = {
+	'opaque:isolation-manifest-1': isolationManifestBytes,
+	'opaque:private-entry-1': privateEntryBytes,
+}
 
 describe('run: the happy paths', () => {
 	it('case 57: compile writes the serialized contract to stdout and exits 0', async () => {
@@ -792,7 +873,8 @@ describe('run: the two strict flags', () => {
 		const concerns: CommandOutcome = {
 			kind: 'verdict',
 			verdict: 'CONCERNS',
-			evidenceConditionsOnly: false,
+			exitCode: EXIT_OK,
+			strictPromotable: true,
 		}
 		expect(exitOf(invocation, concerns)).toBe(EXIT_CONCERNS_PROMOTED)
 		expect(
@@ -802,7 +884,8 @@ describe('run: the two strict flags', () => {
 			exitOf(invocation, {
 				kind: 'verdict',
 				verdict: 'FAIL',
-				evidenceConditionsOnly: false,
+				exitCode: EXIT_FAIL,
+				strictPromotable: true,
 			}),
 		).toBe(EXIT_FAIL)
 	})
@@ -900,5 +983,178 @@ describe('run: help and version', () => {
 		)
 		expect(second.outcome).toEqual({ kind: 'artifact' })
 		expect(distinct.writes).toHaveLength(1)
+	})
+})
+
+describe('run: the score command (Story 8.4)', () => {
+	it('writes evidence-artifact.json and exits 0 on the clean PASS chain', async () => {
+		const environment = environmentOf(scoreFiles(), '', [], SCORE_CORPUS_FILES)
+		const { outcome, exit } = await invoke(
+			[...SCORE_ARGV, '--out', 'run-42'],
+			environment,
+		)
+		expect(environment.writes).toHaveLength(1)
+		expect(environment.writes[0]?.path).toBe('run-42/evidence-artifact.json')
+		const artifact = JSON.parse(environment.writes[0]?.body ?? '{}') as {
+			readonly exitCode: number
+			readonly mode: string
+			readonly productionVerdict: string
+		}
+		expect(artifact.mode).toBe('production')
+		expect(artifact.productionVerdict).toBe('PASS')
+		expect(artifact.exitCode).toBe(0)
+		expect(outcome).toEqual({
+			kind: 'verdict',
+			verdict: 'PASS',
+			exitCode: EXIT_OK,
+			strictPromotable: true,
+		})
+		expect(exit).toBe(EXIT_OK)
+		expect(environment.corpusRoots).toEqual(['/corpus'])
+	})
+
+	it('exits 3 on the Invalid rung and writes nothing at all', async () => {
+		const environment = environmentOf(
+			scoreFiles({
+				'preflight-verdict.json': JSON.stringify({
+					...passingPreflightVerdictForScore,
+					passed: false,
+				}),
+			}),
+			'',
+			[],
+			SCORE_CORPUS_FILES,
+		)
+		const { outcome, exit } = await invoke(
+			[...SCORE_ARGV, '--out', 'run-42'],
+			environment,
+		)
+		expect(environment.writes).toEqual([])
+		expect(environment.out).toEqual([])
+		expect(outcome).toEqual({
+			kind: 'verdict',
+			verdict: null,
+			exitCode: EXIT_INVALID,
+			strictPromotable: true,
+		})
+		expect(exit).toBe(EXIT_INVALID)
+	})
+
+	it('omitting --isolation-manifest and --evaluator-configuration is legal syntax that still invalidates the run', async () => {
+		const environment = environmentOf(scoreFiles(), '', [], SCORE_CORPUS_FILES)
+		const { outcome, exit } = await invoke(
+			[
+				'score',
+				'--record',
+				'record.json',
+				'--contract',
+				'contract.json',
+				'--probe',
+				'probe.json',
+				'--preflight-verdict',
+				'preflight-verdict.json',
+				'--policy',
+				'policy.json',
+				'--corpus-digest',
+				corpusDigestFixture,
+				'--corpus-root',
+				'/corpus',
+			],
+			environment,
+		)
+		expect(outcome).toEqual({
+			kind: 'verdict',
+			verdict: null,
+			exitCode: EXIT_INVALID,
+			strictPromotable: true,
+		})
+		expect(exit).toBe(EXIT_INVALID)
+	})
+
+	it('a --private-manifest entry needing a port with no --corpus-root is a usage error naming the flag', async () => {
+		const environment = environmentOf(scoreFiles(), '', [], SCORE_CORPUS_FILES)
+		const { outcome, exit } = await invoke(
+			[
+				'score',
+				'--record',
+				'record.json',
+				'--contract',
+				'contract.json',
+				'--probe',
+				'probe.json',
+				'--preflight-verdict',
+				'preflight-verdict.json',
+				'--policy',
+				'policy.json',
+				'--private-manifest',
+				'private-manifest.json',
+				'--corpus-digest',
+				corpusDigestFixture,
+			],
+			environment,
+		)
+		expect(outcome).toEqual({ kind: 'usage-error' })
+		expect(exit).toBe(EXIT_USAGE)
+		expect(environment.diagnostics[0]).toContain('--corpus-root')
+		expect(environment.writes).toEqual([])
+	})
+
+	it('a private-storage isolationManifestArtifact digest mismatch is a fault, exit 5', async () => {
+		const environment = environmentOf(scoreFiles(), '', [], {
+			'opaque:isolation-manifest-1': new TextEncoder().encode('wrong bytes'),
+		})
+		const { outcome, exit } = await invoke(SCORE_ARGV, environment)
+		expect(outcome).toEqual({ kind: 'fault' })
+		expect(exit).toBe(EXIT_FAULT)
+		expect(environment.diagnostics[0]).toMatch(
+			/^eval-quality: digest-mismatch: SealedRunRecord\.isolationManifestArtifact: /,
+		)
+	})
+
+	it('calls the facade runScore exactly once, and no other orchestration call', async () => {
+		const environment = environmentOf(scoreFiles(), '', [], SCORE_CORPUS_FILES)
+		const facade = facadeOf()
+		await invoke(SCORE_ARGV, environment, facade)
+		expect(facade.runScore).toHaveBeenCalledTimes(1)
+		expect(facade.compile).not.toHaveBeenCalled()
+		expect(facade.seal).not.toHaveBeenCalled()
+		expect(facade.preflightFromObservations).not.toHaveBeenCalled()
+	})
+
+	it('an unrecognized command is a usage error, never a silent seal', async () => {
+		const environment = environmentOf()
+		const { outcome, exit } = await invoke(['frobnicate'], environment)
+		expect(outcome).toEqual({ kind: 'usage-error' })
+		expect(exit).toBe(EXIT_USAGE)
+	})
+
+	// The case above only proves `parseArguments`'s own `isCommand` gate
+	// rejects an unrecognized string; it never reaches `runCommand`'s
+	// dispatch at all. This one bypasses that gate the way a future
+	// well-typed fifth `Command` member would (nothing rejects it earlier),
+	// to prove the dispatch itself never falls through to `seal` -- the
+	// exact failure mode a non-exhaustive ternary risks. `runCommand`'s
+	// `switch (command)` has no case for it and no default, so this throws
+	// rather than silently returning an artifact outcome; a real fifth
+	// command reaching the same switch with a matching case would not.
+	it('a command reaching runCommand outside the Command union never calls any facade method', async () => {
+		const environment = environmentOf()
+		const facade = facadeOf()
+		const bypassed = {
+			kind: 'run',
+			command: 'frobnicate',
+			inputs: {},
+			out: null,
+			runId: null,
+			corpusDigest: null,
+			corpusRoot: null,
+			strictInputs: true,
+			strict: false,
+		} as unknown as ParsedInvocation
+		await expect(run(bypassed, environment, facade)).rejects.toThrow()
+		expect(facade.compile).not.toHaveBeenCalled()
+		expect(facade.seal).not.toHaveBeenCalled()
+		expect(facade.preflightFromObservations).not.toHaveBeenCalled()
+		expect(facade.runScore).not.toHaveBeenCalled()
 	})
 })

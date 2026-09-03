@@ -24,7 +24,7 @@ Eight nouns, in the order they occur in a run. They sit one level above the six 
 | **Rubric** | The grading guide. When scoring lands, it grades judgment-heavy quality against defined criteria. |
 | **Score / verdict** | The combined result of the evaluation, and the answer to whether the evaluation caught the planted defect. Four values: `PASS`, `WAIVED`, `CONCERNS`, `FAIL`. A fifth outcome, Invalid, says the run produced no verdict. |
 
-Two entries above describe semantics the package does not execute yet. `compile` validates oracle structure and reachability today, and resolving an oracle over evaluator evidence to `true`, `false`, or `insufficient-evidence` belongs to the scoring path. `compile` also validates rubrics structurally, and no shipped stage grades with one. See the [roadmap](/explanation/roadmap/).
+`compile` validates oracle structure and reachability, and the `score` command resolves an oracle over evaluator evidence to `true`, `false`, or `insufficient-evidence`. `compile` also validates rubrics structurally, and `score` reads a declared rubric to classify a judge's own conduct as conforming or malformed; grading a subject against a rubric's criteria stays undone. See the [roadmap](/explanation/roadmap/).
 
 ---
 
@@ -39,13 +39,13 @@ The `Probe` schema is broader than the conceptual probe; `PreflightVerdict` is n
 | **`Probe` (schema)** | A corpus artifact. Among its fields: `probeId`, `probeClass`, `expectedClean`, `implementationDigest`, `rationale`, a required `qualification` record, and, on the `expectedClean: false` branch, a required `defectSignature`. The last two are newer than the rest and are a breaking addition; see `CHANGELOG.md`. |
 | **Probe request** | The inputs for a single call: an interface, an operation, and the four transport channels. A sensitivity witness carries two legs of `legId` and `inputs`, and preflight combines each with the owning operation to derive the request. |
 | **Preflight leg** | One planned unit inside a preflight run, correlated to an observation by `probeId`. A contract's sensitivity witnesses and control observations each contribute legs. |
-| **`PreflightVerdict`** | The environment-validity result. It says whether the environment is fit to be measured. It is a different thing from the scored verdict at the end of the core flow, which is written and reachable from nothing. |
+| **`PreflightVerdict`** | The environment-validity result. It says whether the environment is fit to be measured. It is a different thing from the scored verdict at the end of the core flow, which the `score` command mints as an `EvidenceArtifact`. |
 
 ---
 
 ## Scoring vocabulary
 
-Every term here names something implemented in `src/core/score/` and reachable from no published surface. They appear in CLI output, in the generated reference tables, and on the other pages, so they are defined here.
+Every term here names something implemented in `src/core/score/` and reachable through the `score` command and its library entry, `runScore`. They appear in CLI output, in the generated reference tables, and on the other pages, so they are defined here.
 
 | Term | What it is |
 | --- | --- |
@@ -61,7 +61,7 @@ Every term here names something implemented in `src/core/score/` and reachable f
 | **Coverage gap** | A discipline rule that is relevant to a contract and not satisfied by it. Recorded, and below the severity floor it does not move the verdict. The fourteen predicates that decide relevance and satisfaction are published at the AD-31 coverage predicate table at `/ad31-coverage-predicatesgenerated/`. |
 | **Probe class** | What a probe is for: `defect`, `gameability`, `zero-action`, or `canary`. Canary probes and clean controls never enter the strength vector. |
 | **Waiver** | A recorded, conditional exemption from a discipline rule, carrying the rule name, a rationale, a machine-checkable condition, and an approval. An expired waiver reinstates its gap. |
-| **Ingest** | The stage that turns a caller's sealed run record, isolation manifest, and evaluator configuration into validated observations, recording every cross-artifact inconsistency it finds as data. Built; exported nowhere. |
+| **Ingest** | The stage that turns a caller's sealed run record, isolation manifest, and evaluator configuration into validated observations, recording every cross-artifact inconsistency it finds as data. Runs first inside the `score` command; not published as a standalone entry point. |
 
 ---
 

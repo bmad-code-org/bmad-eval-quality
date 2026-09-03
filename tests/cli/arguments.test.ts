@@ -57,6 +57,8 @@ describe('cli arguments: the three accepts (cases 1-3)', () => {
 			inputs: { in: 'contract.json' },
 			out: 'artifacts/',
 			runId: null,
+			corpusDigest: null,
+			corpusRoot: null,
 			strictInputs: true,
 			strict: true,
 		})
@@ -79,6 +81,8 @@ describe('cli arguments: the three accepts (cases 1-3)', () => {
 			inputs: { in: 'compiled.json' },
 			out: 'artifacts/sealed.json',
 			runId: null,
+			corpusDigest: null,
+			corpusRoot: null,
 			strictInputs: true,
 			strict: true,
 		})
@@ -103,6 +107,8 @@ describe('cli arguments: the three accepts (cases 1-3)', () => {
 			},
 			out: 'artifacts/',
 			runId: 'R-1',
+			corpusDigest: null,
+			corpusRoot: null,
 			strictInputs: true,
 			strict: true,
 		})
@@ -348,5 +354,139 @@ describe('cli arguments: values carried through unresolved (cases 29-30)', () =>
 				runId,
 			]).runId,
 		).toBe(runId)
+	})
+})
+
+/** `score`'s five required flags, in the order the grammar lists them. */
+const SCORE_REQUIRED = [
+	'--record',
+	'record.json',
+	'--contract',
+	'contract.json',
+	'--probe',
+	'probe.json',
+	'--preflight-verdict',
+	'preflight-verdict.json',
+	'--policy',
+	'policy.json',
+	'--corpus-digest',
+	'sha256:0000000000000000000000000000000000000000000000000000000000000001',
+]
+
+describe('cli arguments: score (Story 8.4)', () => {
+	it('accepts every flag it takes, required and optional alike', () => {
+		expect(
+			parseArguments([
+				'score',
+				...SCORE_REQUIRED,
+				'--isolation-manifest',
+				'manifest.json',
+				'--evaluator-configuration',
+				'configuration.json',
+				'--private-manifest',
+				'private-manifest.json',
+				'--corpus-root',
+				'/corpus',
+				'--out',
+				'artifacts/',
+				'--strict',
+			]),
+		).toEqual({
+			kind: 'run',
+			command: 'score',
+			inputs: {
+				record: 'record.json',
+				contract: 'contract.json',
+				probe: 'probe.json',
+				'preflight-verdict': 'preflight-verdict.json',
+				policy: 'policy.json',
+				'isolation-manifest': 'manifest.json',
+				'evaluator-configuration': 'configuration.json',
+				'private-manifest': 'private-manifest.json',
+			},
+			out: 'artifacts/',
+			runId: null,
+			corpusDigest:
+				'sha256:0000000000000000000000000000000000000000000000000000000000000001',
+			corpusRoot: '/corpus',
+			strictInputs: true,
+			strict: true,
+		})
+	})
+
+	it('takes no --run-id: no such flag exists for score', () => {
+		const { message } = parseUsageError([
+			'score',
+			...SCORE_REQUIRED,
+			'--run-id',
+			'r-1',
+		])
+		expect(message).toContain('--run-id')
+	})
+
+	it('isolation-manifest, evaluator-configuration, and private-manifest are each optional', () => {
+		const parsed = parseRun(['score', ...SCORE_REQUIRED])
+		expect(parsed.inputs).toEqual({
+			record: 'record.json',
+			contract: 'contract.json',
+			probe: 'probe.json',
+			'preflight-verdict': 'preflight-verdict.json',
+			policy: 'policy.json',
+		})
+		expect(parsed.corpusRoot).toBeNull()
+	})
+
+	it('--corpus-root is optional even though --corpus-digest is required', () => {
+		expect(parseRun(['score', ...SCORE_REQUIRED]).corpusRoot).toBeNull()
+		const { message } = parseUsageError([
+			'score',
+			'--record',
+			'record.json',
+			'--contract',
+			'contract.json',
+			'--probe',
+			'probe.json',
+			'--preflight-verdict',
+			'preflight-verdict.json',
+			'--policy',
+			'policy.json',
+		])
+		expect(message).toContain('--corpus-digest')
+	})
+
+	it('a missing required input names the flag that is absent', () => {
+		const { message } = parseUsageError([
+			'score',
+			'--contract',
+			'contract.json',
+			'--probe',
+			'probe.json',
+			'--preflight-verdict',
+			'preflight-verdict.json',
+			'--policy',
+			'policy.json',
+			'--corpus-digest',
+			'sha256:0000000000000000000000000000000000000000000000000000000000000001',
+		])
+		expect(message).toContain('--record')
+		expect(message).toContain('score')
+	})
+
+	it('rejects --strict-inputs and --no-strict-inputs, the same way preflight does', () => {
+		expect(
+			parseUsageError(['score', ...SCORE_REQUIRED, '--strict-inputs']).message,
+		).toContain('--strict-inputs')
+		expect(
+			parseUsageError(['score', ...SCORE_REQUIRED, '--no-strict-inputs'])
+				.message,
+		).toContain('--no-strict-inputs')
+	})
+
+	it('accepts --strict, promoting CONCERNS the same way every other command does', () => {
+		expect(parseRun(['score', ...SCORE_REQUIRED, '--strict']).strict).toBe(true)
+	})
+
+	it('COMMANDS names all four commands, score included', () => {
+		expect(COMMANDS).toEqual(['compile', 'seal', 'preflight', 'score'])
 	})
 })

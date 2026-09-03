@@ -35,5 +35,7 @@ export type {
 	RunPreflightOptions,
 } from './preflight.ts'
 export { preflightFromObservations, runPreflight } from './preflight.ts'
+export type { RunScoreOptions } from './score.ts'
+export { runScore } from './score.ts'
 export { seal } from './seal.ts'
 export { serializeArtifact } from './serialize.ts'

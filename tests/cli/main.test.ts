@@ -38,6 +38,17 @@ import {
 	EXIT_USAGE,
 } from '../../src/cli/exit-codes.ts'
 import { EXIT_CODE_TABLE } from '../../src/cli/render.ts'
+import {
+	corpusDigestFixture,
+	evaluatorConfigurationFixture,
+	isolationManifestBytes,
+	isolationManifestFixtureForScore,
+	passingPreflightVerdictForScore,
+	scoreContractFixture,
+	scoreProbeFixture,
+	scoringPolicyFixtureForScore,
+	sealedRunRecordFixtureForScore,
+} from '../application/fixtures/score-fixtures.ts'
 
 const REPO = fileURLToPath(new URL('../../', import.meta.url))
 const SOURCE_MAIN = join(REPO, 'src/cli/main.ts')
@@ -553,6 +564,247 @@ describe('main.ts at the process boundary', () => {
 					JSON.parse(contractBytes()),
 				)
 			})
+		}, 60_000)
+	})
+
+	// Round 2 peer review, finding 12: `main.ts`'s own corpus-port wiring
+	// (`createLocalCorpusAdapter`, `--corpus-root`, `RunEnvironment.corpusPort`)
+	// had no test of its own; only the in-memory fake in `tests/cli/run.test.ts`
+	// exercised the seam. This runs the real adapter against a real directory.
+	describe('score resolves a private reference through the real corpus adapter', () => {
+		it('a private-storage isolationManifestArtifact resolves for real under --corpus-root', (ctx) => {
+			if (!BUILT) return ctx.skip(NEEDS_BUILD)
+			const scratch = mkdtempSync(join(tmpdir(), 'eval-quality-corpus-'))
+			try {
+				const corpusRoot = join(scratch, 'corpus')
+				mkdirSync(corpusRoot, { recursive: true })
+				// The fixture record's own `isolationManifestArtifact.privateRef`;
+				// the real adapter resolves it relative to `--corpus-root`.
+				writeFileSync(
+					join(corpusRoot, 'opaque:isolation-manifest-1'),
+					isolationManifestBytes,
+				)
+				writeFileSync(
+					join(scratch, 'record.json'),
+					JSON.stringify(sealedRunRecordFixtureForScore),
+				)
+				writeFileSync(
+					join(scratch, 'contract.json'),
+					JSON.stringify(scoreContractFixture),
+				)
+				writeFileSync(
+					join(scratch, 'probe.json'),
+					JSON.stringify(scoreProbeFixture),
+				)
+				writeFileSync(
+					join(scratch, 'preflight-verdict.json'),
+					JSON.stringify(passingPreflightVerdictForScore),
+				)
+				writeFileSync(
+					join(scratch, 'policy.json'),
+					JSON.stringify(scoringPolicyFixtureForScore),
+				)
+				writeFileSync(
+					join(scratch, 'isolation-manifest.json'),
+					JSON.stringify(isolationManifestFixtureForScore),
+				)
+				writeFileSync(
+					join(scratch, 'evaluator-configuration.json'),
+					JSON.stringify(evaluatorConfigurationFixture),
+				)
+
+				const result = spawnSync(
+					process.execPath,
+					[
+						BUILT_MAIN,
+						'score',
+						'--record',
+						join(scratch, 'record.json'),
+						'--contract',
+						join(scratch, 'contract.json'),
+						'--probe',
+						join(scratch, 'probe.json'),
+						'--preflight-verdict',
+						join(scratch, 'preflight-verdict.json'),
+						'--policy',
+						join(scratch, 'policy.json'),
+						'--isolation-manifest',
+						join(scratch, 'isolation-manifest.json'),
+						'--evaluator-configuration',
+						join(scratch, 'evaluator-configuration.json'),
+						'--corpus-digest',
+						corpusDigestFixture,
+						'--corpus-root',
+						corpusRoot,
+					],
+					{ encoding: 'utf8' },
+				)
+
+				expect(result.stderr).toBe('')
+				expect(result.status).toBe(EXIT_OK)
+				const artifact = JSON.parse(result.stdout) as {
+					readonly mode: string
+					readonly productionVerdict: string
+				}
+				expect(artifact.mode).toBe('production')
+				expect(artifact.productionVerdict).toBe('PASS')
+			} finally {
+				rmSync(scratch, { recursive: true, force: true })
+			}
+		}, 60_000)
+
+		it('a digest mismatch against the real resolved bytes is a fault, exit 5', (ctx) => {
+			if (!BUILT) return ctx.skip(NEEDS_BUILD)
+			const scratch = mkdtempSync(join(tmpdir(), 'eval-quality-corpus-'))
+			try {
+				const corpusRoot = join(scratch, 'corpus')
+				mkdirSync(corpusRoot, { recursive: true })
+				// Wrong bytes at the same privateRef: the declared digest on the
+				// record no longer matches what the adapter actually resolves.
+				writeFileSync(
+					join(corpusRoot, 'opaque:isolation-manifest-1'),
+					'not the isolation manifest bytes',
+				)
+				writeFileSync(
+					join(scratch, 'record.json'),
+					JSON.stringify(sealedRunRecordFixtureForScore),
+				)
+				writeFileSync(
+					join(scratch, 'contract.json'),
+					JSON.stringify(scoreContractFixture),
+				)
+				writeFileSync(
+					join(scratch, 'probe.json'),
+					JSON.stringify(scoreProbeFixture),
+				)
+				writeFileSync(
+					join(scratch, 'preflight-verdict.json'),
+					JSON.stringify(passingPreflightVerdictForScore),
+				)
+				writeFileSync(
+					join(scratch, 'policy.json'),
+					JSON.stringify(scoringPolicyFixtureForScore),
+				)
+
+				const result = spawnSync(
+					process.execPath,
+					[
+						BUILT_MAIN,
+						'score',
+						'--record',
+						join(scratch, 'record.json'),
+						'--contract',
+						join(scratch, 'contract.json'),
+						'--probe',
+						join(scratch, 'probe.json'),
+						'--preflight-verdict',
+						join(scratch, 'preflight-verdict.json'),
+						'--policy',
+						join(scratch, 'policy.json'),
+						'--corpus-digest',
+						corpusDigestFixture,
+						'--corpus-root',
+						corpusRoot,
+					],
+					{ encoding: 'utf8' },
+				)
+
+				expect(result.stdout).toBe('')
+				expect(result.status).toBe(EXIT_FAULT)
+				expect(result.stderr).toMatch(
+					/^eval-quality: digest-mismatch: SealedRunRecord\.isolationManifestArtifact: /,
+				)
+			} finally {
+				rmSync(scratch, { recursive: true, force: true })
+			}
+		}, 60_000)
+
+		it('a --private-manifest with zero entries and no --corpus-root proceeds cleanly (blocking finding 1)', (ctx) => {
+			if (!BUILT) return ctx.skip(NEEDS_BUILD)
+			const scratch = mkdtempSync(join(tmpdir(), 'eval-quality-corpus-'))
+			try {
+				// A public-storage reference here, deliberately: isolating the one
+				// thing this case is for, an empty --private-manifest with no
+				// --corpus-root, from the record's own private isolation-manifest
+				// reference, which would need one for an unrelated reason.
+				const record = {
+					...sealedRunRecordFixtureForScore,
+					isolationManifestArtifact: {
+						storage: 'public' as const,
+						path: 'evidence/manifest.json',
+						privateRef: null,
+						digest:
+							sealedRunRecordFixtureForScore.isolationManifestArtifact.digest,
+					},
+				}
+				writeFileSync(join(scratch, 'record.json'), JSON.stringify(record))
+				writeFileSync(
+					join(scratch, 'contract.json'),
+					JSON.stringify(scoreContractFixture),
+				)
+				writeFileSync(
+					join(scratch, 'probe.json'),
+					JSON.stringify(scoreProbeFixture),
+				)
+				writeFileSync(
+					join(scratch, 'preflight-verdict.json'),
+					JSON.stringify(passingPreflightVerdictForScore),
+				)
+				writeFileSync(
+					join(scratch, 'policy.json'),
+					JSON.stringify(scoringPolicyFixtureForScore),
+				)
+				writeFileSync(
+					join(scratch, 'isolation-manifest.json'),
+					JSON.stringify(isolationManifestFixtureForScore),
+				)
+				writeFileSync(
+					join(scratch, 'evaluator-configuration.json'),
+					JSON.stringify(evaluatorConfigurationFixture),
+				)
+				writeFileSync(
+					join(scratch, 'private-manifest.json'),
+					JSON.stringify({
+						schemaVersion: 1,
+						parentDigest: null,
+						revisionCount: 0,
+						entries: [],
+					}),
+				)
+
+				const result = spawnSync(
+					process.execPath,
+					[
+						BUILT_MAIN,
+						'score',
+						'--record',
+						join(scratch, 'record.json'),
+						'--contract',
+						join(scratch, 'contract.json'),
+						'--probe',
+						join(scratch, 'probe.json'),
+						'--preflight-verdict',
+						join(scratch, 'preflight-verdict.json'),
+						'--policy',
+						join(scratch, 'policy.json'),
+						'--isolation-manifest',
+						join(scratch, 'isolation-manifest.json'),
+						'--evaluator-configuration',
+						join(scratch, 'evaluator-configuration.json'),
+						'--private-manifest',
+						join(scratch, 'private-manifest.json'),
+						'--corpus-digest',
+						corpusDigestFixture,
+					],
+					{ encoding: 'utf8' },
+				)
+
+				expect(result.stderr).toBe('')
+				expect(result.status).toBe(EXIT_OK)
+				expect(result.stdout).not.toBe('')
+			} finally {
+				rmSync(scratch, { recursive: true, force: true })
+			}
 		}, 60_000)
 	})
 })

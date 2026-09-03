@@ -114,4 +114,13 @@ describe('the digest agreement over rendered output', () => {
 			expect(plain).toContain(`| ${code} | ${text} |`)
 		}
 	})
+
+	// Round 2 peer review, finding 3/4's class: guards against the exact
+	// regression this table's own prose already had once (`score` shipping
+	// while the trailing paragraph still said it did not).
+	it('the trailing prose names score, never the old "ships in a later release" claim', () => {
+		expect(EXIT_CODE_TABLE).toContain('score')
+		expect(EXIT_CODE_TABLE).not.toMatch(/ships in a later release/)
+		expect(EXIT_CODE_TABLE).not.toMatch(/no command here reaches/)
+	})
 })
