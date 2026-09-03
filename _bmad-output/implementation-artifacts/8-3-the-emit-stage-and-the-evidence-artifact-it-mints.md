@@ -98,7 +98,7 @@ baseline_commit: 'f42dda00f6e30dc3034873c1bfb1242a33e67726'
 - [x] `tests/ingest/ingest.test.ts` — assert `runId` passthrough (Story 8.2's Round 3 found the identical gap for `evaluatorRecommendation`; this widening does not repeat it).
 - [x] `tests/score/outcome.test.ts` — widen the closed-vocabulary allowlist so `emit.ts`'s own `'unreached'` read is a sanctioned classification, not a reported violation (Decision 11).
 - [x] `tests/architecture/lineage-ownership.test.ts` — move the synthetic `OTHER` fixture path off `src/core/emit/emit.ts`, now a real named lineage writer (Decision 11).
-- [ ] `_bmad-output/project-knowledge/learning-path-step-by-step.md` — add this story's step, after peer review findings are addressed and before local review.
+- [x] `_bmad-output/project-knowledge/learning-path-step-by-step.md` — add this story's step, after peer review findings are addressed and before local review.
 
 **Acceptance Criteria:**
 - Given `STAGE_SIGNATURES.emit`, when the stage ships, then its `module` names the new file and `ARTIFACT_PRODUCERS['evidence-artifact']` stays `'emit'`.

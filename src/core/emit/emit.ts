@@ -141,8 +141,8 @@ export const emit: EmitStage<ScoredOutcomesAndVerdict> = (
 			// they nest at different depths.
 			revisionCount: scored.contract.revisionCount,
 			cap: scored.policy.remediationCap,
-			// AD-12 states the package validates the cap rather than enforcing
-			// it; there is no second legal value.
+			// AD-12 has the package only validate the cap; nothing enforces it,
+			// so there is no second legal value.
 			capSource: 'caller-attested' as const,
 			// `remediationState` is already declared `LineageChain` (`ladder.ts`):
 			// reused from the assessment, never recomputed here.

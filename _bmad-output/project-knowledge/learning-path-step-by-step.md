@@ -75,6 +75,8 @@ flowchart TD
 |   32 | epic7-story9 | Regenerate the published worked chain from the shipped reference functions, and check the committed bytes still match. |
 |   33 | epic7-story10 | One place that says what the release broke and which scoring versions can no longer be compared. |
 |   34 | epic8-story1 | The first stage that reads three artifacts at once and writes down every way they disagree, without throwing. |
+|   35 | epic8-story2 | The stage that runs every reference function from the last epic together, over a whole trial set instead of one run. |
+|   36 | epic8-story3 | The stage that mints the evidence artifact, replacing the one hand-assembled copy that used to be the only one. |
 
 Adding a step: follow `learning-path-template.md`.
 
@@ -3063,3 +3065,74 @@ flowchart TD
   when `revisionCount` is 0, and fires `lineage-chain-inconsistent` on every ordinarily-revised
   contract otherwise, since score is never handed the ancestor chain to check. It arrives declared
   (a vacuous pass), on `disclosure`'s own precedent, until some future stage is handed a real chain.
+
+## Step 36 (epic8-story3): the stage that mints the evidence artifact
+
+**In plain terms:** every earlier step decided facts -- did the check pass, what should the verdict
+be -- but nobody actually wrote the report you'd hand someone. A demo script had one hand-typed copy
+of that report, rebuilt by hand every time it ran. This step is the real thing: one function that
+builds that report for real, from the facts the earlier steps already worked out.
+
+**What:** `src/core/emit/emit.ts`, a pure function over the last step's widened result plus three
+values only the caller can supply (a corpus digest, a fixture digest, an evaluator-configuration
+digest), returning a frozen `EvidenceArtifact`.
+
+**Why:** `emit`'s row in the stage table said `module: null` since the table existed. The one place
+that ever built a real report was a seven-field hand-assembly in a demo script, sitting outside the
+library's own code paths. The step before this one produced too little to build a report from --
+just the outcome and the verdict -- so it grew eight more fields this step needed and had nowhere
+else to get.
+
+```mermaid
+flowchart TD
+  SCORED["Step 35's widened result<br/>assessment + ladder + runId + contract +<br/>policy + probe + sealedProbes + trialSetResult +<br/>outcomes + uncitedFindings"]
+  DIGESTS["corpusDigest, fixtureDigest,<br/>evaluatorConfigurationDigest<br/>(caller-supplied, no artifact carries them)"]
+  EMIT["emit.ts"]
+  ARTIFACT["EvidenceArtifact<br/>(frozen)"]
+
+  SCORED --> EMIT
+  DIGESTS --> EMIT
+  EMIT --> ARTIFACT
+```
+
+**Read in this order:**
+
+1. `src/core/emit/emit.ts`: the stage, top to bottom -- the strength and comparability numbers, then
+   the mode-specific report, then the one real check before it hands the report back.
+2. `src/core/score/score.ts`: the previous step's result gains eight fields this step needed and had
+   no other way to get.
+3. `src/core/ingest/ingest.ts`: gains one more field, a run id, that gets carried all the way through
+   to here.
+4. `src/core/stage-contracts.ts`: `EmitStage<Input>`, this step's own function shape.
+5. `src/core/lineage/stage-table.ts`: the registry row that said "nothing builds this yet" now names
+   the file that does.
+6. `scripts/worked-example-target.ts`: the old hand-typed report is deleted; one function call
+   replaces it.
+7. `tests/emit/emit.test.ts`: one test per row of this step's own edge-case table.
+
+**Story:** `_bmad-output/implementation-artifacts/8-3-the-emit-stage-and-the-evidence-artifact-it-mints.md`
+
+### Reference
+
+**Rules:**
+
+- `emit.ts` throws nothing for a domain input. Its one throw fires only if a future caller assembles
+  the input from two disagreeing sources by hand, which today's one caller cannot do.
+- The three caller-supplied digests are named parameters, never read off anything upstream: nothing
+  earlier in the pipeline carries them.
+- The strength and comparability numbers are lifted field for field from the old hand-typed report,
+  not redesigned.
+- `emit` freezes the report it hands back, the same as the two other steps that mint something new
+  (Step 7's sealed brief, Step 20's pre-flight verdict).
+- A verdict that never resolved (the run was Invalid) is trusted rather than re-checked here: the
+  caller's own guard, one call earlier, is where that gets stopped.
+- The run id now joins the two fields Step 35 already compared across trials, so two trials from
+  different runs batched into one set no longer slip through silently.
+
+**Watch out:**
+
+- A second small file, `private-artifact-digest.ts`, ships beside `emit.ts` but has no caller yet:
+  checking a manifest's declared digests against the real bytes needs those bytes fetched first, and
+  fetching is the calling layer's job, not this one's. The next step wires it up.
+- Don't assume the two files in `src/core/emit/` are both finished features just because they sit in
+  the same folder -- only one of them has a caller today.

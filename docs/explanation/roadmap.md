@@ -19,7 +19,7 @@ Twelve JSON Schema documents ship under `eval-quality/schemas/*`, a nineteen-con
 
 `ingest`, `score`, `emit`, and the whole scoring core are implemented, tested, and compiled into the published tarball. No export path reaches them. `src/index.ts` and `src/application/index.ts` name none of the three, and the CLI has three commands.
 
-The functions came first because the spine fixed that as the way seven recorded defects in the score half would close: write the decision procedures as pure functions, and let their tables be output. They are unreachable not because any stage is unbuilt — every one of the six pipeline stages now names a module in the stage table — but because nothing yet wires `ingest`, `score`, and `emit` to a command or a library entry point; doing that is the next epic's work. Two of those tables are published here: the the AD-21 verdict decision table at `/ad21-verdict-decisiongenerated/` and the the AD-33 outcome decision table at `/ad33-outcome-decisiongenerated/`. Both describe code that runs today and that you cannot call.
+The functions came first because the spine fixed that as the way seven recorded defects in the score half would close: write the decision procedures as pure functions, and let their tables be output. Every one of the six pipeline stages now names a module in the stage table. They stay unreachable because nothing yet wires `ingest`, `score`, and `emit` to a command or a library entry point; wiring that up is the next epic's work. Two of those tables are published here: the AD-21 verdict decision table at `/ad21-verdict-decisiongenerated/` and the AD-33 outcome decision table at `/ad33-outcome-decisiongenerated/`. Both describe code that runs today and that you cannot call.
 
 The covered ground:
 
