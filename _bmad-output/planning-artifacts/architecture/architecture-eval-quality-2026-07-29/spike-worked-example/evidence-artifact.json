@@ -165,9 +165,9 @@
   "revisionCount": 0,
   "runId": "spike-run-0001",
   "schemaVersion": 3,
-  "scoringVersion": "sha256:d2a1162b0ec36db971f8fba48d73d6d39c825136082efb1b6555c9eaf38ac784",
+  "scoringVersion": "sha256:f10a9973d8b52a8b15c4b6eeda67a496ddad06ba6fb78a400d3cb9e2398651fb",
   "scoringVersionInputs": {
-    "contractSchemaVersion": 1,
+    "contractSchemaVersion": 3,
     "corpusDigest": "sha256:000000000000000000000000000000000000000000000000000000000000000e",
     "evaluatorConfigurationDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000004",
     "fixtureDigest": "sha256:000000000000000000000000000000000000000000000000000000000000000f",
