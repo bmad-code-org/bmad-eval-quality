@@ -9,13 +9,14 @@
 //
 // That file now holds the regenerated contract, emitted by
 // `npm run generate:worked-example` and checked byte for byte by
-// `npm run check:worked-example`, and all five of its check expressions moved:
-// O-001's second operand is now
-// /interactions/write/call-inputs/body/title, and both `shape` checks carry a
-// named `descriptor` where they carried a `{ literal }` operand. So the
-// entries below are no longer a transcription of what is on disk, and the
-// three `parses: false` findings describe expressions the committed contract
-// no longer contains.
+// `npm run check:worked-example`, and three of its five check expressions
+// moved: O-001's second operand is now
+// /interactions/write/call-inputs/body/title, and both `shape` checks, O-003's
+// and O-004's, carry a named `descriptor` where they carried a `{ literal }`
+// operand. O-002 and O-005 are byte-identical to the entries below. So the
+// entries are no longer a transcription of what is on disk, and the three
+// `parses: false` findings describe expressions the committed contract no
+// longer contains.
 //
 // They are kept, unedited and pinned at two conforming and three stale,
 // because what they record is which spellings the grammar rejected and why.

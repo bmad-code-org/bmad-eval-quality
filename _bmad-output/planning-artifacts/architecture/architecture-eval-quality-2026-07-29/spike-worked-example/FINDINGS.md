@@ -48,13 +48,17 @@ what the discipline rules require.
 > and `npm run check:worked-example` compares the committed bytes against a rebuild on every
 > `npm run validate`.
 >
-> Which functions, precisely, because "the reference functions" is too loose to check. Four come from the
+> Which functions, precisely, because "the reference functions" is too loose to check. Five come from the
 > compile half and the core modules beside it: `compile` and `seal` produce the contract and the brief,
 > `digestArtifact` computes every digest the chain pins itself with, `evaluateCoverage` produces the
-> coverage gaps, and `validateLineageChain` produces `remediation.lineageChain`. The rest are epic 7's
-> score-side functions: `sealProbeSet`, `bindingOrder`, `resolveCapturedBindings`, `selectWithBindings`,
-> `resolveCheck`, `mapFindings`, `matchProbeWitness`, `resolveOutcome`, `uncitedFindingIds`,
-> `uncitedDefectFindingGaps`, `reduceTrialSet`, `buildStrengthVector`, and `resolveContractVerdict`.
+> coverage gaps, and `validateLineageChain` produces `remediation.lineageChain`. Seventeen are epic 7's
+> score-side functions: `sealProbeSet` and the `resolveHomeOperation` it is handed, `bindingOrder`,
+> `resolveCapturedBindings`, `selectWithBindings`, `resolveCheck` and the two resolvers it is wired
+> through, `makeResolveOperand` and `makePointerDenotesCollection`, `mapFindings`, `matchProbeWitness`,
+> `auditQuotation`, `resolveOutcome`, `uncitedFindingIds`, `uncitedDefectFindingGaps`, `reduceTrialSet`,
+> `buildStrengthVector`, and `resolveContractVerdict`. `buildPlanIndex` and `serializeArtifact` are
+> plumbing beside them: the plan index the selector and the pointer resolver both read, and the RFC 8785
+> serializer every digest and every emitted file goes through.
 >
 > The evaluator's own evidence is still authored, because there is no live Notes API here to run against:
 > the contract, the probe's declarations, and the run record's raw observations, dispositions, and
@@ -119,9 +123,13 @@ what the discipline rules require.
 >
 > *`corpusDigest` and `fixtureDigest` in `scoringVersionInputs` are placeholders.* They sit beside genuine
 > computed digests and are all zeros but for a final nibble, because no corpus or fixture artifact exists
-> here for a caller to attest. `comparabilityKey` is computed over one of them, so it is a well-formed key
-> that compares nothing. Read it as a shape; a run scored against a real corpus would carry a real one.
-> `callerAttestedInputs` names all three attested inputs, which is what that field is for.
+> here for a caller to attest. `scoringVersion` is the digest over all six inputs, so it pins those two
+> placeholders along with the real ones: read it as a shape, and a run scored against a real corpus would
+> carry a real one. `comparabilityKey` is a separate and narrower digest and neither placeholder is an
+> input to it: AD-7 defines it as the scoring policy digest plus the corpus digest restricted to the
+> probes a comparison covers, and with no corpus artifact here the builder digests the admitted probe
+> identifiers in that second position, so both of its inputs are real. `callerAttestedInputs` names all
+> three attested inputs, which is what that field is for.
 >
 > These artifacts are now a worked example. What they are still not is a *passing* example: the regenerated
 > verdict is FAIL, computed from the evidence, and `README.md` in this folder lists what must still not be

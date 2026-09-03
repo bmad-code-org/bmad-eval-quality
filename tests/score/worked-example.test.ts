@@ -12,7 +12,12 @@
  * committed.
  */
 import { describe, expect, it } from 'vitest'
-import { buildWorkedExampleChain } from '../../scripts/worked-example-target.ts'
+import {
+	buildWorkedExample,
+	buildWorkedExampleChain,
+	WORKED_EXAMPLE_FILES,
+	WORKED_EXAMPLE_LABEL,
+} from '../../scripts/worked-example-target.ts'
 import type { Observation } from '../../src/core/schemas/sealed-run-record.ts'
 import { matchProbeWitness } from '../../src/core/score/witness.ts'
 
@@ -82,18 +87,22 @@ describe('the reversed-order flip, on the regenerated chain', () => {
 	const reversedArray = [...record.observations].reverse()
 
 	// Permutation family one: array position is never read. A first-match
-	// scorer would flip `matched` to `manifested-unclaimed` here.
+	// scorer would flip `matched` to `manifested-unclaimed` here. Anchored to
+	// literals rather than to `chain.witness`, so a regression that moves the
+	// builder's own match cannot move both sides of the comparison together.
 	it.each([
 		['declared order', forward],
 		['reversed array', reversedArray],
 	])('permutation by %s returns identical identifiers', (_label, order) => {
 		const result = match(order)
 		expect(result.result).toBe('matched')
-		expect(result.observationIds).toEqual(chain.witness.observationIds)
-		expect(result.partition).toEqual(chain.witness.partition)
-		expect(result.witnessObservationIds).toEqual(
-			chain.witness.witnessObservationIds,
-		)
+		expect(result.observationIds).toEqual(['obs-004'])
+		expect(result.partition).toEqual({
+			satisfying: ['obs-004'],
+			refuting: [],
+			inconclusive: [],
+		})
+		expect(result.witnessObservationIds).toEqual(['obs-004'])
 	})
 
 	// Permutation family two: the same observations with the two reads' own
@@ -118,10 +127,8 @@ describe('the reversed-order flip, on the regenerated chain', () => {
 	// array position is the same non-meaning `sequence` was added to remove.
 	it('returns identical finding identifiers under a permuted findings array', () => {
 		const result = match(record.observations, [...record.findings].reverse())
-		expect(result.result).toBe(chain.witness.result)
-		expect(result.unwitnessedFindingIds).toEqual(
-			chain.witness.unwitnessedFindingIds,
-		)
+		expect(result.result).toBe('matched')
+		expect(result.unwitnessedFindingIds).toEqual([])
 	})
 })
 
@@ -232,5 +239,32 @@ describe('the headline result the prose is built on', () => {
 			invalidatedAttempts: [],
 		})
 		expect(chain.artifact.strength.comparable).toBe(false)
+	})
+})
+
+// The renderer, the emitted key set, and the cross-check against
+// `WORKED_EXAMPLE_FILES` otherwise rest on `npm run check:worked-example`
+// alone, which runs outside vitest. `brief.json` also lands here: it is the
+// only place the `seal` leg of the chain reaches an assertion.
+describe('the emitted file set', () => {
+	const files = buildWorkedExample()
+
+	it('emits exactly the five declared keys', () => {
+		expect([...files.keys()].sort()).toEqual(
+			WORKED_EXAMPLE_FILES.map(
+				(name) => `${WORKED_EXAMPLE_LABEL}/${name}`,
+			).sort(),
+		)
+	})
+
+	it('renders each file as re-indented JSON that parses back to the artifact', () => {
+		for (const [path, text] of files) {
+			expect(text.endsWith('\n'), path).toBe(true)
+			expect(() => JSON.parse(text) as unknown).not.toThrow()
+		}
+		const brief = JSON.parse(
+			files.get(`${WORKED_EXAMPLE_LABEL}/brief.json`) ?? '',
+		) as { readonly contractDigest?: unknown }
+		expect(brief.contractDigest).toBe(chain.brief.contractDigest)
 	})
 })

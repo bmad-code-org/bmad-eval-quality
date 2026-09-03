@@ -4,7 +4,7 @@ type: 'feature'
 created: '2026-09-02'
 status: 'done'
 baseline_commit: '46a5ba724349b7ddc5a143531d41580a48da3336'
-review_loop_iteration: 1
+review_loop_iteration: 2
 context: [
   '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-eval-quality-2026-07-29/ARCHITECTURE-SPINE.md',
   '{project-root}/_bmad-output/implementation-artifacts/epic-7-context.md',
@@ -714,6 +714,85 @@ nothing deferred.
     "rather than" survives by the rule's own carve-out: the defect signature's home operation is a
     decision record naming the option turned down and the reason, quoted from `system-under-test.md`.
 
+**Round 2 — an adversarial peer review of the finished commit, in three parallel layers.** The three
+recorded divergences were each re-derived from source and all three hold: the `unwitnessed-claim`
+route the spec's `patch-note` homing would take is confirmed at `outcome.ts:245,416-420` and
+`ladder.ts:157,610-616` (invalid, exit 3, no verdict); AD-4's three-valued resolution and its single
+`empty-collection` introduction condition are confirmed at `resolution.ts:86-92,170-181` and
+`ARCHITECTURE-SPINE.md:201`; and the FAIL tier is confirmed at
+`ladder.ts:357-371`. Ten of the fourteen round-1 findings verified clean against the code; four
+carried a defect of their own. Nine findings in total, all fixed in this pass.
+
+15. **The re-indent's key-order condition was argued and never checked.** `renderJson`'s docblock
+    reasoned that `JSON.parse` then `JSON.stringify` preserves RFC 8785 order while no emitted object
+    carries an array-index-like key, and nothing enforced it. Several maps in the chain are
+    caller-keyed and unconstrained (`KeyTypeMap`, `responseHeaders`, the four `callInputs` channels,
+    `channelRoles`, `referenceSets`), and a breach is invisible by construction: the generator would
+    write reordered bytes and the drift check would compare them against an identically reordered
+    rebuild and exit 0. `renderJson` now round-trips its own output back to canonical bytes and fails
+    on a mismatch. Verified by running the check with the trailing newline left off the comparison,
+    which fails naming `EvalContract`.
+16. **The new CI canary's fixed-point step could pass without the generator writing anything.** It
+    ran `generate:worked-example` on an already-clean tree and asserted an empty
+    `git status --porcelain`, both of which hold for a generator that does nothing. Substituting `:`
+    for the generate command reproduced a green step. It now deletes `probe.json` first, so only a
+    generator that rewrites it byte for byte leaves the directory clean. The identical gap in the
+    sibling `canary-dev-corpus` is fixed the same way, on `compile-seal-example/brief.json`: it is one
+    line, and leaving a known-vacuous assertion in a gate this one was modelled on would ship the
+    defect twice.
+17. **`FINDINGS.md` claimed `comparabilityKey` is computed over a placeholder digest.** It is not.
+    `comparabilityKey` digests the scoring policy digest and the admitted probe identifiers, both
+    real; `scoringVersion` is the digest that carries `corpusDigest` and `fixtureDigest`. The
+    paragraph now says which digest carries the placeholders, and the code comment beside
+    `comparabilityKey` now states that the probe-id list stands where AD-7 names a corpus digest, and
+    why, instead of quoting the schema's definition over code that does something narrower.
+18. **The "nine hand-declared inputs" claim was two short.** `probeSigned` and `checkResolved` were
+    hardcoded `true` beside the nine, and both are things an artifact carries: `probeSigned` is
+    `defectSignature !== null` on the probe, and `ladder.ts:42` defines `checkResolved` as the
+    caller's own `checkResolution !== null`. Both are read off their sources now, so the claim is
+    nine and stays nine.
+19. **`FINDINGS.md`'s function list said "four" and named five, and the score-side list was
+    incomplete.** Corrected to five, and the score-side list gains `resolveHomeOperation`,
+    `makeResolveOperand`, `makePointerDenotesCollection`, and `auditQuotation` — four calls the
+    builder makes that a paragraph opening "because 'the reference functions' is too loose to check"
+    cannot omit. `buildPlanIndex` and `serializeArtifact` are named beside them as plumbing.
+20. **`worked-example-checks.ts`'s new provenance header said all five check expressions moved.**
+    Three moved: O-001's second operand and the two `shape` checks. O-002 and O-005 are byte-identical
+    between `46a5ba7` and the regenerated contract, which the same comment's own "two conforming and
+    three stale" already implied.
+21. **Two silent fallbacks where the module otherwise fails loudly.** A `resolvedFrom` naming a
+    finding the record does not carry substituted the behaviour severity, which can move the AD-21
+    floor comparison with no signal; it now fails. A `selectionOf` miss fabricated a `none` selection
+    and fed it to `resolveOutcome`; it now fails, in all three places the lookup happens.
+22. **Cast and duplication cleanup, no byte change.** `fail` becomes a function declaration so
+    TypeScript narrows through it, which removes both `check as Expression` casts and the
+    `oracles[0] as string`; `declaration.members as JsonValue[]` and three casts inside `emptyChannel`
+    go with an explicit `KeyedShapeDescriptor` return type; the four finding-bucket loops collapse to
+    one over a `keyof FindingMap` list; `addressedSteps` checks the pointer root rather than reading
+    segment two of any pointer; `bindingOrder`'s result is destructured to the one field read. The
+    `probe as SignedProbe` cast stays, with a comment: narrowing `probe.defectSignature` refines the
+    property for reads and leaves the object's declared type alone, so the value is not assignable
+    without it. Reproduced in isolation before the comment was written.
+23. **Two test assertions compared the builder's output against itself.** The permutation rows
+    asserted `result.observationIds`/`partition`/`witnessObservationIds` against `chain.witness.*`, so
+    a regression moving the builder's own match moved both sides together. Anchored to literals.
+    `buildWorkedExample`, `renderJson`, and the `WORKED_EXAMPLE_FILES` cross-check also reached no
+    vitest case, resting on the CI script alone; a new `the emitted file set` block covers all three
+    and is the only place `brief.json`, and so the `seal` leg, is asserted.
+
+**Reviewed and deliberately not changed.** The step-to-observation reduction at the top of the
+derivation restates `resolveTemporalAnchor`'s rule (`selection.ts:96-127`) rather than calling it,
+because that function re-runs the operation-only `selectObservations` instead of taking a
+`StepSelection`. Lifting the reduction out of it would be new score-side surface, which this story's
+Boundaries forbid; the duplication is recorded in a comment at the call site instead, and extracting
+it is a candidate for whichever story next touches `selection.ts`. The drift-window reporter in
+`check-worked-example.ts` is the sixth verbatim copy across the `check:*` scripts; collapsing all six
+into a shared `scripts/drift-report.ts` is a repo-wide change, not this story's. And the round-1 note
+that one negation-then-correction survives by the rule's decision-record carve-out was re-swept: the
+surviving instances in the scripts and tests are decision records naming a rejected option and its
+reason, which the rule allows. One was not, `README.md`'s "evidence rather than an oversight", and it
+is rewritten.
+
 ## Verification
 
 **Commands, all run and green:**
@@ -727,6 +806,9 @@ nothing deferred.
   makes by hand and `system-under-test.md` is unchanged
 - `npx vitest run tests/score/worked-example.test.ts tests/score/witness.test.ts` — green (55 tests),
   including the real-data citation triad, all three permutation families, and the headline verdict
+- `npm run validate` — re-run green after round 2: 99 suite files, 3339 tests (two added by finding
+  23), 97.05%/92.64% statements/branches, and the five committed files still byte-identical to the
+  builder, so nothing round 2 changed moved a published byte
 - `npm run validate` — green end to end: build, typecheck, lint, docs, doc-invocations, shareable,
   spine lint, vectors, schemas, AD-5/AD-28 registries, AD-31/AD-33/AD-21 tables, layers, lineage,
   boundary, corpus, **worked-example**, website-deps, and `test:coverage` (99 suite files, 3337

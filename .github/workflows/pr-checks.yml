@@ -1041,15 +1041,22 @@ jobs:
 
       # Regeneration is the repair every failure message above names, so the
       # repair is proven to be a fixed point rather than assumed to be one.
+      #
+      # `brief.json` is deleted first so the generate call is load-bearing. On
+      # an already-clean tree both assertions below hold for a generator that
+      # writes nothing at all, and the step would report a fixed point it never
+      # exercised.
       - name: Assert generate then check is a fixed point
         run: |
+          set -e
+          rm corpus/dev/compile-seal-example/brief.json
           npm run --silent generate:dev-corpus > /dev/null
           # `git status --porcelain`, because `git diff` reports no untracked
           # file: a generator writing to a path the check does not read would
           # leave the committed corpus intact and pass a diff test.
-          [ -z "$(git status --porcelain -- corpus/)" ] || { echo "generate:dev-corpus left corpus/ dirty; the writer and the check are out of step" >&2; git status --porcelain -- corpus/ >&2; exit 1; }
+          [ -z "$(git status --porcelain -- corpus/)" ] || { echo "generate:dev-corpus left corpus/ dirty; the writer and the check are out of step, or the generator did not rewrite the deleted brief.json" >&2; git status --porcelain -- corpus/ >&2; exit 1; }
           npm run --silent check:corpus
-          echo "canary passed: generate:dev-corpus reproduces the committed bytes exactly"
+          echo "canary passed: generate:dev-corpus rewrites a deleted file to the committed bytes exactly"
 
   canary-worked-example:
     name: "Canary: the worked-example check fails on a mutated byte and on a changed seed"
@@ -1134,13 +1141,21 @@ jobs:
       # committed chain intact and pass a diff test. The same command is what
       # proves the generator leaves `FINDINGS.md`, `README.md`, and
       # `system-under-test.md` alone, since it walks the whole directory.
+      #
+      # `probe.json` is deleted first so the generate call is load-bearing. On
+      # an already-clean tree both assertions below hold for a generator that
+      # writes nothing at all, and the step would report a fixed point it never
+      # exercised. With the file gone, only a generator that actually rewrites
+      # it byte for byte leaves the directory clean.
       - name: Assert generate then check is a fixed point
         run: |
+          set -e
           dir="_bmad-output/planning-artifacts/architecture/architecture-eval-quality-2026-07-29/spike-worked-example"
+          rm "$dir/probe.json"
           npm run --silent generate:worked-example > /dev/null
-          [ -z "$(git status --porcelain -- "$dir")" ] || { echo "generate:worked-example left $dir dirty; the writer and the check are out of step, or the generator touched a hand-authored file" >&2; git status --porcelain -- "$dir" >&2; exit 1; }
+          [ -z "$(git status --porcelain -- "$dir")" ] || { echo "generate:worked-example left $dir dirty; the writer and the check are out of step, the generator did not rewrite the deleted probe.json, or it touched a hand-authored file" >&2; git status --porcelain -- "$dir" >&2; exit 1; }
           npm run --silent check:worked-example
-          echo "canary passed: generate:worked-example reproduces the committed bytes exactly and leaves the prose files alone"
+          echo "canary passed: generate:worked-example rewrites a deleted file to the committed bytes exactly and leaves the prose files alone"
 
   canary-shareable:
     name: "Canary: shareable check fails on a stale export and on a legacy URL"

@@ -45,8 +45,8 @@ named in `FINDINGS.md`.
 
 ## What must still not be copied out of here
 
-The chain is regenerated. It is still deliberately defective in three places, and every one of them is
-evidence rather than an oversight.
+The chain is regenerated. It is still deliberately defective in three places, and each one is kept as the
+fixture some rule needs.
 
 - **O-005's disposition narrates a rejection nothing observed.** The evaluator wrote "A tags value of the
   wrong type was rejected with 400 and ok false" and cited no observation, and no observation in the record

@@ -41,10 +41,7 @@ import type {
 	SetOperand,
 } from '../src/core/schemas/expression.ts'
 import type { Operation } from '../src/core/schemas/interface.ts'
-import type {
-	JsonValue,
-	KeyedShapeDescriptor,
-} from '../src/core/schemas/primitives.ts'
+import type { KeyedShapeDescriptor } from '../src/core/schemas/primitives.ts'
 import { Probe } from '../src/core/schemas/probe.ts'
 import { ScoringPolicy } from '../src/core/schemas/scoring-policy.ts'
 import type { SealedEvaluatorBrief } from '../src/core/schemas/sealed-evaluator-brief.ts'
@@ -77,6 +74,7 @@ import { reduceTrialSet } from '../src/core/score/reduce-trials.ts'
 import type { StepSelection } from '../src/core/score/selection.ts'
 import { buildStrengthVector } from '../src/core/score/strength.ts'
 import {
+	type FindingMap,
 	mapFindings,
 	matchProbeWitness,
 	type ProbeWitnessMatch,
@@ -130,13 +128,23 @@ const keyOf = (name: string): string => `${WORKED_EXAMPLE_LABEL}/${name}`
  * The re-indent preserves RFC 8785 key order only while no emitted object
  * carries an array-index-like key: V8 hoists integer-like own properties and
  * enumerates them in numeric order ahead of the string keys, so `JSON.parse`
- * followed by `JSON.stringify` would reorder such an object. No object in
- * these five files carries one, and the digests above are computed over the
- * canonical bytes rather than over this rendering, so nothing downstream reads
- * the rendered order.
+ * followed by `JSON.stringify` would reorder such an object. The round trip
+ * below checks that rather than asserting it, because a breach is otherwise
+ * invisible: the generator would write reordered bytes and the drift check
+ * would compare them against an identically reordered rebuild and exit 0. The
+ * digests are computed over the canonical bytes rather than over this
+ * rendering, so nothing downstream reads the rendered order either way.
  */
-const renderJson = (value: unknown, artifactPath: string): string =>
-	`${JSON.stringify(JSON.parse(serializeArtifact(value, artifactPath)), null, 2)}\n`
+const renderJson = (value: unknown, artifactPath: string): string => {
+	const canonical = serializeArtifact(value, artifactPath)
+	const rendered = `${JSON.stringify(JSON.parse(canonical), null, 2)}\n`
+	// `serializeArtifact` ends its output with a newline, which the re-parse
+	// drops, so the comparison puts one back.
+	if (`${JSON.stringify(JSON.parse(rendered))}\n` !== canonical) {
+		fail(`${artifactPath}: the re-indent did not round-trip to canonical bytes`)
+	}
+	return rendered
+}
 
 const digestPlaceholder = (ordinal: number): string =>
 	`sha256:${ordinal.toString(16).padStart(64, '0')}`
@@ -169,10 +177,10 @@ const POLICY = ScoringPolicy.parse({
 // authored input 2: the Eval Contract
 // ---------------------------------------------------------------------------
 
-const emptyChannel = () => ({
-	requiredKeys: [] as string[],
-	permittedKeys: [] as string[],
-	types: {} as Record<string, null>,
+const emptyChannel = (): KeyedShapeDescriptor => ({
+	requiredKeys: [],
+	permittedKeys: [],
+	types: {},
 })
 
 /** The note payload both read operations and the update return. */
@@ -1005,24 +1013,37 @@ const SYSTEM_RECOMMENDATION_NOTE =
 // derivation
 // ---------------------------------------------------------------------------
 
-/** Every interaction-rooted step identifier one check addresses, in walk order. */
+/** Every interaction-rooted step identifier one check addresses. */
 function addressedSteps(expression: Expression): ReadonlySet<string> {
 	const found = new Set<string>()
 	const take = (operand: Operand | SetOperand): void => {
 		if (!('pointer' in operand)) return
 		const { pointer } = operand
 		if (pointer.startsWith('@')) return
-		const [, , stepId] = pointer.split('/')
-		if (stepId !== undefined) found.add(stepId)
+		// The root segment is checked, so a pointer rooted anywhere else cannot
+		// contribute a phantom step identifier that happens to match a plan step.
+		const [, root, stepId] = pointer.split('/')
+		if (root === 'interactions' && stepId !== undefined) found.add(stepId)
 	}
-	walkExpression(expression, 0, '', {
-		onOperand: (operand) => take(operand),
-		onSetOperand: (setOperand) => take(setOperand),
-	})
+	walkExpression(expression, 0, '', { onOperand: take, onSetOperand: take })
 	return found
 }
 
-const fail = (message: string): never => {
+/** AD-23 and AD-40's four finding buckets, in `FindingMap`'s own declaration order. */
+const FINDING_BUCKETS = [
+	'mapped',
+	'unmapped',
+	'dangling',
+	'signatureless',
+] as const satisfies readonly (keyof FindingMap)[]
+
+/**
+ * A function declaration rather than an arrow, because TypeScript treats a
+ * call as never-returning only when the callee is declared this way. As a
+ * `const` arrow it stops narrowing at every guard below, and the null checks
+ * on `oracle.check` and on the plan lookups then need casts to undo.
+ */
+function fail(message: string): never {
 	throw new Error(`worked-example: ${message}`)
 }
 
@@ -1059,7 +1080,7 @@ export function buildWorkedExampleChain(): WorkedExampleChain {
 
 	// AD-9's gate, run for real. A rejection fails the build rather than
 	// shipping a chain scored against a probe no sealed set would admit.
-	const homeOperationOf = (candidate: typeof probe): Operation | null =>
+	const homeOperationOf = (candidate: Probe): Operation | null =>
 		candidate.expectedClean || candidate.defectSignature === null
 			? null
 			: resolveHomeOperation(
@@ -1085,11 +1106,11 @@ export function buildWorkedExampleChain(): WorkedExampleChain {
 		contract.interactionPlan,
 		contract.permittedInterfaces,
 	)
-	const order = bindingOrder(contract.interactionPlan)
-	if (order.cyclic.length > 0) {
-		fail(
-			`the interaction plan carries a binding cycle: ${order.cyclic.join(', ')}`,
-		)
+	// `resolveCapturedBindings` orders the plan itself, so this call is here
+	// only to assert the plan is acyclic before it does.
+	const { cyclic } = bindingOrder(contract.interactionPlan)
+	if (cyclic.length > 0) {
+		fail(`the interaction plan carries a binding cycle: ${cyclic.join(', ')}`)
 	}
 	const captured = resolveCapturedBindings(
 		contract.interactionPlan,
@@ -1104,9 +1125,14 @@ export function buildWorkedExampleChain(): WorkedExampleChain {
 		)
 	}
 
-	// One observation per step, by the same rule the selector's own single-match
-	// reduction uses: one match binds, several under a declared `any` binds the
-	// lowest sequence, and anything else binds nothing.
+	// One observation per step, by the same rule `resolveTemporalAnchor`
+	// (`selection.ts:96-127`) applies to an anchor: one match binds, several
+	// under a declared `any` binds the lowest sequence, and anything else binds
+	// nothing. That function cannot be called here because it re-runs the
+	// operation-only `selectObservations` instead of taking a `StepSelection`,
+	// and lifting the reduction out of it would be new score-side surface this
+	// story's Boundaries forbid. `matchedObservationIds` is ascending by
+	// `sequence` (`selection.ts:28-31`), so `[0]` is the lowest.
 	const observationById = new Map(
 		record.observations.map((observation) => [
 			observation.observationId,
@@ -1115,13 +1141,16 @@ export function buildWorkedExampleChain(): WorkedExampleChain {
 	)
 	const stepObservations: Record<string, Observation> = {}
 	for (const step of contract.interactionPlan) {
-		const selection = selectionOf.get(step.stepId)
-		if (selection === undefined) continue
+		const selection =
+			selectionOf.get(step.stepId) ??
+			fail(`step ${step.stepId} was never selected`)
 		const [first] = selection.matchedObservationIds
 		if (first === undefined) continue
 		if (selection.result === 'several' && step.cardinality !== 'any') continue
-		const observation = observationById.get(first)
-		if (observation !== undefined) stepObservations[step.stepId] = observation
+		const observation =
+			observationById.get(first) ??
+			fail(`step ${step.stepId} selected unknown observation ${first}`)
+		stepObservations[step.stepId] = observation
 	}
 	// The contract's own declared sets, projected to their members. Hardcoding
 	// an empty map would leave a reference-set operand added later resolving
@@ -1129,14 +1158,19 @@ export function buildWorkedExampleChain(): WorkedExampleChain {
 	const referenceSets = Object.fromEntries(
 		Object.entries(contract.referenceSets ?? {}).map(([id, declaration]) => [
 			id,
-			declaration.members as JsonValue[],
+			declaration.members,
 		]),
 	)
 	const resolveOperand = makeResolveOperand(stepObservations, referenceSets)
 	const pointerDenotesCollection = makePointerDenotesCollection(contract, index)
 
 	// AD-40's witness match, and AD-23's finding buckets.
-	if (probe.expectedClean || probe.defectSignature === null) {
+	// Split so each failure names its own reason. The cast is what TypeScript
+	// still needs after them: narrowing `probe.defectSignature` refines the
+	// property for reads and leaves the object's own declared type alone, so
+	// the whole value is not assignable to `SignedProbe` without it.
+	if (probe.expectedClean) fail(`${probe.probeId} is a clean control`)
+	if (probe.defectSignature === null) {
 		fail(`${probe.probeId} carries no defect signature to match against`)
 	}
 	const signedProbe = probe as SignedProbe
@@ -1146,24 +1180,17 @@ export function buildWorkedExampleChain(): WorkedExampleChain {
 		record,
 	)
 	const findingMap = mapFindings([probe], contract.permittedInterfaces, record)
-	const bucketOf = new Map<
-		string,
-		'mapped' | 'unmapped' | 'dangling' | 'signatureless'
-	>()
-	for (const entry of findingMap.mapped) bucketOf.set(entry.findingId, 'mapped')
-	for (const entry of findingMap.unmapped)
-		bucketOf.set(entry.findingId, 'unmapped')
-	for (const entry of findingMap.dangling)
-		bucketOf.set(entry.findingId, 'dangling')
-	for (const entry of findingMap.signatureless)
-		bucketOf.set(entry.findingId, 'signatureless')
+	const bucketOf = new Map<string, keyof FindingMap>()
+	for (const bucket of FINDING_BUCKETS) {
+		for (const entry of findingMap[bucket])
+			bucketOf.set(entry.findingId, bucket)
+	}
 
 	// AD-40 pairs a probe with exactly one designated oracle: the one
 	// discharging the behaviour its seeded defect breaks. The witness attaches
 	// there and nowhere else.
-	const seededBehaviorId = probe.expectedClean
-		? fail('a clean control seeds no defect')
-		: (probe.defects[0]?.behaviorId ?? fail('the probe seeds no defect'))
+	const seededBehaviorId =
+		signedProbe.defects[0]?.behaviorId ?? fail('the probe seeds no defect')
 	const seededBehavior =
 		contract.behaviors.find((behavior) => behavior.id === seededBehaviorId) ??
 		fail(`no behaviour ${seededBehaviorId}`)
@@ -1172,7 +1199,9 @@ export function buildWorkedExampleChain(): WorkedExampleChain {
 			`behaviour ${seededBehaviorId} is discharged by ${seededBehavior.oracles.length} oracles, so the signature designates none`,
 		)
 	}
-	const designatedOracleId = seededBehavior.oracles[0] as string
+	const designatedOracleId =
+		seededBehavior.oracles[0] ??
+		fail(`behaviour ${seededBehaviorId} declares no oracle`)
 
 	const severityOfBehaviourFor = (oracleId: string) =>
 		contract.behaviors.find((behavior) => behavior.oracles.includes(oracleId))
@@ -1184,27 +1213,28 @@ export function buildWorkedExampleChain(): WorkedExampleChain {
 		const check = oracle.check
 		if (check === null) fail(`oracle ${oracle.id} carries no check`)
 		const checkResolution: CheckResolutionValue = resolveCheck(
-			check as Expression,
+			check,
 			resolveOperand,
 			pointerDenotesCollection,
 			POLICY.regexMatchStepBudget,
 			`EvalContract.oracles[id=${oracle.id}].check`,
 		)
-		const steps = addressedSteps(check as Expression)
-		const selections = contract.interactionPlan
+		const steps = addressedSteps(check)
+		// Walked once: `selections` is what the outcome reads and
+		// `selectorAmbiguity` is a predicate over the same pairs.
+		const addressed = contract.interactionPlan
 			.filter((step) => steps.has(step.stepId))
-			.map(
-				(step) =>
-					selectionOf.get(step.stepId) ?? {
-						result: 'none' as const,
-						matchedObservationIds: [],
-					},
-			)
-		const selectorAmbiguity = contract.interactionPlan.some(
-			(step) =>
-				steps.has(step.stepId) &&
-				selectionOf.get(step.stepId)?.result === 'several' &&
-				step.cardinality !== 'any',
+			.map((step) => ({
+				step,
+				selection:
+					selectionOf.get(step.stepId) ??
+					fail(`step ${step.stepId} was never selected`),
+			}))
+		const selections = addressed.map((entry) => entry.selection)
+		const selectorAmbiguity = addressed.some(
+			(entry) =>
+				entry.selection.result === 'several' &&
+				entry.step.cardinality !== 'any',
 		)
 		const disposition =
 			record.oracleDispositions.find((entry) => entry.oracleId === oracle.id) ??
@@ -1233,7 +1263,9 @@ export function buildWorkedExampleChain(): WorkedExampleChain {
 			polarity: oracle.polarity,
 			probeClass: probe.probeClass,
 			expectedClean: probe.expectedClean,
-			probeSigned: true,
+			// Read off the probe rather than asserted, so the nine declared inputs
+			// this chain names stay exactly nine: this one an artifact carries.
+			probeSigned: signedProbe.defectSignature !== null,
 			probeQualified: admitted.result.qualified,
 			// The contract declares no waiver, no rubric, and the run recorded no
 			// AD-26 evaluation fault. All three arrive declared, as `outcome.ts`
@@ -1243,12 +1275,19 @@ export function buildWorkedExampleChain(): WorkedExampleChain {
 			evaluationFault: false,
 		}
 		const resolution = resolveOutcome(inputs)
+		// A `resolvedFrom` naming a finding the record does not carry is an AD-32
+		// cross-artifact dangling reference, and quietly substituting the
+		// behaviour severity there could move the AD-21 floor comparison with no
+		// signal, so it fails instead.
 		const severity =
 			resolution.resolvedFrom === null
 				? severityOfBehaviourFor(oracle.id)
 				: (record.findings.find(
 						(finding) => finding.findingId === resolution.resolvedFrom,
-					)?.severity ?? severityOfBehaviourFor(oracle.id))
+					)?.severity ??
+					fail(
+						`oracle ${oracle.id} resolved from ${resolution.resolvedFrom}, which the record does not carry`,
+					))
 		outcomes.push({
 			oracleId: oracle.id,
 			probeId: probe.probeId,
@@ -1266,7 +1305,10 @@ export function buildWorkedExampleChain(): WorkedExampleChain {
 			oracleId: oracle.id,
 			required: true,
 			severity,
-			checkResolved: true,
+			// `ladder.ts:42` defines this as the caller's own
+			// `OutcomeInputs.checkResolution !== null`, so it is read off the
+			// resolution rather than declared beside it.
+			checkResolved: inputs.checkResolution !== null,
 			resolution,
 		})
 	}
@@ -1384,7 +1426,11 @@ export function buildWorkedExampleChain(): WorkedExampleChain {
 		),
 		scoringVersionInputs,
 		// AD-7's declared key: the scoring policy digest plus the corpus digest
-		// restricted to the probes a comparison covers.
+		// restricted to the probes a comparison covers. No corpus artifact
+		// exists here, so the admitted probe identifiers stand in that second
+		// position: they are the restriction the definition asks for, and both
+		// inputs are then real rather than the placeholder `corpusDigest`
+		// `scoringVersion` has to carry.
 		comparabilityKey: digestArtifact(
 			{
 				scoringPolicyDigest: scoringVersionInputs.scoringPolicyDigest,
