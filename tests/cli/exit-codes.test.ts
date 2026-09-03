@@ -148,6 +148,19 @@ describe('cli exit codes: the Invalid rung (Story 8.4)', () => {
 	})
 })
 
+describe('cli exit codes: the carried exit code is never recomputed from the verdict (Story 8.4)', () => {
+	it('an explicit exitCode that disagrees with the verdict-derived one is returned unchanged when strict promotion does not apply', () => {
+		const outcome: CommandOutcome = {
+			kind: 'verdict',
+			verdict: 'PASS',
+			exitCode: 99,
+			strictPromotable: true,
+		}
+		expect(exitCodeFor(outcome, LAX)).toBe(99)
+		expect(exitCodeFor(outcome, STRICT)).toBe(99)
+	})
+})
+
 describe('cli exit codes: totality (cases 47-48)', () => {
 	it('case 47: a kind outside the union falls off the ladder as undefined', () => {
 		const outside = { kind: 'reticulate' } as unknown as CommandOutcome

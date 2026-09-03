@@ -681,10 +681,11 @@ minted by the <code>score</code> command</li>
 </ul>
 <p><code>eval-quality</code> executes nothing: it never spawns a process, calls a model, drives a system under test,
 or invokes a judge. Its pure stages are compile, seal, ingest, pre-flight, score, and emit, and every
-one of them is built: <code>src/core/lineage/stage-table.ts</code> carries a real module on all six rows. Three
-are reachable through the CLI and the library alike: compile, seal, and pre-flight. <code>ingest</code>, <code>score</code>,
-and <code>emit</code> are built and exported nowhere, along with every other module under <code>src/core/score/</code> and
-<code>src/core/emit/</code>. Pre-flight probes the fixture through the environment-probe port, so a contract that declares a fixture reset
+one of them is built: <code>src/core/lineage/stage-table.ts</code> carries a real module on all six rows, and
+every one is reachable through the CLI and the library alike. Compile, seal, and pre-flight each
+have their own command and their own exported function. <code>ingest</code>, <code>score</code>, and <code>emit</code> are reached
+through the one <code>score</code> command and the one exported <code>runScore</code> call that chains them, per AD-14&#39;s
+rule that a command exposes no more than the library itself calls. Pre-flight probes the fixture through the environment-probe port, so a contract that declares a fixture reset
 needs the caller&#39;s probe policy to authorize that operation&#39;s method as well as the read methods
 every other pre-flight leg uses. Engine integration is a later adapter behind a port, not a v0
 dependency. See
@@ -704,9 +705,9 @@ dependency. See
 <p>A compiler enforces these rules mechanically against the contract artifact, in three classes. Structural errors fail compilation. Coverage gaps score down without blocking. A waived pattern is allowed when it records the named rule, a rationale, a machine-checkable condition, and the approval.</p>
 <p>Rubrics compile under the same discipline: an anchored scale, a bounded length, named failure-mode penalties, rubric identifiers unique across the contract and criterion identifiers unique inside their own rubric, every criterion stating a question, and every criterion&#39;s evidence pointer resolving against the declared interfaces. Authored rubric text that asks a judge to grade the subject&#39;s own stated reasoning fails a closed-vocabulary check over the wording.</p>
 <h2 id="how-eval-contract-strength-scoring-works">How Eval Contract strength scoring works<a class="heading-anchor" href="#how-eval-contract-strength-scoring-works" aria-label="Link to How Eval Contract strength scoring works">#</a></h2>
-<p>This section describes the design. Nothing in this release computes it <em>through a command or a
-library call</em>; the functions themselves exist, and <code>npm run generate:worked-example</code> runs them over
-the committed worked chain. Do not trust a contract because it looks thorough. Put a known defect behind it, run the evaluator, and check whether the contract&#39;s oracles caused the defect to be caught.</p>
+<p>This section describes the design. The <code>score</code> command and its <code>runScore</code> library call compute it
+over a trial set; <code>npm run generate:worked-example</code> runs the same functions over the committed worked
+chain. Do not trust a contract because it looks thorough. Put a known defect behind it, run the evaluator, and check whether the contract&#39;s oracles caused the defect to be caught.</p>
 <p>Two probe classes go behind a contract, and a strong contract rejects both:</p>
 <ul>
 <li><strong>Defect probes</strong>, where the behavior is simply wrong.</li>
@@ -720,7 +721,7 @@ the committed worked chain. Do not trust a contract because it looks thorough. P
 <p>A required oracle that missed, abstained, errored, or is absent prevents PASS, and a high overall score never overrides it. An infrastructure error or a failed environment pre-flight is not a behavioral result at all; it invalidates the run and is re-executed rather than scored.</p>
 <h2 id="using-it">Using it<a class="heading-anchor" href="#using-it" aria-label="Link to Using it">#</a></h2>
 <p><code>eval-quality</code> is its own repository and package, not a plugin inside another framework.</p>
-<p>The <strong>library</strong> is the primary surface. It exports the artifact types, the compiler, the pre-flight, the canonical digest, the lineage validator, and the failure-code and verdict registries. The Zod schemas themselves are not exported; they are published as JSON Schema under <code>eval-quality/schemas/*</code>. The published typed schema is what lets coding agents author contracts correctly by default, which is how the discipline scales beyond the people who went looking for the tool.</p>
+<p>The <strong>library</strong> is the primary surface. It exports the artifact types, the compiler, the pre-flight, <code>runScore</code>, the canonical digest, the lineage validator, and the failure-code and verdict registries. The Zod schemas themselves are not exported; they are published as JSON Schema under <code>eval-quality/schemas/*</code>. The published typed schema is what lets coding agents author contracts correctly by default, which is how the discipline scales beyond the people who went looking for the tool.</p>
 <p>The <strong>CLI</strong> wraps the same library for callers that cannot import TypeScript: CI jobs, GitHub Actions, PR-review and unit-test bots, other frameworks&#39; skills, and any agent permitted to run a shell command.</p>
 <h3 id="what-the-cli-commands-do">What the CLI Commands Do<a class="heading-anchor" href="#what-the-cli-commands-do" aria-label="Link to What the CLI Commands Do">#</a></h3>
 <ul>

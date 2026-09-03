@@ -24,7 +24,7 @@ Eight nouns, in the order they occur in a run. They sit one level above the six 
 | **Rubric** | The grading guide. When scoring lands, it grades judgment-heavy quality against defined criteria. |
 | **Score / verdict** | The combined result of the evaluation, and the answer to whether the evaluation caught the planted defect. Four values: `PASS`, `WAIVED`, `CONCERNS`, `FAIL`. A fifth outcome, Invalid, says the run produced no verdict. |
 
-Two entries above describe semantics the package does not execute yet. `compile` validates oracle structure and reachability today, and resolving an oracle over evaluator evidence to `true`, `false`, or `insufficient-evidence` belongs to the scoring path. `compile` also validates rubrics structurally, and no shipped stage grades with one. See the [roadmap](/explanation/roadmap/).
+`compile` validates oracle structure and reachability, and the `score` command resolves an oracle over evaluator evidence to `true`, `false`, or `insufficient-evidence`. `compile` also validates rubrics structurally, and `score` reads a declared rubric to classify a judge's own conduct as conforming or malformed; grading a subject against a rubric's criteria stays undone. See the [roadmap](/explanation/roadmap/).
 
 ---
 

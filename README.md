@@ -126,10 +126,11 @@ The caller provides:
 
 `eval-quality` executes nothing: it never spawns a process, calls a model, drives a system under test,
 or invokes a judge. Its pure stages are compile, seal, ingest, pre-flight, score, and emit, and every
-one of them is built: `src/core/lineage/stage-table.ts` carries a real module on all six rows. Three
-are reachable through the CLI and the library alike: compile, seal, and pre-flight. `ingest`, `score`,
-and `emit` are built and exported nowhere, along with every other module under `src/core/score/` and
-`src/core/emit/`. Pre-flight probes the fixture through the environment-probe port, so a contract that declares a fixture reset
+one of them is built: `src/core/lineage/stage-table.ts` carries a real module on all six rows, and
+every one is reachable through the CLI and the library alike. Compile, seal, and pre-flight each
+have their own command and their own exported function. `ingest`, `score`, and `emit` are reached
+through the one `score` command and the one exported `runScore` call that chains them, per AD-14's
+rule that a command exposes no more than the library itself calls. Pre-flight probes the fixture through the environment-probe port, so a contract that declares a fixture reset
 needs the caller's probe policy to authorize that operation's method as well as the read methods
 every other pre-flight leg uses. Engine integration is a later adapter behind a port, not a v0
 dependency. See
@@ -159,9 +160,9 @@ Rubrics compile under the same discipline: an anchored scale, a bounded length, 
 
 ## How Eval Contract strength scoring works
 
-This section describes the design. Nothing in this release computes it *through a command or a
-library call*; the functions themselves exist, and `npm run generate:worked-example` runs them over
-the committed worked chain. Do not trust a contract because it looks thorough. Put a known defect behind it, run the evaluator, and check whether the contract's oracles caused the defect to be caught.
+This section describes the design. The `score` command and its `runScore` library call compute it
+over a trial set; `npm run generate:worked-example` runs the same functions over the committed worked
+chain. Do not trust a contract because it looks thorough. Put a known defect behind it, run the evaluator, and check whether the contract's oracles caused the defect to be caught.
 
 Two probe classes go behind a contract, and a strong contract rejects both:
 
@@ -181,7 +182,7 @@ A required oracle that missed, abstained, errored, or is absent prevents PASS, a
 
 `eval-quality` is its own repository and package, not a plugin inside another framework.
 
-The **library** is the primary surface. It exports the artifact types, the compiler, the pre-flight, the canonical digest, the lineage validator, and the failure-code and verdict registries. The Zod schemas themselves are not exported; they are published as JSON Schema under `eval-quality/schemas/*`. The published typed schema is what lets coding agents author contracts correctly by default, which is how the discipline scales beyond the people who went looking for the tool.
+The **library** is the primary surface. It exports the artifact types, the compiler, the pre-flight, `runScore`, the canonical digest, the lineage validator, and the failure-code and verdict registries. The Zod schemas themselves are not exported; they are published as JSON Schema under `eval-quality/schemas/*`. The published typed schema is what lets coding agents author contracts correctly by default, which is how the discipline scales beyond the people who went looking for the tool.
 
 The **CLI** wraps the same library for callers that cannot import TypeScript: CI jobs, GitHub Actions, PR-review and unit-test bots, other frameworks' skills, and any agent permitted to run a shell command.
 
