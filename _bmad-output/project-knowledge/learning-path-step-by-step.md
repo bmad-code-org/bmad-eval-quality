@@ -71,6 +71,10 @@ flowchart TD
 |   28 | epic7-story5 | One function that names each result, written as four ordered tables it prints to a checked-in document, so nobody can read the same run two ways. |
 |   29 | epic7-story6 | Fold a probe's repeated trial votes into one verdict by strict majority, then turn a qualified probe set into a rate vector and a four-valued dominance relation. |
 |   30 | epic7-story7 | Give production and contract-scoring their own verdict ladder, put mode in the scoring version's identity, and reject a run whose two artifacts disagree about which one it is. |
+|   31 | epic7-story8 | Give an uncited defect finding somewhere to go, so a real defect nobody wrote an oracle for still reaches the verdict. |
+|   32 | epic7-story9 | Regenerate the published worked chain from the shipped reference functions, and check the committed bytes still match. |
+|   33 | epic7-story10 | One place that says what the release broke and which scoring versions can no longer be compared. |
+|   34 | epic8-story1 | The first stage that reads three artifacts at once and writes down every way they disagree, without throwing. |
 
 Adding a step: follow `learning-path-template.md`.
 
@@ -2846,4 +2850,98 @@ flowchart TD
   it, because the same hardcoded `1` sits on both sides of the drift comparison. Filed to
   `deferred-work.md` rather than fixed here, since fixing it touches a different story's shipped
   files.
-  included, was read off the actual regenerated schema and test run.
+
+## Step 34 (epic8-story1): the first stage that reads three artifacts at once
+
+**In plain terms:** a pile of rules in this codebase said "the ingest step checks this," and there was
+no ingest step. Most were written into the shipped schema files themselves, where a reader would find
+them and assume the check existed. This step builds it. It takes the three files a finished run
+produces, compares them against each other, and writes down every way they disagree. It never throws
+and never guesses: a run with problems comes back as a run carrying a list of its problems.
+
+**What:** `src/core/ingest/ingest.ts`, a pure function over three already-parsed artifacts, returning
+the observations in a fixed order, the findings, the dispositions, every condition it detected, and
+the two verdict-ladder inputs it can fill today. `src/core/ingest/conditions.ts` declares the eleven
+condition kinds as a runtime list and maps each to the ladder field it feeds, or to `null` where no
+rung exists yet. `STAGE_SIGNATURES.ingest.module` stops being `null`.
+
+**Why:** nothing produced `validated-observations`, which `score` declares as an input, so the
+thirteen scoring functions the previous epic shipped had no path to reach. `auditQuotation` shipped in
+Step 27 with a header saying it "ships with no caller by design"; this is that caller.
+
+**Read in this order:**
+
+1. `src/core/ingest/conditions.ts`: the seven kinds, their payloads, and the ladder field each feeds.
+2. `src/core/ingest/ingest.ts`: the stage, top to bottom, in the order the kinds are declared.
+3. `src/core/stage-contracts.ts`: `IngestStage`, generic over its product so the shape file and the
+   stage never import each other in a circle.
+4. `src/core/lineage/stage-table.ts`: the `ingest` row's `module`, the one field this step changes.
+5. `tests/ingest/ingest.test.ts` and `tests/ingest/conditions.test.ts`: one case per edge-case row,
+   plus the drift checks over the kinds list.
+
+```mermaid
+flowchart TD
+  REC["SealedRunRecord<br/>observations, findings, judge results"]
+  MAN["IsolationManifest or null<br/>allowlists, forbidden-input accounting"]
+  CFG["EvaluatorConfiguration"]
+  QUOTE["score/quotation.ts (Step 27)<br/>auditQuotation, no caller until now"]
+  COND["ingest/conditions.ts<br/>kinds tuple, LADDER_TARGETS"]
+  ING["ingest/ingest.ts<br/>seven checks, nothing thrown"]
+  PROD["ValidatedObservations<br/>conditions + two ladder inputs"]
+  LADDER["score/ladder.ts (Step 30)<br/>rungs for three of the seven"]
+
+  REC --> ING
+  MAN --> ING
+  CFG --> ING
+  QUOTE --> ING
+  COND --> ING
+  ING --> PROD
+  PROD -.-> LADDER
+```
+
+**Story:** `_bmad-output/implementation-artifacts/8-1-the-ingest-stage-and-the-conditions-it-records.md`
+
+### Reference
+
+**Rules:**
+
+- Ingest never parses. Unparseable bytes are rejected at the application boundary; this stage
+  receives typed artifacts and compares them.
+- A detected problem comes back as data. Exactly one fault propagates: quoting a value canonical
+  serialization rejects raises `non-canonicalizable-value` out of `core/canonical`.
+- A condition with no rung maps to `null` and keeps its own name. Putting it on a neighbouring rung
+  would make the persisted reason line say the wrong thing.
+- Eight of the eleven carry `null` today. A ninth fails the build, because `conditions.test.ts` pins
+  the set of eight.
+- A `findingId` or an `oracleId` the record uses twice is itself a condition. Everything downstream
+  addresses those entries by exactly that identifier.
+- The evaluator configuration's digest is recomputed here and compared against the record's. It is
+  the one digest in the run that no caller attests to.
+- An absent isolation manifest and an absent evaluator configuration are conditions, not errors.
+  Unparseable and incomplete are schema rejections raised before this stage runs.
+- Everything the stage sorts is sorted on its whole payload. Two entries that still tie are equal
+  values, so nothing can tell them apart anyway.
+- The kinds are a runtime list first and the union draws from it. A union's string literals are
+  erased at runtime, so a drift check has nothing to read otherwise.
+- `ladder.ts` is imported type-only. A value import used only in type position compiles silently
+  under this tsconfig and would put the whole ladder module on ingest's runtime load path.
+- Observations come out sorted by `sequence`, then `observationId`, the same sort
+  `selectObservations` uses. Array position is never read.
+- `isolationViolation` ships as a list of strings, one entry per offending value, while the ladder
+  field it feeds is still one nullable string. The field is the half that widens next.
+- Three checks that name ingest in a schema comment need inputs the stage row does not declare. They
+  sit in `deferred-work.md` with owners rather than being computed from artifacts ingest never sees.
+
+**Watch out:**
+
+- The coverage config takes a per-directory floor as a glob key, and a glob matching nothing
+  summarises to `"Unknown"`, which compares below no threshold at all. Such a gate is permanently
+  green. `tests/ingest/conditions.test.ts` asserts the directory the glob names is real.
+- `tests/preflight/fixtures/observations.ts` builds `ProbeObservation` from the port message schema,
+  an unrelated type. The filename reads like a source for this step's fixtures.
+- The shipped record fixture is not clean, by design. Its defect finding quotes a JSON spelling
+  RFC 8785 never produces, one judge result carries `score: null`, the paired manifest admits one
+  forbidden input, and both artifacts declare a placeholder evaluator-configuration digest, so four
+  of the eleven conditions fire on the fixtures as they ship.
+- The product's arrays are copies and its elements are not. Mutating an observation on the record
+  after the call changes what the product shows.

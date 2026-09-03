@@ -17,6 +17,8 @@ This document decomposes the epic-ready compile-and-seal half of eval-quality v0
 
 **Scope boundary for Epic 7, which opens v1.** Epic 7 is the work that closes those seven items: pure reference functions with generated fixtures for AD-21, AD-33, and AD-40, run against the worked chain plus synthetic records, with the tables emitted rather than promised. It delivers reference implementations and their generated tables. It does not ship the `score` or `emit` stages or a `score` CLI command; `stage-table.ts` still carries `module: null` for both when the epic ends, and epic 8 is what fills them in. Two shipped surfaces do move: the generated AD-21 ladder carries an exit code and a `--strict` column because a ladder without them is not AD-21's table, and mode entering `ScoringVersionInputs` makes every scoring version computed before the epic non-comparable with every one after. Epic 7's own preamble states both.
 
+**Scope boundary for Epic 8, which finishes v1.** Epic 8 fills in the three stages Epic 7 left at `module: null` — `ingest`, `score`, and `emit` — and puts a `score` command and a library call on top of them. Everything it composes already exists as a pure reference function; what it adds is the one orchestration path through them, the validation `ingest` owns, the evidence artifact `emit` mints, and the adapter AD-14 permits. It closes the remaining half of owed item 1 by changing `score`'s stage-table row to consume a trial set in the same story that gives `score` a module. When it ends, `scripts/worked-example-target.ts` no longer hand-composes the chain: it calls the shipped stages, which is what makes the worked example evidence rather than a parallel implementation.
+
 ## Requirements Inventory
 
 ### Functional Requirements
@@ -120,7 +122,25 @@ FR26 (AD-11, AD-13, NFR8): every interchange schema Epic 7 touches is bumped and
 
 Also added with Epic 7: FR21 covers AD-9's per-class qualification record and the gate that rejects an unqualified probe, which the shipped probe schema records as enforced by nothing in v0.
 
+### v1 requirements, added with Epic 8
+
+FR27 (AD-16, AD-23, AD-24): `ingest` validates a sealed run record against its isolation manifest, evaluator configuration, and private artifact manifest, produces the validated observations `score` consumes, and records every invalidation condition it finds as data rather than throwing.
+FR28 (AD-7, AD-24, Owed 1's remaining half): `score` consumes a trial set, orchestrates Epic 7's reference functions into the outcome and verdict values `emit` serializes, and its stage-table row declares both that trial set and its own module.
+FR29 (AD-24, AD-29): `emit` mints the evidence artifact from the scored outcomes and verdict and is its sole producer, with the lineage edge the stage table already declares.
+FR30 (AD-14, AD-21, AD-34): a `score` command translates its arguments into one application call and serialization, takes its exit code from the ladder's own resolution, honours `--strict` through the ladder's strict-promotion flag, and reaches no capability the library cannot.
+FR31 (AD-11, AD-38, NFR8): the worked chain and the development corpus are regenerated through the shipped stages rather than a parallel composition, and the epic's caller-facing CLI and library surface change is disclosed on release.
+
+| Requirement | Covered by |
+| --- | --- |
+| FR27 | Epic 8 (Story 8.1) |
+| FR28 | Epic 8 (Story 8.2) |
+| FR29 | Epic 8 (Story 8.3) |
+| FR30 | Epic 8 (Story 8.4) |
+| FR31 | Epic 8 (Story 8.5) |
+
 Still out of scope after Epic 7: the shipped `score` and `emit` stages and their CLI surface (epic 8), VFR-6 engine reuse, VFR-1 detection, and every entry in the spine's *Deferred* section.
+
+Still out of scope after Epic 8: VFR-6 engine reuse, VFR-1 detection, and every entry in the spine's *Deferred* section, whose first item names `agentevals` by name.
 
 ## Epic List
 
@@ -131,6 +151,7 @@ Still out of scope after Epic 7: the shipped `score` and `emit` stages and their
 - Epic 5: the discipline-rule predicates and their contract fixture corpus (3 stories)
 - Epic 6: ports, pre-flight, and the library and CLI surface (5 stories)
 - Epic 7: the score reference implementation (10 stories) — v1
+- Epic 8: the shipped ingest, score, and emit stages and their CLI surface (5 stories) — v1
 
 ## Epic 1: Zod schemas and the published JSON Schema export
 
@@ -647,3 +668,79 @@ So that a version bump is a disclosure rather than a surprise.
 **Given** the `schemaVersion` bumps Stories 7.1 through 7.8 each made,
 **When** the release notes are written,
 **Then** every caller-facing break is called out under NFR8's pre-1.0 SemVer rule naming the artifact, the field, and whether the change is additive or breaking, the five touched interchange schemas — sealed run record, eval contract, probe, evidence artifact, sealed evaluator brief — each appear with their new `schemaVersion`, the probe schema is added to the surfaces AD-11's disclosure sentence enumerates because it did not name one, the two new AD-5 codes and the regenerated failure-code enumeration are listed among those surfaces, the disclosure states plainly that a pre-bump record reaches a caller as a parse failure and never as AD-28's `schema-version-mismatch`, since `src/core/schemas/lineage.ts` deliberately keeps `schemaVersion` as `z.int().min(1)` and nothing compares versions, and the statement that mode entering `ScoringVersionInputs` makes every scoring version computed before this epic non-comparable with every version after it is written down rather than left silently true.
+
+## Epic 8: the shipped ingest, score, and emit stages and their CLI surface
+
+Implements AD-14, AD-16's enforcement point, AD-23's ingest-side rules, AD-24's three unbuilt stage rows, AD-34's single published shape, and the remaining half of owed item 1. This is the epic Epic 7's preamble names three times: "Epic 8 is what fills those in, and it becomes writable when this epic's tables exist."
+
+**Why this epic is writable now.** Every function it composes exists and is covered. `src/core/score/` holds thirteen modules and `npm run validate` is green over all of them. What does not exist is any path from a caller to any of them: nothing under `src/` imports `src/core/score/`, `src/application/index.ts` re-exports no score symbol, `src/index.ts` re-exports no score symbol, and `src/cli/arguments.ts:8` types `Command` as `'compile' | 'seal' | 'preflight'`. The one place the whole chain is composed is `scripts/worked-example-target.ts:1071`, a build script outside the package's own dependency graph, which assembles `OutcomeInputs` by hand at lines 1247-1272 and hardcodes `waiver`, `judgeConduct`, `evaluationFault`, and `preflightPassed` because no shipped code derives them. That script is the evidence this epic is buildable and the reason it must be built: a second composition living in `scripts/` is the parallel implementation AD-14's *Prevents* clause exists to stop.
+
+**What Epic 7 left that this epic is obliged to pick up.** Three code-review findings were deferred with an explicit epic-8 trigger rather than closed, and each names the moment it fires. `src/core/score/reduce-trials.ts:98-105` has no runtime guard on a vote state outside the closed twelve, deferred as "worth a defensive `default` branch when the reducer is actually wired to a caller in epic 8". `src/core/score/reduce-trials.ts:92-95,115` never range-checks `catchThreshold`, deferred as "revisit when epic 8 wires a caller". `src/core/score/strength.ts:168-177` silently drops the earlier of two `Outcome` entries sharing one `probeId`, deferred until "the epic 8 artifact-emission code starts building `outcomes` arrays for real". Story 8.2 wires the first two callers and Story 8.3 is that artifact-emission code, so all three close inside this epic rather than moving again.
+
+**One inherited claim is not true as written, and Story 8.4 settles it.** Epic 7's preamble states that the generated AD-21 ladder table "carries an exit code per rung and a column saying whether `--strict` promotes that rung". The data exists — `LADDER_EXIT_CODES` at `src/core/score/ladder.ts:156-162` and `LadderResolution.exitCode` and `.strictPromotable` at `:139-146` — but `docs/ad21-verdict-decision.generated.md` renders four columns, `Condition`, `Rung`, `Guard`, and `Evidence condition`, and no exit code appears in either ladder's table. `Evidence condition` is the strict column under another name, since `strictPromotable` is computed from `LadderConditionRow.evidenceCondition` at `ladder.ts:618-627`. The exit-code column is genuinely absent. Story 8.4 is the story that makes the CLI read those columns, so it is the story that adds the column the claim already promised.
+
+**What this epic may not do.** No new interchange artifact and no `schemaVersion` bump. `validated-observations` and `scored-outcomes-and-verdict` are internal stage products that AD-24 exempts from publication, and `stage-table.ts` already carries both with `ownsInterchange: null`. No AD-5 code and no AD-28 code is minted: AD-28's ten-code registry already carries `non-canonicalizable-value`, the one fault that reaches a caller through `ingest`, and `schema-parse-failure`, which the application boundary raises before `ingest` sees anything, and AD-5 is compile-time only. No spine amendment and no new ADR: an ambiguity found mid-story is settled by construction in that story, as Epic 7 established. VFR-6 engine reuse stays deferred, and the spine's *Deferred* list, whose first entry is "Any engine integration, including agentevals", is untouched.
+
+**The one architectural decision this epic must not get wrong, stated up front.** `ingest` returns what it found as data and raises nothing. AD-16's rule text names `core/ingest` as "the enforcement point: an absent, unparseable, incomplete, or violating manifest invalidates the run and records the reason", and AD-24 says ingest "computes its digest from the artifact and invalidates the run when it is absent or incomplete". Invalidation is a rung on AD-21's ladder; a thrown `RuntimeFault` is exit code 5. Two exceptions are named rather than assumed: `schema-parse-failure` is raised at the application boundary before `ingest` sees anything, following every shipped artifact parse, and `non-canonicalizable-value` propagates out of `auditQuotation` when a parsed record carries a value `core/canonical` rejects.
+
+**Four conditions have no rung, and Story 8.2 owes them one.** Story 8.1 detects a dangling citation, a record-versus-manifest disagreement, an admitted prohibited input, and a malformed judge result, and neither shipped ladder has a row for any of them. AD-32 says its checks fail "invalidating rather than degrading a verdict", AD-17 says a malformed judge response "invalidates the run rather than becoming a low score", and AD-16's title carries a prohibited-input clause AD-21's Invalid enumeration never picked up. None may be routed to the FAIL row at `ladder.ts:404-412`, whose guard reads "internally inconsistent under AD-17". So Story 8.1 records them against a `null` ladder target and Story 8.2 adds the rows, which is a real dependency between the two rather than a deferral.
+
+### Story 8.1: The ingest stage and the conditions it records
+
+As the six schema fields and one AD that name `ingest` as their enforcement point and have no enforcer,
+I want the stage built,
+So that a sealed run record becomes validated observations with every condition named in the shape its consumer already declares.
+
+**Acceptance Criteria:**
+
+**Given** `stage-table.ts:89-104`'s `ingest` row, which already declares `sealed-run-record`, `isolation-manifest`, and `evaluator-configuration` as inputs, `mode` as its value input, and `validated-observations` as its owned internal product,
+**When** the stage is built at `src/core/ingest/`,
+**Then** the row's `module` names it and `src/core/stage-contracts.ts` gains a generic `IngestStage<Product>` on the `ReduceStage` pattern so the file keeps importing schemas only; the stage receives already-parsed artifacts and never parses, since every shipped `schema-parse-failure` over an artifact is raised in `application/`; it enforces cited-identifier resolution, quotation witnessing through the existing `auditQuotation`, an absent isolation manifest, a violating one, forbidden-input accounting admitting any of the seven floor members, record-versus-manifest agreement over `runId`, `contractDigest`, and `evaluatorConfigurationDigest` but not over `conditionArm`, which both schemas call an opaque label with no product semantics, and AD-17's record-decidable judge half where `JudgeResult.score` is `null`; each condition is a discriminated-union variant carrying its consumer's declared payload, mapped under a total record keyed off an exported `INGEST_CONDITION_KINDS` tuple onto the literal target union `'isolationViolation' | 'unwitnessedQuotations' | null`, with the four `null` targets pinned by a case so a fifth fails the build; nothing is thrown except AD-28's `non-canonicalizable-value` propagating out of `auditQuotation`, and no code is added to either registry; ingest's condition identifiers are asserted disjoint from `outcome.ts`'s shipped `INVALIDATING_CONDITIONS`; the three checks whose inputs the row does not declare are routed into `deferred-work.md` with named owners; `mode` is read off the record and nowhere later; observations are exposed in ascending `sequence`; and no generated table moves, which `check:ad21-table` proves.
+
+### Story 8.2: The score stage over a trial set
+
+As owed item 1's remaining half and thirteen reference functions no caller reaches,
+I want `score` to be one orchestration over them,
+So that the composition living in a build script becomes the product.
+
+**Acceptance Criteria:**
+
+**Given** Story 8.1's validated observations and the reference functions of Stories 7.2 through 7.8,
+**When** the stage is built at `src/core/score/score.ts`,
+**Then** `stage-table.ts`'s `score` row names the module and declares a trial set rather than a single run's observations, closing owed item 1's second half in the same story that gives `score` a module as the epic breakdown requires; the orchestration is the one at `scripts/worked-example-target.ts:1071-1381` rather than a second design, covering probe sealing, plan indexing, captured-binding resolution, selection, the witness match, per-oracle check resolution, `resolveOutcome`, `reduceTrialSet`, `buildStrengthVector`, coverage evaluation, and the mode's own ladder; the four `OutcomeInputs` fields that script hardcodes — `waiver`, `judgeConduct`, `evaluationFault`, and `probeQualified` — are each derived from a declared input or are a documented caller-supplied argument, with `judgeConduct`'s derivation consuming Story 8.1's `judge-result-unscored` condition and performing the criterion-to-oracle mapping that needs the contract's rubrics; `preflightPassed` is read from a real `PreflightVerdict` rather than assumed; **the eight rows Story 8.1's rungless conditions require are added to both ladders — a repeated record identifier, a dangling citation from a finding, a dangling citation from an oracle disposition, a record-versus-manifest disagreement, an admitted prohibited input under AD-16's first clause, an absent evaluator configuration, an evaluator configuration whose recomputed digest disagrees with the record's declaration, and a malformed judge result — each with its ladder input and its fixture, with `docs/ad21-verdict-decision.generated.md` regenerated and `check:ad21-table` green**, since AD-32's "invalidating rather than degrading a verdict", AD-17's "invalidates the run rather than becoming a low score", AD-16's two-clause title, and AD-24's "invalidates the run when it is absent or incomplete" each close the FAIL route; **the malformed-judge row reads Story 8.1's condition directly and is an independent invalidation path**, not the basis-naming row `ladder.ts:218-223` records for `selector-ambiguity` and `unwitnessed-claim`: those coincide with `infrastructure-error` by construction, while a `judgeResults` entry whose `criterionId` maps to no oracle produces the condition and no per-oracle `judge-error`, so `invalidating-state` never fires and nothing else invalidates the run; **`LadderTarget` widens to name the eight new `EvidenceIntegrityInputs` fields alongside the two existing targets, each still built with `Extract` against its own `keyof` union, `null` is removed from the union entirely, and Story 8.1's mapping is re-pointed onto the new fields**, since a row whose `reasons()` reads a field nothing populates is worse than the condition it replaced, and deleting `null` from the type makes a ninth rungless condition a compile error rather than a test failure; `EvidenceIntegrityInputs.isolationViolation` widens from `string | null` to `readonly string[]`, which is the shape `ladder.ts:192-197` was written for and the shape Story 8.1's product already ships, so the widening is the ladder catching up rather than a conversion; the row additions change behaviour and republish a generated table rather than moving any surface AD-11 enumerates, so they are release-noted rather than disclosed as a schema, registry, or exit-code break; the `operationId` collision routed out of Story 8.1 is enforced here, where `eval-contract` is a declared input; `reduceTrialSet` gains the `default` branch and the `catchThreshold` range check its two deferred findings name; and the mode-specific assessment type is chosen from the record's own `mode` with `checkModeAgreement` enforced rather than merely exported.
+
+### Story 8.3: The emit stage and the evidence artifact it mints
+
+As the artifact AD-24 gives to `emit` alone and nothing in `src/` has ever built,
+I want the stage that mints it,
+So that a scored run leaves the package as a versioned artifact with its lineage.
+
+**Acceptance Criteria:**
+
+**Given** Story 8.2's outcomes and verdict and `stage-table.ts`'s `emit` row, which already declares `lineage: 'mints'`,
+**When** the stage is built at `src/core/emit/`,
+**Then** the row's `module` names it, `emit` is the sole producer of the evidence artifact as `ARTIFACT_PRODUCERS` already declares, the artifact it builds parses under the shipped schema at its current `schemaVersion` with no bump, `parentDigest` and `revisionCount` are written here and by no other module so `check:lineage`'s derived allowlist stays true, `ScoringVersionInputs.mode` appears in `callerAttestedInputs` because it is the one field that can only be caller-supplied, the duplicate-`probeId` drop at `strength.ts:168-177` is guarded now that outcome arrays are built for real, and the seven-place hand-assembly at `scripts/worked-example-target.ts:1417-1480` is deleted rather than left as a second builder.
+
+### Story 8.4: The score command, the application call, and the published surface
+
+As VFR-8's parity rule, which defines a capability reachable through one surface and not the other as a defect,
+I want `score` on both surfaces at once,
+So that the library and the CLI publish one shape.
+
+**Acceptance Criteria:**
+
+**Given** AD-14's rule that a command is "one orchestration call plus artifact serialization" holding no validation, scoring, or policy logic, and AD-34's rule that both surfaces sit on `application/`,
+**When** the surface is added,
+**Then** `src/application/score.ts` is the single orchestration entry, it is re-exported from `application/index.ts` and reachable from `src/index.ts` under the same dependency matrix the barrel comment already fixes, `Command` gains `'score'` with its input flags and its `--strict` behaviour declared in the same exhaustive records the existing three commands use (`INPUT_KEYS`, `TAKES_STRICT_INPUTS`, `TAKES_RUN_ID`, `EMITTED`, and `COMMAND_USAGE` are the five the compiler catches), the dispatch at `src/cli/run.ts:262-276` stops being a two-branch ternary whose `else` silently runs `seal` for any command it does not name, and `COMMANDS` at `arguments.ts:27` and the `USAGE` synopsis at `run.ts:94-102`, neither of which the compiler checks, are updated in the same diff, the command's exit code is `LadderResolution.exitCode` read from the ladder rather than recomputed, `--strict` promotes through `LadderResolution.strictPromotable` so `cli/exit-codes.ts`'s `evidenceConditionsOnly` and the ladder's own column can no longer disagree, `docs/ad21-verdict-decision.generated.md` gains the exit-code column Epic 7's preamble already claims for it with `check:ad21-table` green, the CLI writes the artifact to `<target>/evidence-artifact.json` under the existing convention, `README.md`'s exit-code table and its sentence that "scoring ships in a later release" and `docs/explanation/roadmap.md`'s "Nothing in the current release computes contract strength" are each corrected in this diff, and `check:doc-invocations` runs every newly documented `score` invocation against the built binary.
+
+### Story 8.5: The worked chain through the shipped stages, and the release disclosure
+
+As the build script that still holds a second implementation of the pipeline,
+I want it to call the product,
+So that the worked example is evidence rather than a parallel derivation.
+
+**Acceptance Criteria:**
+
+**Given** Stories 8.1 through 8.4 and `scripts/worked-example-target.ts`'s existing 400-line derivation,
+**When** the chain is regenerated,
+**Then** `buildWorkedExampleChain` calls the shipped `ingest`, `score`, and `emit` stages for every value it currently derives by hand, the committed `spike-worked-example/` bytes are byte-identical to the pre-change bytes or every difference is named with its cause, `npm run check:worked-example` and `npm run check:dev-corpus` are green with no hand-filled downstream value remaining, `npm run generate:dev-corpus` reproduces the corpus through the same path with `scripts/dev-corpus-target.ts:134-136`'s "a probe cannot yet be scored once admitted" corrected at its source rather than in the generated `corpus/dev/README.md`, and the release notes disclose the epic's caller-facing surface change under NFR8 naming the new command, its flags, its exit codes, and the newly exported library entry, stating plainly that this is an addition to `0.2.0`'s surface rather than a break in any shipped artifact, since no `schemaVersion` moves in this epic.

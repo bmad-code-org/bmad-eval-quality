@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-08-10
-last_updated: 2026-09-02
+last_updated: 2026-09-03
 project: evalcore
 project_key: NOKEY
 tracking_system: file-system
@@ -94,3 +94,10 @@ development_status:
   7-8-a-rung-for-uncited-defect-findings-and-the-record-it-writes: review
   7-9-regenerate-the-worked-chain-and-its-probe-corpus-entry: review
   7-10-the-epics-disclosed-breaks-and-the-non-comparability-statement: review
+
+  epic-8: in-progress
+  8-1-the-ingest-stage-and-the-conditions-it-records: review
+  8-2-the-score-stage-over-a-trial-set: backlog
+  8-3-the-emit-stage-and-the-evidence-artifact-it-mints: backlog
+  8-4-the-score-command-the-application-call-and-the-published-surface: backlog
+  8-5-the-worked-chain-through-the-shipped-stages-and-the-release-disclosure: backlog
