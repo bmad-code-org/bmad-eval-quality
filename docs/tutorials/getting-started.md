@@ -115,7 +115,7 @@ node dist/cli/main.js seal --in corpus/dev/compile-seal-example/contract.json | 
 ```
 
 ```text
-"contractDigest":"sha256:1f7c657db755e9550ee78c57bdb81ea9f9de9ca227dbeaf823939a0313cbd781"
+"contractDigest":"sha256:3393debb49692e43b7521a8af5887e8c3cea84fa0c44a5d4d39432ae0810fc5a"
 ```
 
 The repository ships the brief this command produces, at `corpus/dev/compile-seal-example/brief.json`.

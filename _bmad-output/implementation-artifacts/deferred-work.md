@@ -40,33 +40,64 @@ misattribution to AD-29, whose actual Rule text (`ARCHITECTURE-SPINE.md:439`) go
 `parentDigest` and `revisionCount`. The guard now checks AD-29's own pair alone; verified still live
 against a mutated `revisionCount` and a set `parentDigest`, and correctly silent against a
 `schemaVersion` other than 1. A sweep for the same pattern (an `EvalContract` literal already
-shaped to the current schema but still stamped 1) found two more unshipped test fixtures
-(`tests/schemas/fixtures/relevance-contracts.ts`'s `absentContract`, `tests/schemas/fixtures/gate-c-
-contract.ts`, and `tests/preflight/fixtures/observations.ts`'s preflight contract) and corrected all
-three in the same pass, though none of them ships or is asserted against a version anywhere, so
-their staleness was cosmetic rather than a caller-facing break. `npm run validate` green throughout:
-99 suite files, 3339 tests, 97.05 / 92.64 percent statement / branch coverage.
+shaped to the current schema but still stamped 1) found three more unshipped test fixtures
+(`tests/schemas/fixtures/relevance-contracts.ts`'s `absentContract`, which
+`explicitlyEmptyContract` spreads, `tests/schemas/fixtures/gate-c-contract.ts`, and
+`tests/preflight/fixtures/observations.ts`'s preflight contract) and corrected all three in the same
+pass, though none of them ships or is asserted against a version anywhere, so their staleness was
+cosmetic rather than a caller-facing break. The sweep is complete: the only `schemaVersion: 1`
+literals left in the repository are the five artifacts genuinely still at version 1 (the rubric, the
+isolation manifest, the evaluator configuration, the private artifact manifest, and the pre-flight
+verdict) and `worked-example-artifacts.ts`'s deliberately frozen pre-regeneration transcriptions.
 
-That both stray stamps trace to one root cause each (a single seed literal for the whole dev
-corpus, a single authored constant for the worked example) is itself the reason a fourth site of
-this exact bug (and, before it, a third: `spike-worked-example/eval-contract.json` on story 7.9's
-own first pass) surfaced in two days. Nothing in the repository names a current schema version per
-artifact, so nothing can catch a stale stamp short of a manual sweep, and the two structural checks
-that touch these files (`check:worked-example`, `check:corpus`) cannot catch it by construction: both
-rebuild through the same literal they compare the commit against, so a wrong stamp and its check
-agree with each other. Closing that properly means a per-artifact current-version registry, which is
-an architecture decision, not a bug fix: `src/core/schemas/eval-contract.ts`'s own published
-description already states that no reader in this version declares an expected version constant,
-and introducing one contradicts that shipped design intent rather than extending it. Left open as an
-observation rather than filed as a new item: every instance the pattern has produced so far is now
-fixed, and the next one (if this repository's schemas keep moving) is a `git grep
-'schemaVersion: 1'` away from being found the same way these four were.
+Five literals carried the stale stamp, and the arithmetic is worth stating plainly because the
+pattern kept recurring: two generator seeds that reach published bytes
+(`scripts/worked-example-target.ts`'s `AUTHORED_CONTRACT` and
+`tests/coverage/fixtures/satisfaction-contracts.ts`'s seed, the second of which the whole dev corpus
+spreads from) and three unshipped fixtures found by the sweep above. Before any of those, the
+committed `spike-worked-example/eval-contract.json` carried it too, since Story 7.9 re-authored that
+contract whole against the current schema and re-stamped it `1` in the same pass; it is the output
+of the first seed and was corrected with it. Every copy was found by hand, across three separate
+passes.
+
+The mechanism that let it happen is now closed. `tests/schemas/eval-contract-version.test.ts` pins
+the eval contract's current version in one place and asserts every authored literal, every member of
+`CORPUS_CONTRACTS`, every contract `buildDevCorpus` emits, and the worked example's own contract
+against it. Verified by reverting the corpus seed to `1`, which reddens twenty-one of its
+twenty-eight cases and names the seed and every corpus member, and by reverting the worked example's
+constant, which reddens the emitted-chain case alone. This is the check `check:corpus` and
+`check:worked-example` cannot be: both rebuild through the same literal they compare the commit
+against, so a wrong stamp and its check agree with each other, while the expected value here is
+written down once and nowhere else. It is also the shape every other lineage-bearing artifact already
+has, since `artifact-fixtures.ts` calls each of its fixtures "the only place a ... version number is
+written down, which is what makes each bump visible"; the eval contract was the one artifact with
+seven such places and no pin. An earlier draft of this entry argued that closing this needed a
+per-artifact current-version registry and that a registry contradicts
+`src/core/schemas/eval-contract.ts`'s published statement that no reader in this version declares an
+expected version constant. That statement is about ingest-side readers, and a test-side pin is not
+one, so the argument did not reach as far as it was asked to. Nothing about the shipped reader
+changed.
+
+A fourth published copy of the same value turned up in review, outside `corpus/`, and the branch's
+own claim that "the only corpus bytes to move are the twenty stamps and the digests over them" was
+therefore one artifact short. `docs/tutorials/getting-started.md` publishes the example brief's
+`contractDigest` as the output of a `seal` command and then tells the reader the repository ships
+the brief that command produces, so a user following the page saw a digest the package no longer
+emits. It had been stale since epic 7 story 2 and went stale a third time here. Neither doc gate
+catches it: `check:docs` does not scan `docs/`, and `check-doc-invocations.mjs` runs each documented
+command but never compares its output to the fenced block beside it. The value is corrected, and
+`tests/architecture/dev-corpus.test.ts`'s case 162, which already recomputes `seal(compile(contract))`
+and compares it to the shipped brief, now also asserts the tutorial carries that brief's digest.
+Verified by restoring the stale value, which reddens the case.
 
 The two remaining Story 7.10 items closed by argument, not by code, because both are spine-text
 completeness gaps rather than defects: nothing reads wrong today, and both would need someone to
-decide new architecture-document text, which is exactly what this repository's standing practice
-(recorded in prior epics' own retrospectives) reserves for a deliberate spine revision rather than an
-incidental finding from an unrelated story. AD-11's enumerated disclosure surface having no automated
+write new normative architecture text. This repository has no epic retrospectives, and the practice
+it does record points the other way: `epic-7-context.md:45` says an ambiguity found mid-story is
+settled by construction in that story rather than escalated into a new spine revision. Neither of
+these two is such an ambiguity. Each is a proposal to add a rule the spine does not currently make,
+which is the one thing that guidance does not cover and the one thing an incidental finding from an
+unrelated story is worst placed to decide. AD-11's enumerated disclosure surface having no automated
 drift check is real and Story 7.10 found it by hand, but the fix is a new checker script deriving the
 list from `INTERCHANGE_ARTIFACTS`, which is new tooling scope disproportionate to what surfaced it,
 not a correction to anything currently wrong. AD-11's rule text having no explicit "added a required

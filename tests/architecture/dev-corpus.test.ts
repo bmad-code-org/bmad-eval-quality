@@ -213,7 +213,7 @@ describe('the development corpus', () => {
 		expect(unnamed).toEqual([indexPath])
 	})
 
-	it('case 162: the example brief is what the shipped stages produce', () => {
+	it('case 162: the example brief is what the shipped stages produce', async () => {
 		const contractText = corpus.get(
 			`${CORPUS_LABEL}/compile-seal-example/contract.json`,
 		) as string
@@ -224,6 +224,25 @@ describe('the development corpus', () => {
 		expect(
 			serializeArtifact(seal(compile(contract)), 'SealedEvaluatorBrief'),
 		).toBe(briefText)
+
+		// The tutorial publishes this brief's `contractDigest` as the output of
+		// `seal --in corpus/dev/compile-seal-example/contract.json` and then says
+		// the repository ships the brief that command produces, so the page is a
+		// third copy of a value only the builder should own. It went stale three
+		// times (stories 6.5, 7.2 and 7.3 each moved the contract's bytes and
+		// left the page behind) because `check:docs` does not scan `docs/` and
+		// `check-doc-invocations.mjs` runs the commands without comparing their
+		// output. Asserted here rather than as a case of its own: it is the same
+		// claim this case already makes, read at the one other place the value
+		// is written down.
+		const tutorial = await readFile(
+			join(repoRoot, 'docs/tutorials/getting-started.md'),
+			'utf8',
+		)
+		const { contractDigest } = JSON.parse(briefText) as {
+			readonly contractDigest: string
+		}
+		expect(tutorial).toContain(`"contractDigest":"${contractDigest}"`)
 	})
 
 	it('case 163: the README names all four absences', () => {
