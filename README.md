@@ -15,7 +15,7 @@ npx eval-quality --help
 2. **Seal**: render the brief for the independent evaluator while hiding the planted bug and scoring answer.
 3. **Preflight**: verify baseline environment readiness and probe reachability before running an evaluator.
 
-Scoring is the next milestone: comparing the evaluator’s completed findings with the hidden bug signature to determine whether the bug was actually caught.
+Scoring is the next milestone. The comparison itself, the evaluator's completed findings against the hidden bug signature, is written and covered in `src/core/score/`. No stage and no command reach it yet.
 
 ### What is the eval spec?
 
@@ -110,8 +110,11 @@ product spec
 - the oracle vocabulary and authoring rules
 - the contract compiler
 - the environment pre-flight
-- Eval Contract strength scoring (next milestone)
-- versioned evidence output and PASS / WAIVED / CONCERNS / FAIL governance (next milestone)
+- Eval Contract strength scoring: the AD-7 rate vector and dominance relation are implemented in
+  `src/core/score/strength.ts`, and no stage or command reaches them
+- PASS / WAIVED / CONCERNS / FAIL governance: both verdict ladders are implemented and total in
+  `src/core/score/ladder.ts`, and no command produces a verdict
+- versioned evidence output (not built; `emit` is the one stage with no module)
 
 The caller provides:
 
@@ -122,8 +125,11 @@ The caller provides:
 - a sealed run record returned for ingestion
 
 `eval-quality` executes nothing: it never spawns a process, calls a model, drives a system under test,
-or invokes a judge. Its pure stages are compile, seal, ingest, pre-flight, score, and emit; compile,
-seal, and pre-flight ship, and ingest, score, and emit are the next milestone. Pre-flight probes the
+or invokes a judge. Its pure stages are compile, seal, ingest, pre-flight, score, and emit. Three of
+the six are reachable: compile, seal, and pre-flight, through the CLI and the library alike. `ingest`
+is built and exported nowhere, and so are the thirteen modules under `src/core/score/`. What `score`
+and `emit` lack is a stage: `src/core/lineage/stage-table.ts` carries `module: null` on those two
+rows and on no others, meaning no module yet writes their output. `emit` has no code at all. Pre-flight probes the
 fixture through the environment-probe port, so a contract that declares a fixture reset
 needs the caller's probe policy to authorize that operation's method as well as the read methods
 every other pre-flight leg uses. Engine integration is a later adapter behind a port, not a v0
@@ -154,15 +160,16 @@ Rubrics compile under the same discipline: an anchored scale, a bounded length, 
 
 ## How Eval Contract strength scoring works
 
-This section describes the design; scoring is the next milestone, so nothing in this release
-computes it yet. Do not trust a contract because it looks thorough. Put a known defect behind it, run the evaluator, and check whether the contract's oracles caused the defect to be caught.
+This section describes the design. Nothing in this release computes it *through a command or a
+library call*; the functions themselves exist, and `npm run generate:worked-example` runs them over
+the committed worked chain. Do not trust a contract because it looks thorough. Put a known defect behind it, run the evaluator, and check whether the contract's oracles caused the defect to be caught.
 
 Two probe classes go behind a contract, and a strong contract rejects both:
 
 - **Defect probes**, where the behavior is simply wrong.
 - **Gameability probes**, where the behavior looks compliant while dodging the oracle's intent. A test that raises coverage while asserting nothing is the familiar version of this.
 
-Probes come from qualified historical defects or verified controlled mutations. The corpus separates a visible development set from an immutable sealed set for each scoring version.
+Probes come from qualified historical defects or verified controlled mutations. The corpus separates a visible development set from an immutable sealed set for each scoring version. Only the development set exists today; the sealed set is part of the design and ships in no release yet.
 
 Every required oracle check resolves to exactly one state, and the state travels with the result, so
 "the check reported" is never sufficient on its own: `caught`, `confirmed`, `missed`,
@@ -175,7 +182,7 @@ A required oracle that missed, abstained, errored, or is absent prevents PASS, a
 
 `eval-quality` is its own repository and package, not a plugin inside another framework.
 
-The **library** is the primary surface. It exports the contract schema, the oracle vocabulary, the compiler, the pre-flight, and the evidence types. The published typed schema is what lets coding agents author contracts correctly by default, which is how the discipline scales beyond the people who went looking for the tool.
+The **library** is the primary surface. It exports the artifact types, the compiler, the pre-flight, the canonical digest, the lineage validator, and the failure-code and verdict registries. The Zod schemas themselves are not exported; they are published as JSON Schema under `eval-quality/schemas/*`. The published typed schema is what lets coding agents author contracts correctly by default, which is how the discipline scales beyond the people who went looking for the tool.
 
 The **CLI** wraps the same library for callers that cannot import TypeScript: CI jobs, GitHub Actions, PR-review and unit-test bots, other frameworks' skills, and any agent permitted to run a shell command.
 
@@ -183,7 +190,7 @@ The **CLI** wraps the same library for callers that cannot import TypeScript: CI
 
 - **`compile`**: Typechecks an authored `eval-contract.json`. Verifies that all behaviors, oracles, rubrics, and sensitivity witnesses comply with structural and authoring rules.
 - **`seal`**: Generates a `sealed-evaluator-brief.json` by stripping secret defect signatures, planted answers, and author commentary. The brief carries only the directions and safety bounds the evaluator needs.
-- **`preflight`**: Reduces caller-supplied probe observations against the contract to verify environment baseline readiness and probe reachability. Halts early with exit code `3` if the environment is unready.
+- **`preflight`**: Reduces caller-supplied probe observations against the contract to verify environment baseline readiness and probe reachability. All four of `--contract`, `--probes`, `--observations`, and `--run-id` are required. Halts early with exit code `3` if the environment is unready. `schemas/probe.schema.json` and `schemas/sealed-run-record.schema.json` give the shape of the two input files, which no corpus fixture ships yet.
 
 ### Running the CLI
 
@@ -202,8 +209,9 @@ npx eval-quality preflight --contract contract.json \
 Every command is non-interactive: no prompt, no terminal check, and no behaviour that differs when
 stdin is a pipe. Each one is a single call into the library plus artifact serialization.
 
-**Input and output.** An input flag left out reads stdin, and `-` names stdin explicitly; at most one
-input may be `-`. Without `--out` the artifact goes to stdout, so a command composes with a pipe.
+**Input and output.** `--in` is the only optional input: `compile` and `seal` read stdin when it is
+left out, while `preflight`'s three input flags are each required. `-` names stdin explicitly, and at
+most one input may be `-`. Without `--out` the artifact goes to stdout, so a command composes with a pipe.
 An `--out` ending in `.json` is a file path; anything else is a directory, and the artifact is
 written to `<target>/<kind>.json` where `kind` is `eval-contract`, `sealed-evaluator-brief`, or
 `preflight-verdict`. Diagnostics and errors go to stderr, always, so stdout carries the artifact
@@ -216,18 +224,21 @@ alone.
 | `0` | success, and every verdict other than FAIL or a promoted CONCERNS |
 | `1` | CONCERNS promoted by `--strict` |
 | `2` | FAIL |
-| `3` | invalid: a pre-flight verdict that did not pass |
+| `3` | invalid: a failed pre-flight, or any other AD-21 invalidating condition |
 | `4` | structural failure |
 | `5` | runtime fault |
 | `64` | usage error |
 
-Codes 1 and 2 report a scored verdict. Scoring ships in a later release, so no command here reaches
-either yet, and `--strict` changes no code this binary produces. The flag and the two codes are part
-of the published contract, so they are documented now and wired now.
+`--strict` never promotes a CONCERNS whose firing conditions are all evidence conditions: those
+conditions report that the measurement fell short of the policy. Of the invalidating conditions
+behind code 3, only the failed pre-flight is reachable from this binary. Codes 1 and 2 report a
+scored verdict. Scoring ships in a later release, so no command here reaches either yet, and `--strict`
+changes no code this binary produces. The flag and the two codes are part of the published contract,
+so they are documented now and wired now.
 
 `--strict` is the gate-promotion flag and is accepted on every command. `--strict-inputs` and
 `--no-strict-inputs` are a different switch: they set the compiler's input strictness, which is on
-by default.
+by default, and `preflight` rejects both with exit `64` because it has no compile step.
 
 **The published JSON Schema.** A consumer that does not read TypeScript validates against the
 twelve generated documents, published at the `eval-quality/schemas/*` subpath:
@@ -239,6 +250,17 @@ import spec from 'eval-quality/schemas/eval-contract.schema.json' with { type: '
 The import attribute is required: ESM on Node 22 and 24 both throw `ERR_IMPORT_ATTRIBUTE_MISSING`
 without it. The development corpus ships the same way, at `eval-quality/corpus/dev/`, so an adopter
 can read real compiled contracts and one compiled-and-sealed pair without cloning this repository.
+`eval-quality/adapters` is one of the five published subpaths, holding the three reference adapters
+the conformance suite runs against.
+
+Eleven of the twelve published schemas carry a `schemaVersion`. `artifact-reference` is exempt: it
+is embedded inside other artifacts rather than exchanged alone, so it has no version to break.
+
+`schemaVersion` is declared as any integer at or above 1, so a document at an unexpected version
+parses. The bumps in the next release each add a required field, which is why an older document
+fails; the version itself is compared in exactly one place, `validateLineageChain`, over
+lineage-chain members, and nowhere on the command path. The package is pre-1.0, so pin exactly.
+`CHANGELOG.md` records what each release breaks.
 
 ## Relationship with BMad and TEA
 
@@ -271,9 +293,9 @@ Read the [product brief](_bmad-output/planning-artifacts/briefs/brief-eval-quali
 
 ## Architecture status
 
-The [architecture spine](_bmad-output/planning-artifacts/architecture/architecture-eval-quality-2026-07-29/ARCHITECTURE-SPINE.md) is split by pipeline half: the compile-and-seal half is epic-ready, while the score half is not. Gate C closed at zero blocking authoring points and 14 of 14 declaration-only predicates. Gate D's generated-current-fields arm matched the hand-written positive control at 3 of 3 seeded-defect catches, so `seal` joins the stage-one order without adding an evidence-precondition field.
+The [architecture spine](_bmad-output/planning-artifacts/architecture/architecture-eval-quality-2026-07-29/ARCHITECTURE-SPINE.md) is split by pipeline half: the compile-and-seal half is epic-ready, while the score half is not. The spine's own status line still reads that way. Work on the score half has since started: epic 7 closed six of the seven items its *Owed to the reference implementation* section listed, plus the first half of the seventh, delivering AD-21, AD-33, and AD-40 as pure functions with generated tables. Owed item 1's remaining half, the `score` stage row consuming a trial set, is epic 8's, along with the stages and the surface over them. Until it closes, no stage signature consumes more than one run record, so the declared minimum trial count is unreachable and the strength vector stays non-comparable. Gate C closed at zero blocking authoring points and 14 of 14 declaration-only predicates. Gate D's generated-current-fields arm matched the hand-written positive control at 3 of 3 seeded-defect catches, so `seal` joins the stage-one order without adding an evidence-precondition field.
 
-Contract strength scoring has been open since [ADR-007](_bmad-output/planning-artifacts/architecture/architecture-eval-quality-2026-07-29/ADR-007-compile-score-split.md): three rounds of external review established that the catch rate was 1.00 by construction, because nothing matched a finding to the defect its probe seeded. That input now exists and the mapping that reads it is owed to a reference implementation.
+Contract strength scoring has been open since [ADR-007](_bmad-output/planning-artifacts/architecture/architecture-eval-quality-2026-07-29/ADR-007-compile-score-split.md): three rounds of external review established that the catch rate was 1.00 by construction, because nothing matched a finding to the defect its probe seeded. That input now exists, and so does the mapping that reads it: `src/core/score/witness.ts` is AD-40's witness match, delivered by epic 7. What is still owed is its validation against the block-2 replication, which the spine records as committed and not yet run.
 
 Contract compilation was declared ready in ADR-007 and a fourth review withdrew that claim in [ADR-008](_bmad-output/planning-artifacts/architecture/architecture-eval-quality-2026-07-29/ADR-008-compile-half-owed-to-calibration.md). The named calibration is now complete. The absent local-only mut2 arm was reconstructed from its recorded base, reproduced its prior black-box behavior, and ran under a pre-registered three-arm, three-repetition design. All three arms composed filters and detected the seeded defect in every valid repetition. This closes the calibration gate narrowly; it does not generalize the historical 0.33-to-1.00 effect beyond one behavior and one controlled mutation.
 
@@ -289,17 +311,23 @@ Out of scope entirely: a new eval engine, a hosted service, a dashboard or GUI, 
 
 ## Development
 
+Node `>=22.20.0`, which `package.json` declares as the engine floor. `zod` is the only production
+dependency.
+
 ```bash
 npm install
-npm run validate            # typecheck, lint, docs, shareable, spine, vectors, schemas, registries, AD-31 and AD-33 tables, layers, lineage, boundary, corpus, worked chain, tests with coverage
+npm run validate            # build, typecheck, lint, docs, doc invocations, shareable, spine, vectors, schemas, both code registries, the AD-21, AD-31 and AD-33 tables, layers, lineage, boundary, corpus, worked chain, website deps, tests with coverage
 npm run build               # emit to dist/
 npm run lint:fix            # auto-fix with Biome
 npm run test:coverage       # run the suite and fail below AD-30's 90 percent statement and branch floor on core/
 npm run generate:schemas    # rebuild schemas/*.schema.json from the Zod source
 npm run check:schemas       # fail if the committed schemas differ from the source by one byte
-npm run check:ad5-registry  # fail if the failure-code list drifts from the AD-5 table
+npm run check:ad5-registry  # fail if the compile-time failure-code list drifts from the AD-5 table
+npm run check:ad28-registry # fail if the runtime fault-code list drifts from the AD-28 table
 npm run check:lineage       # fail if a module outside the stage table writes an artifact's lineage fields
 npm run check:boundary      # fail if anything the tarball carries references the planning system that produced it
+npm run generate:ad21-table # rebuild docs/ad21-verdict-decision.generated.md from the two verdict ladders
+npm run check:ad21-table    # fail if the committed AD-21 table differs from the builder by one byte
 npm run generate:ad31-table # rebuild docs/ad31-coverage-predicates.generated.md from the predicates
 npm run check:ad31-table    # fail if the committed AD-31 table differs from the builder by one byte
 npm run generate:ad33-table # rebuild docs/ad33-outcome-decision.generated.md from the decision procedure
@@ -347,6 +375,11 @@ successful call returns a response the published schema accepts. The environment
 thirteen more from AD-35's default-deny target policy. `npm run test:conformance` runs the suite
 against the three adapters this package ships and against an in-repository probe subject that exists
 only as the suite's own subject.
+
+`docs/ad21-verdict-decision.generated.md` holds AD-21's two published verdict ladders, production and
+contract-scoring, emitted from the rule tables in `src/core/score/ladder.ts` together with the
+fixtures that exercise them, and guarded by `npm run check:ad21-table`. Each row carries its
+condition, its rung, the guard in prose, and whether `--strict` may promote it.
 
 `docs/ad31-coverage-predicates.generated.md` holds AD-31's published predicate table, emitted from
 the seven relevance predicates and their seven satisfaction twins run over a hand-authored contract
