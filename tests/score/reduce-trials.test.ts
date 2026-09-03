@@ -6,6 +6,7 @@ import { OUTCOME_STATES } from '../../src/core/schemas/evidence-artifact.ts'
 import {
 	reduceTrialSet,
 	TRIAL_VOTE_STATES,
+	type TrialVote,
 } from '../../src/core/score/reduce-trials.ts'
 import {
 	ALL_INVALIDATING_VOTES,
@@ -211,5 +212,111 @@ describe('catchThreshold is read as a bare fraction, not a special-cased floor o
 			1,
 		)
 		expect(result.caught).toBe(false)
+	})
+})
+
+// Both findings this story's real caller (score.ts) triggers: neither was
+// reachable while this reducer shipped with no caller.
+describe('an out-of-domain vote state throws instead of silently counting as voted', () => {
+	it('throws on a state outside the closed twelve, bypassing the type at a boundary', () => {
+		const bypassed = [
+			{ state: 'not-a-real-state' },
+		] as unknown as readonly TrialVote[]
+		expect(() => reduceTrialSet(bypassed, DEFAULT_THRESHOLD)).toThrow(
+			/out-of-domain state/,
+		)
+	})
+
+	it('names the offending vote by its attempt position, not by array index of the filtered result', () => {
+		const bypassed = [
+			voteOf('confirmed'),
+			{ state: 'still-not-real' },
+		] as unknown as readonly TrialVote[]
+		expect(() => reduceTrialSet(bypassed, DEFAULT_THRESHOLD)).toThrow(/vote 2/)
+	})
+
+	// `TRIAL_VOTE_STATE_OF` is a plain object built by `Object.fromEntries`, so
+	// it inherits `Object.prototype`. A naive `=== undefined` check against the
+	// lookup is fooled by any state string that happens to name an inherited
+	// member: the lookup resolves to that inherited function rather than
+	// `undefined`, clearing the guard and voting the bogus state in.
+	// `Object.hasOwn` closes this, since none of these names is ever an own
+	// property of the map.
+	it.each(['toString', 'constructor', 'hasOwnProperty', 'valueOf'])(
+		'throws rather than resolving an inherited Object.prototype member for state %j',
+		(state) => {
+			const bypassed = [{ state }] as unknown as readonly TrialVote[]
+			expect(() => reduceTrialSet(bypassed, DEFAULT_THRESHOLD)).toThrow(
+				/out-of-domain state/,
+			)
+		},
+	)
+})
+
+describe('catchThreshold is rejected outside its declared 0..1 domain', () => {
+	it('throws below zero', () => {
+		expect(() => reduceTrialSet([voteOf('caught')], -0.1)).toThrow(
+			/catchThreshold/,
+		)
+	})
+
+	it('throws above one', () => {
+		expect(() => reduceTrialSet([voteOf('caught')], 1.5)).toThrow(
+			/catchThreshold/,
+		)
+	})
+
+	it('throws on NaN, never silently absorbed into the majority comparison', () => {
+		expect(() => reduceTrialSet([voteOf('caught')], Number.NaN)).toThrow(
+			/catchThreshold/,
+		)
+	})
+
+	it('rejects the threshold before folding a single vote', () => {
+		// If the range check ran after folding, a one-vote set would still
+		// produce a `TrialSetResult` before the throw; asserting the throw
+		// alone does not prove ordering, so this pins that no valid result
+		// could have been computed first by keeping the vote itself
+		// unreachable-if-processed (an out-of-domain state) alongside the bad
+		// threshold. Either fault alone throws; both together still throws
+		// exactly once, from the threshold check that runs first.
+		const bypassed = [
+			{ state: 'unreachable' },
+		] as unknown as readonly TrialVote[]
+		expect(() => reduceTrialSet(bypassed, 2)).toThrow(/catchThreshold/)
+	})
+
+	it('accepts the closed boundaries 0 and 1 themselves', () => {
+		expect(() => reduceTrialSet([voteOf('caught')], 0)).not.toThrow()
+		expect(() => reduceTrialSet([voteOf('caught')], 1)).not.toThrow()
+	})
+
+	// `>=`/`<=` coerce their operands, so a naive range check alone admits
+	// anything that coerces into `0..1` -- `null` coerces to `0`, a numeric
+	// string coerces via `ToNumber`, and a boxed `Number` coerces via its own
+	// `valueOf` -- none of which is the primitive `number` the range check
+	// means to bound. The `typeof`/`Number.isFinite` guard ahead of the range
+	// check rejects all three before the coercing comparison ever runs.
+	it('throws on null rather than letting it coerce to 0', () => {
+		const bypassed = null as unknown as number
+		expect(() => reduceTrialSet([voteOf('caught')], bypassed)).toThrow(
+			/catchThreshold/,
+		)
+	})
+
+	it('throws on a numeric string rather than letting it coerce via ToNumber', () => {
+		const bypassed = '0.5' as unknown as number
+		expect(() => reduceTrialSet([voteOf('caught')], bypassed)).toThrow(
+			/catchThreshold/,
+		)
+	})
+
+	// The boxed form (`new Number(...)`) is deliberate here: it is the exact
+	// shape this test proves `reduceTrialSet` rejects.
+	it('throws on a boxed Number rather than letting it coerce via valueOf', () => {
+		const bypassed = new Number(0.5) as unknown as number
+		expect(() => reduceTrialSet([voteOf('caught')], bypassed)).toThrow(
+			/catchThreshold/,
+		)
 	})
 })

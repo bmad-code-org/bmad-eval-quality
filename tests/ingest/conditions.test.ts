@@ -53,25 +53,15 @@ describe('the ingest condition vocabulary', () => {
 		expect(shared).toEqual([])
 	})
 
-	// Pinned rather than derived: a ninth kind mapping to `null` is a ninth
-	// condition scoring nothing, and it should fail the build and force a
-	// decision instead of quietly joining the eight the design already accounts
-	// for.
-	it('leaves exactly eight kinds without a rung', () => {
-		const rungless = INGEST_CONDITION_KINDS.filter(
-			(kind) => LADDER_TARGETS[kind] === null,
-		)
+	// Story 8.2 gave the eight rungless kinds a rung apiece and dropped `null`
+	// from `LadderTarget` entirely, so this is no longer a filter over the
+	// mapping's values -- there is no `null` left to filter for -- but a
+	// direct assertion that every kind now names a real, non-empty target.
+	it('leaves none of the kinds without a rung', () => {
+		const targets = INGEST_CONDITION_KINDS.map((kind) => LADDER_TARGETS[kind])
 
-		expect(rungless).toEqual([
-			'duplicate-record-identifier',
-			'dangling-citation',
-			'dangling-disposition-citation',
-			'forbidden-input-not-withheld',
-			'cross-artifact-disagreement',
-			'evaluator-configuration-absent',
-			'evaluator-configuration-digest-mismatch',
-			'judge-result-unscored',
-		])
+		expect(targets.every((target) => typeof target === 'string')).toBe(true)
+		expect(new Set(targets).size).toBe(10)
 	})
 
 	// The coverage floor is a glob, and a glob matching nothing summarises to

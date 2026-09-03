@@ -126,7 +126,7 @@ export const STAGE_SIGNATURES: Record<PipelineStage, StageSignature> = {
 		owns: 'scored-outcomes-and-verdict',
 		ownsInterchange: null,
 		lineage: 'none',
-		module: null,
+		module: 'src/core/score/score.ts',
 	},
 	emit: {
 		inputs: ['scored-outcomes-and-verdict'],

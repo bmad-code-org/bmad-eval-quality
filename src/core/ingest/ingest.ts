@@ -35,6 +35,7 @@ import type {
 	RunModeValue,
 	SealedRunRecord,
 } from '../schemas/sealed-run-record.ts'
+import type { EvaluatorRecommendation } from '../schemas/verdict.ts'
 import {
 	auditQuotation,
 	type UnwitnessedQuotation,
@@ -66,6 +67,14 @@ import { AGREEMENT_FIELDS, type IngestCondition } from './conditions.ts'
  */
 export type ValidatedObservations = {
 	readonly mode: RunModeValue
+	/**
+	 * `AssessmentCommon.evaluatorRecommendation` (`score/ladder.ts:107`) is
+	 * required and two shared ladder rows read it directly; nothing before
+	 * this field supplied it to anything score-shaped. Read off
+	 * `record.evaluatorRecommendation` the same way `mode` already is above:
+	 * restated, never derived, recomputed, or defaulted.
+	 */
+	readonly evaluatorRecommendation: EvaluatorRecommendation
 	/** ascending `sequence`, then `observationId`, so the record's array order is never what a consumer reads. */
 	readonly observations: readonly Observation[]
 	/** ascending `findingId`; entries sharing one keep their presented order, which is all the record supplies. */
@@ -382,6 +391,7 @@ export const ingest: IngestStage<ValidatedObservations> = (
 		// defaulted: AD-21 fixes mode before ingest and there is no fourth
 		// parameter for a caller to disagree with it through.
 		mode: record.mode,
+		evaluatorRecommendation: record.evaluatorRecommendation,
 		// `selectObservations`' own sort, matched exactly so two readers of one
 		// record cannot disagree about which observation came first. The
 		// identifier tie-break cannot fire on a record that parsed, since

@@ -1360,7 +1360,21 @@ export function buildWorkedExampleChain(): WorkedExampleChain {
 			overTruncated: false,
 			unavailable: false,
 			internallyInconsistent: false,
-			isolationViolation: null,
+			isolationViolation: [],
+			// This chain hand-assembles the record directly and never calls
+			// `core/ingest`, so none of Story 8.2's eight ingest-condition
+			// fields, nor its two score-computed ones, has anything to carry;
+			// every one is the empty array its own type already permits.
+			duplicateRecordIdentifiers: [],
+			danglingCitations: [],
+			danglingDispositionCitations: [],
+			forbiddenInputsNotWithheld: [],
+			crossArtifactDisagreements: [],
+			evaluatorConfigurationAbsent: [],
+			evaluatorConfigurationDigestMismatches: [],
+			judgeResultsUnscored: [],
+			operationIdentifierCollisions: [],
+			trialSetDisagreements: [],
 		},
 		evaluatorRecommendation: record.evaluatorRecommendation,
 		coverageGaps,

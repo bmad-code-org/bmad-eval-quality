@@ -233,44 +233,46 @@ export type IngestCondition =
 	| JudgeResultUnscored
 
 /**
- * The ladder field a condition feeds, or `null` where no rung reads it.
+ * The ladder field a condition feeds. Every one of the eleven kinds now
+ * carries a rung, so the union below names all ten `EvidenceIntegrityInputs`
+ * fields that carry an ingest condition and `null` is dropped entirely: a
+ * kind with no rung is a compile error now, not a documented gap.
  *
- * Eight of the eleven carry `null`. Neither shipped ladder has a rung for a
- * repeated record identifier, a dangling citation from either site, a
- * record-versus-manifest disagreement, an admitted prohibited input, an
- * evaluator configuration that is absent or whose digest does not recompute, or
- * a malformed judge result: AD-16's title carries
- * two clauses, "a prohibited input **or** an unaccounted isolation manifest
- * invalidates a run", and AD-21's Invalid enumeration names only the manifest
- * one. Routing any of them onto a neighbouring rung would make the persisted
- * basis read as a different finding, which is worse than a condition with no
- * rung at all, so the mapping records `null` until those rungs exist and a check
- * pins the set so a ninth fails the build.
- *
- * A narrow pair built with `Extract` rather than a bare `keyof` product: the
- * product expands to nine keys including `internallyInconsistent`, whose row is
- * FAIL and whose guard reads "internally inconsistent under AD-17", and a bare
- * key would also lose which of the two input types it came from. Renaming
- * either field in `ladder.ts` collapses its branch here to `never`, so the
- * mapping below stops compiling instead of pointing at a field that no longer
- * exists.
+ * Ten pairs built with `Extract` rather than a bare `keyof` product: the
+ * product would also pull in fields like `internallyInconsistent`, whose row
+ * is FAIL and whose guard reads "internally inconsistent under AD-17" rather
+ * than reading an `IngestCondition`, and a bare key would lose which of the
+ * two input types a member came from. Renaming a field in `ladder.ts`
+ * collapses its branch here to `never`, so the mapping below stops compiling
+ * instead of pointing at a field that no longer exists.
  */
 export type LadderTarget =
 	| Extract<keyof EvidenceIntegrityInputs, 'isolationViolation'>
 	| Extract<keyof OutcomeStateInputs, 'unwitnessedQuotations'>
-	| null
+	| Extract<keyof EvidenceIntegrityInputs, 'duplicateRecordIdentifiers'>
+	| Extract<keyof EvidenceIntegrityInputs, 'danglingCitations'>
+	| Extract<keyof EvidenceIntegrityInputs, 'danglingDispositionCitations'>
+	| Extract<keyof EvidenceIntegrityInputs, 'forbiddenInputsNotWithheld'>
+	| Extract<keyof EvidenceIntegrityInputs, 'crossArtifactDisagreements'>
+	| Extract<keyof EvidenceIntegrityInputs, 'evaluatorConfigurationAbsent'>
+	| Extract<
+			keyof EvidenceIntegrityInputs,
+			'evaluatorConfigurationDigestMismatches'
+	  >
+	| Extract<keyof EvidenceIntegrityInputs, 'judgeResultsUnscored'>
 
-/** Total over the kinds tuple: a new kind fails to compile until it declares its rung or admits it has none. */
+/** Total over the kinds tuple: a new kind fails to compile until it declares its rung. */
 export const LADDER_TARGETS: Record<IngestConditionKind, LadderTarget> = {
-	'duplicate-record-identifier': null,
-	'dangling-citation': null,
-	'dangling-disposition-citation': null,
+	'duplicate-record-identifier': 'duplicateRecordIdentifiers',
+	'dangling-citation': 'danglingCitations',
+	'dangling-disposition-citation': 'danglingDispositionCitations',
 	'unwitnessed-quotation': 'unwitnessedQuotations',
 	'isolation-manifest-absent': 'isolationViolation',
 	'isolation-manifest-violation': 'isolationViolation',
-	'forbidden-input-not-withheld': null,
-	'cross-artifact-disagreement': null,
-	'evaluator-configuration-absent': null,
-	'evaluator-configuration-digest-mismatch': null,
-	'judge-result-unscored': null,
+	'forbidden-input-not-withheld': 'forbiddenInputsNotWithheld',
+	'cross-artifact-disagreement': 'crossArtifactDisagreements',
+	'evaluator-configuration-absent': 'evaluatorConfigurationAbsent',
+	'evaluator-configuration-digest-mismatch':
+		'evaluatorConfigurationDigestMismatches',
+	'judge-result-unscored': 'judgeResultsUnscored',
 }

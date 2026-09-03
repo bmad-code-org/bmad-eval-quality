@@ -1,8 +1,10 @@
 # Deferred work
 
-Seventeen items are open, listed under "How to use this file" and in the per-review sections
+Eighteen items are open, listed under "How to use this file" and in the per-review sections
 following it. The prose immediately below records how each past item closed. Epic 7's reviews
-filed fifteen; this file's own closure narrative below accounts for the other four.
+filed fifteen; this file's own closure narrative below accounts for the other four. Story 8.2's
+review closed one Story-8.1-routed item (the operationId collision) and opened two of its own, a
+net gain of one over the seventeen story 8.1's reviews left open.
 
 Story 7.10 opened five items and one of them closed the same day, 2026-09-03, wider than it was
 filed. The entry said two of epic 7's nine `schemaVersion` bumps carried no bump note in the driving
@@ -338,20 +340,14 @@ The rule is about the entry, not about erasing that something was once open.
 
 ## Deferred from: story review of 8-1-the-ingest-stage-and-the-conditions-it-records (2026-09-03)
 
-Three cross-artifact rules name `core/ingest` in a shipped schema comment and cannot be computed
+Two cross-artifact rules name `core/ingest` in a shipped schema comment and cannot be computed
 from the three artifacts `STAGE_SIGNATURES.ingest` declares. They are routed here with owners
 during story creation rather than after implementation, because two peer reviews of the draft found
-the story silently assuming inputs the stage row does not carry.
-
-- source_spec: `8-1-the-ingest-stage-and-the-conditions-it-records.md`
-  summary: Two permitted interfaces declaring the same `operationId`, which
-    `src/core/schemas/sealed-run-record.ts:179-181` leaves to ingest, is unreachable there.
-  evidence: `PermittedInterface` lives on the eval contract
-    (`src/core/schemas/eval-contract.ts:174`), which is not among ingest's declared inputs
-    (`src/core/lineage/stage-table.ts:90-93`). `Observation` carries `operationId` with no interface
-    qualifier, so even given the contract ingest could name the ambiguous identifier and never the
-    two interfaces colliding on it. Owner: story 8.2, whose stage row already declares
-    `eval-contract` and whose `qualification.ts` work resolves an observation to an operation.
+the story silently assuming inputs the stage row does not carry. A third, the operationId collision,
+closed the same way it was filed: `score.ts` (story 8.2, which declares `eval-contract`) now carries
+the `operation-identifier-collision` Invalid row, resolving each observation's `operationId` against
+`contract.permittedInterfaces[*].operations[*].operationId` directly rather than through
+`qualification.ts`, which resolves a signature to its home operation and had no comparable use here.
 
 - source_spec: `8-1-the-ingest-stage-and-the-conditions-it-records.md`
   summary: AD-17's rule that a scored criterion is one the cited rubric declares, and that a
@@ -370,13 +366,13 @@ the story silently assuming inputs the stage row does not carry.
     recomputes every per-artifact digest from the resolved bytes" and AD-34 says `application/`
     "holds no decision logic" and is only where a port is awaited, so the construction is a pure core
     comparator called by the application layer that awaited the port. An earlier draft of story 8.1
-    argued the whole check belonged in `application/`, which overshot AD-8's subject. Owner: whichever
-    story first awaits that port. Naming 8.4 as "the first code to await the corpus port" was a
-    prediction rather than an observation, and AD-11 makes `ScoringVersionInputs.corpusDigest`
-    (`src/core/schemas/evidence-artifact.ts:105`) a required recomputation from resolved bytes on an
-    artifact `emit` owns, so 8.2 or 8.3 may reach the port first. Story 8.2 settles the owner in its
-    own decisions. `src/ports/corpus-port.ts` and `src/adapters/local-corpus-adapter.ts` both already
-    exist, so this is buildable inside epic 8 either way.
+    argued the whole check belonged in `application/`, which overshot AD-8's subject. Owner: story
+    8.3. Story 8.2 narrows this from its own earlier "8.2 or 8.3": `score`'s row declares no
+    `private-artifact-manifest` input and no corpus port, so it has no resolved bytes to recompute
+    against, and `ScoringVersionInputs.corpusDigest`
+    (`src/core/schemas/evidence-artifact.ts:105`) is a field `emit` constructs, which makes story
+    8.3 the buildable owner. `src/ports/corpus-port.ts` and `src/adapters/local-corpus-adapter.ts`
+    both already exist, so this is buildable once story 8.3 reaches it.
 
 ## Deferred from: code review of 8-1-the-ingest-stage-and-the-conditions-it-records (2026-09-03)
 
@@ -409,8 +405,15 @@ rest of the review's findings were closed in the same pass.
     only artifact that could supply the second operand is the eval contract, which is not among
     ingest's declared inputs. `AGREEMENT_FIELDS` compares `runId`, `contractDigest`, and
     `evaluatorConfigurationDigest`, which is the match the two artifacts can actually support.
-    Owner: story 8.2, whose stage row already declares `eval-contract`. It settles whether the
-    identifier gains a real comparison or the description is corrected to name the digest match.
+    Owner was recorded as story 8.2, on the assumption its stage row would pair `eval-contract`
+    with the isolation manifest; it does not. `STAGE_SIGNATURES.score.inputs` is `eval-contract,
+    validated-observations, probe, preflight-verdict, scoring-policy` (`src/core/lineage/
+    stage-table.ts:115-122`), never `isolation-manifest`, so `score.ts` has no manifest to compare
+    the contract against either. No currently-declared stage row pairs the two artifacts. Recorded
+    with no owner, on the same reasoning as AD-17's rubric half and the empty-violation-string
+    entry above: naming a story that cannot satisfy it is how a rule ships unenforced. Settling it
+    means either widening a stage row to carry both artifacts or correcting the manifest's own
+    description to name the digest match `AGREEMENT_FIELDS` actually supports.
 
 - source_spec: `8-1-the-ingest-stage-and-the-conditions-it-records.md`
   summary: Nothing checks that the isolation manifest handed to ingest is the artifact
@@ -424,3 +427,56 @@ rest of the review's findings were closed in the same pass.
     parsed object is a canonical-form digest. Comparing the two is only sound once the bytes are
     resolved through the corpus port. Owner: whichever story first awaits that port, the same owner
     the private-artifact digest carries, and the same story settles both together.
+
+## Deferred from: story review of 8-2-the-score-stage-over-a-trial-set (2026-09-03)
+
+Two items this story's own build routes forward, each because the real call needs an artifact no
+stage before `emit` holds.
+
+- source_spec: `8-2-the-score-stage-over-a-trial-set.md`
+  summary: `checkModeAgreement` (`src/core/score/mode-agreement.ts`) is still not called anywhere,
+    diverging from epics.md's own Story 8.2 acceptance-criteria wording: "the mode-specific
+    assessment type is chosen from the record's own `mode` with `checkModeAgreement` enforced
+    rather than merely exported."
+  evidence: `checkModeAgreement`'s signature takes `Pick<SealedRunRecord, 'mode'>` and
+    `Pick<EvidenceArtifact, 'mode'>`; `score.ts` produces no `EvidenceArtifact` (that artifact is
+    `emit`'s own product), so a real second argument does not exist yet inside this stage. `score.ts`
+    instead chooses `ProductionAssessment` vs `ContractAssessment` from the trial set's own `mode`
+    and stamps that value onto `ScoredOutcomesAndVerdict.assessment.mode`, and a new Invalid row,
+    `trial-set-field-disagreement`, catches a trial set that cannot even agree on its own `mode` or
+    `evaluatorRecommendation`. epics.md is not amended for this divergence; it is recorded here per
+    standing instruction, and the story's own Decision 4 carries the same reasoning. Owner: story
+    8.3, once `emit` holds a real `EvidenceArtifact` to compare the record's `mode` against.
+
+- source_spec: `8-2-the-score-stage-over-a-trial-set.md`
+  summary: `emit`'s declared input, `scored-outcomes-and-verdict` alone
+    (`src/core/lineage/stage-table.ts:131-138`), is too narrow for `emit` to construct
+    `EvidenceArtifact`'s other required fields: `strength` (needs `buildStrengthVector` over the
+    sealed probe set and the trial-set reducer's per-probe result), `uncitedFindings` (needs
+    `uncitedFindingIds` over each trial's own findings), `comparabilityKey`, `runId`,
+    `excludedProbeIds`, and the rest of `evidenceCommonFields`.
+  evidence: `ScoredOutcomesAndVerdict` (`src/core/score/score.ts`) is, per this story's own Design
+    Notes, "exactly the pairing of the assessment ... with the `LadderResolution`" AD-24's sentence
+    names -- the outcome and verdict values, nothing wider. `buildStrengthVector` and
+    `uncitedFindingIds` are two of the thirteen reference functions this story's Approach names, and
+    neither is called from `score.ts`: their results have no field to land in under that narrower
+    definition, and calling either only to discard the result would be dead code. Since
+    `STAGE_SIGNATURES.emit.inputs` names `scored-outcomes-and-verdict` as `emit`'s *only* input,
+    `emit` cannot itself re-derive `admitted: readonly QualifiedProbe[]` or a per-trial finding list
+    to call either function with. Owner: story 8.3. It either widens `ScoredOutcomesAndVerdict` to
+    carry what `emit` needs (the same kind of widening Decision 1 already used for the trial-set
+    shape, entirely inside `score.ts`'s own function signature rather than the stage-table registry)
+    or widens `emit`'s own declared inputs beyond `scored-outcomes-and-verdict`.
+
+- source_spec: `8-2-the-score-stage-over-a-trial-set.md`
+  summary: `score.ts` never checks whether the same observation, finding, or oracle-disposition
+    identifier is reused across two *different* trials in one trial set, only within one trial's own
+    record.
+  evidence: `ingest`'s own `duplicate-record-identifier` condition (`ingest.ts`) is computed per
+    single sealed run record, since `ingest` sees one trial at a time. `score.ts` pools `findings`,
+    `allOutcomes`, `unwitnessedQuotations`, and `isolationViolation` across every trial in the set
+    (`score.ts`'s `trials.flatMap(...)` calls) with no cross-trial identifier check, even though this
+    story treats a comparable cross-trial disagreement -- `mode`/`evaluatorRecommendation` -- as
+    worth its own new Invalid row (`trial-set-field-disagreement`). Closing this needs the same kind
+    of new row, which is new scope beyond this story's frozen Boundaries & Constraints. Owner:
+    unassigned -- whichever future story next touches `score.ts`'s trial-set handling.

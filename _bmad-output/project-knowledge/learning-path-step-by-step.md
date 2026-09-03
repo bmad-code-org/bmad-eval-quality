@@ -2945,3 +2945,121 @@ flowchart TD
   of the eleven conditions fire on the fixtures as they ship.
 - The product's arrays are copies and its elements are not. Mutating an observation on the record
   after the call changes what the product shows.
+
+## Step 35 (epic8-story2): the stage that runs every reference function at once
+
+**In plain terms:** the last epic built a dozen small, separately-tested functions -- seal a probe,
+match a witness, resolve one oracle's outcome, fold votes across trials -- and none of them had a
+caller. This step is the caller. It takes a whole trial set (one probe, run several times) instead of
+one run, walks every oracle against every trial, and hands the ladder from step 30 the one assessment
+it needs to resolve a verdict. It never throws: a rejected probe, a malformed input, two trials that
+disagree with each other -- every one comes back as data on the verdict, never a crash.
+
+**What:** `src/core/score/score.ts`, a pure function over an eval contract, a trial set
+(`readonly ValidatedObservations[]`), a probe, a pre-flight verdict, a scoring policy, and two
+caller-supplied values (`waiver`, `evaluationFault`) neither artifact declares. It seals the probe
+once, builds the plan index once, then per trial resolves every oracle's outcome and folds the
+designated oracle's votes into `Trials`. Ten new ladder rows arrive alongside it: eight conditions
+Step 34 detected but had no rung for, plus two `score.ts` computes itself -- an `operationId`
+ambiguous across two interfaces, and a trial set disagreeing with itself on `mode` or
+`evaluatorRecommendation`.
+
+**Why:** `STAGE_SIGNATURES.score.module` had been `null` since the registry existed. Every function
+this step calls was written and tested in isolation across the previous epic; nothing had ever run
+them together over more than one trial, and "a trial set" had no declared shape anywhere until this
+step's own function signature gave it one.
+
+**Read in this order:**
+
+1. `src/core/score/score.ts`: the stage, top to bottom -- probe sealing once, then the per-trial loop
+   resolving every oracle, then the trial-set reducer, then the two new conditions, then the ladder
+   call chosen by the trial set's own `mode`.
+2. `src/core/score/ladder.ts`: the ten new `INVALID_ROWS` entries and the ten new
+   `EvidenceIntegrityInputs` fields they read.
+3. `src/core/ingest/conditions.ts`: `LadderTarget` losing `null` -- every one of the eleven kinds now
+   names a real field.
+4. `src/core/ingest/ingest.ts`: `ValidatedObservations` gaining `evaluatorRecommendation`, read off
+   the record the same way `mode` already was.
+5. `src/core/stage-contracts.ts`: `ScoreStage<Trials, Product>`, generic over both the trial-set
+   element and the product for the same reason `IngestStage` is generic over its product.
+6. `tests/score/score.test.ts`: one case per I/O Matrix row, built on a minimal hand-authored contract
+   wired to `tests/score/fixtures/probe-witness.ts`'s probe and operation inventory.
+
+```mermaid
+flowchart TD
+  CONTRACT["EvalContract"]
+  TRIALS["readonly ValidatedObservations[]<br/>one trial set, N records"]
+  PROBE["Probe"]
+  PREFLIGHT["PreflightVerdict"]
+  POLICY["ScoringPolicy"]
+  SEAL["qualification.ts (epic 7)<br/>sealProbeSet, once per run"]
+  LOOP["per trial: bindings.ts, witness.ts,<br/>evaluate/resolution.ts, outcome.ts"]
+  REDUCE["reduce-trials.ts (epic 7)<br/>reduceTrialSet, folding the designated oracle's votes"]
+  LADDER["ladder.ts (Step 30)<br/>ten new rows, resolveProductionVerdict / resolveContractVerdict"]
+  PROD["ScoredOutcomesAndVerdict<br/>assessment + LadderResolution"]
+
+  CONTRACT --> SEAL
+  PROBE --> SEAL
+  SEAL --> LOOP
+  TRIALS --> LOOP
+  CONTRACT --> LOOP
+  LOOP --> REDUCE
+  POLICY --> REDUCE
+  REDUCE --> LADDER
+  LOOP --> LADDER
+  PREFLIGHT --> LADDER
+  LADDER --> PROD
+```
+
+**Story:** `_bmad-output/implementation-artifacts/8-2-the-score-stage-over-a-trial-set.md`
+
+### Reference
+
+**Rules:**
+
+- `score.ts` throws nothing for a domain input. A rejected probe, an oracle with no check, a probe
+  whose behaviour resolves to no single designated oracle -- each degrades to a documented fallback
+  rather than a `fail()` call, unlike the worked-example script this stage's order is lifted from.
+- The designated oracle is found from the probe's own `behaviorId`, not from its first seeded defect.
+  A canary and a clean control carry no defect to read `behaviorId` off, and `probe.behaviorId` is on
+  every branch.
+- `judgeConduct` derives once per run and is broadcast to every oracle: `'absent'` when the contract
+  declares no rubric, `'malformed'` when any trial carries an unscored judge result, `'conforming'`
+  otherwise -- checked in that order, so an empty-rubric contract stays `'absent'` even carrying the
+  condition.
+- A trial set that disagrees with itself on `mode` or `evaluatorRecommendation` still resolves: the
+  first trial's values build the one assessment a discriminated union requires, and the new Invalid
+  row's basis line, naming both disagreeing values, is what keeps the pick non-silent.
+- `resolveOutcome` stays the one place an AD-6 state gets assigned. A trial's fallback vote, when the
+  probe has no designated oracle, is read off a state some oracle already resolved this trial, never
+  a literal this module invents.
+- `buildPlanIndex` is called with `duplicateIds: 'unresolved'`, not its own default `'throw'`: two
+  interfaces sharing an `operationId` is the exact shape the new `operation-identifier-collision` row
+  exists to describe, and the index builder cannot be allowed to crash on it first.
+- `EvidenceIntegrityInputs.disclosure` and its three sibling booleans arrive declared, never derived:
+  no declared input carries `EvidenceDisclosure`, and the module's own doc comment already states this
+  posture for the other three.
+
+**Watch out:**
+
+- `ScoredOutcomesAndVerdict` is exactly `{assessment, ladder}` -- not a full `EvidenceArtifact`
+  in miniature. `buildStrengthVector` and `uncitedFindingIds` are not called here: neither result has
+  a field to land in under this story's own definition, and calling either just to discard the answer
+  would be dead code. `emit`'s own declared input (`scored-outcomes-and-verdict` alone) is too narrow
+  to build `EvidenceArtifact`'s remaining fields from, which is filed forward rather than solved here.
+- `checkModeAgreement` (`mode-agreement.ts`) is still never called. Its second parameter needs an
+  `EvidenceArtifact`, which does not exist until `emit` produces one.
+- A minimal hand-authored test contract triggers several AD-31 coverage-gap rules that a real contract
+  would satisfy (no declared success indicator, no sibling groups, and so on). `tests/score/
+  score.test.ts`'s fixture keeps its one behaviour's severity below the policy's severity floor so
+  those gaps populate `coverageGaps` without also firing the ladder's `coverage-gap-at-or-above-floor`
+  row for a reason unrelated to what each case actually tests.
+- Four schema-legal duplicates -- two oracles sharing an id, two defect findings citing the same
+  oracle, two dispositions for the same oracle, two findings sharing a `resolvedFrom` identifier --
+  are each guarded to an ambiguous/floor value rather than picked by array order (`designatedState`,
+  `citedFinding`, `disposition`, resolved-`severity`). Two review passes found these one at a time;
+  a fifth lookup with the same shape is worth the same guard on sight, not another review round.
+- `remediationState` cannot call `validateLineageChain` on `[contract]` alone: that only self-validates
+  when `revisionCount` is 0, and fires `lineage-chain-inconsistent` on every ordinarily-revised
+  contract otherwise, since score is never handed the ancestor chain to check. It arrives declared
+  (a vacuous pass), on `disclosure`'s own precedent, until some future stage is handed a real chain.

@@ -27,6 +27,16 @@ that fired first.
 | `selector-ambiguity` | Invalid | a step matched several observations under a single-valued cardinality (owed item 2) | no |
 | `unwitnessed-claim` | Invalid | a defect finding claimed a detection no candidate observation witnesses (AD-40) | no |
 | `unwitnessed-quotation` | Invalid | a defect finding's quoted evidence appears in no cited observation (AD-32) | no |
+| `duplicate-record-identifier` | Invalid | the record uses one observation, finding, or oracle-disposition identifier twice | no |
+| `dangling-citation` | Invalid | a finding cites an observation identifier the record does not declare | no |
+| `dangling-disposition-citation` | Invalid | an oracle disposition cites an observation identifier the record does not declare | no |
+| `forbidden-input-not-withheld` | Invalid | AD-16 forbidden input admitted rather than withheld | no |
+| `cross-artifact-disagreement` | Invalid | the sealed run record and the isolation manifest disagree on a field AD-32 requires them to agree on | no |
+| `evaluator-configuration-absent` | Invalid | the evaluator configuration artifact is absent | no |
+| `evaluator-configuration-digest-mismatch` | Invalid | the evaluator configuration digest the record declares does not recompute from the artifact | no |
+| `judge-result-unscored` | Invalid | a judge result carries `score: null` | no |
+| `operation-identifier-collision` | Invalid | an observation's operationId matches an operation in more than one permittedInterfaces entry | no |
+| `trial-set-field-disagreement` | Invalid | two trials in the same trial set disagree on `mode` or `evaluatorRecommendation` | no |
 | `behavioural-failure-at-or-above-floor` | FAIL | an AD-6 behavioural failure at or above the scoring policy's severity floor | no |
 | `evidence-incomplete` | FAIL | evidence reported incomplete under AD-17 | no |
 | `evidence-over-truncated` | FAIL | evidence truncated past its disclosed bound under AD-17 | no |
@@ -45,11 +55,11 @@ that fired first.
 
 ### Production ladder census, by rung
 
-Over the 25 resolved production fixture cases.
+Over the 35 resolved production fixture cases.
 
 | Rung | Cases |
 | --- | --- |
-| `invalid` | 9 |
+| `invalid` | 19 |
 | `FAIL` | 7 |
 | `CONCERNS` | 7 |
 | `WAIVED` | 1 |
@@ -68,6 +78,16 @@ Over the 25 resolved production fixture cases.
 | `selector-ambiguity` | 1 |
 | `unwitnessed-claim` | 1 |
 | `unwitnessed-quotation` | 1 |
+| `duplicate-record-identifier` | 1 |
+| `dangling-citation` | 1 |
+| `dangling-disposition-citation` | 1 |
+| `forbidden-input-not-withheld` | 1 |
+| `cross-artifact-disagreement` | 1 |
+| `evaluator-configuration-absent` | 1 |
+| `evaluator-configuration-digest-mismatch` | 1 |
+| `judge-result-unscored` | 1 |
+| `operation-identifier-collision` | 1 |
+| `trial-set-field-disagreement` | 1 |
 | `behavioural-failure-at-or-above-floor` | 1 |
 | `evidence-incomplete` | 1 |
 | `evidence-over-truncated` | 1 |
@@ -97,6 +117,16 @@ Over the 25 resolved production fixture cases.
 | `selector-ambiguity` | Invalid | a step matched several observations under a single-valued cardinality (owed item 2) | no |
 | `unwitnessed-claim` | Invalid | a defect finding claimed a detection no candidate observation witnesses (AD-40) | no |
 | `unwitnessed-quotation` | Invalid | a defect finding's quoted evidence appears in no cited observation (AD-32) | no |
+| `duplicate-record-identifier` | Invalid | the record uses one observation, finding, or oracle-disposition identifier twice | no |
+| `dangling-citation` | Invalid | a finding cites an observation identifier the record does not declare | no |
+| `dangling-disposition-citation` | Invalid | an oracle disposition cites an observation identifier the record does not declare | no |
+| `forbidden-input-not-withheld` | Invalid | AD-16 forbidden input admitted rather than withheld | no |
+| `cross-artifact-disagreement` | Invalid | the sealed run record and the isolation manifest disagree on a field AD-32 requires them to agree on | no |
+| `evaluator-configuration-absent` | Invalid | the evaluator configuration artifact is absent | no |
+| `evaluator-configuration-digest-mismatch` | Invalid | the evaluator configuration digest the record declares does not recompute from the artifact | no |
+| `judge-result-unscored` | Invalid | a judge result carries `score: null` | no |
+| `operation-identifier-collision` | Invalid | an observation's operationId matches an operation in more than one permittedInterfaces entry | no |
+| `trial-set-field-disagreement` | Invalid | two trials in the same trial set disagree on `mode` or `evaluatorRecommendation` | no |
 | `behavioural-failure-at-or-above-floor` | FAIL | an AD-6 behavioural failure at or above the scoring policy's severity floor | no |
 | `evidence-incomplete` | FAIL | evidence reported incomplete under AD-17 | no |
 | `evidence-over-truncated` | FAIL | evidence truncated past its disclosed bound under AD-17 | no |
@@ -113,11 +143,11 @@ Over the 25 resolved production fixture cases.
 
 ### Contract-scoring ladder census, by rung
 
-Over the 23 resolved contract-scoring fixture cases.
+Over the 33 resolved contract-scoring fixture cases.
 
 | Rung | Cases |
 | --- | --- |
-| `invalid` | 9 |
+| `invalid` | 19 |
 | `FAIL` | 6 |
 | `CONCERNS` | 6 |
 | `WAIVED` | 1 |
@@ -136,6 +166,16 @@ Over the 23 resolved contract-scoring fixture cases.
 | `selector-ambiguity` | 1 |
 | `unwitnessed-claim` | 1 |
 | `unwitnessed-quotation` | 1 |
+| `duplicate-record-identifier` | 1 |
+| `dangling-citation` | 1 |
+| `dangling-disposition-citation` | 1 |
+| `forbidden-input-not-withheld` | 1 |
+| `cross-artifact-disagreement` | 1 |
+| `evaluator-configuration-absent` | 1 |
+| `evaluator-configuration-digest-mismatch` | 1 |
+| `judge-result-unscored` | 1 |
+| `operation-identifier-collision` | 1 |
+| `trial-set-field-disagreement` | 1 |
 | `behavioural-failure-at-or-above-floor` | 1 |
 | `evidence-incomplete` | 1 |
 | `evidence-over-truncated` | 1 |

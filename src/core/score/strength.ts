@@ -165,12 +165,20 @@ function componentComparison(
 const atOrAboveFloor = (severity: Severity, floor: Severity): boolean =>
 	SEVERITY_LEVELS.indexOf(severity) >= SEVERITY_LEVELS.indexOf(floor)
 
+/**
+ * Keyed by the first outcome carrying each `probeId`, not the last: two
+ * `Outcome` entries sharing one `probeId` is itself a defect somewhere
+ * upstream (this map has no way to tell which entry is the real one), and a
+ * silent last-write-wins overwrite would drop the earlier entry from the
+ * severity-floor scan below with no trace it was ever there.
+ */
 const outcomesByProbeId = (
 	outcomes: readonly Outcome[],
 ): ReadonlyMap<string, Outcome> => {
 	const byProbeId = new Map<string, Outcome>()
 	for (const outcome of outcomes) {
 		if (outcome.probeId === null) continue
+		if (byProbeId.has(outcome.probeId)) continue
 		byProbeId.set(outcome.probeId, outcome)
 	}
 	return byProbeId

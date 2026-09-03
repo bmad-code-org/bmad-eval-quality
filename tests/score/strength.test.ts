@@ -435,4 +435,30 @@ describe('compareDominance', () => {
 		const b = comparableOf(other, [outcomeOf(null, 'caught', 'critical')])
 		expect(compareDominance(a, b, 'material')).toBe('a-dominates-b')
 	})
+
+	// `outcomesByProbeId` keeps the first entry sharing a `probeId`, never the
+	// last. Here `other`'s own list carries two `P-shared` entries -- `caught`
+	// first, `missed` second -- so a last-write-wins map would read `missed`
+	// for the override check, skip it (the guard only fires on `caught`), and
+	// leave `a-dominates-b` standing uncorrected. First-write-wins reads
+	// `caught`, finds `favored` missed the same probe, and downgrades to
+	// `incomparable`.
+	it('reads the first Outcome sharing a probeId, not the last, when applying the severity-floor override', () => {
+		const vector = {
+			...NULL_VECTOR,
+			defect: { caught: 3, exercised: 4, rate: 0.75 },
+		}
+		const other = {
+			...NULL_VECTOR,
+			defect: { caught: 1, exercised: 4, rate: 0.25 },
+		}
+		const a = comparableOf(vector, [
+			outcomeOf('P-shared', 'missed', 'critical'),
+		])
+		const b = comparableOf(other, [
+			outcomeOf('P-shared', 'caught', 'critical'),
+			outcomeOf('P-shared', 'missed', 'critical'),
+		])
+		expect(compareDominance(a, b, 'material')).toBe('incomparable')
+	})
 })

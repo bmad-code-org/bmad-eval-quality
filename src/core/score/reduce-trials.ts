@@ -88,14 +88,50 @@ export type TrialSetResult = {
  * A probe with zero voted trials is `exercised: false` and contributes
  * nothing to `ClassStrength`; `caught` is `false` in that case too, since a
  * majority over zero trials decides nothing.
+ *
+ * `catchThreshold` is checked against `ScoringPolicy.catchThreshold`'s own
+ * declared domain (`.min(0).max(1)`) and a `vote.state` outside the closed
+ * twelve is checked explicitly, rather than silently falling through into
+ * `votedStates.push`: both were reachable only through a type-system bypass
+ * while this reducer shipped with no caller, and now that `score.ts` calls
+ * it for real, a bypass is exactly the input this pure function must still
+ * answer without absorbing it silently.
+ *
+ * Both checks are written to survive a bypass that also defeats the naive
+ * form of the check, not only a bypass of the declared type. `catchThreshold`
+ * is asserted a finite primitive `number` before the range comparison runs:
+ * `>=`/`<=` coerce their operands, so `null`, a numeric string, or a boxed
+ * `Number` would each satisfy `0 <= x <= 1` without ever being the number the
+ * range check means to bound. `vote.state`'s lookup uses `Object.hasOwn`
+ * rather than trusting `=== undefined`: `TRIAL_VOTE_STATE_OF` is a plain
+ * object and so inherits `Object.prototype`, and a state string that happens
+ * to name an inherited member (`"toString"`, `"constructor"`,
+ * `"hasOwnProperty"`, `"valueOf"`) resolves to that inherited function
+ * instead of `undefined`, which would silently clear the `=== undefined`
+ * guard and vote the bogus state in.
  */
 export function reduceTrialSet(
 	votes: readonly TrialVote[],
 	catchThreshold: number,
 ): TrialSetResult {
+	if (typeof catchThreshold !== 'number' || !Number.isFinite(catchThreshold)) {
+		throw new TypeError(
+			`reduceTrialSet: catchThreshold ${String(catchThreshold)} is not a finite number`,
+		)
+	}
+	if (!(catchThreshold >= 0 && catchThreshold <= 1)) {
+		throw new TypeError(
+			`reduceTrialSet: catchThreshold ${catchThreshold} is outside ScoringPolicy's declared 0..1 domain`,
+		)
+	}
 	const invalidatedAttempts: InvalidatedAttempt[] = []
 	const votedStates: OutcomeStateValue[] = []
 	votes.forEach((vote, index) => {
+		if (!Object.hasOwn(TRIAL_VOTE_STATE_OF, vote.state)) {
+			throw new TypeError(
+				`reduceTrialSet: vote ${index + 1} carries an out-of-domain state "${vote.state}"`,
+			)
+		}
 		const group = TRIAL_VOTE_STATE_OF[vote.state]
 		if (group === 'invalidating') {
 			invalidatedAttempts.push({ attempt: index + 1, reason: vote.state })
