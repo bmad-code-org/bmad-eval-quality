@@ -1,9 +1,8 @@
 # Deferred work
 
-Fifteen items are open, listed under "How to use this file" and in the per-review sections
-following it. The prose immediately below records how each past item closed. This sentence said
-"no items are currently open" while epic 7 filed fifteen of them; it is corrected here so a reader
-does not trust the header over the list.
+Eleven items are open, listed under "How to use this file" and in the per-review sections following
+it. The prose immediately below records how each past item closed. Epic 7's reviews filed fifteen;
+this file's own closure narrative below accounts for the other four.
 
 Story 7.10 opened five items and one of them closed the same day, 2026-09-03, wider than it was
 filed. The entry said two of epic 7's nine `schemaVersion` bumps carried no bump note in the driving
@@ -20,8 +19,62 @@ brief's bump is in a code comment at `src/core/seal/seal.ts:95-98`, and the prob
 artifact's are in their artifact-level `.meta` descriptions, which do export. The scoring policy was
 the only one with no record anywhere in its module. The edit is additive text on six existing
 `.describe()` calls, so no `schemaVersion` moved and no field changed shape; the reasoning lives in
-`7-10-the-epics-disclosed-breaks-and-the-non-comparability-statement.md`'s review record. The other
-four items Story 7.10 opened stay open below.
+`7-10-the-epics-disclosed-breaks-and-the-non-comparability-statement.md`'s review record.
+
+The other four items Story 7.10 opened all closed the same week, once epic 7's own stories were
+done and a dedicated cleanup pass could touch what a documentation-only story's frozen Never
+clause could not.
+
+The two stale-stamp items closed by code, not by argument: `scripts/worked-example-target.ts`'s
+`AUTHORED_CONTRACT.schemaVersion` moved from `1` to `3`, matching the shape it was already
+re-authored against, and `spike-worked-example/`'s five files were regenerated
+(`npm run generate:worked-example`), correcting the `contractSchemaVersion: 1` the published
+evidence artifact carried against an eval contract the same release discloses at 3. The dev-corpus
+stamp traced to one line: `tests/coverage/fixtures/satisfaction-contracts.ts`'s seed literal, which
+every one of the nineteen corpus contracts spreads from, so a single-line fix and a
+`npm run generate:dev-corpus` regeneration corrected all nineteen files plus the compiled-and-sealed
+example at once. Closing it required first fixing `scripts/dev-corpus-target.ts`'s
+`assertLineageRoot`, which had hard-required `schemaVersion === 1` as part of what makes a contract
+a lineage root: a stale assumption from when every schema was still at version 1, and a
+misattribution to AD-29, whose actual Rule text (`ARCHITECTURE-SPINE.md:439`) governs only
+`parentDigest` and `revisionCount`. The guard now checks AD-29's own pair alone; verified still live
+against a mutated `revisionCount` and a set `parentDigest`, and correctly silent against a
+`schemaVersion` other than 1. A sweep for the same pattern (an `EvalContract` literal already
+shaped to the current schema but still stamped 1) found two more unshipped test fixtures
+(`tests/schemas/fixtures/relevance-contracts.ts`'s `absentContract`, `tests/schemas/fixtures/gate-c-
+contract.ts`, and `tests/preflight/fixtures/observations.ts`'s preflight contract) and corrected all
+three in the same pass, though none of them ships or is asserted against a version anywhere, so
+their staleness was cosmetic rather than a caller-facing break. `npm run validate` green throughout:
+99 suite files, 3339 tests, 97.05 / 92.64 percent statement / branch coverage.
+
+That both stray stamps trace to one root cause each (a single seed literal for the whole dev
+corpus, a single authored constant for the worked example) is itself the reason a fourth site of
+this exact bug (and, before it, a third: `spike-worked-example/eval-contract.json` on story 7.9's
+own first pass) surfaced in two days. Nothing in the repository names a current schema version per
+artifact, so nothing can catch a stale stamp short of a manual sweep, and the two structural checks
+that touch these files (`check:worked-example`, `check:corpus`) cannot catch it by construction: both
+rebuild through the same literal they compare the commit against, so a wrong stamp and its check
+agree with each other. Closing that properly means a per-artifact current-version registry, which is
+an architecture decision, not a bug fix: `src/core/schemas/eval-contract.ts`'s own published
+description already states that no reader in this version declares an expected version constant,
+and introducing one contradicts that shipped design intent rather than extending it. Left open as an
+observation rather than filed as a new item: every instance the pattern has produced so far is now
+fixed, and the next one (if this repository's schemas keep moving) is a `git grep
+'schemaVersion: 1'` away from being found the same way these four were.
+
+The two remaining Story 7.10 items closed by argument, not by code, because both are spine-text
+completeness gaps rather than defects: nothing reads wrong today, and both would need someone to
+decide new architecture-document text, which is exactly what this repository's standing practice
+(recorded in prior epics' own retrospectives) reserves for a deliberate spine revision rather than an
+incidental finding from an unrelated story. AD-11's enumerated disclosure surface having no automated
+drift check is real and Story 7.10 found it by hand, but the fix is a new checker script deriving the
+list from `INTERCHANGE_ARTIFACTS`, which is new tooling scope disproportionate to what surfaced it,
+not a correction to anything currently wrong. AD-11's rule text having no explicit "added a required
+field is breaking" case is also real and the reading Story 7.10 used is correct, cited, and now
+published in `CHANGELOG.md`; writing that case into AD-11's Rule paragraph itself, rather than into
+its disclosure-surface sentence (which Story 7.10 was already authorized to edit), is a change to
+the architecture's own normative text, and stays a recorded observation rather than a spine edit no
+single story's incidental finding should make alone.
 
 All five items Story 4.2's own step-04 review opened were closed the same day, 2026-08-25, once
 pushed on rather than left queued:
@@ -251,19 +304,3 @@ The rule is about the entry, not about erasing that something was once open.
     other four. A focused pass across all five fields (which ones are structurally always
     caller-attested vs. optionally computed by `score`, and enforcing the always-caller-attested ones)
     is the right shape for closing this, not a one-field patch.
-
-- source_spec: `_bmad-output/implementation-artifacts/7-10-the-epics-disclosed-breaks-and-the-non-comparability-statement.md`
-  summary: The regenerated spike worked example stamps `schemaVersion: 1` on a contract re-authored whole against the schema at 3, and that stale stamp propagates into the one scoring identity the repository publishes.
-  evidence: `scripts/worked-example-target.ts:221` hardcodes `schemaVersion: 1` directly under a comment stating the contract was "Authored whole against the current `EvalContract`, not patched", and the committed `spike-worked-example/eval-contract.json` carries five `cardinality` occurrences plus `testData.principals`/`testData.resources`, so it is a version-3-shaped document wearing a version-1 stamp. `:1389` feeds `contractSchemaVersion: contract.schemaVersion` into `scoringVersionInputs`, so `spike-worked-example/evidence-artifact.json` publishes `"contractSchemaVersion": 1` against an eval contract the same release discloses at 3. `check:worked-example` cannot catch it: it rebuilds through the same builder and compares the committed `1` against the same hardcoded `1`. No per-artifact current-version constant exists anywhere in `src/`, `scripts/`, or `tests/` to compare a stamp against. This is Story 7.9's artifact, already merged, and Story 7.10's frozen Never forbids touching it.
-
-- source_spec: `_bmad-output/implementation-artifacts/7-10-the-epics-disclosed-breaks-and-the-non-comparability-statement.md`
-  summary: Every eval contract in the shipped dev corpus carries `schemaVersion: 1` against an eval-contract schema at 3.
-  evidence: All 19 files under `corpus/dev/contracts/` and `corpus/dev/compile-seal-example/contract.json` carry `schemaVersion: 1`, while the sibling `compile-seal-example/brief.json` carries `2`. `package.json`'s `files` ships `corpus`, and `CHANGELOG.md`'s `[0.1.0]` section names the dev corpus as caller-facing, so these are published artifacts whose stamps disagree with the schema the same tarball ships. They parse only because nothing compares the number, which is the property Story 7.10's disclosure documents. Correcting the stamps means regenerating the corpus, which is outside a documentation-only story.
-
-- source_spec: `_bmad-output/implementation-artifacts/7-10-the-epics-disclosed-breaks-and-the-non-comparability-statement.md`
-  summary: AD-11's enumerated disclosure surface is hand-maintained with no gate, unlike every comparable spine table, so it drifts silently.
-  evidence: `npm run validate` runs `check:ad5-registry`, `check:ad28-registry`, `check:ad31-table`, `check:ad33-table`, and `check:ad21-table`, each pinning spine text against code. `scripts/spine-lint/lint_spine.py` contains no rule mentioning AD-11 or disclosure; its rules are uncoded prohibitions and dangling declaration citations. The drift is not hypothetical: Story 7.10 found and corrected it by hand after the probe schema and the scoring policy had been missing from the list for nine spine revisions. A checker deriving the list from `INTERCHANGE_ARTIFACTS`' `carriesLineage: true` entries would close it.
-
-- source_spec: `_bmad-output/implementation-artifacts/7-10-the-epics-disclosed-breaks-and-the-non-comparability-statement.md`
-  summary: AD-11's rule has no case for "added a required field", the reading every one of epic 7's nine breaking bumps rests on.
-  evidence: The rule at `ARCHITECTURE-SPINE.md:291` offers a two-case taxonomy: "Adding an optional field is a `schemaVersion` bump recorded in the field's own description; removing or retyping is breaking." Story 7.10's disclosure classifies nine required-field additions as breaking by reading them as a retyping of the shape, which is correct but is a derivation the spine never states. The next reader re-derives it from scratch. One clause in that sentence closes it, but Story 7.10's frozen Never permits editing only the enumerated-surface sentence on that line.
