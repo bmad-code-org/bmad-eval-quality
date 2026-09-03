@@ -805,6 +805,26 @@ describe('quotation audits and never governs', () => {
 		expect(forward.map((entry) => entry.findingId)).toEqual(['F-029', 'F-030'])
 	})
 
+	// `observationIds` carries no ordering field and no uniqueness refinement, so
+	// the payload may carry neither the citation array's order nor its repeats.
+	// The only assertion in the tree that reads this field on a real audit result
+	// does so against a finding already sorted and duplicate-free, so without this
+	// case the rule is unguarded.
+	it('returns cited identifiers ascending and deduplicated', () => {
+		const unwitnessed = auditQuotation(
+			recordOf(bothObservations, [
+				defectFinding(['obs-2', 'obs-1', 'obs-2'], {
+					findingId: 'F-031',
+					quote: '999',
+				}),
+			]),
+		)
+
+		expect(unwitnessed.map((entry) => entry.citedObservationIds)).toEqual([
+			['obs-1', 'obs-2'],
+		])
+	})
+
 	it('does not feed the verdict: an unwitnessed quote still resolves matched', () => {
 		const record = recordOf(bothObservations, [
 			defectFinding(['obs-2'], { quote: 'a quote nothing carries' }),

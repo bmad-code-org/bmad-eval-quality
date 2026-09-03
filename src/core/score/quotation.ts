@@ -144,7 +144,13 @@ export function auditQuotation(
 			.filter(
 				(observation): observation is Observation => observation !== undefined,
 			)
-			.sort((a, b) => (a.observationId < b.observationId ? -1 : 1))
+			.sort((a, b) =>
+				a.observationId < b.observationId
+					? -1
+					: a.observationId > b.observationId
+						? 1
+						: 0,
+			)
 		const artifactPath = `SealedRunRecord.findings[findingId=${finding.findingId}]`
 		finding.quotedEvidence.forEach((quoted, quoteIndex) => {
 			const witnessed = cited.some((observation) =>
