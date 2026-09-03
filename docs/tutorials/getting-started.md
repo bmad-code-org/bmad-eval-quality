@@ -26,7 +26,7 @@ Three package stages sit inside it. The table maps each step to the terms whose 
 | 3 | `seal` | evaluation contract, oracle directions |
 | 4 | `preflight` | probes, observations, preflight |
 
-The rest of the flow is elsewhere. Running the system and the evaluator and collecting evidence are the caller's job today. Oracle resolution, rubric grading, and scoring form a future package stage, on the [roadmap](/explanation/roadmap/).
+The rest of the flow is elsewhere. Running the system and the evaluator and collecting evidence are the caller's job today. Oracle resolution, rubric grading, and scoring belong to a package stage that has no module yet. The functions behind them are written and shipped in the tarball with no export path to them, which the [roadmap](/explanation/roadmap/) sets out in full.
 
 The contract is `satisfied-declarations`. Its one behavior reads: *a created thing is readable back in the list of things*, so its checks look at the create response **and** at the list that create was supposed to change. An evaluation that only read the create response would pass while the list stayed empty, which is the shape of blind spot the [twin run](/explanation/behavioral-evaluation-contracts/) exists to find.
 
@@ -46,7 +46,7 @@ Nothing here executes a system under test or an evaluator. You compile a contrac
 The package publishes as `eval-quality`, and it installs a binary of the same name:
 
 ```bash
-npm install eval-quality
+npm install eval-quality   # the package itself; the walkthrough below uses a clone instead
 ```
 
 Every command below runs from a clone, so the binary is `node dist/cli/main.js`:
@@ -188,13 +188,13 @@ The verdict goes to stdout:
 
 ## What you have run, and what you have not
 
-You compiled the shipped contract, sealed it into a brief, and reduced six observations into a passing preflight verdict. That is every stage the package ships.
+You compiled the shipped contract, sealed it into a brief, and reduced six observations into a passing preflight verdict. Those are the three stages a caller can reach.
 
 **The second arm is missing.** The finding worth having comes from planting a known defect in a real system under test, running the identical contract against it, and checking that the evaluation's findings degrade. That means executing the system and the evaluator, which the package deliberately leaves to the caller. It is not something this tutorial can do with a JSON file.
 
 You can still watch preflight discriminate. Delete the `preflight-control-observe-2` entry from `observations.json` and rerun the command: `interface-present` for `list-things`, `state-reset`, and `clean-control` all report `failed`, `passed` is `false`, and the command exits `3`. That is a negative preflight demonstration, and it shows the environment gate refusing an incomplete run.
 
-Nothing here scored anything either. Scoring is the comparison step at the bottom of the twin run. It is the next milestone, and the [roadmap](/explanation/roadmap/) says what that covers.
+Nothing here scored anything either. Scoring is the comparison step at the bottom of the twin run. No command and no library call reaches it, though the functions exist; the [roadmap](/explanation/roadmap/) says what is written and what is still missing.
 
 ---
 

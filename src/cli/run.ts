@@ -133,10 +133,11 @@ const COMMAND_USAGE: Readonly<Record<Command, string>> = {
 }
 
 const IO_RULES = `Inputs and outputs:
-  An input flag left out reads stdin, and "-" names stdin explicitly; at most
-  one input may be "-". Without --out the artifact goes to stdout. An --out
-  ending in .json is a file path; anything else is a directory taking
-  <target>/<kind>.json. Diagnostics and errors go to stderr.`
+  --in is the only optional input: compile and seal read stdin when it is
+  left out, while preflight's three inputs are each required. "-" names stdin
+  explicitly and at most one input may be "-". Without --out the artifact goes
+  to stdout. An --out ending in .json is a file path; anything else is a
+  directory taking <target>/<kind>.json. Diagnostics and errors go to stderr.`
 
 export function helpText(command: Command | null): string {
 	if (command === null) {

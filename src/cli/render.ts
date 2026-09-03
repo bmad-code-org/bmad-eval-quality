@@ -52,14 +52,17 @@ export const EXIT_CODE_TABLE = `Exit codes (AD-21):
   0   success, and every verdict other than FAIL or a promoted CONCERNS
   1   CONCERNS promoted by --strict
   2   FAIL
-  3   invalid: a pre-flight verdict that did not pass
+  3   invalid: a failed pre-flight, or any other AD-21 invalidating condition
   4   structural failure
   5   runtime fault
   64  usage error
 
-  1 and 2 report a scored verdict. Scoring ships in a later release, so no
-  command here reaches either yet, and --strict changes no code this binary
-  produces.`
+  --strict never promotes a CONCERNS whose firing conditions are all evidence
+  conditions: those conditions report that the measurement fell short of the
+  policy. Of the invalidating conditions behind 3, only the failed pre-flight
+  is reachable from this binary. 1 and 2 report a scored verdict. Scoring ships
+  in a later release, so no command here reaches either yet, and --strict
+  changes no code this binary produces.`
 
 /** `eval-quality: usage: <message>` */
 export function renderUsage(message: string): string {

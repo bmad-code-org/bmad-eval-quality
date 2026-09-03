@@ -68,7 +68,7 @@ cmp /tmp/eval-quality-run/sealed-evaluator-brief.json /tmp/eval-quality-run/pipe
 identical
 ```
 
-An input flag left out reads stdin, which is what makes the pipe work. `-` names stdin explicitly, and at most one input on a command may be `-`.
+`--in` left out reads stdin, which is what makes the pipe work. `preflight` has no such default: its three inputs are each required. `-` names stdin explicitly, and at most one input on a command may be `-`.
 
 ---
 
@@ -131,7 +131,9 @@ state-reset null satisfied
 clean-control null satisfied
 ```
 
-Exit `0` means the verdict passed. Exit `3` means it did not. Delete one observation and the checks that read its leg report `failed`, with the reason in each check's `note`. `seeded-faults-scoped` is the exception: it asks whether a manifestation witness fires on a clean leg, and a leg with no observation cannot fire one, so a missing clean leg leaves that check `satisfied`.
+Exit `0` means the verdict passed. Exit `3` means it did not. Delete one observation and the checks that read its leg report `failed`, with the reason in each check's `note`.
+
+This contract seeds no faults, so it emits none of the two seeded-fault check kinds and you will not see them in the six rows above. `seeded-faults-scoped` asks whether a manifestation witness fires on a clean leg, and a leg with no observation cannot fire one, so a missing clean leg leaves that check `satisfied`.
 
 ---
 
@@ -154,13 +156,13 @@ sealed-evaluator-brief.json
 
 ## Two guards worth knowing
 
-**`--out` may not overwrite an input.** The CLI resolves both paths and also asks the filesystem whether they name the same file, so a symlink and a case-insensitive spelling are caught too. It exits `64` with:
+**`--out` may not overwrite an input.** The CLI resolves both paths and also asks the filesystem whether they name the same file, so a symlink and a case-insensitive spelling are caught too. Step 1 wrote `eval-contract.json` into the run directory, so pointing both `--in` and `--out` at it shows the guard: run `compile` with `--in /tmp/eval-quality-run/eval-contract.json --out /tmp/eval-quality-run/eval-contract.json`. It exits `64` with:
 
 ```text
-eval-quality: usage: --out resolves to "/tmp/eval-quality-run/contract.json", which is also --in "/tmp/eval-quality-run/contract.json"
+eval-quality: usage: --out resolves to "/tmp/eval-quality-run/eval-contract.json", which is also --in "/tmp/eval-quality-run/eval-contract.json"
 ```
 
-**One stdin cannot serve two readers.** Naming `-` on more than one input of the same command exits `64`:
+**One stdin cannot serve two readers.** Naming `-` on more than one input of the same command exits `64`. Run `preflight` with `--contract - --probes - --observations - --run-id run-1` and it reports:
 
 ```text
 eval-quality: usage: only one input may read stdin, but --contract, --probes, --observations all name "-"
@@ -173,3 +175,5 @@ eval-quality: usage: only one input may read stdin, but --contract, --probes, --
 - [CLI reference](/reference/cli-commands/), including the difference between `--strict` and `--strict-inputs`
 - [Author a Behavioral Evaluation Contract](/how-to/author-behavioral-contracts/)
 - [Getting Started](/tutorials/getting-started/)
+
+Supplying your own effects instead of the reference adapters is covered in [Ports, adapters, and the conformance suite](/how-to/ports-and-adapters/).

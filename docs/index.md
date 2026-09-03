@@ -75,7 +75,7 @@ Every flag each command accepts is listed on the [CLI reference](/reference/cli-
 
 ## What does not ship
 
-**Scoring is the comparison step of the loop.** No command computes contract strength, defect detection, or any other score, so the "did the evaluation catch it?" question is answered by hand today. Exit codes 1 and 2 are reserved for a scored verdict, so nothing in this release reaches them, and `--strict` changes no exit code the binary produces today. The [roadmap](/explanation/roadmap/) records what is next.
+**Scoring is the comparison step of the loop.** No command and no library call computes contract strength, defect detection, or any other score, so the "did the evaluation catch it?" question is answered by hand today. The functions themselves are written and covered, in `src/core/score/`; no stage and no surface reach them yet. Exit codes 1 and 2 are reserved for a scored verdict, so nothing in this release reaches them, and `--strict` changes no exit code the binary produces today. The [roadmap](/explanation/roadmap/) records what ships, what is built but unreachable, and what is not built.
 
 ---
 
@@ -89,7 +89,7 @@ The documentation follows the Diátaxis framework:
 Install the package and run compile, seal, and preflight on a contract that ships in the corpus.
 
 ### [How-To Guides](/how-to/author-behavioral-contracts/)
-Author a contract against the real schema, and drive the three commands end to end.
+Author a contract against the real schema, drive the three commands end to end, and implement a [port of your own](/how-to/ports-and-adapters/).
 
 ### [Explanation](/explanation/behavioral-evaluation-contracts/)
 The twin-run loop, what a Behavioral Evaluation Contract asserts, and why compile rejects what it rejects.

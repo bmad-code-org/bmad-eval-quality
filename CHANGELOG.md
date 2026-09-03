@@ -12,6 +12,16 @@ body.
 
 ### Added
 
+- The `ingest` stage at `src/core/ingest/`, which turns a caller's sealed run record, isolation
+  manifest, and evaluator configuration into validated observations plus every cross-artifact
+  condition it detected. It enforces the rules six shipped schema fields and AD-16 name `core/ingest`
+  as the enforcement point for, and it is reachable from no published surface: neither
+  `src/index.ts` nor `src/application/index.ts` exports it, and the CLI still has three commands.
+  Eight of its eleven conditions have no rung on either verdict ladder yet and carry an explicit
+  null target. A later story adds the rungs.
+- Documentation for the two published subpaths that had none: `eval-quality/adapters` and
+  `eval-quality/conformance` are covered by a new "Ports, adapters, and the conformance suite" page.
+
 - Two compile-time failure codes in AD-5's registry, the closed enumeration `compile` reports
   against: `binding-cycle`, for a cycle over a compiled plan's capture edges and `after` edges taken
   together, and `captured-channel-undeclared`, for a captured pointer naming any channel but

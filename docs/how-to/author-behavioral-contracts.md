@@ -104,7 +104,7 @@ Both exit `4`, the structural-failure code. The message names the failure code, 
 
 ## Use the corpus as a rule index
 
-`corpus/dev/contracts/` holds nineteen contracts, one per discipline rule in each declaration state. Sixteen compile, and three fail by design. `corpus/dev/index.json` lists every file with its digest, and records the failure code for each of the three that fail:
+`corpus/dev/contracts/` holds nineteen contracts, collectively covering AD-20's seven discipline rules in each declaration state. Sixteen compile, and three fail by design. `corpus/dev/index.json` lists every file with its digest, and records the failure code for each of the three that fail:
 
 ```bash
 node -e "for (const e of require('./corpus/dev/index.json').entries) if (e.structuralFailure) console.log(e.structuralFailure, e.path)"
@@ -136,3 +136,5 @@ npm run check:corpus
 - [Run the three commands](/how-to/run-the-three-commands/)
 - [CLI reference](/reference/cli-commands/)
 - [What a Behavioral Evaluation Contract asserts](/explanation/behavioral-evaluation-contracts/)
+
+Supplying your own effects instead of the reference adapters is covered in [Ports, adapters, and the conformance suite](/how-to/ports-and-adapters/).

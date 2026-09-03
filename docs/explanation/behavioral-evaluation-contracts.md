@@ -57,7 +57,7 @@ The way to find a blind spot is to plant one. Keep the evaluation fixed and chan
                   ↓                                   ↓
                evidence                            evidence
                   ↓                                   ↓
-      score / verdict  [next milestone]   score / verdict  [next milestone]
+      score / verdict  [written]         score / verdict  [written]
              should pass                       should degrade
                   └─────────────────┬─────────────────┘
                                     ↓
@@ -66,7 +66,9 @@ The way to find a blind spot is to plant one. Keep the evaluation fixed and chan
                       evidence of evaluation strength
 ```
 
-This is the conceptual loop, drawn in core-flow order. Ownership splits three ways. `eval-quality` ships the `preflight` row today. Executing the two systems, running the evaluator, and collecting evidence belong to the caller. The `score / verdict` row is a future `eval-quality` stage, which is why it is marked as the next milestone rather than as caller work.
+This is the conceptual loop, drawn in core-flow order. Ownership splits three ways. `eval-quality` ships the `preflight` row today. Executing the two systems, running the evaluator, and collecting evidence belong to the caller. The `score / verdict` row belongs to `eval-quality`, and it is written: the outcome-state procedure and both verdict ladders run today and are published as generated tables. What is missing is the stage and the surface that reach them.
+
+The loop is drawn in the eight core-flow nouns, which is one level above the pipeline. The pipeline itself has six stages, and `ingest` sits between the caller's run record and the scoring rows: it validates a sealed run record against its isolation manifest and evaluator configuration, and records every cross-artifact inconsistency it finds. Like the scoring rows, it is built and reachable from nothing.
 
 Two of the boxes are easy to conflate: **observations** are probe results about environment fitness, which is what `preflight` reduces, and **evidence** is what the evaluation run itself produced. Oracles resolve over that evidence and rubrics grade it, between the `evidence` and `score / verdict` rows.
 
@@ -158,6 +160,6 @@ Both are the blind-spot problem in miniature: an evaluation that reports success
 
 ## What is not implemented
 
-Scoring is the comparison step at the bottom of the twin run. Nothing in this release measures contract strength, defect detection, or oracle effectiveness. Today an external evaluator or harness produces the findings for each arm and you compare them yourself, and a future scoring stage is what turns those findings into a governed score. `compile` checks a contract's rubrics structurally, so a rubric that scores reasoning prose or cites unreachable evidence is rejected, and no shipped stage then uses a rubric to produce a score. `schemas/scoring-policy.schema.json` is published, the registry and the schema checks consume it, and no shipped scoring stage does. Exit codes 1 and 2 are reserved for a scored verdict and no command reaches them.
+Scoring is the comparison step at the bottom of the twin run. No published stage, command, or library call measures contract strength, defect detection, or oracle effectiveness. Today an external evaluator or harness produces the findings for each arm and you compare them yourself, and the scoring stage is what will turn those findings into a governed score. The functions it will call already exist in `src/core/score/`, exported nowhere; the [roadmap](/explanation/roadmap/) lists what they cover. `compile` checks a contract's rubrics structurally, so a rubric that scores reasoning prose or cites unreachable evidence is rejected, and no shipped stage then uses a rubric to produce a score. `schemas/scoring-policy.schema.json` is published, the registry and the schema checks consume it, and no shipped scoring stage does. Exit codes 1 and 2 are reserved for a scored verdict and no command reaches them.
 
 The [roadmap](/explanation/roadmap/) records where that stands.
