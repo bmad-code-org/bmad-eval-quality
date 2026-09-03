@@ -9,7 +9,7 @@ sidebar:
 
 The package publishes one binary, `eval-quality`, declared in `package.json` under `bin`. Inside a clone it is `node dist/cli/main.js` after `npm run build`.
 
-Every usage block on this page is the binary's own help text, printed by `eval-quality --help` and `eval-quality help <command>`.
+The synopsis, the inputs-and-outputs block, and the exit-code table on this page are the binary's own help text verbatim. The three per-command blocks are the command half of it: `eval-quality help <command>` prints the block shown here followed by the exit-code table, printed by `eval-quality --help` and `eval-quality help <command>`.
 
 ---
 
@@ -110,7 +110,7 @@ A flag a command does not accept exits `64` as an unknown flag, so `--strict-inp
 
 The two names are one keystroke apart and control unrelated things.
 
-**`--strict`** is the exit-code gate. It promotes a `CONCERNS` verdict to exit `1`. Scoring is what produces a verdict of that kind, and scoring does not ship in this release, so `--strict` changes no exit code the binary produces today. Every command accepts it.
+**`--strict`** is the exit-code gate. It promotes a `CONCERNS` verdict to exit `1`, except a `CONCERNS` whose firing conditions are all evidence conditions, which it never promotes. Scoring is what produces a verdict of that kind, and scoring does not ship in this release, so `--strict` changes no exit code the binary produces today. Every command accepts it.
 
 **`--strict-inputs`** and **`--no-strict-inputs`** are the compile mode. `--strict-inputs` rejects undeclared inputs, and it is the default when neither flag is given. `--no-strict-inputs` allows them. Only the two commands with a compile step accept these: `compile` and `seal`. `preflight` has no compile step, so it rejects them as unknown flags.
 
@@ -122,10 +122,11 @@ Passing `--strict-inputs` and `--no-strict-inputs` together resolves to whicheve
 
 ```text
 Inputs and outputs:
-  An input flag left out reads stdin, and "-" names stdin explicitly; at most
-  one input may be "-". Without --out the artifact goes to stdout. An --out
-  ending in .json is a file path; anything else is a directory taking
-  <target>/<kind>.json. Diagnostics and errors go to stderr.
+  --in is the only optional input: compile and seal read stdin when it is
+  left out, while preflight's three inputs are each required. "-" names stdin
+  explicitly and at most one input may be "-". Without --out the artifact goes
+  to stdout. An --out ending in .json is a file path; anything else is a
+  directory taking <target>/<kind>.json. Diagnostics and errors go to stderr.
 ```
 
 The `.json` suffix is the whole classifier for `--out`, matched case-insensitively. The CLI never stats the path to decide. The artifact kinds that name a file inside a directory target are `eval-contract.json`, `sealed-evaluator-brief.json`, and `preflight-verdict.json`.
@@ -138,12 +139,12 @@ Artifacts are written as one line of RFC 8785 canonical JSON with sorted keys. T
 
 ## Flag parsing
 
-- `--flag=value` splits on the first `=`, so a value may contain one.
+- `--flag=value` splits on the first `=`, so a value may contain one. Only flags that take a value accept this form: `--strict-inputs=true` exits `64` as an unknown flag.
 - An empty value exits `64`, in both the `--in=` and the `--in ""` form.
 - In the space form, a next token longer than one character that begins with `-` is read as the next flag, so the command reports a missing value and points at the `=` form. A bare `-` stays legal, since it names stdin.
 - A flag repeated with the same value is accepted. Repeated with different values it exits `64`.
-- `--` at the end of the line is ignored. A positional argument after it exits `64`, because no command takes one.
-- `--help` or `-h` anywhere in a command's arguments prints that command's help and exits `0`.
+- `--` at the end of the line is ignored. A positional argument exits `64` whether or not it follows one, because no command takes a positional; without `--` the message names it as an unknown flag.
+- `--help` or `-h` anywhere a flag is expected prints that command's help and exits `0`. In a position where a value is expected it is read as the missing value and exits `64`, so `compile --in --help` is a usage error.
 
 ---
 
@@ -154,14 +155,17 @@ Exit codes (AD-21):
   0   success, and every verdict other than FAIL or a promoted CONCERNS
   1   CONCERNS promoted by --strict
   2   FAIL
-  3   invalid: a pre-flight verdict that did not pass
+  3   invalid: a failed pre-flight, or any other AD-21 invalidating condition
   4   structural failure
   5   runtime fault
   64  usage error
 
-  1 and 2 report a scored verdict. Scoring ships in a later release, so no
-  command here reaches either yet, and --strict changes no code this binary
-  produces.
+  --strict never promotes a CONCERNS whose firing conditions are all evidence
+  conditions: those conditions report that the measurement fell short of the
+  policy. Of the invalidating conditions behind 3, only the failed pre-flight
+  is reachable from this binary. 1 and 2 report a scored verdict. Scoring ships
+  in a later release, so no command here reaches either yet, and --strict
+  changes no code this binary produces.
 ```
 
 ---
@@ -216,7 +220,7 @@ Node 22 and Node 24 both throw `ERR_IMPORT_ATTRIBUTE_MISSING` for the same impor
 - **Enumerations**: `FAILURE_CODES`, `RUNTIME_FAULT_CODES`, `VERDICTS`, `EVALUATOR_RECOMMENDATIONS`, `INTERCHANGE_ARTIFACT_KEYS`
 - **Version**: `VERSION`
 
-The artifact types ship alongside them as type-only exports: `EvalContract`, `SealedEvaluatorBrief`, `PreflightVerdict`, `PreflightCheck`, `Probe`, `Rubric`, `ScoringPolicy`, `SealedRunRecord`, `EvidenceArtifact`, `IsolationManifest`, `EvaluatorConfiguration`, `PrivateArtifactManifest`, `ArtifactReference`, along with `Diagnostic`, `DiagnosticSink`, `FailureCode`, `RuntimeFaultCode`, `Verdict`, `EvaluatorRecommendation`, and the witness types.
+The artifact types ship alongside them as type-only exports: `EvalContract`, `SealedEvaluatorBrief`, `PreflightVerdict`, `PreflightCheck`, `Probe`, `Rubric`, `ScoringPolicy`, `SealedRunRecord`, `EvidenceArtifact`, `IsolationManifest`, `EvaluatorConfiguration`, `PrivateArtifactManifest`, `ArtifactReference`, along with `Diagnostic`, `DiagnosticSink`, `FailureCode`, `RuntimeFaultCode`, `Verdict`, `EvaluatorRecommendation`, `LineageChainReport` and `LineageFinding` (what `validateLineageChain` returns), `RunPreflightOptions` and `PreflightFromObservationsOptions` (what the two pre-flight entries take), and the witness types.
 
 `runPreflight` takes an `EnvironmentProbePort` and awaits it. `preflightFromObservations` takes observations you already have and stays synchronous. The CLI's `preflight` command calls the second one.
 
@@ -229,7 +233,7 @@ The artifact types ship alongside them as type-only exports: `EvalContract`, `Se
 | Path | What it is |
 | --- | --- |
 | `corpus/dev/README.md` | what the corpus covers, and what it leaves out |
-| `corpus/dev/index.json` | every file, its kind, its digest, and the failure code for the three that fail |
+| `corpus/dev/index.json` | every other file, its kind, its digest, and the failure code for the three that fail |
 | `corpus/dev/contracts/` | nineteen contracts, collectively covering each discipline rule in each declaration state |
 | `corpus/dev/compile-seal-example/contract.json` | one contract that compiles |
 | `corpus/dev/compile-seal-example/brief.json` | the brief `seal` produces from it |
