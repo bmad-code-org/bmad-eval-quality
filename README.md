@@ -306,6 +306,8 @@ npm run generate:ad33-table # rebuild docs/ad33-outcome-decision.generated.md fr
 npm run check:ad33-table    # fail if the committed AD-33 table differs from the builder by one byte
 npm run generate:dev-corpus # rebuild corpus/dev/ from the contract fixtures through the shipped compile and seal
 npm run check:corpus        # fail if the committed corpus differs from the builder by one byte
+npm run generate:worked-example # rebuild the spike worked chain by running the compile, seal, and score functions over it
+npm run check:worked-example    # fail if the committed worked chain differs from the builder by one byte
 npm run build:shareable     # render the planning artifacts to self-contained HTML
 npm run test:conformance    # run the published port conformance suite against every shipped adapter
 ```

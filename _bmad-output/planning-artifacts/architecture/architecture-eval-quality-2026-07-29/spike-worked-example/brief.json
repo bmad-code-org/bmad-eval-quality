@@ -1,0 +1,117 @@
+{
+  "behaviors": [
+    {
+      "description": "A PATCH reporting success has persisted the change.",
+      "id": "B-001",
+      "observableSuccessCriterion": "An independent GET issued after a successful PATCH returns the title the PATCH sent.",
+      "oracles": [
+        "O-001"
+      ],
+      "requirementLinks": [
+        {
+          "id": "REQ-NOTES-1",
+          "scheme": "spike"
+        }
+      ],
+      "riskLinks": [
+        {
+          "id": "RISK-SILENT-WRITE",
+          "scheme": "spike-risk"
+        }
+      ],
+      "severity": "critical"
+    },
+    {
+      "description": "The success indicator agrees with the transport status and excludes a diagnostic.",
+      "id": "B-002",
+      "observableSuccessCriterion": "A successful call carries status 200 with `ok` true, a complete note payload, and no diagnostic field.",
+      "oracles": [
+        "O-002",
+        "O-003"
+      ],
+      "requirementLinks": [
+        {
+          "id": "REQ-NOTES-2",
+          "scheme": "spike"
+        }
+      ],
+      "riskLinks": [],
+      "severity": "material"
+    },
+    {
+      "description": "Every note in a collection response is complete, not only the first.",
+      "id": "B-003",
+      "observableSuccessCriterion": "Every element of the collection response carries all five declared note fields.",
+      "oracles": [
+        "O-004"
+      ],
+      "requirementLinks": [
+        {
+          "id": "REQ-NOTES-3",
+          "scheme": "spike"
+        }
+      ],
+      "riskLinks": [],
+      "severity": "material"
+    },
+    {
+      "description": "A malformed PATCH body is rejected rather than silently accepted.",
+      "id": "B-004",
+      "observableSuccessCriterion": "A PATCH whose tags field violates its declared type returns status 400 with `ok` false.",
+      "oracles": [
+        "O-005"
+      ],
+      "requirementLinks": [
+        {
+          "id": "REQ-NOTES-4",
+          "scheme": "spike"
+        }
+      ],
+      "riskLinks": [],
+      "severity": "low"
+    }
+  ],
+  "budgets": {
+    "maxCostUsd": "1.0",
+    "maxToolCalls": 40,
+    "maxWallClockMinutes": 10
+  },
+  "contractDigest": "sha256:1f1ad941b36c56bbeac5aa0168f0f71acb1b7df3338ef4c813b462c0ee4c6dc9",
+  "directions": [
+    {
+      "oracleId": "O-001",
+      "text": "The body title value you sent to the patch note endpoint (with the supplied path id and the supplied body title), compared with its note.title field from the get note endpoint (with the supplied path id) is asserted to be equal. The declared polarity expects this relation to hold. One update followed by one independent read of the same note through the separate read operation. An update reporting success whose title the later read does not return. The update operation's own response is not evidence that it persisted: that response can be generated from a value that was never written is treated as a defect."
+    },
+    {
+      "oracleId": "O-002",
+      "text": "The patch note endpoint (with the supplied path id and the supplied body title): its ok field and its transport status is asserted to satisfy every declared condition together. The declared polarity expects this relation to hold. The update call's status and its success indicator, together. A body claiming success under a failing status, or the reverse is treated as a defect."
+    },
+    {
+      "oracleId": "O-003",
+      "text": "The patch note endpoint (with the supplied path id and the supplied body title): its error field and its note field is asserted to satisfy every declared condition together. The declared polarity expects this relation to hold. The update response taken as a whole. A success carrying a diagnostic field beside the success flag, or a note payload carrying only the fields the caller changed is treated as a defect."
+    },
+    {
+      "oracleId": "O-004",
+      "text": "Every element reachable through its notes field from the list notes endpoint is asserted to meet the declared condition. The declared polarity expects this relation to hold. Every element of the collection response. A collection whose first element carries all five fields and whose later elements do not is treated as a defect."
+    },
+    {
+      "oracleId": "O-005",
+      "text": "The patch note endpoint (with a malformed body tags value): its ok field and its transport status is asserted to satisfy every declared condition together. The declared polarity expects this relation to hold. One update whose tags value violates the declared type for that key. A malformed body accepted with status 200 instead of rejected with 400 is treated as a defect."
+    }
+  ],
+  "parentDigest": null,
+  "permittedInterfaces": [
+    {
+      "kind": "api",
+      "logicalId": "notes-api"
+    }
+  ],
+  "principals": [],
+  "probeStepBound": 8,
+  "revisionCount": 0,
+  "safetyLimits": [
+    "No request to any host other than the mapped notes-api target."
+  ],
+  "schemaVersion": 2,
+  "scopedResources": []
+}

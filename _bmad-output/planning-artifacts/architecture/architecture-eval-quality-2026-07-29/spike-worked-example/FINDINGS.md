@@ -29,20 +29,103 @@ what the discipline rules require.
 >    over zero records while this contract's own `testData.setup` declares three seeded notes. It reports
 >    `confirmed`/`agrees`.
 >
+> **A fourth defect, added by the spine's owed item 7 at round 3 and never written into this block until
+> now.** The run record cites `probeId: "P-001"` and nothing in the repository defined P-001: no probe
+> artifact, no AD-9 qualification record, no AD-40 defect signature. The chain therefore reported a score
+> computed against a probe the reader could not inspect, and AD-40's signature schema had no fixture to
+> land in.
+>
 > The checker I wrote validated *shape* — dispositions present, states within the closed set, no dangling
 > references — and never asked whether the artifacts' content supported their own claims. It confirmed the
 > chain was well-formed and I reported that it was correct. That is the same class of error this product
 > exists to prevent, committed in the artifact meant to prove the architecture works, in the same document
 > that argues hand-authoring beats reading. Finding 8's claim that the chain "works" and the closing
 > section's confidence should both be read with that in mind.
+
+> **Closed by regeneration.** All four defects are closed. The five JSON files in this folder are now
+> generated: `npm run generate:worked-example` emits `eval-contract.json`, `brief.json`, `probe.json`,
+> `sealed-run-record.json`, and `evidence-artifact.json` by running the shipped functions over the chain,
+> and `npm run check:worked-example` compares the committed bytes against a rebuild on every
+> `npm run validate`.
 >
-> Spine revision 4 fixes defect 3 at the grammar level: AD-4 now resolves an empty-collection `for-all` to
-> false rather than vacuously true. Defects 1 and 2 are downstream of observation-selection semantics that
-> revision 4 records as open in *Owed to the reference implementation* rather than patching, so **this chain
-> is deliberately left uncorrected** and must be regenerated from the reference reducer once it exists,
-> with hand-filled downstream values forbidden. Until then these artifacts are evidence of what the
-> architecture could not express, which is what they were built for — not a conforming example. Do not copy
-> them as one.
+> Which functions, precisely, because "the reference functions" is too loose to check. Four come from the
+> compile half and the core modules beside it: `compile` and `seal` produce the contract and the brief,
+> `digestArtifact` computes every digest the chain pins itself with, `evaluateCoverage` produces the
+> coverage gaps, and `validateLineageChain` produces `remediation.lineageChain`. The rest are epic 7's
+> score-side functions: `sealProbeSet`, `bindingOrder`, `resolveCapturedBindings`, `selectWithBindings`,
+> `resolveCheck`, `mapFindings`, `matchProbeWitness`, `resolveOutcome`, `uncitedFindingIds`,
+> `uncitedDefectFindingGaps`, `reduceTrialSet`, `buildStrengthVector`, and `resolveContractVerdict`.
+>
+> The evaluator's own evidence is still authored, because there is no live Notes API here to run against:
+> the contract, the probe's declarations, and the run record's raw observations, dispositions, and
+> findings. **Nine further inputs are hand-declared too, and the claim has to say so.** `resolveOutcome`
+> takes `waiver`, `judgeConduct`, `evaluationFault`, and `required` per oracle; AD-21's ladder takes
+> `preflightPassed`, `overTruncated`, `unavailable`, `internallyInconsistent`, and `isolationViolation`.
+> Several of those feed AD-21's Invalid tier, so a different declaration would change the verdict. They
+> are declared because no artifact in this chain carries them: the spike ran no pre-flight, produced no
+> isolation-manifest violation, and recorded no AD-26 evaluation fault. So the accurate claim is narrower
+> than "everything downstream is computed": every value the reference functions can derive from the
+> evidence is derived, and the nine that arrive declared are named here.
+>
+> What each defect now reads as:
+>
+> 1. **Closed.** `malformed-write` still matches zero observations, and O-005's disposition still cites
+>    none. `resolveOutcome` reads that: the state is `unreached` where the hand-typed artifact read
+>    `confirmed`, and the corroboration is `disagrees` where it read `agrees`. The rule that produced the
+>    corroboration is `disposition-unsupported`, first in AD-33's corroboration table, ahead of both
+>    check-derived rules, so the disposition is not believed. The same input also comes back from
+>    `resolveOutcome` as the `unsupported-disposition` invalidating condition. **The artifact does not
+>    show either.** `Outcome` carries no field for the rule that fired, the waiver rule, the corroboration
+>    rule, the invalidating conditions, or the declined findings, so a reader opening
+>    `evidence-artifact.json` sees the state and the corroboration and has to take this paragraph's word
+>    for what produced them. Story 7.7's own record names those missing fields as owed.
+> 2. **Closed.** Only `baseline-read` genuinely matches two observations, and it declares `cardinality:
+>    "any"`, which is what several legitimate matches are declared with. `read-back` carries `after:
+>    "write"`, and the binding-aware selector floors its candidates at the anchor's `sequence`, so it
+>    matches exactly `obs-004` under `exactly-one`. The temporal clause is what separates the two reads,
+>    which keeps the read-back oracle the seeded defect turns on bound to one particular read. Finding
+>    10's withdrawal below closes with this defect.
+> 3. **Fixed at the grammar level in spine revision 4, and observable in this chain for the first time
+>    here.** AD-4's three-valued resolution makes an empty-collection quantifier terminal: O-004's
+>    `for-all` over `notes: []` now resolves `insufficient-evidence` carrying the `empty-collection`
+>    introduction condition, and AD-6 lands that on `abstained` where the hand-typed artifact read
+>    `confirmed`. The state change is visible in the verdict too: `abstained` is a behavioural failure at
+>    the policy's severity floor, so the regenerated chain scores **FAIL** where the hand-typed one claimed
+>    CONCERNS. *(One wording note. The spine's revision-4 sentence says the fix resolves the quantifier to
+>    `false`. The shipped grammar resolves it to `insufficient-evidence`, which closes the same hole by the
+>    same rule: the quantifier no longer certifies, and AD-4's third value is what carries the closure.)*
+> 4. **Closed.** `probe.json` defines P-001: its class, its `expectedClean` flag, the seeded defect D-001,
+>    an authored AD-9 qualification record on the controlled-mutation route, and an AD-40 defect signature.
+>    The signature is homed on `GET /notes/{id}` rather than on the update, because `system-under-test.md`
+>    records that the update's own response "is indistinguishable from a correct one": the defect manifests
+>    on the independent read that returns the stale title, which is the observation F-001 cites. The
+>    generator runs `sealProbeSet` and fails the build if P-001 lands in `rejected`, so the gate is a
+>    condition of publishing the chain.
+>
+> **Three readings of the regenerated artifact will surprise a reader.**
+>
+> *Every outcome carries `resolvedFrom: null`, O-001 included.* The hand-typed artifact recorded
+> `resolvedFrom: "F-001"` on O-001, and O-001 is still `caught` with F-001 still citing it. The link
+> disappears because AD-33's ladder marks only four rows as resolving from a citation, and `witness-matched`
+> is not one of them: the state came from AD-40's signature match over the observations, so no finding
+> produced it. The finding is still reachable through `sealed-run-record.json`.
+>
+> *O-005 publishes `checkResolution.resolution: "false"` with two `false` children, over zero observations.*
+> AD-26 resolves an absent pointer to a decisive `false` inside `equality`, so a check whose step matched
+> nothing reads on disk as though the API answered something other than 400. Only `state: "unreached"`,
+> several fields away, records that nothing was observed at all. AD-26 states that rule outright, so the
+> chain is behaving as declared here, and this is the clearest case in the folder for reading a check
+> resolution beside its outcome state.
+>
+> *`corpusDigest` and `fixtureDigest` in `scoringVersionInputs` are placeholders.* They sit beside genuine
+> computed digests and are all zeros but for a final nibble, because no corpus or fixture artifact exists
+> here for a caller to attest. `comparabilityKey` is computed over one of them, so it is a well-formed key
+> that compares nothing. Read it as a shape; a run scored against a real corpus would carry a real one.
+> `callerAttestedInputs` names all three attested inputs, which is what that field is for.
+>
+> These artifacts are now a worked example. What they are still not is a *passing* example: the regenerated
+> verdict is FAIL, computed from the evidence, and `README.md` in this folder lists what must still not be
+> copied out of here.
 
 ## 1. Critical — the addressing grammar is single-observation; four of the seven rules are not
 
@@ -170,9 +253,39 @@ mode the scorer exists for, and AD-21 called its table total without run mode as
 
 **Fixed in revision 3.** The run declares `production` or `contract-scoring`; in scoring mode the verdict
 is about contract adequacy and the system recommendation is recorded as an input, never promoted to a
-rung. The corrected artifact reads CONCERNS on the contract — it caught the defect, but carries an
-unsatisfied sibling-cross-check gap at material severity and ran one trial against a declared minimum of
-three.
+rung.
+
+The hand-typed artifact then read CONCERNS on the contract. **The regenerated one reads FAIL**, and the
+change is the point: O-004 resolves `abstained` over the empty collection, which is a behavioural failure
+at the policy's severity floor, and the contract-scoring ladder routes that to FAIL. The
+`systemRecommendationRecorded` field still carries the evaluator's own FAIL about the system, unpromoted,
+which is what this finding asked for. The two questions now have two fields and two answers, and both are
+computed.
+
+**The coverage gaps moved with it.** The hand-typed artifact carried one gap, `sibling-cross-check` at
+`material`. The regenerated artifact carries three, all at `critical`, and all three are true positives
+AD-31's predicates find in this contract:
+
+- `success-indicator-separation`. The satisfaction predicate wants an oracle addressing every operation's
+  nominated success indicator beside another roled pointer. Only `patch-note` has such an oracle, through
+  O-002; `get-note` and `list-notes` nominate `/ok` and no oracle reads it, so two of three operations are
+  uncovered.
+- `malformed-input`. The plan declares `malformed-write` with a `type-violating` binding, and O-005 asserts
+  the rejection, but the step matched no observation, so the rule has no witness in this run.
+- `sibling-cross-check`. `siblingGroups` declares `get-note` and `list-notes` as siblings and `title` and
+  `body` as sibling parameters, and no oracle addresses both members of either group. This is the gap the
+  hand-typed artifact already recorded.
+
+AD-31's predicates are contract-level and oracle-blind, so a gap takes the highest declared behaviour
+severity, which B-001 sets at `critical`. The hand-typed artifact's single gap carried `material`, a
+hand-typed value with no predicate behind it.
+
+**`verdictBasis` shrank from three lines to one, and no condition disappeared.** AD-21's ladder is
+first-match-wins across tiers: the FAIL tier fires on O-004, so the CONCERNS tier is never evaluated and
+its reasons never reach the basis. Three CONCERNS conditions hold on this run and are readable elsewhere in
+the same artifact: the three unsatisfied coverage gaps at or above the floor, in `coverageGaps`; one
+completed trial against a declared minimum of three, in `trials`; and O-005 `unreached`, in `outcomes`.
+`verdictBasis` records what decided the rung, and the artifact records the rest.
 
 ## 10. Low — the addressing grammar is now uniformly step-rooted
 
@@ -184,6 +297,11 @@ This finding originally ended by claiming step-rooting left "no ambiguity when a
 observations of the same operation". **Withdrawn at revision 4.** Naming a step removed the ambiguity about
 *which channel* a pointer addresses and introduced a new one about *which observation* a step selects, which
 is retraction defect 2 above. The trade was still right; the claim about ambiguity was not.
+
+**The withdrawal closes with retraction defect 2.** A step now declares its own selector cardinality, and
+the selector filters the operation's observations through the step's input bindings and its temporal
+clause, so which observation a step selects is a declared answer. Several matches under a single-valued
+cardinality is a named condition the selector returns as data for a caller to route.
 
 ## What this says about the review strategy
 

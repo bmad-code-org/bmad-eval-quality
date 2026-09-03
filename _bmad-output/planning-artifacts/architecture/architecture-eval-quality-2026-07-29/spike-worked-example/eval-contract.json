@@ -1,169 +1,83 @@
 {
-  "schemaVersion": 1,
-  "contractId": "notes-api-v1",
-  "sourceSpecDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000001",
-  "linkage": [
-    { "scheme": "spike", "id": "REQ-NOTES-1" },
-    { "scheme": "spike-risk", "id": "RISK-SILENT-WRITE" }
-  ],
-  "permittedInterfaces": [
-    {
-      "logicalId": "notes-api",
-      "kind": "api",
-      "operations": [
-        {
-          "operationId": "get-note",
-          "method": "GET",
-          "path": "/notes/{id}",
-          "requestShape": {
-            "requiredKeys": [],
-            "permittedKeys": ["id"],
-            "types": { "id": "string" }
-          }
-        },
-        {
-          "operationId": "patch-note",
-          "method": "PATCH",
-          "path": "/notes/{id}",
-          "requestShape": {
-            "requiredKeys": ["id"],
-            "permittedKeys": ["id", "title", "body", "tags"],
-            "types": { "id": "string", "title": "string", "body": "string", "tags": "array" }
-          }
-        },
-        {
-          "operationId": "list-notes",
-          "method": "GET",
-          "path": "/notes",
-          "requestShape": { "requiredKeys": [], "permittedKeys": [], "types": {} }
-        }
-      ],
-      "responseShape": {
-        "requiredKeys": ["ok"],
-        "permittedKeys": ["ok", "note", "notes", "error"],
-        "types": { "ok": "boolean", "note": "object", "notes": "array", "error": "string" },
-        "successIndicator": "/ok",
-        "channelRoles": { "/ok": "success-indicator", "/error": "diagnostic", "/note": "payload", "/notes": "collection" },
-        "collectionLocations": ["/notes"]
-      },
-      "volatilePointers": ["/note/updatedAt"]
-    }
-  ],
-  "siblingGroups": {
-    "operations": [["get-note", "list-notes"]],
-    "parameters": [["title", "body"]]
-  },
-  "interactionPlan": [
-    { "stepId": "baseline-read", "operationId": "get-note", "inputBinding": { "id": "n-1" } },
-    { "stepId": "write", "operationId": "patch-note", "inputBinding": { "id": "n-1", "title": { "matcher": "any" } } },
-    { "stepId": "read-back", "operationId": "get-note", "inputBinding": { "id": "n-1" }, "after": "write" },
-    { "stepId": "collection", "operationId": "list-notes", "inputBinding": {} },
-    { "stepId": "malformed-write", "operationId": "patch-note", "inputBinding": { "id": "n-1", "tags": { "matcher": "type-violating" } } }
-  ],
   "behaviors": [
     {
-      "id": "B-001",
       "description": "A PATCH reporting success has persisted the change.",
-      "severity": "critical",
-      "oracles": ["O-001"]
-    },
-    {
-      "id": "B-002",
-      "description": "The success indicator agrees with the transport status and excludes a diagnostic.",
-      "severity": "material",
-      "oracles": ["O-002", "O-003"]
-    },
-    {
-      "id": "B-003",
-      "description": "Every note in a collection response is complete, not only the first.",
-      "severity": "material",
-      "oracles": ["O-004"]
-    },
-    {
-      "id": "B-004",
-      "description": "A malformed PATCH body is rejected rather than silently accepted.",
-      "severity": "low",
-      "oracles": ["O-005"]
-    }
-  ],
-  "oracles": [
-    {
-      "id": "O-001",
-      "rule": "state-change-read-back",
-      "intent": "Change a note's title through the update operation, then read that note back through the separate read operation and confirm the stored title is the new one. Do not accept the update operation's own response as evidence that it persisted: that response can be generated from a value that was never written. The read must be an independent call.",
-      "check": {
-        "op": "equality",
-        "operands": [
-          { "pointer": "/interactions/read-back/response-body/note/title" },
-          { "pointer": "/interactions/write/call-inputs/title" }
-        ]
-      },
-      "polarity": "expects-hold"
-    },
-    {
-      "id": "O-002",
-      "rule": "success-indicator-separation",
-      "intent": "Confirm the body's ok flag agrees with the transport status. A body claiming success under a failing status is a defect, and so is the reverse.",
-      "check": {
-        "op": "all",
-        "operands": [
-          { "op": "equality", "operands": [{ "pointer": "/interactions/write/response-status" }, { "literal": 200 }] },
-          { "op": "equality", "operands": [{ "pointer": "/interactions/write/response-body/ok" }, { "literal": true }] }
-        ]
-      },
-      "polarity": "expects-hold"
-    },
-    {
-      "id": "O-003",
-      "rule": "whole-body",
-      "intent": "Confirm a successful response carries no diagnostic field alongside the success flag, and that the note payload carries all five fields rather than only the ones the caller happened to change.",
-      "check": {
-        "op": "all",
-        "operands": [
-          { "op": "absence", "operands": [{ "pointer": "/interactions/write/response-body/error" }] },
-          {
-            "op": "shape",
-            "operands": [
-              { "pointer": "/interactions/write/response-body/note" },
-              { "literal": { "requiredKeys": ["id", "title", "body", "tags", "updatedAt"] } }
-            ]
-          }
-        ]
-      },
-      "polarity": "expects-hold"
-    },
-    {
-      "id": "O-004",
-      "rule": "per-record",
-      "intent": "Confirm EVERY note in the collection carries all five fields, not merely the first. Check each element.",
-      "check": {
-        "op": "for-all",
-        "collection": { "pointer": "/interactions/collection/response-body/notes" },
-        "predicate": {
-          "op": "shape",
-          "operands": [
-            { "pointer": "@/" },
-            { "literal": { "requiredKeys": ["id", "title", "body", "tags", "updatedAt"] } }
-          ]
+      "id": "B-001",
+      "observableSuccessCriterion": "An independent GET issued after a successful PATCH returns the title the PATCH sent.",
+      "oracles": [
+        "O-001"
+      ],
+      "requirementLinks": [
+        {
+          "id": "REQ-NOTES-1",
+          "scheme": "spike"
         }
-      },
-      "polarity": "expects-hold"
+      ],
+      "riskLinks": [
+        {
+          "id": "RISK-SILENT-WRITE",
+          "scheme": "spike-risk"
+        }
+      ],
+      "severity": "critical"
     },
     {
-      "id": "O-005",
-      "rule": "malformed-input",
-      "intent": "Send a PATCH whose tags field is a string rather than an array, and confirm it is rejected with status 400 and ok false rather than accepted with a 200.",
-      "check": {
-        "op": "all",
-        "operands": [
-          { "op": "equality", "operands": [{ "pointer": "/interactions/malformed-write/response-status" }, { "literal": 400 }] },
-          { "op": "equality", "operands": [{ "pointer": "/interactions/malformed-write/response-body/ok" }, { "literal": false }] }
-        ]
-      },
-      "polarity": "expects-hold"
+      "description": "The success indicator agrees with the transport status and excludes a diagnostic.",
+      "id": "B-002",
+      "observableSuccessCriterion": "A successful call carries status 200 with `ok` true, a complete note payload, and no diagnostic field.",
+      "oracles": [
+        "O-002",
+        "O-003"
+      ],
+      "requirementLinks": [
+        {
+          "id": "REQ-NOTES-2",
+          "scheme": "spike"
+        }
+      ],
+      "riskLinks": [],
+      "severity": "material"
+    },
+    {
+      "description": "Every note in a collection response is complete, not only the first.",
+      "id": "B-003",
+      "observableSuccessCriterion": "Every element of the collection response carries all five declared note fields.",
+      "oracles": [
+        "O-004"
+      ],
+      "requirementLinks": [
+        {
+          "id": "REQ-NOTES-3",
+          "scheme": "spike"
+        }
+      ],
+      "riskLinks": [],
+      "severity": "material"
+    },
+    {
+      "description": "A malformed PATCH body is rejected rather than silently accepted.",
+      "id": "B-004",
+      "observableSuccessCriterion": "A PATCH whose tags field violates its declared type returns status 400 with `ok` false.",
+      "oracles": [
+        "O-005"
+      ],
+      "requirementLinks": [
+        {
+          "id": "REQ-NOTES-4",
+          "scheme": "spike"
+        }
+      ],
+      "riskLinks": [],
+      "severity": "low"
     }
   ],
-  "rubrics": [],
+  "budgets": {
+    "maxCostUsd": "1.0",
+    "maxToolCalls": 40,
+    "maxWallClockMinutes": 10
+  },
+  "contractId": "notes-api-v1",
+  "fixtureReset": null,
   "forbiddenInputs": [
     "original-spec",
     "source-code",
@@ -173,12 +87,644 @@
     "comparator-results",
     "human-labels"
   ],
-  "testData": {
-    "setup": "Seed exactly three notes with ids n-1, n-2, n-3, each with all five fields populated.",
-    "cleanup": "Delete all notes created or modified during the run."
+  "interactionPlan": [
+    {
+      "after": null,
+      "cardinality": "any",
+      "inputBinding": {
+        "body": null,
+        "header": null,
+        "path": {
+          "id": {
+            "literal": "n-1"
+          }
+        },
+        "query": null
+      },
+      "operationId": "get-note",
+      "stepId": "baseline-read"
+    },
+    {
+      "after": null,
+      "cardinality": "exactly-one",
+      "inputBinding": {
+        "body": {
+          "title": {
+            "matcher": "any"
+          }
+        },
+        "header": null,
+        "path": {
+          "id": {
+            "literal": "n-1"
+          }
+        },
+        "query": null
+      },
+      "operationId": "patch-note",
+      "stepId": "write"
+    },
+    {
+      "after": "write",
+      "cardinality": "exactly-one",
+      "inputBinding": {
+        "body": null,
+        "header": null,
+        "path": {
+          "id": {
+            "literal": "n-1"
+          }
+        },
+        "query": null
+      },
+      "operationId": "get-note",
+      "stepId": "read-back"
+    },
+    {
+      "after": null,
+      "cardinality": "exactly-one",
+      "inputBinding": {
+        "body": null,
+        "header": null,
+        "path": null,
+        "query": null
+      },
+      "operationId": "list-notes",
+      "stepId": "collection"
+    },
+    {
+      "after": null,
+      "cardinality": "exactly-one",
+      "inputBinding": {
+        "body": {
+          "tags": {
+            "matcher": "type-violating"
+          }
+        },
+        "header": null,
+        "path": {
+          "id": {
+            "literal": "n-1"
+          }
+        },
+        "query": null
+      },
+      "operationId": "patch-note",
+      "stepId": "malformed-write"
+    }
+  ],
+  "oracles": [
+    {
+      "check": {
+        "op": "equality",
+        "operands": [
+          {
+            "pointer": "/interactions/read-back/response-body/note/title"
+          },
+          {
+            "pointer": "/interactions/write/call-inputs/body/title"
+          }
+        ]
+      },
+      "commentary": "The read-back rule. The seeded defect turns on this oracle binding one particular read.",
+      "direction": {
+        "evidenceTargets": [
+          "/interactions/read-back/response-body/note/title",
+          "/interactions/write/call-inputs/body/title"
+        ],
+        "negativeDomain": "An update reporting success whose title the later read does not return. The update operation's own response is not evidence that it persisted: that response can be generated from a value that was never written.",
+        "polarity": "expects-hold",
+        "relation": "equality",
+        "scope": "One update followed by one independent read of the same note through the separate read operation."
+      },
+      "id": "O-001",
+      "polarity": "expects-hold"
+    },
+    {
+      "check": {
+        "op": "all",
+        "operands": [
+          {
+            "op": "equality",
+            "operands": [
+              {
+                "pointer": "/interactions/write/response-status"
+              },
+              {
+                "literal": 200
+              }
+            ]
+          },
+          {
+            "op": "equality",
+            "operands": [
+              {
+                "pointer": "/interactions/write/response-body/ok"
+              },
+              {
+                "literal": true
+              }
+            ]
+          }
+        ]
+      },
+      "commentary": null,
+      "direction": {
+        "evidenceTargets": [
+          "/interactions/write/response-status",
+          "/interactions/write/response-body/ok"
+        ],
+        "negativeDomain": "A body claiming success under a failing status, or the reverse.",
+        "polarity": "expects-hold",
+        "relation": "all",
+        "scope": "The update call's status and its success indicator, together."
+      },
+      "id": "O-002",
+      "polarity": "expects-hold"
+    },
+    {
+      "check": {
+        "op": "all",
+        "operands": [
+          {
+            "op": "absence",
+            "operands": [
+              {
+                "pointer": "/interactions/write/response-body/error"
+              }
+            ]
+          },
+          {
+            "descriptor": {
+              "permittedKeys": [
+                "id",
+                "title",
+                "body",
+                "tags",
+                "updatedAt"
+              ],
+              "requiredKeys": [
+                "id",
+                "title",
+                "body",
+                "tags",
+                "updatedAt"
+              ],
+              "types": {
+                "body": "string",
+                "id": "string",
+                "tags": "array",
+                "title": "string",
+                "updatedAt": "string"
+              }
+            },
+            "op": "shape",
+            "operands": [
+              {
+                "pointer": "/interactions/write/response-body/note"
+              }
+            ]
+          }
+        ]
+      },
+      "commentary": null,
+      "direction": {
+        "evidenceTargets": [
+          "/interactions/write/response-body/error",
+          "/interactions/write/response-body/note"
+        ],
+        "negativeDomain": "A success carrying a diagnostic field beside the success flag, or a note payload carrying only the fields the caller changed.",
+        "polarity": "expects-hold",
+        "relation": "all",
+        "scope": "The update response taken as a whole."
+      },
+      "id": "O-003",
+      "polarity": "expects-hold"
+    },
+    {
+      "check": {
+        "collection": {
+          "pointer": "/interactions/collection/response-body/notes"
+        },
+        "op": "for-all",
+        "predicate": {
+          "descriptor": {
+            "permittedKeys": [
+              "id",
+              "title",
+              "body",
+              "tags",
+              "updatedAt"
+            ],
+            "requiredKeys": [
+              "id",
+              "title",
+              "body",
+              "tags",
+              "updatedAt"
+            ],
+            "types": {
+              "body": "string",
+              "id": "string",
+              "tags": "array",
+              "title": "string",
+              "updatedAt": "string"
+            }
+          },
+          "op": "shape",
+          "operands": [
+            {
+              "pointer": "@/"
+            }
+          ]
+        }
+      },
+      "commentary": "Per-record completeness. AD-4 resolves this over an empty collection as `insufficient-evidence` rather than vacuously true.",
+      "direction": {
+        "evidenceTargets": [
+          "/interactions/collection/response-body/notes"
+        ],
+        "negativeDomain": "A collection whose first element carries all five fields and whose later elements do not.",
+        "polarity": "expects-hold",
+        "relation": "for-all",
+        "scope": "Every element of the collection response."
+      },
+      "id": "O-004",
+      "polarity": "expects-hold"
+    },
+    {
+      "check": {
+        "op": "all",
+        "operands": [
+          {
+            "op": "equality",
+            "operands": [
+              {
+                "pointer": "/interactions/malformed-write/response-status"
+              },
+              {
+                "literal": 400
+              }
+            ]
+          },
+          {
+            "op": "equality",
+            "operands": [
+              {
+                "pointer": "/interactions/malformed-write/response-body/ok"
+              },
+              {
+                "literal": false
+              }
+            ]
+          }
+        ]
+      },
+      "commentary": null,
+      "direction": {
+        "evidenceTargets": [
+          "/interactions/malformed-write/response-status",
+          "/interactions/malformed-write/response-body/ok"
+        ],
+        "negativeDomain": "A malformed body accepted with status 200 instead of rejected with 400.",
+        "polarity": "expects-hold",
+        "relation": "all",
+        "scope": "One update whose tags value violates the declared type for that key."
+      },
+      "id": "O-005",
+      "polarity": "expects-hold"
+    }
+  ],
+  "parentDigest": null,
+  "permittedInterfaces": [
+    {
+      "kind": "api",
+      "logicalId": "notes-api",
+      "operations": [
+        {
+          "method": "GET",
+          "operationId": "get-note",
+          "pathTemplate": "/notes/{id}",
+          "requestShape": {
+            "body": {
+              "permittedKeys": [],
+              "requiredKeys": [],
+              "types": {}
+            },
+            "header": {
+              "permittedKeys": [],
+              "requiredKeys": [],
+              "types": {}
+            },
+            "path": {
+              "permittedKeys": [
+                "id"
+              ],
+              "requiredKeys": [
+                "id"
+              ],
+              "types": {
+                "id": "string"
+              }
+            },
+            "query": {
+              "permittedKeys": [],
+              "requiredKeys": [],
+              "types": {}
+            }
+          },
+          "responseDescriptor": {
+            "channelRoles": {
+              "/error": "diagnostic",
+              "/note": "payload",
+              "/ok": "success-indicator"
+            },
+            "collectionLocations": [],
+            "permittedKeys": [
+              "ok",
+              "note",
+              "error"
+            ],
+            "requiredKeys": [
+              "ok"
+            ],
+            "successIndicator": "/ok",
+            "types": {
+              "error": "string",
+              "note": "object",
+              "ok": "boolean"
+            }
+          },
+          "sensitivityWitness": {
+            "channel": "path",
+            "legs": [
+              {
+                "inputs": {
+                  "body": {
+                    "kind": "absent"
+                  },
+                  "header": {},
+                  "path": {
+                    "id": "n-1"
+                  },
+                  "query": {}
+                },
+                "legId": "get-note-witness-a"
+              },
+              {
+                "inputs": {
+                  "body": {
+                    "kind": "absent"
+                  },
+                  "header": {},
+                  "path": {
+                    "id": "n-2"
+                  },
+                  "query": {}
+                },
+                "legId": "get-note-witness-b"
+              }
+            ],
+            "relation": {
+              "op": "not",
+              "operands": [
+                {
+                  "op": "deep-equality",
+                  "operands": [
+                    {
+                      "pointer": "/interactions/get-note-witness-a/response-body"
+                    },
+                    {
+                      "pointer": "/interactions/get-note-witness-b/response-body"
+                    }
+                  ]
+                }
+              ]
+            },
+            "witnessId": "get-note-sensitivity"
+          },
+          "stateChangeMarker": false,
+          "volatilePointers": [
+            "/note/updatedAt"
+          ]
+        },
+        {
+          "method": "PATCH",
+          "operationId": "patch-note",
+          "pathTemplate": "/notes/{id}",
+          "requestShape": {
+            "body": {
+              "permittedKeys": [
+                "title",
+                "body",
+                "tags"
+              ],
+              "requiredKeys": [],
+              "types": {
+                "body": "string",
+                "tags": "array",
+                "title": "string"
+              }
+            },
+            "header": {
+              "permittedKeys": [],
+              "requiredKeys": [],
+              "types": {}
+            },
+            "path": {
+              "permittedKeys": [
+                "id"
+              ],
+              "requiredKeys": [
+                "id"
+              ],
+              "types": {
+                "id": "string"
+              }
+            },
+            "query": {
+              "permittedKeys": [],
+              "requiredKeys": [],
+              "types": {}
+            }
+          },
+          "responseDescriptor": {
+            "channelRoles": {
+              "/error": "diagnostic",
+              "/note": "payload",
+              "/ok": "success-indicator"
+            },
+            "collectionLocations": [],
+            "permittedKeys": [
+              "ok",
+              "note",
+              "error"
+            ],
+            "requiredKeys": [
+              "ok"
+            ],
+            "successIndicator": "/ok",
+            "types": {
+              "error": "string",
+              "note": "object",
+              "ok": "boolean"
+            }
+          },
+          "sensitivityWitness": {
+            "channel": "body",
+            "legs": [
+              {
+                "inputs": {
+                  "body": {
+                    "kind": "json",
+                    "value": {
+                      "title": "alpha"
+                    }
+                  },
+                  "header": {},
+                  "path": {
+                    "id": "n-1"
+                  },
+                  "query": {}
+                },
+                "legId": "patch-note-witness-a"
+              },
+              {
+                "inputs": {
+                  "body": {
+                    "kind": "json",
+                    "value": {
+                      "title": "beta"
+                    }
+                  },
+                  "header": {},
+                  "path": {
+                    "id": "n-1"
+                  },
+                  "query": {}
+                },
+                "legId": "patch-note-witness-b"
+              }
+            ],
+            "relation": {
+              "op": "not",
+              "operands": [
+                {
+                  "op": "deep-equality",
+                  "operands": [
+                    {
+                      "pointer": "/interactions/patch-note-witness-a/response-body"
+                    },
+                    {
+                      "pointer": "/interactions/patch-note-witness-b/response-body"
+                    }
+                  ]
+                }
+              ]
+            },
+            "witnessId": "patch-note-sensitivity"
+          },
+          "stateChangeMarker": true,
+          "volatilePointers": [
+            "/note/updatedAt"
+          ]
+        },
+        {
+          "method": "GET",
+          "operationId": "list-notes",
+          "pathTemplate": "/notes",
+          "requestShape": {
+            "body": {
+              "permittedKeys": [],
+              "requiredKeys": [],
+              "types": {}
+            },
+            "header": {
+              "permittedKeys": [],
+              "requiredKeys": [],
+              "types": {}
+            },
+            "path": {
+              "permittedKeys": [],
+              "requiredKeys": [],
+              "types": {}
+            },
+            "query": {
+              "permittedKeys": [],
+              "requiredKeys": [],
+              "types": {}
+            }
+          },
+          "responseDescriptor": {
+            "channelRoles": {
+              "/error": "diagnostic",
+              "/notes": "collection",
+              "/ok": "success-indicator"
+            },
+            "collectionLocations": [
+              {
+                "expectedCardinality": {
+                  "count": 3,
+                  "mode": "exact"
+                },
+                "pointer": "/notes",
+                "referenceSet": null
+              }
+            ],
+            "permittedKeys": [
+              "ok",
+              "notes",
+              "error"
+            ],
+            "requiredKeys": [
+              "ok"
+            ],
+            "successIndicator": "/ok",
+            "types": {
+              "error": "string",
+              "notes": "array",
+              "ok": "boolean"
+            }
+          },
+          "sensitivityWitness": null,
+          "stateChangeMarker": false,
+          "volatilePointers": []
+        }
+      ]
+    }
+  ],
+  "probeStepBound": 8,
+  "referenceSets": null,
+  "requiredEvidence": [
+    "Request and response pair for every call, in order."
+  ],
+  "revisionCount": 0,
+  "rubrics": [],
+  "safetyLimits": [
+    "No request to any host other than the mapped notes-api target."
+  ],
+  "schemaVersion": 1,
+  "scopedResources": null,
+  "siblingGroups": {
+    "operations": [
+      [
+        "get-note",
+        "list-notes"
+      ]
+    ],
+    "parameters": [
+      [
+        "title",
+        "body"
+      ]
+    ]
   },
-  "budgets": { "maxToolCalls": 40, "maxWallClockMinutes": 10, "maxCostUsd": 1.0 },
-  "safetyLimits": ["No request to any host other than the mapped notes-api target."],
-  "requiredEvidence": ["Request and response pair for every call, in order."],
-  "strictMode": true
+  "sourceSpecDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000001",
+  "testData": {
+    "cleanup": "Delete all notes created or modified during the run.",
+    "principals": null,
+    "resources": null,
+    "setup": "Seed exactly three notes with ids n-1, n-2, n-3, each with all five fields populated."
+  },
+  "waivers": []
 }

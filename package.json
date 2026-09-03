@@ -96,6 +96,8 @@
     "check:boundary": "node scripts/check-package-boundary.ts",
     "generate:dev-corpus": "node scripts/generate-dev-corpus.ts",
     "check:corpus": "node scripts/check-dev-corpus.ts",
+    "generate:worked-example": "node scripts/generate-worked-example.ts",
+    "check:worked-example": "node scripts/check-worked-example.ts",
     "check:website-deps": "node scripts/audit-lockfile-age.mjs --lockfile website/package-lock.json && node scripts/check-licenses.mjs --lockfile website/package-lock.json",
     "check:shareable": "node scripts/check-shareable.mjs",
     "bench:digest": "node scripts/bench-digest.ts",
@@ -105,7 +107,7 @@
     "docs:validate-links": "node tools/validate-doc-links.js",
     "release:prepare": "node scripts/release-prepare.mjs",
     "release:publish": "gh workflow run publish.yml --ref main",
-    "validate": "npm run build && npm run typecheck && npm run lint && npm run check:docs && npm run check:doc-invocations && npm run check:shareable && npm run lint:spine && npm run check:vectors && npm run check:schemas && npm run check:ad5-registry && npm run check:ad28-registry && npm run check:ad31-table && npm run check:ad33-table && npm run check:ad21-table && npm run check:layers && npm run check:lineage && npm run check:boundary && npm run check:corpus && npm run check:website-deps && npm run test:coverage",
+    "validate": "npm run build && npm run typecheck && npm run lint && npm run check:docs && npm run check:doc-invocations && npm run check:shareable && npm run lint:spine && npm run check:vectors && npm run check:schemas && npm run check:ad5-registry && npm run check:ad28-registry && npm run check:ad31-table && npm run check:ad33-table && npm run check:ad21-table && npm run check:layers && npm run check:lineage && npm run check:boundary && npm run check:corpus && npm run check:worked-example && npm run check:website-deps && npm run test:coverage",
     "prepack": "npm run clean && npm run build",
     "prepublishOnly": "node scripts/assert-publish-authorized.mjs"
   },

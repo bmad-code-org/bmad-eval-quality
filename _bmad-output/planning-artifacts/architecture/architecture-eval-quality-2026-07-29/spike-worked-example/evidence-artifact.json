@@ -1,37 +1,206 @@
 {
-  "schemaVersion": 1,
-  "runId": "spike-run-0001",
-  "scoringVersion": "sha256:0000000000000000000000000000000000000000000000000000000000000009",
-  "comparabilityKey": "sha256:000000000000000000000000000000000000000000000000000000000000000a",
-  "mode": "contract-scoring",
-  "contractVerdict": "CONCERNS",
-  "exitCode": 0,
-  "verdictBasis": [
-    "contract caught the seeded critical defect on its only defect probe",
-    "one unsatisfied coverage gap at material severity: sibling-cross-check",
-    "trials below declared minimum: 1 completed, 3 declared"
+  "callerAttestedInputs": [
+    "corpusDigest",
+    "fixtureDigest",
+    "evaluatorConfigurationDigest"
   ],
-  "systemRecommendationRecorded": "FAIL",
-  "systemRecommendationNote": "Expected in contract-scoring mode: the probe is knowingly defective, so a system-directed FAIL is an input rather than a signal about the contract. Not promoted to a verdict.",
-  "callerAttestedInputs": ["corpusDigest", "fixtureDigest", "evaluatorConfigurationDigest"],
-  "trials": { "declaredMinimum": 3, "completed": 1, "invalidatedAttempts": [] },
-  "outcomes": [
-    { "oracleId": "O-001", "probeId": "P-001", "state": "caught", "severity": "critical", "disposition": "violated", "resolvedFrom": "F-001", "corroboration": "agrees" },
-    { "oracleId": "O-002", "probeId": "P-001", "state": "confirmed", "severity": "material", "disposition": "held", "resolvedFrom": "F-002", "corroboration": "agrees" },
-    { "oracleId": "O-003", "probeId": "P-001", "state": "confirmed", "severity": "material", "disposition": "held", "resolvedFrom": null, "corroboration": "agrees" },
-    { "oracleId": "O-004", "probeId": "P-001", "state": "confirmed", "severity": "material", "disposition": "held", "resolvedFrom": null, "corroboration": "agrees" },
-    { "oracleId": "O-005", "probeId": "P-001", "state": "confirmed", "severity": "low", "disposition": "held", "resolvedFrom": null, "corroboration": "agrees" }
-  ],
-  "uncitedFindings": ["F-003"],
+  "comparabilityKey": "sha256:d4d03b4d153066086ea1c591944fc02d14f8a3fe3c89b0867279db8329fd85ea",
+  "contractVerdict": "FAIL",
   "coverageGaps": [
-    { "rule": "sibling-cross-check", "relevancePredicate": "siblingGroups.parameters non-empty", "satisfactionPredicate": "an oracle whose intent and check address both members of a declared parameter group", "satisfied": false, "severity": "material" }
+    {
+      "relevancePredicate": "success-indicator-separation-relevance",
+      "rule": "success-indicator-separation",
+      "satisfactionPredicate": "success-indicator-separation-satisfaction",
+      "satisfied": false,
+      "severity": "critical"
+    },
+    {
+      "relevancePredicate": "malformed-input-relevance",
+      "rule": "malformed-input",
+      "satisfactionPredicate": "malformed-input-satisfaction",
+      "satisfied": false,
+      "severity": "critical"
+    },
+    {
+      "relevancePredicate": "sibling-cross-check-relevance",
+      "rule": "sibling-cross-check",
+      "satisfactionPredicate": "sibling-cross-check-satisfaction",
+      "satisfied": false,
+      "severity": "critical"
+    }
   ],
-  "strength": {
-    "denominator": "unique qualified probe identifiers exercised per class, across 1 completed trial",
-    "vector": { "defect": { "caught": 1, "exercised": 1, "rate": 1.0 } },
-    "rawCounts": { "defect": { "caught": 1, "exercised": 1 } },
-    "comparable": false,
-    "note": "Single probe, single trial. Below the declared minimum of 3, so the vector is reported and explicitly non-comparable rather than silently compared."
+  "excludedProbeIds": [],
+  "exitCode": 2,
+  "mode": "contract-scoring",
+  "outcomes": [
+    {
+      "checkResolution": {
+        "children": [],
+        "introductionCondition": null,
+        "resolution": "false"
+      },
+      "corroboration": "agrees",
+      "disposition": "violated",
+      "oracleId": "O-001",
+      "probeId": "P-001",
+      "resolvedFrom": null,
+      "selectedObservationIds": [
+        "obs-003",
+        "obs-004"
+      ],
+      "severity": "critical",
+      "state": "caught"
+    },
+    {
+      "checkResolution": {
+        "children": [
+          {
+            "children": [],
+            "introductionCondition": null,
+            "resolution": "true"
+          },
+          {
+            "children": [],
+            "introductionCondition": null,
+            "resolution": "true"
+          }
+        ],
+        "introductionCondition": null,
+        "resolution": "true"
+      },
+      "corroboration": "agrees",
+      "disposition": "held",
+      "oracleId": "O-002",
+      "probeId": "P-001",
+      "resolvedFrom": null,
+      "selectedObservationIds": [
+        "obs-003"
+      ],
+      "severity": "material",
+      "state": "confirmed"
+    },
+    {
+      "checkResolution": {
+        "children": [
+          {
+            "children": [],
+            "introductionCondition": null,
+            "resolution": "true"
+          },
+          {
+            "children": [],
+            "introductionCondition": null,
+            "resolution": "true"
+          }
+        ],
+        "introductionCondition": null,
+        "resolution": "true"
+      },
+      "corroboration": "agrees",
+      "disposition": "held",
+      "oracleId": "O-003",
+      "probeId": "P-001",
+      "resolvedFrom": null,
+      "selectedObservationIds": [
+        "obs-003"
+      ],
+      "severity": "material",
+      "state": "confirmed"
+    },
+    {
+      "checkResolution": {
+        "children": [],
+        "introductionCondition": "empty-collection",
+        "resolution": "insufficient-evidence"
+      },
+      "corroboration": "agrees",
+      "disposition": "held",
+      "oracleId": "O-004",
+      "probeId": "P-001",
+      "resolvedFrom": null,
+      "selectedObservationIds": [
+        "obs-002"
+      ],
+      "severity": "material",
+      "state": "abstained"
+    },
+    {
+      "checkResolution": {
+        "children": [
+          {
+            "children": [],
+            "introductionCondition": null,
+            "resolution": "false"
+          },
+          {
+            "children": [],
+            "introductionCondition": null,
+            "resolution": "false"
+          }
+        ],
+        "introductionCondition": null,
+        "resolution": "false"
+      },
+      "corroboration": "disagrees",
+      "disposition": "held",
+      "oracleId": "O-005",
+      "probeId": "P-001",
+      "resolvedFrom": null,
+      "selectedObservationIds": [],
+      "severity": "low",
+      "state": "unreached"
+    }
+  ],
+  "parentDigest": null,
+  "remediation": {
+    "cap": 3,
+    "capSource": "caller-attested",
+    "lineageChain": {
+      "lengthConsistent": true,
+      "noGap": true,
+      "noRepeatedDigest": true
+    },
+    "revisionCount": 0
   },
-  "remediation": { "revisionCount": 0, "cap": 3, "capSource": "caller-attested" }
+  "revisionCount": 0,
+  "runId": "spike-run-0001",
+  "schemaVersion": 3,
+  "scoringVersion": "sha256:d2a1162b0ec36db971f8fba48d73d6d39c825136082efb1b6555c9eaf38ac784",
+  "scoringVersionInputs": {
+    "contractSchemaVersion": 1,
+    "corpusDigest": "sha256:000000000000000000000000000000000000000000000000000000000000000e",
+    "evaluatorConfigurationDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000004",
+    "fixtureDigest": "sha256:000000000000000000000000000000000000000000000000000000000000000f",
+    "mode": "contract-scoring",
+    "scoringPolicyDigest": "sha256:cc9e09a64f2ed19a6a204f72244e43e51b742f078fab859329601146fdf47bb7"
+  },
+  "strength": {
+    "basis": "measured",
+    "comparable": false,
+    "denominator": "unique qualified probe identifiers exercised per class, across 1 completed trial",
+    "note": "1 admitted probe over 1 completed trial. Below the declared minimum of 3. O-005 resolved unreached. The vector is reported and marked non-comparable.",
+    "vector": {
+      "defect": {
+        "caught": 1,
+        "exercised": 1,
+        "rate": 1
+      },
+      "gameability": null,
+      "zero-action": null
+    }
+  },
+  "systemRecommendationNote": "Expected in contract-scoring mode: the probe is knowingly defective, so a system-directed FAIL is an input rather than a signal about the contract. Not promoted to a verdict.",
+  "systemRecommendationRecorded": "FAIL",
+  "trials": {
+    "completed": 1,
+    "declaredMinimum": 3,
+    "invalidatedAttempts": []
+  },
+  "uncitedFindingGaps": [],
+  "uncitedFindings": [
+    "F-003"
+  ],
+  "verdictBasis": [
+    "oracle O-004 resolved abstained at or above the severity floor"
+  ]
 }
