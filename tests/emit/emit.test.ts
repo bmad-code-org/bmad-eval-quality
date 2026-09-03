@@ -12,6 +12,7 @@ import { digestArtifact } from '../../src/core/canonical/digest.ts'
 import { emit } from '../../src/core/emit/emit.ts'
 import type { EvalContract } from '../../src/core/schemas/eval-contract.ts'
 import {
+	type CoverageGap,
 	EvidenceArtifact,
 	type Outcome,
 	type UncitedFindingGap,
@@ -299,6 +300,40 @@ describe('emit: the I/O & Edge-Case Matrix', () => {
 		expect(result.excludedProbeIds).toEqual([probe.probeId])
 	})
 
+	it('Matrix row 3: comparabilityKey and strength.vector are still computed over zero admitted probes', () => {
+		const result = emitOf({ sealedProbes: sealedProbesRejected })
+		expect(result.comparabilityKey).toBe(
+			digestArtifact(
+				{
+					scoringPolicyDigest: digestArtifact(policy, 'ScoringPolicy'),
+					probeIds: [],
+				},
+				'ComparabilityKey',
+			),
+		)
+		expect(result.strength.vector).toEqual({
+			defect: null,
+			gameability: null,
+			'zero-action': null,
+		})
+	})
+
+	it('carries non-empty uncitedFindings and coverageGaps through unchanged', () => {
+		const coverageGap: CoverageGap = {
+			rule: 'a-coverage-rule',
+			relevancePredicate: 'applies',
+			satisfactionPredicate: 'satisfied',
+			satisfied: false,
+			severity: 'material',
+		}
+		const result = emitOf({
+			uncitedFindings: ['F-777'],
+			assessment: contractAssessment({ coverageGaps: [coverageGap] }),
+		})
+		expect(result.uncitedFindings).toEqual(['F-777'])
+		expect(result.coverageGaps).toEqual([coverageGap])
+	})
+
 	it("Matrix row 4: an outcome carrying disposition 'not-attempted' (score.ts's ambiguity-guard default) passes through unchanged", () => {
 		const notAttemptedOutcome: Outcome = {
 			...baseOutcome,
@@ -390,6 +425,11 @@ describe('emit: production-mode and contract-scoring-mode shape', () => {
 		if (parsed.mode === 'production') {
 			expect(parsed.productionVerdict).toBe('PASS')
 		}
+		// AD-29: `emit` freezes what it owns, matching `seal()`/`preflight`'s
+		// own precedent for the other two minting stages.
+		expect(Object.isFrozen(result)).toBe(true)
+		expect(Object.isFrozen(result.strength)).toBe(true)
+		expect(Object.isFrozen(result.outcomes)).toBe(true)
 		// `commonFields`, shared by both mode branches, so checked once here
 		// rather than duplicated in the contract-scoring case below.
 		expect(parsed.strength.basis).toBe('measured')

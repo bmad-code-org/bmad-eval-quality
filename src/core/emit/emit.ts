@@ -10,6 +10,7 @@
  * from one caller-assembled record to `score`'s own widened product.
  */
 import { digestArtifact } from '../canonical/digest.ts'
+import { freezeArtifact } from '../lineage/freeze.ts'
 import type {
 	EvidenceArtifact,
 	SCORING_VERSION_INPUT_NAMES,
@@ -149,7 +150,11 @@ export const emit: EmitStage<ScoredOutcomesAndVerdict> = (
 		},
 	}
 
-	/** Runs the one real check this stage carries, then returns. */
+	/**
+	 * Runs the one real check this stage carries, then freezes and returns.
+	 * AD-29: a stage freezes the artifact it owns, matching `seal.ts`/
+	 * `preflight/reduce.ts`'s own precedent for the other two minting stages.
+	 */
 	const finalize = (artifact: EvidenceArtifact): EvidenceArtifact => {
 		const agreement = checkModeAgreement(
 			{ mode: scored.assessment.mode },
@@ -167,7 +172,7 @@ export const emit: EmitStage<ScoredOutcomesAndVerdict> = (
 				`emit(): assembled an artifact whose mode ("${agreement.artifactMode}") disagrees with the assessment mode ("${agreement.recordMode}") it was built from`,
 			)
 		}
-		return artifact
+		return freezeArtifact(artifact)
 	}
 
 	if (scored.assessment.mode === 'production') {

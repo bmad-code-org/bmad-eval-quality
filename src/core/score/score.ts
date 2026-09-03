@@ -265,10 +265,14 @@ function operationIdentifierCollisionsOf(
 
 /**
  * The tenth new Invalid condition: a caller assembling a trial set from
- * records that disagree on `mode` or `evaluatorRecommendation`. Every trial
- * is compared against the first: a trial set is not a genuine set once one
- * trial's own value is picked as authoritative, regardless of which one, so
- * basis lines name every disagreeing pair.
+ * records that disagree on `mode`, `evaluatorRecommendation`, or `runId`.
+ * Every trial is compared against the first: a trial set is not a genuine
+ * set once one trial's own value is picked as authoritative, regardless of
+ * which one, so basis lines name every disagreeing pair. `runId` joined the
+ * other two once `ValidatedObservations` carried it: batching trials from
+ * two different runs into one trial set is the single most important
+ * cross-trial mixup this check exists to catch, and it read the same
+ * fallback posture as the other two without being compared like them.
  */
 function trialSetDisagreementsOf(
 	trials: readonly ValidatedObservations[],
@@ -286,6 +290,11 @@ function trialSetDisagreementsOf(
 		if (trial.evaluatorRecommendation !== first.evaluatorRecommendation) {
 			disagreements.push(
 				`evaluatorRecommendation: trial 1 = "${first.evaluatorRecommendation}", trial ${index + 1} = "${trial.evaluatorRecommendation}"`,
+			)
+		}
+		if (trial.runId !== first.runId) {
+			disagreements.push(
+				`runId: trial 1 = "${first.runId}", trial ${index + 1} = "${trial.runId}"`,
 			)
 		}
 	})

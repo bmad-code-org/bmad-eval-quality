@@ -455,6 +455,33 @@ describe('score: the I/O & Edge-Case Matrix', () => {
 		expect(result.assessment.mode).toBe('production')
 	})
 
+	// `uncitedFindings` (broader, an identifier only) and `uncitedDefectFindings`
+	// (narrower, `defect`-only, the full gap record) coexist per `outcome.ts`'s
+	// own doc comment. A non-`defect` finding citing no oracle proves the two
+	// are computed separately, not one derived from the other's output.
+	it('a non-defect finding citing no oracle reaches uncitedFindings but not uncitedDefectFindings', () => {
+		const result = scoreOf(baseContract, [
+			cleanTrial({
+				findings: [
+					{
+						findingType: 'observation',
+						findingId: 'F-UNCITED',
+						oracleId: null,
+						probeId: qualifiedProbe.probeId,
+						behaviorId: null,
+						severity: 'material',
+						summary: 'an observation citing no oracle',
+						confidence: 0.5,
+						observationIds: ['obs-1'],
+						evidenceArtifacts: [],
+					},
+				],
+			}),
+		])
+		expect(result.uncitedFindings).toEqual(['F-UNCITED'])
+		expect(result.assessment.uncitedDefectFindings).toEqual([])
+	})
+
 	it('trials disagreeing on evaluatorRecommendation fire trial-set-field-disagreement naming both values', () => {
 		const result = scoreOf(baseContract, [
 			cleanTrial({ evaluatorRecommendation: 'PASS' }),
@@ -464,6 +491,24 @@ describe('score: the I/O & Edge-Case Matrix', () => {
 		expect(result.ladder.basis).toEqual([
 			'trial-set field disagreement: evaluatorRecommendation: trial 1 = "PASS", trial 2 = "FAIL"',
 		])
+	})
+
+	// `runId` joined `mode`/`evaluatorRecommendation` in this check the same
+	// story that widened `ValidatedObservations` to carry it: batching trials
+	// from two different runs into one trial set is the mixup this check
+	// exists to catch, and a caller can only assemble that by hand.
+	it('trials disagreeing on runId fire trial-set-field-disagreement naming both values', () => {
+		const result = scoreOf(baseContract, [
+			cleanTrial({ runId: 'run-1' }),
+			cleanTrial({ runId: 'run-2' }),
+		])
+		expect(result.ladder.verdict).toBeNull()
+		expect(result.ladder.basis).toEqual([
+			'trial-set field disagreement: runId: trial 1 = "run-1", trial 2 = "run-2"',
+		])
+		// The first trial's own runId still builds the one assessment a
+		// discriminated union requires.
+		expect(result.runId).toBe('run-1')
 	})
 })
 
@@ -634,6 +679,11 @@ describe('score: regressions and documented fallbacks beyond the frozen I/O Matr
 		expect(result.ladder.basis).toEqual([
 			'oracle O-001 is required and carries no disposition',
 		])
+		// Decision 4: a `null` local `disposition` -- ambiguous here -- reads
+		// as `'not-attempted'` on the widened `Outcome[]` array, the one member
+		// of the closed three that means "nothing was recorded".
+		expect(result.outcomes).toHaveLength(1)
+		expect(result.outcomes[0]?.disposition).toBe('not-attempted')
 	})
 
 	// Guard #4 of this family: `findingId` carries no uniqueness constraint
