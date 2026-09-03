@@ -25,6 +25,7 @@ import type {
 	CheckResolutionValue,
 	CORROBORATION_VALUES,
 	OUTCOME_STATES,
+	UncitedFindingGap,
 } from '../schemas/evidence-artifact.ts'
 import type { Polarity } from '../schemas/expression.ts'
 import type { Probe } from '../schemas/probe.ts'
@@ -763,4 +764,34 @@ export function uncitedFindingIds(
 		.filter((finding) => finding.oracleId === null)
 		.map((finding) => finding.findingId)
 		.sort(byIdentifier)
+}
+
+/**
+ * Owed item 5: every uncited `defect` finding, as `UncitedFindingGap`'s
+ * persisted shape. Deliberately not a rename or extension of
+ * `uncitedFindingIds` above: that function is broader (every finding type)
+ * and thinner (an identifier only), and already backs the artifact's own bare
+ * `uncitedFindings` field; this one is narrower (`defect` only, since only
+ * that branch carries `quotedEvidence`) and richer (the full gap record), and
+ * the two coexist rather than one replacing the other.
+ */
+export function uncitedDefectFindingGaps(
+	record: Pick<SealedRunRecord, 'findings'>,
+): readonly UncitedFindingGap[] {
+	return record.findings
+		.filter(
+			(
+				finding,
+			): finding is Extract<
+				SealedRunRecord['findings'][number],
+				{ findingType: 'defect' }
+			> => finding.findingType === 'defect' && finding.oracleId === null,
+		)
+		.map((finding) => ({
+			findingId: finding.findingId,
+			observationIds: finding.observationIds,
+			quotedEvidence: finding.quotedEvidence,
+			severity: finding.severity,
+		}))
+		.sort((a, b) => byIdentifier(a.findingId, b.findingId))
 }

@@ -73,7 +73,9 @@ export const rejectInstancesOf = (
 	}
 	for (const rejectCase of ARTIFACT_REJECT_CASES) {
 		if (rejectCase.artifact !== key) continue
-		const instance = structuredClone(ARTIFACT_ACCEPT_FIXTURES[key]) as any
+		const instance = structuredClone(
+			rejectCase.seed ?? ARTIFACT_ACCEPT_FIXTURES[key],
+		) as any
 		rejectCase.mutate(instance)
 		instances.push({ id: `reject/${rejectCase.id}`, value: instance })
 	}

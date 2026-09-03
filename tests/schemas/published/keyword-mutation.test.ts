@@ -121,7 +121,7 @@ const CENSUS_BY_DOCUMENT: Readonly<Record<string, number>> = {
 	'artifact-reference': 21,
 	'eval-contract': 761,
 	'evaluator-configuration': 69,
-	'evidence-artifact': 413,
+	'evidence-artifact': 437,
 	'isolation-manifest': 134,
 	'preflight-verdict': 34,
 	'private-artifact-manifest': 31,
@@ -133,28 +133,28 @@ const CENSUS_BY_DOCUMENT: Readonly<Record<string, number>> = {
 }
 
 const CENSUS_BY_KEYWORD: Readonly<Record<string, number>> = {
-	additionalProperties: 216,
+	additionalProperties: 218,
 	anyOf: 131,
 	const: 66,
-	enum: 64,
+	enum: 66,
 	exclusiveMinimum: 2,
 	format: 1,
-	items: 130,
+	items: 133,
 	maxItems: 2,
 	maximum: 102,
-	minItems: 39,
-	minLength: 102,
+	minItems: 41,
+	minLength: 103,
 	minProperties: 2,
 	minimum: 103,
 	oneOf: 13,
-	pattern: 161,
+	pattern: 163,
 	prefixItems: 24,
 	propertyNames: 30,
-	required: 186,
-	type: 1077,
+	required: 188,
+	type: 1087,
 }
 
-const CENSUS_TOTAL = 2451
+const CENSUS_TOTAL = 2475
 
 describe('the occurrence walk descends, so the sweep cannot pass hollow', () => {
 	it('finds the full census across the twelve documents', () => {

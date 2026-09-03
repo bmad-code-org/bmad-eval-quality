@@ -704,7 +704,7 @@ export const scoringPolicyFixture: ScoringPolicy = {
 }
 
 const evidenceCommon = {
-	schemaVersion: 2,
+	schemaVersion: 3,
 	parentDigest: null,
 	revisionCount: 0,
 	runId: 'spike-run-0001',
@@ -777,7 +777,12 @@ const evidenceCommon = {
 			checkResolution: null,
 		},
 	],
-	uncitedFindings: ['F-003'],
+	// F-004 is the synthetic uncited defect finding `uncitedFindingGaps` below
+	// carries on the contract-scoring branch; listing it here too keeps this
+	// bare id list, which spans every finding type per its own description, in
+	// agreement with the richer defect-only record rather than naming a finding
+	// this artifact's own `uncitedFindingGaps` claims but this field omits.
+	uncitedFindings: ['F-003', 'F-004'],
 	coverageGaps: [
 		{
 			rule: 'sibling-cross-check',
@@ -839,6 +844,14 @@ export const contractScoringEvidenceArtifact: EvidenceArtifact = {
 	exitCode: 0,
 	mode: 'contract-scoring',
 	contractVerdict: 'CONCERNS',
+	uncitedFindingGaps: [
+		{
+			findingId: 'F-004',
+			observationIds: ['obs-005'],
+			quotedEvidence: [{ quote: 'colour', channel: 'response-body' }],
+			severity: 'low',
+		},
+	],
 	systemRecommendationRecorded: 'FAIL',
 	systemRecommendationNote:
 		'Expected in contract-scoring mode: the probe is knowingly defective, so a system-directed FAIL is an input rather than a signal about the contract.',

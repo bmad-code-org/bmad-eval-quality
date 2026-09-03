@@ -2616,3 +2616,76 @@ flowchart TD
 - A required oracle whose check never resolved, on an otherwise clean-looking run, used to fall
   through both WAIVED and PASS. A review during development found it; the fix widened the Invalid
   guard from "no check resolved" to "not every check resolved."
+
+## Step 31 (epic7-story8): giving an uncited defect finding somewhere to go
+
+**In plain terms:** AD-23 already retains a finding that names no oracle. Nothing after that ever
+read it. An evaluator could catch a real, uncontemplated defect and the run would still come back
+clean.
+
+**What:** `uncitedDefectFindingGaps` filters a record's findings down to the uncited `defect` ones and
+shapes each into `UncitedFindingGap` (finding id, cited observations, quoted evidence, severity).
+`AssessmentCommon.uncitedDefectFindings` carries that array into both ladders, and one new shared
+CONCERNS row, `uncited-defect-finding`, fires whenever it's non-empty. No severity floor, unlike its
+two neighbor rows. `EvidenceArtifact`'s contract-scoring branch gets a required `uncitedFindingGaps`
+field to persist the same records, `schemaVersion` 2 to 3.
+
+**Why:** the finding this closes is narrower than it looks. `uncitedFindingIds` (Step 28) already
+existed and already covered every finding type; this one is `defect`-only and carries the full record
+because that's the strongest evidence contract-scoring has of a coverage gap. It isn't `CoverageGap`
+(Step 20-ish, AD-31): a coverage gap names the declaration that went unconfirmed, and an uncited defect
+finding has no declaration to name at all, so forcing it into that shape would mean inventing predicate
+fields that lie. No floor gate either: a genuine defect an evaluator already caught outside every
+declared oracle isn't the "harmless under-declared corner" AD-21's floor-gated PASS clause is about.
+
+**Read in this order:**
+
+1. `src/core/schemas/evidence-artifact.ts`: `UncitedFindingGap`, next to `CoverageGap` so the
+   contrast is visible.
+2. `src/core/score/outcome.ts`: `uncitedDefectFindingGaps`, right after `uncitedFindingIds`.
+3. `src/core/score/ladder.ts`: `uncitedDefectFindings` on `AssessmentCommon`, and the
+   `uncited-defect-finding` row in `CONCERNS_ROWS_SHARED`.
+4. `tests/score/fixtures/ladder-inputs.ts`: the `uncited-defect-finding` override, same shape as
+   `coverage-gap-at-or-above-floor`.
+
+```mermaid
+flowchart TD
+  FINDINGS["SealedRunRecord.findings<br/>defect, oracleId: null"]
+  GAPS["outcome.ts<br/>uncitedDefectFindingGaps"]
+  ASSESS["ladder.ts<br/>AssessmentCommon.uncitedDefectFindings"]
+  RUNG["CONCERNS_ROWS_SHARED<br/>uncited-defect-finding, no floor"]
+  ARTIFACT["EvidenceArtifact (contract-scoring)<br/>uncitedFindingGaps, schemaVersion 3"]
+
+  FINDINGS --> GAPS
+  GAPS --> ASSESS
+  ASSESS --> RUNG
+  GAPS --> ARTIFACT
+```
+
+**Story:** `_bmad-output/implementation-artifacts/7-8-a-rung-for-uncited-defect-findings-and-the-record-it-writes.md`
+
+### Reference
+
+**Rules:**
+
+- Only `defect` findings qualify. `uncitedFindingIds` (Step 28) covers every finding type;
+  `uncitedDefectFindingGaps` only the ones with `quotedEvidence` to read.
+- The new CONCERNS row has no severity floor, unlike the two rows next to it. Presence alone fires
+  it. `severity` rides on the persisted record for a reader; the guard itself never reads it.
+- `uncitedFindingGaps` is required only on the contract-scoring branch. The same key on a production
+  fixture fails `strictObject`'s `unrecognized_keys` rule.
+- A reject-fixture case that targets a contract-scoring-only field can't clone the registry's default
+  accept seed, which is production-mode; `ArtifactRejectCase` gained an optional `seed` override for
+  exactly that.
+
+**Watch out:**
+
+- The default accept seed gets cloned in more places than the two the spec named.
+  `published-rejection.test.ts` rebuilds its own copy of the reject-case list and had the same bare
+  `ARTIFACT_ACCEPT_FIXTURES[artifact]` lookup; it needed the same `seed` fix as the two named consumers,
+  found only by actually running the suite.
+- A schema change can move a pinned `$defs` census in a file the story never mentions.
+  `publish.test.ts`'s per-document count for `evidence-artifact` moved 3 to 4, because the new field
+  reuses `QuotedEvidence`, and that made an already-`.meta({id})`-tagged type (`EvidenceChannel`)
+  reachable from this document for the first time. Every pinned counter in this story, this one
+  included, was read off the actual regenerated schema and test run.

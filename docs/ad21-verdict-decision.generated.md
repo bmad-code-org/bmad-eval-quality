@@ -37,6 +37,7 @@ that fired first.
 | `behavioural-failure-below-floor` | CONCERNS | an AD-6 behavioural failure below the scoring policy's severity floor | no |
 | `coverage-gap-at-or-above-floor` | CONCERNS | an unsatisfied coverage gap at or above the severity floor under AD-20 | no |
 | `finding-confidence-below-threshold` | CONCERNS | a finding whose confidence falls below the policy threshold | no |
+| `uncited-defect-finding` | CONCERNS | an ingested defect finding citing no oracle | no |
 | `below-minimum-trial-count` | CONCERNS | the run completed fewer trials than the policy's declared minimum | yes |
 | `oracle-unreached` | CONCERNS | an oracle resolved `unreached` | yes |
 | `evaluator-recommendation-concerns` | CONCERNS | an ingested recommendation of CONCERNS | no |
@@ -44,13 +45,13 @@ that fired first.
 
 ### Production ladder census, by rung
 
-Over the 24 resolved production fixture cases.
+Over the 25 resolved production fixture cases.
 
 | Rung | Cases |
 | --- | --- |
 | `invalid` | 9 |
 | `FAIL` | 7 |
-| `CONCERNS` | 6 |
+| `CONCERNS` | 7 |
 | `WAIVED` | 1 |
 | `PASS` | 1 |
 
@@ -77,6 +78,7 @@ Over the 24 resolved production fixture cases.
 | `behavioural-failure-below-floor` | 1 |
 | `coverage-gap-at-or-above-floor` | 1 |
 | `finding-confidence-below-threshold` | 1 |
+| `uncited-defect-finding` | 1 |
 | `below-minimum-trial-count` | 1 |
 | `oracle-unreached` | 1 |
 | `evaluator-recommendation-concerns` | 1 |
@@ -104,19 +106,20 @@ Over the 24 resolved production fixture cases.
 | `behavioural-failure-below-floor` | CONCERNS | an AD-6 behavioural failure below the scoring policy's severity floor | no |
 | `coverage-gap-at-or-above-floor` | CONCERNS | an unsatisfied coverage gap at or above the severity floor under AD-20 | no |
 | `finding-confidence-below-threshold` | CONCERNS | a finding whose confidence falls below the policy threshold | no |
+| `uncited-defect-finding` | CONCERNS | an ingested defect finding citing no oracle | no |
 | `below-minimum-trial-count` | CONCERNS | the run completed fewer trials than the policy's declared minimum | yes |
 | `oracle-unreached` | CONCERNS | an oracle resolved `unreached` | yes |
 | `waiver-honoured` | WAIVED | every required check resolved and at least one resolved `not-applicable` against an unexpired waiver | no |
 
 ### Contract-scoring ladder census, by rung
 
-Over the 22 resolved contract-scoring fixture cases.
+Over the 23 resolved contract-scoring fixture cases.
 
 | Rung | Cases |
 | --- | --- |
 | `invalid` | 9 |
 | `FAIL` | 6 |
-| `CONCERNS` | 5 |
+| `CONCERNS` | 6 |
 | `WAIVED` | 1 |
 | `PASS` | 1 |
 
@@ -142,6 +145,7 @@ Over the 22 resolved contract-scoring fixture cases.
 | `behavioural-failure-below-floor` | 1 |
 | `coverage-gap-at-or-above-floor` | 1 |
 | `finding-confidence-below-threshold` | 1 |
+| `uncited-defect-finding` | 1 |
 | `below-minimum-trial-count` | 1 |
 | `oracle-unreached` | 1 |
 | `waiver-honoured` | 1 |

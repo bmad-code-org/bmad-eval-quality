@@ -30,9 +30,9 @@ describe('the per-constraint reject corpus for the eleven new artifacts', () => 
 	// go silently dead.
 	it.each(ARTIFACT_REJECT_CASES)(
 		'$id violates $constraint',
-		({ artifact, mutate, issuePath, issueCode, issueCount }) => {
+		({ artifact, mutate, issuePath, issueCode, issueCount, seed }) => {
 			const subject = structuredClone(
-				ARTIFACT_ACCEPT_FIXTURES[artifact],
+				seed ?? ARTIFACT_ACCEPT_FIXTURES[artifact],
 			) as unknown
 			mutate(subject)
 			const result = INTERCHANGE_ARTIFACTS[artifact].schema.safeParse(subject)

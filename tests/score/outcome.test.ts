@@ -23,6 +23,7 @@ import {
 	OUTCOME_RULES,
 	type OutcomeInputs,
 	resolveOutcome,
+	uncitedDefectFindingGaps,
 	uncitedFindingIds,
 	WAIVABLE_FAILURES,
 	WAIVER_RULES,
@@ -1343,6 +1344,56 @@ describe('what the resolution carries back', () => {
 			'finding-a',
 			'finding-a',
 		])
+	})
+
+	// Owed item 5: the gap record for an uncited `defect` finding, narrower
+	// (`defect` only) and richer (the full record) than `uncitedFindingIds`
+	// above.
+	it('returns the uncited defect finding gaps, sorted, and excludes an oracle-cited defect or a non-defect finding', () => {
+		const uncitedDefect = {
+			findingType: 'defect',
+			findingId: 'finding-b',
+			oracleId: null,
+			observationIds: ['obs-2', 'obs-1'],
+			quotedEvidence: [{ quote: '500', channel: 'response-status' }],
+			severity: 'critical',
+		}
+		const otherUncitedDefect = {
+			...uncitedDefect,
+			findingId: 'finding-a',
+		}
+		const citedDefect = {
+			...uncitedDefect,
+			findingId: 'finding-cited',
+			oracleId: 'oracle-1',
+		}
+		const uncitedObservation = {
+			findingType: 'observation',
+			findingId: 'finding-observation',
+			oracleId: null,
+			observationIds: ['obs-1'],
+		}
+		const findings = [
+			uncitedDefect,
+			otherUncitedDefect,
+			citedDefect,
+			uncitedObservation,
+		] as unknown as SealedRunRecord['findings']
+		expect(uncitedDefectFindingGaps({ findings })).toEqual([
+			{
+				findingId: 'finding-a',
+				observationIds: ['obs-2', 'obs-1'],
+				quotedEvidence: [{ quote: '500', channel: 'response-status' }],
+				severity: 'critical',
+			},
+			{
+				findingId: 'finding-b',
+				observationIds: ['obs-2', 'obs-1'],
+				quotedEvidence: [{ quote: '500', channel: 'response-status' }],
+				severity: 'critical',
+			},
+		])
+		expect(uncitedDefectFindingGaps({ findings: [] })).toEqual([])
 	})
 })
 

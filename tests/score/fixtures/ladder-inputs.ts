@@ -14,6 +14,7 @@ import type { Severity } from '../../../src/core/schemas/eval-contract.ts'
 import type {
 	CoverageGap,
 	LineageChain,
+	UncitedFindingGap,
 } from '../../../src/core/schemas/evidence-artifact.ts'
 import type { EvidenceDisclosure } from '../../../src/core/schemas/sealed-run-record.ts'
 import type { EvaluatorRecommendation } from '../../../src/core/schemas/verdict.ts'
@@ -34,6 +35,7 @@ export type AssessmentBody = {
 	readonly evidenceIntegrity: EvidenceIntegrityInputs
 	readonly evaluatorRecommendation: EvaluatorRecommendation
 	readonly coverageGaps: readonly CoverageGap[]
+	readonly uncitedDefectFindings: readonly UncitedFindingGap[]
 	readonly findings: readonly FindingConfidence[]
 	readonly confidenceThreshold: number
 	readonly remediationState: LineageChain
@@ -89,6 +91,7 @@ export const baseline = (): AssessmentBody => ({
 	},
 	evaluatorRecommendation: 'PASS',
 	coverageGaps: [],
+	uncitedDefectFindings: [],
 	findings: [],
 	confidenceThreshold: 0.5,
 	remediationState: neutralChain(),
@@ -338,6 +341,20 @@ const SHARED_OVERRIDES: readonly SharedOverride[] = [
 					satisfied: false,
 					severity: 'material',
 				},
+			],
+		}),
+	},
+	{
+		id: 'uncited-defect-finding',
+		body: () => ({
+			...baseline(),
+			uncitedDefectFindings: [
+				{
+					findingId: 'finding-uncited-1',
+					observationIds: ['obs-1'],
+					quotedEvidence: [{ quote: '500', channel: 'response-status' }],
+					severity: 'critical',
+				} satisfies UncitedFindingGap,
 			],
 		}),
 	},

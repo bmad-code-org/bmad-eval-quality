@@ -34,6 +34,7 @@ const PUBLISHED_REJECT_CASES: readonly {
 	issuePath: readonly (string | number)[]
 	errorParams?: Readonly<Record<string, string>>
 	mutate: (value: any) => void
+	seed?: unknown
 }[] = [
 	...REJECT_CASES.map((rejectCase) => ({
 		id: rejectCase.id,
@@ -52,6 +53,7 @@ const PUBLISHED_REJECT_CASES: readonly {
 		issuePath: rejectCase.issuePath,
 		errorParams: rejectCase.errorParams,
 		mutate: rejectCase.mutate,
+		seed: rejectCase.seed,
 	})),
 ]
 
@@ -79,14 +81,14 @@ const pointerOf = (path: readonly (string | number)[]): string =>
 				.join('/')}`
 
 describe('the reject corpus, run against the published documents', () => {
-	// 55 against the Eval Contract plus 85 across the other eleven; a count
-	// drift here means a case was added on one side and not annotated. The 140
+	// 55 against the Eval Contract plus 88 across the other eleven; a count
+	// drift here means a case was added on one side and not annotated. The 143
 	// total is also pinned in differential.test.ts ("carries every hand-written
 	// reject case").
-	it('enumerates all 140 cases exactly once', () => {
+	it('enumerates all 143 cases exactly once', () => {
 		expect(REJECT_CASES).toHaveLength(55)
-		expect(ARTIFACT_REJECT_CASES).toHaveLength(85)
-		expect(PUBLISHED_REJECT_CASES).toHaveLength(140)
+		expect(ARTIFACT_REJECT_CASES).toHaveLength(88)
+		expect(PUBLISHED_REJECT_CASES).toHaveLength(143)
 		const ids = PUBLISHED_REJECT_CASES.map(
 			(rejectCase) => `${rejectCase.artifact}/${rejectCase.id}`,
 		)
@@ -139,10 +141,10 @@ describe('the reject corpus, run against the published documents', () => {
 
 	it.each(PUBLISHED_REJECT_CASES)(
 		'$artifact/$id is rejected with $keyword at $instancePath',
-		({ artifact, keyword, instancePath, errorParams, mutate }) => {
+		({ artifact, keyword, instancePath, errorParams, mutate, seed }) => {
 			const validate = publishedValidatorOf(artifact)
 			const instance = structuredClone(
-				ARTIFACT_ACCEPT_FIXTURES[artifact],
+				seed ?? ARTIFACT_ACCEPT_FIXTURES[artifact],
 			) as unknown
 			mutate(instance)
 			expect(validate(instance)).toBe(false)
