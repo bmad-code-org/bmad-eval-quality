@@ -97,15 +97,25 @@ describe('the ingest condition vocabulary', () => {
 	// The key alone is half the gate. Lowering either number is the same edit as
 	// pointing the glob at nothing, and neither the coverage run nor the case
 	// above would notice.
-	it('holds the per-directory floor and the two global ones at 90', () => {
+	//
+	// A floor, never an equality. The coverage canary in CI proves the gate
+	// blocks by seeding a threshold it cannot meet, so pinning these to exactly
+	// 90 makes that canary fail here instead of on the axis it is testing, and
+	// it then reports that the check "failed for the wrong reason".
+	it('holds the per-directory floor and the two global ones at 90 or above', () => {
 		const thresholds = vitestConfig.test?.coverage?.thresholds ?? {}
+		const globs = Object.entries(thresholds).filter(
+			([key]) => !NON_GLOB_THRESHOLD_KEYS.has(key),
+		)
 
-		expect(
-			Object.entries(thresholds).filter(
-				([key]) => !NON_GLOB_THRESHOLD_KEYS.has(key),
-			),
-		).toEqual([['src/core/ingest/**', { statements: 90, branches: 90 }]])
-		expect(thresholds.statements).toBe(90)
-		expect(thresholds.branches).toBe(90)
+		expect(globs.map(([key]) => key)).toEqual(['src/core/ingest/**'])
+		const perDirectory = globs[0]?.[1] as {
+			statements?: number
+			branches?: number
+		}
+		expect(perDirectory.statements).toBeGreaterThanOrEqual(90)
+		expect(perDirectory.branches).toBeGreaterThanOrEqual(90)
+		expect(thresholds.statements).toBeGreaterThanOrEqual(90)
+		expect(thresholds.branches).toBeGreaterThanOrEqual(90)
 	})
 })

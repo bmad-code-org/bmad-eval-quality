@@ -1,5 +1,6 @@
 /**
- * The ten conditions `core/ingest` detects, and the ladder input each one feeds.
+ * The eleven conditions `core/ingest` detects, and the ladder input each one
+ * feeds.
  *
  * Each condition is a cross-artifact rule a shipped schema names `core/ingest`
  * as the enforcement point for, and none of them is a parse failure: the
@@ -25,12 +26,13 @@ import type {
 import type { UnwitnessedQuotation } from '../score/quotation.ts'
 
 /**
- * The ten kinds, in the order `ingest` records them. The two isolation-family
+ * The eleven kinds, in the order `ingest` records them. The two isolation-family
  * kinds and the two evaluator-configuration ones are sequenced here; the order
  * of the values inside one `isolation-manifest-violation` is the manifest's own
  * array order and belongs to the stage, not to this tuple.
  */
 export const INGEST_CONDITION_KINDS = [
+	'duplicate-record-identifier',
 	'dangling-citation',
 	'dangling-disposition-citation',
 	'unwitnessed-quotation',
@@ -62,6 +64,28 @@ export const AGREEMENT_FIELDS = [
 ] as const
 
 export type AgreementField = (typeof AGREEMENT_FIELDS)[number]
+
+/**
+ * An identifier the record uses twice where everything downstream addresses by
+ * it once.
+ *
+ * `observations` is the only array `SealedRunRecord` refines for uniqueness
+ * (`sequence`), so two findings may share a `findingId` and two dispositions an
+ * `oracleId`. Nothing downstream can then tell the pair apart: `verdictBasis`
+ * names a finding by its identifier, `FindingConfidence` is keyed by it, and
+ * `resolveOutcome` reads one disposition per oracle. Recorded rather than
+ * repaired, because choosing which of two entries an identifier means is not a
+ * choice this stage can make.
+ *
+ * It is also what makes the product's `findings` and `dispositions` order
+ * total in every record that does not carry this condition.
+ */
+export type DuplicateRecordIdentifier = {
+	readonly kind: Extract<IngestConditionKind, 'duplicate-record-identifier'>
+	readonly subject: 'finding' | 'oracle-disposition'
+	readonly identifier: string
+	readonly occurrences: number
+}
 
 /**
  * A finding citing an observation identifier the record does not declare. One
@@ -187,6 +211,7 @@ export type JudgeResultUnscored = {
 }
 
 export type IngestCondition =
+	| DuplicateRecordIdentifier
 	| DanglingCitation
 	| DanglingDispositionCitation
 	| UnwitnessedQuotationCondition
@@ -201,16 +226,17 @@ export type IngestCondition =
 /**
  * The ladder field a condition feeds, or `null` where no rung reads it.
  *
- * Seven of the ten carry `null`. Neither shipped ladder has a rung for a
- * dangling citation from either site, a record-versus-manifest disagreement, an
- * admitted prohibited input, an evaluator configuration that is absent or whose
- * digest does not recompute, or a malformed judge result: AD-16's title carries
+ * Eight of the eleven carry `null`. Neither shipped ladder has a rung for a
+ * repeated record identifier, a dangling citation from either site, a
+ * record-versus-manifest disagreement, an admitted prohibited input, an
+ * evaluator configuration that is absent or whose digest does not recompute, or
+ * a malformed judge result: AD-16's title carries
  * two clauses, "a prohibited input **or** an unaccounted isolation manifest
  * invalidates a run", and AD-21's Invalid enumeration names only the manifest
  * one. Routing any of them onto a neighbouring rung would make the persisted
  * basis read as a different finding, which is worse than a condition with no
  * rung at all, so the mapping records `null` until those rungs exist and a check
- * pins the set so an eighth fails the build.
+ * pins the set so a ninth fails the build.
  *
  * A narrow pair built with `Extract` rather than a bare `keyof` product: the
  * product expands to nine keys including `internallyInconsistent`, whose row is
@@ -227,6 +253,7 @@ export type LadderTarget =
 
 /** Total over the kinds tuple: a new kind fails to compile until it declares its rung or admits it has none. */
 export const LADDER_TARGETS: Record<IngestConditionKind, LadderTarget> = {
+	'duplicate-record-identifier': null,
 	'dangling-citation': null,
 	'dangling-disposition-citation': null,
 	'unwitnessed-quotation': 'unwitnessedQuotations',
