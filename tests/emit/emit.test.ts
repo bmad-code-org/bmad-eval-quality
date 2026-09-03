@@ -396,6 +396,28 @@ describe('emit: the I/O & Edge-Case Matrix', () => {
 		})
 		expect(() => emitOf({ assessment: lyingAssessment })).toThrow(TypeError)
 	})
+
+	// `scored.ladder.verdict` is legitimately typed `Verdict | null` (AD-21's
+	// Invalid rung); `emit.ts` trusts the caller's own precondition rather
+	// than re-throwing on it (Decision 12), but the assembled artifact is
+	// schema-validated before it freezes, so a `null` verdict that reaches
+	// this point despite that precondition fails loudly instead of shipping
+	// a schema-invalid `EvidenceArtifact`.
+	it('a null ladder verdict fails EvidenceArtifact validation rather than minting an invalid artifact', () => {
+		expect(() => emitOf({ ladder: { ...passLadder, verdict: null } })).toThrow(
+			/EvidenceArtifact validation/,
+		)
+	})
+
+	// `dotPath`'s array-index-bracketed, then object-key-dotted case, mirroring
+	// `tests/seal/seal.test.ts`'s own "names a nested failing field" test for
+	// the identical formatter, duplicated here rather than shared.
+	it('names a nested failing field with the array index bracketed and the object key dotted', () => {
+		const invalidOutcome: Outcome = { ...baseOutcome, oracleId: 'not-an-id' }
+		expect(() => emitOf({ outcomes: [invalidOutcome] })).toThrow(
+			/first at "outcomes\[0\]\.oracleId"/,
+		)
+	})
 })
 
 describe('emit: production-mode and contract-scoring-mode shape', () => {

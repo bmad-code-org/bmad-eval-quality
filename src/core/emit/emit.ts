@@ -11,9 +11,9 @@
  */
 import { digestArtifact } from '../canonical/digest.ts'
 import { freezeArtifact } from '../lineage/freeze.ts'
-import type {
+import {
 	EvidenceArtifact,
-	SCORING_VERSION_INPUT_NAMES,
+	type SCORING_VERSION_INPUT_NAMES,
 } from '../schemas/evidence-artifact.ts'
 import type { Verdict } from '../schemas/verdict.ts'
 import { checkModeAgreement } from '../score/mode-agreement.ts'
@@ -151,9 +151,12 @@ export const emit: EmitStage<ScoredOutcomesAndVerdict> = (
 	}
 
 	/**
-	 * Runs the one real check this stage carries, then freezes and returns.
-	 * AD-29: a stage freezes the artifact it owns, matching `seal.ts`/
+	 * Runs both of this stage's checks, then freezes and returns. AD-29: a
+	 * stage freezes the artifact it owns, matching `seal.ts`/
 	 * `preflight/reduce.ts`'s own precedent for the other two minting stages.
+	 * Both checks fire only on a precondition violation, never a domain
+	 * input: neither is reachable through any path this module's own
+	 * construction takes.
 	 */
 	const finalize = (artifact: EvidenceArtifact): EvidenceArtifact => {
 		const agreement = checkModeAgreement(
@@ -172,7 +175,7 @@ export const emit: EmitStage<ScoredOutcomesAndVerdict> = (
 				`emit(): assembled an artifact whose mode ("${agreement.artifactMode}") disagrees with the assessment mode ("${agreement.recordMode}") it was built from`,
 			)
 		}
-		return freezeArtifact(artifact)
+		return freezeArtifact(validateAssembledArtifact(artifact))
 	}
 
 	if (scored.assessment.mode === 'production') {
@@ -220,4 +223,43 @@ export const emit: EmitStage<ScoredOutcomesAndVerdict> = (
 		systemRecommendationNote: scored.assessment.systemRecommendationNote,
 	}
 	return finalize(artifact)
+}
+
+/**
+ * The runtime backstop `finalize()` calls before freezing: TypeScript
+ * guarantees this module's own object literals match `EvidenceArtifact`'s
+ * shape at compile time, except at the one place that casts past it
+ * (`scored.ladder.verdict as Verdict`, above). Mirrors `seal.ts`'s own
+ * `validateAssembledBrief` -- same `safeParse`-then-`TypeError` shape, same
+ * first-issue diagnosis -- so a verdict that reached this function `null`
+ * despite the caller's own precondition fails loudly here instead of
+ * shipping a schema-invalid artifact silently.
+ */
+function validateAssembledArtifact(
+	artifact: EvidenceArtifact,
+): EvidenceArtifact {
+	const result = EvidenceArtifact.safeParse(artifact)
+	if (result.success) return result.data
+	const issueCount = result.error.issues.length
+	const firstIssue = result.error.issues[0]
+	const firstPath = firstIssue ? dotPath(firstIssue.path) : ''
+	throw new TypeError(
+		`emit(): assembled an artifact that failed EvidenceArtifact validation: ${issueCount} issue${issueCount === 1 ? '' : 's'}, first at "${firstPath === '' ? '(root)' : firstPath}"`,
+		{ cause: result.error },
+	)
+}
+
+/** `seal.ts`'s own formatter, duplicated rather than shared: both are small, stage-local, and neither exports it today. */
+function dotPath(path: readonly PropertyKey[]): string {
+	const segments: string[] = []
+	for (const segment of path) {
+		if (typeof segment === 'number') segments.push(`[${segment}]`)
+		else if (typeof segment === 'symbol' || /[^\w$]/.test(segment)) {
+			segments.push(`[${JSON.stringify(String(segment))}]`)
+		} else {
+			if (segments.length > 0) segments.push('.')
+			segments.push(segment)
+		}
+	}
+	return segments.join('')
 }

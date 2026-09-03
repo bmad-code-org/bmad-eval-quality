@@ -858,7 +858,7 @@ npm run generate:ad33-table # rebuild docs/ad33-outcome-decision.generated.md fr
 npm run check:ad33-table    # fail if the committed AD-33 table differs from the builder by one byte
 npm run generate:dev-corpus # rebuild corpus/dev/ from the contract fixtures through the shipped compile and seal
 npm run check:corpus        # fail if the committed corpus differs from the builder by one byte
-npm run generate:worked-example # rebuild the spike worked chain by running the compile, seal, and score functions over it
+npm run generate:worked-example # rebuild the spike worked chain by running the compile, seal, score, and emit functions over it
 npm run check:worked-example    # fail if the committed worked chain differs from the builder by one byte
 npm run build:shareable     # render the planning artifacts to self-contained HTML
 npm run test:conformance    # run the published port conformance suite against every shipped adapter
@@ -875,8 +875,8 @@ is ES modules, which are always strict, so an attempt throws a <code>TypeError</
 caller sees the write fail silently. A revision is minted as a new artifact carrying its parent&#39;s
 digest and a revision count one greater. <code>check:lineage</code> fails the build when a lineage field is
 written outside <code>src/core/schemas/</code>, <code>src/core/lineage/</code>, and the modules the AD-24 stage table
-names as that artifact&#39;s producer, which today are <code>src/core/seal/seal.ts</code> and
-<code>src/core/preflight/reduce.ts</code>.</p>
+names as that artifact&#39;s producer, which today are <code>src/core/seal/seal.ts</code>,
+<code>src/core/preflight/reduce.ts</code>, and <code>src/core/emit/emit.ts</code>.</p>
 <p>The <code>eval-quality/conformance</code> subpath publishes the port boundary: the four port types, the message
 shapes they carry, the AD-28 <code>RUNTIME_FAULT_CODES</code> registry and <code>RuntimeFaultCode</code> type a conforming
 adapter throws against, and an executable conformance suite. An adapter is conforming when

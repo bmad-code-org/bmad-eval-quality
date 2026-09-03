@@ -3098,7 +3098,7 @@ flowchart TD
 **Read in this order:**
 
 1. `src/core/emit/emit.ts`: the stage, top to bottom -- the strength and comparability numbers, then
-   the mode-specific report, then the one real check before it hands the report back.
+   the mode-specific report, then the two checks it runs before handing the report back.
 2. `src/core/score/score.ts`: the previous step's result gains eight fields this step needed and had
    no other way to get.
 3. `src/core/ingest/ingest.ts`: gains one more field, a run id, that gets carried all the way through
@@ -3116,16 +3116,18 @@ flowchart TD
 
 **Rules:**
 
-- `emit.ts` throws nothing for a domain input. Its one throw fires only if a future caller assembles
-  the input from two disagreeing sources by hand, which today's one caller cannot do.
+- `emit.ts` throws nothing for a domain input. Both of its checks fire only if this step's own build
+  produced a broken report, never because of what a caller sent it.
 - The three caller-supplied digests are named parameters, never read off anything upstream: nothing
   earlier in the pipeline carries them.
 - The strength and comparability numbers are lifted field for field from the old hand-typed report,
   not redesigned.
-- `emit` freezes the report it hands back, the same as the two other steps that mint something new
-  (Step 7's sealed brief, Step 20's pre-flight verdict).
-- A verdict that never resolved (the run was Invalid) is trusted rather than re-checked here: the
-  caller's own guard, one call earlier, is where that gets stopped.
+- `emit` checks its own report is well-formed and freezes it before handing it back, the same as the
+  two other steps that mint something new (Step 7's sealed brief, Step 20's pre-flight verdict) --
+  Step 7's own well-formed check is where this step copied the pattern from.
+- A verdict that never resolved (the run was Invalid) is the caller's own guard to stop, one call
+  earlier, before it ever reaches here -- but if one slipped through anyway, the well-formed check
+  above catches it before anything gets handed back.
 - The run id now joins the two fields Step 35 already compared across trials, so two trials from
   different runs batched into one set no longer slip through silently.
 
