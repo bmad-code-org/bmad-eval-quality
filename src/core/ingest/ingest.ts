@@ -316,6 +316,14 @@ export const ingest: IngestStage<ValidatedObservations> = (
 	// no uniqueness refinement, so one criterion may appear twice, and two
 	// byte-identical conditions naming one criterion are one finding a basis line
 	// can act on rather than two.
+	//
+	// The two citation families deduplicate identifiers inside an entry and never
+	// the entries themselves, which is the opposite answer to the same shape and
+	// is deliberate. A repeated `(rubricId, criterionId)` is one criterion scored
+	// twice, so the second entry names nothing new. Two findings sharing a
+	// `findingId` are two findings the record cannot address apart, and their
+	// citations may differ, so collapsing them would drop a bad citation on the
+	// floor.
 	const unscored = [
 		...new Map(
 			record.judgeResults
