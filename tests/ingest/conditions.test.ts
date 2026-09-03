@@ -2,7 +2,7 @@
  * The mechanical properties of the condition vocabulary: that the ladder
  * mapping stays total over the kinds tuple, that ingest's identifiers stay
  * disjoint from the per-oracle vocabulary `resolveOutcome` assigns, that the set
- * of conditions with no rung is exactly the seven the design admits, and that
+ * of conditions with no rung is exactly the eight the design admits, and that
  * the per-directory coverage floor points at a directory that exists and still
  * carries its number.
  *
@@ -53,16 +53,17 @@ describe('the ingest condition vocabulary', () => {
 		expect(shared).toEqual([])
 	})
 
-	// Pinned rather than derived: an eighth kind mapping to `null` is an eighth
+	// Pinned rather than derived: a ninth kind mapping to `null` is a ninth
 	// condition scoring nothing, and it should fail the build and force a
-	// decision instead of quietly joining the seven the design already accounts
+	// decision instead of quietly joining the eight the design already accounts
 	// for.
-	it('leaves exactly seven kinds without a rung', () => {
+	it('leaves exactly eight kinds without a rung', () => {
 		const rungless = INGEST_CONDITION_KINDS.filter(
 			(kind) => LADDER_TARGETS[kind] === null,
 		)
 
 		expect(rungless).toEqual([
+			'duplicate-record-identifier',
 			'dangling-citation',
 			'dangling-disposition-citation',
 			'forbidden-input-not-withheld',

@@ -255,6 +255,77 @@ describe('the ingest stage', () => {
 		expect(result.dispositions).not.toBe(record.oracleDispositions)
 	})
 
+	// The identifier sort is total on any record that does not repeat one, and a
+	// record that does says so. Both halves in one case: the repeat is reported
+	// per subject with its count, and the pair it makes unaddressable is the only
+	// thing left whose product order follows presentation.
+	it('reports an identifier the record uses twice, per subject', () => {
+		const [defect] = cleanRecord.findings
+		const [held] = cleanRecord.oracleDispositions
+		if (defect === undefined || held === undefined) throw new Error('fixture')
+		const record: SealedRunRecord = {
+			...cleanRecord,
+			findings: [defect, { ...defect, summary: 'a second finding, same id' }],
+			oracleDispositions: [held, { ...held, note: 'a second disposition' }],
+		}
+
+		expect(
+			conditionsOf(
+				ingest(record, cleanManifest, configuration).conditions,
+				'duplicate-record-identifier',
+			),
+		).toEqual([
+			{
+				kind: 'duplicate-record-identifier',
+				subject: 'finding',
+				identifier: 'F-001',
+				occurrences: 2,
+			},
+			{
+				kind: 'duplicate-record-identifier',
+				subject: 'oracle-disposition',
+				identifier: 'O-001',
+				occurrences: 2,
+			},
+		])
+		expect(LADDER_TARGETS['duplicate-record-identifier']).toBeNull()
+	})
+
+	// Two repeated identifiers in one subject, presented out of order, so the
+	// conditions carry their own order rather than the array's.
+	it('orders repeated identifiers by identifier, not by where they appear', () => {
+		const [defect, confirmation] = cleanRecord.findings
+		if (defect === undefined || confirmation === undefined)
+			throw new Error('fixture')
+		const record: SealedRunRecord = {
+			...cleanRecord,
+			findings: [
+				confirmation,
+				{ ...confirmation, summary: 'the second F-002' },
+				defect,
+				{ ...defect, summary: 'the second F-001' },
+			],
+		}
+
+		expect(
+			conditionsOf(
+				ingest(record, cleanManifest, configuration).conditions,
+				'duplicate-record-identifier',
+			).map((condition) => condition.identifier),
+		).toEqual(['F-001', 'F-002'])
+	})
+
+	// A record that addresses each entry once says nothing, which is what makes
+	// the condition above a report of a defect rather than noise on every run.
+	it('says nothing about identifiers a well-formed record uses once', () => {
+		expect(
+			conditionsOf(
+				ingest(cleanRecord, cleanManifest, configuration).conditions,
+				'duplicate-record-identifier',
+			),
+		).toEqual([])
+	})
+
 	// Neither `findings` nor `oracleDispositions` declares an order, so the
 	// product carries its own rather than the record's array position. Presented
 	// reversed, since the fixture already lists both in identifier order.

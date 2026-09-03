@@ -2861,7 +2861,7 @@ and never guesses: a run with problems comes back as a run carrying a list of it
 
 **What:** `src/core/ingest/ingest.ts`, a pure function over three already-parsed artifacts, returning
 the observations in a fixed order, the findings, the dispositions, every condition it detected, and
-the two verdict-ladder inputs it can fill today. `src/core/ingest/conditions.ts` declares the ten
+the two verdict-ladder inputs it can fill today. `src/core/ingest/conditions.ts` declares the eleven
 condition kinds as a runtime list and maps each to the ladder field it feeds, or to `null` where no
 rung exists yet. `STAGE_SIGNATURES.ingest.module` stops being `null`.
 
@@ -2911,8 +2911,10 @@ flowchart TD
   serialization rejects raises `non-canonicalizable-value` out of `core/canonical`.
 - A condition with no rung maps to `null` and keeps its own name. Putting it on a neighbouring rung
   would make the persisted reason line say the wrong thing.
-- Seven of the ten carry `null` today. An eighth fails the build, because `conditions.test.ts` pins
-  the set of seven.
+- Eight of the eleven carry `null` today. A ninth fails the build, because `conditions.test.ts` pins
+  the set of eight.
+- A `findingId` or an `oracleId` the record uses twice is itself a condition. Everything downstream
+  addresses those entries by exactly that identifier.
 - The evaluator configuration's digest is recomputed here and compared against the record's. It is
   the one digest in the run that no caller attests to.
 - An absent isolation manifest and an absent evaluator configuration are conditions, not errors.
@@ -2940,6 +2942,6 @@ flowchart TD
 - The shipped record fixture is not clean, by design. Its defect finding quotes a JSON spelling
   RFC 8785 never produces, one judge result carries `score: null`, the paired manifest admits one
   forbidden input, and both artifacts declare a placeholder evaluator-configuration digest, so four
-  of the ten conditions fire on the fixtures as they ship.
+  of the eleven conditions fire on the fixtures as they ship.
 - The product's arrays are copies and its elements are not. Mutating an observation on the record
   after the call changes what the product shows.

@@ -19,7 +19,7 @@
  *
  * Nothing here re-derives what `resolveOutcome` already decides. Its ten
  * invalidating conditions are per oracle and reach the ladder through
- * `outcome.resolution.invalidatingConditions`; these ten are per record and
+ * `outcome.resolution.invalidatingConditions`; these eleven are per record and
  * reach it through `EvidenceIntegrityInputs` and `OutcomeStateInputs`. Two
  * pairs are related rather than identical: `judge-result-unscored` is the
  * derivation `OutcomeInputs.judgeConduct` has never had, and a
@@ -147,6 +147,34 @@ export const ingest: IngestStage<ValidatedObservations> = (
 	configuration,
 ) => {
 	const conditions: IngestCondition[] = []
+
+	// Prior to every other check: a record that uses one identifier twice cannot
+	// address its own entries, and every consumer downstream addresses by them.
+	// Reported before the conditions that name a `findingId` or an `oracleId`, so
+	// a reader meets the ambiguity before a condition that relies on it.
+	for (const [subject, identifiers] of [
+		['finding', record.findings.map((finding) => finding.findingId)],
+		[
+			'oracle-disposition',
+			record.oracleDispositions.map((disposition) => disposition.oracleId),
+		],
+	] as const) {
+		const counts = new Map<string, number>()
+		for (const identifier of identifiers) {
+			counts.set(identifier, (counts.get(identifier) ?? 0) + 1)
+		}
+		const repeated = [...counts.entries()]
+			.filter(([, occurrences]) => occurrences > 1)
+			.sort((a, b) => compareKeys([a[0]], [b[0]]))
+		for (const [identifier, occurrences] of repeated) {
+			conditions.push({
+				kind: 'duplicate-record-identifier',
+				subject,
+				identifier,
+				occurrences,
+			})
+		}
+	}
 
 	// A cited identifier matching a declared observation is the cross-artifact
 	// rule `observationIds` leaves to this stage. Declared on every finding
@@ -356,9 +384,14 @@ export const ingest: IngestStage<ValidatedObservations> = (
 		),
 		// Sorted for the same reason the conditions are: neither array declares an
 		// order, so carrying the record's would make the product depend on a
-		// position nothing may read. A repeated identifier is a caller defect the
-		// schema admits, and the tied pair keeps its presented order because the
-		// record supplies nothing else to separate them by.
+		// position nothing may read. The identifier is a total key on any record
+		// that does not repeat one, and a record that does repeats it into a
+		// `duplicate-record-identifier` condition, so the one input whose product
+		// still varies with presentation order is one the run already reports as
+		// unaddressable. Ordering that pair by content instead would mean
+		// canonicalizing every finding, which buys determinism for a record
+		// already flagged at the cost of making `non-canonicalizable-value`
+		// reachable from a field no quotation cites.
 		findings: [...record.findings].sort((a, b) =>
 			compareKeys([a.findingId], [b.findingId]),
 		),

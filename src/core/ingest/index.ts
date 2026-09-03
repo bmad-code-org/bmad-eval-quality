@@ -13,6 +13,7 @@ export type {
 	CrossArtifactDisagreement,
 	DanglingCitation,
 	DanglingDispositionCitation,
+	DuplicateRecordIdentifier,
 	EvaluatorConfigurationAbsent,
 	EvaluatorConfigurationDigestMismatch,
 	ForbiddenInputNotWithheld,
