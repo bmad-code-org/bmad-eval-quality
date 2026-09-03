@@ -66,9 +66,9 @@ The way to find a blind spot is to plant one. Keep the evaluation fixed and chan
                       evidence of evaluation strength
 ```
 
-This is the conceptual loop, drawn in core-flow order. Ownership splits three ways. `eval-quality` ships the `preflight` row today. Executing the two systems, running the evaluator, and collecting evidence belong to the caller. The `score / verdict` row belongs to `eval-quality`, and it is written: the outcome-state procedure and both verdict ladders run today and are published as generated tables. What is missing is the stage and the surface that reach them.
+This is the conceptual loop, drawn in core-flow order. Ownership splits three ways. `eval-quality` ships the `preflight` row and the `score / verdict` row today. Executing the two systems, running the evaluator, and collecting evidence belong to the caller.
 
-The loop is drawn in the eight core-flow nouns, which is one level above the pipeline. The pipeline itself has six stages, and `ingest` sits between the caller's run record and the scoring rows: it validates a sealed run record against its isolation manifest and evaluator configuration, and records every cross-artifact inconsistency it finds. Like the scoring rows, it is built and reachable from nothing.
+The loop is drawn in the eight core-flow nouns, which is one level above the pipeline. The pipeline itself has six stages, and `ingest` sits between the caller's run record and the scoring rows: it validates a sealed run record against its isolation manifest and evaluator configuration, and records every cross-artifact inconsistency it finds. `ingest`, `score`, and `emit` all run behind the `score` command and its library entry, `runScore`.
 
 Two of the boxes are easy to conflate: **observations** are probe results about environment fitness, which is what `preflight` reduces, and **evidence** is what the evaluation run itself produced. Oracles resolve over that evidence and rubrics grade it, between the `evidence` and `score / verdict` rows.
 
@@ -158,8 +158,8 @@ Both are the blind-spot problem in miniature: an evaluation that reports success
 
 ---
 
-## What is not implemented
+## Scoring
 
-Scoring is the comparison step at the bottom of the twin run. No published stage, command, or library call measures contract strength, defect detection, or oracle effectiveness. Today an external evaluator or harness produces the findings for each arm and you compare them yourself, and the scoring stage is what will turn those findings into a governed score. The functions it will call already exist in `src/core/score/`, exported nowhere; the [roadmap](/explanation/roadmap/) lists what they cover. `compile` checks a contract's rubrics structurally, so a rubric that scores reasoning prose or cites unreachable evidence is rejected, and no shipped stage then uses a rubric to produce a score. `schemas/scoring-policy.schema.json` is published, the registry and the schema checks consume it, and no shipped scoring stage does. Exit codes 1 and 2 are reserved for a scored verdict and no command reaches them.
+Scoring is the comparison step at the bottom of the twin run. The `score` command and its library entry, `runScore`, chain `ingest`, `score`, and `emit` over a sealed run record, an isolation manifest, an evaluator configuration, the compiled contract, a probe, a preflight verdict, and a scoring policy, and mint a versioned `EvidenceArtifact` carrying the AD-21 verdict. `compile` checks a contract's rubrics structurally, so a rubric that scores reasoning prose or cites unreachable evidence is rejected, and `score` reads a declared rubric to decide whether a judge's conduct was conforming or malformed. `schemas/scoring-policy.schema.json` is published, and `score` is the stage that consumes it. Exit codes 1 and 2, reserved for a scored verdict, and `--strict`'s promotion of a CONCERNS, are both reachable through `score`.
 
-The [roadmap](/explanation/roadmap/) records where that stands.
+The [roadmap](/explanation/roadmap/) records what ships today, what is next, and what the next release breaks.

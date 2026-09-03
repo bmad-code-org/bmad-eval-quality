@@ -14,6 +14,7 @@
 import {
 	CONTRACT_LADDER,
 	type ContractAssessment,
+	LADDER_EXIT_CODES,
 	PRODUCTION_LADDER,
 	type ProductionAssessment,
 	resolveContractVerdict,
@@ -58,6 +59,11 @@ const HEADER = [
 	'throws. Precedence is Invalid, then FAIL, then CONCERNS, then WAIVED, then PASS. Within the',
 	'winning tier every condition that holds contributes to the basis; none is masked by another',
 	'that fired first.',
+	'',
+	'The exit-code column names the rung, not `--strict`. Every CONCERNS row shows 0 because that is',
+	"the rung's own exit code before `--strict` runs; passing `--strict` promotes the resolution to 1,",
+	'except when every firing row for that resolution has "Evidence condition" `yes`, which `--strict`',
+	'never promotes.',
 ]
 
 const RUNG_LABELS = ['invalid', 'FAIL', 'CONCERNS', 'WAIVED', 'PASS'] as const
@@ -109,6 +115,7 @@ function ladderSection(
 		conditionRow.rung === 'invalid' ? 'Invalid' : conditionRow.rung,
 		conditionRow.guard,
 		conditionRow.evidenceCondition ? 'yes' : 'no',
+		String(LADDER_EXIT_CODES[conditionRow.rung]),
 	])
 	const rungCensus = census(
 		ladderKey,
@@ -132,7 +139,7 @@ function ladderSection(
 		`## ${name}`,
 		'',
 		...table(
-			['Condition', 'Rung', 'Guard', 'Evidence condition'],
+			['Condition', 'Rung', 'Guard', 'Evidence condition', 'Exit code'],
 			conditionRows,
 		),
 		'',

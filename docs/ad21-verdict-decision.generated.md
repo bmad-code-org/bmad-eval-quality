@@ -14,44 +14,49 @@ throws. Precedence is Invalid, then FAIL, then CONCERNS, then WAIVED, then PASS.
 winning tier every condition that holds contributes to the basis; none is masked by another
 that fired first.
 
+The exit-code column names the rung, not `--strict`. Every CONCERNS row shows 0 because that is
+the rung's own exit code before `--strict` runs; passing `--strict` promotes the resolution to 1,
+except when every firing row for that resolution has "Evidence condition" `yes`, which `--strict`
+never promotes.
+
 ## Production ladder
 
-| Condition | Rung | Guard | Evidence condition |
-| --- | --- | --- | --- |
-| `invalidating-state` | Invalid | an outcome resolved an AD-6 invalidating state (oracle-error, judge-error, or infrastructure-error) | no |
-| `failed-preflight` | Invalid | a failed pre-flight | no |
-| `isolation-manifest-violation` | Invalid | an unaccounted isolation manifest under AD-16 | no |
-| `re-execution-cap-breach` | Invalid | a re-execution cap breach under AD-6 | no |
-| `disposition-missing` | Invalid | a required oracle carrying no disposition in the run record under AD-23 | no |
-| `required-check-unresolved` | Invalid | not every required check resolved | no |
-| `selector-ambiguity` | Invalid | a step matched several observations under a single-valued cardinality (owed item 2) | no |
-| `unwitnessed-claim` | Invalid | a defect finding claimed a detection no candidate observation witnesses (AD-40) | no |
-| `unwitnessed-quotation` | Invalid | a defect finding's quoted evidence appears in no cited observation (AD-32) | no |
-| `duplicate-record-identifier` | Invalid | the record uses one observation, finding, or oracle-disposition identifier twice | no |
-| `dangling-citation` | Invalid | a finding cites an observation identifier the record does not declare | no |
-| `dangling-disposition-citation` | Invalid | an oracle disposition cites an observation identifier the record does not declare | no |
-| `forbidden-input-not-withheld` | Invalid | AD-16 forbidden input admitted rather than withheld | no |
-| `cross-artifact-disagreement` | Invalid | the sealed run record and the isolation manifest disagree on a field AD-32 requires them to agree on | no |
-| `evaluator-configuration-absent` | Invalid | the evaluator configuration artifact is absent | no |
-| `evaluator-configuration-digest-mismatch` | Invalid | the evaluator configuration digest the record declares does not recompute from the artifact | no |
-| `judge-result-unscored` | Invalid | a judge result carries `score: null` | no |
-| `operation-identifier-collision` | Invalid | an observation's operationId matches an operation in more than one permittedInterfaces entry | no |
-| `trial-set-field-disagreement` | Invalid | two trials in the same trial set disagree on `mode` or `evaluatorRecommendation` | no |
-| `behavioural-failure-at-or-above-floor` | FAIL | an AD-6 behavioural failure at or above the scoring policy's severity floor | no |
-| `evidence-incomplete` | FAIL | evidence reported incomplete under AD-17 | no |
-| `evidence-over-truncated` | FAIL | evidence truncated past its disclosed bound under AD-17 | no |
-| `evidence-unavailable` | FAIL | evidence unavailable under AD-17 | no |
-| `evidence-internally-inconsistent` | FAIL | evidence internally inconsistent under AD-17 | no |
-| `lineage-chain-inconsistent` | FAIL | a presented lineage chain internally inconsistent under AD-12 | no |
-| `evaluator-recommendation-fail` | FAIL | an ingested evaluator recommendation of FAIL | no |
-| `behavioural-failure-below-floor` | CONCERNS | an AD-6 behavioural failure below the scoring policy's severity floor | no |
-| `coverage-gap-at-or-above-floor` | CONCERNS | an unsatisfied coverage gap at or above the severity floor under AD-20 | no |
-| `finding-confidence-below-threshold` | CONCERNS | a finding whose confidence falls below the policy threshold | no |
-| `uncited-defect-finding` | CONCERNS | an ingested defect finding citing no oracle | no |
-| `below-minimum-trial-count` | CONCERNS | the run completed fewer trials than the policy's declared minimum | yes |
-| `oracle-unreached` | CONCERNS | an oracle resolved `unreached` | yes |
-| `evaluator-recommendation-concerns` | CONCERNS | an ingested recommendation of CONCERNS | no |
-| `waiver-honoured` | WAIVED | every required check resolved and at least one resolved `not-applicable` against an unexpired waiver | no |
+| Condition | Rung | Guard | Evidence condition | Exit code |
+| --- | --- | --- | --- | --- |
+| `invalidating-state` | Invalid | an outcome resolved an AD-6 invalidating state (oracle-error, judge-error, or infrastructure-error) | no | 3 |
+| `failed-preflight` | Invalid | a failed pre-flight | no | 3 |
+| `isolation-manifest-violation` | Invalid | an unaccounted isolation manifest under AD-16 | no | 3 |
+| `re-execution-cap-breach` | Invalid | a re-execution cap breach under AD-6 | no | 3 |
+| `disposition-missing` | Invalid | a required oracle carrying no disposition in the run record under AD-23 | no | 3 |
+| `required-check-unresolved` | Invalid | not every required check resolved | no | 3 |
+| `selector-ambiguity` | Invalid | a step matched several observations under a single-valued cardinality (owed item 2) | no | 3 |
+| `unwitnessed-claim` | Invalid | a defect finding claimed a detection no candidate observation witnesses (AD-40) | no | 3 |
+| `unwitnessed-quotation` | Invalid | a defect finding's quoted evidence appears in no cited observation (AD-32) | no | 3 |
+| `duplicate-record-identifier` | Invalid | the record uses one observation, finding, or oracle-disposition identifier twice | no | 3 |
+| `dangling-citation` | Invalid | a finding cites an observation identifier the record does not declare | no | 3 |
+| `dangling-disposition-citation` | Invalid | an oracle disposition cites an observation identifier the record does not declare | no | 3 |
+| `forbidden-input-not-withheld` | Invalid | AD-16 forbidden input admitted rather than withheld | no | 3 |
+| `cross-artifact-disagreement` | Invalid | the sealed run record and the isolation manifest disagree on a field AD-32 requires them to agree on | no | 3 |
+| `evaluator-configuration-absent` | Invalid | the evaluator configuration artifact is absent | no | 3 |
+| `evaluator-configuration-digest-mismatch` | Invalid | the evaluator configuration digest the record declares does not recompute from the artifact | no | 3 |
+| `judge-result-unscored` | Invalid | a judge result carries `score: null` | no | 3 |
+| `operation-identifier-collision` | Invalid | an observation's operationId matches an operation in more than one permittedInterfaces entry | no | 3 |
+| `trial-set-field-disagreement` | Invalid | two trials in the same trial set disagree on `mode` or `evaluatorRecommendation` | no | 3 |
+| `behavioural-failure-at-or-above-floor` | FAIL | an AD-6 behavioural failure at or above the scoring policy's severity floor | no | 2 |
+| `evidence-incomplete` | FAIL | evidence reported incomplete under AD-17 | no | 2 |
+| `evidence-over-truncated` | FAIL | evidence truncated past its disclosed bound under AD-17 | no | 2 |
+| `evidence-unavailable` | FAIL | evidence unavailable under AD-17 | no | 2 |
+| `evidence-internally-inconsistent` | FAIL | evidence internally inconsistent under AD-17 | no | 2 |
+| `lineage-chain-inconsistent` | FAIL | a presented lineage chain internally inconsistent under AD-12 | no | 2 |
+| `evaluator-recommendation-fail` | FAIL | an ingested evaluator recommendation of FAIL | no | 2 |
+| `behavioural-failure-below-floor` | CONCERNS | an AD-6 behavioural failure below the scoring policy's severity floor | no | 0 |
+| `coverage-gap-at-or-above-floor` | CONCERNS | an unsatisfied coverage gap at or above the severity floor under AD-20 | no | 0 |
+| `finding-confidence-below-threshold` | CONCERNS | a finding whose confidence falls below the policy threshold | no | 0 |
+| `uncited-defect-finding` | CONCERNS | an ingested defect finding citing no oracle | no | 0 |
+| `below-minimum-trial-count` | CONCERNS | the run completed fewer trials than the policy's declared minimum | yes | 0 |
+| `oracle-unreached` | CONCERNS | an oracle resolved `unreached` | yes | 0 |
+| `evaluator-recommendation-concerns` | CONCERNS | an ingested recommendation of CONCERNS | no | 0 |
+| `waiver-honoured` | WAIVED | every required check resolved and at least one resolved `not-applicable` against an unexpired waiver | no | 0 |
 
 ### Production ladder census, by rung
 
@@ -106,40 +111,40 @@ Over the 35 resolved production fixture cases.
 
 ## Contract-scoring ladder
 
-| Condition | Rung | Guard | Evidence condition |
-| --- | --- | --- | --- |
-| `invalidating-state` | Invalid | an outcome resolved an AD-6 invalidating state (oracle-error, judge-error, or infrastructure-error) | no |
-| `failed-preflight` | Invalid | a failed pre-flight | no |
-| `isolation-manifest-violation` | Invalid | an unaccounted isolation manifest under AD-16 | no |
-| `re-execution-cap-breach` | Invalid | a re-execution cap breach under AD-6 | no |
-| `disposition-missing` | Invalid | a required oracle carrying no disposition in the run record under AD-23 | no |
-| `required-check-unresolved` | Invalid | not every required check resolved | no |
-| `selector-ambiguity` | Invalid | a step matched several observations under a single-valued cardinality (owed item 2) | no |
-| `unwitnessed-claim` | Invalid | a defect finding claimed a detection no candidate observation witnesses (AD-40) | no |
-| `unwitnessed-quotation` | Invalid | a defect finding's quoted evidence appears in no cited observation (AD-32) | no |
-| `duplicate-record-identifier` | Invalid | the record uses one observation, finding, or oracle-disposition identifier twice | no |
-| `dangling-citation` | Invalid | a finding cites an observation identifier the record does not declare | no |
-| `dangling-disposition-citation` | Invalid | an oracle disposition cites an observation identifier the record does not declare | no |
-| `forbidden-input-not-withheld` | Invalid | AD-16 forbidden input admitted rather than withheld | no |
-| `cross-artifact-disagreement` | Invalid | the sealed run record and the isolation manifest disagree on a field AD-32 requires them to agree on | no |
-| `evaluator-configuration-absent` | Invalid | the evaluator configuration artifact is absent | no |
-| `evaluator-configuration-digest-mismatch` | Invalid | the evaluator configuration digest the record declares does not recompute from the artifact | no |
-| `judge-result-unscored` | Invalid | a judge result carries `score: null` | no |
-| `operation-identifier-collision` | Invalid | an observation's operationId matches an operation in more than one permittedInterfaces entry | no |
-| `trial-set-field-disagreement` | Invalid | two trials in the same trial set disagree on `mode` or `evaluatorRecommendation` | no |
-| `behavioural-failure-at-or-above-floor` | FAIL | an AD-6 behavioural failure at or above the scoring policy's severity floor | no |
-| `evidence-incomplete` | FAIL | evidence reported incomplete under AD-17 | no |
-| `evidence-over-truncated` | FAIL | evidence truncated past its disclosed bound under AD-17 | no |
-| `evidence-unavailable` | FAIL | evidence unavailable under AD-17 | no |
-| `evidence-internally-inconsistent` | FAIL | evidence internally inconsistent under AD-17 | no |
-| `lineage-chain-inconsistent` | FAIL | a presented lineage chain internally inconsistent under AD-12 | no |
-| `behavioural-failure-below-floor` | CONCERNS | an AD-6 behavioural failure below the scoring policy's severity floor | no |
-| `coverage-gap-at-or-above-floor` | CONCERNS | an unsatisfied coverage gap at or above the severity floor under AD-20 | no |
-| `finding-confidence-below-threshold` | CONCERNS | a finding whose confidence falls below the policy threshold | no |
-| `uncited-defect-finding` | CONCERNS | an ingested defect finding citing no oracle | no |
-| `below-minimum-trial-count` | CONCERNS | the run completed fewer trials than the policy's declared minimum | yes |
-| `oracle-unreached` | CONCERNS | an oracle resolved `unreached` | yes |
-| `waiver-honoured` | WAIVED | every required check resolved and at least one resolved `not-applicable` against an unexpired waiver | no |
+| Condition | Rung | Guard | Evidence condition | Exit code |
+| --- | --- | --- | --- | --- |
+| `invalidating-state` | Invalid | an outcome resolved an AD-6 invalidating state (oracle-error, judge-error, or infrastructure-error) | no | 3 |
+| `failed-preflight` | Invalid | a failed pre-flight | no | 3 |
+| `isolation-manifest-violation` | Invalid | an unaccounted isolation manifest under AD-16 | no | 3 |
+| `re-execution-cap-breach` | Invalid | a re-execution cap breach under AD-6 | no | 3 |
+| `disposition-missing` | Invalid | a required oracle carrying no disposition in the run record under AD-23 | no | 3 |
+| `required-check-unresolved` | Invalid | not every required check resolved | no | 3 |
+| `selector-ambiguity` | Invalid | a step matched several observations under a single-valued cardinality (owed item 2) | no | 3 |
+| `unwitnessed-claim` | Invalid | a defect finding claimed a detection no candidate observation witnesses (AD-40) | no | 3 |
+| `unwitnessed-quotation` | Invalid | a defect finding's quoted evidence appears in no cited observation (AD-32) | no | 3 |
+| `duplicate-record-identifier` | Invalid | the record uses one observation, finding, or oracle-disposition identifier twice | no | 3 |
+| `dangling-citation` | Invalid | a finding cites an observation identifier the record does not declare | no | 3 |
+| `dangling-disposition-citation` | Invalid | an oracle disposition cites an observation identifier the record does not declare | no | 3 |
+| `forbidden-input-not-withheld` | Invalid | AD-16 forbidden input admitted rather than withheld | no | 3 |
+| `cross-artifact-disagreement` | Invalid | the sealed run record and the isolation manifest disagree on a field AD-32 requires them to agree on | no | 3 |
+| `evaluator-configuration-absent` | Invalid | the evaluator configuration artifact is absent | no | 3 |
+| `evaluator-configuration-digest-mismatch` | Invalid | the evaluator configuration digest the record declares does not recompute from the artifact | no | 3 |
+| `judge-result-unscored` | Invalid | a judge result carries `score: null` | no | 3 |
+| `operation-identifier-collision` | Invalid | an observation's operationId matches an operation in more than one permittedInterfaces entry | no | 3 |
+| `trial-set-field-disagreement` | Invalid | two trials in the same trial set disagree on `mode` or `evaluatorRecommendation` | no | 3 |
+| `behavioural-failure-at-or-above-floor` | FAIL | an AD-6 behavioural failure at or above the scoring policy's severity floor | no | 2 |
+| `evidence-incomplete` | FAIL | evidence reported incomplete under AD-17 | no | 2 |
+| `evidence-over-truncated` | FAIL | evidence truncated past its disclosed bound under AD-17 | no | 2 |
+| `evidence-unavailable` | FAIL | evidence unavailable under AD-17 | no | 2 |
+| `evidence-internally-inconsistent` | FAIL | evidence internally inconsistent under AD-17 | no | 2 |
+| `lineage-chain-inconsistent` | FAIL | a presented lineage chain internally inconsistent under AD-12 | no | 2 |
+| `behavioural-failure-below-floor` | CONCERNS | an AD-6 behavioural failure below the scoring policy's severity floor | no | 0 |
+| `coverage-gap-at-or-above-floor` | CONCERNS | an unsatisfied coverage gap at or above the severity floor under AD-20 | no | 0 |
+| `finding-confidence-below-threshold` | CONCERNS | a finding whose confidence falls below the policy threshold | no | 0 |
+| `uncited-defect-finding` | CONCERNS | an ingested defect finding citing no oracle | no | 0 |
+| `below-minimum-trial-count` | CONCERNS | the run completed fewer trials than the policy's declared minimum | yes | 0 |
+| `oracle-unreached` | CONCERNS | an oracle resolved `unreached` | yes | 0 |
+| `waiver-honoured` | WAIVED | every required check resolved and at least one resolved `not-applicable` against an unexpired waiver | no | 0 |
 
 ### Contract-scoring ladder census, by rung
 

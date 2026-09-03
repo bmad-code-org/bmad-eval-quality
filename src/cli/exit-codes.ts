@@ -22,8 +22,12 @@ export type CommandOutcome =
 	| { readonly kind: 'preflight'; readonly passed: boolean }
 	| {
 			readonly kind: 'verdict'
-			readonly verdict: Verdict
-			readonly evidenceConditionsOnly: boolean
+			/** `null` is AD-21's Invalid rung: `LadderResolution.verdict` on that rung, never a `Verdict`. */
+			readonly verdict: Verdict | null
+			/** `LadderResolution.exitCode`, read directly rather than recomputed from `verdict`. */
+			readonly exitCode: number
+			/** `LadderResolution.strictPromotable`, carried through unchanged: never inverted into a locally-invented `evidenceConditionsOnly`. */
+			readonly strictPromotable: boolean
 	  }
 	| { readonly kind: 'structural-failure' }
 	| { readonly kind: 'fault' }
@@ -33,18 +37,16 @@ function verdictExit(
 	outcome: Extract<CommandOutcome, { kind: 'verdict' }>,
 	strict: boolean,
 ): number {
-	if (outcome.verdict === 'FAIL') return EXIT_FAIL
-	// `--strict` promotes CONCERNS to one, "except a CONCERNS whose only firing
-	// conditions are evidence conditions, which `--strict` never promotes"
-	// (AD-21). A thinner measurement is not a claim about the system.
-	if (
-		outcome.verdict === 'CONCERNS' &&
-		strict &&
-		!outcome.evidenceConditionsOnly
-	) {
+	// `--strict` promotes a CONCERNS to one, "except a CONCERNS whose only
+	// firing conditions are evidence conditions, which `--strict` never
+	// promotes" (AD-21). `LADDER_EXIT_CODES.CONCERNS` is already zero, so this
+	// promotion cannot be read out of `outcome.exitCode` itself: it is applied
+	// on top of it. Every other rung -- PASS, WAIVED, FAIL, and Invalid's
+	// `null` -- returns its own `exitCode` unchanged.
+	if (outcome.verdict === 'CONCERNS' && strict && outcome.strictPromotable) {
 		return EXIT_CONCERNS_PROMOTED
 	}
-	return EXIT_OK
+	return outcome.exitCode
 }
 
 export function exitCodeFor(

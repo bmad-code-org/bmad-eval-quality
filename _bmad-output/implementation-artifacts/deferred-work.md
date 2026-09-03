@@ -1,6 +1,6 @@
 # Deferred work
 
-Eighteen items are open, listed under "How to use this file" and in the per-review sections
+Sixteen items are open, listed under "How to use this file" and in the per-review sections
 following it. The prose immediately below records how each past item closed. Epic 7's reviews
 filed fifteen; this file's own closure narrative below accounts for the other four. Story 8.2's
 review closed one Story-8.1-routed item (the operationId collision) and opened two of its own, a
@@ -9,7 +9,12 @@ net gain of one over the seventeen story 8.1's reviews left open. Story 8.3 clos
 widened) and closed the comparator half of the private-artifact-manifest entry Story 8.1's review
 opened, reassigning that entry's port-awaiting half and the coupled `isolationManifestArtifact`
 entry to story 8.4 -- a net loss of two, and its own review opened one (the `qualifiedProbe` fixture's
-schema-invalid `probeId`), a net loss of one over the story's own start.
+schema-invalid `probeId`), a net loss of one over the story's own start. Story 8.4 closed both
+reassigned entries: `application/score.ts` is the first caller to await `CorpusPort.resolve`, so
+each `--private-manifest` entry's digest and the private-storage `isolationManifestArtifact`
+reference's digest are both now checked against their resolved bytes -- a net loss of two, leaving
+the two Story-8.1-review entries with no owner (the empty-violation-string gap and the
+`IsolationManifest.contractId` match) as that section's only remaining items.
 
 Story 7.10 opened five items and one of them closed the same day, 2026-09-03, wider than it was
 filed. The entry said two of epic 7's nine `schemaVersion` bumps carried no bump note in the driving
@@ -364,19 +369,6 @@ the `operation-identifier-collision` Invalid row, resolving each observation's `
     no owner deliberately: assigning it to a story that cannot satisfy it is how a rule ships
     unenforced. Settling it means either widening a stage row or accepting the gap in writing.
 
-- source_spec: `8-1-the-ingest-stage-and-the-conditions-it-records.md`
-  summary: `src/core/schemas/private-artifact-manifest.ts:31-34` says a digest mismatch "is an AD-28
-    `digest-mismatch` fault at ingest", and nothing calls the comparator that checks it.
-  evidence: The pure half closed already: `checkPrivateArtifactManifestDigests`
-    (`src/core/emit/private-artifact-digest.ts`) takes a manifest and an already-resolved
-    `(privateRef -> digest)` map and throws on the first disagreement. What remains is the half that
-    resolves that map. AD-8's own subject is "the core recomputes every per-artifact digest from the
-    resolved bytes"; resolving a `privateRef` needs `CorpusPort.resolve`, an async port method, and
-    AD-34 says `application/` "holds no decision logic" and is only where a port is awaited, so the
-    comparator stays a pure `core/` function called by whichever `application/` code awaits the
-    port. `src/ports/corpus-port.ts` and `src/adapters/local-corpus-adapter.ts` both already exist,
-    so this is buildable once a story reaches it. Owner: story 8.4.
-
 ## Deferred from: code review of 8-1-the-ingest-stage-and-the-conditions-it-records (2026-09-03)
 
 Three items the four review sessions raised against the implemented stage. Each was checked for
@@ -417,19 +409,6 @@ rest of the review's findings were closed in the same pass.
     entry above: naming a story that cannot satisfy it is how a rule ships unenforced. Settling it
     means either widening a stage row to carry both artifacts or correcting the manifest's own
     description to name the digest match `AGREEMENT_FIELDS` actually supports.
-
-- source_spec: `8-1-the-ingest-stage-and-the-conditions-it-records.md`
-  summary: Nothing checks that the isolation manifest handed to ingest is the artifact
-    `SealedRunRecord.isolationManifestArtifact` points at.
-  evidence: `ArtifactReference` carries a `digest` on both branches
-    (`src/core/schemas/artifact-reference.ts`), so the operand is on the record and the artifact is a
-    declared input, which is what made the evaluator configuration's recomputation buildable inside
-    story 8.1. This one is not the same case: no schema description names `core/ingest` as its
-    enforcement point, and AD-8's subject is "the core recomputes every per-artifact digest from the
-    resolved bytes", so the reference's digest is over stored bytes while `digestArtifact` over a
-    parsed object is a canonical-form digest. Comparing the two is only sound once the bytes are
-    resolved through the corpus port. Owner: story 8.4, alongside the private-artifact-manifest
-    entry's own port-awaiting half above; the same story settles both together.
 
 ## Deferred from: story review of 8-2-the-score-stage-over-a-trial-set (2026-09-03)
 

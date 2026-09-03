@@ -741,8 +741,8 @@ describe('LADDER_EXIT_CODES and strictPromotable agree with src/cli/exit-codes.t
 		expect(LADDER_EXIT_CODES.PASS).toBe(EXIT_OK)
 	})
 
-	// For every CONCERNS-tier fixture case, `--strict` promotion driven by
-	// `evidenceConditionsOnly: !strictPromotable` must land exactly where
+	// For every CONCERNS-tier fixture case, `exitCodeFor`'s promotion, driven
+	// directly off `strictPromotable`, must land exactly where
 	// `strictPromotable` itself says: promoted when true, held at zero when
 	// false. Proves the restated rule agrees end to end, not only in prose.
 	it('drives exitCodeFor to agree with strictPromotable on every CONCERNS fixture case', () => {
@@ -758,7 +758,8 @@ describe('LADDER_EXIT_CODES and strictPromotable agree with src/cli/exit-codes.t
 				{
 					kind: 'verdict',
 					verdict: 'CONCERNS',
-					evidenceConditionsOnly: !resolution.strictPromotable,
+					exitCode: resolution.exitCode,
+					strictPromotable: resolution.strictPromotable,
 				},
 				{ strict: true },
 			)

@@ -9,13 +9,12 @@
 npx eval-quality --help
 ```
 
-### `eval-quality` does three things
+### `eval-quality` does four things
 
 1. **Compile**: validate and normalize an eval contract into a machine-readable artifact.
 2. **Seal**: render the brief for the independent evaluator while hiding the planted bug and scoring answer.
 3. **Preflight**: verify baseline environment readiness and probe reachability before running an evaluator.
-
-Scoring is the next milestone. The comparison itself, the evaluator's completed findings against the hidden bug signature, is written and covered in `src/core/score/`. No stage and no command reach it yet.
+4. **Score**: compare the evaluator's completed findings against the hidden bug signature and mint a versioned evidence artifact.
 
 ### What is the eval spec?
 
@@ -110,11 +109,12 @@ product spec
 - the oracle vocabulary and authoring rules
 - the contract compiler
 - the environment pre-flight
-- Eval Contract strength scoring: the AD-7 rate vector and dominance relation are implemented in
-  `src/core/score/strength.ts`, and no stage or command reaches them
-- PASS / WAIVED / CONCERNS / FAIL governance: both verdict ladders are implemented and total in
-  `src/core/score/ladder.ts`, and no command produces a verdict
-- versioned evidence output: implemented in `src/core/emit/emit.ts`, and no command produces it
+- Eval Contract strength scoring: the AD-7 rate vector and dominance relation, implemented in
+  `src/core/score/strength.ts` and reached by the `score` command
+- PASS / WAIVED / CONCERNS / FAIL governance: both verdict ladders, implemented and total in
+  `src/core/score/ladder.ts`, and the `score` command's own exit code
+- versioned evidence output: `evidence-artifact.json`, implemented in `src/core/emit/emit.ts` and
+  minted by the `score` command
 
 The caller provides:
 
@@ -190,6 +190,7 @@ The **CLI** wraps the same library for callers that cannot import TypeScript: CI
 - **`compile`**: Typechecks an authored `eval-contract.json`. Verifies that all behaviors, oracles, rubrics, and sensitivity witnesses comply with structural and authoring rules.
 - **`seal`**: Generates a `sealed-evaluator-brief.json` by stripping secret defect signatures, planted answers, and author commentary. The brief carries only the directions and safety bounds the evaluator needs.
 - **`preflight`**: Reduces caller-supplied probe observations against the contract to verify environment baseline readiness and probe reachability. All four of `--contract`, `--probes`, `--observations`, and `--run-id` are required. Halts early with exit code `3` if the environment is unready. `schemas/probe.schema.json` and `schemas/sealed-run-record.schema.json` give the shape of the two input files, which no corpus fixture ships yet.
+- **`score`**: Chains ingest, score, and emit over a sealed run record, minting `evidence-artifact.json` and exiting with the AD-21 verdict's own exit code. `--record`, `--contract`, `--probe`, `--preflight-verdict`, `--policy`, and `--corpus-digest` are required; `--isolation-manifest` and `--evaluator-configuration` are each optional and their absence invalidates the run rather than failing to parse; `--private-manifest` is optional and, when given, each entry's declared digest is checked against its resolved bytes. `--corpus-root` names the directory a private reference resolves under, and is required only when `--private-manifest` or a private-storage isolation-manifest reference is actually present.
 
 ### Running the CLI
 
@@ -203,18 +204,25 @@ npx eval-quality seal --in contract.json --out ./eval-out
 npx eval-quality preflight --contract contract.json \
   --probes probes.json --observations observations.json \
   --run-id 2026-08-28-a --out ./eval-out
+
+npx eval-quality score --record record.json --contract contract.json \
+  --probe probe.json --preflight-verdict preflight-verdict.json \
+  --policy policy.json --corpus-digest <digest> \
+  --out ./eval-out
 ```
 
 Every command is non-interactive: no prompt, no terminal check, and no behaviour that differs when
 stdin is a pipe. Each one is a single call into the library plus artifact serialization.
 
-**Input and output.** `--in` is the only optional input: `compile` and `seal` read stdin when it is
-left out, while `preflight`'s three input flags are each required. `-` names stdin explicitly, and at
-most one input may be `-`. Without `--out` the artifact goes to stdout, so a command composes with a pipe.
+**Input and output.** `--in` is the only input that falls back to stdin: `compile` and `seal` read it
+when `--in` is left out. `-` names stdin explicitly on any input, and at most one input may be `-` per
+invocation. `compile` and `seal` each take one input; `preflight` takes three, all required; `score`
+takes eight, three of them optional (`--isolation-manifest`, `--evaluator-configuration`, and
+`--private-manifest`). Without `--out` the artifact goes to stdout, so a command composes with a pipe.
 An `--out` ending in `.json` is a file path; anything else is a directory, and the artifact is
-written to `<target>/<kind>.json` where `kind` is `eval-contract`, `sealed-evaluator-brief`, or
-`preflight-verdict`. Diagnostics and errors go to stderr, always, so stdout carries the artifact
-alone.
+written to `<target>/<kind>.json` where `kind` is `eval-contract`, `sealed-evaluator-brief`,
+`preflight-verdict`, or `evidence-artifact`. Diagnostics and errors go to stderr, always, so stdout
+carries the artifact alone.
 
 **Exit codes.**
 
@@ -229,15 +237,15 @@ alone.
 | `64` | usage error |
 
 `--strict` never promotes a CONCERNS whose firing conditions are all evidence conditions: those
-conditions report that the measurement fell short of the policy. Of the invalidating conditions
-behind code 3, only the failed pre-flight is reachable from this binary. Codes 1 and 2 report a
-scored verdict. Scoring ships in a later release, so no command here reaches either yet, and `--strict`
-changes no code this binary produces. The flag and the two codes are part of the published contract,
-so they are documented now and wired now.
+conditions report that the measurement fell short of the policy. Codes 1 and 2 report a verdict
+`score`'s ladder resolved, read directly off `LadderResolution.exitCode`; every other invalidating
+condition behind code 3 is reachable through `score` too, alongside the failed pre-flight `preflight`
+itself reports.
 
 `--strict` is the gate-promotion flag and is accepted on every command. `--strict-inputs` and
 `--no-strict-inputs` are a different switch: they set the compiler's input strictness, which is on
-by default, and `preflight` rejects both with exit `64` because it has no compile step.
+by default, and `preflight` and `score` each reject both with exit `64` because neither has a compile
+step.
 
 **The published JSON Schema.** A consumer that does not read TypeScript validates against the
 twelve generated documents, published at the `eval-quality/schemas/*` subpath:
