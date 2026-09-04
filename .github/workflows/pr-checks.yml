@@ -14,7 +14,10 @@ jobs:
   validate-and-build:
     name: Node 24 (validate + build)
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # Build, typecheck, lint, the documentation checks and the full coverage run
+    # take roughly twelve minutes together, which left no headroom once the
+    # advisory audit started retrying a dead endpoint ahead of them.
+    timeout-minutes: 22
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
@@ -113,16 +116,20 @@ jobs:
                 return "$status"
               fi
               echo "::notice::${label}: the advisory endpoint was unreachable (attempt ${attempt} of 3)."
-              sleep $((attempt * 20))
+              sleep $((attempt * 10))
             done
             echo "::warning::${label}: skipped after three unreachable attempts. No vulnerability verdict was obtained from the advisory database."
             return 0
           }
           # npm's default `fetch-timeout` is five minutes, which is how long the
-          # 503 took to surface each time. Three attempts at that default would
-          # hold the job for a quarter of an hour to reach the same warning.
-          audit "root graph" npm audit --audit-level=high --fetch-timeout=60000
-          audit "website graph" npm --prefix website audit --audit-level=high --fetch-timeout=60000
+          # 503 took to surface each time. The whole retry budget is capped
+          # instead: three attempts of thirty seconds with ten and twenty second
+          # backoffs is under two minutes per graph, so a sustained outage costs
+          # this job under four minutes rather than the seven it spent on
+          # 2026-09-04, when the audit alone consumed enough of the fifteen
+          # minute budget that the coverage run was cancelled mid-flight.
+          audit "root graph" npm audit --audit-level=high --fetch-timeout=30000
+          audit "website graph" npm --prefix website audit --audit-level=high --fetch-timeout=30000
 
       # Before the two steps that run the suite. The published-surface cases
       # resolve `dist/` through the `exports` map and skip with a clear message
