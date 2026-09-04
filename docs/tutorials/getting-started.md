@@ -1,13 +1,13 @@
 ---
 title: "Getting Started"
-description: "Install eval-quality, then run compile, seal, and preflight against a contract that ships in the corpus."
+description: "Install eval-quality, then run compile, seal, and preflight against a contract that ships in the corpus, and see where score sits."
 sidebar:
   order: 1
 ---
 
 # Getting Started
 
-By the end of this tutorial you will have run all three commands the package ships, on a contract that lives in the repository.
+By the end of this tutorial you will have run three of the four commands the package ships, on a contract that lives in the repository. The fourth, `score`, needs a completed evaluator run, and [Read a Scored Run](/tutorials/read-a-scored-run/) walks one that the repository commits.
 
 ## What you are about to run
 
@@ -17,16 +17,17 @@ The [core flow](/reference/glossary/) runs in this order:
 evaluation contract → probe → observation → preflight → evidence → oracle → rubric → score / verdict
 ```
 
-Three package stages sit inside it. The table maps each step to the terms whose artifacts it handles, which is a different thing from where those terms fall in the runtime order above:
+Four commands sit inside it. The table maps each step to the terms whose artifacts it handles, which is a different thing from where those terms fall in the runtime order above:
 
-| Step | Stage | Core-flow artifacts it handles |
+| Step | Command | Core-flow artifacts it handles |
 | --- | --- | --- |
 | 1 | get the binary | none |
 | 2 | `compile` | evaluation contract |
 | 3 | `seal` | evaluation contract, oracle directions |
 | 4 | `preflight` | probes, observations, preflight |
+| later | `score` | evidence, oracles, rubrics, score / verdict |
 
-The rest of the flow is elsewhere. Running the system and the evaluator and collecting evidence are the caller's job today. Oracle resolution, rubric grading, and scoring belong to a package stage that has no module yet. The functions behind them are written and shipped in the tarball with no export path to them, which the [roadmap](/explanation/roadmap/) sets out in full.
+Between step 4 and `score` is the part the package leaves to you: running the system under test and the evaluator, and sealing what the evaluator produced into a run record. `score` then resolves the oracles over that record, classifies the judge's conduct against any declared rubric, and mints the verdict. Nothing in this repository runs an evaluator, so this tutorial stops at preflight and the next one reads a finished score.
 
 The contract is `satisfied-declarations`. Its one behavior reads: *a created thing is readable back in the list of things*, so its checks look at the create response **and** at the list that create was supposed to change. An evaluation that only read the create response would pass while the list stayed empty, which is the shape of blind spot the [twin run](/explanation/behavioral-evaluation-contracts/) exists to find.
 
@@ -182,26 +183,27 @@ The verdict goes to stdout:
 {"checks":[{"kind":"interface-present","note":null,"operationId":"create-thing","outcome":"satisfied"},{"kind":"interface-present","note":null,"operationId":"list-things","outcome":"satisfied"},{"kind":"input-sensitivity","note":null,"operationId":"create-thing","outcome":"satisfied"},{"kind":"input-sensitivity","note":null,"operationId":"list-things","outcome":"satisfied"},{"kind":"state-reset","note":null,"operationId":null,"outcome":"satisfied"},{"kind":"clean-control","note":null,"operationId":null,"outcome":"satisfied"}],"fixtureDigest":"sha256:eb0ac07ada60686f7f12812fc86885b812e3b04c0e0067522173449a81e162be","parentDigest":null,"passed":true,"revisionCount":0,"runId":"run-1","schemaVersion":1}
 ```
 
-`passed` is `true`, so the command exits `0`. A verdict that does not pass exits `3`.
+`passed` is `true`, so the command exits `0`. A verdict that does not pass exits `3`. This file is also one of `score`'s inputs: `score` reads `passed` to decide whether the run is valid at all, and `fixtureDigest` as one of the inputs that fix a scored result's identity.
 
 ---
 
 ## What you have run, and what you have not
 
-You compiled the shipped contract, sealed it into a brief, and reduced six observations into a passing preflight verdict. Those are the three stages a caller can reach.
+You compiled the shipped contract, sealed it into a brief, and reduced six observations into a passing preflight verdict. Those are the three stages a contract alone can reach.
 
 **The second arm is missing.** The finding worth having comes from planting a known defect in a real system under test, running the identical contract against it, and checking that the evaluation's findings degrade. That means executing the system and the evaluator, which the package deliberately leaves to the caller. It is not something this tutorial can do with a JSON file.
 
 You can still watch preflight discriminate. Delete the `preflight-control-observe-2` entry from `observations.json` and rerun the command: `interface-present` for `list-things`, `state-reset`, and `clean-control` all report `failed`, `passed` is `false`, and the command exits `3`. That is a negative preflight demonstration, and it shows the environment gate refusing an incomplete run.
 
-Nothing here scored anything either. Scoring is the comparison step at the bottom of the twin run. No command and no library call reaches it, though the functions exist; the [roadmap](/explanation/roadmap/) says what is written and what is still missing.
+Nothing here scored anything either. Scoring is the comparison step at the bottom of the twin run, and `score` reaches it over a sealed run record, a probe, this preflight verdict, and a scoring policy. The repository commits one such run, scored end to end against a planted defect, and [Read a Scored Run](/tutorials/read-a-scored-run/) reads it field by field down to the verdict and the exit code.
 
 ---
 
 ## Next steps
 
+- [Read a scored run, down to the verdict and the exit code](/tutorials/read-a-scored-run/)
 - [The twin run, and why compile rejects contracts](/explanation/behavioral-evaluation-contracts/)
 - [The glossary, in eight nouns](/reference/glossary/)
-- [Run the three commands as a pipeline](/how-to/run-the-three-commands/)
+- [Run the four commands as a pipeline](/how-to/run-the-four-commands/)
 - [Author a contract against the real schema](/how-to/author-behavioral-contracts/)
 - [CLI reference](/reference/cli-commands/)

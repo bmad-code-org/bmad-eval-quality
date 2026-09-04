@@ -56,7 +56,7 @@ The schema sets `additionalProperties: false` and requires twenty-one top-level 
 
 `requiredEvidence`, `fixtureReset`
 
-For the type of each field, its value space, and every nested shape, read `schemas/eval-contract.schema.json`. It is the normative document, and the descriptions inside it carry the reasoning for each constraint. The remaining eleven schemas in `schemas/` cover the other artifacts, including `probe.schema.json`, `preflight-verdict.schema.json`, and `sealed-evaluator-brief.schema.json`.
+For the type of each field, its value space, and every nested shape, read `schemas/eval-contract.schema.json`. It is the normative document, and the descriptions inside it carry the reasoning for each constraint. The remaining eleven schemas in `schemas/` cover the other artifacts: what `seal` and `preflight` emit, what a caller hands `score` (`probe.schema.json`, `sealed-run-record.schema.json`, `isolation-manifest.schema.json`, `evaluator-configuration.schema.json`, `scoring-policy.schema.json`), and what `score` mints (`evidence-artifact.schema.json`).
 
 ---
 
@@ -133,8 +133,8 @@ npm run check:corpus
 
 ## Related pages
 
-- [Run the three commands](/how-to/run-the-three-commands/)
+- [Run the four commands](/how-to/run-the-four-commands/)
 - [CLI reference](/reference/cli-commands/)
 - [What a Behavioral Evaluation Contract asserts](/explanation/behavioral-evaluation-contracts/)
 
-Supplying your own effects instead of the reference adapters is covered in [Ports, adapters, and the conformance suite](/how-to/ports-and-adapters/).
+Supplying your own effects is covered in [Ports, adapters, and the conformance suite](/how-to/ports-and-adapters/).
