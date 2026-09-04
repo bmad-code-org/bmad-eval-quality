@@ -1,15 +1,29 @@
-# Publishes eval-quality to npmjs.org from a release commit that is already on main.
+# Publishes eval-quality to npmjs.org, cutting the release commit on main first when asked to.
 #
-# The version is decided before this runs: `npm run release:prepare -- patch|minor|major` on a
-# laptop bumps package.json, stamps CHANGELOG.md, and opens a `release/vX.Y.Z` PR that clears
-# `gate` and is merged by a human. Then Actions > Publish Package > Run workflow (from main). This
-# job publishes the version main declares, tags github.sha, and creates the GitHub Release. It
-# writes to no branch and takes no inputs.
+# Run it with `npm run release:patch` (or minor, major), or Actions > Publish Package > Run
+# workflow from main. The `bump` input decides what happens before the publish:
 #
-# Every side-effecting step checks for its own earlier success, so a re-run after a partial failure
+#   patch | minor | major   Mints a GitHub App token, checks main out with it, and runs
+#                           `scripts/release-prepare.mjs <bump> --on-main`: bumps package.json and
+#                           package-lock.json, stamps VERSION in src/index.ts and the [Unreleased]
+#                           notes in CHANGELOG.md, commits `chore: release vX.Y.Z [skip ci]` on
+#                           main, pushes. The App is a bypass actor on the `protect-main` ruleset;
+#                           nothing else may push there. The run then publishes that commit.
+#   none                    Publishes the version main already declares. The fallback while the App
+#                           is not set up: `npm run release:prepare -- patch` on a laptop opens the
+#                           release PR, a human merges it, and this run (`npm run release:publish`)
+#                           publishes the merge commit.
+#
+# The commit being released is `release_sha` from the state step: HEAD, which is the bump commit
+# after a bump and github.sha without one. github.sha is the pre-bump commit once a bump happened,
+# so no step below the state step reads it.
+#
+# Every side-effecting step checks for its own earlier success, so a run after a partial failure
 # finishes the release instead of colliding with it: publish is skipped when npm already has the
-# version, the tag when it already points at github.sha, the Release when it already exists. A tag
-# at a different commit, or an npm version published from a different commit, is a refusal.
+# version, the tag when it already points at release_sha, the Release when it already exists. A tag
+# at a different commit, or an npm version published from a different commit, is a refusal. Recover
+# by dispatching again with bump=none: the bump is already on main, and a re-run of the failed job
+# is pinned to the pre-bump commit and refuses because main has moved.
 #
 # Uses npm trusted publishing (OIDC), not a static NPM_TOKEN secret: npm 11.5.1+ exchanges this job's
 # GitHub Actions OIDC token for a short-lived publish credential automatically, so there is no
@@ -25,6 +39,17 @@ name: Publish Package
 
 on:
   workflow_dispatch:
+    inputs:
+      bump:
+        description: "Version bump to cut on main before publishing (none = publish the version main already declares)"
+        type: choice
+        required: true
+        default: patch
+        options:
+          - none
+          - patch
+          - minor
+          - major
 
 # One publish at a time, and a queued run waits rather than cancelling the one holding a half-done
 # release.
@@ -35,6 +60,7 @@ concurrency:
 env:
   NPM_VERSION: "11.18.0"
   PACKAGE: eval-quality
+  BUMP: ${{ inputs.bump }}
 
 permissions:
   contents: write # push the tag, create the Release
@@ -63,10 +89,37 @@ jobs:
             exit 1
           fi
 
+      # A bump pushes to main, and the `protect-main` ruleset refuses that from GITHUB_TOKEN. A
+      # GitHub App on the ruleset's bypass list is the one identity that may, so its credentials
+      # have to exist before anything else runs. Only presence is checked here; the values never
+      # enter the shell.
+      - name: Require the release App for a bump
+        if: inputs.bump != 'none'
+        env:
+          HAS_APP_ID: ${{ secrets.RELEASE_APP_ID != '' }}
+          HAS_PRIVATE_KEY: ${{ secrets.RELEASE_APP_PRIVATE_KEY != '' }}
+        run: |
+          if [ "$HAS_APP_ID" != "true" ] || [ "$HAS_PRIVATE_KEY" != "true" ]; then
+            echo "bump=$BUMP requires the release GitHub App: add the repository secrets RELEASE_APP_ID and RELEASE_APP_PRIVATE_KEY, and add the App as a bypass actor on the protect-main ruleset (CONTRIBUTING.md, Releasing)." >&2
+            echo "Or run with bump=none and cut the release from a laptop with: npm run release:prepare -- $BUMP" >&2
+            exit 1
+          fi
+
+      - name: Mint the release App token
+        id: app-token
+        if: inputs.bump != 'none'
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3
+        with:
+          app-id: ${{ secrets.RELEASE_APP_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+
+      # The App token when there is a bump to push, GITHUB_TOKEN otherwise. persist-credentials
+      # (the default) leaves it in the checkout's remote, which is what authorizes the push.
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           fetch-depth: 0
+          token: ${{ steps.app-token.outputs.token || github.token }}
 
       - name: Setup Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
@@ -84,6 +137,21 @@ jobs:
       - name: Install dependencies
         run: npm ci --no-audit --no-fund
 
+      - name: Configure git identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      # Before the bump on purpose: a red main gets no release commit. The bump changes the four
+      # stamped files only, and release-prepare refuses unless VERSION already matches the manifest,
+      # so what it commits is the validated tree plus a version.
+      - name: Run full validation suite
+        run: npm run validate
+
+      - name: Cut the release commit on main
+        if: inputs.bump != 'none'
+        run: node scripts/release-prepare.mjs "$BUMP" --on-main
+
       # Reads the version main declares and works out which side effects already happened. The
       # refusals here are the two states a re-run must not paper over.
       - name: Resolve release state
@@ -92,20 +160,34 @@ jobs:
           set -euo pipefail
           VERSION="$(node -p 'require("./package.json").version')"
           TAG="v$VERSION"
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          # HEAD is the commit being released: the bump commit, or github.sha when there was none.
+          # github.sha is stale after a bump, so every later step compares against and tags this.
+          RELEASE_SHA="$(git rev-parse HEAD)"
+          if [ "$BUMP" = "none" ] && [ "$RELEASE_SHA" != "$GITHUB_SHA" ]; then
+            echo "HEAD is $RELEASE_SHA but this run was dispatched at $GITHUB_SHA with bump=none." >&2
+            exit 1
+          fi
+          if [ "$BUMP" != "none" ] && [ "$RELEASE_SHA" = "$GITHUB_SHA" ]; then
+            echo "bump=$BUMP was requested but HEAD is still $GITHUB_SHA; no release commit was made." >&2
+            exit 1
+          fi
+          {
+            echo "version=$VERSION"
+            echo "tag=$TAG"
+            echo "release_sha=$RELEASE_SHA"
+          } >> "$GITHUB_OUTPUT"
 
           TAG_EXISTS=false
           if git ls-remote --exit-code --tags origin "refs/tags/$TAG" >/dev/null; then
             git fetch --quiet origin "refs/tags/${TAG}:refs/tags/${TAG}"
             TAG_SHA="$(git rev-parse "refs/tags/$TAG^{commit}")"
-            if [ "$TAG_SHA" != "$GITHUB_SHA" ]; then
-              echo "Tag $TAG already exists at $TAG_SHA, and this run is at $GITHUB_SHA." >&2
-              echo "Refusing to publish a version whose tag points elsewhere. Bump the version with release:prepare, or move the tag by hand if it is wrong." >&2
+            if [ "$TAG_SHA" != "$RELEASE_SHA" ]; then
+              echo "Tag $TAG already exists at $TAG_SHA, and this run is releasing $RELEASE_SHA." >&2
+              echo "Refusing to publish a version whose tag points elsewhere. Bump the version (bump input, or release:prepare), or move the tag by hand if it is wrong." >&2
               exit 1
             fi
             TAG_EXISTS=true
-            echo "Tag $TAG already points at $GITHUB_SHA; the tag step will be skipped."
+            echo "Tag $TAG already points at $RELEASE_SHA; the tag step will be skipped."
           fi
           echo "tag_exists=$TAG_EXISTS" >> "$GITHUB_OUTPUT"
 
@@ -119,21 +201,18 @@ jobs:
             GIT_HEAD="$(npm view "$PACKAGE@$VERSION" gitHead 2>/dev/null || true)"
             if [ -z "$GIT_HEAD" ]; then
               echo "$PACKAGE@$VERSION is on npm and records no gitHead, so the commit it was published from cannot be verified." >&2
-              echo "Refusing to tag or release against an unverifiable publication. Bump the version with release:prepare." >&2
+              echo "Refusing to tag or release against an unverifiable publication. Bump the version (bump input, or release:prepare)." >&2
               exit 1
             fi
-            if [ "$GIT_HEAD" != "$GITHUB_SHA" ]; then
-              echo "$PACKAGE@$VERSION is on npm, published from $GIT_HEAD, and this run is at $GITHUB_SHA." >&2
-              echo "Refusing to tag a commit npm did not publish. Bump the version with release:prepare." >&2
+            if [ "$GIT_HEAD" != "$RELEASE_SHA" ]; then
+              echo "$PACKAGE@$VERSION is on npm, published from $GIT_HEAD, and this run is releasing $RELEASE_SHA." >&2
+              echo "Refusing to tag a commit npm did not publish. Bump the version (bump input, or release:prepare)." >&2
               exit 1
             fi
             NPM_HAS=true
             echo "$PACKAGE@$VERSION is already on npm; the publish step will be skipped."
           fi
           echo "npm_has=$NPM_HAS" >> "$GITHUB_OUTPUT"
-
-      - name: Run full validation suite
-        run: npm run validate
 
       - name: Build package
         run: npm run build
@@ -143,9 +222,9 @@ jobs:
         # --provenance requires the id-token: write permission (granted above) and a public package;
         # no NODE_AUTH_TOKEN - trusted publishing exchanges this job's OIDC token for a short-lived
         # npm credential automatically once the registry-side Trusted Publisher link exists (see the
-        # top-of-file comment). Nothing has been pushed or tagged yet, so a failure here leaves no
-        # partial state on GitHub; a failure after the registry accepted the tarball is what the
-        # re-run path above handles.
+        # top-of-file comment). The bump commit is the only thing on GitHub by now, and it is the
+        # thing a bump=none run publishes; a failure after the registry accepted the tarball is what
+        # the re-run path above handles.
         run: npm publish --access public --provenance --tag latest
         env:
           # Only this step sets this; prepublishOnly (scripts/assert-publish-authorized.mjs) raises
@@ -177,14 +256,13 @@ jobs:
         if: steps.state.outputs.tag_exists != 'true'
         env:
           TAG: ${{ steps.state.outputs.tag }}
+          RELEASE_SHA: ${{ steps.state.outputs.release_sha }}
         run: |
           set -euo pipefail
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git tag -a "$TAG" "$GITHUB_SHA" -m "Release $TAG"
+          git tag -a "$TAG" "$RELEASE_SHA" -m "Release $TAG"
           git push origin "refs/tags/$TAG"
 
-      # Body comes from the CHANGELOG section release:prepare stamped, then from [Unreleased] if the
+      # Body comes from the CHANGELOG section release-prepare stamped, then from [Unreleased] if the
       # stamp found nothing, then from GitHub's generated notes.
       - name: Create GitHub Release
         env:
