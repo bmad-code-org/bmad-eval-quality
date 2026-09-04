@@ -255,12 +255,12 @@ describe('the development corpus', () => {
 				/qualified-probe\s+dimensions\s+are\s+absent/,
 			],
 			[
-				'Owed item 1 alone is the reason the probe dimensions are absent',
-				/qualified-probe\s+dimensions\s+are\s+absent[\s\S]*trial\s+reducer[\s\S]*Owed\s+item 1/,
+				'the trial reducer and the score stage are both shipped, so the corpus gate is the remaining gap',
+				/qualified-probe\s+dimensions\s+are\s+absent[\s\S]*trial\s+reducer[\s\S]*score\s+stage/,
 			],
 			[
-				"three of the end-to-end example's artifacts are absent, and hand-filling is forbidden",
-				/Three of the four artifacts[\s\S]*forbids\s+hand-filling/,
+				"three of the end-to-end example's artifacts are absent here, and are produced by the shipped stages",
+				/Three of the four artifacts[\s\S]*produced by the shipped[\s\S]*ingest[\s\S]*score[\s\S]*emit/,
 			],
 			[
 				'the contracts are visible and diagnostic, and no holdout',

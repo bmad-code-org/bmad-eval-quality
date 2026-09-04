@@ -166,11 +166,11 @@
   "revisionCount": 0,
   "runId": "spike-run-0001",
   "schemaVersion": 3,
-  "scoringVersion": "sha256:f10a9973d8b52a8b15c4b6eeda67a496ddad06ba6fb78a400d3cb9e2398651fb",
+  "scoringVersion": "sha256:4f74cb4ee24a362ac6b80aee2900e1fe864574c7c81d4d8dc0e447e33feec9a8",
   "scoringVersionInputs": {
     "contractSchemaVersion": 3,
     "corpusDigest": "sha256:000000000000000000000000000000000000000000000000000000000000000e",
-    "evaluatorConfigurationDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000004",
+    "evaluatorConfigurationDigest": "sha256:b9e38414069a3296d31c07d8facf8df5ebaf3b3d2e20e1ebb5539b38300c46df",
     "fixtureDigest": "sha256:000000000000000000000000000000000000000000000000000000000000000f",
     "mode": "contract-scoring",
     "scoringPolicyDigest": "sha256:cc9e09a64f2ed19a6a204f72244e43e51b742f078fab859329601146fdf47bb7"
@@ -190,7 +190,7 @@
       "zero-action": null
     }
   },
-  "systemRecommendationNote": "Expected in contract-scoring mode: the probe is knowingly defective, so a system-directed FAIL is an input rather than a signal about the contract. Not promoted to a verdict.",
+  "systemRecommendationNote": null,
   "systemRecommendationRecorded": "FAIL",
   "trials": {
     "completed": 1,

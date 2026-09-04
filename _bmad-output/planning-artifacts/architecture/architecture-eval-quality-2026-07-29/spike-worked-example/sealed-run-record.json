@@ -7,7 +7,7 @@
   },
   "conditionArm": "independent",
   "contractDigest": "sha256:10aa580f94fb3b1b252c24b7ca7186da737498e9f35cfc6150b97a8afbcc4bc9",
-  "evaluatorConfigurationDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000004",
+  "evaluatorConfigurationDigest": "sha256:b9e38414069a3296d31c07d8facf8df5ebaf3b3d2e20e1ebb5539b38300c46df",
   "evaluatorRecommendation": "FAIL",
   "evidenceDisclosure": {
     "reportedIncomplete": false,
