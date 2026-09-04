@@ -9,15 +9,15 @@ sidebar:
 
 `eval-quality` performs no effects of its own. A port is an interface the package declares for an effect it will not perform; an adapter is your implementation of one. `eval-quality/adapters` ships three reference adapters, and `eval-quality/conformance` ships the suite that decides whether an implementation conforms.
 
-One port is wired to a stage today. `preflight` reaches a live environment through `EnvironmentProbePort`, and that is the only place in the shipped path where a port is awaited. The other three are declared, published, and unused by the package itself: the CLI reads and writes artifacts with `node:fs/promises` directly. They are here for the stages that will use them and for a caller building its own pipeline on the library.
+Two ports are wired to stages today. `runPreflight` reaches a live environment through `EnvironmentProbePort`. `runScore` resolves a private artifact reference through `CorpusPort`, and awaits it only when a `--private-manifest` entry or a private-storage isolation-manifest reference needs its bytes digested and checked; the CLI's `score` builds that port from `--corpus-root` with the shipped local corpus adapter. The other two are declared, published, and unused by the package itself: the CLI reads and writes artifacts with `node:fs/promises` directly. They are here for a caller building its own pipeline on the library.
 
 ## The four ports
 
 | Port | What it does | Wired today |
 | --- | --- | --- |
-| `EnvironmentProbePort` | Probes a live environment | Yes. `preflight` awaits it |
+| `EnvironmentProbePort` | Probes a live environment | Yes. `runPreflight` awaits it |
 | `ClockPort` | Reads the current time | No |
-| `CorpusPort` | Resolves an opaque private reference to bytes | No. Intended for the private artifacts a contract points at |
+| `CorpusPort` | Resolves an opaque private reference to bytes | Yes. `runScore` awaits it when a private reference needs its digest checked |
 | `FileSystemPort` | Reads and writes files | No. The CLI uses `node:fs/promises` |
 
 Each port's type comes from `eval-quality/conformance`:
@@ -72,7 +72,7 @@ console.log(formatConformanceReport(report))
 if (!report.passed) process.exitCode = 1
 ```
 
-`build` returns a fresh instance every time, and `underlyingCalls` counts the underlying mechanism rather than the port call, or the retry assertion counts the wrong thing and passes for everything.
+`build` returns a fresh instance every time. `underlyingCalls` counts calls into the underlying mechanism; counting the port call itself makes the retry assertion pass for everything.
 
 There is one runner per port: `runClockPortConformance`, `runCorpusPortConformance`, `runFileSystemPortConformance`, and `runEnvironmentProbePortConformance`.
 

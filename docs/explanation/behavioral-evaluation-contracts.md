@@ -7,7 +7,7 @@ sidebar:
 
 # Behavioral Evaluation Contracts
 
-A Behavioral Evaluation Contract is a JSON document that declares what an agent or service is supposed to do, in terms an automated check can resolve. `eval-quality` compiles those documents, seals them, and checks that an environment is fit to be measured against one.
+A Behavioral Evaluation Contract is a JSON document that declares what an agent or service is supposed to do, in terms an automated check can resolve. `eval-quality` compiles those documents, seals them, checks that an environment is fit to be measured against one, and scores what an evaluator produced against one. It executes nothing: no agent, no judge, and no system under test runs inside it. Your harness runs the evaluation and hands over a sealed run record.
 
 ---
 
@@ -57,7 +57,7 @@ The way to find a blind spot is to plant one. Keep the evaluation fixed and chan
                   ↓                                   ↓
                evidence                            evidence
                   ↓                                   ↓
-      score / verdict  [written]         score / verdict  [written]
+      score / verdict  [ships]           score / verdict  [ships]
              should pass                       should degrade
                   └─────────────────┬─────────────────┘
                                     ↓
@@ -70,9 +70,11 @@ This is the conceptual loop, drawn in core-flow order. Ownership splits three wa
 
 The loop is drawn in the eight core-flow nouns, which is one level above the pipeline. The pipeline itself has six stages, and `ingest` sits between the caller's run record and the scoring rows: it validates a sealed run record against its isolation manifest and evaluator configuration, and records every cross-artifact inconsistency it finds. `ingest`, `score`, and `emit` all run behind the `score` command and its library entry, `runScore`.
 
-Two of the boxes are easy to conflate: **observations** are probe results about environment fitness, which is what `preflight` reduces, and **evidence** is what the evaluation run itself produced. Oracles resolve over that evidence and rubrics grade it, between the `evidence` and `score / verdict` rows.
+Two of the boxes are easy to conflate: **observations** are probe results about environment fitness, which is what `preflight` reduces, and **evidence** is what the evaluation run itself produced. Oracles resolve over that evidence and rubrics grade it, between the `evidence` and `score / verdict` rows. The evidence reaches `score` sealed inside a run record, and what `score` mints at the bottom is the evidence artifact: the same word, the output side.
 
 The mutation is one deliberate change that should make behavior worse, and you know in advance which failure it is supposed to create. Weaken the prompt, remove required context, drop a validation step, alter a tool's results, change the agent configuration, switch models.
+
+Both arms of this loop are scored in `contract-scoring` mode: the subject is the contract, the mutated arm's probe declares the defect it seeded, and the clean arm's probe is a clean control. `production` mode is the other use of the same machinery, where the subject is the system and the question is whether it ships. [Run the four commands](/how-to/run-the-four-commands/) writes the loop out as commands.
 
 Preflight has to pass on **both** arms. A mutated run that fails preflight tells you the environment was unfit, which is a different finding from the evaluation catching the defect, and mixing the two makes the comparison meaningless.
 
@@ -105,7 +107,7 @@ The full field list is on the [contract authoring page](/how-to/author-behaviora
 
 ---
 
-## The three artifacts
+## The four artifacts the package mints
 
 ```text
   authored contract (JSON)
@@ -120,21 +122,28 @@ The full field list is on the [contract authoring page](/how-to/author-behaviora
           |     SealedEvaluatorBrief
           |
           +---> preflight: plan probe legs from the contract and the probe list,
-                           reduce the observations the caller supplies
-                           |
-                           v
-                    PreflightVerdict
+          |                reduce the observations the caller supplies
+          |                |
+          |                v
+          |         PreflightVerdict
+          |
+          +---> score: ingest the sealed run record against its isolation manifest
+                       and evaluator configuration, resolve every oracle over the
+                       trial set, run the verdict ladder, emit
+                       |
+                       v
+                EvidenceArtifact
 ```
 
-`compile` produces the checked contract. `seal` turns it into a brief that an evaluator can be handed without seeing the checks. `preflight` answers a narrower question: is this environment in a state where a measurement would mean anything?
+`compile` produces the checked contract. `seal` turns it into a brief that an evaluator can be handed without seeing the checks. `preflight` answers a narrower question: is this environment in a state where a measurement would mean anything? `score` takes what the evaluator produced and answers the one the whole loop exists for: did the evaluation catch the defect, and what is the verdict?
 
-The package owns no network adapter. The CLI's `preflight` reduces observations the caller collected, and the library's `runPreflight` drives a caller-supplied `EnvironmentProbePort`, so every request that reaches a real system is issued by the caller's own code.
+Between `preflight` and `score` sit the artifacts only the caller can produce: the sealed run record, the isolation manifest, the evaluator configuration, the probe, and the scoring policy. The package owns no network adapter. The CLI's `preflight` reduces observations the caller collected, and the library's `runPreflight` drives a caller-supplied `EnvironmentProbePort`, so every request that reaches a real system is issued by the caller's own code.
 
 ---
 
 ## Why compile rejects contracts
 
-**Compile is type-checking for your eval design.** A contract can be valid JSON, parse cleanly against the schema, and still be incapable of proving anything. Compile catches the recognized cases of that before you spend a run on one, the same way a linter catches known defect patterns rather than every possible bug.
+**Compile is type-checking for your eval design.** A contract can be valid JSON, parse cleanly against the schema, and still be incapable of proving anything. Compile catches the recognized cases of that before you spend a run on one, the same way a linter catches known defect patterns.
 
 What it rejects is declaration defects it has a rule for: checks whose evidence path cannot exist, and operations that take an input without declaring the witness that would show the input matters. Whether a live operation actually responds to that witness is preflight's question.
 
@@ -151,7 +160,7 @@ Both are the blind-spot problem in miniature: an evaluation that reports success
 
 ## Design commitments
 
-- **The package runs nothing under evaluation.** No agent, no judge, no system under test. Compile, seal, and the verdict reduction are pure transformations, and every artifact they read or write is JSON, so those stages are deterministic. `runPreflight` awaits a caller-supplied port, so what it observes is only as steady as the environment behind that port. Holding the rest of the run steady across the two arms is the caller's job: model sampling, evaluator behavior, fixture state, trial policy, and configuration all have to be controlled, or the comparison measures those instead of the planted defect.
+- **The package runs nothing under evaluation.** No agent, no judge, no system under test. Compile, seal, the verdict reduction, and the score chain are pure transformations, and every artifact they read or write is JSON, so those stages are deterministic. `runPreflight` awaits a caller-supplied port, so what it observes is only as steady as the environment behind that port, and `runScore` awaits a corpus port only to check the digest of a private artifact reference. Holding the rest of the run steady across the two arms is the caller's job: model sampling, evaluator behavior, fixture state, trial policy, and configuration all have to be controlled, or those are what the comparison measures.
 - **Canonical serialization.** Artifacts serialize to RFC 8785 canonical JSON, one line with sorted keys, and the digest is computed over exactly that payload, so two machines agree on the identity of an artifact. The serializer appends a line terminator after the payload, and the digest does not cover it.
 - **Lineage.** Every lineage-bearing artifact carries `parentDigest` and `revisionCount`, and `validateLineageChain` checks a chain of them.
 - **Failure codes over prose.** A rejection names a code and a path inside the artifact, so a caller can branch on the code.
@@ -160,6 +169,18 @@ Both are the blind-spot problem in miniature: an evaluation that reports success
 
 ## Scoring
 
-Scoring is the comparison step at the bottom of the twin run. The `score` command and its library entry, `runScore`, chain `ingest`, `score`, and `emit` over a sealed run record, an isolation manifest, an evaluator configuration, the compiled contract, a probe, a preflight verdict, and a scoring policy, and mint a versioned `EvidenceArtifact` carrying the AD-21 verdict. `compile` checks a contract's rubrics structurally, so a rubric that scores reasoning prose or cites unreachable evidence is rejected, and `score` reads a declared rubric to decide whether a judge's conduct was conforming or malformed. `schemas/scoring-policy.schema.json` is published, and `score` is the stage that consumes it. Exit codes 1 and 2, reserved for a scored verdict, and `--strict`'s promotion of a CONCERNS, are both reachable through `score`.
+Scoring is the comparison step at the bottom of the twin run. The `score` command and its library entry, `runScore`, chain three stages over one sealed run record and mint a versioned `EvidenceArtifact` carrying the AD-21 verdict.
+
+**The input side is the sealed run record.** It carries what the evaluator did and claimed: the observations it made, in a declared `sequence`; the findings it wrote, each citing observations; a disposition per oracle; its own recommendation; and `mode`, the caller's declaration of whether the subject is the system or the contract. Beside it travel the isolation manifest, which says what the evaluator was allowed and what it did, and the evaluator configuration, which says what the evaluator was.
+
+**`ingest`** validates the record against those two. It checks that the record and the manifest agree on the run id, the contract digest, and the configuration digest, recomputes the configuration's digest and compares it with the record's declaration, that every forbidden input is accounted for as withheld, that every citation names an observation that exists, and that no judge result went unscored, and it records every inconsistency as a condition. An absent manifest or configuration is a condition too. Every condition lands on the Invalid rung.
+
+**`score`** resolves each oracle over the observations its interaction-plan step selects, and lands each one in one of twelve closed outcome states, corroborated against the evaluator's disposition. A defect finding counts as detection only when the probe's declared defect signature matches an observation the finding cites; the evaluator's own claim does not settle it. Trials of one probe reduce to one result per probe, the strength vector is computed per probe class, and the ladder for the declared mode resolves the verdict. The stage takes a trial set; the command and `runScore` hand it one record per call, so a run scored from the published surface completes one trial and, whenever the policy's declared minimum exceeds one, its strength vector is reported and marked non-comparable.
+
+**`emit`** mints the `EvidenceArtifact`: the outcomes, the verdict with the conditions that fired, the strength vector, the coverage gaps, the trial count, the scoring version with its six identity inputs, and the exit code the command returns. On the Invalid rung there is no artifact, because no legal one carries a null verdict.
+
+The two modes share no field. In `production` the verdict says whether the system is shippable, and the evaluator's recommendation can move it. In `contract-scoring` the probe is knowingly defective, a caught defect is the contract succeeding, and the recommendation is recorded and never promoted. A scoring version fixes the mode as one of its inputs, so results from the two modes are never comparable.
+
+Rubrics stay outside the scoring the package does. `compile` checks a contract's rubrics structurally, so a rubric that scores reasoning prose or cites unreachable evidence is rejected. The judge that grades against a rubric runs in the caller's harness, and its scores arrive inside the sealed run record, one integer per criterion; `ingest` records a `null` score as a judge error, and `score` classifies the judge's conduct for the run as absent, conforming, or malformed. `schemas/scoring-policy.schema.json` is published, and `score` is the stage that consumes it. Exit codes 1 and 2, reserved for a scored verdict, and `--strict`'s promotion of a CONCERNS, are both reachable through `score`. [Read a Scored Run](/tutorials/read-a-scored-run/) follows one committed run through every one of these steps.
 
 The [roadmap](/explanation/roadmap/) records what ships today, what is next, and what the next release breaks.

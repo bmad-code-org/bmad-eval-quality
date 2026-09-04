@@ -15,10 +15,8 @@ body.
 - The `ingest` stage at `src/core/ingest/`, which turns a caller's sealed run record, isolation
   manifest, and evaluator configuration into validated observations plus every cross-artifact
   condition it detected. It enforces the rules six shipped schema fields and AD-16 name `core/ingest`
-  as the enforcement point for, and it is reachable from no published surface: neither
-  `src/index.ts` nor `src/application/index.ts` exports it, and the CLI still has three commands.
-  Eight of its eleven conditions have no rung on either verdict ladder yet and carry an explicit
-  null target. A later story adds the rungs.
+  as the enforcement point for. It is reached through the `score` command and `runScore` below, and
+  each of its eleven conditions lands on the Invalid rung of both verdict ladders.
 - Documentation for the two published subpaths that had none: `eval-quality/adapters` and
   `eval-quality/conformance` are covered by a new "Ports, adapters, and the conformance suite" page.
 
@@ -27,7 +25,7 @@ body.
   together, and `captured-channel-undeclared`, for a captured pointer naming any channel but
   `response-body`. The registry's move from 21 entries to 23 is itself a break for an exhaustive
   match; see **Changed** below.
-- **The `score` command, an addition to `0.2.0`'s surface rather than a break.** `eval-quality score`
+- **The `score` command, an addition to `0.2.0`'s surface.** `eval-quality score`
   runs `ingest` → `score` → `emit` over a sealed run record and mints an `EvidenceArtifact`. Required
   flags: `--record`, `--contract`, `--probe`, `--preflight-verdict`, `--policy`, `--corpus-digest`.
   Optional: `--isolation-manifest`, `--evaluator-configuration`, `--private-manifest`,
@@ -117,9 +115,9 @@ body.
   requires disclosed on release, and the enumeration is itself the caller-facing surface: an
   exhaustive match over it stops being exhaustive.
 - **Unchanged in this release, stated so the silence is not read as an oversight.** The other code
-  registry, AD-28's runtime faults, stays at its ten codes, and the CLI command, flag, and exit-code
-  contract published in `0.1.0` is untouched. Those are the remaining members of AD-11's
-  caller-facing surface.
+  registry, AD-28's runtime faults, stays at its ten codes, and the three commands, their flags, and
+  the exit-code table published in `0.1.0` are untouched; `score` is an addition beside them. Those
+  are the remaining members of AD-11's caller-facing surface.
 
 ## [0.1.0] - 2026-08-28
 
