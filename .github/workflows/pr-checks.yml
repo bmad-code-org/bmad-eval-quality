@@ -118,8 +118,11 @@ jobs:
             echo "::warning::${label}: skipped after three unreachable attempts. No vulnerability verdict was obtained from the advisory database."
             return 0
           }
-          audit "root graph" npm audit --audit-level=high
-          audit "website graph" npm --prefix website audit --audit-level=high
+          # npm's default `fetch-timeout` is five minutes, which is how long the
+          # 503 took to surface each time. Three attempts at that default would
+          # hold the job for a quarter of an hour to reach the same warning.
+          audit "root graph" npm audit --audit-level=high --fetch-timeout=60000
+          audit "website graph" npm --prefix website audit --audit-level=high --fetch-timeout=60000
 
       # Before the two steps that run the suite. The published-surface cases
       # resolve `dist/` through the `exports` map and skip with a clear message
