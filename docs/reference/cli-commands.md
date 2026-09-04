@@ -9,7 +9,7 @@ sidebar:
 
 The package publishes one binary, `eval-quality`, declared in `package.json` under `bin`. Inside a clone it is `node dist/cli/main.js` after `npm run build`.
 
-The synopsis, the inputs-and-outputs block, and the exit-code table on this page are the binary's own help text verbatim. The four per-command blocks are the command half of it: `eval-quality help <command>` prints the block shown here followed by the exit-code table, printed by `eval-quality --help` and `eval-quality help <command>`.
+The synopsis, the inputs-and-outputs block, and the exit-code table on this page are the binary's own help text verbatim. The four per-command blocks are what `eval-quality help <command>` prints, minus the exit-code table it appends.
 
 ---
 
@@ -123,9 +123,11 @@ Usage:
   --strict                          promote CONCERNS to exit 1
 ```
 
-`--record`, `--contract`, `--probe`, `--preflight-verdict`, `--policy`, and `--corpus-digest` are required. `--isolation-manifest`, `--evaluator-configuration`, and `--private-manifest` are each optional: an absent isolation manifest or evaluator configuration invalidates the run under AD-16/AD-24 rather than failing to parse, and a private-artifact manifest is checked only when given. `--corpus-root` is optional at the argument-parsing level; it becomes required, with a usage error naming it, the moment a `--private-manifest` entry or a private-storage isolation-manifest reference actually needs a byte resolved through it.
+`--record`, `--contract`, `--probe`, `--preflight-verdict`, `--policy`, and `--corpus-digest` are required. `--isolation-manifest`, `--evaluator-configuration`, and `--private-manifest` are each optional: an absent isolation manifest or evaluator configuration invalidates the run under AD-16/AD-24 and the command still parses, and a private-artifact manifest is checked only when given. `--corpus-root` is optional at the argument-parsing level; it becomes required, with a usage error naming it, the moment a `--private-manifest` entry or a private-storage isolation-manifest reference actually needs a byte resolved through it.
 
-On the AD-21 Invalid rung the command exits `3` and writes nothing: there is no legal `EvidenceArtifact` with a null verdict to write.
+On the AD-21 Invalid rung the command exits `3` and writes nothing: there is no legal `EvidenceArtifact` with a null verdict to write. On every other rung the artifact's own `exitCode` field carries the number the command returns.
+
+One invocation scores one sealed run record, a trial set of one. That is a limit of the published surface: the stage behind the command is built to take a trial set, and no published entry point hands it more than one record yet, so whenever the policy's declared minimum exceeds one the strength vector comes out reported and marked non-comparable. [Read a Scored Run](/tutorials/read-a-scored-run/) reads every field of a committed run's inputs and its artifact.
 
 ---
 
@@ -263,7 +265,7 @@ Node 22 and Node 24 both throw `ERR_IMPORT_ATTRIBUTE_MISSING` for the same impor
 
 ### The library barrel
 
-`eval-quality` exports the four stages plus the values a caller needs to interpret what they return:
+`eval-quality` exports the stage entry points plus the values a caller needs to interpret what they return:
 
 - **Stages**: `compile`, `seal`, `runPreflight`, `preflightFromObservations`, `runScore`
 - **Serialization and digests**: `serializeArtifact`, `digestArtifact`, `digestBytes`, `digestComposite`
@@ -272,7 +274,7 @@ Node 22 and Node 24 both throw `ERR_IMPORT_ATTRIBUTE_MISSING` for the same impor
 - **Enumerations**: `FAILURE_CODES`, `RUNTIME_FAULT_CODES`, `VERDICTS`, `EVALUATOR_RECOMMENDATIONS`, `INTERCHANGE_ARTIFACT_KEYS`
 - **Version**: `VERSION`
 
-The artifact types ship alongside them as type-only exports: `EvalContract`, `SealedEvaluatorBrief`, `PreflightVerdict`, `PreflightCheck`, `Probe`, `Rubric`, `ScoringPolicy`, `SealedRunRecord`, `EvidenceArtifact`, `IsolationManifest`, `EvaluatorConfiguration`, `PrivateArtifactManifest`, `ArtifactReference`, along with `Diagnostic`, `DiagnosticSink`, `FailureCode`, `RuntimeFaultCode`, `Verdict`, `EvaluatorRecommendation`, `LineageChainReport` and `LineageFinding` (what `validateLineageChain` returns), `RunPreflightOptions` and `PreflightFromObservationsOptions` (what the two pre-flight entries take), `RunScoreOptions` (what `runScore` takes), and the witness types.
+The artifact types ship alongside them as type-only exports: `EvalContract`, `SealedEvaluatorBrief`, `PreflightVerdict`, `PreflightCheck`, `Probe`, `Rubric`, `ScoringPolicy`, `SealedRunRecord`, `EvidenceArtifact`, `IsolationManifest`, `EvaluatorConfiguration`, `PrivateArtifactManifest`, `ArtifactReference`, along with `Diagnostic`, `DiagnosticSink`, `FailureCode`, `RuntimeFaultCode`, `Verdict`, `EvaluatorRecommendation`, `LineageChainReport` and `LineageFinding` (what `validateLineageChain` returns), `RunPreflightOptions` and `PreflightFromObservationsOptions` (what the two pre-flight entries take), `RunScoreOptions` and `RunScoreResult` (what `runScore` takes and returns), and the witness types.
 
 `runPreflight` takes an `EnvironmentProbePort` and awaits it. `preflightFromObservations` takes observations you already have and stays synchronous. The CLI's `preflight` command calls the second one. `runScore` takes an optional `CorpusPort`, awaited only when a private reference actually needs resolving; the CLI's `score` command builds one from `--corpus-root` when given.
 
@@ -310,6 +312,7 @@ npm run docs:validate-links
 
 ## Related pages
 
-- [Run the three commands](/how-to/run-the-three-commands/)
+- [Run the four commands](/how-to/run-the-four-commands/)
+- [Read a Scored Run](/tutorials/read-a-scored-run/)
 - [Author a Behavioral Evaluation Contract](/how-to/author-behavioral-contracts/)
 - [Roadmap](/explanation/roadmap/)
