@@ -137,9 +137,13 @@ dimension arrives with the change that adds that gate.
 
 **Three of the four artifacts in AD-38's end-to-end example are absent here.** The example there is
 a sealed brief, a conforming sealed run record, an isolation manifest, and an evaluator
-configuration. The last three are produced by the shipped \`ingest\`/\`score\`/\`emit\` stages, and the
-full chain is regenerated through them at \`spike-worked-example/\`, outside this package. This
-directory still ships only the compile-and-seal pair, scoped to what a corpus of contracts needs,
+configuration. The last three are inputs the shipped \`ingest\` stage consumes, authored for the
+worked example in \`scripts/worked-example-target.ts\` and exercised there through
+\`ingest\`/\`score\`/\`emit\`. Only the run record among them is committed, as
+\`spike-worked-example/sealed-run-record.json\`; the isolation manifest and the evaluator
+configuration exist only as the authored values that build passes to \`ingest\`, never serialized to
+a file. This directory still ships only the compile-and-seal pair, scoped to what a corpus of
+contracts needs,
 under a name that does not claim AD-38's term.
 `
 

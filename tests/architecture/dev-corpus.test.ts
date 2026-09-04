@@ -259,8 +259,8 @@ describe('the development corpus', () => {
 				/qualified-probe\s+dimensions\s+are\s+absent[\s\S]*trial\s+reducer[\s\S]*score\s+stage/,
 			],
 			[
-				"three of the end-to-end example's artifacts are absent here, and are produced by the shipped stages",
-				/Three of the four artifacts[\s\S]*produced by the shipped[\s\S]*ingest[\s\S]*score[\s\S]*emit/,
+				"three of the end-to-end example's artifacts are absent here, and are ingest's own inputs, not its output",
+				/Three of the four artifacts[\s\S]*inputs the shipped[\s\S]*ingest[\s\S]*stage\s+consumes/,
 			],
 			[
 				'the contracts are visible and diagnostic, and no holdout',

@@ -1024,7 +1024,14 @@ const authoredEvaluatorConfiguration = (
  * record's own values or AD-32's agreement rule fires
  * (`ingest.ts`'s `AGREEMENT_FIELDS`), and all seven `forbiddenInputAccounting`
  * keys must carry `withheld: true` or `forbidden-input-not-withheld` fires
- * against the same seven `AUTHORED_CONTRACT.forbiddenInputs` names.
+ * against `FORBIDDEN_INPUT_FLOOR`, the seven names `ingest` actually reads
+ * (`eval-contract.ts`); `AUTHORED_CONTRACT.forbiddenInputs` declares the same
+ * seven, but `ingest` never reads the contract itself. `systemPromptDigest`
+ * carries the same ordinal `authoredEvaluatorConfiguration` declares: both
+ * describe one evaluator's system prompt for this run, and nothing checks the
+ * two artifacts agree on it (`AGREEMENT_FIELDS` covers only `runId`,
+ * `contractDigest`, and `evaluatorConfigurationDigest`), so a mismatch here
+ * would be a silent contradiction in the reference fixture.
  */
 const authoredIsolationManifest = (
 	contractDigest: string,
@@ -1037,7 +1044,7 @@ const authoredIsolationManifest = (
 	contractId: AUTHORED_CONTRACT.contractId,
 	conditionArm: 'independent',
 	modelSnapshot: 'spike-evaluator-model-2026-07-29',
-	systemPromptDigest: digestPlaceholder(3),
+	systemPromptDigest: digestPlaceholder(2),
 	contractDigest,
 	evaluatorConfigurationDigest,
 	workspaceIdentity: 'spike-workspace-0001',

@@ -3239,7 +3239,8 @@ authored configuration, since `ingest` now recomputes and compares it for real.
    shortened body -- the qualification gate and the selection/witness prologue stay, the whole oracle
    loop through `emit` collapses into three calls.
 2. `_bmad-output/planning-artifacts/architecture/architecture-eval-quality-2026-07-29/spike-worked-example/sealed-run-record.json`
-   and `evidence-artifact.json`: the two bytes that actually moved.
+   and `evidence-artifact.json`: the two files that actually moved -- three lines between them,
+   since `evaluatorConfigurationDigest` moving pulls `scoringVersion` with it.
 3. `CHANGELOG.md`'s `[Unreleased]` → `### Added`: the `score` command's disclosure.
 4. `scripts/dev-corpus-target.ts`: the corrected "What is absent, and why" prose.
 
