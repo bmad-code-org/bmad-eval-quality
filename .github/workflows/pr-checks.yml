@@ -88,10 +88,38 @@ jobs:
       # documentation site resolves its own graph. `--omit=dev` would exempt
       # almost everything here, since every root dependency but `zod` is a dev
       # dependency, so the level is the filter and the scope is everything.
+      # The advisory database is a live service, so its 503 lands on whichever
+      # pull request happens to be running: a documentation-only change failed
+      # here on 2026-09-04 with `audit endpoint returned an error`. A registry
+      # that cannot be reached has returned no verdict, which is not the same
+      # answer as "no vulnerability", so the transport failure is retried and
+      # then warned about while a real advisory hit still fails on the first
+      # attempt. A run that ends in the warning has skipped this check; the next
+      # push, and every run on main, asks again.
       - name: Known-vulnerability audit (advisory DB, CI only)
         run: |
-          npm audit --audit-level=high
-          npm --prefix website audit --audit-level=high
+          audit() {
+            local label="$1"
+            shift
+            local out status
+            for attempt in 1 2 3; do
+              out="$("$@" 2>&1)" && status=0 || status=$?
+              printf '%s\n' "$out"
+              if [ "$status" -eq 0 ]; then
+                return 0
+              fi
+              if ! grep -qE 'audit endpoint returned an error|Service Unavailable|Gateway Time-?out|Bad Gateway|ETIMEDOUT|ENOTFOUND|ECONNRESET|socket hang up' <<<"$out"; then
+                echo "::error::${label}: a known vulnerability at or above high severity."
+                return "$status"
+              fi
+              echo "::notice::${label}: the advisory endpoint was unreachable (attempt ${attempt} of 3)."
+              sleep $((attempt * 20))
+            done
+            echo "::warning::${label}: skipped after three unreachable attempts. No vulnerability verdict was obtained from the advisory database."
+            return 0
+          }
+          audit "root graph" npm audit --audit-level=high
+          audit "website graph" npm --prefix website audit --audit-level=high
 
       # Before the two steps that run the suite. The published-surface cases
       # resolve `dist/` through the `exports` map and skip with a clear message
