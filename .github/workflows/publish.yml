@@ -3,16 +3,17 @@
 # Run it with `npm run release:patch` (or minor, major), or Actions > Publish Package > Run
 # workflow from main. The `bump` input decides what happens before the publish:
 #
-#   patch | minor | major   Mints a GitHub App token, checks main out with it, and runs
-#                           `scripts/release-prepare.mjs <bump> --on-main`: bumps package.json and
-#                           package-lock.json, stamps VERSION in src/index.ts and the [Unreleased]
-#                           notes in CHANGELOG.md, commits `chore: release vX.Y.Z [skip ci]` on
-#                           main, pushes. The App is a bypass actor on the `protect-main` ruleset;
-#                           nothing else may push there. The run then publishes that commit.
-#   none                    Publishes the version main already declares. The fallback while the App
-#                           is not set up: `npm run release:prepare -- patch` on a laptop opens the
-#                           release PR, a human merges it, and this run (`npm run release:publish`)
-#                           publishes the merge commit.
+#   patch | minor | major   Runs `scripts/release-prepare.mjs <bump> --on-main`: bumps
+#                           package.json and package-lock.json, stamps VERSION in src/index.ts and
+#                           the [Unreleased] notes in CHANGELOG.md, commits
+#                           `chore: release vX.Y.Z [skip ci]` on main, pushes with the job's own
+#                           GITHUB_TOKEN. That push lands only because GitHub Actions is a bypass
+#                           actor on the `protect-main` ruleset; nothing else may push there. The
+#                           run then publishes that commit.
+#   none                    Publishes the version main already declares. The fallback if the
+#                           bypass is ever removed: `npm run release:prepare -- patch` on a laptop
+#                           opens the release PR, a human merges it, and this run
+#                           (`npm run release:publish`) publishes the merge commit.
 #
 # The commit being released is `release_sha` from the state step: HEAD, which is the bump commit
 # after a bump and github.sha without one. github.sha is the pre-bump commit once a bump happened,
@@ -89,37 +90,14 @@ jobs:
             exit 1
           fi
 
-      # A bump pushes to main, and the `protect-main` ruleset refuses that from GITHUB_TOKEN. A
-      # GitHub App on the ruleset's bypass list is the one identity that may, so its credentials
-      # have to exist before anything else runs. Only presence is checked here; the values never
-      # enter the shell.
-      - name: Require the release App for a bump
-        if: inputs.bump != 'none'
-        env:
-          HAS_APP_ID: ${{ secrets.RELEASE_APP_ID != '' }}
-          HAS_PRIVATE_KEY: ${{ secrets.RELEASE_APP_PRIVATE_KEY != '' }}
-        run: |
-          if [ "$HAS_APP_ID" != "true" ] || [ "$HAS_PRIVATE_KEY" != "true" ]; then
-            echo "bump=$BUMP requires the release GitHub App: add the repository secrets RELEASE_APP_ID and RELEASE_APP_PRIVATE_KEY, and add the App as a bypass actor on the protect-main ruleset (CONTRIBUTING.md, Releasing)." >&2
-            echo "Or run with bump=none and cut the release from a laptop with: npm run release:prepare -- $BUMP" >&2
-            exit 1
-          fi
-
-      - name: Mint the release App token
-        id: app-token
-        if: inputs.bump != 'none'
-        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3
-        with:
-          app-id: ${{ secrets.RELEASE_APP_ID }}
-          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
-
-      # The App token when there is a bump to push, GITHUB_TOKEN otherwise. persist-credentials
-      # (the default) leaves it in the checkout's remote, which is what authorizes the push.
+      # persist-credentials (the default) leaves GITHUB_TOKEN in the checkout's remote, which is
+      # what authorizes the release commit's push to main below. That push lands only because
+      # GitHub Actions is a bypass actor on the `protect-main` ruleset (CONTRIBUTING.md,
+      # Releasing); without that bypass, a bump push here is refused the same as anyone else's.
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           fetch-depth: 0
-          token: ${{ steps.app-token.outputs.token || github.token }}
 
       - name: Setup Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7

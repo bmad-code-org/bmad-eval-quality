@@ -8,9 +8,9 @@
 // publish.yml with `bump=none` publishes the version main declares.
 //
 // `--on-main`, from publish.yml: the commit lands on main and is pushed there, so the run that
-// made it can publish it. The checkout's remote carries a GitHub App token and the App is a bypass
-// actor on the `protect-main` ruleset; that is the only reason the push is accepted. `[skip ci]`
-// keeps the push from starting push-triggered workflows on a commit the release run already owns.
+// made it can publish it. The push uses the job's own GITHUB_TOKEN; it is accepted only because
+// GitHub Actions is a bypass actor on the `protect-main` ruleset. `[skip ci]` keeps the push from
+// starting push-triggered workflows on a commit the release run already owns.
 //
 // The laptop mode exists because GITHUB_TOKEN cannot do any of this: it may not push to main, and a
 // PR it opens never triggers pr-gate.yml, so `gate` never posts and the PR never merges.
@@ -159,7 +159,7 @@ function pushMain(tag) {
 			[
 				`origin rejected the push of ${tag} to main.`,
 				'The protect-main ruleset accepts a push to main from a bypass actor only.',
-				'Check that the checkout was made with the release App token and that the App is on the ruleset bypass list (CONTRIBUTING.md, Releasing).',
+				'Check that GitHub Actions is on the ruleset bypass list (CONTRIBUTING.md, Releasing).',
 				'The commit is local only; nothing on origin changed.',
 			].join('\n'),
 		)

@@ -96,12 +96,15 @@ All PRs require at least one maintainer review before merge. CI must be green.
 
 `npm run release:patch` (or `release:minor`, `release:major`) picks the bump and dispatches
 `publish.yml` from `main`, which bumps the version, stamps the changelog, commits, tags, and
-publishes in one run. That needs the release GitHub App set up first (below); until then, use the
-two-step fallback: bump on a laptop, merge the PR, publish with `bump=none`.
+publishes in one run. It works because GitHub Actions is a bypass actor on the `protect-main`
+ruleset: the run pushes the release commit to `main` with its own `GITHUB_TOKEN`, the one push
+that ruleset otherwise refuses from anyone but a PR merge that has cleared `gate`. If that bypass
+is ever removed, use the two-step fallback below instead: bump on a laptop, merge the PR, publish
+with `bump=none`.
 
 ### One-step: bump and publish together
 
-Requires the one-time setup below. From any checkout:
+From any checkout:
 
 ```bash
 npm run release:patch      # or release:minor, release:major
@@ -110,20 +113,17 @@ npm run release:patch      # or release:minor, release:major
 This dispatches `publish.yml` on `main` with the matching `bump` input. The run:
 
 1. fails at the AD-18 guard unless the repository variable `PUBLICATION_UNBLOCKED` is `true`;
-2. fails fast if the repository secrets `RELEASE_APP_ID` / `RELEASE_APP_PRIVATE_KEY` are not set,
-   with the setup steps below in the error;
-3. mints a token from the release GitHub App and checks out `main` with it;
-4. runs `npm run validate`, then `node scripts/release-prepare.mjs <bump> --on-main`: bumps
-   `package.json` and `package-lock.json` (`npm version --no-git-tag-version`), stamps `VERSION` in
-   `src/index.ts`, moves `[Unreleased]` in `CHANGELOG.md` into a dated `[X.Y.Z]` section
-   (`scripts/stamp-changelog.mjs`), and commits `chore: release vX.Y.Z [skip ci]` straight onto
-   `main`. That push succeeds only because the App is a bypass actor on the `protect-main` ruleset;
-   nothing else may push there directly. `[skip ci]` keeps the push from starting `pr-checks.yml`
-   and the other push-triggered workflows on a commit this run already validated and owns;
-5. resolves the release state from that commit (`git rev-parse HEAD`; `github.sha` is the pre-bump
+2. checks out `main`, runs `npm run validate`, then `node scripts/release-prepare.mjs <bump>
+   --on-main`: bumps `package.json` and `package-lock.json` (`npm version --no-git-tag-version`),
+   stamps `VERSION` in `src/index.ts`, moves `[Unreleased]` in `CHANGELOG.md` into a dated
+   `[X.Y.Z]` section (`scripts/stamp-changelog.mjs`), and commits `chore: release vX.Y.Z [skip ci]`
+   straight onto `main`, pushed with `GITHUB_TOKEN`. `[skip ci]` keeps that push from starting
+   `pr-checks.yml` and the other push-triggered workflows on a commit this run already validated
+   and owns;
+3. resolves the release state from that commit (`git rev-parse HEAD`; `github.sha` is the pre-bump
    commit once a bump happened) and refuses if the tag or npm version already exists at a different
    commit;
-6. builds, publishes to npm with `--provenance` through the Trusted Publisher (OIDC, no token),
+4. builds, publishes to npm with `--provenance` through the Trusted Publisher (OIDC, no token),
    tags the release commit, and creates the GitHub Release from the `[X.Y.Z]` CHANGELOG section.
 
 Write changelog entries under `[Unreleased]` in the PR that makes the change; the release run only
@@ -135,25 +135,10 @@ version, the tag once it points at the release commit, the GitHub Release once i
 again with the same `bump`, or with `bump=none` once the bump commit is already on `main`. Runs are
 serialized (`concurrency: publish`, no cancellation).
 
-### One-time setup: the release GitHub App
-
-The one-step path needs a GitHub App that can push to `main` and two repository secrets, both
-things only a repository admin can do:
-
-1. Create a GitHub App (or reuse the one already installed on the `bmad-tea` repository) with
-   `Contents: read and write` permission, and install it on `bmad-code-org/bmad-eval-quality`.
-2. Add its App ID and a private key as the repository secrets `RELEASE_APP_ID` and
-   `RELEASE_APP_PRIVATE_KEY`.
-3. Add the App as a bypass actor on the `protect-main` ruleset, so its push of the release commit
-   skips the `gate` check a normal PR merge has to pass.
-
-Until this is done, `publish.yml` with a `bump` other than `none` fails at step 2 above with the
-same instructions.
-
 ### Fallback: bump on a laptop, publish separately
 
 Two steps with a human merge in between: the flow before the one-step path existed, and the
-fallback for a release cut without the App set up.
+fallback if the `protect-main` bypass for GitHub Actions is ever removed.
 
 #### 1. Cut the release PR
 
@@ -182,7 +167,7 @@ npm run release:publish             # gh workflow run publish.yml --ref main -f 
 or Actions > Publish Package > Run workflow, branch `main`, `bump: none`. With `bump=none` the run
 skips straight to publishing the version `main` already declares: pins npm, audits lockfile age,
 runs `npm ci` and `npm run validate` and `npm run build`, then publishes, tags, and creates the
-Release exactly as described in the one-step path above, steps 5 and 6.
+Release exactly as described in the one-step path above, steps 3 and 4.
 
 ### First publish
 
