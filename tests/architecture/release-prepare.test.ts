@@ -82,6 +82,18 @@ const git = (cwd: string, env: NodeJS.ProcessEnv, ...args: string[]) =>
 	execFileSync('git', args, { cwd, env, encoding: 'utf8' }).trim()
 
 /**
+ * `npm_config_*` is npm's own config, exported into every child process npm launches; `npm run
+ * --silent` sets `npm_config_loglevel=silent` this way, which reaches this fixture through
+ * `process.env` when the suite runs under `npm run --silent test:coverage` (the coverage-canary
+ * jobs do exactly that) and silences the `npm view` stderr `npmHasVersion` parses for E404. Start
+ * from `process.env` with every `npm_config_*` key dropped, so the fixture's npm behavior depends
+ * only on what this file sets.
+ */
+const AMBIENT_ENV = Object.fromEntries(
+	Object.entries(process.env).filter(([key]) => !key.startsWith('npm_config_')),
+)
+
+/**
  * A bare origin and a clone on `main`, one commit in, both pushed. Git reads no user or system
  * config, so a signing key or hooks path on the machine running the suite cannot leak in.
  */
@@ -92,13 +104,14 @@ function fixture(): Fixture {
 	const gitconfig = join(dir, 'gitconfig')
 	writeFileSync(gitconfig, '')
 	const env: NodeJS.ProcessEnv = {
-		...process.env,
+		...AMBIENT_ENV,
 		GIT_CONFIG_GLOBAL: gitconfig,
 		GIT_CONFIG_NOSYSTEM: '1',
 		CHANGELOG_DATE: DATE,
 		npm_config_registry: registryUrl,
 		npm_config_fetch_retries: '0',
 		npm_config_cache: join(dir, 'npm-cache'),
+		npm_config_loglevel: 'notice',
 	}
 
 	git(dir, env, 'init', '--quiet', '--bare', '--initial-branch=main', origin)
@@ -143,13 +156,10 @@ interface Outcome {
 	stderr: string
 }
 
-/** Runs the script in the fixture's clone and waits for it to exit. */
-const run = (fx: Fixture, ...args: string[]) =>
+/** Runs the script in `cwd` under `env` and waits for it to exit. */
+const spawnScript = (cwd: string, env: NodeJS.ProcessEnv, args: string[]) =>
 	new Promise<Outcome>((done) => {
-		const child = spawn(process.execPath, [SCRIPT, ...args], {
-			cwd: fx.work,
-			env: fx.env,
-		})
+		const child = spawn(process.execPath, [SCRIPT, ...args], { cwd, env })
 		let stdout = ''
 		let stderr = ''
 		child.stdout.on('data', (chunk: Buffer) => {
@@ -160,6 +170,10 @@ const run = (fx: Fixture, ...args: string[]) =>
 		})
 		child.on('close', (status) => done({ status, stdout, stderr }))
 	})
+
+/** Runs the script in the fixture's clone, under the fixture's env, and waits for it to exit. */
+const run = (fx: Fixture, ...args: string[]) =>
+	spawnScript(fx.work, fx.env, args)
 
 /** What the fixture looks like after a run: both refs on origin, the clone's tree. */
 function inspect(fx: Fixture) {
@@ -403,5 +417,28 @@ describe('release-prepare on a release branch (the laptop path)', () => {
 		const { status, stderr } = await run(fx, 'patch', '--no-pr')
 		expect(status).toBe(1)
 		expect(stderr).toContain('branch release/v0.1.1 already exists on origin')
+	})
+})
+
+describe("release-prepare tolerates the caller's ambient npm config", () => {
+	/**
+	 * `npm run --silent` sets `npm_config_loglevel=silent` in every child process it starts,
+	 * this script included, which is exactly how the coverage canary and CI both invoke the test
+	 * suite. `npmHasVersion` used to decide "not published" by regex-matching E404 out of `npm
+	 * view`'s plain stderr, and silent logging blanks that text, so a normal unpublished-version
+	 * check looked like a fatal npm failure and every release was refused. `--json` fixed it:
+	 * npm always writes that to stdout, unaffected by loglevel. This asserts the fix directly,
+	 * independent of the fixture's own env hygiene, by inheriting silent logging on purpose.
+	 */
+	it('still cuts the release when npm_config_loglevel=silent is inherited', async () => {
+		const fx = fixture()
+		const { status, stdout } = await spawnScript(
+			fx.work,
+			{ ...fx.env, npm_config_loglevel: 'silent' },
+			['patch', '--on-main'],
+		)
+		expect(status).toBe(0)
+		expect(stdout).toContain('0.1.0 -> 0.1.1 on main')
+		expect(inspect(fx).version).toBe('0.1.1')
 	})
 })

@@ -79,17 +79,35 @@ function remoteRefExists(ref) {
 	}
 }
 
-// E404 is the one failure that means "not published". Anything else is the registry or the
-// network, and reading it as "not published" is how a duplicate version gets cut.
+// E404 is the one failure that means "not published". A registry that is down, a name someone
+// else holds, or output that does not parse are all refused.
+//
+// `--json` makes that read independent of npm's own ambient config. npm always writes its
+// `--json` result to stdout as parseable JSON, on success or on failure, even under
+// `npm_config_loglevel=silent`, which every `npm run --silent` also sets in this script's own
+// child processes, and which used to blank the plain stderr this function once regex-matched for
+// E404.
 function npmHasVersion(version) {
 	const spec = `${PACKAGE}@${version}`
-	const result = spawnSync('npm', ['view', spec, 'version'], {
+	const result = spawnSync('npm', ['view', spec, 'version', '--json'], {
 		encoding: 'utf8',
 		stdio: ['ignore', 'pipe', 'pipe'],
 	})
-	if (result.status === 0) return result.stdout.trim() === version
-	if (/\bE404\b/.test(result.stderr)) return false
-	fail(`npm view ${spec} failed:\n${result.stderr.trim()}`)
+	const body = parseNpmJson(result.stdout)
+	if (result.status === 0) return body === version
+	if (body && typeof body === 'object' && body.error?.code === 'E404')
+		return false
+	fail(
+		`npm view ${spec} failed:\n${body?.error?.summary ?? result.stderr.trim()}`,
+	)
+}
+
+function parseNpmJson(text) {
+	try {
+		return text.trim() ? JSON.parse(text) : null
+	} catch {
+		return null
+	}
 }
 
 function preflight({ bump, onMain }) {
