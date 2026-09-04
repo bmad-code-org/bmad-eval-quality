@@ -645,10 +645,10 @@ Detailed explanation if needed
 <h2 id="releasing">Releasing<a class="heading-anchor" href="#releasing" aria-label="Link to Releasing">#</a></h2>
 <p><code>npm run release:patch</code> (or <code>release:minor</code>, <code>release:major</code>) picks the bump and dispatches
 <code>publish.yml</code> from <code>main</code>, which bumps the version, stamps the changelog, commits, tags, and
-publishes in one run. It works because GitHub Actions is a bypass actor on the <code>protect-main</code>
-ruleset: the run pushes the release commit to <code>main</code> with its own <code>GITHUB_TOKEN</code>, the one push
-that ruleset otherwise refuses from anyone but a PR merge that has cleared <code>gate</code>. If that bypass
-is ever removed, use the two-step fallback below instead: bump on a laptop, merge the PR, publish
+publishes in one run. The workflow pushes the release commit to <code>main</code> with its own
+<code>GITHUB_TOKEN</code>, which lands because the <code>protect-main</code> ruleset requires no status check; <code>gate</code>
+still runs and reports on every pull request without blocking a merge. If <code>gate</code> is ever made
+required again, use the two-step fallback below instead: bump on a laptop, merge the PR, publish
 with <code>bump=none</code>.</p>
 <h3 id="one-step-bump-and-publish-together">One-step: bump and publish together<a class="heading-anchor" href="#one-step-bump-and-publish-together" aria-label="Link to One-step: bump and publish together">#</a></h3>
 <p>From any checkout:</p>
@@ -678,7 +678,7 @@ again with the same <code>bump</code>, or with <code>bump=none</code> once the b
 serialized (<code>concurrency: publish</code>, no cancellation).</p>
 <h3 id="fallback-bump-on-a-laptop-publish-separately">Fallback: bump on a laptop, publish separately<a class="heading-anchor" href="#fallback-bump-on-a-laptop-publish-separately" aria-label="Link to Fallback: bump on a laptop, publish separately">#</a></h3>
 <p>Two steps with a human merge in between: the flow before the one-step path existed, and the
-fallback if the <code>protect-main</code> bypass for GitHub Actions is ever removed.</p>
+fallback if <code>gate</code> is ever made required again.</p>
 <h4 id="section-1-cut-the-release-pr">1. Cut the release PR<a class="heading-anchor" href="#section-1-cut-the-release-pr" aria-label="Link to 1. Cut the release PR">#</a></h4>
 <p>From a clean checkout of <code>main</code> that matches <code>origin/main</code>:</p>
 <pre><code class="language-bash">npm run release:prepare -- patch    # or minor, major

@@ -4,16 +4,13 @@
 // Two modes, one commit shape.
 //
 // Default, from a laptop: the commit lands on `release/vX.Y.Z`, the branch is pushed, and a PR
-// against main is opened. The PR clears `gate` like any other PR and a human merges it; then
-// publish.yml with `bump=none` publishes the version main declares.
+// against main is opened for a human to review and merge; then publish.yml with `bump=none`
+// publishes the version main declares.
 //
 // `--on-main`, from publish.yml: the commit lands on main and is pushed there, so the run that
-// made it can publish it. The push uses the job's own GITHUB_TOKEN; it is accepted only because
-// GitHub Actions is a bypass actor on the `protect-main` ruleset. `[skip ci]` keeps the push from
-// starting push-triggered workflows on a commit the release run already owns.
-//
-// The laptop mode exists because GITHUB_TOKEN cannot do any of this: it may not push to main, and a
-// PR it opens never triggers pr-gate.yml, so `gate` never posts and the PR never merges.
+// made it can publish it. The push uses the job's own GITHUB_TOKEN; it lands because the
+// `protect-main` ruleset requires no status check. `[skip ci]` keeps the push from starting
+// push-triggered workflows on a commit the release run already owns.
 //
 // Every check runs before anything is written, so a refusal leaves the tree exactly as found.
 //
@@ -158,8 +155,8 @@ function pushMain(tag) {
 		fail(
 			[
 				`origin rejected the push of ${tag} to main.`,
-				'The protect-main ruleset accepts a push to main from a bypass actor only.',
-				'Check that GitHub Actions is on the ruleset bypass list (CONTRIBUTING.md, Releasing).',
+				'The protect-main ruleset lets this push through only because it requires no status check.',
+				'Check the protect-main ruleset (CONTRIBUTING.md, Releasing) if that changed.',
 				'The commit is local only; nothing on origin changed.',
 			].join('\n'),
 		)

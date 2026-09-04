@@ -7,12 +7,12 @@
 #                           package.json and package-lock.json, stamps VERSION in src/index.ts and
 #                           the [Unreleased] notes in CHANGELOG.md, commits
 #                           `chore: release vX.Y.Z [skip ci]` on main, pushes with the job's own
-#                           GITHUB_TOKEN. That push lands only because GitHub Actions is a bypass
-#                           actor on the `protect-main` ruleset; nothing else may push there. The
-#                           run then publishes that commit.
-#   none                    Publishes the version main already declares. The fallback if the
-#                           bypass is ever removed: `npm run release:prepare -- patch` on a laptop
-#                           opens the release PR, a human merges it, and this run
+#                           GITHUB_TOKEN. That push lands because the `protect-main` ruleset
+#                           requires no status check; `gate` still runs and reports on every pull
+#                           request without blocking a merge. The run then publishes that commit.
+#   none                    Publishes the version main already declares. The fallback if `gate` is
+#                           ever made required again: `npm run release:prepare -- patch` on a
+#                           laptop opens the release PR, a human merges it, and this run
 #                           (`npm run release:publish`) publishes the merge commit.
 #
 # The commit being released is `release_sha` from the state step: HEAD, which is the bump commit
@@ -91,9 +91,9 @@ jobs:
           fi
 
       # persist-credentials (the default) leaves GITHUB_TOKEN in the checkout's remote, which is
-      # what authorizes the release commit's push to main below. That push lands only because
-      # GitHub Actions is a bypass actor on the `protect-main` ruleset (CONTRIBUTING.md,
-      # Releasing); without that bypass, a bump push here is refused the same as anyone else's.
+      # what authorizes the release commit's push to main below. That push lands because the
+      # `protect-main` ruleset requires no status check (CONTRIBUTING.md, Releasing); a bump push
+      # here is refused if a required check is ever added back without an automation path for it.
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:

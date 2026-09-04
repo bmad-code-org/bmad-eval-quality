@@ -96,10 +96,10 @@ All PRs require at least one maintainer review before merge. CI must be green.
 
 `npm run release:patch` (or `release:minor`, `release:major`) picks the bump and dispatches
 `publish.yml` from `main`, which bumps the version, stamps the changelog, commits, tags, and
-publishes in one run. It works because GitHub Actions is a bypass actor on the `protect-main`
-ruleset: the run pushes the release commit to `main` with its own `GITHUB_TOKEN`, the one push
-that ruleset otherwise refuses from anyone but a PR merge that has cleared `gate`. If that bypass
-is ever removed, use the two-step fallback below instead: bump on a laptop, merge the PR, publish
+publishes in one run. The workflow pushes the release commit to `main` with its own
+`GITHUB_TOKEN`, which lands because the `protect-main` ruleset requires no status check; `gate`
+still runs and reports on every pull request without blocking a merge. If `gate` is ever made
+required again, use the two-step fallback below instead: bump on a laptop, merge the PR, publish
 with `bump=none`.
 
 ### One-step: bump and publish together
@@ -138,7 +138,7 @@ serialized (`concurrency: publish`, no cancellation).
 ### Fallback: bump on a laptop, publish separately
 
 Two steps with a human merge in between: the flow before the one-step path existed, and the
-fallback if the `protect-main` bypass for GitHub Actions is ever removed.
+fallback if `gate` is ever made required again.
 
 #### 1. Cut the release PR
 

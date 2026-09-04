@@ -366,7 +366,7 @@ describe('release-prepare refusals leave origin and the tree untouched', () => {
 		const { status, stderr } = await run(fx, 'patch', '--on-main')
 		expect(status).toBe(1)
 		expect(stderr).toContain('origin rejected the push of v0.1.1 to main')
-		expect(stderr).toContain('bypass actor')
+		expect(stderr).toContain('requires no status check')
 		const after = inspect(fx)
 		expect(after.originMain).toBe(before.originMain)
 		// The local commit stays, as the message says; a rerun from a clean main is the fix.
