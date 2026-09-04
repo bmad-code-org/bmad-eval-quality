@@ -95,9 +95,9 @@ development_status:
   7-9-regenerate-the-worked-chain-and-its-probe-corpus-entry: done
   7-10-the-epics-disclosed-breaks-and-the-non-comparability-statement: done
 
-  epic-8: in-progress
+  epic-8: done
   8-1-the-ingest-stage-and-the-conditions-it-records: done
   8-2-the-score-stage-over-a-trial-set: done
   8-3-the-emit-stage-and-the-evidence-artifact-it-mints: review
   8-4-the-score-command-the-application-call-and-the-published-surface: done
-  8-5-the-worked-chain-through-the-shipped-stages-and-the-release-disclosure: backlog
+  8-5-the-worked-chain-through-the-shipped-stages-and-the-release-disclosure: done

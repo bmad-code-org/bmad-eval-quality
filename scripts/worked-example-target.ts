@@ -3,13 +3,15 @@
 // themselves. Both import this module, so neither can address a file the other
 // does not.
 //
-// Owed item 7: the chain's derived values were hand-typed against a pre-epic-7
-// architecture and are now demonstrably wrong. Nothing downstream of the
-// evaluator's own evidence is written here by hand. The evaluator-authored
-// inputs are the contract, the probe's declarations, and the run record's raw
-// observations, dispositions, and findings; every selection, check resolution,
-// witness match, outcome state, corroboration, rate and verdict below is the
-// return value of a reference function this epic built.
+// Owed item 7, closed: the chain's derived values used to be hand-typed
+// against a pre-epic-7 architecture. Nothing downstream of the evaluator's
+// own evidence is written here by hand. The evaluator-authored inputs are the
+// contract, the probe's declarations, the run record's raw observations,
+// dispositions, and findings, and the isolation manifest, evaluator
+// configuration, and pre-flight verdict the run was scored under; every
+// selection, check resolution, witness match, outcome state, corroboration,
+// rate and verdict below is the return value of the shipped `ingest`/`score`
+// reference functions, called for real.
 //
 // Run by `node` directly: Node's type stripping erases types only, so no
 // TypeScript enum, namespace, parameter property, or non-type re-export may
@@ -18,64 +20,32 @@ import { compile } from '../src/application/compile.ts'
 import { seal } from '../src/application/seal.ts'
 import { serializeArtifact } from '../src/application/serialize.ts'
 import { digestArtifact } from '../src/core/canonical/digest.ts'
-import { walkExpression } from '../src/core/compile/expression-legality.ts'
-import { evaluateCoverage } from '../src/core/coverage/coverage.ts'
 import { emit } from '../src/core/emit/emit.ts'
-import {
-	makePointerDenotesCollection,
-	makeResolveOperand,
-} from '../src/core/evaluate/evidence-resolution.ts'
-import { resolveCheck } from '../src/core/evaluate/resolution.ts'
-import { validateLineageChain } from '../src/core/lineage/chain.ts'
+import { ingest } from '../src/core/ingest/ingest.ts'
 import type { DefectSignature } from '../src/core/schemas/defect-signature.ts'
 import type { EvalContract } from '../src/core/schemas/eval-contract.ts'
-import {
-	type CheckResolutionValue,
-	EvidenceArtifact,
-	type Outcome,
-	type UncitedFindingGap,
-} from '../src/core/schemas/evidence-artifact.ts'
-import type {
-	Expression,
-	Operand,
-	SetOperand,
-} from '../src/core/schemas/expression.ts'
+import { EvaluatorConfiguration } from '../src/core/schemas/evaluator-configuration.ts'
+import { EvidenceArtifact } from '../src/core/schemas/evidence-artifact.ts'
 import type { Operation } from '../src/core/schemas/interface.ts'
+import { IsolationManifest } from '../src/core/schemas/isolation-manifest.ts'
+import { PreflightVerdict } from '../src/core/schemas/preflight-verdict.ts'
 import type { KeyedShapeDescriptor } from '../src/core/schemas/primitives.ts'
 import { Probe } from '../src/core/schemas/probe.ts'
 import { ScoringPolicy } from '../src/core/schemas/scoring-policy.ts'
 import type { SealedEvaluatorBrief } from '../src/core/schemas/sealed-evaluator-brief.ts'
-import {
-	type Observation,
-	SealedRunRecord,
-} from '../src/core/schemas/sealed-run-record.ts'
+import { SealedRunRecord } from '../src/core/schemas/sealed-run-record.ts'
 import { bindingOrder } from '../src/core/score/binding-order.ts'
 import {
 	resolveCapturedBindings,
 	selectWithBindings,
 } from '../src/core/score/bindings.ts'
 import {
-	type ContractAssessment,
-	resolveContractVerdict,
-	type ScoredOutcome,
-} from '../src/core/score/ladder.ts'
-import {
-	type OutcomeInputs,
-	resolveOutcome,
-	uncitedDefectFindingGaps,
-	uncitedFindingIds,
-} from '../src/core/score/outcome.ts'
-import {
 	resolveHomeOperation,
 	sealProbeSet,
 } from '../src/core/score/qualification.ts'
-import { auditQuotation } from '../src/core/score/quotation.ts'
-import { reduceTrialSet } from '../src/core/score/reduce-trials.ts'
-import type { ScoredOutcomesAndVerdict } from '../src/core/score/score.ts'
+import { score } from '../src/core/score/score.ts'
 import type { StepSelection } from '../src/core/score/selection.ts'
 import {
-	type FindingMap,
-	mapFindings,
 	matchProbeWitness,
 	type ProbeWitnessMatch,
 	type SignedProbe,
@@ -790,14 +760,15 @@ const note = (
 /**
  * The observations are evaluator-authored evidence and stay so: there is no
  * live Notes API in this repository, only the prose spec, and `core/ingest`
- * does not exist. Owed item 7 forbids hand-filling a downstream value that
- * pretends to be a reducer's output; it never asked for a live system to run
- * against. The evidence here is the same five calls the committed record
- * carries. Only its shape moved.
+ * validates a record rather than producing one. Owed item 7 forbids
+ * hand-filling a downstream value that pretends to be a reducer's output; it
+ * never asked for a live system to run against. The evidence here is the same
+ * five calls the committed record carries. Only its shape moved.
  */
 const authoredRecord = (
 	contractDigest: string,
 	briefDigest: string,
+	evaluatorConfigurationDigest: string,
 ): SealedRunRecord => ({
 	schemaVersion: 3,
 	parentDigest: null,
@@ -808,7 +779,15 @@ const authoredRecord = (
 	trialIndex: 1,
 	contractDigest,
 	sealedBriefDigest: briefDigest,
-	evaluatorConfigurationDigest: digestPlaceholder(4),
+	evaluatorConfigurationDigest,
+	// Expected in contract-scoring mode: the probe is knowingly defective, so
+	// a system-directed FAIL is an input rather than a signal about the
+	// contract, and is not promoted to a verdict. `score()` returns
+	// `systemRecommendationNote: null` for every contract-scoring run
+	// (Decision 3): no declared input or caller-supplied parameter carries
+	// authored prose for that field, so the explanatory sentence that used to
+	// sit on the emitted artifact lives here instead, beside the value it
+	// explains, rather than claiming to be derived output.
 	evaluatorRecommendation: 'FAIL',
 	oracleDispositions: [
 		{
@@ -1006,42 +985,134 @@ const authoredRecord = (
 	invalidReason: null,
 })
 
-const SYSTEM_RECOMMENDATION_NOTE =
-	'Expected in contract-scoring mode: the probe is knowingly defective, so a system-directed FAIL is an input rather than a signal about the contract. Not promoted to a verdict.'
+// ---------------------------------------------------------------------------
+// authored input 5: the evaluator configuration the run was scored under
+// ---------------------------------------------------------------------------
+
+/**
+ * A real `EvaluatorConfiguration`: `ingest` recomputes its digest from this
+ * artifact and invalidates the run if the record's declaration disagrees
+ * (AD-24, AD-32). No judge is configured, matching `AUTHORED_CONTRACT.rubrics`
+ * being empty.
+ */
+const authoredEvaluatorConfiguration = (
+	briefDigest: string,
+): EvaluatorConfiguration => ({
+	schemaVersion: 1,
+	parentDigest: null,
+	revisionCount: 0,
+	sealedBriefDigest: briefDigest,
+	evaluatorIdentity: 'opaque:spike-evaluator-0001',
+	modelSnapshot: 'spike-evaluator-model-2026-07-29',
+	systemPromptDigest: digestPlaceholder(2),
+	decodingParameters: { temperature: 0, topP: 1 },
+	toolInventory: [],
+	permissionInventory: [],
+	budgets: AUTHORED_CONTRACT.budgets,
+	seed: null,
+	judgeConfiguration: null,
+})
+
+// ---------------------------------------------------------------------------
+// authored input 6: the isolation manifest the run was audited under
+// ---------------------------------------------------------------------------
+
+/**
+ * A real `IsolationManifest`: the happy path this worked example demonstrates,
+ * so `violation` is `null` and every observed array equals its allowlist.
+ * `runId`, `contractDigest`, and `evaluatorConfigurationDigest` must equal the
+ * record's own values or AD-32's agreement rule fires
+ * (`ingest.ts`'s `AGREEMENT_FIELDS`), and all seven `forbiddenInputAccounting`
+ * keys must carry `withheld: true` or `forbidden-input-not-withheld` fires
+ * against `FORBIDDEN_INPUT_FLOOR`, the seven names `ingest` actually reads
+ * (`eval-contract.ts`); `AUTHORED_CONTRACT.forbiddenInputs` declares the same
+ * seven, but `ingest` never reads the contract itself. `systemPromptDigest`
+ * carries the same ordinal `authoredEvaluatorConfiguration` declares: both
+ * describe one evaluator's system prompt for this run, and nothing checks the
+ * two artifacts agree on it (`AGREEMENT_FIELDS` covers only `runId`,
+ * `contractDigest`, and `evaluatorConfigurationDigest`), so a mismatch here
+ * would be a silent contradiction in the reference fixture.
+ */
+const authoredIsolationManifest = (
+	contractDigest: string,
+	evaluatorConfigurationDigest: string,
+): IsolationManifest => ({
+	schemaVersion: 1,
+	parentDigest: null,
+	revisionCount: 0,
+	runId: 'spike-run-0001',
+	contractId: AUTHORED_CONTRACT.contractId,
+	conditionArm: 'independent',
+	modelSnapshot: 'spike-evaluator-model-2026-07-29',
+	systemPromptDigest: digestPlaceholder(2),
+	contractDigest,
+	evaluatorConfigurationDigest,
+	workspaceIdentity: 'spike-workspace-0001',
+	allowedMounts: [],
+	observedMounts: [],
+	networkAllowlist: [],
+	observedNetworkTargets: [],
+	toolAllowlist: [],
+	observedToolCalls: [],
+	resourceCeilings: {
+		maxToolCalls: 50,
+		maxInputTokens: 200000,
+		maxOutputTokens: 50000,
+		maxWallClockMinutes: 30,
+		maxCostUsd: '5.00',
+	},
+	actualResourceUse: {
+		toolCalls: 5,
+		inputTokens: 8100,
+		outputTokens: 1400,
+		wallClockSeconds: 62.5,
+		costUsd: '0.04',
+	},
+	forbiddenInputAccounting: {
+		'original-spec': { withheld: true, note: null },
+		'source-code': { withheld: true, note: null },
+		repository: { withheld: true, note: null },
+		'builder-transcript': { withheld: true, note: null },
+		'implementation-logs': { withheld: true, note: null },
+		'comparator-results': { withheld: true, note: null },
+		'human-labels': { withheld: true, note: null },
+	},
+	violation: null,
+})
+
+// ---------------------------------------------------------------------------
+// authored input 7: the pre-flight verdict `score()` requires
+// ---------------------------------------------------------------------------
+
+/**
+ * A real `PreflightVerdict`: `score()`'s fourth positional parameter, the
+ * source of `preflightPassed`, and (Decision 5) the source of `emit`'s
+ * `fixtureDigest` argument, mirroring `runScore`'s own precedent
+ * (`application/score.ts`: "AD-11 names the same fixture digest
+ * `PreflightVerdict.fixtureDigest` already carries: restated, never
+ * re-derived"). `fixtureDigest` declares the same placeholder ordinal the
+ * hand-rolled `emit` call used to pass directly, so moving it here does not
+ * move a byte.
+ */
+const authoredPreflightVerdict = (): PreflightVerdict => ({
+	schemaVersion: 1,
+	parentDigest: null,
+	revisionCount: 0,
+	runId: 'spike-run-0001',
+	fixtureDigest: digestPlaceholder(15),
+	passed: true,
+	checks: [],
+})
 
 // ---------------------------------------------------------------------------
 // derivation
 // ---------------------------------------------------------------------------
 
-/** Every interaction-rooted step identifier one check addresses. */
-function addressedSteps(expression: Expression): ReadonlySet<string> {
-	const found = new Set<string>()
-	const take = (operand: Operand | SetOperand): void => {
-		if (!('pointer' in operand)) return
-		const { pointer } = operand
-		if (pointer.startsWith('@')) return
-		// The root segment is checked, so a pointer rooted anywhere else cannot
-		// contribute a phantom step identifier that happens to match a plan step.
-		const [, root, stepId] = pointer.split('/')
-		if (root === 'interactions' && stepId !== undefined) found.add(stepId)
-	}
-	walkExpression(expression, 0, '', { onOperand: take, onSetOperand: take })
-	return found
-}
-
-/** AD-23 and AD-40's four finding buckets, in `FindingMap`'s own declaration order. */
-const FINDING_BUCKETS = [
-	'mapped',
-	'unmapped',
-	'dangling',
-	'signatureless',
-] as const satisfies readonly (keyof FindingMap)[]
-
 /**
  * A function declaration rather than an arrow, because TypeScript treats a
  * call as never-returning only when the callee is declared this way. As a
  * `const` arrow it stops narrowing at every guard below, and the null checks
- * on `oracle.check` and on the plan lookups then need casts to undo.
+ * on the probe's own qualifying fields then need casts to undo.
  */
 function fail(message: string): never {
 	throw new Error(`worked-example: ${message}`)
@@ -1073,10 +1144,21 @@ export function buildWorkedExampleChain(): WorkedExampleChain {
 	const brief = seal(AUTHORED_CONTRACT)
 	const contractDigest = digestArtifact(contract, 'EvalContract')
 	const briefDigest = digestArtifact(brief, 'SealedEvaluatorBrief')
+	const configuration = EvaluatorConfiguration.parse(
+		authoredEvaluatorConfiguration(briefDigest),
+	)
+	const evaluatorConfigurationDigest = digestArtifact(
+		configuration,
+		'EvaluatorConfiguration',
+	)
 	const probe = Probe.parse(AUTHORED_PROBE)
 	const record = SealedRunRecord.parse(
-		authoredRecord(contractDigest, briefDigest),
+		authoredRecord(contractDigest, briefDigest, evaluatorConfigurationDigest),
 	)
+	const manifest = IsolationManifest.parse(
+		authoredIsolationManifest(contractDigest, evaluatorConfigurationDigest),
+	)
+	const preflightVerdict = PreflightVerdict.parse(authoredPreflightVerdict())
 
 	// AD-9's gate, run for real. A rejection fails the build rather than
 	// shipping a chain scored against a probe no sealed set would admit.
@@ -1096,12 +1178,18 @@ export function buildWorkedExampleChain(): WorkedExampleChain {
 				.join('; ')}`,
 		)
 	}
-	const admitted = sealedProbes.admitted[0] ?? fail('no probe was admitted')
+	if (sealedProbes.admitted.length === 0) fail('no probe was admitted')
 
 	// Selection: `bindingOrder` first, then the captured-binding map, then the
 	// binding-aware selector. Bare `selectObservations` filters on `operationId`
 	// alone and returns `several` for all four steps that share an operation;
 	// the temporal clause and the binding filters are what separate them.
+	// Published on `WorkedExampleChain` alongside `witness` below:
+	// `ScoredOutcomesAndVerdict` (`score.ts`) carries neither, and `score()`
+	// recomputes this identical reduction internally, so the file computes it
+	// twice: once for its own published shape, once inside `score()` (Decision
+	// 4). Both computations call the same shipped reference functions, so
+	// neither is a hand-filled value.
 	const index = buildPlanIndex(
 		contract.interactionPlan,
 		contract.permittedInterfaces,
@@ -1125,50 +1213,12 @@ export function buildWorkedExampleChain(): WorkedExampleChain {
 		)
 	}
 
-	// One observation per step, by the same rule `resolveTemporalAnchor`
-	// (`selection.ts:96-127`) applies to an anchor: one match binds, several
-	// under a declared `any` binds the lowest sequence, and anything else binds
-	// nothing. That function cannot be called here because it re-runs the
-	// operation-only `selectObservations` instead of taking a `StepSelection`,
-	// and lifting the reduction out of it would be new score-side surface this
-	// story's Boundaries forbid. `matchedObservationIds` is ascending by
-	// `sequence` (`selection.ts:28-31`), so `[0]` is the lowest.
-	const observationById = new Map(
-		record.observations.map((observation) => [
-			observation.observationId,
-			observation,
-		]),
-	)
-	const stepObservations: Record<string, Observation> = {}
-	for (const step of contract.interactionPlan) {
-		const selection =
-			selectionOf.get(step.stepId) ??
-			fail(`step ${step.stepId} was never selected`)
-		const [first] = selection.matchedObservationIds
-		if (first === undefined) continue
-		if (selection.result === 'several' && step.cardinality !== 'any') continue
-		const observation =
-			observationById.get(first) ??
-			fail(`step ${step.stepId} selected unknown observation ${first}`)
-		stepObservations[step.stepId] = observation
-	}
-	// The contract's own declared sets, projected to their members. Hardcoding
-	// an empty map would leave a reference-set operand added later resolving
-	// ABSENT, which weakens the check it sits in instead of failing loudly.
-	const referenceSets = Object.fromEntries(
-		Object.entries(contract.referenceSets ?? {}).map(([id, declaration]) => [
-			id,
-			declaration.members,
-		]),
-	)
-	const resolveOperand = makeResolveOperand(stepObservations, referenceSets)
-	const pointerDenotesCollection = makePointerDenotesCollection(contract, index)
-
-	// AD-40's witness match, and AD-23's finding buckets.
-	// Split so each failure names its own reason. The cast is what TypeScript
-	// still needs after them: narrowing `probe.defectSignature` refines the
-	// property for reads and leaves the object's own declared type alone, so
-	// the whole value is not assignable to `SignedProbe` without it.
+	// AD-40's witness match, published on `WorkedExampleChain` for the same
+	// reason `selectionOf` is. Split so each failure names its own reason. The
+	// cast is what TypeScript still needs after them: narrowing
+	// `probe.defectSignature` refines the property for reads and leaves the
+	// object's own declared type alone, so the whole value is not assignable
+	// to `SignedProbe` without it.
 	if (probe.expectedClean) fail(`${probe.probeId} is a clean control`)
 	if (probe.defectSignature === null) {
 		fail(`${probe.probeId} carries no defect signature to match against`)
@@ -1179,242 +1229,39 @@ export function buildWorkedExampleChain(): WorkedExampleChain {
 		contract.permittedInterfaces,
 		record,
 	)
-	const findingMap = mapFindings([probe], contract.permittedInterfaces, record)
-	const bucketOf = new Map<string, keyof FindingMap>()
-	for (const bucket of FINDING_BUCKETS) {
-		for (const entry of findingMap[bucket])
-			bucketOf.set(entry.findingId, bucket)
-	}
 
-	// AD-40 pairs a probe with exactly one designated oracle: the one
-	// discharging the behaviour its seeded defect breaks. The witness attaches
-	// there and nowhere else.
-	const seededBehaviorId =
-		signedProbe.defects[0]?.behaviorId ?? fail('the probe seeds no defect')
-	const seededBehavior =
-		contract.behaviors.find((behavior) => behavior.id === seededBehaviorId) ??
-		fail(`no behaviour ${seededBehaviorId}`)
-	if (seededBehavior.oracles.length !== 1) {
-		fail(
-			`behaviour ${seededBehaviorId} is discharged by ${seededBehavior.oracles.length} oracles, so the signature designates none`,
-		)
-	}
-	const designatedOracleId =
-		seededBehavior.oracles[0] ??
-		fail(`behaviour ${seededBehaviorId} declares no oracle`)
-
-	const severityOfBehaviourFor = (oracleId: string) =>
-		contract.behaviors.find((behavior) => behavior.oracles.includes(oracleId))
-			?.severity ?? fail(`no behaviour declares oracle ${oracleId}`)
-
-	const outcomes: Outcome[] = []
-	const scored: ScoredOutcome[] = []
-	for (const oracle of contract.oracles) {
-		const check = oracle.check
-		if (check === null) fail(`oracle ${oracle.id} carries no check`)
-		const checkResolution: CheckResolutionValue = resolveCheck(
-			check,
-			resolveOperand,
-			pointerDenotesCollection,
-			POLICY.regexMatchStepBudget,
-			`EvalContract.oracles[id=${oracle.id}].check`,
-		)
-		const steps = addressedSteps(check)
-		// Walked once: `selections` is what the outcome reads and
-		// `selectorAmbiguity` is a predicate over the same pairs.
-		const addressed = contract.interactionPlan
-			.filter((step) => steps.has(step.stepId))
-			.map((step) => ({
-				step,
-				selection:
-					selectionOf.get(step.stepId) ??
-					fail(`step ${step.stepId} was never selected`),
-			}))
-		const selections = addressed.map((entry) => entry.selection)
-		const selectorAmbiguity = addressed.some(
-			(entry) =>
-				entry.selection.result === 'several' &&
-				entry.step.cardinality !== 'any',
-		)
-		const disposition =
-			record.oracleDispositions.find((entry) => entry.oracleId === oracle.id) ??
-			null
-		const defectFinding = record.findings.find(
-			(finding) =>
-				finding.findingType === 'defect' && finding.oracleId === oracle.id,
-		)
-		const citedFinding =
-			defectFinding === undefined
-				? null
-				: {
-						findingId: defectFinding.findingId,
-						bucket:
-							bucketOf.get(defectFinding.findingId) ??
-							fail(`finding ${defectFinding.findingId} landed in no bucket`),
-					}
-		const inputs: OutcomeInputs = {
-			required: true,
-			disposition,
-			citedFinding,
-			witness: oracle.id === designatedOracleId ? witness : null,
-			selections,
-			selectorAmbiguity,
-			checkResolution: checkResolution.resolution,
-			polarity: oracle.polarity,
-			probeClass: probe.probeClass,
-			expectedClean: probe.expectedClean,
-			// Read off the probe rather than asserted, so the nine declared inputs
-			// this chain names stay exactly nine: this one an artifact carries.
-			probeSigned: signedProbe.defectSignature !== null,
-			probeQualified: admitted.result.qualified,
-			// The contract declares no waiver, no rubric, and the run recorded no
-			// AD-26 evaluation fault. All three arrive declared, as `outcome.ts`
-			// requires.
-			waiver: 'none',
-			judgeConduct: 'absent',
-			evaluationFault: false,
-		}
-		const resolution = resolveOutcome(inputs)
-		// A `resolvedFrom` naming a finding the record does not carry is an AD-32
-		// cross-artifact dangling reference, and quietly substituting the
-		// behaviour severity there could move the AD-21 floor comparison with no
-		// signal, so it fails instead.
-		const severity =
-			resolution.resolvedFrom === null
-				? severityOfBehaviourFor(oracle.id)
-				: (record.findings.find(
-						(finding) => finding.findingId === resolution.resolvedFrom,
-					)?.severity ??
-					fail(
-						`oracle ${oracle.id} resolved from ${resolution.resolvedFrom}, which the record does not carry`,
-					))
-		outcomes.push({
-			oracleId: oracle.id,
-			probeId: probe.probeId,
-			state: resolution.state,
-			severity,
-			disposition:
-				disposition?.disposition ??
-				fail(`oracle ${oracle.id} carries no disposition`),
-			resolvedFrom: resolution.resolvedFrom,
-			corroboration: resolution.corroboration,
-			selectedObservationIds: [...resolution.selectedObservationIds],
-			checkResolution,
-		})
-		scored.push({
-			oracleId: oracle.id,
-			required: true,
-			severity,
-			// `ladder.ts:42` defines this as the caller's own
-			// `OutcomeInputs.checkResolution !== null`, so it is read off the
-			// resolution rather than declared beside it.
-			checkResolved: inputs.checkResolution !== null,
-			resolution,
-		})
-	}
-
-	// AD-7's reducer over the single-trial set, then the rate vector.
-	const designated =
-		scored.find((outcome) => outcome.oracleId === designatedOracleId) ??
-		fail(`no outcome for the designated oracle ${designatedOracleId}`)
-	// One vote per trial, and this chain carries one trial record. `completed`
-	// is read off the same array, so a second trial cannot leave it at one and
-	// understate both the strength denominator and the comparability test.
-	const votes = [{ state: designated.resolution.state }]
-	const reduced = reduceTrialSet(votes, POLICY.catchThreshold)
-	const trials = {
-		declaredMinimum: POLICY.minimumTrialCount,
-		completed: votes.length,
-		invalidatedAttempts: [...reduced.invalidatedAttempts],
-	}
-
-	const coverageGaps = evaluateCoverage(contract)
-	const uncitedGaps: readonly UncitedFindingGap[] =
-		uncitedDefectFindingGaps(record)
-	const lineage = validateLineageChain([contract], {
-		artifactPath: 'EvalContract',
-		acceptedSchemaVersion: contract.schemaVersion,
-		declaredRevisionCount: contract.revisionCount,
-		remediationCap: POLICY.remediationCap,
-	})
-
-	const assessment: ContractAssessment = {
-		mode: 'contract-scoring',
-		outcomeState: {
-			outcomes: scored,
-			unwitnessedQuotations: auditQuotation(record),
-			trials,
-			reExecutionCap: POLICY.reExecutionCap,
-		},
-		evidenceIntegrity: {
-			disclosure: record.evidenceDisclosure,
-			// Declared, not derived: the first two have no source in any artifact
-			// the chain carries, the third is AD-32's cross-artifact check, and the
-			// fourth is AD-16's isolation manifest, which the spike never produced
-			// a violation for.
-			overTruncated: false,
-			unavailable: false,
-			internallyInconsistent: false,
-			isolationViolation: [],
-			// This chain hand-assembles the record directly and never calls
-			// `core/ingest`, so none of Story 8.2's eight ingest-condition
-			// fields, nor its two score-computed ones, has anything to carry;
-			// every one is the empty array its own type already permits.
-			duplicateRecordIdentifiers: [],
-			danglingCitations: [],
-			danglingDispositionCitations: [],
-			forbiddenInputsNotWithheld: [],
-			crossArtifactDisagreements: [],
-			evaluatorConfigurationAbsent: [],
-			evaluatorConfigurationDigestMismatches: [],
-			judgeResultsUnscored: [],
-			operationIdentifierCollisions: [],
-			trialSetDisagreements: [],
-		},
-		evaluatorRecommendation: record.evaluatorRecommendation,
-		coverageGaps,
-		uncitedDefectFindings: uncitedGaps,
-		findings: record.findings.map((finding) => ({
-			findingId: finding.findingId,
-			confidence: finding.confidence,
-		})),
-		confidenceThreshold: POLICY.confidenceThreshold,
-		remediationState: lineage.checks,
-		// Declared: pre-flight is a separate stage the spike never ran, and a
-		// `false` here would invalidate the run over a stage it never reached.
-		preflightPassed: true,
-		severityFloor: POLICY.severityFloor,
-		systemRecommendationRecorded: record.evaluatorRecommendation,
-		systemRecommendationNote: SYSTEM_RECOMMENDATION_NOTE,
-	}
-	const ladder = resolveContractVerdict(assessment)
-	if (ladder.verdict === null) {
-		fail(
-			`the chain resolved AD-21's Invalid rung and carries no contract verdict: ${ladder.basis.join('; ')}`,
-		)
-	}
-
-	// `emit` now builds scoringVersionInputs, comparabilityKey, strength, and
-	// the mode-discriminated artifact literal this hand-assembly used to build
-	// directly. The two placeholder digests are the same AD-11 caller-attested
-	// pair this chain always supplied: no artifact here carries a corpus or
-	// fixture digest, so both stay caller-supplied rather than derived.
-	const scoredOutcomesAndVerdict: ScoredOutcomesAndVerdict = {
-		assessment,
-		ladder,
-		runId: record.runId,
+	// The chain's own scoring, through the shipped stages: `ingest` validates
+	// the authored record against the authored manifest and configuration,
+	// and `score` reproduces this file's former hand-rolled oracle loop,
+	// AD-7 reduction, and ladder resolution step for step (Story 8.2 lifted
+	// this exact sequence into `src/`).
+	const validated = ingest(record, manifest, configuration)
+	const scoredOutcomesAndVerdict = score(
 		contract,
-		policy: POLICY,
+		[validated],
 		probe,
-		sealedProbes,
-		trialSetResult: reduced,
-		outcomes,
-		uncitedFindings: [...uncitedFindingIds(record)],
+		preflightVerdict,
+		POLICY,
+		// Neither has a declared-input source: the contract declares no
+		// waiver and the run record carries no AD-26 evaluation fault field
+		// (Decision 6), the same gap `runScore` closes identically.
+		'none',
+		false,
+	)
+	if (scoredOutcomesAndVerdict.ladder.verdict === null) {
+		fail(
+			`the chain resolved AD-21's Invalid rung and carries no contract verdict: ${scoredOutcomesAndVerdict.ladder.basis.join('; ')}`,
+		)
 	}
+
+	// The two placeholder digests `emit` still takes directly: no artifact in
+	// this chain carries a corpus digest (Decision 6), and the fixture digest
+	// now comes off the authored pre-flight verdict rather than a literal at
+	// this call site (Decision 5), mirroring `runScore`.
 	const artifact = emit(
 		scoredOutcomesAndVerdict,
 		digestPlaceholder(14),
-		digestPlaceholder(15),
+		preflightVerdict.fixtureDigest,
 		record.evaluatorConfigurationDigest,
 	)
 

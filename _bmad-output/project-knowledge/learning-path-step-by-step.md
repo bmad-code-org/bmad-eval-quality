@@ -3208,3 +3208,75 @@ flowchart TD
   content, so that check happens once the files are actually read, not while parsing flags.
 - `src/` comments ban a story-local decision number and the word "story." The reasoning for a
   choice made in a story lives in the story file and in plain-English code comments.
+
+## Step 38 (epic8-story5): calling the real stages, and telling a reader the command exists
+
+**In plain terms:** the worked chain still hand-typed everything downstream of `ingest`/`score`,
+even though Story 8.2 had already lifted this exact script's own sequence into `src/`. Calling the
+real stages in place of the hand-rolled equivalent should reproduce the same output; running it
+found two places it doesn't, and both are named below. Nothing in `CHANGELOG.md` yet told a reader
+the `score` command exists at all.
+
+**What:** `scripts/worked-example-target.ts` now authors a real `IsolationManifest`,
+`EvaluatorConfiguration`, and `PreflightVerdict` alongside the existing contract, probe, and run
+record, and calls `ingest()` then `score()` in place of the old hand-rolled oracle loop, AD-7
+reduction, and ladder resolution. `emit()` now takes real values for its `fixtureDigest` and
+`evaluatorConfigurationDigest` arguments, two of the four placeholders it used to be handed. The
+per-step selection map and the witness match stay computed directly in the
+script, since `score()`'s own product carries neither and `WorkedExampleChain` still publishes both.
+`CHANGELOG.md` gains the `score` command's full flag set, its seven exit codes, and `runScore`'s
+export.
+
+**Why:** `score()` was built by lifting this file's own prior logic, so the two should agree by
+construction. They do, with two named exceptions: `systemRecommendationNote` moves from an authored
+sentence to `null`, since no declared input carries authored prose for that field once a shipped
+stage owns it; and `evaluatorConfigurationDigest` moves from a placeholder to the real digest of the
+authored configuration, since `ingest` now recomputes and compares it for real.
+
+**Read in this order:**
+
+1. `scripts/worked-example-target.ts`: the three new authored inputs, then `buildWorkedExampleChain`'s
+   shortened body -- the qualification gate and the selection/witness prologue stay, the whole oracle
+   loop through `emit` collapses into three calls.
+2. `_bmad-output/planning-artifacts/architecture/architecture-eval-quality-2026-07-29/spike-worked-example/sealed-run-record.json`
+   and `evidence-artifact.json`: the two files that actually moved -- three lines between them,
+   since `evaluatorConfigurationDigest` moving pulls `scoringVersion` with it.
+3. `CHANGELOG.md`'s `[Unreleased]` → `### Added`: the `score` command's disclosure.
+4. `scripts/dev-corpus-target.ts`: the corrected "What is absent, and why" prose.
+
+```mermaid
+flowchart TD
+  AUTH["authored: contract, probe, record,<br/>manifest, configuration, preflight verdict"]
+  INGEST["ingest(record, manifest, configuration)"]
+  SCORE["score(contract, [validated], probe,<br/>preflightVerdict, policy, 'none', false)"]
+  EMIT["emit(scored, corpusDigest,<br/>preflightVerdict.fixtureDigest, evaluatorConfigurationDigest)"]
+  FILES["5 generated files"]
+
+  AUTH --> INGEST --> SCORE --> EMIT --> FILES
+```
+
+**Story:** `_bmad-output/implementation-artifacts/8-5-the-worked-chain-through-the-shipped-stages-and-the-release-disclosure.md`
+
+### Reference
+
+**Rules:**
+
+- Calling a stage that was lifted from a script's own prior logic is the way to prove the lift was
+  faithful: a byte that moves is real information about where it diverged.
+- Two things `WorkedExampleChain` publishes that `score()`'s own product does not -- the per-step
+  selection map, the witness match -- stay computed directly in the script, calling the same shipped
+  functions `score()` calls internally. That keeps both values owed item 7 clean.
+- `waiver`, `evaluationFault`, and the corpus digest stay caller-supplied literals even after the
+  switch to shipped stages, because no declared input or authored artifact carries a source for any
+  of the three -- the same gap `runScore` closes the identical way.
+- A pre-flight verdict's `fixtureDigest` is where `emit`'s own fixture-digest argument comes from
+  now.
+
+**Watch out:**
+
+- A spec can assert a fact about the published surface (here, that a result type was already
+  exported from the library barrel) that build time finds is not true yet. The fix is to make the
+  assertion true.
+- A test asserting on a doc's exact stale wording stops being a regression guard once the wording it
+  pins is the thing being corrected. Updating the assertion to the corrected wording is what keeps
+  the test meaningful.

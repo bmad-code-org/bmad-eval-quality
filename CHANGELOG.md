@@ -27,6 +27,15 @@ body.
   together, and `captured-channel-undeclared`, for a captured pointer naming any channel but
   `response-body`. The registry's move from 21 entries to 23 is itself a break for an exhaustive
   match; see **Changed** below.
+- **The `score` command, an addition to `0.2.0`'s surface rather than a break.** `eval-quality score`
+  runs `ingest` → `score` → `emit` over a sealed run record and mints an `EvidenceArtifact`. Required
+  flags: `--record`, `--contract`, `--probe`, `--preflight-verdict`, `--policy`, `--corpus-digest`.
+  Optional: `--isolation-manifest`, `--evaluator-configuration`, `--private-manifest`,
+  `--corpus-root`, `--out`, `--strict`. It exits **0, 1, 2, 3, 4, 5,** or **64**: the ladder's own
+  0/2/3, `1` when `--strict` promotes a CONCERNS, `4` on a structural failure and `5` on a runtime
+  fault (both reachable the same way every other command's catch block reaches them), and `64` on a
+  usage error. `runScore` (`RunScoreOptions`/`RunScoreResult`) is exported alongside it from
+  `eval-quality`'s library surface.
 
 ### Changed
 

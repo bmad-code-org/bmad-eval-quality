@@ -25,13 +25,18 @@ contract's strength is a separate thing this package does not ship.
 **The qualified-probe dimensions are absent.** AD-38 asks for at least one qualified probe per
 probe class and per `expectedClean` state. The probe schema now carries both halves qualification
 needs: AD-9's per-route qualification record and AD-40's machine-readable defect signature, with a
-corpus gate that admits a probe only when the two agree with its class. What is still missing is the
-trial reducer, which Owed item 1 records as not yet built, so a probe cannot yet be scored once
-admitted. The dimension arrives with the stage that adds it.
+corpus gate that admits a probe only when the two agree with its class. The trial reducer and the
+score stage that reads it are both shipped, so an admitted probe can be scored end to end today;
+what is still missing is this directory's own gate widening to require at least one such probe. The
+dimension arrives with the change that adds that gate.
 
-**Three of the four artifacts in AD-38's end-to-end example are absent.** The example there is a
-sealed brief, a conforming sealed run record, an isolation manifest, and an evaluator
-configuration. The last three are produced by ingest, which does not exist yet, and Owed item 7
-forbids hand-filling downstream values: the chain must be regenerated from the reference reducer
-once that reducer exists. So this directory ships the compile-and-seal pair under a name that does
-not claim AD-38's term.
+**Three of the four artifacts in AD-38's end-to-end example are absent here.** The example there is
+a sealed brief, a conforming sealed run record, an isolation manifest, and an evaluator
+configuration. The last three are inputs the shipped `ingest` stage consumes, authored for the
+worked example in `scripts/worked-example-target.ts` and exercised there through
+`ingest`/`score`/`emit`. Only the run record among them is committed, as
+`spike-worked-example/sealed-run-record.json`; the isolation manifest and the evaluator
+configuration exist only as the authored values that build passes to `ingest`, never serialized to
+a file. This directory still ships only the compile-and-seal pair, scoped to what a corpus of
+contracts needs,
+under a name that does not claim AD-38's term.
