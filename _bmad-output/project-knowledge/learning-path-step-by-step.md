@@ -77,6 +77,8 @@ flowchart TD
 |   34 | epic8-story1 | The first stage that reads three artifacts at once and writes down every way they disagree, without throwing. |
 |   35 | epic8-story2 | The stage that runs every reference function from the last epic together, over a whole trial set instead of one run. |
 |   36 | epic8-story3 | The stage that mints the evidence artifact, replacing the one hand-assembled copy that used to be the only one. |
+|   37 | epic8-story4 | One command and one library call that reach the three stages, so a caller outside a test gets an evidence artifact back. |
+|   38 | epic8-story5 | The worked example calls the shipped stages for the values it used to hand-type, and the changelog tells a reader the command exists. |
 
 Adding a step: follow `learning-path-template.md`.
 
