@@ -10,6 +10,8 @@ body.
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-09-04
+
 ### Added
 
 - The `ingest` stage at `src/core/ingest/`, which turns a caller's sealed run record, isolation
