@@ -1,6 +1,6 @@
 {
   "name": "eval-quality",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Compile disciplined Behavioral Evaluation Contracts and score their ability to catch known defects.",
   "author": "Murat Ozcan",
   "license": "Apache-2.0",
