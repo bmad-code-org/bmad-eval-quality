@@ -673,8 +673,9 @@ tags the release commit, and creates the GitHub Release from the <code>[X.Y.Z]</
 moves them. An empty <code>[Unreleased]</code> makes the stamp a no-op and the GitHub Release falls back to
 generated notes.</p>
 <p>Re-dispatching after a partial failure is the recovery path: publish is skipped once npm has the
-version, the tag once it points at the release commit, the GitHub Release once it exists. Dispatch
-again with the same <code>bump</code>, or with <code>bump=none</code> once the bump commit is already on <code>main</code>. Runs are
+version, the tag once it points at the release commit, the GitHub Release once it exists. Once the
+bump commit is on <code>main</code>, dispatch again with <code>bump=none</code>; re-dispatching with the same <code>bump</code>
+computes the next version from the one already there and cuts a second, unwanted bump. Runs are
 serialized (<code>concurrency: publish</code>, no cancellation).</p>
 <h3 id="fallback-bump-on-a-laptop-publish-separately">Fallback: bump on a laptop, publish separately<a class="heading-anchor" href="#fallback-bump-on-a-laptop-publish-separately" aria-label="Link to Fallback: bump on a laptop, publish separately">#</a></h3>
 <p>Two steps with a human merge in between: the flow before the one-step path existed, and the
@@ -724,7 +725,10 @@ EVAL_QUALITY_PUBLISH_AUTHORIZED=true NODE_AUTH_TOKEN=&lt;token&gt; npm publish -
 <li><p>Revoke the token.</p>
 </li>
 <li><p>Configure the Trusted Publisher: organization <code>bmad-code-org</code>, repository <code>bmad-eval-quality</code>,
-workflow filename <code>publish.yml</code>, no environment.</p>
+workflow filename <code>publish.yml</code>, no environment. npm defaults a Trusted Publisher created on or
+after 2026-09-03 to staged publishing only; <code>publish.yml</code> runs <code>npm publish --provenance</code>
+directly, so also grant this configuration the direct-publish permission, or npm rejects that
+publish on the registry side with the workflow otherwise correct.</p>
 </li>
 <li><p>Run the publish workflow from <code>main</code> with <code>bump: none</code>. It finds the version on npm with a
 matching <code>gitHead</code>, skips the publish, and does the tag and Release.</p>

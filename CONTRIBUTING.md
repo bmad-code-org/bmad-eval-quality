@@ -131,8 +131,9 @@ moves them. An empty `[Unreleased]` makes the stamp a no-op and the GitHub Relea
 generated notes.
 
 Re-dispatching after a partial failure is the recovery path: publish is skipped once npm has the
-version, the tag once it points at the release commit, the GitHub Release once it exists. Dispatch
-again with the same `bump`, or with `bump=none` once the bump commit is already on `main`. Runs are
+version, the tag once it points at the release commit, the GitHub Release once it exists. Once the
+bump commit is on `main`, dispatch again with `bump=none`; re-dispatching with the same `bump`
+computes the next version from the one already there and cuts a second, unwanted bump. Runs are
 serialized (`concurrency: publish`, no cancellation).
 
 ### Fallback: bump on a laptop, publish separately
@@ -195,7 +196,10 @@ by hand:
    No `--provenance`: attestations need a CI identity. Every later release gets one.
 4. Revoke the token.
 5. Configure the Trusted Publisher: organization `bmad-code-org`, repository `bmad-eval-quality`,
-   workflow filename `publish.yml`, no environment.
+   workflow filename `publish.yml`, no environment. npm defaults a Trusted Publisher created on or
+   after 2026-09-03 to staged publishing only; `publish.yml` runs `npm publish --provenance`
+   directly, so also grant this configuration the direct-publish permission, or npm rejects that
+   publish on the registry side with the workflow otherwise correct.
 6. Run the publish workflow from `main` with `bump: none`. It finds the version on npm with a
    matching `gitHead`, skips the publish, and does the tag and Release.
 

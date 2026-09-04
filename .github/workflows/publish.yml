@@ -90,14 +90,14 @@ jobs:
             exit 1
           fi
 
-      # persist-credentials (the default) leaves GITHUB_TOKEN in the checkout's remote, which is
-      # what authorizes the release commit's push to main below. That push lands because the
-      # `protect-main` ruleset requires no status check (CONTRIBUTING.md, Releasing); a bump push
-      # here is refused if a required check is ever added back without an automation path for it.
+      # persist-credentials: false so GITHUB_TOKEN is not sitting in the checkout's remote while
+      # `npm ci` below runs third-party install scripts. The token goes back in, scoped to the
+      # remote URL only, right after `npm ci` and before anything that pushes.
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Setup Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
@@ -115,10 +115,16 @@ jobs:
       - name: Install dependencies
         run: npm ci --no-audit --no-fund
 
-      - name: Configure git identity
+      # The release commit and the tag both push below; this is the one place GITHUB_TOKEN goes
+      # back into the checkout, past the `npm ci` install-script step that persist-credentials:
+      # false above was keeping it away from. That push still lands only because the
+      # `protect-main` ruleset requires no status check (CONTRIBUTING.md, Releasing); a bump push
+      # here is refused if a required check is ever added back without an automation path for it.
+      - name: Configure git for the release push
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git"
 
       # Before the bump on purpose: a red main gets no release commit. The bump changes the four
       # stamped files only, and release-prepare refuses unless VERSION already matches the manifest,
