@@ -105,8 +105,11 @@
     "docs:build": "node tools/build-docs.mjs",
     "docs:preview": "npm --prefix website run preview",
     "docs:validate-links": "node tools/validate-doc-links.js",
+    "release:patch": "gh workflow run publish.yml --ref main -f bump=patch",
+    "release:minor": "gh workflow run publish.yml --ref main -f bump=minor",
+    "release:major": "gh workflow run publish.yml --ref main -f bump=major",
     "release:prepare": "node scripts/release-prepare.mjs",
-    "release:publish": "gh workflow run publish.yml --ref main",
+    "release:publish": "gh workflow run publish.yml --ref main -f bump=none",
     "validate": "npm run build && npm run typecheck && npm run lint && npm run check:docs && npm run check:doc-invocations && npm run check:shareable && npm run lint:spine && npm run check:vectors && npm run check:schemas && npm run check:ad5-registry && npm run check:ad28-registry && npm run check:ad31-table && npm run check:ad33-table && npm run check:ad21-table && npm run check:layers && npm run check:lineage && npm run check:boundary && npm run check:corpus && npm run check:worked-example && npm run check:website-deps && npm run test:coverage",
     "prepack": "npm run clean && npm run build",
     "prepublishOnly": "node scripts/assert-publish-authorized.mjs"

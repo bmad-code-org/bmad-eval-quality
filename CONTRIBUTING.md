@@ -94,13 +94,54 @@ All PRs require at least one maintainer review before merge. CI must be green.
 
 ## Releasing
 
-A release is two steps with a human merge in between. The version is decided on a laptop and lands
-on `main` through an ordinary PR; the publish workflow then publishes whatever version `main`
-declares. Nothing in CI bumps a version or pushes to a branch, because the `protect-main` ruleset
-makes that impossible: a PR opened with `GITHUB_TOKEN` never triggers `pr-gate.yml`, so the
-required `gate` check never posts and the PR never merges.
+`npm run release:patch` (or `release:minor`, `release:major`) picks the bump and dispatches
+`publish.yml` from `main`, which bumps the version, stamps the changelog, commits, tags, and
+publishes in one run. The workflow pushes the release commit to `main` with its own
+`GITHUB_TOKEN`, which lands because the `protect-main` ruleset requires no status check; `gate`
+still runs and reports on every pull request without blocking a merge. If `gate` is ever made
+required again, use the two-step fallback below instead: bump on a laptop, merge the PR, publish
+with `bump=none`.
 
-### 1. Cut the release PR
+### One-step: bump and publish together
+
+From any checkout:
+
+```bash
+npm run release:patch      # or release:minor, release:major
+```
+
+This dispatches `publish.yml` on `main` with the matching `bump` input. The run:
+
+1. fails at the AD-18 guard unless the repository variable `PUBLICATION_UNBLOCKED` is `true`;
+2. checks out `main`, runs `npm run validate`, then `node scripts/release-prepare.mjs <bump>
+   --on-main`: bumps `package.json` and `package-lock.json` (`npm version --no-git-tag-version`),
+   stamps `VERSION` in `src/index.ts`, moves `[Unreleased]` in `CHANGELOG.md` into a dated
+   `[X.Y.Z]` section (`scripts/stamp-changelog.mjs`), and commits `chore: release vX.Y.Z [skip ci]`
+   straight onto `main`, pushed with `GITHUB_TOKEN`. `[skip ci]` keeps that push from starting
+   `pr-checks.yml` and the other push-triggered workflows on a commit this run already validated
+   and owns;
+3. resolves the release state from that commit (`git rev-parse HEAD`; `github.sha` is the pre-bump
+   commit once a bump happened) and refuses if the tag or npm version already exists at a different
+   commit;
+4. builds, publishes to npm with `--provenance` through the Trusted Publisher (OIDC, no token),
+   tags the release commit, and creates the GitHub Release from the `[X.Y.Z]` CHANGELOG section.
+
+Write changelog entries under `[Unreleased]` in the PR that makes the change; the release run only
+moves them. An empty `[Unreleased]` makes the stamp a no-op and the GitHub Release falls back to
+generated notes.
+
+Re-dispatching after a partial failure is the recovery path: publish is skipped once npm has the
+version, the tag once it points at the release commit, the GitHub Release once it exists. Once the
+bump commit is on `main`, dispatch again with `bump=none`; re-dispatching with the same `bump`
+computes the next version from the one already there and cuts a second, unwanted bump. Runs are
+serialized (`concurrency: publish`, no cancellation).
+
+### Fallback: bump on a laptop, publish separately
+
+Two steps with a human merge in between: the flow before the one-step path existed, and the
+fallback if `gate` is ever made required again.
+
+#### 1. Cut the release PR
 
 From a clean checkout of `main` that matches `origin/main`:
 
@@ -115,39 +156,19 @@ opens the PR against `main`. It refuses on a dirty tree, off `main`, when local 
 `origin/main`, and when the tag, the branch, or the npm version already exists. Pass `--no-pr` to
 push without opening the PR.
 
-Write changelog entries under `[Unreleased]` in the PR that makes the change, so the release PR
-only moves them. If `[Unreleased]` is empty at release time the stamp is a no-op and the GitHub
-Release falls back to generated notes.
-
 Review the PR, wait for `gate`, merge it. Every merge here is a squash, so the release commit on
 `main` is the squash commit, and that is what gets tagged.
 
-### 2. Publish from main
+#### 2. Publish from main
 
 ```bash
-npm run release:publish             # gh workflow run publish.yml --ref main
+npm run release:publish             # gh workflow run publish.yml --ref main -f bump=none
 ```
 
-or Actions > Publish Package > Run workflow, branch `main`. The workflow takes no inputs. It:
-
-1. fails at the AD-18 guard unless the repository variable `PUBLICATION_UNBLOCKED` is `true`;
-2. checks out `main`, pins npm, audits lockfile age, runs `npm ci`;
-3. reads the version from `package.json` and resolves what already happened: refuses if tag
-   `vX.Y.Z` exists at a different commit, or if npm already has `X.Y.Z` published from a different
-   commit (`gitHead` on the registry manifest);
-4. runs `npm run validate` and `npm run build`;
-5. `npm publish --access public --provenance --tag latest` through the npm Trusted Publisher
-   (OIDC, no token), skipped when npm already has the version;
-6. polls the registry for up to two minutes until the version resolves;
-7. tags `github.sha` as `vX.Y.Z` (no `-f`), skipped when the tag already points there;
-8. creates the GitHub Release with the `[X.Y.Z]` section of `CHANGELOG.md` as the body, falling
-   back to `[Unreleased]`, then to generated notes; skipped when the Release exists.
-
-Re-running the workflow after a partial failure is the recovery path. The registry can accept a
-tarball and then fail the provenance upload, or the tag push can fail after the publish succeeded;
-each step above checks its own prior success, so a re-run finishes the release instead of dying on
-"tag already exists" or "cannot publish over existing version". Runs are serialized
-(`concurrency: publish`, no cancellation).
+or Actions > Publish Package > Run workflow, branch `main`, `bump: none`. With `bump=none` the run
+skips straight to publishing the version `main` already declares: pins npm, audits lockfile age,
+runs `npm ci` and `npm run validate` and `npm run build`, then publishes, tags, and creates the
+Release exactly as described in the one-step path above, steps 3 and 4.
 
 ### First publish
 
@@ -175,9 +196,12 @@ by hand:
    No `--provenance`: attestations need a CI identity. Every later release gets one.
 4. Revoke the token.
 5. Configure the Trusted Publisher: organization `bmad-code-org`, repository `bmad-eval-quality`,
-   workflow filename `publish.yml`, no environment.
-6. Run the publish workflow from `main`. It finds the version on npm with a matching `gitHead`,
-   skips the publish, and does the tag and Release.
+   workflow filename `publish.yml`, no environment. npm defaults a Trusted Publisher created on or
+   after 2026-09-03 to staged publishing only; `publish.yml` runs `npm publish --provenance`
+   directly, so also grant this configuration the direct-publish permission, or npm rejects that
+   publish on the registry side with the workflow otherwise correct.
+6. Run the publish workflow from `main` with `bump: none`. It finds the version on npm with a
+   matching `gitHead`, skips the publish, and does the tag and Release.
 
 ### Tag protection
 

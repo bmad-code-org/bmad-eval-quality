@@ -1,24 +1,34 @@
 #!/usr/bin/env node
-// Cuts a release branch from a laptop: bumps the version, stamps CHANGELOG.md, commits on
-// `release/vX.Y.Z`, pushes, and opens the PR against main. The PR clears `gate` like any other and
-// a human merges it; publish.yml then publishes whatever version main declares.
+// Cuts a release: bumps the version, stamps `src/index.ts` and CHANGELOG.md, commits, pushes.
 //
-// This used to happen inside publish.yml. Under the `protect-main` ruleset it cannot: a PR opened
-// with GITHUB_TOKEN never triggers pr-gate.yml, so `gate` never posts and the PR never merges.
+// Two modes, one commit shape.
+//
+// Default, from a laptop: the commit lands on `release/vX.Y.Z`, the branch is pushed, and a PR
+// against main is opened for a human to review and merge; then publish.yml with `bump=none`
+// publishes the version main declares.
+//
+// `--on-main`, from publish.yml: the commit lands on main and is pushed there, so the run that
+// made it can publish it. The push uses the job's own GITHUB_TOKEN; it lands because the
+// `protect-main` ruleset requires no status check. `[skip ci]` keeps the push from starting
+// push-triggered workflows on a commit the release run already owns.
 //
 // Every check runs before anything is written, so a refusal leaves the tree exactly as found.
 //
 // Usage:
 //   npm run release:prepare -- patch|minor|major [--no-pr]
+//   node scripts/release-prepare.mjs patch|minor|major --on-main
 //
 // --no-pr pushes the branch and prints the `gh pr create` command instead of running it.
 
-import { execFileSync } from 'node:child_process'
+import { execFileSync, spawnSync } from 'node:child_process'
 import { readFileSync, writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 const PACKAGE = 'eval-quality'
 const BUMPS = new Set(['patch', 'minor', 'major'])
+const USAGE =
+	'usage: npm run release:prepare -- patch|minor|major [--no-pr | --on-main]'
 
 function git(...args) {
 	return execFileSync('git', args, { encoding: 'utf8' }).trim()
@@ -34,14 +44,16 @@ function fail(message) {
 }
 
 function parseArgs(argv) {
-	const args = { bump: null, pr: true }
+	const args = { bump: null, pr: true, onMain: false }
 	for (const arg of argv) {
 		if (arg === '--no-pr') args.pr = false
+		else if (arg === '--on-main') args.onMain = true
 		else if (BUMPS.has(arg) && args.bump === null) args.bump = arg
-		else fail(`unknown argument: ${arg}`)
+		else fail(`unknown argument: ${arg}\n${USAGE}`)
 	}
-	if (!args.bump)
-		fail('usage: npm run release:prepare -- patch|minor|major [--no-pr]')
+	if (!args.bump) fail(USAGE)
+	if (args.onMain && !args.pr)
+		fail(`--no-pr has no meaning with --on-main\n${USAGE}`)
 	return args
 }
 
@@ -67,21 +79,38 @@ function remoteRefExists(ref) {
 	}
 }
 
+// E404 is the one failure that means "not published". A registry that is down, a name someone
+// else holds, or output that does not parse are all refused.
+//
+// `--json` makes that read independent of npm's own ambient config. npm always writes its
+// `--json` result to stdout as parseable JSON, on success or on failure, even under
+// `npm_config_loglevel=silent`, which every `npm run --silent` also sets in this script's own
+// child processes, and which used to blank the plain stderr this function once regex-matched for
+// E404.
 function npmHasVersion(version) {
-	try {
-		const out = execFileSync(
-			'npm',
-			['view', `${PACKAGE}@${version}`, 'version'],
-			{ encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] },
-		).trim()
-		return out === version
-	} catch {
-		// E404: the package or the version does not exist on the registry.
+	const spec = `${PACKAGE}@${version}`
+	const result = spawnSync('npm', ['view', spec, 'version', '--json'], {
+		encoding: 'utf8',
+		stdio: ['ignore', 'pipe', 'pipe'],
+	})
+	const body = parseNpmJson(result.stdout)
+	if (result.status === 0) return body === version
+	if (body && typeof body === 'object' && body.error?.code === 'E404')
 		return false
+	fail(
+		`npm view ${spec} failed:\n${body?.error?.summary ?? result.stderr.trim()}`,
+	)
+}
+
+function parseNpmJson(text) {
+	try {
+		return text.trim() ? JSON.parse(text) : null
+	} catch {
+		return null
 	}
 }
 
-function preflight(bump) {
+function preflight({ bump, onMain }) {
 	const branch = git('rev-parse', '--abbrev-ref', 'HEAD')
 	if (branch !== 'main') fail(`must run from main, currently on ${branch}`)
 	if (git('status', '--porcelain') !== '') fail('working tree is not clean')
@@ -104,7 +133,7 @@ function preflight(bump) {
 
 	if (remoteRefExists(`refs/tags/${tag}`))
 		fail(`tag ${tag} already exists on origin`)
-	if (remoteRefExists(`refs/heads/${releaseBranch}`)) {
+	if (!onMain && remoteRefExists(`refs/heads/${releaseBranch}`)) {
 		fail(
 			`branch ${releaseBranch} already exists on origin; merge or delete it first`,
 		)
@@ -115,6 +144,9 @@ function preflight(bump) {
 }
 
 const BARREL = 'src/index.ts'
+const STAMP_CHANGELOG = fileURLToPath(
+	new URL('./stamp-changelog.mjs', import.meta.url),
+)
 
 /**
  * `src/index.ts` publishes the version as a constant, so bumping the manifest
@@ -134,18 +166,46 @@ function stampBarrelVersion(current, version) {
 	)
 }
 
+function pushMain(tag) {
+	try {
+		run('git', ['push', 'origin', 'main'])
+	} catch {
+		fail(
+			[
+				`origin rejected the push of ${tag} to main.`,
+				'The protect-main ruleset lets this push through only because it requires no status check.',
+				'Check the protect-main ruleset (CONTRIBUTING.md, Releasing) if that changed.',
+				'The commit is local only; nothing on origin changed.',
+			].join('\n'),
+		)
+	}
+}
+
 function main() {
 	const args = parseArgs(process.argv.slice(2))
-	const { current, version, tag, releaseBranch } = preflight(args.bump)
-	console.log(`release-prepare: ${current} -> ${version} on ${releaseBranch}`)
+	const { current, version, tag, releaseBranch } = preflight(args)
+	const target = args.onMain ? 'main' : releaseBranch
+	console.log(`release-prepare: ${current} -> ${version} on ${target}`)
 
 	run('npm', ['version', version, '--no-git-tag-version'])
 	stampBarrelVersion(current, version)
-	run(process.execPath, [resolve('scripts/stamp-changelog.mjs')])
+	run(process.execPath, [STAMP_CHANGELOG])
 
-	git('checkout', '-b', releaseBranch)
+	if (!args.onMain) git('checkout', '-b', releaseBranch)
 	git('add', 'package.json', 'package-lock.json', 'CHANGELOG.md', BARREL)
-	git('commit', '--quiet', '-m', `chore: release ${tag}`)
+	const subject = args.onMain
+		? `chore: release ${tag} [skip ci]`
+		: `chore: release ${tag}`
+	git('commit', '--quiet', '-m', subject)
+
+	if (args.onMain) {
+		pushMain(tag)
+		console.log(
+			`release-prepare: ${tag} is on main at ${git('rev-parse', 'HEAD')}`,
+		)
+		return
+	}
+
 	run('git', ['push', '--set-upstream', 'origin', releaseBranch])
 
 	const prArgs = [
@@ -158,7 +218,7 @@ function main() {
 		'--title',
 		`chore: release ${tag}`,
 		'--body',
-		`Bumps the version to ${version} and stamps CHANGELOG.md. Merge, then run the Publish Package workflow from main.`,
+		`Bumps the version to ${version} and stamps CHANGELOG.md. Merge, then run \`npm run release:publish\`.`,
 	]
 	if (!args.pr) {
 		console.log(
