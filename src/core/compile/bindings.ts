@@ -17,6 +17,7 @@
  */
 import {
 	boundChannelsOf,
+	descriptorArtifactOf,
 	descriptorChannelOf,
 	requestShapeOf,
 } from '../declared-inputs.ts'
@@ -237,7 +238,15 @@ export function checkCapturedChannel(contract: EvalContract): void {
 				operation === undefined
 					? 'response-body'
 					: descriptorChannelOf(operation)
-			if (capture.target.channel === capturable) continue
+			// On the artifact channel the channel name is not the whole answer:
+			// an operation may declare several files and its one descriptor
+			// describes one of them, so a capture from a different file would
+			// be typed against a descriptor that does not describe it.
+			const describesThisOne =
+				capturable !== 'artifact' ||
+				(operation !== undefined &&
+					capture.target.artifactId === descriptorArtifactOf(operation))
+			if (capture.target.channel === capturable && describesThisOne) continue
 			throw new StructuralFailure(
 				'captured-channel-undeclared',
 				bindingPath(step, capture),
@@ -392,6 +401,16 @@ export function checkCapturedReachability(contract: EvalContract): void {
 				)
 			}
 			if (capture.target.channel !== descriptorChannelOf(operation)) continue
+			// The same qualification `checkCapturedChannel` makes: a capture
+			// from a declared file the descriptor does not describe has no
+			// declared type, and typing it against the wrong descriptor is the
+			// error this skip avoids.
+			if (
+				capture.target.channel === 'artifact' &&
+				capture.target.artifactId !== descriptorArtifactOf(operation)
+			) {
+				continue
+			}
 			const reachability = evaluatePointerReachability(capture.pointer, index)
 			if (!reachability.reachable) {
 				throw new StructuralFailure(

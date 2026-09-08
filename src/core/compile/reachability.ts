@@ -381,12 +381,16 @@ function evaluateReachabilityAgainstOperation(
 			// Unreachable: parseEvidenceTarget's own guarantee.
 			throw new TypeError('artifact evidence target names no artifact')
 		}
-		// A name the operation does not declare is an authoring fault with its
-		// own code, reported by `checkArtifactReferences` at that code's own
-		// rung. Saying nothing here keeps the two codes from racing on one
-		// pointer.
+		// An identifier the operation does not declare produces no evidence, so
+		// it is unreachable and this says so. `checkArtifactReferences` runs
+		// earlier in `compile` and reports the more specific
+		// `unresolved-artifact-reference` for a contract, so the two never race
+		// there; this answer is the only one on the probe side, where that check
+		// does not run because it walks a contract rather than a signature.
 		if (!declaredArtifactsOf(operation).includes(artifactId)) {
-			return reachable()
+			return unreachable(
+				`names the "${artifactId}" artifact, which operation "${operation.operationId}" does not declare it writes`,
+			)
 		}
 		if (artifactId !== descriptorArtifactOf(operation)) {
 			// Declared to exist, and nothing declares its structure: the

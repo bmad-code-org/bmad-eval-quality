@@ -7,6 +7,7 @@
 // as a `response-body` pointer does off an interface that speaks HTTP.
 
 import { describe, expect, it } from 'vitest'
+import { compile } from '../../src/core/compile/compile.ts'
 import { checkArtifactReferences } from '../../src/core/compile/interface-inventory.ts'
 import { evaluatePointerReachability } from '../../src/core/compile/reachability.ts'
 import { StructuralFailure } from '../../src/core/failure-codes.ts'
@@ -211,5 +212,89 @@ describe('unresolved-artifact-reference', () => {
 		expect(() =>
 			checkArtifactReferences(EvalContract.parse(artifactCommandContract)),
 		).not.toThrow()
+	})
+})
+
+describe('an artifact identifier nothing declares', () => {
+	const artifactIndex = indexOf(artifactCommandContract)
+
+	// Reachability answers rather than abstaining, because it is the only
+	// answer on the probe side: `checkArtifactReferences` walks a contract and
+	// never sees a defect signature's own condition.
+	it('is unreachable, so a probe condition naming one cannot pass silently', () => {
+		const result = evaluatePointerReachability(
+			'/interactions/select/artifact/transcript/fragments',
+			artifactIndex,
+		)
+		expect(result.reachable).toBe(false)
+		expect(result.reachable === false && result.reason).toContain(
+			'does not declare it writes',
+		)
+	})
+
+	// On the contract side both checks see it, and the more specific one runs
+	// first, so a reader gets the code that names the fault.
+	it('reports the coded fault rather than the reachability consequence', () => {
+		const contract = structuredClone(artifactCommandContract) as any
+		contract.oracles[0].check.operands[0].pointer =
+			'/interactions/select/artifact/transcript/fragments'
+		contract.oracles[0].direction.evidenceTargets[0] =
+			'/interactions/select/artifact/transcript/fragments'
+		let thrown: unknown
+		try {
+			compile(EvalContract.parse(contract), { strict: true })
+		} catch (error) {
+			thrown = error
+		}
+		expect(thrown).toBeInstanceOf(StructuralFailure)
+		expect((thrown as StructuralFailure).code).toBe(
+			'unresolved-artifact-reference',
+		)
+	})
+})
+
+describe('a capture from a file the descriptor does not describe', () => {
+	const capturing = (artifactId: string) => {
+		const contract = structuredClone(artifactCommandContract) as any
+		const [operation] = contract.permittedInterfaces[0].operations
+		operation.requestShape.option = {
+			requiredKeys: [],
+			permittedKeys: ['seed'],
+			types: { seed: 'string' },
+		}
+		operation.responseDescriptor.types.fragments = 'string'
+		contract.interactionPlan = [
+			contract.interactionPlan[0],
+			{
+				stepId: 'again',
+				operationId: 'select-fragments',
+				after: null,
+				cardinality: 'exactly-one',
+				inputBinding: {
+					argument: null,
+					option: {
+						seed: {
+							captured: `/interactions/select/artifact/${artifactId}/fragments`,
+						},
+					},
+					environment: null,
+					stdin: contract.interactionPlan[0].inputBinding.stdin,
+				},
+			},
+		]
+		return EvalContract.parse(contract)
+	}
+
+	it('admits a capture from the file the descriptor describes', () => {
+		expect(() => compile(capturing('verdict'), { strict: true })).not.toThrow()
+	})
+
+	// `report` is declared and its structure is not, so there is no declared
+	// type to compare a bound parameter against, and typing it against the
+	// verdict's descriptor would be the wrong answer rather than no answer.
+	it('reports a capture from the other declared file rather than typing it', () => {
+		expect(() => compile(capturing('report'), { strict: true })).toThrow(
+			/captured-channel-undeclared/,
+		)
 	})
 })
