@@ -5,8 +5,10 @@
 // families, and the citation triad that makes non-detection reachable.
 
 import { describe, expect, it } from 'vitest'
-import type { DefectSignature } from '../../src/core/schemas/defect-signature.ts'
+import { isCommandOperation } from '../../src/core/declared-inputs.ts'
+import type { ApiDefectSignature } from '../../src/core/schemas/defect-signature.ts'
 import { RuntimeFault } from '../../src/core/schemas/faults.ts'
+import type { PermittedInterface } from '../../src/core/schemas/interface.ts'
 import type { Observation } from '../../src/core/schemas/sealed-run-record.ts'
 import {
 	auditQuotation,
@@ -33,11 +35,14 @@ import {
 } from './fixtures/probe-witness.ts'
 
 const withSignature = (
-	signature: Partial<DefectSignature>,
+	signature: Partial<ApiDefectSignature>,
 	probe: SignedProbe = qualifiedProbe,
 ): SignedProbe => ({
 	...probe,
-	defectSignature: { ...probe.defectSignature, ...signature },
+	defectSignature: {
+		...(probe.defectSignature as ApiDefectSignature),
+		...signature,
+	},
 })
 
 const bothObservations = [correctRejection, defectFired]
@@ -323,7 +328,7 @@ describe('a fault leaves the function undecorated', () => {
 		expect(thrown).toBeInstanceOf(RuntimeFault)
 		expect((thrown as RuntimeFault).code).toBe('budget-exhausted')
 		expect((thrown as RuntimeFault).artifactPath).toBe(
-			'Probe[probeId=PX-001].defectSignature.condition.predicate',
+			'Probe[probeId=P-901].defectSignature.condition.predicate',
 		)
 	})
 })
@@ -421,15 +426,17 @@ describe('the selector follows the shipped binding filter', () => {
 	})
 
 	it('fails closed when the declared type is indeterminate', () => {
-		const inventory = [
+		const declared = INTERFACES[0]!.operations[0]!
+		if (isCommandOperation(declared)) throw new Error('fixture is api-shaped')
+		const inventory: PermittedInterface[] = [
 			{
 				logicalId: 'notes-api',
 				kind: 'api' as const,
 				operations: [
 					{
-						...INTERFACES[0]!.operations[0]!,
+						...declared,
 						requestShape: {
-							...INTERFACES[0]!.operations[0]!.requestShape,
+							...declared.requestShape,
 							body: {
 								requiredKeys: ['title'],
 								permittedKeys: [],
@@ -461,6 +468,10 @@ describe('the selector follows the shipped binding filter', () => {
 						query: null,
 						header: null,
 						body: { title: { matcher: 'any' } },
+						argument: null,
+						option: null,
+						environment: null,
+						stdin: null,
 					},
 				},
 				predicate: qualifiedProbe.defectSignature.condition.predicate,
@@ -485,6 +496,10 @@ describe('the selector follows the shipped binding filter', () => {
 						query: null,
 						header: null,
 						body: { other: 42 },
+						argument: null,
+						option: null,
+						environment: null,
+						stdin: null,
 					},
 				},
 			]),
@@ -502,6 +517,10 @@ describe('the selector follows the shipped binding filter', () => {
 						query: null,
 						header: null,
 						body: { title: { literal: { a: 1, b: [2, 3] } } },
+						argument: null,
+						option: null,
+						environment: null,
+						stdin: null,
 					},
 				},
 				predicate: qualifiedProbe.defectSignature.condition.predicate,
@@ -536,6 +555,10 @@ describe('the home operation binds after parameter-name erasure', () => {
 						query: null,
 						header: null,
 						body: null,
+						argument: null,
+						option: null,
+						environment: null,
+						stdin: null,
 					},
 				},
 				predicate: qualifiedProbe.defectSignature.condition.predicate,
@@ -574,7 +597,7 @@ describe('mapFindings sorts every defect finding into one of four buckets', () =
 				[defectFinding(['obs-7'], { findingId: 'F-010' })],
 			),
 		)
-		expect(map.unmapped).toEqual([{ findingId: 'F-010', probeId: 'PX-001' }])
+		expect(map.unmapped).toEqual([{ findingId: 'F-010', probeId: 'P-901' }])
 		expect(map.mapped).toEqual([])
 		const match = matchProbeWitness(
 			qualifiedProbe,
@@ -678,7 +701,7 @@ describe('mapFindings sorts every defect finding into one of four buckets', () =
 					findingType: 'confirmation',
 					findingId: 'F-014',
 					oracleId: 'O-002',
-					probeId: 'PX-001',
+					probeId: 'P-901',
 					behaviorId: 'B-001',
 					severity: 'low',
 					summary: 'The rejection held on the first call.',
@@ -688,7 +711,7 @@ describe('mapFindings sorts every defect finding into one of four buckets', () =
 				},
 			]),
 		)
-		expect(map.mapped).toEqual([{ findingId: 'F-013', probeId: 'PX-001' }])
+		expect(map.mapped).toEqual([{ findingId: 'F-013', probeId: 'P-901' }])
 		expect(map.unmapped).toEqual([])
 		expect(map.signatureless).toEqual([])
 		expect(map.dangling).toEqual([])
@@ -704,13 +727,18 @@ describe('quotation audits and never governs', () => {
 				query: null,
 				header: null,
 				body: { b: 1, a: 2 },
+				argument: null,
+				option: null,
+				environment: null,
+				stdin: null,
 			},
 			responseBody: { z: 1, a: 2 },
 			responseHeaders: { 'content-type': 'application/json' },
 			responseStatus: 500,
-			stdout: 'hello',
-			stderr: 'boom',
+			stdout: { kind: 'text', value: 'hello' },
+			stderr: { kind: 'text', value: 'boom' },
 			exitCode: -9,
+			artifacts: {},
 		})
 		const at = 'test'
 		expect(projectChannel(rich, 'stdout', at)).toBe('hello')
@@ -724,7 +752,7 @@ describe('quotation audits and never governs', () => {
 			'{"content-type":"application/json"}',
 		)
 		expect(projectChannel(rich, 'call-inputs', at)).toBe(
-			'{"body":{"a":2,"b":1},"header":null,"path":null,"query":null}',
+			'{"argument":null,"body":{"a":2,"b":1},"environment":null,"header":null,"option":null,"path":null,"query":null,"stdin":null}',
 		)
 	})
 
@@ -743,7 +771,7 @@ describe('quotation audits and never governs', () => {
 		// `call-inputs` is the one channel that always projects: its four-key
 		// shape is present even when every channel inside it is null.
 		expect(projectChannel(blank, 'call-inputs', 'test')).toBe(
-			'{"body":null,"header":null,"path":null,"query":null}',
+			'{"argument":null,"body":null,"environment":null,"header":null,"option":null,"path":null,"query":null,"stdin":null}',
 		)
 	})
 

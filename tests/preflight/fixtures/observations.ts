@@ -10,15 +10,17 @@
  * keyless mutating reset the fixture-reset branch names.
  */
 
+import { isApiOperation } from '../../../src/core/declared-inputs.ts'
 import { EvalContract } from '../../../src/core/schemas/eval-contract.ts'
 import type { Operation } from '../../../src/core/schemas/interface.ts'
+import { operationsOf } from '../../../src/core/schemas/interface.ts'
 import type {
 	ProbeObservation,
 	ProbeObservedBody,
 } from '../../../src/core/schemas/port-messages.ts'
 import type { JsonValue } from '../../../src/core/schemas/primitives.ts'
 import { Probe } from '../../../src/core/schemas/probe.ts'
-import type { WitnessInputs } from '../../../src/core/schemas/sensitivity-witness.ts'
+import type { ApiWitnessInputs } from '../../../src/core/schemas/sensitivity-witness.ts'
 
 export const jsonBody = (value: JsonValue): ProbeObservedBody => ({
 	kind: 'json',
@@ -39,8 +41,8 @@ const emptyChannel = () => ({
 })
 
 export const inputsOf = (
-	patch: Partial<WitnessInputs> = {},
-): WitnessInputs => ({
+	patch: Partial<ApiWitnessInputs> = {},
+): ApiWitnessInputs => ({
 	path: {},
 	query: {},
 	header: {},
@@ -64,7 +66,7 @@ const probeEvidenceReference = {
 const contractLiteral = {
 	// 3, the version this contract's shape satisfies, matching the other
 	// full-contract fixtures.
-	schemaVersion: 3,
+	schemaVersion: 4,
 	contractId: 'preflight-fixture',
 	parentDigest: null,
 	revisionCount: 0,
@@ -345,9 +347,13 @@ export const operationNamed = (
 	contract: EvalContract,
 	operationId: string,
 ): Operation => {
-	const found = contract.permittedInterfaces[0]?.operations.find(
-		(candidate) => candidate.operationId === operationId,
-	)
+	const declared = contract.permittedInterfaces[0]
+	const found =
+		declared === undefined
+			? undefined
+			: operationsOf(declared)
+					.filter(isApiOperation)
+					.find((candidate) => candidate.operationId === operationId)
 	if (found === undefined)
 		throw new Error(`the fixture declares no operation "${operationId}"`)
 	return found
@@ -356,7 +362,7 @@ export const operationNamed = (
 const probeCommon = {
 	// Version 2: AD-9's qualification record and AD-40's defect signature both
 	// landed as required fields.
-	schemaVersion: 2,
+	schemaVersion: 3,
 	parentDigest: null,
 	revisionCount: 0,
 	probeClass: 'defect',
@@ -408,6 +414,10 @@ export const seededProbe: Probe = Probe.parse({
 					query: { limit: { matcher: 'any' } },
 					header: null,
 					body: null,
+					argument: null,
+					option: null,
+					environment: null,
+					stdin: null,
 				},
 			},
 			predicate: {
@@ -494,6 +504,7 @@ export const observationsFor = (
 			probeId: leg.legId,
 			interfaceId: patch.interfaceId ?? leg.request.interfaceId,
 			operationId: patch.operationId ?? leg.request.operationId,
+			kind: 'api',
 			status: patch.status ?? 200,
 			headers: patch.headers ?? {},
 			body: patch.body ?? absentBody(),

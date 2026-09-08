@@ -34,6 +34,7 @@ import { evaluateCoverage } from '../coverage/coverage.ts'
 import {
 	makePointerDenotesCollection,
 	makeResolveOperand,
+	referenceSetKeysOf,
 } from '../evaluate/evidence-resolution.ts'
 import { resolveCheck } from '../evaluate/resolution.ts'
 import type { ValidatedObservations } from '../ingest/ingest.ts'
@@ -44,7 +45,7 @@ import {
 } from '../schemas/eval-contract.ts'
 import type { Outcome } from '../schemas/evidence-artifact.ts'
 import type { Expression, Operand, SetOperand } from '../schemas/expression.ts'
-import type { Operation } from '../schemas/interface.ts'
+import type { AnyOperation } from '../schemas/interface.ts'
 import type { Probe } from '../schemas/probe.ts'
 import type { ScoringPolicy } from '../schemas/scoring-policy.ts'
 import type { Observation } from '../schemas/sealed-run-record.ts'
@@ -301,6 +302,30 @@ function trialSetDisagreementsOf(
 	return disagreements
 }
 
+/**
+ * Cross-trial identifier reuse is NOT a collision, and this is where that was
+ * settled after being carried as an open question.
+ *
+ * `ingest` computes `duplicate-record-identifier` per sealed run record, since
+ * it sees one trial at a time, and nothing checks whether two DIFFERENT trials
+ * of one set reuse an observation, finding, or oracle-disposition identifier.
+ * That asymmetry looks like a gap beside `trial-set-field-disagreement`, which
+ * does compare `mode` and `evaluatorRecommendation` across trials.
+ *
+ * It is not one. A trial set is n independent evaluator runs of one contract,
+ * each producing its own record, and a harness that names its first observation
+ * `obs-1` names it that in every run. Reporting the second run for it would
+ * make a repeated run Invalid by construction, which is the opposite of what a
+ * trial set is for. The fields that ARE compared across trials are compared
+ * because they describe the SET rather than a run within it: two trials
+ * disagreeing about which mode they ran under cannot both be true of one set,
+ * while two trials both carrying `obs-1` are two true statements about two
+ * runs.
+ *
+ * The pooled basis this stage builds carries each entry with the trial it came
+ * from, so a repeated identifier is never resolved against the wrong row.
+ */
+
 /** Every `IngestCondition` of one `kind` across every trial, in trial order. */
 function conditionsAcrossTrials<
 	K extends ValidatedObservations['conditions'][number]['kind'],
@@ -352,7 +377,7 @@ export const score: ScoreStage<
 	// reads whichever bucket the probe actually lands in -- never a throw on
 	// rejection, since a rejected probe is a legitimate domain outcome the
 	// existing `unqualified-probe-in-sealed-set` condition already reports.
-	const homeOperationOf = (candidate: Probe): Operation | null =>
+	const homeOperationOf = (candidate: Probe): AnyOperation | null =>
 		candidate.expectedClean || candidate.defectSignature === null
 			? null
 			: resolveHomeOperation(
@@ -393,6 +418,9 @@ export const score: ScoreStage<
 			declaration.members,
 		]),
 	)
+	// The declared keys the members map above drops. `set-membership`'s set
+	// position reads the single declared key off each member.
+	const referenceSetKeys = referenceSetKeysOf(contract)
 
 	const judgeConduct = judgeConductOf(contract, trials)
 
@@ -493,6 +521,7 @@ export const score: ScoreStage<
 							check,
 							resolveOperand,
 							pointerDenotesCollection,
+							referenceSetKeys,
 							policy.regexMatchStepBudget,
 							`EvalContract.oracles[id=${oracle.id}].check`,
 						)

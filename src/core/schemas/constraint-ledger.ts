@@ -235,6 +235,19 @@ export const CONSTRAINT_LEDGER: readonly ConstraintLedgerEntry[] = [
 		},
 	},
 	{
+		id: 'evidence-mode-caller-attested',
+		location: { kind: 'root', artifact: 'evidence-artifact' },
+		branch: null,
+		field: 'callerAttestedInputs',
+		statement:
+			'`mode` appears in `callerAttestedInputs`. The other five scoring-version inputs may each legitimately be attested or computed, so the list admits any subset of them; `mode` cannot be, since `ScoringVersionInputs.mode` is read from the sealed run record and never re-derived, which makes omitting it a misdeclaration under AD-32 rather than a stricter integration.',
+		disposition: {
+			kind: 'not-expressible',
+			reason:
+				'A one-member `contains` would express it, and injecting one would fail the same way the observation-sequence entry describes in reverse: the mutant generator manufactures the witness trivially by dropping one array element, so a Zod refinement and an uninjected export would disagree on a corpus member this repository generates. The rule is enforced where the artifact is produced instead: `core/emit` names `mode` in `CALLER_ATTESTED_INPUTS` unconditionally, and the field description states the rule for a caller who authors the artifact by hand. This argument holds only while `emit` is the sole producer in this package.',
+		},
+	},
+	{
 		id: 'defect-signature-required',
 		location: { kind: 'root', artifact: 'probe' },
 		branch: null,

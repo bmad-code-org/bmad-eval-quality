@@ -19,7 +19,10 @@ import type { Socket } from 'node:net'
 import { runPortMethod } from '../../src/adapters/port-boundary.ts'
 import { evaluateTarget } from '../../src/core/probe/target-policy.ts'
 import { RuntimeFault } from '../../src/core/schemas/faults.ts'
-import type { ProbeRequest } from '../../src/core/schemas/port-messages.ts'
+import type {
+	ApiProbeRequest,
+	ProbeRequest,
+} from '../../src/core/schemas/port-messages.ts'
 import type {
 	ProbeTargetAuthorization,
 	ProbeTargetPolicy,
@@ -196,7 +199,7 @@ export const nodeHttpMechanism: ProbeMechanism = (hop) =>
  * channels reach nothing but the byte budget, and a body-sensitivity
  * differential would observe the same empty request as a body-free probe.
  */
-function renderRequest(parsed: ProbeRequest): {
+function renderRequest(parsed: ApiProbeRequest): {
 	readonly path: string
 	readonly headers: Record<string, string>
 	readonly body: string | undefined
@@ -264,7 +267,7 @@ export function createProbeSubjectAdapter(options: {
 
 	/** Policy first, then the hop. Every redirect target comes back through here. */
 	function validate(
-		parsed: ProbeRequest,
+		parsed: ApiProbeRequest,
 		target: SubjectTarget,
 	): {
 		readonly address: string
@@ -292,7 +295,7 @@ export function createProbeSubjectAdapter(options: {
 	}
 
 	async function runProbe(
-		parsed: ProbeRequest,
+		parsed: ApiProbeRequest,
 		signal: AbortSignal,
 		onAuthorization: (authorization: ProbeTargetAuthorization) => void,
 	): Promise<unknown> {
@@ -355,6 +358,7 @@ export function createProbeSubjectAdapter(options: {
 					probeId: parsed.probeId,
 					interfaceId: parsed.interfaceId,
 					operationId: parsed.operationId,
+					kind: 'api',
 					status: hop.status,
 					headers: flattenHeaders(hop.headers),
 					body: observedBody(hop),
@@ -395,6 +399,16 @@ export function createProbeSubjectAdapter(options: {
 				responsePath: 'ProbeObservation',
 				signal,
 				mechanism: async (parsed, innerSignal) => {
+					// This adapter speaks HTTP. AD-2 ships no network adapter at
+					// all in the package, and this one exists under `tests/` to be
+					// the conformance suite's own subject; a command request is a
+					// different mechanism entirely and is declined rather than
+					// half-served.
+					if (parsed.kind !== 'api') {
+						throw forbidden(
+							'this adapter speaks HTTP; a command request names a mechanism it does not implement',
+						)
+					}
 					// The cap gets its own controller so firing it destroys the
 					// in-flight socket. A leaked handle makes vitest hang, which is
 					// the worst failure mode here.
@@ -635,12 +649,13 @@ function subjectRequest(
 	interfaceId: string,
 	operationId: string,
 	pathTemplate: string,
-	method: ProbeRequest['method'] = 'GET',
-): ProbeRequest {
+	method: ApiProbeRequest['method'] = 'GET',
+): ApiProbeRequest {
 	return {
 		probeId: `probe-${operationId}`,
 		interfaceId,
 		operationId,
+		kind: 'api',
 		method,
 		pathTemplate,
 		channels: { path: {}, query: {}, header: {}, body: { kind: 'absent' } },
@@ -663,16 +678,16 @@ const IN_BAND_HOP = {
 export function createProbeSubject(server: {
 	readonly port: number
 }): ProbeSubject & {
-	readonly oversizeUtf8Request: ProbeRequest
-	readonly relativeRedirectRequest: ProbeRequest
-	readonly echoRequest: ProbeRequest
+	readonly oversizeUtf8Request: ApiProbeRequest
+	readonly relativeRedirectRequest: ApiProbeRequest
+	readonly echoRequest: ApiProbeRequest
 } {
 	const policy = buildSubjectPolicy(server.port)
 	const targets = buildSubjectTargets(server.port)
 	const request = (
 		operationId: string,
 		path: string,
-		method: ProbeRequest['method'] = 'GET',
+		method: ApiProbeRequest['method'] = 'GET',
 	) => subjectRequest('authorized', operationId, path, method)
 
 	const build = async (

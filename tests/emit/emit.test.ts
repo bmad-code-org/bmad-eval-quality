@@ -36,15 +36,13 @@ import type { SignedProbe } from '../../src/core/score/witness.ts'
 import { digestOf } from '../schemas/fixtures/artifact-fixtures.ts'
 import { qualifiedProbe } from '../score/fixtures/probe-witness.ts'
 
-// `qualifiedProbe`'s own `probeId` ("PX-001") is not schema-valid `ProbeId`
-// shape (`^P-[0-9]{3,}$`); no existing suite parses it through Zod, so the
-// mismatch is latent there. This module does parse through `EvidenceArtifact`
-// (the I/O Matrix's own "artifact parses" clause), so a locally
-// schema-valid override stands in rather than widening that shared fixture.
+// A distinct identifier from the shared fixture's, so the two never collide
+// in a suite that carries both. `qualifiedProbe`'s own is schema-valid
+// `ProbeId` shape now, so this is a naming choice rather than a workaround.
 const probe: SignedProbe = { ...qualifiedProbe, probeId: 'P-001' }
 
 const minimalContract: EvalContract = {
-	schemaVersion: 3,
+	schemaVersion: 4,
 	parentDigest: null,
 	revisionCount: 0,
 	contractId: 'emit-stage-contract',

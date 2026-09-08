@@ -17,13 +17,24 @@ function observation(
 		sequence,
 		operationId,
 		provenance: 'evaluator-chosen',
-		callInputs: { path: null, query: null, header: null, body: null },
+		principal: null,
+		callInputs: {
+			path: null,
+			query: null,
+			header: null,
+			body: null,
+			argument: null,
+			option: null,
+			environment: null,
+			stdin: null,
+		},
 		responseBody: null,
 		responseHeaders: null,
 		responseStatus: 200,
-		stdout: null,
-		stderr: null,
+		stdout: { kind: 'absent' },
+		stderr: { kind: 'absent' },
 		exitCode: null,
+		artifacts: {},
 	}
 }
 

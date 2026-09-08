@@ -14,6 +14,7 @@ import {
 	INVALIDATED_TRIAL_MIDDLE_VOTES,
 	INVALIDATED_TRIAL_VOTES,
 	MAJORITY_CAUGHT_VOTES,
+	MIXED_GROUP_VOTES,
 	NO_VOTES,
 	SINGLE_CAUGHT_VOTES,
 	TIE_AT_FOUR_VOTES,
@@ -318,5 +319,19 @@ describe('catchThreshold is rejected outside its declared 0..1 domain', () => {
 		expect(() => reduceTrialSet([voteOf('caught')], bypassed)).toThrow(
 			/catchThreshold/,
 		)
+	})
+})
+
+describe('the three vote groups do not interact', () => {
+	// One invalidating, one unvoted, one voted, in one set: the invalidating
+	// attempt is recorded, the unvoted trial is excluded from the denominator,
+	// and the majority is taken over the one vote that remains.
+	it('classifies each vote independently', () => {
+		const result = reduceTrialSet(MIXED_GROUP_VOTES, 0.5)
+		expect(result.validCount).toBe(1)
+		expect(result.caughtCount).toBe(1)
+		expect(result.exercised).toBe(true)
+		expect(result.caught).toBe(true)
+		expect(result.invalidatedAttempts).toHaveLength(1)
 	})
 })

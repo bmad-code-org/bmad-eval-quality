@@ -706,95 +706,220 @@
         "defectSignature": {
           "anyOf": [
             {
-              "type": "object",
-              "properties": {
-                "interfaceKind": {
-                  "type": "string",
-                  "enum": [
-                    "api",
-                    "web",
-                    "cli",
-                    "mcp"
-                  ],
-                  "description": "The interface the seeded defect lives behind. All four kinds parse so `unsupported-interface-kind` stays fireable contract-side, and the qualification gate rejects every kind but `api`: `Operation` carries no interface kind and requires a method and a path template with no per-kind variation, so a `cli` or `mcp` signature would declare a meaningless `POST /path`."
-                },
-                "method": {
-                  "type": "string",
-                  "enum": [
-                    "GET",
-                    "HEAD",
-                    "POST",
-                    "PUT",
-                    "PATCH",
-                    "DELETE",
-                    "OPTIONS"
-                  ]
-                },
-                "pathTemplate": {
-                  "type": "string",
-                  "pattern": "^(?:\\/(?:[^/{}:]|\\{[A-Za-z0-9_-]+\\})*)+$",
-                  "description": "A path template whose parameters are spelled `{name}` in braces. The `:name` spelling is rejected: AD-40 resolves a defect signature by comparing method and path template, and that comparison is not implementable against an unstated syntax."
-                },
-                "observableChannel": {
-                  "description": "AD-26's channel the seeded defect manifests in. The qualification gate reads it: a condition passes only if its pointers name this channel, or name two channels with at least one response-side member. That rule exists to reject a condition collapsing to \"the evidence contains the string I sent\", which is satisfied by a finding that merely echoes its own input.",
-                  "$ref": "#/$defs/EvidenceChannel"
-                },
-                "condition": {
+              "anyOf": [
+                {
                   "type": "object",
                   "properties": {
-                    "selector": {
+                    "interfaceKind": {
+                      "type": "string",
+                      "enum": [
+                        "api",
+                        "web",
+                        "mcp"
+                      ]
+                    },
+                    "method": {
+                      "type": "string",
+                      "enum": [
+                        "GET",
+                        "HEAD",
+                        "POST",
+                        "PUT",
+                        "PATCH",
+                        "DELETE",
+                        "OPTIONS"
+                      ]
+                    },
+                    "pathTemplate": {
+                      "type": "string",
+                      "pattern": "^(?:\\/(?:[^/{}:]|\\{[A-Za-z0-9_-]+\\})*)+$",
+                      "description": "A path template whose parameters are spelled `{name}` in braces. The `:name` spelling is rejected: AD-40 resolves a defect signature by comparing method and path template, and that comparison is not implementable against an unstated syntax."
+                    },
+                    "observableChannel": {
+                      "description": "AD-26's channel the seeded defect manifests in. The qualification gate reads it: a condition passes only if its pointers name this channel, or name two channels with at least one response-side member. That rule exists to reject a condition collapsing to \"the evidence contains the string I sent\", which is satisfied by a finding that merely echoes its own input. It must also be a channel the declared kind produces: an api interface writes nothing to standard output and a command returns no HTTP status.",
+                      "$ref": "#/$defs/EvidenceChannel"
+                    },
+                    "condition": {
                       "type": "object",
                       "properties": {
-                        "inputBinding": {
+                        "selector": {
                           "type": "object",
                           "properties": {
-                            "path": {
-                              "$ref": "#/$defs/ProbeInputBindingChannel"
-                            },
-                            "query": {
-                              "$ref": "#/$defs/ProbeInputBindingChannel"
-                            },
-                            "header": {
-                              "$ref": "#/$defs/ProbeInputBindingChannel"
-                            },
-                            "body": {
-                              "$ref": "#/$defs/ProbeInputBindingChannel"
+                            "inputBinding": {
+                              "type": "object",
+                              "properties": {
+                                "path": {
+                                  "$ref": "#/$defs/ProbeInputBindingChannel"
+                                },
+                                "query": {
+                                  "$ref": "#/$defs/ProbeInputBindingChannel"
+                                },
+                                "header": {
+                                  "$ref": "#/$defs/ProbeInputBindingChannel"
+                                },
+                                "body": {
+                                  "$ref": "#/$defs/ProbeInputBindingChannel"
+                                },
+                                "argument": {
+                                  "$ref": "#/$defs/ProbeInputBindingChannel"
+                                },
+                                "option": {
+                                  "$ref": "#/$defs/ProbeInputBindingChannel"
+                                },
+                                "environment": {
+                                  "$ref": "#/$defs/ProbeInputBindingChannel"
+                                },
+                                "stdin": {
+                                  "$ref": "#/$defs/ProbeInputBindingChannel"
+                                }
+                              },
+                              "required": [
+                                "path",
+                                "query",
+                                "header",
+                                "body",
+                                "argument",
+                                "option",
+                                "environment",
+                                "stdin"
+                              ],
+                              "additionalProperties": false
                             }
                           },
                           "required": [
-                            "path",
-                            "query",
-                            "header",
-                            "body"
+                            "inputBinding"
                           ],
                           "additionalProperties": false
+                        },
+                        "predicate": {
+                          "description": "An AD-4 expression over AD-26 response channels, every pointer rooted at the reserved step identifier `observed`. Legality is the corpus qualification gate's: an unchecked predicate admits `existence` over a literal, which is true of every observation and makes the catch rate 1.00 by construction.",
+                          "$ref": "#/$defs/Expression"
                         }
                       },
                       "required": [
-                        "inputBinding"
+                        "selector",
+                        "predicate"
                       ],
                       "additionalProperties": false
-                    },
-                    "predicate": {
-                      "description": "An AD-4 expression over AD-26 response channels, every pointer rooted at the reserved step identifier `observed`. Legality is the corpus qualification gate's: an unchecked predicate admits `existence` over a literal, which is true of every observation and makes the catch rate 1.00 by construction.",
-                      "$ref": "#/$defs/Expression"
                     }
                   },
                   "required": [
-                    "selector",
-                    "predicate"
+                    "interfaceKind",
+                    "method",
+                    "pathTemplate",
+                    "observableChannel",
+                    "condition"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "interfaceKind": {
+                      "type": "string",
+                      "const": "cli"
+                    },
+                    "invocation": {
+                      "type": "object",
+                      "properties": {
+                        "executable": {
+                          "type": "string",
+                          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                          "description": "A logical executable name, never a filesystem path, a URL, a host, or a port (AD-35). The caller maps it to an authorized target through configuration outside the contract."
+                        },
+                        "subcommandPath": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                            "description": "A kebab-case slug. Excludes \"/\" and \"~\" so an identifier can be embedded in an interaction-rooted pointer without escaping."
+                          },
+                          "description": "The subcommand segments after the executable, outermost first. Empty is legal and means the executable is invoked with no subcommand."
+                        }
+                      },
+                      "required": [
+                        "executable",
+                        "subcommandPath"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "observableChannel": {
+                      "description": "AD-26's channel the seeded defect manifests in. The qualification gate reads it: a condition passes only if its pointers name this channel, or name two channels with at least one response-side member. That rule exists to reject a condition collapsing to \"the evidence contains the string I sent\", which is satisfied by a finding that merely echoes its own input. It must also be a channel the declared kind produces: an api interface writes nothing to standard output and a command returns no HTTP status.",
+                      "$ref": "#/$defs/EvidenceChannel"
+                    },
+                    "condition": {
+                      "type": "object",
+                      "properties": {
+                        "selector": {
+                          "type": "object",
+                          "properties": {
+                            "inputBinding": {
+                              "type": "object",
+                              "properties": {
+                                "path": {
+                                  "$ref": "#/$defs/ProbeInputBindingChannel"
+                                },
+                                "query": {
+                                  "$ref": "#/$defs/ProbeInputBindingChannel"
+                                },
+                                "header": {
+                                  "$ref": "#/$defs/ProbeInputBindingChannel"
+                                },
+                                "body": {
+                                  "$ref": "#/$defs/ProbeInputBindingChannel"
+                                },
+                                "argument": {
+                                  "$ref": "#/$defs/ProbeInputBindingChannel"
+                                },
+                                "option": {
+                                  "$ref": "#/$defs/ProbeInputBindingChannel"
+                                },
+                                "environment": {
+                                  "$ref": "#/$defs/ProbeInputBindingChannel"
+                                },
+                                "stdin": {
+                                  "$ref": "#/$defs/ProbeInputBindingChannel"
+                                }
+                              },
+                              "required": [
+                                "path",
+                                "query",
+                                "header",
+                                "body",
+                                "argument",
+                                "option",
+                                "environment",
+                                "stdin"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "inputBinding"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "predicate": {
+                          "description": "An AD-4 expression over AD-26 response channels, every pointer rooted at the reserved step identifier `observed`. Legality is the corpus qualification gate's: an unchecked predicate admits `existence` over a literal, which is true of every observation and makes the catch rate 1.00 by construction.",
+                          "$ref": "#/$defs/Expression"
+                        }
+                      },
+                      "required": [
+                        "selector",
+                        "predicate"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "interfaceKind",
+                    "invocation",
+                    "observableChannel",
+                    "condition"
                   ],
                   "additionalProperties": false
                 }
-              },
-              "required": [
-                "interfaceKind",
-                "method",
-                "pathTemplate",
-                "observableChannel",
-                "condition"
-              ],
-              "additionalProperties": false
+              ]
             },
             {
               "type": "null"
@@ -824,7 +949,7 @@
       "description": "A probe that is not a known-clean control. The one branch AD-40 gives a defect signature."
     }
   ],
-  "description": "One corpus probe. Succeeds the prior-art `h0-ground-truth` schema per AD-24, carrying its system identifier, implementation digest, `expectedClean` flag, seeded defects, and rationale, and adding AD-9's probe class and AD-9's per-probe artifact and commit digests. Divergences: `implementationSha` becomes `implementationDigest`, `taskId` does not survive because the probe pins what it describes by digest, and `expectedGate` does not survive because AD-40 makes detection a signature match rather than a verdict comparison and AD-7 keeps comparisons inside the dominance vector, so carrying an expected gate would invite a comparison the architecture forbids. Two constructions landed here together under one BREAKING `schemaVersion` bump: AD-9's per-class QUALIFICATION record, as a five-route tagged union required on every branch, and AD-40's machine-readable DEFECT SIGNATURE on the `expectedClean: false` branch, carrying the interface kind, the home operation as a method and a path template, the observable channel, and the discriminating condition. Both are required rather than optional, which is what makes the bump breaking under AD-11: every corpus written against version 1 fails to parse. What the schema still does not decide is stated rather than hidden. AD-9's \"an unqualified probe cannot enter a sealed set\" is a corpus-construction invariant enforced by the qualification gate in `core/score/qualification.ts`, not by this schema: all eight class-and-`expectedClean` pairings parse, a route incompatible with the pair parses, and a signature-less non-canary parses, each so the gate can return a reason code carrying an artifact path instead of an anonymous parse failure. The constraint ledger carries both gaps.",
+  "description": "One corpus probe. Succeeds the prior-art `h0-ground-truth` schema per AD-24, carrying its system identifier, implementation digest, `expectedClean` flag, seeded defects, and rationale, and adding AD-9's probe class and AD-9's per-probe artifact and commit digests. Divergences: `implementationSha` becomes `implementationDigest`, `taskId` does not survive because the probe pins what it describes by digest, and `expectedGate` does not survive because AD-40 makes detection a signature match rather than a verdict comparison and AD-7 keeps comparisons inside the dominance vector, so carrying an expected gate would invite a comparison the architecture forbids. Two constructions landed here together under one BREAKING `schemaVersion` bump: AD-9's per-class QUALIFICATION record, as a five-route tagged union required on every branch, and AD-40's machine-readable DEFECT SIGNATURE on the `expectedClean: false` branch, carrying the interface kind, the home operation as a method and a path template, the observable channel, and the discriminating condition. Both are required rather than optional, which is what makes the bump breaking under AD-11: every corpus written against version 1 fails to parse. Version 3 opened the signature to a second interface kind: it is a union on `interfaceKind`, where the `cli` branch declares a logical invocation in place of a method and a path template, and the selector's input binding carries the four command channels beside the four transport ones. What the schema still does not decide is stated rather than hidden. AD-9's \"an unqualified probe cannot enter a sealed set\" is a corpus-construction invariant enforced by the qualification gate in `core/score/qualification.ts`, not by this schema: all eight class-and-`expectedClean` pairings parse, a route incompatible with the pair parses, and a signature-less non-canary parses, each so the gate can return a reason code carrying an artifact path instead of an anonymous parse failure. The constraint ledger carries both gaps.",
   "$defs": {
     "ArtifactReference": {
       "oneOf": [
@@ -1546,8 +1671,8 @@
               "anyOf": [
                 {
                   "type": "string",
-                  "pattern": "^\\/interactions\\/[a-z0-9]+(?:-[a-z0-9]+)*\\/(?:(?:response-body|response-headers|stdout|stderr)(?:\\/(?:[^/~]|~[01])*)*|(?:response-status|exit-code)|call-inputs\\/(?:path|query|header|body)(?:\\/(?:[^/~]|~[01])*)*)$",
-                  "description": "AD-26 interaction-rooted pointer: \"/interactions/{stepId}/\" followed by one channel of the closed vocabulary. `call-inputs` takes one of the four transport channels as its next segment; `response-status` and `exit-code` take no tail. Syntax only: whether the step exists and whether the evidence is reachable are compile-time checks, not schema checks."
+                  "pattern": "^\\/interactions\\/[a-z0-9]+(?:-[a-z0-9]+)*\\/(?:(?:response-body|response-headers|stdout|stderr)(?:\\/(?:[^/~]|~[01])*)*|(?:response-status|exit-code)|call-inputs\\/(?:path|query|header|body|argument|option|environment|stdin)(?:\\/(?:[^/~]|~[01])*)*|artifact\\/[a-z0-9]+(?:-[a-z0-9]+)*(?:\\/(?:[^/~]|~[01])*)*)$",
+                  "description": "AD-26 interaction-rooted pointer: \"/interactions/{stepId}/\" followed by one channel of the closed vocabulary. `call-inputs` takes one input channel as its next segment, one of the four transport channels or one of the four command channels; `artifact` takes the identifier of a file the operation declares it writes; `response-status` and `exit-code` take no tail. Syntax only: whether the step exists and whether the evidence is reachable are compile-time checks, not schema checks."
                 },
                 {
                   "type": "string",
@@ -1600,9 +1725,10 @@
         "call-inputs",
         "stdout",
         "stderr",
-        "exit-code"
+        "exit-code",
+        "artifact"
       ],
-      "description": "AD-26's closed evidence channel vocabulary. The same seven the interaction-rooted pointer addresses; a channel outside this set is a syntax error rather than an unreachable-evidence finding."
+      "description": "AD-26's closed evidence channel vocabulary. The same eight the interaction-rooted pointer addresses; a channel outside this set is a syntax error rather than an unreachable-evidence finding."
     },
     "ProbeInputBindingChannel": {
       "anyOf": [
@@ -1649,7 +1775,7 @@
           "type": "null"
         }
       ],
-      "description": "A parameter-name-to-binding-value map for one transport channel of a defect signature's selector, or `null` for a channel the selector binds nothing in. An empty map is rejected: `null` is the only spelling for unbound. Admits `{ literal }` and `{ matcher }` only; `{ captured }` and `{ principal }` are contract-local vocabulary and a corpus signature cannot carry either.",
+      "description": "A parameter-name-to-binding-value map for one input channel of a defect signature's selector, or `null` for a channel the selector binds nothing in. An empty map is rejected: `null` is the only spelling for unbound. Admits `{ literal }` and `{ matcher }` only; `{ captured }` and `{ principal }` are contract-local vocabulary and a corpus signature cannot carry either.",
       "minProperties": 1
     }
   }

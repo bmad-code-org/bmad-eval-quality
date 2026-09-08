@@ -12,6 +12,7 @@ import {
 import { CONSTRAINT_LEDGER } from '../../../src/core/schemas/constraint-ledger.ts'
 import { ARTIFACT_REJECT_CASES } from '../fixtures/artifact-reject-cases.ts'
 import { REJECT_CASES } from '../fixtures/reject-cases.ts'
+import { LEDGER_COUNTS, REJECT_CASE_COUNTS } from '../published-census.ts'
 import { corpusOf, generationOf, rejectInstancesOf, seedsOf } from './corpus.ts'
 import { pointerMatchesSchemaPath } from './keyword-occurrences.ts'
 import { publishedDocumentOf, publishedValidatorOf } from './validator.ts'
@@ -29,8 +30,7 @@ describe('the corpus itself, so a hollow differential cannot pass', () => {
 			0,
 		)
 		expect(total).toBe(REJECT_CASES.length + ARTIFACT_REJECT_CASES.length)
-		// the 55/88/143 corpus size is also pinned in published-rejection.test.ts
-		expect(total).toBe(143)
+		expect(total).toBe(REJECT_CASE_COUNTS.total)
 	})
 
 	it.each(INTERCHANGE_ARTIFACT_KEYS)(
@@ -133,7 +133,7 @@ describe('each injected ledger entry is paired with its own fixture (AD-13)', ()
 	// binding-channel minimum on each of those two artifacts: the contract's
 	// input binding, and the probe's defect-signature selector.
 	it('walks all twenty-six inject entries', () => {
-		expect(injectEntries).toHaveLength(26)
+		expect(injectEntries).toHaveLength(LEDGER_COUNTS.inject)
 	})
 
 	/** the entry's stated address as an occurrence pointer in its document. */

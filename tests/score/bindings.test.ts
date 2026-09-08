@@ -27,8 +27,9 @@ import {
 
 /**
  * A schema-shaped observation widened where these cases read: `callInputs` is
- * what a binding filters on and `responseBody` is what a capture resolves from.
- * Every other field stays an inert default.
+ * what a binding filters on, `responseBody` is what a capture resolves from,
+ * and `principal` is what a `{ principal }` binding compares. Every other field
+ * stays an inert default.
  */
 function observation(
 	observationId: string,
@@ -37,6 +38,7 @@ function observation(
 	fields: {
 		callInputs?: Partial<ObservedCallInputs>
 		responseBody?: JsonValue
+		principal?: string | null
 	} = {},
 ): Observation {
 	return {
@@ -44,19 +46,25 @@ function observation(
 		sequence,
 		operationId,
 		provenance: 'evaluator-chosen',
+		principal: fields.principal ?? null,
 		callInputs: {
 			path: null,
 			query: null,
 			header: null,
 			body: null,
+			argument: null,
+			option: null,
+			environment: null,
+			stdin: null,
 			...fields.callInputs,
 		},
 		responseBody: fields.responseBody ?? null,
 		responseHeaders: null,
 		responseStatus: 200,
-		stdout: null,
-		stderr: null,
+		stdout: { kind: 'absent' },
+		stderr: { kind: 'absent' },
 		exitCode: null,
+		artifacts: {},
 	}
 }
 
@@ -578,10 +586,11 @@ describe('selectWithBindings', () => {
 		}
 	})
 
-	// A known, recorded limitation: a principal's value is provisioned by the
-	// harness at runtime, and no field of a sealed run record says which
-	// principal it used, so the two cross-user steps stay indistinguishable here.
-	it('leaves two steps binding the same key to different principals both several', () => {
+	// `Observation.principal` is what separates them: the value behind a
+	// principal name is provisioned by the harness at runtime, so the name is
+	// all either side can compare, and comparing it is what makes the
+	// act-as-A-read-as-B pair scoreable at all.
+	it('separates two steps binding the same key to different principals', () => {
 		const plan = [
 			step('read-as-owner', 'get-note', {
 				inputBinding: { header: { authorization: { principal: 'owner' } } },
@@ -593,21 +602,56 @@ describe('selectWithBindings', () => {
 		const index = planIndex(plan)
 		const observations = [
 			observation('obs-a', 1, 'get-note', {
+				principal: 'owner',
 				callInputs: { header: { authorization: 'token-a' } },
 			}),
 			observation('obs-b', 2, 'get-note', {
+				principal: 'intruder',
 				callInputs: { header: { authorization: 'token-b' } },
 			}),
 		]
 		const resolved = resolveCapturedBindings(plan, index, observations)
-		for (const declared of plan) {
-			expect(
-				selectWithBindings(declared, observations, index, resolved),
-			).toEqual({
-				result: 'several',
-				matchedObservationIds: ['obs-a', 'obs-b'],
-			})
-		}
+		expect(
+			selectWithBindings(
+				plan[0] as InteractionStep,
+				observations,
+				index,
+				resolved,
+			),
+		).toEqual({ result: 'one', matchedObservationIds: ['obs-a'] })
+		expect(
+			selectWithBindings(
+				plan[1] as InteractionStep,
+				observations,
+				index,
+				resolved,
+			),
+		).toEqual({ result: 'one', matchedObservationIds: ['obs-b'] })
+	})
+
+	// A record naming no principal matches no principal-bound step, rather than
+	// matching every one of them.
+	it('matches no principal-bound step against a record naming none', () => {
+		const plan = [
+			step('read-as-owner', 'get-note', {
+				inputBinding: { header: { authorization: { principal: 'owner' } } },
+			}),
+		]
+		const index = planIndex(plan)
+		const observations = [
+			observation('obs-a', 1, 'get-note', {
+				callInputs: { header: { authorization: 'token-a' } },
+			}),
+		]
+		const resolved = resolveCapturedBindings(plan, index, observations)
+		expect(
+			selectWithBindings(
+				plan[0] as InteractionStep,
+				observations,
+				index,
+				resolved,
+			),
+		).toEqual({ result: 'none', matchedObservationIds: [] })
 	})
 
 	it('keeps a candidate carrying the key under matcher any and drops one lacking it', () => {

@@ -17,6 +17,7 @@ import {
 	RubricId,
 	UnsignedDecimalString,
 } from './primitives.ts'
+import { ProbeObservedBody } from './probe-body.ts'
 import { EvaluatorRecommendation } from './verdict.ts'
 
 /**
@@ -155,6 +156,10 @@ export const ObservedCallInputs = z.strictObject({
 	query: JsonObjectValue.nullable(),
 	header: JsonObjectValue.nullable(),
 	body: JsonObjectValue.nullable(),
+	argument: JsonObjectValue.nullable(),
+	option: JsonObjectValue.nullable(),
+	environment: JsonObjectValue.nullable(),
+	stdin: JsonObjectValue.nullable(),
 })
 
 /** the constraint identifier the ledger carries for the check below. */
@@ -184,6 +189,9 @@ export const Observation = z.strictObject({
 		.describe(
 			"AD-23: `baseline` for a pre-canned or deterministic test, `evaluator-chosen` for an action the evaluator selected. The distinction is the one the product's central finding rests on: what a sealed evaluator detects beyond the pre-canned baseline. It lives on the observation, never on the finding.",
 		),
+	principal: Identifier.nullable().describe(
+		"The declared principal the harness acted as, or `null` where the run named none. Owed item 3's other half: a `{ principal }` input binding is presence-only by construction, since the contract declares a name and the harness provisions the value, so without this field two steps of one operation binding `owner` and `other-user` both match every observation and both resolve `several`. That is exactly the act-as-A-read-as-B shape the two critical-severity cross-user behaviours need, and it was unscoreable while the record said nothing about which account was used. An opaque label carrying no account identifier or credential, on `testData.principals`' own AD-18 terms.",
+	),
 	callInputs: ObservedCallInputs,
 	responseBody: JsonValue.nullable().describe(
 		'AD-26\'s `response-body` channel. The null branch is redundant against the value container, which already admits `null`; it is kept so all ten observation fields read the same way, and it means "no body observed" and "a body that was JSON null" are indistinguishable here, which is an accepted cost of one uniform spelling.',
@@ -198,13 +206,22 @@ export const Observation = z.strictObject({
 		.describe(
 			'Deliberately not bounded to a protocol range. A negative status is meaningless and excluded, but the upper end is left open: AD-19 declares four interface kinds and v0 rejects three of them at compile time under `unsupported-interface-kind`, so bounding this to HTTP would encode a protocol assumption the artifact outlives. `null` where the channel does not apply.',
 		),
-	stdout: z.string().nullable(),
-	stderr: z.string().nullable(),
+	stdout: ProbeObservedBody.describe(
+		'AD-26\'s `stdout` channel, tagged rather than a bare string. An operation may nominate standard output as the channel its response descriptor describes, in which case a pointer descends into it, and an untagged string could not tell output that was JSON from output that was only ever text. `{ "kind": "absent" }` is the channel a run did not observe.',
+	),
+	stderr: ProbeObservedBody.describe(
+		"AD-26's `stderr` channel, tagged on the same terms as `stdout`.",
+	),
 	exitCode: z
 		.int()
 		.nullable()
 		.describe(
 			'Signed on purpose, unlike `responseStatus`: a process terminated by a signal is conventionally reported as a negative code, and this field records what was observed rather than what is tidy.',
+		),
+	artifacts: z
+		.record(Identifier, ProbeObservedBody)
+		.describe(
+			"AD-26's `artifact` channel, keyed by the identifier the operation declares it writes, which is the segment an artifact pointer carries before its tail. Caller-keyed and expected to be partial: a run that wrote no files carries `{}`. Tagged on the same terms as `stdout`, since a written report may be JSON, may be prose, and may not have been written at all.",
 		),
 })
 
@@ -223,7 +240,7 @@ export const JudgeResult = z.strictObject({
 		.int()
 		.nullable()
 		.describe(
-			"An integer, because AD-22 puts the scale on the rubric's own anchored levels and `ScaleLevel.level` is already `z.int()`; no second scale is minted here. `null` is the shape AD-6's `judge-error` fires on, so it must parse. That the criterion is one the cited rubric declares, and that a conforming record shows one judge call scoring all named criteria, are AD-17 cross-artifact rules a schema over one artifact cannot see.",
+			"An integer, because AD-22 puts the scale on the rubric's own anchored levels and `ScaleLevel.level` is already `z.int()`; no second scale is minted here. `null` is the shape AD-6's `judge-error` fires on, so it must parse. Two AD-17 rules sit over this field and only one of them is decidable from a record. That a criterion is scored at most once IS: `core/ingest` reports a repeated `rubricId`/`criterionId` pair as a `duplicate-record-identifier` condition, since a criterion scored twice is not one judge call's product whatever else the record says. That a scored criterion is one the cited rubric DECLARES is not, and never will be from inside this package: the rubric is not among ingest's declared inputs, no stage row names it, and a schema over one artifact has no second operand. That half is the caller's, on the same terms AD-12 states for the remediation cap, and it is a stated boundary rather than an unimplemented rule.",
 		),
 	note: z.string().nullable(),
 })
@@ -349,7 +366,7 @@ export const SealedRunRecord = z
 	.meta({
 		id: 'SealedRunRecord',
 		description:
-			"One sealed evaluator trial, as the caller presents it. Succeeds the prior-art `h0-run-result` schema per AD-24, keeping its run identifier, condition arm, findings, action-log reference, resource use, invalidation reason, evaluator recommendation as a closed enum, and per-finding confidence on a declared scale. Divergences: `condition` is demoted to the opaque `conditionArm`, `verdict` becomes `evaluatorRecommendation` without `NOT_APPLICABLE`, money is a decimal string, and `taskId`, `note`, and per-finding `actionIds` do not survive: the contract is pinned by `contractDigest`, an unstructured orchestrator annotation is the free-prose channel the Conventions close everywhere else, and two citation vocabularies on one finding is the ambiguity ADR-009 removed. The run MODE landed here as a required field under a BREAKING `schemaVersion` bump, which is where AD-21's \"fixed before ingest\" puts it; owed item 4 is now closed: mode enters AD-11's identity inputs as `ScoringVersionInputs`'s sixth field, and `core/score/ladder.ts` carries `ProductionAssessment`/`ContractAssessment` as the two assessment input types with their own total ladders. Observation ORDERING landed here too, under its own BREAKING `schemaVersion` bump: `sequence` is required and unique per record, closing owed item 2's ADR-006 gap, since array position was never a legal ordering.",
+			"One sealed evaluator trial, as the caller presents it. Succeeds the prior-art `h0-run-result` schema per AD-24, keeping its run identifier, condition arm, findings, action-log reference, resource use, invalidation reason, evaluator recommendation as a closed enum, and per-finding confidence on a declared scale. Divergences: `condition` is demoted to the opaque `conditionArm`, `verdict` becomes `evaluatorRecommendation` without `NOT_APPLICABLE`, money is a decimal string, and `taskId`, `note`, and per-finding `actionIds` do not survive: the contract is pinned by `contractDigest`, an unstructured orchestrator annotation is the free-prose channel the Conventions close everywhere else, and two citation vocabularies on one finding is the ambiguity ADR-009 removed. The run MODE landed here as a required field under a BREAKING `schemaVersion` bump, which is where AD-21's \"fixed before ingest\" puts it; owed item 4 is now closed: mode enters AD-11's identity inputs as `ScoringVersionInputs`'s sixth field, and `core/score/ladder.ts` carries `ProductionAssessment`/`ContractAssessment` as the two assessment input types with their own total ladders. Observation ORDERING landed here too, under its own BREAKING `schemaVersion` bump: `sequence` is required and unique per record, closing owed item 2's ADR-006 gap, since array position was never a legal ordering. Version 4 opened the record to a system under test that runs behind a command: `callInputs` carries the four command channels beside the four transport ones, `stdout` and `stderr` are tagged rather than bare strings so a nominated output channel can be descended into, and `artifacts` records the files the run wrote, keyed by the identifier the operation declares.",
 	})
 
 export type SealedRunRecord = z.infer<typeof SealedRunRecord>

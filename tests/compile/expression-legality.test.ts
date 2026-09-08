@@ -206,6 +206,92 @@ describe('checkOperandLegality: malformed-operator-expression', () => {
 			'referenceSets[id=expected-things].members[1].id',
 		)
 	})
+
+	// `coversByKey` returns false for the whole collection when one declared
+	// member lacks `expectedKey`, which reads as a detected defect in the
+	// system under test. The compiler used to walk past exactly that member.
+	it('rejects a covers-by-key reference set whose member lacks expectedKey', () => {
+		const contract = structuredClone(populatedContract) as any
+		contract.referenceSets['expected-things'].members[1] = { notId: 't-2' }
+		const failure = structuralFailureOf(() => checkOperandLegality(contract))
+		expect(failure.code).toBe('malformed-operator-expression')
+		expect(failure.artifactPath).toContain(
+			'referenceSets[id=expected-things].members[1].id',
+		)
+		expect(failure.message).toContain('no expectedKey "id"')
+	})
+
+	// `set-membership`'s set position reads the single declared key off each
+	// member, so these two are the shapes that leave nothing to read. Rejecting
+	// them here is what makes the resolver's projection total.
+	describe("a reference set in set-membership's set position", () => {
+		const withSetMembership = (): any => {
+			const contract = structuredClone(populatedContract) as any
+			contract.oracles[0].check = {
+				op: 'for-all',
+				collection: { pointer: '/interactions/list/response-body/items' },
+				predicate: {
+					op: 'set-membership',
+					operands: [{ pointer: '@/id' }, { referenceSet: 'expected-things' }],
+				},
+			}
+			return contract
+		}
+
+		it('passes when the set declares one key and every member carries it', () => {
+			expect(() => checkOperandLegality(withSetMembership())).not.toThrow()
+		})
+
+		it('rejects a set declaring more than one key, naming the operand position', () => {
+			const contract = withSetMembership()
+			contract.referenceSets['expected-things'].keys = ['id', 'tenant']
+			const failure = structuralFailureOf(() => checkOperandLegality(contract))
+			expect(failure.code).toBe('malformed-operator-expression')
+			expect(failure.artifactPath).toBe(
+				'EvalContract.oracles[id=O-001].check.predicate.operands[1]',
+			)
+			expect(failure.message).toContain('declares 2 keys')
+		})
+
+		it('rejects a member carrying no own property for the declared key', () => {
+			const contract = withSetMembership()
+			contract.referenceSets['expected-things'].members[2] = { notId: 't-3' }
+			const failure = structuralFailureOf(() => checkOperandLegality(contract))
+			expect(failure.code).toBe('malformed-operator-expression')
+			expect(failure.artifactPath).toBe(
+				'EvalContract.referenceSets[id=expected-things].members[2].id',
+			)
+		})
+
+		// An undeclared identifier belongs to `checkReferenceSetResolution`
+		// under `unresolved-reference-set`, so this check stays quiet about it.
+		it('stays quiet about an undeclared reference set', () => {
+			const contract = withSetMembership()
+			contract.oracles[0].check.predicate.operands[1] = {
+				referenceSet: 'never-declared',
+			}
+			expect(() => checkOperandLegality(contract)).not.toThrow()
+			expect(
+				structuralFailureOf(() => checkReferenceSetResolution(contract)).code,
+			).toBe('unresolved-reference-set')
+		})
+
+		// A literal set carries no declaration to read keys off, so the guard
+		// has nothing to say about it.
+		it('stays quiet about a literal set operand', () => {
+			const contract = withSetMembership()
+			contract.oracles[0].check.predicate.operands[1] = {
+				literal: ['t-1', 't-2'],
+			}
+			expect(() => checkOperandLegality(contract)).not.toThrow()
+		})
+
+		it('stays quiet when the contract declares no reference sets at all', () => {
+			const contract = withSetMembership()
+			contract.referenceSets = null
+			expect(() => checkOperandLegality(contract)).not.toThrow()
+		})
+	})
 })
 
 describe('checkRegexConstructs: malformed-operator-expression', () => {

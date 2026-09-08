@@ -4,9 +4,11 @@ import {
 	checkDuplicateOperationSignature,
 	checkInterfaceKind,
 	checkUndeclaredMandatoryInput,
+	commandSignature,
 } from '../../src/core/compile/interface-inventory.ts'
 import { StructuralFailure } from '../../src/core/failure-codes.ts'
 import { EvalContract } from '../../src/core/schemas/eval-contract.ts'
+import { commandContract } from '../schemas/fixtures/command-contract.ts'
 import { gateCContract } from '../schemas/fixtures/gate-c-contract.ts'
 import { populatedContract } from '../schemas/fixtures/relevance-contracts.ts'
 import { cleanPopulatedContract } from './helpers.ts'
@@ -33,7 +35,7 @@ describe('all three checks: positive whole-fixture regression', () => {
 })
 
 describe('checkInterfaceKind: unsupported-interface-kind', () => {
-	it.each(['web', 'cli', 'mcp'])(
+	it.each(['web', 'mcp'])(
 		"fixture 30: ad5-admissions.test.ts's %s-interface mutation throws",
 		(kind) => {
 			const contract = structuredClone(populatedContract) as any
@@ -42,6 +44,14 @@ describe('checkInterfaceKind: unsupported-interface-kind', () => {
 			expect(failure.code).toBe('unsupported-interface-kind')
 		},
 	)
+
+	// The two conditions that remain are what keeps this code fireable. AD-10
+	// opens a kind once its probe semantics are declared, and `cli`'s are.
+	it('admits a command interface', () => {
+		expect(() =>
+			checkInterfaceKind(EvalContract.parse(commandContract)),
+		).not.toThrow()
+	})
 })
 
 describe('checkDuplicateOperationSignature: duplicate-operation-signature', () => {
@@ -274,5 +284,41 @@ describe('checkUndeclaredMandatoryInput: the principal condition', () => {
 			structuralFailureOf(() => compile(parsed, { strict: true })).code,
 		).toBe('undeclared-mandatory-input')
 		expect(() => compile(parsed, { strict: false })).not.toThrow()
+	})
+})
+
+describe('commandSignature: the command transport identity', () => {
+	it('joins the executable and the subcommand path in one declared spelling', () => {
+		expect(
+			commandSignature({
+				invocation: { executable: 'tea', subcommandPath: ['review', 'tests'] },
+			}),
+		).toBe('tea review tests')
+	})
+
+	it('renders an executable with no subcommand as the executable alone', () => {
+		expect(
+			commandSignature({
+				invocation: { executable: 'tea', subcommandPath: [] },
+			}),
+		).toBe('tea')
+	})
+
+	// The erasure that makes `/notes/{id}` and `/notes/{noteId}` one signature
+	// has no command counterpart, so two subcommands never collide.
+	it('collides two command operations only on the identical identity', () => {
+		const contract = structuredClone(commandContract) as any
+		const operations = contract.permittedInterfaces[0].operations
+		operations.push({
+			...structuredClone(operations[0]),
+			operationId: 'select-fragments-again',
+		})
+		expect(() =>
+			checkDuplicateOperationSignature(EvalContract.parse(contract)),
+		).toThrow(/duplicate-operation-signature/)
+		operations[1].invocation.subcommandPath = ['report']
+		expect(() =>
+			checkDuplicateOperationSignature(EvalContract.parse(contract)),
+		).not.toThrow()
 	})
 })

@@ -95,7 +95,7 @@
           },
           "evidence": {
             "type": "string",
-            "pattern": "^\\/interactions\\/[a-z0-9]+(?:-[a-z0-9]+)*\\/(?:(?:response-body|response-headers|stdout|stderr)(?:\\/(?:[^/~]|~[01])*)*|(?:response-status|exit-code)|call-inputs\\/(?:path|query|header|body)(?:\\/(?:[^/~]|~[01])*)*)$",
+            "pattern": "^\\/interactions\\/[a-z0-9]+(?:-[a-z0-9]+)*\\/(?:(?:response-body|response-headers|stdout|stderr)(?:\\/(?:[^/~]|~[01])*)*|(?:response-status|exit-code)|call-inputs\\/(?:path|query|header|body|argument|option|environment|stdin)(?:\\/(?:[^/~]|~[01])*)*|artifact\\/[a-z0-9]+(?:-[a-z0-9]+)*(?:\\/(?:[^/~]|~[01])*)*)$",
             "description": "Where the criterion is answerable from. A pointer that resolves nowhere is `rubric-evidence-unreachable`, a compile-time code, and is deliberately not a schema rejection."
           }
         },

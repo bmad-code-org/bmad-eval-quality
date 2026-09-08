@@ -6,8 +6,8 @@
     "storage": "private"
   },
   "conditionArm": "independent",
-  "contractDigest": "sha256:10aa580f94fb3b1b252c24b7ca7186da737498e9f35cfc6150b97a8afbcc4bc9",
-  "evaluatorConfigurationDigest": "sha256:b9e38414069a3296d31c07d8facf8df5ebaf3b3d2e20e1ebb5539b38300c46df",
+  "contractDigest": "sha256:8791efa67a20cbfdea0aad892b64696216362b07dc25d32351e8a0fbe2ac748e",
+  "evaluatorConfigurationDigest": "sha256:44708e1deb9e0d818773f38ce8242266a41d1201db7c3ed8a382c37bdd5a9d41",
   "evaluatorRecommendation": "FAIL",
   "evidenceDisclosure": {
     "reportedIncomplete": false,
@@ -87,17 +87,23 @@
   "mode": "contract-scoring",
   "observations": [
     {
+      "artifacts": {},
       "callInputs": {
+        "argument": null,
         "body": null,
+        "environment": null,
         "header": null,
+        "option": null,
         "path": {
           "id": "n-1"
         },
-        "query": null
+        "query": null,
+        "stdin": null
       },
       "exitCode": null,
       "observationId": "obs-001",
       "operationId": "get-note",
+      "principal": null,
       "provenance": "baseline",
       "responseBody": {
         "note": {
@@ -116,19 +122,29 @@
       },
       "responseStatus": 200,
       "sequence": 1,
-      "stderr": null,
-      "stdout": null
+      "stderr": {
+        "kind": "absent"
+      },
+      "stdout": {
+        "kind": "absent"
+      }
     },
     {
+      "artifacts": {},
       "callInputs": {
+        "argument": null,
         "body": null,
+        "environment": null,
         "header": null,
+        "option": null,
         "path": null,
-        "query": null
+        "query": null,
+        "stdin": null
       },
       "exitCode": null,
       "observationId": "obs-002",
       "operationId": "list-notes",
+      "principal": null,
       "provenance": "baseline",
       "responseBody": {
         "notes": [],
@@ -139,23 +155,33 @@
       },
       "responseStatus": 200,
       "sequence": 2,
-      "stderr": null,
-      "stdout": null
+      "stderr": {
+        "kind": "absent"
+      },
+      "stdout": {
+        "kind": "absent"
+      }
     },
     {
+      "artifacts": {},
       "callInputs": {
+        "argument": null,
         "body": {
           "title": "Revised"
         },
+        "environment": null,
         "header": null,
+        "option": null,
         "path": {
           "id": "n-1"
         },
-        "query": null
+        "query": null,
+        "stdin": null
       },
       "exitCode": null,
       "observationId": "obs-003",
       "operationId": "patch-note",
+      "principal": null,
       "provenance": "evaluator-chosen",
       "responseBody": {
         "note": {
@@ -174,21 +200,31 @@
       },
       "responseStatus": 200,
       "sequence": 3,
-      "stderr": null,
-      "stdout": null
+      "stderr": {
+        "kind": "absent"
+      },
+      "stdout": {
+        "kind": "absent"
+      }
     },
     {
+      "artifacts": {},
       "callInputs": {
+        "argument": null,
         "body": null,
+        "environment": null,
         "header": null,
+        "option": null,
         "path": {
           "id": "n-1"
         },
-        "query": null
+        "query": null,
+        "stdin": null
       },
       "exitCode": null,
       "observationId": "obs-004",
       "operationId": "get-note",
+      "principal": null,
       "provenance": "evaluator-chosen",
       "responseBody": {
         "note": {
@@ -207,23 +243,33 @@
       },
       "responseStatus": 200,
       "sequence": 4,
-      "stderr": null,
-      "stdout": null
+      "stderr": {
+        "kind": "absent"
+      },
+      "stdout": {
+        "kind": "absent"
+      }
     },
     {
+      "artifacts": {},
       "callInputs": {
+        "argument": null,
         "body": {
           "colour": "red"
         },
+        "environment": null,
         "header": null,
+        "option": null,
         "path": {
           "id": "n-2"
         },
-        "query": null
+        "query": null,
+        "stdin": null
       },
       "exitCode": null,
       "observationId": "obs-005",
       "operationId": "patch-note",
+      "principal": null,
       "provenance": "evaluator-chosen",
       "responseBody": {
         "note": {
@@ -241,8 +287,12 @@
       },
       "responseStatus": 200,
       "sequence": 5,
-      "stderr": null,
-      "stdout": null
+      "stderr": {
+        "kind": "absent"
+      },
+      "stdout": {
+        "kind": "absent"
+      }
     }
   ],
   "oracleDispositions": [
@@ -296,7 +346,7 @@
   },
   "revisionCount": 0,
   "runId": "spike-run-0001",
-  "schemaVersion": 3,
-  "sealedBriefDigest": "sha256:bf20772fb46fd5f84f67e3c88564069499e4db234a7bc0463727833b2e74b2de",
+  "schemaVersion": 4,
+  "sealedBriefDigest": "sha256:4c9c6bf7a8354dbed1ce891ece0bfed2fb564ac6cb9884159ca1e9aeecedf27b",
   "trialIndex": 1
 }

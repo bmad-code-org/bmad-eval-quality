@@ -69,6 +69,8 @@ export const ResponseDescriptor = z.strictObject({
 		),
 })
 
+export type ResponseDescriptor = z.infer<typeof ResponseDescriptor>
+
 /**
  * AD-19's four transport channels, spelled as a four-key strict object rather
  * than a record over a channel enum: a record over an enum key demands every
@@ -115,24 +117,142 @@ export const PathTemplate = z
 		'A path template whose parameters are spelled `{name}` in braces. The `:name` spelling is rejected: AD-40 resolves a defect signature by comparing method and path template, and that comparison is not implementable against an unstated syntax.',
 	)
 
-export const Operation = z.strictObject({
+export const Operation = z
+	.strictObject({
+		operationId: Identifier,
+		method: HttpMethod,
+		pathTemplate: PathTemplate,
+		stateChangeMarker: z
+			.boolean()
+			.describe(
+				'AD-19: whether the operation is intended to change state. AD-20 rule 7 relevance reads it, and AD-10 selects the sensitivity channel by it. Both values are legal and neither is a default.',
+			),
+		requestShape: RequestShape,
+		responseDescriptor: ResponseDescriptor,
+		volatilePointers: z.array(DescriptorPointer),
+		sensitivityWitness: SensitivityWitness.nullable().describe(
+			'AD-10, mandatory per declared operation rather than per interface. `null` is legal only for an operation declaring no keys in any request channel; AD-10 exempts that operation and requires the exemption to be recorded, which pre-flight does as an `exempt` check. An input-bearing operation declaring `null` fails a strict compilation under `undeclared-mandatory-input`, alongside the other declaration-completeness check that code already gates.',
+		),
+	})
+	.meta({
+		id: 'Operation',
+		description:
+			"AD-19's per-operation declaration inventory for an interface that speaks HTTP. Carried by the `api`, `web`, and `mcp` branches alike, so the export names it once instead of inlining three copies that could drift apart.",
+	})
+
+export type Operation = z.infer<typeof Operation>
+
+/**
+ * AD-35 applied to a command: the operation names a logical executable and the
+ * caller maps it to something runnable outside the contract. `Identifier`'s
+ * charset admits no slash, dot, or colon, so `/usr/local/bin/tool`, `./tool`,
+ * and `http://host/tool` are parse errors rather than compile findings. That is
+ * what makes AD-35 structural here instead of advisory.
+ *
+ * The subcommand path is a list of segments rather than one string for the
+ * reason `PathTemplate` spells parameters in braces and nothing else: AD-40
+ * compares identities as segments, and a single string would force two
+ * implementations to agree on a separator no field declares.
+ */
+export const CommandInvocation = z.strictObject({
+	executable: Identifier.describe(
+		'A logical executable name, never a filesystem path, a URL, a host, or a port (AD-35). The caller maps it to an authorized target through configuration outside the contract.',
+	),
+	subcommandPath: z
+		.array(Identifier)
+		.describe(
+			'The subcommand segments after the executable, outermost first. Empty is legal and means the executable is invoked with no subcommand.',
+		),
+})
+
+export type CommandInvocation = z.infer<typeof CommandInvocation>
+
+/**
+ * The command counterpart of `RequestShape`, built as a four-key strict object
+ * for the reason the comment above `RequestShape` gives: a record over a
+ * channel enum demands every member at parse time, and the partial spelling
+ * that would relax it is the one the Consistency Conventions ban.
+ */
+export const CommandRequestShape = z.strictObject({
+	argument: KeyedShapeDescriptor.describe(
+		"Positional arguments, keyed by the name the contract gives each position. The key is the author's own label; position is not encoded here, because no AD-31 predicate reads argument order.",
+	),
+	option: KeyedShapeDescriptor,
+	environment: KeyedShapeDescriptor.describe(
+		'AD-18: an environment channel declaration names a variable and its type and never carries a credential value. The same rule the header channel carries, for the channel that plays the same role off an HTTP interface.',
+	),
+	stdin: KeyedShapeDescriptor,
+})
+
+export type CommandRequestShape = z.infer<typeof CommandRequestShape>
+
+/**
+ * Which output channel the operation's one response descriptor describes.
+ *
+ * Tagged on `kind` rather than spelled as a bare channel name because `stdout`
+ * is itself a legal `Identifier`: an untagged root could not tell the stream
+ * from an artifact genuinely named `stdout`, which is exactly the ambiguity the
+ * two members below would otherwise share.
+ */
+export const CommandDescriptorChannel = z.discriminatedUnion('kind', [
+	z.strictObject({
+		kind: z.literal('stream'),
+		channel: z.enum(['stdout', 'stderr']),
+	}),
+	z.strictObject({
+		kind: z.literal('artifact'),
+		artifactId: Identifier.describe(
+			'One of the identifiers this operation declares in `artifacts`. A name absent from that list fails compilation under `unresolved-artifact-reference` rather than resolving absent, because a dangling declaration is an authoring fault the compiler can see.',
+		),
+	}),
+])
+
+export type CommandDescriptorChannel = z.infer<typeof CommandDescriptorChannel>
+
+/**
+ * A command-kind operation. It carries exactly one `ResponseDescriptor`, the
+ * same shape an api operation carries, and `descriptorChannel` says which
+ * output channel that descriptor describes.
+ *
+ * One descriptor rather than one per output channel: AD-19 fixes the descriptor
+ * per operation so that `requiredKeys` has a truthful value, and AD-20 rule 2
+ * reads "the required keys of the response descriptor belonging to the
+ * operation that step invokes" as its denominator. Several descriptors leave
+ * that phrase with several referents, which is the defect AD-19 already records
+ * one level up for an interface-wide union. An operation whose stream and whose
+ * written file both need declared structure is two operations.
+ *
+ * There is no declared success value space for the exit code. AD-19 already
+ * declares one nominated success indicator per operation, and an exit-code
+ * assertion is an ordinary oracle over `/interactions/{stepId}/exit-code`,
+ * which the pointer grammar carries as a scalar channel.
+ */
+export const CommandOperation = z.strictObject({
 	operationId: Identifier,
-	method: HttpMethod,
-	pathTemplate: PathTemplate,
+	invocation: CommandInvocation,
 	stateChangeMarker: z
 		.boolean()
 		.describe(
 			'AD-19: whether the operation is intended to change state. AD-20 rule 7 relevance reads it, and AD-10 selects the sensitivity channel by it. Both values are legal and neither is a default.',
 		),
-	requestShape: RequestShape,
+	requestShape: CommandRequestShape,
+	artifacts: z
+		.array(Identifier)
+		.describe(
+			"The files the operation writes, as bare declared identifiers with existence semantics only. No descriptor and no keys of their own: an artifact pointer's identifier segment resolves against this list, and structure comes from the operation's one response descriptor when `descriptorChannel` nominates that artifact. A pointer naming an identifier absent here fails compilation under `unresolved-artifact-reference`.",
+		),
+	descriptorChannel: CommandDescriptorChannel,
 	responseDescriptor: ResponseDescriptor,
 	volatilePointers: z.array(DescriptorPointer),
 	sensitivityWitness: SensitivityWitness.nullable().describe(
-		'AD-10, mandatory per declared operation rather than per interface. `null` is legal only for an operation declaring no keys in any request channel; AD-10 exempts that operation and requires the exemption to be recorded, which pre-flight does as an `exempt` check. An input-bearing operation declaring `null` fails a strict compilation under `undeclared-mandatory-input`, alongside the other declaration-completeness check that code already gates.',
+		"AD-10, mandatory per declared operation rather than per interface, on the api operation's own terms. `null` is legal only for an operation declaring no keys in any request channel, which for a command means no argument, no option, no environment variable, and no standard input. An input-bearing operation declaring `null` fails a strict compilation under `undeclared-mandatory-input`.",
 	),
 })
 
-export type Operation = z.infer<typeof Operation>
+export type CommandOperation = z.infer<typeof CommandOperation>
+
+/** Either operation shape, for the consumers that read only kind-neutral fields. */
+export type AnyOperation = Operation | CommandOperation
 
 /**
  * AD-19's four interface kinds, exported once so nothing else respells them:
@@ -143,20 +263,52 @@ export type Operation = z.infer<typeof Operation>
  */
 export const INTERFACE_KINDS = ['api', 'web', 'cli', 'mcp'] as const
 
+export type InterfaceKindName = (typeof INTERFACE_KINDS)[number]
+
 export const InterfaceKind = z.enum(INTERFACE_KINDS)
 
-export const PermittedInterface = z.strictObject({
-	logicalId: Identifier.describe(
-		"AD-35: a logical identifier for the interface, never a URL, host, or port. Mapping it to a target is the caller's, outside the contract.",
-	),
-	kind: InterfaceKind.describe(
-		'All four kinds are admitted so `unsupported-interface-kind` stays fireable. v0 supports `api`; the other three fail compilation under that code rather than failing to parse.',
-	),
-	operations: z
-		.array(Operation)
-		.describe(
-			'No uniqueness constraint: two operations colliding on method plus path template after parameter-name erasure is `duplicate-operation-signature`, a coded compile-time error, and a schema that deduped them would delete it.',
-		),
-})
+const LOGICAL_ID_DESCRIPTION =
+	"AD-35: a logical identifier for the interface, never a URL, host, or port. Mapping it to a target is the caller's, outside the contract."
+
+const OPERATIONS_DESCRIPTION =
+	'No uniqueness constraint: two operations colliding on their transport identity after parameter-name erasure is `duplicate-operation-signature`, a coded compile-time error, and a schema that deduped them would delete it.'
+
+// `web` and `mcp` carry the api operation shape unchanged. A two-member union
+// would make either one a parse failure, and a parse failure carries no AD-5
+// code, no artifact path, and no name for the kind that is unsupported, which
+// is the opposite of AD-10's "fails compilation honestly under
+// `unsupported-interface-kind`".
+const apiShapedInterface = <Kind extends 'api' | 'web' | 'mcp'>(kind: Kind) =>
+	z.strictObject({
+		logicalId: Identifier.describe(LOGICAL_ID_DESCRIPTION),
+		kind: z.literal(kind),
+		operations: z.array(Operation).describe(OPERATIONS_DESCRIPTION),
+	})
+
+/**
+ * Discriminated on `kind`, so an operation shape cannot be smuggled onto the
+ * wrong interface: a `cli` interface declaring `method` and an `api` interface
+ * declaring `invocation` are both parse errors.
+ */
+export const PermittedInterface = z.discriminatedUnion('kind', [
+	apiShapedInterface('api'),
+	apiShapedInterface('web'),
+	apiShapedInterface('mcp'),
+	z.strictObject({
+		logicalId: Identifier.describe(LOGICAL_ID_DESCRIPTION),
+		kind: z.literal('cli'),
+		operations: z.array(CommandOperation).describe(OPERATIONS_DESCRIPTION),
+	}),
+])
 
 export type PermittedInterface = z.infer<typeof PermittedInterface>
+
+/**
+ * One interface's operations widened to the element union. TypeScript will not
+ * iterate `iface.operations` directly, because the union's branches give it a
+ * union of array types whose `map` signatures do not unify; this is the one
+ * place that widening is spelled, so no call site invents its own.
+ */
+export const operationsOf = (
+	iface: PermittedInterface,
+): readonly AnyOperation[] => iface.operations

@@ -2,7 +2,10 @@
 // AD-4 legality pass, and the sealed-set filter that reports its exclusions.
 
 import { describe, expect, it } from 'vitest'
-import type { DefectSignature } from '../../src/core/schemas/defect-signature.ts'
+import type {
+	ApiDefectSignature,
+	DefectSignature,
+} from '../../src/core/schemas/defect-signature.ts'
 import type { Expression } from '../../src/core/schemas/expression.ts'
 import type { Operation } from '../../src/core/schemas/interface.ts'
 import type { Probe } from '../../src/core/schemas/probe.ts'
@@ -30,7 +33,10 @@ const withPredicate = (predicate: Expression): Probe => ({
 	},
 })
 
-const withSignature = (signature: Partial<DefectSignature>): Probe => ({
+// `Partial<DefectSignature>` distributes over the union, so a patch naming a
+// method would have to satisfy the command branch too. The api branch is what
+// every case here mutates, so the patch is typed against it.
+const withSignature = (signature: Partial<ApiDefectSignature>): Probe => ({
 	...qualifiedProbe,
 	defectSignature: { ...seededSignature, ...signature },
 })
@@ -237,11 +243,19 @@ describe('the signature requirement, and the one class exempt from it', () => {
 		).toEqual(['signature-present-on-canary'])
 	})
 
-	it('rejects an interface kind other than api', () => {
-		expect(codesOf(withSignature({ interfaceKind: 'cli' }))).toEqual([
-			'signature-interface-kind-unsupported',
-		])
-	})
+	// `web` and `mcp` still have no declared probe semantics, which is what
+	// keeps this code fireable now that `cli` does.
+	it.each(['web', 'mcp'] as const)(
+		'rejects the %s interface kind, whose probe semantics are undeclared',
+		(interfaceKind) => {
+			expect(
+				codesOf({
+					...qualifiedProbe,
+					defectSignature: { ...seededSignature, interfaceKind },
+				} as Probe),
+			).toEqual(['signature-interface-kind-unsupported'])
+		},
+	)
 })
 
 describe('the channel rule: the response channel, or two channels', () => {
@@ -293,8 +307,7 @@ describe('the channel rule: the response channel, or two channels', () => {
 		expect(
 			codesOf(
 				withSignature({
-					observableChannel: 'exit-code',
-					interfaceKind: 'mcp',
+					observableChannel: 'response-status',
 					condition: {
 						selector,
 						predicate: {
@@ -307,8 +320,7 @@ describe('the channel rule: the response channel, or two channels', () => {
 					},
 				}),
 			),
-			// `mcp` is its own failure; the channel rule is what this row is about.
-		).toEqual(['signature-interface-kind-unsupported'])
+		).toEqual([])
 	})
 })
 
@@ -391,6 +403,10 @@ describe('the selector is checked against the same request shape it filters', ()
 						query: null,
 						header: null,
 						body: { neverDeclared: { matcher: 'any' } },
+						argument: null,
+						option: null,
+						environment: null,
+						stdin: null,
 					},
 				},
 				predicate: seededSignature.condition.predicate,
@@ -401,7 +417,7 @@ describe('the selector is checked against the same request shape it filters', ()
 			'condition-selector-key-undeclared',
 		])
 		expect(result.failures[0]?.artifactPath).toBe(
-			'Probe[probeId=PX-001].defectSignature.condition.selector.inputBinding.body["neverDeclared"]',
+			'Probe[probeId=P-901].defectSignature.condition.selector.inputBinding.body["neverDeclared"]',
 		)
 	})
 
@@ -414,6 +430,10 @@ describe('the selector is checked against the same request shape it filters', ()
 						query: null,
 						header: null,
 						body: { neverDeclared: { matcher: 'any' } },
+						argument: null,
+						option: null,
+						environment: null,
+						stdin: null,
 					},
 				},
 				predicate: seededSignature.condition.predicate,
@@ -450,6 +470,10 @@ describe('the selector is checked against the same request shape it filters', ()
 						query: null,
 						header: null,
 						body: { tag: { matcher: 'type-violating' } },
+						argument: null,
+						option: null,
+						environment: null,
+						stdin: null,
 					},
 				},
 				predicate: seededSignature.condition.predicate,
@@ -473,6 +497,10 @@ describe('the selector is checked against the same request shape it filters', ()
 								query: null,
 								header: null,
 								body: { tag: { matcher: 'any' } },
+								argument: null,
+								option: null,
+								environment: null,
+								stdin: null,
 							},
 						},
 						predicate: seededSignature.condition.predicate,
@@ -519,7 +547,7 @@ describe('a disjunct that examines only what was sent decides on its own', () =>
 			'condition-disjunct-without-response-channel',
 		])
 		expect(result.failures[0]?.artifactPath).toBe(
-			'Probe[probeId=PX-001].defectSignature.condition.predicate.operands[0]',
+			'Probe[probeId=P-901].defectSignature.condition.predicate.operands[0]',
 		)
 	})
 
@@ -786,8 +814,8 @@ describe('the pointer rules', () => {
 				createNote,
 			).failures.map((failure) => failure.artifactPath),
 		).toEqual([
-			'Probe[probeId=PX-001].defectSignature.observableChannel',
-			'Probe[probeId=PX-001].defectSignature.condition.predicate.operands[0]',
+			'Probe[probeId=P-901].defectSignature.observableChannel',
+			'Probe[probeId=P-901].defectSignature.condition.predicate.operands[0]',
 		])
 	})
 })
@@ -966,7 +994,7 @@ describe('the probe-side AD-4 legality pass', () => {
 			createNote,
 		).failures.find((entry) => entry.code === 'condition-operand-illegal')
 		expect(failure?.artifactPath).toBe(
-			'Probe[probeId=PX-001].defectSignature.condition.predicate.operands[0]',
+			'Probe[probeId=P-901].defectSignature.condition.predicate.operands[0]',
 		)
 	})
 })
@@ -975,7 +1003,12 @@ describe('the home operation resolves by erased transport identity', () => {
 	it('binds a parameterised template regardless of parameter name', () => {
 		expect(
 			resolveHomeOperation(
-				{ ...seededSignature, method: 'GET', pathTemplate: '/notes/{id}' },
+				{
+					...seededSignature,
+					interfaceKind: 'api' as const,
+					method: 'GET',
+					pathTemplate: '/notes/{id}',
+				},
 				INTERFACES,
 			),
 		).toBe(readNote)
@@ -984,7 +1017,11 @@ describe('the home operation resolves by erased transport identity', () => {
 	it('returns null when the inventory declares no such signature', () => {
 		expect(
 			resolveHomeOperation(
-				{ ...seededSignature, pathTemplate: '/archives' },
+				{
+					...seededSignature,
+					interfaceKind: 'api' as const,
+					pathTemplate: '/archives',
+				},
 				INTERFACES,
 			),
 		).toBeNull()
@@ -1007,7 +1044,7 @@ describe('sealProbeSet admits and reports, never drops silently', () => {
 			() => createNote,
 		)
 		expect(sealed.admitted.map((entry) => entry.probe.probeId)).toEqual([
-			'PX-001',
+			'P-901',
 			'PX-002',
 		])
 		expect(sealed.rejected).toHaveLength(1)

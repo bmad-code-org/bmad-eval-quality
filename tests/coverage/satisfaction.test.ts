@@ -1009,7 +1009,7 @@ describe('rule 7 — state change read-back', () => {
 				operations: [createThing],
 			})
 		})
-		// The witnessed reason is the assertion: under an `operationsOf` that reads
+		// The witnessed reason is the assertion: under a `resolveOperations` that reads
 		// only the first interface, create-thing vanishes and the rule answers
 		// satisfied for having no site at all.
 		expect(verdictFor(contract, rule)).toMatchObject({

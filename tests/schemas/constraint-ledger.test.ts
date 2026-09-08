@@ -12,6 +12,7 @@ import {
 	TUPLE_ARITY,
 } from '../../src/core/schemas/expression.ts'
 import { BINDING_CHANNEL_NON_EMPTY } from '../../src/core/schemas/plan.ts'
+import { LEDGER_COUNTS } from './published-census.ts'
 
 // One document per interchange artifact, because an address that names an
 // artifact and resolves against a different one resolves nothing.
@@ -105,13 +106,14 @@ describe('the constraint ledger', () => {
 		const lineageCarriers = Object.values(INTERCHANGE_ARTIFACTS).filter(
 			(artifact) => artifact.carriesLineage,
 		)
-		expect(lineageCarriers).toHaveLength(11)
-		// The literal 6 is the group that is neither arity, nor lineage, nor
+		expect(lineageCarriers).toHaveLength(LEDGER_COUNTS.lineageCarriers)
+		// The literal 7 is the group that is neither arity, nor lineage, nor
 		// AD-18's two: the two binding-channel minimums, the numeric domain, the
-		// operand-type declaration, the observation-sequence gap, and AD-40's
-		// signature-required rule. The trailing 2 stays AD-18's pair.
+		// operand-type declaration, the observation-sequence gap, AD-40's
+		// signature-required rule, and the evidence artifact's caller-attested
+		// `mode`. The trailing 2 stays AD-18's pair.
 		expect(CONSTRAINT_LEDGER).toHaveLength(
-			arityEntries.length + 6 + lineageCarriers.length + 2,
+			arityEntries.length + 7 + lineageCarriers.length + 2,
 		)
 	})
 
@@ -122,7 +124,7 @@ describe('the constraint ledger', () => {
 		const lineageIds = CONSTRAINT_LEDGER.filter((entry) =>
 			entry.id.startsWith('lineage-'),
 		).map((entry) => entry.id)
-		expect(lineageIds).toHaveLength(11)
+		expect(lineageIds).toHaveLength(LEDGER_COUNTS.lineageCarriers)
 		expect(lineageIds).not.toContain('lineage-artifact-reference')
 		for (const [key, artifact] of Object.entries(INTERCHANGE_ARTIFACTS)) {
 			expect(lineageIds.includes(`lineage-${key}`), key).toBe(
@@ -218,11 +220,17 @@ describe('the premises the ledger rests on, verified against the export', () => 
 		// artifact under a generated positional name, and it stays reachable from
 		// the contract. The AC 2 lineage refactor adds nothing here, which is one
 		// reason the spread was chosen over a nested object.
+		// `Operation` joins the set with the command interface kind, named
+		// because the `api`, `web`, and `mcp` branches carry the identical shape
+		// and inlining it three times would ship three copies that could drift
+		// apart. The command witness inputs stay inline; the reason is on the
+		// shape itself.
 		expect(Object.keys(exported.$defs).sort()).toEqual([
 			'Expression',
 			'InputBindingChannel',
 			'JsonValue',
 			'Operand',
+			'Operation',
 			'RubricBody',
 			'WitnessInputs',
 		])
@@ -339,12 +347,20 @@ describe('the premises the ledger rests on, verified against the export', () => 
 	it('drops the binding-channel check entirely', () => {
 		const channel = exported.$defs.InputBindingChannel
 		expect(JSON.stringify(channel)).not.toContain('minProperties')
-		// All four channels reference the one definition, so the injection lands
-		// once rather than four times.
+		// Every channel of both binding spellings references the one definition,
+		// so the injection lands once rather than eight times.
 		const binding =
 			exported.properties.interactionPlan.items.properties.inputBinding
-		for (const name of ['path', 'query', 'header', 'body']) {
-			expect(binding.properties[name].$ref).toBe('#/$defs/InputBindingChannel')
+		const channels: Readonly<Record<number, readonly string[]>> = {
+			0: ['path', 'query', 'header', 'body'],
+			1: ['argument', 'option', 'environment', 'stdin'],
+		}
+		for (const [branch, names] of Object.entries(channels)) {
+			for (const name of names) {
+				expect(binding.anyOf[Number(branch)].properties[name].$ref).toBe(
+					'#/$defs/InputBindingChannel',
+				)
+			}
 		}
 	})
 

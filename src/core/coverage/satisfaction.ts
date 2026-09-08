@@ -12,6 +12,7 @@
  * the artifact still ships (AD-5), so there is no failure code.
  */
 import { substitutePointer } from '../compile/oracle-alignment.ts'
+import { boundChannelsOf } from '../declared-inputs.ts'
 import {
 	type EvalContract,
 	SIBLING_GROUP_MINIMUM,
@@ -19,8 +20,9 @@ import {
 import type { Expression, Operand } from '../schemas/expression.ts'
 import type { Operation } from '../schemas/interface.ts'
 import type { InteractionStep } from '../schemas/plan.ts'
-import { TRANSPORT_CHANNELS } from '../schemas/pointer.ts'
+import { INPUT_CHANNELS } from '../schemas/pointer.ts'
 import { buildPlanIndex, type PlanIndex } from '../seal/plan-index.ts'
+import { type ResolvedOperation, resolveOperations } from './operations.ts'
 import {
 	DISCIPLINE_RULES,
 	type DisciplineRule,
@@ -54,10 +56,6 @@ export const NO_RELEVANT_SITE =
 export const NO_OPERATION_WITNESS =
 	'the contract declares no operation, so the site this rule fires on has no declaration to witness'
 
-/** Every declared operation, flattened. `relevance.ts` keeps its own copy. */
-const operationsOf = (contract: EvalContract): readonly Operation[] =>
-	contract.permittedInterfaces.flatMap((declared) => declared.operations)
-
 /** `unresolved` never throws; a duplicate identifier resolves to nothing. */
 const planIndexOf = (contract: EvalContract): PlanIndex =>
 	buildPlanIndex(contract.interactionPlan, contract.permittedInterfaces, {
@@ -77,13 +75,24 @@ const encodeToken = (token: string): string =>
 /** Everything one step produced or was given. */
 const stepRoot = (stepId: string): string => `/interactions/${stepId}`
 
-/** A descriptor pointer read at one step, spelled interaction-rooted. */
-const bodyPointer = (stepId: string, descriptorPointer: string): string =>
-	`/interactions/${stepId}/response-body${descriptorPointer}`
+/**
+ * A descriptor pointer read at one step, spelled interaction-rooted. The root
+ * travels on the resolved operation, so an interface kind whose response
+ * arrives on another channel is one change in `operations.ts` and none at the
+ * five call sites below.
+ */
+const bodyPointer = (
+	resolved: ResolvedOperation,
+	stepId: string,
+	descriptorPointer: string,
+): string => `${stepRoot(stepId)}${resolved.descriptorRoot}${descriptorPointer}`
 
-/** One declared response key at one step. */
-const keyPointer = (stepId: string, key: string): string =>
-	`/interactions/${stepId}/response-body/${encodeToken(key)}`
+/** One declared response key at one step, rooted the way `bodyPointer` is. */
+const keyPointer = (
+	resolved: ResolvedOperation,
+	stepId: string,
+	key: string,
+): string => `${stepRoot(stepId)}${resolved.descriptorRoot}/${encodeToken(key)}`
 
 /** One declared parameter on one transport channel at one step. */
 const parameterPointer = (
@@ -210,13 +219,13 @@ const definedPointers = (node: CheckNode): readonly string[] =>
  * own, which is what every per-rule fixture does.
  */
 export type SatisfactionContext = {
-	readonly operations: readonly Operation[]
+	readonly operations: readonly ResolvedOperation[]
 	readonly index: PlanIndex
 	readonly oracles: readonly OracleView[]
 }
 
 const contextOf = (contract: EvalContract): SatisfactionContext => ({
-	operations: operationsOf(contract),
+	operations: resolveOperations(contract),
 	index: planIndexOf(contract),
 	oracles: oracleViewsOf(contract),
 })
@@ -236,8 +245,9 @@ export function successIndicatorSeparationSatisfaction(
 	const { operations, index, oracles } = context
 	if (operations.length === 0) return verdict(rule, false, NO_OPERATION_WITNESS)
 	let sites = 0
-	for (const operation of operations) {
-		const { successIndicator, channelRoles } = operation.responseDescriptor
+	for (const resolved of operations) {
+		const { operation, descriptor } = resolved
+		const { successIndicator, channelRoles } = descriptor
 		if (successIndicator === null) {
 			return verdict(
 				rule,
@@ -268,10 +278,13 @@ export function successIndicatorSeparationSatisfaction(
 					(oracle) =>
 						bothChannelsAddress(
 							oracle,
-							bodyPointer(step.stepId, successIndicator),
+							bodyPointer(resolved, step.stepId, successIndicator),
 						) &&
 						others.some((pointer) =>
-							bothChannelsAddress(oracle, bodyPointer(step.stepId, pointer)),
+							bothChannelsAddress(
+								oracle,
+								bodyPointer(resolved, step.stepId, pointer),
+							),
 						),
 				),
 			)
@@ -306,8 +319,9 @@ export function wholeBodySatisfaction(
 	const { operations, index, oracles } = context
 	if (operations.length === 0) return verdict(rule, false, NO_OPERATION_WITNESS)
 	let sites = 0
-	for (const operation of operations) {
-		const required = [...new Set(operation.responseDescriptor.requiredKeys)]
+	for (const resolved of operations) {
+		const { operation, descriptor } = resolved
+		const required = [...new Set(descriptor.requiredKeys)]
 		if (required.length <= 1) continue
 		sites += 1
 		const witnessed = index
@@ -315,7 +329,7 @@ export function wholeBodySatisfaction(
 			.some((step) =>
 				oracles.some((oracle) =>
 					required.every((key) =>
-						bothChannelsAddress(oracle, keyPointer(step.stepId, key)),
+						bothChannelsAddress(oracle, keyPointer(resolved, step.stepId, key)),
 					),
 				),
 			)
@@ -336,23 +350,24 @@ export function wholeBodySatisfaction(
 	)
 }
 
-/** The site condition rule 3 relevance reads: a key on any of the four channels. */
-const declaresRequestKey = (operation: Operation): boolean =>
-	TRANSPORT_CHANNELS.some((channel) => {
-		const shape = operation.requestShape[channel]
-		return (
+/** The site condition rule 3 relevance reads: a key on any input channel. */
+const declaresRequestKey = (resolved: ResolvedOperation): boolean =>
+	resolved.requestChannels.some(
+		({ shape }) =>
 			shape.requiredKeys.length > 0 ||
 			shape.permittedKeys.length > 0 ||
-			Object.keys(shape.types).length > 0
-		)
-	})
+			Object.keys(shape.types).length > 0,
+	)
 
-/** AD-39's matcher, on any transport channel of one step. */
+/**
+ * AD-39's matcher, on any input channel of one step. The step carries no
+ * operation, so the bound channels are read off the binding itself rather than
+ * off a channel tuple that would name four channels the binding does not have.
+ */
 const bindsTypeViolating = (step: InteractionStep): boolean =>
-	TRANSPORT_CHANNELS.some((channel) => {
-		const binding = step.inputBinding[channel]
-		if (binding === null) return false
-		return Object.values(binding).some(
+	boundChannelsOf(step.inputBinding).some(({ bound }) => {
+		if (bound === null) return false
+		return Object.values(bound).some(
 			(value) => 'matcher' in value && value.matcher === 'type-violating',
 		)
 	})
@@ -371,8 +386,9 @@ export function malformedInputSatisfaction(
 	const { operations, index, oracles } = context
 	if (operations.length === 0) return verdict(rule, false, NO_OPERATION_WITNESS)
 	let sites = 0
-	for (const operation of operations) {
-		if (!declaresRequestKey(operation)) continue
+	for (const resolved of operations) {
+		const { operation } = resolved
+		if (!declaresRequestKey(resolved)) continue
 		sites += 1
 		const witnessed = index
 			.stepsUsing(operation.operationId)
@@ -415,8 +431,9 @@ export function perRecordSatisfaction(
 	const { operations, index, oracles } = context
 	if (operations.length === 0) return verdict(rule, false, NO_OPERATION_WITNESS)
 	let sites = 0
-	for (const operation of operations) {
-		const { collectionLocations } = operation.responseDescriptor
+	for (const resolved of operations) {
+		const { operation, descriptor } = resolved
+		const { collectionLocations } = descriptor
 		if (collectionLocations === null) {
 			return verdict(
 				rule,
@@ -428,7 +445,7 @@ export function perRecordSatisfaction(
 		for (const location of collectionLocations) {
 			sites += 1
 			const witnessed = steps.some((step) => {
-				const collection = bodyPointer(step.stepId, location.pointer)
+				const collection = bodyPointer(resolved, step.stepId, location.pointer)
 				return oracles.some((oracle) =>
 					oracle.nodes.some((node) => node.collection === collection),
 				)
@@ -499,7 +516,12 @@ export function siblingCrossCheckSatisfaction(
 			(oracle) =>
 				members.filter((parameter) =>
 					contract.interactionPlan.some((step) =>
-						TRANSPORT_CHANNELS.some((channel) =>
+						// Building candidate pointers, not reading a declared
+						// shape: `groups.parameters` carries no operation, so
+						// every input channel is tried and whichever one the
+						// oracle actually addresses is the match. It looks
+						// identical to `declaresRequestKey` above and is not.
+						INPUT_CHANNELS.some((channel) =>
 							bothChannelsAddress(
 								oracle,
 								parameterPointer(step.stepId, channel, parameter),
@@ -571,8 +593,9 @@ export function omissionAndCompletenessSatisfaction(
 	const { operations, index, oracles } = context
 	if (operations.length === 0) return verdict(rule, false, NO_OPERATION_WITNESS)
 	let sites = 0
-	for (const operation of operations) {
-		const { collectionLocations } = operation.responseDescriptor
+	for (const resolved of operations) {
+		const { operation, descriptor } = resolved
+		const { collectionLocations } = descriptor
 		if (collectionLocations === null) {
 			return verdict(
 				rule,
@@ -586,7 +609,7 @@ export function omissionAndCompletenessSatisfaction(
 			if (referenceSet === null) continue
 			sites += 1
 			const witnessed = steps.some((step) => {
-				const collection = bodyPointer(step.stepId, location.pointer)
+				const collection = bodyPointer(resolved, step.stepId, location.pointer)
 				return oracles.some((oracle) =>
 					oracle.nodes.some((node) =>
 						reconciles(node, collection, location, referenceSet),
@@ -611,28 +634,50 @@ export function omissionAndCompletenessSatisfaction(
 	)
 }
 
+/**
+ * A read-back step with the operation it invokes. The read side is a different
+ * operation from the write side, so the pair travels together: the read side's
+ * own `descriptorRoot` decides where its response is addressed.
+ */
+type ReadBackStep = {
+	readonly step: InteractionStep
+	readonly resolved: ResolvedOperation
+}
+
 /** AD-39: a read-back step names the write in its temporal clause and changes no state itself. */
 const readBackStepsFor = (
 	contract: EvalContract,
-	index: PlanIndex,
+	context: SatisfactionContext,
 	writeStepId: string,
-): readonly InteractionStep[] =>
-	contract.interactionPlan.filter((step) => {
-		if (step.stepId === writeStepId || step.after !== writeStepId) return false
-		const operation = index.operationOf(step.operationId)
-		return operation !== undefined && !operation.stateChangeMarker
+): readonly ReadBackStep[] =>
+	contract.interactionPlan.flatMap((step) => {
+		if (step.stepId === writeStepId || step.after !== writeStepId) return []
+		const operation = context.index.operationOf(step.operationId)
+		if (operation === undefined || operation.stateChangeMarker) return []
+		// The index and the resolver both read `permittedInterfaces`, so the
+		// index answers with the very object the resolver carries. Matching on
+		// identity leaves the index's duplicate-identifier rule as the one
+		// thing deciding which operations resolve.
+		return context.operations
+			.filter((resolved) => resolved.operation === operation)
+			.map((resolved) => ({ step, resolved }))
 	})
 
 /** One node holding a pointer into each side of the read-back relation. */
 const relates = (
 	node: CheckNode,
 	writeStepId: string,
-	readStepId: string,
+	readBack: ReadBackStep,
 ): boolean => {
 	const pointers = definedPointers(node)
 	return (
+		// `call-inputs` is the same segment for every interface kind, so the
+		// write side takes no root from its operation.
 		someAddresses(pointers, `${stepRoot(writeStepId)}/call-inputs`) &&
-		someAddresses(pointers, `${stepRoot(readStepId)}/response-body`)
+		someAddresses(
+			pointers,
+			`${stepRoot(readBack.step.stepId)}${readBack.resolved.descriptorRoot}`,
+		)
 	)
 }
 
@@ -651,16 +696,16 @@ export function stateChangeReadBackSatisfaction(
 	const { operations, index, oracles } = context
 	if (operations.length === 0) return verdict(rule, false, NO_OPERATION_WITNESS)
 	let sites = 0
-	for (const operation of operations) {
+	for (const { operation } of operations) {
 		if (!operation.stateChangeMarker) continue
 		sites += 1
 		const witnessed = index
 			.stepsUsing(operation.operationId)
 			.some((writeStep) =>
-				readBackStepsFor(contract, index, writeStep.stepId).some((readStep) =>
+				readBackStepsFor(contract, context, writeStep.stepId).some((readBack) =>
 					oracles.some((oracle) =>
 						oracle.nodes.some((node) =>
-							relates(node, writeStep.stepId, readStep.stepId),
+							relates(node, writeStep.stepId, readBack),
 						),
 					),
 				),

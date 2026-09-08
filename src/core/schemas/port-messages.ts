@@ -2,7 +2,11 @@
 import { z } from 'zod'
 import { HttpMethod, PathTemplate } from './interface.ts'
 import { Identifier, JsonValue, KeyName, Rfc3339Utc } from './primitives.ts'
-import { ProbeObservedBody, ProbeRequestBody } from './probe-body.ts'
+import {
+	ProbeObservedBody,
+	ProbeRequestBody,
+	ProbeRequestStdin,
+} from './probe-body.ts'
 
 export { ProbeObservedBody, ProbeRequestBody } from './probe-body.ts'
 
@@ -64,12 +68,23 @@ export const FileWriteResponse = z.strictObject({
  * authorization material is the adapter's, supplied by the same mapping that
  * authorizes the target.
  */
-export const ProbeRequest = z.strictObject({
+const probeCorrelation = {
 	probeId: Identifier.describe(
 		'An opaque correlation label minted by the pre-flight plan and echoed unchanged on the observation. Two witnesses of one operation, and the three observations a state-reset differential needs, are otherwise distinguishable only by array position, which NFR9 forbids any stage from reading.',
 	),
 	interfaceId: Identifier,
 	operationId: Identifier,
+}
+
+/**
+ * A request to an interface that speaks HTTP. Tagged on `kind` so an adapter
+ * knows what it is being asked to do before it reads anything else, and so the
+ * two shapes cannot be confused for one another by a field that happens to be
+ * absent.
+ */
+export const ApiProbeRequest = z.strictObject({
+	...probeCorrelation,
+	kind: z.literal('api'),
 	method: HttpMethod,
 	pathTemplate: PathTemplate,
 	channels: z.strictObject({
@@ -85,6 +100,44 @@ export const ProbeRequest = z.strictObject({
 })
 
 /**
+ * A request to run a command.
+ *
+ * AD-35's rule is that a contract names a logical identifier and the caller
+ * maps it, and the analogue for a command is exactly the same shape: the
+ * `executable` is the logical name the contract declared, and the adapter maps
+ * it to something runnable from configuration outside the contract. No
+ * filesystem path, no interpreter, no shell string. The adapter builds the
+ * argument vector; it is never handed one to execute.
+ *
+ * `environment` is string-valued for the reason `header` is, and carries no
+ * credential for the reason AD-18 gives: authorization material is the
+ * adapter's, supplied by the same mapping that authorizes the target.
+ */
+export const CommandProbeRequest = z.strictObject({
+	...probeCorrelation,
+	kind: z.literal('cli'),
+	executable: Identifier.describe(
+		'A logical executable name, never a filesystem path, a URL, a host, or a port (AD-35). The adapter maps it to an authorized target through configuration outside the contract.',
+	),
+	subcommandPath: z.array(Identifier),
+	channels: z.strictObject({
+		argument: z.record(KeyName, JsonValue),
+		option: z.record(KeyName, JsonValue),
+		environment: z
+			.record(KeyName, z.string())
+			.describe(
+				'String-valued because an environment variable is a string to the process; the other channels carry the declared JSON value.',
+			),
+		stdin: ProbeRequestStdin,
+	}),
+})
+
+export const ProbeRequest = z.discriminatedUnion('kind', [
+	ApiProbeRequest,
+	CommandProbeRequest,
+])
+
+/**
  * What the adapter observed. Deliberately response content only: no elapsed
  * time, no redirect count, no retry count. AD-35's caps are safety limits, so
  * exceeding one throws a `budget-exhausted` fault and never lands as a field
@@ -95,10 +148,9 @@ export const ProbeRequest = z.strictObject({
  * policy denial, a cap, an abort, or a transport failure throws; a 500 is the
  * payload AD-10's seeded-fault check reads, never an error.
  */
-export const ProbeObservation = z.strictObject({
-	probeId: Identifier,
-	interfaceId: Identifier,
-	operationId: Identifier,
+export const ApiProbeObservation = z.strictObject({
+	...probeCorrelation,
+	kind: z.literal('api'),
 	status: z.int().min(100).max(599),
 	headers: z
 		.record(KeyName, z.string())
@@ -108,6 +160,34 @@ export const ProbeObservation = z.strictObject({
 	body: ProbeObservedBody,
 })
 
+/**
+ * What the adapter observed of a command run: its two streams, its exit code,
+ * and the files it wrote.
+ *
+ * `exitCode` is signed, unlike an HTTP status, because a process terminated by
+ * a signal is conventionally reported as a negative code and this field records
+ * what happened rather than what is tidy. A non-zero exit is an observation
+ * exactly as a 500 is: only a policy denial, a cap, an abort, or a failure to
+ * start the process throws.
+ *
+ * `artifacts` is keyed by the identifier the operation declared, not by a
+ * filesystem path. Which path each identifier names is the adapter's mapping,
+ * the same disclosure boundary AD-35 draws around the executable itself.
+ */
+export const CommandProbeObservation = z.strictObject({
+	...probeCorrelation,
+	kind: z.literal('cli'),
+	exitCode: z.int(),
+	stdout: ProbeObservedBody,
+	stderr: ProbeObservedBody,
+	artifacts: z.record(Identifier, ProbeObservedBody),
+})
+
+export const ProbeObservation = z.discriminatedUnion('kind', [
+	ApiProbeObservation,
+	CommandProbeObservation,
+])
+
 export type CorpusResolveRequest = z.infer<typeof CorpusResolveRequest>
 export type CorpusResolveResponse = z.infer<typeof CorpusResolveResponse>
 export type ClockReadRequest = z.infer<typeof ClockReadRequest>
@@ -116,5 +196,9 @@ export type FileReadRequest = z.infer<typeof FileReadRequest>
 export type FileReadResponse = z.infer<typeof FileReadResponse>
 export type FileWriteRequest = z.infer<typeof FileWriteRequest>
 export type FileWriteResponse = z.infer<typeof FileWriteResponse>
+export type ApiProbeRequest = z.infer<typeof ApiProbeRequest>
+export type CommandProbeRequest = z.infer<typeof CommandProbeRequest>
 export type ProbeRequest = z.infer<typeof ProbeRequest>
+export type ApiProbeObservation = z.infer<typeof ApiProbeObservation>
+export type CommandProbeObservation = z.infer<typeof CommandProbeObservation>
 export type ProbeObservation = z.infer<typeof ProbeObservation>

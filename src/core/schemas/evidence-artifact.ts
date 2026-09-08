@@ -351,7 +351,7 @@ const evidenceCommonFields = {
 	callerAttestedInputs: z
 		.array(ScoringVersionInputName)
 		.describe(
-			'Which of the six scoring-version inputs were caller-attested rather than computed by this package. An enum over the six key names rather than free strings, because AD-32 requires the artifact to state *which* inputs were attested and an unconstrained string cannot be checked against anything. AD-11 names three of the six as caller-attested; the enum admits any subset so a stricter or looser integration stays representable.',
+			'Which of the six scoring-version inputs were caller-attested rather than computed by this package. An enum over the six key names rather than free strings, because AD-32 requires the artifact to state *which* inputs were attested and an unconstrained string cannot be checked against anything. AD-11 names three of the six as caller-attested; the enum admits any subset so a stricter or looser integration stays representable. `mode` is the one member that is not a choice: `ScoringVersionInputs.mode` is read from the sealed run record and never re-derived, so a list omitting it is a misdeclaration rather than a stricter integration. The schema admits that shape and the constraint ledger records why; `core/emit` always names it.',
 		),
 	trials: Trials,
 	outcomes: z.array(Outcome),

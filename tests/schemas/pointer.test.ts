@@ -6,6 +6,7 @@ import {
 	DescriptorPointer,
 	EVIDENCE_CHANNELS,
 	EvidenceChannel,
+	IDENTIFIER_ROOTED_CHANNEL,
 	INTERACTION_POINTER_PATTERN,
 	InteractionPointer,
 	SCALAR_CHANNELS,
@@ -128,7 +129,7 @@ describe('each spelling is assigned to its consumers', () => {
 })
 
 describe('the channel vocabularies, exported once and derived by name', () => {
-	it('holds AD-26 seven, in AD-26 order', () => {
+	it('holds AD-26 eight, in AD-26 order', () => {
 		expect(EVIDENCE_CHANNELS).toEqual([
 			'response-body',
 			'response-headers',
@@ -137,22 +138,24 @@ describe('the channel vocabularies, exported once and derived by name', () => {
 			'stdout',
 			'stderr',
 			'exit-code',
+			'artifact',
 		])
-		expect(new Set(EVIDENCE_CHANNELS).size).toBe(7)
+		expect(new Set(EVIDENCE_CHANNELS).size).toBe(8)
 	})
 
 	it('holds AD-19 four transport channels', () => {
 		expect(TRANSPORT_CHANNELS).toEqual(['path', 'query', 'header', 'body'])
 	})
 
-	// The pattern is not rebuilt from the flat seven: it rests on a three-way
+	// The pattern is not rebuilt from the flat eight: it rests on a four-way
 	// partition the enum does not carry. The partition is spelled by naming its
 	// members, so this is what proves the naming stayed honest.
-	it('partitions the seven disjointly and exhaustively', () => {
+	it('partitions the eight disjointly and exhaustively', () => {
 		const partitioned = [
 			...TAIL_BEARING_CHANNELS,
 			...SCALAR_CHANNELS,
 			TRANSPORT_ROOTED_CHANNEL,
+			IDENTIFIER_ROOTED_CHANNEL,
 		]
 		expect(new Set(partitioned).size).toBe(partitioned.length)
 		expect([...partitioned].sort()).toEqual([...EVIDENCE_CHANNELS].sort())

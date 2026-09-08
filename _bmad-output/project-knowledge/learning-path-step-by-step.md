@@ -79,6 +79,11 @@ flowchart TD
 |   36 | epic8-story3 | The stage that mints the evidence artifact, replacing the one hand-assembled copy that used to be the only one. |
 |   37 | epic8-story4 | One command and one library call that reach the three stages, so a caller outside a test gets an evidence artifact back. |
 |   38 | epic8-story5 | The worked example calls the shipped stages for the values it used to hand-type, and the changelog tells a reader the command exists. |
+|   39 | epic9-story1 | A contract can describe a system under test that runs behind a command, and every operation's declared output channel descends through its own response descriptor. |
+|   40 | epic9-story2 | A file the system wrote is addressable, and the artifact channel is a third case of the descent rule rather than a fourth rule. |
+|   41 | epic9-story3 | The probe port learns to run a command, and seal stops calling one an endpoint. |
+|   42 | epic9-story4 | The run record records what a command produced, and the defect signature can name one. |
+|   43 | epic9-story5 | The corpus ships two command contracts, and the release says what stopped being comparable. |
 
 Adding a step: follow `learning-path-template.md`.
 
@@ -3282,3 +3287,208 @@ flowchart TD
 - A test asserting on a doc's exact stale wording stops being a regression guard once the wording it
   pins is the thing being corrected. Updating the assertion to the corrected wording is what keeps
   the test meaningful.
+
+## Step 39 (epic9-story1): a system under test that is a command, not a website
+
+**In plain terms:** everything this project could describe so far was a thing you talk to over the
+web. Ask it a question, get an answer back. But a lot of software is not like that. You run it, you
+type something in, and it prints an answer out. None of that could be written down here, so anyone
+with a program of that kind could not write a contract at all. Now they can.
+
+**What:** `permittedInterfaces` became a union tagged by `kind`. The three web-shaped kinds carry the
+operation shape they always had, unchanged. The new `cli` kind carries a command operation: a logical
+executable and a subcommand path instead of a method and a path, four input channels named
+`argument`, `option`, `environment`, and `stdin`, a list of the files it writes, and one
+`descriptorChannel` saying which output channel its single response descriptor describes. The eval
+contract's `schemaVersion` is 4.
+
+**Why:** the second half is the half that matters. An operation has exactly one response descriptor
+under AD-19, and until now every reader of one assumed the channel it described was the response
+body. `descriptorChannel` makes that an operation's own answer, so `/interactions/x/stdout/key`
+descends through the descriptor exactly as `/interactions/x/response-body/key` does. Without it a
+command contract parses and then fails on the first line of its oracles: 110 of the pointers in the
+nine contracts driving this epic address standard output with a tail, and the old rule rejected every
+one of them.
+
+**Read in this order:**
+
+1. `src/core/schemas/interface.ts`: `CommandOperation`, and the four members of `PermittedInterface`.
+2. `src/core/declared-inputs.ts`: `descriptorChannelOf` and `requestChannelsOf`, the two questions a
+   caller asks an operation instead of assuming its kind.
+3. `src/core/compile/reachability.ts`: `descendThroughDescriptor`, called from whichever channel the
+   operation nominates.
+4. `src/core/seal/plan-index.ts`: `interfaceKindOf` and `commandOperationOf` beside a narrow
+   `operationOf`.
+5. `tests/schemas/fixtures/command-contract.ts`: a command contract that compiles end to end.
+
+**Story:** `_bmad-output/implementation-artifacts/9-1-the-interface-kind-shaped-operation.md`
+
+### Reference
+
+**Rules:**
+
+- An operation's declared output channel is whatever `descriptorChannel` names; never assume the
+  response body.
+- `PlanIndex.operationOf` stays narrow. Read `interfaceKindOf` first, then the matching accessor.
+- A tuple named for one kind's channels stays bound to that kind's channels. Carry resolved
+  `{ channel, shape }` pairs rather than indexing a union with a name from the other kind's tuple.
+- `invocation.executable` is an `Identifier`, so AD-35's ban on naming a target is a parse error
+  rather than a check.
+- Standard input on a witness leg is `json`, `text`, or `absent`; a text stream is opaque, so that
+  channel's key comparison abstains.
+- Pre-flight still refuses a command interface, because the probe port carries a method and a path.
+- `web` and `mcp` keep the web-shaped operation, which is what keeps `unsupported-interface-kind`
+  fireable.
+
+**Watch out:**
+
+- A union of two closed objects over disjoint keys makes a schema-mutation sweep unable to attribute
+  a keyword deletion to one branch when both branches are `$ref`s. Spelling one branch in place is
+  what restores attribution.
+- Making `permittedInterfaces` a discriminated union means `iface.operations` is a union of array
+  types, which TypeScript will not call `.map` on. `operationsOf(iface)` is the one place that
+  widening is spelled.
+
+## Step 40 (epic9-story2): the file a program wrote, addressed by name
+
+**In plain terms:** a program that writes a report has put its answer in a file, not on the screen.
+Until now there was no way to point at that file, or at a field inside it, so a check could not read
+it. Now you can name the file the program said it writes and read inside it, and naming a file it
+never said it writes is an error rather than a silent nothing.
+
+**What:** `artifact` is an eighth evidence channel, spelled
+`/interactions/{stepId}/artifact/{artifactId}` plus a tail. The identifier segment is mandatory and
+resolves against the operation's own `artifacts` list; a name absent from that list fails
+compilation under `unresolved-artifact-reference`. `descriptorChannel` gains its `artifact` arm, so
+an operation may nominate one written file as the channel its response descriptor describes.
+
+**Why:** the segment is mandatory for the reason AD-26 already gives for `call-inputs`: a channel
+that names one of several things has nothing to resolve against without it. And a dangling
+identifier is a coded failure rather than absent evidence because `absent` is defined over pointers
+that do not resolve against observed evidence, while a dangling declaration is an authoring fault the
+compiler can see. That is the same call AD-26 made for a dangling reference-set identifier.
+
+**Read in this order:**
+
+1. `src/core/schemas/pointer.ts`: `IDENTIFIER_ROOTED_CHANNEL` and the four-way partition.
+2. `src/core/compile/reachability.ts`: the artifact branch, and how it reaches the same descent.
+3. `src/core/compile/interface-inventory.ts`: `checkArtifactReferences`, both sites it walks.
+4. `src/core/schemas/sealed-run-record.ts`: `Observation.artifacts`.
+
+**Story:** `_bmad-output/implementation-artifacts/9-2-the-channel-vocabulary-and-the-pointer-grammar.md`
+
+### Reference
+
+**Rules:**
+
+- A channel naming one of several things takes a declared segment before its tail.
+- A dangling declared identifier is a coded compile failure, never `absent`.
+- An artifact the operation declares but the descriptor does not nominate exists and declares no
+  structure: a bare pointer at it is fine, a tail on it is not.
+
+**Watch out:**
+
+- Adding a channel to `EVIDENCE_CHANNELS` breaks two exhaustive switches on purpose. That is the
+  forcing function; do not add a `default` to either.
+
+## Step 41 (epic9-story3): teaching the probe port to run a command
+
+**In plain terms:** before any of this counts, the package checks the test environment is real by
+poking it. That poke could only be a web request. Now it can also be running a program, and the
+rule that the contract never says where anything lives holds the same way for both.
+
+**What:** `ProbeRequest` and `ProbeObservation` are each a union tagged on `kind`. A command request
+carries a logical `executable`, a `subcommandPath`, and the four command channels; a command
+observation carries an exit code, two streams, and the files the run wrote. `planPreflight` plans
+command legs and the reducer reads a non-zero exit as the anomaly a 4xx is on the other kind. `seal`
+calls a command a command rather than an endpoint.
+
+**Why:** AD-35 says a contract names a logical identifier and the caller maps it, and the analogue
+for a command is exactly the same shape: the adapter maps the name to something runnable and builds
+the argument vector, and is never handed one to execute. Handing it a shell string would put the
+target back inside the contract in a different alphabet.
+
+**Read in this order:**
+
+1. `src/core/schemas/port-messages.ts`: the two request shapes and the two observation shapes.
+2. `src/core/preflight/plan.ts`: `requestOf`, and why a leg's spelling must agree with its kind.
+3. `src/core/preflight/reduce.ts`: `anomalyOf`.
+4. `src/core/seal/derived-reference.ts`: `operationReference`.
+
+**Story:** `_bmad-output/implementation-artifacts/9-3-compile-and-preflight-admit-a-command-interface.md`
+
+### Reference
+
+**Rules:**
+
+- The adapter builds the argument vector. A request never carries one, and never a shell string.
+- A non-zero exit on a control leg is what a 4xx is on the other kind.
+- An adapter that speaks one mechanism declines the other rather than half-serving it.
+
+## Step 42 (epic9-story4): recording what a command produced
+
+**In plain terms:** the record of a run had places for a web response and none for what a program
+prints or writes. It has them now. It also records which account the harness was acting as, which
+is what makes "act as one user, read as another" checkable at all.
+
+**What:** `Observation` gains `artifacts` and `principal`, `stdout` and `stderr` become tagged
+values, and `callInputs` carries all eight input channels. `DefectSignature` becomes a union whose
+command branch declares an invocation instead of a method and a path template.
+
+**Why:** the tagging is what makes a nominated output channel resolvable. A tailed `stdout` pointer
+compiled and then resolved absent at score time, because a tail over a bare string resolves absent;
+a harness that captured JSON now records it as JSON and the tail walks into it. `principal` closes
+the other half of a gap that had been open since owed item 3: a `{ principal }` binding is
+presence-only by construction, so two steps binding different accounts both matched everything.
+
+**Read in this order:**
+
+1. `src/core/schemas/sealed-run-record.ts`: `Observation`, and why `ObservedCallInputs` is one object.
+2. `src/core/score/bindings.ts`: `satisfiesBindings`, the principal comparison.
+3. `src/core/schemas/defect-signature.ts`: the two branches and why the union is plain.
+4. `src/core/score/qualification.ts`: `resolveHomeOperation`, comparing identity within its kind.
+
+**Story:** `_bmad-output/implementation-artifacts/9-4-the-run-record-the-defect-signature-and-qualification.md`
+
+### Reference
+
+**Rules:**
+
+- A declaration cannot tell unused from empty, so those spellings stay apart; an observation can, so
+  one object serves both kinds.
+- Compare a transport identity within its own kind. `GET /notes` and an executable of that name are
+  not the same operation.
+- A union of identical branches is a union AD-13's sweep cannot attribute a deletion to.
+
+## Step 43 (epic9-story5): saying what stopped being comparable
+
+**In plain terms:** the package computes a version number for every score from what went into it,
+and one of those inputs just changed for every contract. So no score from before this release can be
+compared with any score after it, including scores that have nothing to do with commands. Saying so
+plainly is the whole job of this step.
+
+**What:** two command contracts ship in `corpus/dev/`, the published schemas and generated tables are
+regenerated, and `CHANGELOG.md` carries the breaks and the non-comparability statement.
+
+**Why:** AD-11 computes the scoring version from a named object whose first field is the contract
+schema version, and that moved from 3 to 4 for every contract in the tree. Older results are not
+invalidated: they stay true of the version they were computed under, and no comparison spans the two.
+A reader who is not told that will compare them anyway.
+
+**Read in this order:**
+
+1. `CHANGELOG.md`: the Comparability section.
+2. `tests/coverage/fixtures/corpus.ts`: `DEV_CORPUS_CONTRACTS` and why it differs from the cells.
+3. `tests/schemas/published-census.ts`: every hand-maintained published count, in one place.
+
+**Story:** `_bmad-output/implementation-artifacts/9-5-the-published-surface-the-corpus-and-the-disclosed-breaks.md`
+
+### Reference
+
+**Rules:**
+
+- A schema version is an input to the scoring version, so bumping one ends comparability for every
+  contract, not only the ones the change was about.
+- One release gets one bump per artifact, whatever the plan said about per-story releasability.
+- An entry criterion about someone else's document is discharged by a measured reading of their
+  check, never by a fixture written in this tree.

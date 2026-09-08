@@ -753,9 +753,9 @@ every other pre-flight leg uses. Engine integration is a later adapter behind a 
 <p>Rubrics compile under the same discipline: an anchored scale, a bounded length, named failure-mode penalties, rubric identifiers unique across the contract and criterion identifiers unique inside their own rubric, every criterion stating a question, and every criterion&#39;s evidence pointer resolving against the declared interfaces. Authored rubric text that asks a judge to grade the subject&#39;s own stated reasoning fails a closed-vocabulary check over the wording.</p>
 <h2 id="how-eval-contract-strength-scoring-works">How Eval Contract strength scoring works<a class="heading-anchor" href="#how-eval-contract-strength-scoring-works" aria-label="Link to How Eval Contract strength scoring works">#</a></h2>
 <p>The <code>score</code> command and its <code>runScore</code> library call compute it; <code>npm run generate:worked-example</code>
-runs the same functions over the committed worked chain, and the
-<a href="https://bmad-code-org.github.io/bmad-eval-quality/tutorials/read-a-scored-run/">Read a Scored Run</a>
-tutorial reads the result field by field. Do not trust a contract because it looks thorough. Put a known defect behind it, run the evaluator, and check whether the contract&#39;s oracles caused the defect to be caught.</p>
+runs the same functions over the committed worked chain, and
+<a href="https://bmad-code-org.github.io/bmad-eval-quality/how-to/author-behavioral-contracts/">the full walkthrough</a>
+reads the result field by field. Do not trust a contract because it looks thorough. Put a known defect behind it, run the evaluator, and check whether the contract&#39;s oracles caused the defect to be caught.</p>
 <p>Two probe classes go behind a contract, and a strong contract rejects both:</p>
 <ul>
 <li><strong>Defect probes</strong>, where the behavior is simply wrong.</li>

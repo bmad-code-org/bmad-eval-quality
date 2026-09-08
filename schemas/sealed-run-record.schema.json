@@ -151,6 +151,19 @@
             ],
             "description": "AD-23: `baseline` for a pre-canned or deterministic test, `evaluator-chosen` for an action the evaluator selected. The distinction is the one the product's central finding rests on: what a sealed evaluator detects beyond the pre-canned baseline. It lives on the observation, never on the finding."
           },
+          "principal": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                "description": "A kebab-case slug. Excludes \"/\" and \"~\" so an identifier can be embedded in an interaction-rooted pointer without escaping."
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The declared principal the harness acted as, or `null` where the run named none. Owed item 3's other half: a `{ principal }` input binding is presence-only by construction, since the contract declares a name and the harness provisions the value, so without this field two steps of one operation binding `owner` and `other-user` both match every observation and both resolve `several`. That is exactly the act-as-A-read-as-B shape the two critical-severity cross-user behaviours need, and it was unscoreable while the record said nothing about which account was used. An opaque label carrying no account identifier or credential, on `testData.principals`' own AD-18 terms."
+          },
           "callInputs": {
             "type": "object",
             "properties": {
@@ -217,13 +230,81 @@
                     "type": "null"
                   }
                 ]
+              },
+              "argument": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "propertyNames": {
+                      "type": "string"
+                    },
+                    "additionalProperties": {
+                      "$ref": "#/$defs/JsonValue"
+                    }
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "option": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "propertyNames": {
+                      "type": "string"
+                    },
+                    "additionalProperties": {
+                      "$ref": "#/$defs/JsonValue"
+                    }
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "environment": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "propertyNames": {
+                      "type": "string"
+                    },
+                    "additionalProperties": {
+                      "$ref": "#/$defs/JsonValue"
+                    }
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "stdin": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "propertyNames": {
+                      "type": "string"
+                    },
+                    "additionalProperties": {
+                      "$ref": "#/$defs/JsonValue"
+                    }
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
               }
             },
             "required": [
               "path",
               "query",
               "header",
-              "body"
+              "body",
+              "argument",
+              "option",
+              "environment",
+              "stdin"
             ],
             "additionalProperties": false
           },
@@ -269,24 +350,108 @@
             "description": "Deliberately not bounded to a protocol range. A negative status is meaningless and excluded, but the upper end is left open: AD-19 declares four interface kinds and v0 rejects three of them at compile time under `unsupported-interface-kind`, so bounding this to HTTP would encode a protocol assumption the artifact outlives. `null` where the channel does not apply."
           },
           "stdout": {
-            "anyOf": [
+            "oneOf": [
               {
-                "type": "string"
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "const": "json"
+                  },
+                  "value": {
+                    "$ref": "#/$defs/JsonValue"
+                  }
+                },
+                "required": [
+                  "kind",
+                  "value"
+                ],
+                "additionalProperties": false
               },
               {
-                "type": "null"
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "const": "text"
+                  },
+                  "value": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "kind",
+                  "value"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "const": "absent"
+                  }
+                },
+                "required": [
+                  "kind"
+                ],
+                "additionalProperties": false
               }
-            ]
+            ],
+            "description": "AD-26's `stdout` channel, tagged rather than a bare string. An operation may nominate standard output as the channel its response descriptor describes, in which case a pointer descends into it, and an untagged string could not tell output that was JSON from output that was only ever text. `{ \"kind\": \"absent\" }` is the channel a run did not observe."
           },
           "stderr": {
-            "anyOf": [
+            "oneOf": [
               {
-                "type": "string"
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "const": "json"
+                  },
+                  "value": {
+                    "$ref": "#/$defs/JsonValue"
+                  }
+                },
+                "required": [
+                  "kind",
+                  "value"
+                ],
+                "additionalProperties": false
               },
               {
-                "type": "null"
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "const": "text"
+                  },
+                  "value": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "kind",
+                  "value"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "const": "absent"
+                  }
+                },
+                "required": [
+                  "kind"
+                ],
+                "additionalProperties": false
               }
-            ]
+            ],
+            "description": "AD-26's `stderr` channel, tagged on the same terms as `stdout`."
           },
           "exitCode": {
             "anyOf": [
@@ -300,6 +465,66 @@
               }
             ],
             "description": "Signed on purpose, unlike `responseStatus`: a process terminated by a signal is conventionally reported as a negative code, and this field records what was observed rather than what is tidy."
+          },
+          "artifacts": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string",
+              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+              "description": "A kebab-case slug. Excludes \"/\" and \"~\" so an identifier can be embedded in an interaction-rooted pointer without escaping."
+            },
+            "additionalProperties": {
+              "oneOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "const": "json"
+                    },
+                    "value": {
+                      "$ref": "#/$defs/JsonValue"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "value"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "const": "text"
+                    },
+                    "value": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "value"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "const": "absent"
+                    }
+                  },
+                  "required": [
+                    "kind"
+                  ],
+                  "additionalProperties": false
+                }
+              ]
+            },
+            "description": "AD-26's `artifact` channel, keyed by the identifier the operation declares it writes, which is the segment an artifact pointer carries before its tail. Caller-keyed and expected to be partial: a run that wrote no files carries `{}`. Tagged on the same terms as `stdout`, since a written report may be JSON, may be prose, and may not have been written at all."
           }
         },
         "required": [
@@ -307,13 +532,15 @@
           "sequence",
           "operationId",
           "provenance",
+          "principal",
           "callInputs",
           "responseBody",
           "responseHeaders",
           "responseStatus",
           "stdout",
           "stderr",
-          "exitCode"
+          "exitCode",
+          "artifacts"
         ],
         "additionalProperties": false
       },
@@ -343,7 +570,7 @@
                 "type": "null"
               }
             ],
-            "description": "An integer, because AD-22 puts the scale on the rubric's own anchored levels and `ScaleLevel.level` is already `z.int()`; no second scale is minted here. `null` is the shape AD-6's `judge-error` fires on, so it must parse. That the criterion is one the cited rubric declares, and that a conforming record shows one judge call scoring all named criteria, are AD-17 cross-artifact rules a schema over one artifact cannot see."
+            "description": "An integer, because AD-22 puts the scale on the rubric's own anchored levels and `ScaleLevel.level` is already `z.int()`; no second scale is minted here. `null` is the shape AD-6's `judge-error` fires on, so it must parse. Two AD-17 rules sit over this field and only one of them is decidable from a record. That a criterion is scored at most once IS: `core/ingest` reports a repeated `rubricId`/`criterionId` pair as a `duplicate-record-identifier` condition, since a criterion scored twice is not one judge call's product whatever else the record says. That a scored criterion is one the cited rubric DECLARES is not, and never will be from inside this package: the rubric is not among ingest's declared inputs, no stage row names it, and a schema over one artifact has no second operand. That half is the caller's, on the same terms AD-12 states for the remediation cap, and it is a stated boundary rather than an unimplemented rule."
           },
           "note": {
             "anyOf": [
@@ -471,7 +698,7 @@
     "invalidReason"
   ],
   "additionalProperties": false,
-  "description": "One sealed evaluator trial, as the caller presents it. Succeeds the prior-art `h0-run-result` schema per AD-24, keeping its run identifier, condition arm, findings, action-log reference, resource use, invalidation reason, evaluator recommendation as a closed enum, and per-finding confidence on a declared scale. Divergences: `condition` is demoted to the opaque `conditionArm`, `verdict` becomes `evaluatorRecommendation` without `NOT_APPLICABLE`, money is a decimal string, and `taskId`, `note`, and per-finding `actionIds` do not survive: the contract is pinned by `contractDigest`, an unstructured orchestrator annotation is the free-prose channel the Conventions close everywhere else, and two citation vocabularies on one finding is the ambiguity ADR-009 removed. The run MODE landed here as a required field under a BREAKING `schemaVersion` bump, which is where AD-21's \"fixed before ingest\" puts it; owed item 4 is now closed: mode enters AD-11's identity inputs as `ScoringVersionInputs`'s sixth field, and `core/score/ladder.ts` carries `ProductionAssessment`/`ContractAssessment` as the two assessment input types with their own total ladders. Observation ORDERING landed here too, under its own BREAKING `schemaVersion` bump: `sequence` is required and unique per record, closing owed item 2's ADR-006 gap, since array position was never a legal ordering.",
+  "description": "One sealed evaluator trial, as the caller presents it. Succeeds the prior-art `h0-run-result` schema per AD-24, keeping its run identifier, condition arm, findings, action-log reference, resource use, invalidation reason, evaluator recommendation as a closed enum, and per-finding confidence on a declared scale. Divergences: `condition` is demoted to the opaque `conditionArm`, `verdict` becomes `evaluatorRecommendation` without `NOT_APPLICABLE`, money is a decimal string, and `taskId`, `note`, and per-finding `actionIds` do not survive: the contract is pinned by `contractDigest`, an unstructured orchestrator annotation is the free-prose channel the Conventions close everywhere else, and two citation vocabularies on one finding is the ambiguity ADR-009 removed. The run MODE landed here as a required field under a BREAKING `schemaVersion` bump, which is where AD-21's \"fixed before ingest\" puts it; owed item 4 is now closed: mode enters AD-11's identity inputs as `ScoringVersionInputs`'s sixth field, and `core/score/ladder.ts` carries `ProductionAssessment`/`ContractAssessment` as the two assessment input types with their own total ladders. Observation ORDERING landed here too, under its own BREAKING `schemaVersion` bump: `sequence` is required and unique per record, closing owed item 2's ADR-006 gap, since array position was never a legal ordering. Version 4 opened the record to a system under test that runs behind a command: `callInputs` carries the four command channels beside the four transport ones, `stdout` and `stderr` are tagged rather than bare strings so a nominated output channel can be descended into, and `artifacts` records the files the run wrote, keyed by the identifier the operation declares.",
   "$defs": {
     "EvaluatorRecommendation": {
       "type": "string",
@@ -852,9 +1079,10 @@
         "call-inputs",
         "stdout",
         "stderr",
-        "exit-code"
+        "exit-code",
+        "artifact"
       ],
-      "description": "AD-26's closed evidence channel vocabulary. The same seven the interaction-rooted pointer addresses; a channel outside this set is a syntax error rather than an unreachable-evidence finding."
+      "description": "AD-26's closed evidence channel vocabulary. The same eight the interaction-rooted pointer addresses; a channel outside this set is a syntax error rather than an unreachable-evidence finding."
     },
     "JsonValue": {
       "description": "AD-36 value domain. Every number is a finite IEEE 754 double-precision value, and every integer lies in the safe-integer range; a larger integer, and any value needing exact decimal semantics such as money, is carried as a string in its own declared format. JSON Schema cannot express finiteness, so this restriction is stated rather than encoded: producers are told the rule here instead of discovering it through a digest mismatch, and the canonical scanner rejects a violating value before any parse.",

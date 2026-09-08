@@ -23,6 +23,11 @@ import {
 import { ARTIFACT_REJECT_CASES } from '../fixtures/artifact-reject-cases.ts'
 import { REJECT_CASES } from '../fixtures/reject-cases.ts'
 import { RELEVANCE_CONTRACTS } from '../fixtures/relevance-contracts.ts'
+import {
+	ACCEPT_FIXTURE_COUNTS,
+	ACCEPT_FIXTURE_TOTAL,
+	REJECT_CASE_COUNTS,
+} from '../published-census.ts'
 import { publishedValidatorOf } from './validator.ts'
 
 /** the whole corpus in one enumerable list, so completeness is assertable. */
@@ -82,13 +87,13 @@ const pointerOf = (path: readonly (string | number)[]): string =>
 
 describe('the reject corpus, run against the published documents', () => {
 	// 55 against the Eval Contract plus 88 across the other eleven; a count
-	// drift here means a case was added on one side and not annotated. The 143
+	// drift here means a case was added on one side and not annotated. The 149
 	// total is also pinned in differential.test.ts ("carries every hand-written
 	// reject case").
-	it('enumerates all 143 cases exactly once', () => {
-		expect(REJECT_CASES).toHaveLength(55)
-		expect(ARTIFACT_REJECT_CASES).toHaveLength(88)
-		expect(PUBLISHED_REJECT_CASES).toHaveLength(143)
+	it('enumerates every case exactly once', () => {
+		expect(REJECT_CASES).toHaveLength(REJECT_CASE_COUNTS.contract)
+		expect(ARTIFACT_REJECT_CASES).toHaveLength(REJECT_CASE_COUNTS.artifact)
+		expect(PUBLISHED_REJECT_CASES).toHaveLength(REJECT_CASE_COUNTS.total)
 		const ids = PUBLISHED_REJECT_CASES.map(
 			(rejectCase) => `${rejectCase.artifact}/${rejectCase.id}`,
 		)
@@ -210,8 +215,8 @@ describe('every accept fixture validates clean against its own published documen
 	// twelve accepts, four probe classes, five qualification routes, six union
 	// branches, three relevance contracts: the enumeration itself is asserted so
 	// none can go silently dead.
-	it('enumerates all thirty positives', () => {
-		expect(PUBLISHED_ACCEPT_FIXTURES).toHaveLength(12 + 4 + 5 + 6 + 3)
+	it('enumerates every positive', () => {
+		expect(PUBLISHED_ACCEPT_FIXTURES).toHaveLength(ACCEPT_FIXTURE_TOTAL)
 	})
 
 	// Thirty listings, twenty distinct instances: ten of the branch,
@@ -227,10 +232,10 @@ describe('every accept fixture validates clean against its own published documen
 	// dedupes by identity; this list deliberately doesn't, so every declared id
 	// is exercised under its own name. The distinct count is pinned so a fixture
 	// quietly collapsing into an alias of another shows up here.
-	it('covers twenty distinct instances behind those thirty ids', () => {
+	it('covers fewer distinct instances than ids, by the pinned count', () => {
 		expect(
 			new Set(PUBLISHED_ACCEPT_FIXTURES.map((entry) => entry.value)).size,
-		).toBe(20)
+		).toBe(ACCEPT_FIXTURE_COUNTS.distinctInstances)
 	})
 
 	it.each(PUBLISHED_ACCEPT_FIXTURES)(

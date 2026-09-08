@@ -1,13 +1,21 @@
 /** resolves a pointer to its step and operation; nothing about reachability. */
-import type { Operation, PermittedInterface } from '../schemas/interface.ts'
+import type {
+	AnyOperation,
+	CommandOperation,
+	InterfaceKindName,
+	Operation,
+	PermittedInterface,
+} from '../schemas/interface.ts'
+import { operationsOf } from '../schemas/interface.ts'
 import type { InteractionStep } from '../schemas/plan.ts'
 import {
 	type EvidenceChannelName,
+	IDENTIFIER_ROOTED_CHANNEL,
+	INPUT_CHANNELS,
+	type InputChannelName,
 	SCALAR_CHANNELS,
 	TAIL_BEARING_CHANNELS,
-	TRANSPORT_CHANNELS,
 	TRANSPORT_ROOTED_CHANNEL,
-	type TransportChannelName,
 } from '../schemas/pointer.ts'
 import { IDENTIFIER_CHARSET_SOURCE } from '../schemas/primitives.ts'
 
@@ -28,15 +36,15 @@ const alternation = (members: readonly string[]): string => members.join('|')
 // dependency on `IDENTIFIER_CHARSET_SOURCE` staying free of its own capturing
 // groups.
 const EVIDENCE_TARGET_PATTERN = new RegExp(
-	`^/interactions/(?<stepId>${IDENTIFIER_CHARSET_SOURCE})/(?:(?<tailBearingChannel>${alternation(TAIL_BEARING_CHANNELS)})(?<tailBearingTail>${TAIL_SOURCE})|(?<scalarChannel>${alternation(SCALAR_CHANNELS)})|${TRANSPORT_ROOTED_CHANNEL}/(?<transportChannel>${alternation(TRANSPORT_CHANNELS)})(?<callInputsTail>${TAIL_SOURCE}))$`,
+	`^/interactions/(?<stepId>${IDENTIFIER_CHARSET_SOURCE})/(?:(?<tailBearingChannel>${alternation(TAIL_BEARING_CHANNELS)})(?<tailBearingTail>${TAIL_SOURCE})|(?<scalarChannel>${alternation(SCALAR_CHANNELS)})|${TRANSPORT_ROOTED_CHANNEL}/(?<transportChannel>${alternation(INPUT_CHANNELS)})(?<callInputsTail>${TAIL_SOURCE})|${IDENTIFIER_ROOTED_CHANNEL}/(?<artifactId>${IDENTIFIER_CHARSET_SOURCE})(?<artifactTail>${TAIL_SOURCE}))$`,
 )
 
 const isEvidenceChannel = (value: string): value is EvidenceChannelName =>
 	(TAIL_BEARING_CHANNELS as readonly string[]).includes(value) ||
 	(SCALAR_CHANNELS as readonly string[]).includes(value)
 
-const isTransportChannel = (value: string): value is TransportChannelName =>
-	(TRANSPORT_CHANNELS as readonly string[]).includes(value)
+const isInputChannel = (value: string): value is InputChannelName =>
+	(INPUT_CHANNELS as readonly string[]).includes(value)
 
 /**
  * Exported so `core/evaluate/evidence-resolution.ts` decodes pointer tails
@@ -57,7 +65,8 @@ export const decodeTail = (tailSource: string): readonly string[] =>
 export type EvidenceTarget = {
 	stepId: string
 	channel: EvidenceChannelName
-	transportChannel: TransportChannelName | null // non-null exactly when channel is 'call-inputs'
+	transportChannel: InputChannelName | null // non-null exactly when channel is 'call-inputs'
+	artifactId: string | null // non-null exactly when channel is 'artifact'
 	tail: readonly string[] // decoded RFC 6901 tokens; empty on a scalar channel
 }
 
@@ -87,6 +96,7 @@ export function parseEvidenceTarget(pointer: string): EvidenceTarget {
 			stepId,
 			channel: groups.scalarChannel,
 			transportChannel: null,
+			artifactId: null,
 			tail: [],
 		}
 	}
@@ -101,12 +111,13 @@ export function parseEvidenceTarget(pointer: string): EvidenceTarget {
 			stepId,
 			channel: groups.tailBearingChannel,
 			transportChannel: null,
+			artifactId: null,
 			tail: decodeTail(groups.tailBearingTail ?? ''),
 		}
 	}
 	if (groups.transportChannel !== undefined) {
-		if (!isTransportChannel(groups.transportChannel)) {
-			// Unreachable: TRANSPORT_CHANNELS is exactly what this group can match.
+		if (!isInputChannel(groups.transportChannel)) {
+			// Unreachable: INPUT_CHANNELS is exactly what this group can match.
 			throw new TypeError(
 				`call-inputs evidence target names no transport channel: ${pointer}`,
 			)
@@ -115,7 +126,17 @@ export function parseEvidenceTarget(pointer: string): EvidenceTarget {
 			stepId,
 			channel: 'call-inputs',
 			transportChannel: groups.transportChannel,
+			artifactId: null,
 			tail: decodeTail(groups.callInputsTail ?? ''),
+		}
+	}
+	if (groups.artifactId !== undefined) {
+		return {
+			stepId,
+			channel: IDENTIFIER_ROOTED_CHANNEL,
+			transportChannel: null,
+			artifactId: groups.artifactId,
+			tail: decodeTail(groups.artifactTail ?? ''),
 		}
 	}
 	// Unreachable: the pattern's three branches are exhaustive once stepId matched.
@@ -130,10 +151,18 @@ export function parseEvidenceTarget(pointer: string): EvidenceTarget {
  * about reachability or channel typing; the general addressing-grammar
  * resolver lives in `core/evaluate/evidence-resolution.ts` and reachability
  * in `core/compile/reachability.ts`.
+ *
+ * `operationOf` stays narrow on purpose. It hands a resolved `Operation` to
+ * every downstream consumer, so widening its return type to the operation
+ * union would retype seventeen files at once. A command operation resolves to
+ * `undefined` from it and to a value from `commandOperationOf`, and each
+ * caller that has to branch reads the declaring kind first.
  */
 export type PlanIndex = {
 	stepOf: (stepId: string) => InteractionStep | undefined
 	operationOf: (operationId: string) => Operation | undefined
+	commandOperationOf: (operationId: string) => CommandOperation | undefined
+	interfaceKindOf: (operationId: string) => InterfaceKindName | undefined
 	stepsUsing: (operationId: string) => readonly InteractionStep[]
 }
 
@@ -175,11 +204,13 @@ export function buildPlanIndex(
 		}
 	}
 	const operations = new Map<string, Operation>()
+	const commandOperations = new Map<string, CommandOperation>()
+	const kinds = new Map<string, InterfaceKindName>()
 	const duplicateOperationIds = new Set<string>()
 	for (const iface of permittedInterfaces) {
-		for (const operation of iface.operations) {
+		for (const operation of operationsOf(iface)) {
 			if (
-				operations.has(operation.operationId) ||
+				kinds.has(operation.operationId) ||
 				duplicateOperationIds.has(operation.operationId)
 			) {
 				if (duplicateIds === 'throw') {
@@ -188,15 +219,32 @@ export function buildPlanIndex(
 					)
 				}
 				operations.delete(operation.operationId)
+				commandOperations.delete(operation.operationId)
+				kinds.delete(operation.operationId)
 				duplicateOperationIds.add(operation.operationId)
 			} else {
-				operations.set(operation.operationId, operation)
+				kinds.set(operation.operationId, iface.kind)
+				// Sorted into the two maps by the interface's own kind rather
+				// than by probing the operation for a field: `web` and `mcp`
+				// carry the api operation shape and belong in the same map as
+				// `api`, since every consumer of a resolved operation reads
+				// the same declared fields off all three.
+				if (iface.kind === 'cli') {
+					commandOperations.set(
+						operation.operationId,
+						operation as CommandOperation,
+					)
+				} else {
+					operations.set(operation.operationId, operation as Operation)
+				}
 			}
 		}
 	}
 	return {
 		stepOf: (stepId) => steps.get(stepId),
 		operationOf: (operationId) => operations.get(operationId),
+		commandOperationOf: (operationId) => commandOperations.get(operationId),
+		interfaceKindOf: (operationId) => kinds.get(operationId),
 		stepsUsing: (operationId) => stepsByOperation.get(operationId) ?? [],
 	}
 }
@@ -217,6 +265,17 @@ export function resolveStep(index: PlanIndex, stepId: string): InteractionStep {
 	}
 	return step
 }
+
+/**
+ * The declared operation of whichever kind, for the callers that read only
+ * fields both shapes carry. Callers reading a kind-specific field ask
+ * `interfaceKindOf` first and then take the matching accessor.
+ */
+export const anyOperationOf = (
+	index: PlanIndex,
+	operationId: string,
+): AnyOperation | undefined =>
+	index.operationOf(operationId) ?? index.commandOperationOf(operationId)
 
 /** Resolves an operation id through the index or throws. See `resolveStep`. */
 export function resolveOperation(

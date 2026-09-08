@@ -55,6 +55,10 @@ const observation = (index: number): Record<string, unknown> => ({
 		query: index % 4 === 0 ? { include: 'history' } : null,
 		header: null,
 		body: index % 2 === 0 ? null : { title: `Revised ${index}` },
+		argument: null,
+		option: null,
+		environment: null,
+		stdin: null,
 	},
 	responseBody: {
 		ok: index % 5 !== 0,
@@ -69,9 +73,10 @@ const observation = (index: number): Record<string, unknown> => ({
 		'x-request-id': `r-${index}`,
 	},
 	responseStatus: index % 5 === 0 ? 500 : 200,
-	stdout: null,
-	stderr: null,
+	stdout: { kind: 'absent' },
+	stderr: { kind: 'absent' },
 	exitCode: null,
+	artifacts: {},
 })
 
 /** One scored criterion, shaped after what the score half will carry. */

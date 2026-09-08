@@ -85,5 +85,19 @@ export const EVERY_VOTED_STATE_VOTES: readonly TrialVote[] = [
 	voteOf('false-positive'),
 ]
 
+/**
+ * One trial from each of the three groups at once. The reducer classifies each
+ * vote independently with no state shared between the invalidating and unvoted
+ * branches, so this catches no interaction the per-group fixtures miss; it is
+ * here because the claim that the branches do not interact is worth one case
+ * rather than an argument, and a future reducer that carried state between them
+ * would fail here first.
+ */
+export const MIXED_GROUP_VOTES: readonly TrialVote[] = [
+	voteOf('oracle-error'),
+	voteOf('not-applicable'),
+	voteOf('caught'),
+]
+
 /** no declared trials at all. */
 export const NO_VOTES: readonly TrialVote[] = []

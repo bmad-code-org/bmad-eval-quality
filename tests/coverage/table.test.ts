@@ -16,7 +16,9 @@ import {
 	coveragePredicateTable,
 	DECLARATION_STATES,
 } from '../../src/core/coverage/table.ts'
+import { isApiOperation } from '../../src/core/declared-inputs.ts'
 import { EvalContract } from '../../src/core/schemas/eval-contract.ts'
+import { operationsOf } from '../../src/core/schemas/interface.ts'
 import { DescriptorPointer } from '../../src/core/schemas/pointer.ts'
 import { CORPUS_CELLS, CORPUS_CONTRACTS } from './fixtures/corpus.ts'
 
@@ -308,7 +310,11 @@ describe('what the renderer escapes and what it must never carry', () => {
 
 	it('229. a satisfaction reason carrying a pipe is escaped, and the cell reads back unescaped', () => {
 		const source = contractNamed('no-collection-quantifier')
-		const [create, list] = source.permittedInterfaces[0]?.operations ?? []
+		const declared = source.permittedInterfaces[0]
+		const [create, list] =
+			declared === undefined
+				? []
+				: operationsOf(declared).filter(isApiOperation)
 		if (create === undefined || list === undefined) {
 			throw new Error('corpus contract lost an operation')
 		}

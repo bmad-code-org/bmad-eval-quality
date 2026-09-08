@@ -4,9 +4,14 @@
  * scoring version: two runs whose projections agree describe the same fixture.
  */
 import { digestComposite } from '../canonical/digest.ts'
-import type { Operation } from '../schemas/interface.ts'
+import {
+	descriptorArtifactOf,
+	descriptorChannelOf,
+} from '../declared-inputs.ts'
+import type { AnyOperation } from '../schemas/interface.ts'
 import { DESCRIPTOR_POINTER_PATTERN } from '../schemas/pointer.ts'
 import type {
+	CommandProbeObservation,
 	ProbeObservation,
 	ProbeObservedBody,
 } from '../schemas/port-messages.ts'
@@ -31,7 +36,10 @@ export type ProjectedObservation = {
 	readonly legId: string
 	readonly interfaceId: string
 	readonly operationId: string
-	readonly status: number
+	/** the transport status, or `null` off an interface that speaks HTTP. */
+	readonly status: number | null
+	/** the process exit code, or `null` on an interface that does. */
+	readonly exitCode: number | null
 	readonly body: ProbeObservedBody
 }
 
@@ -101,20 +109,40 @@ export function pruneVolatile(
 /** One observation reduced to the projection, with its volatile pointers gone. */
 export function projectObservation(
 	observation: ProbeObservation,
-	operation: Operation,
+	operation: AnyOperation,
 	artifactPath: string,
 ): ProjectedObservation {
+	// The channel the operation's descriptor describes is the one AD-10's
+	// relation reads, so it is the one the volatile pointers are pruned from.
+	// Off an interface that speaks HTTP that is the response body; off a
+	// command it is the stream or the file the operation nominates.
+	const observed =
+		observation.kind === 'api'
+			? observation.body
+			: describedChannelOf(observation, operation)
 	return {
 		legId: observation.probeId,
 		interfaceId: observation.interfaceId,
 		operationId: observation.operationId,
-		status: observation.status,
-		body: pruneVolatile(
-			observation.body,
-			operation.volatilePointers,
-			artifactPath,
-		),
+		// A command has no transport status. `null` is what a reader of this
+		// field asks about, and every such reader already handles it.
+		status: observation.kind === 'api' ? observation.status : null,
+		exitCode: observation.kind === 'api' ? null : observation.exitCode,
+		body: pruneVolatile(observed, operation.volatilePointers, artifactPath),
 	}
+}
+
+/** The observed value of whichever channel this operation's descriptor describes. */
+function describedChannelOf(
+	observation: CommandProbeObservation,
+	operation: AnyOperation,
+): ProbeObservedBody {
+	const artifactId = descriptorArtifactOf(operation)
+	if (artifactId !== null)
+		return observation.artifacts[artifactId] ?? { kind: 'absent' }
+	return descriptorChannelOf(operation) === 'stderr'
+		? observation.stderr
+		: observation.stdout
 }
 
 /**

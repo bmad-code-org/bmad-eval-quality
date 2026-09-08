@@ -53,7 +53,7 @@ const oracleCheck: Expression = {
  * what each case means to test.
  */
 const baseContract: EvalContract = {
-	schemaVersion: 3,
+	schemaVersion: 4,
 	parentDigest: null,
 	revisionCount: 0,
 	contractId: 'score-stage-contract',
@@ -150,6 +150,10 @@ const cleanObservation = (
 			query: null,
 			header: null,
 			body: { title: 'ok' },
+			argument: null,
+			option: null,
+			environment: null,
+			stdin: null,
 		},
 		responseBody: { ok: true },
 		responseStatus: 200,

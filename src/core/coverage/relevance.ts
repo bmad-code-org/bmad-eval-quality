@@ -7,8 +7,7 @@
  * `relevant` on an absent declaration.
  */
 import type { EvalContract } from '../schemas/eval-contract.ts'
-import type { Operation } from '../schemas/interface.ts'
-import { TRANSPORT_CHANNELS } from '../schemas/pointer.ts'
+import { resolveOperations } from './operations.ts'
 import {
 	DISCIPLINE_RULES,
 	type DisciplineRule,
@@ -38,10 +37,6 @@ const verdict = (
 const plural = (count: number, noun: string): string =>
 	`${count} ${noun}${count === 1 ? '' : 's'}`
 
-/** Every declared operation, flattened. Six of the seven rules range over this list. */
-const operationsOf = (contract: EvalContract): readonly Operation[] =>
-	contract.permittedInterfaces.flatMap((declared) => declared.operations)
-
 /** A contract declaring no operation leaves six of the rules nothing to read. */
 export const NO_OPERATION =
 	'the contract declares no operation, so the declaration this rule reads is absent'
@@ -56,10 +51,10 @@ export function successIndicatorSeparationRelevance(
 	contract: EvalContract,
 ): RelevanceVerdict {
 	const rule = 'success-indicator-separation'
-	const operations = operationsOf(contract)
+	const operations = resolveOperations(contract)
 	if (operations.length === 0) return verdict(rule, true, NO_OPERATION)
-	for (const operation of operations) {
-		const { successIndicator, channelRoles } = operation.responseDescriptor
+	for (const { operation, descriptor } of operations) {
+		const { successIndicator, channelRoles } = descriptor
 		// `=== null`: `DescriptorPointer` admits the empty string, which
 		// nominates the whole response body.
 		if (successIndicator === null) {
@@ -102,10 +97,10 @@ export function successIndicatorSeparationRelevance(
  */
 export function wholeBodyRelevance(contract: EvalContract): RelevanceVerdict {
 	const rule = 'whole-body'
-	const operations = operationsOf(contract)
+	const operations = resolveOperations(contract)
 	if (operations.length === 0) return verdict(rule, true, NO_OPERATION)
-	for (const operation of operations) {
-		const distinct = new Set(operation.responseDescriptor.requiredKeys)
+	for (const { operation, descriptor } of operations) {
+		const distinct = new Set(descriptor.requiredKeys)
 		if (distinct.size > 1) {
 			return verdict(
 				rule,
@@ -122,8 +117,10 @@ export function wholeBodyRelevance(contract: EvalContract): RelevanceVerdict {
 }
 
 /**
- * Rule 3: some operation declares a request key on any of AD-19's four
- * transport channels. The site is the whole channel triple. A key with no
+ * Rule 3: some operation declares a request key on any of its own input
+ * channels, AD-19's four transport channels off an interface that speaks HTTP
+ * and the four command channels off one that does not. The site is the whole
+ * channel triple. A key with no
  * `types` entry has an absent type, a key typed `null` has AD-31's
  * indeterminate one, and both are relevant, so declaring an input and leaving
  * it untyped buys no irrelevance.
@@ -132,11 +129,10 @@ export function malformedInputRelevance(
 	contract: EvalContract,
 ): RelevanceVerdict {
 	const rule = 'malformed-input'
-	const operations = operationsOf(contract)
+	const operations = resolveOperations(contract)
 	if (operations.length === 0) return verdict(rule, true, NO_OPERATION)
-	for (const operation of operations) {
-		for (const channel of TRANSPORT_CHANNELS) {
-			const shape = operation.requestShape[channel]
+	for (const { operation, requestChannels } of operations) {
+		for (const { channel, shape } of requestChannels) {
 			// `Object.keys` enumerates own keys only. `KeyName` admits
 			// `constructor`, which a keyed lookup would find on the prototype.
 			const key =
@@ -165,10 +161,10 @@ export function malformedInputRelevance(
  */
 export function perRecordRelevance(contract: EvalContract): RelevanceVerdict {
 	const rule = 'per-record'
-	const operations = operationsOf(contract)
+	const operations = resolveOperations(contract)
 	if (operations.length === 0) return verdict(rule, true, NO_OPERATION)
-	for (const operation of operations) {
-		const { collectionLocations } = operation.responseDescriptor
+	for (const { operation, descriptor } of operations) {
+		const { collectionLocations } = descriptor
 		if (collectionLocations === null) {
 			return verdict(
 				rule,
@@ -234,10 +230,10 @@ export function omissionAndCompletenessRelevance(
 	contract: EvalContract,
 ): RelevanceVerdict {
 	const rule = 'omission-and-completeness'
-	const operations = operationsOf(contract)
+	const operations = resolveOperations(contract)
 	if (operations.length === 0) return verdict(rule, true, NO_OPERATION)
-	for (const operation of operations) {
-		const { collectionLocations } = operation.responseDescriptor
+	for (const { operation, descriptor } of operations) {
+		const { collectionLocations } = descriptor
 		if (collectionLocations === null) {
 			return verdict(
 				rule,
@@ -271,9 +267,9 @@ export function stateChangeReadBackRelevance(
 	contract: EvalContract,
 ): RelevanceVerdict {
 	const rule = 'state-change-read-back'
-	const operations = operationsOf(contract)
+	const operations = resolveOperations(contract)
 	if (operations.length === 0) return verdict(rule, true, NO_OPERATION)
-	for (const operation of operations) {
+	for (const { operation } of operations) {
 		if (operation.stateChangeMarker) {
 			return verdict(
 				rule,

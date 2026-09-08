@@ -20,13 +20,24 @@ function observation(overrides: Partial<Observation> = {}): Observation {
 		sequence: 1,
 		operationId: 'op-1',
 		provenance: 'baseline',
-		callInputs: { path: null, query: null, header: null, body: null },
+		principal: null,
+		callInputs: {
+			path: null,
+			query: null,
+			header: null,
+			body: null,
+			argument: null,
+			option: null,
+			environment: null,
+			stdin: null,
+		},
 		responseBody: null,
 		responseHeaders: null,
 		responseStatus: null,
-		stdout: null,
-		stderr: null,
+		stdout: { kind: 'absent' },
+		stderr: { kind: 'absent' },
 		exitCode: null,
+		artifacts: {},
 		...overrides,
 	}
 }
@@ -190,14 +201,19 @@ describe('makeResolveOperand', () => {
 			responseBody: { a: 1 },
 			responseHeaders: { 'x-h': 'v' },
 			responseStatus: null,
-			stdout: 'out-text',
-			stderr: 'err-text',
+			stdout: { kind: 'text', value: 'out-text' },
+			stderr: { kind: 'text', value: 'err-text' },
 			exitCode: 0,
+			artifacts: {},
 			callInputs: {
 				path: { id: 'p1' },
 				query: { q: 'q1' },
 				header: { h: 'h1' },
 				body: { b: 'b1' },
+				argument: null,
+				option: null,
+				environment: null,
+				stdin: null,
 			},
 		})
 		const resolve = makeResolveOperand({ step }, {})
@@ -243,7 +259,16 @@ describe('makeResolveOperand', () => {
 
 	it('fixture 17: call-inputs selects the right transport channel; a null channel resolves ABSENT on a non-empty tail and null on an empty one', () => {
 		const step = observation({
-			callInputs: { path: { id: 'p1' }, query: null, header: null, body: null },
+			callInputs: {
+				path: { id: 'p1' },
+				query: null,
+				header: null,
+				body: null,
+				argument: null,
+				option: null,
+				environment: null,
+				stdin: null,
+			},
 		})
 		const resolve = makeResolveOperand({ step }, {})
 		expect(

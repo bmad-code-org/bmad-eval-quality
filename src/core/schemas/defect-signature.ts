@@ -1,7 +1,7 @@
 /** AD-40's machine-readable defect signature and its probe-side selector. */
 import { z } from 'zod'
 import { Expression } from './expression.ts'
-import { HttpMethod, InterfaceKind, PathTemplate } from './interface.ts'
+import { CommandInvocation, HttpMethod, PathTemplate } from './interface.ts'
 import { LiteralBindingValue, MatcherBindingValue } from './plan.ts'
 import { EvidenceChannel } from './pointer.ts'
 import { KeyName } from './primitives.ts'
@@ -67,20 +67,31 @@ export const ProbeBindingChannel = z
 	.meta({
 		id: 'ProbeInputBindingChannel',
 		description:
-			"A parameter-name-to-binding-value map for one transport channel of a defect signature's selector, or `null` for a channel the selector binds nothing in. An empty map is rejected: `null` is the only spelling for unbound. Admits `{ literal }` and `{ matcher }` only; `{ captured }` and `{ principal }` are contract-local vocabulary and a corpus signature cannot carry either.",
+			"A parameter-name-to-binding-value map for one input channel of a defect signature's selector, or `null` for a channel the selector binds nothing in. An empty map is rejected: `null` is the only spelling for unbound. Admits `{ literal }` and `{ matcher }` only; `{ captured }` and `{ principal }` are contract-local vocabulary and a corpus signature cannot carry either.",
 	})
 
 /**
- * The four transport channels, spelled exactly as `InputBinding` and
- * `ObservedCallInputs` spell them. The three shapes agree on channel names, on
- * the four-key strict form, and on flatness, so the selector filters recorded
- * call inputs with no shape to bridge.
+ * Every input channel of either kind, spelled exactly as `ObservedCallInputs`
+ * spells them. The two shapes agree on channel names, on the eight-key strict
+ * form, and on flatness, so the selector filters recorded call inputs with no
+ * shape to bridge.
+ *
+ * One object over both kinds rather than a union, on `ObservedCallInputs`'s own
+ * reasoning: `null` already means "binds nothing here", so a selector that
+ * binds only command channels writes `null` in the transport four and nothing
+ * is ambiguous. `InputBinding` on the contract side is a union instead, because
+ * a request-shape channel's "declared, no keys" state is not the same as
+ * unused and the two spellings had to stay apart.
  */
 export const ProbeInputBinding = z.strictObject({
 	path: ProbeBindingChannel,
 	query: ProbeBindingChannel,
 	header: ProbeBindingChannel,
 	body: ProbeBindingChannel,
+	argument: ProbeBindingChannel,
+	option: ProbeBindingChannel,
+	environment: ProbeBindingChannel,
+	stdin: ProbeBindingChannel,
 })
 
 /**
@@ -130,17 +141,59 @@ export const DiscriminatingCondition = z.strictObject({
  * collision inside one contract has already failed compilation under
  * `duplicate-operation-signature`.
  */
-export const DefectSignature = z.strictObject({
-	interfaceKind: InterfaceKind.describe(
-		'The interface the seeded defect lives behind. All four kinds parse so `unsupported-interface-kind` stays fireable contract-side, and the qualification gate rejects every kind but `api`: `Operation` carries no interface kind and requires a method and a path template with no per-kind variation, so a `cli` or `mcp` signature would declare a meaningless `POST /path`.',
-	),
-	method: HttpMethod,
-	pathTemplate: PathTemplate,
+const signatureCommon = {
 	observableChannel: EvidenceChannel.describe(
-		'AD-26\'s channel the seeded defect manifests in. The qualification gate reads it: a condition passes only if its pointers name this channel, or name two channels with at least one response-side member. That rule exists to reject a condition collapsing to "the evidence contains the string I sent", which is satisfied by a finding that merely echoes its own input.',
+		'AD-26\'s channel the seeded defect manifests in. The qualification gate reads it: a condition passes only if its pointers name this channel, or name two channels with at least one response-side member. That rule exists to reject a condition collapsing to "the evidence contains the string I sent", which is satisfied by a finding that merely echoes its own input. It must also be a channel the declared kind produces: an api interface writes nothing to standard output and a command returns no HTTP status.',
 	),
 	condition: DiscriminatingCondition,
+}
+
+/**
+ * A signature against an interface that speaks HTTP. `web` and `mcp` share the
+ * shape and are still rejected by the qualification gate, which is what keeps
+ * `signature-interface-kind-unsupported` fireable on the kinds whose probe
+ * semantics are undeclared.
+ *
+ * One branch over the three kinds rather than three identical branches. Three
+ * would publish three byte-identical subschemas, and AD-13's mutation sweep
+ * cannot attribute a keyword deletion to one of several identical branches:
+ * deleting `pathTemplate`'s pattern from the second still leaves the first
+ * accepting everything the corpus carries, so nothing flips.
+ */
+export const ApiDefectSignature = z.strictObject({
+	interfaceKind: z.enum(['api', 'web', 'mcp']),
+	method: HttpMethod,
+	pathTemplate: PathTemplate,
+	...signatureCommon,
 })
+
+/**
+ * A signature against an interface that runs behind a command. It declares the
+ * transport identity a command operation declares, for the reason AD-40 gives
+ * for method and path template: the identity has to be contract-independent so
+ * a signature authored against a corpus binds a second contract's operation.
+ * An operation identifier is contract-local and would bind nothing.
+ */
+export const CommandDefectSignature = z.strictObject({
+	interfaceKind: z.literal('cli'),
+	invocation: CommandInvocation,
+	...signatureCommon,
+})
+
+/**
+ * A plain union rather than a discriminated one: the discriminator would have
+ * to be `interfaceKind`, and the api-shaped branch carries three values for it.
+ * The two branches are told apart by the identity they declare, exactly as
+ * `InputBinding`'s two are told apart by the channels they name.
+ */
+export const DefectSignature = z.union([
+	ApiDefectSignature,
+	CommandDefectSignature,
+])
+
+export type ApiDefectSignature = z.infer<typeof ApiDefectSignature>
+
+export type CommandDefectSignature = z.infer<typeof CommandDefectSignature>
 
 export type DefectSignature = z.infer<typeof DefectSignature>
 

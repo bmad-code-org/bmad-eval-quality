@@ -35,10 +35,24 @@ export type PreflightObservations = {
 /**
  * AD-10 names no threshold, and this is the one the repository already speaks:
  * the published conformance suite ships `probe/observe-anomalous-status`, and
- * `ProbeObservation.status` is bounded to 100-599 at the port, so HTTP is
- * already assumed at that boundary.
+ * an api observation's `status` is bounded to 100-599 at the port.
  */
 const ANOMALOUS_STATUS = 400
+
+/**
+ * What makes a control leg anomalous, in the vocabulary of the kind it ran
+ * against, or `null` when nothing does. A command's analogue of a 4xx is a
+ * non-zero exit: both are the system saying the call did not go through, and
+ * AD-10's clean-control check is about exactly that.
+ */
+function anomalyOf(observation: ProbeObservation): string | null {
+	if (observation.kind === 'api') {
+		return observation.status >= ANOMALOUS_STATUS
+			? `status ${observation.status}`
+			: null
+	}
+	return observation.exitCode === 0 ? null : `exit code ${observation.exitCode}`
+}
 
 type LegState = {
 	readonly leg: PlannedLeg
@@ -97,6 +111,7 @@ const resolveAgainst = (
 		{ [witness.legId]: state.evidence },
 		state.leg.operation,
 		plan.referenceSets,
+		plan.referenceSetKeys,
 		artifactPath,
 	).resolution
 }
@@ -136,7 +151,7 @@ export const reducePreflight: ReduceStage<
 			leg,
 			observation,
 			projected,
-			evidence: evidenceOf(projected, observation, leg.inputs),
+			evidence: evidenceOf(projected, observation, leg.inputs, leg.operation),
 		})
 	}
 
@@ -196,6 +211,7 @@ export const reducePreflight: ReduceStage<
 					evidence,
 					operation,
 					plan.referenceSets,
+					plan.referenceSetKeys,
 					PREFLIGHT_ARTIFACT_PATH,
 				)
 				// AD-10's own sentence, and the most load-bearing line here: a
@@ -245,12 +261,13 @@ export const reducePreflight: ReduceStage<
 							'failed',
 							`control leg "${legId}" produced no observation`,
 						)
-					if (state.observation.status >= ANOMALOUS_STATUS)
+					const anomaly = anomalyOf(state.observation)
+					if (anomaly !== null)
 						return check(
 							planned.kind,
 							null,
 							'failed',
-							`control leg "${legId}" observed status ${state.observation.status}`,
+							`control leg "${legId}" observed ${anomaly}`,
 						)
 				}
 				return check(planned.kind, null, 'satisfied', null)

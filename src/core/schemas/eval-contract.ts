@@ -173,7 +173,7 @@ export const EvalContract = z
 		permittedInterfaces: z
 			.array(PermittedInterface)
 			.describe(
-				'AD-35: logical identifiers only. No entry here is ever a URL, a host, or a port.',
+				"AD-35: logical identifiers only. No entry here is ever a URL, a host, or a port. Discriminated on `kind`, which makes this field the eval contract's `schemaVersion` 3 -> 4 BREAKING bump under AD-11, whose rule is that \"adding an optional field is a `schemaVersion` bump recorded in the field's own description; removing or retyping is breaking\". The `api`, `web`, and `mcp` branches carry the shipped operation shape unchanged, so a version-3 contract's own bytes still parse on them; the `cli` branch carries a command operation, which declares a logical invocation instead of a method and a path template, four command input channels instead of the four transport channels, a nominated output channel for its one response descriptor, and the files it writes.",
 			),
 		referenceSets: z
 			.record(Identifier, ReferenceSetDeclaration)
@@ -218,7 +218,7 @@ export const EvalContract = z
 	.meta({
 		id: 'EvalContract',
 		description:
-			"The Eval Contract. Succeeds the prior-art `eval-contract` schema per AD-24. It carries every declaration AD-19 requires so that AD-31's fourteen relevance and satisfaction predicates are decidable from declarations alone. AD-10's sensitivity witnesses arrived in this version, on each operation, as the additive `schemaVersion` bump AD-11 requires; the bump is recorded in each new field's own description, since no reader in this version declares an expected version constant to compare against.",
+			"The Eval Contract. Succeeds the prior-art `eval-contract` schema per AD-24. It carries every declaration AD-19 requires so that AD-31's fourteen relevance and satisfaction predicates are decidable from declarations alone. AD-10's sensitivity witnesses arrived on each operation as an additive `schemaVersion` bump; version 4 opens `permittedInterfaces` to a second interface kind, so a contract may describe a system under test that runs behind a command. Each bump is recorded in its own field's description, since no reader in this version declares an expected version constant to compare against.",
 	})
 
 export type EvalContract = z.infer<typeof EvalContract>

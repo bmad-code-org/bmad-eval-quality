@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+	ApiInputBinding,
 	BindingValue,
 	InputBinding,
 	InteractionStep,
@@ -25,12 +26,13 @@ describe('the tagged input binding', () => {
 	})
 
 	it('rejects an untagged binding inside a channel', () => {
-		const result = InputBinding.safeParse({
-			...unbound,
-			body: { title: 'type-violating' },
-		})
-		expect(result.success).toBe(false)
-		expect(result.error?.issues[0]?.path).toEqual(['body', 'title'])
+		const value = { ...unbound, body: { title: 'type-violating' } }
+		expect(InputBinding.safeParse(value).success).toBe(false)
+		// Read through the branch, because `InputBinding` is a union and a
+		// union reports at its own root: the per-key path lives on whichever
+		// branch the value was written for.
+		const branch = ApiInputBinding.safeParse(value)
+		expect(branch.error?.issues[0]?.path).toEqual(['body', 'title'])
 	})
 
 	it('accepts both tagged spellings inside a channel', () => {
@@ -55,20 +57,30 @@ describe('the tagged input binding', () => {
 
 describe('the four-key binding container', () => {
 	it('requires all four channels to be present', () => {
-		const result = InputBinding.safeParse({
-			path: null,
-			query: null,
-			body: null,
-		})
-		expect(result.success).toBe(false)
-		expect(result.error?.issues[0]?.path).toEqual(['header'])
-		expect(result.error?.issues[0]?.code).toBe('invalid_type')
+		const value = { path: null, query: null, body: null }
+		expect(InputBinding.safeParse(value).success).toBe(false)
+		const branch = ApiInputBinding.safeParse(value)
+		expect(branch.error?.issues[0]?.path).toEqual(['header'])
+		expect(branch.error?.issues[0]?.code).toBe('invalid_type')
 	})
 
 	it('rejects a fifth channel', () => {
-		const result = InputBinding.safeParse({ ...unbound, cookie: null })
-		expect(result.success).toBe(false)
-		expect(result.error?.issues[0]?.code).toBe('unrecognized_keys')
+		const value = { ...unbound, cookie: null }
+		expect(InputBinding.safeParse(value).success).toBe(false)
+		expect(ApiInputBinding.safeParse(value).error?.issues[0]?.code).toBe(
+			'unrecognized_keys',
+		)
+	})
+
+	it('admits the command channels and never a mixture of the two', () => {
+		const bound = {
+			argument: null,
+			option: null,
+			environment: null,
+			stdin: { prompt: { matcher: 'any' } },
+		}
+		expect(InputBinding.safeParse(bound).success).toBe(true)
+		expect(InputBinding.safeParse({ ...unbound, ...bound }).success).toBe(false)
 	})
 
 	it('spells an unbound channel as null and rejects the empty map', () => {

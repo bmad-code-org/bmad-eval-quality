@@ -91,7 +91,11 @@ export type AgreementField = (typeof AGREEMENT_FIELDS)[number]
  */
 export type DuplicateRecordIdentifier = {
 	readonly kind: Extract<IngestConditionKind, 'duplicate-record-identifier'>
-	readonly subject: 'observation' | 'finding' | 'oracle-disposition'
+	readonly subject:
+		| 'observation'
+		| 'finding'
+		| 'oracle-disposition'
+		| 'judge-result'
 	readonly identifier: string
 	readonly occurrences: number
 }

@@ -167,9 +167,9 @@ Rubrics compile under the same discipline: an anchored scale, a bounded length, 
 ## How Eval Contract strength scoring works
 
 The `score` command and its `runScore` library call compute it; `npm run generate:worked-example`
-runs the same functions over the committed worked chain, and the
-[Read a Scored Run](https://bmad-code-org.github.io/bmad-eval-quality/tutorials/read-a-scored-run/)
-tutorial reads the result field by field. Do not trust a contract because it looks thorough. Put a known defect behind it, run the evaluator, and check whether the contract's oracles caused the defect to be caught.
+runs the same functions over the committed worked chain, and
+[the full walkthrough](https://bmad-code-org.github.io/bmad-eval-quality/how-to/author-behavioral-contracts/)
+reads the result field by field. Do not trust a contract because it looks thorough. Put a known defect behind it, run the evaluator, and check whether the contract's oracles caused the defect to be caught.
 
 Two probe classes go behind a contract, and a strong contract rejects both:
 

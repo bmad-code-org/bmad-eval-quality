@@ -2,20 +2,43 @@
  * Checks interface kinds, inventory-wide operation signatures, and step input
  * bindings against each operation's request shape.
  */
+import {
+	boundChannelsOf,
+	declaredArtifactsOf,
+	descriptorArtifactOf,
+	isCommandOperation,
+	requestShapeOf,
+} from '../declared-inputs.ts'
 import { StructuralFailure } from '../failure-codes.ts'
 import type { EvalContract } from '../schemas/eval-contract.ts'
-import type { Operation } from '../schemas/interface.ts'
-import { TRANSPORT_CHANNELS } from '../schemas/pointer.ts'
-import { buildPlanIndex } from '../seal/plan-index.ts'
+import type { AnyOperation } from '../schemas/interface.ts'
+import { operationsOf } from '../schemas/interface.ts'
+import {
+	anyOperationOf,
+	buildPlanIndex,
+	parseEvidenceTarget,
+} from '../seal/plan-index.ts'
+import { forEachArtifactPointer } from './reachability.ts'
 
-/** Rejects permitted interface kinds that this contract version cannot run. */
+/**
+ * Rejects permitted interface kinds whose probe semantics are undeclared.
+ *
+ * AD-10 closed all three non-api kinds and named the condition for opening
+ * one: the semantics have to be declared. They are declared for `cli`, so it
+ * runs; `web` and `mcp` are still undeclared and still fail here, which is
+ * what keeps this code fireable and keeps AD-10's sentence true of them.
+ */
+const SUPPORTED_INTERFACE_KINDS = ['api', 'cli'] as const
+
 export function checkInterfaceKind(contract: EvalContract): void {
 	for (const iface of contract.permittedInterfaces) {
-		if (iface.kind !== 'api') {
+		if (
+			!(SUPPORTED_INTERFACE_KINDS as readonly string[]).includes(iface.kind)
+		) {
 			throw new StructuralFailure(
 				'unsupported-interface-kind',
 				`EvalContract.permittedInterfaces[logicalId=${iface.logicalId}].kind`,
-				`"${iface.kind}" is not supported in v0; only "api" is (AD-10)`,
+				`"${iface.kind}" is not supported; "api" and "cli" are (AD-10)`,
 			)
 		}
 	}
@@ -40,12 +63,45 @@ export function operationSignature(operation: {
 	return `${operation.method} ${erase(operation.pathTemplate)}`
 }
 
+/**
+ * The separator between a command's executable and each subcommand segment,
+ * declared once so the contract side and AD-40's corpus side cannot disagree
+ * about it. A space, matching the way the identity is written on a terminal.
+ */
+export const COMMAND_SIGNATURE_SEPARATOR = ' '
+
+/**
+ * The command counterpart of `operationSignature`, compared literally.
+ *
+ * There is no erasure step. A subcommand path carries no parameters: a
+ * command's variable inputs are its arguments and options, which live in the
+ * request shape. Erasing a subcommand segment would make `tool review` and
+ * `tool report` one signature, which is the opposite of what erasure is for.
+ */
+export function commandSignature(operation: {
+	readonly invocation: {
+		readonly executable: string
+		readonly subcommandPath: readonly string[]
+	}
+}): string {
+	return [
+		operation.invocation.executable,
+		...operation.invocation.subcommandPath,
+	].join(COMMAND_SIGNATURE_SEPARATOR)
+}
+
+/** The transport identity of an operation of either kind. */
+export const anyOperationSignature = (operation: AnyOperation): string =>
+	isCommandOperation(operation)
+		? commandSignature(operation)
+		: operationSignature(operation)
+
 /** Finds duplicate method and path signatures across the full inventory. */
 export function checkDuplicateOperationSignature(contract: EvalContract): void {
-	const seen = new Map<string, { logicalId: string; operation: Operation }>()
+	const seen = new Map<string, { logicalId: string; operation: AnyOperation }>()
 	for (const iface of contract.permittedInterfaces) {
-		for (const operation of iface.operations) {
-			const signature = operationSignature(operation)
+		for (const operation of operationsOf(iface)) {
+			const signature = anyOperationSignature(operation)
 			const collision = seen.get(signature)
 			if (collision !== undefined) {
 				throw new StructuralFailure(
@@ -57,6 +113,53 @@ export function checkDuplicateOperationSignature(contract: EvalContract): void {
 			seen.set(signature, { logicalId: iface.logicalId, operation })
 		}
 	}
+}
+
+/**
+ * `unresolved-artifact-reference`: an artifact identifier nothing declares.
+ *
+ * Two sites name one: an evidence pointer's identifier segment, and a command
+ * operation's own `descriptorChannel` when it nominates an artifact. Both are
+ * authoring faults the compiler can see, and both take a code rather than
+ * resolving `absent`, on AD-26's own precedent for a dangling reference-set
+ * identifier: `absent` is defined over pointers that do not resolve against
+ * observed evidence, and a dangling declaration is neither.
+ */
+export function checkArtifactReferences(contract: EvalContract): void {
+	for (const iface of contract.permittedInterfaces) {
+		for (const operation of operationsOf(iface)) {
+			const declared = declaredArtifactsOf(operation)
+			const nominated = descriptorArtifactOf(operation)
+			if (nominated !== null && !declared.includes(nominated)) {
+				throw new StructuralFailure(
+					'unresolved-artifact-reference',
+					`EvalContract.permittedInterfaces[logicalId=${iface.logicalId}].operations[operationId=${operation.operationId}].descriptorChannel.artifactId`,
+					`nominates "${nominated}", which this operation does not declare it writes (AD-19, AD-26)`,
+				)
+			}
+		}
+	}
+	const index = buildPlanIndex(
+		contract.interactionPlan,
+		contract.permittedInterfaces,
+		{ duplicateIds: 'unresolved' },
+	)
+	forEachArtifactPointer(contract, (pointer, path) => {
+		const target = parseEvidenceTarget(pointer)
+		if (target.artifactId === null) return
+		const step = index.stepOf(target.stepId)
+		if (step === undefined) return
+		const operation = anyOperationOf(index, step.operationId)
+		// An unresolvable step or operation is `unreachable-check-evidence`'s,
+		// at a higher rung; this check has nothing to compare against.
+		if (operation === undefined) return
+		if (declaredArtifactsOf(operation).includes(target.artifactId)) return
+		throw new StructuralFailure(
+			'unresolved-artifact-reference',
+			path,
+			`"${pointer}" names the "${target.artifactId}" artifact, which operation "${operation.operationId}" does not declare it writes (AD-26)`,
+		)
+	})
 }
 
 /**
@@ -82,12 +185,19 @@ export function checkUndeclaredMandatoryInput(contract: EvalContract): void {
 	)
 	const principals = new Set(Object.keys(contract.testData.principals ?? {}))
 	for (const step of contract.interactionPlan) {
-		const operation = index.operationOf(step.operationId)
+		const operation = anyOperationOf(index, step.operationId)
 		if (operation === undefined) continue
-		for (const channel of TRANSPORT_CHANNELS) {
-			const binding = step.inputBinding[channel]
+		for (const { channel, bound: binding } of boundChannelsOf(
+			step.inputBinding,
+		)) {
 			if (binding === null) continue
-			const { requiredKeys, permittedKeys } = operation.requestShape[channel]
+			const shape = requestShapeOf(operation, channel)
+			// A step binding a channel of the other kind has no declared shape
+			// to answer to. Reporting it as an undeclared input is true as far
+			// as it goes: the operation declares no such channel, and so
+			// declares no such key on it.
+			const requiredKeys: readonly string[] = shape?.requiredKeys ?? []
+			const permittedKeys: readonly string[] = shape?.permittedKeys ?? []
 			for (const key of Object.keys(binding)) {
 				const path = `EvalContract.interactionPlan[stepId=${step.stepId}].inputBinding.${channel}[${JSON.stringify(key)}]`
 				if (!requiredKeys.includes(key) && !permittedKeys.includes(key)) {

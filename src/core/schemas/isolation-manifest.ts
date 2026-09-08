@@ -73,12 +73,19 @@ const accountingShape = Object.fromEntries(
  */
 export const ForbiddenInputAccountingMap = z.strictObject(accountingShape)
 
+/**
+ * A label a reader has to be able to act on. Empty is not a mount, a network
+ * target, or a tool call, and an empty entry renders as a basis line with
+ * nothing after its colon.
+ */
+const NonEmptyLabel = z.string().min(1)
+
 export const IsolationManifest = z
 	.strictObject({
 		...lineageFields,
 		runId: z.string().min(1),
 		contractId: Identifier.describe(
-			'The prior art\'s `taskId`, renamed. "Task" is experiment vocabulary with no product meaning, and the manifest keeps an identifier because it is the artifact `core/ingest` matches against a run; the run record and the probe pin what they describe by digest instead.',
+			'The prior art\'s `taskId`, renamed. "Task" is experiment vocabulary with no product meaning, and the manifest keeps an identifier so a reader can say which contract the run was isolated for. It is a label and not a second operand for any check: `core/ingest` matches this artifact to a run on `runId`, `contractDigest`, and `evaluatorConfigurationDigest`, which is the whole of the agreement the two artifacts make. Nothing in the pipeline carries a contract identifier to compare this against, since the sealed run record pins its contract by digest and the eval contract is not among ingest\'s inputs.',
 		),
 		conditionArm: z
 			.string()
@@ -93,16 +100,16 @@ export const IsolationManifest = z
 			'Added here and absent from the prior art. AD-32 requires this digest to agree between the manifest and the run record, which was previously an agreement rule asserted over two fields that did not exist. Required and non-nullable on both, which is what makes the substitution cost two contradictions rather than one omission. The agreement itself is a cross-artifact rule no schema can see.',
 		),
 		workspaceIdentity: z.string().min(1),
-		allowedMounts: z.array(z.string()),
+		allowedMounts: z.array(NonEmptyLabel),
 		observedMounts: z
-			.array(z.string())
+			.array(NonEmptyLabel)
 			.describe(
-				'Observed mounts, network targets, and tool calls exceeding their allowlist is a violation AD-16 has `core/ingest` record; it is a cross-field rule with no AD-5 code and the schema admits it.',
+				'Observed mounts, network targets, and tool calls exceeding their allowlist is a violation AD-16 has `core/ingest` record; it is a cross-field rule with no AD-5 code and the schema admits it. Each entry is non-empty: an empty string is not a mount, and it renders as a basis line naming nothing after its colon.',
 			),
-		networkAllowlist: z.array(z.string()),
-		observedNetworkTargets: z.array(z.string()),
-		toolAllowlist: z.array(z.string()),
-		observedToolCalls: z.array(z.string()),
+		networkAllowlist: z.array(NonEmptyLabel),
+		observedNetworkTargets: z.array(NonEmptyLabel),
+		toolAllowlist: z.array(NonEmptyLabel),
+		observedToolCalls: z.array(NonEmptyLabel),
 		resourceCeilings: ResourceCeilings,
 		actualResourceUse: ActualResourceUse,
 		forbiddenInputAccounting: ForbiddenInputAccountingMap.describe(
@@ -110,9 +117,10 @@ export const IsolationManifest = z
 		),
 		violation: z
 			.string()
+			.min(1)
 			.nullable()
 			.describe(
-				"The sixteenth of the prior art's sixteen required members, and the one that is not a description of the run: a non-null violation invalidates it. AD-16 says the schema is \"seeded from the prior art's fifteen\"; the prior art's `required` array has sixteen. Settled by construction: the fifteen are the fields describing the run and this is the invalidation outcome. All sixteen are carried.",
+				"The sixteenth of the prior art's sixteen required members, and the one that is not a description of the run: a non-null violation invalidates it. Non-empty when present, on `QuotedEvidence.quote`'s precedent: `null` is the spelling for no violation, so an empty string is a violation that names nothing while still invalidating the run and rendering a blank basis entry. AD-16 says the schema is \"seeded from the prior art's fifteen\"; the prior art's `required` array has sixteen. Settled by construction: the fifteen are the fields describing the run and this is the invalidation outcome. All sixteen are carried.",
 			),
 	})
 	.meta({

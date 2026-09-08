@@ -15,42 +15,44 @@
  * scalar-descent half. The scalar determination, the one-segment tail rule, and
  * type equality are this module's own.
  */
+import {
+	boundChannelsOf,
+	descriptorChannelOf,
+	requestShapeOf,
+} from '../declared-inputs.ts'
 import { ARRAY_INDEX_PATTERN } from '../evaluate/evidence-resolution.ts'
 import { StructuralFailure } from '../failure-codes.ts'
 import type { EvalContract } from '../schemas/eval-contract.ts'
 import type { InteractionStep } from '../schemas/plan.ts'
-import {
-	TRANSPORT_CHANNELS,
-	type TransportChannelName,
-} from '../schemas/pointer.ts'
+import type { InputChannelName } from '../schemas/pointer.ts'
 import { JsonTypeName } from '../schemas/primitives.ts'
 import {
+	anyOperationOf,
 	buildPlanIndex,
 	type EvidenceTarget,
 	type PlanIndex,
 	parseEvidenceTarget,
-	resolveOperation,
 	resolveStep,
 } from '../seal/plan-index.ts'
 import { evaluatePointerReachability } from './reachability.ts'
 
 /**
- * The one channel a captured pointer may name. `ResponseDescriptor` declares
- * `requiredKeys`, `permittedKeys`, `types`, `successIndicator`, `channelRoles`,
- * and `collectionLocations`, every one of them about the body, so the body is
- * the one channel it declares and the criterion's "a channel the referenced
- * operation's response descriptor does not declare" is literally true of the
- * other six. Admitting `response-headers` and `response-status` was tried and
- * dropped: their types would have to be invented by fiat, and
- * `Observation.responseHeaders` admits objects, arrays, numbers, and `null`, so
- * a header capture compiled as a `string` could resolve to an object at score
- * time.
+ * The one channel a captured pointer may name: whichever channel the
+ * referenced operation's own response descriptor describes.
+ *
+ * `ResponseDescriptor` declares `requiredKeys`, `permittedKeys`, `types`,
+ * `successIndicator`, `channelRoles`, and `collectionLocations`, and every one
+ * of them is about the channel the operation nominates. Off an interface that
+ * speaks HTTP that is the response body; off a command it is the stream the
+ * operation names. `response-headers` and `response-status` are never it,
+ * because `Observation.responseHeaders` admits objects, arrays, numbers, and
+ * `null`, so a header capture compiled as a `string` could resolve to an
+ * object at score time.
  */
-const CAPTURABLE_CHANNEL = 'response-body'
 
 /** One `{ captured }` binding, resolved to the pointer target it addresses. */
 export type CapturedBinding = {
-	readonly transportChannel: TransportChannelName
+	readonly transportChannel: InputChannelName
 	readonly key: string
 	readonly pointer: string
 	readonly target: EvidenceTarget
@@ -66,8 +68,9 @@ export function capturedBindings(
 	step: InteractionStep,
 ): readonly CapturedBinding[] {
 	const captures: CapturedBinding[] = []
-	for (const transportChannel of TRANSPORT_CHANNELS) {
-		const map = step.inputBinding[transportChannel]
+	for (const { channel: transportChannel, bound: map } of boundChannelsOf(
+		step.inputBinding,
+	)) {
 		if (map === null) continue
 		for (const key of Object.keys(map).sort()) {
 			const value = map[key]
@@ -214,9 +217,27 @@ function stronglyConnectedComponents(
  * type.
  */
 export function checkCapturedChannel(contract: EvalContract): void {
+	let index: PlanIndex | undefined
 	for (const step of contract.interactionPlan) {
 		for (const capture of capturedBindings(step)) {
-			if (capture.target.channel === CAPTURABLE_CHANNEL) continue
+			index ??= buildPlanIndex(
+				contract.interactionPlan,
+				contract.permittedInterfaces,
+				{ duplicateIds: 'unresolved' },
+			)
+			const referenced = index.stepOf(capture.target.stepId)
+			const operation =
+				referenced === undefined
+					? undefined
+					: anyOperationOf(index, referenced.operationId)
+			// An unresolvable reference is `checkCapturedReachability`'s, at a
+			// higher rung. With nothing to ask, this check falls back to the
+			// api answer so an unresolvable off-body capture still reports.
+			const capturable =
+				operation === undefined
+					? 'response-body'
+					: descriptorChannelOf(operation)
+			if (capture.target.channel === capturable) continue
 			throw new StructuralFailure(
 				'captured-channel-undeclared',
 				bindingPath(step, capture),
@@ -244,10 +265,11 @@ type TypeDecision =
  * `evaluatePointerReachability` admits the index against a root collection.
  */
 function capturedType(target: EvidenceTarget, index: PlanIndex): TypeDecision {
+	const channel = target.channel
 	const segments = target.tail.length
 	if (segments !== 1) {
 		return {
-			reason: `addresses ${segments === 0 ? 'the whole response body' : `a response-body path ${segments} segments deep`}, which declares no scalar to capture`,
+			reason: `addresses ${segments === 0 ? `the whole ${channel}` : `a ${channel} path ${segments} segments deep`}, which declares no scalar to capture`,
 		}
 	}
 	const key = target.tail[0]
@@ -257,20 +279,25 @@ function capturedType(target: EvidenceTarget, index: PlanIndex): TypeDecision {
 	}
 	if (ARRAY_INDEX_PATTERN.test(key)) {
 		return {
-			reason: `addresses response-body element ${key}, which no declaration gives a type`,
+			reason: `addresses ${channel} element ${key}, which no declaration gives a type`,
 		}
 	}
 	const step = resolveStep(index, target.stepId)
-	const operation = resolveOperation(index, step.operationId)
+	const operation = anyOperationOf(index, step.operationId)
+	if (operation === undefined) {
+		throw new TypeError(
+			`step names an operation the permitted interfaces do not declare: ${step.operationId}`,
+		)
+	}
 	const declared = operation.responseDescriptor.types[key]
 	if (declared === undefined || declared === null) {
 		return {
-			reason: `addresses response-body field "${key}", whose type operation "${operation.operationId}" ${declared === undefined ? 'does not declare' : 'declares indeterminate'}`,
+			reason: `addresses ${channel} field "${key}", whose type operation "${operation.operationId}" ${declared === undefined ? 'does not declare' : 'declares indeterminate'}`,
 		}
 	}
 	if (!SCALAR_TYPES.has(declared)) {
 		return {
-			reason: `addresses response-body field "${key}", which operation "${operation.operationId}" declares "${declared}" rather than a scalar`,
+			reason: `addresses ${channel} field "${key}", which operation "${operation.operationId}" declares "${declared}" rather than a scalar`,
 		}
 	}
 	return { type: declared }
@@ -289,9 +316,13 @@ function boundParameterType(
 	capture: CapturedBinding,
 	index: PlanIndex,
 ): TypeDecision | null {
-	const operation = index.operationOf(step.operationId)
+	const operation = anyOperationOf(index, step.operationId)
 	if (operation === undefined) return null
-	const shape = operation.requestShape[capture.transportChannel]
+	const shape = requestShapeOf(operation, capture.transportChannel)
+	// A channel the operation does not accept input on declares no type for
+	// the key either, so there is nothing to compare and the check abstains
+	// for the same reason the undeclared-key branch below does.
+	if (shape === undefined) return null
 	// A key the operation declares in neither list is an input the contract did
 	// not declare, which is `undeclared-mandatory-input`'s and strict-only under
 	// AD-4. This check runs unconditionally, so claiming it here would reject a
@@ -352,14 +383,15 @@ export function checkCapturedReachability(contract: EvalContract): void {
 					`captured pointer "${capture.pointer}" names a step the interaction plan does not declare`,
 				)
 			}
-			if (index.operationOf(referenced.operationId) === undefined) {
+			const operation = anyOperationOf(index, referenced.operationId)
+			if (operation === undefined) {
 				throw new StructuralFailure(
 					'unreachable-check-evidence',
 					path,
 					`captured pointer "${capture.pointer}" names step "${capture.target.stepId}", which names operation "${referenced.operationId}", not declared by any permitted interface`,
 				)
 			}
-			if (capture.target.channel !== CAPTURABLE_CHANNEL) continue
+			if (capture.target.channel !== descriptorChannelOf(operation)) continue
 			const reachability = evaluatePointerReachability(capture.pointer, index)
 			if (!reachability.reachable) {
 				throw new StructuralFailure(

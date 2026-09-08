@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import type { Operation } from '../../src/core/schemas/interface.ts'
+import { checkStepReferenceReducibility } from '../../src/core/compile/step-reference.ts'
+import { StructuralFailure } from '../../src/core/failure-codes.ts'
+import type { EvalContract } from '../../src/core/schemas/eval-contract.ts'
+import type {
+	Operation,
+	PermittedInterface,
+} from '../../src/core/schemas/interface.ts'
 import type { InteractionStep } from '../../src/core/schemas/plan.ts'
 import {
 	EVIDENCE_CHANNELS,
@@ -130,7 +136,10 @@ describe('renderStepReference: the escalation ladder and its injectivity', () =>
 		expect(phraseB).toContain('widget-b')
 	})
 
-	it('an irreducible collision (identical bindings on one operation) throws once escalation is exhausted, rather than silently shipping an ambiguous phrase', () => {
+	// Coded rather than a bare `TypeError`: a contract reaching here is an
+	// ordinary authoring fault, and `checkStepReferenceReducibility` reports
+	// the same code at compile time so a caller never meets it at seal.
+	it('an irreducible collision (identical bindings on one operation) throws a coded failure once escalation is exhausted, rather than silently shipping an ambiguous phrase', () => {
 		const index = buildPlanIndex(
 			irreducibleCollisionPair.interactionPlan,
 			irreducibleCollisionPair.permittedInterfaces,
@@ -140,12 +149,58 @@ describe('renderStepReference: the escalation ladder and its injectivity', () =>
 			throw new Error('fixture malformed')
 		const operation = resolveOperation(index, 'ping-service')
 		const siblings = [stepA, stepB]
-		expect(() =>
-			renderStepReference(stepA, operation, siblings, index),
-		).toThrow(TypeError)
-		expect(() =>
-			renderStepReference(stepB, operation, siblings, index),
-		).toThrow(TypeError)
+		for (const step of [stepA, stepB]) {
+			let thrown: unknown
+			try {
+				renderStepReference(step, operation, siblings, index)
+			} catch (error) {
+				thrown = error
+			}
+			expect(thrown).toBeInstanceOf(StructuralFailure)
+			expect((thrown as StructuralFailure).code).toBe(
+				'irreducible-step-reference',
+			)
+		}
+	})
+
+	// The same fault, reported before `seal` is ever called. The fixture is a
+	// contract slice, so the one direction that references the pair is supplied
+	// here rather than carried on it.
+	it('is reported at compile time against the direction that references the pair', () => {
+		const contract = {
+			...irreducibleCollisionPair,
+			oracles: [
+				{
+					id: 'O-001',
+					direction: {
+						evidenceTargets: [
+							'/interactions/ping-1/response-body/ok',
+							'/interactions/ping-2/response-body/ok',
+						],
+						relation: 'existence',
+						polarity: 'expects-hold',
+						scope: 'Two pings.',
+						negativeDomain: 'Neither answers.',
+					},
+					check: null,
+					polarity: 'expects-hold',
+					commentary: null,
+				},
+			],
+		} as unknown as EvalContract
+		let thrown: unknown
+		try {
+			checkStepReferenceReducibility(contract)
+		} catch (error) {
+			thrown = error
+		}
+		expect(thrown).toBeInstanceOf(StructuralFailure)
+		expect((thrown as StructuralFailure).code).toBe(
+			'irreducible-step-reference',
+		)
+		expect((thrown as StructuralFailure).artifactPath).toContain(
+			'direction.evidenceTargets',
+		)
 	})
 
 	it('a step binding nothing in any channel still renders, with the binding clause omitted', () => {
@@ -519,7 +574,7 @@ describe('renderStepReference: the escalation ladder and its injectivity', () =>
 					operations: widgetApi.operations.filter(
 						(operation) => operation.operationId !== 'create-beta-widget',
 					),
-				},
+				} as PermittedInterface,
 			]),
 		]
 		for (const index of indexes) {
@@ -557,14 +612,20 @@ describe('the exhaustive evidence-channel sweep', () => {
 			// No tail: exercises each channel's own base framing directly. The
 			// tail-naming behavior ("its {field} field") is asserted separately
 			// by the same-step-grouping and injectivity tests above.
+			// Two channels take a mandatory segment before any tail, so neither
+			// has a bare form to sweep.
 			const pointer =
 				channel === 'call-inputs'
 					? '/interactions/submit/call-inputs/body'
-					: `/interactions/poll/${channel}`
+					: channel === 'artifact'
+						? '/interactions/poll/artifact/verdict'
+						: `/interactions/poll/${channel}`
 			const text = renderEvidenceReferences([pointer], gateCIndex)
 			expect(text.length).toBeGreaterThan(0)
 			if (channel === 'call-inputs') {
 				expect(text).toContain('you sent')
+			} else if (channel === 'artifact') {
+				expect(text).toContain('it wrote')
 			} else {
 				expect(text).toMatch(/you obtained|transport status|exit code/)
 			}
@@ -995,10 +1056,12 @@ describe('AC 5: determinism by permutation', () => {
 		]
 		const baseline = renderEvidenceReferences(pointers, gateCIndex)
 		const permutedPlan = [...gateCInteractionPlan].reverse()
-		const permutedInterfaces = gateCPermittedInterfaces.map((iface) => ({
-			...iface,
-			operations: [...iface.operations].reverse(),
-		}))
+		const permutedInterfaces = gateCPermittedInterfaces.map(
+			(iface): PermittedInterface =>
+				iface.kind === 'cli'
+					? { ...iface, operations: [...iface.operations].reverse() }
+					: { ...iface, operations: [...iface.operations].reverse() },
+		)
 		const permutedIndex = buildPlanIndex(permutedPlan, permutedInterfaces)
 		expect(renderEvidenceReferences(pointers, permutedIndex)).toBe(baseline)
 	})

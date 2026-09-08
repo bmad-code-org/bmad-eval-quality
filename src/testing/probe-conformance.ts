@@ -116,9 +116,9 @@ const PROBE_ASSERTIONS: readonly ProbeAssertion[] = [
 		expectation: {
 			kind: 'resolves',
 			check: (observation) =>
-				observation.status === 500
+				observation.kind === 'api' && observation.status === 500
 					? undefined
-					: `observed status ${observation.status}, expected 500`,
+					: `observed ${observation.kind === 'api' ? `status ${observation.status}` : 'a command observation'}, expected status 500`,
 		},
 	},
 	{

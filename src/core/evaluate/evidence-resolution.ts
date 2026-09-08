@@ -8,6 +8,7 @@
 
 import type { EvalContract } from '../schemas/eval-contract.ts'
 import type { JsonValue } from '../schemas/primitives.ts'
+import type { ProbeObservedBody } from '../schemas/probe-body.ts'
 import type { Observation } from '../schemas/sealed-run-record.ts'
 import {
 	buildPlanIndex,
@@ -16,7 +17,11 @@ import {
 	type PlanIndex,
 	parseEvidenceTarget,
 } from '../seal/plan-index.ts'
-import type { PointerDenotesCollection, ResolveOperand } from './resolution.ts'
+import type {
+	PointerDenotesCollection,
+	ReferenceSetKeys,
+	ResolveOperand,
+} from './resolution.ts'
 import { ABSENT, type ResolvedValue } from './resolved-value.ts'
 
 /**
@@ -67,14 +72,26 @@ export function decodeBoundElementTail(pointer: string): readonly string[] {
 }
 
 /**
- * Selects the channel `target` names off one `Observation`. `stdout`/`stderr`
- * can carry a tail even though they're bare strings; `walkTail` already
- * resolves any non-empty tail against a string to `ABSENT`, so no special
- * case is needed here.
+ * Selects the channel `target` names off one `Observation`.
+ *
+ * `stdout`, `stderr`, and each written artifact are tagged, so a channel a
+ * harness captured as JSON resolves to the value and a tail walks into it,
+ * while one captured as text resolves to the string and a tail over it
+ * resolves `ABSENT`. That is what makes a command operation's nominated output
+ * channel resolvable at score time on the same terms as a response body.
  *
  * Exported so `core/score/bindings.ts` reads a captured pointer's channel off
  * an observation through this one spelling, keeping the switch in one place.
  */
+/**
+ * The value a tagged observed channel resolves to. A JSON body resolves to the
+ * value itself, so a tail walks into it; text resolves to the string, so a tail
+ * over it resolves `ABSENT` through `walkTail`, which is the truthful answer
+ * for output nothing parsed.
+ */
+const observedValue = (body: ProbeObservedBody): JsonValue =>
+	body.kind === 'absent' ? null : body.value
+
 export function channelRoot(
 	observation: Observation,
 	target: EvidenceTarget,
@@ -87,9 +104,9 @@ export function channelRoot(
 		case 'response-status':
 			return observation.responseStatus
 		case 'stdout':
-			return observation.stdout
+			return observedValue(observation.stdout)
 		case 'stderr':
-			return observation.stderr
+			return observedValue(observation.stderr)
 		case 'exit-code':
 			return observation.exitCode
 		case 'call-inputs': {
@@ -102,6 +119,16 @@ export function channelRoot(
 				)
 			}
 			return observation.callInputs[transportChannel]
+		}
+		case 'artifact': {
+			const { artifactId } = target
+			if (artifactId === null) {
+				// parseEvidenceTarget sets artifactId exactly when the channel
+				// is 'artifact', so this throw should never fire.
+				throw new TypeError('artifact evidence target names no artifact')
+			}
+			const written = observation.artifacts[artifactId]
+			return written === undefined ? null : observedValue(written)
 		}
 	}
 }
@@ -136,6 +163,20 @@ export function makeResolveOperand(
 		const observation = stepObservations[target.stepId] as Observation
 		return walkTail(channelRoot(observation, target), target.tail)
 	}
+}
+
+/**
+ * The `keys` a contract's reference sets declare. Built from the same
+ * `contract.referenceSets` the members map handed to `makeResolveOperand` is
+ * built from, so a set that resolves to members always has its keys here.
+ */
+export function referenceSetKeysOf(contract: EvalContract): ReferenceSetKeys {
+	return Object.fromEntries(
+		Object.entries(contract.referenceSets ?? {}).map(([id, set]) => [
+			id,
+			set.keys,
+		]),
+	)
 }
 
 function tokensEqual(a: readonly string[], b: readonly string[]): boolean {
