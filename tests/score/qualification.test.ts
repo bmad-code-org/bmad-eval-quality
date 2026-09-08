@@ -2,10 +2,7 @@
 // AD-4 legality pass, and the sealed-set filter that reports its exclusions.
 
 import { describe, expect, it } from 'vitest'
-import type {
-	ApiDefectSignature,
-	DefectSignature,
-} from '../../src/core/schemas/defect-signature.ts'
+import type { ApiDefectSignature } from '../../src/core/schemas/defect-signature.ts'
 import type { Expression } from '../../src/core/schemas/expression.ts'
 import type { Operation } from '../../src/core/schemas/interface.ts'
 import type { Probe } from '../../src/core/schemas/probe.ts'

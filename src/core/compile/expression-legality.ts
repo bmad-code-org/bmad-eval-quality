@@ -3,7 +3,7 @@
  * reference-set resolution. Each check reports the first structural failure.
  */
 import { digestArtifact } from '../canonical/digest.ts'
-import { descriptorChannelOf } from '../declared-inputs.ts'
+import { targetsDescribedChannel } from '../declared-inputs.ts'
 import { StructuralFailure } from '../failure-codes.ts'
 import type { EvalContract } from '../schemas/eval-contract.ts'
 import type { Expression, Operand, SetOperand } from '../schemas/expression.ts'
@@ -619,9 +619,10 @@ function checkQuantifiersAgainst(
 		const target = parseEvidenceTarget(pointer)
 		const operation = operationFor(target.stepId)
 		if (operation === undefined) return
-		// The operation is resolved before the channel is tested, because which
-		// channel carries the declared structure is the operation's own answer.
-		if (target.channel !== descriptorChannelOf(operation)) return
+		// The operation is resolved before the target is tested, because which
+		// channel carries the declared structure is the operation's own answer,
+		// and on the artifact channel so is which file.
+		if (!targetsDescribedChannel(operation, target)) return
 		const firstToken = target.tail.length === 1 ? target.tail[0] : undefined
 		const declaredType =
 			firstToken === undefined

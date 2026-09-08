@@ -218,7 +218,7 @@ export const EvalContract = z
 	.meta({
 		id: 'EvalContract',
 		description:
-			"The Eval Contract. Succeeds the prior-art `eval-contract` schema per AD-24. It carries every declaration AD-19 requires so that AD-31's fourteen relevance and satisfaction predicates are decidable from declarations alone. AD-10's sensitivity witnesses arrived on each operation as an additive `schemaVersion` bump; version 4 opens `permittedInterfaces` to a second interface kind, so a contract may describe a system under test that runs behind a command. Each bump is recorded in its own field's description, since no reader in this version declares an expected version constant to compare against.",
+			"The Eval Contract. Succeeds the prior-art `eval-contract` schema per AD-24. It carries every declaration AD-19 requires so that AD-31's fourteen relevance and satisfaction predicates are decidable from declarations alone. AD-10's sensitivity witnesses arrived on each operation as an additive `schemaVersion` bump; version 4 opens `permittedInterfaces` to a second interface kind, so a contract may describe a system under test that runs behind a command, and widens the interaction pointer's accepted language with the four command input channels and the `artifact` channel. The widening retypes nothing on its own, since every pointer legal under version 3 is still legal; it carries the same version because it ships in the same release as the retypes. Each bump is recorded in its own field's description, since no reader in this version declares an expected version constant to compare against.",
 	})
 
 export type EvalContract = z.infer<typeof EvalContract>

@@ -14,10 +14,7 @@
 // enum, namespace, parameter property, or non-type re-export may appear here
 // or in anything it imports.
 import { mkdir, readdir, rm, writeFile } from 'node:fs/promises'
-import {
-	CORPUS_CONTRACTS,
-	DEV_CORPUS_CONTRACTS,
-} from '../tests/coverage/fixtures/corpus.ts'
+import { DEV_CORPUS_CONTRACTS } from '../tests/coverage/fixtures/corpus.ts'
 import {
 	buildDevCorpus,
 	CORPUS_CONTRACTS_DIR,

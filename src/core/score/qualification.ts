@@ -38,11 +38,7 @@ import {
 	OBSERVED_STEP_ID,
 } from '../schemas/defect-signature.ts'
 import type { Expression, Operand } from '../schemas/expression.ts'
-import type {
-	AnyOperation,
-	Operation,
-	PermittedInterface,
-} from '../schemas/interface.ts'
+import type { AnyOperation, PermittedInterface } from '../schemas/interface.ts'
 import { operationsOf } from '../schemas/interface.ts'
 import {
 	API_RESPONSE_CHANNELS,

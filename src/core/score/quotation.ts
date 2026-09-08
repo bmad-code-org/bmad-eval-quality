@@ -82,10 +82,22 @@ export function projectChannel(
 		case 'stderr':
 			return observedText(observation.stderr, artifactPath)
 		case 'artifact':
-			// Every written file at once, keyed by identifier. A quotation names
-			// a channel rather than one artifact, so the whole map is the
-			// channel's text, the way `call-inputs` serialises all eight.
-			return serialize(observation.artifacts, artifactPath)
+			// Each written file's own text, joined by a newline. Serializing the
+			// whole map instead escaped every newline and quotation mark inside
+			// it, so a quotation lifted from a file with more than one line, or
+			// with a quotation mark in it, could never be a substring of the
+			// projection. `QuotedEvidence` names a channel and not a file, so
+			// matching any of them is the whole of what the record declared.
+			return Object.keys(observation.artifacts)
+				.sort()
+				.map((id) =>
+					observedText(
+						observation.artifacts[id] ?? { kind: 'absent' },
+						artifactPath,
+					),
+				)
+				.filter((text): text is string => text !== null)
+				.join('\n')
 		case 'response-status':
 			return observation.responseStatus === null
 				? null

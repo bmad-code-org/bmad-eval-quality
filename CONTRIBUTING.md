@@ -96,11 +96,12 @@ All PRs require at least one maintainer review before merge. CI must be green.
 
 `npm run release:patch` (or `release:minor`, `release:major`) picks the bump and dispatches
 `publish.yml` from `main`, which bumps the version, stamps the changelog, commits, tags, and
-publishes in one run. The workflow pushes the release commit to `main` with its own
-`GITHUB_TOKEN`, which lands because the `protect-main` ruleset requires no status check; `gate`
-still runs and reports on every pull request without blocking a merge. If `gate` is ever made
-required again, use the two-step fallback below instead: bump on a laptop, merge the PR, publish
-with `bump=none`.
+publishes in one run. The workflow pushes the release commit to `main` as a GitHub App that holds a
+bypass entry on the `protect-main` ruleset; [Release App and ruleset
+bypass](#release-app-and-ruleset-bypass) explains why the push needs one.
+
+The two-step path below (bump on a laptop, merge the PR, publish with `bump=none`) takes the release
+commit through an ordinary pull request and depends on no bypass at all.
 
 ### One-step: bump and publish together
 
@@ -112,14 +113,16 @@ npm run release:patch      # or release:minor, release:major
 
 This dispatches `publish.yml` on `main` with the matching `bump` input. The run:
 
-1. fails at the AD-18 guard unless the repository variable `PUBLICATION_UNBLOCKED` is `true`;
+1. fails at the AD-18 guard unless the repository variable `PUBLICATION_UNBLOCKED` is `true`, then
+   mints the App installation token that will push the release commit;
 2. checks out `main`, runs `npm run validate`, then `node scripts/release-prepare.mjs <bump>
    --on-main`: bumps `package.json` and `package-lock.json` (`npm version --no-git-tag-version`),
    stamps `VERSION` in `src/index.ts`, moves `[Unreleased]` in `CHANGELOG.md` into a dated
    `[X.Y.Z]` section (`scripts/stamp-changelog.mjs`), and commits `chore: release vX.Y.Z [skip ci]`
-   straight onto `main`, pushed with `GITHUB_TOKEN`. `[skip ci]` keeps that push from starting
+   straight onto `main`, pushed as the App. `[skip ci]` keeps that push from starting
    `pr-checks.yml` and the other push-triggered workflows on a commit this run already validated
-   and owns;
+   and owns. The commit identity stays `github-actions[bot]`; only the pushing credential is the
+   App;
 3. resolves the release state from that commit (`git rev-parse HEAD`; `github.sha` is the pre-bump
    commit once a bump happened) and refuses if the tag or npm version already exists at a different
    commit;
@@ -136,10 +139,47 @@ bump commit is on `main`, dispatch again with `bump=none`; re-dispatching with t
 computes the next version from the one already there and cuts a second, unwanted bump. Runs are
 serialized (`concurrency: publish`, no cancellation).
 
+### Release App and ruleset bypass
+
+The `protect-main` ruleset targets the default branch and carries two rules, `deletion` and
+`code_coverage`. `code_coverage` refuses every direct push to `main` with
+
+```
+remote: error: GH013: Repository rule violations found for refs/heads/main.
+remote: - Code coverage checks require merging via API or UI.
+```
+
+Getting a direct push past that needs a bypass entry for the pushing actor on the ruleset, and a
+bypass list can name repository roles, teams, GitHub Apps and Dependabot. A workflow's own
+`GITHUB_TOKEN` is none of those, so `publish.yml` mints an App installation token from
+`RELEASE_APP_ID` and `RELEASE_APP_PRIVATE_KEY` and pushes as the App. It is the same mechanism, and
+the same App, that releases `bmad-code-org/bmad-method-test-architecture-enterprise`. The token is
+git credentials only; npm authentication is still trusted publishing over OIDC with no npm token
+anywhere.
+
+A run that cannot mint the token, or whose push the bypass does not cover, stops before it has
+published, tagged, or released anything, and the two-step path below still works.
+
+When a ruleset changes again, read it before changing the release path:
+
+```bash
+gh api repos/bmad-code-org/bmad-eval-quality/rulesets                  # which rulesets exist
+gh api repos/bmad-code-org/bmad-eval-quality/rulesets/<id>             # its rules and bypass list
+gh api repos/bmad-code-org/bmad-eval-quality/rulesets/<id>/history     # who changed it, and when
+gh api repos/bmad-code-org/bmad-eval-quality/rules/branches/main       # what actually applies to main
+```
+
+A bypass entry carries the release push past every rule in the ruleset it is on, so a new rule
+added to `protect-main` needs no release-path change. A rule added to `Release tags` does, because
+the tag push holds no bypass there. Read the whole rule list rather than the one rule you changed:
+run 34245836441 failed because `required_status_checks` was audited and removed while
+`code_coverage`, present since the ruleset was created on 2026-08-25, went unread.
+
 ### Fallback: bump on a laptop, publish separately
 
-Two steps with a human merge in between: the flow before the one-step path existed, and the
-fallback if `gate` is ever made required again.
+Two steps with a human merge in between: the flow before the one-step path existed, and the one that
+depends on no App and no bypass, because the release commit reaches `main` through an ordinary
+merged pull request.
 
 #### 1. Cut the release PR
 

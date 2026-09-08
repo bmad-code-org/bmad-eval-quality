@@ -17,9 +17,9 @@
  */
 import {
 	boundChannelsOf,
-	descriptorArtifactOf,
 	descriptorChannelOf,
 	requestShapeOf,
+	targetsDescribedChannel,
 } from '../declared-inputs.ts'
 import { ARRAY_INDEX_PATTERN } from '../evaluate/evidence-resolution.ts'
 import { StructuralFailure } from '../failure-codes.ts'
@@ -238,15 +238,13 @@ export function checkCapturedChannel(contract: EvalContract): void {
 				operation === undefined
 					? 'response-body'
 					: descriptorChannelOf(operation)
-			// On the artifact channel the channel name is not the whole answer:
-			// an operation may declare several files and its one descriptor
-			// describes one of them, so a capture from a different file would
-			// be typed against a descriptor that does not describe it.
-			const describesThisOne =
-				capturable !== 'artifact' ||
-				(operation !== undefined &&
-					capture.target.artifactId === descriptorArtifactOf(operation))
-			if (capture.target.channel === capturable && describesThisOne) continue
+			if (
+				operation === undefined
+					? capture.target.channel === capturable
+					: targetsDescribedChannel(operation, capture.target)
+			) {
+				continue
+			}
 			throw new StructuralFailure(
 				'captured-channel-undeclared',
 				bindingPath(step, capture),
@@ -400,17 +398,7 @@ export function checkCapturedReachability(contract: EvalContract): void {
 					`captured pointer "${capture.pointer}" names step "${capture.target.stepId}", which names operation "${referenced.operationId}", not declared by any permitted interface`,
 				)
 			}
-			if (capture.target.channel !== descriptorChannelOf(operation)) continue
-			// The same qualification `checkCapturedChannel` makes: a capture
-			// from a declared file the descriptor does not describe has no
-			// declared type, and typing it against the wrong descriptor is the
-			// error this skip avoids.
-			if (
-				capture.target.channel === 'artifact' &&
-				capture.target.artifactId !== descriptorArtifactOf(operation)
-			) {
-				continue
-			}
+			if (!targetsDescribedChannel(operation, capture.target)) continue
 			const reachability = evaluatePointerReachability(capture.pointer, index)
 			if (!reachability.reachable) {
 				throw new StructuralFailure(

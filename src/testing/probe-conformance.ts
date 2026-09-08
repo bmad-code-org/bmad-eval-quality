@@ -6,6 +6,24 @@
  * Each of the thirteen builds its own `'resolves'` subject and reads
  * `underlyingCalls()` from a counter starting at zero, so every count below is
  * absolute.
+ *
+ * **This suite certifies an adapter for the `api` mechanism and says nothing
+ * about the `cli` one.** Every scenario is HTTP: redirects, methods, schemes,
+ * an anomalous status. `ProbeSubject` requires an unauthorized-method request,
+ * a redirecting request and a not-found request, none of which a command
+ * adapter has. So an adapter that runs commands cannot present a subject here,
+ * and an adapter that passes all nineteen has been shown nothing about whether
+ * it can run one safely: it may deny an unmapped executable or execute a shell
+ * string, and this suite cannot tell the difference.
+ *
+ * That is a real gap in the published surface, not an intentional scope. The
+ * command mechanism has its own denials to certify — an executable no mapping
+ * names, a refusal to accept a pre-built argument vector, a non-zero exit as an
+ * observation rather than a fault, caps on output bytes and elapsed time — and
+ * building that suite is an addition to the published surface rather than a
+ * repair to this one. Until it exists, an adopter writing a command adapter has
+ * no harness, and this comment is here so nobody concludes from a green run
+ * that they do.
  */
 import type {
 	ProbeObservation,

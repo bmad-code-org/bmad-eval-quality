@@ -14,7 +14,7 @@ body.
 
 - A contract can describe a system under test that runs behind a command. `permittedInterfaces` is
   now a union discriminated on `kind`. The `api`, `web`, and `mcp` branches carry the shipped
-  operation shape byte for byte, so every existing contract parses unchanged; `web` and `mcp` still
+  operation shape, so every existing contract parses unchanged; `web` and `mcp` still
   fail compilation under `unsupported-interface-kind`, which is how AD-10 says an undeclared kind
   fails. The `cli` branch carries a command operation: a logical `invocation` of an executable plus
   a subcommand path in place of a method and a path template, a `requestShape` over `argument`,
@@ -78,10 +78,6 @@ body.
   operation shape inline now follows one `$ref`.
 - `unsupported-interface-kind` fires on two kinds rather than three. AD-10 closes a kind until its
   probe semantics are declared, and a command's are; `web` and `mcp` are unchanged.
-- Pre-flight still refuses a command interface, under `unsupported-interface-kind` with a message
-  that says so. `ProbeRequest` carries a method, a path template, and the four transport channels,
-  none of which a command invocation has, so planning a leg for one would mint a request the port
-  cannot issue. A command contract compiles and seals; it does not yet pre-flight.
 - A witness leg's standard input is a three-arm tagged value, `json`, `text`, or `absent`, matching
   the observed body rather than the request body. Standard input is a byte stream, so a command
   that reads a prompt receives text that was never JSON, and routing it through the `json` arm as a
@@ -138,10 +134,17 @@ body.
   release's own; the corpus digest moves because the corpus gained two contracts, which narrows a
   comparison to the intersection and records the excluded probes, exactly as AD-7 intends.
 - Eleven of the twelve interchange artifacts carry a `schemaVersion` and three of them moved: the
-  eval contract 3 to 4, the sealed run record 3 to 4, and the probe 2 to 3. A reader accepts an
-  equal version only and throws `schema-version-mismatch` outside it, so a caller holding a
-  version-3 contract, a version-3 record, or a version-2 probe must migrate rather than expect a
-  lenient parse.
+  eval contract 3 to 4, the sealed run record 3 to 4, and the probe 2 to 3.
+- **Nothing rejects a stale `schemaVersion`, and the consequence is worse than a parse failure would
+  be.** AD-11 says a reader accepts an equal version only and throws `schema-version-mismatch`
+  outside it. No shipped stage does. `schemaVersion` is a plain `z.int()`, the one reader that
+  compares versions is `validateLineageChain`, and no caller passes it an `acceptedSchemaVersion`.
+  So a version-3 contract whose shape is still legal parses, compiles clean under `--strict`, and
+  reaches `emit`, where its stale `3` goes straight into the scoring version as
+  `contractSchemaVersion`. The score that comes back is well-formed, carries a scoring version
+  nothing else will ever equal, and gives no sign anything is wrong. **Check the stamp yourself
+  before scoring against this release; the package will not check it for you.** Closing that is a
+  change to what every stage accepts and is not made here.
 - AD-5's registry grew from twenty-three codes to twenty-five and `unsupported-interface-kind`
   narrowed from three firing conditions to two. A caller matching on the registry's length or on
   that code's exhaustive set of kinds needs both.
@@ -181,6 +184,15 @@ body.
   RFC 6901 pointer over the failing value, sorted so two runs over the same input print the same
   bytes, and capped at twenty issues followed by a count of the rest. The first line is unchanged,
   so anything matching on it still matches.
+- `publish.yml` pushes the release commit with a GitHub App token instead of the job's own
+  `GITHUB_TOKEN`. A `GITHUB_TOKEN` cannot be granted a ruleset bypass and an App can, and
+  `protect-main` carries a `code_coverage` rule that refuses direct pushes to `main` with
+  `GH013 ... Code coverage checks require merging via API or UI`. Publish run 34245836441 hit that
+  and stopped with `0.3.0` committed inside the runner and nothing pushed. The token is minted from
+  `RELEASE_APP_ID` and `RELEASE_APP_PRIVATE_KEY` only for a run that actually bumps, so a
+  `bump=none` publish still runs on `GITHUB_TOKEN` alone. It is the same mechanism, and the same
+  App, that releases `bmad-method-test-architecture-enterprise`. npm authentication is untouched:
+  trusted publishing over OIDC, no npm token anywhere.
 
 ## [0.2.0] - 2026-09-04
 

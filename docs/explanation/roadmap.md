@@ -34,6 +34,6 @@ No date is set for any of these.
 
 ## Breaking changes
 
-Nothing in this release compares a `schemaVersion` at runtime. An artifact written against an older version arrives as a parse failure with no version-mismatch message, so pin the version you build against exactly.
+Nothing in this release compares a `schemaVersion` at runtime, and an artifact written against an older version does not reliably arrive as a parse failure either. Where its shape is still legal it parses and is scored, and its stale stamp is carried into the scoring version, so the result is well-formed and quietly incomparable with everything else. Pin the version you build against exactly, and check the stamp before you score.
 
 `CHANGELOG.md` in the repository carries every breaking change artifact by artifact, with what each schema bump added and why it breaks.

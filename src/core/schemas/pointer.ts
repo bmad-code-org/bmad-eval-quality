@@ -75,12 +75,6 @@ export const INPUT_CHANNELS = [
 
 export type InputChannelName = (typeof INPUT_CHANNELS)[number]
 
-/** Whether a channel name is one of the four an HTTP interface accepts. */
-export const isTransportChannelName = (
-	channel: InputChannelName,
-): channel is TransportChannelName =>
-	(TRANSPORT_CHANNELS as readonly string[]).includes(channel)
-
 // The four-way partition (tail-bearing, scalar, transport-rooted,
 // identifier-rooted) is spelled out and typed against the enum rather than
 // rebuilt from it, so a typo fails the typecheck; a test asserts it stays

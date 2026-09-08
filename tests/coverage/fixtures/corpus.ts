@@ -540,10 +540,17 @@ export const CORPUS_CONTRACTS: readonly EvalContract[] = [
  *
  * `CORPUS_CONTRACTS` stays exactly the cell contracts, in cell order, so the
  * ordering check that proves it derived rather than hand-listed keeps working.
- * The two command contracts describe a system under test that runs behind a
- * command and grade the same as any other under AD-31; they are here because a
- * published corpus that could not show one would leave an adopter with no
- * worked example of the shape this version opened.
+ * The two command contracts are not declaration-state exemplars and so do not
+ * belong in a matrix of declaration states; they are here because a published
+ * corpus that could not show one would leave an adopter with no worked example
+ * of the shape this version opened.
+ *
+ * They are graded, and NOT by the AD-31 table this file feeds. The table reads
+ * the cells, so for one release nothing ran the fourteen predicates over a
+ * command contract at all and three of them answered confidently and wrongly
+ * while the suite stayed green. `tests/coverage/command-coverage.test.ts` is
+ * where they are graded, and it asserts the whole verdict table rather than the
+ * rules that happen to be interesting.
  */
 export const DEV_CORPUS_CONTRACTS: readonly EvalContract[] = [
 	...CORPUS_CONTRACTS,
