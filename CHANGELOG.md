@@ -10,6 +10,14 @@ body.
 
 ## [Unreleased]
 
+### Fixed
+
+- The publish workflow's verify step waits ten minutes and revalidates the registry metadata. The
+  1.2.0 publish succeeded and the step failed: the tarball was on npmjs.org and the metadata had not
+  caught up inside the old two-minute window, so a green release reported as a failed one. The window
+  is now sixty attempts at ten seconds, and `npm view --prefer-online` revalidates rather than
+  trusting a cached metadata document.
+
 ## [1.2.0] - 2026-09-08
 
 ### Added
