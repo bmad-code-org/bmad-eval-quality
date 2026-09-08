@@ -78,8 +78,8 @@ const kindsOf = (
  * actually clean.
  */
 const witnessedQuotes: DefectFinding['quotedEvidence'] = [
-	{ quote: '"title":"Revised"', channel: 'response-body' },
-	{ quote: '200', channel: 'response-status' },
+	{ quote: '"title":"Revised"', channel: 'response-body', artifactId: null },
+	{ quote: '200', channel: 'response-status', artifactId: null },
 ]
 
 const withQuotes = (
@@ -366,7 +366,7 @@ describe('the ingest stage', () => {
 		const withNeedle = carrying({ note: 'needle' }, 1)
 		const without = carrying({ note: 'nothing' }, 2)
 		const finding = quotingFinding('F-100', 'obs-dup', [
-			{ quote: 'needle', channel: 'response-body' },
+			{ quote: 'needle', channel: 'response-body', artifactId: null },
 		])
 
 		for (const observations of [
@@ -1073,7 +1073,7 @@ describe('the ingest stage', () => {
 				observations: [observation],
 				findings: [
 					quotingFinding('F-001', observation.observationId, [
-						{ quote: 'total', channel },
+						{ quote: 'total', channel, artifactId: null },
 					]),
 				],
 			})

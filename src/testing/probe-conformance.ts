@@ -16,14 +16,25 @@
  * it can run one safely: it may deny an unmapped executable or execute a shell
  * string, and this suite cannot tell the difference.
  *
- * That is a real gap in the published surface, not an intentional scope. The
- * command mechanism has its own denials to certify — an executable no mapping
- * names, a refusal to accept a pre-built argument vector, a non-zero exit as an
- * observation rather than a fault, caps on output bytes and elapsed time — and
- * building that suite is an addition to the published surface rather than a
- * repair to this one. Until it exists, an adopter writing a command adapter has
- * no harness, and this comment is here so nobody concludes from a green run
- * that they do.
+ * That is a real gap in the published surface and it is wider than this suite.
+ * `ProbeTargetPolicy` has one authorization shape and every field in it is
+ * HTTP: scheme, host, port, resolved addresses, methods, safe methods,
+ * redirects, request and response byte caps. **A command interface cannot be
+ * authorized at all**, so AD-35's "an adapter denies by default and permits
+ * only what that mapping names" has nothing to name for the mechanism this
+ * release adds, and a conformance arm built on top of a policy that cannot
+ * express a command authorization would certify against nothing.
+ *
+ * Closing it is a declaration first and a suite second: a command
+ * authorization naming a permitted executable, the subcommand paths and
+ * environment keys it may carry, and its own elapsed and output-byte caps;
+ * then the denials to certify — an executable no mapping names, a refusal to
+ * accept a pre-built argument vector, a non-zero exit as an observation rather
+ * than a fault, each cap enforced. That is a design addition to the published
+ * surface rather than a repair, and it is not made here. Until it exists an
+ * adopter writing a command adapter has no policy to declare and no harness to
+ * run, and this comment is here so nobody concludes from a green run that they
+ * have either.
  */
 import type {
 	ProbeObservation,
@@ -234,6 +245,7 @@ function checkResolved(
 	assertion: ProbeAssertion,
 	expectation: Extract<Expectation, { kind: 'resolves' }>,
 	value: unknown,
+	request: ProbeRequest,
 ): ConformanceOutcome {
 	const parsed = probeParsers.response.safeParse(value)
 	if (!parsed.success) {
@@ -244,6 +256,16 @@ function checkResolved(
 			'the resolved value is not a schema-valid ProbeObservation',
 		)
 	}
+	// Schema validity is not correlation. Both messages are unions now, so an
+	// adapter can answer a command request with a schema-valid HTTP observation
+	// and satisfy every assertion below without running a command or consulting
+	// a policy. The four echoed fields are what tie one answer to one question,
+	// and `ProbeRequest.probeId`'s own description already says the port returns
+	// them unchanged.
+	const mismatch = echoMismatch(request, parsed.data)
+	if (mismatch !== undefined) {
+		return titledOutcome(assertion.id, assertion.title, false, mismatch)
+	}
 	const complaint = expectation.check?.(parsed.data)
 	return titledOutcome(
 		assertion.id,
@@ -251,6 +273,27 @@ function checkResolved(
 		complaint === undefined,
 		complaint ?? '',
 	)
+}
+
+/**
+ * Which of the four echoed fields the observation failed to return unchanged,
+ * or `undefined` when it answered the question it was asked.
+ */
+function echoMismatch(
+	request: ProbeRequest,
+	observation: ProbeObservation,
+): string | undefined {
+	const echoed = [
+		['kind', request.kind, observation.kind],
+		['probeId', request.probeId, observation.probeId],
+		['interfaceId', request.interfaceId, observation.interfaceId],
+		['operationId', request.operationId, observation.operationId],
+	] as const
+	for (const [field, asked, answered] of echoed) {
+		if (asked === answered) continue
+		return `observed ${field} "${answered}" for a request carrying "${asked}", so the answer does not correlate with the question`
+	}
+	return undefined
 }
 
 function checkRejected(
@@ -306,15 +349,21 @@ async function runProbeAssertion(
 	if (!run.ok) {
 		return titledOutcome(assertion.id, assertion.title, false, run.detail)
 	}
+	const request = assertion.request(subject)
 	const settled = await settle(
-		run.built.port(assertion.request(subject), new AbortController().signal),
+		run.built.port(request, new AbortController().signal),
 	)
 
 	let result: ConformanceOutcome
 	if (assertion.expectation.kind === 'resolves') {
 		result =
 			settled.kind === 'resolved'
-				? checkResolved(assertion, assertion.expectation, settled.value)
+				? checkResolved(
+						assertion,
+						assertion.expectation,
+						settled.value,
+						request,
+					)
 				: titledOutcome(
 						assertion.id,
 						assertion.title,

@@ -42,8 +42,8 @@ body.
   compilation under `unresolved-artifact-reference` rather than resolving absent, on AD-26's
   precedent for a dangling reference-set identifier. `descriptorChannel` gains its `artifact` arm,
   so an operation may nominate a written file as the channel its response descriptor describes.
-- `unresolved-artifact-reference` and `irreducible-step-reference` join AD-5's registry, which now
-  carries twenty-five codes. The second reports two steps of one direction that render to the same
+- `unresolved-artifact-reference`, `irreducible-step-reference`, and
+  `excluded-content-in-declaration` join AD-5's registry, which now carries twenty-six codes. The second reports two steps of one direction that render to the same
   derived reference even fully escalated: that was a bare `TypeError` out of `seal`, the one
   authoring fault in the package that reached a caller as a stack trace rather than a code and a
   path, and `compile` now reports it before `seal` is called.
@@ -67,6 +67,19 @@ body.
   admits a `cli` signature on the same terms it admits an `api` one.
 - Two command contracts ship in `corpus/dev/`, one describing its output on standard output and one
   through a file it writes. The corpus is twenty-one contracts now, eighteen of which compile.
+- **AD-18 is enforced against the contract rather than only against this repository's own corpus.**
+  The decision excludes credentials, tokens, real names, email addresses, account identifiers, and
+  transaction content from every artifact this package produces or publishes, and binds "published
+  examples and test fixtures as strictly as real runs"; the only mechanism was a test that greps
+  `corpus/dev`. `compile` now walks the whole contract and fails with
+  `excluded-content-in-declaration` on a string whose shape is a PEM private key header, a token
+  with an issuer prefix, an email address, an IBAN or SSN, or a card-shaped digit run. It runs
+  unconditionally rather than under `--strict`, since AD-18 has no lenient reading, and the failure
+  names the category and the path and quotes none of what it matched. Only value-shaped patterns
+  gate: a contract for an authentication API declares `password` body keys and `Authorization`
+  headers, which is what AD-18 says a declaration is for, so the name-shaped half of the scan stays
+  a review gate in `tests/architecture/dev-corpus.test.ts`. **This rejects contracts that compiled
+  before**, which is the point; the fix is to store a digest or an AD-8 opaque reference.
 
 ### Changed
 
@@ -134,25 +147,112 @@ body.
   release's own; the corpus digest moves because the corpus gained two contracts, which narrows a
   comparison to the intersection and records the excluded probes, exactly as AD-7 intends.
 - Eleven of the twelve interchange artifacts carry a `schemaVersion` and three of them moved: the
-  eval contract 3 to 4, the sealed run record 3 to 4, and the probe 2 to 3.
-- **Nothing rejects a stale `schemaVersion`, and the consequence is worse than a parse failure would
-  be.** AD-11 says a reader accepts an equal version only and throws `schema-version-mismatch`
-  outside it. No shipped stage does. `schemaVersion` is a plain `z.int()`, the one reader that
-  compares versions is `validateLineageChain`, and no caller passes it an `acceptedSchemaVersion`.
-  So a version-3 contract whose shape is still legal parses, compiles clean under `--strict`, and
-  reaches `emit`, where its stale `3` goes straight into the scoring version as
-  `contractSchemaVersion`. The score that comes back is well-formed, carries a scoring version
-  nothing else will ever equal, and gives no sign anything is wrong. **Check the stamp yourself
-  before scoring against this release; the package will not check it for you.** Closing that is a
-  change to what every stage accepts and is not made here.
-- AD-5's registry grew from twenty-three codes to twenty-five and `unsupported-interface-kind`
+  eval contract 3 to 4, the sealed run record 3 to 4, and the probe 2 to 3. What that does to a
+  document written against 0.2.0, measured against this build rather than reasoned about:
+  - **A version-3 eval contract still parses and no longer compiles.** Every field it carries is
+    still legal and the api branch accepts its bytes, so `EvalContract.parse` succeeds; `compile`
+    refuses it with `schema-version-mismatch`. Restamping is the whole edit.
+  - **A version-3 sealed run record does not parse.** `Observation.artifacts` is a required key,
+    `stdout` and `stderr` are tagged values rather than strings, and `callInputs` carries eight
+    channels rather than four. A harness that wrote 0.2.0 records writes new ones.
+  - **A version-2 probe carrying a defect signature does not parse**, because `DefectSignature` is
+    a union whose branches carry different keys and the signature must now name its
+    `interfaceKind`. **A version-2 probe with no signature does parse**: a clean control and a
+    zero-action probe carry none, so a corpus of those needs its stamp moved and nothing else.
+  - **An environment-probe adapter breaks in both build modes.** `ProbeRequest` and
+    `ProbeObservation` are unions now, so an adapter typed against the api shape stops satisfying
+    the port's parameter type and fails the typecheck at the boundary; an adapter that compiles
+    anyway, or that was written in JavaScript, fails the published conformance suite, which checks
+    that the observation echoes the request's `kind` before it checks anything else. Both are
+    intended: an adapter that ignores `kind` answers a command request with an HTTP observation.
+- **`compile` now rejects a stale eval-contract `schemaVersion`.** AD-11 says a reader accepts an
+  equal version only and throws `schema-version-mismatch` outside it, and until this release no
+  shipped stage did: a version-3 contract whose shape was still legal parsed, compiled clean under
+  `--strict`, and reached `emit`, where its stale `3` went into the scoring version as
+  `contractSchemaVersion`. The score came back well-formed, carried a scoring version nothing else
+  would ever equal, and gave no sign anything was wrong. `EVAL_CONTRACT_SCHEMA_VERSION` is exported
+  beside the schema and `compile` compares the stamp against it before any other check runs, so a
+  contract written for another version is refused with the code AD-11 names rather than read
+  leniently. **This rejects documents that compiled before.** Restamp a contract you have checked
+  against the version-4 shape; every version-3 document still parses, so the stamp is the only edit
+  a contract that used no removed field needs.
+- AD-5's registry grew from twenty-three codes to twenty-six and `unsupported-interface-kind`
   narrowed from three firing conditions to two. A caller matching on the registry's length or on
   that code's exhaustive set of kinds needs both.
+- **Two codes answer differently for a `cli` contract than they did for any contract before, because
+  both now read the operation's nominated channel instead of assuming the response body.**
+  `captured-channel-undeclared` used to fire on every channel but `response-body`; it now fires on
+  every channel but the one the referenced operation's response descriptor describes, so a capture
+  from `stdout` off a command operation compiles where it previously failed, and a capture from
+  `response-body` off that same operation now fails where it previously compiled.
+  `unreachable-check-evidence` follows the same rule through `descendThroughDescriptor`. Neither
+  changes for an api contract: the described channel there is `response-body`, which is what both
+  checks hard-coded.
 - The published `eval-contract` schema names `Operation` as a shared definition, so a non-TypeScript
   consumer that read the operation shape inline now follows one `$ref`.
+- **A command interface cannot be authorized, so AD-35's default-deny mapping does not cover the
+  mechanism this release adds.** `ProbeTargetAuthorization` has one shape and every field in it is
+  HTTP: scheme, host, port, resolved addresses, methods, safe methods, redirect and byte caps. An
+  adapter that runs commands therefore has no policy to declare and no conformance arm to run
+  against, and the published suite says so in its own header rather than leaving a green run to
+  imply otherwise. The suite does now check that an observation echoes its request's `kind`, so an
+  api adapter can no longer pass by answering with the wrong mechanism; that is the repair. The
+  declaration and the command assertions are an addition to the published surface and are not made
+  here.
 
 ### Fixed
 
+- **Nothing graded a command contract, which is why the rest of this section exists.** AD-31's
+  fourteen relevance and satisfaction predicates are asserted through a generated table that reads
+  `CORPUS_CELLS`, and the two command contracts went into `DEV_CORPUS_CONTRACTS` only, under a
+  comment claiming they graded like any other. Three predicates answered confidently and wrongly
+  under a green suite. `tests/coverage/command-coverage.test.ts` now grades both, asserting the
+  whole fourteen-verdict table rather than the rules that happen to be interesting.
+- Rule 7 was unsatisfiable for every command contract. `satisfaction.ts` resolved the read-back
+  step through `operationOf`, which answers `undefined` for a command operation by design, and read
+  that as "no operation". Every site that asked the narrow accessor a kind-neutral question now
+  asks `anyOperationOf`; `operationOf` stays narrow, which is what makes it safe to read an
+  api-only field through.
+- `descriptorRoot` built `/artifact` where every pointer the grammar admits starts
+  `/artifact/<artifactId>`, so rules 1, 2, 4, 6, and 7 compared against a pointer no compilable
+  contract can contain, and the match in the other direction accepted any declared file.
+- A file the run did not write resolved to `null`, which AD-26 counts as present, so an oracle
+  asserting a missing file exists passed. It resolves `ABSENT`. The lookup uses `Object.hasOwn`,
+  since `Identifier` admits `constructor`.
+- AD-4's empty-collection abstention could never fire for a command operation: the predicate that
+  decides whether a pointer denotes a declared collection hard-coded `response-body`. It asks the
+  operation which channel its descriptor describes, so a quantifier over a declared collection that
+  came back empty abstains instead of answering vacuously true.
+- Quoted evidence on the `artifact` channel is audited against the file the finding cited.
+  `QuotedEvidence` gains `artifactId`, and the projection unwraps that one file's own text.
+  Serializing the whole `artifacts` map escaped every newline and quotation mark, so a quotation
+  from a file with more than one line could never be witnessed, and it searched every file at once,
+  so a quotation found in a file the finding did not cite was reported as witnessed.
+- A quantifier's legality was checked against the descriptor of a different file.
+  `targetsDescribedChannel` is the one predicate every consumer asks now, since comparing the
+  channel without the identifier was wrong at three separate sites.
+- Reachability answers `unreachable` for a pointer naming an artifact the operation does not
+  describe. It abstained, which let a probe-side condition pass silently.
+- **A defect signature may no longer address the `artifact` channel.** An artifact identifier is
+  minted per contract, so a signature carrying one resolves against exactly the contract it was
+  authored on, which is the defect AD-40 already retracted once by dropping `operationId` from the
+  resolution key. `condition-artifact-channel-contract-local` joins `QUALIFICATION_FAILURES`, which
+  now carries twenty members. The restriction lifts the day the vocabulary reserves an
+  identifier meaning "the artifact this operation describes", the way the reserved step identifier
+  works; until then a signature reaches a written file through the descriptor channel of whatever
+  operation it binds.
+- **The published conformance suite certified nothing.** It checked that a resolved value parsed as
+  a `ProbeObservation` and never that the observation answered the request: with both port messages
+  now unions, an adapter could answer a command request with a schema-valid HTTP observation and
+  pass nineteen of nineteen without running a command. The suite compares `kind`, `probeId`,
+  `interfaceId`, and `operationId` before it checks anything else. The suite's header now also says
+  plainly that it certifies nothing for a command adapter, since every assertion in it is authored
+  against an api request.
+- Real pre-flight had the same hole one level up. `reducePreflight` throws
+  `port-contract-violation` when an observation's `kind` is not the leg's. Narrow to `kind` on
+  purpose: `interfaceId` and `operationId` already have a reader that reports a mismatch as a
+  failed `interface-present` verdict, and throwing on them would turn a shipped verdict into a
+  fault.
 - `set-membership` against a declared reference set now answers. A `{ referenceSet }` operand in
   the set position resolved to the declared members themselves, and members are objects, so the
   operator compared a whole object against the scalar the value operand resolved to and answered

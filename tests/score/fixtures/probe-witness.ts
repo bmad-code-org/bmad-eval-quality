@@ -13,6 +13,7 @@ import type {
 	Operation,
 	PermittedInterface,
 } from '../../../src/core/schemas/interface.ts'
+import type { EvidenceChannelName } from '../../../src/core/schemas/pointer.ts'
 import type { Probe } from '../../../src/core/schemas/probe.ts'
 import type {
 	Observation,
@@ -244,6 +245,8 @@ export const defectFinding = (
 		findingId: string
 		probeId: string
 		quote: string
+		channel: EvidenceChannelName
+		artifactId: string | null
 	}> = {},
 ): SealedRunRecord['findings'][number] => ({
 	findingType: 'defect',
@@ -257,7 +260,11 @@ export const defectFinding = (
 	observationIds: [...observationIds],
 	evidenceArtifacts: [],
 	quotedEvidence: [
-		{ quote: overrides.quote ?? '500', channel: 'response-status' },
+		{
+			quote: overrides.quote ?? '500',
+			channel: overrides.channel ?? 'response-status',
+			artifactId: overrides.artifactId ?? null,
+		},
 	],
 })
 

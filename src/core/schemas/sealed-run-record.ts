@@ -33,6 +33,9 @@ export const QuotedEvidence = z.strictObject({
 			"The evaluator's verbatim quotation, per AD-23. Non-empty: an empty quotation quotes nothing, no AD-5 code names the condition, and under the admit-rule's second clause the schema is therefore the enforcement point. That this text appears in at least one of the finding's cited observations is NOT checked here; it is an AD-32 declared-versus-observed inconsistency that invalidates at ingest, and ADR-009 Decision 2 settles the precedence: \"cited identifiers govern the witness match; quotation audits it.\"",
 		),
 	channel: EvidenceChannel,
+	artifactId: Identifier.nullable().describe(
+		"Which written file the quotation came from, or `null` on every channel but `artifact`. A channel alone does not identify one: an operation may write several, and an audit that searched all of them at once accepted a quotation lifted from a file the finding never cited, which is the opposite of what AD-23's verbatim requirement is for. Required and nullable rather than optional, so a record cannot omit the question; that the value is non-null exactly when the channel is `artifact` is a cross-field rule the export cannot carry, and `auditQuotation` reports it.",
+	),
 })
 
 // Spread into each finding branch rather than shared as a base object: a

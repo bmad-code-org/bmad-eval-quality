@@ -75,29 +75,24 @@ export function projectChannel(
 	observation: Observation,
 	channel: EvidenceChannelName,
 	artifactPath: string,
+	artifactId: string | null = null,
 ): string | null {
 	switch (channel) {
 		case 'stdout':
 			return observedText(observation.stdout, artifactPath)
 		case 'stderr':
 			return observedText(observation.stderr, artifactPath)
-		case 'artifact':
-			// Each written file's own text, joined by a newline. Serializing the
-			// whole map instead escaped every newline and quotation mark inside
-			// it, so a quotation lifted from a file with more than one line, or
-			// with a quotation mark in it, could never be a substring of the
-			// projection. `QuotedEvidence` names a channel and not a file, so
-			// matching any of them is the whole of what the record declared.
-			return Object.keys(observation.artifacts)
-				.sort()
-				.map((id) =>
-					observedText(
-						observation.artifacts[id] ?? { kind: 'absent' },
-						artifactPath,
-					),
-				)
-				.filter((text): text is string => text !== null)
-				.join('\n')
+		case 'artifact': {
+			// One named file's own text. Serializing the whole map instead was
+			// wrong twice over: it escaped every newline and quotation mark, so
+			// a quotation from a file with more than one line could never match,
+			// and it searched every file at once, so a quotation from a file the
+			// finding did not cite matched anyway.
+			if (artifactId === null) return null
+			if (!Object.hasOwn(observation.artifacts, artifactId)) return null
+			const written = observation.artifacts[artifactId]
+			return written === undefined ? null : observedText(written, artifactPath)
+		}
 		case 'response-status':
 			return observation.responseStatus === null
 				? null
@@ -127,7 +122,12 @@ function quotationWitnessed(
 	observation: Observation,
 	artifactPath: string,
 ): boolean {
-	const projected = projectChannel(observation, quoted.channel, artifactPath)
+	const projected = projectChannel(
+		observation,
+		quoted.channel,
+		artifactPath,
+		quoted.artifactId,
+	)
 	// A null projection witnesses nothing, and `false` is the answer: an
 	// optional chain here would hand a caller `undefined` where the return type
 	// says boolean.

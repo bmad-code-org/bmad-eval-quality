@@ -61,6 +61,25 @@ type LegState = {
 	readonly evidence: Observation
 }
 
+/**
+ * Whether the observation answers the mechanism the leg asked about.
+ *
+ * `kind` alone, and deliberately not `interfaceId` or `operationId`: those two
+ * are already read by the `interface-present` check, which reports a mismatch
+ * as a failed verdict rather than a fault, and reclassifying them here would
+ * turn a shipped verdict into a thrown fault. `kind` has no such reader. An
+ * observation of the wrong mechanism is not a weaker answer to the question, it
+ * is an answer to a different one, and every check below would read it as the
+ * leg's own result.
+ */
+function kindMismatch(
+	leg: PlannedLeg,
+	observation: ProbeObservation,
+): string | undefined {
+	if (leg.request.kind === observation.kind) return undefined
+	return `leg "${leg.legId}" asked for a "${leg.request.kind}" probe and was answered with a "${observation.kind}" observation, so the port answered a question nobody asked`
+}
+
 const check = (
 	kind: PreflightCheck['kind'],
 	operationId: string | null,
@@ -142,6 +161,20 @@ export const reducePreflight: ReduceStage<
 	for (const leg of plan.legs) {
 		const observation = byProbeId.get(leg.legId)
 		if (observation === undefined) continue
+		// The echo is checked, not assumed. Both port messages are unions, so a
+		// port can answer a command leg with a schema-valid HTTP observation and
+		// every check below reads it as the leg's own result: a command contract
+		// then passes pre-flight with four checks satisfied and no command ever
+		// run. `probeId` alone binds the two together and says nothing about
+		// whether the answer is to this question.
+		const mismatch = kindMismatch(leg, observation)
+		if (mismatch !== undefined) {
+			throw new RuntimeFault(
+				'port-contract-violation',
+				PREFLIGHT_ARTIFACT_PATH,
+				mismatch,
+			)
+		}
 		const projected = projectObservation(
 			observation,
 			leg.operation,

@@ -282,7 +282,7 @@ describe('the finding union, where AD-23 says "additionally"', () => {
 
 		const confirmation = clone(FINDING_BRANCH_FIXTURES[1].value) as any
 		confirmation.quotedEvidence = [
-			{ quote: 'anything', channel: 'response-body' },
+			{ quote: 'anything', channel: 'response-body', artifactId: null },
 		]
 		const issue = firstIssue(Finding.safeParse(confirmation))
 		expect(issue?.code).toBe('unrecognized_keys')

@@ -10,8 +10,8 @@ describe('FAILURE_CODES, the single source for every later consumer', () => {
 	// The count is pinned mechanically too: the registry check above parses the
 	// spine's AD-5 table and asserts set and order equality, so a code added
 	// there must land here as well.
-	it('carries exactly the twenty-five AD-5 codes', () => {
-		expect(FAILURE_CODES).toHaveLength(25)
+	it('carries exactly the twenty-six AD-5 codes', () => {
+		expect(FAILURE_CODES).toHaveLength(26)
 	})
 
 	it('carries no duplicate', () => {

@@ -512,7 +512,9 @@ const SHARED_OVERRIDES: readonly SharedOverride[] = [
 				{
 					findingId: 'finding-uncited-1',
 					observationIds: ['obs-1'],
-					quotedEvidence: [{ quote: '500', channel: 'response-status' }],
+					quotedEvidence: [
+						{ quote: '500', channel: 'response-status', artifactId: null },
+					],
 					severity: 'critical',
 				} satisfies UncitedFindingGap,
 			],

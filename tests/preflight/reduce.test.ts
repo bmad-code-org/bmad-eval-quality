@@ -424,6 +424,58 @@ describe('the verdict itself', () => {
 		expect((thrown as RuntimeFault).artifactPath).toBe('PreflightVerdict')
 	})
 
+	// The same hole one level up from the conformance suite. Both port messages
+	// are unions since the command kind landed, so a port could answer every leg
+	// of a command contract with a schema-valid HTTP observation and pre-flight
+	// would report four checks satisfied with no command ever run. `probeId` ties
+	// the answer to the question; only `kind` says it answered the same question.
+	it('123. raises port-contract-violation when the observation answers the other mechanism', () => {
+		const plan = planPreflight({
+			contract: preflightContract,
+			probes: [seededProbe],
+			runId: 'run-1',
+		})
+		const wrongKind = observationsFor(plan.legs).map((observation, index) =>
+			index === 0
+				? {
+						probeId: observation.probeId,
+						interfaceId: observation.interfaceId,
+						operationId: observation.operationId,
+						kind: 'cli' as const,
+						exitCode: 0,
+						stdout: { kind: 'text' as const, value: 'ok' },
+						stderr: { kind: 'absent' as const },
+						artifacts: {},
+					}
+				: observation,
+		)
+		let thrown: unknown
+		try {
+			reducePreflight(plan, { observations: wrongKind })
+		} catch (error) {
+			thrown = error
+		}
+		expect(thrown).toBeInstanceOf(RuntimeFault)
+		expect((thrown as RuntimeFault).code).toBe('port-contract-violation')
+		expect((thrown as RuntimeFault).message).toMatch(
+			/asked for a "api" probe and was answered with a "cli" observation/,
+		)
+	})
+
+	// Narrow on purpose: `interfaceId` and `operationId` already have a reader,
+	// and it reports a mismatch as a failed `interface-present` verdict rather
+	// than as a fault, which fixture 40 asserts. Throwing on them here would turn
+	// a shipped verdict into a fault, so the fault reads `kind` and nothing else.
+	it('124. leaves an operation mismatch to the verdict that already reports it', () => {
+		expect(
+			outcomeOf(
+				{ patches: { 'read-b': { operationId: 'create-thing' } } },
+				'interface-present',
+				'read-thing',
+			),
+		).toBe('failed')
+	})
+
 	it('68. emits no seeded-fault check at all for a contract with no seeded faults', () => {
 		const { checks } = verdictOf({ probes: [cleanControlProbe] })
 		expect(

@@ -143,6 +143,23 @@ export const Budgets = z.strictObject({
 	),
 })
 
+/**
+ * The one `schemaVersion` this build reads.
+ *
+ * AD-11 says "readers accept an equal `schemaVersion` only and throw
+ * `schema-version-mismatch` outside that", and puts the comparison on the
+ * reader rather than in the schema: `lineage.ts` records that a `z.literal`
+ * would turn a version-2 artifact into an anonymous parse failure instead of
+ * AD-28's dedicated fault. That left the rule stated everywhere and performed
+ * nowhere for this artifact, so a contract stamped 3 parsed and compiled clean
+ * and its stale version travelled into the scoring version, which is the one
+ * number AD-11 exists to keep comparable.
+ *
+ * `compile` is the reader that performs it. The constant lives here beside the
+ * schema whose version it names, so the bump and the constant are one edit.
+ */
+export const EVAL_CONTRACT_SCHEMA_VERSION = 4
+
 export const EvalContract = z
 	.strictObject({
 		// AD-11's schemaVersion and AD-29's lineage pair, spread from the leaf
@@ -218,7 +235,7 @@ export const EvalContract = z
 	.meta({
 		id: 'EvalContract',
 		description:
-			"The Eval Contract. Succeeds the prior-art `eval-contract` schema per AD-24. It carries every declaration AD-19 requires so that AD-31's fourteen relevance and satisfaction predicates are decidable from declarations alone. AD-10's sensitivity witnesses arrived on each operation as an additive `schemaVersion` bump; version 4 opens `permittedInterfaces` to a second interface kind, so a contract may describe a system under test that runs behind a command, and widens the interaction pointer's accepted language with the four command input channels and the `artifact` channel. The widening retypes nothing on its own, since every pointer legal under version 3 is still legal; it carries the same version because it ships in the same release as the retypes. Each bump is recorded in its own field's description, since no reader in this version declares an expected version constant to compare against.",
+			"The Eval Contract. Succeeds the prior-art `eval-contract` schema per AD-24. It carries every declaration AD-19 requires so that AD-31's fourteen relevance and satisfaction predicates are decidable from declarations alone. AD-10's sensitivity witnesses arrived on each operation as an additive `schemaVersion` bump; version 4 opens `permittedInterfaces` to a second interface kind, so a contract may describe a system under test that runs behind a command, and widens the interaction pointer's accepted language with the four command input channels and the `artifact` channel. The widening retypes nothing on its own, since every pointer legal under version 3 is still legal; it carries the same version because it ships in the same release as the retypes. Each bump is recorded in its own field's description, and `compile` compares the stamp against `EVAL_CONTRACT_SCHEMA_VERSION` and throws AD-28's `schema-version-mismatch` on anything else.",
 	})
 
 export type EvalContract = z.infer<typeof EvalContract>

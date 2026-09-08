@@ -799,11 +799,25 @@
                   },
                   "channel": {
                     "$ref": "#/$defs/EvidenceChannel"
+                  },
+                  "artifactId": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                        "description": "A kebab-case slug. Excludes \"/\" and \"~\" so an identifier can be embedded in an interaction-rooted pointer without escaping."
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "description": "Which written file the quotation came from, or `null` on every channel but `artifact`. A channel alone does not identify one: an operation may write several, and an audit that searched all of them at once accepted a quotation lifted from a file the finding never cited, which is the opposite of what AD-23's verbatim requirement is for. Required and nullable rather than optional, so a record cannot omit the question; that the value is non-null exactly when the channel is `artifact` is a cross-field rule the export cannot carry, and `auditQuotation` reports it."
                   }
                 },
                 "required": [
                   "quote",
-                  "channel"
+                  "channel",
+                  "artifactId"
                 ],
                 "additionalProperties": false
               },

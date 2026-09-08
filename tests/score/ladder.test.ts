@@ -371,7 +371,11 @@ describe('resolveProductionVerdict / resolveContractVerdict', () => {
 					findingId: 'finding-7',
 					observationIds: ['obs-1'],
 					quotedEvidence: [
-						{ quote: 'boom', channel: 'response-body' as const },
+						{
+							quote: 'boom',
+							channel: 'response-body' as const,
+							artifactId: null,
+						},
 					],
 					severity: 'low' as const,
 				},
