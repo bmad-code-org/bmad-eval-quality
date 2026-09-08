@@ -174,8 +174,7 @@ Releasing is two steps: `npm run release:prepare -- patch|minor|major` opens the
 request so the bump lands on `main` through the normal gate, and `npm run release:publish` then
 dispatches `.github/workflows/publish.yml` from `main`. The workflow refuses to run twice for one
 version and skips any step whose effect already exists, so a re-run after a partial failure is safe.
-`CONTRIBUTING.md` carries the first-publish bootstrap, which matters here because `eval-quality` has
-never been published and npm's Trusted Publisher form only appears for a package that exists.
+`CONTRIBUTING.md` carries the release process; the package is on npm through a Trusted Publisher.
 
 ## 8. Gate 7: the installed tarball
 

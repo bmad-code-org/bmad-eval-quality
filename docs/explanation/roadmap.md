@@ -1,41 +1,49 @@
 ---
-title: "Roadmap"
-description: "What ships today, what is deliberately out of scope, and what is next."
+title: "What Ships"
+description: "What version 1.0 covers, the trial-set limit, and what is deliberately out of scope."
 sidebar:
   order: 2
 ---
 
-# Roadmap
+# What Ships
 
-## Shipping today
+Version 1.0 is out. All four commands ship, and the published surface is stable: a breaking change to a command, an export, or a schema is a major version bump from here.
 
-All four commands: `compile`, `seal`, `preflight`, and `score`. Every flag each one takes is on the [CLI reference](/reference/cli-commands/), and [the walkthrough](/how-to/author-behavioral-contracts/) runs them end to end.
+## The four commands
 
-`score` is the largest of the four. Behind it sit three stages, `ingest`, `score`, and `emit`, reached by one command and one library call, `runScore`. It covers outcome-state assignment over twelve closed states, both verdict ladders, the witness match that decides whether a finding really detected the defect its probe seeded, the trial-set reducer, the contract-strength vector with its four-valued dominance relation, probe qualification, and observation selection.
+`compile`, `seal`, `preflight`, and `score`. Every flag each one takes is on the [CLI reference](/reference/cli-commands/), and [the walkthrough](/how-to/author-behavioral-contracts/) runs them end to end.
+
+`score` is the largest of the four. Behind it sit three stages, `ingest`, `score`, and `emit`, reached by one command and one library call, `runScore`. It resolves every oracle to one of twelve outcome states, decides whether a finding really detected the defect its probe seeded, reduces repeated trials to one result per probe, and reports contract strength as a vector two contracts can be compared on.
+
+A contract can describe a system behind an HTTP API or one behind a command line. Both kinds compile, preflight, and score.
 
 Also published: twelve JSON Schema documents under `eval-quality/schemas/*`, a twenty-one-contract development corpus under `eval-quality/corpus/dev/`, four reference adapters at `eval-quality/adapters`, and a port conformance suite at `eval-quality/conformance`.
 
-**One limit is worth knowing before you rely on the numbers.** The `score` stage is built to consume a trial set: several runs of the same probes, reduced to one result per probe before any rate is computed. The command and `runScore` hand it one sealed run record per call. So a run scored from the published surface completes one trial, and whenever your policy's declared minimum exceeds one, the strength vector comes out reported and marked non-comparable. The stage is ready for several trials; the entry point that hands it several is what is missing.
+## The trial-set limit
 
-## Deliberately out of scope
+The `score` stage is built for a trial set: several runs of the same probes, reduced to one result per probe before any rate is computed. The command and `runScore` hand it one record per call. So a run scored from the published surface completes one trial, and whenever your scoring policy asks for more than one, the strength vector comes out reported and marked non-comparable.
 
-The package executes nothing. It never runs an agent, a judge, or a system under test, and it ships no network adapter. Both arms of the twin run, the evaluator itself, and the sealing of what the evaluator produced into a run record are yours.
+The number is still real and still worth reading. It cannot be compared against another run's until the policy's trial minimum is met.
+
+## What this package does not do
+
+It executes nothing. No agent, no judge, and no system under test runs inside it, and it ships no network adapter. Both arms of the twin run, the evaluator itself, and the sealing of what the evaluator produced into a run record are yours.
 
 Also outside the package, by decision: a new eval engine, a hosted service, a dashboard or GUI, multimodal evaluators, automatic prompt repair, and a generic judge-calibration platform.
 
 Deferred until the contract layer is in real use: claim-to-evidence lineage, semantic checkpoint scoring, process and outcome separation, and first material error attribution.
 
-## Next
+## Two things the project still owes itself
 
-No date is set for any of these.
+Neither blocks using the tool. Both are about how far the measurement can be trusted.
 
-- **A sealed probe corpus.** `corpus/dev/` is visible and diagnostic, and its own gate does not yet require a qualified probe per probe class. The probe schema already carries the qualification record and the defect signature that gate reads. What is missing is the corpus widening to require one.
-- **Validation of the witness match against the block-2 replication**, which the architecture records as committed and not yet run.
+- **A held-out probe corpus.** `corpus/dev/` is visible and diagnostic: every contract in it is published to be read. Measuring a contract's strength against probes an author can read is a weaker claim than measuring it against probes they cannot. The probe schema already carries the qualification record and the defect signature such a corpus would need.
+- **Validating the witness match against a second experiment round.** The rule that decides whether a finding detected the defect its probe seeded is implemented. The replication that would confirm it on fresh records has not been run.
 
-## Breaking changes
+## Version compatibility
 
-`compile` refuses an eval contract whose `schemaVersion` is not the one this build reads, with the `schema-version-mismatch` fault. A version-3 contract still parses, because most of its shape is still legal; it stops at compilation rather than being scored under a stale stamp that would go into the scoring version and quietly make the result incomparable with everything else.
+`compile` refuses an eval contract whose `schemaVersion` differs from the one this build reads, with the `schema-version-mismatch` fault. A contract whose shape moved between versions fails the schema gate first; one that still parses and carries another stamp stops at compilation with that fault. Either way it never reaches scoring, where a stale stamp would travel into the scoring version and quietly make the result incomparable with everything else.
 
-The other artifacts have no such reader. A sealed run record, a probe, or a rubric written against an older version arrives as a parse failure where a required field moved, and is read as written where it did not. Pin the version you build against exactly, and check the stamp on anything you did not produce with this build.
+The other artifacts have no such reader. A sealed run record, a probe, or a rubric written against an older version fails to parse where a required field moved, and is read as written where it did not. Check the stamp on anything you did not produce with this build.
 
-`CHANGELOG.md` in the repository carries every breaking change artifact by artifact, with what each schema bump added and why it breaks.
+`CHANGELOG.md` in the repository carries every breaking change artifact by artifact.
