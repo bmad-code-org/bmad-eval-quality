@@ -240,14 +240,20 @@ jobs:
           VERSION: ${{ steps.state.outputs.version }}
         run: |
           set -euo pipefail
-          for attempt in $(seq 1 24); do
-            if [ "$(npm view "$PACKAGE@$VERSION" version 2>/dev/null || true)" = "$VERSION" ]; then
+          # Ten minutes, because two minutes was not enough. The 1.2.0 publish
+          # succeeded and this step failed: the tarball was on npmjs.org and the
+          # registry metadata had not caught up inside the old 24 x 5s window, so
+          # a green release reported as a failed one. --prefer-online revalidates
+          # rather than trusting a cached metadata document, which is the other
+          # half of the same staleness.
+          for attempt in $(seq 1 60); do
+            if [ "$(npm view --prefer-online "$PACKAGE@$VERSION" version 2>/dev/null || true)" = "$VERSION" ]; then
               echo "Verified $PACKAGE@$VERSION on npmjs.org (attempt $attempt)."
               exit 0
             fi
-            sleep 5
+            sleep 10
           done
-          echo "$PACKAGE@$VERSION not visible on npmjs.org after 24 attempts." >&2
+          echo "$PACKAGE@$VERSION not visible on npmjs.org after 60 attempts over ten minutes." >&2
           exit 1
 
       # No -f: the state step already proved the tag is absent, and a tag that appears between the
