@@ -34,6 +34,8 @@ No date is set for any of these.
 
 ## Breaking changes
 
-Nothing in this release compares a `schemaVersion` at runtime. An artifact written against an older version arrives as a parse failure with no version-mismatch message, so pin the version you build against exactly.
+`compile` refuses an eval contract whose `schemaVersion` is not the one this build reads, with the `schema-version-mismatch` fault. A version-3 contract still parses, because most of its shape is still legal; it stops at compilation rather than being scored under a stale stamp that would go into the scoring version and quietly make the result incomparable with everything else.
+
+The other artifacts have no such reader. A sealed run record, a probe, or a rubric written against an older version arrives as a parse failure where a required field moved, and is read as written where it did not. Pin the version you build against exactly, and check the stamp on anything you did not produce with this build.
 
 `CHANGELOG.md` in the repository carries every breaking change artifact by artifact, with what each schema bump added and why it breaks.

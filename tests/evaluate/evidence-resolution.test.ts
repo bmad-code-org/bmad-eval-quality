@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+	channelRoot,
 	decodeBoundElementTail,
 	makePointerDenotesCollection,
 	makeResolveOperand,
@@ -9,7 +10,14 @@ import { ABSENT } from '../../src/core/evaluate/resolved-value.ts'
 import { EvalContract } from '../../src/core/schemas/eval-contract.ts'
 import type { JsonValue } from '../../src/core/schemas/primitives.ts'
 import type { Observation } from '../../src/core/schemas/sealed-run-record.ts'
-import { decodeTail } from '../../src/core/seal/plan-index.ts'
+import {
+	decodeTail,
+	parseEvidenceTarget,
+} from '../../src/core/seal/plan-index.ts'
+import {
+	artifactCommandContract,
+	commandContract,
+} from '../schemas/fixtures/command-contract.ts'
 import { populatedContract } from '../schemas/fixtures/relevance-contracts.ts'
 
 const PATH = 'artifacts/evidence-resolution.json'
@@ -323,6 +331,48 @@ describe('makeResolveOperand', () => {
 })
 
 // ---------------------------------------------------------------------------
+// channelRoot, on the channel that names one of several things
+// ---------------------------------------------------------------------------
+
+describe('channelRoot on the artifact channel', () => {
+	const rootOf = (observed: Observation, pointer: string) =>
+		channelRoot(observed, parseEvidenceTarget(pointer))
+
+	const wrote = observation({
+		artifacts: {
+			report: { kind: 'json', value: { fragments: [1, 2] } },
+			empty: { kind: 'absent' },
+		},
+	})
+
+	it('resolves a written file to its own value', () => {
+		expect(rootOf(wrote, '/interactions/s/artifact/report')).toEqual({
+			fragments: [1, 2],
+		})
+	})
+
+	// The defect this pins: a missing file resolved `null`, which AD-26 counts as
+	// present, so an oracle asserting a file exists passed against a run that
+	// wrote nothing.
+	it('resolves a file the run did not write to ABSENT rather than null', () => {
+		expect(rootOf(wrote, '/interactions/s/artifact/missing')).toBe(ABSENT)
+		expect(rootOf(observation(), '/interactions/s/artifact/report')).toBe(
+			ABSENT,
+		)
+	})
+
+	it('resolves a file the run declared absent to ABSENT', () => {
+		expect(rootOf(wrote, '/interactions/s/artifact/empty')).toBe(ABSENT)
+	})
+
+	it('reaches no inherited key, since Identifier admits a prototype name', () => {
+		// The charset is a lowercase kebab slug, which `constructor` satisfies, so
+		// a bare index would resolve it to `Object.prototype.constructor`.
+		expect(rootOf(wrote, '/interactions/s/artifact/constructor')).toBe(ABSENT)
+	})
+})
+
+// ---------------------------------------------------------------------------
 // makePointerDenotesCollection (fixtures 21-28)
 // ---------------------------------------------------------------------------
 
@@ -407,6 +457,48 @@ describe('makePointerDenotesCollection', () => {
 				'/interactions/list/response-body/items',
 			),
 		).toBe(true)
+	})
+
+	// The predicate hard-coded `response-body`, so no pointer against an
+	// interface behind a command could ever denote a collection: AD-4's
+	// empty-collection abstention was unreachable for every command contract, and
+	// a quantifier over a declared collection that came back empty answered
+	// `true` vacuously instead of abstaining.
+	describe('against an interface that runs behind a command', () => {
+		it('resolves true for the channel the operation nominates', () => {
+			expect(
+				makePointerDenotesCollection(EvalContract.parse(commandContract))(
+					'/interactions/select/stdout/fragments',
+				),
+			).toBe(true)
+		})
+
+		it('resolves true for a declared collection inside a written file', () => {
+			expect(
+				makePointerDenotesCollection(
+					EvalContract.parse(artifactCommandContract),
+				)('/interactions/select/artifact/verdict/fragments'),
+			).toBe(true)
+		})
+
+		it('resolves false for the file the operation does not describe', () => {
+			// The descriptor describes one nominated channel, and on the artifact
+			// channel that is one named file. A second declared file is written and
+			// undescribed, so nothing in it is a declared collection.
+			expect(
+				makePointerDenotesCollection(
+					EvalContract.parse(artifactCommandContract),
+				)('/interactions/select/artifact/report/fragments'),
+			).toBe(false)
+		})
+
+		it('resolves false for the response body a command never produces', () => {
+			expect(
+				makePointerDenotesCollection(EvalContract.parse(commandContract))(
+					'/interactions/select/response-body/fragments',
+				),
+			).toBe(false)
+		})
 	})
 
 	it('fixture 28: a declared collection location pointer with an escaped ~1/~0 segment resolves true against the matching decoded target', () => {

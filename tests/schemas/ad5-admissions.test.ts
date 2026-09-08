@@ -475,7 +475,11 @@ describe('cross-artifact and cross-field rules this story leaves unenforced', ()
 	it('admits a defect whose quotation appears in none of its cited observations', () => {
 		admitsArtifact('sealed-run-record', (record) => {
 			record.findings[0].quotedEvidence = [
-				{ quote: 'text that appears in no observation', channel: 'stdout' },
+				{
+					quote: 'text that appears in no observation',
+					channel: 'stdout',
+					artifactId: null,
+				},
 			]
 		})
 	})

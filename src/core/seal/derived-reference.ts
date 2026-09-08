@@ -273,7 +273,7 @@ function renderCaptureGroup(
 	const locals = joinWithAnd(group.targets.map(localTargetPhrase))
 	const step = index.stepOf(group.stepId)
 	const operation =
-		step === undefined ? undefined : index.operationOf(step.operationId)
+		step === undefined ? undefined : anyOperationOf(index, step.operationId)
 	if (step === undefined || operation === undefined) {
 		return unexpandedGroup(group)
 	}
@@ -314,7 +314,7 @@ function expandableCapture(
 	if (rendering.has(target.stepId)) return null
 	const step = index.stepOf(target.stepId)
 	if (step === undefined) return null
-	return index.operationOf(step.operationId) === undefined ? null : target
+	return anyOperationOf(index, step.operationId) === undefined ? null : target
 }
 
 // Renders one entry on its own. Every captured entry that expands lands in a

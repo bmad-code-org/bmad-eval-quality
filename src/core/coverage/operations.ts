@@ -16,11 +16,13 @@
  * left to assert.
  */
 import {
+	descriptorArtifactOf,
 	descriptorChannelOf,
 	inputChannelsOf,
 	type RequestChannel,
 	requestChannelsOf,
 } from '../declared-inputs.ts'
+
 import type { EvalContract } from '../schemas/eval-contract.ts'
 import type {
 	AnyOperation,
@@ -29,6 +31,32 @@ import type {
 } from '../schemas/interface.ts'
 import { operationsOf } from '../schemas/interface.ts'
 import type { InputChannelName } from '../schemas/pointer.ts'
+
+/**
+ * RFC 6901 escaping, `~` before `/`. Lives here rather than beside the
+ * pointer-building helpers that use it, because the descriptor root is built
+ * here and both spellings have to escape the same way.
+ */
+export const encodeToken = (token: string): string =>
+	token.replace(/~/g, '~0').replace(/\//g, '~1')
+
+/**
+ * Where a descriptor-relative pointer hangs off an interaction root for this
+ * operation. Two segments on the artifact channel, one everywhere else.
+ */
+const descriptorRootOf = (operation: AnyOperation): string => {
+	const channel = descriptorChannelOf(operation)
+	if (channel !== 'artifact') return `/${channel}`
+	const artifactId = descriptorArtifactOf(operation)
+	// Unreachable: `descriptorChannelOf` answers `artifact` only for the arm
+	// that carries an identifier.
+	if (artifactId === null) {
+		throw new TypeError(
+			`operation "${operation.operationId}" describes an artifact and names none`,
+		)
+	}
+	return `/${channel}/${encodeToken(artifactId)}`
+}
 
 export type ResolvedOperation = {
 	readonly operation: AnyOperation
@@ -39,7 +67,11 @@ export type ResolvedOperation = {
 	readonly descriptor: ResponseDescriptor
 	/**
 	 * The interaction-rooted segment a descriptor pointer hangs off, which is
-	 * the channel this operation's own descriptor describes.
+	 * the channel this operation's own descriptor describes, and on the artifact
+	 * channel the file as well. `/artifact` alone is not a root any real
+	 * evidence pointer starts with, since an artifact pointer carries its
+	 * identifier before its tail, so a root without it matched nothing and made
+	 * every pointer-building rule answer against a pointer that cannot exist.
 	 */
 	readonly descriptorRoot: string
 	/**
@@ -70,7 +102,7 @@ export function resolveOperations(
 			kind: declared.kind,
 			logicalId: declared.logicalId,
 			descriptor: operation.responseDescriptor,
-			descriptorRoot: `/${descriptorChannelOf(operation)}`,
+			descriptorRoot: descriptorRootOf(operation),
 			transportChannels: inputChannelsOf(operation),
 			requestChannels: requestChannelsOf(operation),
 		})),

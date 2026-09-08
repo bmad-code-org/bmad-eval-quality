@@ -1,6 +1,22 @@
 # Deferred work
 
-**Nothing is open.** Epic 9 closed the sixteen items this file carried, on the instruction that no
+**One item is open, and it is an addition to the published surface rather than a repair.** Epic 9's
+third adversarial review found that `ProbeTargetPolicy` has a single authorization shape and that
+every field in it is HTTP: scheme, host, port, resolved addresses, methods, safe methods, redirect
+count, and request and response byte caps. So a `cli` interface cannot be authorized at all, AD-35's
+rule that "an adapter denies by default and permits only what that mapping names" has nothing to
+name for the mechanism epic 9 adds, and the published conformance suite has no command arm because
+there is no policy for one to certify against. Closing it is a declaration first: a command
+authorization naming a permitted executable, the subcommand paths and environment keys it may
+carry, and its own elapsed and output-byte caps; then the assertions -- an executable no mapping
+names, a refusal to accept a pre-built argument vector, a non-zero exit as an observation rather
+than a fault, each cap enforced. The gap is stated in `src/testing/probe-conformance.ts`'s own
+header and in the release disclosure, so no adopter concludes from a green nineteen-of-nineteen run
+that a command adapter has been certified. What the review round did repair is the suite's silence:
+it now checks that an observation echoes its request's `kind`, so an api adapter can no longer pass
+by answering a command request with an HTTP observation.
+
+Epic 9 closed the sixteen items this file carried, on the instruction that no
 work be left owed; the closure narrative for those sixteen is at the end, under "How to use this
 file". The prose immediately below records how each past item closed. Epic 7's reviews
 filed fifteen; this file's own closure narrative below accounts for the other four. Story 8.2's

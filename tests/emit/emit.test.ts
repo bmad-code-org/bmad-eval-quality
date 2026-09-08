@@ -270,7 +270,9 @@ describe('emit: the I/O & Edge-Case Matrix', () => {
 		const uncitedGap: UncitedFindingGap = {
 			findingId: 'F-999',
 			observationIds: ['obs-1'],
-			quotedEvidence: [{ quote: 'evidence', channel: 'response-status' }],
+			quotedEvidence: [
+				{ quote: 'evidence', channel: 'response-status', artifactId: null },
+			],
 			severity: 'material',
 		}
 		const result = emitOf({

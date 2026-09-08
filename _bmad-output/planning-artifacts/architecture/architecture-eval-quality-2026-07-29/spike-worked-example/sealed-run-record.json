@@ -35,10 +35,12 @@
       "probeId": "P-001",
       "quotedEvidence": [
         {
+          "artifactId": null,
           "channel": "response-body",
           "quote": "\"title\":\"Revised\""
         },
         {
+          "artifactId": null,
           "channel": "response-body",
           "quote": "\"title\":\"Original\""
         }

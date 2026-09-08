@@ -450,6 +450,13 @@ type ProbeKnobs = {
 	readonly resolveAfterElapsedCap?: boolean
 	readonly throwOnFiveHundred?: boolean
 	readonly denyAuthorized?: boolean
+	/**
+	 * Answer the authorized request without echoing one of the four fields that
+	 * tie an observation to the request it answers. Both port messages are
+	 * unions, so `'kind'` is the one that lets a command request come back with a
+	 * schema-valid HTTP observation.
+	 */
+	readonly breakEcho?: 'kind' | 'probeId' | 'interfaceId' | 'operationId'
 }
 
 const MAX_REDIRECTS = 2
@@ -503,6 +510,32 @@ function observation(request: ProbeRequest, status: number) {
 		headers: { 'content-type': 'application/json' },
 		body: { kind: 'json' as const, value: { ok: status < 400 } },
 	}
+}
+
+/**
+ * One echoed field replaced with a schema-valid value that is not the one asked
+ * for. A `command` observation carries stdout, stderr, and an exit code instead
+ * of a status and headers, so the kind case is a whole different message rather
+ * than a relabelled one.
+ */
+function breakEcho(
+	observed: ReturnType<typeof observation>,
+	field: ProbeKnobs['breakEcho'],
+): unknown {
+	if (field === undefined) return observed
+	if (field === 'kind') {
+		return {
+			probeId: observed.probeId,
+			interfaceId: observed.interfaceId,
+			operationId: observed.operationId,
+			kind: 'cli' as const,
+			exitCode: 0,
+			stdout: { kind: 'text' as const, value: 'ok' },
+			stderr: { kind: 'absent' as const },
+			artifacts: {},
+		}
+	}
+	return { ...observed, [field]: `not-the-${field}` }
 }
 
 function forbidden(detail: string): RuntimeFault {
@@ -588,7 +621,7 @@ function syntheticProbeSubject(knobs: ProbeKnobs = {}): ProbeSubject {
 						throw forbidden('this subject refuses everything')
 					}
 					hops++
-					return observation(request, 200)
+					return breakEcho(observation(request, 200), knobs.breakEcho)
 				}
 				if (operation === 'faulting') {
 					hops++
@@ -738,5 +771,36 @@ describe('the probe suite: AD-35 default-deny and the four caps (fixtures 59-72)
 		expect(await probeFailures({ denyAuthorized: true })).toEqual([
 			'probe/allow-authorized-loopback',
 		])
+	})
+
+	// The suite passed nineteen of nineteen against an adapter that answered
+	// every request with an observation for a different one, because it checked
+	// that the value parsed and never that it correlated. Both port messages
+	// became unions when the command kind landed, so the failure that mattered
+	// was `kind`: an adapter could answer a command request with a schema-valid
+	// HTTP observation and certify clean without ever running a command.
+	it.each([
+		['kind', 'answering a request with an observation of the other mechanism'],
+		['probeId', 'answering with another probe identifier'],
+		['interfaceId', 'answering about another interface'],
+		['operationId', 'answering about another operation'],
+	] as const)(
+		'fixture 73 (%s): %s flips only probe/allow-authorized-loopback',
+		async (field, _description) => {
+			expect(await probeFailures({ breakEcho: field })).toEqual([
+				'probe/allow-authorized-loopback',
+			])
+		},
+	)
+
+	it('says which field failed to come back, not merely that something did', async () => {
+		const report = await runEnvironmentProbePortConformance(
+			syntheticProbeSubject({ breakEcho: 'kind' }),
+		)
+		const outcome = report.outcomes.find(
+			(each) => each.id === 'probe/allow-authorized-loopback',
+		)
+		expect(outcome?.detail).toMatch(/observed kind "cli"/)
+		expect(outcome?.detail).toMatch(/does not correlate/)
 	})
 })

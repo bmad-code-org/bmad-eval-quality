@@ -4,7 +4,7 @@
 import { describe, expect, it } from 'vitest'
 import type {
 	ApiDefectSignature,
-	DefectSignature,
+	CommandDefectSignature,
 } from '../../src/core/schemas/defect-signature.ts'
 import type { Expression } from '../../src/core/schemas/expression.ts'
 import type { Operation } from '../../src/core/schemas/interface.ts'
@@ -15,6 +15,7 @@ import {
 	resolveHomeOperation,
 	sealProbeSet,
 } from '../../src/core/score/qualification.ts'
+import { commandProbe } from '../schemas/fixtures/artifact-fixtures.ts'
 import {
 	canary,
 	createNote,
@@ -816,6 +817,117 @@ describe('the pointer rules', () => {
 		).toEqual([
 			'Probe[probeId=P-901].defectSignature.observableChannel',
 			'Probe[probeId=P-901].defectSignature.condition.predicate.operands[0]',
+		])
+	})
+})
+
+describe('an artifact-channel pointer in a condition', () => {
+	// AD-40 dropped `operationId` from the resolution key because it is
+	// contract-local, and an artifact identifier is contract-local the same way:
+	// `/artifact/report` names one declared file in the contract it was authored
+	// against and nothing in the next one. Before this the pointer parsed,
+	// compiled, and qualified, and the signature silently bound one contract.
+	//
+	// The fixture's own two-operand predicate is kept and one pointer swapped,
+	// since a lone pointer names one channel and trips
+	// `condition-channels-underspecified` before this rule is reached.
+	// `Probe` is a union and only the seeded branch carries a signature, and that
+	// branch types it nullable, so the fixture's own signature is narrowed once
+	// rather than at every field read.
+	const commandDefect = commandProbe as Extract<Probe, { expectedClean: false }>
+	const commandSignature =
+		commandDefect.defectSignature as CommandDefectSignature
+	const withSecondPointer = (pointer: string): Probe => ({
+		...commandDefect,
+		defectSignature: {
+			...commandSignature,
+			condition: {
+				...commandSignature.condition,
+				predicate: {
+					op: 'all',
+					operands: [
+						{
+							op: 'equality',
+							operands: [
+								{ pointer: '/interactions/observed/exit-code' },
+								{ literal: 0 },
+							],
+						},
+						{ op: 'existence', operands: [{ pointer }] },
+					],
+				},
+			},
+		},
+	})
+
+	it('qualifies the command fixture as authored', () => {
+		expect(qualifyProbe(commandProbe, null).failures).toEqual([])
+	})
+
+	it('rejects a pointer rooted at a named artifact', () => {
+		expect(
+			codesOf(
+				withSecondPointer('/interactions/observed/artifact/report/verdict'),
+				null,
+			),
+		).toEqual(['condition-artifact-channel-contract-local'])
+	})
+
+	it('rejects the bare artifact pointer too, since the identifier is still there', () => {
+		expect(
+			codesOf(
+				withSecondPointer('/interactions/observed/artifact/report'),
+				null,
+			),
+		).toEqual(['condition-artifact-channel-contract-local'])
+	})
+
+	it('names the artifact it rejected and the decision that rejects it', () => {
+		const failure = qualifyProbe(
+			withSecondPointer('/interactions/observed/artifact/report/verdict'),
+			null,
+		).failures[0]
+		expect(failure?.detail).toMatch(/artifact "report"/)
+		expect(failure?.detail).toMatch(/AD-40/)
+		expect(failure?.artifactPath).toBe(
+			'Probe[probeId=P-003].defectSignature.condition.predicate.operands[1].operands[0]',
+		)
+	})
+
+	it('leaves the channels a command signature can address alone', () => {
+		expect(
+			codesOf(withSecondPointer('/interactions/observed/stdout'), null),
+		).toEqual([])
+		expect(
+			codesOf(withSecondPointer('/interactions/observed/stderr'), null),
+		).toEqual([])
+	})
+
+	it('reports it on an api signature as a foreign channel as well', () => {
+		// `artifact` is a command response channel, so an api signature naming one
+		// is wrong twice and both checks say so.
+		expect(
+			codesOf(
+				withPredicate({
+					op: 'all',
+					operands: [
+						{
+							op: 'existence',
+							operands: [{ pointer: '/interactions/observed/response-status' }],
+						},
+						{
+							op: 'existence',
+							operands: [
+								{ pointer: '/interactions/observed/artifact/report/verdict' },
+							],
+						},
+					],
+				}),
+				null,
+			),
+		).toEqual([
+			'condition-artifact-channel-contract-local',
+			'condition-text-channel-on-api',
 		])
 	})
 })

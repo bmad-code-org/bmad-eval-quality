@@ -90,8 +90,9 @@ const defectFinding: SealedRunRecord['findings'][number] = {
 		{
 			quote: '{"ok":true,"note":{"title":"Revised"}}',
 			channel: 'response-body',
+			artifactId: null,
 		},
-		{ quote: '200', channel: 'response-status' },
+		{ quote: '200', channel: 'response-status', artifactId: null },
 	],
 }
 
@@ -960,7 +961,9 @@ export const contractScoringEvidenceArtifact: EvidenceArtifact = {
 		{
 			findingId: 'F-004',
 			observationIds: ['obs-005'],
-			quotedEvidence: [{ quote: 'colour', channel: 'response-body' }],
+			quotedEvidence: [
+				{ quote: 'colour', channel: 'response-body', artifactId: null },
+			],
 			severity: 'low',
 		},
 	],

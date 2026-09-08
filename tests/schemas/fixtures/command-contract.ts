@@ -191,6 +191,10 @@ if (selectFragments === undefined) {
 export const artifactCommandContract = {
 	...commandContract,
 	contractId: 'review-corpus',
+	behaviors: commandContract.behaviors.map((behavior) => ({
+		...behavior,
+		oracles: ['O-001', 'O-002'],
+	})),
 	oracles: [
 		{
 			id: 'O-001',
@@ -209,6 +213,29 @@ export const artifactCommandContract = {
 			},
 			polarity: 'expects-hold',
 			commentary: 'Reads the collection the verdict file declares.',
+		},
+		{
+			// A quantifier over the declared collection, so AD-20 rule 4 is
+			// relevant and decided rather than vacuous. A fixture that leaves
+			// every rule irrelevant grades nothing, which is how a whole
+			// interface kind went ungraded in the first place.
+			id: 'O-002',
+			direction: {
+				evidenceTargets: ['/interactions/select/artifact/verdict/fragments'],
+				relation: 'for-all',
+				polarity: 'expects-hold',
+				scope: 'Every fragment the verdict names.',
+				negativeDomain: 'A named fragment carrying no identifier.',
+			},
+			check: {
+				op: 'for-all',
+				collection: {
+					pointer: '/interactions/select/artifact/verdict/fragments',
+				},
+				predicate: { op: 'existence', operands: [{ pointer: '@/id' }] },
+			},
+			polarity: 'expects-hold',
+			commentary: 'Every named fragment carries an identifier.',
 		},
 	],
 	permittedInterfaces: [

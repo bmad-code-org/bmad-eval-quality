@@ -56,6 +56,29 @@ export const descriptorArtifactOf = (
 		: null
 }
 
+/**
+ * Whether an evidence target addresses the channel this operation's response
+ * descriptor describes.
+ *
+ * The channel name alone is not the answer on the artifact channel: an
+ * operation may declare several files while its one descriptor describes one of
+ * them, so a pointer at a different file names a channel with no declared
+ * structure. Every consumer asks this rather than comparing the channel itself,
+ * because comparing only the channel was a defect at three separate sites and a
+ * fourth site would have made the same mistake for the same reason.
+ */
+export const targetsDescribedChannel = (
+	operation: AnyOperation,
+	target: {
+		readonly channel: EvidenceChannelName
+		readonly artifactId: string | null
+	},
+): boolean => {
+	if (target.channel !== descriptorChannelOf(operation)) return false
+	if (target.channel !== 'artifact') return true
+	return target.artifactId === descriptorArtifactOf(operation)
+}
+
 /** Every artifact identifier the operation declares it writes. */
 export const declaredArtifactsOf = (
 	operation: AnyOperation,

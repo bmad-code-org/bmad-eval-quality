@@ -17,9 +17,9 @@
  */
 import {
 	boundChannelsOf,
-	descriptorArtifactOf,
 	descriptorChannelOf,
 	requestShapeOf,
+	targetsDescribedChannel,
 } from '../declared-inputs.ts'
 import { ARRAY_INDEX_PATTERN } from '../evaluate/evidence-resolution.ts'
 import { StructuralFailure } from '../failure-codes.ts'
@@ -211,11 +211,17 @@ function stronglyConnectedComponents(
 
 /**
  * `captured-channel-undeclared`: a captured pointer naming any AD-26 channel
- * but `response-body`. `call-inputs` addresses a step's own request,
- * `stdout`, `stderr`, and `exit-code` are process channels no operation
- * surviving `unsupported-interface-kind` produces, and `response-headers` and
- * `response-status` have no declared structure to give a captured value a
- * type.
+ * but the one the referenced operation's response descriptor describes. That
+ * is `response-body` off an interface that speaks HTTP and whichever channel
+ * `descriptorChannel` nominates off one that runs behind a command, which is
+ * the same rule read against the declaration rather than assumed.
+ *
+ * Every other channel is refused for a reason that does not depend on the
+ * kind: `call-inputs` addresses a step's own request, and `response-headers`,
+ * `response-status`, and `exit-code` have no declared structure to give a
+ * captured value a type. On the `artifact` channel the identifier is compared
+ * too, so a capture from a file the operation writes but does not describe is
+ * refused alongside one from a file it never writes.
  */
 export function checkCapturedChannel(contract: EvalContract): void {
 	let index: PlanIndex | undefined
@@ -238,15 +244,13 @@ export function checkCapturedChannel(contract: EvalContract): void {
 				operation === undefined
 					? 'response-body'
 					: descriptorChannelOf(operation)
-			// On the artifact channel the channel name is not the whole answer:
-			// an operation may declare several files and its one descriptor
-			// describes one of them, so a capture from a different file would
-			// be typed against a descriptor that does not describe it.
-			const describesThisOne =
-				capturable !== 'artifact' ||
-				(operation !== undefined &&
-					capture.target.artifactId === descriptorArtifactOf(operation))
-			if (capture.target.channel === capturable && describesThisOne) continue
+			if (
+				operation === undefined
+					? capture.target.channel === capturable
+					: targetsDescribedChannel(operation, capture.target)
+			) {
+				continue
+			}
 			throw new StructuralFailure(
 				'captured-channel-undeclared',
 				bindingPath(step, capture),
@@ -400,17 +404,7 @@ export function checkCapturedReachability(contract: EvalContract): void {
 					`captured pointer "${capture.pointer}" names step "${capture.target.stepId}", which names operation "${referenced.operationId}", not declared by any permitted interface`,
 				)
 			}
-			if (capture.target.channel !== descriptorChannelOf(operation)) continue
-			// The same qualification `checkCapturedChannel` makes: a capture
-			// from a declared file the descriptor does not describe has no
-			// declared type, and typing it against the wrong descriptor is the
-			// error this skip avoids.
-			if (
-				capture.target.channel === 'artifact' &&
-				capture.target.artifactId !== descriptorArtifactOf(operation)
-			) {
-				continue
-			}
+			if (!targetsDescribedChannel(operation, capture.target)) continue
 			const reachability = evaluatePointerReachability(capture.pointer, index)
 			if (!reachability.reachable) {
 				throw new StructuralFailure(

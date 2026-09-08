@@ -6,14 +6,28 @@
 #   patch | minor | major   Runs `scripts/release-prepare.mjs <bump> --on-main`: bumps
 #                           package.json and package-lock.json, stamps VERSION in src/index.ts and
 #                           the [Unreleased] notes in CHANGELOG.md, commits
-#                           `chore: release vX.Y.Z [skip ci]` on main, pushes with the job's own
-#                           GITHUB_TOKEN. That push lands because the `protect-main` ruleset
-#                           requires no status check; `gate` still runs and reports on every pull
-#                           request without blocking a merge. The run then publishes that commit.
-#   none                    Publishes the version main already declares. The fallback if `gate` is
-#                           ever made required again: `npm run release:prepare -- patch` on a
-#                           laptop opens the release PR, a human merges it, and this run
-#                           (`npm run release:publish`) publishes the merge commit.
+#                           `chore: release vX.Y.Z [skip ci]` on main, pushes it, then publishes
+#                           that commit.
+#   none                    Publishes the version main already declares. Use it to finish a
+#                           partially failed release, and as the laptop path: `npm run
+#                           release:prepare -- patch` opens the release PR, a human merges it, and
+#                           this run (`npm run release:publish`) publishes the merge commit.
+#
+# The bump push goes out as a GitHub App token, the same mechanism that releases
+# bmad-method-test-architecture-enterprise. A ruleset bypass list can name repository roles, teams,
+# GitHub Apps and Dependabot, so an App is an actor that can be let past `protect-main` and the job's
+# own GITHUB_TOKEN is not. That matters because `protect-main` carries a `code_coverage` rule, which
+# refuses every direct push to main with "Code coverage checks require merging via API or UI"
+# whatever else the ruleset says. Run 34245836441 is that refusal: the header here used to claim the
+# push landed because the ruleset required no status check, the `required_status_checks` rule had
+# indeed been removed, and the release still stopped with 0.3.0 committed inside the runner and
+# nothing pushed. Read the ruleset rather than trusting this comment about it:
+# `gh api repos/bmad-code-org/bmad-eval-quality/rulesets/21423708 --jq '{rules, bypass_actors}'`.
+#
+# The App token is git credentials and nothing else. npm authentication stays trusted publishing over
+# OIDC with no token, as described at the bottom of this comment. A failure to mint the token, or a
+# push the bypass does not cover, stops the run before it has published, tagged, or released
+# anything, which is the same safe failure the direct-push path already had.
 #
 # The commit being released is `release_sha` from the state step: HEAD, which is the bump commit
 # after a bump and github.sha without one. github.sha is the pre-bump commit once a bump happened,
@@ -90,14 +104,28 @@ jobs:
             exit 1
           fi
 
-      # persist-credentials: false so GITHUB_TOKEN is not sitting in the checkout's remote while
-      # `npm ci` below runs third-party install scripts. The token goes back in, scoped to the
-      # remote URL only, right after `npm ci` and before anything that pushes.
+      # A GITHUB_TOKEN cannot be granted a ruleset bypass and a GitHub App can, so a bump run pushes
+      # main as the App. Minted only when there is a bump to push, so a bump=none publish never
+      # touches these secrets. This is the same mechanism, and the same App, that releases
+      # bmad-method-test-architecture-enterprise.
+      - name: Generate GitHub App token
+        id: app-token
+        if: inputs.bump != 'none'
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          app-id: ${{ secrets.RELEASE_APP_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+
+      # persist-credentials: false so neither token is sitting in the checkout's remote while
+      # `npm ci` below runs third-party install scripts. `token` authenticates this fetch only; the
+      # credential goes back in, scoped to the remote URL only, right after `npm ci` and before
+      # anything that pushes.
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           fetch-depth: 0
           persist-credentials: false
+          token: ${{ steps.app-token.outputs.token || github.token }}
 
       - name: Setup Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
@@ -115,16 +143,18 @@ jobs:
       - name: Install dependencies
         run: npm ci --no-audit --no-fund
 
-      # The release commit and the tag both push below; this is the one place GITHUB_TOKEN goes
-      # back into the checkout, past the `npm ci` install-script step that persist-credentials:
-      # false above was keeping it away from. That push still lands only because the
-      # `protect-main` ruleset requires no status check (CONTRIBUTING.md, Releasing); a bump push
-      # here is refused if a required check is ever added back without an automation path for it.
+      # The release commit and the tag both push below; this is the one place a credential goes back
+      # into the checkout, past the `npm ci` install-script step that persist-credentials: false
+      # above was keeping it away from. The App token when there is a bump to push, since only the
+      # App holds the protect-main bypass that push needs; GITHUB_TOKEN otherwise, which is all the
+      # tag push needs because tags are governed by the separate `Release tags` ruleset. The commit
+      # identity stays github-actions[bot] either way, so the authorship of a release commit does not
+      # move when the pushing credential does.
       - name: Configure git for the release push
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git remote set-url origin "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git"
+          git remote set-url origin "https://x-access-token:${{ steps.app-token.outputs.token || github.token }}@github.com/${{ github.repository }}.git"
 
       # Before the bump on purpose: a red main gets no release commit. The bump changes the four
       # stamped files only, and release-prepare refuses unless VERSION already matches the manifest,

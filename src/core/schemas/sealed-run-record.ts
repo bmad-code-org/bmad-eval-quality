@@ -3,7 +3,10 @@ import { z } from 'zod'
 import { ArtifactReference } from './artifact-reference.ts'
 import { Severity } from './eval-contract.ts'
 import { lineageFields } from './lineage.ts'
-import { EvidenceChannel } from './pointer.ts'
+import {
+	IDENTIFIER_ROOTED_CHANNEL,
+	NON_IDENTIFIER_ROOTED_CHANNELS,
+} from './pointer.ts'
 import {
 	BehaviorId,
 	Digest,
@@ -20,20 +23,63 @@ import {
 import { ProbeObservedBody } from './probe-body.ts'
 import { EvaluatorRecommendation } from './verdict.ts'
 
+const QUOTE_DESCRIPTION =
+	"The evaluator's verbatim quotation, per AD-23. Non-empty: an empty quotation quotes nothing, no AD-5 code names the condition, and under the admit-rule's second clause the schema is therefore the enforcement point. That this text appears in at least one of the finding's cited observations is NOT checked here; it is an AD-32 declared-versus-observed inconsistency that invalidates at ingest, and ADR-009 Decision 2 settles the precedence: \"cited identifiers govern the witness match; quotation audits it.\""
+
+const quote = z.string().min(1).describe(QUOTE_DESCRIPTION)
+
 /**
  * AD-23's verbatim quotation, paired with the channel it came from: a
  * quotation with no channel cannot be audited against its source observation
  * (ADR-009 Decision 2).
+ *
+ * Two arms rather than one shape with a nullable identifier and a `.refine()`
+ * over the pair. The identifier is meaningful on exactly one channel, and the
+ * first spelling of this field said so in prose while admitting every other
+ * combination: `channel: "response-body"` with a non-null `artifactId` parsed,
+ * and `projectChannel` reads the identifier only on the artifact channel, so
+ * the quotation was audited against the response body and a record naming a
+ * file it never consulted produced no condition at all. That is a narrower
+ * spelling of the wrong-file hole `artifactId` was added to close.
+ *
+ * A refinement would not have closed it either, for the reason
+ * `evidence-artifact.ts` records where it narrows a mode to a literal instead:
+ * a refinement never exports, so the published document keeps admitting the
+ * disagreement, and AD-13's corpus-mutation generator synthesises witnesses
+ * from a branch's own JSON Schema with no knowledge of a Zod-only cross-field
+ * rule. Narrowing the schema removes the gap at its source.
+ *
+ * A plain union rather than a discriminated one, on `DefectSignature`'s own
+ * reasoning: the discriminator would be `channel`, and one arm carries seven
+ * values for it. The two arms are told apart by the channel they name.
+ *
+ * The `EvidenceChannel` `$ref` is not carried at this site, since neither arm
+ * accepts the whole vocabulary. A non-TypeScript consumer reads a literal on
+ * one arm and a seven-member enum on the other, which is the rule itself
+ * rather than a reference plus a sentence about it.
  */
-export const QuotedEvidence = z.strictObject({
-	quote: z
-		.string()
-		.min(1)
-		.describe(
-			"The evaluator's verbatim quotation, per AD-23. Non-empty: an empty quotation quotes nothing, no AD-5 code names the condition, and under the admit-rule's second clause the schema is therefore the enforcement point. That this text appears in at least one of the finding's cited observations is NOT checked here; it is an AD-32 declared-versus-observed inconsistency that invalidates at ingest, and ADR-009 Decision 2 settles the precedence: \"cited identifiers govern the witness match; quotation audits it.\"",
-		),
-	channel: EvidenceChannel,
+export const ArtifactQuotedEvidence = z.strictObject({
+	quote,
+	channel: z.literal(IDENTIFIER_ROOTED_CHANNEL),
+	artifactId: Identifier.describe(
+		"Which written file the quotation came from. A channel alone does not identify one: an operation may write several, and an audit that searched all of them at once accepted a quotation lifted from a file the finding never cited, which is the opposite of what AD-23's verbatim requirement is for.",
+	),
 })
+
+export const ChannelQuotedEvidence = z.strictObject({
+	quote,
+	channel: z.enum(NON_IDENTIFIER_ROOTED_CHANNELS),
+	artifactId: z
+		.null()
+		.describe(
+			'Null on every channel but `artifact`, and required rather than optional so a record cannot omit the question. Only a written file needs naming; every other channel is one thing per observation.',
+		),
+})
+
+export const QuotedEvidence = z.union([
+	ArtifactQuotedEvidence,
+	ChannelQuotedEvidence,
+])
 
 // Spread into each finding branch rather than shared as a base object: a
 // spread adds no `$defs` entry, so each branch exports as a complete shape a

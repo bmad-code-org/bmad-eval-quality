@@ -38,6 +38,7 @@
  */
 
 import type { EvalContract } from '../schemas/eval-contract.ts'
+import { EVAL_CONTRACT_SCHEMA_VERSION } from '../schemas/eval-contract.ts'
 import type { CompileOptions } from '../stage-contracts.ts'
 import {
 	checkBindingCycle,
@@ -48,6 +49,7 @@ import {
 	checkObservableSuccessCriterion,
 	checkRequirementLinkage,
 } from './declarations.ts'
+import { checkExcludedContent } from './excluded-content.ts'
 import {
 	checkOperandLegality,
 	checkQuantifierNesting,
@@ -76,6 +78,7 @@ import {
 	checkRubricIdentifiers,
 	checkRubricReasoningProse,
 } from './rubrics.ts'
+import { checkSchemaVersion } from './schema-version.ts'
 import {
 	checkNestedTemporalClause,
 	checkScriptingBound,
@@ -92,6 +95,14 @@ export function compile(
 	contract: EvalContract,
 	options: CompileOptions,
 ): EvalContract {
+	// First, and before any check reads a declaration. AD-11 makes an unequal
+	// stamp a rejection rather than a degraded read, and every check below is
+	// written against this version's field shapes.
+	checkSchemaVersion(
+		contract.schemaVersion,
+		EVAL_CONTRACT_SCHEMA_VERSION,
+		'EvalContract.schemaVersion',
+	)
 	checkRequirementLinkage(contract)
 	checkObservableSuccessCriterion(contract)
 	// Ahead of reachability, because a pointer naming an artifact nothing
@@ -124,6 +135,7 @@ export function compile(
 	checkRubricAnchoring(contract)
 	checkRubricEvidenceReachability(contract)
 	checkForbiddenInputFloor(contract)
+	checkExcludedContent(contract)
 	checkScopedResourceReferences(contract)
 	checkWaiverCompleteness(contract)
 	checkStepReferenceReducibility(contract)

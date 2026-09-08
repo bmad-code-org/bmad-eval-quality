@@ -13,6 +13,7 @@ import type {
 	Operation,
 	PermittedInterface,
 } from '../../../src/core/schemas/interface.ts'
+import type { EvidenceChannelName } from '../../../src/core/schemas/pointer.ts'
 import type { Probe } from '../../../src/core/schemas/probe.ts'
 import type {
 	Observation,
@@ -238,12 +239,36 @@ export const defectFired = observation({
 	responseStatus: 500,
 })
 
+/**
+ * One quoted-evidence entry on whichever arm the channel selects. The schema
+ * carries the pairing now: an artifact quotation names a file and every other
+ * channel names none, so a helper that built one flat shape could no longer
+ * produce either arm.
+ */
+const quotedEvidenceOf = (overrides: {
+	quote?: string
+	channel?: EvidenceChannelName
+	artifactId?: string | null
+}): Extract<
+	SealedRunRecord['findings'][number],
+	{ findingType: 'defect' }
+>['quotedEvidence'][number] => {
+	const quote = overrides.quote ?? '500'
+	const channel = overrides.channel ?? 'response-status'
+	if (channel === 'artifact') {
+		return { quote, channel, artifactId: overrides.artifactId ?? 'report' }
+	}
+	return { quote, channel, artifactId: null }
+}
+
 export const defectFinding = (
 	observationIds: readonly string[],
 	overrides: Partial<{
 		findingId: string
 		probeId: string
 		quote: string
+		channel: EvidenceChannelName
+		artifactId: string | null
 	}> = {},
 ): SealedRunRecord['findings'][number] => ({
 	findingType: 'defect',
@@ -256,9 +281,7 @@ export const defectFinding = (
 	confidence: 0.9,
 	observationIds: [...observationIds],
 	evidenceArtifacts: [],
-	quotedEvidence: [
-		{ quote: overrides.quote ?? '500', channel: 'response-status' },
-	],
+	quotedEvidence: [quotedEvidenceOf(overrides)],
 })
 
 /** the record the match reads: observations plus findings, nothing else. */

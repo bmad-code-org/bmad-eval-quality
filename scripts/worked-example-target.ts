@@ -844,8 +844,16 @@ const authoredRecord = (
 				"PATCH /notes/n-1 returned 200 with ok true and the new title 'Revised', but a subsequent GET /notes/n-1 returned the original title 'Original'. The update response was not backed by a write.",
 			observationIds: ['obs-003', 'obs-004'],
 			quotedEvidence: [
-				{ quote: '"title":"Revised"', channel: 'response-body' },
-				{ quote: '"title":"Original"', channel: 'response-body' },
+				{
+					quote: '"title":"Revised"',
+					channel: 'response-body',
+					artifactId: null,
+				},
+				{
+					quote: '"title":"Original"',
+					channel: 'response-body',
+					artifactId: null,
+				},
 			],
 			evidenceArtifacts: [spikeEvidence(5, 'spike-actions-0001')],
 		},

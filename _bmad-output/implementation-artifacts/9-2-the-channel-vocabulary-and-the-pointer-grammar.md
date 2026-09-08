@@ -25,7 +25,7 @@ context:
 - The partition stays disjoint and exhaustive. `pointer.ts:45-49` says the three-way partition "is spelled out and typed against the enum rather than rebuilt from it, so a typo fails the typecheck; a test asserts it stays disjoint and exhaustive." That test is `tests/schemas/pointer.test.ts:158` and it moves from seven members to eight, with a fourth class.
 - Both new AD-5 codes are appended to AD-5's registry table in the same diff that mints them, preserving `check:ad5-registry`'s set-and-order equality, exactly as `epic-7-context.md:32` records for `binding-cycle` and `captured-channel-undeclared`. `lint:spine` runs `--registry-ad 5` over that table and must stay green.
 - Every code this story mints ships its thrower in the same diff. A code with no thrower is what `deferred-work.md:125-128` records AD-16's two forbidden-input checks having been for a whole epic.
-- The eval contract takes one BREAKING `schemaVersion` bump, 4 → 5, recorded in the driving field's own `.describe()`. `InteractionPointer`'s accepted language widens, which retypes every field that carries one: oracle evidence targets, every `{ pointer }` operand, every `{ captured }` binding, and every rubric criterion's evidence.
+- ~~The eval contract takes one BREAKING `schemaVersion` bump, 4 → 5~~ **(WRONG, see the divergence note below: one bump landed, not two.)** The eval contract's accepted language widens here, recorded in the driving field's own `.describe()`. `InteractionPointer`'s accepted language widens, which retypes every field that carries one: oracle evidence targets, every `{ pointer }` operand, every `{ captured }` binding, and every rubric criterion's evidence.
 - No source comment may contain any of `check:boundary`'s twelve forbidden strings.
 
 **Ask First:**
@@ -122,7 +122,7 @@ context:
 - [ ] `src/core/compile/compile.ts` -- call both between `checkObservableSuccessCriterion` (`:82`) and `checkEvidenceReachability` (`:83`), and extend the header's ordering paragraph with why they sit there.
 - [ ] `src/core/compile/reachability.ts` -- narrow Story 9.1's blanket non-api deferral so it covers `web` and `mcp` only, and leave `cli` deferring on the descriptor-shaped branches until Story 9.3 -- record in the comment which story removes the remainder.
 - [ ] `src/core/compile/bindings.ts`, `src/core/compile/rubrics.ts`, `src/core/coverage/satisfaction.ts` -- correct the three comments named in the Code Map at their source.
-- [ ] `src/core/schemas/eval-contract.ts` -- record the 4 → 5 BREAKING bump. The driving field is `InteractionPointer`'s accepted language, which no single contract field owns, so the note goes on `oracles` (the field whose operands carry the grammar) and is restated in the artifact `.meta`, matching how the sealed brief's bump is recorded both in a field and in a code comment.
+- [x] `src/core/schemas/eval-contract.ts` -- record this change under the epic's single 3 → 4 bump, not a second one. The driving field is `InteractionPointer`'s accepted language, which no single contract field owns, so the note goes on `oracles` (the field whose operands carry the grammar) and is restated in the artifact `.meta`, matching how the sealed brief's bump is recorded both in a field and in a code comment.
 - [ ] `tests/schemas/eval-contract-version.test.ts` -- raise `EVAL_CONTRACT_SCHEMA_VERSION` to 5 and move every literal its failures name.
 - [ ] `npm run generate:schemas` -- regenerate; update the five census literals `deferred-work.md`'s first open entry names.
 - [ ] `tests/schemas/pointer.test.ts`, `tests/schemas/failure-codes.test.ts`, `tests/seal/derived-reference.test.ts` -- move the pinned counts and lists.
@@ -203,6 +203,18 @@ const INPUT_CHANNELS_BY_KIND = {
 - `npm run validate` -- expected: exit 0 with no output on stderr.
 
 ## Built, and where it diverged
+
+**The second `schemaVersion` bump this story specified did not happen, and should not have.** The
+story reads 4 → 5 because the plan gave the epic two breaking bumps on the rule that each story be
+independently releasable. The epic shipped as one release, so a version 4 carrying the interface
+union but not the pointer grammar never existed for any consumer to hold, and disclosing a
+transition nobody can be on is churn rather than disclosure. One bump, 3 → 4, covers every retype in
+the epic, and the artifact's own `.meta` names what version 4 added.
+
+The change this story makes to the contract is also weaker than the story assumed. Widening
+`InteractionPointer`'s accepted language retypes nothing: every pointer legal under version 3 is
+still legal, so the field accepts a strict superset. It travels under the same breaking bump as the
+union retypes because it ships in the same release, not because it is breaking on its own.
 
 The artifact channel shipped as the fourth partition class this story named, spelled
 `/interactions/{stepId}/artifact/{artifactId}` plus a tail, with `IDENTIFIER_ROOTED_CHANNEL` beside

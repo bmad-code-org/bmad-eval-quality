@@ -8,9 +8,10 @@
 // publishes the version main declares.
 //
 // `--on-main`, from publish.yml: the commit lands on main and is pushed there, so the run that
-// made it can publish it. The push uses the job's own GITHUB_TOKEN; it lands because the
-// `protect-main` ruleset requires no status check. `[skip ci]` keeps the push from starting
-// push-triggered workflows on a commit the release run already owns.
+// made it can publish it. The push goes out as a GitHub App token, because getting past the
+// `protect-main` ruleset's `code_coverage` rule needs a bypass entry for the pushing actor, and a
+// bypass list can name a GitHub App where it cannot name the job's own GITHUB_TOKEN. `[skip ci]`
+// keeps the push from starting push-triggered workflows on a commit the release run already owns.
 //
 // Every check runs before anything is written, so a refusal leaves the tree exactly as found.
 //
@@ -173,8 +174,8 @@ function pushMain(tag) {
 		fail(
 			[
 				`origin rejected the push of ${tag} to main.`,
-				'The protect-main ruleset lets this push through only because it requires no status check.',
-				'Check the protect-main ruleset (CONTRIBUTING.md, Releasing) if that changed.',
+				'This push lands only while the release App holds a bypass entry on the protect-main ruleset and the App token is what pushes.',
+				'Check the App installation, the RELEASE_APP_ID and RELEASE_APP_PRIVATE_KEY secrets, and that bypass entry (CONTRIBUTING.md, Releasing).',
 				'The commit is local only; nothing on origin changed.',
 			].join('\n'),
 		)

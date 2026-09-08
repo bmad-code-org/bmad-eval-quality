@@ -5,10 +5,7 @@
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { RuntimeFault } from '../../src/core/schemas/faults.ts'
-import type {
-	ApiProbeRequest,
-	ProbeRequest,
-} from '../../src/core/schemas/port-messages.ts'
+import type { ApiProbeRequest } from '../../src/core/schemas/port-messages.ts'
 import { runEnvironmentProbePortConformance } from '../../src/testing/probe-conformance.ts'
 import {
 	buildSubjectPolicy,

@@ -38,16 +38,13 @@ import {
 	OBSERVED_STEP_ID,
 } from '../schemas/defect-signature.ts'
 import type { Expression, Operand } from '../schemas/expression.ts'
-import type {
-	AnyOperation,
-	Operation,
-	PermittedInterface,
-} from '../schemas/interface.ts'
+import type { AnyOperation, PermittedInterface } from '../schemas/interface.ts'
 import { operationsOf } from '../schemas/interface.ts'
 import {
 	API_RESPONSE_CHANNELS,
 	COMMAND_RESPONSE_CHANNELS,
 	type EvidenceChannelName,
+	IDENTIFIER_ROOTED_CHANNEL,
 	INPUT_CHANNELS,
 	RESPONSE_SIDE_CHANNELS,
 } from '../schemas/pointer.ts'
@@ -72,6 +69,7 @@ export const QUALIFICATION_FAILURES = [
 	'condition-selector-key-undeclared',
 	'condition-pointer-not-observation-rooted',
 	'condition-pointer-unwritable',
+	'condition-artifact-channel-contract-local',
 	'condition-text-channel-on-api',
 	'condition-reference-set-operand',
 	'condition-operand-illegal',
@@ -323,6 +321,27 @@ function checkOperandsAndCollectChannels(
 			return
 		}
 		channels.add(target.channel)
+		if (target.channel === IDENTIFIER_ROOTED_CHANNEL) {
+			// AD-40 dropped `operationId` from the resolution key because it is
+			// contract-local: two contracts name the same operation differently, so
+			// a signature carrying one resolves against exactly the contract it was
+			// authored on. An artifact identifier is contract-local in the same way.
+			// It is minted by whoever declared the operation's artifact descriptor,
+			// so `/artifact/report` names one file in this contract and nothing at
+			// all in the next one, and a signature quantified over it stops being
+			// portable while still parsing and compiling clean.
+			//
+			// The restriction lifts the day the vocabulary reserves an identifier
+			// meaning "the artifact this operation describes", the way
+			// `OBSERVED_STEP_ID` reserves one for the step. Until then a signature
+			// reaches a written file through the descriptor channel of whatever
+			// operation it binds, which is kind-neutral and needs no identifier.
+			failures.push({
+				code: 'condition-artifact-channel-contract-local',
+				artifactPath: `${conditionPath}${path}`,
+				detail: `"${pointer}" names artifact "${target.artifactId}"; an artifact identifier is minted per contract, so a signature carrying one resolves only against the contract it was authored on, which is what AD-40 dropped operationId to avoid`,
+			})
+		}
 		if (foreignChannels(signature.interfaceKind).has(target.channel)) {
 			failures.push({
 				code: 'condition-text-channel-on-api',

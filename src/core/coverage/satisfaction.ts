@@ -21,8 +21,16 @@ import type { Expression, Operand } from '../schemas/expression.ts'
 import type { Operation } from '../schemas/interface.ts'
 import type { InteractionStep } from '../schemas/plan.ts'
 import { INPUT_CHANNELS } from '../schemas/pointer.ts'
-import { buildPlanIndex, type PlanIndex } from '../seal/plan-index.ts'
-import { type ResolvedOperation, resolveOperations } from './operations.ts'
+import {
+	anyOperationOf,
+	buildPlanIndex,
+	type PlanIndex,
+} from '../seal/plan-index.ts'
+import {
+	encodeToken,
+	type ResolvedOperation,
+	resolveOperations,
+} from './operations.ts'
 import {
 	DISCIPLINE_RULES,
 	type DisciplineRule,
@@ -67,10 +75,6 @@ type CollectionLocation = NonNullable<
 >[number]
 
 // ---- the join between the two pointer spellings -------------------------
-
-/** RFC 6901 escaping, `~` before `/`. */
-const encodeToken = (token: string): string =>
-	token.replace(/~/g, '~0').replace(/\//g, '~1')
 
 /** Everything one step produced or was given. */
 const stepRoot = (stepId: string): string => `/interactions/${stepId}`
@@ -652,7 +656,7 @@ const readBackStepsFor = (
 ): readonly ReadBackStep[] =>
 	contract.interactionPlan.flatMap((step) => {
 		if (step.stepId === writeStepId || step.after !== writeStepId) return []
-		const operation = context.index.operationOf(step.operationId)
+		const operation = anyOperationOf(context.index, step.operationId)
 		if (operation === undefined || operation.stateChangeMarker) return []
 		// The index and the resolver both read `permittedInterfaces`, so the
 		// index answers with the very object the resolver carries. Matching on

@@ -1159,22 +1159,65 @@
                 "minItems": 1,
                 "type": "array",
                 "items": {
-                  "type": "object",
-                  "properties": {
-                    "quote": {
-                      "type": "string",
-                      "minLength": 1,
-                      "description": "The evaluator's verbatim quotation, per AD-23. Non-empty: an empty quotation quotes nothing, no AD-5 code names the condition, and under the admit-rule's second clause the schema is therefore the enforcement point. That this text appears in at least one of the finding's cited observations is NOT checked here; it is an AD-32 declared-versus-observed inconsistency that invalidates at ingest, and ADR-009 Decision 2 settles the precedence: \"cited identifiers govern the witness match; quotation audits it.\""
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "quote": {
+                          "type": "string",
+                          "minLength": 1,
+                          "description": "The evaluator's verbatim quotation, per AD-23. Non-empty: an empty quotation quotes nothing, no AD-5 code names the condition, and under the admit-rule's second clause the schema is therefore the enforcement point. That this text appears in at least one of the finding's cited observations is NOT checked here; it is an AD-32 declared-versus-observed inconsistency that invalidates at ingest, and ADR-009 Decision 2 settles the precedence: \"cited identifiers govern the witness match; quotation audits it.\""
+                        },
+                        "channel": {
+                          "type": "string",
+                          "const": "artifact"
+                        },
+                        "artifactId": {
+                          "type": "string",
+                          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                          "description": "Which written file the quotation came from. A channel alone does not identify one: an operation may write several, and an audit that searched all of them at once accepted a quotation lifted from a file the finding never cited, which is the opposite of what AD-23's verbatim requirement is for."
+                        }
+                      },
+                      "required": [
+                        "quote",
+                        "channel",
+                        "artifactId"
+                      ],
+                      "additionalProperties": false
                     },
-                    "channel": {
-                      "$ref": "#/$defs/EvidenceChannel"
+                    {
+                      "type": "object",
+                      "properties": {
+                        "quote": {
+                          "type": "string",
+                          "minLength": 1,
+                          "description": "The evaluator's verbatim quotation, per AD-23. Non-empty: an empty quotation quotes nothing, no AD-5 code names the condition, and under the admit-rule's second clause the schema is therefore the enforcement point. That this text appears in at least one of the finding's cited observations is NOT checked here; it is an AD-32 declared-versus-observed inconsistency that invalidates at ingest, and ADR-009 Decision 2 settles the precedence: \"cited identifiers govern the witness match; quotation audits it.\""
+                        },
+                        "channel": {
+                          "type": "string",
+                          "enum": [
+                            "response-body",
+                            "response-headers",
+                            "response-status",
+                            "call-inputs",
+                            "stdout",
+                            "stderr",
+                            "exit-code"
+                          ]
+                        },
+                        "artifactId": {
+                          "type": "null",
+                          "description": "Null on every channel but `artifact`, and required rather than optional so a record cannot omit the question. Only a written file needs naming; every other channel is one thing per observation."
+                        }
+                      },
+                      "required": [
+                        "quote",
+                        "channel",
+                        "artifactId"
+                      ],
+                      "additionalProperties": false
                     }
-                  },
-                  "required": [
-                    "quote",
-                    "channel"
-                  ],
-                  "additionalProperties": false
+                  ]
                 }
               },
               "severity": {
@@ -1289,20 +1332,6 @@
         "FAIL"
       ],
       "description": "AD-21's four verdicts. Uppercase is one of the two named exceptions to the lowercase kebab-case enum convention. Exit codes are AD-21's and belong to the CLI rather than to this value: PASS, WAIVED, and CONCERNS exit zero and FAIL exits two."
-    },
-    "EvidenceChannel": {
-      "type": "string",
-      "enum": [
-        "response-body",
-        "response-headers",
-        "response-status",
-        "call-inputs",
-        "stdout",
-        "stderr",
-        "exit-code",
-        "artifact"
-      ],
-      "description": "AD-26's closed evidence channel vocabulary. The same eight the interaction-rooted pointer addresses; a channel outside this set is a syntax error rather than an unreachable-evidence finding."
     },
     "EvaluatorRecommendation": {
       "type": "string",

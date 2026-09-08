@@ -262,7 +262,12 @@ describe('a capture from a file the descriptor does not describe', () => {
 			permittedKeys: ['seed'],
 			types: { seed: 'string' },
 		}
-		operation.responseDescriptor.types.fragments = 'string'
+		// A scalar key of its own rather than retyping `fragments`: that key is
+		// the collection a quantifier in this fixture ranges over, and retyping
+		// it makes the quantifier illegal for an unrelated reason.
+		operation.responseDescriptor.requiredKeys.push('digest')
+		operation.responseDescriptor.permittedKeys.push('digest')
+		operation.responseDescriptor.types.digest = 'string'
 		contract.interactionPlan = [
 			contract.interactionPlan[0],
 			{
@@ -274,7 +279,7 @@ describe('a capture from a file the descriptor does not describe', () => {
 					argument: null,
 					option: {
 						seed: {
-							captured: `/interactions/select/artifact/${artifactId}/fragments`,
+							captured: `/interactions/select/artifact/${artifactId}/digest`,
 						},
 					},
 					environment: null,

@@ -380,7 +380,10 @@ describe('release-prepare refusals leave origin and the tree untouched', () => {
 		const { status, stderr } = await run(fx, 'patch', '--on-main')
 		expect(status).toBe(1)
 		expect(stderr).toContain('origin rejected the push of v0.1.1 to main')
-		expect(stderr).toContain('requires no status check')
+		// The message names the mechanism the push depends on. It used to name the wrong one, and
+		// this assertion pinned the wrong one in place: `protect-main` was said to require no
+		// status check, while its `code_coverage` rule refused the push regardless.
+		expect(stderr).toContain('bypass entry on the protect-main ruleset')
 		const after = inspect(fx)
 		expect(after.originMain).toBe(before.originMain)
 		// The local commit stays, as the message says; a rerun from a clean main is the fix.

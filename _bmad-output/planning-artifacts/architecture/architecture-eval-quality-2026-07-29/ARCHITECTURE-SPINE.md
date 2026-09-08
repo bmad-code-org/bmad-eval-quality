@@ -243,6 +243,7 @@ Nothing imports `cli/`.
   | `brief-exceeds-scripting-bound` | the emitted brief's generated direction prose exceeds the contract's declared bound on enumerated probe steps | AD-16 |
   | `unresolved-artifact-reference` | a pointer or a descriptor root names an artifact identifier the operation does not declare it writes | AD-26, AD-19 |
   | `irreducible-step-reference` | two steps one direction references render to the same derived reference even fully escalated, so the sealed brief cannot name them apart | AD-16, AD-3 |
+  | `excluded-content-in-declaration` | a contract carries a string whose shape is a credential, a token, an address, an account identifier, or transaction content, in any field | AD-18 |
 
   Adding a class is an amendment to this AD and to no other, and an AD that commands a compile-time check without adding a code here is a defect in that AD. The published schema's failure-code enumeration is generated from this table, not maintained beside it.
 

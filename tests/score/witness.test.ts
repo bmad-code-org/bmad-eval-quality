@@ -775,6 +775,87 @@ describe('quotation audits and never governs', () => {
 		)
 	})
 
+	// Before this the artifact channel serialized the whole `artifacts` map, which
+	// was wrong twice over: every newline and quotation mark came back escaped, so
+	// a quotation from a file with more than one line could never match, and the
+	// search ran over every file at once, so a quotation found in a file the
+	// finding did not cite was reported as witnessed.
+	describe('the artifact channel, which names one file rather than a map', () => {
+		const written = observation({
+			observationId: 'obs-files',
+			artifacts: {
+				report: { kind: 'text', value: 'line one\nline two' },
+				log: { kind: 'text', value: 'unrelated' },
+			},
+		})
+		const at = 'test'
+
+		it('projects one named file as its own text, newlines and all', () => {
+			expect(projectChannel(written, 'artifact', at, 'report')).toBe(
+				'line one\nline two',
+			)
+		})
+
+		it('projects a file the run did not write to nothing', () => {
+			expect(projectChannel(written, 'artifact', at, 'absent')).toBeNull()
+		})
+
+		it('projects nothing when the quotation names no file at all', () => {
+			expect(projectChannel(written, 'artifact', at, null)).toBeNull()
+		})
+
+		it('reaches no key the run did not write, inherited or otherwise', () => {
+			// `artifacts` is a record over an open identifier, and `constructor` is
+			// a legal one, so a lookup that trusted `in` or a bare index would find
+			// `Object.prototype.constructor` and project a function.
+			expect(projectChannel(written, 'artifact', at, 'constructor')).toBeNull()
+		})
+
+		it('witnesses a multi-line quotation from the file that carries it', () => {
+			expect(
+				auditQuotation(
+					recordOf(
+						[written],
+						[
+							defectFinding(['obs-files'], {
+								findingId: 'F-030',
+								quote: 'one\nline two',
+								channel: 'artifact',
+								artifactId: 'report',
+							}),
+						],
+					),
+				),
+			).toEqual([])
+		})
+
+		it('does not witness a quotation found in a file the finding did not cite', () => {
+			expect(
+				auditQuotation(
+					recordOf(
+						[written],
+						[
+							defectFinding(['obs-files'], {
+								findingId: 'F-031',
+								quote: 'unrelated',
+								channel: 'artifact',
+								artifactId: 'report',
+							}),
+						],
+					),
+				),
+			).toEqual([
+				{
+					findingId: 'F-031',
+					quoteIndex: 0,
+					channel: 'artifact',
+					quote: 'unrelated',
+					citedObservationIds: ['obs-files'],
+				},
+			])
+		})
+	})
+
 	it('reports a quote appearing in no cited observation', () => {
 		const unwitnessed = auditQuotation(
 			recordOf(bothObservations, [
@@ -940,9 +1021,15 @@ describe('the containment procedure, defined and unreachable in v0', () => {
 	// schema's first version, so no record this reader accepts can present the
 	// shape the procedure exists for.
 	const legacyFinding = {
-		quotedEvidence: [{ quote: 'internal error', channel: 'response-body' }],
+		quotedEvidence: [
+			{ quote: 'internal error', channel: 'response-body', artifactId: null },
+		],
 	} as unknown as {
-		quotedEvidence: { quote: string; channel: 'response-body' }[]
+		quotedEvidence: {
+			quote: string
+			channel: 'response-body'
+			artifactId: null
+		}[]
 	}
 
 	it('labels its result reconstructed and resolves by quotation', () => {

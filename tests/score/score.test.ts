@@ -715,7 +715,13 @@ describe('score: regressions and documented fallbacks beyond the frozen I/O Matr
 							confidence: 0.9,
 							observationIds: ['obs-1'],
 							evidenceArtifacts: [],
-							quotedEvidence: [{ quote: 'ok', channel: 'response-status' }],
+							quotedEvidence: [
+								{
+									quote: 'ok',
+									channel: 'response-status',
+									artifactId: null,
+								},
+							],
 						},
 						{
 							findingType: 'observation',

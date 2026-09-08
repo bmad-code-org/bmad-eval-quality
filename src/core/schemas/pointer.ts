@@ -75,12 +75,6 @@ export const INPUT_CHANNELS = [
 
 export type InputChannelName = (typeof INPUT_CHANNELS)[number]
 
-/** Whether a channel name is one of the four an HTTP interface accepts. */
-export const isTransportChannelName = (
-	channel: InputChannelName,
-): channel is TransportChannelName =>
-	(TRANSPORT_CHANNELS as readonly string[]).includes(channel)
-
 // The four-way partition (tail-bearing, scalar, transport-rooted,
 // identifier-rooted) is spelled out and typed against the enum rather than
 // rebuilt from it, so a typo fails the typecheck; a test asserts it stays
@@ -133,6 +127,26 @@ export const COMMAND_RESPONSE_CHANNELS = [
 	'stderr',
 	'exit-code',
 	'artifact',
+] as const satisfies readonly EvidenceChannelName[]
+
+/**
+ * Every channel but the identifier-rooted one, in the vocabulary's own order.
+ *
+ * Spelled out and typed against the enum rather than filtered from it: a filter
+ * widens to `EvidenceChannelName[]` and `z.enum` needs a tuple, and the whole
+ * point of the list is that adding a ninth channel has to be a decision about
+ * which side of this line it falls on rather than something a filter absorbs.
+ * `tests/schemas/pointer.test.ts` asserts it partitions the vocabulary with
+ * `IDENTIFIER_ROOTED_CHANNEL` exactly.
+ */
+export const NON_IDENTIFIER_ROOTED_CHANNELS = [
+	'response-body',
+	'response-headers',
+	'response-status',
+	'call-inputs',
+	'stdout',
+	'stderr',
+	'exit-code',
 ] as const satisfies readonly EvidenceChannelName[]
 
 /** Every channel that carries what came back, whichever kind produced it. */

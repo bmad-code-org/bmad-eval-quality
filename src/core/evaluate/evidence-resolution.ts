@@ -6,11 +6,13 @@
  * `Observation`.
  */
 
+import { targetsDescribedChannel } from '../declared-inputs.ts'
 import type { EvalContract } from '../schemas/eval-contract.ts'
 import type { JsonValue } from '../schemas/primitives.ts'
 import type { ProbeObservedBody } from '../schemas/probe-body.ts'
 import type { Observation } from '../schemas/sealed-run-record.ts'
 import {
+	anyOperationOf,
 	buildPlanIndex,
 	decodeTail,
 	type EvidenceTarget,
@@ -41,9 +43,14 @@ export const ARRAY_INDEX_PATTERN = /^(?:0|[1-9][0-9]*)$/
  * running past a scalar collapses to `ABSENT` uniformly (AD-26).
  */
 export function walkTail(
-	root: JsonValue,
+	root: ResolvedValue,
 	tail: readonly string[],
 ): ResolvedValue {
+	// A root that did not resolve stays unresolved however short the tail is.
+	// The bare-pointer case is the one that matters: without this, an absent
+	// channel with no tail returned its own root and a caller could not tell it
+	// from a resolved value.
+	if (root === ABSENT) return ABSENT
 	let current: JsonValue = root
 	for (const token of tail) {
 		if (current === null || typeof current !== 'object') return ABSENT
@@ -84,18 +91,23 @@ export function decodeBoundElementTail(pointer: string): readonly string[] {
  * an observation through this one spelling, keeping the switch in one place.
  */
 /**
- * The value a tagged observed channel resolves to. A JSON body resolves to the
- * value itself, so a tail walks into it; text resolves to the string, so a tail
- * over it resolves `ABSENT` through `walkTail`, which is the truthful answer
- * for output nothing parsed.
+ * The value a tagged observed channel resolves to.
+ *
+ * A JSON body resolves to the value itself, so a tail walks into it; text
+ * resolves to the string, so a tail over it resolves `ABSENT` through
+ * `walkTail`, which is the truthful answer for output nothing parsed. An absent
+ * channel resolves to `ABSENT` and never to `null`: the tag exists precisely to
+ * tell "nothing was observed here" from "a value that was JSON null", and
+ * collapsing the two would make `existence` answer true for a file the run
+ * never wrote, since AD-26 counts `null` as present.
  */
-const observedValue = (body: ProbeObservedBody): JsonValue =>
-	body.kind === 'absent' ? null : body.value
+const observedValue = (body: ProbeObservedBody): ResolvedValue =>
+	body.kind === 'absent' ? ABSENT : body.value
 
 export function channelRoot(
 	observation: Observation,
 	target: EvidenceTarget,
-): JsonValue {
+): ResolvedValue {
 	switch (target.channel) {
 		case 'response-body':
 			return observation.responseBody
@@ -127,8 +139,18 @@ export function channelRoot(
 				// is 'artifact', so this throw should never fire.
 				throw new TypeError('artifact evidence target names no artifact')
 			}
+			// `Object.hasOwn` for the reason this module's header gives for
+			// `stepObservations` and `referenceSets`: `Identifier` admits
+			// `constructor`, `toString` and `valueOf`, so a bare index on an
+			// unwritten file of one of those names resolves to an inherited
+			// function rather than to nothing.
+			//
+			// A file the run did not write is absent evidence, not a `null`
+			// value. `null` would read as present under AD-26 and invert every
+			// oracle asserting the file exists or does not.
+			if (!Object.hasOwn(observation.artifacts, artifactId)) return ABSENT
 			const written = observation.artifacts[artifactId]
-			return written === undefined ? null : observedValue(written)
+			return written === undefined ? ABSENT : observedValue(written)
 		}
 	}
 }
@@ -207,11 +229,17 @@ export function makePointerDenotesCollection(
 	return (pointer) => {
 		if (pointer.startsWith('@')) return false
 		const target = parseEvidenceTarget(pointer)
-		if (target.channel !== 'response-body') return false
 		const step = getIndex().stepOf(target.stepId)
 		if (step === undefined) return false
-		const operation = getIndex().operationOf(step.operationId)
+		const operation = anyOperationOf(getIndex(), step.operationId)
 		if (operation === undefined) return false
+		// The channel is tested against the operation's own descriptor rather
+		// than against `response-body`. AD-4's empty-collection resolution
+		// applies to whichever channel an operation says carries its declared
+		// collections, and hard-coding the body left it inapplicable to every
+		// command contract: a quantifier over an empty declared collection
+		// resolved `false` instead of `insufficient-evidence`.
+		if (!targetsDescribedChannel(operation, target)) return false
 		const { collectionLocations } = operation.responseDescriptor
 		if (collectionLocations === null) return false
 		return collectionLocations.some((location) =>
