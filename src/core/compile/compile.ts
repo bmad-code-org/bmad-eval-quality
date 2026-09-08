@@ -18,6 +18,18 @@
  * Grouping it with the two codes owed item 3 added, at the inserted position
  * below, would let a lower-ranked code win on a contract carrying both defects.
  *
+ * `checkArtifactReferences` fires `unresolved-artifact-reference`, the
+ * registry's last code, but runs near the front for the reason its own call
+ * site records: it names a fault that reachability can only describe the
+ * consequence of, and reachability abstains on the same pointer so the two
+ * never race.
+ *
+ * `checkStepReferenceReducibility` runs last, after every other check has had
+ * its say. It is the only check that reports what a LATER stage cannot do
+ * rather than what this contract declares wrongly, so a contract with an
+ * ordinary declaration fault should hear about that fault rather than about
+ * the sealing consequence of it.
+ *
  * `checkRubricIdentifiers` fires `rubric-unanchored` but runs ahead of
  * `checkRubricReasoningProse`, which outranks it in the registry. A duplicated
  * rubric or criterion id makes every `rubrics[id=...]` path the other three
@@ -48,6 +60,7 @@ import {
 	checkScopedResourceReferences,
 } from './forbidden-inputs.ts'
 import {
+	checkArtifactReferences,
 	checkDuplicateOperationSignature,
 	checkInterfaceKind,
 	checkUndeclaredMandatoryInput,
@@ -72,6 +85,7 @@ import {
 	checkWitnessLegality,
 	checkWitnessLegIdentifiers,
 } from './sensitivity-witness.ts'
+import { checkStepReferenceReducibility } from './step-reference.ts'
 import { checkWaiverCompleteness } from './waivers.ts'
 
 export function compile(
@@ -80,6 +94,11 @@ export function compile(
 ): EvalContract {
 	checkRequirementLinkage(contract)
 	checkObservableSuccessCriterion(contract)
+	// Ahead of reachability, because a pointer naming an artifact nothing
+	// declares has no operation shape to be reachable against, and the code
+	// that names the fault directly should not lose the race to the code that
+	// describes its consequence.
+	checkArtifactReferences(contract)
 	checkEvidenceReachability(contract)
 	checkCapturedReachability(contract)
 	checkBoundElementScope(contract)
@@ -107,6 +126,7 @@ export function compile(
 	checkForbiddenInputFloor(contract)
 	checkScopedResourceReferences(contract)
 	checkWaiverCompleteness(contract)
+	checkStepReferenceReducibility(contract)
 	// Identifiers before legality. A duplicated or plan-colliding leg id makes
 	// the legality check's question ("does the relation address both legs?")
 	// unanswerable, so legality-first reports an unreachable-evidence failure on

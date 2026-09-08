@@ -178,6 +178,16 @@ export const ingest: IngestStage<ValidatedObservations> = (
 			'oracle-disposition',
 			record.oracleDispositions.map((disposition) => disposition.oracleId),
 		],
+		// AD-17's "one judge call scoring all named criteria", read as far as
+		// one record can be read: a criterion scored twice is not one call's
+		// product whatever the rest of the record says. Keyed by the pair,
+		// since two rubrics may each declare a criterion of the same name.
+		[
+			'judge-result',
+			record.judgeResults.map(
+				(result) => `${result.rubricId}/${result.criterionId}`,
+			),
+		],
 	] as const) {
 		const counts = new Map<string, number>()
 		for (const identifier of identifiers) {

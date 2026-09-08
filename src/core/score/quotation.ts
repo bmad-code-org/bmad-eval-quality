@@ -21,6 +21,7 @@
  */
 import { serialize } from '../canonical/canonicalize.ts'
 import type { EvidenceChannelName } from '../schemas/pointer.ts'
+import type { ProbeObservedBody } from '../schemas/probe-body.ts'
 import type {
 	Observation,
 	SealedRunRecord,
@@ -56,6 +57,20 @@ type QuotedEvidence = DefectFinding['quotedEvidence'][number]
  * Should canonicalization fault on a caller's record, the fault propagates,
  * which is what keeps this procedure from being circular with it.
  */
+/**
+ * One tagged observed value as the text a quotation is compared against. A
+ * text body is its own value; a JSON body is its canonical serialisation, the
+ * same one `response-body` gets; an absent channel has no text.
+ */
+function observedText(
+	body: ProbeObservedBody,
+	artifactPath: string,
+): string | null {
+	if (body.kind === 'absent') return null
+	if (body.kind === 'text') return body.value
+	return serialize(body.value, artifactPath)
+}
+
 export function projectChannel(
 	observation: Observation,
 	channel: EvidenceChannelName,
@@ -63,9 +78,14 @@ export function projectChannel(
 ): string | null {
 	switch (channel) {
 		case 'stdout':
-			return observation.stdout
+			return observedText(observation.stdout, artifactPath)
 		case 'stderr':
-			return observation.stderr
+			return observedText(observation.stderr, artifactPath)
+		case 'artifact':
+			// Every written file at once, keyed by identifier. A quotation names
+			// a channel rather than one artifact, so the whole map is the
+			// channel's text, the way `call-inputs` serialises all eight.
+			return serialize(observation.artifacts, artifactPath)
 		case 'response-status':
 			return observation.responseStatus === null
 				? null

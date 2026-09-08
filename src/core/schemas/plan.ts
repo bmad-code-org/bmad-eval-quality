@@ -89,12 +89,39 @@ export const BindingChannel = BindingChannelMap.nullable().meta({
  * requires every member at parse time and fails five of the Gate C fixture's
  * six steps, all of which bind a subset of the channels.
  */
-export const InputBinding = z.strictObject({
+export const ApiInputBinding = z.strictObject({
 	path: BindingChannel,
 	query: BindingChannel,
 	header: BindingChannel,
 	body: BindingChannel,
 })
+
+/** The same shape over the four channels a command-kind operation accepts. */
+export const CommandInputBinding = z.strictObject({
+	argument: BindingChannel,
+	option: BindingChannel,
+	environment: BindingChannel,
+	stdin: BindingChannel,
+})
+
+/**
+ * A plain union rather than a discriminated one, and the agreement between a
+ * step's bound channels and its operation's kind is a compile-time check
+ * rather than a schema refinement.
+ *
+ * A step names an `operationId` and nothing else; the kind of the interface
+ * declaring that operation lives in a different subtree of the same document.
+ * That is the cross-subtree constraint the `{ principal }` comment above
+ * already records as unrepresentable in the export. Adding a `kind` field to
+ * the step itself was the other option and duplicates a fact the operation
+ * already carries, which makes a disagreeing step a second inconsistency to
+ * check rather than one fewer.
+ */
+export const InputBinding = z.union([ApiInputBinding, CommandInputBinding])
+
+export type InputBinding = z.infer<typeof InputBinding>
+
+export type BindingChannel = z.infer<typeof BindingChannel>
 
 /**
  * AD-39's declared selector cardinality (owed item 2): what a step means when

@@ -26,7 +26,10 @@ import type { DefectSignature } from '../src/core/schemas/defect-signature.ts'
 import type { EvalContract } from '../src/core/schemas/eval-contract.ts'
 import { EvaluatorConfiguration } from '../src/core/schemas/evaluator-configuration.ts'
 import { EvidenceArtifact } from '../src/core/schemas/evidence-artifact.ts'
-import type { Operation } from '../src/core/schemas/interface.ts'
+import type {
+	AnyOperation,
+	ResponseDescriptor,
+} from '../src/core/schemas/interface.ts'
 import { IsolationManifest } from '../src/core/schemas/isolation-manifest.ts'
 import { PreflightVerdict } from '../src/core/schemas/preflight-verdict.ts'
 import type { KeyedShapeDescriptor } from '../src/core/schemas/primitives.ts'
@@ -166,7 +169,7 @@ const NOTE_SHAPE: KeyedShapeDescriptor = {
 	},
 }
 
-const noteEnvelope = (): Operation['responseDescriptor'] => ({
+const noteEnvelope = (): ResponseDescriptor => ({
 	requiredKeys: ['ok'],
 	permittedKeys: ['ok', 'note', 'error'],
 	types: { ok: 'boolean', note: 'object', error: 'string' },
@@ -188,7 +191,7 @@ const noteEnvelope = (): Operation['responseDescriptor'] => ({
  * `cardinality` and an explicit `after`.
  */
 const AUTHORED_CONTRACT = {
-	schemaVersion: 3,
+	schemaVersion: 4,
 	contractId: 'notes-api-v1',
 	parentDigest: null,
 	revisionCount: 0,
@@ -684,6 +687,10 @@ const SEEDED_SIGNATURE: DefectSignature = {
 				query: null,
 				header: null,
 				body: null,
+				argument: null,
+				option: null,
+				environment: null,
+				stdin: null,
 			},
 		},
 		predicate: {
@@ -703,7 +710,7 @@ const SEEDED_SIGNATURE: DefectSignature = {
  * why `sealProbeSet` below fails the build on a rejection.
  */
 const AUTHORED_PROBE = {
-	schemaVersion: 2,
+	schemaVersion: 3,
 	parentDigest: null,
 	revisionCount: 0,
 	probeId: 'P-001',
@@ -770,7 +777,7 @@ const authoredRecord = (
 	briefDigest: string,
 	evaluatorConfigurationDigest: string,
 ): SealedRunRecord => ({
-	schemaVersion: 3,
+	schemaVersion: 4,
 	parentDigest: null,
 	revisionCount: 0,
 	runId: 'spike-run-0001',
@@ -875,11 +882,16 @@ const authoredRecord = (
 			sequence: 1,
 			operationId: 'get-note',
 			provenance: 'baseline',
+			principal: null,
 			callInputs: {
 				path: { id: 'n-1' },
 				query: null,
 				header: null,
 				body: null,
+				argument: null,
+				option: null,
+				environment: null,
+				stdin: null,
 			},
 			responseBody: {
 				ok: true,
@@ -887,33 +899,50 @@ const authoredRecord = (
 			},
 			responseHeaders: JSON_HEADERS,
 			responseStatus: 200,
-			stdout: null,
-			stderr: null,
+			stdout: { kind: 'absent' },
+			stderr: { kind: 'absent' },
 			exitCode: null,
+			artifacts: {},
 		},
 		{
 			observationId: 'obs-002',
 			sequence: 2,
 			operationId: 'list-notes',
 			provenance: 'baseline',
-			callInputs: { path: null, query: null, header: null, body: null },
+			principal: null,
+			callInputs: {
+				path: null,
+				query: null,
+				header: null,
+				body: null,
+				argument: null,
+				option: null,
+				environment: null,
+				stdin: null,
+			},
 			responseBody: { ok: true, notes: [] },
 			responseHeaders: JSON_HEADERS,
 			responseStatus: 200,
-			stdout: null,
-			stderr: null,
+			stdout: { kind: 'absent' },
+			stderr: { kind: 'absent' },
 			exitCode: null,
+			artifacts: {},
 		},
 		{
 			observationId: 'obs-003',
 			sequence: 3,
 			operationId: 'patch-note',
 			provenance: 'evaluator-chosen',
+			principal: null,
 			callInputs: {
 				path: { id: 'n-1' },
 				query: null,
 				header: null,
 				body: { title: 'Revised' },
+				argument: null,
+				option: null,
+				environment: null,
+				stdin: null,
 			},
 			responseBody: {
 				ok: true,
@@ -921,20 +950,26 @@ const authoredRecord = (
 			},
 			responseHeaders: JSON_HEADERS,
 			responseStatus: 200,
-			stdout: null,
-			stderr: null,
+			stdout: { kind: 'absent' },
+			stderr: { kind: 'absent' },
 			exitCode: null,
+			artifacts: {},
 		},
 		{
 			observationId: 'obs-004',
 			sequence: 4,
 			operationId: 'get-note',
 			provenance: 'evaluator-chosen',
+			principal: null,
 			callInputs: {
 				path: { id: 'n-1' },
 				query: null,
 				header: null,
 				body: null,
+				argument: null,
+				option: null,
+				environment: null,
+				stdin: null,
 			},
 			responseBody: {
 				ok: true,
@@ -942,20 +977,26 @@ const authoredRecord = (
 			},
 			responseHeaders: JSON_HEADERS,
 			responseStatus: 200,
-			stdout: null,
-			stderr: null,
+			stdout: { kind: 'absent' },
+			stderr: { kind: 'absent' },
 			exitCode: null,
+			artifacts: {},
 		},
 		{
 			observationId: 'obs-005',
 			sequence: 5,
 			operationId: 'patch-note',
 			provenance: 'evaluator-chosen',
+			principal: null,
 			callInputs: {
 				path: { id: 'n-2' },
 				query: null,
 				header: null,
 				body: { colour: 'red' },
+				argument: null,
+				option: null,
+				environment: null,
+				stdin: null,
 			},
 			responseBody: {
 				ok: true,
@@ -966,9 +1007,10 @@ const authoredRecord = (
 			},
 			responseHeaders: JSON_HEADERS,
 			responseStatus: 200,
-			stdout: null,
-			stderr: null,
+			stdout: { kind: 'absent' },
+			stderr: { kind: 'absent' },
 			exitCode: null,
+			artifacts: {},
 		},
 	],
 	judgeResults: [],
@@ -1162,7 +1204,7 @@ export function buildWorkedExampleChain(): WorkedExampleChain {
 
 	// AD-9's gate, run for real. A rejection fails the build rather than
 	// shipping a chain scored against a probe no sealed set would admit.
-	const homeOperationOf = (candidate: Probe): Operation | null =>
+	const homeOperationOf = (candidate: Probe): AnyOperation | null =>
 		candidate.expectedClean || candidate.defectSignature === null
 			? null
 			: resolveHomeOperation(

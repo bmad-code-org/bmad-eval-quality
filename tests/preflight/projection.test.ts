@@ -11,7 +11,7 @@ import {
 	projectObservation,
 	pruneVolatile,
 } from '../../src/core/preflight/projection.ts'
-import type { ProbeObservation } from '../../src/core/schemas/port-messages.ts'
+import type { ApiProbeObservation } from '../../src/core/schemas/port-messages.ts'
 import {
 	absentBody,
 	jsonBody,
@@ -25,12 +25,13 @@ const prune = (body: Parameters<typeof pruneVolatile>[0], pointers: string[]) =>
 
 const observation = (
 	probeId: string,
-	body: ProbeObservation['body'],
-	patch: Partial<ProbeObservation> = {},
-): ProbeObservation => ({
+	body: ApiProbeObservation['body'],
+	patch: Partial<ApiProbeObservation> = {},
+): ApiProbeObservation => ({
 	probeId,
 	interfaceId: 'thing-api',
 	operationId: 'read-thing',
+	kind: 'api',
 	status: 200,
 	headers: {},
 	body,
@@ -39,8 +40,8 @@ const observation = (
 
 const projectionOf = (
 	probeId: string,
-	body: ProbeObservation['body'],
-	patch: Partial<ProbeObservation> = {},
+	body: ApiProbeObservation['body'],
+	patch: Partial<ApiProbeObservation> = {},
 ): ProjectedObservation =>
 	projectObservation(
 		observation(probeId, body, patch),
@@ -82,12 +83,13 @@ describe('pruneVolatile', () => {
 })
 
 describe('the projection', () => {
-	it('74. carries exactly five keys and no response headers', () => {
+	it('74. carries exactly six keys and no response headers', () => {
 		const projected = projectionOf('read-a', jsonBody({ value: 'v' }), {
 			headers: { 'x-request-id': 'r-1' },
 		})
 		expect(Object.keys(projected).sort()).toEqual([
 			'body',
+			'exitCode',
 			'interfaceId',
 			'legId',
 			'operationId',
@@ -168,7 +170,7 @@ describe('fixtureDigest', () => {
 		const value = digest([first, second])
 		expect(value).toMatch(/^sha256:[0-9a-f]{64}$/)
 		expect(value).toBe(
-			'sha256:f0251b7c9bff1a37ab4a775539a9ae9b96830c945489f41bf2416240dfb0d684',
+			'sha256:f945b35ab40c49436be1d82609d3847a76b41d148f8447209829e28f73967e3a',
 		)
 	})
 })

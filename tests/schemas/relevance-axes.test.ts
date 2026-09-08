@@ -5,10 +5,17 @@
 
 import { describe, expect, it } from 'vitest'
 import {
+	requestChannelsOf,
+	requestShapeOf,
+} from '../../src/core/declared-inputs.ts'
+import {
 	EvalContract,
 	SiblingGroups,
 } from '../../src/core/schemas/eval-contract.ts'
-import { ResponseDescriptor } from '../../src/core/schemas/interface.ts'
+import {
+	operationsOf,
+	ResponseDescriptor,
+} from '../../src/core/schemas/interface.ts'
 import {
 	absentContract,
 	explicitlyEmptyContract,
@@ -18,19 +25,19 @@ import {
 
 // Reading through the parser rather than off the literal: the assertions then
 // speak about what the schema accepted, not about what the fixture was typed as.
-const operationsOf = (contract: unknown) =>
-	EvalContract.parse(contract).permittedInterfaces.flatMap(
-		(declared) => declared.operations,
+const declaredOperations = (contract: unknown) =>
+	EvalContract.parse(contract).permittedInterfaces.flatMap((declared) =>
+		operationsOf(declared),
 	)
 
 const firstOperation = (contract: unknown) => {
-	const operation = operationsOf(contract)[0]
+	const operation = declaredOperations(contract)[0]
 	if (!operation) throw new Error('fixture declares no operation')
 	return operation
 }
 
 const operationNamed = (contract: unknown, operationId: string) => {
-	const operation = operationsOf(contract).find(
+	const operation = declaredOperations(contract).find(
 		(candidate) => candidate.operationId === operationId,
 	)
 	if (!operation) throw new Error(`fixture declares no ${operationId}`)
@@ -97,20 +104,19 @@ describe('rule 2 — a descriptor declaring more than one pointer', () => {
 
 describe('rule 3 — an operation declaring at least one typed key', () => {
 	it('admits an operation with zero typed keys across all four channels', () => {
-		const shape = firstOperation(absentContract).requestShape
-		const typedKeys = [
-			shape.path,
-			shape.query,
-			shape.header,
-			shape.body,
-		].flatMap((channel) => Object.keys(channel.types))
+		const typedKeys = requestChannelsOf(firstOperation(absentContract)).flatMap(
+			({ shape }) => Object.keys(shape.types),
+		)
 		// Also AD-10's "declares no inputs in any channel is exempt" case.
 		expect(typedKeys).toEqual([])
 	})
 
 	it('admits an operation with a typed key', () => {
-		const shape = operationNamed(populatedContract, 'create-thing').requestShape
-		expect(Object.keys(shape.body.types)).toEqual(['name'])
+		const shape = requestShapeOf(
+			operationNamed(populatedContract, 'create-thing'),
+			'body',
+		)
+		expect(Object.keys(shape?.types ?? {})).toEqual(['name'])
 	})
 })
 

@@ -35,7 +35,7 @@
     "contractId": {
       "type": "string",
       "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
-      "description": "The prior art's `taskId`, renamed. \"Task\" is experiment vocabulary with no product meaning, and the manifest keeps an identifier because it is the artifact `core/ingest` matches against a run; the run record and the probe pin what they describe by digest instead."
+      "description": "The prior art's `taskId`, renamed. \"Task\" is experiment vocabulary with no product meaning, and the manifest keeps an identifier so a reader can say which contract the run was isolated for. It is a label and not a second operand for any check: `core/ingest` matches this artifact to a run on `runId`, `contractDigest`, and `evaluatorConfigurationDigest`, which is the whole of the agreement the two artifacts make. Nothing in the pipeline carries a contract identifier to compare this against, since the sealed run record pins its contract by digest and the eval contract is not among ingest's inputs."
     },
     "conditionArm": {
       "type": "string",
@@ -68,38 +68,44 @@
     "allowedMounts": {
       "type": "array",
       "items": {
-        "type": "string"
+        "type": "string",
+        "minLength": 1
       }
     },
     "observedMounts": {
       "type": "array",
       "items": {
-        "type": "string"
+        "type": "string",
+        "minLength": 1
       },
-      "description": "Observed mounts, network targets, and tool calls exceeding their allowlist is a violation AD-16 has `core/ingest` record; it is a cross-field rule with no AD-5 code and the schema admits it."
+      "description": "Observed mounts, network targets, and tool calls exceeding their allowlist is a violation AD-16 has `core/ingest` record; it is a cross-field rule with no AD-5 code and the schema admits it. Each entry is non-empty: an empty string is not a mount, and it renders as a basis line naming nothing after its colon."
     },
     "networkAllowlist": {
       "type": "array",
       "items": {
-        "type": "string"
+        "type": "string",
+        "minLength": 1
       }
     },
     "observedNetworkTargets": {
       "type": "array",
       "items": {
-        "type": "string"
+        "type": "string",
+        "minLength": 1
       }
     },
     "toolAllowlist": {
       "type": "array",
       "items": {
-        "type": "string"
+        "type": "string",
+        "minLength": 1
       }
     },
     "observedToolCalls": {
       "type": "array",
       "items": {
-        "type": "string"
+        "type": "string",
+        "minLength": 1
       }
     },
     "resourceCeilings": {
@@ -357,13 +363,14 @@
     "violation": {
       "anyOf": [
         {
-          "type": "string"
+          "type": "string",
+          "minLength": 1
         },
         {
           "type": "null"
         }
       ],
-      "description": "The sixteenth of the prior art's sixteen required members, and the one that is not a description of the run: a non-null violation invalidates it. AD-16 says the schema is \"seeded from the prior art's fifteen\"; the prior art's `required` array has sixteen. Settled by construction: the fifteen are the fields describing the run and this is the invalidation outcome. All sixteen are carried."
+      "description": "The sixteenth of the prior art's sixteen required members, and the one that is not a description of the run: a non-null violation invalidates it. Non-empty when present, on `QuotedEvidence.quote`'s precedent: `null` is the spelling for no violation, so an empty string is a violation that names nothing while still invalidating the run and rendering a blank basis entry. AD-16 says the schema is \"seeded from the prior art's fifteen\"; the prior art's `required` array has sixteen. Settled by construction: the fifteen are the fields describing the run and this is the invalidation outcome. All sixteen are carried."
     }
   },
   "required": [

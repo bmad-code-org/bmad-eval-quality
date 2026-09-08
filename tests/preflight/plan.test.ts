@@ -54,10 +54,13 @@ describe('the sensitivity legs', () => {
 
 	it("92. carries the operation's method and path template unchanged", () => {
 		const [leg] = legsFor(planOf(), 'read-thing')
-		expect(leg?.request.method).toBe('GET')
-		expect(leg?.request.pathTemplate).toBe('/things/{id}')
-		expect(leg?.request.interfaceId).toBe('thing-api')
-		expect(leg?.request.operationId).toBe('read-thing')
+		const request = leg?.request
+		if (request?.kind !== 'api')
+			throw new Error('this fixture declares an api interface')
+		expect(request.method).toBe('GET')
+		expect(request.pathTemplate).toBe('/things/{id}')
+		expect(request.interfaceId).toBe('thing-api')
+		expect(request.operationId).toBe('read-thing')
 	})
 
 	it('93. maps WitnessInputs onto ProbeRequest.channels with no conversion loss', () => {

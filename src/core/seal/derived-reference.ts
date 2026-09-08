@@ -5,26 +5,28 @@
  * Resolves pointers through a `PlanIndex` into a phrase, kept apart from
  * `plan-index.ts`'s resolving and `direction-prose.ts`'s relation templates.
  */
-import type { Operation } from '../schemas/interface.ts'
-import type { InteractionStep } from '../schemas/plan.ts'
-import type { TransportChannelName } from '../schemas/pointer.ts'
+import { boundChannelsOf, isCommandOperation } from '../declared-inputs.ts'
+import { StructuralFailure } from '../failure-codes.ts'
+import type { AnyOperation } from '../schemas/interface.ts'
+import type { BindingChannel, InteractionStep } from '../schemas/plan.ts'
+import type { InputChannelName } from '../schemas/pointer.ts'
 import {
+	anyOperationOf,
 	type EvidenceTarget,
 	type PlanIndex,
 	parseEvidenceTarget,
-	resolveOperation,
 	resolveStep,
 } from './plan-index.ts'
 
-// InputBinding's four channels share one value shape, so indexing through
-// InteractionStep names it without adding a fifth type alias to
+// Every binding channel of either kind shares one value shape, so naming it
+// through the schema's own `BindingChannel` avoids a second type alias in
 // `core/schemas/`.
-type BindingValue = NonNullable<InteractionStep['inputBinding']['path']>[string]
+type BindingValue = NonNullable<BindingChannel>[string]
 
 type ResolvedTarget = {
 	readonly target: EvidenceTarget
 	readonly step: InteractionStep
-	readonly operation: Operation
+	readonly operation: AnyOperation
 }
 
 function resolveEvidenceTarget(
@@ -33,7 +35,12 @@ function resolveEvidenceTarget(
 ): ResolvedTarget {
 	const target = parseEvidenceTarget(pointer)
 	const step = resolveStep(index, target.stepId)
-	const operation = resolveOperation(index, step.operationId)
+	const operation = anyOperationOf(index, step.operationId)
+	if (operation === undefined) {
+		throw new TypeError(
+			`step names an operation the permitted interfaces do not declare: ${step.operationId}`,
+		)
+	}
 	return { target, step, operation }
 }
 
@@ -53,11 +60,19 @@ function joinWithAnd(items: readonly string[]): string {
 
 // Humanizing a kebab-case operationId is injective on distinct ids, and
 // `buildPlanIndex` already rejects a duplicate `operationId` across
-// interfaces, so two resolved operations never share this phrase. `method`
-// and `pathTemplate` are never printed here: AD-16 withholds the operation
-// inventory from the brief.
-function operationReference(operation: Operation): string {
-	return `the ${operation.operationId.split('-').join(' ')} endpoint`
+// interfaces, so two resolved operations never share this phrase. The
+// transport identity is never printed here, whichever kind it is: AD-16
+// withholds the operation inventory from the brief, so neither a method and a
+// path template nor an executable and a subcommand path reach an evaluator.
+//
+// The noun follows the kind. Calling a command an endpoint told the evaluator
+// something false about what it was reading, and the word is the only thing
+// this phrase says beyond the operation's own name.
+function operationReference(operation: AnyOperation): string {
+	const name = operation.operationId.split('-').join(' ')
+	return isCommandOperation(operation)
+		? `the ${name} command`
+		: `the ${name} endpoint`
 }
 
 // ---- the binding clause and its escalation ----------------------------
@@ -75,25 +90,19 @@ const ESCALATION_LEVELS: readonly EscalationLevel[] = [
 ]
 
 type TransportEntry = {
-	readonly transportChannel: TransportChannelName
+	readonly transportChannel: InputChannelName
 	readonly key: string
 	readonly value: BindingValue
 }
 
-const TRANSPORT_ORDER: readonly TransportChannelName[] = [
-	'path',
-	'query',
-	'header',
-	'body',
-]
-
-// Sorted by transport channel in fixed order, then by key name, so this
+// Sorted by input channel in `INPUT_CHANNELS` order, then by key name, so this
 // never depends on a binding map's insertion order and the rendered prose
-// stays permutation-invariant.
+// stays permutation-invariant. `boundChannelsOf` supplies the channel order.
 function bindingEntries(step: InteractionStep): readonly TransportEntry[] {
 	const entries: TransportEntry[] = []
-	for (const transportChannel of TRANSPORT_ORDER) {
-		const map = step.inputBinding[transportChannel]
+	for (const { channel: transportChannel, bound: map } of boundChannelsOf(
+		step.inputBinding,
+	)) {
 		if (map === null) continue
 		for (const key of Object.keys(map).sort()) {
 			const value = map[key]
@@ -152,9 +161,10 @@ function formatLiteral(literal: unknown): string {
 // predecessor separates them by its own binding clause. Two predecessors that
 // are themselves irreducible still tie, and the throw there is correct: the
 // declared structure does not distinguish them, which is the same answer
-// `irreducibleCollisionPair` already gets. That throw is a bare `TypeError`
-// rather than a coded failure, which is a pre-existing gap this widens; the
-// deferred-work entry names hoisting the collision check to compile time.
+// `irreducibleCollisionPair` already gets. That throw is a coded
+// `StructuralFailure` under `irreducible-step-reference`, and it is
+// hoisted to compile time by `checkStepReferenceReducibility`, which runs this
+// same ladder and reports the same code before `seal` is ever called.
 //
 // It does NOT call `renderStepReference`, so none of that function's
 // constraints apply: no direction-scoped sibling list is consulted, so AD-16's
@@ -400,7 +410,7 @@ function bindingClause(
 // phrases are joined.
 function stepReferenceAtLevel(
 	step: InteractionStep,
-	operation: Operation,
+	operation: AnyOperation,
 	level: EscalationLevel,
 	index: PlanIndex,
 	rendering: ReadonlySet<string> = new Set(),
@@ -434,7 +444,7 @@ function stepReferenceAtLevel(
  */
 export function renderStepReference(
 	step: InteractionStep,
-	operation: Operation,
+	operation: AnyOperation,
 	siblings: readonly InteractionStep[],
 	index: PlanIndex,
 ): string {
@@ -478,8 +488,16 @@ export function renderStepReference(
 		}
 		if (!starved) break
 	}
-	throw new TypeError(
-		`two or more steps invoking operation "${operation.operationId}" that this direction references render to the same derived reference even fully escalated; the declared structure does not distinguish them`,
+	// Coded rather than a bare `TypeError`. A contract reaching here passed
+	// every compile check and then failed at seal time with a stack trace, and
+	// the defect is an ordinary authoring fault: two steps the declared
+	// structure does not tell apart. `checkStepReferenceReducibility` runs this
+	// same ladder at compile time so the fault is reported before seal, and
+	// this throw is what it catches.
+	throw new StructuralFailure(
+		'irreducible-step-reference',
+		`EvalContract.interactionPlan[operationId=${operation.operationId}]`,
+		`two or more steps invoking operation "${operation.operationId}" that one direction references render to the same derived reference even fully escalated; the declared structure does not distinguish them (AD-16, AD-3)`,
 	)
 }
 
@@ -555,6 +573,20 @@ function localTargetPhrase(target: EvidenceTarget): string {
 			return field !== null
 				? `the ${field} field of its standard error`
 				: 'the standard error you obtained'
+		case 'artifact': {
+			if (target.artifactId === null) {
+				// Unreachable: `parseEvidenceTarget` sets this exactly when the
+				// channel is 'artifact'.
+				throw new TypeError('artifact evidence target names no artifact')
+			}
+			// The artifact is named for the same reason the transport channel
+			// is: two files can carry the same field name, and an evaluator
+			// reading "its findings field" twice cannot tell which file it
+			// means.
+			return field !== null
+				? `the ${field} field of the ${target.artifactId} it wrote`
+				: `the ${target.artifactId} it wrote`
+		}
 	}
 }
 
@@ -580,7 +612,12 @@ function fullTargetPhrase(
 // 'b']`). Both would join to the same `".../a/b"` string, producing a false
 // tie in `sentFirstOrder` below.
 function channelSignature(target: EvidenceTarget): string {
-	return JSON.stringify([target.channel, target.transportChannel, target.tail])
+	return JSON.stringify([
+		target.channel,
+		target.transportChannel,
+		target.artifactId,
+		target.tail,
+	])
 }
 
 // A total order over one pair, independent of argument order. The final

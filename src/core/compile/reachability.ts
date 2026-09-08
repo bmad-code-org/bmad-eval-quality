@@ -7,13 +7,22 @@
  * `evaluatePointerReachability` is exported separately as the non-throwing
  * per-pointer core, for reuse and direct testing.
  */
+import {
+	declaredArtifactsOf,
+	descriptorArtifactOf,
+	descriptorChannelOf,
+	isCommandOperation,
+	requestShapeOf,
+} from '../declared-inputs.ts'
 import { ARRAY_INDEX_PATTERN } from '../evaluate/evidence-resolution.ts'
 import { StructuralFailure } from '../failure-codes.ts'
 import type { EvalContract } from '../schemas/eval-contract.ts'
 import type { Expression, Operand } from '../schemas/expression.ts'
-import type { Operation } from '../schemas/interface.ts'
+import type { AnyOperation, ResponseDescriptor } from '../schemas/interface.ts'
+import { operationsOf } from '../schemas/interface.ts'
 import { JsonTypeName } from '../schemas/primitives.ts'
 import {
+	anyOperationOf,
 	buildPlanIndex,
 	type PlanIndex,
 	parseEvidenceTarget,
@@ -112,6 +121,60 @@ function forEachCheckPointer(
 	})
 }
 
+/**
+ * Every interaction-rooted pointer the contract writes down, wherever it sits:
+ * an oracle's check and its direction's evidence targets, a rubric criterion's
+ * evidence, and each operation's sensitivity-witness relation.
+ *
+ * Broader than `forEachCheckPointer`, which walks oracle checks alone, because
+ * an artifact identifier is an authoring fault at every site that names one and
+ * a check that walked only the checks would report half of them.
+ */
+export function forEachArtifactPointer(
+	contract: EvalContract,
+	visit: (pointer: string, artifactPath: string) => void,
+): void {
+	const seen = (pointer: string, artifactPath: string): void => {
+		if (pointer.startsWith('@')) return
+		visit(pointer, artifactPath)
+	}
+	contract.oracles.forEach((oracle) => {
+		if (oracle.check !== null)
+			visitExpression(oracle.check, 'check', false, (site) =>
+				seen(
+					site.pointer,
+					`EvalContract.oracles[id=${oracle.id}].${site.path}`,
+				),
+			)
+		oracle.direction?.evidenceTargets.forEach((target, index) => {
+			seen(
+				target,
+				`EvalContract.oracles[id=${oracle.id}].direction.evidenceTargets[${index}]`,
+			)
+		})
+	})
+	contract.rubrics.forEach((rubric) => {
+		rubric.criteria.forEach((criterion) => {
+			seen(
+				criterion.evidence,
+				`EvalContract.rubrics[id=${rubric.id}].criteria[id=${criterion.id}].evidence`,
+			)
+		})
+	})
+	contract.permittedInterfaces.forEach((iface, interfaceIndex) => {
+		operationsOf(iface).forEach((operation, operationIndex) => {
+			const witness = operation.sensitivityWitness
+			if (witness === null) return
+			visitExpression(witness.relation, 'relation', false, (site) =>
+				seen(
+					site.pointer,
+					`EvalContract.permittedInterfaces[${interfaceIndex}].operations[${operationIndex}].sensitivityWitness.${site.path}`,
+				),
+			)
+		})
+	})
+}
+
 // ---- malformed-operator-expression: @/ outside any quantifier -----------
 
 export function checkBoundElementScope(contract: EvalContract): void {
@@ -161,7 +224,7 @@ export function forEachExpressionPointer(
 export function checkExpressionEvidenceReachability(
 	expression: Expression,
 	artifactPath: string,
-	operation: Operation,
+	operation: AnyOperation,
 ): void {
 	visitExpression(expression, '', false, (site) => {
 		const result = evaluateReachabilityAgainstOperation(site.pointer, operation)
@@ -231,13 +294,69 @@ export function evaluatePointerReachability(
 	if (step === undefined) {
 		return unreachable('names a step the interaction plan does not declare')
 	}
-	const operation = index.operationOf(step.operationId)
+	const operation = anyOperationOf(index, step.operationId)
 	if (operation === undefined) {
 		return unreachable(
 			`names step "${target.stepId}", which names operation "${step.operationId}", not declared by any permitted interface`,
 		)
 	}
 	return evaluateReachabilityAgainstOperation(pointer, operation)
+}
+
+/**
+ * Descent through the operation's response descriptor, from whichever channel
+ * that descriptor describes. `channel` is carried only so the reason names the
+ * pointer's own root back to the author.
+ */
+function descendThroughDescriptor(
+	descriptor: ResponseDescriptor,
+	target: { readonly tail: readonly string[] },
+	operationId: string,
+	channel: string,
+): ReachabilityResult {
+	if (target.tail.length === 0) return reachable()
+	const firstToken = target.tail[0]
+	if (firstToken === undefined) {
+		// Unreachable: the length check above guarantees an element.
+		throw new TypeError(
+			'evidence-target tail is non-empty but has no first token',
+		)
+	}
+	const { requiredKeys, permittedKeys, types, collectionLocations } = descriptor
+	// A root-declared collection (`pointer: ''`) indexes directly, bypassing
+	// the key check below. `expectedCardinality` bounds the array size
+	// (`exact` is the true count; `at-most`/`page-bounded` is an upper
+	// bound), so an index at or past it is unreachable.
+	const rootCollection = collectionLocations?.find(
+		(location) => location.pointer === '',
+	)
+	if (rootCollection !== undefined && ARRAY_INDEX_PATTERN.test(firstToken)) {
+		const { expectedCardinality } = rootCollection
+		const bound =
+			expectedCardinality.mode === 'exact'
+				? expectedCardinality.count
+				: expectedCardinality.max
+		if (Number(firstToken) >= bound) {
+			return unreachable(
+				`addresses ${channel} index ${firstToken}, out of bounds for the declared root collection's expectedCardinality (${expectedCardinality.mode} ${bound})`,
+			)
+		}
+		return reachable()
+	}
+	if (
+		!requiredKeys.includes(firstToken) &&
+		!permittedKeys.includes(firstToken)
+	) {
+		return unreachable(
+			`addresses ${channel} field "${firstToken}", which operation "${operationId}" declares in neither requiredKeys nor permittedKeys`,
+		)
+	}
+	if (descendsIntoDeclaredScalar(types, target.tail, firstToken)) {
+		return unreachable(
+			`descends into ${channel} field "${firstToken}", which operation "${operationId}" declares a scalar with no further structure`,
+		)
+	}
+	return reachable()
 }
 
 /**
@@ -249,67 +368,81 @@ export function evaluatePointerReachability(
  */
 function evaluateReachabilityAgainstOperation(
 	pointer: string,
-	operation: Operation,
+	operation: AnyOperation,
 ): ReachabilityResult {
 	if (pointer.startsWith('@')) return reachable()
 	const target = parseEvidenceTarget(pointer)
+	const descriptorChannel = descriptorChannelOf(operation)
+	const command = isCommandOperation(operation)
+
+	if (target.channel === 'artifact') {
+		const { artifactId } = target
+		if (artifactId === null) {
+			// Unreachable: parseEvidenceTarget's own guarantee.
+			throw new TypeError('artifact evidence target names no artifact')
+		}
+		// An identifier the operation does not declare produces no evidence, so
+		// it is unreachable and this says so. `checkArtifactReferences` runs
+		// earlier in `compile` and reports the more specific
+		// `unresolved-artifact-reference` for a contract, so the two never race
+		// there; this answer is the only one on the probe side, where that check
+		// does not run because it walks a contract rather than a signature.
+		if (!declaredArtifactsOf(operation).includes(artifactId)) {
+			return unreachable(
+				`names the "${artifactId}" artifact, which operation "${operation.operationId}" does not declare it writes`,
+			)
+		}
+		if (artifactId !== descriptorArtifactOf(operation)) {
+			// Declared to exist, and nothing declares its structure: the
+			// operation's one descriptor describes a different channel.
+			if (target.tail.length > 0) {
+				return unreachable(
+					`addresses a field inside the "${artifactId}" artifact, which operation "${operation.operationId}" declares it writes but declares no structure for`,
+				)
+			}
+			return reachable()
+		}
+		return descendThroughDescriptor(
+			operation.responseDescriptor,
+			target,
+			operation.operationId,
+			`the "${artifactId}" artifact`,
+		)
+	}
+
+	// The declared output channel descends through the descriptor whatever it
+	// is called. This is the one rule; the channels below are the cases where
+	// no descriptor applies.
+	if (target.channel === descriptorChannel) {
+		return descendThroughDescriptor(
+			operation.responseDescriptor,
+			target,
+			operation.operationId,
+			target.channel,
+		)
+	}
 
 	if (target.channel === 'stdout' || target.channel === 'stderr') {
-		// stdout/stderr are always bare strings. A non-empty tail proves the
-		// pointer unreachable.
+		// The stream this operation's descriptor does not describe carries no
+		// declared structure, so a non-empty tail proves the pointer
+		// unreachable.
 		if (target.tail.length > 0) {
 			return unreachable(
-				`addresses a field inside ${target.channel}, which never carries structure to descend into`,
+				`addresses a field inside ${target.channel}, which operation "${operation.operationId}" declares no structure for`,
 			)
 		}
 		return reachable()
 	}
 
-	if (target.channel === 'response-body') {
-		if (target.tail.length === 0) return reachable()
-		const firstToken = target.tail[0]
-		if (firstToken === undefined) {
-			// Unreachable: the length check above guarantees an element.
-			throw new TypeError(
-				'evidence-target tail is non-empty but has no first token',
-			)
-		}
-		const { requiredKeys, permittedKeys, types, collectionLocations } =
-			operation.responseDescriptor
-		// A root-declared collection (`pointer: ''`) indexes directly, bypassing
-		// the key check below. `expectedCardinality` bounds the array size
-		// (`exact` is the true count; `at-most`/`page-bounded` is an upper
-		// bound), so an index at or past it is unreachable.
-		const rootCollection = collectionLocations?.find(
-			(location) => location.pointer === '',
+	if (
+		command &&
+		(target.channel === 'response-body' ||
+			target.channel === 'response-headers' ||
+			target.channel === 'response-status')
+	) {
+		return unreachable(
+			`addresses ${target.channel} on operation "${operation.operationId}", which runs behind a command and produces no HTTP response`,
 		)
-		if (rootCollection !== undefined && ARRAY_INDEX_PATTERN.test(firstToken)) {
-			const { expectedCardinality } = rootCollection
-			const bound =
-				expectedCardinality.mode === 'exact'
-					? expectedCardinality.count
-					: expectedCardinality.max
-			if (Number(firstToken) >= bound) {
-				return unreachable(
-					`addresses response-body index ${firstToken}, out of bounds for the declared root collection's expectedCardinality (${expectedCardinality.mode} ${bound})`,
-				)
-			}
-			return reachable()
-		}
-		if (
-			!requiredKeys.includes(firstToken) &&
-			!permittedKeys.includes(firstToken)
-		) {
-			return unreachable(
-				`addresses response-body field "${firstToken}", which operation "${operation.operationId}" declares in neither requiredKeys nor permittedKeys`,
-			)
-		}
-		if (descendsIntoDeclaredScalar(types, target.tail, firstToken)) {
-			return unreachable(
-				`descends into response-body field "${firstToken}", which operation "${operation.operationId}" declares a scalar with no further structure`,
-			)
-		}
-		return reachable()
 	}
 
 	if (target.channel === 'call-inputs') {
@@ -327,8 +460,13 @@ function evaluateReachabilityAgainstOperation(
 				'evidence-target tail is non-empty but has no first token',
 			)
 		}
-		const { requiredKeys, permittedKeys, types } =
-			operation.requestShape[transportChannel]
+		const shape = requestShapeOf(operation, transportChannel)
+		if (shape === undefined) {
+			return unreachable(
+				`addresses call-inputs ${transportChannel}, a channel operation "${operation.operationId}" does not accept input on`,
+			)
+		}
+		const { requiredKeys, permittedKeys, types } = shape
 		if (
 			!requiredKeys.includes(firstToken) &&
 			!permittedKeys.includes(firstToken)

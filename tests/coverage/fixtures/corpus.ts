@@ -13,6 +13,10 @@ import type { DisciplineRule } from '../../../src/core/coverage/rules.ts'
 import type { DeclarationState } from '../../../src/core/coverage/table.ts'
 import { EvalContract } from '../../../src/core/schemas/eval-contract.ts'
 import type { Operation } from '../../../src/core/schemas/interface.ts'
+import {
+	artifactCommandContract,
+	commandContract,
+} from '../../schemas/fixtures/command-contract.ts'
 import { satisfiedContract } from './satisfaction-contracts.ts'
 
 // The seed goes through the schema first. `satisfiedContract` is `satisfies
@@ -527,4 +531,22 @@ export const CORPUS_CONTRACTS: readonly EvalContract[] = [
 	wrongCardinalityForm,
 	noStateChangeMarker,
 	noReadBackRelation,
+]
+
+/**
+ * What the published dev corpus ships: the coverage contracts above, plus the
+ * two whose reason for shipping is the interface kind rather than a coverage
+ * cell.
+ *
+ * `CORPUS_CONTRACTS` stays exactly the cell contracts, in cell order, so the
+ * ordering check that proves it derived rather than hand-listed keeps working.
+ * The two command contracts describe a system under test that runs behind a
+ * command and grade the same as any other under AD-31; they are here because a
+ * published corpus that could not show one would leave an adopter with no
+ * worked example of the shape this version opened.
+ */
+export const DEV_CORPUS_CONTRACTS: readonly EvalContract[] = [
+	...CORPUS_CONTRACTS,
+	commandContract,
+	artifactCommandContract,
 ]

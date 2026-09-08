@@ -8,7 +8,11 @@
 // `ad5-admissions.test.ts` instead (AD-5).
 
 import type { InterchangeArtifactKey } from '../../../src/core/schemas/artifact.ts'
-import { contractScoringEvidenceArtifact } from './artifact-fixtures.ts'
+import {
+	ARTIFACT_ACCEPT_FIXTURES,
+	contractScoringEvidenceArtifact,
+} from './artifact-fixtures.ts'
+import { commandContract } from './command-contract.ts'
 
 export type ArtifactRejectCase = {
 	readonly id: string
@@ -37,6 +41,139 @@ export type ArtifactRejectCase = {
 }
 
 export const ARTIFACT_REJECT_CASES: readonly ArtifactRejectCase[] = [
+	// ---- eval-contract, the command interface branch -------------------------
+	// Seeded on the command contract rather than on the registry's api accept
+	// fixture: every constraint below sits on a branch that fixture never takes,
+	// and a union branch nothing exercises has no fixture to flip when its
+	// keywords are deleted.
+	{
+		id: 'command-binding-channel-missing',
+		artifact: 'eval-contract',
+		constraint: 'a command input binding declares all four command channels',
+		seed: commandContract,
+		mutate: (contract) => {
+			delete contract.interactionPlan[0].inputBinding.option
+		},
+		issuePath: ['interactionPlan', 0, 'inputBinding'],
+		issueCode: 'invalid_union',
+		keyword: 'required',
+		instancePath: '/interactionPlan/0/inputBinding',
+		errorParams: { missingProperty: 'option' },
+	},
+	{
+		id: 'command-binding-fifth-channel',
+		artifact: 'eval-contract',
+		constraint: 'a command input binding declares no channel beyond the four',
+		seed: commandContract,
+		mutate: (contract) => {
+			contract.interactionPlan[0].inputBinding.cookie = null
+		},
+		issuePath: ['interactionPlan', 0, 'inputBinding'],
+		issueCode: 'invalid_union',
+		keyword: 'additionalProperties',
+		instancePath: '/interactionPlan/0/inputBinding',
+		errorParams: { additionalProperty: 'cookie' },
+	},
+	{
+		id: 'command-witness-inputs-channel-missing',
+		artifact: 'eval-contract',
+		constraint: 'a command witness leg supplies all four command channels',
+		seed: commandContract,
+		mutate: (contract) => {
+			delete contract.permittedInterfaces[0].operations[0].sensitivityWitness
+				.legs[0].inputs.option
+		},
+		issuePath: [
+			'permittedInterfaces',
+			0,
+			'operations',
+			0,
+			'sensitivityWitness',
+			'legs',
+			0,
+			'inputs',
+		],
+		issueCode: 'invalid_union',
+		keyword: 'required',
+		instancePath:
+			'/permittedInterfaces/0/operations/0/sensitivityWitness/legs/0/inputs',
+		errorParams: { missingProperty: 'option' },
+	},
+	{
+		id: 'command-witness-inputs-fifth-channel',
+		artifact: 'eval-contract',
+		constraint: 'a command witness leg supplies no channel beyond the four',
+		seed: commandContract,
+		mutate: (contract) => {
+			contract.permittedInterfaces[0].operations[0].sensitivityWitness.legs[0].inputs.cookie =
+				{}
+		},
+		issuePath: [
+			'permittedInterfaces',
+			0,
+			'operations',
+			0,
+			'sensitivityWitness',
+			'legs',
+			0,
+			'inputs',
+		],
+		issueCode: 'invalid_union',
+		keyword: 'additionalProperties',
+		instancePath:
+			'/permittedInterfaces/0/operations/0/sensitivityWitness/legs/0/inputs',
+		errorParams: { additionalProperty: 'cookie' },
+	},
+	{
+		id: 'witness-inputs-channel-missing',
+		artifact: 'eval-contract',
+		constraint: 'a transport witness leg supplies all four transport channels',
+		seed: ARTIFACT_ACCEPT_FIXTURES['eval-contract'],
+		mutate: (contract) => {
+			delete contract.permittedInterfaces[0].operations[0].sensitivityWitness
+				.legs[0].inputs.query
+		},
+		issuePath: [
+			'permittedInterfaces',
+			0,
+			'operations',
+			0,
+			'sensitivityWitness',
+			'legs',
+			0,
+			'inputs',
+		],
+		issueCode: 'invalid_union',
+		keyword: 'required',
+		instancePath:
+			'/permittedInterfaces/0/operations/0/sensitivityWitness/legs/0/inputs',
+		errorParams: { missingProperty: 'query' },
+	},
+	{
+		id: 'witness-inputs-fifth-channel',
+		artifact: 'eval-contract',
+		constraint: 'a transport witness leg supplies no channel beyond the four',
+		seed: ARTIFACT_ACCEPT_FIXTURES['eval-contract'],
+		mutate: (contract) => {
+			contract.permittedInterfaces[0].operations[0].sensitivityWitness.legs[0].inputs.cookie =
+				{}
+		},
+		issuePath: [
+			'permittedInterfaces',
+			0,
+			'operations',
+			0,
+			'sensitivityWitness',
+			'legs',
+			0,
+			'inputs',
+		],
+		issueCode: 'invalid_union',
+		keyword: 'additionalProperties',
+		instancePath:
+			'/permittedInterfaces/0/operations/0/sensitivityWitness/legs/0/inputs',
+		errorParams: { additionalProperty: 'cookie' },
+	},
 	// ---- artifact-reference -------------------------------------------------
 	{
 		id: 'reference-digest-malformed',
@@ -636,17 +773,13 @@ export const ARTIFACT_REJECT_CASES: readonly ArtifactRejectCase[] = [
 				captured: '/interactions/write/response-body/id',
 			}
 		},
-		issuePath: [
-			'defectSignature',
-			'condition',
-			'selector',
-			'inputBinding',
-			'body',
-			'title',
-		],
+		// `defectSignature` is a union of the two identity shapes, and a union
+		// reports at its own root: the per-key path lives on whichever branch
+		// the value was written for.
+		issuePath: ['defectSignature'],
 		issueCode: 'invalid_union',
 		keyword: 'anyOf',
-		instancePath: '/defectSignature/condition/selector/inputBinding/body/title',
+		instancePath: '/defectSignature',
 	},
 	{
 		id: 'probe-signature-selector-principal-binding',
@@ -658,17 +791,13 @@ export const ARTIFACT_REJECT_CASES: readonly ArtifactRejectCase[] = [
 				principal: 'owner',
 			}
 		},
-		issuePath: [
-			'defectSignature',
-			'condition',
-			'selector',
-			'inputBinding',
-			'body',
-			'title',
-		],
+		// `defectSignature` is a union of the two identity shapes, and a union
+		// reports at its own root: the per-key path lives on whichever branch
+		// the value was written for.
+		issuePath: ['defectSignature'],
 		issueCode: 'invalid_union',
 		keyword: 'anyOf',
-		instancePath: '/defectSignature/condition/selector/inputBinding/body/title',
+		instancePath: '/defectSignature',
 	},
 	{
 		id: 'probe-signature-selector-channel-empty',
@@ -692,14 +821,14 @@ export const ARTIFACT_REJECT_CASES: readonly ArtifactRejectCase[] = [
 	{
 		id: 'probe-signature-channel-outside-the-seven',
 		artifact: 'probe',
-		constraint: "an observable channel is one of AD-26's closed seven",
+		constraint: "an observable channel is one of AD-26's closed eight",
 		mutate: (probe) => {
 			probe.defectSignature.observableChannel = 'response-trailer'
 		},
-		issuePath: ['defectSignature', 'observableChannel'],
-		issueCode: 'invalid_value',
-		keyword: 'enum',
-		instancePath: '/defectSignature/observableChannel',
+		issuePath: ['defectSignature'],
+		issueCode: 'invalid_union',
+		keyword: 'anyOf',
+		instancePath: '/defectSignature',
 	},
 	{
 		id: 'probe-signature-path-template-colon-spelled',

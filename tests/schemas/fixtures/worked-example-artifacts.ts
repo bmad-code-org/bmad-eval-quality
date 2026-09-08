@@ -81,6 +81,7 @@ export const workedExampleSealedRunRecord: unknown = {
 			severity: 'critical',
 			confidence: 0.95,
 			provenance: 'evaluator-chosen',
+			principal: null,
 			summary:
 				"PATCH /notes/n-1 returned 200 with ok true and the new title 'Revised', but a subsequent GET /notes/n-1 returned the original title 'Original'. The update response was not backed by a write.",
 			observationIds: ['obs-003', 'obs-004'],
@@ -103,6 +104,7 @@ export const workedExampleSealedRunRecord: unknown = {
 			severity: 'material',
 			confidence: 0.99,
 			provenance: 'baseline',
+			principal: null,
 			summary:
 				'Status 200 agreed with ok true on every successful call observed.',
 			observationIds: ['obs-001', 'obs-003'],
@@ -117,6 +119,7 @@ export const workedExampleSealedRunRecord: unknown = {
 			severity: 'low',
 			confidence: 0.8,
 			provenance: 'evaluator-chosen',
+			principal: null,
 			summary:
 				"PATCH accepts an unknown field 'colour' and echoes it back in the note payload. No oracle in the contract addresses unknown-field handling, so this is filed uncited.",
 			observationIds: ['obs-005'],
@@ -128,6 +131,7 @@ export const workedExampleSealedRunRecord: unknown = {
 			observationId: 'obs-001',
 			operationId: 'get-note',
 			provenance: 'baseline',
+			principal: null,
 			callInputs: {
 				id: 'n-1',
 			},
@@ -147,6 +151,7 @@ export const workedExampleSealedRunRecord: unknown = {
 			observationId: 'obs-002',
 			operationId: 'list-notes',
 			provenance: 'baseline',
+			principal: null,
 			callInputs: {},
 			responseStatus: 200,
 			responseBody: {
@@ -158,6 +163,7 @@ export const workedExampleSealedRunRecord: unknown = {
 			observationId: 'obs-003',
 			operationId: 'patch-note',
 			provenance: 'evaluator-chosen',
+			principal: null,
 			callInputs: {
 				id: 'n-1',
 				title: 'Revised',
@@ -178,6 +184,7 @@ export const workedExampleSealedRunRecord: unknown = {
 			observationId: 'obs-004',
 			operationId: 'get-note',
 			provenance: 'evaluator-chosen',
+			principal: null,
 			callInputs: {
 				id: 'n-1',
 			},
@@ -197,6 +204,7 @@ export const workedExampleSealedRunRecord: unknown = {
 			observationId: 'obs-005',
 			operationId: 'patch-note',
 			provenance: 'evaluator-chosen',
+			principal: null,
 			callInputs: {
 				id: 'n-2',
 				colour: 'red',
@@ -241,14 +249,19 @@ export const workedExampleSealedRunRecord: unknown = {
 }
 
 /**
- * Its sixty-six issues, each a real divergence rather than a transcription
+ * Its ninety-one issues, each a real divergence rather than a transcription
  * slip: absent lineage; no run `mode`, the field owed item 4 made required; no
  * observation `sequence`, the field owed item 2 made required; dispositions
  * missing `observationIds` (AD-33); finding-level `provenance` instead of
  * observation-level (AD-23); the old four-field artifact-reference shape; a
  * defect finding with no `quotedEvidence` (AD-23); the flat `callInputs` map
- * (AD-26); missing process channels; `costUsd` as a number; no
- * `evidenceDisclosure`.
+ * (AD-26); missing process channels and no written artifacts; `costUsd` as a
+ * number; no `evidenceDisclosure`.
+ *
+ * The count rose from sixty-six when the record opened to a system under test
+ * that runs behind a command: each observation now owes four more call-input
+ * channels, a tagged rather than bare `stdout` and `stderr`, and an `artifacts`
+ * map, and this artifact predates all of them.
  */
 export const WORKED_EXAMPLE_RECORD_ISSUES: readonly WorkedExampleIssue[] = [
 	{ path: ['parentDigest'], code: 'invalid_type' },
@@ -272,50 +285,90 @@ export const WORKED_EXAMPLE_RECORD_ISSUES: readonly WorkedExampleIssue[] = [
 	{ path: ['observations', 0, 'callInputs', 'query'], code: 'invalid_type' },
 	{ path: ['observations', 0, 'callInputs', 'header'], code: 'invalid_type' },
 	{ path: ['observations', 0, 'callInputs', 'body'], code: 'invalid_type' },
+	{ path: ['observations', 0, 'callInputs', 'argument'], code: 'invalid_type' },
+	{ path: ['observations', 0, 'callInputs', 'option'], code: 'invalid_type' },
+	{
+		path: ['observations', 0, 'callInputs', 'environment'],
+		code: 'invalid_type',
+	},
+	{ path: ['observations', 0, 'callInputs', 'stdin'], code: 'invalid_type' },
 	{ path: ['observations', 0, 'callInputs'], code: 'unrecognized_keys' },
 	{ path: ['observations', 0, 'responseHeaders'], code: 'invalid_type' },
 	{ path: ['observations', 0, 'stdout'], code: 'invalid_type' },
 	{ path: ['observations', 0, 'stderr'], code: 'invalid_type' },
 	{ path: ['observations', 0, 'exitCode'], code: 'invalid_type' },
+	{ path: ['observations', 0, 'artifacts'], code: 'invalid_type' },
 	{ path: ['observations', 1, 'sequence'], code: 'invalid_type' },
 	{ path: ['observations', 1, 'callInputs', 'path'], code: 'invalid_type' },
 	{ path: ['observations', 1, 'callInputs', 'query'], code: 'invalid_type' },
 	{ path: ['observations', 1, 'callInputs', 'header'], code: 'invalid_type' },
 	{ path: ['observations', 1, 'callInputs', 'body'], code: 'invalid_type' },
+	{ path: ['observations', 1, 'callInputs', 'argument'], code: 'invalid_type' },
+	{ path: ['observations', 1, 'callInputs', 'option'], code: 'invalid_type' },
+	{
+		path: ['observations', 1, 'callInputs', 'environment'],
+		code: 'invalid_type',
+	},
+	{ path: ['observations', 1, 'callInputs', 'stdin'], code: 'invalid_type' },
 	{ path: ['observations', 1, 'responseHeaders'], code: 'invalid_type' },
 	{ path: ['observations', 1, 'stdout'], code: 'invalid_type' },
 	{ path: ['observations', 1, 'stderr'], code: 'invalid_type' },
 	{ path: ['observations', 1, 'exitCode'], code: 'invalid_type' },
+	{ path: ['observations', 1, 'artifacts'], code: 'invalid_type' },
 	{ path: ['observations', 2, 'sequence'], code: 'invalid_type' },
 	{ path: ['observations', 2, 'callInputs', 'path'], code: 'invalid_type' },
 	{ path: ['observations', 2, 'callInputs', 'query'], code: 'invalid_type' },
 	{ path: ['observations', 2, 'callInputs', 'header'], code: 'invalid_type' },
 	{ path: ['observations', 2, 'callInputs', 'body'], code: 'invalid_type' },
+	{ path: ['observations', 2, 'callInputs', 'argument'], code: 'invalid_type' },
+	{ path: ['observations', 2, 'callInputs', 'option'], code: 'invalid_type' },
+	{
+		path: ['observations', 2, 'callInputs', 'environment'],
+		code: 'invalid_type',
+	},
+	{ path: ['observations', 2, 'callInputs', 'stdin'], code: 'invalid_type' },
 	{ path: ['observations', 2, 'callInputs'], code: 'unrecognized_keys' },
 	{ path: ['observations', 2, 'responseHeaders'], code: 'invalid_type' },
 	{ path: ['observations', 2, 'stdout'], code: 'invalid_type' },
 	{ path: ['observations', 2, 'stderr'], code: 'invalid_type' },
 	{ path: ['observations', 2, 'exitCode'], code: 'invalid_type' },
+	{ path: ['observations', 2, 'artifacts'], code: 'invalid_type' },
 	{ path: ['observations', 3, 'sequence'], code: 'invalid_type' },
 	{ path: ['observations', 3, 'callInputs', 'path'], code: 'invalid_type' },
 	{ path: ['observations', 3, 'callInputs', 'query'], code: 'invalid_type' },
 	{ path: ['observations', 3, 'callInputs', 'header'], code: 'invalid_type' },
 	{ path: ['observations', 3, 'callInputs', 'body'], code: 'invalid_type' },
+	{ path: ['observations', 3, 'callInputs', 'argument'], code: 'invalid_type' },
+	{ path: ['observations', 3, 'callInputs', 'option'], code: 'invalid_type' },
+	{
+		path: ['observations', 3, 'callInputs', 'environment'],
+		code: 'invalid_type',
+	},
+	{ path: ['observations', 3, 'callInputs', 'stdin'], code: 'invalid_type' },
 	{ path: ['observations', 3, 'callInputs'], code: 'unrecognized_keys' },
 	{ path: ['observations', 3, 'responseHeaders'], code: 'invalid_type' },
 	{ path: ['observations', 3, 'stdout'], code: 'invalid_type' },
 	{ path: ['observations', 3, 'stderr'], code: 'invalid_type' },
 	{ path: ['observations', 3, 'exitCode'], code: 'invalid_type' },
+	{ path: ['observations', 3, 'artifacts'], code: 'invalid_type' },
 	{ path: ['observations', 4, 'sequence'], code: 'invalid_type' },
 	{ path: ['observations', 4, 'callInputs', 'path'], code: 'invalid_type' },
 	{ path: ['observations', 4, 'callInputs', 'query'], code: 'invalid_type' },
 	{ path: ['observations', 4, 'callInputs', 'header'], code: 'invalid_type' },
 	{ path: ['observations', 4, 'callInputs', 'body'], code: 'invalid_type' },
+	{ path: ['observations', 4, 'callInputs', 'argument'], code: 'invalid_type' },
+	{ path: ['observations', 4, 'callInputs', 'option'], code: 'invalid_type' },
+	{
+		path: ['observations', 4, 'callInputs', 'environment'],
+		code: 'invalid_type',
+	},
+	{ path: ['observations', 4, 'callInputs', 'stdin'], code: 'invalid_type' },
 	{ path: ['observations', 4, 'callInputs'], code: 'unrecognized_keys' },
 	{ path: ['observations', 4, 'responseHeaders'], code: 'invalid_type' },
 	{ path: ['observations', 4, 'stdout'], code: 'invalid_type' },
 	{ path: ['observations', 4, 'stderr'], code: 'invalid_type' },
 	{ path: ['observations', 4, 'exitCode'], code: 'invalid_type' },
+	{ path: ['observations', 4, 'artifacts'], code: 'invalid_type' },
 	{ path: ['actionsArtifact', 'storage'], code: 'invalid_union' },
 	{ path: ['isolationManifestArtifact', 'storage'], code: 'invalid_union' },
 	{ path: ['resourceUse', 'costUsd'], code: 'invalid_type' },

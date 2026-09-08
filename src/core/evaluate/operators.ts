@@ -122,6 +122,18 @@ export function setMembership(
  * single element to search for: this function receives resolved values only,
  * so it cannot tell a `{ literal }` array from a resolved `{ referenceSet }`.
  * Known, accepted limitation.
+ *
+ * A separate property, and a separate limitation: a `{ referenceSet }`
+ * candidate matches **whole declared members** by structural equality. A
+ * container element carrying any field the reference set does not declare
+ * therefore never matches, which is the ordinary case for rows read off a
+ * response body. `set-membership`'s set position projects a reference set to
+ * its single declared key and this position does not, because projecting only
+ * where a container happens to hold objects would make the operand's meaning
+ * depend on the evidence's runtime shape. An author reconciling rows against a
+ * declared set wants `covers-by-key`, which compares on named keys on both
+ * sides, or `for-all(rows, set-membership(@/key, { referenceSet }))`, which
+ * reads the declared key.
  */
 export function containment(
 	container: ResolvedValue,
@@ -365,8 +377,12 @@ export function shape(
  * Own-property lookup only, so a key like `__proto__` reads as missing
  * rather than inherited. Returns `ABSENT`, never throws (AD-4: a missing key
  * resolves `false`, not an error).
+ *
+ * Exported so `resolution.ts`'s `set-membership` set-operand projection reads
+ * a declared member's key through this one spelling, keeping the own-property
+ * guard in one place.
  */
-function keyValueOf(
+export function keyValueOf(
 	element: JsonValue,
 	key: string,
 ): JsonValue | typeof ABSENT {

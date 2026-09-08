@@ -55,7 +55,7 @@ const cleanControlProbe = (
 	probeId: string,
 	probeClass: Extract<Probe, { expectedClean: false }>['probeClass'],
 ): Probe => ({
-	schemaVersion: 2,
+	schemaVersion: 3,
 	parentDigest: null,
 	revisionCount: 0,
 	probeId,
@@ -460,5 +460,39 @@ describe('compareDominance', () => {
 			outcomeOf('P-shared', 'missed', 'critical'),
 		])
 		expect(compareDominance(a, b, 'material')).toBe('incomparable')
+	})
+})
+
+describe('the rate vector counts identifiers, not entries', () => {
+	// Nothing below `buildStrengthVector` enforces one entry per identifier:
+	// no probe-corpus schema exists, so the uniqueness is inherited from
+	// upstream qualification rather than checked.
+	it('counts a repeated probe identifier once within its class', () => {
+		const entry = admittedOf(seedingProbe('P-001', 'defect'))
+		const results = new Map([['P-001', trialResult()]])
+		const once = buildStrengthVector([entry], results)
+		const twice = buildStrengthVector([entry, entry], results)
+		expect(twice).toEqual(once)
+		expect(once.defect).toEqual({ exercised: 1, caught: 1, rate: 1 })
+	})
+})
+
+describe('the severity floor is a ladder position, never an absence', () => {
+	// `indexOf` answers -1 for a value the ladder does not name, and comparing
+	// two absences reads as "at or above" unless both are checked first, which
+	// would let an unrecognised severity trip the override against an
+	// unrecognised floor.
+	it('treats an unrecognised severity as below an unrecognised floor', () => {
+		const favored = comparableOf(
+			{ ...NULL_VECTOR, defect: { exercised: 2, caught: 2, rate: 1 } },
+			[outcomeOf('P-shared', 'missed', 'blocker' as Severity)],
+		)
+		const other = comparableOf(
+			{ ...NULL_VECTOR, defect: { exercised: 2, caught: 1, rate: 0.5 } },
+			[outcomeOf('P-shared', 'caught', 'blocker' as Severity)],
+		)
+		expect(compareDominance(favored, other, 'blocker' as Severity)).toBe(
+			'a-dominates-b',
+		)
 	})
 })

@@ -26,11 +26,20 @@
  * looks like, and the failures it produces name every literal that has not
  * moved with it.
  */
+import { readdirSync, readFileSync } from 'node:fs'
+import { join, relative } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
+
+const repoRoot = fileURLToPath(new URL('../..', import.meta.url))
+
 import { buildDevCorpus } from '../../scripts/dev-corpus-target.ts'
 import { buildWorkedExampleChain } from '../../scripts/worked-example-target.ts'
 import type { EvalContract } from '../../src/core/schemas/eval-contract.ts'
-import { CORPUS_CONTRACTS } from '../coverage/fixtures/corpus.ts'
+import {
+	CORPUS_CONTRACTS,
+	DEV_CORPUS_CONTRACTS,
+} from '../coverage/fixtures/corpus.ts'
 import { satisfiedContract } from '../coverage/fixtures/satisfaction-contracts.ts'
 import {
 	preflightContract,
@@ -48,7 +57,7 @@ import {
  * change that makes the shape break, the way each artifact's own fixture
  * records its bumps.
  */
-const EVAL_CONTRACT_SCHEMA_VERSION = 3
+const EVAL_CONTRACT_SCHEMA_VERSION = 4
 
 const LITERALS: readonly (readonly [
 	string,
@@ -86,7 +95,7 @@ describe('every authored EvalContract literal carries the current version', () =
 // value on its way out.
 describe('every emitted EvalContract carries the current version', () => {
 	it('the dev corpus the tarball ships', () => {
-		const emitted = [...buildDevCorpus(CORPUS_CONTRACTS)]
+		const emitted = [...buildDevCorpus(DEV_CORPUS_CONTRACTS)]
 			.filter(
 				([path]) => path.endsWith('.json') && !path.endsWith('index.json'),
 			)
@@ -105,5 +114,62 @@ describe('every emitted EvalContract carries the current version', () => {
 		expect(buildWorkedExampleChain().contract.schemaVersion).toBe(
 			EVAL_CONTRACT_SCHEMA_VERSION,
 		)
+	})
+})
+
+// The enumeration above names the literals a reader can import. It cannot
+// reach a fixture a test file declares privately, and test files never import
+// each other, so three contracts sat at a stale stamp for two versions without
+// failing anything. This walks the source instead: every literal in the tree
+// annotated as an `EvalContract`, whichever file declares it and whether or not
+// it is exported.
+describe('no EvalContract literal anywhere in the tree carries a stale stamp', () => {
+	const ROOTS = ['tests', 'scripts', 'src']
+
+	const sourceFiles = (directory: string): readonly string[] => {
+		const found: string[] = []
+		const walk = (current: string): void => {
+			for (const entry of readdirSync(current, { withFileTypes: true })) {
+				const full = join(current, entry.name)
+				if (entry.isDirectory()) walk(full)
+				else if (entry.name.endsWith('.ts')) found.push(full)
+			}
+		}
+		walk(join(repoRoot, directory))
+		return found
+	}
+
+	// Both annotations a contract literal carries in this tree: an explicit type
+	// on the binding, and the `satisfies` form the relevance fixtures use.
+	const ANNOTATION =
+		/(?::\s*EvalContract\s*=\s*\{|\}\s*satisfies\s+EvalContract)/g
+	const STAMP = /^\s*schemaVersion:\s*(\d+),/m
+
+	it('walks every source file and finds at least the known literals', () => {
+		const stale: string[] = []
+		let checked = 0
+		for (const directory of ROOTS) {
+			for (const file of sourceFiles(directory)) {
+				const text = readFileSync(file, 'utf8')
+				for (const match of text.matchAll(ANNOTATION)) {
+					// Read the stamp from the literal's own body: forwards from an
+					// opening brace, backwards from a `satisfies` clause.
+					const forwards = match[0].endsWith('{')
+					const body = forwards
+						? text.slice(match.index ?? 0, (match.index ?? 0) + 400)
+						: text.slice(Math.max(0, (match.index ?? 0) - 4000), match.index)
+					const stamp = STAMP.exec(body)
+					if (stamp === null) continue
+					checked += 1
+					if (Number(stamp[1]) !== EVAL_CONTRACT_SCHEMA_VERSION) {
+						stale.push(`${relative(repoRoot, file)}: schemaVersion ${stamp[1]}`)
+					}
+				}
+			}
+		}
+		// A floor, not a pin: this walks whatever the tree holds, and the point
+		// is that it walked something rather than that it walked exactly n.
+		expect(checked).toBeGreaterThan(5)
+		expect(stale).toEqual([])
 	})
 })

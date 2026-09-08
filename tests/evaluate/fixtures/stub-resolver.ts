@@ -5,6 +5,7 @@
 
 import type {
 	PointerDenotesCollection,
+	ReferenceSetKeys,
 	ResolveOperand,
 } from '../../../src/core/evaluate/resolution.ts'
 import {
@@ -79,6 +80,13 @@ export function makeStubResolver(
 		return walkPointer(step, tail)
 	}
 }
+
+/**
+ * The `ReferenceSetKeys` of a fixture that declares no reference sets. A set
+ * operand resolving to members with no keys behind it stays unprojected,
+ * which is what every fixture spelling its sets as flat arrays wants.
+ */
+export const NO_REFERENCE_SET_KEYS: ReferenceSetKeys = {}
 
 /**
  * Implements `PointerDenotesCollection`'s own contract: `false` for any `@/…`

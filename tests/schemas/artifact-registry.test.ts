@@ -224,27 +224,53 @@ describe('the Consistency Conventions, extended rather than restarted', () => {
 	// `testData.principals` and `testData.resources`, each keyed by the author's
 	// own declared name so a duplicate declaration is unrepresentable.
 	//
+	// The command interface kind added the tenth, the command witness leg's
+	// `environment`, string-valued for the reason `WitnessInputs.header` is,
+	// and doubled the per-operation addresses: `Operation` now carries a `$defs`
+	// id shared by the three api-shaped branches, and the command branch inlines
+	// its own four request channels and its response descriptor beside them. The
+	// command witness leg is inline rather than named, so it is reached twice,
+	// once through each operation shape.
+	//
 	// The census below counts ADDRESSES, not declarations, which is why
-	// eval-contract lists twelve for nine declarations: `KeyTypeMap` is reached
-	// at six of them, once per request channel plus the response descriptor plus
-	// the `shape` descriptor. Pinned in both directions, so a genuinely new
-	// caller-keyed map still fails here rather than being absorbed by a widened
-	// skip list.
+	// eval-contract lists twenty for ten declarations: `KeyTypeMap` is reached
+	// once per request channel of each operation shape, plus each response
+	// descriptor, plus the `shape` descriptor. Pinned in both directions, so a
+	// genuinely new caller-keyed map still fails here rather than being absorbed
+	// by a widened skip list.
 	const CALLER_KEYED_CONTROL_MAPS: Readonly<Record<string, readonly string[]>> =
 		{
 			'eval-contract': [
-				'/properties/permittedInterfaces/items/properties/operations/items/properties/requestShape/properties/path/properties/types',
-				'/properties/permittedInterfaces/items/properties/operations/items/properties/requestShape/properties/query/properties/types',
-				'/properties/permittedInterfaces/items/properties/operations/items/properties/requestShape/properties/header/properties/types',
-				'/properties/permittedInterfaces/items/properties/operations/items/properties/requestShape/properties/body/properties/types',
-				'/properties/permittedInterfaces/items/properties/operations/items/properties/responseDescriptor/properties/types',
-				'/properties/permittedInterfaces/items/properties/operations/items/properties/responseDescriptor/properties/channelRoles/anyOf/0',
+				// The `cli` branch, inlined: it is the one branch whose operation
+				// shape is not the shared `Operation` definition below.
+				'/properties/permittedInterfaces/items/oneOf/3/properties/operations/items/properties/requestShape/properties/argument/properties/types',
+				'/properties/permittedInterfaces/items/oneOf/3/properties/operations/items/properties/requestShape/properties/option/properties/types',
+				'/properties/permittedInterfaces/items/oneOf/3/properties/operations/items/properties/requestShape/properties/environment/properties/types',
+				'/properties/permittedInterfaces/items/oneOf/3/properties/operations/items/properties/requestShape/properties/stdin/properties/types',
+				'/properties/permittedInterfaces/items/oneOf/3/properties/operations/items/properties/responseDescriptor/properties/types',
+				'/properties/permittedInterfaces/items/oneOf/3/properties/operations/items/properties/responseDescriptor/properties/channelRoles/anyOf/0',
+				'/properties/permittedInterfaces/items/oneOf/3/properties/operations/items/properties/sensitivityWitness/anyOf/0/properties/legs/items/properties/inputs/anyOf/1/properties/environment',
 				'/properties/referenceSets/anyOf/0',
 				'/properties/testData/properties/principals/anyOf/0',
 				'/properties/testData/properties/resources/anyOf/0',
 				'/$defs/Expression/oneOf/9/properties/descriptor/properties/types',
+				// The api operation shape, named once and referenced by the
+				// `api`, `web`, and `mcp` branches alike.
+				'/$defs/Operation/properties/requestShape/properties/path/properties/types',
+				'/$defs/Operation/properties/requestShape/properties/query/properties/types',
+				'/$defs/Operation/properties/requestShape/properties/header/properties/types',
+				'/$defs/Operation/properties/requestShape/properties/body/properties/types',
+				'/$defs/Operation/properties/responseDescriptor/properties/types',
+				'/$defs/Operation/properties/responseDescriptor/properties/channelRoles/anyOf/0',
+				'/$defs/Operation/properties/sensitivityWitness/anyOf/0/properties/legs/items/properties/inputs/anyOf/1/properties/environment',
 				'/$defs/WitnessInputs/properties/header',
 				'/$defs/InputBindingChannel/anyOf/0',
+			],
+			// AD-26's `artifact` channel: keyed by the identifier the operation
+			// declares it writes, which is the segment an artifact pointer
+			// carries before its tail.
+			'sealed-run-record': [
+				'/properties/observations/items/properties/artifacts',
 			],
 			probe: [
 				'/$defs/WitnessInputs/properties/header',

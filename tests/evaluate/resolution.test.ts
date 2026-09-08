@@ -13,6 +13,7 @@ import {
 	makeResolverWithMisbehavingReferenceSet,
 	makeStubPointerDenotesCollection,
 	makeStubResolver,
+	NO_REFERENCE_SET_KEYS,
 } from './fixtures/stub-resolver.ts'
 
 const PATH = 'artifacts/resolution.json'
@@ -69,6 +70,7 @@ const resolve = (expression: Expression) =>
 		expression,
 		noEvidenceResolver,
 		noneCollectionTyped,
+		NO_REFERENCE_SET_KEYS,
 		DEFAULT_BUDGET,
 		PATH,
 	)
@@ -225,6 +227,7 @@ describe('notOf/allOf/anyOf propagation (AC 4)', () => {
 				findCheck('O-002'),
 				resolver,
 				noneCollectionTyped,
+				NO_REFERENCE_SET_KEYS,
 				DEFAULT_BUDGET,
 				PATH,
 			)
@@ -240,6 +243,7 @@ describe('notOf/allOf/anyOf propagation (AC 4)', () => {
 				findCheck('O-002'),
 				resolver,
 				noneCollectionTyped,
+				NO_REFERENCE_SET_KEYS,
 				DEFAULT_BUDGET,
 				PATH,
 			)
@@ -255,6 +259,7 @@ describe('notOf/allOf/anyOf propagation (AC 4)', () => {
 				findCheck('O-002'),
 				resolver,
 				noneCollectionTyped,
+				NO_REFERENCE_SET_KEYS,
 				DEFAULT_BUDGET,
 				PATH,
 			)
@@ -268,6 +273,7 @@ describe('notOf/allOf/anyOf propagation (AC 4)', () => {
 				findCheck('O-003'),
 				resolver,
 				noneCollectionTyped,
+				NO_REFERENCE_SET_KEYS,
 				DEFAULT_BUDGET,
 				PATH,
 			)
@@ -281,6 +287,7 @@ describe('notOf/allOf/anyOf propagation (AC 4)', () => {
 				VALID_NODES.any,
 				resolver,
 				noneCollectionTyped,
+				NO_REFERENCE_SET_KEYS,
 				DEFAULT_BUDGET,
 				PATH,
 			)
@@ -294,6 +301,7 @@ describe('notOf/allOf/anyOf propagation (AC 4)', () => {
 				VALID_NODES.any,
 				resolver,
 				noneCollectionTyped,
+				NO_REFERENCE_SET_KEYS,
 				DEFAULT_BUDGET,
 				PATH,
 			)
@@ -323,6 +331,7 @@ describe('equality vs deep-equality dispatch is not swappable (P1)', () => {
 			check,
 			resolver,
 			noneCollectionTyped,
+			NO_REFERENCE_SET_KEYS,
 			DEFAULT_BUDGET,
 			PATH,
 		)
@@ -354,6 +363,7 @@ describe('ordering and count-tolerance actually reach the operator over a non-em
 				ascending,
 				resolver,
 				noneCollectionTyped,
+				NO_REFERENCE_SET_KEYS,
 				DEFAULT_BUDGET,
 				PATH,
 			).resolution,
@@ -363,6 +373,7 @@ describe('ordering and count-tolerance actually reach the operator over a non-em
 				descending,
 				resolver,
 				noneCollectionTyped,
+				NO_REFERENCE_SET_KEYS,
 				DEFAULT_BUDGET,
 				PATH,
 			).resolution,
@@ -381,6 +392,7 @@ describe('ordering and count-tolerance actually reach the operator over a non-em
 				},
 				makeStubResolver({ x: { 'response-body': { rows } } }, {}),
 				noneCollectionTyped,
+				NO_REFERENCE_SET_KEYS,
 				DEFAULT_BUDGET,
 				PATH,
 			)
@@ -405,14 +417,21 @@ describe('regex resolves to a genuine boolean, and the step budget threads throu
 			{},
 		)
 		expect(
-			resolveCheck(check, matching, noneCollectionTyped, DEFAULT_BUDGET, PATH)
-				.resolution,
+			resolveCheck(
+				check,
+				matching,
+				noneCollectionTyped,
+				NO_REFERENCE_SET_KEYS,
+				DEFAULT_BUDGET,
+				PATH,
+			).resolution,
 		).toBe('true')
 		expect(
 			resolveCheck(
 				check,
 				notMatching,
 				noneCollectionTyped,
+				NO_REFERENCE_SET_KEYS,
 				DEFAULT_BUDGET,
 				PATH,
 			).resolution,
@@ -432,7 +451,14 @@ describe('regex resolves to a genuine boolean, and the step budget threads throu
 		)
 		const tinyBudget = 10
 		const fault = faultOf(() =>
-			resolveCheck(check, resolver, noneCollectionTyped, tinyBudget, PATH),
+			resolveCheck(
+				check,
+				resolver,
+				noneCollectionTyped,
+				NO_REFERENCE_SET_KEYS,
+				tinyBudget,
+				PATH,
+			),
 		)
 		expect(fault).toBeInstanceOf(RuntimeFault)
 		expect(fault.code).toBe('budget-exhausted')
@@ -455,12 +481,24 @@ describe('the soft-delete agreement pair (AC 5, AD-4 worked example)', () => {
 			{},
 		)
 		expect(
-			resolveCheck(forAny, resolver, noneCollectionTyped, DEFAULT_BUDGET, PATH)
-				.resolution,
+			resolveCheck(
+				forAny,
+				resolver,
+				noneCollectionTyped,
+				NO_REFERENCE_SET_KEYS,
+				DEFAULT_BUDGET,
+				PATH,
+			).resolution,
 		).toBe('true')
 		expect(
-			resolveCheck(forAll, resolver, noneCollectionTyped, DEFAULT_BUDGET, PATH)
-				.resolution,
+			resolveCheck(
+				forAll,
+				resolver,
+				noneCollectionTyped,
+				NO_REFERENCE_SET_KEYS,
+				DEFAULT_BUDGET,
+				PATH,
+			).resolution,
 		).toBe('true')
 	})
 
@@ -474,12 +512,24 @@ describe('the soft-delete agreement pair (AC 5, AD-4 worked example)', () => {
 			{},
 		)
 		expect(
-			resolveCheck(forAny, resolver, noneCollectionTyped, DEFAULT_BUDGET, PATH)
-				.resolution,
+			resolveCheck(
+				forAny,
+				resolver,
+				noneCollectionTyped,
+				NO_REFERENCE_SET_KEYS,
+				DEFAULT_BUDGET,
+				PATH,
+			).resolution,
 		).toBe('false')
 		expect(
-			resolveCheck(forAll, resolver, noneCollectionTyped, DEFAULT_BUDGET, PATH)
-				.resolution,
+			resolveCheck(
+				forAll,
+				resolver,
+				noneCollectionTyped,
+				NO_REFERENCE_SET_KEYS,
+				DEFAULT_BUDGET,
+				PATH,
+			).resolution,
 		).toBe('false')
 	})
 
@@ -489,12 +539,24 @@ describe('the soft-delete agreement pair (AC 5, AD-4 worked example)', () => {
 			{},
 		)
 		expect(
-			resolveCheck(forAny, resolver, noneCollectionTyped, DEFAULT_BUDGET, PATH)
-				.resolution,
+			resolveCheck(
+				forAny,
+				resolver,
+				noneCollectionTyped,
+				NO_REFERENCE_SET_KEYS,
+				DEFAULT_BUDGET,
+				PATH,
+			).resolution,
 		).toBe('insufficient-evidence')
 		expect(
-			resolveCheck(forAll, resolver, noneCollectionTyped, DEFAULT_BUDGET, PATH)
-				.resolution,
+			resolveCheck(
+				forAll,
+				resolver,
+				noneCollectionTyped,
+				NO_REFERENCE_SET_KEYS,
+				DEFAULT_BUDGET,
+				PATH,
+			).resolution,
 		).toBe('insufficient-evidence')
 	})
 
@@ -511,56 +573,167 @@ describe('the soft-delete agreement pair (AC 5, AD-4 worked example)', () => {
 			{},
 		)
 		expect(
-			resolveCheck(forAny, resolver, noneCollectionTyped, DEFAULT_BUDGET, PATH)
-				.resolution,
+			resolveCheck(
+				forAny,
+				resolver,
+				noneCollectionTyped,
+				NO_REFERENCE_SET_KEYS,
+				DEFAULT_BUDGET,
+				PATH,
+			).resolution,
 		).toBe('insufficient-evidence')
 		expect(
-			resolveCheck(forAll, resolver, noneCollectionTyped, DEFAULT_BUDGET, PATH)
-				.resolution,
+			resolveCheck(
+				forAll,
+				resolver,
+				noneCollectionTyped,
+				NO_REFERENCE_SET_KEYS,
+				DEFAULT_BUDGET,
+				PATH,
+			).resolution,
 		).toBe('insufficient-evidence')
 	})
 })
 
 describe('a quantifier over a reference-set-backed predicate (O-006 shape)', () => {
 	const check = findCheck('O-006') // for-all(page, set-membership(@/id, {referenceSet}))
-	// P9: this fixture's stub reference-set members are flat id strings,
-	// while the real gate-c-contract.ts fixture declares them as objects
-	// ({ id: 'r-001' }, ...). This test pins only the dispatch wiring, that
-	// set-membership is reached correctly through a quantifier's bound
-	// element; Story 4.1's resolver decides how a reference set's declared
-	// member shape gets compared against @/id.
-	const referenceSets = { 'expected-export-rows': ['r-001', 'r-002', 'r-003'] }
-
-	it('resolves true when every id is a member', () => {
-		const rows: JsonValue[] = [{ id: 'r-001' }, { id: 'r-002' }]
-		const resolver = makeStubResolver(
-			{ 'first-page': { 'response-body': { rows } } },
-			referenceSets,
+	// The declared members and keys of gate-c-contract.ts's own reference set,
+	// read off the fixture itself. An earlier version of this
+	// block substituted flat id strings for the declared `{ id: 'r-001' }`
+	// objects and deferred the member shape to "Story 4.1's resolver", and
+	// that substitution is why no suite caught the resolver returning members
+	// unprojected: against the real declaration every one of these cases
+	// resolved false.
+	const declaredSet = gateCContract.referenceSets?.['expected-export-rows']
+	if (declaredSet === undefined) {
+		throw new Error(
+			'fixture setup: gateCContract declares no expected-export-rows',
 		)
-		const result = resolveCheck(
-			check,
-			resolver,
+	}
+	const referenceSets = {
+		'expected-export-rows': declaredSet.members as JsonValue[],
+	}
+	const referenceSetKeys = { 'expected-export-rows': declaredSet.keys }
+	const resolveAgainst = (rows: JsonValue[], expression: Expression = check) =>
+		resolveCheck(
+			expression,
+			makeStubResolver(
+				{ 'first-page': { 'response-body': { rows } } },
+				referenceSets,
+			),
 			noneCollectionTyped,
+			referenceSetKeys,
 			DEFAULT_BUDGET,
 			PATH,
-		)
-		expect(result.resolution).toBe('true')
+		).resolution
+
+	it('resolves true when every id is a member of the declared object members', () => {
+		expect(resolveAgainst([{ id: 'r-001' }, { id: 'r-002' }])).toBe('true')
 	})
 
 	it('resolves false when one id is not a member', () => {
-		const rows: JsonValue[] = [{ id: 'r-001' }, { id: 'r-999' }]
-		const resolver = makeStubResolver(
-			{ 'first-page': { 'response-body': { rows } } },
-			referenceSets,
-		)
-		const result = resolveCheck(
+		expect(resolveAgainst([{ id: 'r-001' }, { id: 'r-999' }])).toBe('false')
+	})
+
+	// The polarity whose failure is invisible. "None of these appear" is
+	// spelled by negating the predicate, and an always-false set-membership
+	// makes that whole quantifier true for every page forever, so this case is
+	// the one that would pass while establishing nothing.
+	it('resolves false, under the negated spelling, when a member of the set IS present', () => {
+		const forbidden: Expression = {
+			op: 'for-all',
+			collection: { pointer: '/interactions/first-page/response-body/rows' },
+			predicate: {
+				op: 'not',
+				operands: [
+					{
+						op: 'set-membership',
+						operands: [
+							{ pointer: '@/id' },
+							{ referenceSet: 'expected-export-rows' },
+						],
+					},
+				],
+			},
+		}
+		expect(resolveAgainst([{ id: 'r-001' }], forbidden)).toBe('false')
+		expect(resolveAgainst([{ id: 'r-999' }], forbidden)).toBe('true')
+	})
+
+	// A row carrying fields the reference set does not declare is the ordinary
+	// case, and it is the one whole-member comparison could never answer.
+	it('resolves true for rows carrying fields the reference set does not declare', () => {
+		expect(
+			resolveAgainst([
+				{ id: 'r-001', datasetId: 'ds-7' },
+				{ id: 'r-002', datasetId: 'ds-8' },
+			]),
+		).toBe('true')
+	})
+})
+
+describe("set-membership's set-operand projection guards", () => {
+	const check: Expression = {
+		op: 'set-membership',
+		operands: [
+			{ pointer: '/interactions/x/response-body/id' },
+			{ referenceSet: 'rows' },
+		],
+	}
+	const resolveWith = (
+		members: JsonValue[],
+		keys: readonly string[],
+		resolver = makeStubResolver(
+			{ x: { 'response-body': { id: 'r-1' } } },
+			{ rows: members },
+		),
+	) =>
+		resolveCheck(
 			check,
 			resolver,
 			noneCollectionTyped,
+			{ rows: keys },
 			DEFAULT_BUDGET,
 			PATH,
 		)
-		expect(result.resolution).toBe('false')
+
+	it('projects a declared single-key set down to that key', () => {
+		expect(resolveWith([{ id: 'r-1' }, { id: 'r-2' }], ['id']).resolution).toBe(
+			'true',
+		)
+		expect(resolveWith([{ id: 'r-2' }], ['id']).resolution).toBe('false')
+	})
+
+	it('throws a plain Error, never a RuntimeFault, on a multi-key reference set', () => {
+		const error = plainErrorOf(() =>
+			resolveWith([{ id: 'r-1', tenant: 't' }], ['id', 'tenant']),
+		)
+		expect(error).not.toBeInstanceOf(RuntimeFault)
+		expect(error.message).toContain('declares 2 keys')
+	})
+
+	it('throws a plain Error when a declared member carries no own property for the declared key', () => {
+		const error = plainErrorOf(() => resolveWith([{ other: 'r-1' }], ['id']))
+		expect(error).not.toBeInstanceOf(RuntimeFault)
+		expect(error.message).toContain('carries no own property "id"')
+	})
+
+	// The array guard owns a non-array set operand, so the projection hands it
+	// through untouched, so one guard reports the shape and one only.
+	it('leaves a non-array set operand to the array-narrowing guard even with keys declared', () => {
+		const error = plainErrorOf(() =>
+			resolveWith(
+				[],
+				['id'],
+				makeResolverWithMisbehavingReferenceSet(
+					{ x: { 'response-body': { id: 'r-1' } } },
+					{},
+					'rows',
+					42,
+				),
+			),
+		)
+		expect(error.message).toContain('must resolve to an array')
 	})
 })
 
@@ -580,8 +753,14 @@ describe('a quantifier over shape (O-005 shape)', () => {
 			{},
 		)
 		expect(
-			resolveCheck(check, resolver, noneCollectionTyped, DEFAULT_BUDGET, PATH)
-				.resolution,
+			resolveCheck(
+				check,
+				resolver,
+				noneCollectionTyped,
+				NO_REFERENCE_SET_KEYS,
+				DEFAULT_BUDGET,
+				PATH,
+			).resolution,
 		).toBe('true')
 	})
 
@@ -593,8 +772,14 @@ describe('a quantifier over shape (O-005 shape)', () => {
 			{},
 		)
 		expect(
-			resolveCheck(check, resolver, noneCollectionTyped, DEFAULT_BUDGET, PATH)
-				.resolution,
+			resolveCheck(
+				check,
+				resolver,
+				noneCollectionTyped,
+				NO_REFERENCE_SET_KEYS,
+				DEFAULT_BUDGET,
+				PATH,
+			).resolution,
 		).toBe('false')
 	})
 })
@@ -612,6 +797,7 @@ describe('quantifier fold correctness (P11)', () => {
 			check,
 			resolver,
 			noneCollectionTyped,
+			NO_REFERENCE_SET_KEYS,
 			DEFAULT_BUDGET,
 			PATH,
 		)
@@ -651,6 +837,7 @@ describe('quantifier fold correctness (P11)', () => {
 			check,
 			resolver,
 			noneCollectionTyped,
+			NO_REFERENCE_SET_KEYS,
 			DEFAULT_BUDGET,
 			PATH,
 		)
@@ -674,6 +861,7 @@ describe('the empty-collection introduction condition, applied uniformly (Decisi
 			check,
 			resolver,
 			noneCollectionTyped,
+			NO_REFERENCE_SET_KEYS,
 			DEFAULT_BUDGET,
 			PATH,
 		)
@@ -700,6 +888,7 @@ describe('the empty-collection introduction condition, applied uniformly (Decisi
 			check,
 			resolver,
 			noneCollectionTyped,
+			NO_REFERENCE_SET_KEYS,
 			DEFAULT_BUDGET,
 			PATH,
 		)
@@ -722,6 +911,7 @@ describe('the empty-collection introduction condition, applied uniformly (Decisi
 			check,
 			resolver,
 			noneCollectionTyped,
+			NO_REFERENCE_SET_KEYS,
 			DEFAULT_BUDGET,
 			PATH,
 		)
@@ -744,6 +934,7 @@ describe('the empty-collection introduction condition, applied uniformly (Decisi
 			check,
 			resolver,
 			noneCollectionTyped,
+			NO_REFERENCE_SET_KEYS,
 			DEFAULT_BUDGET,
 			PATH,
 		)
@@ -766,6 +957,7 @@ describe('the empty-collection introduction condition, applied uniformly (Decisi
 			check,
 			resolver,
 			noneCollectionTyped,
+			NO_REFERENCE_SET_KEYS,
 			DEFAULT_BUDGET,
 			PATH,
 		)
@@ -787,6 +979,7 @@ describe('ABSENT on a { pointer } operand: collection-typed vs not (AC 3, Decisi
 			check,
 			resolver,
 			collectionTyped,
+			NO_REFERENCE_SET_KEYS,
 			DEFAULT_BUDGET,
 			PATH,
 		)
@@ -802,6 +995,7 @@ describe('ABSENT on a { pointer } operand: collection-typed vs not (AC 3, Decisi
 			check,
 			resolver,
 			noneCollectionTyped,
+			NO_REFERENCE_SET_KEYS,
 			DEFAULT_BUDGET,
 			PATH,
 		)
@@ -824,6 +1018,7 @@ describe('the real covers-by-key dispatch branch (AC 3, AC 4, Decision 1, Decisi
 			coversByKeyCheck,
 			resolver,
 			pointerDenotesCollection,
+			NO_REFERENCE_SET_KEYS,
 			DEFAULT_BUDGET,
 			PATH,
 		)
@@ -990,6 +1185,7 @@ describe('the real covers-by-key dispatch branch (AC 3, AC 4, Decision 1, Decisi
 				coversByKeyCheck,
 				misbehavingResolver,
 				noneCollectionTyped,
+				NO_REFERENCE_SET_KEYS,
 				DEFAULT_BUDGET,
 				PATH,
 			),
@@ -1011,6 +1207,7 @@ describe('the real covers-by-key dispatch branch (AC 3, AC 4, Decision 1, Decisi
 				coversByKeyCheck,
 				misbehavingResolver,
 				noneCollectionTyped,
+				NO_REFERENCE_SET_KEYS,
 				DEFAULT_BUDGET,
 				PATH,
 			),
@@ -1090,6 +1287,7 @@ describe('array-narrowing guards fire only where a schema-guaranteed array is mi
 				check,
 				misbehavingResolver,
 				noneCollectionTyped,
+				NO_REFERENCE_SET_KEYS,
 				DEFAULT_BUDGET,
 				PATH,
 			),
@@ -1115,6 +1313,7 @@ describe('array-narrowing guards fire only where a schema-guaranteed array is mi
 				check,
 				misbehavingResolver,
 				noneCollectionTyped,
+				NO_REFERENCE_SET_KEYS,
 				DEFAULT_BUDGET,
 				PATH,
 			),
@@ -1134,6 +1333,7 @@ describe('array-narrowing guards fire only where a schema-guaranteed array is mi
 			check,
 			resolver,
 			noneCollectionTyped,
+			NO_REFERENCE_SET_KEYS,
 			DEFAULT_BUDGET,
 			PATH,
 		)
@@ -1162,6 +1362,7 @@ describe('a { literal: [] } operand trips the empty-collection condition exactly
 			check,
 			resolver,
 			noneCollectionTyped,
+			NO_REFERENCE_SET_KEYS,
 			DEFAULT_BUDGET,
 			PATH,
 		)
@@ -1203,6 +1404,7 @@ describe('a RuntimeFault from a nested regexMatch propagates undecorated through
 				nestedQuantifierRegexOverPointer,
 				resolver,
 				noneCollectionTyped,
+				NO_REFERENCE_SET_KEYS,
 				DEFAULT_BUDGET,
 				PATH,
 			),
@@ -1215,7 +1417,14 @@ describe('a RuntimeFault from a nested regexMatch propagates undecorated through
 			operands: [nestedQuantifierRegexOverPointer],
 		}
 		assertBudgetExhausted(() =>
-			resolveCheck(check, resolver, noneCollectionTyped, DEFAULT_BUDGET, PATH),
+			resolveCheck(
+				check,
+				resolver,
+				noneCollectionTyped,
+				NO_REFERENCE_SET_KEYS,
+				DEFAULT_BUDGET,
+				PATH,
+			),
 		)
 	})
 
@@ -1228,7 +1437,14 @@ describe('a RuntimeFault from a nested regexMatch propagates undecorated through
 			operands: [FALSE_NODE, nestedQuantifierRegexOverPointer],
 		}
 		assertBudgetExhausted(() =>
-			resolveCheck(check, resolver, noneCollectionTyped, DEFAULT_BUDGET, PATH),
+			resolveCheck(
+				check,
+				resolver,
+				noneCollectionTyped,
+				NO_REFERENCE_SET_KEYS,
+				DEFAULT_BUDGET,
+				PATH,
+			),
 		)
 	})
 
@@ -1238,7 +1454,14 @@ describe('a RuntimeFault from a nested regexMatch propagates undecorated through
 			operands: [TRUE_NODE, nestedQuantifierRegexOverPointer],
 		}
 		assertBudgetExhausted(() =>
-			resolveCheck(check, resolver, noneCollectionTyped, DEFAULT_BUDGET, PATH),
+			resolveCheck(
+				check,
+				resolver,
+				noneCollectionTyped,
+				NO_REFERENCE_SET_KEYS,
+				DEFAULT_BUDGET,
+				PATH,
+			),
 		)
 	})
 
@@ -1266,6 +1489,7 @@ describe('a RuntimeFault from a nested regexMatch propagates undecorated through
 				check,
 				quantifierResolver,
 				rowsCollectionTyped,
+				NO_REFERENCE_SET_KEYS,
 				DEFAULT_BUDGET,
 				PATH,
 			),
@@ -1283,6 +1507,7 @@ describe('a RuntimeFault from a nested regexMatch propagates undecorated through
 				check,
 				quantifierResolver,
 				rowsCollectionTyped,
+				NO_REFERENCE_SET_KEYS,
 				DEFAULT_BUDGET,
 				PATH,
 			),
@@ -1299,7 +1524,14 @@ describe('a RuntimeFault from a nested regexMatch propagates undecorated through
 			pattern: '^([a$',
 		}
 		const fault = faultOf(() =>
-			resolveCheck(check, resolver, noneCollectionTyped, DEFAULT_BUDGET, PATH),
+			resolveCheck(
+				check,
+				resolver,
+				noneCollectionTyped,
+				NO_REFERENCE_SET_KEYS,
+				DEFAULT_BUDGET,
+				PATH,
+			),
 		)
 		expect(fault).toBeInstanceOf(RuntimeFault)
 		expect(fault.code).toBe('operator-cannot-accept-operand')
@@ -1341,6 +1573,7 @@ describe('a type-mismatch quantifier collection resolves insufficient-evidence, 
 			check,
 			resolver,
 			noneCollectionTyped,
+			NO_REFERENCE_SET_KEYS,
 			DEFAULT_BUDGET,
 			PATH,
 		)

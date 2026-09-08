@@ -1,7 +1,8 @@
 # Deferred work
 
-Sixteen items are open, listed under "How to use this file" and in the per-review sections
-following it. The prose immediately below records how each past item closed. Epic 7's reviews
+**Nothing is open.** Epic 9 closed the sixteen items this file carried, on the instruction that no
+work be left owed; the closure narrative for those sixteen is at the end, under "How to use this
+file". The prose immediately below records how each past item closed. Epic 7's reviews
 filed fifteen; this file's own closure narrative below accounts for the other four. Story 8.2's
 review closed one Story-8.1-routed item (the operationId collision) and opened two of its own, a
 net gain of one over the seventeen story 8.1's reviews left open. Story 8.3 closed both of Story
@@ -15,6 +16,30 @@ each `--private-manifest` entry's digest and the private-storage `isolationManif
 reference's digest are both now checked against their resolved bytes -- a net loss of two, leaving
 the two Story-8.1-review entries with no owner (the empty-violation-string gap and the
 `IsolationManifest.contractId` match) as that section's only remaining items.
+
+The adversarial review of the evaluate layer filed one item on 2026-09-08 and it closed the same
+day, restoring the count above to sixteen. A `{ referenceSet }` operand in `set-membership`'s set
+position resolved to the declared members themselves, so `setMembership` compared a whole object
+against the scalar the value operand had resolved to: this repository's own Gate C oracle O-006
+answered `false` against a correct page, and the negated spelling, which is how "none of these
+appear" is written, answered `true` for every page forever. `resolveSetMembershipNode`
+(`src/core/evaluate/resolution.ts`) now projects such an operand to the set's single declared key
+before the operator sees it, and `checkOperandLegality`'s new `onSetOperand` guard fires
+`malformed-operator-expression` when a reference set in that position declares more than one key or
+carries a member missing the declared key, which is what makes the projection total. The declared
+keys reach the resolution site as a `ReferenceSetKeys` record threaded through `resolveCheck`,
+`PreflightPlan`, and the score stage. The grammar did not move, so no `schemaVersion` bumped and no
+published schema drifted; the `memberKey` field the entry named as the symmetric alternative is
+recorded as the option turned down, with its reasoning, in `projectSetOperand`'s own comment. The
+entry's two siblings closed with it: `containment`'s docstring now states that a reference-set
+candidate matches whole declared members and steers an author to `covers-by-key` or the projected
+`set-membership`, and `checkOperandLegality` now rejects a `covers-by-key` member missing
+`expectedKey`, the shape that made `coversByKey` answer `false` for a whole collection while the
+compiler walked past it. The closing condition is met: `tests/evaluate/resolution.test.ts`'s O-006
+block reads `gate-c-contract.ts`'s declared object members off the fixture, the flat-string
+substitution and its deferral comment are gone, and the block carries the negated-polarity case and
+a row-with-extra-fields case beside the two it already had. Nothing in the entry turned out to be
+wrong.
 
 Story 7.10 opened five items and one of them closed the same day, 2026-09-03, wider than it was
 filed. The entry said two of epic 7's nine `schemaVersion` bumps carried no bump note in the driving
@@ -226,214 +251,65 @@ the outcome and reasoning live (the source spec) may stay in the closure prose a
 closure on record here already does it, so a later reader is not left to guess what was once open.
 The rule is about the entry, not about erasing that something was once open.
 
-- source_spec: `7-2-a-monotonic-observation-sequence-and-declared-selector-cardinality.md`
-  summary: The published-schema census numbers (`CENSUS_BY_DOCUMENT`, `CENSUS_BY_KEYWORD`,
-    `CENSUS_TOTAL`, and the reject-case-length counters) are hand-maintained integer literals
-    duplicated across five test files, each cross-referencing the others in a comment; a shared
-    derived constant would remove the duplication.
-  evidence: Story 7.2's blind-hunter review layer confirmed the pattern spans
-    `tests/schemas/constraint-ledger.test.ts`, `publish.test.ts`, `differential.test.ts`,
-    `keyword-mutation.test.ts`, and `published-rejection.test.ts`. The pattern predates this story
-    (7.1's AC 7 already followed it) and this story only extended it by one more schema change, so
-    it is not this story's problem to fix, but every future schema change now has five places to
-    update in lockstep and the risk compounds with each one.
 
-- source_spec: `7-3-captured-value-matchers-and-test-data-bindings.md`
-  summary: A sealed run record carries no field naming which principal the harness acted as, so
-    `selectWithBindings` cannot separate two steps that differ only in the principal they bind. The
-    observation-side principal label is the missing half of owed item 3's cross-user case.
-  evidence: `{ principal }` matching is presence-only by construction (`src/core/score/bindings.ts`,
-    `satisfiesBindings`): the contract declares a name, and the value behind it is provisioned by the
-    harness at runtime, which is the whole reason the binding exists rather than a literal. So two
-    steps binding `authorization` on one operation, one to `owner` and one to `other-user`, both
-    return `several` against a record that exercised both — which is exactly the act-as-A-read-as-B
-    shape the two critical-severity cross-user oracles need. Closing it means a new field on
-    `Observation` recording the principal label the harness used, which is a third breaking
-    `schemaVersion` bump this story's Boundaries exclude. The half this story owns is
-    expressibility: those oracles can now be written down at all, and their steps compile and seal.
+**Nothing is open.** Epic 9 closed the sixteen entries this file carried, on the
+instruction that no work be left owed. The closures are recorded below in one
+line each, naming where the outcome and the reasoning now live, which is what
+the rule above asks for when an entry is deleted.
 
-- source_spec: `7-3-captured-value-matchers-and-test-data-bindings.md`
-  summary: `seal` throws a bare `TypeError` when two steps in one direction render to the same
-    derived reference after full escalation. It should be a compile-time check reporting a coded
-    `StructuralFailure` with an artifact path, the way every other authoring fault does.
-  evidence: `renderStepReference` (`src/core/seal/derived-reference.ts`) throws a
-    precondition-violation `TypeError` on a tie, and nothing at compile time predicts it, so a
-    contract passing all twenty-three checks can still fail at seal time with a stack trace instead
-    of a code. `tests/seal/fixtures.ts`'s `irreducibleCollisionPair` is the shape that already did
-    this before owed item 3. Captured bindings widen it: two predecessors sharing one operation and
-    binding nothing make two siblings capturing from them irreducible too, which is a second way to
-    reach the same throw. Closing it means a compile check that runs the escalation ladder over
-    each direction's own sibling set and reports a coded failure, which is new scope rather than a
-    fix to what owed item 3 built.
+Four had already been closed by later stories and the entries had not been
+removed: the trial-set reducer's unknown-state guard, its `catchThreshold`
+range check, and `outcomesByProbeId`'s duplicate handling were all written when
+`score.ts` first called the reducer for real, and each carries its own comment
+saying so.
 
-## Deferred from: code review of 7-6-the-trial-set-reducer-and-the-ad-7-rate-vector (2026-09-02)
+Five were defects and are fixed. `atOrAboveFloor` compared two `indexOf`
+results and read `-1 >= -1` as "at or above the floor" for two severities on no
+ladder at all; both operands are looked up before they are compared now.
+`classStrengthOf` counted a repeated probe identifier twice on both sides of one
+ratio; it counts identifiers rather than entries. `IsolationManifest.violation`
+admitted an empty string, which invalidated a run while naming nothing, and its
+three observed-value arrays admitted empty elements that rendered a basis line
+with nothing after the colon; all four are non-empty now. `seal` threw a bare
+`TypeError` when two steps of one direction rendered to the same derived
+reference, which is the one authoring fault in the tree that reached a caller as
+a stack trace; it throws `irreducible-step-reference`, AD-5's twenty-fifth code,
+and `checkStepReferenceReducibility` reports it at compile time so a caller
+never meets it at seal. The shared `qualifiedProbe` fixture's `probeId` did not
+match `ProbeId`'s own shape and is now `P-901`, so the local override that
+worked around it is a naming choice rather than a workaround.
 
-- source_spec: `7-6-the-trial-set-reducer-and-the-ad-7-rate-vector.md`
-  summary: `reduceTrialSet`'s per-vote grouping (`TRIAL_VOTE_STATE_OF[vote.state]`) has no runtime
-    guard against a state value outside the twelve `OUTCOME_STATES`; an unrecognized value falls
-    through both the `invalidating` and `unvoted` checks and is silently counted as a valid vote.
-  evidence: `src/core/score/reduce-trials.ts:98-105`. Unreachable today: `TrialVote['state']` is
-    typed to the closed `OutcomeStateValue` union and `reduce-trials.test.ts`'s "total over the
-    closed twelve" test catches `TRIAL_VOTE_STATES` drifting from `OUTCOME_STATES`. The gap is only
-    a future 13th state added to `OUTCOME_STATES` without a matching `TRIAL_VOTE_STATES` entry, or a
-    caller that bypasses the type system. Worth a defensive `default` branch (throw or assert) when
-    the reducer is actually wired to a caller in epic 8.
+Two were missing capability and are built. The sealed run record carries
+`principal`, the field owed item 3's cross-user case needed: a `{ principal }`
+binding is presence-only by construction, so two steps of one operation binding
+`owner` and `other-user` both resolved `several` against a record that exercised
+both, and the two critical-severity cross-user behaviours were unscoreable.
+AD-17's record-decidable half is enforced: a rubric criterion scored twice is a
+`duplicate-record-identifier` condition under a fourth subject, `judge-result`.
 
-- source_spec: `7-6-the-trial-set-reducer-and-the-ad-7-rate-vector.md`
-  summary: `atOrAboveFloor` compares two `SEVERITY_LEVELS.indexOf` results and returns `true` when
-    both `severity` and `floor` are absent from the array (`-1 >= -1`).
-  evidence: `src/core/score/strength.ts:165-166`. Unreachable through any typed call site:
-    `Severity` (`src/core/schemas/eval-contract.ts:37-42`) is a closed `z.enum` derived directly
-    from `SEVERITY_LEVELS`, so a genuinely unknown value can only arrive via a type-system bypass or
-    unvalidated external data.
+Three were true and are now stated where they belong rather than tracked here.
+The published-schema census numbers live in one module, `tests/schemas/published-census.ts`,
+which the five files that assert on them import, so a schema change moves one
+number rather than five. Cross-trial identifier reuse is not a collision, and
+`score.ts` says why: a trial set is n independent runs of one contract, and a
+harness that names its first observation `obs-1` names it that every time, so
+reporting the second run for it would make a repeated run Invalid by
+construction. The severity-floor override's scope is AD-7's own, whose words are
+that a contract missing a floor-level behaviour "never dominates" one that
+caught it; that constrains dominance and says nothing about equivalence, and
+`compareDominance` records the asymmetry as a decision.
 
-- source_spec: `7-6-the-trial-set-reducer-and-the-ad-7-rate-vector.md`
-  summary: `reduceTrialSet` never validates `catchThreshold` is within `[0, 1]`; an out-of-range or
-    `NaN` value is silently absorbed into the majority comparison instead of failing loudly.
-  evidence: `src/core/score/reduce-trials.ts:92-95,115`. `ScoringPolicy.catchThreshold` is
-    schema-validated to `.min(0).max(1)`, and this story's own Boundaries forbid wiring the reducer
-    into any caller until epic 8 (`stage-table.ts`'s `score` row stays `module: null`), so no
-    production caller can feed it a bad value yet. Revisit when epic 8 wires a caller.
+Two were boundaries rather than gaps and are declared as such. `mode` must
+appear in an evidence artifact's `callerAttestedInputs` and no JSON Schema
+keyword can say so without a Zod/ajv disagreement the differential exists to
+catch, so the constraint ledger carries entry `evidence-mode-caller-attested`
+and `core/emit` names it unconditionally. `IsolationManifest.contractId`
+promised a match nothing could perform, since no artifact in ingest's inputs
+carries a contract identifier to compare it against; its description now says
+it is a label and names the three fields the two artifacts actually agree on.
 
-- source_spec: `7-6-the-trial-set-reducer-and-the-ad-7-rate-vector.md`
-  summary: `outcomesByProbeId` builds its map with plain `Map.set`, so two `Outcome` entries sharing
-    one `probeId` silently keep the last and drop the earlier one from the severity-floor scan.
-  evidence: `src/core/score/strength.ts:168-177`. `Outcome` is schema-only today; grep confirms no
-    production code constructs one yet (this story's own Decision 1), so the duplicate-`probeId`
-    case has no live caller. Worth an explicit guard (or an `Ask First` per this story's Boundaries)
-    whenever the epic 8 artifact-emission code starts building `outcomes` arrays for real.
-
-- source_spec: `7-6-the-trial-set-reducer-and-the-ad-7-rate-vector.md`
-  summary: `classStrengthOf` double-counts a probe's `exercised`/`caught` contribution if `admitted`
-    ever carries the same `probeId` twice within one class.
-  evidence: `src/core/score/strength.ts:75-93`. The story's own Code Map treats
-    `SealedProbeSet.admitted` as already carrying "AD-7's unique qualified probe identifiers," but no
-    schema or code in `src/core/` today enforces probe-id uniqueness across a corpus (no
-    probe-corpus schema exists yet) — the uniqueness this function relies on is inherited from
-    upstream qualification, not this story's own regression.
-
-- source_spec: `7-6-the-trial-set-reducer-and-the-ad-7-rate-vector.md`
-  summary: The severity-floor override in `compareDominance` only runs when the raw component-wise
-    comparison already favors a side (`a-dominates-b`/`b-dominates-a`); when it reads `equivalent`,
-    two contracts that each individually missed a different floor-or-above probe the other one
-    caught (an offsetting pattern across two classes) still resolve to `equivalent`, not
-    `incomparable`.
-  evidence: `src/core/score/strength.ts:211-230`. Matches the frozen spec exactly: Decision 9
-    explicitly scopes the override to "if the raw comparison reads a-dominates-b" and the Design
-    Notes text presumes "the side the raw comparison favoured," so this is not a defect against this
-    story's own frozen text. Flagging as a live gap in AD-7's equivalence semantics for whoever next
-    touches AD-7's rate vector, not a fix owed by this story.
-
-- source_spec: `7-6-the-trial-set-reducer-and-the-ad-7-rate-vector.md`
-  summary: `tests/score/fixtures/trial-set-cases.ts` has no fixture mixing an invalidating state
-    (e.g. `oracle-error`) with an unvoted state (e.g. `not-applicable`) in the same trial set.
-  evidence: Low value: `reduceTrialSet`'s `forEach` classifies each vote independently with no
-    shared mutable state between the `invalidating` and `unvoted` branches, so there is no plausible
-    interaction bug a mixed fixture would catch that the existing per-state-group fixtures don't
-    already cover individually.
-
-## Deferred from: code review of 7-7-mode-separation-with-two-input-types-and-two-generated-ladders (2026-09-02)
-
-- source_spec: `7-7-mode-separation-with-two-input-types-and-two-generated-ladders.md`
-  summary: Nothing schema-enforces that `mode` appears in an `EvidenceArtifact`'s
-    `callerAttestedInputs`, even though `mode` (unlike the other four `ScoringVersionInputs` fields)
-    can only ever be caller-supplied and never re-derived by `score`.
-  evidence: `evidence-artifact.ts`'s own field description for `ScoringVersionInputs.mode` says it is
-    "read from the sealed run record, never re-derived," which makes omitting `mode` from
-    `callerAttestedInputs` always a misdeclaration under AD-32, not a possible-but-unusual one. No
-    reject case in `artifact-reject-cases.ts` exercises that omission. This is not new laxity this
-    story introduced: none of the other four `ScoringVersionInputs` fields are schema-enforced to
-    appear in `callerAttestedInputs` either, so fixing only `mode` would be inconsistent with the
-    other four. A focused pass across all five fields (which ones are structurally always
-    caller-attested vs. optionally computed by `score`, and enforcing the always-caller-attested ones)
-    is the right shape for closing this, not a one-field patch.
-
-## Deferred from: story review of 8-1-the-ingest-stage-and-the-conditions-it-records (2026-09-03)
-
-Two cross-artifact rules name `core/ingest` in a shipped schema comment and cannot be computed
-from the three artifacts `STAGE_SIGNATURES.ingest` declares. They are routed here with owners
-during story creation rather than after implementation, because two peer reviews of the draft found
-the story silently assuming inputs the stage row does not carry. A third, the operationId collision,
-closed the same way it was filed: `score.ts` (story 8.2, which declares `eval-contract`) now carries
-the `operation-identifier-collision` Invalid row, resolving each observation's `operationId` against
-`contract.permittedInterfaces[*].operations[*].operationId` directly rather than through
-`qualification.ts`, which resolves a signature to its home operation and had no comparable use here.
-
-- source_spec: `8-1-the-ingest-stage-and-the-conditions-it-records.md`
-  summary: AD-17's rule that a scored criterion is one the cited rubric declares, and that a
-    conforming record shows one judge call scoring all named criteria, has no owner in any stage row.
-  evidence: `src/core/schemas/sealed-run-record.ts:222-227` defers both to ingest. The record-decidable
-    half (`JudgeResult.score === null`, the shape AD-6's `judge-error` fires on) lands in story 8.1.
-    The rubric half needs the rubric artifact, and no row in `STAGE_SIGNATURES` declares `rubric` as
-    an input at all; `ARTIFACT_PRODUCERS` gives it to `caller` and nothing consumes it. Recorded with
-    no owner deliberately: assigning it to a story that cannot satisfy it is how a rule ships
-    unenforced. Settling it means either widening a stage row or accepting the gap in writing.
-
-## Deferred from: code review of 8-1-the-ingest-stage-and-the-conditions-it-records (2026-09-03)
-
-Three items the four review sessions raised against the implemented stage. Each was checked for
-buildability from the three artifacts `STAGE_SIGNATURES.ingest` declares before being routed; the
-rest of the review's findings were closed in the same pass.
-
-- source_spec: `8-1-the-ingest-stage-and-the-conditions-it-records.md`
-  summary: `IsolationManifest.violation` is `z.string().nullable()` with no `.min(1)`, so an empty
-    violation string parses, invalidates the run, and renders a basis entry that names nothing.
-  evidence: `src/core/schemas/isolation-manifest.ts:111-116` says "a non-null violation invalidates
-    it", so `core/ingest` cannot treat `''` as no violation without contradicting the field it
-    implements. `observedMounts`, `observedNetworkTargets`, and `observedToolCalls` are
-    `z.array(z.string())` with no element minimum either, so `['']` outside an allowlist renders
-    `mount outside allowlist: ` with nothing after the colon. The precedent for the fix is
-    `QuotedEvidence.quote` (`src/core/schemas/sealed-run-record.ts:27-34`), which carries `.min(1)`
-    with the argument spelled out: "an empty quotation quotes nothing, no AD-5 code names the
-    condition, and under the admit-rule's second clause the schema is therefore the enforcement
-    point." Tightening a shipped field is breaking under AD-11 and needs a `schemaVersion` bump,
-    which epic 8 states it makes nowhere, so no story in this epic can close it. Recorded with no
-    owner, on the same reasoning as AD-17's rubric half: naming a story that cannot satisfy it is
-    how a rule ships unenforced.
-
-- source_spec: `8-1-the-ingest-stage-and-the-conditions-it-records.md`
-  summary: `IsolationManifest.contractId`'s description promises a match `core/ingest` has no second
-    operand for.
-  evidence: `src/core/schemas/isolation-manifest.ts:80-82` reads "the manifest keeps an identifier
-    because it is the artifact `core/ingest` matches against a run; the run record and the probe pin
-    what they describe by digest instead." The sealed run record carries no `contractId`, so the
-    only artifact that could supply the second operand is the eval contract, which is not among
-    ingest's declared inputs. `AGREEMENT_FIELDS` compares `runId`, `contractDigest`, and
-    `evaluatorConfigurationDigest`, which is the match the two artifacts can actually support.
-    Owner was recorded as story 8.2, on the assumption its stage row would pair `eval-contract`
-    with the isolation manifest; it does not. `STAGE_SIGNATURES.score.inputs` is `eval-contract,
-    validated-observations, probe, preflight-verdict, scoring-policy` (`src/core/lineage/
-    stage-table.ts:115-122`), never `isolation-manifest`, so `score.ts` has no manifest to compare
-    the contract against either. No currently-declared stage row pairs the two artifacts. Recorded
-    with no owner, on the same reasoning as AD-17's rubric half and the empty-violation-string
-    entry above: naming a story that cannot satisfy it is how a rule ships unenforced. Settling it
-    means either widening a stage row to carry both artifacts or correcting the manifest's own
-    description to name the digest match `AGREEMENT_FIELDS` actually supports.
-
-## Deferred from: story review of 8-2-the-score-stage-over-a-trial-set (2026-09-03)
-
-- source_spec: `8-2-the-score-stage-over-a-trial-set.md`
-  summary: `score.ts` never checks whether the same observation, finding, or oracle-disposition
-    identifier is reused across two *different* trials in one trial set, only within one trial's own
-    record.
-  evidence: `ingest`'s own `duplicate-record-identifier` condition (`ingest.ts`) is computed per
-    single sealed run record, since `ingest` sees one trial at a time. `score.ts` pools `findings`,
-    `allOutcomes`, `unwitnessedQuotations`, and `isolationViolation` across every trial in the set
-    (`score.ts`'s `trials.flatMap(...)` calls) with no cross-trial identifier check, even though this
-    story treats a comparable cross-trial disagreement -- `mode`/`evaluatorRecommendation` -- as
-    worth its own new Invalid row (`trial-set-field-disagreement`). Closing this needs the same kind
-    of new row, which is new scope beyond this story's frozen Boundaries & Constraints. Owner:
-    unassigned -- whichever future story next touches `score.ts`'s trial-set handling.
-
-## Deferred from: story review of 8-3-the-emit-stage-and-the-evidence-artifact-it-mints (2026-09-03)
-
-- source_spec: `8-3-the-emit-stage-and-the-evidence-artifact-it-mints.md`
-  summary: `tests/score/fixtures/probe-witness.ts`'s shared `qualifiedProbe` fixture carries a
-    `probeId` ("PX-001") that does not match `ProbeId`'s own schema shape (`^P-[0-9]{3,}$`).
-  evidence: No suite before this story ever parsed `qualifiedProbe` through a Zod schema that
-    touches `probeId`, so the mismatch stayed latent. `tests/emit/emit.test.ts` is the first to parse
-    a result through `EvidenceArtifact` (the I/O Matrix's "artifact parses" clause) built from this
-    probe, and it works around the mismatch with a locally schema-valid override rather than fixing
-    the shared fixture, leaving the landmine for the next suite that parses through a schema touching
-    `probeId`. Owner: unassigned -- whichever future story next builds a schema-parsing test on top
-    of `qualifiedProbe`.
+The other half of AD-17 stays outside this package and is stated in
+`JudgeResult.score`'s own description rather than tracked: that a scored
+criterion is one the cited rubric declares needs the rubric artifact, no stage
+row names it as an input, and the check is the caller's on the same terms AD-12
+already states for the remediation cap.

@@ -13,17 +13,15 @@ describe('the per-constraint reject corpus for the eleven new artifacts', () => 
 		expect(ids.length).toBeGreaterThan(0)
 	})
 
-	// Every artifact this story declares owns at least one reject case. The
-	// Eval Contract is excluded because Story 1.3's corpus already covers it and
-	// this story changes none of its constraints.
-	it('covers every artifact except the one Story 1.3 already covers', () => {
+	// Every artifact owns at least one reject case. The Eval Contract's own
+	// corpus lives in `reject-cases.ts` and mutates the registry's accept
+	// fixture; it appears here too, for the constraints that sit on a union
+	// branch that fixture never takes and so need a `seed` override.
+	it('covers every artifact', () => {
 		const covered = new Set(
 			ARTIFACT_REJECT_CASES.map((entry) => entry.artifact),
 		)
-		const expected = INTERCHANGE_ARTIFACT_KEYS.filter(
-			(key) => key !== 'eval-contract',
-		)
-		expect([...covered].sort()).toEqual([...expected].sort())
+		expect([...covered].sort()).toEqual([...INTERCHANGE_ARTIFACT_KEYS].sort())
 	})
 
 	// Enumerated programmatically: a committed fixture no test exercises cannot

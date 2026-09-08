@@ -8,6 +8,7 @@ import { describe, expect, it } from 'vitest'
 import { invokePort } from '../../src/application/invoke-port.ts'
 import { RuntimeFault } from '../../src/core/schemas/faults.ts'
 import type {
+	ApiProbeRequest,
 	ClockReadRequest,
 	CorpusResolveRequest,
 	FileReadRequest,
@@ -474,12 +475,13 @@ const probePolicy: ProbeTargetPolicy = {
 function probeRequest(
 	interfaceId: string,
 	operationId: string,
-	method: ProbeRequest['method'] = 'GET',
-): ProbeRequest {
+	method: ApiProbeRequest['method'] = 'GET',
+): ApiProbeRequest {
 	return {
 		probeId: `probe-${operationId}`,
 		interfaceId,
 		operationId,
+		kind: 'api',
 		method,
 		pathTemplate: '/orders',
 		channels: {
@@ -496,6 +498,7 @@ function observation(request: ProbeRequest, status: number) {
 		probeId: request.probeId,
 		interfaceId: request.interfaceId,
 		operationId: request.operationId,
+		kind: 'api' as const,
 		status,
 		headers: { 'content-type': 'application/json' },
 		body: { kind: 'json' as const, value: { ok: status < 400 } },

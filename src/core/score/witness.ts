@@ -19,6 +19,8 @@
  * four plain-`Error` sites reachable, which leaves exactly two data-dependent
  * `RuntimeFault`s: an exhausted regex budget and a non-canonicalizable value.
  */
+
+import { requestShapeOf } from '../declared-inputs.ts'
 import { makeResolveOperand } from '../evaluate/evidence-resolution.ts'
 import { resolveCheck } from '../evaluate/resolution.ts'
 import { makeWitnessPointerDenotesCollection } from '../preflight/witness-evidence.ts'
@@ -27,8 +29,8 @@ import type {
 	ProbeInputBinding,
 } from '../schemas/defect-signature.ts'
 import { OBSERVED_STEP_ID } from '../schemas/defect-signature.ts'
-import type { Operation, PermittedInterface } from '../schemas/interface.ts'
-import { TRANSPORT_CHANNELS } from '../schemas/pointer.ts'
+import type { AnyOperation, PermittedInterface } from '../schemas/interface.ts'
+import { INPUT_CHANNELS } from '../schemas/pointer.ts'
 import type { JsonValue } from '../schemas/primitives.ts'
 import type { Probe } from '../schemas/probe.ts'
 import type {
@@ -133,9 +135,9 @@ export type ProbeWitnessMatch = {
 function selectorAdmits(
 	binding: ProbeInputBinding,
 	observation: Observation,
-	operation: Operation,
+	operation: AnyOperation,
 ): boolean {
-	for (const channel of TRANSPORT_CHANNELS) {
+	for (const channel of INPUT_CHANNELS) {
 		const channelBinding = binding[channel]
 		if (channelBinding === null) continue
 		const observed = observation.callInputs[channel]
@@ -150,7 +152,7 @@ function selectorAdmits(
 				continue
 			}
 			if (value.matcher === 'any') continue
-			const declared = operation.requestShape[channel].types[key]
+			const declared = requestShapeOf(operation, channel)?.types[key]
 			if (declared === undefined || declared === null) return false
 			if (jsonTypeOf(actual) === declared) return false
 		}
@@ -178,13 +180,17 @@ const bySequence = (a: Observation, b: Observation): number =>
 function resolveCondition(
 	signature: DefectSignature,
 	observation: Observation,
-	operation: Operation,
+	operation: AnyOperation,
 	artifactPath: string,
 ): 'true' | 'false' | 'insufficient-evidence' {
 	return resolveCheck(
 		signature.condition.predicate,
 		makeResolveOperand({ [OBSERVED_STEP_ID]: observation }, {}),
 		makeWitnessPointerDenotesCollection(operation),
+		// No reference sets, matching the empty members map above: the
+		// qualification gate rejects a reference-set operand in a defect
+		// signature under `condition-reference-set-operand`.
+		{},
 		PROBE_REGEX_MATCH_STEP_BUDGET,
 		artifactPath,
 	).resolution

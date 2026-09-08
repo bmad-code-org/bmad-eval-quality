@@ -5,7 +5,10 @@
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { RuntimeFault } from '../../src/core/schemas/faults.ts'
-import type { ProbeRequest } from '../../src/core/schemas/port-messages.ts'
+import type {
+	ApiProbeRequest,
+	ProbeRequest,
+} from '../../src/core/schemas/port-messages.ts'
 import { runEnvironmentProbePortConformance } from '../../src/testing/probe-conformance.ts'
 import {
 	buildSubjectPolicy,
@@ -119,6 +122,8 @@ describe('the in-repository probe subject (fixtures 85-88)', () => {
 			subject.echoRequest,
 			new AbortController().signal,
 		)
+		if (observed.kind !== 'api') throw new Error('expected an api observation')
+		if (observed.kind !== 'api') throw new Error('expected an api observation')
 		expect(observed.status).toBe(200)
 		expect(observed.body.kind).toBe('json')
 		const echoed =
@@ -146,6 +151,7 @@ describe('the in-repository probe subject (fixtures 85-88)', () => {
 			subject.relativeRedirectRequest,
 			new AbortController().signal,
 		)
+		if (observed.kind !== 'api') throw new Error('expected an api observation')
 		expect(observed.status).toBe(200)
 	})
 
@@ -161,10 +167,16 @@ describe('the in-repository probe subject (fixtures 85-88)', () => {
 			},
 		})
 		const subject = createProbeSubject(server)
-		const oversize: ProbeRequest = {
-			...subject.authorizedRequest,
+		// `ProbeSubject` types its requests as either kind; this one is the
+		// adapter's own HTTP subject, and the assertion below is about a
+		// transport channel.
+		const { authorizedRequest } = subject
+		if (authorizedRequest.kind !== 'api')
+			throw new Error('the HTTP subject builds an api request')
+		const oversize: ApiProbeRequest = {
+			...authorizedRequest,
 			channels: {
-				...subject.authorizedRequest.channels,
+				...authorizedRequest.channels,
 				query: { filler: 'x'.repeat(MAX_REQUEST_BYTES + 1) },
 			},
 		}
@@ -203,6 +215,7 @@ describe('the in-repository probe subject (fixtures 85-88)', () => {
 			new AbortController().signal,
 		)
 
+		if (observed.kind !== 'api') throw new Error('expected an api observation')
 		expect(observed.status).toBe(200)
 		expect(hops).toHaveLength(1)
 		expect(hops[0]?.host).toBe(SUBJECT_HOSTS.authorized)
@@ -235,6 +248,7 @@ describe('the in-repository probe subject (fixtures 85-88)', () => {
 			subject.authorizedRequest,
 			new AbortController().signal,
 		)
+		if (viaMapped.kind !== 'api') throw new Error('expected an api observation')
 		expect(viaMapped.status).toBe(200)
 		expect(mappedHops).toHaveLength(1)
 		expect(mappedHops[0]?.address).toBe('127.0.0.1')

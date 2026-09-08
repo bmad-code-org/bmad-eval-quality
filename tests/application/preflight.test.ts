@@ -133,7 +133,10 @@ describe('runPreflight: the boundary and the verdict', () => {
 	// propagates with its code intact rather than becoming a check.
 	it('111. lets a StructuralFailure from the plan propagate unchanged', async () => {
 		const draft = contractDraft()
-		draft.permittedInterfaces[0].kind = 'cli'
+		// `mcp` rather than `cli`: a command interface compiles now, and its
+		// operation shape is not the api one, so flipping the kind alone would
+		// be a parse failure rather than the structural one under test.
+		draft.permittedInterfaces[0].kind = 'mcp'
 		let thrown: unknown
 		try {
 			await run({ contract: parseContract(draft) })

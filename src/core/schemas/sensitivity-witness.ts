@@ -2,7 +2,7 @@
 import { z } from 'zod'
 import { Expression } from './expression.ts'
 import { Identifier, JsonObjectValue, KeyName } from './primitives.ts'
-import { ProbeRequestBody } from './probe-body.ts'
+import { ProbeRequestBody, ProbeRequestStdin } from './probe-body.ts'
 
 /**
  * The four transport channels one probe leg supplies, as values. `RequestShape`
@@ -14,7 +14,7 @@ import { ProbeRequestBody } from './probe-body.ts'
  * leg the plan could not map onto a `ProbeRequest` would declare work nothing
  * runs.
  */
-export const WitnessInputs = z
+export const ApiWitnessInputs = z
 	.strictObject({
 		path: JsonObjectValue,
 		query: JsonObjectValue,
@@ -26,6 +26,52 @@ export const WitnessInputs = z
 		description:
 			"One probe leg's supplied inputs, keyed by AD-19 transport channel, in the spelling the environment-probe port accepts. Shared by both witness kinds and by the fixture reset, so the export carries it once.",
 	})
+
+export type ApiWitnessInputs = z.infer<typeof ApiWitnessInputs>
+
+/**
+ * The same, for a leg supplied to a command-kind operation. `stdin` is a
+ * tagged value rather than a key map for exactly the reason `body` is: one leg
+ * supplies a value and has to tell an absent standard input from one carrying
+ * JSON null, which a key map cannot express. The request shape's `stdin` stays
+ * a key map, because a declaration says which keys an operation accepts.
+ * `suppliedKeys` is the code that bridges the two spellings and it
+ * special-cases `stdin` alongside `body`.
+ *
+ * AD-18 applies to `environment` the way it applies to `header`, so an
+ * environment value carries no credential.
+ */
+// Bare, with no `.meta({ id })`, and the reason is a published-schema one
+// rather than a size one. A `$ref`'d definition's own errors reach ajv with a
+// schema path relative to that definition, so two definitions under one
+// `anyOf` report `#/required` and `#/additionalProperties` at the same
+// instance path and nothing tells them apart. AD-13's mutation sweep needs one
+// keyword deletion to be attributable to one occurrence, and the branch is
+// attributable only while it is spelled in place.
+export const CommandWitnessInputs = z.strictObject({
+	argument: JsonObjectValue,
+	option: JsonObjectValue,
+	environment: z.record(KeyName, z.string()),
+	stdin: ProbeRequestStdin,
+})
+
+export type CommandWitnessInputs = z.infer<typeof CommandWitnessInputs>
+
+/**
+ * Either spelling. A plain union rather than a discriminated one for the same
+ * reason `InputBinding` is: the leg names an operation and the kind of the
+ * interface declaring it lives in another subtree, so no discriminator is
+ * available to the schema and the agreement is a compile-time check.
+ *
+ * Only the sensitivity leg takes the union. `ManifestationWitness` and
+ * `FixtureReset` keep the transport spelling, which keeps the probe artifact
+ * byte-identical and keeps this shape's widening inside the eval contract's own
+ * version bump. That is truthful rather than merely convenient: both of those
+ * legs are issued through the environment-probe port, whose `ProbeRequest`
+ * carries a method, a path template, and the four transport channels, and
+ * pre-flight rejects a non-api interface for exactly that reason.
+ */
+export const WitnessInputs = z.union([ApiWitnessInputs, CommandWitnessInputs])
 
 export type WitnessInputs = z.infer<typeof WitnessInputs>
 
@@ -44,7 +90,25 @@ export type SensitivityWitnessLeg = z.infer<typeof SensitivityWitnessLeg>
 // AD-10 selects the differential channel by the operation's state-change
 // marker: `path` or `query` where the marker is false, `body` where it is true.
 // `header` is absent on purpose; no AD names a header differential.
-export const WITNESS_CHANNELS = ['path', 'query', 'body'] as const
+export const API_WITNESS_CHANNELS = ['path', 'query', 'body'] as const
+
+// A command operation's differential channel. All four are admitted rather
+// than two: AD-10's marker rule selects `path` or `query` against `body`
+// because an HTTP read carries its identifier in the URL and a write carries
+// it in the body, and a command carries its inputs the same way whether or not
+// it changes state, so the marker decides nothing here. Which channel a given
+// command witness may use is the contract author's choice.
+export const COMMAND_WITNESS_CHANNELS = [
+	'argument',
+	'option',
+	'environment',
+	'stdin',
+] as const
+
+export const WITNESS_CHANNELS = [
+	...API_WITNESS_CHANNELS,
+	...COMMAND_WITNESS_CHANNELS,
+] as const
 
 export const WitnessChannel = z.enum(WITNESS_CHANNELS)
 
@@ -85,7 +149,7 @@ export const ManifestationWitness = z.strictObject({
 	legId: Identifier,
 	interfaceId: Identifier,
 	operationId: Identifier,
-	inputs: WitnessInputs,
+	inputs: ApiWitnessInputs,
 	relation: Expression,
 })
 
@@ -100,7 +164,7 @@ export const FixtureReset = z.strictObject({
 	legId: Identifier,
 	interfaceId: Identifier,
 	operationId: Identifier,
-	inputs: WitnessInputs,
+	inputs: ApiWitnessInputs,
 })
 
 export type FixtureReset = z.infer<typeof FixtureReset>

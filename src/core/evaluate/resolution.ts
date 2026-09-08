@@ -3,11 +3,13 @@
  * that turns an `Expression` into one `CheckResolutionValue`. Leaf operators,
  * `covers-by-key` included, live in `operators.ts`. Operand resolution, every
  * pointer form including the bound-element `@/` form, is injected;
- * `evidence-resolution.ts` supplies it, and `ResolveOperand` and
- * `PointerDenotesCollection` are the consumer-side contract it satisfies.
+ * `evidence-resolution.ts` supplies it, and `ResolveOperand`,
+ * `PointerDenotesCollection`, and `ReferenceSetKeys` are the consumer-side
+ * contract it satisfies.
  */
 import type { CheckResolutionValue } from '../schemas/evidence-artifact.ts'
-import type { Expression, Operand } from '../schemas/expression.ts'
+import type { Expression, Operand, SetOperand } from '../schemas/expression.ts'
+import type { JsonValue } from '../schemas/primitives.ts'
 import {
 	absence,
 	containment,
@@ -16,6 +18,7 @@ import {
 	deepEquality,
 	equality,
 	existence,
+	keyValueOf,
 	ordering,
 	regexMatch,
 	setMembership,
@@ -51,9 +54,21 @@ export type ResolveOperand = (
  */
 export type PointerDenotesCollection = (pointer: string) => boolean
 
+/**
+ * The `keys` each declared reference set names, by identifier.
+ * `set-membership`'s set position reads the single declared key off each
+ * member (`reference-set.ts`), and the members map the injected
+ * `ResolveOperand` closes over has already discarded the keys, so they travel
+ * separately. Plain data, because `PreflightPlan` carries this through to
+ * its reducer and is compared by value, which a closure fails.
+ * `evidence-resolution.ts` builds it from a contract.
+ */
+export type ReferenceSetKeys = Readonly<Record<string, readonly string[]>>
+
 type ResolutionContext = {
 	resolveOperand: ResolveOperand
 	pointerDenotesCollection: PointerDenotesCollection
+	referenceSetKeys: ReferenceSetKeys
 	regexMatchStepBudget: number
 	artifactPath: string
 }
@@ -476,6 +491,69 @@ function resolveRegexNode(
 	)
 }
 
+/**
+ * Reads the single declared key off each member of a `{ referenceSet }` set
+ * operand. `reference-set.ts` declares members as objects so one declaration
+ * serves both operators, and states that "a `set-membership` operand against
+ * the same set reads the single named key". This is where that reading
+ * happens, and without it AD-20 rule 6's injection form can never answer
+ * `true`: the value operand resolves to a scalar, and `setMembership` compares
+ * whole members by digest, so a scalar against an object is always `false`.
+ *
+ * Scoped to this one operator position on purpose. `covers-by-key` projects
+ * both sides itself on `expectedKey` and `actualKey`, and `containment`
+ * matches whole members, so both want the members unprojected. The injected
+ * `ResolveOperand` is handed one operand at a time and cannot see which
+ * operator position it is filling, which is why the projection lives at the
+ * resolution site.
+ *
+ * The option turned down: an explicit `memberKey` field on `set-membership`
+ * mirroring `covers-by-key`'s `expectedKey`. It is symmetric with its sibling
+ * and it carries a multi-key set, at the price of a grammar change to a
+ * published artifact, an eval-contract `schemaVersion` bump, and
+ * published-schema drift, for a case no shipped contract has. Revisit it the
+ * first time a real contract wants a multi-key set in this position.
+ *
+ * Both throws are unreachable for a compiled contract:
+ * `checkOperandLegality` rejects a multi-key reference set in this position,
+ * and a member missing the declared key, under
+ * `malformed-operator-expression`. They throw, because a set this function
+ * cannot project carries no membership answer to give.
+ */
+function projectSetOperand(
+	resolvedSet: ResolvedValue,
+	setOperand: SetOperand,
+	ctx: ResolutionContext,
+): ResolvedValue {
+	if (!('referenceSet' in setOperand)) return resolvedSet
+	const { referenceSet } = setOperand
+	// `Object.hasOwn`, the same prototype-chain guard `makeResolveOperand`
+	// applies to its own maps: `Identifier`'s charset admits `constructor`.
+	const keys = Object.hasOwn(ctx.referenceSetKeys, referenceSet)
+		? ctx.referenceSetKeys[referenceSet]
+		: undefined
+	// No declared keys means the contract declares no such reference set,
+	// which compilation rejects under `unresolved-reference-set`; a non-array
+	// is the array guard below reporting whatever the resolver returned. Both
+	// pass through so exactly one guard speaks for each.
+	if (keys === undefined || !Array.isArray(resolvedSet)) return resolvedSet
+	if (keys.length !== 1) {
+		throw new Error(
+			`set-membership's set-operand projection: referenceSet "${referenceSet}" declares ${keys.length} keys, and this position reads exactly one. A multi-key set here is malformed-operator-expression, which compilation rejects.`,
+		)
+	}
+	const key = keys[0] as string
+	return resolvedSet.map((member) => {
+		const keyValue = keyValueOf(member, key)
+		if (keyValue === ABSENT) {
+			throw new Error(
+				`set-membership's set-operand projection: a member of referenceSet "${referenceSet}" carries no own property "${key}", the key it declares. That is malformed-operator-expression, which compilation rejects.`,
+			)
+		}
+		return keyValue
+	}) as JsonValue[]
+}
+
 function resolveSetMembershipNode(
 	expression: Extract<Expression, { op: 'set-membership' }>,
 	boundElement: ResolvedValue,
@@ -483,10 +561,13 @@ function resolveSetMembershipNode(
 ): CheckResolutionValue {
 	const [valueOperand, setOperand] = expression.operands
 	const value = ctx.resolveOperand(valueOperand, boundElement, ctx.artifactPath)
-	const resolvedSet = ctx.resolveOperand(
+	// Projected before the empty-collection interception and the array guard
+	// below, so both read the one value the operator will see. Projection
+	// preserves length and array-ness, so neither answer moves.
+	const resolvedSet = projectSetOperand(
+		ctx.resolveOperand(setOperand, boundElement, ctx.artifactPath),
 		setOperand,
-		boundElement,
-		ctx.artifactPath,
+		ctx,
 	)
 	if (
 		anyOperandEmpty(
@@ -611,12 +692,14 @@ export function resolveCheck(
 	expression: Expression,
 	resolveOperand: ResolveOperand,
 	pointerDenotesCollection: PointerDenotesCollection,
+	referenceSetKeys: ReferenceSetKeys,
 	regexMatchStepBudget: number,
 	artifactPath: string,
 ): CheckResolutionValue {
 	return resolveNode(expression, ABSENT, {
 		resolveOperand,
 		pointerDenotesCollection,
+		referenceSetKeys,
 		regexMatchStepBudget,
 		artifactPath,
 	})

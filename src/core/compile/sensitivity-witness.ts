@@ -4,48 +4,151 @@
  * execute it, and that its leg identifiers are distinct from each other and
  * from every interaction-plan step.
  *
- * No new AD-5 code is minted. The registry is closed at twenty-three and
- * `check:ad5-registry` pins it against the spine, so each defect below takes the
- * code that already names it. Two rows stretch that reading: a leg-id equality
+ * No new AD-5 code is minted here. `check:ad5-registry` pins the registry
+ * against the spine's own table, so each defect below takes the code that
+ * already names it. Two rows stretch that reading: a leg-id equality
  * and a leg-id/step-id collision are identifier collisions, and
  * `malformed-operator-expression` is the closest available code because the
  * relation is illegal in its position once its operands cannot be told apart.
  */
-import { declaresNoRequestKeys } from '../declared-inputs.ts'
+import {
+	declaresNoRequestKeys,
+	isCommandOperation,
+	requestChannelsOf,
+} from '../declared-inputs.ts'
 import { StructuralFailure } from '../failure-codes.ts'
 import type { EvalContract } from '../schemas/eval-contract.ts'
 import type { Expression } from '../schemas/expression.ts'
-import type { Operation } from '../schemas/interface.ts'
-import {
-	TRANSPORT_CHANNELS,
-	type TransportChannelName,
-} from '../schemas/pointer.ts'
+import type { AnyOperation } from '../schemas/interface.ts'
+import { operationsOf } from '../schemas/interface.ts'
+import type { InputChannelName } from '../schemas/pointer.ts'
+import type { KeyedShapeDescriptor } from '../schemas/primitives.ts'
 import type {
-	SensitivityWitness,
-	WitnessChannel,
-	WitnessInputs,
+	ProbeRequestBody,
+	ProbeRequestStdin,
+} from '../schemas/probe-body.ts'
+import {
+	type ApiWitnessInputs,
+	COMMAND_WITNESS_CHANNELS,
+	type CommandWitnessInputs,
+	type SensitivityWitness,
+	type WitnessChannel,
+	type WitnessInputs,
 } from '../schemas/sensitivity-witness.ts'
 import { parseEvidenceTarget } from '../seal/plan-index.ts'
 
 export { declaresNoRequestKeys }
 
-/**
- * The keys one set of witness inputs supplies on one channel. A body that is
- * absent, or JSON that is not an object, supplies no keys: the channel is
- * declared as a keyed shape, so such a leg omits every required key rather
- * than being exempt from the comparison.
- */
-export function suppliedKeys(
+/** Which spelling this leg uses. `stdin` is the command shape's own key. */
+const isCommandWitnessInputs = (
 	inputs: WitnessInputs,
-	channel: TransportChannelName,
+): inputs is CommandWitnessInputs => 'stdin' in inputs
+
+/**
+ * The transport spelling, for the consumers that can only send one: the probe
+ * port carries a method, a path template, and the four transport channels.
+ */
+export const isApiWitnessInputs = (
+	inputs: WitnessInputs,
+): inputs is ApiWitnessInputs => 'body' in inputs
+
+/**
+ * Whether the leg supplies this channel as an undifferentiated stream.
+ *
+ * Standard input written as text is one such stream. A `KeyedShapeDescriptor`
+ * can say what keys a channel carries and cannot say "one opaque stream", so a
+ * command that reads a prompt is declared by naming the one thing the stream
+ * carries, and the leg supplies that thing as the text it actually is.
+ */
+export function suppliesOpaquely(
+	inputs: WitnessInputs,
+	channel: InputChannelName,
+): boolean {
+	return (
+		isCommandWitnessInputs(inputs) &&
+		channel === 'stdin' &&
+		inputs.stdin.kind === 'text'
+	)
+}
+
+/**
+ * What an opaque stream fills, and when it cannot say.
+ *
+ * A text leg supplies the channel's ONE declared key: the stream is the value
+ * of the single thing the operation says it reads. Where the channel declares
+ * no required key there is nothing for the text to be, and where it declares
+ * more than one there is no way to say which the text fills, so both are the
+ * authoring fault this reports rather than a comparison that quietly abstains.
+ *
+ * That is what a keyed `stdin` means for a command that reads text, and it is
+ * the reason the declaration stays keyed: an operation that genuinely parses a
+ * structured document off standard input declares several keys and supplies
+ * them through the leg's `json` arm, and the same descriptor serves both.
+ */
+function checkOpaqueStream(
+	shape: KeyedShapeDescriptor,
+	channel: InputChannelName,
+	operationId: string,
+	owner: string,
+	artifactPath: string,
+): void {
+	if (shape.requiredKeys.length === 1) return
+	throw new StructuralFailure(
+		'undeclared-mandatory-input',
+		artifactPath,
+		`${owner} supplies its ${channel} channel as text, which fills the one key the channel declares, but operation "${operationId}" declares ${shape.requiredKeys.length === 0 ? 'no required key there, so the text fills nothing' : `${shape.requiredKeys.length} required keys there, so nothing says which the text fills`} (AD-10, AD-19)`,
+	)
+}
+
+/**
+ * The keys a tagged body value supplies. A body that is absent, or JSON that
+ * is not an object, supplies no keys: the channel is declared as a keyed
+ * shape, so such a leg omits every required key rather than being exempt from
+ * the comparison.
+ */
+function bodyKeys(
+	body: ProbeRequestBody | ProbeRequestStdin,
 ): readonly string[] {
-	if (channel !== 'body') return Object.keys(inputs[channel])
-	const { body } = inputs
 	if (body.kind !== 'json') return []
 	const { value } = body
 	if (value === null || typeof value !== 'object' || Array.isArray(value))
 		return []
 	return Object.keys(value)
+}
+
+/**
+ * The keys one set of witness inputs supplies on one channel, or none where
+ * the leg's spelling has no such channel.
+ *
+ * `body` and `stdin` are the two channels a leg supplies as a tagged value
+ * rather than as a key map, because a leg has to tell an absent value from one
+ * carrying JSON null. This function is the bridge between that spelling and
+ * the keyed shape the request declares.
+ */
+export function suppliedKeys(
+	inputs: WitnessInputs,
+	channel: InputChannelName,
+): readonly string[] {
+	if (isCommandWitnessInputs(inputs)) {
+		if (channel === 'stdin') return bodyKeys(inputs.stdin)
+		if (channel === 'argument' || channel === 'option')
+			return Object.keys(inputs[channel])
+		if (channel === 'environment') return Object.keys(inputs.environment)
+		return []
+	}
+	if (channel === 'body') return bodyKeys(inputs.body)
+	if (channel === 'path' || channel === 'query')
+		return Object.keys(inputs[channel])
+	if (channel === 'header') return Object.keys(inputs.header)
+	return []
+}
+
+/** One channel's supplied value, for the differential comparison. */
+export function suppliedValue(
+	inputs: WitnessInputs,
+	channel: WitnessChannel,
+): unknown {
+	return (inputs as Record<string, unknown>)[channel]
 }
 
 /**
@@ -75,12 +178,21 @@ export function suppliedKeys(
  */
 export function checkInputsAgainstShape(
 	inputs: WitnessInputs,
-	operation: Operation,
+	operation: AnyOperation,
 	owner: string,
 	artifactPath: string,
 ): void {
-	for (const channel of TRANSPORT_CHANNELS) {
-		const shape = operation.requestShape[channel]
+	for (const { channel, shape } of requestChannelsOf(operation)) {
+		if (suppliesOpaquely(inputs, channel)) {
+			checkOpaqueStream(
+				shape,
+				channel,
+				operation.operationId,
+				owner,
+				artifactPath,
+			)
+			continue
+		}
 		const supplied = suppliedKeys(inputs, channel)
 		for (const key of shape.requiredKeys) {
 			if (supplied.includes(key)) continue
@@ -110,13 +222,13 @@ const operationPath = (
 
 type WitnessVisit = (
 	witness: SensitivityWitness,
-	operation: Operation,
+	operation: AnyOperation,
 	path: string,
 ) => void
 
 function forEachWitness(contract: EvalContract, visit: WitnessVisit): void {
 	contract.permittedInterfaces.forEach((iface, interfaceIndex) => {
-		iface.operations.forEach((operation, operationIndex) => {
+		operationsOf(iface).forEach((operation, operationIndex) => {
 			const witness = operation.sensitivityWitness
 			if (witness === null) return
 			visit(witness, operation, operationPath(interfaceIndex, operationIndex))
@@ -132,7 +244,7 @@ function forEachWitness(contract: EvalContract, visit: WitnessVisit): void {
  */
 export function checkSensitivityWitnessDeclared(contract: EvalContract): void {
 	contract.permittedInterfaces.forEach((iface, interfaceIndex) => {
-		iface.operations.forEach((operation, operationIndex) => {
+		operationsOf(iface).forEach((operation, operationIndex) => {
 			const path = operationPath(interfaceIndex, operationIndex)
 			const witness = operation.sensitivityWitness
 			if (witness === null) {
@@ -140,7 +252,7 @@ export function checkSensitivityWitnessDeclared(contract: EvalContract): void {
 				throw new StructuralFailure(
 					'undeclared-mandatory-input',
 					path,
-					`operation "${operation.operationId}" declares request keys but no sensitivity witness; only an operation declaring no keys in any channel is exempt (AD-10)`,
+					`operation "${operation.operationId}" declares request keys but no sensitivity witness; only an operation declaring no keys in any channel is exempt (AD-10). The relation is the author's to choose and need not assert the two legs differ: an operation that is insensitive to its declared inputs by design declares a witness whose relation says so, which is a true and checkable claim about it, and gets the weaker guarantee that follows`,
 				)
 			}
 			witness.legs.forEach((leg, legIndex) => {
@@ -187,9 +299,22 @@ function addressedStepIds(expression: Expression): Set<string> {
 	return found
 }
 
-/** the channel AD-10 selects for an operation, by its state-change marker. */
-const legalChannels = (operation: Operation): readonly WitnessChannel[] =>
-	operation.stateChangeMarker ? ['body'] : ['path', 'query']
+const MUTATING_CHANNELS: readonly WitnessChannel[] = ['body']
+const READ_CHANNELS: readonly WitnessChannel[] = ['path', 'query']
+
+/**
+ * The channels AD-10 admits for an operation's witness.
+ *
+ * Off an interface that speaks HTTP the state-change marker selects one, since
+ * a read carries its identifier in the URL and a write carries it in the body.
+ * A command carries its inputs the same way whether or not it changes state,
+ * so the marker selects nothing there and all four command channels are
+ * admitted. The author picks the one their operation is actually sensitive on.
+ */
+const legalChannels = (operation: AnyOperation): readonly WitnessChannel[] => {
+	if (isCommandOperation(operation)) return COMMAND_WITNESS_CHANNELS
+	return operation.stateChangeMarker ? MUTATING_CHANNELS : READ_CHANNELS
+}
 
 /**
  * The shape rules: the differential channel agrees with the state-change
@@ -215,8 +340,8 @@ export function checkWitnessLegality(contract: EvalContract): void {
 		if (
 			first !== undefined &&
 			second !== undefined &&
-			JSON.stringify(first.inputs[witness.channel]) ===
-				JSON.stringify(second.inputs[witness.channel])
+			JSON.stringify(suppliedValue(first.inputs, witness.channel)) ===
+				JSON.stringify(suppliedValue(second.inputs, witness.channel))
 		) {
 			throw new StructuralFailure(
 				'malformed-operator-expression',
@@ -251,9 +376,12 @@ export function checkWitnessLegality(contract: EvalContract): void {
 	const iface = contract.permittedInterfaces.find(
 		(candidate) => candidate.logicalId === reset.interfaceId,
 	)
-	const operation = iface?.operations.find(
-		(candidate) => candidate.operationId === reset.operationId,
-	)
+	const operation =
+		iface === undefined
+			? undefined
+			: operationsOf(iface).find(
+					(candidate) => candidate.operationId === reset.operationId,
+				)
 	if (operation === undefined) {
 		throw new StructuralFailure(
 			'unreachable-check-evidence',

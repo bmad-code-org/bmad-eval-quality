@@ -13,16 +13,18 @@
  * evidence, and no AD-6 outcome state is assigned.
  */
 import { capturedBindings } from '../compile/bindings.ts'
+import { boundChannelsOf, requestShapeOf } from '../declared-inputs.ts'
 import { channelRoot, walkTail } from '../evaluate/evidence-resolution.ts'
 import { ABSENT, type ResolvedValue } from '../evaluate/resolved-value.ts'
 import type { InteractionStep } from '../schemas/plan.ts'
-import {
-	TRANSPORT_CHANNELS,
-	type TransportChannelName,
-} from '../schemas/pointer.ts'
+import type { InputChannelName } from '../schemas/pointer.ts'
 import type { JsonValue } from '../schemas/primitives.ts'
 import type { Observation } from '../schemas/sealed-run-record.ts'
-import { type PlanIndex, parseEvidenceTarget } from '../seal/plan-index.ts'
+import {
+	anyOperationOf,
+	type PlanIndex,
+	parseEvidenceTarget,
+} from '../seal/plan-index.ts'
 import { bindingOrder } from './binding-order.ts'
 import { type StepSelection, selectObservations } from './selection.ts'
 
@@ -61,7 +63,7 @@ const ABSENT_RESOLUTION: CapturedResolution = { status: 'absent' }
  */
 export function bindingSiteKey(
 	stepId: string,
-	transportChannel: TransportChannelName,
+	transportChannel: InputChannelName,
 	key: string,
 ): string {
 	return JSON.stringify([stepId, transportChannel, key])
@@ -266,12 +268,14 @@ function capturedFloor(
  *   irrelevant.
  * - `{ captured: p }`: the observed value deep-equals the resolved captured
  *   value. The ordering half is `capturedFloor`'s, applied before this runs.
- * - `{ matcher: 'any' }` and `{ principal }`: the key is present, and nothing
- *   more. Neither declares a value the contract knows: a principal's value is
- *   provisioned by the harness at runtime, which is the whole reason the
- *   binding exists. The consequence is that two steps differing only by which
- *   principal they bind cannot be separated here, because no field of a sealed
- *   run record says which principal the harness used.
+ * - `{ matcher: 'any' }`: the key is present, and nothing more.
+ * - `{ principal }`: the key is present AND the observation names the same
+ *   principal. The value behind the name is provisioned by the harness at
+ *   runtime, which is the whole reason the binding exists, so the name is all
+ *   either side can compare. `Observation.principal` is what makes that
+ *   comparison possible: without it two steps differing only by which
+ *   principal they bind both matched every observation and both resolved
+ *   `several`.
  * - `{ matcher: 'type-violating' }`: the observed value's JSON type differs
  *   from the operation's declared type for that key. A key whose declared type
  *   is absent or `null` fails closed: an indeterminate type cannot prove a
@@ -283,9 +287,10 @@ function satisfiesBindings(
 	index: PlanIndex,
 	resolved: ReadonlyMap<string, CapturedResolution>,
 ): boolean {
-	const operation = index.operationOf(step.operationId)
-	for (const channel of TRANSPORT_CHANNELS) {
-		const binding = step.inputBinding[channel]
+	const operation = anyOperationOf(index, step.operationId)
+	for (const { channel, bound: binding } of boundChannelsOf(
+		step.inputBinding,
+	)) {
 		if (binding === null) continue
 		const observed = observation.callInputs[channel]
 		if (observed === null) return false
@@ -308,9 +313,21 @@ function satisfiesBindings(
 				if (!deepEquals(actual, resolution.value)) return false
 				continue
 			}
-			if ('principal' in value) continue
+			// Presence plus identity. The contract declares a name and the
+			// harness provisions the value behind it, so the name is all either
+			// side can compare; comparing it is what separates two steps of one
+			// operation that differ only in the account they act as. A record
+			// naming no principal matches no principal-bound step, rather than
+			// matching every one of them.
+			if ('principal' in value) {
+				if (observation.principal !== value.principal) return false
+				continue
+			}
 			if (value.matcher === 'any') continue
-			const declared = operation?.requestShape[channel].types[key]
+			const declared =
+				operation === undefined
+					? undefined
+					: requestShapeOf(operation, channel)?.types[key]
 			if (declared === undefined || declared === null) return false
 			if (jsonTypeOf(actual) === declared) return false
 		}

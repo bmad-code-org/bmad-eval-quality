@@ -14,6 +14,11 @@ import { Ajv2020 } from 'ajv/dist/2020.js'
 import { describe, expect, it } from 'vitest'
 import { INTERCHANGE_ARTIFACT_KEYS } from '../../../src/core/schemas/artifact.ts'
 import { CONSTRAINT_LEDGER } from '../../../src/core/schemas/constraint-ledger.ts'
+import {
+	CENSUS_BY_DOCUMENT,
+	CENSUS_BY_KEYWORD,
+	CENSUS_TOTAL,
+} from '../published-census.ts'
 import { corpusOf, generationOf } from './corpus.ts'
 import {
 	exemptOccurrencePointers,
@@ -110,51 +115,6 @@ const computeSweep = (
 	}
 	return { survivors, uncompilable, occurrenceCount: occurrences.length }
 }
-
-// AC 8's census, pinned exactly rather than by a floor: a floor can't catch a
-// narrowed walk (e.g. dropping `propertyNames` from descent silently removes
-// 28 occurrences while every other assertion here still passes). Pinning is
-// safe because `schemas/` is already compared byte for byte by
-// `npm run check:schemas`, so these numbers can't drift without regenerating
-// the committed documents in the same commit.
-const CENSUS_BY_DOCUMENT: Readonly<Record<string, number>> = {
-	'artifact-reference': 21,
-	'eval-contract': 761,
-	'evaluator-configuration': 69,
-	'evidence-artifact': 437,
-	'isolation-manifest': 134,
-	'preflight-verdict': 34,
-	'private-artifact-manifest': 31,
-	probe: 508,
-	rubric: 51,
-	'scoring-policy': 35,
-	'sealed-evaluator-brief': 102,
-	'sealed-run-record': 292,
-}
-
-const CENSUS_BY_KEYWORD: Readonly<Record<string, number>> = {
-	additionalProperties: 218,
-	anyOf: 131,
-	const: 66,
-	enum: 66,
-	exclusiveMinimum: 2,
-	format: 1,
-	items: 133,
-	maxItems: 2,
-	maximum: 102,
-	minItems: 41,
-	minLength: 103,
-	minProperties: 2,
-	minimum: 103,
-	oneOf: 13,
-	pattern: 163,
-	prefixItems: 24,
-	propertyNames: 30,
-	required: 188,
-	type: 1087,
-}
-
-const CENSUS_TOTAL = 2475
 
 describe('the occurrence walk descends, so the sweep cannot pass hollow', () => {
 	it('finds the full census across the twelve documents', () => {

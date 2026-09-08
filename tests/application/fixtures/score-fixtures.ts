@@ -39,7 +39,7 @@ export const privateEntryBytes = new TextEncoder().encode(
 export const privateEntryBytesDigest = digestBytes(privateEntryBytes)
 
 export const scoreContractFixture: EvalContract = {
-	schemaVersion: 3,
+	schemaVersion: 4,
 	parentDigest: null,
 	revisionCount: 0,
 	contractId: 'score-command-contract',
@@ -99,7 +99,7 @@ export const scoreContractFixture: EvalContract = {
 	fixtureReset: null,
 }
 
-// `qualifiedProbe`'s own `probeId` ("PX-001") is not schema-valid `ProbeId`
+// `qualifiedProbe`'s own `probeId` ("P-901") is not schema-valid `ProbeId`
 // shape (`^P-[0-9]{3,}$`); `tests/emit/emit.test.ts` hits the identical gap
 // and overrides it the same way (deferred-work.md's routed, unassigned entry
 // from the emit stage's own review).
@@ -180,7 +180,7 @@ export const isolationManifestFixtureForScore: IsolationManifest = {
 
 /** The clean record: one observation satisfying O-001's check, `held`, no findings, no conditions. */
 export const sealedRunRecordFixtureForScore: SealedRunRecord = {
-	schemaVersion: 3,
+	schemaVersion: 4,
 	parentDigest: null,
 	revisionCount: 0,
 	runId: 'run-1',
@@ -207,18 +207,24 @@ export const sealedRunRecordFixtureForScore: SealedRunRecord = {
 			sequence: 1,
 			operationId: 'create-note',
 			provenance: 'evaluator-chosen',
+			principal: null,
 			callInputs: {
 				path: null,
 				query: null,
 				header: null,
 				body: { title: 'ok' },
+				argument: null,
+				option: null,
+				environment: null,
+				stdin: null,
 			},
 			responseBody: { ok: true },
 			responseHeaders: null,
 			responseStatus: 200,
-			stdout: null,
-			stderr: null,
+			stdout: { kind: 'absent' },
+			stderr: { kind: 'absent' },
 			exitCode: null,
+			artifacts: {},
 		},
 	],
 	judgeResults: [],

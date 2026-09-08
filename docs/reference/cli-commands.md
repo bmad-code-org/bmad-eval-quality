@@ -1,6 +1,6 @@
 ---
 title: "CLI Reference"
-description: "Every command, flag, exit code, and export subpath the eval-quality package publishes."
+description: "Every command, flag, exit code, export subpath, and port the eval-quality package publishes."
 sidebar:
   order: 2
 ---
@@ -9,31 +9,7 @@ sidebar:
 
 The package publishes one binary, `eval-quality`, declared in `package.json` under `bin`. Inside a clone it is `node dist/cli/main.js` after `npm run build`.
 
-The synopsis, the inputs-and-outputs block, and the exit-code table on this page are the binary's own help text verbatim. The four per-command blocks are what `eval-quality help <command>` prints, minus the exit-code table it appends.
-
----
-
-## Synopsis
-
-```text
-Usage:
-  eval-quality compile          [--in <path>] [--out <target>]
-                                [--strict-inputs | --no-strict-inputs] [--strict]
-  eval-quality seal             [--in <path>] [--out <target>]
-                                [--strict-inputs | --no-strict-inputs] [--strict]
-  eval-quality preflight         --contract <path> --probes <path> --observations <path>
-                                 --run-id <id> [--out <target>] [--strict]
-  eval-quality score             --record <path> --contract <path> --probe <path>
-                                  --preflight-verdict <path> --policy <path>
-                                  --corpus-digest <digest>
-                                  [--isolation-manifest <path>] [--evaluator-configuration <path>]
-                                  [--private-manifest <path>] [--corpus-root <dir>]
-                                  [--out <target>] [--strict]
-  eval-quality --help | -h | help [<command>]
-  eval-quality --version | -V
-```
-
-There are four commands. `--help`, `-h`, and `help` all print usage, and `help <command>` prints one command's block. `--version` and `-V` print the package version.
+There are four commands. `--help`, `-h`, and `help` all print usage, and `help <command>` prints one command's block. `--version` and `-V` print the package version. The four blocks below are what `eval-quality help <command>` prints, minus the exit-code table it appends.
 
 ---
 
@@ -53,8 +29,6 @@ Usage:
   --strict                 promote CONCERNS to exit 1
 ```
 
----
-
 ## `seal`
 
 Compiles the input and reduces it to a `SealedEvaluatorBrief`, which carries the digest of the contract it was sealed from.
@@ -70,8 +44,6 @@ Usage:
   --no-strict-inputs       allow undeclared inputs
   --strict                 promote CONCERNS to exit 1
 ```
-
----
 
 ## `preflight`
 
@@ -92,11 +64,9 @@ Usage:
 
 All four of `--contract`, `--probes`, `--observations`, and `--run-id` are required. Omitting any of them exits `64` with a message naming the missing flags.
 
----
-
 ## `score`
 
-Chains `ingest`, `score`, and `emit`: validates a sealed run record against its isolation manifest and evaluator configuration, scores it against the compiled contract, and mints an `EvidenceArtifact` carrying the AD-21 verdict.
+Chains `ingest`, `score`, and `emit`: validates a sealed run record against its isolation manifest and evaluator configuration, scores it against the compiled contract, and mints an `EvidenceArtifact` carrying the verdict.
 
 ```text
 Usage:
@@ -123,36 +93,11 @@ Usage:
   --strict                          promote CONCERNS to exit 1
 ```
 
-`--record`, `--contract`, `--probe`, `--preflight-verdict`, `--policy`, and `--corpus-digest` are required. `--isolation-manifest`, `--evaluator-configuration`, and `--private-manifest` are each optional: an absent isolation manifest or evaluator configuration invalidates the run under AD-16/AD-24 and the command still parses, and a private-artifact manifest is checked only when given. `--corpus-root` is optional at the argument-parsing level; it becomes required, with a usage error naming it, the moment a `--private-manifest` entry or a private-storage isolation-manifest reference actually needs a byte resolved through it.
+`--record`, `--contract`, `--probe`, `--preflight-verdict`, `--policy`, and `--corpus-digest` are required. `--corpus-root` is optional at the argument-parsing level; it becomes required, with a usage error naming it, the moment a private reference actually needs a byte resolved through it.
 
-On the AD-21 Invalid rung the command exits `3` and writes nothing: there is no legal `EvidenceArtifact` with a null verdict to write. On every other rung the artifact's own `exitCode` field carries the number the command returns.
+On the Invalid rung the command exits `3` and writes nothing: no legal `EvidenceArtifact` carries a null verdict. On every other rung the artifact's own `exitCode` field carries the number the command returns.
 
-One invocation scores one sealed run record, a trial set of one. That is a limit of the published surface: the stage behind the command is built to take a trial set, and no published entry point hands it more than one record yet, so whenever the policy's declared minimum exceeds one the strength vector comes out reported and marked non-comparable. [Read a Scored Run](/tutorials/read-a-scored-run/) reads every field of a committed run's inputs and its artifact.
-
----
-
-## Flags by command
-
-| Flag | `compile` | `seal` | `preflight` | `score` |
-| --- | --- | --- | --- | --- |
-| `--in <path>` | optional, stdin by default | optional, stdin by default | not accepted | not accepted |
-| `--contract <path>` | not accepted | not accepted | required | required |
-| `--probes <path>` | not accepted | not accepted | required | not accepted |
-| `--observations <path>` | not accepted | not accepted | required | not accepted |
-| `--run-id <id>` | not accepted | not accepted | required | not accepted |
-| `--record <path>` | not accepted | not accepted | not accepted | required |
-| `--probe <path>` | not accepted | not accepted | not accepted | required |
-| `--preflight-verdict <path>` | not accepted | not accepted | not accepted | required |
-| `--policy <path>` | not accepted | not accepted | not accepted | required |
-| `--corpus-digest <digest>` | not accepted | not accepted | not accepted | required |
-| `--isolation-manifest <path>` | not accepted | not accepted | not accepted | optional |
-| `--evaluator-configuration <path>` | not accepted | not accepted | not accepted | optional |
-| `--private-manifest <path>` | not accepted | not accepted | not accepted | optional |
-| `--corpus-root <dir>` | not accepted | not accepted | not accepted | optional |
-| `--out <target>` | optional | optional | optional | optional |
-| `--strict-inputs` / `--no-strict-inputs` | accepted | accepted | not accepted | not accepted |
-| `--strict` | accepted | accepted | accepted | accepted |
-| `--help`, `-h` | accepted | accepted | accepted | accepted |
+One invocation scores one sealed run record, a trial set of one. That is a limit of the published surface, so whenever the policy's declared minimum exceeds one, the strength vector comes out reported and marked non-comparable.
 
 A flag a command does not accept exits `64` as an unknown flag, so `--strict-inputs` on `preflight` and `--contract` on `compile` are both usage errors.
 
@@ -162,11 +107,9 @@ A flag a command does not accept exits `64` as an unknown flag, so `--strict-inp
 
 The two names are one keystroke apart and control unrelated things.
 
-**`--strict`** is the exit-code gate. It promotes a `CONCERNS` verdict to exit `1`, except a `CONCERNS` whose firing conditions are all evidence conditions, which it never promotes. `score`'s ladder resolution is what produces a verdict of that kind, so this is the command `--strict` actually changes the exit code for. Every command accepts the flag.
+**`--strict`** is the exit-code gate. It promotes a `CONCERNS` verdict to exit `1`, except a `CONCERNS` whose firing conditions are all evidence conditions, which it never promotes. `score` is the command that produces a verdict of that kind, so it is the one `--strict` actually changes the exit code for. Every command accepts the flag.
 
-**`--strict-inputs`** and **`--no-strict-inputs`** are the compile mode. `--strict-inputs` rejects undeclared inputs, and it is the default when neither flag is given. `--no-strict-inputs` allows them. Only the two commands with a compile step accept these: `compile` and `seal`. `preflight` and `score` each have no compile step, so both reject these as unknown flags.
-
-Passing `--strict-inputs` and `--no-strict-inputs` together resolves to whichever appears last on the line.
+**`--strict-inputs`** and **`--no-strict-inputs`** are the compile mode. `--strict-inputs` rejects undeclared inputs, and it is the default when neither flag is given. Only `compile` and `seal` have a compile step, so only those two accept these. Passing both resolves to whichever appears last on the line.
 
 ---
 
@@ -190,18 +133,14 @@ The `.json` suffix is the whole classifier for `--out`, matched case-insensitive
 
 Artifacts are written as one line of RFC 8785 canonical JSON with sorted keys. The digest is computed over exactly that payload; the serializer appends a line terminator after it, which the digest does not cover.
 
----
-
 ## Flag parsing
 
 - `--flag=value` splits on the first `=`, so a value may contain one. Only flags that take a value accept this form: `--strict-inputs=true` exits `64` as an unknown flag.
 - An empty value exits `64`, in both the `--in=` and the `--in ""` form.
 - In the space form, a next token longer than one character that begins with `-` is read as the next flag, so the command reports a missing value and points at the `=` form. A bare `-` stays legal, since it names stdin.
 - A flag repeated with the same value is accepted. Repeated with different values it exits `64`.
-- `--` at the end of the line is ignored. A positional argument exits `64` whether or not it follows one, because no command takes a positional; without `--` the message names it as an unknown flag.
-- `--help` or `-h` anywhere a flag is expected prints that command's help and exits `0`. In a position where a value is expected it is read as the missing value and exits `64`, so `compile --in --help` is a usage error.
-
----
+- `--` at the end of the line is ignored. A positional argument exits `64`, because no command takes one.
+- `--help` or `-h` anywhere a flag is expected prints that command's help and exits `0`. Where a value is expected it is read as that value and exits `64`, so `compile --in --help` is a usage error.
 
 ## Exit codes
 
@@ -221,8 +160,6 @@ Exit codes (AD-21):
   other invalidating condition behind 3 is reachable there too, alongside the
   failed pre-flight the preflight command itself reports.
 ```
-
----
 
 ## Diagnostic format
 
@@ -251,17 +188,7 @@ Everything on stderr carries the `eval-quality` prefix.
 
 The published tarball carries `dist`, `schemas`, `corpus`, `README.md`, and `LICENSE`.
 
-### Importing a schema
-
-`eval-quality/schemas/*` resolves to `.json` files, so an ESM import of one needs the type attribute:
-
-```javascript
-import spec from 'eval-quality/schemas/eval-contract.schema.json' with { type: 'json' }
-
-console.log(spec.$id)
-```
-
-Node 22 and Node 24 both throw `ERR_IMPORT_ATTRIBUTE_MISSING` for the same import without `with { type: 'json' }`.
+`eval-quality/schemas/*` resolves to `.json` files, so an ESM import of one needs `with { type: 'json' }`. Node 22 and Node 24 both throw `ERR_IMPORT_ATTRIBUTE_MISSING` without it.
 
 ### The library barrel
 
@@ -274,45 +201,35 @@ Node 22 and Node 24 both throw `ERR_IMPORT_ATTRIBUTE_MISSING` for the same impor
 - **Enumerations**: `FAILURE_CODES`, `RUNTIME_FAULT_CODES`, `VERDICTS`, `EVALUATOR_RECOMMENDATIONS`, `INTERCHANGE_ARTIFACT_KEYS`
 - **Version**: `VERSION`
 
-The artifact types ship alongside them as type-only exports: `EvalContract`, `SealedEvaluatorBrief`, `PreflightVerdict`, `PreflightCheck`, `Probe`, `Rubric`, `ScoringPolicy`, `SealedRunRecord`, `EvidenceArtifact`, `IsolationManifest`, `EvaluatorConfiguration`, `PrivateArtifactManifest`, `ArtifactReference`, along with `Diagnostic`, `DiagnosticSink`, `FailureCode`, `RuntimeFaultCode`, `Verdict`, `EvaluatorRecommendation`, `LineageChainReport` and `LineageFinding` (what `validateLineageChain` returns), `RunPreflightOptions` and `PreflightFromObservationsOptions` (what the two pre-flight entries take), `RunScoreOptions` and `RunScoreResult` (what `runScore` takes and returns), and the witness types.
+Every artifact type ships alongside them as a type-only export, together with the option and result types of each entry point.
 
-`runPreflight` takes an `EnvironmentProbePort` and awaits it. `preflightFromObservations` takes observations you already have and stays synchronous. The CLI's `preflight` command calls the second one. `runScore` takes an optional `CorpusPort`, awaited only when a private reference actually needs resolving; the CLI's `score` command builds one from `--corpus-root` when given.
+`runPreflight` takes an `EnvironmentProbePort` and awaits it. `preflightFromObservations` takes observations you already have and stays synchronous; the CLI's `preflight` command calls that one. `runScore` takes an optional `CorpusPort`, awaited only when a private reference actually needs resolving.
 
----
+## Ports and adapters
+
+The package performs no effects of its own. A **port** is an interface it declares for an effect it will not perform, and an **adapter** is your implementation of one. This matters only if you are building your own pipeline on the library; the CLI needs none of it.
+
+| Port | What it does | Wired today |
+| --- | --- | --- |
+| `EnvironmentProbePort` | Probes a live environment | Yes. `runPreflight` awaits it |
+| `CorpusPort` | Resolves an opaque private reference to bytes | Yes. `runScore` awaits it when a private reference needs its digest checked |
+| `ClockPort` | Reads the current time | No |
+| `FileSystemPort` | Reads and writes files | No. The CLI uses `node:fs/promises` |
+
+Each port's type comes from `eval-quality/conformance`. `eval-quality/adapters` ships three reference adapters, `createLocalCorpusAdapter`, `createNodeFileSystemAdapter`, and `createSystemClockAdapter`, each a factory taking the mechanism it wraps. There is no reference `EnvironmentProbePort`, because probing a live environment is the part only you can write.
+
+**The conformance suite** decides whether an implementation conforms. It checks behavior the type checker cannot: whether the implementation returns a typed fault where the boundary demands one, and whether it hangs where it should time out. It takes a `PortSubject`, a small harness around your port carrying a name, one sample request, and a `build` function the suite calls once per scenario. `ScenarioKind` is the four situations it needs your port to be in: `resolves`, `fails`, `in-band-error`, and `hangs`. Putting the port into each of them is your job, because only you know how to make your mechanism fail.
+
+There is one runner per port: `runClockPortConformance`, `runCorpusPortConformance`, `runFileSystemPortConformance`, and `runEnvironmentProbePortConformance`. A report carries the subject name, the port, one outcome per assertion, and a `passed` field over all of them. Every outcome id has the form `<method>/<assertion>`, so a failure names the method and the property it broke.
+
+`CONFORMANCE_OUTCOME_COUNTS` publishes the count per port, and the suite asserts its own totals against it: `corpus` 6, `clock` 6, `file-system` 12, `environment-probe` 19. A count that does not match means the suite did not finish, which is itself a failure.
 
 ## The corpus
 
-`corpus/dev/` ships twenty-three files, published so an adopter can read real input without cloning:
-
-| Path | What it is |
-| --- | --- |
-| `corpus/dev/README.md` | what the corpus covers, and what it leaves out |
-| `corpus/dev/index.json` | every other file, its kind, its digest, and the failure code for the three that fail |
-| `corpus/dev/contracts/` | nineteen contracts, collectively covering each discipline rule in each declaration state |
-| `corpus/dev/compile-seal-example/contract.json` | one contract that compiles |
-| `corpus/dev/compile-seal-example/brief.json` | the brief `seal` produces from it |
-
-Sixteen of the nineteen contracts compile. Three fail by design: `empty-request-shapes.json` and `no-operation-inventory.json` raise `unreachable-check-evidence`, and `no-state-change-marker.json` raises `undeclared-mandatory-input`.
-
----
-
-## Repository scripts
-
-These run inside a clone and have nothing to do with the published binary.
-
-```bash
-npm run typecheck
-npm run lint
-npm run test
-npm run validate
-npm run docs:validate-links
-```
-
----
+`corpus/dev/` ships twenty-one contracts under `contracts/`, one compiled-and-sealed pair under `compile-seal-example/`, an `index.json` naming every file with its digest, and a `README.md` explaining what the set covers. Eighteen contracts compile. Three fail by design: `empty-request-shapes.json` and `no-operation-inventory.json` raise `unreachable-check-evidence`, and `no-state-change-marker.json` raises `undeclared-mandatory-input`.
 
 ## Related pages
 
-- [Run the four commands](/how-to/run-the-four-commands/)
-- [Read a Scored Run](/tutorials/read-a-scored-run/)
-- [Author a Behavioral Evaluation Contract](/how-to/author-behavioral-contracts/)
+- [The full walkthrough](/how-to/author-behavioral-contracts/)
+- [Glossary](/reference/glossary/)
 - [Roadmap](/explanation/roadmap/)

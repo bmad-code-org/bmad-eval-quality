@@ -30,7 +30,7 @@ export const satisfiedContract = {
 	// the seed `corpus.ts` spreads all nineteen corpus contracts from, so the
 	// stamp here is the stamp on every contract the tarball publishes under
 	// `corpus/dev/`.
-	schemaVersion: 3,
+	schemaVersion: 4,
 	contractId: 'satisfied-declarations',
 	parentDigest: null,
 	revisionCount: 0,

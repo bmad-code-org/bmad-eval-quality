@@ -21,7 +21,7 @@
 import { readdir, readFile } from 'node:fs/promises'
 import { join, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { CORPUS_CONTRACTS } from '../tests/coverage/fixtures/corpus.ts'
+import { DEV_CORPUS_CONTRACTS } from '../tests/coverage/fixtures/corpus.ts'
 import {
 	buildDevCorpus,
 	CORPUS_LABEL,
@@ -31,7 +31,7 @@ import {
 
 let expected: Map<string, string>
 try {
-	expected = buildDevCorpus(CORPUS_CONTRACTS)
+	expected = buildDevCorpus(DEV_CORPUS_CONTRACTS)
 } catch (error) {
 	console.error(
 		`check-dev-corpus: the builder failed: ${

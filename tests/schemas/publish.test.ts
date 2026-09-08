@@ -25,6 +25,7 @@ import {
 	pointerMatchesSchemaPath,
 	rootReadingCouldProduce,
 } from './published/keyword-occurrences.ts'
+import { DEFS_BY_DOCUMENT, LEDGER_COUNTS } from './published-census.ts'
 
 const documents = publishedDocuments()
 
@@ -99,20 +100,7 @@ describe('the twelve published documents (AC 1)', () => {
 		// a real fifteen would let eval-contract's or sealed-run-record's five
 		// definitions stop being emitted while the walk still passed, and a walk
 		// that silently stops walking is the failure this lock exists to catch.
-		expect(walked).toEqual({
-			'artifact-reference': 0,
-			'eval-contract': 6,
-			'evaluator-configuration': 1,
-			'evidence-artifact': 4,
-			'isolation-manifest': 0,
-			'preflight-verdict': 0,
-			'private-artifact-manifest': 0,
-			probe: 7,
-			rubric: 0,
-			'scoring-policy': 0,
-			'sealed-evaluator-brief': 0,
-			'sealed-run-record': 5,
-		})
+		expect(walked).toEqual(DEFS_BY_DOCUMENT)
 	})
 
 	// Self-containment (AD-13): only local `#/$defs/...` references, no
@@ -205,12 +193,13 @@ describe('the exact serialisation (AC 3), asserted independently of the drift ch
 })
 
 describe('the ledger drives the injection, by stated address (AC 2)', () => {
-	// This 26/17 split is also pinned in differential.test.ts ("walks all
-	// twenty-six inject entries") and arithmetically in
-	// constraint-ledger.test.ts; a ledger change updates all three together.
+	// The split itself lives in `published-census.ts`, which every file that
+	// asserts on it reads, so a ledger change moves one number.
 	it('has twenty-six inject entries to act on, and seventeen not-expressible left alone', () => {
-		expect(INJECT_ENTRIES).toHaveLength(26)
-		expect(CONSTRAINT_LEDGER.length - INJECT_ENTRIES.length).toBe(17)
+		expect(INJECT_ENTRIES).toHaveLength(LEDGER_COUNTS.inject)
+		expect(CONSTRAINT_LEDGER.length - INJECT_ENTRIES.length).toBe(
+			LEDGER_COUNTS.notExpressible,
+		)
 	})
 
 	it.each(INJECT_ENTRIES)(

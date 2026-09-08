@@ -14,6 +14,7 @@ describe('parseEvidenceTarget', () => {
 			stepId: 'poll',
 			channel: 'response-status',
 			transportChannel: null,
+			artifactId: null,
 			tail: [],
 		})
 	})
@@ -23,6 +24,7 @@ describe('parseEvidenceTarget', () => {
 			stepId: 'run',
 			channel: 'exit-code',
 			transportChannel: null,
+			artifactId: null,
 			tail: [],
 		})
 	})
@@ -36,6 +38,7 @@ describe('parseEvidenceTarget', () => {
 			stepId: 'first-page',
 			channel: 'response-body',
 			transportChannel: null,
+			artifactId: null,
 			tail: ['rows', 'retractedAt'],
 		})
 	})
@@ -78,6 +81,7 @@ describe('parseEvidenceTarget', () => {
 			stepId: 'submit',
 			channel: 'call-inputs',
 			transportChannel: 'path',
+			artifactId: null,
 			tail: ['id'],
 		})
 		expect(
@@ -100,6 +104,7 @@ describe('parseEvidenceTarget', () => {
 			stepId: 'submit',
 			channel: 'call-inputs',
 			transportChannel: 'body',
+			artifactId: null,
 			tail: [],
 		})
 	})
@@ -250,3 +255,38 @@ describe('resolveStep / resolveOperation', () => {
 // missed the normal relative import spelling real code uses. Story 4.4's
 // `npm run check:layers` (`scripts/dependency-direction.ts`) supersedes it,
 // parsing every file under `src/` and enforcing the whole layer graph.
+
+describe('parseEvidenceTarget: the artifact channel', () => {
+	it('parses an artifact pointer into its identifier and its tail', () => {
+		expect(
+			parseEvidenceTarget('/interactions/review/artifact/verdict/findings/0'),
+		).toEqual({
+			stepId: 'review',
+			channel: 'artifact',
+			transportChannel: null,
+			artifactId: 'verdict',
+			tail: ['findings', '0'],
+		})
+	})
+
+	it('parses an artifact pointer addressing the whole file, with no tail', () => {
+		expect(parseEvidenceTarget('/interactions/review/artifact/report')).toEqual(
+			{
+				stepId: 'review',
+				channel: 'artifact',
+				transportChannel: null,
+				artifactId: 'report',
+				tail: [],
+			},
+		)
+	})
+
+	// The identifier segment is mandatory, for the reason AD-26 gives for
+	// `call-inputs`: a channel naming one of several things has nothing to
+	// resolve against without it.
+	it('rejects an artifact pointer naming no artifact', () => {
+		expect(() => parseEvidenceTarget('/interactions/review/artifact')).toThrow(
+			TypeError,
+		)
+	})
+})

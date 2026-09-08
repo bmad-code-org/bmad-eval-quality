@@ -356,7 +356,7 @@ describe('checkCapturedReachability: unreachable-check-evidence', () => {
 		)
 		expect(failure.code).toBe('unreachable-check-evidence')
 		expect(failure.artifactPath).toBe(LIST_LIMIT_PATH)
-		expect(failure.message).toContain('addresses the whole response body')
+		expect(failure.message).toContain('addresses the whole response-body')
 	})
 
 	it('a two-segment tail throws', () => {

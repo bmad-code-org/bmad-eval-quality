@@ -8,15 +8,25 @@
  * the operation and the witness themselves: there is nothing to look an
  * identifier up in at reduce time.
  */
-import { checkInputsAgainstShape } from '../compile/sensitivity-witness.ts'
-import { declaresNoRequiredKeys } from '../declared-inputs.ts'
+import {
+	checkInputsAgainstShape,
+	isApiWitnessInputs,
+} from '../compile/sensitivity-witness.ts'
+import {
+	declaresNoRequiredKeys,
+	isCommandOperation,
+} from '../declared-inputs.ts'
+import { referenceSetKeysOf } from '../evaluate/evidence-resolution.ts'
+import type { ReferenceSetKeys } from '../evaluate/resolution.ts'
 import { StructuralFailure } from '../failure-codes.ts'
 import type { EvalContract } from '../schemas/eval-contract.ts'
-import type { Operation, PermittedInterface } from '../schemas/interface.ts'
+import type { AnyOperation, PermittedInterface } from '../schemas/interface.ts'
+import { operationsOf } from '../schemas/interface.ts'
 import type { ProbeRequest } from '../schemas/port-messages.ts'
 import type { JsonValue } from '../schemas/primitives.ts'
 import type { Probe } from '../schemas/probe.ts'
 import type {
+	ApiWitnessInputs,
 	ManifestationWitness,
 	SensitivityWitness,
 	WitnessInputs,
@@ -41,7 +51,7 @@ export type PlannedLeg = {
 	readonly legId: string
 	readonly purpose: PlannedLegPurpose
 	readonly request: ProbeRequest
-	readonly operation: Operation
+	readonly operation: AnyOperation
 	readonly inputs: WitnessInputs
 }
 
@@ -57,7 +67,7 @@ export type PlannedCheck =
 			readonly interfaceId: string
 			readonly operationId: string
 			readonly witness: SensitivityWitness | null
-			readonly operation: Operation
+			readonly operation: AnyOperation
 	  }
 	| { readonly kind: 'state-reset'; readonly legIds: readonly [string, string] }
 	| { readonly kind: 'clean-control'; readonly legIds: readonly string[] }
@@ -65,14 +75,14 @@ export type PlannedCheck =
 			readonly kind: 'seeded-faults-scoped'
 			readonly defectId: string
 			readonly witness: ManifestationWitness
-			readonly operation: Operation
+			readonly operation: AnyOperation
 			readonly cleanLegIds: readonly string[]
 	  }
 	| {
 			readonly kind: 'seeded-fault-fired'
 			readonly defectId: string
 			readonly witness: ManifestationWitness | null
-			readonly operation: Operation | null
+			readonly operation: AnyOperation | null
 	  }
 
 export type PreflightPlan = {
@@ -80,28 +90,66 @@ export type PreflightPlan = {
 	readonly legs: readonly PlannedLeg[]
 	readonly checks: readonly PlannedCheck[]
 	readonly referenceSets: Readonly<Record<string, JsonValue[]>>
+	// Beside the members, because `set-membership`'s set position reads the
+	// single declared key off each member and the members map alone has
+	// already discarded the keys.
+	readonly referenceSetKeys: ReferenceSetKeys
 }
 
 const requestOf = (
 	legId: string,
 	interfaceId: string,
-	operation: Operation,
+	operation: AnyOperation,
 	inputs: WitnessInputs,
-): ProbeRequest => ({
-	// NFR9's correlation by identifier: the port echoes this back, and it is
-	// the only thing that tells two legs of one operation apart.
-	probeId: legId,
-	interfaceId,
-	operationId: operation.operationId,
-	method: operation.method,
-	pathTemplate: operation.pathTemplate,
-	channels: {
-		path: inputs.path,
-		query: inputs.query,
-		header: inputs.header,
-		body: inputs.body,
-	},
-})
+): ProbeRequest => {
+	// NFR9's correlation by identifier: the port echoes these back, and they
+	// are the only thing that tells two legs of one operation apart.
+	const correlation = {
+		probeId: legId,
+		interfaceId,
+		operationId: operation.operationId,
+	}
+	if (isCommandOperation(operation)) {
+		if (isApiWitnessInputs(inputs)) {
+			throw new StructuralFailure(
+				'undeclared-mandatory-input',
+				`EvalContract.permittedInterfaces[logicalId=${interfaceId}].operations[operationId=${operation.operationId}]`,
+				`leg "${legId}" supplies transport channels to an operation that runs behind a command (AD-10, AD-19)`,
+			)
+		}
+		return {
+			...correlation,
+			kind: 'cli',
+			executable: operation.invocation.executable,
+			subcommandPath: operation.invocation.subcommandPath,
+			channels: {
+				argument: inputs.argument,
+				option: inputs.option,
+				environment: inputs.environment,
+				stdin: inputs.stdin,
+			},
+		}
+	}
+	if (!isApiWitnessInputs(inputs)) {
+		throw new StructuralFailure(
+			'undeclared-mandatory-input',
+			`EvalContract.permittedInterfaces[logicalId=${interfaceId}].operations[operationId=${operation.operationId}]`,
+			`leg "${legId}" supplies command channels to an operation that speaks HTTP (AD-10, AD-19)`,
+		)
+	}
+	return {
+		...correlation,
+		kind: 'api',
+		method: operation.method,
+		pathTemplate: operation.pathTemplate,
+		channels: {
+			path: inputs.path,
+			query: inputs.query,
+			header: inputs.header,
+			body: inputs.body,
+		},
+	}
+}
 
 /** where a leg came from, so a duplicate identifier names its own source. */
 type LegOrigin = { readonly leg: PlannedLeg; readonly artifactPath: string }
@@ -139,7 +187,7 @@ const declaredLegIds = (
 				if (legId !== undefined) taken.add(legId)
 			}
 	for (const iface of contract.permittedInterfaces)
-		for (const operation of iface.operations)
+		for (const operation of operationsOf(iface))
 			for (const leg of operation.sensitivityWitness?.legs ?? [])
 				taken.add(leg.legId)
 	if (contract.fixtureReset !== null) taken.add(contract.fixtureReset.legId)
@@ -148,7 +196,7 @@ const declaredLegIds = (
 
 type ControlTarget = {
 	readonly iface: PermittedInterface
-	readonly operation: Operation
+	readonly operation: AnyOperation
 	readonly inputs: WitnessInputs
 }
 
@@ -157,7 +205,14 @@ type ControlSelection = {
 	readonly mutating: ControlTarget | null
 }
 
-const EMPTY_INPUTS: WitnessInputs = {
+const EMPTY_COMMAND_INPUTS: WitnessInputs = {
+	argument: {},
+	option: {},
+	environment: {},
+	stdin: { kind: 'absent' },
+}
+
+const EMPTY_INPUTS: ApiWitnessInputs = {
 	path: {},
 	query: {},
 	header: {},
@@ -175,15 +230,19 @@ const EMPTY_INPUTS: WitnessInputs = {
  * parameterless GET is exempt, so it carried no witness, so no control leg was
  * planned and the verdict passed with no immutability evidence at all.
  */
-const controlInputs = (operation: Operation): WitnessInputs | null => {
+const controlInputs = (operation: AnyOperation): WitnessInputs | null => {
 	const declared = operation.sensitivityWitness?.legs[0]?.inputs
 	if (declared !== undefined) return declared
-	return declaresNoRequiredKeys(operation) ? EMPTY_INPUTS : null
+	// AD-10 exempts an operation with no required key, so an empty leg is a
+	// legal request for it. Which empty leg depends on the kind, because the
+	// port sends what the operation's own channels name.
+	if (!declaresNoRequiredKeys(operation)) return null
+	return isCommandOperation(operation) ? EMPTY_COMMAND_INPUTS : EMPTY_INPUTS
 }
 
 const targetOf = (
 	iface: PermittedInterface,
-	operation: Operation,
+	operation: AnyOperation,
 ): ControlTarget | null => {
 	const inputs = controlInputs(operation)
 	return inputs === null ? null : { iface, operation, inputs }
@@ -196,10 +255,13 @@ const targetOf = (
  * marker-true operation on the interface the fixture reset names, resolved
  * independently of where the observed read came from.
  */
-const selectControl = (contract: EvalContract): ControlSelection | null => {
+const selectControl = (
+	contract: EvalContract,
+	permittedInterfaces: readonly PermittedInterface[],
+): ControlSelection | null => {
 	let observed: ControlTarget | null = null
-	for (const iface of contract.permittedInterfaces) {
-		for (const operation of iface.operations) {
+	for (const iface of permittedInterfaces) {
+		for (const operation of operationsOf(iface)) {
 			if (operation.stateChangeMarker) continue
 			observed = targetOf(iface, operation)
 			if (observed !== null) break
@@ -209,13 +271,14 @@ const selectControl = (contract: EvalContract): ControlSelection | null => {
 	if (observed === null) return null
 	const reset = contract.fixtureReset
 	if (reset === null) return { observed, mutating: null }
-	const resetInterface = contract.permittedInterfaces.find(
+	const resetInterface = permittedInterfaces.find(
 		(candidate) => candidate.logicalId === reset.interfaceId,
 	)
 	let mutating: ControlTarget | null = null
 	for (const operation of resetInterface?.operations ?? []) {
 		if (!operation.stateChangeMarker) continue
-		mutating = targetOf(resetInterface as PermittedInterface, operation)
+		if (resetInterface === undefined) break
+		mutating = targetOf(resetInterface, operation)
 		if (mutating !== null) break
 	}
 	return { observed, mutating }
@@ -237,16 +300,17 @@ export const planPreflight: PlanStage<PreflightPlanInput, PreflightPlan> = (
 ) => {
 	const { contract, probes, runId } = input
 	for (const iface of contract.permittedInterfaces) {
-		// Already thrown at compile; asserted again because the plan is reachable
-		// from a caller who assembled a contract by hand.
-		if (iface.kind !== 'api') {
+		// Already thrown at compile; asserted again because the plan is
+		// reachable from a caller who assembled a contract by hand.
+		if (iface.kind !== 'api' && iface.kind !== 'cli') {
 			throw new StructuralFailure(
 				'unsupported-interface-kind',
 				`EvalContract.permittedInterfaces[logicalId=${iface.logicalId}].kind`,
-				`"${iface.kind}" is not supported in v0; only "api" is (AD-10)`,
+				`"${iface.kind}" is not supported; "api" and "cli" are (AD-10)`,
 			)
 		}
 	}
+	const permittedInterfaces = contract.permittedInterfaces
 
 	const origins: LegOrigin[] = []
 	const checks: PlannedCheck[] = []
@@ -262,7 +326,7 @@ export const planPreflight: PlanStage<PreflightPlanInput, PreflightPlan> = (
 		legId: string,
 		purpose: PlannedLegPurpose,
 		interfaceId: string,
-		operation: Operation,
+		operation: AnyOperation,
 		inputs: WitnessInputs,
 		artifactPath: string,
 	): void => {
@@ -283,8 +347,8 @@ export const planPreflight: PlanStage<PreflightPlanInput, PreflightPlan> = (
 	}
 
 	// 1. the sensitivity legs and their checks
-	contract.permittedInterfaces.forEach((iface, interfaceIndex) => {
-		iface.operations.forEach((operation, operationIndex) => {
+	permittedInterfaces.forEach((iface, interfaceIndex) => {
+		operationsOf(iface).forEach((operation, operationIndex) => {
 			const witness = operation.sensitivityWitness
 			const path = `EvalContract.permittedInterfaces[${interfaceIndex}].operations[${operationIndex}]`
 			if (witness !== null)
@@ -309,7 +373,7 @@ export const planPreflight: PlanStage<PreflightPlanInput, PreflightPlan> = (
 	})
 
 	// 3. the control legs, once per contract
-	const control = selectControl(contract)
+	const control = selectControl(contract, permittedInterfaces)
 	const controlLegIds: string[] = []
 	if (control !== null) {
 		const taken = declaredLegIds(contract, probes)
@@ -345,7 +409,7 @@ export const planPreflight: PlanStage<PreflightPlanInput, PreflightPlan> = (
 				`the minted control-mutate leg against "${mutating.operation.operationId}"`,
 			)
 			controlLegIds.push(mutate)
-			const resetOperation = mutating.iface.operations.find(
+			const resetOperation = operationsOf(mutating.iface).find(
 				(candidate) => candidate.operationId === reset.operationId,
 			)
 			if (resetOperation === undefined) {
@@ -389,7 +453,7 @@ export const planPreflight: PlanStage<PreflightPlanInput, PreflightPlan> = (
 				})
 				continue
 			}
-			const iface = contract.permittedInterfaces.find(
+			const iface = permittedInterfaces.find(
 				(candidate) => candidate.logicalId === witness.interfaceId,
 			)
 			const operation = iface?.operations.find(
@@ -488,5 +552,6 @@ export const planPreflight: PlanStage<PreflightPlanInput, PreflightPlan> = (
 		legs: origins.map((origin) => origin.leg),
 		checks: [...presence, ...checks],
 		referenceSets: referenceSetMembers(contract),
+		referenceSetKeys: referenceSetKeysOf(contract),
 	}
 }

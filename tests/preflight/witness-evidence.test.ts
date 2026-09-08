@@ -18,7 +18,7 @@ import {
 import { EvalContract } from '../../src/core/schemas/eval-contract.ts'
 import type { Expression } from '../../src/core/schemas/expression.ts'
 import { RuntimeFault } from '../../src/core/schemas/faults.ts'
-import type { ProbeObservation } from '../../src/core/schemas/port-messages.ts'
+import type { ApiProbeObservation } from '../../src/core/schemas/port-messages.ts'
 import {
 	absentBody,
 	contractDraft,
@@ -33,19 +33,20 @@ const listThings = operationNamed(preflightContract, 'list-things')
 const createThing = operationNamed(preflightContract, 'create-thing')
 
 const observation = (
-	body: ProbeObservation['body'],
+	body: ApiProbeObservation['body'],
 	headers: Record<string, string> = {},
-): ProbeObservation => ({
+): ApiProbeObservation => ({
 	probeId: 'create-a',
 	interfaceId: 'thing-api',
 	operationId: 'create-thing',
+	kind: 'api',
 	status: 201,
 	headers,
 	body,
 })
 
 const evidenceFor = (
-	body: ProbeObservation['body'],
+	body: ApiProbeObservation['body'],
 	headers: Record<string, string> = {},
 	inputs = inputsOf({ body: { kind: 'json', value: { name: 'alpha' } } }),
 ) => {
@@ -54,6 +55,7 @@ const evidenceFor = (
 		projectObservation(raw, createThing, PREFLIGHT_ARTIFACT_PATH),
 		raw,
 		inputs,
+		createThing,
 	)
 }
 
@@ -69,8 +71,9 @@ describe('evidenceOf', () => {
 		expect(evidence.responseHeaders).toEqual({ 'x-request-id': 'r-1' })
 		expect(evidence.provenance).toBe('baseline')
 		expect(evidence.responseStatus).toBe(201)
-		expect(evidence.stdout).toBeNull()
-		expect(evidence.stderr).toBeNull()
+		expect(evidence.stdout).toEqual({ kind: 'absent' })
+		expect(evidence.stderr).toEqual({ kind: 'absent' })
+		expect(evidence.artifacts).toEqual({})
 		expect(evidence.exitCode).toBeNull()
 	})
 
@@ -119,6 +122,7 @@ describe('evidenceOf', () => {
 				{ 'create-a': evidence },
 				createThing,
 				{},
+				{},
 				PREFLIGHT_ARTIFACT_PATH,
 			).resolution,
 		).toBe('true')
@@ -165,10 +169,11 @@ describe('makeWitnessPointerDenotesCollection', () => {
 
 describe('resolveWitnessRelation', () => {
 	const listEvidence = (items: unknown[]) => {
-		const raw: ProbeObservation = {
+		const raw: ApiProbeObservation = {
 			probeId: 'list-a',
 			interfaceId: 'thing-api',
 			operationId: 'list-things',
+			kind: 'api',
 			status: 200,
 			headers: {},
 			body: jsonBody({ items } as never),
@@ -177,6 +182,7 @@ describe('resolveWitnessRelation', () => {
 			projectObservation(raw, listThings, PREFLIGHT_ARTIFACT_PATH),
 			raw,
 			inputsOf({ query: { limit: 1 } }),
+			listThings,
 		)
 	}
 
@@ -194,6 +200,7 @@ describe('resolveWitnessRelation', () => {
 				relation,
 				{ 'list-a': listEvidence([]) },
 				listThings,
+				{},
 				{},
 				PREFLIGHT_ARTIFACT_PATH,
 			).resolution,
@@ -217,6 +224,7 @@ describe('resolveWitnessRelation', () => {
 				relation,
 				{ 'create-a': evidence },
 				createThing,
+				{},
 				{},
 				PREFLIGHT_ARTIFACT_PATH,
 			)

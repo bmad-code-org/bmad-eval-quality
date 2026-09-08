@@ -17,14 +17,18 @@
       },
       "selector": {
         "inputBinding": {
+          "argument": null,
           "body": null,
+          "environment": null,
           "header": null,
+          "option": null,
           "path": {
             "id": {
               "literal": "n-1"
             }
           },
-          "query": null
+          "query": null,
+          "stdin": null
         }
       }
     },
@@ -83,6 +87,6 @@
   },
   "rationale": "The seeded silent-write defect: PATCH validates, builds the updated note, returns it with ok true and status 200, and never persists it. Only an independent GET reveals the old value.",
   "revisionCount": 0,
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "systemId": "spike-notes-api"
 }

@@ -79,7 +79,17 @@ const classStrengthOf = (
 	if (probesInClass.length === 0) return null
 	let exercised = 0
 	let caught = 0
+	// Counted once per identifier, not once per entry. AD-7's rate is over
+	// unique qualified probe identifiers, and nothing in `src/` enforces that
+	// `admitted` carries each identifier once: no probe-corpus schema exists,
+	// so the uniqueness is inherited from upstream qualification rather than
+	// checked. A repeated identifier would otherwise count its trial-set
+	// result twice on both sides of the same ratio, which leaves the rate
+	// right and the raw counts wrong.
+	const counted = new Set<string>()
 	for (const { probe } of probesInClass) {
+		if (counted.has(probe.probeId)) continue
+		counted.add(probe.probeId)
 		const result = results.get(probe.probeId)
 		if (result === undefined || !result.exercised) continue
 		exercised += 1
@@ -162,8 +172,20 @@ function componentComparison(
 	return 'incomparable'
 }
 
-const atOrAboveFloor = (severity: Severity, floor: Severity): boolean =>
-	SEVERITY_LEVELS.indexOf(severity) >= SEVERITY_LEVELS.indexOf(floor)
+/**
+ * Both operands are looked up before they are compared, because `indexOf`
+ * answers `-1` for a value the ladder does not name and `-1 >= -1` reads as
+ * "at or above the floor" for two values that are on no ladder at all. A
+ * severity outside the closed set is not at or above anything, and a floor
+ * outside it bounds nothing, so either one absent is `false` rather than a
+ * comparison of two absences.
+ */
+const atOrAboveFloor = (severity: Severity, floor: Severity): boolean => {
+	const rank = SEVERITY_LEVELS.indexOf(severity)
+	const bound = SEVERITY_LEVELS.indexOf(floor)
+	if (rank < 0 || bound < 0) return false
+	return rank >= bound
+}
 
 /**
  * Keyed by the first outcome carrying each `probeId`, not the last: two
@@ -219,6 +241,15 @@ function favoredMissesWhatOtherCaught(
  * on it is not fit to decide a comparison either way. The severity-floor
  * override runs only against the side the raw comparison favoured, and only
  * ever downgrades that result to `incomparable`.
+ *
+ * That scope is AD-7's own and not an omission: its words are that a contract
+ * missing a behaviour at or above the floor "never dominates" one that caught
+ * it, which constrains dominance and says nothing about equivalence. Two
+ * vectors that are component-wise equal are `equivalent` whatever their
+ * severities, because neither is dominating anything for the override to
+ * withdraw. Widening it to `equivalent` would be a new rule rather than this
+ * one applied more thoroughly, and it is written down here so the asymmetry
+ * reads as a decision rather than a gap.
  */
 export function compareDominance(
 	a: ComparableResult,

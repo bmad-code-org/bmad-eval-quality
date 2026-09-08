@@ -111,29 +111,33 @@ export default defineConfig({
 				},
 			],
 			customCss: ['./src/styles/custom.css'],
+			// A first-time reader walks this top to bottom: a short tutorial to get
+			// their feet wet, then the ideas, then the long tutorial, then the
+			// reference. Explanation sits ahead of the walkthrough because the
+			// walkthrough is long and reads better once the twin run is understood.
 			sidebar: [
 				{
 					label: 'Welcome',
 					slug: 'index',
 				},
 				{
-					label: 'Tutorials',
+					label: 'Tutorial',
 					collapsed: false,
 					items: [{ autogenerate: { directory: 'tutorials' } }],
 				},
 				{
-					label: 'How-To Guides',
-					collapsed: true,
-					items: [{ autogenerate: { directory: 'how-to' } }],
-				},
-				{
 					label: 'Explanation',
-					collapsed: true,
+					collapsed: false,
 					items: [{ autogenerate: { directory: 'explanation' } }],
 				},
 				{
+					label: 'Walkthrough',
+					collapsed: false,
+					items: [{ autogenerate: { directory: 'how-to' } }],
+				},
+				{
 					label: 'Reference',
-					collapsed: true,
+					collapsed: false,
 					items: [{ autogenerate: { directory: 'reference' } }],
 				},
 			],

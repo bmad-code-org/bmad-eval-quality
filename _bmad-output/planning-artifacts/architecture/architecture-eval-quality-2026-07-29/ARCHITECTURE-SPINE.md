@@ -233,7 +233,7 @@ Nothing imports `cli/`.
   | `nested-temporal-clause` | a temporal clause names a step that carries one | AD-39 |
   | `plan-exceeds-scripting-bound` | the interaction plan violates the published graph predicate below | AD-39 |
   | `binding-cycle` | a cycle over the capture and temporal-clause edges together that contains at least one captured input binding, a step capturing from itself included | AD-39 |
-  | `captured-channel-undeclared` | a captured input binding names any channel but `response-body`, the one channel a response descriptor declares structure for | AD-39, AD-26 |
+  | `captured-channel-undeclared` | a captured input binding names any channel but the one its operation's response descriptor describes | AD-39, AD-26 |
   | `rubric-scores-reasoning-prose` | a criterion scores chain-of-thought or stated-reasoning prose | AD-17, AD-22 |
   | `rubric-unanchored` | an unanchored scale, unbounded length, or missing named failure-mode penalties | AD-22 |
   | `rubric-evidence-unreachable` | a criterion's evidence is unreachable through the declared interfaces | AD-22 |
@@ -241,6 +241,8 @@ Nothing imports `cli/`.
   | `scoped-reference-resolves-forbidden` | a scoped resource reference resolves to a forbidden input | AD-16 |
   | `waiver-incomplete` | a waiver omits any required part | AD-6, AD-21 |
   | `brief-exceeds-scripting-bound` | the emitted brief's generated direction prose exceeds the contract's declared bound on enumerated probe steps | AD-16 |
+  | `unresolved-artifact-reference` | a pointer or a descriptor root names an artifact identifier the operation does not declare it writes | AD-26, AD-19 |
+  | `irreducible-step-reference` | two steps one direction references render to the same derived reference even fully escalated, so the sealed brief cannot name them apart | AD-16, AD-3 |
 
   Adding a class is an amendment to this AD and to no other, and an AD that commands a compile-time check without adding a code here is a defect in that AD. The published schema's failure-code enumeration is generated from this table, not maintained beside it.
 

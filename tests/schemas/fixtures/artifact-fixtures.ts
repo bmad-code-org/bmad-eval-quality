@@ -15,6 +15,7 @@ import type { Rubric } from '../../../src/core/schemas/rubric.ts'
 import type { ScoringPolicy } from '../../../src/core/schemas/scoring-policy.ts'
 import type { SealedEvaluatorBrief } from '../../../src/core/schemas/sealed-evaluator-brief.ts'
 import type { SealedRunRecord } from '../../../src/core/schemas/sealed-run-record.ts'
+import { commandContract } from './command-contract.ts'
 import { populatedContract } from './relevance-contracts.ts'
 
 /** AD-27's rendered form: "sha256:" plus 64 lowercase hexadecimal characters. */
@@ -134,14 +135,19 @@ const emptyCallInputs: SealedRunRecord['observations'][number]['callInputs'] = {
 	query: null,
 	header: null,
 	body: null,
+	argument: null,
+	option: null,
+	environment: null,
+	stdin: null,
 }
 
 export const sealedRunRecordFixture: SealedRunRecord = {
-	// Version 3: `mode` (version 2) and now `sequence` (version 3) are both
-	// required, so neither a version-1 nor a version-2 record parses. This
+	// Version 3: `mode` (version 2) and `sequence` (version 3) are both
+	// required, so neither a version-1 nor a version-2 record parses. Version 4
+	// retyped the process channels and added the written artifacts. This
 	// fixture is the only place a Sealed Run Record version number is written
 	// down, which is what makes each bump visible.
-	schemaVersion: 3,
+	schemaVersion: 4,
 	parentDigest: null,
 	revisionCount: 0,
 	runId: 'spike-run-0001',
@@ -186,6 +192,7 @@ export const sealedRunRecordFixture: SealedRunRecord = {
 			sequence: 1,
 			operationId: 'get-note',
 			provenance: 'baseline',
+			principal: null,
 			callInputs: { ...emptyCallInputs, path: { id: 'n-1' } },
 			responseBody: {
 				ok: true,
@@ -193,15 +200,17 @@ export const sealedRunRecordFixture: SealedRunRecord = {
 			},
 			responseHeaders: { 'content-type': 'application/json' },
 			responseStatus: 200,
-			stdout: null,
-			stderr: null,
+			stdout: { kind: 'absent' },
+			stderr: { kind: 'absent' },
 			exitCode: null,
+			artifacts: {},
 		},
 		{
 			observationId: 'obs-003',
 			sequence: 2,
 			operationId: 'patch-note',
 			provenance: 'evaluator-chosen',
+			principal: null,
 			callInputs: {
 				...emptyCallInputs,
 				path: { id: 'n-1' },
@@ -210,22 +219,25 @@ export const sealedRunRecordFixture: SealedRunRecord = {
 			responseBody: { ok: true, note: { id: 'n-1', title: 'Revised' } },
 			responseHeaders: null,
 			responseStatus: 200,
-			stdout: null,
-			stderr: null,
+			stdout: { kind: 'absent' },
+			stderr: { kind: 'absent' },
 			exitCode: null,
+			artifacts: {},
 		},
 		{
 			observationId: 'obs-004',
 			sequence: 3,
 			operationId: 'get-note',
 			provenance: 'evaluator-chosen',
+			principal: null,
 			callInputs: { ...emptyCallInputs, path: { id: 'n-1' } },
 			responseBody: { ok: true, note: { id: 'n-1', title: 'Original' } },
 			responseHeaders: null,
 			responseStatus: 200,
-			stdout: null,
-			stderr: null,
+			stdout: { kind: 'absent' },
+			stderr: { kind: 'absent' },
 			exitCode: null,
+			artifacts: {},
 		},
 		{
 			// The three process channels, so every one of AD-26's seven has a
@@ -234,13 +246,15 @@ export const sealedRunRecordFixture: SealedRunRecord = {
 			sequence: 4,
 			operationId: 'run-migration',
 			provenance: 'evaluator-chosen',
+			principal: null,
 			callInputs: { ...emptyCallInputs, query: { dryRun: true } },
 			responseBody: null,
 			responseHeaders: null,
 			responseStatus: null,
-			stdout: 'migrated 0 rows\n',
-			stderr: '',
+			stdout: { kind: 'text', value: 'migrated 0 rows\n' },
+			stderr: { kind: 'text', value: '' },
 			exitCode: 0,
+			artifacts: {},
 		},
 	],
 	judgeResults: [
@@ -396,6 +410,10 @@ const lostUpdateSignature: Extract<
 				query: null,
 				header: null,
 				body: { title: { matcher: 'any' } },
+				argument: null,
+				option: null,
+				environment: null,
+				stdin: null,
 			},
 		},
 		predicate: {
@@ -427,8 +445,11 @@ const lostUpdateSignature: Extract<
 
 export const seededProbe: Probe = {
 	// Version 2: AD-9's qualification record and AD-40's defect signature both
-	// landed as required fields, so no version-1 probe parses.
-	schemaVersion: 2,
+	// landed as required fields, so no version-1 probe parses. Version 3 opened
+	// the defect signature to a system under test that runs behind a command:
+	// the signature is a union on `interfaceKind`, and the selector carries the
+	// four command channels beside the four transport ones.
+	schemaVersion: 3,
 	parentDigest: null,
 	revisionCount: 0,
 	probeId: 'P-001',
@@ -455,8 +476,91 @@ export const seededProbe: Probe = {
 	defectSignature: lostUpdateSignature,
 }
 
+/**
+ * The same probe shape against a system under test that runs behind a command.
+ * Its signature declares a logical invocation in place of a method and a path
+ * template, its selector binds a command channel, and its observable channel is
+ * one only a command produces.
+ *
+ * It is the accept fixture for the `cli` branch of `DefectSignature`, and the
+ * only seed that reaches those keywords: a branch nothing exercises is a branch
+ * AD-13's sweep reports as unprotected.
+ */
+const fragmentSelectionSignature: Extract<
+	Probe,
+	{ expectedClean: false }
+>['defectSignature'] = {
+	interfaceKind: 'cli',
+	invocation: {
+		executable: 'fragment-selection-runner',
+		// A non-empty path on purpose: an empty one leaves the identifier
+		// pattern on its elements with nothing to reject.
+		subcommandPath: ['select'],
+	},
+	observableChannel: 'stdout',
+	condition: {
+		selector: {
+			inputBinding: {
+				path: null,
+				query: null,
+				header: null,
+				body: null,
+				argument: null,
+				option: null,
+				environment: null,
+				stdin: { prompt: { matcher: 'any' } },
+			},
+		},
+		predicate: {
+			op: 'all',
+			operands: [
+				{
+					op: 'equality',
+					operands: [
+						{ pointer: '/interactions/observed/exit-code' },
+						{ literal: 0 },
+					],
+				},
+				{
+					op: 'absence',
+					operands: [{ pointer: '/interactions/observed/stdout/fragments' }],
+				},
+			],
+		},
+	},
+}
+
+export const commandProbe: Probe = {
+	schemaVersion: 3,
+	parentDigest: null,
+	revisionCount: 0,
+	probeId: 'P-003',
+	probeClass: 'defect',
+	expectedClean: false,
+	behaviorId: 'B-001',
+	systemId: 'fragment-selection',
+	implementationDigest: digestOf(21),
+	artifactDigest: digestOf(22),
+	commitDigest: digestOf(23),
+	rationale:
+		'A controlled mutation seeding a selection that exits clean and writes nothing.',
+	qualification: {
+		route: 'controlled-mutation',
+		mutationSource: 'hand-authored mutation of the selection writer',
+		mutationOperator: 'statement-deletion',
+		targetArtifact: publicArtifactReference,
+		expectedObservableFailure:
+			'the process exits zero and standard output carries no fragments',
+		baselinePassEvidence: publicArtifactReference,
+		mutatedFailEvidence: privateArtifactReference,
+		rollbackVerified: true,
+	},
+	defects: [seededDefect],
+	defectSignature: fragmentSelectionSignature,
+}
+
 export const cleanControlProbe: Probe = {
-	schemaVersion: 2,
+	schemaVersion: 3,
 	parentDigest: null,
 	revisionCount: 0,
 	probeId: 'P-002',
@@ -523,6 +627,10 @@ export const gameabilityProbe: Probe = {
 					query: null,
 					header: null,
 					body: { title: { matcher: 'any' } },
+					argument: null,
+					option: null,
+					environment: null,
+					stdin: null,
 				},
 			},
 			predicate: {
@@ -588,6 +696,10 @@ export const historicalProbe: Probe = {
 					query: null,
 					header: null,
 					body: null,
+					argument: null,
+					option: null,
+					environment: null,
+					stdin: null,
 				},
 			},
 			predicate: {
@@ -993,6 +1105,14 @@ export const QUALIFICATION_ROUTE_FIXTURES = [
 
 export const UNION_BRANCH_FIXTURES = [
 	{
+		// The `cli` branch of `permittedInterfaces`, whose operation shape, input
+		// binding, and witness leg spelling are reachable from no other seed.
+		id: 'eval-contract/command-interface',
+		artifact: 'eval-contract',
+		discriminator: 'kind',
+		value: commandContract as unknown,
+	},
+	{
 		id: 'artifact-reference/public',
 		artifact: 'artifact-reference',
 		discriminator: 'storage',
@@ -1009,6 +1129,13 @@ export const UNION_BRANCH_FIXTURES = [
 		artifact: 'probe',
 		discriminator: 'expectedClean',
 		value: seededProbe as unknown,
+	},
+	{
+		// The `cli` branch of `DefectSignature`, reachable from no other seed.
+		id: 'probe/command-signature',
+		artifact: 'probe',
+		discriminator: 'interfaceKind',
+		value: commandProbe as unknown,
 	},
 	{
 		id: 'probe/clean-control',

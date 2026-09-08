@@ -122,13 +122,24 @@ const inertObservation = (
 	sequence,
 	operationId: 'get-note',
 	provenance: 'evaluator-chosen',
-	callInputs: { path: null, query: null, header: null, body: null },
+	principal: null,
+	callInputs: {
+		path: null,
+		query: null,
+		header: null,
+		body: null,
+		argument: null,
+		option: null,
+		environment: null,
+		stdin: null,
+	},
 	responseBody: null,
 	responseHeaders: null,
 	responseStatus: 200,
-	stdout: null,
-	stderr: null,
+	stdout: { kind: 'absent' },
+	stderr: { kind: 'absent' },
 	exitCode: null,
+	artifacts: {},
 })
 
 /** A defect finding citing one observation and quoting one channel of it. */
@@ -1088,6 +1099,10 @@ describe('the ingest stage', () => {
 						query: null,
 						header: null,
 						body: { total: 2 ** 53 },
+						argument: null,
+						option: null,
+						environment: null,
+						stdin: null,
 					},
 				},
 				'call-inputs',
@@ -1207,5 +1222,49 @@ describe('the ingest stage', () => {
 		expect(
 			ingest(record, cleanManifest, configuration).unwitnessedQuotations,
 		).toEqual(auditQuotation(record))
+	})
+})
+
+describe("AD-17's record-decidable half: a criterion scored once", () => {
+	it('reports a rubric criterion scored twice as a duplicate judge result', () => {
+		const mutated: SealedRunRecord = {
+			...cleanRecord,
+			judgeResults: [
+				{ rubricId: 'R-001', criterionId: 'RC-001', score: 3, note: null },
+				{ rubricId: 'R-001', criterionId: 'RC-001', score: 1, note: null },
+			],
+		}
+		const conditions = ingest(
+			mutated,
+			cleanManifest,
+			configuration,
+		).conditions.filter(
+			(condition) => condition.kind === 'duplicate-record-identifier',
+		)
+		expect(conditions).toEqual([
+			{
+				kind: 'duplicate-record-identifier',
+				subject: 'judge-result',
+				identifier: 'R-001/RC-001',
+				occurrences: 2,
+			},
+		])
+	})
+
+	// Two rubrics may each declare a criterion of the same name, so the pair is
+	// the key rather than the criterion alone.
+	it('says nothing about one criterion name scored under two rubrics', () => {
+		const mutated: SealedRunRecord = {
+			...cleanRecord,
+			judgeResults: [
+				{ rubricId: 'R-001', criterionId: 'RC-001', score: 3, note: null },
+				{ rubricId: 'R-002', criterionId: 'RC-001', score: 1, note: null },
+			],
+		}
+		expect(
+			ingest(mutated, cleanManifest, configuration).conditions.filter(
+				(condition) => condition.kind === 'duplicate-record-identifier',
+			),
+		).toEqual([])
 	})
 })

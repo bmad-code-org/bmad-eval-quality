@@ -21,22 +21,35 @@ import {
 	checkExpressionRegexConstructs,
 	walkExpression,
 } from '../compile/expression-legality.ts'
-import { operationSignature } from '../compile/interface-inventory.ts'
+import {
+	anyOperationSignature,
+	commandSignature,
+	operationSignature,
+} from '../compile/interface-inventory.ts'
 import {
 	checkExpressionBoundElementScope,
 	checkExpressionEvidenceReachability,
 	forEachExpressionPointer,
 } from '../compile/reachability.ts'
+import { requestShapeOf } from '../declared-inputs.ts'
 import { StructuralFailure } from '../failure-codes.ts'
 import {
 	type DefectSignature,
 	OBSERVED_STEP_ID,
 } from '../schemas/defect-signature.ts'
 import type { Expression, Operand } from '../schemas/expression.ts'
-import type { Operation, PermittedInterface } from '../schemas/interface.ts'
+import type {
+	AnyOperation,
+	Operation,
+	PermittedInterface,
+} from '../schemas/interface.ts'
+import { operationsOf } from '../schemas/interface.ts'
 import {
+	API_RESPONSE_CHANNELS,
+	COMMAND_RESPONSE_CHANNELS,
 	type EvidenceChannelName,
-	TRANSPORT_CHANNELS,
+	INPUT_CHANNELS,
+	RESPONSE_SIDE_CHANNELS,
 } from '../schemas/pointer.ts'
 import type { Probe } from '../schemas/probe.ts'
 import type { QualificationRouteValue } from '../schemas/probe-qualification.ts'
@@ -104,11 +117,20 @@ export type QualificationResult = {
 export function resolveHomeOperation(
 	signature: DefectSignature,
 	interfaces: readonly PermittedInterface[],
-): Operation | null {
-	const wanted = operationSignature(signature)
+): AnyOperation | null {
+	// The identity is compared within its own kind. A signature declaring a
+	// method and a path template can only name an operation declaring the same
+	// pair, and one declaring an invocation can only name an operation
+	// declaring one; comparing the rendered strings across kinds would let
+	// `GET /notes` collide with an executable literally named that.
+	const command = signature.interfaceKind === 'cli'
+	const wanted = command
+		? commandSignature(signature)
+		: operationSignature(signature)
 	for (const iface of interfaces) {
-		for (const operation of iface.operations) {
-			if (operationSignature(operation) === wanted) return operation
+		if ((iface.kind === 'cli') !== command) continue
+		for (const operation of operationsOf(iface)) {
+			if (anyOperationSignature(operation) === wanted) return operation
 		}
 	}
 	return null
@@ -117,25 +139,18 @@ export function resolveHomeOperation(
 // AD-26's channels that carry what came back, as opposed to what was sent. The
 // channel rule below needs at least one of these, or a condition naming two
 // channels could name `call-inputs` twice and pass.
-const RESPONSE_SIDE_CHANNELS: ReadonlySet<string> = new Set([
-	'response-body',
-	'response-headers',
-	'response-status',
-	'stdout',
-	'stderr',
-	'exit-code',
-])
+//
+// Derived from the vocabulary rather than transcribed: these were two
+// hand-maintained string sets, and a string set does not fail a typecheck when
+// a channel joins the enum, so a new channel would have gone unassigned and
+// silently answered "no" to both questions below.
+const RESPONSE_SIDE: ReadonlySet<string> = new Set(RESPONSE_SIDE_CHANNELS)
 
-// The three channels an `api` signature can never manifest in. The contract
-// side cannot decide this: reachability rejects a tailed `stdout` pointer and
-// returns reachable for a bare one unconditionally, because an operation
-// carries no interface kind. The signature's own declared kind is what makes
-// the rule decidable, so it is spent here rather than left as prose.
-const TEXT_CHANNELS: ReadonlySet<string> = new Set([
-	'stdout',
-	'stderr',
-	'exit-code',
-])
+/** The channels a signature of this kind can never manifest in. */
+const foreignChannels = (kind: string): ReadonlySet<string> =>
+	new Set<string>(
+		kind === 'cli' ? API_RESPONSE_CHANNELS : COMMAND_RESPONSE_CHANNELS,
+	)
 
 const probePath = (probe: Probe, tail: string): string =>
 	`Probe[probeId=${probe.probeId}]${tail}`
@@ -308,14 +323,11 @@ function checkOperandsAndCollectChannels(
 			return
 		}
 		channels.add(target.channel)
-		if (
-			signature.interfaceKind === 'api' &&
-			TEXT_CHANNELS.has(target.channel)
-		) {
+		if (foreignChannels(signature.interfaceKind).has(target.channel)) {
 			failures.push({
 				code: 'condition-text-channel-on-api',
 				artifactPath: `${conditionPath}${path}`,
-				detail: `"${pointer}" addresses ${target.channel}, which an api interface never produces (AD-19, AD-26)`,
+				detail: `"${pointer}" addresses ${target.channel}, which ${signature.interfaceKind === 'cli' ? 'an interface behind a command' : 'an api interface'} never produces (AD-19, AD-26)`,
 			})
 		}
 	})
@@ -343,15 +355,21 @@ function checkOperandsAndCollectChannels(
 function checkSelectorKeys(
 	probe: Probe,
 	signature: DefectSignature,
-	operation: Operation,
+	operation: AnyOperation,
 	failures: QualificationFailure[],
 ): void {
 	const { inputBinding } = signature.condition.selector
-	for (const channel of TRANSPORT_CHANNELS) {
+	for (const channel of INPUT_CHANNELS) {
 		const binding = inputBinding[channel]
 		if (binding === null) continue
-		const { requiredKeys, permittedKeys, types } =
-			operation.requestShape[channel]
+		const shape = requestShapeOf(operation, channel)
+		// A channel the operation does not accept input on declares no key,
+		// which is exactly the condition the first check below reports.
+		const { requiredKeys, permittedKeys, types } = shape ?? {
+			requiredKeys: [] as readonly string[],
+			permittedKeys: [] as readonly string[],
+			types: {} as Record<string, string | null | undefined>,
+		}
 		for (const key of Object.keys(binding)) {
 			const at = probePath(
 				probe,
@@ -404,7 +422,7 @@ function checkObservableChannel(
 	failures: QualificationFailure[],
 ): void {
 	const path = probePath(probe, '.defectSignature.observableChannel')
-	if (!RESPONSE_SIDE_CHANNELS.has(signature.observableChannel)) {
+	if (!RESPONSE_SIDE.has(signature.observableChannel)) {
 		failures.push({
 			code: 'signature-observable-channel-not-response-side',
 			artifactPath: path,
@@ -413,13 +431,12 @@ function checkObservableChannel(
 		return
 	}
 	if (
-		signature.interfaceKind === 'api' &&
-		TEXT_CHANNELS.has(signature.observableChannel)
+		foreignChannels(signature.interfaceKind).has(signature.observableChannel)
 	) {
 		failures.push({
 			code: 'condition-text-channel-on-api',
 			artifactPath: path,
-			detail: `declares observableChannel "${signature.observableChannel}", which an api interface never produces (AD-19, AD-26)`,
+			detail: `declares observableChannel "${signature.observableChannel}", which ${signature.interfaceKind === 'cli' ? 'an interface behind a command' : 'an api interface'} never produces (AD-19, AD-26)`,
 		})
 	}
 }
@@ -448,13 +465,13 @@ function checkChannels(
 	// channel is rejected outright one check up, and this guard keeps the rule
 	// true of this function on its own.
 	if (
-		RESPONSE_SIDE_CHANNELS.has(signature.observableChannel) &&
+		RESPONSE_SIDE.has(signature.observableChannel) &&
 		channels.has(signature.observableChannel)
 	)
 		return
 	const namesTwo = channels.size >= 2
 	const namesResponse = [...channels].some((channel) =>
-		RESPONSE_SIDE_CHANNELS.has(channel),
+		RESPONSE_SIDE.has(channel),
 	)
 	if (namesTwo && namesResponse) return
 	failures.push({
@@ -530,7 +547,7 @@ function checkDisjuncts(
 		null,
 		(operand, path, bound) => {
 			const named = channelsNamedBy(operand, bound)
-			if ([...named].some((channel) => RESPONSE_SIDE_CHANNELS.has(channel))) {
+			if ([...named].some((channel) => RESPONSE_SIDE.has(channel))) {
 				return
 			}
 			failures.push({
@@ -591,7 +608,7 @@ const LEGALITY_CHECKS: readonly {
 	readonly run: (
 		signature: DefectSignature,
 		artifactPath: string,
-		operation: Operation | null,
+		operation: AnyOperation | null,
 	) => void
 }[] = [
 	{
@@ -663,7 +680,7 @@ const LEGALITY_CHECKS: readonly {
 function runLegalityChecks(
 	probe: Probe,
 	signature: DefectSignature,
-	homeOperation: Operation | null,
+	homeOperation: AnyOperation | null,
 	failures: QualificationFailure[],
 ): void {
 	const artifactPath = probePath(probe, '.defectSignature.condition.predicate')
@@ -690,7 +707,7 @@ function runLegalityChecks(
  */
 export function qualifyProbe(
 	probe: Probe,
-	homeOperation: Operation | null,
+	homeOperation: AnyOperation | null,
 ): QualificationResult {
 	const failures: QualificationFailure[] = []
 	checkRoute(probe, failures)
@@ -715,11 +732,14 @@ export function qualifyProbe(
 		}
 	}
 	if (signature !== null) {
-		if (signature.interfaceKind !== 'api') {
+		if (
+			signature.interfaceKind !== 'api' &&
+			signature.interfaceKind !== 'cli'
+		) {
 			failures.push({
 				code: 'signature-interface-kind-unsupported',
 				artifactPath: probePath(probe, '.defectSignature.interfaceKind'),
-				detail: `"${signature.interfaceKind}" declares a method and a path template that mean nothing off an api interface; v0 keeps all four kinds in the enum so unsupported-interface-kind stays fireable contract-side (AD-19)`,
+				detail: `"${signature.interfaceKind}" declares a method and a path template with no per-kind semantics behind them; the kinds stay in the enum so unsupported-interface-kind stays fireable contract-side (AD-19)`,
 			})
 		}
 		checkObservableChannel(probe, signature, failures)
@@ -778,7 +798,7 @@ export type SealedProbeSet = {
  */
 export function sealProbeSet(
 	probes: readonly Probe[],
-	homeOperationOf: (probe: Probe) => Operation | null,
+	homeOperationOf: (probe: Probe) => AnyOperation | null,
 ): SealedProbeSet {
 	const admitted: QualifiedProbe[] = []
 	const rejected: QualifiedProbe[] = []

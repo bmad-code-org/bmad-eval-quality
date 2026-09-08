@@ -259,9 +259,16 @@ describe("AD-10's sensitivity witness, manifestation witness, and fixture reset"
 			return { roots, fields: fields.sort() }
 		}
 		// `Probe` is a union on `expectedClean`, so its `Defect` shape, and with
-		// it the manifestation witness, exports once per branch.
+		// it the manifestation witness, exports once per branch. The eval
+		// contract carries `sensitivityWitness` twice for the same reason: once
+		// on the shared api `Operation` definition and once on the inlined
+		// command operation.
 		const expected: Record<string, string[]> = {
-			'eval-contract': ['fixtureReset', 'sensitivityWitness'],
+			'eval-contract': [
+				'fixtureReset',
+				'sensitivityWitness',
+				'sensitivityWitness',
+			],
 			probe: ['manifestationWitness', 'manifestationWitness'],
 		}
 		for (const key of ['eval-contract', 'probe'] as const) {
@@ -282,10 +289,12 @@ describe("AD-10's sensitivity witness, manifestation witness, and fixture reset"
 		}
 	})
 
-	// The story predicted three references in the eval-contract export. Two is
-	// the truth: the third belongs to `ManifestationWitness`, which rides on
-	// `Defect` and therefore lands in the probe document, twice, once per branch
-	// of `Probe`'s `expectedClean` union.
+	// The story predicted three references in the eval-contract export. Two was
+	// the truth while one operation shape existed: the third belonged to
+	// `ManifestationWitness`, which rides on `Defect` and therefore lands in the
+	// probe document, twice, once per branch of `Probe`'s `expectedClean` union.
+	// The command interface kind restores the count to three, on a different
+	// footing: the two operation shapes each carry a sensitivity leg.
 	it('16. exports WitnessInputs as one shared definition per document, referenced from every witness shape', () => {
 		const referenceCount = (document: unknown): number => {
 			let count = 0
@@ -305,8 +314,8 @@ describe("AD-10's sensitivity witness, manifestation witness, and fixture reset"
 			const document = publishedDocumentOf(key) as any
 			expect(Object.keys(document.$defs), key).toContain('WitnessInputs')
 		}
-		// the sensitivity witness leg and the fixture reset
-		expect(referenceCount(publishedDocumentOf('eval-contract'))).toBe(2)
+		// the two operation shapes' sensitivity witness legs and the fixture reset
+		expect(referenceCount(publishedDocumentOf('eval-contract'))).toBe(3)
 		// the manifestation witness, once per union branch
 		expect(referenceCount(publishedDocumentOf('probe'))).toBe(2)
 	})

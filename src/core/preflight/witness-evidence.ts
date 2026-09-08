@@ -5,16 +5,24 @@
  * collection predicate scoped to one operation.
  */
 
+import {
+	descriptorArtifactOf,
+	descriptorChannelOf,
+} from '../declared-inputs.ts'
 import { makeResolveOperand } from '../evaluate/evidence-resolution.ts'
 import {
 	type PointerDenotesCollection,
+	type ReferenceSetKeys,
 	resolveCheck,
 } from '../evaluate/resolution.ts'
 import type { EvalContract } from '../schemas/eval-contract.ts'
 import type { CheckResolutionValue } from '../schemas/evidence-artifact.ts'
 import type { Expression } from '../schemas/expression.ts'
-import type { Operation } from '../schemas/interface.ts'
-import type { ProbeObservation } from '../schemas/port-messages.ts'
+import type { AnyOperation } from '../schemas/interface.ts'
+import type {
+	ProbeObservation,
+	ProbeObservedBody,
+} from '../schemas/port-messages.ts'
 import type { JsonObject, JsonValue } from '../schemas/primitives.ts'
 import type {
 	Observation,
@@ -37,17 +45,51 @@ const asJsonObject = (value: JsonValue): JsonObject | null =>
 		: null
 
 /**
- * `ObservedCallInputs` is narrower than `WitnessInputs`, so `body` loses
+ * `ObservedCallInputs` is narrower than `ApiWitnessInputs`, so `body` loses
  * information here: an absent body and a non-object JSON body both map to
  * `null`, and a relation addressing `/interactions/{legId}/call-inputs/body` on
  * such a leg resolves `ABSENT`.
  */
-const callInputsOf = (inputs: WitnessInputs): ObservedCallInputs => ({
-	path: inputs.path,
-	query: inputs.query,
-	header: inputs.header,
-	body: inputs.body.kind === 'json' ? asJsonObject(inputs.body.value) : null,
-})
+const ABSENT_CHANNEL = { kind: 'absent' } as const
+
+const bodyValue = (body: ProbeObservedBody): JsonValue =>
+	body.kind === 'absent' ? null : body.value
+
+/**
+ * The leg's supplied inputs as the record spells them: every channel the leg
+ * did not use is `null` rather than absent, which is the observation's own
+ * convention for an unused channel.
+ */
+const callInputsOf = (inputs: WitnessInputs): ObservedCallInputs => {
+	const empty = {
+		path: null,
+		query: null,
+		header: null,
+		body: null,
+		argument: null,
+		option: null,
+		environment: null,
+		stdin: null,
+	}
+	if ('body' in inputs) {
+		return {
+			...empty,
+			path: inputs.path,
+			query: inputs.query,
+			header: inputs.header,
+			body:
+				inputs.body.kind === 'json' ? asJsonObject(inputs.body.value) : null,
+		}
+	}
+	return {
+		...empty,
+		argument: inputs.argument,
+		option: inputs.option,
+		environment: inputs.environment,
+		stdin:
+			inputs.stdin.kind === 'json' ? asJsonObject(inputs.stdin.value) : null,
+	}
+}
 
 /**
  * One leg as the `Observation` `makeResolveOperand` takes. The relation reads the
@@ -60,8 +102,11 @@ export function evidenceOf(
 	projected: ProjectedObservation,
 	observation: ProbeObservation,
 	inputs: WitnessInputs,
+	operation: AnyOperation,
 ): Observation {
 	const { body } = projected
+	const descriptorChannel = descriptorChannelOf(operation)
+	const describedArtifact = descriptorArtifactOf(operation)
 	return {
 		observationId: projected.legId,
 		// A synthetic, single-observation shape built fresh per leg and never
@@ -76,18 +121,31 @@ export function evidenceOf(
 		sequence: 1,
 		operationId: projected.operationId,
 		provenance: 'baseline',
+		// A pre-flight leg is issued by this package rather than by a harness
+		// acting as a declared account, so it names no principal.
+		principal: null,
 		callInputs: callInputsOf(inputs),
-		responseBody:
-			body.kind === 'json'
-				? body.value
-				: body.kind === 'text'
-					? body.value
-					: null,
-		responseHeaders: observation.headers,
-		responseStatus: observation.status,
-		stdout: null,
-		stderr: null,
-		exitCode: null,
+		// The projected body is whichever channel the operation's descriptor
+		// describes, so it lands on the channel a relation addresses. Both are
+		// filled from the same projection rather than one being derived from
+		// the other, and every channel the leg did not observe is written down
+		// as unobserved rather than left to a default.
+		responseBody: observation.kind === 'api' ? bodyValue(body) : null,
+		responseHeaders: observation.kind === 'api' ? observation.headers : null,
+		responseStatus: observation.kind === 'api' ? observation.status : null,
+		stdout:
+			observation.kind === 'api' || descriptorChannel !== 'stdout'
+				? ABSENT_CHANNEL
+				: body,
+		stderr:
+			observation.kind === 'api' || descriptorChannel !== 'stderr'
+				? ABSENT_CHANNEL
+				: body,
+		exitCode: observation.kind === 'api' ? null : observation.exitCode,
+		artifacts:
+			observation.kind === 'api' || describedArtifact === null
+				? {}
+				: { [describedArtifact]: body },
 	}
 }
 
@@ -114,7 +172,7 @@ const tokensEqual = (a: readonly string[], b: readonly string[]): boolean =>
  * machinery than the predicate.
  */
 export function makeWitnessPointerDenotesCollection(
-	operation: Operation,
+	operation: AnyOperation,
 ): PointerDenotesCollection {
 	const { collectionLocations } = operation.responseDescriptor
 	return (pointer) => {
@@ -132,14 +190,16 @@ export function makeWitnessPointerDenotesCollection(
 export function resolveWitnessRelation(
 	relation: Expression,
 	legEvidence: Readonly<Record<string, Observation>>,
-	operation: Operation,
+	operation: AnyOperation,
 	referenceSets: Readonly<Record<string, JsonValue[]>>,
+	referenceSetKeys: ReferenceSetKeys,
 	artifactPath: string,
 ): CheckResolutionValue {
 	return resolveCheck(
 		relation,
 		makeResolveOperand(legEvidence, referenceSets),
 		makeWitnessPointerDenotesCollection(operation),
+		referenceSetKeys,
 		PREFLIGHT_REGEX_MATCH_STEP_BUDGET,
 		artifactPath,
 	)

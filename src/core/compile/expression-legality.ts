@@ -3,12 +3,15 @@
  * reference-set resolution. Each check reports the first structural failure.
  */
 import { digestArtifact } from '../canonical/digest.ts'
+import { descriptorChannelOf } from '../declared-inputs.ts'
 import { StructuralFailure } from '../failure-codes.ts'
 import type { EvalContract } from '../schemas/eval-contract.ts'
 import type { Expression, Operand, SetOperand } from '../schemas/expression.ts'
-import type { Operation } from '../schemas/interface.ts'
+import type { AnyOperation } from '../schemas/interface.ts'
+import { operationsOf } from '../schemas/interface.ts'
 import { JsonTypeName } from '../schemas/primitives.ts'
 import {
+	anyOperationOf,
 	buildPlanIndex,
 	type PlanIndex,
 	parseEvidenceTarget,
@@ -152,7 +155,7 @@ type ExpressionSite = {
 	readonly expression: Expression
 	readonly artifactPath: string
 	readonly witnessScope: {
-		readonly operation: Operation
+		readonly operation: AnyOperation
 		readonly legIds: readonly string[]
 	} | null
 }
@@ -176,7 +179,7 @@ function forEachContractExpression(
 		})
 	})
 	contract.permittedInterfaces.forEach((iface, interfaceIndex) => {
-		iface.operations.forEach((operation, operationIndex) => {
+		operationsOf(iface).forEach((operation, operationIndex) => {
 			const witness = operation.sensitivityWitness
 			if (witness === null) return
 			visit({
@@ -336,6 +339,27 @@ export function checkExpressionQuantifierNesting(
 	})
 }
 
+type ReferenceSetDeclaration = NonNullable<
+	EvalContract['referenceSets']
+>[string]
+
+/**
+ * The declaration a reference-set operand names, and `undefined` when the
+ * contract declares none by that identifier. An undeclared identifier is
+ * `checkReferenceSetResolution`'s `unresolved-reference-set`, so the
+ * shape-aware checks below stay quiet about it.
+ */
+function declaredReferenceSetOf(
+	contract: EvalContract,
+	referenceSetId: string,
+): ReferenceSetDeclaration | undefined {
+	const declarations = contract.referenceSets
+	if (declarations === null || !Object.hasOwn(declarations, referenceSetId)) {
+		return undefined
+	}
+	return declarations[referenceSetId]
+}
+
 /** Checks each operator's operands against its position-specific constraints. */
 export function checkOperandLegality(contract: EvalContract): void {
 	forEachContractExpression(contract, (site) => {
@@ -348,21 +372,60 @@ export function checkOperandLegality(contract: EvalContract): void {
 					`${site.artifactPath}${path}`,
 				)
 			},
+			// Fires only for `set-membership`'s set position, which is the one
+			// position that reads a reference set by its single declared key
+			// (`reference-set.ts`). `keys` is `.min(1)` with no maximum, so a
+			// two-key set names no one key to read there, and a member missing
+			// the declared key has nothing to read at all. AD-26 assigns
+			// `malformed-operator-expression` to an operand type the operator
+			// does not accept, which is what each of those is. Rejecting them
+			// here is what makes the resolver's projection total.
+			onSetOperand: (setOperand, path) => {
+				if (!('referenceSet' in setOperand)) return
+				const { referenceSet } = setOperand
+				const declaration = declaredReferenceSetOf(contract, referenceSet)
+				if (declaration === undefined) return
+				if (declaration.keys.length !== 1) {
+					throw new StructuralFailure(
+						'malformed-operator-expression',
+						`${site.artifactPath}${path}`,
+						`referenceSet "${referenceSet}" declares ${declaration.keys.length} keys, and set-membership reads exactly one, so only a single-key set is legal in its set position (AD-4, AD-26)`,
+					)
+				}
+				const key = declaration.keys[0] as string
+				for (const [index, member] of declaration.members.entries()) {
+					if (Object.hasOwn(member, key)) continue
+					throw new StructuralFailure(
+						'malformed-operator-expression',
+						`EvalContract.referenceSets[id=${referenceSet}].members[${index}]${artifactKey(key)}`,
+						`referenceSet "${referenceSet}" has a member carrying no key "${key}", which it declares and which set-membership reads (AD-4, AD-26)`,
+					)
+				}
+			},
 			onCoversByKey: (expr) => {
 				const expected = expr.operands[0]
 				if (!('referenceSet' in expected)) return
-				const declarations = contract.referenceSets
-				if (
-					declarations === null ||
-					!Object.hasOwn(declarations, expected.referenceSet)
+				const declaration = declaredReferenceSetOf(
+					contract,
+					expected.referenceSet,
 				)
-					return
-				const declaration = declarations[expected.referenceSet]
 				if (declaration === undefined) return
 				const seen = new Set<string>()
 				for (const [index, member] of declaration.members.entries()) {
-					if (!Object.hasOwn(member, expr.expectedKey)) continue
 					const memberPath = `EvalContract.referenceSets[id=${expected.referenceSet}].members[${index}]${artifactKey(expr.expectedKey)}`
+					// `coversByKey` returns false for the whole collection when one
+					// declared member lacks `expectedKey`, which reads as a detected
+					// defect in the system under test, when it is an authoring
+					// mistake. This check used to walk past that member to keep the
+					// duplicate-detection loop total, which left the compiler silent
+					// about the one shape that makes the operator answer wrongly.
+					if (!Object.hasOwn(member, expr.expectedKey)) {
+						throw new StructuralFailure(
+							'malformed-operator-expression',
+							memberPath,
+							`referenceSet "${expected.referenceSet}" has a member carrying no expectedKey "${expr.expectedKey}", which covers-by-key reads on every member (AD-4)`,
+						)
+					}
 					const digest = digestArtifact(member[expr.expectedKey], memberPath)
 					if (seen.has(digest)) {
 						throw new StructuralFailure(
@@ -550,13 +613,15 @@ function forEachQuantifierCollection(
 function checkQuantifiersAgainst(
 	expression: Expression,
 	artifactPath: string,
-	operationFor: (stepId: string) => Operation | undefined,
+	operationFor: (stepId: string) => AnyOperation | undefined,
 ): void {
 	forEachQuantifierCollection(expression, null, '', (pointer, path) => {
 		const target = parseEvidenceTarget(pointer)
-		if (target.channel !== 'response-body') return
 		const operation = operationFor(target.stepId)
 		if (operation === undefined) return
+		// The operation is resolved before the channel is tested, because which
+		// channel carries the declared structure is the operation's own answer.
+		if (target.channel !== descriptorChannelOf(operation)) return
 		const firstToken = target.tail.length === 1 ? target.tail[0] : undefined
 		const declaredType =
 			firstToken === undefined
@@ -589,7 +654,10 @@ function checkQuantifiersAgainst(
 export function checkExpressionQuantifierOverNonCollection(
 	expression: Expression,
 	artifactPath: string,
-	scope: { readonly operation: Operation; readonly legIds: readonly string[] },
+	scope: {
+		readonly operation: AnyOperation
+		readonly legIds: readonly string[]
+	},
 ): void {
 	checkQuantifiersAgainst(expression, artifactPath, (stepId) =>
 		scope.legIds.includes(stepId) ? scope.operation : undefined,
@@ -610,14 +678,14 @@ export function checkQuantifierOverNonCollection(contract: EvalContract): void {
 	const operationFor = (
 		site: ExpressionSite,
 		stepId: string,
-	): Operation | undefined => {
+	): AnyOperation | undefined => {
 		const scope = site.witnessScope
 		if (scope !== null) {
 			return scope.legIds.includes(stepId) ? scope.operation : undefined
 		}
 		const step = index.stepOf(stepId)
 		if (step === undefined) return undefined
-		return index.operationOf(step.operationId)
+		return anyOperationOf(index, step.operationId)
 	}
 	forEachContractExpression(contract, (site) => {
 		checkQuantifiersAgainst(site.expression, site.artifactPath, (stepId) =>

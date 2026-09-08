@@ -811,7 +811,7 @@ Nothing imports <code>cli/</code>.</p>
 </tr>
 <tr>
 <td><code>captured-channel-undeclared</code></td>
-<td>a captured input binding names any channel but <code>response-body</code>, the one channel a response descriptor declares structure for</td>
+<td>a captured input binding names any channel but the one its operation&#39;s response descriptor describes</td>
 <td>AD-39, AD-26</td>
 </tr>
 <tr>
@@ -848,6 +848,16 @@ Nothing imports <code>cli/</code>.</p>
 <td><code>brief-exceeds-scripting-bound</code></td>
 <td>the emitted brief&#39;s generated direction prose exceeds the contract&#39;s declared bound on enumerated probe steps</td>
 <td>AD-16</td>
+</tr>
+<tr>
+<td><code>unresolved-artifact-reference</code></td>
+<td>a pointer or a descriptor root names an artifact identifier the operation does not declare it writes</td>
+<td>AD-26, AD-19</td>
+</tr>
+<tr>
+<td><code>irreducible-step-reference</code></td>
+<td>two steps one direction references render to the same derived reference even fully escalated, so the sealed brief cannot name them apart</td>
+<td>AD-16, AD-3</td>
 </tr>
 </tbody></table>
 </div><p>Adding a class is an amendment to this AD and to no other, and an AD that commands a compile-time check without adding a code here is a defect in that AD. The published schema&#39;s failure-code enumeration is generated from this table, not maintained beside it.</p>

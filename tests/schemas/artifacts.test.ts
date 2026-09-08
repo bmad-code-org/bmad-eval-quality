@@ -21,7 +21,10 @@ import {
 } from '../../src/core/schemas/evidence-artifact.ts'
 import { RequestShape } from '../../src/core/schemas/interface.ts'
 import { IsolationManifest } from '../../src/core/schemas/isolation-manifest.ts'
-import { TRANSPORT_CHANNELS } from '../../src/core/schemas/pointer.ts'
+import {
+	INPUT_CHANNELS,
+	TRANSPORT_CHANNELS,
+} from '../../src/core/schemas/pointer.ts'
 import { PreflightVerdict } from '../../src/core/schemas/preflight-verdict.ts'
 import { PROBE_CLASSES, Probe } from '../../src/core/schemas/probe.ts'
 import { QUALIFICATION_ROUTES } from '../../src/core/schemas/probe-qualification.ts'
@@ -90,12 +93,21 @@ describe('one positive fixture per union branch', () => {
 
 	// The other direction: the fixture list is compared against the branch count
 	// read off the schemas, so a fourth branch cannot ship unexercised.
+	//
+	// Matched on the discriminator each fixture names, not on the artifact
+	// alone. A fixture may exist to reach a branch of a union NESTED inside an
+	// artifact rather than the artifact's own root union, and counting those
+	// against the root's branch count would make adding one look like a
+	// duplicate of a branch already covered.
 	it('covers every branch of every union-rooted artifact', () => {
 		for (const [key, entry] of Object.entries(INTERCHANGE_ARTIFACTS)) {
-			const options = (entry.schema as any).options
+			const schema = entry.schema as any
+			const options = schema.options
 			if (options === undefined) continue
+			const discriminator = schema.def?.discriminator
 			const covered = UNION_BRANCH_FIXTURES.filter(
-				(fixture) => fixture.artifact === key,
+				(fixture) =>
+					fixture.artifact === key && fixture.discriminator === discriminator,
 			)
 			expect(covered, key).toHaveLength(options.length)
 		}
@@ -664,10 +676,10 @@ describe('the shared vocabularies, derived rather than rebuilt', () => {
 		)
 	})
 
-	it("keys an observation's call inputs by the same four channels", () => {
+	it("keys an observation's call inputs by the same eight channels", () => {
 		const callInputs = (SealedRunRecord.shape.observations as any).element.shape
 			.callInputs
-		expect(Object.keys(callInputs.shape)).toEqual([...TRANSPORT_CHANNELS])
+		expect(Object.keys(callInputs.shape)).toEqual([...INPUT_CHANNELS])
 	})
 
 	// The worked example's flat `callInputs: { id: "n-1" }` does not survive.

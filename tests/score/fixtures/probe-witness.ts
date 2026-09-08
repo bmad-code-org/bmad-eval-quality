@@ -8,7 +8,7 @@
 // was sent cannot tell them apart, which is the failure the discriminating
 // condition exists to close.
 
-import type { DefectSignature } from '../../../src/core/schemas/defect-signature.ts'
+import type { ApiDefectSignature } from '../../../src/core/schemas/defect-signature.ts'
 import type {
 	Operation,
 	PermittedInterface,
@@ -95,7 +95,7 @@ export const notesInterface: PermittedInterface = {
 export const INTERFACES: readonly PermittedInterface[] = [notesInterface]
 
 /** the seeded defect: a 500 where a malformed title should have been rejected. */
-export const seededSignature: DefectSignature = {
+export const seededSignature: ApiDefectSignature = {
 	interfaceKind: 'api',
 	method: 'POST',
 	pathTemplate: '/notes',
@@ -107,6 +107,10 @@ export const seededSignature: DefectSignature = {
 				query: null,
 				header: null,
 				body: { title: { matcher: 'type-violating' } },
+				argument: null,
+				option: null,
+				environment: null,
+				stdin: null,
 			},
 		},
 		predicate: {
@@ -120,10 +124,10 @@ export const seededSignature: DefectSignature = {
 }
 
 export const qualifiedProbe: SignedProbe = {
-	schemaVersion: 2,
+	schemaVersion: 3,
 	parentDigest: null,
 	revisionCount: 0,
-	probeId: 'PX-001',
+	probeId: 'P-901',
 	probeClass: 'defect',
 	expectedClean: false,
 	behaviorId: 'B-001',
@@ -177,13 +181,24 @@ export const observation = (
 	sequence: 1,
 	operationId: 'create-note',
 	provenance: 'evaluator-chosen',
-	callInputs: { path: null, query: null, header: null, body: null },
+	principal: null,
+	callInputs: {
+		path: null,
+		query: null,
+		header: null,
+		body: null,
+		argument: null,
+		option: null,
+		environment: null,
+		stdin: null,
+	},
 	responseBody: null,
 	responseHeaders: null,
 	responseStatus: null,
-	stdout: null,
-	stderr: null,
+	stdout: { kind: 'absent' },
+	stderr: { kind: 'absent' },
 	exitCode: null,
+	artifacts: {},
 	...overrides,
 })
 
@@ -191,7 +206,16 @@ export const observation = (
 export const correctRejection = observation({
 	observationId: 'obs-1',
 	sequence: 1,
-	callInputs: { path: null, query: null, header: null, body: { title: 42 } },
+	callInputs: {
+		path: null,
+		query: null,
+		header: null,
+		body: { title: 42 },
+		argument: null,
+		option: null,
+		environment: null,
+		stdin: null,
+	},
 	responseBody: { ok: false, message: 'title must be a string' },
 	responseStatus: 400,
 })
@@ -200,7 +224,16 @@ export const correctRejection = observation({
 export const defectFired = observation({
 	observationId: 'obs-2',
 	sequence: 2,
-	callInputs: { path: null, query: null, header: null, body: { title: 42 } },
+	callInputs: {
+		path: null,
+		query: null,
+		header: null,
+		body: { title: 42 },
+		argument: null,
+		option: null,
+		environment: null,
+		stdin: null,
+	},
 	responseBody: { ok: false, message: 'internal error' },
 	responseStatus: 500,
 })

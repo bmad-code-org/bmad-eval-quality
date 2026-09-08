@@ -225,24 +225,43 @@ describe('the development corpus', () => {
 			serializeArtifact(seal(compile(contract)), 'SealedEvaluatorBrief'),
 		).toBe(briefText)
 
-		// The tutorial publishes this brief's `contractDigest` as the output of
-		// `seal --in corpus/dev/compile-seal-example/contract.json` and then says
-		// the repository ships the brief that command produces, so the page is a
-		// third copy of a value only the builder should own. It went stale three
-		// times (stories 6.5, 7.2 and 7.3 each moved the contract's bytes and
-		// left the page behind) because `check:docs` does not scan `docs/` and
+		// A page that publishes this brief's `contractDigest` is a second copy of
+		// a value only the builder should own, and it went stale three times
+		// (stories 6.5, 7.2 and 7.3 each moved the contract's bytes and left the
+		// page behind) because `check:docs` does not scan `docs/` and
 		// `check-doc-invocations.mjs` runs the commands without comparing their
-		// output. Asserted here rather than as a case of its own: it is the same
-		// claim this case already makes, read at the one other place the value
-		// is written down.
-		const tutorial = await readFile(
-			join(repoRoot, 'docs/tutorials/getting-started.md'),
-			'utf8',
-		)
+		// output.
+		//
+		// Every digest-shaped literal under `docs/` is compared rather than one
+		// named page's: a page that stops publishing the value solves the
+		// staleness by deletion and must not fail this, and a page that starts
+		// publishing it must not escape the check by not being the one named
+		// here. Zero occurrences passes.
 		const { contractDigest } = JSON.parse(briefText) as {
 			readonly contractDigest: string
 		}
-		expect(tutorial).toContain(`"contractDigest":"${contractDigest}"`)
+		const published: string[] = []
+		const walk = async (directory: string): Promise<void> => {
+			for (const entry of await readdir(directory, { withFileTypes: true })) {
+				const full = join(directory, entry.name)
+				if (entry.isDirectory()) {
+					await walk(full)
+					continue
+				}
+				if (!entry.name.endsWith('.md')) continue
+				const text = await readFile(full, 'utf8')
+				for (const match of text.matchAll(
+					/"contractDigest":\s*"(sha256:[0-9a-f]{64})"/g,
+				)) {
+					published.push(`${entry.name}: ${match[1]}`)
+				}
+			}
+		}
+		await walk(join(repoRoot, 'docs'))
+		expect(
+			published.filter((entry) => !entry.endsWith(contractDigest)),
+			'docs publishing a stale contractDigest',
+		).toEqual([])
 	})
 
 	it('case 163: the README names all four absences', () => {

@@ -136,9 +136,12 @@ export const REJECT_CASES: readonly RejectCase[] = [
 		mutate: (contract) => {
 			firstInterface(contract).kind = 'grpc'
 		},
+		// `permittedInterfaces` is discriminated on `kind`, so an unknown kind
+		// matches no branch and both sides report the discriminator itself:
+		// Zod as an invalid union at that path, ajv as the branches' `const`.
 		issuePath: ['permittedInterfaces', 0, 'kind'],
-		issueCode: 'invalid_value',
-		keyword: 'enum',
+		issueCode: 'invalid_union',
+		keyword: 'const',
 		instancePath: '/permittedInterfaces/0/kind',
 	},
 	{
@@ -367,10 +370,13 @@ export const REJECT_CASES: readonly RejectCase[] = [
 		mutate: (contract) => {
 			contract.interactionPlan[0].inputBinding.body.name = 'type-violating'
 		},
-		issuePath: ['interactionPlan', 0, 'inputBinding', 'body', 'name'],
+		// `inputBinding` is a union of the transport and command spellings, and
+		// a union reports at its own root: the per-key path lives on whichever
+		// branch the value was written for.
+		issuePath: ['interactionPlan', 0, 'inputBinding'],
 		issueCode: 'invalid_union',
 		keyword: 'anyOf',
-		instancePath: '/interactionPlan/0/inputBinding/body/name',
+		instancePath: '/interactionPlan/0/inputBinding',
 	},
 	{
 		id: 'matcher-outside-the-two',
@@ -378,10 +384,13 @@ export const REJECT_CASES: readonly RejectCase[] = [
 		mutate: (contract) => {
 			contract.interactionPlan[0].inputBinding.body.name = { matcher: 'random' }
 		},
-		issuePath: ['interactionPlan', 0, 'inputBinding', 'body', 'name'],
+		// `inputBinding` is a union of the transport and command spellings, and
+		// a union reports at its own root: the per-key path lives on whichever
+		// branch the value was written for.
+		issuePath: ['interactionPlan', 0, 'inputBinding'],
 		issueCode: 'invalid_union',
 		keyword: 'anyOf',
-		instancePath: '/interactionPlan/0/inputBinding/body/name',
+		instancePath: '/interactionPlan/0/inputBinding',
 	},
 	{
 		id: 'captured-pointer-not-interaction-rooted',
@@ -416,10 +425,13 @@ export const REJECT_CASES: readonly RejectCase[] = [
 				matcher: 'any',
 			}
 		},
-		issuePath: ['interactionPlan', 0, 'inputBinding', 'body', 'name'],
+		// `inputBinding` is a union of the transport and command spellings, and
+		// a union reports at its own root: the per-key path lives on whichever
+		// branch the value was written for.
+		issuePath: ['interactionPlan', 0, 'inputBinding'],
 		issueCode: 'invalid_union',
 		keyword: 'anyOf',
-		instancePath: '/interactionPlan/0/inputBinding/body/name',
+		instancePath: '/interactionPlan/0/inputBinding',
 	},
 	{
 		id: 'principal-name-not-an-identifier',
