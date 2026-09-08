@@ -139,15 +139,15 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git remote set-url origin "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git"
 
-      # Before the bump on purpose: a red main gets no release commit. Tests only, not the whole
-      # `validate` target: every commit on main already passed `gate` on its pull request, so
-      # re-running the build, the lint, the twenty-odd consistency checks and the coverage run here
-      # proves nothing new and gives a release a second unrelated way to fail. The bump changes the
-      # four stamped files only, and release-prepare refuses unless VERSION already matches the
-      # manifest, so what it commits is the tested tree plus a version.
-      - name: Run tests
-        run: npm test
-
+      # No test step, on purpose. Every commit on main passed `gate` on its pull request, which runs
+      # `npm run validate` on two Node versions plus the canary jobs, so a release re-proving any
+      # part of that costs minutes and buys nothing. It also gives a release a second way to fail on
+      # something that is not about releasing: this job used to run `npm test` alone, and run
+      # 34260745486 died on `Cannot find package 'eval-quality/conformance'` because
+      # tests/conformance imports the package through its public specifier, which resolves only
+      # against built output that `npm run validate` produces and a bare `npm test` does not. The
+      # bump below changes the four stamped files only, and release-prepare refuses unless VERSION
+      # already matches the manifest, so what it commits is the gated tree plus a version.
       - name: Cut the release commit on main
         if: inputs.bump != 'none'
         run: node scripts/release-prepare.mjs "$BUMP" --on-main
