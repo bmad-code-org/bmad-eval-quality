@@ -10,6 +10,8 @@ body.
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-09-08
+
 ### Added
 
 - A contract can describe a system under test that runs behind a command. `permittedInterfaces` is
