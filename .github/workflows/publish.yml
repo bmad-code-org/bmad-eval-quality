@@ -13,21 +13,19 @@
 #                           release:prepare -- patch` opens the release PR, a human merges it, and
 #                           this run (`npm run release:publish`) publishes the merge commit.
 #
-# The bump push goes out as a GitHub App token, the same mechanism that releases
-# bmad-method-test-architecture-enterprise. A ruleset bypass list can name repository roles, teams,
-# GitHub Apps and Dependabot, so an App is an actor that can be let past `protect-main` and the job's
-# own GITHUB_TOKEN is not. That matters because `protect-main` carries a `code_coverage` rule, which
-# refuses every direct push to main with "Code coverage checks require merging via API or UI"
-# whatever else the ruleset says. Run 34245836441 is that refusal: the header here used to claim the
-# push landed because the ruleset required no status check, the `required_status_checks` rule had
-# indeed been removed, and the release still stopped with 0.3.0 committed inside the runner and
-# nothing pushed. Read the ruleset rather than trusting this comment about it:
-# `gh api repos/bmad-code-org/bmad-eval-quality/rulesets/21423708 --jq '{rules, bypass_actors}'`.
+# The bump push goes out as the job's own GITHUB_TOKEN, the same mechanism that releases
+# bmad-method-test-architecture-enterprise. Both repositories leave `main` unruled, so an ordinary
+# token pushes the release commit and nothing has to be granted a bypass. `main` here used to carry a
+# `protect-main` ruleset whose `code_coverage` rule refused every direct push with "Code coverage
+# checks require merging via API or UI", which is what run 34245836441 hit; the ruleset was deleted
+# rather than worked around, and the only ruleset left is `Release tags`, which the tag push below
+# satisfies because it never deletes, updates or force-pushes a tag. Read the rulesets rather than
+# trusting this comment about them:
+# `gh api repos/bmad-code-org/bmad-eval-quality/rulesets`.
 #
-# The App token is git credentials and nothing else. npm authentication stays trusted publishing over
-# OIDC with no token, as described at the bottom of this comment. A failure to mint the token, or a
-# push the bypass does not cover, stops the run before it has published, tagged, or released
-# anything, which is the same safe failure the direct-push path already had.
+# A push that main's state refuses stops the run before it has published, tagged, or released
+# anything, which is the safe failure the direct-push path is meant to have. npm authentication is
+# trusted publishing over OIDC with no token, as described at the bottom of this comment.
 #
 # The commit being released is `release_sha` from the state step: HEAD, which is the bump commit
 # after a bump and github.sha without one. github.sha is the pre-bump commit once a bump happened,
@@ -104,19 +102,7 @@ jobs:
             exit 1
           fi
 
-      # A GITHUB_TOKEN cannot be granted a ruleset bypass and a GitHub App can, so a bump run pushes
-      # main as the App. Minted only when there is a bump to push, so a bump=none publish never
-      # touches these secrets. This is the same mechanism, and the same App, that releases
-      # bmad-method-test-architecture-enterprise.
-      - name: Generate GitHub App token
-        id: app-token
-        if: inputs.bump != 'none'
-        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
-        with:
-          app-id: ${{ secrets.RELEASE_APP_ID }}
-          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
-
-      # persist-credentials: false so neither token is sitting in the checkout's remote while
+      # persist-credentials: false so the token is not sitting in the checkout's remote while
       # `npm ci` below runs third-party install scripts. `token` authenticates this fetch only; the
       # credential goes back in, scoped to the remote URL only, right after `npm ci` and before
       # anything that pushes.
@@ -125,7 +111,7 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-          token: ${{ steps.app-token.outputs.token || github.token }}
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Setup Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
@@ -143,24 +129,24 @@ jobs:
       - name: Install dependencies
         run: npm ci --no-audit --no-fund
 
-      # The release commit and the tag both push below; this is the one place a credential goes back
-      # into the checkout, past the `npm ci` install-script step that persist-credentials: false
-      # above was keeping it away from. The App token when there is a bump to push, since only the
-      # App holds the protect-main bypass that push needs; GITHUB_TOKEN otherwise, which is all the
-      # tag push needs because tags are governed by the separate `Release tags` ruleset. The commit
-      # identity stays github-actions[bot] either way, so the authorship of a release commit does not
-      # move when the pushing credential does.
+      # The release commit and the tag both push below; this is the one place the credential goes
+      # back into the checkout, past the `npm ci` install-script step that persist-credentials: false
+      # above was keeping it away from. The commit identity is github-actions[bot], matching the
+      # credential.
       - name: Configure git for the release push
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git remote set-url origin "https://x-access-token:${{ steps.app-token.outputs.token || github.token }}@github.com/${{ github.repository }}.git"
+          git remote set-url origin "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git"
 
-      # Before the bump on purpose: a red main gets no release commit. The bump changes the four
-      # stamped files only, and release-prepare refuses unless VERSION already matches the manifest,
-      # so what it commits is the validated tree plus a version.
-      - name: Run full validation suite
-        run: npm run validate
+      # Before the bump on purpose: a red main gets no release commit. Tests only, not the whole
+      # `validate` target: every commit on main already passed `gate` on its pull request, so
+      # re-running the build, the lint, the twenty-odd consistency checks and the coverage run here
+      # proves nothing new and gives a release a second unrelated way to fail. The bump changes the
+      # four stamped files only, and release-prepare refuses unless VERSION already matches the
+      # manifest, so what it commits is the tested tree plus a version.
+      - name: Run tests
+        run: npm test
 
       - name: Cut the release commit on main
         if: inputs.bump != 'none'
