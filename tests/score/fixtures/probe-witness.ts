@@ -239,6 +239,28 @@ export const defectFired = observation({
 	responseStatus: 500,
 })
 
+/**
+ * One quoted-evidence entry on whichever arm the channel selects. The schema
+ * carries the pairing now: an artifact quotation names a file and every other
+ * channel names none, so a helper that built one flat shape could no longer
+ * produce either arm.
+ */
+const quotedEvidenceOf = (overrides: {
+	quote?: string
+	channel?: EvidenceChannelName
+	artifactId?: string | null
+}): Extract<
+	SealedRunRecord['findings'][number],
+	{ findingType: 'defect' }
+>['quotedEvidence'][number] => {
+	const quote = overrides.quote ?? '500'
+	const channel = overrides.channel ?? 'response-status'
+	if (channel === 'artifact') {
+		return { quote, channel, artifactId: overrides.artifactId ?? 'report' }
+	}
+	return { quote, channel, artifactId: null }
+}
+
 export const defectFinding = (
 	observationIds: readonly string[],
 	overrides: Partial<{
@@ -259,13 +281,7 @@ export const defectFinding = (
 	confidence: 0.9,
 	observationIds: [...observationIds],
 	evidenceArtifacts: [],
-	quotedEvidence: [
-		{
-			quote: overrides.quote ?? '500',
-			channel: overrides.channel ?? 'response-status',
-			artifactId: overrides.artifactId ?? null,
-		},
-	],
+	quotedEvidence: [quotedEvidenceOf(overrides)],
 })
 
 /** the record the match reads: observations plus findings, nothing else. */

@@ -380,16 +380,53 @@ export const ARTIFACT_REJECT_CASES: readonly ArtifactRejectCase[] = [
 		instancePath: '/findings/0/quotedEvidence',
 	},
 	{
-		id: 'record-quoted-channel-outside-the-seven',
+		// Both validators report at the union node rather than at `channel`:
+		// neither arm matched, so the failure is the choice between them and not
+		// one field inside either. That is why all three quoted-evidence cases
+		// below share a keyword and an instance path, and why the constraint each
+		// one names is what tells them apart.
+		id: 'record-quoted-channel-outside-the-eight',
 		artifact: 'sealed-run-record',
-		constraint: "quoted evidence names one of AD-26's seven channels",
+		constraint: "quoted evidence names one of AD-26's eight channels",
 		mutate: (record) => {
 			record.findings[0].quotedEvidence[0].channel = 'trace'
 		},
-		issuePath: ['findings', 0, 'quotedEvidence', 0, 'channel'],
-		issueCode: 'invalid_value',
-		keyword: 'enum',
-		instancePath: '/findings/0/quotedEvidence/0/channel',
+		issuePath: ['findings', 0, 'quotedEvidence', 0],
+		issueCode: 'invalid_union',
+		keyword: 'anyOf',
+		instancePath: '/findings/0/quotedEvidence/0',
+	},
+	{
+		// The pairing, in the direction nothing else catches. `projectChannel`
+		// reads `artifactId` only on the artifact channel, so a response-body
+		// quotation naming a file was audited against the response body and a
+		// record citing a file it never consulted produced no condition at all.
+		id: 'record-quoted-identifier-on-a-non-artifact-channel',
+		artifact: 'sealed-run-record',
+		constraint:
+			'quoted evidence names a written file exactly when its channel is `artifact`',
+		mutate: (record) => {
+			record.findings[0].quotedEvidence[0].artifactId = 'report'
+		},
+		issuePath: ['findings', 0, 'quotedEvidence', 0],
+		issueCode: 'invalid_union',
+		keyword: 'anyOf',
+		instancePath: '/findings/0/quotedEvidence/0',
+	},
+	{
+		// The other direction. It already resolved unwitnessed at audit time, so
+		// this one closes the shape rather than a behaviour.
+		id: 'record-quoted-artifact-channel-naming-no-file',
+		artifact: 'sealed-run-record',
+		constraint:
+			'an artifact quotation names the file it was taken from, never null',
+		mutate: (record) => {
+			record.findings[0].quotedEvidence[0].channel = 'artifact'
+		},
+		issuePath: ['findings', 0, 'quotedEvidence', 0],
+		issueCode: 'invalid_union',
+		keyword: 'anyOf',
+		instancePath: '/findings/0/quotedEvidence/0',
 	},
 	{
 		id: 'record-disposition-outside-the-three',

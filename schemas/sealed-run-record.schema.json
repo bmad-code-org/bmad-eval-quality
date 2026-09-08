@@ -790,36 +790,65 @@
               "minItems": 1,
               "type": "array",
               "items": {
-                "type": "object",
-                "properties": {
-                  "quote": {
-                    "type": "string",
-                    "minLength": 1,
-                    "description": "The evaluator's verbatim quotation, per AD-23. Non-empty: an empty quotation quotes nothing, no AD-5 code names the condition, and under the admit-rule's second clause the schema is therefore the enforcement point. That this text appears in at least one of the finding's cited observations is NOT checked here; it is an AD-32 declared-versus-observed inconsistency that invalidates at ingest, and ADR-009 Decision 2 settles the precedence: \"cited identifiers govern the witness match; quotation audits it.\""
-                  },
-                  "channel": {
-                    "$ref": "#/$defs/EvidenceChannel"
-                  },
-                  "artifactId": {
-                    "anyOf": [
-                      {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "quote": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": "The evaluator's verbatim quotation, per AD-23. Non-empty: an empty quotation quotes nothing, no AD-5 code names the condition, and under the admit-rule's second clause the schema is therefore the enforcement point. That this text appears in at least one of the finding's cited observations is NOT checked here; it is an AD-32 declared-versus-observed inconsistency that invalidates at ingest, and ADR-009 Decision 2 settles the precedence: \"cited identifiers govern the witness match; quotation audits it.\""
+                      },
+                      "channel": {
+                        "type": "string",
+                        "const": "artifact"
+                      },
+                      "artifactId": {
                         "type": "string",
                         "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
-                        "description": "A kebab-case slug. Excludes \"/\" and \"~\" so an identifier can be embedded in an interaction-rooted pointer without escaping."
-                      },
-                      {
-                        "type": "null"
+                        "description": "Which written file the quotation came from. A channel alone does not identify one: an operation may write several, and an audit that searched all of them at once accepted a quotation lifted from a file the finding never cited, which is the opposite of what AD-23's verbatim requirement is for."
                       }
+                    },
+                    "required": [
+                      "quote",
+                      "channel",
+                      "artifactId"
                     ],
-                    "description": "Which written file the quotation came from, or `null` on every channel but `artifact`. A channel alone does not identify one: an operation may write several, and an audit that searched all of them at once accepted a quotation lifted from a file the finding never cited, which is the opposite of what AD-23's verbatim requirement is for. Required and nullable rather than optional, so a record cannot omit the question; that the value is non-null exactly when the channel is `artifact` is a cross-field rule the export cannot carry, and `auditQuotation` reports it."
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "quote": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": "The evaluator's verbatim quotation, per AD-23. Non-empty: an empty quotation quotes nothing, no AD-5 code names the condition, and under the admit-rule's second clause the schema is therefore the enforcement point. That this text appears in at least one of the finding's cited observations is NOT checked here; it is an AD-32 declared-versus-observed inconsistency that invalidates at ingest, and ADR-009 Decision 2 settles the precedence: \"cited identifiers govern the witness match; quotation audits it.\""
+                      },
+                      "channel": {
+                        "type": "string",
+                        "enum": [
+                          "response-body",
+                          "response-headers",
+                          "response-status",
+                          "call-inputs",
+                          "stdout",
+                          "stderr",
+                          "exit-code"
+                        ]
+                      },
+                      "artifactId": {
+                        "type": "null",
+                        "description": "Null on every channel but `artifact`, and required rather than optional so a record cannot omit the question. Only a written file needs naming; every other channel is one thing per observation."
+                      }
+                    },
+                    "required": [
+                      "quote",
+                      "channel",
+                      "artifactId"
+                    ],
+                    "additionalProperties": false
                   }
-                },
-                "required": [
-                  "quote",
-                  "channel",
-                  "artifactId"
-                ],
-                "additionalProperties": false
+                ]
               },
               "description": "Required and non-empty on this branch alone, per AD-23. Only `defect` findings enter a detection measure, and a detection claim with no quotation is the shape AD-40 records revision 4 having no way to match."
             }
@@ -1083,20 +1112,6 @@
         }
       ],
       "description": "A reference to an artifact, public by path or private by opaque handle. Succeeds the prior-art `artifact-ref` schema per AD-24, with its two `if`/`then` branches re-expressed as a discriminated union per AD-13 and its `sha256` field renamed to `digest` against the shared AD-27 primitive. Alone among the twelve interchange artifacts this one carries NO `schemaVersion` and NO AD-29 lineage: it is a reference shape embedded inside other artifacts rather than one that crosses the package boundary alone, so versioning it would add a key to every finding and every manifest entry for no reader. It is in the inventory because it is published, not because it is exchanged; the exemption is asserted by a test against the registry's `carriesLineage` flag."
-    },
-    "EvidenceChannel": {
-      "type": "string",
-      "enum": [
-        "response-body",
-        "response-headers",
-        "response-status",
-        "call-inputs",
-        "stdout",
-        "stderr",
-        "exit-code",
-        "artifact"
-      ],
-      "description": "AD-26's closed evidence channel vocabulary. The same eight the interaction-rooted pointer addresses; a channel outside this set is a syntax error rather than an unreachable-evidence finding."
     },
     "JsonValue": {
       "description": "AD-36 value domain. Every number is a finite IEEE 754 double-precision value, and every integer lies in the safe-integer range; a larger integer, and any value needing exact decimal semantics such as money, is carried as a string in its own declared format. JSON Schema cannot express finiteness, so this restriction is stated rather than encoded: producers are told the rule here instead of discovering it through a digest mismatch, and the canonical scanner rejects a violating value before any parse.",

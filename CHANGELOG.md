@@ -224,7 +224,15 @@ body.
   operation which channel its descriptor describes, so a quantifier over a declared collection that
   came back empty abstains instead of answering vacuously true.
 - Quoted evidence on the `artifact` channel is audited against the file the finding cited.
-  `QuotedEvidence` gains `artifactId`, and the projection unwraps that one file's own text.
+  `QuotedEvidence` is two arms: an `artifact` channel with a named file, and the other seven with a
+  null identifier. The first spelling was one shape with a nullable identifier and the pairing
+  stated in prose, which admitted `channel: "response-body"` with a non-null `artifactId`;
+  `projectChannel` reads the identifier only on the artifact channel, so such a quotation was
+  audited against the response body and a record naming a file it never consulted produced no
+  `unwitnessed-quotation` condition at all. A refinement would not have closed it either, for the
+  reason `evidence-artifact.ts` records where it narrows a mode to a literal: a refinement never
+  exports, and AD-13's generator synthesises witnesses from a branch's own JSON Schema. Two arms put
+  the rule in the published document. The projection unwraps that one file's own text.
   Serializing the whole `artifacts` map escaped every newline and quotation mark, so a quotation
   from a file with more than one line could never be witnessed, and it searched every file at once,
   so a quotation found in a file the finding did not cite was reported as witnessed.

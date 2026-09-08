@@ -129,6 +129,26 @@ export const COMMAND_RESPONSE_CHANNELS = [
 	'artifact',
 ] as const satisfies readonly EvidenceChannelName[]
 
+/**
+ * Every channel but the identifier-rooted one, in the vocabulary's own order.
+ *
+ * Spelled out and typed against the enum rather than filtered from it: a filter
+ * widens to `EvidenceChannelName[]` and `z.enum` needs a tuple, and the whole
+ * point of the list is that adding a ninth channel has to be a decision about
+ * which side of this line it falls on rather than something a filter absorbs.
+ * `tests/schemas/pointer.test.ts` asserts it partitions the vocabulary with
+ * `IDENTIFIER_ROOTED_CHANNEL` exactly.
+ */
+export const NON_IDENTIFIER_ROOTED_CHANNELS = [
+	'response-body',
+	'response-headers',
+	'response-status',
+	'call-inputs',
+	'stdout',
+	'stderr',
+	'exit-code',
+] as const satisfies readonly EvidenceChannelName[]
+
 /** Every channel that carries what came back, whichever kind produced it. */
 export const RESPONSE_SIDE_CHANNELS = [
 	...API_RESPONSE_CHANNELS,

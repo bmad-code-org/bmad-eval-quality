@@ -21,7 +21,7 @@ export const CENSUS_BY_DOCUMENT: Readonly<Record<string, number>> = {
 	'artifact-reference': 21,
 	'eval-contract': 1073,
 	'evaluator-configuration': 69,
-	'evidence-artifact': 441,
+	'evidence-artifact': 448,
 	'isolation-manifest': 141,
 	'preflight-verdict': 34,
 	'private-artifact-manifest': 31,
@@ -29,14 +29,14 @@ export const CENSUS_BY_DOCUMENT: Readonly<Record<string, number>> = {
 	rubric: 51,
 	'scoring-policy': 35,
 	'sealed-evaluator-brief': 102,
-	'sealed-run-record': 374,
+	'sealed-run-record': 381,
 }
 
 /** The same occurrences counted by keyword instead of by document. */
 export const CENSUS_BY_KEYWORD: Readonly<Record<string, number>> = {
-	additionalProperties: 277,
+	additionalProperties: 279,
 	anyOf: 150,
-	const: 91,
+	const: 93,
 	enum: 73,
 	exclusiveMinimum: 2,
 	format: 1,
@@ -44,15 +44,15 @@ export const CENSUS_BY_KEYWORD: Readonly<Record<string, number>> = {
 	maxItems: 3,
 	maximum: 105,
 	minItems: 42,
-	minLength: 127,
+	minLength: 129,
 	minProperties: 2,
 	minimum: 106,
 	oneOf: 21,
 	pattern: 184,
 	prefixItems: 24,
 	propertyNames: 47,
-	required: 230,
-	type: 1267,
+	required: 232,
+	type: 1273,
 }
 
 /**
@@ -61,14 +61,14 @@ export const CENSUS_BY_KEYWORD: Readonly<Record<string, number>> = {
  * keyword's descent being removed, and the total catches an arithmetic slip in
  * either.
  */
-export const CENSUS_TOTAL = 2904
+export const CENSUS_TOTAL = 2918
 
 /** Named `$defs` keys per published document. */
 export const DEFS_BY_DOCUMENT: Readonly<Record<string, number>> = {
 	'artifact-reference': 0,
 	'eval-contract': 7,
 	'evaluator-configuration': 1,
-	'evidence-artifact': 4,
+	'evidence-artifact': 3,
 	'isolation-manifest': 0,
 	'preflight-verdict': 0,
 	'private-artifact-manifest': 0,
@@ -76,7 +76,7 @@ export const DEFS_BY_DOCUMENT: Readonly<Record<string, number>> = {
 	rubric: 0,
 	'scoring-policy': 0,
 	'sealed-evaluator-brief': 0,
-	'sealed-run-record': 5,
+	'sealed-run-record': 4,
 }
 
 /**
@@ -87,8 +87,8 @@ export const DEFS_BY_DOCUMENT: Readonly<Record<string, number>> = {
  */
 export const REJECT_CASE_COUNTS = {
 	contract: 55,
-	artifact: 94,
-	total: 149,
+	artifact: 96,
+	total: 151,
 } as const
 
 /**

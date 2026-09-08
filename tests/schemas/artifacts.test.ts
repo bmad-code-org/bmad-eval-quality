@@ -32,6 +32,7 @@ import { Rubric, RubricBody } from '../../src/core/schemas/rubric.ts'
 import { SealedEvaluatorBrief } from '../../src/core/schemas/sealed-evaluator-brief.ts'
 import {
 	Finding,
+	QuotedEvidence,
 	RUN_MODES,
 	SealedRunRecord,
 } from '../../src/core/schemas/sealed-run-record.ts'
@@ -286,6 +287,76 @@ describe('the finding union, where AD-23 says "additionally"', () => {
 		]
 		const issue = firstIssue(Finding.safeParse(confirmation))
 		expect(issue?.code).toBe('unrecognized_keys')
+	})
+
+	// The identifier is meaningful on exactly one channel, and the first
+	// spelling of the field said so in prose while admitting every other pairing.
+	// A `response-body` quotation naming a file parsed, `projectChannel` read the
+	// identifier only on the artifact channel, so the quotation was audited
+	// against the response body and a record naming a file it never consulted
+	// produced no `unwitnessed-quotation` condition at all.
+	describe('quoted evidence pairs its channel with its artifact identifier', () => {
+		const withQuote = (quoted: unknown) => {
+			const defect = clone(FINDING_BRANCH_FIXTURES[0].value) as any
+			defect.quotedEvidence = [quoted]
+			return Finding.safeParse(defect)
+		}
+
+		it('accepts an artifact quotation naming the file it came from', () => {
+			expect(
+				withQuote({ quote: 'x', channel: 'artifact', artifactId: 'report' })
+					.success,
+			).toBe(true)
+		})
+
+		it.each([
+			'response-body',
+			'response-headers',
+			'response-status',
+			'call-inputs',
+			'stdout',
+			'stderr',
+			'exit-code',
+		])('accepts %s with a null identifier', (channel) => {
+			expect(withQuote({ quote: 'x', channel, artifactId: null }).success).toBe(
+				true,
+			)
+		})
+
+		it('rejects a non-artifact channel carrying an identifier', () => {
+			expect(
+				withQuote({
+					quote: 'x',
+					channel: 'response-body',
+					artifactId: 'report',
+				}).success,
+			).toBe(false)
+		})
+
+		it('rejects the artifact channel carrying no identifier', () => {
+			expect(
+				withQuote({ quote: 'x', channel: 'artifact', artifactId: null })
+					.success,
+			).toBe(false)
+		})
+
+		it('carries the rule in the published document, not only in Zod', () => {
+			// A refinement never exports, and AD-13's generator synthesises
+			// witnesses from a branch's own JSON Schema, so the rule has to be in
+			// the shape. Two arms: a literal channel with a string identifier, and
+			// a seven-member enum with a null one.
+			const published = z.toJSONSchema(QuotedEvidence, { io: 'input' }) as any
+			const arms = published.anyOf as any[]
+			expect(arms).toHaveLength(2)
+			expect(arms[0].properties.channel).toEqual({
+				type: 'string',
+				const: 'artifact',
+			})
+			expect(arms[0].properties.artifactId.type).toBe('string')
+			expect(arms[1].properties.channel.enum).toHaveLength(7)
+			expect(arms[1].properties.channel.enum).not.toContain('artifact')
+			expect(arms[1].properties.artifactId.type).toBe('null')
+		})
 	})
 
 	it('requires at least one cited observation on a defect', () => {

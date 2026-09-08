@@ -1059,14 +1059,17 @@ describe('the ingest stage', () => {
 	// Matrix row 10. The fault is `core/canonical`'s, raised through
 	// `auditQuotation` when a quoted channel is one of the three that reach
 	// RFC 8785 serialization. Canonicalization, not projection, is what makes it
-	// reachable: `projectChannel` handles all seven channels and only three
+	// reachable: `projectChannel` handles all eight channels and only three
 	// serialize. Each record is parsed rather than asserted into shape, so a
 	// later tightening of `z.number()` or `z.string()` fails this case instead
 	// of leaving it green over an unreachable path.
 	it('lets a canonicalization fault propagate out of the quotation audit', () => {
 		const carrying = (
 			observation: Observation,
-			channel: DefectFinding['quotedEvidence'][number]['channel'],
+			channel: Extract<
+				DefectFinding['quotedEvidence'][number],
+				{ artifactId: null }
+			>['channel'],
 		): SealedRunRecord =>
 			SealedRunRecord.parse({
 				...cleanRecord,
