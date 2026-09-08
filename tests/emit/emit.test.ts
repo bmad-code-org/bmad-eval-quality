@@ -428,12 +428,17 @@ describe('emit: production-mode and contract-scoring-mode shape', () => {
 		expect(parsed.revisionCount).toBe(0)
 		expect(parsed.runId).toBe(scored.runId)
 		expect(parsed.mode).toBe('production')
+		// `mode` is the one member that is not a choice, and the constraint
+		// ledger's `evidence-mode-caller-attested` entry names this stage as
+		// where that is enforced, since no JSON Schema keyword can carry it
+		// without a Zod/ajv disagreement the differential exists to catch.
 		expect(parsed.callerAttestedInputs).toEqual([
 			'corpusDigest',
 			'fixtureDigest',
 			'evaluatorConfigurationDigest',
 			'mode',
 		])
+		expect(parsed.callerAttestedInputs).toContain('mode')
 		expect(parsed.scoringVersionInputs).toEqual({
 			contractSchemaVersion: minimalContract.schemaVersion,
 			corpusDigest: digestOf(200),
@@ -499,5 +504,22 @@ describe('emit: STAGE_SIGNATURES conformance', () => {
 			'evaluatorConfigurationDigest',
 		])
 		expect(ARTIFACT_PRODUCERS['evidence-artifact']).toBe('emit')
+	})
+})
+
+describe('the caller-attested list always names mode', () => {
+	// The enforcement point the constraint ledger's `evidence-mode-caller-attested`
+	// entry names. `ScoringVersionInputs.mode` is read from the sealed run
+	// record and never re-derived, so an artifact omitting it from this list is
+	// a misdeclaration under AD-32 rather than a stricter integration, and the
+	// schema admits that shape on purpose.
+	it.each([
+		['production', () => scoredOf({ assessment: productionAssessment() })],
+		['contract-scoring', () => scoredOf({ assessment: contractAssessment() })],
+	] as const)('in %s mode', (_label, build) => {
+		const parsed = EvidenceArtifact.parse(
+			emit(build(), digestOf(200), digestOf(201), digestOf(202)),
+		)
+		expect(parsed.callerAttestedInputs).toContain('mode')
 	})
 })
