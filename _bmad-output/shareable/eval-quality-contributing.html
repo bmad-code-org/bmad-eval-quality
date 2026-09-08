@@ -657,7 +657,7 @@ commit through an ordinary pull request instead, and is the fallback when the di
 <p>This dispatches <code>publish.yml</code> on <code>main</code> with the matching <code>bump</code> input. The run:</p>
 <ol>
 <li>fails at the AD-18 guard unless the repository variable <code>PUBLICATION_UNBLOCKED</code> is <code>true</code>;</li>
-<li>checks out <code>main</code>, runs <code>npm test</code>, then <code>node scripts/release-prepare.mjs &lt;bump&gt; --on-main</code>: bumps <code>package.json</code> and <code>package-lock.json</code> (<code>npm version --no-git-tag-version</code>),
+<li>checks out <code>main</code>, then <code>node scripts/release-prepare.mjs &lt;bump&gt; --on-main</code>: bumps <code>package.json</code> and <code>package-lock.json</code> (<code>npm version --no-git-tag-version</code>),
 stamps <code>VERSION</code> in <code>src/index.ts</code>, moves <code>[Unreleased]</code> in <code>CHANGELOG.md</code> into a dated
 <code>[X.Y.Z]</code> section (<code>scripts/stamp-changelog.mjs</code>), and commits <code>chore: release vX.Y.Z [skip ci]</code>
 straight onto <code>main</code>. <code>[skip ci]</code> keeps that push from starting <code>pr-checks.yml</code> and the other
@@ -726,11 +726,12 @@ push without opening the PR.</p>
 </code></pre>
 <p>or Actions &gt; Publish Package &gt; Run workflow, branch <code>main</code>, <code>bump: none</code>. With <code>bump=none</code> the run
 skips straight to publishing the version <code>main</code> already declares: pins npm, audits lockfile age,
-runs <code>npm ci</code> and <code>npm test</code> and <code>npm run build</code>, then publishes, tags, and creates the
+runs <code>npm ci</code> and <code>npm run build</code>, then publishes, tags, and creates the
 Release exactly as described in the one-step path above, steps 3 and 4.</p>
-<p>The release run tests and does not <code>validate</code>: every commit on <code>main</code> cleared <code>gate</code> on its pull
-request, so the build, the lint and the consistency checks have already run against that tree. Run
-<code>npm run validate</code> on a laptop before pushing, not on the way out.</p>
+<p>The release run has no test step. Every commit on <code>main</code> cleared <code>gate</code> on its pull request,
+which runs <code>npm run validate</code> on two Node versions plus the canary jobs, so a release re-proving any
+part of that buys nothing and gives it a second way to fail on something unrelated to releasing.
+Tests belong on the pull request and on a laptop before the push.</p>
 <h3 id="first-publish">First publish<a class="heading-anchor" href="#first-publish" aria-label="Link to First publish">#</a></h3>
 <p>The npm Trusted Publisher form lives under an existing package&#39;s settings
 (npmjs.com &gt; Packages &gt; <code>eval-quality</code> &gt; Settings &gt; Trusted Publisher), and as of the

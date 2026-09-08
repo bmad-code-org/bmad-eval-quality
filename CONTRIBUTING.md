@@ -114,7 +114,7 @@ npm run release:patch      # or release:minor, release:major
 This dispatches `publish.yml` on `main` with the matching `bump` input. The run:
 
 1. fails at the AD-18 guard unless the repository variable `PUBLICATION_UNBLOCKED` is `true`;
-2. checks out `main`, runs `npm test`, then `node scripts/release-prepare.mjs <bump>
+2. checks out `main`, then `node scripts/release-prepare.mjs <bump>
    --on-main`: bumps `package.json` and `package-lock.json` (`npm version --no-git-tag-version`),
    stamps `VERSION` in `src/index.ts`, moves `[Unreleased]` in `CHANGELOG.md` into a dated
    `[X.Y.Z]` section (`scripts/stamp-changelog.mjs`), and commits `chore: release vX.Y.Z [skip ci]`
@@ -209,12 +209,13 @@ npm run release:publish             # gh workflow run publish.yml --ref main -f 
 
 or Actions > Publish Package > Run workflow, branch `main`, `bump: none`. With `bump=none` the run
 skips straight to publishing the version `main` already declares: pins npm, audits lockfile age,
-runs `npm ci` and `npm test` and `npm run build`, then publishes, tags, and creates the
+runs `npm ci` and `npm run build`, then publishes, tags, and creates the
 Release exactly as described in the one-step path above, steps 3 and 4.
 
-The release run tests and does not `validate`: every commit on `main` cleared `gate` on its pull
-request, so the build, the lint and the consistency checks have already run against that tree. Run
-`npm run validate` on a laptop before pushing, not on the way out.
+The release run has no test step. Every commit on `main` cleared `gate` on its pull request,
+which runs `npm run validate` on two Node versions plus the canary jobs, so a release re-proving any
+part of that buys nothing and gives it a second way to fail on something unrelated to releasing.
+Tests belong on the pull request and on a laptop before the push.
 
 ### First publish
 
