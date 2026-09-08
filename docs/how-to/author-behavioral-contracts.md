@@ -60,7 +60,7 @@ The same bytes ship a second time as `corpus/dev/compile-seal-example/contract.j
 | Bounds on a run | `budgets`, `safetyLimits`, `probeStepBound` |
 | Evidence and fixture handling | `requiredEvidence`, `fixtureReset` |
 
-For the type of each field and every nested shape, read the schema itself. The descriptions inside it carry the reasoning for each constraint. The other eleven schemas cover the remaining artifacts: what `seal` and `preflight` emit, the five a caller hands `score`, and the one `score` mints. All twelve are published at the `eval-quality/schemas/*` subpath, so a consumer reaches them by specifier without knowing the install layout.
+For the type of each field and every nested shape, read the schema itself. The descriptions inside it carry the reasoning for each constraint. The other eleven schemas cover the remaining artifacts: three more minted by a stage, seven a caller writes, and one embedded inside others. The [glossary](/reference/glossary/) lists all twelve with their producers. All twelve are published at the `eval-quality/schemas/*` subpath, so a consumer reaches them by specifier without knowing the install layout.
 
 ## 3. Read a rejection
 
@@ -91,7 +91,7 @@ eval-quality: unreachable-check-evidence: EvalContract.oracles[id=O-005].check.o
 
 The pointer resolves to nothing, so the assertion checks evidence that cannot exist.
 
-**Use the corpus as a rule index.** `corpus/dev/contracts/` holds twenty-one contracts: nineteen covering AD-20's seven discipline rules in each declaration state, and two describing a system under test that runs behind a command. Eighteen compile, and three fail by design.
+**Use the corpus as a rule index.** `corpus/dev/contracts/` holds twenty-one contracts: nineteen covering the seven discipline rules, one per declaration state, and two describing a system under test that runs behind a command. Eighteen compile, and three fail by design.
 
 ```bash
 node -e "for (const e of require('./corpus/dev/index.json').entries) if (e.structuralFailure) console.log(e.structuralFailure, e.path)"
@@ -306,7 +306,7 @@ false | 1 admitted probe over 1 completed trial. Below the declared minimum of 3
 
 One defect probe was exercised and caught, so the defect rate is 1. The other two probe classes were not exercised. The policy asked for three trials and the run completed one, so `comparable` is `false`: this number may be reported and may not be compared with another.
 
-**You cannot re-run this chain from the command line.** Its record points at a private-storage isolation manifest whose declared digest no bytes produce, and `score` resolves a private reference and checks it. The generator calls the stages as functions and never resolves the reference, which is why the committed artifact exists. A real run's record points at real bytes, and the check passes.
+**You cannot re-run this chain from the command line.** Its record points at a private isolation manifest whose declared digest no file on disk produces, and `score` checks that digest. The generator calls the stages as functions and skips the check, which is how the committed artifact was produced. A real run's record points at real bytes, and the check passes.
 
 ## The twin run, as commands
 
@@ -353,7 +353,7 @@ Then read the two artifacts. On the clean arm the oracles should resolve `passed
 
 Compare `scoringVersion` across the two artifacts before comparing anything else in them. Two results compare only when it agrees.
 
-## Two guards worth knowing
+## Two guards
 
 **`--out` may not overwrite an input.** The CLI resolves both paths and then asks the filesystem whether they name the same file, so a symlink and a case-insensitive spelling are caught too. A collision exits `64`:
 

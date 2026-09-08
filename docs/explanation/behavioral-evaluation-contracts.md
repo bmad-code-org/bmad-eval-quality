@@ -7,8 +7,6 @@ sidebar:
 
 # How It Works
 
-This page is the idea behind the tool. It is for someone deciding whether `eval-quality` is worth their time, and it assumes you have run nothing yet.
-
 ## The layer this sits on
 
 Traditional testing runs a system through tests and gets pass or fail. AI evaluation runs a feature through an evaluation and gets a score with evidence.
@@ -52,25 +50,25 @@ The way to find a blind spot is to plant one. Hold the evaluation fixed and chan
                   ↓                                   ↓
               observations                       observations
                   ↓                                   ↓
-          preflight  [ships]                 preflight  [ships]
+     preflight  [eval-quality]         preflight  [eval-quality]
               must pass                           must pass
                   ↓                                   ↓
                evidence                            evidence
                   ↓                                   ↓
-      score / verdict  [ships]           score / verdict  [ships]
+ score / verdict  [eval-quality]   score / verdict  [eval-quality]
              should pass                       should degrade
                   └─────────────────┬─────────────────┘
                                     ↓
                        did the evaluation catch it?
 ```
 
-The rows marked `[ships]` are the ones `eval-quality` performs. Executing the two systems, running the evaluator, and collecting what it produced belong to you.
+The rows marked `[eval-quality]` are the ones the package performs. Executing the two systems, running the evaluator, and collecting what it produced belong to you.
 
 The mutation is one deliberate change that should make behavior worse, and you know in advance which failure it is supposed to create. Weaken the prompt, remove required context, drop a validation step, alter a tool's results, change the agent configuration, switch models.
 
 Preflight has to pass on **both** arms. A mutated run that fails preflight tells you the environment was unfit, which is a different finding from the evaluation catching the defect. Mixing the two makes the comparison meaningless.
 
-`seal` is what keeps the two arms comparable. It reduces the contract to a brief the evaluator can be handed: the behaviors, the interfaces by name and kind, the bounds, one prose direction per oracle, and a digest of the contract it came from. The oracle checks, the interaction plan, the reference sets, and the test data have nowhere to go in a brief's shape, so an evaluator reading one cannot read the answers off the contract. Comparing the digest across the two arms proves both arms ran the same contract.
+`seal` is what keeps the two arms comparable. It reduces the contract to a brief the evaluator can be handed: the behaviors, the interfaces by name and kind, the bounds, one prose direction per oracle, and a digest of the contract it came from. The checks themselves and the test data have no place in a brief, so an evaluator reading one cannot read the answers off the contract. Comparing the digest across the two arms proves both ran the same contract.
 
 The digest says nothing about the probes, the scoring policy, the evaluator configuration, the harness, or the model settings. Holding those fixed across the two arms is your job.
 
@@ -90,7 +88,7 @@ Run the same evaluation against the fixed implementation and it passes again. A 
 - **Behaviors**: what the system is supposed to do, each with a severity and an observable success criterion.
 - **Oracles**: the checks themselves, written as relations over JSON pointers into recorded interactions.
 - **Permitted interfaces**: every operation a probe may call, its request shape, its response descriptor, and the pointers whose values are volatile. An interface declares a kind, and `compile` accepts two of them today: `api`, a system behind an HTTP API, and `cli`, a system behind a command. The vocabulary also names `web` and `mcp`, and a contract declaring either is rejected with `unsupported-interface-kind`.
-- **Sensitivity witnesses**: a pair of calls per operation that differ in one input channel, and the relation that has to distinguish their responses. This is the mutation idea applied to one operation at compile time.
+- **Sensitivity witnesses**: two calls per operation that differ in one input, and how their responses have to differ. If the responses come back the same, nothing shows the operation read that input. This is the mutation idea applied to one operation.
 - **Reference sets, budgets, safety limits, and forbidden inputs**: the data a check reads, and the bounds a run has to stay inside.
 
 `schemas/eval-contract.schema.json` is the normative shape, and every field is listed on [the walkthrough](/how-to/author-behavioral-contracts/). The vocabulary is defined in the [glossary](/reference/glossary/).
@@ -108,13 +106,13 @@ Two examples, both shipped in the corpus:
 
 Both are the blind-spot problem in miniature: an evaluation that reports success without having looked.
 
-`corpus/dev/contracts/` holds twenty-one contracts. Nineteen cover each rule in each declaration state, which makes the rule set readable as examples; the other two describe a system under test that runs behind a command.
+`corpus/dev/contracts/` holds twenty-one contracts. Nineteen cover the seven discipline rules, one per declaration state, so the rule set reads as examples; the other two describe a system under test that runs behind a command.
 
 ## What scoring answers
 
 `score` is the comparison step at the bottom of the twin run. It reads the sealed run record your harness produced, resolves each oracle over the observations the record carries, and mints a verdict.
 
-Three things about it are worth knowing before you use it.
+Three things to know before you use it.
 
 **A caught defect is decided by evidence.** A finding counts as detection only when the probe's declared defect signature matches an observation that finding cites. An evaluator that says "I found it" without citing the observation that shows it gets no credit.
 
@@ -127,6 +125,6 @@ Three things about it are worth knowing before you use it.
 - **The package runs nothing under evaluation.** Compile, seal, the preflight reduction, and the score chain are pure transformations over JSON, so they are deterministic. Holding the rest of a run steady across the two arms is the caller's job: model sampling, evaluator behavior, fixture state, trial policy, and configuration all have to be controlled, or those are what the comparison measures.
 - **Canonical serialization.** Artifacts serialize to RFC 8785 canonical JSON, one line with sorted keys, and the digest covers exactly that payload, so two machines agree on the identity of an artifact.
 - **Lineage.** Every lineage-bearing artifact carries `parentDigest` and `revisionCount`, so a chain of revisions can be checked.
-- **Failure codes over prose.** A rejection names a code and a path inside the artifact, so a caller can branch on the code.
+- **Failure codes.** A rejection names a machine-readable code and a path inside the artifact, so a caller can branch on the code.
 
-The [roadmap](/explanation/roadmap/) records what ships today, what is deliberately out of scope, and what is next.
+[What Ships](/explanation/roadmap/) covers version 1.0, the trial-set limit, and what is deliberately out of scope.

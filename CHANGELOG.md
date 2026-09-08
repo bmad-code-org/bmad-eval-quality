@@ -10,6 +10,16 @@ body.
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-09-08
+
+No code changes since 0.5.0. From here the package follows semantic versioning on its published
+surface: a breaking change to a command, an export, or a schema is a major bump.
+
+## [0.5.0] - 2026-09-08
+
+Version bump only. 0.4.0 was never published: the first publish run from its commit bumped to 0.5.0
+before publishing, so the 0.4.0 changes below shipped in this version.
+
 ## [0.4.0] - 2026-09-08
 
 ### Added

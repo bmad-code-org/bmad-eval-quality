@@ -44,7 +44,7 @@ That is mutation testing, pointed at evaluations. `eval-quality` is the tool for
 
 An **eval contract** is a JSON document that says what a system is supposed to do, written so an automated check can resolve it. Every command here is built around one.
 
-The package executes nothing. No agent, no judge, and no system under test runs inside it. Your harness runs both arms of the loop and hands over what the evaluator produced; `eval-quality` compiles, seals, preflights, and scores.
+The package executes nothing. No agent, no judge, and no system under test runs inside it. You run the evaluation twice, once against the clean system and once against the broken one, and hand over what it produced; `eval-quality` compiles, seals, preflights, and scores.
 
 ## Where to go
 

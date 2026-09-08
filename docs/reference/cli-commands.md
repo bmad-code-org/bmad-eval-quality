@@ -155,10 +155,10 @@ Exit codes (AD-21):
   64  usage error
 
   --strict never promotes a CONCERNS whose firing conditions are all evidence
-  conditions: those conditions report that the measurement fell short of the
-  policy. 1 and 2 report a verdict the score command's ladder resolved; every
-  other invalidating condition behind 3 is reachable there too, alongside the
-  failed pre-flight the preflight command itself reports.
+  conditions: those report that the measurement fell short of the policy.
+  1 and 2 come from the score command's verdict ladder. 3 comes from a failed
+  pre-flight, which the preflight command reports, or from any other
+  invalidating condition score finds.
 ```
 
 ## Diagnostic format
@@ -216,7 +216,7 @@ The package performs no effects of its own. A **port** is an interface it declar
 | `ClockPort` | Reads the current time | No |
 | `FileSystemPort` | Reads and writes files | No. The CLI uses `node:fs/promises` |
 
-Each port's type comes from `eval-quality/conformance`. `eval-quality/adapters` ships four reference adapters, `createLocalCorpusAdapter`, `createNodeFileSystemAdapter`, `createSystemClockAdapter`, and `createCommandLineAdapter`, each a factory taking the mechanism it wraps. `createCommandLineAdapter` implements `EnvironmentProbePort` for the `cli` mechanism only, over a real child process, authorized by a `CommandTargetPolicy` mapping outside the contract; there is still no reference `EnvironmentProbePort` for `api`, because probing a live HTTP environment is the part only you can write.
+Each port's type comes from `eval-quality/conformance`. `eval-quality/adapters` ships four reference adapters, `createLocalCorpusAdapter`, `createNodeFileSystemAdapter`, `createSystemClockAdapter`, and `createCommandLineAdapter`, each a factory taking the mechanism it wraps. `createCommandLineAdapter` implements `EnvironmentProbePort` for the `cli` mechanism only, over a real child process, authorized by a `CommandTargetPolicy` mapping outside the contract; there is no reference `EnvironmentProbePort` for `api`, because probing a live HTTP environment is the part only you can write.
 
 **The conformance suite** decides whether an implementation conforms. It checks behavior the type checker cannot: whether the implementation returns a typed fault where the boundary demands one, and whether it hangs where it should time out. It takes a `PortSubject`, a small harness around your port carrying a name, one sample request, and a `build` function the suite calls once per scenario. `ScenarioKind` is the four situations it needs your port to be in: `resolves`, `fails`, `in-band-error`, and `hangs`. Putting the port into each of them is your job, because only you know how to make your mechanism fail.
 
@@ -232,4 +232,4 @@ There is one runner per port, plus a second arm for `EnvironmentProbePort`'s two
 
 - [The full walkthrough](/how-to/author-behavioral-contracts/)
 - [Glossary](/reference/glossary/)
-- [Roadmap](/explanation/roadmap/)
+- [What Ships](/explanation/roadmap/)

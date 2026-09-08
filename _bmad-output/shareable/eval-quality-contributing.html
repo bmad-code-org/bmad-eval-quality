@@ -550,7 +550,7 @@ tbody tr:hover {
   <div class="layout">
     <aside class="sidebar" aria-label="Table of contents">
       <p class="toc-title">On this page</p>
-      <a class="toc-link depth-2" href="#getting-started">Getting Started</a><a class="toc-link depth-3" href="#prerequisites">Prerequisites</a><a class="toc-link depth-3" href="#initial-setup">Initial Setup</a><a class="toc-link depth-3" href="#quick-development-commands">Quick Development Commands</a><a class="toc-link depth-2" href="#architecture-constraints">Architecture Constraints</a><a class="toc-link depth-2" href="#adding-a-module">Adding a Module</a><a class="toc-link depth-2" href="#code-standards">Code Standards</a><a class="toc-link depth-2" href="#submitting-changes">Submitting Changes</a><a class="toc-link depth-3" href="#commit-message-format">Commit Message Format</a><a class="toc-link depth-3" href="#code-review-process">Code Review Process</a><a class="toc-link depth-2" href="#releasing">Releasing</a><a class="toc-link depth-3" href="#one-step-bump-and-publish-together">One-step: bump and publish together</a><a class="toc-link depth-3" href="#why-the-release-push-needs-nothing-special">Why the release push needs nothing special</a><a class="toc-link depth-3" href="#fallback-bump-on-a-laptop-publish-separately">Fallback: bump on a laptop, publish separately</a><a class="toc-link depth-4" href="#section-1-cut-the-release-pr">1. Cut the release PR</a><a class="toc-link depth-4" href="#section-2-publish-from-main">2. Publish from main</a><a class="toc-link depth-3" href="#first-publish">First publish</a><a class="toc-link depth-3" href="#tag-protection">Tag protection</a><a class="toc-link depth-2" href="#community-support">Community &amp; Support</a>
+      <a class="toc-link depth-2" href="#getting-started">Getting started</a><a class="toc-link depth-2" href="#what-the-gate-checks">What the gate checks</a><a class="toc-link depth-2" href="#code-standards">Code standards</a><a class="toc-link depth-2" href="#submitting-changes">Submitting changes</a><a class="toc-link depth-2" href="#releasing">Releasing</a><a class="toc-link depth-3" href="#one-step-bump-and-publish-together">One-step: bump and publish together</a><a class="toc-link depth-3" href="#why-the-release-push-needs-nothing-special">Why the release push needs nothing special</a><a class="toc-link depth-3" href="#fallback-bump-on-a-laptop-publish-separately">Fallback: bump on a laptop, publish separately</a><a class="toc-link depth-4" href="#section-1-cut-the-release-pr">1. Cut the release PR</a><a class="toc-link depth-4" href="#section-2-publish-from-main">2. Publish from main</a><a class="toc-link depth-3" href="#tags">Tags</a><a class="toc-link depth-2" href="#community-support">Community &amp; Support</a>
     </aside>
     <main class="paper">
       <header class="hero">
@@ -563,85 +563,53 @@ tbody tr:hover {
       </header>
       <details class="mobile-toc">
         <summary>On this page</summary>
-        <div class="mobile-toc-links"><a class="toc-link depth-2" href="#getting-started">Getting Started</a><a class="toc-link depth-3" href="#prerequisites">Prerequisites</a><a class="toc-link depth-3" href="#initial-setup">Initial Setup</a><a class="toc-link depth-3" href="#quick-development-commands">Quick Development Commands</a><a class="toc-link depth-2" href="#architecture-constraints">Architecture Constraints</a><a class="toc-link depth-2" href="#adding-a-module">Adding a Module</a><a class="toc-link depth-2" href="#code-standards">Code Standards</a><a class="toc-link depth-2" href="#submitting-changes">Submitting Changes</a><a class="toc-link depth-3" href="#commit-message-format">Commit Message Format</a><a class="toc-link depth-3" href="#code-review-process">Code Review Process</a><a class="toc-link depth-2" href="#releasing">Releasing</a><a class="toc-link depth-3" href="#one-step-bump-and-publish-together">One-step: bump and publish together</a><a class="toc-link depth-3" href="#why-the-release-push-needs-nothing-special">Why the release push needs nothing special</a><a class="toc-link depth-3" href="#fallback-bump-on-a-laptop-publish-separately">Fallback: bump on a laptop, publish separately</a><a class="toc-link depth-4" href="#section-1-cut-the-release-pr">1. Cut the release PR</a><a class="toc-link depth-4" href="#section-2-publish-from-main">2. Publish from main</a><a class="toc-link depth-3" href="#first-publish">First publish</a><a class="toc-link depth-3" href="#tag-protection">Tag protection</a><a class="toc-link depth-2" href="#community-support">Community &amp; Support</a></div>
+        <div class="mobile-toc-links"><a class="toc-link depth-2" href="#getting-started">Getting started</a><a class="toc-link depth-2" href="#what-the-gate-checks">What the gate checks</a><a class="toc-link depth-2" href="#code-standards">Code standards</a><a class="toc-link depth-2" href="#submitting-changes">Submitting changes</a><a class="toc-link depth-2" href="#releasing">Releasing</a><a class="toc-link depth-3" href="#one-step-bump-and-publish-together">One-step: bump and publish together</a><a class="toc-link depth-3" href="#why-the-release-push-needs-nothing-special">Why the release push needs nothing special</a><a class="toc-link depth-3" href="#fallback-bump-on-a-laptop-publish-separately">Fallback: bump on a laptop, publish separately</a><a class="toc-link depth-4" href="#section-1-cut-the-release-pr">1. Cut the release PR</a><a class="toc-link depth-4" href="#section-2-publish-from-main">2. Publish from main</a><a class="toc-link depth-3" href="#tags">Tags</a><a class="toc-link depth-2" href="#community-support">Community &amp; Support</a></div>
       </details>
-      <article class="content"><p>Thanks for your interest in contributing! <code>eval-quality</code> is a provider-agnostic agent-evaluation library, distributed as a single npm package with per-module subpath exports.</p>
-<h2 id="getting-started">Getting Started<a class="heading-anchor" href="#getting-started" aria-label="Link to Getting Started">#</a></h2>
-<h3 id="prerequisites">Prerequisites<a class="heading-anchor" href="#prerequisites" aria-label="Link to Prerequisites">#</a></h3>
-<ul>
-<li>Node.js (version specified in <code>.nvmrc</code>)</li>
-<li>npm</li>
-</ul>
-<h3 id="initial-setup">Initial Setup<a class="heading-anchor" href="#initial-setup" aria-label="Link to Initial Setup">#</a></h3>
+      <article class="content"><p><code>eval-quality</code> compiles Behavioral Evaluation Contracts and scores their ability to catch known defects.
+It is one npm package with a small set of subpath exports, and it executes nothing: no agent, judge, or system under test runs inside it.</p>
+<h2 id="getting-started">Getting started<a class="heading-anchor" href="#getting-started" aria-label="Link to Getting started">#</a></h2>
+<p>Node.js 22.20.0 or newer. <code>.nvmrc</code> pins the version CI uses.</p>
 <pre><code class="language-bash">git clone https://github.com/bmad-code-org/bmad-eval-quality.git
-cd eval-quality
+cd bmad-eval-quality
 nvm use
 npm install
-npm run hooks:install   # install the pre-commit hooks
-
-# Verify the setup
-npm run validate
+npm run hooks:install   # pre-commit hooks
+npm run validate        # the whole gate
 </code></pre>
-<h3 id="quick-development-commands">Quick Development Commands<a class="heading-anchor" href="#quick-development-commands" aria-label="Link to Quick Development Commands">#</a></h3>
-<pre><code class="language-bash">npm run validate    # typecheck + lint + test
-npm run build       # emit to dist/
-npm run lint:fix    # auto-fix with Biome
-npm run format      # format with Biome
-npm run test        # run vitest once
+<pre><code class="language-bash">npm run build       # emit to dist/
+npm run test        # vitest once
 npm run test:watch  # vitest in watch mode
+npm run lint:fix    # Biome, with fixes
+npm run docs:dev    # the documentation site, live
 </code></pre>
-<h2 id="architecture-constraints">Architecture Constraints<a class="heading-anchor" href="#architecture-constraints" aria-label="Link to Architecture Constraints">#</a></h2>
+<h2 id="what-the-gate-checks">What the gate checks<a class="heading-anchor" href="#what-the-gate-checks" aria-label="Link to What the gate checks">#</a></h2>
+<p><code>npm run validate</code> is what CI runs on every pull request.
+Beyond typecheck, lint, and tests with coverage, it holds a set of byte-exact drift checks: the published JSON Schemas against the Zod source, the development corpus, the three generated decision tables under <code>docs/</code>, the worked example chain, and the shareable HTML export.
+Every one has a <code>generate:*</code> or <code>build:*</code> twin; the README&#39;s Development section lists them.
+A hand edit to a generated file fails the check, so regenerate.</p>
+<p>Three more guards are structural.
+<code>check:layers</code> keeps the dependency direction inside <code>src/</code>.
+<code>check:lineage</code> keeps lineage fields written only by the modules that own them.
+<code>check:boundary</code> keeps everything the tarball carries free of references to the planning system that produced it.</p>
+<p>Every fenced CLI invocation in <code>README.md</code> and <code>docs/</code> is run against the built binary by <code>check:doc-invocations</code>, and its exit code is compared with what the page claims.
+A page that demonstrates a failure declares the code it expects in an HTML comment on the line before the fence.</p>
+<h2 id="code-standards">Code standards<a class="heading-anchor" href="#code-standards" aria-label="Link to Code standards">#</a></h2>
 <ul>
-<li><strong>Provider-agnostic core.</strong> The runner and judge talk to model providers through thin adapters. Nothing in the core grader pipeline should hard-depend on a single vendor&#39;s SDK; provider SDKs are optional peer dependencies behind an adapter interface.</li>
-<li><strong>Evidence, not benchmarks.</strong> A grader&#39;s job is to produce evidence that feeds a ship / don&#39;t-ship decision, with a numeric score and a pass/fail, not a leaderboard number.</li>
-<li><strong>Deterministic-first.</strong> Prefer deterministic assertions (tool calls, params, sequence, grounding checks) over LLM-judge calls; the judge is the expensive, last-resort layer.</li>
-<li><strong>Non-determinism is measured, not hidden.</strong> Use <code>trials</code> + pass@k to measure flakiness; do not use retries to paper over it.</li>
+<li>Strict typing: explicit return types, no <code>any</code> in <code>src/</code>.</li>
+<li>Pure functions in <code>src/core/</code>. Every effect goes through a port; the CLI and the adapters are the only places that touch the filesystem or a process.</li>
+<li>No new runtime dependency without discussion first. <code>zod</code> is the only one today.</li>
+<li>Lean comments. A module&#39;s top-of-file comment carries the reasoning; the docs carry the consequence.</li>
 </ul>
-<h2 id="adding-a-module">Adding a Module<a class="heading-anchor" href="#adding-a-module" aria-label="Link to Adding a Module">#</a></h2>
-<p>Each module follows the same shape:</p>
-<pre><code>src/&lt;module&gt;.ts        # implementation + exported types
-tests/&lt;module&gt;.test.ts # vitest unit tests
-docs/&lt;module&gt;.md       # usage docs with real examples
-</code></pre>
+<h2 id="submitting-changes">Submitting changes<a class="heading-anchor" href="#submitting-changes" aria-label="Link to Submitting changes">#</a></h2>
 <ol>
-<li><p><strong>Implement</strong> in <code>src/&lt;module&gt;.ts</code>. Export explicit types; keep side effects out of module scope.</p>
-</li>
-<li><p><strong>Add a subpath export</strong> in <code>package.json</code>:</p>
-<pre><code class="language-json">&quot;./&lt;module&gt;&quot;: {
-  &quot;types&quot;: &quot;./dist/&lt;module&gt;.d.ts&quot;,
-  &quot;default&quot;: &quot;./dist/&lt;module&gt;.js&quot;
-}
-</code></pre>
-</li>
-<li><p><strong>Re-export from the barrel</strong> in <code>src/index.ts</code>.</p>
-</li>
-<li><p><strong>Add tests</strong> in <code>tests/&lt;module&gt;.test.ts</code>.</p>
-</li>
-<li><p><strong>Document</strong> it in <code>docs/&lt;module&gt;.md</code> and add a row to the README module table.</p>
-</li>
+<li>One change per pull request.</li>
+<li>Tests for any behavior change. Coverage on <code>src/core/</code> stays at or above 90 percent, statements and branches.</li>
+<li>Docs for any change to a command, a flag, an export, or a schema: <code>docs/</code> and the README.</li>
+<li>A changelog entry under <code>[Unreleased]</code> in <code>CHANGELOG.md</code> for anything a consumer would notice.</li>
+<li><code>npm run validate</code> green locally, then the <code>gate</code> check green on the pull request.</li>
 </ol>
-<h2 id="code-standards">Code Standards<a class="heading-anchor" href="#code-standards" aria-label="Link to Code Standards">#</a></h2>
-<ul>
-<li><strong>Strict typing</strong>: explicit return types, no <code>any</code> in <code>src</code>.</li>
-<li><strong>Functional style</strong>: pure functions, minimal shared state.</li>
-<li><strong>No new runtime dependencies</strong> without discussion first. Provider SDKs are peer dependencies, not direct dependencies.</li>
-</ul>
-<h2 id="submitting-changes">Submitting Changes<a class="heading-anchor" href="#submitting-changes" aria-label="Link to Submitting Changes">#</a></h2>
-<ol>
-<li><strong>Keep PRs focused</strong>: one module or fix per PR.</li>
-<li><strong>Tests required</strong>: add or update coverage for any behavior change.</li>
-<li><strong>Docs required</strong>: update the relevant <code>docs/*.md</code> and the README table for any public API change.</li>
-<li><strong>CI must pass</strong>: <code>pr-checks.yml</code> (lint / typecheck / build / test) and <code>gitleaks-check.yml</code> must be green.</li>
-<li><strong>No breaking changes</strong> to existing exports unless discussed and documented.</li>
-</ol>
-<h3 id="commit-message-format">Commit Message Format<a class="heading-anchor" href="#commit-message-format" aria-label="Link to Commit Message Format">#</a></h3>
-<pre><code>type: brief description
-
-Detailed explanation if needed
-</code></pre>
-<p>Types: <code>feat</code>, <code>fix</code>, <code>docs</code>, <code>refactor</code>, <code>test</code>, <code>chore</code>.</p>
-<h3 id="code-review-process">Code Review Process<a class="heading-anchor" href="#code-review-process" aria-label="Link to Code Review Process">#</a></h3>
-<p>All PRs require at least one maintainer review before merge. CI must be green.</p>
+<p>Commit messages follow <code>type: brief description</code>, with <code>feat</code>, <code>fix</code>, <code>docs</code>, <code>refactor</code>, <code>test</code>, or <code>chore</code> as the type.
+Merge by squash; the repository allows the other two, and the release tag lands on whatever commit reaches <code>main</code>.</p>
 <h2 id="releasing">Releasing<a class="heading-anchor" href="#releasing" aria-label="Link to Releasing">#</a></h2>
 <p><code>npm run release:patch</code> (or <code>release:minor</code>, <code>release:major</code>) picks the bump and dispatches
 <code>publish.yml</code> from <code>main</code>, which bumps the version, stamps the changelog, commits, tags, and
@@ -649,7 +617,7 @@ publishes in one run. The workflow pushes the release commit to <code>main</code
 <code>GITHUB_TOKEN</code>; <a href="#why-the-release-push-needs-nothing-special">Why the release push needs nothing
 special</a> explains why that is enough.</p>
 <p>The two-step path below (bump on a laptop, merge the PR, publish with <code>bump=none</code>) takes the release
-commit through an ordinary pull request instead, and is the fallback when the direct push is refused.</p>
+commit through an ordinary pull request, and is the fallback when the direct push is refused.</p>
 <h3 id="one-step-bump-and-publish-together">One-step: bump and publish together<a class="heading-anchor" href="#one-step-bump-and-publish-together" aria-label="Link to One-step: bump and publish together">#</a></h3>
 <p>From any checkout:</p>
 <pre><code class="language-bash">npm run release:patch      # or release:minor, release:major
@@ -684,15 +652,7 @@ serialized (<code>concurrency: publish</code>, no cancellation).</p>
 equally unruled <code>main</code>. The only ruleset in this repository is <code>Release tags</code>, which carries
 <code>deletion</code>, <code>non_fast_forward</code> and <code>update</code> on <code>refs/tags/v*</code>; the tag push does none of those three,
 so it is unaffected.</p>
-<p>Getting here cost three failed releases. <code>main</code> used to carry a <code>protect-main</code> ruleset whose
-<code>code_coverage</code> rule refused every direct push with</p>
-<pre><code>remote: error: GH013: Repository rule violations found for refs/heads/main.
-remote: - Code coverage checks require merging via API or UI.
-</code></pre>
-<p>A <code>GITHUB_TOKEN</code> cannot be named in a ruleset bypass list, so the fix attempted at the time was to
-push as a GitHub App instead. That made it worse: <code>RELEASE_APP_ID</code> and <code>RELEASE_APP_PRIVATE_KEY</code> are
-repository secrets in the other repository and were never created here, so the run died earlier, at
-the token step, with <code>The &#39;client-id&#39; (or deprecated &#39;app-id&#39;) input must be set to a non-empty string</code>. The ruleset was deleted instead, which is what made the two repositories the same.</p>
+<p><code>main</code> once carried a ruleset whose <code>code_coverage</code> rule refused every direct push, and a <code>GITHUB_TOKEN</code> cannot be named in a ruleset bypass list, so the ruleset was deleted.</p>
 <p>Branch protection on <code>main</code> and the one-step release path are therefore mutually exclusive as things
 stand. If <code>main</code> is ever protected again, either give the pushing actor a bypass or use the two-step
 path below, which takes the release commit through a pull request and needs no bypass at all.</p>
@@ -702,9 +662,7 @@ gh api repos/bmad-code-org/bmad-eval-quality/rulesets/&lt;id&gt;             # i
 gh api repos/bmad-code-org/bmad-eval-quality/rulesets/&lt;id&gt;/history     # who changed it, and when
 gh api repos/bmad-code-org/bmad-eval-quality/rules/branches/main       # what actually applies to main
 </code></pre>
-<p>Read the whole rule list rather than the one rule you changed: run 34245836441 failed because
-<code>required_status_checks</code> was audited and removed while <code>code_coverage</code>, present since the ruleset was
-created on 2026-08-25, went unread.</p>
+<p>Read every rule in the list, since one overlooked rule is enough to refuse the push.</p>
 <h3 id="fallback-bump-on-a-laptop-publish-separately">Fallback: bump on a laptop, publish separately<a class="heading-anchor" href="#fallback-bump-on-a-laptop-publish-separately" aria-label="Link to Fallback: bump on a laptop, publish separately">#</a></h3>
 <p>Two steps with a human merge in between: the flow before the one-step path existed, and the one that
 depends on no App and no bypass, because the release commit reaches <code>main</code> through an ordinary
@@ -719,8 +677,8 @@ the <code>[Unreleased]</code> notes in <code>CHANGELOG.md</code> into a dated <c
 opens the PR against <code>main</code>. It refuses on a dirty tree, off <code>main</code>, when local <code>main</code> differs from
 <code>origin/main</code>, and when the tag, the branch, or the npm version already exists. Pass <code>--no-pr</code> to
 push without opening the PR.</p>
-<p>Review the PR, wait for <code>gate</code>, merge it. Every merge here is a squash, so the release commit on
-<code>main</code> is the squash commit, and that is what gets tagged.</p>
+<p>Review the PR, wait for <code>gate</code>, merge it by squash, so the release commit on <code>main</code> is the squash
+commit that gets tagged.</p>
 <h4 id="section-2-publish-from-main">2. Publish from main<a class="heading-anchor" href="#section-2-publish-from-main" aria-label="Link to 2. Publish from main">#</a></h4>
 <pre><code class="language-bash">npm run release:publish             # gh workflow run publish.yml --ref main -f bump=none
 </code></pre>
@@ -732,63 +690,13 @@ Release exactly as described in the one-step path above, steps 3 and 4.</p>
 which runs <code>npm run validate</code> on two Node versions plus the canary jobs, so a release re-proving any
 part of that buys nothing and gives it a second way to fail on something unrelated to releasing.
 Tests belong on the pull request and on a laptop before the push.</p>
-<h3 id="first-publish">First publish<a class="heading-anchor" href="#first-publish" aria-label="Link to First publish">#</a></h3>
-<p>The npm Trusted Publisher form lives under an existing package&#39;s settings
-(npmjs.com &gt; Packages &gt; <code>eval-quality</code> &gt; Settings &gt; Trusted Publisher), and as of the
-<a href="https://docs.npmjs.com/trusted-publishers">current docs</a> there is no way to register one for a
-package the registry has never seen. Check that page first; if npm has added first-publish support
-since, configure the publisher and skip the token below. Otherwise the first version goes up once
-by hand:</p>
-<ol>
-<li><p>Pick the first version deliberately. <code>package.json</code> sits at <code>0.0.0</code>, so <code>release:prepare -- patch</code>
-produces <code>0.0.1</code> and <code>minor</code> produces <code>0.1.0</code>. Cut and merge that PR as in step 1.</p>
-</li>
-<li><p>On npmjs.com, create a granular access token: packages and scopes &quot;Read and write&quot;, the
-shortest expiry offered, IP allowlist if practical, bypass 2FA off. It has to cover all
-packages, since an unpublished package cannot be selected.</p>
-</li>
-<li><p>From a clean checkout of <code>main</code> at the merged release commit (<code>git rev-parse HEAD</code> must equal
-what <code>gh pr view --json mergeCommit</code> reports; publishing from the release branch would record
-a <code>gitHead</code> that is not on <code>main</code> and the workflow would refuse it):</p>
-<pre><code class="language-bash">npm ci &amp;&amp; npm run validate &amp;&amp; npm run build
-EVAL_QUALITY_PUBLISH_AUTHORIZED=true NODE_AUTH_TOKEN=&lt;token&gt; npm publish --access public --tag latest
-</code></pre>
-<p>No <code>--provenance</code>: attestations need a CI identity. Every later release gets one.</p>
-</li>
-<li><p>Revoke the token.</p>
-</li>
-<li><p>Configure the Trusted Publisher: organization <code>bmad-code-org</code>, repository <code>bmad-eval-quality</code>,
-workflow filename <code>publish.yml</code>, no environment. npm defaults a Trusted Publisher created on or
-after 2026-09-03 to staged publishing only; <code>publish.yml</code> runs <code>npm publish --provenance</code>
-directly, so also grant this configuration the direct-publish permission, or npm rejects that
-publish on the registry side with the workflow otherwise correct.</p>
-</li>
-<li><p>Run the publish workflow from <code>main</code> with <code>bump: none</code>. It finds the version on npm with a
-matching <code>gitHead</code>, skips the publish, and does the tag and Release.</p>
-</li>
-</ol>
-<h3 id="tag-protection">Tag protection<a class="heading-anchor" href="#tag-protection" aria-label="Link to Tag protection">#</a></h3>
-<p>Tags <code>v*</code> should be immutable once pushed, like the &quot;Release tags&quot; ruleset on bmad-tea. Create it
-once with:</p>
-<pre><code class="language-bash">gh api --method POST repos/bmad-code-org/bmad-eval-quality/rulesets --input - &lt;&lt;&#39;JSON&#39;
-{
-  &quot;name&quot;: &quot;Release tags&quot;,
-  &quot;target&quot;: &quot;tag&quot;,
-  &quot;enforcement&quot;: &quot;active&quot;,
-  &quot;conditions&quot;: { &quot;ref_name&quot;: { &quot;include&quot;: [&quot;refs/tags/v*&quot;], &quot;exclude&quot;: [] } },
-  &quot;rules&quot;: [{ &quot;type&quot;: &quot;deletion&quot; }, { &quot;type&quot;: &quot;non_fast_forward&quot; }, { &quot;type&quot;: &quot;update&quot; }],
-  &quot;bypass_actors&quot;: []
-}
-JSON
-</code></pre>
-<p>Creation stays allowed, which is all the workflow needs. A tag at the wrong commit is fixed by
-bumping the version and releasing again, never by moving the tag.</p>
+<h3 id="tags">Tags<a class="heading-anchor" href="#tags" aria-label="Link to Tags">#</a></h3>
+<p>The <code>Release tags</code> ruleset makes every <code>v*</code> tag immutable once pushed. A tag at the wrong commit is fixed by bumping the version and releasing again.</p>
 <h2 id="community-support">Community &amp; Support<a class="heading-anchor" href="#community-support" aria-label="Link to Community &amp; Support">#</a></h2>
 <ul>
 <li><strong>Issues</strong>: report bugs and request features via GitHub Issues.</li>
-<li><strong>Security</strong>: see <a href="eval-quality-security.html">SECURITY.md</a> - do not open a public issue for vulnerabilities.</li>
+<li><strong>Security</strong>: see <a href="eval-quality-security.html">SECURITY.md</a>. Do not open a public issue for vulnerabilities.</li>
 </ul>
-<p>Thank you for contributing to eval-quality!</p>
 </article>
       <footer class="footer">Generated from CONTRIBUTING.md by scripts/build-shareable.mjs. Self-contained and print-ready. Do not hand-edit; regenerate instead.</footer>
     </main>

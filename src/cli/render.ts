@@ -110,10 +110,10 @@ export const EXIT_CODE_TABLE = `Exit codes (AD-21):
   64  usage error
 
   --strict never promotes a CONCERNS whose firing conditions are all evidence
-  conditions: those conditions report that the measurement fell short of the
-  policy. 1 and 2 report a verdict the score command's ladder resolved; every
-  other invalidating condition behind 3 is reachable there too, alongside the
-  failed pre-flight the preflight command itself reports.`
+  conditions: those report that the measurement fell short of the policy.
+  1 and 2 come from the score command's verdict ladder. 3 comes from a failed
+  pre-flight, which the preflight command reports, or from any other
+  invalidating condition score finds.`
 
 /** `eval-quality: usage: <message>` */
 export function renderUsage(message: string): string {
