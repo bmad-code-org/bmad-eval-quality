@@ -267,7 +267,7 @@ import spec from 'eval-quality/schemas/eval-contract.schema.json' with { type: '
 The import attribute is required: ESM on Node 22 and 24 both throw `ERR_IMPORT_ATTRIBUTE_MISSING`
 without it. The development corpus ships the same way, at `eval-quality/corpus/dev/`, so an adopter
 can read real compiled contracts and one compiled-and-sealed pair without cloning this repository.
-`eval-quality/adapters` is one of the five published subpaths, holding the three reference adapters
+`eval-quality/adapters` is one of the five published subpaths, holding the four reference adapters
 the conformance suite runs against.
 
 Eleven of the twelve published schemas carry a `schemaVersion`. `artifact-reference` is exempt: it
@@ -378,10 +378,10 @@ names as that artifact's producer, which today are `src/core/seal/seal.ts`,
 The `eval-quality/conformance` subpath publishes the port boundary: the four port types, the message
 shapes they carry, the AD-28 `RUNTIME_FAULT_CODES` registry and `RuntimeFaultCode` type a conforming
 adapter throws against, and an executable conformance suite. An adapter is conforming when
-`runCorpusPortConformance`, `runClockPortConformance`, `runFileSystemPortConformance`, or
-`runEnvironmentProbePortConformance` returns a report whose `passed` is true, which is the definition;
-each returns a report, so the suite carries no test framework and runs under whichever one you
-already use.
+`runCorpusPortConformance`, `runClockPortConformance`, `runFileSystemPortConformance`,
+`runEnvironmentProbePortConformance`, or `runCommandLineProbeConformance` returns a report whose
+`passed` is true, which is the definition; each returns a report, so the suite carries no test
+framework and runs under whichever one you already use.
 
 ```ts
 import { runCorpusPortConformance, type CorpusPort } from 'eval-quality/conformance'
@@ -390,10 +390,15 @@ import { runCorpusPortConformance, type CorpusPort } from 'eval-quality/conforma
 The suite drives a subject through four scenarios and checks six assertions per port method: a
 mechanism failure is a typed fault, exactly one underlying call happens on success and on failure, an
 aborted signal rejects promptly, an in-band error value is thrown as a fault, and a
-successful call returns a response the published schema accepts. The environment-probe port adds
-thirteen more from AD-35's default-deny target policy. `npm run test:conformance` runs the suite
-against the three adapters this package ships and against an in-repository probe subject that exists
-only as the suite's own subject.
+successful call returns a response the published schema accepts. `EnvironmentProbePort` adds a second
+arm per mechanism: `runEnvironmentProbePortConformance` (`api`) adds thirteen more from AD-35's
+default-deny target policy, and `runCommandLineProbeConformance` (`cli`) adds nine, once
+`CommandTargetPolicy` gave that mechanism something to authorize — an unmapped interface, an
+unmapped executable, an unauthorized subcommand path, a non-zero exit read as an observation, a
+shell-metacharacter argument proven to reach the process as one literal token, a declared artifact
+captured, and both caps enforced. `npm run test:conformance` runs the suite against the four
+adapters this package ships and against two in-repository probe subjects, one per mechanism, that
+exist only as the suite's own subjects.
 
 `docs/ad21-verdict-decision.generated.md` holds AD-21's two published verdict ladders, production and
 contract-scoring, emitted from the rule tables in `src/core/score/ladder.ts` together with the

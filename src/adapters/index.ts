@@ -4,6 +4,15 @@
  * subpath and the root barrel keeps the `root -> adapters` edge the matrix
  * does not grant.
  */
+export type {
+	CommandMechanism,
+	CommandRunRequest,
+	CommandRunResult,
+} from './command-line-adapter.ts'
+export {
+	createCommandLineAdapter,
+	nodeCommandMechanism,
+} from './command-line-adapter.ts'
 export type { CorpusMechanism } from './local-corpus-adapter.ts'
 export { createLocalCorpusAdapter } from './local-corpus-adapter.ts'
 export type { FileSystemMechanism } from './node-file-system-adapter.ts'

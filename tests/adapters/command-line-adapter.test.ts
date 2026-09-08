@@ -1,0 +1,368 @@
+import { chmodSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import {
+	buildArgv,
+	type CommandMechanism,
+	createCommandLineAdapter,
+} from '../../src/adapters/command-line-adapter.ts'
+import type {
+	CommandProbeRequest,
+	ProbeRequest,
+} from '../../src/core/schemas/port-messages.ts'
+import type {
+	CommandTargetAuthorization,
+	CommandTargetPolicy,
+} from '../../src/core/schemas/probe-policy.ts'
+
+const FIXTURE_PATH = fileURLToPath(
+	new URL('./fixtures/command-probe-fixture.mjs', import.meta.url),
+)
+
+beforeAll(() => {
+	chmodSync(FIXTURE_PATH, 0o755)
+})
+
+function authorization(
+	overrides: Partial<CommandTargetAuthorization> = {},
+): CommandTargetAuthorization {
+	return {
+		interfaceId: 'devtools',
+		executable: 'probe-cli',
+		target: FIXTURE_PATH,
+		permittedSubcommandPaths: [[]],
+		cwd: tmpdir(),
+		artifacts: {},
+		maxElapsedMs: 2000,
+		maxOutputBytes: 4096,
+		...overrides,
+	}
+}
+
+function policyOf(
+	...authorizations: CommandTargetAuthorization[]
+): CommandTargetPolicy {
+	return { authorizations }
+}
+
+function request(
+	overrides: Partial<CommandProbeRequest> = {},
+): CommandProbeRequest {
+	return {
+		kind: 'cli',
+		probeId: 'p1',
+		interfaceId: 'devtools',
+		operationId: 'op1',
+		executable: 'probe-cli',
+		subcommandPath: [],
+		channels: {
+			argument: {},
+			option: {},
+			environment: {},
+			stdin: { kind: 'absent' },
+		},
+		...overrides,
+	}
+}
+
+describe('createCommandLineAdapter, policy denial', () => {
+	it('never calls the mechanism when the interface is unmapped', async () => {
+		let calls = 0
+		const mechanism: CommandMechanism = {
+			run: async () => {
+				calls++
+				throw new Error('should not run')
+			},
+			readArtifact: async () => ({
+				present: false,
+				text: '',
+				truncated: false,
+			}),
+		}
+		const adapter = createCommandLineAdapter(
+			policyOf(authorization()),
+			mechanism,
+		)
+		await expect(
+			adapter.probe(
+				request({ interfaceId: 'unmapped' }),
+				new AbortController().signal,
+			),
+		).rejects.toMatchObject({ code: 'forbidden-target' })
+		expect(calls).toBe(0)
+	})
+
+	it('never calls the mechanism when the subcommand path is not authorized', async () => {
+		let calls = 0
+		const mechanism: CommandMechanism = {
+			run: async () => {
+				calls++
+				throw new Error('should not run')
+			},
+			readArtifact: async () => ({
+				present: false,
+				text: '',
+				truncated: false,
+			}),
+		}
+		const adapter = createCommandLineAdapter(
+			policyOf(authorization({ permittedSubcommandPaths: [['status']] })),
+			mechanism,
+		)
+		await expect(
+			adapter.probe(
+				request({ subcommandPath: ['push'] }),
+				new AbortController().signal,
+			),
+		).rejects.toMatchObject({ code: 'forbidden-target' })
+		expect(calls).toBe(0)
+	})
+
+	it('denies an api request the same way: no target is ever authorized', async () => {
+		let calls = 0
+		const mechanism: CommandMechanism = {
+			run: async () => {
+				calls++
+				throw new Error('should not run')
+			},
+			readArtifact: async () => ({
+				present: false,
+				text: '',
+				truncated: false,
+			}),
+		}
+		const adapter = createCommandLineAdapter(
+			policyOf(authorization()),
+			mechanism,
+		)
+		const apiRequest: ProbeRequest = {
+			kind: 'api',
+			probeId: 'p1',
+			interfaceId: 'devtools',
+			operationId: 'op1',
+			method: 'GET',
+			pathTemplate: '/health',
+			channels: { path: {}, query: {}, header: {}, body: { kind: 'absent' } },
+		}
+		await expect(
+			adapter.probe(apiRequest, new AbortController().signal),
+		).rejects.toMatchObject({ code: 'forbidden-target' })
+		expect(calls).toBe(0)
+	})
+})
+
+describe('createCommandLineAdapter, argv construction', () => {
+	it('builds options before positionals, both in record order, booleans as bare flags', () => {
+		const argv = buildArgv({
+			argument: { first: 'alpha', second: 'beta' },
+			option: { verbose: true, quiet: false, level: 3 },
+			environment: {},
+			stdin: { kind: 'absent' },
+		})
+		expect(argv).toEqual(['--verbose', '--level', '3', 'alpha', 'beta'])
+	})
+})
+
+describe('createCommandLineAdapter, real spawn', () => {
+	let scratchDir: string
+
+	beforeAll(() => {
+		scratchDir = mkdtempSync(join(tmpdir(), 'command-adapter-'))
+	})
+	afterAll(() => {
+		rmSync(scratchDir, { recursive: true, force: true })
+	})
+
+	it('runs an authorized invocation and observes its stdout, echoing every correlation field', async () => {
+		const adapter = createCommandLineAdapter(policyOf(authorization()))
+		const observation = await adapter.probe(
+			request({ probeId: 'corr-1' }),
+			new AbortController().signal,
+		)
+		expect(observation).toMatchObject({
+			kind: 'cli',
+			probeId: 'corr-1',
+			interfaceId: 'devtools',
+			operationId: 'op1',
+			exitCode: 0,
+		})
+		if (observation.kind !== 'cli')
+			throw new Error('expected a cli observation')
+		expect(observation.stdout.kind).toBe('json')
+	})
+
+	it('observes a non-zero exit rather than throwing', async () => {
+		const adapter = createCommandLineAdapter(policyOf(authorization()))
+		const observation = await adapter.probe(
+			request({
+				channels: {
+					argument: {},
+					option: { 'exit-code': 3 },
+					environment: {},
+					stdin: { kind: 'absent' },
+				},
+			}),
+			new AbortController().signal,
+		)
+		if (observation.kind !== 'cli')
+			throw new Error('expected a cli observation')
+		expect(observation.exitCode).toBe(3)
+	})
+
+	it('passes a shell-metacharacter argument through as one literal token, never interpreted', async () => {
+		const dangerous = '$(echo pwned); rm -rf / #'
+		const adapter = createCommandLineAdapter(policyOf(authorization()))
+		const observation = await adapter.probe(
+			request({
+				channels: {
+					argument: { payload: dangerous },
+					option: {},
+					environment: {},
+					stdin: { kind: 'absent' },
+				},
+			}),
+			new AbortController().signal,
+		)
+		if (observation.kind !== 'cli')
+			throw new Error('expected a cli observation')
+		expect(observation.stdout.kind).toBe('json')
+		const payload =
+			observation.stdout.kind === 'json' ? observation.stdout.value : undefined
+		expect((payload as { argv: string[] }).argv).toEqual([dangerous])
+	})
+
+	it('writes the declared stdin to the process and closes the stream', async () => {
+		const adapter = createCommandLineAdapter(policyOf(authorization()))
+		const observation = await adapter.probe(
+			request({
+				channels: {
+					argument: {},
+					option: {},
+					environment: {},
+					stdin: { kind: 'text', value: 'piped-in' },
+				},
+			}),
+			new AbortController().signal,
+		)
+		if (observation.kind !== 'cli')
+			throw new Error('expected a cli observation')
+		const payload =
+			observation.stdout.kind === 'json' ? observation.stdout.value : undefined
+		expect((payload as { stdin: string }).stdin).toBe('piped-in')
+	})
+
+	it('passes the declared environment channel through to the process', async () => {
+		const adapter = createCommandLineAdapter(policyOf(authorization()))
+		const observation = await adapter.probe(
+			request({
+				channels: {
+					argument: {},
+					option: {},
+					environment: { PROBE_TEST_VAR: 'from-contract' },
+					stdin: { kind: 'absent' },
+				},
+			}),
+			new AbortController().signal,
+		)
+		if (observation.kind !== 'cli')
+			throw new Error('expected a cli observation')
+		const payload =
+			observation.stdout.kind === 'json' ? observation.stdout.value : undefined
+		expect(
+			(payload as { env: Record<string, string> }).env.PROBE_TEST_VAR,
+		).toBe('from-contract')
+	})
+
+	it('captures a declared artifact the process wrote, and reports absent for one it did not', async () => {
+		const artifactPath = join(scratchDir, 'written.txt')
+		const adapter = createCommandLineAdapter(
+			policyOf(
+				authorization({
+					artifacts: {
+						written: artifactPath,
+						'never-written': join(scratchDir, 'ghost.txt'),
+					},
+				}),
+			),
+		)
+		const observation = await adapter.probe(
+			request({
+				channels: {
+					argument: {},
+					option: { 'write-artifact': [artifactPath, 'artifact-body'] },
+					environment: {},
+					stdin: { kind: 'absent' },
+				},
+			}),
+			new AbortController().signal,
+		)
+		if (observation.kind !== 'cli')
+			throw new Error('expected a cli observation')
+		expect(observation.artifacts.written).toEqual({
+			kind: 'text',
+			value: 'artifact-body',
+		})
+		expect(observation.artifacts['never-written']).toEqual({ kind: 'absent' })
+		expect(readFileSync(artifactPath, 'utf8')).toBe('artifact-body')
+	})
+
+	it('caps wall-clock time and throws budget-exhausted, killing the process', async () => {
+		const adapter = createCommandLineAdapter(
+			policyOf(authorization({ maxElapsedMs: 100 })),
+		)
+		await expect(
+			adapter.probe(
+				request({
+					channels: {
+						argument: {},
+						option: { 'sleep-ms': 5000 },
+						environment: {},
+						stdin: { kind: 'absent' },
+					},
+				}),
+				new AbortController().signal,
+			),
+		).rejects.toMatchObject({ code: 'budget-exhausted' })
+	})
+
+	it('caps output bytes and throws budget-exhausted, killing the process', async () => {
+		const adapter = createCommandLineAdapter(
+			policyOf(authorization({ maxOutputBytes: 64 })),
+		)
+		await expect(
+			adapter.probe(
+				request({
+					channels: {
+						argument: {},
+						option: { 'big-output': 4096 },
+						environment: {},
+						stdin: { kind: 'absent' },
+					},
+				}),
+				new AbortController().signal,
+			),
+		).rejects.toMatchObject({ code: 'budget-exhausted' })
+	})
+
+	it('rejects with the aborted fault when the signal aborts mid-run', async () => {
+		const adapter = createCommandLineAdapter(
+			policyOf(authorization({ maxElapsedMs: 5000 })),
+		)
+		const controller = new AbortController()
+		const call = adapter.probe(
+			request({
+				channels: {
+					argument: {},
+					option: { 'sleep-ms': 2000 },
+					environment: {},
+					stdin: { kind: 'absent' },
+				},
+			}),
+			controller.signal,
+		)
+		queueMicrotask(() => controller.abort())
+		await expect(call).rejects.toMatchObject({ code: 'aborted' })
+	})
+})

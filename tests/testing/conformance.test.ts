@@ -426,6 +426,7 @@ describe('the report itself: formatting, the length rule, and the declared count
 			clock: 6,
 			'file-system': 12,
 			'environment-probe': 19,
+			'command-probe': 15,
 		})
 	})
 })

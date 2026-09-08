@@ -858,7 +858,7 @@ twelve generated documents, published at the <code>eval-quality/schemas/*</code>
 <p>The import attribute is required: ESM on Node 22 and 24 both throw <code>ERR_IMPORT_ATTRIBUTE_MISSING</code>
 without it. The development corpus ships the same way, at <code>eval-quality/corpus/dev/</code>, so an adopter
 can read real compiled contracts and one compiled-and-sealed pair without cloning this repository.
-<code>eval-quality/adapters</code> is one of the five published subpaths, holding the three reference adapters
+<code>eval-quality/adapters</code> is one of the five published subpaths, holding the four reference adapters
 the conformance suite runs against.</p>
 <p>Eleven of the twelve published schemas carry a <code>schemaVersion</code>. <code>artifact-reference</code> is exempt: it
 is embedded inside other artifacts, so it has no version to break.</p>
@@ -941,19 +941,24 @@ names as that artifact&#39;s producer, which today are <code>src/core/seal/seal.
 <p>The <code>eval-quality/conformance</code> subpath publishes the port boundary: the four port types, the message
 shapes they carry, the AD-28 <code>RUNTIME_FAULT_CODES</code> registry and <code>RuntimeFaultCode</code> type a conforming
 adapter throws against, and an executable conformance suite. An adapter is conforming when
-<code>runCorpusPortConformance</code>, <code>runClockPortConformance</code>, <code>runFileSystemPortConformance</code>, or
-<code>runEnvironmentProbePortConformance</code> returns a report whose <code>passed</code> is true, which is the definition;
-each returns a report, so the suite carries no test framework and runs under whichever one you
-already use.</p>
+<code>runCorpusPortConformance</code>, <code>runClockPortConformance</code>, <code>runFileSystemPortConformance</code>,
+<code>runEnvironmentProbePortConformance</code>, or <code>runCommandLineProbeConformance</code> returns a report whose
+<code>passed</code> is true, which is the definition; each returns a report, so the suite carries no test
+framework and runs under whichever one you already use.</p>
 <pre><code class="language-ts">import { runCorpusPortConformance, type CorpusPort } from &#39;eval-quality/conformance&#39;
 </code></pre>
 <p>The suite drives a subject through four scenarios and checks six assertions per port method: a
 mechanism failure is a typed fault, exactly one underlying call happens on success and on failure, an
 aborted signal rejects promptly, an in-band error value is thrown as a fault, and a
-successful call returns a response the published schema accepts. The environment-probe port adds
-thirteen more from AD-35&#39;s default-deny target policy. <code>npm run test:conformance</code> runs the suite
-against the three adapters this package ships and against an in-repository probe subject that exists
-only as the suite&#39;s own subject.</p>
+successful call returns a response the published schema accepts. <code>EnvironmentProbePort</code> adds a second
+arm per mechanism: <code>runEnvironmentProbePortConformance</code> (<code>api</code>) adds thirteen more from AD-35&#39;s
+default-deny target policy, and <code>runCommandLineProbeConformance</code> (<code>cli</code>) adds nine, once
+<code>CommandTargetPolicy</code> gave that mechanism something to authorize — an unmapped interface, an
+unmapped executable, an unauthorized subcommand path, a non-zero exit read as an observation, a
+shell-metacharacter argument proven to reach the process as one literal token, a declared artifact
+captured, and both caps enforced. <code>npm run test:conformance</code> runs the suite against the four
+adapters this package ships and against two in-repository probe subjects, one per mechanism, that
+exist only as the suite&#39;s own subjects.</p>
 <p><code>docs/ad21-verdict-decision.generated.md</code> holds AD-21&#39;s two published verdict ladders, production and
 contract-scoring, emitted from the rule tables in <code>src/core/score/ladder.ts</code> together with the
 fixtures that exercise them, and guarded by <code>npm run check:ad21-table</code>. Each row carries its
