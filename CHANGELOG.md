@@ -10,6 +10,8 @@ body.
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-09-08
+
 ### Added
 
 - `createCommandLineAdapter`, a reference `EnvironmentProbePort` adapter for the `cli` mechanism,
