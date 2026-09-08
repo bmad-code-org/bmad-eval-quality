@@ -163,6 +163,58 @@ describe('createCommandLineAdapter, argv construction', () => {
 		})
 		expect(argv).toEqual(['--verbose', '--level', '3', 'alpha', 'beta'])
 	})
+
+	it('repeats an option once per element when its value is an array, in the array order', () => {
+		const argv = buildArgv({
+			argument: {},
+			option: { 'env-pass': ['HOME', 'USER'], agent: 'claude' },
+			environment: {},
+			stdin: { kind: 'absent' },
+		})
+		expect(argv).toEqual([
+			'--env-pass',
+			'HOME',
+			'--env-pass',
+			'USER',
+			'--agent',
+			'claude',
+		])
+	})
+
+	it('emits nothing for an empty array, the same as a false flag', () => {
+		const argv = buildArgv({
+			argument: {},
+			option: { 'agent-arg': [], quiet: false, agent: 'codex' },
+			environment: {},
+			stdin: { kind: 'absent' },
+		})
+		expect(argv).toEqual(['--agent', 'codex'])
+	})
+
+	it('expands an array positional into one token per element', () => {
+		const argv = buildArgv({
+			argument: { paths: ['a.spec.ts', 'b.spec.ts'], mode: 'strict' },
+			option: {},
+			environment: {},
+			stdin: { kind: 'absent' },
+		})
+		expect(argv).toEqual(['a.spec.ts', 'b.spec.ts', 'strict'])
+	})
+
+	it('keeps an array element that looks like a flag as one literal token', () => {
+		const argv = buildArgv({
+			argument: {},
+			option: { 'agent-arg': ['--dangerously-skip-permissions', '; rm -rf /'] },
+			environment: {},
+			stdin: { kind: 'absent' },
+		})
+		expect(argv).toEqual([
+			'--agent-arg',
+			'--dangerously-skip-permissions',
+			'--agent-arg',
+			'; rm -rf /',
+		])
+	})
 })
 
 describe('createCommandLineAdapter, real spawn', () => {

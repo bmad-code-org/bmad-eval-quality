@@ -8,7 +8,7 @@
 //   --sleep-ms <n>       sleep before doing anything else (timeout cases)
 //   --big-output <n>     write n bytes of 'x' to stdout (output-cap cases)
 //   --exit-code <n>      exit with code n after the rest runs
-//   --write-artifact <path> <text>   write text to path (artifact cases)
+//   --write-artifact <value>  given twice, as path then text (artifact cases)
 // Anything else is echoed back verbatim in the JSON payload below, which is
 // how `argument-passed-literally` proves a shell metacharacter never reaches
 // a shell: the fixture never invokes one, so whatever it receives in argv is
@@ -18,6 +18,7 @@ import { readFileSync, writeFileSync } from 'node:fs'
 const argv = process.argv.slice(2)
 let exitCode = 0
 const rest = []
+const artifactTokens = []
 
 for (let index = 0; index < argv.length; index++) {
 	const flag = argv[index]
@@ -33,14 +34,18 @@ for (let index = 0; index < argv.length; index++) {
 	} else if (flag === '--exit-code') {
 		exitCode = Number(argv[++index])
 	} else if (flag === '--write-artifact') {
-		// One token: buildArgv JSON-encodes an array-valued option rather than
-		// splitting it into two argv elements, so the fixture reads it the same
-		// way.
-		const [path, text] = JSON.parse(argv[++index])
-		writeFileSync(path, text)
+		// The repeatable spelling: buildArgv emits `--write-artifact` once per
+		// array element, so the path and the text arrive as two occurrences of
+		// the same flag and this collects them the way a real CLI parser would.
+		artifactTokens.push(argv[++index])
 	} else {
 		rest.push(flag)
 	}
+}
+
+if (artifactTokens.length > 0) {
+	const [path, text] = artifactTokens
+	writeFileSync(path, text)
 }
 
 let stdin = ''

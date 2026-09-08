@@ -10,6 +10,24 @@ body.
 
 ## [Unreleased]
 
+### Added
+
+- `createCommandLineAdapter` spells a repeatable option. An array value in the `option` channel
+  emits `--{key}` once per element, in the array's order, and an array in the `argument` channel
+  contributes one positional token per element. A channel record holds one value per key, so a
+  caller could previously send `--env-pass` once; a great many command-line tools accept an option
+  several times and collect the values. The old behaviour for an array was a single
+  `--env-pass ["A","B"]` token, which reaches no parser that understands it, so nothing can depend
+  on it. An empty array emits nothing, the same as `false`.
+
+### Fixed
+
+- The documentation site pins `astro` 7.2.9. 7.2.4 carries a critical advisory, remote code
+  execution through AVIF image optimization (GHSA-26w7-cxv4-gfx2), and three high advisories reached
+  the same graph through `js-yaml`, `sharp`, and `svgo`. The known-vulnerability audit job had been
+  failing on all four. 7.2.9 published on 2026-08-26, so it clears the seven-day lockfile-age window
+  the same job enforces.
+
 ## [1.0.0] - 2026-09-08
 
 No code changes since 0.5.0. From here the package follows semantic versioning on its published

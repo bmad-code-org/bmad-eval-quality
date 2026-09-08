@@ -16,11 +16,13 @@
  * 2. `argument` and `option` build the argv the same way a well-behaved CLI
  *    parser reads one: options first as `--{key}` (a boolean `true` is a
  *    bare flag, `false` is omitted, anything else gets one value token),
- *    positionals after in the record's own key order. `environment` passes
- *    through as declared, plus the host's own `PATH` so a `target` naming a
- *    bare command still resolves; a declared `PATH` key wins over that
- *    default. `stdin` is written and the stream is closed; `absent` closes
- *    it with nothing written.
+ *    positionals after in the record's own key order. An array value is the
+ *    repeatable spelling: `--{key}` is emitted once per element, and an
+ *    array positional contributes one token per element. `environment`
+ *    passes through as declared, plus the host's own `PATH` so a `target`
+ *    naming a bare command still resolves; a declared `PATH` key wins over
+ *    that default. `stdin` is written and the stream is closed; `absent`
+ *    closes it with nothing written.
  * 3. `maxElapsedMs` and `maxOutputBytes` are enforced by this adapter, not
  *    borrowed from `AbortSignal`: exceeding either kills the process with
  *    `SIGKILL` and throws `budget-exhausted`, exactly as an HTTP cap does.
@@ -95,15 +97,37 @@ function stringifyScalar(value: unknown): string {
 	return JSON.stringify(value)
 }
 
-/** Options first as `--{key}`, positionals after, both in the record's own key order. Exported for its own unit tests: this is the one place shell-injection safety is decided. */
+/**
+ * Options first as `--{key}`, positionals after, both in the record's own key
+ * order. Exported for its own unit tests: this is the one place
+ * shell-injection safety is decided.
+ *
+ * An array value is the repeatable spelling. A great many command-line tools
+ * accept an option more than once and collect the values (`--env-pass A
+ * --env-pass B`), and a channel record holds one value per key, so before this
+ * a caller could send exactly one. The single JSON token an array used to
+ * produce (`--env-pass ["A","B"]`) reaches no parser that understands it, so
+ * nothing can depend on the old spelling. An empty array emits nothing, the
+ * same as `false`: there is no value to pass.
+ */
 export function buildArgv(channels: CommandProbeRequest['channels']): string[] {
 	const optionTokens: string[] = []
 	for (const [key, value] of Object.entries(channels.option)) {
 		if (value === false) continue
+		if (Array.isArray(value)) {
+			for (const element of value) {
+				optionTokens.push(`--${key}`, stringifyScalar(element))
+			}
+			continue
+		}
 		optionTokens.push(`--${key}`)
 		if (value !== true) optionTokens.push(stringifyScalar(value))
 	}
-	const argumentTokens = Object.values(channels.argument).map(stringifyScalar)
+	const argumentTokens = Object.values(channels.argument).flatMap((value) =>
+		Array.isArray(value)
+			? value.map(stringifyScalar)
+			: [stringifyScalar(value)],
+	)
 	return [...optionTokens, ...argumentTokens]
 }
 
