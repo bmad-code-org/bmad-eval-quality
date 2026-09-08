@@ -308,6 +308,33 @@ describe('createCommandLineAdapter, real spawn', () => {
 		expect(readFileSync(artifactPath, 'utf8')).toBe('artifact-body')
 	})
 
+	it('caps an oversize artifact and throws budget-exhausted, without reading past the cap', async () => {
+		const artifactPath = join(scratchDir, 'oversize.txt')
+		const adapter = createCommandLineAdapter(
+			policyOf(
+				authorization({
+					artifacts: { report: artifactPath },
+					maxOutputBytes: 64,
+				}),
+			),
+		)
+		await expect(
+			adapter.probe(
+				request({
+					channels: {
+						argument: {},
+						option: {
+							'write-artifact': [artifactPath, 'x'.repeat(4096)],
+						},
+						environment: {},
+						stdin: { kind: 'absent' },
+					},
+				}),
+				new AbortController().signal,
+			),
+		).rejects.toMatchObject({ code: 'budget-exhausted' })
+	})
+
 	it('caps wall-clock time and throws budget-exhausted, killing the process', async () => {
 		const adapter = createCommandLineAdapter(
 			policyOf(authorization({ maxElapsedMs: 100 })),

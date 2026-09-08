@@ -33,7 +33,7 @@
  *    documents for itself.
  */
 import { spawn } from 'node:child_process'
-import { readFile } from 'node:fs/promises'
+import { open } from 'node:fs/promises'
 import { constants as osConstants } from 'node:os'
 import { isAbsolute, resolve as resolvePath } from 'node:path'
 import { RuntimeFault } from '../core/schemas/faults.ts'
@@ -147,6 +147,12 @@ function writeStdin(
 ): void {
 	const stream = child.stdin
 	if (stream === null) return
+	// A child that exits before reading stdin closes its end of the pipe, and
+	// the pending `end()` write below then raises EPIPE on this stream, not on
+	// `child` itself. With no listener that is an unhandled 'error' and crashes
+	// the host process; the run itself is unaffected, since `close` still fires
+	// and carries the exit code this adapter already reads it from.
+	stream.on('error', () => {})
 	if (stdin.kind === 'absent') {
 		stream.end()
 		return
@@ -269,25 +275,31 @@ async function runChildProcess(
 	})
 }
 
-/** Read fully, then cap. A path an authorization names is expected to hold a small evidence artifact, not the kind of file worth streaming to cap early. */
+/** Reads at most `maxBytes + 1` bytes rather than the whole file: an oversize artifact is capped before its bytes are loaded, not after, so a run that wrote past the limit cannot make this adapter allocate the excess first. */
 async function readArtifactFile(
 	path: string,
 	maxBytes: number,
 ): Promise<ArtifactRead> {
-	let bytes: Buffer
+	let handle: import('node:fs/promises').FileHandle
 	try {
-		bytes = await readFile(path)
+		handle = await open(path, 'r')
 	} catch (error) {
 		if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
 			return { present: false, text: '', truncated: false }
 		}
 		throw error
 	}
-	const truncated = bytes.byteLength > maxBytes
-	const text = (truncated ? bytes.subarray(0, maxBytes) : bytes).toString(
-		'utf8',
-	)
-	return { present: true, text, truncated }
+	try {
+		const buffer = Buffer.alloc(maxBytes + 1)
+		const { bytesRead } = await handle.read(buffer, 0, buffer.byteLength, 0)
+		const truncated = bytesRead > maxBytes
+		const text = buffer
+			.subarray(0, Math.min(bytesRead, maxBytes))
+			.toString('utf8')
+		return { present: true, text, truncated }
+	} finally {
+		await handle.close()
+	}
 }
 
 /**
