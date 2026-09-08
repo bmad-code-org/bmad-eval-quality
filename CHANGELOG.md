@@ -10,6 +10,8 @@ body.
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-09-08
+
 ### Added
 
 - `createCommandLineAdapter` spells a repeatable option. An array value in the `option` channel
