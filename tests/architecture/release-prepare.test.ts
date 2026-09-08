@@ -368,7 +368,7 @@ describe('release-prepare refusals leave origin and the tree untouched', () => {
 
 	it('reports a rejected push without leaving anything on origin', async () => {
 		const fx = fixture()
-		// A pre-receive hook standing in for the protect-main ruleset.
+		// A pre-receive hook standing in for a rule on main.
 		const hooks = join(fx.origin, 'hooks')
 		mkdirSync(hooks, { recursive: true })
 		writeFileSync(
@@ -380,10 +380,11 @@ describe('release-prepare refusals leave origin and the tree untouched', () => {
 		const { status, stderr } = await run(fx, 'patch', '--on-main')
 		expect(status).toBe(1)
 		expect(stderr).toContain('origin rejected the push of v0.1.1 to main')
-		// The message names the mechanism the push depends on. It used to name the wrong one, and
-		// this assertion pinned the wrong one in place: `protect-main` was said to require no
-		// status check, while its `code_coverage` rule refused the push regardless.
-		expect(stderr).toContain('bypass entry on the protect-main ruleset')
+		// The message names the condition the push depends on, and points at the call that reads
+		// it. Naming a specific ruleset here is what went wrong twice: the message asserted a
+		// mechanism instead of telling the reader to go and look at main.
+		expect(stderr).toContain('main carries no ruleset and no branch protection')
+		expect(stderr).toContain('rules/branches/main')
 		const after = inspect(fx)
 		expect(after.originMain).toBe(before.originMain)
 		// The local commit stays, as the message says; a rerun from a clean main is the fix.
