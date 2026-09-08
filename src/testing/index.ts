@@ -28,6 +28,8 @@ export type {
 	ProbeRequestBody,
 } from '../core/schemas/port-messages.ts'
 export type {
+	CommandTargetAuthorization,
+	CommandTargetPolicy,
 	ProbeTargetAuthorization,
 	ProbeTargetPolicy,
 } from '../core/schemas/probe-policy.ts'
@@ -57,5 +59,8 @@ export {
 	runCorpusPortConformance,
 	runFileSystemPortConformance,
 } from './conformance.ts'
-export type { ProbeSubject } from './probe-conformance.ts'
-export { runEnvironmentProbePortConformance } from './probe-conformance.ts'
+export type { CommandProbeSubject, ProbeSubject } from './probe-conformance.ts'
+export {
+	runCommandLineProbeConformance,
+	runEnvironmentProbePortConformance,
+} from './probe-conformance.ts'

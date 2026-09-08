@@ -34,6 +34,7 @@ export type ConformancePort =
 	| 'clock'
 	| 'file-system'
 	| 'environment-probe'
+	| 'command-probe'
 
 /** how many outcomes a complete run of each port produces. Asserted as literals by fixture 58. */
 export const CONFORMANCE_OUTCOME_COUNTS = {
@@ -41,6 +42,7 @@ export const CONFORMANCE_OUTCOME_COUNTS = {
 	clock: 6,
 	'file-system': 12,
 	'environment-probe': 19,
+	'command-probe': 15,
 } as const
 
 export type ConformanceReport = {

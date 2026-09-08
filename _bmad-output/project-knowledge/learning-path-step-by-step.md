@@ -3492,3 +3492,37 @@ A reader who is not told that will compare them anyway.
 - One release gets one bump per artifact, whatever the plan said about per-story releasability.
 - An entry criterion about someone else's document is discharged by a measured reading of their
   check, never by a fixture written in this tree.
+
+## Step 44 (epic10-story1): a real adapter for the port that had none
+
+**In plain terms:** the schema for describing a command-line system under test existed; nothing could
+actually run one. This step ships the adapter that spawns the real process, plus the authorization
+shape that says which process it is allowed to spawn.
+
+**What:** `CommandTargetAuthorization`/`CommandTargetPolicy` in `core/schemas/`, a pure evaluator and
+`createCommandLineAdapter` under `src/adapters/`, and a second conformance runner,
+`runCommandLineProbeConformance`, alongside the existing `api`-only one.
+
+**Why:** the dependency-direction check forbids `adapters/` from importing `core/`, so the evaluator
+cannot live beside its HTTP sibling under `core/probe/` the way a first read of the existing code
+suggests — it has to be adapter-owned, or no shipped adapter could ever call it.
+
+**Read in this order:**
+
+1. `src/adapters/command-target-policy.ts`: the evaluator, and why it is not under `core/`.
+2. `src/adapters/command-line-adapter.ts`: the four numbered rules in its header comment are the whole
+   "what's a command allowed to do" answer.
+3. `src/testing/probe-conformance.ts`: the nine `cli`-arm assertions, next to the thirteen `api` ones.
+
+**Story:** `_bmad-output/implementation-artifacts/10-1-the-command-line-environment-probe-adapter.md`
+
+### Reference
+
+**Rules:**
+
+- A pure decision function an adapter calls is adapter-owned infrastructure, not `core/`, when the
+  layer rule forbids the import — check the rule before writing the module, not after.
+- An authorization names exactly what its mapping needs to name and nothing the contract's own
+  compile-time declaration already checks.
+- A conformance arm for a second mechanism is a second runner with its own outcome count, not a
+  widened version of the first.

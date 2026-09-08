@@ -1,46 +1,31 @@
 /**
- * AD-35's thirteen extra assertions, for the environment-probe port only. The
- * subject supplies its policy and one request per denial, since only it knows
- * how its own interface-to-target mapping is wired.
+ * AD-35's extra assertions for the environment-probe port, one arm per
+ * mechanism. The subject supplies its policy and one request per denial,
+ * since only it knows how its own interface-to-target mapping is wired.
  *
- * Each of the thirteen builds its own `'resolves'` subject and reads
+ * `runEnvironmentProbePortConformance` is the `api` arm: thirteen assertions,
+ * every scenario HTTP (redirects, methods, schemes, an anomalous status).
+ * `runCommandLineProbeConformance` is the `cli` arm, added once
+ * `CommandTargetPolicy` gave the mechanism something to authorize: an
+ * unmapped interface, an unmapped executable, an unauthorized subcommand path,
+ * a non-zero exit read as an observation, a shell-metacharacter argument
+ * proven to reach the process as one literal token rather than a shell
+ * expansion, a declared artifact captured, and both caps enforced. The two
+ * arms are separate functions rather than one, because their subjects need
+ * disjoint fixtures (an HTTP redirect chain has no command analogue, and a
+ * subcommand allowlist has no HTTP one) and a subject presenting for one
+ * mechanism is not asked to fake the other's scenarios.
+ *
+ * Each assertion in either arm builds its own `'resolves'` subject and reads
  * `underlyingCalls()` from a counter starting at zero, so every count below is
  * absolute.
- *
- * **This suite certifies an adapter for the `api` mechanism and says nothing
- * about the `cli` one.** Every scenario is HTTP: redirects, methods, schemes,
- * an anomalous status. `ProbeSubject` requires an unauthorized-method request,
- * a redirecting request and a not-found request, none of which a command
- * adapter has. So an adapter that runs commands cannot present a subject here,
- * and an adapter that passes all nineteen has been shown nothing about whether
- * it can run one safely: it may deny an unmapped executable or execute a shell
- * string, and this suite cannot tell the difference.
- *
- * That is a real gap in the published surface and it is wider than this suite.
- * `ProbeTargetPolicy` has one authorization shape and every field in it is
- * HTTP: scheme, host, port, resolved addresses, methods, safe methods,
- * redirects, request and response byte caps. **A command interface cannot be
- * authorized at all**, so AD-35's "an adapter denies by default and permits
- * only what that mapping names" has nothing to name for the mechanism this
- * release adds, and a conformance arm built on top of a policy that cannot
- * express a command authorization would certify against nothing.
- *
- * Closing it is a declaration first and a suite second: a command
- * authorization naming a permitted executable, the subcommand paths and
- * environment keys it may carry, and its own elapsed and output-byte caps;
- * then the denials to certify — an executable no mapping names, a refusal to
- * accept a pre-built argument vector, a non-zero exit as an observation rather
- * than a fault, each cap enforced. That is a design addition to the published
- * surface rather than a repair, and it is not made here. Until it exists an
- * adopter writing a command adapter has no policy to declare and no harness to
- * run, and this comment is here so nobody concludes from a green run that they
- * have either.
  */
 import type {
 	ProbeObservation,
 	ProbeRequest,
 } from '../core/schemas/port-messages.ts'
 import type {
+	CommandTargetPolicy,
 	ProbeTargetAuthorization,
 	ProbeTargetPolicy,
 } from '../core/schemas/probe-policy.ts'
@@ -296,8 +281,9 @@ function echoMismatch(
 	return undefined
 }
 
+/** Reads only `id` and `title`, so both arms' assertion shapes satisfy it structurally. */
 function checkRejected(
-	assertion: ProbeAssertion,
+	assertion: { readonly id: string; readonly title: string },
 	expectedCode: string,
 	error: unknown,
 ): ConformanceOutcome {
@@ -405,4 +391,276 @@ export async function runEnvironmentProbePortConformance(
 		additional.push(await runProbeAssertion(assertion, subject))
 	}
 	return reportOf(subject.name, 'environment-probe', [...shared, ...additional])
+}
+
+/**
+ * The `cli` arm's subject. Every field is a request `evaluateCommandTarget`
+ * decides one specific way against the subject's own `policy`, the same
+ * division `ProbeSubject` draws for the `api` arm: the subject knows how its
+ * mapping is wired, the suite only knows what each request should produce.
+ */
+export type CommandProbeSubject = PortSubject<ProbeRequest> & {
+	readonly policy: CommandTargetPolicy
+	/** a request the policy ALLOWS, run against the subject's own fixture executable. */
+	readonly authorizedRequest: ProbeRequest
+	/** an interfaceId no authorization names. */
+	readonly unmappedInterfaceRequest: ProbeRequest
+	/** an interfaceId the policy names, paired with an executable it never names. */
+	readonly unmappedExecutableRequest: ProbeRequest
+	/** an interface-executable pair the policy names, with a subcommandPath no authorization for it permits. */
+	readonly unauthorizedSubcommandRequest: ProbeRequest
+	/** authorized, and answered by the fixture exiting non-zero. */
+	readonly nonZeroExitRequest: ProbeRequest
+	/** authorized, carrying a shell-metacharacter value on one argument channel key. */
+	readonly injectionRequest: ProbeRequest
+	/** the exact literal value `injectionRequest` carries, so the assertion can confirm the fixture received it byte for byte. */
+	readonly injectionArgumentValue: string
+	/** authorized, and its authorization declares one artifact identifier the fixture writes when run. */
+	readonly artifactRequest: ProbeRequest
+	readonly artifactId: string
+	readonly artifactExpectedText: string
+	/** authorized against a maxElapsedMs the fixture is made to sleep past. */
+	readonly overElapsedRequest: ProbeRequest
+	/** authorized against a maxOutputBytes the fixture is made to write past. */
+	readonly overOutputRequest: ProbeRequest
+}
+
+/** Unlike `Expectation`, `check` also reads `subject`: two of the seven command assertions check a value only the subject's own fixtures know (an artifact's expected bytes, an injected argument's literal text). */
+type CommandExpectation =
+	| {
+			readonly kind: 'resolves'
+			readonly check?: (
+				observation: ProbeObservation,
+				subject: CommandProbeSubject,
+			) => string | undefined
+	  }
+	| { readonly kind: 'rejects'; readonly code: string }
+
+type CommandAssertion = {
+	readonly id: string
+	readonly title: string
+	readonly request: (subject: CommandProbeSubject) => ProbeRequest
+	readonly expectation: CommandExpectation
+	readonly expectedCalls?: (subject: CommandProbeSubject) => number | string
+}
+
+const COMMAND_ASSERTIONS: readonly CommandAssertion[] = [
+	{
+		id: 'command/allow-authorized-invocation',
+		title: 'an explicitly authorized command runs and is observed',
+		request: (subject) => subject.authorizedRequest,
+		expectation: { kind: 'resolves' },
+	},
+	{
+		id: 'command/observe-nonzero-exit',
+		title:
+			'a non-zero exit from an authorized command is an observation, not a fault',
+		request: (subject) => subject.nonZeroExitRequest,
+		expectation: {
+			kind: 'resolves',
+			check: (observation) =>
+				observation.kind === 'cli' && observation.exitCode !== 0
+					? undefined
+					: `observed ${observation.kind === 'cli' ? `exit code ${observation.exitCode}` : 'an api observation'}, expected a non-zero exit`,
+		},
+	},
+	{
+		id: 'command/deny-unmapped-interface',
+		title:
+			'an interface no authorization names is refused before a process spawns',
+		request: (subject) => subject.unmappedInterfaceRequest,
+		expectation: { kind: 'rejects', code: DENIED },
+		expectedCalls: () => 0,
+	},
+	{
+		id: 'command/deny-unmapped-executable',
+		title:
+			'an executable the interface is never paired with is refused before a process spawns',
+		request: (subject) => subject.unmappedExecutableRequest,
+		expectation: { kind: 'rejects', code: DENIED },
+		expectedCalls: () => 0,
+	},
+	{
+		id: 'command/deny-unauthorized-subcommand',
+		title:
+			'a subcommand path outside the authorized set is refused before a process spawns',
+		request: (subject) => subject.unauthorizedSubcommandRequest,
+		expectation: { kind: 'rejects', code: DENIED },
+		expectedCalls: () => 0,
+	},
+	{
+		// The strongest available proof that no shell ever reads a channel value:
+		// an argument built to look like a command substitution, checked to reach
+		// the process as the one, unmodified literal token it was declared as.
+		id: 'command/argument-passed-literally',
+		title:
+			'a shell-metacharacter argument reaches the process as one unmodified literal token, never a shell expansion',
+		request: (subject) => subject.injectionRequest,
+		expectation: {
+			kind: 'resolves',
+			check: (observation, subject) => {
+				if (observation.kind !== 'cli' || observation.stdout.kind !== 'json') {
+					return 'the observation carries no parsed stdout to check the received argument against'
+				}
+				const argv = (observation.stdout.value as { argv?: unknown }).argv
+				const received = Array.isArray(argv) ? argv : []
+				return received.length === 1 &&
+					received[0] === subject.injectionArgumentValue
+					? undefined
+					: `the process observed argv ${JSON.stringify(received)}, expected exactly one element equal to the declared literal`
+			},
+		},
+	},
+	{
+		id: 'command/capture-declared-artifact',
+		title:
+			"a declared artifact identifier reads the file the run wrote, keyed by the operation's own identifier",
+		request: (subject) => subject.artifactRequest,
+		expectation: {
+			kind: 'resolves',
+			check: (observation, subject) => {
+				if (observation.kind !== 'cli') {
+					return 'the observation is not a command observation'
+				}
+				const artifact = observation.artifacts[subject.artifactId]
+				return artifact?.kind === 'text' &&
+					artifact.value === subject.artifactExpectedText
+					? undefined
+					: `artifacts["${subject.artifactId}"] was ${JSON.stringify(artifact)}, expected the fixture's declared text`
+			},
+		},
+	},
+	{
+		id: 'command/cap-elapsed',
+		title: 'a process past maxElapsedMs is capped, not left to finish',
+		request: (subject) => subject.overElapsedRequest,
+		expectation: { kind: 'rejects', code: CAPPED },
+	},
+	{
+		id: 'command/cap-output-bytes',
+		title:
+			'output past maxOutputBytes is capped, not silently truncated and returned',
+		request: (subject) => subject.overOutputRequest,
+		expectation: { kind: 'rejects', code: CAPPED },
+	},
+]
+
+function checkCommandResolved(
+	assertion: CommandAssertion,
+	expectation: Extract<CommandExpectation, { kind: 'resolves' }>,
+	value: unknown,
+	request: ProbeRequest,
+	subject: CommandProbeSubject,
+): ConformanceOutcome {
+	const parsed = probeParsers.response.safeParse(value)
+	if (!parsed.success) {
+		return titledOutcome(
+			assertion.id,
+			assertion.title,
+			false,
+			'the resolved value is not a schema-valid ProbeObservation',
+		)
+	}
+	const mismatch = echoMismatch(request, parsed.data)
+	if (mismatch !== undefined) {
+		return titledOutcome(assertion.id, assertion.title, false, mismatch)
+	}
+	const complaint = expectation.check?.(parsed.data, subject)
+	return titledOutcome(
+		assertion.id,
+		assertion.title,
+		complaint === undefined,
+		complaint ?? '',
+	)
+}
+
+/** `checkCalls`'s own logic, typed against `CommandAssertion`/`CommandProbeSubject` rather than the `api` arm's pair: a function parameter type is checked contravariantly, so the two assertion shapes cannot share one checker. */
+function checkCommandCalls<Request>(
+	assertion: CommandAssertion,
+	subject: CommandProbeSubject,
+	built: BuiltSubject<Request>,
+	base: ConformanceOutcome,
+): ConformanceOutcome {
+	if (assertion.expectedCalls === undefined) return base
+	const expected = assertion.expectedCalls(subject)
+	if (typeof expected === 'string') {
+		return { ...base, passed: false, detail: expected }
+	}
+	const actual = countCalls(built)
+	if (typeof actual === 'string') {
+		return { ...base, passed: false, detail: actual }
+	}
+	if (actual === expected) return base
+	return {
+		...base,
+		passed: false,
+		detail: `${base.passed ? '' : `${base.detail}; `}underlyingCalls() was ${actual}, expected ${expected}`,
+	}
+}
+
+async function runCommandAssertion(
+	assertion: CommandAssertion,
+	subject: CommandProbeSubject,
+): Promise<ConformanceOutcome> {
+	const run = await buildScenario(subject, 'resolves')
+	if (!run.ok) {
+		return titledOutcome(assertion.id, assertion.title, false, run.detail)
+	}
+	const request = assertion.request(subject)
+	const settled = await settle(
+		run.built.port(request, new AbortController().signal),
+	)
+
+	let result: ConformanceOutcome
+	if (assertion.expectation.kind === 'resolves') {
+		result =
+			settled.kind === 'resolved'
+				? checkCommandResolved(
+						assertion,
+						assertion.expectation,
+						settled.value,
+						request,
+						subject,
+					)
+				: titledOutcome(
+						assertion.id,
+						assertion.title,
+						false,
+						`rejected with ${describeThrown(settled.error)} instead of returning an observation`,
+					)
+	} else {
+		result =
+			settled.kind === 'rejected'
+				? checkRejected(assertion, assertion.expectation.code, settled.error)
+				: titledOutcome(
+						assertion.id,
+						assertion.title,
+						false,
+						`resolved instead of rejecting with "${assertion.expectation.code}"`,
+					)
+	}
+
+	result = checkCommandCalls(assertion, subject, run.built, result)
+	return withDispose(result, await disposeScenario(run.built))
+}
+
+/**
+ * Fifteen outcomes: the six shared assertions plus the nine above. Unlike the
+ * `api` arm, every cap here has an assertion: a command subject's fixture
+ * script can be told to overrun a byte cap directly, with no oversize-request
+ * problem to work around.
+ */
+export async function runCommandLineProbeConformance(
+	subject: CommandProbeSubject,
+): Promise<ConformanceReport> {
+	const shared = await runSharedAssertions(
+		'probe',
+		subject,
+		probeParsers.response,
+	)
+	const additional: ConformanceOutcome[] = []
+	for (const assertion of COMMAND_ASSERTIONS) {
+		additional.push(await runCommandAssertion(assertion, subject))
+	}
+	return reportOf(subject.name, 'command-probe', [...shared, ...additional])
 }

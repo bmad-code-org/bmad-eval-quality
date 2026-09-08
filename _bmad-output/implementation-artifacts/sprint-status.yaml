@@ -1,5 +1,5 @@
 # generated: 2026-08-10
-# last_updated: 2026-09-07
+# last_updated: 2026-09-08
 # project: evalcore
 # project_key: NOKEY
 # tracking_system: file-system
@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-08-10
-last_updated: 2026-09-07
+last_updated: 2026-09-08
 project: evalcore
 project_key: NOKEY
 tracking_system: file-system
@@ -108,3 +108,6 @@ development_status:
   9-3-compile-and-preflight-admit-a-command-interface: done
   9-4-the-run-record-the-defect-signature-and-qualification: done
   9-5-the-published-surface-the-corpus-and-the-disclosed-breaks: done
+
+  epic-10: done
+  10-1-the-command-line-environment-probe-adapter: done

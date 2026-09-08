@@ -10,6 +10,20 @@ body.
 
 ## [Unreleased]
 
+### Added
+
+- `createCommandLineAdapter`, a reference `EnvironmentProbePort` adapter for the `cli` mechanism,
+  ships from `eval-quality/adapters`. It spawns a real child process (argv only, never a shell
+  string), authorized by a `CommandTargetPolicy` mapping outside the contract: a denies-by-default
+  `(interfaceId, executable)` pair naming the real executable, the permitted subcommand paths, a
+  working directory, per-artifact file paths, and elapsed-time and output-byte caps. A non-zero
+  exit is an observation, never a fault; only a policy denial, a cap, an abort, or a failure to
+  start the process throws.
+- `runCommandLineProbeConformance`, the `cli` arm of the environment-probe conformance suite,
+  ships from `eval-quality/conformance` alongside a new `command-probe` entry in
+  `CONFORMANCE_OUTCOME_COUNTS` (15: the six shared assertions plus nine covering the denial paths,
+  a non-zero exit, shell-injection safety, artifact capture, and both caps).
+
 ## [0.3.0] - 2026-09-08
 
 ### Added

@@ -13,7 +13,7 @@ All four commands: `compile`, `seal`, `preflight`, and `score`. Every flag each 
 
 `score` is the largest of the four. Behind it sit three stages, `ingest`, `score`, and `emit`, reached by one command and one library call, `runScore`. It covers outcome-state assignment over twelve closed states, both verdict ladders, the witness match that decides whether a finding really detected the defect its probe seeded, the trial-set reducer, the contract-strength vector with its four-valued dominance relation, probe qualification, and observation selection.
 
-Also published: twelve JSON Schema documents under `eval-quality/schemas/*`, a twenty-one-contract development corpus under `eval-quality/corpus/dev/`, three reference adapters at `eval-quality/adapters`, and a port conformance suite at `eval-quality/conformance`.
+Also published: twelve JSON Schema documents under `eval-quality/schemas/*`, a twenty-one-contract development corpus under `eval-quality/corpus/dev/`, four reference adapters at `eval-quality/adapters`, and a port conformance suite at `eval-quality/conformance`.
 
 **One limit is worth knowing before you rely on the numbers.** The `score` stage is built to consume a trial set: several runs of the same probes, reduced to one result per probe before any rate is computed. The command and `runScore` hand it one sealed run record per call. So a run scored from the published surface completes one trial, and whenever your policy's declared minimum exceeds one, the strength vector comes out reported and marked non-comparable. The stage is ready for several trials; the entry point that hands it several is what is missing.
 

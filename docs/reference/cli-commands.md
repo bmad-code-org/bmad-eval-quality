@@ -216,13 +216,13 @@ The package performs no effects of its own. A **port** is an interface it declar
 | `ClockPort` | Reads the current time | No |
 | `FileSystemPort` | Reads and writes files | No. The CLI uses `node:fs/promises` |
 
-Each port's type comes from `eval-quality/conformance`. `eval-quality/adapters` ships three reference adapters, `createLocalCorpusAdapter`, `createNodeFileSystemAdapter`, and `createSystemClockAdapter`, each a factory taking the mechanism it wraps. There is no reference `EnvironmentProbePort`, because probing a live environment is the part only you can write.
+Each port's type comes from `eval-quality/conformance`. `eval-quality/adapters` ships four reference adapters, `createLocalCorpusAdapter`, `createNodeFileSystemAdapter`, `createSystemClockAdapter`, and `createCommandLineAdapter`, each a factory taking the mechanism it wraps. `createCommandLineAdapter` implements `EnvironmentProbePort` for the `cli` mechanism only, over a real child process, authorized by a `CommandTargetPolicy` mapping outside the contract; there is still no reference `EnvironmentProbePort` for `api`, because probing a live HTTP environment is the part only you can write.
 
 **The conformance suite** decides whether an implementation conforms. It checks behavior the type checker cannot: whether the implementation returns a typed fault where the boundary demands one, and whether it hangs where it should time out. It takes a `PortSubject`, a small harness around your port carrying a name, one sample request, and a `build` function the suite calls once per scenario. `ScenarioKind` is the four situations it needs your port to be in: `resolves`, `fails`, `in-band-error`, and `hangs`. Putting the port into each of them is your job, because only you know how to make your mechanism fail.
 
-There is one runner per port: `runClockPortConformance`, `runCorpusPortConformance`, `runFileSystemPortConformance`, and `runEnvironmentProbePortConformance`. A report carries the subject name, the port, one outcome per assertion, and a `passed` field over all of them. Every outcome id has the form `<method>/<assertion>`, so a failure names the method and the property it broke.
+There is one runner per port, plus a second arm for `EnvironmentProbePort`'s two mechanisms: `runClockPortConformance`, `runCorpusPortConformance`, `runFileSystemPortConformance`, `runEnvironmentProbePortConformance` (the `api` arm), and `runCommandLineProbeConformance` (the `cli` arm). A report carries the subject name, the port, one outcome per assertion, and a `passed` field over all of them. Every outcome id has the form `<method>/<assertion>`, so a failure names the method and the property it broke.
 
-`CONFORMANCE_OUTCOME_COUNTS` publishes the count per port, and the suite asserts its own totals against it: `corpus` 6, `clock` 6, `file-system` 12, `environment-probe` 19. A count that does not match means the suite did not finish, which is itself a failure.
+`CONFORMANCE_OUTCOME_COUNTS` publishes the count per port, and the suite asserts its own totals against it: `corpus` 6, `clock` 6, `file-system` 12, `environment-probe` 19, `command-probe` 15. A count that does not match means the suite did not finish, which is itself a failure.
 
 ## The corpus
 
