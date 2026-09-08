@@ -20,6 +20,14 @@ body.
   `--env-pass ["A","B"]` token, which reaches no parser that understands it, so nothing can depend
   on it. An empty array emits nothing, the same as `false`.
 
+### Fixed
+
+- The documentation site pins `astro` 7.2.9. 7.2.4 carries a critical advisory, remote code
+  execution through AVIF image optimization (GHSA-26w7-cxv4-gfx2), and three high advisories reached
+  the same graph through `js-yaml`, `sharp`, and `svgo`. The known-vulnerability audit job had been
+  failing on all four. 7.2.9 published on 2026-08-26, so it clears the seven-day lockfile-age window
+  the same job enforces.
+
 ## [1.0.0] - 2026-09-08
 
 No code changes since 0.5.0. From here the package follows semantic versioning on its published
