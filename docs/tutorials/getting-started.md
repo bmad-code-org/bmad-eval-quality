@@ -47,7 +47,7 @@ The first 200 characters of what comes back:
 
 That contract declares one behavior: *a created thing is readable back in the list of things*. Its checks look at the create response **and** at the list that create was supposed to change. An evaluation that only read the create response would pass while the list stayed empty. That is the shape of blind spot the whole tool exists to find.
 
-The artifact itself is one line of JSON with the keys in sorted order. That exact payload is what the digest, a fingerprint of the exact bytes, is computed over, so two machines agree on what the contract is.
+The artifact itself is one line of JSON with the keys in sorted order, plus a trailing newline. The digest, a fingerprint of the artifact, is computed over that line without the newline, so two machines agree on what the contract is.
 
 The command exited `0` and wrote to stdout. Add `--out` to land the artifact on disk:
 

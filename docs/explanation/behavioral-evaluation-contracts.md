@@ -88,7 +88,7 @@ Run the same evaluation against the fixed implementation and it passes again. A 
 - **Behaviors**: what the system is supposed to do, each with a severity and an observable success criterion.
 - **Oracles**: the checks themselves, written as relations over JSON pointers into recorded interactions.
 - **Permitted interfaces**: every operation a probe may call, its request shape, its response descriptor, and the pointers whose values are volatile. An interface declares a kind, and `compile` accepts two of them today: `api`, a system behind an HTTP API, and `cli`, a system behind a command. The vocabulary also names `web` and `mcp`, and a contract declaring either is rejected with `unsupported-interface-kind`.
-- **Sensitivity witnesses**: two calls per operation that differ in one input, and how their responses have to differ. If the responses come back the same, the operation never read that input. This is the mutation idea applied to one operation.
+- **Sensitivity witnesses**: two calls per operation that differ in one input, and how their responses have to differ. If the responses come back the same, nothing shows the operation read that input. This is the mutation idea applied to one operation.
 - **Reference sets, budgets, safety limits, and forbidden inputs**: the data a check reads, and the bounds a run has to stay inside.
 
 `schemas/eval-contract.schema.json` is the normative shape, and every field is listed on [the walkthrough](/how-to/author-behavioral-contracts/). The vocabulary is defined in the [glossary](/reference/glossary/).
