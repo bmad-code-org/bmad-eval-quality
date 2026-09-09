@@ -236,4 +236,4 @@ There is one runner per port, plus a second arm for `EnvironmentProbePort`'s two
 
 - [The full walkthrough](/how-to/author-behavioral-contracts/)
 - [Glossary](/reference/glossary/)
-- [What Ships](/explanation/roadmap/)
+- [What Ships](/explanation/what-ships/)
