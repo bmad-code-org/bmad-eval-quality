@@ -110,6 +110,66 @@ const sameFixtureState = (
 }
 
 /**
+ * The canonical digest of one value, or `null` where the value holds something
+ * RFC 8785 cannot serialise. `JsonValue` admits an integer outside the safe
+ * range and a lone surrogate, and a 64-bit identifier in a query parameter is
+ * ordinary, so this is reachable from a contract that parses. A verdict is what
+ * this stage owes its caller, and `null` compares equal to nothing, so a value
+ * that cannot be digested leaves the two sides distinguishable and the check
+ * still reads the leg.
+ */
+const digestOrNull = (value: unknown): string | null => {
+	try {
+		return digestArtifact(value, PREFLIGHT_ARTIFACT_PATH)
+	} catch (error) {
+		if (error instanceof RuntimeFault) return null
+		throw error
+	}
+}
+
+/**
+ * Whether two legs issued one request and received one answer, which makes them
+ * one probe under two labels. A manifestation witness firing on such a leg is
+ * the fault leg's own manifestation read a second time, and it establishes
+ * nothing about where the defect is scoped.
+ *
+ * Both halves are required. Answers alone would drop AD-10's own worked example,
+ * two distinct nonexistent identifiers both returning 404: those legs ask
+ * different questions and are exactly the legs this check exists to read.
+ * Requests alone are what the plan can see, and identical requests can still be
+ * answered differently, which is why the comparison lives here where the
+ * answers are in hand.
+ *
+ * The answer half compares the evidence, which is everything a relation can
+ * address: two legs with equal evidence resolve one relation to one value. It
+ * carries AD-11's projected body, so a field the operation declares volatile is
+ * already out of it and a server-minted identifier stops being a difference,
+ * which is what makes the same request to a mutating operation comparable at
+ * all. The raw observation is the wrong side of this comparison for that exact
+ * reason: two writes to one collection differ on a minted id by design, and
+ * reading that as a difference puts the false failure this check just lost back
+ * one stage over.
+ *
+ * The correlation identifiers are neutralised on both sides, since they are the
+ * leg id and differ by construction. A digest that comes back `null` matches
+ * nothing, so a pair that cannot be compared stays a pair the check reads.
+ */
+const answeredAlike = (left: LegState, right: LegState): boolean => {
+	const request = (state: LegState): string | null =>
+		digestOrNull({ ...state.leg.request, probeId: '' })
+	const answer = (state: LegState): string | null =>
+		digestOrNull({ ...state.evidence, observationId: '' })
+	const leftRequest = request(left)
+	const leftAnswer = answer(left)
+	return (
+		leftRequest !== null &&
+		leftAnswer !== null &&
+		leftRequest === request(right) &&
+		leftAnswer === answer(right)
+	)
+}
+
+/**
  * Resolves a manifestation witness against one leg. Returns `null` when that
  * leg produced no observation, which the two seeded-fault rows read
  * differently: the fired row fails on it, the scoped row has nothing to
@@ -307,7 +367,43 @@ export const reducePreflight: ReduceStage<
 			}
 			case 'seeded-faults-scoped': {
 				const { witness, defectId } = planned
+				const fault = states.get(witness.legId)
+				// The legs that answered a different question than the fault leg's, and
+				// the legs dropped for answering the same one.
+				const examined: string[] = []
+				const dropped: string[] = []
 				for (const legId of planned.cleanLegIds) {
+					const state = states.get(legId)
+					if (
+						state !== undefined &&
+						fault !== undefined &&
+						answeredAlike(state, fault)
+					) {
+						dropped.push(legId)
+						continue
+					}
+					examined.push(legId)
+				}
+				// Emptiness is tested on what survived the drop. A check over no clean
+				// leg examined nothing, and a check that examined nothing has
+				// established nothing, which is the rule the `input-sensitivity` row
+				// above already runs on. Satisfied here would certify scoping from zero
+				// evidence on the three contracts least able to afford it: one whose
+				// defect names the only leg its operation has, one whose every other leg
+				// repeats the fault leg's probe, and one where the plan named legs and
+				// the drop took all of them. The note says which.
+				if (examined.length === 0) {
+					const named = dropped.map((legId) => `"${legId}"`).join(', ')
+					return check(
+						planned.kind,
+						witness.operationId,
+						'failed',
+						dropped.length === 0
+							? `${defectId}: the operation has no leg besides the fault leg, so nothing here establishes that the defect is scoped to it`
+							: `${defectId}: every other leg of the operation issued the fault leg's own request and received its answer (${named}), so nothing here establishes that the defect is scoped to it`,
+					)
+				}
+				for (const legId of examined) {
 					const resolved = resolveAgainst(
 						witness,
 						states.get(legId),

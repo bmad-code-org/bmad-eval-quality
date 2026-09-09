@@ -79,7 +79,7 @@ The six kinds a `PreflightVerdict` can carry.
 | `state-reset` | Does the declared fixture reset return the system to a known state? |
 | `clean-control` | Does the leg that should show nothing wrong in fact show nothing wrong? |
 | `seeded-fault-fired` | Did the seeded fault manifest where it was supposed to? |
-| `seeded-faults-scoped` | Did a manifestation witness fire on a clean leg, where it should not have? A leg with no observation cannot fire one, so a missing clean leg leaves this `satisfied`. |
+| `seeded-faults-scoped` | Did a manifestation witness fire on a clean leg, where it should not have? A clean leg is one that asks a different question, so a leg that sent the fault leg's request and got back the fault leg's answer is left out. With no clean leg left to ask, this fails and says why. |
 
 ## Contract vocabulary
 

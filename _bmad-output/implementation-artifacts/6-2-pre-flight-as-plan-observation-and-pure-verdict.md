@@ -570,6 +570,35 @@ Story 6.4's.
 | `seeded-faults-scoped` | the defect's witness resolves non-`true` on every clean leg of its operation | it resolves `true` on any clean leg | never |
 | `seeded-fault-fired` | the witness resolves `true` on its own fault leg | the witness is `null`, its leg has no observation, or the relation resolves `false` or `insufficient-evidence` | never |
 
+>
+> **Amended 2026-09-09, two rules.**
+>
+> 1. The row says "every clean leg of its operation", and the shipped reducer read "clean" as every
+>    other leg of that operation by leg id. A leg can run the fault leg's own probe under a second
+>    label, most often a sensitivity witness leg spelling the manifestation witness's inputs, and a
+>    witness firing there is the fault leg's own manifestation read a second time. The reducer now
+>    drops a clean leg that issued the fault leg's request and received the fault leg's answer.
+>    Both halves are required. Answers alone would drop AD-10's own worked example, two distinct
+>    nonexistent identifiers both returning 404, which are exactly the legs this check exists to
+>    read; requests alone are what the plan can see, and identical requests can still be answered
+>    differently. Both sides are canonical digests, the request with `probeId` neutralised and the
+>    answer as the leg's evidence with `observationId` neutralised. Evidence is the right side of
+>    the comparison because it is everything a relation can address, and it carries AD-11's
+>    projected body, so a field the operation declares volatile is already out of it. The comparison
+>    is in `reducePreflight` beside the `state-reset` row, which already compares two legs'
+>    projections there. An earlier revision of this change compared requests alone in
+>    `planPreflight` and narrowed the drop to `stateChangeMarker: false`, which left a defect seeded
+>    on `create-thing` failing the check whenever its witness posted a sensitivity leg's body. That
+>    case passes now: the answers decide it. Fixtures 126, 127, 128, 131, and 132.
+> 2. An empty clean-leg set resolved `satisfied`, which certified scoping from no observation. It
+>    fails now, on the rule the `input-sensitivity` row already runs on: a check that examined
+>    nothing has established nothing. Emptiness is tested on the set that survives the drop, since
+>    the drop is what can empty it. Both causes are reachable and the note says which. An operation
+>    whose only leg is the fault leg reached it before this change. The drop adds AD-10's exemption
+>    case exactly: one keyless safe read whose two control-observe legs both send the empty inputs
+>    the operation admits, answered alike, so every leg the plan named is dropped. Fixtures 130 and
+>    133.
+
 **Anomalous** means `status >= 400`. The word is already the repository's: Story 6.1's conformance
 suite asserts `probe/observe-anomalous-status`, and `ProbeObservation.status` is already bounded to
 100–599 at the port, so nothing new is assumed about the protocol here.

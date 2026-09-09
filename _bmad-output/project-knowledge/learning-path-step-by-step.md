@@ -1801,6 +1801,18 @@ flowchart TD
 - `clean-control` reads only the control legs. AD-10's own example is two 404s from a good fixture.
 - The two seeded-fault checks are disjoint: one reads only clean legs, the other only the fault leg.
   Fold them together and one answer maps to no outcome the schema can spell.
+- A clean leg is one that asks a different question. The reducer drops a leg that issued the fault
+  leg's request and got the fault leg's answer, since that leg is the fault leg's own probe under a
+  second label. Both halves are needed: answers alone would drop two 404s from two distinct
+  nonexistent identifiers, which is AD-10's own example of a good fixture, and requests alone cannot
+  see that one request was answered two ways.
+- The answer half compares the evidence, which is what a relation can address. It carries the
+  projected body, so a field the operation declares volatile is out of it already and a
+  server-minted id stops being a difference.
+- An empty clean-leg set fails, and emptiness is tested on what survived the drop. The check
+  examined nothing, and a check that examined nothing has established nothing, which is the same
+  rule `insufficient-evidence` gets. The note says which cause emptied it: the operation had no
+  other leg, or every leg the plan named ran the fault leg's own probe.
 
 **Watch out:**
 

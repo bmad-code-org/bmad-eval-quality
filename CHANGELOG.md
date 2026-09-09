@@ -37,6 +37,24 @@ body.
   `deep-equality(coll, [])` and `equality(coll, [])` still resolve `insufficient-evidence` over the same
   evidence where `count-tolerance(coll, 0, 0)` resolves `true`, because one totality covers a whole leaf
   and exempting `equality` would also exempt a `{ literal: [] }` operand.
+- Pre-flight's `seeded-faults-scoped` check no longer fails on a leg that is the fault leg's own
+  probe wearing a second label. The clean-leg set excluded the fault leg by leg id alone, so a
+  sensitivity witness leg spelling the manifestation witness's inputs was read as independent
+  evidence, the witness fired on it, and the check reported a scoping violation. A clean leg is now
+  dropped when it issued the fault leg's request and received the fault leg's answer. Both are
+  compared as canonical digests: the request with its correlation identifier neutralised, the
+  answer as the evidence a relation can address, which carries AD-11's projected body, so a field
+  the operation declares volatile is already out of it and a server-minted identifier stops being a
+  difference. Both halves are required. Answers alone would drop AD-10's own worked example of two
+  distinct nonexistent identifiers both returning 404, and requests alone cannot see that a system
+  answered one request two ways. The comparison lives in the reducer, where the answers are in
+  hand, beside the `state-reset` row that already compares two legs there.
+- `seeded-faults-scoped` fails when no clean leg survives that comparison. It was satisfied before,
+  so a defect seeded against an operation with no other leg certified its own scoping from no
+  observation at all. A check that examined nothing has established nothing, which is the rule a
+  sensitivity relation resolving `insufficient-evidence` already follows. The note names the cause,
+  since an operation with no other leg and an operation every one of whose legs ran the fault leg's
+  probe are different authoring mistakes.
 
 ## [1.3.0] - 2026-09-09
 
