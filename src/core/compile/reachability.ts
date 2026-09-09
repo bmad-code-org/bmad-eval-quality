@@ -24,6 +24,7 @@ import { JsonTypeName } from '../schemas/primitives.ts'
 import {
 	anyOperationOf,
 	buildPlanIndex,
+	decodeTail,
 	type PlanIndex,
 	parseEvidenceTarget,
 } from '../seal/plan-index.ts'
@@ -276,6 +277,51 @@ export function checkExpressionEvidenceReachability(
 				`"${site.pointer}" ${result.reason}`,
 			)
 		}
+	})
+}
+
+/**
+ * `unreachable-check-evidence` for a pointer at a field the operation declares
+ * volatile. Reachability answers the descriptor question and this answers the
+ * projection one, so a caller that runs both gets the whole answer.
+ *
+ * Only a sensitivity-witness relation asks. `projectObservation` prunes every
+ * volatile pointer from the described channel before `evidenceOf` builds the
+ * leg the relation reads, so a relation addressing one resolves absent on both
+ * legs. That is a false pass rather than a failure: `deep-equality` over an
+ * absent side is `false`, and the enclosing `not` reports the operation
+ * sensitive on every run from a pair of pointers that never resolved. An oracle
+ * is scored against a sealed run record, which carries no projection, so the
+ * same pointer is legitimate there.
+ *
+ * The empty pointer is RFC 6901's whole document, and `pruneVolatile` reads it
+ * that way, so an operation declaring it makes every pointer at the described
+ * channel volatile.
+ */
+export function checkExpressionVolatility(
+	expression: Expression,
+	artifactPath: string,
+	operation: AnyOperation,
+): void {
+	if (operation.volatilePointers.length === 0) return
+	const channel = descriptorChannelOf(operation)
+	const describedArtifact = descriptorArtifactOf(operation)
+	const volatileTails = operation.volatilePointers.map(decodeTail)
+	visitExpression(expression, '', false, (site) => {
+		if (site.pointer.startsWith('@')) return
+		const target = parseEvidenceTarget(site.pointer)
+		if (target.channel !== channel) return
+		if (target.artifactId !== null && target.artifactId !== describedArtifact)
+			return
+		const pruned = volatileTails.find((tokens) =>
+			tokens.every((token, index) => target.tail[index] === token),
+		)
+		if (pruned === undefined) return
+		throw new StructuralFailure(
+			'unreachable-check-evidence',
+			`${artifactPath}${site.path}`,
+			`"${site.pointer}" addresses "${`/${pruned.join('/')}`}", which operation "${operation.operationId}" declares volatile, so the projection the relation reads has already removed it`,
+		)
 	})
 }
 
