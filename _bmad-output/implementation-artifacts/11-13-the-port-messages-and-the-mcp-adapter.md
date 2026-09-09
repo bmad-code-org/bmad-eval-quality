@@ -212,7 +212,7 @@ half of the window Story 11.5 opened and finishes what Story 11.6 began.
 
 **Test sites that move with the observation union**
 
-- `tests/preflight/reduce.test.ts:562-592` -- fixture 129, pinning
+- `tests/preflight/reduce.test.ts:562-593` -- fixture 129, pinning
   `/asked for a "api" probe and was answered with a "cli" observation/` at `:591`. Story 11.5's
   Decision 3 states it left this untouched.
 - `tests/testing/conformance.test.ts:483-502` -- `probeRequest()`, hard-returning `kind: 'api'` at `:492`.
@@ -224,15 +224,20 @@ half of the window Story 11.5 opened and finishes what Story 11.6 began.
 - `tests/testing/conformance.test.ts:681` and `:692` -- the per-arm outcome counts, `19` for
   `environment-probe`. `:423-431` is fixture 58, unchanged here.
 - `tests/preflight/fixtures/probe-port.ts:29-42` -- `echoPort()`, hard-returning `kind: 'api'` at `:35`.
+- `tests/preflight/fixtures/observations.ts:553-570` -- `observationsFor`, the shared builder every
+  `tests/preflight/` file reads, hard-returning `kind: 'api'` at `:566`. The `mcp` builder lands
+  beside it, which is where a port-message fixture belongs: `port-messages.ts` produces none of the
+  twelve published documents, so `tests/schemas/fixtures/` has nothing to seed for this union.
 - `tests/adapters/command-probe-subject.ts:1-9` and `:139-141` -- the in-repository `cli` subject, read
   as the model. Its MCP counterpart is Story 11.7's.
 
 **Documentation this story owns**
 
-Story 11.9's ownership tables at `:66-87` and `:91-102` assign the first five sites below to the story
-that ships the adapter and the port union, which is this one, one owner each. The two marked
-**unclaimed** appear in no story's table and are taken here on 11.9's own rule that a hit no earlier
-story claims is a hit that ships stale.
+Story 11.9's ownership tables at `:71-100` and `:104-118` assign the first five sites below to the
+story that ships the adapter and the port union, which is this one, one owner each, and they carry
+`docs/how-to/evaluate-agent-behavior.md:24` with the same owner. The site marked **partly this
+story's** is split between two owners on 11.9's own terms. Every row those tables name this story on
+is fixed in this diff, which is 11.9's rule that a sentence moves with the change that falsifies it.
 
 - `docs/reference/cli-commands.md:223` -- "ships four reference adapters, `createLocalCorpusAdapter`,
   `createNodeFileSystemAdapter`, `createSystemClockAdapter`, and `createCommandLineAdapter`". Becomes
@@ -254,7 +259,7 @@ story claims is a hit that ships stale.
   eight-key claim on this line. The remaining clause, that a tool-use signature's confinement to
   `response-body`, `response-headers`, and `response-status` "is decided rather than open", is this
   story's, since Decision 6 decides what two of those three carry.
-- `docs/how-to/evaluate-agent-behavior.md:24` -- **unclaimed.** "The one component that starts a
+- `docs/how-to/evaluate-agent-behavior.md:24` -- **this story's.** "The one component that starts a
   process is `createCommandLineAdapter` in `src/adapters/command-line-adapter.ts`". A stdio MCP server
   is a second process this package starts.
 - `docs/how-to/evaluate-agent-behavior.md:163`, `:270`, `:296` -- three `CommandTargetPolicy` and port
@@ -314,9 +319,13 @@ story claims is a hit that ships stale.
       whichever kind the case substitutes.
 - [ ] `tests/preflight/fixtures/probe-port.ts` -- leave `echoPort()` answering `api` and add the
       `mcp`-answering counterpart, so no existing `runPreflight` fixture moves.
-- [ ] `tests/schemas/fixtures/artifact-fixtures.ts` -- add an `mcp` observation fixture carrying
-      `callInputs.arguments`, against the nine-key record Story 11.6 landed. No version literal moves
-      here.
+- [ ] `tests/preflight/fixtures/observations.ts` -- an `McpProbeObservation` builder beside
+      `observationsFor` (`:553-570`, which hard-returns `kind: 'api'` at `:566`), carrying `isError`
+      and `result`, read by the `mcp`-answering port double above and by the widened fixture 129.
+      Nothing this story adds lands in `tests/schemas/fixtures/artifact-fixtures.ts`:
+      `port-messages.ts` produces none of the twelve published documents, so its shapes have no
+      accept fixture to seed, and the sealed run record fixture carrying `callInputs.arguments` is
+      Story 11.6's, landed in the diff that publishes the ninth key.
 - [ ] `tests/preflight/` and `tests/evaluate/` -- one case per branch this story adds, including the
       `mcp` arms in `projectObservation`, `evidenceOf`, and `anomalyOf`, and an oracle resolving
       `/response-status` to `0` and to `1`.

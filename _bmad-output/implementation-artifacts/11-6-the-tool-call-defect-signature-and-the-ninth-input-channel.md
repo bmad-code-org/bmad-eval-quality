@@ -210,10 +210,10 @@ still builds an `McpProbeRequest` no shipped adapter can answer, and `kindMismat
 
 **Documentation this story owns**
 
-Story 11.9's ownership tables at `:66-87` and `:91-102` carry no row for either site below; both are
-taken here on 11.9's own rule that a hit no earlier story claims is a hit that ships stale. Every
-other documentation site the earlier combined draft claimed belongs to Story 11.13, which ships the
-adapter and the port union those sentences describe.
+Story 11.9's ownership tables at `:71-100` and `:104-118` assign both sites below to this story, and
+they split `:236` between the eight-key half here and Story 11.13's confinement clause. Every other
+documentation site the earlier combined draft claimed belongs to Story 11.13, which ships the adapter
+and the port union those sentences describe.
 
 - `docs/how-to/evaluate-tool-use-behavior.md:72` -- "`ObservedCallInputs` is one eight-key object
   holding both kinds' input channels (`sealed-run-record.ts:200`)". The ninth key falsifies it. The
@@ -266,13 +266,23 @@ adapter and the port union those sentences describe.
 - [ ] `tests/schemas/fixtures/artifact-fixtures.ts` -- add the `mcp` signature accept fixture and its
       `UNION_BRANCH_FIXTURES` entry beside `probe/command-signature`, in this diff. The keyword sweep
       fails on any published keyword no fixture flips, so the branch and its seed cannot be split
-      across two stories.
+      across two stories. The entry's `discriminator` reads `interfaceKind`, on
+      `probe/command-signature`'s own terms: `tests/schemas/artifacts.test.ts:103-115` counts only
+      the probe entries naming the root discriminator `expectedClean` against that union's two
+      branches, so a seed naming `expectedClean` makes the count 3 against 2 and turns `validate`
+      red. Story 11.4's Decision 10 records the rule.
 - [ ] `npm run generate:schemas` -- regenerate `sealed-run-record.schema.json` and `probe.schema.json`;
       move every census constant in `tests/schemas/published-census.ts` the two documents move, by
       reading each failure. Decision 4 states which ones and what each move is.
 - [ ] `tests/schemas/fixtures/artifact-fixtures.ts` -- move the four version literals (`:151` for the
       sealed run record, `:453`, `:535`, `:564` for the probes, each line re-read after Story 11.4's
-      edits to this file) and add a sealed run record fixture carrying `callInputs.arguments`.
+      edits to this file), add `arguments: null` to the `emptyCallInputs` literal at `:134`, and fill
+      `callInputs.arguments` on one observation of `sealedRunRecordFixture` so the ninth key ships
+      with the accept seed AD-13's sweep reads for it. This story owns that fixture and it is the
+      only one: `Observation` (`sealed-run-record.ts:222-272`) declares no interface kind, so a
+      filled `arguments` channel is the whole of what makes a sealed observation tool-shaped, and the
+      keyword and its seed land in one diff. Story 11.13's port-message fixture is a different shape
+      in a different file.
 - [ ] `tests/schemas/fixtures/artifact-reject-cases.ts` -- one single-mutation reject fixture per new
       published constraint, per AD-13 and AD-30, including one for the narrowed
       `ApiDefectSignature.interfaceKind` so a fixture proves the removed enum member is refused.
