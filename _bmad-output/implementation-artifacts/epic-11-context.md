@@ -1,0 +1,173 @@
+# Epic 11 Context: the fifth interface kind and the documentation that describes it
+
+<!-- Compiled from planning artifacts. Edit freely. Regenerate with compile-epic-context if planning docs change. -->
+
+## Goal
+
+The published documentation says eval-quality can be pointed at five system shapes and gives a how-to guide for each.
+Four of the five run. The fifth does not.
+`docs/index.md:72` reads "Two interface kinds compile today, `api` and `cli`, and a guide below covers each shape people put in front of them", the routing table at `:74-80` lists five shapes, and the tool-use row at `:80` carries the verdict "Declared and refused at compile".
+The cause is one module-private literal: `SUPPORTED_INTERFACE_KINDS = ['api', 'cli']` at `src/core/compile/interface-inventory.ts:31`.
+That is the same defect class this repository spent 9 September closing at six other sites: prose that states what the schema will not accept.
+This epic closes the last one by building the kind rather than by softening the sentence.
+When the epic ends, an `mcp` contract compiles, seals, pre-flights, scores, and ships in the dev corpus, a real adapter answers it, a third conformance arm certifies that adapter, AD-31 grades the kind in its own file, and every page describing what the product can be pointed at is true without a qualifier.
+
+## Stories
+
+- Story 11.1: Whether tool-use evaluation is one gap or two
+- Story 11.2: The check that would catch a stale tool-use claim
+- Story 11.3: The response descriptor for an unstructured tool result
+- Story 11.4: The operation shape for a tool call
+- Story 11.5: Compile and pre-flight admit an MCP interface
+- Story 11.6: The tool-call defect signature and the ninth input channel
+- Story 11.13: The port messages and the MCP adapter
+- Story 11.7: The third conformance arm and the graded kind
+- Story 11.8: The published surface, the corpus, and the census
+- Story 11.10: A seeded defect scored against a skill contract
+- Story 11.11: A shipped workflow contract with a captured binding and a fixture reset
+- Story 11.12: An end-to-end run against a service the suite starts
+- Story 11.9: The documentation says what is true (runs last)
+
+## The findings this epic exists to close
+
+Each is verified against the source in this tree at 1.4.2.
+
+1. **Three gates refuse the kind, and all three are reachable.** `SUPPORTED_INTERFACE_KINDS` (`src/core/compile/interface-inventory.ts:31`) is `['api', 'cli']`, module-private and never exported, checked at `:36`. `planPreflight` asserts it a second time at `src/core/preflight/plan.ts:305`, because a caller can assemble a plan by hand. `qualifyProbe` raises `signature-interface-kind-unsupported` at `src/core/score/qualification.ts:755-762` when a probe's defect signature names the kind, with the detail "declares a method and a path template with no per-kind semantics behind them".
+2. **The only transcription of the compile literal outside `src/` is in the documentation.** `docs/how-to/evaluate-tool-use-behavior.md:63` reproduces `SUPPORTED_INTERFACE_KINDS = ['api', 'cli']` in a table, and nothing checks that it agrees with the source.
+3. **The response descriptor is the reason the kind was deferred rather than built.** `ResponseDescriptor` (`src/core/schemas/interface.ts:45-70`) carries `requiredKeys`, `permittedKeys`, `types`, `successIndicator`, `channelRoles`, and `collectionLocations`, and every one of the six is about a JSON body. A real MCP tool result is `content: [{type: "text", text: "..."}]` alongside `isError`, and AD-4's quantifiers need a JSON collection to range over. `ARCHITECTURE-SPINE.md:656` records the consequence: "Bringing `mcp` into v0 remains Deferred." `docs/explanation/what-ships.md:40` says the same thing to the public.
+4. **`mcp` borrows the HTTP-shaped operation and four things about it are wrong for a tool call.** `apiShapedInterface` (`interface.ts:281-286`) hands `mcp` the `Operation` shape at `:296`. `method` is required over the seven HTTP verbs. `pathTemplate` is the only place a tool name could go, because every MCP call shares the one transport identity `tools/call`, so two tools declared as `POST /tools/call` collide under `duplicate-operation-signature` (`interface-inventory.ts:108`) after the parameter-name erasure in `operationSignature` (`:59`). Three of the four request channels are dead, since a tool call has arguments only. And the response descriptor is finding 3.
+5. **AD-40 has nothing to bind against.** `ApiDefectSignature` declares `method` and `pathTemplate` at `defect-signature.ts:165-166`, and its `interfaceKind` at `:164` is `z.enum(['api', 'web', 'mcp'])`, so an `mcp` probe is schema-valid and fails qualification. `cli` took its own literal branch at `:178` when Epic 9 gave that kind a real identity.
+6. **There is no port message an MCP adapter could be handed and none it could return.** `ProbeRequest` (`src/core/schemas/port-messages.ts:135-138`) and `ProbeObservation` (`:186-189`) are discriminated unions over `api` and `cli` only.
+7. **The check that would have caught a stale claim does not run on the page that carries it.** `docs/how-to/evaluate-tool-use-behavior.md:137-139` invokes `compile --in mcp-contract.json` and `:141-143` shows the rejection, but the contract at `:84-133` is a plain fenced JSON block rather than a `cat > … <<'EOF'` heredoc and no `<!-- expect-exit: N -->` is declared. Under `scripts/check-doc-invocations.mjs:20-34` that makes the run UNFAITHFUL: the page named a file only its reader has, so the check substitutes a stand-in and keeps the usage-error judgment only. Opening the kind would not fail `npm run validate`, and the false claim at `:142` would ship in silence.
+8. **The page's own example is an interface fragment, and the check order decides which code fires.** The fenced JSON at `docs/how-to/evaluate-tool-use-behavior.md:84-133` is a `PermittedInterface`, while the command below it says "Compile a contract carrying it", so a heredoc over those bytes verbatim exits 5 under `schema-parse-failure` rather than the 4 the page shows. The heredoc has to carry a whole `EvalContract`, and it has to declare one operation: `checkDuplicateOperationSignature` runs at `src/core/compile/compile.ts:121` ahead of `checkInterfaceKind` at `:128`, so two `mcp` tools sharing `POST /tools/call` raise the collision code rather than the kind code. This is also why Story 11.4's acceptance test is worth having.
+9. **A stale count already sits beside the kind.** `tests/schemas/command-interface.test.ts:117` reads `describe('the three kinds whose probe semantics are still undeclared')` while enumerating two. It becomes one.
+
+## Two defects inherited from Epic 9, closed by this epic's evidence stories
+
+Both were found while writing the evidence stories and both are verified by a grep that returns nothing.
+
+- **An orphaned docblock.** `src/core/compile/bindings.ts:40-52` documents `CAPTURABLE_CHANNEL`, a constant Story 9.3 deleted in favour of `descriptorChannelOf`. The name appears nowhere in `src/`, `tests/` or `docs/`, so the block floats above `CapturedBinding` documenting nothing. Story 11.11 deletes it after moving its one surviving sentence into `checkCapturedChannel`'s own docblock.
+- **A downstream consequence that never landed.** Story 9.3's Decision 4 recorded that "Story 9.5's corpus carries a command contract capturing from stdout". `grep -rn "captured" corpus/` returns nothing, so no shipped contract carries a capture of either kind. Story 11.11 ships the first one. The `cli` capture from `stdout` and the one from the `artifact` channel stay unexercised by a shipped contract, which Story 11.11 states plainly.
+
+## The committed chain count moves twice, and the published pages say "one"
+
+Stories 11.10 and 11.11 each add a generated end-to-end chain, so the repository ends this epic committing three rather than one. Three published statements say otherwise and each is verified: `docs/how-to/author-behavioral-contracts.md:237` says the repository commits one complete chain, `README.md:240`'s first cell names "the committed worked chain" in the singular, and the corpus README's absence paragraph, generated from `scripts/dev-corpus-target.ts:137-144`, describes a single example whose run record is committed as `spike-worked-example/sealed-run-record.json`. `tests/architecture/dev-corpus.test.ts:280-283` pins a regex over that README text which both rewrites have to keep matching, so it is a constraint the two stories share rather than one either owns.
+
+Execution order settles the ownership. Story 11.10 lands first and takes the singular to two. Story 11.11 lands second and takes two to three. Neither predicts the other's number: each reads the committed state and writes what it finds, the same way the corpus numerals are handled. The corpus README is generated, so that edit lands in `scripts/dev-corpus-target.ts` and `corpus/dev/README.md` is never hand-edited. The two npm scripts keep their singular names and gain the new chains, so `package.json` takes no edit and `validate`'s step count does not move on their account. Story 11.10 phrases its sentences so Story 11.11's edit is a numeral swap.
+
+One trap in that paragraph is worth naming, because it looks like a count that moves and is not. "Three of the four artifacts" counts the artifacts of an end-to-end example, which is a different quantity from how many chains commit a run record. It holds all epic. Editing it would falsify the sentence and break `dev-corpus.test.ts:282`'s regex in one move, since that regex anchors on four fragments in order. The clause that does move is the path list, which the regex never reaches.
+
+## The dev corpus contract count, one chain across four stories
+
+Four stories add a corpus member and each states its arithmetic against the story before it. The count runs 21 today, 22 after Story 11.8's `mcp` exemplar, 23 after Story 11.10's skill contract, and 24 after Story 11.11's workflow contract. Story 11.12 moves no count at all, since its evidence is a run rather than a contract. "Nineteen are one per discipline rule" and "Three fail compilation by design" hold throughout. No story predicts another's total: Story 11.8's `check:doc-counts` computes each gated numeral from `DEV_CORPUS_CONTRACTS` at run time and names the word owed, and Story 11.9 reads the result last.
+
+## What needs nothing, confirmed
+
+- **The package boundary does not move.** `src/index.ts:14-20` grants the root barrel `root -> application` and `root -> core-schemas` only, and it exports no interface kinds, no probe messages, no adapters, and no conformance runners. `McpProbeRequest`, `McpProbeObservation`, and the third conformance arm ride the existing `./conformance` subpath, and an MCP adapter rides `./adapters`. `package.json` and `tests/architecture/package-exports.test.ts:122-153` are untouched.
+- **The website needs no change.** `website/src/content/docs` is a symlink to `docs/`, and `website/astro.config.mjs:120-142` autogenerates navigation, so a new guide appears without a configuration edit.
+- **`Observation` needs nothing.** It is not discriminated on kind in the sealed run record, so a recorded tool call has somewhere to live. `ObservedCallInputs` is a different case and the earlier draft of this register had it wrong: Story 11.4's ninth input channel forces a ninth `arguments` key on it under Story 11.6's breaking sealed-run-record bump, so it does move. `foreignChannels` in `qualification.ts` gives every non-`cli` kind the API response channels, which confines a tool-use defect signature to `response-body`, `response-headers`, and `response-status`; Story 11.5 keeps `response-body` and `response-status` reachable for `mcp` and closes `response-headers`.
+- **The generated AD tables carry no kind enumeration.** `docs/ad21-*`, `ad31-*`, and `ad33-*.generated.md` need nothing.
+
+## Requirements & Constraints
+
+- **AD-10 closed the kinds and AD-10 names the condition for opening one.** Probe semantics are declared per interface kind, and a kind fails honestly under `unsupported-interface-kind` while its semantics are undeclared. Stories 11.3 and 11.4 declare them for `mcp`. AD-10's sentence must stay true of `web` afterwards, and `web` must still fail at all three gates with the same code.
+- **AD-35 forbids more than a logical identifier.** A contract names logical interface identifiers only and never a URL, host, or port, so an MCP server address is configuration outside the contract and the adapter's target policy is where authorization lives.
+- **AD-19 is what a new kind has to satisfy.** Every operation declares a transport identity, a state-change marker, a request shape, a closed response descriptor, a channel role per descriptor pointer, a nominated success indicator, and volatile pointers. AD-40's resolution needs the identity half to be contract-independent.
+- **AD-11 governs every schema move.** Adding an optional field is a `schemaVersion` bump recorded in the field's own description; removing or retyping is breaking. Story 11.4 retypes the eval contract, so its bump is breaking and is recorded in the driving field's own `.describe()`, with `src/core/schemas/eval-contract.ts:161` and the pinned copy at `tests/schemas/eval-contract-version.test.ts:60` raised first so the failures name every literal that has not moved.
+- **AD-13's four checks move together on every schema story:** the rejection suite, the byte-exact drift check (`check:schemas`), the differential, and the keyword-mutation check. Only the second has its own npm script; the other three ride `test:coverage`.
+- **AD-37 binds the conformance suite.** A conforming adapter is defined by an executable suite. `package.json:81` constrains where a new conformance test may live: `test:conformance` runs only `tests/adapters tests/testing tests/conformance`.
+- **AD-31 grading is owed per kind in its own file.** `tests/coverage/command-coverage.test.ts:1-13` records why: "a whole interface kind went ungraded while the suite stayed green" over three of the fourteen predicates that answered "confidently and wrongly" for a full release. `tests/coverage/fixtures/corpus.ts:548-553` states the rule. An `mcp` kind inherits the obligation.
+- **The package executes nothing.** No agent, judge, or system under test runs inside it. An MCP adapter is a port implementation the caller drives.
+- **`check:boundary` scans `src/`, `corpus/`, and three `package.json` fields for host-project vocabulary.** No comment or corpus byte this epic writes may cite an epic, story, acceptance-criterion, task, or decision number.
+- **Generated files are never hand-edited.** Contracts, probe corpora, schema documents, corpus READMEs, and AD tables come from their generators, and the `check:` scripts prove it.
+- **Prose the code contradicts is a defect.** When a story changes behaviour, the same story fixes every sentence describing the old behaviour and says which ones it found.
+- **Documentation moves with every story.** Each story fixes the published pages its own change makes false, adds its own step to `_bmad-output/project-knowledge/learning-path-step-by-step.md` following `learning-path-template.md`, and prunes and de-AIs every JSDoc, comment and `.describe()` string it writes while writing them. The learning path ends at Step 44, so this epic's thirteen stories are Steps 45 through 57. Story 11.9 keeps the cross-cutting prose no earlier story owns, plus the sweep that catches a sentence nobody claimed. The published `.describe()` strings count as shipped documentation, and one was already found stale on 9 September.
+- **Ambiguities are settled by construction in the story that finds them**, with the later story that inherits the decision named. No spine revision is bumped and no new ADR is opened.
+
+## Technical Decisions
+
+- **Story 11.1 runs first because it can shrink the epic.** Two different things are called tool-use evaluation. Reading one asks whether an agent's tool use was correct, where the system under test is the agent behind a command and the tool calls it made are a file that command wrote; `CommandOperation.artifacts` (`interface.ts:239-243`) already declares such a file. Reading two asks whether the MCP server itself is correct, and only the `mcp` kind can describe that. If reading one works, the tool-use guide is rewritten around it, the `mcp` gap narrows to reading two, and some of Stories 11.3 through 11.8 may be deferrable. The constraint most likely to decide it is `condition-artifact-channel-contract-local` (`qualification.ts:325-343`), which refuses a signature naming an artifact identifier while its own comment at `:336-338` states that "a signature reaches a written file through the descriptor channel of whatever operation it binds, which is kind-neutral and needs no identifier". So the descriptor-channel route may work where the identifier route provably fails, and the story must record which route it took.
+- **Story 11.2 runs before any behaviour changes, because it is the check that proves the epic finished.** Turning the guide's contract into a heredoc and declaring `<!-- expect-exit: 4 -->` makes the run faithful, following the spelling at `docs/how-to/author-behavioral-contracts.md:82` and `docs/tutorials/getting-started.md:66`, the only two pages that declare one today.
+- **That gate is live for the rest of the epic, and it constrains Stories 11.4 and 11.5.** `check:doc-invocations` runs inside `npm run validate`, so the guide becomes an executed input to every later gate run. Story 11.4 makes the page's HTTP-shaped contract stop parsing, and Story 11.5 makes the page's declared rejection stop firing. Each updates the guide's contract fence and declared exit code in the same diff so `npm run validate` is green at every story boundary; the prose rewrite stays in Story 11.9. This is the armed gate working as designed.
+- **Story 11.4 follows the `CommandOperation` precedent rather than bending the HTTP shape.** Epic 9 solved the same problem for `cli` by giving the kind its own operation shape (`interface.ts:230-252`), and `AnyOperation` at `:255` already exists for the consumers that read only kind-neutral fields. Story 11.4 also decides and records whether `mcp` moves to its own defect-signature branch beside the `cli` literal at `defect-signature.ts:178` or keeps the api-shaped one, since AD-40 requires a contract-independent identity either way. When `mcp` leaves `apiShapedInterface`, `web` becomes its only member, and the story states that in the source.
+- **Eight files under `src/` discriminate on the kind and stop compiling when a third branch lands.** `src/core/seal/plan-index.ts`, `src/core/score/qualification.ts`, `src/core/preflight/projection.ts`, `src/core/preflight/witness-evidence.ts`, `src/core/preflight/reduce.ts`, `src/core/preflight/plan.ts`, `src/testing/probe-conformance.ts`, and `src/adapters/command-line-adapter.ts`. That exhaustiveness is a feature; Story 11.13 works them as a checklist and decides each branch against its own module.
+- **`src/adapters/command-line-adapter.ts` is the model for the third adapter.** It is the most recent one added, and its deny-by-default target policy, its elapsed and output bounds, and its rule that a non-zero exit is an observation rather than a fault each need an MCP equivalent decided explicitly.
+- **The third conformance arm gets its own runner and its own count entry.** `CONFORMANCE_OUTCOME_COUNTS` gains an `mcp-probe` entry so nothing already published moves, which is the shape Epic 10 used when it added `command-probe` beside `environment-probe`. `docs/reference/cli-commands.md:229` publishes those counts and moves with them.
+- **Opening `mcp` narrows `unsupported-interface-kind` fireability to one kind, and Story 11.5 says so in the source.** `tests/application/preflight.test.ts:139` sets `kind = 'mcp'` deliberately, and its comment at `:136-138` explains that a command interface compiles now, so flipping to `cli` would be a parse failure rather than the structural failure under test. After this epic, `web` is the only api-shaped mutation that can fire the code end to end. The mutation and its comment move to `web` with the reason rewritten.
+- **The census is six pinned constants.** `tests/schemas/published-census.ts` holds `CENSUS_BY_DOCUMENT:20`, `CENSUS_BY_KEYWORD:36`, `CENSUS_TOTAL = 3023` at `:64`, `DEFS_BY_DOCUMENT:67`, `REJECT_CASE_COUNTS:88`, and `ACCEPT_FIXTURE_COUNTS:100` with `ACCEPT_FIXTURE_TOTAL` derived at `:109-114`. Each moves by reading the failure and following the procedure that file documents.
+- **The union-branch seeds are three, and they land in the stories that declare their branches.** `tests/schemas/published/corpus.ts:28-45` builds the mutation sweep's seeds from five lists, and three of them are closed: `ARTIFACT_ACCEPT_FIXTURES` (`artifact-fixtures.ts:1041-1054`, one entry per artifact key), `PROBE_CLASS_FIXTURES` (asserted equal to the closed class set at `tests/schemas/artifacts.test.ts:498-502`), and `QUALIFICATION_ROUTE_FIXTURES` (one per AD-9 route). So every new seed this epic needs joins `UNION_BRANCH_FIXTURES`. Story 11.4 lands two, one for `PermittedInterface`'s `mcp` branch and one for the probe's `mcp` manifestation-witness leg, moving `ACCEPT_FIXTURE_COUNTS.unionBranches` 8 to 10 and `.distinctInstances` 22 to 24. Story 11.6 lands the third for `DefectSignature`'s `mcp` branch, moving 10 to 11 and 24 to 25. `artifact-fixtures.ts:486-488` records why each is mandatory: a branch nothing exercises is a branch AD-13's sweep reports as unprotected, and `keyword-mutation.test.ts:190-193` fails on any published keyword no fixture flips.
+- **A third dev-corpus exemplar moves four spelled-out numerals at their source.** `DEV_CORPUS_CONTRACTS` (`tests/coverage/fixtures/corpus.ts:555-559`) is the slot. `tests/architecture/dev-corpus.test.ts:333` pins exactly 3 structural failures. `scripts/dev-corpus-target.ts:106-113` is the README template carrying "Twenty-one contracts and one compiled-and-sealed pair", "Nineteen are one per discipline rule", "two describe a system under test that runs behind a command", "Eighteen are published only after", and "Three fail compilation by design", mirrored byte-checked at `corpus/dev/README.md:3` and `:9-12` and regenerated by `npm run generate:dev-corpus`.
+- **Two things the epic does not move, each checked against the tree.** The `interface-kind-outside-the-four` reject cases keep their count: `INTERFACE_KINDS` stays `['api','web','cli','mcp']` and this epic changes what `compile` admits, so the only edit is the constraint prose at `tests/schemas/fixtures/artifact-reject-cases.ts:1271` catching up with `reject-cases.ts:135`. And the worked example's `probe.json:35` keeps `"interfaceKind": "api"`, because the chain's subject is the api contract; Story 11.8 reruns `npm run check:worked-example` and changes nothing there.
+- **The dev corpus grows, and the numeral sites are five.** They are `scripts/dev-corpus-target.ts:65`, `:108`, `:114`, which carries two words, and `:115`. `:117`'s "Three fail compilation by design" holds. Four stories add corpus members, 11.8 for the `mcp` exemplar and 11.10 through 11.12 for the evidence contracts, so each states its arithmetic against the story before it and the last one landing writes the final words.
+- **Every hand-written documentation count is gated by nothing today, and Story 11.8 closes that.** `scripts/check-docs.mjs` reads frontmatter and whitespace only and never reads a page body, and `check:doc-invocations` judges fenced commands rather than prose, so thirteen numerals across six pages drift silently. Epic 9's Story 9.5 recorded the same observation and its intended test never landed, which `grep -rn "twenty-one" tests/` confirms by returning nothing. The gate ships as a script wired into `validate`, carrying its own closed word table because no numeral-to-word renderer exists in the tree, and it enumerates the counts it does not cover.
+- **`check:ad5-registry` parses the first column only.** `scripts/check-ad5-registry.ts:96` reads no further, so prose in later columns is checked by nothing, and the already-stale "Fires when" text at `ARCHITECTURE-SPINE.md:232` is an existing example. Story 11.8 fixes it while it is there.
+- **`npm run validate` and `npm run docs:build` are separate gates.** Validate does not build the website, so Story 11.8's acceptance names both.
+
+## Cross-Story Dependencies
+
+- Story 11.1 depends on nothing and can shrink Stories 11.3 through 11.8. It ships no code in either outcome.
+- Story 11.2 depends on nothing and must land before any behaviour changes, because it is the check that turns a stale documentation claim into a build failure.
+- Story 11.3 depends on nothing in the tree and settles the shape Stories 11.4 through 11.8 build to. It changes no schema, so it is reviewable on its own.
+- Story 11.4 depends on Story 11.3 for the descriptor and is the only story that may retype the eval contract for this kind.
+- Story 11.5 depends on Stories 11.3 and 11.4 for the declared semantics AD-10 requires before a kind may be opened. Nothing before it can compile an `mcp` contract even in a test.
+- Story 11.6 depends on Stories 11.4 and 11.5 for the operation shape and the opened gates its signature branch binds against, and it closes the qualification window Story 11.5 leaves.
+- Story 11.13 depends on Story 11.6 for the ninth `arguments` key its observation arms write. That is the one coupling edge between the two halves and the reason the schema half runs first. The observation branch is what forces the remaining exhaustiveness sweep.
+- Story 11.7 depends on Story 11.13 for an adapter to certify, and it is the story that discharges the AD-31 grading obligation a new kind inherits.
+- Story 11.8 depends on Stories 11.4 through 11.7 for every enumeration it regenerates, and it is the story where `npm run validate` and `npm run docs:build` both go green.
+- Story 11.10 depends on Story 11.8 for the corpus state it inherits and on nothing else. It establishes the worked-example construction the epic uses: a shared module, one target file per chain, and chains under `_bmad-output/worked-examples/`.
+- Story 11.11 depends on Story 11.10 for that construction and for the committed-chain count it moves from two to three.
+- Story 11.12 depends on Stories 11.10 and 11.11 only for the corpus counts it must not transcribe. It adds no corpus member and moves no numeral.
+- Story 11.9 depends on Story 11.2 for its proof and on every other story for its subject, the three evidence stories included. It runs last, because it is the story that states what is true and it can only do that once the evidence exists. It is the only story that may claim the five-shape promise is kept.
+
+## Artifact bumps, the port split, and the qualification gate, settled across the stories
+
+Every artifact `schemaVersion` bump in this repository is owned by exactly one story, so an unclaimed or double-claimed bump is a defect. A peer review found two such defects in the first draft of this epic and both are closed here.
+
+- **The eval contract's breaking bump is Story 11.4's**, recorded in `permittedInterfaces`' own `.describe()`, with `src/core/schemas/eval-contract.ts:161` and its pinned copy at `tests/schemas/eval-contract-version.test.ts:60` raised first so the failures name every literal that has not moved.
+- **The probe bumps twice.** Story 11.4 takes the first, because its `WitnessInputs` widening reaches `probe.schema.json` through `src/core/schemas/probe.ts:36`. Story 11.6 takes the second, for `McpDefectSignature` and `ProbeInputBinding`'s ninth `arguments` channel together. Two bumps in one epic is the rule Epic 9 already established when the eval contract moved 3 to 4 in Story 9.1 and 4 to 5 in Story 9.2: a story that retypes an artifact takes its own bump so each is independently releasable.
+- **The sealed run record's breaking bump is Story 11.6's**, carrying the ninth `arguments` key on `ObservedCallInputs` that Story 11.4's ninth input channel forces. Story 11.13 moves no published document at all, since the port messages carry no `lineageFields` and have no entry under `schemas/`.
+
+**`src/core/schemas/defect-signature.ts` is one story's, and the qualification gate goes with it.** `ProbeInputBinding` sits at `defect-signature.ts:86` and is consumed at `:109` inside `signatureCommon`, so the `mcp` signature branch and the `arguments` channel are one file and one change. Story 11.6 owns `McpDefectSignature`, the narrowing of `ApiDefectSignature.interfaceKind` to `['api','web']`, that channel, the qualification gate, and the `UNION_BRANCH_FIXTURES` seed for the branch, all in one diff. The seed ships with the branch because `tests/schemas/published/keyword-mutation.test.ts:190-193` fails on any published keyword no fixture flips.
+
+**Story 11.5 therefore opens two gates rather than three.** Compile and pre-flight admit `mcp`; qualification does not. That leaves a window where an `mcp` contract compiles and pre-flights while a probe against it cannot yet qualify, and Story 11.6 closes it. Epic 9 ran the same shape when Story 9.2's command pointers resolved `absent` at score time until Story 9.4 landed.
+
+**The port splits across three stories.** `McpProbeRequest` is Story 11.5's, because opening the pre-flight gate puts an `McpOperation` into `requestOf` on every leg path and no `mcp` contract reaches a plan without it. `McpProbeObservation`, the port signature, the adapter and its target policy are Story 11.13's, which a late review split out of Story 11.6 after proving the two halves independent in both directions with one coupling edge, `callInputsOf`'s eight-key literal, that forces the schema half first.
+
+Three placement and semantics decisions are settled and none reopens an AD:
+
+- **The reference MCP adapter speaks the stdio transport only.** Streamable HTTP and HTTP+SSE are excluded in the source with their reason. AD-2's rule is a flat prohibition on network I/O and its own history records that the exception was deleted rather than narrowed, while a stdio server is a child process, which Epic 10 already settled is not a network call. This keeps `docs/explanation/what-ships.md:30`'s published "ships no network adapter" sentence true with no edit.
+- **`evaluateMcpTarget` lives at `src/adapters/mcp-target-policy.ts`**, because `scripts/dependency-direction.ts:86-87` grants `adapters/` an edge to `ports/` and `core/schemas` only. The declared `McpTargetAuthorization` and `McpTargetPolicy` shapes go in `src/core/schemas/probe-policy.ts` beside the two shipped ones. This is the reasoning Epic 10 recorded when it moved the `cli` evaluator out of `core/`.
+- **`isError` is observable on `response-status` as 0 or 1**, projected by Story 11.13's adapter. `response-body` and `response-status` are reachable for `mcp` and `response-headers` is not. An oracle asserting that a tool did not report an error is a real check, and it is what gives `foreignChannels` (`qualification.ts:148-151`) a trigger that fires.
+- **`CONFORMANCE_OUTCOME_COUNTS['mcp-probe']` is 14**, six shared assertions plus eight, and it holds because the shipped authorization declares exactly two authorization-scoped fields.
+
+## Three published sentences the epic falsifies that no first-draft story claimed
+
+Each was found while fixing a story against the review and each is verified in the tree. They are recorded here because the pattern matters more than the three instances: a sentence describing a shape's key count is exactly the kind a story changes without noticing.
+
+- `docs/how-to/evaluate-tool-use-behavior.md:72` and `:236` both describe `ObservedCallInputs` as "one eight-key object". Story 11.4's ninth input channel falsifies both, and `:236` also frames the three-channel confinement as settled. Story 11.6 claims the eight-key half of both, and Story 11.13 claims `:236`'s confinement clause, whose meaning its observation union changes.
+- `src/core/schemas/sealed-run-record.ts:195-196` still says "A four-key strict object", which was already false at eight keys before this epic touched it. Story 11.6 folds it into the ninth-key task.
+
+The lesson for the remaining stories is the one Story 11.9's sweep exists to enforce: grep for the shape's own vocabulary, not only for the words the epic introduces.
+
+## One owner per documentation line
+
+A peer review found four published lines claimed by two stories each. The table settles it, and Story 11.9's sweep is what catches a line nobody claimed.
+
+| Line | Owner | Why that story |
+|---|---|---|
+| `docs/index.md:70-84`, minus the three evidence State cells | 11.9 | The framing sentence, the table structure, the tool-use row and the paragraph below describe the product's shape, which no single change falsifies |
+| The skill, workflow and AI-feature State cells inside that block | 11.10, 11.11, 11.12 | Each evidence story is what removes its own unproven claim, and each drafts its own cell carrying the limit it keeps. Story 11.9 asserts these three rather than writing them |
+| `docs/reference/glossary.md:91` | 11.5 | Opening the kind is what falsifies it |
+| `docs/explanation/what-ships.md:18` | 11.5 | Same cause |
+| `docs/explanation/what-ships.md:40` | 11.3 | Its recorded decision is what answers the open design question |
+| `docs/how-to/evaluate-ai-feature-behavior.md:14` | 11.4 | The operation branch falsifies "apiShapedInterface carries api, web and mcp" |
+| `docs/how-to/evaluate-tool-use-behavior.md:242` | 11.9 | Deleted as part of the guide's rewrite |
+| The guide's contract fence and invocation | 11.2, then 11.4 and 11.5 | 11.2 arms it; each later story keeps it green in its own diff |
+| Every hand-written count | 11.8 | It ships the gate and moves the corpus |
+
+
+## What this epic deliberately leaves for later
+
+- `web` stays refused, and `unsupported-interface-kind` fireability narrows to that one kind.
+- No third-party AI feature has been evaluated, and the package still executes nothing under evaluation. Story 11.12 proves the shape end to end against a loopback fixture the suite starts and says the boundary out loud; pointing it at a production service stays the caller's adapter by design.
+- The held-out probe corpus and the second experiment round stay owed, exactly as the What Ships page already records.

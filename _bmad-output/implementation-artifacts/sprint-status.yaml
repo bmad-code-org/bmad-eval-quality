@@ -1,5 +1,5 @@
 # generated: 2026-08-10
-# last_updated: 2026-09-08
+# last_updated: 2026-09-09
 # project: evalcore
 # project_key: NOKEY
 # tracking_system: file-system
@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-08-10
-last_updated: 2026-09-08
+last_updated: 2026-09-09
 project: evalcore
 project_key: NOKEY
 tracking_system: file-system
@@ -111,3 +111,18 @@ development_status:
 
   epic-10: done
   10-1-the-command-line-environment-probe-adapter: done
+
+  epic-11: backlog
+  11-1-whether-tool-use-evaluation-is-one-gap-or-two: backlog
+  11-2-the-check-that-would-catch-a-stale-tool-use-claim: backlog
+  11-3-the-response-descriptor-for-an-unstructured-tool-result: backlog
+  11-4-the-operation-shape-for-a-tool-call: backlog
+  11-5-compile-and-preflight-admit-an-mcp-interface: backlog
+  11-6-the-tool-call-defect-signature-and-the-ninth-input-channel: backlog
+  11-13-the-port-messages-and-the-mcp-adapter: backlog
+  11-7-the-third-conformance-arm-and-the-graded-kind: backlog
+  11-8-the-published-surface-the-corpus-and-the-census: backlog
+  11-10-a-seeded-defect-scored-against-a-skill-contract: backlog
+  11-11-a-shipped-workflow-contract-with-a-captured-binding-and-a-fixture-reset: backlog
+  11-12-an-end-to-end-run-against-a-service-the-suite-starts: backlog
+  11-9-the-documentation-says-what-is-true: backlog
