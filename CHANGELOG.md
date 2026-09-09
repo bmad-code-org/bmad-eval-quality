@@ -10,6 +10,18 @@ body.
 
 ## [Unreleased]
 
+### Fixed
+
+- A contract can assert that a collection is empty. AD-4's empty-collection introduction condition fired
+  for every operand of every operator, so `count-tolerance(coll, 0, 0)` could never resolve `true` against
+  a genuinely empty collection, and `existence` over a pointer resolving to a present-but-empty array
+  resolved `insufficient-evidence` even though `existence` only asks about presence. The condition is now
+  qualified by what the operator reads: `count-tolerance` reads cardinality, `existence` and `absence` read
+  presence, and all three resolve over a collection observed to be present and empty. Every quantifier and
+  every operator that needs a member to answer is unchanged, and a collection-typed pointer that resolved
+  `absent` still resolves `insufficient-evidence` for every operator, so a missing collection never
+  certifies as an empty one. The disjunctive escape hatch AD-4 struck stays closed on `any`'s own fold.
+
 ## [1.3.0] - 2026-09-09
 
 ### Fixed

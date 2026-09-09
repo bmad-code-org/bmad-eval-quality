@@ -115,6 +115,13 @@ explicitly test-only stub next to the tests, never exported from `src/`.
 
 ### AC 3 — The empty-collection introduction condition, applied uniformly per operand
 
+> **Amended after this story shipped.** AD-4 now qualifies the condition: a collection observed to be
+> present and empty introduces `insufficient-evidence` only where the operator holding it needs a member
+> to answer. `count-tolerance`, `existence`, and `absence` read the collection's cardinality or its
+> presence, so they resolve over one. A collection-typed pointer that resolved `absent` still trips for
+> every operator, and every quantifier is unchanged. `ARCHITECTURE-SPINE.md` AD-4 and
+> `src/core/evaluate/resolution.ts` carry the current rule; the AC below is the shipped-then reading.
+
 AD-4: *"Resolution is three-valued, and the third value is an invariant over operands rather than a
 rule about particular operators … the value arrives for every operator now in the closed set … without
 a further decision"* (`ARCHITECTURE-SPINE.md:191`). Read literally and applied uniformly (Decision 1):

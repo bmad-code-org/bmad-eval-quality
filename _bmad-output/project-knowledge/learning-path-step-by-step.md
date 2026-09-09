@@ -779,8 +779,8 @@ item failed", so an empty response certifies itself. This step adds a third answ
 meaning "there was nothing here to look at", so an empty result stops reading as a clean pass.
 
 **What:** `resolveCheck`, the tree-walker that turns an `Expression` into a `CheckResolutionValue`:
-`notOf`/`allOf`/`anyOf` for the three connectives, `resolveQuantifier` for `for-all`/`for-any`, and one
-uniform empty-collection check applied before every leaf operator runs.
+`notOf`/`allOf`/`anyOf` for the three connectives, `resolveQuantifier` for `for-all`/`for-any`, and the
+empty-collection check applied before every leaf operator runs.
 
 **Why:** Story 3.1's ten operators only decide one node. The soft-delete pair is why three-valued
 resolution exists: `for-all(page, absence(@/retractedAt))` and
@@ -824,6 +824,9 @@ flowchart TD
 
 - The empty-collection check runs on every operand of every operator, including a `{ literal: [] }`
   one: there is no spelling in this grammar for "this may legitimately be empty."
+- One exception, by operand evidence: a collection observed present and empty still answers
+  `count-tolerance`, `existence`, and `absence`, so `count-tolerance(coll, 0, 0)` spells "this
+  collection should be empty." A collection-typed pointer that did not resolve still abstains.
 - `all` keeps a genuine `false` decisive even next to an `insufficient-evidence` sibling. `any` is
   weaker than plain OR: one `insufficient-evidence` sibling beats a `true` one.
 - `not(insufficient-evidence)` is `insufficient-evidence`, under both polarities.

@@ -294,7 +294,22 @@ describe('notOf/allOf/anyOf propagation (AC 4)', () => {
 			expect(result.resolution).toBe('true')
 		})
 
-		it("expression-nodes.ts's any shape resolves insufficient-evidence when both children read the same empty-collection operand", () => {
+		it("expression-nodes.ts's any shape resolves insufficient-evidence when both children read the same collection-typed pointer that did not resolve", () => {
+			const resolver = makeStubResolver({ list: { 'response-body': {} } }, {})
+			const result = resolveCheck(
+				VALID_NODES.any,
+				resolver,
+				makeStubPointerDenotesCollection([
+					'/interactions/list/response-body/items',
+				]),
+				NO_REFERENCE_SET_KEYS,
+				DEFAULT_BUDGET,
+				PATH,
+			)
+			expect(result.resolution).toBe('insufficient-evidence')
+		})
+
+		it("expression-nodes.ts's any shape resolves true over an observed empty collection, because existence and absence are total over one", () => {
 			const evidence = { list: { 'response-body': { items: [] } } }
 			const resolver = makeStubResolver(evidence, {})
 			const result = resolveCheck(
@@ -305,7 +320,14 @@ describe('notOf/allOf/anyOf propagation (AC 4)', () => {
 				DEFAULT_BUDGET,
 				PATH,
 			)
-			expect(result.resolution).toBe('insufficient-evidence')
+			// `existence` answers true and `absence` answers false against a
+			// present, empty array, so the two stay exact complements and the
+			// disjunction has a genuine resolution to fold.
+			expect(result.resolution).toBe('true')
+			expect(result.children.map((child) => child.resolution)).toEqual([
+				'true',
+				'false',
+			])
 		})
 	})
 })
@@ -786,12 +808,26 @@ describe('a quantifier over shape (O-005 shape)', () => {
 
 describe('quantifier fold correctness (P11)', () => {
 	it('a mixed fold: one true child, one insufficient-evidence child, one false child', () => {
+		// The predicate is `ordering`, and it used to be `existence`.
+		// `existence` is total over a present, empty array and answers true
+		// there, so it can no longer produce the insufficient-evidence child
+		// this fold needs. `ordering` has to read a member, so the empty second
+		// element still trips the condition.
 		const check: Expression = {
 			op: 'for-all',
 			collection: { pointer: '/interactions/x/response-body/rows' },
-			predicate: { op: 'existence', operands: [{ pointer: '@/tags' }] },
+			predicate: {
+				op: 'ordering',
+				operands: [{ pointer: '@/tags' }],
+				key: 'capturedAt',
+				order: 'ascending',
+			},
 		}
-		const rows: JsonValue[] = [{ tags: ['a'] }, { tags: [] }, {}]
+		const rows: JsonValue[] = [
+			{ tags: [{ capturedAt: 1 }, { capturedAt: 2 }] },
+			{ tags: [] },
+			{},
+		]
 		const resolver = makeStubResolver({ x: { 'response-body': { rows } } }, {})
 		const result = resolveCheck(
 			check,
@@ -845,7 +881,7 @@ describe('quantifier fold correctness (P11)', () => {
 	})
 })
 
-describe('the empty-collection introduction condition, applied uniformly (Decision 1, AC 7 point 5)', () => {
+describe('the empty-collection introduction condition over an observed empty collection (Decision 1, AC 7 point 5)', () => {
 	it("trips on ordering's sole operand resolving [], never ordering's own vacuous-true answer for a short array", () => {
 		const check: Expression = {
 			op: 'ordering',
@@ -872,7 +908,7 @@ describe('the empty-collection introduction condition, applied uniformly (Decisi
 		})
 	})
 
-	it("trips on countTolerance's sole operand resolving []", () => {
+	it("does not trip on countTolerance's sole operand resolving [], because counting an observed empty collection answers zero", () => {
 		const check: Expression = {
 			op: 'count-tolerance',
 			operands: [{ pointer: '/interactions/x/response-body/rows' }],
@@ -892,7 +928,14 @@ describe('the empty-collection introduction condition, applied uniformly (Decisi
 			DEFAULT_BUDGET,
 			PATH,
 		)
-		expect(result.resolution).toBe('insufficient-evidence')
+		// Zero rows where three were expected is a defect the contract caught.
+		// AD-4 keeps a detection a detection rather than converting it into an
+		// abstention.
+		expect(result).toEqual({
+			resolution: 'false',
+			introductionCondition: null,
+			children: [],
+		})
 	})
 
 	it("trips on containment's container resolving []", () => {
@@ -962,6 +1005,126 @@ describe('the empty-collection introduction condition, applied uniformly (Decisi
 			PATH,
 		)
 		expect(result.resolution).toBe('insufficient-evidence')
+	})
+})
+
+// AD-4's introduction condition asks whether the evidence channel produced an
+// answer, and a present, empty array is an answer for an operator that reads a
+// property of the collection itself. These are the three operators that do:
+// `count-tolerance` reads its cardinality, `existence` and `absence` read its
+// presence.
+describe('operators total over an observed empty collection resolve rather than abstain', () => {
+	const ROWS = '/interactions/x/response-body/rows'
+	const emptyRowsResolver = makeStubResolver(
+		{ x: { 'response-body': { rows: [] } } },
+		{},
+	)
+	const resolveOverEmptyRows = (
+		check: Expression,
+		pointerDenotesCollection = noneCollectionTyped,
+	) =>
+		resolveCheck(
+			check,
+			emptyRowsResolver,
+			pointerDenotesCollection,
+			NO_REFERENCE_SET_KEYS,
+			DEFAULT_BUDGET,
+			PATH,
+		)
+
+	it('"this collection should be empty" resolves true: count-tolerance with expected 0 over an observed empty collection', () => {
+		const result = resolveOverEmptyRows({
+			op: 'count-tolerance',
+			operands: [{ pointer: ROWS }],
+			expected: 0,
+			tolerance: 0,
+			relative: false,
+		})
+		expect(result).toEqual({
+			resolution: 'true',
+			introductionCondition: null,
+			children: [],
+		})
+	})
+
+	it('existence over an observed empty collection resolves true, since the value is present', () => {
+		const result = resolveOverEmptyRows({
+			op: 'existence',
+			operands: [{ pointer: ROWS }],
+		})
+		expect(result).toEqual({
+			resolution: 'true',
+			introductionCondition: null,
+			children: [],
+		})
+	})
+
+	it("absence over an observed empty collection resolves false, keeping AD-26's exact complement of existence", () => {
+		const result = resolveOverEmptyRows({
+			op: 'absence',
+			operands: [{ pointer: ROWS }],
+		})
+		expect(result).toEqual({
+			resolution: 'false',
+			introductionCondition: null,
+			children: [],
+		})
+	})
+
+	it('a collection-typed pointer that did not resolve still abstains under count-tolerance, so a missing collection never certifies as empty', () => {
+		const missing = '/interactions/x/response-body/missing'
+		const result = resolveCheck(
+			{
+				op: 'count-tolerance',
+				operands: [{ pointer: missing }],
+				expected: 0,
+				tolerance: 0,
+				relative: false,
+			},
+			emptyRowsResolver,
+			makeStubPointerDenotesCollection([missing]),
+			NO_REFERENCE_SET_KEYS,
+			DEFAULT_BUDGET,
+			PATH,
+		)
+		expect(result).toEqual({
+			resolution: 'insufficient-evidence',
+			introductionCondition: 'empty-collection',
+			children: [],
+		})
+	})
+
+	it("AD-4's struck disjunction stays closed: any(count-tolerance(coll, 0, 0), for-all(coll, absence)) abstains over an empty collection", () => {
+		// The count-tolerance branch now resolves true, and the disjunction is
+		// still insufficient-evidence. `anyOf` is weaker than logical
+		// disjunction on purpose, so a sibling that examined nothing is never
+		// rescued. That fold is what closes this fail-open; the leaf
+		// interception never was.
+		const result = resolveOverEmptyRows({
+			op: 'any',
+			operands: [
+				{
+					op: 'count-tolerance',
+					operands: [{ pointer: ROWS }],
+					expected: 0,
+					tolerance: 0,
+					relative: false,
+				},
+				{
+					op: 'for-all',
+					collection: { pointer: ROWS },
+					predicate: {
+						op: 'absence',
+						operands: [{ pointer: '@/retractedAt' }],
+					},
+				},
+			],
+		})
+		expect(result.resolution).toBe('insufficient-evidence')
+		expect(result.children.map((child) => child.resolution)).toEqual([
+			'true',
+			'insufficient-evidence',
+		])
 	})
 })
 
