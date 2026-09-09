@@ -570,15 +570,31 @@ Story 6.4's.
 | `seeded-faults-scoped` | the defect's witness resolves non-`true` on every clean leg of its operation | it resolves `true` on any clean leg | never |
 | `seeded-fault-fired` | the witness resolves `true` on its own fault leg | the witness is `null`, its leg has no observation, or the relation resolves `false` or `insufficient-evidence` | never |
 
-> **Amended 2026-09-09.** The `seeded-faults-scoped` row says "every clean leg of its operation",
-> and the shipped plan read "clean" as every other leg of that operation by leg id. A leg can carry
-> a request identical to the fault leg's, most often a sensitivity leg spelling the witness's own
-> inputs. The environment answers both the same way, so the check failed on one observation counted
-> twice. A leg whose built request equals the fault leg's is now excluded from `cleanLegIds`,
-> compared over the whole `ProbeRequest` in RFC 8785 form with `probeId` neutralised. The exclusion
-> is bounded to an operation whose `stateChangeMarker` is false, where one request has one answer
-> for the length of the run; a mutating operation keeps both legs, since the same request issued
-> twice is two events the system may answer differently. Fixtures 126, 127, and 128.
+>
+> **Amended 2026-09-09, two rules.**
+>
+> 1. The row says "every clean leg of its operation", and the shipped plan read "clean" as every
+>    other leg of that operation by leg id. A leg can carry a request identical to the fault leg's,
+>    most often a sensitivity leg spelling the witness's own inputs, and the plan has nothing that
+>    tells the two apart: same operation, same inputs, same request bytes. The check failed over a
+>    leg it could not distinguish from the fault leg. A leg whose built request equals the fault
+>    leg's is now excluded from `cleanLegIds`, compared over the whole `ProbeRequest` in RFC 8785
+>    form with `probeId` neutralised. The exclusion is bounded to an operation whose
+>    `stateChangeMarker` is false. That bound is conservatism: nothing at plan time establishes that
+>    a mutating operation answers two identical requests differently, only that it may, since a
+>    request that changes state is a different event the second time it is issued. The cost is
+>    live and named: a defect seeded on `create-thing` whose witness posts `{name: 'alpha'}`, the
+>    same body sensitivity leg `create-a` sends, still reports `the manifestation witness fires on
+>    clean leg "create-a"`. Comparing the two legs' observations at reduce time would close it, and
+>    that comparison is left open pending a decision. Fixtures 126, 127, and 128.
+> 2. An empty `cleanLegIds` resolved `satisfied`, which certified scoping from no observation. It
+>    fails now, on the rule the `input-sensitivity` row already runs on: a check that examined
+>    nothing has established nothing. Both causes are reachable. An operation whose only leg is the
+>    fault leg reached it before this change, and rule 1 adds the operation every one of whose legs
+>    carries the fault leg's request, which is AD-10's exemption case exactly: one keyless safe read
+>    whose two control-observe legs both send the empty inputs the operation admits. The check
+>    carries `droppedLegIds` so the note can say which cause it was. Fixtures 130, 131, 132, and
+>    133.
 
 **Anomalous** means `status >= 400`. The word is already the repository's: Story 6.1's conformance
 suite asserts `probe/observe-anomalous-status`, and `ProbeObservation.status` is already bounded to

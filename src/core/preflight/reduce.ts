@@ -306,7 +306,26 @@ export const reducePreflight: ReduceStage<
 				return check(planned.kind, null, 'satisfied', null)
 			}
 			case 'seeded-faults-scoped': {
-				const { witness, defectId } = planned
+				const { witness, defectId, droppedLegIds } = planned
+				// A check over no clean leg examined nothing, and a check that
+				// examined nothing has established nothing, which is the rule the
+				// `input-sensitivity` row above already runs on. Satisfied here would
+				// certify scoping from zero evidence, and it would do so on the two
+				// contracts least able to afford it: one whose defect names the only
+				// leg its operation has, and one whose every other leg repeats the
+				// fault leg's request. Those are different authoring mistakes, so the
+				// note says which one this was.
+				if (planned.cleanLegIds.length === 0) {
+					const named = droppedLegIds.map((legId) => `"${legId}"`).join(', ')
+					return check(
+						planned.kind,
+						witness.operationId,
+						'failed',
+						droppedLegIds.length === 0
+							? `${defectId}: the operation has no leg besides the fault leg, so nothing here establishes that the defect is scoped to it`
+							: `${defectId}: every other leg of the operation carries the fault leg's own request (${named}), so nothing here establishes that the defect is scoped to it`,
+					)
+				}
 				for (const legId of planned.cleanLegIds) {
 					const resolved = resolveAgainst(
 						witness,

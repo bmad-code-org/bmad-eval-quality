@@ -1795,10 +1795,14 @@ flowchart TD
 - The two seeded-fault checks are disjoint: one reads only clean legs, the other only the fault leg.
   Fold them together and one answer maps to no outcome the schema can spell.
 - A clean leg is one that asks a different question. A leg carrying the fault leg's own request is
-  dropped from the set: one request gets one answer, so the witness firing there is the fault's own
-  manifestation read a second time. That holds for an operation whose `stateChangeMarker` is false.
-  A mutating operation can answer the same request differently at two points in the sequence, so
-  both legs stay in the set there.
+  dropped from the set, because the plan has nothing that tells the two apart. The drop is bounded
+  to an operation whose `stateChangeMarker` is false, which is caution: nothing establishes that a
+  mutating operation answers two identical requests differently, only that it may. A defect seeded
+  on a mutating operation whose witness repeats a sensitivity leg's inputs still fails this check.
+- An empty clean-leg set fails. The check examined nothing, and a check that examined nothing has
+  established nothing, which is the same rule `insufficient-evidence` gets. The note says which
+  cause emptied it: the operation had no other leg, or every other leg carried the fault leg's own
+  request.
 
 **Watch out:**
 

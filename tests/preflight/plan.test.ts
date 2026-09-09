@@ -17,6 +17,8 @@ import {
 	cleanControlProbe,
 	contractDraft,
 	inputsOf,
+	keylessDefectProbe,
+	keylessReadContract,
 	parseContract,
 	preflightContract,
 	probeDraft,
@@ -371,5 +373,60 @@ describe('the plan as a whole', () => {
 		if (scoped?.kind !== 'seeded-faults-scoped')
 			throw new Error('the draft declares one seeded defect')
 		expect(scoped.cleanLegIds).toEqual(['create-a', 'create-b'])
+	})
+
+	// AD-10's exemption case: one keyless safe read, whose only legs are the two
+	// control-observe legs, both carrying the empty inputs the operation admits.
+	// A defect seeded there matches every leg it has. The reducer is told which
+	// legs went, because an empty set it read as satisfied would certify scoping
+	// from nothing (fixture 132).
+	it("130. names the legs it dropped when the fault leg's request matches every leg of its operation", () => {
+		const plan = planPreflight({
+			contract: keylessReadContract,
+			probes: [keylessDefectProbe],
+			runId: 'run-1',
+		})
+		const scoped = plan.checks.find(
+			(check) => check.kind === 'seeded-faults-scoped',
+		)
+		if (scoped?.kind !== 'seeded-faults-scoped')
+			throw new Error('the probe declares one seeded defect')
+		expect(scoped.cleanLegIds).toEqual([])
+		expect(scoped.droppedLegIds).toEqual([
+			'preflight-control-observe',
+			'preflight-control-observe-2',
+		])
+	})
+
+	// `JsonValue` admits an integer outside the safe range and RFC 8785 does not,
+	// so the signature of such a request is unavailable. Planning stays a plan:
+	// no fault is thrown, and a leg that cannot be proved identical stays in the
+	// clean-leg set.
+	it('131. keeps a leg whose request holds a value RFC 8785 cannot serialise', () => {
+		const draft = contractDraft()
+		const listThings = draft.permittedInterfaces[0].operations.find(
+			(operation: { operationId: string }) =>
+				operation.operationId === 'list-things',
+		)
+		listThings.sensitivityWitness.legs[0].inputs.query = { limit: 1e21 }
+		const cleanLegsOf = (probes: readonly Probe[]) => {
+			const scoped = planOf(parseContract(draft), probes).checks.find(
+				(check) => check.kind === 'seeded-faults-scoped',
+			)
+			if (scoped?.kind !== 'seeded-faults-scoped')
+				throw new Error('the probe declares one seeded defect')
+			return scoped.cleanLegIds
+		}
+		// The unserialisable leg is the clean one here.
+		expect(cleanLegsOf([seededProbe])).toEqual(['list-a', 'list-b'])
+		// And here it is the fault leg, so no leg is dropped at all.
+		const faulty = probeDraft()
+		faulty.defects[0].manifestationWitness.inputs = inputsOf({
+			query: { limit: 1e21 },
+		})
+		expect(cleanLegsOf([ProbeSchema.parse(faulty)])).toEqual([
+			'list-a',
+			'list-b',
+		])
 	})
 })

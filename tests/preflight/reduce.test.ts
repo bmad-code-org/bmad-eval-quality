@@ -15,6 +15,9 @@ import {
 	cleanControlProbe,
 	contractDraft,
 	jsonBody,
+	keylessDefectProbe,
+	keylessReadContract,
+	lonelyDefectProbe,
 	type ObservationPatch,
 	observationsFor,
 	parseContract,
@@ -326,6 +329,29 @@ describe('the two seeded-fault checks, which are disjoint by construction', () =
 		).toBe('satisfied')
 	})
 
+	// An empty clean-leg set examined nothing, so it establishes nothing. The two
+	// ways it empties are different authoring mistakes and the note says which.
+	it("132. seeded-faults-scoped fails when every other leg of the operation carries the fault leg's request", () => {
+		const { checks } = verdictOf({
+			contract: keylessReadContract,
+			probes: [keylessDefectProbe],
+		})
+		const scoped = checkFor(checks, 'seeded-faults-scoped', 'read-health')
+		expect(scoped.outcome).toBe('failed')
+		expect(scoped.note).toContain("carries the fault leg's own request")
+		expect(scoped.note).toContain('"preflight-control-observe"')
+	})
+
+	it('133. seeded-faults-scoped fails when the operation has no leg besides the fault leg', () => {
+		const scoped = checkFor(
+			verdictOf({ probes: [lonelyDefectProbe] }).checks,
+			'seeded-faults-scoped',
+			'reset-things',
+		)
+		expect(scoped.outcome).toBe('failed')
+		expect(scoped.note).toContain('no leg besides the fault leg')
+	})
+
 	it('60. seeded-faults-scoped stays satisfied even when the witness resolves false on its own fault leg', () => {
 		expect(
 			outcomeOf(
@@ -447,7 +473,7 @@ describe('the verdict itself', () => {
 	// of a command contract with a schema-valid HTTP observation and pre-flight
 	// would report four checks satisfied with no command ever run. `probeId` ties
 	// the answer to the question; only `kind` says it answered the same question.
-	it('123. raises port-contract-violation when the observation answers the other mechanism', () => {
+	it('129. raises port-contract-violation when the observation answers the other mechanism', () => {
 		const plan = planPreflight({
 			contract: preflightContract,
 			probes: [seededProbe],

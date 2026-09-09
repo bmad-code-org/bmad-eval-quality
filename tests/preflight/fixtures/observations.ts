@@ -478,6 +478,65 @@ export const cleanControlProbe: Probe = Probe.parse({
 /** a deep copy of the seeded probe a test may mutate before parsing it back. */
 export const probeDraft = (): any => structuredClone(seededProbe)
 
+/**
+ * AD-10's exemption case as a whole contract: one safe read declaring no key in
+ * any channel. Its only legs are the two control-observe legs, and both carry
+ * the empty inputs the operation admits, so a defect seeded there has a
+ * manifestation witness that matches every leg of its own operation.
+ */
+export const keylessReadContract: EvalContract = EvalContract.parse({
+	...contractLiteral,
+	contractId: 'preflight-fixture-keyless',
+	permittedInterfaces: [
+		{
+			logicalId: 'thing-api',
+			kind: 'api',
+			operations: [
+				{
+					operationId: 'read-health',
+					method: 'GET',
+					pathTemplate: '/health',
+					stateChangeMarker: false,
+					requestShape: {
+						path: emptyChannel(),
+						query: emptyChannel(),
+						header: emptyChannel(),
+						body: emptyChannel(),
+					},
+					responseDescriptor: {
+						requiredKeys: [],
+						permittedKeys: ['ok'],
+						types: { ok: 'boolean' },
+						successIndicator: null,
+						channelRoles: null,
+						collectionLocations: null,
+					},
+					volatilePointers: [],
+					sensitivityWitness: null,
+				},
+			],
+		},
+	],
+})
+
+/** the seeded probe aimed at that contract's only operation. */
+export const keylessDefectProbe: Probe = (() => {
+	const draft = probeDraft()
+	draft.probeId = 'P-003'
+	draft.defects[0].manifestationWitness.operationId = 'read-health'
+	draft.defects[0].manifestationWitness.inputs = inputsOf()
+	return Probe.parse(draft)
+})()
+
+/** the same probe aimed at an operation the plan gives no other leg. */
+export const lonelyDefectProbe: Probe = (() => {
+	const draft = probeDraft()
+	draft.probeId = 'P-004'
+	draft.defects[0].manifestationWitness.operationId = 'reset-things'
+	draft.defects[0].manifestationWitness.inputs = inputsOf()
+	return Probe.parse(draft)
+})()
+
 export type ObservationPatch = {
 	readonly status?: number
 	readonly body?: ProbeObservedBody

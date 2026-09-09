@@ -14,13 +14,20 @@ body.
 
 - Pre-flight's `seeded-faults-scoped` check no longer fails on a clean leg that carries the fault
   leg's own request. The clean-leg set excluded the fault leg by identity alone, so a sensitivity
-  leg spelling the same inputs got the same answer from the environment, the manifestation witness
-  fired on it, and the check reported a scoping violation for one observation counted twice. A leg
-  whose built request equals the fault leg's is now dropped from the set, compared over the whole
-  `ProbeRequest` in RFC 8785 form with the correlation id neutralised. The exclusion is bounded to
-  an operation AD-19 marks as changing no state, where one request has one answer for the length of
-  the run; on a mutating operation both legs stay in the set, since the same request issued twice
-  is two events the system may answer differently.
+  leg spelling the same inputs issued one request under two labels, the manifestation witness fired
+  on both, and the check reported a scoping violation over a leg the plan had no way to tell from
+  the fault leg. A leg whose built request equals the fault leg's is now dropped from the set,
+  compared over the whole `ProbeRequest` in RFC 8785 form with the correlation id neutralised. The
+  exclusion is bounded to an operation AD-19 marks as changing no state, and that bound is
+  caution: nothing available at plan time establishes that a system answers two identical mutating
+  requests differently, only that it may. The cost is live. A defect seeded on a mutating operation
+  whose manifestation witness repeats a sensitivity leg's inputs still fails this check.
+- `seeded-faults-scoped` fails when its clean-leg set is empty. It was satisfied before, so a
+  defect seeded against an operation with no other leg certified its own scoping from no
+  observation at all. An empty set examined nothing and establishes nothing, which is the rule a
+  sensitivity relation resolving `insufficient-evidence` already follows. The note names the cause,
+  since the operation having no other leg and every other leg carrying the fault leg's request are
+  different authoring mistakes.
 
 ## [1.3.0] - 2026-09-09
 
