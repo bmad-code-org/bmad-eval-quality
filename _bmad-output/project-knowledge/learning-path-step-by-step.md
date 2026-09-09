@@ -85,6 +85,7 @@ flowchart TD
 |   41 | epic9-story3 | The probe port learns to run a command, and seal stops calling one an endpoint. |
 |   42 | epic9-story4 | The run record records what a command produced, and the defect signature can name one. |
 |   43 | epic9-story5 | The corpus ships two command contracts, and the release says what stopped being comparable. |
+|   44 | epic10-story1 | The port that could describe a command finally gets an adapter that runs one, with a policy saying which. |
 
 Adding a step: follow `learning-path-template.md`.
 
