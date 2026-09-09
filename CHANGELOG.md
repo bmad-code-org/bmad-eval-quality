@@ -24,22 +24,24 @@ body.
 
 ### Fixed
 
-- Pre-flight's `seeded-faults-scoped` check no longer fails on a clean leg that carries the fault
-  leg's own request. The clean-leg set excluded the fault leg by identity alone, so a sensitivity
-  leg spelling the same inputs issued one request under two labels, the manifestation witness fired
-  on both, and the check reported a scoping violation over a leg the plan had no way to tell from
-  the fault leg. A leg whose built request equals the fault leg's is now dropped from the set,
-  compared over the whole `ProbeRequest` in RFC 8785 form with the correlation id neutralised. The
-  exclusion is bounded to an operation AD-19 marks as changing no state, and that bound is
-  caution: nothing available at plan time establishes that a system answers two identical mutating
-  requests differently, only that it may. The cost is live. A defect seeded on a mutating operation
-  whose manifestation witness repeats a sensitivity leg's inputs still fails this check.
-- `seeded-faults-scoped` fails when its clean-leg set is empty. It was satisfied before, so a
-  defect seeded against an operation with no other leg certified its own scoping from no
-  observation at all. An empty set examined nothing and establishes nothing, which is the rule a
+- Pre-flight's `seeded-faults-scoped` check no longer fails on a leg that is the fault leg's own
+  probe wearing a second label. The clean-leg set excluded the fault leg by leg id alone, so a
+  sensitivity witness leg spelling the manifestation witness's inputs was read as independent
+  evidence, the witness fired on it, and the check reported a scoping violation. A clean leg is now
+  dropped when it issued the fault leg's request and received the fault leg's answer. Both are
+  compared as canonical digests: the request with its correlation identifier neutralised, the
+  answer as the evidence a relation can address, which carries AD-11's projected body, so a field
+  the operation declares volatile is already out of it and a server-minted identifier stops being a
+  difference. Both halves are required. Answers alone would drop AD-10's own worked example of two
+  distinct nonexistent identifiers both returning 404, and requests alone cannot see that a system
+  answered one request two ways. The comparison lives in the reducer, where the answers are in
+  hand, beside the `state-reset` row that already compares two legs there.
+- `seeded-faults-scoped` fails when no clean leg survives that comparison. It was satisfied before,
+  so a defect seeded against an operation with no other leg certified its own scoping from no
+  observation at all. A check that examined nothing has established nothing, which is the rule a
   sensitivity relation resolving `insufficient-evidence` already follows. The note names the cause,
-  since the operation having no other leg and every other leg carrying the fault leg's request are
-  different authoring mistakes.
+  since an operation with no other leg and an operation every one of whose legs ran the fault leg's
+  probe are different authoring mistakes.
 
 ## [1.3.0] - 2026-09-09
 

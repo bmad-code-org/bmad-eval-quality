@@ -314,32 +314,118 @@ describe('the two seeded-fault checks, which are disjoint by construction', () =
 		).toBe('failed')
 	})
 
-	// `list-a` carries the fault leg's request byte for byte, so an environment
-	// that answered one that way answered the other the same way. The plan drops
-	// such a leg (fixture 126) and the check stays satisfied; without that, every
-	// contract whose sensitivity legs cover the witness's own inputs failed
-	// pre-flight on one observation counted twice.
-	it("127. seeded-faults-scoped stays satisfied when the leg the witness fires on carries the fault leg's own request", () => {
+	// `list-a` reads `list-things` with `limit: 1`, which is the fault leg's
+	// request byte for byte. Answered the same way too, the two legs are one
+	// probe under two labels, and a witness firing there is the fault leg's own
+	// manifestation read a second time.
+	it("126. seeded-faults-scoped drops a clean leg that issued the fault leg's request and got its answer", () => {
 		expect(
 			outcomeOf(
-				{ patches: { 'list-a': jsonPatch({ items: [{ broken: true }] }) } },
+				{
+					patches: {
+						'list-a': jsonPatch({ items: [{ id: 'r-1', broken: true }] }),
+					},
+				},
 				'seeded-faults-scoped',
 				'list-things',
 			),
 		).toBe('satisfied')
 	})
 
-	// An empty clean-leg set examined nothing, so it establishes nothing. The two
-	// ways it empties are different authoring mistakes and the note says which.
-	it("132. seeded-faults-scoped fails when every other leg of the operation carries the fault leg's request", () => {
+	// The same request, answered differently. That is a second answer and it is
+	// evidence of its own, so the leg is read and the check fails on it.
+	it("127. seeded-faults-scoped fails on a leg that issued the fault leg's request and got a different answer", () => {
+		expect(
+			outcomeOf(
+				{ patches: { 'list-a': jsonPatch({ items: [{ broken: true }] }) } },
+				'seeded-faults-scoped',
+				'list-things',
+			),
+		).toBe('failed')
+	})
+
+	// The mutating case, which is the one the plan could never decide. `create-a`
+	// posts the body the witness posts, and the answers agree once `/id`, which
+	// the operation declares volatile, is out of the projection.
+	it('128. seeded-faults-scoped drops a clean leg of a mutating operation answered as the fault leg was', () => {
+		expect(
+			outcomeOf(
+				{
+					probes: [mutatingDefectProbe()],
+					patches: {
+						'fault-leg': jsonPatch({ id: 'x-9', ok: true, echo: 'alpha' }),
+					},
+				},
+				'seeded-faults-scoped',
+				'create-thing',
+			),
+		).toBe('satisfied')
+	})
+
+	it('132. seeded-faults-scoped fails on a clean leg of a mutating operation answered differently', () => {
+		expect(
+			outcomeOf(
+				{
+					probes: [mutatingDefectProbe()],
+					patches: {
+						'fault-leg': jsonPatch({ id: 'x-9', ok: true, echo: 'beta' }),
+					},
+				},
+				'seeded-faults-scoped',
+				'create-thing',
+			),
+		).toBe('failed')
+	})
+
+	// AD-10's exemption case: one keyless safe read, whose only legs are the two
+	// control-observe legs, both sending the empty inputs the operation admits
+	// and both answered alike. Every leg the plan named is dropped, and emptiness
+	// is tested on what survived, so the check fails and names the cause.
+	it('130. seeded-faults-scoped fails when the drop takes every leg the plan named', () => {
+		const answer = jsonPatch({ ok: false })
 		const { checks } = verdictOf({
 			contract: keylessReadContract,
 			probes: [keylessDefectProbe],
+			patches: {
+				'preflight-control-observe': answer,
+				'preflight-control-observe-2': answer,
+				'fault-leg': answer,
+			},
 		})
 		const scoped = checkFor(checks, 'seeded-faults-scoped', 'read-health')
 		expect(scoped.outcome).toBe('failed')
-		expect(scoped.note).toContain("carries the fault leg's own request")
+		expect(scoped.note).toContain(
+			"issued the fault leg's own request and received its answer",
+		)
 		expect(scoped.note).toContain('"preflight-control-observe"')
+	})
+
+	// `JsonValue` admits an integer outside the safe range and RFC 8785 does not.
+	// Both legs here send it, so both digests come back unavailable. A pair that
+	// cannot be compared is a pair the check reads, and the reducer answers with a
+	// verdict; the fault stays inside the comparison.
+	it('131. seeded-faults-scoped reads a leg whose request holds a value RFC 8785 cannot serialise', () => {
+		const draft = contractDraft()
+		const listThings = draft.permittedInterfaces[0].operations.find(
+			(operation: { operationId: string }) =>
+				operation.operationId === 'list-things',
+		)
+		listThings.sensitivityWitness.legs[0].inputs.query = { limit: 1e21 }
+		const probe = probeDraft()
+		probe.defects[0].manifestationWitness.inputs.query = { limit: 1e21 }
+		expect(
+			outcomeOf(
+				{
+					contract: parseContract(draft),
+					probes: [ProbeSchema.parse(probe)],
+					patches: {
+						'list-a': jsonPatch({ items: [{ id: 'r-1', broken: true }] }),
+					},
+				},
+				'seeded-faults-scoped',
+				'list-things',
+			),
+		).toBe('failed')
 	})
 
 	it('133. seeded-faults-scoped fails when the operation has no leg besides the fault leg', () => {
@@ -547,6 +633,30 @@ function driftPatches(): Record<string, ObservationPatch> {
 			servedAt: 'T2',
 		}),
 	}
+}
+
+/**
+ * The seeded probe aimed at the mutating operation, posting the body sensitivity
+ * leg `create-a` posts, with a relation that reads the echo `create-thing`
+ * returns.
+ */
+function mutatingDefectProbe(): Probe {
+	const draft = probeDraft()
+	draft.defects[0].manifestationWitness.operationId = 'create-thing'
+	draft.defects[0].manifestationWitness.inputs = {
+		path: {},
+		query: {},
+		header: {},
+		body: { kind: 'json', value: { name: 'alpha' } },
+	}
+	draft.defects[0].manifestationWitness.relation = {
+		op: 'equality',
+		operands: [
+			{ pointer: '/interactions/fault-leg/response-body/echo' },
+			{ literal: 'alpha' },
+		],
+	}
+	return ProbeSchema.parse(draft)
 }
 
 /** the seeded fault failing to fire on its own leg. */

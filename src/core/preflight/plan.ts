@@ -8,7 +8,6 @@
  * the operation and the witness themselves: there is nothing to look an
  * identifier up in at reduce time.
  */
-import { serialize } from '../canonical/canonicalize.ts'
 import {
 	checkInputsAgainstShape,
 	isApiWitnessInputs,
@@ -21,7 +20,6 @@ import { referenceSetKeysOf } from '../evaluate/evidence-resolution.ts'
 import type { ReferenceSetKeys } from '../evaluate/resolution.ts'
 import { StructuralFailure } from '../failure-codes.ts'
 import type { EvalContract } from '../schemas/eval-contract.ts'
-import { RuntimeFault } from '../schemas/faults.ts'
 import type { AnyOperation, PermittedInterface } from '../schemas/interface.ts'
 import { operationsOf } from '../schemas/interface.ts'
 import type { ProbeRequest } from '../schemas/port-messages.ts'
@@ -34,7 +32,6 @@ import type {
 	WitnessInputs,
 } from '../schemas/sensitivity-witness.ts'
 import type { PlanStage } from '../stage-contracts.ts'
-import { PREFLIGHT_ARTIFACT_PATH } from './projection.ts'
 import { referenceSetMembers } from './witness-evidence.ts'
 
 export type PreflightPlanInput = {
@@ -80,9 +77,6 @@ export type PlannedCheck =
 			readonly witness: ManifestationWitness
 			readonly operation: AnyOperation
 			readonly cleanLegIds: readonly string[]
-			// The legs dropped for carrying the fault leg's own request, so the
-			// reducer can say which of the two ways an empty clean-leg set arose.
-			readonly droppedLegIds: readonly string[]
 	  }
 	| {
 			readonly kind: 'seeded-fault-fired'
@@ -154,30 +148,6 @@ const requestOf = (
 			header: inputs.header,
 			body: inputs.body,
 		},
-	}
-}
-
-/**
- * A leg's request in the RFC 8785 form, with the correlation identifier
- * neutralised because it is the leg id and differs between any two legs.
- * Two legs whose signatures match issue one request under two labels. Taken over
- * the whole request, so a field added to `ProbeRequest` later is compared with
- * no edit here, and canonical, because two key orders spell one request.
- *
- * `null` when the request holds a value RFC 8785 cannot serialise. `JsonValue`
- * admits an integer outside the safe range, a lone surrogate, and nesting past
- * AD-36's depth, and `serialize` raises `non-canonicalizable-value` on each.
- * Planning stays a plan: `planPreflight` reports declaration defects as
- * `StructuralFailure`, and pre-flight ships a verdict wherever it can. A request
- * nothing can canonicalise is a request nothing can prove identical, and `null`
- * matches no other signature, so such a leg stays in the clean-leg set.
- */
-const requestSignature = (request: ProbeRequest): string | null => {
-	try {
-		return serialize({ ...request, probeId: '' }, PREFLIGHT_ARTIFACT_PATH)
-	} catch (error) {
-		if (error instanceof RuntimeFault) return null
-		throw error
 	}
 }
 
@@ -352,11 +322,6 @@ export const planPreflight: PlanStage<PreflightPlanInput, PreflightPlan> = (
 	const legIdsByOperation = new Map<string, string[]>()
 	const scopeKey = (interfaceId: string, operationId: string): string =>
 		`${interfaceId}\u0000${operationId}`
-	// Every planned leg's built request, so the seeded-fault branch below can ask
-	// whether a leg already in the group carries the fault leg's own. Signatures
-	// are taken at that site, so a contract seeding no defect canonicalises
-	// nothing.
-	const requestByLegId = new Map<string, ProbeRequest>()
 	const addLeg = (
 		legId: string,
 		purpose: PlannedLegPurpose,
@@ -364,21 +329,21 @@ export const planPreflight: PlanStage<PreflightPlanInput, PreflightPlan> = (
 		operation: AnyOperation,
 		inputs: WitnessInputs,
 		artifactPath: string,
-	): PlannedLeg => {
-		const leg: PlannedLeg = {
-			legId,
-			purpose,
-			request: requestOf(legId, interfaceId, operation, inputs),
-			operation,
-			inputs,
-		}
-		origins.push({ leg, artifactPath })
-		requestByLegId.set(legId, leg.request)
+	): void => {
+		origins.push({
+			leg: {
+				legId,
+				purpose,
+				request: requestOf(legId, interfaceId, operation, inputs),
+				operation,
+				inputs,
+			},
+			artifactPath,
+		})
 		const key = scopeKey(interfaceId, operation.operationId)
 		const group = legIdsByOperation.get(key)
 		if (group === undefined) legIdsByOperation.set(key, [legId])
 		else group.push(legId)
-		return leg
 	}
 
 	// 1. the sensitivity legs and their checks
@@ -509,14 +474,14 @@ export const planPreflight: PlanStage<PreflightPlanInput, PreflightPlan> = (
 				`the manifestation witness of ${defect.defectId}`,
 				`${path}.inputs`,
 			)
-			// The group is read before the fault leg joins it, which keeps the fault
-			// leg out of its own clean-leg set.
-			const group = [
+			// Read before the fault leg joins the group, which keeps the fault leg out
+			// of its own clean-leg set.
+			const cleanLegIds = [
 				...(legIdsByOperation.get(
 					scopeKey(witness.interfaceId, operation.operationId),
 				) ?? []),
 			]
-			const faultLeg = addLeg(
+			addLeg(
 				witness.legId,
 				'seeded-fault',
 				witness.interfaceId,
@@ -524,40 +489,12 @@ export const planPreflight: PlanStage<PreflightPlanInput, PreflightPlan> = (
 				witness.inputs,
 				`${path}.legId`,
 			)
-			// A clean leg has to ask a different question. Another leg of the same
-			// operation, most often a sensitivity leg, can carry a request equal to
-			// the fault leg's, and the plan has nothing that tells the two apart: same
-			// operation, same inputs, same request bytes. A witness firing on such a
-			// leg says nothing about scope, so it is dropped and the reducer is told
-			// it was.
-			//
-			// Bounded to an operation AD-19 marks as changing no state. That bound is
-			// caution: nothing here establishes that a mutating operation answers two
-			// identical requests differently, only that it may, since a request that
-			// changes state is a different event the second time it is issued. The cost is named in the changelog: a defect seeded on a
-			// mutating operation whose witness repeats a sensitivity leg's inputs
-			// still fails this check.
-			const faultSignature = operation.stateChangeMarker
-				? null
-				: requestSignature(faultLeg.request)
-			const dropped =
-				faultSignature === null
-					? []
-					: group.filter((legId) => {
-							const request = requestByLegId.get(legId)
-							return (
-								request !== undefined &&
-								requestSignature(request) === faultSignature
-							)
-						})
-			const cleanLegIds = group.filter((legId) => !dropped.includes(legId))
 			checks.push({
 				kind: 'seeded-faults-scoped',
 				defectId: defect.defectId,
 				witness,
 				operation,
 				cleanLegIds,
-				droppedLegIds: dropped,
 			})
 			checks.push({
 				kind: 'seeded-fault-fired',

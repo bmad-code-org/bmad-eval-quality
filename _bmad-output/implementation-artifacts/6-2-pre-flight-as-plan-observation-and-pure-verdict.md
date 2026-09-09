@@ -573,27 +573,30 @@ Story 6.4's.
 >
 > **Amended 2026-09-09, two rules.**
 >
-> 1. The row says "every clean leg of its operation", and the shipped plan read "clean" as every
->    other leg of that operation by leg id. A leg can carry a request identical to the fault leg's,
->    most often a sensitivity leg spelling the witness's own inputs, and the plan has nothing that
->    tells the two apart: same operation, same inputs, same request bytes. The check failed over a
->    leg it could not distinguish from the fault leg. A leg whose built request equals the fault
->    leg's is now excluded from `cleanLegIds`, compared over the whole `ProbeRequest` in RFC 8785
->    form with `probeId` neutralised. The exclusion is bounded to an operation whose
->    `stateChangeMarker` is false. That bound is conservatism: nothing at plan time establishes that
->    a mutating operation answers two identical requests differently, only that it may, since a
->    request that changes state is a different event the second time it is issued. The cost is
->    live and named: a defect seeded on `create-thing` whose witness posts `{name: 'alpha'}`, the
->    same body sensitivity leg `create-a` sends, still reports `the manifestation witness fires on
->    clean leg "create-a"`. Comparing the two legs' observations at reduce time would close it, and
->    that comparison is left open pending a decision. Fixtures 126, 127, and 128.
-> 2. An empty `cleanLegIds` resolved `satisfied`, which certified scoping from no observation. It
+> 1. The row says "every clean leg of its operation", and the shipped reducer read "clean" as every
+>    other leg of that operation by leg id. A leg can run the fault leg's own probe under a second
+>    label, most often a sensitivity witness leg spelling the manifestation witness's inputs, and a
+>    witness firing there is the fault leg's own manifestation read a second time. The reducer now
+>    drops a clean leg that issued the fault leg's request and received the fault leg's answer.
+>    Both halves are required. Answers alone would drop AD-10's own worked example, two distinct
+>    nonexistent identifiers both returning 404, which are exactly the legs this check exists to
+>    read; requests alone are what the plan can see, and identical requests can still be answered
+>    differently. Both sides are canonical digests, the request with `probeId` neutralised and the
+>    answer as the leg's evidence with `observationId` neutralised. Evidence is the right side of
+>    the comparison because it is everything a relation can address, and it carries AD-11's
+>    projected body, so a field the operation declares volatile is already out of it. The comparison
+>    is in `reducePreflight` beside the `state-reset` row, which already compares two legs'
+>    projections there. An earlier revision of this change compared requests alone in
+>    `planPreflight` and narrowed the drop to `stateChangeMarker: false`, which left a defect seeded
+>    on `create-thing` failing the check whenever its witness posted a sensitivity leg's body. That
+>    case passes now: the answers decide it. Fixtures 126, 127, 128, 131, and 132.
+> 2. An empty clean-leg set resolved `satisfied`, which certified scoping from no observation. It
 >    fails now, on the rule the `input-sensitivity` row already runs on: a check that examined
->    nothing has established nothing. Both causes are reachable. An operation whose only leg is the
->    fault leg reached it before this change, and rule 1 adds the operation every one of whose legs
->    carries the fault leg's request, which is AD-10's exemption case exactly: one keyless safe read
->    whose two control-observe legs both send the empty inputs the operation admits. The check
->    carries `droppedLegIds` so the note can say which cause it was. Fixtures 130, 131, 132, and
+>    nothing has established nothing. Emptiness is tested on the set that survives the drop, since
+>    the drop is what can empty it. Both causes are reachable and the note says which. An operation
+>    whose only leg is the fault leg reached it before this change. The drop adds AD-10's exemption
+>    case exactly: one keyless safe read whose two control-observe legs both send the empty inputs
+>    the operation admits, answered alike, so every leg the plan named is dropped. Fixtures 130 and
 >    133.
 
 **Anomalous** means `status >= 400`. The word is already the repository's: Story 6.1's conformance
