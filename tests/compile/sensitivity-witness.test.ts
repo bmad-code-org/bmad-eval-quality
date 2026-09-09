@@ -252,6 +252,25 @@ describe('checkWitnessLegality: the channel, the relation, and the fixture reset
 		expect(failure.artifactPath).toBe(`${WITNESS_PATH}.relation`)
 	})
 
+	// The relation is the one expression `checkEvidenceReachability` never
+	// walks, since that check reads oracle checks alone. Left unchecked, both
+	// pointers resolve absent at pre-flight, `deep-equality` over an absent side
+	// is false, and the enclosing `not` certifies the operation sensitive from a
+	// pair that never resolved.
+	it('28. fires unreachable-check-evidence when a relation pointer names a key the descriptor does not declare', () => {
+		const failure = failureOf((contract) => {
+			createWitness(contract).relation = {
+				op: 'deep-equality',
+				operands: [
+					{ pointer: legPointer('create-witness-a', '/nope') },
+					{ pointer: legPointer('create-witness-b', '/nope') },
+				],
+			}
+		})
+		expect(failure.code).toBe('unreachable-check-evidence')
+		expect(failure.artifactPath).toContain(`${WITNESS_PATH}.relation`)
+	})
+
 	it('30. fires malformed-operator-expression when fixtureReset names a non-mutating operation', () => {
 		const failure = failureOf((contract) => {
 			contract.fixtureReset = {

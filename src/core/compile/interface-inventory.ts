@@ -18,7 +18,7 @@ import {
 	buildPlanIndex,
 	parseEvidenceTarget,
 } from '../seal/plan-index.ts'
-import { forEachArtifactPointer } from './reachability.ts'
+import { forEachArtifactPointer, type WitnessScope } from './reachability.ts'
 
 /**
  * Rejects permitted interface kinds whose probe semantics are undeclared.
@@ -127,13 +127,12 @@ export function checkDuplicateOperationSignature(contract: EvalContract): void {
  *
  * Resolving the pointer's step segment against the interaction plan is the
  * route for an oracle check, an oracle direction's evidence target and a rubric
- * criterion, and it is the wrong route for a sensitivity-witness relation: a
- * leg identifier shares the step namespace without being a step, so the lookup
- * missed and every witness pointer went unchecked, which let a witness name an
- * artifact the contract declared nowhere at all and still compile clean. The
- * walk hands the declaring operation over at that site and it is preferred
- * where present, so a leg identifier that collides with a step id is answered
- * against the operation the witness actually probes.
+ * criterion. A sensitivity-witness relation takes the other route, because a leg
+ * identifier shares the step namespace without being a step and the plan lookup
+ * cannot answer for one. The witness scope is what decides it, and preferring it
+ * over the plan matters for ordering: this check runs at `compile.ts` ahead of
+ * `checkWitnessLegIdentifiers`, so a leg id colliding with a step id is still
+ * present here and the plan route would answer it against the wrong operation.
  */
 export function checkArtifactReferences(contract: EvalContract): void {
 	for (const iface of contract.permittedInterfaces) {
@@ -154,18 +153,24 @@ export function checkArtifactReferences(contract: EvalContract): void {
 		contract.permittedInterfaces,
 		{ duplicateIds: 'unresolved' },
 	)
-	// A site that hands its own operation over is answered against that
-	// operation, and a site that does not is answered against the operation the
-	// pointer's step segment names.
-	const planOperationOf = (stepId: string): AnyOperation | undefined => {
+	const operationFor = (
+		witnessScope: WitnessScope | null,
+		stepId: string,
+	): AnyOperation | undefined => {
+		// A relation pointer rooted at anything but its own leg is
+		// `checkWitnessLegality`'s, which names the witness and the stray root.
+		if (witnessScope !== null)
+			return witnessScope.legIds.includes(stepId)
+				? witnessScope.operation
+				: undefined
 		const step = index.stepOf(stepId)
 		if (step === undefined) return undefined
 		return anyOperationOf(index, step.operationId)
 	}
-	forEachArtifactPointer(contract, (pointer, path, declaringOperation) => {
+	forEachArtifactPointer(contract, (pointer, path, witnessScope) => {
 		const target = parseEvidenceTarget(pointer)
 		if (target.artifactId === null) return
-		const operation = declaringOperation ?? planOperationOf(target.stepId)
+		const operation = operationFor(witnessScope, target.stepId)
 		// An unresolvable step or operation is `unreachable-check-evidence`'s,
 		// at a higher rung; this check has nothing to compare against.
 		if (operation === undefined) return

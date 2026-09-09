@@ -122,6 +122,22 @@ function forEachCheckPointer(
 }
 
 /**
+ * A sensitivity witness's own resolution context: the operation it is declared
+ * on, and the leg identifiers its relation's pointers may root at. Both halves
+ * are needed. The operation is the only one a leg can be issued against, and a
+ * pointer rooted at anything else is `checkWitnessLegality`'s to report, so a
+ * consumer answers for a leg and abstains on the rest.
+ *
+ * `ExpressionSite.witnessScope` in `expression-legality.ts` carries the same
+ * pair for the same reason. Two spellings of one idea, kept apart while each
+ * has one consumer.
+ */
+export type WitnessScope = {
+	readonly operation: AnyOperation
+	readonly legIds: readonly string[]
+}
+
+/**
  * Every interaction-rooted pointer the contract writes down, wherever it sits:
  * an oracle's check and its direction's evidence targets, a rubric criterion's
  * evidence, and each operation's sensitivity-witness relation.
@@ -130,30 +146,30 @@ function forEachCheckPointer(
  * an artifact identifier is an authoring fault at every site that names one and
  * a check that walked only the checks would report half of them.
  *
- * The third argument is the operation the site belongs to, and it is supplied
- * only at a sensitivity-witness relation. A witness leg carries no operation of
- * its own: it probes the operation declaring the witness, and its `legId` roots
- * the relation's pointers in the same namespace as interaction-plan step ids
+ * The third argument is the witness scope, supplied at a sensitivity-witness
+ * relation and `null` everywhere else. A witness leg carries no operation of its
+ * own: it probes the operation declaring the witness, and its `legId` roots the
+ * relation's pointers in the same namespace as interaction-plan step ids
  * without being a step. So a caller resolving the pointer's own step segment
  * against the plan finds nothing at a witness site and has to be handed the
- * operation instead. Everywhere else the pointer's step segment is the only
- * thing that names an operation, and the argument is `null`.
+ * scope instead. Everywhere else the pointer's step segment is the only thing
+ * that names an operation.
  */
 export function forEachArtifactPointer(
 	contract: EvalContract,
 	visit: (
 		pointer: string,
 		artifactPath: string,
-		declaringOperation: AnyOperation | null,
+		witnessScope: WitnessScope | null,
 	) => void,
 ): void {
 	const seen = (
 		pointer: string,
 		artifactPath: string,
-		declaringOperation: AnyOperation | null = null,
+		witnessScope: WitnessScope | null,
 	): void => {
 		if (pointer.startsWith('@')) return
-		visit(pointer, artifactPath, declaringOperation)
+		visit(pointer, artifactPath, witnessScope)
 	}
 	contract.oracles.forEach((oracle) => {
 		if (oracle.check !== null)
@@ -161,12 +177,14 @@ export function forEachArtifactPointer(
 				seen(
 					site.pointer,
 					`EvalContract.oracles[id=${oracle.id}].${site.path}`,
+					null,
 				),
 			)
 		oracle.direction?.evidenceTargets.forEach((target, index) => {
 			seen(
 				target,
 				`EvalContract.oracles[id=${oracle.id}].direction.evidenceTargets[${index}]`,
+				null,
 			)
 		})
 	})
@@ -175,6 +193,7 @@ export function forEachArtifactPointer(
 			seen(
 				criterion.evidence,
 				`EvalContract.rubrics[id=${rubric.id}].criteria[id=${criterion.id}].evidence`,
+				null,
 			)
 		})
 	})
@@ -182,11 +201,15 @@ export function forEachArtifactPointer(
 		operationsOf(iface).forEach((operation, operationIndex) => {
 			const witness = operation.sensitivityWitness
 			if (witness === null) return
+			const scope: WitnessScope = {
+				operation,
+				legIds: witness.legs.map((leg) => leg.legId),
+			}
 			visitExpression(witness.relation, 'relation', false, (site) =>
 				seen(
 					site.pointer,
 					`EvalContract.permittedInterfaces[${interfaceIndex}].operations[${operationIndex}].sensitivityWitness.${site.path}`,
-					operation,
+					scope,
 				),
 			)
 		})
