@@ -86,6 +86,7 @@ flowchart TD
 |   42 | epic9-story4 | The run record records what a command produced, and the defect signature can name one. |
 |   43 | epic9-story5 | The corpus ships two command contracts, and the release says what stopped being comparable. |
 |   44 | epic10-story1 | The port that could describe a command finally gets an adapter that runs one, with a policy saying which. |
+|   45 | epic11-story1 | Two different questions were sharing the name "tool-use evaluation"; one of them already runs. |
 
 Adding a step: follow `learning-path-template.md`.
 
@@ -3728,3 +3729,40 @@ It has to be adapter-owned, or no shipped adapter could ever call it.
   Check the rule before writing the module.
 - An authorization names exactly what its mapping needs to name and nothing the contract's own compile-time declaration already checks.
 - A conformance arm for a second mechanism is a second runner with its own outcome count.
+
+## Step 45 (epic11-story1): two different questions were sharing one name
+
+**In plain terms:** people say "test how the assistant uses its tools" and mean two different things.
+One is whether the assistant picked the right tools and used them properly.
+The other is whether the tool service it called behaves correctly.
+We tried the first one for real, start to finish, and it works with what already ships.
+The second one is the part still missing, and the guide had been describing them as one gap.
+
+**What:** a worked run of a command-shaped contract whose one operation declares the tool-call log as a file it writes, put through `compile`, `seal`, `preflight`, and the probe qualification gate on both addressing routes, with the finding recorded and the three published pages that merged the two questions corrected.
+
+**Why:** six later stories were sized against the merged pair without anyone testing the first half.
+If the shipped `cli` kind already answers "was the agent's tool use correct", the reason to build the `mcp` kind is the second question alone.
+A guide that says otherwise is worse than a gap, because it is the sentence that stops anyone checking.
+
+**Read in this order:**
+
+1. `src/core/schemas/interface.ts`: `CommandOperation.artifacts` and `descriptorChannel`, the two declarations that make a written file addressable.
+2. `src/core/compile/reachability.ts`: the artifact branch, which descends through the descriptor for the nominated file and refuses a tail into any other.
+3. `src/core/score/qualification.ts`: the comment above `condition-artifact-channel-contract-local`, which names the descriptor channel as the route a signature takes to a file.
+4. `docs/how-to/evaluate-tool-use-behavior.md`: the two readings, split.
+
+**Story:** `_bmad-output/implementation-artifacts/11-1-whether-tool-use-evaluation-is-one-gap-or-two.md`
+
+### Reference
+
+**Rules:**
+
+- An oracle, a sensitivity witness, and a manifestation witness may all address a declared artifact; a scoring-side defect signature may not.
+- The artifact refusal reads the channel, so the tailed and the bare pointer spelling are refused alike.
+- Put the structure on the channel the descriptor nominates and the same defect qualifies with no failures.
+- Keep the file in `artifacts` even then, so the oracle and both witnesses still reach it.
+- A pointer into a declared file the descriptor does not nominate is `unreachable-check-evidence`; a pointer at an undeclared file is `unresolved-artifact-reference`.
+- Flipping a contract's interface kind flips its operation shape too, so an unsupported kind can surface as a parse failure before its own code fires.
+- Test a claim about what the shipped code expresses by running it against real bytes.
+
+**Watch out:** the routing table on the docs home page still reads "Declared and refused at compile" for the tool-use row, and that stays true. It describes the second question only.
