@@ -335,16 +335,16 @@ Every line number in this section is the **pre-edit** address, matching the Exec
 - `docs/how-to/evaluate-tool-use-behavior.md:236` -- one voice-pass trim only. "that confinement is decided rather than open" became "a confinement the code decides". The eight-key clause on the same line is Story 11.6's and the confinement clause's meaning is Story 11.13's; neither meaning moved.
 - `docs/index.md:72-84` and `docs/explanation/what-ships.md:38-40` -- checked and left standing, per Decision 6. The tool-use row's verdict "Declared and refused at compile" is the exit 4 this story transcribed.
 
-**Addresses that moved, for the stories holding the old ones.** The rewritten opening grew the tool-use guide from 254 lines to 282, so every later address on that page shifted. Each pair below was read off the post-edit file at the end of the pass, after the peer review's fixes landed.
+**Addresses that moved, for the stories holding the old ones.** The rewritten opening grew the tool-use guide from 254 lines to 284, so every later address on that page shifted. Each pair below was read off the post-edit file at the end of the pass, after the peer review's and CodeRabbit's fixes landed.
 
 | What | Owner | Pre-edit | Post-edit |
 |---|---|---|---|
-| The `mcp` contract fence | 11.2, then 11.4 and 11.5 | `:84-133` | `:103-152` |
-| The declared `compile` invocation | 11.2 | `:137-139` | `:156-158` |
-| The rejection the page shows | 11.2 | `:141-143` | `:160-162` |
-| The eight-key `ObservedCallInputs` line | 11.6 | `:72` | `:91` |
-| The `foreignChannels` confinement line | 11.6 and 11.13 | `:236` | `:255` |
-| The "workable move" paragraph | reassigned to 11.1 above | `:242` | `:261` |
+| The `mcp` contract fence | 11.2, then 11.4 and 11.5 | `:84-133` | `:105-154` |
+| The declared `compile` invocation | 11.2 | `:137-139` | `:158-160` |
+| The rejection the page shows | 11.2 | `:141-143` | `:162-164` |
+| The eight-key `ObservedCallInputs` line | 11.6 | `:72` | `:93` |
+| The `foreignChannels` confinement line | 11.6 and 11.13 | `:236` | `:257` |
+| The "workable move" paragraph | reassigned to 11.1 above | `:242` | `:263` |
 
 Both `:84-133` and `:137-143` are byte-identical, verified by the absence of a diff hunk in that range. This story's Never list and Decision 6 name the pre-edit numbers because they were written against the pre-edit file. `docs/how-to/evaluate-agent-behavior.md` grew by one line at `:31`, so its `:67-82` restriction section is now `:68-83` and its `:318-320` TEA paragraph is now `:319-321`. `epic-11-context.md:42`, `:147`, and `:164` carry the pre-edit tool-use numbers; they are the epic register's, and Story 11.9's sweep is where they get reconciled.
 

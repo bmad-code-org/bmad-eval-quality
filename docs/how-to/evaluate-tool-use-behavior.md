@@ -54,6 +54,8 @@ Without it a check over the tool passes while the tool ignores everything you se
 
 **The same three questions, under reading one.**
 The agent is one operation and the run is one step, so the calls it made are rows in the log it wrote and the plan holds a single `exactly-one` step invoking the agent.
+One condition governs all three answers below: `artifacts` declares the log with existence semantics and declares nothing about its fields, so the operation's `descriptorChannel` has to nominate that artifact before any pointer reads inside it.
+Without the nomination, `/interactions/{stepId}/artifact/{id}` asserts the file exists and a tailed pointer into it is `unreachable-check-evidence` at compile.
 "Was the right tool chosen" becomes a `for-all` over the declared collection inside that log, whose predicate reads each row's tool name, and the cap on how many calls a run may make is the `expectedCardinality` on the operation's `collectionLocations` entry, such as `{ "mode": "at-most", "max": 8 }`.
 "Were the arguments right" is the same shape one level down, a predicate over the fields of each row, since each row carries what the agent sent. The worked run declared only the call list, so this is the shape reading one implies; the run transcribed no such predicate.
 "Was the result used correctly" is answered from the log and from the channel the descriptor nominates. The read-back form above needs a second declared operation that reads the state back, and one agent behind one command is a single-step plan; [Evaluate agent behavior](/how-to/evaluate-agent-behavior/) covers declaring that second operation.
