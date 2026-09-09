@@ -37,10 +37,24 @@
 // `EXIT_STRUCTURAL_FAILURE`, the code every discipline rule returns, so a page
 // can name one failure while the binary reports another and the codes still
 // agree. A page that declares its exit code may therefore transcribe the
-// diagnostic beside it, in a `text` fence directly under the command's fence,
-// and that block is compared line for line against what the run wrote to
-// stderr. A page that transcribes only the first lines of a longer diagnostic
-// is fine, and `...` inside a line elides a run of characters.
+// diagnostic beside it, and that block is compared line for line against what
+// the run wrote to stderr. Four rules shape which block gets compared:
+//
+//   * The block is a `text` fence separated from the command's fence by blank
+//     lines only. Prose between them detaches it, and a fence carrying any
+//     other label is left alone.
+//   * The fence above it holds exactly one invocation. Two commands share the
+//     fence's declaration, so neither owns the block.
+//   * Each documented line has to describe the stderr line at the same
+//     position, whole. `...` inside a line elides a run of characters there,
+//     and a line that is exactly `...` matches any one line. Without an
+//     elision the documented line has to be the entire line, because failure
+//     codes share prefixes and an unanchored tail would describe a sibling
+//     failure as readily as its own. A page cannot transcribe a literal
+//     ellipsis.
+//   * Stderr may run past the block. A page that transcribes the first lines
+//     of a longer diagnostic is making a claim about those lines, and the
+//     lines it left out stay unchecked.
 //
 // To make a page's own examples faithful, the run replays each page in
 // document order inside its own sandbox: a `cat > path <<'EOF'` heredoc, an
@@ -79,16 +93,36 @@ if (!existsSync(builtMain)) {
 	process.exit(0)
 }
 
+/** A misdriven run ends here, so it can never report a pass over nothing. */
+const fail = (message) => {
+	console.error(`check:doc-invocations: ${message}`)
+	process.exit(1)
+}
+
 /**
- * The doc roots that document the command line. `--root <path>` replaces them
- * and may be repeated, which is what lets a test drive this check over a
- * fixture page.
+ * The doc roots that document the command line. `--root <path>` and
+ * `--root=<path>` replace them and may be repeated, which is what lets a test
+ * drive this check over a fixture page. A malformed override is an error: a
+ * mistyped root that fell back to the shipped documentation, or to nothing at
+ * all, would report a pass over pages nobody meant to check.
  */
 const ROOTS = (() => {
 	const args = process.argv.slice(2)
-	const overrides = args.flatMap((argument, index) =>
-		args[index - 1] === '--root' ? [argument] : [],
-	)
+	const overrides = []
+	for (let index = 0; index < args.length; index += 1) {
+		const argument = args[index]
+		if (argument.startsWith('--root=')) {
+			overrides.push(argument.slice('--root='.length))
+			continue
+		}
+		if (argument !== '--root') fail(`unrecognized argument "${argument}"`)
+		const value = args[index + 1]
+		if (value === undefined || value.startsWith('--')) {
+			fail('--root takes a path')
+		}
+		overrides.push(value)
+		index += 1
+	}
 	return overrides.length > 0 ? overrides : ['README.md', 'docs']
 })()
 
@@ -205,21 +239,34 @@ function realizeInput(token, sandbox) {
 	if (isMetavariable(token)) return { value: SAMPLE_INPUT, faithful: false }
 	if (!looksLikePath(token)) return { value: token, faithful: true }
 
+	const candidates = token.startsWith(INSTALLED_PREFIX)
+		? [
+				resolve(repoRoot, token.slice(INSTALLED_PREFIX.length)),
+				resolve(repoRoot, token),
+			]
+		: [resolve(repoRoot, token)]
+	const shipped = candidates.find((candidate) => existsSync(candidate))
+
 	// The page's own bytes win over anything on the real filesystem. A page
 	// that writes `mcp-contract.json` and then reads it is describing the file
 	// it just wrote, and a reader who followed the page leaves a copy of that
 	// name at the clone root. Resolving against the repository first would read
 	// the leftover, so the gate would be measuring a file nobody is editing.
+	//
+	// A directory in the sandbox is the one exception. `--out` and `mkdir -p`
+	// create one under every path they are given, and a directory standing in
+	// front of a file this repository ships fails the run on EISDIR, which the
+	// exit code then reports as a usage error the page never made.
 	const authored = sandbox.rebase(token)
-	if (existsSync(authored)) return { value: authored, faithful: true }
-
-	if (token.startsWith(INSTALLED_PREFIX)) {
-		const published = resolve(repoRoot, token.slice(INSTALLED_PREFIX.length))
-		if (existsSync(published)) return { value: published, faithful: true }
+	const made = statSync(authored, { throwIfNoEntry: false })
+	const shadowsAFile =
+		made?.isDirectory() === true &&
+		statSync(shipped ?? authored, { throwIfNoEntry: false })?.isFile() === true
+	if (made !== undefined && !shadowsAFile) {
+		return { value: authored, faithful: true }
 	}
 
-	const shipped = resolve(repoRoot, token)
-	if (existsSync(shipped)) return { value: shipped, faithful: true }
+	if (shipped !== undefined) return { value: shipped, faithful: true }
 
 	return { value: SAMPLE_INPUT, faithful: false }
 }
@@ -289,7 +336,8 @@ function realizeArguments(tail, sandbox) {
  * lines is that invocation's transcribed diagnostic, and it travels on the run
  * as `expectStderr`. Only a declared-exit invocation collects one: a page that
  * shows the output of a command that succeeded is showing stdout, and every
- * page that documents a failure prints it on stderr.
+ * page that documents a failure prints it on stderr. The fence has to have
+ * pushed exactly one such invocation, since both would carry its declaration.
  */
 function extractActions(file, source) {
 	const lines = source.split('\n')
@@ -300,31 +348,44 @@ function extractActions(file, source) {
 	let previous = ''
 	/** The declared-exit run a `text` fence opening here would describe. */
 	let described = null
+	/** The declared-exit runs the open fence has pushed so far. */
+	let fenceRuns = []
 
 	for (let index = 0; index < lines.length; index += 1) {
 		const raw = lines[index]
 
 		if (raw.trimStart().startsWith('```')) {
+			const indent = raw.length - raw.trimStart().length
 			if (!inFence) {
-				if (described !== null && raw.trim().slice(3).trim() === 'text') {
+				if (described !== null && labelOf(raw) === 'text') {
 					const body = []
 					index += 1
 					while (
 						index < lines.length &&
 						!lines[index].trimStart().startsWith('```')
 					) {
-						body.push(lines[index])
+						body.push(undent(lines[index], indent))
 						index += 1
 					}
-					described.expectStderr = body
+					const transcript = trimBlankEdges(body)
+					// An empty block claims nothing, so it is left unattached
+					// and the run keeps the exit-code judgment alone.
+					if (transcript.length > 0) described.expectStderr = transcript
 					described = null
 					previous = raw
 					continue
 				}
 				described = null
+				fenceRuns = []
 				const declared = previous.trim().match(EXPECT_EXIT_PATTERN)
 				expectExit = declared ? Number(declared[1]) : null
-			} else expectExit = null
+			} else {
+				// Two commands in one fence share its declaration, so neither
+				// owns the block below: attaching to the last would quote one
+				// command's transcript against the other's run.
+				described = fenceRuns.length === 1 ? fenceRuns[0] : null
+				expectExit = null
+			}
 			inFence = !inFence
 			inGrammar = false
 			previous = raw
@@ -334,6 +395,7 @@ function extractActions(file, source) {
 		if (raw.trim() === 'Usage:') {
 			inGrammar = true
 			previous = raw
+			described = null
 			continue
 		}
 		if (inGrammar || !inFence) {
@@ -406,25 +468,41 @@ function extractActions(file, source) {
 			expectStderr: null,
 		}
 		actions.push(action)
-		described = expectExit === null ? null : action
+		if (expectExit !== null) fenceRuns.push(action)
 	}
 	return actions
 }
 
+/** A fence's own label, so a `text` fence carrying attributes still counts. */
+const labelOf = (fence) => fence.trim().slice(3).trim().split(/[\s{]/)[0]
+
+/** One captured line without the indentation its opening fence carries. */
+const undent = (line, indent) =>
+	line.slice(0, indent).trim() === '' ? line.slice(indent) : line.trimStart()
+
 /**
  * Whether one documented output line describes the line the run really wrote.
- * `...` elides a run of characters, so the segments around it have to appear in
- * order and the first one has to start the line.
+ * `...` elides a run of characters within the line, so the segments around it
+ * have to appear in order, the first has to start the line, and the last has to
+ * end it. A line that is exactly `...` matches any one line.
  */
 function describesLine(documented, actual) {
+	if (documented === '...') return true
+	if (documented === '') return actual === ''
+	const segments = documented.split('...')
 	let cursor = 0
-	for (const [position, segment] of documented.split('...').entries()) {
+	for (const [position, segment] of segments.entries()) {
 		if (segment === '') continue
 		const found = actual.indexOf(segment, cursor)
 		if (found === -1 || (position === 0 && found !== 0)) return false
 		cursor = found + segment.length
 	}
-	return true
+	// The end anchor is what makes the elision mean something. Failure codes
+	// share prefixes -- `isolation-manifest-absent` and
+	// `isolation-manifest-violation`, `evaluator-configuration-absent` and
+	// `evaluator-configuration-digest-mismatch` -- so a documented line left
+	// hanging would describe a sibling failure as readily as its own.
+	return segments.at(-1) === '' || cursor === actual.length
 }
 
 /** The transcribed block without the blank lines that frame it in the page. */
@@ -439,6 +517,9 @@ function trimBlankEdges(block) {
 const files = ROOTS.flatMap((root) =>
 	collectMarkdown(resolve(repoRoot, root)),
 ).sort()
+
+/** A root that reaches no page is a gate reporting a pass over nothing. */
+if (files.length === 0) fail(`no markdown under ${ROOTS.join(', ')}`)
 
 const workDir = mkdtempSync(join(tmpdir(), 'check-doc-invocations-'))
 
@@ -526,7 +607,7 @@ try {
 			if (action.expectStderr === null) continue
 			compared += 1
 			const written = result.stderr.split('\n')
-			const documented = trimBlankEdges(action.expectStderr)
+			const documented = action.expectStderr
 			const drift = documented.findIndex(
 				(line, position) =>
 					!describesLine(line.trimEnd(), (written[position] ?? '').trimEnd()),

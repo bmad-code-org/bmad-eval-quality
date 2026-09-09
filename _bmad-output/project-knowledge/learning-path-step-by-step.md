@@ -3806,9 +3806,9 @@ The three changes each move the exit code off 4, and a fourth kind of drift leav
 - The heredoc carries a whole contract: the interface fragment on its own exits 5 under `schema-parse-failure`.
 - The contract declares one tool: two tools collide under `duplicate-operation-signature`, which is checked before the kind is, and both exit 4.
 - Prove the gate is armed by declaring a code the run does not produce and watching the check fail.
-- A `text` fence directly under a declared-exit command is that run's transcribed stderr, and it is compared line for line; `...` inside a line elides a run of characters.
-- Only a declared-exit command collects one. A command that succeeded prints on stdout, and the block under it is left alone.
-- Prose between the command's fence and the `text` fence detaches them, and the block is left alone.
+- A `text` fence directly under a declared-exit command, blank lines only between them, is that run's transcribed stderr and is compared line for line.
+- Each documented line has to be the whole stderr line. `...` inside a line elides characters there; a bare `...` line matches any one line. Stderr may run past the block.
+- The block detaches from prose above it, from a fence carrying two commands, and from a command with no declared exit, which prints on stdout.
 - A page's own heredoc is read ahead of any file at the same path in the clone, so a copy a reader leaves behind changes nothing the gate reports.
 
 **Watch out:** two more commands on that page still name files the page never writes, so their exit codes stay unjudged. The story records the six authored artifacts that making them faithful would cost. The example contract also carries a second fault behind the one the page shows, and the page names it: a search changes no state, and the witness channel a tool call needs is illegal for an operation that changes none.

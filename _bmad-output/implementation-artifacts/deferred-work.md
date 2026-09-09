@@ -137,8 +137,9 @@ therefore one artifact short. `docs/tutorials/getting-started.md` publishes the 
 `contractDigest` as the output of a `seal` command and then tells the reader the repository ships
 the brief that command produces, so a user following the page saw a digest the package no longer
 emits. It had been stale since epic 7 story 2 and went stale a third time here. Neither doc gate
-catches it: `check:docs` does not scan `docs/`, and `check-doc-invocations.mjs` runs each documented
-command but never compares its output to the fenced block beside it. The value is corrected, and
+catches it: `check:docs` does not scan `docs/`, and `check-doc-invocations.mjs` compares a page's
+transcribed output only where the page declares the exit code it expects, which leaves a digest
+quoted in prose beyond it. The value is corrected, and
 `tests/architecture/dev-corpus.test.ts`'s case 162, which already recomputes `seal(compile(contract))`
 and compares it to the shipped brief, now also asserts the tutorial carries that brief's digest.
 Verified by restoring the stale value, which reddens the case.
