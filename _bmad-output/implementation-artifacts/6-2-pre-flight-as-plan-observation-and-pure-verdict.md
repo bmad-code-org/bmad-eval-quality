@@ -570,6 +570,16 @@ Story 6.4's.
 | `seeded-faults-scoped` | the defect's witness resolves non-`true` on every clean leg of its operation | it resolves `true` on any clean leg | never |
 | `seeded-fault-fired` | the witness resolves `true` on its own fault leg | the witness is `null`, its leg has no observation, or the relation resolves `false` or `insufficient-evidence` | never |
 
+> **Amended 2026-09-09.** The `seeded-faults-scoped` row says "every clean leg of its operation",
+> and the shipped plan read "clean" as every other leg of that operation by leg id. A leg can carry
+> a request identical to the fault leg's, most often a sensitivity leg spelling the witness's own
+> inputs. The environment answers both the same way, so the check failed on one observation counted
+> twice. A leg whose built request equals the fault leg's is now excluded from `cleanLegIds`,
+> compared over the whole `ProbeRequest` in RFC 8785 form with `probeId` neutralised. The exclusion
+> is bounded to an operation whose `stateChangeMarker` is false, where one request has one answer
+> for the length of the run; a mutating operation keeps both legs, since the same request issued
+> twice is two events the system may answer differently. Fixtures 126, 127, and 128.
+
 **Anomalous** means `status >= 400`. The word is already the repository's: Story 6.1's conformance
 suite asserts `probe/observe-anomalous-status`, and `ProbeObservation.status` is already bounded to
 100–599 at the port, so nothing new is assumed about the protocol here.

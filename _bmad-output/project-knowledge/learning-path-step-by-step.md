@@ -1794,6 +1794,11 @@ flowchart TD
 - `clean-control` reads only the control legs. AD-10's own example is two 404s from a good fixture.
 - The two seeded-fault checks are disjoint: one reads only clean legs, the other only the fault leg.
   Fold them together and one answer maps to no outcome the schema can spell.
+- A clean leg is one that asks a different question. A leg carrying the fault leg's own request is
+  dropped from the set: one request gets one answer, so the witness firing there is the fault's own
+  manifestation read a second time. That holds for an operation whose `stateChangeMarker` is false.
+  A mutating operation can answer the same request differently at two points in the sequence, so
+  both legs stay in the set there.
 
 **Watch out:**
 
