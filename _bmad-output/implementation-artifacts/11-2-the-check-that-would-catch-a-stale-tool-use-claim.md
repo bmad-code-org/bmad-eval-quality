@@ -334,9 +334,8 @@ admitted all four channels because AD-10's marker rule decides nothing for a com
 The frozen matrix says the contract "compiles; exit 0 against a declared 4" when Story 11.5 opens the kind.
 Decision 5 shows it will exit 4 under `malformed-operator-expression` instead, so removing the declaration as
 that row instructs turns the gate red for a reason Story 11.5 did not cause. The frozen block is the human's
-and is left as written; this is the correction the later story reads. **Story 11.5 keeps the declared 4 until
-the operation shape Story 11.4 lands makes the witness legal, and it removes the declaration only once
-`compile` over the page's contract actually exits 0.** Story 11.4 is where that becomes possible.
+and is left as written; this is the correction the later story reads. **Story 11.5 keeps whatever code Story 11.4 leaves declared, and
+removes the declaration only once `compile` over the page's contract actually exits 0.** Story 11.4 is where that becomes possible.
 
 **Decision 7: the gate defends the exit code and nothing else, and the constraint that holds the page true
 is prose.** `check-doc-invocations.mjs:425-434` compares `result.status` against the declared code and reads
@@ -349,21 +348,41 @@ shares, so any structural check firing first on this contract passes the gate wi
 Two consequences are recorded rather than fixed, and the reason is this story's own Ask First list: the fix
 is inside `check-doc-invocations.mjs`, and a story that edits the gate it is measured by proves nothing.
 **Owed to the epic, before Story 11.4 lands:** teach the check to diff a `text` fence that follows a
-declared-exit invocation against that run's stderr. The same edit closes the second half, which the
-verification-gap review found independently: `realizeInput` (`:184-200`) resolves a documented path against
-the real filesystem before the page's own sandbox, so a real file at that path shadows the heredoc silently.
+declared-exit invocation against that run's stderr. The second half is a smaller repair in the same
+function and is owed with it: `realizeInput` (`:184-200`) resolves a documented path against the real
+filesystem before the page's own sandbox, so a real file at that path shadows the heredoc silently. The peer
+review verified a two-line fix, testing `sandbox.rebase(token)` ahead of `resolve(repoRoot, token)`, and
+measured that the ordinary run is unchanged at 32 scanned, 11 faithful, 0 failures while a planted shadow
+stops flipping the verdict. It is left undone here for one reason, the Ask First list: this story is measured
+by this check, and the argument that reserves the output comparison reserves the lookup order with it.
+Whoever takes the output comparison takes this in the same diff.
 **Story 11.4 keeps exactly one operation in the heredoc, or updates the page's text fence in the same diff.**
 That constraint is the whole guard until the check grows an output comparison.
 
-**Decision 8: the heredoc writes under `/tmp/eval-quality-run/`.** The frozen approach names
-`cat > mcp-contract.json`, and the file keeps that name under the scratch directory
-`docs/how-to/author-behavioral-contracts.md:30` already establishes. Two reasons, both measured. A reader
-following this page from a clone would otherwise create an untracked `mcp-contract.json` at the repository
-root, which `git check-ignore` reports is not ignored. And that same file then shadows the page's own
-heredoc under `realizeInput`'s branch order, which the verification-gap review demonstrated by copying a
-contract there and watching the check report `exited 0, and the block declares expect-exit 4`. The scratch
-path is shadowable too, so this buys a clean tree and moves the collision out of the repository; the
-shadowing itself is Decision 7's owed fix.
+**Decision 8: the heredoc writes into the reader's working directory, and the page says to delete the file.**
+A first attempt moved it under `/tmp/eval-quality-run/`, the scratch directory
+`docs/how-to/author-behavioral-contracts.md:29-31` establishes, to keep a reader's clone clean. The peer
+review measured what that actually bought and it was the wrong trade. `realizeInput`
+(`scripts/check-doc-invocations.mjs:184-200`) computes `resolve(repoRoot, token)`, and `resolve` discards
+the root when the token is absolute, so a real file at the documented path wins over the sandbox copy the
+page just wrote, at either spelling. Moving the write does not remove the shadow. What it changes is who can
+see it: a stale `mcp-contract.json` at the repository root shows up as untracked in `git status`, which is
+how the verification-gap review found the hazard in the first place, while a stale
+`/tmp/eval-quality-run/mcp-contract.json` shows up in no status, no diff and no ignore file, is shared by
+every clone on the machine, and would be created by anyone following the page's own instruction.
+
+So the relative path stays, matching the frozen approach, and the page tells the reader the file lands in
+the working directory and to delete it. The hazard stays where a person can see it. Adding the name to
+`.gitignore` was considered and turned down for the same reason: it buys a clean `git status` by removing
+the one signal that makes a stale file findable.
+
+**Decision 10: the page carries its own prerequisites.** The peer review's rejection of the earlier
+"pre-existing, not this page's problem" ruling was correct on the facts. One other guide shares the gap, and
+this story is what makes it load-bearing: before this change a reader could not run the page's command at
+all, since the input file did not exist, and now the missing build step is the only thing left between
+following the page and seeing the output it shows. The page gains the "What you need" block from
+`author-behavioral-contracts.md:14-27`, which also carries the `eval-quality` versus `node dist/cli/main.js`
+spelling note a reader arriving here directly was not getting.
 
 **Decision 9: the contract compiles but does not seal, and nothing on the page claims otherwise.** With the
 kind and the witness channel both made legal it compiles at exit 0, and `seal` still exits 5: empty
@@ -385,8 +404,8 @@ may not fix are recorded as decisions the next story inherits, with the owner na
 | "the kind is the only thing `compile` can fault" is false; the witness channel is a second fault | high | Reproduced: flip `kind` to `api` and the same contract exits 4 under `malformed-operator-expression`. Patched: the page names the second fault, Decision 5 records the AD-10 tension for Story 11.4 |
 | The frozen matrix predicts Story 11.5 sees exit 0 | high | Follows from the row above; 11.5 would delete the declaration and turn the gate red for a fault it did not cause. Frozen block left as written, corrected in Decision 6 |
 | The gate pins the exit code and never the message text | high | Measured twice independently: a second tool spliced into the heredoc leaves the check fully green while the page's fence is stale, and rewriting the fence text leaves it green too. The fix is inside `check-doc-invocations.mjs`, which this story's Ask First list reserves. Recorded in Decision 7 with the owner and the interim constraint |
-| `realizeInput` prefers a real file over the page's own heredoc | high | Demonstrated: a contract copied to the documented path makes the check report `exited 0, and the block declares expect-exit 4`. Same fix location as the row above; mitigated by Decision 8 moving the write out of the clone |
-| The heredoc dirties the reader's clone | medium | `git check-ignore mcp-contract.json` reports not ignored, and the page tells a reader in a clone to create it. Patched by Decision 8 |
+| `realizeInput` prefers a real file over the page's own heredoc | high | Demonstrated at both spellings: a contract copied to the documented path makes the check report `exited 0, and the block declares expect-exit 4`. Absolute or relative makes no difference, since `resolve` discards the root for an absolute token. Same fix location and owner as the row above; the two-line fix is verified and recorded in Decision 7 |
+| The heredoc dirties the reader's clone | low | Real, and the first fix was worse than the defect: moving the write to a scratch path left the shadow in place and took it out of `git status`, off one clone and onto the whole machine. Reverted; the page now says the file lands in the working directory and to delete it. Decision 8 |
 | The learning-path step claims the message text is gated | medium | True of the exit code alone. Patched: the step now says the error text is compared with nothing |
 | The rendered page no longer names the expected exit code | medium | `<!-- expect-exit: 4 -->` renders as nothing and the old caption was cut. Patched: one sentence after the fence names the 4 and the code, following `docs/tutorials/getting-started.md:76` |
 | Decision 3 says "seven checks ahead" | low | Seven is the line delta; four checks intervene under the CLI's default strict mode and two without it. Patched |
@@ -400,7 +419,7 @@ may not fix are recorded as decisions the next story inherits, with the owner na
 | "the two gates" introduces three entries | low | Patched |
 | The heredoc's `EOF` delimiter differs from the precedent's `JSON` | false | The check's heredoc regex requires a bare word and accepts either; the precedent's choice is not a convention the check enforces |
 | Expressive Code renders the bash fence as terminal chrome, losing JSON highlighting | low | Real, and the same is already true of the one existing docs heredoc. The fence has to be `bash` for the check to replay it, so the alternative is losing the gate. Left, with the trade recorded here |
-| The page names no build prerequisite for `node dist/cli/main.js` | false | Pre-existing and true of every fence on the page and of several other guides; not caused by this change and not this page's to solve alone |
+| The page names no build prerequisite for `node dist/cli/main.js` | medium | The first ruling was wrong on its facts: one other guide shares the gap, and this story is what makes it load-bearing, since the input file now exists and the build step is the only thing left between a reader and the output the page shows. Patched by Decision 10 |
 | The heredoc could swallow the rest of the page if `EOF` were indented or renamed | false | Hypothetical about an edit nobody made; the check's own replay proves the current delimiter closes, since the two invocations below it are still scanned |
 
 ## Design Notes

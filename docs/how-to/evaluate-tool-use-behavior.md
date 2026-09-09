@@ -97,16 +97,28 @@ The port is the shape that has nothing.
 `ProbeRequest` and `ProbeObservation` are discriminated unions with an `api` member and a `cli` member (`src/core/schemas/port-messages.ts:135` and `:186`).
 There is no `mcp` member, so there is no message an adapter could be handed and none it could return.
 
+## What you need
+
+The commands below are `node dist/cli/main.js`, the binary inside a clone, so work from one:
+
+```bash
+git clone https://github.com/bmad-code-org/bmad-eval-quality.git
+cd bmad-eval-quality
+npm ci
+npm run build
+```
+
+Installed from the registry, the same binary is on `PATH` as `eval-quality`.
+
 ## Declaring the interface
 
 Here is a tool server declared as far as the schema allows, inside the smallest contract that can carry it.
 The fields above `permittedInterfaces` are the scaffolding every contract declares, at their emptiest legal values, and the interface under them is what this page is about.
 An evaluation you would run declares oracles and an interaction plan; this one declares neither, because `compile` is the only stage it reaches.
-Write it to a file:
+Write it to a file in the directory you are working in, and delete it when you are done:
 
 ```bash
-mkdir -p /tmp/eval-quality-run
-cat > /tmp/eval-quality-run/mcp-contract.json <<'EOF'
+cat > mcp-contract.json <<'EOF'
 {
   "schemaVersion": 4,
   "contractId": "notes-tool-server-evaluation",
@@ -187,7 +199,7 @@ It parses, and the kind is the first thing `compile` faults:
 <!-- expect-exit: 4 -->
 
 ```bash
-node dist/cli/main.js compile --in /tmp/eval-quality-run/mcp-contract.json
+node dist/cli/main.js compile --in mcp-contract.json
 ```
 
 ```text
