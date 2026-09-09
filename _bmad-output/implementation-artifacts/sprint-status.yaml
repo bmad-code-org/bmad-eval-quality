@@ -112,8 +112,8 @@ development_status:
   epic-10: done
   10-1-the-command-line-environment-probe-adapter: done
 
-  epic-11: backlog
-  11-1-whether-tool-use-evaluation-is-one-gap-or-two: backlog
+  epic-11: in-progress
+  11-1-whether-tool-use-evaluation-is-one-gap-or-two: done
   11-2-the-check-that-would-catch-a-stale-tool-use-claim: backlog
   11-3-the-response-descriptor-for-an-unstructured-tool-result: backlog
   11-4-the-operation-shape-for-a-tool-call: backlog

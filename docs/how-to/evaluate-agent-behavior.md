@@ -27,7 +27,8 @@ Three things this cannot see.
 
 **The agent's reasoning.**
 An observation is one invocation and what came back from it.
-There is no transcript channel, no per-turn record, and no tool-call log.
+There is no transcript channel and no per-turn record.
+A tool-call log the agent writes to a file the operation declares is addressable, under [the restriction below](#the-restriction-that-bites-here): oracles and witnesses reach it, and a defect signature does not.
 
 **A sequence of calls.**
 `ProbeStepSelector` in `src/core/schemas/defect-signature.ts` drops the temporal clause the contract-side selector carries, because a corpus signature maps one probe to one observation.
@@ -320,6 +321,6 @@ Its signature quantifies over `/interactions/observed/artifact/verdict/findings`
 TEA records that refusal rather than swapping in an exit-code signature that would qualify and discriminate nothing.
 
 The nine caught probes still come back `CONCERNS` rather than `PASS`, on three unsatisfied coverage rules: `malformed-input`, `state-change-read-back`, and `whole-body`.
-Those are findings about the contract rather than about the runs, which is the point of scoring a contract at all.
+Those are findings about the contract, which is the point of scoring a contract at all.
 
 For bringing this to another BMAD module in sequence, read TEA's own adoption guide at `docs/explanation/eval-quality-adoption-guide.md` in the test-architecture repository.

@@ -1,23 +1,34 @@
 ---
 title: "Evaluate Tool-Use Behavior"
-description: "What the mcp interface kind declares today, how close a tool call sits to the operation shape it inherits, and what a first adopter would have to build."
+description: "Two questions get called tool-use evaluation: whether an agent's tool use was correct, which the shipped cli kind answers today, and whether the tool server itself is correct, which the mcp kind still owes."
 sidebar:
   order: 6
 ---
 
 # Evaluate tool-use behavior
 
-The system under test is an agent that reaches its capabilities through tools.
-An MCP server exposing `search_notes` and `create_note`, a function-calling loop, a plugin the model invokes with arguments it chose itself.
-`PermittedInterface` declares four interface kinds and one of them is `mcp` (`src/core/schemas/interface.ts:264`).
-That is the declared home for tool-use behavior.
+Two questions get called tool-use evaluation, and each has a different system under test.
 
-Nothing in this repository and nothing in TEA evaluates an `mcp` interface today.
-This page is the first writing that takes the kind seriously, so it states what the kind gives you, where a tool call fits the operation shape it inherits, and where a reader has to bend something.
+**Was the agent's tool use correct?**
+The system under test is the agent that reaches its capabilities through tools: a function-calling loop, a plugin it invokes with arguments it chose itself, an MCP client it drives.
+The calls it made are output it produced, and if it writes them down, the shipped `cli` kind already declares that file.
+`CommandOperation.artifacts` names the files an operation writes and `descriptorChannel` says which output channel the operation's one response descriptor describes (`src/core/schemas/interface.ts:239-244`).
+A contract shaped that way compiles, seals, and pre-flights today, and [Evaluate agent behavior](/how-to/evaluate-agent-behavior/) is the guide for building one.
+The last entry under [Where this stands](#where-this-stands) records the run that proved it and the one restriction that shapes it.
+
+**Is the tool server itself correct?**
+The system under test is the MCP server: the tool call is the request, the tool result is the response, and only the `mcp` kind can describe that.
+`PermittedInterface` declares four interface kinds and one of them is `mcp` (`src/core/schemas/interface.ts:264`), and `compile` refuses it.
+Everything from [What the `mcp` kind gives you today](#what-the-mcp-kind-gives-you-today) down is about this question.
+
+Nothing in this repository and nothing in TEA evaluates an `mcp` interface today, and this page is the first writing that takes the kind seriously.
 
 ## What you are evaluating
 
-Tool-use behavior asks three questions, and a contract has a different declaration for each.
+Three questions, and both readings answer all three.
+The declarations shown for them are the ones reading two would use once the kind opens: one operation per tool, so a tool call is an interaction step and its arguments are that step's input binding.
+Reading one answers the same three today with different declarations, given at the end of this section.
+The fourth question after them is kind-neutral and belongs to both readings.
 
 **Was the right tool chosen?**
 An `InteractionStep` names an `operationId` and a `cardinality` (`src/core/schemas/plan.ts:158`).
@@ -40,6 +51,16 @@ A fourth question sits underneath all three.
 `sensitivityWitness` is mandatory per operation that declares any input (`interface.ts:120`), and it is what establishes that the tool reads its arguments at all.
 Two calls differing in one argument, and the relation their responses have to satisfy.
 Without it a check over the tool passes while the tool ignores everything you send.
+
+**The same three questions, under reading one.**
+The agent is one operation and the run is one step, so the calls it made are rows in the log it wrote and the plan holds a single `exactly-one` step invoking the agent.
+One condition governs all three answers below: `artifacts` declares the log with existence semantics and declares nothing about its fields, so the operation's `descriptorChannel` has to nominate that artifact before any pointer reads inside it.
+Without the nomination, `/interactions/{stepId}/artifact/{id}` asserts the file exists and a tailed pointer into it is `unreachable-check-evidence` at compile.
+"Was the right tool chosen" becomes a `for-all` over the declared collection inside that log, whose predicate reads each row's tool name, and the cap on how many calls a run may make is the `expectedCardinality` on the operation's `collectionLocations` entry, such as `{ "mode": "at-most", "max": 8 }`.
+"Were the arguments right" is the same shape one level down, a predicate over the fields of each row, since each row carries what the agent sent. The worked run declared only the call list, so this is the shape reading one implies; the run transcribed no such predicate.
+"Was the result used correctly" is answered from the log and from the channel the descriptor nominates. The read-back form above needs a second declared operation that reads the state back, and one agent behind one command is a single-step plan; [Evaluate agent behavior](/how-to/evaluate-agent-behavior/) covers declaring that second operation.
+The `call-inputs` channel still carries what was sent, which under reading one is the task the agent was given.
+The fourth question is unchanged by the split: `sensitivityWitness` is kind-neutral, mandatory for any input-bearing operation, and it is what pre-flight's `input-sensitivity` check reports on in both readings.
 
 ## What the `mcp` kind gives you today
 
@@ -233,13 +254,22 @@ An `mcp` adapter would need an `McpProbeRequest` and an `McpProbeObservation` on
 
 **Missing.** A port message for the kind, an adapter, a conformance arm, a channel model for a text-shaped tool result, and a convention for the transport identity of a tool call.
 
-**Already works, and this is the part worth knowing before you fund any of it.** The recorded-observation side accommodates the kind today. `Observation` in the sealed run record is not discriminated on kind (`sealed-run-record.ts:222`) and `ObservedCallInputs` is one eight-key object over both kinds' channels (`:200`), so a recorded tool call already has somewhere to live. `foreignChannels` (`qualification.ts:148`) gives every kind other than `cli` the API response channels, so a tool-use signature is confined to `response-body`, `response-headers`, and `response-status`, and that confinement is decided rather than open.
+**Already works, and this is the part worth knowing before you fund any of it.** The recorded-observation side accommodates the kind today. `Observation` in the sealed run record is not discriminated on kind (`sealed-run-record.ts:222`) and `ObservedCallInputs` is one eight-key object over both kinds' channels (`:200`), so a recorded tool call already has somewhere to live. `foreignChannels` (`qualification.ts:148`) gives every kind other than `cli` the API response channels, so a tool-use signature is confined to `response-body`, `response-headers`, and `response-status`, a confinement the code decides.
 
 **Unproven, and this is the uncomfortable part.** The calibration record behind this project's central measurement is itself MCP-shaped. The architecture records that every contract in the phase-2 block that produced the 0.33-to-1.00 result declares an MCP tool interface, and that 22 of 25 real contracts use the kind. Those contracts were transcribed into API shape to be compiled here, and a transcription is not the measured artifact. So `mcp` is simultaneously the most-used kind in the prior art and the only one with no path through this package.
 
 **What a first adopter hits.** In order: the compile rejection, then the tool-name-in-the-path question, then the response descriptor against a tool that returns prose. The first is a wall. The second is a convention someone has to fix and write down. The third is the design question the architecture named and left open.
 
-Until the kind opens, the workable move is the one TEA already made: put the tool-calling agent behind a command, declare a `cli` interface, and evaluate the run through its arguments, its streams, and the files it writes.
+**The first reading runs today, and here is what that cost.** Until the kind opens, the workable move for the first reading is the one TEA already made: put the tool-calling agent behind a command, declare a `cli` interface, and evaluate the run through its arguments, its streams, and the files it writes.
+
+That route was run end to end against the built CLI at 1.4.2.
+A contract whose one operation declares the tool-call log in `artifacts` and nominates it with `descriptorChannel` compiles and seals at exit `0`, an oracle quantifies over the calls inside the log, and pre-flight resolves at exit `0` with all six checks satisfied, including a sensitivity witness and a manifestation witness whose legs both address the file.
+
+One restriction shapes it, and it lands on the scoring side only.
+A defect signature naming the log by identifier is refused with `condition-artifact-channel-contract-local`, in both the tailed spelling `/interactions/observed/artifact/tool-calls/calls` and the bare `/interactions/observed/artifact/tool-calls`, and `sealProbeSet` then admits nothing.
+Print the log as JSON on the stream the descriptor nominates and the same seeded defect qualifies with an empty failure list.
+The file stays declared in `artifacts` even then, so an existence oracle and the sensitivity witness legs still reach it. What moves with the descriptor is any pointer that reads *inside* the file: once `stdout` is nominated, a tailed oracle pointer into the log is `unreachable-check-evidence`, so the structural oracle addresses the stream and the existence oracle addresses the file with no tail.
+[Evaluate agent behavior](/how-to/evaluate-agent-behavior/) states the restriction in full.
 
 ## In BMAD terms
 
@@ -249,6 +279,6 @@ The nearest thing that exists is TEA, and it is one interface kind over.
 Every contract in `test/contracts/` of the `bmad-method-test-architecture-enterprise` repository declares `kind: "cli"`: `test-review.contract.json`, `trace.contract.json`, and the eight under `test/contracts/fragment-selection/`.
 Each one wraps an agent workflow run behind a command and evaluates what came back on the command's own channels.
 
-That is the same evaluation shape a tool-use contract needs.
 The agent chooses, the harness records what it chose, and an oracle over the recording decides whether the choice was right.
-What is missing for tool use is the interface kind that lets you say the choice was a tool call.
+That is the first reading, working, in a shipped module.
+What is still owed is the second: an interface kind whose system under test is the tool server.
