@@ -95,7 +95,9 @@ Usage:
 
 `--record`, `--contract`, `--probe`, `--preflight-verdict`, `--policy`, and `--corpus-digest` are required. `--corpus-root` is optional at the argument-parsing level; it becomes required, with a usage error naming it, the moment a private reference actually needs a byte resolved through it.
 
-On the Invalid rung the command exits `3` and writes nothing: no legal `EvidenceArtifact` carries a null verdict. On every other rung the artifact's own `exitCode` field carries the number the command returns.
+On the Invalid rung the command exits `3` and writes no artifact: no legal `EvidenceArtifact` carries a null verdict. Diagnostics still go to stderr on that rung. On every other rung the artifact's own `exitCode` field carries the number the command returns.
+
+A probe that fails AD-9's qualification gate resolves an oracle to `infrastructure-error` wherever no higher-precedence condition already resolved that oracle: an evaluation fault and a malformed judge both outrank it. Each of those three states lands the run on the Invalid rung, and a contract declaring no oracles resolves none of them and stays off it. The command writes one line per reason to stderr on every rung, in the `eval-quality: <code>: <artifactPath>: <detail>` shape, so the failure names the field it fired on. `QUALIFICATION_FAILURES` publishes the closed set of codes those lines draw from.
 
 One invocation scores one sealed run record, a trial set of one. That is a limit of the published surface, so whenever the policy's declared minimum exceeds one, the strength vector comes out reported and marked non-comparable.
 
@@ -198,10 +200,12 @@ The published tarball carries `dist`, `schemas`, `corpus`, `README.md`, and `LIC
 - **Serialization and digests**: `serializeArtifact`, `digestArtifact`, `digestBytes`, `digestComposite`
 - **Lineage**: `validateLineageChain`
 - **Errors**: `StructuralFailure`, `RuntimeFault`
-- **Enumerations**: `FAILURE_CODES`, `RUNTIME_FAULT_CODES`, `VERDICTS`, `EVALUATOR_RECOMMENDATIONS`, `INTERCHANGE_ARTIFACT_KEYS`
+- **Enumerations**: `FAILURE_CODES`, `RUNTIME_FAULT_CODES`, `VERDICTS`, `EVALUATOR_RECOMMENDATIONS`, `INTERCHANGE_ARTIFACT_KEYS`, `QUALIFICATION_FAILURES`
 - **Version**: `VERSION`
 
 Every artifact type ships alongside them as a type-only export, together with the option and result types of each entry point.
+
+`runScore` returns the probe's own qualification result next to the artifact and the ladder. `qualification.failures` carries AD-9's closed reason codes for a probe the gate rejected, typed as `QualificationFailure` and `QualificationFailureCode`, and `qualification.declarationChecksRan` says whether the three checks that read the home operation's declared shapes ran.
 
 `runPreflight` takes an `EnvironmentProbePort` and awaits it. `preflightFromObservations` takes observations you already have and stays synchronous; the CLI's `preflight` command calls that one. `runScore` takes an optional `CorpusPort`, awaited only when a private reference actually needs resolving.
 

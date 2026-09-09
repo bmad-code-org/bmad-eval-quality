@@ -105,6 +105,17 @@ export const scoreContractFixture: EvalContract = {
 // from the emit stage's own review).
 export const scoreProbeFixture: Probe = { ...qualifiedProbe, probeId: 'P-001' }
 
+/**
+ * The same probe with its signature dropped. `probeClass` stays `defect`, so
+ * AD-9's gate rejects it under `signature-absent`: the schema admits the shape
+ * (the union-level refinement Zod would need exports as nothing, per
+ * `constraint-ledger.ts`), and the reason is the gate's to report.
+ */
+export const unqualifiedProbeFixture: Probe = {
+	...scoreProbeFixture,
+	defectSignature: null,
+}
+
 export const evaluatorConfigurationFixture: EvaluatorConfiguration = {
 	schemaVersion: 1,
 	parentDigest: null,

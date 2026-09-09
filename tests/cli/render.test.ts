@@ -8,12 +8,14 @@ import {
 	renderArtifact,
 	renderDiagnostic,
 	renderError,
+	renderQualificationFailure,
 	renderUsage,
 } from '../../src/cli/render.ts'
 import { digestArtifact, digestBytes } from '../../src/core/canonical/digest.ts'
 import { StructuralFailure } from '../../src/core/failure-codes.ts'
 import { EvalContract } from '../../src/core/schemas/eval-contract.ts'
 import { RuntimeFault } from '../../src/core/schemas/faults.ts'
+import type { QualificationFailure } from '../../src/core/score/qualification.ts'
 import { populatedContract } from '../schemas/fixtures/relevance-contracts.ts'
 
 const PATH = 'EvalContract'
@@ -178,6 +180,19 @@ describe('renderError', () => {
 		// What a defect in our own code looks like from outside: no code, no
 		// artifact path.
 		expect(renderError(new Error('boom'))).toBe('eval-quality: Error: boom')
+	})
+})
+
+describe('renderQualificationFailure', () => {
+	it('renders eval-quality: <code>: <artifactPath>: <detail>, the shape renderError uses', () => {
+		const failure: QualificationFailure = {
+			code: 'signature-absent',
+			artifactPath: 'Probe[probeId=P-001].defectSignature',
+			detail: 'a defect probe declaring no signature is unscoreable',
+		}
+		expect(renderQualificationFailure(failure)).toBe(
+			'eval-quality: signature-absent: Probe[probeId=P-001].defectSignature: a defect probe declaring no signature is unscoreable',
+		)
 	})
 })
 

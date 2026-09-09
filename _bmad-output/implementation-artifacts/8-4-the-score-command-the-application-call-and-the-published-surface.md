@@ -78,6 +78,13 @@ baseline_commit: 'a11055566a1bd843a51833ca96b7e181711f9f66'
 - [x] `_bmad-output/project-knowledge/learning-path-step-by-step.md` -- add this story's row, de-ai'd
 
 **Acceptance Criteria:**
+
+> **Amended after this story shipped.** `runScore` returns a third field, `qualification`, carrying the
+> probe's own AD-9 qualification result, and the `score` command writes one stderr line per reason before
+> it writes the artifact. The published surface gained `QUALIFICATION_FAILURES` and the three types naming
+> that value, over the `root -> application` edge this story already used. The criteria below are the
+> shipped-then reading, and no artifact schema changed.
+
 - Given a full valid chain of inputs, when `eval-quality score` runs, then it writes `evidence-artifact.json` and exits with `LadderResolution.exitCode`, promoted through `--strict` only via `LadderResolution.strictPromotable`.
 - Given `src/cli/run.ts`'s dispatch, when an unrecognized command reaches it, then it returns a usage error rather than silently sealing.
 - Given `npm run check:ad21-table`, when it runs after `generate:ad21-table`, then it is green with the new exit-code column populated from `LADDER_EXIT_CODES`.
