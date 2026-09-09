@@ -29,7 +29,7 @@ mutated system  → evaluation → should degrade
 
 An evaluation that caught the planted defect is sensitive to that failure. One that stayed green has a blind spot, and now you know where.
 
-That is mutation testing, pointed at evaluations. `eval-quality` is the tool for running it.
+That is mutation testing, pointed at evaluations. You plant the defect and run both arms; `eval-quality` is what makes each arm's result worth comparing.
 
 ## What the tool does
 
@@ -44,7 +44,7 @@ That is mutation testing, pointed at evaluations. `eval-quality` is the tool for
 
 An **eval contract** is a JSON document that says what a system is supposed to do, written so an automated check can resolve it. Every command here is built around one.
 
-The package executes nothing. No agent, no judge, and no system under test runs inside it. You run the evaluation twice, once against the clean system and once against the broken one, and hand over what it produced; `eval-quality` compiles, seals, preflights, and scores.
+The package executes nothing and mutates nothing. No agent, no judge, and no system under test runs inside it, and it edits none of your artifacts. You break the system yourself, run the evaluation twice, once against the clean system and once against the broken one, and hand over what it produced; `eval-quality` compiles, seals, preflights, and scores.
 
 ## Where to go
 

@@ -181,6 +181,7 @@ The relation is declared, because inequality on its own decides nothing: two dis
 ## Seeding a defect and proving the contract catches it
 
 The twin run needs a defect you planted and know the shape of.
+You plant it by editing the agent yourself; `eval-quality` mutates nothing and reads only what the probe declares about the edit.
 Take this one: given a diff it cannot parse, the agent writes an empty notes file and exits 0, where a correct agent exits non-zero and says why on stderr.
 
 A probe carries that defect, and each defect carries a **manifestation witness**: which operation to run, with what inputs, and the relation that is true exactly when the seeded fault has fired.

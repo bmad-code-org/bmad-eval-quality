@@ -162,7 +162,7 @@ The plan contributes its step identifiers to `declaredLegIds`, which is the set 
 
 ## Seeding a defect in a multi-step workflow
 
-The fault goes on the probe.
+You seed the fault in the workflow by hand, and the probe is where you declare it.
 A defect declares a `manifestationWitness` naming a `legId`, an `interfaceId`, an `operationId`, the inputs to send, and the relation that has to fire.
 `planPreflight` adds that leg with purpose `seeded-fault` and emits two checks for it: `seeded-faults-scoped` and `seeded-fault-fired`.
 

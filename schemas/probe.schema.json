@@ -122,7 +122,8 @@
                 },
                 "mutationOperator": {
                   "type": "string",
-                  "minLength": 1
+                  "minLength": 1,
+                  "description": "The edit that was made, in the corpus author's own terms. An opaque caller string: the author performs the mutation by hand, the package performs none, and no code reads this field. There is no operator vocabulary, so a value like `store-write-deletion` means whatever its author meant by it."
                 },
                 "targetArtifact": {
                   "$ref": "#/$defs/ArtifactReference"
@@ -578,7 +579,8 @@
                 },
                 "mutationOperator": {
                   "type": "string",
-                  "minLength": 1
+                  "minLength": 1,
+                  "description": "The edit that was made, in the corpus author's own terms. An opaque caller string: the author performs the mutation by hand, the package performs none, and no code reads this field. There is no operator vocabulary, so a value like `store-write-deletion` means whatever its author meant by it."
                 },
                 "targetArtifact": {
                   "$ref": "#/$defs/ArtifactReference"
