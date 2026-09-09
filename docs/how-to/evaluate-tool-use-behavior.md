@@ -100,11 +100,13 @@ There is no `mcp` member, so there is no message an adapter could be handed and 
 ## Declaring the interface
 
 Here is a tool server declared as far as the schema allows, inside the smallest contract that can carry it.
-The twenty fields above `permittedInterfaces` are the scaffolding every contract declares, and the interface under them is what this page is about.
+The fields above `permittedInterfaces` are the scaffolding every contract declares, at their emptiest legal values, and the interface under them is what this page is about.
+An evaluation you would run declares oracles and an interaction plan; this one declares neither, because `compile` is the only stage it reaches.
 Write it to a file:
 
 ```bash
-cat > mcp-contract.json <<'EOF'
+mkdir -p /tmp/eval-quality-run
+cat > /tmp/eval-quality-run/mcp-contract.json <<'EOF'
 {
   "schemaVersion": 4,
   "contractId": "notes-tool-server-evaluation",
@@ -180,17 +182,25 @@ cat > mcp-contract.json <<'EOF'
 EOF
 ```
 
-It parses, and the kind is the only thing `compile` can fault:
+It parses, and the kind is the first thing `compile` faults:
 
 <!-- expect-exit: 4 -->
 
 ```bash
-node dist/cli/main.js compile --in mcp-contract.json
+node dist/cli/main.js compile --in /tmp/eval-quality-run/mcp-contract.json
 ```
 
 ```text
 eval-quality: unsupported-interface-kind: EvalContract.permittedInterfaces[logicalId=notes-tool-server].kind: "mcp" is not supported; "api" and "cli" are (AD-10)
 ```
+
+Exit code 4, the structural-failure code, and the message names the AD-5 code and the field that carries the fault.
+
+One fault sits behind that one, and it is worth knowing before you copy the declaration.
+A search changes no state, so `stateChangeMarker` is false, and AD-10 gives a non-mutating operation `path` or `query` for its sensitivity witness.
+A tool call carries its arguments in `body`, which is where the witness above varies them, so the witness is illegal on its own terms.
+Flip the kind to `api` and `compile` says so, at the same exit 4 under `malformed-operator-expression`.
+Opening the kind is not on its own enough to make this contract compile.
 
 Four places in that declaration are a bend, and each one is a real cost.
 
@@ -201,7 +211,7 @@ Nothing decides it, and AD-40 resolves a defect signature by comparing method an
 
 **`pathTemplate` has to carry the tool name.**
 The natural transport identity of every MCP tool call is the same JSON-RPC method, `tools/call`, with the tool name in the payload.
-Declaring two tools that way collides:
+Declaring two tools that way collides, which this fence shows without running it:
 
 ```text
 eval-quality: duplicate-operation-signature: EvalContract.permittedInterfaces[logicalId=notes-tool-server].operations[operationId=create-note]: collides with permittedInterfaces[logicalId=notes-tool-server].operations[operationId=search-notes] after parameter-name erasure ("POST /tools/call") (AD-19, AD-40)
@@ -249,6 +259,7 @@ An oracle over the write step's own response passes on a tool that silently disc
 ## Running it
 
 The commands are the two on the [CLI reference](/reference/cli-commands/), and they are the same for every interface kind.
+Both fences below are command grammar: they name files this page never writes, so copying them verbatim reports a missing file.
 
 ```bash
 node dist/cli/main.js preflight --contract eval-contract.json \
