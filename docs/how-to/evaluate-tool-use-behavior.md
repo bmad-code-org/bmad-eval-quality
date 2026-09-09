@@ -99,61 +99,90 @@ There is no `mcp` member, so there is no message an adapter could be handed and 
 
 ## Declaring the interface
 
-Here is a tool server declared as far as the schema allows.
-It parses, and it is legal in every respect `compile` can check other than the kind itself.
+Here is a tool server declared as far as the schema allows, inside the smallest contract that can carry it.
+The twenty fields above `permittedInterfaces` are the scaffolding every contract declares, and the interface under them is what this page is about.
+Write it to a file:
 
-```json
+```bash
+cat > mcp-contract.json <<'EOF'
 {
-  "logicalId": "notes-tool-server",
-  "kind": "mcp",
-  "operations": [
+  "schemaVersion": 4,
+  "contractId": "notes-tool-server-evaluation",
+  "parentDigest": null,
+  "revisionCount": 0,
+  "sourceSpecDigest": null,
+  "behaviors": [{ "id": "B-001", "description": "A search over the notes returns the notes that match.", "severity": "material", "observableSuccessCriterion": "A search call returns content naming the query it was given.", "requirementLinks": [{ "scheme": "local", "id": "REQ-1" }], "riskLinks": [], "oracles": [] }],
+  "oracles": [],
+  "rubrics": [],
+  "waivers": [],
+  "referenceSets": null,
+  "siblingGroups": null,
+  "interactionPlan": [],
+  "scopedResources": null,
+  "forbiddenInputs": ["original-spec", "source-code", "repository", "builder-transcript", "implementation-logs", "comparator-results", "human-labels"],
+  "testData": { "setup": null, "cleanup": null, "principals": null, "resources": null },
+  "budgets": { "maxToolCalls": 20, "maxWallClockMinutes": 5, "maxCostUsd": "0.25" },
+  "safetyLimits": [],
+  "requiredEvidence": [],
+  "probeStepBound": null,
+  "fixtureReset": null,
+  "permittedInterfaces": [
     {
-      "operationId": "search-notes",
-      "method": "POST",
-      "pathTemplate": "/tools/call/search_notes",
-      "stateChangeMarker": false,
-      "requestShape": {
-        "path": { "requiredKeys": [], "permittedKeys": [], "types": {} },
-        "query": { "requiredKeys": [], "permittedKeys": [], "types": {} },
-        "header": { "requiredKeys": [], "permittedKeys": [], "types": {} },
-        "body": {
-          "requiredKeys": ["query"],
-          "permittedKeys": ["query", "limit"],
-          "types": { "query": "string", "limit": "number" }
+      "logicalId": "notes-tool-server",
+      "kind": "mcp",
+      "operations": [
+        {
+          "operationId": "search-notes",
+          "method": "POST",
+          "pathTemplate": "/tools/call/search_notes",
+          "stateChangeMarker": false,
+          "requestShape": {
+            "path": { "requiredKeys": [], "permittedKeys": [], "types": {} },
+            "query": { "requiredKeys": [], "permittedKeys": [], "types": {} },
+            "header": { "requiredKeys": [], "permittedKeys": [], "types": {} },
+            "body": {
+              "requiredKeys": ["query"],
+              "permittedKeys": ["query", "limit"],
+              "types": { "query": "string", "limit": "number" }
+            }
+          },
+          "responseDescriptor": {
+            "requiredKeys": ["content", "isError"],
+            "permittedKeys": ["content", "isError"],
+            "types": { "content": "array", "isError": "boolean" },
+            "successIndicator": "/isError",
+            "channelRoles": { "/content": "payload", "/isError": "success-indicator" },
+            "collectionLocations": []
+          },
+          "volatilePointers": [],
+          "sensitivityWitness": {
+            "witnessId": "search-notes-sensitivity",
+            "channel": "body",
+            "legs": [
+              { "legId": "search-witness-a", "inputs": { "path": {}, "query": {}, "header": {}, "body": { "kind": "json", "value": { "query": "alpha" } } } },
+              { "legId": "search-witness-b", "inputs": { "path": {}, "query": {}, "header": {}, "body": { "kind": "json", "value": { "query": "beta" } } } }
+            ],
+            "relation": {
+              "op": "not",
+              "operands": [
+                { "op": "deep-equality", "operands": [
+                  { "pointer": "/interactions/search-witness-a/response-body/content" },
+                  { "pointer": "/interactions/search-witness-b/response-body/content" }
+                ] }
+              ]
+            }
+          }
         }
-      },
-      "responseDescriptor": {
-        "requiredKeys": ["content", "isError"],
-        "permittedKeys": ["content", "isError"],
-        "types": { "content": "array", "isError": "boolean" },
-        "successIndicator": "/isError",
-        "channelRoles": { "/content": "payload", "/isError": "success-indicator" },
-        "collectionLocations": []
-      },
-      "volatilePointers": [],
-      "sensitivityWitness": {
-        "witnessId": "search-notes-sensitivity",
-        "channel": "body",
-        "legs": [
-          { "legId": "search-witness-a", "inputs": { "path": {}, "query": {}, "header": {}, "body": { "kind": "json", "value": { "query": "alpha" } } } },
-          { "legId": "search-witness-b", "inputs": { "path": {}, "query": {}, "header": {}, "body": { "kind": "json", "value": { "query": "beta" } } } }
-        ],
-        "relation": {
-          "op": "not",
-          "operands": [
-            { "op": "deep-equality", "operands": [
-              { "pointer": "/interactions/search-witness-a/response-body/content" },
-              { "pointer": "/interactions/search-witness-b/response-body/content" }
-            ] }
-          ]
-        }
-      }
+      ]
     }
   ]
 }
+EOF
 ```
 
-Compile a contract carrying it and you get the one coded rejection:
+It parses, and the kind is the only thing `compile` can fault:
+
+<!-- expect-exit: 4 -->
 
 ```bash
 node dist/cli/main.js compile --in mcp-contract.json

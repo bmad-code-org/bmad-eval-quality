@@ -87,6 +87,7 @@ flowchart TD
 |   43 | epic9-story5 | The corpus ships two command contracts, and the release says what stopped being comparable. |
 |   44 | epic10-story1 | The port that could describe a command finally gets an adapter that runs one, with a policy saying which. |
 |   45 | epic11-story1 | Two different questions were sharing the name "tool-use evaluation"; one of them already runs. |
+|   46 | epic11-story2 | A documented command is judged on its exit code only once the page writes the file it names. |
 
 Adding a step: follow `learning-path-template.md`.
 
@@ -3768,3 +3769,40 @@ A guide that says otherwise is worse than a gap, because it is the sentence that
 - Test a claim about what the shipped code expresses by running it against real bytes.
 
 **Watch out:** the routing table on the docs home page still reads "Declared and refused at compile" for the tool-use row, and that stays true. It describes the second question only.
+
+## Step 46 (epic11-story2): a documented example that names a file only its reader has
+
+**In plain terms:** a guide showed a command and the error message it produces.
+The file the command reads was never written down anywhere on the page, so the checker that runs every documented command quietly substituted a different file and ran that.
+The command still ran, it still passed, and the error message printed on the page was never compared against anything.
+Now the guide writes the file out first and says which failure it expects, so the page fails the build on the day that failure stops happening.
+
+**What:** the tool-use guide's JSON block becomes a `cat > mcp-contract.json <<'EOF'` heredoc carrying a whole `EvalContract`, and `<!-- expect-exit: 4 -->` is declared on the line before the command that reads it.
+
+**Why:** three later changes in this epic each falsify the rejection that page shows.
+Left alone, the checker keeps reporting a pass over a substituted input and a stale rejection ships.
+Armed, `npm run validate` goes red inside the story that breaks the claim, which is the story that has to fix the page.
+
+**Read in this order:**
+
+1. `scripts/check-doc-invocations.mjs`: the header comment, which states the faithful and unfaithful rules and what each one judges.
+2. `scripts/check-doc-invocations.mjs`: `realizeInput`, whose four branches decide whether a named path reaches real bytes or the stand-in.
+3. `docs/how-to/evaluate-tool-use-behavior.md`: the heredoc, the declaration, and the text fence the declaration pins.
+
+**Story:** `_bmad-output/implementation-artifacts/11-2-the-check-that-would-catch-a-stale-tool-use-claim.md`
+
+### Reference
+
+**Rules:**
+
+- A documented command is judged on its exit code only when every input it names resolved to real bytes.
+- Three things count as real bytes: a file this repository ships, a file under `node_modules/eval-quality/`, and a file an earlier command on the same page wrote.
+- Write the third kind on the page with a `cat > path <<'EOF'` heredoc; the checker replays it into a per-page sandbox.
+- Declare a deliberate failure with `<!-- expect-exit: N -->` on the last non-empty line before the fence.
+- A sentence between the declaration and the fence swallows the declaration, and the run is judged against 0.
+- A fence whose first line is a shell command is labelled `bash`.
+- The heredoc carries a whole contract: the interface fragment on its own exits 5 under `schema-parse-failure`.
+- The contract declares one tool: two tools collide under `duplicate-operation-signature`, which is checked before the kind is, and both exit 4.
+- Prove the gate is armed by declaring a code the run does not produce and watching the check fail.
+
+**Watch out:** two more commands on that page still name files the page never writes, so their exit codes stay unjudged. The story records the six authored artifacts that making them faithful would cost.

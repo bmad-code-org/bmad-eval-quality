@@ -2,8 +2,9 @@
 title: 'The check that would catch a stale tool-use claim'
 type: 'chore'
 created: '2026-09-09'
-status: 'draft'
+status: 'in-review'
 review_loop_iteration: 0
+baseline_commit: '949e1cb4005638c9627a5faf1a5289069cbf0f2c'
 context:
   - _bmad-output/implementation-artifacts/epic-11-context.md
 ---
@@ -91,23 +92,38 @@ written.
 
 </frozen-after-approval>
 
+## Checkpoint decisions taken without the human
+
+The build ran unattended by standing instruction, so the two gates this workflow halts at were decided here and recorded in this section.
+
+**Multi-goal gate: single goal, no split.** The spec has one shippable deliverable, making one documented invocation faithful so its declared exit code is judged. The learning-path step and the caption edits are the same goal's own documentation, which this repository requires in the same diff.
+
+**Token-count gate: keep the full spec.** It is well past 1600 tokens, and the excess is Code Map and recorded decisions rather than scope. Cutting it would delete the enumeration of the twenty-two unfaithful invocations, which is what Acceptance Criterion 6 is graded against, and the four decisions later stories in this epic inherit. The context-rot risk the gate names is mitigated by the story being implemented in the session that planned it.
+
+**Open Questions: none.** The spec carried no entry, and investigation settled everything the intent left open. The one measurement the plan depended on, that a complete contract carrying the page's interface exits 4 with stderr byte-identical to the page's text fence, was rerun against the built binary before any file was edited.
+
 ## Code Map
+
+Every `docs/how-to/evaluate-tool-use-behavior.md` line number below was written twenty-one lines
+early, because Story 11.1's edits to the page landed between the spec's reading and this one. Each
+citation was matched by its text and the number it carries in the tree at implementation time is
+given beside it, in brackets.
 
 **The page this story edits**
 
-- `docs/how-to/evaluate-tool-use-behavior.md:84-133` -- the `json` fence. Lines `85-132` are a
+- `docs/how-to/evaluate-tool-use-behavior.md:84-133` [`:105-154`] -- the `json` fence. Lines `85-132` are a
   `PermittedInterface` with `logicalId: "notes-tool-server"` and one operation, `search-notes`, whose
   `sensitivityWitness` at `:113-129` is what keeps `checkUndeclaredMandatoryInput` and
   `checkSensitivityWitnessDeclared` (`compile.ts:122-125`, strict-mode only) quiet. This fence becomes
   the heredoc.
-- `docs/how-to/evaluate-tool-use-behavior.md:135` -- the caption, "Compile a contract carrying it and
+- `docs/how-to/evaluate-tool-use-behavior.md:135` [`:156`] -- the caption, "Compile a contract carrying it and
   you get the one coded rejection". It now introduces the contract the reader writes, so it moves by
   one sentence and the `:81-82` caption above the fence moves with it.
-- `docs/how-to/evaluate-tool-use-behavior.md:137-139` -- the bash fence. `<!-- expect-exit: 4 -->` and
+- `docs/how-to/evaluate-tool-use-behavior.md:137-139` [`:158-160`] -- the bash fence. `<!-- expect-exit: 4 -->` and
   one blank line go above `:137`.
-- `docs/how-to/evaluate-tool-use-behavior.md:141-143` -- the text fence carrying the rejection.
+- `docs/how-to/evaluate-tool-use-behavior.md:141-143` [`:162-164`, `:191-193` after the edit] -- the text fence carrying the rejection.
   Unchanged, and it is what the declared 4 pins.
-- `docs/how-to/evaluate-tool-use-behavior.md:203-207,209-216` -- the `preflight` and `score` fences.
+- `docs/how-to/evaluate-tool-use-behavior.md:203-207,209-216` [`:253-257,259-266` after the edit] -- the `preflight` and `score` fences.
   They name `eval-contract.json`, `probes.json`, `observations.json`, and six more files the page
   never writes, so both stay UNFAITHFUL and both keep the usage-error judgment only. This story
   leaves them: making them faithful means authoring a probe list, an observation list, a sealed run
@@ -157,7 +173,7 @@ see whether the page fences the input the command names.
   and the mutation-round recipe, naming `sealed-run-record.json`, `contract.json`,
   `clean-probes.json`, `mutated-probes.json`, `clean-record.json`, `mutated-record.json`. No fence on
   that page carries any of them. Not the same shape.
-- `docs/how-to/evaluate-agent-behavior.md:261,276` -- the page's three `json` fences at `:89`, `:191`,
+- `docs/how-to/evaluate-agent-behavior.md:262,277` -- the page's three `json` fences at `:89`, `:191`,
   and `:230` are a `PermittedInterface`, a probe leg, and a defect signature, introduced at `:87`,
   `:189`, and `:228` as schema shapes. None is named by a command. Not the same shape.
 - `docs/how-to/evaluate-ai-feature-behavior.md:206,213` -- fences at `:51` and `:118` are a
@@ -166,7 +182,7 @@ see whether the page fences the input the command names.
   `PermittedInterface` and two oracle halves. Not the same shape.
 - `docs/how-to/evaluate-workflow-behavior.md:193,203` -- the fence at `:42` is an `InteractionStep`
   array. Not the same shape.
-- `docs/how-to/evaluate-tool-use-behavior.md:138` -- the one page where a fenced input and a command
+- `docs/how-to/evaluate-tool-use-behavior.md:138` [`:159`, `:188` after the edit] -- the one page where a fenced input and a command
   naming it sit five lines apart, and where the text fence beneath reads as that command's own
   output. This story fixes this one, because it is the claim the epic's behaviour change contradicts.
 
@@ -192,19 +208,19 @@ see whether the page fences the input the command names.
 
 **Execution:**
 
-- [ ] `docs/how-to/evaluate-tool-use-behavior.md` -- turn the `:84-133` fence into a ```bash fence
+- [x] `docs/how-to/evaluate-tool-use-behavior.md` -- turn the `:84-133` fence into a ```bash fence
       holding `cat > mcp-contract.json <<'EOF'`, a complete `EvalContract`, and `EOF`. The `mcp`
       interface stays pretty-printed and nests under `permittedInterfaces`; the other twenty
       top-level fields are written compactly, one field per line where the value is a scalar or a
       short collection, following `author-behavioral-contracts.md:150-161`. One operation only.
-- [ ] `docs/how-to/evaluate-tool-use-behavior.md` -- add `<!-- expect-exit: 4 -->` and one blank line
+- [x] `docs/how-to/evaluate-tool-use-behavior.md` -- add `<!-- expect-exit: 4 -->` and one blank line
       above the bash fence at `:137`.
-- [ ] `docs/how-to/evaluate-tool-use-behavior.md` -- move the captions at `:81-82` and `:135` so they
+- [x] `docs/how-to/evaluate-tool-use-behavior.md` -- move the captions at `:81-82` and `:135` so they
       introduce a contract the reader writes, and cut whatever those two sentences now say twice.
-- [ ] `_bmad-output/project-knowledge/learning-path-step-by-step.md` -- add this story's step per
+- [x] `_bmad-output/project-knowledge/learning-path-step-by-step.md` -- add this story's step per
       `learning-path-template.md`, teaching why a documented example naming a file only its reader
       has proves nothing. Add the step's own table row at `:43-88`, below Step 44's.
-- [ ] Voice and prune pass over every line of prose this story writes, done while writing. Then grep
+- [x] Voice and prune pass over every line of prose this story writes, done while writing. Then grep
       the edited files for `, not `, `rather than`, `instead of`, `as opposed to`, `, never `, and
       `no longer`, and confirm every hit is a real before/after contrast with a fact on both sides.
 
@@ -278,7 +294,7 @@ fence in `docs/` is a schema fragment introduced as one, and no command on any o
 it as a file.
 
 Two of the twenty-one are on the page this story arms, so name them exactly. The `preflight` fence at
-`docs/how-to/evaluate-tool-use-behavior.md:203-207` and the `score` fence at `:209-216` both stay
+`docs/how-to/evaluate-tool-use-behavior.md:253-257` and the `score` fence at `:259-266` both stay
 UNFAITHFUL after this story, and both keep the usage-error judgment at
 `check-doc-invocations.mjs:413-416` and no exit-code judgment. Making them faithful costs six
 authored artifacts: a probe list, an observation list, a sealed run record, a scoring policy, an
@@ -286,7 +302,7 @@ isolation manifest, and an evaluator configuration, each one a schema-valid docu
 need maintaining through every schema bump this epic ships. Those two fences document command
 grammar, and the usage-error judgment already holds the grammar. Story 11.9 owns the page's prose and
 cites this decision when it narrows its faithfulness acceptance criterion to the invocations that
-are faithful, which after this story is the `compile` fence at `:137-139` alone. One near-miss is
+are faithful, which after this story is the `compile` fence at `:187-189` alone. One near-miss is
 recorded and left:
 `docs/how-to/evaluate-skill-behavior.md:55` claims its fence "compiles at exit 0" over a block that is
 a `PermittedInterface`, and because no command on that page names the block, `check:doc-invocations`
@@ -335,3 +351,33 @@ report `exited 4, and the block declares expect-exit 5` is what separates those 
   -- expected: every hit is a before/after contrast with a fact on both sides, checked by reading.
 - `git diff --name-only` -- expected: no path under `src/`, `schemas/`, or `corpus/`.
 - `npm run validate` -- expected: exit 0 with nothing on stderr.
+
+**Measured, against the tree at this commit.** Every expectation above held.
+
+- `npm run build` -- exit 0.
+- `npm run check:doc-invocations` -- exit 0, `32 invocation(s) scanned across 17 doc file(s), 11 run
+  faithfully over real inputs, 0 failures`, up from 10 faithful before the edit.
+- The armed-gate step -- with the declaration flipped to 5, exit 1 and one failure:
+  `docs/how-to/evaluate-tool-use-behavior.md:188 [exited 4, and the block declares expect-exit 5]
+  node dist/cli/main.js compile --in mcp-contract.json`. Restored to 4, exit 0 and 11 faithful again.
+- The heredoc body extracted from the page and compiled -- exit 4, and `diff` against the page's text
+  fence reports no difference, `logicalId=notes-tool-server` included. Same result under `--strict`.
+- The two measurements Decisions 1 and 3 rest on were rerun rather than inherited. The interface
+  object alone exits 5 under `schema-parse-failure` with `Unrecognized keys: "logicalId", "kind",
+  "operations"` and `... and 2 more` at the end of the list. A second tool rendering `POST
+  /tools/call` exits 4 under `duplicate-operation-signature`, before the kind check.
+- `npm run docs:build` -- exit 0.
+- The banned-construction grep over the added lines only -- no hits. The hits in the two files as a
+  whole are all pre-existing lines this story did not write.
+- `git diff --name-only` -- `docs/how-to/evaluate-tool-use-behavior.md`,
+  `_bmad-output/project-knowledge/learning-path-step-by-step.md`, this file, and
+  `_bmad-output/implementation-artifacts/sprint-status.yaml`. Nothing under `src/`, `schemas/`, or
+  `corpus/`.
+- `npm run validate` -- exit 0, nothing on stderr, 116 test files and 3787 tests passing.
+
+**One divergence from the Code Map, recorded.** Every line number the spec cites for
+`docs/how-to/evaluate-tool-use-behavior.md` is off by twenty-one: the fence is at `:105-154`, the
+caption at `:156`, the bash fence at `:158-160`, and the text fence at `:162-164`. Story 11.1's
+edits to the page landed between the spec's reading and this one. The content each citation names is
+unambiguous and was matched by text, so nothing else in the plan moved. After this story the
+declaration sits at `:185` and the compile fence at `:187-189`.
