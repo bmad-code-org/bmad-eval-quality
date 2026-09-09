@@ -95,7 +95,7 @@ Usage:
 
 `--record`, `--contract`, `--probe`, `--preflight-verdict`, `--policy`, and `--corpus-digest` are required. `--corpus-root` is optional at the argument-parsing level; it becomes required, with a usage error naming it, the moment a private reference actually needs a byte resolved through it.
 
-On the Invalid rung the command exits `3` and writes nothing: no legal `EvidenceArtifact` carries a null verdict. On every other rung the artifact's own `exitCode` field carries the number the command returns.
+On the Invalid rung the command exits `3` and writes no artifact: no legal `EvidenceArtifact` carries a null verdict. Diagnostics still go to stderr on that rung. On every other rung the artifact's own `exitCode` field carries the number the command returns.
 
 A probe that fails AD-9's qualification gate resolves every oracle to `infrastructure-error` and lands the run on the Invalid rung. The command writes one line per reason to stderr, in the `eval-quality: <code>: <artifactPath>: <detail>` shape, so the failure names the field it fired on. `QUALIFICATION_FAILURES` publishes the closed set of codes those lines draw from.
 

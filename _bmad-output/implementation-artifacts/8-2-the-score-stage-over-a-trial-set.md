@@ -110,6 +110,10 @@ baseline_commit: '6e4ca5817cd9d78f7d8f1450f7e0a0fa83b7a798'
 - Given an observation whose `operationId` matches an operation in two different `permittedInterfaces` entries, when `score` runs, then `operation-identifier-collision` fires.
 - Given two trials in one set whose `mode` or `evaluatorRecommendation` disagree, when `score` runs, then `trial-set-field-disagreement` fires naming the field and both values, and no assessment is built from a silently-picked value.
 - Given a probe `sealProbeSet` rejects, when `score` runs, then `probeQualified` is `false` and nothing throws.
+  > **Amended after this story shipped.** The stage also returns that probe's whole `QualificationResult`
+  > as `probeQualification`, and `probeQualified` is read off it. The criterion above is the shipped-then
+  > reading: the boolean was all the stage kept, so the closed reason set behind it stopped here. No
+  > artifact schema changed. `src/core/score/score.ts` carries the current shape.
 - Given the full suite, when `npm run validate` runs, then it exits 0 with nothing on stderr, `src/core/**` meets its 90/90 floor, `check:boundary` and `check:lineage` pass, and `check:ad21-table` passes against the regenerated table.
 
 ## Spec Change Log
