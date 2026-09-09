@@ -144,12 +144,23 @@ export type SensitivityWitness = z.infer<typeof SensitivityWitness>
  * A different mechanism from AD-40's DEFECT SIGNATURE, which matches a
  * scoring-side finding against an observation. This one never enters a score; it
  * makes "every declared seeded fault observed to fire" decidable at pre-flight.
+ *
+ * `inputs` is the same union a sensitivity leg takes. It was `ApiWitnessInputs`
+ * alone, which made a seeded defect against a command-line system under test
+ * unrepresentable in both directions: command channels failed the `Probe`
+ * parse, and transport channels reached `requestOf` and threw
+ * `undeclared-mandatory-input` for supplying transport channels to an operation
+ * that runs behind a command. A `null` witness parses, so the only way through
+ * was to declare the defect unobservable, which pre-flight records as a failed
+ * `seeded-fault-fired` check. Every `defect` and `zero-action` probe against a
+ * command was therefore unscoreable. 0.3.0 widened the contract side and left
+ * this one and `FixtureReset` behind.
  */
 export const ManifestationWitness = z.strictObject({
 	legId: Identifier,
 	interfaceId: Identifier,
 	operationId: Identifier,
-	inputs: ApiWitnessInputs,
+	inputs: WitnessInputs,
 	relation: Expression,
 })
 
@@ -164,7 +175,7 @@ export const FixtureReset = z.strictObject({
 	legId: Identifier,
 	interfaceId: Identifier,
 	operationId: Identifier,
-	inputs: ApiWitnessInputs,
+	inputs: WitnessInputs,
 })
 
 export type FixtureReset = z.infer<typeof FixtureReset>

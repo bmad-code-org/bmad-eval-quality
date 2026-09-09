@@ -253,6 +253,9 @@ describe('the Consistency Conventions, extended rather than restarted', () => {
 				'/properties/referenceSets/anyOf/0',
 				'/properties/testData/properties/principals/anyOf/0',
 				'/properties/testData/properties/resources/anyOf/0',
+				// The command branch of fixtureReset's inputs, which 1.3.0 widened to
+				// the same union a sensitivity leg takes.
+				'/properties/fixtureReset/anyOf/0/properties/inputs/anyOf/1/properties/environment',
 				'/$defs/Expression/oneOf/9/properties/descriptor/properties/types',
 				// The api operation shape, named once and referenced by the
 				// `api`, `web`, and `mcp` branches alike.
@@ -273,6 +276,12 @@ describe('the Consistency Conventions, extended rather than restarted', () => {
 				'/properties/observations/items/properties/artifacts',
 			],
 			probe: [
+				// The command branch of a manifestation witness's inputs, in both
+				// probe-class branches. 1.3.0 widened this to the same union a
+				// sensitivity leg takes, which is what makes a seeded defect against
+				// a command-line system under test representable at all.
+				'/oneOf/0/properties/defects/items/properties/manifestationWitness/anyOf/0/properties/inputs/anyOf/1/properties/environment',
+				'/oneOf/1/properties/defects/items/properties/manifestationWitness/anyOf/0/properties/inputs/anyOf/1/properties/environment',
 				'/$defs/WitnessInputs/properties/header',
 				'/$defs/Expression/oneOf/9/properties/descriptor/properties/types',
 				// AD-40's defect-signature selector, one address rather than

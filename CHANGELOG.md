@@ -12,6 +12,19 @@ body.
 
 ### Fixed
 
+- A seeded defect against a command-line system under test is representable. `ManifestationWitness.inputs`
+  and `FixtureReset.inputs` were `ApiWitnessInputs`, the four transport channels, while a sensitivity
+  witness leg has taken the `WitnessInputs` union since 0.3.0. Both are the union now. The consequence of
+  the gap was total for the `cli` mechanism: command channels failed the `Probe` parse, transport channels
+  reached `requestOf` and threw `undeclared-mandatory-input` for supplying transport channels to an
+  operation that runs behind a command, and the only shape that parsed was `manifestationWitness: null`,
+  which pre-flight records as a failed `seeded-fault-fired` check. Every `defect` and `zero-action` probe
+  against a command was therefore unscoreable, and `runScore` returned a null verdict. `requestOf` already
+  branched on both shapes, so the plan side needed no change: 0.3.0 widened the contract side and left
+  these two behind.
+
+### Fixed
+
 - The publish workflow's verify step waits ten minutes and revalidates the registry metadata. The
   1.2.0 publish succeeded and the step failed: the tarball was on npmjs.org and the metadata had not
   caught up inside the old two-minute window, so a green release reported as a failed one. The window
