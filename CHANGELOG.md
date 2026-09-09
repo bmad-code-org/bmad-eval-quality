@@ -10,6 +10,8 @@ body.
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-09-09
+
 ### Added
 
 - The reason a probe failed AD-9's qualification gate is reachable from the published package.
