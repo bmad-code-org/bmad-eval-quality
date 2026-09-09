@@ -356,6 +356,33 @@ describe('a sensitivity witness reading a file the descriptor does not describe'
 	})
 })
 
+describe('a sensitivity witness reading a declared file the descriptor does not nominate', () => {
+	// Bare, so reachability admits it: the artifact is declared and a pointer
+	// with no tail asks only that it exists. `evidenceOf` still carries the one
+	// artifact the descriptor nominates and nothing else, so both legs resolve
+	// absent and the relation certifies sensitivity from a pair that never
+	// resolved.
+	it('fails compilation on the bare pointer that reachability admits', () => {
+		const contract = structuredClone(artifactCommandContract) as any
+		const { relation } =
+			contract.permittedInterfaces[0].operations[0].sensitivityWitness
+		for (const [index, operand] of relation.operands[0].operands.entries()) {
+			const legId = index === 0 ? 'leg-first-task' : 'leg-second-task'
+			operand.pointer = `/interactions/${legId}/artifact/report`
+		}
+		let thrown: unknown
+		try {
+			compile(EvalContract.parse(contract), { strict: true })
+		} catch (error) {
+			thrown = error
+		}
+		expect(thrown).toBeInstanceOf(StructuralFailure)
+		const failure = thrown as StructuralFailure
+		expect(failure.code).toBe('unreachable-check-evidence')
+		expect(failure.message).toContain('a witness leg carries nothing for it')
+	})
+})
+
 describe('a capture from a file the descriptor does not describe', () => {
 	const capturing = (artifactId: string) => {
 		const contract = structuredClone(artifactCommandContract) as any

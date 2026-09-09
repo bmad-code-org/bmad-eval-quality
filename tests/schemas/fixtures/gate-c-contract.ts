@@ -594,7 +594,11 @@ export const gateCContract = {
 					// compares absent with absent, reports `false`, and the
 					// enclosing `not` certifies this operation sensitive on
 					// every run, including against a server that ignores the
-					// path parameter.
+					// path parameter. The declaration itself is the questionable
+					// half and is left alone here: `/jobId` on a GET is the
+					// caller's own path parameter echoed back, which is stable
+					// per leg, and it reads as copied down from `submit-export`,
+					// where the POST mints the id and the declaration is right.
 					sensitivityWitness: {
 						witnessId: 'get-export-sensitivity',
 						channel: 'path',

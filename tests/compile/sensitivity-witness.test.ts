@@ -328,9 +328,13 @@ describe('checkWitnessLegality: the channel, the relation, and the fixture reset
 			compile(
 				mutated((contract) => {
 					// `/items` on `list-things` is what O-001's check and RC-001's
-					// evidence both address. Its witness moves to the bare bodies,
-					// so the only pointers left at the volatile field are the two
-					// scored against a sealed run record.
+					// evidence both address. Its witness moves to `/error`, a
+					// declared key nothing marks volatile, so the only pointers
+					// left at the volatile field are the two scored against a
+					// sealed run record. A bare-body differential would have done
+					// the same job and been vacuous doing it: `/items` and
+					// `/error` are the only declared keys, so both legs would
+					// project to `{}`.
 					const [, list] = contract.permittedInterfaces[0].operations
 					list.volatilePointers = ['/items']
 					list.sensitivityWitness.relation = {
@@ -339,8 +343,73 @@ describe('checkWitnessLegality: the channel, the relation, and the fixture reset
 							{
 								op: 'deep-equality',
 								operands: [
-									{ pointer: '/interactions/list-witness-a/response-body' },
-									{ pointer: '/interactions/list-witness-b/response-body' },
+									{
+										pointer: '/interactions/list-witness-a/response-body/error',
+									},
+									{
+										pointer: '/interactions/list-witness-b/response-body/error',
+									},
+								],
+							},
+						],
+					}
+				}),
+				{ strict: true },
+			),
+		).not.toThrow()
+	})
+
+	// `evidenceOf` writes every channel the leg's own observation does not
+	// describe blank, so these resolve absent however legal they look against
+	// the declaration. The first is the false pass; the second is its milder
+	// twin, since `deep-equality(null, null)` is true and the `not` then reports
+	// the operation insensitive on every run.
+	it('42. fires unreachable-check-evidence for a relation pointer at a stream an api operation has none of', () => {
+		const failure = failureOf((contract) => {
+			createWitness(contract).relation = {
+				op: 'deep-equality',
+				operands: [
+					{ pointer: '/interactions/create-witness-a/stdout' },
+					{ pointer: '/interactions/create-witness-b/stdout' },
+				],
+			}
+		})
+		expect(failure.code).toBe('unreachable-check-evidence')
+		expect(failure.message).toContain('does not carry')
+	})
+
+	it('43. fires unreachable-check-evidence for a relation pointer at the exit code of an api operation', () => {
+		const failure = failureOf((contract) => {
+			createWitness(contract).relation = {
+				op: 'deep-equality',
+				operands: [
+					{ pointer: '/interactions/create-witness-a/exit-code' },
+					{ pointer: '/interactions/create-witness-b/exit-code' },
+				],
+			}
+		})
+		expect(failure.code).toBe('unreachable-check-evidence')
+		expect(failure.message).toContain('does not carry')
+	})
+
+	// The projection drops headers and the relation reads them raw, so this one
+	// is legal and stays legal.
+	it('44. leaves a relation pointer at the response headers alone', () => {
+		expect(() =>
+			compile(
+				mutated((contract) => {
+					createWitness(contract).relation = {
+						op: 'not',
+						operands: [
+							{
+								op: 'deep-equality',
+								operands: [
+									{
+										pointer: '/interactions/create-witness-a/response-headers',
+									},
+									{
+										pointer: '/interactions/create-witness-b/response-headers',
+									},
 								],
 							},
 						],

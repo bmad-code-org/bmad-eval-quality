@@ -20,6 +20,7 @@ import type { EvalContract } from '../schemas/eval-contract.ts'
 import type { Expression, Operand } from '../schemas/expression.ts'
 import type { AnyOperation, ResponseDescriptor } from '../schemas/interface.ts'
 import { operationsOf } from '../schemas/interface.ts'
+import type { EvidenceChannelName } from '../schemas/pointer.ts'
 import { JsonTypeName } from '../schemas/primitives.ts'
 import {
 	anyOperationOf,
@@ -281,6 +282,61 @@ export function checkExpressionEvidenceReachability(
 }
 
 /**
+ * `unreachable-check-evidence` for a pointer at a channel a witness leg never
+ * carries.
+ *
+ * `evaluateReachabilityAgainstOperation` answers for a sealed run record, where
+ * every channel the interface produces is observed. A witness leg is narrower.
+ * `evidenceOf` builds one from a single probe observation and writes every
+ * channel that observation does not describe blank, so a bare pointer at one
+ * resolves absent on both legs however reachable it looks against the
+ * declaration. `deep-equality` over an absent side is `false` and the enclosing
+ * `not` then certifies the operation sensitive on every run, which is the false
+ * pass `checkExpressionVolatility` below closes by the projection route.
+ *
+ * What a leg carries is the operation's own described channel, its transport
+ * inputs, and the channels its transport produces with no descriptor of their
+ * own: the status and the headers off an interface that speaks HTTP, the exit
+ * code off a command. `response-headers` stays legal deliberately, matching the
+ * note on `projectObservation` that the projection does not carry headers and
+ * the relation reads them raw.
+ *
+ * The artifact channel narrows once more. A leg carries the one artifact the
+ * descriptor nominates, so a pointer at any other declared artifact is blank
+ * even though the contract declares the operation writes it.
+ */
+export function checkExpressionLegChannel(
+	expression: Expression,
+	artifactPath: string,
+	operation: AnyOperation,
+): void {
+	const described = descriptorChannelOf(operation)
+	const describedArtifact = descriptorArtifactOf(operation)
+	const carried: readonly EvidenceChannelName[] = isCommandOperation(operation)
+		? [described, 'exit-code', 'call-inputs']
+		: [described, 'response-headers', 'response-status', 'call-inputs']
+	visitExpression(expression, '', false, (site) => {
+		if (site.pointer.startsWith('@')) return
+		const target = parseEvidenceTarget(site.pointer)
+		const refuse = (reason: string): never => {
+			throw new StructuralFailure(
+				'unreachable-check-evidence',
+				`${artifactPath}${site.path}`,
+				`"${site.pointer}" ${reason}`,
+			)
+		}
+		if (!carried.includes(target.channel))
+			refuse(
+				`addresses ${target.channel}, which a witness leg of operation "${operation.operationId}" does not carry; pre-flight builds each leg from ${carried.join(', ')} alone`,
+			)
+		if (target.artifactId !== null && target.artifactId !== describedArtifact)
+			refuse(
+				`addresses the "${target.artifactId}" artifact, which operation "${operation.operationId}" declares it writes and its descriptor does not nominate, so a witness leg carries nothing for it`,
+			)
+	})
+}
+
+/**
  * `unreachable-check-evidence` for a pointer at a field the operation declares
  * volatile. Reachability answers the descriptor question and this answers the
  * projection one, so a caller that runs both gets the whole answer.
@@ -288,15 +344,19 @@ export function checkExpressionEvidenceReachability(
  * Only a sensitivity-witness relation asks. `projectObservation` prunes every
  * volatile pointer from the described channel before `evidenceOf` builds the
  * leg the relation reads, so a relation addressing one resolves absent on both
- * legs. That is a false pass rather than a failure: `deep-equality` over an
- * absent side is `false`, and the enclosing `not` reports the operation
- * sensitive on every run from a pair of pointers that never resolved. An oracle
+ * legs. `deep-equality` over an absent side is `false`, and the enclosing `not`
+ * then reports the operation sensitive on every run from a pair of pointers that
+ * never resolved. It is one of two ways a leg comes back blank, and
+ * `checkExpressionLegChannel` above covers the other. An oracle
  * is scored against a sealed run record, which carries no projection, so the
  * same pointer is legitimate there.
  *
  * The empty pointer is RFC 6901's whole document, and `pruneVolatile` reads it
  * that way, so an operation declaring it makes every pointer at the described
- * channel volatile.
+ * channel volatile. `pruneVolatile` prunes a `json` body alone, so a body
+ * arriving as text is never pruned and a differential over it would work.
+ * Refusing it anyway is the right default: a descriptor declaring `requiredKeys`
+ * and `types` says the body is json, and compile cannot see what arrives.
  */
 export function checkExpressionVolatility(
 	expression: Expression,

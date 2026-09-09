@@ -38,6 +38,7 @@ import {
 import { parseEvidenceTarget } from '../seal/plan-index.ts'
 import {
 	checkExpressionEvidenceReachability,
+	checkExpressionLegChannel,
 	checkExpressionVolatility,
 } from './reachability.ts'
 
@@ -385,6 +386,7 @@ export function checkWitnessLegality(contract: EvalContract): void {
 			relationPath,
 			operation,
 		)
+		checkExpressionLegChannel(witness.relation, relationPath, operation)
 		checkExpressionVolatility(witness.relation, relationPath, operation)
 	})
 	const reset = contract.fixtureReset

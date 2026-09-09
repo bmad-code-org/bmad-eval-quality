@@ -3763,6 +3763,7 @@ A guide that says otherwise is worse than a gap, because it is the sentence that
 - Keep the file in `artifacts` even then, so the oracle and both witnesses still reach it.
 - A pointer into a declared file the descriptor does not nominate is `unreachable-check-evidence`; a pointer at an undeclared file is `unresolved-artifact-reference`, at every site that names one including a sensitivity-witness relation.
 - A sensitivity-witness relation may not read a field the operation declares volatile, because the projection it reads has already removed it.
+- A witness relation may only read a channel pre-flight actually fills for that leg: the described one, the transport inputs, and the status, headers or exit code its transport produces.
 - Flipping a contract's interface kind flips its operation shape too, so an unsupported kind can surface as a parse failure before its own code fires.
 - Test a claim about what the shipped code expresses by running it against real bytes.
 
