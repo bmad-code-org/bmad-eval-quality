@@ -513,7 +513,10 @@ regexMatch(value: ResolvedValue, pattern: string, matchStepBudget: number, artif
   (this function never special-cases an *empty* array as
   anything but a legitimate zero count; the architecture's own prohibition on treating emptiness as
   "insufficient-evidence, therefore skip the check" is enforced by Story 3.2's wrapper intercepting
-  before this function is ever called on a genuinely empty collection: see AC 1). Let
+  before this function is ever called on a genuinely empty collection: see AC 1). *(Amended after this
+  story shipped: AD-4 exempts `count-tolerance` from that interception over a collection observed to be
+  present and empty, so this function is called with `[]` and its length guard is load-bearing. A
+  collection-typed pointer that resolved `absent` is still intercepted.)* Let
   `actual = collection.length`. The allowed deviation is `relative ? (expected * tolerance) / 100 :
   tolerance`, compared without rounding: `true` iff `Math.abs(actual - expected) <= allowedDeviation`.
   No floor or ceiling is applied to a fractional relative deviation: see Decision 5 for why rounding

@@ -145,7 +145,10 @@ const digestOrNull = (value: unknown): string | null => {
  * carries AD-11's projected body, so a field the operation declares volatile is
  * already out of it and a server-minted identifier stops being a difference,
  * which is what makes the same request to a mutating operation comparable at
- * all.
+ * all. The raw observation is the wrong side of this comparison for that exact
+ * reason: two writes to one collection differ on a minted id by design, and
+ * reading that as a difference puts the false failure this check just lost back
+ * one stage over.
  *
  * The correlation identifiers are neutralised on both sides, since they are the
  * leg id and differ by construction. A digest that comes back `null` matches

@@ -24,6 +24,19 @@ body.
 
 ### Fixed
 
+- A contract can assert that a collection is empty. AD-4's empty-collection introduction condition fired
+  for every operand of every operator, so `count-tolerance(coll, 0, 0)` could never resolve `true` against
+  a genuinely empty collection, and `existence` over a pointer resolving to a present-but-empty array
+  resolved `insufficient-evidence` even though `existence` only asks about presence. The condition now
+  exempts a closed list of three named operators, the ones that read a property of the collection itself:
+  `count-tolerance` reads its cardinality, `existence` and `absence` read its presence. All three resolve
+  over a collection observed to be present and empty. Every quantifier and every other operator keeps the
+  interception, and a collection-typed pointer that resolved `absent` still resolves `insufficient-evidence`
+  under all three, so a missing collection never certifies as an empty one. The disjunctive escape hatch
+  AD-4 struck stays closed on `any`'s own fold. One disagreement is left standing and is recorded in AD-4:
+  `deep-equality(coll, [])` and `equality(coll, [])` still resolve `insufficient-evidence` over the same
+  evidence where `count-tolerance(coll, 0, 0)` resolves `true`, because one totality covers a whole leaf
+  and exempting `equality` would also exempt a `{ literal: [] }` operand.
 - Pre-flight's `seeded-faults-scoped` check no longer fails on a leg that is the fault leg's own
   probe wearing a second label. The clean-leg set excluded the fault leg by leg id alone, so a
   sensitivity witness leg spelling the manifestation witness's inputs was read as independent
