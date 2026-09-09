@@ -10,6 +10,8 @@ body.
 
 ## [Unreleased]
 
+## [1.4.2] - 2026-09-09
+
 ### Changed
 
 - Documentation now says plainly who performs the mutation. The twin-run passages explained the loop
