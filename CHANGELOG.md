@@ -22,6 +22,22 @@ body.
   exports `QUALIFICATION_FAILURES` with the `QualificationFailure`, `QualificationFailureCode`, and
   `QualificationResult` types. No artifact schema changed.
 
+### Fixed
+
+- A contract can assert that a collection is empty. AD-4's empty-collection introduction condition fired
+  for every operand of every operator, so `count-tolerance(coll, 0, 0)` could never resolve `true` against
+  a genuinely empty collection, and `existence` over a pointer resolving to a present-but-empty array
+  resolved `insufficient-evidence` even though `existence` only asks about presence. The condition now
+  exempts a closed list of three named operators, the ones that read a property of the collection itself:
+  `count-tolerance` reads its cardinality, `existence` and `absence` read its presence. All three resolve
+  over a collection observed to be present and empty. Every quantifier and every other operator keeps the
+  interception, and a collection-typed pointer that resolved `absent` still resolves `insufficient-evidence`
+  under all three, so a missing collection never certifies as an empty one. The disjunctive escape hatch
+  AD-4 struck stays closed on `any`'s own fold. One disagreement is left standing and is recorded in AD-4:
+  `deep-equality(coll, [])` and `equality(coll, [])` still resolve `insufficient-evidence` over the same
+  evidence where `count-tolerance(coll, 0, 0)` resolves `true`, because one totality covers a whole leaf
+  and exempting `equality` would also exempt a `{ literal: [] }` operand.
+
 ## [1.3.0] - 2026-09-09
 
 ### Fixed

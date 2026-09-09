@@ -74,23 +74,58 @@ type ResolutionContext = {
 }
 
 /**
- * AD-4's one closed introduction condition, checked per operand and applied
- * uniformly: the resolved value and its operand are the only inputs.
+ * Whether the operator holding an operand reads a property of the collection
+ * itself. `total` is a closed list of three: `count-tolerance` reads its
+ * cardinality, `existence` and `absence` read its presence, and all three have
+ * an answer over a collection observed to be present and empty.
+ * `needs-a-member` is every other operator, and it is what an operator a later
+ * schema version admits arrives with.
  *
- * Two permanent consequences of that uniform reading, the same class as a
- * `{ literal: [] }` operand tripping it: a `count-tolerance` node asserting
- * `expected: 0` over a genuinely empty collection can never resolve `true`,
- * because this interception fires first; and `existence` over a pointer
- * resolving to a present-but-empty array resolves `insufficient-evidence`, not
- * `true`, even though `existence` only asks about presence.
+ * The list is enumerated here because it is narrower than "the operators that
+ * could answer over an observed `[]`". Five of the `needs-a-member` operators
+ * could: `equality` and `deepEquality` compare two empty arrays as equal, and
+ * `shape`, `regexMatch`, and `setMembership` answer false on the type alone.
+ * They stay intercepted because `anyOperandEmpty` applies one totality across
+ * every operand of a leaf at once, so marking `equality` would also stop a
+ * `{ literal: [] }` operand from tripping, and an author-supplied empty array
+ * is subject to the invariant like any other. AD-4 records the disagreement
+ * that leaves standing: `deep-equality(coll, [])` abstains over evidence where
+ * `count-tolerance(coll, 0, 0)` resolves.
+ *
+ * This is the only axis on which AD-4's introduction condition varies, and it
+ * separates "we could not observe enough to answer" from "we observed an
+ * answer". A collection-typed pointer that resolved `absent` is unobserved
+ * under both values and always trips.
+ */
+type EmptyCollectionTotality = 'total' | 'needs-a-member'
+
+/**
+ * AD-4's one closed introduction condition, checked per operand. Two inputs
+ * decide it: what the operand resolved to, and whether the operator can answer
+ * from an empty collection.
+ *
+ * An operand that resolved to a present, empty array reached an evidence
+ * channel that worked and had nothing in it. That stops a `needs-a-member`
+ * operator, which would otherwise report a vacuous truth over no elements.
+ * A `total` operator has its answer: the cardinality is zero, the value is
+ * present. AD-4's own rule keeps a detected defect a detection, and that is
+ * what makes the second case a resolution.
+ *
+ * The `absent` branch does not vary. A collection-typed pointer that did not
+ * resolve is the missing page AD-4 folds into this condition to close the
+ * soft-delete fail-open, and no operator gets to read a missing collection as
+ * an empty one.
  */
 function operandDenotesEmptyCollection(
 	resolved: ResolvedValue,
 	operand: Operand,
 	pointerDenotesCollection: PointerDenotesCollection,
+	totality: EmptyCollectionTotality,
 ): boolean {
-	if (Array.isArray(resolved) && resolved.length === 0) return true
-	if (resolved !== ABSENT) return false
+	if (resolved !== ABSENT) {
+		if (totality === 'total') return false
+		return Array.isArray(resolved) && resolved.length === 0
+	}
 	// Only a `{ pointer }` operand can carry a declared collection type.
 	// `{ literal }` never resolves ABSENT, and an ABSENT `{ referenceSet }`
 	// means `unresolved-reference-set` slipped past compilation, which this
@@ -119,9 +154,15 @@ function booleanResult(result: boolean): CheckResolutionValue {
 function anyOperandEmpty(
 	pairs: readonly { operand: Operand; resolved: ResolvedValue }[],
 	pointerDenotesCollection: PointerDenotesCollection,
+	totality: EmptyCollectionTotality,
 ): boolean {
 	return pairs.some(({ operand, resolved }) =>
-		operandDenotesEmptyCollection(resolved, operand, pointerDenotesCollection),
+		operandDenotesEmptyCollection(
+			resolved,
+			operand,
+			pointerDenotesCollection,
+			totality,
+		),
 	)
 }
 
@@ -210,15 +251,24 @@ function resolveQuantifier(
 }
 
 // Shared by the six single-operand leaves: resolve, intercept on the
-// empty-collection condition, otherwise hand the value to the operator.
+// empty-collection condition, otherwise hand the value to the operator. Each
+// caller declares its own totality, since that is the one thing the six
+// disagree on.
 function resolveSingleOperand(
 	operand: Operand,
 	boundElement: ResolvedValue,
 	ctx: ResolutionContext,
+	totality: EmptyCollectionTotality,
 	evaluate: (resolved: ResolvedValue) => boolean,
 ): CheckResolutionValue {
 	const resolved = ctx.resolveOperand(operand, boundElement, ctx.artifactPath)
-	if (anyOperandEmpty([{ operand, resolved }], ctx.pointerDenotesCollection)) {
+	if (
+		anyOperandEmpty(
+			[{ operand, resolved }],
+			ctx.pointerDenotesCollection,
+			totality,
+		)
+	) {
 		return emptyCollectionResult()
 	}
 	return booleanResult(evaluate(resolved))
@@ -246,6 +296,7 @@ function resolveEqualityLike(
 				{ operand: bOperand, resolved: b },
 			],
 			ctx.pointerDenotesCollection,
+			'needs-a-member',
 		)
 	) {
 		return emptyCollectionResult()
@@ -436,6 +487,7 @@ function resolveContainmentNode(
 				{ operand: candidateOperand, resolved: candidate },
 			],
 			ctx.pointerDenotesCollection,
+			'needs-a-member',
 		)
 	) {
 		return emptyCollectionResult()
@@ -463,7 +515,7 @@ function resolveExistenceNode(
 	ctx: ResolutionContext,
 ): CheckResolutionValue {
 	const [operand] = expression.operands
-	return resolveSingleOperand(operand, boundElement, ctx, (resolved) =>
+	return resolveSingleOperand(operand, boundElement, ctx, 'total', (resolved) =>
 		existence(resolved, ctx.artifactPath),
 	)
 }
@@ -474,7 +526,7 @@ function resolveAbsenceNode(
 	ctx: ResolutionContext,
 ): CheckResolutionValue {
 	const [operand] = expression.operands
-	return resolveSingleOperand(operand, boundElement, ctx, (resolved) =>
+	return resolveSingleOperand(operand, boundElement, ctx, 'total', (resolved) =>
 		absence(resolved, ctx.artifactPath),
 	)
 }
@@ -486,8 +538,13 @@ function resolveRegexNode(
 ): CheckResolutionValue {
 	const [operand] = expression.operands
 	const { pattern } = expression
-	return resolveSingleOperand(operand, boundElement, ctx, (resolved) =>
-		regexMatch(resolved, pattern, ctx.regexMatchStepBudget, ctx.artifactPath),
+	return resolveSingleOperand(
+		operand,
+		boundElement,
+		ctx,
+		'needs-a-member',
+		(resolved) =>
+			regexMatch(resolved, pattern, ctx.regexMatchStepBudget, ctx.artifactPath),
 	)
 }
 
@@ -576,6 +633,7 @@ function resolveSetMembershipNode(
 				{ operand: setOperand, resolved: resolvedSet },
 			],
 			ctx.pointerDenotesCollection,
+			'needs-a-member',
 		)
 	) {
 		return emptyCollectionResult()
@@ -602,8 +660,12 @@ function resolveOrderingNode(
 ): CheckResolutionValue {
 	const [operand] = expression.operands
 	const { key, order } = expression
-	return resolveSingleOperand(operand, boundElement, ctx, (resolved) =>
-		ordering(resolved, key, order, ctx.artifactPath),
+	return resolveSingleOperand(
+		operand,
+		boundElement,
+		ctx,
+		'needs-a-member',
+		(resolved) => ordering(resolved, key, order, ctx.artifactPath),
 	)
 }
 
@@ -614,7 +676,7 @@ function resolveCountToleranceNode(
 ): CheckResolutionValue {
 	const [operand] = expression.operands
 	const { expected, tolerance, relative } = expression
-	return resolveSingleOperand(operand, boundElement, ctx, (resolved) =>
+	return resolveSingleOperand(operand, boundElement, ctx, 'total', (resolved) =>
 		countTolerance(resolved, expected, tolerance, relative, ctx.artifactPath),
 	)
 }
@@ -626,8 +688,12 @@ function resolveShapeNode(
 ): CheckResolutionValue {
 	const [operand] = expression.operands
 	const { descriptor } = expression
-	return resolveSingleOperand(operand, boundElement, ctx, (resolved) =>
-		shape(resolved, descriptor, ctx.artifactPath),
+	return resolveSingleOperand(
+		operand,
+		boundElement,
+		ctx,
+		'needs-a-member',
+		(resolved) => shape(resolved, descriptor, ctx.artifactPath),
 	)
 }
 
