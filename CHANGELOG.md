@@ -10,6 +10,8 @@ body.
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-09-09
+
 ### Fixed
 
 - A seeded defect against a command-line system under test is representable. `ManifestationWitness.inputs`
