@@ -27,6 +27,7 @@ import type {
 	ScoredOutcome,
 } from '../../src/core/score/ladder.ts'
 import type {
+	QualificationResult,
 	QualifiedProbe,
 	SealedProbeSet,
 } from '../../src/core/score/qualification.ts'
@@ -117,6 +118,20 @@ const sealedProbesQualified: SealedProbeSet = {
 const sealedProbesRejected: SealedProbeSet = {
 	admitted: [],
 	rejected: [rejectedProbeEntry],
+}
+
+/**
+ * The one entry's own result, so a case overriding `sealedProbes` cannot hand
+ * `emit` a set that rejected the probe next to a `probeQualification` saying it
+ * qualified. `score` cannot produce that pair, and `emit` reads the field
+ * nowhere today, so nothing would catch it.
+ */
+const qualificationOf = (sealed: SealedProbeSet): QualificationResult => {
+	const entry = sealed.admitted[0] ?? sealed.rejected[0]
+	if (entry === undefined) {
+		throw new Error('this fixture seals exactly one probe')
+	}
+	return entry.result
 }
 
 const cleanTrialSetResult: TrialSetResult = {
@@ -238,20 +253,23 @@ const passLadder: LadderResolution = {
 
 const scoredOf = (
 	overrides: Partial<ScoredOutcomesAndVerdict> = {},
-): ScoredOutcomesAndVerdict => ({
-	assessment: contractAssessment(),
-	ladder: passLadder,
-	runId: 'run-1',
-	contract: minimalContract,
-	policy,
-	probe,
-	sealedProbes: sealedProbesQualified,
-	probeQualification: qualifiedProbeEntry.result,
-	trialSetResult: cleanTrialSetResult,
-	outcomes: [baseOutcome],
-	uncitedFindings: [],
-	...overrides,
-})
+): ScoredOutcomesAndVerdict => {
+	const sealedProbes = overrides.sealedProbes ?? sealedProbesQualified
+	return {
+		assessment: contractAssessment(),
+		ladder: passLadder,
+		runId: 'run-1',
+		contract: minimalContract,
+		policy,
+		probe,
+		sealedProbes,
+		probeQualification: qualificationOf(sealedProbes),
+		trialSetResult: cleanTrialSetResult,
+		outcomes: [baseOutcome],
+		uncitedFindings: [],
+		...overrides,
+	}
+}
 
 const emitOf = (overrides: Partial<ScoredOutcomesAndVerdict> = {}) =>
 	emit(scoredOf(overrides), digestOf(200), digestOf(201), digestOf(202))

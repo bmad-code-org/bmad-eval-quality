@@ -16,8 +16,8 @@ body.
   `runScore` returns `qualification` next to the artifact and the ladder, carrying the closed
   `QualificationFailureCode` set that decided the probe, and the `score` command writes one line per
   reason to stderr in the `eval-quality: <code>: <artifactPath>: <detail>` shape. Before this, an
-  unqualified probe drove every oracle to `infrastructure-error` and the run to exit 3 with the
-  reason recorded nowhere a consumer could read: `qualifyProbe` and its reason-code type were both
+  unqualified probe drove each oracle to `infrastructure-error` where no higher-precedence condition
+  had resolved it, and the run to exit 3, with the reason recorded nowhere a consumer could read: `qualifyProbe` and its reason-code type were both
   off the exports map, so diagnosing a rejection meant reimplementing the gate. The barrel now also
   exports `QUALIFICATION_FAILURES` with the `QualificationFailure`, `QualificationFailureCode`, and
   `QualificationResult` types. No artifact schema changed.

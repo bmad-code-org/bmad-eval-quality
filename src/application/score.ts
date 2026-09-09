@@ -74,12 +74,14 @@ export type RunScoreResult = {
 	readonly artifact: EvidenceArtifact | null
 	readonly ladder: LadderResolution
 	/**
-	 * AD-9's gate over `options.probe`, carried out of `score` unchanged. An
-	 * unqualified probe drives every oracle to `infrastructure-error` and the
-	 * run to the Invalid rung, and the `EvidenceArtifact` records the state
-	 * without the reason. `failures` is that reason, in the closed
-	 * `QualificationFailureCode` vocabulary, so a caller reads it off the
-	 * result it already holds.
+	 * AD-9's gate over `options.probe`, carried out of `score` unchanged. A
+	 * rejected probe resolves an oracle to `infrastructure-error` wherever no
+	 * higher-precedence AD-33 row already resolved it, and any of those states
+	 * lands the run on the Invalid rung, where `artifact` is `null` and there
+	 * is no artifact field for the reason to travel in. A contract declaring no
+	 * oracles resolves no outcome at all: that run mints an artifact carrying
+	 * no trace of the rejection. `failures` is the reason in both cases, in the
+	 * closed `QualificationFailureCode` vocabulary.
 	 */
 	readonly qualification: QualificationResult
 }

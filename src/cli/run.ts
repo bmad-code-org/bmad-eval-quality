@@ -529,10 +529,11 @@ async function runScoreCommand(
 		signal: environment.signal,
 	})
 
-	// An unqualified probe resolves every oracle to `infrastructure-error` and
-	// the run to Invalid, and no artifact field carries the reason. Written
-	// whatever the rung, since the gate also runs on a probe the ladder never
-	// invalidated: the reasons are the same either way.
+	// A rejected probe resolves an oracle to `infrastructure-error` wherever no
+	// higher-precedence AD-33 row already resolved it, and no artifact field
+	// carries the reason on any rung. Written whatever the rung, since the gate
+	// also runs on a probe the ladder never invalidated, a contract declaring
+	// no oracles above all: the reasons are the same either way.
 	for (const failure of result.qualification.failures) {
 		environment.writeDiagnostic(renderQualificationFailure(failure))
 	}

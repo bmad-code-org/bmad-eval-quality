@@ -1,7 +1,8 @@
 /**
  * The four shapes the binary writes, and the exit-code table two documents
  * share. Every line the CLI emits is produced here, so a format change is one
- * file.
+ * file. Five renderers over the four shapes: a qualification failure and an
+ * error both print `<code>: <artifactPath>: <detail>`.
  */
 import { z } from 'zod'
 import {

@@ -3218,8 +3218,9 @@ flowchart TD
   probe's own AD-9 result, and the command writes one stderr line per reason in the
   `<code>: <artifactPath>: <detail>` shape the renderer already used. The barrel gained
   `QUALIFICATION_FAILURES` with the `QualificationFailure`, `QualificationFailureCode`, and
-  `QualificationResult` types, over the `root -> application` edge it already had. An unqualified probe
-  still reaches the Invalid rung and writes no artifact, and no artifact schema changed.
+  `QualificationResult` types, over the `root -> application` edge it already had. A rejected probe
+  reaches the Invalid rung and writes no artifact whenever it resolves an oracle, and the line goes to
+  stderr on every rung. No artifact schema changed.
 
 **Watch out:**
 

@@ -75,6 +75,7 @@ import {
 } from './outcome.ts'
 import {
 	type QualificationResult,
+	qualifyProbe,
 	resolveHomeOperation,
 	type SealedProbeSet,
 	sealProbeSet,
@@ -394,15 +395,16 @@ export const score: ScoreStage<
 				)
 	const sealedProbes = sealProbeSet([probe], homeOperationOf)
 	// `sealProbeSet` over a one-probe array puts that probe in exactly one
-	// bucket, so the third branch is unreachable. It stays fail-closed, on the
-	// same never-throw terms as the rest of this stage.
-	const probeQualification: QualificationResult = sealedProbes.admitted[0]
-		?.result ??
-		sealedProbes.rejected[0]?.result ?? {
-			qualified: false,
-			failures: [],
-			declarationChecksRan: false,
-		}
+	// bucket, so the third branch is unreachable. It re-runs the gate rather
+	// than composing a result here: `qualifyProbe` holds
+	// `qualified === (failures.length === 0)`, and a hand-built
+	// `{ qualified: false, failures: [] }` would hand a consumer a rejection
+	// with no code to route on, which is the silent state this field removes.
+	// The gate is pure, so a second call over the same probe answers the same.
+	const probeQualification: QualificationResult =
+		sealedProbes.admitted[0]?.result ??
+		sealedProbes.rejected[0]?.result ??
+		qualifyProbe(probe, homeOperationOf(probe))
 	const probeQualified = probeQualification.qualified
 
 	const signedProbe = signedProbeOf(probe)

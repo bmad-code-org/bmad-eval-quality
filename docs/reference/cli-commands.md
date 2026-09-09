@@ -97,7 +97,7 @@ Usage:
 
 On the Invalid rung the command exits `3` and writes no artifact: no legal `EvidenceArtifact` carries a null verdict. Diagnostics still go to stderr on that rung. On every other rung the artifact's own `exitCode` field carries the number the command returns.
 
-A probe that fails AD-9's qualification gate resolves every oracle to `infrastructure-error` and lands the run on the Invalid rung. The command writes one line per reason to stderr, in the `eval-quality: <code>: <artifactPath>: <detail>` shape, so the failure names the field it fired on. `QUALIFICATION_FAILURES` publishes the closed set of codes those lines draw from.
+A probe that fails AD-9's qualification gate resolves an oracle to `infrastructure-error` wherever no higher-precedence condition already resolved that oracle: an evaluation fault and a malformed judge both outrank it. Each of those three states lands the run on the Invalid rung, and a contract declaring no oracles resolves none of them and stays off it. The command writes one line per reason to stderr on every rung, in the `eval-quality: <code>: <artifactPath>: <detail>` shape, so the failure names the field it fired on. `QUALIFICATION_FAILURES` publishes the closed set of codes those lines draw from.
 
 One invocation scores one sealed run record, a trial set of one. That is a limit of the published surface, so whenever the policy's declared minimum exceeds one, the strength vector comes out reported and marked non-comparable.
 
