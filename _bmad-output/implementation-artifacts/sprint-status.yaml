@@ -114,7 +114,7 @@ development_status:
 
   epic-11: in-progress
   11-1-whether-tool-use-evaluation-is-one-gap-or-two: done
-  11-2-the-check-that-would-catch-a-stale-tool-use-claim: review
+  11-2-the-check-that-would-catch-a-stale-tool-use-claim: done
   11-3-the-response-descriptor-for-an-unstructured-tool-result: backlog
   11-4-the-operation-shape-for-a-tool-call: backlog
   11-5-compile-and-preflight-admit-an-mcp-interface: backlog
