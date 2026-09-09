@@ -24,6 +24,7 @@ import {
 	renderArtifact,
 	renderDiagnostic,
 	renderError,
+	renderQualificationFailure,
 	renderUsage,
 } from './render.ts'
 
@@ -528,6 +529,14 @@ async function runScoreCommand(
 		signal: environment.signal,
 	})
 
+	// A rejected probe resolves an oracle to `infrastructure-error` wherever no
+	// higher-precedence AD-33 row already resolved it, and no artifact field
+	// carries the reason on any rung. Written whatever the rung, since the gate
+	// also runs on a probe the ladder never invalidated, a contract declaring
+	// no oracles above all: the reasons are the same either way.
+	for (const failure of result.qualification.failures) {
+		environment.writeDiagnostic(renderQualificationFailure(failure))
+	}
 	if (result.artifact !== null) {
 		await emitArtifact(environment, result.artifact, 'score', target)
 	}

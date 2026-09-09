@@ -51,6 +51,7 @@ import {
 	scoreProbeFixture,
 	scoringPolicyFixtureForScore,
 	sealedRunRecordFixtureForScore,
+	unqualifiedProbeFixture,
 } from '../application/fixtures/score-fixtures.ts'
 import {
 	jsonBody,
@@ -1069,6 +1070,37 @@ describe('run: the score command (Story 8.4)', () => {
 			strictPromotable: true,
 		})
 		expect(exit).toBe(EXIT_INVALID)
+	})
+
+	it('an unqualified probe writes its reason code to the diagnostic stream and exits 3', async () => {
+		const environment = environmentOf(
+			scoreFiles({ 'probe.json': JSON.stringify(unqualifiedProbeFixture) }),
+			'',
+			[],
+			SCORE_CORPUS_FILES,
+		)
+		const { outcome, exit } = await invoke(SCORE_ARGV, environment)
+		expect(exit).toBe(EXIT_INVALID)
+		expect(outcome).toEqual({
+			kind: 'verdict',
+			verdict: null,
+			exitCode: EXIT_INVALID,
+			strictPromotable: true,
+		})
+		// Without this line the run reports `infrastructure-error` on every
+		// oracle and names no reason anywhere.
+		expect(environment.diagnostics).toEqual([
+			expect.stringMatching(
+				/^eval-quality: signature-absent: Probe\[probeId=P-001\]\.defectSignature: /,
+			),
+		])
+		expect(environment.out).toEqual([])
+	})
+
+	it('a qualified probe writes nothing to the diagnostic stream', async () => {
+		const environment = environmentOf(scoreFiles(), '', [], SCORE_CORPUS_FILES)
+		await invoke(SCORE_ARGV, environment)
+		expect(environment.diagnostics).toEqual([])
 	})
 
 	it('a --private-manifest entry needing a port with no --corpus-root is a usage error naming the flag', async () => {

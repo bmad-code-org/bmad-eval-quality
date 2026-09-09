@@ -32,6 +32,7 @@ import { Probe } from '../core/schemas/probe.ts'
 import { ScoringPolicy } from '../core/schemas/scoring-policy.ts'
 import { SealedRunRecord } from '../core/schemas/sealed-run-record.ts'
 import type { LadderResolution } from '../core/score/ladder.ts'
+import type { QualificationResult } from '../core/score/qualification.ts'
 import { score } from '../core/score/score.ts'
 import { type CorpusPort, corpusResolveParsers } from '../ports/corpus-port.ts'
 import { invokePort } from './invoke-port.ts'
@@ -72,6 +73,17 @@ export type RunScoreResult = {
 	 */
 	readonly artifact: EvidenceArtifact | null
 	readonly ladder: LadderResolution
+	/**
+	 * AD-9's gate over `options.probe`, carried out of `score` unchanged. A
+	 * rejected probe resolves an oracle to `infrastructure-error` wherever no
+	 * higher-precedence AD-33 row already resolved it, and any of those states
+	 * lands the run on the Invalid rung, where `artifact` is `null` and there
+	 * is no artifact field for the reason to travel in. A contract declaring no
+	 * oracles resolves no outcome at all: that run mints an artifact carrying
+	 * no trace of the rejection. `failures` is the reason in both cases, in the
+	 * closed `QualificationFailureCode` vocabulary.
+	 */
+	readonly qualification: QualificationResult
 }
 
 function parseFault(artifactPath: string, cause: unknown): RuntimeFault {
@@ -272,7 +284,11 @@ export async function runScore(
 	)
 
 	if (scored.ladder.verdict === null) {
-		return { artifact: null, ladder: scored.ladder }
+		return {
+			artifact: null,
+			ladder: scored.ladder,
+			qualification: scored.probeQualification,
+		}
 	}
 
 	const artifact = emit(
@@ -283,5 +299,9 @@ export async function runScore(
 		preflightVerdict.fixtureDigest,
 		record.evaluatorConfigurationDigest,
 	)
-	return { artifact, ladder: scored.ladder }
+	return {
+		artifact,
+		ladder: scored.ladder,
+		qualification: scored.probeQualification,
+	}
 }

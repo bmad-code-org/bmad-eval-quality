@@ -3055,6 +3055,10 @@ flowchart TD
 - `EvidenceIntegrityInputs.disclosure` and its three sibling booleans arrive declared, never derived:
   no declared input carries `EvidenceDisclosure`, and the module's own doc comment already states this
   posture for the other three.
+- Amended after this step shipped: the stage lifts the one probe's own `QualificationResult` out of the
+  sealed set and returns it as `probeQualification`, and `probeQualified` is read off it. The closed
+  reason set that decided the probe now travels with the result, so a caller holding an
+  `infrastructure-error` outcome can say which reason fired. No artifact schema changed.
 
 **Watch out:**
 
@@ -3152,6 +3156,9 @@ flowchart TD
   fetching is the calling layer's job, not this one's. The next step wires it up.
 - Don't assume the two files in `src/core/emit/` are both finished features just because they sit in
   the same folder -- only one of them has a caller today.
+- Amended after this step shipped: the scored result carries an eleventh field, `probeQualification`,
+  which `emit` reads nothing from. The evidence artifact is the same bytes either way. The field is
+  there so the reason a probe failed qualification reaches the caller.
 
 ## Step 37 (epic8-story4): the score command, at last
 
@@ -3214,6 +3221,13 @@ flowchart TD
   `--corpus-digest`, the same way `--run-id` already does for a value with no JSON file behind it.
 - The fixture digest is not a new flag. It is already sitting on the preflight verdict every score
   call already takes, so it is read from there.
+- Amended after this step shipped: `runScore` returns a third field, `qualification`, carrying the
+  probe's own AD-9 result, and the command writes one stderr line per reason in the
+  `<code>: <artifactPath>: <detail>` shape the renderer already used. The barrel gained
+  `QUALIFICATION_FAILURES` with the `QualificationFailure`, `QualificationFailureCode`, and
+  `QualificationResult` types, over the `root -> application` edge it already had. A rejected probe
+  reaches the Invalid rung and writes no artifact whenever it resolves an oracle, and the line goes to
+  stderr on every rung. No artifact schema changed.
 
 **Watch out:**
 
