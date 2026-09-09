@@ -56,7 +56,10 @@
 //     margin, and whatever indentation the diagnostic itself emits survives.
 //   * Stderr may run past the block, and the block may never run past stderr.
 //     A page that transcribes the first lines of a longer diagnostic is making
-//     a claim about those lines, and the lines it left out stay unchecked.
+//     a claim about those lines, and the lines it left out stay unchecked. An
+//     empty block claims nothing and is left unattached, and a line carrying
+//     more than three elisions is an error, since matching them is polynomial
+//     in the count.
 //
 // To make a page's own examples faithful, the run replays each page in
 // document order inside its own sandbox: a `cat > path <<'EOF'` heredoc, an
@@ -76,12 +79,13 @@ import {
 	mkdtempSync,
 	readdirSync,
 	readFileSync,
+	realpathSync,
 	rmSync,
 	statSync,
 	writeFileSync,
 } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { dirname, isAbsolute, join, resolve, sep } from 'node:path'
+import { basename, dirname, isAbsolute, join, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const repoRoot = fileURLToPath(new URL('..', import.meta.url))
@@ -129,10 +133,20 @@ const ROOTS = (() => {
 	// reaches every page in the tree, planning material included, and every
 	// fenced command inside them. A root outside the repository is fine, since
 	// that is how a fixture page is driven.
+	// Canonical paths, because `resolve` follows no symlink: a link pointing at
+	// the repository would otherwise walk straight past this guard.
+	const canonical = (target) => {
+		try {
+			return realpathSync(target)
+		} catch {
+			return target
+		}
+	}
+	const root = canonical(repoRoot)
 	for (const override of overrides) {
-		const resolved = resolve(repoRoot, override)
+		const resolved = canonical(resolve(repoRoot, override))
 		const enclosing = resolved.endsWith(sep) ? resolved : `${resolved}${sep}`
-		if (repoRoot.startsWith(enclosing)) {
+		if (`${root}${root.endsWith(sep) ? '' : sep}`.startsWith(enclosing)) {
 			fail(
 				`--root ${override || '""'} encloses the repository; name a page or a directory inside it`,
 			)
@@ -177,6 +191,14 @@ const EXPECT_EXIT_PATTERN = /^<!--\s*expect-exit:\s*(\d{1,3})\s*-->$/
 /** What a page writes where it left characters, or a whole line, out. */
 const ELISION = '...'
 
+/**
+ * Elisions allowed in one documented line. Matching them is polynomial in the
+ * count, so a line carrying many of them over a long repetitive diagnostic can
+ * run for minutes, and no timeout covers this process. Three is more than any
+ * real transcript needs and the cap keeps the check's own cost bounded.
+ */
+const ELISION_LIMIT = 3
+
 const PER_INVOCATION_TIMEOUT_MS = 30_000
 
 /**
@@ -184,13 +206,16 @@ const PER_INVOCATION_TIMEOUT_MS = 30_000
  * carry fenced commands nobody here wrote, and running those is the inverse of
  * what this check is for, so the walk never descends into either.
  */
+const isSkipped = (name) => name === 'node_modules' || name.startsWith('.')
+
 const collectMarkdown = (target) => {
+	if (isSkipped(basename(target))) return []
 	const info = statSync(target, { throwIfNoEntry: false })
 	if (!info) return []
 	if (info.isFile()) return target.endsWith('.md') ? [target] : []
-	return readdirSync(target)
-		.filter((entry) => entry !== 'node_modules' && !entry.startsWith('.'))
-		.flatMap((entry) => collectMarkdown(join(target, entry)))
+	return readdirSync(target).flatMap((entry) =>
+		collectMarkdown(join(target, entry)),
+	)
 }
 
 /** Splits on whitespace, keeping a quoted value in one piece. */
@@ -505,17 +530,14 @@ const labelOf = (fence) => fence.trim().slice(3).trim().split(/[\s{]/)[0]
  * and stays right where the fence and its body are indented differently.
  */
 function dedent(block) {
-	const shared = block
+	const prefixes = block
 		.filter((line) => line.trim() !== '')
 		.map((line) => line.slice(0, line.length - line.trimStart().length))
-		.reduce(
-			(a, b) => {
-				let common = 0
-				while (common < a.length && a[common] === b[common]) common += 1
-				return a.slice(0, common)
-			},
-			block.find((line) => line.trim() !== '') ?? '',
-		)
+	const shared = prefixes.reduce((a, b) => {
+		let common = 0
+		while (common < a.length && a[common] === b[common]) common += 1
+		return a.slice(0, common)
+	}, prefixes[0] ?? '')
 	return block.map((line) => line.slice(shared.length))
 }
 
@@ -642,6 +664,16 @@ try {
 			compared += 1
 			const written = result.stderr.split('\n')
 			const documented = action.expectStderr
+			const overElided = documented.findIndex(
+				(line) => line.split(ELISION).length - 1 > ELISION_LIMIT,
+			)
+			if (overElided !== -1) {
+				record(
+					`line ${overElided + 1} of the block beside it elides ${ELISION_LIMIT} times over; transcribe the line or cut it`,
+				)
+				continue
+			}
+
 			// A documented line past the end of stderr fails, `...` included: a
 			// page may transcribe less than the run wrote and never more.
 			const drift = documented.findIndex((line, position) => {
@@ -656,7 +688,7 @@ try {
 				record(
 					line.trim() === wrote.trim() && line !== wrote
 						? `the block beside it is indented differently from the output at line ${drift + 1}`
-						: `the block beside it transcribes "${documented[drift].trim()}" as line ${drift + 1} of the output, and the run wrote something else`,
+						: `the block beside it transcribes "${line.trim()}" as line ${drift + 1} of the output, and the run wrote something else`,
 				)
 			}
 		}

@@ -17,7 +17,7 @@
  */
 
 import { spawnSync } from 'node:child_process'
-import { existsSync, mkdtempSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdtempSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
@@ -342,6 +342,18 @@ describe('check-doc-invocations, the transcribed diagnostic', () => {
 		expect(run.status).toBe(0)
 	})
 
+	it('fails a documented line carrying more elisions than the cap', (ctx) => {
+		if (!BUILT) return ctx.skip(NEEDS_BUILD)
+		// Matching elisions is polynomial in their count and nothing times this
+		// process out. A page that leans on them gets a diagnostic, where it
+		// would otherwise get a long silent wait.
+		const run = check(
+			rejectionPage('```text', 'eval-quality: ...a...b...c...d...e', '```'),
+		)
+		expect(run.status).toBe(1)
+		expect(run.output).toContain('elides 3 times over')
+	})
+
 	it('does not count an empty block as compared', (ctx) => {
 		if (!BUILT) return ctx.skip(NEEDS_BUILD)
 		const run = check(rejectionPage('```text', '```'))
@@ -470,6 +482,23 @@ describe('check-doc-invocations, a misdriven run is an error', () => {
 			expect(run.status).toBe(1)
 			expect(run.output).toContain('encloses the repository')
 		}
+	})
+
+	it('fails on a symlink pointing at the repository', (ctx) => {
+		if (!BUILT) return ctx.skip(NEEDS_BUILD)
+		// `resolve` follows no symlink, so the guard canonicalizes first.
+		const link = join(mkdtempSync(join(tmpdir(), 'root-link-')), 'repo')
+		symlinkSync(resolve('.'), link)
+		const run = drive('--root', link)
+		expect(run.status).toBe(1)
+		expect(run.output).toContain('encloses the repository')
+	})
+
+	it('reaches no page when handed a skipped directory outright', (ctx) => {
+		if (!BUILT) return ctx.skip(NEEDS_BUILD)
+		const run = drive('--root', 'node_modules')
+		expect(run.status).toBe(1)
+		expect(run.output).toContain('no markdown under')
 	})
 
 	it('fails on an argument it does not know', (ctx) => {
