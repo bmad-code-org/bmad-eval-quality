@@ -327,10 +327,11 @@ describe('an artifact identifier nothing declares', () => {
 })
 
 describe('a sensitivity witness reading a file the descriptor does not describe', () => {
-	// The artifact is declared, so `unresolved-artifact-reference` abstains and
-	// the pointer is a reachability question. Nothing asked it at this site
-	// before: `checkEvidenceReachability` walks oracle checks alone.
-	it('fails compilation rather than certifying sensitivity from pointers that never resolve', () => {
+	// The artifact is declared, so `unresolved-artifact-reference` abstains.
+	// What is left is two questions with one answer, and the carriage one is
+	// asked first: a leg carries only the nominated artifact, so no tail depth
+	// reaches this one and the descriptor reason would mislead.
+	it('reports the same carriage reason for the tailed spelling as for the bare one', () => {
 		const contract = structuredClone(artifactCommandContract) as any
 		const { relation } =
 			contract.permittedInterfaces[0].operations[0].sensitivityWitness
@@ -350,9 +351,7 @@ describe('a sensitivity witness reading a file the descriptor does not describe'
 		const failure = thrown as StructuralFailure
 		expect(failure.code).toBe('unreachable-check-evidence')
 		expect(failure.artifactPath).toContain('sensitivityWitness.relation')
-		expect(failure.message).toContain(
-			'declares it writes but declares no structure for',
-		)
+		expect(failure.message).toContain('a witness leg carries nothing for it')
 	})
 })
 

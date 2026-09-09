@@ -328,13 +328,12 @@ describe('checkWitnessLegality: the channel, the relation, and the fixture reset
 			compile(
 				mutated((contract) => {
 					// `/items` on `list-things` is what O-001's check and RC-001's
-					// evidence both address. Its witness moves to `/error`, a
-					// declared key nothing marks volatile, so the only pointers
-					// left at the volatile field are the two scored against a
-					// sealed run record. A bare-body differential would have done
-					// the same job and been vacuous doing it: `/items` and
-					// `/error` are the only declared keys, so both legs would
-					// project to `{}`.
+					// evidence both address, so its witness has to move off it.
+					// `/error` is the only other declared key and it is a
+					// diagnostic absent on success, so the differential is
+					// artificial wherever it goes on this operation. The case is
+					// about the oracle: the volatile field keeps its two pointers
+					// and they are the two scored against a sealed run record.
 					const [, list] = contract.permittedInterfaces[0].operations
 					list.volatilePointers = ['/items']
 					list.sensitivityWitness.relation = {

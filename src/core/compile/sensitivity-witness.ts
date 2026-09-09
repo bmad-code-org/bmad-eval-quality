@@ -381,12 +381,17 @@ export function checkWitnessLegality(contract: EvalContract): void {
 		// it walks oracle checks alone, and the descriptor question and the
 		// projection question are both open here.
 		const relationPath = `${path}.sensitivityWitness.relation`
+		// Carriage first. A tailed pointer at a channel the leg does not carry is
+		// unreachable against the descriptor too, and that reason invites the
+		// author to declare structure on a channel no depth of tail would
+		// reach. The carriage reason is the accurate one at a witness for both
+		// spellings, so it is asked first.
+		checkExpressionLegChannel(witness.relation, relationPath, operation)
 		checkExpressionEvidenceReachability(
 			witness.relation,
 			relationPath,
 			operation,
 		)
-		checkExpressionLegChannel(witness.relation, relationPath, operation)
 		checkExpressionVolatility(witness.relation, relationPath, operation)
 	})
 	const reset = contract.fixtureReset

@@ -291,8 +291,7 @@ export function checkExpressionEvidenceReachability(
  * channel that observation does not describe blank, so a bare pointer at one
  * resolves absent on both legs however reachable it looks against the
  * declaration. `deep-equality` over an absent side is `false` and the enclosing
- * `not` then certifies the operation sensitive on every run, which is the false
- * pass `checkExpressionVolatility` below closes by the projection route.
+ * `not` then certifies the operation sensitive on every run.
  *
  * What a leg carries is the operation's own described channel, its transport
  * inputs, and the channels its transport produces with no descriptor of their
