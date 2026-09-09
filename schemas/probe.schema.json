@@ -308,7 +308,102 @@
                         "description": "A kebab-case slug. Excludes \"/\" and \"~\" so an identifier can be embedded in an interaction-rooted pointer without escaping."
                       },
                       "inputs": {
-                        "$ref": "#/$defs/WitnessInputs"
+                        "anyOf": [
+                          {
+                            "$ref": "#/$defs/WitnessInputs"
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "argument": {
+                                "type": "object",
+                                "propertyNames": {
+                                  "type": "string"
+                                },
+                                "additionalProperties": {
+                                  "$ref": "#/$defs/JsonValue"
+                                }
+                              },
+                              "option": {
+                                "type": "object",
+                                "propertyNames": {
+                                  "type": "string"
+                                },
+                                "additionalProperties": {
+                                  "$ref": "#/$defs/JsonValue"
+                                }
+                              },
+                              "environment": {
+                                "type": "object",
+                                "propertyNames": {
+                                  "type": "string",
+                                  "minLength": 1
+                                },
+                                "additionalProperties": {
+                                  "type": "string"
+                                }
+                              },
+                              "stdin": {
+                                "oneOf": [
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "kind": {
+                                        "type": "string",
+                                        "const": "json"
+                                      },
+                                      "value": {
+                                        "$ref": "#/$defs/JsonValue"
+                                      }
+                                    },
+                                    "required": [
+                                      "kind",
+                                      "value"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "kind": {
+                                        "type": "string",
+                                        "const": "text"
+                                      },
+                                      "value": {
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": [
+                                      "kind",
+                                      "value"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "kind": {
+                                        "type": "string",
+                                        "const": "absent"
+                                      }
+                                    },
+                                    "required": [
+                                      "kind"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                ]
+                              }
+                            },
+                            "required": [
+                              "argument",
+                              "option",
+                              "environment",
+                              "stdin"
+                            ],
+                            "additionalProperties": false
+                          }
+                        ]
                       },
                       "relation": {
                         "$ref": "#/$defs/Expression"
@@ -668,7 +763,102 @@
                         "description": "A kebab-case slug. Excludes \"/\" and \"~\" so an identifier can be embedded in an interaction-rooted pointer without escaping."
                       },
                       "inputs": {
-                        "$ref": "#/$defs/WitnessInputs"
+                        "anyOf": [
+                          {
+                            "$ref": "#/$defs/WitnessInputs"
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "argument": {
+                                "type": "object",
+                                "propertyNames": {
+                                  "type": "string"
+                                },
+                                "additionalProperties": {
+                                  "$ref": "#/$defs/JsonValue"
+                                }
+                              },
+                              "option": {
+                                "type": "object",
+                                "propertyNames": {
+                                  "type": "string"
+                                },
+                                "additionalProperties": {
+                                  "$ref": "#/$defs/JsonValue"
+                                }
+                              },
+                              "environment": {
+                                "type": "object",
+                                "propertyNames": {
+                                  "type": "string",
+                                  "minLength": 1
+                                },
+                                "additionalProperties": {
+                                  "type": "string"
+                                }
+                              },
+                              "stdin": {
+                                "oneOf": [
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "kind": {
+                                        "type": "string",
+                                        "const": "json"
+                                      },
+                                      "value": {
+                                        "$ref": "#/$defs/JsonValue"
+                                      }
+                                    },
+                                    "required": [
+                                      "kind",
+                                      "value"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "kind": {
+                                        "type": "string",
+                                        "const": "text"
+                                      },
+                                      "value": {
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": [
+                                      "kind",
+                                      "value"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "kind": {
+                                        "type": "string",
+                                        "const": "absent"
+                                      }
+                                    },
+                                    "required": [
+                                      "kind"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                ]
+                              }
+                            },
+                            "required": [
+                              "argument",
+                              "option",
+                              "environment",
+                              "stdin"
+                            ],
+                            "additionalProperties": false
+                          }
+                        ]
                       },
                       "relation": {
                         "$ref": "#/$defs/Expression"
