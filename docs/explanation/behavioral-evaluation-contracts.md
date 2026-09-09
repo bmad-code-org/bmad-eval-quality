@@ -64,7 +64,9 @@ The way to find a blind spot is to plant one. Hold the evaluation fixed and chan
 
 The rows marked `[eval-quality]` are the ones the package performs. Executing the two systems, running the evaluator, and collecting what it produced belong to you.
 
-The mutation is one deliberate change that should make behavior worse, and you know in advance which failure it is supposed to create. Weaken the prompt, remove required context, drop a validation step, alter a tool's results, change the agent configuration, switch models.
+The mutation is one deliberate change that should make behavior worse, and you know in advance which failure it is supposed to create. Weaken the prompt, remove required context, drop a validation step, alter a tool's results, change the agent configuration.
+
+Each of those edits an artifact you hold, which is what a probe has to declare. The `controlled-mutation` qualification route names a `targetArtifact` for what changed and carries `rollbackVerified` for putting it back, so a planted defect is something you can point at and restore. A prompt file is the ordinary case, and a prompt mutation counts as a planted defect whenever its effect shows up in what came back. A vendor's model weights fill neither field, so switching models is outside what a probe can declare.
 
 Preflight has to pass on **both** arms. A mutated run that fails preflight tells you the environment was unfit, which is a different finding from the evaluation catching the defect. Mixing the two makes the comparison meaningless.
 
@@ -81,7 +83,7 @@ Planted defect: the correct error is returned, and the record is created anyway.
 - A **weak** evaluation checks only the response. It sees the error, and it passes. The defect ships.
 - A **strong** evaluation checks the response and the resulting state. It finds the record, and it fails.
 
-Run the same evaluation against the fixed implementation and it passes again. A trustworthy evaluation has to prove both directions: planted defect present, evaluation fails; clean implementation, evaluation passes. The question is whether the evaluation reliably tells bad behavior from good, whether that behavior belongs to a model, an agent, a skill, a tool-use path, a workflow, or an end-to-end AI feature.
+Run the same evaluation against the fixed implementation and it passes again. A trustworthy evaluation has to prove both directions: planted defect present, evaluation fails; clean implementation, evaluation passes. The question is whether the evaluation reliably tells bad behavior from good, whether that behavior belongs to an agent, a skill, a tool-use path, a workflow, or an end-to-end AI feature.
 
 ## What an eval contract declares
 

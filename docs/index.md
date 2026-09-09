@@ -59,10 +59,29 @@ The twin run, what an eval contract declares, and why `compile` rejects the cont
 ### [The full walkthrough](/how-to/author-behavioral-contracts/)
 Author a contract, run all four commands over it, and read a scored run down to its verdict.
 
+### [Pick your system shape](/how-to/evaluate-agent-behavior/)
+Five guides, one per kind of system people point this at. Start with the one that matches yours.
+
 ### [Reference](/reference/cli-commands/)
 Every command, every flag, every exit code, and the glossary.
 
 </div>
+
+## What you can point this at
+
+An eval contract describes a system through a declared interface. Two interface kinds compile today, `api` and `cli`, and a guide below covers each shape people put in front of them.
+
+| Your system | Guide | State |
+| --- | --- | --- |
+| An agent you invoke from the command line | [Agent behavior](/how-to/evaluate-agent-behavior/) | Proven. Nine probes catch a seeded defect in a real corpus. |
+| A skill an agent loads and acts on | [Skill behavior](/how-to/evaluate-skill-behavior/) | Gameability proven across eight contracts. No seeded-defect instance yet. |
+| Several steps that have to happen in order | [Workflow behavior](/how-to/evaluate-workflow-behavior/) | Declarable and compiling. Step binding is unit-tested, with no shipped end-to-end run. |
+| An AI feature behind an HTTP surface | [AI feature behavior](/how-to/evaluate-ai-feature-behavior/) | The shape the library was designed around. No live service has been evaluated yet. |
+| An MCP server answering tool calls | [Tool-use behavior](/how-to/evaluate-tool-use-behavior/) | Declared and refused at compile. The guide says what a first adopter would have to build. |
+
+Each guide says plainly what is proven and what is not, so a "state" column entry is the guide's own verdict rather than a roadmap promise.
+
+Two kinds parse and stop at compilation under `unsupported-interface-kind`: `web`, which has had no design pass, and `mcp`, which has one and is covered above. The [roadmap](/explanation/roadmap/) carries what tool-use support would take.
 
 :::tip[AI Documentation]
 Plain-text documentation for AI agents is available at [`/llms-full.txt`](/llms-full.txt) or indexed at [`/llms.txt`](/llms.txt).
