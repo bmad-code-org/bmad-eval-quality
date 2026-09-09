@@ -32,6 +32,7 @@ import { Probe } from '../core/schemas/probe.ts'
 import { ScoringPolicy } from '../core/schemas/scoring-policy.ts'
 import { SealedRunRecord } from '../core/schemas/sealed-run-record.ts'
 import type { LadderResolution } from '../core/score/ladder.ts'
+import type { QualificationResult } from '../core/score/qualification.ts'
 import { score } from '../core/score/score.ts'
 import { type CorpusPort, corpusResolveParsers } from '../ports/corpus-port.ts'
 import { invokePort } from './invoke-port.ts'
@@ -72,6 +73,15 @@ export type RunScoreResult = {
 	 */
 	readonly artifact: EvidenceArtifact | null
 	readonly ladder: LadderResolution
+	/**
+	 * AD-9's gate over `options.probe`, carried out of `score` unchanged. An
+	 * unqualified probe drives every oracle to `infrastructure-error` and the
+	 * run to the Invalid rung, and the `EvidenceArtifact` records the state
+	 * without the reason. `failures` is that reason, in the closed
+	 * `QualificationFailureCode` vocabulary, so a caller reads it off the
+	 * result it already holds.
+	 */
+	readonly qualification: QualificationResult
 }
 
 function parseFault(artifactPath: string, cause: unknown): RuntimeFault {
@@ -272,7 +282,11 @@ export async function runScore(
 	)
 
 	if (scored.ladder.verdict === null) {
-		return { artifact: null, ladder: scored.ladder }
+		return {
+			artifact: null,
+			ladder: scored.ladder,
+			qualification: scored.probeQualification,
+		}
 	}
 
 	const artifact = emit(
@@ -283,5 +297,9 @@ export async function runScore(
 		preflightVerdict.fixtureDigest,
 		record.evaluatorConfigurationDigest,
 	)
-	return { artifact, ladder: scored.ladder }
+	return {
+		artifact,
+		ladder: scored.ladder,
+		qualification: scored.probeQualification,
+	}
 }

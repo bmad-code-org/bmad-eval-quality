@@ -6,6 +6,7 @@
 import { z } from 'zod'
 import {
 	type Diagnostic,
+	type QualificationFailure,
 	RuntimeFault,
 	StructuralFailure,
 	serializeArtifact,
@@ -94,6 +95,19 @@ export function renderError(error: unknown): string {
 		return `${PREFIX}: ${error.code}: ${error.artifactPath}: ${detail}${issues}`
 	}
 	return `${PREFIX}: ${String(error)}`
+}
+
+/**
+ * One AD-9 qualification failure, in the same
+ * `<code>: <artifactPath>: <detail>` shape `renderError` uses. An unqualified
+ * probe is a domain outcome the ladder resolves to Invalid, so no
+ * `StructuralFailure` and no `RuntimeFault` carries it. It reads like one on
+ * stderr because the reader's question is the same.
+ */
+export function renderQualificationFailure(
+	failure: QualificationFailure,
+): string {
+	return `${PREFIX}: ${failure.code}: ${failure.artifactPath}: ${failure.detail}`
 }
 
 /**

@@ -256,6 +256,25 @@ describe('the published package surface', () => {
 		])
 	})
 
+	it('the barrel carries the probe-qualification reason vocabulary', async (ctx) => {
+		if (!BUILT) return ctx.skip(NEEDS_BUILD)
+		const barrel = await publishedBarrel()
+		// The runtime list, so a consumer routing a rejection can write a total
+		// table over it.
+		expect(barrel.QUALIFICATION_FAILURES).toContain('signature-absent')
+		// The types naming what `RunScoreResult.qualification` carries. Erased
+		// before runtime, so the layer barrel's text is the only place to read
+		// them.
+		const layerTypes = exportedTypeNames(layerBarrelSource)
+		for (const name of [
+			'QualificationFailure',
+			'QualificationFailureCode',
+			'QualificationResult',
+		]) {
+			expect(layerTypes).toContain(name)
+		}
+	})
+
 	it('case 158: the corpus README resolves and a missing schema does not', () => {
 		expect(resolveSubpath('eval-quality/corpus/dev/README.md')).toBe(
 			join(repoRoot, 'corpus/dev/README.md'),

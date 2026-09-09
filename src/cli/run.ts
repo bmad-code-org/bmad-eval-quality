@@ -24,6 +24,7 @@ import {
 	renderArtifact,
 	renderDiagnostic,
 	renderError,
+	renderQualificationFailure,
 	renderUsage,
 } from './render.ts'
 
@@ -528,6 +529,13 @@ async function runScoreCommand(
 		signal: environment.signal,
 	})
 
+	// An unqualified probe resolves every oracle to `infrastructure-error` and
+	// the run to Invalid, and no artifact field carries the reason. Written
+	// whatever the rung, since the gate also runs on a probe the ladder never
+	// invalidated: the reasons are the same either way.
+	for (const failure of result.qualification.failures) {
+		environment.writeDiagnostic(renderQualificationFailure(failure))
+	}
 	if (result.artifact !== null) {
 		await emitArtifact(environment, result.artifact, 'score', target)
 	}

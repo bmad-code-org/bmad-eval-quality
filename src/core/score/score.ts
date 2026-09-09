@@ -74,6 +74,7 @@ import {
 	uncitedFindingIds,
 } from './outcome.ts'
 import {
+	type QualificationResult,
 	resolveHomeOperation,
 	type SealedProbeSet,
 	sealProbeSet,
@@ -106,6 +107,13 @@ export type ScoredOutcomesAndVerdict = {
 	readonly policy: ScoringPolicy
 	readonly probe: Probe
 	readonly sealedProbes: SealedProbeSet
+	/**
+	 * The one probe's own qualification result, lifted out of `sealedProbes`
+	 * so a caller reading a run's product holds the closed reason set that
+	 * decided it. `emit` mints no field from this: AD-9's reasons stay off the
+	 * `EvidenceArtifact` and travel the return path.
+	 */
+	readonly probeQualification: QualificationResult
 	/** this probe's own AD-7 trial-set fold, keyed by `emit` under `probe.probeId` to build the strength vector. */
 	readonly trialSetResult: TrialSetResult
 	/** the full `EvidenceArtifact.outcomes` shape, a parallel array to `ScoredOutcome[]` above: `ScoredOutcome` carries `resolution` but not `disposition` or the raw `CheckResolution` tree this shape needs, so the two are not reconstructible from one another. */
@@ -385,9 +393,17 @@ export const score: ScoreStage<
 					contract.permittedInterfaces,
 				)
 	const sealedProbes = sealProbeSet([probe], homeOperationOf)
-	const qualifiedEntry = sealedProbes.admitted[0] ?? sealedProbes.rejected[0]
-	const probeQualified =
-		qualifiedEntry === undefined ? false : qualifiedEntry.result.qualified
+	// `sealProbeSet` over a one-probe array puts that probe in exactly one
+	// bucket, so the third branch is unreachable. It stays fail-closed, on the
+	// same never-throw terms as the rest of this stage.
+	const probeQualification: QualificationResult = sealedProbes.admitted[0]
+		?.result ??
+		sealedProbes.rejected[0]?.result ?? {
+			qualified: false,
+			failures: [],
+			declarationChecksRan: false,
+		}
+	const probeQualified = probeQualification.qualified
 
 	const signedProbe = signedProbeOf(probe)
 	const designatedOracleId = designatedOracleIdOf(probe, contract)
@@ -820,6 +836,7 @@ export const score: ScoreStage<
 			policy,
 			probe,
 			sealedProbes,
+			probeQualification,
 			trialSetResult: reduced,
 			outcomes,
 			uncitedFindings,
@@ -842,6 +859,7 @@ export const score: ScoreStage<
 		policy,
 		probe,
 		sealedProbes,
+		probeQualification,
 		trialSetResult: reduced,
 		outcomes,
 		uncitedFindings,

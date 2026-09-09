@@ -246,6 +246,7 @@ const scoredOf = (
 	policy,
 	probe,
 	sealedProbes: sealedProbesQualified,
+	probeQualification: qualifiedProbeEntry.result,
 	trialSetResult: cleanTrialSetResult,
 	outcomes: [baseOutcome],
 	uncitedFindings: [],
