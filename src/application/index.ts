@@ -28,6 +28,12 @@ export {
 	EVALUATOR_RECOMMENDATIONS,
 	VERDICTS,
 } from '../core/schemas/verdict.ts'
+export type {
+	QualificationFailure,
+	QualificationFailureCode,
+	QualificationResult,
+} from '../core/score/qualification.ts'
+export { QUALIFICATION_FAILURES } from '../core/score/qualification.ts'
 export { compile } from './compile.ts'
 export type { Diagnostic, DiagnosticSink } from './diagnostics.ts'
 export type {

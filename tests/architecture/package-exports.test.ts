@@ -24,6 +24,11 @@ import { existsSync, readFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { join } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
+import type {
+	QualificationFailure,
+	QualificationFailureCode,
+	QualificationResult,
+} from 'eval-quality'
 import { describe, expect, it } from 'vitest'
 import { INTERCHANGE_ARTIFACT_KEYS } from '../../src/core/schemas/artifact.ts'
 
@@ -254,6 +259,40 @@ describe('the published package surface', () => {
 			'package.json',
 			'schemas',
 		])
+	})
+
+	it('the barrel carries the probe-qualification reason vocabulary', async (ctx) => {
+		if (!BUILT) return ctx.skip(NEEDS_BUILD)
+		const barrel = await publishedBarrel()
+		// The runtime list, so a consumer routing a rejection can write a total
+		// table over it.
+		expect(barrel.QUALIFICATION_FAILURES).toContain('signature-absent')
+		// The types naming what `RunScoreResult.qualification` carries. Erased
+		// before runtime, so the layer barrel's text is where they are read.
+		const layerTypes = exportedTypeNames(layerBarrelSource)
+		for (const name of [
+			'QualificationFailure',
+			'QualificationFailureCode',
+			'QualificationResult',
+		]) {
+			expect(layerTypes).toContain(name)
+		}
+		// The same three off the package root, annotated so `npm run typecheck`
+		// resolves them through `dist/index.d.ts`. The text check above passes
+		// on a layer barrel the root barrel stopped re-exporting; this one does
+		// not.
+		const code: QualificationFailureCode = 'signature-absent'
+		const failure: QualificationFailure = {
+			code,
+			artifactPath: 'Probe[probeId=P-001].defectSignature',
+			detail: 'a defect probe declaring no signature is unscoreable',
+		}
+		const carried: QualificationResult = {
+			qualified: false,
+			failures: [failure],
+			declarationChecksRan: true,
+		}
+		expect(carried.failures[0]?.code).toBe('signature-absent')
 	})
 
 	it('case 158: the corpus README resolves and a missing schema does not', () => {

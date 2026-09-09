@@ -228,7 +228,7 @@ node dist/cli/main.js score \
   --out /tmp/eval-quality-run
 ```
 
-The exit code is the verdict. `0` is `PASS`, `WAIVED`, or `CONCERNS`. `2` is `FAIL`. `1` is a `CONCERNS` that `--strict` promoted. `3` is the Invalid rung, and the command writes nothing on it, because no legal evidence artifact carries a null verdict.
+The exit code is the verdict. `0` is `PASS`, `WAIVED`, or `CONCERNS`. `2` is `FAIL`. `1` is a `CONCERNS` that `--strict` promoted. `3` is the Invalid rung, and the command writes no artifact on it, because no legal evidence artifact carries a null verdict. Anything it has to say about the rung goes to stderr.
 
 One record per invocation is a trial set of one. Whenever your policy's declared minimum exceeds one, the strength vector comes out reported and marked non-comparable.
 

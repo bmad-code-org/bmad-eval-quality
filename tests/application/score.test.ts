@@ -24,6 +24,7 @@ import {
 	scoreProbeFixture,
 	scoringPolicyFixtureForScore,
 	sealedRunRecordFixtureForScore,
+	unqualifiedProbeFixture,
 } from './fixtures/score-fixtures.ts'
 
 /** A hand-written fake, never the real adapter (AD-30). */
@@ -302,5 +303,33 @@ describe('runScore: the orchestration order and the two hardcoded value paramete
 		} finally {
 			vi.restoreAllMocks()
 		}
+	})
+})
+
+describe('runScore: the probe-qualification reason reaches the caller', () => {
+	it('an unqualified probe returns its closed reason codes alongside the Invalid rung', async () => {
+		const result = await run({ probe: unqualifiedProbeFixture })
+		expect(result.ladder.verdict).toBeNull()
+		expect(result.ladder.exitCode).toBe(3)
+		expect(result.artifact).toBeNull()
+		expect(result.qualification.qualified).toBe(false)
+		expect(
+			result.qualification.failures.map((failure) => failure.code),
+		).toEqual(['signature-absent'])
+		// The reason names where it fired, in the probe-rooted spelling a
+		// structural failure uses, so a caller can point at the field.
+		expect(result.qualification.failures[0]?.artifactPath).toContain(
+			'.defectSignature',
+		)
+	})
+
+	it('a qualified probe returns an empty reason set on the artifact-minting branch', async () => {
+		const result = await run()
+		expect(result.artifact).not.toBeNull()
+		expect(result.qualification).toEqual({
+			qualified: true,
+			failures: [],
+			declarationChecksRan: true,
+		})
 	})
 })

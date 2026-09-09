@@ -74,6 +74,8 @@ import {
 	uncitedFindingIds,
 } from './outcome.ts'
 import {
+	type QualificationResult,
+	qualifyProbe,
 	resolveHomeOperation,
 	type SealedProbeSet,
 	sealProbeSet,
@@ -106,6 +108,13 @@ export type ScoredOutcomesAndVerdict = {
 	readonly policy: ScoringPolicy
 	readonly probe: Probe
 	readonly sealedProbes: SealedProbeSet
+	/**
+	 * The one probe's own qualification result, lifted out of `sealedProbes`
+	 * so a caller reading a run's product holds the closed reason set that
+	 * decided it. `emit` mints no field from this: AD-9's reasons stay off the
+	 * `EvidenceArtifact` and travel the return path.
+	 */
+	readonly probeQualification: QualificationResult
 	/** this probe's own AD-7 trial-set fold, keyed by `emit` under `probe.probeId` to build the strength vector. */
 	readonly trialSetResult: TrialSetResult
 	/** the full `EvidenceArtifact.outcomes` shape, a parallel array to `ScoredOutcome[]` above: `ScoredOutcome` carries `resolution` but not `disposition` or the raw `CheckResolution` tree this shape needs, so the two are not reconstructible from one another. */
@@ -385,9 +394,18 @@ export const score: ScoreStage<
 					contract.permittedInterfaces,
 				)
 	const sealedProbes = sealProbeSet([probe], homeOperationOf)
-	const qualifiedEntry = sealedProbes.admitted[0] ?? sealedProbes.rejected[0]
-	const probeQualified =
-		qualifiedEntry === undefined ? false : qualifiedEntry.result.qualified
+	// `sealProbeSet` over a one-probe array puts that probe in exactly one
+	// bucket, so the third branch is unreachable. It re-runs the gate rather
+	// than composing a result here: `qualifyProbe` holds
+	// `qualified === (failures.length === 0)`, and a hand-built
+	// `{ qualified: false, failures: [] }` would hand a consumer a rejection
+	// with no code to route on, which is the silent state this field removes.
+	// The gate is pure, so a second call over the same probe answers the same.
+	const probeQualification: QualificationResult =
+		sealedProbes.admitted[0]?.result ??
+		sealedProbes.rejected[0]?.result ??
+		qualifyProbe(probe, homeOperationOf(probe))
+	const probeQualified = probeQualification.qualified
 
 	const signedProbe = signedProbeOf(probe)
 	const designatedOracleId = designatedOracleIdOf(probe, contract)
@@ -820,6 +838,7 @@ export const score: ScoreStage<
 			policy,
 			probe,
 			sealedProbes,
+			probeQualification,
 			trialSetResult: reduced,
 			outcomes,
 			uncitedFindings,
@@ -842,6 +861,7 @@ export const score: ScoreStage<
 		policy,
 		probe,
 		sealedProbes,
+		probeQualification,
 		trialSetResult: reduced,
 		outcomes,
 		uncitedFindings,
