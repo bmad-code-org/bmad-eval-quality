@@ -468,6 +468,7 @@ Story 3.1's own AC 7 convention, never inventing an unrelated tree where a real 
   - [x] `src/core/evaluate/resolution.ts`: `ResolveOperand`, `PointerDenotesCollection` types.
 - [x] Task 3: the empty-collection introduction condition (AC 3)
   - [x] `operandDenotesEmptyCollection`, applied uniformly to every operand of every leaf and quantifier
+    *(Amended after this story shipped: AD-4 now exempts `count-tolerance`, `existence`, and `absence` over a collection observed to be present and empty. See the note under AC 3.)*
         node.
 - [x] Task 4: connective propagation (AC 4)
   - [x] `notOf`, `allOf`, `anyOf`.
@@ -641,6 +642,16 @@ looped back as `bad_spec`.
     collection before `existence` is called. Both are correct consequences of the already-adopted uniform
     rule, not new gaps. **Consequence:** a one-line comment near `operandDenotesEmptyCollection` names both;
     no behavior changes.
+
+    > **Overturned after this story shipped.** Neither limitation is permanent, and calling them permanent
+    > here is what this note corrects. AD-4 now exempts the three operators that read a property of the
+    > collection itself: `count-tolerance` reads its cardinality, `existence` and `absence` read its
+    > presence. All three resolve over a collection observed to be present and empty, so
+    > `count-tolerance(coll, 0, 0)` is the spelling for "this collection should be empty". A
+    > collection-typed pointer that resolved `absent` still trips for every operator, and every quantifier
+    > is unchanged. Decision 7's `{ literal: [] }` rule is untouched, and AD-4 records the disagreement
+    > that leaves between `deep-equality(coll, [])` and `count-tolerance(coll, 0, 0)` over the same
+    > evidence. The comment near `operandDenotesEmptyCollection` now describes the exemption.
 11. **A type-mismatched quantifier `collection` operand is indistinguishable, in the evidence artifact,
     from a genuinely empty collection or an absent, declared-collection-typed one.** Decision 4 already
     settles that all three resolve `insufficient-evidence`/`empty-collection` rather than throwing; left
@@ -763,7 +774,7 @@ Claude Sonnet 5 (claude-sonnet-5).
 ### Completion Notes List
 
 - Implemented `src/core/evaluate/resolution.ts` exactly per the story's ACs: `ResolveOperand` /
-  `PointerDenotesCollection` (AC 2), `operandDenotesEmptyCollection` applied uniformly across every
+  `PointerDenotesCollection` (AC 2), `operandDenotesEmptyCollection` applied uniformly across every <!-- amended: three operators are exempt over an observed empty collection; see the note under AC 3 -->
   operand of every leaf and quantifier node (AC 3, Decision 1), `notOf`/`allOf`/`anyOf` (AC 4),
   `resolveQuantifier` (AC 5), and `resolveNode`/`resolveCheck` dispatching all sixteen `op` values
   (AC 6).
@@ -809,7 +820,8 @@ Claude Sonnet 5 (claude-sonnet-5).
 - Decision 10: a comment near `operandDenotesEmptyCollection` names the two permanent consequences
   (an unsatisfiable `count-tolerance(expected: 0)` over a genuinely empty collection, and `existence`
   over a present-but-empty array reading `insufficient-evidence` rather than `true`). No behavior
-  change; nothing to test beyond what already existed.
+  change; nothing to test beyond what already existed. *(Overturned after this story shipped; see the
+  note on Decision 10 itself.)*
 - Decision 11: `resolveQuantifier`'s "one guard covers three cases" comment now states the collapse
   onto one `empty-collection` value is deliberate and names the schema-edit precondition for
   separating them.
@@ -892,7 +904,7 @@ Claude Sonnet 5 (claude-sonnet-5).
 
 **The empty-collection condition — the one rule this whole story exists to get right**
 
-- `operandDenotesEmptyCollection`: applied uniformly, per Decision 1, not restricted to the four
+- `operandDenotesEmptyCollection`: applied uniformly, per Decision 1, not restricted to the four <!-- amended: `count-tolerance`, `existence`, and `absence` are exempt over an observed empty collection; see the note under AC 3 -->
   operators Story 3.1's own text named.
 
 **Propagation formulas**

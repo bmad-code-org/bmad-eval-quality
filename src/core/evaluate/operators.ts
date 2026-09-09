@@ -321,11 +321,15 @@ export function ordering(
 }
 
 /**
- * An empty array is a legitimate zero count, never special-cased; the
- * resolver in `resolution.ts` intercepts before this runs on a genuinely
- * empty collection. The allowed deviation is compared unrounded: `actual` is
- * an integer, so `<=` against a fractional deviation is already exact, and
- * rounding either direction would move the declared boundary.
+ * An empty array is a legitimate zero count, never special-cased, and this
+ * function is called with one. `count-tolerance` reads the collection's
+ * cardinality, so `resolution.ts` marks it `total` over a collection observed
+ * to be present and empty and hands the `[]` straight through; the guard below
+ * is load-bearing on `collection.length === 0`. A collection-typed pointer
+ * that resolved `absent` is still intercepted there and never reaches here.
+ * The allowed deviation is compared unrounded: `actual` is an integer, so `<=`
+ * against a fractional deviation is already exact, and rounding either
+ * direction would move the declared boundary.
  */
 export function countTolerance(
 	collection: ResolvedValue,

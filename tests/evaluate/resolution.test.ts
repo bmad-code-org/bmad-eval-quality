@@ -555,6 +555,41 @@ describe('the soft-delete agreement pair (AC 5, AD-4 worked example)', () => {
 		).toBe('false')
 	})
 
+	it('agree (both false) on a page whose one element carries a present, empty retractedAt', () => {
+		// The bound-element position, where AD-4's worked example lives, and the
+		// one shape this qualification moved: `@/retractedAt` resolving to a
+		// present `[]` used to trip the empty-collection condition under both
+		// spellings. `existence` and `absence` are both total over it now, so
+		// both spellings move to `false` together. Marking only one of the two
+		// operators total would split the pair here, which is the failure this
+		// suite exists to catch.
+		const rows: JsonValue[] = [{ id: 'r-1', retractedAt: [] }]
+		const resolver = makeStubResolver(
+			{ 'first-page': { 'response-body': { rows } } },
+			{},
+		)
+		expect(
+			resolveCheck(
+				forAny,
+				resolver,
+				noneCollectionTyped,
+				NO_REFERENCE_SET_KEYS,
+				DEFAULT_BUDGET,
+				PATH,
+			).resolution,
+		).toBe('false')
+		expect(
+			resolveCheck(
+				forAll,
+				resolver,
+				noneCollectionTyped,
+				NO_REFERENCE_SET_KEYS,
+				DEFAULT_BUDGET,
+				PATH,
+			).resolution,
+		).toBe('false')
+	})
+
 	it('agree (both insufficient-evidence) on an empty page', () => {
 		const resolver = makeStubResolver(
 			{ 'first-page': { 'response-body': { rows: [] } } },
@@ -1508,7 +1543,7 @@ describe('array-narrowing guards fire only where a schema-guaranteed array is mi
 	})
 })
 
-describe('a { literal: [] } operand trips the empty-collection condition exactly as an observed [] does (Decision 7, AC 7 point 9)', () => {
+describe('a { literal: [] } operand trips the empty-collection condition exactly as an observed [] does, under every operator that keeps the interception (Decision 7, AC 7 point 9)', () => {
 	it('deepEquality against { literal: [] } never resolves true, even against a non-empty observed array', () => {
 		const check: Expression = {
 			op: 'deep-equality',

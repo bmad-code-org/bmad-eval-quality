@@ -74,12 +74,23 @@ type ResolutionContext = {
 }
 
 /**
- * Whether the operator holding an operand can answer from a collection it
- * observed to be present and empty. `total` operators read a property of the
- * collection itself: its cardinality (`count-tolerance`) or its presence
- * (`existence`, `absence`). `needs-a-member` operators have to look inside a
- * collection to say anything, so an empty one leaves them nothing to examine
- * and AD-4's interception stands.
+ * Whether the operator holding an operand reads a property of the collection
+ * itself. `total` is a closed list of three: `count-tolerance` reads its
+ * cardinality, `existence` and `absence` read its presence, and all three have
+ * an answer over a collection observed to be present and empty.
+ * `needs-a-member` is every other operator, and it is what an operator a later
+ * schema version admits arrives with.
+ *
+ * The list is enumerated here because it is narrower than "the operators that
+ * could answer over an observed `[]`". Five of the `needs-a-member` operators
+ * could: `equality` and `deepEquality` compare two empty arrays as equal, and
+ * `shape`, `regexMatch`, and `setMembership` answer false on the type alone.
+ * They stay intercepted because `anyOperandEmpty` applies one totality across
+ * every operand of a leaf at once, so marking `equality` would also stop a
+ * `{ literal: [] }` operand from tripping, and an author-supplied empty array
+ * is subject to the invariant like any other. AD-4 records the disagreement
+ * that leaves standing: `deep-equality(coll, [])` abstains over evidence where
+ * `count-tolerance(coll, 0, 0)` resolves.
  *
  * This is the only axis on which AD-4's introduction condition varies, and it
  * separates "we could not observe enough to answer" from "we observed an

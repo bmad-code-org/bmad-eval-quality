@@ -822,11 +822,15 @@ flowchart TD
 
 **Rules:**
 
-- The empty-collection check runs on every operand of every operator, including a `{ literal: [] }`
-  one: there is no spelling in this grammar for "this may legitimately be empty."
-- One exception, by operand evidence: a collection observed present and empty still answers
-  `count-tolerance`, `existence`, and `absence`, so `count-tolerance(coll, 0, 0)` spells "this
-  collection should be empty." A collection-typed pointer that did not resolve still abstains.
+- The empty-collection check runs on every operand of every operator except three, including a
+  `{ literal: [] }` one: there is no spelling in this grammar for "this may legitimately be empty."
+- The three exceptions read a property of the collection itself: `count-tolerance` reads its
+  cardinality, `existence` and `absence` read its presence. All three answer over a collection
+  observed present and empty, so `count-tolerance(coll, 0, 0)` spells "this collection should be
+  empty." A collection-typed pointer that did not resolve still abstains under all three.
+- Known disagreement, recorded in AD-4: `deep-equality(coll, [])` still abstains over evidence where
+  `count-tolerance(coll, 0, 0)` resolves. One totality covers a whole leaf, so exempting `equality`
+  would exempt a `{ literal: [] }` operand too.
 - `all` keeps a genuine `false` decisive even next to an `insufficient-evidence` sibling. `any` is
   weaker than plain OR: one `insufficient-evidence` sibling beats a `true` one.
 - `not(insufficient-evidence)` is `insufficient-evidence`, under both polarities.
