@@ -1,7 +1,6 @@
 ---
 title: "Evaluate Tool-Use Behavior"
 description: "What the mcp interface kind declares today, how close a tool call sits to the operation shape it inherits, and what a first adopter would have to build."
-  order: 4
 sidebar:
   order: 6
 ---

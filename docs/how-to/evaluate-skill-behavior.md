@@ -1,7 +1,6 @@
 ---
 title: "Evaluate Skill Behavior"
 description: "Hold a skill responsible for a decision an agent carried out, and prove the contract can tell a real answer from a degenerate one."
-  order: 3
 sidebar:
   order: 3
 ---

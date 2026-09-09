@@ -1,7 +1,6 @@
 ---
 title: "End-to-End AI Feature Behavior"
 description: "Write an eval contract for an AI feature behind an HTTP surface, and get a real user-visible regression to fail the run."
-  order: 6
 sidebar:
   order: 5
 ---
@@ -152,7 +151,8 @@ The endpoint that returns zero rows to every request passes every check of this 
 
 AD-4 closes that by making resolution three-valued.
 Every node resolves to `true`, `false`, or `insufficient-evidence`, and the third has one closed introduction condition: an operand denoting a collection that is empty.
-A pointer the declared response descriptor types as a collection, which resolves `absent`, counts as an empty collection here, which is what covers the missing page as well as the empty one.
+A pointer the declared response descriptor types as a collection, which resolves `absent`, introduces the value too, which is what covers the missing page alongside the empty one.
+An absent collection is never read as a present, empty one: `operandDenotesEmptyCollection` in `src/core/evaluate/resolution.ts` answers the `absent` case without consulting the operator exemption below it, so a missing collection stays intercepted under every operator in the set.
 The value is terminal and never satisfies: `not(insufficient-evidence)` stays `insufficient-evidence`, `all` and `any` both carry it, and `any` does not let a `true` sibling rescue a branch that examined nothing.
 
 **Version 1.4.0 qualified that rule for three operators, and only three.**

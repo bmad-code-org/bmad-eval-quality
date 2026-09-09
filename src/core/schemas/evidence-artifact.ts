@@ -331,7 +331,7 @@ const evidenceCommonFields = {
 	),
 	scoringVersionInputs: ScoringVersionInputs,
 	comparabilityKey: Digest.describe(
-		"AD-7's declared key: the scoring policy digest plus the corpus digest restricted to the probes both results cover. Deliberately weaker than the scoring version, so adding a probe narrows a comparison rather than voiding every prior result.",
+		"AD-7's declared key, computed by `emit` over the scoring policy digest and the sorted list of admitted probe identifiers. AD-7 words it as the scoring policy digest plus the corpus digest restricted to the probes both results cover, and that identifier list is what the restriction resolves to: the corpus digest bytes are not an input, so two results over one scoring policy and one admitted set share a key whatever corpus each was attested against. Deliberately weaker than the scoring version, so adding a probe narrows a comparison rather than voiding every prior result.",
 	),
 	excludedProbeIds: z
 		.array(ProbeId)

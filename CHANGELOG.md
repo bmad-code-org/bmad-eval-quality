@@ -49,6 +49,14 @@ body.
   a non-api interface. All three fields have taken the union since 1.3.0, and `preflight/plan.ts`
   admits `api` and `cli`. The block now says what each of the three takes and why the port's own
   `ProbeRequest` union is what carries the reach.
+- `comparabilityKey`'s published field description in `src/core/schemas/evidence-artifact.ts` gave
+  AD-7's specification wording, "the scoring policy digest plus the corpus digest restricted to the
+  probes both results cover", with no statement of what the restriction resolves to. `emit` digests
+  the scoring policy digest and the sorted admitted probe identifier list, and the corpus digest
+  bytes are not an input. The description now says that, and a reviewer had already filed a finding
+  against correct prose on the strength of the old wording. `schemas/evidence-artifact.schema.json`
+  was regenerated; it is the only one of the twelve published schema files whose bytes moved, and no
+  shape changed.
 
 ## [1.4.0] - 2026-09-09
 
