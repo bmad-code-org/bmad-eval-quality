@@ -175,12 +175,14 @@ No score-side function reads it, so a response short of its declared cardinality
 ## Seeding a defect
 
 The twin run needs a defect you planted on purpose, and for an AI feature the useful ones are the changes that leave the answer looking right.
+You make the edit yourself; the package performs no mutation.
 Drop the persistence call and keep the response.
 Remove a retrieval step and keep the citation format.
 Strip a required piece of context from the prompt and keep the schema of the reply.
 
 The probe records what you did in its `qualification` block.
 The worked example's P-001 declares `route: "controlled-mutation"`, `mutationOperator: "store-write-deletion"`, the target artifact, an `expectedObservableFailure` of *a later independent GET of the updated note returns the title the update replaced*, baseline-pass and mutated-fail evidence, and `rollbackVerified: true`.
+`mutationOperator` is free text in your own words, `store-write-deletion` here, and no code reads it: the field is where you say which edit you made.
 
 Two separate mechanisms then act on it, and they are easy to confuse.
 

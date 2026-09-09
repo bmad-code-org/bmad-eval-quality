@@ -10,6 +10,18 @@ body.
 
 ## [Unreleased]
 
+### Changed
+
+- Documentation now says plainly who performs the mutation. The twin-run passages explained the loop
+  without stating that the author edits the artifact by hand, so a reader could not tell whether the
+  package plants the defect. `docs/index.md`, `docs/explanation/behavioral-evaluation-contracts.md`,
+  `docs/how-to/author-behavioral-contracts.md`, `docs/reference/glossary.md`, and the agent,
+  AI-feature, and workflow how-to guides each state it where the idea is introduced.
+- `mutationOperator` on the `controlled-mutation` qualification route carries a description. It was
+  the only field in that route without one, and it is an opaque caller string that no code reads, so
+  a reader met the term with nothing explaining it. The glossary and the AI-feature guide now
+  document it too.
+
 ## [1.4.1] - 2026-09-09
 
 ### Added

@@ -77,7 +77,12 @@ export const ProbeQualification = z.discriminatedUnion('route', [
 				.describe(
 					"Where the mutation came from, in the corpus author's own terms. An opaque caller string, unrelated to `Defect.source`'s two-member enum, which records whether the defect is natural or introduced.",
 				),
-			mutationOperator: z.string().min(1),
+			mutationOperator: z
+				.string()
+				.min(1)
+				.describe(
+					"The edit that was made, in the corpus author's own terms. An opaque caller string: the author performs the mutation by hand, the package performs none, and no code reads this field. There is no operator vocabulary, so a value like `store-write-deletion` means whatever its author meant by it.",
+				),
 			targetArtifact: ArtifactReference,
 			expectedObservableFailure: z.string().min(1),
 			baselinePassEvidence: ArtifactReference,

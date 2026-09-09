@@ -36,7 +36,7 @@ An eval contract takes a third route. It declares the checkable structure ahead 
 
 ## The twin run
 
-The way to find a blind spot is to plant one. Hold the evaluation fixed and change the system under test:
+The way to find a blind spot is to plant one. You are the one who plants it: `eval-quality` performs no mutation, so you edit the artifact by hand, run the evaluation against both versions of the system, and declare in the probe what you changed. Hold the evaluation fixed and change the system under test:
 
 ```text
         eval contract + probes + oracles + rubrics + scoring policy
@@ -62,7 +62,7 @@ The way to find a blind spot is to plant one. Hold the evaluation fixed and chan
                        did the evaluation catch it?
 ```
 
-The rows marked `[eval-quality]` are the ones the package performs. Executing the two systems, running the evaluator, and collecting what it produced belong to you.
+The rows marked `[eval-quality]` are the ones the package performs. Planting the defect, executing the two systems, running the evaluator, and collecting what it produced belong to you.
 
 The mutation is one deliberate change that should make behavior worse, and you know in advance which failure it is supposed to create. Weaken the prompt, remove required context, drop a validation step, alter a tool's results, change the agent configuration.
 

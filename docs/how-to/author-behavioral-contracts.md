@@ -310,7 +310,7 @@ One defect probe was exercised and caught, so the defect rate is 1. The other tw
 
 ## The twin run, as commands
 
-The loop on [How It Works](/explanation/behavioral-evaluation-contracts/) is these commands run over two arms. The contract, the brief, the policy, and the evaluator configuration are shared. Each arm has its own probe, its own preflight, its own evaluator run, and its own record. Every file named `clean-*` or `mutated-*` is one your harness produces.
+The loop on [How It Works](/explanation/behavioral-evaluation-contracts/) is these commands run over two arms. The contract, the brief, the policy, and the evaluator configuration are shared. Each arm has its own probe, its own preflight, its own evaluator run, and its own record. Every file named `clean-*` or `mutated-*` is one your harness produces. The mutation is an edit you make by hand before the mutated arm runs, and no command below performs it.
 
 Compile and seal once. The brief is what both evaluator runs receive, and its `contractDigest` is how you later prove both arms ran the same contract:
 
