@@ -330,8 +330,46 @@ describe('the plan as a whole', () => {
 		const scoped = plan.checks.find(
 			(check) => check.kind === 'seeded-faults-scoped',
 		)
+		// `list-a` is absent for the separate reason fixture 126 pins: it carries
+		// the fault leg's own request. What this fixture pins is that no
+		// `other-api` leg reached the set.
 		expect(
 			scoped?.kind === 'seeded-faults-scoped' ? scoped.cleanLegIds : [],
-		).toEqual(['list-a', 'list-b'])
+		).toEqual(['list-b'])
+	})
+
+	// The fixture's fault leg reads `list-things` with `limit: 1`, which is the
+	// sensitivity leg `list-a`'s request exactly. One request gets one answer, so
+	// a witness firing on `list-a` is the fault's own manifestation read a second
+	// time. `list-b` asks for `limit: 2` and stays.
+	it("126. drops a clean leg carrying the fault leg's own request, and keeps one that differs", () => {
+		const scoped = planOf().checks.find(
+			(check) => check.kind === 'seeded-faults-scoped',
+		)
+		if (scoped?.kind !== 'seeded-faults-scoped')
+			throw new Error('the fixture declares one seeded defect')
+		expect(scoped.cleanLegIds).toEqual(['list-b'])
+		const requestOfLeg = (legId: string) =>
+			planOf().legs.find((leg) => leg.legId === legId)?.request.channels
+		expect(requestOfLeg('list-a')).toEqual(requestOfLeg('fault-leg'))
+		expect(requestOfLeg('list-b')).not.toEqual(requestOfLeg('fault-leg'))
+	})
+
+	// The exclusion holds where one request has one answer. `create-thing`
+	// declares `stateChangeMarker: true`, so the same body posted twice is two
+	// events the environment may answer differently, and both legs stay.
+	it("128. keeps a clean leg carrying the fault leg's request when the operation changes state", () => {
+		const draft = probeDraft()
+		draft.defects[0].manifestationWitness.operationId = 'create-thing'
+		draft.defects[0].manifestationWitness.inputs = inputsOf({
+			body: { kind: 'json', value: { name: 'alpha' } },
+		})
+		const plan = planOf(preflightContract, [ProbeSchema.parse(draft)])
+		const scoped = plan.checks.find(
+			(check) => check.kind === 'seeded-faults-scoped',
+		)
+		if (scoped?.kind !== 'seeded-faults-scoped')
+			throw new Error('the draft declares one seeded defect')
+		expect(scoped.cleanLegIds).toEqual(['create-a', 'create-b'])
 	})
 })

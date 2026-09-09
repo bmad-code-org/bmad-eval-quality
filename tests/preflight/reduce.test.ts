@@ -298,14 +298,32 @@ describe('the two seeded-fault checks, which are disjoint by construction', () =
 		)
 	})
 
+	// `list-b` reads `list-things` with `limit: 2` and the fault leg reads it
+	// with `limit: 1`, so this is a second question answered the way the fault
+	// leg's was: the defect shows outside its own leg.
 	it('59. seeded-faults-scoped fails when the witness resolves true on a clean leg', () => {
+		expect(
+			outcomeOf(
+				{ patches: { 'list-b': jsonPatch({ items: [{ broken: true }] }) } },
+				'seeded-faults-scoped',
+				'list-things',
+			),
+		).toBe('failed')
+	})
+
+	// `list-a` carries the fault leg's request byte for byte, so an environment
+	// that answered one that way answered the other the same way. The plan drops
+	// such a leg (fixture 126) and the check stays satisfied; without that, every
+	// contract whose sensitivity legs cover the witness's own inputs failed
+	// pre-flight on one observation counted twice.
+	it("127. seeded-faults-scoped stays satisfied when the leg the witness fires on carries the fault leg's own request", () => {
 		expect(
 			outcomeOf(
 				{ patches: { 'list-a': jsonPatch({ items: [{ broken: true }] }) } },
 				'seeded-faults-scoped',
 				'list-things',
 			),
-		).toBe('failed')
+		).toBe('satisfied')
 	})
 
 	it('60. seeded-faults-scoped stays satisfied even when the witness resolves false on its own fault leg', () => {
@@ -466,7 +484,7 @@ describe('the verdict itself', () => {
 	// and it reports a mismatch as a failed `interface-present` verdict rather
 	// than as a fault, which fixture 40 asserts. Throwing on them here would turn
 	// a shipped verdict into a fault, so the fault reads `kind` and nothing else.
-	it('124. leaves an operation mismatch to the verdict that already reports it', () => {
+	it('125. leaves an operation mismatch to the verdict that already reports it', () => {
 		expect(
 			outcomeOf(
 				{ patches: { 'read-b': { operationId: 'create-thing' } } },

@@ -8,6 +8,7 @@
  * the operation and the witness themselves: there is nothing to look an
  * identifier up in at reduce time.
  */
+import { serialize } from '../canonical/canonicalize.ts'
 import {
 	checkInputsAgainstShape,
 	isApiWitnessInputs,
@@ -150,6 +151,21 @@ const requestOf = (
 		},
 	}
 }
+
+/**
+ * A leg's request in the RFC 8785 form, with the correlation identifier
+ * neutralised because it is the leg id and differs between any two legs.
+ *
+ * Two legs whose signatures match ask the environment the same question, so the
+ * environment answers them the same way. Taken over the whole request, so a
+ * field added to `ProbeRequest` later is compared with no edit here. Canonical,
+ * because key order is a serialisation detail: two spellings of one request are
+ * one request.
+ */
+const requestSignature = (
+	request: ProbeRequest,
+	artifactPath: string,
+): string => serialize({ ...request, probeId: '' }, artifactPath)
 
 /** where a leg came from, so a duplicate identifier names its own source. */
 type LegOrigin = { readonly leg: PlannedLeg; readonly artifactPath: string }
@@ -322,6 +338,9 @@ export const planPreflight: PlanStage<PreflightPlanInput, PreflightPlan> = (
 	const legIdsByOperation = new Map<string, string[]>()
 	const scopeKey = (interfaceId: string, operationId: string): string =>
 		`${interfaceId}\u0000${operationId}`
+	// Every planned leg's request signature, so the seeded-fault branch below can
+	// ask whether a leg already in the group carries the fault leg's own request.
+	const signatureByLegId = new Map<string, string>()
 	const addLeg = (
 		legId: string,
 		purpose: PlannedLegPurpose,
@@ -329,21 +348,21 @@ export const planPreflight: PlanStage<PreflightPlanInput, PreflightPlan> = (
 		operation: AnyOperation,
 		inputs: WitnessInputs,
 		artifactPath: string,
-	): void => {
-		origins.push({
-			leg: {
-				legId,
-				purpose,
-				request: requestOf(legId, interfaceId, operation, inputs),
-				operation,
-				inputs,
-			},
-			artifactPath,
-		})
+	): PlannedLeg => {
+		const leg: PlannedLeg = {
+			legId,
+			purpose,
+			request: requestOf(legId, interfaceId, operation, inputs),
+			operation,
+			inputs,
+		}
+		origins.push({ leg, artifactPath })
+		signatureByLegId.set(legId, requestSignature(leg.request, artifactPath))
 		const key = scopeKey(interfaceId, operation.operationId)
 		const group = legIdsByOperation.get(key)
 		if (group === undefined) legIdsByOperation.set(key, [legId])
 		else group.push(legId)
+		return leg
 	}
 
 	// 1. the sensitivity legs and their checks
@@ -474,20 +493,41 @@ export const planPreflight: PlanStage<PreflightPlanInput, PreflightPlan> = (
 				`the manifestation witness of ${defect.defectId}`,
 				`${path}.inputs`,
 			)
-			// Read before the fault leg joins the group, which keeps the fault leg out
-			// of its own clean-leg set.
-			const cleanLegIds = [
+			// The group is read before the fault leg joins it, which keeps the fault
+			// leg out of its own clean-leg set.
+			const group = [
 				...(legIdsByOperation.get(
 					scopeKey(witness.interfaceId, operation.operationId),
 				) ?? []),
 			]
-			addLeg(
+			const faultLeg = addLeg(
 				witness.legId,
 				'seeded-fault',
 				witness.interfaceId,
 				operation,
 				witness.inputs,
 				`${path}.legId`,
+			)
+			// A clean leg has to ask the environment a different question. Another
+			// leg of the same operation, most often a sensitivity leg, can carry a
+			// request equal to the fault leg's; the environment answers both the same
+			// way, so a witness firing there is the fault's own manifestation observed
+			// a second time. Such a leg is dropped, since nothing downstream can tell
+			// the two observations apart.
+			//
+			// Bounded to an operation AD-19 marks as changing no state, where one
+			// request has one answer for the length of the run, which is the property
+			// `state-reset` asserts over the same fixture. A mutating operation can
+			// answer the same request differently at two points in the sequence, so
+			// there the two legs are two events and the second answer is evidence of
+			// its own; both legs stay in the set.
+			const faultSignature = operation.stateChangeMarker
+				? null
+				: requestSignature(faultLeg.request, `${path}.legId`)
+			const cleanLegIds = group.filter(
+				(legId) =>
+					faultSignature === null ||
+					signatureByLegId.get(legId) !== faultSignature,
 			)
 			checks.push({
 				kind: 'seeded-faults-scoped',

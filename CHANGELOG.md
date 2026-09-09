@@ -10,6 +10,18 @@ body.
 
 ## [Unreleased]
 
+### Fixed
+
+- Pre-flight's `seeded-faults-scoped` check no longer fails on a clean leg that carries the fault
+  leg's own request. The clean-leg set excluded the fault leg by identity alone, so a sensitivity
+  leg spelling the same inputs got the same answer from the environment, the manifestation witness
+  fired on it, and the check reported a scoping violation for one observation counted twice. A leg
+  whose built request equals the fault leg's is now dropped from the set, compared over the whole
+  `ProbeRequest` in RFC 8785 form with the correlation id neutralised. The exclusion is bounded to
+  an operation AD-19 marks as changing no state, where one request has one answer for the length of
+  the run; on a mutating operation both legs stay in the set, since the same request issued twice
+  is two events the system may answer differently.
+
 ## [1.3.0] - 2026-09-09
 
 ### Fixed
