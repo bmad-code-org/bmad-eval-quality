@@ -10,6 +10,18 @@ body.
 
 ## [Unreleased]
 
+### Fixed
+
+- `check:doc-invocations` compares the diagnostic a page transcribes, and not only the exit code it
+  declares. Exit `4` is every structural failure's code, so a page could name one failure while the
+  binary reported another and the gate stayed green. A `text` fence directly under a declared-exit
+  command is now compared line for line against that run's stderr, with `...` eliding a run of
+  characters.
+- `check:doc-invocations` reads a page's own heredoc ahead of any file at the same path in the
+  clone. A leftover `mcp-contract.json` at the repository root, of the kind a reader following
+  `docs/how-to/evaluate-tool-use-behavior.md` creates, silently replaced the bytes the page writes
+  and decided the gate's verdict.
+
 ## [1.4.2] - 2026-09-09
 
 ### Changed

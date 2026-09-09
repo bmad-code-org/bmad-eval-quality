@@ -3776,14 +3776,14 @@ A guide that says otherwise is worse than a gap, because it is the sentence that
 The file the command reads was never written down anywhere on the page, so the checker that runs every documented command quietly substituted a different file and ran that.
 The command still ran, it still passed, and nothing on the page was ever measured against a real run.
 Now the guide writes the file out first and says which exit code it expects, so the page fails the build on the day the command stops failing that way.
-The error text printed beside it is still compared with nothing, so a message that changes wording ships unnoticed.
+The error message printed beside it is compared with the run's own output too, because one exit code covers every kind of structural failure and the message is what names which one.
 
 **What:** the tool-use guide's JSON block becomes a `cat > mcp-contract.json <<'EOF'` heredoc carrying a whole `EvalContract`, and `<!-- expect-exit: 4 -->` is declared on the line before the command that reads it.
 
 **Why:** three later changes in this epic each falsify the rejection that page shows.
 Left alone, the checker keeps reporting a pass over a substituted input and a stale rejection ships.
 Armed, `npm run validate` goes red inside the story that breaks the claim, which is the story that has to fix the page.
-That holds for the exit code alone: the three changes each move it off 4.
+The three changes each move the exit code off 4, and a fourth kind of drift leaves it at 4 and changes the message, which is why the message is compared as well.
 
 **Read in this order:**
 
@@ -3806,7 +3806,9 @@ That holds for the exit code alone: the three changes each move it off 4.
 - The heredoc carries a whole contract: the interface fragment on its own exits 5 under `schema-parse-failure`.
 - The contract declares one tool: two tools collide under `duplicate-operation-signature`, which is checked before the kind is, and both exit 4.
 - Prove the gate is armed by declaring a code the run does not produce and watching the check fail.
-- The declaration pins the exit code and nothing else; an output fence a page shows beside a command is compared with nothing.
-- A documented path that exists on the real filesystem is used ahead of the one the page's own heredoc wrote, so a heredoc writes under a scratch directory and never into the reader's clone.
+- A `text` fence directly under a declared-exit command is that run's transcribed stderr, and it is compared line for line; `...` inside a line elides a run of characters.
+- Only a declared-exit command collects one. A command that succeeded prints on stdout, and the block under it is left alone.
+- Prose between the command's fence and the `text` fence detaches them, and the block is left alone.
+- A page's own heredoc is read ahead of any file at the same path in the clone, so a copy a reader leaves behind changes nothing the gate reports.
 
 **Watch out:** two more commands on that page still name files the page never writes, so their exit codes stay unjudged. The story records the six authored artifacts that making them faithful would cost. The example contract also carries a second fault behind the one the page shows, and the page names it: a search changes no state, and the witness channel a tool call needs is illegal for an operation that changes none.

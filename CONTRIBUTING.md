@@ -38,6 +38,7 @@ Three more guards are structural.
 
 Every fenced CLI invocation in `README.md` and `docs/` is run against the built binary by `check:doc-invocations`, and its exit code is compared with what the page claims.
 A page that demonstrates a failure declares the code it expects in an HTML comment on the line before the fence.
+Exit `4` is every structural failure's code, so a page that also transcribes the diagnostic in a `text` fence under the command has that block compared line for line against what the run wrote to stderr.
 
 ## Code standards
 

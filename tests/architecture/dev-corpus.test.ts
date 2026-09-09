@@ -228,9 +228,10 @@ describe('the development corpus', () => {
 		// A page that publishes this brief's `contractDigest` is a second copy of
 		// a value only the builder should own, and it went stale three times
 		// (stories 6.5, 7.2 and 7.3 each moved the contract's bytes and left the
-		// page behind) because `check:docs` does not scan `docs/` and
-		// `check-doc-invocations.mjs` runs the commands without comparing their
-		// output.
+		// page behind) because `check:docs` does not scan `docs/`, and
+		// `check-doc-invocations.mjs` compares a page's transcribed output only
+		// where the page declares the exit code it expects, which leaves a
+		// digest quoted in prose beyond it.
 		//
 		// Every digest-shaped literal under `docs/` is compared rather than one
 		// named page's: a page that stops publishing the value solves the

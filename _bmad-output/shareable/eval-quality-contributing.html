@@ -592,7 +592,8 @@ A hand edit to a generated file fails the check, so regenerate.</p>
 <code>check:lineage</code> keeps lineage fields written only by the modules that own them.
 <code>check:boundary</code> keeps everything the tarball carries free of references to the planning system that produced it.</p>
 <p>Every fenced CLI invocation in <code>README.md</code> and <code>docs/</code> is run against the built binary by <code>check:doc-invocations</code>, and its exit code is compared with what the page claims.
-A page that demonstrates a failure declares the code it expects in an HTML comment on the line before the fence.</p>
+A page that demonstrates a failure declares the code it expects in an HTML comment on the line before the fence.
+Exit <code>4</code> is every structural failure&#39;s code, so a page that also transcribes the diagnostic in a <code>text</code> fence under the command has that block compared line for line against what the run wrote to stderr.</p>
 <h2 id="code-standards">Code standards<a class="heading-anchor" href="#code-standards" aria-label="Link to Code standards">#</a></h2>
 <ul>
 <li>Strict typing: explicit return types, no <code>any</code> in <code>src/</code>.</li>

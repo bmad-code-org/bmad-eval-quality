@@ -33,6 +33,15 @@
 //     so this check substitutes a stand-in and the exit code says nothing about
 //     the page. Those keep the usage-error judgment and no more.
 //
+// The exit code alone is a weak claim, because it is shared. Exit 4 is
+// `EXIT_STRUCTURAL_FAILURE`, the code every discipline rule returns, so a page
+// can name one failure while the binary reports another and the codes still
+// agree. A page that declares its exit code may therefore transcribe the
+// diagnostic beside it, in a `text` fence directly under the command's fence,
+// and that block is compared line for line against what the run wrote to
+// stderr. A page that transcribes only the first lines of a longer diagnostic
+// is fine, and `...` inside a line elides a run of characters.
+//
 // To make a page's own examples faithful, the run replays each page in
 // document order inside its own sandbox: a `cat > path <<'EOF'` heredoc, an
 // `echo ... > path` redirect, and a `mkdir -p` all take effect, and `--out`
@@ -42,6 +51,7 @@
 //
 // Usage:
 //   npm run check:doc-invocations
+//   node scripts/check-doc-invocations.mjs --root <path>   (a fixture page)
 
 import { spawnSync } from 'node:child_process'
 import {
@@ -69,8 +79,18 @@ if (!existsSync(builtMain)) {
 	process.exit(0)
 }
 
-/** The doc roots that document the command line. */
-const ROOTS = ['README.md', 'docs']
+/**
+ * The doc roots that document the command line. `--root <path>` replaces them
+ * and may be repeated, which is what lets a test drive this check over a
+ * fixture page.
+ */
+const ROOTS = (() => {
+	const args = process.argv.slice(2)
+	const overrides = args.flatMap((argument, index) =>
+		args[index - 1] === '--root' ? [argument] : [],
+	)
+	return overrides.length > 0 ? overrides : ['README.md', 'docs']
+})()
 
 /** A placeholder path stands in for this, which compiles and seals cleanly. */
 const SAMPLE_INPUT = join(
@@ -185,6 +205,14 @@ function realizeInput(token, sandbox) {
 	if (isMetavariable(token)) return { value: SAMPLE_INPUT, faithful: false }
 	if (!looksLikePath(token)) return { value: token, faithful: true }
 
+	// The page's own bytes win over anything on the real filesystem. A page
+	// that writes `mcp-contract.json` and then reads it is describing the file
+	// it just wrote, and a reader who followed the page leaves a copy of that
+	// name at the clone root. Resolving against the repository first would read
+	// the leftover, so the gate would be measuring a file nobody is editing.
+	const authored = sandbox.rebase(token)
+	if (existsSync(authored)) return { value: authored, faithful: true }
+
 	if (token.startsWith(INSTALLED_PREFIX)) {
 		const published = resolve(repoRoot, token.slice(INSTALLED_PREFIX.length))
 		if (existsSync(published)) return { value: published, faithful: true }
@@ -192,9 +220,6 @@ function realizeInput(token, sandbox) {
 
 	const shipped = resolve(repoRoot, token)
 	if (existsSync(shipped)) return { value: shipped, faithful: true }
-
-	const authored = sandbox.rebase(token)
-	if (existsSync(authored)) return { value: authored, faithful: true }
 
 	return { value: SAMPLE_INPUT, faithful: false }
 }
@@ -259,6 +284,12 @@ function realizeArguments(tail, sandbox) {
  * -flag notation, and the grammar wraps across lines, which would otherwise be
  * executed as a command missing half its flags. The block ends at the next
  * fence or the next unindented line.
+ *
+ * A `text` fence separated from a declared-exit invocation by nothing but blank
+ * lines is that invocation's transcribed diagnostic, and it travels on the run
+ * as `expectStderr`. Only a declared-exit invocation collects one: a page that
+ * shows the output of a command that succeeded is showing stdout, and every
+ * page that documents a failure prints it on stderr.
  */
 function extractActions(file, source) {
 	const lines = source.split('\n')
@@ -267,12 +298,30 @@ function extractActions(file, source) {
 	let inGrammar = false
 	let expectExit = null
 	let previous = ''
+	/** The declared-exit run a `text` fence opening here would describe. */
+	let described = null
 
 	for (let index = 0; index < lines.length; index += 1) {
 		const raw = lines[index]
 
 		if (raw.trimStart().startsWith('```')) {
 			if (!inFence) {
+				if (described !== null && raw.trim().slice(3).trim() === 'text') {
+					const body = []
+					index += 1
+					while (
+						index < lines.length &&
+						!lines[index].trimStart().startsWith('```')
+					) {
+						body.push(lines[index])
+						index += 1
+					}
+					described.expectStderr = body
+					described = null
+					previous = raw
+					continue
+				}
+				described = null
 				const declared = previous.trim().match(EXPECT_EXIT_PATTERN)
 				expectExit = declared ? Number(declared[1]) : null
 			} else expectExit = null
@@ -288,7 +337,10 @@ function extractActions(file, source) {
 			continue
 		}
 		if (inGrammar || !inFence) {
-			if (raw.trim() !== '') previous = raw
+			if (raw.trim() !== '') {
+				previous = raw
+				described = null
+			}
 			continue
 		}
 
@@ -309,6 +361,7 @@ function extractActions(file, source) {
 				target,
 				contents: `${body.join('\n')}\n`,
 			})
+			described = null
 			continue
 		}
 
@@ -319,12 +372,14 @@ function extractActions(file, source) {
 				target: echoed[2],
 				contents: `${echoed[1].replace(/^['"]|['"]$/g, '')}\n`,
 			})
+			described = null
 			continue
 		}
 
 		const made = text.match(/^mkdir\s+-p\s+(\S+)$/)
 		if (made) {
 			actions.push({ kind: 'mkdir', target: made[1] })
+			described = null
 			continue
 		}
 
@@ -341,20 +396,48 @@ function extractActions(file, source) {
 		const first = tokenize(tail)[0]
 		if (first !== undefined && isMetavariable(first)) continue
 
-		actions.push({
+		const action = {
 			kind: 'run',
 			file,
 			line: startLine,
 			invocation: text,
 			tail,
 			expectExit,
-		})
+			expectStderr: null,
+		}
+		actions.push(action)
+		described = expectExit === null ? null : action
 	}
 	return actions
 }
 
+/**
+ * Whether one documented output line describes the line the run really wrote.
+ * `...` elides a run of characters, so the segments around it have to appear in
+ * order and the first one has to start the line.
+ */
+function describesLine(documented, actual) {
+	let cursor = 0
+	for (const [position, segment] of documented.split('...').entries()) {
+		if (segment === '') continue
+		const found = actual.indexOf(segment, cursor)
+		if (found === -1 || (position === 0 && found !== 0)) return false
+		cursor = found + segment.length
+	}
+	return true
+}
+
+/** The transcribed block without the blank lines that frame it in the page. */
+function trimBlankEdges(block) {
+	let first = 0
+	let last = block.length
+	while (first < last && block[first].trim() === '') first += 1
+	while (last > first && block[last - 1].trim() === '') last -= 1
+	return block.slice(first, last)
+}
+
 const files = ROOTS.flatMap((root) =>
-	collectMarkdown(join(repoRoot, root)),
+	collectMarkdown(resolve(repoRoot, root)),
 ).sort()
 
 const workDir = mkdtempSync(join(tmpdir(), 'check-doc-invocations-'))
@@ -362,10 +445,13 @@ const workDir = mkdtempSync(join(tmpdir(), 'check-doc-invocations-'))
 const failures = []
 let scanned = 0
 let judged = 0
+let compared = 0
 
 try {
 	for (const [index, absolute] of files.entries()) {
-		const file = absolute.slice(repoRoot.length)
+		const file = absolute.startsWith(repoRoot)
+			? absolute.slice(repoRoot.length)
+			: absolute
 		const sandbox = createPageSandbox(workDir, index)
 
 		for (const action of extractActions(file, readFileSync(absolute, 'utf8'))) {
@@ -431,6 +517,24 @@ try {
 						? `exited ${result.status} over inputs this repository really has; a documented example has to work, or declare its exit with an "<!-- expect-exit: N -->" comment before the block`
 						: `exited ${result.status}, and the block declares expect-exit ${expected}`,
 				)
+				continue
+			}
+
+			// The exit code is shared, so it cannot tell one structural failure
+			// from another. The transcribed diagnostic is what names the code
+			// the page claims, and it is compared line for line.
+			if (action.expectStderr === null) continue
+			compared += 1
+			const written = result.stderr.split('\n')
+			const documented = trimBlankEdges(action.expectStderr)
+			const drift = documented.findIndex(
+				(line, position) =>
+					!describesLine(line.trimEnd(), (written[position] ?? '').trimEnd()),
+			)
+			if (drift !== -1) {
+				record(
+					`the block beside it transcribes "${documented[drift].trim()}" as line ${drift + 1} of the output, and the run wrote something else`,
+				)
 			}
 		}
 	}
@@ -456,5 +560,5 @@ if (failures.length > 0) {
 }
 
 console.log(
-	`check:doc-invocations: ${scanned} invocation(s) scanned across ${files.length} doc file(s), ${judged} run faithfully over real inputs, 0 failures`,
+	`check:doc-invocations: ${scanned} invocation(s) scanned across ${files.length} doc file(s), ${judged} run faithfully over real inputs, ${compared} with their output compared, 0 failures`,
 )
