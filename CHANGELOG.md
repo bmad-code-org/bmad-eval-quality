@@ -10,6 +10,54 @@ body.
 
 ## [Unreleased]
 
+### Added
+
+- Five how-to guides, one per system shape people point this package at, under `docs/how-to/`.
+  Agent behavior and skill behavior cover the two `cli` shapes, workflow behavior covers a multi-step
+  interaction plan, AI feature behavior covers the `api` shape the library was designed around, and
+  tool-use behavior covers the `mcp` kind. Each states plainly what is proven and what is not, and
+  every fenced contract fragment in them was parsed against the published schemas before it was
+  written down. The documentation index gains a table routing a reader from their own system to the
+  matching guide.
+- A tool-use section in `docs/explanation/roadmap.md`. The roadmap named MCP support in neither of
+  its two scope lists, so a reader deciding whether to fund it had nothing to read. It now carries
+  the four blockers: three coded gates refuse the kind, `ProbeRequest` and `ProbeObservation` have no
+  branch for it, no adapter or conformance arm exists beside the shipped `api` and `cli` ones, and a
+  markdown `content` array gives AD-4's quantifiers no JSON collection to range over.
+
+### Fixed
+
+- Documentation no longer promises a planted defect the probe schema cannot accept. The mutation
+  loop in `docs/explanation/behavioral-evaluation-contracts.md` and the glossary's planted-defect
+  entry both listed a swapped model beside a weakened prompt. `ProbeQualification`'s
+  `controlled-mutation` route requires a `targetArtifact` naming what changed and `rollbackVerified`
+  proving it was restored, and vendor model weights fill neither field. Both pages now state the
+  artifact requirement and keep the prompt mutation, which qualifies as a planted defect whenever
+  its effect shows up in what came back.
+- The `scoringVersion` comparison in `docs/how-to/author-behavioral-contracts.md` read as a rule the
+  library applies. `compareDominance` gates on `comparabilityKey` and on each side's
+  `strength.comparable` and reads no `scoringVersion`, so the passage now names which check the
+  library makes and which one is the reader's own.
+- The glossary states that `EvaluatorConfiguration.modelSnapshot` names the model the evaluator ran
+  on. No artifact names the model the system under test ran on, and a reader meeting the field had
+  nothing to stop the opposite reading. The system-under-test entry drops "a model" from its list
+  for the same reason: `PermittedInterface` declares four interface kinds and none of them is a bare
+  model call.
+- The comment over `WitnessInputs` in `src/core/schemas/sensitivity-witness.ts` described the shape
+  as it stood before 1.3.0. It claimed only the sensitivity leg took the union, that
+  `ManifestationWitness` and `FixtureReset` kept the transport spelling, and that pre-flight rejects
+  a non-api interface. All three fields have taken the union since 1.3.0, and `preflight/plan.ts`
+  admits `api` and `cli`. The block now says what each of the three takes and why the port's own
+  `ProbeRequest` union is what carries the reach.
+- `comparabilityKey`'s published field description in `src/core/schemas/evidence-artifact.ts` gave
+  AD-7's specification wording, "the scoring policy digest plus the corpus digest restricted to the
+  probes both results cover", with no statement of what the restriction resolves to. `emit` digests
+  the scoring policy digest and the sorted admitted probe identifier list, and the corpus digest
+  bytes are not an input. The description now says that, and a reviewer had already filed a finding
+  against correct prose on the strength of the old wording. `schemas/evidence-artifact.schema.json`
+  was regenerated; it is the only one of the twelve published schema files whose bytes moved, and no
+  shape changed.
+
 ## [1.4.0] - 2026-09-09
 
 ### Added

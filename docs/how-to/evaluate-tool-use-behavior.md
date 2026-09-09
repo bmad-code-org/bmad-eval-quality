@@ -1,0 +1,254 @@
+---
+title: "Evaluate Tool-Use Behavior"
+description: "What the mcp interface kind declares today, how close a tool call sits to the operation shape it inherits, and what a first adopter would have to build."
+sidebar:
+  order: 6
+---
+
+# Evaluate tool-use behavior
+
+The system under test is an agent that reaches its capabilities through tools.
+An MCP server exposing `search_notes` and `create_note`, a function-calling loop, a plugin the model invokes with arguments it chose itself.
+`PermittedInterface` declares four interface kinds and one of them is `mcp` (`src/core/schemas/interface.ts:264`).
+That is the declared home for tool-use behavior.
+
+Nothing in this repository and nothing in TEA evaluates an `mcp` interface today.
+This page is the first writing that takes the kind seriously, so it states what the kind gives you, where a tool call fits the operation shape it inherits, and where a reader has to bend something.
+
+## What you are evaluating
+
+Tool-use behavior asks three questions, and a contract has a different declaration for each.
+
+**Was the right tool chosen?**
+An `InteractionStep` names an `operationId` and a `cardinality` (`src/core/schemas/plan.ts:158`).
+The step is a selector over observations the evaluator produced, so a step naming `search-notes` with `cardinality: "exactly-one"` declares that exactly one call to that tool is expected in the run.
+`SELECTOR_CARDINALITIES` is the closed three, `exactly-one`, `at-most-one`, and `any` (`plan.ts:141`).
+
+**Were the arguments right?**
+A step's `inputBinding` binds each channel to a `BindingValue` (`plan.ts:55`), and the four tagged forms are `{ literal }`, `{ matcher }`, `{ captured }`, and `{ principal }`.
+`{ literal }` writes the argument down.
+`{ matcher: "any" }` binds whatever was sent and `{ matcher: "type-violating" }` binds an argument whose JSON type differs from the operation's declared type for that key, which is how you address a tool called with a malformed argument.
+`{ captured }` binds an earlier step's declared scalar output, which is what a tool called with an identifier a previous tool returned needs.
+An oracle then addresses the argument directly through the `call-inputs` channel.
+
+**Was the result used correctly?**
+The operation's `responseDescriptor` declares what the tool returns, and an oracle asserts a relation over it.
+The stronger form is a read-back: one step calls the tool, a later independent step observes the state, and the oracle compares the two.
+That is the shape [How It Works](/explanation/behavioral-evaluation-contracts/) calls a strong evaluation, and it is what separates a tool that reported success from a tool that did the work.
+
+A fourth question sits underneath all three.
+`sensitivityWitness` is mandatory per operation that declares any input (`interface.ts:120`), and it is what establishes that the tool reads its arguments at all.
+Two calls differing in one argument, and the relation their responses have to satisfy.
+Without it a check over the tool passes while the tool ignores everything you send.
+
+## What the `mcp` kind gives you today
+
+Exactly one thing: a legal value for `kind`, carrying the operation shape built for HTTP.
+
+`PermittedInterface` is a union discriminated on `kind` (`interface.ts:293`), and its `mcp` branch is produced by `apiShapedInterface('mcp')` (`interface.ts:281`).
+So an `mcp` interface has three fields, `logicalId`, `kind`, and `operations`, and each operation is an `Operation`.
+`Operation`'s own schema description names what it was built for: "AD-19's per-operation declaration inventory for an interface that speaks HTTP" (`interface.ts:140`).
+
+An `Operation` declares eight fields.
+`operationId`, `method` from the closed seven HTTP verbs, `pathTemplate` matching `PATH_TEMPLATE_PATTERN`, `stateChangeMarker`, `requestShape` over the four transport channels `path`, `query`, `header`, and `body`, `responseDescriptor`, `volatilePointers`, and `sensitivityWitness`.
+
+The comment above `apiShapedInterface` says why the branch exists at all.
+A two-member union would make an `mcp` contract a parse failure, and a parse failure carries no failure code, no artifact path, and no name for the kind that is unsupported.
+The branch exists so the rejection is a coded one.
+
+Three gates reject an `mcp` contract, and they are the whole story.
+
+| Where | What fires | Source |
+| --- | --- | --- |
+| `compile` | `unsupported-interface-kind` | `src/core/compile/interface-inventory.ts:39`, over `SUPPORTED_INTERFACE_KINDS = ['api', 'cli']` |
+| `preflight` plan | `unsupported-interface-kind` again, for a contract assembled by hand | `src/core/preflight/plan.ts:307` |
+| `score` probe qualification | `signature-interface-kind-unsupported` | `src/core/score/qualification.ts:759` |
+
+The probe side parses too.
+`ApiDefectSignature.interfaceKind` is `z.enum(['api', 'web', 'mcp'])` (`src/core/schemas/defect-signature.ts:164`), so a probe declaring a tool-use defect is schema-valid and fails the qualification gate.
+
+Two shapes downstream have no `mcp` problem at all, which is worth knowing before you build anything.
+`Observation` in the sealed run record is not discriminated on kind (`src/core/schemas/sealed-run-record.ts:222`): it carries all eight evidence channels flat, with `null` or `{ "kind": "absent" }` where a channel does not apply.
+`ObservedCallInputs` is one eight-key object holding both kinds' input channels (`sealed-run-record.ts:200`).
+A recorded tool call has somewhere to live.
+
+The port is the shape that has nothing.
+`ProbeRequest` and `ProbeObservation` are discriminated unions with an `api` member and a `cli` member (`src/core/schemas/port-messages.ts:135` and `:186`).
+There is no `mcp` member, so there is no message an adapter could be handed and none it could return.
+
+## Declaring the interface
+
+Here is a tool server declared as far as the schema allows.
+It parses, and it is legal in every respect `compile` can check other than the kind itself.
+
+```json
+{
+  "logicalId": "notes-tool-server",
+  "kind": "mcp",
+  "operations": [
+    {
+      "operationId": "search-notes",
+      "method": "POST",
+      "pathTemplate": "/tools/call/search_notes",
+      "stateChangeMarker": false,
+      "requestShape": {
+        "path": { "requiredKeys": [], "permittedKeys": [], "types": {} },
+        "query": { "requiredKeys": [], "permittedKeys": [], "types": {} },
+        "header": { "requiredKeys": [], "permittedKeys": [], "types": {} },
+        "body": {
+          "requiredKeys": ["query"],
+          "permittedKeys": ["query", "limit"],
+          "types": { "query": "string", "limit": "number" }
+        }
+      },
+      "responseDescriptor": {
+        "requiredKeys": ["content", "isError"],
+        "permittedKeys": ["content", "isError"],
+        "types": { "content": "array", "isError": "boolean" },
+        "successIndicator": "/isError",
+        "channelRoles": { "/content": "payload", "/isError": "success-indicator" },
+        "collectionLocations": []
+      },
+      "volatilePointers": [],
+      "sensitivityWitness": {
+        "witnessId": "search-notes-sensitivity",
+        "channel": "body",
+        "legs": [
+          { "legId": "search-witness-a", "inputs": { "path": {}, "query": {}, "header": {}, "body": { "kind": "json", "value": { "query": "alpha" } } } },
+          { "legId": "search-witness-b", "inputs": { "path": {}, "query": {}, "header": {}, "body": { "kind": "json", "value": { "query": "beta" } } } }
+        ],
+        "relation": {
+          "op": "not",
+          "operands": [
+            { "op": "deep-equality", "operands": [
+              { "pointer": "/interactions/search-witness-a/response-body/content" },
+              { "pointer": "/interactions/search-witness-b/response-body/content" }
+            ] }
+          ]
+        }
+      }
+    }
+  ]
+}
+```
+
+Compile a contract carrying it and you get the one coded rejection:
+
+```bash
+node dist/cli/main.js compile --in mcp-contract.json
+```
+
+```text
+eval-quality: unsupported-interface-kind: EvalContract.permittedInterfaces[logicalId=notes-tool-server].kind: "mcp" is not supported; "api" and "cli" are (AD-10)
+```
+
+Four places in that declaration are a bend, and each one is a real cost.
+
+**`method` carries no tool-call meaning.**
+The field is required and its value space is the seven HTTP verbs.
+`POST` is the closest reading of a tool invocation, and a read-only tool argues equally for `GET`.
+Nothing decides it, and AD-40 resolves a defect signature by comparing method and path template, so two authors disagreeing here author signatures that never bind each other's contracts.
+
+**`pathTemplate` has to carry the tool name.**
+The natural transport identity of every MCP tool call is the same JSON-RPC method, `tools/call`, with the tool name in the payload.
+Declaring two tools that way collides:
+
+```text
+eval-quality: duplicate-operation-signature: EvalContract.permittedInterfaces[logicalId=notes-tool-server].operations[operationId=create-note]: collides with permittedInterfaces[logicalId=notes-tool-server].operations[operationId=search-notes] after parameter-name erasure ("POST /tools/call") (AD-19, AD-40)
+```
+
+So the tool name moves into the path, as `/tools/call/search_notes` above.
+That is a spelling this repository invented for the example, and a second author would be free to invent `/search_notes` instead.
+The kind ships no convention.
+
+**Three of the four request channels are dead.**
+A tool call has arguments and nothing else.
+`path`, `query`, and `header` are declared as empty triples on every operation, and `body` carries the whole argument object.
+The declaration is honest and three quarters of it is ceremony.
+
+**The response descriptor wants JSON that MCP does not promise.**
+`ResponseDescriptor.types` is a flat map from key name to JSON type (`interface.ts`), `collectionLocations` addresses a JSON collection, and AD-4's `for-all` and `for-any` quantify over one.
+A real MCP tool commonly returns `content: [{ "type": "text", "text": "..." }]`, where the text is markdown a person reads.
+The architecture records this as the open design question behind deferring the kind: "real responses are unstructured markdown with no JSON collection for AD-4's quantifiers."
+A tool returning a JSON object fits the descriptor cleanly.
+A tool returning prose does not, and no field in the shape closes that gap.
+
+## Writing oracles over a tool call
+
+Every oracle is an `Expression` over pointers, and the pointer grammar is what decides what you can assert.
+
+**About the arguments.**
+`call-inputs` takes a channel segment and then a tail, so `/interactions/search/call-inputs/body/query` addresses the `query` argument the agent actually sent on the step whose `stepId` is `search`.
+`TRANSPORT_CHANNELS` is the four the api-shaped kinds accept (`src/core/schemas/pointer.ts:36`).
+Assertions worth writing: the argument equals a literal the behavior requires, the argument is a member of a declared reference set, the argument matches an anchored pattern.
+`compile` rejects a pointer at a key the operation's `requestShape` declares in neither `requiredKeys` nor `permittedKeys`, under `unreachable-check-evidence`, so an oracle over an argument that does not exist never ships.
+
+**About the response.**
+`response-body`, `response-headers`, and `response-status` are the three response-side channels an api-shaped kind produces.
+`qualification.ts:148` confirms it from the other direction: for any kind other than `cli`, the command channels are the foreign ones, so `stdout`, `stderr`, `exit-code`, and `artifact` are unavailable to a tool-use signature.
+`/interactions/search/response-body/isError` and `/interactions/search/response-body/content` are the two pointers the example above makes addressable.
+
+**About the tool having been called at all.**
+`existence` and `absence` over a step's evidence carry that, and the step's own `cardinality` carries how many matches are legitimate.
+
+**The check that matters most.**
+A tool call that reports success and changed nothing is the tool-use version of the worked example on [How It Works](/explanation/behavioral-evaluation-contracts/).
+Write it as two steps and one `deep-equality` under a `not`: bind the write step's argument, bind a later read step with `after` naming the write, and compare what was sent against what came back on the read.
+An oracle over the write step's own response passes on a tool that silently discarded the call.
+
+## Running it
+
+The commands are the two on the [CLI reference](/reference/cli-commands/), and they are the same for every interface kind.
+
+```bash
+node dist/cli/main.js preflight --contract eval-contract.json \
+  --probes probes.json --observations observations.json \
+  --run-id tool-run-1 --out preflight-verdict.json
+```
+
+```bash
+node dist/cli/main.js score --record sealed-run-record.json \
+  --contract eval-contract.json --probe probe.json \
+  --preflight-verdict preflight-verdict.json --policy scoring-policy.json \
+  --isolation-manifest isolation-manifest.json \
+  --evaluator-configuration evaluator-configuration.json \
+  --corpus-digest <digest> --out evidence-artifact.json
+```
+
+Neither reaches a tool call today, because `compile` and the pre-flight plan both stop an `mcp` contract first.
+
+What a port would have to do, when the kind opens.
+`EnvironmentProbePort` has one method, `probe`, taking a `ProbeRequest` and an `AbortSignal` and returning a `ProbeObservation` (`src/ports/environment-probe-port.ts`).
+The four rules stated on that port are the adapter's whole obligation: apply the target policy before any call and again to every redirect target, issue the request against the address the policy validated and never re-resolve a hostname after validation, throw `forbidden-target`, `budget-exhausted`, `aborted`, or `port-failure` for the four fault classes, and treat every response the server returns as an observation at any status.
+That last rule is the one a tool-use adapter would break first: an MCP error result is the payload the seeded-fault check reads, and an adapter that throws on it makes the whole pre-flight vacuous.
+
+The mapping from a logical identifier to a running server is the adapter's, from configuration outside the contract (AD-35).
+An `mcp` adapter would need an `McpProbeRequest` and an `McpProbeObservation` on the two unions in `port-messages.ts` before any of this is writable, and a third conformance arm beside `runEnvironmentProbePortConformance` and `runCommandLineProbeConformance`.
+
+## Where this stands
+
+**Declared.** The kind, the api-shaped operation inventory it carries, and a parse that succeeds. A contract, a probe, and a sealed brief can all name `mcp` and be schema-valid.
+
+**Blocked.** `compile` rejects it, the pre-flight plan rejects it, and the probe qualification gate rejects it. Three coded rejections, no silent failures.
+
+**Missing.** A port message for the kind, an adapter, a conformance arm, a channel model for a text-shaped tool result, and a convention for the transport identity of a tool call.
+
+**Already works, and this is the part worth knowing before you fund any of it.** The recorded-observation side accommodates the kind today. `Observation` in the sealed run record is not discriminated on kind (`sealed-run-record.ts:222`) and `ObservedCallInputs` is one eight-key object over both kinds' channels (`:200`), so a recorded tool call already has somewhere to live. `foreignChannels` (`qualification.ts:148`) gives every kind other than `cli` the API response channels, so a tool-use signature is confined to `response-body`, `response-headers`, and `response-status`, and that confinement is decided rather than open.
+
+**Unproven, and this is the uncomfortable part.** The calibration record behind this project's central measurement is itself MCP-shaped. The architecture records that every contract in the phase-2 block that produced the 0.33-to-1.00 result declares an MCP tool interface, and that 22 of 25 real contracts use the kind. Those contracts were transcribed into API shape to be compiled here, and a transcription is not the measured artifact. So `mcp` is simultaneously the most-used kind in the prior art and the only one with no path through this package.
+
+**What a first adopter hits.** In order: the compile rejection, then the tool-name-in-the-path question, then the response descriptor against a tool that returns prose. The first is a wall. The second is a convention someone has to fix and write down. The third is the design question the architecture named and left open.
+
+Until the kind opens, the workable move is the one TEA already made: put the tool-calling agent behind a command, declare a `cli` interface, and evaluate the run through its arguments, its streams, and the files it writes.
+
+## In BMAD terms
+
+No BMAD module evaluates tool use.
+
+The nearest thing that exists is TEA, and it is one interface kind over.
+Every contract in `test/contracts/` of the `bmad-method-test-architecture-enterprise` repository declares `kind: "cli"`: `test-review.contract.json`, `trace.contract.json`, and the eight under `test/contracts/fragment-selection/`.
+Each one wraps an agent workflow run behind a command and evaluates what came back on the command's own channels.
+
+That is the same evaluation shape a tool-use contract needs.
+The agent chooses, the harness records what it chose, and an oracle over the recording decides whether the choice was right.
+What is missing for tool use is the interface kind that lets you say the choice was a tool call.

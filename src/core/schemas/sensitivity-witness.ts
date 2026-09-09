@@ -63,13 +63,16 @@ export type CommandWitnessInputs = z.infer<typeof CommandWitnessInputs>
  * interface declaring it lives in another subtree, so no discriminator is
  * available to the schema and the agreement is a compile-time check.
  *
- * Only the sensitivity leg takes the union. `ManifestationWitness` and
- * `FixtureReset` keep the transport spelling, which keeps the probe artifact
- * byte-identical and keeps this shape's widening inside the eval contract's own
- * version bump. That is truthful rather than merely convenient: both of those
- * legs are issued through the environment-probe port, whose `ProbeRequest`
- * carries a method, a path template, and the four transport channels, and
- * pre-flight rejects a non-api interface for exactly that reason.
+ * All three leg shapes take it: `SensitivityWitnessLeg.inputs`,
+ * `ManifestationWitness.inputs`, and `FixtureReset.inputs`. The sensitivity leg
+ * took it from 0.3.0 and the other two followed in 1.3.0, since the transport
+ * spelling left a seeded defect against a command-line system under test
+ * unrepresentable. The reach is the port's: all three legs are issued through
+ * the environment-probe port, whose `ProbeRequest` is itself a union of
+ * `ApiProbeRequest` and `CommandProbeRequest`, and `preflight/plan.ts` admits
+ * `api` and `cli`, rejecting `web` and `mcp` under `unsupported-interface-kind`.
+ * A leg shape narrower than the port it feeds leaves a kind the adapter can run
+ * with no way to declare a leg for it.
  */
 export const WitnessInputs = z.union([ApiWitnessInputs, CommandWitnessInputs])
 

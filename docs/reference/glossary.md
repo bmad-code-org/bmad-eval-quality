@@ -39,7 +39,7 @@ Every artifact that crosses the package boundary has a published JSON Schema und
 | **`Probe`** | caller | One probe: its id, its class, `expectedClean`, the implementation digest, a rationale, a required qualification record, and, when `expectedClean` is false, a `defectSignature` describing where the seeded defect shows. |
 | **`SealedRunRecord`** | caller | The input side of scoring: what the evaluator's run produced, sealed. The observations in `sequence` order, the findings with the observations each cites, one disposition per oracle, the judge results, the evaluator's own recommendation, `mode`, and the digests it ran under. |
 | **`IsolationManifest`** | caller | What the evaluator was allowed and what it did: allowed and observed mounts, network targets, and tool calls, resource ceilings and actual use, and an accounting of every forbidden input as withheld. |
-| **`EvaluatorConfiguration`** | caller | What the evaluator was: identity, model snapshot, system-prompt digest, decoding parameters, tool and permission inventories, budgets, and judge configuration. |
+| **`EvaluatorConfiguration`** | caller | What the evaluator was: identity, model snapshot, system-prompt digest, decoding parameters, tool and permission inventories, budgets, and judge configuration. `modelSnapshot` names the model the **evaluator** ran on. No artifact names the model the system under test ran on; the closest a probe comes is its opaque `systemId` and its `implementationDigest`. |
 | **`ScoringPolicy`** | caller | The thresholds `score` reads: severity floor, confidence threshold, catch threshold, minimum trial count, re-execution cap, remediation cap, and regex match-step budget. |
 | **`Rubric`** | caller | A rubric body, also declared inline in a contract's `rubrics` array. |
 | **`PrivateArtifactManifest`** | caller | Entries naming private references with their declared digests. `score` checks each against the bytes `--corpus-root` resolves. |
@@ -103,9 +103,9 @@ The six kinds a `PreflightVerdict` can carry.
 
 | Term | What it is |
 | --- | --- |
-| **System under test (SUT)** | The AI feature being evaluated: a model, an agent, a skill, a tool-use path, a workflow. |
+| **System under test (SUT)** | The AI feature being evaluated: an agent, a skill, a tool-use path, a workflow. A probe reaches it through a declared interface, and `PermittedInterface` declares four kinds: `api`, `web`, `cli`, and `mcp`. There is no kind for a bare model call. |
 | **Clean system** | The system with no planted defect. The evaluation should pass against it. Its probe is a clean control, `expectedClean: true`. |
 | **Mutated system** | The same system with one deliberate defect planted. The evaluation should degrade against it. Its probe declares the defect, `expectedClean: false`, with a defect signature. |
-| **Planted defect (mutation)** | The one intentional change, whose expected failure mode is known in advance. A weakened prompt, removed context, a dropped validation step, an altered tool result, a swapped model. |
+| **Planted defect (mutation)** | The one intentional change, whose expected failure mode is known in advance. A weakened prompt, removed context, a dropped validation step, an altered tool result. It has to be an artifact you hold: the probe's `controlled-mutation` qualification route requires a `targetArtifact` naming what changed and `rollbackVerified` proving it was restored, and vendor model weights fill neither field. |
 | **Blind spot** | An evaluation that stays green against a planted defect. The finding the twin run exists to produce. |
 | **Twin run** | Running the same fixed evaluation against the clean and the mutated system and comparing the two results. Both arms are scored in `contract-scoring` mode. |

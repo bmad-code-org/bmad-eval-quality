@@ -351,7 +351,7 @@ node dist/cli/main.js score --record mutated-record.json \
 
 Then read the two artifacts. On the clean arm the oracles should resolve `passed-clean-control` and the verdict should be `PASS`, exit `0`. On the mutated arm the oracle the defect targets should resolve `caught`, which in `contract-scoring` mode is the contract succeeding. An oracle that resolves `missed` on the mutated arm is the blind spot the loop exists to find.
 
-Compare `scoringVersion` across the two artifacts before comparing anything else in them. Two results compare only when it agrees.
+Compare `scoringVersion` across the two artifacts before comparing anything else in them. That comparison is yours to make, and the library makes no such check. Its own dominance comparison gates on `comparabilityKey`, a digest of the scoring policy digest and the sorted admitted probe ids, together with each side's `strength.comparable`; it reads no `scoringVersion` and no model field. Two artifacts agreeing on those will compare even when their contract schema version, corpus digest, fixture digest, evaluator configuration, or mode differ, and each of those five is a scoring-version input for a reason.
 
 ## Two guards
 
