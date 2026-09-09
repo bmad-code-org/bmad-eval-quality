@@ -81,7 +81,7 @@ flowchart TD
 |   37 | epic8-story4 | One command and one library call that reach the three stages, so a caller outside a test gets an evidence artifact back. |
 |   38 | epic8-story5 | The worked example calls the shipped stages for the values it used to hand-type, and the changelog tells a reader the command exists. |
 |   39 | epic9-story1 | A contract can describe a system under test that runs behind a command, and every operation's declared output channel descends through its own response descriptor. |
-|   40 | epic9-story2 | A file the system wrote is addressable, and the artifact channel is a third case of the descent rule rather than a fourth rule. |
+|   40 | epic9-story2 | A file the system wrote is addressable, and the artifact channel becomes a third case of the one descent rule. |
 |   41 | epic9-story3 | The probe port learns to run a command, and seal stops calling one an endpoint. |
 |   42 | epic9-story4 | The run record records what a command produced, and the defect signature can name one. |
 |   43 | epic9-story5 | The corpus ships two command contracts, and the release says what stopped being comparable. |
@@ -1161,9 +1161,9 @@ flowchart TD
   Neither coordinates with the other by design.
 - `checkUndeclaredMandatoryInput` takes no `strict` parameter and always enforces;
   whether it is even called is a future orchestrator's decision.
-- AD-16's forbidden-input-floor and scoped-reference codes have no thrower anywhere in `src/` yet.
-  A pre-existing Epic 2 gap, named in this story's own AC 1 and left for a later story:
-  closing it is out of Epic 4's stated scope.
+- AD-16's forbidden-input-floor and scoped-reference codes get their throwers here,
+  in `src/core/compile/forbidden-inputs.ts`, closing a gap Epic 2 left open.
+  Neither one runs until Step 15 wires it into the pipeline.
 
 ## Step 14 (epic4-story3): the last two stage-one AD-5 codes, a graph predicate over the interaction plan
 
