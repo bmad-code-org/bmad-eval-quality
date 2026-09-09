@@ -33,6 +33,34 @@
 //     so this check substitutes a stand-in and the exit code says nothing about
 //     the page. Those keep the usage-error judgment and no more.
 //
+// The exit code alone is a weak claim, because it is shared. Exit 4 is
+// `EXIT_STRUCTURAL_FAILURE`, the code every discipline rule returns, so a page
+// can name one failure while the binary reports another and the codes still
+// agree. A page that declares its exit code may therefore transcribe the
+// diagnostic beside it, and that block is compared line for line against what
+// the run wrote to stderr. Four rules shape which block gets compared:
+//
+//   * The block is a `text` fence separated from the command's fence by blank
+//     lines only. Prose between them detaches it, and a fence carrying any
+//     other label is left alone.
+//   * The fence above it holds exactly one invocation. Two commands share the
+//     fence's declaration, so neither owns the block.
+//   * Each documented line has to describe the stderr line at the same
+//     position, whole. `...` inside a line elides a run of characters there,
+//     and a line that is exactly `...` matches any one line. Without an
+//     elision the documented line has to be the entire line, because failure
+//     codes share prefixes and an unanchored tail would describe a sibling
+//     failure as readily as its own. A page cannot transcribe a literal
+//     ellipsis. The indentation the block shares is stripped before any of
+//     this, so a fence inside a list item compares the same as one at the
+//     margin, and whatever indentation the diagnostic itself emits survives.
+//   * Stderr may run past the block, and the block may never run past stderr.
+//     A page that transcribes the first lines of a longer diagnostic is making
+//     a claim about those lines, and the lines it left out stay unchecked. An
+//     empty block claims nothing and is left unattached, and a line carrying
+//     more than three elisions is an error, since matching them is polynomial
+//     in the count.
+//
 // To make a page's own examples faithful, the run replays each page in
 // document order inside its own sandbox: a `cat > path <<'EOF'` heredoc, an
 // `echo ... > path` redirect, and a `mkdir -p` all take effect, and `--out`
@@ -42,6 +70,7 @@
 //
 // Usage:
 //   npm run check:doc-invocations
+//   node scripts/check-doc-invocations.mjs --root <path>   (a fixture page)
 
 import { spawnSync } from 'node:child_process'
 import {
@@ -50,12 +79,13 @@ import {
 	mkdtempSync,
 	readdirSync,
 	readFileSync,
+	realpathSync,
 	rmSync,
 	statSync,
 	writeFileSync,
 } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { dirname, isAbsolute, join, resolve } from 'node:path'
+import { basename, dirname, isAbsolute, join, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const repoRoot = fileURLToPath(new URL('..', import.meta.url))
@@ -69,8 +99,61 @@ if (!existsSync(builtMain)) {
 	process.exit(0)
 }
 
-/** The doc roots that document the command line. */
-const ROOTS = ['README.md', 'docs']
+/** A misdriven run ends here, so it can never report a pass over nothing. */
+const fail = (message) => {
+	console.error(`check:doc-invocations: ${message}`)
+	process.exit(1)
+}
+
+/**
+ * The doc roots that document the command line. `--root <path>` and
+ * `--root=<path>` replace them and may be repeated, which is what lets a test
+ * drive this check over a fixture page. A malformed override is an error: a
+ * mistyped root that fell back to the shipped documentation, or to nothing at
+ * all, would report a pass over pages nobody meant to check.
+ */
+const ROOTS = (() => {
+	const args = process.argv.slice(2)
+	const overrides = []
+	for (let index = 0; index < args.length; index += 1) {
+		const argument = args[index]
+		if (argument.startsWith('--root=')) {
+			overrides.push(argument.slice('--root='.length))
+			continue
+		}
+		if (argument !== '--root') fail(`unrecognized argument "${argument}"`)
+		const value = args[index + 1]
+		if (value === undefined || value.startsWith('--')) {
+			fail('--root takes a path')
+		}
+		overrides.push(value)
+		index += 1
+	}
+	// `--root .` is the easiest thing to type and the worst thing to run: it
+	// reaches every page in the tree, planning material included, and every
+	// fenced command inside them. A root outside the repository is fine, since
+	// that is how a fixture page is driven.
+	// Canonical paths, because `resolve` follows no symlink: a link pointing at
+	// the repository would otherwise walk straight past this guard.
+	const canonical = (target) => {
+		try {
+			return realpathSync(target)
+		} catch {
+			return target
+		}
+	}
+	const root = canonical(repoRoot)
+	for (const override of overrides) {
+		const resolved = canonical(resolve(repoRoot, override))
+		const enclosing = resolved.endsWith(sep) ? resolved : `${resolved}${sep}`
+		if (`${root}${root.endsWith(sep) ? '' : sep}`.startsWith(enclosing)) {
+			fail(
+				`--root ${override || '""'} encloses the repository; name a page or a directory inside it`,
+			)
+		}
+	}
+	return overrides.length > 0 ? overrides : ['README.md', 'docs']
+})()
 
 /** A placeholder path stands in for this, which compiles and seals cleanly. */
 const SAMPLE_INPUT = join(
@@ -105,9 +188,28 @@ const INSTALLED_PREFIX = 'node_modules/eval-quality/'
 
 const EXPECT_EXIT_PATTERN = /^<!--\s*expect-exit:\s*(\d{1,3})\s*-->$/
 
+/** What a page writes where it left characters, or a whole line, out. */
+const ELISION = '...'
+
+/**
+ * Elisions allowed in one documented line. Matching them is polynomial in the
+ * count, so a line carrying many of them over a long repetitive diagnostic can
+ * run for minutes, and no timeout covers this process. Three is more than any
+ * real transcript needs and the cap keeps the check's own cost bounded.
+ */
+const ELISION_LIMIT = 3
+
 const PER_INVOCATION_TIMEOUT_MS = 30_000
 
+/**
+ * The pages under one root. A dependency's README and a tool's own directory
+ * carry fenced commands nobody here wrote, and running those is the inverse of
+ * what this check is for, so the walk never descends into either.
+ */
+const isSkipped = (name) => name === 'node_modules' || name.startsWith('.')
+
 const collectMarkdown = (target) => {
+	if (isSkipped(basename(target))) return []
 	const info = statSync(target, { throwIfNoEntry: false })
 	if (!info) return []
 	if (info.isFile()) return target.endsWith('.md') ? [target] : []
@@ -185,16 +287,34 @@ function realizeInput(token, sandbox) {
 	if (isMetavariable(token)) return { value: SAMPLE_INPUT, faithful: false }
 	if (!looksLikePath(token)) return { value: token, faithful: true }
 
-	if (token.startsWith(INSTALLED_PREFIX)) {
-		const published = resolve(repoRoot, token.slice(INSTALLED_PREFIX.length))
-		if (existsSync(published)) return { value: published, faithful: true }
+	const candidates = token.startsWith(INSTALLED_PREFIX)
+		? [
+				resolve(repoRoot, token.slice(INSTALLED_PREFIX.length)),
+				resolve(repoRoot, token),
+			]
+		: [resolve(repoRoot, token)]
+	const shipped = candidates.find((candidate) => existsSync(candidate))
+
+	// The page's own bytes win over anything on the real filesystem. A page
+	// that writes `mcp-contract.json` and then reads it is describing the file
+	// it just wrote, and a reader who followed the page leaves a copy of that
+	// name at the clone root. Resolving against the repository first would read
+	// the leftover, so the gate would be measuring a file nobody is editing.
+	//
+	// A directory in the sandbox is the one exception. `--out` and `mkdir -p`
+	// create one under every path they are given, and `mkdir -p` over a path the
+	// repository already carries is a no-op in a reader's clone. So the empty
+	// sandbox copy yields: in front of a file it would fail the run on EISDIR,
+	// which the exit code reports as a usage error the page never made, and in
+	// front of a directory it would run the command over nothing at all.
+	const authored = sandbox.rebase(token)
+	const made = statSync(authored, { throwIfNoEntry: false })
+	const shadows = made?.isDirectory() === true && shipped !== undefined
+	if (made !== undefined && !shadows) {
+		return { value: authored, faithful: true }
 	}
 
-	const shipped = resolve(repoRoot, token)
-	if (existsSync(shipped)) return { value: shipped, faithful: true }
-
-	const authored = sandbox.rebase(token)
-	if (existsSync(authored)) return { value: authored, faithful: true }
+	if (shipped !== undefined) return { value: shipped, faithful: true }
 
 	return { value: SAMPLE_INPUT, faithful: false }
 }
@@ -259,6 +379,13 @@ function realizeArguments(tail, sandbox) {
  * -flag notation, and the grammar wraps across lines, which would otherwise be
  * executed as a command missing half its flags. The block ends at the next
  * fence or the next unindented line.
+ *
+ * A `text` fence separated from a declared-exit invocation by nothing but blank
+ * lines is that invocation's transcribed diagnostic, and it travels on the run
+ * as `expectStderr`. Only a declared-exit invocation collects one: a page that
+ * shows the output of a command that succeeded is showing stdout, and every
+ * page that documents a failure prints it on stderr. The fence has to have
+ * pushed exactly one such invocation, since both would carry its declaration.
  */
 function extractActions(file, source) {
 	const lines = source.split('\n')
@@ -267,15 +394,45 @@ function extractActions(file, source) {
 	let inGrammar = false
 	let expectExit = null
 	let previous = ''
+	/** The declared-exit run a `text` fence opening here would describe. */
+	let described = null
+	/** The declared-exit runs the open fence has pushed so far. */
+	let fenceRuns = []
 
 	for (let index = 0; index < lines.length; index += 1) {
 		const raw = lines[index]
 
 		if (raw.trimStart().startsWith('```')) {
 			if (!inFence) {
+				if (described !== null && labelOf(raw) === 'text') {
+					const body = []
+					index += 1
+					while (
+						index < lines.length &&
+						!lines[index].trimStart().startsWith('```')
+					) {
+						body.push(lines[index])
+						index += 1
+					}
+					const transcript = dedent(trimBlankEdges(body))
+					// An empty block claims nothing, so it is left unattached
+					// and the run keeps the exit-code judgment alone.
+					if (transcript.length > 0) described.expectStderr = transcript
+					described = null
+					previous = raw
+					continue
+				}
+				described = null
+				fenceRuns = []
 				const declared = previous.trim().match(EXPECT_EXIT_PATTERN)
 				expectExit = declared ? Number(declared[1]) : null
-			} else expectExit = null
+			} else {
+				// Two commands in one fence share its declaration, so neither
+				// owns the block below: attaching to the last would quote one
+				// command's transcript against the other's run.
+				described = fenceRuns.length === 1 ? fenceRuns[0] : null
+				expectExit = null
+			}
 			inFence = !inFence
 			inGrammar = false
 			previous = raw
@@ -285,10 +442,14 @@ function extractActions(file, source) {
 		if (raw.trim() === 'Usage:') {
 			inGrammar = true
 			previous = raw
+			described = null
 			continue
 		}
 		if (inGrammar || !inFence) {
-			if (raw.trim() !== '') previous = raw
+			if (raw.trim() !== '') {
+				previous = raw
+				described = null
+			}
 			continue
 		}
 
@@ -309,6 +470,7 @@ function extractActions(file, source) {
 				target,
 				contents: `${body.join('\n')}\n`,
 			})
+			described = null
 			continue
 		}
 
@@ -319,12 +481,14 @@ function extractActions(file, source) {
 				target: echoed[2],
 				contents: `${echoed[1].replace(/^['"]|['"]$/g, '')}\n`,
 			})
+			described = null
 			continue
 		}
 
 		const made = text.match(/^mkdir\s+-p\s+(\S+)$/)
 		if (made) {
 			actions.push({ kind: 'mkdir', target: made[1] })
+			described = null
 			continue
 		}
 
@@ -341,31 +505,90 @@ function extractActions(file, source) {
 		const first = tokenize(tail)[0]
 		if (first !== undefined && isMetavariable(first)) continue
 
-		actions.push({
+		const action = {
 			kind: 'run',
 			file,
 			line: startLine,
 			invocation: text,
 			tail,
 			expectExit,
-		})
+			expectStderr: null,
+		}
+		actions.push(action)
+		if (expectExit !== null) fenceRuns.push(action)
 	}
 	return actions
 }
 
+/** A fence's own label, so a `text` fence carrying attributes still counts. */
+const labelOf = (fence) => fence.trim().slice(3).trim().split(/[\s{]/)[0]
+
+/**
+ * A block without the indentation it shares, so a fence inside a list item
+ * compares against the same bytes it would at the margin. The shared prefix is
+ * the block's own, which keeps whatever indentation the diagnostic itself emits
+ * and stays right where the fence and its body are indented differently.
+ */
+function dedent(block) {
+	const prefixes = block
+		.filter((line) => line.trim() !== '')
+		.map((line) => line.slice(0, line.length - line.trimStart().length))
+	const shared = prefixes.reduce((a, b) => {
+		let common = 0
+		while (common < a.length && a[common] === b[common]) common += 1
+		return a.slice(0, common)
+	}, prefixes[0] ?? '')
+	return block.map((line) => line.slice(shared.length))
+}
+
+const escapeForPattern = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+
+/**
+ * Whether one documented output line describes the line the run really wrote.
+ * `...` elides a run of characters within the line, and the rest of the line is
+ * matched whole: failure codes share prefixes -- `isolation-manifest-absent`
+ * beside `isolation-manifest-violation`, `evaluator-configuration-absent`
+ * beside `evaluator-configuration-digest-mismatch` -- so a documented line left
+ * hanging would describe a sibling failure as readily as its own. A line that
+ * is exactly `...` matches any one line.
+ */
+function describesLine(documented, actual) {
+	if (documented === ELISION) return true
+	const pattern = documented
+		.split(ELISION)
+		.map(escapeForPattern)
+		.join('[\\s\\S]*')
+	return new RegExp(`^${pattern}$`).test(actual)
+}
+
+/** The transcribed block without the blank lines that frame it in the page. */
+function trimBlankEdges(block) {
+	let first = 0
+	let last = block.length
+	while (first < last && block[first].trim() === '') first += 1
+	while (last > first && block[last - 1].trim() === '') last -= 1
+	return block.slice(first, last)
+}
+
 const files = ROOTS.flatMap((root) =>
-	collectMarkdown(join(repoRoot, root)),
+	collectMarkdown(resolve(repoRoot, root)),
 ).sort()
+
+/** A root that reaches no page is a gate reporting a pass over nothing. */
+if (files.length === 0) fail(`no markdown under ${ROOTS.join(', ')}`)
 
 const workDir = mkdtempSync(join(tmpdir(), 'check-doc-invocations-'))
 
 const failures = []
 let scanned = 0
 let judged = 0
+let compared = 0
 
 try {
 	for (const [index, absolute] of files.entries()) {
-		const file = absolute.slice(repoRoot.length)
+		const file = absolute.startsWith(repoRoot)
+			? absolute.slice(repoRoot.length)
+			: absolute
 		const sandbox = createPageSandbox(workDir, index)
 
 		for (const action of extractActions(file, readFileSync(absolute, 'utf8'))) {
@@ -431,6 +654,42 @@ try {
 						? `exited ${result.status} over inputs this repository really has; a documented example has to work, or declare its exit with an "<!-- expect-exit: N -->" comment before the block`
 						: `exited ${result.status}, and the block declares expect-exit ${expected}`,
 				)
+				continue
+			}
+
+			// The exit code is shared, so it cannot tell one structural failure
+			// from another. The transcribed diagnostic is what names the code
+			// the page claims, and it is compared line for line.
+			if (action.expectStderr === null) continue
+			compared += 1
+			const written = result.stderr.split('\n')
+			const documented = action.expectStderr
+			const overElided = documented.findIndex(
+				(line) => line.split(ELISION).length - 1 > ELISION_LIMIT,
+			)
+			if (overElided !== -1) {
+				record(
+					`line ${overElided + 1} of the block beside it elides ${ELISION_LIMIT} times over; transcribe the line or cut it`,
+				)
+				continue
+			}
+
+			// A documented line past the end of stderr fails, `...` included: a
+			// page may transcribe less than the run wrote and never more.
+			const drift = documented.findIndex((line, position) => {
+				const wrote = written[position]
+				return (
+					wrote === undefined || !describesLine(line.trimEnd(), wrote.trimEnd())
+				)
+			})
+			if (drift !== -1) {
+				const wrote = written[drift] ?? ''
+				const line = documented[drift]
+				record(
+					line.trim() === wrote.trim() && line !== wrote
+						? `the block beside it is indented differently from the output at line ${drift + 1}`
+						: `the block beside it transcribes "${line.trim()}" as line ${drift + 1} of the output, and the run wrote something else`,
+				)
 			}
 		}
 	}
@@ -456,5 +715,5 @@ if (failures.length > 0) {
 }
 
 console.log(
-	`check:doc-invocations: ${scanned} invocation(s) scanned across ${files.length} doc file(s), ${judged} run faithfully over real inputs, 0 failures`,
+	`check:doc-invocations: ${scanned} invocation(s) scanned across ${files.length} doc file(s), ${judged} run faithfully over real inputs, ${compared} with their output compared, 0 failures`,
 )

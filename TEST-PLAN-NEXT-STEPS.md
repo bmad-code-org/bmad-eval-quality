@@ -65,10 +65,14 @@ not in the chain: Gate 7 needs a build first, and Gate 8 needs code that does no
 `check:doc-invocations` deserves a sentence of its own, because it exists for a defect that already
 happened. The documentation described a product this repository does not contain: a command that was
 never implemented, flags no parser accepts, and a scoring stage that has not been written. The check
-extracts every fenced `eval-quality ...` invocation from `README.md` and `docs/**`, runs each one
-against the built binary in a temporary directory, and fails on exit 64 or on a Node stack. Exit 64
-is the CLI's usage error, so a documented flag that does not exist fails the build. It skips with a
-clear message when `dist/cli/main.js` is absent.
+extracts every fenced `eval-quality ...` invocation from `README.md` and `docs/**` and runs each one
+against the built binary in a per-page sandbox. Exit 64 is the CLI's usage error, so a documented
+flag that does not exist fails the build, and a Node stack fails it too. An invocation whose every
+input reached real bytes is judged on its exit code as well: 0, or whatever an
+`<!-- expect-exit: N -->` comment before the fence declares. A `text` fence directly under a
+declared-exit command is that run's transcribed stderr and is compared line for line, since exit 4 is
+shared by every structural failure and cannot say which one fired. It skips with a clear message when
+`dist/cli/main.js` is absent.
 
 ## 3. Gate 2: tests and coverage
 
