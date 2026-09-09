@@ -208,6 +208,79 @@ describe('unresolved-artifact-reference', () => {
 		expect(failure.artifactPath).toContain('descriptorChannel.artifactId')
 	})
 
+	// The witness site is the one this check reached and could not answer. A
+	// leg identifier roots the relation's pointers in the step namespace
+	// without being a step, so resolving it against the interaction plan found
+	// nothing and the check returned before comparing anything. Reachability
+	// does not cover the site either: it walks oracle checks alone. So the
+	// contract below compiled clean while naming a file nothing declares.
+	it('fires on a sensitivity-witness relation naming an artifact the operation does not declare', () => {
+		const contract = structuredClone(artifactCommandContract) as any
+		const { relation } =
+			contract.permittedInterfaces[0].operations[0].sensitivityWitness
+		for (const operand of relation.operands[0].operands) {
+			operand.pointer = operand.pointer.replace(
+				'/artifact/verdict/',
+				'/artifact/transcript/',
+			)
+		}
+		const failure = failureOf(contract)
+		expect(failure.code).toBe('unresolved-artifact-reference')
+		expect(failure.artifactPath).toContain('sensitivityWitness.relation')
+		expect(failure.message).toContain('does not declare it writes')
+		expect(failure.message).toContain('operation "select-fragments"')
+	})
+
+	// The preference for the witness's own operation over the plan lookup is
+	// load-bearing exactly here. `checkWitnessLegIdentifiers` rejects this
+	// collision, and it runs after this check, so the wrong route is still
+	// available when this check asks its question and would answer against the
+	// operation the colliding step names.
+	it('answers a witness pointer against the declaring operation when the leg id collides with a plan step id', () => {
+		const contract = structuredClone(artifactCommandContract) as any
+		const iface = contract.permittedInterfaces[0]
+		const [witnessOperation] = iface.operations
+		const other = structuredClone(witnessOperation)
+		other.operationId = 'peek-transcript'
+		other.invocation.subcommandPath = ['peek']
+		other.artifacts = ['transcript']
+		other.descriptorChannel = { kind: 'artifact', artifactId: 'transcript' }
+		other.sensitivityWitness = null
+		iface.operations.push(other)
+		contract.interactionPlan.push({
+			stepId: 'peek',
+			operationId: 'peek-transcript',
+			after: null,
+			cardinality: 'exactly-one',
+			inputBinding: {
+				argument: null,
+				option: null,
+				environment: null,
+				stdin: { prompt: { matcher: 'any' } },
+			},
+		})
+		witnessOperation.sensitivityWitness.legs[0].legId = 'peek'
+		witnessOperation.sensitivityWitness.relation.operands[0].operands[0].pointer =
+			'/interactions/peek/artifact/transcript/fragments'
+		const failure = failureOf(contract)
+		expect(failure.code).toBe('unresolved-artifact-reference')
+		expect(failure.message).toContain('operation "select-fragments"')
+	})
+
+	// A relation rooted at a third step is the stray-root fault, and
+	// `checkWitnessLegality` is the check that names the witness and the root.
+	// Answering it here would report a real operation the pointer never named.
+	it('abstains on a witness pointer rooted at a step that is neither leg', () => {
+		const contract = structuredClone(artifactCommandContract) as any
+		const { relation } =
+			contract.permittedInterfaces[0].operations[0].sensitivityWitness
+		relation.operands[0].operands[0].pointer =
+			'/interactions/select/artifact/transcript/fragments'
+		expect(() =>
+			checkArtifactReferences(EvalContract.parse(contract)),
+		).not.toThrow()
+	})
+
 	it('says nothing about a contract whose artifact references all resolve', () => {
 		expect(() =>
 			checkArtifactReferences(EvalContract.parse(artifactCommandContract)),
@@ -249,6 +322,36 @@ describe('an artifact identifier nothing declares', () => {
 		expect(thrown).toBeInstanceOf(StructuralFailure)
 		expect((thrown as StructuralFailure).code).toBe(
 			'unresolved-artifact-reference',
+		)
+	})
+})
+
+describe('a sensitivity witness reading a file the descriptor does not describe', () => {
+	// The artifact is declared, so `unresolved-artifact-reference` abstains and
+	// the pointer is a reachability question. Nothing asked it at this site
+	// before: `checkEvidenceReachability` walks oracle checks alone.
+	it('fails compilation rather than certifying sensitivity from pointers that never resolve', () => {
+		const contract = structuredClone(artifactCommandContract) as any
+		const { relation } =
+			contract.permittedInterfaces[0].operations[0].sensitivityWitness
+		for (const operand of relation.operands[0].operands) {
+			operand.pointer = operand.pointer.replace(
+				'/artifact/verdict/',
+				'/artifact/report/',
+			)
+		}
+		let thrown: unknown
+		try {
+			compile(EvalContract.parse(contract), { strict: true })
+		} catch (error) {
+			thrown = error
+		}
+		expect(thrown).toBeInstanceOf(StructuralFailure)
+		const failure = thrown as StructuralFailure
+		expect(failure.code).toBe('unreachable-check-evidence')
+		expect(failure.artifactPath).toContain('sensitivityWitness.relation')
+		expect(failure.message).toContain(
+			'declares it writes but declares no structure for',
 		)
 	})
 })

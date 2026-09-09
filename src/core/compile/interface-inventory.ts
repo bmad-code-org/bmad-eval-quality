@@ -18,7 +18,7 @@ import {
 	buildPlanIndex,
 	parseEvidenceTarget,
 } from '../seal/plan-index.ts'
-import { forEachArtifactPointer } from './reachability.ts'
+import { forEachArtifactPointer, type WitnessScope } from './reachability.ts'
 
 /**
  * Rejects permitted interface kinds whose probe semantics are undeclared.
@@ -124,6 +124,15 @@ export function checkDuplicateOperationSignature(contract: EvalContract): void {
  * resolving `absent`, on AD-26's own precedent for a dangling reference-set
  * identifier: `absent` is defined over pointers that do not resolve against
  * observed evidence, and a dangling declaration is neither.
+ *
+ * Resolving the pointer's step segment against the interaction plan is the
+ * route for an oracle check, an oracle direction's evidence target and a rubric
+ * criterion. A sensitivity-witness relation takes the other route, because a leg
+ * identifier shares the step namespace without being a step and the plan lookup
+ * cannot answer for one. The witness scope is what decides it, and preferring it
+ * over the plan matters for ordering: this check runs at `compile.ts` ahead of
+ * `checkWitnessLegIdentifiers`, so a leg id colliding with a step id is still
+ * present here and the plan route would answer it against the wrong operation.
  */
 export function checkArtifactReferences(contract: EvalContract): void {
 	for (const iface of contract.permittedInterfaces) {
@@ -144,12 +153,24 @@ export function checkArtifactReferences(contract: EvalContract): void {
 		contract.permittedInterfaces,
 		{ duplicateIds: 'unresolved' },
 	)
-	forEachArtifactPointer(contract, (pointer, path) => {
+	const operationFor = (
+		witnessScope: WitnessScope | null,
+		stepId: string,
+	): AnyOperation | undefined => {
+		// A relation pointer rooted at anything but its own leg is
+		// `checkWitnessLegality`'s, which names the witness and the stray root.
+		if (witnessScope !== null)
+			return witnessScope.legIds.includes(stepId)
+				? witnessScope.operation
+				: undefined
+		const step = index.stepOf(stepId)
+		if (step === undefined) return undefined
+		return anyOperationOf(index, step.operationId)
+	}
+	forEachArtifactPointer(contract, (pointer, path, witnessScope) => {
 		const target = parseEvidenceTarget(pointer)
 		if (target.artifactId === null) return
-		const step = index.stepOf(target.stepId)
-		if (step === undefined) return
-		const operation = anyOperationOf(index, step.operationId)
+		const operation = operationFor(witnessScope, target.stepId)
 		// An unresolvable step or operation is `unreachable-check-evidence`'s,
 		// at a higher rung; this check has nothing to compare against.
 		if (operation === undefined) return

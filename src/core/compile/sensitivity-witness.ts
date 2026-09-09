@@ -36,6 +36,10 @@ import {
 	type WitnessInputs,
 } from '../schemas/sensitivity-witness.ts'
 import { parseEvidenceTarget } from '../seal/plan-index.ts'
+import {
+	checkExpressionEvidenceReachability,
+	checkExpressionVolatility,
+} from './reachability.ts'
 
 export { declaresNoRequestKeys }
 
@@ -370,6 +374,18 @@ export function checkWitnessLegality(contract: EvalContract): void {
 				`the relation addresses ${covered.length} of the two legs of witness "${witness.witnessId}"; a differential that reads one leg establishes no sensitivity (AD-10)`,
 			)
 		}
+		// Last, because both presume the two rules above: every root is one of
+		// this witness's own legs, so every pointer answers to this operation's
+		// own shape. `checkEvidenceReachability` never reaches a relation, since
+		// it walks oracle checks alone, and the descriptor question and the
+		// projection question are both open here.
+		const relationPath = `${path}.sensitivityWitness.relation`
+		checkExpressionEvidenceReachability(
+			witness.relation,
+			relationPath,
+			operation,
+		)
+		checkExpressionVolatility(witness.relation, relationPath, operation)
 	})
 	const reset = contract.fixtureReset
 	if (reset === null) return

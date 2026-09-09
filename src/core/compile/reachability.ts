@@ -24,6 +24,7 @@ import { JsonTypeName } from '../schemas/primitives.ts'
 import {
 	anyOperationOf,
 	buildPlanIndex,
+	decodeTail,
 	type PlanIndex,
 	parseEvidenceTarget,
 } from '../seal/plan-index.ts'
@@ -122,6 +123,22 @@ function forEachCheckPointer(
 }
 
 /**
+ * A sensitivity witness's own resolution context: the operation it is declared
+ * on, and the leg identifiers its relation's pointers may root at. Both halves
+ * are needed. The operation is the only one a leg can be issued against, and a
+ * pointer rooted at anything else is `checkWitnessLegality`'s to report, so a
+ * consumer answers for a leg and abstains on the rest.
+ *
+ * `ExpressionSite.witnessScope` in `expression-legality.ts` carries the same
+ * pair for the same reason. Two spellings of one idea, kept apart while each
+ * has one consumer.
+ */
+export type WitnessScope = {
+	readonly operation: AnyOperation
+	readonly legIds: readonly string[]
+}
+
+/**
  * Every interaction-rooted pointer the contract writes down, wherever it sits:
  * an oracle's check and its direction's evidence targets, a rubric criterion's
  * evidence, and each operation's sensitivity-witness relation.
@@ -129,14 +146,31 @@ function forEachCheckPointer(
  * Broader than `forEachCheckPointer`, which walks oracle checks alone, because
  * an artifact identifier is an authoring fault at every site that names one and
  * a check that walked only the checks would report half of them.
+ *
+ * The third argument is the witness scope, supplied at a sensitivity-witness
+ * relation and `null` everywhere else. A witness leg carries no operation of its
+ * own: it probes the operation declaring the witness, and its `legId` roots the
+ * relation's pointers in the same namespace as interaction-plan step ids
+ * without being a step. So a caller resolving the pointer's own step segment
+ * against the plan finds nothing at a witness site and has to be handed the
+ * scope instead. Everywhere else the pointer's step segment is the only thing
+ * that names an operation.
  */
 export function forEachArtifactPointer(
 	contract: EvalContract,
-	visit: (pointer: string, artifactPath: string) => void,
+	visit: (
+		pointer: string,
+		artifactPath: string,
+		witnessScope: WitnessScope | null,
+	) => void,
 ): void {
-	const seen = (pointer: string, artifactPath: string): void => {
+	const seen = (
+		pointer: string,
+		artifactPath: string,
+		witnessScope: WitnessScope | null,
+	): void => {
 		if (pointer.startsWith('@')) return
-		visit(pointer, artifactPath)
+		visit(pointer, artifactPath, witnessScope)
 	}
 	contract.oracles.forEach((oracle) => {
 		if (oracle.check !== null)
@@ -144,12 +178,14 @@ export function forEachArtifactPointer(
 				seen(
 					site.pointer,
 					`EvalContract.oracles[id=${oracle.id}].${site.path}`,
+					null,
 				),
 			)
 		oracle.direction?.evidenceTargets.forEach((target, index) => {
 			seen(
 				target,
 				`EvalContract.oracles[id=${oracle.id}].direction.evidenceTargets[${index}]`,
+				null,
 			)
 		})
 	})
@@ -158,6 +194,7 @@ export function forEachArtifactPointer(
 			seen(
 				criterion.evidence,
 				`EvalContract.rubrics[id=${rubric.id}].criteria[id=${criterion.id}].evidence`,
+				null,
 			)
 		})
 	})
@@ -165,10 +202,15 @@ export function forEachArtifactPointer(
 		operationsOf(iface).forEach((operation, operationIndex) => {
 			const witness = operation.sensitivityWitness
 			if (witness === null) return
+			const scope: WitnessScope = {
+				operation,
+				legIds: witness.legs.map((leg) => leg.legId),
+			}
 			visitExpression(witness.relation, 'relation', false, (site) =>
 				seen(
 					site.pointer,
 					`EvalContract.permittedInterfaces[${interfaceIndex}].operations[${operationIndex}].sensitivityWitness.${site.path}`,
+					scope,
 				),
 			)
 		})
@@ -235,6 +277,51 @@ export function checkExpressionEvidenceReachability(
 				`"${site.pointer}" ${result.reason}`,
 			)
 		}
+	})
+}
+
+/**
+ * `unreachable-check-evidence` for a pointer at a field the operation declares
+ * volatile. Reachability answers the descriptor question and this answers the
+ * projection one, so a caller that runs both gets the whole answer.
+ *
+ * Only a sensitivity-witness relation asks. `projectObservation` prunes every
+ * volatile pointer from the described channel before `evidenceOf` builds the
+ * leg the relation reads, so a relation addressing one resolves absent on both
+ * legs. That is a false pass rather than a failure: `deep-equality` over an
+ * absent side is `false`, and the enclosing `not` reports the operation
+ * sensitive on every run from a pair of pointers that never resolved. An oracle
+ * is scored against a sealed run record, which carries no projection, so the
+ * same pointer is legitimate there.
+ *
+ * The empty pointer is RFC 6901's whole document, and `pruneVolatile` reads it
+ * that way, so an operation declaring it makes every pointer at the described
+ * channel volatile.
+ */
+export function checkExpressionVolatility(
+	expression: Expression,
+	artifactPath: string,
+	operation: AnyOperation,
+): void {
+	if (operation.volatilePointers.length === 0) return
+	const channel = descriptorChannelOf(operation)
+	const describedArtifact = descriptorArtifactOf(operation)
+	const volatileTails = operation.volatilePointers.map(decodeTail)
+	visitExpression(expression, '', false, (site) => {
+		if (site.pointer.startsWith('@')) return
+		const target = parseEvidenceTarget(site.pointer)
+		if (target.channel !== channel) return
+		if (target.artifactId !== null && target.artifactId !== describedArtifact)
+			return
+		const pruned = volatileTails.find((tokens) =>
+			tokens.every((token, index) => target.tail[index] === token),
+		)
+		if (pruned === undefined) return
+		throw new StructuralFailure(
+			'unreachable-check-evidence',
+			`${artifactPath}${site.path}`,
+			`"${site.pointer}" addresses "${`/${pruned.join('/')}`}", which operation "${operation.operationId}" declares volatile, so the projection the relation reads has already removed it`,
+		)
 	})
 }
 

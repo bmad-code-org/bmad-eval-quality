@@ -587,6 +587,14 @@ export const gateCContract = {
 						collectionLocations: null,
 					},
 					volatilePointers: ['/completedAt', '/jobId'],
+					// The differential reads `/submittedFilters` rather than
+					// `/jobId`, and the declaration two lines above is why.
+					// `pruneVolatile` deletes `/jobId` from both projections
+					// before the relation sees them, so a differential over it
+					// compares absent with absent, reports `false`, and the
+					// enclosing `not` certifies this operation sensitive on
+					// every run, including against a server that ignores the
+					// path parameter.
 					sensitivityWitness: {
 						witnessId: 'get-export-sensitivity',
 						channel: 'path',
@@ -618,11 +626,11 @@ export const gateCContract = {
 									operands: [
 										{
 											pointer:
-												'/interactions/get-export-witness-a/response-body/jobId',
+												'/interactions/get-export-witness-a/response-body/submittedFilters',
 										},
 										{
 											pointer:
-												'/interactions/get-export-witness-b/response-body/jobId',
+												'/interactions/get-export-witness-b/response-body/submittedFilters',
 										},
 									],
 								},

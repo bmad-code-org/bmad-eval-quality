@@ -252,6 +252,105 @@ describe('checkWitnessLegality: the channel, the relation, and the fixture reset
 		expect(failure.artifactPath).toBe(`${WITNESS_PATH}.relation`)
 	})
 
+	// The relation is the one expression `checkEvidenceReachability` never
+	// walks, since that check reads oracle checks alone. Left unchecked, both
+	// pointers resolve absent at pre-flight, `deep-equality` over an absent side
+	// is false, and the enclosing `not` certifies the operation sensitive from a
+	// pair that never resolved.
+	it('37. fires unreachable-check-evidence when a relation pointer names a key the descriptor does not declare', () => {
+		const failure = failureOf((contract) => {
+			createWitness(contract).relation = {
+				op: 'deep-equality',
+				operands: [
+					{ pointer: legPointer('create-witness-a', '/nope') },
+					{ pointer: legPointer('create-witness-b', '/nope') },
+				],
+			}
+		})
+		expect(failure.code).toBe('unreachable-check-evidence')
+		expect(failure.artifactPath).toContain(`${WITNESS_PATH}.relation`)
+	})
+
+	// The rule order inside this check is load-bearing and this is where it
+	// shows: both operands root at one leg and both are unreachable, so the
+	// coverage rule and the reachability rule each have an answer and they
+	// carry different codes. Reachability runs last, so the coverage fault is
+	// the one reported.
+	it('38. reports the one-leg coverage fault ahead of relation reachability', () => {
+		const failure = failureOf((contract) => {
+			createWitness(contract).relation = {
+				op: 'deep-equality',
+				operands: [
+					{ pointer: legPointer('create-witness-a', '/nope') },
+					{ pointer: legPointer('create-witness-a', '/nope') },
+				],
+			}
+		})
+		expect(failure.code).toBe('malformed-operator-expression')
+		expect(failure.artifactPath).toBe(`${WITNESS_PATH}.relation`)
+	})
+
+	// `pruneVolatile` deletes the field from the projection before the relation
+	// reads it, so the pointer is reachable against the descriptor and absent in
+	// practice. Left unchecked it is the same false pass as case 37 by a second
+	// route.
+	it('39. fires unreachable-check-evidence when a relation pointer names a declared volatile field', () => {
+		const failure = failureOf((contract) => {
+			contract.permittedInterfaces[0].operations[0].volatilePointers = ['/id']
+			createWitness(contract).relation = {
+				op: 'deep-equality',
+				operands: [
+					{ pointer: legPointer('create-witness-a', '/id') },
+					{ pointer: legPointer('create-witness-b', '/id') },
+				],
+			}
+		})
+		expect(failure.code).toBe('unreachable-check-evidence')
+		expect(failure.artifactPath).toContain(`${WITNESS_PATH}.relation`)
+		expect(failure.message).toContain('declares volatile')
+	})
+
+	// RFC 6901's empty pointer is the whole document, which is how
+	// `pruneVolatile` reads it, so the described channel carries nothing.
+	it('40. fires unreachable-check-evidence for the empty volatile pointer over any relation pointer', () => {
+		const failure = failureOf((contract) => {
+			contract.permittedInterfaces[0].operations[0].volatilePointers = ['']
+		})
+		expect(failure.code).toBe('unreachable-check-evidence')
+		expect(failure.message).toContain('declares volatile')
+	})
+
+	// The volatile declaration is about the projection a witness relation reads.
+	// An oracle is scored against a sealed run record, which carries no
+	// projection, so the same pointer stays legitimate there.
+	it('41. leaves an oracle pointer at a declared volatile field alone', () => {
+		expect(() =>
+			compile(
+				mutated((contract) => {
+					// `/items` on `list-things` is what O-001's check and RC-001's
+					// evidence both address. Its witness moves to the bare bodies,
+					// so the only pointers left at the volatile field are the two
+					// scored against a sealed run record.
+					const [, list] = contract.permittedInterfaces[0].operations
+					list.volatilePointers = ['/items']
+					list.sensitivityWitness.relation = {
+						op: 'not',
+						operands: [
+							{
+								op: 'deep-equality',
+								operands: [
+									{ pointer: '/interactions/list-witness-a/response-body' },
+									{ pointer: '/interactions/list-witness-b/response-body' },
+								],
+							},
+						],
+					}
+				}),
+				{ strict: true },
+			),
+		).not.toThrow()
+	})
+
 	it('30. fires malformed-operator-expression when fixtureReset names a non-mutating operation', () => {
 		const failure = failureOf((contract) => {
 			contract.fixtureReset = {
