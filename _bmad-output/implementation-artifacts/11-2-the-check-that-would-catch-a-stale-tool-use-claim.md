@@ -2,8 +2,9 @@
 title: 'The check that would catch a stale tool-use claim'
 type: 'chore'
 created: '2026-09-09'
-status: 'draft'
+status: 'in-review'
 review_loop_iteration: 0
+baseline_commit: '949e1cb4005638c9627a5faf1a5289069cbf0f2c'
 context:
   - _bmad-output/implementation-artifacts/epic-11-context.md
 ---
@@ -91,23 +92,38 @@ written.
 
 </frozen-after-approval>
 
+## Checkpoint decisions taken without the human
+
+The build ran unattended by standing instruction, so the three checkpoints this workflow halts at were decided here and recorded in this section.
+
+**Multi-goal gate: single goal, no split.** The spec has one shippable deliverable, making one documented invocation faithful so its declared exit code is judged. The learning-path step and the caption edits are the same goal's own documentation, which this repository requires in the same diff.
+
+**Token-count gate: keep the full spec.** It is well past 1600 tokens. The excess is Code Map and recorded decisions, and the scope stays one goal. Cutting it would delete the enumeration of the twenty-two unfaithful invocations, which is what Acceptance Criterion 6 is graded against, and the four decisions later stories in this epic inherit. The context-rot risk the gate names is mitigated by the story being implemented in the session that planned it.
+
+**Open Questions: none.** The spec carried no entry, and investigation settled everything the intent left open. The one measurement the plan depended on, that a complete contract carrying the page's interface exits 4 with stderr byte-identical to the page's text fence, was rerun against the built binary before any file was edited.
+
 ## Code Map
+
+Every `docs/how-to/evaluate-tool-use-behavior.md` line number below was written twenty-one lines
+early, because Story 11.1's edits to the page landed between the spec's reading and this one. Each
+citation was matched by its text and the number it carries in the tree at implementation time is
+given beside it, in brackets.
 
 **The page this story edits**
 
-- `docs/how-to/evaluate-tool-use-behavior.md:84-133` -- the `json` fence. Lines `85-132` are a
+- `docs/how-to/evaluate-tool-use-behavior.md:84-133` [`:105-154`] -- the `json` fence. Lines `85-132` are a
   `PermittedInterface` with `logicalId: "notes-tool-server"` and one operation, `search-notes`, whose
   `sensitivityWitness` at `:113-129` is what keeps `checkUndeclaredMandatoryInput` and
   `checkSensitivityWitnessDeclared` (`compile.ts:122-125`, strict-mode only) quiet. This fence becomes
   the heredoc.
-- `docs/how-to/evaluate-tool-use-behavior.md:135` -- the caption, "Compile a contract carrying it and
+- `docs/how-to/evaluate-tool-use-behavior.md:135` [`:156`] -- the caption, "Compile a contract carrying it and
   you get the one coded rejection". It now introduces the contract the reader writes, so it moves by
   one sentence and the `:81-82` caption above the fence moves with it.
-- `docs/how-to/evaluate-tool-use-behavior.md:137-139` -- the bash fence. `<!-- expect-exit: 4 -->` and
+- `docs/how-to/evaluate-tool-use-behavior.md:137-139` [`:158-160`] -- the bash fence. `<!-- expect-exit: 4 -->` and
   one blank line go above `:137`.
-- `docs/how-to/evaluate-tool-use-behavior.md:141-143` -- the text fence carrying the rejection.
+- `docs/how-to/evaluate-tool-use-behavior.md:141-143` [`:162-164`, `:191-193` after the edit] -- the text fence carrying the rejection.
   Unchanged, and it is what the declared 4 pins.
-- `docs/how-to/evaluate-tool-use-behavior.md:203-207,209-216` -- the `preflight` and `score` fences.
+- `docs/how-to/evaluate-tool-use-behavior.md:203-207,209-216` [`:253-257,259-266` after the edit] -- the `preflight` and `score` fences.
   They name `eval-contract.json`, `probes.json`, `observations.json`, and six more files the page
   never writes, so both stay UNFAITHFUL and both keep the usage-error judgment only. This story
   leaves them: making them faithful means authoring a probe list, an observation list, a sealed run
@@ -157,16 +173,16 @@ see whether the page fences the input the command names.
   and the mutation-round recipe, naming `sealed-run-record.json`, `contract.json`,
   `clean-probes.json`, `mutated-probes.json`, `clean-record.json`, `mutated-record.json`. No fence on
   that page carries any of them. Not the same shape.
-- `docs/how-to/evaluate-agent-behavior.md:261,276` -- the page's three `json` fences at `:89`, `:191`,
-  and `:230` are a `PermittedInterface`, a probe leg, and a defect signature, introduced at `:87`,
-  `:189`, and `:228` as schema shapes. None is named by a command. Not the same shape.
+- `docs/how-to/evaluate-agent-behavior.md:262,277` -- the page's three `json` fences at `:90`, `:192`,
+  and `:231` are a `PermittedInterface`, a probe leg, and a defect signature, introduced at `:88`,
+  `:190`, and `:229` as schema shapes. None is named by a command. Not the same shape.
 - `docs/how-to/evaluate-ai-feature-behavior.md:206,213` -- fences at `:51` and `:118` are a
   `PermittedInterface` and one oracle expression. Not the same shape.
 - `docs/how-to/evaluate-skill-behavior.md:203,214` -- fences at `:57`, `:125`, and `:138` are a
   `PermittedInterface` and two oracle halves. Not the same shape.
 - `docs/how-to/evaluate-workflow-behavior.md:193,203` -- the fence at `:42` is an `InteractionStep`
   array. Not the same shape.
-- `docs/how-to/evaluate-tool-use-behavior.md:138` -- the one page where a fenced input and a command
+- `docs/how-to/evaluate-tool-use-behavior.md:138` [`:159`, `:188` after the edit] -- the one page where a fenced input and a command
   naming it sit five lines apart, and where the text fence beneath reads as that command's own
   output. This story fixes this one, because it is the claim the epic's behaviour change contradicts.
 
@@ -192,19 +208,19 @@ see whether the page fences the input the command names.
 
 **Execution:**
 
-- [ ] `docs/how-to/evaluate-tool-use-behavior.md` -- turn the `:84-133` fence into a ```bash fence
+- [x] `docs/how-to/evaluate-tool-use-behavior.md` -- turn the `:84-133` [`:105-154`] fence into a ```bash fence
       holding `cat > mcp-contract.json <<'EOF'`, a complete `EvalContract`, and `EOF`. The `mcp`
       interface stays pretty-printed and nests under `permittedInterfaces`; the other twenty
       top-level fields are written compactly, one field per line where the value is a scalar or a
       short collection, following `author-behavioral-contracts.md:150-161`. One operation only.
-- [ ] `docs/how-to/evaluate-tool-use-behavior.md` -- add `<!-- expect-exit: 4 -->` and one blank line
+- [x] `docs/how-to/evaluate-tool-use-behavior.md` -- add `<!-- expect-exit: 4 -->` and one blank line
       above the bash fence at `:137`.
-- [ ] `docs/how-to/evaluate-tool-use-behavior.md` -- move the captions at `:81-82` and `:135` so they
+- [x] `docs/how-to/evaluate-tool-use-behavior.md` -- move the captions at `:81-82` and `:135` so they
       introduce a contract the reader writes, and cut whatever those two sentences now say twice.
-- [ ] `_bmad-output/project-knowledge/learning-path-step-by-step.md` -- add this story's step per
+- [x] `_bmad-output/project-knowledge/learning-path-step-by-step.md` -- add this story's step per
       `learning-path-template.md`, teaching why a documented example naming a file only its reader
       has proves nothing. Add the step's own table row at `:43-88`, below Step 44's.
-- [ ] Voice and prune pass over every line of prose this story writes, done while writing. Then grep
+- [x] Voice and prune pass over every line of prose this story writes, done while writing. Then grep
       the edited files for `, not `, `rather than`, `instead of`, `as opposed to`, `, never `, and
       `no longer`, and confirm every hit is a real before/after contrast with a fact on both sides.
 
@@ -216,7 +232,7 @@ see whether the page fences the input the command names.
   then it exits 1 naming `docs/how-to/evaluate-tool-use-behavior.md` and the declared code, which is
   what proves the gate is armed; the declaration is then restored.
 - Given the heredoc contract, when `compile` runs over it, then stderr is byte-identical to the text
-  fence at `:141-143`, including `logicalId=notes-tool-server`, so the page's shown output and its
+  fence at `:141-143` [`:193-195`], including `logicalId=notes-tool-server`, so the page's shown output and its
   executed output are the same bytes.
 - Given `npm run validate`, when it runs, then it exits 0, and no file under `src/` appears in the
   diff, so the story ships documentation alone.
@@ -232,10 +248,10 @@ see whether the page fences the input the command names.
 ## Decisions settled by construction
 
 **Decision 1: the heredoc carries a complete `EvalContract`, and the fence's teaching content
-survives inside it.** The fence at `:84-133` is a `PermittedInterface`. Written to disk verbatim and
+survives inside it.** The fence at `:84-133` [`:105-154` before this change] is a `PermittedInterface`. Written to disk verbatim and
 compiled, it exits 5 under `schema-parse-failure` reporting `Unrecognized keys: "logicalId", "kind",
 "operations"` and twenty-one absent top-level fields, so a heredoc over those bytes would arm the gate against
-the wrong code and the page's own text fence at `:142` would still be unproven. Both routes out were
+the wrong code and the page's own text fence at `:142` [`:193-195`] would still be unproven. Both routes out were
 weighed. A second heredoc beside the existing fence duplicates the forty-eight-line interface on one
 page, and two copies drift. Nesting the same interface inside a complete contract keeps one copy, and
 the fence a reader copies becomes the one that runs. The cost is measured: a minimal complete
@@ -260,10 +276,11 @@ edit. The prose rewrite that retires the page's refused-kind narrative stays in 
 depends on this story for its proof.
 
 **Decision 3: the heredoc contract carries one operation, and the reason is check order.**
-`checkDuplicateOperationSignature` runs at `compile.ts:121`, seven checks ahead of `checkInterfaceKind`
-at `:128`. The page at `:152-158` teaches that two MCP tools declared honestly collide under
+`checkDuplicateOperationSignature` runs at `compile.ts:121`, four checks ahead of `checkInterfaceKind`
+at `:128` under the CLI's default strict mode and two ahead without it. Seven is the line delta.
+The page at `:152-158` [`:212-218`] teaches that two MCP tools declared honestly collide under
 `duplicate-operation-signature` on the shared `POST /tools/call` identity, and a heredoc contract
-carrying both tools would fire that code and exit 4 for a reason the text fence at `:142` does not
+carrying both tools would fire that code and exit 4 for a reason the text fence at `:142` [`:193-195`] does not
 describe. Two invocations exiting 4 for two different reasons is a gate that passes while the page is
 wrong, which is the failure class this story exists to close. So the contract declares `search-notes`
 alone, and the collision stays where it is today, in an unexecuted text fence. Downstream
@@ -272,13 +289,13 @@ not promote it to a second heredoc.
 
 **Decision 4: twenty-one of the twenty-two unfaithful invocations stay unfaithful, and each is
 recorded.** Twenty-two of the thirty-two scanned invocations are unfaithful today, this page's
-`compile` at `:138` among them. That one becomes faithful, and the remaining twenty-one do not. The
+`compile` at `:138` [`:190`] among them. That one becomes faithful, and the remaining twenty-one do not. The
 Code Map lists every one with its file and line. None shares this page's shape: every other `json`
 fence in `docs/` is a schema fragment introduced as one, and no command on any of those pages names
 it as a file.
 
 Two of the twenty-one are on the page this story arms, so name them exactly. The `preflight` fence at
-`docs/how-to/evaluate-tool-use-behavior.md:203-207` and the `score` fence at `:209-216` both stay
+`docs/how-to/evaluate-tool-use-behavior.md:253-257` and the `score` fence at `:259-266` both stay
 UNFAITHFUL after this story, and both keep the usage-error judgment at
 `check-doc-invocations.mjs:413-416` and no exit-code judgment. Making them faithful costs six
 authored artifacts: a probe list, an observation list, a sealed run record, a scoring policy, an
@@ -286,7 +303,7 @@ isolation manifest, and an evaluator configuration, each one a schema-valid docu
 need maintaining through every schema bump this epic ships. Those two fences document command
 grammar, and the usage-error judgment already holds the grammar. Story 11.9 owns the page's prose and
 cites this decision when it narrows its faithfulness acceptance criterion to the invocations that
-are faithful, which after this story is the `compile` fence at `:137-139` alone. One near-miss is
+are faithful, which after this story is the `compile` fence at `:187-189` alone. One near-miss is
 recorded and left:
 `docs/how-to/evaluate-skill-behavior.md:55` claims its fence "compiles at exit 0" over a block that is
 a `PermittedInterface`, and because no command on that page names the block, `check:doc-invocations`
@@ -294,12 +311,123 @@ cannot reach the claim. It is a prose defect with no invocation behind it, and i
 owns that guide's evidence. Downstream consequence: this epic's later stories inherit one armed page,
 so a failing `check:doc-invocations` in Epic 11 always points at `evaluate-tool-use-behavior.md`.
 
+**Decision 5: the example contract carries a second fault, and the page says so rather than hiding it.**
+Both reviews found that "the kind is the only thing `compile` can fault" was false. Flip `kind` to `api`,
+change nothing else, and the contract exits 4 under `malformed-operator-expression`: `channel "body"
+contradicts stateChangeMarker false on operation "search-notes"; AD-10 selects "path" or "query"`.
+`checkInterfaceKind` (`compile.ts:128`) runs ahead of `checkWitnessLegality` (`:148`), and that ordering is
+the only reason the kind wins the race. Making the fault go away would mean declaring a search
+state-changing, which is false, or varying the witness on `path` or `query`, which this operation declares
+empty, so both legs would supply the same value and fail as a non-differential. The fault is the honest
+shape of the example. The page names it in three sentences after the rejection, and the option turned down
+is a contract edited into legality that no MCP tool server would match.
+
+The tension underneath is AD-10's, and it is real: a tool call carries its arguments in `body` and changes
+no state, and `legalChannels` (`sensitivity-witness.ts:314-317`) gives a non-mutating api-shaped operation
+`path` or `query` alone. As shaped today, an `mcp` operation cannot declare a legal sensitivity witness.
+Downstream consequence: **Story 11.4 inherits this as a known constraint** rather than rediscovering it. The
+operation shape it designs has to give a tool call a witness channel that is legal for a read, and the
+`CommandOperation` precedent it is already following did the same thing when `COMMAND_WITNESS_CHANNELS`
+admitted all four channels because AD-10's marker rule decides nothing for a command.
+
+**Decision 6: the matrix row predicting Story 11.5's exit code is wrong, and the correction lives here.**
+The frozen matrix says the contract "compiles; exit 0 against a declared 4" when Story 11.5 opens the kind.
+Decision 5 shows it will exit 4 under `malformed-operator-expression` instead, so removing the declaration as
+that row instructs turns the gate red for a reason Story 11.5 did not cause. The frozen block is the human's
+and is left as written; this is the correction the later story reads. **Story 11.5 keeps whatever code Story 11.4 leaves declared, and
+removes the declaration only once `compile` over the page's contract actually exits 0.** Story 11.4 is where that becomes possible.
+
+**Decision 7: the gate defends the exit code and nothing else, and the constraint that holds the page true
+is prose.** `check-doc-invocations.mjs:425-434` compares `result.status` against the declared code and reads
+stderr only to print it on a failure. Nothing associates a `text` fence with the run above it. Measured by
+the peer review: splice a second tool into the page's heredoc and the check reports 32 scanned, 11 faithful,
+0 failures while the page shows `unsupported-interface-kind` and the binary emits
+`duplicate-operation-signature`. Exit 4 is `EXIT_STRUCTURAL_FAILURE`, the bucket every structural failure
+shares, so any structural check firing first on this contract passes the gate with the page stale.
+
+Two consequences are recorded rather than fixed, and the reason is this story's own Ask First list: the fix
+is inside `check-doc-invocations.mjs`, and a story that edits the gate it is measured by proves nothing.
+**Owed to the epic, before Story 11.4 lands:** teach the check to diff a `text` fence that follows a
+declared-exit invocation against that run's stderr. The second half is a smaller repair in the same
+function and is owed with it: `realizeInput` (`:184-200`) resolves a documented path against the real
+filesystem before the page's own sandbox, so a real file at that path shadows the heredoc silently. The peer
+review verified a two-line fix, testing `sandbox.rebase(token)` ahead of `resolve(repoRoot, token)`, and
+measured that the ordinary run is unchanged at 32 scanned, 11 faithful, 0 failures while a planted shadow
+stops flipping the verdict. It is left undone here for one reason, the Ask First list: this story is measured
+by this check, and the argument that reserves the output comparison reserves the lookup order with it.
+Whoever takes the output comparison takes this in the same diff.
+**Story 11.4 keeps exactly one operation in the heredoc, or updates the page's text fence in the same diff.**
+That constraint is the whole guard until the check grows an output comparison.
+
+**Decision 8: the heredoc writes into the reader's working directory, and the page says to delete the file.**
+A first attempt moved it under `/tmp/eval-quality-run/`, the scratch directory
+`docs/how-to/author-behavioral-contracts.md:29-31` establishes, to keep a reader's clone clean. The peer
+review measured what that actually bought and it was the wrong trade. `realizeInput`
+(`scripts/check-doc-invocations.mjs:184-200`) computes `resolve(repoRoot, token)`, and `resolve` discards
+the root when the token is absolute, so a real file at the documented path wins over the sandbox copy the
+page just wrote, at either spelling. Moving the write does not remove the shadow. What it changes is who can
+see it: a stale `mcp-contract.json` at the repository root shows up as untracked in `git status`, which is
+how the verification-gap review found the hazard in the first place, while a stale
+`/tmp/eval-quality-run/mcp-contract.json` shows up in no status, no diff and no ignore file, is shared by
+every clone on the machine, and would be created by anyone following the page's own instruction.
+
+So the relative path stays, matching the frozen approach, and the page tells the reader the file lands in
+the working directory and to delete it. The hazard stays where a person can see it. Adding the name to
+`.gitignore` was considered and turned down for the same reason: it buys a clean `git status` by removing
+the one signal that makes a stale file findable.
+
+**Decision 10: the page carries its own prerequisites.** The peer review's rejection of the earlier
+"pre-existing, not this page's problem" ruling was correct on the facts. One other guide shares the gap, and
+this story is what makes it load-bearing: before this change a reader could not run the page's command at
+all, since the input file did not exist, and now the missing build step is the only thing left between
+following the page and seeing the output it shows. The page gains the "What you need" block from
+`author-behavioral-contracts.md:14-27`, which also carries the `eval-quality` versus `node dist/cli/main.js`
+spelling note a reader arriving here directly was not getting.
+
+**Decision 9: the contract compiles but does not seal, and nothing on the page claims otherwise.** With the
+kind and the witness channel both made legal it compiles at exit 0, and `seal` still exits 5: empty
+`oracles` produce no directions and `SealedEvaluatorBrief` validation fails. The page runs `compile` alone
+and the new prose says the scaffolding is at its emptiest legal values, so no reader is promised a working
+evaluation. Downstream consequence: Story 11.9 owns this page's prose and must not carry the example to a
+later stage without declaring oracles and an interaction plan.
+
+
+## Review Triage Log
+
+Four reviews ran: a peer Claude Code session with its own clone, plus the blind-hunter, edge-case and
+verification-gap layers. Every finding gets a row. Nothing is routed to deferred work: the repository owner's
+standing rule is that a finding is fixed in the pass that finds it, so the two entries below that this story
+may not fix are recorded as decisions the next story inherits, with the owner named.
+
+| Finding | Verdict | Evidence and route |
+|---|---|---|
+| "the kind is the only thing `compile` can fault" is false; the witness channel is a second fault | high | Reproduced: flip `kind` to `api` and the same contract exits 4 under `malformed-operator-expression`. Patched: the page names the second fault, Decision 5 records the AD-10 tension for Story 11.4 |
+| The frozen matrix predicts Story 11.5 sees exit 0 | high | Follows from the row above; 11.5 would delete the declaration and turn the gate red for a fault it did not cause. Frozen block left as written, corrected in Decision 6 |
+| The gate pins the exit code and never the message text | high | Measured twice independently: a second tool spliced into the heredoc leaves the check fully green while the page's fence is stale, and rewriting the fence text leaves it green too. The fix is inside `check-doc-invocations.mjs`, which this story's Ask First list reserves. Recorded in Decision 7 with the owner and the interim constraint |
+| `realizeInput` prefers a real file over the page's own heredoc | high | Demonstrated at both spellings: a contract copied to the documented path makes the check report `exited 0, and the block declares expect-exit 4`. Absolute or relative makes no difference, since `resolve` discards the root for an absolute token. Same fix location and owner as the row above; the two-line fix is verified and recorded in Decision 7 |
+| The heredoc dirties the reader's clone | low | Real, and the first fix was worse than the defect: moving the write to a scratch path left the shadow in place and took it out of `git status`, off one clone and onto the whole machine. Reverted; the page now says the file lands in the working directory and to delete it. Decision 8 |
+| The learning-path step claims the message text is gated | medium | True of the exit code alone. Patched: the step now says the error text is compared with nothing |
+| The rendered page no longer names the expected exit code | medium | `<!-- expect-exit: 4 -->` renders as nothing and the old caption was cut. Patched: one sentence after the fence names the 4 and the code, following `docs/tutorials/getting-started.md:76` |
+| Decision 3 says "seven checks ahead" | low | Seven is the line delta; four checks intervene under the CLI's default strict mode and two without it. Patched |
+| Stale line citations outside the Code Map | low | Decisions 1, 3 and 4, Design Notes and Acceptance Criterion 3 kept pre-edit numbers. Patched with the same bracket treatment the Code Map uses |
+| The `evaluate-agent-behavior.md` fence citations are one line early | low | Fences open at `:90`, `:192`, `:231`, introduced at `:88`, `:190`, `:229`. Patched |
+| Two banned constructions in added story prose | low | `rather than scope` and `rather than inherited`, neither a before/after with facts on both sides. Patched |
+| The collision fence sits unexecuted beside a verified one | low | Patched: the sentence above it says it shows the collision without running it |
+| The two later fences name files the page never writes | low | Patched: one sentence says both are command grammar |
+| The contract declares empty `oracles` and `interactionPlan` with no caveat | low | Patched: the page says the scaffolding is at its emptiest legal values and that `compile` is the only stage it reaches. Decision 9 records that it does not seal |
+| `last_updated` retyped from a YAML date to a string | low | Serializer noise beside an unquoted `generated:`. Patched |
+| "the two gates" introduces three entries | low | Patched |
+| The heredoc's `EOF` delimiter differs from the precedent's `JSON` | false | The check's heredoc regex requires a bare word and accepts either; the precedent's choice is not a convention the check enforces |
+| Expressive Code renders the bash fence as terminal chrome, losing JSON highlighting | low | Real, and the same is already true of the one existing docs heredoc. The fence has to be `bash` for the check to replay it, so the alternative is losing the gate. Left, with the trade recorded here |
+| The page names no build prerequisite for `node dist/cli/main.js` | medium | The first ruling was wrong on its facts: one other guide shares the gap, and this story is what makes it load-bearing, since the input file now exists and the build step is the only thing left between a reader and the output the page shows. Patched by Decision 10 |
+| The heredoc could swallow the rest of the page if `EOF` were indented or renamed | false | Hypothetical about an edit nobody made; the check's own replay proves the current delimiter closes, since the two invocations below it are still scanned |
+
 ## Design Notes
 
 The organising idea is that this check has two judgments and only one of them was reaching this page.
 Every invocation is judged for usage errors and crashes, because those are about the command line
 alone. Only a faithful invocation is judged for its exit code, because only then is the exit code the
-page's own claim. `docs/how-to/evaluate-tool-use-behavior.md:138` was getting the first judgment and
+page's own claim. `docs/how-to/evaluate-tool-use-behavior.md:138` [`:190`] was getting the first judgment and
 skipping the second, so the page could show a 4 while the check silently observed a 0 over a
 substituted contract that compiles cleanly. The heredoc is what moves the invocation from the first
 judgment to the second, and the declaration is what tells the second judgment which number to expect.
@@ -328,10 +456,40 @@ report `exited 4, and the block declares expect-exit 5` is what separates those 
   expect-exit 5`, located at `docs/how-to/evaluate-tool-use-behavior.md`. Restore the 4 and confirm
   the check returns to exit 0. This is the step that proves the gate is armed.
 - `node dist/cli/main.js compile --in <the heredoc body written to a file>` -- expected: exit 4 and
-  stderr byte-identical to the page's text fence at `:141-143`.
+  stderr byte-identical to the page's text fence at `:141-143` [`:193-195`].
 - `npm run docs:build` -- expected: exit 0. `validate` does not build the website, and the fence
   language changed.
 - `grep -nE ', not |rather than|instead of|as opposed to|, never |no longer' docs/how-to/evaluate-tool-use-behavior.md _bmad-output/project-knowledge/learning-path-step-by-step.md`
   -- expected: every hit is a before/after contrast with a fact on both sides, checked by reading.
 - `git diff --name-only` -- expected: no path under `src/`, `schemas/`, or `corpus/`.
 - `npm run validate` -- expected: exit 0 with nothing on stderr.
+
+**Measured, against the tree at this commit.** Every expectation above held.
+
+- `npm run build` -- exit 0.
+- `npm run check:doc-invocations` -- exit 0, `32 invocation(s) scanned across 17 doc file(s), 11 run
+  faithfully over real inputs, 0 failures`, up from 10 faithful before the edit.
+- The armed-gate step -- with the declaration flipped to 5, exit 1 and one failure:
+  `docs/how-to/evaluate-tool-use-behavior.md:188 [exited 4, and the block declares expect-exit 5]
+  node dist/cli/main.js compile --in mcp-contract.json`. Restored to 4, exit 0 and 11 faithful again.
+- The heredoc body extracted from the page and compiled -- exit 4, and `diff` against the page's text
+  fence reports no difference, `logicalId=notes-tool-server` included. Same result under `--strict`.
+- The two measurements Decisions 1 and 3 rest on were rerun against the built binary. The interface
+  object alone exits 5 under `schema-parse-failure` with `Unrecognized keys: "logicalId", "kind",
+  "operations"` and `... and 2 more` at the end of the list. A second tool rendering `POST
+  /tools/call` exits 4 under `duplicate-operation-signature`, before the kind check.
+- `npm run docs:build` -- exit 0.
+- The banned-construction grep over the added lines only -- no hits. The hits in the two files as a
+  whole are all pre-existing lines this story did not write.
+- `git diff --name-only` -- `docs/how-to/evaluate-tool-use-behavior.md`,
+  `_bmad-output/project-knowledge/learning-path-step-by-step.md`, this file, and
+  `_bmad-output/implementation-artifacts/sprint-status.yaml`. Nothing under `src/`, `schemas/`, or
+  `corpus/`.
+- `npm run validate` -- exit 0, nothing on stderr, 116 test files and 3787 tests passing.
+
+**One divergence from the Code Map, recorded.** Every line number the spec cites for
+`docs/how-to/evaluate-tool-use-behavior.md` is off by twenty-one: the fence is at `:105-154`, the
+caption at `:156`, the bash fence at `:158-160`, and the text fence at `:162-164`. Story 11.1's
+edits to the page landed between the spec's reading and this one. The content each citation names is
+unambiguous and was matched by text, so nothing else in the plan moved. After this story the
+declaration sits at `:185` and the compile fence at `:187-189`.

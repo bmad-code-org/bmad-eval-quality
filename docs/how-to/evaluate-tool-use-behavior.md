@@ -97,63 +97,106 @@ The port is the shape that has nothing.
 `ProbeRequest` and `ProbeObservation` are discriminated unions with an `api` member and a `cli` member (`src/core/schemas/port-messages.ts:135` and `:186`).
 There is no `mcp` member, so there is no message an adapter could be handed and none it could return.
 
+## What you need
+
+The commands below are `node dist/cli/main.js`, the binary inside a clone, so work from one:
+
+```bash
+git clone https://github.com/bmad-code-org/bmad-eval-quality.git
+cd bmad-eval-quality
+npm ci
+npm run build
+```
+
+Installed from the registry, the same binary is on `PATH` as `eval-quality`.
+
 ## Declaring the interface
 
-Here is a tool server declared as far as the schema allows.
-It parses, and it is legal in every respect `compile` can check other than the kind itself.
+Here is a tool server declared as far as the schema allows, inside the smallest contract that can carry it.
+The fields above `permittedInterfaces` are the scaffolding every contract declares, at their emptiest legal values, and the interface under them is what this page is about.
+An evaluation you would run declares oracles and an interaction plan; this one declares neither, because `compile` is the only stage it reaches.
+Write it to a file in the directory you are working in, and delete it when you are done: `npm run check:doc-invocations` replays this page's own heredoc, and a leftover copy at the clone root is read ahead of it.
 
-```json
+```bash
+cat > mcp-contract.json <<'EOF'
 {
-  "logicalId": "notes-tool-server",
-  "kind": "mcp",
-  "operations": [
+  "schemaVersion": 4,
+  "contractId": "notes-tool-server-evaluation",
+  "parentDigest": null,
+  "revisionCount": 0,
+  "sourceSpecDigest": null,
+  "behaviors": [{ "id": "B-001", "description": "A search over the notes returns the notes that match.", "severity": "material", "observableSuccessCriterion": "A search call returns content naming the query it was given.", "requirementLinks": [{ "scheme": "local", "id": "REQ-1" }], "riskLinks": [], "oracles": [] }],
+  "oracles": [],
+  "rubrics": [],
+  "waivers": [],
+  "referenceSets": null,
+  "siblingGroups": null,
+  "interactionPlan": [],
+  "scopedResources": null,
+  "forbiddenInputs": ["original-spec", "source-code", "repository", "builder-transcript", "implementation-logs", "comparator-results", "human-labels"],
+  "testData": { "setup": null, "cleanup": null, "principals": null, "resources": null },
+  "budgets": { "maxToolCalls": 20, "maxWallClockMinutes": 5, "maxCostUsd": "0.25" },
+  "safetyLimits": [],
+  "requiredEvidence": [],
+  "probeStepBound": null,
+  "fixtureReset": null,
+  "permittedInterfaces": [
     {
-      "operationId": "search-notes",
-      "method": "POST",
-      "pathTemplate": "/tools/call/search_notes",
-      "stateChangeMarker": false,
-      "requestShape": {
-        "path": { "requiredKeys": [], "permittedKeys": [], "types": {} },
-        "query": { "requiredKeys": [], "permittedKeys": [], "types": {} },
-        "header": { "requiredKeys": [], "permittedKeys": [], "types": {} },
-        "body": {
-          "requiredKeys": ["query"],
-          "permittedKeys": ["query", "limit"],
-          "types": { "query": "string", "limit": "number" }
+      "logicalId": "notes-tool-server",
+      "kind": "mcp",
+      "operations": [
+        {
+          "operationId": "search-notes",
+          "method": "POST",
+          "pathTemplate": "/tools/call/search_notes",
+          "stateChangeMarker": false,
+          "requestShape": {
+            "path": { "requiredKeys": [], "permittedKeys": [], "types": {} },
+            "query": { "requiredKeys": [], "permittedKeys": [], "types": {} },
+            "header": { "requiredKeys": [], "permittedKeys": [], "types": {} },
+            "body": {
+              "requiredKeys": ["query"],
+              "permittedKeys": ["query", "limit"],
+              "types": { "query": "string", "limit": "number" }
+            }
+          },
+          "responseDescriptor": {
+            "requiredKeys": ["content", "isError"],
+            "permittedKeys": ["content", "isError"],
+            "types": { "content": "array", "isError": "boolean" },
+            "successIndicator": "/isError",
+            "channelRoles": { "/content": "payload", "/isError": "success-indicator" },
+            "collectionLocations": []
+          },
+          "volatilePointers": [],
+          "sensitivityWitness": {
+            "witnessId": "search-notes-sensitivity",
+            "channel": "body",
+            "legs": [
+              { "legId": "search-witness-a", "inputs": { "path": {}, "query": {}, "header": {}, "body": { "kind": "json", "value": { "query": "alpha" } } } },
+              { "legId": "search-witness-b", "inputs": { "path": {}, "query": {}, "header": {}, "body": { "kind": "json", "value": { "query": "beta" } } } }
+            ],
+            "relation": {
+              "op": "not",
+              "operands": [
+                { "op": "deep-equality", "operands": [
+                  { "pointer": "/interactions/search-witness-a/response-body/content" },
+                  { "pointer": "/interactions/search-witness-b/response-body/content" }
+                ] }
+              ]
+            }
+          }
         }
-      },
-      "responseDescriptor": {
-        "requiredKeys": ["content", "isError"],
-        "permittedKeys": ["content", "isError"],
-        "types": { "content": "array", "isError": "boolean" },
-        "successIndicator": "/isError",
-        "channelRoles": { "/content": "payload", "/isError": "success-indicator" },
-        "collectionLocations": []
-      },
-      "volatilePointers": [],
-      "sensitivityWitness": {
-        "witnessId": "search-notes-sensitivity",
-        "channel": "body",
-        "legs": [
-          { "legId": "search-witness-a", "inputs": { "path": {}, "query": {}, "header": {}, "body": { "kind": "json", "value": { "query": "alpha" } } } },
-          { "legId": "search-witness-b", "inputs": { "path": {}, "query": {}, "header": {}, "body": { "kind": "json", "value": { "query": "beta" } } } }
-        ],
-        "relation": {
-          "op": "not",
-          "operands": [
-            { "op": "deep-equality", "operands": [
-              { "pointer": "/interactions/search-witness-a/response-body/content" },
-              { "pointer": "/interactions/search-witness-b/response-body/content" }
-            ] }
-          ]
-        }
-      }
+      ]
     }
   ]
 }
+EOF
 ```
 
-Compile a contract carrying it and you get the one coded rejection:
+It parses, and the kind is the first thing `compile` faults:
+
+<!-- expect-exit: 4 -->
 
 ```bash
 node dist/cli/main.js compile --in mcp-contract.json
@@ -162,6 +205,14 @@ node dist/cli/main.js compile --in mcp-contract.json
 ```text
 eval-quality: unsupported-interface-kind: EvalContract.permittedInterfaces[logicalId=notes-tool-server].kind: "mcp" is not supported; "api" and "cli" are (AD-10)
 ```
+
+Exit code 4, the structural-failure code, and the message names the AD-5 code and the field that carries the fault.
+
+One fault sits behind that one, and it is worth knowing before you copy the declaration.
+A search changes no state, so `stateChangeMarker` is false, and AD-10 gives a non-mutating operation `path` or `query` for its sensitivity witness.
+A tool call carries its arguments in `body`, which is where the witness above varies them, so the witness is illegal on its own terms.
+Flip the kind to `api` and `compile` says so, at the same exit 4 under `malformed-operator-expression`.
+Opening the kind is not on its own enough to make this contract compile.
 
 Four places in that declaration are a bend, and each one is a real cost.
 
@@ -172,7 +223,7 @@ Nothing decides it, and AD-40 resolves a defect signature by comparing method an
 
 **`pathTemplate` has to carry the tool name.**
 The natural transport identity of every MCP tool call is the same JSON-RPC method, `tools/call`, with the tool name in the payload.
-Declaring two tools that way collides:
+Declaring two tools that way collides, which this fence shows without running it:
 
 ```text
 eval-quality: duplicate-operation-signature: EvalContract.permittedInterfaces[logicalId=notes-tool-server].operations[operationId=create-note]: collides with permittedInterfaces[logicalId=notes-tool-server].operations[operationId=search-notes] after parameter-name erasure ("POST /tools/call") (AD-19, AD-40)
@@ -220,6 +271,7 @@ An oracle over the write step's own response passes on a tool that silently disc
 ## Running it
 
 The commands are the two on the [CLI reference](/reference/cli-commands/), and they are the same for every interface kind.
+Both fences below are command grammar: they name files this page never writes, so copying them verbatim reports a missing file.
 
 ```bash
 node dist/cli/main.js preflight --contract eval-contract.json \
