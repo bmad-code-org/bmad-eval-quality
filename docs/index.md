@@ -81,7 +81,7 @@ An eval contract describes a system through a declared interface. Two interface 
 
 Each guide says plainly what is proven and what is not, so a "state" column entry is the guide's own verdict rather than a roadmap promise.
 
-Two kinds parse and stop at compilation under `unsupported-interface-kind`: `web`, which has had no design pass, and `mcp`, which has one and is covered above. The [roadmap](/explanation/roadmap/) carries what tool-use support would take.
+Two kinds parse and stop at compilation under `unsupported-interface-kind`: `web`, which has had no design pass, and `mcp`, which has one and is covered above. [What Ships](/explanation/what-ships/) carries what tool-use support would take.
 
 :::tip[AI Documentation]
 Plain-text documentation for AI agents is available at [`/llms-full.txt`](/llms-full.txt) or indexed at [`/llms.txt`](/llms.txt).

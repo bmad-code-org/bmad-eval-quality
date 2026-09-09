@@ -10,6 +10,7 @@ sidebar:
 A skill is a unit of instruction an agent loads and acts on.
 You never invoke it directly: you invoke an agent, hand it the skill's own rules, and hold the skill responsible for what comes back.
 That shape maps to the `cli` interface kind, the same kind [agent behavior](/how-to/evaluate-agent-behavior/) uses, so a command runs the agent and the contract addresses what the command produced.
+`compile` accepts `api` and `cli`, and rejects a contract declaring `web` or `mcp` with `unsupported-interface-kind`.
 
 This page is about the part that differs: an agent-behavior contract asks whether the run did the right thing, and a skill-behavior contract has to answer the narrower question of whether the skill's instructions are what decided it.
 

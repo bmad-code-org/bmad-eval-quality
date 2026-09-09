@@ -87,13 +87,13 @@ Run the same evaluation against the fixed implementation and it passes again. A 
 
 ## What an eval contract declares
 
-- **Behaviors**: what the system is supposed to do, each with a severity and an observable success criterion.
-- **Oracles**: the checks themselves, written as relations over JSON pointers into recorded interactions.
-- **Permitted interfaces**: every operation a probe may call, its request shape, its response descriptor, and the pointers whose values are volatile. An interface declares a kind, and `compile` accepts two of them today: `api`, a system behind an HTTP API, and `cli`, a system behind a command. The vocabulary also names `web` and `mcp`, and a contract declaring either is rejected with `unsupported-interface-kind`.
-- **Sensitivity witnesses**: two calls per operation that differ in one input, and how their responses have to differ. If the responses come back the same, nothing shows the operation read that input. This is the mutation idea applied to one operation.
-- **Reference sets, budgets, safety limits, and forbidden inputs**: the data a check reads, and the bounds a run has to stay inside.
+A contract names the behaviors the system owes, each with a severity and an observable success criterion, and the oracles that check them, written as relations over JSON pointers into recorded interactions. It also declares which interfaces a probe may call, the reference data a check reads, and the bounds a run has to stay inside.
 
-`schemas/eval-contract.schema.json` is the normative shape, and every field is listed on [the walkthrough](/how-to/author-behavioral-contracts/). The vocabulary is defined in the [glossary](/reference/glossary/).
+One part is worth pausing on, because it is the twin run applied to a single operation.
+
+**Sensitivity witnesses** are two calls that differ in one input, and a statement of how the two responses have to differ. If both come back the same, nothing in the run shows the operation ever read that input. A check over that operation would pass while the input was ignored entirely.
+
+`schemas/eval-contract.schema.json` is the normative shape, and [the walkthrough](/how-to/author-behavioral-contracts/) lists every field.
 
 ## Why compile rejects contracts
 
@@ -108,25 +108,14 @@ Two examples, both shipped in the corpus:
 
 Both are the blind-spot problem in miniature: an evaluation that reports success without having looked.
 
-`corpus/dev/contracts/` holds twenty-one contracts. Nineteen cover the seven discipline rules, one per declaration state, so the rule set reads as examples; the other two describe a system under test that runs behind a command.
+## Three ways to get a wrong answer
 
-## What scoring answers
+`score` is the comparison step at the bottom of the twin run. It reads the sealed run record your harness produced, resolves each oracle over the observations the record carries, and mints a verdict. Three things decide whether that verdict means anything.
 
-`score` is the comparison step at the bottom of the twin run. It reads the sealed run record your harness produced, resolves each oracle over the observations the record carries, and mints a verdict.
+**A caught defect is decided by evidence.** A finding counts as detection only when the probe's declared defect signature matches an observation that finding cites. An evaluator that reports a catch without citing the observation that shows it gets no credit.
 
-Three things to know before you use it.
+**A run has a mode, and the two modes never compare.** In `production` the subject is the system and the verdict says whether it ships. In `contract-scoring` the subject is the contract, the probe is knowingly defective, and a caught defect means the contract succeeded. Both arms of a twin run are `contract-scoring`, so that is the mode to declare.
 
-**A caught defect is decided by evidence.** A finding counts as detection only when the probe's declared defect signature matches an observation that finding cites. An evaluator that says "I found it" without citing the observation that shows it gets no credit.
+**The package holds nothing steady beyond its own transforms.** Compile, seal, the preflight reduction, and the score chain are pure transformations over JSON, so they are deterministic. Everything past that edge is yours to control: model sampling, evaluator behavior, fixture state, trial policy, and configuration. Whatever you leave uncontrolled is what the comparison measures.
 
-**The verdict is one of four values**, `PASS`, `WAIVED`, `CONCERNS`, or `FAIL`, plus Invalid for a run that produced no verdict at all. A ladder decides which, in that order, first match wins, and the command's exit code carries the answer.
-
-**A run has a mode, and the two modes never compare.** In `production` the subject is the system and the verdict says whether it ships. In `contract-scoring` the subject is the contract, the probe is knowingly defective, and a caught defect means the contract succeeded. Both arms of a twin run are `contract-scoring`.
-
-## Design commitments
-
-- **The package runs nothing under evaluation.** Compile, seal, the preflight reduction, and the score chain are pure transformations over JSON, so they are deterministic. Holding the rest of a run steady across the two arms is the caller's job: model sampling, evaluator behavior, fixture state, trial policy, and configuration all have to be controlled, or those are what the comparison measures.
-- **Canonical serialization.** Artifacts serialize to RFC 8785 canonical JSON, one line with sorted keys, and the digest covers exactly that payload, so two machines agree on the identity of an artifact.
-- **Lineage.** Every lineage-bearing artifact carries `parentDigest` and `revisionCount`, so a chain of revisions can be checked.
-- **Failure codes.** A rejection names a machine-readable code and a path inside the artifact, so a caller can branch on the code.
-
-[What Ships](/explanation/roadmap/) covers version 1.0, the trial-set limit, and what is deliberately out of scope.
+[What Ships](/explanation/what-ships/) covers version 1.0, the trial-set limit, and what is deliberately out of scope.

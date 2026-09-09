@@ -35,14 +35,9 @@ Deferred until the contract layer is in real use: claim-to-evidence lineage, sem
 
 ## Tool-use evaluation
 
-`compile` accepts `api` and `cli`. The `mcp` kind is declared in the interface vocabulary and refused, so no contract over an MCP tool server runs today. [Evaluate tool-use behavior](/how-to/evaluate-tool-use-behavior/) covers the whole picture. This is what opening the kind costs.
+`compile` accepts `api` and `cli`. The `mcp` kind is declared in the interface vocabulary and refused, so no contract over an MCP tool server runs today. [Evaluate tool-use behavior](/how-to/evaluate-tool-use-behavior/) covers the whole picture, down to the gate codes, the port messages, and the conformance arm an adapter would need.
 
-- **Three gates refuse it.** `unsupported-interface-kind` at compile, the same code again in the pre-flight plan for a contract assembled by hand, and `signature-interface-kind-unsupported` when a probe's defect signature names the kind.
-- **The probe port has no branch for it.** `ProbeRequest` and `ProbeObservation` are unions over `api` and `cli`, so there is no message an adapter could be handed and none it could return.
-- **No adapter, and no third conformance arm.** The suite ships an `api` arm and a `cli` arm; a `mcp` arm would have to join them.
-- **The response descriptor is the open design question.** A tool that returns a markdown `content` array gives AD-4's quantifiers no JSON collection to range over, and no field in the shape closes that gap.
-
-The recorded-observation side already accommodates the kind. `Observation` in the sealed run record is not discriminated on kind, and `ObservedCallInputs` carries both kinds' input channels, so a recorded tool call has somewhere to live.
+The response descriptor is the open design question behind the deferral. A tool that returns a markdown `content` array gives AD-4's quantifiers no JSON collection to range over, and no field in the shape closes that gap.
 
 `web` is refused on the same terms and has had no design pass at all.
 
