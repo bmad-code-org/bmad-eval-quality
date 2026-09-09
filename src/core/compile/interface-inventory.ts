@@ -124,6 +124,16 @@ export function checkDuplicateOperationSignature(contract: EvalContract): void {
  * resolving `absent`, on AD-26's own precedent for a dangling reference-set
  * identifier: `absent` is defined over pointers that do not resolve against
  * observed evidence, and a dangling declaration is neither.
+ *
+ * Resolving the pointer's step segment against the interaction plan is the
+ * route for an oracle check, an oracle direction's evidence target and a rubric
+ * criterion, and it is the wrong route for a sensitivity-witness relation: a
+ * leg identifier shares the step namespace without being a step, so the lookup
+ * missed and every witness pointer went unchecked, which let a witness name an
+ * artifact the contract declared nowhere at all and still compile clean. The
+ * walk hands the declaring operation over at that site and it is preferred
+ * where present, so a leg identifier that collides with a step id is answered
+ * against the operation the witness actually probes.
  */
 export function checkArtifactReferences(contract: EvalContract): void {
 	for (const iface of contract.permittedInterfaces) {
@@ -144,12 +154,18 @@ export function checkArtifactReferences(contract: EvalContract): void {
 		contract.permittedInterfaces,
 		{ duplicateIds: 'unresolved' },
 	)
-	forEachArtifactPointer(contract, (pointer, path) => {
+	// A site that hands its own operation over is answered against that
+	// operation, and a site that does not is answered against the operation the
+	// pointer's step segment names.
+	const planOperationOf = (stepId: string): AnyOperation | undefined => {
+		const step = index.stepOf(stepId)
+		if (step === undefined) return undefined
+		return anyOperationOf(index, step.operationId)
+	}
+	forEachArtifactPointer(contract, (pointer, path, declaringOperation) => {
 		const target = parseEvidenceTarget(pointer)
 		if (target.artifactId === null) return
-		const step = index.stepOf(target.stepId)
-		if (step === undefined) return
-		const operation = anyOperationOf(index, step.operationId)
+		const operation = declaringOperation ?? planOperationOf(target.stepId)
 		// An unresolvable step or operation is `unreachable-check-evidence`'s,
 		// at a higher rung; this check has nothing to compare against.
 		if (operation === undefined) return

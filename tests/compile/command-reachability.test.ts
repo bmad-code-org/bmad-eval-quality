@@ -208,6 +208,28 @@ describe('unresolved-artifact-reference', () => {
 		expect(failure.artifactPath).toContain('descriptorChannel.artifactId')
 	})
 
+	// The witness site is the one this check reached and could not answer. A
+	// leg identifier roots the relation's pointers in the step namespace
+	// without being a step, so resolving it against the interaction plan found
+	// nothing and the check returned before comparing anything. Reachability
+	// does not cover the site either: it walks oracle checks alone. So the
+	// contract below compiled clean while naming a file nothing declares.
+	it('fires on a sensitivity-witness relation naming an artifact the operation does not declare', () => {
+		const contract = structuredClone(artifactCommandContract) as any
+		const { relation } =
+			contract.permittedInterfaces[0].operations[0].sensitivityWitness
+		for (const operand of relation.operands[0].operands) {
+			operand.pointer = operand.pointer.replace(
+				'/artifact/verdict/',
+				'/artifact/transcript/',
+			)
+		}
+		const failure = failureOf(contract)
+		expect(failure.code).toBe('unresolved-artifact-reference')
+		expect(failure.artifactPath).toContain('sensitivityWitness.relation')
+		expect(failure.message).toContain('does not declare it writes')
+	})
+
 	it('says nothing about a contract whose artifact references all resolve', () => {
 		expect(() =>
 			checkArtifactReferences(EvalContract.parse(artifactCommandContract)),

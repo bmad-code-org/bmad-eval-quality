@@ -129,14 +129,31 @@ function forEachCheckPointer(
  * Broader than `forEachCheckPointer`, which walks oracle checks alone, because
  * an artifact identifier is an authoring fault at every site that names one and
  * a check that walked only the checks would report half of them.
+ *
+ * The third argument is the operation the site belongs to, and it is supplied
+ * only at a sensitivity-witness relation. A witness leg carries no operation of
+ * its own: it probes the operation declaring the witness, and its `legId` roots
+ * the relation's pointers in the same namespace as interaction-plan step ids
+ * without being a step. So a caller resolving the pointer's own step segment
+ * against the plan finds nothing at a witness site and has to be handed the
+ * operation instead. Everywhere else the pointer's step segment is the only
+ * thing that names an operation, and the argument is `null`.
  */
 export function forEachArtifactPointer(
 	contract: EvalContract,
-	visit: (pointer: string, artifactPath: string) => void,
+	visit: (
+		pointer: string,
+		artifactPath: string,
+		declaringOperation: AnyOperation | null,
+	) => void,
 ): void {
-	const seen = (pointer: string, artifactPath: string): void => {
+	const seen = (
+		pointer: string,
+		artifactPath: string,
+		declaringOperation: AnyOperation | null = null,
+	): void => {
 		if (pointer.startsWith('@')) return
-		visit(pointer, artifactPath)
+		visit(pointer, artifactPath, declaringOperation)
 	}
 	contract.oracles.forEach((oracle) => {
 		if (oracle.check !== null)
@@ -169,6 +186,7 @@ export function forEachArtifactPointer(
 				seen(
 					site.pointer,
 					`EvalContract.permittedInterfaces[${interfaceIndex}].operations[${operationIndex}].sensitivityWitness.${site.path}`,
+					operation,
 				),
 			)
 		})
