@@ -115,7 +115,7 @@ Installed from the registry, the same binary is on `PATH` as `eval-quality`.
 Here is a tool server declared as far as the schema allows, inside the smallest contract that can carry it.
 The fields above `permittedInterfaces` are the scaffolding every contract declares, at their emptiest legal values, and the interface under them is what this page is about.
 An evaluation you would run declares oracles and an interaction plan; this one declares neither, because `compile` is the only stage it reaches.
-Write it to a file in the directory you are working in, and delete it when you are done:
+Write it to a file in the directory you are working in, and delete it when you are done: `npm run check:doc-invocations` replays this page's own heredoc, and a leftover copy at the clone root is read ahead of it.
 
 ```bash
 cat > mcp-contract.json <<'EOF'
