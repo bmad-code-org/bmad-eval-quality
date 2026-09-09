@@ -10,6 +10,8 @@ body.
 
 ## [Unreleased]
 
+## [1.4.1] - 2026-09-09
+
 ### Added
 
 - Five how-to guides, one per system shape people point this package at, under `docs/how-to/`.
