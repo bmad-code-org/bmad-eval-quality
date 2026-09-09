@@ -238,6 +238,110 @@ describe('check-doc-invocations, the transcribed diagnostic', () => {
 		expect(run.status).toBe(0)
 	})
 
+	it('matches an elision by the whole line and not by the first hit', (ctx) => {
+		if (!BUILT) return ctx.skip(NEEDS_BUILD)
+		// `schema` occurs inside `schema-parse-failure` and again at the end of
+		// the line. Taking the leftmost hit and then demanding it end the line
+		// rejected a page that is correct.
+		const run = check(
+			fence(
+				'# A page',
+				'',
+				'```bash',
+				`cat > ${SHIPPED_CONTRACT} <<'EOF'`,
+				'{ "schemaVersion": 4 }',
+				'EOF',
+				'```',
+				'',
+				'<!-- expect-exit: 5 -->',
+				'',
+				'```bash',
+				`node dist/cli/main.js compile --in ${SHIPPED_CONTRACT}`,
+				'```',
+				'',
+				'```text',
+				'eval-quality: ...schema',
+				'```',
+				'',
+			),
+		)
+		expect(run.output).toContain('1 with their output compared, 0 failures')
+		expect(run.status).toBe(0)
+	})
+
+	it('fails a documented line past the end of the output', (ctx) => {
+		if (!BUILT) return ctx.skip(NEEDS_BUILD)
+		// A bare `...` matches any one line, so it has to require a line.
+		const run = check(
+			rejectionPage('```text', UNREACHABLE, '...', '...', '...', '```'),
+		)
+		expect(run.status).toBe(1)
+		expect(run.output).toContain('1 failing invocation(s)')
+	})
+
+	it('names indentation when that is the whole difference', (ctx) => {
+		if (!BUILT) return ctx.skip(NEEDS_BUILD)
+		// The block keeps whatever indentation the diagnostic itself emits, so
+		// a page that indents an issue line further than the CLI does is wrong.
+		// A message quoting the trimmed line would look identical to the output.
+		const run = check(
+			fence(
+				'# A page',
+				'',
+				'```bash',
+				`cat > ${SHIPPED_CONTRACT} <<'EOF'`,
+				'{ "schemaVersion": 4 }',
+				'EOF',
+				'```',
+				'',
+				'<!-- expect-exit: 5 -->',
+				'',
+				'```bash',
+				`node dist/cli/main.js compile --in ${SHIPPED_CONTRACT}`,
+				'```',
+				'',
+				'```text',
+				'eval-quality: schema-parse-failure: EvalContract: ...',
+				'      /behaviors: Invalid input: expected array, received undefined',
+				'```',
+				'',
+			),
+		)
+		expect(run.status).toBe(1)
+		expect(run.output).toContain('indented differently from the output')
+	})
+
+	it('keeps the indentation the diagnostic itself emits', (ctx) => {
+		if (!BUILT) return ctx.skip(NEEDS_BUILD)
+		// The same block, transcribed at the two spaces the CLI really writes,
+		// inside a fence indented under a list item.
+		const run = check(
+			fence(
+				'1. Run it:',
+				'',
+				'   ```bash',
+				`   cat > ${SHIPPED_CONTRACT} <<'EOF'`,
+				'   { "schemaVersion": 4 }',
+				'   EOF',
+				'   ```',
+				'',
+				'   <!-- expect-exit: 5 -->',
+				'',
+				'   ```bash',
+				`   node dist/cli/main.js compile --in ${SHIPPED_CONTRACT}`,
+				'   ```',
+				'',
+				'   ```text',
+				'   eval-quality: schema-parse-failure: EvalContract: ...',
+				'     /behaviors: Invalid input: expected array, received undefined',
+				'   ```',
+				'',
+			),
+		)
+		expect(run.output).toContain('1 with their output compared, 0 failures')
+		expect(run.status).toBe(0)
+	})
+
 	it('does not count an empty block as compared', (ctx) => {
 		if (!BUILT) return ctx.skip(NEEDS_BUILD)
 		const run = check(rejectionPage('```text', '```'))
@@ -278,6 +382,31 @@ describe('check-doc-invocations, the page owns the paths it writes', () => {
 		)
 		expect(run.output).toContain('1 invocation(s) scanned')
 		expect(run.output).toContain('1 with their output compared, 0 failures')
+		expect(run.status).toBe(0)
+	})
+
+	it('lets a shipped directory win over a directory the page made', (ctx) => {
+		if (!BUILT) return ctx.skip(NEEDS_BUILD)
+		// `mkdir -p` over a path a clone already carries is a no-op for the
+		// reader, so the empty sandbox copy must not stand in front of it: the
+		// command would run over an empty corpus and be judged as the page's.
+		const run = check(
+			fence(
+				'# A page',
+				'',
+				'```bash',
+				'mkdir -p corpus/dev',
+				'```',
+				'',
+				'```bash',
+				'node dist/cli/main.js compile --in corpus/dev/compile-seal-example/contract.json',
+				'```',
+				'',
+			),
+		)
+		expect(run.output).toContain('1 invocation(s) scanned')
+		expect(run.output).toContain('1 run faithfully over real inputs, ')
+		expect(run.output).toContain('0 failures')
 		expect(run.status).toBe(0)
 	})
 
@@ -330,6 +459,17 @@ describe('check-doc-invocations, a misdriven run is an error', () => {
 		const run = drive('--root')
 		expect(run.status).toBe(1)
 		expect(run.output).toContain('--root takes a path')
+	})
+
+	it('fails on a root that encloses the repository', (ctx) => {
+		if (!BUILT) return ctx.skip(NEEDS_BUILD)
+		// `--root .` reaches every page in the tree and every fenced command
+		// inside them, planning material and dependencies included.
+		for (const root of ['.', '', '..']) {
+			const run = drive('--root', root)
+			expect(run.status).toBe(1)
+			expect(run.output).toContain('encloses the repository')
+		}
 	})
 
 	it('fails on an argument it does not know', (ctx) => {

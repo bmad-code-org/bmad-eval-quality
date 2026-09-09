@@ -3807,7 +3807,7 @@ The three changes each move the exit code off 4, and a fourth kind of drift leav
 - The contract declares one tool: two tools collide under `duplicate-operation-signature`, which is checked before the kind is, and both exit 4.
 - Prove the gate is armed by declaring a code the run does not produce and watching the check fail.
 - A `text` fence directly under a declared-exit command, blank lines only between them, is that run's transcribed stderr and is compared line for line.
-- Each documented line has to be the whole stderr line. `...` inside a line elides characters there; a bare `...` line matches any one line. Stderr may run past the block.
+- Each documented line has to be the whole stderr line. `...` inside a line elides characters there; a bare `...` line matches any one line that exists. Stderr may run past the block, and the block may never run past stderr.
 - The block detaches from prose above it, from a fence carrying two commands, and from a command with no declared exit, which prints on stdout.
 - A page's own heredoc is read ahead of any file at the same path in the clone, so a copy a reader leaves behind changes nothing the gate reports.
 
