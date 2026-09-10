@@ -100,7 +100,7 @@ The `create` step sends no identifier, so the service mints one, and a `GET` pro
 A plan whose write supplied the identifier could name it on both sides and skip the capture, and it would prove less: a write that chooses its own identifier says nothing about what the service filed under it.
 
 Three compile-time checks read every capture, all in `src/core/compile/bindings.ts`.
-Each message below is the real output of `node dist/cli/main.js compile`. The first two run on the contract above with one field changed, the second on its `list` step, which the corpus contract carries and the fenced plan does not show. The third needs a `name` key on `create-thing`'s response descriptor too, since a captured pointer has to name a declared key before the cycle check can reach it.
+Each message below is the real output of `node dist/cli/main.js compile` on the plan above with one field changed.
 
 **The channel.**
 A captured pointer names the channel the referenced operation's response descriptor describes, which is `response-body` off an interface that speaks HTTP and the nominated output channel off one that runs behind a command.
@@ -120,7 +120,7 @@ eval-quality: unreachable-check-evidence: EvalContract.interactionPlan[stepId=re
 
 **The cycle.**
 `checkBindingCycle` builds one graph over the capture edges and the `after` edges together, and rejects any cycle containing a capture edge.
-Giving `create-thing`'s response descriptor a `name` key and then capturing `/interactions/create/response-body/name` into `create`'s own `body.name` exits `4`:
+Making `create` capture from `read-back` while `read-back.after` is `create` exits `4`:
 
 ```text
 eval-quality: binding-cycle: EvalContract.interactionPlan[stepId=create].inputBinding.body["name"]: captured pointer "/interactions/read-back/response-body/error" closes a cycle over the capture and temporal-clause edges; a captured value has no earlier step to resolve from (AD-39)

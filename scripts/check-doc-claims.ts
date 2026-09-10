@@ -412,6 +412,15 @@ const FOREIGN_IDENTIFIERS: readonly {
 		reason: 'an `HttpMethod` value, which the enum spells as a string literal',
 	},
 	{
+		token: 'CHAIN',
+		reason: 'a shell variable the walkthrough sets before its own commands',
+	},
+	{
+		token: 'HOME',
+		reason:
+			'an environment variable an example contract declares, spelled as the process sees it',
+	},
+	{
 		token: 'Original',
 		reason:
 			"a note title in the worked example's observation, quoted as a value",
@@ -697,27 +706,6 @@ const DATED_CLAIMS: readonly DatedClaim[] = [
 		key: 'is the one kind `compile` still refuses',
 		settles: () => UNSUPPORTED_INTERFACE_KINDS.length === 1,
 		reason: 'counts `UNSUPPORTED_INTERFACE_KINDS`',
-	},
-	{
-		file: 'docs/how-to/evaluate-skill-behavior.md',
-		key: 'nobody has scored a seeded-defect probe against a skill contract',
-		settles: 'read',
-		reason:
-			'a scoring run that was never performed leaves no artifact; Story 11.10 ships the one that falsifies it',
-	},
-	{
-		file: 'docs/how-to/evaluate-skill-behavior.md',
-		key: 'is `null` in all eight of those suites',
-		settles: 'read',
-		reason:
-			"the suites are TEA's, in another repository, so this tree holds none of them",
-	},
-	{
-		file: 'docs/how-to/evaluate-workflow-behavior.md',
-		key: 'No committed chain carries a capture',
-		settles: 'read',
-		reason:
-			'the committed chain is the worked example, whose generator output this gate does not parse; Story 11.11 ships the chain that falsifies it',
 	},
 	{
 		file: 'docs/how-to/evaluate-workflow-behavior.md',
@@ -1309,12 +1297,38 @@ for (const page of authoredPages) {
 const TRANSCRIPTIONS: readonly {
 	readonly file: string
 	readonly claim: string
-	readonly text: string
+	/** A literal, or a reader for a value the tree carries in an artifact. */
+	readonly text: string | (() => Promise<string>)
 }[] = [
 	{
 		file: 'docs/reference/cli-commands.md',
 		claim: "the CLI's exit-code table",
 		text: EXIT_CODE_TABLE,
+	},
+	{
+		// Story 11.10 asked for this to settle by predicate rather than by a
+		// reading. It is a transcription rather than a dated claim: the sentence
+		// reprints three numbers out of a committed artifact, and `check:worked-
+		// example` proves the artifact matches its builder without reading what
+		// the guide says about it.
+		file: 'docs/how-to/evaluate-skill-behavior.md',
+		claim: "the skill chain's defect strength vector",
+		text: async () => {
+			const artifact = JSON.parse(
+				await readFile(
+					pathOf(
+						'_bmad-output/worked-examples/skill-defect/evidence-artifact.json',
+					),
+					'utf8',
+				),
+			) as { strength: { vector: { defect: Record<string, number> } } }
+			const { caught, exercised, rate } = artifact.strength.vector.defect as {
+				caught: number
+				exercised: number
+				rate: number
+			}
+			return `{"caught": ${caught}, "exercised": ${exercised}, "rate": ${rate}}`
+		},
 	},
 ]
 
@@ -1324,12 +1338,13 @@ for (const entry of TRANSCRIPTIONS) {
 		fail(`${entry.file}: missing, but a transcription entry names it`)
 		continue
 	}
-	if (lines.join('\n').includes(entry.text)) continue
-	const head = entry.text.split('\n')[0] as string
+	const text = typeof entry.text === 'string' ? entry.text : await entry.text()
+	if (lines.join('\n').includes(text)) continue
+	const head = text.split('\n')[0] as string
 	const at = lines.indexOf(head)
 	fail(
-		`${entry.file}${at === -1 ? '' : `:${at + 1}`}: ${entry.claim} no longer matches the string ` +
-			'the binary emits; the transcription and its source have to be the same bytes',
+		`${entry.file}${at === -1 ? '' : `:${at + 1}`}: ${entry.claim} no longer matches its source; ` +
+			'a transcription and the thing it reprints have to be the same bytes',
 	)
 }
 
@@ -1345,7 +1360,7 @@ console.log(
 	`check-doc-claims: ${citationsChecked} citations resolve (${citationsAnchored} anchored on a ` +
 		`symbol, ${UNANCHORED_CITATIONS.length} held by review), ${symbolsChecked} backticked ` +
 		`identifiers are declared under src/, ${LISTS.length} transcribed lists match their source, ` +
-		`${codesChecked} named codes exist, ${TRANSCRIPTIONS.length} transcription matches its source ` +
+		`${codesChecked} named codes exist, ${TRANSCRIPTIONS.length} transcriptions match their source ` +
 		`byte for byte, ${kindMentions} interface-kind mentions agree with the ` +
 		`accepted and refused tuples, ${FENCES.length} worked JSON blocks parse against their ` +
 		`schema, ${datedDerived + datedRead} time-sensitive claims ` +

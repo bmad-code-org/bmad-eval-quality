@@ -380,7 +380,7 @@
                 "items": {
                   "$ref": "#/$defs/Operation"
                 },
-                "description": "No uniqueness constraint: two operations colliding on their transport identity after parameter-name erasure is `duplicate-operation-signature`, a coded compile-time error, and a schema that deduped them would delete it."
+                "description": "No uniqueness constraint: two operations colliding on their transport identity is `duplicate-operation-signature`, a coded compile-time error, and a schema that deduped them would delete it. What that identity is depends on the kind, and `compile/interface-inventory.ts` is what computes it."
               }
             },
             "required": [
@@ -407,7 +407,7 @@
                 "items": {
                   "$ref": "#/$defs/Operation"
                 },
-                "description": "No uniqueness constraint: two operations colliding on their transport identity after parameter-name erasure is `duplicate-operation-signature`, a coded compile-time error, and a schema that deduped them would delete it."
+                "description": "No uniqueness constraint: two operations colliding on their transport identity is `duplicate-operation-signature`, a coded compile-time error, and a schema that deduped them would delete it. What that identity is depends on the kind, and `compile/interface-inventory.ts` is what computes it."
               }
             },
             "required": [
@@ -919,7 +919,7 @@
                   ],
                   "additionalProperties": false
                 },
-                "description": "No uniqueness constraint: two operations colliding on their transport identity after parameter-name erasure is `duplicate-operation-signature`, a coded compile-time error, and a schema that deduped them would delete it."
+                "description": "No uniqueness constraint: two operations colliding on their transport identity is `duplicate-operation-signature`, a coded compile-time error, and a schema that deduped them would delete it. What that identity is depends on the kind, and `compile/interface-inventory.ts` is what computes it."
               }
             },
             "required": [
@@ -1647,7 +1647,7 @@
                   ],
                   "additionalProperties": false
                 },
-                "description": "No uniqueness constraint: two operations colliding on their transport identity after parameter-name erasure is `duplicate-operation-signature`, a coded compile-time error, and a schema that deduped them would delete it."
+                "description": "No uniqueness constraint: two operations colliding on their transport identity is `duplicate-operation-signature`, a coded compile-time error, and a schema that deduped them would delete it. What that identity is depends on the kind, and `compile/interface-inventory.ts` is what computes it."
               }
             },
             "required": [

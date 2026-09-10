@@ -279,14 +279,21 @@ body.
   whitespace, `check:doc-invocations` judges fenced commands against their declared exit codes, and
   `check:doc-counts` holds numerals. A sentence naming a symbol, citing a line, transcribing a set,
   saying which interface kinds compile, printing a JSON example, or saying a thing is not yet true
-  fell through all three. Seven classes, each resolving against an artifact in the repository: a
+  fell through all three. Eight classes, each resolving against an artifact in the repository: a
   `path.ts:N` citation resolves and stays anchored on a symbol the cited file declares; a backticked
   identifier is declared under `src/`; a spelled-out list equals the set the source exports; a named
   failure code exists in a registry; a published JSON block parses against the schema the prose
   names; a kind a sentence accepts or refuses agrees with `SUPPORTED_INTERFACE_KINDS` and
-  `UNSUPPORTED_INTERFACE_KINDS`; and a sentence claiming something is true as of now, or not yet
+  `UNSUPPORTED_INTERFACE_KINDS`; a page reprinting a string the binary emits or a value an artifact
+  carries reprints the same bytes; and a sentence claiming something is true as of now, or not yet
   true, is registered with how it is settled, by a predicate the script runs or by a recorded human
   reading with the reason no artifact decides it. `validate` runs twenty-three steps.
+- `Operation`'s published description no longer says two operations collide "after parameter-name
+  erasure". One string carries that sentence onto all four interface branches of
+  `schemas/eval-contract.schema.json`, and `compile/interface-inventory.ts` erases nothing for a
+  command or a tool call: their transport identities are an executable joined to its subcommand path
+  and a published tool name. The description names the transport identity and points at the module
+  that computes it per kind.
 - The tool-use guide said a dev-corpus exemplar was missing while
   `corpus/dev/contracts/notes-tool-server.json` shipped and declared `mcp`. The remaining gap is the
   channel model for a text-shaped tool result, which is what the sentence now says.

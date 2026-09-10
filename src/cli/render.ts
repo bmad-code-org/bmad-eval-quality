@@ -1,7 +1,8 @@
 /**
  * The four shapes the binary writes, and the exit-code table two documents
- * share. Every line the CLI emits is produced here apart from the stack
- * `main.ts` writes for a rethrown defect, so a format change is one file. Five
+ * share. Every line the CLI emits is produced here apart from what `main.ts`
+ * writes for a rethrown defect, which is that error's own stack or message, so a
+ * format change is one file. Five
  * renderers over the four shapes: a qualification failure and an error both
  * print `<code>: <artifactPath>: <detail>`.
  */

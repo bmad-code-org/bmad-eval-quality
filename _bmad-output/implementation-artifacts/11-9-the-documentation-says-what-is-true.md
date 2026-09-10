@@ -852,6 +852,54 @@ a limit instead. That is the same move as class 7, which turned "say which kinds
 from a review habit into a check that reads the source.
 
 
+**Decision 27: the rebase merged cleanly and left a section that contradicted itself.**
+Story 11.11 and this story corrected the same three defects in
+`docs/how-to/evaluate-workflow-behavior.md` by different routes, and Decision 22 recorded that this
+story would drop its own at rebase. `git rebase origin/main` reported no conflict, because the two
+stories had edited different lines: 11.11 replaced the two quoted diagnostics and moved the page's
+provenance to `corpus/dev/contracts/captured-read-back.json`, and this story had rewritten the
+sentences above them.
+
+What survived was a section where the prose and the fence disagreed. The cycle paragraph said to give
+`create-thing`'s response descriptor a `name` key and capture
+`/interactions/create/response-body/name`, and the message under it quoted
+`/interactions/read-back/response-body/error`. That is the same defect the page had before either
+story touched it, reintroduced by a clean merge. The umbrella sentence was wrong the same way: it
+said the second message runs on the `list` step, and 11.11's second message is `read-back`'s path
+binding.
+
+Both hunks were taken from main whole, by `git checkout origin/main -- <path>`, and the file is now
+byte-identical to the merged page. Main's version is correct on the merged contract, and this was
+verified by running it rather than by reading: `captured-read-back.json` compiles at exit 0, and the
+three one-field changes reproduce all three quoted diagnostics byte for byte, including the cycle
+message, which needs no added descriptor key because `create-thing` already declares `name` as a
+string and `get-thing` already declares `error`.
+
+The instruction that caught this was the coordinator's, and it is the transferable part: check the
+merged sentence rather than that your own edit survived. A clean rebase is evidence about lines and
+says nothing about meaning, and two correct edits to adjacent lines can compose into a false
+paragraph. Downstream consequence: when two stories fix the same defect, the rebase step is a
+re-verification of the merged text rather than a conflict resolution, and a diff against `origin/main`
+showing only your own hunks is the signal to read them against their neighbours.
+
+**Decision 28: the held erasure claim is taken, and the census consequence it was held for did not
+happen.**
+`OPERATIONS_DESCRIPTION` is one string on three call sites, `:356` for the `Operation` factory that
+serves `api` and `web`, `:371` for `McpOperation` and `:376` for `CommandOperation`, so it shipped on
+all four branches of `schemas/eval-contract.schema.json` asserting a parameter-name erasure step that
+`interface-inventory.ts:112-119` and `:135-141` say happens for neither `cli` nor `mcp`. It now says
+two operations collide on their transport identity, with `compile/interface-inventory.ts` named as
+what computes it, which is true of all four branches and leaves the per-kind definition where the
+code that decides it lives.
+
+Decision 3 predicted this would move `CENSUS_BY_KEYWORD` and `CENSUS_TOTAL` and priced a red census as
+expected work, and the coordinator held the edit for three stories on that basis. It did not happen.
+`npm run generate:schemas` moved four lines of `schemas/eval-contract.schema.json`, the erasure phrase
+is gone from the published schema, and `tests/schemas/published-census.ts` passes untouched: the
+census counts keyword occurrences rather than bytes, and this edit changed no keyword. The prediction
+was wrong in the safe direction and the record says so rather than leaving Decision 3 reading as
+though it had been borne out.
+
 ## Design Notes
 
 The proposed replacements, written to the de-AI rule and offered as drafts for the execution pass to confirm against the artifacts.

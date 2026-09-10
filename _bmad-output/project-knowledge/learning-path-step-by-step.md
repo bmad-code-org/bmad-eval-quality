@@ -100,6 +100,7 @@ flowchart TD
 |   56 | epic11-tail | The operator could say which command may run but not which environment keys it carries. Now they can, and the one key that would pick the binary is refused outright. |
 |   57 | epic11-story11 | Writing something down and reading it back is proved end to end: the second call takes its address from the first call's answer, and a run catches a write that dropped what it was given. |
 |   58 | epic11-tail | A record could say it was invalid and nothing read it. The field is gone, and the attestation that works is named in its place. |
+|   59 | epic11-story9 | The pages said what the code no longer did, and every test passed because no test reads sentences. The build reads them now, working the answer out from the code rather than from a list. |
 
 Adding a step: follow `learning-path-template.md`.
 
@@ -4332,3 +4333,47 @@ Honouring it instead would mean deciding what a caller-attested invalid run does
 - A required shape that changes moves its version stamp, and every fixture carrying that stamp moves in the same commit.
 
 **Watch out:** there were two invalidation mechanisms here and only the dead one was caller-facing. The working one is computed inside scoring from the run's own outcome states, and the caller's route is a different artifact's field. Finding a live mechanism nearby is what tells you a field is dead rather than merely unfinished.
+
+## Step 59 (epic11-story9): the sentences nobody checked
+
+**In plain terms:** a manual goes out of date without anyone touching it.
+The product changes, the sentence describing the product does not, and every test still passes, because no test reads sentences.
+The only thing standing between a reader and a false instruction is somebody noticing.
+This step teaches the build to read the sentences, and the trick is that a check which works out the answer from the code beats a check that compares against a list somebody typed.
+
+**What:** `npm run validate` gains a step, `check:doc-claims`, over the prose on the published pages. Eight classes, each resolving against something already in the repository. Twenty false claims found by a sweep are corrected in the same change, and two of them were found by the new check rather than by reading.
+
+**Why:** three gates already read the documentation and none of them read a sentence. One reads frontmatter and whitespace, one runs the commands in fenced blocks, and one holds numerals. A sentence naming a symbol, citing a line, listing what the compiler accepts, printing an example, or saying a thing is not yet true fell through all three. This epic opened an interface kind and every page describing that kind as refused went stale at once; four of those sentences were caught by a person reading, which is the mechanism this step replaces.
+
+**Read in this order:**
+
+1. `scripts/check-doc-claims.ts`: the whole check. The header says what each class decides and, more usefully, what it declines to decide.
+2. `src/core/compile/interface-inventory.ts`: the two tuples the kind class reads. Nothing about which kinds compile is written down twice any more.
+3. `scripts/check-doc-counts.ts`: the numeral check this one is modelled on, and the source of the rule that a pattern matching nothing is a failure.
+4. `_bmad-output/implementation-artifacts/11-9-the-documentation-says-what-is-true.md`: the sweep, the twenty claims, and why two of them are held rather than fixed.
+
+```mermaid
+flowchart LR
+  pages["README.md, docs/"] --> claims["check:doc-claims"]
+  src["src/ tuples, registries, schemas"] --> claims
+  artifacts["corpus/, worked examples, schemas/"] --> claims
+  claims --> validate["npm run validate"]
+```
+
+**Story:** `_bmad-output/implementation-artifacts/11-9-the-documentation-says-what-is-true.md`
+
+### Reference
+
+**Rules:**
+
+- Derive the answer from the source rather than comparing against a list. A list of sentences catches the mistake you already made; a check reading the tuple catches the one nobody has made yet.
+- A guard that cannot fire is worth nothing and looks exactly like one that can. The only way to tell them apart is to break the thing the guard exists to catch and watch whether it fails.
+- Two ways to build one that cannot fire, both met in this epic: a check asking whether something still exists, inside a script that imports it, so the removal crashes the check first; and a schema refinement over a shape nothing parses.
+- A claim no artifact can settle still gets registered, with the reason no check can decide it. That turns an invisible claim into a listed one, and a new unproven sentence fails the build until somebody writes down who holds it.
+- A registration that settles nothing is worse than none: it puts a reason on record for a claim that never needed one.
+- State a limit, never a debt. A limit says how far to trust a result and a debt says to wait for a better version. Six registrations went dead the day a section was reframed, because a limit implies no future in which it is false.
+- A published example is the strongest claim on a page, because a reader copies it. Parse every fenced example against the schema its prose names.
+- Check the merged sentence, not that your own edit survived. A clean rebase is evidence about lines and says nothing about meaning.
+- The person who wrote the fix is the worst reader of it. Two corrections in this change were themselves false and an independent reader found both.
+
+**Watch out:** the check reads the published pages and not `src/`. Source comments go stale the same way, and the count was measured rather than guessed: ten comment blocks name two or more interface kinds, eight state a structural relationship a new kind would not falsify, and the one that stated the accepted set was rewritten here. The one that remains sits two lines above the tuples it describes and names the test that asserts them.
