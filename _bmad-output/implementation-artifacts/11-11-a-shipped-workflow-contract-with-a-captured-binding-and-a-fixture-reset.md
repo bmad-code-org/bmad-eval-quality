@@ -399,6 +399,37 @@ infers `{ id?: undefined }` and the array literal stops being assignable to `rea
 `EvalContract.parse` at the array site is the shipped answer to that and it is what
 `corpus.ts` already does for `mcpContract`; the comment there now names both.
 
+## Review Findings
+
+Two peer-review rounds against a sibling Claude Code session in this worktree, nineteen findings, all
+addressed. Round one returned thirteen and is recorded in Decision 19; round two returned six against
+the fixes, and three of those were problems the fixes themselves introduced.
+
+The one worth carrying forward is the first-round finding that the exemplar's authored evidence
+contradicted its own `testData.setup`, and the second-round finding that the repair had moved the
+contradiction rather than removed it. The first fix declared a fixture record filed through the write
+under test, which is what a manifestation witness needs; the second-round reading was that
+`create-thing` permitted only `name` on its body, so no harness could file that record under the
+identifier the witness names, and a static contract had pinned a value only the service can choose.
+The fix that holds is one permitted key: `id` on the write's body, never required. A fixture supplies
+it, the interaction plan's own `create` step omits it and takes what the service mints, and both the
+volatility declaration and the capture stay necessary for the reason they were written.
+
+Two more second-round findings were new dependencies the first fix created rather than errors in it.
+The seeded-fault leg reads the filed record after the control legs have run, so the reset's reach had
+to be stated: `testData.cleanup` now says the reset restores the directly seeded record and leaves
+every other one alone. And the new fault narrative had not reached three committed sites, two of them
+in the corpus JSON an adopter downloads.
+
+Three of the nineteen were assertions that pinned nothing, each found by deleting the assertion and
+then applying the mutation it was supposed to catch. Deleting an assertion from a passing suite proves
+nothing on its own, and that method is the reason the count is three rather than zero.
+
+**No bot review landed on the pull request.** The organisation's CodeRabbit quota was exhausted for the
+afternoon, and the repository owner's ruling was that a rate-limit notice, a boilerplate-only pass and
+an "already reviewed" reply all count as nothing arriving, so a green run plus the peer rounds is the
+gate. The silence is not approval and is recorded here as an absence rather than a pass.
+
 ## Design Notes
 
 The organising idea is Story 9.5's. That story applied it to an interface kind; this one applies it to a mechanism. A chain that calls the shipped stages is evidence, and a claim about a mechanism no shipped artifact exercises is an assertion. Two sentences in the workflow guide say plainly that the capture form and the four-leg control branch are in that position, and the only thing that moves them is one contract declaring both, going through `compile` → `seal` → `preflight` → `ingest` → `score` → `emit`, producing bytes a byte gate compares.
