@@ -221,7 +221,8 @@ That is a workflow contract catching a persistence defect that a single-response
 The capture half has narrower evidence.
 One shipped contract uses a `{ captured }` binding: `corpus/dev/contracts/notes-tool-server.json` binds its `read-back` step's `query` argument to the identifier its creation call returned.
 A capture has two axes and that exemplar covers one value on each: it binds into the `arguments` input channel, and it captures from `response-body`, which is the source channel the three compile checks above are about.
-No committed chain uses a capture at all, and a capture from `stdout` or from the `artifact` channel is shipped nowhere, so what backs those is the schema, those three compile checks, and the unit tests in `tests/compile/bindings.test.ts`, `tests/score/bindings.test.ts`, and `tests/score/binding-order.test.ts`.
+No committed chain carries a capture: `spike-worked-example/`, the chain named above, orders its steps with `after` and compares the two responses by pointer, which is the temporal half of the shape without the capture half.
+A capture from `stdout` or from the `artifact` channel is shipped nowhere, so what backs those is the schema, those three compile checks, and the unit tests in `tests/compile/bindings.test.ts`, `tests/score/bindings.test.ts`, and `tests/score/binding-order.test.ts`.
 The worked example in this guide was compiled for this page and is not shipped in the corpus.
 
 The four-leg control branch has the same one exemplar.

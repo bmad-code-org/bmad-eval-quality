@@ -541,8 +541,17 @@ Two published sentences say the opposite and both are corrected here, under the 
 for a sentence this story's own change falsifies:
 
 - `docs/how-to/evaluate-workflow-behavior.md:222` read "No contract in `corpus/dev/contracts/` and no
-  committed chain uses a `{ captured }` binding". It now names the shipped contract, scopes it to the
-  `arguments` channel, and keeps the committed-chain half, which is still true.
+  committed chain uses a `{ captured }` binding". It now names the shipped contract and both axes of
+  its capture, which the peer review asked for: it binds into the `arguments` input channel and
+  captures from `response-body`, and conflating those two was what the first rewrite did. The
+  committed-chain half is still true and CodeRabbit read it as false, on the grounds that
+  `tests/application/mcp-end-to-end.test.ts` takes `mcpContract` through all four stages. A Vitest
+  run is not a committed chain: `grep -c captured` over the five files under `spike-worked-example/`
+  returns zero on every one, and the epic register counts committed chains as the generated artifact
+  sets, which is why Stories 11.10 and 11.11 each add one. The sentence names the chain by path now
+  and says what it does instead of capturing, so the term cannot be read the loose way. It states no
+  chain count, because three published sentences already say "one" and Story 11.10 owns all three;
+  adding a fourth site would make that story's edit harder.
 - `:226` read "No contract in `corpus/dev/contracts/` declares a `fixtureReset`, so the
   `control-mutate` and `control-reset` legs are exercised by ... no shipped contract". Its
   `control-mutate` and `control-reset` were leg purposes and were correct on that axis: the reset leg
