@@ -680,11 +680,21 @@ export function buildSkillExampleChain(): SkillExampleChain {
 	// AD-40's witness match, published on `SkillExampleChain` so a reader can
 	// check the partition the outcome rests on.
 	//
-	// The cast carries the narrowing on its own, and the two guards the spike
-	// chain writes ahead of it are not repeated: `expectedClean: true` with a
-	// declared defect is refused by `Probe.parse` above, and a null signature is
-	// refused by the `sealProbeSet` guard under `signature-absent`. Both fail
-	// before this line, so a guard here would read as a check and be none.
+	// One guard, not the two the spike chain writes. A null signature is
+	// already refused by the `sealProbeSet` guard above under
+	// `signature-absent`, so a second refusal here would catch nothing. A clean
+	// control is not: `Probe` parses all eight class-and-`expectedClean`
+	// pairings on purpose, so the gate can return a reason code instead of an
+	// anonymous parse failure, and of the four classes declared clean here only
+	// three are rejected under `qualification-route-incompatible`. A
+	// `zero-action` clean control is admitted with `declarationChecksRan` true,
+	// so it reaches this line, and `matchProbeWitness` would then read
+	// `interfaceKind` off a branch that carries no `defectSignature` key and
+	// throw an untyped `TypeError` out of `src/`. This guard is what turns that
+	// into a sentence.
+	//
+	// The cast carries the narrowing either way.
+	if (probe.expectedClean) fail(`${probe.probeId} is a clean control`)
 	const signedProbe = probe as SignedProbe
 	const witness = matchProbeWitness(
 		signedProbe,

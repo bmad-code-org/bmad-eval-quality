@@ -118,27 +118,35 @@ describe('the skill chain, as the shipped stages computed it', () => {
 		// The inclusion half holds over the same reply the exclusion half
 		// rejects, which is the whole reason a skill contract carries both.
 		//
-		// Both oracles read their authored disposition beside the resolution the
-		// evaluator computed. Without the disposition lines, flipping O-001's to
-		// `violated` scores identically and the suite stays green: `state` holds
-		// at `confirmed` and the field that moves is `corroboration`.
+		// Four fields per oracle, and each reads something the other three do
+		// not.
 		//
-		// `corroboration` itself is deliberately not asserted. It is a function
-		// of the two values on either side of it, both pinned here, so no
-		// mutation this chain admits moves it alone; the rules that derive it
-		// are tied to their values exhaustively in `tests/score/outcome.test.ts`.
+		// `corroboration` is the one that is easy to mistake for a derived
+		// restatement of the two beside it, and it is not: three of the eight
+		// corroboration rules read neither the disposition value nor the check
+		// resolution. One fires when a disposition of `held` or `violated`
+		// cites no observation at all, one reads whether a defect finding cites
+		// the oracle, one reads that finding's bucket. Empty this chain's
+		// `observationIds` on either disposition and `state`, `disposition` and
+		// `checkResolution` all hold while `corroboration` goes `disagrees`, so
+		// this is the only line that says the authored dispositions are
+		// supported by the observations they cite. `tests/score/outcome.test.ts`
+		// holds the rule table; nothing but this holds it over this chain.
 		//
-		// O-001's `state` is the one line here that is the sole catcher of
-		// nothing. `confirmed` is the outcome table's catch-all row, so it holds
-		// against both the resolution and the disposition moving. It stays
-		// because the pair `confirmed` and `caught` is the claim this chain
-		// exists to make, and a reader should not have to derive it.
+		// `disposition` is the sole catcher of a disposition flipped to any
+		// other value, including `not-attempted`, which moves nothing else.
+		// `checkResolution` is the sole catcher of a reply the oracle reads
+		// differently. `state` is the sole catcher of the probe being repointed
+		// at the other behaviour, which swaps which oracle the witness match
+		// attaches to.
 		expect(outcomeOf('O-001')?.state).toBe('confirmed')
 		expect(outcomeOf('O-001')?.checkResolution?.resolution).toBe('true')
 		expect(outcomeOf('O-001')?.disposition).toBe('held')
+		expect(outcomeOf('O-001')?.corroboration).toBe('agrees')
 		expect(outcomeOf('O-002')?.state).toBe('caught')
 		expect(outcomeOf('O-002')?.checkResolution?.resolution).toBe('false')
 		expect(outcomeOf('O-002')?.disposition).toBe('violated')
+		expect(outcomeOf('O-002')?.corroboration).toBe('agrees')
 	})
 
 	it('puts a number where the skill guide reported null', () => {

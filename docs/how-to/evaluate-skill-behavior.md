@@ -40,7 +40,7 @@ An operation carries exactly one descriptor, so an operation whose stream and wh
 
 A defect signature cannot address a file the command wrote.
 `qualifyProbe` refuses an `artifact` pointer under `condition-artifact-channel-contract-local`, because an artifact identifier is minted per contract and a signature carrying one resolves only against the contract it was authored on.
-The refusal reads the channel of a condition's pointer and never reads the probe's class, so it lands the same way on every one of the four.
+The refusal reads the channel of a condition's pointer and never reads the probe's class, so it lands the same way on every probe class.
 A skill whose decision is visible only inside a written file can still carry oracles; it cannot carry any probe whose signature has to address that file, which is what makes those oracles worth trusting.
 
 ## Declaring the interface

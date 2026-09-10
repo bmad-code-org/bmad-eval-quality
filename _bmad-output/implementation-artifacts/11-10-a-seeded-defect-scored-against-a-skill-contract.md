@@ -293,6 +293,117 @@ The block was written against 1.4.2 and Story 11.8 landed between. None of the f
 
 ## Review Findings
 
+`/bmad-code-review` in a peer session over `git diff b0ea14d..HEAD`, in two rounds. Round one at
+1a415e7: one blocking finding, twelve non-blocking. Round two at a82862d: one blocking, five
+non-blocking, and two of those five were round one's own fixes going wrong. Every finding is
+addressed in this pass. The review ran its mutations in a detached worktree after the first round
+collided with this session's uncommitted edits in the shared one.
+
+**The blocking finding, both times, was the same assertion.** Round one: the chain test asserted
+O-001's state and check resolution, and O-002's disposition, and no oracle's `corroboration`.
+Flipping O-001's authored disposition from `held` to `violated` left all 94 tests green while the
+emitted artifact carried `corroboration: 'disagrees'`; only `check:worked-example` reddened, and only
+on bytes. Cutting obs-002's selection to `['timing-rules', 'mobile-rules']` reddened the resolution
+line and left the state line green, because `confirmed` is the outcome table's catch-all row.
+
+The first fix was wrong in an instructive way and the second round caught it. It pinned the authored
+disposition on both oracles and dropped `corroboration`, on the premise that `corroboration` is a
+function of the disposition and the resolution and therefore unmovable once both are pinned. The
+premise is false. `CORROBORATION_RULES` is eight rows and the first three read neither field: one
+fires when a disposition of `held` or `violated` cites no observation at all, one reads whether a
+defect finding cites the oracle, one reads that finding's bucket. Emptying either disposition's
+`observationIds` leaves `state`, `disposition` and `checkResolution` all unchanged and moves
+`corroboration` alone, and with `corroboration` dropped that mutation passed the entire suite. So the
+chain could ship a run record whose oracle disposition cites nothing, and only a byte check would
+notice.
+
+What ships is four fields per oracle: `state`, `checkResolution.resolution`, `disposition` and
+`corroboration`, each the sole catcher of a different mutation. `corroboration` catches an emptied
+citation, `disposition` catches a flipped disposition including `not-attempted`, `checkResolution`
+catches a reply the oracle reads differently, and `state` catches the probe repointed at the other
+behaviour. `state` was recorded in the first round as the sole catcher of nothing; that was wrong
+too, and the source comment says what each line holds rather than repeating the claim.
+
+**Three assertions removed because they could not fail**, and re-verified as safe. `witness.basis`
+and `strength.basis` are each typed to one literal with one producer. `witnessObservationIds` and
+`unwitnessedFindingIds` are both entailed by `result: 'matched'` over a pinned partition, and a
+non-empty `unwitnessedFindingIds` forces a different result and aborts the build. The second
+registry case in `tests/score/worked-example.test.ts` went the same way: the registry copies each
+builder's entries and fails on a collision, so a value can only differ by a missing key.
+
+**Two assertions kept although they duplicate a builder guard**, `preflightVerdict.passed` and
+`witness.result`, each with a comment saying so.
+
+**Two dead guards deleted, and one deleted then restored.** The null-signature guard ahead of
+`matchProbeWitness` is genuinely dead: `sealProbeSet` refuses it first under `signature-absent`. The
+`leg.request.kind !== 'cli'` guard in the observation walk is unreachable while the contract declares
+one `cli` interface, and a second interface of another kind makes `reducePreflight` throw
+`port-contract-violation` naming both kinds, which says more than the guard could. The
+`expectedClean` guard was deleted on the same reasoning and put back, because the reasoning was
+wrong: `Probe` parses all eight class-and-`expectedClean` pairings on purpose, and of the four
+classes declared clean only three are rejected under `qualification-route-incompatible`. A
+`zero-action` clean control is admitted with `declarationChecksRan` true, reaches
+`matchProbeWitness`, and throws `TypeError: Cannot read properties of undefined (reading
+'interfaceKind')` out of `src/`, because `defectSignature` is not a key on that branch. Reproduced
+here directly against `sealProbeSet` before restoring the guard.
+
+**Six prose corrections.** The widened sentence at `docs/how-to/evaluate-skill-behavior.md:43` said
+"either kind" over a refusal that reads no class at all; the first correction said "every one of the
+four", which names a number the page never enumerates, and it reads "every probe class" now. A
+voice-pass hit survived at `:240` and lost its rejected half. `docs/index.md:77` and the guide's
+standing section both now say the chain's observations are authored, because the two rows beside the
+skill row read "in a real corpus" and "a real probe observes a seeded defect over HTTP" and the
+column's frame made the unqualified sentence read as a live run. The sentence this story added to the
+corpus README's "What is here" bullet said "the committed end-to-end chain" in the same generated
+file whose absence paragraph says two are committed; it reads "one of the two committed end-to-end
+chains" now, so Story 11.11 swaps a numeral there as well. And
+`docs/how-to/author-behavioral-contracts.md` invited a reader to point `CHAIN` at the second chain and
+read the same values: three of the four readers do, and the observation reader does not, because it
+prints an HTTP request body and response body a command-shaped chain does not carry. The invitation
+says which.
+
+**One correction to this file.** The corpus composition this story returned is the last column of
+Decision 6's table, not the middle one.
+
+**A dead assertion outside this story's diff, fixed here.** `tests/architecture/dev-corpus.test.ts`
+case 163's first pattern was a strict prefix of its second, so no README could falsify it while
+satisfying that one and it certified nothing across two epics. It is anchored on the paragraph's own
+bold heading now. The review then ran six mutations over the generated README and confirmed all four
+patterns are independently falsifiable, and that neither the wrap nor the paragraph order is
+load-bearing: splitting the paragraph after the heading and swapping the two absence paragraphs both
+still match all four.
+
+**One finding found and routed rather than fixed here.** `SealedRunRecord.invalidReason` has no
+reader anywhere in `src/`: it appears once, in its own schema declaration. The review set it to a
+non-null string on this chain's record and the run still scored `trials.completed: 1`,
+`invalidatedAttempts: []` and a measured defect rate of 1, with the whole suite green. So the record
+carries a working invalidation mechanism the caller cannot reach, `invalidatedAttempts` computed
+internally from vote states, beside a caller-facing field that does nothing. Wiring it is a `src/`
+change this story's Boundaries make Ask First, with its own AD-21 rung question and its own reject
+cases. The ruling was to keep it out of this diff and hand it to the session clearing the epic's
+leftovers, on its own branch and its own pull request, rather than to record it unowned or to hand it
+forward to a story that did not plan for it. Nothing was added to `deferred-work.md`.
+
+**What the review confirmed rather than found.** No reachable silent vacuum under AD-4's
+empty-collection rule: an emptied selection on obs-002 sends the condition to
+`insufficient-evidence` and the witness to `unwitnessed-claim`, and an emptied sensitivity leg fails
+`input-sensitivity`, so both abort the build. The one shape that slips every guard is obs-001 coming
+back empty, which moves it from `refuting` to `inconclusive`, and the partition assertion is its sole
+catcher. The pre-flight walk reads both minted control identifiers off `plan.legs`;
+`seeded-faults-scoped` examines all four clean legs and drops none, because the fault leg's request
+carries a different prompt. Decisions 11 through 16 were each checked against the tree, both digests
+in Decision 14 reproduced, and both stdin spellings in Decision 16 confirmed to compile clean under
+`{ strict: true }`. Read as a whole, the five surfaces that describe this chain, the index row, the
+guide, the corpus README, the authoring guide and the changelog, all say its inputs are authored.
+
+## Checkpoint decisions taken without the human
+
+- **All four Ask First items were declined, which is what the story predicted.** The diff under `src/` is empty. No `schemaVersion` moved. No policy carrying `minimumTrialCount: 1` was authored; the chain is scored under the published default at 3 and reports the shortfall. `docs/how-to/evaluate-skill-behavior.md`'s "In BMAD terms" section is unedited.
+- **The learning-path step is 55.** Main ended at Step 54 when this story rebased. A sibling session working the epic's tail has 55 written on its own branch and unmerged, so whichever branch merges second renumbers; this one re-checks the committed file immediately before merging.
+- **The chain's own test asserts a value-level property the story's task list did not name:** that `preflightVerdict.fixtureDigest` equals the fixture digest on the emitted artifact. That is the one link between the pre-flight half and the scoring half, and without it a chain could compute a verdict and score under a different one.
+
+## Review Findings
+
 `/bmad-code-review` in a peer session, over `git diff b0ea14d..HEAD`, at 1a415e7. One blocking
 finding, twelve non-blocking, all addressed in this pass. The review ran every mutation in a detached
 worktree after the first round collided with this session's own uncommitted edits in the shared one.
