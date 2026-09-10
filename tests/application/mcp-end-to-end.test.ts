@@ -117,7 +117,7 @@ const held = (oracleId: string, observationIds: readonly string[]) => ({
 })
 
 const record: SealedRunRecord = {
-	schemaVersion: 5,
+	schemaVersion: 6,
 	parentDigest: null,
 	revisionCount: 0,
 	runId: RUN_ID,
@@ -221,7 +221,6 @@ const record: SealedRunRecord = {
 		costUsd: '0',
 	},
 	evidenceDisclosure: { truncationBound: null, reportedIncomplete: false },
-	invalidReason: null,
 }
 
 /** The whole chain, run once: each assertion below reads a different stage's output. */

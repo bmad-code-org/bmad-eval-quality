@@ -99,6 +99,7 @@ flowchart TD
 |   55 | epic11-story10 | A skill is caught cheating for the first time on the record: a planted fault, a real run, and a catch rate where the guide used to print nothing. |
 |   56 | epic11-tail | The operator could say which command may run but not which environment keys it carries. Now they can, and the one key that would pick the binary is refused outright. |
 |   57 | epic11-story11 | Writing something down and reading it back is proved end to end: the second call takes its address from the first call's answer, and a run catches a write that dropped what it was given. |
+|   58 | epic11-tail | A record could say it was invalid and nothing read it. The field is gone, and the attestation that works is named in its place. |
 
 Adding a step: follow `learning-path-template.md`.
 
@@ -4300,3 +4301,34 @@ flowchart LR
 - A count in a sentence needs something that counts it. Four sentences counting worked runs now read a list of the runs, and the build fails if a run reaches disk that the list does not name.
 
 **Watch out:** the file the pre-flight stage writes does not list the four calls. It carries the answers to the questions asked about them, and one of those questions only gets asked when the four calls were planned. That is what the file proves; the order of the calls is proved by the test instead.
+
+## Step 58 (epic11-tail): the box nobody ever read
+
+**In plain terms:** the form carried a box saying "this run was no good, here is why", and anyone filing a run could fill it in.
+Nothing downstream ever looked at that box.
+A run marked no-good was counted, scored and published exactly like a good one, and the person who filled it in had no way to tell.
+This step removes the box and points at the one that works.
+
+**What:** `SealedRunRecord.invalidReason` is deleted, the record's version stamp moves from five to six, the published schema document is regenerated, and a record still carrying the field is refused instead of quietly accepted.
+
+**Why:** the field appeared once in the whole of `src/`, in its own declaration, and the scoring stage parses the record without ever reading it.
+A published field no stage reads is a promise the code does not keep, which is the defect this epic kept finding in other shapes.
+Honouring it instead would mean deciding what a caller-attested invalid run does to the trial count, the strength vector and the verdict, and that decision does not exist; a cleanup is the wrong place to invent it.
+
+**Read in this order:**
+
+1. `src/core/schemas/sealed-run-record.ts`: the field is gone and the record's own description says what replaced it.
+2. `src/core/ingest/ingest.ts`: the live path. A non-null `violation` on the isolation manifest becomes a condition that reaches the verdict basis, which is what a caller attesting an invalid run actually reaches.
+3. `src/core/score/reduce-trials.ts`: the other invalidation, computed rather than declared. An attempt whose vote is an oracle, judge or infrastructure error is invalidated from inside.
+4. `tests/schemas/fixtures/artifact-reject-cases.ts`: the case that makes the removal observable.
+
+### Reference
+
+**Rules:**
+
+- A caller-facing field nothing reads is a defect, and the honest fix is to remove it. Documenting it as unread leaves the promise in place.
+- Prove a removal the way you prove an addition, and then check what is really doing the catching. Putting the field back here reddens a convention test asserting no key on this shape is optional, both census counts, the byte check over the published document, the historical fixture's pinned list of ways it fails, and the case written for the purpose, which fires twice because it is checked against two shapes. Write down what fires rather than how many: the count went stale inside this very change, when repairing the historical fixture added a catcher.
+- Say what the removal does not break, and check the claim before writing it down: the scoring version is computed from the corpus, fixture, evaluator-configuration and scoring-policy digests and carries no digest of the run record, so prior results stay comparable.
+- A required shape that changes moves its version stamp, and every fixture carrying that stamp moves in the same commit.
+
+**Watch out:** there were two invalidation mechanisms here and only the dead one was caller-facing. The working one is computed inside scoring from the run's own outcome states, and the caller's route is a different artifact's field. Finding a live mechanism nearby is what tells you a field is dead rather than merely unfinished.

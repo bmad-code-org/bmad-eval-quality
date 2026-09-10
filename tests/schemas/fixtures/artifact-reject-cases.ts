@@ -462,6 +462,25 @@ export const ARTIFACT_REJECT_CASES: readonly ArtifactRejectCase[] = [
 
 	// ---- sealed-run-record --------------------------------------------------
 	{
+		// The field a caller used to set to attest that a run was invalid. It was
+		// read by nothing, so this case is what makes its removal observable: a
+		// version-5 record carrying it is refused rather than silently accepted
+		// and ignored. `IsolationManifest.violation` is the attestation that
+		// works, and `core/ingest` raises it as a condition that reaches the
+		// verdict basis.
+		id: 'record-invalid-reason-removed',
+		artifact: 'sealed-run-record',
+		constraint: 'the record declares no invalidReason (dropped in version 6)',
+		mutate: (record) => {
+			record.invalidReason = 'the harness crashed'
+		},
+		issuePath: [],
+		issueCode: 'unrecognized_keys',
+		keyword: 'additionalProperties',
+		instancePath: '',
+		errorParams: { additionalProperty: 'invalidReason' },
+	},
+	{
 		id: 'record-mode-absent',
 		artifact: 'sealed-run-record',
 		constraint: 'the run mode is required (AD-21, owed item 4)',

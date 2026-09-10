@@ -389,7 +389,7 @@ const authoredRecord = (
 	briefDigest: string,
 	evaluatorConfigurationDigest: string,
 ): SealedRunRecord => ({
-	schemaVersion: 5,
+	schemaVersion: 6,
 	parentDigest: null,
 	revisionCount: 0,
 	runId: RUN_ID,
@@ -503,7 +503,6 @@ const authoredRecord = (
 		costUsd: '0.02',
 	},
 	evidenceDisclosure: { truncationBound: null, reportedIncomplete: false },
-	invalidReason: null,
 })
 
 // ---------------------------------------------------------------------------

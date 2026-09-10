@@ -62,7 +62,6 @@
       "summary": "The backend selection carried no excluded item, so the same claim held for the other declared case."
     }
   ],
-  "invalidReason": null,
   "isolationManifestArtifact": {
     "digest": "sha256:0000000000000000000000000000000000000000000000000000000000000018",
     "path": null,
@@ -183,7 +182,7 @@
   },
   "revisionCount": 0,
   "runId": "skill-defect-run-0001",
-  "schemaVersion": 5,
+  "schemaVersion": 6,
   "sealedBriefDigest": "sha256:dc6ed0b8043d06c27520d4a0eb0f9803c01e20d03be50c565b9e3733870510bd",
   "trialIndex": 1
 }

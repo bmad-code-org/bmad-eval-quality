@@ -163,6 +163,37 @@ body.
   shortfall. The published corpus grows to twenty-four contracts, twenty-one of which compile. No
   artifact `schemaVersion` moved for this change.
 
+### Removed
+
+- **BREAKING** `SealedRunRecord` drops `invalidReason`, and the record's `schemaVersion` is 6. The
+  field was the prior art's run-level invalidation reason, carried over under AD-24 and read by
+  nothing: it appeared once in `src/`, in its own declaration, and `score` parses the record without
+  consulting it. A caller could set it to any string, attest that the run was invalid, and still see
+  the trial counted as completed with an empty `invalidatedAttempts` and a defect rate computed from
+  it. A published field that no stage reads is a promise this package does not keep, so it is gone
+  rather than wired up: honouring it would mean defining record-level invalidation and its AD-21 rung,
+  which no decision specifies.
+
+  **What to do with a version-5 record.** Delete the key and stamp `schemaVersion: 6`. A record still
+  carrying it now fails to parse against the strict shape, which is the loud failure the removal is
+  for. No re-run and no re-score is needed: `ScoringVersionInputs` carries the corpus, fixture,
+  evaluator-configuration and scoring-policy digests and no digest of the run record, so the scoring
+  version and the comparability key are both unchanged and prior results stay comparable. The three
+  committed worked-example chains are the proof: `check:worked-example` rebuilds every file in each
+  and compares byte for byte, and not one `evidence-artifact.json` moved in this change.
+
+  **Where an invalid run is attested instead.** `IsolationManifest.violation`, which `core/ingest`
+  raises as an `isolation-manifest-violation` condition that reaches the verdict basis, is the
+  caller-facing channel that works. It is also the one the architecture kept: the 2026-07-29
+  reconciliation review that mapped the prior art onto this package kept `violation` and recorded the
+  run-level twin as dropped, so this removal restores a decision rather than making a new one. A
+  failure the run itself produced is carried by AD-6's invalidating outcome states, `oracle-error`,
+  `judge-error` and `infrastructure-error`, which `reduce-trials` already folds into
+  `invalidatedAttempts`.
+
+  The published `schemas/sealed-run-record.schema.json` is regenerated, and the two committed
+  worked-example chains carry the new stamp.
+
 ### Changed
 
 - **BREAKING** The eval contract's `schemaVersion` is 5. The `mcp` branch of `permittedInterfaces`

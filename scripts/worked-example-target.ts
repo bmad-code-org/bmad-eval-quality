@@ -719,7 +719,7 @@ const authoredRecord = (
 	briefDigest: string,
 	evaluatorConfigurationDigest: string,
 ): SealedRunRecord => ({
-	schemaVersion: 5,
+	schemaVersion: 6,
 	parentDigest: null,
 	revisionCount: 0,
 	runId: 'spike-run-0001',
@@ -979,7 +979,6 @@ const authoredRecord = (
 		costUsd: '0.04',
 	},
 	evidenceDisclosure: { truncationBound: null, reportedIncomplete: false },
-	invalidReason: null,
 })
 
 // ---------------------------------------------------------------------------
