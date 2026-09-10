@@ -608,6 +608,25 @@ every request would flip both and neither would be measuring what its id says. T
 assert the failure detail rather than the flip, and one asserts the non-matching arm of
 `observe-error-result` names the kind it observed.
 
+**Four assertions proved against the shipped adapter by mutation, not only against a synthetic
+subject.** The synthetic suite proves each assertion is individually falsifiable; these prove the
+same assertions are falsifiable against the code an adopter runs. Reverting `bodyOf`
+(`src/adapters/mcp-adapter.ts`) to always answer `{ kind: 'absent' }` turns
+`mcp/observe-declared-result-channel` red with "the result channel carried {\"kind\":\"absent\"},
+expected the structured result carrying [\"ok\",\"matches\",\"totalCount\",\"echo\"]", and
+`mcp/arguments-passed-as-declared` with it, since one `bodyOf` serves both requests in the real
+adapter. Sending `arguments: {}` instead of the declared channel turns only
+`mcp/arguments-passed-as-declared` red, with "the tool reported receiving null on \"echo\", expected
+the declared literal". Making `evaluateMcpTarget` allow every interface and every tool turns exactly
+`mcp/deny-unmapped-interface` and `mcp/deny-unauthorized-tool` red, each reporting both halves:
+"resolved instead of rejecting with \"forbidden-target\"; underlyingCalls() was 1, expected 0", which
+is the call-count pin doing its own work rather than riding on the code check.
+
+That the two result-reading assertions flip together against the real adapter and separately in the
+synthetic suite is the expected split and worth stating: the real adapter has one projection serving
+both requests, while the synthetic subject keys each mutant to its own `operationId`, which is what
+the one-flip-per-mutant rule is about.
+
 **The grading, and why its table of fourteen `true`s is not vacuous.** Six oracle-removal cases,
 covering all seven rules: O-001 and O-003 each carry `success-indicator-separation` and `whole-body`
 for their own operation, O-002 carries `per-record` and `omission-and-completeness`, O-006 with
