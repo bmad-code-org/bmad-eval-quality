@@ -289,19 +289,75 @@ location and the reference set it names are added to the read's descriptor, noth
 both rules come back relevant. That is what separates "this contract declares no collection" from
 "these predicates stopped firing".
 
-**Decision 14: the three type-violating steps stay unobserved, and the artifact says so.**
-All three are `cardinality: at-most-one` and the committed run made none of them, so `O-003` resolves
-`unreached` and its authored `held` disposition scores `corroboration: 'disagrees'`. Both are asserted
-in the chain test and `oracle O-003 resolved unreached` appears in the emitted `verdictBasis`.
+**Decision 14: `create` binds by literal, so all three type-violating steps are observed and every
+oracle is reached.**
+The first build left the three `at-most-one` type-violating steps unobserved, which made `O-003`
+resolve `unreached`, gave its authored `held` disposition `corroboration: 'disagrees'`, and put
+`oracle O-003 resolved unreached` in the emitted `verdictBasis`. The reason recorded for that was the
+plan the guide prints: `create` bound `body.name` with `{ matcher: 'any' }`, which binds whatever was
+sent, so a second `create-thing` observation carrying a type-violating name would make
+`selectWithBindings` return `several` under `exactly-one` and the outcome would be an infrastructure
+error rather than a verdict about the contract.
 
-The alternative was to record an observation per malformed step, and it is blocked by the plan the
-guide prints. `create` binds `body.name` with `{ matcher: 'any' }`, which selects whatever was sent,
-so a second `create-thing` observation carrying a type-violating name would make `selectWithBindings`
-return `several` under `exactly-one` and the outcome would be an infrastructure error rather than a
-verdict about the contract. Rebinding `create` by literal would make the shipped contract stop
-matching the plan printed at `docs/how-to/evaluate-workflow-behavior.md:42-69`, which Decision 1 rests
-on. A published chain whose artifact flags an oracle the run did not exercise is the better of the
-two, and it is a thing a reader of a worked example should see once.
+The peer review turned that reasoning over and it was wrong about the cost. Binding `create` with
+`{ literal: 'a thing the run created' }` separates the two steps at one token: `create` then selects
+exactly one call and `malformed-create` still selects only the type-violating one under its own
+matcher. The printed plan changes by that one token and nothing else, the three compile-check
+demonstrations do not read the binding form, and the block at
+`docs/how-to/evaluate-workflow-behavior.md:42-69` stays byte-identical to the published contract's
+first two steps, which is what Decision 1 actually rests on.
+
+So the run makes all three calls, each answering 400 with `ok: false`, `O-003` scores `confirmed` with
+its corroboration agreeing, and `verdictBasis` is one entry, the trial-set shortfall. The first
+shipped api workflow exemplar no longer ships a chain leaving three of its seven steps unexercised.
+Downstream consequence: `obs-malformed-read` is a `get-thing` observation the probe's selector admits,
+so the witness partition gains a second refuting member and the chain test asserts both.
+
+**Decision 18: the seeded fault is a dropped field, because a create-shaped silent write cannot be
+observed at pre-flight.**
+The first build seeded the spike chain's fault, a write that reports success and reaches no store, and
+the peer review found that its evidence contradicted the contract's own `testData.setup`: a read at the
+identifier the write returned answered 200 carrying a record, which a store that was never written
+cannot hold. The setup declared one seeded thing, and two authored reads answered for records it ruled
+out.
+
+Widening the setup to admit those records was the cheap repair and it is the wrong one, because the
+contradiction is not in the prose. A pre-flight leg is one call with fixed inputs and cannot write and
+then read back, so a fault in the write is observable on a leg only against a record the write itself
+filed; and the fault has to be input-conditional, since every create leg of a mutated build exhibits
+it and `seeded-faults-scoped` fails when the relation fires on a clean leg of the same operation.
+
+The fault this story ships instead is a dropped field: the write files the record, drops the name it
+was sent, and the store fills in its own placeholder, while the handler answers from the request it
+was given. Three properties follow, and each is what some part of the chain needs. The write's own
+response still echoes the name it was sent, so it stays indistinguishable from a correct one and the
+signature stays homed on the read. The record exists at the identifier the write returned, so the
+read-back's 200 is what a store in that state answers. And the fixture can hold a record filed through
+the write, which is what the manifestation witness reads: `testData.setup` declares `t-8` as filed
+through the write under test rather than placed directly, and the relation over that leg is true only
+of a build that drops the field. Downstream consequence: `testData.setup` is now load-bearing for the
+pre-flight plan rather than only for a human running the fixture, and a later story that changes the
+seeded fault has to move it with the evidence.
+
+**Decision 19: what the peer review found, and the two findings that were errors in shipped prose.**
+The review returned thirteen findings over the first build. Two were factual errors in prose a reader
+would open: the claim that this chain is the only one whose pre-flight verdict is computed, which the
+skill chain shipped one story earlier falsifies, and the fixture contradiction Decision 18 records.
+Four more were overclaims about what `preflight-verdict.json` records, which Decision 12 had already
+settled for the guide and which the chain builder's own header still carried in the wrong words. Three
+were assertions that pinned nothing, found by deleting them and then applying the mutation each was
+supposed to catch: an assertion on `contract.fixtureReset.operationId` that the control-leg row above
+it already read through the planner, and two "with nothing removed" controls in the coverage file that
+the whole-table verdict already determined in both columns.
+
+Two of its checks are worth carrying forward as method. It attacked a claim by reading the file the
+claim points at rather than the claim: the tool-server citation named a test whose own docblock says
+it does not restate the leg count, and the file that pins it is
+`tests/application/preflight.test.ts` case 113. And it found that a sentence I had gated in the corpus
+README was left ungated in the guide, which is the page an adopter actually reads; both now have
+entries, and the gate holds 31 numerals across 10 files.
+
+One finding was declined on its first reading and then taken. Decision 14 records that exchange.
 
 **Decision 15: `check:doc-counts` gains six entries, and the committed-chain count is read off the
 registry.**
