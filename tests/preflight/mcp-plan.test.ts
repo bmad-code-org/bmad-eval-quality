@@ -1,10 +1,12 @@
 // Pre-flight against a system under test behind an MCP tool server: the legs
 // the plan mints and the request the port is handed.
 //
-// The third file of the `plan.test.ts` and `command-plan.test.ts` pair, and it
-// stops one step earlier than either. `ProbeObservation` carries no tool-call
-// member yet, so nothing can answer an mcp leg, and what an api or a cli answer
-// gets instead is the last case here.
+// The third file of the `plan.test.ts` and `command-plan.test.ts` pair. It was
+// written while `ProbeObservation` still had two members, so its subject is a
+// hand-built answer and the last case here is what an api or a cli answer gets
+// instead. `McpProbeObservation` landed with the reference adapter, and the
+// pre-flight that runs a real tool server end to end lives beside that adapter
+// in `tests/adapters/mcp-adapter.test.ts`.
 
 import { describe, expect, it } from 'vitest'
 import { compile } from '../../src/core/compile/compile.ts'

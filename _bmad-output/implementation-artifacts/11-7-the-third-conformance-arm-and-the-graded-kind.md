@@ -343,6 +343,156 @@ describes two working arms. This story rewrites that header, so it is the change
 entry's last true sentence false, and closing the entry in the same diff keeps the file's claim that
 it records what is actually owed.
 
+**Decision 7: Decision 2 is superseded, and all three arms now share one assertion shape, one
+runner, one resolve-side checker and one call-count checker.**
+Decision 2 recorded that `checkCommandCalls`'s own comment explains why a call-count checker cannot
+be shared, that the resolve-side checker has the same problem, and that a generic "would remove the
+duplication and add a type parameter to every assertion record for no assertion it makes possible."
+The contravariance half of that is correct and the conclusion does not follow from it. The problem
+is real when the generic is put on the assertion *record*, which is what that sentence describes and
+what it rightly turns down. Put on the *helper* instead, TypeScript infers the subject from the
+`subject` argument at each call site and the records stay concrete: `ArmAssertion<ProbeSubject>`,
+`ArmAssertion<CommandProbeSubject>`, `ArmAssertion<McpProbeSubject>`, no type parameter written
+anywhere a list of assertions is authored.
+
+Taking it collapsed four types (`Expectation`, `ProbeAssertion`, `CommandExpectation`,
+`CommandAssertion`) into one, three near-identical runners into `runArmAssertion` and `runArm`, two
+resolve-side checkers into `checkResolvedFor`, and three call-count checkers into `checkCallCount`.
+The `api` arm's `check` takes only `(observation)` and satisfies the two-parameter signature, since a
+function of fewer parameters is assignable to one of more. Writing the third arm the way Decision 2
+described would have shipped a third copy of each.
+
+Verified as a behaviour-preserving change rather than argued: `npm run typecheck` exits 0, and the
+whole of `tests/testing/conformance.test.ts`, including the `api` arm's fourteen mutant fixtures, plus
+`tests/adapters/command-probe-subject.test.ts`'s real fifteen-of-fifteen run, were green across the
+edit before any new assertion existed. Downstream consequence: a fourth mechanism writes a subject
+type and a list of assertions and inherits the machinery, which is the shape this story wanted for
+its own arm and would otherwise have owed the next one.
+
+**Decision 8: Story 11.13's Decision 21 is weighed here and the two wide field types stay wide, and
+the third arm's equivalent is wide too.**
+11.13 deliberately left `ProbeSubject.faultingRequest` and `CommandProbeSubject.nonZeroExitRequest`
+typed over the whole three-member request union, made both arms' non-matching detail strings
+reachable that way, gave each a case, and handed the narrowing decision to this story on the ground
+that this story owns the conformance surface. Read with the third arm in hand, the answer is to keep
+them wide. `McpProbeSubject.errorResultRequest` is declared the same way, its non-`mcp` arm names the
+observed kind, and it has its own case.
+
+Three reasons, in the order they decide it. The suite is published for adapter authors to run against
+their own subjects, and nothing obliges such an author to be using TypeScript at all; a narrowed
+field type is invisible to a JavaScript caller, while the runtime detail naming the kind it observed
+works for every caller. Narrowing is a caller-facing break on a published type for zero assertions
+gained, since the assertion it would make unnecessary is a mis-wired subject the suite already
+reports precisely. And it would delete three reachable branches and the three cases that cover them,
+trading a message that says what went wrong for a compile error one class of caller sees.
+
+Downstream consequence: a fourth arm declares its own kind-specific request over the request union
+too, and owes the same non-matching case. The alternative turned down is recorded here rather than in
+the source, since the source now carries only what holds.
+
+**Decision 9: the fixture server needed no change, and the Execution list item that asks for one is
+recorded as already landed.**
+The Execution list asks this story to write `tests/adapters/fixtures/mcp-probe-fixture.mjs`,
+"scripting the error result, the argument echo, the declared result channel, and both overruns."
+Story 11.13 shipped the file with all four already in it: `failing_tool` returns a result carrying
+`isError: true`, `search_notes` returns `echo` carrying the query it received, its structured result
+carries `ok`, `matches`, `totalCount` and `echo`, `oversize_tool` writes past a byte cap on demand,
+and `hanging_tool` never answers. The subject drives those five tools and the file is untouched by
+this diff.
+
+The argument-echo assertion reads `echo`, which is a scalar the tool publishes beside `matches`. That
+is deliberate and it is the AD-4 trap: a check over a collection that came back empty resolves to
+insufficient evidence under `empty-collection`, so an assertion spelled over `matches` would report
+vacuous and could never witness a dropped or re-encoded argument. `McpProbeSubject`'s own comment
+carries the rule.
+
+**Decision 10: no predicate under `src/core/coverage/` answered wrongly for `mcp`, and the grading
+file proves that rather than asserting it.**
+The Execution list carries "repair any predicate the grading finds answering wrongly for `mcp`, at
+its source". None does. All seven relevance predicates answer `true` and all seven satisfaction
+predicates answer `true` over `tests/schemas/fixtures/mcp-contract.ts`, which is a different shape
+from either command contract, where four rules are irrelevant. The difference is the fixture's own
+richness: it declares a success indicator beside two other channel roles, two type-violating
+bindings, a collection location naming a reference set, a sibling group, and a state-change marker,
+so no rule has an absent declaration to be irrelevant about.
+
+A table of seven `true, true` rows is the table most easily green for the wrong reason, so
+`tests/coverage/mcp-coverage.test.ts` carries a second block that removes one oracle at a time and
+names which rules go unsatisfied. Six removals, and every rule is accounted for: dropping O-001 or
+O-003 leaves `success-indicator-separation` and `whole-body` unsatisfied, dropping O-002 leaves
+`per-record` and `omission-and-completeness`, dropping O-006 and O-007 leaves `malformed-input`,
+dropping O-005 leaves `sibling-cross-check`, and dropping O-004 leaves `state-change-read-back`.
+Every mutant still compiles under `strict`, so the predicates run on all of them.
+
+The root the command grading found broken is right here for the same reason it was wrong there:
+`descriptorChannelOf` answers `response-body` for an `mcp` operation and `descriptorRootOf` builds
+`/response-body`, which is the prefix a real evidence pointer such as
+`/interactions/search/response-body/matches` starts with. The grading file asserts both operations'
+roots and kinds directly.
+
+**Decision 11: the five pairs, walked against the tree at this story's start. Every pair has its
+third file and the named fallback did not fire.**
+1. `tests/preflight/mcp-plan.test.ts` **arrived from Story 11.5**, so this story's fallback was not
+   needed. Its own header claimed `ProbeObservation` "carries no tool-call member yet", which Story
+   11.13 falsified; the header is corrected in place here and now points at the end-to-end pre-flight
+   that lives beside the adapter.
+2. `tests/adapters/mcp-probe-subject.ts` **written here**.
+3. `tests/adapters/mcp-probe-subject.test.ts` **written here**;
+   `tests/adapters/mcp-adapter.test.ts`, the other half of that pair as this story's Design Notes
+   splits it, **arrived from Story 11.13**.
+4. `tests/adapters/mcp-target-policy.test.ts` **arrived from Story 11.13**.
+5. `tests/coverage/mcp-coverage.test.ts` **written here**.
+
+**Decision 12: Decision 6 is amended. The deferred-work entry is rescoped here and stays open, with
+a named owner.**
+Decision 6 said this story closes `deferred-work.md`'s one open item, on the ground that Epic 10
+satisfied it and that this story's header rewrite makes its last true sentence false. The first half
+is nearly right and the second half is exactly right. Epic 10 shipped `CommandTargetPolicy`,
+`CommandTargetAuthorization` and the fifteen-outcome `command-probe` arm, which covers every
+assertion the entry named as its closing condition. One sub-item survived: the entry also asked the
+command authorization to name "the environment keys it may carry", and it names none.
+`CommandProbeRequest.channels.environment` is contract-declared and `buildEnv` spreads it into the
+child with no allowlist anywhere, so every other command channel is default-deny and this one is
+default-allow.
+
+The entry is therefore rewritten down to that item, with its `source_spec`, its evidence, and what
+closing it costs: a `permittedEnvironmentKeys` field, an enforcement point in
+`command-line-adapter.ts`, and a tenth command assertion moving
+`CONFORMANCE_OUTCOME_COUNTS['command-probe']` from 15 to 16, which is a caller-facing disclosure.
+Its stale evidence pointers are corrected in the same pass, and the file's own contradiction between
+"One item is open" at the top and "**Nothing is open.**" further down is resolved.
+
+The closure was held back on an explicit ruling rather than forgotten, and the entry says so. The fix
+moves a published count on a mechanism this story does not touch, and the epic coordinator owns it as
+one post-epic pull request after Story 11.9. Recording the owner and the cost is what separates this
+from the deferred-work pattern the repository owner objects to.
+
+The `mcp` mechanism does not inherit the gap and the entry says that too: `McpProbeRequest` declares
+no environment channel, and `McpTargetAuthorization.serverEnvironment` is the adapter's own launch
+environment under AD-18, which is authorization material rather than a contract-declared channel.
+
+**Decision 13: `tests/adapters/mcp-probe-subject.test.ts` sweeps no pids, and the file says why.**
+Story 11.13 leaked two server processes onto a developer machine because its teardown case recorded a
+pid, asserted the process was dead, and had no cleanup on the path where that assertion fails. The
+rule that came out of it is that a test which starts a process cleans up on its failing path. This
+file starts six servers per run and needs no sweep, for a reason worth stating rather than assuming:
+every session the subject opens is closed in `callToolOverStdio`'s own `finally`, which ends the
+server's stdin and kills its process group, and that runs on the cap path and the throw path as much
+as the clean one. No case here launches through a launcher or passes `--linger`, so there is no
+grandchild for a failed assertion to strand. The file header carries the argument, so the next reader
+does not have to re-derive it or add a sweep over nothing.
+
+**Decision 14: three sentences outside this story's named documentation list were falsified by this
+change or by 11.13's, and all three are corrected here.**
+Rule: a story corrects the sentences its own change falsifies, in its own diff.
+`_bmad-output/project-knowledge/learning-path-step-by-step.md`'s step 51 closed with "the conformance
+suite still has two arms" and "the third arm, and the count that goes with it, land in the next
+story", which this diff makes false; it now states what was true when 11.13 landed and points at step
+52. `tests/preflight/mcp-plan.test.ts`'s header claimed `ProbeObservation` carries no tool-call
+member, which 11.13 falsified and no story corrected. `tests/adapters/probe-subject.test.ts` carried
+its `expected an api observation` guard twice on consecutive lines, which the Execution list already
+names, and one copy is deleted.
+
 ## Design Notes
 
 **The five pairs, walked against the tree.** Every pair exists. Three get a third file here and two

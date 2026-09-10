@@ -224,9 +224,9 @@ Each port's type comes from `eval-quality/conformance`. `eval-quality/adapters` 
 
 **The conformance suite** decides whether an implementation conforms. It checks behavior the type checker cannot: whether the implementation returns a typed fault where the boundary demands one, and whether it hangs where it should time out. It takes a `PortSubject`, a small harness around your port carrying a name, one sample request, and a `build` function the suite calls once per scenario. `ScenarioKind` is the four situations it needs your port to be in: `resolves`, `fails`, `in-band-error`, and `hangs`. Putting the port into each of them is your job, because only you know how to make your mechanism fail.
 
-There is one runner per port, plus a second arm for `EnvironmentProbePort`'s HTTP and command mechanisms: `runClockPortConformance`, `runCorpusPortConformance`, `runFileSystemPortConformance`, `runEnvironmentProbePortConformance` (the `api` arm), and `runCommandLineProbeConformance` (the `cli` arm). A report carries the subject name, the port, one outcome per assertion, and a `passed` field over all of them. Every outcome id has the form `<method>/<assertion>`, so a failure names the method and the property it broke.
+There is one runner per port, and `EnvironmentProbePort` has one arm per mechanism: `runClockPortConformance`, `runCorpusPortConformance`, `runFileSystemPortConformance`, `runEnvironmentProbePortConformance` (the `api` arm), `runCommandLineProbeConformance` (the `cli` arm), and `runMcpProbeConformance` (the `mcp` arm). A report carries the subject name, the port, one outcome per assertion, and a `passed` field over all of them. Every outcome id has the form `<method>/<assertion>`, so a failure names the method and the property it broke.
 
-`CONFORMANCE_OUTCOME_COUNTS` publishes the count per port, and the suite asserts its own totals against it: `corpus` 6, `clock` 6, `file-system` 12, `environment-probe` 19, `command-probe` 15. A count that does not match means the suite did not finish, which is itself a failure.
+`CONFORMANCE_OUTCOME_COUNTS` publishes the count per port, and the suite asserts its own totals against it: `corpus` 6, `clock` 6, `file-system` 12, `environment-probe` 19, `command-probe` 15, `mcp-probe` 14. A count that does not match means the suite did not finish, which is itself a failure.
 
 ## The corpus
 

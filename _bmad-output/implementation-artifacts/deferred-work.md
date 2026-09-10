@@ -1,20 +1,54 @@
 # Deferred work
 
-**One item is open, and it is an addition to the published surface rather than a repair.** Epic 9's
-third adversarial review found that `ProbeTargetPolicy` has a single authorization shape and that
-every field in it is HTTP: scheme, host, port, resolved addresses, methods, safe methods, redirect
-count, and request and response byte caps. So a `cli` interface cannot be authorized at all, AD-35's
-rule that "an adapter denies by default and permits only what that mapping names" has nothing to
-name for the mechanism epic 9 adds, and the published conformance suite has no command arm because
-there is no policy for one to certify against. Closing it is a declaration first: a command
-authorization naming a permitted executable, the subcommand paths and environment keys it may
-carry, and its own elapsed and output-byte caps; then the assertions -- an executable no mapping
-names, a refusal to accept a pre-built argument vector, a non-zero exit as an observation rather
-than a fault, each cap enforced. The gap is stated in `src/testing/probe-conformance.ts`'s own
-header and in the release disclosure, so no adopter concludes from a green nineteen-of-nineteen run
-that a command adapter has been certified. What the review round did repair is the suite's silence:
-it now checks that an observation echoes its request's `kind`, so an api adapter can no longer pass
-by answering a command request with an HTTP observation.
+**One item is open: a command authorization cannot restrict the environment keys a call carries.**
+
+`source_spec`: epic 9's third adversarial review, rescoped 2026-09-10 during epic 11 story 7.
+
+`summary`: `CommandProbeRequest.channels.environment` is a contract-declared `Record<KeyName, string>`
+(`src/core/schemas/port-messages.ts`), and `command-line-adapter.ts`'s `buildEnv` spreads it over a
+PATH-only base and hands the result to the child. `CommandTargetAuthorization`
+(`src/core/schemas/probe-policy.ts`) declares eight fields and none of them names permitted
+environment keys, so there is no allowlist for the adapter to check against.
+
+`evidence`: this is an AD-35 violation rather than a missing convenience, and the asymmetry has a
+direction. Every other command channel is default-deny: the executable is compared against
+`target`, the subcommand path against `permittedSubcommandPaths`, the artifact identifiers against
+`artifacts`. The environment channel is default-allow. The operator's mapping is what authorizes
+which executable may run, while the contract author is what declares the environment that
+executable carries, and the operator has no way to restrict it. That is why the field belongs on
+the authorization rather than on the request.
+
+`closing cost`: a `permittedEnvironmentKeys` field on `CommandTargetAuthorization`, an enforcement
+point in `command-line-adapter.ts`'s `buildEnv`, and a tenth command assertion,
+`command/deny-unauthorized-environment-key`, pinning `underlyingCalls() === 0` the way the other
+three command denials do. That moves `CONFORMANCE_OUTCOME_COUNTS['command-probe']` from 15 to 16,
+which is caller-facing surface and needs an NFR8 disclosure in `CHANGELOG.md`.
+
+The `mcp` mechanism does not inherit this. `McpProbeRequest` declares no environment channel at all,
+and `McpTargetAuthorization.serverEnvironment` is the environment the adapter launches the server
+with, supplied by the same mapping that authorizes the target under AD-18. That is authorization
+material rather than a contract-declared channel, so there is nothing for a caller to smuggle
+through it.
+
+**What this entry used to say, and why it is shorter now.** As epic 9's review filed it, the entry
+covered the whole command mechanism: no `CommandTargetPolicy` at all, so a `cli` interface could not
+be authorized, AD-35's default-deny rule had nothing to name, and the published conformance suite
+had no command arm. Epic 10 shipped all of that. `CommandTargetPolicy` and
+`CommandTargetAuthorization` declare the executable, the subcommand paths, the working directory,
+the artifacts, and both caps; `runCommandLineProbeConformance` reports fifteen outcomes, nine of
+them command-specific, and they include every assertion the entry named as its closing condition:
+an executable no mapping names, the refusal to accept a pre-built argument vector, a non-zero exit
+read as an observation, and each cap enforced. The entry's two evidence pointers went stale with it.
+`src/testing/probe-conformance.ts`'s header described the gap and now describes three working arms,
+and the "nineteen-of-nineteen" framing was the `environment-probe` count alone, which a command
+subject never runs. The environment-key half is the one thing epic 10 did not build, and it is what
+is left here.
+
+The closure was held back deliberately rather than forgotten. Epic 11 story 7 found the gap while
+scoping its own third conformance arm, confirmed it against the tree, and was told not to take it:
+the fix moves a published count on a mechanism that story does not touch, and the coordinator owns
+it as one post-epic pull request after story 11.9. That is a scoped handoff with a named owner and a
+stated cost, which is the thing this file is for.
 
 Epic 9 closed the sixteen items this file carried, on the instruction that no
 work be left owed; the closure narrative for those sixteen is at the end, under "How to use this
@@ -269,10 +303,12 @@ closure on record here already does it, so a later reader is not left to guess w
 The rule is about the entry, not about erasing that something was once open.
 
 
-**Nothing is open.** Epic 9 closed the sixteen entries this file carried, on the
+**The sixteen entries this file carried when epic 9 began are all closed**, on the
 instruction that no work be left owed. The closures are recorded below in one
 line each, naming where the outcome and the reasoning now live, which is what
-the rule above asks for when an entry is deleted.
+the rule above asks for when an entry is deleted. The one item open today is the
+environment-key gap at the top of this file, which epic 9's own third
+adversarial review opened after this sweep had run.
 
 Four had already been closed by later stories and the entries had not been
 removed: the trial-set reducer's unknown-state guard, its `catchThreshold`

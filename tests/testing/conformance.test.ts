@@ -39,11 +39,13 @@ import {
 } from '../../src/testing/conformance.ts'
 import type {
 	CommandProbeSubject,
+	McpProbeSubject,
 	ProbeSubject,
 } from '../../src/testing/probe-conformance.ts'
 import {
 	runCommandLineProbeConformance,
 	runEnvironmentProbePortConformance,
+	runMcpProbeConformance,
 } from '../../src/testing/probe-conformance.ts'
 
 // ---------------------------------------------------------------------------
@@ -434,6 +436,7 @@ describe('the report itself: formatting, the length rule, and the declared count
 			'file-system': 12,
 			'environment-probe': 19,
 			'command-probe': 15,
+			'mcp-probe': 14,
 		})
 	})
 })
@@ -908,71 +911,6 @@ describe('the probe suite: AD-35 default-deny and the four caps (fixtures 59-72)
 	// over the whole request union, so a subject may declare a tool call there
 	// and answer it correlated; `echoMismatch` passes and the status check's own
 	// non-api arm fires. It used to call that answer "a command observation".
-	/**
-	 * The command arm's twin of the case below it. `nonZeroExitRequest` is typed
-	 * over the whole request union too, so one request is all this subject has
-	 * to declare truthfully; every other field is a placeholder, and only the
-	 * one outcome is asserted.
-	 */
-	function syntheticCommandSubject(): CommandProbeSubject {
-		const commandRequest = (operationId: string): ProbeRequest => ({
-			probeId: `probe-${operationId}`,
-			interfaceId: 'devtools',
-			operationId,
-			kind: 'cli',
-			executable: 'probe-cli',
-			subcommandPath: [],
-			channels: {
-				argument: {},
-				option: {},
-				environment: {},
-				stdin: { kind: 'absent' },
-			},
-		})
-		return {
-			name: 'synthetic-command',
-			sampleRequest: commandRequest('sample'),
-			build: async () => {
-				let calls = 0
-				return {
-					port: async (request: ProbeRequest) => {
-						calls++
-						if (request.operationId === 'non-zero-exit')
-							return mcpObservationFor(request)
-						throw forbidden('this subject answers one request')
-					},
-					underlyingCalls: () => calls,
-				}
-			},
-			policy: { authorizations: [] },
-			authorizedRequest: commandRequest('authorized'),
-			unmappedInterfaceRequest: commandRequest('unmapped-interface'),
-			unmappedExecutableRequest: commandRequest('unmapped-executable'),
-			unauthorizedSubcommandRequest: commandRequest('unauthorized-subcommand'),
-			nonZeroExitRequest: mcpProbeRequest('devtools', 'non-zero-exit'),
-			injectionRequest: commandRequest('injection'),
-			injectionArgumentValue: 'literal',
-			artifactRequest: commandRequest('artifact'),
-			artifactId: 'report',
-			artifactExpectedText: 'artifact-body',
-			overElapsedRequest: commandRequest('over-elapsed'),
-			overOutputRequest: commandRequest('over-output'),
-		}
-	}
-
-	it('names the kind it observed when a command subject declares a tool call for the non-zero-exit case', async () => {
-		const report = await runCommandLineProbeConformance(
-			syntheticCommandSubject(),
-		)
-		const outcome = report.outcomes.find(
-			(each) => each.id === 'command/observe-nonzero-exit',
-		)
-		expect(outcome?.passed).toBe(false)
-		expect(outcome?.detail).toBe(
-			'observed a "mcp" observation, expected a non-zero exit',
-		)
-	})
-
 	it('names the kind it observed when the faulting request is itself a tool call', async () => {
 		const report = await runEnvironmentProbePortConformance(
 			syntheticProbeSubject({ faultingRequestIsMcp: true }),
@@ -983,6 +921,466 @@ describe('the probe suite: AD-35 default-deny and the four caps (fixtures 59-72)
 		expect(outcome?.passed).toBe(false)
 		expect(outcome?.detail).toBe(
 			'observed a "mcp" observation, expected status 500',
+		)
+	})
+})
+
+// The `cli` and `mcp` arms' non-vacuity proofs, on the shape the `api` arm's
+// fixtures 59-73 set. Each subject below is one conforming synthetic adapter
+// with one knob per assertion; every knob defaults off, so the base case is the
+// subject every mutant is a single change to. The `cli` arm shipped without
+// this: `command-probe-subject.test.ts` runs the real adapter and asserts
+// fifteen of fifteen, which proves the arm passes and says nothing about
+// whether any single assertion can fail.
+//
+// Every mutant is keyed to one `operationId`, which is what keeps the flips
+// disjoint. Two `mcp` assertions read the structured result, so a mutant that
+// emptied it for every request would flip both and neither would be measuring
+// what its id says.
+
+const INJECTION_VALUE = 'literal-$(echo pwned)'
+const ARTIFACT_ID = 'report'
+const ARTIFACT_TEXT = 'artifact-body'
+const ECHO_KEY = 'echo'
+const ECHO_VALUE = 'declared-$(echo pwned)'
+const MCP_RESULT_KEYS = ['ok', ECHO_KEY]
+
+type CommandKnobs = {
+	readonly denyAuthorized?: boolean
+	readonly throwOnNonZeroExit?: boolean
+	readonly allowUnmappedInterface?: boolean
+	readonly allowUnmappedExecutable?: boolean
+	readonly allowUnauthorizedSubcommand?: boolean
+	readonly mangleArgument?: boolean
+	readonly dropArtifact?: boolean
+	readonly resolveAfterElapsedCap?: boolean
+	readonly forbiddenInsteadOfCapOnOutput?: boolean
+	/** Declare the non-zero-exit request itself as a tool call, and answer it correlated. `CommandProbeSubject.nonZeroExitRequest` is typed over the whole request union, so this is a subject the published type admits, and it is what reaches the check's own non-`cli` arm. */
+	readonly nonZeroExitRequestIsMcp?: boolean
+}
+
+function commandRequest(operationId: string): ProbeRequest {
+	return {
+		probeId: `probe-${operationId}`,
+		interfaceId: 'devtools',
+		operationId,
+		kind: 'cli',
+		executable: 'probe-cli',
+		subcommandPath: [],
+		channels: {
+			argument: {},
+			option: {},
+			environment: {},
+			stdin: { kind: 'absent' },
+		},
+	}
+}
+
+function commandObservation(
+	request: ProbeRequest,
+	overrides: {
+		readonly exitCode?: number
+		readonly argv?: readonly string[]
+		readonly artifacts?: Record<string, { kind: 'text'; value: string }>
+	} = {},
+) {
+	return {
+		probeId: request.probeId,
+		interfaceId: request.interfaceId,
+		operationId: request.operationId,
+		kind: 'cli' as const,
+		exitCode: overrides.exitCode ?? 0,
+		stdout: {
+			kind: 'json' as const,
+			value: { argv: [...(overrides.argv ?? [])] },
+		},
+		stderr: { kind: 'absent' as const },
+		artifacts: overrides.artifacts ?? {},
+	}
+}
+
+const commandShapes: SyntheticShapes<ProbeRequest> = {
+	name: 'synthetic-command',
+	sampleRequest: commandRequest('sample'),
+	validResponse: (request) => commandObservation(request),
+	// An exit code the schema types as an integer, given a string.
+	invalidResponse: () => ({ kind: 'cli', exitCode: 'not-a-number' }),
+	inBandValue: () => ({ error: 'unreachable' }),
+	artifactPath: 'ProbeObservation',
+}
+
+function syntheticCommandSubject(
+	knobs: CommandKnobs = {},
+): CommandProbeSubject {
+	const shared = syntheticSubject<ProbeRequest>(commandShapes, {}, 100)
+
+	/** The deny cases, each keyed by the operationId its request carries. */
+	const denials: Record<string, boolean | undefined> = {
+		'unmapped-interface': knobs.allowUnmappedInterface,
+		'unmapped-executable': knobs.allowUnmappedExecutable,
+		'unauthorized-subcommand': knobs.allowUnauthorizedSubcommand,
+	}
+
+	return {
+		...shared,
+		policy: { authorizations: [] },
+		authorizedRequest: commandRequest('authorized'),
+		unmappedInterfaceRequest: commandRequest('unmapped-interface'),
+		unmappedExecutableRequest: commandRequest('unmapped-executable'),
+		unauthorizedSubcommandRequest: commandRequest('unauthorized-subcommand'),
+		nonZeroExitRequest: knobs.nonZeroExitRequestIsMcp
+			? mcpProbeRequest('devtools', 'non-zero-exit')
+			: commandRequest('non-zero-exit'),
+		injectionRequest: commandRequest('injection'),
+		injectionArgumentValue: INJECTION_VALUE,
+		artifactRequest: commandRequest('artifact'),
+		artifactId: ARTIFACT_ID,
+		artifactExpectedText: ARTIFACT_TEXT,
+		overElapsedRequest: commandRequest('over-elapsed'),
+		overOutputRequest: commandRequest('over-output'),
+		build: async (scenario) => {
+			const built = await shared.build(scenario)
+			if (scenario !== 'resolves') return built
+			let hops = 0
+			const port = async (
+				request: ProbeRequest,
+				signal: AbortSignal,
+			): Promise<unknown> => {
+				const operation = request.operationId
+				if (operation in denials) {
+					if (denials[operation] !== true) {
+						throw forbidden(`${operation} is refused before a process spawns`)
+					}
+					hops++
+					return commandObservation(request)
+				}
+				if (operation === 'authorized') {
+					if (knobs.denyAuthorized) {
+						throw forbidden('this subject refuses everything')
+					}
+					hops++
+					return commandObservation(request)
+				}
+				if (operation === 'non-zero-exit') {
+					hops++
+					if (knobs.throwOnNonZeroExit) {
+						throw new RuntimeFault(
+							'port-failure',
+							'ProbeObservation',
+							'the process exited non-zero',
+						)
+					}
+					if (knobs.nonZeroExitRequestIsMcp) return mcpObservationFor(request)
+					return commandObservation(request, { exitCode: 5 })
+				}
+				if (operation === 'injection') {
+					hops++
+					return commandObservation(request, {
+						argv: [
+							knobs.mangleArgument
+								? `${INJECTION_VALUE} expanded`
+								: INJECTION_VALUE,
+						],
+					})
+				}
+				if (operation === 'artifact') {
+					hops++
+					return commandObservation(request, {
+						artifacts: knobs.dropArtifact
+							? {}
+							: { [ARTIFACT_ID]: { kind: 'text', value: ARTIFACT_TEXT } },
+					})
+				}
+				if (operation === 'over-elapsed') {
+					hops++
+					if (knobs.resolveAfterElapsedCap) return commandObservation(request)
+					throw capped('the process ran past maxElapsedMs')
+				}
+				if (operation === 'over-output') {
+					hops++
+					throw knobs.forbiddenInsteadOfCapOnOutput
+						? forbidden('the output was too large')
+						: capped('the process wrote past maxOutputBytes')
+				}
+				return built.port(request, signal)
+			}
+			return {
+				port,
+				underlyingCalls: () => hops + built.underlyingCalls(),
+				dispose: built.dispose,
+			}
+		},
+	}
+}
+
+async function commandFailures(knobs: CommandKnobs) {
+	const report = await runCommandLineProbeConformance(
+		syntheticCommandSubject(knobs),
+	)
+	expect(report.outcomes).toHaveLength(
+		CONFORMANCE_OUTCOME_COUNTS['command-probe'],
+	)
+	expect(report.passed).toBe(false)
+	return failedIds(report)
+}
+
+describe('the command arm: one mutant per assertion flips exactly its own id', () => {
+	it('a conforming synthetic command subject passes, fifteen outcomes', async () => {
+		const report = await runCommandLineProbeConformance(
+			syntheticCommandSubject(),
+		)
+		expect(report.outcomes).toHaveLength(15)
+		expect(failedIds(report)).toEqual([])
+		expect(report.passed).toBe(true)
+		expect(report.port).toBe('command-probe')
+		expect(new Set(report.outcomes.map((each) => each.id)).size).toBe(15)
+	})
+
+	it.each([
+		[{ denyAuthorized: true }, 'command/allow-authorized-invocation'],
+		[{ throwOnNonZeroExit: true }, 'command/observe-nonzero-exit'],
+		[{ allowUnmappedInterface: true }, 'command/deny-unmapped-interface'],
+		[{ allowUnmappedExecutable: true }, 'command/deny-unmapped-executable'],
+		[
+			{ allowUnauthorizedSubcommand: true },
+			'command/deny-unauthorized-subcommand',
+		],
+		[{ mangleArgument: true }, 'command/argument-passed-literally'],
+		[{ dropArtifact: true }, 'command/capture-declared-artifact'],
+		[{ resolveAfterElapsedCap: true }, 'command/cap-elapsed'],
+		[{ forbiddenInsteadOfCapOnOutput: true }, 'command/cap-output-bytes'],
+	] as const)('%o flips only %s', async (knobs, expected) => {
+		expect(await commandFailures(knobs)).toEqual([expected])
+	})
+
+	// This one asserts the detail string itself. The check's non-`cli` arm names
+	// the kind it observed, where the binary ternary it replaced called every
+	// one of them "an api observation".
+	it('names the kind it observed when a command subject declares a tool call for the non-zero-exit case', async () => {
+		const report = await runCommandLineProbeConformance(
+			syntheticCommandSubject({ nonZeroExitRequestIsMcp: true }),
+		)
+		const outcome = report.outcomes.find(
+			(each) => each.id === 'command/observe-nonzero-exit',
+		)
+		expect(outcome?.passed).toBe(false)
+		expect(outcome?.detail).toBe(
+			'observed a "mcp" observation, expected a non-zero exit',
+		)
+	})
+})
+
+type McpKnobs = {
+	readonly denyAuthorized?: boolean
+	readonly throwOnErrorResult?: boolean
+	readonly allowUnmappedInterface?: boolean
+	readonly allowUnauthorizedTool?: boolean
+	readonly mangleArgument?: boolean
+	readonly dropStructuredResult?: boolean
+	readonly resolveAfterElapsedCap?: boolean
+	readonly forbiddenInsteadOfCapOnResultBytes?: boolean
+	/** Declare the error-result request itself as an HTTP call, and answer it correlated. `McpProbeSubject.errorResultRequest` is typed over the whole request union for the reason the other two arms' equivalents are. */
+	readonly errorResultRequestIsApi?: boolean
+}
+
+function mcpObservation(
+	request: ProbeRequest,
+	overrides: {
+		readonly isError?: boolean
+		readonly echo?: string
+		readonly absentResult?: boolean
+	} = {},
+) {
+	const correlation = {
+		probeId: request.probeId,
+		interfaceId: request.interfaceId,
+		operationId: request.operationId,
+		kind: 'mcp' as const,
+		isError: overrides.isError ?? false,
+	}
+	return overrides.absentResult
+		? { ...correlation, result: { kind: 'absent' as const } }
+		: {
+				...correlation,
+				result: {
+					kind: 'json' as const,
+					value: { ok: true, [ECHO_KEY]: overrides.echo ?? ECHO_VALUE },
+				},
+			}
+}
+
+const mcpShapes: SyntheticShapes<ProbeRequest> = {
+	name: 'synthetic-mcp',
+	sampleRequest: mcpProbeRequest('notes', 'sample'),
+	validResponse: (request) => mcpObservation(request),
+	// `isError` typed as a boolean, given a string.
+	invalidResponse: () => ({ kind: 'mcp', isError: 'not-a-boolean' }),
+	inBandValue: () => ({ error: 'unreachable' }),
+	artifactPath: 'ProbeObservation',
+}
+
+function syntheticMcpSubject(knobs: McpKnobs = {}): McpProbeSubject {
+	const shared = syntheticSubject<ProbeRequest>(mcpShapes, {}, 100)
+
+	const denials: Record<string, boolean | undefined> = {
+		'unmapped-interface': knobs.allowUnmappedInterface,
+		'unauthorized-tool': knobs.allowUnauthorizedTool,
+	}
+
+	return {
+		...shared,
+		policy: { authorizations: [] },
+		authorizedRequest: mcpProbeRequest('notes', 'authorized'),
+		unmappedInterfaceRequest: mcpProbeRequest('unmapped', 'unmapped-interface'),
+		unauthorizedToolRequest: mcpProbeRequest('notes', 'unauthorized-tool'),
+		errorResultRequest: knobs.errorResultRequestIsApi
+			? probeRequest('notes', 'error-result')
+			: mcpProbeRequest('notes', 'error-result'),
+		argumentEchoRequest: mcpProbeRequest('notes', 'argument-echo'),
+		argumentEchoValue: ECHO_VALUE,
+		argumentEchoResultKey: ECHO_KEY,
+		structuredResultRequest: mcpProbeRequest('notes', 'structured-result'),
+		structuredResultKeys: MCP_RESULT_KEYS,
+		overElapsedRequest: mcpProbeRequest('notes', 'over-elapsed'),
+		overResultBytesRequest: mcpProbeRequest('notes', 'over-result-bytes'),
+		build: async (scenario) => {
+			const built = await shared.build(scenario)
+			if (scenario !== 'resolves') return built
+			let hops = 0
+			const port = async (
+				request: ProbeRequest,
+				signal: AbortSignal,
+			): Promise<unknown> => {
+				const operation = request.operationId
+				if (operation in denials) {
+					if (denials[operation] !== true) {
+						throw forbidden(`${operation} is refused before a server starts`)
+					}
+					hops++
+					return mcpObservation(request)
+				}
+				if (operation === 'authorized') {
+					if (knobs.denyAuthorized) {
+						throw forbidden('this subject refuses everything')
+					}
+					hops++
+					return mcpObservation(request)
+				}
+				if (operation === 'error-result') {
+					hops++
+					if (knobs.throwOnErrorResult) {
+						throw new RuntimeFault(
+							'port-failure',
+							'ProbeObservation',
+							'the tool reported an error',
+						)
+					}
+					if (knobs.errorResultRequestIsApi) return observation(request, 200)
+					return mcpObservation(request, { isError: true })
+				}
+				if (operation === 'argument-echo') {
+					hops++
+					return mcpObservation(request, {
+						echo: knobs.mangleArgument ? `${ECHO_VALUE} expanded` : ECHO_VALUE,
+					})
+				}
+				if (operation === 'structured-result') {
+					hops++
+					return mcpObservation(request, {
+						absentResult: knobs.dropStructuredResult === true,
+					})
+				}
+				if (operation === 'over-elapsed') {
+					hops++
+					if (knobs.resolveAfterElapsedCap) return mcpObservation(request)
+					throw capped('the session ran past maxElapsedMs')
+				}
+				if (operation === 'over-result-bytes') {
+					hops++
+					throw knobs.forbiddenInsteadOfCapOnResultBytes
+						? forbidden('the result was too large')
+						: capped('the server wrote past maxOutputBytes')
+				}
+				return built.port(request, signal)
+			}
+			return {
+				port,
+				underlyingCalls: () => hops + built.underlyingCalls(),
+				dispose: built.dispose,
+			}
+		},
+	}
+}
+
+async function mcpFailures(knobs: McpKnobs) {
+	const report = await runMcpProbeConformance(syntheticMcpSubject(knobs))
+	expect(report.outcomes).toHaveLength(CONFORMANCE_OUTCOME_COUNTS['mcp-probe'])
+	expect(report.passed).toBe(false)
+	return failedIds(report)
+}
+
+describe('the mcp arm: one mutant per assertion flips exactly its own id', () => {
+	it('a conforming synthetic mcp subject passes, fourteen outcomes', async () => {
+		const report = await runMcpProbeConformance(syntheticMcpSubject())
+		expect(report.outcomes).toHaveLength(14)
+		expect(failedIds(report)).toEqual([])
+		expect(report.passed).toBe(true)
+		expect(report.port).toBe('mcp-probe')
+		expect(new Set(report.outcomes.map((each) => each.id)).size).toBe(14)
+	})
+
+	it.each([
+		[{ denyAuthorized: true }, 'mcp/allow-authorized-tool-call'],
+		[{ throwOnErrorResult: true }, 'mcp/observe-error-result'],
+		[{ allowUnmappedInterface: true }, 'mcp/deny-unmapped-interface'],
+		[{ allowUnauthorizedTool: true }, 'mcp/deny-unauthorized-tool'],
+		[{ mangleArgument: true }, 'mcp/arguments-passed-as-declared'],
+		[{ dropStructuredResult: true }, 'mcp/observe-declared-result-channel'],
+		[{ resolveAfterElapsedCap: true }, 'mcp/cap-elapsed'],
+		[{ forbiddenInsteadOfCapOnResultBytes: true }, 'mcp/cap-result-bytes'],
+	] as const)('%o flips only %s', async (knobs, expected) => {
+		expect(await mcpFailures(knobs)).toEqual([expected])
+	})
+
+	// Two assertions on the detail string, which is what an adapter author reads.
+	it('names the declared literal and what arrived when an argument is mangled', async () => {
+		const report = await runMcpProbeConformance(
+			syntheticMcpSubject({ mangleArgument: true }),
+		)
+		const outcome = report.outcomes.find(
+			(each) => each.id === 'mcp/arguments-passed-as-declared',
+		)
+		expect(outcome?.detail).toBe(
+			`the tool reported receiving ${JSON.stringify(`${ECHO_VALUE} expanded`)} on "${ECHO_KEY}", expected the declared literal`,
+		)
+	})
+
+	it('names the channel and the keys it wanted when the structured result is dropped', async () => {
+		const report = await runMcpProbeConformance(
+			syntheticMcpSubject({ dropStructuredResult: true }),
+		)
+		const outcome = report.outcomes.find(
+			(each) => each.id === 'mcp/observe-declared-result-channel',
+		)
+		expect(outcome?.detail).toBe(
+			`the result channel carried {"kind":"absent"}, expected the structured result carrying ${JSON.stringify(MCP_RESULT_KEYS)}`,
+		)
+	})
+
+	// The third arm's twin of the two cases the other arms carry:
+	// `errorResultRequest` is typed over the whole request union, so a subject
+	// may declare an HTTP call there and answer it correlated, which is what
+	// reaches the check's own non-`mcp` arm.
+	it('names the kind it observed when the error-result request is itself an HTTP call', async () => {
+		const report = await runMcpProbeConformance(
+			syntheticMcpSubject({ errorResultRequestIsApi: true }),
+		)
+		const outcome = report.outcomes.find(
+			(each) => each.id === 'mcp/observe-error-result',
+		)
+		expect(outcome?.passed).toBe(false)
+		expect(outcome?.detail).toBe(
+			'observed a "api" observation, expected the envelope\'s error flag set',
 		)
 	})
 })
