@@ -53,6 +53,8 @@ The rule that decides whether a finding detected the defect its probe seeded run
 
 `compile` refuses an eval contract whose `schemaVersion` differs from the one this build reads, with the `schema-version-mismatch` fault. A contract whose shape moved between versions fails the schema gate first; one that still parses and carries another stamp stops at compilation with that fault. Either way it never reaches scoring, where a stale stamp would travel into the scoring version and quietly make the result incomparable with everything else.
 
-The other artifacts have no such reader. A sealed run record, a probe, or a rubric written against an older version fails to parse where a required field moved, and is read as written where it did not. Check the stamp on anything you did not produce with this build.
+A probe is refused the same way and with the same fault. The stages that perform that comparison are `compile` over an eval contract, and `preflight` and `score` over a probe. A probe whose stamp differs stops at `preflight` before a leg is planned, and at `score` before it is sealed, because the stamp says which shapes it was authored against: the qualification record on every probe, and the witness legs and the defect signature grammar on a seeded one.
+
+The remaining artifacts have no such reader. A sealed run record or a rubric written against an older version fails to parse where a required field moved, and is read as written where it did not. Check the stamp on anything you did not produce with this build.
 
 `CHANGELOG.md` in the repository carries every breaking change artifact by artifact.

@@ -15,8 +15,12 @@ import {
 	planPreflight,
 } from '../../src/core/preflight/plan.ts'
 import type { EvalContract } from '../../src/core/schemas/eval-contract.ts'
+import { RuntimeFault } from '../../src/core/schemas/faults.ts'
 import type { Probe } from '../../src/core/schemas/probe.ts'
-import { Probe as ProbeSchema } from '../../src/core/schemas/probe.ts'
+import {
+	PROBE_SCHEMA_VERSION,
+	Probe as ProbeSchema,
+} from '../../src/core/schemas/probe.ts'
 import {
 	cleanControlProbe,
 	contractDraft,
@@ -353,5 +357,80 @@ describe('the plan as a whole', () => {
 		expect(
 			scoped?.kind === 'seeded-faults-scoped' ? scoped.cleanLegIds : [],
 		).toEqual(['list-a', 'list-b'])
+	})
+})
+
+/**
+ * AD-11's version equality on the probe, at the pre-flight reader.
+ *
+ * AD-11 says a reader "accepts an equal `schemaVersion` only and throws
+ * `schema-version-mismatch` outside that", and `lineage.ts` keeps the field a
+ * plain integer so the fault is named rather than anonymous. `compile` performs
+ * it for the eval contract; nothing performed it for a probe, so a probe stamped
+ * for a version whose signature grammar this build does not read planned a
+ * pre-flight anyway whenever its bytes happened to still fit.
+ */
+describe('planPreflight, reading the probe stamp', () => {
+	const stamped = (schemaVersion: number): Probe =>
+		({ ...seededProbe, schemaVersion }) as Probe
+
+	it('accepts the version this build reads', () => {
+		expect(seededProbe.schemaVersion).toBe(PROBE_SCHEMA_VERSION)
+		expect(() => planOf()).not.toThrow()
+	})
+
+	it.each([1, 2, 3, 4, 6, 99])('refuses the stamp %i', (schemaVersion) => {
+		const run = () => planOf(preflightContract, [stamped(schemaVersion)])
+		expect(run).toThrow(RuntimeFault)
+		expect(run).toThrow(/schema-version-mismatch/)
+	})
+
+	it('names the probe and both versions, so a reader knows which to move', () => {
+		expect(() => planOf(preflightContract, [stamped(3)])).toThrow(
+			/Probe\[probeId=P-001\]\.schemaVersion: carries "schemaVersion" 3 where this build reads 5/,
+		)
+	})
+
+	it('reads every probe, not the first alone', () => {
+		const run = () =>
+			planOf(preflightContract, [seededProbe, stamped(4) as Probe])
+		expect(run).toThrow(/schema-version-mismatch/)
+	})
+
+	it('runs before the rule that reads the probe itself', () => {
+		// The competitor that actually reads a probe: a manifestation witness
+		// naming an operation the contract does not declare throws
+		// `unreachable-check-evidence` from the seeded-defect loop below. A
+		// stale stamp beats it, because that loop's answer about a probe
+		// written for another version's witness shapes means nothing.
+		const strayWitness = structuredClone(seededProbe) as Probe & {
+			defects: { manifestationWitness: { operationId: string } }[]
+		}
+		const [defect] = strayWitness.defects
+		if (defect === undefined) throw new Error('the fixture seeds no defect')
+		defect.manifestationWitness.operationId = 'no-such-operation'
+		expect(() => planOf(preflightContract, [strayWitness as Probe])).toThrow(
+			/unreachable-check-evidence/,
+		)
+		expect(() =>
+			planOf(preflightContract, [
+				{ ...strayWitness, schemaVersion: 3 } as Probe,
+			]),
+		).toThrow(/schema-version-mismatch/)
+	})
+
+	it('runs before the contract-side kind gate', () => {
+		// Both rules sit above the plan body. The stamp wins, so a caller who
+		// assembled both a foreign probe and an unsupported kind by hand is told
+		// about the probe they can restamp.
+		const foreign = {
+			...preflightContract,
+			permittedInterfaces: [
+				{ ...preflightContract.permittedInterfaces[0], kind: 'web' },
+			],
+		} as EvalContract
+		expect(() => planOf(foreign, [stamped(3)])).toThrow(
+			/schema-version-mismatch/,
+		)
 	})
 })

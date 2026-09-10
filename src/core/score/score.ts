@@ -30,6 +30,7 @@
  */
 
 import { walkExpression } from '../compile/expression-legality.ts'
+import { checkSchemaVersion } from '../compile/schema-version.ts'
 import { evaluateCoverage } from '../coverage/coverage.ts'
 import {
 	makePointerDenotesCollection,
@@ -46,7 +47,11 @@ import {
 import type { Outcome } from '../schemas/evidence-artifact.ts'
 import type { Expression, Operand, SetOperand } from '../schemas/expression.ts'
 import type { AnyOperation } from '../schemas/interface.ts'
-import type { Probe } from '../schemas/probe.ts'
+import {
+	PROBE_SCHEMA_VERSION,
+	PROBE_SCHEMA_VERSION_CONSEQUENCE,
+	type Probe,
+} from '../schemas/probe.ts'
 import type { ScoringPolicy } from '../schemas/scoring-policy.ts'
 import type { Observation } from '../schemas/sealed-run-record.ts'
 import type { EvaluatorRecommendation } from '../schemas/verdict.ts'
@@ -381,6 +386,27 @@ export const score: ScoreStage<
 	waiver,
 	evaluationFault,
 ) => {
+	// First, and before the probe is sealed. AD-11 makes an unequal stamp a
+	// rejection rather than a degraded read. `compile` performs the same check
+	// for the contract.
+	//
+	// A throw rather than a reported outcome, against this stage's usual rule
+	// that a rejected probe is a domain result the ladder carries. Two reasons,
+	// and the second is the one that decides it. `qualifyProbe` returns a code
+	// from a closed vocabulary keyed to this version's field shapes, so a
+	// foreign probe's reason code is uninterpretable rather than merely
+	// unreliable. And the reporting path drops the fact: an
+	// `unqualified-probe-in-sealed-set` condition lands the run on the Invalid
+	// rung, where `RunScoreResult.artifact` is null, so there is no field for
+	// the reason to travel in. The fault carries an artifact path naming the
+	// probe and both numbers, which is the only path that tells a caller which
+	// probe to restamp.
+	checkSchemaVersion({
+		stamped: probe.schemaVersion,
+		accepted: PROBE_SCHEMA_VERSION,
+		artifactPath: `Probe[probeId=${probe.probeId}].schemaVersion`,
+		consequence: PROBE_SCHEMA_VERSION_CONSEQUENCE,
+	})
 	// Probe sealing: once per run, never per trial, since qualification reads
 	// the probe and the contract's operation inventory alone. `probeQualified`
 	// reads whichever bucket the probe actually lands in -- never a throw on

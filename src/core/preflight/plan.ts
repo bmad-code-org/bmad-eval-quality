@@ -12,6 +12,7 @@ import {
 	isSupportedInterfaceKind,
 	SUPPORTED_KINDS_CLAUSE,
 } from '../compile/interface-inventory.ts'
+import { checkSchemaVersion } from '../compile/schema-version.ts'
 import {
 	checkInputsAgainstShape,
 	isApiWitnessInputs,
@@ -31,6 +32,10 @@ import { operationsOf } from '../schemas/interface.ts'
 import type { ProbeRequest } from '../schemas/port-messages.ts'
 import type { JsonValue } from '../schemas/primitives.ts'
 import type { Probe } from '../schemas/probe.ts'
+import {
+	PROBE_SCHEMA_VERSION,
+	PROBE_SCHEMA_VERSION_CONSEQUENCE,
+} from '../schemas/probe.ts'
 import type {
 	ApiWitnessInputs,
 	ManifestationWitness,
@@ -333,6 +338,19 @@ export const planPreflight: PlanStage<PreflightPlanInput, PreflightPlan> = (
 	input,
 ) => {
 	const { contract, probes, runId } = input
+	// First, and before any check reads a probe. AD-11 makes an unequal stamp a
+	// rejection rather than a degraded read, and every rule below is written
+	// against this version's field shapes. `compile` performs the same check for
+	// the contract; this is the probe's reader, since a probe reaches no other
+	// core stage on the pre-flight path.
+	for (const probe of probes) {
+		checkSchemaVersion({
+			stamped: probe.schemaVersion,
+			accepted: PROBE_SCHEMA_VERSION,
+			artifactPath: `Probe[probeId=${probe.probeId}].schemaVersion`,
+			consequence: PROBE_SCHEMA_VERSION_CONSEQUENCE,
+		})
+	}
 	for (const iface of contract.permittedInterfaces) {
 		// Already thrown at compile; asserted again because the plan is
 		// reachable from a caller who assembled a contract by hand. Reads the

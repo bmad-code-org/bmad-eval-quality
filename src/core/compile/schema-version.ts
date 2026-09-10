@@ -18,16 +18,26 @@
  */
 import { RuntimeFault } from '../schemas/faults.ts'
 
-/** `schema-version-mismatch`: the stamp is not the version this build reads. */
-export function checkSchemaVersion(
-	stamped: number,
-	accepted: number,
-	artifactPath: string,
-): void {
+/**
+ * `schema-version-mismatch`: the stamp is not the version this build reads.
+ *
+ * An options object rather than four positional arguments. `artifactPath` and
+ * `consequence` are both free-form strings, and transposed they typecheck: the
+ * fault's `artifactPath`, which callers read programmatically, would then hold
+ * a sentence.
+ */
+export function checkSchemaVersion(options: {
+	readonly stamped: number
+	readonly accepted: number
+	readonly artifactPath: string
+	/** Why an unequal stamp is a rejection for this artifact, as a clause. */
+	readonly consequence: string
+}): void {
+	const { stamped, accepted, artifactPath, consequence } = options
 	if (stamped === accepted) return
 	throw new RuntimeFault(
 		'schema-version-mismatch',
 		artifactPath,
-		`carries "schemaVersion" ${stamped} where this build reads ${accepted}; a contract written for another version is not read leniently, since its stale version would travel into the scoring version (AD-11)`,
+		`carries "schemaVersion" ${stamped} where this build reads ${accepted}; an artifact written for another version is not read leniently, ${consequence} (AD-11)`,
 	)
 }

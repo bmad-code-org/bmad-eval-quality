@@ -67,18 +67,47 @@ const probeCommonFields = {
  * The probe's current schema version. `EVAL_CONTRACT_SCHEMA_VERSION` is the
  * same thing for the eval contract.
  *
- * It exists for the same reason that one does: `lineage.ts` keeps the field a
- * plain integer so a stale artifact fails as AD-28's `schema-version-mismatch`
- * rather than as an anonymous parse error, which puts the comparison on the
- * reader. `compile` is that reader for a contract. A probe has no such reader
- * yet, so nothing in the pipeline performs AD-11's version equality on one, and
- * this constant is what a reader would compare against when there is one. Until
- * then it is the single place the stamp is written: the committed worked-example
- * chains build their probes from it, and `check:doc-claims` reads it to hold the
- * published sentence that names it. Before it existed, the number lived as a
+ * It exists for the reason that one does: `lineage.ts` keeps the field a plain
+ * integer so a stale artifact fails as AD-28's `schema-version-mismatch` rather
+ * than as an anonymous parse error, which puts the comparison on the reader.
+ * `compile` is that reader for a contract. A probe has two in this pipeline and
+ * both compare against this constant: `planPreflight` before it plans a leg,
+ * and `score` before it seals the probe. An unequal stamp leaves by the fault
+ * path rather than being read leniently.
+ *
+ * A third reader exists for a caller outside this package.
+ * `validateLineageChain` takes an `acceptedSchemaVersion` and raises the same
+ * code over a presented chain, and `Probe` carries lineage, so a caller who
+ * presents one gets the comparison there. It words the fault its own way, which
+ * is why the two spellings of `schema-version-mismatch` in this tree are not a
+ * drift.
+ *
+ * It is also the single place the number is written. The committed
+ * worked-example chains build their probes from it and `check:doc-claims` reads
+ * it to hold the published sentence that names it, where the number was a
  * literal in three places that could disagree in silence.
  */
 export const PROBE_SCHEMA_VERSION = 5
+
+/**
+ * Why a stale probe stamp is a rejection, in the words the fault carries.
+ *
+ * One string for both readers. Two copies of a sentence this long disagree in
+ * silence exactly as the number did before `PROBE_SCHEMA_VERSION` existed, and
+ * it lives here because this is where a version bump is one edit.
+ *
+ * It splits the shapes by branch, because a clean control carries neither a
+ * `defectSignature` nor a manifestation witness: the signature is declared on
+ * the seeded branch below and a witness hangs off a `Defect`, which that branch
+ * bounds at zero. What every probe carries is the qualification record, whose
+ * arrival on both branches is what made the 1 to 2 bump breaking. A clean
+ * control is the probe a reader is most likely to meet this message with, so
+ * naming a field it does not have would be the wrong half to lead with.
+ */
+export const PROBE_SCHEMA_VERSION_CONSEQUENCE =
+	'since the stamp says which shapes the probe was authored against: the ' +
+	'qualification record on every probe, and the witness legs and the defect ' +
+	'signature grammar on a seeded one'
 
 /**
  * The prior art's `expectedClean` conditional, re-expressed as a discriminated
