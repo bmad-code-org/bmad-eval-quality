@@ -401,9 +401,10 @@ infers `{ id?: undefined }` and the array literal stops being assignable to `rea
 
 ## Review Findings
 
-Two peer-review rounds against a sibling Claude Code session in this worktree, nineteen findings, all
-addressed. Round one returned thirteen and is recorded in Decision 19; round two returned six against
-the fixes, and three of those were problems the fixes themselves introduced.
+Three peer-review rounds against a sibling Claude Code session in this worktree, twenty-one findings,
+all addressed. Round one returned thirteen and is recorded in Decision 19; round two returned six
+against the fixes, three of them problems the fixes themselves introduced; round three returned two,
+neither above medium.
 
 The one worth carrying forward is the first-round finding that the exemplar's authored evidence
 contradicted its own `testData.setup`, and the second-round finding that the repair had moved the
@@ -421,7 +422,24 @@ to be stated: `testData.cleanup` now says the reset restores the directly seeded
 every other one alone. And the new fault narrative had not reached three committed sites, two of them
 in the corpus JSON an adopter downloads.
 
-Three of the nineteen were assertions that pinned nothing, each found by deleting the assertion and
+Round three returned two more, both on one axis: each earlier fix was correct and each had left a
+claim the exemplar no longer supported. Permitting `id` on the write's body made the write-then-read
+shape writable with two literals, which falsified the two sentences that motivate the capture at all,
+in the guide and in the fixture; both now say that a literal works only when the write supplies the
+identifier, and that a write choosing its own identifier proves nothing about what the service filed.
+
+The second was the sharper one and it predates the review. `state-reset` compares the projections of
+the first and last control-observe legs, `selectControl` gives the control-mutate leg the first create
+witness's inputs, and that witness filed under an identifier the service minted. So the mutation never
+touched the record the observe legs read, both observe legs were answered from one authored reply, and
+the committed `state-reset: satisfied` recorded a comparison of two identical bodies that no authored
+value could move. The create witness legs now supply the seeded identifier and differ only in the name
+they file, so the control mutation overwrites the record the observe legs read and the reset is what
+puts it back; the builder answers the two observe legs from two entries rather than one. Changing the
+second entry now fails the build with "the projections of ... differ", which is what makes the
+committed row evidence rather than an artifact of how the replies were written.
+
+Three of the twenty-one were assertions that pinned nothing, each found by deleting the assertion and
 then applying the mutation it was supposed to catch. Deleting an assertion from a passing suite proves
 nothing on its own, and that method is the reason the count is three rather than zero.
 

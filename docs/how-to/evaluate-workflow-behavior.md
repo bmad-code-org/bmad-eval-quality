@@ -95,8 +95,9 @@ The step-count message says what the bound is defending: "an exhaustive operatio
 The tags exist because the untagged spelling let `{ "title": "type-violating" }` mean the matcher to one implementation and the literal string to another, which flipped a witness match between `caught` and `missed` on one record.
 
 Step binding is the third form.
-In the plan above, `read-back` binds its `path` parameter `id` to `/interactions/create/response-body/id`, which is `create`'s declared `id` field.
-A `POST` that mints a server-side identifier followed by a `GET` proving persistence is unwritable with a literal, which would hard-code a resource the evaluator never created, and unwritable with `any`, which matches unrelated reads.
+In the plan above, `read-back` binds its `path` parameter `id` to `/interactions/create/response-body/id`, which is the `id` key `create-thing`'s response descriptor declares.
+The `create` step sends no identifier, so the service mints one, and a `GET` proving persistence is then unwritable with a literal, which would hard-code a resource the evaluator never created, and unwritable with `any`, which matches unrelated reads.
+A plan whose write supplied the identifier could name it on both sides and skip the capture, and it would prove less: a write that chooses its own identifier says nothing about what the service filed under it.
 
 Three compile-time checks read every capture, all in `src/core/compile/bindings.ts`.
 Each message below is the real output of `node dist/cli/main.js compile` on the plan above with one field changed.

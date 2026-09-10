@@ -61,7 +61,7 @@
       "outcome": "satisfied"
     }
   ],
-  "fixtureDigest": "sha256:90cb59d3270db62edec2054188f3d7414675a953456fc79c1538554adc7f29e5",
+  "fixtureDigest": "sha256:e442f4522d794424e4d693a5a696986acade91076afdc8dd2dfc7e5533151a3e",
   "parentDigest": null,
   "passed": true,
   "revisionCount": 0,

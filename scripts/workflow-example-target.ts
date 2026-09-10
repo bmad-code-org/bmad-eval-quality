@@ -324,17 +324,23 @@ const REPLY_FOR: Record<
 	string,
 	{ readonly status: number; readonly body: JsonValue }
 > = {
+	// Both write the seeded record, so each answers with that identifier and the
+	// name it was given. `/id` is volatile, so the projection prunes it and the
+	// echoed name is what the witness relation is left comparing.
 	'create-witness-a': {
 		status: 201,
-		body: { ok: true, id: 't-11', name: 'alpha' },
+		body: { ok: true, id: SEEDED_ID, name: 'gamma' },
 	},
 	'create-witness-b': {
 		status: 201,
-		body: { ok: true, id: 't-12', name: 'beta' },
+		body: { ok: true, id: SEEDED_ID, name: 'beta' },
 	},
+	// The read runs after both create legs, so it answers with what the second
+	// of them left. Authoring `alpha` here would describe a store that ignored
+	// the two writes above it.
 	'read-witness-a': {
 		status: 200,
-		body: { ok: true, thing: thing(SEEDED_ID, SEEDED_NAME) },
+		body: { ok: true, thing: thing(SEEDED_ID, 'beta') },
 	},
 	// A read of an identifier `testData.setup` leaves unfiled. The relation over
 	// the two read legs is `not(deep-equality)` of their bodies, so a truthful
@@ -348,17 +354,20 @@ const REPLY_FOR: Record<
 		status: 404,
 		body: { ok: false, error: 'no thing is filed under that identifier' },
 	},
-	'reset-witness-a': {
+	'reset-witness-a': { status: 200, body: { ok: true, seededName: 'gamma' } },
+	// The last sensitivity leg, and it leaves the fixture in the state
+	// `testData.setup` declares, which is what the control block starts from.
+	'reset-witness-b': {
 		status: 200,
 		body: { ok: true, seededName: SEEDED_NAME },
 	},
-	'reset-witness-b': { status: 200, body: { ok: true, seededName: 'gamma' } },
 	// The control-mutate leg, which `planPreflight` gives the first create
-	// witness leg's inputs. It writes, so the store it leaves behind is not
-	// the seeded one, which is what the reset leg after it undoes.
+	// witness leg's inputs. Those name the seeded record, so this leg overwrites
+	// the very record the two control-observe legs read, and the reset leg after
+	// it is what puts the name back.
 	'preflight-control-mutate': {
 		status: 201,
-		body: { ok: true, id: 't-13', name: 'alpha' },
+		body: { ok: true, id: SEEDED_ID, name: 'gamma' },
 	},
 	// The reset leg, under the identifier the contract's own `fixtureReset`
 	// names.
@@ -375,6 +384,23 @@ const REPLY_FOR: Record<
 		body: { ok: true, thing: thing(FILED_ID, SUBSTITUTED_NAME) },
 	},
 }
+
+/**
+ * What the two minted control-observe legs answer, in the order the planner
+ * emits them: the read before the control mutation, and the read after the
+ * reset. They are equal, and that is the claim `state-reset` checks rather than
+ * a property of how they are written here. Two entries rather than one shared
+ * reply, so a chain describing a fixture the reset failed to restore is
+ * expressible and the check can be falsified; keyed by position because a
+ * minted leg identifier is not something an author knows.
+ */
+const CONTROL_OBSERVE_REPLIES: readonly {
+	readonly status: number
+	readonly body: JsonValue
+}[] = [
+	{ status: 200, body: { ok: true, thing: thing(SEEDED_ID, SEEDED_NAME) } },
+	{ status: 200, body: { ok: true, thing: thing(SEEDED_ID, SEEDED_NAME) } },
+]
 
 /**
  * One `ProbeObservation` per planned leg, built by walking the plan the shipped
@@ -395,17 +421,15 @@ function authoredObservations(
 		probes,
 		runId: RUN_ID,
 	})
+	let observed = 0
 	return plan.legs.map((leg) => {
 		// Keyed by purpose first, so an unrecognised named leg aborts instead of
-		// silently taking the read witness's reply. A control-observe identifier
-		// is minted and has no entry to look up; every other leg does, and a
-		// renamed one is a mistake this build should report.
+		// silently taking another leg's reply. A control-observe identifier is
+		// minted and has no entry to look up; every other leg does, and a renamed
+		// one is a mistake this build should report.
 		const reply =
 			leg.purpose === 'control-observe'
-				? // `planPreflight` gives a control leg the first sensitivity leg's
-					// inputs, so both control-observe legs are the first read witness
-					// run again, which is what `state-reset` compares.
-					REPLY_FOR['read-witness-a']
+				? CONTROL_OBSERVE_REPLIES[observed++]
 				: REPLY_FOR[leg.legId]
 		if (reply === undefined) {
 			fail(

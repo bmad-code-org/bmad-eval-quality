@@ -4297,6 +4297,6 @@ flowchart LR
 - Two calls to the same place in one run need different addresses in the plan, one fixed and one picked up. Same address twice and the run cannot tell which answer belongs to which step.
 - Match on a written-down value, not on "whatever was sent". "Whatever was sent" also matches the bad-input call, and then two steps claim the same answer.
 - An example with only two steps fails half the quality questions. Every call needs a bad-input case, every answer with two required parts needs a check covering both, and every write needs a read-back.
-- A count in a sentence needs something that counts it. Four sentences counting worked runs now read the list of runs itself, so adding one moves all four words or fails the build.
+- A count in a sentence needs something that counts it. Four sentences counting worked runs now read a list of the runs, and the build fails if a run reaches disk that the list does not name.
 
 **Watch out:** the file the pre-flight stage writes does not list the four calls. It carries the answers to the questions asked about them, and one of those questions only gets asked when the four calls were planned. That is what the file proves; the order of the calls is proved by the test instead.

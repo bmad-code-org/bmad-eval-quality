@@ -6,8 +6,8 @@
     "storage": "private"
   },
   "conditionArm": "independent",
-  "contractDigest": "sha256:c715964b3785f3492095eadb7a76610e23df6f1e6fbde7799166bbae46ffe249",
-  "evaluatorConfigurationDigest": "sha256:2ebda86d6ddbde77f215ce8424a9b018a9b794c4856308bc41347f4193320185",
+  "contractDigest": "sha256:a8d2e49742d97b32b9d0a53525ebdd97659e9c5bdcaa70464399c02f146d1d0b",
+  "evaluatorConfigurationDigest": "sha256:c62dee4fa65fa47dde27063aa29f3fbbacf4986b1a60865d9160903098339495",
   "evaluatorRecommendation": "FAIL",
   "evidenceDisclosure": {
     "reportedIncomplete": false,
@@ -406,6 +406,6 @@
   "revisionCount": 0,
   "runId": "workflow-capture-run-0001",
   "schemaVersion": 5,
-  "sealedBriefDigest": "sha256:7feaf30ad8ec4b1767656832e730c67b755b5935728134a2cd8822339ab26c79",
+  "sealedBriefDigest": "sha256:71a84e4dfe5472f984ce808b60336a0ba09d1dbd49ba06437108cc915bb31c4b",
   "trialIndex": 1
 }

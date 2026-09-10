@@ -396,8 +396,9 @@ export const workflowContract = {
 							// whatever the service mints. Both halves are needed:
 							// `testData.setup` names the identifier it files under,
 							// and the interaction plan's `create` step binds `name`
-							// alone, which is why `/id` is volatile and why the
-							// read-back has to capture rather than name a literal.
+							// alone. That is what leaves the identifier to the
+							// service, which is why `/id` is volatile and why the
+							// read-back has a value only a capture can reach.
 							requiredKeys: ['name'],
 							permittedKeys: ['name', 'id'],
 							types: { name: 'string', id: 'string' },
@@ -440,6 +441,15 @@ export const workflowContract = {
 						// a write carries its subject in the body where a read
 						// carries it in the URL.
 						channel: 'body',
+						// Both legs supply the seeded identifier and differ only in
+						// the name, which is the single-variable differential AD-10
+						// asks for. Supplying it also decides what the control
+						// branch is worth: `selectControl` gives the control-mutate
+						// leg the first leg's inputs, so a write that files under
+						// its own minted identifier would leave the record the
+						// control-observe legs read untouched and `state-reset`
+						// would compare two reads of a fixture nothing had
+						// disturbed.
 						legs: [
 							{
 								legId: 'create-witness-a',
@@ -447,7 +457,10 @@ export const workflowContract = {
 									path: {},
 									query: {},
 									header: {},
-									body: { kind: 'json', value: { name: 'alpha' } },
+									body: {
+										kind: 'json',
+										value: { name: 'gamma', id: 't-1' },
+									},
 								},
 							},
 							{
@@ -456,7 +469,10 @@ export const workflowContract = {
 									path: {},
 									query: {},
 									header: {},
-									body: { kind: 'json', value: { name: 'beta' } },
+									body: {
+										kind: 'json',
+										value: { name: 'beta', id: 't-1' },
+									},
 								},
 							},
 						],
@@ -593,13 +609,19 @@ export const workflowContract = {
 						witnessId: 'the-reset-seeds-what-it-was-given',
 						channel: 'body',
 						legs: [
+							// The second leg seeds the name `testData.setup`
+							// declares, so the fixture is back in its declared state
+							// when the control block starts. Reversed, the first
+							// control-observe leg would read what this witness left
+							// and `state-reset` would compare against a state the
+							// reset does not restore.
 							{
 								legId: 'reset-witness-a',
 								inputs: {
 									path: {},
 									query: {},
 									header: {},
-									body: { kind: 'json', value: { seedName: 'alpha' } },
+									body: { kind: 'json', value: { seedName: 'gamma' } },
 								},
 							},
 							{
@@ -608,7 +630,7 @@ export const workflowContract = {
 									path: {},
 									query: {},
 									header: {},
-									body: { kind: 'json', value: { seedName: 'gamma' } },
+									body: { kind: 'json', value: { seedName: 'alpha' } },
 								},
 							},
 						],
@@ -654,10 +676,14 @@ export const workflowContract = {
 			},
 		},
 		{
-			// The capture. A write that mints a server-side identifier followed by
-			// a read proving persistence is unwritable with a literal, which would
-			// name a record the evaluator never created, and unwritable with
-			// `any`, which matches unrelated reads.
+			// The capture. This step's write does not supply an identifier, so the
+			// service mints one, and a read proving persistence is then unwritable
+			// with a literal, which would name a record the evaluator never
+			// created, and unwritable with `any`, which matches unrelated reads.
+			// A plan whose write supplied the identifier could use a literal on
+			// both sides; this one deliberately does not, because a write that
+			// chooses its own identifier proves nothing about what the service
+			// filed.
 			stepId: 'read-back',
 			operationId: 'get-thing',
 			after: 'create',
