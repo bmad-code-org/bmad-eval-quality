@@ -161,14 +161,16 @@ What each part is doing.
 
 `executable` is a logical name (AD-35).
 Its `Identifier` charset admits no slash, dot, or colon, so `./bin/agent` and `/usr/local/bin/agent` are parse errors.
-The mapping to a real file, the working directory, the artifact paths, and the two budgets all live in a `CommandTargetPolicy` the caller supplies, outside the contract.
+The mapping to a real file, the working directory, the artifact paths, the environment keys a call may carry, and the two budgets all live in a `CommandTargetPolicy` the caller supplies, outside the contract.
 
 `subcommandPath` is a list of segments, so two implementations never have to agree on a separator no field declares.
 
 `requestShape` has four channels: `argument`, `option`, `environment`, and `stdin`.
 An `argument` key is the author's own label for a position, since no predicate reads argument order.
 AD-18 governs `environment` the way it governs an HTTP header: a declaration names a variable and its type and never carries a credential value.
-When the adapter runs the process, the child environment is closed to `PATH` plus what the request declares.
+When the adapter runs the process, the child environment is closed to `PATH` plus the declared keys the authorization permits.
+The contract above declares `HOME`, so a mapping whose `permittedEnvironmentKeys` omits `HOME` refuses the call before the process starts.
+The contract author says which keys a call carries; the operator says which of them may reach the process.
 
 The adapter builds argv as options first, spelled `--{key}`, then positionals, both in the record's own key order.
 A `true` value is a bare flag, a `false` value is omitted, and an array value is the repeatable spelling, emitting the flag once per element.

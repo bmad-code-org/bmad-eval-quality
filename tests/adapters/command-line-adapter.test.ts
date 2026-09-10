@@ -33,6 +33,7 @@ function authorization(
 		executable: 'probe-cli',
 		target: FIXTURE_PATH,
 		permittedSubcommandPaths: [[]],
+		permittedEnvironmentKeys: [],
 		cwd: tmpdir(),
 		artifacts: {},
 		maxElapsedMs: 2000,
@@ -343,14 +344,25 @@ describe('createCommandLineAdapter, real spawn', () => {
 		expect((payload as { stdin: string }).stdin).toBe('piped-in')
 	})
 
-	it('passes the declared environment channel through to the process', async () => {
-		const adapter = createCommandLineAdapter(policyOf(authorization()))
+	it('passes permitted environment keys through to the process', async () => {
+		// Two keys here and two in the denial below, so an adapter refusing on
+		// key count alone fails one of the pair.
+		const adapter = createCommandLineAdapter(
+			policyOf(
+				authorization({
+					permittedEnvironmentKeys: ['PROBE_TEST_VAR', 'PROBE_RUN_ID'],
+				}),
+			),
+		)
 		const observation = await adapter.probe(
 			request({
 				channels: {
 					argument: {},
 					option: {},
-					environment: { PROBE_TEST_VAR: 'from-contract' },
+					environment: {
+						PROBE_TEST_VAR: 'from-contract',
+						PROBE_RUN_ID: 'run-1',
+					},
 					stdin: { kind: 'absent' },
 				},
 			}),
@@ -363,6 +375,138 @@ describe('createCommandLineAdapter, real spawn', () => {
 		expect(
 			(payload as { env: Record<string, string> }).env.PROBE_TEST_VAR,
 		).toBe('from-contract')
+	})
+
+	it('never calls the mechanism when an environment key is not permitted', async () => {
+		// The one command channel that used to reach the process unbounded. The
+		// contract author declares the key; this authorization is where the
+		// operator says which keys may travel, and a key it omits is refused
+		// before anything spawns.
+		let calls = 0
+		const mechanism: CommandMechanism = {
+			run: async () => {
+				calls++
+				throw new Error('should not run')
+			},
+			readArtifact: async () => ({
+				present: false,
+				text: '',
+				truncated: false,
+			}),
+		}
+		const adapter = createCommandLineAdapter(
+			policyOf(
+				authorization({
+					permittedEnvironmentKeys: ['PROBE_MODE', 'PROBE_RUN_ID'],
+				}),
+			),
+			mechanism,
+		)
+		// Two smuggled spellings, each a near-twin of a permitted key by a
+		// different route. `PROBE_RUN_ID_2` extends one, so a lookup comparing
+		// by prefix or by substring over-permits it; `probe_mode` differs only
+		// by case, so a case-insensitive lookup does, and those are two
+		// different variables to a process. A key like `AWS_SECRET_ACCESS_KEY`
+		// would let a blocklist on credential-shaped names pass this test while
+		// reading no allowlist at all.
+		//
+		// The limit of a two-request fixture: any two distinct strings differ
+		// somehow, so a contrived predicate can always separate them. These
+		// cover the over-permissive lookups somebody would actually write.
+		for (const smuggled of ['PROBE_RUN_ID_2', 'probe_mode']) {
+			await expect(
+				adapter.probe(
+					request({
+						channels: {
+							argument: {},
+							option: {},
+							environment: { PROBE_MODE: 'fine', [smuggled]: 'smuggled' },
+							stdin: { kind: 'absent' },
+						},
+					}),
+					new AbortController().signal,
+				),
+			).rejects.toMatchObject({ code: 'forbidden-target' })
+		}
+		expect(calls).toBe(0)
+	})
+
+	it('refuses a declared PATH even when the mapping permits it', async () => {
+		// The mapping here is a plain object, which is how every caller supplies
+		// one: nothing in this package parses `CommandTargetPolicy`, so the
+		// schema's refusal of PATH never runs on this path and the adapter has
+		// to refuse it itself. `target` may be a bare command name, and the
+		// child environment is what resolves it, so a permitted PATH would pick
+		// the binary.
+		let calls = 0
+		const mechanism: CommandMechanism = {
+			run: async () => {
+				calls++
+				throw new Error('should not run')
+			},
+			readArtifact: async () => ({
+				present: false,
+				text: '',
+				truncated: false,
+			}),
+		}
+		const adapter = createCommandLineAdapter(
+			policyOf(authorization({ permittedEnvironmentKeys: ['PATH', 'Path'] })),
+			mechanism,
+		)
+		for (const key of ['PATH', 'Path']) {
+			await expect(
+				adapter.probe(
+					request({
+						channels: {
+							argument: {},
+							option: {},
+							environment: { [key]: '/tmp/evil' },
+							stdin: { kind: 'absent' },
+						},
+					}),
+					new AbortController().signal,
+				),
+			).rejects.toMatchObject({ code: 'forbidden-target' })
+		}
+		expect(calls).toBe(0)
+	})
+
+	it('refuses an environment key carrying a second assignment, at the boundary', async () => {
+		// `A=B` as a key reaches a child as a variable `A` whose value carries
+		// `B=` in front of the declared one. The allowlist cannot catch that on
+		// its own, since an operator can permit the malformed key by the same
+		// spelling; the key charset is what closes it, one layer earlier.
+		let calls = 0
+		const mechanism: CommandMechanism = {
+			run: async () => {
+				calls++
+				throw new Error('should not run')
+			},
+			readArtifact: async () => ({
+				present: false,
+				text: '',
+				truncated: false,
+			}),
+		}
+		const adapter = createCommandLineAdapter(
+			policyOf(authorization({ permittedEnvironmentKeys: ['PROBE_MODE'] })),
+			mechanism,
+		)
+		await expect(
+			adapter.probe(
+				request({
+					channels: {
+						argument: {},
+						option: {},
+						environment: { 'PROBE_MODE=INJECTED': 'x' },
+						stdin: { kind: 'absent' },
+					},
+				}),
+				new AbortController().signal,
+			),
+		).rejects.toMatchObject({ code: 'schema-parse-failure' })
+		expect(calls).toBe(0)
 	})
 
 	it('captures a declared artifact the process wrote, and reports absent for one it did not', async () => {

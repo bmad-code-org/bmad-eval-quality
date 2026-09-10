@@ -43,7 +43,7 @@ export const CONFORMANCE_OUTCOME_COUNTS = {
 	clock: 6,
 	'file-system': 12,
 	'environment-probe': 19,
-	'command-probe': 15,
+	'command-probe': 16,
 	'mcp-probe': 14,
 } as const
 

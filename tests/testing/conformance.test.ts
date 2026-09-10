@@ -439,7 +439,7 @@ describe('the report itself: formatting, the length rule, and the declared count
 			clock: 6,
 			'file-system': 12,
 			'environment-probe': 19,
-			'command-probe': 15,
+			'command-probe': 16,
 			'mcp-probe': 14,
 		})
 	})
@@ -1008,6 +1008,10 @@ describe('the probe suite: AD-35 default-deny and the four caps (fixtures 59-72)
 const INJECTION_VALUE = 'literal-$(echo pwned)'
 const ARTIFACT_ID = 'report'
 const ARTIFACT_TEXT = 'artifact-body'
+const PERMITTED_ENV_KEY = 'PROBE_MODE'
+const SECOND_PERMITTED_ENV_KEY = 'PROBE_RUN_ID'
+/** A near-twin of a permitted key: an adapter that blocklists credential-shaped names, or reads a `PROBE_` prefix, must not pass by telling the two cases apart on the name. */
+const UNPERMITTED_ENV_KEY = 'PROBE_RUN_ID_2'
 const ECHO_KEY = 'echo'
 const ECHO_VALUE = 'declared-$(echo pwned)'
 const MCP_RESULT_KEYS = ['ok', ECHO_KEY]
@@ -1018,6 +1022,7 @@ type CommandKnobs = {
 	readonly allowUnmappedInterface?: boolean
 	readonly allowUnmappedExecutable?: boolean
 	readonly allowUnauthorizedSubcommand?: boolean
+	readonly allowUnauthorizedEnvironmentKey?: boolean
 	readonly mangleArgument?: boolean
 	readonly dropArtifact?: boolean
 	readonly resolveAfterElapsedCap?: boolean
@@ -1029,6 +1034,7 @@ type CommandKnobs = {
 		| 'unmapped-interface'
 		| 'unmapped-executable'
 		| 'unauthorized-subcommand'
+		| 'unauthorized-environment-key'
 }
 
 function commandRequest(
@@ -1037,6 +1043,7 @@ function commandRequest(
 		readonly interfaceId?: string
 		readonly executable?: string
 		readonly subcommandPath?: readonly string[]
+		readonly environment?: Record<string, string>
 	} = {},
 ): ProbeRequest {
 	return {
@@ -1049,7 +1056,7 @@ function commandRequest(
 		channels: {
 			argument: {},
 			option: {},
-			environment: {},
+			environment: overrides.environment ?? {},
 			stdin: { kind: 'absent' },
 		},
 	}
@@ -1085,6 +1092,7 @@ const commandPolicy: CommandTargetPolicy = {
 			executable: 'probe-cli',
 			target: '/usr/bin/true',
 			permittedSubcommandPaths: [[]],
+			permittedEnvironmentKeys: [PERMITTED_ENV_KEY, SECOND_PERMITTED_ENV_KEY],
 			cwd: '/tmp',
 			artifacts: { [ARTIFACT_ID]: 'report.txt' },
 			maxElapsedMs: 1500,
@@ -1113,6 +1121,7 @@ function syntheticCommandSubject(
 		'unmapped-interface': knobs.allowUnmappedInterface,
 		'unmapped-executable': knobs.allowUnmappedExecutable,
 		'unauthorized-subcommand': knobs.allowUnauthorizedSubcommand,
+		'unauthorized-environment-key': knobs.allowUnauthorizedEnvironmentKey,
 	}
 
 	return {
@@ -1137,6 +1146,10 @@ function syntheticCommandSubject(
 		unauthorizedSubcommandRequest: commandRequest('unauthorized-subcommand', {
 			subcommandPath: ['danger'],
 		}),
+		unauthorizedEnvironmentKeyRequest: commandRequest(
+			'unauthorized-environment-key',
+			{ environment: { [UNPERMITTED_ENV_KEY]: 'smuggled' } },
+		),
 		nonZeroExitRequest: knobs.nonZeroExitRequestIsMcp
 			? mcpProbeRequest('devtools', 'non-zero-exit')
 			: commandRequest('non-zero-exit'),
@@ -1235,15 +1248,15 @@ async function commandFailures(knobs: CommandKnobs) {
 }
 
 describe('the command arm: one mutant per assertion flips exactly its own id', () => {
-	it('a conforming synthetic command subject passes, fifteen outcomes', async () => {
+	it('a conforming synthetic command subject passes, sixteen outcomes', async () => {
 		const report = await runCommandLineProbeConformance(
 			syntheticCommandSubject(),
 		)
-		expect(report.outcomes).toHaveLength(15)
+		expect(report.outcomes).toHaveLength(16)
 		expect(failedIds(report)).toEqual([])
 		expect(report.passed).toBe(true)
 		expect(report.port).toBe('command-probe')
-		expect(new Set(report.outcomes.map((each) => each.id)).size).toBe(15)
+		expect(new Set(report.outcomes.map((each) => each.id)).size).toBe(16)
 	})
 
 	it.each([
@@ -1254,6 +1267,10 @@ describe('the command arm: one mutant per assertion flips exactly its own id', (
 		[
 			{ allowUnauthorizedSubcommand: true },
 			'command/deny-unauthorized-subcommand',
+		],
+		[
+			{ allowUnauthorizedEnvironmentKey: true },
+			'command/deny-unauthorized-environment-key',
 		],
 		[{ mangleArgument: true }, 'command/argument-passed-literally'],
 		[{ dropArtifact: true }, 'command/capture-declared-artifact'],
@@ -1319,6 +1336,52 @@ describe('the command arm: one mutant per assertion flips exactly its own id', (
 			'command/deny-unauthorized-subcommand',
 			'permits subcommand path []',
 		],
+		[
+			'an unauthorized environment key declared as a tool call',
+			{
+				unauthorizedEnvironmentKeyRequest: mcpProbeRequest(
+					'devtools',
+					'unauthorized-environment-key',
+				),
+			},
+			'command/deny-unauthorized-environment-key',
+			'unauthorizedEnvironmentKeyRequest declares a "mcp" request',
+		],
+		[
+			'an unauthorized environment key on a pair the policy never names',
+			{
+				unauthorizedEnvironmentKeyRequest: commandRequest(
+					'unauthorized-environment-key',
+					{
+						interfaceId: 'unmapped',
+						environment: { [UNPERMITTED_ENV_KEY]: 'smuggled' },
+					},
+				),
+			},
+			'command/deny-unauthorized-environment-key',
+			'cannot tell an unmapped pair from an unauthorized environment key',
+		],
+		[
+			'an unauthorized environment key request that declares none',
+			{
+				unauthorizedEnvironmentKeyRequest: commandRequest(
+					'unauthorized-environment-key',
+				),
+			},
+			'command/deny-unauthorized-environment-key',
+			'declares no environment key',
+		],
+		[
+			'an unauthorized environment key the policy does permit',
+			{
+				unauthorizedEnvironmentKeyRequest: commandRequest(
+					'unauthorized-environment-key',
+					{ environment: { [PERMITTED_ENV_KEY]: 'fine' } },
+				),
+			},
+			'command/deny-unauthorized-environment-key',
+			'permits every environment key unauthorizedEnvironmentKeyRequest declares',
+		],
 	] as const)(
 		'reports a subject declaring %s',
 		async (_what, override, id, expected) => {
@@ -1337,6 +1400,10 @@ describe('the command arm: one mutant per assertion flips exactly its own id', (
 		['unmapped-interface', 'command/deny-unmapped-interface'],
 		['unmapped-executable', 'command/deny-unmapped-executable'],
 		['unauthorized-subcommand', 'command/deny-unauthorized-subcommand'],
+		[
+			'unauthorized-environment-key',
+			'command/deny-unauthorized-environment-key',
+		],
 	] as const)(
 		'refusing %s only after a process spawns flips only %s',
 		async (operation, expected) => {

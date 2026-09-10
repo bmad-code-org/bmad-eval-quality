@@ -42,6 +42,10 @@ const ARTIFACT_ID = 'report'
 const ARTIFACT_FILE = 'report.txt'
 const ARTIFACT_TEXT = 'artifact-body'
 const INJECTION_VALUE = '$(echo pwned); rm -rf / #'
+/** Two permitted keys, so the authorized request and the denied one below declare the same NUMBER of keys. A subject where they differ by count certifies an adapter that counts keys and never reads the allowlist. */
+const PERMITTED_ENV_KEYS = ['PROBE_MODE', 'PROBE_RUN_ID'] as const
+/** A near-twin of a permitted key, so nothing about the NAME separates the two cases either. An adapter blocklisting `/SECRET|TOKEN|PASSWORD/`, or hardcoding a `PROBE_` prefix, passes a subject whose denied key is `AWS_SECRET_ACCESS_KEY` while reading no allowlist at all. */
+const UNPERMITTED_ENV_KEY = 'PROBE_RUN_ID_2'
 
 function commandRequest(params: {
 	readonly probeId: string
@@ -50,6 +54,7 @@ function commandRequest(params: {
 	readonly subcommandPath?: readonly string[]
 	readonly argument?: Record<string, JsonValue>
 	readonly option?: Record<string, JsonValue>
+	readonly environment?: Record<string, string>
 }): ProbeRequest {
 	return {
 		kind: 'cli',
@@ -61,13 +66,13 @@ function commandRequest(params: {
 		channels: {
 			argument: params.argument ?? {},
 			option: params.option ?? {},
-			environment: {},
+			environment: params.environment ?? {},
 			stdin: { kind: 'absent' },
 		},
 	}
 }
 
-/** The subject's own single authorization. One entry covers every case below: the only cases that leave it are `unmappedInterfaceRequest` (a different interfaceId) and `unmappedExecutableRequest` (a different executable), neither of which this entry names, and `unauthorizedSubcommandRequest`, which names a subcommand path outside `permittedSubcommandPaths`. */
+/** The subject's own single authorization. One entry covers every case below: the only cases that leave it are `unmappedInterfaceRequest` (a different interfaceId) and `unmappedExecutableRequest` (a different executable), neither of which this entry names, `unauthorizedSubcommandRequest`, which names a subcommand path outside `permittedSubcommandPaths`, and `unauthorizedEnvironmentKeyRequest`, which declares a key outside `permittedEnvironmentKeys`. */
 function buildPolicy(scratchDir: string): CommandTargetPolicy {
 	return {
 		authorizations: [
@@ -76,6 +81,7 @@ function buildPolicy(scratchDir: string): CommandTargetPolicy {
 				executable: EXECUTABLE,
 				target: FIXTURE_PATH,
 				permittedSubcommandPaths: [[]],
+				permittedEnvironmentKeys: [...PERMITTED_ENV_KEYS],
 				cwd: scratchDir,
 				artifacts: { [ARTIFACT_ID]: ARTIFACT_FILE },
 				maxElapsedMs: MAX_ELAPSED_MS,
@@ -145,7 +151,17 @@ export function createCommandProbeSubject(
 		sampleRequest: commandRequest({ probeId: 'sample' }),
 		build,
 		policy,
-		authorizedRequest: commandRequest({ probeId: 'authorized' }),
+		// Carries both permitted environment keys. An adapter that denied every
+		// declared key fails here, and one that refuses on key count alone
+		// cannot tell this request from the denied one below, which declares
+		// two keys as well.
+		authorizedRequest: commandRequest({
+			probeId: 'authorized',
+			environment: {
+				[PERMITTED_ENV_KEYS[0]]: 'conformance',
+				[PERMITTED_ENV_KEYS[1]]: 'run-1',
+			},
+		}),
 		unmappedInterfaceRequest: commandRequest({
 			probeId: 'unmapped-interface',
 			interfaceId: 'unmapped',
@@ -157,6 +173,16 @@ export function createCommandProbeSubject(
 		unauthorizedSubcommandRequest: commandRequest({
 			probeId: 'unauthorized-subcommand',
 			subcommandPath: ['danger'],
+		}),
+		// One permitted key and one the mapping omits, so the refusal has to be
+		// key-specific: a blanket denial of any declared environment fails the
+		// authorized case above.
+		unauthorizedEnvironmentKeyRequest: commandRequest({
+			probeId: 'unauthorized-environment-key',
+			environment: {
+				[PERMITTED_ENV_KEYS[0]]: 'conformance',
+				[UNPERMITTED_ENV_KEY]: 'smuggled',
+			},
 		}),
 		nonZeroExitRequest: commandRequest({
 			probeId: 'nonzero-exit',

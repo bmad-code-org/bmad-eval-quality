@@ -2,6 +2,7 @@
 import { z } from 'zod'
 import { HttpMethod, PathTemplate } from './interface.ts'
 import {
+	EnvironmentKeyName,
 	Identifier,
 	JsonValue,
 	KeyName,
@@ -130,9 +131,9 @@ export const CommandProbeRequest = z.strictObject({
 		argument: z.record(KeyName, JsonValue),
 		option: z.record(KeyName, JsonValue),
 		environment: z
-			.record(KeyName, z.string())
+			.record(EnvironmentKeyName, z.string())
 			.describe(
-				'String-valued because an environment variable is a string to the process; the other channels carry the declared JSON value.',
+				'String-valued because an environment variable is a string to the process; the other channels carry the declared JSON value. Keyed more narrowly than the other channels: this one becomes real variables on a real process, where `A=B` as a key would smuggle a second assignment past anyone reading the mapping.',
 			),
 		stdin: ProbeRequestStdin,
 	}),
