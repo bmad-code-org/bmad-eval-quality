@@ -432,6 +432,28 @@ against the same subject, which is the duplication the conformance suite exists 
 story's Boundaries also put a second HTTP client out of scope, and the transport is not what the run
 swaps: the swapped input is the response bytes.
 
+**Decision 20: one branch in the AD-37 subject may be unreachable, and this story ships no assertion
+for it.**
+Closing CodeRabbit's second finding turned up a third thing neither review had. `nodeHttpMechanism`
+(`tests/adapters/probe-subject.ts`) rejects on the response's `close` event when
+`response.complete` is false, and its comment says why: "a server that sends headers and part of a
+body and then destroys the socket emits neither `end` nor `error`, so without this the promise never
+settles and only the elapsed cap rescues it." No fixture route in that file drives it.
+
+An attempt was made to give it one, and it is recorded because the attempt failed rather than
+because it succeeded. Two routes were written, one destroying the socket mid-body and one closing it
+gracefully mid-body with a declared `content-length`. Under both, deleting the `close` branch
+entirely left the new assertion green, which means the rejection came from the mechanism's own
+`error` handler rather than from the branch under test. On this Node version a premature close
+reaches the client as an error event first, so the branch reads as unreachable rather than untested.
+
+The assertion was reverted rather than shipped. A green assertion certifying a boundary nothing
+reaches is the exact defect this epic has paid for twice, and shipping one to close a review comment
+would be the worst available outcome. `tests/adapters/probe-subject.ts` is another story's file, the
+question is whether that branch can fire at all rather than whether it is covered, and answering it
+means establishing what Node guarantees for a premature close. That is handed to the epic
+coordinator by message, with this decision as the record of what was tried.
+
 ## Design Notes
 
 The organising idea is the one Story 8.5 established and Story 9.5 restated: evidence is a chain that calls the shipped functions, and anything else is a parallel derivation. The authored chain proved everything from the observations forward. This story proves the one hop before them, and it does so by swapping exactly one input: the same compiled contract, the same signed probe, the same defect signature, with observations that a socket produced. That is why the acceptance is an equality against the authored chain: a fresh set of expected values would prove only that the test author could predict the fixture. If the live verdict and the authored verdict agree, the authored observations were a faithful description of what a real Notes API does, and the worked example stops being a self-consistent fiction. If they disagree, the disagreement is the finding.
