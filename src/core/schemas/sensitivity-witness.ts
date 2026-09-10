@@ -191,7 +191,7 @@ export const ManifestationWitness = z.strictObject({
 	interfaceId: Identifier,
 	operationId: Identifier,
 	inputs: WitnessInputs.describe(
-		"The probe's `schemaVersion` 3 -> 4 BREAKING bump under AD-11, whose rule is that removing or retyping is breaking. The union gained a third leg shape, one key over a tool call's arguments, so a seeded defect against an MCP tool server is declarable. Every version-3 probe's own bytes still parse, since the widening adds a branch and narrows none.",
+		"The probe's `schemaVersion` 3 -> 4 BREAKING bump under AD-11, whose rule is that removing or retyping is breaking. The union gained a third leg shape, one key over a tool call's arguments, so a witness leg against a tool call is expressible. The matching defect signature is a separate shape and is not declarable in this version: `DefectSignature` still renders an `mcp` identity as a method and a path template. Every version-3 probe's own bytes still parse, since the widening adds a branch and narrows none.",
 	),
 	relation: Expression,
 })

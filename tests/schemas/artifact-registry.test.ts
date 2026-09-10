@@ -227,8 +227,9 @@ describe('the Consistency Conventions, extended rather than restarted', () => {
 	// The command interface kind added the tenth, the command witness leg's
 	// `environment`, string-valued for the reason `WitnessInputs.header` is,
 	// and doubled the per-operation addresses: `Operation` now carries a `$defs`
-	// id shared by the three api-shaped branches, and the command branch inlines
-	// its own four request channels and its response descriptor beside them. The
+	// id shared by the `api` and `web` branches, while the command branch and the
+	// tool-call branch each inline their own request channels and their own
+	// response descriptor beside them. The
 	// command witness leg is inline rather than named, so it is reached twice,
 	// once through each operation shape.
 	//

@@ -23,7 +23,7 @@ export const mcpContract = {
 				'A search names at least one match and never more than the server holds.',
 			requirementLinks: [{ scheme: 'local', id: 'REQ-1' }],
 			riskLinks: [{ scheme: 'local-risk', id: 'RISK-1' }],
-			oracles: ['O-001', 'O-002'],
+			oracles: ['O-001', 'O-002', 'O-005', 'O-006'],
 		},
 		{
 			id: 'B-002',
@@ -33,63 +33,213 @@ export const mcpContract = {
 				'A creation call answers with an identifier and reports no error.',
 			requirementLinks: [{ scheme: 'local', id: 'REQ-2' }],
 			riskLinks: [{ scheme: 'local-risk', id: 'RISK-2' }],
-			oracles: ['O-003'],
+			oracles: ['O-003', 'O-004', 'O-007'],
 		},
 	],
 	oracles: [
 		{
+			// Rule 1 and rule 2 over the search result: the tool's own success
+			// field beside the collection it returns, which is every required
+			// key of the descriptor and two pointers carrying distinct roles.
 			id: 'O-001',
 			direction: {
-				evidenceTargets: ['/interactions/search/response-body/matches'],
-				relation: 'existence',
+				evidenceTargets: [
+					'/interactions/search/response-body/ok',
+					'/interactions/search/response-body/matches',
+				],
+				relation: 'all',
 				polarity: 'expects-hold',
 				scope: 'One search call for one query.',
-				negativeDomain: 'A search naming no match at all.',
+				negativeDomain: 'A search reporting success and naming no match.',
 			},
 			check: {
-				op: 'existence',
-				operands: [{ pointer: '/interactions/search/response-body/matches' }],
+				op: 'all',
+				operands: [
+					{
+						op: 'equality',
+						operands: [
+							{ pointer: '/interactions/search/response-body/ok' },
+							{ literal: true },
+						],
+					},
+					{
+						op: 'existence',
+						operands: [
+							{ pointer: '/interactions/search/response-body/matches' },
+						],
+					},
+				],
 			},
 			polarity: 'expects-hold',
 			commentary:
-				'Reads the collection the tool declares its structured result carries.',
+				'The tool reporting success has to have returned the list it reports on.',
 		},
 		{
-			// A quantifier over the declared collection, so AD-20 rule 4 is
-			// relevant and decided rather than vacuous. A fixture that leaves
-			// every rule irrelevant grades nothing, which is how a whole
-			// interface kind went ungraded in the first place.
+			// Rule 4 and rule 6 together. The declared cardinality is `at-most`,
+			// so rule 6 takes the injection form: a quantifier over the page
+			// whose predicate tests membership of the declared set. A bijection
+			// would resolve false against a correct server returning a page.
 			id: 'O-002',
 			direction: {
 				evidenceTargets: ['/interactions/search/response-body/matches'],
 				relation: 'for-all',
 				polarity: 'expects-hold',
 				scope: 'Every match the search names.',
-				negativeDomain: 'A named match carrying no identifier.',
+				negativeDomain: 'A match naming a note the seeded set does not hold.',
 			},
 			check: {
 				op: 'for-all',
 				collection: { pointer: '/interactions/search/response-body/matches' },
-				predicate: { op: 'existence', operands: [{ pointer: '@/noteId' }] },
+				predicate: {
+					op: 'set-membership',
+					operands: [
+						{ pointer: '@/noteId' },
+						{ referenceSet: 'expected-notes' },
+					],
+				},
 			},
 			polarity: 'expects-hold',
-			commentary: 'Every named match carries an identifier.',
+			commentary: 'Every match returned is one of the notes that were seeded.',
 		},
 		{
+			// The same pair of rules over the creation result.
 			id: 'O-003',
 			direction: {
-				evidenceTargets: ['/interactions/create/response-body/noteId'],
-				relation: 'existence',
+				evidenceTargets: [
+					'/interactions/create/response-body/ok',
+					'/interactions/create/response-body/noteId',
+				],
+				relation: 'all',
 				polarity: 'expects-hold',
 				scope: 'One creation call for one note.',
-				negativeDomain: 'A creation answering with no identifier.',
+				negativeDomain: 'A creation reporting success with no identifier.',
 			},
 			check: {
-				op: 'existence',
-				operands: [{ pointer: '/interactions/create/response-body/noteId' }],
+				op: 'all',
+				operands: [
+					{
+						op: 'equality',
+						operands: [
+							{ pointer: '/interactions/create/response-body/ok' },
+							{ literal: true },
+						],
+					},
+					{
+						op: 'existence',
+						operands: [
+							{ pointer: '/interactions/create/response-body/noteId' },
+						],
+					},
+				],
 			},
 			polarity: 'expects-hold',
-			commentary: 'Reads the identifier the creation tool declares it returns.',
+			commentary:
+				'A creation that reports success has to answer with the identifier it filed under.',
+		},
+		{
+			// Rule 7's read-back. The title the creation call sent has to appear
+			// in what a later non-mutating step reads, which is what separates a
+			// tool that reported success from a tool that did the work.
+			id: 'O-004',
+			direction: {
+				evidenceTargets: [
+					'/interactions/create/call-inputs/arguments/title',
+					'/interactions/read-back/response-body/matches',
+				],
+				relation: 'containment',
+				polarity: 'expects-hold',
+				scope: 'One creation followed by one search for what it filed.',
+				negativeDomain: 'A creation the later search cannot find.',
+			},
+			check: {
+				op: 'containment',
+				operands: [
+					{ pointer: '/interactions/read-back/response-body/matches' },
+					{ pointer: '/interactions/create/call-inputs/arguments/title' },
+				],
+			},
+			polarity: 'expects-hold',
+			commentary:
+				'A creation that reported success and filed nothing fails here.',
+		},
+		{
+			// Rule 5: the two declared parameter siblings read at one oracle, so
+			// a tool honouring one argument and ignoring the other is caught.
+			id: 'O-005',
+			direction: {
+				evidenceTargets: [
+					'/interactions/search/call-inputs/arguments/query',
+					'/interactions/create/call-inputs/arguments/title',
+				],
+				relation: 'all',
+				polarity: 'expects-hold',
+				scope: 'The two arguments the sibling group names.',
+				negativeDomain: 'A call sending one of the pair and not the other.',
+			},
+			check: {
+				op: 'all',
+				operands: [
+					{
+						op: 'existence',
+						operands: [
+							{ pointer: '/interactions/search/call-inputs/arguments/query' },
+						],
+					},
+					{
+						op: 'existence',
+						operands: [
+							{ pointer: '/interactions/create/call-inputs/arguments/title' },
+						],
+					},
+				],
+			},
+			polarity: 'expects-hold',
+			commentary: 'Both declared siblings were actually sent.',
+		},
+		{
+			// Rule 3: a call whose argument carries the wrong JSON type has to
+			// be refused rather than answered, and the oracle addressing that
+			// step is what makes the rule satisfiable.
+			id: 'O-006',
+			direction: {
+				evidenceTargets: ['/interactions/malformed-search/response-body/ok'],
+				relation: 'equality',
+				polarity: 'expects-violation',
+				scope: 'One search whose query argument is not a string.',
+				negativeDomain: 'A search answering success over a malformed argument.',
+			},
+			check: {
+				op: 'equality',
+				operands: [
+					{ pointer: '/interactions/malformed-search/response-body/ok' },
+					{ literal: false },
+				],
+			},
+			polarity: 'expects-violation',
+			commentary: 'A type-violating argument is refused rather than answered.',
+		},
+		{
+			// The same rule over the mutating tool, which the rule fires on
+			// separately: a malformed creation that reports success has written
+			// something nobody asked for.
+			id: 'O-007',
+			direction: {
+				evidenceTargets: ['/interactions/malformed-create/response-body/ok'],
+				relation: 'equality',
+				polarity: 'expects-violation',
+				scope: 'One creation whose title argument is not a string.',
+				negativeDomain:
+					'A creation answering success over a malformed argument.',
+			},
+			check: {
+				op: 'equality',
+				operands: [
+					{ pointer: '/interactions/malformed-create/response-body/ok' },
+					{ literal: false },
+				],
+			},
+			polarity: 'expects-violation',
+			commentary: 'A type-violating argument is refused rather than filed.',
 		},
 	],
 	rubrics: [],
@@ -111,19 +261,26 @@ export const mcpContract = {
 						},
 					},
 					descriptorChannel: { kind: 'structured-result' },
+					// `ok` is the tool's own field inside its structured result,
+					// and it is deliberately not the protocol's `isError`: that
+					// flag is envelope framing, it lands on `response-status`,
+					// and declaring it here is the envelope-descriptor trap the
+					// kind's design record names. An oracle over `ok` checks
+					// what the tool said about its own work.
 					responseDescriptor: {
-						requiredKeys: ['matches', 'isError'],
-						permittedKeys: ['matches', 'isError'],
-						types: { matches: 'array', isError: 'boolean' },
-						successIndicator: '/isError',
+						requiredKeys: ['ok', 'matches'],
+						permittedKeys: ['ok', 'matches', 'totalCount'],
+						types: { ok: 'boolean', matches: 'array', totalCount: 'number' },
+						successIndicator: '/ok',
 						channelRoles: {
+							'/ok': 'success-indicator',
 							'/matches': 'collection',
-							'/isError': 'success-indicator',
+							'/totalCount': 'payload',
 						},
 						collectionLocations: [
 							{
 								pointer: '/matches',
-								referenceSet: null,
+								referenceSet: 'expected-notes',
 								expectedCardinality: { mode: 'at-most', max: 20 },
 							},
 						],
@@ -178,17 +335,21 @@ export const mcpContract = {
 					},
 					descriptorChannel: { kind: 'structured-result' },
 					responseDescriptor: {
-						requiredKeys: ['noteId', 'isError'],
-						permittedKeys: ['noteId', 'isError'],
-						types: { noteId: 'string', isError: 'boolean' },
-						successIndicator: '/isError',
+						requiredKeys: ['ok', 'noteId'],
+						permittedKeys: ['ok', 'noteId', 'filedAt'],
+						types: { ok: 'boolean', noteId: 'string', filedAt: 'string' },
+						successIndicator: '/ok',
 						channelRoles: {
+							'/ok': 'success-indicator',
 							'/noteId': 'payload',
-							'/isError': 'success-indicator',
 						},
 						collectionLocations: [],
 					},
-					volatilePointers: [],
+					// The filing timestamp differs on every run, so a witness
+					// relation reading it would certify the tool sensitive to
+					// its own clock. Declared volatile so the projection prunes
+					// it and a relation addressing it is refused at compile.
+					volatilePointers: ['/filedAt'],
 					sensitivityWitness: {
 						witnessId: 'creation-follows-the-title',
 						channel: 'arguments',
@@ -225,8 +386,17 @@ export const mcpContract = {
 			],
 		},
 	],
-	referenceSets: null,
-	siblingGroups: null,
+	referenceSets: {
+		'expected-notes': {
+			keys: ['noteId'],
+			members: [{ noteId: 'n-1' }, { noteId: 'n-2' }],
+			commentary: null,
+		},
+	},
+	siblingGroups: {
+		operations: [['search-notes', 'create-note']],
+		parameters: [['query', 'title']],
+	},
 	interactionPlan: [
 		{
 			stepId: 'search',
@@ -241,6 +411,42 @@ export const mcpContract = {
 			after: null,
 			cardinality: 'exactly-one',
 			inputBinding: { arguments: { title: { literal: 'a new note' } } },
+		},
+		{
+			// Rule 3's site: an argument bound by the type-violating matcher,
+			// which binds a call whose JSON type differs from the one the tool
+			// declares for that key.
+			stepId: 'malformed-search',
+			operationId: 'search-notes',
+			after: null,
+			cardinality: 'at-most-one',
+			inputBinding: {
+				arguments: { query: { matcher: 'type-violating' } },
+			},
+		},
+		{
+			stepId: 'malformed-create',
+			operationId: 'create-note',
+			after: null,
+			cardinality: 'at-most-one',
+			inputBinding: {
+				arguments: { title: { matcher: 'type-violating' } },
+			},
+		},
+		{
+			// The read-back half of the pair AD-20 rule 7 asks for, and the one
+			// step that binds a captured value: the identifier the creation
+			// tool minted is what the search looks for, which a literal cannot
+			// name because the evaluator never created it.
+			stepId: 'read-back',
+			operationId: 'search-notes',
+			after: 'create',
+			cardinality: 'exactly-one',
+			inputBinding: {
+				arguments: {
+					query: { captured: '/interactions/create/response-body/noteId' },
+				},
+			},
 		},
 	],
 	scopedResources: null,
@@ -258,5 +464,13 @@ export const mcpContract = {
 	safetyLimits: [],
 	requiredEvidence: [],
 	probeStepBound: null,
-	fixtureReset: null,
+	// The reset is an ordinary declared operation and goes through the same port
+	// as every other leg, so this is the accept fixture for the tool-call arm of
+	// `FixtureReset.inputs`, which is reachable from no other declaration.
+	fixtureReset: {
+		legId: 'reset-notes',
+		interfaceId: 'notes-tool-server',
+		operationId: 'create-note',
+		inputs: { arguments: { title: 'the clean fixture' } },
+	},
 } satisfies EvalContract

@@ -5,6 +5,7 @@
  * collection predicate scoped to one operation.
  */
 
+import { isMcpWitnessInputs } from '../compile/sensitivity-witness.ts'
 import {
 	descriptorArtifactOf,
 	descriptorChannelOf,
@@ -84,8 +85,10 @@ const callInputsOf = (inputs: WitnessInputs): ObservedCallInputs => {
 	// A tool call's arguments have no key on this shape yet: the ninth channel
 	// lands with the sealed run record's own breaking bump. Every channel reads
 	// `null` until then, which is the same answer this record already gives for
-	// a channel the leg did not use.
-	if ('arguments' in inputs) return empty
+	// a channel the leg did not use, and which `checkExpressionLegChannel`
+	// admits `call-inputs` against, so the two are reconciled when that key
+	// lands.
+	if (isMcpWitnessInputs(inputs)) return empty
 	return {
 		...empty,
 		argument: inputs.argument,

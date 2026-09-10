@@ -611,7 +611,6 @@ function evaluateReachabilityAgainstOperation(
 	}
 
 	if (target.channel === 'call-inputs') {
-		if (target.tail.length === 0) return reachable()
 		const { transportChannel } = target
 		if (transportChannel === null) {
 			// Unreachable: parseEvidenceTarget's own guarantee.
@@ -619,16 +618,22 @@ function evaluateReachabilityAgainstOperation(
 				'call-inputs evidence target carries no transport channel',
 			)
 		}
-		const firstToken = target.tail[0]
-		if (firstToken === undefined) {
-			throw new TypeError(
-				'evidence-target tail is non-empty but has no first token',
-			)
-		}
+		// The channel test runs ahead of the tail test, because a tail-less
+		// pointer at a channel the operation does not accept is unreachable
+		// too: the recorded call inputs carry no key for it, so the pointer
+		// resolves absent on every run and no run can change that. Asking about
+		// the tail first admitted every such pointer, on all nine channels.
 		const shape = requestShapeOf(operation, transportChannel)
 		if (shape === undefined) {
 			return unreachable(
 				`addresses call-inputs ${transportChannel}, a channel operation "${operation.operationId}" does not accept input on`,
+			)
+		}
+		if (target.tail.length === 0) return reachable()
+		const firstToken = target.tail[0]
+		if (firstToken === undefined) {
+			throw new TypeError(
+				'evidence-target tail is non-empty but has no first token',
 			)
 		}
 		const { requiredKeys, permittedKeys, types } = shape

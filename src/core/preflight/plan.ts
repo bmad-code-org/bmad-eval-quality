@@ -30,6 +30,7 @@ import type { Probe } from '../schemas/probe.ts'
 import type {
 	ApiWitnessInputs,
 	ManifestationWitness,
+	McpWitnessInputs,
 	SensitivityWitness,
 	WitnessInputs,
 } from '../schemas/sensitivity-witness.ts'
@@ -119,7 +120,9 @@ const requestOf = (
 		// spelled where the operation union forces a third arm.
 		throw new StructuralFailure(
 			'unsupported-interface-kind',
-			operationPath,
+			// The kind field, matching both shipped throwers of this code, so a
+			// reader grepping by artifact path gets one shape rather than two.
+			`EvalContract.permittedInterfaces[logicalId=${interfaceId}].kind`,
 			`"mcp" is not supported; "api" and "cli" are (AD-10)`,
 		)
 	}
@@ -240,7 +243,7 @@ const EMPTY_INPUTS: ApiWitnessInputs = {
 	body: { kind: 'absent' },
 }
 
-const EMPTY_MCP_INPUTS = { arguments: {} }
+const EMPTY_MCP_INPUTS: McpWitnessInputs = { arguments: {} }
 
 /**
  * The inputs a control leg sends. A witness supplies them when the operation has

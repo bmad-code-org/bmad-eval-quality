@@ -87,8 +87,8 @@ export const DEFS_BY_DOCUMENT: Readonly<Record<string, number>> = {
  */
 export const REJECT_CASE_COUNTS = {
 	contract: 55,
-	artifact: 105,
-	total: 160,
+	artifact: 106,
+	total: 161,
 } as const
 
 /**

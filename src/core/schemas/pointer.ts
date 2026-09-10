@@ -124,13 +124,14 @@ export const IDENTIFIER_ROOTED_CHANNEL =
 	'artifact' as const satisfies EvidenceChannelName
 
 /**
- * The response-side channels each kind produces, and neither produces the
- * other's. Declared here rather than rebuilt from a description, so a channel
- * added to the vocabulary has to be assigned to a side and a test can assert
- * the two partition the response side exactly.
+ * The response-side channels an interface that speaks HTTP produces and the
+ * ones a command produces, and neither produces the other's. A tool call fills
+ * a strict subset of the first. Declared here rather than rebuilt from a
+ * description, so a channel added to the vocabulary has to be assigned to a
+ * side and a test can assert the two partition the response side exactly.
  *
  * `call-inputs` belongs to neither: it carries what was sent rather than what
- * came back, and both kinds have it.
+ * came back, and every kind has it.
  */
 export const API_RESPONSE_CHANNELS = [
 	'response-body',
@@ -195,7 +196,7 @@ export const InteractionPointer = z
 	.string()
 	.regex(INTERACTION_POINTER_PATTERN)
 	.describe(
-		'AD-26 interaction-rooted pointer: "/interactions/{stepId}/" followed by one channel of the closed vocabulary. `call-inputs` takes one input channel as its next segment, one of the four transport channels or one of the four command channels; `artifact` takes the identifier of a file the operation declares it writes; `response-status` and `exit-code` take no tail. Syntax only: whether the step exists and whether the evidence is reachable are compile-time checks, not schema checks.',
+		'AD-26 interaction-rooted pointer: "/interactions/{stepId}/" followed by one channel of the closed vocabulary. `call-inputs` takes one input channel as its next segment, one of the four transport channels, one of the four command channels, or the `arguments` channel a tool call accepts; `artifact` takes the identifier of a file the operation declares it writes; `response-status` and `exit-code` take no tail. Syntax only: whether the step exists and whether the evidence is reachable are compile-time checks, not schema checks.',
 	)
 
 /**

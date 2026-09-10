@@ -12,7 +12,7 @@ import {
 } from '../declared-inputs.ts'
 import { StructuralFailure } from '../failure-codes.ts'
 import type { EvalContract } from '../schemas/eval-contract.ts'
-import type { AnyOperation } from '../schemas/interface.ts'
+import type { AnyOperation, InterfaceKindName } from '../schemas/interface.ts'
 import { operationsOf } from '../schemas/interface.ts'
 import {
 	anyOperationOf,
@@ -113,36 +113,62 @@ export const anyOperationSignature = (operation: AnyOperation): string => {
 	return operationSignature(operation)
 }
 
+export type SignatureFamily = 'api' | 'cli' | 'mcp'
+
 /**
- * The shape family an interface kind's identity is rendered in. Three
- * renderings, and `api` and `web` share one because they share an operation
- * shape.
+ * The shape family an interface kind's transport identity is rendered in.
+ * Three renderings, and `api` and `web` share one because they share an
+ * operation shape.
+ *
+ * Typed against the kind vocabulary rather than `string`, so a fifth
+ * `INTERFACE_KINDS` member fails the typecheck here instead of landing in the
+ * `api` family and rendering a method and a path template it does not have.
  */
-export const signatureFamilyOf = (kind: string): string =>
-	kind === 'cli' ? 'cli' : kind === 'mcp' ? 'mcp' : 'api'
+export const signatureFamilyOf = (kind: InterfaceKindName): SignatureFamily => {
+	switch (kind) {
+		case 'cli':
+			return 'cli'
+		case 'mcp':
+			return 'mcp'
+		case 'api':
+		case 'web':
+			return 'api'
+	}
+}
 
 /**
  * Finds duplicate transport identities across the full inventory.
  *
- * Keyed on the declaring kind's family beside the rendered string, because the
- * three renderings draw from different namespaces: a tool named `notes` and an
- * executable named `notes` both render `notes` while naming different things on
- * different servers, and refusing that pair would be a collision the author
- * cannot fix. `resolveHomeOperation` compares within a family for the same
- * reason, so the two agree about what a collision is.
+ * Keyed on the declaring kind's shape family beside the rendered string,
+ * because the three renderings draw from different namespaces: a tool named
+ * `notes` and an executable named `notes` both render `notes` while naming
+ * different things on different machines, and refusing that pair would be a
+ * collision the author cannot fix. `api` and `web` share one family, so two
+ * operations sharing a method and a path template across those two kinds still
+ * collide. `resolveHomeOperation` compares within a family for the same reason,
+ * so the two agree about what a collision is.
  */
 export function checkDuplicateOperationSignature(contract: EvalContract): void {
 	const seen = new Map<string, { logicalId: string; operation: AnyOperation }>()
 	for (const iface of contract.permittedInterfaces) {
 		for (const operation of operationsOf(iface)) {
 			const signature = anyOperationSignature(operation)
-			const key = `${signatureFamilyOf(iface.kind)} ${signature}`
+			const family = signatureFamilyOf(iface.kind)
+			const key = `${family} ${signature}`
 			const collision = seen.get(key)
 			if (collision !== undefined) {
+				// The message names the family, because the identity alone no
+				// longer says which namespace it was compared in, and the
+				// erasure clause is scoped to the family it applies to: a tool
+				// name and an executable path carry no parameters to erase.
+				const how =
+					family === 'api'
+						? 'after parameter-name erasure'
+						: 'on the identity it renders'
 				throw new StructuralFailure(
 					'duplicate-operation-signature',
 					`EvalContract.permittedInterfaces[logicalId=${iface.logicalId}].operations[operationId=${operation.operationId}]`,
-					`collides with permittedInterfaces[logicalId=${collision.logicalId}].operations[operationId=${collision.operation.operationId}] after parameter-name erasure ("${signature}") (AD-19, AD-40)`,
+					`collides with permittedInterfaces[logicalId=${collision.logicalId}].operations[operationId=${collision.operation.operationId}] ${how} ("${signature}") among ${family}-shaped operations (AD-19, AD-40)`,
 				)
 			}
 			seen.set(key, { logicalId: iface.logicalId, operation })
@@ -248,7 +274,7 @@ export function checkUndeclaredMandatoryInput(contract: EvalContract): void {
 		)) {
 			if (binding === null) continue
 			const shape = requestShapeOf(operation, channel)
-			// A step binding a channel of the other kind has no declared shape
+			// A step binding a channel of another kind has no declared shape
 			// to answer to. Reporting it as an undeclared input is true as far
 			// as it goes: the operation declares no such channel, and so
 			// declares no such key on it.

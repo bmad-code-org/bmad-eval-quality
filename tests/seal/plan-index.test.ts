@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest'
+import { isApiOperation } from '../../src/core/declared-inputs.ts'
+import { EvalContract } from '../../src/core/schemas/eval-contract.ts'
 import { InteractionPointer } from '../../src/core/schemas/pointer.ts'
 import {
 	buildPlanIndex,
@@ -6,6 +8,7 @@ import {
 	resolveOperation,
 	resolveStep,
 } from '../../src/core/seal/plan-index.ts'
+import { commandContract } from '../schemas/fixtures/command-contract.ts'
 import { gateCInteractionPlan, gateCPermittedInterfaces } from './fixtures.ts'
 
 describe('parseEvidenceTarget', () => {
@@ -242,7 +245,23 @@ describe('resolveStep / resolveOperation', () => {
 	})
 
 	it('resolveOperation returns the declared operation', () => {
-		expect(resolveOperation(index, 'get-export').method).toBe('GET')
+		const operation = resolveOperation(index, 'get-export')
+		expect(isApiOperation(operation)).toBe(true)
+		if (!isApiOperation(operation)) throw new Error('fixture is api-shaped')
+		expect(operation.method).toBe('GET')
+	})
+
+	// It read `operationOf` alone and threw for any kind that declares its own
+	// operation shape, with a message saying the interfaces do not declare the
+	// operation. They do; a different accessor held it.
+	it('resolveOperation returns a command operation rather than throwing', () => {
+		const commandIndex = buildPlanIndex(
+			EvalContract.parse(commandContract).interactionPlan,
+			EvalContract.parse(commandContract).permittedInterfaces,
+		)
+		expect(resolveOperation(commandIndex, 'select-fragments').operationId).toBe(
+			'select-fragments',
+		)
 	})
 
 	it('resolveOperation throws TypeError on an operation the interfaces do not declare', () => {

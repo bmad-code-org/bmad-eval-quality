@@ -2,8 +2,8 @@
 title: 'The operation shape for a tool call'
 type: 'feature'
 created: '2026-09-09'
-status: 'in-progress'
-review_loop_iteration: 0
+status: 'done'
+review_loop_iteration: 5
 context:
   - _bmad-output/implementation-artifacts/epic-11-context.md
   - _bmad-output/implementation-artifacts/11-3-the-response-descriptor-for-an-unstructured-tool-result.md
@@ -184,7 +184,7 @@ context:
 - [x] `docs/how-to/evaluate-tool-use-behavior.md` -- rewrite `:44-53` to what an `mcp` operation declares, replace the heredoc contract at `:84-133` with the new shape at stamp 5, delete the three bend paragraphs at `:147-167` this story removes, move `:169-174` onto Story 11.3's descriptor, correct the citation at `:40`, and correct the argument pointer and channel-tuple sentences at `:181-182`. The declared exit code and the shown rejection stay as they are.
 - [x] `docs/how-to/evaluate-ai-feature-behavior.md` -- `:14` says two kinds parse through `apiShapedInterface` and names `mcp` as declaring its own operation shape. Cut whatever the correction makes redundant against `:13`, which already names the four kinds.
 - [x] `CHANGELOG.md` `[Unreleased]` -- two `**BREAKING**` bullets under `### Changed`, on the shape `CHANGELOG.md:285-290` and `:311-313` set for Epic 9's bumps. One says the eval contract's `schemaVersion` is 5, that `permittedInterfaces`' `mcp` branch carries its own operation shape, that an `mcp` contract written against version 4 stops parsing, and that `InputBinding` and a witness leg's `inputs` each gained a third arm. One says the probe's `schemaVersion` is 4, that a manifestation witness's `inputs` gained the same third arm, and that every version-3 probe still parses. NFR8 (`_bmad-output/planning-artifacts/epics.md:54`, "pre-1.0 SemVer with every caller-facing break called out") is what requires both. The version-gates-nothing statement at `CHANGELOG.md:578` already covers this release's stamps and is not restated; the corpus-digest non-comparability statement belongs to Story 11.8.
-- [ ] `_bmad-output/project-knowledge/learning-path-step-by-step.md` -- add this story's step per `learning-path-template.md`, and one row to the table at the top of the file. Written after the peer review's findings are addressed.
+- [x] `_bmad-output/project-knowledge/learning-path-step-by-step.md` -- add this story's step per `learning-path-template.md`, and one row to the table at the top of the file. Written after the peer review's findings are addressed.
 - [x] Prune-and-de-AI pass over every string this story wrote. Grep the edited files for `, not `, `rather than`, `instead of`, `as opposed to`, `, never `, and `no longer`, and confirm each surviving hit is a contrast whose halves both carry a fact.
 
 **Acceptance Criteria:**
@@ -203,6 +203,16 @@ context:
 - Given the corrected pages, when `npm run check:doc-invocations` runs, then the tool-use guide's invocation is reported faithful and exits 4 as declared, and grepping `docs/` for `apiShapedInterface('mcp')`, for the eight-field `Operation` enumeration, and for `call-inputs/body/query` against a tool call returns nothing.
 - Given `npm run validate`, when it runs, then all twenty-one steps exit 0 with nothing on stderr, `check:boundary` passes, and the only generated files that changed are the regenerated schemas, corpus, and worked example.
 
+## Checkpoint decisions taken without the human
+
+The build ran unattended by standing instruction, so the three checkpoints this workflow halts at were decided here.
+
+**Multi-goal gate: single goal, no split.** The deliverable is one operation shape and the declarations that mirror it. The two artifact bumps, the fixture, the census moves, the corrected documentation and the changelog entries are that one change's own consequences, and this repository requires them in the same diff.
+
+**Token-count gate: keep the full spec.** It is well past 1600 tokens. The excess is the Code Map and the I/O matrix, both of which are the addresses this build read the tree against, and cutting either would have meant rediscovering them.
+
+**CHECKPOINT 1 (approve/edit): approved as written, with one correction taken from Story 11.3.** Story 11.3's decisions section carried corrected `reachability.ts` addresses, and this story's own frozen matrix carries the stale ones. The corrected addresses were used, per the handoff's instruction, and the two frozen rows carrying the drift were left untouched because the block is human-owned. Decision 12 records the divergence.
+
 ## Decisions settled by construction
 
 **Decision 1: `mcp` needs its own defect-signature branch, AD-40's contract-independence requirement is what forces it, and Story 11.6 lands the whole signature side.**
@@ -217,7 +227,7 @@ The interim state this story leaves is coherent. An `mcp` contract parses; an `m
 **Decision 2: the tool identity is one flat `toolName`, carrying no server segment and no wrapper object.**
 `CommandInvocation` is a wrapper because a command's identity has two parts and AD-40 compares them as segments. An MCP tool call has one: the wire carries `tools/call` with a `name`, and there is no second segment for two implementations to disagree about a separator for. A wrapper around one field would publish an object whose only job is to hold a string.
 
-The server's own identity is left out on the same reasoning. `PermittedInterface.logicalId` names the server, and neither `operationSignature` nor `commandSignature` folds the declaring interface's `logicalId` into the rendered identity. AD-40 needs a signature authored against a corpus to bind a second contract's operation, and a second contract is free to name its server anything; folding in a contract-local logical id would make the identity contract-local, which is the property AD-40 forbids. Downstream consequence: Story 11.6's `McpDefectSignature` declares `toolName` alone, and two interfaces declaring the same tool name are told apart by Decision 4's kind-scoped key and by nothing else.
+The server's own identity is left out on the same reasoning. `PermittedInterface.logicalId` names the server, and neither `operationSignature` nor `commandSignature` folds the declaring interface's `logicalId` into the rendered identity. AD-40 needs a signature authored against a corpus to bind a second contract's operation, and a second contract is free to name its server anything; folding in a contract-local logical id would make the identity contract-local, which is the property AD-40 forbids. Downstream consequence: Story 11.6's `McpDefectSignature` declares `toolName` alone. **Corrected during the build:** two `mcp` interfaces declaring the same tool name are not told apart, they collide. Decision 4's key is scoped by shape family and the family is the same for both, so a contract declaring two tool servers that each publish `search` fails compilation with no fix its author can apply, since renaming one breaks the binding to the real server. That is a real limitation of a contract-independent identity and it is pinned by a test rather than left to be discovered. If AD-40 ever needs two servers in one contract the fix is a namespace on the map's key and never on the rendered identity, because the rendered identity is what a signature author reads.
 
 **Decision 3: `ToolName` is its own pattern, and `Identifier` is the option turned down.**
 `Identifier` is `[a-z0-9]+(?:-[a-z0-9]+)*` (`primitives.ts:8`), lowercase kebab. MCP tool names in the ecosystem are overwhelmingly `snake_case`, and `search_notes`, `create_note`, and `searchNotes` all fail that pattern. A kind whose transport identity refuses the spelling nearly every real server uses ships unusable, and the author's only recourse is to invent a second name for the tool and lose the binding to the server it describes. So `ToolName` admits ASCII letters, digits, underscore, and hyphen.
@@ -227,7 +237,9 @@ Widening `Identifier` itself was the other option and is turned down: it is the 
 **Decision 4: `checkDuplicateOperationSignature` keys on the declaring kind beside the rendered identity.**
 Today a cross-kind collision is impossible by charset: `commandSignature` joins identifiers with a space and `operationSignature` renders a verb, a space, and a slash-rooted template, so no two can ever render the same string. A bare tool name breaks that accident. An `mcp` tool named `notes` and a `cli` executable named `notes` with an empty `subcommandPath` both render `notes`, and the check at `:100-116` would refuse a contract declaring both.
 
-That refusal would be a false positive. `duplicate-operation-signature` exists so that AD-40's first match is the only match, and `resolveHomeOperation` already compares identities inside their own kind, so a tool and a command sharing a name resolve unambiguously. Two ways to fix it were on the table: prefix the rendered identity with the kind, or key the check's map on the pair. Prefixing loses, because the rendered identity is also what AD-40's message quotes and what a signature author reads, and a prefix would put an internal discriminator into published output. So the map is keyed on the pair, and the collision message names the kind alongside the identity. Downstream consequence: Story 11.5 inherits a check that already tells the three kinds apart, and Story 11.8's dev-corpus exemplar may name a tool after a command in the same corpus without an unexplained rejection.
+That refusal would be a false positive. `duplicate-operation-signature` exists so that AD-40's first match is the only match, and `resolveHomeOperation` already compares identities inside their own kind, so a tool and a command sharing a name resolve unambiguously. Two ways to fix it were on the table: prefix the rendered identity with the kind, or key the check's map on the pair. Prefixing loses, because the rendered identity is also what AD-40's message quotes and what a signature author reads, and a prefix would put an internal discriminator into published output. So the map is keyed on the pair, and the collision message names the family alongside the identity and scopes its erasure clause to the family it applies to, since a tool name and an executable path carry no parameters to erase.
+
+**Corrected during the build:** the key is scoped by shape *family* rather than by kind, and `api` and `web` share one because they share an operation shape. Two operations declaring the same method and path template across an `api` interface and a `web` interface therefore still collide, which is right: they render one identity from one shape. `signatureFamilyOf` is a `switch` over `InterfaceKindName` with no default arm, so a fifth kind fails the typecheck at the declaration instead of landing in the api family, which is the same trap Decision 7 removes one level down. Downstream consequence: Story 11.5 inherits a check that already tells the three kinds apart, and Story 11.8's dev-corpus exemplar may name a tool after a command in the same corpus without an unexplained rejection.
 
 **Decision 5: the mcp input channel is `arguments`, a ninth member of `INPUT_CHANNELS`, and reusing `argument` is the option turned down.**
 Reuse is genuinely cheaper and is worth stating exactly: `INPUT_CHANNELS` would stay at eight, `INTERACTION_POINTER_PATTERN` would not move, and `ObservedCallInputs` (`sealed-run-record.ts:200-209`) and `ProbeInputBinding` (`defect-signature.ts:86-95`) would each stay at eight keys, which would take a ninth key off Story 11.6 entirely. It is turned down because a channel name is vocabulary, and `argument`'s own description (`interface.ts:177-179`) says what it means: "Positional arguments, keyed by the name the contract gives each position. The key is the author's own label; position is not encoded here, because no AD-31 predicate reads argument order." A tool call's arguments are a named object with no positions at all, so the reuse would require that description to be widened until it says nothing, and `pointer.ts` would own a channel whose meaning depends on a kind the pointer grammar cannot see. `arguments` is the wire spelling MCP itself uses, which is the same reason `subcommandPath` took the spelling the contracts authored outside this repository already used.
@@ -244,7 +256,9 @@ The reach is what makes this two artifacts. All three leg shapes take the union:
 
 Adding `isMcpOperation` beside `isCommandOperation` and leaving `isApiOperation` as a negation was the cheaper edit and is turned down: it leaves the same trap armed for a fifth kind, and the trap is silent by construction, since a boolean negation has no exhaustiveness for a compiler to check. So `isApiOperation` tests its own required field, and every dispatch site becomes a three-way resolution over the operation union.
 
-Deleting `isApiOperation` was the other option, on the ground that `src/` has no caller. It is turned down because two callers outside `src/` do exist and both would break: `tests/coverage/table.test.ts:317` and `tests/preflight/fixtures/observations.ts:355`, each spelled `operationsOf(...).filter(isApiOperation)` to narrow a `PermittedInterface`'s operations to the HTTP-shaped ones. Deleting the predicate would make both files inline the same negation and inherit the wrong answer for `mcp` that this decision exists to remove. Downstream consequence: Story 11.13 works its exhaustiveness list against a `declared-inputs` module that already answers for three kinds, a fifth kind gets a failing typecheck instead of a wrong answer, and Story 11.5 keeps the predicate rather than dropping it.
+Deleting `isApiOperation` was the other option, on the ground that `src/` has no caller. It is turned down because two callers outside `src/` do exist and both would break: `tests/coverage/table.test.ts:317` and `tests/preflight/fixtures/observations.ts:355`, each spelled `operationsOf(...).filter(isApiOperation)` to narrow a `PermittedInterface`'s operations to the HTTP-shaped ones. Deleting the predicate would make both files inline the same negation and inherit the wrong answer for `mcp` that this decision exists to remove. Three of the five dispatches gained an `mcp` arm: `descriptorChannelOf`, `requestChannelsOf`, and `inputChannelsOf`. `descriptorArtifactOf` and `declaredArtifactsOf` did not, and their `!isCommandOperation` tests are correct as they stand, because only a command nominates a file: neither an operation that speaks HTTP nor a tool call declares one. The claim to check them against is not that every site grew an arm; it is that no site answers for a tool call through an arm written for another kind.
+
+Downstream consequence: Story 11.13 works its exhaustiveness list against a `declared-inputs` module that already answers for three kinds, and Story 11.5 keeps the predicate rather than dropping it. What a fourth `AnyOperation` member does not do is break the typecheck everywhere: seven of the nine api-arm-as-`else` dispatches across `src/` compile clean and treat it as HTTP-shaped, so a fifth kind still needs the grep this build used.
 
 **Decision 8: this story absorbs the census constants its own two bumps force, and Stories 11.6 and 11.8 sweep the rest.**
 `tests/schemas/published-census.ts` holds six pinned constants, and the file's own procedure at `:1-17` is to run the change, read the failure, and move the number the failure names. What this story's own regeneration moves is `CENSUS_BY_DOCUMENT` for `eval-contract` and for `probe` (currently 1108 and 602 at `:22` and `:28`), `CENSUS_BY_KEYWORD` for the keywords the five new object branches publish, `CENSUS_TOTAL` derived from both (currently 3023 at `:64`), and `REJECT_CASE_COUNTS` for the new reject fixtures (currently 55, 96 and 151 at `:89-91`). Each is read from its own failure message, which names the artifact and the keyword path.
@@ -269,6 +283,34 @@ The comment at `artifacts.test.ts:95-102` states what the field is for: "A fixtu
 
 `WitnessInputs` is a plain `z.union` and carries no discriminating field, since its branches are strict objects told apart by the channel keys they declare, which is the reason `:60-76` records. So the entry names the field that carries the union, `inputs`, which is also the field AD-11 puts this story's probe bump record on. `arguments` was the other candidate and is turned down: it names one branch's channel key, so it would read as a discriminator this union does not have and would leave a later api-side or command-side witness seed with no consistent value to take. Downstream consequence: Story 11.6's signature seed names `interfaceKind` on `probe/command-signature`'s own terms and leaves the `expectedClean` group at two, and any later fixture reaching a union nested inside an artifact names the field carrying that union.
 
+**Decision 11: `resolveHomeOperation` compares inside a shape family, and the families are three.**
+
+The kind filter at `qualification.ts:129` was `(iface.kind === 'cli') !== command`, a two-way test that admitted `api`, `web` and `mcp` interfaces alike into the api-shaped comparison. That was already wrong before this story: a signature declaring `interfaceKind: 'mcp'` with a method and a path template could bind an operation on an `api` interface that happened to share the pair, and the scorer would have resolved a tool-use defect against an HTTP endpoint. `signatureFamilyOf` in `interface-inventory.ts` maps a kind name to one of `api`, `cli`, `mcp`, and both `resolveHomeOperation` and `checkDuplicateOperationSignature` read it, so Decision 4's key and this filter cannot disagree about what a collision is.
+
+An `mcp` signature therefore resolves to `null` at this story's boundary, because it renders an HTTP identity and no `mcp` operation carries one. That is the honest answer for a signature the schema has not yet given a tool identity, and it is the same inert state Decision 1 describes. Story 11.6 is what gives it one.
+
+**Decision 12: seven probe stamps moved, not the three the frozen block names.**
+
+The frozen block records the probe's version as living "in the three fixture literals at `tests/schemas/fixtures/artifact-fixtures.ts:453`, `:535`, and `:564`". The tree carries seven authored `Probe` literals: those three plus `tests/score/strength.test.ts:58`, `tests/score/fixtures/probe-witness.ts:128`, `tests/preflight/fixtures/observations.ts:365`, and `scripts/worked-example-target.ts:713`. All seven moved to 4.
+
+The frozen block is left as written, per its own terms. Nothing about the correction contradicts its intent: it names where the bump is recorded, and the four extra literals are the same fact spelled in four more places. They matter because no reader compares a probe's stamp, so `check:corpus` and `check:worked-example` would both have stayed green over four stale fours, exactly the way the eval contract's five stale ones sat at 1 while the schema moved to 3, which is the defect `tests/schemas/eval-contract-version.test.ts:1-28` exists to record. The probe has no such pin, and this decision is what stands in for one.
+
+**Decision 13: the port has no tool-call request, so `requestOf` asserts rather than builds.**
+
+`planPreflight` refuses `mcp` before any leg is planned, so an `mcp` operation cannot reach `requestOf` at run time. The operation union nonetheless forces a third arm, and it throws `unsupported-interface-kind` with the operation's own path, which is the same assert-again the kind gate above it makes and is spelled where the type forces it. `McpProbeRequest` is Story 11.5's, per the epic's own split.
+
+A second guard refuses a tool call's arguments supplied to an operation that is not a tool call. It is placed ahead of both existing arms so the two shipped messages, about transport channels supplied to a command and command channels supplied to an operation that speaks HTTP, keep their exact wording rather than becoming ambiguous about a third shape.
+
+`controlInputs` gained an `EMPTY_MCP_INPUTS` arm for the same reason it has an `EMPTY_COMMAND_INPUTS` one: which empty leg an AD-10-exempt operation sends depends on the kind, and the transport four are wrong for a tool call whatever the gate does.
+
+**Decision 14: what a tool call's evidence reaches, closed at both sites.**
+
+`evaluateReachabilityAgainstOperation` gained an `mcp` arm placed ahead of the residue that answers reachable for `response-headers`, `response-status` and `exit-code`. A tool call carries its structured result on the channel its descriptor nominates and its error flag on `response-status`, and `call-inputs` carries what was sent, so every other channel is `unreachable-check-evidence`. One predicate closes `response-headers`, `exit-code`, both streams and the artifact channel, rather than four.
+
+`checkExpressionLegChannel` (`reachability.ts:307-336`) is the second site Story 11.3's Decision 7 named, and it is closed the same way: a witness leg of a tool call carries the described channel, `response-status` and `call-inputs`. Without it a witness relation addressing `/response-headers/...` on a tool call would have passed reachability while the oracle path refused it, and `sensitivity-witness.ts:389` calls it for every witness relation.
+
+`foreignChannels` (`qualification.ts:148-151`) is untouched. It gives `mcp` the api response channels through its default arm, which is the right answer for the qualification gate a defect signature passes through; compile-time reachability is what narrows a tool call to two of the three. `docs/how-to/evaluate-tool-use-behavior.md` now says both halves, since saying only the first was what made its confinement sentence overstate.
+
 **Decision 15: the plan index sorts a tool call into its own map, which closes a cast that had started lying.**
 
 `buildPlanIndex` (`seal/plan-index.ts`) sorted every non-`cli` operation into the `operations` map with `operation as Operation`, on a comment stating that "`web` and `mcp` carry the api operation shape". That stopped being true the moment `McpOperation` landed, and the cast is what kept it type-checking: `operationOf` promises an `Operation` and would have handed back a tool call with no `method` and no `pathTemplate`, so any consumer reading either got `undefined` at run time with a clean typecheck. This is exactly the silent-wrong-answer class Decision 7 exists to close, found by grepping for the cast rather than by the compiler, which is the point.
@@ -276,6 +318,35 @@ The comment at `artifacts.test.ts:95-102` states what the field is for: "A fixtu
 `PlanIndex` gains `mcpOperationOf`, `anyOperationOf` reads all three maps, and `operationOf` returns `undefined` for a tool call, which is what its own docblock already promised for a command. `resolveOperation` still returns an `Operation` and is called from tests alone in this tree, so nothing in `src/` narrows.
 
 The epic's cross-story register listed `plan-index.ts` among the eight files that "stop compiling when a third branch lands", to be worked as a checklist by Story 11.13. It did not stop compiling, because of that cast. Story 11.13 inherits seven files rather than eight.
+
+**Decision 16: the AD-31 grade `mcpContract` produces today, recorded for Story 11.7.**
+
+Run through `evaluateRelevance` and `evaluateSatisfaction` at this story's boundary, the fixture grades:
+
+| Rule | Relevant | Satisfied |
+| --- | --- | --- |
+| `success-indicator-separation` | true | false |
+| `whole-body` | true | false |
+| `malformed-input` | true | false |
+| `per-record` | true | true |
+| `sibling-cross-check` | true | false |
+| `omission-and-completeness` | false | true |
+| `state-change-read-back` | true | false |
+
+All fourteen predicates are decidable, which is what the frozen block asks of the fixture. Six of the seven rules are relevant, against three for `commandContract`, so the fixture exercises more of the grading surface than the `cli` exemplar does. `omission-and-completeness` is irrelevant because the declared collection location carries `referenceSet: null`, which is the explicit declaration state AD-20 rule 6 reads as its own answer.
+
+The table is recorded rather than asserted. Story 11.7 owns the `mcp` AD-31 grading file and the whole fourteen-verdict assertion; pinning it here would take that story's deliverable. If Story 11.7 wants more satisfied verdicts it enriches the fixture, and this table is the baseline it moves from.
+
+**Decision 17: the corrected `reachability.ts` addresses were trusted over this story's own frozen matrix.**
+
+Story 11.3's decisions section records that this story's `reachability.ts` citations are off by roughly 145 lines, and two rows inside this story's `<frozen-after-approval>` block carry the same drift. The block is human-owned, so it was left as written. The build used the corrected addresses: `descendThroughDescriptor` at `:457-506`, `evaluateReachabilityAgainstOperation` at `:515-635` with its command branch at `:583-592` and its reachable residue at `:632-634`, and the root-collection cardinality branch at `:472-490`. Every one was re-read against the tree before it was edited.
+
+**Decision 18: the twelve spine sentences corrected here, with no revision bump.**
+
+The spine stays at revision 9, per the standing rule that an ambiguity is settled in the story that finds it. Twelve sentences described the old behaviour and are corrected: the revision-9 preamble's inventory list; AD-19's Rule sentence, its `mcp` descriptor paragraph's `CommandDescriptorChannel` claim, its request-shape channel enumeration and its duplicate-signature sentence; AD-5's `duplicate-operation-signature` registry row and the prose that explains it; AD-10's witness-channel selection sentence; AD-26's `call-inputs` segment list; AD-31's declaration list; and AD-40's two sentences about a home operation as a method and a path template.
+
+Seven of the twelve were already stale for `cli` before this story touched them, which is the pattern Story 11.3's review named: a sentence describing a shape's key count is the kind a story changes without noticing. Each correction is phrased in terms of a transport identity and the input channels a kind declares, so Story 11.6's signature branch changes none of them again. `check:ad5-registry` parses the first column only, so the registry row's description column was safe to edit. `npm run build:shareable` regenerated the projection, and `check:shareable` compares it byte for byte.
+
 
 ## Design Notes
 
@@ -328,130 +399,39 @@ export const McpOperation = z.strictObject({
 - `grep -rn "'web', 'mcp'" tests` returns one hit, `tests/score/qualification.test.ts:249`, which is Story 11.6's to move.
 - `CHANGELOG.md`'s `[Unreleased]` carries the two `**BREAKING**` bullets, and `git diff CHANGELOG.md` touches nothing below `[Unreleased]`, since `release:prepare` owns the dated sections.
 - `grep -rnE ", not |rather than|instead of|as opposed to|, never |no longer"` over the files this story edited: every hit is a contrast whose halves each carry a fact.
-
-
-## Checkpoint decisions taken without the human
-
-The build ran unattended by standing instruction, so the three checkpoints this workflow halts at were decided here.
-
-**Multi-goal gate: single goal, no split.** The deliverable is one operation shape and the declarations that mirror it. The two artifact bumps, the fixture, the census moves, the corrected documentation and the changelog entries are that one change's own consequences, and this repository requires them in the same diff.
-
-**Token-count gate: keep the full spec.** It is well past 1600 tokens. The excess is the Code Map and the I/O matrix, both of which are the addresses this build read the tree against, and cutting either would have meant rediscovering them.
-
-**CHECKPOINT 1 (approve/edit): approved as written, with one correction taken from Story 11.3.** Story 11.3's decisions section carried corrected `reachability.ts` addresses, and this story's own frozen matrix carries the stale ones. The corrected addresses were used, per the handoff's instruction, and the two frozen rows carrying the drift were left untouched because the block is human-owned. Decision 12 records the divergence.
-
-## Decisions settled by construction
-
-**Decision 1: `mcp` keeps the api-shaped defect signature at this story's boundary, and the branch is Story 11.6's.**
-
-`ApiDefectSignature.interfaceKind` (`defect-signature.ts:164`) still reads `z.enum(['api', 'web', 'mcp'])`, so a probe declaring a tool-use defect parses and fails the qualification gate exactly as it did before. Nothing here narrows it. The reason is the one the epic records: `ProbeInputBinding` sits at `defect-signature.ts:86` and is consumed at `:109` inside `signatureCommon`, so the `mcp` signature branch, the ninth `arguments` selector channel, the narrowed enum, the qualification gate and the union-branch seed are one file and one diff. Splitting them would ship a signature branch whose selector cannot name the channel the operation accepts.
-
-Downstream consequence: `tests/score/qualification.test.ts:249-259` stays green with no edit, since it flips `seededSignature.interfaceKind` to `web` and `mcp` and expects `signature-interface-kind-unsupported`, and both values still parse. Story 11.6 moves that case when it narrows the enum.
-
-**Decision 2: `resolveHomeOperation` compares inside a shape family, and the families are three.**
-
-The kind filter at `qualification.ts:129` was `(iface.kind === 'cli') !== command`, a two-way test that admitted `api`, `web` and `mcp` interfaces alike into the api-shaped comparison. That was already wrong before this story: a signature declaring `interfaceKind: 'mcp'` with a method and a path template could bind an operation on an `api` interface that happened to share the pair, and the scorer would have resolved a tool-use defect against an HTTP endpoint. `signatureFamilyOf` (`interface-inventory.ts`) maps a kind name to one of `api`, `cli`, `mcp`, and both `resolveHomeOperation` and `checkDuplicateOperationSignature` read it, so the two agree about what a collision is.
-
-An `mcp` signature therefore resolves to `null` at this story's boundary, because it renders an HTTP identity and no `mcp` operation carries one. That is the honest answer for a signature the schema has not yet given a tool identity, and Story 11.6 is what gives it one.
-
-**Decision 3: the tool name is its own primitive and not an `Identifier`.**
-
-`IDENTIFIER_SOURCE` is `[a-z0-9]+(?:-[a-z0-9]+)*` (`primitives.ts:8`), lowercase kebab. MCP servers publish `search_notes` and `searchNotes`, and both fail that pattern, so a contract could not name the tool it evaluates. `TOOL_NAME_PATTERN` is `^[A-Za-z0-9_-]+$`: letters, digits, underscore, hyphen. It admits every spelling the ecosystem uses and admits no `/`, `:`, or `.`, so a URL, a host and a port are parse errors rather than compile findings, which is Story 9.1's own reason for `Identifier` on `CommandInvocation.executable` applied to a different charset. It also excludes `~`, so a tool name is embeddable in a pointer without escaping, on the same terms `Identifier`'s description states.
-
-**Decision 4: a transport identity is compared inside its own kind, and that closes a collision the author cannot fix.**
-
-`checkDuplicateOperationSignature` keyed its `seen` map on the rendered string alone. `mcpSignature` renders a bare tool name and `commandSignature` renders an executable plus its subcommand segments, so a tool published as `notes` and an executable named `notes` with an empty subcommand path rendered the same string and collided. They name different things on different machines and no rewrite of either contract resolves it, so refusing the pair would have been a compile failure with no repair. The map is keyed on the kind family beside the identity, and the collision message still names the rendered identity so an author sees what actually matched.
-
-This narrows the check. Two operations declaring the same method and path template on an `api` interface and a `web` interface no longer collide. That is the same correctness argument in the other direction: `web` is refused at compile and the two kinds' inventories are never resolved against one another.
-
-**Decision 5: the request channel is `arguments` and not a reuse of `argument`.**
-
-`COMMAND_CHANNELS` already carries `argument`, a command's positional arguments keyed by the name the contract gives each position. A tool call's arguments are a named object the server publishes a schema for. One name for both would have made an `undeclared-mandatory-input` message ambiguous about which shape it meant, and it would have let a command binding and a tool-call binding parse as each other, since `InputBinding` is a structural union with no discriminator. `MCP_CHANNELS` is its own one-member tuple and `INPUT_CHANNELS` is the nine-member concatenation, so `INTERACTION_POINTER_PATTERN` widens with no second edit.
-
-**Decision 6: the probe's bump widens the witness leg and nothing else.**
-
-`WitnessInputs` gains `McpWitnessInputs`, a one-key strict object over `arguments: JsonObjectValue`. All three leg shapes take it, so `SensitivityWitnessLeg.inputs`, `ManifestationWitness.inputs` and `FixtureReset.inputs` widen together, and the probe document is reached through `ManifestationWitness` alone. AD-11 makes a retype breaking, so the probe's stamp moves 3 to 4 and the record sits on `ManifestationWitness.inputs`' own `.describe()`.
-
-A JSON object rather than a tagged value, because a tool call with no arguments supplies `{}` and has no absent spelling to tell from a JSON null, which is what `ProbeRequestBody` and `ProbeRequestStdin` exist for on the two channels that are byte streams.
-
-What it does not widen: `ObservedCallInputs` and `ProbeInputBinding` keep their eight keys. Both are Story 11.6's, with the sealed run record's own version. `channelEntryOf` (`declared-inputs.ts`) is what keeps a loop over the nine-member vocabulary total against an eight-key record until then, and `tests/schemas/artifacts.test.ts` asserts the gap rather than tolerating it, so the day the ninth key lands that assertion is what says so.
-
-The frozen block names three probe stamps in `artifact-fixtures.ts`. The tree carries seven authored probe literals: those three plus `tests/score/strength.test.ts:58`, `tests/score/fixtures/probe-witness.ts:128`, `tests/preflight/fixtures/observations.ts:365`, and `scripts/worked-example-target.ts:713`. All seven moved to 4. No reader compares the probe's stamp, so a stale one would not have failed a gate, which is exactly why leaving four behind would have been invisible.
-
-**Decision 7: three positive predicates replace one predicate and its negation.**
-
-`isApiOperation` was `!isCommandOperation(operation)`, so it answered `true` for a tool call the moment the third shape landed, and every dispatch reading it would have handed an `mcp` operation the four transport channels while type-checking clean. `isMcpOperation` reads `'toolName' in operation`, `isApiOperation` reads `'method' in operation`, and `isCommandOperation` keeps `'invocation' in operation`. A second boolean beside the first was turned down for the same reason the first one failed: two booleans still leave a default arm that claims whatever neither names.
-
-`isApiOperation` is repaired rather than deleted because its two callers, `tests/coverage/table.test.ts:317` and `tests/preflight/fixtures/observations.ts:355`, filter a mixed inventory down to the shape that declares a method and a path template, and they need that question asked positively.
-
-The five dispatches in `declared-inputs.ts` each gain an `mcp` arm. `descriptorChannelOf` reads the tagged channel through a lookup keyed on the tag, so admitting the prose half of a tool result later fails the typecheck there rather than answering `response-body` for it. `descriptorArtifactOf` answers `null` and `declaredArtifactsOf` answers `[]`, since only a command nominates a file. `boundChannelsOf` needed no arm, as the Code Map recorded: it filters `INPUT_CHANNELS` by key presence.
-
-**Decision 8: which census constants moved here.**
-
-`ACCEPT_FIXTURE_COUNTS.unionBranches` moved 8 to 10 and `.distinctInstances` 22 to 24, for the two seeds this story lands. `REJECT_CASE_COUNTS.artifact` moved 96 to 105 and `.total` 151 to 160, for the nine tool-call reject cases. `CENSUS_BY_DOCUMENT` moved for `eval-contract` (1108 to 1304) and `probe` (602 to 616); every other document is unchanged, which is the evidence that the widening touched two artifacts. `CENSUS_BY_KEYWORD` and `CENSUS_TOTAL` moved with them, 3023 to 3233. `DEFS_BY_DOCUMENT` did not move: the new branches are spelled in place with no `.meta({ id })`, which is `CommandWitnessInputs`' own mutation-attributability reason.
-
-Staying for later stories: `ACCEPT_FIXTURE_COUNTS.unionBranches` moves 10 to 11 and `.distinctInstances` 24 to 25 in Story 11.6, for `DefectSignature`'s `mcp` branch.
-
-**Decision 9: the four shipped tests this story breaks, and what each became.**
-
-`tests/schemas/command-interface.test.ts` and `tests/schemas/ad5-admissions.test.ts` each carried `it.each(['web', 'mcp'])` over a mutation that flips an api-shaped contract's kind and expects a clean parse. `mcp` dropped out of both, since that mutation is now a parse failure, and each case is a single `it` naming `web` with the reason in a comment. `tests/compile/interface-inventory.test.ts` tracked the ad5 case by name and moved with it, and gained a case asserting that an `mcp` contract carrying its own operation shape still throws `unsupported-interface-kind`. `tests/application/preflight.test.ts` case 111 flips to `web`, and its comment now records that `web` is the one kind left whose operation shape is the api one, so it is the only kind a bare kind flip can reach the structural failure through.
-
-**Decision 10: the probe union-branch seed's discriminator field reads `inputs`.**
-
-`ManifestationWitness` reaches the published probe document from nowhere else, and `PROBE_CLASS_FIXTURES` is asserted equal to the closed class set while `QUALIFICATION_ROUTE_FIXTURES` is one per AD-9 route, so neither takes a new entry. `mcpWitnessProbe` spreads `seededProbe` and replaces its one defect's manifestation witness with an `arguments` leg, keeping the api-shaped defect signature Decision 1 leaves in place.
-
-**Decision 11: the port has no tool-call request, so `requestOf` asserts rather than builds.**
-
-`planPreflight` refuses `mcp` before any leg is planned, so an `mcp` operation cannot reach `requestOf` at run time. The operation union nonetheless forces a third arm, and it throws `unsupported-interface-kind` with the operation's own path, which is the same assert-again the kind gate above it makes and is spelled where the type forces it. `McpProbeRequest` is Story 11.5's. A second guard refuses a tool call's arguments supplied to an operation that is not a tool call, so the two shipped messages about transport and command channels keep their exact wording.
-
-`controlInputs` gained an `EMPTY_MCP_INPUTS` arm for the same reason: which empty leg an exempt operation sends depends on the kind, and the transport four are wrong for a tool call whatever the gate does.
-
-**Decision 12: the corrected `reachability.ts` addresses were trusted over this story's own frozen matrix.**
-
-Story 11.3's decisions section records that this story's `reachability.ts` citations are off by roughly 145 lines, and two rows inside this story's `<frozen-after-approval>` block carry the same drift. The block is human-owned, so it was left as written. The build used the corrected addresses: `descendThroughDescriptor` at `:457-506`, `evaluateReachabilityAgainstOperation` at `:515-635` with its command branch at `:583-592` and its reachable residue at `:632-634`, and the root-collection cardinality branch at `:472-490`. Every one was re-read against the tree before it was edited.
-
-**Decision 13: what a tool call's evidence reaches, closed at both sites.**
-
-`evaluateReachabilityAgainstOperation` gained an `mcp` arm placed ahead of the residue that answers reachable for `response-headers`, `response-status` and `exit-code`. A tool call carries its structured result on the channel its descriptor nominates and its error flag on `response-status`, and `call-inputs` carries what was sent, so every other channel is `unreachable-check-evidence`. That closes `response-headers`, `exit-code`, both streams and the artifact channel in one predicate rather than four.
-
-`checkExpressionLegChannel` is the second site Story 11.3's Decision 7 named, and it is closed the same way: a witness leg of a tool call carries the described channel, `response-status` and `call-inputs`. Without it a witness relation addressing `/response-headers/...` on a tool call would have passed reachability while the oracle path refused it.
-
-`foreignChannels` (`qualification.ts:148-151`) is untouched. It gives `mcp` the api response channels through its default arm, which is the right answer for the qualification gate; compile-time reachability is what narrows a tool call to two of the three, and `docs/how-to/evaluate-tool-use-behavior.md` now says both halves.
-
-**Decision 14: the twelve spine sentences corrected here, with no revision bump.**
-
-The spine is at revision 9 and stays there, per the standing rule that an ambiguity is settled in the story that finds it. Twelve sentences described the old behaviour and are corrected: the revision-9 preamble's inventory list; AD-19's Rule sentence, its `mcp` descriptor paragraph's `CommandDescriptorChannel` claim, its request-shape channel enumeration and its duplicate-signature sentence; AD-5's `duplicate-operation-signature` registry row and the prose that explains it; AD-10's witness-channel selection sentence; AD-26's `call-inputs` segment list; AD-31's declaration list; and AD-40's two sentences about a home operation as a method and a path template.
-
-Seven of the twelve were already stale for `cli` before this story touched them, which is the pattern Story 11.3's review named: a sentence describing a shape's key count is the kind a story changes without noticing. Each correction is phrased in terms of a transport identity and the input channels a kind declares, so Story 11.6's signature branch changes none of them again. `check:ad5-registry` parses the first column only, so the registry row's description column was safe to edit.
-
-## Design Notes
-
-The organising idea is Epic 9's, applied a second time. When `cli` arrived, the choice was between bending the HTTP operation shape and giving the kind its own, and the repository chose its own with `AnyOperation` as the widening spelled once. Everything that followed from that choice followed again here: a second `RequestShape`, a second tagged descriptor channel, a second witness-inputs branch, a second input-binding arm, and one predicate per shape at each dispatch.
-
-What the second application exposed is the cost of the first one's shortcut. `isApiOperation` was written as a negation because two shapes make a negation exhaustive, and a negation stops being exhaustive at three. The typecheck caught eleven sites; the twelfth would have been silent, which is why the repair is three positive predicates rather than a third boolean.
-
-The other thing worth recording is that the tool identity is the whole of what makes this kind describable. Every MCP call shares one transport identity, so a kind that reused the HTTP shape would have had every tool on a server rendering one signature, and AD-40's resolution and AD-19's duplicate check would both have been arguing about the framing rather than the tool. Moving the identity to the published tool name is what turns a server's tool list into an operation inventory.
-
-## Verification
-
-**Commands:**
-
-- `npm run validate` -- expected: exit 0 with nothing on stderr. It runs 21 steps, unchanged from 1.4.2, since this story adds no script. `check:doc-invocations` is inside it, so the tool-use guide's heredoc contract and its declared exit 4 are executed input.
-- `npm run build` -- expected: exit 0. Run inside `validate` as its first step.
-- `npm run check:schemas` -- expected: exit 0 against the regenerated `schemas/eval-contract.schema.json` and `schemas/probe.schema.json`, which is the byte-exact half of AD-13.
-- `npm run check:corpus` and `npm run check:worked-example` -- expected: exit 0. Both rebuild through the raised stamp, so `tests/schemas/eval-contract-version.test.ts` is the check that a stale literal cannot agree with its own check.
-- `npm run check:ad5-registry` and `npm run lint:spine` -- expected: exit 0. No AD-5 row is added and no code name is edited.
-- `npm run check:boundary` -- expected: exit 0. No comment under `src/` or `corpus/` carries an epic, story, acceptance-criterion, task, or decision number.
-
-**Manual checks:**
-
-- `EvalContract.safeParse` returns `success: false` for an `mcp` interface carrying `method` and `pathTemplate`, for an `api` interface carrying `toolName`, for a tool name containing `/`, `:`, or `.`, and for a `descriptorChannel` nominating any tag but `structured-result`. Each has a case in `tests/schemas/mcp-interface.test.ts` and a reject fixture in `tests/schemas/fixtures/artifact-reject-cases.ts`.
-- `checkDuplicateOperationSignature` admits `mcpContract`'s two distinct tools and throws `duplicate-operation-signature` naming `"search_notes"` when one name is declared twice.
-- Every compile check but `checkInterfaceKind` admits `mcpContract`, asserted as its own case, so Story 11.5 opens the gate and changes nothing else.
 - `buildPlanIndex` over `mcpContract` answers `mcpOperationOf` and returns `undefined` from `operationOf` and `commandOperationOf`, and `renderStepReference` calls the step "the search notes tool".
+- Every compile check but `checkInterfaceKind` admits `mcpContract`, asserted as its own case in `tests/schemas/mcp-interface.test.ts`, so Story 11.5 opens the gate and changes nothing else.
 - `ARCHITECTURE-SPINE.md` frontmatter still reads `revision: 9`, and no file was added under the ADR directory.
-- The de-AI grep over the diff (`, not `, `rather than`, `instead of`, `as opposed to`, `, never `, `no longer`) returns only hits where both halves of the contrast carry a fact.
 
 ## Review Triage Log
 
-To be filled by the peer review.
+One peer Claude Code session with its own read of the tree ran seven layers over five batches: a blind hunter, an edge-case hunter, a verification-gap layer that deleted each new `mcp` arm and re-ran the suite, an acceptance auditor against the frozen block, and three attacks aimed at the areas the brief named. Every finding gets a row. Nothing is routed to deferred work.
+
+| Verdict | Finding | Evidence and disposition |
+| --- | --- | --- |
+| high | An oracle at `call-inputs/arguments` passes forever, on a contract of any kind | The widened `INPUT_CHANNELS` admits the pointer, `evaluateReachabilityAgainstOperation` returned `reachable()` for a tail-less `call-inputs` target before consulting `requestShapeOf`, and `channelEntryOf` answered `null`, which reads as present under AD-26. `existence` over it held on every run and `absence` failed on every run, with no run able to change either. Fixed at both ends: `channelEntryOrAbsent` answers ABSENT for a channel the record carries no key for, on the artifact arm's own rule, and the reachability arm asks the channel question before the tail question, which closes the same latent hole on the eight existing channels |
+| high | Two new published `.describe()` strings claim a seeded MCP defect is declarable | `DefectSignature` has no tool branch, so an `mcp` signature renders a method and a path template that `ToolName`'s charset can never equal, and the qualification gate refuses it. The sentence claimed Story 11.6's outcome. Reworded on both the probe and the witness field, and in the changelog bullet, to say the leg shape shipped and the signature did not |
+| high | The fixture declares `isError` in `requiredKeys`, contradicting Story 11.3's Decision 7 and this story's own guide | The exemplar taught the envelope-descriptor anti-pattern the page names two sections above it. Replaced with `ok`, the tool's own field inside its own structured result, which is a different thing from the protocol's envelope flag and is stated as such in the fixture and on the page. The page's heredoc moved with it |
+| high | The tool-use guide's "Where this stands" section still describes the deleted shape | Four sentences, none of them inside the frozen Code Map's documentation inventory. The map pointed at five spans and the page was false in a sixth, which is the failure this epic exists to close. Rewritten: the declared inventory, the missing list, the first-adopter sequence, and the eight-key claim about `ObservedCallInputs`, which is now stated as the half that is short a key |
+| high | `signatureFamilyOf` re-arms the trap Decision 7 removes | It was `(kind: string): string` with a chained ternary whose default answered `api`. The day `web` takes its own operation shape it would key two renderings into one namespace with no typecheck failure. Now a `switch` over `InterfaceKindName` returning a closed three-member type, with no default arm |
+| high | The reachable guard in `requestOf` has no test | Deleting the `isMcpWitnessInputs` throw left the whole suite green while `planPreflight` returned four `CommandProbeRequest`s carrying `channels: {}`, so both differential legs went out identical and AD-10's check probed nothing. Three cases added covering the parse, the compile-side diagnosis, and the plan-side refusal |
+| medium | The api-versus-web narrowing and `resolveHomeOperation`'s family filter have no test | Measured: reverting the filter left the suite green. Three cases added: an api and a web interface sharing a method and path still collide, two `mcp` interfaces sharing a tool name collide, and an `mcp` signature against a matching `api` operation resolves `null` while the same signature declaring `api` binds |
+| medium | Decision 2 says the kind-scoped key tells two tool servers apart | It is what makes them collide. Corrected in Decision 2 with the limitation stated and pinned by a test, and the repair named for the day it bites: a namespace on the map's key |
+| medium | Decision 4 and the changelog say "kind" where the code says shape family | `api` and `web` share a family, so the pair still collides. Corrected in both, and the collision message now names the family and scopes its erasure clause to the family it applies to |
+| medium | `foreignChannels` gives `mcp` the api response channels, omitting `response-headers` | Two sources of truth about what a tool call produces: compile-time reachability closed `response-headers` and the qualification gate still admitted it. Now a three-way switch over `InterfaceKindName`, and the two detail strings that called an `mcp` signature "an api interface" take a third arm |
+| medium | `suppliedValue` casts the witness-inputs union away | An `mcp` operation with api-shaped legs compared `undefined` against `undefined` and reported "both legs supply the same value", which describes a symptom. `suppliedValue` reads the branch and returns a sentinel, and `checkWitnessLegality` reports the shape mismatch first. `checkInputsAgainstShape` gained the same guard, so the accurate fault is reported under strict compilation too rather than only at pre-flight |
+| medium | Six doc citations point at lines that moved, and one section's rename broke an in-page anchor | Every `file:line` in the guide was re-resolved against the tree and corrected, and the link at `:22` now names the renamed heading |
+| medium | The fixture leaves three of AD-31's rules hollow | `omission-and-completeness` was irrelevant-and-vacuous, `sibling-cross-check` decided through the absent-declaration branch, and `state-change-read-back` was relevant and unsatisfiable, with four compile checks passing on nothing. Closed inside the fixture: a reference set reconciled in the injection form its `at-most` cardinality requires, a declared sibling group, a read-back step with a captured binding and an `after` edge, two type-violating steps, and a volatile pointer. All seven rules are now relevant and satisfied, which Decision 16 records |
+| medium | The mcp test file claimed to cover the compile pipeline while asserting five of its thirty-three checks | Twenty-eight could regress against the fixture with the file green. It now asserts that `compile` stops at the kind gate, which covers everything ahead of it, and walks the fifteen checks that run after it |
+| medium | The I/O matrix's api-carrying-`toolName` row had no reject fixture | Added, so both directions of the smuggling test are attributable under AD-13's sweep |
+| medium | `resolveOperation` misreports a kind that declares its own operation shape | It read `operationOf` alone and threw "the permitted interfaces do not declare it", which is false: they declare it and a different accessor holds it. Pre-existing for `cli` since Epic 9. It reads all three maps now and returns `AnyOperation` |
+| medium | Five `src/` comments describe two kinds where there are three | `pointer.ts`'s response-side partition, `plan-index.ts`'s `anyOperationOf`, `relevance.ts`'s rule-3 channel list, `qualification.ts`'s `signature-interface-kind-unsupported` diagnostic, and `defect-signature.ts`'s `ProbeInputBinding` and `ApiDefectSignature` headers. All corrected, and the `InteractionPointer` description had already shipped false into two published schema documents |
+| low | The doc and the changelog name the wrong failure code for a pointer at a written file | `checkArtifactReferences` runs one line ahead of `checkEvidenceReachability`, so an artifact pointer on an operation declaring no artifacts fires `unresolved-artifact-reference`. `compile.ts`'s own comment states the rule the two sentences broke. Corrected in both |
+| low | `requestOf`'s new throw uses an artifact path no other thrower of that code uses | Both shipped throwers name the `kind` field. Changed to match, so grepping the code by artifact path returns one shape |
+| low | Decision 7 claims five dispatches gained an arm; two did not | `descriptorArtifactOf` and `declaredArtifactsOf` are correct as they stand, since only a command nominates a file. A claim defect rather than a code defect. Decision 7 narrowed, and the sentence about a fourth shape breaking the typecheck now states how far that actually holds |
+| low | `FixtureReset.inputs`' mcp branch is published with no accept fixture | The fixture now declares a `fixtureReset` naming the mutating tool with a tool-call leg, so the route has its own seed rather than being covered transitively |
+| low | `InputBinding`'s comment overstates the compile-time agreement by one word | A step binding every channel of the wrong kind's branch to `null` parses and passes, since `null` means the step binds nothing there. Pre-existing for `cli`. The comment now says the agreement is checked per bound channel |
+| low | The spine's AD-19 rule line gained an em-dash pair | Parenthetical rather than a clause connector, and it matches the surrounding convention, but rewritten with a colon and a semicolon since the repository's own prose rule is flat |
+| false | `{ arguments: {} }` as an input binding compiles clean against an api operation | Refuted by the peer's own run: `BindingChannel` rejects an empty map, so it fails to parse. The weaker `{ arguments: null }` case is real and is the `InputBinding` comment row above |
+| noted | `checkExpressionLegChannel`'s mcp arm survives deletion with the suite green | Verified: the sibling `checkExpressionEvidenceReachability` call two lines later produces the same code, so the arm improves a diagnostic rather than deciding an outcome. Kept, because the two sites answering differently about the same channel is what Story 11.3's Decision 7 asked this story to close |
+| noted | `channelEntryOf` is well covered as a loop guard | Reverting it to a bare index fails 97 tests across seven suites. That is a different question from the ABSENT one in row 1, and the fix there is a second function rather than a change to this one |

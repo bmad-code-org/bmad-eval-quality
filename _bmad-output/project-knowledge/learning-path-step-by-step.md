@@ -89,6 +89,7 @@ flowchart TD
 |   45 | epic11-story1 | Two different questions were sharing the name "tool-use evaluation"; one of them already runs. |
 |   46 | epic11-story2 | A documented command is judged on its exit code only once the page writes the file it names. |
 |   47 | epic11-story3 | A tool that answers with prose has no list to count, so the kind's first version covers the tools that answer with data. |
+|   48 | epic11-story4 | Every tool call on a server shares one address, so the tool's own published name becomes the address. |
 
 Adding a step: follow `learning-path-template.md`.
 
@@ -3490,13 +3491,13 @@ so anyone with a program of that kind could not write a contract at all.
 Now they can.
 
 **What:** `permittedInterfaces` became a union tagged by `kind`.
-The three web-shaped kinds carry the operation shape they always had, unchanged.
+The three kinds that spoke HTTP carried the operation shape they always had, unchanged; Step 48 gives `mcp` its own.
 The new `cli` kind carries a command operation:
 a logical executable and a subcommand path where the web kinds carry a method and a path,
 four input channels named `argument`, `option`, `environment`, and `stdin`,
 a list of the files it writes,
 and one `descriptorChannel` saying which output channel its single response descriptor describes.
-The eval contract's `schemaVersion` is 4.
+That took the eval contract's `schemaVersion` to 4. Step 48 takes it to 5.
 
 **Why:** an operation has exactly one response descriptor under AD-19,
 and until now every reader of one assumed the channel it described was the response body.
@@ -3532,8 +3533,9 @@ and the old rule rejected every one of them.
 - Standard input on a witness leg is `json`, `text`, or `absent`; a text stream is opaque,
   so that channel's key comparison abstains.
 - Pre-flight still refuses a command interface, because the probe port carries a method and a path.
-- `web` and `mcp` keep the web-shaped operation,
-  which is what keeps `unsupported-interface-kind` fireable.
+- `web` and `mcp` kept the api-shaped operation at this step,
+  which is what kept `unsupported-interface-kind` fireable.
+  Step 48 gives `mcp` its own shape and leaves `web` carrying that job alone.
 
 **Watch out:**
 
@@ -3854,3 +3856,45 @@ Letting an author declare a markdown-to-JSON parser makes those same predicates 
 - Admitting markdown later adds a member to the operation's descriptor-channel tag, which is an additive change; retyping a bare field would be a breaking one.
 
 **Watch out:** the kind is still refused at compile. This step records the answer to the question that deferred it and opens nothing, so the docs home page still says `api` and `cli` are what compile and its routing table still gives the tool-use row the verdict "Declared and refused at compile".
+
+## Step 48 (epic11-story4): every tool call has the same address
+
+**In plain terms:** an HTTP request says which thing it wants in its address.
+Every call to a tool server sends the same address and puts the tool's name inside the message.
+So if you describe a tool server the way you describe a web service, every tool on it looks identical, and two tools you declared separately are read as one.
+The fix is to stop pretending: describe a tool by the name the server publishes for it.
+
+**What:** the `mcp` kind stops borrowing the HTTP operation shape and declares its own.
+A tool call carries a published tool name, one channel of arguments, and a tagged nomination of the structured result its one response descriptor describes.
+
+**Why:** the borrowed shape forced four wrong declarations.
+A tool call has no HTTP verb, so `method` was a guess.
+The only place a tool name fit was the path, so two tools both spelled `POST /tools/call` and collided under `duplicate-operation-signature`.
+Three of the four request channels were declared empty on every operation and could never carry anything.
+And the fourth, the response descriptor, is what the step before this one settled.
+
+**Read in this order:**
+
+1. `src/core/schemas/primitives.ts`: `ToolName`, whose charset admits `search_notes` and `searchNotes` and admits no slash, colon, or dot.
+2. `src/core/schemas/interface.ts`: `McpOperation` beside `Operation` and `CommandOperation`, three shapes under one union.
+3. `src/core/declared-inputs.ts`: three predicates that each test their own required field, replacing one predicate and its negation.
+4. `src/core/compile/interface-inventory.ts`: `mcpSignature` and the shape family a transport identity is compared inside.
+5. `src/core/compile/reachability.ts`: the two places a tool call's evidence is closed to the two channels it fills.
+6. `tests/schemas/fixtures/mcp-contract.ts`: a whole tool-server contract, two tools, seven discipline rules relevant and satisfied.
+
+**Story:** `_bmad-output/implementation-artifacts/11-4-the-operation-shape-for-a-tool-call.md`
+
+### Reference
+
+**Rules:**
+
+- A tool call's transport identity is its published tool name and nothing else. No server segment: a signature written against one contract has to bind another, and a contract-local name would stop it.
+- Tool names are compared inside their own shape family. A tool named `notes` and a command named `notes` are different things; two tool servers each publishing `notes` are refused, and renaming is not a fix.
+- `arguments` is the ninth input channel. It is its own name because a command's positional `argument` means something else.
+- A tool call fills `response-body` and `response-status` and nothing else. A pointer at a header, an exit code, or a stream is `unreachable-check-evidence`; one at a file is `unresolved-artifact-reference`.
+- AD-10's marker rule selects nothing for a tool call, so `arguments` is its one legal witness channel whichever value the marker takes.
+- Never test "which kind is this" as a negation. `isApiOperation` was `!isCommandOperation` and answered yes for a tool call the day the third shape landed, silently, with a clean typecheck.
+- The eval contract's `schemaVersion` is 5 and the probe's is 4. Both breaking: an `mcp` interface written against version 4 stops parsing.
+- The protocol's `isError` flag belongs on `response-status`, never in the response descriptor's `requiredKeys`, where it would satisfy a coverage rule while checking nothing.
+
+**Watch out:** the kind is still refused at compile. Everything above parses and every compile check but the kind gate admits it; opening that gate is the next step. And `ObservedCallInputs` still has eight keys, so what a tool call *sent* has nowhere to be recorded yet: an oracle over `/interactions/{stepId}/call-inputs/arguments/...` compiles and resolves absent until the sealed run record takes its ninth key.

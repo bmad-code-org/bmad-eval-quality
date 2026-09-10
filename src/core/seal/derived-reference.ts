@@ -22,7 +22,7 @@ import {
 	resolveStep,
 } from './plan-index.ts'
 
-// Every binding channel of either kind shares one value shape, so naming it
+// Every binding channel of every kind shares one value shape, so naming it
 // through the schema's own `BindingChannel` avoids a second type alias in
 // `core/schemas/`.
 type BindingValue = NonNullable<BindingChannel>[string]

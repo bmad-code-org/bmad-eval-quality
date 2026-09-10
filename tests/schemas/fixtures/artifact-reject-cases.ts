@@ -213,6 +213,22 @@ export const ARTIFACT_REJECT_CASES: readonly ArtifactRejectCase[] = [
 		instancePath: '/permittedInterfaces/0/operations/0/descriptorChannel/kind',
 	},
 	{
+		// The reverse direction of the mcp-operation-http-shaped case above, so
+		// neither shape can be smuggled onto the other branch and each
+		// direction has a fixture the sweep can attribute.
+		id: 'api-operation-declares-a-tool-name',
+		artifact: 'eval-contract',
+		constraint: 'an api operation declares no tool name',
+		mutate: (contract) => {
+			contract.permittedInterfaces[0].operations[0].toolName = 'search_notes'
+		},
+		issuePath: ['permittedInterfaces', 0, 'operations', 0],
+		issueCode: 'unrecognized_keys',
+		keyword: 'additionalProperties',
+		instancePath: '/permittedInterfaces/0/operations/0',
+		errorParams: { additionalProperty: 'toolName' },
+	},
+	{
 		id: 'mcp-binding-channel-missing',
 		artifact: 'eval-contract',
 		constraint: 'a tool-call input binding declares its one channel',

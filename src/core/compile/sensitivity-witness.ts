@@ -29,6 +29,7 @@ import type {
 	ProbeRequestStdin,
 } from '../schemas/probe-body.ts'
 import {
+	API_WITNESS_CHANNELS,
 	type ApiWitnessInputs,
 	COMMAND_WITNESS_CHANNELS,
 	type CommandWitnessInputs,
@@ -158,36 +159,79 @@ export function suppliedKeys(
 	return []
 }
 
-/** One channel's supplied value, for the differential comparison. */
+/**
+ * The sentinel `suppliedValue` returns for a channel the leg's own shape has no
+ * key for. Distinct from `undefined`, which a leg may legitimately hold nowhere
+ * and which two mismatched legs would otherwise compare equal on.
+ */
+const CHANNEL_NOT_ON_SHAPE = Symbol('channel not on this witness leg shape')
+
+/** Which of the three input vocabularies a leg spells, named for a message. */
+const witnessInputsKindOf = (inputs: WitnessInputs): string => {
+	if (isMcpWitnessInputs(inputs)) return 'tool-call'
+	if (isCommandWitnessInputs(inputs)) return 'command'
+	return 'transport'
+}
+
+/** The same question about the operation that will receive them. */
+const operationInputsKindOf = (operation: AnyOperation): string => {
+	if (isMcpOperation(operation)) return 'tool-call'
+	if (isCommandOperation(operation)) return 'command'
+	return 'transport'
+}
+
+/**
+ * One channel's supplied value, for the differential comparison, or the
+ * sentinel above where the leg's shape carries no such channel.
+ *
+ * Reads the branch first rather than indexing the union: indexing returned
+ * `undefined` for both legs of a witness whose channel belongs to a different
+ * kind, so the two compared equal and the differential check reported "both
+ * legs supply the same value" over legs that were the wrong shape entirely.
+ * The mismatch has its own diagnosis and `checkWitnessLegality` gives it one.
+ */
 export function suppliedValue(
 	inputs: WitnessInputs,
 	channel: WitnessChannel,
 ): unknown {
-	return (inputs as Record<string, unknown>)[channel]
+	if (isMcpWitnessInputs(inputs))
+		return channel === 'arguments' ? inputs.arguments : CHANNEL_NOT_ON_SHAPE
+	if (isCommandWitnessInputs(inputs))
+		return COMMAND_WITNESS_CHANNELS.includes(
+			channel as (typeof COMMAND_WITNESS_CHANNELS)[number],
+		)
+			? (inputs as Record<string, unknown>)[channel]
+			: CHANNEL_NOT_ON_SHAPE
+	return API_WITNESS_CHANNELS.includes(
+		channel as (typeof API_WITNESS_CHANNELS)[number],
+	)
+		? (inputs as Record<string, unknown>)[channel]
+		: CHANNEL_NOT_ON_SHAPE
 }
 
 /**
  * Every channel of one set of witness inputs against the operation that will
- * receive them. All four, not only the differential channel: `planPreflight`
- * copies all four onto the `ProbeRequest` and the port sends them, so a value
- * on an unselected channel is as much an outbound value as one on the selected
- * channel.
+ * receive them, and every one of them rather than the differential channel
+ * alone: `planPreflight` copies each onto the `ProbeRequest` and the port sends
+ * them, so a value on an unselected channel is as much an outbound value as one
+ * on the selected channel. Four channels off an interface that speaks HTTP,
+ * four off a command, one off a tool call.
  *
  * The two directions have different standing, and the difference matters
  * enough to name, because the next reader will diff this against
  * `checkUndeclaredMandatoryInput` and find the two disagreeing.
  *
  * The permitted direction is that function's rule, carried over: it loops the
- * same four channels and rejects a key the operation declares in neither list.
+ * same channels and rejects a key the operation declares in neither list.
  * That is what makes `WitnessInputs`'s AD-18 promise about `header` more than a
  * comment.
  *
  * The required direction is new here, because the two shapes differ. An
  * `InputBindingChannel` is nullable, and `null` means "this step binds nothing in
  * this channel", so `checkUndeclaredMandatoryInput` skips an unbound channel and
- * asks nothing about required keys. `WitnessInputs` has all four channels as
- * concrete values, so a leg omitting a required key is a request the port cannot
- * issue. The cost is that a required header forces a literal value into the
+ * asks nothing about required keys. A `WitnessInputs` leg carries every channel
+ * of its own shape as a concrete value, so a leg omitting a required key is a
+ * request the port cannot issue. The cost is that a required header forces a literal value into the
  * contract artifact, the surface AD-18 governs; a placeholder satisfies this
  * check, and what pre-flight probes is a fixture.
  */
@@ -197,6 +241,21 @@ export function checkInputsAgainstShape(
 	owner: string,
 	artifactPath: string,
 ): void {
+	// The leg's shape has to be the operation's kind before any key is
+	// compared. `WitnessInputs` is a plain union with no discriminator, so a
+	// tool call's arguments parse against an operation that speaks HTTP, and
+	// the key loop below then reports the first required key as omitted, which
+	// describes a consequence of the mismatch and names the wrong field. The
+	// port's own arm says the same thing about the same pair.
+	const legKind = witnessInputsKindOf(inputs)
+	const operationKind = operationInputsKindOf(operation)
+	if (legKind !== operationKind) {
+		throw new StructuralFailure(
+			'undeclared-mandatory-input',
+			artifactPath,
+			`${owner} supplies ${legKind} channels to operation "${operation.operationId}", which accepts ${operationKind} channels (AD-10, AD-19)`,
+		)
+	}
 	for (const { channel, shape } of requestChannelsOf(operation)) {
 		if (suppliesOpaquely(inputs, channel)) {
 			checkOpaqueStream(
@@ -354,11 +413,25 @@ export function checkWitnessLegality(contract: EvalContract): void {
 				`channel "${witness.channel}" contradicts stateChangeMarker ${operation.stateChangeMarker} on operation "${operation.operationId}"; AD-10 selects ${legal.map((name) => `"${name}"`).join(' or ')}`,
 			)
 		}
+		const [first, second] = witness.legs
+		// The leg shape agrees with the operation's kind before anything is
+		// compared. A leg of the wrong shape carries no value on the selected
+		// channel at all, and comparing two of them found them equal and
+		// reported "not a differential", which describes a symptom of the real
+		// fault rather than the fault.
+		for (const leg of witness.legs) {
+			if (suppliedValue(leg.inputs, witness.channel) !== CHANNEL_NOT_ON_SHAPE)
+				continue
+			throw new StructuralFailure(
+				'malformed-operator-expression',
+				`${path}.sensitivityWitness.legs`,
+				`leg "${leg.legId}" of witness "${witness.witnessId}" supplies inputs whose shape carries no "${witness.channel}" channel, so it cannot vary the channel operation "${operation.operationId}" declares (AD-10, AD-19)`,
+			)
+		}
 		// AD-10's predicate is a differential. Two legs supplying the same values on
 		// the selected channel establish nothing, and at run time that surfaces as a
 		// `failed` check pointing at the fixture, when the defect is in the
 		// declaration.
-		const [first, second] = witness.legs
 		if (
 			first !== undefined &&
 			second !== undefined &&

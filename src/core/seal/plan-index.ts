@@ -277,7 +277,7 @@ export function resolveStep(index: PlanIndex, stepId: string): InteractionStep {
 
 /**
  * The declared operation of whichever kind, for the callers that read only
- * fields both shapes carry. Callers reading a kind-specific field ask
+ * fields all three shapes carry. Callers reading a kind-specific field ask
  * `interfaceKindOf` first and then take the matching accessor.
  */
 export const anyOperationOf = (
@@ -288,12 +288,20 @@ export const anyOperationOf = (
 	index.commandOperationOf(operationId) ??
 	index.mcpOperationOf(operationId)
 
-/** Resolves an operation id through the index or throws. See `resolveStep`. */
+/**
+ * Resolves an operation id through the index or throws. See `resolveStep`.
+ *
+ * Reads all three maps. It read `operationOf` alone, so it threw for a command
+ * operation and then for a tool call with the message "the permitted interfaces
+ * do not declare it", which is false: they declare it, and a different accessor
+ * holds it. Callers narrow with the operation predicates in
+ * `core/declared-inputs.ts`.
+ */
 export function resolveOperation(
 	index: PlanIndex,
 	operationId: string,
-): Operation {
-	const operation = index.operationOf(operationId)
+): AnyOperation {
+	const operation = anyOperationOf(index, operationId)
 	if (operation === undefined) {
 		throw new TypeError(
 			`step names an operation the permitted interfaces do not declare: ${operationId}`,

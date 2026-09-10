@@ -39,7 +39,11 @@ import {
 	OBSERVED_STEP_ID,
 } from '../schemas/defect-signature.ts'
 import type { Expression, Operand } from '../schemas/expression.ts'
-import type { AnyOperation, PermittedInterface } from '../schemas/interface.ts'
+import type {
+	AnyOperation,
+	InterfaceKindName,
+	PermittedInterface,
+} from '../schemas/interface.ts'
 import { operationsOf } from '../schemas/interface.ts'
 import {
 	API_RESPONSE_CHANNELS,
@@ -107,11 +111,13 @@ export type QualificationResult = {
 
 /**
  * Resolves a signature's home operation against a contract's operation
- * inventory, comparing method plus path template with parameter names erased
- * first, so a corpus signature on `/notes/{id}` binds a contract declaring
- * `/notes/{noteId}`. A post-erasure collision inside one contract has already
- * failed compilation under `duplicate-operation-signature`, so the first match
- * is the only match for any contract that compiled.
+ * inventory, comparing the transport identity each renders inside its own shape
+ * family. Off an interface that speaks HTTP that identity is a method plus a
+ * path template with parameter names erased first, so a corpus signature on
+ * `/notes/{id}` binds a contract declaring `/notes/{noteId}`. A collision inside
+ * one contract and one family has already failed compilation under
+ * `duplicate-operation-signature`, so the first match is the only match for any
+ * contract that compiled.
  */
 export function resolveHomeOperation(
 	signature: DefectSignature,
@@ -150,11 +156,41 @@ export function resolveHomeOperation(
 // silently answered "no" to both questions below.
 const RESPONSE_SIDE: ReadonlySet<string> = new Set(RESPONSE_SIDE_CHANNELS)
 
-/** The channels a signature of this kind can never manifest in. */
-const foreignChannels = (kind: string): ReadonlySet<string> =>
-	new Set<string>(
-		kind === 'cli' ? API_RESPONSE_CHANNELS : COMMAND_RESPONSE_CHANNELS,
-	)
+/**
+ * The channels a signature of this kind can never manifest in.
+ *
+ * Three arms rather than two. A tool call produces neither the command response
+ * channels nor `response-headers`: it carries its structured result on
+ * `response-body` and its error flag on `response-status`, which is the same
+ * answer `checkExpressionLegChannel` and `evaluateReachabilityAgainstOperation`
+ * give at compile. A two-way ternary put `mcp` on the api arm and left
+ * `response-headers` admitted here while compile refused it, which is two
+ * sources of truth about what a tool call produces.
+ */
+const foreignChannels = (kind: InterfaceKindName): ReadonlySet<string> => {
+	switch (kind) {
+		case 'cli':
+			return new Set<string>(API_RESPONSE_CHANNELS)
+		case 'mcp':
+			return new Set<string>([...COMMAND_RESPONSE_CHANNELS, 'response-headers'])
+		case 'api':
+		case 'web':
+			return new Set<string>(COMMAND_RESPONSE_CHANNELS)
+	}
+}
+
+/** How a detail string names the sort of interface a signature declares. */
+const interfacePhraseOf = (kind: InterfaceKindName): string => {
+	switch (kind) {
+		case 'cli':
+			return 'an interface behind a command'
+		case 'mcp':
+			return 'a tool call'
+		case 'api':
+		case 'web':
+			return 'an api interface'
+	}
+}
 
 const probePath = (probe: Probe, tail: string): string =>
 	`Probe[probeId=${probe.probeId}]${tail}`
@@ -352,7 +388,7 @@ function checkOperandsAndCollectChannels(
 			failures.push({
 				code: 'condition-text-channel-on-api',
 				artifactPath: `${conditionPath}${path}`,
-				detail: `"${pointer}" addresses ${target.channel}, which ${signature.interfaceKind === 'cli' ? 'an interface behind a command' : 'an api interface'} never produces (AD-19, AD-26)`,
+				detail: `"${pointer}" addresses ${target.channel}, which ${interfacePhraseOf(signature.interfaceKind)} never produces (AD-19, AD-26)`,
 			})
 		}
 	})
@@ -439,7 +475,8 @@ function checkSelectorKeys(
  * unchecked would make an unchecked field load-bearing. On an `api` signature
  * the three text channels are rejected for the same reason a pointer into one
  * is: an api interface never produces them, which is the same rule the pointer
- * walk applies, read on the declaration too.
+ * walk applies, read on the declaration too. A tool call rejects those three and
+ * `response-headers`, since it produces neither.
  */
 function checkObservableChannel(
 	probe: Probe,
@@ -461,7 +498,7 @@ function checkObservableChannel(
 		failures.push({
 			code: 'condition-text-channel-on-api',
 			artifactPath: path,
-			detail: `declares observableChannel "${signature.observableChannel}", which ${signature.interfaceKind === 'cli' ? 'an interface behind a command' : 'an api interface'} never produces (AD-19, AD-26)`,
+			detail: `declares observableChannel "${signature.observableChannel}", which ${interfacePhraseOf(signature.interfaceKind)} never produces (AD-19, AD-26)`,
 		})
 	}
 }
@@ -764,7 +801,7 @@ export function qualifyProbe(
 			failures.push({
 				code: 'signature-interface-kind-unsupported',
 				artifactPath: probePath(probe, '.defectSignature.interfaceKind'),
-				detail: `"${signature.interfaceKind}" declares a method and a path template with no per-kind semantics behind them; the kinds stay in the enum so unsupported-interface-kind stays fireable contract-side (AD-19)`,
+				detail: `"${signature.interfaceKind}" has no probe semantics in this version: "web" declares no operation shape of its own, and "mcp" declares a published tool name that this signature's method and path template cannot render. The kinds stay in the enum so unsupported-interface-kind stays fireable contract-side (AD-19)`,
 			})
 		}
 		checkObservableChannel(probe, signature, failures)
