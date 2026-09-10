@@ -16,7 +16,7 @@
 // `npm run generate:worked-example` from the reference functions and checked
 // byte for byte by `npm run check:worked-example`, so these literals are no
 // longer a transcription of what is on disk. They are kept, and pinned at the
-// same 96 and 20 issues, because what they record is what the pre-epic-7
+// same 97 and 20 issues, because what they record is what the pre-epic-7
 // chain failed against the shipped shapes. Regeneration is what closed those
 // failures; deleting the record of them would delete the evidence that they
 // were real.
@@ -245,6 +245,10 @@ export const workedExampleSealedRunRecord: unknown = {
 			'sha256:0000000000000000000000000000000000000000000000000000000000000006',
 		visibility: 'private',
 	},
+	// Verbatim, including the key version 6 dropped. Repairing the spike here
+	// would hold the count at ninety-six by editing the input, where the point
+	// of this fixture is to record what the pre-epic-7 chain fails against the
+	// shipped shapes. The ninety-seventh issue is that key.
 	invalidReason: null,
 }
 
@@ -393,6 +397,9 @@ export const WORKED_EXAMPLE_RECORD_ISSUES: readonly WorkedExampleIssue[] = [
 	{ path: ['isolationManifestArtifact', 'storage'], code: 'invalid_union' },
 	{ path: ['resourceUse', 'costUsd'], code: 'invalid_type' },
 	{ path: ['evidenceDisclosure'], code: 'invalid_type' },
+	// The ninety-seventh, added when version 6 dropped `invalidReason`: the
+	// spike's record carries the key and the shape no longer declares it.
+	{ path: [], code: 'unrecognized_keys' },
 ]
 
 /** `evidence-artifact.json`, verbatim. */

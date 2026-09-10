@@ -64,7 +64,6 @@
       "summary": "The read after the reset carried the name the reset was given, so the same read-back relation held for the other write in the run."
     }
   ],
-  "invalidReason": null,
   "isolationManifestArtifact": {
     "digest": "sha256:0000000000000000000000000000000000000000000000000000000000000023",
     "path": null,
@@ -405,7 +404,7 @@
   },
   "revisionCount": 0,
   "runId": "workflow-capture-run-0001",
-  "schemaVersion": 5,
+  "schemaVersion": 6,
   "sealedBriefDigest": "sha256:2b9f17353270eeeea870760f7d6d9720bf7f48d5a4238e0795439cfb6037c5a9",
   "trialIndex": 1
 }

@@ -78,7 +78,6 @@
       "summary": "PATCH accepts an unknown field 'colour' and echoes it back in the note payload. No oracle in the contract addresses unknown-field handling, so this is filed uncited."
     }
   ],
-  "invalidReason": null,
   "isolationManifestArtifact": {
     "digest": "sha256:0000000000000000000000000000000000000000000000000000000000000006",
     "path": null,
@@ -353,7 +352,7 @@
   },
   "revisionCount": 0,
   "runId": "spike-run-0001",
-  "schemaVersion": 5,
+  "schemaVersion": 6,
   "sealedBriefDigest": "sha256:58db24860f50fee33512040a666b51a413c700f5f3b23b5e0bc6aea7a3a8bb9b",
   "trialIndex": 1
 }

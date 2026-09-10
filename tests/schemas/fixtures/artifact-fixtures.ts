@@ -149,10 +149,11 @@ export const sealedRunRecordFixture: SealedRunRecord = {
 	// required, so neither a version-1 nor a version-2 record parses. Version 4
 	// retyped the process channels and added the written artifacts. Version 5
 	// added the ninth `arguments` call-input channel, so a version-4 record
-	// declares eight and fails to parse. This fixture is the only place a
-	// Sealed Run Record version number is written down, which is what makes
-	// each bump visible.
-	schemaVersion: 5,
+	// declares eight and fails to parse. Version 6 dropped `invalidReason`, so
+	// a version-5 record carrying it fails to parse. Each bump is written down
+	// here first; the three other records that stamp a version, `score-fixtures`,
+	// the `mcp` end-to-end record and the worked-example target, move with it.
+	schemaVersion: 6,
 	parentDigest: null,
 	revisionCount: 0,
 	runId: 'spike-run-0001',
@@ -302,7 +303,6 @@ export const sealedRunRecordFixture: SealedRunRecord = {
 		costUsd: '0.04',
 	},
 	evidenceDisclosure: { truncationBound: 4096, reportedIncomplete: false },
-	invalidReason: null,
 }
 
 const withheld = { withheld: true, note: null }

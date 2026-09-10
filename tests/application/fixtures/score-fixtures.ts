@@ -191,7 +191,7 @@ export const isolationManifestFixtureForScore: IsolationManifest = {
 
 /** The clean record: one observation satisfying O-001's check, `held`, no findings, no conditions. */
 export const sealedRunRecordFixtureForScore: SealedRunRecord = {
-	schemaVersion: 5,
+	schemaVersion: 6,
 	parentDigest: null,
 	revisionCount: 0,
 	runId: 'run-1',
@@ -261,7 +261,6 @@ export const sealedRunRecordFixtureForScore: SealedRunRecord = {
 		costUsd: '0',
 	},
 	evidenceDisclosure: { truncationBound: null, reportedIncomplete: false },
-	invalidReason: null,
 }
 
 export const scoringPolicyFixtureForScore: ScoringPolicy = {
