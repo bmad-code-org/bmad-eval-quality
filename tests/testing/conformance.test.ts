@@ -1010,7 +1010,8 @@ const ARTIFACT_ID = 'report'
 const ARTIFACT_TEXT = 'artifact-body'
 const PERMITTED_ENV_KEY = 'PROBE_MODE'
 const SECOND_PERMITTED_ENV_KEY = 'PROBE_RUN_ID'
-const UNPERMITTED_ENV_KEY = 'AWS_SECRET_ACCESS_KEY'
+/** A near-twin of a permitted key: an adapter that blocklists credential-shaped names, or reads a `PROBE_` prefix, must not pass by telling the two cases apart on the name. */
+const UNPERMITTED_ENV_KEY = 'PROBE_RUN_ID_2'
 const ECHO_KEY = 'echo'
 const ECHO_VALUE = 'declared-$(echo pwned)'
 const MCP_RESULT_KEYS = ['ok', ECHO_KEY]

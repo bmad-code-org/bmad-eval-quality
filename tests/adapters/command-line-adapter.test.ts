@@ -410,7 +410,10 @@ describe('createCommandLineAdapter, real spawn', () => {
 						option: {},
 						environment: {
 							PROBE_MODE: 'fine',
-							AWS_SECRET_ACCESS_KEY: 'smuggled',
+							// A near-twin of the permitted `PROBE_RUN_ID`, so a blocklist
+							// on credential-shaped names, or a `PROBE_` prefix rule, fails
+							// here where `AWS_SECRET_ACCESS_KEY` would have let both pass.
+							PROBE_RUN_ID_2: 'smuggled',
 						},
 						stdin: { kind: 'absent' },
 					},
@@ -418,6 +421,47 @@ describe('createCommandLineAdapter, real spawn', () => {
 				new AbortController().signal,
 			),
 		).rejects.toMatchObject({ code: 'forbidden-target' })
+		expect(calls).toBe(0)
+	})
+
+	it('refuses a declared PATH even when the mapping permits it', async () => {
+		// The mapping here is a plain object, which is how every caller supplies
+		// one: nothing in this package parses `CommandTargetPolicy`, so the
+		// schema's refusal of PATH never runs on this path and the adapter has
+		// to refuse it itself. `target` may be a bare command name, and the
+		// child environment is what resolves it, so a permitted PATH would pick
+		// the binary.
+		let calls = 0
+		const mechanism: CommandMechanism = {
+			run: async () => {
+				calls++
+				throw new Error('should not run')
+			},
+			readArtifact: async () => ({
+				present: false,
+				text: '',
+				truncated: false,
+			}),
+		}
+		const adapter = createCommandLineAdapter(
+			policyOf(authorization({ permittedEnvironmentKeys: ['PATH', 'Path'] })),
+			mechanism,
+		)
+		for (const key of ['PATH', 'Path']) {
+			await expect(
+				adapter.probe(
+					request({
+						channels: {
+							argument: {},
+							option: {},
+							environment: { [key]: '/tmp/evil' },
+							stdin: { kind: 'absent' },
+						},
+					}),
+					new AbortController().signal,
+				),
+			).rejects.toMatchObject({ code: 'forbidden-target' })
+		}
 		expect(calls).toBe(0)
 	})
 

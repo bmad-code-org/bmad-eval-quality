@@ -44,7 +44,8 @@ const ARTIFACT_TEXT = 'artifact-body'
 const INJECTION_VALUE = '$(echo pwned); rm -rf / #'
 /** Two permitted keys, so the authorized request and the denied one below declare the same NUMBER of keys. A subject where they differ by count certifies an adapter that counts keys and never reads the allowlist. */
 const PERMITTED_ENV_KEYS = ['PROBE_MODE', 'PROBE_RUN_ID'] as const
-const UNPERMITTED_ENV_KEY = 'AWS_SECRET_ACCESS_KEY'
+/** A near-twin of a permitted key, so nothing about the NAME separates the two cases either. An adapter blocklisting `/SECRET|TOKEN|PASSWORD/`, or hardcoding a `PROBE_` prefix, passes a subject whose denied key is `AWS_SECRET_ACCESS_KEY` while reading no allowlist at all. */
+const UNPERMITTED_ENV_KEY = 'PROBE_RUN_ID_2'
 
 function commandRequest(params: {
 	readonly probeId: string

@@ -21,7 +21,12 @@ body.
   was default-allow, which meant the contract author decided alone what the process carried while
   the operator's mapping had no say. An empty array permits no declared key. `PATH` cannot be
   permitted at all: `target` may be a bare command name, and the child environment is what resolves
-  it, so a permitted `PATH` would hand executable selection to the contract author. The adapter's
+  it, so a permitted `PATH` would hand executable selection to the contract author. The adapter
+  refuses a declared `PATH` itself, ahead of the allowlist and case-insensitively, because nothing
+  in this package parses a `CommandTargetPolicy`; the schema refuses it too, which turns the
+  operator's mistake into a parse error for a caller who does parse. The refusal covers executable
+  selection alone, so a key that injects into the chosen binary, `LD_PRELOAD` or `NODE_OPTIONS`, is
+  kept out by the allowlist like any other. The adapter's
   own `PATH` still reaches the child, from the process the mapping launched under AD-18. The `mcp`
   mechanism has nothing equivalent: `McpProbeRequest` declares no environment channel, and
   `McpTargetAuthorization.serverEnvironment` is the environment the adapter launches its server

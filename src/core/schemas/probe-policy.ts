@@ -83,12 +83,12 @@ export const CommandTargetAuthorization = z.strictObject({
 		),
 	permittedEnvironmentKeys: z
 		.array(EnvironmentKeyName)
-		.refine((keys) => !keys.includes('PATH'), {
+		.refine((keys) => !keys.some((key) => key.toUpperCase() === 'PATH'), {
 			message:
 				'PATH cannot be permitted: target may name a bare command, and a declared PATH would then choose which binary runs',
 		})
 		.describe(
-			'The environment keys a request may carry into the process. `CommandProbeRequest.channels.environment` is declared by the contract author, and this is where the operator bounds it: a key absent from this list is denied before target is ever spawned, the same role permittedSubcommandPaths plays for a subcommand. An empty array is legal and permits no declared key, which is the default-deny base case. PATH is refused outright, because target may be "a name the adapter resolves through its own PATH" and the child environment is what resolves it: permitting PATH would hand executable selection to the contract author, which is the direction AD-35 exists to prevent. The adapter\'s own PATH reaches the child from the process the mapping launched, under AD-18.',
+			'The environment keys a request may carry into the process. `CommandProbeRequest.channels.environment` is declared by the contract author, and this is where the operator bounds it: a key absent from this list is denied before target is ever spawned, the same role permittedSubcommandPaths plays for a subcommand. An empty array is legal and permits no declared key, which is the default-deny base case. PATH is refused outright, because target may be "a name the adapter resolves through its own PATH" and the child environment is what resolves it: permitting PATH would hand executable selection to the contract author, which is the direction AD-35 exists to prevent. That refusal is narrow and covers executable selection alone. A key such as LD_PRELOAD or NODE_OPTIONS injects into the binary the mapping already chose, and this list is what keeps such a key out: naming one here is a deliberate act. The adapter refuses PATH again at its own boundary, since nothing in this package parses this policy and a refinement leaves no trace in the TypeScript type. The adapter\'s own PATH reaches the child from the process the mapping launched, under AD-18.',
 		),
 	cwd: z
 		.string()

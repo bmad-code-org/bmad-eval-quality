@@ -141,16 +141,31 @@ export function buildArgv(channels: CommandProbeRequest['channels']): string[] {
  * against `artifacts`.
  *
  * `PATH` is the adapter's own, supplied by the process the mapping launched
- * under AD-18. The allowlist refuses `PATH` outright, so a declared one is
- * always denied here: `target` may be a bare command name, and the child
- * environment is what resolves it, so permitting `PATH` would let the contract
- * author pick which binary runs.
+ * under AD-18, and a declared one is refused ahead of the allowlist: `target`
+ * may be a bare command name, and the child environment is what resolves it,
+ * so a permitted `PATH` would let the contract author pick which binary runs.
+ * The check lives here rather than only on the authorization because nothing
+ * in this package parses `CommandTargetPolicy`; a caller hands
+ * `createCommandLineAdapter` a plain object, and a schema refinement leaves no
+ * trace in the TypeScript type. The schema refuses it too, which turns an
+ * operator's mistake into a parse error for a caller who does parse.
+ *
+ * Compared case-insensitively, since a platform that folds `Path` onto `PATH`
+ * would otherwise reach the same outcome by the other spelling. The refusal is
+ * narrow and covers executable selection alone: a key like `LD_PRELOAD` or
+ * `NODE_OPTIONS` injects into the binary the mapping already chose, and the
+ * allowlist is what an operator uses to keep those out.
  */
 function buildEnv(
 	declared: Readonly<Record<string, string>>,
 	permitted: readonly string[],
 ): Record<string, string> {
 	for (const key of Object.keys(declared)) {
+		if (key.toUpperCase() === 'PATH') {
+			throw forbidden(
+				'environment key "PATH" is never permitted: it would choose which binary runs',
+			)
+		}
 		if (!permitted.includes(key)) {
 			throw forbidden(
 				`environment key "${key}" is not permitted by this authorization`,
