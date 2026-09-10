@@ -41,9 +41,9 @@ describe('spelling 1 — interaction-rooted', () => {
 	const rejected = [
 		// `call-inputs` rooted directly on a key name is the defect AD-26 records
 		// revision 3 carrying: it had no declared structure to resolve against.
-		['/interactions/x/call-inputs', 'no transport channel'],
-		['/interactions/x/call-inputs/filters', 'not one of the four channels'],
-		['/interactions/x/call-inputs/cookie/a', 'not one of the four channels'],
+		['/interactions/x/call-inputs', 'no input channel'],
+		['/interactions/x/call-inputs/filters', 'not one of the nine channels'],
+		['/interactions/x/call-inputs/cookie/a', 'not one of the nine channels'],
 		['/interactions/x/response-status/code', 'a scalar channel takes no tail'],
 		['/interactions/x/exit-code/0', 'a scalar channel takes no tail'],
 		['/interactions/x/response-bodyish', 'not a declared channel'],

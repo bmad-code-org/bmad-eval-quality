@@ -136,13 +136,13 @@ describe('parseEvidenceTarget', () => {
 		)
 	})
 
-	it('throws TypeError on a call-inputs pointer with no transport channel', () => {
+	it('throws TypeError on a call-inputs pointer with no input channel', () => {
 		expect(() => parseEvidenceTarget('/interactions/x/call-inputs')).toThrow(
 			TypeError,
 		)
 	})
 
-	it('throws TypeError on a call-inputs pointer whose next segment is not a transport channel', () => {
+	it('throws TypeError on a call-inputs pointer whose next segment is not an input channel', () => {
 		expect(() =>
 			parseEvidenceTarget('/interactions/x/call-inputs/nope'),
 		).toThrow(TypeError)

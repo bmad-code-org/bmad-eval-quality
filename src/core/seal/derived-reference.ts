@@ -94,7 +94,7 @@ const ESCALATION_LEVELS: readonly EscalationLevel[] = [
 	'literal',
 ]
 
-type TransportEntry = {
+type InputEntry = {
 	readonly inputChannel: InputChannelName
 	readonly key: string
 	readonly value: BindingValue
@@ -103,8 +103,8 @@ type TransportEntry = {
 // Sorted by input channel in `INPUT_CHANNELS` order, then by key name, so this
 // never depends on a binding map's insertion order and the rendered prose
 // stays permutation-invariant. `boundChannelsOf` supplies the channel order.
-function bindingEntries(step: InteractionStep): readonly TransportEntry[] {
-	const entries: TransportEntry[] = []
+function bindingEntries(step: InteractionStep): readonly InputEntry[] {
+	const entries: InputEntry[] = []
 	for (const { channel: inputChannel, bound: map } of boundChannelsOf(
 		step.inputBinding,
 	)) {
@@ -121,7 +121,7 @@ function bindingEntries(step: InteractionStep): readonly TransportEntry[] {
 // key: two bindings can share a parameter name across channels (path.id and
 // query.id), and without the qualifier both would render as "the supplied
 // id", hiding two different bindings behind identical text.
-function entryName(entry: TransportEntry): string {
+function entryName(entry: InputEntry): string {
 	return `${entry.inputChannel} ${entry.key}`
 }
 
@@ -260,7 +260,7 @@ const newBudget = (limit: number): RenderBudget => ({
 
 type CaptureGroup = {
 	readonly stepId: string
-	readonly entries: TransportEntry[]
+	readonly entries: InputEntry[]
 	readonly targets: EvidenceTarget[]
 }
 
@@ -307,7 +307,7 @@ function exhausted(budget: RenderBudget): boolean {
 // Whether this entry expands into a group, or renders as the level-independent
 // phrase on its own.
 function expandableCapture(
-	entry: TransportEntry,
+	entry: InputEntry,
 	level: EscalationLevel,
 	index: PlanIndex,
 	rendering: ReadonlySet<string>,
@@ -324,10 +324,7 @@ function expandableCapture(
 
 // Renders one entry on its own. Every captured entry that expands lands in a
 // group instead, so the arm here is the level-independent fallback.
-function renderBindingValue(
-	entry: TransportEntry,
-	level: EscalationLevel,
-): string {
+function renderBindingValue(entry: InputEntry, level: EscalationLevel): string {
 	const name = entryName(entry)
 	const { value } = entry
 	if ('matcher' in value) {
@@ -372,7 +369,7 @@ function bindingClause(
 	// Each expandable capture joins the group for the step it references, held
 	// at the position that step was first referenced from, so the clause's order
 	// still comes from `bindingEntries`'s sort rather than from a map's keys.
-	const slots: (TransportEntry | CaptureGroup)[] = []
+	const slots: (InputEntry | CaptureGroup)[] = []
 	const groups = new Map<string, CaptureGroup>()
 	for (const entry of chosen) {
 		const target = expandableCapture(entry, level, index, rendering, budget)

@@ -170,7 +170,7 @@ cat > mcp-contract.json <<'EOF'
           },
           "descriptorChannel": { "kind": "structured-result" },
           "responseDescriptor": {
-            "requiredKeys": ["ok", "matches"],
+            "requiredKeys": ["ok", "matches", "totalCount"],
             "permittedKeys": ["ok", "matches", "totalCount"],
             "types": { "ok": "boolean", "matches": "array", "totalCount": "number" },
             "successIndicator": "/ok",
@@ -243,7 +243,7 @@ Assertions worth writing: the argument equals a literal the behavior requires, t
 **About the response.**
 A tool call carries its structured result on `response-body` and its error flag on `response-status`, and fills no other response channel.
 A pointer at `response-headers`, `exit-code`, or a stream is `unreachable-check-evidence` at compile (`src/core/compile/reachability.ts:581`), and a pointer at a written file is `unresolved-artifact-reference`, since a tool call declares no `artifacts` list for an identifier to resolve against.
-`/interactions/search/response-body/ok` and `/interactions/search/response-body/matches` are the two pointers the example above makes addressable.
+`/interactions/search/response-body/ok`, `/interactions/search/response-body/matches`, and `/interactions/search/response-body/totalCount` are the three pointers the example above makes addressable.
 
 **Declaring the defect you seeded.**
 A probe's `defectSignature` names the tool rather than a verb and a URL, and its selector filters on the `arguments` channel.
@@ -274,6 +274,7 @@ A probe's `defectSignature` names the tool rather than a verb and a URL, and its
 
 All nine input channels are declared and the eight the kind does not accept are `null`, exactly as a recorded observation spells them.
 Assert over a scalar the tool publishes beside a list rather than over the list itself: AD-4 resolves a check over an empty collection to `insufficient-evidence`, so "the list came back empty" can never witness a defect.
+Declare that scalar in the descriptor's `requiredKeys`. A server free to omit the field the signature turns on reports the defect as `not-triggered`, and nothing says the evidence was missing.
 
 **About the tool having been called at all.**
 `existence` and `absence` over a step's evidence carry that, and the step's own `cardinality` carries how many matches are legitimate.

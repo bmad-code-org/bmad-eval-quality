@@ -457,8 +457,13 @@ defect is "reports no error and counts zero matches" and it resolves `true` agai
 that manifests it. `tests/score/witness.test.ts` asserts `manifested-unclaimed` on the positive arm
 and `not-triggered` on the negative one, which is the first end-to-end proof in the tree that a
 seeded tool-use defect is catchable. The rule generalises past this fixture and is now written into
-the tool-use guide: assert over a scalar the tool publishes beside a collection, never over the
-collection's emptiness.
+the tool-use guide in two halves. Assert over a scalar the tool publishes beside a collection rather
+than over the collection's emptiness, and declare that scalar in the descriptor's `requiredKeys`: a
+server free to omit the field the signature turns on reports the seeded defect as `not-triggered`,
+which is a worse answer than `vacuous`, since `vacuous` at least announces that the corpus presented
+nothing. Making `totalCount` required is what forced `O-001` in the mcp contract fixture to cover it,
+because AD-20 counts rule 2's coverage over required keys alone. The contract now declares, the
+oracle now reads, and the signature now asserts on the same field.
 
 **Decision 15: the peer review found no defect in a shipped code path, and every finding it did
 raise was fixed in this pass.**
@@ -548,5 +553,21 @@ Every command below was run and the result is recorded.
 | `condition-text-channel-on-api` fires for a channel that is neither text nor api | Known imprecision recorded in the source, on Story 11.5's Decision 4 terms |
 | Story predicts one `qualification.ts` edit and miscounts the antithesis survivors | Decision 12, and the task line corrected to nine lines |
 
-- `npm run validate` after the round -- exit 0. 119 test files, 3961 tests, `src/core/**` at 96.94%
+**Re-verify round, all six follow-up findings addressed.**
+
+The peer's narrowed re-verify confirmed both merge-blockers closed against the regenerated
+`schemas/probe.schema.json` rather than against the source, and confirmed Decision 13's rename touched
+nothing that genuinely means the transport four and moved no caller-facing rendered string. Six
+follow-ups came back and all six are fixed.
+
+| Finding | Fix |
+|---|---|
+| `totalCount` is only a permitted key, so a conforming server may omit the field the whole signature turns on and the probe reports `not-triggered` with nothing saying the evidence was missing | `totalCount` moved into `requiredKeys` in the fixture contract and in the guide's example, with the reason in the fixture. That made discipline rule 2 unsatisfied, since AD-20 counts coverage over required keys alone, so `O-001` gained the pointer in its `evidenceTargets` and an `existence` operand in its check |
+| The guide's scalar-over-collection rule carries no requiredness clause | Clause added: declare that scalar in the descriptor's `requiredKeys` |
+| Guide `:246` says two pointers are addressable while the example declares three, and the signature block twenty lines below uses the third | Says three and names `totalCount` |
+| `derived-reference.ts`'s `TransportEntry` keeps the old name while its own field is `inputChannel` | Renamed to `InputEntry`, eight occurrences |
+| Two `plan-index.test.ts` names and one `pointer.test.ts` label still say transport channel | All three say input channel |
+| Two `pointer.test.ts` reject labels say "not one of the four channels" against a nine-member vocabulary | Both say nine |
+
+- `npm run validate` after both rounds -- exit 0. 119 test files, 3961 tests, `src/core/**` at 96.94%
   statements and 92.21% branches.

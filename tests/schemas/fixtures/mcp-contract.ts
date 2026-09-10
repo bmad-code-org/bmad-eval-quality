@@ -39,13 +39,15 @@ export const mcpContract = {
 	oracles: [
 		{
 			// Rule 1 and rule 2 over the search result: the tool's own success
-			// field beside the collection it returns, which is every required
-			// key of the descriptor and two pointers carrying distinct roles.
+			// field beside the collection it returns and the count it reports
+			// for that collection, which is every required key of the descriptor
+			// and three pointers carrying distinct roles.
 			id: 'O-001',
 			direction: {
 				evidenceTargets: [
 					'/interactions/search/response-body/ok',
 					'/interactions/search/response-body/matches',
+					'/interactions/search/response-body/totalCount',
 				],
 				relation: 'all',
 				polarity: 'expects-hold',
@@ -68,11 +70,17 @@ export const mcpContract = {
 							{ pointer: '/interactions/search/response-body/matches' },
 						],
 					},
+					{
+						op: 'existence',
+						operands: [
+							{ pointer: '/interactions/search/response-body/totalCount' },
+						],
+					},
 				],
 			},
 			polarity: 'expects-hold',
 			commentary:
-				'The tool reporting success has to have returned the list it reports on.',
+				'The tool reporting success has to have returned the list it reports on, and the count it reports for that list.',
 		},
 		{
 			// Rule 4 and rule 6 together. The declared cardinality is `at-most`,
@@ -268,7 +276,12 @@ export const mcpContract = {
 					// kind's design record names. An oracle over `ok` checks
 					// what the tool said about its own work.
 					responseDescriptor: {
-						requiredKeys: ['ok', 'matches'],
+						// `totalCount` is required rather than merely permitted:
+						// a defect signature over this tool asserts on it, and a
+						// server free to omit it would turn a caught defect into
+						// a silent `not-triggered` with nothing saying the
+						// evidence was missing.
+						requiredKeys: ['ok', 'matches', 'totalCount'],
 						permittedKeys: ['ok', 'matches', 'totalCount', 'topMatch'],
 						// `topMatch` is the single best hit, which is what the
 						// read-back reads. AD-20 rule 7's satisfaction predicate
