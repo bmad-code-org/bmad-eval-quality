@@ -118,7 +118,7 @@ development_status:
   11-3-the-response-descriptor-for-an-unstructured-tool-result: done
   11-4-the-operation-shape-for-a-tool-call: done
   11-5-compile-and-preflight-admit-an-mcp-interface: done
-  11-6-the-tool-call-defect-signature-and-the-ninth-input-channel: backlog
+  11-6-the-tool-call-defect-signature-and-the-ninth-input-channel: done
   11-13-the-port-messages-and-the-mcp-adapter: backlog
   11-7-the-third-conformance-arm-and-the-graded-kind: backlog
   11-8-the-published-surface-the-corpus-and-the-census: backlog
