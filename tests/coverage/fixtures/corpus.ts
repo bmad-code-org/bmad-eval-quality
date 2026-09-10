@@ -19,6 +19,7 @@ import {
 } from '../../schemas/fixtures/command-contract.ts'
 import { mcpContract } from '../../schemas/fixtures/mcp-contract.ts'
 import { skillContract } from '../../schemas/fixtures/skill-contract.ts'
+import { workflowContract } from '../../schemas/fixtures/workflow-contract.ts'
 import { satisfiedContract } from './satisfaction-contracts.ts'
 
 // The seed goes through the schema first. `satisfiedContract` is `satisfies
@@ -536,7 +537,7 @@ export const CORPUS_CONTRACTS: readonly EvalContract[] = [
 ]
 
 /**
- * What the published dev corpus ships: the coverage contracts above, plus four
+ * What the published dev corpus ships: the coverage contracts above, plus five
  * whose reason for shipping is a shape an adopter needs a worked example of.
  *
  * `CORPUS_CONTRACTS` stays exactly the cell contracts, in cell order, so the
@@ -547,7 +548,8 @@ export const CORPUS_CONTRACTS: readonly EvalContract[] = [
  * would leave an adopter with no worked example of the shape this version
  * opened. Each kind the language admits earns a member here on that rule.
  *
- * A kind can also earn a second member, and the skill contract is the case:
+ * A kind can also earn a second member, and two of the five are that case. The
+ * skill contract is the first:
  * `checklist-selection` declares the same `cli` kind the two `fragment-*`
  * contracts do, and what it adds is the shape a seeded defect can be scored
  * against. Its two behaviors declare one oracle each, which is what
@@ -556,12 +558,21 @@ export const CORPUS_CONTRACTS: readonly EvalContract[] = [
  * scores. That chain imports this object, so the bytes the corpus publishes
  * and the bytes the evidence was produced from have one digest.
  *
+ * The workflow contract is the second: `captured-read-back` declares the same
+ * `api` kind nineteen cell contracts do, and what it adds is the pair of
+ * mechanisms the workflow shape exists for. It binds a step to a value the run
+ * captured from an earlier response and it declares a `fixtureReset`, which is
+ * what plans pre-flight's four-leg control branch. The committed chain under
+ * `_bmad-output/worked-examples/workflow-capture/` imports it on the same
+ * digest argument.
+ *
  * They are graded, and by their own coverage files rather than by the AD-31
  * table this file feeds. The table reads the cells, so for one release nothing
  * ran the fourteen predicates over a command contract at all and three of them
  * answered confidently and wrongly while the suite stayed green.
- * `tests/coverage/command-coverage.test.ts` grades the three command contracts
- * and `tests/coverage/mcp-coverage.test.ts` grades the tool server, each
+ * `tests/coverage/command-coverage.test.ts` grades the three command contracts,
+ * `tests/coverage/mcp-coverage.test.ts` grades the tool server, and
+ * `tests/coverage/workflow-coverage.test.ts` grades the workflow contract, each
  * asserting the whole verdict table rather than the rules that happen to be
  * interesting.
  */
@@ -570,8 +581,10 @@ export const DEV_CORPUS_CONTRACTS: readonly EvalContract[] = [
 	commandContract,
 	artifactCommandContract,
 	skillContract,
-	// Parsed for the reason the header gives for the seed: its two operations
-	// declare different argument keys, so the literal `types` widens past
-	// `Record<string, KeyType>`. The command contracts declare one shape each.
+	// Parsed for the reason the header gives for the seed: their operations
+	// declare different keys per channel, so the literal `types` widens past
+	// `Record<string, KeyType>` and one empty channel infers `{ key?: undefined }`.
+	// The command contracts declare one shape each.
+	EvalContract.parse(workflowContract),
 	EvalContract.parse(mcpContract),
 ]

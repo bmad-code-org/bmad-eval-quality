@@ -17,7 +17,7 @@ Version 1.0 is out. All four commands ship, and the published surface is stable:
 
 A contract can describe a system behind an HTTP API, one behind a command line, or one behind an MCP tool server. All three compile, and all three plan a pre-flight. `cli` and `mcp` each have a shipped adapter that runs that pre-flight end to end; `api` has none, because probing a live HTTP environment is the part only a caller can write.
 
-Also published: twelve JSON Schema documents under `eval-quality/schemas/*`, a twenty-three-contract development corpus under `eval-quality/corpus/dev/`, five reference adapters at `eval-quality/adapters`, and a port conformance suite at `eval-quality/conformance`.
+Also published: twelve JSON Schema documents under `eval-quality/schemas/*`, a twenty-four-contract development corpus under `eval-quality/corpus/dev/`, five reference adapters at `eval-quality/adapters`, and a port conformance suite at `eval-quality/conformance`.
 
 ## The trial-set limit
 

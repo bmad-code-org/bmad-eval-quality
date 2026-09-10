@@ -23,6 +23,10 @@ import {
 	WORKED_EXAMPLE_FILES,
 	WORKED_EXAMPLE_LABEL,
 } from '../../scripts/worked-example-target.ts'
+import {
+	WORKFLOW_EXAMPLE_FILES,
+	WORKFLOW_EXAMPLE_LABEL,
+} from '../../scripts/workflow-example-target.ts'
 import type { Observation } from '../../src/core/schemas/sealed-run-record.ts'
 import { matchProbeWitness } from '../../src/core/score/witness.ts'
 
@@ -280,23 +284,27 @@ describe('the emitted file set', () => {
 })
 
 // The registry `generate:worked-example` and `check:worked-example` both call.
-// It belongs to neither chain, so it is asserted here once: a builder dropped
+// It belongs to no one chain, so it is asserted here once: a builder dropped
 // from it leaves its chain's committed files unowned and permanently stale,
 // which the drift check cannot report because it iterates this same map. Drop
-// `buildSkillExample` from it and `check:worked-example` reports five files
-// matching byte for byte and exits 0 while six committed files go unowned.
+// `buildSkillExample` or `buildWorkflowExample` from it and
+// `check:worked-example` reports the remaining files matching byte for byte and
+// exits 0 while six committed files go unowned.
 //
 // The key set is the whole assertion. The registry copies each builder's
 // entries and fails on a collision, so the only way a value can differ is a
 // missing key, which the key set already reads.
 describe('the union every committed chain reaches disk through', () => {
-	it('holds every key both builders emit and nothing else', () => {
+	it('holds every key each builder emits and nothing else', () => {
 		expect([...buildWorkedExample().keys()].sort()).toEqual(
 			[
 				...WORKED_EXAMPLE_FILES.map(
 					(name) => `${WORKED_EXAMPLE_LABEL}/${name}`,
 				),
 				...SKILL_EXAMPLE_FILES.map((name) => `${SKILL_EXAMPLE_LABEL}/${name}`),
+				...WORKFLOW_EXAMPLE_FILES.map(
+					(name) => `${WORKFLOW_EXAMPLE_LABEL}/${name}`,
+				),
 			].sort(),
 		)
 	})

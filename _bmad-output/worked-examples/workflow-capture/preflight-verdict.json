@@ -1,0 +1,70 @@
+{
+  "checks": [
+    {
+      "kind": "interface-present",
+      "note": null,
+      "operationId": "get-thing",
+      "outcome": "satisfied"
+    },
+    {
+      "kind": "interface-present",
+      "note": null,
+      "operationId": "create-thing",
+      "outcome": "satisfied"
+    },
+    {
+      "kind": "interface-present",
+      "note": null,
+      "operationId": "reset-things",
+      "outcome": "satisfied"
+    },
+    {
+      "kind": "input-sensitivity",
+      "note": null,
+      "operationId": "get-thing",
+      "outcome": "satisfied"
+    },
+    {
+      "kind": "input-sensitivity",
+      "note": null,
+      "operationId": "create-thing",
+      "outcome": "satisfied"
+    },
+    {
+      "kind": "input-sensitivity",
+      "note": null,
+      "operationId": "reset-things",
+      "outcome": "satisfied"
+    },
+    {
+      "kind": "state-reset",
+      "note": null,
+      "operationId": null,
+      "outcome": "satisfied"
+    },
+    {
+      "kind": "clean-control",
+      "note": null,
+      "operationId": null,
+      "outcome": "satisfied"
+    },
+    {
+      "kind": "seeded-faults-scoped",
+      "note": "D-001",
+      "operationId": "get-thing",
+      "outcome": "satisfied"
+    },
+    {
+      "kind": "seeded-fault-fired",
+      "note": "D-001",
+      "operationId": "get-thing",
+      "outcome": "satisfied"
+    }
+  ],
+  "fixtureDigest": "sha256:7fcaf73a7de73d9af99050ae5c79f9a9bc620c3cd9f2e3db82ae802e107abb30",
+  "parentDigest": null,
+  "passed": true,
+  "revisionCount": 0,
+  "runId": "workflow-capture-run-0001",
+  "schemaVersion": 1
+}

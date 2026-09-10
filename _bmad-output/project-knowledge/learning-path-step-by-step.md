@@ -98,6 +98,7 @@ flowchart TD
 |   54 | epic11-story8 | The tool server joins the published example set, the pages that count it are held by a checker that counts for itself, and the kind runs end to end for the first time. |
 |   55 | epic11-story10 | A skill is caught cheating for the first time on the record: a planted fault, a real run, and a catch rate where the guide used to print nothing. |
 |   56 | epic11-tail | The operator could say which command may run but not which environment keys it carries. Now they can, and the one key that would pick the binary is refused outright. |
+|   57 | epic11-story11 | Writing something down and reading it back is proved end to end: the second call takes its address from the first call's answer, and a run catches a write that dropped what it was given. |
 
 Adding a step: follow `learning-path-template.md`.
 
@@ -4242,3 +4243,60 @@ The direction matters: the operator's mapping says which executable may run, whi
 - A rule written into a shape nobody reads is not enforced. The list of allowed labels refuses the dangerous one, and nothing in this package reads that list back: callers hand it over as a plain object. The refusal has to sit where the work happens, and the shape keeps its copy as the earlier warning for whoever does read it.
 
 **Watch out:** the `mcp` mechanism looks like it has the same gap and does not. `McpProbeRequest` declares no environment channel, and `McpTargetAuthorization.serverEnvironment` is the environment the adapter launches its own server with, which is authorization material the mapping supplies.
+
+## Step 57 (epic11-story11): the value one step has to hand the next
+
+**In plain terms:** some checks need two calls, not one.
+Write something down, then read it back and see whether it is really there.
+The catch is that the thing you write down gets a name from the other side, and you do not know that name until the write answers.
+So the second call cannot be written in advance; it has to take its address from what the first call said.
+This step ships an example that does exactly that, and runs it end to end for the first time.
+
+**What:** a new example joins the published set. It writes a record, reads it back at the name the write returned, and says how to put the storage back the way it found it. A third full worked run carries it through every stage, and the run catches a write that filed the record but threw away the name it was given.
+
+**Why:** both halves of this shape were described and neither had been run. The written rules allowed it, small tests covered the pieces, and no file on disk showed the whole thing working. The guide said so in two places.
+A shape nobody has run end to end is a shape nobody knows the cost of.
+
+**The shape:**
+
+```mermaid
+flowchart LR
+  FIX["workflow-contract.ts<br/>the example, as a fixture"]
+  CORPUS["dev-corpus-target.ts<br/>writes the published copy"]
+  CHAIN["workflow-example-target.ts<br/>the run"]
+  SHARED["worked-example-shared.ts<br/>bytes, abort, policy"]
+  SPIKE["worked-example-target.ts<br/>the first run, and the list of runs"]
+  DISK["worked-examples/workflow-capture/<br/>six files"]
+
+  FIX --> CORPUS
+  FIX --> CHAIN
+  SHARED --> CHAIN
+  CHAIN --> SPIKE
+  SPIKE --> DISK
+```
+
+**Read in this order:**
+
+1. `tests/schemas/fixtures/workflow-contract.ts`: the example. Three calls, a write, a read, and a way to put the storage back; a plan whose read takes its address from the write's answer.
+2. `scripts/workflow-example-target.ts`: the run. The planted fault, what the harness saw on every leg, and the stage that plans the four steady-state calls, run for real.
+3. `tests/score/workflow-worked-example.test.ts`: what the run came back with, read value by value.
+4. `scripts/check-doc-counts.ts`: the checker, now holding four sentences that count how many worked runs this project keeps.
+
+**Story:** `_bmad-output/implementation-artifacts/11-11-a-shipped-workflow-contract-with-a-captured-binding-and-a-fixture-reset.md`
+
+### Reference
+
+**Rules:**
+
+- A value taken from an earlier answer beats a value written in advance. Write the name in advance and you name a record nobody made; match on anything and you match the wrong one.
+- The name the storage hands back changes on every run, so mark it as changing. The steady-state comparison then ignores it, and the value pickup still reads it, because the two look at different copies.
+- Give the reset its own call, separate from the write. Then the four steady-state calls read, change, put back, and read again, which is what they are for.
+- The stage that plans those four calls has to run, not be typed out. Typed out, the file says the same thing whether or not the stage works.
+- Look for the fault on the read, not on the write. The write answers from what it was handed, so its own reply looks correct either way.
+- A single planted call cannot write and then read back, so the fixture has to already hold something the broken write filed. Say that in the setup notes; it is what the check reads.
+- Two calls to the same place in one run need different addresses in the plan, one fixed and one picked up. Same address twice and the run cannot tell which answer belongs to which step.
+- Match on a written-down value, not on "whatever was sent". "Whatever was sent" also matches the bad-input call, and then two steps claim the same answer.
+- An example with only two steps fails half the quality questions. Every call needs a bad-input case, every answer with two required parts needs a check covering both, and every write needs a read-back.
+- A count in a sentence needs something that counts it. Four sentences counting worked runs now read a list of the runs, and the build fails if a run reaches disk that the list does not name.
+
+**Watch out:** the file the pre-flight stage writes does not list the four calls. It carries the answers to the questions asked about them, and one of those questions only gets asked when the four calls were planned. That is what the file proves; the order of the calls is proved by the test instead.
