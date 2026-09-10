@@ -645,7 +645,16 @@ subject while its neighbour `command/deny-unauthorized-subcommand` complained ex
 same thing. The helper now takes the narrowed request type, so each caller has to state what it does
 about another kind, and the executable case carries the same explicit complaint. `mcpAuthorizationFor`
 keeps the wide parameter, because it reads `interfaceId`, which every member of the request union
-carries; the difference is principled and its comment says so.
+carries.
+
+The rule behind the asymmetry, stated so a later reader can apply it rather than reading it as the
+same bug in two shapes: a helper that reads a member-specific field takes the narrowed type, and one
+that reads a union-wide field takes the union. `commandAuthorizationFor` keys on
+`(interfaceId, executable)` and `executable` exists only on the `cli` member, so narrowing is what
+makes it total over what it reads. `mcpAuthorizationFor` keys on `interfaceId` alone and is already
+total over what it reads: it answers `undefined` exactly when the policy names no such interface,
+which is the question asked, and `deny-unauthorized-tool` narrows itself before touching
+`toolName`.
 
 *The fix for the second high finding could misattribute.* `mcp/observe-error-result`'s new
 absent-result rule blamed the adapter for dropping a payload, and the reference adapter derives the
@@ -665,6 +674,12 @@ one from `src/testing/index.ts` stays invisible to every runtime gate. The gate 
 under AD-37's own restriction, and it now names five published types in that import. Verified by
 deleting `McpProbeSubject` from the barrel, which fails the typecheck with
 `TS2724: '"eval-quality/conformance"' has no exported member named 'McpProbeSubject'`.
+
+The guard depends on build ordering, which is worth knowing rather than fixing. The specifier
+resolves to `dist/testing/index.d.ts`, so deleting the export and typechecking without rebuilding
+passes against the stale declaration. `validate` is `npm run build && npm run typecheck && ...`, so
+the gate is sound as the pipeline orders it, and case 147b depends on `dist` existing in the same
+way.
 
 ## Design Notes
 
