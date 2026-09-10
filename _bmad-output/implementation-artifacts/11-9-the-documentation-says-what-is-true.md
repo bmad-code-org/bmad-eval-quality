@@ -2,7 +2,7 @@
 title: 'The documentation says what is true'
 type: 'chore'
 created: '2026-09-09'
-status: 'draft'
+status: 'done'
 review_loop_iteration: 0
 context:
   - _bmad-output/implementation-artifacts/epic-11-context.md

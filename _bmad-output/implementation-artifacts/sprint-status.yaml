@@ -112,7 +112,7 @@ development_status:
   epic-10: done
   10-1-the-command-line-environment-probe-adapter: done
 
-  epic-11: in-progress
+  epic-11: done
   11-1-whether-tool-use-evaluation-is-one-gap-or-two: done
   11-2-the-check-that-would-catch-a-stale-tool-use-claim: done
   11-3-the-response-descriptor-for-an-unstructured-tool-result: done
@@ -125,4 +125,4 @@ development_status:
   11-10-a-seeded-defect-scored-against-a-skill-contract: done
   11-11-a-shipped-workflow-contract-with-a-captured-binding-and-a-fixture-reset: done
   11-12-an-end-to-end-run-against-a-service-the-suite-starts: done
-  11-9-the-documentation-says-what-is-true: backlog
+  11-9-the-documentation-says-what-is-true: done
