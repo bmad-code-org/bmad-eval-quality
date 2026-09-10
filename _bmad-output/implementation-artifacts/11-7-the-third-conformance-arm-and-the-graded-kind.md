@@ -2,7 +2,7 @@
 title: 'The third conformance arm and the graded kind'
 type: 'feature'
 created: '2026-09-09'
-status: 'in-review'
+status: 'done'
 review_loop_iteration: 0
 context:
   - _bmad-output/implementation-artifacts/epic-11-context.md
