@@ -170,7 +170,7 @@ Nothing imports `cli/`.
 
 - **Binds:** VFR-3, VFR-4, VFR-5, VFR-7, package dependency policy
 - **Prevents:** the package growing an agent runner, provider adapters, or container orchestration — the scope the Non-Goals forbid and the reason an existing engine was to be reused
-- **Rule:** the package emits a sealed evaluator brief and ingests a sealed run record, isolation manifest, and evaluator configuration. Executing agents, judges, and the system under test is the caller's responsibility, and judge results therefore arrive inside the run record rather than through a port the package calls. No provider or model SDK is a dependency, required or optional. No module in the package performs network I/O, and v0 ships no network adapter at all — the environment-probe port is the only interface across which observations of a live system enter, and every implementation of it is the caller's, governed by AD-35 and proven by AD-37's suite. Revision 1 named the prober as "the single exception" while shipping a fetch adapter, which meant the package both did and did not perform network I/O; the exception is deleted rather than narrowed, and the conformance suite is what makes a caller-owned prober practical.
+- **Rule:** the package emits a sealed evaluator brief and ingests a sealed run record, isolation manifest, and evaluator configuration. Executing agents, judges, and the system under test is the caller's responsibility, and judge results therefore arrive inside the run record rather than through a port the package calls. No provider or model SDK is a dependency, required or optional. No module in the package performs network I/O, and v0 ships no network adapter at all — the environment-probe port is the only interface across which observations of a live system enter, and every implementation of it that reaches a live system over a network is the caller's, governed by AD-35 and proven by AD-37's suite. The shipped implementations reach one by launching a child process and opening no socket: the command-line adapter, and the MCP adapter over that protocol's stdio transport. Revision 1 named the prober as "the single exception" while shipping a fetch adapter, which meant the package both did and did not perform network I/O; the exception is deleted rather than narrowed, and the conformance suite is what makes a caller-owned prober practical.
 
 ### AD-3 — An oracle is a prose intent and an enforceable expression, and both are authored
 
@@ -600,7 +600,7 @@ src/
     emit/              # outcomes -> Evidence Artifact (sole owner)
   application/         # the only layer that awaits ports; no decision logic
   ports/               # CorpusPort, EnvironmentProbePort, ClockPort, FileSystemPort
-  adapters/            # LocalCorpusAdapter, NodeFileSystemAdapter; no network adapter in v0 (AD-2)
+  adapters/            # LocalCorpusAdapter, NodeFileSystemAdapter, SystemClockAdapter, CommandLineAdapter, McpAdapter; no network adapter in v0 (AD-2)
   cli/                 # one command per application call
   testing/             # published port conformance suite (AD-37)
 schemas/               # generated JSON Schema, committed, formatter-excluded, drift- and rejection-checked

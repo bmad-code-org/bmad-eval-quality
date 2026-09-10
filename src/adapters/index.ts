@@ -15,6 +15,12 @@ export {
 } from './command-line-adapter.ts'
 export type { CorpusMechanism } from './local-corpus-adapter.ts'
 export { createLocalCorpusAdapter } from './local-corpus-adapter.ts'
+export type {
+	McpCallToolRequest,
+	McpCallToolResult,
+	McpMechanism,
+} from './mcp-adapter.ts'
+export { createMcpAdapter, nodeStdioMcpMechanism } from './mcp-adapter.ts'
 export type { FileSystemMechanism } from './node-file-system-adapter.ts'
 export { createNodeFileSystemAdapter } from './node-file-system-adapter.ts'
 export type { ClockMechanism } from './system-clock-adapter.ts'

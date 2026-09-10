@@ -132,7 +132,7 @@ const PROBE_ASSERTIONS: readonly ProbeAssertion[] = [
 			check: (observation) =>
 				observation.kind === 'api' && observation.status === 500
 					? undefined
-					: `observed ${observation.kind === 'api' ? `status ${observation.status}` : 'a command observation'}, expected status 500`,
+					: `observed ${observation.kind === 'api' ? `status ${observation.status}` : `a "${observation.kind}" observation`}, expected status 500`,
 		},
 	},
 	{
@@ -461,7 +461,7 @@ const COMMAND_ASSERTIONS: readonly CommandAssertion[] = [
 			check: (observation) =>
 				observation.kind === 'cli' && observation.exitCode !== 0
 					? undefined
-					: `observed ${observation.kind === 'cli' ? `exit code ${observation.exitCode}` : 'an api observation'}, expected a non-zero exit`,
+					: `observed ${observation.kind === 'cli' ? `exit code ${observation.exitCode}` : `a "${observation.kind}" observation`}, expected a non-zero exit`,
 		},
 	},
 	{

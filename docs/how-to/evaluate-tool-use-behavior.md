@@ -21,7 +21,7 @@ The system under test is the MCP server: the tool call is the request, the tool 
 `PermittedInterface` declares four interface kinds and one of them is `mcp` (`src/core/schemas/interface.ts:333`), and `compile` accepts it.
 Everything from [What an `mcp` operation declares](#what-an-mcp-operation-declares) down is about this question.
 
-No adapter in this repository and none in TEA has yet run a tool call, so nothing has been scored end to end against an `mcp` interface. This page is the first writing that takes the kind seriously.
+This repository now ships an adapter that runs a tool call. `createMcpAdapter` speaks MCP's stdio transport, and a pre-flight over an `mcp` contract runs end to end against a real tool server. Nothing in TEA has been scored against an `mcp` interface yet. This page is the first writing that takes the kind seriously.
 
 ## What you are evaluating
 
@@ -104,9 +104,9 @@ Both shapes downstream carry the kind.
 `ObservedCallInputs` (`sealed-run-record.ts:204`) declares one key per input channel, `arguments` included, so what a tool call *sent* has somewhere to live and a pointer at `/interactions/{stepId}/call-inputs/arguments/...` resolves the recorded value.
 That key arrived with the record's own breaking version bump, from 4 to 5.
 
-The port carries one half of the exchange.
-`ProbeRequest` has an `mcp` member now, `McpProbeRequest`, carrying the correlation triple, the tool name, and the arguments channel (`src/core/schemas/port-messages.ts`), so a pre-flight plan over an `mcp` contract mints real requests.
-`ProbeObservation` still has an `api` member and a `cli` member and no third, so there is nothing an adapter could return.
+The port carries both halves of the exchange.
+`ProbeRequest` has an `mcp` member, `McpProbeRequest`, carrying the correlation triple, the tool name, and the arguments channel (`src/core/schemas/port-messages.ts`), so a pre-flight plan over an `mcp` contract mints real requests.
+`ProbeObservation` has its own third member, `McpProbeObservation`, carrying the envelope's `isError` flag and the structured result the tool returned, so an adapter has a shape to answer with.
 An adapter that answered a tool-call leg with an observation of another mechanism gets a `port-contract-violation` from the reducer, which is what stops a tool call from being scored off an HTTP answer.
 
 ## What you need
@@ -304,31 +304,30 @@ node dist/cli/main.js score --record sealed-run-record.json \
   --corpus-digest <digest> --out evidence-artifact.json
 ```
 
-Neither reaches a tool call today. A planned mcp leg is issued to whatever port is wired, and there is no shape for the answer to come back in, so how it fails is the adapter's. The shipped command-line adapter throws `forbidden-target` on any request that is not `cli`, before it builds anything (`src/adapters/command-line-adapter.ts`). An adapter that answered with an api or cli observation instead reaches the reducer, which reports `port-contract-violation`.
+A planned mcp leg is issued to whatever port is wired, and `createMcpAdapter` is the one this package ships for it (`src/adapters/mcp-adapter.ts`). Wire another kind's adapter and how it fails is that adapter's: the shipped command-line adapter throws `forbidden-target` on any request that is not `cli`, before it builds anything, and an adapter that answered with an api or cli observation instead reaches the reducer, which reports `port-contract-violation`.
 
-What an adapter behind the port would have to do.
+What the shipped adapter does.
 `EnvironmentProbePort` has one method, `probe`, taking a `ProbeRequest` and an `AbortSignal` and returning a `ProbeObservation` (`src/ports/environment-probe-port.ts`).
-The four rules stated on that port are the adapter's whole obligation: apply the target policy before any call and again to every redirect target, issue the request against the address the policy validated and never re-resolve a hostname after validation, throw `forbidden-target`, `budget-exhausted`, `aborted`, or `port-failure` for the four fault classes, and treat every response the server returns as an observation at any status.
-That last rule is the one a tool-use adapter would break first: an MCP error result is the payload the seeded-fault check reads, and an adapter that throws on it makes the whole pre-flight vacuous.
+An `McpTargetPolicy` maps the contract's logical interface identifier to a server the adapter launches, and lists the tools that server may be asked for; a request naming either an interface or a tool the mapping omits is refused with `forbidden-target` before a process starts. One session per invocation covers launch, `initialize`, `tools/call`, and teardown, bounded by `maxElapsedMs`, and `maxOutputBytes` caps the server's stdout and its stderr on their own.
+A tool result carrying `isError: true` resolves, and so does a JSON-RPC error answering `tools/call`, with the error object as the result. That is the rule a tool-use adapter would break first: an MCP error result is the payload the seeded-fault check reads, and an adapter that throws on it makes the whole pre-flight vacuous.
 
-The mapping from a logical identifier to a running server is the adapter's, from configuration outside the contract (AD-35).
-`McpProbeRequest` is on the request union already, so an adapter has a shape to be handed. What it still lacks is an `McpProbeObservation` to return, and a third conformance arm beside `runEnvironmentProbePortConformance` and `runCommandLineProbeConformance`.
+The transport is stdio and nothing else. A server reached over Streamable HTTP speaks the same JSON-RPC across a socket, and this package performs no network I/O at all, so that server needs your own `EnvironmentProbePort` behind the same mapping rule (AD-35). `eval-quality/conformance` is what proves one: the six shared assertions run against any subject, and the third arm certifying an `mcp` subject against AD-35's own denials is still owed.
 
 ## Where this stands
 
-**Compiles, and plans a pre-flight.** The kind, its own operation inventory over a published tool name, a parse that succeeds, and both contract-side gates open. A contract over an MCP tool server compiles under every discipline rule and plans a pre-flight whose legs are tool-call requests. That pre-flight cannot complete: no observation shape exists for a tool call, so no adapter can answer a leg. The shipped command-line adapter denies the request with `forbidden-target`, and an adapter that answered with another mechanism's observation gets `port-contract-violation`.
+**Compiles, and runs a pre-flight.** The kind, its own operation inventory over a published tool name, a parse that succeeds, and both contract-side gates open. A contract over an MCP tool server compiles under every discipline rule, plans a pre-flight whose legs are tool-call requests, and completes that pre-flight against `createMcpAdapter` over a real stdio tool server. Wire an adapter of another mechanism and the shipped command-line adapter denies the request with `forbidden-target`, while an adapter answering with another mechanism's observation gets `port-contract-violation`.
 
 **Scores a probe.** A defect signature declares the tool name, the qualification gate admits the kind, and a recorded tool call's arguments are addressable, so a seeded tool-use defect can be qualified and matched against a sealed run record.
 
-**Missing.** An observation message for the kind, an adapter, a conformance arm, and a channel model for a text-shaped tool result.
+**Missing.** A conformance arm certifying an `mcp` subject, a dev-corpus exemplar, and a channel model for a text-shaped tool result.
 
-**Already works, and this is the part worth knowing before you fund any of it.** Both sides of the exchange accommodate the kind today. `Observation` in the sealed run record is not discriminated on kind (`sealed-run-record.ts:229`), so what a tool answered has somewhere to live. `foreignChannels` (`qualification.ts:187`) confines a tool-use signature to `response-body`, `response-status`, and its own `call-inputs`, which is the same answer compile-time reachability gives, a confinement the code decides. `ObservedCallInputs` (`sealed-run-record.ts:204`) carries a key per input channel, `arguments` among them.
+**Already works, and this is the part worth knowing before you fund any of it.** Both sides of the exchange accommodate the kind today. `Observation` in the sealed run record is not discriminated on kind (`sealed-run-record.ts:229`), so what a tool answered has somewhere to live. `foreignChannels` (`qualification.ts:187`) confines a tool-use signature to `response-body`, `response-status`, and its own `call-inputs`, which is the same answer compile-time reachability gives, a confinement the code decides. Two of those three carry a value once the adapter runs: the structured result lands on `response-body` and the error flag on `response-status`, and `response-headers` stays empty because a tool call has no header map. `ObservedCallInputs` (`sealed-run-record.ts:204`) carries a key per input channel, `arguments` among them.
 
 **Unproven, and this is the uncomfortable part.** The calibration record behind this project's central measurement is itself MCP-shaped. The architecture records that every contract in the phase-2 block that produced the 0.33-to-1.00 result declares an MCP tool interface, and that 22 of 25 real contracts use the kind. Those contracts were transcribed into API shape to be compiled here, and a transcription is not the measured artifact. So `mcp` is the most-used kind in the prior art and the one this package reached last.
 
-**What a first adopter hits.** In order: a planned pre-flight nothing can answer, then the response descriptor against a tool that returns prose. The first needs an observation message and an adapter. The second is a stated boundary: the descriptor describes a tool's structured result, and a tool that answers with markdown alone is outside the kind's first version.
+**What a first adopter hits.** In order: a tool server reached over HTTP, then the response descriptor against a tool that returns prose. The first needs your own `EnvironmentProbePort`, because the shipped adapter speaks stdio and this package opens no socket. The second is a stated boundary: the descriptor describes a tool's structured result, and a tool that answers with markdown alone is outside the kind's first version.
 
-**The first reading runs today, and here is what that cost.** Until an adapter answers a tool call, the workable move for the first reading is the one TEA already made: put the tool-calling agent behind a command, declare a `cli` interface, and evaluate the run through its arguments, its streams, and the files it writes.
+**The first reading runs today, and here is what that cost.** For the first reading, TEA's own move stays workable and stays cheaper than writing an adapter: put the tool-calling agent behind a command, declare a `cli` interface, and evaluate the run through its arguments, its streams, and the files it writes.
 
 That route was run end to end against the built CLI at 1.4.2.
 A contract whose one operation declares the tool-call log in `artifacts` and nominates it with `descriptorChannel` compiles and seals at exit `0`, an oracle quantifies over the calls inside the log, and pre-flight resolves at exit `0` with all six checks satisfied, including a sensitivity witness and a manifestation witness whose legs both address the file.

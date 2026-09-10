@@ -40,3 +40,40 @@ export const echoPort = () =>
 				jsonBody({ id: 't-1', value: 'alpha' }),
 		}),
 	)
+
+/**
+ * A structured result derived from the arguments the leg supplied, under the
+ * two keys the mcp fixture contract's witness relations address. Derived rather
+ * than constant because AD-10's input-sensitivity differential compares two
+ * legs that differ only in what they sent, and pure because its state-reset
+ * differential compares two legs that sent the same thing.
+ */
+const toolResultFor = (request: ProbeRequest) => {
+	const supplied = request.kind === 'mcp' ? request.channels.arguments : {}
+	const id = `n-${JSON.stringify(supplied)}`
+	return {
+		ok: true,
+		matches: [{ noteId: id }],
+		noteId: id,
+		totalCount: 1,
+		echo: supplied,
+	}
+}
+
+/**
+ * The same echo for a tool call. `echoPort` above keeps answering `api`, so no
+ * existing `runPreflight` fixture moves; this one exists for the legs an mcp
+ * contract plans.
+ *
+ */
+export const mcpEchoPort = (isError = false) =>
+	vi.fn<PortMethod<ProbeRequest, ProbeObservation>>(
+		async (request): Promise<ProbeObservation> => ({
+			probeId: request.probeId,
+			interfaceId: request.interfaceId,
+			operationId: request.operationId,
+			kind: 'mcp',
+			isError,
+			result: jsonBody(toolResultFor(request)),
+		}),
+	)

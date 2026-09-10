@@ -4,6 +4,7 @@ import {
 	isMcpOperation,
 } from '../../src/core/declared-inputs.ts'
 import { EvalContract } from '../../src/core/schemas/eval-contract.ts'
+import { PermittedInterface } from '../../src/core/schemas/interface.ts'
 import { InteractionPointer } from '../../src/core/schemas/pointer.ts'
 import {
 	buildPlanIndex,
@@ -216,6 +217,35 @@ describe('buildPlanIndex', () => {
 		expect(() => buildPlanIndex(gateCInteractionPlan, duplicated)).toThrow(
 			TypeError,
 		)
+	})
+
+	// The duplicate bookkeeping is shared by all three kind arms, so a
+	// collision across two kinds has to clear every map. Left per-arm, a
+	// tool-call operation and an api operation sharing an id would each stay
+	// resolvable from its own accessor and `anyOperationOf` would answer with
+	// whichever map it reads first.
+	it('clears an operation id two interfaces of different kinds both declare', () => {
+		const firstInterface = gateCPermittedInterfaces[0]
+		const firstOperation = firstInterface?.operations[0]
+		if (firstInterface === undefined || firstOperation === undefined)
+			throw new Error('fixture missing an interface or operation')
+		const draft = structuredClone(mcpContract.permittedInterfaces[0]) as {
+			operations: { operationId: string }[]
+		}
+		const firstTool = draft.operations[0]
+		if (firstTool === undefined)
+			throw new Error('the mcp fixture declares a tool')
+		firstTool.operationId = firstOperation.operationId
+		const collidingTool = PermittedInterface.parse(draft)
+		const index = buildPlanIndex(
+			gateCInteractionPlan,
+			[...gateCPermittedInterfaces, collidingTool],
+			{ duplicateIds: 'unresolved' },
+		)
+		expect(index.operationOf(firstOperation.operationId)).toBeUndefined()
+		expect(index.mcpOperationOf(firstOperation.operationId)).toBeUndefined()
+		expect(index.commandOperationOf(firstOperation.operationId)).toBeUndefined()
+		expect(index.interfaceKindOf(firstOperation.operationId)).toBeUndefined()
 	})
 
 	it('can mark duplicate step and operation IDs unresolved for total structural checks', () => {

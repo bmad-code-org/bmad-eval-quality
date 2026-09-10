@@ -2,7 +2,7 @@
 title: 'The port messages and the MCP adapter'
 type: 'feature'
 created: '2026-09-09'
-status: 'draft'
+status: 'done'
 review_loop_iteration: 0
 context:
   - _bmad-output/implementation-artifacts/epic-11-context.md
@@ -283,69 +283,69 @@ is fixed in this diff, which is 11.9's rule that a sentence moves with the chang
 
 **Execution:**
 
-- [ ] `src/core/schemas/port-messages.ts` -- add `McpProbeObservation` (`kind: 'mcp'`, `isError`,
+- [x] `src/core/schemas/port-messages.ts` -- add `McpProbeObservation` (`kind: 'mcp'`, `isError`,
       `result`) spreading `probeCorrelation`, add it to `ProbeObservation`, and add the inferred type
       exports.
-- [ ] `src/core/preflight/projection.ts` -- add the `mcp` arm and the `toolError` field per Decision 6;
+- [x] `src/core/preflight/projection.ts` -- add the `mcp` arm and the `toolError` field per Decision 6;
       correct the "five fields and no others" comment above the type.
-- [ ] `src/core/preflight/witness-evidence.ts` -- add the `mcp` arm to `evidenceOf`: `responseBody` the
+- [x] `src/core/preflight/witness-evidence.ts` -- add the `mcp` arm to `evidenceOf`: `responseBody` the
       projected result, `responseStatus` the `isError` projection as 0 or 1 with the projection stated
       in the source per Decision 6, `responseHeaders` `null`, `callInputs.arguments` filled through
       Story 11.6's `callInputsOf`, the command channels unobserved.
-- [ ] `src/core/preflight/reduce.ts` -- give `anomalyOf` its third arm over `isError`.
-- [ ] `src/core/schemas/probe-policy.ts` -- add `McpTargetAuthorization` and `McpTargetPolicy` carrying
+- [x] `src/core/preflight/reduce.ts` -- give `anomalyOf` its third arm over `isError`.
+- [x] `src/core/schemas/probe-policy.ts` -- add `McpTargetAuthorization` and `McpTargetPolicy` carrying
       the server launch target and its arguments, the `tools` identifier-to-wire-name map,
       `cwd`, `serverEnvironment`, `maxElapsedMs`, and `maxOutputBytes`, each field's rule in its own
       `.describe()`.
-- [ ] `src/adapters/mcp-target-policy.ts` -- new: `MCP_DENIAL_REASONS`, `McpResolvedTarget`,
+- [x] `src/adapters/mcp-target-policy.ts` -- new: `MCP_DENIAL_REASONS`, `McpResolvedTarget`,
       `McpPolicyDecision`, and the pure `evaluateMcpTarget`, on `command-target-policy.ts`'s
       declaration-order and first-match rules.
-- [ ] `src/adapters/mcp-adapter.ts` -- new: `McpMechanism` with one `callTool` method,
+- [x] `src/adapters/mcp-adapter.ts` -- new: `McpMechanism` with one `callTool` method,
       `nodeStdioMcpMechanism`, and `createMcpAdapter`, with a header carrying the four rules that
       answer "what is a tool server allowed to do".
-- [ ] `src/adapters/index.ts` and `src/testing/index.ts` -- export the adapter, its mechanism, and
+- [x] `src/adapters/index.ts` and `src/testing/index.ts` -- export the adapter, its mechanism, and
       `McpTargetPolicy` on the two existing subpaths.
-- [ ] `src/testing/probe-conformance.ts` -- correct the two failure details at `:135` and `:464` so
+- [x] `src/testing/probe-conformance.ts` -- correct the two failure details at `:135` and `:464` so
       each names the kind it actually observed.
-- [ ] `src/adapters/command-line-adapter.ts` -- correct the denial detail at `:361` so it names every
+- [x] `src/adapters/command-line-adapter.ts` -- correct the denial detail at `:361` so it names every
       kind this adapter refuses.
-- [ ] `tests/adapters/mcp-adapter.test.ts` and `tests/adapters/mcp-target-policy.test.ts` -- new: one
+- [x] `tests/adapters/mcp-adapter.test.ts` and `tests/adapters/mcp-target-policy.test.ts` -- new: one
       case per I/O Matrix row, including a real stdio session, both caps, the session-failure split,
       and every denial reason. The adapter test also builds a local `PortSubject` and asserts
       `runSharedAssertions` returns six passes, per Decision 7.
-- [ ] `tests/preflight/reduce.test.ts` -- widen fixture 129 to the six ordered mismatch pairs.
-- [ ] `tests/testing/conformance.test.ts` -- parameterise `probeRequest()`, `observation()`, and
+- [x] `tests/preflight/reduce.test.ts` -- widen fixture 129 to the six ordered mismatch pairs.
+- [x] `tests/testing/conformance.test.ts` -- parameterise `probeRequest()`, `observation()`, and
       `breakEcho` over the kind, and update the `/observed kind "cli"/` expectation at `:804` to match
       whichever kind the case substitutes.
-- [ ] `tests/preflight/fixtures/probe-port.ts` -- leave `echoPort()` answering `api` and add the
+- [x] `tests/preflight/fixtures/probe-port.ts` -- leave `echoPort()` answering `api` and add the
       `mcp`-answering counterpart, so no existing `runPreflight` fixture moves.
-- [ ] `tests/preflight/fixtures/observations.ts` -- an `McpProbeObservation` builder beside
+- [x] `tests/preflight/fixtures/observations.ts` -- an `McpProbeObservation` builder beside
       `observationsFor` (`:553-570`, which hard-returns `kind: 'api'` at `:566`), carrying `isError`
       and `result`, read by the `mcp`-answering port double above and by the widened fixture 129.
       Nothing this story adds lands in `tests/schemas/fixtures/artifact-fixtures.ts`:
       `port-messages.ts` produces none of the twelve published documents, so its shapes have no
       accept fixture to seed, and the sealed run record fixture carrying `callInputs.arguments` is
       Story 11.6's, landed in the diff that publishes the ninth key.
-- [ ] `tests/preflight/` and `tests/evaluate/` -- one case per branch this story adds, including the
+- [x] `tests/preflight/` and `tests/evaluate/` -- one case per branch this story adds, including the
       `mcp` arms in `projectObservation`, `evidenceOf`, and `anomalyOf`, and an oracle resolving
       `/response-status` to `0` and to `1`.
-- [ ] `docs/reference/cli-commands.md:223`, `docs/explanation/what-ships.md:20`,
+- [x] `docs/reference/cli-commands.md:223`, `docs/explanation/what-ships.md:20`,
       `docs/how-to/author-behavioral-contracts.md:148`,
       `docs/how-to/evaluate-tool-use-behavior.md:76,226,236`,
       `docs/how-to/evaluate-agent-behavior.md:24`
       -- make each sentence true, re-read every inline `file:line` citation on those lines against the
       tree, and cut the text the change makes redundant. On `:236` only the confinement clause is
       this story's; Story 11.6 already corrected the key count.
-- [ ] `CHANGELOG.md` `[Unreleased]` -- one entry naming the third `ProbeObservation` union member,
+- [x] `CHANGELOG.md` `[Unreleased]` -- one entry naming the third `ProbeObservation` union member,
       which breaks an outside `EnvironmentProbePort` implementation the way Story 9.3's widening did,
       and what is added to the published subpaths: `createMcpAdapter` and its mechanism on
       `eval-quality/adapters`, `McpTargetPolicy` and `McpTargetAuthorization` on
       `eval-quality/conformance`. No `schemaVersion` bump is named here; Story 11.6's entry carries
       both of them.
-- [ ] Comment pass -- prune every JSDoc and comment written here while writing it, then grep the
+- [x] Comment pass -- prune every JSDoc and comment written here while writing it, then grep the
       edited files for `, not `, `rather than`, `instead of`, `as opposed to`, `, never `, and
       `no longer`, and confirm each surviving hit is a real contrast whose halves both carry a fact.
-- [ ] `_bmad-output/project-knowledge/learning-path-step-by-step.md` -- add the next unused step,
+- [x] `_bmad-output/project-knowledge/learning-path-step-by-step.md` -- add the next unused step,
       tagged `(epic11-story13)`, plus its row in the step table, following `learning-path-template.md`.
       The epic's steps now run 45 through 57, since it carries thirteen stories.
 
@@ -543,6 +543,122 @@ signature already qualifies. What this story owes back to it: nothing, since no 
 `DefectSignature` and no published schema document moves. Downstream consequence: this story's
 `CHANGELOG.md` entry names no `schemaVersion` bump, and Story 11.7's count derivation reads
 Decision 3's two-field authorization in this file.
+
+**Decision 9: `tools` is an allowlist of published tool names, which supersedes Decision 3's
+identifier-to-wire-name map.**
+Decision 3 argued for `tools: Record<Identifier, string>` on the ground that `Identifier`'s pattern
+forbids the underscores and camel case real MCP tool names carry, so a mapping was needed. Read from
+the tree that premise is stale. Story 11.4 minted `ToolName` for exactly this problem
+(`primitives.ts:28`, `^[A-Za-z0-9_-]+$`), `McpOperation.toolName` is a `ToolName`, and `requestOf`
+(`preflight/plan.ts`) puts `operation.toolName` straight onto `McpProbeRequest.toolName` in the
+server's own spelling. So no logical tool identifier exists anywhere on the request side, and a map
+keyed by one would introduce a second spelling nothing produces and force the evaluator into a
+reverse lookup by value, where two keys mapping to one wire name would be silently ambiguous. The
+field is `z.array(ToolName).min(1)`, compared literally, which is the role
+`permittedSubcommandPaths` plays on the command side. Everything else Decision 3 settled holds
+unchanged: the authorization is keyed by `interfaceId` alone, `serverEnvironment` carries the
+authorization material AD-18 keeps out of the contract, and the base environment is
+`{ PATH: process.env.PATH }` overridden by it. Downstream consequence: the shipped authorization
+still declares exactly two authorization-scoped fields, the interface and the tool allowlist, so
+Story 11.7's `CONFORMANCE_OUTCOME_COUNTS['mcp-probe'] = 14` derivation is unaffected.
+
+**Decision 10: the three hand-narrowed casts in `buildPlanIndex` are gone, and Story 11.5's
+Decision 10 is superseded.**
+Story 11.5's Decision 10 recorded the casts as staying and named a grep as the standing answer for
+this story's exhaustiveness sweep. That answer is retired. `PermittedInterface` is a
+`z.discriminatedUnion('kind', ...)` whose branches each declare their own `operations` element type,
+so an arm that narrows on `iface.kind` **before** reading `iface.operations` gets
+`CommandOperation[]`, `McpOperation[]` or `Operation[]` with no cast. What forced the casts was one
+line earlier: `operationsOf(iface)` has signature `(iface: PermittedInterface) => readonly
+AnyOperation[]` and discards the kind-to-shape correlation before any kind test runs, so no later
+narrowing could recover it.
+
+The switch now narrows first, and the three arms `continue`, so the statement after it is reachable
+only when a kind has no arm; `iface satisfies never` there is what fails the typecheck. Verified
+mechanically rather than by reading: deleting `case 'web'` produces
+`plan-index.ts: error TS1360: Type '{ ... kind: "web" ... }' does not satisfy the expected type
+'never'`, and restoring it returns the typecheck to exit 0.
+
+The real cost, and the reason 11.5 did not take it opportunistically, is that the duplicate-operation
+bookkeeping is shared by all three kinds. It is hoisted into one `claim` closure rather than repeated
+three times, and it keeps the behaviour that makes `operationOf` answer `undefined` for an id two
+permitted interfaces both declare. That behaviour now has its own case in
+`tests/seal/plan-index.test.ts`, over a collision across two different kinds, which is the case the
+per-arm spelling could have broken while every same-kind case stayed green.
+
+`operationsOf` keeps its keep: fourteen other call sites read it and want the widened element type.
+Its comment at `interface.ts` claimed TypeScript "will not iterate `iface.operations` directly",
+which is true of `.map` on an un-narrowed union and untrue of a `for...of` inside a narrowed arm. The
+comment now says which, and names `buildPlanIndex` as the one site that wants the opposite.
+Downstream consequence: a fifth interface kind fails the build at `plan-index.ts` instead of being
+sorted into the api map by exhaustion, and Story 11.7's kind work starts from a failing build.
+
+**Decision 11: the projection's key count moved, and two assertions moved with it.**
+Decision 6 puts `toolError` on `ProjectedObservation`, which makes it seven keys and changes every
+AD-11 fixture digest, since the digest is computed over the whole projection. Two assertions in
+`tests/preflight/projection.test.ts` carry that: the key-count case, and the golden digest literal,
+which is re-frozen from this pass's first green run on the same terms the original was written under.
+
+Nothing published moved with them. `check:schemas`, `check:worked-example`, `check:corpus`, and
+`check:ad33-table` all exit 0 with no regeneration, which is the mechanical proof that no committed
+artifact carries a fixture digest.
+
+The type's own comment opened "The five fields and no others" while the type carried six and its test
+counted six, so the census in that sentence was already stale before this story touched it. It is
+deleted rather than renumbered, which is what Story 11.6's Design Notes found works: a sentence
+saying what the fields are for needs no census of them, and the census is the half that rots.
+
+**Decision 12: one of the four detail corrections the task list names was already landed, and it is
+recorded here rather than left looking undone.**
+The Execution list asks for `command-line-adapter.ts:361`'s denial detail to name every kind the
+adapter refuses. Story 11.6 landed it: the message interpolates `parsed.kind`, and
+`tests/adapters/command-line-adapter.test.ts` sends an `McpProbeRequest` and asserts the message
+names `mcp`. This story makes the analogous edit in the new MCP adapter and leaves the command one
+untouched. The two `probe-conformance.ts` details at the `api` arm's anomalous-status check and the
+`cli` arm's non-zero-exit check were genuinely owed, and both now interpolate the observed kind
+instead of resolving a binary ternary to the other kind's name.
+
+**Decision 13: only `breakEcho` parameterises over the kind in `tests/testing/conformance.test.ts`.**
+The Execution list names `probeRequest()`, `observation()`, and `breakEcho`. The first two stay
+api-shaped, because `runEnvironmentProbePortConformance` is the `api` arm and its subject answers api
+requests; `probe-conformance.ts`'s own header states the rule this follows, that a subject presenting
+for one mechanism is not asked to fake another's scenarios, and rewriting those two builders over the
+kind would break every one of the arm's nineteen assertions. What actually varies at that site is the
+kind the port answers **with**, which is exactly what `echoMismatch` reads, so `breakEcho` takes the
+substituted kind and the outcome-detail case runs over both `cli` and `mcp`. Downstream consequence:
+Story 11.7's third arm builds its own request and observation builders, and inherits no half-generic
+pair here.
+
+**Decision 14: AD-2's rule sentence is corrected in place, and no spine revision is opened.**
+`ARCHITECTURE-SPINE.md`'s AD-2 rule read "the environment-probe port is the only interface across
+which observations of a live system enter, and every implementation of it is the caller's". Epic 10
+falsified the second clause when it shipped `createCommandLineAdapter`, and this story falsifies it
+further. The clause is narrowed to the implementations that reach a live system over a network, and
+the two shipped implementations are named beside it, both of which launch a child process and open no
+socket. The `adapters/` line in the source-tree sketch, which still listed two of the five shipped
+adapters, is corrected in the same pass. Both edits are one clause each, `lint:spine` reports 0
+findings, and `npm run build:shareable` regenerated the committed HTML that `check:shareable`
+compares byte for byte. The spine stays at revision 9 and no ADR is minted.
+
+**Decision 15: `maxOutputBytes` bounds each of the server's two streams, and the field says so.**
+Decision 4 describes the cap as applying to "the result frame" and to stderr. The adapter enforces it
+on the accumulated bytes of stdout and, separately, of stderr, which is a stricter and simpler
+reading: the handshake frame and the result frame share one stream, and a server that answered
+`initialize` with megabytes has already made the allocation the cap exists to prevent. The field's
+own `.describe()` states it that way, so a policy author reads what the adapter does. Nothing else in
+Decision 4 moves: the session is per invocation, `maxElapsedMs` covers launch through teardown, and
+stderr is drained because an unread pipe deadlocks the server once the OS buffer fills.
+
+**Decision 16: a result with no structured content is an absent body, and it is a case rather than an
+error.**
+Story 11.3's Decision 1 scopes the kind's first version to tools returning structured content, so the
+adapter reads `structuredContent` off the tool result and records `{ kind: 'absent' }` when the
+server returned none. Throwing would make a prose-only tool a port failure, which is a claim about
+the adapter rather than about the tool, and AD-10's own rule is that the answer is payload. An absent
+body is what every downstream reader already handles: `pruneVolatile` passes it through, `evidenceOf`
+writes `responseBody: null`, and an oracle over the descriptor resolves absent, which the compile-time
+reachability rules already describe. `tests/adapters/mcp-adapter.test.ts` covers it against a real
+server through `silent_tool`.
 
 ## Design Notes
 

@@ -21,7 +21,7 @@ A contract declares the operation the agent exposes, the checks over its output,
 
 `eval-quality` runs nothing under evaluation on its own.
 `compile`, `seal`, the pre-flight reduction, and the score chain are transformations over JSON.
-The one component that starts a process is `createCommandLineAdapter` in `src/adapters/command-line-adapter.ts`, and a caller wires it up deliberately, supplying a `CommandTargetPolicy` that maps a logical executable name to a real file.
+Two components start a process, and a caller wires each up deliberately: `createCommandLineAdapter` in `src/adapters/command-line-adapter.ts`, supplying a `CommandTargetPolicy` that maps a logical executable name to a real file, and `createMcpAdapter` in `src/adapters/mcp-adapter.ts`, supplying an `McpTargetPolicy` that maps a logical interface identifier to a tool server it launches over MCP's stdio transport.
 
 Three things this cannot see.
 

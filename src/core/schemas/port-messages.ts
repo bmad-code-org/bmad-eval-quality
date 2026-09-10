@@ -216,9 +216,35 @@ export const CommandProbeObservation = z.strictObject({
 	artifacts: z.record(Identifier, ProbeObservedBody),
 })
 
+/**
+ * What the adapter observed of one tool call: the envelope's error flag and the
+ * structured result.
+ *
+ * `isError` is the tool's own report that the call did not go through, and it
+ * is an observation exactly as a 500 and a non-zero exit are. A JSON-RPC error
+ * answering `tools/call` lands here too, with the error object as `result`: the
+ * server answered, and a server refusing a tool the contract declares is
+ * precisely the defect an oracle should be able to assert on. Only a policy
+ * denial, a cap, an abort, or a failure to establish the session throws.
+ *
+ * `result` is the structured content the tool returned, which is the channel
+ * the operation's response descriptor describes.
+ */
+export const McpProbeObservation = z.strictObject({
+	...probeCorrelation,
+	kind: z.literal('mcp'),
+	isError: z
+		.boolean()
+		.describe(
+			"The MCP envelope's own error flag, true when the tool reported the call failed. Sealed evidence carries it as `responseStatus` 1 for true and 0 for false, since a tool call has no transport status of its own.",
+		),
+	result: ProbeObservedBody,
+})
+
 export const ProbeObservation = z.discriminatedUnion('kind', [
 	ApiProbeObservation,
 	CommandProbeObservation,
+	McpProbeObservation,
 ])
 
 export type CorpusResolveRequest = z.infer<typeof CorpusResolveRequest>
@@ -235,4 +261,5 @@ export type McpProbeRequest = z.infer<typeof McpProbeRequest>
 export type ProbeRequest = z.infer<typeof ProbeRequest>
 export type ApiProbeObservation = z.infer<typeof ApiProbeObservation>
 export type CommandProbeObservation = z.infer<typeof CommandProbeObservation>
+export type McpProbeObservation = z.infer<typeof McpProbeObservation>
 export type ProbeObservation = z.infer<typeof ProbeObservation>

@@ -454,10 +454,12 @@ type ProbeKnobs = {
 	/**
 	 * Answer the authorized request without echoing one of the four fields that
 	 * tie an observation to the request it answers. Both port messages are
-	 * unions, so `'kind'` is the one that lets a command request come back with a
-	 * schema-valid HTTP observation.
+	 * unions, so `'kind'` is the one that lets an api request come back with a
+	 * schema-valid observation of another mechanism.
 	 */
 	readonly breakEcho?: 'kind' | 'probeId' | 'interfaceId' | 'operationId'
+	/** Which kind the `'kind'` case substitutes. The observation union has three members, and `echoMismatch` has to catch all of them. */
+	readonly breakEchoKind?: 'cli' | 'mcp'
 }
 
 const MAX_REDIRECTS = 2
@@ -515,26 +517,43 @@ function observation(request: ProbeRequest, status: number) {
 
 /**
  * One echoed field replaced with a schema-valid value that is not the one asked
- * for. A `command` observation carries stdout, stderr, and an exit code instead
- * of a status and headers, so the kind case is a whole different message rather
- * than a relabelled one.
+ * for. Each non-api member of the observation union carries its own fields in
+ * place of a status and headers, so the kind case is a whole different message
+ * rather than a relabelled one, and it is built per substituted kind.
+ *
+ * `probeRequest` and `observation` above stay api-shaped. This is the api arm
+ * of the suite, and `probe-conformance.ts`'s own rule is that a subject
+ * presenting for one mechanism is not asked to fake another's scenarios; the
+ * kind that varies here is the kind the port answers with, which is exactly
+ * what `echoMismatch` reads.
  */
 function breakEcho(
 	observed: ReturnType<typeof observation>,
 	field: ProbeKnobs['breakEcho'],
+	substituted: 'cli' | 'mcp' = 'cli',
 ): unknown {
 	if (field === undefined) return observed
 	if (field === 'kind') {
-		return {
+		const correlation = {
 			probeId: observed.probeId,
 			interfaceId: observed.interfaceId,
 			operationId: observed.operationId,
-			kind: 'cli' as const,
-			exitCode: 0,
-			stdout: { kind: 'text' as const, value: 'ok' },
-			stderr: { kind: 'absent' as const },
-			artifacts: {},
 		}
+		return substituted === 'mcp'
+			? {
+					...correlation,
+					kind: 'mcp' as const,
+					isError: false,
+					result: { kind: 'json' as const, value: { ok: true } },
+				}
+			: {
+					...correlation,
+					kind: 'cli' as const,
+					exitCode: 0,
+					stdout: { kind: 'text' as const, value: 'ok' },
+					stderr: { kind: 'absent' as const },
+					artifacts: {},
+				}
 	}
 	return { ...observed, [field]: `not-the-${field}` }
 }
@@ -622,7 +641,11 @@ function syntheticProbeSubject(knobs: ProbeKnobs = {}): ProbeSubject {
 						throw forbidden('this subject refuses everything')
 					}
 					hops++
-					return breakEcho(observation(request, 200), knobs.breakEcho)
+					return breakEcho(
+						observation(request, 200),
+						knobs.breakEcho,
+						knobs.breakEchoKind,
+					)
 				}
 				if (operation === 'faulting') {
 					hops++
@@ -794,14 +817,22 @@ describe('the probe suite: AD-35 default-deny and the four caps (fixtures 59-72)
 		},
 	)
 
-	it('says which field failed to come back, not merely that something did', async () => {
-		const report = await runEnvironmentProbePortConformance(
-			syntheticProbeSubject({ breakEcho: 'kind' }),
-		)
-		const outcome = report.outcomes.find(
-			(each) => each.id === 'probe/allow-authorized-loopback',
-		)
-		expect(outcome?.detail).toMatch(/observed kind "cli"/)
-		expect(outcome?.detail).toMatch(/does not correlate/)
-	})
+	it.each(['cli', 'mcp'] as const)(
+		'says which field failed to come back, for a substituted %s observation',
+		async (substituted) => {
+			const report = await runEnvironmentProbePortConformance(
+				syntheticProbeSubject({
+					breakEcho: 'kind',
+					breakEchoKind: substituted,
+				}),
+			)
+			const outcome = report.outcomes.find(
+				(each) => each.id === 'probe/allow-authorized-loopback',
+			)
+			expect(outcome?.detail).toMatch(
+				new RegExp(`observed kind "${substituted}"`),
+			)
+			expect(outcome?.detail).toMatch(/does not correlate/)
+		},
+	)
 })

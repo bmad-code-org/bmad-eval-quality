@@ -145,7 +145,7 @@ This contract declares checks that need no probes, so the probe list is empty:
 echo '[]' > /tmp/eval-quality-run/probes.json
 ```
 
-The plan derives six legs: two sensitivity-witness legs per operation, plus two control-observe legs. Write one observation per leg. Each one echoes its leg id back as `probeId`, and `kind` says which sort of interface it came from, `api` or `cli`:
+The plan derives six legs: two sensitivity-witness legs per operation, plus two control-observe legs. Write one observation per leg. Each one echoes its leg id back as `probeId`, and `kind` says which sort of interface it came from: `api`, `cli`, or `mcp`:
 
 ```bash
 cat > /tmp/eval-quality-run/observations.json <<'JSON'

@@ -8,10 +8,12 @@ import {
 	preflightFromObservations,
 	runPreflight,
 } from '../../src/application/preflight.ts'
+import { compile } from '../../src/core/compile/compile.ts'
 import { StructuralFailure } from '../../src/core/failure-codes.ts'
 import * as planModule from '../../src/core/preflight/plan.ts'
 import { planPreflight } from '../../src/core/preflight/plan.ts'
 import * as reduceModule from '../../src/core/preflight/reduce.ts'
+import { EvalContract } from '../../src/core/schemas/eval-contract.ts'
 import { RuntimeFault } from '../../src/core/schemas/faults.ts'
 import { PreflightVerdict } from '../../src/core/schemas/preflight-verdict.ts'
 import { Probe as ProbeSchema } from '../../src/core/schemas/probe.ts'
@@ -24,7 +26,8 @@ import {
 	satisfiedPatches,
 	seededProbe,
 } from '../preflight/fixtures/observations.ts'
-import { echoPort } from '../preflight/fixtures/probe-port.ts'
+import { echoPort, mcpEchoPort } from '../preflight/fixtures/probe-port.ts'
+import { mcpContract } from '../schemas/fixtures/mcp-contract.ts'
 
 const run = (overrides: Partial<Parameters<typeof runPreflight>[0]> = {}) =>
 	runPreflight({
@@ -329,5 +332,23 @@ describe('preflightFromObservations: the verdict and the stream', () => {
 			expect(check.note).toContain('read-b')
 			expect(check.note).toContain('no observation')
 		}
+	})
+
+	// The same driver over the third kind, still against a hand-written fake
+	// (AD-30): the real stdio adapter is exercised in `tests/adapters/`, and
+	// what this asserts is that `runPreflight` needs no kind-specific arm.
+	it('case 113: drives an mcp contract through a tool-call port and returns a schema-valid verdict', async () => {
+		const port = mcpEchoPort()
+		const verdict = await runPreflight({
+			contract: compile(EvalContract.parse(mcpContract), { strict: true }),
+			probes: [],
+			runId: 'mcp-run-0001',
+			port: { probe: port },
+			signal: new AbortController().signal,
+		})
+		expect(PreflightVerdict.safeParse(verdict).success).toBe(true)
+		expect(port.mock.calls.length).toBeGreaterThan(0)
+		for (const [request] of port.mock.calls) expect(request.kind).toBe('mcp')
+		expect(verdict.passed).toBe(true)
 	})
 })

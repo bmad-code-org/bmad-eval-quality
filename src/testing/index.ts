@@ -30,6 +30,8 @@ export type {
 export type {
 	CommandTargetAuthorization,
 	CommandTargetPolicy,
+	McpTargetAuthorization,
+	McpTargetPolicy,
 	ProbeTargetAuthorization,
 	ProbeTargetPolicy,
 } from '../core/schemas/probe-policy.ts'

@@ -92,6 +92,7 @@ flowchart TD
 |   48 | epic11-story4 | Every tool call on a server shares one address, so the tool's own published name becomes the address. |
 |   49 | epic11-story5 | The gate that refused tool servers opens, and the one list of what it admits is written down once. |
 |   50 | epic11-story6 | A seeded tool bug becomes findable: the signature names the tool, and the record keeps what the call sent. |
+|   51 | epic11-story13 | A real tool server answers a probe: the port gets a shape for a tool result, and an adapter that goes and gets one. |
 
 Adding a step: follow `learning-path-template.md`.
 
@@ -3978,3 +3979,45 @@ And a filter like "the call where `query` was set" had nothing to read, because 
 - A sentence that counts a shape's own keys goes stale in silence. Nothing checks a numeral for sense, so every one near a shape's name gets counted against the declaration.
 
 **Watch out:** an `mcp` probe qualifies now, and it still cannot be run. Nothing can answer a tool call, so a pre-flight against a real server ends in `port-contract-violation`; the observation message and the adapter are the next step.
+
+## Step 51 (epic11-story13): the answer comes back
+
+**In plain terms:** the tool could ask a tool server a question two steps ago, and had nowhere to put the answer.
+There was no shape for "what a tool said back", and nothing that knew how to go and ask.
+This step adds both: a slot for the answer, and a small program that starts a real tool server, asks it, and writes down what came back.
+A check against a live tool server now runs from end to end.
+
+**What:** `ProbeObservation` gains a tool-call member carrying the error flag and the structured result, `createMcpAdapter` runs a real tool call over the stdio transport, and an `McpTargetPolicy` says which servers and which tools are allowed.
+
+**Why:** without this the whole tool-server path stopped one step from useful.
+A pre-flight planned the calls, sent them, and any answer at all was reported as the port breaking its contract, because no answer of that kind could exist.
+The three pure functions that read an answer each tested for one kind and treated everything else as the other, so a tool result would have been read as a command's exit code.
+
+**Read in this order:**
+
+1. `src/core/schemas/port-messages.ts`: `McpProbeObservation`, the third member: the error flag and the structured result.
+2. `src/core/schemas/probe-policy.ts`: `McpTargetAuthorization`, the mapping from a logical interface name to a server the adapter may launch and the tools it may ask for.
+3. `src/adapters/mcp-target-policy.ts`: the pure yes-or-no over that mapping, which runs before anything starts.
+4. `src/adapters/mcp-adapter.ts`: the adapter itself, and its four rules at the top.
+5. `src/core/preflight/projection.ts`: the projection, which gains a sixth field for the error flag.
+6. `src/core/preflight/witness-evidence.ts`: where an observation becomes sealed evidence, and where the flag becomes a 0 or a 1.
+7. `src/core/preflight/reduce.ts`: `anomalyOf`, which now reads a tool error the way it reads a 4xx.
+8. `tests/adapters/mcp-adapter.test.ts`: a real server started, asked, and torn down, once per case.
+
+**Story:** `_bmad-output/implementation-artifacts/11-13-the-port-messages-and-the-mcp-adapter.md`
+
+### Reference
+
+**Rules:**
+
+- A tool result carrying an error is an answer, and so is a JSON-RPC error. Only a denial, a cap, an abort, or a failure to open the session throws.
+- The adapter speaks the stdio transport and starts the server as a child process. A server behind a URL is the caller's own adapter, because this package opens no socket.
+- The policy is checked before a process starts. A server the mapping omits and a tool the list omits are both `forbidden-target`.
+- One session per call: start, handshake, ask, tear down. A session kept between calls would carry state into the very comparison that measures state.
+- `maxElapsedMs` covers the whole thing, launch through teardown. `maxOutputBytes` applies to the server's stdout and to its stderr on their own.
+- Server logging on stderr is read and capped. An unread pipe wedges the server once the operating system's buffer fills.
+- The error flag lands on `response-status` as 1 or 0, so an oracle can assert a tool reported no error. That projection is written down beside the field, because a 0 there and an HTTP status of zero look identical.
+- The projection keeps the flag as its own field. Without it, two calls that returned the same body look identical when one failed and one did not, which reads as a fixture reset that never happened.
+- `buildPlanIndex` sorts operations by asking the interface its kind first. Each branch then reads its own operation type with no hand-written cast, and a fifth kind fails the typecheck there.
+
+**Watch out:** the conformance suite still has two arms, for HTTP and for commands. The six shared assertions run against this adapter from its own test file; the third arm, and the count that goes with it, land in the next story.

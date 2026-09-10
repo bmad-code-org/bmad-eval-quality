@@ -7,7 +7,6 @@ import type {
 	Operation,
 	PermittedInterface,
 } from '../schemas/interface.ts'
-import { operationsOf } from '../schemas/interface.ts'
 import type { InteractionStep } from '../schemas/plan.ts'
 import {
 	type EvidenceChannelName,
@@ -210,43 +209,67 @@ export function buildPlanIndex(
 	const mcpOperations = new Map<string, McpOperation>()
 	const kinds = new Map<string, InterfaceKindName>()
 	const duplicateOperationIds = new Set<string>()
-	for (const iface of permittedInterfaces) {
-		for (const operation of operationsOf(iface)) {
-			if (
-				kinds.has(operation.operationId) ||
-				duplicateOperationIds.has(operation.operationId)
-			) {
-				if (duplicateIds === 'throw') {
-					throw new TypeError(
-						`duplicate operation id across permitted interfaces: ${operation.operationId}`,
-					)
-				}
-				operations.delete(operation.operationId)
-				commandOperations.delete(operation.operationId)
-				mcpOperations.delete(operation.operationId)
-				kinds.delete(operation.operationId)
-				duplicateOperationIds.add(operation.operationId)
-			} else {
-				kinds.set(operation.operationId, iface.kind)
-				// Sorted into the three maps by the interface's own kind rather
-				// than by probing the operation for a field: `web` carries the
-				// api operation shape and belongs in the same map as `api`,
-				// since every consumer of a resolved operation reads the same
-				// declared fields off both. `cli` and `mcp` each declare their
-				// own shape, so each takes its own map and the cast below is a
-				// narrowing the discriminated union already guarantees.
-				if (iface.kind === 'cli') {
-					commandOperations.set(
-						operation.operationId,
-						operation as CommandOperation,
-					)
-				} else if (iface.kind === 'mcp') {
-					mcpOperations.set(operation.operationId, operation as McpOperation)
-				} else {
-					operations.set(operation.operationId, operation as Operation)
-				}
+	/**
+	 * Records one operation id against the kind that declared it and answers
+	 * whether the caller may store the operation. An id two permitted
+	 * interfaces both declare is removed from every map instead of being
+	 * resolved by array order, so `operationOf` and its two siblings answer
+	 * `undefined` for it. One closure rather than one copy per arm, because
+	 * the bookkeeping is the same for all three kinds and only the destination
+	 * map differs.
+	 */
+	const claim = (operationId: string, kind: InterfaceKindName): boolean => {
+		if (kinds.has(operationId) || duplicateOperationIds.has(operationId)) {
+			if (duplicateIds === 'throw') {
+				throw new TypeError(
+					`duplicate operation id across permitted interfaces: ${operationId}`,
+				)
 			}
+			operations.delete(operationId)
+			commandOperations.delete(operationId)
+			mcpOperations.delete(operationId)
+			kinds.delete(operationId)
+			duplicateOperationIds.add(operationId)
+			return false
 		}
+		kinds.set(operationId, kind)
+		return true
+	}
+	for (const iface of permittedInterfaces) {
+		// Narrowed on the interface's own kind before its operations are read.
+		// Each branch of `PermittedInterface` declares its own `operations`
+		// element type, so an arm that narrowed first iterates
+		// `CommandOperation`, `McpOperation` or `Operation` and stores it with
+		// no cast. Widening through `operationsOf` first discards that
+		// correlation, and no later kind test recovers it. `web` shares the api
+		// map: it carries the api operation shape and every consumer of a
+		// resolved operation reads the same declared fields off both.
+		switch (iface.kind) {
+			case 'cli':
+				for (const operation of iface.operations) {
+					if (claim(operation.operationId, iface.kind))
+						commandOperations.set(operation.operationId, operation)
+				}
+				continue
+			case 'mcp':
+				for (const operation of iface.operations) {
+					if (claim(operation.operationId, iface.kind))
+						mcpOperations.set(operation.operationId, operation)
+				}
+				continue
+			case 'api':
+			case 'web':
+				for (const operation of iface.operations) {
+					if (claim(operation.operationId, iface.kind))
+						operations.set(operation.operationId, operation)
+				}
+				continue
+		}
+		// Reachable only once a fifth kind joins the union, and then `iface` is
+		// no longer `never` and this line fails the typecheck. That is the
+		// forcing function the three hand-narrowed casts did not have: a kind
+		// with no arm above was sorted into the api map by exhaustion.
+		iface satisfies never
 	}
 	return {
 		stepOf: (stepId) => steps.get(stepId),
