@@ -399,6 +399,61 @@ infers `{ id?: undefined }` and the array literal stops being assignable to `rea
 `EvalContract.parse` at the array site is the shipped answer to that and it is what
 `corpus.ts` already does for `mcpContract`; the comment there now names both.
 
+**Decision 20: a hand-authored chain has two sources of truth and nothing compares them, which is
+what cost this story five review rounds.**
+Every committed chain in this repository authors two things that describe the same system and are
+never checked against each other. One is the contract's `testData.setup` and `testData.cleanup`, prose
+that says what state the fixture is in before a run and what the reset restores. The other is the set
+of authored observations: each pre-flight leg's reply and each of the run record's observations. No
+stage reads `testData`, which `docs/how-to/evaluate-workflow-behavior.md:31` states plainly, and no
+gate compares the replies against it. A chain can therefore be green, byte-checked, and describe a
+sequence of calls no real service against that fixture could have produced.
+
+That is not a hypothetical. It happened four times in this story, and each occurrence was created by
+the fix for the one before it:
+
+1. The seeded fault was a write that reached no store, and the read-back answered 200 carrying a
+   record. A store that was never written cannot hold one.
+2. The fault became a dropped field, which needs a fixture record the write itself filed, so the setup
+   was widened to declare one. `create-thing` permitted only `name` on its body, so no caller could
+   file that record under the identifier the manifestation witness names, and the contract pinned a
+   value only the service can choose.
+3. `id` became a permitted body key, which let the write witnesses file the seeded record, which made
+   the control mutation reach what the control-observe legs read. Both write witnesses then filed that
+   record, and the read witness was planned after them, so it answered for a store two earlier legs
+   had already changed.
+4. Under the seeded fault the truthful answer on that read leg is the placeholder, and a clean leg
+   carrying it fires the manifestation relation and fails `seeded-faults-scoped`. The honest value and
+   the value that keeps the build green were different values.
+
+Every one of the four was green: `npm run validate` passed, `check:worked-example` matched byte for
+byte, and the chain's own value-level test agreed with the builder, because the builder is what the
+test reads. What caught all four was a person tracing eleven legs against the declared fixture and the
+declared fault by hand.
+
+The shape of the missing check is worth stating even though this story does not build it. A leg's
+reply is a claim about the store's state at that point in the plan's own order, and the order is
+computable: `planPreflight` emits sensitivity legs in operation declaration order, then the control
+block, then one leg per seeded defect. A checker that read `testData.setup` as an initial state and
+replayed each authored reply against it would decide the class. It cannot read prose, so the setup
+would have to become a declaration rather than a sentence, which is a schema change and a different
+story.
+
+A second, narrower finding sits beside it and is closed here rather than recorded as owed. Story 11.11
+shipped a `state-reset: satisfied` in committed bytes that no authored value could falsify:
+`selectControl` gives the control-mutate leg the first create witness's inputs, that witness filed
+under an identifier the service minted, so the mutation never touched the record the two
+control-observe legs read; and the builder answered both of those legs from one shared reply, so their
+projections were equal by construction. Both halves are fixed. The write witnesses supply the seeded
+identifier, so the mutation overwrites the record the observe legs read and the reset is what puts it
+back, and the builder answers the two observe legs from two entries. Perturbing the second entry now
+fails the build with "the projections of ... differ", which is the falsification a committed check
+owes its reader.
+
+Downstream consequence: any later story authoring a chain inherits both problems. The narrow one is
+avoided by asking, of every committed check, what authored value would make it fail; the general one
+is not avoidable by discipline, which is the argument for deciding whether the checker is in scope.
+
 ## Review Findings
 
 Four peer-review rounds against a sibling Claude Code session in this worktree, twenty-three findings,
