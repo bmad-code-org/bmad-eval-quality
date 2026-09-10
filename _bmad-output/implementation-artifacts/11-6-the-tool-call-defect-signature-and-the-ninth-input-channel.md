@@ -2,8 +2,8 @@
 title: 'The tool-call defect signature and the ninth input channel'
 type: 'feature'
 created: '2026-09-09'
-status: 'in-progress'
-review_loop_iteration: 0
+status: 'done'
+review_loop_iteration: 2
 route: 'dispatch'
 context:
   - _bmad-output/implementation-artifacts/epic-11-context.md
