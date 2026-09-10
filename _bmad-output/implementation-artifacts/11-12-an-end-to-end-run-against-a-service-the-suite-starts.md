@@ -2,8 +2,9 @@
 title: 'An end-to-end run against a service the suite starts'
 type: 'feature'
 created: '2026-09-09'
-status: 'draft'
+status: 'done'
 review_loop_iteration: 0
+route: 'dispatch'
 context:
   - _bmad-output/implementation-artifacts/epic-11-context.md
   - _bmad-output/implementation-artifacts/11-8-the-published-surface-the-corpus-and-the-census.md
@@ -101,16 +102,16 @@ context:
 
 **Execution:**
 
-- [ ] `tests/adapters/notes-service.ts` -- the fixture server for the worked contract's three operations, in two builds selected by a flag: clean, and one where `PATCH /notes/{id}` validates, returns the updated note with `ok: true` and status 200, and skips the write. Seed at least `n-1` and `n-2` with different titles so the `get-note` sensitivity relation resolves on observed bytes. Bind `127.0.0.1:0` and report the port, following `startFixtureServer`'s socket-set teardown.
-- [ ] `tests/adapters/notes-service.ts` -- the run's `ProbeTargetPolicy` and target map: one authorization keyed on the contract's `notes-api` logical id, minted from the reported port, with `addresses: ['127.0.0.1']`, `methods`/`safeMethods` covering exactly `GET` and `PATCH`, and caps sized to the Notes payloads, since `MAX_RESPONSE_BYTES` is 256 and a notes list exceeds it. Carry `buildSubjectPolicy`'s denial entries through, so the deny-by-default half is exercised by the same object.
-- [ ] `tests/adapters/live-api-chain.test.ts` -- pre-flight: `runPreflight` over the clean build through `createProbeSubjectAdapter`, asserting `passed: true` and one observation per planned leg.
-- [ ] `tests/adapters/live-api-chain.test.ts` -- the two arms: replay the authored chain's interaction plan through the same port against the clean build and the mutated build, and map each `ApiProbeObservation` to an `Observation` per Decision 3, copying `observationId`, `sequence`, `provenance` and `principal` from the authored observation at the same position.
-- [ ] `tests/adapters/live-api-chain.test.ts` -- the score: assemble the sealed run record from the observed evidence and the authored dispositions and findings, run `ingest`, `score` and `emit`, and assert the verdict, the AD-40 witness match, and `strength` against the authored chain's.
-- [ ] `tests/adapters/live-api-chain.test.ts` -- both AD-30 families over the live record: score it twice and compare serialized bytes; score it with `observations` permuted and compare outcome states and verdict.
-- [ ] `tests/adapters/live-api-chain.test.ts` -- the denial case: one request naming an unauthorized target, asserting `forbidden-target` and zero hops.
-- [ ] `docs/index.md:79` -- replace the AI-feature State cell with Decision 7's cell.
-- [ ] `docs/how-to/evaluate-ai-feature-behavior.md:225-233` -- replace the "Where this stands" opening with Decision 7's block. `:234`, `:236-238` and `:240` are re-read and left as written.
-- [ ] `_bmad-output/project-knowledge/learning-path-step-by-step.md` -- one step following `learning-path-template.md`, numbered next after the last Epic 11 step present, plus its table row.
+- [x] `tests/adapters/notes-service.ts` -- the fixture server for the worked contract's three operations, in two builds selected by a flag: clean, and one where `PATCH /notes/{id}` validates, returns the updated note with `ok: true` and status 200, and skips the write. Seed at least `n-1` and `n-2` with different titles so the `get-note` sensitivity relation resolves on observed bytes. Bind `127.0.0.1:0` and report the port, following `startFixtureServer`'s socket-set teardown.
+- [x] `tests/adapters/notes-service.ts` -- the run's `ProbeTargetPolicy` and target map: one authorization keyed on the contract's `notes-api` logical id, minted from the reported port, with `addresses: ['127.0.0.1']`, `methods`/`safeMethods` covering exactly `GET` and `PATCH`, and caps sized to the Notes payloads, since `MAX_RESPONSE_BYTES` is 256 and a notes list exceeds it. Carry `buildSubjectPolicy`'s denial entries through, so the deny-by-default half is exercised by the same object.
+- [x] `tests/adapters/live-api-chain.test.ts` -- pre-flight: `runPreflight` over the clean build through `createProbeSubjectAdapter`, asserting `passed: true` and one observation per planned leg.
+- [x] `tests/adapters/live-api-chain.test.ts` -- the two arms: replay the authored chain's interaction plan through the same port against the clean build and the mutated build, and map each `ApiProbeObservation` to an `Observation` per Decision 3, copying `observationId`, `sequence`, `provenance` and `principal` from the authored observation at the same position.
+- [x] `tests/adapters/live-api-chain.test.ts` -- the score: assemble the sealed run record from the observed evidence and the authored dispositions and findings, run `ingest`, `score` and `emit`, and assert the verdict, the AD-40 witness match, and `strength` against the authored chain's.
+- [x] `tests/adapters/live-api-chain.test.ts` -- both AD-30 families over the live record: score it twice and compare serialized bytes; score it with `observations` permuted and compare outcome states and verdict.
+- [x] `tests/adapters/live-api-chain.test.ts` -- the denial case: one request naming an unauthorized target, asserting `forbidden-target` and zero hops.
+- [x] `docs/index.md` -- replace the AI-feature State cell with Decision 7's cell.
+- [x] `docs/how-to/evaluate-ai-feature-behavior.md` -- replace the "Where this stands" opening with Decision 7's block. `:234`, `:236-238` and `:240` are re-read and left as written.
+- [x] `_bmad-output/project-knowledge/learning-path-step-by-step.md` -- one step following `learning-path-template.md`, numbered next after the last Epic 11 step present, plus its table row.
 
 **Acceptance Criteria:**
 
@@ -173,6 +174,285 @@ Four things in that cell are load-bearing. "Loopback fixture" says the service i
 > What is proven downstream of the evidence is unchanged and is proven twice over now. The chain's selections, check resolutions, witness match, outcome states, verdict, and strength vector are the return values of the shipped functions, called for real, and `npm run check:worked-example` rebuilds the authored chain on every validate. The empty-collection rule is exercised in that chain and lands a `FAIL`.
 
 Four things those sentences deliberately refuse. They never say a production service has been evaluated, because none has. They never say the package runs anything, because it does not. They never let "runs end to end" stand for a real evaluator, because the evaluator is the one part of the chain this run does not exercise. And they carry no count: the block stops at `:233`, so `:234`'s corpus total and `api`-declaring count are Story 11.8's line under `check:doc-counts`, and `:236-238` and `:240` are untouched, which leaves the held-out probe corpus, the second experiment round and the one-trial limit standing in every place that records them.
+
+**Decision 8: pre-flight over the contract's own probe returns `passed: false`, and the frozen
+matrix's `passed: true` is stale.**
+The frozen I/O matrix's first row and the first acceptance criterion both expect `runPreflight` over
+the compiled contract and its probe to return `passed: true`. It returns false, and the cause is in
+the probe rather than in the fixture. `D-001` declares `manifestationWitness: null`
+(`worked-example-target.ts`'s `AUTHORED_PROBE.defects[0]`), `planPreflight` emits a
+`seeded-fault-fired` check with a null witness for exactly that case, and `reducePreflight` answers
+it `failed` with "the defect declares no manifestation witness, so it cannot be observed to fire".
+No fixture can satisfy that check, because nothing about the running service is what it reads. The
+published guide already says so at `docs/how-to/evaluate-ai-feature-behavior.md`: "A defect declaring
+`manifestationWitness: null` records a **failed** `seeded-fault-fired` check rather than an
+exemption, because a fault nobody can observe firing is a vacuous probe." So the frozen block
+contradicts a sentence this repository had already published, and no documentation edit is owed for
+this: the page is right and the frozen expectation was wrong.
+
+Recorded rather than worked around, and the run asserts both halves so the divergence is visible in
+the suite. With no probe handed in, the plan is six legs and seven checks and the verdict passes:
+two sensitivity legs each for `get-note` and `patch-note`, two minted control-observe legs, and
+`list-notes` exempt because AD-10 exempts an operation declaring no required key in any channel.
+With the probe handed in, the same seven check outcomes hold and one more check fails, and the
+assertion names `D-001` in the failure note. Dropping the probe silently would have reported a green
+pre-flight over evidence the run never asked for, which is the shape this epic exists to close.
+Downstream consequence: a story wanting a green pre-flight over this chain has to give `D-001` a
+manifestation witness first, which is a change to `scripts/worked-example-target.ts` and outside
+this story's boundaries.
+
+**Decision 9: the fixture answers `GET /notes` with an empty list in both builds, and that is a
+property of the fixture rather than a second seeded defect.**
+The authored `obs-002` carries `notes: []` while `testData.setup` declares "Seed exactly three notes
+with ids n-1, n-2, n-3". The worked example's own `README.md` records that as deliberate and says
+why: nothing at scoring time compares an observation against a declared cardinality, so a response
+short of its declared count surfaces through whatever oracle touches the collection, which here is
+O-004's abstain. That abstain is the single line of `verdictBasis` the FAIL rests on.
+
+So the live fixture reproduces it, in both builds, and the source says so where the route is
+implemented. It is not D-001 and not selected by the build flag, because tying it to the flag would
+claim the silent write caused it. Verified by mutation: making the route answer with the seeded
+three reds the collection assertion, the verdict basis, the outcome table, and the byte equality,
+which is the evidence that the short response is load-bearing rather than incidental.
+
+**Decision 10: the four caller-side artifacts the score runs under are reconstructed in the test,
+and three of the four are pinned by digest.**
+`WorkedExampleChain` publishes the contract, the brief, the probe, the record, the artifact, the
+witness match and the selections. It publishes neither the isolation manifest, the evaluator
+configuration, the scoring policy, nor the pre-flight verdict, and all four are module-private in a
+file this story's Boundaries put behind "Ask First". So the test authors all four, which is also
+what the task list already asked for when it said to assemble the record.
+
+Three are pinned against values the committed chain carries, so a reconstruction that drifts reds
+this file rather than scoring the live run under something else. `digestArtifact(POLICY)` is
+asserted equal to `artifact.scoringVersionInputs.scoringPolicyDigest`.
+`digestArtifact(configuration)` is asserted equal to the record's own
+`evaluatorConfigurationDigest`, and `ingest` recomputes the same digest, so a drift lands as an
+`evaluator-configuration-digest-mismatch` condition and moves the verdict as well as reddening the
+assertion. The corpus digest and the fixture digest are read off `scoringVersionInputs` rather than
+retyped, so no placeholder literal appears in this diff at all. The manifest is the fourth and is
+unpinned by construction: `ingest` reads its declared violation, its three observed-versus-allowed
+arrays, its forbidden-input accounting and its three agreement fields, and none of those is a
+digest, so there is nothing to pin it against and the source says which four fields carry the work.
+
+**Decision 11: the live run reproduces the committed evidence artifact byte for byte, so the
+equality acceptance is one assertion rather than a list.**
+The acceptance asked for the verdict, the witness match and the strength vector. All three hold, and
+so does more: `serializeArtifact` over the artifact the live run emits equals `serializeArtifact`
+over the committed one. That is possible because the emitted artifact carries no observed byte. It
+carries outcome states, check resolutions, selected observation identifiers, quoted evidence copied
+from the findings, the strength vector, the trial counts, the coverage gaps and four digests, and
+every one of those is either derived from the observations or supplied by the call site. So the two
+records differ in their response headers and agree on everything the artifact reads.
+
+The named assertions stay beside the byte comparison rather than being folded into it. A byte
+comparison that reds says one thing; the verdict, the witness identifiers, the strength vector and
+the outcome table say which. Both were confirmed non-vacuous by mutation, and the byte assertion is
+the one that catches a divergence nobody predicted.
+
+One block inside that comparison is circular, and the peer review is what found it.
+`scoringVersionInputs` carries five values, and four of them are handed to `emit` from the committed
+artifact or from the shared contract: the corpus digest, the fixture digest, the evaluator
+configuration digest and the contract schema version. Only `scoringPolicyDigest` is computed from an
+artifact this file authors, and that one is separately pinned. So that block of the comparison can
+only agree, and the claim is narrowed to match: everything the emitted artifact derives from the
+observations is covered by the byte assertion, and the scoring-version block is covered by the two
+digest pins beside it.
+
+Two things reach the artifact from nowhere at all, and both get their own assertion for that reason.
+The fifth leg's observation is one: its step matches no observation, O-005 scores `unreached` with an
+empty selection, and nothing about `obs-005` reaches the artifact, so the byte equality says nothing
+about it. The other is the second write's timestamp, which lives only in that observation.
+
+**Decision 11a: the verdict and the catch are asserted apart.**
+`verdictBasis` is one line, "oracle O-004 resolved abstained at or above the severity floor", so the
+FAIL rests entirely on the empty collection. The seeded defect lands as O-001 `caught`, agreeing with
+its disposition and selecting `obs-003` and `obs-004`, and it contributes nothing to the verdict. A
+reader meeting a FAIL beside a seeded defect would take the one for the other, so the run asserts
+both and the published prose claims only what the cell can carry: a real probe observes a seeded
+defect over HTTP and the chain scores it.
+
+**Decision 12: the clean arm resolves AD-21's Invalid rung, and that is what it asserts.**
+The frozen matrix wanted the clean arm as the control that says the seed took. Scored with the same
+authored dispositions and findings, it does more than that. The read-back agrees with the write, so
+O-001's check resolves `true` against a `violated` disposition, F-001 quotes `"title":"Original"`
+and no observation in the clean record carries it, and the detection claim is unwitnessed. AD-21
+lands all three on the Invalid rung and no contract verdict is reached at all.
+
+So the clean arm is asserted at the ladder rather than at a verdict: `ladder.verdict` is null and
+`ladder.basis` names the infrastructure error, the unwitnessed detection claim and the unwitnessed
+quotation, in that order. The witness match over the same record resolves `unwitnessed-claim` with
+`F-001` named and no witnessing observation. That is a stronger control than "the title differs",
+because it says the authored findings are false of the clean build in three independent ways.
+
+**Decision 13: the record carries no clock, and two constructions are what keep it that way.**
+Decision 4 argued the chain is deterministic because the shipped stages read none. Two clocks sit
+upstream of them and both were found by running rather than by reading. The fixture stamps
+`updatedAt` from a write counter, so the first write carries `10:05` and the second `10:06`, which
+is what the authored record's two writes carry. And Node stamps a `Date` header from the system
+clock on every response, which lands in `responseHeaders` and makes the record a different value on
+every run; `sendDate` is a property of the response rather than of the server, so the flag is set
+per answer and the test asserts no observation carries a `date` header.
+
+Both stamps are pinned by assertion, and the reason is worth stating because the determinism
+families read as though they cover it. They do not. Both families re-score one record that was
+already captured, so neither re-runs the HTTP and neither can see run-to-run variance in observed
+bytes. What covers that is the two literal timestamps, `10:05` on the write the seeded arm's third
+leg made and `10:06` on the write its fifth leg made, plus the `date`-header assertion. The peer
+review found the second stamp unpinned and a clock behind it invisible to the whole suite.
+
+**Decision 14: every server is registered before its caller can touch it, and teardown checks its
+own work.**
+A test that starts something needs cleanup on its failing path, because that is the run that leaks.
+`startService` pushes the server into the teardown set before returning it, so a failure between the
+start and the first assertion still leaves it in the set. `afterAll` closes every one and then
+probes each port for a refused connection, so the check is that the close happened rather than that
+it was requested. `startNotesService` also calls `server.unref()`: a listening server holds the
+event loop open, and unreferenced it cannot outlive the run that started it.
+
+Verified rather than assumed. Removing the close call reds the teardown with `port <n> still
+answers`. A deliberately failed run leaves no listener behind, checked with
+`lsof -nP -iTCP -sTCP:LISTEN` after the run rather than only after a passing one, on three separate
+failing paths: a reddened assertion, a throw inside the file-level `beforeAll` after two servers were
+already up, and a throw inside the denial block's own `beforeAll`. Six servers are started per run:
+one for each of the two pre-flight measurements, one per arm, one shared by the two denial cases, and
+one for the malformed-body assertion. The teardown holds six distinct ports and probes all six.
+
+`startNotesService` rejects on a failed `listen`, and the listener that does it is removed once the
+socket is bound. Leaving it attached would swallow a mid-run server error, since a reject on a
+settled promise is a no-op, and the failure would then surface as whatever assertion happened to
+notice with the cause gone. Unlistened, an error event takes the worker down and says why. Measured
+on both sides: pointing `listen` at an address this host does not hold fails in under half a second
+naming `EADDRNOTAVAIL`, where before it hung to the thirty-second `beforeAll` timeout with no cause
+at all.
+
+**Decision 15: `check:doc-counts` is not in the tree at this story's base, and nothing here needs
+it.**
+The Verification list names `npm run check:doc-counts` as the gate proving this story transcribes no
+count. Story 11.8 ships that script and has not merged, so `package.json` carries no such entry and
+the command does not run. What it would gate is unchanged all the same. The corpus-total line in the
+guide sits inside the section this story rewrites and is re-read and left byte for byte, the block
+above it carries no count, and the AI-feature State cell carries none either. `npm run validate`
+runs every gate that does exist and exits 0.
+
+**Decision 16: the value assertions were proved non-vacuous by mutation, one mutation per claim.**
+A green assertion that can be deleted without anything reddening pins nothing, so each claim was
+checked against a deliberate break rather than argued. Making the collection route answer with the
+seeded three reds four assertions. Making the seeded build persist its write reds eight, including
+the read-back title, the verdict, the witness match, the strength vector, the byte equality and both
+determinism families. Minting `provenance` in the mapping instead of copying it reds six, which is
+the mechanical form of Decision 3's argument that AD-40's exercised denominator reads that label.
+Removing the teardown's close call reds the teardown probe.
+
+One structural change came out of that pass. The emitted artifact was originally built once in
+`beforeAll`, and the second mutation made `emitScored` throw there, which skipped all twenty-one
+tests instead of reddening the eight that read it. It is emitted per assertion now, so a divergence
+reaching the Invalid rung names the assertions it broke.
+
+**Decision 17: the peer review's eleven findings, and what each one turned out to be.**
+Every one is closed in this pass. The two high findings were both a value nothing asserted.
+
+*The fifth leg's response was compared to nothing.* Two independent mutations left the suite green:
+renaming the `n-2` seed, and dropping the unknown-key echo so the update applied only `title`. That
+left F-003's whole claim, "PATCH accepts an unknown field 'colour' and echoes it back", unwitnessed
+by a run whose point is witnessing. Closed with one assertion over `obs-005`, carrying the seed, the
+echoed key and the second write's stamp. All three mutations now red.
+
+*The write clock was pinned for the first write only.* A `stampFor` returning the authored `10:05`
+for the first write and a reading of the system clock for every later one left the suite green, which
+made Decision 13's "the record carries no clock" rest on one literal. Closed by the same `obs-005`
+assertion, and Decision 13 now says why the determinism families cannot cover this.
+
+*Three medium findings, each a claim outrunning its evidence.* The score runs under the committed
+chain's pre-flight verdict while the pre-flight the run performs returns `passed: false` and a
+different fixture digest, and the published guide did not say so; the guide block now names both
+authored links. `scoringVersionInputs` inside the byte equality is four-fifths circular, which
+Decision 11 now records. And `tagsViolateType`, the `malformed-body` catch and the 405 branch were
+all unreachable while their comment claimed B-004 was reproduced; the tags guard now has its own
+assertion outside the five legs, and the other two are labelled as guards.
+
+*Six low findings.* `startNotesService` could not reject, so a `listen` failure would have hung to
+the `beforeAll` timeout with no cause: it registers an `error` listener now. The fixture-digest
+assertion said only that the digest was not a placeholder of zeros; it now asserts the two pre-flight
+runs, over two different servers on two different ephemeral ports, produced one digest, which is
+what a digest describing a fixture does and a digest of a socket cannot. The permutation family
+asserted outcome states and the verdict where the whole artifact is in fact byte-identical under the
+reversal, so it asserts that too. The collection route now names the one place the fixture and the
+toy system's own spec disagree. And three prose hits were reworded: "A counter, never a clock", "by a
+second one", "assume it", each a rejected half carrying no fact of its own.
+
+The peer confirmed four things the run already had: the empty collection carries no assertion that
+rests on it, the hop counter's zero is proved by the allowed request through the same counter,
+teardown holds on three separate failing paths, and the reconstructed policy and configuration pins
+are real, with `evaluatorIdentity` drift reddening eight assertions.
+
+**Decision 18: the second review round, and the one assertion it found doing more than it was
+written to do.**
+The re-verify confirmed all eleven round-1 fixes by mutation, each reddening exactly the test it was
+written for and nothing else, and raised three findings, all low. Two are fixed above: the `error`
+listener is now removed once the socket is bound, so a mid-run server error stays loud, and
+Decision 14's server count is corrected from five to six.
+
+The third is a subsumption note rather than a defect, and it is kept deliberately. The O-001
+assertion is covered by the whole-outcome-table comparison in the next test, so deleting it reds
+nothing. Decision 11a is why it stays: `verdictBasis` is one line about O-004's abstain, and a reader
+meeting a FAIL beside a seeded defect will read the FAIL as the catch unless something says
+otherwise. An assertion whose job is to separate two things for a reader earns its place without
+carrying unique coverage.
+
+The finding worth recording for a later story is what the fixture-digest equality turned out to
+catch. It was written to say the digest describes a fixture rather than a socket. Made to fail
+deliberately, by having `GET /notes/{id}` echo the server's own local port into its body, it reds
+alone: the other twenty-three stay green, byte equality included, because an extra key in a read body
+moves no oracle. So it is the only assertion in the file that notices a socket-derived value reaching
+the observations at all, and a story adding a second live run inherits that as the shape worth
+copying.
+
+**Decision 19: CodeRabbit's two findings, one real defect and one duplication.**
+
+*The real one.* `JSON.parse` returns any JSON value, and the fixture's `PATCH` handler cast the
+result to an object and handed it straight to `tagsViolateType`, whose `in` test throws a
+`TypeError` on a scalar and on `null`. Inside an `async` handler nothing awaits, that is a rejected
+promise and a request that never gets an answer, so the caller waits out its elapsed cap for a bug
+in the fixture. The body channel carries any JSON value, so it is reachable rather than theoretical.
+Closed with an object test ahead of the type check, answering `400 malformed-body` for a scalar, a
+null and an array, plus three assertions. Verified by deleting the guard: the scalar and the null
+each hang for the full five-second cap and log the `TypeError`, and the array quietly answers 200.
+
+*The one turned down, with its reason.* The second finding asks this file for cancellation during a
+pending response, the elapsed cap, a connection closed after a partial body, and prompt socket
+cleanup in each. Every one of those is already asserted against this exact adapter.
+`tests/adapters/probe-subject.test.ts` runs the published nineteen-outcome suite over
+`createProbeSubjectAdapter` on a live loopback server, and that suite carries `prompt-abort` from
+`SHARED_ASSERTION_IDS` (`src/testing/conformance.ts`), driven against a route that never answers,
+plus `probe/cap-elapsed`, `probe/cap-response-bytes` and `probe/cap-redirects`
+(`src/testing/probe-conformance.ts`). The partial-body close has its own branch and its own comment
+in `nodeHttpMechanism`. Writing those cases here would ship a second copy of AD-37's own suite
+against the same subject, which is the duplication the conformance suite exists to prevent. This
+story's Boundaries also put a second HTTP client out of scope, and the transport is not what the run
+swaps: the swapped input is the response bytes.
+
+**Decision 20: one branch in the AD-37 subject may be unreachable, and this story ships no assertion
+for it.**
+Closing CodeRabbit's second finding turned up a third thing neither review had. `nodeHttpMechanism`
+(`tests/adapters/probe-subject.ts`) rejects on the response's `close` event when
+`response.complete` is false, and its comment says why: "a server that sends headers and part of a
+body and then destroys the socket emits neither `end` nor `error`, so without this the promise never
+settles and only the elapsed cap rescues it." No fixture route in that file drives it.
+
+An attempt was made to give it one, and it is recorded because the attempt failed rather than
+because it succeeded. Two routes were written, one destroying the socket mid-body and one closing it
+gracefully mid-body with a declared `content-length`. Under both, deleting the `close` branch
+entirely left the new assertion green, which means the rejection came from the mechanism's own
+`error` handler rather than from the branch under test. On this Node version a premature close
+reaches the client as an error event first, so the branch reads as unreachable rather than untested.
+
+The assertion was reverted rather than shipped. A green assertion certifying a boundary nothing
+reaches is the exact defect this epic has paid for twice, and shipping one to close a review comment
+would be the worst available outcome. `tests/adapters/probe-subject.ts` is another story's file, the
+question is whether that branch can fire at all rather than whether it is covered, and answering it
+means establishing what Node guarantees for a premature close. That is handed to the epic
+coordinator by message, with this decision as the record of what was tried.
 
 ## Design Notes
 

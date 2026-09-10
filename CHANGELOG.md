@@ -117,6 +117,20 @@ body.
   sweeping an `mcp` interface into the api-shaped comparison. Two operations sharing a method and a
   path template across an `api` interface and a `web` interface still collide.
 
+### Changed
+
+- **The AI-feature shape is proven end to end against a service the test suite starts.** The suite
+  stands up the toy Notes API the worked contract describes on loopback, in two builds, seeds the
+  silent-write defect into one of them, probes both over real HTTP through the port implementation
+  the published conformance suite already certifies, and scores the run record the seeded arm's
+  observations produce. The evidence artifact that run emits equals the committed one byte for byte,
+  so the worked example's authored observations are now backed by a measurement. `docs/index.md` and
+  `docs/how-to/evaluate-ai-feature-behavior.md` say that, and they carry what it does not prove: no
+  third-party AI feature has been evaluated, the package still executes nothing under evaluation, and
+  two links in the chain stay authored, the five calls the run replays and the pre-flight verdict it
+  scores under. Nothing under `src/` changed, no published surface moved, and no artifact
+  `schemaVersion` moved.
+
 ### Fixed
 
 - The `responseStatus` description in the sealed run record no longer counts how many interface kinds

@@ -94,6 +94,7 @@ flowchart TD
 |   50 | epic11-story6 | A seeded tool bug becomes findable: the signature names the tool, and the record keeps what the call sent. |
 |   51 | epic11-story13 | A real tool server answers a probe: the port gets a shape for a tool result, and an adapter that goes and gets one. |
 |   52 | epic11-story7 | The suite can certify a tool-server adapter, the thoroughness checks grade the kind, and every question in both is proved able to fail. |
+|   53 | epic11-story12 | The worked example's evidence was typed by hand. A real service now answers the same five questions and the score comes out identical. |
 
 Adding a step: follow `learning-path-template.md`.
 
@@ -4064,3 +4065,43 @@ One of the three built an address with a piece missing, so it compared real evid
 - The grading file asserts the whole table, then breaks the contract two ways: one oracle removed at a time, and one declaration removed at a time. The first moves the "did anyone check this" column and the second moves the "does this rule apply" column, and nothing that only moves one of them is evidence about the other.
 
 **Watch out:** the command arm can refuse an executable, a subcommand path, and an unmapped interface, and it cannot refuse an environment key. That gap is written up at the top of `_bmad-output/implementation-artifacts/deferred-work.md` with what closing it costs.
+
+## Step 53 (epic11-story12): the one link nobody had ever run
+
+**In plain terms:** this project ships one full worked example: a written-down set of rules, the evidence a run produced, and the score that comes out the far end.
+The evidence half was typed by hand.
+Someone wrote down what a small web service would have answered, and every step after that point is real code doing real work on made-up answers.
+This step builds that small web service for real, starts it, asks it the same questions in the same order, and checks the score against the one already committed.
+
+**What:** `tests/adapters/notes-service.ts` is the toy notes service on a local socket, in two builds, one with the seeded bug and one without. `tests/adapters/live-api-chain.test.ts` asks both of them the five questions the committed evidence records, turns the answers into a run record, and scores it.
+
+**Why:** a worked example whose evidence is invented is a story that agrees with itself.
+It can be flawless inside and still describe a service no real service would behave like, and nobody would know.
+The run came out equal: the score the live service produces is byte for byte the score committed in the repository, so the hand-written answers were a true description of a real service all along.
+It also shows the bug over a real connection. The update replies "saved" with the new title and status 200, and the read that follows returns the old title.
+
+**Read in this order:**
+
+1. `tests/adapters/notes-service.ts`: the service. Three routes, two builds, a write counter where a clock would go.
+2. `tests/adapters/live-api-chain.test.ts`: the run. The pre-flight, the two builds, the mapping into a run record, the score, and the two repeatability checks.
+3. `tests/adapters/probe-subject.ts`: the piece that actually speaks HTTP. It was already here and already passes the published suite for adapters.
+4. `scripts/worked-example-target.ts`: the committed chain the run is measured against.
+
+**Story:** `_bmad-output/implementation-artifacts/11-12-an-end-to-end-run-against-a-service-the-suite-starts.md`
+
+### Reference
+
+**Rules:**
+
+- Nothing new ships. The whole step lives under `tests/` and `docs/`, and the package still contains no code that opens a network connection.
+- The service binds `127.0.0.1` on a port the operating system picks, so two can run side by side without colliding. Six run per file.
+- The two builds differ in one line: one stores what an update reported, the other does not. That difference is the seeded bug.
+- `GET /notes` answers with an empty list in both builds, because the committed evidence says it did. An empty list is what makes the "every record is complete" rule report that it had nothing to go on, and the whole verdict rests on that.
+- The seeded bug is a separate result from the verdict. It is recorded as caught, on the update and the read that followed it, and it moves the verdict not at all.
+- Timestamps come from a write counter and the `Date` header is switched off, so the record a run produces is the same value every time. Both stamps are pinned by assertion, because neither repeatability check re-runs the HTTP and so neither would see a clock here.
+- The mapping from what the port observed to what the record stores is written in the test. That step belongs to the caller, and a library function doing it would be the package sealing a run.
+- Each observation keeps the committed record's own label for who chose to make that call, because no evaluator runs here and a label invented by the test would be a value with nothing behind it.
+- The pre-flight fails one check on purpose: the seeded bug declares no way to observe itself firing, so the check asking "did it fire" has nothing to read. Every other check passes and the test says which one failed and why.
+- Every server started is closed when the file finishes, on the failing path as much as the passing one, and the teardown then checks each port refuses a connection.
+
+**Watch out:** the committed evidence is deliberately defective in three places and the live run reproduces all three, because reproducing them is the point. The collection comes back short, one oracle's disposition narrates a rejection nothing observed, and three thoroughness rules are unsatisfied. `spike-worked-example/README.md` says which and why.
