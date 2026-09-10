@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest'
 import { RELATION_VOCABULARY } from '../../src/core/schemas/expression.ts'
-import type { PermittedInterface } from '../../src/core/schemas/interface.ts'
 import type { Direction } from '../../src/core/schemas/oracle.ts'
 import { renderEvidenceReferences } from '../../src/core/seal/derived-reference.ts'
 import { renderDirectionText } from '../../src/core/seal/direction-prose.ts'
@@ -14,6 +13,7 @@ import {
 	gateDReconstruction,
 	populatedInteractionPlan,
 	populatedPermittedInterfaces,
+	withReversedOperations,
 } from './fixtures.ts'
 
 const gateCIndex = buildPlanIndex(
@@ -430,12 +430,7 @@ describe('AC 5: determinism by permutation, at the renderDirectionText level', (
 		const baseline = renderDirectionText(direction, gateCIndex)
 		const permutedIndex = buildPlanIndex(
 			[...gateCInteractionPlan].reverse(),
-			gateCPermittedInterfaces.map(
-				(iface): PermittedInterface =>
-					iface.kind === 'cli'
-						? { ...iface, operations: [...iface.operations].reverse() }
-						: { ...iface, operations: [...iface.operations].reverse() },
-			),
+			gateCPermittedInterfaces.map(withReversedOperations),
 		)
 		expect(renderDirectionText(direction, permutedIndex)).toBe(baseline)
 	})

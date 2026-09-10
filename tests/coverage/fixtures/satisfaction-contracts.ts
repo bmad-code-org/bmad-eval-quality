@@ -24,13 +24,11 @@ const emptyChannel = {
 }
 
 export const satisfiedContract = {
-	// 3, the version this contract's shape actually satisfies: `cardinality` on
-	// every interaction step took `EvalContract` to 2 and required
-	// `testData.principals`/`testData.resources` took it to 3. This literal is
+	// 5, the version this contract's shape actually satisfies. This literal is
 	// the seed `corpus.ts` spreads all nineteen corpus contracts from, so the
 	// stamp here is the stamp on every contract the tarball publishes under
 	// `corpus/dev/`.
-	schemaVersion: 4,
+	schemaVersion: 5,
 	contractId: 'satisfied-declarations',
 	parentDigest: null,
 	revisionCount: 0,

@@ -11,10 +11,12 @@
 import {
 	checkInputsAgainstShape,
 	isApiWitnessInputs,
+	isMcpWitnessInputs,
 } from '../compile/sensitivity-witness.ts'
 import {
 	declaresNoRequiredKeys,
 	isCommandOperation,
+	isMcpOperation,
 } from '../declared-inputs.ts'
 import { referenceSetKeysOf } from '../evaluate/evidence-resolution.ts'
 import type { ReferenceSetKeys } from '../evaluate/resolution.ts'
@@ -28,6 +30,7 @@ import type { Probe } from '../schemas/probe.ts'
 import type {
 	ApiWitnessInputs,
 	ManifestationWitness,
+	McpWitnessInputs,
 	SensitivityWitness,
 	WitnessInputs,
 } from '../schemas/sensitivity-witness.ts'
@@ -108,6 +111,27 @@ const requestOf = (
 		probeId: legId,
 		interfaceId,
 		operationId: operation.operationId,
+	}
+	const operationPath = `EvalContract.permittedInterfaces[logicalId=${interfaceId}].operations[operationId=${operation.operationId}]`
+	if (isMcpOperation(operation)) {
+		// The port carries no tool-call request message, so there is nothing to
+		// build here yet. `planPreflight` refuses the kind before any leg is
+		// planned, which makes this the same assert-again that gate makes,
+		// spelled where the operation union forces a third arm.
+		throw new StructuralFailure(
+			'unsupported-interface-kind',
+			// The kind field, matching both shipped throwers of this code, so a
+			// reader grepping by artifact path gets one shape rather than two.
+			`EvalContract.permittedInterfaces[logicalId=${interfaceId}].kind`,
+			`"mcp" is not supported; "api" and "cli" are (AD-10)`,
+		)
+	}
+	if (isMcpWitnessInputs(inputs)) {
+		throw new StructuralFailure(
+			'undeclared-mandatory-input',
+			operationPath,
+			`leg "${legId}" supplies a tool call's arguments to an operation that is not a tool call (AD-10, AD-19)`,
+		)
 	}
 	if (isCommandOperation(operation)) {
 		if (isApiWitnessInputs(inputs)) {
@@ -219,6 +243,8 @@ const EMPTY_INPUTS: ApiWitnessInputs = {
 	body: { kind: 'absent' },
 }
 
+const EMPTY_MCP_INPUTS: McpWitnessInputs = { arguments: {} }
+
 /**
  * The inputs a control leg sends. A witness supplies them when the operation has
  * one; an operation AD-10 exempts has no required key to fill, so empty inputs
@@ -237,7 +263,9 @@ const controlInputs = (operation: AnyOperation): WitnessInputs | null => {
 	// legal request for it. Which empty leg depends on the kind, because the
 	// port sends what the operation's own channels name.
 	if (!declaresNoRequiredKeys(operation)) return null
-	return isCommandOperation(operation) ? EMPTY_COMMAND_INPUTS : EMPTY_INPUTS
+	if (isCommandOperation(operation)) return EMPTY_COMMAND_INPUTS
+	if (isMcpOperation(operation)) return EMPTY_MCP_INPUTS
+	return EMPTY_INPUTS
 }
 
 const targetOf = (

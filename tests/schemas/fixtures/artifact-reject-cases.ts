@@ -13,6 +13,7 @@ import {
 	contractScoringEvidenceArtifact,
 } from './artifact-fixtures.ts'
 import { commandContract } from './command-contract.ts'
+import { mcpContract } from './mcp-contract.ts'
 
 export type ArtifactRejectCase = {
 	readonly id: string
@@ -123,6 +124,187 @@ export const ARTIFACT_REJECT_CASES: readonly ArtifactRejectCase[] = [
 		instancePath:
 			'/permittedInterfaces/0/operations/0/sensitivityWitness/legs/0/inputs',
 		errorParams: { additionalProperty: 'cookie' },
+	},
+	// ---- eval-contract, the tool-call interface branch -----------------------
+	// Seeded on the mcp contract for the reason the command block above gives:
+	// a union branch nothing exercises has no fixture to flip when its keywords
+	// are deleted.
+	{
+		id: 'mcp-operation-tool-name-missing',
+		artifact: 'eval-contract',
+		constraint: 'a tool call declares a tool name',
+		seed: mcpContract,
+		mutate: (contract) => {
+			delete contract.permittedInterfaces[0].operations[0].toolName
+		},
+		issuePath: ['permittedInterfaces', 0, 'operations', 0, 'toolName'],
+		issueCode: 'invalid_type',
+		keyword: 'required',
+		instancePath: '/permittedInterfaces/0/operations/0',
+		errorParams: { missingProperty: 'toolName' },
+	},
+	{
+		id: 'mcp-operation-http-shaped',
+		artifact: 'eval-contract',
+		constraint: 'a tool call declares no method and no path template',
+		seed: mcpContract,
+		mutate: (contract) => {
+			contract.permittedInterfaces[0].operations[0].method = 'POST'
+		},
+		issuePath: ['permittedInterfaces', 0, 'operations', 0],
+		issueCode: 'unrecognized_keys',
+		keyword: 'additionalProperties',
+		instancePath: '/permittedInterfaces/0/operations/0',
+		errorParams: { additionalProperty: 'method' },
+	},
+	{
+		id: 'mcp-tool-name-names-an-address',
+		artifact: 'eval-contract',
+		constraint: 'a tool name carries no slash, colon, or dot (AD-35)',
+		seed: mcpContract,
+		mutate: (contract) => {
+			contract.permittedInterfaces[0].operations[0].toolName =
+				'https://host/tools'
+		},
+		issuePath: ['permittedInterfaces', 0, 'operations', 0, 'toolName'],
+		issueCode: 'invalid_format',
+		keyword: 'pattern',
+		instancePath: '/permittedInterfaces/0/operations/0/toolName',
+	},
+	{
+		id: 'mcp-request-shape-second-channel',
+		artifact: 'eval-contract',
+		constraint: 'a tool call declares no request channel beyond arguments',
+		seed: mcpContract,
+		mutate: (contract) => {
+			contract.permittedInterfaces[0].operations[0].requestShape.body = {
+				requiredKeys: [],
+				permittedKeys: [],
+				types: {},
+			}
+		},
+		issuePath: ['permittedInterfaces', 0, 'operations', 0, 'requestShape'],
+		issueCode: 'unrecognized_keys',
+		keyword: 'additionalProperties',
+		instancePath: '/permittedInterfaces/0/operations/0/requestShape',
+		errorParams: { additionalProperty: 'body' },
+	},
+	{
+		id: 'mcp-descriptor-channel-second-tag',
+		artifact: 'eval-contract',
+		constraint:
+			'a tool call nominates the structured result and no other channel',
+		seed: mcpContract,
+		mutate: (contract) => {
+			contract.permittedInterfaces[0].operations[0].descriptorChannel = {
+				kind: 'text-content',
+			}
+		},
+		issuePath: [
+			'permittedInterfaces',
+			0,
+			'operations',
+			0,
+			'descriptorChannel',
+			'kind',
+		],
+		issueCode: 'invalid_union',
+		keyword: 'const',
+		instancePath: '/permittedInterfaces/0/operations/0/descriptorChannel/kind',
+	},
+	{
+		// The reverse direction of the mcp-operation-http-shaped case above, so
+		// neither shape can be smuggled onto the other branch and each
+		// direction has a fixture the sweep can attribute.
+		id: 'api-operation-declares-a-tool-name',
+		artifact: 'eval-contract',
+		constraint: 'an api operation declares no tool name',
+		mutate: (contract) => {
+			contract.permittedInterfaces[0].operations[0].toolName = 'search_notes'
+		},
+		issuePath: ['permittedInterfaces', 0, 'operations', 0],
+		issueCode: 'unrecognized_keys',
+		keyword: 'additionalProperties',
+		instancePath: '/permittedInterfaces/0/operations/0',
+		errorParams: { additionalProperty: 'toolName' },
+	},
+	{
+		id: 'mcp-binding-channel-missing',
+		artifact: 'eval-contract',
+		constraint: 'a tool-call input binding declares its one channel',
+		seed: mcpContract,
+		mutate: (contract) => {
+			delete contract.interactionPlan[0].inputBinding.arguments
+		},
+		issuePath: ['interactionPlan', 0, 'inputBinding'],
+		issueCode: 'invalid_union',
+		keyword: 'required',
+		instancePath: '/interactionPlan/0/inputBinding',
+		errorParams: { missingProperty: 'arguments' },
+	},
+	{
+		id: 'mcp-binding-second-channel',
+		artifact: 'eval-contract',
+		constraint: 'a tool-call input binding declares no second channel',
+		seed: mcpContract,
+		mutate: (contract) => {
+			contract.interactionPlan[0].inputBinding.body = null
+		},
+		issuePath: ['interactionPlan', 0, 'inputBinding'],
+		issueCode: 'invalid_union',
+		keyword: 'additionalProperties',
+		instancePath: '/interactionPlan/0/inputBinding',
+		errorParams: { additionalProperty: 'body' },
+	},
+	{
+		id: 'mcp-witness-inputs-channel-missing',
+		artifact: 'eval-contract',
+		constraint: 'a tool-call witness leg supplies its one channel',
+		seed: mcpContract,
+		mutate: (contract) => {
+			delete contract.permittedInterfaces[0].operations[0].sensitivityWitness
+				.legs[0].inputs.arguments
+		},
+		issuePath: [
+			'permittedInterfaces',
+			0,
+			'operations',
+			0,
+			'sensitivityWitness',
+			'legs',
+			0,
+			'inputs',
+		],
+		issueCode: 'invalid_union',
+		keyword: 'required',
+		instancePath:
+			'/permittedInterfaces/0/operations/0/sensitivityWitness/legs/0/inputs',
+		errorParams: { missingProperty: 'arguments' },
+	},
+	{
+		id: 'mcp-witness-inputs-second-channel',
+		artifact: 'eval-contract',
+		constraint: 'a tool-call witness leg supplies no second channel',
+		seed: mcpContract,
+		mutate: (contract) => {
+			contract.permittedInterfaces[0].operations[0].sensitivityWitness.legs[0].inputs.body =
+				{}
+		},
+		issuePath: [
+			'permittedInterfaces',
+			0,
+			'operations',
+			0,
+			'sensitivityWitness',
+			'legs',
+			0,
+			'inputs',
+		],
+		issueCode: 'invalid_union',
+		keyword: 'additionalProperties',
+		instancePath:
+			'/permittedInterfaces/0/operations/0/sensitivityWitness/legs/0/inputs',
+		errorParams: { additionalProperty: 'body' },
 	},
 	{
 		id: 'witness-inputs-channel-missing',

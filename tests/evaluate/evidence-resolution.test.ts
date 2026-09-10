@@ -6,6 +6,7 @@ import {
 	makeResolveOperand,
 	walkTail,
 } from '../../src/core/evaluate/evidence-resolution.ts'
+import { absence, existence } from '../../src/core/evaluate/operators.ts'
 import { ABSENT } from '../../src/core/evaluate/resolved-value.ts'
 import { EvalContract } from '../../src/core/schemas/eval-contract.ts'
 import type { JsonValue } from '../../src/core/schemas/primitives.ts'
@@ -263,6 +264,42 @@ describe('makeResolveOperand', () => {
 		expect(
 			resolve({ pointer: '/interactions/step/call-inputs/body' }, ABSENT, PATH),
 		).toEqual({ b: 'b1' })
+	})
+
+	// The ninth channel is the only one that tells `channelEntryOf` and
+	// `channelEntryOrAbsent` apart: `ObservedCallInputs` declares the other
+	// eight as required-and-nullable, so `Object.hasOwn` is true for all of
+	// them and both functions answer `null`. A record carrying no key at all is
+	// the case where `null` would read as present under AD-26 and invert every
+	// oracle over the channel, which is what the artifact arm's own guard
+	// exists to prevent for a file the run did not write.
+	it('fixture 17b: a channel the record has no key for resolves ABSENT rather than null', () => {
+		const step = observation({
+			callInputs: {
+				path: null,
+				query: null,
+				header: null,
+				body: null,
+				argument: null,
+				option: null,
+				environment: null,
+				stdin: null,
+			},
+		})
+		const resolve = makeResolveOperand({ step }, {})
+		const resolved = resolve(
+			{ pointer: '/interactions/step/call-inputs/arguments' },
+			ABSENT,
+			PATH,
+		)
+		expect(resolved).toBe(ABSENT)
+		expect(existence(resolved, PATH)).toBe(false)
+		expect(absence(resolved, PATH)).toBe(true)
+		// The declared eight keep answering `null`, so this is the ninth
+		// channel's own case and not a change to the other eight.
+		expect(
+			resolve({ pointer: '/interactions/step/call-inputs/body' }, ABSENT, PATH),
+		).toBe(null)
 	})
 
 	it('fixture 17: call-inputs selects the right transport channel; a null channel resolves ABSENT on a non-empty tail and null on an empty one', () => {

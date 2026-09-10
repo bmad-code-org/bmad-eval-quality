@@ -5,7 +5,7 @@
 // families, and the citation triad that makes non-detection reachable.
 
 import { describe, expect, it } from 'vitest'
-import { isCommandOperation } from '../../src/core/declared-inputs.ts'
+import { isApiOperation } from '../../src/core/declared-inputs.ts'
 import type { ApiDefectSignature } from '../../src/core/schemas/defect-signature.ts'
 import { RuntimeFault } from '../../src/core/schemas/faults.ts'
 import type { PermittedInterface } from '../../src/core/schemas/interface.ts'
@@ -427,7 +427,7 @@ describe('the selector follows the shipped binding filter', () => {
 
 	it('fails closed when the declared type is indeterminate', () => {
 		const declared = INTERFACES[0]!.operations[0]!
-		if (isCommandOperation(declared)) throw new Error('fixture is api-shaped')
+		if (!isApiOperation(declared)) throw new Error('fixture is api-shaped')
 		const inventory: PermittedInterface[] = [
 			{
 				logicalId: 'notes-api',

@@ -26,6 +26,28 @@ export const gateCPermittedInterfaces: readonly PermittedInterface[] = z
 	.array(PermittedInterface)
 	.parse(gateCContract.permittedInterfaces)
 
+/**
+ * One interface with its operation list reversed, for the permutation tests
+ * that assert a rendering does not depend on declaration order.
+ *
+ * One arm per branch of the interface union rather than one spread: TypeScript
+ * gives a spread of a union member a union of array types whose element shapes
+ * do not unify, so the branches have to be written out even though each arm's
+ * body is the same expression.
+ */
+export const withReversedOperations = (
+	iface: PermittedInterface,
+): PermittedInterface => {
+	switch (iface.kind) {
+		case 'cli':
+			return { ...iface, operations: [...iface.operations].reverse() }
+		case 'mcp':
+			return { ...iface, operations: [...iface.operations].reverse() }
+		default:
+			return { ...iface, operations: [...iface.operations].reverse() }
+	}
+}
+
 export const populatedInteractionPlan: readonly InteractionStep[] = z
 	.array(InteractionStep)
 	.parse(populatedContract.interactionPlan)

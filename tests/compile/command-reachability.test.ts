@@ -89,6 +89,21 @@ describe('a command operation whose descriptor describes standard output', () =>
 		).toEqual({ reachable: true })
 	})
 
+	// Tail-less as well as tailed. The channel test used to sit behind the tail
+	// test, so a bare pointer at a channel the operation does not accept was
+	// admitted on all nine channels, compiled clean, and then resolved absent
+	// on every run with no diagnostic.
+	it('rejects a tail-less call-inputs pointer on a channel of another kind', () => {
+		const result = evaluatePointerReachability(
+			'/interactions/select/call-inputs/query',
+			index,
+		)
+		expect(result.reachable).toBe(false)
+		expect(result.reachable === false && result.reason).toContain(
+			'a channel operation "select-fragments" does not accept input on',
+		)
+	})
+
 	it('rejects a call-inputs pointer on a channel of the other kind', () => {
 		const result = evaluatePointerReachability(
 			'/interactions/select/call-inputs/query/prompt',

@@ -71,10 +71,15 @@ export const ProbeBindingChannel = z
 	})
 
 /**
- * Every input channel of either kind, spelled exactly as `ObservedCallInputs`
- * spells them. The two shapes agree on channel names, on the eight-key strict
- * form, and on flatness, so the selector filters recorded call inputs with no
- * shape to bridge.
+ * The transport and command input channels, spelled exactly as
+ * `ObservedCallInputs` spells them. The two shapes agree on channel names, on
+ * the eight-key strict form, and on flatness, so the selector filters recorded
+ * call inputs with no shape to bridge.
+ *
+ * Eight of the nine the pointer grammar admits. A tool call's `arguments`
+ * channel lands on both shapes together, under the sealed run record's own
+ * breaking bump, since a selector that could name a channel no observation
+ * records would filter against nothing.
  *
  * One object over both kinds rather than a union, on `ObservedCallInputs`'s own
  * reasoning: `null` already means "binds nothing here", so a selector that
@@ -149,10 +154,16 @@ const signatureCommon = {
 }
 
 /**
- * A signature against an interface that speaks HTTP. `web` and `mcp` share the
+ * A signature declaring a method and a path template. `web` and `mcp` share the
  * shape and are still rejected by the qualification gate, which is what keeps
  * `signature-interface-kind-unsupported` fireable on the kinds whose probe
  * semantics are undeclared.
+ *
+ * `mcp` sits here for the gate's sake alone. A tool call declares a published
+ * tool name as its transport identity and neither of these two fields, so a
+ * signature declaring `mcp` renders an identity no operation can match and
+ * resolves against nothing; the branch that gives it a tool identity ships with
+ * the selector channel it needs.
  *
  * One branch over the three kinds rather than three identical branches. Three
  * would publish three byte-identical subschemas, and AD-13's mutation sweep

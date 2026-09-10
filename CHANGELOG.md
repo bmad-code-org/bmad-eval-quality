@@ -10,6 +10,32 @@ body.
 
 ## [Unreleased]
 
+### Changed
+
+- **BREAKING** The eval contract's `schemaVersion` is 5. The `mcp` branch of `permittedInterfaces`
+  carries its own operation shape: a published tool name as the whole transport identity, one
+  `arguments` request channel, and a descriptor channel tagged `structured-result` over the tool's
+  structured result. An `mcp` interface written against version 4, which declared a method and a
+  path template and four transport channels, no longer parses. `interactionPlan[].inputBinding` and
+  a sensitivity witness leg's `inputs` each gain a third arm over the same one channel. Contracts on
+  the `api`, `web`, and `cli` branches parse with no edit other than their stamp.
+- **BREAKING** The probe's `schemaVersion` is 4. A manifestation witness's `inputs` gains the same
+  third arm, so a witness leg against a tool call is expressible. The matching defect signature is a
+  separate shape this version does not carry, so a seeded defect against an MCP tool server is still
+  refused at qualification. Every version-3 probe parses with no edit, and no reader in this version
+  compares the probe's stamp against a constant.
+- A tool call's evidence is confined at compile time as well as at qualification. An oracle pointer
+  at `response-headers`, `exit-code`, or a stream on an `mcp` operation is
+  `unreachable-check-evidence`, and one at a written file is `unresolved-artifact-reference`: a tool
+  call carries its structured result on `response-body` and its error flag on `response-status` and
+  fills nothing else. A witness leg on one carries those two channels and `call-inputs`.
+- A transport identity is compared inside its own shape family: `api` and `web` share one because
+  they share an operation shape, and `cli` and `mcp` each have their own. A tool named `notes` and an
+  executable named `notes` are different things on different machines, so
+  `duplicate-operation-signature` no longer reports the pair, and `resolveHomeOperation` stops
+  sweeping an `mcp` interface into the api-shaped comparison. Two operations sharing a method and a
+  path template across an `api` interface and a `web` interface still collide.
+
 ### Fixed
 
 - The `responseStatus` description in the sealed run record no longer counts how many interface kinds

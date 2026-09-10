@@ -24,7 +24,7 @@ export const ApiWitnessInputs = z
 	.meta({
 		id: 'WitnessInputs',
 		description:
-			"One probe leg's supplied inputs, keyed by AD-19 transport channel, in the spelling the environment-probe port accepts. Shared by both witness kinds and by the fixture reset, so the export carries it once.",
+			"One probe leg's supplied inputs, keyed by AD-19 transport channel, in the spelling the environment-probe port accepts. The transport branch of the union every leg shape takes: a sensitivity leg, a manifestation witness, and the fixture reset.",
 	})
 
 export type ApiWitnessInputs = z.infer<typeof ApiWitnessInputs>
@@ -58,7 +58,22 @@ export const CommandWitnessInputs = z.strictObject({
 export type CommandWitnessInputs = z.infer<typeof CommandWitnessInputs>
 
 /**
- * Either spelling. A plain union rather than a discriminated one for the same
+ * The same, for a leg supplied to a tool call. One key, because a tool call
+ * carries an arguments object and nothing else, and a JSON object rather than a
+ * tagged value because an argument-less call supplies `{}` and has no absent
+ * spelling to tell apart from a JSON null.
+ */
+// Bare, with no `.meta({ id })`, on the reason the command branch above records:
+// two `$ref`'d definitions under one `anyOf` report `#/required` at the same
+// instance path and AD-13's mutation sweep cannot attribute the deletion.
+export const McpWitnessInputs = z.strictObject({
+	arguments: JsonObjectValue,
+})
+
+export type McpWitnessInputs = z.infer<typeof McpWitnessInputs>
+
+/**
+ * Any spelling. A plain union rather than a discriminated one for the same
  * reason `InputBinding` is: the leg names an operation and the kind of the
  * interface declaring it lives in another subtree, so no discriminator is
  * available to the schema and the agreement is a compile-time check.
@@ -72,9 +87,14 @@ export type CommandWitnessInputs = z.infer<typeof CommandWitnessInputs>
  * `ApiProbeRequest` and `CommandProbeRequest`, and `preflight/plan.ts` admits
  * `api` and `cli`, rejecting `web` and `mcp` under `unsupported-interface-kind`.
  * A leg shape narrower than the port it feeds leaves a kind the adapter can run
- * with no way to declare a leg for it.
+ * with no way to declare a leg for it, which is why the tool-call branch lands
+ * with the operation shape and ahead of the gate that admits the kind.
  */
-export const WitnessInputs = z.union([ApiWitnessInputs, CommandWitnessInputs])
+export const WitnessInputs = z.union([
+	ApiWitnessInputs,
+	CommandWitnessInputs,
+	McpWitnessInputs,
+])
 
 export type WitnessInputs = z.infer<typeof WitnessInputs>
 
@@ -108,9 +128,16 @@ export const COMMAND_WITNESS_CHANNELS = [
 	'stdin',
 ] as const
 
+// A tool call's one channel. AD-10's marker rule decides nothing here for the
+// reason it decides nothing for a command: a tool call carries its inputs the
+// same way whether or not it changes state. With one channel there is nothing
+// left for the rule to select, so both marker values admit it.
+export const MCP_WITNESS_CHANNELS = ['arguments'] as const
+
 export const WITNESS_CHANNELS = [
 	...API_WITNESS_CHANNELS,
 	...COMMAND_WITNESS_CHANNELS,
+	...MCP_WITNESS_CHANNELS,
 ] as const
 
 export const WitnessChannel = z.enum(WITNESS_CHANNELS)
@@ -163,7 +190,9 @@ export const ManifestationWitness = z.strictObject({
 	legId: Identifier,
 	interfaceId: Identifier,
 	operationId: Identifier,
-	inputs: WitnessInputs,
+	inputs: WitnessInputs.describe(
+		"The probe's `schemaVersion` 3 -> 4 BREAKING bump under AD-11, whose rule is that removing or retyping is breaking. The union gained a third leg shape, one key over a tool call's arguments, so a witness leg against a tool call is expressible. The matching defect signature is a separate shape and is not declarable in this version: `DefectSignature` still renders an `mcp` identity as a method and a path template. Every version-3 probe's own bytes still parse, since the widening adds a branch and narrows none.",
+	),
 	relation: Expression,
 })
 

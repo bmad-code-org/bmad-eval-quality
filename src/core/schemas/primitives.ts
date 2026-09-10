@@ -19,6 +19,21 @@ export const Identifier = z
 		'A kebab-case slug. Excludes "/" and "~" so an identifier can be embedded in an interaction-rooted pointer without escaping.',
 	)
 
+// A tool name is the ecosystem's own spelling rather than this repository's.
+// MCP servers publish `search_notes` and `searchNotes`, and `Identifier`'s
+// kebab charset would reject both, which would make a contract unable to name
+// the tool it evaluates. The charset admits letters, digits, underscore, and
+// hyphen and nothing else, so an address in any of its three spellings is a
+// parse error.
+export const TOOL_NAME_PATTERN = /^[A-Za-z0-9_-]+$/
+
+export const ToolName = z
+	.string()
+	.regex(TOOL_NAME_PATTERN)
+	.describe(
+		'The name the MCP server publishes for one tool, in the server\'s own spelling. AD-35: a logical identifier, never a URL, host, or port. The charset admits no "/", ":", or ".", so an address is unrepresentable rather than refused by a later check, and it excludes "~" so a tool name can be embedded in a pointer without escaping.',
+	)
+
 // All eight Consistency-Conventions prefixes are defined here even though this
 // artifact uses five: the Probe, Evidence Artifact, and finding shapes import
 // P-, D-, and F- rather than re-spelling the quantifier, and a second spelling

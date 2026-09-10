@@ -12,6 +12,7 @@ import {
 	descriptorArtifactOf,
 	descriptorChannelOf,
 	isCommandOperation,
+	isMcpOperation,
 	requestShapeOf,
 } from '../declared-inputs.ts'
 import { ARRAY_INDEX_PATTERN } from '../evaluate/evidence-resolution.ts'
@@ -296,9 +297,10 @@ export function checkExpressionEvidenceReachability(
  * What a leg carries is the operation's own described channel, its transport
  * inputs, and the channels its transport produces with no descriptor of their
  * own: the status and the headers off an interface that speaks HTTP, the exit
- * code off a command. `response-headers` stays legal deliberately, matching the
- * note on `projectObservation` that the projection does not carry headers and
- * the relation reads them raw.
+ * code off a command, the error flag alone off a tool call. `response-headers`
+ * stays legal for HTTP deliberately, matching the note on `projectObservation`
+ * that the projection does not carry headers and the relation reads them raw;
+ * a tool call has none to read.
  *
  * The artifact channel narrows once more. A leg carries the one artifact the
  * descriptor nominates, so a pointer at any other declared artifact is blank
@@ -313,7 +315,9 @@ export function checkExpressionLegChannel(
 	const describedArtifact = descriptorArtifactOf(operation)
 	const carried: readonly EvidenceChannelName[] = isCommandOperation(operation)
 		? [described, 'exit-code', 'call-inputs']
-		: [described, 'response-headers', 'response-status', 'call-inputs']
+		: isMcpOperation(operation)
+			? [described, 'response-status', 'call-inputs']
+			: [described, 'response-headers', 'response-status', 'call-inputs']
 	visitExpression(expression, '', false, (site) => {
 		if (site.pointer.startsWith('@')) return
 		const target = parseEvidenceTarget(site.pointer)
@@ -568,6 +572,21 @@ function evaluateReachabilityAgainstOperation(
 		)
 	}
 
+	// A tool call produces its structured result on the descriptor's channel and
+	// its error flag on `response-status`, and nothing else: no HTTP headers, no
+	// process exit code, no stream, and no written file. Placed ahead of the
+	// residue below, which answers reachable for three channels a tool call
+	// never fills.
+	if (
+		isMcpOperation(operation) &&
+		target.channel !== 'response-status' &&
+		target.channel !== 'call-inputs'
+	) {
+		return unreachable(
+			`addresses ${target.channel} on operation "${operation.operationId}", which is a tool call and carries its result on ${descriptorChannel} and its error flag on response-status alone`,
+		)
+	}
+
 	if (target.channel === 'stdout' || target.channel === 'stderr') {
 		// The stream this operation's descriptor does not describe carries no
 		// declared structure, so a non-empty tail proves the pointer
@@ -592,7 +611,6 @@ function evaluateReachabilityAgainstOperation(
 	}
 
 	if (target.channel === 'call-inputs') {
-		if (target.tail.length === 0) return reachable()
 		const { transportChannel } = target
 		if (transportChannel === null) {
 			// Unreachable: parseEvidenceTarget's own guarantee.
@@ -600,16 +618,22 @@ function evaluateReachabilityAgainstOperation(
 				'call-inputs evidence target carries no transport channel',
 			)
 		}
-		const firstToken = target.tail[0]
-		if (firstToken === undefined) {
-			throw new TypeError(
-				'evidence-target tail is non-empty but has no first token',
-			)
-		}
+		// The channel test runs ahead of the tail test, because a tail-less
+		// pointer at a channel the operation does not accept is unreachable
+		// too: the recorded call inputs carry no key for it, so the pointer
+		// resolves absent on every run and no run can change that. Asking about
+		// the tail first admitted every such pointer, on all nine channels.
 		const shape = requestShapeOf(operation, transportChannel)
 		if (shape === undefined) {
 			return unreachable(
 				`addresses call-inputs ${transportChannel}, a channel operation "${operation.operationId}" does not accept input on`,
+			)
+		}
+		if (target.tail.length === 0) return reachable()
+		const firstToken = target.tail[0]
+		if (firstToken === undefined) {
+			throw new TypeError(
+				'evidence-target tail is non-empty but has no first token',
 			)
 		}
 		const { requiredKeys, permittedKeys, types } = shape

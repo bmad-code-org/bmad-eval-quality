@@ -15,7 +15,7 @@ const emptyChannel = {
 }
 
 export const commandContract = {
-	schemaVersion: 4,
+	schemaVersion: 5,
 	contractId: 'fragment-selection',
 	parentDigest: null,
 	revisionCount: 0,

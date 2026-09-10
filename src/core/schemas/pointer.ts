@@ -63,14 +63,30 @@ export const COMMAND_CHANNELS = [
 export type CommandChannelName = (typeof COMMAND_CHANNELS)[number]
 
 /**
- * Every channel `call-inputs` may take as its next segment, both kinds
+ * The one channel a tool call accepts input on. Every MCP tool call carries an
+ * arguments object and nothing else, so the tuple has one member and the kind
+ * declares no dead channels the way the transport shape would have given it
+ * three.
+ *
+ * Its own name rather than a reuse of `argument`: a command's positional
+ * argument and a tool call's named arguments object are different shapes with
+ * different declaration rules, and one name for both would make an
+ * `undeclared-mandatory-input` message ambiguous about which it meant.
+ */
+export const MCP_CHANNELS = ['arguments'] as const
+
+export type McpChannelName = (typeof MCP_CHANNELS)[number]
+
+/**
+ * Every channel `call-inputs` may take as its next segment, all three kinds
  * together. A pointer is parsed with no contract in hand, so the grammar
- * admits all eight and the question of which four a given operation may use is
+ * admits all nine and the question of which a given operation may use is
  * answered by reachability, which has the operation.
  */
 export const INPUT_CHANNELS = [
 	...TRANSPORT_CHANNELS,
 	...COMMAND_CHANNELS,
+	...MCP_CHANNELS,
 ] as const
 
 export type InputChannelName = (typeof INPUT_CHANNELS)[number]
@@ -108,13 +124,14 @@ export const IDENTIFIER_ROOTED_CHANNEL =
 	'artifact' as const satisfies EvidenceChannelName
 
 /**
- * The response-side channels each kind produces, and neither produces the
- * other's. Declared here rather than rebuilt from a description, so a channel
- * added to the vocabulary has to be assigned to a side and a test can assert
- * the two partition the response side exactly.
+ * The response-side channels an interface that speaks HTTP produces and the
+ * ones a command produces, and neither produces the other's. A tool call fills
+ * a strict subset of the first. Declared here rather than rebuilt from a
+ * description, so a channel added to the vocabulary has to be assigned to a
+ * side and a test can assert the two partition the response side exactly.
  *
  * `call-inputs` belongs to neither: it carries what was sent rather than what
- * came back, and both kinds have it.
+ * came back, and every kind has it.
  */
 export const API_RESPONSE_CHANNELS = [
 	'response-body',
@@ -179,7 +196,7 @@ export const InteractionPointer = z
 	.string()
 	.regex(INTERACTION_POINTER_PATTERN)
 	.describe(
-		'AD-26 interaction-rooted pointer: "/interactions/{stepId}/" followed by one channel of the closed vocabulary. `call-inputs` takes one input channel as its next segment, one of the four transport channels or one of the four command channels; `artifact` takes the identifier of a file the operation declares it writes; `response-status` and `exit-code` take no tail. Syntax only: whether the step exists and whether the evidence is reachable are compile-time checks, not schema checks.',
+		'AD-26 interaction-rooted pointer: "/interactions/{stepId}/" followed by one channel of the closed vocabulary. `call-inputs` takes one input channel as its next segment, one of the four transport channels, one of the four command channels, or the `arguments` channel a tool call accepts; `artifact` takes the identifier of a file the operation declares it writes; `response-status` and `exit-code` take no tail. Syntax only: whether the step exists and whether the evidence is reachable are compile-time checks, not schema checks.',
 	)
 
 /**

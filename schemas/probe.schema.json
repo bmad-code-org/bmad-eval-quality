@@ -403,8 +403,27 @@
                               "stdin"
                             ],
                             "additionalProperties": false
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "arguments": {
+                                "type": "object",
+                                "propertyNames": {
+                                  "type": "string"
+                                },
+                                "additionalProperties": {
+                                  "$ref": "#/$defs/JsonValue"
+                                }
+                              }
+                            },
+                            "required": [
+                              "arguments"
+                            ],
+                            "additionalProperties": false
                           }
-                        ]
+                        ],
+                        "description": "The probe's `schemaVersion` 3 -> 4 BREAKING bump under AD-11, whose rule is that removing or retyping is breaking. The union gained a third leg shape, one key over a tool call's arguments, so a witness leg against a tool call is expressible. The matching defect signature is a separate shape and is not declarable in this version: `DefectSignature` still renders an `mcp` identity as a method and a path template. Every version-3 probe's own bytes still parse, since the widening adds a branch and narrows none."
                       },
                       "relation": {
                         "$ref": "#/$defs/Expression"
@@ -859,8 +878,27 @@
                               "stdin"
                             ],
                             "additionalProperties": false
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "arguments": {
+                                "type": "object",
+                                "propertyNames": {
+                                  "type": "string"
+                                },
+                                "additionalProperties": {
+                                  "$ref": "#/$defs/JsonValue"
+                                }
+                              }
+                            },
+                            "required": [
+                              "arguments"
+                            ],
+                            "additionalProperties": false
                           }
-                        ]
+                        ],
+                        "description": "The probe's `schemaVersion` 3 -> 4 BREAKING bump under AD-11, whose rule is that removing or retyping is breaking. The union gained a third leg shape, one key over a tool call's arguments, so a witness leg against a tool call is expressible. The matching defect signature is a separate shape and is not declarable in this version: `DefectSignature` still renders an `mcp` identity as a method and a path template. Every version-3 probe's own bytes still parse, since the widening adds a branch and narrows none."
                       },
                       "relation": {
                         "$ref": "#/$defs/Expression"
@@ -1141,7 +1179,7 @@
       "description": "A probe that is not a known-clean control. The one branch AD-40 gives a defect signature."
     }
   ],
-  "description": "One corpus probe. Succeeds the prior-art `h0-ground-truth` schema per AD-24, carrying its system identifier, implementation digest, `expectedClean` flag, seeded defects, and rationale, and adding AD-9's probe class and AD-9's per-probe artifact and commit digests. Divergences: `implementationSha` becomes `implementationDigest`, `taskId` does not survive because the probe pins what it describes by digest, and `expectedGate` does not survive because AD-40 makes detection a signature match rather than a verdict comparison and AD-7 keeps comparisons inside the dominance vector, so carrying an expected gate would invite a comparison the architecture forbids. Two constructions landed here together under one BREAKING `schemaVersion` bump: AD-9's per-class QUALIFICATION record, as a five-route tagged union required on every branch, and AD-40's machine-readable DEFECT SIGNATURE on the `expectedClean: false` branch, carrying the interface kind, the home operation as a method and a path template, the observable channel, and the discriminating condition. Both are required rather than optional, which is what makes the bump breaking under AD-11: every corpus written against version 1 fails to parse. Version 3 opened the signature to a second interface kind: it is a union on `interfaceKind`, where the `cli` branch declares a logical invocation in place of a method and a path template, and the selector's input binding carries the four command channels beside the four transport ones. What the schema still does not decide is stated rather than hidden. AD-9's \"an unqualified probe cannot enter a sealed set\" is a corpus-construction invariant enforced by the qualification gate in `core/score/qualification.ts`, not by this schema: all eight class-and-`expectedClean` pairings parse, a route incompatible with the pair parses, and a signature-less non-canary parses, each so the gate can return a reason code carrying an artifact path instead of an anonymous parse failure. The constraint ledger carries both gaps.",
+  "description": "One corpus probe. Succeeds the prior-art `h0-ground-truth` schema per AD-24, carrying its system identifier, implementation digest, `expectedClean` flag, seeded defects, and rationale, and adding AD-9's probe class and AD-9's per-probe artifact and commit digests. Divergences: `implementationSha` becomes `implementationDigest`, `taskId` does not survive because the probe pins what it describes by digest, and `expectedGate` does not survive because AD-40 makes detection a signature match rather than a verdict comparison and AD-7 keeps comparisons inside the dominance vector, so carrying an expected gate would invite a comparison the architecture forbids. Two constructions landed here together under one BREAKING `schemaVersion` bump: AD-9's per-class QUALIFICATION record, as a five-route tagged union required on every branch, and AD-40's machine-readable DEFECT SIGNATURE on the `expectedClean: false` branch, carrying the interface kind, the home operation as a method and a path template, the observable channel, and the discriminating condition. Both are required rather than optional, which is what makes the bump breaking under AD-11: every corpus written against version 1 fails to parse. Version 3 opened the signature to a second interface kind: it is a union on `interfaceKind`, where the `cli` branch declares a logical invocation in place of a method and a path template, and the selector's input binding carries the four command channels beside the four transport ones. Version 4 is a BREAKING bump on the witness side: a manifestation witness's `inputs` gained a third leg shape over a tool call's arguments, so a witness leg against a tool call is expressible. The signature half is a separate shape and this version does not carry it, so a seeded defect against an MCP tool server is still refused at qualification. Every version-3 probe's own bytes still parse. What the schema still does not decide is stated rather than hidden. AD-9's \"an unqualified probe cannot enter a sealed set\" is a corpus-construction invariant enforced by the qualification gate in `core/score/qualification.ts`, not by this schema: all eight class-and-`expectedClean` pairings parse, a route incompatible with the pair parses, and a signature-less non-canary parses, each so the gate can return a reason code carrying an artifact path instead of an anonymous parse failure. The constraint ledger carries both gaps.",
   "$defs": {
     "ArtifactReference": {
       "oneOf": [
@@ -1278,7 +1316,7 @@
         "body"
       ],
       "additionalProperties": false,
-      "description": "One probe leg's supplied inputs, keyed by AD-19 transport channel, in the spelling the environment-probe port accepts. Shared by both witness kinds and by the fixture reset, so the export carries it once."
+      "description": "One probe leg's supplied inputs, keyed by AD-19 transport channel, in the spelling the environment-probe port accepts. The transport branch of the union every leg shape takes: a sensitivity leg, a manifestation witness, and the fixture reset."
     },
     "JsonValue": {
       "description": "AD-36 value domain. Every number is a finite IEEE 754 double-precision value, and every integer lies in the safe-integer range; a larger integer, and any value needing exact decimal semantics such as money, is carried as a string in its own declared format. JSON Schema cannot express finiteness, so this restriction is stated rather than encoded: producers are told the rule here instead of discovering it through a digest mismatch, and the canonical scanner rejects a violating value before any parse.",
@@ -1863,8 +1901,8 @@
               "anyOf": [
                 {
                   "type": "string",
-                  "pattern": "^\\/interactions\\/[a-z0-9]+(?:-[a-z0-9]+)*\\/(?:(?:response-body|response-headers|stdout|stderr)(?:\\/(?:[^/~]|~[01])*)*|(?:response-status|exit-code)|call-inputs\\/(?:path|query|header|body|argument|option|environment|stdin)(?:\\/(?:[^/~]|~[01])*)*|artifact\\/[a-z0-9]+(?:-[a-z0-9]+)*(?:\\/(?:[^/~]|~[01])*)*)$",
-                  "description": "AD-26 interaction-rooted pointer: \"/interactions/{stepId}/\" followed by one channel of the closed vocabulary. `call-inputs` takes one input channel as its next segment, one of the four transport channels or one of the four command channels; `artifact` takes the identifier of a file the operation declares it writes; `response-status` and `exit-code` take no tail. Syntax only: whether the step exists and whether the evidence is reachable are compile-time checks, not schema checks."
+                  "pattern": "^\\/interactions\\/[a-z0-9]+(?:-[a-z0-9]+)*\\/(?:(?:response-body|response-headers|stdout|stderr)(?:\\/(?:[^/~]|~[01])*)*|(?:response-status|exit-code)|call-inputs\\/(?:path|query|header|body|argument|option|environment|stdin|arguments)(?:\\/(?:[^/~]|~[01])*)*|artifact\\/[a-z0-9]+(?:-[a-z0-9]+)*(?:\\/(?:[^/~]|~[01])*)*)$",
+                  "description": "AD-26 interaction-rooted pointer: \"/interactions/{stepId}/\" followed by one channel of the closed vocabulary. `call-inputs` takes one input channel as its next segment, one of the four transport channels, one of the four command channels, or the `arguments` channel a tool call accepts; `artifact` takes the identifier of a file the operation declares it writes; `response-status` and `exit-code` take no tail. Syntax only: whether the step exists and whether the evidence is reachable are compile-time checks, not schema checks."
                 },
                 {
                   "type": "string",

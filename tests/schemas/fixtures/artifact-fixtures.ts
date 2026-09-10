@@ -16,6 +16,7 @@ import type { ScoringPolicy } from '../../../src/core/schemas/scoring-policy.ts'
 import type { SealedEvaluatorBrief } from '../../../src/core/schemas/sealed-evaluator-brief.ts'
 import type { SealedRunRecord } from '../../../src/core/schemas/sealed-run-record.ts'
 import { commandContract } from './command-contract.ts'
+import { mcpContract } from './mcp-contract.ts'
 import { populatedContract } from './relevance-contracts.ts'
 
 /** AD-27's rendered form: "sha256:" plus 64 lowercase hexadecimal characters. */
@@ -449,8 +450,11 @@ export const seededProbe: Probe = {
 	// landed as required fields, so no version-1 probe parses. Version 3 opened
 	// the defect signature to a system under test that runs behind a command:
 	// the signature is a union on `interfaceKind`, and the selector carries the
-	// four command channels beside the four transport ones.
-	schemaVersion: 3,
+	// four command channels beside the four transport ones. Version 4 opened a
+	// manifestation witness's inputs to a tool call's arguments, so a defect
+	// seeded against an MCP tool server is declarable. Every version-3 probe
+	// still parses; AD-11 calls the retype breaking and the stamp records it.
+	schemaVersion: 4,
 	parentDigest: null,
 	revisionCount: 0,
 	probeId: 'P-001',
@@ -532,7 +536,7 @@ const fragmentSelectionSignature: Extract<
 }
 
 export const commandProbe: Probe = {
-	schemaVersion: 3,
+	schemaVersion: 4,
 	parentDigest: null,
 	revisionCount: 0,
 	probeId: 'P-003',
@@ -560,8 +564,51 @@ export const commandProbe: Probe = {
 	defectSignature: fragmentSelectionSignature,
 }
 
+/**
+ * The same seeded-defect shape against an MCP tool server. Its manifestation
+ * witness supplies a tool call's arguments, which is the leg shape reachable
+ * from no other seed: `ManifestationWitness` reaches the published probe
+ * document from nowhere else, and a branch nothing exercises is a branch
+ * AD-13's sweep reports as unprotected.
+ *
+ * The defect signature stays api-shaped. A tool-call signature branch and its
+ * own selector channel land with the probe's second bump.
+ */
+export const mcpWitnessProbe: Probe = {
+	...seededProbe,
+	probeId: 'P-004',
+	systemId: 'notes-tool-server',
+	defects: [
+		{
+			...seededDefect,
+			defectId: 'D-002',
+			summary: 'The create tool answers with an identifier it never filed.',
+			manifestationWitness: {
+				legId: 'create-note-fault',
+				interfaceId: 'notes-tool-server',
+				operationId: 'create-note',
+				inputs: { arguments: { title: 'updated' } },
+				relation: {
+					op: 'not',
+					operands: [
+						{
+							op: 'existence',
+							operands: [
+								{
+									pointer:
+										'/interactions/create-note-fault/response-body/noteId',
+								},
+							],
+						},
+					],
+				},
+			},
+		},
+	],
+}
+
 export const cleanControlProbe: Probe = {
-	schemaVersion: 3,
+	schemaVersion: 4,
 	parentDigest: null,
 	revisionCount: 0,
 	probeId: 'P-002',
@@ -1116,6 +1163,15 @@ export const UNION_BRANCH_FIXTURES = [
 		value: commandContract as unknown,
 	},
 	{
+		// The `mcp` branch of `permittedInterfaces`, same reason: a tool call's
+		// operation shape, its one-key input binding, and its witness leg
+		// spelling are reachable from no other seed.
+		id: 'eval-contract/mcp-interface',
+		artifact: 'eval-contract',
+		discriminator: 'kind',
+		value: mcpContract as unknown,
+	},
+	{
 		id: 'artifact-reference/public',
 		artifact: 'artifact-reference',
 		discriminator: 'storage',
@@ -1139,6 +1195,14 @@ export const UNION_BRANCH_FIXTURES = [
 		artifact: 'probe',
 		discriminator: 'interfaceKind',
 		value: commandProbe as unknown,
+	},
+	{
+		// The tool-call branch of a manifestation witness's `inputs`, reachable
+		// from no other seed.
+		id: 'probe/mcp-manifestation-witness',
+		artifact: 'probe',
+		discriminator: 'inputs',
+		value: mcpWitnessProbe as unknown,
 	},
 	{
 		id: 'probe/clean-control',

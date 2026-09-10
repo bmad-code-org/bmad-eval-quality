@@ -6,7 +6,10 @@
  * `Observation`.
  */
 
-import { targetsDescribedChannel } from '../declared-inputs.ts'
+import {
+	channelEntryOrAbsent,
+	targetsDescribedChannel,
+} from '../declared-inputs.ts'
 import type { EvalContract } from '../schemas/eval-contract.ts'
 import type { JsonValue } from '../schemas/primitives.ts'
 import type { ProbeObservedBody } from '../schemas/probe-body.ts'
@@ -130,7 +133,15 @@ export function channelRoot(
 					'call-inputs evidence target carries no transport channel',
 				)
 			}
-			return observation.callInputs[transportChannel]
+			// ABSENT rather than `null` for a channel this record carries no key
+			// for, on the artifact arm's own rule below: `null` reads as present
+			// under AD-26 and would invert every oracle asserting the channel
+			// was sent or was not.
+			return channelEntryOrAbsent(
+				observation.callInputs,
+				transportChannel,
+				ABSENT,
+			)
 		}
 		case 'artifact': {
 			const { artifactId } = target

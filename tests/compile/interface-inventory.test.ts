@@ -5,11 +5,13 @@ import {
 	checkInterfaceKind,
 	checkUndeclaredMandatoryInput,
 	commandSignature,
+	mcpSignature,
 } from '../../src/core/compile/interface-inventory.ts'
 import { StructuralFailure } from '../../src/core/failure-codes.ts'
 import { EvalContract } from '../../src/core/schemas/eval-contract.ts'
 import { commandContract } from '../schemas/fixtures/command-contract.ts'
 import { gateCContract } from '../schemas/fixtures/gate-c-contract.ts'
+import { mcpContract } from '../schemas/fixtures/mcp-contract.ts'
 import { populatedContract } from '../schemas/fixtures/relevance-contracts.ts'
 import { cleanPopulatedContract } from './helpers.ts'
 
@@ -35,15 +37,18 @@ describe('all three checks: positive whole-fixture regression', () => {
 })
 
 describe('checkInterfaceKind: unsupported-interface-kind', () => {
-	it.each(['web', 'mcp'])(
-		"fixture 30: ad5-admissions.test.ts's %s-interface mutation throws",
-		(kind) => {
-			const contract = structuredClone(populatedContract) as any
-			contract.permittedInterfaces[0].kind = kind
-			const failure = structuralFailureOf(() => checkInterfaceKind(contract))
-			expect(failure.code).toBe('unsupported-interface-kind')
-		},
-	)
+	it("fixture 30: ad5-admissions.test.ts's web-interface mutation throws", () => {
+		const contract = structuredClone(populatedContract) as any
+		contract.permittedInterfaces[0].kind = 'web'
+		const failure = structuralFailureOf(() => checkInterfaceKind(contract))
+		expect(failure.code).toBe('unsupported-interface-kind')
+	})
+
+	it('throws on an mcp interface carrying its own operation shape', () => {
+		const contract = EvalContract.parse(mcpContract)
+		const failure = structuralFailureOf(() => checkInterfaceKind(contract))
+		expect(failure.code).toBe('unsupported-interface-kind')
+	})
 
 	// The two conditions that remain are what keeps this code fireable. AD-10
 	// opens a kind once its probe semantics are declared, and `cli`'s are.
@@ -92,6 +97,26 @@ describe('checkDuplicateOperationSignature: duplicate-operation-signature', () =
 		twin.method = 'PUT'
 		operations.push(twin)
 		expect(() => checkDuplicateOperationSignature(contract)).not.toThrow()
+	})
+
+	it('admits two tools on one server declaring distinct names', () => {
+		const contract = EvalContract.parse(mcpContract)
+		expect(() => checkDuplicateOperationSignature(contract)).not.toThrow()
+	})
+
+	it('throws when one server declares two operations under one tool name', () => {
+		const clone = structuredClone(mcpContract) as any
+		clone.permittedInterfaces[0].operations[1].toolName = 'search_notes'
+		const failure = structuralFailureOf(() =>
+			checkDuplicateOperationSignature(EvalContract.parse(clone)),
+		)
+		expect(failure.code).toBe('duplicate-operation-signature')
+		expect(failure.message).toContain('"search_notes"')
+		expect(failure.artifactPath).toContain('operationId=create-note')
+	})
+
+	it('renders a tool identity as the published name alone', () => {
+		expect(mcpSignature({ toolName: 'search_notes' })).toBe('search_notes')
 	})
 
 	// Two interfaces prove collision checks use the full inventory.

@@ -32,10 +32,14 @@ import {
 } from './validator.ts'
 
 // The deletion sweep compiles the whole document once per occurrence, so the
-// per-artifact budget is explicit rather than left to Vitest's default: one
-// machine measured ~16 s for eval-contract's 761 occurrences, and CI runners
-// are slower.
-const SWEEP_TIMEOUT_MS = 240_000
+// per-artifact budget is explicit rather than left to Vitest's default. It
+// scales with the document, and the document has grown: 761 occurrences when
+// this was first measured at ~16 s, 1108 after the command kind, and 1304 after
+// the tool-call kind. At that size a CI runner measured 248 s for eval-contract
+// against a 240 s budget, so the budget moves with the census. Raise it in the
+// same change that raises `CENSUS_BY_DOCUMENT`, and read the number off a CI
+// run rather than a laptop: the two differ by more than a factor of two.
+const SWEEP_TIMEOUT_MS = 600_000
 
 type SweepResult = {
 	survivors: string[]

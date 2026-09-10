@@ -118,9 +118,9 @@ export function wholeBodyRelevance(contract: EvalContract): RelevanceVerdict {
 
 /**
  * Rule 3: some operation declares a request key on any of its own input
- * channels, AD-19's four transport channels off an interface that speaks HTTP
- * and the four command channels off one that does not. The site is the whole
- * channel triple. A key with no
+ * channels: AD-19's four transport channels off an interface that speaks HTTP,
+ * the four command channels off a command, and the one `arguments` channel off
+ * a tool call. The site is the whole channel triple. A key with no
  * `types` entry has an absent type, a key typed `null` has AD-31's
  * indeterminate one, and both are relevant, so declaring an input and leaving
  * it untyped buys no irrelevance.

@@ -114,15 +114,15 @@ describe('the command branch', () => {
 	})
 })
 
-describe('the three kinds whose probe semantics are still undeclared', () => {
-	it.each(['web', 'mcp'])(
-		'admits a %s interface carrying the api operation shape, so the code stays fireable',
-		(kind) => {
-			const clone = structuredClone(populatedContract) as any
-			clone.permittedInterfaces[0].kind = kind
-			expect(EvalContract.safeParse(clone).success).toBe(true)
-		},
-	)
+describe('the kind whose probe semantics are still undeclared', () => {
+	// `web` alone. `mcp` carries its own operation shape now, so the same
+	// mutation is a parse failure there rather than the clean parse this
+	// asserts, and the branch that keeps the code fireable is this one.
+	it('admits a web interface carrying the api operation shape, so the code stays fireable', () => {
+		const clone = structuredClone(populatedContract) as any
+		clone.permittedInterfaces[0].kind = 'web'
+		expect(EvalContract.safeParse(clone).success).toBe(true)
+	})
 
 	it('refuses a kind outside the four', () => {
 		const clone = structuredClone(populatedContract) as any

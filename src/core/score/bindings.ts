@@ -13,7 +13,11 @@
  * evidence, and no AD-6 outcome state is assigned.
  */
 import { capturedBindings } from '../compile/bindings.ts'
-import { boundChannelsOf, requestShapeOf } from '../declared-inputs.ts'
+import {
+	boundChannelsOf,
+	channelEntryOf,
+	requestShapeOf,
+} from '../declared-inputs.ts'
 import { channelRoot, walkTail } from '../evaluate/evidence-resolution.ts'
 import { ABSENT, type ResolvedValue } from '../evaluate/resolved-value.ts'
 import type { InteractionStep } from '../schemas/plan.ts'
@@ -292,7 +296,7 @@ function satisfiesBindings(
 		step.inputBinding,
 	)) {
 		if (binding === null) continue
-		const observed = observation.callInputs[channel]
+		const observed = channelEntryOf(observation.callInputs, channel)
 		if (observed === null) return false
 		for (const key of Object.keys(binding)) {
 			const value = binding[key]

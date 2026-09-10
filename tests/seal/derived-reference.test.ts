@@ -41,6 +41,7 @@ import {
 	threeStepSharedAfter,
 	unboundStep,
 	unrelatedBulkPair,
+	withReversedOperations,
 } from './fixtures.ts'
 
 const gateCIndex = buildPlanIndex(
@@ -1057,10 +1058,7 @@ describe('AC 5: determinism by permutation', () => {
 		const baseline = renderEvidenceReferences(pointers, gateCIndex)
 		const permutedPlan = [...gateCInteractionPlan].reverse()
 		const permutedInterfaces = gateCPermittedInterfaces.map(
-			(iface): PermittedInterface =>
-				iface.kind === 'cli'
-					? { ...iface, operations: [...iface.operations].reverse() }
-					: { ...iface, operations: [...iface.operations].reverse() },
+			withReversedOperations,
 		)
 		const permutedIndex = buildPlanIndex(permutedPlan, permutedInterfaces)
 		expect(renderEvidenceReferences(pointers, permutedIndex)).toBe(baseline)

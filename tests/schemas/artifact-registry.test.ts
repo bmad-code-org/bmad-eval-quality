@@ -227,8 +227,9 @@ describe('the Consistency Conventions, extended rather than restarted', () => {
 	// The command interface kind added the tenth, the command witness leg's
 	// `environment`, string-valued for the reason `WitnessInputs.header` is,
 	// and doubled the per-operation addresses: `Operation` now carries a `$defs`
-	// id shared by the three api-shaped branches, and the command branch inlines
-	// its own four request channels and its response descriptor beside them. The
+	// id shared by the `api` and `web` branches, while the command branch and the
+	// tool-call branch each inline their own request channels and their own
+	// response descriptor beside them. The
 	// command witness leg is inline rather than named, so it is reached twice,
 	// once through each operation shape.
 	//
@@ -241,8 +242,14 @@ describe('the Consistency Conventions, extended rather than restarted', () => {
 	const CALLER_KEYED_CONTROL_MAPS: Readonly<Record<string, readonly string[]>> =
 		{
 			'eval-contract': [
-				// The `cli` branch, inlined: it is the one branch whose operation
-				// shape is not the shared `Operation` definition below.
+				// The `mcp` branch, inlined: a tool call declares one request
+				// channel and its own tagged descriptor channel, so it carries no
+				// part of the shared `Operation` definition below.
+				'/properties/permittedInterfaces/items/oneOf/2/properties/operations/items/properties/requestShape/properties/arguments/properties/types',
+				'/properties/permittedInterfaces/items/oneOf/2/properties/operations/items/properties/responseDescriptor/properties/types',
+				'/properties/permittedInterfaces/items/oneOf/2/properties/operations/items/properties/responseDescriptor/properties/channelRoles/anyOf/0',
+				'/properties/permittedInterfaces/items/oneOf/2/properties/operations/items/properties/sensitivityWitness/anyOf/0/properties/legs/items/properties/inputs/anyOf/1/properties/environment',
+				// The `cli` branch, inlined for the same reason.
 				'/properties/permittedInterfaces/items/oneOf/3/properties/operations/items/properties/requestShape/properties/argument/properties/types',
 				'/properties/permittedInterfaces/items/oneOf/3/properties/operations/items/properties/requestShape/properties/option/properties/types',
 				'/properties/permittedInterfaces/items/oneOf/3/properties/operations/items/properties/requestShape/properties/environment/properties/types',
@@ -258,7 +265,7 @@ describe('the Consistency Conventions, extended rather than restarted', () => {
 				'/properties/fixtureReset/anyOf/0/properties/inputs/anyOf/1/properties/environment',
 				'/$defs/Expression/oneOf/9/properties/descriptor/properties/types',
 				// The api operation shape, named once and referenced by the
-				// `api`, `web`, and `mcp` branches alike.
+				// `api` and `web` branches alike.
 				'/$defs/Operation/properties/requestShape/properties/path/properties/types',
 				'/$defs/Operation/properties/requestShape/properties/query/properties/types',
 				'/$defs/Operation/properties/requestShape/properties/header/properties/types',

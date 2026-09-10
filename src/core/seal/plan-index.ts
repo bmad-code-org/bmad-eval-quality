@@ -3,6 +3,7 @@ import type {
 	AnyOperation,
 	CommandOperation,
 	InterfaceKindName,
+	McpOperation,
 	Operation,
 	PermittedInterface,
 } from '../schemas/interface.ts'
@@ -154,14 +155,15 @@ export function parseEvidenceTarget(pointer: string): EvidenceTarget {
  *
  * `operationOf` stays narrow on purpose. It hands a resolved `Operation` to
  * every downstream consumer, so widening its return type to the operation
- * union would retype seventeen files at once. A command operation resolves to
- * `undefined` from it and to a value from `commandOperationOf`, and each
- * caller that has to branch reads the declaring kind first.
+ * union would retype seventeen files at once. A command operation and a tool
+ * call each resolve to `undefined` from it and to a value from their own
+ * accessor, and each caller that has to branch reads the declaring kind first.
  */
 export type PlanIndex = {
 	stepOf: (stepId: string) => InteractionStep | undefined
 	operationOf: (operationId: string) => Operation | undefined
 	commandOperationOf: (operationId: string) => CommandOperation | undefined
+	mcpOperationOf: (operationId: string) => McpOperation | undefined
 	interfaceKindOf: (operationId: string) => InterfaceKindName | undefined
 	stepsUsing: (operationId: string) => readonly InteractionStep[]
 }
@@ -205,6 +207,7 @@ export function buildPlanIndex(
 	}
 	const operations = new Map<string, Operation>()
 	const commandOperations = new Map<string, CommandOperation>()
+	const mcpOperations = new Map<string, McpOperation>()
 	const kinds = new Map<string, InterfaceKindName>()
 	const duplicateOperationIds = new Set<string>()
 	for (const iface of permittedInterfaces) {
@@ -220,20 +223,25 @@ export function buildPlanIndex(
 				}
 				operations.delete(operation.operationId)
 				commandOperations.delete(operation.operationId)
+				mcpOperations.delete(operation.operationId)
 				kinds.delete(operation.operationId)
 				duplicateOperationIds.add(operation.operationId)
 			} else {
 				kinds.set(operation.operationId, iface.kind)
-				// Sorted into the two maps by the interface's own kind rather
-				// than by probing the operation for a field: `web` and `mcp`
-				// carry the api operation shape and belong in the same map as
-				// `api`, since every consumer of a resolved operation reads
-				// the same declared fields off all three.
+				// Sorted into the three maps by the interface's own kind rather
+				// than by probing the operation for a field: `web` carries the
+				// api operation shape and belongs in the same map as `api`,
+				// since every consumer of a resolved operation reads the same
+				// declared fields off both. `cli` and `mcp` each declare their
+				// own shape, so each takes its own map and the cast below is a
+				// narrowing the discriminated union already guarantees.
 				if (iface.kind === 'cli') {
 					commandOperations.set(
 						operation.operationId,
 						operation as CommandOperation,
 					)
+				} else if (iface.kind === 'mcp') {
+					mcpOperations.set(operation.operationId, operation as McpOperation)
 				} else {
 					operations.set(operation.operationId, operation as Operation)
 				}
@@ -244,6 +252,7 @@ export function buildPlanIndex(
 		stepOf: (stepId) => steps.get(stepId),
 		operationOf: (operationId) => operations.get(operationId),
 		commandOperationOf: (operationId) => commandOperations.get(operationId),
+		mcpOperationOf: (operationId) => mcpOperations.get(operationId),
 		interfaceKindOf: (operationId) => kinds.get(operationId),
 		stepsUsing: (operationId) => stepsByOperation.get(operationId) ?? [],
 	}
@@ -268,21 +277,31 @@ export function resolveStep(index: PlanIndex, stepId: string): InteractionStep {
 
 /**
  * The declared operation of whichever kind, for the callers that read only
- * fields both shapes carry. Callers reading a kind-specific field ask
+ * fields all three shapes carry. Callers reading a kind-specific field ask
  * `interfaceKindOf` first and then take the matching accessor.
  */
 export const anyOperationOf = (
 	index: PlanIndex,
 	operationId: string,
 ): AnyOperation | undefined =>
-	index.operationOf(operationId) ?? index.commandOperationOf(operationId)
+	index.operationOf(operationId) ??
+	index.commandOperationOf(operationId) ??
+	index.mcpOperationOf(operationId)
 
-/** Resolves an operation id through the index or throws. See `resolveStep`. */
+/**
+ * Resolves an operation id through the index or throws. See `resolveStep`.
+ *
+ * Reads all three maps. It read `operationOf` alone, so it threw for a command
+ * operation and then for a tool call with the message "the permitted interfaces
+ * do not declare it", which is false: they declare it, and a different accessor
+ * holds it. Callers narrow with the operation predicates in
+ * `core/declared-inputs.ts`.
+ */
 export function resolveOperation(
 	index: PlanIndex,
 	operationId: string,
-): Operation {
-	const operation = index.operationOf(operationId)
+): AnyOperation {
+	const operation = anyOperationOf(index, operationId)
 	if (operation === undefined) {
 		throw new TypeError(
 			`step names an operation the permitted interfaces do not declare: ${operationId}`,

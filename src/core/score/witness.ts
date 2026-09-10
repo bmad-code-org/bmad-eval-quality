@@ -20,7 +20,7 @@
  * `RuntimeFault`s: an exhausted regex budget and a non-canonicalizable value.
  */
 
-import { requestShapeOf } from '../declared-inputs.ts'
+import { channelEntryOf, requestShapeOf } from '../declared-inputs.ts'
 import { makeResolveOperand } from '../evaluate/evidence-resolution.ts'
 import { resolveCheck } from '../evaluate/resolution.ts'
 import { makeWitnessPointerDenotesCollection } from '../preflight/witness-evidence.ts'
@@ -138,9 +138,9 @@ function selectorAdmits(
 	operation: AnyOperation,
 ): boolean {
 	for (const channel of INPUT_CHANNELS) {
-		const channelBinding = binding[channel]
+		const channelBinding = channelEntryOf(binding, channel)
 		if (channelBinding === null) continue
-		const observed = observation.callInputs[channel]
+		const observed = channelEntryOf(observation.callInputs, channel)
 		if (observed === null) return false
 		for (const key of Object.keys(channelBinding)) {
 			const value = channelBinding[key]
