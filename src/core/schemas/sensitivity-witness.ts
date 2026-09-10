@@ -83,12 +83,11 @@ export type McpWitnessInputs = z.infer<typeof McpWitnessInputs>
  * took it from 0.3.0 and the other two followed in 1.3.0, since the transport
  * spelling left a seeded defect against a command-line system under test
  * unrepresentable. The reach is the port's: all three legs are issued through
- * the environment-probe port, whose `ProbeRequest` is itself a union of
- * `ApiProbeRequest` and `CommandProbeRequest`, and `preflight/plan.ts` admits
- * `api` and `cli`, rejecting `web` and `mcp` under `unsupported-interface-kind`.
- * A leg shape narrower than the port it feeds leaves a kind the adapter can run
- * with no way to declare a leg for it, which is why the tool-call branch lands
- * with the operation shape and ahead of the gate that admits the kind.
+ * the environment-probe port, whose `ProbeRequest` is a union of one member per
+ * kind the gates admit, and `preflight/plan.ts` admits `api`, `cli`, and `mcp`,
+ * rejecting `web` under `unsupported-interface-kind`. A leg shape narrower than
+ * the port it feeds leaves a kind the adapter can run with no way to declare a
+ * leg for it.
  */
 export const WitnessInputs = z.union([
 	ApiWitnessInputs,

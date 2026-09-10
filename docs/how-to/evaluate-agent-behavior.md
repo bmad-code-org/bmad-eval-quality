@@ -301,7 +301,7 @@ Not proven, and worth knowing before you plan a corpus.
 A defect signature still cannot address a written file, so a defect whose only observable is file content has no scoring-side signature today.
 One `score` invocation is a trial set of one, so a policy whose declared minimum exceeds one produces a strength vector marked non-comparable.
 There is no multi-turn or transcript surface, so an agent whose interesting behavior is a conversation is out of shape for this.
-The interface vocabulary also names `web` and `mcp`, and a contract declaring either is rejected with `unsupported-interface-kind`.
+The interface vocabulary also names `web`, and a contract declaring it is rejected with `unsupported-interface-kind`.
 
 ## In BMAD terms
 

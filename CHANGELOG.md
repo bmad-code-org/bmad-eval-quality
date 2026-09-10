@@ -10,6 +10,24 @@ body.
 
 ## [Unreleased]
 
+### Added
+
+- **`compile` and `preflight` accept a third interface kind.** A contract declaring `mcp` compiles
+  under every discipline rule and plans a pre-flight whose legs are tool-call requests, where 1.4.2
+  refused it at both gates. The code no longer fires for that kind, so a caller who branched on
+  `unsupported-interface-kind` to detect an `mcp` contract reads the declared kind. `web` still
+  fails at both gates with the same code and the same artifact path, and both gates now read one
+  exported tuple, so what compiles and what pre-flights cannot disagree. A probe whose defect
+  signature names `mcp` still fails qualification under `signature-interface-kind-unsupported`, so a
+  tool-use defect cannot yet be scored. No artifact `schemaVersion` moved.
+  - **BREAKING for an environment-probe adapter.** `ProbeRequest` gains a third member,
+    `McpProbeRequest`, carrying the correlation triple, the published tool name, and the `arguments`
+    channel. An implementation typed against the two-member union stops satisfying the port's
+    parameter type and fails the typecheck at the boundary, and one that switches on `request.kind`
+    over `api` and `cli` is no longer total. That is the same class of break the 1.3.0 widening of
+    both port unions disclosed. `ProbeObservation` is unchanged, so no adapter can answer an mcp leg
+    yet: a leg answered with an observation of another mechanism is a `port-contract-violation`.
+
 ### Changed
 
 - **BREAKING** The eval contract's `schemaVersion` is 5. The `mcp` branch of `permittedInterfaces`

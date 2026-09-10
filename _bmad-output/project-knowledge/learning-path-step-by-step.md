@@ -90,6 +90,7 @@ flowchart TD
 |   46 | epic11-story2 | A documented command is judged on its exit code only once the page writes the file it names. |
 |   47 | epic11-story3 | A tool that answers with prose has no list to count, so the kind's first version covers the tools that answer with data. |
 |   48 | epic11-story4 | Every tool call on a server shares one address, so the tool's own published name becomes the address. |
+|   49 | epic11-story5 | The gate that refused tool servers opens, and the one list of what it admits is written down once. |
 
 Adding a step: follow `learning-path-template.md`.
 
@@ -3897,4 +3898,42 @@ And the fourth, the response descriptor, is what the step before this one settle
 - The eval contract's `schemaVersion` is 5 and the probe's is 4. Both breaking: an `mcp` interface written against version 4 stops parsing.
 - The protocol's `isError` flag belongs on `response-status`, never in the response descriptor's `requiredKeys`, where it would satisfy a coverage rule while checking nothing.
 
-**Watch out:** the kind is still refused at compile. Everything above parses and every compile check but the kind gate admits it; opening that gate is the next step. And `ObservedCallInputs` still has eight keys, so what a tool call *sent* has nowhere to be recorded yet: an oracle over `/interactions/{stepId}/call-inputs/arguments/...` compiles and resolves absent until the sealed run record takes its ninth key.
+**Watch out:** this step opens no gate. Everything above parses and every compile check but the kind gate admits it, and the next step is what opens that gate. `ObservedCallInputs` still has eight keys, so what a tool call *sent* has nowhere to be recorded yet: an oracle over `/interactions/{stepId}/call-inputs/arguments/...` compiles and resolves absent until the sealed run record takes its ninth key.
+
+## Step 49 (epic11-story5): the door that was locked from two sides
+
+**In plain terms:** the tool has known how to describe a tool server for two steps now.
+It still refused to accept one, because a list of "kinds I will accept" said no.
+That list was written down in three places that nobody kept in step: two in the code and one in the docs.
+This step adds tool servers to the list, writes the list down once, and deletes the copies.
+
+**What:** `compile` and the pre-flight plan both accept a contract over an MCP tool server.
+Both read one exported list, and the pre-flight plan can now describe the actual tool calls a probe would make.
+
+**Why:** two copies of one fact drift.
+Before this, opening a kind meant editing a list in the compiler, a matching test in the planner, and a table in a guide, with nothing checking that the three agreed.
+Now there is one list, its opposite is spelled out beside it, and a test proves the two together cover every kind the vocabulary names, so a fifth kind cannot be added without someone deciding which side it goes on.
+
+**Read in this order:**
+
+1. `src/core/compile/interface-inventory.ts`: the two lists, the membership check both gates call, and the sentence the failure message builds from them.
+2. `src/core/preflight/plan.ts`: the second gate reading that same list, and `requestOf` building a real tool-call request.
+3. `src/core/schemas/port-messages.ts`: `McpProbeRequest`, the message an adapter would be handed.
+4. `src/core/score/qualification.ts`: `declaredIdentityOf`, which answers "no identity" for a tool call instead of rendering it a method and a path template.
+5. `tests/preflight/mcp-plan.test.ts`: a tool-server contract compiled, planned, and answered with the wrong kind of answer.
+
+**Story:** `_bmad-output/implementation-artifacts/11-5-compile-and-preflight-admit-an-mcp-interface.md`
+
+### Reference
+
+**Rules:**
+
+- What compiles and what pre-flights is one list, `SUPPORTED_INTERFACE_KINDS`. Both gates call `isSupportedInterfaceKind` and interpolate the same sentence.
+- The opposite list is spelled out too. A test proves the two are disjoint and together cover every kind, so a new kind has to be assigned a side by hand.
+- `web` is the only kind still refused. It is the last one that can fire `unsupported-interface-kind` end to end, so it is what keeps that code from becoming dead.
+- A pre-flight over a tool server is planned and cannot finish. Nothing can answer a tool call yet, so any answer is a `port-contract-violation`.
+- A tool-call request carries six keys and no address: the three correlation identifiers, the kind, the published tool name, and the arguments.
+- Never render one kind's identity in another kind's shape. A tool call has a published name; rendering it a method and a path template finds no match, which looks exactly like a contract that declares no such tool.
+- A documented list of what the code accepts is a copy that will go stale. Cite the constant by name and let a reader open it.
+
+**Watch out:** a probe that names a tool server in its defect signature is still refused when it is scored. The contract side opens here; the probe side opens in the step after this one, and until then a tool-use defect cannot be scored at all.

@@ -18,15 +18,15 @@ The last entry under [Where this stands](#where-this-stands) records the run tha
 
 **Is the tool server itself correct?**
 The system under test is the MCP server: the tool call is the request, the tool result is the response, and only the `mcp` kind can describe that.
-`PermittedInterface` declares four interface kinds and one of them is `mcp` (`src/core/schemas/interface.ts:333`), and `compile` refuses it.
+`PermittedInterface` declares four interface kinds and one of them is `mcp` (`src/core/schemas/interface.ts:333`), and `compile` accepts it.
 Everything from [What an `mcp` operation declares](#what-an-mcp-operation-declares) down is about this question.
 
-Nothing in this repository and nothing in TEA evaluates an `mcp` interface today, and this page is the first writing that takes the kind seriously.
+No adapter in this repository and none in TEA has yet run a tool call, so nothing has been scored end to end against an `mcp` interface. This page is the first writing that takes the kind seriously.
 
 ## What you are evaluating
 
 Three questions, and both readings answer all three.
-The declarations shown for them are the ones reading two would use once the kind opens: one operation per tool, so a tool call is an interaction step and its arguments are that step's input binding.
+The declarations shown for them are the ones reading two uses: one operation per tool, so a tool call is an interaction step and its arguments are that step's input binding.
 Reading one answers the same three today with different declarations, given at the end of this section.
 The fourth question after them is kind-neutral and belongs to both readings.
 
@@ -84,25 +84,30 @@ That declaration is where the kind's first version draws its boundary: the respo
 AD-10 selects a witness channel from the state-change marker off an interface that speaks HTTP, because a read carries its identifier in the URL and a write carries it in the body.
 A tool call carries its arguments the same way whichever the marker says, so `arguments` is the one channel AD-10 admits for it (`compile/sensitivity-witness.ts:394`).
 
-Three gates reject an `mcp` contract, and they are the whole story.
+Two of the three gates that used to reject an `mcp` contract now admit it, and the third still refuses a probe.
 
-| Where | What fires | Source |
+| Where | What happens | Source |
 | --- | --- | --- |
-| `compile` | `unsupported-interface-kind` | `src/core/compile/interface-inventory.ts:40`, over `SUPPORTED_INTERFACE_KINDS = ['api', 'cli']` |
-| `preflight` plan | `unsupported-interface-kind` again, for a contract assembled by hand | `src/core/preflight/plan.ts:333` |
+| `compile` | Admits `mcp` | `SUPPORTED_INTERFACE_KINDS` in `src/core/compile/interface-inventory.ts` |
+| `preflight` plan | Admits it too, reading the same tuple | `src/core/preflight/plan.ts` |
 | `score` probe qualification | `signature-interface-kind-unsupported` | `src/core/score/qualification.ts:802` |
 
-The probe side parses too.
-`ApiDefectSignature.interfaceKind` is `z.enum(['api', 'web', 'mcp'])` (`src/core/schemas/defect-signature.ts:175`), so a probe declaring a tool-use defect is schema-valid and fails the qualification gate.
+The two contract-side gates read one exported tuple, so what compiles and what pre-flights cannot disagree.
+`web` is the one kind both still refuse under `unsupported-interface-kind`.
+
+The probe side is the half still closed.
+`ApiDefectSignature.interfaceKind` is `z.enum(['api', 'web', 'mcp'])` (`src/core/schemas/defect-signature.ts:175`), so a probe declaring a tool-use defect is schema-valid, and it fails the qualification gate because the signature declares a method and a path template a tool call cannot render.
+A signature branch that declares the tool name instead is what closes it.
 
 One shape downstream has no `mcp` problem, and one has half of one.
 `Observation` in the sealed run record is not discriminated on kind (`src/core/schemas/sealed-run-record.ts:222`): it carries all eight evidence channels flat, with `null` or `{ "kind": "absent" }` where a channel does not apply, so a tool call's result has somewhere to live.
 `ObservedCallInputs` (`sealed-run-record.ts:200`) is an eight-key object over the four transport and four command channels, and it carries no `arguments` key, so what a tool call *sent* has nowhere to live yet.
 That ninth key lands with the sealed run record's own breaking version bump; until it does, a pointer at `/interactions/{stepId}/call-inputs/arguments/...` compiles and resolves absent.
 
-The port is the shape that has nothing.
-`ProbeRequest` and `ProbeObservation` are discriminated unions with an `api` member and a `cli` member (`src/core/schemas/port-messages.ts:135` and `:186`).
-There is no `mcp` member, so there is no message an adapter could be handed and none it could return.
+The port carries one half of the exchange.
+`ProbeRequest` has an `mcp` member now, `McpProbeRequest`, carrying the correlation triple, the tool name, and the arguments channel (`src/core/schemas/port-messages.ts`), so a pre-flight plan over an `mcp` contract mints real requests.
+`ProbeObservation` still has an `api` member and a `cli` member and no third, so there is nothing an adapter could return.
+A leg answered with an observation of another mechanism is a `port-contract-violation`, which is what stops a tool call from being scored off an HTTP answer.
 
 ## What you need
 
@@ -200,22 +205,15 @@ cat > mcp-contract.json <<'EOF'
 EOF
 ```
 
-It parses, and the kind is the first thing `compile` faults:
-
-<!-- expect-exit: 4 -->
+It compiles, and the compiled contract goes to stdout:
 
 ```bash
 node dist/cli/main.js compile --in mcp-contract.json
 ```
 
-```text
-eval-quality: unsupported-interface-kind: EvalContract.permittedInterfaces[logicalId=notes-tool-server].kind: "mcp" is not supported; "api" and "cli" are (AD-10)
-```
-
-Exit code 4, the structural-failure code, and the message names the AD-5 code and the field that carries the fault.
-
-The kind gate is the only thing between that contract and a clean compile.
-Every other check reads the declaration and admits it: the witness is legal on the `arguments` channel, the tool identity renders one signature, and every pointer resolves against the descriptor.
+Exit code 0.
+Every check reads the declaration and admits it: the witness is legal on the `arguments` channel, the tool identity renders one signature, and every pointer resolves against the descriptor.
+`preflight` plans over it too, minting one tool-call request per witness leg.
 
 Two things in the declaration are worth reading closely.
 
@@ -275,31 +273,31 @@ node dist/cli/main.js score --record sealed-run-record.json \
   --corpus-digest <digest> --out evidence-artifact.json
 ```
 
-Neither reaches a tool call today, because `compile` and the pre-flight plan both stop an `mcp` contract first.
+Neither reaches a tool call today. A planned mcp leg is issued to whatever port is wired, and the answer has no shape to come back in, so the reduce step reports a `port-contract-violation`.
 
-What a port would have to do, when the kind opens.
+What an adapter behind the port would have to do.
 `EnvironmentProbePort` has one method, `probe`, taking a `ProbeRequest` and an `AbortSignal` and returning a `ProbeObservation` (`src/ports/environment-probe-port.ts`).
 The four rules stated on that port are the adapter's whole obligation: apply the target policy before any call and again to every redirect target, issue the request against the address the policy validated and never re-resolve a hostname after validation, throw `forbidden-target`, `budget-exhausted`, `aborted`, or `port-failure` for the four fault classes, and treat every response the server returns as an observation at any status.
 That last rule is the one a tool-use adapter would break first: an MCP error result is the payload the seeded-fault check reads, and an adapter that throws on it makes the whole pre-flight vacuous.
 
 The mapping from a logical identifier to a running server is the adapter's, from configuration outside the contract (AD-35).
-An `mcp` adapter would need an `McpProbeRequest` and an `McpProbeObservation` on the two unions in `port-messages.ts` before any of this is writable, and a third conformance arm beside `runEnvironmentProbePortConformance` and `runCommandLineProbeConformance`.
+`McpProbeRequest` is on the request union already, so an adapter has a shape to be handed. What it still lacks is an `McpProbeObservation` to return, and a third conformance arm beside `runEnvironmentProbePortConformance` and `runCommandLineProbeConformance`.
 
 ## Where this stands
 
-**Declared.** The kind, its own operation inventory over a published tool name, and a parse that succeeds. A contract, a probe, and a sealed brief can all name `mcp` and be schema-valid.
+**Compiles, and plans a pre-flight.** The kind, its own operation inventory over a published tool name, a parse that succeeds, and both contract-side gates open. A contract over an MCP tool server compiles under every discipline rule and plans a pre-flight whose legs are tool-call requests. That pre-flight cannot complete: no observation shape exists for a tool call, so every answer reduces to a `port-contract-violation`.
 
-**Blocked.** `compile` rejects it, the pre-flight plan rejects it, and the probe qualification gate rejects it. Three coded rejections, no silent failures.
+**Blocked.** The probe qualification gate rejects a defect signature naming `mcp`, because the signature declares a method and a path template a tool call cannot render. One coded rejection, no silent failures.
 
-**Missing.** A port message for the kind, an adapter, a conformance arm, a defect signature that can name a tool, a ninth `arguments` key on the recorded call inputs, and a channel model for a text-shaped tool result.
+**Missing.** An observation message for the kind, an adapter, a conformance arm, a defect signature that can name a tool, a ninth `arguments` key on the recorded call inputs, and a channel model for a text-shaped tool result.
 
 **Already works, and this is the part worth knowing before you fund any of it.** The response side accommodates the kind today. `Observation` in the sealed run record is not discriminated on kind (`sealed-run-record.ts:222`), so what a tool answered has somewhere to live. `foreignChannels` (`qualification.ts:170`) gives every kind other than `cli` the API response channels, and compile-time reachability narrows a tool call further to `response-body`, `response-status`, and its own `call-inputs`, a confinement the code decides. The request side is the half that is short a key: `ObservedCallInputs` (`sealed-run-record.ts:200`) carries eight channels and none of them is `arguments`.
 
-**Unproven, and this is the uncomfortable part.** The calibration record behind this project's central measurement is itself MCP-shaped. The architecture records that every contract in the phase-2 block that produced the 0.33-to-1.00 result declares an MCP tool interface, and that 22 of 25 real contracts use the kind. Those contracts were transcribed into API shape to be compiled here, and a transcription is not the measured artifact. So `mcp` is simultaneously the most-used kind in the prior art and the only one with no path through this package.
+**Unproven, and this is the uncomfortable part.** The calibration record behind this project's central measurement is itself MCP-shaped. The architecture records that every contract in the phase-2 block that produced the 0.33-to-1.00 result declares an MCP tool interface, and that 22 of 25 real contracts use the kind. Those contracts were transcribed into API shape to be compiled here, and a transcription is not the measured artifact. So `mcp` is the most-used kind in the prior art and the one this package reached last.
 
-**What a first adopter hits.** In order: the compile rejection, then a recorded tool call whose arguments have no key to land in, then the response descriptor against a tool that returns prose. The first is a wall. The second makes an oracle over an argument resolve absent until the sealed run record takes its ninth key. The third is a stated boundary: the descriptor describes a tool's structured result, and a tool that answers with markdown alone is outside the kind's first version.
+**What a first adopter hits.** In order: a planned pre-flight nothing can answer, then a recorded tool call whose arguments have no key to land in, then the response descriptor against a tool that returns prose. The first needs an observation message and an adapter. The second makes an oracle over an argument resolve absent until the sealed run record takes its ninth key. The third is a stated boundary: the descriptor describes a tool's structured result, and a tool that answers with markdown alone is outside the kind's first version.
 
-**The first reading runs today, and here is what that cost.** Until the kind opens, the workable move for the first reading is the one TEA already made: put the tool-calling agent behind a command, declare a `cli` interface, and evaluate the run through its arguments, its streams, and the files it writes.
+**The first reading runs today, and here is what that cost.** Until an adapter answers a tool call, the workable move for the first reading is the one TEA already made: put the tool-calling agent behind a command, declare a `cli` interface, and evaluate the run through its arguments, its streams, and the files it writes.
 
 That route was run end to end against the built CLI at 1.4.2.
 A contract whose one operation declares the tool-call log in `artifacts` and nominates it with `descriptorChannel` compiles and seals at exit `0`, an oracle quantifies over the calls inside the log, and pre-flight resolves at exit `0` with all six checks satisfied, including a sensitivity witness and a manifestation witness whose legs both address the file.

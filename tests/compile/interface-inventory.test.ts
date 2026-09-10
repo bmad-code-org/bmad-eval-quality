@@ -5,10 +5,15 @@ import {
 	checkInterfaceKind,
 	checkUndeclaredMandatoryInput,
 	commandSignature,
+	kindsClause,
 	mcpSignature,
+	SUPPORTED_INTERFACE_KINDS,
+	SUPPORTED_KINDS_CLAUSE,
+	UNSUPPORTED_INTERFACE_KINDS,
 } from '../../src/core/compile/interface-inventory.ts'
 import { StructuralFailure } from '../../src/core/failure-codes.ts'
 import { EvalContract } from '../../src/core/schemas/eval-contract.ts'
+import { INTERFACE_KINDS } from '../../src/core/schemas/interface.ts'
 import { commandContract } from '../schemas/fixtures/command-contract.ts'
 import { gateCContract } from '../schemas/fixtures/gate-c-contract.ts'
 import { mcpContract } from '../schemas/fixtures/mcp-contract.ts'
@@ -44,18 +49,59 @@ describe('checkInterfaceKind: unsupported-interface-kind', () => {
 		expect(failure.code).toBe('unsupported-interface-kind')
 	})
 
-	it('throws on an mcp interface carrying its own operation shape', () => {
-		const contract = EvalContract.parse(mcpContract)
-		const failure = structuralFailureOf(() => checkInterfaceKind(contract))
-		expect(failure.code).toBe('unsupported-interface-kind')
-	})
-
-	// The two conditions that remain are what keeps this code fireable. AD-10
-	// opens a kind once its probe semantics are declared, and `cli`'s are.
+	// The one condition that remains is what keeps this code fireable. AD-10
+	// opens a kind once its probe semantics are declared, and `cli`'s and
+	// `mcp`'s are. `web` declares none, so it is the whole firing condition,
+	// and it is the only kind still carrying the api operation shape, so a bare
+	// kind flip on an api-shaped contract is the only mutation that reaches it.
 	it('admits a command interface', () => {
 		expect(() =>
 			checkInterfaceKind(EvalContract.parse(commandContract)),
 		).not.toThrow()
+	})
+
+	it('admits an mcp interface carrying its own operation shape', () => {
+		expect(() =>
+			checkInterfaceKind(EvalContract.parse(mcpContract)),
+		).not.toThrow()
+	})
+
+	it('names every supported kind in the detail, rendered from the tuple', () => {
+		const contract = structuredClone(populatedContract) as any
+		contract.permittedInterfaces[0].kind = 'web'
+		const failure = structuralFailureOf(() => checkInterfaceKind(contract))
+		for (const kind of SUPPORTED_INTERFACE_KINDS) {
+			expect(failure.message).toContain(`"${kind}"`)
+		}
+	})
+})
+
+describe('the supported-kinds clause', () => {
+	it('reads as a list with a plural verb', () => {
+		expect(kindsClause(['api', 'cli', 'mcp'])).toBe(
+			'"api", "cli" and "mcp" are',
+		)
+	})
+
+	// The form the general one renders as a leading " and ". Closing a kind is
+	// a move the tuple is built to allow, so the message has to survive it.
+	it('reads as one quoted kind with a singular verb', () => {
+		expect(kindsClause(['api'])).toBe('"api" is')
+	})
+
+	it('is what both throwers interpolate', () => {
+		expect(SUPPORTED_KINDS_CLAUSE).toBe(kindsClause(SUPPORTED_INTERFACE_KINDS))
+	})
+})
+
+describe('the supported and unsupported kind tuples partition the vocabulary', () => {
+	it('are disjoint and together equal INTERFACE_KINDS', () => {
+		const supported = new Set<string>(SUPPORTED_INTERFACE_KINDS)
+		const unsupported = new Set<string>(UNSUPPORTED_INTERFACE_KINDS)
+		for (const kind of unsupported) expect(supported.has(kind)).toBe(false)
+		expect(
+			[...SUPPORTED_INTERFACE_KINDS, ...UNSUPPORTED_INTERFACE_KINDS].sort(),
+		).toEqual([...INTERFACE_KINDS].sort())
 	})
 })
 

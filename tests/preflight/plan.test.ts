@@ -4,6 +4,10 @@
  * `ReduceStage` gets the plan and the observations and nothing else.
  */
 import { describe, expect, it } from 'vitest'
+import {
+	checkInterfaceKind,
+	SUPPORTED_INTERFACE_KINDS,
+} from '../../src/core/compile/interface-inventory.ts'
 import { StructuralFailure } from '../../src/core/failure-codes.ts'
 import {
 	type PlannedLeg,
@@ -205,6 +209,22 @@ describe('the plan as a whole', () => {
 		expect(failure.artifactPath).toBe(
 			'EvalContract.permittedInterfaces[logicalId=thing-api].kind',
 		)
+		for (const kind of SUPPORTED_INTERFACE_KINDS) {
+			expect(failure.message).toContain(`"${kind}"`)
+		}
+	})
+
+	// Two gates asserting one fact, so an author who reaches the second by
+	// assembling a plan by hand reads the message the first would have given.
+	it("103b. reports the same failure the compile gate's own check does", () => {
+		const draft = contractDraft()
+		draft.permittedInterfaces[0].kind = 'web'
+		const contract = parseContract(draft)
+		const atPlan = failureOf(() => planOf(contract))
+		const atCompile = failureOf(() => checkInterfaceKind(contract))
+		expect(atPlan.code).toBe(atCompile.code)
+		expect(atPlan.artifactPath).toBe(atCompile.artifactPath)
+		expect(atPlan.message).toBe(atCompile.message)
 	})
 
 	it('104. is deterministic: two calls on the same input produce deep-equal plans', () => {

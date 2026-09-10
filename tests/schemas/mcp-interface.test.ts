@@ -337,25 +337,21 @@ describe('what a tool call can be asked about', () => {
 	})
 })
 
-describe('the whole compile pipeline, minus the kind gate', () => {
+describe('the whole compile pipeline', () => {
 	const contract = EvalContract.parse(mcpContract)
 
 	// `compile` itself rather than a hand-picked subset. Naming five checks
 	// let the other twenty-eight regress against this fixture while the file
 	// claiming to cover them stayed green, and Stories 11.7 and 11.8 both
 	// depend on the fixture compiling under the whole pipeline.
-	it('stops at the kind gate and at nothing before it', () => {
-		const failure = failureOf(() => compile(contract, { strict: true }))
-		expect(failure.code).toBe('unsupported-interface-kind')
-		expect(failure.artifactPath).toBe(
-			'EvalContract.permittedInterfaces[logicalId=notes-tool-server].kind',
-		)
+	it('compiles the contract under strict mode', () => {
+		expect(() => compile(contract, { strict: true })).not.toThrow()
 	})
 
-	// `compile` stopping at the gate proves every check ahead of it passes.
-	// The fifteen below are the ones that run after it, in `compile.ts`'s own
-	// order, so between the two assertions the whole pipeline is covered and
-	// opening the gate is the only thing Story 11.5 has to do here.
+	// `compile` returning proves every check passes, the kind gate included.
+	// The fifteen below are the ones that run after that gate, in `compile.ts`'s
+	// own order, and they stay named so a regression in one of them reports
+	// which check failed rather than only that the pipeline stopped.
 	it.each([
 		['checkNestedTemporalClause', checkNestedTemporalClause],
 		['checkScriptingBound', checkScriptingBound],
@@ -584,6 +580,47 @@ describe('a transport identity is compared inside its own shape family', () => {
 				contract.permittedInterfaces,
 			),
 		).toBe(operation)
+	})
+
+	// This case is green under the two-way ternary it replaced, and it has to be:
+	// `operationSignature` puts a space between the method and the path, and
+	// `ToolName`'s charset forbids one, so an api-shaped string could never have
+	// equalled a legal tool name. What holds the line is the switch with no
+	// default arm, which fails the typecheck on a fifth kind and makes the
+	// branch that gives `mcp` a tool identity answer at that site. This asserts
+	// the answer the switch is there to keep.
+	it('resolves an mcp signature against no mcp operation either', () => {
+		const contract = EvalContract.parse(mcpContract)
+		const signature = {
+			interfaceKind: 'mcp',
+			method: 'POST',
+			pathTemplate: '/tools/call',
+			observableChannel: 'response-body',
+			condition: {
+				selector: {
+					inputBinding: {
+						path: null,
+						query: null,
+						header: null,
+						body: null,
+						argument: null,
+						option: null,
+						environment: null,
+						stdin: null,
+					},
+				},
+				predicate: {
+					op: 'existence',
+					operands: [{ pointer: '/interactions/observed/response-body' }],
+				},
+			},
+		} as const
+		expect(
+			resolveHomeOperation(
+				DefectSignature.parse(signature),
+				contract.permittedInterfaces,
+			),
+		).toBeNull()
 	})
 })
 
