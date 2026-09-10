@@ -252,6 +252,12 @@ describe('the policy, applied before a server process starts', () => {
 			),
 		)
 		expect(calls).toBe(0)
+		// The zero above means something only because this counter does count.
+		await counted.probe(
+			request({ probeId: 'allowed' }),
+			new AbortController().signal,
+		)
+		expect(calls).toBe(1)
 	})
 
 	it.each(['api', 'cli'] as const)(

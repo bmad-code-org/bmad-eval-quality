@@ -13,6 +13,7 @@ import { compile } from '../../src/core/compile/compile.ts'
 import { isMcpOperation } from '../../src/core/declared-inputs.ts'
 import { planPreflight } from '../../src/core/preflight/plan.ts'
 import {
+	fixtureDigest,
 	PREFLIGHT_ARTIFACT_PATH,
 	projectObservation,
 } from '../../src/core/preflight/projection.ts'
@@ -117,21 +118,26 @@ describe('projectObservation over a tool call', () => {
 		).toMatchObject({ status: null, exitCode: null, toolError: false })
 	})
 
-	// The reason the flag is in the projection at all: without it two legs that
+	// The reason the flag is in the projection at all. Without it two legs that
 	// returned the same body digest identically when one errored and one did
-	// not, which is the state-reset check reporting a reset that never happened.
+	// not, and the state-reset check reports a reset that never happened. The
+	// assertion is over the digest itself, since that is the value the check
+	// compares.
 	it('digests differently for two legs whose bodies agree and whose flags do not', () => {
-		const errored = projectObservation(
-			observation(true),
-			searchNotes,
-			PREFLIGHT_ARTIFACT_PATH,
-		)
-		const clean = projectObservation(
-			observation(false),
-			searchNotes,
-			PREFLIGHT_ARTIFACT_PATH,
-		)
-		expect(errored).not.toEqual(clean)
+		const digestFor = (isError: boolean) =>
+			fixtureDigest(
+				[
+					projectObservation(
+						observation(isError),
+						searchNotes,
+						PREFLIGHT_ARTIFACT_PATH,
+					),
+				],
+				PREFLIGHT_ARTIFACT_PATH,
+			)
+		expect(digestFor(true)).toMatch(/^sha256:[0-9a-f]{64}$/)
+		expect(digestFor(true)).not.toBe(digestFor(false))
+		expect(digestFor(true)).toBe(digestFor(true))
 	})
 })
 
