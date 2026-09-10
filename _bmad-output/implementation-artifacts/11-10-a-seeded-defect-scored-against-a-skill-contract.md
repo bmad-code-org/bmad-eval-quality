@@ -398,6 +398,15 @@ cases. The ruling was to keep it out of this diff and hand it to the session cle
 leftovers, on its own branch and its own pull request, rather than to record it unowned or to hand it
 forward to a story that did not plan for it. Nothing was added to `deferred-work.md`.
 
+**This pull request merged without a CodeRabbit pass, and that is recorded rather than assumed.** Its
+first automatic pass on the pull request returned a rate-limit notice, "Review limit reached, next
+included review available in 43 minutes", with no findings. After that window elapsed a single
+`@coderabbitai review` re-trigger returned "Already reviewed the last commit", so the bot considers a
+review done that produced nothing. Two rate-limit notices and an "already reviewed" is silence, and
+silence here is not approval. What the change was reviewed by is the peer session above, over three
+rounds and a seam check, plus `npm run validate` and the pull request's own twenty-one checks. A later
+reader looking for a bot review on this pull request will not find one, and this is why.
+
 **What the review confirmed rather than found.** No reachable silent vacuum under AD-4's
 empty-collection rule: an emptied selection on obs-002 sends the condition to
 `insufficient-evidence` and the witness to `unwitnessed-claim`, and an emptied sensitivity leg fails

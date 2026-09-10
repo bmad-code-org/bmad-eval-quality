@@ -42,6 +42,10 @@ export function fail(message: string): never {
  * reader can reproduce with one shell command. A chain whose contract is a
  * published corpus contract keeps the reproducible hash all the same, because
  * the corpus writes the canonical bytes and the chain's digest is over those.
+ * Strip the published file's trailing newline before hashing it:
+ * `serializeArtifact` appends one and `canonicalize` does not, so
+ * `shasum -a 256` over the file as written answers a different question, the
+ * one `corpus/dev/index.json` records.
  *
  * The re-indent preserves RFC 8785 key order only while no emitted object
  * carries an array-index-like key: V8 hoists integer-like own properties and
