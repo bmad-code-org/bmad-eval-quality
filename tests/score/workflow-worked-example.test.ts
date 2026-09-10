@@ -177,9 +177,13 @@ describe('the workflow chain, as the shipped stages computed it', () => {
 		}
 		const home = resolveHomeOperation(signature, contract.permittedInterfaces)
 		// The write's own response is indistinguishable from a correct one, so a
-		// signature homed there would separate nothing. `/things` and
-		// `/things/reset` are the two other templates on this interface, and a
-		// resolver matching on kind alone would bind one of them.
+		// signature homed there would separate nothing, and what this line proves
+		// is that the resolver matched on the declared template rather than on
+		// the interface. It does not prove the kind-only case: `get-thing` is
+		// declared first, so a resolver taking the first operation of the
+		// matching family lands on the expected value here. That mutation is
+		// caught in `tests/score/qualification.test.ts`, over contracts written
+		// for it.
 		expect(home?.operationId).toBe('get-thing')
 	})
 
