@@ -15,7 +15,6 @@ import {
 } from '../../src/core/compile/forbidden-inputs.ts'
 import {
 	checkDuplicateOperationSignature,
-	checkInterfaceKind,
 	checkUndeclaredMandatoryInput,
 } from '../../src/core/compile/interface-inventory.ts'
 import { checkEvidenceReachability } from '../../src/core/compile/reachability.ts'
