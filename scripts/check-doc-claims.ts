@@ -512,6 +512,90 @@ type ListEntry = {
 	readonly expected: readonly string[]
 }
 
+/**
+ * The stages that perform AD-11's version equality, read off the tree rather
+ * than off a list somebody kept. The map says which stage a file is; membership
+ * is derived, so a file that starts performing the comparison and is absent
+ * from the map fails here and the published sentence has to move with it.
+ *
+ * Two ways a file performs it, because the helper is not the only route.
+ * `checkSchemaVersion` is one, and `chain.ts` is the standing proof of the
+ * other: it compares against `acceptedSchemaVersion` and constructs the fault
+ * directly, calling no helper, so a reader written that way would have been
+ * invisible to a helper-only derivation. Both are matched.
+ *
+ * The helper match reads the import of the symbol rather than any call
+ * spelling. A spelling match catches the three call sites written today and
+ * misses a fourth passing a prebuilt object, which the throw form would miss
+ * too, since the throw lives inside the helper. An import is every call form at
+ * once and carries no comment ambiguity: a docblock naming the function does
+ * not import it. The fault match reads the throw form for the same reason the
+ * helper match avoids the bare name, since the bare code string appears in nine
+ * descriptions and module comments across the schemas and `faults.ts`, none of
+ * which raises anything.
+ */
+const VERSION_READER_BY_FILE: Readonly<Record<string, string>> = {
+	'src/core/compile/compile.ts': 'compile',
+	'src/core/preflight/plan.ts': 'preflight',
+	'src/core/score/score.ts': 'score',
+}
+
+/**
+ * Files that perform the comparison and are no stage on this page. One entry:
+ * `chain.ts` reads a presented lineage chain, has no caller inside this package,
+ * and words the fault its own way, so it is a reader for somebody else's code
+ * and the sentence about this pipeline's stages is right to leave it out.
+ */
+const VERSION_READERS_OUTSIDE_THE_PIPELINE: Readonly<Record<string, string>> = {
+	'src/core/lineage/chain.ts':
+		'reads a presented chain for a caller outside this package, with no in-package call site',
+}
+
+const IMPORTS_VERSION_CHECK =
+	/import\s*\{[^}]*\bcheckSchemaVersion\b[^}]*\}\s*from\s*'[^']*schema-version\.ts'/
+const RAISES_VERSION_FAULT = /new RuntimeFault\(\s*'schema-version-mismatch'/
+
+const performsVersionEquality = (body: string): boolean =>
+	IMPORTS_VERSION_CHECK.test(body) || RAISES_VERSION_FAULT.test(body)
+
+const versionReaders = [
+	...new Set(
+		srcPaths
+			.filter((file) => !file.endsWith('compile/schema-version.ts'))
+			.filter((file) => performsVersionEquality(srcBodies.get(file) as string))
+			.map((file) => {
+				const named = VERSION_READER_BY_FILE[file]
+				if (named !== undefined) return named
+				if (VERSION_READERS_OUTSIDE_THE_PIPELINE[file] !== undefined)
+					return null
+				fail(
+					`${file}: performs AD-11's version equality and neither VERSION_READER_BY_FILE nor ` +
+						'VERSION_READERS_OUTSIDE_THE_PIPELINE names it; a new version reader means the ' +
+						'published sentence naming them has to move too',
+				)
+				return null
+			})
+			.filter((name): name is string => name !== null),
+	),
+].sort()
+
+for (const [file, reason] of Object.entries(
+	VERSION_READERS_OUTSIDE_THE_PIPELINE,
+)) {
+	const body = srcBodies.get(file)
+	if (body === undefined) {
+		fail(
+			`${file}: exempted as a version reader, and no such file is under src/`,
+		)
+		continue
+	}
+	if (performsVersionEquality(body)) continue
+	fail(
+		`${file}: exempted as a version reader (${reason}), and it performs no version ` +
+			'equality any more; drop the entry',
+	)
+}
+
 /** The kind vocabulary, so a kind list is compared over kinds and nothing else. */
 const KIND_TOKEN = new RegExp(`^(?:${INTERFACE_KINDS.join('|')})$`)
 
@@ -575,6 +659,13 @@ const LISTS: readonly ListEntry[] = [
 			/(`[a-z]+`) is the one kind `compile` still refuses under `unsupported-interface-kind`/,
 		tokenShape: KIND_TOKEN,
 		expected: [...UNSUPPORTED_INTERFACE_KINDS],
+	},
+	{
+		file: 'docs/explanation/what-ships.md',
+		claim: "the stages performing AD-11's version equality",
+		pattern: /The stages that perform that comparison are ([^.]*?)\./,
+		tokenShape: /^(?:compile|preflight|score)$/,
+		expected: versionReaders,
 	},
 	{
 		file: 'docs/reference/cli-commands.md',
@@ -1480,10 +1571,9 @@ const TRANSCRIPTIONS: readonly {
 		// committed worked-example chain would have compared a hand-typed literal
 		// against a copy of itself: `check:worked-example` rebuilds that chain
 		// from `worked-example-target.ts`, which used to spell the stamp as a
-		// literal, and no reader in the pipeline performs AD-11's version
-		// equality on a probe the way `compile` does on a contract. So a bump
-		// would have left the literal, the chain, and this page agreeing on a
-		// stale number. `PROBE_SCHEMA_VERSION` is the single place it is written
+		// literal. So a bump would have left the literal, the chain, and this
+		// page agreeing on a stale number, with the version equality AD-11 asks
+		// for performed nowhere. `PROBE_SCHEMA_VERSION` is where it is written
 		// now, and the chain builds from it.
 		file: 'docs/how-to/evaluate-tool-use-behavior.md',
 		claim:

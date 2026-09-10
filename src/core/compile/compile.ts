@@ -98,11 +98,13 @@ export function compile(
 	// First, and before any check reads a declaration. AD-11 makes an unequal
 	// stamp a rejection rather than a degraded read, and every check below is
 	// written against this version's field shapes.
-	checkSchemaVersion(
-		contract.schemaVersion,
-		EVAL_CONTRACT_SCHEMA_VERSION,
-		'EvalContract.schemaVersion',
-	)
+	checkSchemaVersion({
+		stamped: contract.schemaVersion,
+		accepted: EVAL_CONTRACT_SCHEMA_VERSION,
+		artifactPath: 'EvalContract.schemaVersion',
+		consequence:
+			'since its stale version would travel into the scoring version',
+	})
 	checkRequirementLinkage(contract)
 	checkObservableSuccessCriterion(contract)
 	// Ahead of reachability, because a pointer naming an artifact nothing

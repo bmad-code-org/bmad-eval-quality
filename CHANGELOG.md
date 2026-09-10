@@ -10,6 +10,33 @@ body.
 
 ## [Unreleased]
 
+### Changed
+
+- **A probe's `schemaVersion` has a reader.** AD-11 says a reader "accepts an equal `schemaVersion`
+  only and throws `schema-version-mismatch` outside that", and `lineage.ts` keeps the field a plain
+  integer so the fault is named rather than anonymous, which puts the comparison on whoever reads the
+  artifact. `compile` performed it for the eval contract and nothing performed it for a probe, so a
+  probe stamped for a version whose defect signature grammar this build does not read planned a
+  pre-flight and scored a run whenever its bytes happened to still fit. Both core stages that read a
+  probe now compare its stamp against `PROBE_SCHEMA_VERSION`, each at the top of its own stage
+  function: `planPreflight` reads every probe in its input before it plans a leg, and `score` reads
+  its one probe before it seals it. `PROBE_SCHEMA_VERSION` ships from
+  `src/core/schemas/probe.ts` as the single place the number is written, where it was a literal in
+  three places that could disagree in silence.
+  - **BREAKING for a caller holding a probe stamped for another version.** A probe whose
+    `schemaVersion` is anything but 5 now leaves `preflight` and `score` as a
+    `schema-version-mismatch` runtime fault, exit `5`, with an artifact path naming the probe. It
+    previously planned and scored if its bytes fit. Stamp the probe 5 after migrating it; the 2.0.0
+    entries below say what version 5 changed. A probe already stamped 5 is unaffected, and no
+    artifact `schemaVersion` moved for this change.
+  - A rejected probe stays a domain outcome. `unqualified-probe-in-sealed-set` still reports a probe
+    the qualification gate refuses, through the verdict ladder rather than as a fault. A stale stamp
+    is not that: the gate that would report it reads the grammar the stamp names, so the comparison
+    runs ahead of sealing.
+  - The probe stamp travels into no output, so nothing recomputes. The evidence artifact carries
+    `probeId` and the admitted probe identifiers, and no digest in `ScoringVersionInputs` reads the
+    probe, so a score computed before this change and one computed after stay comparable.
+
 ## [2.0.0] - 2026-09-10
 
 ### Added

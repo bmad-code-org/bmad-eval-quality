@@ -564,3 +564,96 @@ release changed, or what carrying a file across one costs, and stay true however
 two are the Node.js floor, now held as a transcription; and three are pins, all three registered
 here. The seven include the two sentences this change added, `:334`'s "forward from 1.4.2" and
 `:339`'s "compiled under 1.4.2", which are history by the same test as the rest.
+
+## The probe stamp got a reader, 10 September
+
+This supersedes the last two sentences of the block above, which are left as written: the docblock no
+longer records an absence, because there is no longer one to record.
+
+The constant above shipped with nothing comparing against it, which the first version of its docblock
+said in the words "a probe has no such reader yet". That `yet` was a promise, and the asymmetry
+behind it was real: `compile` compares a contract's stamp against `EVAL_CONTRACT_SCHEMA_VERSION` and
+throws `schema-version-mismatch`, and `lineage.ts` keeps the field a plain integer precisely so a
+reader can. A probe got no such comparison, so a probe stamped 3 whose bytes happened to still fit
+version 5 planned a pre-flight and scored a run with nothing noticing.
+
+Two core stages read a probe and both now perform it, each at the top of its own stage function the
+way `compile` does. `planPreflight` reads every probe in its input before it plans a leg;
+`score` reads its one probe before it seals it. Neither is a new code: `schema-version-mismatch` is
+AD-11's own, already in `RUNTIME_FAULT_CODES`, already the contract's answer. `checkSchemaVersion`
+gained a fourth parameter carrying the consequence clause, because the message it hardcoded named a
+contract and the probe's consequence is a different sentence: the stamp says which defect signature
+grammar the probe was authored against, and both stages read that grammar.
+
+**Blast radius, measured before building rather than argued.** Every probe in the tree already
+stamps 5, so the full suite passed unchanged with the check in place: 129 files, 4188 tests, no
+edit to a fixture. The check was then removed to prove it holds something, and sixteen cases
+reddened across the two new blocks.
+
+The scoring side is the one place the choice was not obvious. A rejected probe is a domain outcome
+`score` reports through the ladder rather than a throw, and `unqualified-probe-in-sealed-set` exists
+for exactly that. A stale stamp is different in kind: the gate that would report it reads the grammar
+the stamp names, so its answer about a foreign probe means nothing. The comparison therefore runs
+ahead of sealing and leaves by the fault path, and a test pins that difference.
+
+What the stamp does not do is worth recording beside what it now does. It travels into no output: the
+evidence artifact carries `probeId` and the admitted probe identifiers, and no digest in
+`ScoringVersionInputs` reads the probe. So this closes an authoring gap rather than a comparability
+one, which is the opposite of the contract case, where a stale stamp reached the scoring version.
+
+**A third reader exists and is somebody else's.** `validateLineageChain` takes an
+`acceptedSchemaVersion` and raises the same code over a presented chain, and `Probe` carries lineage,
+so a caller who presents a chain gets the comparison there. It has no caller inside this package and
+it words the fault its own way, so the two spellings of `schema-version-mismatch` in this tree are
+not a drift. The docblock says so, which is why it claims two readers *in this pipeline* rather than
+two readers.
+
+**What the peer review changed.** The consequence clause was a 130-character literal at both call
+sites, which is the defect this change closes for the number one paragraph up, so it is exported from
+`probe.ts` as `PROBE_SCHEMA_VERSION_CONSEQUENCE` and written once. Its wording named the defect
+signature grammar alone, which a clean control carries none of; the second round of review caught the
+first correction repeating the error one field over, since a manifestation witness hangs off a
+`Defect` and the clean-control branch bounds `defects` at zero. What every probe carries is the
+qualification record, and the witness legs and the signature grammar are both the seeded branch's,
+which is also the accurate version history: the witness retype was version 4 and the signature
+widening version 5, both on that branch alone.
+`checkSchemaVersion` takes an options object, because four positional arguments ending in two
+free-form strings typecheck when transposed and the fault's `artifactPath` is machine-readable.
+
+Two tests were pinning something other than their names. The pre-flight precedence case asserted the
+stamp beats the interface-kind gate, which reads the contract and never touches a probe; it now
+asserts the stamp beats the seeded-defect loop, whose `unreachable-check-evidence` throw is reached
+by reading the probe, and keeps the kind case under an honest name. The scoring case asserted only
+that some `RuntimeFault` was thrown; it now builds on Matrix row 6's own probe, which that case
+proves rejects gracefully through the ladder, and asserts the stale-stamped twin throws
+`schema-version-mismatch`.
+
+**The published pages moved with it.** `docs/explanation/what-ships.md` said "the other artifacts have
+no such reader" and listed a probe among them, which this change made false the moment it landed, and
+`check:doc-claims` would have stayed green over it. The page now names the three stages that perform
+the comparison and the sentence is registered as a transcribed list, with the expected set derived
+from the tree.
+
+Deriving it took two rounds to get right, and the second round's finding is the one worth keeping.
+The first version read the call sites of `checkSchemaVersion` alone, and `chain.ts` is the standing
+proof that the helper is not the only route: it compares against `acceptedSchemaVersion` and
+constructs the fault directly, so a fourth reader written the way `chain.ts` already is would have
+passed the new gate in silence, which is exactly what the entry exists to stop. The derivation now
+matches the throw form as well as the call form, and `chain.ts` sits on a named exemption carrying
+its reason: it reads a presented chain for a caller outside this package and words the fault its own
+way. An exemption that stops performing any version equality fails as a dead entry, on the rule every
+other registry in that script follows.
+
+The helper side went one step further after a third reading. Matching a call spelling,
+`checkSchemaVersion({`, reads the three sites written today and misses a fourth passing a prebuilt
+object, which the throw form misses too because the throw is inside the helper. Matching the import
+of the symbol is every call form at once, and it keeps the property the spelling match was chosen
+for: a docblock naming the function does not import it, so discussing the helper still does not turn
+a file into a reader.
+
+No CodeRabbit review was waited for on either pull request in this pair. The bot's quota is
+exhausted, the coordinator's brief said so explicitly and said not to wait, and its silence is
+neither approval nor a finding. Recorded here because it is a fact about how the change was produced,
+which is this file's business and not the pull request's.
+
+`README.md`'s one-line version note names the probe's readers too.

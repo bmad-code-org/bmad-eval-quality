@@ -10,8 +10,12 @@ import { describe, expect, it } from 'vitest'
 import type { ValidatedObservations } from '../../src/core/ingest/ingest.ts'
 import type { EvalContract } from '../../src/core/schemas/eval-contract.ts'
 import type { Expression } from '../../src/core/schemas/expression.ts'
+import { RuntimeFault } from '../../src/core/schemas/faults.ts'
 import type { PreflightVerdict } from '../../src/core/schemas/preflight-verdict.ts'
-import type { Probe } from '../../src/core/schemas/probe.ts'
+import {
+	PROBE_SCHEMA_VERSION,
+	type Probe,
+} from '../../src/core/schemas/probe.ts'
 import type { ScoringPolicy } from '../../src/core/schemas/scoring-policy.ts'
 import type { Observation } from '../../src/core/schemas/sealed-run-record.ts'
 import { score } from '../../src/core/score/score.ts'
@@ -762,5 +766,60 @@ describe('score: STAGE_SIGNATURES conformance', () => {
 			'preflight-verdict',
 			'scoring-policy',
 		])
+	})
+})
+
+/**
+ * AD-11's version equality on the probe, at the scoring reader.
+ *
+ * The twin of `tests/preflight/plan.test.ts`'s block: two core stages read a
+ * probe and both perform the comparison, the way `compile` performs it for the
+ * eval contract. A stale stamp is a rejection rather than a degraded read,
+ * because the stamp is what says which defect signature grammar the probe was
+ * authored against and the qualification gate below reads that grammar.
+ */
+describe('score, reading the probe stamp', () => {
+	const stamped = (schemaVersion: number): Probe =>
+		({ ...qualifiedProbe, schemaVersion }) as Probe
+
+	it('accepts the version this build reads', () => {
+		expect(qualifiedProbe.schemaVersion).toBe(PROBE_SCHEMA_VERSION)
+		expect(() => scoreOf(baseContract, [cleanTrial()])).not.toThrow()
+	})
+
+	it.each([1, 2, 3, 4, 6, 99])('refuses the stamp %i', (schemaVersion) => {
+		const run = () =>
+			scoreOf(baseContract, [cleanTrial()], stamped(schemaVersion))
+		expect(run).toThrow(RuntimeFault)
+		expect(run).toThrow(/schema-version-mismatch/)
+	})
+
+	it('names the probe and both versions, so a reader knows which to move', () => {
+		expect(() => scoreOf(baseContract, [cleanTrial()], stamped(3))).toThrow(
+			/carries "schemaVersion" 3 where this build reads 5/,
+		)
+	})
+
+	it('throws where a rejected probe reports through the ladder', () => {
+		// Built on Matrix row 6's own input, which that case proves rejects
+		// gracefully: same probe, same rejection, one stale stamp. A rejected
+		// probe is a domain outcome this stage carries on the ladder; a stale
+		// stamp leaves by the fault path, because the gate that would report it
+		// reads the shapes the stamp names.
+		const qualification = qualifiedProbe.qualification as Extract<
+			Probe['qualification'],
+			{ route: 'controlled-mutation' }
+		>
+		const rejected: Probe = {
+			...qualifiedProbe,
+			qualification: { ...qualification, rollbackVerified: false },
+		}
+		expect(() => scoreOf(baseContract, [cleanTrial()], rejected)).not.toThrow()
+		expect(() =>
+			scoreOf(baseContract, [cleanTrial()], {
+				...rejected,
+				schemaVersion: 3,
+			} as Probe),
+		).toThrow(/schema-version-mismatch/)
 	})
 })
