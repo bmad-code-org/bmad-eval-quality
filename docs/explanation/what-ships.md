@@ -37,7 +37,7 @@ Deferred until the contract layer is in real use: claim-to-evidence lineage, sem
 
 `compile` accepts `api` and `cli`. The `mcp` kind is declared in the interface vocabulary and refused, so no contract over an MCP tool server runs today. [Evaluate tool-use behavior](/how-to/evaluate-tool-use-behavior/) covers the whole picture, down to the gate codes, the port messages, and the conformance arm an adapter would need.
 
-The response descriptor is the open design question behind the deferral. A tool that returns a markdown `content` array gives AD-4's quantifiers no JSON collection to range over, and no field in the shape closes that gap.
+The response descriptor question behind the deferral is settled. The kind's first version describes a tool's structured result, which is what an MCP tool returns when it has a result with structure at all, and typically what it returns when it declares an output schema. A tool that answers with a markdown `content` array is outside that version, since prose gives AD-4's quantifiers no collection to range over. The text channel such a tool would need is the half that stays deferred.
 
 `web` is refused on the same terms and has had no design pass at all.
 

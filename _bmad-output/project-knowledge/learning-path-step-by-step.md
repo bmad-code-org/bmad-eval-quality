@@ -88,6 +88,7 @@ flowchart TD
 |   44 | epic10-story1 | The port that could describe a command finally gets an adapter that runs one, with a policy saying which. |
 |   45 | epic11-story1 | Two different questions were sharing the name "tool-use evaluation"; one of them already runs. |
 |   46 | epic11-story2 | A documented command is judged on its exit code only once the page writes the file it names. |
+|   47 | epic11-story3 | A tool that answers with prose has no list to count, so the kind's first version covers the tools that answer with data. |
 
 Adding a step: follow `learning-path-template.md`.
 
@@ -3812,3 +3813,44 @@ The three changes each move the exit code off 4, and a fourth kind of drift leav
 - A page's own heredoc is read ahead of any file at the same path in the clone, so a copy a reader leaves behind changes nothing the gate reports.
 
 **Watch out:** two more commands on that page still name files the page never writes, so their exit codes stay unjudged. The story records the six authored artifacts that making them faithful would cost. The example contract also carries a second fault behind the one the page shows, and the page names it: a search changes no state, and the witness channel a tool call needs is illegal for an operation that changes none.
+
+## Step 47 (epic11-story3): a blob of prose has nothing to count
+
+**In plain terms:** a check can say "every row in this list carries a price".
+That only works if the answer really is a list.
+A tool that replies with a paragraph of text hands back one long string, so there are no rows and the check has nothing to walk.
+That is the reason the answer sat unwritten: the form a contract author fills in describes named fields and lists, and prose has neither.
+The answer recorded here covers the tools that reply with real data and leaves the ones that reply with prose for later.
+
+**What:** the recorded decision that a tool-server operation's one response descriptor describes the tool's structured result, that a tool answering with markdown alone is outside the kind's first version, and that no schema field, evidence channel, or fault code is added to say so.
+
+**Why:** every later story in the epic declares an operation shape against this answer, so a wrong one gets retyped in the field under a breaking version bump.
+The two cheaper answers both look free and both cost exactly that.
+Describing the transport wrapper makes fourteen coverage predicates report confidently about the wrapper while saying nothing about the tool.
+Letting an author declare a markdown-to-JSON parser makes those same predicates grade a body no declaration contains.
+
+**Read in this order:**
+
+1. `src/core/schemas/interface.ts`: the response descriptor's six fields, each carrying the reason its own shape is what it is.
+2. `src/core/declared-inputs.ts`: `descriptorChannelOf`, the rule that lets one descriptor sit over whichever channel an operation nominates.
+3. `src/core/compile/expression-legality.ts`: `checkQuantifiersAgainst`, which refuses a `for-all` over anything the descriptor types as a non-array.
+4. `src/core/coverage/relevance.ts`: the two relevance predicates that read `collectionLocations` and grade an explicitly empty list irrelevant.
+5. `_bmad-output/planning-artifacts/architecture/architecture-eval-quality-2026-07-29/ARCHITECTURE-SPINE.md`: AD-19's response-descriptor paragraph, and the Deferred entry it answers.
+
+**Story:** `_bmad-output/implementation-artifacts/11-3-the-response-descriptor-for-an-unstructured-tool-result.md`
+
+### Reference
+
+**Rules:**
+
+- A tool-server operation's one descriptor describes the tool's structured result, and all six fields keep the meaning they carry for an HTTP operation.
+- A tool whose result is only markdown is outside this version of the kind, and no check refuses it: a contract for one has nothing to spell.
+- A text channel would give an oracle three assertions and no more: presence, absence, and a whole-string match. No descending, no quantifying, no capturing. This version spells no such channel.
+- `collectionLocations: []` is the trap, and it is the honest declaration for a tool with no collection: it makes two of the seven discipline rules irrelevant, so the contract scores clean over a result nobody checked. Never write it to mean "no collection here".
+- `null` in that same place makes those two rules relevant and permanently unsatisfiable. Both spellings are wrong, which is why the answer is a restriction on the kind.
+- No fault code is minted. `unreachable-check-evidence`, `quantifier-over-non-collection`, and `captured-channel-undeclared` already fire on every condition the restriction produces, and a code with no thrower is its own defect.
+- A contract claiming structured content for a tool that has none fails on its first run: every pointer into an absent body resolves absent, so a comparison over it is false and a quantifier over it abstains. An `absence` oracle over that same missing body still holds, so it is the checks that read the result that collapse.
+- Describing the transport wrapper is the cheap answer, and it grades the wrapper while saying nothing about the tool.
+- Admitting markdown later adds a member to the operation's descriptor-channel tag, which is an additive change; retyping a bare field would be a breaking one.
+
+**Watch out:** the kind is still refused at compile. This step records the answer to the question that deferred it and opens nothing, so the docs home page still says `api` and `cli` are what compile and its routing table still gives the tool-use row the verdict "Declared and refused at compile".

@@ -206,13 +206,14 @@ function tokensEqual(a: readonly string[], b: readonly string[]): boolean {
 }
 
 /**
- * Only `response-body` can ever answer `true` (AD-19: `collectionLocations`
- * is the only declared-collection surface, scoped to the body alone). The
- * `PlanIndex` builds lazily on first call unless the caller supplies one,
- * since a schema-admitted duplicate step or operation id would make building
- * it eagerly throw before this function ever runs. Uses `stepOf`/`operationOf`
- * rather than `resolveStep`/`resolveOperation`: those throw on a miss, which
- * would break this function's always-returns-a-boolean contract.
+ * Answers `true` only for a pointer at the channel the invoked operation's own
+ * response descriptor describes, since that is where AD-19 puts a declared
+ * collection. The `PlanIndex` builds lazily on first call unless the caller
+ * supplies one, since a schema-admitted duplicate step or operation id would
+ * make building it eagerly throw before this function ever runs. Uses
+ * `stepOf`/`operationOf` rather than `resolveStep`/`resolveOperation`: those
+ * throw on a miss, which would break this function's always-returns-a-boolean
+ * contract.
  */
 export function makePointerDenotesCollection(
 	contract: EvalContract,
@@ -233,12 +234,11 @@ export function makePointerDenotesCollection(
 		if (step === undefined) return false
 		const operation = anyOperationOf(getIndex(), step.operationId)
 		if (operation === undefined) return false
-		// The channel is tested against the operation's own descriptor rather
-		// than against `response-body`. AD-4's empty-collection resolution
-		// applies to whichever channel an operation says carries its declared
-		// collections, and hard-coding the body left it inapplicable to every
-		// command contract: a quantifier over an empty declared collection
-		// resolved `false` instead of `insufficient-evidence`.
+		// The channel has to be the one this operation's descriptor describes.
+		// Hard-coding `response-body` here left AD-4's empty-collection
+		// resolution inapplicable to every command contract: a quantifier over
+		// an empty declared collection resolved `false` where the rule says
+		// `insufficient-evidence`.
 		if (!targetsDescribedChannel(operation, target)) return false
 		const { collectionLocations } = operation.responseDescriptor
 		if (collectionLocations === null) return false
