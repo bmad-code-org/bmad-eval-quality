@@ -1,13 +1,12 @@
 /**
  * `createMcpAdapter` over a real stdio MCP server: one case per row of the
- * story's I/O matrix, plus the six shared AD-37 assertions run from a
- * `PortSubject` built here.
+ * story's I/O matrix, plus the six shared AD-37 assertions.
  *
- * The subject is local rather than a shared module. `reportOf` computes
- * `passed` from `CONFORMANCE_OUTCOME_COUNTS[port]`, so an `mcp` conformance
- * report is unconstructible until an `mcp-probe` entry exists, and the story
- * that adds that entry owns the reusable subject. The six shared assertions do
- * not need the entry, so they are discharged here.
+ * The shared six run from `mcp-probe-subject.ts`, the reusable subject the
+ * `mcp` conformance arm certifies. They were discharged from a subject built
+ * in this file while the `mcp-probe` outcome-count entry did not exist, since
+ * `reportOf` computes `passed` from `CONFORMANCE_OUTCOME_COUNTS[port]` and a
+ * report was unconstructible without it.
  */
 import { spawn } from 'node:child_process'
 import { mkdtempSync, readFileSync, realpathSync, rmSync } from 'node:fs'
@@ -17,9 +16,7 @@ import { fileURLToPath } from 'node:url'
 import { afterAll, describe, expect, it } from 'vitest'
 import {
 	createMcpAdapter,
-	type McpCallToolResult,
 	type McpMechanism,
-	nodeStdioMcpMechanism,
 } from '../../src/adapters/mcp-adapter.ts'
 import { runPreflight } from '../../src/application/preflight.ts'
 import { compile } from '../../src/core/compile/compile.ts'
@@ -34,13 +31,9 @@ import type {
 import type { JsonValue } from '../../src/core/schemas/primitives.ts'
 import type { McpTargetPolicy } from '../../src/core/schemas/probe-policy.ts'
 import { probeParsers } from '../../src/ports/environment-probe-port.ts'
-import type {
-	BuiltSubject,
-	PortSubject,
-	ScenarioKind,
-} from '../../src/testing/conformance.ts'
 import { runSharedAssertions } from '../../src/testing/conformance.ts'
 import { mcpContract } from '../schemas/fixtures/mcp-contract.ts'
+import { createMcpProbeSubject } from './mcp-probe-subject.ts'
 
 const FIXTURE_PATH = fileURLToPath(
 	new URL('./fixtures/mcp-probe-fixture.mjs', import.meta.url),
@@ -664,66 +657,18 @@ describe('the caps and the session failures, which are never conflated', () => {
 })
 
 /**
- * The shared six over the real adapter. `resolves` is a real stdio session for
- * the same reason the command arm's subject runs a real process: a synthetic
- * mechanism would prove nothing about the one thing this adapter exists to get
- * right.
+ * The shared six over the real adapter, from the reusable subject the mcp
+ * conformance arm certifies. This file used to build its own `PortSubject`
+ * with its own copy of the scenario scripting, because the `mcp-probe` count
+ * entry the arm needs did not exist yet. It does now, and one copy of the
+ * scripting is what keeps the shared-six result describing the same subject
+ * the arm reports on.
  */
-function mcpSubject(): PortSubject<ProbeRequest> {
-	const build = async (
-		scenario: ScenarioKind,
-	): Promise<BuiltSubject<ProbeRequest>> => {
-		let calls = 0
-		const mechanism: McpMechanism = {
-			callTool: async (callRequest, signal) => {
-				calls++
-				if (scenario === 'fails') {
-					const error: NodeJS.ErrnoException = new Error(
-						'spawn ENOENT: no such server',
-					)
-					error.code = 'ENOENT'
-					throw error
-				}
-				if (scenario === 'in-band-error') {
-					// `isError` typed `boolean` and given a string: the mechanism's
-					// own contract violated, so the assembled observation fails the
-					// response parse rather than resolving.
-					return {
-						isError: 'not-a-boolean' as unknown as boolean,
-					} satisfies McpCallToolResult
-				}
-				if (scenario === 'hangs') {
-					// Deliberately ignores the signal: honouring it is the adapter's
-					// obligation under AD-28, and `port-boundary.ts`'s race is what
-					// discharges it.
-					return new Promise<McpCallToolResult>(() => {})
-				}
-				return nodeStdioMcpMechanism.callTool(callRequest, signal)
-			},
-		}
-		const subjectPort = createMcpAdapter(policy, mechanism)
-		return {
-			port: (probeRequest, signal) => subjectPort.probe(probeRequest, signal),
-			underlyingCalls: () => calls,
-		}
-	}
-
-	return {
-		name: 'createMcpAdapter',
-		// A killed real process can take a little longer to report than an
-		// in-process abort, and this budget sits well clear of MAX_ELAPSED_MS so
-		// a slow runner cannot turn the abort assertion into a cap assertion.
-		abortBudgetMs: 2000,
-		sampleRequest: request({ probeId: 'sample' }),
-		build,
-	}
-}
-
 describe("AD-37's six shared assertions", () => {
 	it('all six pass against the shipped adapter', async () => {
 		const outcomes = await runSharedAssertions(
 			'probe',
-			mcpSubject(),
+			createMcpProbeSubject(),
 			probeParsers.response,
 		)
 		expect(outcomes.map((each) => each.id)).toEqual([

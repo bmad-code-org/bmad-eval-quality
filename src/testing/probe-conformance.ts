@@ -4,15 +4,19 @@
  * since only it knows how its own interface-to-target mapping is wired.
  *
  * `runEnvironmentProbePortConformance` is the `api` arm: thirteen assertions,
- * every scenario HTTP (redirects, methods, schemes, an anomalous status).
- * `runCommandLineProbeConformance` is the `cli` arm: nine, over an unmapped
- * executable, an unauthorized subcommand path, a non-zero exit read as an
- * observation, a shell-metacharacter argument proven to reach the process as
- * one literal token rather than a shell expansion, a declared artifact
- * captured, and both caps. `runMcpProbeConformance` is the `mcp` arm: eight,
- * over an unauthorized tool, a tool-reported error read as an observation, a
- * declared argument proven to cross the JSON-RPC frame unchanged, the
- * structured result the operation's descriptor describes, and both caps.
+ * every scenario HTTP (an authorized target reached, an anomalous status read
+ * as an observation, an unmapped interface, four denied address classes, a
+ * method, a scheme, a redirect revalidated and refused, and three caps).
+ * `runCommandLineProbeConformance` is the `cli` arm: nine, over an authorized
+ * invocation, a non-zero exit read as an observation, an unmapped interface, an
+ * unmapped executable, an unauthorized subcommand path, a shell-metacharacter
+ * argument proven to reach the process as one literal token rather than a shell
+ * expansion, a declared artifact captured, and both caps.
+ * `runMcpProbeConformance` is the `mcp` arm: eight, over an authorized tool
+ * call, a tool-reported error read as an observation, an unmapped interface, an
+ * unauthorized tool, a declared argument proven to cross the JSON-RPC frame
+ * unchanged, the structured result the operation's descriptor describes, and
+ * both caps.
  *
  * Every field an authorization scopes owes a denial, which is the largest term
  * in the three counts: an HTTP authorization scopes the interface, four
@@ -40,7 +44,9 @@ import type {
 	ProbeRequest,
 } from '../core/schemas/port-messages.ts'
 import type {
+	CommandTargetAuthorization,
 	CommandTargetPolicy,
+	McpTargetAuthorization,
 	McpTargetPolicy,
 	ProbeTargetAuthorization,
 	ProbeTargetPolicy,
@@ -193,20 +199,21 @@ function checkCallCount<Subject, Request>(
 	base: ConformanceOutcome,
 ): ConformanceOutcome {
 	if (expectedCalls === undefined) return base
-	const expected = expectedCalls(subject)
-	if (typeof expected === 'string') {
-		return { ...base, passed: false, detail: expected }
-	}
-	const actual = countCalls(built)
-	if (typeof actual === 'string') {
-		return { ...base, passed: false, detail: actual }
-	}
-	if (actual === expected) return base
-	return {
+	// Every branch keeps whatever the assertion's own check already said. An
+	// outcome that failed its predicate AND hit a subject-side count problem
+	// used to report only the second, which hid the reason the assertion was
+	// looked at in the first place.
+	const also = (complaint: string): ConformanceOutcome => ({
 		...base,
 		passed: false,
-		detail: `${base.passed ? '' : `${base.detail}; `}underlyingCalls() was ${actual}, expected ${expected}`,
-	}
+		detail: base.passed ? complaint : `${base.detail}; ${complaint}`,
+	})
+	const expected = expectedCalls(subject)
+	if (typeof expected === 'string') return also(expected)
+	const actual = countCalls(built)
+	if (typeof actual === 'string') return also(actual)
+	if (actual === expected) return base
+	return also(`underlyingCalls() was ${actual}, expected ${expected}`)
 }
 
 async function runArmAssertion<Subject extends PortSubject<ProbeRequest>>(
@@ -338,7 +345,7 @@ const PROBE_ASSERTIONS: readonly ArmAssertion<ProbeSubject>[] = [
 			check: (observation) =>
 				observation.kind === 'api' && observation.status === 500
 					? undefined
-					: `observed ${observation.kind === 'api' ? `status ${observation.status}` : `a "${observation.kind}" observation`}, expected status 500`,
+					: `observed ${observation.kind === 'api' ? `status ${observation.status}` : `an observation of kind "${observation.kind}"`}, expected status 500`,
 		},
 	},
 	{
@@ -476,6 +483,26 @@ export type CommandProbeSubject = PortSubject<ProbeRequest> & {
 	readonly overOutputRequest: ProbeRequest
 }
 
+/**
+ * The authorization the subject's own command policy resolves this request to.
+ * Keyed by the pair, since `CommandTargetAuthorization` is.
+ *
+ * The three denial assertions read it for the reason `mcpAuthorizationFor`
+ * exists: a subject whose "unmapped" request is in fact mapped passes its own
+ * denial for the wrong reason.
+ */
+function commandAuthorizationFor(
+	subject: CommandProbeSubject,
+	request: ProbeRequest,
+): CommandTargetAuthorization | undefined {
+	if (request.kind !== 'cli') return undefined
+	return subject.policy.authorizations.find(
+		(each: CommandTargetAuthorization) =>
+			each.interfaceId === request.interfaceId &&
+			each.executable === request.executable,
+	)
+}
+
 const COMMAND_ASSERTIONS: readonly ArmAssertion<CommandProbeSubject>[] = [
 	{
 		id: 'command/allow-authorized-invocation',
@@ -498,7 +525,7 @@ const COMMAND_ASSERTIONS: readonly ArmAssertion<CommandProbeSubject>[] = [
 			check: (observation) =>
 				observation.kind === 'cli' && observation.exitCode !== 0
 					? undefined
-					: `observed ${observation.kind === 'cli' ? `exit code ${observation.exitCode}` : `a "${observation.kind}" observation`}, expected a non-zero exit`,
+					: `observed ${observation.kind === 'cli' ? `exit code ${observation.exitCode}` : `an observation of kind "${observation.kind}"`}, expected a non-zero exit`,
 		},
 	},
 	{
@@ -507,7 +534,13 @@ const COMMAND_ASSERTIONS: readonly ArmAssertion<CommandProbeSubject>[] = [
 			'an interface no authorization names is refused before a process spawns',
 		request: (subject) => subject.unmappedInterfaceRequest,
 		expectation: { kind: 'rejects', code: DENIED },
-		expectedCalls: () => 0,
+		expectedCalls: (subject) =>
+			subject.policy.authorizations.some(
+				(each: CommandTargetAuthorization) =>
+					each.interfaceId === subject.unmappedInterfaceRequest.interfaceId,
+			)
+				? "the subject's policy names an authorization for unmappedInterfaceRequest.interfaceId, so the request it presents as unmapped is mapped"
+				: 0,
 	},
 	{
 		id: 'command/deny-unmapped-executable',
@@ -515,7 +548,11 @@ const COMMAND_ASSERTIONS: readonly ArmAssertion<CommandProbeSubject>[] = [
 			'an executable the interface is never paired with is refused before a process spawns',
 		request: (subject) => subject.unmappedExecutableRequest,
 		expectation: { kind: 'rejects', code: DENIED },
-		expectedCalls: () => 0,
+		expectedCalls: (subject) =>
+			commandAuthorizationFor(subject, subject.unmappedExecutableRequest) ===
+			undefined
+				? 0
+				: "the subject's policy pairs unmappedExecutableRequest's interface with its executable, so the pair it presents as unmapped is mapped",
 	},
 	{
 		id: 'command/deny-unauthorized-subcommand',
@@ -523,7 +560,26 @@ const COMMAND_ASSERTIONS: readonly ArmAssertion<CommandProbeSubject>[] = [
 			'a subcommand path outside the authorized set is refused before a process spawns',
 		request: (subject) => subject.unauthorizedSubcommandRequest,
 		expectation: { kind: 'rejects', code: DENIED },
-		expectedCalls: () => 0,
+		expectedCalls: (subject) => {
+			const request = subject.unauthorizedSubcommandRequest
+			if (request.kind !== 'cli') {
+				return `unauthorizedSubcommandRequest declares a "${request.kind}" request, which names no subcommand path for the policy to refuse`
+			}
+			const authorization = commandAuthorizationFor(subject, request)
+			if (authorization === undefined) {
+				return "the subject's policy names no authorization for unauthorizedSubcommandRequest's interface and executable, so this case cannot tell an unmapped pair from an unauthorized subcommand"
+			}
+			return authorization.permittedSubcommandPaths.some(
+				(permitted: readonly string[]) =>
+					permitted.length === request.subcommandPath.length &&
+					permitted.every(
+						(segment: string, at: number) =>
+							segment === request.subcommandPath[at],
+					),
+			)
+				? `the subject's policy permits subcommand path ${JSON.stringify(request.subcommandPath)}, so the request it presents as unauthorized is authorized`
+				: 0
+		},
 	},
 	{
 		// The strongest available proof that no shell ever reads a channel value:
@@ -614,7 +670,7 @@ export type McpProbeSubject = PortSubject<ProbeRequest> & {
 	readonly unmappedInterfaceRequest: ProbeRequest
 	/** an interfaceId the policy names, asking for a toolName its authorization omits. */
 	readonly unauthorizedToolRequest: ProbeRequest
-	/** authorized, and answered by a tool result carrying the envelope's error flag. */
+	/** authorized, and answered by a tool result carrying the envelope's error flag AND the content the tool reported the failure with, since the assertion checks both survived. */
 	readonly errorResultRequest: ProbeRequest
 	/** authorized, carrying a metacharacter-bearing value on one argument key. */
 	readonly argumentEchoRequest: ProbeRequest
@@ -630,6 +686,23 @@ export type McpProbeSubject = PortSubject<ProbeRequest> & {
 	readonly overElapsedRequest: ProbeRequest
 	/** authorized against a maxOutputBytes the server is made to write past. */
 	readonly overResultBytesRequest: ProbeRequest
+}
+
+/**
+ * The authorization the subject's own policy resolves this request to.
+ *
+ * The two denial assertions read it to check the subject is internally
+ * consistent: a subject whose "unmapped" request is in fact mapped, or whose
+ * "unauthorized" tool is in fact on the allowlist, would pass its own denial
+ * for the wrong reason and certify an adapter that never refused anything.
+ */
+function mcpAuthorizationFor(
+	subject: McpProbeSubject,
+	request: ProbeRequest,
+): McpTargetAuthorization | undefined {
+	return subject.policy.authorizations.find(
+		(each: McpTargetAuthorization) => each.interfaceId === request.interfaceId,
+	)
 }
 
 /** The tool's structured result as a key map, or `undefined` when the observation carries no JSON object there. */
@@ -668,10 +741,23 @@ const MCP_ASSERTIONS: readonly ArmAssertion<McpProbeSubject>[] = [
 		request: (subject) => subject.errorResultRequest,
 		expectation: {
 			kind: 'resolves',
-			check: (observation) =>
-				observation.kind === 'mcp' && observation.isError
-					? undefined
-					: `observed ${observation.kind === 'mcp' ? 'a tool call reporting no error' : `a "${observation.kind}" observation`}, expected the envelope's error flag set`,
+			check: (observation) => {
+				if (observation.kind !== 'mcp') {
+					return `observed an observation of kind "${observation.kind}", expected the envelope's error flag set`
+				}
+				if (!observation.isError) {
+					return "observed a tool call reporting no error, expected the envelope's error flag set"
+				}
+				// The flag alone is half the rule. An adapter that reads the
+				// envelope and drops what the tool said about the failure passes a
+				// flag-only check, and the seeded-fault oracle downstream then has
+				// the error announced and nothing to assert on. The subject owes a
+				// tool that answers with content here, which `errorResultRequest`
+				// says.
+				return observation.result.kind === 'absent'
+					? 'the error was reported with an absent result channel, so what the tool said about the failure did not survive the adapter'
+					: undefined
+			},
 		},
 	},
 	{
@@ -680,7 +766,11 @@ const MCP_ASSERTIONS: readonly ArmAssertion<McpProbeSubject>[] = [
 			'an interface no authorization names is refused before a server process starts',
 		request: (subject) => subject.unmappedInterfaceRequest,
 		expectation: { kind: 'rejects', code: DENIED },
-		expectedCalls: () => 0,
+		expectedCalls: (subject) =>
+			mcpAuthorizationFor(subject, subject.unmappedInterfaceRequest) ===
+			undefined
+				? 0
+				: "the subject's policy names an authorization for unmappedInterfaceRequest.interfaceId, so the request it presents as unmapped is mapped",
 	},
 	{
 		// The tool allowlist is the second and last authorization-scoped field,
@@ -691,7 +781,19 @@ const MCP_ASSERTIONS: readonly ArmAssertion<McpProbeSubject>[] = [
 			'a tool outside the authorized list is refused before a server process starts',
 		request: (subject) => subject.unauthorizedToolRequest,
 		expectation: { kind: 'rejects', code: DENIED },
-		expectedCalls: () => 0,
+		expectedCalls: (subject) => {
+			const request = subject.unauthorizedToolRequest
+			if (request.kind !== 'mcp') {
+				return `unauthorizedToolRequest declares a "${request.kind}" request, which names no tool for the policy to refuse`
+			}
+			const authorization = mcpAuthorizationFor(subject, request)
+			if (authorization === undefined) {
+				return "the subject's policy names no authorization for unauthorizedToolRequest.interfaceId, so this case cannot tell an unmapped interface from an unauthorized tool"
+			}
+			return authorization.tools.includes(request.toolName)
+				? `the subject's policy permits tool "${request.toolName}" on interface "${request.interfaceId}", so the request it presents as unauthorized is authorized`
+				: 0
+		},
 	},
 	{
 		// The tool-call twin of the command arm's literal-argument proof. A
@@ -706,7 +808,7 @@ const MCP_ASSERTIONS: readonly ArmAssertion<McpProbeSubject>[] = [
 			kind: 'resolves',
 			check: (observation, subject) => {
 				if (observation.kind !== 'mcp') {
-					return `observed a "${observation.kind}" observation, expected a tool call`
+					return `observed an observation of kind "${observation.kind}", expected a tool call`
 				}
 				const result = structuredResultOf(observation)
 				if (result === undefined) {
@@ -733,7 +835,7 @@ const MCP_ASSERTIONS: readonly ArmAssertion<McpProbeSubject>[] = [
 			kind: 'resolves',
 			check: (observation, subject) => {
 				if (observation.kind !== 'mcp') {
-					return `observed a "${observation.kind}" observation, expected a tool call`
+					return `observed an observation of kind "${observation.kind}", expected a tool call`
 				}
 				const result = structuredResultOf(observation)
 				if (result === undefined) {
@@ -769,6 +871,16 @@ const MCP_ASSERTIONS: readonly ArmAssertion<McpProbeSubject>[] = [
  * one session is opened against one server and every tool it offers belongs to
  * that server, so the interface identifier is the server identity and the tool
  * allowlist is the only thing left to deny on.
+ *
+ * Two rules the reference adapter follows are outside what a green run
+ * certifies, and an author reading this should know which. A JSON-RPC error
+ * answering `tools/call` is an observation on the same terms a tool-reported
+ * error is, and the byte cap applies to the server's own stderr as well as its
+ * stdout. Neither has an assertion here, because the derivation above gives
+ * each arm one denial per authorization-scoped field and one assertion per cap
+ * the suite can make a subject exceed, and both of these are a second spelling
+ * of an assertion the arm already carries. The reference adapter's own tests
+ * cover both.
  */
 export async function runMcpProbeConformance(
 	subject: McpProbeSubject,

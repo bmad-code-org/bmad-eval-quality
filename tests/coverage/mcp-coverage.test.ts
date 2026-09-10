@@ -15,10 +15,12 @@
 // happen to be interesting today would let the next one through.
 //
 // A whole table of `relevant, satisfied` is also the table most easily green
-// for the wrong reason, so the second block removes one oracle at a time and
-// names which rules go unsatisfied. That is what separates seven predicates
-// reading this contract from seven predicates answering `true` without reading
-// it.
+// for the wrong reason, so two mutant families follow it, one per column. The
+// oracle-removal block removes one oracle at a time and names which rules go
+// unsatisfied. The declaration-removal block removes one declaration at a time
+// and names which rules go irrelevant, which is the only evidence that reaches
+// the relevance predicates at all: none of the seven reads `oracles`, so every
+// oracle mutant leaves the relevance column byte-identical.
 
 import { describe, expect, it } from 'vitest'
 import { compile } from '../../src/core/compile/compile.ts'
@@ -112,10 +114,17 @@ describe('each rule is satisfied by a named oracle, and goes red without it', ()
 			['success-indicator-separation', 'whole-body'],
 			'the same pair over the creation tool, which has its own descriptor and its own required keys',
 		],
+		// One row each. Paired, the two would hide either one of them ceasing to
+		// be load-bearing, since the rule reports unsatisfied either way.
 		[
-			['O-006', 'O-007'],
+			['O-006'],
 			['malformed-input'],
-			'the two oracles addressing the type-violating steps',
+			"the oracle addressing the search tool's type-violating step",
+		],
+		[
+			['O-007'],
+			['malformed-input'],
+			"the oracle addressing the creation tool's type-violating step",
 		],
 		[
 			['O-002'],
@@ -142,4 +151,118 @@ describe('each rule is satisfied by a named oracle, and goes red without it', ()
 	it('leaves every rule satisfied with no oracle removed', () => {
 		expect(unsatisfiedIn(mcpContract)).toEqual([])
 	})
+})
+
+/** Every operation on the contract's one interface, rebuilt by `change`. A relevance predicate answers on the first operation that satisfies it, so a mutant has to reach both. */
+const soleInterface = mcpContract.permittedInterfaces[0]
+if (soleInterface === undefined) {
+	throw new TypeError('the mcp fixture declares exactly one interface')
+}
+
+const overOperations = (
+	change: (operation: Record<string, unknown>) => Record<string, unknown>,
+) => ({
+	...mcpContract,
+	permittedInterfaces: [
+		{
+			...soleInterface,
+			operations: (
+				soleInterface.operations as unknown as Record<string, unknown>[]
+			).map(change),
+		},
+	],
+})
+
+const overDescriptors = (
+	change: (descriptor: Record<string, unknown>) => Record<string, unknown>,
+) =>
+	overOperations((operation) => ({
+		...operation,
+		responseDescriptor: change(
+			operation.responseDescriptor as Record<string, unknown>,
+		),
+	}))
+
+const irrelevantIn = (contract: unknown): string[] =>
+	gradeOf(contract)
+		.filter(([, relevant]) => relevant !== true)
+		.map(([rule]) => String(rule))
+
+describe('each rule reads a declaration, and goes irrelevant without it', () => {
+	it.each([
+		[
+			'the two sibling groups',
+			{ ...mcpContract, siblingGroups: { operations: [], parameters: [] } },
+			['sibling-cross-check'],
+		],
+		[
+			'every channel role beside the success indicator',
+			overDescriptors((descriptor) => ({
+				...descriptor,
+				channelRoles: { '/ok': 'success-indicator' },
+			})),
+			['success-indicator-separation'],
+		],
+		[
+			'every required response key but one',
+			overDescriptors((descriptor) => ({
+				...descriptor,
+				requiredKeys: ['ok'],
+			})),
+			['whole-body'],
+		],
+		[
+			'every collection location',
+			overDescriptors((descriptor) => ({
+				...descriptor,
+				collectionLocations: [],
+			})),
+			// Both rules read the same list, which is why one declaration
+			// carries two of the seven.
+			['per-record', 'omission-and-completeness'],
+		],
+		[
+			'the reference set each collection location names',
+			overDescriptors((descriptor) => ({
+				...descriptor,
+				collectionLocations: (
+					descriptor.collectionLocations as Record<string, unknown>[]
+				).map((location) => ({ ...location, referenceSet: null })),
+			})),
+			// The narrower half of the pair above: the location survives, so
+			// rule 4 stays relevant and only rule 6 goes.
+			['omission-and-completeness'],
+		],
+		[
+			'every state-change marker, and the fixture reset that needs one',
+			{
+				...overOperations((operation) => ({
+					...operation,
+					stateChangeMarker: false,
+				})),
+				// `compile` refuses a reset naming an operation that changes no
+				// state, so the marker cannot be dropped on its own.
+				fixtureReset: null,
+			},
+			['state-change-read-back'],
+		],
+	] as const)(
+		'dropping %s leaves %j irrelevant',
+		(_what, mutated, expected) => {
+			expect(irrelevantIn(mutated)).toEqual([...expected])
+		},
+	)
+
+	it('leaves every rule relevant with nothing dropped', () => {
+		expect(irrelevantIn(mcpContract)).toEqual([])
+	})
+
+	// `malformed-input` is the one rule with no mutant here, and the reason is
+	// worth stating rather than leaving as a gap. It answers relevant when any
+	// operation declares a key on any input channel, and a tool call has one
+	// channel. Emptying `arguments` on both operations takes the interaction
+	// plan's bindings, both sensitivity witnesses, the sibling parameter group,
+	// the two type-violating steps and the read-back with it, which is a
+	// different contract rather than this one with a declaration removed. The
+	// oracle-removal block above is what holds the rule's satisfaction side.
 })

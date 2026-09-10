@@ -4053,14 +4053,14 @@ One of the three built an address with a piece missing, so it compared real evid
 
 **Rules:**
 
-- Each arm gets one question per thing its mapping is allowed to refuse. An HTTP mapping refuses seven, a command mapping three, a tool-server mapping two, which is why the three counts differ.
-- A refusal question also pins the underlying call count at zero, so the refusal is proved to happen before the adapter touches its mechanism.
+- Each arm gets one question per field its mapping can refuse on. An HTTP mapping has seven such fields, a command mapping three, a tool-server mapping two, which is the biggest reason the counts differ. The HTTP arm carries an eighth refusal on top: a redirect checked again at its new target.
+- A refusal question also pins how many times the adapter touched its mechanism, so the refusal is proved to happen at the right moment. Seven of the eight pin zero. The redirect one pins one, because the first hop is allowed and happens.
 - Every arm answers the six shared questions first, under the same `probe/` names, then its own.
 - The count is part of the verdict. A run that produced too few outcomes fails, so a suite that stopped early cannot read as a pass.
 - The subject under test is the real shipped adapter over a real tool server. A faked mechanism would prove nothing about the one thing the adapter exists to get right.
 - Two questions compare a value the tool published: the argument it received, and the keys in the result it returned. Both read a single value beside the list, because a check over an empty list reports that it had nothing to go on and could witness nothing.
-- One broken subject per question, and each is keyed to its own request. Two questions that both read the result would otherwise go red together, and neither would be measuring what its name says.
-- The grading file asserts the whole table. Naming only today's interesting rules lets the next one through.
-- The grading file also removes one oracle at a time and names which rules go unsatisfied, which is what separates seven rules reading a contract from seven rules answering yes without reading it.
+- Each refusal question also reads the subject's own mapping. A subject whose "not allowed" request turns out to be allowed is told so, rather than passing its own refusal for the wrong reason.
+- One broken subject per question, each keyed to its own request so two questions reading the same thing cannot go red together; plus one that refuses correctly but too late, without which the call-count half of every refusal could be deleted with the suite staying green.
+- The grading file asserts the whole table, then breaks the contract two ways: one oracle removed at a time, and one declaration removed at a time. The first moves the "did anyone check this" column and the second moves the "does this rule apply" column, and nothing that only moves one of them is evidence about the other.
 
 **Watch out:** the command arm can refuse an executable, a subcommand path, and an unmapped interface, and it cannot refuse an environment key. That gap is written up at the top of `_bmad-output/implementation-artifacts/deferred-work.md` with what closing it costs.

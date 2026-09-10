@@ -179,8 +179,8 @@ unchanged.
 - [x] `tests/adapters/mcp-probe-subject.ts` -- the in-repository `mcp` subject over Story 11.13's
   shipped adapter and a real fixture server, on the shape `tests/adapters/command-probe-subject.ts:1-9`
   set -- a synthetic mechanism would prove nothing about the thing the adapter exists to get right.
-- [x] `tests/adapters/fixtures/mcp-probe-fixture.mjs` -- the fixture the subject drives, scripting
-  the error result, the argument echo, the declared result channel, and both overruns.
+- [~] `tests/adapters/fixtures/mcp-probe-fixture.mjs` -- **not written; already landed.** Story
+  11.13 shipped the file with all four scripted. Untouched by this diff. Decision 9.
 - [x] `tests/adapters/mcp-probe-subject.test.ts` -- run `runMcpProbeConformance` against it and
   assert fourteen of fourteen with an empty failure list, as
   `tests/adapters/command-probe-subject.test.ts:27-34` does.
@@ -200,8 +200,9 @@ unchanged.
   an MCP adapter certifies against, and the sentence is deleted outright if Story 11.13 already
   removed its two port-message clauses; `:234` loses its "a conformance arm" item, and the
   "**Missing.**" line is deleted if that empties it.
-- [x] `_bmad-output/implementation-artifacts/deferred-work.md:3-17` -- close the open item, which
-  Epic 10 satisfied and which now reads as false in two places.
+- [~] `_bmad-output/implementation-artifacts/deferred-work.md:3-17` -- **rescoped, deliberately not
+  closed.** Epic 10 satisfied all of it but the environment-key half; the entry is rewritten down to
+  that item and stays open with a named owner. Decision 12.
 - [x] `CHANGELOG.md` `[Unreleased]` -- one `### Added` bullet naming `runMcpProbeConformance` and
   `McpProbeSubject` on `eval-quality/conformance`, and `CONFORMANCE_OUTCOME_COUNTS` gaining
   `'mcp-probe': 14` with every existing count unchanged, stated so the silence is not read as an
@@ -493,6 +494,112 @@ member, which 11.13 falsified and no story corrected. `tests/adapters/probe-subj
 its `expected an api observation` guard twice on consecutive lines, which the Execution list already
 names, and one copy is deleted.
 
+**Decision 15: the peer review's two high findings, and what each one turned out to be.**
+
+*The `underlyingCalls() === 0` pin was unproven on all three arms and deletable with the whole suite
+green.* Every denial mutant in the tree makes the port RESOLVE, which reds on `runArmAssertion`'s
+"resolved instead of rejecting" branch before `checkCallCount` is ever consulted, so the count clause
+carried no test at all. `grep -rn "underlyingCalls() was" tests/` returned nothing. The failure it
+let through is the one an adopter would care about most: an adapter that opens the connection, or
+spawns the server with the operator's own `cwd` and `serverEnvironment`, and only then consults its
+mapping. That adapter certified fourteen of fourteen while breaking the AD-35 boundary both denial
+titles claim in their own words, "refused before a server process starts".
+
+Closed with one mutant shape per arm, `denyAfterContact`, `denyAfterSpawn` and `denyAfterLaunch`,
+each naming the single denial it mistimes so the flip stays disjoint. The mutant refuses correctly
+and only after reaching the mechanism, so the code check passes and the outcome reds on its count
+alone; a case asserts that outcome's detail is exactly `underlyingCalls() was 1, expected 0`.
+Verified deletable-no-longer: removing the `expectedCalls` clause from `mcp/deny-unmapped-interface`
+reds that arm's new mutant and nothing else. Eight denial assertions across the three arms were
+covered this way, and the `api` and `cli` halves were pre-existing holes this story closed rather
+than caused.
+
+*`mcp/observe-error-result` did not read the result its own frozen I/O row names.* The row reads
+"resolves, **and the observation carries that result**", and the check tested only the kind and the
+flag. Mutating the shipped `bodyOf` to answer `{ kind: 'absent' }` left this assertion green while
+reddening two others, so a dropped payload was caught by the arm and misattributed to the wrong two
+ids. The check now also refuses an absent result channel, `errorResultRequest`'s own comment states
+the obligation that puts on a subject author, and a `dropErrorResultBody` mutant covers it. This is
+the same defect class as the vacuous probe Story 11.6 caught: a green assertion checking the wrong
+thing.
+
+**Decision 16: the denial assertions read the subject's own policy, which is what makes
+`McpProbeSubject.policy` and `CommandProbeSubject.policy` load-bearing.**
+Both fields were required published surface that no assertion read: `subject.policy` had exactly one
+reader, the `api` arm's `authorizationFor`. Both synthetic subjects supplied `{ authorizations: [] }`
+purely to satisfy the type, and every outside author would have too. The choice was to drop the field
+or to give the arm an assertion that reads it, and reading it is worth more.
+
+Each denial assertion now resolves the request against the subject's own policy and complains when
+the subject is internally inconsistent: an "unmapped" interface the policy does name, an
+"unauthorized" tool the allowlist does permit, an "unauthorized" subcommand path
+`permittedSubcommandPaths` does allow. A subject like that passes its own denial for the wrong reason
+and certifies an adapter that never refused anything.
+
+It found one immediately. The synthetic command subject's three denial requests were three copies of
+its authorized request, differing only in `operationId`: same interface, same executable, same empty
+subcommand path. It passed all three denials because the subject's own port branched on
+`operationId`, and against a real policy none of the three would have been denied. All three now name
+the one field their denial turns on, and both synthetic subjects carry a real policy.
+
+**Decision 17: `docs/explanation/what-ships.md:38` is corrected here, under the frozen block's own
+carve-out, and the rest of the page stays Story 11.9's.**
+The frozen Boundaries list that page under **Never** and the Code Map assigns `:38` to Story 11.9 by
+name, so this was escalated rather than decided. The ruling is that the correction lands here: the
+same Boundaries sentence already carves out "factual corrections to sentences it falsifies", and
+applying that carve-out as written is not a reinterpretation of the block. One clause moved, from
+"the conformance arm the kind is still owed" to "the conformance arm that certifies an adapter for
+the kind". Story 11.9 keeps the page's narrative, `:20`'s adapter count, `docs/index.md`, the
+glossary, and the tool-use guide's "Where this stands" section; none of them is touched here.
+
+The deciding argument is the epic's own: epic 11 exists because published documentation promised five
+system shapes while the schema refused one. Merging a diff that ships the third conformance arm while
+`what-ships.md` still said the kind was owed that arm would recreate that defect deliberately and
+hold it open for two stories.
+
+**Decision 18: nothing mechanical guards a false prose claim on the published pages, and Story 11.9
+should decide whether that is buildable.** Recorded for 11.9 to pick up rather than built here.
+`scripts/check-docs.mjs` scans `README.md`, `_bmad-output/planning-artifacts`,
+`_bmad-output/project-knowledge` and two experiment files, and never reads `docs/`.
+`check-doc-invocations.mjs` compares a page's transcribed output only where the page declares the
+exit code it expects, which leaves a claim quoted in prose beyond it. So the three sentences this
+story corrected (`cli-commands.md`'s runner list and count list, the tool-use guide's "still owed"
+clause, `what-ships.md:38`) were all found by reading, and Decision 4 had already recorded that
+nothing would catch them.
+
+What a guard would have to read, for the two shapes this story met: the runner list and the outcome
+counts are derivable, since `CONFORMANCE_OUTCOME_COUNTS` and the `run*Conformance` exports are both
+in one module, so a checker could compare a fenced or backticked list on a page against the module
+and fail on a difference, which is the shape `check:ad31-table` already has. The "still owed" clauses
+are not derivable, because no export says a thing is owed; the only mechanical handle is a
+convention, such as an owed claim carrying a marker a checker can find and a story deleting the
+marker when it ships the thing. The pages that carry claims going stale as the code moves are
+`docs/reference/cli-commands.md` (runner list, per-port counts, adapter count, corpus counts),
+`docs/explanation/what-ships.md` (adapter count, what each kind can do), and
+`docs/how-to/evaluate-tool-use-behavior.md` (its "Where this stands" section in full). This is the
+same shape as the gap Story 11.2 armed, one level up.
+
+**Decision 19: the peer review's remaining findings, and the three notes that stayed notes.**
+Sixteen findings were fixed in this pass. Three are recorded rather than changed.
+
+The two `mcp` denials pin the AD-28 code `forbidden-target` and not the denial reason, so an adapter
+answering `tool-not-authorized` for an unmapped interface passes both. That is the suite's own
+division: `checkRejected` reads the published fault code, and the reason is an adapter-internal
+value with no place on the port message. Story 11.13's `mcp-target-policy.test.ts` covers the two
+reasons directly, which is where a value nothing publishes belongs.
+
+Three outcome titles keep the negation-then-correction shape the repository's writing rule bans ("an
+observation, not a fault", "capped, not left running for the caller", "capped, not returned in
+part"). Each is the third arm's twin of a title the `api` or `cli` arm already ships, and both halves
+are concrete states of the same call. Consistency across the three arms is worth more here than
+rewriting two shipped titles.
+
+`malformed-input` is the one AD-31 rule with no relevance mutant in `mcp-coverage.test.ts`.
+Emptying the `arguments` shape on both operations takes the interaction plan's bindings, both
+sensitivity witnesses, the parameter sibling group, both type-violating steps and the read-back with
+it, which is a different contract rather than this one with a declaration removed. The file says so
+where the mutants are, and the rule's satisfaction side is covered by two oracle-removal rows.
+
 ## Design Notes
 
 **The five pairs, walked against the tree.** Every pair exists. Three get a third file here and two
@@ -579,6 +686,51 @@ reading as an ordinary unsatisfied verdict.
 - Read the new step in `learning-path-step-by-step.md` against `learning-path-template.md`: the
   heading order, no repository vocabulary in `In plain terms`, no bullet longer than two lines.
 
+
+## Review Findings
+
+A peer session ran `/bmad-code-review` over the first commit: 19 findings, 2 high, 7 medium, 10 low.
+Sixteen are fixed here; three are recorded as notes in Decision 19 with the reasoning. The peer also
+re-derived the four claims it was asked to check independently rather than taking the build's report,
+and confirmed the refactor preserves behaviour by diffing the deleted code against the new, the real
+subject's fourteen against the fixture's own source, that nothing else in the diff meets AD-4's
+empty-collection trap, and that no path leaks a process, including the abort path it tested by
+measurement.
+
+**The two high findings** are Decision 15. Both were real, both were green tests asserting the wrong
+thing, and both are fixed rather than noted.
+
+**Fixed, medium.** The oracle-removal block was evidence for the satisfaction column alone, since no
+relevance predicate reads `oracles`; a second mutant family now removes one declaration at a time and
+names which rules go irrelevant, covering six of the seven, with the seventh's absence argued in the
+file. `mcp/observe-declared-result-channel`'s missing-keys branch was dead, because the only mutant
+emptied the whole channel and landed in the arm above it, and the synthetic subject's declared keys
+were exactly what its own observation emitted, making the check tautological there; a one-key-drop
+mutant closes both, and the check's non-`mcp` arm gained the case it lacked. `mcp-adapter.test.ts`
+kept a near-verbatim copy of the subject's scenario scripting, which this story's own reusable subject
+supersedes; it now runs the shared six from `mcp-probe-subject.ts`, which is also what makes step 51's
+rewritten Watch out true. Nothing in the tree read the conformance barrel's runner exports, so
+deleting `runMcpProbeConformance` from `src/testing/index.ts` left typecheck, lint and the whole
+suite green while the CHANGELOG and the CLI reference said it ships there; `package-exports.test.ts`
+case 147b imports the built barrel and asserts every runner name and the whole counts object, and
+reverting the export reds it by name. `docs/explanation/what-ships.md:38` is Decision 17. The arm's
+two uncertified rules are named in `runMcpProbeConformance`'s own JSDoc. The header enumerations
+undercounted both rewritten arms and omitted `allow-authorized-tool-call` from three places; all
+three are corrected.
+
+**Fixed, low.** `abortBudgetMs`'s comment named the wrong constant. `checkCallCount` discarded the
+assertion's own detail on two of its three branches. Two learning-path rules were wrong about the
+`api` arm: seven scoped fields but eight `deny-*` ids, and `probe/deny-on-redirect` pins one call
+rather than zero. The paired `O-006`/`O-007` removal row is now two rows, since each is separately
+load-bearing and the pair would have hidden either one going vacuous. Two Execution items were `[x]`
+for work the story deliberately declined and now read `[~]` with the decision that governs them.
+`serverAt` gained a return annotation so excess-property checking applies where the literal is
+written. Three detail strings read `a "api"`; all five sites across the three arms now read
+`an observation of kind "..."`. The CHANGELOG's "That silence" had no antecedent and carried the
+negation-then-correction shape the repository's writing rule bans. `sprint-status.yaml` read
+`backlog` while the work was in flight.
+
+**Re-verify.** A narrowed brief went back to the same session over the fixes.
 
 ## Completion Notes
 

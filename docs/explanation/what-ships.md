@@ -35,7 +35,7 @@ Deferred until the contract layer is in real use: claim-to-evidence lineage, sem
 
 ## Tool-use evaluation
 
-`compile` accepts `mcp`, the pre-flight plan mints the calls a probe would make, and `createMcpAdapter` runs them against a tool server it launches over MCP's stdio transport. A server reached over HTTP needs your own adapter, since this package opens no socket. [Evaluate tool-use behavior](/how-to/evaluate-tool-use-behavior/) covers the whole picture, down to the port messages and the conformance arm the kind is still owed.
+`compile` accepts `mcp`, the pre-flight plan mints the calls a probe would make, and `createMcpAdapter` runs them against a tool server it launches over MCP's stdio transport. A server reached over HTTP needs your own adapter, since this package opens no socket. [Evaluate tool-use behavior](/how-to/evaluate-tool-use-behavior/) covers the whole picture, down to the port messages and the conformance arm that certifies an adapter for the kind.
 
 The response descriptor question the kind turned on is settled. The kind's first version describes a tool's structured result, which is what an MCP tool returns when it has a result with structure at all, and typically what it returns when it declares an output schema. A tool that answers with a markdown `content` array is outside that version, since prose gives AD-4's quantifiers no collection to range over. The text channel such a tool would need is the half that stays deferred.
 

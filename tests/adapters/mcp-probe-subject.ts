@@ -19,7 +19,10 @@ import {
 } from '../../src/adapters/mcp-adapter.ts'
 import type { ProbeRequest } from '../../src/core/schemas/port-messages.ts'
 import type { JsonValue } from '../../src/core/schemas/primitives.ts'
-import type { McpTargetPolicy } from '../../src/core/schemas/probe-policy.ts'
+import type {
+	McpTargetAuthorization,
+	McpTargetPolicy,
+} from '../../src/core/schemas/probe-policy.ts'
 import type {
 	BuiltSubject,
 	ScenarioKind,
@@ -67,7 +70,7 @@ function serverAt(
 	interfaceId: string,
 	tools: readonly string[],
 	maxElapsedMs: number,
-) {
+): McpTargetAuthorization {
 	return {
 		interfaceId,
 		target: process.execPath,
@@ -130,8 +133,9 @@ export function createMcpProbeSubject(): McpProbeSubject {
 	return {
 		name: 'createMcpAdapter',
 		// A killed server process can take a little longer to report than an
-		// in-process abort; well clear of TIGHT_ELAPSED_MS so a slow runner
-		// cannot turn this into a cap assertion instead.
+		// in-process abort; well clear of MAX_ELAPSED_MS, which is the budget
+		// `sampleRequest` runs under, so a slow runner cannot turn this into a
+		// cap assertion instead.
 		abortBudgetMs: 2000,
 		sampleRequest: mcpRequest({ probeId: 'sample' }),
 		build,
