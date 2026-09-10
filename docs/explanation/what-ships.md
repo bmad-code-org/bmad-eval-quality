@@ -31,22 +31,23 @@ It executes nothing. No agent, no judge, and no system under test runs inside it
 
 Also outside the package, by decision: a new eval engine, a hosted service, a dashboard or GUI, multimodal evaluators, automatic prompt repair, and a generic judge-calibration platform.
 
-Deferred until the contract layer is in real use: claim-to-evidence lineage, semantic checkpoint scoring, process and outcome separation, and first material error attribution.
+Also outside the package: claim-to-evidence lineage, semantic checkpoint scoring, process and outcome separation, and first material error attribution. Each needs a contract layer in real use before its shape is decidable, and that is where the brief left them.
 
 ## Tool-use evaluation
 
 `compile` accepts `mcp`, the pre-flight plan mints the calls a probe would make, and `createMcpAdapter` runs them against a tool server it launches over MCP's stdio transport. A server reached over HTTP needs your own adapter, since this package opens no socket. [Evaluate tool-use behavior](/how-to/evaluate-tool-use-behavior/) covers the whole picture, down to the port messages and the conformance arm that certifies an adapter for the kind.
 
-The response descriptor question the kind turned on is settled. The kind's first version describes a tool's structured result, which is what an MCP tool returns when it has a result with structure at all, and typically what it returns when it declares an output schema. A tool that answers with a markdown `content` array is outside that version, since prose gives AD-4's quantifiers no collection to range over. The text channel such a tool would need is the half that stays deferred.
+The response descriptor question the kind turned on is settled. The kind's first version describes a tool's structured result, which is what an MCP tool returns when it has a result with structure at all, and typically what it returns when it declares an output schema. A tool that answers with a markdown `content` array is outside that version, since prose gives AD-4's quantifiers no collection to range over. The text channel such a tool needs is undesigned, so a tool that returns prose is outside what the kind describes.
 
 `web` is the one kind `compile` still refuses under `unsupported-interface-kind`, and it has had no design pass at all.
 
-## Two things the project still owes itself
+## How far a strength number carries
 
-Neither blocks using the tool. Both are about how far the measurement can be trusted.
+Two properties of the measurement decide how to read a contract's strength, and both are visible in what ships.
 
-- **A held-out probe corpus.** `corpus/dev/` is visible and diagnostic: every contract in it is published to be read. Measuring a contract's strength against probes an author can read is a weaker claim than measuring it against probes they cannot. The probe schema already carries the qualification record and the defect signature such a corpus would need.
-- **Validating the witness match against a second experiment round.** The rule that decides whether a finding detected the defect its probe seeded is implemented. The replication that would confirm it on fresh records has not been run.
+`corpus/dev/` is diagnostic: every contract in it is published to be read. A strength number measured against it says the contract catches probes its author could read while writing it. That is a claim about the contract and the probe set together, and it is a weaker claim than the same number measured against probes the author never saw. The probe schema carries the qualification record and the defect signature either probe set needs, so what separates them is the probes rather than the shape.
+
+The rule that decides whether a finding detected the defect its probe seeded runs on every score. It was derived from the experiment records in `experiments/hypothesis-validation/` and it has been exercised on those. A number it produces is a measurement over records of that kind.
 
 ## Version compatibility
 

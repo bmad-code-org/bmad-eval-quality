@@ -374,7 +374,8 @@ async function runCommand(
 			environment.writeDiagnostic(renderError(error))
 			return { outcome: { kind: 'fault' } }
 		}
-		// A defect in our own code surfaces as a stack, never as exit 5.
+		// A defect in our own code is rethrown, and `main.ts` writes its stack and
+		// takes exit 5 for it.
 		throw error
 	}
 }

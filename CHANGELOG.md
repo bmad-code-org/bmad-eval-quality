@@ -257,12 +257,11 @@ body.
 
 ### Fixed
 
-- The `responseStatus` description in the sealed run record no longer counts how many interface kinds
-  `compile` refuses. It said three, and two are refused since `cli` shipped, while
-  `sensitivity-witness.ts` in the same directory already said so. The sentence exists to explain why the
-  status is not bounded to an HTTP range, and it now gives the reason that stays true whatever compiles:
-  not every declared kind speaks HTTP. The published `schemas/sealed-run-record.schema.json` carries the
-  corrected text.
+- The `responseStatus` description in the sealed run record no longer counts how many interface
+  kinds `compile` refuses. It said three, a count `cli` had already made wrong and that this release
+  moves again. The sentence exists to explain why the status is not bounded to an HTTP range, and it now
+  gives the reason that stays true whatever compiles: not every declared kind speaks HTTP. The
+  published `schemas/sealed-run-record.schema.json` carries the corrected text.
 
 ### Changed
 
@@ -275,6 +274,37 @@ body.
 
 ### Fixed
 
+- `npm run validate` gains a step, `check:doc-claims`, over the prose claims on the published pages.
+  Nothing in the build read a page's sentences before it: `check:docs` reads frontmatter and
+  whitespace, `check:doc-invocations` judges fenced commands against their declared exit codes, and
+  `check:doc-counts` holds numerals. A sentence naming a symbol, citing a line, transcribing a set,
+  saying which interface kinds compile, printing a JSON example, or saying a thing is not yet true
+  fell through all three. Eight classes, each resolving against an artifact in the repository: a
+  `path.ts:N` citation resolves and stays anchored on a symbol the cited file declares; a backticked
+  identifier is declared under `src/`; a spelled-out list equals the set the source exports; a named
+  failure code exists in a registry; a published JSON block parses against the schema the prose
+  names; a kind a sentence accepts or refuses agrees with `SUPPORTED_INTERFACE_KINDS` and
+  `UNSUPPORTED_INTERFACE_KINDS`; a page reprinting a string the binary emits or a value an artifact
+  carries reprints the same bytes; and a sentence claiming something is true as of now, or not yet
+  true, is registered with how it is settled, by a predicate the script runs or by a recorded human
+  reading with the reason no artifact decides it. `validate` runs twenty-three steps.
+- `Operation`'s published description no longer says two operations collide "after parameter-name
+  erasure". One string carries that sentence onto all four interface branches of
+  `schemas/eval-contract.schema.json`, and `compile/interface-inventory.ts` erases nothing for a
+  command or a tool call: their transport identities are an executable joined to its subcommand path
+  and a published tool name. The description names the transport identity and points at the module
+  that computes it per kind.
+- The tool-use guide said a dev-corpus exemplar was missing while
+  `corpus/dev/contracts/notes-tool-server.json` shipped and declared `mcp`. The remaining gap is the
+  channel model for a text-shaped tool result, which is what the sentence now says.
+- A correction to the 1.4.2 note below, which said `mutationOperator` "was the only field in that
+  route without one". `expectedObservableFailure` on the same `controlled-mutation` route carries no
+  description either (`src/core/schemas/probe-qualification.ts:87`). The 1.4.2 text is left as it
+  shipped, because a released note records what that release said and a reader may be holding it
+  against the version they are running, so the correction lives here instead.
+- The agent guide's `defectSignature` example parses again. It lost `"arguments": null` when the
+  probe's input binding went to nine channels, so a reader copying the block got
+  `condition.selector.inputBinding.arguments: expected record, received undefined`.
 - `check:doc-invocations` compares the diagnostic a page transcribes, and not only the exit code it
   declares. Exit `4` is every structural failure's code, so a page could name one failure while the
   binary reported another and the gate stayed green. A `text` fence directly under a declared-exit

@@ -77,11 +77,11 @@ An eval contract describes a system through a declared interface. Three interfac
 | A skill an agent loads and acts on | [Skill behavior](/how-to/evaluate-skill-behavior/) | Proven. A seeded defect is caught and scored against a shipped skill contract, on an authored chain regenerated and byte-checked every build, one trial, marked non-comparable. |
 | Several steps that have to happen in order | [Workflow behavior](/how-to/evaluate-workflow-behavior/) | Proven. A shipped contract binds a step to a value captured from an earlier response and declares a fixture reset, on an authored chain regenerated and byte-checked every build, one trial, marked non-comparable. |
 | An AI feature behind an HTTP surface | [AI feature behavior](/how-to/evaluate-ai-feature-behavior/) | Proven end to end against a loopback fixture the suite starts: a real probe observes a seeded defect over HTTP and the chain scores it, one trial, marked non-comparable. No third-party AI feature has been evaluated; pointing this at yours is the adapter and the two arms you write. |
-| An MCP server answering tool calls | [Tool-use behavior](/how-to/evaluate-tool-use-behavior/) | Compiles, scores a probe, and runs a pre-flight against a real stdio tool server. No live server has been scored end to end yet. |
+| An MCP server answering tool calls | [Tool-use behavior](/how-to/evaluate-tool-use-behavior/) | Compiles, scores a probe, and runs a pre-flight against a real stdio tool server. The evidence is the suite's own fixture; no live server stands behind it. |
 
-Each guide says plainly what is proven and what is not, so a "state" column entry is the guide's own verdict rather than a roadmap promise.
+Each guide says plainly what is proven and what is not, so a "state" column entry is the guide's own verdict about evidence that exists.
 
-One kind parses and stops at compilation under `unsupported-interface-kind`: `web`, which has had no design pass. [What Ships](/explanation/what-ships/) carries what tool-use support still needs.
+One kind parses and stops at compilation under `unsupported-interface-kind`: `web`, whose probe semantics are undeclared. [What Ships](/explanation/what-ships/) states the limits of the tool-use kind and how far a strength number carries.
 
 :::tip[AI Documentation]
 Plain-text documentation for AI agents is available at [`/llms-full.txt`](/llms-full.txt) or indexed at [`/llms.txt`](/llms.txt).

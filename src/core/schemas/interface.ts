@@ -340,7 +340,7 @@ const LOGICAL_ID_DESCRIPTION =
 	"AD-35: a logical identifier for the interface, never a URL, host, or port. Mapping it to a target is the caller's, outside the contract."
 
 const OPERATIONS_DESCRIPTION =
-	'No uniqueness constraint: two operations colliding on their transport identity after parameter-name erasure is `duplicate-operation-signature`, a coded compile-time error, and a schema that deduped them would delete it.'
+	'No uniqueness constraint: two operations colliding on their transport identity is `duplicate-operation-signature`, a coded compile-time error, and a schema that deduped them would delete it. What that identity is depends on the kind, and `compile/interface-inventory.ts` is what computes it.'
 
 // `web` is the only kind left sharing the api operation shape, and the factory
 // survives its second caller leaving because that is what keeps the two

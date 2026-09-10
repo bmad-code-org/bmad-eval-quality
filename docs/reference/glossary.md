@@ -92,7 +92,7 @@ The six kinds a `PreflightVerdict` can carry.
 | **Interaction plan** | The evidence-addressing steps a contract declares, with the bounded temporal relationships between them. `seal` withholds it, which is what makes a brief safe to hand to an evaluator that chooses its own probes. |
 | **Forbidden inputs** | The seven things an evaluator may not be given, named one by one, because "the evaluator saw the answer key" is the failure that invalidates everything downstream. The isolation manifest accounts for each one as withheld. |
 | **Scoped resources** | The resources a run is confined to, so a probe cannot reach past what the contract declared. |
-| **Sibling groups** | Declared sets of related items, which several discipline rules read when deciding whether a contract's coverage is complete. |
+| **Sibling groups** | Declared sets of related items, which the `sibling-cross-check` discipline rule reads when deciding whether a contract's coverage is complete. |
 | **Probe step bound** | The ceiling on how many steps a probe may take. It travels into the sealed brief, so the evaluator sees the bound it is held to. |
 | **Strict-input mode** | The compiler mode, on by default, that fails a contract declaring an input it did not witness. `--strict-inputs` and `--no-strict-inputs` select it. |
 | **Canonical serialization** | RFC 8785 JSON: one line with sorted keys. The digest is computed over exactly that payload, and the serializer appends a line terminator that the digest does not cover. |

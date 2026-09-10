@@ -95,7 +95,7 @@ Usage:
 
 `--record`, `--contract`, `--probe`, `--preflight-verdict`, `--policy`, and `--corpus-digest` are required. `--corpus-root` is optional at the argument-parsing level; it becomes required, with a usage error naming it, the moment a private reference actually needs a byte resolved through it.
 
-On the Invalid rung the command exits `3` and writes no artifact: no legal `EvidenceArtifact` carries a null verdict. Diagnostics still go to stderr on that rung. On every other rung the artifact's own `exitCode` field carries the number the command returns.
+On the Invalid rung the command exits `3` and writes no artifact: no legal `EvidenceArtifact` carries a null verdict. Diagnostics still go to stderr on that rung. On every other rung the artifact's own `exitCode` field carries the number the command returns, except a CONCERNS that `--strict` promotes: the artifact still records `0` and the command exits `1`.
 
 A probe that fails AD-9's qualification gate resolves an oracle to `infrastructure-error` wherever no higher-precedence condition already resolved that oracle: an evaluation fault and a malformed judge both outrank it. Each of those three states lands the run on the Invalid rung, and a contract declaring no oracles resolves none of them and stays off it. The command writes one line per reason to stderr on every rung, in the `eval-quality: <code>: <artifactPath>: <detail>` shape, so the failure names the field it fired on. `QUALIFICATION_FAILURES` publishes the closed set of codes those lines draw from.
 
@@ -147,7 +147,7 @@ Artifacts are written as one line of RFC 8785 canonical JSON with sorted keys. T
 ## Exit codes
 
 ```text
-Exit codes (AD-21):
+Exit codes (AD-21's six, plus 64 from sysexits.h):
   0   success, and every verdict other than FAIL or a promoted CONCERNS
   1   CONCERNS promoted by --strict
   2   FAIL
@@ -203,7 +203,7 @@ The published tarball carries `dist`, `schemas`, `corpus`, `README.md`, and `LIC
 - **Enumerations**: `FAILURE_CODES`, `RUNTIME_FAULT_CODES`, `VERDICTS`, `EVALUATOR_RECOMMENDATIONS`, `INTERCHANGE_ARTIFACT_KEYS`, `QUALIFICATION_FAILURES`
 - **Version**: `VERSION`
 
-Every artifact type ships alongside them as a type-only export, together with the option and result types of each entry point.
+Every artifact type ships alongside them as a type-only export, with the option and result types of the three entry points that declare them: `RunPreflightOptions`, `PreflightFromObservationsOptions`, `RunScoreOptions`, and `RunScoreResult`. `compile` and `seal` take an inline `{ strict?: boolean }` and export no options type.
 
 `runScore` returns the probe's own qualification result next to the artifact and the ladder. `qualification.failures` carries AD-9's closed reason codes for a probe the gate rejected, typed as `QualificationFailure` and `QualificationFailureCode`, and `qualification.declarationChecksRan` says whether the three checks that read the home operation's declared shapes ran.
 

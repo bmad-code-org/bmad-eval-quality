@@ -31,7 +31,7 @@ An evaluation that caught the planted defect is sensitive to that failure. One t
 The contract is the test: the evaluator's instructions for how to expose a failure and what evidence counts as finding it. The long name is Behavioral Evaluation Contract; the docs shorten it to eval contract. It is a JSON document that declares:
 
 - the behavior being evaluated;
-- the probes the evaluator should perform;
+- the interfaces a probe may touch, and the plan of steps over them;
 - the evidence it should inspect;
 - the negative behavior it must rule out;
 - the oracle that decides pass or fail.
@@ -213,7 +213,7 @@ The design record is the [architecture spine](_bmad-output/planning-artifacts/ar
 
 ## Not building now
 
-Deferred until the contract layer is in real use: claim-to-evidence lineage, semantic checkpoint scoring, process and outcome separation, and first material error attribution.
+Also outside the package: claim-to-evidence lineage, semantic checkpoint scoring, process and outcome separation, and first material error attribution. Each needs a contract layer in real use before its shape is decidable, and that is where the brief left them.
 
 Out of scope entirely: a new eval engine, a hosted service, a dashboard or GUI, multimodal evaluators, automatic prompt repair, and a generic judge-calibration platform.
 

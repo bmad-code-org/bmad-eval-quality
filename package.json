@@ -74,6 +74,7 @@
     "check:docs": "node scripts/check-docs.mjs",
     "check:doc-invocations": "node scripts/check-doc-invocations.mjs",
     "check:doc-counts": "node scripts/check-doc-counts.ts",
+    "check:doc-claims": "node scripts/check-doc-claims.ts",
     "lint:spine": "python3 scripts/spine-lint/lint_spine.py --registry-ad 5 --workspace-root . --fail-on high",
     "test:spine-lint": "uv run --with pytest pytest scripts/spine-lint/tests -q",
     "build:shareable": "node scripts/build-shareable.mjs",
@@ -111,7 +112,7 @@
     "release:major": "gh workflow run publish.yml --ref main -f bump=major",
     "release:prepare": "node scripts/release-prepare.mjs",
     "release:publish": "gh workflow run publish.yml --ref main -f bump=none",
-    "validate": "npm run build && npm run typecheck && npm run lint && npm run check:docs && npm run check:doc-invocations && npm run check:shareable && npm run lint:spine && npm run check:vectors && npm run check:schemas && npm run check:ad5-registry && npm run check:ad28-registry && npm run check:ad31-table && npm run check:ad33-table && npm run check:ad21-table && npm run check:layers && npm run check:lineage && npm run check:boundary && npm run check:corpus && npm run check:doc-counts && npm run check:worked-example && npm run check:website-deps && npm run test:coverage",
+    "validate": "npm run build && npm run typecheck && npm run lint && npm run check:docs && npm run check:doc-invocations && npm run check:shareable && npm run lint:spine && npm run check:vectors && npm run check:schemas && npm run check:ad5-registry && npm run check:ad28-registry && npm run check:ad31-table && npm run check:ad33-table && npm run check:ad21-table && npm run check:layers && npm run check:lineage && npm run check:boundary && npm run check:corpus && npm run check:doc-counts && npm run check:doc-claims && npm run check:worked-example && npm run check:website-deps && npm run test:coverage",
     "prepack": "npm run clean && npm run build",
     "prepublishOnly": "node scripts/assert-publish-authorized.mjs"
   },
