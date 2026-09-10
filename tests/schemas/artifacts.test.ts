@@ -23,7 +23,9 @@ import {
 import { RequestShape } from '../../src/core/schemas/interface.ts'
 import { IsolationManifest } from '../../src/core/schemas/isolation-manifest.ts'
 import {
+	COMMAND_CHANNELS,
 	INPUT_CHANNELS,
+	MCP_CHANNELS,
 	TRANSPORT_CHANNELS,
 } from '../../src/core/schemas/pointer.ts'
 import { PreflightVerdict } from '../../src/core/schemas/preflight-verdict.ts'
@@ -746,6 +748,17 @@ describe('the shared vocabularies, derived rather than rebuilt', () => {
 		expect(requestShape.properties.header.description).toContain(
 			'never carries a credential value',
 		)
+	})
+
+	// The vocabulary's own composition, pinned separately from the shapes keyed
+	// by it: the assertions below compare against `INPUT_CHANNELS` as a whole, so
+	// a member moving between the three sub-tuples would pass them all.
+	it("builds the input vocabulary from the three kinds' own channel sets", () => {
+		expect(INPUT_CHANNELS).toEqual([
+			...TRANSPORT_CHANNELS,
+			...COMMAND_CHANNELS,
+			...MCP_CHANNELS,
+		])
 	})
 
 	// The record and the vocabulary are the same width now, which is what lets

@@ -3959,7 +3959,7 @@ And a filter like "the call where `query` was set" had nothing to read, because 
 2. `src/core/schemas/sealed-run-record.ts`: `ObservedCallInputs`, now one key per input channel.
 3. `src/core/score/qualification.ts`: the gate reading the same supported-kind list the other two gates read, and `declaredIdentityOf` answering with a tool name.
 4. `src/core/preflight/witness-evidence.ts`: `callInputsOf`, whose tool-call arm writes the ninth key.
-5. `src/core/declared-inputs.ts`: where two lookup helpers used to be, and the four call sites that index the record directly now.
+5. `src/core/declared-inputs.ts`: where two lookup helpers used to be, and the five call sites across four files that index the record directly now.
 6. `tests/schemas/fixtures/artifact-fixtures.ts`: `toolCallProbe`, the first probe whose signature names a tool.
 
 **Story:** `_bmad-output/implementation-artifacts/11-6-the-tool-call-defect-signature-and-the-ninth-input-channel.md`
@@ -3972,7 +3972,7 @@ And a filter like "the call where `query` was set" had nothing to read, because 
 - `ApiDefectSignature.interfaceKind` is `api` and `web` only. A signature naming `mcp` beside a verb and a URL no longer parses.
 - All three gates read `SUPPORTED_INTERFACE_KINDS`. `web` is the only kind any of them still refuses.
 - The record and the signature's filter are the same width, one key per member of `INPUT_CHANNELS`. A loop over the vocabulary indexes either one directly.
-- Two helpers that bridged the width gap are deleted. A tenth channel now fails the typecheck at four call sites, where those helpers resolved it quietly.
+- Two helpers that bridged the width gap are deleted. A tenth channel now fails the typecheck at five call sites across four files, where those helpers resolved it quietly.
 - The sealed run record is version 5 and the probe is version 5. Both breaking: a record or probe declaring eight call-input channels stops parsing.
 - A new union branch ships with its accept fixture in the same change. A branch nothing exercises is a branch the mutation sweep reports as unprotected.
 - A sentence that counts a shape's own keys goes stale in silence. Nothing checks a numeral for sense, so every one near a shape's name gets counted against the declaration.

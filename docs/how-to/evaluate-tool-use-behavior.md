@@ -90,7 +90,7 @@ All three gates that used to reject an `mcp` contract now admit it.
 | --- | --- | --- |
 | `compile` | Admits `mcp` | `SUPPORTED_INTERFACE_KINDS` in `src/core/compile/interface-inventory.ts` |
 | `preflight` plan | Admits it too, reading the same tuple | `src/core/preflight/plan.ts` |
-| `score` probe qualification | Admits it, reading the same tuple again | `src/core/score/qualification.ts:819` |
+| `score` probe qualification | Admits it, reading the same tuple again | `src/core/score/qualification.ts:818` |
 
 All three read one exported tuple, so what compiles, what pre-flights, and what a signature may declare against cannot disagree.
 `web` is the one kind all three still refuse, under `unsupported-interface-kind` contract-side and `signature-interface-kind-unsupported` probe-side.
@@ -99,7 +99,7 @@ The probe side is open too.
 `McpDefectSignature` (`src/core/schemas/defect-signature.ts:207`) declares the published tool name, which is the identity AD-40 resolves against, and `ApiDefectSignature.interfaceKind` is `z.enum(['api', 'web'])` (`:172`), so a signature naming `mcp` beside a method and a path template no longer parses.
 The qualification gate admits the kind, reading the same tuple the compile and pre-flight gates read.
 
-One shape downstream has no `mcp` problem, and one has half of one.
+Both shapes downstream carry the kind.
 `Observation` in the sealed run record is not discriminated on kind (`src/core/schemas/sealed-run-record.ts:229`): it carries all eight evidence channels flat, with `null` or `{ "kind": "absent" }` where a channel does not apply, so a tool call's result has somewhere to live.
 `ObservedCallInputs` (`sealed-run-record.ts:204`) declares one key per input channel, `arguments` included, so what a tool call *sent* has somewhere to live and a pointer at `/interactions/{stepId}/call-inputs/arguments/...` resolves the recorded value.
 That key arrived with the record's own breaking version bump, from 4 to 5.
@@ -244,6 +244,36 @@ Assertions worth writing: the argument equals a literal the behavior requires, t
 A tool call carries its structured result on `response-body` and its error flag on `response-status`, and fills no other response channel.
 A pointer at `response-headers`, `exit-code`, or a stream is `unreachable-check-evidence` at compile (`src/core/compile/reachability.ts:581`), and a pointer at a written file is `unresolved-artifact-reference`, since a tool call declares no `artifacts` list for an identifier to resolve against.
 `/interactions/search/response-body/ok` and `/interactions/search/response-body/matches` are the two pointers the example above makes addressable.
+
+**Declaring the defect you seeded.**
+A probe's `defectSignature` names the tool rather than a verb and a URL, and its selector filters on the `arguments` channel.
+
+```json
+{
+  "interfaceKind": "mcp",
+  "toolName": "search_notes",
+  "observableChannel": "response-body",
+  "condition": {
+    "selector": {
+      "inputBinding": {
+        "path": null, "query": null, "header": null, "body": null,
+        "argument": null, "option": null, "environment": null, "stdin": null,
+        "arguments": { "query": { "matcher": "any" } }
+      }
+    },
+    "predicate": {
+      "op": "all",
+      "operands": [
+        { "op": "equality", "operands": [{ "pointer": "/interactions/observed/response-status" }, { "literal": 0 }] },
+        { "op": "equality", "operands": [{ "pointer": "/interactions/observed/response-body/totalCount" }, { "literal": 0 }] }
+      ]
+    }
+  }
+}
+```
+
+All nine input channels are declared and the eight the kind does not accept are `null`, exactly as a recorded observation spells them.
+Assert over a scalar the tool publishes beside a list rather than over the list itself: AD-4 resolves a check over an empty collection to `insufficient-evidence`, so "the list came back empty" can never witness a defect.
 
 **About the tool having been called at all.**
 `existence` and `absence` over a step's evidence carry that, and the step's own `cardinality` carries how many matches are legitimate.

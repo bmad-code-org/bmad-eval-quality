@@ -95,7 +95,7 @@ const ESCALATION_LEVELS: readonly EscalationLevel[] = [
 ]
 
 type TransportEntry = {
-	readonly transportChannel: InputChannelName
+	readonly inputChannel: InputChannelName
 	readonly key: string
 	readonly value: BindingValue
 }
@@ -105,24 +105,24 @@ type TransportEntry = {
 // stays permutation-invariant. `boundChannelsOf` supplies the channel order.
 function bindingEntries(step: InteractionStep): readonly TransportEntry[] {
 	const entries: TransportEntry[] = []
-	for (const { channel: transportChannel, bound: map } of boundChannelsOf(
+	for (const { channel: inputChannel, bound: map } of boundChannelsOf(
 		step.inputBinding,
 	)) {
 		if (map === null) continue
 		for (const key of Object.keys(map).sort()) {
 			const value = map[key]
-			if (value !== undefined) entries.push({ transportChannel, key, value })
+			if (value !== undefined) entries.push({ inputChannel, key, value })
 		}
 	}
 	return entries
 }
 
-// The transport channel is part of the rendered name as well as the sort
+// The input channel is part of the rendered name as well as the sort
 // key: two bindings can share a parameter name across channels (path.id and
 // query.id), and without the qualifier both would render as "the supplied
 // id", hiding two different bindings behind identical text.
 function entryName(entry: TransportEntry): string {
-	return `${entry.transportChannel} ${entry.key}`
+	return `${entry.inputChannel} ${entry.key}`
 }
 
 function isTypeViolating(value: BindingValue): boolean {
@@ -545,19 +545,19 @@ function localTargetPhrase(target: EvidenceTarget): string {
 		case 'exit-code':
 			return 'its exit code'
 		case 'call-inputs': {
-			if (target.transportChannel === null) {
+			if (target.inputChannel === null) {
 				// Unreachable: `parseEvidenceTarget` sets this exactly when the
 				// channel is 'call-inputs'.
 				throw new TypeError(
-					'call-inputs evidence target carries no transport channel',
+					'call-inputs evidence target carries no input channel',
 				)
 			}
-			// The transport channel is named here too, not only in the no-tail
+			// The input channel is named here too, not only in the no-tail
 			// fallback below: same path.id / query.id collision `entryName`
 			// above guards against.
 			return field !== null
-				? `the ${target.transportChannel} ${field} value you sent`
-				: `the ${target.transportChannel} you sent`
+				? `the ${target.inputChannel} ${field} value you sent`
+				: `the ${target.inputChannel} you sent`
 		}
 		case 'response-body':
 			return field !== null
@@ -584,7 +584,7 @@ function localTargetPhrase(target: EvidenceTarget): string {
 				// channel is 'artifact'.
 				throw new TypeError('artifact evidence target names no artifact')
 			}
-			// The artifact is named for the same reason the transport channel
+			// The artifact is named for the same reason the input channel
 			// is: two files can carry the same field name, and an evaluator
 			// reading "its findings field" twice cannot tell which file it
 			// means.
@@ -619,7 +619,7 @@ function fullTargetPhrase(
 function channelSignature(target: EvidenceTarget): string {
 	return JSON.stringify([
 		target.channel,
-		target.transportChannel,
+		target.inputChannel,
 		target.artifactId,
 		target.tail,
 	])

@@ -78,7 +78,7 @@ export type ResolvedOperation = {
 	 * The channels a call's inputs may be keyed by. Names only: the two sites
 	 * that build candidate pointers need the names and never the shapes.
 	 */
-	readonly transportChannels: readonly InputChannelName[]
+	readonly inputChannels: readonly InputChannelName[]
 	/**
 	 * The same channels already paired with the shapes they declare. Predicates
 	 * that read a declared shape take these rather than indexing the request
@@ -103,7 +103,7 @@ export function resolveOperations(
 			logicalId: declared.logicalId,
 			descriptor: operation.responseDescriptor,
 			descriptorRoot: descriptorRootOf(operation),
-			transportChannels: inputChannelsOf(operation),
+			inputChannels: inputChannelsOf(operation),
 			requestChannels: requestChannelsOf(operation),
 		})),
 	)

@@ -29,8 +29,10 @@ import { forEachArtifactPointer, type WitnessScope } from './reachability.ts'
  * Each tuple is spelled out and typed against `INTERFACE_KINDS`, on the
  * reasoning `pointer.ts` records for `NON_IDENTIFIER_ROOTED_CHANNELS`: adding a
  * fifth kind is then a decision about which side of this line it falls on, and
- * a test asserts the partition. Exported because `preflight/plan.ts` asserts
- * the same fact a second time.
+ * a test asserts the partition. Exported because two other gates assert the
+ * same fact: `preflight/plan.ts`, which a caller can reach by assembling a plan
+ * by hand, and `score/qualification.ts`, which reads a probe's declared kind
+ * where these two read a contract's.
  */
 export const SUPPORTED_INTERFACE_KINDS = [
 	'api',
@@ -42,7 +44,11 @@ export const UNSUPPORTED_INTERFACE_KINDS = [
 	'web',
 ] as const satisfies readonly InterfaceKindName[]
 
-/** Whether `compile` and the pre-flight plan admit a declared kind. */
+/**
+ * Whether `compile`, the pre-flight plan, and the probe qualification gate
+ * admit a declared kind. All three call this, so what a contract may declare
+ * and what a defect signature may declare against cannot disagree.
+ */
 export const isSupportedInterfaceKind = (kind: InterfaceKindName): boolean =>
 	(SUPPORTED_INTERFACE_KINDS as readonly string[]).includes(kind)
 

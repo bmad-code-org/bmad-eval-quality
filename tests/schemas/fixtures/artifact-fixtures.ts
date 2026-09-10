@@ -273,7 +273,7 @@ export const sealedRunRecordFixture: SealedRunRecord = {
 			provenance: 'evaluator-chosen',
 			principal: null,
 			callInputs: { ...emptyCallInputs, arguments: { query: 'revised' } },
-			responseBody: { ok: true, matches: [{ id: 'n-1' }] },
+			responseBody: { ok: true, matches: [{ id: 'n-1' }], totalCount: 1 },
 			responseHeaders: null,
 			responseStatus: 0,
 			stdout: { kind: 'absent' },
@@ -675,9 +675,16 @@ const searchToolSignature: Extract<
 					],
 				},
 				{
-					op: 'absence',
+					// `totalCount` rather than the `matches` array itself. AD-4
+					// resolves a check over an empty collection to
+					// `insufficient-evidence` under `empty-collection`, so a
+					// predicate asserting that the list came back empty can never
+					// witness anything. The scalar the tool publishes beside the
+					// list is what the assertion has to read.
+					op: 'equality',
 					operands: [
-						{ pointer: '/interactions/observed/response-body/matches' },
+						{ pointer: '/interactions/observed/response-body/totalCount' },
+						{ literal: 0 },
 					],
 				},
 			],
@@ -698,14 +705,14 @@ export const toolCallProbe: Probe = {
 	artifactDigest: digestOf(32),
 	commitDigest: digestOf(33),
 	rationale:
-		'A controlled mutation seeding a search tool that reports no error and returns no matches.',
+		'A controlled mutation seeding a search tool that reports no error and counts zero matches.',
 	qualification: {
 		route: 'controlled-mutation',
 		mutationSource: 'hand-authored mutation of the search tool handler',
 		mutationOperator: 'statement-deletion',
 		targetArtifact: publicArtifactReference,
 		expectedObservableFailure:
-			'the tool reports no error and its structured result carries no matches',
+			'the tool reports no error and its structured result counts zero matches',
 		baselinePassEvidence: publicArtifactReference,
 		mutatedFailEvidence: privateArtifactReference,
 		rollbackVerified: true,

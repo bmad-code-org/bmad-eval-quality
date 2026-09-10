@@ -108,7 +108,7 @@ export const SCALAR_CHANNELS = [
 	'exit-code',
 ] as const satisfies readonly EvidenceChannelName[]
 
-export const TRANSPORT_ROOTED_CHANNEL =
+export const INPUT_ROOTED_CHANNEL =
 	'call-inputs' as const satisfies EvidenceChannelName
 
 // A fourth class rather than a fourth rule. AD-26's repair for `call-inputs`
@@ -181,7 +181,7 @@ const TAIL = `(?:/${TOKEN})*`
 const alternation = (members: readonly string[]): string => members.join('|')
 
 export const INTERACTION_POINTER_PATTERN = new RegExp(
-	`^/interactions/${IDENTIFIER_CHARSET_SOURCE}/(?:(?:${alternation(TAIL_BEARING_CHANNELS)})${TAIL}|(?:${alternation(SCALAR_CHANNELS)})|${TRANSPORT_ROOTED_CHANNEL}/(?:${alternation(INPUT_CHANNELS)})${TAIL}|${IDENTIFIER_ROOTED_CHANNEL}/${IDENTIFIER_CHARSET_SOURCE}${TAIL})$`,
+	`^/interactions/${IDENTIFIER_CHARSET_SOURCE}/(?:(?:${alternation(TAIL_BEARING_CHANNELS)})${TAIL}|(?:${alternation(SCALAR_CHANNELS)})|${INPUT_ROOTED_CHANNEL}/(?:${alternation(INPUT_CHANNELS)})${TAIL}|${IDENTIFIER_ROOTED_CHANNEL}/${IDENTIFIER_CHARSET_SOURCE}${TAIL})$`,
 )
 
 export const BOUND_ELEMENT_POINTER_PATTERN = new RegExp(`^@(?:/${TOKEN})+$`)

@@ -1079,6 +1079,11 @@ export const ARTIFACT_REJECT_CASES: readonly ArtifactRejectCase[] = [
 	},
 
 	{
+		// This and `probe-api-signature-declaring-the-tool-kind` below both fail
+		// at the union node with the same keyword and instance path, because
+		// neither mutation matches any branch and ajv reports the choice rather
+		// than a field inside one. The `constraint` each names is what tells
+		// them apart; both still catch a revert of the change they guard.
 		id: 'probe-signature-selector-missing-the-arguments-channel',
 		artifact: 'probe',
 		constraint:

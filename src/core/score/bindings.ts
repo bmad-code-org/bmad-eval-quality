@@ -63,10 +63,10 @@ const ABSENT_RESOLUTION: CapturedResolution = { status: 'absent' }
  */
 export function bindingSiteKey(
 	stepId: string,
-	transportChannel: InputChannelName,
+	inputChannel: InputChannelName,
 	key: string,
 ): string {
-	return JSON.stringify([stepId, transportChannel, key])
+	return JSON.stringify([stepId, inputChannel, key])
 }
 
 /**
@@ -187,7 +187,7 @@ export function resolveCapturedBindings(
 			if (step === undefined) continue
 			for (const capture of capturedBindings(step)) {
 				resolved.set(
-					bindingSiteKey(stepId, capture.transportChannel, capture.key),
+					bindingSiteKey(stepId, capture.inputChannel, capture.key),
 					resolveCapturedValue(capture.pointer, index, observations, resolved),
 				)
 			}
@@ -244,7 +244,7 @@ function capturedFloor(
 	let floor: number | null = null
 	for (const capture of capturedBindings(step)) {
 		const resolution = resolved.get(
-			bindingSiteKey(step.stepId, capture.transportChannel, capture.key),
+			bindingSiteKey(step.stepId, capture.inputChannel, capture.key),
 		)
 		if (resolution === undefined || resolution.status !== 'resolved')
 			return null

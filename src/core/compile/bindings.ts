@@ -53,14 +53,14 @@ import { evaluatePointerReachability } from './reachability.ts'
 
 /** One `{ captured }` binding, resolved to the pointer target it addresses. */
 export type CapturedBinding = {
-	readonly transportChannel: InputChannelName
+	readonly inputChannel: InputChannelName
 	readonly key: string
 	readonly pointer: string
 	readonly target: EvidenceTarget
 }
 
 /**
- * Every captured binding one step declares, in fixed transport-channel order
+ * Every captured binding one step declares, in fixed input-channel order
  * then by key name, so which binding a check reports never depends on a
  * caller-keyed map's insertion order. Exported because `score/binding-order.ts`
  * and `score/bindings.ts` need the same reading of which bindings are captures.
@@ -69,7 +69,7 @@ export function capturedBindings(
 	step: InteractionStep,
 ): readonly CapturedBinding[] {
 	const captures: CapturedBinding[] = []
-	for (const { channel: transportChannel, bound: map } of boundChannelsOf(
+	for (const { channel: inputChannel, bound: map } of boundChannelsOf(
 		step.inputBinding,
 	)) {
 		if (map === null) continue
@@ -77,7 +77,7 @@ export function capturedBindings(
 			const value = map[key]
 			if (value === undefined || !('captured' in value)) continue
 			captures.push({
-				transportChannel,
+				inputChannel,
 				key,
 				pointer: value.captured,
 				target: parseEvidenceTarget(value.captured),
@@ -91,7 +91,7 @@ export function capturedBindings(
 // (`interface-inventory.ts`'s undeclared-key throw), reused so the two new
 // codes and the widened `undeclared-mandatory-input` agree on one spelling.
 function bindingPath(step: InteractionStep, capture: CapturedBinding): string {
-	return `EvalContract.interactionPlan[stepId=${step.stepId}].inputBinding.${capture.transportChannel}[${JSON.stringify(capture.key)}]`
+	return `EvalContract.interactionPlan[stepId=${step.stepId}].inputBinding.${capture.inputChannel}[${JSON.stringify(capture.key)}]`
 }
 
 // ---- binding-cycle -------------------------------------------------------
@@ -331,7 +331,7 @@ function boundParameterType(
 ): TypeDecision | null {
 	const operation = anyOperationOf(index, step.operationId)
 	if (operation === undefined) return null
-	const shape = requestShapeOf(operation, capture.transportChannel)
+	const shape = requestShapeOf(operation, capture.inputChannel)
 	// A channel the operation does not accept input on declares no type for
 	// the key either, so there is nothing to compare and the check abstains
 	// for the same reason the undeclared-key branch below does.
@@ -350,7 +350,7 @@ function boundParameterType(
 	const declared = shape.types[capture.key]
 	if (declared === undefined || declared === null) {
 		return {
-			reason: `binds ${capture.transportChannel} parameter "${capture.key}", whose type operation "${operation.operationId}" ${declared === undefined ? 'does not declare' : 'declares indeterminate'}, so no type equality is decidable`,
+			reason: `binds ${capture.inputChannel} parameter "${capture.key}", whose type operation "${operation.operationId}" ${declared === undefined ? 'does not declare' : 'declares indeterminate'}, so no type equality is decidable`,
 		}
 	}
 	return { type: declared }
@@ -434,7 +434,7 @@ export function checkCapturedReachability(contract: EvalContract): void {
 				throw new StructuralFailure(
 					'unreachable-check-evidence',
 					path,
-					`captured pointer "${capture.pointer}" resolves to a declared "${captured.type}", which is not the "${bound.type}" the bound ${capture.transportChannel} parameter "${capture.key}" is declared as`,
+					`captured pointer "${capture.pointer}" resolves to a declared "${captured.type}", which is not the "${bound.type}" the bound ${capture.inputChannel} parameter "${capture.key}" is declared as`,
 				)
 			}
 		}

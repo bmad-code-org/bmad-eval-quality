@@ -634,8 +634,8 @@ describe('the exhaustive evidence-channel sweep', () => {
 	})
 
 	it('every transport channel under call-inputs renders without throwing', () => {
-		for (const transportChannel of TRANSPORT_CHANNELS) {
-			const pointer = `/interactions/submit/call-inputs/${transportChannel}/x`
+		for (const inputChannel of TRANSPORT_CHANNELS) {
+			const pointer = `/interactions/submit/call-inputs/${inputChannel}/x`
 			expect(() =>
 				renderEvidenceReferences([pointer], gateCIndex),
 			).not.toThrow()

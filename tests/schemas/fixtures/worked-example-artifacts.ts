@@ -16,7 +16,7 @@
 // `npm run generate:worked-example` from the reference functions and checked
 // byte for byte by `npm run check:worked-example`, so these literals are no
 // longer a transcription of what is on disk. They are kept, and pinned at the
-// same 66 and 20 issues, because what they record is what the pre-epic-7
+// same 96 and 20 issues, because what they record is what the pre-epic-7
 // chain failed against the shipped shapes. Regeneration is what closed those
 // failures; deleting the record of them would delete the evidence that they
 // were real.

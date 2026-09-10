@@ -241,8 +241,10 @@ a line the tree no longer carries, the current line is given and Decision 5 reco
       enum, the ninth channel, and the opened gate, plus the two forward-looking sentences in the
       earlier entries this story falsifies.
 - [x] Comment pass -- every JSDoc and comment written here pruned while written, then grepped for the
-      negation-then-correction forms. Four survivors, each a decision record naming the option turned
-      down and why.
+      negation-then-correction forms over the `src/` diff. Nine added lines carry one: three are
+      pre-existing text this pass only re-wrapped or re-worded, and six are decision records naming
+      the option turned down and why. One tenth was written and then trimmed, since its rejected half
+      restated a failure mode the sentence before it already named.
 - [x] `_bmad-output/project-knowledge/learning-path-step-by-step.md` -- Step 50 `(epic11-story6)` and
       its table row, plus one stale numeral in Step 48's rule list.
 
@@ -410,6 +412,70 @@ It now says the probe's "moves to 4 here", which is what the step did. Downstrea
 later story bumping either artifact corrects its own step's rule the same way rather than every
 earlier step's.
 
+**Decision 12: this story edits `qualification.ts` in five places, and the frozen Never list predicts
+one.**
+The frozen block says "The one `qualification.ts` edit this story makes is the gate at `:754-763`".
+The diff makes five: the import list, `declaredIdentityOf`'s `mcp` arm, `resolveHomeOperation`'s
+`null` short circuit, `checkSelectorKeys`' index of `inputBinding`, and the gate.
+
+Every one of the four extra edits is authorised elsewhere and none reopens a decision the frozen
+block reserved. `declaredIdentityOf` is Story 11.5's Decision 11 handing this story "one arm of one
+switch" by name, and `resolveHomeOperation`'s short circuit is dead code the moment that arm returns
+a string. `checkSelectorKeys`' index is one of the five call sites Decision 6 unbridges. The import
+list follows from the other three. The frozen sentence was written against the file as Story 11.5
+left it, before Decision 6 existed. It is recorded here rather than edited, because the block is
+human-owned; a reviewer reading it should read this decision beside it.
+
+**Decision 13: `EvidenceTarget.transportChannel` is renamed to `inputChannel`, and so is every
+sibling field of the same name.**
+The field is typed `InputChannelName | null` and, after Decision 6, is the direct index key into a
+nine-key record, so a name saying "transport" describes four of the nine values it can hold. The same
+name held the same wrong concept in four other places: `CapturedBinding` (`compile/bindings.ts`),
+`bindings.ts`'s resolved-capture shape, `derived-reference.ts`'s `TransportEntry`, and
+`coverage/operations.ts`'s `transportChannels` list. Renaming only the one this story indexes would
+have made the tree less consistent, so all five moved together, along with the regex named group,
+`TRANSPORT_ROOTED_CHANNEL` (now `INPUT_ROOTED_CHANNEL`), and the two throw messages that spelled it
+out.
+
+`TRANSPORT_CHANNELS` keeps its name: that tuple really is AD-19's four transport channels, and
+`pointer.ts`'s prose about them is correct as written. The rename is behaviour-free, which
+`check:worked-example` proves: the caller-facing strings `derived-reference.ts` renders read the
+channel's *value*, so no rendered byte moved. Downstream consequence: Story 11.13's observation arms
+and Story 11.7's conformance arm read one name for one concept.
+
+**Decision 14: the tool-call accept fixture's seeded predicate was unprovable, and the fix is a
+scalar.**
+`toolCallProbe`'s condition first asserted `absence` over `/response-body/matches`, then equality
+against an empty array. Both resolve `insufficient-evidence`: the first because the tool's response
+descriptor declares `matches` a required key, so a body without it is malformed rather than
+defective; the second because AD-4 resolves a check over an empty collection under
+`empty-collection`, which is exactly the degenerate case that rule exists to catch. Either way
+`matchProbeWitness` returned `vacuous` and the corpus presented no defect to detect.
+
+The predicate now reads `totalCount`, the scalar the tool publishes beside the list, so the seeded
+defect is "reports no error and counts zero matches" and it resolves `true` against an observation
+that manifests it. `tests/score/witness.test.ts` asserts `manifested-unclaimed` on the positive arm
+and `not-triggered` on the negative one, which is the first end-to-end proof in the tree that a
+seeded tool-use defect is catchable. The rule generalises past this fixture and is now written into
+the tool-use guide: assert over a scalar the tool publishes beside a collection, never over the
+collection's emptiness.
+
+**Decision 15: the peer review found no defect in a shipped code path, and every finding it did
+raise was fixed in this pass.**
+Twenty-two findings across four review layers. Two were merge-blocking, both published stale
+descriptions that ship inside `probe.schema.json`: the `Probe` artifact `.meta()` still said a
+seeded MCP defect "is still refused at qualification" and that every version-3 probe parses, and
+`ManifestationWitness.inputs`' 3 to 4 `.describe()` still said the matching signature "is not
+declarable in this version". Both are corrected and the `Probe` meta gained its version-5 paragraph.
+
+The rest were counts, prose, and test precision, and are listed against their fixes in the
+Verification section. Three are worth naming because they changed the shipped artefact rather than
+its description: Decision 13's rename, Decision 14's predicate, and one test that passed vacuously
+(`Object.values(rest).every(...)` over a possibly-empty rest, which now names the eight channels).
+Two findings the review raised and then rejected itself are not chased: `probeId: 'P-005'` colliding
+with `historicalProbe` follows the file's existing pattern, and the guide's `defect-signature.ts:172`
+citation follows the page's own convention of citing declaration lines. Nothing was deferred.
+
 ## Design Notes
 
 The organising idea in the drafted story holds: a vocabulary that outran its consumers. What the pass
@@ -453,5 +519,34 @@ Every command below was run and the result is recorded.
   probe each took the ninth key and their stamps moved to 5; nothing else in the chain changed.
 - `npm run check:ad33-table`, `check:ad21-table`, `check:ad31-table` -- exit 0 with no regeneration.
 - `npm run check:doc-invocations` and `npm run check:docs` -- exit 0, 32 invocations across 17 files.
-- `npm run validate` -- exit 0. 119 test files, 3956 tests, `src/core/**` at 96.94% statements and
-  92.21% branches.
+- `npm run validate` -- exit 0 before the peer review and again after every finding was addressed.
+
+**Peer review round, all twenty-two findings addressed.**
+
+| Finding | Fix |
+|---|---|
+| `probe.ts:109` artifact `.meta()` stale in three ways, no version-5 paragraph | Version-5 paragraph added, the two version-4 sentences corrected, "a method and a path template" generalised to "its transport identity" |
+| `sensitivity-witness.ts:193` probe 3 to 4 `.describe()` says the signature is undeclarable | Rewritten to name version 5 as where it landed, and to say which versions stop parsing |
+| `interface-inventory.ts:32` and `:45` name two readers of the tuple | Both name the third, `score/qualification.ts` |
+| An mcp signature and a cli operation of the same name render byte-identical identities | Case added over `search-notes`, the name both charsets admit; only the family filter separates them |
+| "four call sites" in Step 50 and in the task list | Five sites across four files, counted |
+| `docs/index.md:78` tool-use State cell contradicts the guide | Row now reads "Compiles, plans a pre-flight, and scores a probe" |
+| `worked-example-artifacts.ts:19` header says 66 and 20 | 96 and 20 |
+| CHANGELOG's probe 3 to 4 entry says every version-3 probe parses, inside a block that moves it to 5 | Entry now says the widening alone broke nothing and points at the version-5 entry for the migration |
+| `artifacts.test.ts` pins key order against `INPUT_CHANNELS` but not the tuple's composition | Case added asserting `INPUT_CHANNELS` equals the three sub-tuples concatenated |
+| Guide lead-in "one shape has half a problem" contradicts the two sentences under it | "Both shapes downstream carry the kind" |
+| Guide cites `qualification.ts:819`, the `code:` line | `:818`, the admitting `if` |
+| Witness test asserts identifiers and never the result value | Asserts `manifested-unclaimed` and `not-triggered`, which surfaced Decision 14 |
+| Case 83b passes vacuously over an empty rest | Names the other eight channels |
+| CHANGELOG probe 4 to 5 entry has no migration recipe | Both edits spelled out |
+| CHANGELOG "the entry below carries it" twice, positional | Both name the entry |
+| `EvidenceTarget.transportChannel` holds an input channel | Decision 13 |
+| The probe gate and the contract gates now share one predicate | Comment records the coupling as deliberate and what a future divergence needs |
+| Two reject cases assert an identical union-node failure | Comment records what tells them apart and that both still catch a revert |
+| `condition-selector-key-undeclared` untested for an undeclared argument name; two of four foreign channels unexercised | Both added; the `it.each` now runs all four |
+| The guide claims "Scores a probe" and shows no `McpDefectSignature` | JSON example added, with the scalar-over-collection rule Decision 14 established |
+| `condition-text-channel-on-api` fires for a channel that is neither text nor api | Known imprecision recorded in the source, on Story 11.5's Decision 4 terms |
+| Story predicts one `qualification.ts` edit and miscounts the antithesis survivors | Decision 12, and the task line corrected to nine lines |
+
+- `npm run validate` after the round -- exit 0. 119 test files, 3961 tests, `src/core/**` at 96.94%
+  statements and 92.21% branches.

@@ -609,6 +609,29 @@ describe('a transport identity is compared inside its own shape family', () => {
 		).toBe(declared)
 	})
 
+	// `commandSignature` renders an executable with an empty subcommand path as
+	// the bare executable and `mcpSignature` renders the bare tool name, so the
+	// two produce byte-identical strings. Only the family filter separates them,
+	// and it became load-bearing the moment an mcp signature started rendering an
+	// identity at all.
+	it('resolves a tool-call signature against no cli operation of the same name', () => {
+		// `search-notes` sits in the intersection of the two charsets:
+		// `ToolName` admits it and so does an executable's kebab-case pattern,
+		// so both sides render the identical string `search-notes`.
+		const merged = structuredClone(commandContract) as any
+		merged.permittedInterfaces[0].operations[0].invocation = {
+			executable: 'search-notes',
+			subcommandPath: [],
+		}
+		const contract = EvalContract.parse(merged)
+		expect(
+			resolveHomeOperation(
+				DefectSignature.parse(toolSignature('search-notes')),
+				contract.permittedInterfaces,
+			),
+		).toBeNull()
+	})
+
 	it('resolves a tool-call signature naming an undeclared tool against nothing', () => {
 		const contract = EvalContract.parse(mcpContract)
 		expect(

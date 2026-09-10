@@ -122,12 +122,12 @@ export function channelRoot(
 		case 'exit-code':
 			return observation.exitCode
 		case 'call-inputs': {
-			const { transportChannel } = target
-			if (transportChannel === null) {
-				// parseEvidenceTarget sets transportChannel exactly when the
+			const { inputChannel } = target
+			if (inputChannel === null) {
+				// parseEvidenceTarget sets inputChannel exactly when the
 				// channel is 'call-inputs', so this throw should never fire.
 				throw new TypeError(
-					'call-inputs evidence target carries no transport channel',
+					'call-inputs evidence target carries no input channel',
 				)
 			}
 			// A direct read: `ObservedCallInputs` declares one key per member of
@@ -137,7 +137,7 @@ export function channelRoot(
 			// The lookup helper this replaced answered absent for a missing
 			// key, which was correct while the two widths disagreed and is a
 			// silent answer now that they do not.
-			return observation.callInputs[transportChannel]
+			return observation.callInputs[inputChannel]
 		}
 		case 'artifact': {
 			const { artifactId } = target

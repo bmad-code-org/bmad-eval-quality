@@ -532,7 +532,7 @@ describe('the selector follows the shipped binding filter', () => {
 				stdin: null,
 				arguments: { query: 'revised' },
 			},
-			responseBody: { ok: true },
+			responseBody: { ok: true, matches: [], totalCount: 0 },
 			responseStatus: 0,
 		})
 		const boundOnly = matchProbeWitness(
@@ -541,6 +541,10 @@ describe('the selector follows the shipped binding filter', () => {
 			recordOf([searched, { ...searched, observationId: 'obs-tool-2' }]),
 		)
 		expect(boundOnly.observationIds).toEqual(['obs-tool-1', 'obs-tool-2'])
+		// The seeded tool bug is caught: the predicate holds on both candidates
+		// and no finding claims them, which is the state this whole story exists
+		// to make reachable.
+		expect(boundOnly.result).toBe('manifested-unclaimed')
 
 		const unbound = matchProbeWitness(
 			toolCallProbe as SignedProbe,
@@ -553,6 +557,7 @@ describe('the selector follows the shipped binding filter', () => {
 			]),
 		)
 		expect(unbound.observationIds).toEqual([])
+		expect(unbound.result).toBe('not-triggered')
 	})
 
 	it('binds a literal by deep equality, key order irrelevant', () => {

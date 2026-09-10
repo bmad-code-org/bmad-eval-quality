@@ -13,10 +13,10 @@ import {
 	type EvidenceChannelName,
 	IDENTIFIER_ROOTED_CHANNEL,
 	INPUT_CHANNELS,
+	INPUT_ROOTED_CHANNEL,
 	type InputChannelName,
 	SCALAR_CHANNELS,
 	TAIL_BEARING_CHANNELS,
-	TRANSPORT_ROOTED_CHANNEL,
 } from '../schemas/pointer.ts'
 import { IDENTIFIER_CHARSET_SOURCE } from '../schemas/primitives.ts'
 
@@ -37,7 +37,7 @@ const alternation = (members: readonly string[]): string => members.join('|')
 // dependency on `IDENTIFIER_CHARSET_SOURCE` staying free of its own capturing
 // groups.
 const EVIDENCE_TARGET_PATTERN = new RegExp(
-	`^/interactions/(?<stepId>${IDENTIFIER_CHARSET_SOURCE})/(?:(?<tailBearingChannel>${alternation(TAIL_BEARING_CHANNELS)})(?<tailBearingTail>${TAIL_SOURCE})|(?<scalarChannel>${alternation(SCALAR_CHANNELS)})|${TRANSPORT_ROOTED_CHANNEL}/(?<transportChannel>${alternation(INPUT_CHANNELS)})(?<callInputsTail>${TAIL_SOURCE})|${IDENTIFIER_ROOTED_CHANNEL}/(?<artifactId>${IDENTIFIER_CHARSET_SOURCE})(?<artifactTail>${TAIL_SOURCE}))$`,
+	`^/interactions/(?<stepId>${IDENTIFIER_CHARSET_SOURCE})/(?:(?<tailBearingChannel>${alternation(TAIL_BEARING_CHANNELS)})(?<tailBearingTail>${TAIL_SOURCE})|(?<scalarChannel>${alternation(SCALAR_CHANNELS)})|${INPUT_ROOTED_CHANNEL}/(?<inputChannel>${alternation(INPUT_CHANNELS)})(?<callInputsTail>${TAIL_SOURCE})|${IDENTIFIER_ROOTED_CHANNEL}/(?<artifactId>${IDENTIFIER_CHARSET_SOURCE})(?<artifactTail>${TAIL_SOURCE}))$`,
 )
 
 const isEvidenceChannel = (value: string): value is EvidenceChannelName =>
@@ -66,14 +66,14 @@ export const decodeTail = (tailSource: string): readonly string[] =>
 export type EvidenceTarget = {
 	stepId: string
 	channel: EvidenceChannelName
-	transportChannel: InputChannelName | null // non-null exactly when channel is 'call-inputs'
+	inputChannel: InputChannelName | null // non-null exactly when channel is 'call-inputs'
 	artifactId: string | null // non-null exactly when channel is 'artifact'
 	tail: readonly string[] // decoded RFC 6901 tokens; empty on a scalar channel
 }
 
 /**
  * Parses one `InteractionPointer` string (`INTERACTION_POINTER_PATTERN` in
- * `pointer.ts`) into its step id, channel, transport channel, and tail, using
+ * `pointer.ts`) into its step id, channel, input channel, and tail, using
  * the schema's own channel partition so this accepts exactly what
  * `InteractionPointer.safeParse` accepts. A should-never-happen precondition
  * violation throws `TypeError`, per `digest.ts`'s precedent.
@@ -96,7 +96,7 @@ export function parseEvidenceTarget(pointer: string): EvidenceTarget {
 		return {
 			stepId,
 			channel: groups.scalarChannel,
-			transportChannel: null,
+			inputChannel: null,
 			artifactId: null,
 			tail: [],
 		}
@@ -111,22 +111,22 @@ export function parseEvidenceTarget(pointer: string): EvidenceTarget {
 		return {
 			stepId,
 			channel: groups.tailBearingChannel,
-			transportChannel: null,
+			inputChannel: null,
 			artifactId: null,
 			tail: decodeTail(groups.tailBearingTail ?? ''),
 		}
 	}
-	if (groups.transportChannel !== undefined) {
-		if (!isInputChannel(groups.transportChannel)) {
+	if (groups.inputChannel !== undefined) {
+		if (!isInputChannel(groups.inputChannel)) {
 			// Unreachable: INPUT_CHANNELS is exactly what this group can match.
 			throw new TypeError(
-				`call-inputs evidence target names no transport channel: ${pointer}`,
+				`call-inputs evidence target names no input channel: ${pointer}`,
 			)
 		}
 		return {
 			stepId,
 			channel: 'call-inputs',
-			transportChannel: groups.transportChannel,
+			inputChannel: groups.inputChannel,
 			artifactId: null,
 			tail: decodeTail(groups.callInputsTail ?? ''),
 		}
@@ -135,7 +135,7 @@ export function parseEvidenceTarget(pointer: string): EvidenceTarget {
 		return {
 			stepId,
 			channel: IDENTIFIER_ROOTED_CHANNEL,
-			transportChannel: null,
+			inputChannel: null,
 			artifactId: groups.artifactId,
 			tail: decodeTail(groups.artifactTail ?? ''),
 		}

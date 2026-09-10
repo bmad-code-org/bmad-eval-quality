@@ -196,6 +196,13 @@ const foreignChannels = (kind: InterfaceKindName): ReadonlySet<string> => {
 	}
 }
 
+// `condition-text-channel-on-api` fires for any channel the declared kind
+// cannot produce, `response-headers` on a tool call included, so the name is
+// narrower than the rule. It stays: renaming moves an AD-5 registry row, a
+// `QUALIFICATION_FAILURES` member, every fixture naming it, and the published
+// census, with no behaviour behind any of it. Recorded here as a known
+// imprecision so a reader of the closed table is not surprised by it.
+
 /** How a detail string names the sort of interface a signature declares. */
 const interfacePhraseOf = (kind: InterfaceKindName): string => {
 	switch (kind) {
@@ -814,6 +821,14 @@ export function qualifyProbe(
 		// The same tuple the compile and pre-flight gates read, so what a
 		// contract may declare and what a signature may declare against cannot
 		// disagree. This was the fourth transcription of the pair and the last.
+		//
+		// The coupling is deliberate and it is not free: the two questions can
+		// legitimately differ, and they did for one release, when the contract
+		// gates opened for `mcp` while this one stayed shut because the kind had
+		// no signature branch to declare. Opening a kind contract-side now opens
+		// it here too. A future kind that needs the gap back gets its own
+		// predicate beside `isSupportedInterfaceKind` rather than a re-spelled
+		// condition, so the divergence stays a named decision.
 		if (!isSupportedInterfaceKind(signature.interfaceKind)) {
 			failures.push({
 				code: 'signature-interface-kind-unsupported',

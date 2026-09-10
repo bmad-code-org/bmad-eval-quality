@@ -122,6 +122,18 @@ describe('evidenceOf', () => {
 		const evidence = evidenceFor(jsonBody({ ok: true }), {}, toolCallInputs)
 		const { arguments: supplied, ...rest } = evidence.callInputs
 		expect(supplied).toEqual({ query: 'alpha' })
+		// The other eight are named, so a key disappearing from
+		// `ObservedCallInputs` fails here rather than passing vacuously.
+		expect(Object.keys(rest).sort()).toEqual([
+			'argument',
+			'body',
+			'environment',
+			'header',
+			'option',
+			'path',
+			'query',
+			'stdin',
+		])
 		expect(Object.values(rest).every((value) => value === null)).toBe(true)
 	})
 

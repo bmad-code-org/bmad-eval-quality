@@ -302,10 +302,11 @@ describe('the signature requirement, and the one class exempt from it', () => {
 	})
 
 	// A tool call carries its result on `response-body` and its error flag on
-	// `response-status`, and fills nothing else. `foreignChannels` hands an mcp
-	// signature the command channels plus `response-headers`, so both of these
-	// fire on the same code the api kind fires for a stream.
-	it.each(['stdout', 'response-headers'] as const)(
+	// `response-status`, and fills nothing else. These four are the whole of what
+	// `foreignChannels` hands an mcp signature: the three command response
+	// channels plus `response-headers`, which compile-time reachability refuses
+	// on the same operation.
+	it.each(['stdout', 'stderr', 'exit-code', 'response-headers'] as const)(
 		'refuses a tool-call signature addressing %s',
 		(channel) => {
 			const codes = qualifyProbe(
@@ -327,6 +328,32 @@ describe('the signature requirement, and the one class exempt from it', () => {
 			expect(codes).toContain('condition-text-channel-on-api')
 		},
 	)
+
+	// The case an author actually hits: the right channel, a key the tool does
+	// not publish. This is the path through `requestShapeOf(operation,
+	// 'arguments')`, which the command-shaped selector below never reaches.
+	it('refuses an argument name the tool does not publish', () => {
+		const probe = {
+			...toolCallProbe,
+			defectSignature: {
+				...toolCallSignature,
+				condition: {
+					...toolCallSignature.condition,
+					selector: {
+						inputBinding: {
+							...toolCallSignature.condition.selector.inputBinding,
+							arguments: { neverPublished: { matcher: 'any' } },
+						},
+					},
+				},
+			},
+		} as Probe
+		expect(
+			qualifyProbe(probe, searchNotesOperation()).failures.map(
+				(failure) => failure.code,
+			),
+		).toEqual(['condition-selector-key-undeclared'])
+	})
 
 	// A tool call declares one input channel, so a command-shaped selector binds
 	// keys the operation declares nowhere and every candidate observation is

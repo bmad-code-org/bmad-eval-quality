@@ -20,7 +20,7 @@ describe('parseEvidenceTarget', () => {
 		expect(parseEvidenceTarget('/interactions/poll/response-status')).toEqual({
 			stepId: 'poll',
 			channel: 'response-status',
-			transportChannel: null,
+			inputChannel: null,
 			artifactId: null,
 			tail: [],
 		})
@@ -30,7 +30,7 @@ describe('parseEvidenceTarget', () => {
 		expect(parseEvidenceTarget('/interactions/run/exit-code')).toEqual({
 			stepId: 'run',
 			channel: 'exit-code',
-			transportChannel: null,
+			inputChannel: null,
 			artifactId: null,
 			tail: [],
 		})
@@ -44,7 +44,7 @@ describe('parseEvidenceTarget', () => {
 		).toEqual({
 			stepId: 'first-page',
 			channel: 'response-body',
-			transportChannel: null,
+			inputChannel: null,
 			artifactId: null,
 			tail: ['rows', 'retractedAt'],
 		})
@@ -87,21 +87,21 @@ describe('parseEvidenceTarget', () => {
 		).toEqual({
 			stepId: 'submit',
 			channel: 'call-inputs',
-			transportChannel: 'path',
+			inputChannel: 'path',
 			artifactId: null,
 			tail: ['id'],
 		})
 		expect(
 			parseEvidenceTarget('/interactions/submit/call-inputs/query/limit'),
-		).toMatchObject({ transportChannel: 'query', tail: ['limit'] })
+		).toMatchObject({ inputChannel: 'query', tail: ['limit'] })
 		expect(
 			parseEvidenceTarget(
 				'/interactions/submit/call-inputs/header/Idempotency-Key',
 			),
-		).toMatchObject({ transportChannel: 'header', tail: ['Idempotency-Key'] })
+		).toMatchObject({ inputChannel: 'header', tail: ['Idempotency-Key'] })
 		expect(
 			parseEvidenceTarget('/interactions/submit/call-inputs/body/filters'),
-		).toMatchObject({ transportChannel: 'body', tail: ['filters'] })
+		).toMatchObject({ inputChannel: 'body', tail: ['filters'] })
 	})
 
 	it('parses a call-inputs pointer targeting the whole transport channel, with no tail', () => {
@@ -110,7 +110,7 @@ describe('parseEvidenceTarget', () => {
 		).toEqual({
 			stepId: 'submit',
 			channel: 'call-inputs',
-			transportChannel: 'body',
+			inputChannel: 'body',
 			artifactId: null,
 			tail: [],
 		})
@@ -299,7 +299,7 @@ describe('parseEvidenceTarget: the artifact channel', () => {
 		).toEqual({
 			stepId: 'review',
 			channel: 'artifact',
-			transportChannel: null,
+			inputChannel: null,
 			artifactId: 'verdict',
 			tail: ['findings', '0'],
 		})
@@ -310,7 +310,7 @@ describe('parseEvidenceTarget: the artifact channel', () => {
 			{
 				stepId: 'review',
 				channel: 'artifact',
-				transportChannel: null,
+				inputChannel: null,
 				artifactId: 'report',
 				tail: [],
 			},

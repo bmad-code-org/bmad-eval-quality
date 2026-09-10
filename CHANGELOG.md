@@ -18,8 +18,8 @@ body.
   `unsupported-interface-kind` to detect an `mcp` contract reads the declared kind. `web` still
   fails at both gates with the same code and the same artifact path, and both gates now read one
   exported tuple, so what compiles and what pre-flights cannot disagree. The probe-side gate opened
-  separately and reads the same tuple; the entry below carries it. No artifact `schemaVersion` moved
-  for this change.
+  separately and reads the same tuple; the `mcp` qualification entry under **Changed** carries it. No
+  artifact `schemaVersion` moved for this change.
   - **BREAKING for an environment-probe adapter.** `ProbeRequest` gains a third member,
     `McpProbeRequest`, carrying the correlation triple, the published tool name, and the `arguments`
     channel. An implementation typed against the two-member union stops satisfying the port's
@@ -39,8 +39,9 @@ body.
   the `api`, `web`, and `cli` branches parse with no edit other than their stamp.
 - **BREAKING** The probe's `schemaVersion` moved to 4 for the witness side. A manifestation
   witness's `inputs` gains the same third arm, so a witness leg against a tool call is expressible.
-  Every version-3 probe parses with no edit, and no reader compares the probe's stamp against a
-  constant. The signature side moved the stamp again, to 5; the entry below carries it.
+  That widening alone adds a branch and narrows none, so it broke no version-3 probe; the signature
+  side then moved the stamp to 5 and does narrow. Read the two together: migrating from version 3
+  goes straight to 5, and the version-5 entry below carries the edits it needs.
 - **BREAKING** The sealed run record's `schemaVersion` is 5. `ObservedCallInputs` carries a ninth
   `arguments` key, so what a tool call supplied has somewhere to live and a pointer at
   `/interactions/{stepId}/call-inputs/arguments/{key}` resolves the recorded value. Every channel on
@@ -52,7 +53,10 @@ body.
   name AD-40 resolves against, and `ApiDefectSignature.interfaceKind` narrows to `api` and `web`, so
   a signature carrying `interfaceKind: "mcp"` beside a method and a path template stops parsing. And
   a signature selector's `inputBinding` gains the same ninth `arguments` channel on the same
-  required-and-nullable terms, so a version-4 probe declaring eight channels fails to parse.
+  required-and-nullable terms, so a version-4 probe declaring eight channels fails to parse. To
+  migrate: add `"arguments": null` to every `defectSignature.condition.selector.inputBinding`, and
+  rewrite any signature declaring `mcp` to drop `method` and `pathTemplate` for the `toolName` its
+  contract publishes.
 - A probe whose defect signature names `mcp` qualifies. `qualifyProbe` reads the same supported-kind
   tuple `compile` and the pre-flight plan read, so `signature-interface-kind-unsupported` fires for
   `web` alone and its detail names the three admitted kinds. A tool-use signature stays confined to
