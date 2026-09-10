@@ -76,10 +76,12 @@ describe('the workflow chain, as the shipped stages computed it', () => {
 			['reset-the-store', 'control-reset', 'reset-things'],
 			['preflight-control-observe-2', 'control-observe', 'get-thing'],
 		])
-		// The mutating leg and the reset leg are two different operations here,
-		// which is what this contract adds over the tool-server exemplar: there
-		// the reset names the operation the mutating leg already used.
-		expect(contract.fixtureReset?.operationId).toBe('reset-things')
+		// The third element of each tuple is where the contract's own addition
+		// sits: the mutating leg and the reset leg are two different operations,
+		// where the tool-server exemplar's reset names the operation the mutating
+		// leg already used. `contract.fixtureReset.operationId` is not asserted
+		// beside it, because the reset leg's operation above is that field read
+		// through the planner.
 		// `state-reset` names the first and the fourth, and `clean-control` all
 		// four. Both are read off the plan rather than restated, so a planner
 		// that minted a third observe leg would move these together.

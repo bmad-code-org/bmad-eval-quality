@@ -2,7 +2,7 @@
 title: 'A shipped workflow contract with a captured binding and a fixture reset'
 type: 'feature'
 created: '2026-09-09'
-status: 'draft'
+status: 'done'
 review_loop_iteration: 0
 context:
   - _bmad-output/implementation-artifacts/epic-11-context.md
@@ -134,22 +134,22 @@ Story 11.10 lands first and defines the construction; the citations below are to
 
 **Execution:**
 
-- [ ] `tests/schemas/fixtures/workflow-contract.ts` -- NEW, in the directory `command-contract.ts` sets as the precedent for a corpus member authored as a fixture, which is where Story 11.10 puts its skill exemplar too. Author the exemplar: one `api` interface carrying `create-thing` (marker true, response `id` typed `string`, `/id` volatile), `get-thing` (`GET /things/{id}`, marker false, `path.id` typed `string`), and `reset-things` (marker true), each with a sensitivity witness on the channel `legalChannels` allows it; a two-step plan whose `read-back` binds `path.id` to `/interactions/create/response-body/id` with `after: "create"`; a `fixtureReset` naming `reset-things`; and oracles that address the read-back body and compare it with the write's call inputs.
-- [ ] `tests/coverage/fixtures/corpus.ts` -- add the exemplar to `DEV_CORPUS_CONTRACTS` and extend the docblock at `:536-554` to say why a mechanism exemplar ships without a cell. Leave `CORPUS_CONTRACTS` at 19.
-- [ ] `tests/coverage/workflow-coverage.test.ts` -- NEW. Grade AD-31's fourteen predicates over the exemplar as one whole verdict table, following `tests/coverage/command-coverage.test.ts`'s construction and its reason, so no dev-corpus member outside the cell matrix ships ungraded.
-- [ ] `scripts/dev-corpus-target.ts` -- move the corpus total at `:65`, `:108` and `:114` and the compiling count at `:115` against what `DEV_CORPUS_CONTRACTS` holds when this story runs, and name the workflow exemplar in "What is here" beside the clauses Stories 11.8 and 11.10 left there. Leave `:114`'s "Nineteen", `:115`'s "two" and `:117`'s "Three" alone. `corpus/dev/README.md` is generated, so this template is where its bytes are edited and `npm run generate:dev-corpus` is what writes them.
-- [ ] `scripts/dev-corpus-target.ts:141` -- the committed-run-record clause in the same template. Read what the tree holds after Story 11.10 landed and name each committed run record by path, keeping every phrase `tests/architecture/dev-corpus.test.ts:282`'s regex anchors on, per Decision 8.
-- [ ] `README.md:240` -- the generated-artifact table's "the committed worked chain" row, read against the same tree.
-- [ ] `npm run generate:dev-corpus && npm run check:corpus` -- regenerate; expect zero orphans and zero drift.
-- [ ] `scripts/workflow-example-target.ts` -- NEW, the third target file in the shape Story 11.10 established. It imports `renderJson`, `digestPlaceholder`, `fail` and `POLICY` from `scripts/worked-example-shared.ts`, and owns its own label `_bmad-output/worked-examples/workflow-capture`, its own root, its own six-file list, its own key-set check, the authored probe, the authored observations for every planned leg, the `preflightFromObservations` call, and the same `ingest` → `score` → `emit` sequence the spike chain runs. `scripts/worked-example-target.ts` takes no edit, and neither does `scripts/skill-example-target.ts`.
-- [ ] `scripts/generate-worked-example.ts` and `scripts/check-worked-example.ts` -- add this builder's map to the union `buildWorkedExample` returns. Story 11.10 already made the generator create each key's own parent and both log lines label-independent, so nothing else in either script moves.
-- [ ] `npm run generate:worked-example && npm run check:worked-example` -- regenerate; expect the spike chain's five files and Story 11.10's six byte-identical, and this chain's six files written.
-- [ ] `tests/score/workflow-worked-example.test.ts` -- NEW, following `tests/score/worked-example.test.ts`'s posture of reading the builder's values and touching no file. Assert this chain's values: the resolved captured value equals the identifier the write returned, the pre-flight verdict's control legs read `control-observe`, `control-mutate`, `control-reset`, `control-observe`, `state-reset` is satisfied, `strength.comparable` is `false` with the note naming one trial, and the emitted key set is exactly the declared one.
-- [ ] `src/core/compile/bindings.ts` -- delete the orphaned docblock at `:40-52`, first moving into `checkCapturedChannel`'s docblock the one reason it carries that the latter does not: `Observation.responseHeaders` admits objects, arrays and numbers, so a header capture compiled as a `string` could resolve to an object at score time.
-- [ ] `docs/index.md:78` and `docs/how-to/evaluate-workflow-behavior.md:71-72,221-226` -- the cell and the three passages, per Decision 5.
-- [ ] The corpus numerals -- run `npm run check:doc-counts`, move every word it names, and re-run until it exits 0.
-- [ ] `CHANGELOG.md` `[Unreleased]` -- one `### Added` bullet naming this story's own additions and nothing else: the workflow exemplar now published in `corpus/dev/contracts/`, the first shipped contract carrying a `{ captured }` binding and a `fixtureReset`, and the third committed chain at `_bmad-output/worked-examples/workflow-capture/` whose pre-flight verdict records the four control legs. Story 11.10's bullet discloses the second chain and this one does not restate it. The corpus-digest non-comparability statement is stated once for this epic by the first story that moves the corpus, which is Story 11.8, and this bullet does not restate that either. No `schemaVersion` moves here, so `CHANGELOG.md:578` stands untouched.
-- [ ] `_bmad-output/project-knowledge/learning-path-step-by-step.md` -- one step and one table row, per `learning-path-template.md`, numbered from the file's last step at the time this story runs. The file ends at Step 44 (epic10-story1) today, and under the epic's execution order of 11.1 through 11.8, then 11.10 through 11.12, then 11.9, that is Step 54.
+- [x] `tests/schemas/fixtures/workflow-contract.ts` -- NEW, in the directory `command-contract.ts` sets as the precedent for a corpus member authored as a fixture, which is where Story 11.10 puts its skill exemplar too. Author the exemplar: one `api` interface carrying `create-thing` (marker true, response `id` typed `string`, `/id` volatile), `get-thing` (`GET /things/{id}`, marker false, `path.id` typed `string`), and `reset-things` (marker true), each with a sensitivity witness on the channel `legalChannels` allows it; a two-step plan whose `read-back` binds `path.id` to `/interactions/create/response-body/id` with `after: "create"`; a `fixtureReset` naming `reset-things`; and oracles that address the read-back body and compare it with the write's call inputs. Shipped as a seven-step plan with seven oracles over six behaviors, per Decision 10: a two-step plan leaves `malformed-input`, `whole-body` and `state-change-read-back` unsatisfied on a member the corpus README calls a rule index.
+- [x] `tests/coverage/fixtures/corpus.ts` -- add the exemplar to `DEV_CORPUS_CONTRACTS` and extend the docblock at `:536-554` to say why a mechanism exemplar ships without a cell. Leave `CORPUS_CONTRACTS` at 19.
+- [x] `tests/coverage/workflow-coverage.test.ts` -- NEW. Grade AD-31's fourteen predicates over the exemplar as one whole verdict table, following `tests/coverage/command-coverage.test.ts`'s construction and its reason, so no dev-corpus member outside the cell matrix ships ungraded.
+- [x] `scripts/dev-corpus-target.ts` -- move the corpus total at `:65`, `:108` and `:114` and the compiling count at `:115` against what `DEV_CORPUS_CONTRACTS` holds when this story runs, and name the workflow exemplar in "What is here" beside the clauses Stories 11.8 and 11.10 left there. Leave `:114`'s "Nineteen", `:115`'s "two" and `:117`'s "Three" alone. `corpus/dev/README.md` is generated, so this template is where its bytes are edited and `npm run generate:dev-corpus` is what writes them.
+- [x] `scripts/dev-corpus-target.ts:141` -- the committed-run-record clause in the same template. Read what the tree holds after Story 11.10 landed and name each committed run record by path, keeping every phrase `tests/architecture/dev-corpus.test.ts:282`'s regex anchors on, per Decision 8.
+- [x] `README.md:240` -- the generated-artifact table's "the committed worked chain" row, read against the same tree.
+- [x] `npm run generate:dev-corpus && npm run check:corpus` -- regenerate; expect zero orphans and zero drift.
+- [x] `scripts/workflow-example-target.ts` -- NEW, the third target file in the shape Story 11.10 established. It imports `renderJson`, `digestPlaceholder`, `fail` and `POLICY` from `scripts/worked-example-shared.ts`, and owns its own label `_bmad-output/worked-examples/workflow-capture`, its own root, its own six-file list, its own key-set check, the authored probe, the authored observations for every planned leg, the `preflightFromObservations` call, and the same `ingest` → `score` → `emit` sequence the spike chain runs. `scripts/worked-example-target.ts` takes no edit, and neither does `scripts/skill-example-target.ts`.
+- [x] `scripts/generate-worked-example.ts` and `scripts/check-worked-example.ts` -- add this builder's map to the union `buildWorkedExample` returns. Story 11.10 already made the generator create each key's own parent and both log lines label-independent, so nothing else in either script moves.
+- [x] `npm run generate:worked-example && npm run check:worked-example` -- regenerate; expect the spike chain's five files and Story 11.10's six byte-identical, and this chain's six files written.
+- [x] `tests/score/workflow-worked-example.test.ts` -- NEW, following `tests/score/worked-example.test.ts`'s posture of reading the builder's values and touching no file. Assert this chain's values: the resolved captured value equals the identifier the write returned, the pre-flight verdict's control legs read `control-observe`, `control-mutate`, `control-reset`, `control-observe`, `state-reset` is satisfied, `strength.comparable` is `false` with the note naming one trial, and the emitted key set is exactly the declared one. The control legs are asserted off `planPreflight` rather than off the verdict, per Decision 12. The key set moved to `tests/score/worked-example.test.ts`'s existing registry case, which Story 11.10 wrote for exactly this and which goes red on a builder left out of the union.
+- [x] `src/core/compile/bindings.ts` -- delete the orphaned docblock at `:40-52`, first moving into `checkCapturedChannel`'s docblock the one reason it carries that the latter does not: `Observation.responseHeaders` admits objects, arrays and numbers, so a header capture compiled as a `string` could resolve to an object at score time.
+- [x] `docs/index.md:78` and `docs/how-to/evaluate-workflow-behavior.md:71-72,221-226` -- the cell and the three passages, per Decision 5.
+- [x] The corpus numerals -- run `npm run check:doc-counts`, move every word it names, and re-run until it exits 0. It named thirteen; six more entries were added for the sentences this story leaves behind, per Decision 15, and the gate now holds 29 numerals across 9 files.
+- [x] `CHANGELOG.md` `[Unreleased]` -- one `### Added` bullet naming this story's own additions and nothing else: the workflow exemplar now published in `corpus/dev/contracts/`, the first shipped contract carrying a `{ captured }` binding and a `fixtureReset`, and the third committed chain at `_bmad-output/worked-examples/workflow-capture/` whose pre-flight verdict records the four control legs. Story 11.10's bullet discloses the second chain and this one does not restate it. The corpus-digest non-comparability statement is stated once for this epic by the first story that moves the corpus, which is Story 11.8, and this bullet does not restate that either. No `schemaVersion` moves here, so `CHANGELOG.md:578` stands untouched.
+- [x] `_bmad-output/project-knowledge/learning-path-step-by-step.md` -- one step and one table row, per `learning-path-template.md`, numbered from the file's last step at the time this story runs. The file ends at Step 44 (epic10-story1) today, and under the epic's execution order of 11.1 through 11.8, then 11.10 through 11.12, then 11.9, that is Step 54.
 
 **Acceptance Criteria:**
 
@@ -210,6 +210,138 @@ Story 11.8 owns the first move of the total and the compiling count, Story 11.10
 Three published statements say this repository commits one end-to-end chain. `scripts/dev-corpus-target.ts:141` is the source of `corpus/dev/README.md:36`, "Only the run record among them is committed, as `spike-worked-example/sealed-run-record.json`". `README.md:240` names "the committed worked chain" in the singular in the generated-artifact table. `tests/architecture/dev-corpus.test.ts:282` pins a regex over the corpus README paragraph that carries the first. Story 11.10 ships a generated chain and takes the singular to two; this story ships a second and takes two to three. Neither story writes the other's number: each reads the committed state when its own edit is made and states what it finds, which is the same rule Decision 6 applies to the corpus numerals and for the same reason. `corpus/dev/README.md` is generated, so both edits land at the template and reach disk through `npm run generate:dev-corpus`.
 
 Two traps are stated because the paragraph carries two unrelated numbers. `dev-corpus.test.ts:282` anchors on four fragments in order, "Three of the four artifacts", "inputs the shipped", "ingest", and "stage consumes", and every one of them has to survive both stories' edits, so both stories carry the regex as a constraint on their own diff and Story 11.10 leaves it green for this one. And the "Three of the four" in it counts the artifacts of an end-to-end example, which is a different quantity from how many chains commit a run record; it does not move in this epic, and editing it would falsify the sentence and break the regex at once. The clause that moves is the path list at `:141`, which the regex does not reach. Downstream consequence: Story 11.12 inherits the same composition if it ships a fourth chain, and Story 11.9's closing sweep reads all three statements last.
+
+**Decision 9: the frozen Intent describes a tree that no longer exists, and this is the divergence record.**
+The `<frozen-after-approval>` Intent opens on two sentences being true at 1.4.2: that no contract in
+`corpus/dev/contracts/` uses a `{ captured }` binding, and that none declares a `fixtureReset`. Both
+are false in the tree this story ran against. Story 11.8 promoted `tests/schemas/fixtures/mcp-contract.ts`
+into the corpus as `corpus/dev/contracts/notes-tool-server.json`, and Story 11.4 had authored it with
+a captured binding on its `read-back` step and a `fixtureReset` on `create-note`, the latter being the
+accept fixture for the tool-call arm of `FixtureReset.inputs` and reachable from no other declaration.
+Story 11.8 corrected the two published sentences its own change falsified, at
+`docs/how-to/evaluate-workflow-behavior.md:222` and `:226`, and corrected `epic-11-context.md:50`.
+
+The block is human-owned so it is left exactly as written. What this story actually adds, stated here
+because the Intent no longer states it: the first **api-shaped** capture in a shipped contract, the
+first `fixtureReset` on that kind, and the first **committed end-to-end chain** over either mechanism.
+The `cli` capture from `stdout` and the capture from the `artifact` channel stay unexercised by any
+shipped contract, which Decision 1 already recorded and which the guide now says in those words.
+
+Two consequences follow. The guide's "Where this stands" section counts two shipped contracts for each
+mechanism rather than one, and it says which axis each covers. And the `api`-declaring numeral is the
+only per-kind count this story moves, which is what Decision 6's last column already predicted.
+
+**Decision 10: the plan is seven steps, and the exemplar satisfies every rule its declarations make
+relevant.**
+The task list said "a two-step plan". Two steps carry the capture and nothing else: `malformed-input`
+answers relevant for every operation declaring a request key, `whole-body` for every operation
+declaring more than one required response key, and `state-change-read-back` for every marker-true
+operation, so a two-step plan would publish a corpus member failing three of the seven discipline
+rules while the corpus README calls the set a rule index. The plan is therefore `create`, `read-back`,
+`reset`, `reset-read-back`, and one type-violating step per operation, and the contract declares seven
+oracles against six behaviors.
+
+The result is `success-indicator-separation`, `whole-body`, `malformed-input`, `sibling-cross-check`
+and `state-change-read-back` all relevant and satisfied. `per-record` and `omission-and-completeness`
+come out irrelevant, and Decision 13 records why that is the honest answer rather than a gap.
+
+**Decision 11: the reset names a third operation, so the mutating leg and the reset leg are different
+calls.**
+`selectControl` (`src/core/preflight/plan.ts:290-319`) takes the mutating control leg from the first
+marker-true operation on the interface the reset names, and the reset leg from the operation the reset
+itself names. On `notes-tool-server.json` those resolve to one operation, `create-note`, so the
+shipped four-leg branch has never had an example where the mutation and the restoration are separate
+calls. Declaring `reset-things` as a third operation is what makes the committed plan read
+`create-thing`, then `reset-things`, which is the shape the branch exists for.
+
+The cost is that `reset-things` is an operation like any other to every predicate that walks the
+inventory, so it needs its own sensitivity witness, its own type-violating step, its own
+whole-response oracle and its own read-back. All four are declared. Its witness relation reads the
+whole response body, and `seededName` is required rather than merely permitted for the reason the
+tool-server contract states about `totalCount`: a service free to omit the field would leave both legs
+answering `{ ok: true }` and the relation resolving false against a service doing its job.
+
+**Decision 12: `PreflightVerdict` records no leg list, so the acceptance criterion is met by two check
+rows rather than by four leg entries.**
+An acceptance criterion states that the emitted `preflight-verdict.json` "records every control leg
+and its check result". It does not, and cannot: `PreflightVerdict` carries `schemaVersion`, the
+lineage pair, `runId`, `fixtureDigest`, `passed` and `checks`, and a `PlannedLeg` never reaches it.
+What the committed bytes carry of the four legs is `state-reset` satisfied and `clean-control`
+satisfied, which `planPreflight` emits only when control legs could be planned at all
+(`plan.ts:409-472`), plus a `fixtureDigest` computed over the projection of every leg including those
+four. The leg identifiers and their order are values on the plan, and
+`tests/score/workflow-worked-example.test.ts` asserts them off `planPreflight` directly.
+
+The guide says this in the same words rather than implying the file lists the legs. No schema moves
+here: widening `PreflightVerdict` to carry a leg record is a shape change another story owns, and it
+would be an AD-11 bump for a field this story does not need.
+
+**Decision 13: the two collection rules are irrelevant, and a positive control is what proves the
+absent declaration is why.**
+`per-record` and `omission-and-completeness` both read `collectionLocations`, and this contract
+declares none: every operation answers with one record or with a verdict about one call. Adding a
+list operation to make the two rules relevant would add a fourth operation, its witness, its
+type-violating step and two more oracles to a contract whose subject is the capture and the reset.
+
+An assertion that a rule is irrelevant is satisfied by a predicate that answers irrelevant to
+everything, so `tests/coverage/workflow-coverage.test.ts` carries a positive control: one collection
+location and the reference set it names are added to the read's descriptor, nothing else moves, and
+both rules come back relevant. That is what separates "this contract declares no collection" from
+"these predicates stopped firing".
+
+**Decision 14: the three type-violating steps stay unobserved, and the artifact says so.**
+All three are `cardinality: at-most-one` and the committed run made none of them, so `O-003` resolves
+`unreached` and its authored `held` disposition scores `corroboration: 'disagrees'`. Both are asserted
+in the chain test and `oracle O-003 resolved unreached` appears in the emitted `verdictBasis`.
+
+The alternative was to record an observation per malformed step, and it is blocked by the plan the
+guide prints. `create` binds `body.name` with `{ matcher: 'any' }`, which selects whatever was sent,
+so a second `create-thing` observation carrying a type-violating name would make `selectWithBindings`
+return `several` under `exactly-one` and the outcome would be an infrastructure error rather than a
+verdict about the contract. Rebinding `create` by literal would make the shipped contract stop
+matching the plan printed at `docs/how-to/evaluate-workflow-behavior.md:42-69`, which Decision 1 rests
+on. A published chain whose artifact flags an oracle the run did not exercise is the better of the
+two, and it is a thing a reader of a worked example should see once.
+
+**Decision 15: `check:doc-counts` gains six entries, and the committed-chain count is read off the
+registry.**
+Three published sentences count committed chains and a fourth was added by Story 11.10 inside the
+corpus README's "What is here" bullet. All four now have gate entries, and the value comes from
+`buildWorkedExample()`'s own key set rather than from a list of chain labels kept in the gate: a chain
+added to that registry and left out of such a list would leave all four sentences stale with nothing
+to notice, which is the drift the gate exists to stop.
+
+Two more entries cover the mechanism counts this story's own sentence in the corpus README states, the
+number of published contracts carrying a `{ captured }` binding and the number declaring a
+`fixtureReset`. Both are computed by walking the published JSON's `interactionPlan` bindings and
+`fixtureReset` field rather than by matching the word in the file text, so a contract whose oracle
+commentary happened to spell "captured" is not counted. All six patterns are built with the file's own
+`WRAP` constant where they read the wrapped README, so no capture can come from the paragraph above
+the sentence being gated.
+
+**Decision 16: the guide's three compile-check demonstrations are regenerated against the shipped
+contract, and two of them were false before.**
+`docs/how-to/evaluate-workflow-behavior.md:102` says each quoted message is the real output of
+`compile` on the plan above with one field changed. The channel message was true. The type message
+named a `list` step and a `limit` parameter the plan above does not declare, and the cycle message
+quoted `/interactions/create/response-body/name`, a self-capture that reproduces
+`unreachable-check-evidence` rather than the `binding-cycle` the page shows, because no response
+descriptor in that contract declares `name`.
+
+Both are now produced from `captured-read-back` with one field changed and were captured from a real
+`compile` call: the type message captures the boolean `ok` into `read-back`'s own `string` `id`, and
+the cycle message makes `create` capture `/interactions/read-back/response-body/error`, a declared
+string, while `read-back.after` is `create`. Story 11.9's Phase 1 sweep reported the same two defects
+independently while this story was in flight, along with `:76` claiming `InputBinding` is a two-member
+union where `src/core/schemas/plan.ts:128-132` makes it three. That third one is corrected here too,
+since this story was already editing the sentence's own page.
+
+**Decision 17: the exemplar is parsed into `DEV_CORPUS_CONTRACTS` for the reason the tool-server
+contract is.**
+Its operations declare different keys per channel, so an empty `types: {}` beside a populated one
+infers `{ id?: undefined }` and the array literal stops being assignable to `readonly EvalContract[]`.
+`EvalContract.parse` at the array site is the shipped answer to that and it is what
+`corpus.ts` already does for `mcpContract`; the comment there now names both.
 
 ## Design Notes
 
