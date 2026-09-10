@@ -7,12 +7,12 @@ import {
 	EVIDENCE_CHANNELS,
 	EvidenceChannel,
 	IDENTIFIER_ROOTED_CHANNEL,
+	INPUT_ROOTED_CHANNEL,
 	INTERACTION_POINTER_PATTERN,
 	InteractionPointer,
 	SCALAR_CHANNELS,
 	TAIL_BEARING_CHANNELS,
 	TRANSPORT_CHANNELS,
-	TRANSPORT_ROOTED_CHANNEL,
 	TransportChannel,
 } from '../../src/core/schemas/pointer.ts'
 
@@ -41,9 +41,9 @@ describe('spelling 1 — interaction-rooted', () => {
 	const rejected = [
 		// `call-inputs` rooted directly on a key name is the defect AD-26 records
 		// revision 3 carrying: it had no declared structure to resolve against.
-		['/interactions/x/call-inputs', 'no transport channel'],
-		['/interactions/x/call-inputs/filters', 'not one of the four channels'],
-		['/interactions/x/call-inputs/cookie/a', 'not one of the four channels'],
+		['/interactions/x/call-inputs', 'no input channel'],
+		['/interactions/x/call-inputs/filters', 'not one of the nine channels'],
+		['/interactions/x/call-inputs/cookie/a', 'not one of the nine channels'],
 		['/interactions/x/response-status/code', 'a scalar channel takes no tail'],
 		['/interactions/x/exit-code/0', 'a scalar channel takes no tail'],
 		['/interactions/x/response-bodyish', 'not a declared channel'],
@@ -154,7 +154,7 @@ describe('the channel vocabularies, exported once and derived by name', () => {
 		const partitioned = [
 			...TAIL_BEARING_CHANNELS,
 			...SCALAR_CHANNELS,
-			TRANSPORT_ROOTED_CHANNEL,
+			INPUT_ROOTED_CHANNEL,
 			IDENTIFIER_ROOTED_CHANNEL,
 		]
 		expect(new Set(partitioned).size).toBe(partitioned.length)

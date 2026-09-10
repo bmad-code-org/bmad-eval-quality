@@ -611,11 +611,11 @@ function evaluateReachabilityAgainstOperation(
 	}
 
 	if (target.channel === 'call-inputs') {
-		const { transportChannel } = target
-		if (transportChannel === null) {
+		const { inputChannel } = target
+		if (inputChannel === null) {
 			// Unreachable: parseEvidenceTarget's own guarantee.
 			throw new TypeError(
-				'call-inputs evidence target carries no transport channel',
+				'call-inputs evidence target carries no input channel',
 			)
 		}
 		// The channel test runs ahead of the tail test, because a tail-less
@@ -623,10 +623,10 @@ function evaluateReachabilityAgainstOperation(
 		// too: the recorded call inputs carry no key for it, so the pointer
 		// resolves absent on every run and no run can change that. Asking about
 		// the tail first admitted every such pointer, on all nine channels.
-		const shape = requestShapeOf(operation, transportChannel)
+		const shape = requestShapeOf(operation, inputChannel)
 		if (shape === undefined) {
 			return unreachable(
-				`addresses call-inputs ${transportChannel}, a channel operation "${operation.operationId}" does not accept input on`,
+				`addresses call-inputs ${inputChannel}, a channel operation "${operation.operationId}" does not accept input on`,
 			)
 		}
 		if (target.tail.length === 0) return reachable()
@@ -642,12 +642,12 @@ function evaluateReachabilityAgainstOperation(
 			!permittedKeys.includes(firstToken)
 		) {
 			return unreachable(
-				`addresses call-inputs ${transportChannel} field "${firstToken}", which operation "${operation.operationId}" declares in neither requiredKeys nor permittedKeys`,
+				`addresses call-inputs ${inputChannel} field "${firstToken}", which operation "${operation.operationId}" declares in neither requiredKeys nor permittedKeys`,
 			)
 		}
 		if (descendsIntoDeclaredScalar(types, target.tail, firstToken)) {
 			return unreachable(
-				`descends into call-inputs ${transportChannel} field "${firstToken}", which operation "${operation.operationId}" declares a scalar with no further structure`,
+				`descends into call-inputs ${inputChannel} field "${firstToken}", which operation "${operation.operationId}" declares a scalar with no further structure`,
 			)
 		}
 		return reachable()

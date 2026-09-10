@@ -24,7 +24,10 @@ import {
 import {
 	anyOperationSignature,
 	commandSignature,
+	isSupportedInterfaceKind,
+	mcpSignature,
 	operationSignature,
+	SUPPORTED_KINDS_CLAUSE,
 	signatureFamilyOf,
 } from '../compile/interface-inventory.ts'
 import {
@@ -32,7 +35,7 @@ import {
 	checkExpressionEvidenceReachability,
 	forEachExpressionPointer,
 } from '../compile/reachability.ts'
-import { channelEntryOf, requestShapeOf } from '../declared-inputs.ts'
+import { requestShapeOf } from '../declared-inputs.ts'
 import { StructuralFailure } from '../failure-codes.ts'
 import {
 	type DefectSignature,
@@ -110,23 +113,19 @@ export type QualificationResult = {
 }
 
 /**
- * The transport identity a signature declares, or `null` where the kind has
- * none this version can render.
+ * The transport identity a signature declares, in its own kind's spelling. All
+ * four kinds render one now: `mcp` renders the published tool name its own
+ * branch declares, which is what `McpOperation` renders on the contract side.
  *
- * `mcp` is the `null` case, and the answer is decided here. Its signature still
- * carries a method and a path template, which is an identity no tool call
- * renders, so rendering it would compare an HTTP string against a bare tool
- * name inside the mcp family and report a miss as though the contract declared
- * no such operation. A switch with no default arm, so the branch that gives the
- * kind a tool identity has to answer here rather than inherit the api arm the
- * way a two-way test let it.
+ * A switch with no default arm, so a fifth kind fails the typecheck here rather
+ * than inheriting the api arm the way a two-way test let `mcp` do.
  */
-const declaredIdentityOf = (signature: DefectSignature): string | null => {
+const declaredIdentityOf = (signature: DefectSignature): string => {
 	switch (signature.interfaceKind) {
 		case 'cli':
 			return commandSignature(signature)
 		case 'mcp':
-			return null
+			return mcpSignature(signature)
 		case 'api':
 		case 'web':
 			return operationSignature(signature)
@@ -152,12 +151,8 @@ export function resolveHomeOperation(
 	// declaring the same pair, one declaring an invocation can only name an
 	// operation declaring one, and one declaring a tool name can only name a
 	// tool; comparing the rendered strings across families would let
-	// `GET /notes` collide with an executable literally named that. The test
-	// was two-way and swept an `mcp` interface into the api-shaped comparison,
-	// where a signature declaring `mcp` could bind an operation on an `api`
-	// interface that happened to share a method and a path.
+	// `GET /notes` collide with an executable literally named that.
 	const wanted = declaredIdentityOf(signature)
-	if (wanted === null) return null
 	const family = signatureFamilyOf(signature.interfaceKind)
 	for (const iface of interfaces) {
 		if (signatureFamilyOf(iface.kind) !== family) continue
@@ -200,6 +195,13 @@ const foreignChannels = (kind: InterfaceKindName): ReadonlySet<string> => {
 			return new Set<string>(COMMAND_RESPONSE_CHANNELS)
 	}
 }
+
+// `condition-text-channel-on-api` fires for any channel the declared kind
+// cannot produce, `response-headers` on a tool call included, so the name is
+// narrower than the rule. It stays: renaming moves an AD-5 registry row, a
+// `QUALIFICATION_FAILURES` member, every fixture naming it, and the published
+// census, with no behaviour behind any of it. Recorded here as a known
+// imprecision so a reader of the closed table is not surprised by it.
 
 /** How a detail string names the sort of interface a signature declares. */
 const interfacePhraseOf = (kind: InterfaceKindName): string => {
@@ -443,7 +445,7 @@ function checkSelectorKeys(
 ): void {
 	const { inputBinding } = signature.condition.selector
 	for (const channel of INPUT_CHANNELS) {
-		const binding = channelEntryOf(inputBinding, channel)
+		const binding = inputBinding[channel]
 		if (binding === null) continue
 		const shape = requestShapeOf(operation, channel)
 		// A channel the operation does not accept input on declares no key,
@@ -816,14 +818,22 @@ export function qualifyProbe(
 		}
 	}
 	if (signature !== null) {
-		if (
-			signature.interfaceKind !== 'api' &&
-			signature.interfaceKind !== 'cli'
-		) {
+		// The same tuple the compile and pre-flight gates read, so what a
+		// contract may declare and what a signature may declare against cannot
+		// disagree. This was the fourth transcription of the pair and the last.
+		//
+		// The coupling is deliberate and it is not free: the two questions can
+		// legitimately differ, and they did for one release, when the contract
+		// gates opened for `mcp` while this one stayed shut because the kind had
+		// no signature branch to declare. Opening a kind contract-side now opens
+		// it here too. A future kind that needs the gap back gets its own
+		// predicate beside `isSupportedInterfaceKind` rather than a re-spelled
+		// condition, so the divergence stays a named decision.
+		if (!isSupportedInterfaceKind(signature.interfaceKind)) {
 			failures.push({
 				code: 'signature-interface-kind-unsupported',
 				artifactPath: probePath(probe, '.defectSignature.interfaceKind'),
-				detail: `"${signature.interfaceKind}" has no probe semantics in this version: "web" declares no operation shape of its own, and "mcp" declares a published tool name that this signature's method and path template cannot render. The kinds stay in the enum so unsupported-interface-kind stays fireable contract-side (AD-19)`,
+				detail: `"${signature.interfaceKind}" has no probe semantics in this version: it declares a method and a path template with no per-kind semantics behind them, and no operation shape of its own for a signature to bind. It stays in the enum so unsupported-interface-kind stays fireable contract-side; ${SUPPORTED_KINDS_CLAUSE} admitted here (AD-19)`,
 			})
 		}
 		checkObservableChannel(probe, signature, failures)

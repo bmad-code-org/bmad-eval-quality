@@ -361,9 +361,9 @@ export const operationNamed = (
 
 const probeCommon = {
 	// Version 2: AD-9's qualification record and AD-40's defect signature both
-	// landed as required fields. Version 4 is the current stamp; the probe's
+	// landed as required fields. Version 5 is the current stamp; the probe's
 	// own fixture file carries the bump history.
-	schemaVersion: 4,
+	schemaVersion: 5,
 	parentDigest: null,
 	revisionCount: 0,
 	probeClass: 'defect',
@@ -419,6 +419,7 @@ export const seededProbe: Probe = Probe.parse({
 					option: null,
 					environment: null,
 					stdin: null,
+					arguments: null,
 				},
 			},
 			predicate: {

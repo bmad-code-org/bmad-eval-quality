@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { ABSENT } from '../../src/core/evaluate/resolved-value.ts'
+import { EvalContract } from '../../src/core/schemas/eval-contract.ts'
 import type { Operation } from '../../src/core/schemas/interface.ts'
 import type { InteractionStep } from '../../src/core/schemas/plan.ts'
 import type { TransportChannelName } from '../../src/core/schemas/pointer.ts'
@@ -20,6 +21,7 @@ import {
 	buildPlanIndex,
 	type PlanIndex,
 } from '../../src/core/seal/plan-index.ts'
+import { mcpContract } from '../schemas/fixtures/mcp-contract.ts'
 import {
 	irreducibleCollisionPair,
 	literalCollisionPair,
@@ -56,6 +58,7 @@ function observation(
 			option: null,
 			environment: null,
 			stdin: null,
+			arguments: null,
 			...fields.callInputs,
 		},
 		responseBody: fields.responseBody ?? null,
@@ -394,6 +397,36 @@ describe('selectWithBindings', () => {
 				index,
 				resolved,
 			),
+		).toEqual({ result: 'one', matchedObservationIds: ['obs-hit'] })
+	})
+
+	// The ninth channel filters the same way the four transport ones do. A
+	// tool-call step binds one argument, so only the call that carried that
+	// value is selected.
+	it('selects a tool call by the argument it bound', () => {
+		const interfaces = EvalContract.parse(mcpContract).permittedInterfaces
+		const search: InteractionStep = {
+			stepId: 'search',
+			operationId: 'search-notes',
+			inputBinding: { arguments: { query: { literal: 'revised' } } },
+			after: null,
+			cardinality: 'exactly-one',
+		}
+		const index = buildPlanIndex([search], interfaces)
+		const observations = [
+			observation('obs-hit', 1, 'search-notes', {
+				callInputs: { arguments: { query: 'revised' } },
+			}),
+			observation('obs-miss', 2, 'search-notes', {
+				callInputs: { arguments: { query: 'original' } },
+			}),
+		]
+		expect(selectObservations(search, observations)).toEqual({
+			result: 'several',
+			matchedObservationIds: ['obs-hit', 'obs-miss'],
+		})
+		expect(
+			selectWithBindings(search, observations, index, EMPTY_RESOLUTIONS),
 		).toEqual({ result: 'one', matchedObservationIds: ['obs-hit'] })
 	})
 

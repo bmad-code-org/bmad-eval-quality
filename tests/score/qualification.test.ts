@@ -2,12 +2,16 @@
 // AD-4 legality pass, and the sealed-set filter that reports its exclusions.
 
 import { describe, expect, it } from 'vitest'
+import { isMcpOperation } from '../../src/core/declared-inputs.ts'
 import type {
 	ApiDefectSignature,
 	CommandDefectSignature,
+	McpDefectSignature,
 } from '../../src/core/schemas/defect-signature.ts'
+import { EvalContract } from '../../src/core/schemas/eval-contract.ts'
 import type { Expression } from '../../src/core/schemas/expression.ts'
 import type { Operation } from '../../src/core/schemas/interface.ts'
+import { operationsOf } from '../../src/core/schemas/interface.ts'
 import type { Probe } from '../../src/core/schemas/probe.ts'
 import {
 	QUALIFICATION_FAILURES,
@@ -15,7 +19,11 @@ import {
 	resolveHomeOperation,
 	sealProbeSet,
 } from '../../src/core/score/qualification.ts'
-import { commandProbe } from '../schemas/fixtures/artifact-fixtures.ts'
+import {
+	commandProbe,
+	toolCallProbe,
+} from '../schemas/fixtures/artifact-fixtures.ts'
+import { mcpContract } from '../schemas/fixtures/mcp-contract.ts'
 import {
 	canary,
 	createNote,
@@ -244,21 +252,135 @@ describe('the signature requirement, and the one class exempt from it', () => {
 		).toEqual(['signature-present-on-canary'])
 	})
 
-	// `web` has no declared probe semantics at all. `mcp` has them contract-side
-	// now, so its contract compiles and pre-flights, and this gate is what keeps
-	// a probe against it from qualifying until a signature branch declares the
-	// tool identity AD-40 resolves against.
-	it.each(['web', 'mcp'] as const)(
-		'rejects the %s interface kind, which no signature can declare against',
-		(interfaceKind) => {
-			expect(
-				codesOf({
-					...qualifiedProbe,
-					defectSignature: { ...seededSignature, interfaceKind },
-				} as Probe),
-			).toEqual(['signature-interface-kind-unsupported'])
+	// `Probe` is a union and `defectSignature` sits on the seeded branch alone,
+	// so the fixture is narrowed once here rather than at every use.
+	const toolCallSignature = (
+		toolCallProbe as Extract<Probe, { expectedClean: false }>
+	).defectSignature as McpDefectSignature
+
+	const searchNotesOperation = () => {
+		const contract = EvalContract.parse(mcpContract)
+		const [tools] = contract.permittedInterfaces
+		return (
+			operationsOf(tools!).find(
+				(candidate) =>
+					isMcpOperation(candidate) && candidate.toolName === 'search_notes',
+			) ?? null
+		)
+	}
+
+	const toolCallSignedWith = (predicate: Expression): Probe =>
+		({
+			...toolCallProbe,
+			defectSignature: {
+				...toolCallSignature,
+				condition: { ...toolCallSignature.condition, predicate },
+			},
+		}) as Probe
+
+	// `web` is the last kind with no declared probe semantics, so it is the only
+	// kind this gate still refuses. The detail names the admitted three off the
+	// same tuple the compile and pre-flight gates read.
+	it('rejects the web interface kind, which no signature can declare against', () => {
+		const [failure] = qualifyProbe(
+			{
+				...qualifiedProbe,
+				defectSignature: { ...seededSignature, interfaceKind: 'web' },
+			} as Probe,
+			createNote,
+		).failures
+		expect(failure?.code).toBe('signature-interface-kind-unsupported')
+		expect(failure?.detail).toContain('"web"')
+		expect(failure?.detail).toContain('"api", "cli" and "mcp" are')
+	})
+
+	it('admits a tool-call signature against the tool it names', () => {
+		const result = qualifyProbe(toolCallProbe, searchNotesOperation())
+		expect(result.failures).toEqual([])
+		expect(result.qualified).toBe(true)
+		expect(result.declarationChecksRan).toBe(true)
+	})
+
+	// A tool call carries its result on `response-body` and its error flag on
+	// `response-status`, and fills nothing else. These four are the whole of what
+	// `foreignChannels` hands an mcp signature: the three command response
+	// channels plus `response-headers`, which compile-time reachability refuses
+	// on the same operation.
+	it.each(['stdout', 'stderr', 'exit-code', 'response-headers'] as const)(
+		'refuses a tool-call signature addressing %s',
+		(channel) => {
+			const codes = qualifyProbe(
+				toolCallSignedWith({
+					op: 'all',
+					operands: [
+						{
+							op: 'existence',
+							operands: [{ pointer: `/interactions/observed/${channel}` }],
+						},
+						{
+							op: 'existence',
+							operands: [{ pointer: '/interactions/observed/response-body' }],
+						},
+					],
+				}),
+				searchNotesOperation(),
+			).failures.map((failure) => failure.code)
+			expect(codes).toContain('condition-text-channel-on-api')
 		},
 	)
+
+	// The case an author actually hits: the right channel, a key the tool does
+	// not publish. This is the path through `requestShapeOf(operation,
+	// 'arguments')`, which the command-shaped selector below never reaches.
+	it('refuses an argument name the tool does not publish', () => {
+		const probe = {
+			...toolCallProbe,
+			defectSignature: {
+				...toolCallSignature,
+				condition: {
+					...toolCallSignature.condition,
+					selector: {
+						inputBinding: {
+							...toolCallSignature.condition.selector.inputBinding,
+							arguments: { neverPublished: { matcher: 'any' } },
+						},
+					},
+				},
+			},
+		} as Probe
+		expect(
+			qualifyProbe(probe, searchNotesOperation()).failures.map(
+				(failure) => failure.code,
+			),
+		).toEqual(['condition-selector-key-undeclared'])
+	})
+
+	// A tool call declares one input channel, so a command-shaped selector binds
+	// keys the operation declares nowhere and every candidate observation is
+	// filtered out.
+	it('refuses a command-shaped selector on a tool-call signature', () => {
+		const probe = {
+			...toolCallProbe,
+			defectSignature: {
+				...toolCallSignature,
+				condition: {
+					...toolCallSignature.condition,
+					selector: {
+						inputBinding: {
+							...toolCallSignature.condition.selector.inputBinding,
+							arguments: null,
+							option: { verbose: { matcher: 'any' } },
+						},
+					},
+				},
+			},
+		} as Probe
+		expect(
+			qualifyProbe(probe, searchNotesOperation()).failures.map(
+				(failure) => failure.code,
+			),
+		).toEqual(['condition-selector-key-undeclared'])
+	})
 })
 
 describe('the channel rule: the response channel, or two channels', () => {
@@ -410,6 +532,7 @@ describe('the selector is checked against the same request shape it filters', ()
 						option: null,
 						environment: null,
 						stdin: null,
+						arguments: null,
 					},
 				},
 				predicate: seededSignature.condition.predicate,
@@ -437,6 +560,7 @@ describe('the selector is checked against the same request shape it filters', ()
 						option: null,
 						environment: null,
 						stdin: null,
+						arguments: null,
 					},
 				},
 				predicate: seededSignature.condition.predicate,
@@ -477,6 +601,7 @@ describe('the selector is checked against the same request shape it filters', ()
 						option: null,
 						environment: null,
 						stdin: null,
+						arguments: null,
 					},
 				},
 				predicate: seededSignature.condition.predicate,
@@ -504,6 +629,7 @@ describe('the selector is checked against the same request shape it filters', ()
 								option: null,
 								environment: null,
 								stdin: null,
+								arguments: null,
 							},
 						},
 						predicate: seededSignature.condition.predicate,

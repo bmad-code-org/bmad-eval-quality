@@ -154,6 +154,7 @@ const cleanObservation = (
 			option: null,
 			environment: null,
 			stdin: null,
+			arguments: null,
 		},
 		responseBody: { ok: true },
 		responseStatus: 200,

@@ -59,6 +59,7 @@ const observation = (index: number): Record<string, unknown> => ({
 		option: null,
 		environment: null,
 		stdin: null,
+		arguments: null,
 	},
 	responseBody: {
 		ok: index % 5 !== 0,

@@ -4,7 +4,7 @@ import { Expression } from './expression.ts'
 import { CommandInvocation, HttpMethod, PathTemplate } from './interface.ts'
 import { LiteralBindingValue, MatcherBindingValue } from './plan.ts'
 import { EvidenceChannel } from './pointer.ts'
-import { KeyName } from './primitives.ts'
+import { KeyName, ToolName } from './primitives.ts'
 
 /**
  * The reserved step identifier every pointer in a discriminating condition is
@@ -54,9 +54,9 @@ export const PROBE_BINDING_CHANNEL_NON_EMPTY = 'probe-binding-channel-non-empty'
 //
 // Named, like `InputBindingChannel`, so the constraint ledger has one stable
 // address to inject `minProperties` at. Verified rather than assumed: leaving
-// it inlined at four addresses left the rejection Zod-only, and the
+// it inlined at one address per channel left the rejection Zod-only, and the
 // published-schema differential caught the disagreement on a synthesised
-// witness carrying `{}` in three of the four channels.
+// witness carrying `{}` in several of them.
 export const ProbeBindingChannel = z
 	.record(KeyName, ProbeBindingValue)
 	.refine((entries) => Object.keys(entries).length > 0, {
@@ -71,33 +71,33 @@ export const ProbeBindingChannel = z
 	})
 
 /**
- * The transport and command input channels, spelled exactly as
+ * Every input channel the pointer grammar admits, spelled exactly as
  * `ObservedCallInputs` spells them. The two shapes agree on channel names, on
- * the eight-key strict form, and on flatness, so the selector filters recorded
+ * the strict form, on width, and on flatness, so the selector filters recorded
  * call inputs with no shape to bridge.
  *
- * Eight of the nine the pointer grammar admits. A tool call's `arguments`
- * channel lands on both shapes together, under the sealed run record's own
- * breaking bump, since a selector that could name a channel no observation
- * records would filter against nothing.
- *
- * One object over both kinds rather than a union, on `ObservedCallInputs`'s own
- * reasoning: `null` already means "binds nothing here", so a selector that
- * binds only command channels writes `null` in the transport four and nothing
- * is ambiguous. `InputBinding` on the contract side is a union instead, because
- * a request-shape channel's "declared, no keys" state is not the same as
- * unused and the two spellings had to stay apart.
+ * One object over all three kinds rather than a union, on
+ * `ObservedCallInputs`'s own reasoning: `null` already means "binds nothing
+ * here", so a selector that binds only command channels writes `null` in the
+ * transport four and nothing is ambiguous. `InputBinding` on the contract side
+ * is a union instead, because a request-shape channel's "declared, no keys"
+ * state differs from unused and the two spellings had to stay apart.
  */
-export const ProbeInputBinding = z.strictObject({
-	path: ProbeBindingChannel,
-	query: ProbeBindingChannel,
-	header: ProbeBindingChannel,
-	body: ProbeBindingChannel,
-	argument: ProbeBindingChannel,
-	option: ProbeBindingChannel,
-	environment: ProbeBindingChannel,
-	stdin: ProbeBindingChannel,
-})
+export const ProbeInputBinding = z
+	.strictObject({
+		path: ProbeBindingChannel,
+		query: ProbeBindingChannel,
+		header: ProbeBindingChannel,
+		body: ProbeBindingChannel,
+		argument: ProbeBindingChannel,
+		option: ProbeBindingChannel,
+		environment: ProbeBindingChannel,
+		stdin: ProbeBindingChannel,
+		arguments: ProbeBindingChannel,
+	})
+	.describe(
+		'The probe\'s `schemaVersion` 4 -> 5 BREAKING bump under AD-11, whose rule is that removing or retyping is breaking. Two retypings land under this one stamp and both are named here. This selector gained a ninth channel, `arguments`, so a signature against a tool call can filter on what the call supplied; the sealed run record\'s `ObservedCallInputs` gained the same key under its own breaking bump, since a selector naming a channel no observation records would filter against nothing. And `DefectSignature` gained an `McpDefectSignature` branch declaring a published tool name, while `ApiDefectSignature.interfaceKind` narrowed to `api` and `web`, so a version-4 probe carrying `interfaceKind: "mcp"` beside a method and a path template stops parsing. Version 4 took the witness leg shape and this stamp takes both changes above, so each retype stays independently releasable.',
+	)
 
 /**
  * AD-39's selector grammar, duplicated on the corpus side, minus the two
@@ -134,17 +134,19 @@ export const DiscriminatingCondition = z.strictObject({
 })
 
 /**
- * AD-40's four declarations: the interface kind, the defect's home operation as
- * a method and a path template, the observable channel it manifests in, and the
- * discriminating condition that separates it from correct behaviour.
+ * Three of AD-40's four declarations, the three every branch shares: the
+ * observable channel the defect manifests in, the discriminating condition that
+ * separates it from correct behaviour, and the interface kind each branch
+ * spells as its own literal or enum. The fourth is the defect's home operation,
+ * which each branch declares in its own kind's transport identity.
  *
- * Method and path template rather than an operation identifier, because AD-19
- * declares both per operation and both are contract-independent: an identifier
- * is contract-local and would bind nothing against a second contract.
- * Resolution erases parameter names before comparing, so a signature on
- * `/notes/{id}` binds a contract declaring `/notes/{noteId}`; a post-erasure
- * collision inside one contract has already failed compilation under
- * `duplicate-operation-signature`.
+ * A declared transport identity rather than an operation identifier, because
+ * AD-19 declares one per operation and it is contract-independent: an
+ * identifier is contract-local and would bind nothing against a second
+ * contract. The api-shaped branch erases parameter names before comparing, so a
+ * signature on `/notes/{id}` binds a contract declaring `/notes/{noteId}`; a
+ * post-erasure collision inside one contract has already failed compilation
+ * under `duplicate-operation-signature`.
  */
 const signatureCommon = {
 	observableChannel: EvidenceChannel.describe(
@@ -154,25 +156,21 @@ const signatureCommon = {
 }
 
 /**
- * A signature declaring a method and a path template. `web` and `mcp` share the
- * shape and are still rejected by the qualification gate, which is what keeps
- * `signature-interface-kind-unsupported` fireable on the kinds whose probe
- * semantics are undeclared.
+ * A signature declaring a method and a path template. `web` shares the shape
+ * and is still rejected by the qualification gate, which is what keeps
+ * `signature-interface-kind-unsupported` fireable on the one kind whose probe
+ * semantics stay undeclared.
  *
- * `mcp` sits here for the gate's sake alone. A tool call declares a published
- * tool name as its transport identity and neither of these two fields, so a
- * signature declaring `mcp` renders an identity no operation can match and
- * resolves against nothing; the branch that gives it a tool identity ships with
- * the selector channel it needs.
- *
- * One branch over the three kinds rather than three identical branches. Three
- * would publish three byte-identical subschemas, and AD-13's mutation sweep
- * cannot attribute a keyword deletion to one of several identical branches:
- * deleting `pathTemplate`'s pattern from the second still leaves the first
- * accepting everything the corpus carries, so nothing flips.
+ * One branch over both kinds rather than two identical branches. Two would
+ * publish two byte-identical subschemas, and AD-13's mutation sweep cannot
+ * attribute a keyword deletion to one of several identical branches: deleting
+ * `pathTemplate`'s pattern from the second still leaves the first accepting
+ * everything the corpus carries, so nothing flips. That argument reaches only
+ * branches publishing the same keyword shape, which is why the tool-call branch
+ * below is its own.
  */
 export const ApiDefectSignature = z.strictObject({
-	interfaceKind: z.enum(['api', 'web', 'mcp']),
+	interfaceKind: z.enum(['api', 'web']),
 	method: HttpMethod,
 	pathTemplate: PathTemplate,
 	...signatureCommon,
@@ -192,19 +190,43 @@ export const CommandDefectSignature = z.strictObject({
 })
 
 /**
+ * A signature against an MCP tool server. It declares the published tool name,
+ * for the reason AD-40 gives for the api-shaped pair: the identity has to be
+ * contract-independent so a signature authored against a corpus binds a second
+ * contract's operation. Every MCP call shares the one transport method
+ * `tools/call`, so the tool name is the whole of what tells two calls apart,
+ * and `McpOperation.toolName` is the field it resolves against.
+ *
+ * Its own branch, on the model `CommandDefectSignature` set. A tool call has no
+ * method and no path template, so while `mcp` sat on the api-shaped branch a
+ * signature declared a pair it could never mean and rendered an identity no
+ * operation matched. This branch publishes `toolName`'s pattern where that one
+ * publishes `method`'s enum and `pathTemplate`'s pattern, so a keyword deleted
+ * from either is attributable to it and a fixture can flip it.
+ */
+export const McpDefectSignature = z.strictObject({
+	interfaceKind: z.literal('mcp'),
+	toolName: ToolName,
+	...signatureCommon,
+})
+
+/**
  * A plain union rather than a discriminated one: the discriminator would have
- * to be `interfaceKind`, and the api-shaped branch carries three values for it.
- * The two branches are told apart by the identity they declare, exactly as
+ * to be `interfaceKind`, and the api-shaped branch carries two values for it.
+ * The three branches are told apart by the identity they declare, exactly as
  * `InputBinding`'s two are told apart by the channels they name.
  */
 export const DefectSignature = z.union([
 	ApiDefectSignature,
 	CommandDefectSignature,
+	McpDefectSignature,
 ])
 
 export type ApiDefectSignature = z.infer<typeof ApiDefectSignature>
 
 export type CommandDefectSignature = z.infer<typeof CommandDefectSignature>
+
+export type McpDefectSignature = z.infer<typeof McpDefectSignature>
 
 export type DefectSignature = z.infer<typeof DefectSignature>
 

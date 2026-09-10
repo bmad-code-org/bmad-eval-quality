@@ -11,6 +11,7 @@ import type { InterchangeArtifactKey } from '../../../src/core/schemas/artifact.
 import {
 	ARTIFACT_ACCEPT_FIXTURES,
 	contractScoringEvidenceArtifact,
+	toolCallProbe,
 } from './artifact-fixtures.ts'
 import { commandContract } from './command-contract.ts'
 import { mcpContract } from './mcp-contract.ts'
@@ -562,6 +563,20 @@ export const ARTIFACT_REJECT_CASES: readonly ArtifactRejectCase[] = [
 		instancePath: '/findings/0/quotedEvidence',
 	},
 	{
+		id: 'record-call-inputs-missing-the-arguments-channel',
+		artifact: 'sealed-run-record',
+		constraint:
+			"an observation's call inputs declare every one of AD-26's nine input channels; an unused channel is null",
+		mutate: (record) => {
+			delete record.observations[0].callInputs.arguments
+		},
+		issuePath: ['observations', 0, 'callInputs', 'arguments'],
+		issueCode: 'invalid_type',
+		keyword: 'required',
+		instancePath: '/observations/0/callInputs',
+		errorParams: { missingProperty: 'arguments' },
+	},
+	{
 		// Both validators report at the union node rather than at `channel`:
 		// neither arm matched, so the failure is the choice between them and not
 		// one field inside either. That is why all three quoted-evidence cases
@@ -1038,7 +1053,7 @@ export const ARTIFACT_REJECT_CASES: readonly ArtifactRejectCase[] = [
 		instancePath: '/defectSignature/condition/selector/inputBinding/body',
 	},
 	{
-		id: 'probe-signature-channel-outside-the-seven',
+		id: 'probe-signature-channel-outside-the-eight',
 		artifact: 'probe',
 		constraint: "an observable channel is one of AD-26's closed eight",
 		mutate: (probe) => {
@@ -1063,6 +1078,53 @@ export const ARTIFACT_REJECT_CASES: readonly ArtifactRejectCase[] = [
 		instancePath: '/defectSignature/pathTemplate',
 	},
 
+	{
+		// This and `probe-api-signature-declaring-the-tool-kind` below both fail
+		// at the union node with the same keyword and instance path, because
+		// neither mutation matches any branch and ajv reports the choice rather
+		// than a field inside one. The `constraint` each names is what tells
+		// them apart; both still catch a revert of the change they guard.
+		id: 'probe-signature-selector-missing-the-arguments-channel',
+		artifact: 'probe',
+		constraint:
+			"a signature selector declares every one of AD-26's nine input channels, exactly as an observation's call inputs do; an unbound channel is null",
+		mutate: (probe) => {
+			delete probe.defectSignature.condition.selector.inputBinding.arguments
+		},
+		issuePath: ['defectSignature'],
+		issueCode: 'invalid_union',
+		keyword: 'anyOf',
+		instancePath: '/defectSignature',
+	},
+	{
+		id: 'probe-api-signature-declaring-the-tool-kind',
+		artifact: 'probe',
+		constraint:
+			'the api-shaped branch declares `api` and `web` only; a tool call has no method and no path template, so `mcp` declares a published tool name on its own branch',
+		mutate: (probe) => {
+			probe.defectSignature.interfaceKind = 'mcp'
+		},
+		issuePath: ['defectSignature'],
+		issueCode: 'invalid_union',
+		keyword: 'anyOf',
+		instancePath: '/defectSignature',
+	},
+	{
+		// Seeded on the tool-call probe: the constraint sits on a branch the
+		// registry's api accept fixture never takes.
+		id: 'probe-tool-signature-name-carrying-an-address',
+		artifact: 'probe',
+		constraint:
+			'a tool name admits letters, digits, underscore and hyphen only, so AD-35 leaves a URL, a host and a port unrepresentable',
+		seed: toolCallProbe,
+		mutate: (probe) => {
+			probe.defectSignature.toolName = 'notes.example.com/search'
+		},
+		issuePath: ['defectSignature', 'toolName'],
+		issueCode: 'invalid_format',
+		keyword: 'pattern',
+		instancePath: '/defectSignature/toolName',
+	},
 	{
 		id: 'probe-expected-clean-outside-the-two',
 		artifact: 'probe',

@@ -94,8 +94,8 @@ const ESCALATION_LEVELS: readonly EscalationLevel[] = [
 	'literal',
 ]
 
-type TransportEntry = {
-	readonly transportChannel: InputChannelName
+type InputEntry = {
+	readonly inputChannel: InputChannelName
 	readonly key: string
 	readonly value: BindingValue
 }
@@ -103,26 +103,26 @@ type TransportEntry = {
 // Sorted by input channel in `INPUT_CHANNELS` order, then by key name, so this
 // never depends on a binding map's insertion order and the rendered prose
 // stays permutation-invariant. `boundChannelsOf` supplies the channel order.
-function bindingEntries(step: InteractionStep): readonly TransportEntry[] {
-	const entries: TransportEntry[] = []
-	for (const { channel: transportChannel, bound: map } of boundChannelsOf(
+function bindingEntries(step: InteractionStep): readonly InputEntry[] {
+	const entries: InputEntry[] = []
+	for (const { channel: inputChannel, bound: map } of boundChannelsOf(
 		step.inputBinding,
 	)) {
 		if (map === null) continue
 		for (const key of Object.keys(map).sort()) {
 			const value = map[key]
-			if (value !== undefined) entries.push({ transportChannel, key, value })
+			if (value !== undefined) entries.push({ inputChannel, key, value })
 		}
 	}
 	return entries
 }
 
-// The transport channel is part of the rendered name as well as the sort
+// The input channel is part of the rendered name as well as the sort
 // key: two bindings can share a parameter name across channels (path.id and
 // query.id), and without the qualifier both would render as "the supplied
 // id", hiding two different bindings behind identical text.
-function entryName(entry: TransportEntry): string {
-	return `${entry.transportChannel} ${entry.key}`
+function entryName(entry: InputEntry): string {
+	return `${entry.inputChannel} ${entry.key}`
 }
 
 function isTypeViolating(value: BindingValue): boolean {
@@ -260,7 +260,7 @@ const newBudget = (limit: number): RenderBudget => ({
 
 type CaptureGroup = {
 	readonly stepId: string
-	readonly entries: TransportEntry[]
+	readonly entries: InputEntry[]
 	readonly targets: EvidenceTarget[]
 }
 
@@ -307,7 +307,7 @@ function exhausted(budget: RenderBudget): boolean {
 // Whether this entry expands into a group, or renders as the level-independent
 // phrase on its own.
 function expandableCapture(
-	entry: TransportEntry,
+	entry: InputEntry,
 	level: EscalationLevel,
 	index: PlanIndex,
 	rendering: ReadonlySet<string>,
@@ -324,10 +324,7 @@ function expandableCapture(
 
 // Renders one entry on its own. Every captured entry that expands lands in a
 // group instead, so the arm here is the level-independent fallback.
-function renderBindingValue(
-	entry: TransportEntry,
-	level: EscalationLevel,
-): string {
+function renderBindingValue(entry: InputEntry, level: EscalationLevel): string {
 	const name = entryName(entry)
 	const { value } = entry
 	if ('matcher' in value) {
@@ -372,7 +369,7 @@ function bindingClause(
 	// Each expandable capture joins the group for the step it references, held
 	// at the position that step was first referenced from, so the clause's order
 	// still comes from `bindingEntries`'s sort rather than from a map's keys.
-	const slots: (TransportEntry | CaptureGroup)[] = []
+	const slots: (InputEntry | CaptureGroup)[] = []
 	const groups = new Map<string, CaptureGroup>()
 	for (const entry of chosen) {
 		const target = expandableCapture(entry, level, index, rendering, budget)
@@ -545,19 +542,19 @@ function localTargetPhrase(target: EvidenceTarget): string {
 		case 'exit-code':
 			return 'its exit code'
 		case 'call-inputs': {
-			if (target.transportChannel === null) {
+			if (target.inputChannel === null) {
 				// Unreachable: `parseEvidenceTarget` sets this exactly when the
 				// channel is 'call-inputs'.
 				throw new TypeError(
-					'call-inputs evidence target carries no transport channel',
+					'call-inputs evidence target carries no input channel',
 				)
 			}
-			// The transport channel is named here too, not only in the no-tail
+			// The input channel is named here too, not only in the no-tail
 			// fallback below: same path.id / query.id collision `entryName`
 			// above guards against.
 			return field !== null
-				? `the ${target.transportChannel} ${field} value you sent`
-				: `the ${target.transportChannel} you sent`
+				? `the ${target.inputChannel} ${field} value you sent`
+				: `the ${target.inputChannel} you sent`
 		}
 		case 'response-body':
 			return field !== null
@@ -584,7 +581,7 @@ function localTargetPhrase(target: EvidenceTarget): string {
 				// channel is 'artifact'.
 				throw new TypeError('artifact evidence target names no artifact')
 			}
-			// The artifact is named for the same reason the transport channel
+			// The artifact is named for the same reason the input channel
 			// is: two files can carry the same field name, and an evaluator
 			// reading "its findings field" twice cannot tell which file it
 			// means.
@@ -619,7 +616,7 @@ function fullTargetPhrase(
 function channelSignature(target: EvidenceTarget): string {
 	return JSON.stringify([
 		target.channel,
-		target.transportChannel,
+		target.inputChannel,
 		target.artifactId,
 		target.tail,
 	])

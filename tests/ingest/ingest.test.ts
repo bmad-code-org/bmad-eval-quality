@@ -132,6 +132,7 @@ const inertObservation = (
 		option: null,
 		environment: null,
 		stdin: null,
+		arguments: null,
 	},
 	responseBody: null,
 	responseHeaders: null,
@@ -184,6 +185,7 @@ describe('the ingest stage', () => {
 			'obs-003',
 			'obs-004',
 			'obs-005',
+			'obs-006',
 		])
 		expect(result.findings).toEqual(cleanRecord.findings)
 		expect(result.dispositions).toEqual(cleanRecord.oracleDispositions)
@@ -1106,6 +1108,7 @@ describe('the ingest stage', () => {
 						option: null,
 						environment: null,
 						stdin: null,
+						arguments: null,
 					},
 				},
 				'call-inputs',

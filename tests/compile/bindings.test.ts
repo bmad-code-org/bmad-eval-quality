@@ -59,7 +59,7 @@ const LIST_LIMIT_PATH =
 	'EvalContract.interactionPlan[stepId=list].inputBinding.query["limit"]'
 
 describe('capturedBindings', () => {
-	it('returns captures in fixed transport-channel order then by key name, independent of the authored key order', () => {
+	it('returns captures in fixed input-channel order then by key name, independent of the authored key order', () => {
 		// The map is authored body-first with `zeta` before `alpha`, so insertion
 		// order and the returned order disagree on both axes at once.
 		const step = stepWithBindings({
@@ -74,7 +74,7 @@ describe('capturedBindings', () => {
 
 		const captures = capturedBindings(step)
 		expect(
-			captures.map((capture) => `${capture.transportChannel}.${capture.key}`),
+			captures.map((capture) => `${capture.inputChannel}.${capture.key}`),
 		).toEqual([
 			'path.id',
 			'query.limit',

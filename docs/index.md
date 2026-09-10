@@ -77,7 +77,7 @@ An eval contract describes a system through a declared interface. Three interfac
 | A skill an agent loads and acts on | [Skill behavior](/how-to/evaluate-skill-behavior/) | Gameability proven across eight contracts. No seeded-defect instance yet. |
 | Several steps that have to happen in order | [Workflow behavior](/how-to/evaluate-workflow-behavior/) | Declarable and compiling. Step binding is unit-tested, with no shipped end-to-end run. |
 | An AI feature behind an HTTP surface | [AI feature behavior](/how-to/evaluate-ai-feature-behavior/) | The shape the library was designed around. No live service has been evaluated yet. |
-| An MCP server answering tool calls | [Tool-use behavior](/how-to/evaluate-tool-use-behavior/) | Compiles, and plans a pre-flight. No adapter answers a tool call yet, so nothing has been scored end to end. |
+| An MCP server answering tool calls | [Tool-use behavior](/how-to/evaluate-tool-use-behavior/) | Compiles, plans a pre-flight, and scores a probe. No adapter answers a tool call yet, so nothing has been scored end to end. |
 
 Each guide says plainly what is proven and what is not, so a "state" column entry is the guide's own verdict rather than a roadmap promise.
 

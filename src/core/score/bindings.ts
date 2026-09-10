@@ -13,11 +13,7 @@
  * evidence, and no AD-6 outcome state is assigned.
  */
 import { capturedBindings } from '../compile/bindings.ts'
-import {
-	boundChannelsOf,
-	channelEntryOf,
-	requestShapeOf,
-} from '../declared-inputs.ts'
+import { boundChannelsOf, requestShapeOf } from '../declared-inputs.ts'
 import { channelRoot, walkTail } from '../evaluate/evidence-resolution.ts'
 import { ABSENT, type ResolvedValue } from '../evaluate/resolved-value.ts'
 import type { InteractionStep } from '../schemas/plan.ts'
@@ -67,10 +63,10 @@ const ABSENT_RESOLUTION: CapturedResolution = { status: 'absent' }
  */
 export function bindingSiteKey(
 	stepId: string,
-	transportChannel: InputChannelName,
+	inputChannel: InputChannelName,
 	key: string,
 ): string {
-	return JSON.stringify([stepId, transportChannel, key])
+	return JSON.stringify([stepId, inputChannel, key])
 }
 
 /**
@@ -191,7 +187,7 @@ export function resolveCapturedBindings(
 			if (step === undefined) continue
 			for (const capture of capturedBindings(step)) {
 				resolved.set(
-					bindingSiteKey(stepId, capture.transportChannel, capture.key),
+					bindingSiteKey(stepId, capture.inputChannel, capture.key),
 					resolveCapturedValue(capture.pointer, index, observations, resolved),
 				)
 			}
@@ -248,7 +244,7 @@ function capturedFloor(
 	let floor: number | null = null
 	for (const capture of capturedBindings(step)) {
 		const resolution = resolved.get(
-			bindingSiteKey(step.stepId, capture.transportChannel, capture.key),
+			bindingSiteKey(step.stepId, capture.inputChannel, capture.key),
 		)
 		if (resolution === undefined || resolution.status !== 'resolved')
 			return null
@@ -296,7 +292,7 @@ function satisfiesBindings(
 		step.inputBinding,
 	)) {
 		if (binding === null) continue
-		const observed = channelEntryOf(observation.callInputs, channel)
+		const observed = observation.callInputs[channel]
 		if (observed === null) return false
 		for (const key of Object.keys(binding)) {
 			const value = binding[key]

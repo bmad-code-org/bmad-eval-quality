@@ -17,9 +17,9 @@ body.
   refused it at both gates. The code no longer fires for that kind, so a caller who branched on
   `unsupported-interface-kind` to detect an `mcp` contract reads the declared kind. `web` still
   fails at both gates with the same code and the same artifact path, and both gates now read one
-  exported tuple, so what compiles and what pre-flights cannot disagree. A probe whose defect
-  signature names `mcp` still fails qualification under `signature-interface-kind-unsupported`, so a
-  tool-use defect cannot yet be scored. No artifact `schemaVersion` moved.
+  exported tuple, so what compiles and what pre-flights cannot disagree. The probe-side gate opened
+  separately and reads the same tuple; the `mcp` qualification entry under **Changed** carries it. No
+  artifact `schemaVersion` moved for this change.
   - **BREAKING for an environment-probe adapter.** `ProbeRequest` gains a third member,
     `McpProbeRequest`, carrying the correlation triple, the published tool name, and the `arguments`
     channel. An implementation typed against the two-member union stops satisfying the port's
@@ -37,11 +37,32 @@ body.
   path template and four transport channels, no longer parses. `interactionPlan[].inputBinding` and
   a sensitivity witness leg's `inputs` each gain a third arm over the same one channel. Contracts on
   the `api`, `web`, and `cli` branches parse with no edit other than their stamp.
-- **BREAKING** The probe's `schemaVersion` is 4. A manifestation witness's `inputs` gains the same
-  third arm, so a witness leg against a tool call is expressible. The matching defect signature is a
-  separate shape this version does not carry, so a seeded defect against an MCP tool server is still
-  refused at qualification. Every version-3 probe parses with no edit, and no reader in this version
-  compares the probe's stamp against a constant.
+- **BREAKING** The probe's `schemaVersion` moved to 4 for the witness side. A manifestation
+  witness's `inputs` gains the same third arm, so a witness leg against a tool call is expressible.
+  That widening alone adds a branch and narrows none, so it broke no version-3 probe; the signature
+  side then moved the stamp to 5 and does narrow. Read the two together: migrating from version 3
+  goes straight to 5, and the version-5 entry below carries the edits it needs.
+- **BREAKING** The sealed run record's `schemaVersion` is 5. `ObservedCallInputs` carries a ninth
+  `arguments` key, so what a tool call supplied has somewhere to live and a pointer at
+  `/interactions/{stepId}/call-inputs/arguments/{key}` resolves the recorded value. Every channel on
+  that shape is required and nullable, so a version-4 record declaring eight fails to parse: adding
+  `"arguments": null` to each observation's `callInputs` is the whole migration for a record of an
+  api or command run.
+- **BREAKING** The probe's `schemaVersion` is 5, its second move in this release, and two changes
+  land under it. `DefectSignature` gains an `McpDefectSignature` branch declaring the published tool
+  name AD-40 resolves against, and `ApiDefectSignature.interfaceKind` narrows to `api` and `web`, so
+  a signature carrying `interfaceKind: "mcp"` beside a method and a path template stops parsing. And
+  a signature selector's `inputBinding` gains the same ninth `arguments` channel on the same
+  required-and-nullable terms, so a version-4 probe declaring eight channels fails to parse. To
+  migrate: add `"arguments": null` to every `defectSignature.condition.selector.inputBinding`, and
+  rewrite any signature declaring `mcp` to drop `method` and `pathTemplate` for the `toolName` its
+  contract publishes.
+- A probe whose defect signature names `mcp` qualifies. `qualifyProbe` reads the same supported-kind
+  tuple `compile` and the pre-flight plan read, so `signature-interface-kind-unsupported` fires for
+  `web` alone and its detail names the three admitted kinds. A tool-use signature stays confined to
+  `response-body`, `response-status`, and its own `call-inputs`, which is the confinement compile
+  already enforced, and its home operation resolves by tool name rather than by a method and a path
+  template a tool call never carries.
 - A tool call's evidence is confined at compile time as well as at qualification. An oracle pointer
   at `response-headers`, `exit-code`, or a stream on an `mcp` operation is
   `unreachable-check-evidence`, and one at a written file is `unresolved-artifact-reference`: a tool

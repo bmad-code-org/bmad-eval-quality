@@ -71,6 +71,7 @@ const callInputsOf = (inputs: WitnessInputs): ObservedCallInputs => {
 		option: null,
 		environment: null,
 		stdin: null,
+		arguments: null,
 	}
 	if ('body' in inputs) {
 		return {
@@ -82,13 +83,13 @@ const callInputsOf = (inputs: WitnessInputs): ObservedCallInputs => {
 				inputs.body.kind === 'json' ? asJsonObject(inputs.body.value) : null,
 		}
 	}
-	// A tool call's arguments have no key on this shape yet: the ninth channel
-	// lands with the sealed run record's own breaking bump. Every channel reads
-	// `null` until then, which is the same answer this record already gives for
-	// a channel the leg did not use, and which `checkExpressionLegChannel`
-	// admits `call-inputs` against, so the two are reconciled when that key
-	// lands.
-	if (isMcpWitnessInputs(inputs)) return empty
+	// A tool call supplies one channel, so `arguments` carries the whole of what
+	// the leg sent and the other eight read `null`. That is the channel
+	// `checkExpressionLegChannel` admits `call-inputs` against for an mcp
+	// operation, so a relation over `/interactions/{legId}/call-inputs/arguments`
+	// resolves what the leg supplied.
+	if (isMcpWitnessInputs(inputs))
+		return { ...empty, arguments: inputs.arguments }
 	return {
 		...empty,
 		argument: inputs.argument,

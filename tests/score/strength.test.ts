@@ -55,7 +55,7 @@ const cleanControlProbe = (
 	probeId: string,
 	probeClass: Extract<Probe, { expectedClean: false }>['probeClass'],
 ): Probe => ({
-	schemaVersion: 4,
+	schemaVersion: 5,
 	parentDigest: null,
 	revisionCount: 0,
 	probeId,

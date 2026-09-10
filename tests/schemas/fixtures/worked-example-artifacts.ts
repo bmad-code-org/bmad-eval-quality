@@ -16,7 +16,7 @@
 // `npm run generate:worked-example` from the reference functions and checked
 // byte for byte by `npm run check:worked-example`, so these literals are no
 // longer a transcription of what is on disk. They are kept, and pinned at the
-// same 66 and 20 issues, because what they record is what the pre-epic-7
+// same 96 and 20 issues, because what they record is what the pre-epic-7
 // chain failed against the shipped shapes. Regeneration is what closed those
 // failures; deleting the record of them would delete the evidence that they
 // were real.
@@ -292,6 +292,10 @@ export const WORKED_EXAMPLE_RECORD_ISSUES: readonly WorkedExampleIssue[] = [
 		code: 'invalid_type',
 	},
 	{ path: ['observations', 0, 'callInputs', 'stdin'], code: 'invalid_type' },
+	{
+		path: ['observations', 0, 'callInputs', 'arguments'],
+		code: 'invalid_type',
+	},
 	{ path: ['observations', 0, 'callInputs'], code: 'unrecognized_keys' },
 	{ path: ['observations', 0, 'responseHeaders'], code: 'invalid_type' },
 	{ path: ['observations', 0, 'stdout'], code: 'invalid_type' },
@@ -310,6 +314,10 @@ export const WORKED_EXAMPLE_RECORD_ISSUES: readonly WorkedExampleIssue[] = [
 		code: 'invalid_type',
 	},
 	{ path: ['observations', 1, 'callInputs', 'stdin'], code: 'invalid_type' },
+	{
+		path: ['observations', 1, 'callInputs', 'arguments'],
+		code: 'invalid_type',
+	},
 	{ path: ['observations', 1, 'responseHeaders'], code: 'invalid_type' },
 	{ path: ['observations', 1, 'stdout'], code: 'invalid_type' },
 	{ path: ['observations', 1, 'stderr'], code: 'invalid_type' },
@@ -327,6 +335,10 @@ export const WORKED_EXAMPLE_RECORD_ISSUES: readonly WorkedExampleIssue[] = [
 		code: 'invalid_type',
 	},
 	{ path: ['observations', 2, 'callInputs', 'stdin'], code: 'invalid_type' },
+	{
+		path: ['observations', 2, 'callInputs', 'arguments'],
+		code: 'invalid_type',
+	},
 	{ path: ['observations', 2, 'callInputs'], code: 'unrecognized_keys' },
 	{ path: ['observations', 2, 'responseHeaders'], code: 'invalid_type' },
 	{ path: ['observations', 2, 'stdout'], code: 'invalid_type' },
@@ -345,6 +357,10 @@ export const WORKED_EXAMPLE_RECORD_ISSUES: readonly WorkedExampleIssue[] = [
 		code: 'invalid_type',
 	},
 	{ path: ['observations', 3, 'callInputs', 'stdin'], code: 'invalid_type' },
+	{
+		path: ['observations', 3, 'callInputs', 'arguments'],
+		code: 'invalid_type',
+	},
 	{ path: ['observations', 3, 'callInputs'], code: 'unrecognized_keys' },
 	{ path: ['observations', 3, 'responseHeaders'], code: 'invalid_type' },
 	{ path: ['observations', 3, 'stdout'], code: 'invalid_type' },
@@ -363,6 +379,10 @@ export const WORKED_EXAMPLE_RECORD_ISSUES: readonly WorkedExampleIssue[] = [
 		code: 'invalid_type',
 	},
 	{ path: ['observations', 4, 'callInputs', 'stdin'], code: 'invalid_type' },
+	{
+		path: ['observations', 4, 'callInputs', 'arguments'],
+		code: 'invalid_type',
+	},
 	{ path: ['observations', 4, 'callInputs'], code: 'unrecognized_keys' },
 	{ path: ['observations', 4, 'responseHeaders'], code: 'invalid_type' },
 	{ path: ['observations', 4, 'stdout'], code: 'invalid_type' },
