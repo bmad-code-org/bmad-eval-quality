@@ -124,6 +124,26 @@ export const JsonTypeName = z.enum([
 // reference-set key list. Plain caller-supplied text.
 export const KeyName = z.string().min(1)
 
+/**
+ * An environment variable name, at the port boundary where one becomes a real
+ * variable on a real process. `KeyName` is plain text, and a plain-text key is
+ * a smuggling channel here: `A=B` reaches the child as a variable `A` whose
+ * value carries `B=` in front of the declared one, and a key holding a NUL
+ * fails the spawn itself. The charset is the portable one, which is what a
+ * caller reading a mapping's allowlist assumes it is reading.
+ *
+ * This binds the port message and the authorization allowlist. The contract
+ * side keeps `KeyName`, since AD-19's channel shapes are one grammar across
+ * every channel, so a contract declaring a malformed environment key compiles
+ * and fails at this boundary with `schema-parse-failure`.
+ */
+export const EnvironmentKeyName = z
+	.string()
+	.regex(
+		/^[A-Za-z_][A-Za-z0-9_]*$/,
+		'an environment key is a letter or underscore followed by letters, digits or underscores',
+	)
+
 export type JsonValue =
 	| string
 	| number

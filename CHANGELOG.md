@@ -19,11 +19,22 @@ body.
   default-deny under AD-35: the executable against `target`, the subcommand path against
   `permittedSubcommandPaths`, the artifact identifiers against `artifacts`. The environment channel
   was default-allow, which meant the contract author decided alone what the process carried while
-  the operator's mapping had no say. An empty array permits no declared key. The adapter's own
-  `PATH` is unaffected, since it is launch material the mapping supplies under AD-18. The `mcp`
+  the operator's mapping had no say. An empty array permits no declared key. `PATH` cannot be
+  permitted at all: `target` may be a bare command name, and the child environment is what resolves
+  it, so a permitted `PATH` would hand executable selection to the contract author. The adapter's
+  own `PATH` still reaches the child, from the process the mapping launched under AD-18. The `mcp`
   mechanism has nothing equivalent: `McpProbeRequest` declares no environment channel, and
   `McpTargetAuthorization.serverEnvironment` is the environment the adapter launches its server
   with, which is authorization material.
+  - **BREAKING for a command probe request.** `CommandProbeRequest.channels.environment` is keyed by
+    `EnvironmentKeyName` (`/^[A-Za-z_][A-Za-z0-9_]*$/`) where it was keyed by any non-empty string.
+    At this boundary a key becomes a real variable on a real process, and a plain-text key is a
+    smuggling channel: `A=B` reaches the child as a variable `A` carrying `B=` in front of the
+    declared value, past anyone reading the mapping, and a key holding a NUL fails the spawn as a
+    `port-failure` rather than a denial. The contract side keeps `KeyName`, since AD-19's channel
+    shapes are one grammar across every channel, so a contract declaring a malformed environment key
+    compiles and fails at the port boundary with `schema-parse-failure`. No published artifact schema
+    moved: the port messages are not interchange artifacts.
   - **BREAKING for a caller that builds a `CommandTargetPolicy`.** `permittedEnvironmentKeys` is
     required, like every other field on the authorization, so an existing mapping fails the
     typecheck and, at runtime, `CommandTargetPolicy.parse`. Add the field naming the keys your

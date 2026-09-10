@@ -42,7 +42,8 @@ const ARTIFACT_ID = 'report'
 const ARTIFACT_FILE = 'report.txt'
 const ARTIFACT_TEXT = 'artifact-body'
 const INJECTION_VALUE = '$(echo pwned); rm -rf / #'
-const PERMITTED_ENV_KEY = 'PROBE_MODE'
+/** Two permitted keys, so the authorized request and the denied one below declare the same NUMBER of keys. A subject where they differ by count certifies an adapter that counts keys and never reads the allowlist. */
+const PERMITTED_ENV_KEYS = ['PROBE_MODE', 'PROBE_RUN_ID'] as const
 const UNPERMITTED_ENV_KEY = 'AWS_SECRET_ACCESS_KEY'
 
 function commandRequest(params: {
@@ -79,7 +80,7 @@ function buildPolicy(scratchDir: string): CommandTargetPolicy {
 				executable: EXECUTABLE,
 				target: FIXTURE_PATH,
 				permittedSubcommandPaths: [[]],
-				permittedEnvironmentKeys: [PERMITTED_ENV_KEY],
+				permittedEnvironmentKeys: [...PERMITTED_ENV_KEYS],
 				cwd: scratchDir,
 				artifacts: { [ARTIFACT_ID]: ARTIFACT_FILE },
 				maxElapsedMs: MAX_ELAPSED_MS,
@@ -149,12 +150,16 @@ export function createCommandProbeSubject(
 		sampleRequest: commandRequest({ probeId: 'sample' }),
 		build,
 		policy,
-		// Carries the one permitted environment key, so an adapter that denied
-		// every declared key would fail this assertion rather than passing the
-		// denial one below on a technicality.
+		// Carries both permitted environment keys. An adapter that denied every
+		// declared key fails here, and one that refuses on key count alone
+		// cannot tell this request from the denied one below, which declares
+		// two keys as well.
 		authorizedRequest: commandRequest({
 			probeId: 'authorized',
-			environment: { [PERMITTED_ENV_KEY]: 'conformance' },
+			environment: {
+				[PERMITTED_ENV_KEYS[0]]: 'conformance',
+				[PERMITTED_ENV_KEYS[1]]: 'run-1',
+			},
 		}),
 		unmappedInterfaceRequest: commandRequest({
 			probeId: 'unmapped-interface',
@@ -168,10 +173,13 @@ export function createCommandProbeSubject(
 			probeId: 'unauthorized-subcommand',
 			subcommandPath: ['danger'],
 		}),
+		// One permitted key and one the mapping omits, so the refusal has to be
+		// key-specific: a blanket denial of any declared environment fails the
+		// authorized case above.
 		unauthorizedEnvironmentKeyRequest: commandRequest({
 			probeId: 'unauthorized-environment-key',
 			environment: {
-				[PERMITTED_ENV_KEY]: 'conformance',
+				[PERMITTED_ENV_KEYS[0]]: 'conformance',
 				[UNPERMITTED_ENV_KEY]: 'smuggled',
 			},
 		}),

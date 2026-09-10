@@ -1009,6 +1009,7 @@ const INJECTION_VALUE = 'literal-$(echo pwned)'
 const ARTIFACT_ID = 'report'
 const ARTIFACT_TEXT = 'artifact-body'
 const PERMITTED_ENV_KEY = 'PROBE_MODE'
+const SECOND_PERMITTED_ENV_KEY = 'PROBE_RUN_ID'
 const UNPERMITTED_ENV_KEY = 'AWS_SECRET_ACCESS_KEY'
 const ECHO_KEY = 'echo'
 const ECHO_VALUE = 'declared-$(echo pwned)'
@@ -1090,7 +1091,7 @@ const commandPolicy: CommandTargetPolicy = {
 			executable: 'probe-cli',
 			target: '/usr/bin/true',
 			permittedSubcommandPaths: [[]],
-			permittedEnvironmentKeys: [PERMITTED_ENV_KEY],
+			permittedEnvironmentKeys: [PERMITTED_ENV_KEY, SECOND_PERMITTED_ENV_KEY],
 			cwd: '/tmp',
 			artifacts: { [ARTIFACT_ID]: 'report.txt' },
 			maxElapsedMs: 1500,

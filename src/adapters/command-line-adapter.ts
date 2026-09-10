@@ -141,9 +141,10 @@ export function buildArgv(channels: CommandProbeRequest['channels']): string[] {
  * against `artifacts`.
  *
  * `PATH` is the adapter's own, supplied by the process the mapping launched
- * under AD-18, so the allowlist has no say over it. A declared `PATH` still
- * has to be permitted, and being permitted it overrides the base, which is
- * what an operator naming it in the mapping is asking for.
+ * under AD-18. The allowlist refuses `PATH` outright, so a declared one is
+ * always denied here: `target` may be a bare command name, and the child
+ * environment is what resolves it, so permitting `PATH` would let the contract
+ * author pick which binary runs.
  */
 function buildEnv(
 	declared: Readonly<Record<string, string>>,

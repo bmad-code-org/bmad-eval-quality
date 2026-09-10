@@ -4,9 +4,9 @@ import {
 	type CommandResolvedTarget,
 	evaluateCommandTarget,
 } from '../../src/adapters/command-target-policy.ts'
-import type {
+import {
 	CommandTargetAuthorization,
-	CommandTargetPolicy,
+	type CommandTargetPolicy,
 } from '../../src/core/schemas/probe-policy.ts'
 
 function authorization(
@@ -150,5 +150,37 @@ describe('evaluateCommandTarget', () => {
 			'executable-not-authorized',
 			'subcommand-not-authorized',
 		])
+	})
+
+	// The allowlist is checked by the adapter, so these two are the schema's
+	// own share of the same rule: what an operator is allowed to write down.
+	it('refuses PATH in permittedEnvironmentKeys, and admits an ordinary key', () => {
+		// `target` may be a bare command name, and the child environment is
+		// what resolves it, so a permitted PATH would let the contract author
+		// choose which binary runs.
+		for (const keys of [['PATH'], ['HOME', 'PATH']]) {
+			const refused = CommandTargetAuthorization.safeParse(
+				authorization({ permittedEnvironmentKeys: keys }),
+			)
+			expect(refused.success).toBe(false)
+		}
+		expect(
+			CommandTargetAuthorization.safeParse(
+				authorization({ permittedEnvironmentKeys: ['HOME'] }),
+			).success,
+		).toBe(true)
+	})
+
+	it('refuses an environment key outside the portable charset', () => {
+		// `A=B` as a key reaches a child as a variable `A` whose value carries
+		// `B=` in front of the declared one, which an operator reading the
+		// mapping cannot see.
+		for (const key of ['A=B', '1BAD', 'HAS SPACE', '']) {
+			expect(
+				CommandTargetAuthorization.safeParse(
+					authorization({ permittedEnvironmentKeys: [key] }),
+				).success,
+			).toBe(false)
+		}
 	})
 })

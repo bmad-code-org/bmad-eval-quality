@@ -344,16 +344,25 @@ describe('createCommandLineAdapter, real spawn', () => {
 		expect((payload as { stdin: string }).stdin).toBe('piped-in')
 	})
 
-	it('passes a permitted environment key through to the process', async () => {
+	it('passes permitted environment keys through to the process', async () => {
+		// Two keys here and two in the denial below, so an adapter refusing on
+		// key count alone fails one of the pair.
 		const adapter = createCommandLineAdapter(
-			policyOf(authorization({ permittedEnvironmentKeys: ['PROBE_TEST_VAR'] })),
+			policyOf(
+				authorization({
+					permittedEnvironmentKeys: ['PROBE_TEST_VAR', 'PROBE_RUN_ID'],
+				}),
+			),
 		)
 		const observation = await adapter.probe(
 			request({
 				channels: {
 					argument: {},
 					option: {},
-					environment: { PROBE_TEST_VAR: 'from-contract' },
+					environment: {
+						PROBE_TEST_VAR: 'from-contract',
+						PROBE_RUN_ID: 'run-1',
+					},
 					stdin: { kind: 'absent' },
 				},
 			}),
@@ -386,7 +395,11 @@ describe('createCommandLineAdapter, real spawn', () => {
 			}),
 		}
 		const adapter = createCommandLineAdapter(
-			policyOf(authorization({ permittedEnvironmentKeys: ['PROBE_MODE'] })),
+			policyOf(
+				authorization({
+					permittedEnvironmentKeys: ['PROBE_MODE', 'PROBE_RUN_ID'],
+				}),
+			),
 			mechanism,
 		)
 		await expect(
@@ -405,6 +418,43 @@ describe('createCommandLineAdapter, real spawn', () => {
 				new AbortController().signal,
 			),
 		).rejects.toMatchObject({ code: 'forbidden-target' })
+		expect(calls).toBe(0)
+	})
+
+	it('refuses an environment key carrying a second assignment, at the boundary', async () => {
+		// `A=B` as a key reaches a child as a variable `A` whose value carries
+		// `B=` in front of the declared one. The allowlist cannot catch that on
+		// its own, since an operator can permit the malformed key by the same
+		// spelling; the key charset is what closes it, one layer earlier.
+		let calls = 0
+		const mechanism: CommandMechanism = {
+			run: async () => {
+				calls++
+				throw new Error('should not run')
+			},
+			readArtifact: async () => ({
+				present: false,
+				text: '',
+				truncated: false,
+			}),
+		}
+		const adapter = createCommandLineAdapter(
+			policyOf(authorization({ permittedEnvironmentKeys: ['PROBE_MODE'] })),
+			mechanism,
+		)
+		await expect(
+			adapter.probe(
+				request({
+					channels: {
+						argument: {},
+						option: {},
+						environment: { 'PROBE_MODE=INJECTED': 'x' },
+						stdin: { kind: 'absent' },
+					},
+				}),
+				new AbortController().signal,
+			),
+		).rejects.toMatchObject({ code: 'schema-parse-failure' })
 		expect(calls).toBe(0)
 	})
 
