@@ -536,9 +536,8 @@ export const CORPUS_CONTRACTS: readonly EvalContract[] = [
 ]
 
 /**
- * What the published dev corpus ships: the coverage contracts above, plus the
- * three whose reason for shipping is the interface kind rather than a coverage
- * cell.
+ * What the published dev corpus ships: the coverage contracts above, plus four
+ * whose reason for shipping is a shape an adopter needs a worked example of.
  *
  * `CORPUS_CONTRACTS` stays exactly the cell contracts, in cell order, so the
  * ordering check that proves it derived rather than hand-listed keeps working.

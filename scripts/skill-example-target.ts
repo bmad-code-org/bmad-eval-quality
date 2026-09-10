@@ -370,9 +370,10 @@ const callInputs = (prompt: string) => ({
  *
  * Two runs of one operation, one per case the sensitivity witness declares.
  * The backend run behaves, so the discriminating condition resolves `false`
- * over it and it lands in the witness match's refuting set: the condition is
- * shown to separate rather than to be true of everything the selector admits.
- * The frontend run is the mutated one.
+ * over it and it lands in the witness match's refuting set. That refuting
+ * member is what shows the condition separates: a partition holding only
+ * satisfying members is equally consistent with a condition true of every
+ * candidate the selector admits. The frontend run is the mutated one.
  */
 const authoredRecord = (
 	contractDigest: string,

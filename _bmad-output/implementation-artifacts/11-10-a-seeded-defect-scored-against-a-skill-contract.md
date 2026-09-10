@@ -2,7 +2,7 @@
 title: 'A seeded defect scored against a skill contract'
 type: 'feature'
 created: '2026-09-09'
-status: 'draft'
+status: 'done'
 review_loop_iteration: 0
 context:
   - _bmad-output/implementation-artifacts/epic-11-context.md
@@ -153,26 +153,26 @@ The composition is in Decision 6; the sites are:
 
 **Execution:**
 
-- [ ] `tests/schemas/fixtures/skill-contract.ts` -- author the skill exemplar on `command-contract.ts`'s model, wrapping the interface `docs/how-to/evaluate-skill-behavior.md:57-113` already publishes as compiling at exit 0: one `cli` interface, one operation whose invocation is the guide's own at `:64`, executable `skill-runner` with `subcommandPath` empty, `descriptorChannel` on `stdout`, a response descriptor declaring the selection as a collection with a cardinality bound, and the sensitivity witness the strict compile needs. Two behaviors, each with exactly one oracle, so `designatedOracleIdOf` (`src/core/score/score.ts:168-178`) resolves: the inclusion half and the exclusion half the guide describes at `:118-170`. Every string clears `check:boundary`'s twelve patterns and AD-18's excluded content.
-- [ ] `tests/coverage/fixtures/corpus.ts` -- add the exemplar to `DEV_CORPUS_CONTRACTS` and leave `CORPUS_CONTRACTS` at 19. Extend the docblock at `:537-546` to say what a third contract behind a command is here for, and cut what the extension makes redundant.
-- [ ] `tests/coverage/command-coverage.test.ts` -- a third grading case over the exemplar, whole verdict table asserted, following the file's own rule that naming only the interesting rules lets the next one through.
-- [ ] `scripts/worked-example-shared.ts` -- NEW. Extract `renderJson`, `digestPlaceholder`, `fail` and `POLICY` from `worked-example-target.ts`, so every chain renders bytes one way and is scored under one declared policy artifact. This module is what more than one chain needs and nothing else. `check:worked-example` proves the extraction moved no spike-chain byte.
-- [ ] `scripts/skill-example-target.ts` -- NEW, and one target file per chain is the rule this story sets: `worked-example-target.ts` keeps the spike chain and never learns about a second. This module imports the corpus fixture as its contract, authors the probe, the sealed run record, the isolation manifest, the evaluator configuration, and one `ProbeObservation` per planned leg; computes its pre-flight verdict through `preflightFromObservations`; runs `sealProbeSet`, `ingest`, `score` and `emit` for real; and fails on a rejected probe or a null verdict. It owns its own label `_bmad-output/worked-examples/skill-defect`, its own six-file list, and its own key-set check. Its digest placeholders continue the spike chain's ordinal sequence so no two placeholders in the repository collide.
-- [ ] `scripts/generate-worked-example.ts` and `scripts/check-worked-example.ts` -- `buildWorkedExample` becomes the union of the builders' maps, and the generator creates each key's own parent directory where today it creates one fixed root at `:37`. Neither script learns which chain a key belongs to, and each reports every label it wrote or compared. One `generate:` script and one `check:` step still cover both chains, so `validate` gains no step.
-- [ ] `npm run generate:worked-example && npm run check:worked-example` -- regenerate and verify. The spike chain's five files are byte-identical; any difference is investigated before it is accepted.
-- [ ] `tests/score/skill-worked-example.test.ts` -- NEW. Value-level assertions on the second chain, following `tests/score/worked-example.test.ts`'s posture of reading the builder's values and touching no file: the probe qualified, the witness match resolved `matched`, the computed pre-flight verdict reads `passed: true`, `strength.vector.defect` carries its three values, `strength.comparable` is `false` with the note naming the declared minimum, and the emitted key set is exactly the declared one.
-- [ ] `npm run generate:dev-corpus && npm run check:corpus` -- regenerate; expect 26 index entries, 24 of kind `contract`, zero orphans, zero drift, and the `structuralFailure` pin still at 3.
-- [ ] `scripts/dev-corpus-target.ts` -- move the corpus total at `:65`, `:108` and `:114`, and both words at `:115`, the command-contract count and the compiling count; leave `:114`'s "Nineteen" and `:117`'s "Three" alone. Describe the skill contract in "What is here" and cut what that makes redundant. This is published prose and gets the voice pass at its source.
-- [ ] `scripts/dev-corpus-target.ts:137-144` -- rewrite the second absence paragraph for two committed chains: name both target modules and both committed run records, keep the claim that the isolation manifest and the evaluator configuration reach `ingest` as authored values only, and keep case 163's third pattern matching. The paragraph is a template literal that reaches disk through `npm run generate:dev-corpus`, so `corpus/dev/README.md` is never hand-edited. Then regenerate and re-run `tests/architecture/dev-corpus.test.ts`.
-- [ ] The seven hand-written page counts -- move each at its source per the Code Map, then `npm run build:shareable && npm run check:shareable` for `README.md`'s projection.
-- [ ] `docs/how-to/evaluate-agent-behavior.md:294` -- "two contracts describing a system behind a command" becomes three. Story 11.8's gate already carries this line as its fourteenth entry, so `check:doc-counts` names the word before the edit and exits 0 after; this story adds no gate entry and edits no gate code.
-- [ ] `docs/index.md:77` -- the skill row's State cell becomes Decision 10's cell.
-- [ ] `docs/how-to/evaluate-skill-behavior.md:41-43` -- widen the last clause from the gameability probe to any probe carrying a signature, since the refusal reads the channel of a condition's pointer and is indifferent to the probe class.
-- [ ] `docs/how-to/evaluate-skill-behavior.md:229-239` -- rewrite "Where this stands" against the run: what the chain proves, where a reader opens it, the three values `strength.vector.defect` carries, the rung and exit code, and the two limits restated per Decisions 3 and 4. Cut the sentences the rewrite makes redundant.
-- [ ] `docs/how-to/author-behavioral-contracts.md:237` and `README.md:240` -- both say the repository commits one chain. Each names two, with one line saying which question each answers, and each is written so Story 11.11 changes a count and no framing. `README.md:240`'s Rebuild and Guard cells keep their two script names; only the first cell moves.
-- [ ] `CHANGELOG.md` `[Unreleased]` -- one `### Added` bullet naming the second committed chain: what it holds, where it lives, that the corpus contract it scores is the same object the tarball publishes and its digest proves it, and that its strength vector is one trial and marked non-comparable. It says nothing about the corpus digest's effect on scoring-version comparability, which Story 11.8 states once for this epic as the first story that moves the corpus, and nothing about a `schemaVersion`, which this story does not move.
-- [ ] Voice pass -- grep every file this story edited for the six banned constructions and keep only the hits where both halves carry a fact.
-- [ ] `_bmad-output/project-knowledge/learning-path-step-by-step.md` -- add this story's step as the next number after the highest in the file, marked `(epic11-story10)`, plus its table row, following `_bmad-output/project-knowledge/learning-path-template.md`. Written after the peer review's findings are addressed and before the human reviews locally.
+- [x] `tests/schemas/fixtures/skill-contract.ts` -- author the skill exemplar on `command-contract.ts`'s model, wrapping the interface `docs/how-to/evaluate-skill-behavior.md:57-113` already publishes as compiling at exit 0: one `cli` interface, one operation whose invocation is the guide's own at `:64`, executable `skill-runner` with `subcommandPath` empty, `descriptorChannel` on `stdout`, a response descriptor declaring the selection as a collection with a cardinality bound, and the sensitivity witness the strict compile needs. Two behaviors, each with exactly one oracle, so `designatedOracleIdOf` (`src/core/score/score.ts:168-178`) resolves: the inclusion half and the exclusion half the guide describes at `:118-170`. Every string clears `check:boundary`'s twelve patterns and AD-18's excluded content.
+- [x] `tests/coverage/fixtures/corpus.ts` -- add the exemplar to `DEV_CORPUS_CONTRACTS` and leave `CORPUS_CONTRACTS` at 19. Extend the docblock at `:537-546` to say what a third contract behind a command is here for, and cut what the extension makes redundant.
+- [x] `tests/coverage/command-coverage.test.ts` -- a third grading case over the exemplar, whole verdict table asserted, following the file's own rule that naming only the interesting rules lets the next one through.
+- [x] `scripts/worked-example-shared.ts` -- NEW. Extract `renderJson`, `digestPlaceholder`, `fail` and `POLICY` from `worked-example-target.ts`, so every chain renders bytes one way and is scored under one declared policy artifact. This module is what more than one chain needs and nothing else. `check:worked-example` proves the extraction moved no spike-chain byte.
+- [x] `scripts/skill-example-target.ts` -- NEW, and one target file per chain is the rule this story sets: `worked-example-target.ts` keeps the spike chain and never learns about a second. This module imports the corpus fixture as its contract, authors the probe, the sealed run record, the isolation manifest, the evaluator configuration, and one `ProbeObservation` per planned leg; computes its pre-flight verdict through `preflightFromObservations`; runs `sealProbeSet`, `ingest`, `score` and `emit` for real; and fails on a rejected probe or a null verdict. It owns its own label `_bmad-output/worked-examples/skill-defect`, its own six-file list, and its own key-set check. Its digest placeholders continue the spike chain's ordinal sequence so no two placeholders in the repository collide.
+- [x] `scripts/generate-worked-example.ts` and `scripts/check-worked-example.ts` -- `buildWorkedExample` becomes the union of the builders' maps, and the generator creates each key's own parent directory where today it creates one fixed root at `:37`. Neither script learns which chain a key belongs to, and each reports every label it wrote or compared. One `generate:` script and one `check:` step still cover both chains, so `validate` gains no step.
+- [x] `npm run generate:worked-example && npm run check:worked-example` -- regenerate and verify. The spike chain's five files are byte-identical; any difference is investigated before it is accepted.
+- [x] `tests/score/skill-worked-example.test.ts` -- NEW. Value-level assertions on the second chain, following `tests/score/worked-example.test.ts`'s posture of reading the builder's values and touching no file: the probe qualified, the witness match resolved `matched`, the computed pre-flight verdict reads `passed: true`, `strength.vector.defect` carries its three values, `strength.comparable` is `false` with the note naming the declared minimum, and the emitted key set is exactly the declared one.
+- [x] `npm run generate:dev-corpus && npm run check:corpus` -- regenerate; expect 26 index entries, 24 of kind `contract`, zero orphans, zero drift, and the `structuralFailure` pin still at 3.
+- [x] `scripts/dev-corpus-target.ts` -- move the corpus total at `:65`, `:108` and `:114`, and both words at `:115`, the command-contract count and the compiling count; leave `:114`'s "Nineteen" and `:117`'s "Three" alone. Describe the skill contract in "What is here" and cut what that makes redundant. This is published prose and gets the voice pass at its source.
+- [x] `scripts/dev-corpus-target.ts:137-144` -- rewrite the second absence paragraph for two committed chains: name both target modules and both committed run records, keep the claim that the isolation manifest and the evaluator configuration reach `ingest` as authored values only, and keep case 163's third pattern matching. The paragraph is a template literal that reaches disk through `npm run generate:dev-corpus`, so `corpus/dev/README.md` is never hand-edited. Then regenerate and re-run `tests/architecture/dev-corpus.test.ts`.
+- [x] The seven hand-written page counts -- move each at its source per the Code Map, then `npm run build:shareable && npm run check:shareable` for `README.md`'s projection.
+- [x] `docs/how-to/evaluate-agent-behavior.md:294` -- "two contracts describing a system behind a command" becomes three. Story 11.8's gate already carries this line as its fourteenth entry, so `check:doc-counts` names the word before the edit and exits 0 after; this story adds no gate entry and edits no gate code.
+- [x] `docs/index.md:77` -- the skill row's State cell becomes Decision 10's cell.
+- [x] `docs/how-to/evaluate-skill-behavior.md:41-43` -- widen the last clause from the gameability probe to any probe carrying a signature, since the refusal reads the channel of a condition's pointer and is indifferent to the probe class.
+- [x] `docs/how-to/evaluate-skill-behavior.md:229-239` -- rewrite "Where this stands" against the run: what the chain proves, where a reader opens it, the three values `strength.vector.defect` carries, the rung and exit code, and the two limits restated per Decisions 3 and 4. Cut the sentences the rewrite makes redundant.
+- [x] `docs/how-to/author-behavioral-contracts.md:237` and `README.md:240` -- both say the repository commits one chain. Each names two, with one line saying which question each answers, and each is written so Story 11.11 changes a count and no framing. `README.md:240`'s Rebuild and Guard cells keep their two script names; only the first cell moves.
+- [x] `CHANGELOG.md` `[Unreleased]` -- one `### Added` bullet naming the second committed chain: what it holds, where it lives, that the corpus contract it scores is the same object the tarball publishes and its digest proves it, and that its strength vector is one trial and marked non-comparable. It says nothing about the corpus digest's effect on scoring-version comparability, which Story 11.8 states once for this epic as the first story that moves the corpus, and nothing about a `schemaVersion`, which this story does not move.
+- [x] Voice pass -- grep every file this story edited for the six banned constructions and keep only the hits where both halves carry a fact.
+- [x] `_bmad-output/project-knowledge/learning-path-step-by-step.md` -- add this story's step as the next number after the highest in the file, marked `(epic11-story10)`, plus its table row, following `_bmad-output/project-knowledge/learning-path-template.md`. Written after the peer review's findings are addressed and before the human reviews locally.
 
 **Acceptance Criteria:**
 
@@ -255,6 +255,42 @@ The spike chain hand-authors its verdict: `scripts/worked-example-target.ts` cal
 
 Three things are deliberate. It says "shipped" because the scored contract is the corpus contract an adopter can open, which Decision 4's digest is what proves. It carries the one-trial non-comparable limit, which is the limit Decision 3 records as surviving this story and which the cell has to carry so a reader who never opens the guide still meets it. It drops the gameability sentence rather than keeping it beside the new one, because the guide's "Where this stands" section carries the gameability numbers and the routing table's job is one verdict per row. The written-file limit stays out of the cell: it is a constraint on which skills can carry a signature at all, and `docs/how-to/evaluate-skill-behavior.md:41-43` and `:229-239` are where it belongs. Downstream consequence: Story 11.9 finds this row already unqualified and owns only the framing prose around the table.
 
+**Decision 11: the seeded defect declares a manifestation witness, which the frozen block never named and pre-flight requires.**
+Decision 9 commits the chain to computing its verdict through `preflightFromObservations`, and the I/O matrix expects `passed: true`. Neither says anything about `Probe.defects[].manifestationWitness`, and the spike chain this story models leaves it `null`. Against the reducer as the tree carries it, `null` is fatal: `reducePreflight`'s `seeded-fault-fired` arm returns `failed` with the note "the defect declares no manifestation witness, so it cannot be observed to fire", `passed` is `checks.every(outcome !== 'failed')`, and the chain would abort at its own guard. So the defect declares one, `skill-defect-leg` against `run-skill` on `skill-runner`, whose relation is the signature's discriminating half rooted at that leg instead of at the reserved observation identifier. That gives pre-flight two questions it can answer separately: `seeded-fault-fired` asks whether the relation fires on the fault leg, and `seeded-faults-scoped` asks whether it stays quiet on every clean leg of the same operation. Both come back satisfied. Downstream consequence: Story 11.11's chain inherits the same requirement, and a chain whose defect declares no witness cannot pass a pre-flight it actually runs.
+
+**Decision 12: the interaction plan binds the prompt by literal, because the record carries two runs of one operation.**
+The Design Notes spell the probe's selector as `option: { skill: { literal: ... } }, stdin: { prompt: { matcher: 'any' } }`, and the chain ships that selector unchanged. The contract's own interaction step is a different question the frozen block does not settle. A step binding `stdin.prompt` with a matcher selects every observation of `run-skill`, and `selectWithBindings` returns `several` under `cardinality: 'exactly-one'`, which `score` reads as `selectorAmbiguity` and `resolveOutcome` turns into `infrastructure-error` on a row that outranks `witness-matched`. The step therefore binds the frontend prompt by literal.
+
+What that buys is the reason it is worth writing down rather than collapsing the record to one observation. The evaluator exercises the operation on both cases the sensitivity witness declares. The backend run behaves, the probe's selector admits it, and the condition resolves `false` over it, so the witness partition comes back `satisfying: ['obs-002'], refuting: ['obs-001'], inconclusive: []`. A partition holding only satisfying members is equally consistent with a condition true of every candidate the selector admits, and this one is not. Downstream consequence: a chain with one observation on its home operation proves the condition fires and proves nothing about whether it discriminates, and Story 11.11 inherits the same shape.
+
+**Decision 13: `buildWorkedExample` is a registry at the foot of `worked-example-target.ts`, and the spike chain's own builder is `buildSpikeExample`.**
+Decision 5 says two things that read as a conflict once the code exists: `buildWorkedExample` becomes the union of the builders' maps, and `worked-example-target.ts` keeps the spike chain and never learns about a second. Three placements were available. A union inside `worked-example-shared.ts` is circular, because both target modules import it. A new module holding nothing but the union is a fourth file for eight lines. Exporting each builder and merging the two maps at both call sites duplicates the merge and puts the collision check in two places.
+
+So the union stays where the Code Map put it, as the last function in `worked-example-target.ts`, with a docblock saying it is the registry and that everything above it is the spike chain. The spike chain's own map is `buildSpikeExample`, exported so `tests/score/worked-example.test.ts` keeps asserting the five keys that belong to it. The registry fails the build when two chains emit one path, since the drift check iterates the union and would report the loser as missing rather than as overwritten. Downstream consequence: Story 11.11 adds one target module and one entry to the list in that function, and `tests/score/worked-example.test.ts` carries the assertion that the union is exactly what the builders emit, so a chain dropped from the registry reddens there.
+
+**Decision 14: the reproducible hash needs the file's trailing newline stripped, and the frozen block's command does not do that.**
+The I/O matrix and the Verification section both give `shasum -a 256 corpus/dev/contracts/<contractId>.json` and expect the hex half to equal the chain's `contractDigest`. It does not, and the reason is one byte. `serializeArtifact` returns `canonicalize` output plus a trailing newline and its own docblock says so; `digestArtifact` hashes `canonicalize` output. The corpus writes `serializeArtifact` output to disk, so the file carries a byte the digest does not cover.
+
+The property Decision 4 claims holds, and the command that demonstrates it is `printf '%s' "$(cat corpus/dev/contracts/checklist-selection.json)" | shasum -a 256`, which returns `db47672fee36bd18d5b7d42ac24cc11dc3d5c46ed0a7be86617676f2ebb9841c`, the hex half of the `contractDigest` in the chain's `sealed-run-record.json`. Hashing the file as written returns `4395b261...`, which is the value `corpus/dev/index.json` records for that entry, so both numbers are real and they answer different questions. The published prose says which one to compute, and `tests/score/skill-worked-example.test.ts` asserts the stripped form against the record's digest so the claim is held by a test rather than by a sentence. Downstream consequence: Story 11.11's chain inherits the same one-byte trap if it imports a corpus fixture.
+
+**Decision 15: five statements in the frozen block were stale or off by a line when this story ran, and each is recorded here rather than edited.**
+The block was written against 1.4.2 and Story 11.8 landed between. None of the five changed what this story had to do.
+
+1. The gate. The Code Map describes `check:doc-counts` as "fourteen numerals across those seven pages". Story 11.8's peer review took it to twenty-three numerals across nine files, `corpus/dev/README.md` and `scripts/dev-corpus-target.ts` among them. That is a help rather than a divergence in substance: the gate named every stale word this story owed, including the two in the corpus README template that no earlier draft of this story listed.
+2. The README template's numeral sites. The Code Map gives `scripts/dev-corpus-target.ts:65,108,114,115` and says `:115` carries the compiling count. In the tree this story met, the compiling count is at `:119` ("The other nineteen are published only after") and `:115` carries the `cli` count alone. Five words moved and the two the story reserves, the discipline-rule count and the failing-by-design count, stayed.
+3. `docs/how-to/evaluate-agent-behavior.md:294` is `:295`.
+4. `docs/how-to/evaluate-ai-feature-behavior.md:234` is `:243`, and the `api`-declaring count on that line did not move: the exemplar declares `cli`, so `Eighteen` stands and only the total moved.
+5. Every line number the Code Map gives inside `scripts/worked-example-target.ts` moved when the shared module was extracted. `POLICY`, `renderJson`, `digestPlaceholder` and `fail` are in `scripts/worked-example-shared.ts` now, which is what the story's own task asked for.
+
+**Decision 16: the guide's fence spells the witness legs' stdin as text and the corpus contract spells it as a declared key, and the fence is left alone.**
+`docs/how-to/evaluate-skill-behavior.md:97-98` gives each sensitivity leg `"stdin": { "kind": "text", "value": "..." }`. Both spellings parse and both compile clean under `{ strict: true }`, checked. The exemplar takes the keyed form, `{ kind: 'json', value: { prompt } }`, following `commandContract`'s shipped precedent, because `callInputsOf` records a JSON stdin as a call input and drops a text one: with the text form the chain's own selector on `stdin.prompt` would have nothing to match on a pre-flight leg. The fence stays as written, since nothing this story's run does makes it false. Downstream consequence: an author copying the guide's fence gets a contract that compiles and a witness leg whose inputs are invisible to a selector, which is worth a sentence on that page the day someone needs it.
+
+## Checkpoint decisions taken without the human
+
+- **All four Ask First items were declined, which is what the story predicted.** The diff under `src/` is empty. No `schemaVersion` moved. No policy carrying `minimumTrialCount: 1` was authored; the chain is scored under the published default at 3 and reports the shortfall. `docs/how-to/evaluate-skill-behavior.md`'s "In BMAD terms" section is unedited.
+- **The learning-path step is 55.** Main ended at Step 54 when this story rebased. A sibling session working the epic's tail has 55 written on its own branch and unmerged, so whichever branch merges second renumbers; this one re-checks the committed file immediately before merging.
+- **The chain's own test asserts a value-level property the story's task list did not name:** that `preflightVerdict.fixtureDigest` equals the fixture digest on the emitted artifact. That is the one link between the pre-flight half and the scoring half, and without it a chain could compute a verdict and score under a different one.
+
 ## Design Notes
 
 The organising idea is Story 8.5's, pointed at a different kind: a chain that calls the shipped stages is evidence, and a claim without one is an assertion. The skill shape's claim has been half evidence and half assertion since the gameability probe landed. The gameability half runs in TEA and its numbers are published; the seeded-defect half has a schema, a gate that admits it, a fixture that passes the gate, and no artifact anywhere carrying the result. This story turns the last of those into a file.
@@ -306,3 +342,68 @@ The invocation above is spelled exactly as the contract's operation spells it, w
 - `docs/index.md:77` and `docs/how-to/evaluate-skill-behavior.md:229-239` read together claim no more than the emitted artifact carries.
 - `git diff CHANGELOG.md` touches nothing below `[Unreleased]`, since `release:prepare` owns the dated sections.
 - `git status` over `_bmad-output/planning-artifacts/architecture/architecture-eval-quality-2026-07-29/spike-worked-example/` reports no change, which is what the four sentences at `docs/how-to/evaluate-workflow-behavior.md:216-219` need.
+
+## What the run returned
+
+Every value below is transcribed from a run of this branch, not predicted.
+
+**The probe qualified.** `sealProbeSet` over `[P-001]` returned one admitted entry and an empty
+rejected list, with `declarationChecksRan: true`, which the builder asserts and fails the build on.
+`commandSignature` over the signature's invocation and over the contract's operation render the same
+string, so `resolveHomeOperation` returns the operation.
+
+**The pre-flight verdict, computed by `preflightFromObservations`.** `passed: true` over six checks,
+each satisfied: `interface-present`, `input-sensitivity`, `state-reset`, `clean-control`,
+`seeded-faults-scoped`, `seeded-fault-fired`. Five legs were planned and five observations authored,
+one per leg: the two sensitivity legs, the two minted `preflight-control-observe` legs, and
+`skill-defect-leg`. The observations are built by walking `planPreflight`'s own leg list, so the two
+minted identifiers are read rather than transcribed.
+
+**The witness match.** `matched`, basis `measured`, `homeOperationResolved: true`, partition
+`{ satisfying: ['obs-002'], refuting: ['obs-001'], inconclusive: [] }`, `witnessObservationIds:
+['obs-002']`, `unwitnessedFindingIds: []`.
+
+**The two oracles.** `O-001` resolved `confirmed` with `checkResolution.resolution: 'true'` and
+disposition `held`. `O-002` resolved `caught` with `checkResolution.resolution: 'false'` and
+disposition `violated`. The same reply satisfies the inclusion half and violates the exclusion half,
+which is the pair working.
+
+**The strength vector.** `strength.vector.defect` is `{ caught: 1, exercised: 1, rate: 1 }`.
+`gameability` and `zero-action` are both `null`. `strength.basis` is `measured`.
+`strength.comparable` is `false` and `strength.note` reads "1 admitted probe over 1 completed trial.
+Below the declared minimum of 3. The vector is reported and marked non-comparable."
+
+**The ladder.** `contractVerdict: 'CONCERNS'` at `exitCode: 0`, on three bases:
+
+```text
+coverage gap malformed-input unsatisfied at or above the severity floor
+coverage gap sibling-cross-check unsatisfied at or above the severity floor
+1 completed trials below the declared minimum of 3
+```
+
+**The corpus.** `generate:dev-corpus` then `check:corpus`: 27 committed corpus files matching byte
+for byte, zero orphans. `index.json` carries 26 entries, 24 of kind `contract`, and 3 of those carry
+a `structuralFailure`, so the pin at `tests/architecture/dev-corpus.test.ts` is unmoved. The
+composition is 18 declaring `api`, 3 declaring `cli`, 1 declaring `mcp`, and 1 declaring none, which
+is the middle column of Decision 6's table.
+
+**The digest.** `printf '%s' "$(cat corpus/dev/contracts/checklist-selection.json)" | shasum -a 256`
+returns `db47672fee36bd18d5b7d42ac24cc11dc3d5c46ed0a7be86617676f2ebb9841c`, and the chain's
+`sealed-run-record.json` carries `contractDigest`
+`sha256:db47672fee36bd18d5b7d42ac24cc11dc3d5c46ed0a7be86617676f2ebb9841c`. See Decision 14 for why the
+frozen block's own spelling of that command is off by one byte.
+
+**The chains.** `check:worked-example` reports 11 committed files across both roots matching byte for
+byte, and `git status` over the spike directory reports no change, so the shared-module extraction
+moved no spike byte.
+
+**The count gate.** `check:doc-counts` exits 0: "23 numerals across 9 files agree with their source,
+plus 6 per-port conformance counts". Before the edits it exited 1 naming 14 stale words across 8
+files, each with the word carried and the word owed.
+
+**The AD tables.** `check:ad31-table`, `check:ad21-table` and `check:ad33-table` all exit 0 with no
+regeneration, so no coverage cell, ladder row or outcome cell moved.
+
+**The gate.** `npm run validate` exits 0. 127 test files, 4150 tests, statements 97.09%, branches
+92.32%, functions 99.9%, lines 98.29%. The step count is what Story 11.8 left; this story adds no
+`check:` script.
