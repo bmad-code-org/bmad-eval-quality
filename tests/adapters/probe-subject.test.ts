@@ -151,13 +151,16 @@ describe('the in-repository probe subject (fixtures 85-88)', () => {
 		expect(observed.status).toBe(200)
 	})
 
-	it('fixture 97: a body the server cuts short rejects, and the response error is what settles it', async () => {
+	it("fixture 97: a body the server cuts short rejects with the response's own aborted error", async () => {
 		// The mechanism carries no `close`-based rescue for this case: Node
-		// destroys the response with `ECONNRESET` before `close`, so `error` is
-		// what rejects. Pinning the code here is what catches Node changing
-		// that. Delete `response.on('error', reject)` and this reddens, because
-		// the emission is gated on that listener existing and the promise then
-		// hangs.
+		// destroys the incomplete response and the `error` handler is what
+		// rejects. Three failures on this route all carry `ECONNRESET` and the
+		// message is what separates them: the response's `aborted`, which is
+		// this case; the request's `socket hang up`, which is a route that
+		// answered nothing at all; and `read ECONNRESET` from an RST. Assert the
+		// code alone and a route that never sends headers passes this test.
+		// Delete `response.on('error', reject)` and it reddens on the timeout,
+		// since Node gates that emission on the listener.
 		const thrown = await nodeHttpMechanism({
 			address: '127.0.0.1',
 			port: server.port,
@@ -172,8 +175,38 @@ describe('the in-repository probe subject (fixtures 85-88)', () => {
 			() => undefined,
 			(error: unknown) => error,
 		)
-		expect(thrown).toBeInstanceOf(Error)
-		expect((thrown as NodeJS.ErrnoException).code).toBe('ECONNRESET')
+		const error = thrown as NodeJS.ErrnoException | undefined
+		// One assertion over both fields: split in two and the code half is
+		// deletable, since every failure this route can produce carries
+		// `ECONNRESET` and the message is the half that identifies which.
+		expect({ code: error?.code, message: error?.message }).toEqual({
+			code: 'ECONNRESET',
+			message: 'aborted',
+		})
+	})
+
+	it('fixture 98: an unrequested protocol switch rejects', async () => {
+		// A 101 leaves the response callback unrun, so every handler inside it
+		// is out of reach, and Node holds the request open when nothing listens
+		// for `upgrade`. Delete that listener and this reddens on the timeout,
+		// which is the shape a real call would take to the elapsed cap.
+		const thrown = await nodeHttpMechanism({
+			address: '127.0.0.1',
+			port: server.port,
+			path: '/switch-protocols',
+			method: 'GET',
+			host: SUBJECT_HOSTS.authorized,
+			headers: {},
+			body: undefined,
+			maxResponseBytes: 1024,
+			signal: new AbortController().signal,
+		}).then(
+			() => undefined,
+			(error: unknown) => error,
+		)
+		expect((thrown as Error | undefined)?.message).toBe(
+			'the server switched protocols',
+		)
 	})
 
 	it('fixture 92: a request past maxRequestBytes is capped before any hop', async () => {
