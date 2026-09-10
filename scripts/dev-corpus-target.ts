@@ -140,7 +140,7 @@ ship.
 defect signature agree with its class, and a probe corpus would carry at least one per probe class and
 per \`expectedClean\` state. The probe schema carries both halves, and the trial reducer and the
 score stage that reads it are both shipped, so an admitted probe can be scored end to end today. This
-directory's own gate does not yet require one.
+directory's own gate does not require one.
 
 **Three of the four artifacts in an end-to-end example are absent here.** Such an example is a sealed
 brief, a conforming sealed run record, an isolation manifest, and an evaluator configuration. The last
