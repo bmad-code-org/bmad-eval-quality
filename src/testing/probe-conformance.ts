@@ -703,6 +703,9 @@ const MCP_ASSERTIONS: readonly ArmAssertion<McpProbeSubject>[] = [
 		expectation: {
 			kind: 'resolves',
 			check: (observation, subject) => {
+				if (observation.kind !== 'mcp') {
+					return `observed a "${observation.kind}" observation, expected a tool call`
+				}
 				const result = structuredResultOf(observation)
 				if (result === undefined) {
 					return 'the observation carries no structured result to read the received argument from'

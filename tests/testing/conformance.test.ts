@@ -1181,6 +1181,8 @@ type McpKnobs = {
 	readonly forbiddenInsteadOfCapOnResultBytes?: boolean
 	/** Declare the error-result request itself as an HTTP call, and answer it correlated. `McpProbeSubject.errorResultRequest` is typed over the whole request union for the reason the other two arms' equivalents are. */
 	readonly errorResultRequestIsApi?: boolean
+	/** The same for the argument-echo request, whose check has its own kind arm. */
+	readonly argumentEchoRequestIsApi?: boolean
 }
 
 function mcpObservation(
@@ -1236,7 +1238,9 @@ function syntheticMcpSubject(knobs: McpKnobs = {}): McpProbeSubject {
 		errorResultRequest: knobs.errorResultRequestIsApi
 			? probeRequest('notes', 'error-result')
 			: mcpProbeRequest('notes', 'error-result'),
-		argumentEchoRequest: mcpProbeRequest('notes', 'argument-echo'),
+		argumentEchoRequest: knobs.argumentEchoRequestIsApi
+			? probeRequest('notes', 'argument-echo')
+			: mcpProbeRequest('notes', 'argument-echo'),
 		argumentEchoValue: ECHO_VALUE,
 		argumentEchoResultKey: ECHO_KEY,
 		structuredResultRequest: mcpProbeRequest('notes', 'structured-result'),
@@ -1280,6 +1284,7 @@ function syntheticMcpSubject(knobs: McpKnobs = {}): McpProbeSubject {
 				}
 				if (operation === 'argument-echo') {
 					hops++
+					if (knobs.argumentEchoRequestIsApi) return observation(request, 200)
 					return mcpObservation(request, {
 						echo: knobs.mangleArgument ? `${ECHO_VALUE} expanded` : ECHO_VALUE,
 					})
@@ -1367,10 +1372,11 @@ describe('the mcp arm: one mutant per assertion flips exactly its own id', () =>
 		)
 	})
 
-	// The third arm's twin of the two cases the other arms carry:
-	// `errorResultRequest` is typed over the whole request union, so a subject
-	// may declare an HTTP call there and answer it correlated, which is what
-	// reaches the check's own non-`mcp` arm.
+	// The third arm's twin of the two cases the other arms carry. Both requests
+	// below are typed over the whole request union, so a subject may declare an
+	// HTTP call there and answer it correlated, which is what gets past
+	// `echoMismatch` and reaches each check's own non-`mcp` arm. Without a case
+	// each, those two arms are branches nothing can turn red.
 	it('names the kind it observed when the error-result request is itself an HTTP call', async () => {
 		const report = await runMcpProbeConformance(
 			syntheticMcpSubject({ errorResultRequestIsApi: true }),
@@ -1381,6 +1387,19 @@ describe('the mcp arm: one mutant per assertion flips exactly its own id', () =>
 		expect(outcome?.passed).toBe(false)
 		expect(outcome?.detail).toBe(
 			'observed a "api" observation, expected the envelope\'s error flag set',
+		)
+	})
+
+	it('names the kind it observed when the argument-echo request is itself an HTTP call', async () => {
+		const report = await runMcpProbeConformance(
+			syntheticMcpSubject({ argumentEchoRequestIsApi: true }),
+		)
+		const outcome = report.outcomes.find(
+			(each) => each.id === 'mcp/arguments-passed-as-declared',
+		)
+		expect(outcome?.passed).toBe(false)
+		expect(outcome?.detail).toBe(
+			'observed a "api" observation, expected a tool call',
 		)
 	})
 })
