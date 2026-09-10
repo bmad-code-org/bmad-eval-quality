@@ -25,8 +25,7 @@ const emptyChannel = {
 }
 
 /** The decision pointer both oracles address, and the one the probe's condition mirrors. */
-export const SKILL_SELECTION_POINTER =
-	'/interactions/frontend-case/stdout/selected'
+const SKILL_SELECTION_POINTER = '/interactions/frontend-case/stdout/selected'
 
 /** What the rules mandate for the declared case. */
 export const SKILL_MANDATED_ITEMS = [

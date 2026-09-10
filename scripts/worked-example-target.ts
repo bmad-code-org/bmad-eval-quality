@@ -1,7 +1,8 @@
-// Everything the worked-example generator and its drift check must agree on:
-// where the chain lives, which five files the builder owns, and the bytes
-// themselves. Both import this module, so neither can address a file the other
-// does not.
+// The spike chain: where it lives, which five files its builder owns, and the
+// bytes themselves. `buildWorkedExample` at the foot of this file is the
+// registry over every committed chain, and it is the one thing here that knows
+// a second chain exists; the generator and the drift check both import it, so
+// neither can address a file the other does not.
 //
 // Owed item 7, closed: the chain's derived values used to be hand-typed
 // against a pre-epic-7 architecture. Nothing downstream of the evaluator's

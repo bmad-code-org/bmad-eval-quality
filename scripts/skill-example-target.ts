@@ -328,13 +328,21 @@ function authoredObservations(
 		runId: RUN_ID,
 	})
 	return plan.legs.map((leg) => {
+		// Keyed by purpose first, so an unrecognised named leg aborts instead of
+		// silently taking the frontend reply. A control-observe identifier is
+		// minted and has no entry to look up; every other purpose does, and a
+		// renamed sensitivity leg is a mistake this build should report.
 		const selected =
-			leg.legId in SELECTION_FOR
-				? SELECTION_FOR[leg.legId as keyof typeof SELECTION_FOR]
-				: // Every remaining leg is a minted control observe, which
-					// `planPreflight` gives the first sensitivity leg's inputs, so it
-					// is the frontend case run twice.
+			leg.purpose === 'control-observe'
+				? // `planPreflight` gives a control leg the first sensitivity leg's
+					// inputs, so it is the frontend case run twice, which is what
+					// `state-reset` compares.
 					SELECTION_FOR['witness-frontend']
+				: leg.legId in SELECTION_FOR
+					? SELECTION_FOR[leg.legId as keyof typeof SELECTION_FOR]
+					: fail(
+							`leg "${leg.legId}" (${leg.purpose}) has no authored reply; the plan and SELECTION_FOR disagree`,
+						)
 		if (leg.request.kind !== 'cli') {
 			fail(`leg "${leg.legId}" planned a ${leg.request.kind} request`)
 		}
