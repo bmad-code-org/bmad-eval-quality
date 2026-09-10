@@ -242,11 +242,11 @@ The chain's selections, check resolutions, witness match, outcome states, verdic
 The empty-collection rule is exercised in that chain and lands a `FAIL`.
 Nineteen of the twenty-four contracts in `corpus/dev/contracts/` declare an `api` interface, so the compile-side rules for this shape are covered by readable examples.
 
-Two things the project owes itself here.
-A held-out probe corpus, since measuring a contract against probes its author can read is a weaker claim than measuring it against probes they cannot.
-Validation of the witness match against a second experiment round, which is implemented and not yet replicated.
+Two limits on what a strength number here means.
+`corpus/dev/` is readable, so a number measured against it says the contract catches probes its author could read while writing it, which is a weaker claim than the same number against probes they never saw.
+And the rule deciding whether a finding detected the defect its probe seeded was derived from the records in `experiments/hypothesis-validation/`, so a number it produces is a measurement over records of that kind. [What Ships](/explanation/what-ships/) says the same two in full.
 
-One operational limit: the command and `runScore` take one record per call, so a scored run completes one trial, and whenever your policy asks for more the strength vector comes out reported and marked non-comparable.
+A third limit is operational: the command and `runScore` take one record per call, so a scored run completes one trial, and whenever your policy asks for more the strength vector comes out reported and marked non-comparable.
 
 ## In BMAD terms
 

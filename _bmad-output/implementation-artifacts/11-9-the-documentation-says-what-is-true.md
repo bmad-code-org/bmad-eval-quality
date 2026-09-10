@@ -771,6 +771,49 @@ fails.
 Thirteen of twenty-six entries now settle by predicate, up from eleven of twenty-seven, and every one
 of the remaining thirteen carries a reason naming what would have to exist for a check to decide it.
 
+**Decision 26: the published pages state limits and never debts, and converting one into the other
+empties six registry entries.**
+`docs/explanation/what-ships.md` carried a section headed "Two things the project still owes itself",
+and `docs/how-to/evaluate-ai-feature-behavior.md:245` carried the same pair in miniature. The
+repository owner's instruction is that the section should not exist, because nothing should be owed.
+The facts underneath were true and stay published; the framing was the defect.
+
+The test the instruction supplies is sharp enough to apply by hand: a limit tells a reader how to
+interpret a result, and a debt tells them to wait for a better version. So `corpus/dev/` being
+readable is published as what a strength number measured against it means, which is that the contract
+catches probes its author could read while writing it. The witness-match rule having been derived
+from the records in `experiments/hypothesis-validation/` is published as the range a number it
+produces covers. Both pages say those two things, the what-ships section under "How far a strength
+number carries", and neither says anybody owes anybody anything.
+
+Four other sentences failed the same test and are restated. `what-ships.md:34` and `README.md:216`
+said four capabilities were "deferred until the contract layer is in real use", which tells a reader
+to wait; they now say the capabilities are outside the package and that each needs a contract layer
+in real use before its shape is decidable, which is the same fact as a reason. The tool-use section's
+"the half that stays deferred" is now the text channel being undesigned. `docs/index.md:80` said no
+live server has been scored "yet" and now says the evidence is the suite's own fixture. And
+`docs/index.md:82`'s "the guide's own verdict rather than a roadmap promise" loses a rejected half
+that named nothing real, which the repository's writing rule already banned and which this
+instruction makes doubly wrong, since the roadmap promise is the thing being removed.
+
+The mechanical consequence is the interesting one. Six `DATED_CLAIMS` entries went dead in one pass,
+and none of them moved: a limit is not time-sensitive, so it trips no trigger and needs no
+registration. The registry went from twenty-six entries to nineteen, and the sentences it lost are
+the ones that stopped implying a future in which they would be false. `check:doc-claims` found every
+one of the six and named it, which is the gate doing the job it was built for on a change nobody
+built it for.
+
+Two checks were retired with them and both are held elsewhere, which was verified rather than
+assumed. The predicate reading `corpus/dev/index.json` for missing contracts is redundant with
+`check:corpus`, which answers `corpus/dev/contracts/notes-tool-server.json: missing; run
+`npm run generate:dev-corpus`` when a named contract is gone. The `web` design-pass entry is
+redundant with class 7, which holds the kind's refusal from the source tuples.
+
+Downstream consequence: the `OWED_HEADING` mechanism now guards a shape the repository has decided
+against rather than one it uses, which makes it more useful rather than less. A section headed with
+what the project owes fails the gate until every bullet under it is registered, and registering one
+is now the moment to ask whether it should be a limit instead.
+
 ## Design Notes
 
 The proposed replacements, written to the de-AI rule and offered as drafts for the execution pass to confirm against the artifacts.

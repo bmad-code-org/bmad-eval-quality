@@ -213,7 +213,7 @@ The design record is the [architecture spine](_bmad-output/planning-artifacts/ar
 
 ## Not building now
 
-Deferred until the contract layer is in real use: claim-to-evidence lineage, semantic checkpoint scoring, process and outcome separation, and first material error attribution.
+Also outside the package: claim-to-evidence lineage, semantic checkpoint scoring, process and outcome separation, and first material error attribution. Each needs a contract layer in real use before its shape is decidable, and that is where the brief left them.
 
 Out of scope entirely: a new eval engine, a hosted service, a dashboard or GUI, multimodal evaluators, automatic prompt repair, and a generic judge-calibration platform.
 

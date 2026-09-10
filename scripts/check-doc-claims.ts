@@ -678,27 +678,6 @@ type DatedClaim = {
 	readonly reason: string
 }
 
-/** How many published corpus contracts the index names and the tree does not carry. */
-const unreadableCorpusContracts = async (): Promise<number> => {
-	const manifest = JSON.parse(
-		await readFile(pathOf('corpus/dev/index.json'), 'utf8'),
-	) as { entries: readonly { kind: string; path: string }[] }
-	const contracts = manifest.entries.filter(
-		(entry) =>
-			entry.kind === 'contract' &&
-			entry.path.startsWith('corpus/dev/contracts/'),
-	)
-	const readable = await Promise.all(
-		contracts.map((entry) =>
-			readFile(pathOf(entry.path), 'utf8').then(
-				() => true,
-				() => false,
-			),
-		),
-	)
-	return readable.filter((each) => !each).length
-}
-
 const DATED_CLAIMS: readonly DatedClaim[] = [
 	{
 		file: 'docs/index.md',
@@ -708,49 +687,16 @@ const DATED_CLAIMS: readonly DatedClaim[] = [
 	},
 	{
 		file: 'docs/index.md',
-		key: 'No live server has been scored end to end yet',
+		key: 'no live server stands behind it',
 		settles: 'read',
 		reason:
-			'a live MCP server is outside this repository, so no artifact in the tree records whether one was scored',
-	},
-	{
-		file: 'docs/index.md',
-		key: 'which has had no design pass',
-		settles: () => UNSUPPORTED_INTERFACE_KINDS.includes('web'),
-		reason: 'holds while `web` is still in `UNSUPPORTED_INTERFACE_KINDS`',
-	},
-	{
-		file: 'docs/explanation/what-ships.md',
-		key: 'Deferred until the contract layer is in real use',
-		settles: 'read',
-		reason:
-			'names four capabilities the roadmap defers; nothing in the tree records a deferral',
-	},
-	{
-		file: 'docs/explanation/what-ships.md',
-		key: 'The response descriptor question the kind turned on is settled',
-		settles: () => SUPPORTED_INTERFACE_KINDS.includes('mcp'),
-		reason: 'holds while `mcp` is in `SUPPORTED_INTERFACE_KINDS`',
+			'a live MCP server is outside this repository, so no artifact in the tree records whether one was scored; the sentence states how far the fixture carries rather than what is owed',
 	},
 	{
 		file: 'docs/explanation/what-ships.md',
 		key: 'is the one kind `compile` still refuses',
 		settles: () => UNSUPPORTED_INTERFACE_KINDS.length === 1,
 		reason: 'counts `UNSUPPORTED_INTERFACE_KINDS`',
-	},
-	{
-		file: 'docs/explanation/what-ships.md',
-		key: 'A held-out probe corpus',
-		settles: async () => (await unreadableCorpusContracts()) === 0,
-		reason:
-			'reads the half the bullet rests on, that every contract in `corpus/dev/` is published to be read; whether a probe set was held out from its authors is a fact about how it was produced and the corpus files do not record it',
-	},
-	{
-		file: 'docs/explanation/what-ships.md',
-		key: '**Validating the witness match against a second experiment round.**',
-		settles: 'read',
-		reason:
-			"a second experiment round that has not been run leaves no artifact; the same claim as the AI-feature guide's",
 	},
 	{
 		file: 'docs/how-to/evaluate-skill-behavior.md',
@@ -836,13 +782,6 @@ const DATED_CLAIMS: readonly DatedClaim[] = [
 		reason: 'holds while `web` is refused and `api` is accepted',
 	},
 	{
-		file: 'docs/how-to/evaluate-ai-feature-behavior.md',
-		key: 'which is implemented and not yet replicated',
-		settles: 'read',
-		reason:
-			'two halves and neither wants a predicate here: `matchProbeWitness` in `src/core/score/witness.ts` is called from `score.ts` and covered by `tests/score/witness.test.ts`, so the typecheck and the suite hold the implemented half and a predicate restating it would only repeat them; a round that was never run leaves no artifact for the unreplicated half',
-	},
-	{
 		file: 'docs/how-to/evaluate-agent-behavior.md',
 		key: 'Not proven, and worth knowing before you plan a corpus',
 		settles: 'read',
@@ -865,12 +804,6 @@ const DATED_CLAIMS: readonly DatedClaim[] = [
 		settles: 'read',
 		reason:
 			'which ports the CLI awaits is a fact about the command implementation, which this gate does not execute',
-	},
-	{
-		file: 'README.md',
-		key: 'Deferred until the contract layer is in real use',
-		settles: 'read',
-		reason: "the same roadmap sentence as `what-ships.md`'s",
 	},
 ]
 
@@ -1393,7 +1326,7 @@ for (const entry of TRANSCRIPTIONS) {
 	}
 	if (lines.join('\n').includes(entry.text)) continue
 	const head = entry.text.split('\n')[0] as string
-	const at = lines.findIndex((line) => line === head)
+	const at = lines.indexOf(head)
 	fail(
 		`${entry.file}${at === -1 ? '' : `:${at + 1}`}: ${entry.claim} no longer matches the string ` +
 			'the binary emits; the transcription and its source have to be the same bytes',
