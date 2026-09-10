@@ -241,7 +241,7 @@ The probe's `defectSignature` is what the witness match compares a finding again
         "path": null, "query": null, "header": null, "body": null,
         "argument": null,
         "option": { "input": { "literal": "fixtures/malformed.diff" } },
-        "environment": null, "stdin": null
+        "environment": null, "stdin": null, "arguments": null
       }
     },
     "predicate": {

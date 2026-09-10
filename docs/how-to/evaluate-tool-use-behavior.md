@@ -273,7 +273,7 @@ A probe's `defectSignature` names the tool rather than a verb and a URL, and its
 ```
 
 All nine input channels are declared and the eight the kind does not accept are `null`, exactly as a recorded observation spells them.
-Assert over a scalar the tool publishes beside a list rather than over the list itself: AD-4 resolves a check over an empty collection to `insufficient-evidence`, so "the list came back empty" can never witness a defect.
+Prefer a scalar the tool publishes beside a list over the list itself. AD-4's quantifiers abstain on an empty collection, so `for-all` and `for-any` over an empty list resolve `insufficient-evidence` and witness nothing. Three operators read a property of the collection itself and do resolve over one observed present and empty: `count-tolerance` reads its cardinality, `existence` and `absence` read its presence. So `count-tolerance(list, 0, 0)` is the spelling that makes "the list came back empty" a witness, and a quantifier over the same list is not.
 Declare that scalar in the descriptor's `requiredKeys`. A server free to omit the field the signature turns on reports the defect as `not-triggered`, and nothing says the evidence was missing.
 
 **About the tool having been called at all.**
@@ -319,7 +319,7 @@ The transport is stdio and nothing else. A server reached over Streamable HTTP s
 
 **Scores a probe.** A defect signature declares the tool name, the qualification gate admits the kind, and a recorded tool call's arguments are addressable, so a seeded tool-use defect can be qualified and matched against a sealed run record.
 
-**Missing.** A dev-corpus exemplar, and a channel model for a text-shaped tool result.
+**Missing.** A channel model for a text-shaped tool result.
 
 **Already works, and this is the part worth knowing before you fund any of it.** Both sides of the exchange accommodate the kind today. `Observation` in the sealed run record is not discriminated on kind (`sealed-run-record.ts:229`), so what a tool answered has somewhere to live. `foreignChannels` (`qualification.ts:187`) confines a tool-use signature to `response-body`, `response-status`, and its own `call-inputs`, which is the same answer compile-time reachability gives, a confinement the code decides. All three carry a value once the adapter runs: the structured result lands on `response-body`, the error flag on `response-status`, and the tool call's arguments on `call-inputs`. `response-headers` is not among them; `foreignChannels` hands it to a tool-use signature as foreign, so a signature naming it is refused rather than left empty. `ObservedCallInputs` (`sealed-run-record.ts:204`) carries a key per input channel, `arguments` among them.
 
