@@ -91,7 +91,7 @@ eval-quality: unreachable-check-evidence: EvalContract.oracles[id=O-005].check.o
 
 The pointer resolves to nothing, so the assertion checks evidence that cannot exist.
 
-**Use the corpus as a rule index.** `corpus/dev/contracts/` holds twenty-one contracts: nineteen covering the seven discipline rules, one per declaration state, and two describing a system under test that runs behind a command. Eighteen compile, and three fail by design.
+**Use the corpus as a rule index.** `corpus/dev/contracts/` holds twenty-two contracts: nineteen covering the seven discipline rules, one per declaration state, two describing a system under test that runs behind a command, and one describing a tool server whose operations are the tools it publishes. Nineteen compile, and three fail by design.
 
 ```bash
 node -e "for (const e of require('./corpus/dev/index.json').entries) if (e.structuralFailure) console.log(e.structuralFailure, e.path)"

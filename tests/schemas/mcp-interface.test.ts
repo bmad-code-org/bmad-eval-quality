@@ -542,8 +542,18 @@ describe('a transport identity is compared inside its own shape family', () => {
 	// Two MCP servers publishing the same tool name are refused, and the author
 	// has no fix: renaming the tool breaks the binding to the real server. The
 	// identity carries no server segment because AD-40 needs it contract-
-	// independent, so this is a recorded limitation rather than an oversight,
-	// and the fix if it ever bites is a namespace on the map key.
+	// independent, so this is a recorded limitation rather than an oversight.
+	//
+	// Namespacing the map key by `logicalId` would admit the pair, and that is
+	// the wrong trade rather than the unwritten fix. `resolveHomeOperation`
+	// returns the first operation in the family whose identity matches, and its
+	// docblock rests on this refusal for the claim that the first match is the
+	// only match. A signature declares a kind and a tool name and nothing that
+	// names a server, so with the pair admitted there is no input by which the
+	// resolver could pick between two equally matching tools: a coded compile
+	// failure the author reads would become a silent binding to whichever
+	// interface was declared first. The pair below pins both halves, and the
+	// admitted case is the one that says the refusal is scoped to the name.
 	it('refuses two mcp interfaces publishing the same tool name', () => {
 		const clone = structuredClone(mcpContract) as any
 		const [first] = clone.permittedInterfaces
@@ -562,6 +572,41 @@ describe('a transport identity is compared inside its own shape family', () => {
 		)
 		expect(failure.code).toBe('duplicate-operation-signature')
 		expect(failure.message).toContain('"search_notes"')
+	})
+
+	it('admits two mcp interfaces whose tool names differ, each resolving home', () => {
+		const clone = structuredClone(mcpContract) as any
+		const [first] = clone.permittedInterfaces
+		// Unshifted rather than pushed. `resolveHomeOperation` scans in
+		// declaration order, so with the archive server appended the
+		// `search_notes` half of the pair would resolve correctly under a
+		// resolver that ignored the identity entirely and returned the first
+		// operation it saw.
+		clone.permittedInterfaces.unshift({
+			...structuredClone(first),
+			logicalId: 'archive-tool-server',
+			operations: [
+				{
+					...structuredClone(first.operations[0]),
+					operationId: 'archive-notes',
+					toolName: 'archive_notes',
+				},
+			],
+		})
+		const contract = EvalContract.parse(clone)
+		expect(() => checkDuplicateOperationSignature(contract)).not.toThrow()
+		expect(
+			resolveHomeOperation(
+				DefectSignature.parse(toolSignature('archive_notes')),
+				contract.permittedInterfaces,
+			),
+		).toMatchObject({ operationId: 'archive-notes' })
+		expect(
+			resolveHomeOperation(
+				DefectSignature.parse(toolSignature('search_notes')),
+				contract.permittedInterfaces,
+			),
+		).toMatchObject({ operationId: 'search-notes' })
 	})
 
 	it('refuses an api-shaped signature that declares the kind', () => {

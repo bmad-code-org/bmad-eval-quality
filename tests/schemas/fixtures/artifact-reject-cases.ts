@@ -1512,7 +1512,7 @@ export const ARTIFACT_REJECT_CASES: readonly ArtifactRejectCase[] = [
 	{
 		id: 'brief-interface-kind-outside-the-four',
 		artifact: 'sealed-evaluator-brief',
-		constraint: "an interface kind is AD-19's closed four",
+		constraint: 'an interface kind is api, web, cli, or mcp',
 		mutate: (brief) => {
 			brief.permittedInterfaces[0].kind = 'grpc'
 		},

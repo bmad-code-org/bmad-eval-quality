@@ -219,11 +219,14 @@ Its O-001 compares `/interactions/read-back/response-body/note/title` with `/int
 That is a workflow contract catching a persistence defect that a single-response check cannot see.
 
 The capture half has narrower evidence.
-No contract in `corpus/dev/contracts/` and no committed chain uses a `{ captured }` binding, so what backs it is the schema, the three compile checks demonstrated above, and the unit tests in `tests/compile/bindings.test.ts`, `tests/score/bindings.test.ts`, and `tests/score/binding-order.test.ts`.
+One shipped contract uses a `{ captured }` binding: `corpus/dev/contracts/notes-tool-server.json` binds its `read-back` step's `query` argument to the identifier its creation call returned.
+A capture has two axes and that exemplar covers one value on each: it binds into the `arguments` input channel, and it captures from `response-body`, which is the source channel the three compile checks above are about.
+No committed chain uses a capture at all, and a capture from `stdout` or from the `artifact` channel is shipped nowhere, so what backs those is the schema, those three compile checks, and the unit tests in `tests/compile/bindings.test.ts`, `tests/score/bindings.test.ts`, and `tests/score/binding-order.test.ts`.
 The worked example in this guide was compiled for this page and is not shipped in the corpus.
 
-The four-leg control branch is in the same position.
-No contract in `corpus/dev/contracts/` declares a `fixtureReset`, so the `control-mutate` and `control-reset` legs are exercised by `tests/preflight/plan.test.ts` and by no shipped contract.
+The four-leg control branch has the same one exemplar.
+`corpus/dev/contracts/notes-tool-server.json` declares a `fixtureReset`, so its pre-flight plans the four-leg branch: `preflight-control-observe`, `preflight-control-mutate`, the contract's own `reset-notes`, and `preflight-control-observe-2`.
+`tests/preflight/plan.test.ts` is what covers the shapes that contract does not declare.
 
 ## In BMAD terms
 
