@@ -199,7 +199,7 @@ Checked and holding, listed so a later reader does not read the survival as a mi
 - [x] `CHANGELOG.md` `[Unreleased]` -- the disclosure, on `:285-290`'s shape and following the one precedent at `9-5-the-published-surface-the-corpus-and-the-disclosed-breaks.md:127`. It names two things: the dev corpus gaining a member, which moves the corpus digest and so stops a scoring version computed before this epic being comparable with one computed after, and the new `validate` step `check:doc-counts` adds. The non-comparability note is stated once for this epic and this is the story that states it, because this is the first story that moves the corpus. `:578`'s standing `schemaVersion` statement is left alone.
 - [x] `grep -rn mcp src schemas` -- confirm every surviving mention describes the shipped kind, and hand anything prose-shaped to Story 11.9 by name.
 - [x] Voice pass -- grep every file this story edited for `, not `, `rather than`, `instead of`, `as opposed to`, `, never `, `no longer`, and keep only the hits where both halves carry a fact.
-- [x] `_bmad-output/project-knowledge/learning-path-step-by-step.md` -- add this story's step as the next number after the highest in the file, marked `(epic11-story8)`, plus its table row, following `learning-path-template.md`. Written after the peer review's findings are addressed.
+- [x] `_bmad-output/project-knowledge/learning-path-step-by-step.md` -- add this story's step as the next number after the highest in the file, marked `(epic11-story8)`, plus its table row, following `learning-path-template.md`. Written after the peer review's findings are addressed. Landed as Step 54: Story 11.12 merged in a parallel worktree while this story was in review and took Step 53, so this branch was rebased onto its merge and the step and its table row renumbered. Decision 19 records it.
 
 **Acceptance Criteria:**
 
@@ -572,6 +572,25 @@ holds, and the ownership table gives that cell to Story 11.11. Its other clause,
 unit-tested", is now understated rather than false, since one shipped corpus contract carries a
 captured binding. Story 11.11 owns the cell and inherits the wording; the honest grade once it lands
 is "unit-tested and shipped in one corpus contract, with no shipped end-to-end run".
+
+**Decision 19: this story is Step 54, because Story 11.12 merged in parallel and took 53.**
+The brief said Step 53 and the file ended at 52 when it was written. Story 11.12 landed from a
+separate worktree while this story was in peer review, and its own step took 53. This branch was
+rebased onto that merge and the step renumbered, along with its row in the table at the top of the
+file.
+
+The rebase conflicted in one file, the learning path, at three hunks: the table row and the two ends
+of the step body. It was resolved by taking main's copy of the file whole and re-inserting this
+story's step and row against it, rather than by editing the conflict markers, because a hunk
+boundary sat inside Story 11.12's own `### Reference` section and a marker-by-marker resolution
+dropped it. Nothing else conflicted: `CHANGELOG.md` auto-merged because Story 11.12 added no entry
+there, `sprint-status.yaml` took main's `11-12-...: done` line unchanged, and neither of the two
+published pages Story 11.12 rewrote carries a count, so `check:doc-counts` needed no entry and
+reported no dead one. The full gate was re-run against the rebased tree: 126 files and 4136 tests,
+where this story's own runs read 125 and 4109.
+
+Downstream consequence: Story 11.9 runs last and writes the epic's final learning-path step, so it
+reads the file rather than the brief for the next number.
 
 ## Design Notes
 
