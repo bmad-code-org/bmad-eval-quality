@@ -25,6 +25,11 @@ import {
 import { StructuralFailure } from '../../src/core/failure-codes.ts'
 import { EvalContract } from '../../src/core/schemas/eval-contract.ts'
 import { operationsOf } from '../../src/core/schemas/interface.ts'
+import { renderStepReference } from '../../src/core/seal/derived-reference.ts'
+import {
+	anyOperationOf,
+	buildPlanIndex,
+} from '../../src/core/seal/plan-index.ts'
 import { commandContract } from './fixtures/command-contract.ts'
 import { mcpContract } from './fixtures/mcp-contract.ts'
 import { populatedContract } from './fixtures/relevance-contracts.ts'
@@ -273,5 +278,35 @@ describe('an mcp tool and a cli executable sharing a name', () => {
 		merged.permittedInterfaces.push(command.permittedInterfaces[0])
 		const contract = EvalContract.parse(merged)
 		expect(() => checkDuplicateOperationSignature(contract)).not.toThrow()
+	})
+})
+
+describe('the plan index sorts a tool call into its own map', () => {
+	const contract = EvalContract.parse(mcpContract)
+	const index = buildPlanIndex(
+		contract.interactionPlan,
+		contract.permittedInterfaces,
+	)
+
+	it('answers the tool-call accessor and neither of the other two', () => {
+		expect(index.mcpOperationOf('search-notes')?.toolName).toBe('search_notes')
+		expect(index.operationOf('search-notes')).toBeUndefined()
+		expect(index.commandOperationOf('search-notes')).toBeUndefined()
+	})
+
+	it('resolves it through the kind-neutral accessor', () => {
+		const operation = anyOperationOf(index, 'search-notes')
+		expect(operation).toBeDefined()
+		expect(isMcpOperation(operation!)).toBe(true)
+	})
+
+	it('names it a tool in a sealed brief, on the noun-follows-the-kind rule', () => {
+		const step = index.stepOf('search')
+		const operation = anyOperationOf(index, 'search-notes')
+		expect(step).toBeDefined()
+		expect(operation).toBeDefined()
+		expect(renderStepReference(step!, operation!, [step!], index)).toContain(
+			'the search notes tool',
+		)
 	})
 })

@@ -269,6 +269,14 @@ The comment at `artifacts.test.ts:95-102` states what the field is for: "A fixtu
 
 `WitnessInputs` is a plain `z.union` and carries no discriminating field, since its branches are strict objects told apart by the channel keys they declare, which is the reason `:60-76` records. So the entry names the field that carries the union, `inputs`, which is also the field AD-11 puts this story's probe bump record on. `arguments` was the other candidate and is turned down: it names one branch's channel key, so it would read as a discriminator this union does not have and would leave a later api-side or command-side witness seed with no consistent value to take. Downstream consequence: Story 11.6's signature seed names `interfaceKind` on `probe/command-signature`'s own terms and leaves the `expectedClean` group at two, and any later fixture reaching a union nested inside an artifact names the field carrying that union.
 
+**Decision 15: the plan index sorts a tool call into its own map, which closes a cast that had started lying.**
+
+`buildPlanIndex` (`seal/plan-index.ts`) sorted every non-`cli` operation into the `operations` map with `operation as Operation`, on a comment stating that "`web` and `mcp` carry the api operation shape". That stopped being true the moment `McpOperation` landed, and the cast is what kept it type-checking: `operationOf` promises an `Operation` and would have handed back a tool call with no `method` and no `pathTemplate`, so any consumer reading either got `undefined` at run time with a clean typecheck. This is exactly the silent-wrong-answer class Decision 7 exists to close, found by grepping for the cast rather than by the compiler, which is the point.
+
+`PlanIndex` gains `mcpOperationOf`, `anyOperationOf` reads all three maps, and `operationOf` returns `undefined` for a tool call, which is what its own docblock already promised for a command. `resolveOperation` still returns an `Operation` and is called from tests alone in this tree, so nothing in `src/` narrows.
+
+The epic's cross-story register listed `plan-index.ts` among the eight files that "stop compiling when a third branch lands", to be worked as a checklist by Story 11.13. It did not stop compiling, because of that cast. Story 11.13 inherits seven files rather than eight.
+
 ## Design Notes
 
 The organising idea is the one Epic 9 already proved: the discriminator exists, and the operation shape is what should depend on it. `cli` got its own shape because a command has no method and no path template. `mcp` has the same problem one level sharper, since every tool call shares one transport identity, so the HTTP shape does not merely waste fields, it makes two correct declarations collide.
@@ -440,6 +448,7 @@ The other thing worth recording is that the tool identity is the whole of what m
 - `EvalContract.safeParse` returns `success: false` for an `mcp` interface carrying `method` and `pathTemplate`, for an `api` interface carrying `toolName`, for a tool name containing `/`, `:`, or `.`, and for a `descriptorChannel` nominating any tag but `structured-result`. Each has a case in `tests/schemas/mcp-interface.test.ts` and a reject fixture in `tests/schemas/fixtures/artifact-reject-cases.ts`.
 - `checkDuplicateOperationSignature` admits `mcpContract`'s two distinct tools and throws `duplicate-operation-signature` naming `"search_notes"` when one name is declared twice.
 - Every compile check but `checkInterfaceKind` admits `mcpContract`, asserted as its own case, so Story 11.5 opens the gate and changes nothing else.
+- `buildPlanIndex` over `mcpContract` answers `mcpOperationOf` and returns `undefined` from `operationOf` and `commandOperationOf`, and `renderStepReference` calls the step "the search notes tool".
 - `ARCHITECTURE-SPINE.md` frontmatter still reads `revision: 9`, and no file was added under the ADR directory.
 - The de-AI grep over the diff (`, not `, `rather than`, `instead of`, `as opposed to`, `, never `, `no longer`) returns only hits where both halves of the contrast carry a fact.
 
