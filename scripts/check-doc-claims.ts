@@ -22,10 +22,10 @@
 //      `src/`. A mention in a comment does not save a name that was renamed.
 //   3. Transcribed lists. A list a page spells out equals the set the source
 //      exports.
-//   4. Time-sensitive claims. A sentence saying a thing is not yet true, or is
-//      true "today", is registered with how it is settled: by a predicate this
-//      script runs, or by a recorded human reading with the reason no artifact
-//      can decide it.
+//   4. Time-sensitive claims. A sentence saying a thing is not yet true, is
+//      true "today", or pins a reading to a released version, is registered with
+//      how it is settled: by a predicate this script runs, or by a recorded
+//      human reading with the reason no artifact can decide it.
 //   5. Named codes. A code a page says is raised exists in a registry.
 //   6. Worked JSON. A published example block parses against the schema the
 //      prose names.
@@ -79,8 +79,10 @@ import {
 	SUPPORTED_INTERFACE_KINDS,
 	UNSUPPORTED_INTERFACE_KINDS,
 } from '../src/core/compile/interface-inventory.ts'
+import { resolveCheck } from '../src/core/evaluate/resolution.ts'
 import { FAILURE_CODES } from '../src/core/failure-codes.ts'
 import { DefectSignature } from '../src/core/schemas/defect-signature.ts'
+import { EVAL_CONTRACT_SCHEMA_VERSION } from '../src/core/schemas/eval-contract.ts'
 import { Expression } from '../src/core/schemas/expression.ts'
 import { RUNTIME_FAULT_CODES } from '../src/core/schemas/faults.ts'
 import {
@@ -90,6 +92,7 @@ import {
 } from '../src/core/schemas/interface.ts'
 import { Oracle } from '../src/core/schemas/oracle.ts'
 import { InteractionStep } from '../src/core/schemas/plan.ts'
+import { PROBE_SCHEMA_VERSION } from '../src/core/schemas/probe.ts'
 import { ManifestationWitness } from '../src/core/schemas/sensitivity-witness.ts'
 import { QUALIFICATION_FAILURES } from '../src/core/score/qualification.ts'
 
@@ -631,15 +634,53 @@ for (const entry of LISTS) {
 // ---------------------------------------------------------------------------
 
 /**
- * The shapes a claim takes when its truth depends on when it was written. Two
- * families: a sentence saying a thing has not happened, and a sentence saying
- * something is true as of now. Both are exactly the sentences that go stale
- * when the code moves under them and neither is decidable from the words alone,
- * so the pattern's job is to find candidates and the registry's job is to say
- * how each one is settled.
+ * A version a sentence pins a reading to. Two prepositions, which are the ones
+ * this repository's pages use when they say a claim was checked at a release,
+ * plus the bare `as of` that carries the same thing with no verb at all:
+ * "run end to end against the built CLI at 2.0.0". A version named with `in`,
+ * `from` or `under`, or standing as a sentence's subject, is release history to
+ * this pattern, and `VERSION_CLAIM` below is what reads those.
+ *
+ * The claim it catches is the one nothing else here could: a verification
+ * sentence carries no dated vocabulary, names no symbol that could be renamed,
+ * and transcribes no list, so it ages in silence while every gate stays green.
+ * `docs/how-to/evaluate-tool-use-behavior.md` carried one across a major release
+ * that shipped twelve breaking changes.
+ */
+const VERSION_PIN =
+	/\b(?:at|against|as of) (?:eval-quality )?(\d+\.\d+\.\d+)\b/i
+
+/**
+ * The same claim written any other way. `VERSION_PIN` reads a preposition, and
+ * the preposition is the wrong half of the sentence to read: "the bug was fixed
+ * in 1.4.0" is history and "this was verified in 1.4.0" is a pin, and the two
+ * share the word. The verb is what separates them, so this alternative anchors
+ * on the verb and takes the version at whatever distance it sits, in either
+ * order. Six spellings a preposition rule misses are caught here, "run end to
+ * end on 2.0.0" and "reproduced under 2.0.0" among them. `built` is in the
+ * vocabulary because "against the built CLI" is how this repository already
+ * writes the claim, so "a binary built from 2.1.0" is how the next one gets
+ * written.
+ *
+ * Both forms stay in the trigger. This one catches more, and the preposition
+ * form catches a pin whose verb sits in a neighbouring sentence.
+ */
+const VERSION_CLAIM =
+	/\b(?:run|ran|re-run|verified|checked|measured|reproduced|observed|transcribed|exercised|built|holds?|stands?)\b[^.]{0,90}?\b\d+\.\d+\.\d+\b|\b\d+\.\d+\.\d+\b[^.]{0,90}?\b(?:was|were) (?:run|verified|checked|measured|observed|built)\b/i
+
+/**
+ * The shapes a claim takes when its truth depends on when it was written. Three
+ * families: a sentence saying a thing has not happened, a sentence saying
+ * something is true as of now, and a sentence pinning a reading to a released
+ * version, which `VERSION_PIN` above carries. All three are exactly the
+ * sentences that go stale when the code moves under them and none is decidable
+ * from the words alone, so the pattern's job is to find candidates and the
+ * registry's job is to say how each one is settled.
  */
 const TIME_SENSITIVE = new RegExp(
 	[
+		VERSION_PIN.source,
+		VERSION_CLAIM.source,
 		'\\bno [a-z-]+ (?:has|have)\\b',
 		'\\bno live\\b',
 		'\\bno committed\\b',
@@ -686,6 +727,66 @@ type DatedClaim = {
 	readonly settles: 'read' | (() => Promise<boolean> | boolean)
 	readonly reason: string
 }
+
+/** The manifest the release workflow stamps, and the engine floor it declares. */
+const manifest = JSON.parse(await readFile(pathOf('package.json'), 'utf8')) as {
+	version: string
+	engines: { node: string }
+}
+const publishedMajor = manifest.version.split('.')[0] as string
+
+/**
+ * How far a version-pinned reading can be settled from inside the tree: the
+ * version the sentence names is in the published major line, and the record
+ * that reading was written down in names the same version.
+ *
+ * The first half decides currency and never the reading. Whether the route a
+ * sentence describes still runs is settled by running it, which no check here
+ * does. What this holds is the one thing semantic versioning makes mechanical:
+ * a release that breaks the reading moves the major, so a sentence left behind
+ * by one fails this gate and somebody re-runs the route. A minor or a patch
+ * leaves the pin standing, which is the promise the version number itself
+ * makes.
+ *
+ * The second half closes the cheapest way of passing the first, which is to
+ * type the new numeral over the old one. A version in the page has to be a
+ * version in the record too, so passing this gate means somebody opened the
+ * record and wrote down what they saw.
+ *
+ * The match is read from the key forward. Scanning the whole line would take
+ * whichever pin came first on it, which is the wrong one on any line carrying
+ * two.
+ */
+const pinnedVersionIsCurrentMajor = (
+	file: string,
+	key: string,
+	record: string,
+): boolean => {
+	const line =
+		(pageText.get(file) ?? []).find((each) => each.includes(key)) ?? ''
+	const at = line.indexOf(key)
+	const pinned = at === -1 ? null : VERSION_PIN.exec(line.slice(at))
+	if (pinned === null) return false
+	const version = pinned[1] as string
+	if (version.split('.')[0] !== publishedMajor) return false
+	return record.includes(version)
+}
+
+/**
+ * A budget large enough that no check registered here can exhaust it. The
+ * parameter exists for a regex operator's step count; nothing above uses one.
+ */
+const REGEX_STEP_BUDGET = 1_000_000
+
+const TOOL_USE_ROUTE_KEY = 'was run end to end against the built CLI at'
+
+/** The record the tool-use route's reading is written down in. */
+const toolUseRouteRecord = await readFile(
+	pathOf(
+		'_bmad-output/implementation-artifacts/11-1-whether-tool-use-evaluation-is-one-gap-or-two.md',
+	),
+	'utf8',
+)
 
 const DATED_CLAIMS: readonly DatedClaim[] = [
 	{
@@ -785,6 +886,46 @@ const DATED_CLAIMS: readonly DatedClaim[] = [
 			),
 		reason:
 			'reads whether the qualification gate still publishes the code it refuses an `artifact`-channel signature with; the day a signature may address a written file, that code stops being the reason',
+	},
+	{
+		file: 'docs/how-to/evaluate-tool-use-behavior.md',
+		key: TOOL_USE_ROUTE_KEY,
+		settles: () =>
+			pinnedVersionIsCurrentMajor(
+				'docs/how-to/evaluate-tool-use-behavior.md',
+				TOOL_USE_ROUTE_KEY,
+				toolUseRouteRecord,
+			),
+		reason:
+			'compares the version the sentence pins the route to against the published major, and against the record that transcribes the run; the route itself is settled by running it, which no check here does',
+	},
+	{
+		file: 'docs/how-to/evaluate-agent-behavior.md',
+		key: 'resolves `true` from eval-quality 1.4.0',
+		settles: () =>
+			resolveCheck(
+				{
+					op: 'count-tolerance',
+					operands: [{ pointer: '/interactions/observed/response-body/items' }],
+					expected: 0,
+					tolerance: 0,
+					relative: false,
+				},
+				() => [],
+				(pointer) => pointer.endsWith('/items'),
+				{},
+				REGEX_STEP_BUDGET,
+				'check-doc-claims',
+			).resolution === 'true',
+		reason:
+			'resolves a `count-tolerance` check over a collection-typed pointer answered present and empty, which is the path the sentence is about: `countTolerance` alone answers `true` for any empty array under any wiring, and what the sentence reports is `resolution.ts` marking the operand total rather than needing a member',
+	},
+	{
+		file: 'docs/how-to/evaluate-agent-behavior.md',
+		key: 'all nine defect probes are exercised and caught',
+		settles: 'read',
+		reason:
+			"the numbers are TEA's, recorded in that repository's `test/probes/expected-strength.json`, so nothing here can re-run them; the sentence names the eval-quality version they were read at, which is what tells a reader how far back the reading is",
 	},
 	{
 		file: 'docs/reference/cli-commands.md',
@@ -1294,6 +1435,30 @@ for (const page of authoredPages) {
  * A substring compare rather than a fence walk, because the claim is that the
  * page carries these bytes and the fence around them is presentation.
  */
+/**
+ * The engine floor as the two pages spell it, from the range `package.json`
+ * declares. A range this cannot render, `^22` say, is a failure of its own
+ * rather than a crash: the pages spell one version, so a range that is not a
+ * floor is not the thing they are transcribing, and the entries drop out rather
+ * than comparing against nothing while every other class still reports.
+ */
+const declaredNodeRange = manifest.engines.node
+const nodeFloorVersion = /^>=\s*(\d+\.\d+\.\d+)$/.exec(declaredNodeRange)
+if (nodeFloorVersion === null) {
+	fail(
+		`package.json: engines.node is "${declaredNodeRange}", which is not a floor; ` +
+			'README.md and docs/tutorials/getting-started.md each spell one version, so nothing ' +
+			'here can hold them',
+	)
+}
+const nodeFloor =
+	nodeFloorVersion === null
+		? null
+		: `Node.js ${nodeFloorVersion[1] as string} or newer`
+
+/** The pages that spell the floor. Both carry the same sentence. */
+const NODE_FLOOR_PAGES = ['README.md', 'docs/tutorials/getting-started.md']
+
 const TRANSCRIPTIONS: readonly {
 	readonly file: string
 	readonly claim: string
@@ -1305,6 +1470,38 @@ const TRANSCRIPTIONS: readonly {
 		claim: "the CLI's exit-code table",
 		text: EXIT_CODE_TABLE,
 	},
+	{
+		// A sentence naming the stamps an author has to carry forward is a live
+		// claim about the tree, and every other class reads past it: it names no
+		// symbol, cites no line, transcribes no exported list, and carries no
+		// dated vocabulary.
+		//
+		// Both halves read a build constant. Reading the probe's stamp off a
+		// committed worked-example chain would have compared a hand-typed literal
+		// against a copy of itself: `check:worked-example` rebuilds that chain
+		// from `worked-example-target.ts`, which used to spell the stamp as a
+		// literal, and no reader in the pipeline performs AD-11's version
+		// equality on a probe the way `compile` does on a contract. So a bump
+		// would have left the literal, the chain, and this page agreeing on a
+		// stale number. `PROBE_SCHEMA_VERSION` is the single place it is written
+		// now, and the chain builds from it.
+		file: 'docs/how-to/evaluate-tool-use-behavior.md',
+		claim:
+			'the schema stamps the tool-use route carries, from `EVAL_CONTRACT_SCHEMA_VERSION` and `PROBE_SCHEMA_VERSION`',
+		text:
+			`the contract is \`schemaVersion\` ${EVAL_CONTRACT_SCHEMA_VERSION}, ` +
+			`the probe is ${PROBE_SCHEMA_VERSION}`,
+	},
+	// Two pages state the engine floor and `package.json` declares it. The three
+	// agreed with nothing comparing them, so an edit to one page left the other
+	// and the manifest behind with every gate green.
+	...(nodeFloor === null
+		? []
+		: NODE_FLOOR_PAGES.map((file) => ({
+				file,
+				claim: "the Node.js floor, from `package.json`'s `engines.node`",
+				text: nodeFloor,
+			}))),
 	{
 		// Story 11.10 asked for this to settle by predicate rather than by a
 		// reading. It is a transcription rather than a dated claim: the sentence

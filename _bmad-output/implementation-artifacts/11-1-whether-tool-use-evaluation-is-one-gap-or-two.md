@@ -414,3 +414,153 @@ node dist/cli/main.js preflight --contract $SCRATCH/tool-use-contract-route-b.js
 node $SCRATCH/qualify.ts       # all four probes, both contracts
 node $SCRATCH/seal-probes.ts   # AD-9 admission over the Route A probe
 ```
+
+## Re-verified at 2.0.0, 10 September
+
+The published claim this story wrote, `docs/how-to/evaluate-tool-use-behavior.md`'s "that route was run
+end to end against the built CLI", was pinned to 1.4.2 and was the only version-pinned verification
+claim in the docs. `2.0.0` shipped twelve breaking entries, so the route was run again rather than
+reasoned about. `npm run build` first, then the same four stages against files authored in an
+untracked scratch directory.
+
+**Route A reproduces whole.** The contract carrying `artifacts: ["tool-calls"]`, `descriptorChannel`
+nominating that artifact, the two tailed oracles, and the sensitivity witness over tailed artifact
+pointers compiles at exit 0 and seals at exit 0. Pre-flight plans the same five legs
+(`leg-changelog-task`, `leg-tag-task`, `preflight-control-observe`, `preflight-control-observe-2`,
+`tool-log-fault`), reduces them at exit 0, and reports all six checks satisfied. The sensitivity
+witness legs and the manifestation witness both address the file, as they did at 1.4.2.
+
+**The scoring-side restriction reproduces whole.** `qualifyProbe` returns
+`condition-artifact-channel-contract-local` for the tailed
+`/interactions/observed/artifact/tool-calls/calls` and for the bare
+`/interactions/observed/artifact/tool-calls`, with the same detail string this story transcribed, and
+`sealProbeSet` admits neither. With the log printed as JSON on a nominated `stdout`, the same seeded
+defect qualifies with an empty failure list and `sealProbeSet` admits it.
+
+**Two stamps and one key are the whole migration.** The eval contract is `schemaVersion` 5 where this
+story authored 4, the probe is 5 where this story authored 3, and the defect signature's
+`condition.selector.inputBinding` declares the ninth channel `"arguments": null`. Every exit code and
+every check outcome above is what 1.4.2 gave.
+
+**One published sentence stopped being true, and the release is why.** This story's paragraph said the
+file stays reachable when `stdout` is nominated, "so an existence oracle and the sensitivity witness
+legs still reach it". The existence oracle half holds: a bare `/interactions/run/artifact/tool-calls`
+compiles at exit 0 under a `stdout` descriptor. The witness half is refused at compile now:
+
+```
+unreachable-check-evidence: EvalContract.permittedInterfaces[0].operations[0].sensitivityWitness
+.relation.operands[0].operands[0]: "/interactions/leg-changelog-task/artifact/tool-calls" addresses
+artifact, which a witness leg of operation "run-agent" does not carry; pre-flight builds each leg
+from stdout, exit-code, call-inputs alone
+```
+
+That is `checkExpressionLegChannel`, which landed in `ca4c621` on this story's own follow-up branch,
+after `283bdfe` published the paragraph, and shipped in `2.0.0`. It closes the false pass this story's
+record already names as the fourth route, and the false pass is observable rather than argued.
+Pre-flight runs no compile pass, so the pre-2.0.0 witness shape is still executable through it. The
+same observations, with both sensitivity legs given identical `stdout`, through the two contracts:
+
+```
+witness at the artifact  (route-b-contract.json)        exit 0  input-sensitivity: satisfied
+witness on the stream    (route-b-stdout-witness.json)  exit 3  input-sensitivity: failed,
+                                                                "The witness relation resolved false."
+```
+
+Two identical legs certified as sensitive. `deepEquality` (`src/core/evaluate/operators.ts:90`)
+returns false the moment either side is absent, so `not(deep-equality(absent, absent))` is true on
+every run and the witness reports a system that answered the same thing twice as one that responds to
+its input. The page now says the witness moves to the stream beside the signature.
+
+The manifestation witness has the same shape and a louder failure. It is not compile-checked, so a
+relation over an un-nominated artifact still parses and plans. Each leg then carries the nominated
+channel, `call-inputs`, and the exit code alone, so the pointer is absent on every leg and the
+relation over it resolves the same way on the fault leg and the clean legs alike. Which check fails
+follows from the relation's polarity, and both were run:
+
+```
+absence   over /interactions/tool-log-fault/artifact/tool-calls/calls
+          exit 3  seeded-faults-scoped: failed, "the manifestation witness fires on clean leg
+                  "leg-changelog-task""       seeded-fault-fired: satisfied
+existence over the same pointer
+          exit 3  seeded-faults-scoped: satisfied
+                  seeded-fault-fired: failed, "the manifestation witness resolved false on its own
+                  fault leg"
+```
+
+A relation resolves `true`, `false`, or `insufficient-evidence`; it is the pointer that is absent,
+and `reduce.ts` compares each row against `true` alone. Three shapes were run in the peer review
+round, and the middle one is the one worth publishing:
+
+```
+not(deep-equality(A, A))                 exit 3  scoped: failed, fires on clean leg
+                                                 "leg-changelog-task"    fired: satisfied
+all(absence(stdout/calls), absence(A))   exit 0  scoped: satisfied       fired: satisfied
+for-all over A, predicate existence      exit 3  scoped: satisfied
+                                                 fired: failed, "resolved insufficient-evidence on
+                                                 its own fault leg"
+```
+
+The middle row passes every check with the pointer at the file contributing nothing: the other
+operand reads a carried channel and discriminates on its own, so the witness looks like it reads the
+file and does not. That is the same false-pass family one level up from the sensitivity witness, and
+it is the shape an author writes when they add a file assertion to a witness that already works. The
+first row matters because `absence` names one operator while the class is "any relation that resolves
+`true` over an absent pointer", and `not(deep-equality(...))` is this repository's own member of it.
+
+`docs/how-to/evaluate-agent-behavior.md` said a manifestation witness "may address an artifact
+freely". It now states the condition the descriptor has to meet, both polarities, and the compound
+shape that passes.
+
+**The claim is registered now.** `scripts/check-doc-claims.ts` gained two class-4 triggers for a
+version a sentence pins a reading to. `VERSION_PIN` reads the preposition, `at <version>`,
+`against <version>` or `as of <version>`, and doubles as the extractor the predicate reads. `VERSION_CLAIM` reads the
+verb, which is the half that actually separates a pin from release history: "the bug was fixed in
+1.4.0" and "this was verified in 1.4.0" share the preposition and differ in the verb. Twelve
+spellings of a pin were tried against the pair and ten fire, including "a binary built from 2.1.0",
+which is how the next re-verification of this route gets written. The two that slip, "this behaviour
+dates to 2.0.0" and "2.0.0 is where we last looked", carry no verb from the list and no preposition
+from it, and neither is this repository's register. Five history spellings were tried and none fires,
+which is the half that has to keep missing.
+
+The tool-use entry settles by predicate on two conditions. The version the sentence names is in the
+published major, so the next breaking release fails the gate until somebody re-runs the route. And
+that same version appears in this file, so typing a new numeral over the old one fails too: passing
+means somebody opened the record and wrote down what they saw. Neither condition decides whether the
+route still runs, and the entry's reason says so.
+
+Three more claims are held that were not before. `docs/how-to/evaluate-agent-behavior.md`'s "At
+eval-quality 1.4.0, all nine defect probes are exercised and caught" is registered as a reading,
+because the numbers are TEA's, in another repository, and nothing here can re-run them. The same
+page's "`count-tolerance` over a collection observed to be present and empty resolves `true`" is
+settled by resolving a `count-tolerance` check over a collection answered present and empty. The
+operator alone answers `true` for any empty array under any wiring, so a test of the operator would
+have stayed green through the regression the sentence is about, which is `resolution.ts` marking that
+operand total. And the sentence this change itself added, naming the two schema stamps, is held as a
+transcription against two build constants, because a claim about the current stamps is exactly the
+shape this change set out to stop shipping unheld.
+
+The probe half of that needed a constant that did not exist. `EVAL_CONTRACT_SCHEMA_VERSION` is held
+by `compile`, which throws `schema-version-mismatch` on a stale stamp, and that call is what makes
+the contract half real. The probe's stamp was a literal in `worked-example-target.ts` copied into the
+committed chain, so `check:worked-example` compared it against a copy of itself and a bump would have
+left the literal, the chain, and the page agreeing on a stale number. `PROBE_SCHEMA_VERSION` now
+lives in `probe.ts` beside the schema it names, the chain builds from it, and this gate reads it. It
+records in its own docblock what it does not do: no reader in the pipeline performs AD-11's version
+equality on a probe the way `compile` does on a contract, so the constant is the single place the
+stamp is written rather than a comparison anything performs.
+
+One claim outside the version pattern is held in the same edit: `README.md` and
+`docs/tutorials/getting-started.md` both spell the Node.js floor, `package.json` declares it in
+`engines`, and the three agreed today with nothing comparing them. All three are one transcription
+now.
+
+The sweep that found it: every `\d+\.\d+\.\d+` in `docs/` and `README.md`, and every line matching
+`run end to end|ran end to end|was run|were run|against the built|transcribed from|verified
+against|reproduc|has been run|was measured|were measured|as of \d|at the time of writing|last
+(checked|verified|run)`. The peer review widened it again with `compiles at exit|seals at
+exit|resolves at exit|all six checks|exit \`0\`|admits|refused with|qualifies with` and found nothing
+further. Twelve version mentions once this change's own two are counted: seven state what a past
+release changed, or what carrying a file across one costs, and stay true however far the tree moves;
+two are the Node.js floor, now held as a transcription; and three are pins, all three registered
+here. The seven include the two sentences this change added, `:334`'s "forward from 1.4.2" and
+`:339`'s "compiled under 1.4.2", which are history by the same test as the rest.
