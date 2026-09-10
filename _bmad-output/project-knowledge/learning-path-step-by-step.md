@@ -4045,7 +4045,7 @@ One of the three built an address with a piece missing, so it compared real evid
 3. `tests/adapters/mcp-probe-subject.ts`: the reusable subject, the real shipped adapter pointed at a real tool server.
 4. `tests/adapters/mcp-probe-subject.test.ts`: that subject run against the arm, fourteen of fourteen.
 5. `tests/testing/conformance.test.ts`: the broken subjects. One knob per question, each proved to turn exactly its own question red.
-6. `tests/coverage/mcp-coverage.test.ts`: the thoroughness rules over a tool-call contract, the whole table at once, then one oracle removed at a time.
+6. `tests/coverage/mcp-coverage.test.ts`: the thoroughness rules over a tool-call contract. The whole table at once, then one oracle removed at a time, then one declaration removed at a time.
 
 **Story:** `_bmad-output/implementation-artifacts/11-7-the-third-conformance-arm-and-the-graded-kind.md`
 
