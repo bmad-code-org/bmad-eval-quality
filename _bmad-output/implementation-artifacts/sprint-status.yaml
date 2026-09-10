@@ -1,5 +1,5 @@
 # generated: 2026-08-10
-# last_updated: 2026-09-09
+# last_updated: 2026-09-10
 # project: evalcore
 # project_key: NOKEY
 # tracking_system: file-system
@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-08-10
-last_updated: 2026-09-09
+last_updated: 2026-09-10
 project: evalcore
 project_key: NOKEY
 tracking_system: file-system
@@ -83,7 +83,7 @@ development_status:
   6-4-artifact-immutability-and-lineage-enforcement: done
   6-5-the-library-and-cli-surface: done
 
-  epic-7: in-progress
+  epic-7: done
   7-1-the-run-mode-source-and-the-sealed-run-records-mode-field: done
   7-2-a-monotonic-observation-sequence-and-declared-selector-cardinality: done
   7-3-captured-value-matchers-and-test-data-bindings: done
@@ -98,7 +98,7 @@ development_status:
   epic-8: done
   8-1-the-ingest-stage-and-the-conditions-it-records: done
   8-2-the-score-stage-over-a-trial-set: done
-  8-3-the-emit-stage-and-the-evidence-artifact-it-mints: review
+  8-3-the-emit-stage-and-the-evidence-artifact-it-mints: done
   8-4-the-score-command-the-application-call-and-the-published-surface: done
   8-5-the-worked-chain-through-the-shipped-stages-and-the-release-disclosure: done
 

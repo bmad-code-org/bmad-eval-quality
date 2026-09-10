@@ -63,7 +63,7 @@ const DOCS = [
 		source:
 			'_bmad-output/planning-artifacts/architecture/architecture-eval-quality-2026-07-29/ARCHITECTURE-SPINE.md',
 		title: 'Architecture Spine: eval-quality',
-		lede: 'Forty invariants that keep independently built units from diverging — and two sections recording what four review rounds proved cannot be settled in prose.',
+		lede: 'Forty invariants that keep independently built units from diverging, and the record of what four review rounds found against them and how each finding closed.',
 	},
 	{
 		out: 'eval-quality-adr-001.html',

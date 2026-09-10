@@ -384,7 +384,7 @@ export const SealedRunRecord = z
 			.int()
 			.min(1)
 			.describe(
-				"Which trial this record is. AD-24 excludes the trial index from the Evaluator Configuration \"so trials pool into one scoring version\", which requires it somewhere else, and a Sealed Run Record is the only artifact carrying exactly one trial. One-based, matching the only instance that exists. AD-6's aggregate of trial count, invalidated attempts, and each attempt's reason is the Evidence Artifact's; asking one run to report its siblings is what no stage signature can do.",
+				"Which trial this record is. AD-24 excludes the trial index from the Evaluator Configuration \"so trials pool into one scoring version\", which requires it somewhere else, and a Sealed Run Record is the only artifact carrying exactly one trial. One-based, matching the only instance that exists. AD-6's aggregate of trial count, invalidated attempts, and each attempt's reason is the Evidence Artifact's, computed by `score` over the trial set a caller assembles. The reducer keys an attempt by its position in that set, so this field is the caller's own bookkeeping and a label for a reader of one record.",
 			),
 		contractDigest: Digest,
 		sealedBriefDigest: Digest,

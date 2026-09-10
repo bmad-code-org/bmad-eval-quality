@@ -1,6 +1,6 @@
 // AD-31's contract fixture corpus: nineteen contracts covering every AD-20
 // rule in every declaration state. The publication target AD-31 names in place
-// of the worked example, which stays inconsistent (Owed item 7).
+// of the worked example, which no stage-one requirement may cite (Owed item 7).
 //
 // Built by spread from the parsed seed. Nothing clones: a clone keeps
 // `satisfaction-contracts.ts:20-24`'s channel aliasing. Every override
