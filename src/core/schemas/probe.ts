@@ -64,6 +64,23 @@ const probeCommonFields = {
 }
 
 /**
+ * The probe's current schema version. `EVAL_CONTRACT_SCHEMA_VERSION` is the
+ * same thing for the eval contract.
+ *
+ * It exists for the same reason that one does: `lineage.ts` keeps the field a
+ * plain integer so a stale artifact fails as AD-28's `schema-version-mismatch`
+ * rather than as an anonymous parse error, which puts the comparison on the
+ * reader. `compile` is that reader for a contract. A probe has no such reader
+ * yet, so nothing in the pipeline performs AD-11's version equality on one, and
+ * this constant is what a reader would compare against when there is one. Until
+ * then it is the single place the stamp is written: the committed worked-example
+ * chains build their probes from it, and `check:doc-claims` reads it to hold the
+ * published sentence that names it. Before it existed, the number lived as a
+ * literal in three places that could disagree in silence.
+ */
+export const PROBE_SCHEMA_VERSION = 5
+
+/**
  * The prior art's `expectedClean` conditional, re-expressed as a discriminated
  * union per AD-13 (a boolean literal discriminator parses on this pin,
  * verified).

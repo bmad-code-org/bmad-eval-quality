@@ -329,13 +329,14 @@ The transport is stdio and nothing else. A server reached over Streamable HTTP s
 
 **The first reading runs today, and here is what that cost.** For the first reading, TEA's own move stays workable and stays cheaper than writing an adapter: put the tool-calling agent behind a command, declare a `cli` interface, and evaluate the run through its arguments, its streams, and the files it writes.
 
-That route was run end to end against the built CLI at 1.4.2.
+That route was run end to end against the built CLI at 2.0.0.
 A contract whose one operation declares the tool-call log in `artifacts` and nominates it with `descriptorChannel` compiles and seals at exit `0`, an oracle quantifies over the calls inside the log, and pre-flight resolves at exit `0` with all six checks satisfied, including a sensitivity witness and a manifestation witness whose legs both address the file.
+Carrying those files forward from 1.4.2 costs two stamps and one key: the contract is `schemaVersion` 5, the probe is 5, and the defect signature's input binding declares `"arguments": null`.
 
 One restriction shapes it, and it lands on the scoring side only.
 A defect signature naming the log by identifier is refused with `condition-artifact-channel-contract-local`, in both the tailed spelling `/interactions/observed/artifact/tool-calls/calls` and the bare `/interactions/observed/artifact/tool-calls`, and `sealProbeSet` then admits nothing.
 Print the log as JSON on the stream the descriptor nominates and the same seeded defect qualifies with an empty failure list.
-The file stays declared in `artifacts` even then, so an existence oracle and the sensitivity witness legs still reach it. What moves with the descriptor is any pointer that reads *inside* the file: once `stdout` is nominated, a tailed oracle pointer into the log is `unreachable-check-evidence`, so the structural oracle addresses the stream and the existence oracle addresses the file with no tail.
+The file stays declared in `artifacts` even then, and an existence oracle with no tail still reaches it. Every other pointer at the file has to move with the descriptor. Once `stdout` is nominated, a tailed oracle pointer into the log is `unreachable-check-evidence`, so the structural oracle addresses the stream. A sensitivity witness leg pointed at the file is refused under that code too, tailed or bare, because pre-flight builds each leg from the nominated channel, `call-inputs`, and the exit code; the witness moves to the stream beside the signature. Such a leg compiled under 1.4.2 with both of its sides resolving absent, which is the false pass the rule closes.
 [Evaluate agent behavior](/how-to/evaluate-agent-behavior/) states the restriction in full.
 
 ## In BMAD terms

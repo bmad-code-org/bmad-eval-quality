@@ -33,7 +33,7 @@ import type {
 import { IsolationManifest } from '../src/core/schemas/isolation-manifest.ts'
 import { PreflightVerdict } from '../src/core/schemas/preflight-verdict.ts'
 import type { KeyedShapeDescriptor } from '../src/core/schemas/primitives.ts'
-import { Probe } from '../src/core/schemas/probe.ts'
+import { PROBE_SCHEMA_VERSION, Probe } from '../src/core/schemas/probe.ts'
 import type { SealedEvaluatorBrief } from '../src/core/schemas/sealed-evaluator-brief.ts'
 import { SealedRunRecord } from '../src/core/schemas/sealed-run-record.ts'
 import { bindingOrder } from '../src/core/score/binding-order.ts'
@@ -652,7 +652,7 @@ const SEEDED_SIGNATURE: DefectSignature = {
  * why `sealProbeSet` below fails the build on a rejection.
  */
 const AUTHORED_PROBE = {
-	schemaVersion: 5,
+	schemaVersion: PROBE_SCHEMA_VERSION,
 	parentDigest: null,
 	revisionCount: 0,
 	probeId: 'P-001',

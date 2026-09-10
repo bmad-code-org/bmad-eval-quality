@@ -74,7 +74,11 @@ The reason is portability.
 AD-40 dropped `operationId` from the resolution key because an operation name is contract-local, and an artifact identifier is minted the same way: `/interactions/observed/artifact/verdict` names one file in the contract that declared it and nothing at all in the next contract.
 A signature carrying one would parse, compile, and resolve against exactly one contract while looking portable.
 
-A manifestation witness has no such problem and may address an artifact freely, because it is bound to one contract and one leg.
+A manifestation witness has no such problem and may address an artifact, because it is bound to one contract and one leg.
+What it needs is that the operation's descriptor nominates the file it names.
+A pre-flight leg carries the nominated channel, `call-inputs`, and the exit code, so a pointer at a file the descriptor passed over is absent on every leg.
+A relation that turns on that pointer alone then resolves the same way on the fault leg and on the clean legs: one that resolves `true` over an absent pointer fires everywhere and `seeded-faults-scoped` fails, one that resolves `false` or `insufficient-evidence` fires nowhere and `seeded-fault-fired` fails.
+A relation that reads a carried channel beside it passes both checks, with the pointer at the file contributing nothing to either.
 So the split is: pre-flight can read the file, the scoring-side signature cannot.
 Plan the seeded defect so its signature lives on `exit-code`, or on the stream the descriptor nominates.
 
