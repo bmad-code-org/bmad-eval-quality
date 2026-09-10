@@ -224,12 +224,21 @@ Every flag and every exit code is on the [CLI reference](/reference/cli-commands
 
 Be clear about what this page proves.
 
-**No live AI feature has been evaluated with this library.**
-The one complete chain in the repository is a toy Notes API described by a prose spec, with no running service behind it, and its observations are authored evidence.
-The package executes nothing under evaluation: it ships no network adapter, and running the two arms and the evaluator is yours.
+**The shape runs end to end against a loopback fixture.**
+The test suite starts the toy Notes API on loopback in two builds, seeds D-001 into one of them, probes both over real HTTP through a port implementation that passes the published conformance suite, and scores the run record the seeded arm's observations produce.
+The observations are measured, and the evidence artifact that run emits equals the committed one byte for byte.
+Two links stay authored, and the test says so where it makes each one.
+No evaluator runs: the five calls are the ones the committed record says were made, and the dispositions, the findings, and each observation's provenance label come from that record.
+The score is taken under the committed chain's pre-flight verdict, because the pre-flight the suite performs is a separate measurement that fails one check no fixture can answer: the seeded defect declares no way to observe itself firing.
+One record is one trial, so the strength vector comes out reported and marked non-comparable.
+`npm run validate` runs it.
 
-What is proven is everything downstream of the evidence.
-The chain's selections, check resolutions, witness match, outcome states, verdict, and strength vector are the return values of the shipped functions, called for real, and `npm run check:worked-example` rebuilds them on every validate.
+**No third-party AI feature has been evaluated with this library.**
+The package executes nothing under evaluation: it ships no network adapter, and the port implementation above lives in the test suite.
+Pointing this at your own feature means an `EnvironmentProbePort` you write, plus the two arms and the evaluator.
+
+What is proven downstream of the evidence is unchanged, and it is proven twice over now.
+The chain's selections, check resolutions, witness match, outcome states, verdict, and strength vector are the return values of the shipped functions, called for real, and `npm run check:worked-example` rebuilds the authored chain on every validate.
 The empty-collection rule is exercised in that chain and lands a `FAIL`.
 Eighteen of the twenty-one contracts in `corpus/dev/contracts/` declare an `api` interface, so the compile-side rules for this shape are covered by readable examples.
 
