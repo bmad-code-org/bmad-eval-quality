@@ -523,6 +523,6 @@ files, each with the word carried and the word owed.
 **The AD tables.** `check:ad31-table`, `check:ad21-table` and `check:ad33-table` all exit 0 with no
 regeneration, so no coverage cell, ladder row or outcome cell moved.
 
-**The gate.** `npm run validate` exits 0. 127 test files, 4150 tests, statements 97.09%, branches
+**The gate.** `npm run validate` exits 0. 127 test files, 4148 tests, statements 97.09%, branches
 92.32%, functions 99.9%, lines 98.29%. The step count is what Story 11.8 left; this story adds no
 `check:` script.
