@@ -334,13 +334,13 @@
           }
         ]
       },
-      "commentary": "A create that reported success and wrote nothing fails here.",
+      "commentary": "A create that reported success and filed the name it was sent nowhere fails here.",
       "direction": {
         "evidenceTargets": [
           "/interactions/create/call-inputs/body/name",
           "/interactions/read-back/response-body/thing/name"
         ],
-        "negativeDomain": "A create whose later read answers with the name the store already held.",
+        "negativeDomain": "A create whose later read answers with a name the call never sent.",
         "polarity": "expects-hold",
         "relation": "equality",
         "scope": "One create followed by one read at the identifier it returned."
@@ -556,12 +556,14 @@
           "requestShape": {
             "body": {
               "permittedKeys": [
-                "name"
+                "name",
+                "id"
               ],
               "requiredKeys": [
                 "name"
               ],
               "types": {
+                "id": "string",
                 "name": "string"
               }
             },
@@ -907,10 +909,10 @@
   },
   "sourceSpecDigest": null,
   "testData": {
-    "cleanup": "Reset the store to the seeded state.",
+    "cleanup": "Reset the store: it restores t-1 to the name it is given and leaves every other record as it found it, including t-8.",
     "principals": null,
     "resources": null,
-    "setup": "Seed one thing directly, with identifier t-1 and name alpha. File a second through the write under test, under identifier t-8. Leave t-2 unfiled."
+    "setup": "Seed one thing directly, with identifier t-1 and name alpha. File a second through the write under test, supplying identifier t-8. Leave t-2 unfiled."
   },
   "waivers": []
 }

@@ -143,6 +143,26 @@ body.
   `preflightFromObservations`, so its verdict is that stage's own return value rather than an
   authored literal. No artifact `schemaVersion` moved for this change.
 
+- **A published contract carries a captured step binding and a fixture reset, and a third end-to-end
+  chain scores it.** `corpus/dev/contracts/captured-read-back.json` is the first contract the tarball
+  publishes on the `api` kind whose plan binds a step to a value the run captured from an earlier
+  response, and the first on that kind declaring a `fixtureReset`. Its `read-back` step takes its
+  `path` parameter `id` from `/interactions/create/response-body/id`, which the write's own operation
+  also declares volatile, so the pre-flight projection prunes that field while the capture still
+  resolves it off the raw observation. The reset names a third operation, so the four-leg control
+  branch runs `get-thing`, `create-thing`, `reset-things`, `get-thing` rather than reusing one
+  operation for the mutation and the restoration. `_bmad-output/worked-examples/workflow-capture/`
+  holds six files, the compiled contract, the sealed brief, the probe, the pre-flight verdict, the
+  sealed run record and the evidence artifact, each produced by running the shipped stages over
+  authored inputs. It is built by `npm run generate:worked-example` and compared byte for byte by
+  `npm run check:worked-example`, so neither `package.json` nor `validate`'s step count moved. Its
+  verdict is `preflightFromObservations`' own return value, so the `state-reset` and `clean-control`
+  rows it carries are the shipped reducer's answers over legs the shipped planner planned.
+  `strength.vector.defect` reads `{"caught": 1, "exercised": 1, "rate": 1}` over one completed trial
+  against a declared minimum of 3, so `strength.comparable` is `false` and the note names the
+  shortfall. The published corpus grows to twenty-four contracts, twenty-one of which compile. No
+  artifact `schemaVersion` moved for this change.
+
 ### Changed
 
 - **BREAKING** The eval contract's `schemaVersion` is 5. The `mcp` branch of `permittedInterfaces`

@@ -174,7 +174,7 @@ export const workflowContract = {
 				polarity: 'expects-hold',
 				scope: 'One create followed by one read at the identifier it returned.',
 				negativeDomain:
-					'A create whose later read answers with the name the store already held.',
+					'A create whose later read answers with a name the call never sent.',
 			},
 			check: {
 				op: 'equality',
@@ -185,7 +185,7 @@ export const workflowContract = {
 			},
 			polarity: 'expects-hold',
 			commentary:
-				'A create that reported success and wrote nothing fails here.',
+				'A create that reported success and filed the name it was sent nowhere fails here.',
 		},
 		{
 			// One oracle over all three type-violating steps. AD-31 rule 3 asks
@@ -390,12 +390,25 @@ export const workflowContract = {
 						query: { requiredKeys: [], permittedKeys: [], types: {} },
 						header: { requiredKeys: [], permittedKeys: [], types: {} },
 						body: {
+							// `id` is permitted and never required, which is what
+							// lets a fixture file a record under an identifier it
+							// chose while the run's own write omits it and takes
+							// whatever the service mints. Both halves are needed:
+							// `testData.setup` names the identifier it files under,
+							// and the interaction plan's `create` step binds `name`
+							// alone, which is why `/id` is volatile and why the
+							// read-back has to capture rather than name a literal.
 							requiredKeys: ['name'],
-							permittedKeys: ['name'],
-							types: { name: 'string' },
+							permittedKeys: ['name', 'id'],
+							types: { name: 'string', id: 'string' },
 						},
 					},
 					responseDescriptor: {
+						// The success shape. Nothing enforces `requiredKeys` against
+						// an observation at run time, and the type-violating steps
+						// this plan declares are answered with `{ ok: false, error }`
+						// and no `thing`, which is the failure shape the same
+						// descriptor's `permittedKeys` and `channelRoles` cover.
 						requiredKeys: ['ok', 'id'],
 						permittedKeys: ['ok', 'id', 'name', 'error'],
 						types: {
@@ -538,6 +551,12 @@ export const workflowContract = {
 					// declared operation and its leg goes through the same port as
 					// every other, which is why the reset declares inputs this
 					// request shape accepts.
+					//
+					// It restores t-1 and touches nothing else, which
+					// `testData.cleanup` states and which the plan order needs: the
+					// seeded-fault leg runs after the control legs and reads t-8, so
+					// a reset that cleared the store would take the record that leg
+					// depends on with it.
 					operationId: 'reset-things',
 					method: 'POST',
 					pathTemplate: '/things/reset',
@@ -733,8 +752,9 @@ export const workflowContract = {
 		// Nothing is filed under t-2, which is what the second read witness
 		// reads.
 		setup:
-			'Seed one thing directly, with identifier t-1 and name alpha. File a second through the write under test, under identifier t-8. Leave t-2 unfiled.',
-		cleanup: 'Reset the store to the seeded state.',
+			'Seed one thing directly, with identifier t-1 and name alpha. File a second through the write under test, supplying identifier t-8. Leave t-2 unfiled.',
+		cleanup:
+			'Reset the store: it restores t-1 to the name it is given and leaves every other record as it found it, including t-8.',
 		principals: null,
 		resources: null,
 	},

@@ -133,7 +133,7 @@
     "maxToolCalls": 20,
     "maxWallClockMinutes": 5
   },
-  "contractDigest": "sha256:e04a988ae3da77df2e9c4d0b027bf2398bcb6bcb8e2587bc3f705e07627cc9f3",
+  "contractDigest": "sha256:c715964b3785f3492095eadb7a76610e23df6f1e6fbde7799166bbae46ffe249",
   "directions": [
     {
       "oracleId": "O-001",
@@ -141,7 +141,7 @@
     },
     {
       "oracleId": "O-002",
-      "text": "The body name value you sent to the create thing endpoint (with the supplied body name), compared with its thing.name field from the get thing endpoint (with the supplied path id) is asserted to be equal. The declared polarity expects this relation to hold. One create followed by one read at the identifier it returned. A create whose later read answers with the name the store already held is treated as a defect."
+      "text": "The body name value you sent to the create thing endpoint (with the supplied body name), compared with its thing.name field from the get thing endpoint (with the supplied path id) is asserted to be equal. The declared polarity expects this relation to hold. One create followed by one read at the identifier it returned. A create whose later read answers with a name the call never sent is treated as a defect."
     },
     {
       "oracleId": "O-003",

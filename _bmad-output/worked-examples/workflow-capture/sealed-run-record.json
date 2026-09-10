@@ -6,8 +6,8 @@
     "storage": "private"
   },
   "conditionArm": "independent",
-  "contractDigest": "sha256:e04a988ae3da77df2e9c4d0b027bf2398bcb6bcb8e2587bc3f705e07627cc9f3",
-  "evaluatorConfigurationDigest": "sha256:3e82a83d547f897b6e0a2e64a90ec4f547922eab3288f6355daf6d227f39148e",
+  "contractDigest": "sha256:c715964b3785f3492095eadb7a76610e23df6f1e6fbde7799166bbae46ffe249",
+  "evaluatorConfigurationDigest": "sha256:2ebda86d6ddbde77f215ce8424a9b018a9b794c4856308bc41347f4193320185",
   "evaluatorRecommendation": "FAIL",
   "evidenceDisclosure": {
     "reportedIncomplete": false,
@@ -345,7 +345,7 @@
     },
     {
       "disposition": "violated",
-      "note": "The read at the identifier the write returned answered with the name the store already held.",
+      "note": "The read at the identifier the write returned answered with the placeholder the store filled in, and never with the name the call sent.",
       "observationIds": [
         "obs-read-back"
       ],
@@ -406,6 +406,6 @@
   "revisionCount": 0,
   "runId": "workflow-capture-run-0001",
   "schemaVersion": 5,
-  "sealedBriefDigest": "sha256:5cfc371c10770c9482bc8e1fa5498e46327ebf34c248488ea217de75f05b5798",
+  "sealedBriefDigest": "sha256:7feaf30ad8ec4b1767656832e730c67b755b5935728134a2cd8822339ab26c79",
   "trialIndex": 1
 }

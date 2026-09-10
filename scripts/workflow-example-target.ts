@@ -206,9 +206,11 @@ const SEEDED_SIGNATURE: DefectSignature = {
  * The leg reads the record `testData.setup` files through the write under test,
  * rather than the one it seeds directly. A pre-flight leg is one call with fixed
  * inputs and cannot write and then read back, so a fault in the write is
- * observable here only on a record the write itself filed. Reading the directly
- * seeded record would make the relation true of every clean leg as well, and
- * `seeded-faults-scoped` would fail.
+ * observable here only on a record the write itself filed: its name is the one
+ * thing on that leg that depends on the build. Pointed at the directly seeded
+ * record the relation as written resolves false and `seeded-fault-fired` fails,
+ * and a relation rewritten to be true of that record would then hold on every
+ * clean read of it and `seeded-faults-scoped` would fail instead.
  */
 const MANIFESTATION_LEG_ID = 'workflow-defect-leg'
 
@@ -337,9 +339,11 @@ const REPLY_FOR: Record<
 	// A read of an identifier `testData.setup` leaves unfiled. The relation over
 	// the two read legs is `not(deep-equality)` of their bodies, so a truthful
 	// miss separates the pair as well as a second record would, and it does so
-	// without asking the fixture to hold something the setup does not declare. A
-	// 404 is not an anomaly under `anomalyOf`, which flags status 500 and above,
-	// and this is a sensitivity leg rather than a control leg in any case.
+	// without asking the fixture to hold something the setup does not declare.
+	// `anomalyOf` counts any status at or above 400 as an anomaly, and its one
+	// caller is the `clean-control` check, which reads control legs. This is a
+	// sensitivity leg, so the 404 reaches no anomaly test; the same reply on a
+	// control leg would fail `clean-control` naming the status.
 	'read-witness-b': {
 		status: 404,
 		body: { ok: false, error: 'no thing is filed under that identifier' },
@@ -493,7 +497,7 @@ const authoredRecord = (
 			oracleId: 'O-002',
 			disposition: 'violated',
 			observationIds: ['obs-read-back'],
-			note: 'The read at the identifier the write returned answered with the name the store already held.',
+			note: 'The read at the identifier the write returned answered with the placeholder the store filled in, and never with the name the call sent.',
 		},
 		{
 			// One disposition over three observations, because the oracle is one
