@@ -347,7 +347,7 @@
                 "type": "null"
               }
             ],
-            "description": "Deliberately not bounded to a protocol range. A negative status is meaningless and excluded, but the upper end is left open: AD-19 declares four interface kinds and v0 rejects three of them at compile time under `unsupported-interface-kind`, so bounding this to HTTP would encode a protocol assumption the artifact outlives. `null` where the channel does not apply."
+            "description": "Deliberately not bounded to a protocol range. A negative status is meaningless and excluded, but the upper end is left open: AD-19 declares four interface kinds and not all of them speak HTTP, so bounding this to HTTP would encode a protocol assumption the artifact outlives. `null` where the channel does not apply."
           },
           "stdout": {
             "oneOf": [

@@ -10,6 +10,15 @@ body.
 
 ## [Unreleased]
 
+### Fixed
+
+- The `responseStatus` description in the sealed run record no longer counts how many interface kinds
+  `compile` refuses. It said three, and two are refused since `cli` shipped, while
+  `sensitivity-witness.ts` in the same directory already said so. The sentence exists to explain why the
+  status is not bounded to an HTTP range, and it now gives the reason that stays true whatever compiles:
+  not every declared kind speaks HTTP. The published `schemas/sealed-run-record.schema.json` carries the
+  corrected text.
+
 ### Changed
 
 - The published documentation says what the response descriptor does about a tool result that carries only
