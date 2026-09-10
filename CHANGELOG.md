@@ -28,6 +28,23 @@ body.
     both port unions disclosed. `ProbeObservation` took its own third member in the same
     `[Unreleased]` block; the reference MCP adapter entry below carries it.
 
+- **The conformance suite certifies a tool-call adapter.** `runMcpProbeConformance` and the
+  `McpProbeSubject` type ship on `eval-quality/conformance`, beside the two arms already there. The
+  arm is fourteen outcomes: the six shared assertions plus eight of its own, over an authorized tool
+  call reaching its server and being observed, the two denials AD-35 asks a tool-server mapping for
+  (an interface no authorization names, a tool outside the authorized list, each proven to refuse
+  before a server process starts), a tool-reported error read as an observation rather than a fault,
+  a declared argument proven to reach the tool byte for byte across the JSON-RPC frame, the
+  structured result carried on the channel the operation's descriptor describes, and both caps.
+  `CONFORMANCE_OUTCOME_COUNTS` gains `'mcp-probe': 14`. The five counts already published are
+  unchanged and are restated here so a reader can check rather than assume: `corpus` 6, `clock` 6,
+  `file-system` 12, `environment-probe` 19, `command-probe` 15. A new arm adds an entry and moves no
+  other.
+  - **BREAKING for a caller that enumerates the ports.** `ConformancePort` gains `'mcp-probe'` as a
+    sixth member, so a `switch` or a `Record<ConformancePort, ...>` written over the five is no
+    longer total and fails the typecheck. Nothing else about the type moved, and no report a caller
+    already holds changes shape.
+
 - **A reference adapter answers a tool call, and `ProbeObservation` has a third member.**
   `createMcpAdapter` and `nodeStdioMcpMechanism` ship on `eval-quality/adapters`, and
   `McpTargetPolicy` and `McpTargetAuthorization` ship on `eval-quality/conformance`. The adapter

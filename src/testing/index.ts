@@ -61,8 +61,13 @@ export {
 	runCorpusPortConformance,
 	runFileSystemPortConformance,
 } from './conformance.ts'
-export type { CommandProbeSubject, ProbeSubject } from './probe-conformance.ts'
+export type {
+	CommandProbeSubject,
+	McpProbeSubject,
+	ProbeSubject,
+} from './probe-conformance.ts'
 export {
 	runCommandLineProbeConformance,
 	runEnvironmentProbePortConformance,
+	runMcpProbeConformance,
 } from './probe-conformance.ts'

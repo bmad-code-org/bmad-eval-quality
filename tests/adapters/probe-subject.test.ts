@@ -120,7 +120,6 @@ describe('the in-repository probe subject (fixtures 85-88)', () => {
 			new AbortController().signal,
 		)
 		if (observed.kind !== 'api') throw new Error('expected an api observation')
-		if (observed.kind !== 'api') throw new Error('expected an api observation')
 		expect(observed.status).toBe(200)
 		expect(observed.body.kind).toBe('json')
 		const echoed =

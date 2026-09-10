@@ -93,6 +93,7 @@ flowchart TD
 |   49 | epic11-story5 | The gate that refused tool servers opens, and the one list of what it admits is written down once. |
 |   50 | epic11-story6 | A seeded tool bug becomes findable: the signature names the tool, and the record keeps what the call sent. |
 |   51 | epic11-story13 | A real tool server answers a probe: the port gets a shape for a tool result, and an adapter that goes and gets one. |
+|   52 | epic11-story7 | The suite can certify a tool-server adapter, the thoroughness checks grade the kind, and every question in both is proved able to fail. |
 
 Adding a step: follow `learning-path-template.md`.
 
@@ -4022,4 +4023,44 @@ The three pure functions that read an answer each tested for one kind and treate
 - The projection keeps the flag as its own field. Without it, two calls that returned the same body look identical when one failed and one did not, which reads as a fixture reset that never happened.
 - `buildPlanIndex` sorts operations by asking the interface its kind first. Each branch then reads its own operation type with no hand-written cast, and a fifth kind fails the typecheck there.
 
-**Watch out:** the conformance suite still has two arms, for HTTP and for commands. The six shared assertions run against this adapter from its own test file; the third arm, and the count that goes with it, land in the next story.
+**Watch out:** when this story landed, the conformance suite had two arms, for HTTP and for commands, and the six shared assertions ran against this adapter from its own test file. Step 52 adds the third arm and the count that goes with it, and moves the shared six onto a reusable subject.
+
+## Step 52 (epic11-story7): a green test says two different things
+
+**In plain terms:** a test that passes can mean the thing works.
+It can also mean the test never looked.
+The two read the same from the outside, and this project has already been burned by the second one: a whole family of systems went ungraded for a full release while every test stayed green.
+This step writes the check that says whether a program talking to a tool server is doing it right, then goes back and breaks that program one way at a time to prove each question in the check can actually fail.
+
+**What:** `runMcpProbeConformance` is the third arm of the published conformance suite, fourteen questions a tool-server adapter has to answer; `tests/coverage/mcp-coverage.test.ts` grades the thoroughness rules over a tool-call contract; and both the tool-call arm and the command arm now carry one broken subject per question.
+
+**Why:** the suite is what an outside adapter author runs to know their adapter is finished, so an arm that does not exist certifies nothing and an arm that cannot fail certifies less.
+The grading half has the same shape and a worked example behind it: when the command kind shipped, nothing ran the thoroughness rules over a command contract, and three of them answered confidently and wrongly for a full release.
+One of the three built an address with a piece missing, so it compared real evidence against an address no evidence could ever have, and every contract it graded looked merely unthorough.
+
+**Read in this order:**
+
+1. `src/testing/conformance.ts`: the six questions every port answers, and the table of how many outcomes a full run of each port produces.
+2. `src/testing/probe-conformance.ts`: the shared machinery, then the three arms. One assertion shape, one runner, one answer checker, one call counter.
+3. `tests/adapters/mcp-probe-subject.ts`: the reusable subject, the real shipped adapter pointed at a real tool server.
+4. `tests/adapters/mcp-probe-subject.test.ts`: that subject run against the arm, fourteen of fourteen.
+5. `tests/testing/conformance.test.ts`: the broken subjects. One knob per question, each proved to turn exactly its own question red.
+6. `tests/coverage/mcp-coverage.test.ts`: the thoroughness rules over a tool-call contract. The whole table at once, then one oracle removed at a time, then one declaration removed at a time.
+
+**Story:** `_bmad-output/implementation-artifacts/11-7-the-third-conformance-arm-and-the-graded-kind.md`
+
+### Reference
+
+**Rules:**
+
+- Each arm gets one question per field its mapping can refuse on. An HTTP mapping has seven such fields, a command mapping three, a tool-server mapping two, which is the biggest reason the counts differ. The HTTP arm carries an eighth refusal on top: a redirect checked again at its new target.
+- A refusal question also pins how many times the adapter touched its mechanism, so the refusal is proved to happen at the right moment. Seven of the eight pin zero. The redirect one pins one, because the first hop is allowed and happens.
+- Every arm answers the six shared questions first, under the same `probe/` names, then its own.
+- The count is part of the verdict. A run that produced too few outcomes fails, so a suite that stopped early cannot read as a pass.
+- The subject under test is the real shipped adapter over a real tool server. A faked mechanism would prove nothing about the one thing the adapter exists to get right.
+- Two questions compare a value the tool published: the argument it received, and the keys in the result it returned. Both read a single value beside the list, because a check over an empty list reports that it had nothing to go on and could witness nothing.
+- Each refusal question also reads the subject's own mapping. A subject whose "not allowed" request turns out to be allowed is told so, rather than passing its own refusal for the wrong reason.
+- One broken subject per question, each keyed to its own request so two questions reading the same thing cannot go red together; plus one that refuses correctly but too late, without which the call-count half of every refusal could be deleted with the suite staying green.
+- The grading file asserts the whole table, then breaks the contract two ways: one oracle removed at a time, and one declaration removed at a time. The first moves the "did anyone check this" column and the second moves the "does this rule apply" column, and nothing that only moves one of them is evidence about the other.
+
+**Watch out:** the command arm can refuse an executable, a subcommand path, and an unmapped interface, and it cannot refuse an environment key. That gap is written up at the top of `_bmad-output/implementation-artifacts/deferred-work.md` with what closing it costs.

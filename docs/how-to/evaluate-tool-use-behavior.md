@@ -311,7 +311,7 @@ What the shipped adapter does.
 An `McpTargetPolicy` maps the contract's logical interface identifier to a server the adapter launches, and lists the tools that server may be asked for; a request naming either an interface or a tool the mapping omits is refused with `forbidden-target` before a process starts. One session per invocation covers launch, `initialize`, `tools/call`, and teardown, bounded by `maxElapsedMs`, and `maxOutputBytes` caps the server's stdout and its stderr on their own.
 A tool result carrying `isError: true` resolves, and so does a JSON-RPC error answering `tools/call`, with the error object as the result. That is the rule a tool-use adapter would break first: an MCP error result is the payload the seeded-fault check reads, and an adapter that throws on it makes the whole pre-flight vacuous.
 
-The transport is stdio and nothing else. A server reached over Streamable HTTP speaks the same JSON-RPC across a socket, and this package performs no network I/O at all, so that server needs your own `EnvironmentProbePort` behind the same mapping rule (AD-35). `eval-quality/conformance` is what proves one: the six shared assertions run against any subject, and the third arm certifying an `mcp` subject against AD-35's own denials is still owed.
+The transport is stdio and nothing else. A server reached over Streamable HTTP speaks the same JSON-RPC across a socket, and this package performs no network I/O at all, so that server needs your own `EnvironmentProbePort` behind the same mapping rule (AD-35). `eval-quality/conformance` is what proves one: the six shared assertions run against any subject, and `runMcpProbeConformance` adds eight more, over an authorized tool call reaching its server, the two denials AD-35 asks a tool-server mapping for, a tool-reported error read as an observation, a declared argument that has to arrive byte for byte, the structured result the descriptor describes, and both caps.
 
 ## Where this stands
 
@@ -319,7 +319,7 @@ The transport is stdio and nothing else. A server reached over Streamable HTTP s
 
 **Scores a probe.** A defect signature declares the tool name, the qualification gate admits the kind, and a recorded tool call's arguments are addressable, so a seeded tool-use defect can be qualified and matched against a sealed run record.
 
-**Missing.** A conformance arm certifying an `mcp` subject, a dev-corpus exemplar, and a channel model for a text-shaped tool result.
+**Missing.** A dev-corpus exemplar, and a channel model for a text-shaped tool result.
 
 **Already works, and this is the part worth knowing before you fund any of it.** Both sides of the exchange accommodate the kind today. `Observation` in the sealed run record is not discriminated on kind (`sealed-run-record.ts:229`), so what a tool answered has somewhere to live. `foreignChannels` (`qualification.ts:187`) confines a tool-use signature to `response-body`, `response-status`, and its own `call-inputs`, which is the same answer compile-time reachability gives, a confinement the code decides. All three carry a value once the adapter runs: the structured result lands on `response-body`, the error flag on `response-status`, and the tool call's arguments on `call-inputs`. `response-headers` is not among them; `foreignChannels` hands it to a tool-use signature as foreign, so a signature naming it is refused rather than left empty. `ObservedCallInputs` (`sealed-run-record.ts:204`) carries a key per input channel, `arguments` among them.
 

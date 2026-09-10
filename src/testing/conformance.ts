@@ -35,6 +35,7 @@ export type ConformancePort =
 	| 'file-system'
 	| 'environment-probe'
 	| 'command-probe'
+	| 'mcp-probe'
 
 /** how many outcomes a complete run of each port produces. Asserted as literals by fixture 58. */
 export const CONFORMANCE_OUTCOME_COUNTS = {
@@ -43,6 +44,7 @@ export const CONFORMANCE_OUTCOME_COUNTS = {
 	'file-system': 12,
 	'environment-probe': 19,
 	'command-probe': 15,
+	'mcp-probe': 14,
 } as const
 
 export type ConformanceReport = {

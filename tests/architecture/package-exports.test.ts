@@ -153,6 +153,41 @@ describe('the published package surface', () => {
 		)
 	})
 
+	// Resolving the subpath says nothing about what it exports. Every runner
+	// below is named in `CHANGELOG.md` and in `docs/reference/cli-commands.md`
+	// as shipping on `eval-quality/conformance`, and nothing in this repository
+	// imports them through the barrel: both probe subjects and the mutant suite
+	// import `src/testing/probe-conformance.ts` directly. Deleting any one of
+	// these names from `src/testing/index.ts` left the typecheck, the linter and
+	// the whole test suite green.
+	it('case 147b: `./conformance` exports every port runner it publishes', async (ctx) => {
+		if (!BUILT) return ctx.skip(NEEDS_BUILD)
+		const barrel = (await import(
+			join(repoRoot, 'dist/testing/index.js')
+		)) as Record<string, unknown>
+		for (const name of [
+			'runClockPortConformance',
+			'runCorpusPortConformance',
+			'runFileSystemPortConformance',
+			'runEnvironmentProbePortConformance',
+			'runCommandLineProbeConformance',
+			'runMcpProbeConformance',
+			'formatConformanceReport',
+		]) {
+			expect(typeof barrel[name], `${name} is missing from the barrel`).toBe(
+				'function',
+			)
+		}
+		expect(barrel.CONFORMANCE_OUTCOME_COUNTS).toEqual({
+			corpus: 6,
+			clock: 6,
+			'file-system': 12,
+			'environment-probe': 19,
+			'command-probe': 15,
+			'mcp-probe': 14,
+		})
+	})
+
 	it('case 148: `./schemas/*` resolves a generated JSON Schema by its real filename', () => {
 		// `./schemas/*.json` would make this specifier resolve to
 		// `eval-contract.schema.json.json`, which is why the target is `./schemas/*`.

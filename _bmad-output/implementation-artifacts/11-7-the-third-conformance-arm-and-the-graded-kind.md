@@ -2,7 +2,7 @@
 title: 'The third conformance arm and the graded kind'
 type: 'feature'
 created: '2026-09-09'
-status: 'draft'
+status: 'in-review'
 review_loop_iteration: 0
 context:
   - _bmad-output/implementation-artifacts/epic-11-context.md
@@ -164,59 +164,60 @@ unchanged.
 
 **Execution:**
 
-- [ ] `src/testing/conformance.ts` -- add `'mcp-probe'` to `ConformancePort` (`:32-37`) and
+- [x] `src/testing/conformance.ts` -- add `'mcp-probe'` to `ConformancePort` (`:32-37`) and
   `'mcp-probe': 14` to `CONFORMANCE_OUTCOME_COUNTS` (`:40-46`) -- a new entry leaves every published
   count where it is.
-- [ ] `src/testing/probe-conformance.ts` -- add `McpProbeSubject`, `MCP_ASSERTIONS`,
+- [x] `src/testing/probe-conformance.ts` -- add `McpProbeSubject`, `MCP_ASSERTIONS`,
   `checkMcpResolved`, `checkMcpCalls`, `runMcpProbeAssertion`, and `runMcpProbeConformance` returning
   `reportOf(subject.name, 'mcp-probe', ...)` -- the arm is what a future MCP adapter author has to
   satisfy, so it is written after both existing arms are read.
-- [ ] `src/testing/probe-conformance.ts` -- rewrite the header at `:1-22` to describe three arms and
+- [x] `src/testing/probe-conformance.ts` -- rewrite the header at `:1-22` to describe three arms and
   cut the sentences the third makes redundant -- the header is the file's own map and it currently
   reads as an exhaustive two-arm list.
-- [ ] `src/testing/index.ts` -- export `runMcpProbeConformance` and `McpProbeSubject` beside the two
+- [x] `src/testing/index.ts` -- export `runMcpProbeConformance` and `McpProbeSubject` beside the two
   at `:62-65` -- the `./conformance` subpath is where AD-37 puts the definition an adapter author reads.
-- [ ] `tests/adapters/mcp-probe-subject.ts` -- the in-repository `mcp` subject over Story 11.13's
+- [x] `tests/adapters/mcp-probe-subject.ts` -- the in-repository `mcp` subject over Story 11.13's
   shipped adapter and a real fixture server, on the shape `tests/adapters/command-probe-subject.ts:1-9`
   set -- a synthetic mechanism would prove nothing about the thing the adapter exists to get right.
-- [ ] `tests/adapters/fixtures/mcp-probe-fixture.mjs` -- the fixture the subject drives, scripting
-  the error result, the argument echo, the declared result channel, and both overruns.
-- [ ] `tests/adapters/mcp-probe-subject.test.ts` -- run `runMcpProbeConformance` against it and
+- [~] `tests/adapters/fixtures/mcp-probe-fixture.mjs` -- **not written; already landed.** Story
+  11.13 shipped the file with all four scripted. Untouched by this diff. Decision 9.
+- [x] `tests/adapters/mcp-probe-subject.test.ts` -- run `runMcpProbeConformance` against it and
   assert fourteen of fourteen with an empty failure list, as
   `tests/adapters/command-probe-subject.test.ts:27-34` does.
-- [ ] `tests/testing/conformance.test.ts` -- move the declared-literals assertion at `:423-431` to
+- [x] `tests/testing/conformance.test.ts` -- move the declared-literals assertion at `:423-431` to
   include `'mcp-probe': 14`; add a synthetic `mcp` subject with one knob per assertion and eight
   mutant fixtures; add a synthetic `cli` subject and nine mutant fixtures -- Decision 5.
-- [ ] `tests/coverage/mcp-coverage.test.ts` -- grade the fourteen predicates over the `mcp` accept
+- [x] `tests/coverage/mcp-coverage.test.ts` -- grade the fourteen predicates over the `mcp` accept
   fixture, asserting the whole verdict table per contract and the `descriptorRoot` directly, as
   `tests/coverage/command-coverage.test.ts:40-90` does.
-- [ ] `src/core/coverage/` -- repair any predicate the grading finds answering wrongly for `mcp`, at
+- [x] `src/core/coverage/` -- repair any predicate the grading finds answering wrongly for `mcp`, at
   its source, in this diff.
-- [ ] `tests/adapters/probe-subject.test.ts` -- delete the duplicated guard at `:123`.
-- [ ] `docs/reference/cli-commands.md` -- `:227` becomes "There is one runner per port, and
+- [x] `tests/adapters/probe-subject.test.ts` -- delete the duplicated guard at `:123`.
+- [x] `docs/reference/cli-commands.md` -- `:227` becomes "There is one runner per port, and
   `EnvironmentProbePort` has one arm per mechanism:", with `runMcpProbeConformance` (the `mcp` arm)
   appended to the runner list; `:229`'s count list gains "`mcp-probe` 14".
-- [ ] `docs/how-to/evaluate-tool-use-behavior.md` -- `:226` names `runMcpProbeConformance` as the arm
+- [x] `docs/how-to/evaluate-tool-use-behavior.md` -- `:226` names `runMcpProbeConformance` as the arm
   an MCP adapter certifies against, and the sentence is deleted outright if Story 11.13 already
   removed its two port-message clauses; `:234` loses its "a conformance arm" item, and the
   "**Missing.**" line is deleted if that empties it.
-- [ ] `_bmad-output/implementation-artifacts/deferred-work.md:3-17` -- close the open item, which
-  Epic 10 satisfied and which now reads as false in two places.
-- [ ] `CHANGELOG.md` `[Unreleased]` -- one `### Added` bullet naming `runMcpProbeConformance` and
+- [~] `_bmad-output/implementation-artifacts/deferred-work.md:3-17` -- **rescoped, deliberately not
+  closed.** Epic 10 satisfied all of it but the environment-key half; the entry is rewritten down to
+  that item and stays open with a named owner. Decision 12.
+- [x] `CHANGELOG.md` `[Unreleased]` -- one `### Added` bullet naming `runMcpProbeConformance` and
   `McpProbeSubject` on `eval-quality/conformance`, and `CONFORMANCE_OUTCOME_COUNTS` gaining
   `'mcp-probe': 14` with every existing count unchanged, stated so the silence is not read as an
   oversight. It also names the `ConformancePort` widening, which breaks an exhaustive switch an
   adapter author wrote over the five members.
-- [ ] The five pairs -- walk them against the tree at this story's start and record the result in the
+- [x] The five pairs -- walk them against the tree at this story's start and record the result in the
   story: three third files written here, one written by Story 11.13, and
   `tests/preflight/mcp-plan.test.ts` either landed by Story 11.5 or written here under the fallback
   the Design Notes names.
-- [ ] `_bmad-output/project-knowledge/learning-path-step-by-step.md` -- add the next unused step,
+- [x] `_bmad-output/project-knowledge/learning-path-step-by-step.md` -- add the next unused step,
   tagged `(epic11-story7)`, plus its row in the step table, following
   `learning-path-template.md`. The `In plain terms` hook is that a whole interface kind went
   ungraded once while the test suite stayed green, and three checks answered confidently and wrongly
   for a full release.
-- [ ] Every file this story edits -- grep for `, not `, `rather than`, `instead of`, `as opposed to`,
+- [x] Every file this story edits -- grep for `, not `, `rather than`, `instead of`, `as opposed to`,
   `, never `, and `no longer`, and confirm each surviving hit is a before/after where both halves
   carry a fact.
 
@@ -343,6 +344,343 @@ describes two working arms. This story rewrites that header, so it is the change
 entry's last true sentence false, and closing the entry in the same diff keeps the file's claim that
 it records what is actually owed.
 
+**Decision 7: Decision 2 is superseded, and all three arms now share one assertion shape, one
+runner, one resolve-side checker and one call-count checker.**
+Decision 2 recorded that `checkCommandCalls`'s own comment explains why a call-count checker cannot
+be shared, that the resolve-side checker has the same problem, and that a generic "would remove the
+duplication and add a type parameter to every assertion record for no assertion it makes possible."
+The contravariance half of that is correct and the conclusion does not follow from it. The problem
+is real when the generic is put on the assertion *record*, which is what that sentence describes and
+what it rightly turns down. Put on the *helper* instead, TypeScript infers the subject from the
+`subject` argument at each call site and the records stay concrete: `ArmAssertion<ProbeSubject>`,
+`ArmAssertion<CommandProbeSubject>`, `ArmAssertion<McpProbeSubject>`, no type parameter written
+anywhere a list of assertions is authored.
+
+Taking it collapsed four types (`Expectation`, `ProbeAssertion`, `CommandExpectation`,
+`CommandAssertion`) into one, three near-identical runners into `runArmAssertion` and `runArm`, two
+resolve-side checkers into `checkResolvedFor`, and three call-count checkers into `checkCallCount`.
+The `api` arm's `check` takes only `(observation)` and satisfies the two-parameter signature, since a
+function of fewer parameters is assignable to one of more. Writing the third arm the way Decision 2
+described would have shipped a third copy of each.
+
+Verified as a behaviour-preserving change rather than argued: `npm run typecheck` exits 0, and the
+whole of `tests/testing/conformance.test.ts`, including the `api` arm's fourteen mutant fixtures, plus
+`tests/adapters/command-probe-subject.test.ts`'s real fifteen-of-fifteen run, were green across the
+edit before any new assertion existed. Downstream consequence: a fourth mechanism writes a subject
+type and a list of assertions and inherits the machinery, which is the shape this story wanted for
+its own arm and would otherwise have owed the next one.
+
+**Decision 8: Story 11.13's Decision 21 is weighed here and the two wide field types stay wide, and
+the third arm's equivalent is wide too.**
+11.13 deliberately left `ProbeSubject.faultingRequest` and `CommandProbeSubject.nonZeroExitRequest`
+typed over the whole three-member request union, made both arms' non-matching detail strings
+reachable that way, gave each a case, and handed the narrowing decision to this story on the ground
+that this story owns the conformance surface. Read with the third arm in hand, the answer is to keep
+them wide. `McpProbeSubject.errorResultRequest` is declared the same way, its non-`mcp` arm names the
+observed kind, and it has its own case.
+
+Three reasons, in the order they decide it. The suite is published for adapter authors to run against
+their own subjects, and nothing obliges such an author to be using TypeScript at all; a narrowed
+field type is invisible to a JavaScript caller, while the runtime detail naming the kind it observed
+works for every caller. Narrowing is a caller-facing break on a published type for zero assertions
+gained, since the assertion it would make unnecessary is a mis-wired subject the suite already
+reports precisely. And it would delete three reachable branches and the three cases that cover them,
+trading a message that says what went wrong for a compile error one class of caller sees.
+
+Downstream consequence: a fourth arm declares its own kind-specific request over the request union
+too, and owes the same non-matching case. The alternative turned down is recorded here rather than in
+the source, since the source now carries only what holds.
+
+**Decision 9: the fixture server needed no change, and the Execution list item that asks for one is
+recorded as already landed.**
+The Execution list asks this story to write `tests/adapters/fixtures/mcp-probe-fixture.mjs`,
+"scripting the error result, the argument echo, the declared result channel, and both overruns."
+Story 11.13 shipped the file with all four already in it: `failing_tool` returns a result carrying
+`isError: true`, `search_notes` returns `echo` carrying the query it received, its structured result
+carries `ok`, `matches`, `totalCount` and `echo`, `oversize_tool` writes past a byte cap on demand,
+and `hanging_tool` never answers. The subject drives those five tools and the file is untouched by
+this diff.
+
+The argument-echo assertion reads `echo`, which is a scalar the tool publishes beside `matches`. That
+is deliberate and it is the AD-4 trap: a check over a collection that came back empty resolves to
+insufficient evidence under `empty-collection`, so an assertion spelled over `matches` would report
+vacuous and could never witness a dropped or re-encoded argument. `McpProbeSubject`'s own comment
+carries the rule.
+
+**Decision 10: no predicate under `src/core/coverage/` answered wrongly for `mcp`, and the grading
+file proves that rather than asserting it.**
+The Execution list carries "repair any predicate the grading finds answering wrongly for `mcp`, at
+its source". None does. All seven relevance predicates answer `true` and all seven satisfaction
+predicates answer `true` over `tests/schemas/fixtures/mcp-contract.ts`, which is a different shape
+from either command contract, where four rules are irrelevant. The difference is the fixture's own
+richness: it declares a success indicator beside two other channel roles, two type-violating
+bindings, a collection location naming a reference set, a sibling group, and a state-change marker,
+so no rule has an absent declaration to be irrelevant about.
+
+A table of seven `true, true` rows is the table most easily green for the wrong reason, so
+`tests/coverage/mcp-coverage.test.ts` carries a second block that removes one oracle at a time and
+names which rules go unsatisfied. Six removals, and every rule is accounted for: dropping O-001 or
+O-003 leaves `success-indicator-separation` and `whole-body` unsatisfied, dropping O-002 leaves
+`per-record` and `omission-and-completeness`, dropping O-006 and O-007 leaves `malformed-input`,
+dropping O-005 leaves `sibling-cross-check`, and dropping O-004 leaves `state-change-read-back`.
+Every mutant still compiles under `strict`, so the predicates run on all of them.
+
+The root the command grading found broken is right here for the same reason it was wrong there:
+`descriptorChannelOf` answers `response-body` for an `mcp` operation and `descriptorRootOf` builds
+`/response-body`, which is the prefix a real evidence pointer such as
+`/interactions/search/response-body/matches` starts with. The grading file asserts both operations'
+roots and kinds directly.
+
+**Decision 11: the five pairs, walked against the tree at this story's start. Every pair has its
+third file and the named fallback did not fire.**
+1. `tests/preflight/mcp-plan.test.ts` **arrived from Story 11.5**, so this story's fallback was not
+   needed. Its own header claimed `ProbeObservation` "carries no tool-call member yet", which Story
+   11.13 falsified; the header is corrected in place here and now points at the end-to-end pre-flight
+   that lives beside the adapter.
+2. `tests/adapters/mcp-probe-subject.ts` **written here**.
+3. `tests/adapters/mcp-probe-subject.test.ts` **written here**;
+   `tests/adapters/mcp-adapter.test.ts`, the other half of that pair as this story's Design Notes
+   splits it, **arrived from Story 11.13**.
+4. `tests/adapters/mcp-target-policy.test.ts` **arrived from Story 11.13**.
+5. `tests/coverage/mcp-coverage.test.ts` **written here**.
+
+**Decision 12: Decision 6 is amended. The deferred-work entry is rescoped here and stays open, with
+a named owner.**
+Decision 6 said this story closes `deferred-work.md`'s one open item, on the ground that Epic 10
+satisfied it and that this story's header rewrite makes its last true sentence false. The first half
+is nearly right and the second half is exactly right. Epic 10 shipped `CommandTargetPolicy`,
+`CommandTargetAuthorization` and the fifteen-outcome `command-probe` arm, which covers every
+assertion the entry named as its closing condition. One sub-item survived: the entry also asked the
+command authorization to name "the environment keys it may carry", and it names none.
+`CommandProbeRequest.channels.environment` is contract-declared and `buildEnv` spreads it into the
+child with no allowlist anywhere, so every other command channel is default-deny and this one is
+default-allow.
+
+The entry is therefore rewritten down to that item, with its `source_spec`, its evidence, and what
+closing it costs: a `permittedEnvironmentKeys` field, an enforcement point in
+`command-line-adapter.ts`, and a tenth command assertion moving
+`CONFORMANCE_OUTCOME_COUNTS['command-probe']` from 15 to 16, which is a caller-facing disclosure.
+Its stale evidence pointers are corrected in the same pass, and the file's own contradiction between
+"One item is open" at the top and "**Nothing is open.**" further down is resolved.
+
+The closure was held back on an explicit ruling rather than forgotten, and the entry says so. The fix
+moves a published count on a mechanism this story does not touch, and the epic coordinator owns it as
+one post-epic pull request after Story 11.9. Recording the owner and the cost is what separates this
+from the deferred-work pattern the repository owner objects to.
+
+The `mcp` mechanism does not inherit the gap and the entry says that too: `McpProbeRequest` declares
+no environment channel, and `McpTargetAuthorization.serverEnvironment` is the adapter's own launch
+environment under AD-18, which is authorization material rather than a contract-declared channel.
+
+**Decision 13: `tests/adapters/mcp-probe-subject.test.ts` sweeps no pids, and the file says why.**
+Story 11.13 leaked two server processes onto a developer machine because its teardown case recorded a
+pid, asserted the process was dead, and had no cleanup on the path where that assertion fails. The
+rule that came out of it is that a test which starts a process cleans up on its failing path. This
+file starts six servers per run and needs no sweep, for a reason worth stating rather than assuming:
+every session the subject opens is closed in `callToolOverStdio`'s own `finally`, which ends the
+server's stdin and kills its process group, and that runs on the cap path and the throw path as much
+as the clean one. No case here launches through a launcher or passes `--linger`, so there is no
+grandchild for a failed assertion to strand. The file header carries the argument, so the next reader
+does not have to re-derive it or add a sweep over nothing.
+
+**Decision 14: three sentences outside this story's named documentation list were falsified by this
+change or by 11.13's, and all three are corrected here.**
+Rule: a story corrects the sentences its own change falsifies, in its own diff.
+`_bmad-output/project-knowledge/learning-path-step-by-step.md`'s step 51 closed with "the conformance
+suite still has two arms" and "the third arm, and the count that goes with it, land in the next
+story", which this diff makes false; it now states what was true when 11.13 landed and points at step
+52. `tests/preflight/mcp-plan.test.ts`'s header claimed `ProbeObservation` carries no tool-call
+member, which 11.13 falsified and no story corrected. `tests/adapters/probe-subject.test.ts` carried
+its `expected an api observation` guard twice on consecutive lines, which the Execution list already
+names, and one copy is deleted.
+
+**Decision 15: the peer review's two high findings, and what each one turned out to be.**
+
+*The `underlyingCalls() === 0` pin was unproven on all three arms and deletable with the whole suite
+green.* Every denial mutant in the tree makes the port RESOLVE, which reds on `runArmAssertion`'s
+"resolved instead of rejecting" branch before `checkCallCount` is ever consulted, so the count clause
+carried no test at all. `grep -rn "underlyingCalls() was" tests/` returned nothing. The failure it
+let through is the one an adopter would care about most: an adapter that opens the connection, or
+spawns the server with the operator's own `cwd` and `serverEnvironment`, and only then consults its
+mapping. That adapter certified fourteen of fourteen while breaking the AD-35 boundary both denial
+titles claim in their own words, "refused before a server process starts".
+
+Closed with one mutant shape per arm, `denyAfterContact`, `denyAfterSpawn` and `denyAfterLaunch`,
+each naming the single denial it mistimes so the flip stays disjoint. The mutant refuses correctly
+and only after reaching the mechanism, so the code check passes and the outcome reds on its count
+alone; a case asserts that outcome's detail is exactly `underlyingCalls() was 1, expected 0`.
+Verified deletable-no-longer: removing the `expectedCalls` clause from `mcp/deny-unmapped-interface`
+reds that arm's new mutant and nothing else. Eight denial assertions across the three arms were
+covered this way, and the `api` and `cli` halves were pre-existing holes this story closed rather
+than caused.
+
+*`mcp/observe-error-result` did not read the result its own frozen I/O row names.* The row reads
+"resolves, **and the observation carries that result**", and the check tested only the kind and the
+flag. Mutating the shipped `bodyOf` to answer `{ kind: 'absent' }` left this assertion green while
+reddening two others, so a dropped payload was caught by the arm and misattributed to the wrong two
+ids. The check now also refuses an absent result channel, `errorResultRequest`'s own comment states
+the obligation that puts on a subject author, and a `dropErrorResultBody` mutant covers it. This is
+the same defect class as the vacuous probe Story 11.6 caught: a green assertion checking the wrong
+thing.
+
+**Decision 16: the denial assertions read the subject's own policy, which is what makes
+`McpProbeSubject.policy` and `CommandProbeSubject.policy` load-bearing.**
+Both fields were required published surface that no assertion read: `subject.policy` had exactly one
+reader, the `api` arm's `authorizationFor`. Both synthetic subjects supplied `{ authorizations: [] }`
+purely to satisfy the type, and every outside author would have too. The choice was to drop the field
+or to give the arm an assertion that reads it, and reading it is worth more.
+
+Each denial assertion now resolves the request against the subject's own policy and complains when
+the subject is internally inconsistent: an "unmapped" interface the policy does name, an
+"unauthorized" tool the allowlist does permit, an "unauthorized" subcommand path
+`permittedSubcommandPaths` does allow. A subject like that passes its own denial for the wrong reason
+and certifies an adapter that never refused anything.
+
+It found one immediately. The synthetic command subject's three denial requests were three copies of
+its authorized request, differing only in `operationId`: same interface, same executable, same empty
+subcommand path. It passed all three denials because the subject's own port branched on
+`operationId`, and against a real policy none of the three would have been denied. All three now name
+the one field their denial turns on, and both synthetic subjects carry a real policy.
+
+**Decision 17: `docs/explanation/what-ships.md:38` is corrected here, under the frozen block's own
+carve-out, and the rest of the page stays Story 11.9's.**
+The frozen Boundaries list that page under **Never** and the Code Map assigns `:38` to Story 11.9 by
+name, so this was escalated rather than decided. The ruling is that the correction lands here: the
+same Boundaries sentence already carves out "factual corrections to sentences it falsifies", and
+applying that carve-out as written is not a reinterpretation of the block. One clause moved, from
+"the conformance arm the kind is still owed" to "the conformance arm that certifies an adapter for
+the kind". Story 11.9 keeps the page's narrative, `:20`'s adapter count, `docs/index.md`, the
+glossary, and the tool-use guide's "Where this stands" section; none of them is touched here.
+
+The deciding argument is the epic's own: epic 11 exists because published documentation promised five
+system shapes while the schema refused one. Merging a diff that ships the third conformance arm while
+`what-ships.md` still said the kind was owed that arm would recreate that defect deliberately and
+hold it open for two stories.
+
+**Decision 18: nothing mechanical guards a false prose claim on the published pages, and Story 11.9
+should decide whether that is buildable.** Recorded for 11.9 to pick up rather than built here.
+`scripts/check-docs.mjs` scans `README.md`, `_bmad-output/planning-artifacts`,
+`_bmad-output/project-knowledge` and two experiment files, and never reads `docs/`.
+`check-doc-invocations.mjs` compares a page's transcribed output only where the page declares the
+exit code it expects, which leaves a claim quoted in prose beyond it. So the three sentences this
+story corrected (`cli-commands.md`'s runner list and count list, the tool-use guide's "still owed"
+clause, `what-ships.md:38`) were all found by reading, and Decision 4 had already recorded that
+nothing would catch them.
+
+What a guard would have to read, for the two shapes this story met: the runner list and the outcome
+counts are derivable, since `CONFORMANCE_OUTCOME_COUNTS` and the `run*Conformance` exports are both
+in one module, so a checker could compare a fenced or backticked list on a page against the module
+and fail on a difference, which is the shape `check:ad31-table` already has. The "still owed" clauses
+are not derivable, because no export says a thing is owed; the only mechanical handle is a
+convention, such as an owed claim carrying a marker a checker can find and a story deleting the
+marker when it ships the thing. The pages that carry claims going stale as the code moves are
+`docs/reference/cli-commands.md` (runner list, per-port counts, adapter count, corpus counts),
+`docs/explanation/what-ships.md` (adapter count, what each kind can do), and
+`docs/how-to/evaluate-tool-use-behavior.md` (its "Where this stands" section in full). This is the
+same shape as the gap Story 11.2 armed, one level up.
+
+**Decision 19: the peer review's remaining findings, and the three notes that stayed notes.**
+Sixteen findings were fixed in this pass. Three are recorded rather than changed.
+
+The two `mcp` denials pin the AD-28 code `forbidden-target` and not the denial reason, so an adapter
+answering `tool-not-authorized` for an unmapped interface passes both. That is the suite's own
+division: `checkRejected` reads the published fault code, and the reason is an adapter-internal
+value with no place on the port message. Story 11.13's `mcp-target-policy.test.ts` covers the two
+reasons directly, which is where a value nothing publishes belongs.
+
+Three outcome titles keep the negation-then-correction shape the repository's writing rule bans ("an
+observation, not a fault", "capped, not left running for the caller", "capped, not returned in
+part"). Each is the third arm's twin of a title the `api` or `cli` arm already ships, and both halves
+are concrete states of the same call. Consistency across the three arms is worth more here than
+rewriting two shipped titles.
+
+`malformed-input` is the one AD-31 rule with no relevance mutant in `mcp-coverage.test.ts`, and the
+re-verify round sharpened the reason into something a reader can rerun. The mutant exists and the
+predicate is reachable: emptying `requestShape.arguments` to
+`{ requiredKeys: [], permittedKeys: [], types: {} }` on both operations does flip the rule to
+irrelevant and moves nothing else, and `malformedInputRelevance` reads only
+`requestChannels[].shape.{requiredKeys, permittedKeys, types}`, which is exactly what that mutation
+empties. What blocks it is one step later, at the gate `gradeOf` runs before any predicate does:
+
+```
+unreachable-check-evidence in EvalContract.oracles[id=O-004].check.operands[1]:
+"/interactions/create/call-inputs/arguments/title" addresses call-inputs arguments field "title",
+which operation "create-note" declares in neither requiredKeys nor permittedKeys
+```
+
+So the mutant is a contract the compiler rejects, and Decision 3 is why `gradeOf` compiles first: a
+table grading a contract the compiler would reject cannot be mistaken for coverage. Reaching the
+predicate would mean deleting the oracles, bindings, witnesses and sibling group that address those
+arguments, which is a second contract rather than this one with a declaration removed. The file
+records this where the mutants are, and the rule's satisfaction side is covered by two
+oracle-removal rows.
+
+**Decision 20: the re-verify round found four clauses with no mutant, which is the same shape as the
+finding that opened the first round, and all four are closed.**
+
+*Six of the `api` arm's eight call-count clauses were still deletable.* The first round's
+`denyAfterContact` named three of the seven denials. Removing the `expectedCalls` clause from
+`probe/deny-private`, `probe/deny-link-local`, `probe/deny-metadata`,
+`probe/deny-unauthorized-scheme`, `probe/deny-on-redirect` and `probe/cap-redirects` in one patch
+left the whole conformance set green. The last two are the sharpest: `cap-redirects`'s own comment
+says "Every hop is authorized, so only the count can refuse it", so its clause is the entire
+assertion, and `deny-on-redirect`'s pin of 1 is the only thing proving the authorized first hop
+happened. Neither could be reached by an existing mutant, because both existing ones resolve and red
+on the code check first. `denyAfterContact` now names all seven denials, a
+`refuseRedirectBeforeFirstHop` mutant refuses correctly without making the first hop, and a
+`capRedirectsAtWrongCount` mutant caps with the right code after the wrong number of hops. Verified
+by deleting all six clauses again: six tests red, one each.
+
+*Nine of the ten complaints the new policy reads emit had no test.* Decision 16 gave five denial
+assertions a read of the subject's own policy, and only one of the branches those reads can take was
+covered. Replacing four of the five reads with a bare `() => 0` left the conformance set green, which
+is the clause that catches a mis-wired subject being itself uncaught. Ten rows now cover every
+complaint across both arms, each substituting one request on an otherwise conforming subject so the
+port still refuses it and only the read reds. Verified by stripping all five reads at once: ten tests
+red.
+
+*The fix for one finding introduced an inconsistency.* `commandAuthorizationFor` returned `undefined`
+for a non-`cli` request, so `command/deny-unmapped-executable` silently reported 0 for a malformed
+subject while its neighbour `command/deny-unauthorized-subcommand` complained explicitly about the
+same thing. The helper now takes the narrowed request type, so each caller has to state what it does
+about another kind, and the executable case carries the same explicit complaint. `mcpAuthorizationFor`
+keeps the wide parameter, because it reads `interfaceId`, which every member of the request union
+carries.
+
+The rule behind the asymmetry, stated so a later reader can apply it rather than reading it as the
+same bug in two shapes: a helper that reads a member-specific field takes the narrowed type, and one
+that reads a union-wide field takes the union. `commandAuthorizationFor` keys on
+`(interfaceId, executable)` and `executable` exists only on the `cli` member, so narrowing is what
+makes it total over what it reads. `mcpAuthorizationFor` keys on `interfaceId` alone and is already
+total over what it reads: it answers `undefined` exactly when the policy names no such interface,
+which is the question asked, and `deny-unauthorized-tool` narrows itself before touching
+`toolName`.
+
+*The fix for the second high finding could misattribute.* `mcp/observe-error-result`'s new
+absent-result rule blamed the adapter for dropping a payload, and the reference adapter derives the
+result body from `structuredContent` alone, so a tool reporting a failure through a prose `content`
+array with no structured content produces the same absent channel. The two are indistinguishable from
+inside the assertion. The rule stands, since a subject author chooses the tool their
+`errorResultRequest` names and `what-ships.md` already scopes text-only results out of the kind's
+first version, but the detail now names the subject's obligation rather than asserting the adapter
+dropped something.
+
+**Decision 21: a published type erases, so `package-exports.test.ts` cannot guard one.**
+Case 147b imports the built barrel and asserts every runner is a function, which closed the value
+half of the export gap. `McpProbeSubject`, `CommandProbeSubject` and `ProbeSubject` are named in
+`CHANGELOG.md` as shipping on `eval-quality/conformance` and have no runtime existence, so deleting
+one from `src/testing/index.ts` stays invisible to every runtime gate. The gate for those is `tsc`:
+`tests/conformance/outside-clock-adapter.test.ts` already imports only from the published specifier
+under AD-37's own restriction, and it now names five published types in that import. Verified by
+deleting `McpProbeSubject` from the barrel, which fails the typecheck with
+`TS2724: '"eval-quality/conformance"' has no exported member named 'McpProbeSubject'`.
+
+The guard depends on build ordering, which is worth knowing rather than fixing. The specifier
+resolves to `dist/testing/index.d.ts`, so deleting the export and typechecking without rebuilding
+passes against the stale declaration. `validate` is `npm run build && npm run typecheck && ...`, so
+the gate is sound as the pipeline orders it, and case 147b depends on `dist` existing in the same
+way.
+
 ## Design Notes
 
 **The five pairs, walked against the tree.** Every pair exists. Three get a third file here and two
@@ -428,3 +766,124 @@ reading as an ordinary unsatisfied verdict.
   `release:prepare` owns every dated section.
 - Read the new step in `learning-path-step-by-step.md` against `learning-path-template.md`: the
   heading order, no repository vocabulary in `In plain terms`, no bullet longer than two lines.
+
+
+## Review Findings
+
+A peer session ran `/bmad-code-review` over the first commit: 19 findings, 2 high, 7 medium, 10 low.
+Sixteen are fixed here; three are recorded as notes in Decision 19 with the reasoning. The peer also
+re-derived the four claims it was asked to check independently rather than taking the build's report,
+and confirmed the refactor preserves behaviour by diffing the deleted code against the new, the real
+subject's fourteen against the fixture's own source, that nothing else in the diff meets AD-4's
+empty-collection trap, and that no path leaks a process, including the abort path it tested by
+measurement.
+
+**The two high findings** are Decision 15. Both were real, both were green tests asserting the wrong
+thing, and both are fixed rather than noted.
+
+**Fixed, medium.** The oracle-removal block was evidence for the satisfaction column alone, since no
+relevance predicate reads `oracles`; a second mutant family now removes one declaration at a time and
+names which rules go irrelevant, covering six of the seven, with the seventh's absence argued in the
+file. `mcp/observe-declared-result-channel`'s missing-keys branch was dead, because the only mutant
+emptied the whole channel and landed in the arm above it, and the synthetic subject's declared keys
+were exactly what its own observation emitted, making the check tautological there; a one-key-drop
+mutant closes both, and the check's non-`mcp` arm gained the case it lacked. `mcp-adapter.test.ts`
+kept a near-verbatim copy of the subject's scenario scripting, which this story's own reusable subject
+supersedes; it now runs the shared six from `mcp-probe-subject.ts`, which is also what makes step 51's
+rewritten Watch out true. Nothing in the tree read the conformance barrel's runner exports, so
+deleting `runMcpProbeConformance` from `src/testing/index.ts` left typecheck, lint and the whole
+suite green while the CHANGELOG and the CLI reference said it ships there; `package-exports.test.ts`
+case 147b imports the built barrel and asserts every runner name and the whole counts object, and
+reverting the export reds it by name. `docs/explanation/what-ships.md:38` is Decision 17. The arm's
+two uncertified rules are named in `runMcpProbeConformance`'s own JSDoc. The header enumerations
+undercounted both rewritten arms and omitted `allow-authorized-tool-call` from three places; all
+three are corrected.
+
+**Fixed, low.** `abortBudgetMs`'s comment named the wrong constant. `checkCallCount` discarded the
+assertion's own detail on two of its three branches. Two learning-path rules were wrong about the
+`api` arm: seven scoped fields but eight `deny-*` ids, and `probe/deny-on-redirect` pins one call
+rather than zero. The paired `O-006`/`O-007` removal row is now two rows, since each is separately
+load-bearing and the pair would have hidden either one going vacuous. Two Execution items were `[x]`
+for work the story deliberately declined and now read `[~]` with the decision that governs them.
+`serverAt` gained a return annotation so excess-property checking applies where the literal is
+written. Three detail strings read `a "api"`; all five sites across the three arms now read
+`an observation of kind "..."`. The CHANGELOG's "That silence" had no antecedent and carried the
+negation-then-correction shape the repository's writing rule bans. `sprint-status.yaml` read
+`backlog` while the work was in flight.
+
+**Re-verify.** A narrowed brief went back to the same session. It confirmed the relevance mutant
+family, the two previously-dead result-channel arms, the barrel case against a rename as well as a
+deletion, that nothing the deleted local subject covered went uncovered, and all three Decision 19
+notes, one with a stronger reason now folded into it. It found four more clauses with no mutant, two
+of them introduced by the first round's own fixes; those are Decision 20 and Decision 21, and all
+four are closed with the deletion checks recorded there.
+
+## Completion Notes
+
+**Gate.** `npm run validate` exit 0 over 124 test files and 4063 tests, coverage 97.03% statements
+and 92.23% branches against `vitest.config.ts`'s 90/90 floor. `npm run build` exit 0. `npx biome
+check src tests scripts` reports no fixes over 325 files.
+
+**The arm, measured.** `npx vitest run tests/testing tests/adapters tests/coverage` is 409 tests
+green. `runMcpProbeConformance` reports fourteen outcomes in report order, the six shared under
+`probe/` then the eight under `mcp/`, and the in-repository subject over the shipped adapter and a
+real stdio server passes all fourteen with an empty failure list.
+
+**What the assertions actually see.** Each of the eight was checked against the real observation
+before the arm was trusted, since a green suite is the thing this story exists to distrust.
+`failing_tool` answers with `isError: true` and a structured reason. The metacharacter argument
+`$(echo pwned); rm -rf / #` comes back on `echo` byte for byte, with `matches` mangled by the
+fixture's own slug function, which is why the assertion reads the scalar. `search_notes` carries all
+four declared result keys. Both denials throw `forbidden-target` with the interface or the tool named,
+before any process starts. `hanging_tool` throws `budget-exhausted` naming `maxElapsedMs (300ms)` and
+`oversize_tool` throws it naming `maxOutputBytes (8192)` on stdout, so the cap and the denial stay
+distinguishable in the message as well as in the code.
+
+**The mutants.** Seventeen, eight for the `mcp` arm and nine backfilled for the `cli` arm, each
+asserting exactly one outcome id goes red. Every knob is keyed to its own `operationId`, which is
+what keeps the two result-reading `mcp` assertions disjoint: a mutant that emptied the result for
+every request would flip both and neither would be measuring what its id says. Two further cases
+assert the failure detail rather than the flip, and one asserts the non-matching arm of
+`observe-error-result` names the kind it observed.
+
+**Four assertions proved against the shipped adapter by mutation, not only against a synthetic
+subject.** The synthetic suite proves each assertion is individually falsifiable; these prove the
+same assertions are falsifiable against the code an adopter runs. Reverting `bodyOf`
+(`src/adapters/mcp-adapter.ts`) to always answer `{ kind: 'absent' }` turns
+`mcp/observe-declared-result-channel` red with "the result channel carried {\"kind\":\"absent\"},
+expected the structured result carrying [\"ok\",\"matches\",\"totalCount\",\"echo\"]", and
+`mcp/arguments-passed-as-declared` with it, since one `bodyOf` serves both requests in the real
+adapter. Sending `arguments: {}` instead of the declared channel turns only
+`mcp/arguments-passed-as-declared` red, with "the tool reported receiving null on \"echo\", expected
+the declared literal". Making `evaluateMcpTarget` allow every interface and every tool turns exactly
+`mcp/deny-unmapped-interface` and `mcp/deny-unauthorized-tool` red, each reporting both halves:
+"resolved instead of rejecting with \"forbidden-target\"; underlyingCalls() was 1, expected 0", which
+is the call-count pin doing its own work rather than riding on the code check.
+
+That the two result-reading assertions flip together against the real adapter and separately in the
+synthetic suite is the expected split and worth stating: the real adapter has one projection serving
+both requests, while the synthetic subject keys each mutant to its own `operationId`, which is what
+the one-flip-per-mutant rule is about.
+
+**The grading, and why its table of fourteen `true`s is not vacuous.** Six oracle-removal cases,
+covering all seven rules: O-001 and O-003 each carry `success-indicator-separation` and `whole-body`
+for their own operation, O-002 carries `per-record` and `omission-and-completeness`, O-006 with
+O-007 carries `malformed-input`, O-005 carries `sibling-cross-check`, and O-004 carries
+`state-change-read-back`. Every mutant still compiles under `strict`, so the predicates run on all of
+them. Both operations' descriptor roots are asserted directly at `/response-body`, which is the
+prefix `/interactions/search/response-body/matches` starts with; the command grading found that root
+wrong at `/artifact`, and it is the same failure this assertion forecloses for the kind.
+
+**What moved outside `src/testing/`.** `tests/adapters/probe-subject.test.ts` loses its duplicated
+guard. `tests/preflight/mcp-plan.test.ts`'s header loses a claim Story 11.13 falsified.
+`_bmad-output/project-knowledge/learning-path-step-by-step.md` gains step 52 and step 51's closing
+Watch out is corrected. `docs/reference/cli-commands.md` gains the third runner and the sixth count;
+`docs/how-to/evaluate-tool-use-behavior.md` loses the sentence saying the arm is owed and loses the
+conformance-arm item from its Missing list. `CHANGELOG.md` gains one `### Added` bullet under
+`[Unreleased]` with the `ConformancePort` widening as its BREAKING sub-bullet. Nothing below
+`[Unreleased]` is touched.
+
+**What did not move, and why the silence is deliberate.** No schema document, census constant,
+generated table, corpus member or contract fixture. `check:schemas`, `check:ad31-table`,
+`check:corpus` and `check:worked-example` are green with nothing regenerated, which is the mechanical
+proof. Story 11.8 owns every count this story could otherwise have moved.
