@@ -1,0 +1,189 @@
+{
+  "actionsArtifact": {
+    "digest": "sha256:0000000000000000000000000000000000000000000000000000000000000017",
+    "path": null,
+    "privateRef": "opaque:checklist-selection-actions",
+    "storage": "private"
+  },
+  "conditionArm": "independent",
+  "contractDigest": "sha256:db47672fee36bd18d5b7d42ac24cc11dc3d5c46ed0a7be86617676f2ebb9841c",
+  "evaluatorConfigurationDigest": "sha256:9a2309d94959a25356180a152b35ddaa5c548dae8494eea9095296a1aa45e391",
+  "evaluatorRecommendation": "FAIL",
+  "evidenceDisclosure": {
+    "reportedIncomplete": false,
+    "truncationBound": null
+  },
+  "findings": [
+    {
+      "behaviorId": "B-002",
+      "confidence": 0.95,
+      "evidenceArtifacts": [
+        {
+          "digest": "sha256:0000000000000000000000000000000000000000000000000000000000000017",
+          "path": null,
+          "privateRef": "opaque:checklist-selection-actions",
+          "storage": "private"
+        }
+      ],
+      "findingId": "F-001",
+      "findingType": "defect",
+      "observationIds": [
+        "obs-002"
+      ],
+      "oracleId": "O-002",
+      "probeId": "P-001",
+      "quotedEvidence": [
+        {
+          "artifactId": null,
+          "channel": "stdout",
+          "quote": "\"mobile-rules\""
+        },
+        {
+          "artifactId": null,
+          "channel": "exit-code",
+          "quote": "0"
+        }
+      ],
+      "severity": "material",
+      "summary": "The frontend selection carries an excluded item and the run exits 0."
+    },
+    {
+      "behaviorId": "B-002",
+      "confidence": 0.9,
+      "evidenceArtifacts": [],
+      "findingId": "F-002",
+      "findingType": "confirmation",
+      "observationIds": [
+        "obs-001"
+      ],
+      "oracleId": "O-002",
+      "probeId": "P-001",
+      "severity": "material",
+      "summary": "The backend selection carried no excluded item, so the same claim held for the other declared case."
+    }
+  ],
+  "invalidReason": null,
+  "isolationManifestArtifact": {
+    "digest": "sha256:0000000000000000000000000000000000000000000000000000000000000018",
+    "path": null,
+    "privateRef": "opaque:checklist-selection-manifest",
+    "storage": "private"
+  },
+  "judgeResults": [],
+  "mode": "contract-scoring",
+  "observations": [
+    {
+      "artifacts": {},
+      "callInputs": {
+        "argument": null,
+        "arguments": null,
+        "body": null,
+        "environment": null,
+        "header": null,
+        "option": {
+          "skill": "checklist-selection"
+        },
+        "path": null,
+        "query": null,
+        "stdin": {
+          "prompt": "the same rules, then a backend case"
+        }
+      },
+      "exitCode": 0,
+      "observationId": "obs-001",
+      "operationId": "run-skill",
+      "principal": null,
+      "provenance": "evaluator-chosen",
+      "responseBody": null,
+      "responseHeaders": null,
+      "responseStatus": null,
+      "sequence": 1,
+      "stderr": {
+        "kind": "text",
+        "value": ""
+      },
+      "stdout": {
+        "kind": "json",
+        "value": {
+          "selected": [
+            "api-rules",
+            "data-rules"
+          ]
+        }
+      }
+    },
+    {
+      "artifacts": {},
+      "callInputs": {
+        "argument": null,
+        "arguments": null,
+        "body": null,
+        "environment": null,
+        "header": null,
+        "option": {
+          "skill": "checklist-selection"
+        },
+        "path": null,
+        "query": null,
+        "stdin": {
+          "prompt": "the rules, then a frontend case"
+        }
+      },
+      "exitCode": 0,
+      "observationId": "obs-002",
+      "operationId": "run-skill",
+      "principal": null,
+      "provenance": "evaluator-chosen",
+      "responseBody": null,
+      "responseHeaders": null,
+      "responseStatus": null,
+      "sequence": 2,
+      "stderr": {
+        "kind": "text",
+        "value": ""
+      },
+      "stdout": {
+        "kind": "json",
+        "value": {
+          "selected": [
+            "interaction-rules",
+            "timing-rules",
+            "quality-rules",
+            "mobile-rules"
+          ]
+        }
+      }
+    }
+  ],
+  "oracleDispositions": [
+    {
+      "disposition": "held",
+      "note": "The selection named every mandated item for the case.",
+      "observationIds": [
+        "obs-002"
+      ],
+      "oracleId": "O-001"
+    },
+    {
+      "disposition": "violated",
+      "note": "The selection named an item the rules exclude for the case.",
+      "observationIds": [
+        "obs-002"
+      ],
+      "oracleId": "O-002"
+    }
+  ],
+  "parentDigest": null,
+  "resourceUse": {
+    "costUsd": "0.02",
+    "inputTokens": 4200,
+    "outputTokens": 600,
+    "toolCalls": 2,
+    "wallClockSeconds": 18.5
+  },
+  "revisionCount": 0,
+  "runId": "skill-defect-run-0001",
+  "schemaVersion": 5,
+  "sealedBriefDigest": "sha256:dc6ed0b8043d06c27520d4a0eb0f9803c01e20d03be50c565b9e3733870510bd",
+  "trialIndex": 1
+}

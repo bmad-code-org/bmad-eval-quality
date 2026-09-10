@@ -1,5 +1,5 @@
-// The byte-exact drift check over the spike worked example: rebuilds the five
-// generated files in memory through the same pure builder the generator uses
+// The byte-exact drift check over every committed chain: rebuilds each
+// generated file in memory through the same pure builders the generator uses
 // and compares them against the committed bytes, so a published chain never
 // drifts from the reference functions that emitted it.
 //
@@ -22,10 +22,8 @@
 // enum, namespace, parameter property, or non-type re-export may appear here
 // or in anything it imports.
 import { readFile } from 'node:fs/promises'
-import {
-	buildWorkedExample,
-	WORKED_EXAMPLE_LABEL,
-} from './worked-example-target.ts'
+import { dirname } from 'node:path'
+import { buildWorkedExample } from './worked-example-target.ts'
 
 let expected: Map<string, string>
 try {
@@ -41,8 +39,10 @@ try {
 
 const repoRoot = new URL('../', import.meta.url)
 const drifted: string[] = []
+const labels = new Set<string>()
 
 for (const [path, text] of [...expected].sort()) {
+	labels.add(dirname(path))
 	const rebuilt = Buffer.from(text, 'utf8')
 	let committed: Buffer
 	try {
@@ -78,5 +78,5 @@ if (drifted.length > 0) {
 }
 
 console.log(
-	`check-worked-example: ${expected.size} committed files under ${WORKED_EXAMPLE_LABEL} match the builder byte for byte`,
+	`check-worked-example: ${expected.size} committed files under ${[...labels].sort().join(', ')} match the builder byte for byte`,
 )

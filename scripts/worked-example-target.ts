@@ -18,7 +18,6 @@
 // appear in this file or anything it imports.
 import { compile } from '../src/application/compile.ts'
 import { seal } from '../src/application/seal.ts'
-import { serializeArtifact } from '../src/application/serialize.ts'
 import { digestArtifact } from '../src/core/canonical/digest.ts'
 import { emit } from '../src/core/emit/emit.ts'
 import { ingest } from '../src/core/ingest/ingest.ts'
@@ -34,7 +33,6 @@ import { IsolationManifest } from '../src/core/schemas/isolation-manifest.ts'
 import { PreflightVerdict } from '../src/core/schemas/preflight-verdict.ts'
 import type { KeyedShapeDescriptor } from '../src/core/schemas/primitives.ts'
 import { Probe } from '../src/core/schemas/probe.ts'
-import { ScoringPolicy } from '../src/core/schemas/scoring-policy.ts'
 import type { SealedEvaluatorBrief } from '../src/core/schemas/sealed-evaluator-brief.ts'
 import { SealedRunRecord } from '../src/core/schemas/sealed-run-record.ts'
 import { bindingOrder } from '../src/core/score/binding-order.ts'
@@ -54,6 +52,13 @@ import {
 	type SignedProbe,
 } from '../src/core/score/witness.ts'
 import { buildPlanIndex } from '../src/core/seal/plan-index.ts'
+import { buildSkillExample } from './skill-example-target.ts'
+import {
+	digestPlaceholder,
+	fail,
+	POLICY,
+	renderJson,
+} from './worked-example-shared.ts'
 
 /** Repository-relative, for the emitted keys and for violation messages. */
 export const WORKED_EXAMPLE_LABEL =
@@ -80,74 +85,8 @@ export const WORKED_EXAMPLE_FILES = [
 
 const keyOf = (name: string): string => `${WORKED_EXAMPLE_LABEL}/${name}`
 
-/**
- * Canonical bytes, re-indented. RFC 8785 fixes key order and number spelling,
- * so two runs over one input produce one tree; the re-indent is what keeps the
- * chain readable, which is the only reason this folder exists.
- *
- * Two consequences, both stated because a reader of a worked example will hit
- * them.
- *
- * The bytes on disk are the re-indented form, so hashing a file here does not
- * reproduce a digest recorded inside it. `sealed-run-record.json`'s
- * `contractDigest` is `digestArtifact` over the contract's canonical bytes,
- * which is `serializeArtifact` output with no whitespace; `shasum -a 256` over
- * `eval-contract.json` hashes this indented rendering and gives a different
- * value. Every digest in this chain is over the canonical form. That is what
- * `dev-corpus-target.ts` avoids by writing `serializeArtifact` output straight
- * to disk, and the trade taken here is readability against a hash a reader can
- * reproduce with one shell command.
- *
- * The re-indent preserves RFC 8785 key order only while no emitted object
- * carries an array-index-like key: V8 hoists integer-like own properties and
- * enumerates them in numeric order ahead of the string keys, so `JSON.parse`
- * followed by `JSON.stringify` would reorder such an object. The round trip
- * below checks that rather than asserting it, because a breach is otherwise
- * invisible: the generator would write reordered bytes and the drift check
- * would compare them against an identically reordered rebuild and exit 0. The
- * digests are computed over the canonical bytes rather than over this
- * rendering, so nothing downstream reads the rendered order either way.
- */
-const renderJson = (value: unknown, artifactPath: string): string => {
-	const canonical = serializeArtifact(value, artifactPath)
-	const rendered = `${JSON.stringify(JSON.parse(canonical), null, 2)}\n`
-	// `serializeArtifact` ends its output with a newline, which the re-parse
-	// drops, so the comparison puts one back.
-	if (`${JSON.stringify(JSON.parse(rendered))}\n` !== canonical) {
-		fail(`${artifactPath}: the re-indent did not round-trip to canonical bytes`)
-	}
-	return rendered
-}
-
-const digestPlaceholder = (ordinal: number): string =>
-	`sha256:${ordinal.toString(16).padStart(64, '0')}`
-
 // ---------------------------------------------------------------------------
-// authored input 1: the scoring policy the run was scored under
-// ---------------------------------------------------------------------------
-
-/**
- * The published default policy. Not one of the five emitted files: it is a
- * caller-side input the chain was scored under, and it is here so the severity
- * floor, the thresholds, and the regex budget below are read from one declared
- * artifact rather than from five scattered literals.
- */
-const POLICY = ScoringPolicy.parse({
-	schemaVersion: 2,
-	parentDigest: null,
-	revisionCount: 0,
-	policyId: 'default-policy',
-	severityFloor: 'material',
-	confidenceThreshold: 0.7,
-	catchThreshold: 0.5,
-	minimumTrialCount: 3,
-	reExecutionCap: 2,
-	remediationCap: 3,
-	regexMatchStepBudget: 1000000,
-})
-
-// ---------------------------------------------------------------------------
-// authored input 2: the Eval Contract
+// authored input 1: the Eval Contract
 // ---------------------------------------------------------------------------
 
 const emptyChannel = (): KeyedShapeDescriptor => ({
@@ -657,7 +596,7 @@ const AUTHORED_CONTRACT = {
 } satisfies EvalContract
 
 // ---------------------------------------------------------------------------
-// authored input 3: the probe, P-001
+// authored input 2: the probe, P-001
 // ---------------------------------------------------------------------------
 
 const spikeEvidence = (ordinal: number, label: string) => ({
@@ -752,7 +691,7 @@ const AUTHORED_PROBE = {
 } satisfies Probe
 
 // ---------------------------------------------------------------------------
-// authored input 4: the sealed run record
+// authored input 3: the sealed run record
 // ---------------------------------------------------------------------------
 
 const JSON_HEADERS = { 'content-type': 'application/json' }
@@ -1042,7 +981,7 @@ const authoredRecord = (
 })
 
 // ---------------------------------------------------------------------------
-// authored input 5: the evaluator configuration the run was scored under
+// authored input 4: the evaluator configuration the run was scored under
 // ---------------------------------------------------------------------------
 
 /**
@@ -1070,7 +1009,7 @@ const authoredEvaluatorConfiguration = (
 })
 
 // ---------------------------------------------------------------------------
-// authored input 6: the isolation manifest the run was audited under
+// authored input 5: the isolation manifest the run was audited under
 // ---------------------------------------------------------------------------
 
 /**
@@ -1137,7 +1076,7 @@ const authoredIsolationManifest = (
 })
 
 // ---------------------------------------------------------------------------
-// authored input 7: the pre-flight verdict `score()` requires
+// authored input 6: the pre-flight verdict `score()` requires
 // ---------------------------------------------------------------------------
 
 /**
@@ -1163,16 +1102,6 @@ const authoredPreflightVerdict = (): PreflightVerdict => ({
 // ---------------------------------------------------------------------------
 // derivation
 // ---------------------------------------------------------------------------
-
-/**
- * A function declaration rather than an arrow, because TypeScript treats a
- * call as never-returning only when the callee is declared this way. As a
- * `const` arrow it stops narrowing at every guard below, and the null checks
- * on the probe's own qualifying fields then need casts to undo.
- */
-function fail(message: string): never {
-	throw new Error(`worked-example: ${message}`)
-}
 
 /**
  * The chain as values rather than bytes: the four artifacts the files carry
@@ -1333,11 +1262,11 @@ export function buildWorkedExampleChain(): WorkedExampleChain {
 }
 
 /**
- * The five generated files, as repository-relative path to text. The three
- * hand-authored prose files in the same directory are not the builder's and
- * appear in no key here.
+ * The spike chain's five generated files, as repository-relative path to text.
+ * The three hand-authored prose files in the same directory are not the
+ * builder's and appear in no key here.
  */
-export function buildWorkedExample(): Map<string, string> {
+export function buildSpikeExample(): Map<string, string> {
 	const chain = buildWorkedExampleChain()
 	const files = new Map<string, string>()
 	files.set(
@@ -1375,6 +1304,30 @@ export function buildWorkedExample(): Map<string, string> {
 					: ''
 			}${unlisted.length > 0 ? `emitted but not declared: ${unlisted.join(', ')}.` : ''}`.trim(),
 		)
+	}
+	return files
+}
+
+/**
+ * Every committed chain's files in one map, which is what the generator writes
+ * and what the drift check compares.
+ *
+ * The registry, and the only part of this module that knows a second chain
+ * exists. Everything above it is the spike chain and stays that way: one
+ * target file per chain, and what more than one chain needs lives in
+ * `worked-example-shared.ts` rather than in a sibling's module. A chain joins
+ * by adding its builder to the list below; a key collision between two chains
+ * is a build failure rather than a silent overwrite, since one chain would
+ * otherwise publish over another's file and the drift check would report the
+ * loser as missing.
+ */
+export function buildWorkedExample(): Map<string, string> {
+	const files = new Map<string, string>()
+	for (const build of [buildSpikeExample, buildSkillExample]) {
+		for (const [path, text] of build()) {
+			if (files.has(path)) fail(`two chains both emit "${path}"`)
+			files.set(path, text)
+		}
 	}
 	return files
 }

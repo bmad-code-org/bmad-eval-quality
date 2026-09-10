@@ -1,7 +1,7 @@
-// AD-31's fourteen predicates, graded over a command contract.
+// AD-31's fourteen predicates, graded over the three command contracts.
 //
 // `CORPUS_CELLS` is one contract per discipline rule per declaration state, and
-// the two command contracts are not declaration-state exemplars, so they do not
+// the command contracts are not declaration-state exemplars, so they do not
 // belong in it. The consequence was that nothing graded them at all: the
 // generated AD-31 table is the only artifact that runs all fourteen predicates,
 // it reads the cells, and a whole interface kind went ungraded while the suite
@@ -21,6 +21,7 @@ import {
 	artifactCommandContract,
 	commandContract,
 } from '../schemas/fixtures/command-contract.ts'
+import { skillContract } from '../schemas/fixtures/skill-contract.ts'
 
 const gradeOf = (contract: unknown) => {
 	const parsed = EvalContract.parse(contract)
@@ -69,6 +70,24 @@ describe('the fourteen predicates over a command contract', () => {
 		])
 	})
 
+	it('grades one holding a skill responsible for a decision', () => {
+		expect(gradeOf(skillContract)).toEqual([
+			['success-indicator-separation', false, true],
+			['whole-body', false, true],
+			['malformed-input', true, false],
+			// Satisfied where the two fixtures above leave it unsatisfied and
+			// satisfied respectively, and by a third route: the exclusion oracle
+			// quantifies over the declared collection on the nominated stream
+			// rather than inside a written file. A skill contract needs that
+			// quantifier for its own reasons, since the claim it makes is about
+			// every item the reply names.
+			['per-record', true, true],
+			['sibling-cross-check', true, false],
+			['omission-and-completeness', false, true],
+			['state-change-read-back', false, true],
+		])
+	})
+
 	// Every rule that reads a descriptor pointer builds it from this root, so
 	// the root is asserted directly as well: a wrong root makes several rules
 	// answer against a pointer that cannot exist, and each of them reads as an
@@ -84,5 +103,8 @@ describe('the fourteen predicates over a command contract', () => {
 			resolveOperations(EvalContract.parse(artifactCommandContract))[0]
 				?.descriptorRoot,
 		).toBe('/artifact/verdict')
+		expect(
+			resolveOperations(EvalContract.parse(skillContract))[0]?.descriptorRoot,
+		).toBe('/stdout')
 	})
 })

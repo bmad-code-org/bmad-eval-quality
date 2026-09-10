@@ -1,0 +1,145 @@
+{
+  "callerAttestedInputs": [
+    "corpusDigest",
+    "fixtureDigest",
+    "evaluatorConfigurationDigest",
+    "mode"
+  ],
+  "comparabilityKey": "sha256:d4d03b4d153066086ea1c591944fc02d14f8a3fe3c89b0867279db8329fd85ea",
+  "contractVerdict": "CONCERNS",
+  "coverageGaps": [
+    {
+      "relevancePredicate": "malformed-input-relevance",
+      "rule": "malformed-input",
+      "satisfactionPredicate": "malformed-input-satisfaction",
+      "satisfied": false,
+      "severity": "material"
+    },
+    {
+      "relevancePredicate": "sibling-cross-check-relevance",
+      "rule": "sibling-cross-check",
+      "satisfactionPredicate": "sibling-cross-check-satisfaction",
+      "satisfied": false,
+      "severity": "material"
+    }
+  ],
+  "excludedProbeIds": [],
+  "exitCode": 0,
+  "mode": "contract-scoring",
+  "outcomes": [
+    {
+      "checkResolution": {
+        "children": [],
+        "introductionCondition": null,
+        "resolution": "true"
+      },
+      "corroboration": "agrees",
+      "disposition": "held",
+      "oracleId": "O-001",
+      "probeId": "P-001",
+      "resolvedFrom": null,
+      "selectedObservationIds": [
+        "obs-002"
+      ],
+      "severity": "material",
+      "state": "confirmed"
+    },
+    {
+      "checkResolution": {
+        "children": [
+          {
+            "children": [
+              {
+                "children": [],
+                "introductionCondition": null,
+                "resolution": "false"
+              },
+              {
+                "children": [],
+                "introductionCondition": null,
+                "resolution": "false"
+              },
+              {
+                "children": [],
+                "introductionCondition": null,
+                "resolution": "false"
+              },
+              {
+                "children": [],
+                "introductionCondition": null,
+                "resolution": "true"
+              }
+            ],
+            "introductionCondition": null,
+            "resolution": "true"
+          }
+        ],
+        "introductionCondition": null,
+        "resolution": "false"
+      },
+      "corroboration": "agrees",
+      "disposition": "violated",
+      "oracleId": "O-002",
+      "probeId": "P-001",
+      "resolvedFrom": null,
+      "selectedObservationIds": [
+        "obs-002",
+        "obs-001"
+      ],
+      "severity": "material",
+      "state": "caught"
+    }
+  ],
+  "parentDigest": null,
+  "remediation": {
+    "cap": 3,
+    "capSource": "caller-attested",
+    "lineageChain": {
+      "lengthConsistent": true,
+      "noGap": true,
+      "noRepeatedDigest": true
+    },
+    "revisionCount": 0
+  },
+  "revisionCount": 0,
+  "runId": "skill-defect-run-0001",
+  "schemaVersion": 3,
+  "scoringVersion": "sha256:ab0a90d254ce234ce287dfe13c86b48166ff8601eb522561cce52a33e3ca7428",
+  "scoringVersionInputs": {
+    "contractSchemaVersion": 5,
+    "corpusDigest": "sha256:000000000000000000000000000000000000000000000000000000000000001a",
+    "evaluatorConfigurationDigest": "sha256:9a2309d94959a25356180a152b35ddaa5c548dae8494eea9095296a1aa45e391",
+    "fixtureDigest": "sha256:c3428cb77cfdac9f6bb0a35f5ea72b7d569d79c1f90a6de786664acb24796f59",
+    "mode": "contract-scoring",
+    "scoringPolicyDigest": "sha256:cc9e09a64f2ed19a6a204f72244e43e51b742f078fab859329601146fdf47bb7"
+  },
+  "strength": {
+    "basis": "measured",
+    "comparable": false,
+    "denominator": "unique qualified probe identifiers exercised per class, across 1 completed trial",
+    "note": "1 admitted probe over 1 completed trial. Below the declared minimum of 3. The vector is reported and marked non-comparable.",
+    "vector": {
+      "defect": {
+        "caught": 1,
+        "exercised": 1,
+        "rate": 1
+      },
+      "gameability": null,
+      "zero-action": null
+    }
+  },
+  "systemRecommendationNote": null,
+  "systemRecommendationRecorded": "FAIL",
+  "trials": {
+    "completed": 1,
+    "declaredMinimum": 3,
+    "invalidatedAttempts": []
+  },
+  "uncitedFindingGaps": [],
+  "uncitedFindings": [],
+  "verdictBasis": [
+    "coverage gap malformed-input unsatisfied at or above the severity floor",
+    "coverage gap sibling-cross-check unsatisfied at or above the severity floor",
+    "1 completed trials below the declared minimum of 3"
+  ]
+}
