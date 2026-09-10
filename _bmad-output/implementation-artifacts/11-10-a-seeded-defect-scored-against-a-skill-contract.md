@@ -318,11 +318,25 @@ chain could ship a run record whose oracle disposition cites nothing, and only a
 notice.
 
 What ships is four fields per oracle: `state`, `checkResolution.resolution`, `disposition` and
-`corroboration`, each the sole catcher of a different mutation. `corroboration` catches an emptied
-citation, `disposition` catches a flipped disposition including `not-attempted`, `checkResolution`
-catches a reply the oracle reads differently, and `state` catches the probe repointed at the other
-behaviour. `state` was recorded in the first round as the sole catcher of nothing; that was wrong
-too, and the source comment says what each line holds rather than repeating the claim.
+`corroboration`. Four of the eight lines are the sole catcher of a named mutation, measured: both
+`corroboration` lines catch an emptied citation, O-001's `disposition` catches a flip to
+`not-attempted`, and O-001's `state` catches the probe repointed at the other behaviour. The other
+four are not, because `corroboration` is derived partly from the two lines beside it, so a flipped
+disposition or a differently-read reply moves a pair together and whichever line comes first is the
+one that reds.
+
+The asymmetry between the two oracles has a cause worth recording. No defect finding cites O-001, so
+its `corroboration` is `agrees` exactly when its check is satisfied; F-001 and F-002 both cite O-002,
+so its disposition and its resolution each move its `corroboration` too. That is a fact about this
+chain's finding set rather than about the fields.
+
+Two claims about these lines were wrong before this one. Round one recorded O-001's `state` as the
+sole catcher of nothing, which the `behaviorId` mutation disproves. The first re-verify fix recorded
+all eight lines as sole catchers, which was wrong the day it landed for three of them. Both are
+recorded here rather than quietly corrected, because an exclusivity claim over eight assertions is a
+joint property of `CORROBORATION_RULES`, the outcome table and this chain's finding set, nothing
+makes it fail when it stops being true, and this file is the third place it has had to be re-measured
+in one pass.
 
 **Three assertions removed because they could not fail**, and re-verified as safe. `witness.basis`
 and `strength.basis` are each typed to one literal with one producer. `witnessObservationIds` and
@@ -395,100 +409,6 @@ carries a different prompt. Decisions 11 through 16 were each checked against th
 in Decision 14 reproduced, and both stdin spellings in Decision 16 confirmed to compile clean under
 `{ strict: true }`. Read as a whole, the five surfaces that describe this chain, the index row, the
 guide, the corpus README, the authoring guide and the changelog, all say its inputs are authored.
-
-## Checkpoint decisions taken without the human
-
-- **All four Ask First items were declined, which is what the story predicted.** The diff under `src/` is empty. No `schemaVersion` moved. No policy carrying `minimumTrialCount: 1` was authored; the chain is scored under the published default at 3 and reports the shortfall. `docs/how-to/evaluate-skill-behavior.md`'s "In BMAD terms" section is unedited.
-- **The learning-path step is 55.** Main ended at Step 54 when this story rebased. A sibling session working the epic's tail has 55 written on its own branch and unmerged, so whichever branch merges second renumbers; this one re-checks the committed file immediately before merging.
-- **The chain's own test asserts a value-level property the story's task list did not name:** that `preflightVerdict.fixtureDigest` equals the fixture digest on the emitted artifact. That is the one link between the pre-flight half and the scoring half, and without it a chain could compute a verdict and score under a different one.
-
-## Review Findings
-
-`/bmad-code-review` in a peer session, over `git diff b0ea14d..HEAD`, at 1a415e7. One blocking
-finding, twelve non-blocking, all addressed in this pass. The review ran every mutation in a detached
-worktree after the first round collided with this session's own uncommitted edits in the shared one.
-
-**The blocking finding, and why it was the right one.** `tests/score/skill-worked-example.test.ts`
-asserted O-001's state and check resolution and neither oracle's authored disposition. The review
-proved it twice. Flipping O-001's disposition from `held` to `violated` left all 94 tests green while
-the emitted artifact carried `corroboration: 'disagrees'`; only `check:worked-example` reddened, and
-only on bytes. Cutting obs-002's selection to `['timing-rules', 'mobile-rules']` reddened the
-resolution line and left the state line green, because `confirmed` is the outcome table's catch-all
-row.
-
-The fix the review proposed was `corroboration` on both oracles plus O-001's disposition beside
-O-002's. What shipped is the disposition on both and `corroboration` on neither, because the measured
-answer differs from the proposed one. `corroboration` is a function of the authored disposition and
-the resolved check, and this file pins both on both oracles, so no mutation this chain admits moves
-it alone; `tests/score/outcome.test.ts` ties every corroboration rule to the value it produces
-exhaustively, which is where that derivation is held. With the disposition lines in, flipping O-001's
-to `violated` reds, and flipping O-002's to `held` reds, each on its own line. O-001's `state` line
-is kept and labelled in the source as the one assertion here that is the sole catcher of nothing:
-the pair `confirmed` and `caught` is the claim this chain exists to make, and a reader should not
-have to derive it.
-
-**Three assertions removed because they could not fail.** `witness.basis` and `strength.basis` are
-each typed to one literal with one producer. `witnessObservationIds` and `unwitnessedFindingIds` are
-both entailed by `result: 'matched'` over a pinned partition, and a non-empty
-`unwitnessedFindingIds` forces a different result and aborts the build. The second registry case in
-`tests/score/worked-example.test.ts` went the same way: the registry copies each builder's entries and
-fails on a collision, so a value can only differ by a missing key, which the key-set case already
-reads.
-
-**Two assertions kept although they duplicate a builder guard**, `preflightVerdict.passed` and
-`witness.result`, each with a comment saying so. They are acceptance criteria stated literally and
-they mark the boundary between the two halves of the chain, which is the same reason Story 11.8 kept
-its own `verdict.passed`.
-
-**Three dead guards deleted.** The two ahead of `matchProbeWitness` are unreachable: `expectedClean`
-with a declared defect is refused by `Probe.parse`, and a null signature is refused by the
-`sealProbeSet` guard under `signature-absent`. Neither is needed for the narrowing, which the cast
-carries. The `leg.request.kind !== 'cli'` guard in the observation walk is unreachable while the
-contract declares one `cli` interface, and a second interface of another kind makes
-`reducePreflight` throw `port-contract-violation` naming both kinds, which says more than the guard
-could.
-
-**Four prose corrections.** The widened sentence at `docs/how-to/evaluate-skill-behavior.md:43` said
-"either kind" over a refusal that reads no class at all, so it names all four probe classes now. A
-voice-pass hit survived at `:240` and lost its rejected half. `docs/index.md:77` and the guide's
-standing section both now say the chain's observations are authored: the two rows beside the skill
-row read "in a real corpus" and "a real probe observes a seeded defect over HTTP", so the column's
-frame made the unqualified sentence read as a live run. And the sentence this story added to the
-corpus README's "What is here" bullet said "the committed end-to-end chain" in the same generated file
-whose absence paragraph says two are committed; it reads "one of the two committed end-to-end chains"
-now, so Story 11.11 swaps a numeral there as well.
-
-**One correction to this file.** The corpus composition this story returned is the last column of
-Decision 6's table, not the middle one.
-
-**A dead assertion outside this story's diff, fixed here.** `tests/architecture/dev-corpus.test.ts`
-case 163's first pattern, `/qualified-probe\s+dimensions\s+are\s+absent/`, is a strict prefix of its
-second, so no README could falsify it while satisfying that one and it certified nothing across two
-epics. It is anchored on the paragraph's own bold heading now, and removing the bold markers reddens
-it. That is the eleventh assertion this epic has found certifying nothing, and the coordinator ruled
-it belongs in this pass.
-
-**One finding found and routed rather than fixed here.** `SealedRunRecord.invalidReason` has no reader
-anywhere in `src/`: it appears once, in its own schema declaration. The review set it to a non-null
-string on this chain's record and the run still scored `trials.completed: 1`,
-`invalidatedAttempts: []` and a measured defect rate of 1, with the whole suite green. So the record
-carries a working invalidation mechanism the caller cannot reach, `invalidatedAttempts` computed
-internally from vote states, beside a caller-facing field that does nothing. Wiring it is a `src/`
-change this story's Boundaries make Ask First, with its own AD-21 rung question and its own reject
-cases. The ruling was to keep it out of this diff and hand it to the session clearing the epic's
-leftovers, on its own branch and its own pull request, rather than to record it unowned or to hand it
-forward to a story that did not plan for it. Nothing was added to `deferred-work.md`.
-
-**What the review confirmed rather than found.** No reachable silent vacuum under AD-4's
-empty-collection rule: an emptied selection on obs-002 sends the condition to
-`insufficient-evidence` and the witness to `unwitnessed-claim`, and an emptied sensitivity leg fails
-`input-sensitivity`, so both abort the build. The one shape that slips every guard is obs-001 coming
-back empty, which moves it from `refuting` to `inconclusive`, and the partition assertion is its sole
-catcher. The pre-flight walk reads both minted control identifiers off `plan.legs`;
-`seeded-faults-scoped` examines all four clean legs and drops none, because the fault leg's request
-carries a different prompt. Decisions 11 through 16 were each checked against the tree, both digests
-in Decision 14 reproduced, and both stdin spellings in Decision 16 confirmed to compile clean under
-`{ strict: true }`.
 
 ## Design Notes
 

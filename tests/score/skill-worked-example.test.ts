@@ -118,8 +118,11 @@ describe('the skill chain, as the shipped stages computed it', () => {
 		// The inclusion half holds over the same reply the exclusion half
 		// rejects, which is the whole reason a skill contract carries both.
 		//
-		// Four fields per oracle, and each reads something the other three do
-		// not.
+		// Four fields per oracle. What each one holds, rather than a claim that
+		// each of the eight lines uniquely catches something: the eight are not
+		// independent, because `corroboration` is derived partly from the two
+		// beside it, so several mutations move a pair together and the line
+		// that reds is whichever comes first.
 		//
 		// `corroboration` is the one that is easy to mistake for a derived
 		// restatement of the two beside it, and it is not: three of the eight
@@ -133,12 +136,18 @@ describe('the skill chain, as the shipped stages computed it', () => {
 		// supported by the observations they cite. `tests/score/outcome.test.ts`
 		// holds the rule table; nothing but this holds it over this chain.
 		//
-		// `disposition` is the sole catcher of a disposition flipped to any
-		// other value, including `not-attempted`, which moves nothing else.
-		// `checkResolution` is the sole catcher of a reply the oracle reads
-		// differently. `state` is the sole catcher of the probe being repointed
-		// at the other behaviour, which swaps which oracle the witness match
-		// attaches to.
+		// `state` on O-001 is the only line that moves when the probe is
+		// repointed at the other behaviour, which swaps which oracle the witness
+		// match attaches to.
+		//
+		// `disposition` and `checkResolution` each pin a value a reader of a
+		// worked example needs, and neither is the only line that reds when it
+		// moves: a flipped disposition or a differently-read reply usually moves
+		// `corroboration` with it. The one flip that moves a disposition alone
+		// is O-001's to `not-attempted`, which escapes only because no defect
+		// finding cites O-001. That asymmetry is a fact about this chain's
+		// finding set rather than about the fields, so it is recorded here and
+		// not asserted.
 		expect(outcomeOf('O-001')?.state).toBe('confirmed')
 		expect(outcomeOf('O-001')?.checkResolution?.resolution).toBe('true')
 		expect(outcomeOf('O-001')?.disposition).toBe('held')
