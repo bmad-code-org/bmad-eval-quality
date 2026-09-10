@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { isApiOperation } from '../../src/core/declared-inputs.ts'
+import {
+	isApiOperation,
+	isMcpOperation,
+} from '../../src/core/declared-inputs.ts'
 import { EvalContract } from '../../src/core/schemas/eval-contract.ts'
 import { InteractionPointer } from '../../src/core/schemas/pointer.ts'
 import {
@@ -9,6 +12,7 @@ import {
 	resolveStep,
 } from '../../src/core/seal/plan-index.ts'
 import { commandContract } from '../schemas/fixtures/command-contract.ts'
+import { mcpContract } from '../schemas/fixtures/mcp-contract.ts'
 import { gateCInteractionPlan, gateCPermittedInterfaces } from './fixtures.ts'
 
 describe('parseEvidenceTarget', () => {
@@ -262,6 +266,19 @@ describe('resolveStep / resolveOperation', () => {
 		expect(resolveOperation(commandIndex, 'select-fragments').operationId).toBe(
 			'select-fragments',
 		)
+	})
+
+	it('resolveOperation returns a tool call rather than throwing', () => {
+		const parsed = EvalContract.parse(mcpContract)
+		const mcpIndex = buildPlanIndex(
+			parsed.interactionPlan,
+			parsed.permittedInterfaces,
+		)
+		const operation = resolveOperation(mcpIndex, 'search-notes')
+		expect(operation.operationId).toBe('search-notes')
+		expect(isMcpOperation(operation)).toBe(true)
+		if (!isMcpOperation(operation)) throw new Error('fixture is a tool call')
+		expect(operation.toolName).toBe('search_notes')
 	})
 
 	it('resolveOperation throws TypeError on an operation the interfaces do not declare', () => {
