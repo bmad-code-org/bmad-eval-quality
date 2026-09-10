@@ -660,6 +660,27 @@ writes `responseBody: null`, and an oracle over the descriptor resolves absent, 
 reachability rules already describe. `tests/adapters/mcp-adapter.test.ts` covers it against a real
 server through `silent_tool`.
 
+**Decision 17: the frozen Never list predicts the `plan-index.ts` casts were already gone, and they
+were not; the divergence is recorded here rather than edited into the block.**
+The frozen block reserves `plan-index.ts` from this story on the ground that "Story 11.5's Approach
+claims all four, including removing the `operation as Operation` cast at `plan-index.ts:238`. This
+story reads them as landed." Three of the four did land. The cast removal did not: Story 11.5's own
+Decision 10 records that it kept all three casts and substituted a grep for the compiler sweep, so the
+frozen sentence describes a state the tree never reached.
+
+The repository owner directed this story to close them, on a finding the Story 11.5 session verified
+by compiling a standalone probe against the real types under `--strict` rather than by reasoning about
+it. Decision 10 above carries the mechanism and the cost. The block is human-owned and is left byte
+for byte as approved; a reviewer reading its `plan-index.ts` line should read Decision 10 and this one
+beside it. The block's other three reservations hold as written: this story adds no third operation
+map, gives `resolveHomeOperation` no kind test, constructs nothing in `requestOf`, and rewrites
+neither `qualification.ts` detail string.
+
+The frozen Problem statement's two line citations have also drifted, `ProbeRequest` at `:135-138` and
+`ProbeObservation` at `:186-189`, because Story 11.5 added `McpProbeRequest` above both. The claims
+those citations carry are still true of the tree this story started from, so nothing but the numerals
+moved and neither is edited.
+
 ## Design Notes
 
 The organising idea is that the port was already built for a third kind and had one assumption left in
@@ -697,36 +718,54 @@ derives its fourteen outcomes from, and the split did not move it.
 
 ## Verification
 
-**Commands:**
+Every command below was run and the result is recorded.
 
-- `npm run typecheck` -- expected: exit 0. Every observation branch is present, and Story 11.6's nine
-  keys are already in place.
-- `npx vitest run tests/adapters tests/preflight tests/evaluate` -- expected: green, one case per I/O
-  Matrix row, including a real stdio session, both caps, and every denial reason.
-- `npm run test:conformance` -- expected: green. `environment-probe` stays 19/19, `command-probe` stays
+- `npm run typecheck` -- exit 0. Adding `McpProbeObservation` to the union named exactly the four
+  sites the Code Map predicted and no fifth: `projection.ts` twice, `reduce.ts`, and
+  `witness-evidence.ts`.
+- The exhaustiveness of `buildPlanIndex`'s switch, proved by breaking it: deleting `case 'web'`
+  produces `src/core/seal/plan-index.ts(271,9): error TS1360: Type '{ ... kind: "web" ... }' does not
+  satisfy the expected type 'never'`, and restoring it returns the typecheck to exit 0.
+- `npx vitest run tests/adapters` -- green, 79 tests across 9 files. `mcp-adapter.test.ts` runs a real
+  stdio server per case: the authorized call, a shell-metacharacter argument reaching the tool
+  verbatim inside the JSON-RPC frame, a result with no structured content, a tool error, a JSON-RPC
+  error, both denials, an `api` and a `cli` request refused by kind, a denial proved to reach no
+  mechanism, both caps, a server that fails to start, a server that exits at launch, a malformed
+  frame, a mid-call abort, the six shared assertions, and a full `runPreflight` end to end.
+- `npx vitest run tests/preflight tests/evaluate tests/application` -- green. `mcp-observation.test.ts`
+  covers the three branched pure functions and the oracle: `/response-status` resolves `true` against
+  a clean call asserting `0` and against an errored one asserting `1`, and `false` in both other
+  directions, read off `CheckResolutionValue.resolution` rather than off an identifier list.
+- `npx vitest run tests/preflight/reduce.test.ts` -- green, 47 tests. Fixture 129 is now six ordered
+  mismatch pairs over three plans, one per kind, and each asserts the fault message names both kinds.
+- `npm run test:conformance` -- green. `environment-probe` stays 19/19 and `command-probe` stays
   15/15, and the adapter test's six shared assertions all pass.
-- `npm run check:layers` -- expected: exit 0, 0 violations, proving `evaluateMcpTarget`'s placement
-  mechanically.
-- `npm run check:boundary` -- expected: exit 0, 0 violations.
-- `npm run check:schemas` -- expected: exit 0 with no regeneration. A port message carries no
-  `lineageFields` and has no entry under `schemas/`, so no published document moves in this story.
-- `npx vitest run tests/schemas` -- expected: green with no census constant moved, which is what
-  proves the previous line.
-- `npm run check:worked-example` -- expected: exit 0 with no difference. Story 11.6 moved the record's
-  stamp; this story moves nothing the worked chain reads.
-- `npm run check:ad33-table` and `npm run check:ad21-table` -- expected: exit 0 with no regeneration,
-  proving the outcome procedure and both ladders read no transport field.
-- `npm run check:doc-invocations` and `npm run check:docs` -- expected: exit 0. Story 11.2 armed the
-  tool-use guide as an executed input, so this story's edits to it are executed and checked.
-- `grep -nE ', not |rather than|instead of|as opposed to|, never |no longer' src/adapters/mcp-adapter.ts src/adapters/mcp-target-policy.ts src/core/schemas/port-messages.ts src/core/schemas/probe-policy.ts src/core/preflight/projection.ts src/core/preflight/witness-evidence.ts`
-  -- expected: every hit is a contrast whose two halves each carry a fact, checked by reading, and
-  every other hit removed.
-- `git diff CHANGELOG.md` -- expected: every hunk sits under `[Unreleased]` and nothing below it is
-  touched, since `release:prepare` owns every dated section.
-- `npm run test:coverage` -- expected: exit 0 with `src/core/**` at or above 90% statements and 90%
-  branches.
-- `npm run validate` -- expected: exit 0 with no output on stderr, over the 21 steps `package.json:113`
-  declares at this boundary; Story 11.8 adds the twenty-second, `check:doc-counts`, later. Five of the
-  21 read this story's changes: `check:layers`, `check:boundary`, `check:docs`,
-  `check:doc-invocations`, and `test:coverage`. `check:schemas` runs and finds nothing moved, which is
-  the mechanical proof that this half of the split touches no published document.
+- `npm run check:layers` -- exit 0, 128 files, 0 violations, which is the mechanical proof of
+  `evaluateMcpTarget`'s placement under `adapters/`.
+- `npm run check:boundary` -- exit 0, 216 entries, 0 violations.
+- `npm run check:schemas` -- exit 0 with no regeneration, and `npx vitest run tests/schemas` green
+  with no census constant moved. Together they prove no published document moved, which is what a
+  port message that produces none of the twelve should do.
+- `npm run check:worked-example` -- exit 0, 5 files byte for byte. This is also the proof that no
+  committed artifact carries an AD-11 fixture digest, which matters because Decision 6's sixth
+  projection field changes every one of those digests.
+- `npm run check:ad33-table`, `check:ad21-table`, `check:ad31-table`, `check:ad5-registry`,
+  `check:ad28-registry`, `check:corpus` -- all exit 0 with no regeneration.
+- `npm run lint:spine` -- exit 0, 0 findings against the two edited AD-2 sentences.
+- `npm run build:shareable && npm run check:shareable` -- the build rewrote
+  `_bmad-output/shareable/eval-quality-architecture-spine.html` from the edited spine and the check
+  reports 21 committed pages matching byte for byte. The regenerated file is committed.
+- `npm run check:doc-invocations` and `npm run check:docs` -- exit 0. Story 11.2 armed the tool-use
+  guide as an executed input, so this story's edits to it are executed and checked.
+- `grep -nE ', not |rather than|instead of|as opposed to|, never |no longer'` over every source file
+  this story wrote or edited -- every surviving hit read and kept only where both halves carry a fact.
+  One was removed: `mcp-adapter.ts`'s JSON-RPC response type was documented "as opposed to a
+  notification or a server-initiated request", which is now stated as what the shape carries.
+  The same grep over the new learning-path step returns nothing.
+- `git diff CHANGELOG.md` -- two hunks, both under `[Unreleased]`. Nothing below it is touched, since
+  `release:prepare` owns every dated section. One of the two corrects Story 11.5's own entry, whose
+  closing clause said `ProbeObservation` is unchanged and no adapter can answer an mcp leg yet.
+- `npm run test:coverage` -- exit 0. 122 test files, 4009 tests, `src/core/**` at 96.91% statements
+  and 92.23% branches.
+- `npm run validate` -- exit 0 with nothing on stderr, all 21 steps green.
+- `npm run build` -- exit 0.

@@ -109,9 +109,7 @@ function buildEnv(
 	return { ...base, ...declared }
 }
 
-const isJsonObject = (
-	value: unknown,
-): value is Record<string, JsonValue | undefined> =>
+const isJsonObject = (value: unknown): value is Record<string, JsonValue> =>
 	value !== null && typeof value === 'object' && !Array.isArray(value)
 
 /** An answer to something this client asked: an id, and no method. A notification carries no id and a server-initiated request carries a method. */
@@ -248,7 +246,7 @@ function startSession(
 	})
 	child.once('close', () => {
 		if (closed) return
-		fail(new Error('the server exited before the session was established'))
+		fail(new Error('the server exited before answering'))
 	})
 
 	const send = (message: Record<string, JsonValue>): void => {
@@ -286,9 +284,7 @@ function resultOf(response: JsonRpcResponse): McpCallToolResult {
 	const structured = response.result.structuredContent
 	return {
 		isError: response.result.isError === true,
-		structuredResult: isJsonObject(structured)
-			? (structured as JsonValue)
-			: null,
+		structuredResult: isJsonObject(structured) ? structured : null,
 	}
 }
 
