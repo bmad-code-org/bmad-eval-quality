@@ -144,7 +144,7 @@ export const mcpContract = {
 			direction: {
 				evidenceTargets: [
 					'/interactions/create/call-inputs/arguments/title',
-					'/interactions/read-back/response-body/matches',
+					'/interactions/read-back/response-body/titles',
 				],
 				relation: 'containment',
 				polarity: 'expects-hold',
@@ -154,7 +154,7 @@ export const mcpContract = {
 			check: {
 				op: 'containment',
 				operands: [
-					{ pointer: '/interactions/read-back/response-body/matches' },
+					{ pointer: '/interactions/read-back/response-body/titles' },
 					{ pointer: '/interactions/create/call-inputs/arguments/title' },
 				],
 			},
@@ -269,8 +269,20 @@ export const mcpContract = {
 					// what the tool said about its own work.
 					responseDescriptor: {
 						requiredKeys: ['ok', 'matches'],
-						permittedKeys: ['ok', 'matches', 'totalCount'],
-						types: { ok: 'boolean', matches: 'array', totalCount: 'number' },
+						permittedKeys: ['ok', 'matches', 'totalCount', 'titles'],
+						// `matches` holds objects keyed by `noteId`, which is what
+						// the quantifier over it reads. `titles` holds the bare
+						// strings, because AD-20 rule 7's satisfaction predicate
+						// needs one node holding both sides of the read-back and
+						// `containment` over an array compares whole elements: a
+						// containment over `matches` would be false against any
+						// server the quantifier is true of.
+						types: {
+							ok: 'boolean',
+							matches: 'array',
+							totalCount: 'number',
+							titles: 'array',
+						},
 						successIndicator: '/ok',
 						channelRoles: {
 							'/ok': 'success-indicator',

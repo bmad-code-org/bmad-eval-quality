@@ -36,7 +36,10 @@ import {
 import { checkStepReferenceReducibility } from '../../src/core/compile/step-reference.ts'
 import { checkWaiverCompleteness } from '../../src/core/compile/waivers.ts'
 import { evaluateRelevance } from '../../src/core/coverage/relevance.ts'
-import { evaluateSatisfaction } from '../../src/core/coverage/satisfaction.ts'
+import {
+	evaluateSatisfaction,
+	NO_RELEVANT_SITE,
+} from '../../src/core/coverage/satisfaction.ts'
 import {
 	descriptorArtifactOf,
 	descriptorChannelOf,
@@ -246,8 +249,13 @@ describe('a witness leg carries what the tool call produces and no more', () => 
 			),
 		)
 		expect(failure.code).toBe('unreachable-check-evidence')
-		expect(failure.message).toContain('does not carry')
-		expect(failure.message).toContain('response-status')
+		// The whole carriage clause, because the sibling reachability check two
+		// lines later throws the same code on the same pointer. Only the list of
+		// channels a leg is built from tells the two apart, and the api list
+		// carries `response-headers`.
+		expect(failure.message).toContain(
+			'pre-flight builds each leg from response-body, response-status, call-inputs alone',
+		)
 	})
 
 	it('admits a relation addressing response-status, where the error flag lands', () => {
@@ -308,6 +316,18 @@ describe('what a tool call can be asked about', () => {
 		).toBe('unreachable-check-evidence')
 	})
 
+	// Tail-less as well as tailed: the channel test runs ahead of the tail test,
+	// so a bare pointer at a transport channel is refused rather than admitted
+	// and left to resolve absent on every run.
+	it('refuses a tail-less pointer at a transport channel', () => {
+		const contract = oracleOver('/interactions/create/call-inputs/body')
+		const failure = failureOf(() => checkEvidenceReachability(contract))
+		expect(failure.code).toBe('unreachable-check-evidence')
+		expect(failure.message).toContain(
+			'a channel operation "create-note" does not accept input on',
+		)
+	})
+
 	it('admits response-status, where the error flag lands', () => {
 		expect(() =>
 			checkEvidenceReachability(
@@ -363,6 +383,11 @@ describe('the whole compile pipeline, minus the kind gate', () => {
 		expect(satisfaction.map((v) => v.satisfied)).toEqual(
 			satisfaction.map(() => true),
 		)
+		// The booleans alone would stay green against the state this fixture was
+		// enriched to leave: a rule with no site satisfies vacuously and reports
+		// `true`. The reason is what says the predicate found something to
+		// inspect.
+		expect(satisfaction.map((v) => v.reason)).not.toContain(NO_RELEVANT_SITE)
 	})
 })
 
@@ -399,6 +424,49 @@ describe('a witness leg of the wrong shape is diagnosed as one', () => {
 
 	it('parses, because the union carries no discriminator', () => {
 		expect(() => commandWithToolCallLegs()).not.toThrow()
+	})
+
+	// `checkWitnessLegality` is unconditional while `checkSensitivityWitnessDeclared`
+	// is strict-gated, so on a non-strict compile this arm is the only thing
+	// between a mismatched leg and a clean pass. One leg is the case that flips
+	// the verdict: two mismatched legs both resolve to nothing and compare
+	// equal, so the differential check catches them under the wrong diagnosis.
+	const mcpWithOneTransportLeg = () => {
+		const clone = structuredClone(mcpContract) as any
+		operation(clone, 1).sensitivityWitness.legs[1].inputs = {
+			path: {},
+			query: {},
+			header: {},
+			body: { kind: 'json', value: { title: 'the second note' } },
+		}
+		return EvalContract.parse(clone)
+	}
+
+	it('refuses one mismatched leg, which the differential check cannot see', () => {
+		const failure = failureOf(() =>
+			checkWitnessLegality(mcpWithOneTransportLeg()),
+		)
+		expect(failure.code).toBe('malformed-operator-expression')
+		expect(failure.message).toContain('shape carries no "arguments" channel')
+		expect(failure.message).toContain('leg-second-title')
+	})
+
+	it('refuses two mismatched legs by the mismatch and not by the differential', () => {
+		const clone = structuredClone(mcpContract) as any
+		const legs = operation(clone, 1).sensitivityWitness.legs
+		for (const [index, leg] of legs.entries()) {
+			leg.inputs = {
+				path: {},
+				query: {},
+				header: {},
+				body: { kind: 'json', value: { title: `note ${index}` } },
+			}
+		}
+		const failure = failureOf(() =>
+			checkWitnessLegality(EvalContract.parse(clone)),
+		)
+		expect(failure.message).toContain('shape carries no "arguments" channel')
+		expect(failure.message).not.toContain('not a differential')
 	})
 
 	it('names the shape mismatch at compile rather than a missing key', () => {
