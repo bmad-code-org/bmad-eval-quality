@@ -40,7 +40,7 @@ export type TransportChannelName = (typeof TRANSPORT_CHANNELS)[number]
 export const TransportChannel = z.enum(TRANSPORT_CHANNELS).meta({
 	id: 'TransportChannel',
 	description:
-		"AD-19's four transport channels. They are the segment `call-inputs` takes before its tail, and the four keys an observation's recorded call inputs are keyed by.",
+		"AD-19's four transport channels. They are four of the segments `call-inputs` takes before its tail, and four of the keys an observation's recorded call inputs are keyed by; `INPUT_CHANNELS` is the whole set.",
 })
 
 /**

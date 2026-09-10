@@ -25,18 +25,18 @@ export const CENSUS_BY_DOCUMENT: Readonly<Record<string, number>> = {
 	'isolation-manifest': 141,
 	'preflight-verdict': 34,
 	'private-artifact-manifest': 31,
-	probe: 616,
+	probe: 632,
 	rubric: 51,
 	'scoring-policy': 35,
 	'sealed-evaluator-brief': 102,
-	'sealed-run-record': 381,
+	'sealed-run-record': 387,
 }
 
 /** The same occurrences counted by keyword instead of by document. */
 export const CENSUS_BY_KEYWORD: Readonly<Record<string, number>> = {
-	additionalProperties: 334,
-	anyOf: 161,
-	const: 109,
+	additionalProperties: 339,
+	anyOf: 162,
+	const: 110,
 	enum: 77,
 	exclusiveMinimum: 2,
 	format: 1,
@@ -48,11 +48,11 @@ export const CENSUS_BY_KEYWORD: Readonly<Record<string, number>> = {
 	minProperties: 2,
 	minimum: 109,
 	oneOf: 27,
-	pattern: 193,
+	pattern: 194,
 	prefixItems: 24,
-	propertyNames: 68,
-	required: 266,
-	type: 1407,
+	propertyNames: 69,
+	required: 270,
+	type: 1416,
 }
 
 /**
@@ -61,7 +61,7 @@ export const CENSUS_BY_KEYWORD: Readonly<Record<string, number>> = {
  * keyword's descent being removed, and the total catches an arithmetic slip in
  * either.
  */
-export const CENSUS_TOTAL = 3233
+export const CENSUS_TOTAL = 3255
 
 /** Named `$defs` keys per published document. */
 export const DEFS_BY_DOCUMENT: Readonly<Record<string, number>> = {
@@ -87,8 +87,8 @@ export const DEFS_BY_DOCUMENT: Readonly<Record<string, number>> = {
  */
 export const REJECT_CASE_COUNTS = {
 	contract: 55,
-	artifact: 106,
-	total: 161,
+	artifact: 110,
+	total: 165,
 } as const
 
 /**
@@ -101,9 +101,9 @@ export const ACCEPT_FIXTURE_COUNTS = {
 	accepts: 12,
 	probeClasses: 4,
 	qualificationRoutes: 5,
-	unionBranches: 10,
+	unionBranches: 11,
 	relevanceContracts: 3,
-	distinctInstances: 24,
+	distinctInstances: 25,
 } as const
 
 export const ACCEPT_FIXTURE_TOTAL =

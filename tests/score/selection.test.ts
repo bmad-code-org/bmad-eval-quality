@@ -27,6 +27,7 @@ function observation(
 			option: null,
 			environment: null,
 			stdin: null,
+			arguments: null,
 		},
 		responseBody: null,
 		responseHeaders: null,

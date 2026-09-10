@@ -212,14 +212,14 @@ const PUBLISHED_ACCEPT_FIXTURES: readonly {
 ]
 
 describe('every accept fixture validates clean against its own published document', () => {
-	// twelve accepts, four probe classes, five qualification routes, six union
+	// twelve accepts, four probe classes, five qualification routes, eleven union
 	// branches, three relevance contracts: the enumeration itself is asserted so
 	// none can go silently dead.
 	it('enumerates every positive', () => {
 		expect(PUBLISHED_ACCEPT_FIXTURES).toHaveLength(ACCEPT_FIXTURE_TOTAL)
 	})
 
-	// Thirty listings, twenty distinct instances: ten of the branch,
+	// Thirty-five listings, twenty-five distinct instances: ten of the branch,
 	// probe-class, and qualification-route fixtures ARE another listing's
 	// instance, by object identity (`accept/probe` is `probe-class/defect`,
 	// `probe/seeded`, and `probe-route/controlled-mutation`;

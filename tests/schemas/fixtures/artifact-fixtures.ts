@@ -141,15 +141,18 @@ const emptyCallInputs: SealedRunRecord['observations'][number]['callInputs'] = {
 	option: null,
 	environment: null,
 	stdin: null,
+	arguments: null,
 }
 
 export const sealedRunRecordFixture: SealedRunRecord = {
 	// Version 3: `mode` (version 2) and `sequence` (version 3) are both
 	// required, so neither a version-1 nor a version-2 record parses. Version 4
-	// retyped the process channels and added the written artifacts. This
-	// fixture is the only place a Sealed Run Record version number is written
-	// down, which is what makes each bump visible.
-	schemaVersion: 4,
+	// retyped the process channels and added the written artifacts. Version 5
+	// added the ninth `arguments` call-input channel, so a version-4 record
+	// declares eight and fails to parse. This fixture is the only place a
+	// Sealed Run Record version number is written down, which is what makes
+	// each bump visible.
+	schemaVersion: 5,
 	parentDigest: null,
 	revisionCount: 0,
 	runId: 'spike-run-0001',
@@ -256,6 +259,26 @@ export const sealedRunRecordFixture: SealedRunRecord = {
 			stdout: { kind: 'text', value: 'migrated 0 rows\n' },
 			stderr: { kind: 'text', value: '' },
 			exitCode: 0,
+			artifacts: {},
+		},
+		{
+			// A tool call, so the ninth `arguments` channel has a populated
+			// instance in the corpus and a pointer into it resolves a recorded
+			// value. `responseStatus` carries the MCP envelope's error flag as
+			// 0, which is the projection an adapter performs, and every
+			// process channel stays empty.
+			observationId: 'obs-006',
+			sequence: 5,
+			operationId: 'search-notes',
+			provenance: 'evaluator-chosen',
+			principal: null,
+			callInputs: { ...emptyCallInputs, arguments: { query: 'revised' } },
+			responseBody: { ok: true, matches: [{ id: 'n-1' }] },
+			responseHeaders: null,
+			responseStatus: 0,
+			stdout: { kind: 'absent' },
+			stderr: { kind: 'absent' },
+			exitCode: null,
 			artifacts: {},
 		},
 	],
@@ -416,6 +439,7 @@ const lostUpdateSignature: Extract<
 				option: null,
 				environment: null,
 				stdin: null,
+				arguments: null,
 			},
 		},
 		predicate: {
@@ -452,9 +476,12 @@ export const seededProbe: Probe = {
 	// the signature is a union on `interfaceKind`, and the selector carries the
 	// four command channels beside the four transport ones. Version 4 opened a
 	// manifestation witness's inputs to a tool call's arguments, so a defect
-	// seeded against an MCP tool server is declarable. Every version-3 probe
-	// still parses; AD-11 calls the retype breaking and the stamp records it.
-	schemaVersion: 4,
+	// seeded against an MCP tool server is declarable. Version 5 gave the
+	// signature its own tool-call branch and the selector its ninth
+	// `arguments` channel, so a version-4 probe naming `mcp` beside a method
+	// and a path template fails to parse. AD-11 calls each retype breaking and
+	// the stamp records it.
+	schemaVersion: 5,
 	parentDigest: null,
 	revisionCount: 0,
 	probeId: 'P-001',
@@ -514,6 +541,7 @@ const fragmentSelectionSignature: Extract<
 				option: null,
 				environment: null,
 				stdin: { prompt: { matcher: 'any' } },
+				arguments: null,
 			},
 		},
 		predicate: {
@@ -536,7 +564,7 @@ const fragmentSelectionSignature: Extract<
 }
 
 export const commandProbe: Probe = {
-	schemaVersion: 4,
+	schemaVersion: 5,
 	parentDigest: null,
 	revisionCount: 0,
 	probeId: 'P-003',
@@ -571,8 +599,9 @@ export const commandProbe: Probe = {
  * document from nowhere else, and a branch nothing exercises is a branch
  * AD-13's sweep reports as unprotected.
  *
- * The defect signature stays api-shaped. A tool-call signature branch and its
- * own selector channel land with the probe's second bump.
+ * Its defect signature stays api-shaped, so this fixture keeps exercising the
+ * witness leg alone. `toolCallProbe` below is where the tool-call signature
+ * branch and the selector's ninth channel are exercised.
  */
 export const mcpWitnessProbe: Probe = {
 	...seededProbe,
@@ -607,8 +636,86 @@ export const mcpWitnessProbe: Probe = {
 	],
 }
 
+/**
+ * A seeded defect against an MCP tool server whose signature declares the
+ * published tool name. It is the accept fixture for the `mcp` branch of
+ * `DefectSignature` and for the selector's ninth `arguments` channel, and it is
+ * the only seed that reaches either: a branch nothing exercises is a branch
+ * AD-13's sweep reports as unprotected.
+ */
+const searchToolSignature: Extract<
+	Probe,
+	{ expectedClean: false }
+>['defectSignature'] = {
+	interfaceKind: 'mcp',
+	toolName: 'search_notes',
+	observableChannel: 'response-body',
+	condition: {
+		selector: {
+			inputBinding: {
+				path: null,
+				query: null,
+				header: null,
+				body: null,
+				argument: null,
+				option: null,
+				environment: null,
+				stdin: null,
+				arguments: { query: { matcher: 'any' } },
+			},
+		},
+		predicate: {
+			op: 'all',
+			operands: [
+				{
+					op: 'equality',
+					operands: [
+						{ pointer: '/interactions/observed/response-status' },
+						{ literal: 0 },
+					],
+				},
+				{
+					op: 'absence',
+					operands: [
+						{ pointer: '/interactions/observed/response-body/matches' },
+					],
+				},
+			],
+		},
+	},
+}
+
+export const toolCallProbe: Probe = {
+	schemaVersion: 5,
+	parentDigest: null,
+	revisionCount: 0,
+	probeId: 'P-005',
+	probeClass: 'defect',
+	expectedClean: false,
+	behaviorId: 'B-001',
+	systemId: 'notes-tool-server',
+	implementationDigest: digestOf(31),
+	artifactDigest: digestOf(32),
+	commitDigest: digestOf(33),
+	rationale:
+		'A controlled mutation seeding a search tool that reports no error and returns no matches.',
+	qualification: {
+		route: 'controlled-mutation',
+		mutationSource: 'hand-authored mutation of the search tool handler',
+		mutationOperator: 'statement-deletion',
+		targetArtifact: publicArtifactReference,
+		expectedObservableFailure:
+			'the tool reports no error and its structured result carries no matches',
+		baselinePassEvidence: publicArtifactReference,
+		mutatedFailEvidence: privateArtifactReference,
+		rollbackVerified: true,
+	},
+	defects: [seededDefect],
+	defectSignature: searchToolSignature,
+}
+
 export const cleanControlProbe: Probe = {
-	schemaVersion: 4,
+	schemaVersion: 5,
 	parentDigest: null,
 	revisionCount: 0,
 	probeId: 'P-002',
@@ -679,6 +786,7 @@ export const gameabilityProbe: Probe = {
 					option: null,
 					environment: null,
 					stdin: null,
+					arguments: null,
 				},
 			},
 			predicate: {
@@ -748,6 +856,7 @@ export const historicalProbe: Probe = {
 					option: null,
 					environment: null,
 					stdin: null,
+					arguments: null,
 				},
 			},
 			predicate: {
@@ -1203,6 +1312,14 @@ export const UNION_BRANCH_FIXTURES = [
 		artifact: 'probe',
 		discriminator: 'inputs',
 		value: mcpWitnessProbe as unknown,
+	},
+	{
+		// The `mcp` branch of `DefectSignature` and the selector's ninth
+		// channel, reachable from no other seed.
+		id: 'probe/tool-call-signature',
+		artifact: 'probe',
+		discriminator: 'interfaceKind',
+		value: toolCallProbe as unknown,
 	},
 	{
 		id: 'probe/clean-control',

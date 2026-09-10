@@ -6,7 +6,6 @@ import {
 	makeResolveOperand,
 	walkTail,
 } from '../../src/core/evaluate/evidence-resolution.ts'
-import { absence, existence } from '../../src/core/evaluate/operators.ts'
 import { ABSENT } from '../../src/core/evaluate/resolved-value.ts'
 import { EvalContract } from '../../src/core/schemas/eval-contract.ts'
 import type { JsonValue } from '../../src/core/schemas/primitives.ts'
@@ -39,6 +38,7 @@ function observation(overrides: Partial<Observation> = {}): Observation {
 			option: null,
 			environment: null,
 			stdin: null,
+			arguments: null,
 		},
 		responseBody: null,
 		responseHeaders: null,
@@ -223,6 +223,7 @@ describe('makeResolveOperand', () => {
 				option: null,
 				environment: null,
 				stdin: null,
+				arguments: null,
 			},
 		})
 		const resolve = makeResolveOperand({ step }, {})
@@ -266,14 +267,11 @@ describe('makeResolveOperand', () => {
 		).toEqual({ b: 'b1' })
 	})
 
-	// The ninth channel is the only one that tells `channelEntryOf` and
-	// `channelEntryOrAbsent` apart: `ObservedCallInputs` declares the other
-	// eight as required-and-nullable, so `Object.hasOwn` is true for all of
-	// them and both functions answer `null`. A record carrying no key at all is
-	// the case where `null` would read as present under AD-26 and invert every
-	// oracle over the channel, which is what the artifact arm's own guard
-	// exists to prevent for a file the run did not write.
-	it('fixture 17b: a channel the record has no key for resolves ABSENT rather than null', () => {
+	// The ninth channel resolves on the same terms as the other eight now that
+	// the record declares a key for it. Before that key landed a pointer here
+	// read a channel the shape had no slot for, which is the state this case
+	// replaces.
+	it('fixture 17b: the arguments channel resolves what a tool call supplied', () => {
 		const step = observation({
 			callInputs: {
 				path: null,
@@ -284,22 +282,24 @@ describe('makeResolveOperand', () => {
 				option: null,
 				environment: null,
 				stdin: null,
+				arguments: { query: 'revised', limit: 5 },
 			},
 		})
 		const resolve = makeResolveOperand({ step }, {})
-		const resolved = resolve(
-			{ pointer: '/interactions/step/call-inputs/arguments' },
-			ABSENT,
-			PATH,
-		)
-		expect(resolved).toBe(ABSENT)
-		expect(existence(resolved, PATH)).toBe(false)
-		expect(absence(resolved, PATH)).toBe(true)
-		// The declared eight keep answering `null`, so this is the ninth
-		// channel's own case and not a change to the other eight.
 		expect(
-			resolve({ pointer: '/interactions/step/call-inputs/body' }, ABSENT, PATH),
-		).toBe(null)
+			resolve(
+				{ pointer: '/interactions/step/call-inputs/arguments' },
+				ABSENT,
+				PATH,
+			),
+		).toEqual({ query: 'revised', limit: 5 })
+		expect(
+			resolve(
+				{ pointer: '/interactions/step/call-inputs/arguments/query' },
+				ABSENT,
+				PATH,
+			),
+		).toBe('revised')
 	})
 
 	it('fixture 17: call-inputs selects the right transport channel; a null channel resolves ABSENT on a non-empty tail and null on an empty one', () => {
@@ -313,6 +313,7 @@ describe('makeResolveOperand', () => {
 				option: null,
 				environment: null,
 				stdin: null,
+				arguments: null,
 			},
 		})
 		const resolve = makeResolveOperand({ step }, {})

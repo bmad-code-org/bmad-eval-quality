@@ -10,6 +10,7 @@ import {
 	INTERCHANGE_ARTIFACTS,
 } from '../../src/core/schemas/artifact.ts'
 import { ArtifactReference } from '../../src/core/schemas/artifact-reference.ts'
+import { ProbeInputBinding } from '../../src/core/schemas/defect-signature.ts'
 import { FORBIDDEN_INPUT_FLOOR } from '../../src/core/schemas/eval-contract.ts'
 import { EvaluatorConfiguration } from '../../src/core/schemas/evaluator-configuration.ts'
 import {
@@ -22,7 +23,6 @@ import {
 import { RequestShape } from '../../src/core/schemas/interface.ts'
 import { IsolationManifest } from '../../src/core/schemas/isolation-manifest.ts'
 import {
-	COMMAND_CHANNELS,
 	INPUT_CHANNELS,
 	TRANSPORT_CHANNELS,
 } from '../../src/core/schemas/pointer.ts'
@@ -748,19 +748,19 @@ describe('the shared vocabularies, derived rather than rebuilt', () => {
 		)
 	})
 
-	// Eight of the nine. `INPUT_CHANNELS` gained `arguments` with the tool-call
-	// operation shape, and this record's ninth key lands with the sealed run
-	// record's own breaking bump. The gap is asserted here, so the day that key
-	// lands this line is what says so.
-	it("keys an observation's call inputs by the transport and command channels", () => {
+	// The record and the vocabulary are the same width now, which is what lets
+	// every loop over `INPUT_CHANNELS` index this shape directly. A tenth
+	// channel joining the vocabulary fails here first.
+	it("keys an observation's call inputs by every input channel", () => {
 		const callInputs = (SealedRunRecord.shape.observations as any).element.shape
 			.callInputs
-		expect(Object.keys(callInputs.shape)).toEqual([
-			...TRANSPORT_CHANNELS,
-			...COMMAND_CHANNELS,
-		])
-		expect(INPUT_CHANNELS).toContain('arguments')
-		expect(Object.keys(callInputs.shape)).not.toContain('arguments')
+		expect(Object.keys(callInputs.shape)).toEqual([...INPUT_CHANNELS])
+	})
+
+	// The probe's selector is keyed the same way, so a selector filters recorded
+	// call inputs with no shape to bridge.
+	it("keys a signature selector's input binding by every input channel", () => {
+		expect(Object.keys(ProbeInputBinding.shape)).toEqual([...INPUT_CHANNELS])
 	})
 
 	// The worked example's flat `callInputs: { id: "n-1" }` does not survive.

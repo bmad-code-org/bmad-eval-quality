@@ -72,6 +72,33 @@ const mutated = (mutate: (contract: any) => void) => {
 const operation = (contract: any, index = 0) =>
 	contract.permittedInterfaces[0].operations[index]
 
+const emptyBinding = {
+	path: null,
+	query: null,
+	header: null,
+	body: null,
+	argument: null,
+	option: null,
+	environment: null,
+	stdin: null,
+	arguments: null,
+} as const
+
+/** A tool-call defect signature over one published tool name. */
+const toolSignature = (toolName: string) =>
+	({
+		interfaceKind: 'mcp',
+		toolName,
+		observableChannel: 'response-body',
+		condition: {
+			selector: { inputBinding: emptyBinding },
+			predicate: {
+				op: 'existence',
+				operands: [{ pointer: '/interactions/observed/response-body' }],
+			},
+		},
+	}) as const
+
 const failureOf = (fn: () => void): StructuralFailure => {
 	try {
 		fn()
@@ -537,87 +564,56 @@ describe('a transport identity is compared inside its own shape family', () => {
 		expect(failure.message).toContain('"search_notes"')
 	})
 
-	it('resolves an mcp signature against no api operation', () => {
-		const contract = EvalContract.parse(populatedContract)
-		const [api] = contract.permittedInterfaces
-		const [operation] = operationsOf(api!)
-		if (!isApiOperation(operation!)) throw new Error('fixture is api-shaped')
-		const signature = {
+	it('refuses an api-shaped signature that declares the kind', () => {
+		// `ApiDefectSignature.interfaceKind` narrowed to `api` and `web` when the
+		// tool-call branch landed, so a method and a path template beside `mcp`
+		// stops parsing rather than rendering an identity no tool call has.
+		const result = DefectSignature.safeParse({
 			interfaceKind: 'mcp',
-			method: operation.method,
-			pathTemplate: operation.pathTemplate,
+			method: 'GET',
+			pathTemplate: '/notes',
 			observableChannel: 'response-body',
 			condition: {
-				selector: {
-					inputBinding: {
-						path: null,
-						query: null,
-						header: null,
-						body: null,
-						argument: null,
-						option: null,
-						environment: null,
-						stdin: null,
-					},
-				},
+				selector: { inputBinding: emptyBinding },
 				predicate: {
 					op: 'existence',
 					operands: [{ pointer: '/interactions/observed/response-body' }],
 				},
 			},
-		} as const
+		})
+		expect(result.success).toBe(false)
+	})
+
+	it('resolves a tool-call signature against no api operation', () => {
+		const contract = EvalContract.parse(populatedContract)
 		expect(
 			resolveHomeOperation(
-				DefectSignature.parse(signature),
+				DefectSignature.parse(toolSignature('search_notes')),
 				contract.permittedInterfaces,
 			),
 		).toBeNull()
-		// The same signature declaring `api` binds, so the null above is the
-		// family filter and not a rendering accident.
-		expect(
-			resolveHomeOperation(
-				DefectSignature.parse({ ...signature, interfaceKind: 'api' }),
-				contract.permittedInterfaces,
-			),
-		).toBe(operation)
 	})
 
-	// This case is green under the two-way ternary it replaced, and it has to be:
-	// `operationSignature` puts a space between the method and the path, and
-	// `ToolName`'s charset forbids one, so an api-shaped string could never have
-	// equalled a legal tool name. What holds the line is the switch with no
-	// default arm, which fails the typecheck on a fifth kind and makes the
-	// branch that gives `mcp` a tool identity answer at that site. This asserts
-	// the answer the switch is there to keep.
-	it('resolves an mcp signature against no mcp operation either', () => {
+	it('resolves a tool-call signature against the tool it names', () => {
 		const contract = EvalContract.parse(mcpContract)
-		const signature = {
-			interfaceKind: 'mcp',
-			method: 'POST',
-			pathTemplate: '/tools/call',
-			observableChannel: 'response-body',
-			condition: {
-				selector: {
-					inputBinding: {
-						path: null,
-						query: null,
-						header: null,
-						body: null,
-						argument: null,
-						option: null,
-						environment: null,
-						stdin: null,
-					},
-				},
-				predicate: {
-					op: 'existence',
-					operands: [{ pointer: '/interactions/observed/response-body' }],
-				},
-			},
-		} as const
+		const [tools] = contract.permittedInterfaces
+		const declared = operationsOf(tools!).find(
+			(candidate) =>
+				isMcpOperation(candidate) && candidate.toolName === 'search_notes',
+		)
 		expect(
 			resolveHomeOperation(
-				DefectSignature.parse(signature),
+				DefectSignature.parse(toolSignature('search_notes')),
+				contract.permittedInterfaces,
+			),
+		).toBe(declared)
+	})
+
+	it('resolves a tool-call signature naming an undeclared tool against nothing', () => {
+		const contract = EvalContract.parse(mcpContract)
+		expect(
+			resolveHomeOperation(
+				DefectSignature.parse(toolSignature('archive_notes')),
 				contract.permittedInterfaces,
 			),
 		).toBeNull()

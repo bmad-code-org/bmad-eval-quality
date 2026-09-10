@@ -19,6 +19,10 @@ import { EvalContract } from '../../src/core/schemas/eval-contract.ts'
 import type { Expression } from '../../src/core/schemas/expression.ts'
 import { RuntimeFault } from '../../src/core/schemas/faults.ts'
 import type { ApiProbeObservation } from '../../src/core/schemas/port-messages.ts'
+import type {
+	McpWitnessInputs,
+	WitnessInputs,
+} from '../../src/core/schemas/sensitivity-witness.ts'
 import {
 	absentBody,
 	contractDraft,
@@ -48,7 +52,9 @@ const observation = (
 const evidenceFor = (
 	body: ApiProbeObservation['body'],
 	headers: Record<string, string> = {},
-	inputs = inputsOf({ body: { kind: 'json', value: { name: 'alpha' } } }),
+	inputs: WitnessInputs = inputsOf({
+		body: { kind: 'json', value: { name: 'alpha' } },
+	}),
 ) => {
 	const raw = observation(body, headers)
 	return evidenceOf(
@@ -105,6 +111,18 @@ describe('evidenceOf', () => {
 			inputsOf({ body: { kind: 'json', value: null } }),
 		)
 		expect(jsonNull.callInputs.body).toBeNull()
+	})
+
+	// The tool-call arm. A tool call supplies one channel, so `arguments` carries
+	// the whole of what the leg sent and the other eight read `null`, which is
+	// the channel `checkExpressionLegChannel` admits `call-inputs` against for an
+	// mcp operation.
+	it("83b. puts a tool call's arguments on the ninth channel and leaves the rest null", () => {
+		const toolCallInputs: McpWitnessInputs = { arguments: { query: 'alpha' } }
+		const evidence = evidenceFor(jsonBody({ ok: true }), {}, toolCallInputs)
+		const { arguments: supplied, ...rest } = evidence.callInputs
+		expect(supplied).toEqual({ query: 'alpha' })
+		expect(Object.values(rest).every((value) => value === null)).toBe(true)
 	})
 
 	it('84. resolves a relation pointing at a response header against the raw header', () => {

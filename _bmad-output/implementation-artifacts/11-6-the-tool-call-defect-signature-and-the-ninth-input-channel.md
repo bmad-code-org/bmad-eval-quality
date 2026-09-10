@@ -2,8 +2,9 @@
 title: 'The tool-call defect signature and the ninth input channel'
 type: 'feature'
 created: '2026-09-09'
-status: 'draft'
+status: 'in-progress'
 review_loop_iteration: 0
+route: 'dispatch'
 context:
   - _bmad-output/implementation-artifacts/epic-11-context.md
   - _bmad-output/implementation-artifacts/11-4-the-operation-shape-for-a-tool-call.md
@@ -113,400 +114,344 @@ still builds an `McpProbeRequest` no shipped adapter can answer, and `kindMismat
 | Existing probe at version 4 | Any probe left at Story 11.4's stamp | Fails to parse against version 5, on the same terms | Parse failure |
 
 </frozen-after-approval>
-
 ## Code Map
 
-**The two record shapes that are still eight keys wide**
+Verified against the tree at 8e814c6, after Stories 11.4 and 11.5 landed. Where the drafted map named
+a line the tree no longer carries, the current line is given and Decision 5 records why.
 
-- `src/core/schemas/sealed-run-record.ts:200-209` -- `ObservedCallInputs`, whose comment at `:191-199`
-  gives the reason the shape is keyed by channel at all: "AD-26 keys `call-inputs` by transport
-  channel, so a pointer like `/interactions/write/call-inputs/body/title` needs that segment to
-  resolve against" (`:192-195`). The same comment still says "A four-key strict object" at `:195-196`,
-  which Epic 9's fifth through eighth keys already falsified, so the ninth key's pass corrects it.
+**The two record shapes that were eight keys wide**
+
+- `src/core/schemas/sealed-run-record.ts:200-209` -- `ObservedCallInputs`. Its comment at `:191-199`
+  gives the reason the shape is keyed by channel at all, and says "A four-key strict object" at
+  `:195`, which eight keys already falsified.
 - `src/core/schemas/sealed-run-record.ts:222-272` -- `Observation`, flat over the evidence channels
-  with no kind discriminator. It declares thirteen fields, counted: `observationId`, `sequence`,
-  `operationId`, `provenance`, `principal`, `callInputs`, `responseBody`, `responseHeaders`,
-  `responseStatus`, `stdout`, `stderr`, `exitCode`, `artifacts`. `responseBody`'s published
-  `.describe()` at `:243` says "all ten observation fields", which is false in the tree before this
-  epic reaches the file. `:415` is the artifact `.meta` carrying the version history prose.
-- `src/core/schemas/defect-signature.ts:86-95` -- `ProbeInputBinding`, whose comment at `:73-85` states
-  the invariant the ninth key has to preserve: the three shapes agree "on channel names, on the
-  eight-key strict form, and on flatness". `:109` is the consumption inside `ProbeStepSelector`,
-  which is why the ninth channel and the signature branch below are one file and one diff.
-- `src/core/score/witness.ts:140-143` -- `selectorAdmits`, looping `INPUT_CHANNELS` and indexing
-  `observation.callInputs[channel]`. Total once the ninth key lands.
-- `src/core/score/bindings.ts:290-295` -- `satisfiesBindings`, reading `boundChannelsOf` and indexing
-  the same object. Total on the same terms.
-- `src/core/evaluate/evidence-resolution.ts:125-133` -- `channelRoot`'s `call-inputs` case, indexing by
-  the parsed channel. Total on the same terms.
-- `src/core/preflight/witness-evidence.ts:63-92` -- `callInputsOf`, which builds an
-  `ObservedCallInputs` from an eight-key `empty` literal behind a two-arm `'body' in inputs` test.
-  Story 11.4's three-member `WitnessInputs` makes the false arm a union whose `inputs.argument` read
-  fails the typecheck, so this function takes a third arm here. It reads no observation, which is why
-  it belongs to this half.
-- `src/core/schemas/pointer.ts:71-76` -- `INPUT_CHANNELS`, nine members after Story 11.4. Its own
-  comment says the grammar "admits all eight", which Story 11.4 owns.
-- `tests/schemas/fixtures/artifact-fixtures.ts:148-151` -- the sealed run record fixture at
-  `schemaVersion: 4`, with the file's own note that it "is the only place a Sealed Run Record version
-  number is written down, which is what makes each bump visible".
-- `tests/schemas/fixtures/artifact-fixtures.ts:453`, `:535`, `:564` -- the three probe fixtures, at
-  `schemaVersion: 3` in the tree today and at 4 once Story 11.4 lands. Story 11.4 also adds a probe
-  accept fixture to this file, so every line number here is re-read before it is edited.
-- `tests/schemas/published-census.ts` -- the pinned constants, each moved by reading the failure and
-  following the procedure that file documents. `ACCEPT_FIXTURE_COUNTS` is at `:100-107`,
-  `CENSUS_BY_DOCUMENT` at `:20-33`, `CENSUS_BY_KEYWORD` at `:36-56`, `CENSUS_TOTAL` at `:64`,
-  `DEFS_BY_DOCUMENT` at `:67-80`, `REJECT_CASE_COUNTS` at `:88-92`. Decision 4 states the arithmetic.
+  with no kind discriminator. Thirteen fields, counted. `responseBody`'s published `.describe()` at
+  `:243` says "all ten observation fields".
+- `src/core/schemas/defect-signature.ts:73-95` -- `ProbeInputBinding` and the comment stating the
+  invariant: the two shapes agree "on channel names, on the eight-key strict form, and on flatness".
+  `:109` is the consumption inside `ProbeStepSelector`.
+- `src/core/score/witness.ts:135-155` -- `selectorAdmits`, looping `INPUT_CHANNELS`.
+- `src/core/score/bindings.ts:290-300` -- `satisfiesBindings`, reading `boundChannelsOf`.
+- `src/core/evaluate/evidence-resolution.ts:126-145` -- `channelRoot`'s `call-inputs` case.
+- `src/core/declared-inputs.ts:208-253` -- `channelEntryOf` and `channelEntryOrAbsent`, the bridge
+  Story 11.4 landed so a nine-member loop stayed total against an eight-key record. Its own docblock
+  says both shapes "stop at the eight channels the first two kinds accept" and that the bridge holds
+  "until" the ninth key lands. Decision 6 is what this story does with it.
+- `src/core/preflight/witness-evidence.ts:63-100` -- `callInputsOf`. Story 11.4 already gave it three
+  arms; the mcp arm returns the eight-key `empty` literal with a comment naming this story as the
+  reconciliation.
+- `src/core/schemas/pointer.ts:71-90` -- `MCP_CHANNELS` and `INPUT_CHANNELS`, nine members.
+  `TransportChannel`'s `.describe()` at `:43` calls the transport four "the four keys an
+  observation's recorded call inputs are keyed by".
+- `tests/schemas/fixtures/artifact-fixtures.ts:134-143` -- `emptyCallInputs`; `:152` the sealed run
+  record stamp; `:457`, `:539`, `:611` the three probe stamps; `:1156` `UNION_BRANCH_FIXTURES`.
+- `tests/schemas/artifacts.test.ts:751-763` -- the assertion pinning the eight-versus-nine gap.
+- `tests/evaluate/evidence-resolution.test.ts:271-305` -- fixture 17b, the only case that told
+  `channelEntryOf` and `channelEntryOrAbsent` apart.
+- `tests/schemas/published-census.ts` -- `CENSUS_BY_DOCUMENT:20`, `CENSUS_BY_KEYWORD:36`,
+  `CENSUS_TOTAL:64`, `DEFS_BY_DOCUMENT:67`, `REJECT_CASE_COUNTS:88`, `ACCEPT_FIXTURE_COUNTS:100`.
 
 **The defect signature and the qualification gate**
 
-- `src/core/schemas/defect-signature.ts:151-162` -- `ApiDefectSignature`'s comment. `:152-155` says
-  "`web` and `mcp` share the shape and are still rejected by the qualification gate", which this story
-  makes false for `mcp`. `:157-161` is the byte-identity argument for one api-shaped branch over three
-  kinds, which Decision 3 reads and answers.
-- `src/core/schemas/defect-signature.ts:163-168` -- `ApiDefectSignature`, whose `interfaceKind` at
-  `:164` is `z.enum(['api', 'web', 'mcp'])` and becomes `z.enum(['api', 'web'])`.
-- `src/core/schemas/defect-signature.ts:170-181` -- `CommandDefectSignature`, the precedent
-  `McpDefectSignature` follows: a literal kind, one contract-independent transport identity, and
-  `...signatureCommon`. Its comment at `:171-175` gives the reason the identity is declared rather
-  than an operation identifier.
-- `src/core/schemas/defect-signature.ts:183-188` -- the union comment, whose `:185` reads "the
-  api-shaped branch carries three values for it". Two after the narrowing, and the union at `:189-192`
-  takes a third member.
-- `src/core/schemas/defect-signature.ts:194-200` -- the inferred type exports, which gain
-  `McpDefectSignature`.
-- `src/core/score/qualification.ts:754-763` -- the gate. `:754-757` is the two-clause condition
-  spelling `('api', 'cli')`, `:759` the `code` field, `:761` the detail that says the kind "declares a
-  method and a path template with no per-kind semantics behind them", which stays word for word true
-  of `web` and stops being true of `mcp`.
-- `tests/schemas/fixtures/artifact-fixtures.ts:1109` -- `UNION_BRANCH_FIXTURES`. `:1136-1142` is the
-  `probe/command-signature` entry the `mcp` entry follows, and `:480-488` is the `cli` signature
-  fixture whose comment at `:486-488` states why a branch needs a seed at all: "a branch nothing
-  exercises is a branch AD-13's sweep reports as unprotected".
-- `tests/schemas/published/keyword-mutation.test.ts:190-193` -- the assertion that fails on any
-  published keyword occurrence no fixture flips. This is why the seed cannot wait for Story 11.8.
-- `tests/schemas/published/corpus.ts:28-47` -- `seedsOf`, which draws the sweep's seeds from five
-  lists. Three are closed against a new member, which is why every new accept fixture in this epic
-  lands in `UNION_BRANCH_FIXTURES` and why Decision 4's arithmetic reads the way it does.
-- `tests/score/qualification.test.ts:249-259` -- `it.each(['web', 'mcp'])` expecting
-  `['signature-interface-kind-unsupported']`, with the comment at `:247-248` saying "`web` and `mcp`
-  still have no declared probe semantics". This story is what makes both false for `mcp`. Story 11.4
-  claims the matching `tests/schemas/ad5-admissions.test.ts:272-279`, which runs the same pair
-  through `admits` (`:14-20`) and which its operation branch breaks first.
-- `tests/schemas/published/published-rejection.test.ts:215-217` and `:222` -- two comments already
-  stale in the tree: "six union branches" against a pinned 8, and "Thirty listings, twenty distinct
-  instances" against a pinned 22 and an `ACCEPT_FIXTURE_TOTAL` of 32. This story's seed moves both
-  again, so both are re-read and rewritten to the numbers its own run reports.
-
-**Read here as context, changed by no story of this half**
-
-- `src/core/score/qualification.ts:148-151` -- `foreignChannels`.
-  `kind === 'cli' ? API_RESPONSE_CHANNELS : COMMAND_RESPONSE_CHANNELS` is a total binary, so an `mcp`
-  signature is confined to `response-body`, `response-headers`, and `response-status` with no source
-  change. Story 11.13's Decision 6 decides what two of those three carry.
-- `src/core/score/qualification.ts:115-134` and `:349`, `:458` -- `resolveHomeOperation`'s three-way
-  kind test and the two details Story 11.5 rewrites.
-- `src/core/compile/reachability.ts:437-446` -- Story 11.5's refusal of `response-headers` on an `mcp`
-  operation, with `response-body` and `response-status` left reachable.
+- `src/core/schemas/defect-signature.ts:140-152` -- `signatureCommon`'s docblock, which describes
+  AD-40's four declarations in the api spelling and was already falsified by the `cli` branch.
+- `src/core/schemas/defect-signature.ts:156-167` -- `ApiDefectSignature`'s comment: "`web` and `mcp`
+  share the shape and are still rejected by the qualification gate", plus the byte-identity argument
+  Decision 3 answers.
+- `src/core/schemas/defect-signature.ts:168-173` -- `ApiDefectSignature`, `interfaceKind` at `:169`.
+- `src/core/schemas/defect-signature.ts:175-186` -- `CommandDefectSignature`, the model
+  `McpDefectSignature` follows.
+- `src/core/schemas/defect-signature.ts:188-205` -- the union comment ("the api-shaped branch carries
+  three values for it"), the union, and the inferred type exports.
+- `src/core/score/qualification.ts:818-828` -- the gate, spelling `('api', 'cli')` as a two-clause
+  condition. This is the fourth transcription Story 11.5's Decision 1 left for this story.
+- `src/core/compile/interface-inventory.ts:35-47` -- `SUPPORTED_INTERFACE_KINDS`,
+  `isSupportedInterfaceKind`, and `SUPPORTED_KINDS_CLAUSE`, all exported by Story 11.5.
+- `src/core/score/qualification.ts:112-134` -- `declaredIdentityOf`, the switch whose `mcp` arm
+  returns `null`. `interface-inventory.ts:137-139` is `mcpSignature`, the rendering it takes.
+- `src/core/score/qualification.ts:181-202` -- `foreignChannels`, three arms after Story 11.5, with
+  `response-headers` foreign for `mcp`.
+- `tests/score/qualification.test.ts:246-260` -- `it.each(['web', 'mcp'])`.
+- `tests/schemas/mcp-interface.test.ts:540-620` -- two cases building an api-shaped signature that
+  declares `mcp`. The narrowing makes both stop parsing, so both are rewritten.
+- `tests/schemas/published/published-rejection.test.ts:215-217` and `:222` -- two stale enumeration
+  comments.
 
 **Documentation this story owns**
 
-Story 11.9's ownership tables at `:71-100` and `:104-118` assign both sites below to this story, and
-they split `:236` between the eight-key half here and Story 11.13's confinement clause. Every other
-documentation site the earlier combined draft claimed belongs to Story 11.13, which ships the adapter
-and the port union those sentences describe.
+- `docs/how-to/evaluate-tool-use-behavior.md` -- the guide moved under Stories 11.2, 11.4 and 11.5,
+  so the drafted `:72` and `:236` are now `:104` and `:294`. Six passages this story falsifies:
+  the gate table at `:88-97`, the probe-side paragraph at `:98-100`, the eight-key claims at `:104`
+  and `:294`, the "Blocked"/"Missing" pair at `:290-292`, and the first-adopter list at `:296`.
+- `CHANGELOG.md` `[Unreleased]` -- this story's two bumps and the opened gate, plus the two
+  forward-looking sentences in Stories 11.4's and 11.5's own entries that this story falsifies.
+- `_bmad-output/project-knowledge/learning-path-step-by-step.md` -- Step 50 and its table row.
 
-- `docs/how-to/evaluate-tool-use-behavior.md:72` -- "`ObservedCallInputs` is one eight-key object
-  holding both kinds' input channels (`sealed-run-record.ts:200`)". The ninth key falsifies it. The
-  inline citation is re-read at the same time.
-- `docs/how-to/evaluate-tool-use-behavior.md:236` -- the same eight-key claim inside the "Already
-  works" paragraph, plus an inline `sealed-run-record.ts:222` citation that a key added inside
-  `ObservedCallInputs` moves. **The eight-key half of this line is this story's.** The same line's
-  claim that a tool-use signature's confinement "is decided rather than open" is Story 11.13's, whose
-  Decision 6 changes what two of the three confined channels carry.
-- `docs/*.generated.md` and `corpus/dev/README.md` -- generated, never hand-edited.
-- `CHANGELOG.md:1-9` -- the header: entries go under `[Unreleased]` and `release:prepare`
-  (`package.json:111`) stamps them into a dated section at release time. Hand-maintained, so NFR8's
-  disclosure ships with the change that causes it.
-- `CHANGELOG.md:285-290` and `:311-313` -- Epic 9's artifact-bump bullets, the shape to copy: a
-  `**BREAKING**` lead, the artifact and its new number, what was retyped, and what a holder of the
-  previous version sees. `:311-313` is the closest model, carrying the sealed run record and the probe
-  in one bullet. `:578` already states that the `schemaVersion` number gates nothing in either
-  direction in v0, which covers both bumps here, so this entry does not restate it. Story 9.5's file,
-  at `:127`, is the one Epic 9 story that carried the entry as a checklist item; 9.1, 9.2 and 9.3 cite
-  the file in prose and carry no task, which is how a disclosure gets left to a closing story.
+**Read here as context, changed by no story of this half**
+
+- `src/core/compile/reachability.ts:437-446` -- Story 11.5's refusal of `response-headers`.
+- `src/core/compile/interface-inventory.ts:142-169` -- `anyOperationSignature` and
+  `signatureFamilyOf`, both three-way after Story 11.4.
 
 ## Tasks & Acceptance
 
 **Execution:**
 
-- [ ] `src/core/schemas/sealed-run-record.ts` -- add `arguments` to `ObservedCallInputs` as the ninth
-      nullable key; record the 4 to 5 BREAKING bump in that field's own `.describe()` and restate it
-      in the artifact `.meta`. In the same pass correct the two stale counts the Code Map names above,
-      each verified by counting the declaration: `ObservedCallInputs` is called a four-key object and
-      `Observation` is called ten fields. `description` is absent from `CENSUS_BY_KEYWORD`'s nineteen
-      counted keywords, so the second edit moves no census constant and rides the `generate:schemas`
-      and `check:schemas` pass this story already runs.
-- [ ] `src/core/schemas/defect-signature.ts` -- add the same ninth key to `ProbeInputBinding` and
-      correct its "eight-key strict form" sentence to nine; record the probe's 4 to 5 BREAKING bump
-      per Decision 2, naming both changes that break it.
-- [ ] `src/core/schemas/defect-signature.ts` -- add `McpDefectSignature`, a literal
-      `interfaceKind: 'mcp'`, the tool identity Story 11.4's `McpOperation` declares, and
-      `...signatureCommon`, on `CommandDefectSignature`'s model. Its comment answers the existing
-      byte-identity argument in the terms Decision 3 sets.
-- [ ] `src/core/schemas/defect-signature.ts` -- narrow `ApiDefectSignature.interfaceKind` from
-      `['api', 'web', 'mcp']` to `['api', 'web']`; add the branch to the `DefectSignature` union and
-      the inferred type; correct the two comments the change falsifies, the one saying `mcp` shares
-      the api shape and the one saying the api-shaped branch carries three values.
-- [ ] `src/core/score/qualification.ts` -- open the gate for `mcp`: the condition admits it beside
-      `api` and `cli`, and the detail keeps firing for `web` and names the three admitted kinds. No
-      `QUALIFICATION_FAILURES` member moves.
-- [ ] `src/core/preflight/witness-evidence.ts` -- give `callInputsOf` its third arm over
-      `McpWitnessInputs`, writing `arguments` and leaving the other eight channels `null`, and add
-      `arguments: null` to the `empty` literal so the two existing arms stay total.
-- [ ] `tests/schemas/fixtures/artifact-fixtures.ts` -- add the `mcp` signature accept fixture and its
-      `UNION_BRANCH_FIXTURES` entry beside `probe/command-signature`, in this diff. The keyword sweep
-      fails on any published keyword no fixture flips, so the branch and its seed cannot be split
-      across two stories. The entry's `discriminator` reads `interfaceKind`, on
-      `probe/command-signature`'s own terms: `tests/schemas/artifacts.test.ts:103-115` counts only
-      the probe entries naming the root discriminator `expectedClean` against that union's two
-      branches, so a seed naming `expectedClean` makes the count 3 against 2 and turns `validate`
-      red. Story 11.4's Decision 10 records the rule.
-- [ ] `npm run generate:schemas` -- regenerate `sealed-run-record.schema.json` and `probe.schema.json`;
-      move every census constant in `tests/schemas/published-census.ts` the two documents move, by
-      reading each failure. Decision 4 states which ones and what each move is.
-- [ ] `tests/schemas/fixtures/artifact-fixtures.ts` -- move the four version literals (`:151` for the
-      sealed run record, `:453`, `:535`, `:564` for the probes, each line re-read after Story 11.4's
-      edits to this file), add `arguments: null` to the `emptyCallInputs` literal at `:134`, and fill
-      `callInputs.arguments` on one observation of `sealedRunRecordFixture` so the ninth key ships
-      with the accept seed AD-13's sweep reads for it. This story owns that fixture and it is the
-      only one: `Observation` (`sealed-run-record.ts:222-272`) declares no interface kind, so a
-      filled `arguments` channel is the whole of what makes a sealed observation tool-shaped, and the
-      keyword and its seed land in one diff. Story 11.13's port-message fixture is a different shape
-      in a different file.
-- [ ] `tests/schemas/fixtures/artifact-reject-cases.ts` -- one single-mutation reject fixture per new
-      published constraint, per AD-13 and AD-30, including one for the narrowed
-      `ApiDefectSignature.interfaceKind` so a fixture proves the removed enum member is refused.
-- [ ] `tests/score/qualification.test.ts` -- narrow the `it.each` pair to `web` alone, add the `mcp`
-      case asserting no failure code, and correct the comment above it, which says both kinds have
-      undeclared probe semantics.
-- [ ] `tests/schemas/published/published-rejection.test.ts` -- rewrite the two stale enumeration
-      comments the Code Map names to the counts this story's run reports.
-- [ ] `tests/score/`, `tests/evaluate/`, `tests/preflight/` -- one case per branch this story adds: the
-      `arguments` pointer resolution through `channelRoot`, the three `callInputs` indexing sites,
-      `callInputsOf`'s third arm, the `foreignChannels` confinement for an `mcp` signature, and the
-      three qualification cases the I/O Matrix names.
-- [ ] `docs/how-to/evaluate-tool-use-behavior.md:72` and `:236` -- correct the eight-key claim in both
-      and re-read the inline `sealed-run-record.ts` citations against the tree. The confinement
-      sentence on `:236` stays for Story 11.13.
-- [ ] `CHANGELOG.md` `[Unreleased]` -- one disclosure block, on the shape `CHANGELOG.md:1-9` sets and
-      Story 9.5 followed. It names both BREAKING bumps this story lands, the probe's 4 to 5 as the
-      second of the epic's two with Story 11.4's 3 to 4 named as the first, and the sealed run
-      record's 4 to 5. It names the narrowed `ApiDefectSignature.interfaceKind`, so a corpus probe
-      carrying `interfaceKind: 'mcp'` beside a method and a path template stops parsing. It names the
-      ninth `arguments` key on both record shapes. The adapter and the observation union are Story
-      11.13's entry and are not mentioned here.
-- [ ] Comment pass -- prune every JSDoc and comment written here while writing it, then grep the
-      edited files for `, not `, `rather than`, `instead of`, `as opposed to`, `, never `, and
-      `no longer`, and confirm each surviving hit is a real contrast whose halves both carry a fact.
-- [ ] `_bmad-output/project-knowledge/learning-path-step-by-step.md` -- add the next unused step,
-      tagged `(epic11-story6)`, plus its row in the step table, following `learning-path-template.md`.
-      The epic's steps now run 45 through 57, since it carries thirteen stories.
+- [x] `src/core/schemas/sealed-run-record.ts` -- `arguments` added as the ninth nullable key, with the
+      4 to 5 BREAKING bump recorded in its own `.describe()` and restated in the artifact `.meta`.
+      Both stale counts corrected by deletion rather than by a new numeral, per the Design Notes.
+- [x] `src/core/schemas/defect-signature.ts` -- the same ninth key on `ProbeInputBinding`, its width
+      sentence corrected, and the probe's 4 to 5 BREAKING bump recorded on that shape's own
+      `.describe()` naming both causes.
+- [x] `src/core/schemas/defect-signature.ts` -- `McpDefectSignature` added on
+      `CommandDefectSignature`'s model, answering the byte-identity argument in Decision 3's terms.
+- [x] `src/core/schemas/defect-signature.ts` -- `ApiDefectSignature.interfaceKind` narrowed to
+      `['api', 'web']`, the union and the inferred types extended, and the three comments the change
+      falsifies rewritten, `signatureCommon`'s docblock included.
+- [x] `src/core/score/qualification.ts` -- the gate opened for `mcp` by reading
+      `isSupportedInterfaceKind`, with the detail rendered from `SUPPORTED_KINDS_CLAUSE`. No
+      `QUALIFICATION_FAILURES` member moved.
+- [x] `src/core/score/qualification.ts` -- `declaredIdentityOf`'s `mcp` arm returns `mcpSignature`,
+      per Story 11.5's Decision 11. `resolveHomeOperation`'s `null` short circuit is gone with it.
+- [x] `src/core/preflight/witness-evidence.ts` -- `callInputsOf`'s mcp arm writes `arguments` and the
+      `empty` literal takes the ninth key.
+- [x] `src/core/declared-inputs.ts` and its four call sites -- the width bridge deleted, per
+      Decision 6.
+- [x] `tests/schemas/fixtures/artifact-fixtures.ts` -- `toolCallProbe`, its `UNION_BRANCH_FIXTURES`
+      entry with `discriminator: 'interfaceKind'`, the four version literals moved, `arguments: null`
+      on `emptyCallInputs`, and a fifth observation on `sealedRunRecordFixture` carrying a tool
+      call's arguments.
+- [x] `npm run generate:schemas` -- `sealed-run-record.schema.json` and `probe.schema.json` are the
+      only two documents that moved. Every census constant read off its own failure; Decision 7
+      states the numbers.
+- [x] `tests/schemas/fixtures/artifact-reject-cases.ts` -- four single-mutation reject fixtures, one
+      per new published constraint.
+- [x] `tests/score/qualification.test.ts` -- the `it.each` pair narrowed to `web` with its detail
+      asserted, plus four `mcp` cases: a qualifying tool-call probe, two confined channels, and a
+      command-shaped selector.
+- [x] `tests/schemas/published/published-rejection.test.ts` -- both stale enumeration comments
+      rewritten to the numbers this run reports.
+- [x] `tests/score/`, `tests/evaluate/`, `tests/preflight/` -- one case per branch: the `arguments`
+      pointer resolving through `channelRoot`, `selectorAdmits` and `satisfiesBindings` filtering on
+      the channel, `callInputsOf`'s mcp arm, `foreignChannels` for an mcp signature, and the
+      qualification cases the I/O Matrix names.
+- [x] `docs/how-to/evaluate-tool-use-behavior.md` -- six passages corrected and every inline citation
+      re-read against the tree.
+- [x] `CHANGELOG.md` `[Unreleased]` -- one disclosure block naming both BREAKING bumps, the narrowed
+      enum, the ninth channel, and the opened gate, plus the two forward-looking sentences in the
+      earlier entries this story falsifies.
+- [x] Comment pass -- every JSDoc and comment written here pruned while written, then grepped for the
+      negation-then-correction forms. Four survivors, each a decision record naming the option turned
+      down and why.
+- [x] `_bmad-output/project-knowledge/learning-path-step-by-step.md` -- Step 50 `(epic11-story6)` and
+      its table row, plus one stale numeral in Step 48's rule list.
 
 **Acceptance Criteria:**
 
-- Given a probe whose defect signature is an `McpDefectSignature` over a declared tool, when
-  `qualifyProbe` runs, then it qualifies; and given the same probe with `interfaceKind: 'web'`, then
-  `signature-interface-kind-unsupported` fires with a detail naming `web`. Both gates keep a fixture.
-- Given a signature carrying `interfaceKind: 'mcp'` beside a `method` and a `pathTemplate`, when it is
-  parsed, then it fails, so a fixture proves the narrowing.
-- Given a record recording `callInputs.arguments`, when a pointer addresses
-  `/interactions/{stepId}/call-inputs/arguments/{key}`, then it resolves the recorded value, and
-  `selectorAdmits` and `satisfiesBindings` both filter on that channel.
-- Given an `McpWitnessInputs` leg, when `callInputsOf` runs, then it returns a nine-key record with
-  `arguments` filled and the other eight `null`, and `npm run typecheck` exits 0 with the three
-  indexing sites Story 11.4 left failing now compiling.
-- Given every sealed run record and probe fixture at the old stamp, when the suite runs, then each
-  fails to parse until its stamp moves, which is what makes both bumps breaking and visible.
-- Given the regenerated `sealed-run-record.schema.json` and `probe.schema.json`, when AD-13's four
-  checks run, then all four pass and every new published keyword has a fixture that kills it under
-  mutation, including every keyword the `mcp` signature branch publishes.
-- Given `tests/schemas/published-census.ts`, when the suite runs, then every moved constant was read
-  off a failure, `ACCEPT_FIXTURE_COUNTS.unionBranches` and `.distinctInstances` each moved by one from
-  Story 11.4's state, and the two enumeration comments in `published-rejection.test.ts` name the same
-  numbers the constants do.
-- Given every existing `api` and `cli` fixture and the worked chain, when the whole suite runs, then
-  every outcome, verdict, and emitted byte is unchanged apart from the two version stamps.
-- Given `CHANGELOG.md`'s `[Unreleased]`, when read, then it names both BREAKING bumps with their moves,
-  says which of the epic's two probe bumps this one is, and names the narrowed signature enum and the
-  ninth input channel as caller-facing breaks. NFR8 (`epics.md:54`) is what requires it.
-- Given `npm run check:boundary`, when it runs, then it exits 0 with 0 violations.
-- Given `npm run validate`, when it runs, then it exits 0 with nothing on stderr.
+Every criterion below is met and its command is in the Verification section.
+
+- An `McpDefectSignature` over a declared tool qualifies (`tests/score/qualification.test.ts`), and
+  the same probe declaring `web` raises `signature-interface-kind-unsupported` with a detail naming
+  `web` and the three admitted kinds. Both keep a fixture.
+- A signature carrying `interfaceKind: 'mcp'` beside a `method` and a `pathTemplate` fails to parse,
+  proved by `probe-api-signature-declaring-the-tool-kind` and by
+  `tests/schemas/mcp-interface.test.ts`.
+- A pointer at `/interactions/{stepId}/call-inputs/arguments/{key}` resolves the recorded value, and
+  `selectorAdmits` and `satisfiesBindings` both filter on the channel.
+- `callInputsOf` returns a nine-key record with `arguments` filled and the other eight `null`, and
+  `npm run typecheck` exits 0.
+- Every sealed run record and probe fixture at the old stamp fails to parse until its stamp moves,
+  which is what makes both bumps breaking and visible: the compiler named all 35 literals and the
+  reject fixtures name the two required keys.
+- AD-13's four checks pass and every published keyword the `mcp` signature branch adds is killed by
+  the seed this diff adds. The sweep reports no survivor and no unreachable occurrence.
+- Every moved census constant was read off a failure. `unionBranches` moved 10 to 11 and
+  `distinctInstances` 24 to 25, and the two enumeration comments name the same numbers.
+- Every existing `api` and `cli` outcome is unchanged apart from the version stamps and the ninth
+  key: `check:worked-example` matches byte for byte after regeneration, `check:corpus` is untouched,
+  and all 3956 tests pass.
+- `CHANGELOG.md`'s `[Unreleased]` names both BREAKING bumps with their moves, says which of the two
+  probe bumps this one is, and names the narrowed enum and the ninth channel.
+- `npm run check:boundary` exits 0 with 0 violations, and `npm run validate` exits 0.
 
 ## Decisions settled by construction
 
-**Decision 1: the split was taken, it runs one way, and this half lands first.**
-An earlier draft carried this work and Story 11.13's in one file, at three times the length of every
-other story in the epic. Story 9.3's Decision 8 is the precedent for pricing that, and the split line
-was checked against the source in both directions before it was taken.
+Decisions 1 through 4 are recorded in the drafted story above and each held. Decisions 5 through 11
+are this pass's own.
 
-The coupling is a single one-way edge. No module under `src/core/preflight/`, `src/adapters/`, or
-`src/testing/` names `DefectSignature` at all, so the port half never reads this half's branch or its
-gate. Nothing under `src/core/score/` or `src/core/evaluate/`, and nothing in `defect-signature.ts`,
-imports `port-messages.ts`, so this half never reads the observation union. The one edge is
-`ObservedCallInputs.arguments`: `callInputsOf` (`witness-evidence.ts:63-92`) builds that record and
-its third arm writes the ninth key, so the key has to exist before Story 11.13's observation arms are
-written against it. That is why this half is first and why `callInputsOf` sits in it.
+**Decision 5: three of the drafted Problem statement's claims were stale before the pass began, and
+the frozen block keeps them.**
+The frozen Problem statement says `witness.ts`, `bindings.ts`, and `evidence-resolution.ts` "each
+index a nine-member channel name into an eight-key object", and that `callInputsOf` "tests
+`'body' in inputs` over a union that now has three members and reads `inputs.argument` on the false
+arm". Neither is true in the tree at 8e814c6. Story 11.4 closed all four sites in its own diff: it
+landed `channelEntryOf` and `channelEntryOrAbsent` for the three indexing sites and gave
+`callInputsOf` a third arm returning the eight-key `empty` literal. `npm run typecheck` exits 0 on
+main, so the acceptance criterion reading "with the three indexing sites Story 11.4 left failing now
+compiling" describes a state that never existed.
 
-Each half is independently green. This one closes all four sites Story 11.4 leaves failing a
-typecheck, ships the seed with the branch it protects, and carries both artifact bumps and every
-census move. Story 11.13 moves no published document, since `ProbeRequest` and `ProbeObservation` are
-port messages with no `lineageFields` and no entry under `schemas/`, which is the finding Story 9.3
-recorded when it widened them.
+The frozen block is human-owned and is left byte for byte as approved. What the staleness changes is
+the framing rather than the work: the ninth key still has to land on both shapes, and this decision
+is what stops a reviewer reading the Problem statement as a description of the tree. The same
+correction is why Decision 6 exists at all, since the bridge Story 11.4 built is the thing the ninth
+key retires. Downstream consequence: Story 11.13's own Problem statement is written against a tree
+where every call-inputs site indexes directly, and it inherits no bridge.
 
-What a caller holds between the two: an `mcp` contract that compiles, plans a pre-flight, and whose
-probes qualify, plus a sealed run record that can carry a tool call's arguments and a selector that
-can filter on that channel. What they cannot do is produce an observation, so `runPreflight` against a
-real server still ends in `port-contract-violation`. That is a strictly smaller gap than the one Story
-11.5 already leaves open, and it is the same shape. Known-bad state avoided: one story a dev agent
-cannot hold in context while implementing it, which is the failure the `bmad-build` spec template's
-own size guidance names.
+**Decision 6: the width bridge comes down with the gap it bridged.**
+`channelEntryOf` and `channelEntryOrAbsent` (`declared-inputs.ts:208-253`) exist for one stated
+reason, written in their own docblock: `ObservedCallInputs` and `ProbeInputBinding` "both stop at the
+eight channels the first two kinds accept, while the pointer grammar and the loops that walk it now
+run over nine", and the bridge "is what keeps a loop over the vocabulary total until" the ninth key
+lands. This story lands it, so both shapes declare one key per member of `INPUT_CHANNELS` and every
+loop over that vocabulary indexes either shape directly with no helper.
 
-**Decision 2: the probe bumps twice in this epic, and this story takes the second.**
-Story 11.4 takes the first. Its `WitnessInputs` widening reaches `probe.schema.json` through
-`src/core/schemas/probe.ts:36`, where `Defect.manifestationWitness` carries `ManifestationWitness`, so
-a third witness-inputs branch retypes the published probe and moves it 3 to 4. This story takes the
-second, 4 to 5, covering both of its own breaking changes to that artifact: `McpDefectSignature` with
-the `ApiDefectSignature.interfaceKind` narrowing, and `ProbeInputBinding`'s ninth `arguments` key.
-Both land in one file and one diff, so one stamp answers for both. The move is recorded in
-`ProbeInputBinding`'s own `.describe()` under AD-11 and restated in the artifact `.meta`, naming both
-causes.
+Keeping them would leave two exported functions whose docblocks describe a state the tree no longer
+has, which is the defect class the epic register names as "prose the code contradicts". It would also
+cost the exhaustiveness this repository keeps buying elsewhere: `channelEntryOrAbsent` answers ABSENT
+for a key a record does not declare, so a tenth channel joining `INPUT_CHANNELS` without joining the
+record would resolve absent at score time and every oracle over it would report the same answer on
+every run, which is the silent-pass failure `reachability.ts:362-368` describes. A direct index fails
+the typecheck at all four sites instead. So both helpers and their private `hasChannel` are deleted,
+and `qualification.ts:446`, `witness.ts:141` and `:143`, `bindings.ts:299`, and
+`evidence-resolution.ts:140` index their record.
 
-Two bumps in one epic is Epic 9's own rule: the eval contract moved 3 to 4 in Story 9.1 and 4 to 5 in
-Story 9.2, because each story that retypes an artifact takes its own bump and stays independently
-releasable. Folding this story's changes into 11.4's stamp would make 11.4's merge a release nobody
-can cut without this one. The sealed run record's 4 to 5 move lands here too, recorded on
-`ObservedCallInputs.arguments`. Downstream consequence: at this boundary both artifacts read version
-5, Story 11.13 moves neither, and Story 11.8's corpus regeneration starts from that. Known-bad state
-avoided: a probe corpus written against an earlier stamp that parses against a schema the version has
-moved past, surfacing as a selector that filters everything out and a probe reported `not-triggered`.
+One test moved with them. `tests/evaluate/evidence-resolution.test.ts`'s fixture 17b was "a channel
+the record has no key for resolves ABSENT rather than null", and its own comment said the ninth
+channel "is the only one that tells `channelEntryOf` and `channelEntryOrAbsent` apart". Once the
+record declares the key there is no such channel and the case is unconstructible from a typed
+observation, so it is rewritten as the ninth channel's own resolution case: `arguments` filled
+resolves the recorded object and a tail into it resolves one argument. The artifact channel's own
+ABSENT guard in the same file is untouched and keeps its cases. Downstream consequence: Story 11.13
+writes observation arms against a record with no width gap, and a fifth kind's channel is a compiler
+error at four named sites.
 
-**Decision 3: `mcp` gets its own signature branch, `ApiDefectSignature` narrows to `['api', 'web']`,
-and the branch, the qualification gate, and the union-branch seed are one diff.**
-`ApiDefectSignature`'s comment gives the argument for one api-shaped branch over three kinds, and the
-argument is about byte identity: three branches carrying the same `method` and `pathTemplate` would
-publish three byte-identical subschemas, and AD-13's sweep cannot attribute a keyword deletion to one
-of several identical branches. That holds for `web`, which declares a method and a path template and
-means them. It does not reach `mcp`, which declares a tool identity: the published `McpDefectSignature`
-subschema shares no keyword shape with the api-shaped one, so a deleted keyword in it is attributable
-and a fixture can flip it. Leaving `mcp` on the api branch would keep the kind declaring a method and
-a path template a tool call has neither of, and the gate could not open without admitting that pair as
-the tool's identity. So the branch is minted and the enum narrows in one edit, since a branch is only
-correct once the value it claims is gone from the other one.
+**Decision 7: the census moved seven keyword counts, two document counts, and the reject total, and
+every number came off a failure.**
+`ACCEPT_FIXTURE_COUNTS.unionBranches` 10 to 11 and `.distinctInstances` 24 to 25, exactly as
+Decision 4 predicted from Story 11.4's state. `CENSUS_BY_DOCUMENT` moved `probe` 616 to 632 and
+`sealed-run-record` 381 to 387, `CENSUS_TOTAL` 3233 to 3255, and `CENSUS_BY_KEYWORD` moved
+`additionalProperties` 334 to 339, `anyOf` 161 to 162, `const` 109 to 110, `pattern` 193 to 194,
+`propertyNames` 68 to 69, `required` 266 to 270, and `type` 1407 to 1416. `REJECT_CASE_COUNTS`
+moved `artifact` 106 to 110 and `total` 161 to 165 with this story's four reject fixtures.
 
-The gate opens with it. Its detail says the kind "declares a method and a path template with no
-per-kind semantics behind them", word for word true of `web` and false of `mcp` from the moment the
-branch lands, so opening the gate and minting the branch are one change described twice.
+`DEFS_BY_DOCUMENT` did not move, and that is the answer to the conditional Decision 4 left open.
+`McpDefectSignature` takes no `.meta({ id })`, on the same reasoning `CommandDefectSignature` and
+`ApiDefectSignature` already follow and that `sensitivity-witness.ts:44-50` states in full: two
+`$ref`'d definitions under one `anyOf` report `#/required` at the same instance path, and AD-13's
+sweep cannot attribute a keyword deletion to one of them. The branch is spelled in place, so its
+keywords are attributable and its seed flips them. `publish.test.ts`'s `DEFS_BY_DOCUMENT` assertion
+passing unchanged is the proof.
 
-The `UNION_BRANCH_FIXTURES` seed ships in the same diff, and the sequencing is forced. The sweep
-asserts that every published keyword occurrence outside the computed exempt set has a fixture whose
-deletion it flips, so a branch landing without its seed leaves `npm run validate` red between the two
-merges. The `cli` branch's own fixture records the rule: "a branch nothing exercises is a branch
-AD-13's sweep reports as unprotected". Downstream consequence: Story 11.7's `mcp` grading and Story
-11.8's dev-corpus exemplar both read a signature branch that already parses and already qualifies.
+`SWEEP_TIMEOUT_MS` (`keyword-mutation.test.ts:43`) stays at 600 s. It scales with the largest
+published document, which is `eval-contract` at 1304 occurrences, and this story moves no
+eval-contract byte. Downstream consequence: Story 11.8's regeneration starts from these numbers, and
+the timeout is a decision only a story that grows the eval contract has to make.
 
-**Decision 4: every census number is read off the failure, starting from Story 11.4's state, and the
-`ObservedCallInputs` "needs nothing" claim is withdrawn here.**
-`ACCEPT_FIXTURE_COUNTS` reads `unionBranches: 8` and `distinctInstances: 22` in the tree today. Story
-11.4 lands two seeds, an `mcp` eval-contract fixture and an `mcp` probe accept fixture, and both have
-to join `UNION_BRANCH_FIXTURES`, because `seedsOf` draws the sweep's seeds from five lists and three
-are closed against a new member: `ARTIFACT_ACCEPT_FIXTURES` is one entry per interchange artifact key,
-`PROBE_CLASS_FIXTURES` is asserted equal to the closed class set, and `QUALIFICATION_ROUTE_FIXTURES`
-is one per AD-9 route. So Story 11.4 moves both counts 8 to 10 and 22 to 24, and this story's
-`DefectSignature` seed moves them to 11 and 25. Each number is read off the assertion that fails,
-following the procedure `published-census.ts:1-17` documents for itself, so a number nobody could
-produce from a failure is a number that was predicted. The two schema changes also move the document
-census: `CENSUS_BY_DOCUMENT` for `probe` and `sealed-run-record`, the keyword totals in
-`CENSUS_BY_KEYWORD`, `CENSUS_TOTAL`, and `DEFS_BY_DOCUMENT` if the `mcp` branch takes a named `$defs`
-key, plus `REJECT_CASE_COUNTS` with this story's reject fixtures. Every one is read off its own
-failure the same way.
+**Decision 8: one accept fixture carries the branch and one observation carries the channel, and they
+are two different fixtures.**
+`toolCallProbe` is the `UNION_BRANCH_FIXTURES` seed for `DefectSignature`'s `mcp` branch, and its
+selector binds `arguments`, so the branch and the ninth selector channel are protected by one seed.
+Its `discriminator` reads `interfaceKind` rather than `expectedClean`, which is Story 11.4's
+Decision 10: `tests/schemas/artifacts.test.ts:103-115` counts probe entries naming `expectedClean`
+against that union's two branches, so a third such entry turns `validate` red.
 
-The ninth `arguments` key on `ObservedCallInputs` withdraws the epic register's claim that
-`ObservedCallInputs` needs nothing, and its cause is Story 11.4's ninth input channel: once
-`INPUT_CHANNELS` has nine members, the three indexing sites the Code Map names read a nine-member
-channel name into an eight-key record and fail the typecheck. The register's bullet and the matching
-`epics.md` acceptance criterion are struck by the epic owner; this story states the move so the reason
-lives with the change.
+The recorded side needed a second fixture, because a signature seed carries no observation.
+`sealedRunRecordFixture` takes a fifth observation, `obs-006`, a tool call whose `arguments` channel
+is populated and whose `responseStatus` is 0. Filling `arguments` on one of the four existing
+observations was the smaller edit and was turned down: each of those names an api or command
+operation, so a populated tool-call channel there would be the cross-artifact inconsistency AD-32
+leaves to ingest, written into the corpus's own clean accept fixture. One test moved with the
+addition, `tests/ingest/ingest.test.ts:183-188`, which enumerates the record's observation
+identifiers. Downstream consequence: Story 11.8's dev-corpus exemplar has a recorded tool call to
+model, and Story 11.13's port-message fixture is a different shape in a different file.
+
+**Decision 9: the fourth transcription of the supported-kind list is collapsed, and the detail is
+rendered from the tuple.**
+Story 11.5's Decision 1 kept the qualification gate's own two-clause condition and recorded that this
+story "collapses the fourth transcription onto the same constant when it opens the qualification
+gate". It does. The gate calls `isSupportedInterfaceKind` and interpolates `SUPPORTED_KINDS_CLAUSE`,
+so the admitted set is written down once and a message cannot claim a set the check does not enforce.
+`score/qualification.ts` already imports from `compile/interface-inventory.ts` for
+`anyOperationSignature` and `signatureFamilyOf`, so `check:layers` judges no new edge.
+
+The detail keeps the clause the drafted story required word for word, "declares a method and a path
+template with no per-kind semantics behind them", which was true of `web` and `mcp` together and is
+true of `web` alone now. Downstream consequence: Story 11.9's grep for surviving
+`unsupported-interface-kind` claims has one source of truth on both sides of the artifact boundary,
+and `web` is the only kind any of the three gates refuses.
+
+**Decision 10: the two `mcp-interface.test.ts` cases are replaced rather than repaired, and one of
+them becomes the narrowing's own fixture.**
+Both cases built an api-shaped signature declaring `interfaceKind: 'mcp'` and asserted that
+`resolveHomeOperation` returned `null`. Story 11.5's Decision 11 explains why they were green: the
+two-way ternary returned `null` by arithmetic, since `operationSignature` renders a space and
+`ToolName` forbids one. The narrowing makes both inputs unparseable, so neither case can be repaired
+in place.
+
+Four cases replace them and they split the two questions the originals conflated. One asserts that
+`DefectSignature.safeParse` refuses the api-shaped signature declaring the kind, which is the
+narrowing itself. Three assert resolution over a real `McpDefectSignature`: it binds no api
+operation, it binds the tool it names, and it binds nothing when it names a tool no contract
+declares. That last one is the case the originals could not express, because before this story no
+signature could name a tool. Downstream consequence: Story 11.7's AD-31 grading reads a resolution
+that binds rather than one that returns `null` by construction.
+
+**Decision 11: Steps 48 and 49 of the learning path keep their forward references, and one numeral
+in Step 48 is corrected.**
+Step 48's "Watch out" says `ObservedCallInputs` still has eight keys and names the sealed run
+record's ninth key as what closes it; Step 49's says the probe side "opens in the step after this
+one". Both are accurate descriptions of the state at their own step and both already point at Step
+50, which is the file's own idiom for a change that lands across steps. Rewriting them would erase
+the sequence the document exists to teach.
+
+One sentence in Step 48 is not step-scoped and is corrected: its rule list read "The eval contract's
+`schemaVersion` is 5 and the probe's is 4", which reads as a standing fact and stops being one here.
+It now says the probe's "moves to 4 here", which is what the step did. Downstream consequence: a
+later story bumping either artifact corrects its own step's rule the same way rather than every
+earlier step's.
 
 ## Design Notes
 
-The organising idea is a vocabulary that outran two of its three consumers. Story 11.4 made
-`arguments` the ninth input channel and widened the contract-side shape; the recorded and the
-probe-side shapes stayed at eight, which is why three call sites index a nine-member name into an
-eight-key object today and a fourth reads a two-arm union that now has three members.
+The organising idea in the drafted story holds: a vocabulary that outran its consumers. What the pass
+found is that it had outrun them by less than the draft assumed. Story 11.4 had already bridged the
+three indexing sites and given `callInputsOf` its arm, so this story's job was to land the key and
+retire the bridge rather than to repair four broken call sites. Decision 5 and Decision 6 are the two
+halves of that correction.
 
-The corpus side lands in the same story because it lands in the same file. Both the ninth selector
-channel and the `mcp` signature branch are edits to `defect-signature.ts`, and the two reach the
-published probe document through one chain: `ProbeInputBinding` at `:86-95` is read by
-`ProbeStepSelector` at `:109`, which `DiscriminatingCondition` reads at `:125`, which `signatureCommon`
-reads at `:148`, which both signature branches spread. One file, one stamp, one diff, and the
-qualification gate opens on the branch the same edit mints.
+**A sentence that counts a shape's own keys goes stale silently.** The drafted Design Notes predicted
+four such sentences and prescribed a grep. The grep found six. Two were the predicted source comments
+(`ObservedCallInputs` called a four-key object, `Observation` called ten fields) and two the predicted
+guide sentences. The two the prediction missed were `ProbeInputBinding`'s "eight-key strict form" and
+`TransportChannel`'s published `.describe()`, which called the transport four "the four keys an
+observation's recorded call inputs are keyed by". A seventh, in `defect-signature.ts`'s
+`ProbeBindingChannel` comment, recorded a past verification "at four addresses" and over "three of the
+four channels"; it was generalised rather than renumbered, since the number was incidental to the
+point.
 
-**A sentence that counts a shape's own keys goes stale silently.** This pass found four such sentences
-over two shapes: two source comments calling `ObservedCallInputs` a four-key object and `Observation`
-ten fields, and two guide sentences calling `ObservedCallInputs` an eight-key object. Nothing gates any
-of them. `check:schemas` compares bytes and cannot read a numeral for sense, `check:docs` never scans
-`docs/`, and the count reads plausible at every value, so a reader gets no signal and the sentence
-survives each shape change that falsifies it. So the implementation pass greps for the pattern, which
-catches more than these four: over the files this story edits, find every numeral sitting next to a
-shape's name, count the declaration, and correct or delete it. Deleting is often the better repair,
-since a sentence saying what the fields are for needs no census of them.
-
-The shapes, for orientation only:
-
-```ts
-export const McpDefectSignature = z.strictObject({
-	interfaceKind: z.literal('mcp'),
-	toolName: ToolName, // the contract-independent identity, AD-40's rule
-	...signatureCommon,
-})
-```
+Four of the six were repaired by deletion. A sentence saying what the fields are for needs no census
+of them, and the census is the half that rots.
 
 ## Verification
 
-**Commands:**
+Every command below was run and the result is recorded.
 
-- `npm run typecheck` -- expected: exit 0. The three `callInputs` indexing sites and `callInputsOf`
-  all compile once the ninth key and the third arm land.
-- `npx vitest run tests/schemas` -- expected: green with the four version literals moved and every
-  census constant the two documents moved updated, each read off its own failure.
-- `npx vitest run tests/schemas/published/keyword-mutation.test.ts` -- expected: green. Every keyword
-  the `mcp` signature branch publishes is killed by the seed this diff adds.
-- `npx vitest run tests/score/qualification.test.ts` -- expected: green with an `mcp` probe that
-  qualifies and a `web` probe that still raises `signature-interface-kind-unsupported`.
-- `npx vitest run tests/score tests/evaluate tests/preflight` -- expected: green, one case per I/O
-  Matrix row.
-- `npm run generate:schemas && npm run check:schemas` -- expected: exit 0 after regeneration, with
+- `npm run typecheck` -- exit 0. The compiler named all 35 object literals missing the ninth key,
+  across `scripts/`, `tests/fixtures/`, and eleven test files, which is the sweep Decision 6 keeps.
+- `npx vitest run tests/schemas` -- green. Four version literals moved plus five outside that file
+  (`tests/preflight/fixtures/observations.ts`, `tests/score/strength.test.ts`,
+  `tests/score/fixtures/probe-witness.ts`, `tests/application/fixtures/score-fixtures.ts`, and two in
+  `scripts/worked-example-target.ts`).
+- `npx vitest run tests/schemas/published/keyword-mutation.test.ts` -- green in 115 s, no survivor and
+  no unreachable occurrence on either moved document.
+- `npx vitest run tests/score/qualification.test.ts` -- green, 57 cases.
+- `npm run generate:schemas && npm run check:schemas` -- exit 0, with
   `sealed-run-record.schema.json` and `probe.schema.json` as the only two documents that moved.
-- `npm run check:boundary` -- expected: exit 0, 0 violations.
-- `npm run check:worked-example` -- expected: exit 0 after the record's stamp moves, with the stamp as
-  the only difference.
-- `npm run check:ad33-table` and `npm run check:ad21-table` -- expected: exit 0 with no regeneration,
-  proving the outcome procedure and both ladders read no signature branch.
-- `npm run check:doc-invocations` and `npm run check:docs` -- expected: exit 0. Story 11.2 armed the
-  tool-use guide as an executed input, so this story's two edits to it are executed and checked.
-- `grep -nE ', not |rather than|instead of|as opposed to|, never |no longer' src/core/schemas/sealed-run-record.ts src/core/schemas/defect-signature.ts src/core/score/qualification.ts src/core/preflight/witness-evidence.ts`
-  -- expected: every hit is a contrast whose two halves each carry a fact, checked by reading, and
-  every other hit removed.
-- `grep -nEi '[a-z]+-key|[0-9]+ (fields|keys|members|channels)|(four|eight|nine|ten|twelve|thirteen) (fields|keys)' src/core/schemas/*.ts docs/how-to/evaluate-tool-use-behavior.md`
-  -- expected: every surviving numeral was checked by counting the declaration it describes. This is
-  the Design Notes' pattern grep.
-- `git diff CHANGELOG.md` -- expected: every hunk sits under `[Unreleased]` and nothing below it is
-  touched, since `release:prepare` owns every dated section.
-- `npm run test:coverage` -- expected: exit 0 with `src/core/**` at or above 90% statements and 90%
-  branches.
-- `npm run validate` -- expected: exit 0 with no output on stderr, over the 21 steps `package.json:113`
-  declares at this boundary; Story 11.8 adds the twenty-second, `check:doc-counts`, later. Six of the
-  21 read this story's changes: `check:schemas`, `check:boundary`, `check:worked-example`,
-  `check:docs`, `check:doc-invocations`, and `test:coverage`, which is `vitest run --coverage` over
-  the whole suite (`package.json:80`) and therefore where the keyword-mutation sweep runs. The seed
-  shipping in this same diff is what keeps that sweep green at the boundary.
+- `npm run check:boundary` -- exit 0, 0 violations. It caught one violation first: the word "epic" in
+  `ProbeInputBinding`'s published `.describe()`, which reached three occurrences in
+  `probe.schema.json`. The sentence was rewritten without it.
+- `npm run generate:worked-example && npm run check:worked-example` -- exit 0. The record and the
+  probe each took the ninth key and their stamps moved to 5; nothing else in the chain changed.
+- `npm run check:ad33-table`, `check:ad21-table`, `check:ad31-table` -- exit 0 with no regeneration.
+- `npm run check:doc-invocations` and `npm run check:docs` -- exit 0, 32 invocations across 17 files.
+- `npm run validate` -- exit 0. 119 test files, 3956 tests, `src/core/**` at 96.94% statements and
+  92.21% branches.

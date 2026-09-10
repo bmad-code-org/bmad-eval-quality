@@ -7,6 +7,7 @@
 import { describe, expect, it } from 'vitest'
 import { isApiOperation } from '../../src/core/declared-inputs.ts'
 import type { ApiDefectSignature } from '../../src/core/schemas/defect-signature.ts'
+import { EvalContract } from '../../src/core/schemas/eval-contract.ts'
 import { RuntimeFault } from '../../src/core/schemas/faults.ts'
 import type { PermittedInterface } from '../../src/core/schemas/interface.ts'
 import type { Observation } from '../../src/core/schemas/sealed-run-record.ts'
@@ -22,6 +23,8 @@ import {
 	PROBE_WITNESS_RESULTS,
 	type SignedProbe,
 } from '../../src/core/score/witness.ts'
+import { toolCallProbe } from '../schemas/fixtures/artifact-fixtures.ts'
+import { mcpContract } from '../schemas/fixtures/mcp-contract.ts'
 import {
 	canary,
 	correctRejection,
@@ -472,6 +475,7 @@ describe('the selector follows the shipped binding filter', () => {
 						option: null,
 						environment: null,
 						stdin: null,
+						arguments: null,
 					},
 				},
 				predicate: qualifiedProbe.defectSignature.condition.predicate,
@@ -500,12 +504,55 @@ describe('the selector follows the shipped binding filter', () => {
 						option: null,
 						environment: null,
 						stdin: null,
+						arguments: null,
 					},
 				},
 			]),
 		)
 		expect(missingTheKey.observationIds).toEqual([])
 		expect(missingTheKey.result).toBe('not-triggered')
+	})
+
+	// The ninth channel filters the same way the other eight do. The tool-call
+	// probe binds `arguments.query`, so a call that carried it is a candidate and
+	// a call that carried nothing on the channel is filtered out.
+	it('filters a tool call on the arguments channel', () => {
+		const interfaces = EvalContract.parse(mcpContract).permittedInterfaces
+		const searched = observation({
+			observationId: 'obs-tool-1',
+			operationId: 'search-notes',
+			callInputs: {
+				path: null,
+				query: null,
+				header: null,
+				body: null,
+				argument: null,
+				option: null,
+				environment: null,
+				stdin: null,
+				arguments: { query: 'revised' },
+			},
+			responseBody: { ok: true },
+			responseStatus: 0,
+		})
+		const boundOnly = matchProbeWitness(
+			toolCallProbe as SignedProbe,
+			interfaces,
+			recordOf([searched, { ...searched, observationId: 'obs-tool-2' }]),
+		)
+		expect(boundOnly.observationIds).toEqual(['obs-tool-1', 'obs-tool-2'])
+
+		const unbound = matchProbeWitness(
+			toolCallProbe as SignedProbe,
+			interfaces,
+			recordOf([
+				{
+					...searched,
+					callInputs: { ...searched.callInputs, arguments: null },
+				},
+			]),
+		)
+		expect(unbound.observationIds).toEqual([])
 	})
 
 	it('binds a literal by deep equality, key order irrelevant', () => {
@@ -521,6 +568,7 @@ describe('the selector follows the shipped binding filter', () => {
 						option: null,
 						environment: null,
 						stdin: null,
+						arguments: null,
 					},
 				},
 				predicate: qualifiedProbe.defectSignature.condition.predicate,
@@ -559,6 +607,7 @@ describe('the home operation binds after parameter-name erasure', () => {
 						option: null,
 						environment: null,
 						stdin: null,
+						arguments: null,
 					},
 				},
 				predicate: qualifiedProbe.defectSignature.condition.predicate,
@@ -731,6 +780,7 @@ describe('quotation audits and never governs', () => {
 				option: null,
 				environment: null,
 				stdin: null,
+				arguments: null,
 			},
 			responseBody: { z: 1, a: 2 },
 			responseHeaders: { 'content-type': 'application/json' },
@@ -752,7 +802,7 @@ describe('quotation audits and never governs', () => {
 			'{"content-type":"application/json"}',
 		)
 		expect(projectChannel(rich, 'call-inputs', at)).toBe(
-			'{"argument":null,"body":{"a":2,"b":1},"environment":null,"header":null,"option":null,"path":null,"query":null,"stdin":null}',
+			'{"argument":null,"arguments":null,"body":{"a":2,"b":1},"environment":null,"header":null,"option":null,"path":null,"query":null,"stdin":null}',
 		)
 	})
 
@@ -768,10 +818,11 @@ describe('quotation audits and never governs', () => {
 		] as const) {
 			expect(projectChannel(blank, channel, 'test'), channel).toBeNull()
 		}
-		// `call-inputs` is the one channel that always projects: its four-key
-		// shape is present even when every channel inside it is null.
+		// `call-inputs` is the one channel that always projects: the record
+		// declares a key per input channel, so the shape is present even when
+		// every channel inside it is null.
 		expect(projectChannel(blank, 'call-inputs', 'test')).toBe(
-			'{"argument":null,"body":null,"environment":null,"header":null,"option":null,"path":null,"query":null,"stdin":null}',
+			'{"argument":null,"arguments":null,"body":null,"environment":null,"header":null,"option":null,"path":null,"query":null,"stdin":null}',
 		)
 	})
 

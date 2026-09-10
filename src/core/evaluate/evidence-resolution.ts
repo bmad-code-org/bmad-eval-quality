@@ -6,10 +6,7 @@
  * `Observation`.
  */
 
-import {
-	channelEntryOrAbsent,
-	targetsDescribedChannel,
-} from '../declared-inputs.ts'
+import { targetsDescribedChannel } from '../declared-inputs.ts'
 import type { EvalContract } from '../schemas/eval-contract.ts'
 import type { JsonValue } from '../schemas/primitives.ts'
 import type { ProbeObservedBody } from '../schemas/probe-body.ts'
@@ -133,15 +130,14 @@ export function channelRoot(
 					'call-inputs evidence target carries no transport channel',
 				)
 			}
-			// ABSENT rather than `null` for a channel this record carries no key
-			// for, on the artifact arm's own rule below: `null` reads as present
-			// under AD-26 and would invert every oracle asserting the channel
-			// was sent or was not.
-			return channelEntryOrAbsent(
-				observation.callInputs,
-				transportChannel,
-				ABSENT,
-			)
+			// A direct read: `ObservedCallInputs` declares one key per member of
+			// `INPUT_CHANNELS`, so every channel the grammar parses has a key
+			// here and `null` means the channel carried nothing. A tenth
+			// channel joining the vocabulary fails the typecheck at this line.
+			// The lookup helper this replaced answered absent for a missing
+			// key, which was correct while the two widths disagreed and is a
+			// silent answer now that they do not.
+			return observation.callInputs[transportChannel]
 		}
 		case 'artifact': {
 			const { artifactId } = target

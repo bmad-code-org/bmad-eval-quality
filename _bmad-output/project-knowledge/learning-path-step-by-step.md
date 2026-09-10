@@ -91,6 +91,7 @@ flowchart TD
 |   47 | epic11-story3 | A tool that answers with prose has no list to count, so the kind's first version covers the tools that answer with data. |
 |   48 | epic11-story4 | Every tool call on a server shares one address, so the tool's own published name becomes the address. |
 |   49 | epic11-story5 | The gate that refused tool servers opens, and the one list of what it admits is written down once. |
+|   50 | epic11-story6 | A seeded tool bug becomes findable: the signature names the tool, and the record keeps what the call sent. |
 
 Adding a step: follow `learning-path-template.md`.
 
@@ -3895,7 +3896,7 @@ And the fourth, the response descriptor, is what the step before this one settle
 - A tool call fills `response-body` and `response-status` and nothing else. A pointer at a header, an exit code, or a stream is `unreachable-check-evidence`; one at a file is `unresolved-artifact-reference`.
 - AD-10's marker rule selects nothing for a tool call, so `arguments` is its one legal witness channel whichever value the marker takes.
 - Never test "which kind is this" as a negation. `isApiOperation` was `!isCommandOperation` and answered yes for a tool call the day the third shape landed, silently, with a clean typecheck.
-- The eval contract's `schemaVersion` is 5 and the probe's is 4. Both breaking: an `mcp` interface written against version 4 stops parsing.
+- The eval contract's `schemaVersion` is 5 and the probe's moves to 4 here. Both breaking: an `mcp` interface written against version 4 stops parsing.
 - The protocol's `isError` flag belongs on `response-status`, never in the response descriptor's `requiredKeys`, where it would satisfy a coverage rule while checking nothing.
 
 **Watch out:** this step opens no gate. Everything above parses and every compile check but the kind gate admits it, and the next step is what opens that gate. `ObservedCallInputs` still has eight keys, so what a tool call *sent* has nowhere to be recorded yet: an oracle over `/interactions/{stepId}/call-inputs/arguments/...` compiles and resolves absent until the sealed run record takes its ninth key.
@@ -3937,3 +3938,43 @@ Now there is one list, its opposite is spelled out beside it, and a test proves 
 - A documented list of what the code accepts is a copy that will go stale. Cite the constant by name and let a reader open it.
 
 **Watch out:** a probe that names a tool server in its defect signature is still refused when it is scored. The contract side opens here; the probe side opens in the step after this one, and until then a tool-use defect cannot be scored at all.
+
+## Step 50 (epic11-story6): the bug report that names the tool
+
+**In plain terms:** to say "here is the bug I planted", you have to say where it lives.
+For a web service that is a verb and a URL. A tool server has neither, so a bug report against one was writing down an address that meant nothing.
+And when a run was recorded, whatever the tool call actually sent was thrown away, because the record had no slot for it.
+This step gives the bug report the tool's own name, and gives the record a slot for the arguments.
+
+**What:** `DefectSignature` gains a tool-call branch that declares the published tool name, the probe's qualification gate admits the kind, and both the recorded call inputs and the signature's own filter gain a ninth `arguments` channel.
+
+**Why:** without this a planted tool bug could be described but never scored.
+The signature declared a verb and a URL, which matched no tool, so the scorer looked for the bug's home and found nothing.
+The gate refused the kind outright besides.
+And a filter like "the call where `query` was set" had nothing to read, because the record kept eight channels and none of them was `arguments`, so every candidate was filtered out and the probe reported that its bug never fired.
+
+**Read in this order:**
+
+1. `src/core/schemas/defect-signature.ts`: `McpDefectSignature` beside the two existing branches, the narrowed api enum, and the selector's ninth channel.
+2. `src/core/schemas/sealed-run-record.ts`: `ObservedCallInputs`, now one key per input channel.
+3. `src/core/score/qualification.ts`: the gate reading the same supported-kind list the other two gates read, and `declaredIdentityOf` answering with a tool name.
+4. `src/core/preflight/witness-evidence.ts`: `callInputsOf`, whose tool-call arm writes the ninth key.
+5. `src/core/declared-inputs.ts`: where two lookup helpers used to be, and the four call sites that index the record directly now.
+6. `tests/schemas/fixtures/artifact-fixtures.ts`: `toolCallProbe`, the first probe whose signature names a tool.
+
+**Story:** `_bmad-output/implementation-artifacts/11-6-the-tool-call-defect-signature-and-the-ninth-input-channel.md`
+
+### Reference
+
+**Rules:**
+
+- A tool-call signature declares the published tool name. It is compared against `McpOperation.toolName` and against nothing else.
+- `ApiDefectSignature.interfaceKind` is `api` and `web` only. A signature naming `mcp` beside a verb and a URL no longer parses.
+- All three gates read `SUPPORTED_INTERFACE_KINDS`. `web` is the only kind any of them still refuses.
+- The record and the signature's filter are the same width, one key per member of `INPUT_CHANNELS`. A loop over the vocabulary indexes either one directly.
+- Two helpers that bridged the width gap are deleted. A tenth channel now fails the typecheck at four call sites, where those helpers resolved it quietly.
+- The sealed run record is version 5 and the probe is version 5. Both breaking: a record or probe declaring eight call-input channels stops parsing.
+- A new union branch ships with its accept fixture in the same change. A branch nothing exercises is a branch the mutation sweep reports as unprotected.
+- A sentence that counts a shape's own keys goes stale in silence. Nothing checks a numeral for sense, so every one near a shape's name gets counted against the declaration.
+
+**Watch out:** an `mcp` probe qualifies now, and it still cannot be run. Nothing can answer a tool call, so a pre-flight against a real server ends in `port-contract-violation`; the observation message and the adapter are the next step.

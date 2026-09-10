@@ -112,6 +112,7 @@ export const seededSignature: ApiDefectSignature = {
 				option: null,
 				environment: null,
 				stdin: null,
+				arguments: null,
 			},
 		},
 		predicate: {
@@ -125,7 +126,7 @@ export const seededSignature: ApiDefectSignature = {
 }
 
 export const qualifiedProbe: SignedProbe = {
-	schemaVersion: 4,
+	schemaVersion: 5,
 	parentDigest: null,
 	revisionCount: 0,
 	probeId: 'P-901',
@@ -192,6 +193,7 @@ export const observation = (
 		option: null,
 		environment: null,
 		stdin: null,
+		arguments: null,
 	},
 	responseBody: null,
 	responseHeaders: null,
@@ -216,6 +218,7 @@ export const correctRejection = observation({
 		option: null,
 		environment: null,
 		stdin: null,
+		arguments: null,
 	},
 	responseBody: { ok: false, message: 'title must be a string' },
 	responseStatus: 400,
@@ -234,6 +237,7 @@ export const defectFired = observation({
 		option: null,
 		environment: null,
 		stdin: null,
+		arguments: null,
 	},
 	responseBody: { ok: false, message: 'internal error' },
 	responseStatus: 500,

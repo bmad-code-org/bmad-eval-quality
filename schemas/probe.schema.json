@@ -944,8 +944,7 @@
                       "type": "string",
                       "enum": [
                         "api",
-                        "web",
-                        "mcp"
+                        "web"
                       ]
                     },
                     "method": {
@@ -1001,6 +1000,9 @@
                                 },
                                 "stdin": {
                                   "$ref": "#/$defs/ProbeInputBindingChannel"
+                                },
+                                "arguments": {
+                                  "$ref": "#/$defs/ProbeInputBindingChannel"
                                 }
                               },
                               "required": [
@@ -1011,9 +1013,11 @@
                                 "argument",
                                 "option",
                                 "environment",
-                                "stdin"
+                                "stdin",
+                                "arguments"
                               ],
-                              "additionalProperties": false
+                              "additionalProperties": false,
+                              "description": "The probe's `schemaVersion` 4 -> 5 BREAKING bump under AD-11, whose rule is that removing or retyping is breaking. Two retypings land under this one stamp and both are named here. This selector gained a ninth channel, `arguments`, so a signature against a tool call can filter on what the call supplied; the sealed run record's `ObservedCallInputs` gained the same key under its own breaking bump, since a selector naming a channel no observation records would filter against nothing. And `DefectSignature` gained an `McpDefectSignature` branch declaring a published tool name, while `ApiDefectSignature.interfaceKind` narrowed to `api` and `web`, so a version-4 probe carrying `interfaceKind: \"mcp\"` beside a method and a path template stops parsing. Version 4 took the witness leg shape and this stamp takes both changes above, so each retype stays independently releasable."
                             }
                           },
                           "required": [
@@ -1109,6 +1113,9 @@
                                 },
                                 "stdin": {
                                   "$ref": "#/$defs/ProbeInputBindingChannel"
+                                },
+                                "arguments": {
+                                  "$ref": "#/$defs/ProbeInputBindingChannel"
                                 }
                               },
                               "required": [
@@ -1119,9 +1126,11 @@
                                 "argument",
                                 "option",
                                 "environment",
-                                "stdin"
+                                "stdin",
+                                "arguments"
                               ],
-                              "additionalProperties": false
+                              "additionalProperties": false,
+                              "description": "The probe's `schemaVersion` 4 -> 5 BREAKING bump under AD-11, whose rule is that removing or retyping is breaking. Two retypings land under this one stamp and both are named here. This selector gained a ninth channel, `arguments`, so a signature against a tool call can filter on what the call supplied; the sealed run record's `ObservedCallInputs` gained the same key under its own breaking bump, since a selector naming a channel no observation records would filter against nothing. And `DefectSignature` gained an `McpDefectSignature` branch declaring a published tool name, while `ApiDefectSignature.interfaceKind` narrowed to `api` and `web`, so a version-4 probe carrying `interfaceKind: \"mcp\"` beside a method and a path template stops parsing. Version 4 took the witness leg shape and this stamp takes both changes above, so each retype stays independently releasable."
                             }
                           },
                           "required": [
@@ -1144,6 +1153,99 @@
                   "required": [
                     "interfaceKind",
                     "invocation",
+                    "observableChannel",
+                    "condition"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "interfaceKind": {
+                      "type": "string",
+                      "const": "mcp"
+                    },
+                    "toolName": {
+                      "type": "string",
+                      "pattern": "^[A-Za-z0-9_-]+$",
+                      "description": "The name the MCP server publishes for one tool, in the server's own spelling. AD-35: a logical identifier, never a URL, host, or port. The charset admits no \"/\", \":\", or \".\", so an address is unrepresentable rather than refused by a later check, and it excludes \"~\" so a tool name can be embedded in a pointer without escaping."
+                    },
+                    "observableChannel": {
+                      "description": "AD-26's channel the seeded defect manifests in. The qualification gate reads it: a condition passes only if its pointers name this channel, or name two channels with at least one response-side member. That rule exists to reject a condition collapsing to \"the evidence contains the string I sent\", which is satisfied by a finding that merely echoes its own input. It must also be a channel the declared kind produces: an api interface writes nothing to standard output and a command returns no HTTP status.",
+                      "$ref": "#/$defs/EvidenceChannel"
+                    },
+                    "condition": {
+                      "type": "object",
+                      "properties": {
+                        "selector": {
+                          "type": "object",
+                          "properties": {
+                            "inputBinding": {
+                              "type": "object",
+                              "properties": {
+                                "path": {
+                                  "$ref": "#/$defs/ProbeInputBindingChannel"
+                                },
+                                "query": {
+                                  "$ref": "#/$defs/ProbeInputBindingChannel"
+                                },
+                                "header": {
+                                  "$ref": "#/$defs/ProbeInputBindingChannel"
+                                },
+                                "body": {
+                                  "$ref": "#/$defs/ProbeInputBindingChannel"
+                                },
+                                "argument": {
+                                  "$ref": "#/$defs/ProbeInputBindingChannel"
+                                },
+                                "option": {
+                                  "$ref": "#/$defs/ProbeInputBindingChannel"
+                                },
+                                "environment": {
+                                  "$ref": "#/$defs/ProbeInputBindingChannel"
+                                },
+                                "stdin": {
+                                  "$ref": "#/$defs/ProbeInputBindingChannel"
+                                },
+                                "arguments": {
+                                  "$ref": "#/$defs/ProbeInputBindingChannel"
+                                }
+                              },
+                              "required": [
+                                "path",
+                                "query",
+                                "header",
+                                "body",
+                                "argument",
+                                "option",
+                                "environment",
+                                "stdin",
+                                "arguments"
+                              ],
+                              "additionalProperties": false,
+                              "description": "The probe's `schemaVersion` 4 -> 5 BREAKING bump under AD-11, whose rule is that removing or retyping is breaking. Two retypings land under this one stamp and both are named here. This selector gained a ninth channel, `arguments`, so a signature against a tool call can filter on what the call supplied; the sealed run record's `ObservedCallInputs` gained the same key under its own breaking bump, since a selector naming a channel no observation records would filter against nothing. And `DefectSignature` gained an `McpDefectSignature` branch declaring a published tool name, while `ApiDefectSignature.interfaceKind` narrowed to `api` and `web`, so a version-4 probe carrying `interfaceKind: \"mcp\"` beside a method and a path template stops parsing. Version 4 took the witness leg shape and this stamp takes both changes above, so each retype stays independently releasable."
+                            }
+                          },
+                          "required": [
+                            "inputBinding"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "predicate": {
+                          "description": "An AD-4 expression over AD-26 response channels, every pointer rooted at the reserved step identifier `observed`. Legality is the corpus qualification gate's: an unchecked predicate admits `existence` over a literal, which is true of every observation and makes the catch rate 1.00 by construction.",
+                          "$ref": "#/$defs/Expression"
+                        }
+                      },
+                      "required": [
+                        "selector",
+                        "predicate"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "interfaceKind",
+                    "toolName",
                     "observableChannel",
                     "condition"
                   ],

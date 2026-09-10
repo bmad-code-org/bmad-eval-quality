@@ -691,6 +691,7 @@ const SEEDED_SIGNATURE: DefectSignature = {
 				option: null,
 				environment: null,
 				stdin: null,
+				arguments: null,
 			},
 		},
 		predicate: {
@@ -710,7 +711,7 @@ const SEEDED_SIGNATURE: DefectSignature = {
  * why `sealProbeSet` below fails the build on a rejection.
  */
 const AUTHORED_PROBE = {
-	schemaVersion: 4,
+	schemaVersion: 5,
 	parentDigest: null,
 	revisionCount: 0,
 	probeId: 'P-001',
@@ -777,7 +778,7 @@ const authoredRecord = (
 	briefDigest: string,
 	evaluatorConfigurationDigest: string,
 ): SealedRunRecord => ({
-	schemaVersion: 4,
+	schemaVersion: 5,
 	parentDigest: null,
 	revisionCount: 0,
 	runId: 'spike-run-0001',
@@ -900,6 +901,7 @@ const authoredRecord = (
 				option: null,
 				environment: null,
 				stdin: null,
+				arguments: null,
 			},
 			responseBody: {
 				ok: true,
@@ -927,6 +929,7 @@ const authoredRecord = (
 				option: null,
 				environment: null,
 				stdin: null,
+				arguments: null,
 			},
 			responseBody: { ok: true, notes: [] },
 			responseHeaders: JSON_HEADERS,
@@ -951,6 +954,7 @@ const authoredRecord = (
 				option: null,
 				environment: null,
 				stdin: null,
+				arguments: null,
 			},
 			responseBody: {
 				ok: true,
@@ -978,6 +982,7 @@ const authoredRecord = (
 				option: null,
 				environment: null,
 				stdin: null,
+				arguments: null,
 			},
 			responseBody: {
 				ok: true,
@@ -1005,6 +1010,7 @@ const authoredRecord = (
 				option: null,
 				environment: null,
 				stdin: null,
+				arguments: null,
 			},
 			responseBody: {
 				ok: true,

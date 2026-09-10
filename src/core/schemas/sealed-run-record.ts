@@ -192,10 +192,14 @@ export type OracleDisposition = z.infer<typeof OracleDisposition>
  * A flat map would break pointer addressing: AD-26 keys `call-inputs` by
  * transport channel, so a pointer like
  * `/interactions/write/call-inputs/body/title` needs that segment to resolve
- * against. A four-key strict object rather than a record over the transport
- * enum, for the same reason as `RequestShape` and `InputBinding`: a record
- * demands every enum member at parse time, but a real observation binds only
- * a subset.
+ * against. A strict object keyed by channel rather than a record over the
+ * channel enum, for the same reason as `RequestShape` and `InputBinding`: a
+ * record demands every enum member at parse time, and a real observation binds
+ * only a subset.
+ *
+ * One key per member of `INPUT_CHANNELS`, in the order the vocabulary spells
+ * them. A loop over that vocabulary indexes this shape directly, so the two
+ * have to stay the same width.
  */
 export const ObservedCallInputs = z.strictObject({
 	path: JsonObjectValue.nullable(),
@@ -206,6 +210,9 @@ export const ObservedCallInputs = z.strictObject({
 	option: JsonObjectValue.nullable(),
 	environment: JsonObjectValue.nullable(),
 	stdin: JsonObjectValue.nullable(),
+	arguments: JsonObjectValue.nullable().describe(
+		"AD-26's `arguments` channel, the one channel a tool call accepts input on. Its arrival retypes this shape from eight keys to nine, which AD-11 calls breaking and which moves the Sealed Run Record's `schemaVersion` from 4 to 5: a version-4 record declares no `arguments` key and fails to parse against version 5. A name-to-value map on `responseHeaders`' terms, since a pointer descends INTO the channel to address one argument. `null` on an observation that exercised no tool call, which is what every channel here already spells for a channel nothing was sent on.",
+	),
 })
 
 /** the constraint identifier the ledger carries for the check below. */
@@ -240,7 +247,7 @@ export const Observation = z.strictObject({
 	),
 	callInputs: ObservedCallInputs,
 	responseBody: JsonValue.nullable().describe(
-		'AD-26\'s `response-body` channel. The null branch is redundant against the value container, which already admits `null`; it is kept so all ten observation fields read the same way, and it means "no body observed" and "a body that was JSON null" are indistinguishable here, which is an accepted cost of one uniform spelling.',
+		'AD-26\'s `response-body` channel. The null branch is redundant against the value container, which already admits `null`; it is kept so every observation field reads the same way, and it means "no body observed" and "a body that was JSON null" are indistinguishable here, which is an accepted cost of one uniform spelling.',
 	),
 	responseHeaders: JsonObjectValue.nullable().describe(
 		'A name-to-value map, not the open value container. AD-26 gives `response-headers` a tail, so a pointer resolves INTO this channel; a scalar here would leave `/interactions/x/response-headers/Content-Type` addressing nothing. That is the difference from `responseBody`, where a scalar or an array is a legitimate body and the open container is correct.',
@@ -412,7 +419,7 @@ export const SealedRunRecord = z
 	.meta({
 		id: 'SealedRunRecord',
 		description:
-			"One sealed evaluator trial, as the caller presents it. Succeeds the prior-art `h0-run-result` schema per AD-24, keeping its run identifier, condition arm, findings, action-log reference, resource use, invalidation reason, evaluator recommendation as a closed enum, and per-finding confidence on a declared scale. Divergences: `condition` is demoted to the opaque `conditionArm`, `verdict` becomes `evaluatorRecommendation` without `NOT_APPLICABLE`, money is a decimal string, and `taskId`, `note`, and per-finding `actionIds` do not survive: the contract is pinned by `contractDigest`, an unstructured orchestrator annotation is the free-prose channel the Conventions close everywhere else, and two citation vocabularies on one finding is the ambiguity ADR-009 removed. The run MODE landed here as a required field under a BREAKING `schemaVersion` bump, which is where AD-21's \"fixed before ingest\" puts it; owed item 4 is now closed: mode enters AD-11's identity inputs as `ScoringVersionInputs`'s sixth field, and `core/score/ladder.ts` carries `ProductionAssessment`/`ContractAssessment` as the two assessment input types with their own total ladders. Observation ORDERING landed here too, under its own BREAKING `schemaVersion` bump: `sequence` is required and unique per record, closing owed item 2's ADR-006 gap, since array position was never a legal ordering. Version 4 opened the record to a system under test that runs behind a command: `callInputs` carries the four command channels beside the four transport ones, `stdout` and `stderr` are tagged rather than bare strings so a nominated output channel can be descended into, and `artifacts` records the files the run wrote, keyed by the identifier the operation declares.",
+			"One sealed evaluator trial, as the caller presents it. Succeeds the prior-art `h0-run-result` schema per AD-24, keeping its run identifier, condition arm, findings, action-log reference, resource use, invalidation reason, evaluator recommendation as a closed enum, and per-finding confidence on a declared scale. Divergences: `condition` is demoted to the opaque `conditionArm`, `verdict` becomes `evaluatorRecommendation` without `NOT_APPLICABLE`, money is a decimal string, and `taskId`, `note`, and per-finding `actionIds` do not survive: the contract is pinned by `contractDigest`, an unstructured orchestrator annotation is the free-prose channel the Conventions close everywhere else, and two citation vocabularies on one finding is the ambiguity ADR-009 removed. The run MODE landed here as a required field under a BREAKING `schemaVersion` bump, which is where AD-21's \"fixed before ingest\" puts it; owed item 4 is now closed: mode enters AD-11's identity inputs as `ScoringVersionInputs`'s sixth field, and `core/score/ladder.ts` carries `ProductionAssessment`/`ContractAssessment` as the two assessment input types with their own total ladders. Observation ORDERING landed here too, under its own BREAKING `schemaVersion` bump: `sequence` is required and unique per record, closing owed item 2's ADR-006 gap, since array position was never a legal ordering. Version 4 opened the record to a system under test that runs behind a command: `callInputs` carries the four command channels beside the four transport ones, `stdout` and `stderr` are tagged rather than bare strings so a nominated output channel can be descended into, and `artifacts` records the files the run wrote, keyed by the identifier the operation declares. Version 5 opened it to a tool call: `callInputs` carries a ninth `arguments` channel beside those eight, so what a tool call supplied has somewhere to live and a defect signature's selector filtering on that channel has something to read. A version-4 record declares eight call-input channels and fails to parse against version 5.",
 	})
 
 export type SealedRunRecord = z.infer<typeof SealedRunRecord>

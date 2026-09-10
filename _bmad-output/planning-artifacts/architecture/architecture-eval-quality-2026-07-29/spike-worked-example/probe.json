@@ -18,6 +18,7 @@
       "selector": {
         "inputBinding": {
           "argument": null,
+          "arguments": null,
           "body": null,
           "environment": null,
           "header": null,
@@ -87,6 +88,6 @@
   },
   "rationale": "The seeded silent-write defect: PATCH validates, builds the updated note, returns it with ok true and status 200, and never persists it. Only an independent GET reveals the old value.",
   "revisionCount": 0,
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "systemId": "spike-notes-api"
 }

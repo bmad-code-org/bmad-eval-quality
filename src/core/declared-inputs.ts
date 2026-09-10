@@ -207,51 +207,6 @@ export function boundChannelsOf(binding: InputBinding): readonly {
 }
 
 /**
- * One channel's entry out of a flat channel-keyed record, or `null` where the
- * record carries no key for it.
- *
- * `ObservedCallInputs` and `ProbeInputBinding` are both keyed by input channel
- * and both stop at the eight channels the first two kinds accept, while the
- * pointer grammar and the loops that walk it now run over nine. The ninth key
- * lands with the sealed run record's own breaking bump, and this is what keeps
- * a loop over the vocabulary total until it does.
- *
- * `null` is the right answer for the callers that read a declared binding,
- * because `null` is what both shapes already spell for a channel nothing was
- * sent on and every one of them fails closed on it. It is the wrong answer for
- * a caller resolving evidence, which is why `channelEntryOrAbsent` exists: see
- * the note on it.
- */
-export const channelEntryOf = <Value>(
-	record: Readonly<Record<string, Value | null>>,
-	channel: InputChannelName,
-): Value | null =>
-	hasChannel(record, channel) ? (record[channel] ?? null) : null
-
-const hasChannel = (record: object, channel: InputChannelName): boolean =>
-	Object.hasOwn(record, channel)
-
-/**
- * The same read for evidence resolution, where a missing key has to answer
- * ABSENT.
- *
- * A channel the record has no key for carried nothing, and `null` would read as
- * present under AD-26: `existence` over it would hold on every run and
- * `absence` would fail on every run, with no run able to change either answer.
- * That is the same inversion the artifact channel's own guard in
- * `evidence-resolution.ts` exists to prevent for a file the run did not write.
- *
- * Takes the absent value rather than importing it, because `core/evaluate`
- * owns the resolved-value domain and this module sits under `core/`.
- */
-export const channelEntryOrAbsent = <Value, Absent>(
-	record: Readonly<Record<string, Value | null>>,
-	channel: InputChannelName,
-	absent: Absent,
-): Value | null | Absent =>
-	hasChannel(record, channel) ? (record[channel] ?? null) : absent
-
-/**
  * AD-10's exemption predicate. Any of a channel's three lists naming a key
  * counts: a permitted-only or types-only channel is still a surface a witness
  * can vary.
