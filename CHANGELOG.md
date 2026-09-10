@@ -10,6 +10,15 @@ body.
 
 ## [Unreleased]
 
+### Changed
+
+- The published documentation says what the response descriptor does about a tool result that carries only
+  text. `docs/explanation/what-ships.md` and `docs/how-to/evaluate-tool-use-behavior.md` described this as an
+  open design question; the architecture now records the answer, which is that the `mcp` kind's first version
+  describes a tool's structured result and a markdown-only result sits outside it. The tool-use guide also
+  says plainly that its own example declaration is the shape that answer rules out, so a reader copying it
+  knows what they are copying.
+
 ### Fixed
 
 - `check:doc-invocations` compares the diagnostic a page transcribes, and not only the exit code it

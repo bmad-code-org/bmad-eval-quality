@@ -238,12 +238,18 @@ A tool call has arguments and nothing else.
 `path`, `query`, and `header` are declared as empty triples on every operation, and `body` carries the whole argument object.
 The declaration is honest and three quarters of it is ceremony.
 
-**The response descriptor wants JSON that MCP does not promise.**
+**The response descriptor describes a structured result, and the declaration above is not one.**
 `ResponseDescriptor.types` is a flat map from key name to JSON type (`interface.ts`), `collectionLocations` addresses a JSON collection, and AD-4's `for-all` and `for-any` quantify over one.
 A real MCP tool commonly returns `content: [{ "type": "text", "text": "..." }]`, where the text is markdown a person reads.
-The architecture records this as the open design question behind deferring the kind: "real responses are unstructured markdown with no JSON collection for AD-4's quantifiers."
+The architecture answers that with a restriction: the kind's first version describes a tool's structured result, and a tool result carrying only text sits outside it.
 A tool returning a JSON object fits the descriptor cleanly.
-A tool returning prose does not, and no field in the shape closes that gap.
+A tool returning prose does not, and the text channel it would need stays deferred.
+
+The descriptor in the declaration above describes the MCP envelope, `content` beside `isError`, and declares `collectionLocations: []`.
+Both of those are shapes AD-19 rules out for the kind's first version, and they are here because the api-shaped operation offers nowhere else to put them.
+An envelope descriptor makes every coverage rule report about the envelope and none about the tool: `requiredKeys` is `content` for every MCP tool that will ever be written, so whole-body coverage is one oracle.
+`collectionLocations: []` makes the per-record and completeness rules irrelevant, so a contract scores clean over a result nobody checked.
+Copy the declaration to see what the kind gives you today; do not copy it as the shape a tool-server contract should have.
 
 ## Writing oracles over a tool call
 
@@ -310,7 +316,7 @@ An `mcp` adapter would need an `McpProbeRequest` and an `McpProbeObservation` on
 
 **Unproven, and this is the uncomfortable part.** The calibration record behind this project's central measurement is itself MCP-shaped. The architecture records that every contract in the phase-2 block that produced the 0.33-to-1.00 result declares an MCP tool interface, and that 22 of 25 real contracts use the kind. Those contracts were transcribed into API shape to be compiled here, and a transcription is not the measured artifact. So `mcp` is simultaneously the most-used kind in the prior art and the only one with no path through this package.
 
-**What a first adopter hits.** In order: the compile rejection, then the tool-name-in-the-path question, then the response descriptor against a tool that returns prose. The first is a wall. The second is a convention someone has to fix and write down. The third is the design question the architecture named and left open.
+**What a first adopter hits.** In order: the compile rejection, then the tool-name-in-the-path question, then the response descriptor against a tool that returns prose. The first is a wall. The second is a convention someone has to fix and write down. The third is a stated boundary: the descriptor describes a tool's structured result, and a tool that answers with markdown alone is outside the kind's first version.
 
 **The first reading runs today, and here is what that cost.** Until the kind opens, the workable move for the first reading is the one TEA already made: put the tool-calling agent behind a command, declare a `cli` interface, and evaluate the run through its arguments, its streams, and the files it writes.
 
