@@ -42,8 +42,8 @@ documented subpaths, and nothing the tarball ships learns about the skill.
 Epic 11 closed the fifth interface kind, and Stories 11.10 through 11.12 supplied the evidence for the
 three shapes whose guides had recorded something unproven: a seeded defect scored against a skill
 contract, a shipped workflow contract with a captured binding, and an end-to-end run against a service
-the suite starts. A skill built on top now has a demonstrated shape under each of them, which is the
-sequencing the idea was raised with.
+the suite starts. A skill built on top now has a demonstrated shape under each of them, so this is work
+that can start once eval-quality is done, which is the sequencing the idea was raised with.
 
 ## What a story for it would have to settle
 
