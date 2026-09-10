@@ -31,9 +31,9 @@ Reading one answers the same three today with different declarations, given at t
 The fourth question after them is kind-neutral and belongs to both readings.
 
 **Was the right tool chosen?**
-An `InteractionStep` names an `operationId` and a `cardinality` (`src/core/schemas/plan.ts:167`).
+An `InteractionStep` names an `operationId` and a `cardinality` (`src/core/schemas/plan.ts:170`).
 The step is a selector over observations the evaluator produced, so a step naming `search-notes` with `cardinality: "exactly-one"` declares that exactly one call to that tool is expected in the run.
-`SELECTOR_CARDINALITIES` is the closed three, `exactly-one`, `at-most-one`, and `any` (`plan.ts:150`).
+`SELECTOR_CARDINALITIES` is the closed three, `exactly-one`, `at-most-one`, and `any` (`plan.ts:153`).
 
 **Were the arguments right?**
 A step's `inputBinding` binds each channel to a `BindingValue` (`plan.ts:55`), and the four tagged forms are `{ literal }`, `{ matcher }`, `{ captured }`, and `{ principal }`.
