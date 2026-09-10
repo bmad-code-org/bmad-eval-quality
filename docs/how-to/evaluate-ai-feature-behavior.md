@@ -12,7 +12,7 @@ A support reply generator, a document summarizer, a search endpoint that ranks w
 
 `src/core/schemas/interface.ts` declares four interface kinds in `INTERFACE_KINDS`: `api`, `web`, `cli`, and `mcp`.
 `api` and `web` parse through `apiShapedInterface`, which carries one `Operation` shape for both; `cli` and `mcp` each declare their own.
-`compile` supports two of the four, `api` and `cli`, and rejects the rest under `unsupported-interface-kind` (`SUPPORTED_INTERFACE_KINDS` in `src/core/compile/interface-inventory.ts`).
+`compile` supports three of the four, `api`, `cli`, and `mcp`, and rejects `web` under `unsupported-interface-kind` (`SUPPORTED_INTERFACE_KINDS` in `src/core/compile/interface-inventory.ts`).
 So an AI feature behind HTTP is declared `kind: "api"` today, and a contract stamped `web` parses against the schema and stops at compilation.
 
 For the general authoring flow, read [the walkthrough](/how-to/author-behavioral-contracts/): what a contract declares, how to read a rejection, and how the four commands chain.

@@ -9,6 +9,10 @@
  * identifier up in at reduce time.
  */
 import {
+	isSupportedInterfaceKind,
+	SUPPORTED_KINDS_CLAUSE,
+} from '../compile/interface-inventory.ts'
+import {
 	checkInputsAgainstShape,
 	isApiWitnessInputs,
 	isMcpWitnessInputs,
@@ -114,17 +118,19 @@ const requestOf = (
 	}
 	const operationPath = `EvalContract.permittedInterfaces[logicalId=${interfaceId}].operations[operationId=${operation.operationId}]`
 	if (isMcpOperation(operation)) {
-		// The port carries no tool-call request message, so there is nothing to
-		// build here yet. `planPreflight` refuses the kind before any leg is
-		// planned, which makes this the same assert-again that gate makes,
-		// spelled where the operation union forces a third arm.
-		throw new StructuralFailure(
-			'unsupported-interface-kind',
-			// The kind field, matching both shipped throwers of this code, so a
-			// reader grepping by artifact path gets one shape rather than two.
-			`EvalContract.permittedInterfaces[logicalId=${interfaceId}].kind`,
-			`"mcp" is not supported; "api" and "cli" are (AD-10)`,
-		)
+		if (!isMcpWitnessInputs(inputs)) {
+			throw new StructuralFailure(
+				'undeclared-mandatory-input',
+				operationPath,
+				`leg "${legId}" supplies channels a tool call does not carry (AD-10, AD-19)`,
+			)
+		}
+		return {
+			...correlation,
+			kind: 'mcp',
+			toolName: operation.toolName,
+			channels: { arguments: inputs.arguments },
+		}
 	}
 	if (isMcpWitnessInputs(inputs)) {
 		throw new StructuralFailure(
@@ -329,12 +335,13 @@ export const planPreflight: PlanStage<PreflightPlanInput, PreflightPlan> = (
 	const { contract, probes, runId } = input
 	for (const iface of contract.permittedInterfaces) {
 		// Already thrown at compile; asserted again because the plan is
-		// reachable from a caller who assembled a contract by hand.
-		if (iface.kind !== 'api' && iface.kind !== 'cli') {
+		// reachable from a caller who assembled a contract by hand. Reads the
+		// compile gate's own tuple, so opening a kind moves one literal.
+		if (!isSupportedInterfaceKind(iface.kind)) {
 			throw new StructuralFailure(
 				'unsupported-interface-kind',
 				`EvalContract.permittedInterfaces[logicalId=${iface.logicalId}].kind`,
-				`"${iface.kind}" is not supported; "api" and "cli" are (AD-10)`,
+				`"${iface.kind}" is not supported; ${SUPPORTED_KINDS_CLAUSE} (AD-10)`,
 			)
 		}
 	}

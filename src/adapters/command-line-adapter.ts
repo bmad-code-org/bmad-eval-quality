@@ -354,11 +354,13 @@ export function createCommandLineAdapter(
 				signal,
 				mechanism: async (parsed: ProbeRequest, innerSignal) => {
 					if (parsed.kind !== 'cli') {
-						// This adapter authorizes no `api` target, so an `api` request
-						// meets the same "the mapping names nothing" denial an
-						// unmapped interfaceId would, before any process spawns.
+						// This adapter authorizes no target of any other kind, so such
+						// a request meets the same "the mapping names nothing" denial an
+						// unmapped interfaceId would, before any process spawns. The
+						// message names the kind that arrived, because the request union
+						// carries more than one kind this adapter refuses.
 						throw forbidden(
-							'this adapter runs cli requests only; no api target is ever authorized',
+							`this adapter runs cli requests only; no ${parsed.kind} target is ever authorized`,
 						)
 					}
 					const decision = evaluateCommandTarget(policy, {

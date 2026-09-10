@@ -151,6 +151,44 @@ describe('createCommandLineAdapter, policy denial', () => {
 		).rejects.toMatchObject({ code: 'forbidden-target' })
 		expect(calls).toBe(0)
 	})
+
+	// The request union carries a third kind now, so the denial message has to
+	// name the one that arrived. It read "no api target is ever authorized" for
+	// every kind it refused, which describes the wrong mechanism to a reader
+	// pointing a command adapter at a tool-server contract.
+	it('denies a tool-call request and names its kind', async () => {
+		let calls = 0
+		const mechanism: CommandMechanism = {
+			run: async () => {
+				calls++
+				throw new Error('should not run')
+			},
+			readArtifact: async () => ({
+				present: false,
+				text: '',
+				truncated: false,
+			}),
+		}
+		const adapter = createCommandLineAdapter(
+			policyOf(authorization()),
+			mechanism,
+		)
+		const mcpRequest: ProbeRequest = {
+			kind: 'mcp',
+			probeId: 'p1',
+			interfaceId: 'notes-tool-server',
+			operationId: 'search-notes',
+			toolName: 'search_notes',
+			channels: { arguments: { query: 'alpha' } },
+		}
+		await expect(
+			adapter.probe(mcpRequest, new AbortController().signal),
+		).rejects.toMatchObject({
+			code: 'forbidden-target',
+			message: expect.stringContaining('no mcp target is ever authorized'),
+		})
+		expect(calls).toBe(0)
+	})
 })
 
 describe('createCommandLineAdapter, argv construction', () => {

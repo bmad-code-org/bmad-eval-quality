@@ -22,24 +22,56 @@ import {
 import { forEachArtifactPointer, type WitnessScope } from './reachability.ts'
 
 /**
- * Rejects permitted interface kinds whose probe semantics are undeclared.
+ * The kinds whose probe semantics AD-10 requires before it opens one. `cli` and
+ * `mcp` declare theirs, so both run; `web` declares none and fails here, which
+ * keeps this code fireable and AD-10's sentence true of it.
  *
- * AD-10 closed all three non-api kinds and named the condition for opening
- * one: the semantics have to be declared. They are declared for `cli`, so it
- * runs; `web` and `mcp` are still undeclared and still fail here, which is
- * what keeps this code fireable and keeps AD-10's sentence true of them.
+ * Each tuple is spelled out and typed against `INTERFACE_KINDS`, on the
+ * reasoning `pointer.ts` records for `NON_IDENTIFIER_ROOTED_CHANNELS`: adding a
+ * fifth kind is then a decision about which side of this line it falls on, and
+ * a test asserts the partition. Exported because `preflight/plan.ts` asserts
+ * the same fact a second time.
  */
-const SUPPORTED_INTERFACE_KINDS = ['api', 'cli'] as const
+export const SUPPORTED_INTERFACE_KINDS = [
+	'api',
+	'cli',
+	'mcp',
+] as const satisfies readonly InterfaceKindName[]
+
+export const UNSUPPORTED_INTERFACE_KINDS = [
+	'web',
+] as const satisfies readonly InterfaceKindName[]
+
+/** Whether `compile` and the pre-flight plan admit a declared kind. */
+export const isSupportedInterfaceKind = (kind: InterfaceKindName): boolean =>
+	(SUPPORTED_INTERFACE_KINDS as readonly string[]).includes(kind)
+
+/**
+ * A quoted kind list with its own verb, for a diagnostic that names what is
+ * supported. A function so the one-element form has a test: closing a kind is a
+ * move the tuple below is built to allow, and the general form would render one
+ * element as a leading " and ".
+ */
+export const kindsClause = (kinds: readonly string[]): string => {
+	const quoted = kinds.map((kind) => `"${kind}"`)
+	return quoted.length === 1
+		? `${quoted.join('')} is`
+		: `${quoted.slice(0, -1).join(', ')} and ${quoted.slice(-1).join('')} are`
+}
+
+/**
+ * The supported list as both throwers spell it, rendered from the tuple so a
+ * message cannot claim a set the check does not enforce.
+ */
+export const SUPPORTED_KINDS_CLAUSE = kindsClause(SUPPORTED_INTERFACE_KINDS)
 
 export function checkInterfaceKind(contract: EvalContract): void {
 	for (const iface of contract.permittedInterfaces) {
-		if (
-			!(SUPPORTED_INTERFACE_KINDS as readonly string[]).includes(iface.kind)
-		) {
+		if (!isSupportedInterfaceKind(iface.kind)) {
 			throw new StructuralFailure(
 				'unsupported-interface-kind',
 				`EvalContract.permittedInterfaces[logicalId=${iface.logicalId}].kind`,
-				`"${iface.kind}" is not supported; "api" and "cli" are (AD-10)`,
+				`"${iface.kind}" is not supported; ${SUPPORTED_KINDS_CLAUSE} (AD-10)`,
 			)
 		}
 	}

@@ -110,6 +110,30 @@ export type QualificationResult = {
 }
 
 /**
+ * The transport identity a signature declares, or `null` where the kind has
+ * none this version can render.
+ *
+ * `mcp` is the `null` case, and the answer is decided here. Its signature still
+ * carries a method and a path template, which is an identity no tool call
+ * renders, so rendering it would compare an HTTP string against a bare tool
+ * name inside the mcp family and report a miss as though the contract declared
+ * no such operation. A switch with no default arm, so the branch that gives the
+ * kind a tool identity has to answer here rather than inherit the api arm the
+ * way a two-way test let it.
+ */
+const declaredIdentityOf = (signature: DefectSignature): string | null => {
+	switch (signature.interfaceKind) {
+		case 'cli':
+			return commandSignature(signature)
+		case 'mcp':
+			return null
+		case 'api':
+		case 'web':
+			return operationSignature(signature)
+	}
+}
+
+/**
  * Resolves a signature's home operation against a contract's operation
  * inventory, comparing the transport identity each renders inside its own shape
  * family. Off an interface that speaks HTTP that identity is a method plus a
@@ -132,10 +156,8 @@ export function resolveHomeOperation(
 	// was two-way and swept an `mcp` interface into the api-shaped comparison,
 	// where a signature declaring `mcp` could bind an operation on an `api`
 	// interface that happened to share a method and a path.
-	const command = signature.interfaceKind === 'cli'
-	const wanted = command
-		? commandSignature(signature)
-		: operationSignature(signature)
+	const wanted = declaredIdentityOf(signature)
+	if (wanted === null) return null
 	const family = signatureFamilyOf(signature.interfaceKind)
 	for (const iface of interfaces) {
 		if (signatureFamilyOf(iface.kind) !== family) continue

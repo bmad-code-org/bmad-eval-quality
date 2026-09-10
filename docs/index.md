@@ -69,7 +69,7 @@ Every command, every flag, every exit code, and the glossary.
 
 ## What you can point this at
 
-An eval contract describes a system through a declared interface. Two interface kinds compile today, `api` and `cli`, and a guide below covers each shape people put in front of them.
+An eval contract describes a system through a declared interface. Three interface kinds compile today, `api`, `cli`, and `mcp`, and a guide below covers each shape people put in front of them.
 
 | Your system | Guide | State |
 | --- | --- | --- |
@@ -77,11 +77,11 @@ An eval contract describes a system through a declared interface. Two interface 
 | A skill an agent loads and acts on | [Skill behavior](/how-to/evaluate-skill-behavior/) | Gameability proven across eight contracts. No seeded-defect instance yet. |
 | Several steps that have to happen in order | [Workflow behavior](/how-to/evaluate-workflow-behavior/) | Declarable and compiling. Step binding is unit-tested, with no shipped end-to-end run. |
 | An AI feature behind an HTTP surface | [AI feature behavior](/how-to/evaluate-ai-feature-behavior/) | The shape the library was designed around. No live service has been evaluated yet. |
-| An MCP server answering tool calls | [Tool-use behavior](/how-to/evaluate-tool-use-behavior/) | Declared and refused at compile. The guide says what a first adopter would have to build. |
+| An MCP server answering tool calls | [Tool-use behavior](/how-to/evaluate-tool-use-behavior/) | Compiles, and plans a pre-flight. No adapter answers a tool call yet, so nothing has been scored end to end. |
 
 Each guide says plainly what is proven and what is not, so a "state" column entry is the guide's own verdict rather than a roadmap promise.
 
-Two kinds parse and stop at compilation under `unsupported-interface-kind`: `web`, which has had no design pass, and `mcp`, which has one and is covered above. [What Ships](/explanation/what-ships/) carries what tool-use support would take.
+One kind parses and stops at compilation under `unsupported-interface-kind`: `web`, which has had no design pass. [What Ships](/explanation/what-ships/) carries what tool-use support still needs.
 
 :::tip[AI Documentation]
 Plain-text documentation for AI agents is available at [`/llms-full.txt`](/llms-full.txt) or indexed at [`/llms.txt`](/llms.txt).

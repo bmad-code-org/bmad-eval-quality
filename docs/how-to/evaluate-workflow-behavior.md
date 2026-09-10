@@ -72,7 +72,7 @@ That plan compiles clean, exit `0`, against a contract declaring `create-thing` 
 It is `corpus/dev/contracts/satisfied-declarations.json` with one operation and one step added.
 
 - `stepId` is what the rest of the contract addresses the step by, and an evidence pointer spells it `/interactions/{stepId}/...`.
-- `operationId` names an operation on a permitted interface, and the interface's kind decides which binding shape is legal. `compile` accepts `api` and `cli`, and rejects a contract declaring `web` or `mcp` with `unsupported-interface-kind`.
+- `operationId` names an operation on a permitted interface, and the interface's kind decides which binding shape is legal. `compile` accepts `api`, `cli`, and `mcp`, and rejects a contract declaring `web` with `unsupported-interface-kind`.
 - `inputBinding` is `ApiInputBinding` over `path`, `query`, `header`, and `body`, or `CommandInputBinding` over `argument`, `option`, `environment`, and `stdin`.
 - `after` is the temporal clause described above.
 - `cardinality` is one of `exactly-one`, `at-most-one`, and `any`, listed as `SELECTOR_CARDINALITIES`.

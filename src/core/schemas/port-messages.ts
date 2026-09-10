@@ -1,7 +1,13 @@
 /** the request and response shape of every AD-28 port method. */
 import { z } from 'zod'
 import { HttpMethod, PathTemplate } from './interface.ts'
-import { Identifier, JsonValue, KeyName, Rfc3339Utc } from './primitives.ts'
+import {
+	Identifier,
+	JsonValue,
+	KeyName,
+	Rfc3339Utc,
+	ToolName,
+} from './primitives.ts'
 import {
 	ProbeObservedBody,
 	ProbeRequestBody,
@@ -132,9 +138,36 @@ export const CommandProbeRequest = z.strictObject({
 	}),
 })
 
+/**
+ * A request to call one tool on an MCP server.
+ *
+ * AD-35 again: `toolName` is the name the server publishes for the tool, and
+ * which server that is comes from the adapter's mapping of `interfaceId`,
+ * outside the contract. No transport URL, no command, no process.
+ *
+ * One channel. A tool call carries an arguments object, which is what
+ * `McpRequestShape` declares, so the request carries the same one channel the
+ * operation could declare keys in.
+ *
+ * `arguments` holds declared JSON values and carries no credential, for the
+ * reason AD-18 gives: authorization material is the adapter's, supplied by the
+ * same mapping that authorizes the target.
+ */
+export const McpProbeRequest = z.strictObject({
+	...probeCorrelation,
+	kind: z.literal('mcp'),
+	toolName: ToolName.describe(
+		"The tool the adapter calls, in the server's own spelling (AD-35). Which server publishes it is the adapter's mapping of `interfaceId`, from configuration outside the contract.",
+	),
+	channels: z.strictObject({
+		arguments: z.record(KeyName, JsonValue),
+	}),
+})
+
 export const ProbeRequest = z.discriminatedUnion('kind', [
 	ApiProbeRequest,
 	CommandProbeRequest,
+	McpProbeRequest,
 ])
 
 /**
@@ -198,6 +231,7 @@ export type FileWriteRequest = z.infer<typeof FileWriteRequest>
 export type FileWriteResponse = z.infer<typeof FileWriteResponse>
 export type ApiProbeRequest = z.infer<typeof ApiProbeRequest>
 export type CommandProbeRequest = z.infer<typeof CommandProbeRequest>
+export type McpProbeRequest = z.infer<typeof McpProbeRequest>
 export type ProbeRequest = z.infer<typeof ProbeRequest>
 export type ApiProbeObservation = z.infer<typeof ApiProbeObservation>
 export type CommandProbeObservation = z.infer<typeof CommandProbeObservation>

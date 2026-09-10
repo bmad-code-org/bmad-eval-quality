@@ -6,6 +6,7 @@ import { SealedEvaluatorBrief } from '../../src/core/schemas/sealed-evaluator-br
 import { seal, validateAssembledBrief } from '../../src/core/seal/seal.ts'
 import type { SealStage } from '../../src/core/stage-contracts.ts'
 import { gateCContract } from '../schemas/fixtures/gate-c-contract.ts'
+import { mcpContract } from '../schemas/fixtures/mcp-contract.ts'
 import { populatedContract } from '../schemas/fixtures/relevance-contracts.ts'
 import { capturedCollisionPair, principalCollisionPair } from './fixtures.ts'
 
@@ -533,5 +534,43 @@ describe('SealedEvaluatorBrief strictObject rejects accidental leaks (reject fix
 			forbiddenInputs: sealableGateCContract.forbiddenInputs,
 		})
 		expect(result.success).toBe(false)
+	})
+})
+
+describe('sealing a contract over an MCP tool server', () => {
+	const brief = seal(EvalContract.parse(mcpContract))
+
+	// The noun follows the kind. A direction is prose a sealed evaluator reads
+	// with no access to the contract, so calling a tool call an endpoint or a
+	// command describes a mechanism the evaluator will not find. `endpoint` and
+	// `command` are the only two other nouns `operationReference` renders, so
+	// each is a form a regression really produces.
+	it('calls a tool call a tool in every direction', () => {
+		expect(brief.directions.length).toBeGreaterThan(0)
+		for (const direction of brief.directions) {
+			expect(direction.text).toContain('tool')
+			expect(direction.text).not.toContain('endpoint')
+			expect(direction.text).not.toContain('command')
+		}
+	})
+
+	// A fixture guard rather than a dispatch guard: `bindingEntries` reads the
+	// channels the step's binding carries and never consults the operation's
+	// kind, so what this pins is that the fixture's steps bind `arguments`. The
+	// rendered form is what it forbids, since nothing renders the phrase "query
+	// parameter" and forbidding that would pass through the failure it names.
+	// Only the channel position is checked, since a key may itself be `query`.
+	it('names the arguments channel where an api brief names a transport one', () => {
+		const joined = brief.directions.map((d) => d.text).join('\n')
+		expect(joined).toContain('the supplied arguments ')
+		for (const channel of ['query', 'header', 'path', 'body']) {
+			expect(joined).not.toContain(`the supplied ${channel} `)
+		}
+	})
+
+	it('carries the interface kind through unchanged', () => {
+		expect(brief.permittedInterfaces.map((iface) => iface.kind)).toEqual([
+			'mcp',
+		])
 	})
 })

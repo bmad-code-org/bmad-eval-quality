@@ -15,7 +15,7 @@ Version 1.0 is out. All four commands ship, and the published surface is stable:
 
 `score` is the largest of the four. Behind it sit three stages, `ingest`, `score`, and `emit`, reached by one command and one library call, `runScore`. It resolves every oracle to one of twelve outcome states, decides whether a finding really detected the defect its probe seeded, reduces repeated trials to one result per probe, and reports contract strength as a vector two contracts can be compared on.
 
-A contract can describe a system behind an HTTP API or one behind a command line. Both kinds compile, preflight, and score.
+A contract can describe a system behind an HTTP API, one behind a command line, or one behind an MCP tool server. All three compile, and all three plan a pre-flight. The first two run that pre-flight and score against a shipped adapter. `mcp` has no adapter, so its pre-flight is planned and cannot complete.
 
 Also published: twelve JSON Schema documents under `eval-quality/schemas/*`, a twenty-one-contract development corpus under `eval-quality/corpus/dev/`, four reference adapters at `eval-quality/adapters`, and a port conformance suite at `eval-quality/conformance`.
 
@@ -35,11 +35,11 @@ Deferred until the contract layer is in real use: claim-to-evidence lineage, sem
 
 ## Tool-use evaluation
 
-`compile` accepts `api` and `cli`. The `mcp` kind is declared in the interface vocabulary and refused, so no contract over an MCP tool server runs today. [Evaluate tool-use behavior](/how-to/evaluate-tool-use-behavior/) covers the whole picture, down to the gate codes, the port messages, and the conformance arm an adapter would need.
+`compile` accepts `mcp`, and so does the pre-flight plan, so a contract over an MCP tool server compiles and plans the calls a probe would make. What it cannot do yet is run them: no adapter speaks the kind. [Evaluate tool-use behavior](/how-to/evaluate-tool-use-behavior/) covers the whole picture, down to the port messages and the conformance arm an adapter would need.
 
-The response descriptor question behind the deferral is settled. The kind's first version describes a tool's structured result, which is what an MCP tool returns when it has a result with structure at all, and typically what it returns when it declares an output schema. A tool that answers with a markdown `content` array is outside that version, since prose gives AD-4's quantifiers no collection to range over. The text channel such a tool would need is the half that stays deferred.
+The response descriptor question the kind turned on is settled. The kind's first version describes a tool's structured result, which is what an MCP tool returns when it has a result with structure at all, and typically what it returns when it declares an output schema. A tool that answers with a markdown `content` array is outside that version, since prose gives AD-4's quantifiers no collection to range over. The text channel such a tool would need is the half that stays deferred.
 
-`web` is refused on the same terms and has had no design pass at all.
+`web` is the one kind `compile` still refuses under `unsupported-interface-kind`, and it has had no design pass at all.
 
 ## Two things the project still owes itself
 

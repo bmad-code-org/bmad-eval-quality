@@ -2,8 +2,8 @@
 title: 'Compile and pre-flight admit an MCP interface'
 type: 'feature'
 created: '2026-09-09'
-status: 'draft'
-review_loop_iteration: 0
+status: 'done'
+review_loop_iteration: 1
 context:
   - _bmad-output/implementation-artifacts/epic-11-context.md
   - _bmad-output/implementation-artifacts/11-3-the-response-descriptor-for-an-unstructured-tool-result.md
@@ -247,6 +247,25 @@ The margin that leaves is worth stating, because it is this story's own conseque
 Between this story and Story 11.6, an `mcp` contract compiles, seals, and plans a pre-flight, while a probe whose `defectSignature.interfaceKind` is `mcp` still fails `qualifyProbe` under `signature-interface-kind-unsupported` (`qualification.ts:754-763`). Opening that gate here is not available: the gate reads a signature whose `mcp` branch does not exist yet, and the branch lives in `src/core/schemas/defect-signature.ts` beside `ProbeInputBinding` at `:86`, which `signatureCommon` consumes at `:109`, so the ninth `arguments` channel and the `mcp` signature branch are one edit to one file under one breaking probe bump. Splitting them across two stories would bump the probe twice for one change and would land a published union branch with no `UNION_BRANCH_FIXTURES` seed, which `keyword-mutation.test.ts:190-193` reports as an unprotected keyword and which leaves `npm run validate` red.
 
 Epic 9 used this exact shape and it is the precedent this follows. Story 9.2's Decision 6 (`9-2-the-channel-vocabulary-and-the-pointer-grammar.md:162`) landed the `artifact` channel in the pointer grammar while `channelRoot` returned `null` for it, so "between this story and Story 9.4 a compiled command oracle resolves `absent` for every artifact operand", and the story named the window instead of widening `Observation` early. The containment argument is the same one here: the gate itself is what bounds the window, since a probe carrying an `mcp` signature never qualifies, so no `mcp` finding reaches a verdict before Story 11.6 gives the kind a signature to declare. Downstream consequence: Story 11.6's acceptance carries the case that the same probe qualifies once the branch and the gate land together, and Story 11.8's end-to-end run through `compile`, `seal`, `preflight`, and `score` over the `mcp` dev-corpus exemplar is the first proof the whole chain closes.
+
+**Decision 9: Story 11.2's correction to this story's exit-0 prediction is superseded, and the matrix is right as frozen.**
+Story 11.2's Decision 6 recorded that the frozen matrix's "MCP contract, clean -> `compile` returns the contract" row was wrong, because a witness fault made the tool-use guide's heredoc contract illegal on a check ahead of the kind gate. That fault is gone: `MCP_WITNESS_CHANNELS` is `['arguments']` and `legalChannels` (`compile/sensitivity-witness.ts:394-397`) has its mcp arm, so the guide's contract is legal on every check but the kind. Verified by running the guide's own heredoc through the built binary: exit 0. Nobody should re-apply 11.2's correction.
+
+**Decision 10: the plan-index casts stay, and the forcing function this story leans on is a kind check.**
+The story's Execution list said the `as Operation` cast at `plan-index.ts` goes, and named its removal the forcing function that turns every mis-routed site into a typecheck failure. Story 11.4 landed the three-way sort first, and its three arms still narrow by hand: `operation as CommandOperation`, `operation as McpOperation`, and `operation as Operation`, each guarded by an `iface.kind` test. Every cast is sound because the sort proved the kind on the line above, so nothing is wrong, and the three maps give `anyOperationOf`'s callers correctly-typed operations, which is what the story wanted. What the story does not get is a compiler sweep: the sites had to be found by grep, and the peer review's own sweep of every kind dispatch under `src/` is what stands in for it. Downstream consequence: Story 11.13's exhaustiveness checklist starts from a grep rather than from a failing build, which is what Story 11.4's Decision 7 already recorded for a fifth kind.
+
+**Decision 11: `resolveHomeOperation` gets its third arm here, and the reason is exhaustiveness rather than a live defect.**
+`qualification.ts` rendered the wanted identity from a two-way test, `signature.interfaceKind === 'cli'`, so an `mcp` signature fell to the api arm and rendered a method plus an erased path template, which was then compared inside the mcp family. Story 11.4 gave the family filter on the next line its three-way resolution and left the rendering two-way, so the two lines disagreed about what an mcp signature is.
+
+The peer review's second pass established that this was never reachable as a wrong answer, and the story records that correction rather than the first draft's claim: `operationSignature` renders a space between the method and the path, `ToolName` (`primitives.ts`) forbids one, so the api-shaped string could never equal a legal tool name. The two-way ternary returned `null` for every `mcp` signature by arithmetic. No fixture can tell the two implementations apart, and the test added here is green under both.
+
+The switch is kept anyway, for what it does to the next change. `declaredIdentityOf` is a `switch` over `interfaceKind` with no default arm, so a fifth kind fails the typecheck at that site instead of inheriting the api arm, and the branch that gives `mcp` a tool identity has to answer there rather than leave the rendering to a boolean that has no exhaustiveness for a compiler to check. That is the same trap Story 11.4's Decision 7 removed one level down, at the site directly below it, and leaving the two lines in different styles is what made the disagreement hard to see. Downstream consequence: Story 11.6 edits one arm of one switch, and the test at `tests/schemas/mcp-interface.test.ts` is the assertion it inverts.
+
+**Decision 12: pre-flight over an `mcp` contract is planned and cannot complete, and every published page says so.**
+`ProbeObservation` keeps its two members, so nothing can answer an mcp leg: `kindMismatch` (`preflight/reduce.ts:79`) reports any answer as `port-contract-violation`. The first draft of this story's documentation said the kind "compiles and pre-flights", which reads as a completed pre-flight and is an overclaim. Every page now says the pre-flight is planned and names what it is waiting for. The request half moving here and the observation half waiting for Story 11.13 is the epic's own split, and Decision 3 gives the reason; this decision is about the sentence, which a reader funds work from.
+
+**Decision 13: the fourth transcription of the supported-kind literal is deleted rather than corrected.**
+`docs/how-to/evaluate-tool-use-behavior.md` reproduced `SUPPORTED_INTERFACE_KINDS = ['api', 'cli']` in a table and nothing checked it against the source, which the Problem statement names as part of the defect this story exists to close. Correcting the literal would have left the same unchecked transcription one kind later. The table cites the constant by name instead, so the only place the list is written down is the tuple. `isSupportedInterfaceKind` is exported beside it, so the membership predicate is written once too, where the two gates had spelled the same `as readonly string[]` cast twice.
 
 ## Design Notes
 

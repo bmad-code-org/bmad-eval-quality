@@ -244,10 +244,12 @@ describe('the signature requirement, and the one class exempt from it', () => {
 		).toEqual(['signature-present-on-canary'])
 	})
 
-	// `web` and `mcp` still have no declared probe semantics, which is what
-	// keeps this code fireable now that `cli` does.
+	// `web` has no declared probe semantics at all. `mcp` has them contract-side
+	// now, so its contract compiles and pre-flights, and this gate is what keeps
+	// a probe against it from qualifying until a signature branch declares the
+	// tool identity AD-40 resolves against.
 	it.each(['web', 'mcp'] as const)(
-		'rejects the %s interface kind, whose probe semantics are undeclared',
+		'rejects the %s interface kind, which no signature can declare against',
 		(interfaceKind) => {
 			expect(
 				codesOf({
