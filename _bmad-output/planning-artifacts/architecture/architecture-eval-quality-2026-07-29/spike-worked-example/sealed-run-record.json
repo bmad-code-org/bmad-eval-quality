@@ -6,8 +6,8 @@
     "storage": "private"
   },
   "conditionArm": "independent",
-  "contractDigest": "sha256:8791efa67a20cbfdea0aad892b64696216362b07dc25d32351e8a0fbe2ac748e",
-  "evaluatorConfigurationDigest": "sha256:44708e1deb9e0d818773f38ce8242266a41d1201db7c3ed8a382c37bdd5a9d41",
+  "contractDigest": "sha256:4299e39bddc6096e15f0d1da0e258cd09ee96db417e3b9a766c0101f01a4e6ef",
+  "evaluatorConfigurationDigest": "sha256:e620f8f91f958de76678683b8eb699f9f0157113ec997c4f5dac283d6f994e32",
   "evaluatorRecommendation": "FAIL",
   "evidenceDisclosure": {
     "reportedIncomplete": false,
@@ -349,6 +349,6 @@
   "revisionCount": 0,
   "runId": "spike-run-0001",
   "schemaVersion": 4,
-  "sealedBriefDigest": "sha256:4c9c6bf7a8354dbed1ce891ece0bfed2fb564ac6cb9884159ca1e9aeecedf27b",
+  "sealedBriefDigest": "sha256:58db24860f50fee33512040a666b51a413c700f5f3b23b5e0bc6aea7a3a8bb9b",
   "trialIndex": 1
 }

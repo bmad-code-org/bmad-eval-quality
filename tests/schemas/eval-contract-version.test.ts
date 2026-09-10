@@ -57,7 +57,7 @@ import {
  * change that makes the shape break, the way each artifact's own fixture
  * records its bumps.
  */
-const EVAL_CONTRACT_SCHEMA_VERSION = 4
+const EVAL_CONTRACT_SCHEMA_VERSION = 5
 
 const LITERALS: readonly (readonly [
 	string,

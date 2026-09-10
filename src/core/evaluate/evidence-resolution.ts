@@ -6,7 +6,7 @@
  * `Observation`.
  */
 
-import { targetsDescribedChannel } from '../declared-inputs.ts'
+import { channelEntryOf, targetsDescribedChannel } from '../declared-inputs.ts'
 import type { EvalContract } from '../schemas/eval-contract.ts'
 import type { JsonValue } from '../schemas/primitives.ts'
 import type { ProbeObservedBody } from '../schemas/probe-body.ts'
@@ -130,7 +130,7 @@ export function channelRoot(
 					'call-inputs evidence target carries no transport channel',
 				)
 			}
-			return observation.callInputs[transportChannel]
+			return channelEntryOf(observation.callInputs, transportChannel)
 		}
 		case 'artifact': {
 			const { artifactId } = target

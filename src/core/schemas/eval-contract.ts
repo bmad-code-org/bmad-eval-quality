@@ -158,7 +158,7 @@ export const Budgets = z.strictObject({
  * `compile` is the reader that performs it. The constant lives here beside the
  * schema whose version it names, so the bump and the constant are one edit.
  */
-export const EVAL_CONTRACT_SCHEMA_VERSION = 4
+export const EVAL_CONTRACT_SCHEMA_VERSION = 5
 
 export const EvalContract = z
 	.strictObject({
@@ -190,7 +190,7 @@ export const EvalContract = z
 		permittedInterfaces: z
 			.array(PermittedInterface)
 			.describe(
-				"AD-35: logical identifiers only. No entry here is ever a URL, a host, or a port. Discriminated on `kind`, which makes this field the eval contract's `schemaVersion` 3 -> 4 BREAKING bump under AD-11, whose rule is that \"adding an optional field is a `schemaVersion` bump recorded in the field's own description; removing or retyping is breaking\". The `api`, `web`, and `mcp` branches carry the shipped operation shape unchanged, so a version-3 contract's own bytes still parse on them; the `cli` branch carries a command operation, which declares a logical invocation instead of a method and a path template, four command input channels instead of the four transport channels, a nominated output channel for its one response descriptor, and the files it writes.",
+				'AD-35: logical identifiers only. No entry here is ever a URL, a host, or a port. Discriminated on `kind`, and the field AD-11 puts this artifact\'s bump record on, whose rule is that "adding an optional field is a `schemaVersion` bump recorded in the field\'s own description; removing or retyping is breaking". Version 4 added the `cli` branch, carrying a command operation: a logical invocation in place of a method and a path template, four command input channels, a nominated output channel for its one response descriptor, and the files it writes. Version 5 is the `schemaVersion` 4 -> 5 BREAKING bump: the `mcp` branch stops carrying the HTTP operation shape and carries a tool call instead, declaring a published tool name as its whole transport identity, one `arguments` request channel, and a tagged descriptor channel over the structured result. An `mcp` interface written against version 4 no longer parses. `api`, `web`, and `cli` keep every byte they had.',
 			),
 		referenceSets: z
 			.record(Identifier, ReferenceSetDeclaration)
@@ -235,7 +235,7 @@ export const EvalContract = z
 	.meta({
 		id: 'EvalContract',
 		description:
-			"The Eval Contract. Succeeds the prior-art `eval-contract` schema per AD-24. It carries every declaration AD-19 requires so that AD-31's fourteen relevance and satisfaction predicates are decidable from declarations alone. AD-10's sensitivity witnesses arrived on each operation as an additive `schemaVersion` bump; version 4 opens `permittedInterfaces` to a second interface kind, so a contract may describe a system under test that runs behind a command, and widens the interaction pointer's accepted language with the four command input channels and the `artifact` channel. The widening retypes nothing on its own, since every pointer legal under version 3 is still legal; it carries the same version because it ships in the same release as the retypes. Each bump is recorded in its own field's description, and `compile` compares the stamp against `EVAL_CONTRACT_SCHEMA_VERSION` and throws AD-28's `schema-version-mismatch` on anything else.",
+			"The Eval Contract. Succeeds the prior-art `eval-contract` schema per AD-24. It carries every declaration AD-19 requires so that AD-31's fourteen relevance and satisfaction predicates are decidable from declarations alone. AD-10's sensitivity witnesses arrived on each operation as an additive `schemaVersion` bump; version 4 opens `permittedInterfaces` to a second interface kind, so a contract may describe a system under test that runs behind a command, and widens the interaction pointer's accepted language with the four command input channels and the `artifact` channel. The widening retypes nothing on its own, since every pointer legal under version 3 is still legal; it carries the same version because it ships in the same release as the retypes. Version 5 gives the `mcp` kind its own operation shape, so a contract may describe a tool server, and widens the pointer language and a step's input binding with the `arguments` channel. Each bump is recorded in its own field's description, and `compile` compares the stamp against `EVAL_CONTRACT_SCHEMA_VERSION` and throws AD-28's `schema-version-mismatch` on anything else.",
 	})
 
 export type EvalContract = z.infer<typeof EvalContract>

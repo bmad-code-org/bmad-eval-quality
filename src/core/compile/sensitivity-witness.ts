@@ -14,6 +14,7 @@
 import {
 	declaresNoRequestKeys,
 	isCommandOperation,
+	isMcpOperation,
 	requestChannelsOf,
 } from '../declared-inputs.ts'
 import { StructuralFailure } from '../failure-codes.ts'
@@ -31,6 +32,8 @@ import {
 	type ApiWitnessInputs,
 	COMMAND_WITNESS_CHANNELS,
 	type CommandWitnessInputs,
+	MCP_WITNESS_CHANNELS,
+	type McpWitnessInputs,
 	type SensitivityWitness,
 	type WitnessChannel,
 	type WitnessInputs,
@@ -48,6 +51,11 @@ export { declaresNoRequestKeys }
 const isCommandWitnessInputs = (
 	inputs: WitnessInputs,
 ): inputs is CommandWitnessInputs => 'stdin' in inputs
+
+/** Which spelling this leg uses. `arguments` is the tool-call shape's one key. */
+export const isMcpWitnessInputs = (
+	inputs: WitnessInputs,
+): inputs is McpWitnessInputs => 'arguments' in inputs
 
 /**
  * The transport spelling, for the consumers that can only send one: the probe
@@ -141,6 +149,8 @@ export function suppliedKeys(
 		if (channel === 'environment') return Object.keys(inputs.environment)
 		return []
 	}
+	if (isMcpWitnessInputs(inputs))
+		return channel === 'arguments' ? Object.keys(inputs.arguments) : []
 	if (channel === 'body') return bodyKeys(inputs.body)
 	if (channel === 'path' || channel === 'query')
 		return Object.keys(inputs[channel])
@@ -315,9 +325,16 @@ const READ_CHANNELS: readonly WitnessChannel[] = ['path', 'query']
  * A command carries its inputs the same way whether or not it changes state,
  * so the marker selects nothing there and all four command channels are
  * admitted. The author picks the one their operation is actually sensitive on.
+ *
+ * A tool call is the command case with one channel: it carries its arguments
+ * the same way whichever the marker says, and there is no second channel for a
+ * marker rule to choose between. Without this arm the api rule applied and
+ * offered `path` or `query` to an operation that has neither, which left an
+ * input-bearing tool call with no legal witness at all.
  */
 const legalChannels = (operation: AnyOperation): readonly WitnessChannel[] => {
 	if (isCommandOperation(operation)) return COMMAND_WITNESS_CHANNELS
+	if (isMcpOperation(operation)) return MCP_WITNESS_CHANNELS
 	return operation.stateChangeMarker ? MUTATING_CHANNELS : READ_CHANNELS
 }
 

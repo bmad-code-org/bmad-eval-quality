@@ -27,7 +27,7 @@ describe('compile, reading the contract stamp', () => {
 		expect(compileStamped(EVAL_CONTRACT_SCHEMA_VERSION)).not.toThrow()
 	})
 
-	it.each([1, 2, 3, 5, 99])('refuses the stamp %i', (version) => {
+	it.each([1, 2, 3, 4, 6, 99])('refuses the stamp %i', (version) => {
 		const run = compileStamped(version)
 		expect(run).toThrow(RuntimeFault)
 		expect(run).toThrow(/schema-version-mismatch/)
@@ -35,7 +35,7 @@ describe('compile, reading the contract stamp', () => {
 
 	it('names both versions, so a reader knows which way to move', () => {
 		expect(compileStamped(3)).toThrow(
-			/carries "schemaVersion" 3 where this build reads 4/,
+			/carries "schemaVersion" 3 where this build reads 5/,
 		)
 	})
 

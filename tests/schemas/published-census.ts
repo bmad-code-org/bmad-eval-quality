@@ -19,13 +19,13 @@
 /** Mutable keyword occurrences per published document (AC 8's census). */
 export const CENSUS_BY_DOCUMENT: Readonly<Record<string, number>> = {
 	'artifact-reference': 21,
-	'eval-contract': 1108,
+	'eval-contract': 1304,
 	'evaluator-configuration': 69,
 	'evidence-artifact': 448,
 	'isolation-manifest': 141,
 	'preflight-verdict': 34,
 	'private-artifact-manifest': 31,
-	probe: 602,
+	probe: 616,
 	rubric: 51,
 	'scoring-policy': 35,
 	'sealed-evaluator-brief': 102,
@@ -34,25 +34,25 @@ export const CENSUS_BY_DOCUMENT: Readonly<Record<string, number>> = {
 
 /** The same occurrences counted by keyword instead of by document. */
 export const CENSUS_BY_KEYWORD: Readonly<Record<string, number>> = {
-	additionalProperties: 300,
-	anyOf: 153,
-	const: 102,
-	enum: 73,
+	additionalProperties: 334,
+	anyOf: 161,
+	const: 109,
+	enum: 77,
 	exclusiveMinimum: 2,
 	format: 1,
-	items: 152,
-	maxItems: 3,
-	maximum: 105,
-	minItems: 42,
-	minLength: 132,
+	items: 159,
+	maxItems: 4,
+	maximum: 108,
+	minItems: 43,
+	minLength: 139,
 	minProperties: 2,
-	minimum: 106,
-	oneOf: 24,
-	pattern: 184,
+	minimum: 109,
+	oneOf: 27,
+	pattern: 193,
 	prefixItems: 24,
-	propertyNames: 56,
-	required: 244,
-	type: 1318,
+	propertyNames: 68,
+	required: 266,
+	type: 1407,
 }
 
 /**
@@ -61,7 +61,7 @@ export const CENSUS_BY_KEYWORD: Readonly<Record<string, number>> = {
  * keyword's descent being removed, and the total catches an arithmetic slip in
  * either.
  */
-export const CENSUS_TOTAL = 3023
+export const CENSUS_TOTAL = 3233
 
 /** Named `$defs` keys per published document. */
 export const DEFS_BY_DOCUMENT: Readonly<Record<string, number>> = {
@@ -87,8 +87,8 @@ export const DEFS_BY_DOCUMENT: Readonly<Record<string, number>> = {
  */
 export const REJECT_CASE_COUNTS = {
 	contract: 55,
-	artifact: 96,
-	total: 151,
+	artifact: 105,
+	total: 160,
 } as const
 
 /**
@@ -101,9 +101,9 @@ export const ACCEPT_FIXTURE_COUNTS = {
 	accepts: 12,
 	probeClasses: 4,
 	qualificationRoutes: 5,
-	unionBranches: 8,
+	unionBranches: 10,
 	relevanceContracts: 3,
-	distinctInstances: 22,
+	distinctInstances: 24,
 } as const
 
 export const ACCEPT_FIXTURE_TOTAL =

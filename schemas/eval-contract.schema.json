@@ -161,7 +161,7 @@
                     "type": "array",
                     "items": {
                       "type": "string",
-                      "pattern": "^\\/interactions\\/[a-z0-9]+(?:-[a-z0-9]+)*\\/(?:(?:response-body|response-headers|stdout|stderr)(?:\\/(?:[^/~]|~[01])*)*|(?:response-status|exit-code)|call-inputs\\/(?:path|query|header|body|argument|option|environment|stdin)(?:\\/(?:[^/~]|~[01])*)*|artifact\\/[a-z0-9]+(?:-[a-z0-9]+)*(?:\\/(?:[^/~]|~[01])*)*)$",
+                      "pattern": "^\\/interactions\\/[a-z0-9]+(?:-[a-z0-9]+)*\\/(?:(?:response-body|response-headers|stdout|stderr)(?:\\/(?:[^/~]|~[01])*)*|(?:response-status|exit-code)|call-inputs\\/(?:path|query|header|body|argument|option|environment|stdin|arguments)(?:\\/(?:[^/~]|~[01])*)*|artifact\\/[a-z0-9]+(?:-[a-z0-9]+)*(?:\\/(?:[^/~]|~[01])*)*)$",
                       "description": "AD-26 interaction-rooted pointer: \"/interactions/{stepId}/\" followed by one channel of the closed vocabulary. `call-inputs` takes one input channel as its next segment, one of the four transport channels or one of the four command channels; `artifact` takes the identifier of a file the operation declares it writes; `response-status` and `exit-code` take no tail. Syntax only: whether the step exists and whether the evidence is reachable are compile-time checks, not schema checks."
                     },
                     "description": "Interaction-rooted pointers only. AD-3 computes containment after quantifier substitution, so a target is always fully rooted and the bound-element spelling never appears here."
@@ -432,7 +432,492 @@
               "operations": {
                 "type": "array",
                 "items": {
-                  "$ref": "#/$defs/Operation"
+                  "type": "object",
+                  "properties": {
+                    "operationId": {
+                      "type": "string",
+                      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                      "description": "A kebab-case slug. Excludes \"/\" and \"~\" so an identifier can be embedded in an interaction-rooted pointer without escaping."
+                    },
+                    "toolName": {
+                      "type": "string",
+                      "pattern": "^[A-Za-z0-9_-]+$",
+                      "description": "The name the MCP server publishes for one tool, in the server's own spelling. AD-35: a logical identifier, never a URL, host, or port. The charset admits no \"/\", \":\", or \".\", so an address is unrepresentable rather than refused by a later check, and it excludes \"~\" so a tool name can be embedded in a pointer without escaping."
+                    },
+                    "stateChangeMarker": {
+                      "type": "boolean",
+                      "description": "AD-19: whether the operation is intended to change state. AD-20 rule 7 relevance reads it, and AD-10 selects the sensitivity channel by it. Both values are legal and neither is a default."
+                    },
+                    "requestShape": {
+                      "type": "object",
+                      "properties": {
+                        "arguments": {
+                          "type": "object",
+                          "properties": {
+                            "requiredKeys": {
+                              "type": "array",
+                              "items": {
+                                "type": "string",
+                                "minLength": 1
+                              }
+                            },
+                            "permittedKeys": {
+                              "type": "array",
+                              "items": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "description": "The closed set of keys the shape admits. Deliberately not refined to be a superset of `requiredKeys`: no AD-5 code names that contradiction, so it joins the cross-field rules left to the compiler in v0. There is no spelling for \"these keys are required and extras are unconstrained\" \u2014 AD-4 calls the descriptor closed, so an open mode would be a different grammar."
+                            },
+                            "types": {
+                              "type": "object",
+                              "propertyNames": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "additionalProperties": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "string",
+                                      "number",
+                                      "boolean",
+                                      "object",
+                                      "array",
+                                      "null"
+                                    ]
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "description": "Caller-keyed by plain key name, never by pointer: the descriptor-relative pointer spelling does not apply to these keys and must not be extended to them by analogy. A missing key means \"not declared\"; an explicit `null` value means \"declared, type not stated\"."
+                            }
+                          },
+                          "required": [
+                            "requiredKeys",
+                            "permittedKeys",
+                            "types"
+                          ],
+                          "additionalProperties": false,
+                          "description": "The tool's declared arguments, keyed by the names the server publishes for them. AD-18 applies as it does to a header: a declaration names an argument and its type and never carries a credential value."
+                        }
+                      },
+                      "required": [
+                        "arguments"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "descriptorChannel": {
+                      "oneOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "kind": {
+                              "type": "string",
+                              "const": "structured-result"
+                            }
+                          },
+                          "required": [
+                            "kind"
+                          ],
+                          "additionalProperties": false
+                        }
+                      ]
+                    },
+                    "responseDescriptor": {
+                      "type": "object",
+                      "properties": {
+                        "requiredKeys": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "description": "No minimum of two anywhere in this shape: AD-20 rule 2 relevance is \"the descriptor declares more than one pointer\", so a one-pointer descriptor must parse in order to be the irrelevant case."
+                        },
+                        "permittedKeys": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        },
+                        "types": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "additionalProperties": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "string",
+                                  "number",
+                                  "boolean",
+                                  "object",
+                                  "array",
+                                  "null"
+                                ]
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "description": "Caller-keyed by plain key name, never by pointer: this is the shape where that trap bites, since `requiredKeys` sits beside a pointer-keyed `channelRoles` and a pointer-valued `successIndicator`, and the descriptor-relative spelling must not be extended here by analogy. A missing key means \"not declared\"; an explicit `null` value means \"declared, type not stated\", which is AD-31's enumerated indeterminate descriptor state and the shape `quantifier-over-non-collection` reads."
+                        },
+                        "successIndicator": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "pattern": "^(?:\\/(?:[^/~]|~[01])*)*$",
+                              "description": "A plain RFC 6901 pointer into one operation's response descriptor. It resolves through the operation an interaction step names, never through the interaction root. A request or response shape's descriptor keys are plain key names rather than pointers, so this spelling does not apply there. The empty string is admitted and carries RFC 6901's own meaning, the whole document: as a nominated success indicator it says success is visible in the response taken as a whole rather than at any one key, and as a channel-role key it assigns a role to the whole body."
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "AD-20 rule 1 relevance reads this as its first conjunct, so `null` must stay representable."
+                        },
+                        "channelRoles": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "propertyNames": {
+                                "type": "string",
+                                "pattern": "^(?:\\/(?:[^/~]|~[01])*)*$",
+                                "description": "A plain RFC 6901 pointer into one operation's response descriptor. It resolves through the operation an interaction step names, never through the interaction root. A request or response shape's descriptor keys are plain key names rather than pointers, so this spelling does not apply there. The empty string is admitted and carries RFC 6901's own meaning, the whole document: as a nominated success indicator it says success is visible in the response taken as a whole rather than at any one key, and as a channel-role key it assigns a role to the whole body."
+                              },
+                              "additionalProperties": {
+                                "type": "string",
+                                "enum": [
+                                  "success-indicator",
+                                  "diagnostic",
+                                  "payload",
+                                  "collection"
+                                ]
+                              }
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Caller-keyed, and expected to be partial: a missing key means \"no role declared for that pointer\". AD-31 grades absent and explicitly empty differently, so `null`, `{}`, and a populated map are three distinct answers. Deliberately not refined to require a role for every descriptor key: no AD-5 code names that rule, the AD-31 predicates degrade gracefully on partial roles, and a refinement buys nothing an export can carry."
+                        },
+                        "collectionLocations": {
+                          "anyOf": [
+                            {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "pointer": {
+                                    "type": "string",
+                                    "pattern": "^(?:\\/(?:[^/~]|~[01])*)*$",
+                                    "description": "A plain RFC 6901 pointer into one operation's response descriptor. It resolves through the operation an interaction step names, never through the interaction root. A request or response shape's descriptor keys are plain key names rather than pointers, so this spelling does not apply there. The empty string is admitted and carries RFC 6901's own meaning, the whole document: as a nominated success indicator it says success is visible in the response taken as a whole rather than at any one key, and as a channel-role key it assigns a role to the whole body."
+                                  },
+                                  "expectedCardinality": {
+                                    "oneOf": [
+                                      {
+                                        "type": "object",
+                                        "properties": {
+                                          "mode": {
+                                            "type": "string",
+                                            "const": "exact"
+                                          },
+                                          "count": {
+                                            "type": "integer",
+                                            "minimum": 0,
+                                            "maximum": 9007199254740991
+                                          }
+                                        },
+                                        "required": [
+                                          "mode",
+                                          "count"
+                                        ],
+                                        "additionalProperties": false
+                                      },
+                                      {
+                                        "type": "object",
+                                        "properties": {
+                                          "mode": {
+                                            "type": "string",
+                                            "const": "at-most"
+                                          },
+                                          "max": {
+                                            "type": "integer",
+                                            "minimum": 0,
+                                            "maximum": 9007199254740991
+                                          }
+                                        },
+                                        "required": [
+                                          "mode",
+                                          "max"
+                                        ],
+                                        "additionalProperties": false
+                                      },
+                                      {
+                                        "type": "object",
+                                        "properties": {
+                                          "mode": {
+                                            "type": "string",
+                                            "const": "page-bounded"
+                                          },
+                                          "max": {
+                                            "type": "integer",
+                                            "minimum": 0,
+                                            "maximum": 9007199254740991
+                                          }
+                                        },
+                                        "required": [
+                                          "mode",
+                                          "max"
+                                        ],
+                                        "additionalProperties": false
+                                      }
+                                    ]
+                                  },
+                                  "referenceSet": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string",
+                                        "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                                        "description": "A kebab-case slug. Excludes \"/\" and \"~\" so an identifier can be embedded in an interaction-rooted pointer without escaping."
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ],
+                                    "description": "AD-20 rule 6 is relevant when a declared collection location names a reference set, so `null` is the shape that makes the rule irrelevant and must stay representable."
+                                  }
+                                },
+                                "required": [
+                                  "pointer",
+                                  "expectedCardinality",
+                                  "referenceSet"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "AD-20 rule 4 relevance reads this, and AD-31 grades an absent declaration and an explicit empty one differently, so `null` and `[]` are distinct answers."
+                        }
+                      },
+                      "required": [
+                        "requiredKeys",
+                        "permittedKeys",
+                        "types",
+                        "successIndicator",
+                        "channelRoles",
+                        "collectionLocations"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "volatilePointers": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "pattern": "^(?:\\/(?:[^/~]|~[01])*)*$",
+                        "description": "A plain RFC 6901 pointer into one operation's response descriptor. It resolves through the operation an interaction step names, never through the interaction root. A request or response shape's descriptor keys are plain key names rather than pointers, so this spelling does not apply there. The empty string is admitted and carries RFC 6901's own meaning, the whole document: as a nominated success indicator it says success is visible in the response taken as a whole rather than at any one key, and as a channel-role key it assigns a role to the whole body."
+                      }
+                    },
+                    "sensitivityWitness": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "witnessId": {
+                              "type": "string",
+                              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                              "description": "A kebab-case slug. Excludes \"/\" and \"~\" so an identifier can be embedded in an interaction-rooted pointer without escaping."
+                            },
+                            "channel": {
+                              "type": "string",
+                              "enum": [
+                                "path",
+                                "query",
+                                "body",
+                                "argument",
+                                "option",
+                                "environment",
+                                "stdin",
+                                "arguments"
+                              ]
+                            },
+                            "legs": {
+                              "minItems": 2,
+                              "maxItems": 2,
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "legId": {
+                                    "type": "string",
+                                    "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                                    "description": "A kebab-case slug. Excludes \"/\" and \"~\" so an identifier can be embedded in an interaction-rooted pointer without escaping."
+                                  },
+                                  "inputs": {
+                                    "anyOf": [
+                                      {
+                                        "$ref": "#/$defs/WitnessInputs"
+                                      },
+                                      {
+                                        "type": "object",
+                                        "properties": {
+                                          "argument": {
+                                            "type": "object",
+                                            "propertyNames": {
+                                              "type": "string"
+                                            },
+                                            "additionalProperties": {
+                                              "$ref": "#/$defs/JsonValue"
+                                            }
+                                          },
+                                          "option": {
+                                            "type": "object",
+                                            "propertyNames": {
+                                              "type": "string"
+                                            },
+                                            "additionalProperties": {
+                                              "$ref": "#/$defs/JsonValue"
+                                            }
+                                          },
+                                          "environment": {
+                                            "type": "object",
+                                            "propertyNames": {
+                                              "type": "string",
+                                              "minLength": 1
+                                            },
+                                            "additionalProperties": {
+                                              "type": "string"
+                                            }
+                                          },
+                                          "stdin": {
+                                            "oneOf": [
+                                              {
+                                                "type": "object",
+                                                "properties": {
+                                                  "kind": {
+                                                    "type": "string",
+                                                    "const": "json"
+                                                  },
+                                                  "value": {
+                                                    "$ref": "#/$defs/JsonValue"
+                                                  }
+                                                },
+                                                "required": [
+                                                  "kind",
+                                                  "value"
+                                                ],
+                                                "additionalProperties": false
+                                              },
+                                              {
+                                                "type": "object",
+                                                "properties": {
+                                                  "kind": {
+                                                    "type": "string",
+                                                    "const": "text"
+                                                  },
+                                                  "value": {
+                                                    "type": "string"
+                                                  }
+                                                },
+                                                "required": [
+                                                  "kind",
+                                                  "value"
+                                                ],
+                                                "additionalProperties": false
+                                              },
+                                              {
+                                                "type": "object",
+                                                "properties": {
+                                                  "kind": {
+                                                    "type": "string",
+                                                    "const": "absent"
+                                                  }
+                                                },
+                                                "required": [
+                                                  "kind"
+                                                ],
+                                                "additionalProperties": false
+                                              }
+                                            ]
+                                          }
+                                        },
+                                        "required": [
+                                          "argument",
+                                          "option",
+                                          "environment",
+                                          "stdin"
+                                        ],
+                                        "additionalProperties": false
+                                      },
+                                      {
+                                        "type": "object",
+                                        "properties": {
+                                          "arguments": {
+                                            "type": "object",
+                                            "propertyNames": {
+                                              "type": "string"
+                                            },
+                                            "additionalProperties": {
+                                              "$ref": "#/$defs/JsonValue"
+                                            }
+                                          }
+                                        },
+                                        "required": [
+                                          "arguments"
+                                        ],
+                                        "additionalProperties": false
+                                      }
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "legId",
+                                  "inputs"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "relation": {
+                              "$ref": "#/$defs/Expression"
+                            }
+                          },
+                          "required": [
+                            "witnessId",
+                            "channel",
+                            "legs",
+                            "relation"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "AD-10, mandatory per declared operation rather than per interface, on the api operation's own terms. `null` is legal only for an operation declaring no keys in its arguments channel. An input-bearing operation declaring `null` fails a strict compilation under `undeclared-mandatory-input`."
+                    }
+                  },
+                  "required": [
+                    "operationId",
+                    "toolName",
+                    "stateChangeMarker",
+                    "requestShape",
+                    "descriptorChannel",
+                    "responseDescriptor",
+                    "volatilePointers",
+                    "sensitivityWitness"
+                  ],
+                  "additionalProperties": false
                 },
                 "description": "No uniqueness constraint: two operations colliding on their transport identity after parameter-name erasure is `duplicate-operation-signature`, a coded compile-time error, and a schema that deduped them would delete it."
               }
@@ -990,7 +1475,8 @@
                                 "argument",
                                 "option",
                                 "environment",
-                                "stdin"
+                                "stdin",
+                                "arguments"
                               ]
                             },
                             "legs": {
@@ -1100,6 +1586,24 @@
                                           "stdin"
                                         ],
                                         "additionalProperties": false
+                                      },
+                                      {
+                                        "type": "object",
+                                        "properties": {
+                                          "arguments": {
+                                            "type": "object",
+                                            "propertyNames": {
+                                              "type": "string"
+                                            },
+                                            "additionalProperties": {
+                                              "$ref": "#/$defs/JsonValue"
+                                            }
+                                          }
+                                        },
+                                        "required": [
+                                          "arguments"
+                                        ],
+                                        "additionalProperties": false
                                       }
                                     ]
                                   }
@@ -1155,7 +1659,7 @@
           }
         ]
       },
-      "description": "AD-35: logical identifiers only. No entry here is ever a URL, a host, or a port. Discriminated on `kind`, which makes this field the eval contract's `schemaVersion` 3 -> 4 BREAKING bump under AD-11, whose rule is that \"adding an optional field is a `schemaVersion` bump recorded in the field's own description; removing or retyping is breaking\". The `api`, `web`, and `mcp` branches carry the shipped operation shape unchanged, so a version-3 contract's own bytes still parse on them; the `cli` branch carries a command operation, which declares a logical invocation instead of a method and a path template, four command input channels instead of the four transport channels, a nominated output channel for its one response descriptor, and the files it writes."
+      "description": "AD-35: logical identifiers only. No entry here is ever a URL, a host, or a port. Discriminated on `kind`, and the field AD-11 puts this artifact's bump record on, whose rule is that \"adding an optional field is a `schemaVersion` bump recorded in the field's own description; removing or retyping is breaking\". Version 4 added the `cli` branch, carrying a command operation: a logical invocation in place of a method and a path template, four command input channels, a nominated output channel for its one response descriptor, and the files it writes. Version 5 is the `schemaVersion` 4 -> 5 BREAKING bump: the `mcp` branch stops carrying the HTTP operation shape and carries a tool call instead, declaring a published tool name as its whole transport identity, one `arguments` request channel, and a tagged descriptor channel over the structured result. An `mcp` interface written against version 4 no longer parses. `api`, `web`, and `cli` keep every byte they had."
     },
     "referenceSets": {
       "anyOf": [
@@ -1320,6 +1824,18 @@
                   "option",
                   "environment",
                   "stdin"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "arguments": {
+                    "$ref": "#/$defs/InputBindingChannel"
+                  }
+                },
+                "required": [
+                  "arguments"
                 ],
                 "additionalProperties": false
               }
@@ -1660,6 +2176,24 @@
                     "stdin"
                   ],
                   "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "arguments": {
+                      "type": "object",
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "additionalProperties": {
+                        "$ref": "#/$defs/JsonValue"
+                      }
+                    }
+                  },
+                  "required": [
+                    "arguments"
+                  ],
+                  "additionalProperties": false
                 }
               ]
             }
@@ -1703,7 +2237,7 @@
     "fixtureReset"
   ],
   "additionalProperties": false,
-  "description": "The Eval Contract. Succeeds the prior-art `eval-contract` schema per AD-24. It carries every declaration AD-19 requires so that AD-31's fourteen relevance and satisfaction predicates are decidable from declarations alone. AD-10's sensitivity witnesses arrived on each operation as an additive `schemaVersion` bump; version 4 opens `permittedInterfaces` to a second interface kind, so a contract may describe a system under test that runs behind a command, and widens the interaction pointer's accepted language with the four command input channels and the `artifact` channel. The widening retypes nothing on its own, since every pointer legal under version 3 is still legal; it carries the same version because it ships in the same release as the retypes. Each bump is recorded in its own field's description, and `compile` compares the stamp against `EVAL_CONTRACT_SCHEMA_VERSION` and throws AD-28's `schema-version-mismatch` on anything else.",
+  "description": "The Eval Contract. Succeeds the prior-art `eval-contract` schema per AD-24. It carries every declaration AD-19 requires so that AD-31's fourteen relevance and satisfaction predicates are decidable from declarations alone. AD-10's sensitivity witnesses arrived on each operation as an additive `schemaVersion` bump; version 4 opens `permittedInterfaces` to a second interface kind, so a contract may describe a system under test that runs behind a command, and widens the interaction pointer's accepted language with the four command input channels and the `artifact` channel. The widening retypes nothing on its own, since every pointer legal under version 3 is still legal; it carries the same version because it ships in the same release as the retypes. Version 5 gives the `mcp` kind its own operation shape, so a contract may describe a tool server, and widens the pointer language and a step's input binding with the `arguments` channel. Each bump is recorded in its own field's description, and `compile` compares the stamp against `EVAL_CONTRACT_SCHEMA_VERSION` and throws AD-28's `schema-version-mismatch` on anything else.",
   "$defs": {
     "Expression": {
       "description": "A `check` expression tree over AD-4's closed vocabulary, discriminated on `op`. Exports as a `oneOf` of sixteen branches, each identified by its `op` const; a constraint ledger entry names a branch by that const rather than by position.",
@@ -2256,7 +2790,7 @@
               "anyOf": [
                 {
                   "type": "string",
-                  "pattern": "^\\/interactions\\/[a-z0-9]+(?:-[a-z0-9]+)*\\/(?:(?:response-body|response-headers|stdout|stderr)(?:\\/(?:[^/~]|~[01])*)*|(?:response-status|exit-code)|call-inputs\\/(?:path|query|header|body|argument|option|environment|stdin)(?:\\/(?:[^/~]|~[01])*)*|artifact\\/[a-z0-9]+(?:-[a-z0-9]+)*(?:\\/(?:[^/~]|~[01])*)*)$",
+                  "pattern": "^\\/interactions\\/[a-z0-9]+(?:-[a-z0-9]+)*\\/(?:(?:response-body|response-headers|stdout|stderr)(?:\\/(?:[^/~]|~[01])*)*|(?:response-status|exit-code)|call-inputs\\/(?:path|query|header|body|argument|option|environment|stdin|arguments)(?:\\/(?:[^/~]|~[01])*)*|artifact\\/[a-z0-9]+(?:-[a-z0-9]+)*(?:\\/(?:[^/~]|~[01])*)*)$",
                   "description": "AD-26 interaction-rooted pointer: \"/interactions/{stepId}/\" followed by one channel of the closed vocabulary. `call-inputs` takes one input channel as its next segment, one of the four transport channels or one of the four command channels; `artifact` takes the identifier of a file the operation declares it writes; `response-status` and `exit-code` take no tail. Syntax only: whether the step exists and whether the evidence is reachable are compile-time checks, not schema checks."
                 },
                 {
@@ -2428,7 +2962,7 @@
               },
               "evidence": {
                 "type": "string",
-                "pattern": "^\\/interactions\\/[a-z0-9]+(?:-[a-z0-9]+)*\\/(?:(?:response-body|response-headers|stdout|stderr)(?:\\/(?:[^/~]|~[01])*)*|(?:response-status|exit-code)|call-inputs\\/(?:path|query|header|body|argument|option|environment|stdin)(?:\\/(?:[^/~]|~[01])*)*|artifact\\/[a-z0-9]+(?:-[a-z0-9]+)*(?:\\/(?:[^/~]|~[01])*)*)$",
+                "pattern": "^\\/interactions\\/[a-z0-9]+(?:-[a-z0-9]+)*\\/(?:(?:response-body|response-headers|stdout|stderr)(?:\\/(?:[^/~]|~[01])*)*|(?:response-status|exit-code)|call-inputs\\/(?:path|query|header|body|argument|option|environment|stdin|arguments)(?:\\/(?:[^/~]|~[01])*)*|artifact\\/[a-z0-9]+(?:-[a-z0-9]+)*(?:\\/(?:[^/~]|~[01])*)*)$",
                 "description": "Where the criterion is answerable from. A pointer that resolves nowhere is `rubric-evidence-unreachable`, a compile-time code, and is deliberately not a schema rejection."
               }
             },
@@ -2922,7 +3456,8 @@
                     "argument",
                     "option",
                     "environment",
-                    "stdin"
+                    "stdin",
+                    "arguments"
                   ]
                 },
                 "legs": {
@@ -3032,6 +3567,24 @@
                               "stdin"
                             ],
                             "additionalProperties": false
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "arguments": {
+                                "type": "object",
+                                "propertyNames": {
+                                  "type": "string"
+                                },
+                                "additionalProperties": {
+                                  "$ref": "#/$defs/JsonValue"
+                                }
+                              }
+                            },
+                            "required": [
+                              "arguments"
+                            ],
+                            "additionalProperties": false
                           }
                         ]
                       }
@@ -3073,7 +3626,7 @@
         "sensitivityWitness"
       ],
       "additionalProperties": false,
-      "description": "AD-19's per-operation declaration inventory for an interface that speaks HTTP. Carried by the `api`, `web`, and `mcp` branches alike, so the export names it once instead of inlining three copies that could drift apart."
+      "description": "AD-19's per-operation declaration inventory for an interface that speaks HTTP. Carried by the `api` and `web` branches alike, so the export names it once instead of inlining two copies that could drift apart."
     },
     "WitnessInputs": {
       "type": "object",
@@ -3148,7 +3701,7 @@
         "body"
       ],
       "additionalProperties": false,
-      "description": "One probe leg's supplied inputs, keyed by AD-19 transport channel, in the spelling the environment-probe port accepts. Shared by both witness kinds and by the fixture reset, so the export carries it once."
+      "description": "One probe leg's supplied inputs, keyed by AD-19 transport channel, in the spelling the environment-probe port accepts. The transport branch of the union every leg shape takes: a sensitivity leg, a manifestation witness, and the fixture reset."
     },
     "InputBindingChannel": {
       "anyOf": [
@@ -3193,7 +3746,7 @@
                 "properties": {
                   "captured": {
                     "type": "string",
-                    "pattern": "^\\/interactions\\/[a-z0-9]+(?:-[a-z0-9]+)*\\/(?:(?:response-body|response-headers|stdout|stderr)(?:\\/(?:[^/~]|~[01])*)*|(?:response-status|exit-code)|call-inputs\\/(?:path|query|header|body|argument|option|environment|stdin)(?:\\/(?:[^/~]|~[01])*)*|artifact\\/[a-z0-9]+(?:-[a-z0-9]+)*(?:\\/(?:[^/~]|~[01])*)*)$",
+                    "pattern": "^\\/interactions\\/[a-z0-9]+(?:-[a-z0-9]+)*\\/(?:(?:response-body|response-headers|stdout|stderr)(?:\\/(?:[^/~]|~[01])*)*|(?:response-status|exit-code)|call-inputs\\/(?:path|query|header|body|argument|option|environment|stdin|arguments)(?:\\/(?:[^/~]|~[01])*)*|artifact\\/[a-z0-9]+(?:-[a-z0-9]+)*(?:\\/(?:[^/~]|~[01])*)*)$",
                     "description": "AD-26 interaction-rooted pointer: \"/interactions/{stepId}/\" followed by one channel of the closed vocabulary. `call-inputs` takes one input channel as its next segment, one of the four transport channels or one of the four command channels; `artifact` takes the identifier of a file the operation declares it writes; `response-status` and `exit-code` take no tail. Syntax only: whether the step exists and whether the evidence is reachable are compile-time checks, not schema checks."
                   }
                 },

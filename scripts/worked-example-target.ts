@@ -191,7 +191,7 @@ const noteEnvelope = (): ResponseDescriptor => ({
  * `cardinality` and an explicit `after`.
  */
 const AUTHORED_CONTRACT = {
-	schemaVersion: 4,
+	schemaVersion: 5,
 	contractId: 'notes-api-v1',
 	parentDigest: null,
 	revisionCount: 0,
@@ -710,7 +710,7 @@ const SEEDED_SIGNATURE: DefectSignature = {
  * why `sealProbeSet` below fails the build on a rejection.
  */
 const AUTHORED_PROBE = {
-	schemaVersion: 3,
+	schemaVersion: 4,
 	parentDigest: null,
 	revisionCount: 0,
 	probeId: 'P-001',

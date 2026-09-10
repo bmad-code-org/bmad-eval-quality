@@ -22,6 +22,7 @@ import {
 import { RequestShape } from '../../src/core/schemas/interface.ts'
 import { IsolationManifest } from '../../src/core/schemas/isolation-manifest.ts'
 import {
+	COMMAND_CHANNELS,
 	INPUT_CHANNELS,
 	TRANSPORT_CHANNELS,
 } from '../../src/core/schemas/pointer.ts'
@@ -747,10 +748,19 @@ describe('the shared vocabularies, derived rather than rebuilt', () => {
 		)
 	})
 
-	it("keys an observation's call inputs by the same eight channels", () => {
+	// Eight of the nine. `INPUT_CHANNELS` gained `arguments` with the tool-call
+	// operation shape, and this record's ninth key lands with the sealed run
+	// record's own breaking bump. The gap is asserted here, so the day that key
+	// lands this line is what says so.
+	it("keys an observation's call inputs by the transport and command channels", () => {
 		const callInputs = (SealedRunRecord.shape.observations as any).element.shape
 			.callInputs
-		expect(Object.keys(callInputs.shape)).toEqual([...INPUT_CHANNELS])
+		expect(Object.keys(callInputs.shape)).toEqual([
+			...TRANSPORT_CHANNELS,
+			...COMMAND_CHANNELS,
+		])
+		expect(INPUT_CHANNELS).toContain('arguments')
+		expect(Object.keys(callInputs.shape)).not.toContain('arguments')
 	})
 
 	// The worked example's flat `callInputs: { id: "n-1" }` does not survive.

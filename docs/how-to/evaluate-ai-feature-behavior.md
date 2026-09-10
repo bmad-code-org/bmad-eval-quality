@@ -11,7 +11,7 @@ This guide covers the case the library was designed around first: a feature your
 A support reply generator, a document summarizer, a search endpoint that ranks with an embedding, and a chat backend that writes to a database before it answers are all this shape.
 
 `src/core/schemas/interface.ts` declares four interface kinds in `INTERFACE_KINDS`: `api`, `web`, `cli`, and `mcp`.
-The first three of those parse through `apiShapedInterface`, which carries the same `Operation` shape for `api`, `web`, and `mcp`.
+`api` and `web` parse through `apiShapedInterface`, which carries one `Operation` shape for both; `cli` and `mcp` each declare their own.
 `compile` supports two of the four, `api` and `cli`, and rejects the rest under `unsupported-interface-kind` (`SUPPORTED_INTERFACE_KINDS` in `src/core/compile/interface-inventory.ts`).
 So an AI feature behind HTTP is declared `kind: "api"` today, and a contract stamped `web` parses against the schema and stops at compilation.
 

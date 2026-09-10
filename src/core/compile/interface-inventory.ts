@@ -7,6 +7,7 @@ import {
 	declaredArtifactsOf,
 	descriptorArtifactOf,
 	isCommandOperation,
+	isMcpOperation,
 	requestShapeOf,
 } from '../declared-inputs.ts'
 import { StructuralFailure } from '../failure-codes.ts'
@@ -90,19 +91,53 @@ export function commandSignature(operation: {
 	].join(COMMAND_SIGNATURE_SEPARATOR)
 }
 
-/** The transport identity of an operation of either kind. */
-export const anyOperationSignature = (operation: AnyOperation): string =>
-	isCommandOperation(operation)
-		? commandSignature(operation)
-		: operationSignature(operation)
+/**
+ * The transport identity of a tool call: the published tool name, alone and
+ * compared literally.
+ *
+ * There is nothing to erase and nothing to join. Every MCP call shares the one
+ * transport identity `tools/call`, so the tool name is the whole of what tells
+ * two calls apart, and a method and a path template would render one signature
+ * for every tool a server publishes. Takes the field rather than an
+ * `McpOperation`, on `operationSignature`'s own terms: AD-40's corpus-side
+ * signature declares the same name and must produce the same string from it.
+ */
+export function mcpSignature(operation: { readonly toolName: string }): string {
+	return operation.toolName
+}
 
-/** Finds duplicate method and path signatures across the full inventory. */
+/** The transport identity of an operation of any kind. */
+export const anyOperationSignature = (operation: AnyOperation): string => {
+	if (isCommandOperation(operation)) return commandSignature(operation)
+	if (isMcpOperation(operation)) return mcpSignature(operation)
+	return operationSignature(operation)
+}
+
+/**
+ * The shape family an interface kind's identity is rendered in. Three
+ * renderings, and `api` and `web` share one because they share an operation
+ * shape.
+ */
+export const signatureFamilyOf = (kind: string): string =>
+	kind === 'cli' ? 'cli' : kind === 'mcp' ? 'mcp' : 'api'
+
+/**
+ * Finds duplicate transport identities across the full inventory.
+ *
+ * Keyed on the declaring kind's family beside the rendered string, because the
+ * three renderings draw from different namespaces: a tool named `notes` and an
+ * executable named `notes` both render `notes` while naming different things on
+ * different servers, and refusing that pair would be a collision the author
+ * cannot fix. `resolveHomeOperation` compares within a family for the same
+ * reason, so the two agree about what a collision is.
+ */
 export function checkDuplicateOperationSignature(contract: EvalContract): void {
 	const seen = new Map<string, { logicalId: string; operation: AnyOperation }>()
 	for (const iface of contract.permittedInterfaces) {
 		for (const operation of operationsOf(iface)) {
 			const signature = anyOperationSignature(operation)
-			const collision = seen.get(signature)
+			const key = `${signatureFamilyOf(iface.kind)} ${signature}`
+			const collision = seen.get(key)
 			if (collision !== undefined) {
 				throw new StructuralFailure(
 					'duplicate-operation-signature',
@@ -110,7 +145,7 @@ export function checkDuplicateOperationSignature(contract: EvalContract): void {
 					`collides with permittedInterfaces[logicalId=${collision.logicalId}].operations[operationId=${collision.operation.operationId}] after parameter-name erasure ("${signature}") (AD-19, AD-40)`,
 				)
 			}
-			seen.set(signature, { logicalId: iface.logicalId, operation })
+			seen.set(key, { logicalId: iface.logicalId, operation })
 		}
 	}
 }

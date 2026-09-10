@@ -25,13 +25,14 @@ import {
 	anyOperationSignature,
 	commandSignature,
 	operationSignature,
+	signatureFamilyOf,
 } from '../compile/interface-inventory.ts'
 import {
 	checkExpressionBoundElementScope,
 	checkExpressionEvidenceReachability,
 	forEachExpressionPointer,
 } from '../compile/reachability.ts'
-import { requestShapeOf } from '../declared-inputs.ts'
+import { channelEntryOf, requestShapeOf } from '../declared-inputs.ts'
 import { StructuralFailure } from '../failure-codes.ts'
 import {
 	type DefectSignature,
@@ -116,17 +117,22 @@ export function resolveHomeOperation(
 	signature: DefectSignature,
 	interfaces: readonly PermittedInterface[],
 ): AnyOperation | null {
-	// The identity is compared within its own kind. A signature declaring a
-	// method and a path template can only name an operation declaring the same
-	// pair, and one declaring an invocation can only name an operation
-	// declaring one; comparing the rendered strings across kinds would let
-	// `GET /notes` collide with an executable literally named that.
+	// The identity is compared within its own shape family. A signature
+	// declaring a method and a path template can only name an operation
+	// declaring the same pair, one declaring an invocation can only name an
+	// operation declaring one, and one declaring a tool name can only name a
+	// tool; comparing the rendered strings across families would let
+	// `GET /notes` collide with an executable literally named that. The test
+	// was two-way and swept an `mcp` interface into the api-shaped comparison,
+	// where a signature declaring `mcp` could bind an operation on an `api`
+	// interface that happened to share a method and a path.
 	const command = signature.interfaceKind === 'cli'
 	const wanted = command
 		? commandSignature(signature)
 		: operationSignature(signature)
+	const family = signatureFamilyOf(signature.interfaceKind)
 	for (const iface of interfaces) {
-		if ((iface.kind === 'cli') !== command) continue
+		if (signatureFamilyOf(iface.kind) !== family) continue
 		for (const operation of operationsOf(iface)) {
 			if (anyOperationSignature(operation) === wanted) return operation
 		}
@@ -379,7 +385,7 @@ function checkSelectorKeys(
 ): void {
 	const { inputBinding } = signature.condition.selector
 	for (const channel of INPUT_CHANNELS) {
-		const binding = inputBinding[channel]
+		const binding = channelEntryOf(inputBinding, channel)
 		if (binding === null) continue
 		const shape = requestShapeOf(operation, channel)
 		// A channel the operation does not accept input on declares no key,

@@ -39,7 +39,7 @@ export const privateEntryBytes = new TextEncoder().encode(
 export const privateEntryBytesDigest = digestBytes(privateEntryBytes)
 
 export const scoreContractFixture: EvalContract = {
-	schemaVersion: 4,
+	schemaVersion: 5,
 	parentDigest: null,
 	revisionCount: 0,
 	contractId: 'score-command-contract',

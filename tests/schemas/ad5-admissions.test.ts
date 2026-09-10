@@ -269,14 +269,13 @@ describe('AD-5 code walk — every coded shape stays representable', () => {
 		})
 	})
 
-	it.each(['web', 'mcp'])(
-		'unsupported-interface-kind: a %s interface',
-		(kind) => {
-			admits((contract) => {
-				contract.permittedInterfaces[0].kind = kind
-			})
-		},
-	)
+	// `web` alone: flipping an api-shaped contract's kind to `mcp` is a parse
+	// failure now, and this helper asserts a clean parse.
+	it('unsupported-interface-kind: a web interface', () => {
+		admits((contract) => {
+			contract.permittedInterfaces[0].kind = 'web'
+		})
+	})
 
 	it.each(['rule', 'rationale', 'approval', 'expiresAt'])(
 		'waiver-incomplete: a waiver whose %s is null',

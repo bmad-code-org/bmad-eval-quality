@@ -133,10 +133,11 @@ describe('runPreflight: the boundary and the verdict', () => {
 	// propagates with its code intact rather than becoming a check.
 	it('111. lets a StructuralFailure from the plan propagate unchanged', async () => {
 		const draft = contractDraft()
-		// `mcp` rather than `cli`: a command interface compiles now, and its
-		// operation shape is not the api one, so flipping the kind alone would
-		// be a parse failure rather than the structural one under test.
-		draft.permittedInterfaces[0].kind = 'mcp'
+		// `web`: it is the one kind left whose operation shape is the api one,
+		// so it is the only kind a bare kind flip can reach the structural
+		// failure through. `cli` and `mcp` each declare their own shape, and
+		// the flip alone would be a parse failure there.
+		draft.permittedInterfaces[0].kind = 'web'
 		let thrown: unknown
 		try {
 			await run({ contract: parseContract(draft) })

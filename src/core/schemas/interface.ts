@@ -6,6 +6,7 @@ import {
 	KeyedShapeDescriptor,
 	KeyName,
 	KeyTypeMap,
+	ToolName,
 } from './primitives.ts'
 import { SensitivityWitness } from './sensitivity-witness.ts'
 
@@ -137,7 +138,7 @@ export const Operation = z
 	.meta({
 		id: 'Operation',
 		description:
-			"AD-19's per-operation declaration inventory for an interface that speaks HTTP. Carried by the `api`, `web`, and `mcp` branches alike, so the export names it once instead of inlining three copies that could drift apart.",
+			"AD-19's per-operation declaration inventory for an interface that speaks HTTP. Carried by the `api` and `web` branches alike, so the export names it once instead of inlining two copies that could drift apart.",
 	})
 
 export type Operation = z.infer<typeof Operation>
@@ -251,8 +252,76 @@ export const CommandOperation = z.strictObject({
 
 export type CommandOperation = z.infer<typeof CommandOperation>
 
-/** Either operation shape, for the consumers that read only kind-neutral fields. */
-export type AnyOperation = Operation | CommandOperation
+/**
+ * The tool-call counterpart of `RequestShape`, a one-key strict object for the
+ * reason that comment gives: a record over a channel enum demands every member
+ * at parse time, and the partial spelling that would relax it is the one the
+ * Consistency Conventions ban.
+ *
+ * One key rather than four. A tool call carries an arguments object and nothing
+ * else, so declaring `path`, `query`, and `header` beside it would put three
+ * channels on every contract that no call can ever send and no oracle can ever
+ * reach.
+ */
+export const McpRequestShape = z.strictObject({
+	arguments: KeyedShapeDescriptor.describe(
+		"The tool's declared arguments, keyed by the names the server publishes for them. AD-18 applies as it does to a header: a declaration names an argument and its type and never carries a credential value.",
+	),
+})
+
+export type McpRequestShape = z.infer<typeof McpRequestShape>
+
+/**
+ * Which output channel the operation's one response descriptor describes.
+ *
+ * Tagged on `kind` with one member, following `CommandDescriptorChannel`. The
+ * second member is already known: a tool that returns prose rather than
+ * structured content is outside this version, and admitting it later adds a
+ * member, which AD-11 makes additive, where retyping a bare field would be
+ * breaking.
+ */
+export const McpDescriptorChannel = z.discriminatedUnion('kind', [
+	z.strictObject({ kind: z.literal('structured-result') }),
+])
+
+export type McpDescriptorChannel = z.infer<typeof McpDescriptorChannel>
+
+/**
+ * A tool-call operation.
+ *
+ * `toolName` is the whole transport identity. Every MCP call shares the one
+ * transport identity `tools/call` and the tool name is what distinguishes two
+ * of them, so a method and a path template would render one signature for every
+ * tool a server publishes and collide under `duplicate-operation-signature`.
+ * AD-40 needs that identity readable by a probe seeder who has never opened the
+ * contract, and a published tool name is exactly that.
+ *
+ * It carries the same `ResponseDescriptor` an api operation carries, over the
+ * structured result its `descriptorChannel` nominates, so all fourteen AD-31
+ * predicates read one descriptor one dereference deep with no kind-specific
+ * arm.
+ */
+export const McpOperation = z.strictObject({
+	operationId: Identifier,
+	toolName: ToolName,
+	stateChangeMarker: z
+		.boolean()
+		.describe(
+			'AD-19: whether the operation is intended to change state. AD-20 rule 7 relevance reads it, and AD-10 selects the sensitivity channel by it. Both values are legal and neither is a default.',
+		),
+	requestShape: McpRequestShape,
+	descriptorChannel: McpDescriptorChannel,
+	responseDescriptor: ResponseDescriptor,
+	volatilePointers: z.array(DescriptorPointer),
+	sensitivityWitness: SensitivityWitness.nullable().describe(
+		"AD-10, mandatory per declared operation rather than per interface, on the api operation's own terms. `null` is legal only for an operation declaring no keys in its arguments channel. An input-bearing operation declaring `null` fails a strict compilation under `undeclared-mandatory-input`.",
+	),
+})
+
+export type McpOperation = z.infer<typeof McpOperation>
+
+/** Any operation shape, for the consumers that read only kind-neutral fields. */
+export type AnyOperation = Operation | CommandOperation | McpOperation
 
 /**
  * AD-19's four interface kinds, exported once so nothing else respells them:
@@ -273,12 +342,14 @@ const LOGICAL_ID_DESCRIPTION =
 const OPERATIONS_DESCRIPTION =
 	'No uniqueness constraint: two operations colliding on their transport identity after parameter-name erasure is `duplicate-operation-signature`, a coded compile-time error, and a schema that deduped them would delete it.'
 
-// `web` and `mcp` carry the api operation shape unchanged. A two-member union
-// would make either one a parse failure, and a parse failure carries no AD-5
-// code, no artifact path, and no name for the kind that is unsupported, which
-// is the opposite of AD-10's "fails compilation honestly under
-// `unsupported-interface-kind`".
-const apiShapedInterface = <Kind extends 'api' | 'web' | 'mcp'>(kind: Kind) =>
+// `web` is the only kind left sharing the api operation shape, and the factory
+// survives its second caller leaving because that is what keeps the two
+// branches byte-identical. `web` still fails compilation under
+// `unsupported-interface-kind`, which needs the kind to reach the compiler:
+// a parse failure carries no AD-5 code, no artifact path, and no name for the
+// kind that is unsupported, which is the opposite of AD-10's "fails
+// compilation honestly".
+const apiShapedInterface = <Kind extends 'api' | 'web'>(kind: Kind) =>
 	z.strictObject({
 		logicalId: Identifier.describe(LOGICAL_ID_DESCRIPTION),
 		kind: z.literal(kind),
@@ -287,13 +358,18 @@ const apiShapedInterface = <Kind extends 'api' | 'web' | 'mcp'>(kind: Kind) =>
 
 /**
  * Discriminated on `kind`, so an operation shape cannot be smuggled onto the
- * wrong interface: a `cli` interface declaring `method` and an `api` interface
- * declaring `invocation` are both parse errors.
+ * wrong interface: a `cli` interface declaring `method`, an `api` interface
+ * declaring `invocation`, and an `mcp` interface declaring either are all parse
+ * errors.
  */
 export const PermittedInterface = z.discriminatedUnion('kind', [
 	apiShapedInterface('api'),
 	apiShapedInterface('web'),
-	apiShapedInterface('mcp'),
+	z.strictObject({
+		logicalId: Identifier.describe(LOGICAL_ID_DESCRIPTION),
+		kind: z.literal('mcp'),
+		operations: z.array(McpOperation).describe(OPERATIONS_DESCRIPTION),
+	}),
 	z.strictObject({
 		logicalId: Identifier.describe(LOGICAL_ID_DESCRIPTION),
 		kind: z.literal('cli'),

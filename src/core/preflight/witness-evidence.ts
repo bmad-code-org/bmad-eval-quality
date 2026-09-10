@@ -81,6 +81,11 @@ const callInputsOf = (inputs: WitnessInputs): ObservedCallInputs => {
 				inputs.body.kind === 'json' ? asJsonObject(inputs.body.value) : null,
 		}
 	}
+	// A tool call's arguments have no key on this shape yet: the ninth channel
+	// lands with the sealed run record's own breaking bump. Every channel reads
+	// `null` until then, which is the same answer this record already gives for
+	// a channel the leg did not use.
+	if ('arguments' in inputs) return empty
 	return {
 		...empty,
 		argument: inputs.argument,

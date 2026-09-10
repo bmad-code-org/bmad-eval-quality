@@ -260,12 +260,13 @@ describe("AD-10's sensitivity witness, manifestation witness, and fixture reset"
 		}
 		// `Probe` is a union on `expectedClean`, so its `Defect` shape, and with
 		// it the manifestation witness, exports once per branch. The eval
-		// contract carries `sensitivityWitness` twice for the same reason: once
-		// on the shared api `Operation` definition and once on the inlined
-		// command operation.
+		// contract carries `sensitivityWitness` three times for the same reason:
+		// once on the shared api `Operation` definition, once on the inlined
+		// command operation, and once on the inlined tool call.
 		const expected: Record<string, string[]> = {
 			'eval-contract': [
 				'fixtureReset',
+				'sensitivityWitness',
 				'sensitivityWitness',
 				'sensitivityWitness',
 			],
@@ -293,8 +294,8 @@ describe("AD-10's sensitivity witness, manifestation witness, and fixture reset"
 	// the truth while one operation shape existed: the third belonged to
 	// `ManifestationWitness`, which rides on `Defect` and therefore lands in the
 	// probe document, twice, once per branch of `Probe`'s `expectedClean` union.
-	// The command interface kind restores the count to three, on a different
-	// footing: the two operation shapes each carry a sensitivity leg.
+	// Each operation shape carries a sensitivity leg, so the count is one per
+	// shape plus the fixture reset.
 	it('16. exports WitnessInputs as one shared definition per document, referenced from every witness shape', () => {
 		const referenceCount = (document: unknown): number => {
 			let count = 0
@@ -314,8 +315,8 @@ describe("AD-10's sensitivity witness, manifestation witness, and fixture reset"
 			const document = publishedDocumentOf(key) as any
 			expect(Object.keys(document.$defs), key).toContain('WitnessInputs')
 		}
-		// the two operation shapes' sensitivity witness legs and the fixture reset
-		expect(referenceCount(publishedDocumentOf('eval-contract'))).toBe(3)
+		// the three operation shapes' sensitivity witness legs and the fixture reset
+		expect(referenceCount(publishedDocumentOf('eval-contract'))).toBe(4)
 		// the manifestation witness, once per union branch
 		expect(referenceCount(publishedDocumentOf('probe'))).toBe(2)
 	})

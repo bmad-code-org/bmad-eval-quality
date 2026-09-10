@@ -63,14 +63,30 @@ export const COMMAND_CHANNELS = [
 export type CommandChannelName = (typeof COMMAND_CHANNELS)[number]
 
 /**
- * Every channel `call-inputs` may take as its next segment, both kinds
+ * The one channel a tool call accepts input on. Every MCP tool call carries an
+ * arguments object and nothing else, so the tuple has one member and the kind
+ * declares no dead channels the way the transport shape would have given it
+ * three.
+ *
+ * Its own name rather than a reuse of `argument`: a command's positional
+ * argument and a tool call's named arguments object are different shapes with
+ * different declaration rules, and one name for both would make an
+ * `undeclared-mandatory-input` message ambiguous about which it meant.
+ */
+export const MCP_CHANNELS = ['arguments'] as const
+
+export type McpChannelName = (typeof MCP_CHANNELS)[number]
+
+/**
+ * Every channel `call-inputs` may take as its next segment, all three kinds
  * together. A pointer is parsed with no contract in hand, so the grammar
- * admits all eight and the question of which four a given operation may use is
+ * admits all nine and the question of which a given operation may use is
  * answered by reachability, which has the operation.
  */
 export const INPUT_CHANNELS = [
 	...TRANSPORT_CHANNELS,
 	...COMMAND_CHANNELS,
+	...MCP_CHANNELS,
 ] as const
 
 export type InputChannelName = (typeof INPUT_CHANNELS)[number]

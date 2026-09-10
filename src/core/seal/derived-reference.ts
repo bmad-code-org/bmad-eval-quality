@@ -5,7 +5,11 @@
  * Resolves pointers through a `PlanIndex` into a phrase, kept apart from
  * `plan-index.ts`'s resolving and `direction-prose.ts`'s relation templates.
  */
-import { boundChannelsOf, isCommandOperation } from '../declared-inputs.ts'
+import {
+	boundChannelsOf,
+	isCommandOperation,
+	isMcpOperation,
+} from '../declared-inputs.ts'
 import { StructuralFailure } from '../failure-codes.ts'
 import type { AnyOperation } from '../schemas/interface.ts'
 import type { BindingChannel, InteractionStep } from '../schemas/plan.ts'
@@ -62,17 +66,18 @@ function joinWithAnd(items: readonly string[]): string {
 // `buildPlanIndex` already rejects a duplicate `operationId` across
 // interfaces, so two resolved operations never share this phrase. The
 // transport identity is never printed here, whichever kind it is: AD-16
-// withholds the operation inventory from the brief, so neither a method and a
-// path template nor an executable and a subcommand path reach an evaluator.
+// withholds the operation inventory from the brief, so a method and a path
+// template, an executable and a subcommand path, and a tool name are all
+// withheld from an evaluator alike.
 //
 // The noun follows the kind. Calling a command an endpoint told the evaluator
 // something false about what it was reading, and the word is the only thing
 // this phrase says beyond the operation's own name.
 function operationReference(operation: AnyOperation): string {
 	const name = operation.operationId.split('-').join(' ')
-	return isCommandOperation(operation)
-		? `the ${name} command`
-		: `the ${name} endpoint`
+	if (isCommandOperation(operation)) return `the ${name} command`
+	if (isMcpOperation(operation)) return `the ${name} tool`
+	return `the ${name} endpoint`
 }
 
 // ---- the binding clause and its escalation ----------------------------

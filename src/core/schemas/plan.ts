@@ -104,6 +104,11 @@ export const CommandInputBinding = z.strictObject({
 	stdin: BindingChannel,
 })
 
+/** The same shape over the one channel a tool call accepts input on. */
+export const McpInputBinding = z.strictObject({
+	arguments: BindingChannel,
+})
+
 /**
  * A plain union rather than a discriminated one, and the agreement between a
  * step's bound channels and its operation's kind is a compile-time check
@@ -117,7 +122,11 @@ export const CommandInputBinding = z.strictObject({
  * already carries, which makes a disagreeing step a second inconsistency to
  * check rather than one fewer.
  */
-export const InputBinding = z.union([ApiInputBinding, CommandInputBinding])
+export const InputBinding = z.union([
+	ApiInputBinding,
+	CommandInputBinding,
+	McpInputBinding,
+])
 
 export type InputBinding = z.infer<typeof InputBinding>
 

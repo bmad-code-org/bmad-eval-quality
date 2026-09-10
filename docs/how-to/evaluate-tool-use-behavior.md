@@ -62,28 +62,35 @@ Without the nomination, `/interactions/{stepId}/artifact/{id}` asserts the file 
 The `call-inputs` channel still carries what was sent, which under reading one is the task the agent was given.
 The fourth question is unchanged by the split: `sensitivityWitness` is kind-neutral, mandatory for any input-bearing operation, and it is what pre-flight's `input-sensitivity` check reports on in both readings.
 
-## What the `mcp` kind gives you today
+## What an `mcp` operation declares
 
-Exactly one thing: a legal value for `kind`, carrying the operation shape built for HTTP.
+`PermittedInterface` is a union discriminated on `kind` (`interface.ts:365`), and its `mcp` branch carries `McpOperation` (`interface.ts:304`).
+So an `mcp` interface has three fields, `logicalId`, `kind`, and `operations`, and each operation is one tool call.
 
-`PermittedInterface` is a union discriminated on `kind` (`interface.ts:293`), and its `mcp` branch is produced by `apiShapedInterface('mcp')` (`interface.ts:281`).
-So an `mcp` interface has three fields, `logicalId`, `kind`, and `operations`, and each operation is an `Operation`.
-`Operation`'s own schema description names what it was built for: "AD-19's per-operation declaration inventory for an interface that speaks HTTP" (`interface.ts:140`).
+An `McpOperation` declares eight fields.
+`operationId`, `toolName`, `stateChangeMarker`, `requestShape` over its one `arguments` channel, `descriptorChannel`, `responseDescriptor`, `volatilePointers`, and `sensitivityWitness`.
 
-An `Operation` declares eight fields.
-`operationId`, `method` from the closed seven HTTP verbs, `pathTemplate` matching `PATH_TEMPLATE_PATTERN`, `stateChangeMarker`, `requestShape` over the four transport channels `path`, `query`, `header`, and `body`, `responseDescriptor`, `volatilePointers`, and `sensitivityWitness`.
+`toolName` is the whole transport identity.
+Every MCP call shares the one JSON-RPC method `tools/call`, so the published tool name is what tells two calls apart, and it is what AD-40 resolves a defect signature against.
+Its charset is letters, digits, underscore, and hyphen (`primitives.ts:30`), which admits both `search_notes` and `searchNotes` and leaves a URL, a host, and a port unrepresentable, which is AD-35 made structural.
 
-The comment above `apiShapedInterface` says why the branch exists at all.
-A two-member union would make an `mcp` contract a parse failure, and a parse failure carries no failure code, no artifact path, and no name for the kind that is unsupported.
-The branch exists so the rejection is a coded one.
+`requestShape` has one channel, `arguments`, keyed by the argument names the server publishes for that tool.
+
+`descriptorChannel` is a union tagged on `kind` with one member, `{ "kind": "structured-result" }` (`interface.ts:283`).
+That declaration is where the kind's first version draws its boundary: the response descriptor describes a tool's structured result, and a tool that returns only prose sits outside it.
+[What ships](/explanation/what-ships/) records the decision and what it defers.
+
+`sensitivityWitness` varies the `arguments` channel.
+AD-10 selects a witness channel from the state-change marker off an interface that speaks HTTP, because a read carries its identifier in the URL and a write carries it in the body.
+A tool call carries its arguments the same way whichever the marker says, so `arguments` is the one channel AD-10 admits for it (`compile/sensitivity-witness.ts:335`).
 
 Three gates reject an `mcp` contract, and they are the whole story.
 
 | Where | What fires | Source |
 | --- | --- | --- |
-| `compile` | `unsupported-interface-kind` | `src/core/compile/interface-inventory.ts:39`, over `SUPPORTED_INTERFACE_KINDS = ['api', 'cli']` |
-| `preflight` plan | `unsupported-interface-kind` again, for a contract assembled by hand | `src/core/preflight/plan.ts:307` |
-| `score` probe qualification | `signature-interface-kind-unsupported` | `src/core/score/qualification.ts:759` |
+| `compile` | `unsupported-interface-kind` | `src/core/compile/interface-inventory.ts:40`, over `SUPPORTED_INTERFACE_KINDS = ['api', 'cli']` |
+| `preflight` plan | `unsupported-interface-kind` again, for a contract assembled by hand | `src/core/preflight/plan.ts:332` |
+| `score` probe qualification | `signature-interface-kind-unsupported` | `src/core/score/qualification.ts:765` |
 
 The probe side parses too.
 `ApiDefectSignature.interfaceKind` is `z.enum(['api', 'web', 'mcp'])` (`src/core/schemas/defect-signature.ts:164`), so a probe declaring a tool-use defect is schema-valid and fails the qualification gate.
@@ -120,7 +127,7 @@ Write it to a file in the directory you are working in, and delete it when you a
 ```bash
 cat > mcp-contract.json <<'EOF'
 {
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "contractId": "notes-tool-server-evaluation",
   "parentDigest": null,
   "revisionCount": 0,
@@ -147,41 +154,40 @@ cat > mcp-contract.json <<'EOF'
       "operations": [
         {
           "operationId": "search-notes",
-          "method": "POST",
-          "pathTemplate": "/tools/call/search_notes",
+          "toolName": "search_notes",
           "stateChangeMarker": false,
           "requestShape": {
-            "path": { "requiredKeys": [], "permittedKeys": [], "types": {} },
-            "query": { "requiredKeys": [], "permittedKeys": [], "types": {} },
-            "header": { "requiredKeys": [], "permittedKeys": [], "types": {} },
-            "body": {
+            "arguments": {
               "requiredKeys": ["query"],
               "permittedKeys": ["query", "limit"],
               "types": { "query": "string", "limit": "number" }
             }
           },
+          "descriptorChannel": { "kind": "structured-result" },
           "responseDescriptor": {
-            "requiredKeys": ["content", "isError"],
-            "permittedKeys": ["content", "isError"],
-            "types": { "content": "array", "isError": "boolean" },
-            "successIndicator": "/isError",
-            "channelRoles": { "/content": "payload", "/isError": "success-indicator" },
-            "collectionLocations": []
+            "requiredKeys": ["matches"],
+            "permittedKeys": ["matches"],
+            "types": { "matches": "array" },
+            "successIndicator": "/matches",
+            "channelRoles": { "/matches": "collection" },
+            "collectionLocations": [
+              { "pointer": "/matches", "referenceSet": null, "expectedCardinality": { "mode": "at-most", "max": 20 } }
+            ]
           },
           "volatilePointers": [],
           "sensitivityWitness": {
             "witnessId": "search-notes-sensitivity",
-            "channel": "body",
+            "channel": "arguments",
             "legs": [
-              { "legId": "search-witness-a", "inputs": { "path": {}, "query": {}, "header": {}, "body": { "kind": "json", "value": { "query": "alpha" } } } },
-              { "legId": "search-witness-b", "inputs": { "path": {}, "query": {}, "header": {}, "body": { "kind": "json", "value": { "query": "beta" } } } }
+              { "legId": "search-witness-a", "inputs": { "arguments": { "query": "alpha" } } },
+              { "legId": "search-witness-b", "inputs": { "arguments": { "query": "beta" } } }
             ],
             "relation": {
               "op": "not",
               "operands": [
                 { "op": "deep-equality", "operands": [
-                  { "pointer": "/interactions/search-witness-a/response-body/content" },
-                  { "pointer": "/interactions/search-witness-b/response-body/content" }
+                  { "pointer": "/interactions/search-witness-a/response-body/matches" },
+                  { "pointer": "/interactions/search-witness-b/response-body/matches" }
                 ] }
               ]
             }
@@ -208,63 +214,36 @@ eval-quality: unsupported-interface-kind: EvalContract.permittedInterfaces[logic
 
 Exit code 4, the structural-failure code, and the message names the AD-5 code and the field that carries the fault.
 
-One fault sits behind that one, and it is worth knowing before you copy the declaration.
-A search changes no state, so `stateChangeMarker` is false, and AD-10 gives a non-mutating operation `path` or `query` for its sensitivity witness.
-A tool call carries its arguments in `body`, which is where the witness above varies them, so the witness is illegal on its own terms.
-Flip the kind to `api` and `compile` says so, at the same exit 4 under `malformed-operator-expression`.
-Opening the kind is not on its own enough to make this contract compile.
+The kind gate is the only thing between that contract and a clean compile.
+Every other check reads the declaration and admits it: the witness is legal on the `arguments` channel, the tool identity renders one signature, and every pointer resolves against the descriptor.
 
-Four places in that declaration are a bend, and each one is a real cost.
+Two things in the declaration are worth reading closely.
 
-**`method` carries no tool-call meaning.**
-The field is required and its value space is the seven HTTP verbs.
-`POST` is the closest reading of a tool invocation, and a read-only tool argues equally for `GET`.
-Nothing decides it, and AD-40 resolves a defect signature by comparing method and path template, so two authors disagreeing here author signatures that never bind each other's contracts.
-
-**`pathTemplate` has to carry the tool name.**
-The natural transport identity of every MCP tool call is the same JSON-RPC method, `tools/call`, with the tool name in the payload.
-Declaring two tools that way collides, which this fence shows without running it:
-
-```text
-eval-quality: duplicate-operation-signature: EvalContract.permittedInterfaces[logicalId=notes-tool-server].operations[operationId=create-note]: collides with permittedInterfaces[logicalId=notes-tool-server].operations[operationId=search-notes] after parameter-name erasure ("POST /tools/call") (AD-19, AD-40)
-```
-
-So the tool name moves into the path, as `/tools/call/search_notes` above.
-That is a spelling this repository invented for the example, and a second author would be free to invent `/search_notes` instead.
-The kind ships no convention.
-
-**Three of the four request channels are dead.**
-A tool call has arguments and nothing else.
-`path`, `query`, and `header` are declared as empty triples on every operation, and `body` carries the whole argument object.
-The declaration is honest and three quarters of it is ceremony.
-
-**The response descriptor describes a structured result, and the declaration above is not one.**
-`ResponseDescriptor.types` is a flat map from key name to JSON type (`interface.ts`), `collectionLocations` addresses a JSON collection, and AD-4's `for-all` and `for-any` quantify over one.
+**The descriptor describes the tool's own result.**
+`ResponseDescriptor.types` is a flat map from key name to JSON type, `collectionLocations` addresses a JSON collection, and AD-4's `for-all` and `for-any` quantify over one.
 A real MCP tool commonly returns `content: [{ "type": "text", "text": "..." }]`, where the text is markdown a person reads.
-The architecture answers that with a restriction: the kind's first version describes a tool's structured result, and a tool result carrying only text sits outside it.
-A tool returning a JSON object fits the descriptor cleanly.
-A tool returning prose does not, and the text channel it would need stays deferred.
+The kind's first version describes the structured result a tool with an output schema returns, and `descriptorChannel` carries that boundary as a declaration, so a text-only tool has nothing to spell.
+The tempting shape is a descriptor over the MCP envelope, `content` beside `isError`.
+It makes every coverage rule report about the envelope: `requiredKeys` becomes `['content']` for every tool that will ever be written, whole-body coverage is satisfied by one oracle addressing the transport framing, and nothing said anything about what the tool returned.
 
-The descriptor in the declaration above describes the MCP envelope, `content` beside `isError`, and declares `collectionLocations: []`.
-Both of those are shapes AD-19 rules out for the kind's first version, and they are here because the api-shaped operation offers nowhere else to put them.
-An envelope descriptor makes every coverage rule report about the envelope and none about the tool: the declaration above requires `content` and `isError`, so whole-body coverage is satisfied by two oracles addressing the transport framing, and neither says anything about what the tool returned.
-`collectionLocations: []` makes the per-record and completeness rules irrelevant, so a contract scores clean over a result nobody checked.
-Copy the declaration to see what the kind gives you today; do not copy it as the shape a tool-server contract should have.
+**The error flag lands on `response-status`.**
+`isError` is observable there as 0 or 1, which keeps it out of `requiredKeys`, where it would satisfy a coverage rule while checking nothing.
+`Observation.responseStatus` is an integer with no HTTP reading attached (`sealed-run-record.ts:248`), and an adapter is what performs that projection.
 
 ## Writing oracles over a tool call
 
 Every oracle is an `Expression` over pointers, and the pointer grammar is what decides what you can assert.
 
 **About the arguments.**
-`call-inputs` takes a channel segment and then a tail, so `/interactions/search/call-inputs/body/query` addresses the `query` argument the agent actually sent on the step whose `stepId` is `search`.
-`TRANSPORT_CHANNELS` is the four the api-shaped kinds accept (`src/core/schemas/pointer.ts:36`).
+`call-inputs` takes a channel segment and then a tail, so `/interactions/search/call-inputs/arguments/query` addresses the `query` argument the agent actually sent on the step whose `stepId` is `search`.
+`MCP_CHANNELS` is the one channel a tool call accepts input on (`src/core/schemas/pointer.ts:76`), and the grammar admits all nine channels because a pointer is parsed with no contract in hand.
 Assertions worth writing: the argument equals a literal the behavior requires, the argument is a member of a declared reference set, the argument matches an anchored pattern.
 `compile` rejects a pointer at a key the operation's `requestShape` declares in neither `requiredKeys` nor `permittedKeys`, under `unreachable-check-evidence`, so an oracle over an argument that does not exist never ships.
 
 **About the response.**
-`response-body`, `response-headers`, and `response-status` are the three response-side channels an api-shaped kind produces.
-`qualification.ts:148` confirms it from the other direction: for any kind other than `cli`, the command channels are the foreign ones, so `stdout`, `stderr`, `exit-code`, and `artifact` are unavailable to a tool-use signature.
-`/interactions/search/response-body/isError` and `/interactions/search/response-body/content` are the two pointers the example above makes addressable.
+A tool call carries its structured result on `response-body` and its error flag on `response-status`, and fills no other response channel.
+A pointer at `response-headers`, `exit-code`, a stream, or a written file is `unreachable-check-evidence` at compile (`src/core/compile/reachability.ts:581`).
+`/interactions/search/response-body/matches` is the pointer the example above makes addressable.
 
 **About the tool having been called at all.**
 `existence` and `absence` over a step's evidence carry that, and the step's own `cardinality` carries how many matches are legitimate.
@@ -312,7 +291,7 @@ An `mcp` adapter would need an `McpProbeRequest` and an `McpProbeObservation` on
 
 **Missing.** A port message for the kind, an adapter, a conformance arm, a channel model for a text-shaped tool result, and a convention for the transport identity of a tool call.
 
-**Already works, and this is the part worth knowing before you fund any of it.** The recorded-observation side accommodates the kind today. `Observation` in the sealed run record is not discriminated on kind (`sealed-run-record.ts:222`) and `ObservedCallInputs` is one eight-key object over both kinds' channels (`:200`), so a recorded tool call already has somewhere to live. `foreignChannels` (`qualification.ts:148`) gives every kind other than `cli` the API response channels, so a tool-use signature is confined to `response-body`, `response-headers`, and `response-status`, a confinement the code decides.
+**Already works, and this is the part worth knowing before you fund any of it.** The recorded-observation side accommodates the kind today. `Observation` in the sealed run record is not discriminated on kind (`sealed-run-record.ts:222`) and `ObservedCallInputs` is one eight-key object over both kinds' channels (`:200`), so a recorded tool call already has somewhere to live. `foreignChannels` (`qualification.ts:148`) gives every kind other than `cli` the API response channels, and compile-time reachability narrows a tool call further to `response-body` and `response-status`, a confinement the code decides.
 
 **Unproven, and this is the uncomfortable part.** The calibration record behind this project's central measurement is itself MCP-shaped. The architecture records that every contract in the phase-2 block that produced the 0.33-to-1.00 result declares an MCP tool interface, and that 22 of 25 real contracts use the kind. Those contracts were transcribed into API shape to be compiled here, and a transcription is not the measured artifact. So `mcp` is simultaneously the most-used kind in the prior art and the only one with no path through this package.
 
