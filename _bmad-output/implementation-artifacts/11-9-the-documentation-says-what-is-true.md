@@ -814,6 +814,44 @@ against rather than one it uses, which makes it more useful rather than less. A 
 what the project owes fails the gate until every bullet under it is registered, and registering one
 is now the moment to ask whether it should be a limit instead.
 
+### Prepared for the final pass, so it is mechanical rather than exploratory
+
+**`interface.ts:343`, the one held claim under `src/`.** `OPERATIONS_DESCRIPTION` is one string
+attached at three call sites, `:356` for the `Operation` factory that serves both `api` and `web`,
+`:371` for `McpOperation` and `:376` for `CommandOperation`, so it ships on all four branches of
+`schemas/eval-contract.schema.json`. It says two operations collide "after parameter-name erasure",
+which `interface-inventory.ts:112-119` and `:135-141` say does not happen for `cli` or `mcp`: a
+command's identity is its executable joined to its subcommand path and a tool call's is its published
+tool name, and neither has anything to erase.
+
+The prepared replacement drops the clause rather than splitting the constant:
+
+> No uniqueness constraint: two operations colliding on their transport identity is
+> `duplicate-operation-signature`, a coded compile-time error, and a schema that deduped them would
+> delete it.
+
+That is true of all four branches, and where each kind's transport identity comes from is already
+`interface-inventory.ts`'s to say. Splitting into an api-family constant and a second one would be
+more specific and would move more published bytes for a fact the reader can get from the code that
+computes it.
+
+The consequence is stated in Decision 3 and stands: the edit moves `schemas/eval-contract.schema.json`,
+which moves `CENSUS_BY_KEYWORD` and `CENSUS_TOTAL` in `tests/schemas/published-census.ts`, currently
+3255. That number will have moved again by then, since the open pull request removing
+`SealedRunRecord.invalidReason` regenerates the schema too, so the census is read at the time of the
+edit rather than carried from here. The `src/` diff stays description-only.
+
+**For the learning-path step.** Two lines the epic earned that are not about this story's own
+corrections. A guard that cannot fire is worth nothing and looks exactly like one that can, and the
+only way to tell them apart is to break the thing the guard exists to catch and watch whether it
+fails; this story met that twice, once as a predicate over a module the script imports and once as
+the tail session's refinement over a schema nothing parses. And `OWED_HEADING` turned a style
+decision into a gate by accident: a section headed with what the project owes fails until every
+bullet under it is registered, and registering one is the moment somebody asks whether it should be
+a limit instead. That is the same move as class 7, which turned "say which kinds compile correctly"
+from a review habit into a check that reads the source.
+
+
 ## Design Notes
 
 The proposed replacements, written to the de-AI rule and offered as drafts for the execution pass to confirm against the artifacts.
