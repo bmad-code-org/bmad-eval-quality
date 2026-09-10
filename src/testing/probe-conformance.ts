@@ -14,11 +14,13 @@
  * declared argument proven to cross the JSON-RPC frame unchanged, the
  * structured result the operation's descriptor describes, and both caps.
  *
- * The three counts differ because each mechanism's authorization scopes a
- * different number of fields and every scoped field owes a denial: an HTTP
- * authorization scopes the interface, four address classes, the method and the
- * scheme; a command authorization the interface, the executable and the
- * subcommand path; a tool-server authorization the interface and the tool.
+ * Every field an authorization scopes owes a denial, which is the largest term
+ * in the three counts: an HTTP authorization scopes the interface, four
+ * address classes, the method and the scheme; a command authorization the
+ * interface, the executable and the subcommand path; a tool-server
+ * authorization the interface and the tool. Each arm then adds the caps its
+ * mechanism can be made to exceed and the answers it has to read as
+ * observations.
  *
  * The arms are separate functions rather than one, because their subjects need
  * disjoint fixtures (an HTTP redirect chain has no command analogue, and a
