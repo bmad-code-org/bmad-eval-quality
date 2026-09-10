@@ -756,12 +756,17 @@ killed it: removing the module crashed the script during import resolution befor
 because this script imports the scoring path transitively. A predicate a real removal bypasses is not
 a predicate. It is back to `'read'`, with the reason naming where each half is actually held: the
 typecheck and `tests/score/witness.test.ts` hold the implemented half, and a round that was never run
-leaves no artifact for the other. Downstream consequence, and it is the general form rather than a fact about this file: a check that
-asks whether something still exists is worthless when the check itself depends on the thing existing,
-because the removal it is testing for takes the check down before it can answer. Here the dependency
-was a transitive import and the failure was a resolution crash, and the script looked green until it
-was mutated. Every gate this epic found certifying nothing had that shape, passing for a reason other
-than the one its name claimed, and only mutating a gate distinguishes the two.
+leaves no artifact for the other. Downstream consequence, and it is the general form rather than a fact about this file: a guard that
+cannot fire is worth nothing and looks exactly like one that can. A check asking whether something
+still exists is worthless when the check itself depends on the thing existing, because the removal
+it is testing for takes the check down before it can answer; here the dependency was a transitive
+import and the failure was a resolution crash. The same defect reaches the tree from the other
+direction, and the tail session found that one: a Zod refinement that refuses a value is worth
+nothing when nothing parses the schema, since a refinement leaves no trace in the TypeScript type
+and a caller hands the adapter a plain object. Both looked green. Every gate this epic found
+certifying nothing had that shape, passing for a reason other than the one its name claimed, and the
+only way to tell the two apart is to break the thing the gate exists to catch and watch whether it
+fails.
 
 Thirteen of twenty-six entries now settle by predicate, up from eleven of twenty-seven, and every one
 of the remaining thirteen carries a reason naming what would have to exist for a check to decide it.
