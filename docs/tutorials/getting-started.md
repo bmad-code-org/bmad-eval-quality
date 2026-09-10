@@ -9,7 +9,7 @@ sidebar:
 
 Five minutes. You will install the binary, compile a real eval contract, and watch the compiler reject a broken one.
 
-An **eval contract** is a JSON document that says what a system is supposed to do, written so an automated check can resolve it. The package ships twenty-one of them, so you do not have to write one yet.
+An **eval contract** is a JSON document that says what a system is supposed to do, written so an automated check can resolve it. The package ships twenty-two of them, so you do not have to write one yet.
 
 ## Before you start
 

@@ -2,8 +2,8 @@
 title: 'The published surface, the corpus, and the census'
 type: 'feature'
 created: '2026-09-09'
-status: 'draft'
-review_loop_iteration: 0
+status: 'done'
+review_loop_iteration: 2
 context:
   - _bmad-output/implementation-artifacts/epic-11-context.md
   - _bmad-output/implementation-artifacts/11-4-the-operation-shape-for-a-tool-call.md
@@ -75,22 +75,22 @@ context:
 
 **The census and its four consumers**
 
-- `tests/schemas/published-census.ts` -- the six pinned constants and the procedure at `:15-17`. Read at 1.4.2: `CENSUS_BY_DOCUMENT:20-33` (twelve documents summing to 3023), `CENSUS_BY_KEYWORD:36-56` (nineteen keywords summing to 3023), `CENSUS_TOTAL:64` (3023), `DEFS_BY_DOCUMENT:67-80` (eval-contract 7, probe 7, evidence-artifact 3, sealed-run-record 4, evaluator-configuration 1, the other seven 0), `REJECT_CASE_COUNTS:88-92` (contract 55, artifact 96, total 151), `ACCEPT_FIXTURE_COUNTS:100-107` (accepts 12, probeClasses 4, qualificationRoutes 5, unionBranches 8, relevanceContracts 3, distinctInstances 22) with `ACCEPT_FIXTURE_TOTAL` derived at `:109-114` as 32. Every one of the six arrives at this story carrying a value Story 11.4 or Story 11.6 wrote, and this story re-reads all six and edits none. Decision 2 records the chain.
-- `tests/schemas/published/keyword-mutation.test.ts` -- the sweep. `:119-144` asserts the full census across the twelve documents, `:135-137` is the three-way comparison that names which constant moved, and `:138-143` re-adds both maps against the total. `:190-193` is the assertion that fails on a published keyword no fixture flips, which is why a union branch and its seed ship in one diff. The sweep body at `:83-117` deletes each mutable keyword occurrence and requires a corpus verdict to flip; `SWEEP_TIMEOUT_MS` at `:38` is 240 s because eval-contract alone carries 1108 occurrences.
-- `tests/schemas/published/published-rejection.test.ts` -- the union-branch census. `:94-96` pins the three reject-case counts, `:182-204` assembles `PUBLISHED_ACCEPT_FIXTURES` from the five lists, `:215-219` asserts the total, and `:222-238` pins the distinct-instance count with the alias reasoning. The comments at `:215-216` ("six union branches") and `:222` ("Thirty listings, twenty distinct instances") are stale against the constants they document and are corrected here.
+- `tests/schemas/published-census.ts` -- the six pinned constants and the procedure at `:15-17`. The values the Intent quotes were read at 1.4.2, before Stories 11.4 and 11.6 landed; the values actually standing when this story ran are in Decision 9, and this story edited none of the six.
+- `tests/schemas/published/keyword-mutation.test.ts` -- the sweep. `:119-144` asserts the full census across the twelve documents, `:135-137` is the three-way comparison that names which constant moved, and `:138-143` re-adds both maps against the total. `:190-193` is the assertion that fails on a published keyword no fixture flips, which is why a union branch and its seed ship in one diff. The sweep body at `:83-117` deletes each mutable keyword occurrence and requires a corpus verdict to flip; `SWEEP_TIMEOUT_MS` at `:42` is 600 s because eval-contract alone carries 1304 occurrences after Stories 11.4 and 11.6.
+- `tests/schemas/published/published-rejection.test.ts` -- the union-branch census. `:94-96` pins the three reject-case counts, `:182-204` assembles `PUBLISHED_ACCEPT_FIXTURES` from the five lists, `:215-219` asserts the total, and `:222-238` pins the distinct-instance count with the alias reasoning. The two comments this story was to correct read "eleven union branches" and "Thirty-five listings, twenty-five distinct instances" when it ran, so Story 11.6 already moved them; Decision 11 records that.
 - `tests/schemas/publish.test.ts` -- the document census. `:61-65` builds one document per registry key and pins `INTERCHANGE_ARTIFACT_KEYS` at twelve; `:87-104` walks every `$defs` name, rejects positional and underscore-prefixed names, and compares the per-document map to `DEFS_BY_DOCUMENT`; `:196-203` pins the ledger split.
 - `tests/schemas/published/differential.test.ts` -- the Zod-to-JSON-Schema equivalence. `:28-34` counts every hand-written reject case across the twelve and asserts the total against `REJECT_CASE_COUNTS.total`.
 
 **The fixtures**
 
-- `tests/schemas/fixtures/artifact-fixtures.ts:1109-1161` -- `UNION_BRANCH_FIXTURES`, 8 entries at 1.4.2. Two of the eight are `cli`-only: `eval-contract/command-interface` at `:1110-1117`, whose comment says the `cli` branch's operation shape, input binding and witness leg spelling "are reachable from no other seed", and `probe/command-signature` at `:1136-1142`. Story 11.4 adds two, `eval-contract/mcp-interface` beside the first and its `mcp` probe accept fixture, and Story 11.6 adds the `DefectSignature` `mcp` seed beside the second. This story reads all three and adds none.
+- `tests/schemas/fixtures/artifact-fixtures.ts` -- `UNION_BRANCH_FIXTURES`, 8 entries at 1.4.2 and 11 when this story ran. Two of the eight are `cli`-only: `eval-contract/command-interface` at `:1110-1117`, whose comment says the `cli` branch's operation shape, input binding and witness leg spelling "are reachable from no other seed", and `probe/command-signature` at `:1136-1142`. Story 11.4 adds two, `eval-contract/mcp-interface` beside the first and its `mcp` probe accept fixture, and Story 11.6 adds the `DefectSignature` `mcp` seed beside the second. This story reads all three and adds none.
 - `tests/schemas/published/corpus.ts:28-45` -- `seedsOf`, the five seed lists the census sums. Three are closed by their own semantics: `ARTIFACT_ACCEPT_FIXTURES` is one per artifact, `PROBE_CLASS_FIXTURES` is AD-9's classes, and `QUALIFICATION_ROUTE_FIXTURES` is AD-9's five routes, with the comment at `:38-41` recording why the fifth route needed naming. `RELEVANCE_CONTRACTS` is eval-contract only. So `UNION_BRANCH_FIXTURES` at `:45-47` is the one open list, which is why Story 11.4's `mcp` probe accept fixture lands there and why that story moves the pair by two.
 - `tests/schemas/fixtures/artifact-fixtures.ts:480-489` -- `fragmentSelectionSignature`'s docblock, which states the rule the two seeds above satisfy: it is "the only seed that reaches those keywords: a branch nothing exercises is a branch AD-13's sweep reports as unprotected" (`:486-488`).
 - `tests/schemas/fixtures/command-contract.ts:17` and `:191` -- `commandContract` and `artifactCommandContract`, the two `DEV_CORPUS_CONTRACTS` members whose reason for shipping is the interface kind, and the precedent the `mcp` exemplar joins them under.
 - `tests/schemas/fixtures/mcp-contract.ts` -- the `mcp` exemplar itself, authored by Story 11.4 on `command-contract.ts`'s model with two distinct tools, a sensitivity witness and a structured-result descriptor, and used there as the `PermittedInterface` union-branch seed. Story 11.7 imports it. This story promotes it into `DEV_CORPUS_CONTRACTS` and writes no new fixture module.
 - `tests/schemas/fixtures/reject-cases.ts:133-146` -- `interface-kind-outside-the-four`, constraint `'an interface kind is api, web, cli, or mcp'`, mutating `kind` to `'grpc'` and expecting `invalid_union` / `const` at `/permittedInterfaces/0/kind`. Its comment at `:139-141` explains that the discriminated union makes both sides report the discriminator.
 - `tests/schemas/fixtures/artifact-reject-cases.ts:1268-1279` -- `brief-interface-kind-outside-the-four`, constraint `"an interface kind is AD-19's closed four"`, expecting `invalid_value` / `enum`.
-- `src/core/schemas/interface.ts:264` -- `INTERFACE_KINDS = ['api', 'web', 'cli', 'mcp']`, four and staying four.
+- `src/core/schemas/interface.ts:333` -- `INTERFACE_KINDS = ['api', 'web', 'cli', 'mcp']`, four and staying four. The Intent's `:264` is the 1.4.2 line; Story 11.4's operation shape moved it.
 
 **The dev corpus**
 
@@ -130,6 +130,8 @@ This story therefore claims exactly four edits at their source and nothing past 
 - `_bmad-output/.../spike-worked-example/probe.json:35` -- `"interfaceKind": "api"`, the generated mirror of that line. The chain's `corpusDigest` at `evidence-artifact.json:172` is a placeholder, so the corpus gaining a member does not reach it.
 
 **The AD registries and the spine**
+
+The spine lives at `_bmad-output/planning-artifacts/architecture/architecture-eval-quality-2026-07-29/ARCHITECTURE-SPINE.md`; the bare `ARCHITECTURE-SPINE.md` the Intent uses is shorthand for it.
 
 - `scripts/check-ad5-registry.ts:96` -- `ROW_PATTERN = /^\s*\|\s*` + backtick + `([a-z0-9-]+)` + backtick + `\s*\|/`, the first column and nothing after it, so `Fires when` and `Cited by` are checked by no script.
 - `ARCHITECTURE-SPINE.md:232` -- at 1.4.2 the row reads ``| `unsupported-interface-kind` | a declared interface kind is `web`, `cli`, or `mcp` | AD-10 |``. `cli` stopped firing it in Epic 9 and `mcp` stops in Story 11.5, which owns the edit because opening the kind is what falsifies the cell. This story reads the row and asserts it names `web` alone.
@@ -171,8 +173,8 @@ Checked and holding, listed so a later reader does not read the survival as a mi
 - `tests/coverage/fixtures/corpus.ts:555-559` -- `DEV_CORPUS_CONTRACTS.length`, the corpus total.
 - `corpus/dev/index.json` -- entries of kind `contract` under `contracts/`, and the subset carrying `structuralFailure`, which give the compiling count and the failing-by-design count. The manifest is itself byte-gated by `check:corpus`, so the gate reads a value another gate already proved.
 - The published contracts' own `permittedInterfaces[].kind` -- the per-kind split, 18 `api`, 2 `cli` and 1 declaring no interface today.
-- `src/adapters/index.ts:12-21` -- the four `create*Adapter` factory exports (`createCommandLineAdapter` at `:13`, then the corpus, file-system and clock factories at `:17`, `:19` and `:21`) behind "four reference adapters".
-- `src/testing/conformance.ts:40` -- `CONFORMANCE_OUTCOME_COUNTS`, the five digits at `cli-commands.md:229`.
+- `src/adapters/index.ts` -- the `create*Adapter` factory exports behind the reference-adapter count. There are five once Story 11.13's `createMcpAdapter` lands, and both published sentences already read five, so the gate computes the number from the barrel's own exports rather than pinning it.
+- `src/testing/conformance.ts:40` -- `CONFORMANCE_OUTCOME_COUNTS`, six digits at `cli-commands.md:229` once Story 11.7 added `mcp-probe`. The gate's one pattern captures all six.
 - `src/core/schemas/artifact.ts:99` -- `INTERCHANGE_ARTIFACT_KEYS.length`, the twelve published schema documents.
 - No numeral-to-word renderer exists in the tree. `scripts/dev-corpus-target.ts:106-145` is a template literal with no interpolation, so every numeral in it is a hand-typed word, and `src/core/coverage/table.ts:69` replaces hyphens in a state name. The gate ships its own closed word table for the range the docs use.
 
@@ -180,24 +182,24 @@ Checked and holding, listed so a later reader does not read the survival as a mi
 
 **Execution:**
 
-- [ ] `tests/schemas/fixtures/mcp-contract.ts` -- read Story 11.4's exemplar and confirm it carries what the corpus needs: two distinct tools that do not collide under `duplicate-operation-signature`, Story 11.3's response descriptor, a nominated success indicator, and a sensitivity witness on every input-bearing operation. Every string in it clears `check:boundary`'s twelve patterns and AD-18's excluded content. A gap here is a finding against Story 11.4 and is fixed in that file with the finding recorded.
-- [ ] `tests/coverage/fixtures/corpus.ts` -- promote `mcpContract` into `DEV_CORPUS_CONTRACTS` (`:555-559`) and leave `CORPUS_CONTRACTS` at 19. Extend the docblock at `:537-546` to say why a third kind ships without a cell, and cut whatever the extension makes redundant.
-- [ ] `tests/schemas/fixtures/artifact-fixtures.ts` -- read `UNION_BRANCH_FIXTURES` and confirm all three `mcp` seeds landed: Story 11.4's `PermittedInterface` seed and its probe accept fixture, and Story 11.6's `DefectSignature` seed, each with a comment naming the keywords no other seed reaches, following `:486-488`'s rule and `:1110-1117`'s spelling. This story adds no seed. A missing seed is a finding against its story and shows up first as an unprotected occurrence at `keyword-mutation.test.ts:190-193`.
-- [ ] `tests/schemas/published-census.ts` -- run the suite and read all six constants back. Expect no edit: `unionBranches` and `distinctInstances` at whatever Story 11.6's seed left, starting from the 10 and 24 Story 11.4's two seeds produced; `CENSUS_BY_DOCUMENT`, `CENSUS_BY_KEYWORD` and `CENSUS_TOTAL` at the values Story 11.6's probe and sealed-run-record changes left; `DEFS_BY_DOCUMENT` at whatever `McpDefectSignature`'s `.meta` produced; `REJECT_CASE_COUNTS` at whatever the two stories' AD-13 fixtures added; and `ACCEPT_FIXTURE_TOTAL` derived at `:109-114`. Record each read value with the story that moved it. A failure here means an earlier story shipped without following the procedure at `:15-17`, and the number is moved by reading the failure with that finding recorded.
-- [ ] `tests/schemas/published/published-rejection.test.ts` -- correct the two stale comments at `:215-216` and `:222` against the constants they document, so the prose and the pinned numbers agree.
-- [ ] `tests/schemas/fixtures/artifact-reject-cases.ts:1271` -- name the four kinds, matching `reject-cases.ts:135`'s spelling, so a reader of the case learns which four without opening AD-19. `reject-cases.ts:133-146` is re-read and its keyword, issue code and paths are confirmed unchanged.
-- [ ] `scripts/dev-corpus-target.ts` -- move four of the epic's six numerals at their source: `:65`'s "twenty-one" and `:108`'s "Twenty-one" and `:114`'s "twenty-one" all to twenty-two, and `:115`'s "Eighteen" to Nineteen. Leave `:114`'s "Nineteen" and `:117`'s "Three", and leave `:115`'s "two" for Story 11.10, each for the reason in the Code Map's composition table. Describe the tool-server contract in "What is here", and cut the text the third kind makes redundant. This is published prose and gets the voice pass at its source.
-- [ ] `npm run generate:dev-corpus && npm run check:corpus` -- regenerate; expect 25 index entries, 23 of kind `contract`, zero orphans, zero drift.
-- [ ] `tests/architecture/dev-corpus.test.ts` -- confirm case 165's pinned 3 structural failures against the new total of 22 and case 163's four absence patterns against the rewritten README.
-- [ ] `tests/application/mcp-end-to-end.test.ts` -- the exemplar through all four stages, per Decision 8. `compile` and `seal` over `mcpContract`; `runPreflight` with the exemplar, an `mcp` probe, and a hand-written fake port on `tests/preflight/fixtures/probe-port.ts`'s `echoPort` model; then `runScore` over a sealed run record naming the exemplar, following the six inputs `tests/application/fixtures/score-fixtures.ts` already assembles. Assert the pre-flight verdict passes and the score ladder carries a non-null contract verdict, which is what `worked-example-target.ts:1301-1304` fails the build on for the api chain. No filesystem I/O, per AD-30.
-- [ ] `npm run generate:schemas && npm run check:schemas` -- expect nothing to regenerate, because Stories 11.4 and 11.6 each committed their own regenerated documents. A moved byte names the story that shipped a stale `schemas/` tree.
-- [ ] `ARCHITECTURE-SPINE.md` -- read `:232`, `:288` and `:656` and confirm each says what the shipped behaviour does: the AD-5 "Fires when" cell names `web` alone, AD-10's rule sentence names the kinds v0 accepts, and `:656` no longer defers `mcp`. Story 11.5 owns all three edits; this story writes no spine byte and reports any survivor as a finding against 11.5.
-- [ ] The six hand-written counts -- correct each at its source per the Code Map, then `npm run build:shareable && npm run check:shareable` for `README.md`'s projection.
-- [ ] `scripts/check-doc-counts.ts` and `package.json` -- add the count gate and wire `check:doc-counts` into `validate`, per Decision 7. It holds one table entry per gated sentence: the file, a regex capturing the numeral, the expression that computes it, and the rendering. A pattern matching nothing is a dead entry and fails, so a rewritten sentence cannot silence the check. The new script name and value are scanned by `check:boundary` as `package.json#scripts.check:doc-counts` (`scripts/check-package-boundary.ts:109-111`).
-- [ ] `CHANGELOG.md` `[Unreleased]` -- the disclosure, on `:285-290`'s shape and following the one precedent at `9-5-the-published-surface-the-corpus-and-the-disclosed-breaks.md:127`. It names two things: the dev corpus gaining a member, which moves the corpus digest and so stops a scoring version computed before this epic being comparable with one computed after, and the new `validate` step `check:doc-counts` adds. The non-comparability note is stated once for this epic and this is the story that states it, because this is the first story that moves the corpus. `:578`'s standing `schemaVersion` statement is left alone.
-- [ ] `grep -rn mcp src schemas` -- confirm every surviving mention describes the shipped kind, and hand anything prose-shaped to Story 11.9 by name.
-- [ ] Voice pass -- grep every file this story edited for `, not `, `rather than`, `instead of`, `as opposed to`, `, never `, `no longer`, and keep only the hits where both halves carry a fact.
-- [ ] `_bmad-output/project-knowledge/learning-path-step-by-step.md` -- add this story's step as the next number after the highest in the file, marked `(epic11-story8)`, plus its table row, following `learning-path-template.md`. Written after the peer review's findings are addressed.
+- [x] `tests/schemas/fixtures/mcp-contract.ts` -- read Story 11.4's exemplar and confirm it carries what the corpus needs: two distinct tools that do not collide under `duplicate-operation-signature`, Story 11.3's response descriptor, a nominated success indicator, and a sensitivity witness on every input-bearing operation. Every string in it clears `check:boundary`'s twelve patterns and AD-18's excluded content. A gap here is a finding against Story 11.4 and is fixed in that file with the finding recorded.
+- [x] `tests/coverage/fixtures/corpus.ts` -- promote `mcpContract` into `DEV_CORPUS_CONTRACTS` (`:555-559`) and leave `CORPUS_CONTRACTS` at 19. Extend the docblock at `:537-546` to say why a third kind ships without a cell, and cut whatever the extension makes redundant.
+- [x] `tests/schemas/fixtures/artifact-fixtures.ts` -- read `UNION_BRANCH_FIXTURES` and confirm all three `mcp` seeds landed: Story 11.4's `PermittedInterface` seed and its probe accept fixture, and Story 11.6's `DefectSignature` seed, each with a comment naming the keywords no other seed reaches, following `:486-488`'s rule and `:1110-1117`'s spelling. This story adds no seed. A missing seed is a finding against its story and shows up first as an unprotected occurrence at `keyword-mutation.test.ts:190-193`.
+- [x] `tests/schemas/published-census.ts` -- run the suite and read all six constants back. Expect no edit: `unionBranches` and `distinctInstances` at whatever Story 11.6's seed left, starting from the 10 and 24 Story 11.4's two seeds produced; `CENSUS_BY_DOCUMENT`, `CENSUS_BY_KEYWORD` and `CENSUS_TOTAL` at the values Story 11.6's probe and sealed-run-record changes left; `DEFS_BY_DOCUMENT` at whatever `McpDefectSignature`'s `.meta` produced; `REJECT_CASE_COUNTS` at whatever the two stories' AD-13 fixtures added; and `ACCEPT_FIXTURE_TOTAL` derived at `:109-114`. Record each read value with the story that moved it. A failure here means an earlier story shipped without following the procedure at `:15-17`, and the number is moved by reading the failure with that finding recorded.
+- [x] `tests/schemas/published/published-rejection.test.ts` -- correct the two stale comments at `:215-216` and `:222` against the constants they document, so the prose and the pinned numbers agree.
+- [x] `tests/schemas/fixtures/artifact-reject-cases.ts:1271` -- name the four kinds, matching `reject-cases.ts:135`'s spelling, so a reader of the case learns which four without opening AD-19. `reject-cases.ts:133-146` is re-read and its keyword, issue code and paths are confirmed unchanged.
+- [x] `scripts/dev-corpus-target.ts` -- move four of the epic's six numerals at their source: `:65`'s "twenty-one" and `:108`'s "Twenty-one" and `:114`'s "twenty-one" all to twenty-two, and `:115`'s "Eighteen" to Nineteen. Leave `:114`'s "Nineteen" and `:117`'s "Three", and leave `:115`'s "two" for Story 11.10, each for the reason in the Code Map's composition table. Describe the tool-server contract in "What is here", and cut the text the third kind makes redundant. This is published prose and gets the voice pass at its source.
+- [x] `npm run generate:dev-corpus && npm run check:corpus` -- regenerate; expect 25 index entries, 23 of kind `contract`, zero orphans, zero drift.
+- [x] `tests/architecture/dev-corpus.test.ts` -- confirm case 165's pinned 3 structural failures against the new total of 22 and case 163's four absence patterns against the rewritten README.
+- [x] `tests/application/mcp-end-to-end.test.ts` -- the exemplar through all four stages, per Decision 8. `compile` and `seal` over `mcpContract`; `runPreflight` with the exemplar, an `mcp` probe, and a hand-written fake port on `tests/preflight/fixtures/probe-port.ts`'s `echoPort` model; then `runScore` over a sealed run record naming the exemplar, following the six inputs `tests/application/fixtures/score-fixtures.ts` already assembles. Assert the pre-flight verdict passes and the score ladder carries a non-null contract verdict, which is what `worked-example-target.ts:1301-1304` fails the build on for the api chain. No filesystem I/O, per AD-30.
+- [x] `npm run generate:schemas && npm run check:schemas` -- expect nothing to regenerate, because Stories 11.4 and 11.6 each committed their own regenerated documents. A moved byte names the story that shipped a stale `schemas/` tree.
+- [x] `ARCHITECTURE-SPINE.md` -- read `:232`, `:288` and `:656` and confirm each says what the shipped behaviour does: the AD-5 "Fires when" cell names `web` alone, AD-10's rule sentence names the kinds v0 accepts, and `:656` no longer defers `mcp`. Story 11.5 owns all three edits; this story writes no spine byte and reports any survivor as a finding against 11.5.
+- [x] The six hand-written counts -- correct each at its source per the Code Map, then `npm run build:shareable && npm run check:shareable` for `README.md`'s projection.
+- [x] `scripts/check-doc-counts.ts` and `package.json` -- add the count gate and wire `check:doc-counts` into `validate`, per Decision 7. It holds one table entry per gated sentence: the file, a regex capturing the numeral, the expression that computes it, and the rendering. A pattern matching nothing is a dead entry and fails, so a rewritten sentence cannot silence the check. The new script name and value are scanned by `check:boundary` as `package.json#scripts.check:doc-counts` (`scripts/check-package-boundary.ts:109-111`).
+- [x] `CHANGELOG.md` `[Unreleased]` -- the disclosure, on `:285-290`'s shape and following the one precedent at `9-5-the-published-surface-the-corpus-and-the-disclosed-breaks.md:127`. It names two things: the dev corpus gaining a member, which moves the corpus digest and so stops a scoring version computed before this epic being comparable with one computed after, and the new `validate` step `check:doc-counts` adds. The non-comparability note is stated once for this epic and this is the story that states it, because this is the first story that moves the corpus. `:578`'s standing `schemaVersion` statement is left alone.
+- [x] `grep -rn mcp src schemas` -- confirm every surviving mention describes the shipped kind, and hand anything prose-shaped to Story 11.9 by name.
+- [x] Voice pass -- grep every file this story edited for `, not `, `rather than`, `instead of`, `as opposed to`, `, never `, `no longer`, and keep only the hits where both halves carry a fact.
+- [x] `_bmad-output/project-knowledge/learning-path-step-by-step.md` -- add this story's step as the next number after the highest in the file, marked `(epic11-story8)`, plus its table row, following `learning-path-template.md`. Written after the peer review's findings are addressed. Landed as Step 54: Story 11.12 merged in a parallel worktree while this story was in review and took Step 53, so this branch was rebased onto its merge and the step and its table row renumbered. Decision 19 records it.
 
 **Acceptance Criteria:**
 
@@ -247,7 +249,9 @@ Story 9.5's Decision 4 chose a Vitest test over a checker script for one number 
 
 The rendering question has one answer the tree forces. No numeral-to-word helper exists: `scripts/dev-corpus-target.ts:106-145` is a template literal with no interpolation, so its five spelled-out numerals are hand-typed, and `src/core/coverage/table.ts:69` is a hyphen-to-space replace on a coverage state. So the check ships a closed word table for the range the docs use, computes the value from its source, renders it, and compares against a captured group. The pages keep their words.
 
-Covered, counted so the arithmetic is checkable: the corpus contract total at `README.md:180`, `what-ships.md:20`, `cli-commands.md:233`, `author-behavioral-contracts.md:94`, `evaluate-ai-feature-behavior.md:234` and `getting-started.md:12` is six; the compiling count and the failing-by-design count at `cli-commands.md:233` and `author-behavioral-contracts.md:94` is four; the `api`-declaring count at `evaluate-ai-feature-behavior.md:234` is one; the `cli`-declaring count at `evaluate-agent-behavior.md:294` is one; the reference-adapter count at `what-ships.md:20` and `cli-commands.md:223` is two. Fourteen numerals across seven pages, plus one further entry capturing the five `CONFORMANCE_OUTCOME_COUNTS` digits at `cli-commands.md:229` in a single pattern. Every one has a source of truth already under another gate.
+Covered, counted so the arithmetic is checkable: the corpus contract total at `README.md:180`, `what-ships.md:20`, `cli-commands.md:233`, `author-behavioral-contracts.md:94`, `evaluate-ai-feature-behavior.md:234` and `getting-started.md:12` is six; the compiling count and the failing-by-design count at `cli-commands.md:233` and `author-behavioral-contracts.md:94` is four; the `api`-declaring count at `evaluate-ai-feature-behavior.md:234` is one; the `cli`-declaring count at `evaluate-agent-behavior.md:294` is one; the reference-adapter count at `what-ships.md:20` and `cli-commands.md:223` is two. Fourteen numerals across seven pages, plus one further entry capturing the `CONFORMANCE_OUTCOME_COUNTS` digits at `cli-commands.md:229` in a single pattern, which is six digits rather than five once Story 11.7 added `mcp-probe`.
+
+The peer review found the hole in that split, and Decision 16 records the nine entries it added. The shipped gate holds twenty-three numerals across nine files.
 
 `evaluate-agent-behavior.md:294`'s "two contracts describing a system behind a command" is the fourteenth and it earns its entry in this story, ahead of the move it will have to catch. It reads two at this story's boundary and Story 11.10 moves it to three, so shipping the entry now means the gate is what catches that move. Every corpus numeral the epic touches is then held by the gate from the first story that touches the corpus, which is the whole point of building the gate in the same story that grows the corpus.
 
@@ -259,6 +263,334 @@ The epic's definition of done says an `mcp` contract compiles, seals, pre-flight
 Three places could carry it and two are refused on what the tree says. The worked chain at `scripts/worked-example-target.ts` calls `compile` at `:1193`, `seal` at `:1194`, `sealProbeSet` at `:1222` and `score` at `:1289`, and it never calls `preflight`: `:1211` parses the authored `PreflightVerdict` from `:1134-1141`. So riding it would leave one of the four stages unrun, and retargeting `SEEDED_SIGNATURE` at `:678-682` off `api` would delete the epic-8 evidence the chain exists to carry, while adding a second chain doubles `WORKED_EXAMPLE_FILES` at `:73-79` and its byte check. The corpus's compile-and-seal example is one seed by design at `scripts/dev-corpus-target.ts:69`, and this story's Ask First already prices a second one: `scripts/check-doc-invocations.mjs` replays every documented command against it.
 
 So it is a Vitest test beside the four application entry points it chains. AD-30 permits it, because `runPreflight` and `runScore` are in-process calls over authored values against a hand-written fake port, which is exactly what `tests/application/preflight.test.ts` and `tests/application/score.test.ts` already do, and neither touches the filesystem. It reuses `tests/preflight/fixtures/probe-port.ts`'s `echoPort` shape and the six inputs `tests/application/fixtures/score-fixtures.ts` assembles, so the cost is the fixture chain rather than a new mechanism. Downstream consequence: the next kind opened inherits a worked template for proving all four stages, and the ladder assertion is the same one `worked-example-target.ts:1301-1304` fails the build on, so a kind that scores to a null verdict cannot pass quietly.
+
+**Decision 9: the six census constants read back unchanged, and here are the values that stood.**
+The suite ran green with no edit to `tests/schemas/published-census.ts`, which is the outcome
+Decision 2 predicted. The values, read off the file at the time this story ran and each attributed to
+the story that last moved it:
+
+| Constant | Value when this story ran | Who moved it |
+|---|---|---|
+| `CENSUS_BY_DOCUMENT` | twelve documents summing to 3255, `eval-contract` 1304 and `probe` 632 the two largest | 11.4 for the eval contract and the probe's first bump, 11.6 for the probe's second and the sealed run record's |
+| `CENSUS_BY_KEYWORD` | nineteen keywords summing to 3255 | the same two |
+| `CENSUS_TOTAL` | 3255 | the same two |
+| `DEFS_BY_DOCUMENT` | eval-contract 7, probe 7, evidence-artifact 3, sealed-run-record 4, evaluator-configuration 1, the other seven 0 | unchanged since before this epic; `McpDefectSignature` landed inside `probe`'s existing seven |
+| `REJECT_CASE_COUNTS` | contract 55, artifact 110, total 165 | 11.4 and 11.6, fourteen artifact cases between them |
+| `ACCEPT_FIXTURE_COUNTS` | accepts 12, probeClasses 4, qualificationRoutes 5, unionBranches 11, relevanceContracts 3, distinctInstances 25; `ACCEPT_FIXTURE_TOTAL` derives 35 | 11.4 took the pair 8/22 to 10/24, 11.6 took it to 11/25 |
+
+The 1.4.2 numbers the Intent quotes are the pre-epic reading and none of them is the number this
+story met. That is the mechanism working: the constants moved in the diffs that moved the bytes, and
+this story's job was to read them, not to predict them. Downstream consequence: Stories 11.10 through
+11.12 add corpus members and no accept fixture or reject case, so they should expect the same
+no-edit outcome and a red census at their boundary is a finding against whoever last touched
+`schemas/`.
+
+**Decision 10: two MCP servers publishing one tool name stay refused, and the recorded fix is
+withdrawn as the wrong trade.**
+Story 11.4 pinned the refusal at `tests/schemas/mcp-interface.test.ts` and wrote that "the fix if it
+ever bites is a namespace on the map key". This story owns the corpus, so it owns the question of
+whether the corpus needs two servers, and the answer is no in a way that is not about the corpus at
+all.
+
+Namespacing `checkDuplicateOperationSignature`'s `seen` key by `logicalId` would admit the pair. It
+would also break the invariant `resolveHomeOperation` rests on. That function scans the interfaces in
+declaration order and returns the first operation in the signature's family whose rendered identity
+matches, and its own docblock says why that is total: "A collision inside one contract and one family
+has already failed compilation under `duplicate-operation-signature`, so the first match is the only
+match for any contract that compiled." A defect signature declares a kind and a tool name, and AD-40
+requires that identity be contract-independent, so it carries nothing naming a server. Admit the pair
+with the resolver as written and a coded compile failure an author reads becomes a silent binding to
+whichever interface was declared first.
+
+The peer review named the repair that first draft missed, and it is worth recording rather than
+glossing: the resolver could scan every interface and return `null` when two match. That stays loud
+rather than silent, because `qualification.ts:851` already turns a null home operation into
+`declarationChecksRan: false`, which is a recorded refusal. So the ruling rests on cost rather than on
+impossibility. The price of admitting the pair is an ambiguity-aware resolver, a qualification state
+that says "two tools answer to this name", and a published shape an author has to reason about; the
+price of the limitation is that a contract describing two servers that publish a common tool name is
+written as two contracts. The second is cheaper, and the first buys nothing the corpus needs.
+
+So the pin stands, its comment is rewritten to record why the namespace is not the unwritten fix, and
+a second test pins the other direction: two `mcp` interfaces whose tool names differ compile past the
+duplicate check and each signature resolves home to the tool on the server that publishes it. Both
+were mutation-checked. Namespacing the key by `logicalId` reds the refusal test and the api/web one;
+rendering a constant from `mcpSignature` reds the admitting test. Downstream consequence: the corpus
+ships one tool server with two tools, which is the shape that exercises every predicate, and a later
+story that genuinely needs two servers in one contract has to give AD-40 a server segment first.
+
+**Decision 11: two tasks in this story's list were already discharged by Story 11.6, and are recorded
+rather than left looking undone.**
+The task to correct `published-rejection.test.ts:215-216` and `:222` found both comments already
+agreeing with their constants: "eleven union branches" and "Thirty-five listings, twenty-five distinct
+instances". Story 11.6 moved the constants and the prose in one diff, which is the discipline
+`published-census.ts:15-17` asks for. The task to confirm all three `mcp` seeds in
+`UNION_BRANCH_FIXTURES` found all three present, `eval-contract/mcp-interface`,
+`probe/mcp-manifestation-witness` and the `DefectSignature` seed, each with its own comment. Neither
+task produced a diff and neither is a gap.
+
+**Decision 12: the exemplar's two type-violating oracles declared an inverted polarity, and this
+story fixes it in Story 11.4's file.**
+`mcpContract`'s O-006 and O-007 each declared `polarity: 'expects-violation'` on both the direction
+and the oracle, over a check reading `ok == false`. Those are the two AD-20 rule 3 oracles, and the
+check body states what a correct server does: refuse a type-violating argument. But
+`src/core/score/outcome.ts:158-160` reads an `expects-violation` oracle as satisfied when its check
+resolves `false`, and `src/core/seal/direction-prose.ts:124` renders the declaration as "The declared
+polarity expects this relation to be a violation." So a correct server refusing the call produced a
+`disagrees` corroboration on both oracles, and the sealed brief told a reader the opposite of what the
+commentary beside it said.
+
+There are two correct spellings and the shipped fixture now carries one of each. O-007 takes
+`expects-hold` with its check stating the refusal, which is the idiom every other oracle in the
+fixture uses. O-006 keeps `expects-violation` and inverts its check operand to `{ literal: true }`, so
+the check states the violation and a server that refused the call satisfies it. Both resolve
+`confirmed` and `agrees` against the run record this story authored, where both read `disagrees`
+before, and `negativeDomain` reads correctly under either: "A search answering success over a
+malformed argument" is what falsifies `ok == false` and is also the violation `ok == true` names.
+
+The first draft of this decision took `expects-hold` on all four sites and argued that losing the
+corpus's only published `expects-violation` example was the cheaper of two evils. The peer review
+showed that was a false choice by building the third option and running it. Keeping one of each is
+better than either: an author reading the corpus sees both forms of one requirement side by side, and
+the comment on O-006 names the trap that produced the defect. AD-20 rule 3's satisfaction predicate
+(`src/core/coverage/satisfaction.ts:381-419`) reads the binding and the addressing check and never
+reads polarity, so the AD-31 grading in `tests/coverage/mcp-coverage.test.ts` is unmoved either way.
+This is a finding against Story 11.4 and it is fixed in that story's file, per this story's own task
+wording.
+
+The measurement that says the repair needed a test rather than only a fix: with the polarity reverted
+and `tests/application/mcp-end-to-end.test.ts` excluded, the whole suite runs 4104 tests across 124
+files and stays green. Nothing else in the repository catches it. In the file as first written, one
+assertion did, `expect(outcome.corroboration).toBe('agrees')`; the shipped file catches it twice,
+because Decision 17's polarity-driven `checkResolution` assertion reds on the same revert. That is
+Story 11.7's finding about deletable denial assertions read the other way: the defect shipped because
+nothing scored an `mcp` sealed run record, and Decision 8's test is what closes the hole rather than
+the fix alone. The peer review reproduced the measurement to the number, and named one condition
+worth recording: `npm run build` has to have run first, or the self-referential
+`eval-quality/conformance` import fails and 51 tests skip.
+
+**Decision 13: the corpus-digest disclosure is scoped to the caller who digests the published corpus.**
+The task wording said the disclosure names "the dev corpus gaining a member, which moves the corpus
+digest". `runScore`'s `corpusDigest` is caller-attested and no artifact in the pipeline carries it
+(`src/application/score.ts:55-58`), so nothing in this package recomputes on its own and no committed
+artifact moves. What is true, and what the entry says, is narrower: a caller who digests `corpus/dev/`
+as their corpus attests a different value here than on 1.4.2, and the scoring version computed from it
+moves with that value. A caller digesting their own corpus is unaffected. The `[Unreleased]` entry
+also names no corpus total, because Stories 11.10 and 11.11 add members into the same unreleased
+section and a total written here would be stale before the release is cut.
+
+**Decision 14: `DEV_CORPUS_CONTRACTS` parses the tool-server fixture where it spreads the other two.**
+`mcpContract` is `satisfies EvalContract`, and its two operations declare different argument keys, so
+the literal type of `requestShape.arguments.types` is a union carrying `title?: undefined` that no
+`Record<string, KeyType>` accepts and the array assignment fails the typecheck. This is the same
+widening the file's own header records for `satisfiedContract` at `:23-27`, and the same answer:
+`EvalContract.parse`. The two command contracts each declare one argument shape per operation and need
+no parse. Downstream consequence: a later exemplar whose operations declare different request keys
+inherits the parse, and the comment on the line says why.
+
+**Decision 15: five sentences in the frozen Intent were stale when this story ran, and each is
+recorded here rather than edited.**
+The frozen block was written against 1.4.2 and four stories landed between. None of the five changes
+what this story had to do.
+
+1. Every census number in the Intent and the I/O matrix is the 1.4.2 reading. Decision 9 carries the
+   values that actually stood.
+2. `src/core/schemas/interface.ts:264` is now `:333`, and `keyword-mutation.test.ts:38`'s
+   `SWEEP_TIMEOUT_MS` is `:42` and 600 s rather than 240 s. Line drift from Stories 11.4 and 11.6.
+3. `cli-commands.md:229` publishes six per-port conformance counts, not five: Story 11.7 added
+   `mcp-probe` 14. Decision 7's arithmetic still holds, because that entry was always one entry
+   capturing one pattern; the pattern now has six capture groups.
+4. `cli-commands.md:223` and `what-ships.md:20` already read "five reference adapters", which Story
+   11.13 moved when `createMcpAdapter` shipped. Both were correct on arrival, so the gate's job there
+   was to start holding them rather than to correct them.
+5. `ARCHITECTURE-SPINE.md` is at
+   `_bmad-output/planning-artifacts/architecture/architecture-eval-quality-2026-07-29/`. The bare
+   filename in the Intent resolves to that file.
+
+The Boundaries text carves out factual corrections to sentences this story's own change falsifies.
+None of the five is such a sentence, so none was edited; they are divergences and this is the record.
+
+## Checkpoint decisions taken without the human
+
+- **The three Ask First items were all declined, which is what the story predicted.** No `src/`
+  behaviour changed: the whole diff under `src/` is empty. No `schemaVersion` moved. No second
+  compile-and-seal example was added, so `EXAMPLE_SEED_ID` stays `satisfied-declarations` and
+  `check:doc-invocations` keeps its one replay surface.
+- **The polarity repair in Decision 12 touches a test fixture rather than `src/`,** so it is not an
+  Ask First item. It does move published corpus bytes, which `check:corpus` regenerated and gated in
+  the same diff.
+- **`check:doc-counts` sits after `check:corpus` in `validate` rather than beside `check:docs`.** The
+  gate reads `corpus/dev/index.json`, so running it after the check that proves those bytes means a
+  drifted corpus is reported by the gate that owns it. The script also compares
+  `DEV_CORPUS_CONTRACTS.length` against the manifest and says so plainly if they disagree, so the
+  ordering is a courtesy rather than a correctness requirement.
+
+**Decision 16: the gate grew from fourteen numerals to twenty-three, because the corpus README was
+the one place the drift could still happen.**
+The peer review's first finding is the one worth naming here. `check:doc-counts` shipped reading
+`README.md` and six `docs/` pages, and `corpus/dev/README.md` carries seven numerals of its own that
+nothing compared to anything. `check:corpus` proves the generated bytes match the template in
+`scripts/dev-corpus-target.ts` and never reads what the words say, so the exact failure this story
+exists to end was still available: Story 11.10 corrects the six published sentences, misses the
+template, `generate:dev-corpus` writes the stale words to disk, `check:corpus` passes byte for byte,
+and the corpus README ships a wrong count in the file an adopter opens first. One story before the
+move that would have triggered it.
+
+The gate now reads the generated README as a gated page: the total twice, the discipline-rule cell
+count against `CORPUS_CONTRACTS.length`, the `cli` and `mcp` counts, the compiling count and the
+failing-by-design count. `EXAMPLE_SEED_ID`'s docblock in the template is the one corpus numeral that
+reaches no generated byte, so it takes two entries of its own over `scripts/dev-corpus-target.ts`.
+Twenty-three numerals across nine files, plus the six conformance digits, and all twenty-three were
+flipped by hand and confirmed to exit non-zero naming the file, the line, the word carried and the
+word owed. Downstream consequence: Stories 11.10 and 11.11 cannot move the corpus without the gate
+naming every sentence they left behind, template included.
+
+Four mechanical defects in the gate surfaced while wiring those entries and all four are fixed. Two
+were found writing them: the matcher built `new RegExp(entry.pattern, 'g')`, which replaces an
+entry's flags rather than adding to them, so an anchored pattern silently lost its `m` and read as a
+dead entry; and `inWords` threw above ninety-nine instead of reporting, so one out-of-range value
+would abort the run before every other failure was collected.
+
+The other two are the peer review's, and the first is the one that mattered. The README patterns
+first joined their words with `\s+`, following the spelling
+`tests/architecture/dev-corpus.test.ts:270-272` uses over the same file. That precedent is wrong in
+front of a capture group: `\s+` matches a blank line, so the captured word can sit in the paragraph
+above the sentence being read. The review demonstrated it, splitting the "What is here" bullet so a
+number word ended the paragraph above the gated phrase; the gate printed twenty-three numerals agreed
+over a README whose gated sentence stated no count at all. The gap is now `WRAP`, whitespace that may
+wrap a line and never crosses a blank one, and the same attack reports a dead entry. The realistic
+route in was Story 11.11 splitting that bullet per kind, so the fix lands one story ahead of it.
+
+The fourth: `cli-commands.md`'s failing-by-design pattern was still unanchored after the first round,
+so "All three of them fail by design:" reported that the count read "them". It carries the same
+sentence-end lookbehind its siblings do. The corpus README's own failing-by-design entry was anchored
+on a line start, which made the paragraph's wrap load-bearing: reflowing it turned the entry dead. It
+is anchored on the end of the sentence before it now, so the prose and the wrap are independent.
+
+**Decision 17: three assertions the peer review proved could not fail were removed or rewritten.**
+The review delete-tested every assertion in `tests/application/mcp-end-to-end.test.ts` against a
+mutation each should catch. Ten were the sole catcher of a named mutation and stay. Three were not,
+and each is handled rather than left green:
+
+- `expect(verdict.fixtureDigest).toMatch(/^sha256:[0-9a-f]{64}$/)` cannot fail. `PreflightVerdict`
+  parses `fixtureDigest` as `Digest`, whose pattern is that regex, and `runPreflight` parses its own
+  verdict before returning, so a bad value throws upstream. Deleted.
+- The interface-kind list was a premise rather than a check; no mutation reaches it without throwing
+  inside `runPreflight` first. Deleted, and `tests/coverage/mcp-coverage.test.ts` is what holds the
+  fixture's kind.
+- `expect(verdict.passed).toBe(true)` is redundant against three other assertions. Kept, because it
+  is the acceptance criterion stated literally and it reads as the boundary between the two halves of
+  the chain.
+
+Two assertions were added on the review's evidence. `outcome.disposition` is now pinned, because the
+review showed the record could attest `not-attempted` with no observations and the file stayed green;
+that mutation now reds. And `checkResolution.resolution` is read off the oracle's declared polarity
+rather than hard-coded to `'true'`, which the hard-coded form would have failed against a correct
+contract the moment Decision 12's `expects-violation` oracle landed. Downstream consequence: the next
+kind that copies this file inherits a template whose oracle loop is polarity-correct.
+
+Six smaller findings were applied without argument: the exemplar's `budgets.maxToolCalls` was 4
+against a five-step plan plus a reset leg, so a runner honouring it would leave rule 7's oracle
+unreached, and it is 20 to match its siblings; the two-server admitting test `unshift`s rather than
+pushes, so the `search_notes` half stops resolving correctly under a resolver that ignores the
+identity; the record attests the digest of the brief the chain actually seals and reports five tool
+calls rather than zero; the fixture helpers take `JsonObject` and `JsonValue` instead of casting
+through `never`; the parse comment in `tests/coverage/fixtures/corpus.ts` is two lines rather than
+five; and one CHANGELOG contrast lost its rejected half.
+
+## Review Findings
+
+`/bmad-code-review` in a peer session, over the staged diff, in two rounds. Thirteen findings, then
+nine more on re-verify, none blocking, all addressed. Findings 1 through 3 are recorded as Decisions 16, 17 and the revisions to Decisions 10
+and 12; findings 4 through 13 are the applied list above plus the two gate defects. The review also
+independently read back the six census constants, confirmed Decision 11's two comments, reproduced
+the `TS2719` behind Decision 14, verified no oracle resolves `vacuous` under AD-4's empty-collection
+rule, and confirmed the five observations bind to the five interaction steps by their declared
+filters rather than by accident.
+
+The re-verify found nine more, and one of them is the class this story was warned to expect: the
+budget fix in round one carried a five-line comment on a one-line declaration, which is round one's
+own finding 6 reintroduced in a different file. The rest split into the gate's paragraph-spanning
+capture and its half-applied anchor, recorded in Decision 16; the two-axis conflation in the capture
+sentence Decision 18 rewrote, where "covers the `arguments` channel only" named the input axis while
+the compile checks it pointed at are about the source axis; three corrections to this story's own
+prose, at Decisions 12 and 18 and the `docs/index.md` caveat; and one comment asserting a mechanism
+that does not exist, which is the defect this story's Design Notes object to and which the anchor
+rewrite removed. The review also swept every feature the exemplar declares against the published
+pages, ten of them, and found the two sentences Decision 18 already names and nothing else.
+
+Three of its checks are worth carrying forward as method. It proved a repair I had dismissed by
+building and running it, which is why Decision 12 now ships both polarity spellings. It ran the
+delete-test the way it has to be run: delete the assertion, then apply a mutation it should catch,
+and see whether anything else still reds. Deleting an assertion from a passing suite proves nothing.
+And it attacked the gate rather than testing it, which is what turned up a pattern that passes green
+over a sentence carrying no count.
+
+**Decision 18: the exemplar carries the first shipped captured binding and the first shipped
+`fixtureReset`, which falsifies two published sentences and narrows Story 11.11.**
+This one was found by sweeping for claims the diff falsifies rather than by following the task list,
+and it is the finding this story would most easily have shipped without.
+`tests/schemas/fixtures/mcp-contract.ts` binds its `read-back` step's `query` argument to the
+identifier the creation call returned and declares a `fixtureReset` on `create-note`. Story 11.4
+authored both deliberately: the reset is the accept fixture for the tool-call arm of
+`FixtureReset.inputs`, reachable from no other declaration. Promoting the fixture into the corpus
+therefore publishes both for the first time, and a scan of the whole corpus confirms
+`notes-tool-server.json` is the only member carrying either.
+
+Two published sentences say the opposite and both are corrected here, under the Boundaries carve-out
+for a sentence this story's own change falsifies:
+
+- `docs/how-to/evaluate-workflow-behavior.md:222` read "No contract in `corpus/dev/contracts/` and no
+  committed chain uses a `{ captured }` binding". It now names the shipped contract and both axes of
+  its capture, which the peer review asked for: it binds into the `arguments` input channel and
+  captures from `response-body`, and conflating those two was what the first rewrite did. The
+  committed-chain half is still true and CodeRabbit read it as false, on the grounds that
+  `tests/application/mcp-end-to-end.test.ts` takes `mcpContract` through all four stages. A Vitest
+  run is not a committed chain: `grep -c captured` over the five files under `spike-worked-example/`
+  returns zero on every one, and the epic register counts committed chains as the generated artifact
+  sets, which is why Stories 11.10 and 11.11 each add one. The sentence names the chain by path now
+  and says what it does instead of capturing, so the term cannot be read the loose way. It states no
+  chain count, because three published sentences already say "one" and Story 11.10 owns all three;
+  adding a fourth site would make that story's edit harder.
+- `:226` read "No contract in `corpus/dev/contracts/` declares a `fixtureReset`, so the
+  `control-mutate` and `control-reset` legs are exercised by ... no shipped contract". Its
+  `control-mutate` and `control-reset` were leg purposes and were correct on that axis: the reset leg
+  really does carry purpose `control-reset`, under the leg id the contract names. The false half was
+  "no shipped contract". The sentence now names the four leg ids the exemplar's pre-flight plans,
+  read off `planPreflight`: `preflight-control-observe`, `preflight-control-mutate`, the contract's
+  own `reset-notes`, and `preflight-control-observe-2`.
+
+Story 11.11 is the story this reaches. Its frozen Intent opens on both sentences being true at 1.4.2
+and its title claims the first shipped captured binding and fixture reset. Both halves of that are
+now already shipped, and what Story 11.11 adds is the first api-shaped capture, the first committed
+end-to-end chain over one, and the retirement of `docs/how-to/evaluate-workflow-behavior.md:223`'s
+admission that the guide's own example ships nowhere. `epic-11-context.md:50` is corrected in this
+diff so the next reader of the epic register meets the new state; Story 11.11's own frozen block is
+human-owned and stays as written, which is a divergence for that story's session to record. The
+`docs/index.md:78` workflow State cell is untouched: it grades "no shipped end-to-end run", which
+holds, and the ownership table gives that cell to Story 11.11. Its other clause, "Step binding is
+unit-tested", is now understated rather than false, since one shipped corpus contract carries a
+captured binding. Story 11.11 owns the cell and inherits the wording; the honest grade once it lands
+is "unit-tested and shipped in one corpus contract, with no shipped end-to-end run".
+
+**Decision 19: this story is Step 54, because Story 11.12 merged in parallel and took 53.**
+The brief said Step 53 and the file ended at 52 when it was written. Story 11.12 landed from a
+separate worktree while this story was in peer review, and its own step took 53. This branch was
+rebased onto that merge and the step renumbered, along with its row in the table at the top of the
+file.
+
+The rebase conflicted in one file, the learning path, at three hunks: the table row and the two ends
+of the step body. It was resolved by taking main's copy of the file whole and re-inserting this
+story's step and row against it, rather than by editing the conflict markers, because a hunk
+boundary sat inside Story 11.12's own `### Reference` section and a marker-by-marker resolution
+dropped it. Nothing else conflicted: `CHANGELOG.md` auto-merged because Story 11.12 added no entry
+there, `sprint-status.yaml` took main's `11-12-...: done` line unchanged, and neither of the two
+published pages Story 11.12 rewrote carries a count, so `check:doc-counts` needed no entry and
+reported no dead one. The full gate was re-run against the rebased tree: 126 files and 4136 tests,
+where this story's own runs read 125 and 4109.
+
+Downstream consequence: Story 11.9 runs last and writes the epic's final learning-path step, so it
+reads the file rather than the brief for the next number.
 
 ## Design Notes
 

@@ -95,6 +95,7 @@ flowchart TD
 |   51 | epic11-story13 | A real tool server answers a probe: the port gets a shape for a tool result, and an adapter that goes and gets one. |
 |   52 | epic11-story7 | The suite can certify a tool-server adapter, the thoroughness checks grade the kind, and every question in both is proved able to fail. |
 |   53 | epic11-story12 | The worked example's evidence was typed by hand. A real service now answers the same five questions and the score comes out identical. |
+|   54 | epic11-story8 | The tool server joins the published example set, the pages that count it are held by a checker that counts for itself, and the kind runs end to end for the first time. |
 
 Adding a step: follow `learning-path-template.md`.
 
@@ -4105,3 +4106,43 @@ It also shows the bug over a real connection. The update replies "saved" with th
 - Every server started is closed when the file finishes, on the failing path as much as the passing one, and the teardown then checks each port refuses a connection.
 
 **Watch out:** the committed evidence is deliberately defective in three places and the live run reproduces all three, because reproducing them is the point. The collection comes back short, one oracle's disposition narrates a rejection nothing observed, and three thoroughness rules are unsatisfied. `spike-worked-example/README.md` says which and why.
+
+## Step 54 (epic11-story8): a number in a sentence that nothing counts
+
+**In plain terms:** the manual says the box holds twenty-one tools.
+Someone puts a twenty-second tool in the box.
+The manual still says twenty-one, and nothing complains, because the build reads code and never reads sentences.
+This step puts the new tool in the box, fixes the six pages that were counting wrong, and writes the small program that counts the box itself and stops the build when a page disagrees with it.
+
+**What:** the published example set gains a tool-server contract; `scripts/check-doc-counts.ts` works out twenty-three published numbers across nine files from the things they count and fails on a mismatch; and `tests/application/mcp-end-to-end.test.ts` runs that contract through all four stages, which is the first time anything scores a finished run against a tool server.
+
+**Why:** two releases shipped with six sentences claiming a set size that had moved.
+The earlier answer to this was care, plus a test that was written down as a plan and never landed, and the drift happened anyway.
+The four-stage run earns its place the same way: with that one file removed, the whole suite runs four thousand tests and stays green while the new contract carries a setting that says the opposite of what it means.
+
+**Read in this order:**
+
+1. `tests/schemas/fixtures/mcp-contract.ts`: the tool-server contract. Two tools, the arguments each takes, the result each returns, and the checks over them.
+2. `tests/coverage/fixtures/corpus.ts`: the list the example-set generator reads. One kind, one member.
+3. `scripts/dev-corpus-target.ts`: the set's README lives here as text. Edit the words here, and the generator writes them to disk.
+4. `scripts/check-doc-counts.ts`: the gate. One row per sentence: the file, the pattern that finds the number, and the expression that works out what it should be.
+5. `tests/application/mcp-end-to-end.test.ts`: the contract through compile, seal, pre-flight and score, with the pre-flight's own fingerprint proved to land on the result.
+
+**Story:** `_bmad-output/implementation-artifacts/11-8-the-published-surface-the-corpus-and-the-census.md`
+
+### Reference
+
+**Rules:**
+
+- Three kinds of number, three mechanisms. A generated file gets a generator and a byte check. A hand-maintained count gets a pinned constant whose failure names which number moved. A number in published prose gets this gate.
+- Every number the gate checks is worked out at run time from the thing it counts.
+- A pattern that finds nothing fails the build, and so does one that finds two sentences. A rewritten sentence cannot quietly slip out from under its own check.
+- A pattern that allows any whitespace between its words will read across a blank line, so it can pick up a number from the paragraph above and pass. Where the text wraps, allow a line break and stop there.
+- The failure names the file, the line, the word the page carries, and the word it owes.
+- Pages spell numbers as words, so the gate carries its own word table for zero to ninety-nine and renders before comparing. Above that it reports a failure instead of throwing, so one report covers everything.
+- The generated README is gated as a page of its own. Proving its bytes match the template says nothing about whether the template's words are true.
+- A check that reads committed files is a script, because a test here may not read files outside a temporary directory.
+- Adding a contract changes the fingerprint of the published set, so anyone who fingerprints that directory gets a different scoring version than before. The changelog says so and says who it affects.
+- Deleting an assertion from a passing suite proves nothing. To find out whether an assertion holds anything up, break the code it watches, then delete it, then see whether anything else still fails.
+
+**Watch out:** two ways of writing the same requirement both work and mean opposite things about the check body. Say "the refusal happened" and mark it expected-to-hold; or say "the tool answered anyway" and mark it expected-to-be-violated. Getting the pair crossed makes a correct system report disagreement, and the example set now ships one of each so the difference is readable side by side.

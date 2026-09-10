@@ -45,6 +45,24 @@ body.
     longer total and fails the typecheck. Nothing else about the type moved, and no report a caller
     already holds changes shape.
 
+- **The development corpus ships a tool-server contract, and a new gate holds the counts that
+  describe it.** `corpus/dev/contracts/notes-tool-server.json` declares an `mcp` interface with two
+  published tools, a structured-result descriptor and a sensitivity witness on each, a type-violating
+  step per tool, and a captured argument, so the kind this release opened has a readable worked
+  example. It compiles clean, so the set of corpus contracts that fail by
+  design is unchanged, and `corpus/dev/index.json` names the new file with the digest of its bytes.
+  The published pages stating what the corpus holds move with it.
+  - **For a caller who attests a digest over the published corpus.** `--corpus-digest` is
+    caller-attested and no artifact in the pipeline carries it, so nothing recomputes on its own. A
+    caller who digests `corpus/dev/` as their corpus attests a different value here than on 1.4.2,
+    and the scoring version computed from it moves with that value, so a score computed before this
+    release and one computed after are not comparable on that input. A caller attesting a digest
+    over their own corpus is unaffected.
+  - `npm run validate` gains a step, `check:doc-counts`, which computes every published corpus
+    count, reference-adapter count and per-port conformance count from its own source, renders it
+    the way the page spells it, and fails on a page that disagrees or on a pattern that has stopped
+    matching. It reads committed markdown and rewrites nothing.
+
 - **A reference adapter answers a tool call, and `ProbeObservation` has a third member.**
   `createMcpAdapter` and `nodeStdioMcpMechanism` ship on `eval-quality/adapters`, and
   `McpTargetPolicy` and `McpTargetAuthorization` ship on `eval-quality/conformance`. The adapter

@@ -230,7 +230,7 @@ There is one runner per port, and `EnvironmentProbePort` has one arm per mechani
 
 ## The corpus
 
-`corpus/dev/` ships twenty-one contracts under `contracts/`, one compiled-and-sealed pair under `compile-seal-example/`, an `index.json` naming every file with its digest, and a `README.md` explaining what the set covers. Eighteen contracts compile. Three fail by design: `empty-request-shapes.json` and `no-operation-inventory.json` raise `unreachable-check-evidence`, and `no-state-change-marker.json` raises `undeclared-mandatory-input`.
+`corpus/dev/` ships twenty-two contracts under `contracts/`, one compiled-and-sealed pair under `compile-seal-example/`, an `index.json` naming every file with its digest, and a `README.md` explaining what the set covers. Nineteen contracts compile. Three fail by design: `empty-request-shapes.json` and `no-operation-inventory.json` raise `unreachable-check-evidence`, and `no-state-change-marker.json` raises `undeclared-mandatory-input`.
 
 ## Related pages
 

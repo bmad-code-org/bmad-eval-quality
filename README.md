@@ -177,7 +177,7 @@ The [CLI reference](https://bmad-code-org.github.io/bmad-eval-quality/reference/
 import spec from 'eval-quality/schemas/eval-contract.schema.json' with { type: 'json' }
 ```
 
-The import attribute is required: ESM on Node 22 and 24 both throw `ERR_IMPORT_ATTRIBUTE_MISSING` without it. The development corpus ships the same way, at `eval-quality/corpus/dev/`, so you can read twenty-one real contracts and one compiled-and-sealed pair without cloning this repository.
+The import attribute is required: ESM on Node 22 and 24 both throw `ERR_IMPORT_ATTRIBUTE_MISSING` without it. The development corpus ships the same way, at `eval-quality/corpus/dev/`, so you can read twenty-two real contracts and one compiled-and-sealed pair without cloning this repository.
 
 Version 1.0 is out and the published surface is stable: a breaking change to a command, an export, or a schema is a major version bump. `compile` refuses a contract whose `schemaVersion` differs from the one this build reads, so check the stamp on anything you did not author against this version. `CHANGELOG.md` records what each release breaks.
 

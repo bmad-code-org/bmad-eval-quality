@@ -208,34 +208,50 @@ export const mcpContract = {
 			// Rule 3: a call whose argument carries the wrong JSON type has to
 			// be refused rather than answered, and the oracle addressing that
 			// step is what makes the rule satisfiable.
+			//
+			// Written in the `expects-violation` spelling, and O-007 below is the
+			// same rule in the `expects-hold` one, so the corpus publishes both.
+			// The two differ in what the check says: here it states the
+			// violation, and `checkSatisfied` reads an `expects-violation` oracle
+			// as satisfied when its check resolves false, so a server that
+			// refused the call satisfies this. Writing the refusal here instead,
+			// under this polarity, is the trap: the seal would render "the
+			// declared polarity expects this relation to be a violation" over a
+			// check stating what a correct server does, and a correct server
+			// would score `disagrees`.
 			id: 'O-006',
 			direction: {
 				evidenceTargets: ['/interactions/malformed-search/response-body/ok'],
 				relation: 'equality',
 				polarity: 'expects-violation',
-				scope: 'One search whose query argument is not a string.',
+				scope:
+					'One search whose query argument is not a string, with the check stating the failure rather than the requirement.',
 				negativeDomain: 'A search answering success over a malformed argument.',
 			},
 			check: {
 				op: 'equality',
 				operands: [
 					{ pointer: '/interactions/malformed-search/response-body/ok' },
-					{ literal: false },
+					{ literal: true },
 				],
 			},
 			polarity: 'expects-violation',
-			commentary: 'A type-violating argument is refused rather than answered.',
+			commentary:
+				'A search answering success over a type-violating argument is the violation this expects not to see.',
 		},
 		{
 			// The same rule over the mutating tool, which the rule fires on
 			// separately: a malformed creation that reports success has written
-			// something nobody asked for.
+			// something nobody asked for. Spelled `expects-hold` against O-006's
+			// `expects-violation`, so the corpus shows both forms of one
+			// requirement side by side.
 			id: 'O-007',
 			direction: {
 				evidenceTargets: ['/interactions/malformed-create/response-body/ok'],
 				relation: 'equality',
-				polarity: 'expects-violation',
-				scope: 'One creation whose title argument is not a string.',
+				polarity: 'expects-hold',
+				scope:
+					'One creation whose title argument is not a string, with the check stating the requirement.',
 				negativeDomain:
 					'A creation answering success over a malformed argument.',
 			},
@@ -246,7 +262,7 @@ export const mcpContract = {
 					{ literal: false },
 				],
 			},
-			polarity: 'expects-violation',
+			polarity: 'expects-hold',
 			commentary: 'A type-violating argument is refused rather than filed.',
 		},
 	],
@@ -487,7 +503,9 @@ export const mcpContract = {
 		'human-labels',
 	],
 	testData: { setup: null, cleanup: null, principals: null, resources: null },
-	budgets: { maxToolCalls: 4, maxWallClockMinutes: 5, maxCostUsd: '1.00' },
+	// Twenty, matching the sibling contracts: the plan is five steps and the
+	// reset is a sixth call, so four would stop short of the read-back.
+	budgets: { maxToolCalls: 20, maxWallClockMinutes: 5, maxCostUsd: '1.00' },
 	safetyLimits: [],
 	requiredEvidence: [],
 	probeStepBound: null,
