@@ -15,9 +15,9 @@ Version 1.0 is out. All four commands ship, and the published surface is stable:
 
 `score` is the largest of the four. Behind it sit three stages, `ingest`, `score`, and `emit`, reached by one command and one library call, `runScore`. It resolves every oracle to one of twelve outcome states, decides whether a finding really detected the defect its probe seeded, reduces repeated trials to one result per probe, and reports contract strength as a vector two contracts can be compared on.
 
-A contract can describe a system behind an HTTP API, one behind a command line, or one behind an MCP tool server. All three compile, and all three plan a pre-flight. The first two run that pre-flight and score against a shipped adapter. `mcp` has no adapter, so its pre-flight is planned and cannot complete.
+A contract can describe a system behind an HTTP API, one behind a command line, or one behind an MCP tool server. All three compile, and all three plan a pre-flight. `cli` and `mcp` each have a shipped adapter that runs that pre-flight end to end; `api` has none, because probing a live HTTP environment is the part only a caller can write.
 
-Also published: twelve JSON Schema documents under `eval-quality/schemas/*`, a twenty-one-contract development corpus under `eval-quality/corpus/dev/`, four reference adapters at `eval-quality/adapters`, and a port conformance suite at `eval-quality/conformance`.
+Also published: twelve JSON Schema documents under `eval-quality/schemas/*`, a twenty-one-contract development corpus under `eval-quality/corpus/dev/`, five reference adapters at `eval-quality/adapters`, and a port conformance suite at `eval-quality/conformance`.
 
 ## The trial-set limit
 
@@ -35,7 +35,7 @@ Deferred until the contract layer is in real use: claim-to-evidence lineage, sem
 
 ## Tool-use evaluation
 
-`compile` accepts `mcp`, and so does the pre-flight plan, so a contract over an MCP tool server compiles and plans the calls a probe would make. What it cannot do yet is run them: no adapter speaks the kind. [Evaluate tool-use behavior](/how-to/evaluate-tool-use-behavior/) covers the whole picture, down to the port messages and the conformance arm an adapter would need.
+`compile` accepts `mcp`, the pre-flight plan mints the calls a probe would make, and `createMcpAdapter` runs them against a tool server it launches over MCP's stdio transport. A server reached over HTTP needs your own adapter, since this package opens no socket. [Evaluate tool-use behavior](/how-to/evaluate-tool-use-behavior/) covers the whole picture, down to the port messages and the conformance arm the kind is still owed.
 
 The response descriptor question the kind turned on is settled. The kind's first version describes a tool's structured result, which is what an MCP tool returns when it has a result with structure at all, and typically what it returns when it declares an output schema. A tool that answers with a markdown `content` array is outside that version, since prose gives AD-4's quantifiers no collection to range over. The text channel such a tool would need is the half that stays deferred.
 

@@ -572,6 +572,38 @@ export const observationsFor = (
 		}
 	})
 
+export type McpObservationPatch = {
+	readonly isError?: boolean
+	readonly result?: ProbeObservedBody
+	readonly interfaceId?: string
+	readonly operationId?: string
+}
+
+/**
+ * The same builder for a tool-call leg. It lives here beside `observationsFor`
+ * because `port-messages.ts` produces none of the twelve published documents,
+ * so its shapes have no accept fixture to seed and this directory is where a
+ * port-message fixture belongs.
+ */
+export const mcpObservationsFor = (
+	legs: readonly {
+		legId: string
+		request: { interfaceId: string; operationId: string }
+	}[],
+	patches: Readonly<Record<string, McpObservationPatch>> = {},
+): ProbeObservation[] =>
+	legs.map((leg) => {
+		const patch = patches[leg.legId] ?? {}
+		return {
+			probeId: leg.legId,
+			interfaceId: patch.interfaceId ?? leg.request.interfaceId,
+			operationId: patch.operationId ?? leg.request.operationId,
+			kind: 'mcp',
+			isError: patch.isError ?? false,
+			result: patch.result ?? absentBody(),
+		}
+	})
+
 /**
  * The body every leg returns when nothing is being varied: distinct per
  * operation, and distinct per leg where the witness expects a differential.

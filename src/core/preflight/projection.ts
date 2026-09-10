@@ -21,7 +21,7 @@ import { decodeTail } from '../seal/plan-index.ts'
 export const PREFLIGHT_ARTIFACT_PATH = 'PreflightVerdict'
 
 /**
- * The five fields and no others. Response headers are outside the projection
+ * The closed projection, and nothing outside it. Response headers are outside
  * because `volatilePointers` is a `DescriptorPointer` and the response
  * descriptor is body-scoped, so no declaration can mark a header volatile, and
  * unprunable headers would fail the repeated-read immutability branch on any
@@ -31,6 +31,13 @@ export const PREFLIGHT_ARTIFACT_PATH = 'PreflightVerdict'
  * header digest identically, and a witness relation can read a header this
  * projection cannot see. The projection says what the fixture is; a relation
  * addressing a header is the author asserting that header is stable.
+ *
+ * `status`, `exitCode` and `toolError` are one family, one per kind, each
+ * `null` off its own kind. All three answer whether the call went through, and
+ * the projection's test for membership is whether a declaration can prune the
+ * field: none of the three can be. A projection blind to the tool error flag
+ * would digest two legs identical when one errored and one did not, which is
+ * the state-reset check reporting a reset that never happened.
  */
 export type ProjectedObservation = {
 	readonly legId: string
@@ -40,6 +47,8 @@ export type ProjectedObservation = {
 	readonly status: number | null
 	/** the process exit code, or `null` on an interface that does. */
 	readonly exitCode: number | null
+	/** the tool call's error flag, or `null` off an interface that calls one. */
+	readonly toolError: boolean | null
 	readonly body: ProbeObservedBody
 }
 
@@ -115,19 +124,23 @@ export function projectObservation(
 	// The channel the operation's descriptor describes is the one AD-10's
 	// relation reads, so it is the one the volatile pointers are pruned from.
 	// Off an interface that speaks HTTP that is the response body; off a
-	// command it is the stream or the file the operation nominates.
+	// command it is the stream or the file the operation nominates; off a tool
+	// call it is the structured result, which is the kind's only body channel.
 	const observed =
 		observation.kind === 'api'
 			? observation.body
-			: describedChannelOf(observation, operation)
+			: observation.kind === 'mcp'
+				? observation.result
+				: describedChannelOf(observation, operation)
 	return {
 		legId: observation.probeId,
 		interfaceId: observation.interfaceId,
 		operationId: observation.operationId,
-		// A command has no transport status. `null` is what a reader of this
-		// field asks about, and every such reader already handles it.
+		// Each of the three reads `null` off its own kind. Every reader of these
+		// fields already asks about `null`.
 		status: observation.kind === 'api' ? observation.status : null,
-		exitCode: observation.kind === 'api' ? null : observation.exitCode,
+		exitCode: observation.kind === 'cli' ? observation.exitCode : null,
+		toolError: observation.kind === 'mcp' ? observation.isError : null,
 		body: pruneVolatile(observed, operation.volatilePointers, artifactPath),
 	}
 }

@@ -13,6 +13,7 @@ import type {
 	CorpusResolveRequest,
 	FileReadRequest,
 	FileWriteRequest,
+	McpProbeRequest,
 	ProbeRequest,
 } from '../../src/core/schemas/port-messages.ts'
 import type { ProbeTargetPolicy } from '../../src/core/schemas/probe-policy.ts'
@@ -36,8 +37,14 @@ import {
 	runCorpusPortConformance,
 	runFileSystemPortConformance,
 } from '../../src/testing/conformance.ts'
-import type { ProbeSubject } from '../../src/testing/probe-conformance.ts'
-import { runEnvironmentProbePortConformance } from '../../src/testing/probe-conformance.ts'
+import type {
+	CommandProbeSubject,
+	ProbeSubject,
+} from '../../src/testing/probe-conformance.ts'
+import {
+	runCommandLineProbeConformance,
+	runEnvironmentProbePortConformance,
+} from '../../src/testing/probe-conformance.ts'
 
 // ---------------------------------------------------------------------------
 // The synthetic subjects. One knob per mutant, all defaulting to conforming.
@@ -454,10 +461,16 @@ type ProbeKnobs = {
 	/**
 	 * Answer the authorized request without echoing one of the four fields that
 	 * tie an observation to the request it answers. Both port messages are
-	 * unions, so `'kind'` is the one that lets a command request come back with a
-	 * schema-valid HTTP observation.
+	 * unions, so `'kind'` is the one that lets an api request come back with a
+	 * schema-valid observation of another mechanism.
 	 */
 	readonly breakEcho?: 'kind' | 'probeId' | 'interfaceId' | 'operationId'
+	/** Which kind the `'kind'` case substitutes. The observation union has three members, and `echoMismatch` has to catch all of them. */
+	readonly breakEchoKind?: 'cli' | 'mcp'
+	/** Answer the faulting request with an observation of another mechanism, which is what the anomalous-status check's own failure detail has to name. */
+	readonly answerFaultingWith?: 'cli' | 'mcp'
+	/** Declare the faulting request itself as a tool call, and answer it with a correlated tool-call observation. `ProbeSubject.faultingRequest` is typed over the whole request union, so this is a subject the published type admits. */
+	readonly faultingRequestIsMcp?: boolean
 }
 
 const MAX_REDIRECTS = 2
@@ -501,6 +514,32 @@ function probeRequest(
 	}
 }
 
+function mcpProbeRequest(
+	interfaceId: string,
+	operationId: string,
+): McpProbeRequest {
+	return {
+		probeId: `probe-${operationId}`,
+		interfaceId,
+		operationId,
+		kind: 'mcp',
+		toolName: 'search_notes',
+		channels: { arguments: {} },
+	}
+}
+
+/** A correlated answer to a tool-call request: every echoed field matches, so `echoMismatch` passes and the assertion's own `check` runs. */
+function mcpObservationFor(request: ProbeRequest) {
+	return {
+		probeId: request.probeId,
+		interfaceId: request.interfaceId,
+		operationId: request.operationId,
+		kind: 'mcp' as const,
+		isError: true,
+		result: { kind: 'json' as const, value: { ok: false } },
+	}
+}
+
 function observation(request: ProbeRequest, status: number) {
 	return {
 		probeId: request.probeId,
@@ -515,26 +554,43 @@ function observation(request: ProbeRequest, status: number) {
 
 /**
  * One echoed field replaced with a schema-valid value that is not the one asked
- * for. A `command` observation carries stdout, stderr, and an exit code instead
- * of a status and headers, so the kind case is a whole different message rather
- * than a relabelled one.
+ * for. Each non-api member of the observation union carries its own fields in
+ * place of a status and headers, so the kind case is a whole different message
+ * rather than a relabelled one, and it is built per substituted kind.
+ *
+ * `probeRequest` and `observation` above stay api-shaped. This is the api arm
+ * of the suite, and `probe-conformance.ts`'s own rule is that a subject
+ * presenting for one mechanism is not asked to fake another's scenarios; the
+ * kind that varies here is the kind the port answers with, which is exactly
+ * what `echoMismatch` reads.
  */
 function breakEcho(
 	observed: ReturnType<typeof observation>,
 	field: ProbeKnobs['breakEcho'],
+	substituted: 'cli' | 'mcp' = 'cli',
 ): unknown {
 	if (field === undefined) return observed
 	if (field === 'kind') {
-		return {
+		const correlation = {
 			probeId: observed.probeId,
 			interfaceId: observed.interfaceId,
 			operationId: observed.operationId,
-			kind: 'cli' as const,
-			exitCode: 0,
-			stdout: { kind: 'text' as const, value: 'ok' },
-			stderr: { kind: 'absent' as const },
-			artifacts: {},
 		}
+		return substituted === 'mcp'
+			? {
+					...correlation,
+					kind: 'mcp' as const,
+					isError: false,
+					result: { kind: 'json' as const, value: { ok: true } },
+				}
+			: {
+					...correlation,
+					kind: 'cli' as const,
+					exitCode: 0,
+					stdout: { kind: 'text' as const, value: 'ok' },
+					stderr: { kind: 'absent' as const },
+					artifacts: {},
+				}
 	}
 	return { ...observed, [field]: `not-the-${field}` }
 }
@@ -598,7 +654,9 @@ function syntheticProbeSubject(knobs: ProbeKnobs = {}): ProbeSubject {
 		overRedirectRequest: probeRequest('authorized', 'over-redirect'),
 		oversizeResponseRequest: probeRequest('authorized', 'oversize'),
 		slowRequest: probeRequest('authorized', 'slow'),
-		faultingRequest: probeRequest('authorized', 'faulting'),
+		faultingRequest: knobs.faultingRequestIsMcp
+			? mcpProbeRequest('authorized', 'faulting')
+			: probeRequest('authorized', 'faulting'),
 		build: async (scenario) => {
 			const built = await shared.build(scenario)
 			if (scenario !== 'resolves') return built
@@ -622,7 +680,11 @@ function syntheticProbeSubject(knobs: ProbeKnobs = {}): ProbeSubject {
 						throw forbidden('this subject refuses everything')
 					}
 					hops++
-					return breakEcho(observation(request, 200), knobs.breakEcho)
+					return breakEcho(
+						observation(request, 200),
+						knobs.breakEcho,
+						knobs.breakEchoKind,
+					)
 				}
 				if (operation === 'faulting') {
 					hops++
@@ -633,7 +695,14 @@ function syntheticProbeSubject(knobs: ProbeKnobs = {}): ProbeSubject {
 							'the target answered 500',
 						)
 					}
-					return observation(request, 500)
+					if (knobs.faultingRequestIsMcp) return mcpObservationFor(request)
+					return knobs.answerFaultingWith === undefined
+						? observation(request, 500)
+						: breakEcho(
+								observation(request, 500),
+								'kind',
+								knobs.answerFaultingWith,
+							)
 				}
 				if (operation === 'redirecting') {
 					hops++
@@ -794,14 +863,126 @@ describe('the probe suite: AD-35 default-deny and the four caps (fixtures 59-72)
 		},
 	)
 
-	it('says which field failed to come back, not merely that something did', async () => {
-		const report = await runEnvironmentProbePortConformance(
-			syntheticProbeSubject({ breakEcho: 'kind' }),
+	it.each(['cli', 'mcp'] as const)(
+		'says which field failed to come back, for a substituted %s observation',
+		async (substituted) => {
+			const report = await runEnvironmentProbePortConformance(
+				syntheticProbeSubject({
+					breakEcho: 'kind',
+					breakEchoKind: substituted,
+				}),
+			)
+			const outcome = report.outcomes.find(
+				(each) => each.id === 'probe/allow-authorized-loopback',
+			)
+			expect(outcome?.passed).toBe(false)
+			expect(report.passed).toBe(false)
+			expect(outcome?.detail).toMatch(
+				new RegExp(`observed kind "${substituted}"`),
+			)
+			expect(outcome?.detail).toMatch(/does not correlate/)
+		},
+	)
+
+	// Substituting the OBSERVATION's kind while the request stays api never
+	// reaches the status comparison: `echoMismatch` compares `kind` among the
+	// four echoed fields and short-circuits first.
+	it.each(['cli', 'mcp'] as const)(
+		'reports a %s answer to an api faulting request as a correlation failure',
+		async (substituted) => {
+			const report = await runEnvironmentProbePortConformance(
+				syntheticProbeSubject({ answerFaultingWith: substituted }),
+			)
+			const outcome = report.outcomes.find(
+				(each) => each.id === 'probe/observe-anomalous-status',
+			)
+			expect(outcome?.passed).toBe(false)
+			expect(outcome?.detail).toBe(
+				`observed kind "${substituted}" for a request carrying "api", so the answer does not correlate with the question`,
+			)
+			expect(report.passed).toBe(false)
+		},
+	)
+
+	// Substituting the REQUEST's kind does reach it. `faultingRequest` is typed
+	// over the whole request union, so a subject may declare a tool call there
+	// and answer it correlated; `echoMismatch` passes and the status check's own
+	// non-api arm fires. It used to call that answer "a command observation".
+	/**
+	 * The command arm's twin of the case below it. `nonZeroExitRequest` is typed
+	 * over the whole request union too, so one request is all this subject has
+	 * to declare truthfully; every other field is a placeholder, and only the
+	 * one outcome is asserted.
+	 */
+	function syntheticCommandSubject(): CommandProbeSubject {
+		const commandRequest = (operationId: string): ProbeRequest => ({
+			probeId: `probe-${operationId}`,
+			interfaceId: 'devtools',
+			operationId,
+			kind: 'cli',
+			executable: 'probe-cli',
+			subcommandPath: [],
+			channels: {
+				argument: {},
+				option: {},
+				environment: {},
+				stdin: { kind: 'absent' },
+			},
+		})
+		return {
+			name: 'synthetic-command',
+			sampleRequest: commandRequest('sample'),
+			build: async () => {
+				let calls = 0
+				return {
+					port: async (request: ProbeRequest) => {
+						calls++
+						if (request.operationId === 'non-zero-exit')
+							return mcpObservationFor(request)
+						throw forbidden('this subject answers one request')
+					},
+					underlyingCalls: () => calls,
+				}
+			},
+			policy: { authorizations: [] },
+			authorizedRequest: commandRequest('authorized'),
+			unmappedInterfaceRequest: commandRequest('unmapped-interface'),
+			unmappedExecutableRequest: commandRequest('unmapped-executable'),
+			unauthorizedSubcommandRequest: commandRequest('unauthorized-subcommand'),
+			nonZeroExitRequest: mcpProbeRequest('devtools', 'non-zero-exit'),
+			injectionRequest: commandRequest('injection'),
+			injectionArgumentValue: 'literal',
+			artifactRequest: commandRequest('artifact'),
+			artifactId: 'report',
+			artifactExpectedText: 'artifact-body',
+			overElapsedRequest: commandRequest('over-elapsed'),
+			overOutputRequest: commandRequest('over-output'),
+		}
+	}
+
+	it('names the kind it observed when a command subject declares a tool call for the non-zero-exit case', async () => {
+		const report = await runCommandLineProbeConformance(
+			syntheticCommandSubject(),
 		)
 		const outcome = report.outcomes.find(
-			(each) => each.id === 'probe/allow-authorized-loopback',
+			(each) => each.id === 'command/observe-nonzero-exit',
 		)
-		expect(outcome?.detail).toMatch(/observed kind "cli"/)
-		expect(outcome?.detail).toMatch(/does not correlate/)
+		expect(outcome?.passed).toBe(false)
+		expect(outcome?.detail).toBe(
+			'observed a "mcp" observation, expected a non-zero exit',
+		)
+	})
+
+	it('names the kind it observed when the faulting request is itself a tool call', async () => {
+		const report = await runEnvironmentProbePortConformance(
+			syntheticProbeSubject({ faultingRequestIsMcp: true }),
+		)
+		const outcome = report.outcomes.find(
+			(each) => each.id === 'probe/observe-anomalous-status',
+		)
+		expect(outcome?.passed).toBe(false)
+		expect(outcome?.detail).toBe(
+			'observed a "mcp" observation, expected status 500',
+		)
 	})
 })

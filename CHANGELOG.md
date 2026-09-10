@@ -25,8 +25,33 @@ body.
     channel. An implementation typed against the two-member union stops satisfying the port's
     parameter type and fails the typecheck at the boundary, and one that switches on `request.kind`
     over `api` and `cli` is no longer total. That is the same class of break the 1.3.0 widening of
-    both port unions disclosed. `ProbeObservation` is unchanged, so no adapter can answer an mcp leg
-    yet: a leg answered with an observation of another mechanism is a `port-contract-violation`.
+    both port unions disclosed. `ProbeObservation` took its own third member in the same
+    `[Unreleased]` block; the reference MCP adapter entry below carries it.
+
+- **A reference adapter answers a tool call, and `ProbeObservation` has a third member.**
+  `createMcpAdapter` and `nodeStdioMcpMechanism` ship on `eval-quality/adapters`, and
+  `McpTargetPolicy` and `McpTargetAuthorization` ship on `eval-quality/conformance`. The adapter
+  implements `EnvironmentProbePort` for the `mcp` mechanism over MCP's stdio transport only: it
+  launches the tool server as a child process and opens no socket, so AD-2's rule that the package
+  performs no network I/O is unchanged and a server behind a URL still needs a caller-written
+  adapter. An `McpTargetPolicy` names the interfaces and the tools it permits and denies everything
+  else before a server process starts. A pre-flight over an `mcp` contract now runs end to end.
+  - **BREAKING for an environment-probe adapter.** `ProbeObservation` gains a third member,
+    `McpProbeObservation`, carrying the correlation triple, the envelope's `isError` flag, and the
+    structured result. An implementation typed against the two-member union still satisfies the
+    port's return type, but a consumer that switches on `observation.kind` over `api` and `cli` is
+    no longer total, which is the same class of break the 1.3.0 widening of both port unions
+    disclosed. In sealed evidence an `mcp` observation writes its structured result on
+    `responseBody`, `isError` on `responseStatus` as `1` for a reported error and `0` otherwise, and
+    `responseHeaders` as `null`. No artifact `schemaVersion` moved for this change.
+  - **BREAKING for a stored `PreflightVerdict` and for run comparability.** AD-11's projection gains
+    a `toolError` field, so that a pre-flight can tell two legs apart when one reported a tool error
+    and the other did not. The projection is what `fixtureDigest` digests, so every verdict's
+    `fixtureDigest` changes value, including verdicts over unchanged `api` and `cli` contracts, and
+    `scoringVersion` changes with it because the fixture digest is one of its inputs. Re-run a
+    pre-flight to mint a verdict on this version; a verdict produced by 1.4.2 and one produced now
+    describe the same fixture and carry different digests. `comparabilityKey` is unaffected, since it
+    digests the scoring policy and the probe identifiers alone.
 
 ### Changed
 

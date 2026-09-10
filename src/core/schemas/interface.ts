@@ -380,10 +380,17 @@ export const PermittedInterface = z.discriminatedUnion('kind', [
 export type PermittedInterface = z.infer<typeof PermittedInterface>
 
 /**
- * One interface's operations widened to the element union. TypeScript will not
- * iterate `iface.operations` directly, because the union's branches give it a
- * union of array types whose `map` signatures do not unify; this is the one
- * place that widening is spelled, so no call site invents its own.
+ * One interface's operations widened to the element union, for the callers
+ * that read only fields all three shapes carry. `iface.operations.map(...)` on
+ * an un-narrowed interface does not compile, because the union's branches give
+ * it a union of array types whose `map` signatures do not unify, and this is
+ * the one place that widening is spelled so no call site invents its own.
+ *
+ * A caller that narrows on `iface.kind` first wants the opposite and should
+ * read `iface.operations` directly: each branch declares its own element type,
+ * and this function discards the kind-to-shape correlation that a later kind
+ * test cannot recover. `buildPlanIndex` (`core/seal/plan-index.ts`) is the site
+ * that sorts by kind, and it narrows first for exactly that reason.
  */
 export const operationsOf = (
 	iface: PermittedInterface,

@@ -83,7 +83,7 @@ describe('pruneVolatile', () => {
 })
 
 describe('the projection', () => {
-	it('74. carries exactly six keys and no response headers', () => {
+	it('74. carries exactly seven keys and no response headers', () => {
 		const projected = projectionOf('read-a', jsonBody({ value: 'v' }), {
 			headers: { 'x-request-id': 'r-1' },
 		})
@@ -94,6 +94,7 @@ describe('the projection', () => {
 			'legId',
 			'operationId',
 			'status',
+			'toolError',
 		])
 		expect(JSON.stringify(projected)).not.toContain('x-request-id')
 	})
@@ -170,7 +171,7 @@ describe('fixtureDigest', () => {
 		const value = digest([first, second])
 		expect(value).toMatch(/^sha256:[0-9a-f]{64}$/)
 		expect(value).toBe(
-			'sha256:f945b35ab40c49436be1d82609d3847a76b41d148f8447209829e28f73967e3a',
+			'sha256:9051e86e36f3c3123237d8714ade16bc6269ab9ec759f710fa0a39912b6c38e9',
 		)
 	})
 })

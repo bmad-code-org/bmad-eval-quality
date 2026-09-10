@@ -4,6 +4,7 @@ import {
 	isMcpOperation,
 } from '../../src/core/declared-inputs.ts'
 import { EvalContract } from '../../src/core/schemas/eval-contract.ts'
+import { PermittedInterface } from '../../src/core/schemas/interface.ts'
 import { InteractionPointer } from '../../src/core/schemas/pointer.ts'
 import {
 	buildPlanIndex,
@@ -210,11 +211,57 @@ describe('buildPlanIndex', () => {
 
 	it('throws TypeError on a duplicate operationId across permitted interfaces', () => {
 		const firstInterface = gateCPermittedInterfaces[0]
-		if (firstInterface === undefined)
-			throw new Error('fixture missing an interface')
+		const firstOperation = firstInterface?.operations[0]
+		if (firstInterface === undefined || firstOperation === undefined)
+			throw new Error('fixture missing an interface or operation')
 		const duplicated = [...gateCPermittedInterfaces, firstInterface]
+		// The message names the id, so the throw is attributable to the
+		// collision rather than to any other precondition in the builder.
 		expect(() => buildPlanIndex(gateCInteractionPlan, duplicated)).toThrow(
-			TypeError,
+			`duplicate operation id across permitted interfaces: ${firstOperation.operationId}`,
+		)
+	})
+
+	// The duplicate bookkeeping is shared by all three kind arms, so a
+	// collision across two kinds has to clear every map. Left per-arm, a
+	// tool-call operation and an api operation sharing an id would each stay
+	// resolvable from its own accessor and `anyOperationOf` would answer with
+	// whichever map it reads first.
+	it('clears an operation id two interfaces of different kinds both declare', () => {
+		const firstInterface = gateCPermittedInterfaces[0]
+		const firstOperation = firstInterface?.operations[0]
+		if (firstInterface === undefined || firstOperation === undefined)
+			throw new Error('fixture missing an interface or operation')
+		const draft = structuredClone(mcpContract.permittedInterfaces[0]) as {
+			operations: { operationId: string }[]
+		}
+		const firstTool = draft.operations[0]
+		if (firstTool === undefined)
+			throw new Error('the mcp fixture declares a tool')
+		firstTool.operationId = firstOperation.operationId
+		const collidingTool = PermittedInterface.parse(draft)
+		const index = buildPlanIndex(
+			gateCInteractionPlan,
+			[...gateCPermittedInterfaces, collidingTool],
+			{ duplicateIds: 'unresolved' },
+		)
+		expect(index.operationOf(firstOperation.operationId)).toBeUndefined()
+		expect(index.mcpOperationOf(firstOperation.operationId)).toBeUndefined()
+		expect(index.commandOperationOf(firstOperation.operationId)).toBeUndefined()
+		expect(index.interfaceKindOf(firstOperation.operationId)).toBeUndefined()
+		// The positive control: an index that built nothing would satisfy the
+		// four assertions above.
+		const untouched = firstInterface.operations[1]
+		if (untouched === undefined)
+			throw new Error('the fixture declares a second operation')
+		expect(index.operationOf(untouched.operationId)?.operationId).toBe(
+			untouched.operationId,
+		)
+		const survivingTool = collidingTool.operations[1]
+		if (survivingTool === undefined)
+			throw new Error('the mcp fixture declares a second tool')
+		expect(index.mcpOperationOf(survivingTool.operationId)?.operationId).toBe(
+			survivingTool.operationId,
 		)
 	})
 

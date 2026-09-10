@@ -124,6 +124,13 @@ const PROBE_ASSERTIONS: readonly ProbeAssertion[] = [
 	{
 		// A subject that throws on 5xx fails here and nowhere else, and it makes
 		// AD-10's seeded-fault check unimplementable.
+		//
+		// The non-`api` arm of the detail below names the kind it observed. It
+		// is reached when the subject declares a `faultingRequest` of another
+		// kind and answers it correlated, which `ProbeSubject` admits because
+		// the field is typed over the whole request union. Substituting only
+		// the observation's kind does not reach it: `echoMismatch` compares
+		// `kind` among the four echoed fields and short-circuits first.
 		id: 'probe/observe-anomalous-status',
 		title: 'a 500 from an authorized target is an observation, not a fault',
 		request: (subject) => subject.faultingRequest,
@@ -132,7 +139,7 @@ const PROBE_ASSERTIONS: readonly ProbeAssertion[] = [
 			check: (observation) =>
 				observation.kind === 'api' && observation.status === 500
 					? undefined
-					: `observed ${observation.kind === 'api' ? `status ${observation.status}` : 'a command observation'}, expected status 500`,
+					: `observed ${observation.kind === 'api' ? `status ${observation.status}` : `a "${observation.kind}" observation`}, expected status 500`,
 		},
 	},
 	{
@@ -452,6 +459,11 @@ const COMMAND_ASSERTIONS: readonly CommandAssertion[] = [
 		expectation: { kind: 'resolves' },
 	},
 	{
+		// The non-`cli` arm of the detail below is reached the same way the
+		// `api` arm's is: `nonZeroExitRequest` is typed over the whole request
+		// union, so a subject may declare another kind there and answer it
+		// correlated. It names the observed kind; the binary ternary it
+		// replaced called every one of them "an api observation".
 		id: 'command/observe-nonzero-exit',
 		title:
 			'a non-zero exit from an authorized command is an observation, not a fault',
@@ -461,7 +473,7 @@ const COMMAND_ASSERTIONS: readonly CommandAssertion[] = [
 			check: (observation) =>
 				observation.kind === 'cli' && observation.exitCode !== 0
 					? undefined
-					: `observed ${observation.kind === 'cli' ? `exit code ${observation.exitCode}` : 'an api observation'}, expected a non-zero exit`,
+					: `observed ${observation.kind === 'cli' ? `exit code ${observation.exitCode}` : `a "${observation.kind}" observation`}, expected a non-zero exit`,
 		},
 	},
 	{

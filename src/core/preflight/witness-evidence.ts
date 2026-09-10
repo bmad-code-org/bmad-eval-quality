@@ -136,23 +136,37 @@ export function evidenceOf(
 		callInputs: callInputsOf(inputs),
 		// The projected body is whichever channel the operation's descriptor
 		// describes, so it lands on the channel a relation addresses. Both are
-		// filled from the same projection rather than one being derived from
-		// the other, and every channel the leg did not observe is written down
-		// as unobserved rather than left to a default.
-		responseBody: observation.kind === 'api' ? bodyValue(body) : null,
+		// filled from the same projection, and every channel the leg did not
+		// observe is written down here as unobserved. A tool call's structured
+		// result is a response body and lands where an api body does; the
+		// command streams are the one projected body that goes elsewhere.
+		responseBody: observation.kind === 'cli' ? null : bodyValue(body),
 		responseHeaders: observation.kind === 'api' ? observation.headers : null,
-		responseStatus: observation.kind === 'api' ? observation.status : null,
+		// A tool call has no transport status, so the channel AD-26 fixed as a
+		// number carries the envelope's error flag instead: 1 when the tool
+		// reported an error and 0 when it did not. The projection is spelled
+		// here because a 0 in a field typed `number | null` is otherwise
+		// indistinguishable from a transport status of zero, and an oracle
+		// asserting that a tool reported no error reads this value.
+		responseStatus:
+			observation.kind === 'api'
+				? observation.status
+				: observation.kind === 'mcp'
+					? observation.isError
+						? 1
+						: 0
+					: null,
 		stdout:
-			observation.kind === 'api' || descriptorChannel !== 'stdout'
+			observation.kind !== 'cli' || descriptorChannel !== 'stdout'
 				? ABSENT_CHANNEL
 				: body,
 		stderr:
-			observation.kind === 'api' || descriptorChannel !== 'stderr'
+			observation.kind !== 'cli' || descriptorChannel !== 'stderr'
 				? ABSENT_CHANNEL
 				: body,
-		exitCode: observation.kind === 'api' ? null : observation.exitCode,
+		exitCode: observation.kind === 'cli' ? observation.exitCode : null,
 		artifacts:
-			observation.kind === 'api' || describedArtifact === null
+			observation.kind !== 'cli' || describedArtifact === null
 				? {}
 				: { [describedArtifact]: body },
 	}

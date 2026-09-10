@@ -4,13 +4,18 @@
  * assertion carries the literal outcome rather than re-deriving it.
  */
 import { describe, expect, it } from 'vitest'
+import { compile } from '../../src/core/compile/compile.ts'
 import { planPreflight } from '../../src/core/preflight/plan.ts'
 import { reducePreflight } from '../../src/core/preflight/reduce.ts'
 import type { EvalContract } from '../../src/core/schemas/eval-contract.ts'
+import { EvalContract as EvalContractSchema } from '../../src/core/schemas/eval-contract.ts'
 import { RuntimeFault } from '../../src/core/schemas/faults.ts'
+import type { ProbeObservation } from '../../src/core/schemas/port-messages.ts'
 import type { PreflightCheck } from '../../src/core/schemas/preflight-verdict.ts'
 import type { Probe } from '../../src/core/schemas/probe.ts'
 import { Probe as ProbeSchema } from '../../src/core/schemas/probe.ts'
+import { commandContract } from '../schemas/fixtures/command-contract.ts'
+import { mcpContract } from '../schemas/fixtures/mcp-contract.ts'
 import {
 	cleanControlProbe,
 	contractDraft,
@@ -51,6 +56,80 @@ const verdictOf = (run: Run = {}) => {
 	})
 	return reducePreflight(plan, { observations })
 }
+
+/** One plan per interface kind, so a mismatch can be asked in either direction. */
+const planForKind = {
+	api: () =>
+		planPreflight({
+			contract: preflightContract,
+			probes: [seededProbe],
+			runId: 'run-1',
+		}),
+	cli: () =>
+		planPreflight({
+			contract: compile(EvalContractSchema.parse(commandContract), {
+				strict: true,
+			}),
+			probes: [],
+			runId: 'cli-run-0001',
+		}),
+	mcp: () =>
+		planPreflight({
+			contract: compile(EvalContractSchema.parse(mcpContract), {
+				strict: true,
+			}),
+			probes: [],
+			runId: 'mcp-run-0001',
+		}),
+} as const
+
+type ProbeKind = keyof typeof planForKind
+
+/** A schema-valid observation of one kind, correlated to a leg that asked for another. */
+const answerOfKind = (
+	kind: ProbeKind,
+	correlation: {
+		readonly probeId: string
+		readonly interfaceId: string
+		readonly operationId: string
+	},
+): ProbeObservation => {
+	if (kind === 'api') {
+		return {
+			...correlation,
+			kind: 'api',
+			status: 200,
+			headers: {},
+			body: { kind: 'absent' },
+		}
+	}
+	if (kind === 'cli') {
+		return {
+			...correlation,
+			kind: 'cli',
+			exitCode: 0,
+			stdout: { kind: 'text', value: 'ok' },
+			stderr: { kind: 'absent' },
+			artifacts: {},
+		}
+	}
+	return {
+		...correlation,
+		kind: 'mcp',
+		isError: false,
+		result: { kind: 'absent' },
+	}
+}
+
+/** Every ordered pair of distinct kinds: three members give six directions. */
+const ORDERED_MISMATCHES: readonly (readonly [ProbeKind, ProbeKind])[] = [
+	['api', 'cli'],
+	['api', 'mcp'],
+	['cli', 'api'],
+	['cli', 'mcp'],
+	['mcp', 'api'],
+	['mcp', 'cli'],
+]
 
 const checkFor = (
 	checks: readonly PreflightCheck[],
@@ -554,43 +633,43 @@ describe('the verdict itself', () => {
 		expect((thrown as RuntimeFault).artifactPath).toBe('PreflightVerdict')
 	})
 
-	// The same hole one level up from the conformance suite. Both port messages
-	// are unions since the command kind landed, so a port could answer every leg
-	// of a command contract with a schema-valid HTTP observation and pre-flight
-	// would report four checks satisfied with no command ever run. `probeId` ties
-	// the answer to the question; only `kind` says it answered the same question.
-	it('129. raises port-contract-violation when the observation answers the other mechanism', () => {
-		const plan = planPreflight({
-			contract: preflightContract,
-			probes: [seededProbe],
-			runId: 'run-1',
-		})
-		const wrongKind = observationsFor(plan.legs).map((observation, index) =>
-			index === 0
-				? {
-						probeId: observation.probeId,
-						interfaceId: observation.interfaceId,
-						operationId: observation.operationId,
-						kind: 'cli' as const,
-						exitCode: 0,
-						stdout: { kind: 'text' as const, value: 'ok' },
-						stderr: { kind: 'absent' as const },
-						artifacts: {},
-					}
-				: observation,
-		)
-		let thrown: unknown
-		try {
-			reducePreflight(plan, { observations: wrongKind })
-		} catch (error) {
-			thrown = error
-		}
-		expect(thrown).toBeInstanceOf(RuntimeFault)
-		expect((thrown as RuntimeFault).code).toBe('port-contract-violation')
-		expect((thrown as RuntimeFault).message).toMatch(
-			/asked for a "api" probe and was answered with a "cli" observation/,
-		)
-	})
+	// The same hole one level up from the conformance suite. All three port
+	// messages are unions, so a port could answer every leg of a tool-call
+	// contract with a schema-valid HTTP observation and pre-flight would report
+	// four checks satisfied with no tool ever called. `probeId` ties the answer
+	// to the question; only `kind` says it answered the same question.
+	//
+	// `kindMismatch` compares `leg.request.kind` to `observation.kind` with no
+	// enumeration, so a third kind took the ordered pairs from two to six with
+	// no source change. These six are what proves that.
+	it.each(ORDERED_MISMATCHES)(
+		'129. raises port-contract-violation when an "%s" leg is answered with an "%s" observation',
+		(asked, answered) => {
+			const plan = planForKind[asked]()
+			const [leg] = plan.legs
+			if (leg === undefined) throw new Error('the plan mints at least one leg')
+			expect(leg.request.kind).toBe(asked)
+			let thrown: unknown
+			try {
+				reducePreflight(plan, {
+					observations: [
+						answerOfKind(answered, {
+							probeId: leg.legId,
+							interfaceId: leg.request.interfaceId,
+							operationId: leg.request.operationId,
+						}),
+					],
+				})
+			} catch (error) {
+				thrown = error
+			}
+			expect(thrown).toBeInstanceOf(RuntimeFault)
+			expect((thrown as RuntimeFault).code).toBe('port-contract-violation')
+			expect((thrown as RuntimeFault).message).toContain(
+				`asked for a "${asked}" probe and was answered with a "${answered}" observation`,
+			)
+		},
+	)
 
 	// Narrow on purpose: `interfaceId` and `operationId` already have a reader,
 	// and it reports a mismatch as a failed `interface-present` verdict rather
