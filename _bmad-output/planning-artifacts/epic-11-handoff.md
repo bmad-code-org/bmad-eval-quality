@@ -50,7 +50,11 @@ State this in the epic so it does not grow.
   AI feature has been evaluated. Those are evidence gaps rather than feature gaps, the library
   supports all three today, and they belong in their own epic.
 - **The held-out probe corpus** and **the second experiment round**, both already recorded on the
-  What Ships page as things the project owes itself.
+  What Ships page as limits on how far a strength number carries: a number measured against
+  `corpus/dev/` is measured against probes its contract's author could read, and the rule deciding
+  whether a finding detected its probe's seeded defect was derived from the records in
+  `experiments/hypothesis-validation/`, so a number it produces is a measurement over records of that
+  kind.
 
 ## One category that needs nothing, confirmed
 

@@ -1,14 +1,23 @@
 ---
 id: ADR-008
 title: The compile half is owed to a calibration re-run; no half is epic-ready
-status: accepted
+status: closed
 date: 2026-07-29
+updated: 2026-09-10
+closed: 2026-09-10
 amends: ADR-003, ADR-005, ADR-006, ADR-007
 ---
 
 # ADR-008: The compile half is owed to a calibration re-run; no half is epic-ready
 
 ## Status
+
+**Closed 2026-09-10.** Gate D ran on 2026-07-30 under the pre-registered three-arm design and selected
+the Arm 2 branch, which closed this ADR's calibration item 1 and sent `seal` into the epic order. Both
+halves then shipped, `compile` through epic 6 and `score` through epics 7 and 8, so the readiness claim
+this ADR withdrew was answered by the work rather than by a later decision. The API-shaped transcribed
+calibration corpus was never built, and the spine's **Calibration closure** section states what that
+bounds. Nothing below is rewritten.
 
 Accepted 2026-07-29. Enforced by spine revision 5: a new **Owed to the calibration re-run** section records
 three open compile-side defects, AD-38 withdraws stage one's readiness claim and adds `seal` to stage one,

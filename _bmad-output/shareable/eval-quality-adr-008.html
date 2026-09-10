@@ -558,8 +558,8 @@ tbody tr:hover {
         <h1>ADR-008: The compile half is owed a calibration re-run; no half is epic-ready</h1>
         <p class="lede">Three reviewers falsified the one sentence the previous split rested on, and the other half stops claiming to be finished too.</p>
         <div class="metadata">
-          <span class="pill status">accepted</span>
-          <span class="pill">Updated 2026-07-29</span>
+          <span class="pill status">closed</span>
+          <span class="pill">Updated 2026-09-10</span>
           <span class="pill">Owner: Murat Ozcan</span>
         </div>
       </header>
@@ -569,6 +569,12 @@ tbody tr:hover {
       </details>
       <article class="content"><h1>ADR-008: The compile half is owed to a calibration re-run; no half is epic-ready</h1>
 <h2 id="status">Status<a class="heading-anchor" href="#status" aria-label="Link to Status">#</a></h2>
+<p><strong>Closed 2026-09-10.</strong> Gate D ran on 2026-07-30 under the pre-registered three-arm design and selected
+the Arm 2 branch, which closed this ADR&#39;s calibration item 1 and sent <code>seal</code> into the epic order. Both
+halves then shipped, <code>compile</code> through epic 6 and <code>score</code> through epics 7 and 8, so the readiness claim
+this ADR withdrew was answered by the work rather than by a later decision. The API-shaped transcribed
+calibration corpus was never built, and the spine&#39;s <strong>Calibration closure</strong> section states what that
+bounds. Nothing below is rewritten.</p>
 <p>Accepted 2026-07-29. Enforced by spine revision 5: a new <strong>Owed to the calibration re-run</strong> section records
 three open compile-side defects, AD-38 withdraws stage one&#39;s readiness claim and adds <code>seal</code> to stage one,
 AD-31&#39;s publication target moves off the worked example, and AD-40&#39;s grammar citation, determinism hedge,

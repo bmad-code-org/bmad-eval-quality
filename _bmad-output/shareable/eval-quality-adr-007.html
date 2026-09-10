@@ -558,8 +558,8 @@ tbody tr:hover {
         <h1>ADR-007: Compile is a build substrate; score is owed a reference implementation</h1>
         <p class="lede">Why the catch rate was 1.00 by construction, and why half the architecture stops claiming to be finished. Amended by ADR-008.</p>
         <div class="metadata">
-          <span class="pill status">accepted</span>
-          <span class="pill">Updated 2026-07-29</span>
+          <span class="pill status">closed</span>
+          <span class="pill">Updated 2026-09-10</span>
           <span class="pill">Owner: Murat Ozcan</span>
         </div>
       </header>
@@ -569,6 +569,11 @@ tbody tr:hover {
       </details>
       <article class="content"><h1>ADR-007: The compile half is a build substrate; the score half is owed to a reference implementation</h1>
 <h2 id="status">Status<a class="heading-anchor" href="#status" aria-label="Link to Status">#</a></h2>
+<p><strong>Closed 2026-09-10.</strong> The split held and both halves shipped: <code>compile</code> through epic 6 and <code>score</code>
+through epics 7 and 8. The seven items the spine&#39;s <strong>Owed to the reference implementation</strong> section
+recorded closed between epics 4 and 8, and that section now records what each finding was and what
+closed it. Three of them closed with a stated bound on what the shipped code measures. Nothing below is
+rewritten; what follows is the decision as it stood and the amendment it took on the day.</p>
 <p>Accepted 2026-07-29, <strong>amended the same day by <a href="eval-quality-adr-008.html">ADR-008</a></strong>.
 Enforced by spine revision 4: AD-38 restricts the first epic to <code>compile</code>, AD-40 adds the one score-side
 input the measurement cannot do without, and the spine&#39;s <strong>Owed to the reference implementation</strong> section

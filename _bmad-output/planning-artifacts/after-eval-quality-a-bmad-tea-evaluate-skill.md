@@ -39,10 +39,11 @@ documented subpaths, and nothing the tarball ships learns about the skill.
 
 ## Preconditions
 
-Epic 11 closes the fifth interface kind and, with Stories 11.10 through 11.12, the evidence for the
-three shapes whose guides currently record something unproven. Until that lands, a skill built on top
-would be building on a shape the library cannot yet demonstrate. So this is work for after
-eval-quality is done, which is the sequencing the idea was raised with.
+Epic 11 closed the fifth interface kind, and Stories 11.10 through 11.12 supplied the evidence for the
+three shapes whose guides had recorded something unproven: a seeded defect scored against a skill
+contract, a shipped workflow contract with a captured binding, and an end-to-end run against a service
+the suite starts. A skill built on top now has a demonstrated shape under each of them, so this is work
+that can start once eval-quality is done, which is the sequencing the idea was raised with.
 
 ## What a story for it would have to settle
 
@@ -58,6 +59,8 @@ them.
   design.
 - Whether the skill seals its own run records, which makes it responsible for AD-16's isolation
   manifest and the seven forbidden inputs.
-- What it does about the two things eval-quality still owes itself, the held-out probe corpus and the
-  second experiment round, since a harness that hides those makes a weaker claim look like a
-  stronger one.
+- What it does about the two limits the What Ships page records on how far a strength number carries:
+  a strength number measured against `corpus/dev/` says the contract catches probes its author could
+  read while writing it, and the rule deciding whether a finding detected its probe's seeded defect
+  was derived from and exercised on the records in `experiments/hypothesis-validation/`. A harness
+  that hides either makes a weaker claim look like a stronger one.

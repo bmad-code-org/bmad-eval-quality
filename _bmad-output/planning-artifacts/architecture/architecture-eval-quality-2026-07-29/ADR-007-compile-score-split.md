@@ -1,14 +1,22 @@
 ---
 id: ADR-007
 title: The compile half is a build substrate; the score half is owed to a reference implementation
-status: accepted
+status: closed
 date: 2026-07-29
+updated: 2026-09-10
+closed: 2026-09-10
 amends: ADR-003, ADR-005
 ---
 
 # ADR-007: The compile half is a build substrate; the score half is owed to a reference implementation
 
 ## Status
+
+**Closed 2026-09-10.** The split held and both halves shipped: `compile` through epic 6 and `score`
+through epics 7 and 8. The seven items the spine's **Owed to the reference implementation** section
+recorded closed between epics 4 and 8, and that section now records what each finding was and what
+closed it. Three of them closed with a stated bound on what the shipped code measures. Nothing below is
+rewritten; what follows is the decision as it stood and the amendment it took on the day.
 
 Accepted 2026-07-29, **amended the same day by [ADR-008](ADR-008-compile-half-owed-to-calibration.md)**.
 Enforced by spine revision 4: AD-38 restricts the first epic to `compile`, AD-40 adds the one score-side
