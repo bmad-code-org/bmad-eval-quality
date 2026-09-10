@@ -298,13 +298,23 @@ finding, twelve non-blocking, all addressed in this pass. The review ran every m
 worktree after the first round collided with this session's own uncommitted edits in the shared one.
 
 **The blocking finding, and why it was the right one.** `tests/score/skill-worked-example.test.ts`
-asserted O-001's state and check resolution and neither oracle's `corroboration`. The review proved it
-twice. Flipping O-001's authored disposition from `held` to `violated` left all 94 tests green while
+asserted O-001's state and check resolution and neither oracle's authored disposition. The review
+proved it twice. Flipping O-001's disposition from `held` to `violated` left all 94 tests green while
 the emitted artifact carried `corroboration: 'disagrees'`; only `check:worked-example` reddened, and
 only on bytes. Cutting obs-002's selection to `['timing-rules', 'mobile-rules']` reddened the
 resolution line and left the state line green, because `confirmed` is the outcome table's catch-all
-row. Both oracles now read their disposition and their corroboration, and `corroboration` is the sole
-catcher of the first mutation.
+row.
+
+The fix the review proposed was `corroboration` on both oracles plus O-001's disposition beside
+O-002's. What shipped is the disposition on both and `corroboration` on neither, because the measured
+answer differs from the proposed one. `corroboration` is a function of the authored disposition and
+the resolved check, and this file pins both on both oracles, so no mutation this chain admits moves
+it alone; `tests/score/outcome.test.ts` ties every corroboration rule to the value it produces
+exhaustively, which is where that derivation is held. With the disposition lines in, flipping O-001's
+to `violated` reds, and flipping O-002's to `held` reds, each on its own line. O-001's `state` line
+is kept and labelled in the source as the one assertion here that is the sole catcher of nothing:
+the pair `confirmed` and `caught` is the claim this chain exists to make, and a reader should not
+have to derive it.
 
 **Three assertions removed because they could not fail.** `witness.basis` and `strength.basis` are
 each typed to one literal with one producer. `witnessObservationIds` and `unwitnessedFindingIds` are

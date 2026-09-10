@@ -118,20 +118,27 @@ describe('the skill chain, as the shipped stages computed it', () => {
 		// The inclusion half holds over the same reply the exclusion half
 		// rejects, which is the whole reason a skill contract carries both.
 		//
-		// `corroboration` is the field that moves when the record contradicts
-		// what the check resolved, and it is the only one that does: an
-		// authored disposition of `violated` on an oracle whose check resolves
-		// `true` leaves `state` at `confirmed` and every other assertion here
-		// green. Both oracles read it, and both read their disposition, so the
-		// pair is symmetric.
+		// Both oracles read their authored disposition beside the resolution the
+		// evaluator computed. Without the disposition lines, flipping O-001's to
+		// `violated` scores identically and the suite stays green: `state` holds
+		// at `confirmed` and the field that moves is `corroboration`.
+		//
+		// `corroboration` itself is deliberately not asserted. It is a function
+		// of the two values on either side of it, both pinned here, so no
+		// mutation this chain admits moves it alone; the rules that derive it
+		// are tied to their values exhaustively in `tests/score/outcome.test.ts`.
+		//
+		// O-001's `state` is the one line here that is the sole catcher of
+		// nothing. `confirmed` is the outcome table's catch-all row, so it holds
+		// against both the resolution and the disposition moving. It stays
+		// because the pair `confirmed` and `caught` is the claim this chain
+		// exists to make, and a reader should not have to derive it.
 		expect(outcomeOf('O-001')?.state).toBe('confirmed')
 		expect(outcomeOf('O-001')?.checkResolution?.resolution).toBe('true')
 		expect(outcomeOf('O-001')?.disposition).toBe('held')
-		expect(outcomeOf('O-001')?.corroboration).toBe('agrees')
 		expect(outcomeOf('O-002')?.state).toBe('caught')
 		expect(outcomeOf('O-002')?.checkResolution?.resolution).toBe('false')
 		expect(outcomeOf('O-002')?.disposition).toBe('violated')
-		expect(outcomeOf('O-002')?.corroboration).toBe('agrees')
 	})
 
 	it('puts a number where the skill guide reported null', () => {
