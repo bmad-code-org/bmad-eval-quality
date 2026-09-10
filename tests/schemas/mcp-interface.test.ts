@@ -217,6 +217,49 @@ describe('the witness channel AD-10 admits for a tool call', () => {
 	})
 })
 
+describe('a witness leg carries what the tool call produces and no more', () => {
+	const witnessOver = (pointer: string) => {
+		const clone = structuredClone(mcpContract) as any
+		operation(clone).sensitivityWitness.relation = {
+			op: 'not',
+			operands: [
+				{
+					op: 'deep-equality',
+					operands: [
+						{ pointer },
+						{
+							pointer: '/interactions/leg-second-query/response-body/matches',
+						},
+					],
+				},
+			],
+		}
+		return EvalContract.parse(clone)
+	}
+
+	// The leg-channel check and the oracle-side reachability check answer the
+	// same question about the same channel, and this is the site that names
+	// the carriage reason: a tool call's leg carries no headers at all.
+	it('refuses a relation addressing response-headers, naming what a leg carries', () => {
+		const failure = failureOf(() =>
+			checkWitnessLegality(
+				witnessOver('/interactions/leg-first-query/response-headers/etag'),
+			),
+		)
+		expect(failure.code).toBe('unreachable-check-evidence')
+		expect(failure.message).toContain('does not carry')
+		expect(failure.message).toContain('response-status')
+	})
+
+	it('admits a relation addressing response-status, where the error flag lands', () => {
+		expect(() =>
+			checkWitnessLegality(
+				witnessOver('/interactions/leg-first-query/response-status'),
+			),
+		).not.toThrow()
+	})
+})
+
 describe('what a tool call can be asked about', () => {
 	// Replaces the first oracle outright rather than editing inside it: the
 	// fixture's own oracles are compound now, and a mutation reaching into one
