@@ -59,6 +59,12 @@ describe('the in-repository probe subject (fixtures 85-88)', () => {
 				})
 				expect(hop.status).toBe(200)
 			}
+			// The second server has answered no upgrade, which is the other side
+			// of what fixture 98 awaits: the promise is per-server and a caller
+			// asking before the route ran gets told so.
+			await expect(second.upgradedSocketClose()).rejects.toThrow(
+				'/switch-protocols has not answered on this server',
+			)
 		} finally {
 			await second.close()
 		}
@@ -149,6 +155,68 @@ describe('the in-repository probe subject (fixtures 85-88)', () => {
 		)
 		if (observed.kind !== 'api') throw new Error('expected an api observation')
 		expect(observed.status).toBe(200)
+	})
+
+	it("fixture 97: a body the server cuts short rejects with the response's own aborted error", async () => {
+		// The mechanism carries no `close`-based rescue for this case: Node
+		// destroys the incomplete response and the `error` handler is what
+		// rejects. Three failures on this route all carry `ECONNRESET` and the
+		// message is what separates them: the response's `aborted`, which is
+		// this case; the request's `socket hang up`, which is a route that
+		// answered nothing at all; and `read ECONNRESET` from an RST. Assert the
+		// code alone and a route that never sends headers passes this test.
+		// Delete `response.on('error', reject)` and it reddens on the timeout,
+		// since Node gates that emission on the listener.
+		const thrown = await nodeHttpMechanism({
+			address: '127.0.0.1',
+			port: server.port,
+			path: '/premature-close',
+			method: 'GET',
+			host: SUBJECT_HOSTS.authorized,
+			headers: {},
+			body: undefined,
+			maxResponseBytes: 1024,
+			signal: new AbortController().signal,
+		}).then(
+			() => undefined,
+			(error: unknown) => error,
+		)
+		const error = thrown as NodeJS.ErrnoException | undefined
+		// One assertion over both fields: split in two and the code half is
+		// deletable, since every failure this route can produce carries
+		// `ECONNRESET` and the message is the half that identifies which.
+		expect({ code: error?.code, message: error?.message }).toEqual({
+			code: 'ECONNRESET',
+			message: 'aborted',
+		})
+	})
+
+	it('fixture 98: an unrequested protocol switch rejects and closes the socket it left behind', async () => {
+		// A 101 leaves the response callback unrun, so every handler inside it
+		// is out of reach, and Node holds the request open when nothing listens
+		// for `upgrade`. Three mutants, three mechanisms: delete the listener
+		// and the timeout catches it, since nothing rejects at all; change what
+		// it rejects with and the message below catches that; drop the
+		// `socket.destroy()` and the server-side promise catches that, which is
+		// the only way an upgraded socket ever closes once Node detaches it.
+		const thrown = await nodeHttpMechanism({
+			address: '127.0.0.1',
+			port: server.port,
+			path: '/switch-protocols',
+			method: 'GET',
+			host: SUBJECT_HOSTS.authorized,
+			headers: {},
+			body: undefined,
+			maxResponseBytes: 1024,
+			signal: new AbortController().signal,
+		}).then(
+			() => undefined,
+			(error: unknown) => error,
+		)
+		expect((thrown as Error | undefined)?.message).toBe(
+			'the server switched protocols',
+		)
+		await server.upgradedSocketClose()
 	})
 
 	it('fixture 92: a request past maxRequestBytes is capped before any hop', async () => {

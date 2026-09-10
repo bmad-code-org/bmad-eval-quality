@@ -1768,7 +1768,12 @@ that exposed it.
 13. **Low. `nodeHttpMechanism` could hang** when a server sent headers and part of a body then
     destroyed the socket: `close` returned early and neither `end` nor `error` fired. It now
     rejects when `!truncated && !response.complete`. The reviewer confirmed the `end`/`close` pair
-    cannot resolve twice, since `resolve` is idempotent.
+    cannot resolve twice, since `resolve` is idempotent. **Retired in the Epic 11 tail pass:** Node
+    destroys an incomplete response, and with an `error` listener registered that destroy emits
+    `ECONNRESET` ahead of `close`, measured on 22.12.0, 22.20.0, 24.20.0 and 26.5.0, so the
+    `!response.complete` reject was unreachable. Fixture 97 drives a cut-short body and pins the
+    rejection that does fire; fixture 98 covers the one hang the review did find, a 101 with no
+    `upgrade` listener, which the mechanism now rejects.
 14. **Low. An unmapped redirect host threw a plain `Error`**, which `runPortMethod` turned into
     `port-failure`: a policy denial reported as a transport failure. `subjectResolveAddress` now
     throws `forbidden-target`.

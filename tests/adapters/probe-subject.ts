@@ -45,6 +45,8 @@ const OVERSIZE_BYTES = 2048
 /** Two bytes each in UTF-8, one code unit each in UTF-16. Chosen so the body is under `MAX_RESPONSE_BYTES` by code units and over it by bytes. */
 const UTF8_FILLER = Math.floor(MAX_RESPONSE_BYTES * 0.75)
 const SLOW_ANSWER_MS = MAX_ELAPSED_MS + 350
+/** What `/premature-close` declares before sending less than it promised. Below `MAX_RESPONSE_BYTES`, so the byte cap stays out of the way. */
+const PREMATURE_CLOSE_DECLARED_BYTES = 64
 
 /** Eight interfaces, one reachable target. Seven are absent from the policy or break one of its fields, which is what makes each denial reachable. */
 export const SUBJECT_HOSTS = {
@@ -173,23 +175,35 @@ export const nodeHttpMechanism: ProbeMechanism = (hop) =>
 					}
 				})
 				response.on('end', settle)
+				// Only the cap path arrives here unsettled: destroying the
+				// response for truncation stops `end` from firing. A body the
+				// server cuts short settles through `error` below, since
+				// `socketCloseListener` destroys the response whenever the
+				// message is incomplete and the stream machinery then emits
+				// `error` ahead of `close`. That emission is gated on an `error`
+				// listener already being registered (`onError` in
+				// `_http_incoming.js`, kept for backward compatibility), so
+				// dropping the handler below leaves a cut-short body unsettled
+				// and the adapter's elapsed cap as its only exit. Measured on
+				// Node 22.12.0, 22.20.0, 24.20.0 and 26.5.0. Fixture 97 pins it.
 				response.on('close', () => {
-					if (truncated) {
-						settle()
-						return
-					}
-					// A server that sends headers and part of a body and then
-					// destroys the socket emits neither `end` nor `error`, so
-					// without this the promise never settles and only the elapsed
-					// cap rescues it.
-					if (!response.complete) {
-						reject(new Error('the connection closed before the response ended'))
-					}
+					if (truncated) settle()
 				})
 				response.on('error', reject)
 			},
 		)
 		clientRequest.on('error', reject)
+		clientRequest.on('upgrade', (_upgraded, socket: Socket) => {
+			// A 101 no probe asked for. The response callback never runs, so
+			// every handler above is out of reach, and with no listener here Node
+			// leaves the request open: the call would run to the adapter's
+			// elapsed cap. Node also detaches an upgraded socket from the agent
+			// and from its own close and error listeners before emitting, so this
+			// destroy is the only thing left that can close it. Fixture 98 pins
+			// both halves.
+			socket.destroy()
+			reject(new Error('the server switched protocols'))
+		})
 		if (hop.body !== undefined) clientRequest.write(hop.body)
 		clientRequest.end()
 	})
@@ -463,9 +477,12 @@ export function startFixtureServer(): Promise<{
 	readonly port: number
 	readonly address: string
 	readonly close: () => Promise<void>
+	/** Settles when the socket `/switch-protocols` last answered on closes. Node hands an upgraded socket to the client and stops tracking it, so this side is the only place the client's cleanup shows. */
+	readonly upgradedSocketClose: () => Promise<void>
 }> {
 	return new Promise((resolveServer) => {
 		const sockets = new Set<Socket>()
+		let upgradedSocketClose: Promise<void> | undefined
 		const server = createServer((incoming, response) => {
 			const path = (incoming.url ?? '/').split('?')[0] ?? '/'
 			const port = (server.address() as { port: number }).port
@@ -546,6 +563,33 @@ export function startFixtureServer(): Promise<{
 				}, SLOW_ANSWER_MS)
 				return
 			}
+			if (path === '/premature-close') {
+				// Declares more body than it sends and then half-closes, so the
+				// client's parser never completes the message. A FIN once the
+				// bytes are out, since a `destroy()` can reach a Linux client as
+				// an RST and that is a different failure with the same
+				// `ECONNRESET` code. Fixture 97 drives it.
+				response.writeHead(200, {
+					'content-type': 'application/json',
+					'content-length': String(PREMATURE_CLOSE_DECLARED_BYTES),
+				})
+				response.write('{"partial":', () => response.socket?.end())
+				return
+			}
+			if (path === '/switch-protocols') {
+				// A 101 the request never asked for, written to the socket
+				// because a `writeHead(101)` is accepted and then never reaches
+				// the client. Fixture 98 drives it, and reads the promise below
+				// to see the client destroy this socket.
+				const upgraded = response.socket
+				upgradedSocketClose = new Promise((resolveClosed) => {
+					upgraded?.once('close', () => resolveClosed())
+				})
+				upgraded?.write(
+					'HTTP/1.1 101 Switching Protocols\r\nupgrade: websocket\r\nconnection: upgrade\r\n\r\n',
+				)
+				return
+			}
 			if (path === '/hang') return // never answers
 			response.writeHead(404, { 'content-type': 'application/json' })
 			response.end(JSON.stringify({ ok: false }))
@@ -566,6 +610,11 @@ export function startFixtureServer(): Promise<{
 						for (const socket of sockets) socket.destroy()
 						server.close(() => resolveClose())
 					}),
+				upgradedSocketClose: () =>
+					upgradedSocketClose ??
+					Promise.reject(
+						new Error('/switch-protocols has not answered on this server'),
+					),
 			})
 		})
 	})
