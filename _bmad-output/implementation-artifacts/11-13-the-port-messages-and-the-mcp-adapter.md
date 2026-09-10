@@ -294,9 +294,9 @@ is fixed in this diff, which is 11.9's rule that a sentence moves with the chang
       Story 11.6's `callInputsOf`, the command channels unobserved.
 - [x] `src/core/preflight/reduce.ts` -- give `anomalyOf` its third arm over `isError`.
 - [x] `src/core/schemas/probe-policy.ts` -- add `McpTargetAuthorization` and `McpTargetPolicy` carrying
-      the server launch target and its arguments, the `tools` identifier-to-wire-name map,
-      `cwd`, `serverEnvironment`, `maxElapsedMs`, and `maxOutputBytes`, each field's rule in its own
-      `.describe()`.
+      the server launch target and its arguments, the `tools` allowlist (Decision 9 supersedes the
+      identifier-to-wire-name map this line first named), `cwd`, `serverEnvironment`, `maxElapsedMs`,
+      and `maxOutputBytes`, each field's rule in its own `.describe()`.
 - [x] `src/adapters/mcp-target-policy.ts` -- new: `MCP_DENIAL_REASONS`, `McpResolvedTarget`,
       `McpPolicyDecision`, and the pure `evaluateMcpTarget`, on `command-target-policy.ts`'s
       declaration-order and first-match rules.
@@ -380,7 +380,11 @@ is fixed in this diff, which is 11.9's rule that a sentence moves with the chang
   there are exactly two, the interface and the tool allowlist, which is the premise Story 11.7's
   Decision 1 derives `CONFORMANCE_OUTCOME_COUNTS['mcp-probe'] = 14` from.
 - Given every existing `api` and `cli` fixture and the worked chain, when the whole suite runs, then
-  every outcome, verdict, and emitted byte is unchanged, and no published schema document moves.
+  every outcome and every emitted byte is unchanged and no published schema document moves, with one
+  disclosed exception: `PreflightVerdict.fixtureDigest` and the `scoringVersion` derived from it take
+  new values on every kind, because Decision 6's sixth projection field is inside the digest. The
+  `CHANGELOG.md` entry names it as a caller-facing break and Decision 11 records why the field is
+  worth that.
 - Given `CHANGELOG.md`'s `[Unreleased]`, when read, then it names the widened observation union as a
   caller-facing break and names the two subpath additions, and it names no `schemaVersion` bump. NFR8
   (`epics.md:54`) is what requires it.
@@ -586,7 +590,7 @@ permitted interfaces both declare. That behaviour now has its own case in
 `tests/seal/plan-index.test.ts`, over a collision across two different kinds, which is the case the
 per-arm spelling could have broken while every same-kind case stayed green.
 
-`operationsOf` keeps its keep: fourteen other call sites read it and want the widened element type.
+`operationsOf` keeps its keep: every other call site reads it for the widened element type, across `compile/`, `score/`, `coverage/`, and `preflight/`.
 Its comment at `interface.ts` claimed TypeScript "will not iterate `iface.operations` directly",
 which is true of `.map` on an un-narrowed union and untrue of a `for...of` inside a narrowed arm. The
 comment now says which, and names `buildPlanIndex` as the one site that wants the opposite.
@@ -599,9 +603,19 @@ AD-11 fixture digest, since the digest is computed over the whole projection. Tw
 `tests/preflight/projection.test.ts` carry that: the key-count case, and the golden digest literal,
 which is re-frozen from this pass's first green run on the same terms the original was written under.
 
-Nothing published moved with them. `check:schemas`, `check:worked-example`, `check:corpus`, and
-`check:ad33-table` all exit 0 with no regeneration, which is the mechanical proof that no committed
-artifact carries a fixture digest.
+No committed artifact moved with them. `check:schemas`, `check:worked-example`, `check:corpus`, and
+`check:ad33-table` all exit 0 with no regeneration, which is the mechanical proof that nothing in
+this repository carries a fixture digest.
+
+Artifacts callers hold do move, and that is the disclosable half. `fixtureDigest` (`projection.ts`)
+digests whole projections, `reducePreflight` writes it to `PreflightVerdict.fixtureDigest`, and
+`emit.ts` feeds that into `scoringVersionInputs`. So a caller re-running an unchanged `api` contract
+after this release gets a different verdict digest and a different `scoringVersion`. NFR8 requires
+that called out, so the `CHANGELOG.md` entry names both fields and says to re-run a pre-flight rather
+than compare across the boundary. `comparabilityKey` does not move: `emit.ts` digests the scoring
+policy digest and the probe identifiers, and takes no fixture digest. The acceptance criterion that
+read "every outcome, verdict, and emitted byte is unchanged" is corrected to match, since it was
+written before Decision 6 existed.
 
 The type's own comment opened "The five fields and no others" while the type carried six and its test
 counted six, so the census in that sentence was already stale before this story touched it. It is
@@ -681,6 +695,134 @@ The frozen Problem statement's two line citations have also drifted, `ProbeReque
 those citations carry are still true of the tree this story started from, so nothing but the numerals
 moved and neither is edited.
 
+**Decision 18: a refused `initialize` throws `port-failure`, and the fixture server is what makes
+every handshake assertion load-bearing.**
+The first pass awaited the handshake frame and discarded it, so a server answering `initialize` with
+a JSON-RPC error, which is the ordinary shape of a protocol-version disagreement, went on to
+`tools/call` and had whatever came back recorded as a clean observation with `isError: true`. That
+contradicts Decision 5, which draws the line at whether anything answered: a server that refused the
+session answered a different question, and nothing observed the system. `callToolOverStdio` now reads
+the handshake's error and throws, which reaches the caller as `port-failure` alongside a failure to
+start and a malformed frame.
+
+The peer review found the guard by finding its absence: deleting both the `initialize` request and
+the `notifications/initialized` notification left the whole suite green, because the fixture server
+dispatched on method with no session state. It is stateful now, refusing `tools/call` with the
+SDK-standard `server not initialized` error until it has seen `initialize`. That makes every
+successful case in `mcp-adapter.test.ts` a handshake assertion: re-running the same deletion now
+turns ten of them red, which is recorded in Verification. A separate case speaks the fixture's
+protocol directly and asserts the refusal, so the guard on the guard is armed too.
+
+**Decision 19: what the server is launched with is asserted against a real server, and the assertion
+is a marker rather than a key set.**
+`serverEnvironment` and `cwd` had no falsifying test: every authorization declared `{}` and
+`process.cwd()`, so spreading the whole host environment into a spawned server, dropping the declared
+overrides, or dropping `cwd` from the spawn options each left the suite green. That is a gap on the
+one field AD-18 designates for credentials.
+
+The fixture publishes an `env_tool` returning its own environment and working directory, one
+authorization declares `{ NOTES_TOKEN: ... }` and a `cwd` under the system temporary directory, and
+the test asserts the declared token, the inherited `PATH`, the declared working directory, and the
+absence of a marker variable the host process carries and the mapping does not. The marker is what
+the assertion turns on rather than an exact key-set comparison, because macOS injects
+`__CF_USER_TEXT_ENCODING` into a child environment whatever the `env` option says, and a key-set
+assertion would be green on one platform and red on another for no behavioural reason.
+
+**Decision 20: teardown closes the server's stdin and then kills its process group.**
+`close()` killed the direct child only. `npx -y <package>` is the ordinary MCP launch shape, so the
+process the authorization names is routinely a launcher and the server is its child; killing the
+launcher leaves the server running, which is the state rule 3 exists to prevent. The child is spawned
+`detached: true` so it leads its own group, and teardown ends its stdin first, which is the stdio
+transport's own order and enough on its own for a server that exits when its input closes, then kills
+the group. Windows has no process groups and throws on the negative pid, so the direct child is the
+fallback.
+
+Proved by mutation, and the proof needed a second fixture. A launcher fixture records its
+grandchild's pid, and the test asserts the grandchild is gone after the elapsed cap fires. The first
+version of that test passed under both implementations, because ending stdin was enough to end a
+server whose only open handle was its input; the fixture takes a `--linger` flag that holds a timer
+open, and with it the group kill is the only thing that ends the grandchild. Reverting to
+`child.kill('SIGKILL')` turns the case red.
+
+**Decision 21: the two conformance details this story corrected are unreachable through their own
+runners, and the source records that rather than a test pretending otherwise.**
+Decision 12 records correcting the `api` arm's anomalous-status detail and the `cli` arm's
+non-zero-exit detail so each names the kind it observed. Trying to write a test for either found that
+neither non-matching arm can be reached: `checkProbeResolved` and its command-side twin call
+`echoMismatch` first and return on a mismatch, and `echoMismatch` compares `kind` among the four
+echoed fields, so an answer of another mechanism is already reported as a correlation failure before
+the status or exit comparison runs.
+
+Both arms are kept and both are commented as unreachable through the shipped runner, on
+`plan-index.ts`'s own precedent for a branch the type system needs and the data cannot reach. They
+are spelled truthfully because the alternative is what was there: a binary ternary calling a tool
+result "a command observation". What is reachable is asserted instead: a case answers the faulting
+request with a `cli` and then an `mcp` observation and asserts the correlation failure both times,
+with the detail naming the observed kind, so the ordering claim in the source comment has a test
+behind it.
+
+**Decision 22: one authorization per `interfaceId`, and the evaluator consults only the first.**
+The first pass filtered every authorization naming the interface and took the first that named the
+tool, copying `evaluateCommandTarget`'s ordering rule. That rule is safe on the command side because
+its entries are keyed by `(interfaceId, executable)`, so every candidate it considers runs the same
+executable. Here the key is the interface alone, and the schema's own description says the interface
+identifier is the server identity, so searching on past a non-matching tool list would let one
+logical interface resolve to two different binaries depending on which tool was asked for.
+
+`evaluateMcpTarget` now finds the first authorization naming the interface and answers from that one,
+and `McpTargetPolicy` refines its array to reject a second entry naming the same interface, with the
+reason in the message. That gives the shape a runtime check a caller who parses the policy actually
+sees, which is also the first runtime coverage this file's `min(1)` bounds and strict-object
+rejection have had.
+
+**Decision 23: five framing and decoding defects the peer review reproduced, all fixed at the
+adapter.**
+Each was found by running the adapter against a server built to exhibit it, and each has a case in
+`mcp-adapter.test.ts` or a bound in the declaration.
+
+A complete frame arriving with no trailing newline was thrown away, because the buffer flushed only
+on `\n` and nothing flushed the residue on stream end; a fully received, parseable response became
+`port-failure`. The stdout stream's `end` now flushes what is left. A chunk boundary inside a
+multi-byte character corrupted the payload silently: `chunk.toString('utf8')` per data event replaced
+the split character with U+FFFD, `JSON.parse` still succeeded, and the mangled value would have
+reached the observation body an oracle asserts on and the fixture digest covers. A `StringDecoder`
+holds the partial sequence across chunks. A response echoing its id as a JSON-RPC-legal string was
+dropped and the call then burned its whole elapsed budget to report a cap for what was a correlation
+mismatch; the pending map is keyed by the id as text. A frame carrying an explicit `"error": null`
+beside a valid result forced `isError: true` and discarded the result; the error test is now against
+`undefined` and `null` together. A non-object `structuredContent` was recorded as `null` and became
+an absent body indistinguishable from Decision 16's no-structured-content case; `McpCallToolResult`
+carries the structured result as an optional field, so absent means the call published none and a
+`null` means the server published one.
+
+Two smaller ones travel with them: `maxElapsedMs` is bounded above at 2,147,483,647, because a larger
+value is silently clamped by the timer to one millisecond and turns a generous budget into an
+immediate cap, and `close()` sets the session's broken flag as well as its closed flag, so a late
+over-cap chunk cannot reject a session that already settled.
+
+**Decision 24: the three branched observation readers keep binary tails, and the reason is recorded
+rather than patched.**
+`projectObservation`, `evidenceOf`, and `anomalyOf` each test two kinds and let the third fall
+through, so a fifth kind would inherit an arm written for another. The peer review raised giving each
+an exhaustive tail the way `buildPlanIndex` now has one, and it is turned down here. `ProbeObservation`
+is a `z.discriminatedUnion`, so a fifth member cannot arrive without an edit to `port-messages.ts`,
+and that edit is what the next kind's story does; the forcing function that matters is at the site
+that sorts by kind, which Decision 10 gave one. Adding three more guarded branches to guard a state
+the union closes buys an exhaustiveness the compiler already gives at the declaration and costs three
+functions their shape. A story that adds a fifth observation member should read this decision and
+decide again with its own kind in hand.
+
+**Decision 25: the environment-probe port's four normative rules are widened to the mechanisms it
+now has.**
+`environment-probe-port.ts` states four rules an implementation must follow, and all four were
+written in HTTP terms: "before any network call", "keep the original host in the `Host` header",
+"verify TLS against that host". That prose is what an external adapter author reads, and this story
+deleted the documentation sentence that pointed at it precisely because it does not describe a
+mechanism that starts a process. Rules 1 and 2 now state the obligation once and give the HTTP and
+process-launching specifics under it, rule 3 says "a failure to reach the system at all" where it
+said "a transport failure", and rule 4 names a non-zero exit and a tool error beside a 4xx. No rule
+changed what it requires; each one now says it for every mechanism the port has.
+
 ## Design Notes
 
 The organising idea is that the port was already built for a third kind and had one assumption left in
@@ -704,10 +846,10 @@ export const McpTargetAuthorization = z.strictObject({
 	interfaceId: Identifier, // the server, and the whole authorization key
 	target: z.string().min(1),
 	targetArgs: z.array(z.string()),
-	tools: z.record(Identifier, z.string().min(1)), // allowlist and wire mapping
+	tools: z.array(ToolName).min(1), // the allowlist, per Decision 9
 	cwd: z.string().min(1),
 	serverEnvironment: z.record(KeyName, z.string()),
-	maxElapsedMs: z.int().min(1),
+	maxElapsedMs: z.int().min(1).max(2_147_483_647),
 	maxOutputBytes: z.int().min(1),
 })
 ```
@@ -769,3 +911,52 @@ Every command below was run and the result is recorded.
   and 92.23% branches.
 - `npm run validate` -- exit 0 with nothing on stderr, all 21 steps green.
 - `npm run build` -- exit 0.
+
+**Peer review round: 33 findings raised, 33 addressed.**
+
+A sibling session ran `/bmad-code-review` over both commits with seven reviewers and verified every
+claim at the cited line, reproducing four of them by running the adapter against a server built to
+exhibit the defect. Four were merge-blocking, eleven medium, eighteen low, and four it raised and
+rejected itself. Nothing was deferred.
+
+| Finding | Fix |
+|---|---|
+| The sixth projection field moves `fixtureDigest` and `scoringVersion` for every existing api and cli run, and the CHANGELOG discloses nothing | `CHANGELOG.md` entry naming both fields as a caller-facing break, the acceptance criterion corrected, Decision 11 rewritten to separate committed artifacts from artifacts callers hold |
+| A refused `initialize` is treated as an established session | Decision 18: the handshake's error is read and throws `port-failure` |
+| The handshake has no verification at all, and one test's title claims it does | Decision 18: the fixture refuses `tools/call` before `initialize`, so deleting the handshake now turns ten cases red |
+| `serverEnvironment` and `cwd` have zero coverage on the field AD-18 designates for credentials | Decision 19: an `env_tool`, a declared token and working directory, and a host-only marker asserted absent |
+| A complete frame with no trailing newline at EOF is thrown away | Decision 23: the stdout stream's `end` flushes the residue, with a case over `unframed_tool` |
+| UTF-8 corruption across stdout chunk boundaries | Decision 23: `StringDecoder`, with a case over a frame split inside `é` |
+| Grandchildren are orphaned by teardown | Decision 20: `detached: true`, stdin closed then the process group killed, proved by a launcher fixture |
+| Two sentences in the rewritten guide still say the kind is owed | The frontmatter description and the closing line both corrected |
+| A sentence this diff added is arithmetically wrong and names a channel outside its own list | All three of the confined channels carry a value; `response-headers` is named as foreign rather than empty |
+| The three `port-failure` tests are mutually indistinguishable | Each reads the cause the session carries; a fourth case covers a crash during `tools/call` |
+| The literal-comparison policy test asserts only `allowed === false` | Asserts `tool-not-authorized` and the detail |
+| The stderr-cap test races two pipes and can flake | `noisy_tool` never answers |
+| Two new assertions cannot see the failure they are written for | Case 113 pins eight port calls and every check by kind and outcome; the plan-index case gained a positive control |
+| Two authorizations for one `interfaceId` may name different binaries | Decision 22 |
+| Both conformance detail corrections are untested | Decision 21: unreachable through their own runners, recorded in the source, with the reachable behaviour asserted instead |
+| `maxElapsedMs` has no ceiling and a timer clamps a large value to 1ms | Bounded at 2,147,483,647, with a reject case |
+| A response whose id is a legal string is dropped | Keyed by the id as text |
+| An explicit `"error": null` forces `isError: true` | Tested against `undefined` and `null` together |
+| A non-object `structuredContent` is recorded as absent | Carried as the value it is; absent now means the call published none |
+| `close()` never sets the broken flag | It does |
+| The close handler names no phase | It names the method the session was waiting on |
+| Three stale citations in the tool-use guide | `sealed-run-record.ts:255`, `qualification.ts:832`, `interface.ts:365` |
+| `README.md` says the conformance suite runs against every shipped adapter | Says it runs over the shipped adapters |
+| `cli-commands.md` says the port has two mechanisms | Names the HTTP and command arms, which is what the sentence is about |
+| The story's census of `operationsOf` call sites is off | The census is deleted, per Decision 11's own argument |
+| The Execution list and Design Notes still show `tools` as a map | Both point at Decision 9 |
+| `mcpEchoPort`'s `isError` parameter is never passed | Case 114 drives it and asserts a failed verdict |
+| The breakEchoKind case asserts the detail and never the outcome | Asserts `outcome.passed` and `report.passed` |
+| The duplicate-operation-id throw is asserted only as `TypeError` | Asserts the message naming the id |
+| `McpTargetAuthorization` has no runtime coverage | Seven parse cases, including the strict-object rejection |
+| Nothing asserts the two authorization-scoped fields the next story's count rests on | A case pins the eight-field key set |
+| Negation-then-correction in three lines this commit added | Rewritten |
+| The port's four normative rules are HTTP-only prose | Decision 25 |
+
+The reviewer also confirmed the two supersessions against the tree, found no socket anywhere under
+`src/adapters/`, found no never-settling frame, listener leak, unhandled rejection, double-settle, or
+cap evasion in the session, and confirmed the `buildPlanIndex` refactor is semantics-preserving in
+both duplicate modes. Its four self-rejected findings are not chased, except the observation-reader
+one, which Decision 24 settles as a recorded decision.

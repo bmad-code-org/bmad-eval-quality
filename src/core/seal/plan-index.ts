@@ -214,9 +214,8 @@ export function buildPlanIndex(
 	 * whether the caller may store the operation. An id two permitted
 	 * interfaces both declare is removed from every map instead of being
 	 * resolved by array order, so `operationOf` and its two siblings answer
-	 * `undefined` for it. One closure rather than one copy per arm, because
-	 * the bookkeeping is the same for all three kinds and only the destination
-	 * map differs.
+	 * `undefined` for it. One closure serves all three arms: the bookkeeping is
+	 * the same for every kind and only the destination map differs.
 	 */
 	const claim = (operationId: string, kind: InterfaceKindName): boolean => {
 		if (kinds.has(operationId) || duplicateOperationIds.has(operationId)) {

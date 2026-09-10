@@ -211,11 +211,14 @@ describe('buildPlanIndex', () => {
 
 	it('throws TypeError on a duplicate operationId across permitted interfaces', () => {
 		const firstInterface = gateCPermittedInterfaces[0]
-		if (firstInterface === undefined)
-			throw new Error('fixture missing an interface')
+		const firstOperation = firstInterface?.operations[0]
+		if (firstInterface === undefined || firstOperation === undefined)
+			throw new Error('fixture missing an interface or operation')
 		const duplicated = [...gateCPermittedInterfaces, firstInterface]
+		// The message names the id, so the throw is attributable to the
+		// collision rather than to any other precondition in the builder.
 		expect(() => buildPlanIndex(gateCInteractionPlan, duplicated)).toThrow(
-			TypeError,
+			`duplicate operation id across permitted interfaces: ${firstOperation.operationId}`,
 		)
 	})
 
@@ -246,6 +249,20 @@ describe('buildPlanIndex', () => {
 		expect(index.mcpOperationOf(firstOperation.operationId)).toBeUndefined()
 		expect(index.commandOperationOf(firstOperation.operationId)).toBeUndefined()
 		expect(index.interfaceKindOf(firstOperation.operationId)).toBeUndefined()
+		// The positive control: an index that built nothing would satisfy the
+		// four assertions above.
+		const untouched = firstInterface.operations[1]
+		if (untouched === undefined)
+			throw new Error('the fixture declares a second operation')
+		expect(index.operationOf(untouched.operationId)?.operationId).toBe(
+			untouched.operationId,
+		)
+		const survivingTool = collidingTool.operations[1]
+		if (survivingTool === undefined)
+			throw new Error('the mcp fixture declares a second tool')
+		expect(index.mcpOperationOf(survivingTool.operationId)?.operationId).toBe(
+			survivingTool.operationId,
+		)
 	})
 
 	it('can mark duplicate step and operation IDs unresolved for total structural checks', () => {

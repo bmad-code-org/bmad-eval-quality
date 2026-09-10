@@ -337,18 +337,50 @@ describe('preflightFromObservations: the verdict and the stream', () => {
 	// The same driver over the third kind, still against a hand-written fake
 	// (AD-30): the real stdio adapter is exercised in `tests/adapters/`, and
 	// what this asserts is that `runPreflight` needs no kind-specific arm.
-	it('case 113: drives an mcp contract through a tool-call port and returns a schema-valid verdict', async () => {
-		const port = mcpEchoPort()
-		const verdict = await runPreflight({
+	const mcpRun = (port: ReturnType<typeof mcpEchoPort>) =>
+		runPreflight({
 			contract: compile(EvalContract.parse(mcpContract), { strict: true }),
 			probes: [],
 			runId: 'mcp-run-0001',
 			port: { probe: port },
 			signal: new AbortController().signal,
 		})
-		expect(PreflightVerdict.safeParse(verdict).success).toBe(true)
-		expect(port.mock.calls.length).toBeGreaterThan(0)
+
+	// The literals are the point. `passed` is true when nothing failed, so an
+	// empty check list and an all-exempt one would both satisfy a bare
+	// `passed === true`, and a plan that lost legs would satisfy a bare
+	// "called at least once".
+	it('case 113: drives an mcp contract through a tool-call port and satisfies every check', async () => {
+		const port = mcpEchoPort()
+		const verdict = await mcpRun(port)
+		expect(port.mock.calls).toHaveLength(8)
 		for (const [request] of port.mock.calls) expect(request.kind).toBe('mcp')
+		expect(
+			verdict.checks.map((check) => `${check.kind}:${check.outcome}`).sort(),
+		).toEqual([
+			'clean-control:satisfied',
+			'input-sensitivity:satisfied',
+			'input-sensitivity:satisfied',
+			'interface-present:satisfied',
+			'interface-present:satisfied',
+			'state-reset:satisfied',
+		])
 		expect(verdict.passed).toBe(true)
+	})
+
+	// The same run with the tool reporting an error on every leg. AD-10's
+	// clean-control check is what reads the flag, and a verdict that still
+	// passed would mean the flag reached nothing.
+	it('case 114: fails the verdict when the tool reports an error on the control legs', async () => {
+		const verdict = await mcpRun(mcpEchoPort(true))
+		expect(verdict.passed).toBe(false)
+		const control = verdict.checks.filter(
+			(check) => check.kind === 'clean-control',
+		)
+		expect(control).toHaveLength(1)
+		for (const check of control) {
+			expect(check.outcome).toBe('failed')
+			expect(check.note).toContain('tool error')
+		}
 	})
 })

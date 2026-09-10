@@ -43,28 +43,31 @@ function deny(reason: McpDenialReason, detail: string): McpPolicyDecision {
 
 /**
  * The interface check runs first, so an unmapped server never reaches the tool
- * comparison and the two denials stay distinguishable. Where several
- * authorizations name one interface, each is tried in declaration order and the
- * first that names the tool wins; mirrors `evaluateTarget` and
- * `evaluateCommandTarget`'s ordering rule for the same reason.
+ * comparison and the two denials stay distinguishable.
+ *
+ * The first authorization naming the interface is the only one consulted, and
+ * `McpTargetPolicy` refuses a second entry naming it. For this mechanism the
+ * interface identifier is the server identity, so searching on past a
+ * non-matching tool list would let one logical interface resolve to a second
+ * binary depending on which tool was asked for. `evaluateCommandTarget` does
+ * search on, and can: its entries are keyed by `(interfaceId, executable)`, so
+ * every candidate it considers runs the same executable.
  */
 export function evaluateMcpTarget(
 	policy: McpTargetPolicy,
 	target: McpResolvedTarget,
 ): McpPolicyDecision {
-	const matchingInterface = policy.authorizations.filter(
-		(authorization) => authorization.interfaceId === target.interfaceId,
+	const authorization = policy.authorizations.find(
+		(candidate) => candidate.interfaceId === target.interfaceId,
 	)
-	if (matchingInterface.length === 0) {
+	if (authorization === undefined) {
 		return deny(
 			'interface-not-authorized',
 			`no authorization names interface "${target.interfaceId}"`,
 		)
 	}
-	for (const authorization of matchingInterface) {
-		if (authorization.tools.includes(target.toolName)) {
-			return { allowed: true, authorization }
-		}
+	if (authorization.tools.includes(target.toolName)) {
+		return { allowed: true, authorization }
 	}
 	return deny(
 		'tool-not-authorized',

@@ -1,6 +1,6 @@
 ---
 title: "Evaluate Tool-Use Behavior"
-description: "Two questions get called tool-use evaluation: whether an agent's tool use was correct, which the shipped cli kind answers today, and whether the tool server itself is correct, which the mcp kind still owes."
+description: "Two questions get called tool-use evaluation: whether an agent's tool use was correct, which the shipped cli kind answers today, and whether the tool server itself is correct, which the mcp kind and its stdio adapter now answer."
 sidebar:
   order: 6
 ---
@@ -18,7 +18,7 @@ The last entry under [Where this stands](#where-this-stands) records the run tha
 
 **Is the tool server itself correct?**
 The system under test is the MCP server: the tool call is the request, the tool result is the response, and only the `mcp` kind can describe that.
-`PermittedInterface` declares four interface kinds and one of them is `mcp` (`src/core/schemas/interface.ts:333`), and `compile` accepts it.
+`PermittedInterface` declares four interface kinds and one of them is `mcp` (`src/core/schemas/interface.ts:365`), and `compile` accepts it.
 Everything from [What an `mcp` operation declares](#what-an-mcp-operation-declares) down is about this question.
 
 This repository now ships an adapter that runs a tool call. `createMcpAdapter` speaks MCP's stdio transport, and a pre-flight over an `mcp` contract runs end to end against a real tool server. Nothing in TEA has been scored against an `mcp` interface yet. This page is the first writing that takes the kind seriously.
@@ -90,7 +90,7 @@ All three gates that used to reject an `mcp` contract now admit it.
 | --- | --- | --- |
 | `compile` | Admits `mcp` | `SUPPORTED_INTERFACE_KINDS` in `src/core/compile/interface-inventory.ts` |
 | `preflight` plan | Admits it too, reading the same tuple | `src/core/preflight/plan.ts` |
-| `score` probe qualification | Admits it, reading the same tuple again | `src/core/score/qualification.ts:818` |
+| `score` probe qualification | Admits it, reading the same tuple again | `src/core/score/qualification.ts:832` |
 
 All three read one exported tuple, so what compiles, what pre-flights, and what a signature may declare against cannot disagree.
 `web` is the one kind all three still refuse, under `unsupported-interface-kind` contract-side and `signature-interface-kind-unsupported` probe-side.
@@ -226,7 +226,7 @@ It makes every coverage rule report about the envelope: `requiredKeys` becomes `
 
 **The error flag lands on `response-status`.**
 The MCP envelope's `isError` is observable there as 0 or 1, which keeps it out of `requiredKeys`, where it would satisfy a coverage rule while checking nothing.
-`Observation.responseStatus` is an integer with no HTTP reading attached (`sealed-run-record.ts:248`), and an adapter is what performs that projection.
+`Observation.responseStatus` is an integer with no HTTP reading attached (`sealed-run-record.ts:255`), and an adapter is what performs that projection.
 The `ok` field in the declaration above is a different thing: it is the tool's own field inside its own structured result, so an oracle over it checks what the tool said about its work.
 A tool whose result carries no such field declares `successIndicator: null`, which is legal and makes AD-20 rule 1 irrelevant.
 
@@ -321,7 +321,7 @@ The transport is stdio and nothing else. A server reached over Streamable HTTP s
 
 **Missing.** A conformance arm certifying an `mcp` subject, a dev-corpus exemplar, and a channel model for a text-shaped tool result.
 
-**Already works, and this is the part worth knowing before you fund any of it.** Both sides of the exchange accommodate the kind today. `Observation` in the sealed run record is not discriminated on kind (`sealed-run-record.ts:229`), so what a tool answered has somewhere to live. `foreignChannels` (`qualification.ts:187`) confines a tool-use signature to `response-body`, `response-status`, and its own `call-inputs`, which is the same answer compile-time reachability gives, a confinement the code decides. Two of those three carry a value once the adapter runs: the structured result lands on `response-body` and the error flag on `response-status`, and `response-headers` stays empty because a tool call has no header map. `ObservedCallInputs` (`sealed-run-record.ts:204`) carries a key per input channel, `arguments` among them.
+**Already works, and this is the part worth knowing before you fund any of it.** Both sides of the exchange accommodate the kind today. `Observation` in the sealed run record is not discriminated on kind (`sealed-run-record.ts:229`), so what a tool answered has somewhere to live. `foreignChannels` (`qualification.ts:187`) confines a tool-use signature to `response-body`, `response-status`, and its own `call-inputs`, which is the same answer compile-time reachability gives, a confinement the code decides. All three carry a value once the adapter runs: the structured result lands on `response-body`, the error flag on `response-status`, and the tool call's arguments on `call-inputs`. `response-headers` is not among them; `foreignChannels` hands it to a tool-use signature as foreign, so a signature naming it is refused rather than left empty. `ObservedCallInputs` (`sealed-run-record.ts:204`) carries a key per input channel, `arguments` among them.
 
 **Unproven, and this is the uncomfortable part.** The calibration record behind this project's central measurement is itself MCP-shaped. The architecture records that every contract in the phase-2 block that produced the 0.33-to-1.00 result declares an MCP tool interface, and that 22 of 25 real contracts use the kind. Those contracts were transcribed into API shape to be compiled here, and a transcription is not the measured artifact. So `mcp` is the most-used kind in the prior art and the one this package reached last.
 
@@ -348,4 +348,4 @@ Each one wraps an agent workflow run behind a command and evaluates what came ba
 
 The agent chooses, the harness records what it chose, and an oracle over the recording decides whether the choice was right.
 That is the first reading, working, in a shipped module.
-What is still owed is the second: an interface kind whose system under test is the tool server.
+The second reading, whose system under test is the tool server itself, is what the `mcp` kind and `createMcpAdapter` now answer, and no TEA contract has been moved onto it yet.

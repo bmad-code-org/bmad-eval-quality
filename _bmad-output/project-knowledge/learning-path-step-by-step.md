@@ -4010,10 +4010,12 @@ The three pure functions that read an answer each tested for one kind and treate
 
 **Rules:**
 
-- A tool result carrying an error is an answer, and so is a JSON-RPC error. Only a denial, a cap, an abort, or a failure to open the session throws.
+- A tool result carrying an error is an answer, and so is a JSON-RPC error answering the call. Only a denial, a cap, an abort, or a failure to open the session throws.
+- A server that answers the opening handshake with an error has refused the session. Nothing observed the system, so that is a `port-failure`.
 - The adapter speaks the stdio transport and starts the server as a child process. A server behind a URL is the caller's own adapter, because this package opens no socket.
-- The policy is checked before a process starts. A server the mapping omits and a tool the list omits are both `forbidden-target`.
+- The policy is checked before a process starts. A server the mapping omits and a tool the list omits are both `forbidden-target`. One mapping entry per server, so a name cannot point at two binaries.
 - One session per call: start, handshake, ask, tear down. A session kept between calls would carry state into the very comparison that measures state.
+- Teardown closes the server's input and kills its whole process group. Launchers are the normal case, so killing the process you started leaves the server it started behind.
 - `maxElapsedMs` covers the whole thing, launch through teardown. `maxOutputBytes` applies to the server's stdout and to its stderr on their own.
 - Server logging on stderr is read and capped. An unread pipe wedges the server once the operating system's buffer fills.
 - The error flag lands on `response-status` as 1 or 0, so an oracle can assert a tool reported no error. That projection is written down beside the field, because a 0 there and an HTTP status of zero look identical.

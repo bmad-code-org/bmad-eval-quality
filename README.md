@@ -225,7 +225,7 @@ npm run validate            # the whole gate: build, typecheck, lint, every drif
 npm run build               # emit to dist/
 npm run test                # run the suite once
 npm run lint:fix            # auto-fix with Biome
-npm run test:conformance    # run the published port conformance suite against every shipped adapter
+npm run test:conformance    # run the published port conformance suite over the shipped adapters
 ```
 
 Several files are generated from the code and guarded byte for byte, so a hand edit fails the build. Regenerate them:

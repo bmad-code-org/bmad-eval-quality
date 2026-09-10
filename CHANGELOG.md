@@ -44,6 +44,14 @@ body.
     disclosed. In sealed evidence an `mcp` observation writes its structured result on
     `responseBody`, `isError` on `responseStatus` as `1` for a reported error and `0` otherwise, and
     `responseHeaders` as `null`. No artifact `schemaVersion` moved for this change.
+  - **BREAKING for a stored `PreflightVerdict` and for run comparability.** AD-11's projection gains
+    a sixth field, `toolError`, so that a pre-flight can tell two legs apart when one reported a tool
+    error and the other did not. The projection is what `fixtureDigest` digests, so every verdict's
+    `fixtureDigest` changes value, including verdicts over unchanged `api` and `cli` contracts, and
+    `scoringVersion` changes with it because the fixture digest is one of its inputs. Re-run a
+    pre-flight to mint a verdict on this version; a verdict produced by 1.4.2 and one produced now
+    describe the same fixture and carry different digests. `comparabilityKey` is unaffected, since it
+    digests the scoring policy and the probe identifiers alone.
 
 ### Changed
 

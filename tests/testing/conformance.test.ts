@@ -460,6 +460,8 @@ type ProbeKnobs = {
 	readonly breakEcho?: 'kind' | 'probeId' | 'interfaceId' | 'operationId'
 	/** Which kind the `'kind'` case substitutes. The observation union has three members, and `echoMismatch` has to catch all of them. */
 	readonly breakEchoKind?: 'cli' | 'mcp'
+	/** Answer the faulting request with an observation of another mechanism, which is what the anomalous-status check's own failure detail has to name. */
+	readonly answerFaultingWith?: 'cli' | 'mcp'
 }
 
 const MAX_REDIRECTS = 2
@@ -656,7 +658,13 @@ function syntheticProbeSubject(knobs: ProbeKnobs = {}): ProbeSubject {
 							'the target answered 500',
 						)
 					}
-					return observation(request, 500)
+					return knobs.answerFaultingWith === undefined
+						? observation(request, 500)
+						: breakEcho(
+								observation(request, 500),
+								'kind',
+								knobs.answerFaultingWith,
+							)
 				}
 				if (operation === 'redirecting') {
 					hops++
@@ -829,10 +837,35 @@ describe('the probe suite: AD-35 default-deny and the four caps (fixtures 59-72)
 			const outcome = report.outcomes.find(
 				(each) => each.id === 'probe/allow-authorized-loopback',
 			)
+			expect(outcome?.passed).toBe(false)
+			expect(report.passed).toBe(false)
 			expect(outcome?.detail).toMatch(
 				new RegExp(`observed kind "${substituted}"`),
 			)
 			expect(outcome?.detail).toMatch(/does not correlate/)
+		},
+	)
+
+	// What actually happens when the faulting request is answered by another
+	// mechanism, and why the anomalous-status check's own non-api detail is
+	// unreachable: `echoMismatch` compares `kind` first and short-circuits, so
+	// the outcome reports a correlation failure and never reaches the status
+	// comparison. Recorded here so the source comment at that arm has a test
+	// behind the claim.
+	it.each(['cli', 'mcp'] as const)(
+		'reports a %s answer to the faulting request as a correlation failure',
+		async (substituted) => {
+			const report = await runEnvironmentProbePortConformance(
+				syntheticProbeSubject({ answerFaultingWith: substituted }),
+			)
+			const outcome = report.outcomes.find(
+				(each) => each.id === 'probe/observe-anomalous-status',
+			)
+			expect(outcome?.passed).toBe(false)
+			expect(outcome?.detail).toBe(
+				`observed kind "${substituted}" for a request carrying "api", so the answer does not correlate with the question`,
+			)
+			expect(report.passed).toBe(false)
 		},
 	)
 })

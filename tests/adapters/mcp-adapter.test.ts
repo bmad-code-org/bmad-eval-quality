@@ -9,6 +9,10 @@
  * that adds that entry owns the reusable subject. The six shared assertions do
  * not need the entry, so they are discharged here.
  */
+import { spawn } from 'node:child_process'
+import { readFileSync, realpathSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import {
@@ -22,6 +26,7 @@ import { compile } from '../../src/core/compile/compile.ts'
 import { EvalContract } from '../../src/core/schemas/eval-contract.ts'
 import { RuntimeFault } from '../../src/core/schemas/faults.ts'
 import type {
+	McpProbeObservation,
 	McpProbeRequest,
 	ProbeObservation,
 	ProbeRequest,
@@ -41,6 +46,13 @@ const FIXTURE_PATH = fileURLToPath(
 	new URL('./fixtures/mcp-probe-fixture.mjs', import.meta.url),
 )
 
+const LAUNCHER_PATH = fileURLToPath(
+	new URL('./fixtures/mcp-launcher-fixture.mjs', import.meta.url),
+)
+
+/** Where the launcher records the pid of the server it started. */
+const GRANDCHILD_PID_FILE = join(tmpdir(), 'eval-quality-mcp-grandchild.pid')
+
 const MAX_ELAPSED_MS = 5000
 const MAX_OUTPUT_BYTES = 8192
 const TIGHT_ELAPSED_MS = 300
@@ -48,12 +60,19 @@ const TIGHT_ELAPSED_MS = 300
 const TOOLS = [
 	'search_notes',
 	'create_note',
+	'env_tool',
 	'failing_tool',
 	'rpc_error_tool',
 	'oversize_tool',
 	'noisy_tool',
 	'silent_tool',
+	'crash_tool',
+	'unframed_tool',
+	'split_tool',
 ]
+
+const DECLARED_TOKEN = 'token-from-the-mapping'
+const HOST_ONLY = 'EVAL_QUALITY_HOST_ONLY'
 
 const serverAt = (
 	interfaceId: string,
@@ -62,14 +81,16 @@ const serverAt = (
 		readonly target?: string
 		readonly tools?: readonly string[]
 		readonly maxElapsedMs?: number
+		readonly cwd?: string
+		readonly serverEnvironment?: Record<string, string>
 	} = {},
 ) => ({
 	interfaceId,
 	target: overrides.target ?? process.execPath,
 	targetArgs: [...(overrides.targetArgs ?? [FIXTURE_PATH])],
 	tools: [...(overrides.tools ?? TOOLS)],
-	cwd: process.cwd(),
-	serverEnvironment: {},
+	cwd: overrides.cwd ?? process.cwd(),
+	serverEnvironment: overrides.serverEnvironment ?? {},
 	maxElapsedMs: overrides.maxElapsedMs ?? MAX_ELAPSED_MS,
 	maxOutputBytes: MAX_OUTPUT_BYTES,
 })
@@ -98,6 +119,23 @@ const policy: McpTargetPolicy = {
 		serverAt('missing-server', {
 			target: '/nonexistent/eval-quality-no-such-server',
 			tools: ['search_notes'],
+		}),
+		serverAt('launching-server', {
+			targetArgs: [LAUNCHER_PATH, GRANDCHILD_PID_FILE, '--linger'],
+			tools: ['hanging_tool'],
+			maxElapsedMs: TIGHT_ELAPSED_MS,
+		}),
+		serverAt('refusing-server', {
+			targetArgs: [FIXTURE_PATH, '--refuse-initialize'],
+			tools: ['search_notes'],
+		}),
+		// The one entry whose environment and working directory are declared
+		// rather than inherited, which is the pair AD-18 designates for
+		// authorization material.
+		serverAt('scoped-server', {
+			tools: ['env_tool'],
+			cwd: tmpdir(),
+			serverEnvironment: { NOTES_TOKEN: DECLARED_TOKEN },
 		}),
 	],
 }
@@ -132,13 +170,83 @@ const faultOf = async (act: () => Promise<unknown>): Promise<RuntimeFault> => {
 	return thrown as RuntimeFault
 }
 
+/** `runPortMethod` maps every non-fault throw to one `port-failure` with one message, so the cause is where the session says what actually happened. */
+const alive = (pid: number): boolean => {
+	try {
+		// Signal 0 checks for existence without delivering anything.
+		process.kill(pid, 0)
+		return true
+	} catch {
+		return false
+	}
+}
+
+/** A killed process is reaped asynchronously, so this polls rather than reading once. */
+const isDeadWithin = async (
+	pid: number,
+	budgetMs: number,
+): Promise<boolean> => {
+	const until = Date.now() + budgetMs
+	while (Date.now() < until) {
+		if (!alive(pid)) return true
+		await new Promise((settle) => setTimeout(settle, 25))
+	}
+	return !alive(pid)
+}
+
+const causeMessage = (fault: RuntimeFault): string =>
+	fault.cause instanceof Error ? fault.cause.message : String(fault.cause)
+
 const mcpObservation = (observation: ProbeObservation) => {
 	if (observation.kind !== 'mcp')
 		throw new Error('this adapter answers with a tool-call observation')
 	return observation
 }
 
+/**
+ * Speaks the fixture's own protocol with no adapter in the way, to prove the
+ * fixture really refuses a tool call before the handshake. Every success case
+ * below rests on that refusal: without it an adapter that skipped `initialize`
+ * would pass all of them.
+ */
+function callWithoutHandshake(): Promise<string> {
+	return new Promise((settle, fail) => {
+		const child = spawn(process.execPath, [FIXTURE_PATH], { stdio: 'pipe' })
+		let out = ''
+		child.stdout.on('data', (chunk: Buffer) => {
+			out += chunk.toString('utf8')
+			if (out.includes('\n')) {
+				child.kill('SIGKILL')
+				settle(out)
+			}
+		})
+		child.once('error', fail)
+		child.stdin.write(
+			`${JSON.stringify({
+				jsonrpc: '2.0',
+				id: 7,
+				method: 'tools/call',
+				params: { name: 'search_notes', arguments: { query: 'alpha' } },
+			})}\n`,
+		)
+	})
+}
+
+describe('the fixture server', () => {
+	it('refuses a tool call that arrives before the handshake', async () => {
+		const answer = JSON.parse(await callWithoutHandshake()) as {
+			error?: { code: number; message: string }
+		}
+		expect(answer.error?.code).toBe(-32002)
+		expect(answer.error?.message).toBe('server not initialized')
+	})
+})
+
 describe('an authorized tool call', () => {
+	// The result value below is the handshake assertion. The fixture answers
+	// `tools/call` with `server not initialized` until it has seen
+	// `initialize`, so a tool result at all proves the session was opened, and
+	// deleting the handshake from the adapter turns this case red.
 	it('starts the server, completes the handshake, and echoes the four correlation fields', async () => {
 		const observed = mcpObservation(
 			await probeFor({ probeId: 'authorized', arguments: { query: 'alpha' } }),
@@ -156,6 +264,69 @@ describe('an authorized tool call', () => {
 				totalCount: 1,
 				echo: 'alpha',
 			},
+		})
+	})
+
+	// AD-18 puts authorization material on the mapping, so what the server is
+	// launched with is the mapping's business and nothing else's. The assertion
+	// is over the exact key set: a base of the host's own PATH plus what the
+	// authorization declares, and no other host variable.
+	it('launches the server with the declared environment and working directory', async () => {
+		// A marker the host process carries and the mapping does not declare.
+		// Spreading `process.env` into the child is the mutation this catches,
+		// and the operating system's own injected names (macOS adds one) make a
+		// whole-key-set comparison unportable.
+		process.env[HOST_ONLY] = 'this must not reach the server'
+		let observed: McpProbeObservation
+		try {
+			observed = mcpObservation(
+				await probeFor({
+					probeId: 'scoped',
+					interfaceId: 'scoped-server',
+					toolName: 'env_tool',
+					arguments: {},
+				}),
+			)
+		} finally {
+			delete process.env[HOST_ONLY]
+		}
+		if (observed.result.kind !== 'json')
+			throw new Error('the tool returns a structured result')
+		const value = observed.result.value as {
+			env: Record<string, string>
+			cwd: string
+		}
+		expect(value.env.NOTES_TOKEN).toBe(DECLARED_TOKEN)
+		expect(value.env.PATH).toBe(process.env.PATH)
+		expect(value.env[HOST_ONLY]).toBeUndefined()
+		expect(value.env.HOME).toBeUndefined()
+		expect(realpathSync(value.cwd)).toBe(realpathSync(tmpdir()))
+		expect(value.cwd).not.toBe(process.cwd())
+	})
+
+	// The transport frames one message per line, and a server that wrote a
+	// whole frame and closed without the newline has still answered.
+	it('reads a complete frame that arrives with no trailing newline', async () => {
+		const observed = mcpObservation(
+			await probeFor({ probeId: 'unframed', toolName: 'unframed_tool' }),
+		)
+		expect(observed.isError).toBe(false)
+		expect(observed.result).toEqual({
+			kind: 'json',
+			value: { ok: true, framed: false },
+		})
+	})
+
+	// A chunk boundary inside a multi-byte character is silent corruption:
+	// `JSON.parse` still succeeds, and the mangled value lands in the body an
+	// oracle asserts on and the fixture digest covers.
+	it('reassembles a frame split inside a multi-byte character', async () => {
+		const observed = mcpObservation(
+			await probeFor({ probeId: 'split', toolName: 'split_tool' }),
+		)
+		expect(observed.result).toEqual({
+			kind: 'json',
+			value: { ok: true, label: 'café-日本-🎯' },
 		})
 	})
 
@@ -208,12 +379,20 @@ describe('a server that answers with an error', () => {
 			value: { code: -32602, message: 'no such argument', data: null },
 		})
 	})
+})
 
-	it('answers both cases with a schema-valid observation', async () => {
-		for (const toolName of ['failing_tool', 'rpc_error_tool']) {
-			const observed = await probeFor({ probeId: 'schema-valid', toolName })
-			expect(probeParsers.response.safeParse(observed).success).toBe(true)
-		}
+describe('a session that never opens', () => {
+	// A server answering `initialize` with a JSON-RPC error has refused the
+	// session, so nothing observed the system and the pre-flight has no answer
+	// to score. Resolving here would report a failed clean-control check for
+	// what is a port failure.
+	it('reports a refused initialize as a port failure, never as an observation', async () => {
+		const fault = await faultOf(() =>
+			probeFor({ probeId: 'refused', interfaceId: 'refusing-server' }),
+		)
+		expect(fault.code).toBe('port-failure')
+		expect(causeMessage(fault)).toContain('refused the initialize handshake')
+		expect(causeMessage(fault)).toContain('unsupported protocol version')
 	})
 })
 
@@ -241,7 +420,7 @@ describe('the policy, applied before a server process starts', () => {
 		const counting: McpMechanism = {
 			callTool: () => {
 				calls++
-				return Promise.resolve({ isError: false, structuredResult: null })
+				return Promise.resolve({ isError: false })
 			},
 		}
 		const counted = createMcpAdapter(policy, counting)
@@ -342,11 +521,15 @@ describe('the caps and the session failures, which are never conflated', () => {
 		expect(fault.message).toContain('maxElapsedMs')
 	})
 
+	// All four resolve to `port-failure`, because `runPortMethod` maps every
+	// non-fault throw to it. Each is read on the cause it carries, so a
+	// TypeError from a bug anywhere inside the session cannot satisfy them.
 	it('reports a server that fails to start as a port failure, never as a denial', async () => {
 		const fault = await faultOf(() =>
 			probeFor({ probeId: 'missing', interfaceId: 'missing-server' }),
 		)
 		expect(fault.code).toBe('port-failure')
+		expect(causeMessage(fault)).toContain('ENOENT')
 	})
 
 	it('reports a server that exits before the handshake as a port failure', async () => {
@@ -354,6 +537,17 @@ describe('the caps and the session failures, which are never conflated', () => {
 			probeFor({ probeId: 'exiting', interfaceId: 'exiting-server' }),
 		)
 		expect(fault.code).toBe('port-failure')
+		expect(causeMessage(fault)).toBe('the server exited during initialize')
+	})
+
+	// The same event one phase later. Without the phase in the message a crash
+	// at launch and a crash mid-call read identically.
+	it('names the phase when a server exits during the tool call', async () => {
+		const fault = await faultOf(() =>
+			probeFor({ probeId: 'crashing', toolName: 'crash_tool' }),
+		)
+		expect(fault.code).toBe('port-failure')
+		expect(causeMessage(fault)).toBe('the server exited during tools/call')
 	})
 
 	it('reports bytes on stdout that are not a JSON-RPC message as a port failure', async () => {
@@ -361,6 +555,26 @@ describe('the caps and the session failures, which are never conflated', () => {
 			probeFor({ probeId: 'garbage', interfaceId: 'garbage-server' }),
 		)
 		expect(fault.code).toBe('port-failure')
+		expect(causeMessage(fault)).toContain('not a JSON-RPC message')
+	})
+
+	// Teardown kills the process group, so a launcher's grandchild goes with it.
+	// `npx -y <server>` is the ordinary MCP launch shape, so killing the direct
+	// child alone would leave the server running after the cap fired, which is
+	// the state this adapter's one-session rule exists to prevent.
+	it('tears down a server the authorized target only launched', async () => {
+		rmSync(GRANDCHILD_PID_FILE, { force: true })
+		const fault = await faultOf(() =>
+			probeFor({
+				probeId: 'launched',
+				interfaceId: 'launching-server',
+				toolName: 'hanging_tool',
+			}),
+		)
+		expect(fault.code).toBe('budget-exhausted')
+		const grandchild = Number(readFileSync(GRANDCHILD_PID_FILE, 'utf8'))
+		expect(Number.isInteger(grandchild)).toBe(true)
+		expect(await isDeadWithin(grandchild, 2000)).toBe(true)
 	})
 
 	it('rejects promptly when the caller aborts mid-call', async () => {
@@ -410,7 +624,6 @@ function mcpSubject(): PortSubject<ProbeRequest> {
 					// response parse rather than resolving.
 					return {
 						isError: 'not-a-boolean' as unknown as boolean,
-						structuredResult: null,
 					} satisfies McpCallToolResult
 				}
 				if (scenario === 'hangs') {

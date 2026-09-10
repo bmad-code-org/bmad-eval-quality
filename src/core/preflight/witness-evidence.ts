@@ -136,9 +136,8 @@ export function evidenceOf(
 		callInputs: callInputsOf(inputs),
 		// The projected body is whichever channel the operation's descriptor
 		// describes, so it lands on the channel a relation addresses. Both are
-		// filled from the same projection rather than one being derived from
-		// the other, and every channel the leg did not observe is written down
-		// as unobserved rather than left to a default. A tool call's structured
+		// filled from the same projection, and every channel the leg did not
+		// observe is written down here as unobserved. A tool call's structured
 		// result is a response body and lands where an api body does; the
 		// command streams are the one projected body that goes elsewhere.
 		responseBody: observation.kind === 'cli' ? null : bodyValue(body),

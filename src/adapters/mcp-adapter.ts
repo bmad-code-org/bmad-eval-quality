@@ -4,8 +4,8 @@
  * execution half.
  *
  * Every rule below is what "what's a tool server allowed to do" resolves to, a
- * decision settled here in the implementation rather than as an architecture
- * revision:
+ * decision settled here in the implementation, with no architecture revision
+ * behind it:
  *
  * 1. stdio, and no other transport. MCP defines two: stdio launches the server
  *    as a subprocess and speaks JSON-RPC over its standard streams, and
@@ -23,7 +23,8 @@
  *    and never as argv, so no channel value reaches a command line at all.
  *    `serverEnvironment` passes through as declared, over the host's own
  *    `PATH` so a `target` naming a bare command still resolves; a declared
- *    `PATH` key wins over that default.
+ *    `PATH` key wins over that default. Nothing else of the host environment
+ *    reaches the server.
  * 3. One session per port invocation, opened and torn down inside `callTool`.
  *    AD-37's `single-underlying-call-on-success` counts the underlying
  *    mechanism, so a session reused across invocations would make the count
@@ -38,15 +39,23 @@
  *    caller. `maxOutputBytes` applies to the server's stdout and, separately,
  *    to its stderr, which the stdio transport reserves for logging; an
  *    undrained stderr pipe deadlocks the server once the OS buffer fills, and
- *    a drained one with no cap is an unbounded allocation.
+ *    a drained one with no cap is an unbounded allocation. Teardown closes the
+ *    server's stdin and then kills its whole process group: `npx -y <server>`
+ *    is the ordinary launch shape, so killing the direct child alone leaves
+ *    the server it started running, which is the state this rule exists to
+ *    prevent.
  * 4. A tool result carrying `isError: true` is an observation, and so is a
  *    JSON-RPC error answering `tools/call`. The server answered, and a server
  *    refusing a tool the contract declares is precisely the defect an oracle
- *    should be able to assert on; throwing would make it invisible. Only a
+ *    should be able to assert on; throwing would make it invisible. A server
+ *    that refuses the `initialize` handshake answered a different question:
+ *    the session never opened, so nothing observed the system, and that throws
+ *    `port-failure` alongside a failure to start and a malformed frame. Only a
  *    policy denial, a cap, an abort, or a failure to establish the session
  *    throws.
  */
-import { spawn } from 'node:child_process'
+import { type ChildProcess, spawn } from 'node:child_process'
+import { StringDecoder } from 'node:string_decoder'
 import { RuntimeFault } from '../core/schemas/faults.ts'
 import type {
 	McpProbeObservation,
@@ -61,7 +70,7 @@ import { probeParsers } from '../ports/environment-probe-port.ts'
 import { evaluateMcpTarget } from './mcp-target-policy.ts'
 import { runPortMethod } from './port-boundary.ts'
 
-/** The protocol revision this client announces. A server that answers `initialize` at all has accepted the session; version negotiation beyond the announcement is the server's own. */
+/** The protocol revision this client announces. A server free to answer with a different one has still opened the session; a server that answers with a JSON-RPC error has refused it, and rule 4 says what happens then. */
 const PROTOCOL_VERSION = '2025-06-18'
 
 const INITIALIZE_ID = 1
@@ -70,8 +79,8 @@ const CALL_TOOL_ID = 2
 /** One tool call, already reduced to what an observation needs. No truncation flag: exceeding `maxOutputBytes` rejects with `budget-exhausted` rather than resolving with a partial frame. */
 export type McpCallToolResult = {
 	readonly isError: boolean
-	/** The tool's structured result, or the JSON-RPC error object when the server answered `tools/call` with one. `null` when the call returned no structured content, which the observation records as an absent body. */
-	readonly structuredResult: JsonValue | null
+	/** The tool's structured result, or the JSON-RPC error object when the server answered `tools/call` with one. Absent when the call published no structured content at all, which the observation records as an absent body; a `null` here is a structured result the server really returned. */
+	readonly structuredResult?: JsonValue
 }
 
 export type McpCallToolRequest = {
@@ -112,9 +121,8 @@ function buildEnv(
 const isJsonObject = (value: unknown): value is Record<string, JsonValue> =>
 	value !== null && typeof value === 'object' && !Array.isArray(value)
 
-/** An answer to something this client asked: an id, and no method. A notification carries no id and a server-initiated request carries a method. */
+/** An answer to something this client asked. A notification carries no id, and a request the server itself makes carries a method; neither is answered here. */
 type JsonRpcResponse = {
-	readonly id: number
 	readonly result?: JsonValue
 	readonly error?: JsonValue
 }
@@ -130,13 +138,32 @@ type StdioSession = {
 }
 
 /**
+ * A detached child leads its own process group, so the negative pid reaches
+ * every process it started. Windows has no process groups and throws here, so
+ * the direct child is the fallback.
+ */
+function killProcessGroup(child: ChildProcess): void {
+	const { pid } = child
+	if (pid === undefined) {
+		child.kill('SIGKILL')
+		return
+	}
+	try {
+		process.kill(-pid, 'SIGKILL')
+	} catch {
+		child.kill('SIGKILL')
+	}
+}
+
+/**
  * Launches the server and frames JSON-RPC over its standard streams: one
  * message per line, which is what the stdio transport specifies.
  *
  * Every way the session can die reaches the caller through one rejected
  * `failure` promise that each request races against, so a cap, a malformed
- * frame, a spawn failure, and an early exit are all reported at the await that
- * was waiting rather than left to a listener with nobody to tell.
+ * frame, a spawn failure, and an early exit all surface at the await that was
+ * waiting on the server. A listener that rejected nothing would leave the call
+ * to run out its elapsed budget for a fault already known.
  */
 function startSession(
 	request: McpCallToolRequest,
@@ -147,12 +174,16 @@ function startSession(
 		env: { ...request.env },
 		shell: false,
 		signal,
+		detached: true,
 		stdio: ['pipe', 'pipe', 'pipe'],
 	})
 
-	const pending = new Map<number, (response: JsonRpcResponse) => void>()
+	// Keyed by the id as text: JSON-RPC admits a string id, and a server that
+	// echoes `1` back as `"1"` is correlating correctly.
+	const pending = new Map<string, (response: JsonRpcResponse) => void>()
 	let closed = false
 	let broken = false
+	let phase = 'launch'
 	let rejectFailure: (error: unknown) => void = () => {}
 	const failure = new Promise<never>((_resolve, reject) => {
 		rejectFailure = reject
@@ -170,7 +201,7 @@ function startSession(
 	const timer = setTimeout(() => {
 		fail(
 			capped(
-				`the session exceeded maxElapsedMs (${request.maxElapsedMs}ms) and was torn down`,
+				`the session exceeded maxElapsedMs (${request.maxElapsedMs}ms) during ${phase} and was torn down`,
 			),
 		)
 	}, request.maxElapsedMs)
@@ -178,6 +209,11 @@ function startSession(
 	let stdoutBytes = 0
 	let stdoutBuffer = ''
 	let stderrBytes = 0
+	// Chunk boundaries fall inside multi-byte characters, and decoding each
+	// chunk on its own replaces the split character with U+FFFD. The corruption
+	// survives `JSON.parse`, so it would reach the observation body an oracle
+	// asserts on and the fixture digest covers.
+	const decoder = new StringDecoder('utf8')
 
 	const handleLine = (line: string): void => {
 		let message: unknown
@@ -191,18 +227,24 @@ function startSession(
 			)
 			return
 		}
-		// A notification carries no id and a server-initiated request carries a
-		// method; this client answers neither, so both are dropped.
 		if (!isJsonObject(message)) return
-		if (typeof message.id !== 'number' || message.method !== undefined) return
-		const settle = pending.get(message.id)
+		const { id } = message
+		if (typeof id !== 'number' && typeof id !== 'string') return
+		if (message.method !== undefined) return
+		const settle = pending.get(String(id))
 		if (settle === undefined) return
-		pending.delete(message.id)
-		settle({
-			id: message.id,
-			result: message.result,
-			error: message.error,
-		})
+		pending.delete(String(id))
+		settle({ result: message.result, error: message.error })
+	}
+
+	const drainLines = (): void => {
+		let newlineAt = stdoutBuffer.indexOf('\n')
+		while (newlineAt !== -1) {
+			const line = stdoutBuffer.slice(0, newlineAt)
+			stdoutBuffer = stdoutBuffer.slice(newlineAt + 1)
+			if (line.trim() !== '') handleLine(line)
+			newlineAt = stdoutBuffer.indexOf('\n')
+		}
 	}
 
 	child.stdout?.on('data', (chunk: Buffer) => {
@@ -215,14 +257,19 @@ function startSession(
 			)
 			return
 		}
-		stdoutBuffer += chunk.toString('utf8')
-		let newlineAt = stdoutBuffer.indexOf('\n')
-		while (newlineAt !== -1) {
-			const line = stdoutBuffer.slice(0, newlineAt)
-			stdoutBuffer = stdoutBuffer.slice(newlineAt + 1)
-			if (line.trim() !== '') handleLine(line)
-			newlineAt = stdoutBuffer.indexOf('\n')
-		}
+		stdoutBuffer += decoder.write(chunk)
+		drainLines()
+	})
+
+	// A server that wrote a whole frame and closed without a trailing newline
+	// has answered, and dropping the residue would report a fault for a
+	// complete response.
+	child.stdout?.on('end', () => {
+		stdoutBuffer += decoder.end()
+		drainLines()
+		const residual = stdoutBuffer
+		stdoutBuffer = ''
+		if (residual.trim() !== '') handleLine(residual)
 	})
 
 	// Drained rather than ignored: the transport reserves stderr for logging and
@@ -246,7 +293,7 @@ function startSession(
 	})
 	child.once('close', () => {
 		if (closed) return
-		fail(new Error('the server exited before answering'))
+		fail(new Error(`the server exited during ${phase}`))
 	})
 
 	const send = (message: Record<string, JsonValue>): void => {
@@ -254,38 +301,47 @@ function startSession(
 	}
 
 	return {
-		request: (id, method, params) =>
-			Promise.race([
+		request: (id, method, params) => {
+			phase = method
+			return Promise.race([
 				new Promise<JsonRpcResponse>((settle) => {
-					pending.set(id, settle)
+					pending.set(String(id), settle)
 					send({ jsonrpc: '2.0', id, method, params })
 				}),
 				failure,
-			]),
+			])
+		},
 		notify: (method, params) => {
 			send({ jsonrpc: '2.0', method, params })
 		},
 		close: () => {
 			closed = true
+			// Set here too, so a late over-cap chunk or a malformed residual line
+			// arriving after teardown cannot reject a settled session.
+			broken = true
 			clearTimeout(timer)
-			child.kill('SIGKILL')
+			// The stdio transport's own teardown order: close the server's input
+			// stream first, since a well-behaved server exits when it ends.
+			child.stdin?.end()
+			killProcessGroup(child)
 		},
 	}
 }
 
+/** Whether a JSON-RPC frame carried an error. An explicit `null` is the absence of one. */
+const errorOf = (response: JsonRpcResponse): JsonValue | undefined =>
+	response.error === undefined || response.error === null
+		? undefined
+		: response.error
+
 /** The result the tool published, or the error object the server answered with. */
 function resultOf(response: JsonRpcResponse): McpCallToolResult {
-	if (response.error !== undefined) {
-		return { isError: true, structuredResult: response.error }
-	}
-	if (!isJsonObject(response.result)) {
-		return { isError: false, structuredResult: null }
-	}
-	const structured = response.result.structuredContent
-	return {
-		isError: response.result.isError === true,
-		structuredResult: isJsonObject(structured) ? structured : null,
-	}
+	const error = errorOf(response)
+	if (error !== undefined) return { isError: true, structuredResult: error }
+	if (!isJsonObject(response.result)) return { isError: false }
+	const { structuredContent, isError } = response.result
+	if (structuredContent === undefined) return { isError: isError === true }
+	return { isError: isError === true, structuredResult: structuredContent }
 }
 
 async function callToolOverStdio(
@@ -294,11 +350,17 @@ async function callToolOverStdio(
 ): Promise<McpCallToolResult> {
 	const session = startSession(request, signal)
 	try {
-		await session.request(INITIALIZE_ID, 'initialize', {
+		const handshake = await session.request(INITIALIZE_ID, 'initialize', {
 			protocolVersion: PROTOCOL_VERSION,
 			capabilities: {},
 			clientInfo: { name: 'eval-quality', version: '0' },
 		})
+		const refusal = errorOf(handshake)
+		if (refusal !== undefined) {
+			throw new Error(
+				`the server refused the initialize handshake: ${JSON.stringify(refusal)}`,
+			)
+		}
 		session.notify('notifications/initialized', {})
 		const response = await session.request(CALL_TOOL_ID, 'tools/call', {
 			name: request.toolName,
@@ -321,8 +383,8 @@ export const nodeStdioMcpMechanism: McpMechanism = {
 	callTool: callToolOverStdio,
 }
 
-const bodyOf = (structuredResult: JsonValue | null): ProbeObservedBody =>
-	structuredResult === null
+const bodyOf = (structuredResult: JsonValue | undefined): ProbeObservedBody =>
+	structuredResult === undefined
 		? { kind: 'absent' }
 		: { kind: 'json', value: structuredResult }
 

@@ -4,7 +4,7 @@ import {
 	MCP_DENIAL_REASONS,
 	type McpResolvedTarget,
 } from '../../src/adapters/mcp-target-policy.ts'
-import type {
+import {
 	McpTargetAuthorization,
 	McpTargetPolicy,
 } from '../../src/core/schemas/probe-policy.ts'
@@ -81,38 +81,110 @@ describe('evaluateMcpTarget', () => {
 	})
 
 	// Comparison is literal, the way AD-40 compares an invocation: a tool whose
-	// name differs only in case is a different tool to the server.
-	it('compares the tool name literally', () => {
+	// name differs only in case is a different tool to the server. The reason
+	// is what this asserts: `allowed === false` alone would also pass on
+	// interface-not-authorized, which is the distinction the interface-first
+	// ordering exists to keep.
+	it('compares the tool name literally, and says the tool was the problem', () => {
 		const decision = evaluateMcpTarget(
 			policyOf(authorization({ tools: ['search_notes'] })),
 			target({ toolName: 'Search_Notes' }),
 		)
 		expect(decision.allowed).toBe(false)
+		if (decision.allowed) throw new Error('the case does not match')
+		expect(decision.reason).toBe('tool-not-authorized')
+		expect(decision.detail).toContain('Search_Notes')
 	})
 
-	it('tries several authorizations for one interface in declaration order and takes the first that names the tool', () => {
-		const first = authorization({ tools: ['create_note'], cwd: '/tmp/first' })
+	// One entry per interface, so the first entry naming it is the only one
+	// consulted. Searching on would let a second entry point one logical
+	// interface at a second binary depending on which tool was asked for.
+	it('consults only the first authorization naming the interface', () => {
+		const first = authorization({
+			tools: ['create_note'],
+			target: '/usr/bin/first-server',
+		})
 		const second = authorization({
 			tools: ['search_notes'],
-			cwd: '/tmp/second',
+			target: '/usr/bin/second-server',
 		})
 		const decision = evaluateMcpTarget(policyOf(first, second), target())
-		expect(decision.allowed).toBe(true)
-		if (!decision.allowed) throw new Error('the second entry names this tool')
-		expect(decision.authorization.cwd).toBe('/tmp/second')
+		expect(decision.allowed).toBe(false)
+		if (decision.allowed)
+			throw new Error('the first entry does not name this tool')
+		expect(decision.reason).toBe('tool-not-authorized')
 	})
 
-	it('reports tool-not-authorized when several authorizations name the interface and none names the tool', () => {
-		const decision = evaluateMcpTarget(
+	// And the declaration itself refuses the shape that made that question
+	// arise, so a caller who parses the policy is told rather than surprised.
+	it('refuses a policy whose entries name one interface twice', () => {
+		const parsed = McpTargetPolicy.safeParse(
 			policyOf(
 				authorization({ tools: ['create_note'] }),
-				authorization({ tools: ['list_notes'] }),
+				authorization({ tools: ['search_notes'] }),
 			),
-			target(),
 		)
-		expect(decision.allowed).toBe(false)
-		if (decision.allowed) throw new Error('no entry names this tool')
-		expect(decision.reason).toBe('tool-not-authorized')
+		expect(parsed.success).toBe(false)
+		expect(JSON.stringify(parsed.error?.issues)).toContain(
+			'two authorizations name one interfaceId',
+		)
+	})
+
+	it('accepts a policy whose entries name distinct interfaces', () => {
+		expect(
+			McpTargetPolicy.safeParse(
+				policyOf(
+					authorization(),
+					authorization({ interfaceId: 'other-tool-server' }),
+				),
+			).success,
+		).toBe(true)
+	})
+
+	// The premise the third conformance arm's outcome count is derived from.
+	// A ninth field, or a second authorization-scoped one, moves that count,
+	// and this is where it is written down.
+	it('declares eight fields, two of which are authorization-scoped', () => {
+		expect(Object.keys(authorization()).sort()).toEqual([
+			'cwd',
+			'interfaceId',
+			'maxElapsedMs',
+			'maxOutputBytes',
+			'serverEnvironment',
+			'target',
+			'targetArgs',
+			'tools',
+		])
+		expect(McpTargetAuthorization.safeParse(authorization()).success).toBe(true)
+	})
+
+	const REJECTED: readonly (readonly [
+		string,
+		Partial<McpTargetAuthorization>,
+	])[] = [
+		['an empty tool list', { tools: [] }],
+		['an empty target', { target: '' }],
+		['a zero elapsed budget', { maxElapsedMs: 0 }],
+		['an elapsed budget past what a timer accepts', { maxElapsedMs: 2 ** 32 }],
+		['a zero output cap', { maxOutputBytes: 0 }],
+	]
+
+	it.each(REJECTED)(
+		'refuses an authorization declaring %s',
+		(_label, override) => {
+			expect(
+				McpTargetAuthorization.safeParse(authorization(override)).success,
+			).toBe(false)
+		},
+	)
+
+	it('refuses an authorization carrying a field the shape does not declare', () => {
+		expect(
+			McpTargetAuthorization.safeParse({
+				...authorization(),
+				url: 'https://notes.example',
+			}).success,
+		).toBe(false)
 	})
 
 	// The registry and the type are one list. A reason added to the tuple with

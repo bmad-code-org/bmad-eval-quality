@@ -164,8 +164,9 @@ export const McpTargetAuthorization = z.strictObject({
 	maxElapsedMs: z
 		.int()
 		.min(1)
+		.max(2_147_483_647)
 		.describe(
-			'Wall-clock budget for the whole port invocation: server launch, the initialize handshake, the tool call, and teardown. A handshake that never completes and a tool call that never answers are the same event to the caller, and both throw budget-exhausted.',
+			'Wall-clock budget for the whole port invocation: server launch, the initialize handshake, the tool call, and teardown. A handshake that never completes and a tool call that never answers are the same event to the caller, and both throw budget-exhausted. Bounded above by the largest delay a timer accepts: a larger value is silently clamped to one millisecond, which turns a generous budget into an immediate cap.',
 		),
 	maxOutputBytes: z
 		.int()
@@ -178,8 +179,17 @@ export const McpTargetAuthorization = z.strictObject({
 export const McpTargetPolicy = z.strictObject({
 	authorizations: z
 		.array(McpTargetAuthorization)
+		.refine(
+			(authorizations) =>
+				new Set(authorizations.map((each) => each.interfaceId)).size ===
+				authorizations.length,
+			{
+				message:
+					'two authorizations name one interfaceId, so which server the interface resolves to would depend on which tool was asked for',
+			},
+		)
 		.describe(
-			'An empty array is legal and authorizes nothing, the same default-deny base case as ProbeTargetPolicy.',
+			'An empty array is legal and authorizes nothing, the same default-deny base case as ProbeTargetPolicy. One entry per interfaceId: the interface identifier is the server identity for this mechanism, so a second entry naming it could point one logical interface at a second binary. That is the difference from CommandTargetPolicy, whose entries are keyed by (interfaceId, executable) and so cannot disagree about what runs.',
 		),
 })
 
