@@ -5,7 +5,7 @@ purpose: build-substrate
 altitude: feature
 paradigm: artifact-typed pipeline inside a hexagonal boundary (pure core, ports at every impure edge, one orchestration layer)
 scope: eval-quality v0 — Eval Contract compiler, contract strength scoring, environment pre-flight, evidence emission, and the library plus CLI surface
-status: `compile` is epic-ready; `score` remains owed to a reference implementation
+status: `compile` shipped through epic 6; `score` shipped through epics 7 and 8
 created: '2026-07-29'
 updated: '2026-07-29'
 revision: 9
@@ -43,9 +43,9 @@ denominating coverage by the permitted keys of one interface-wide union — was 
 export-API authoring test showed the ordinary multi-shape case: operations returning a job resource, a
 page of rows, and an error share no required key, so the rule would be satisfied by reading nothing.
 This closes Owed-to-calibration item 4, makes all fourteen AD-31 predicates declaration-only, and
-intentionally invalidates the response shape carried by the historical worked example. That example
-remains deliberately inconsistent until the reference reducer regenerates it; it is not hand-edited
-into apparent conformance.
+intentionally invalidated the response shape carried by the historical worked example. Story 7.9
+regenerated that example from the shipped stages rather than hand-editing it into conformance, and
+`check:worked-example` rebuilds it byte for byte inside `npm run validate`.
 
 **Gate D closes calibration item 1 in revision 9.** Against the reconstructed mut2 system, the
 hand-written positive control, prose generated from AD-3's current fields, and the same generation
@@ -89,8 +89,8 @@ not that splitting was the wrong idea. Every reviewer who commented on the split
 named fixes are closed below. The one that prose cannot settle — whether generated prose still carries
 what made the measured contracts win — is recorded in **Owed to the calibration re-run** as an open
 defect, together with the generator design that is downstream of it. `score` keeps its own section
-unchanged in kind, with AD-40 corrected. **No epic touches either half.** ADR-008 records the decision and
-amends ADR-007.
+unchanged in kind, with AD-40 corrected. **That revision sent no epic to either half.** ADR-008 records
+the decision and amends ADR-007.
 
 Revision 2's structural principle still holds: an AD carries only a contract two independently built units
 could resolve incompatibly, and cardinalities live in the Structural Seed. Revision 4 added a second: an AD
@@ -188,7 +188,7 @@ Nothing imports `cli/`.
 
   This supersedes the free-text `oracle` string of the experiments' contract version 1 and revision 3's free-text `intent`. The measured effect came from prose oracles a sealed evaluator read, so the generator's output is the load-bearing artifact and its templates must be calibrated rather than invented.
 
-  **What the templates are calibrated against, stated precisely, because revision 4 cited a corpus this package cannot compile.** Every contract in the phase-2 block that produced the 0.33-to-1.00 result declares an MCP tool interface, which AD-10 placed outside v0 at the time of the measurement and AD-5 rejected at compile time under `unsupported-interface-kind`. No MCP contract compiled then, so the calibration corpus is **API-shaped transcriptions** of the measured contracts, held in the repository as fixtures, and the templates are calibrated against that translation rather than against the instrument. `mcp` compiles now, which makes re-running the calibration against the measured contracts themselves possible; until that re-run happens the claim below stands as written. That is a weaker claim than revision 4 made and it is the true one. Two consequences are recorded rather than glossed: a transcription is not the measured artifact, so nothing here establishes that the effect survives the interface change; and the one clean single-variable oracle intervention in the whole record — the `cc-h0-03` v1/v2 pair, where changing one oracle moved a sealed run from PASS with zero composed-filter actions to FAIL with the seeded defect detected — declares `api` already, so it is calibration data v0 can compile today without any transcription. AD-38 names the re-run that has to pass before either half is epic-ready.
+  **What the templates are calibrated against, stated precisely, because revision 4 cited a corpus this package could not compile.** Every contract in the phase-2 block that produced the 0.33-to-1.00 result declares an MCP tool interface, which AD-10 placed outside v0 at the time of the measurement and AD-5 rejected at compile time under `unsupported-interface-kind`. No MCP contract compiled then, and the **API-shaped transcriptions** revision 4 cited were never committed. What the templates are calibrated against is Gate D's reconstructed mutation and the one measured contract that declares `api` on its own; the calibration section below records what that bounds. `mcp` compiles now, which makes re-running the calibration against the measured contracts themselves possible; until that re-run happens the claim below stands as written. That is a weaker claim than revision 4 made and it is the true one. Two consequences are recorded rather than glossed: a transcription is not the measured artifact, so nothing here establishes that the effect survives the interface change; and the one clean single-variable oracle intervention in the whole record — the `cc-h0-03` v1/v2 pair, where changing one oracle moved a sealed run from PASS with zero composed-filter actions to FAIL with the seeded defect detected — declares `api` already, so it is calibration data v0 can compile today without any transcription. AD-38 names that re-run. It gated neither half: both shipped without it, and what it would add is recorded under Calibration closure.
 
   **The measured effect carries its own qualifications wherever it is cited.** It is 0.33 against 1.00 pooled over three cases with separation on two, since both arms detected the third in three of three; both separating cases carry a recorded measurement-layer confound; and the block's own preregistered decision was **CONTRACT-DISCIPLINE NOT SUPPORTED**, failing one of five gates on a single unreplicated clean control. The experiment record discloses all of this and reads the failure as a harness defect rather than a contract misjudgement, which is defensible. Recording it here is not a hedge: a product whose purpose is making evaluation quality falsifiable cannot cite its own central number as settled fact in the one AD whose rule text depends on it. Any catch rate calibrated against this block names the block-2 replication as a dependency rather than assuming it.
 
@@ -265,7 +265,7 @@ Nothing imports `cli/`.
 
 - **Binds:** scorer, evidence artifact, VFR-7
 - **Prevents:** an uncalibrated composite becoming the artifact people compare while per-oracle diagnostics go unread; a contract scored over more trials falsely dominating one scored over fewer; redundant oracles inflating a class count; a growing corpus voiding every prior comparison; and an unchanged revision reporting as a failed comparison
-- **Rule:** the reported result is per-oracle outcomes, outcome-state counts per oracle category, recorded coverage gaps, and the recorded severity of each behaviour. The dominance vector holds, per probe class, the **catch rate**: unique qualified probe identifiers resolving `caught` under AD-40 over unique qualified probe identifiers exercised, across the declared trial count. **A probe is `exercised` when the evaluator itself invoked its signature's home operation**, per AD-40, counting neither harness baselines nor calls the record shows never completing; a probe whose home operation the evaluator never invoked leaves both numerator and denominator instead of scoring, and its required check resolves `not-applicable` so that AD-6's closed state set still covers every check. That is the definition revision 4 left the denominator without and revision 5 left short of a state. **How several trials of one probe reduce to one probe result is an open defect, not a decision — see Owed to the reference implementation, item 1.** Three readings of "across the declared trial count" are defensible, they disagree on identical data, and one of them is the retry anti-pattern AD-6 forbids; nothing in this AD should be read as having settled it. Rates, not counts, because raw counts let trial count masquerade as contract quality; unique probe identifiers, not checks, because ten oracles mapped to one probe are one probe. Raw counts and the trial count are recorded alongside so any consumer can recompute, and the denominator is named in the artifact so two consumers cannot derive two different recalls. The relation is four-valued: `a-dominates-b`, `b-dominates-a`, `equivalent` on component-wise equality, and `incomparable`. A contract that missed a behaviour at or above the scoring policy's severity floor never dominates one that caught it, regardless of the rest of the vector; that is a constraint on the relation, not a weight. Comparability is a declared key — the scoring policy digest plus the corpus digest restricted to the probes both results cover — and is deliberately weaker than the AD-11 scoring version, so adding a probe narrows a comparison to the intersection and records the excluded probes rather than voiding every prior result. Canary probes and clean controls never enter the vector. No weighting, no percentage, no severity-weighted composite anywhere. This supersedes the brief's "an aggregate score summarizes them" and the aggregate half of the PRD's dual gate; the per-clause half stands alone.
+- **Rule:** the reported result is per-oracle outcomes, outcome-state counts per oracle category, recorded coverage gaps, and the recorded severity of each behaviour. The dominance vector holds, per probe class, the **catch rate**: unique qualified probe identifiers resolving `caught` under AD-40 over unique qualified probe identifiers exercised, across the declared trial count. **A probe is `exercised` when the evaluator itself invoked its signature's home operation**, per AD-40, counting neither harness baselines nor calls the record shows never completing; a probe whose home operation the evaluator never invoked leaves both numerator and denominator instead of scoring, and its required check resolves `not-applicable` so that AD-6's closed state set still covers every check. That is the definition revision 4 left the denominator without and revision 5 left short of a state. **How several trials of one probe reduce to one probe result was left undecided here and is settled in `src/core/score/reduce-trials.ts` — see Owed to the reference implementation, item 1.** Three readings of "across the declared trial count" were defensible, they disagreed on identical data, and one of them is the retry anti-pattern AD-6 forbids. The reducer takes a majority of the voting trials against the scoring policy's declared `catchThreshold` under a strict comparison, which leaves pass-if-any unreachable and a tie out of reach by construction. Rates, not counts, because raw counts let trial count masquerade as contract quality; unique probe identifiers, not checks, because ten oracles mapped to one probe are one probe. Raw counts and the trial count are recorded alongside so any consumer can recompute, and the denominator is named in the artifact so two consumers cannot derive two different recalls. The relation is four-valued: `a-dominates-b`, `b-dominates-a`, `equivalent` on component-wise equality, and `incomparable`. A contract that missed a behaviour at or above the scoring policy's severity floor never dominates one that caught it, regardless of the rest of the vector; that is a constraint on the relation, not a weight. Comparability is a declared key — the scoring policy digest plus the corpus digest restricted to the probes both results cover — and is deliberately weaker than the AD-11 scoring version, so adding a probe narrows a comparison to the intersection and records the excluded probes rather than voiding every prior result. Canary probes and clean controls never enter the vector. No weighting, no percentage, no severity-weighted composite anywhere. This supersedes the brief's "an aggregate score summarizes them" and the aggregate half of the PRD's dual gate; the per-clause half stands alone.
 
 ### AD-8 — Sealed corpora are resolved, never shipped
 
@@ -325,7 +325,7 @@ Nothing imports `cli/`.
 
   **How a generated direction names an observation without naming a step is decided here, because revision 4 required both and permitted neither.** AD-3's evidence targets name "the channels and steps at issue" and the prose is generated from that structure by `seal`; this rule forbids step identifiers on the brief. Both could not hold. If the generator emitted step references the seal was void and ordering was readable off the brief; if it stripped them, a direction over two observations of one operation could not say which is which — "compare the title you sent against the title you read back" collapses into the ambiguity ADR-006 exists to remove. The resolution is a **derived reference vocabulary**: `seal` renders each evidence target as a descriptive reference derived from the step's operation and selection predicate — "the response you obtained when you sent an invalid identifier" — never as the identifier itself. The mapping from step to phrase is one-way.
 
-  **That vocabulary is not yet satisfiable for the temporal case that forced it, and Gate D moves the choice into `seal`'s explicit acceptance criteria rather than leaving it as a pre-epic gate.** AD-39 defines a step's selection predicate as an input binding plus an optional temporal clause. Rendering the clause discloses order; dropping it collapses baseline and read-back into the same phrase. `seal` must test a relational dependency phrase and, if none survives its fixtures, record a bounded ordering disclosure and amend AD-39 explicitly. **A direction's negative domain is emitted as an unordered set, never as an enumeration in declaration order.** The brief is byte-identical under reordering, achieved by sorting rendered members by canonical form before emission. The brief-side scripting audit runs after generation, carries its own AD-5 code, `brief-exceeds-scripting-bound`, and a declared bound on enumerated probe steps, and is acceptance work for `seal`; a declaration-side graph check cannot substitute for it. The isolation manifest's required fields are enumerated in its schema, seeded from the prior art's fifteen, and account for each forbidden input by name. `core/ingest` is the enforcement point: an absent, unparseable, incomplete, or violating manifest invalidates the run and records the reason. None of these ever becomes a CONCERNS verdict or a scored result.
+  **That vocabulary reaches the temporal case that forced it, and Gate D moved the choice into `seal`'s acceptance criteria rather than leaving it as a pre-epic gate.** AD-39 defines a step's selection predicate as an input binding plus an optional temporal clause. Rendering the clause discloses order; dropping it collapses baseline and read-back into the same phrase. `seal` was required to test a relational dependency phrase and, failing that, to record a bounded ordering disclosure and amend AD-39 explicitly. The phrase survived its fixtures: `groupResolvedTargets` renders an `after` pair as one relational phrase joined by "compared with", ordered by channel rank and rendered reference text, so no disclosure was recorded and AD-39 stands unamended. **A direction's negative domain is emitted as an unordered set, never as an enumeration in declaration order.** The brief is byte-identical under reordering, achieved by sorting rendered members by canonical form before emission. The brief-side scripting audit runs after generation, carries its own AD-5 code, `brief-exceeds-scripting-bound`, and a declared bound on enumerated probe steps, and is acceptance work for `seal`; a declaration-side graph check cannot substitute for it. The isolation manifest's required fields are enumerated in its schema, seeded from the prior art's fifteen, and account for each forbidden input by name. `core/ingest` is the enforcement point: an absent, unparseable, incomplete, or violating manifest invalidates the run and records the reason. None of these ever becomes a CONCERNS verdict or a scored result.
 
 ### AD-17 — Judge conduct is enforced on ingest, and reasoning prose is never a scored signal
 
@@ -372,7 +372,7 @@ Nothing imports `cli/`.
 - **Prevents:** a condition with no rung falling through to PASS — which in revision 1 gave a green gate to an evaluator recommendation of FAIL and to unavailable evidence — and a CI runner unable to distinguish a considered verdict from a crash
 - **Rule:** every run declares its mode, and the mode is an input to derivation. In `production` mode the subject is the system under test and the verdict answers whether it is shippable. In `contract-scoring` mode the subject is the **contract**: the probe is knowingly defective, so a `caught` outcome is the contract succeeding and an evaluator recommendation of FAIL is expected rather than informative. Conflating the two makes every scoring run report FAIL while the contract performed perfectly, which is what hand-authoring the first evidence artifact produced — a FAIL verdict with zero behavioural failures. In scoring mode the verdict is therefore about contract adequacy, derived from the outcome states, coverage gaps, and AD-7's vector, and the system-directed recommendation is recorded as an input rather than promoted to a rung. The two verdicts never share a field.
 
-  **The rungs below are the production-mode ladder, and the mode separation they sit inside is incomplete — see Owed to the reference implementation.** Two of them promote an ingested evaluator recommendation unconditionally, which contradicts the paragraph above in scoring mode, so the same sealed artifact derives CONCERNS or FAIL depending on which sentence a reader obeys. That is two exit codes apart and it is not a wording problem: it means the two modes need separate input types and separate ladders rather than one ladder with a preamble, and mode has to be fixed before ingest and enter identity rather than appearing first in the evidence artifact. Within a mode, derivation is total over every outcome state, evidence-integrity state, evaluator recommendation, coverage condition, waiver state, remediation state, and pre-flight state. No condition is unmapped and PASS is a rung rather than an `otherwise`. Precedence, first match wins. **Invalid:** any AD-6 invalidating state, a failed pre-flight, an unaccounted isolation manifest under AD-16, an unrecognised evaluator recommendation value, a re-execution cap breach under AD-6, a required oracle carrying no disposition in the run record under AD-23, or no required check resolved. The record carries every condition that fired and every behavioural failure already resolved, so a persistent judge fault cannot mask a real regression indefinitely. **FAIL:** any AD-6 behavioural failure at or above the scoring policy's severity floor, an ingested evaluator recommendation of FAIL, evidence that is incomplete, over-truncated, unavailable, or internally inconsistent under AD-17, or a presented lineage chain that is internally inconsistent under AD-12. **CONCERNS:** a behavioural failure below the severity floor, an unsatisfied coverage gap at or above the floor, a finding whose confidence falls below the policy threshold, an ingested recommendation of CONCERNS, a run that completed fewer trials than the policy's declared minimum, or any oracle resolving `unreached`. The last two are evidence conditions: the measurement is thinner than the policy asked for, which is not a claim that the system is broken and not a clean bill of health either, and both mark the strength vector non-comparable. **WAIVED:** every required check resolved and at least one resolved `not-applicable` against an unexpired waiver, so a mostly-waived run is distinguishable on a dashboard from one that caught everything. **PASS:** every required oracle carries a disposition, every required check resolved, and none of the above. A coverage gap below the severity floor is recorded and does not move the verdict, which makes PASS reachable for a single-operation contract. An expired waiver reinstates its gap. Exit codes: PASS zero, WAIVED zero, CONCERNS zero, FAIL two, invalid three, structural compile failure four, thrown fault five. CONCERNS is the human-on-the-loop disposition and exits zero because exit one is indistinguishable from a crash and a fatal advisory gate gets `|| true`, which discards FAIL with it; `--strict` promotes CONCERNS to one — **except a CONCERNS whose only firing conditions are evidence conditions, which `--strict` never promotes.** A run that resolved `unreached` or fell short of the declared minimum trial count is a statement that the measurement was thinner than the policy asked for, not a claim about the system, and this AD already says so; letting `--strict` fail a build on it turns an evidence condition into a verdict about the system and hands contract authors the punishment route AD-39 closes. Every other CONCERNS promotes as before. A command producing no verdict never exits inside the verdict range. Severity routes but never weights: no numeric threshold governs a verdict except the confidence bound and the severity floor named in the scoring policy.
+  **The rungs below are the production-mode ladder, and the mode separation they sit inside closed in `src/core/score/ladder.ts` — see Owed to the reference implementation, item 4.** Two of them promoted an ingested evaluator recommendation unconditionally, which contradicted the paragraph above in scoring mode, so one sealed artifact derived CONCERNS or FAIL depending on which sentence a reader obeyed, two exit codes apart. The repair was structural: `ProductionAssessment` and `ContractAssessment` are separate input types carrying a total ladder each, the two evaluator-recommendation rows are spliced into the production ladder alone, and mode is fixed on the sealed run record before ingest and enters AD-11's identity inputs. Within a mode, derivation is total over every outcome state, evidence-integrity state, evaluator recommendation, coverage condition, waiver state, remediation state, and pre-flight state. No condition is unmapped and PASS is a rung rather than an `otherwise`. Precedence, first match wins. **Invalid:** any AD-6 invalidating state, a failed pre-flight, an unaccounted isolation manifest under AD-16, an unrecognised evaluator recommendation value, a re-execution cap breach under AD-6, a required oracle carrying no disposition in the run record under AD-23, or no required check resolved. The record carries every condition that fired and every behavioural failure already resolved, so a persistent judge fault cannot mask a real regression indefinitely. **FAIL:** any AD-6 behavioural failure at or above the scoring policy's severity floor, an ingested evaluator recommendation of FAIL, evidence that is incomplete, over-truncated, unavailable, or internally inconsistent under AD-17, or a presented lineage chain that is internally inconsistent under AD-12. **CONCERNS:** a behavioural failure below the severity floor, an unsatisfied coverage gap at or above the floor, a finding whose confidence falls below the policy threshold, an ingested recommendation of CONCERNS, a run that completed fewer trials than the policy's declared minimum, or any oracle resolving `unreached`. The last two are evidence conditions: the measurement is thinner than the policy asked for, which is not a claim that the system is broken and not a clean bill of health either, and both mark the strength vector non-comparable. **WAIVED:** every required check resolved and at least one resolved `not-applicable` against an unexpired waiver, so a mostly-waived run is distinguishable on a dashboard from one that caught everything. **PASS:** every required oracle carries a disposition, every required check resolved, and none of the above. A coverage gap below the severity floor is recorded and does not move the verdict, which makes PASS reachable for a single-operation contract. An expired waiver reinstates its gap. Exit codes: PASS zero, WAIVED zero, CONCERNS zero, FAIL two, invalid three, structural compile failure four, thrown fault five. CONCERNS is the human-on-the-loop disposition and exits zero because exit one is indistinguishable from a crash and a fatal advisory gate gets `|| true`, which discards FAIL with it; `--strict` promotes CONCERNS to one — **except a CONCERNS whose only firing conditions are evidence conditions, which `--strict` never promotes.** A run that resolved `unreached` or fell short of the declared minimum trial count is a statement that the measurement was thinner than the policy asked for, not a claim about the system, and this AD already says so; letting `--strict` fail a build on it turns an evidence condition into a verdict about the system and hands contract authors the punishment route AD-39 closes. Every other CONCERNS promotes as before. A command producing no verdict never exits inside the verdict range. Severity routes but never weights: no numeric threshold governs a verdict except the confidence bound and the severity floor named in the scoring policy.
 
 ### AD-22 — Rubrics are authored to rules the compiler checks
 
@@ -459,7 +459,7 @@ Nothing imports `cli/`.
 
   The fourteen predicates are **generated and published from the reference implementation, not asserted here**. Revision 3 promised a normative table and shipped none, and on the one contract that exists the predicates under-fired on two of seven rules with nothing surfacing it — a contract declaring sibling operations and a collection location was scored with one gap. Publication means the table is emitted by the implemented predicates and regenerated in CI.
 
-  **Publication is exercised against a compile-side contract fixture corpus, never against the worked example, and this is the correction that frees stage one.** Revision 4 said the table was published by being "exercised against the worked example"; Owed item 7 says the worked example may only be regenerated from the reference reducer; the reducer is Owed items 1 through 3, all score-side, all covered by the rule that no epic touches `score` until they close. That is a closed cycle, and it backed a *blocking* compile error, since `direction-check-misaligned` is an AD-5 code whose predicate lives here. These predicates need no run record, no probe, and no outcome state — they read declarations and the direction/`check` pair — so the corpus they are published against is a set of hand-authored contracts, one per discipline rule per relevance-and-satisfaction combination, which stage one can produce on day one. The worked example's end-to-end chain is the right publication target for AD-33 and AD-40 and the wrong one for these. A coverage-gap record names the relevance predicate that fired and the satisfaction predicate that failed, so a gap is diagnosable rather than a label. Where a declaration is absent, or is present but resolves to an enumerated indeterminate descriptor state, the rule is relevant and its absence is a coverage gap; "unspecific" is that enumerated set and nothing broader. Under-declaration therefore costs coverage rather than earning a clean result, while an explicit empty declaration is an answer rather than a gap.
+  **Publication is exercised against a compile-side contract fixture corpus, never against the worked example, and this is the correction that frees stage one.** Revision 4 said the table was published by being "exercised against the worked example"; Owed item 7 held the worked example to regeneration from the reference reducer, and that reducer was Owed items 1 through 3, all score-side. That was a closed cycle, and it backed a *blocking* compile error, since `direction-check-misaligned` is an AD-5 code whose predicate lives here. The correction is what shipped: `generate:ad31-table` reads the nineteen-contract compile-side fixture corpus in `tests/coverage/fixtures/corpus.ts`, `check:ad31-table` rebuilds the table through the same pure builder and compares byte for byte inside `npm run validate`, and the published table states that the historical worked example is not a publication target. These predicates need no run record, no probe, and no outcome state — they read declarations and the direction/`check` pair — so the corpus they are published against is a set of hand-authored contracts, one per discipline rule per relevance-and-satisfaction combination, which stage one can produce on day one. The worked example's end-to-end chain is the right publication target for AD-33 and AD-40 and the wrong one for these. A coverage-gap record names the relevance predicate that fired and the satisfaction predicate that failed, so a gap is diagnosable rather than a label. Where a declaration is absent, or is present but resolves to an enumerated indeterminate descriptor state, the rule is relevant and its absence is a coverage gap; "unspecific" is that enumerated set and nothing broader. Under-declaration therefore costs coverage rather than earning a clean result, while an explicit empty declaration is an answer rather than a gap.
 
 ### AD-32 — The caller is a possibly-buggy integration, and the trust boundary is stated
 
@@ -503,7 +503,7 @@ Nothing imports `cli/`.
 
 - **Binds:** published tarball, development corpus, documentation, VFR-7, VFR-8
 - **Prevents:** the half of the product carrying most of the architecture being unreachable on day one, with nothing telling an adopter that — and a caller reverse-engineering the run-record shape from a schema before they can produce one
-- **Rule:** the spine states the stages rather than implying them. Stage one is **`compile` and `seal`** against no corpus: it needs AD-3, AD-4, AD-5, AD-13, AD-16, AD-19, AD-20, AD-22, AD-26, AD-31, and AD-39, and nothing else. AD-39 was missing from revision 4's list while two of AD-5's blocking codes cite it and AD-26's step identifiers resolve through it, so the list was closed with "nothing else" around a decision stage one cannot compile without. `seal` is in it because AD-3's generated direction is the load-bearing artifact and `seal` emits it; revision 4 ended stage one at the Eval Contract, one stage before the thing its own calibration argument turns on. **No stage-one requirement may cite an artifact produced by `score`** — an invariant stated so the next revision cannot reintroduce silently what revision 4 introduced through AD-31, whose publication target moves to a compile-side fixture corpus for exactly this reason. Stage two — `score` — needs a qualified corpus, a caller-run evaluator, a pre-flight-passing fixture, and the reference implementation that **Owed to the reference implementation** names. **Stage one is epic-ready as of Gate D; stage two is not.** The calibration spike remains throwaway evidence rather than stage-one implementation. Its Arm 2 result establishes that prose generated from AD-3's current fields can carry B-002's discipline; production `seal` now joins the epic order and must satisfy this AD's complete stage-one list.
+- **Rule:** the spine states the stages rather than implying them. Stage one is **`compile` and `seal`** against no corpus: it needs AD-3, AD-4, AD-5, AD-13, AD-16, AD-19, AD-20, AD-22, AD-26, AD-31, and AD-39, and nothing else. AD-39 was missing from revision 4's list while two of AD-5's blocking codes cite it and AD-26's step identifiers resolve through it, so the list was closed with "nothing else" around a decision stage one cannot compile without. `seal` is in it because AD-3's generated direction is the load-bearing artifact and `seal` emits it; revision 4 ended stage one at the Eval Contract, one stage before the thing its own calibration argument turns on. **No stage-one requirement may cite an artifact produced by `score`** — an invariant stated so the next revision cannot reintroduce silently what revision 4 introduced through AD-31, whose publication target moves to a compile-side fixture corpus for exactly this reason. Stage two — `score` — needs a qualified corpus, a caller-run evaluator, a pre-flight-passing fixture, and the reference implementation that **Owed to the reference implementation** names. **Both stages shipped: stage one through epic 6, stage two through epics 7 and 8, and every item that section names closed along the way.** The calibration spike remains throwaway evidence rather than stage-one implementation. Its Arm 2 result establishes that prose generated from AD-3's current fields can carry B-002's discipline; production `seal` shipped in epic 2 against this AD's complete stage-one list.
 
   **Gate D restores stage one's epic-ready status on measured evidence, not on revision 4's assertion.** The generated-current-fields arm and hand-written positive control each detected the reconstructed B-002 defect in three of three valid repetitions; the evidence-precondition arm did no better. The result is intentionally narrow, but it closes the named gate and selects `seal` rather than an AD-3 field-set amendment. The tarball ships a visible development corpus with at least one qualified probe per class, per `expectedClean` state, **and per AD-20 discipline rule**, labelled visible and therefore diagnostic rather than a holdout, so every scorer path is exercisable on day one. The per-rule requirement is new: the corpus covered probe classes while nothing required a contract exercising each discipline rule as satisfied or gapped, and on the one contract that exists two of seven rules went unaddressed and unreported. It also ships one worked end-to-end example — a sealed brief, a conforming sealed run record, an isolation manifest, and an evaluator configuration — because the caller's boundary is the package's whole adoptability and no document currently describes it. Corpus mining and qualification tooling is named in Deferred rather than assumed, since ADR-002 promised it as part of the scoring feature and no stage provides it.
 
@@ -513,9 +513,9 @@ Nothing imports `cli/`.
 - **Prevents:** the one change that makes multi-observation oracles expressible also reintroducing a prescribed path. A declared plan of named steps is one careless sentence away from being that prescription, and the careless version would dismantle the product's central mechanism while looking like a schema improvement. **The prohibition is by design, not by measurement, and revision 4's claim otherwise is withdrawn:** it said "prescribing the path is what the scripted condition did, and an independent evaluator choosing its own path is what beat it", and no scripted condition was ever run against these tasks. The design reasoning stands on its own and the run records do support it — the disciplined arm's separating detections came from adversarial probes the contract never enumerated, so evaluator-chosen path selection is the mechanism the negative domain depends on
 - **Rule:** a contract declares interaction steps so that oracles can name which observations a relationship holds between. A step is a **selector over observations the evaluator produced**, not an instruction, and it declares exactly three things: an identifier; the operation it refers to; and a selection predicate over that operation's observations, composed of an input binding and an optional temporal clause naming an earlier step. Input-binding values are literals or one of the closed matchers `any` and `type-violating`, the latter being what makes a malformed-input oracle selectable without the contract dictating the malformed value. **The two are tagged and never share a value space**: a literal is written `{ "literal": <JsonValue> }` and a matcher `{ "matcher": "any" | "type-violating" }`. Revision 5 left them untagged, which made the binding `{"title": "type-violating"}` mean the matcher to one implementation and the string to another, gave the literal string `type-violating` no spelling at all, and propagated straight into AD-40, whose probe-side condition duplicates this grammar and therefore flipped a witness match between `caught` and `missed` on the same record. The temporal clause is necessary rather than indulgent: a read-back oracle needs "the read of this resource that follows the write", and without it the baseline read and the read-back are the same operation with the same inputs and cannot be told apart — which is the original inexpressibility in a new costume. A temporal clause stays on the right side of the line because ordering is part of what the behaviour *means*: "did the write persist" is inherently "read after write". It selects among observations by their recorded relation to each other, and never instructs.
 
-  **A temporal clause may name only a step that carries no temporal clause of its own**, bounding every chain at one level and failing compilation under `nested-temporal-clause` otherwise. **Depth is not sufficient on its own, and AD-5's graph predicate bounds width alongside it under `plan-exceeds-scripting-bound`.** Verified by execution against revision 4: an eight-step plan with one root and seven temporal children, and sixty-four independent `write-N`/`read-N` pairs, both reported zero violations. Every edge was legal, every pair was individually a legitimate witness relation, and the plan was a complete action inventory. A bound on chain depth constrains how *deep* a script runs and says nothing about how *wide* it spreads, which is the same prohibition-without-a-predicate defect one level over. Without that bound the plan was a path in disguise, and the enforcement route was not instruction but punishment: nothing limited plan length or `after` depth, so eight chained steps with oracles naming the late ones satisfied every rule as written while any evaluator taking a different path left those oracles `unreached`, which reached CONCERNS, which `--strict` promoted to a failed build. The contract could not command a path but could fail every evaluator that did not follow one — and because AD-16 keeps step identifiers out of the brief, the evaluator was graded against a script it could not see or diagnose. One level permits read-after-write, which is the case that forced the clause into existence, and forbids the chain. AD-21 closes the other half by removing `unreached` from `--strict` promotion. Three consequences follow and each is enforced. The plan never reaches the evaluator: AD-16's sealed brief carries the contract's behaviours, generated directions, interfaces, and permitted resources, the step identifiers stay behind in the compiler and scorer, and a direction names an observation through AD-16's derived reference vocabulary rather than through the identifier. **Whether that holds for a temporal pair is open, not settled** — a step's selection predicate includes its temporal clause, so rendering the predicate discloses the ordering and omitting it collapses the pair, and AD-16 records the unresolved half as owed. No ordering is readable off a brief whose oracles need no temporal disambiguation, which is the case this claim is now limited to. The evaluator remains free to obtain the observations however it chooses, in any order, with any additional calls. And a step whose observation the evaluator never produced does not fail the oracle — it makes that oracle's disposition unreached, which AD-21 handles as an evidence condition rather than a behavioural failure, because "the evaluator did not do the thing" is not "the system is broken". A contract that declares steps no evaluator could plausibly reach is a coverage problem to surface, never a script to enforce.
+  **A temporal clause may name only a step that carries no temporal clause of its own**, bounding every chain at one level and failing compilation under `nested-temporal-clause` otherwise. **Depth is not sufficient on its own, and AD-5's graph predicate bounds width alongside it under `plan-exceeds-scripting-bound`.** Verified by execution against revision 4: an eight-step plan with one root and seven temporal children, and sixty-four independent `write-N`/`read-N` pairs, both reported zero violations. Every edge was legal, every pair was individually a legitimate witness relation, and the plan was a complete action inventory. A bound on chain depth constrains how *deep* a script runs and says nothing about how *wide* it spreads, which is the same prohibition-without-a-predicate defect one level over. Without that bound the plan was a path in disguise, and the enforcement route was not instruction but punishment: nothing limited plan length or `after` depth, so eight chained steps with oracles naming the late ones satisfied every rule as written while any evaluator taking a different path left those oracles `unreached`, which reached CONCERNS, which `--strict` promoted to a failed build. The contract could not command a path but could fail every evaluator that did not follow one — and because AD-16 keeps step identifiers out of the brief, the evaluator was graded against a script it could not see or diagnose. One level permits read-after-write, which is the case that forced the clause into existence, and forbids the chain. AD-21 closes the other half by removing `unreached` from `--strict` promotion. Three consequences follow and each is enforced. The plan never reaches the evaluator: AD-16's sealed brief carries the contract's behaviours, generated directions, interfaces, and permitted resources, the step identifiers stay behind in the compiler and scorer, and a direction names an observation through AD-16's derived reference vocabulary rather than through the identifier. **It holds for a temporal pair as well, and `seal` is where that was proved** — a step's selection predicate includes its temporal clause, so rendering the predicate discloses the ordering and omitting it collapses the pair. `groupResolvedTargets` renders such a pair as one relational phrase carrying no sequence, and the brief-side scripting audit bans every ordering word from the emitted text under `brief-exceeds-scripting-bound`; `tests/seal/derived-reference.test.ts` asserts the rendering is byte-identical under either declaration order and that a pair whose response-reading step is the predecessor still prints sent-side first. No ordering is readable off a brief whose oracles need no temporal disambiguation, which is the case this claim is now limited to. The evaluator remains free to obtain the observations however it chooses, in any order, with any additional calls. And a step whose observation the evaluator never produced does not fail the oracle — it makes that oracle's disposition unreached, which AD-21 handles as an evidence condition rather than a behavioural failure, because "the evaluator did not do the thing" is not "the system is broken". A contract that declares steps no evaluator could plausibly reach is a coverage problem to surface, never a script to enforce.
 
-  **What a step means when it matches more than one observation is not decided here, and revision 3's claim that it was is withdrawn.** "A step matches by operation and input binding, never by position in the run" is a prohibition without a rule: it forbids the only tie-break the run record can express while supplying no other, and in the worked example two steps each matched two observations, so a first-match scorer and a last-match scorer bound different evidence and produced opposite answers from one sealed record. The temporal clause has the same problem one level down, since nothing in the run record orders observations except array position. Selection is therefore listed in **Owed to the reference implementation** with the shape of the fix — a recorded monotonic sequence, declared selector cardinality, ambiguity as a named condition, and the selected observation identifiers recorded on every outcome — because it determines whether the instrument is deterministic and cannot be settled by asserting a sentence.
+  **What a step means when it matches more than one observation was not decided here, and revision 3's claim that it was is withdrawn.** "A step matches by operation and input binding, never by position in the run" is a prohibition without a rule: it forbids the only tie-break the run record can express while supplying no other, and in the worked example two steps each matched two observations, so a first-match scorer and a last-match scorer bound different evidence and produced opposite answers from one sealed record. The temporal clause had the same problem one level down, since nothing in the run record ordered observations except array position. Selection is therefore recorded in **Owed to the reference implementation** as item 2, and it closed there with the shape the item named: `Observation.sequence` supplies the total order, `InteractionStep.cardinality` declares what a step expects, several matches under a single-valued cardinality raise the named condition `selector-ambiguity`, and `Outcome.selectedObservationIds` records on every outcome what the scorer read.
 
 ### AD-40 — Detection is proven by matching a finding to the defect its probe seeded
 
@@ -535,7 +535,7 @@ Nothing imports `cli/`.
 
   **Identifiers govern and quotation audits, because requiring both operands without ranking them left the disagreement case with three conforming answers.** A finding citing observation `o1` while quoting text that appears only in `o2` resolved `missed` under an identifier-primary reading, `caught` under the quotation-containment procedure this AD endorses for historical records, and no verdict at all under the sentence above making an unwitnessed detection claim an AD-32 inconsistency — and all three readings quote this AD. The rule is that the witness match resolves over cited identifiers alone. Quotation is checked against them rather than searched for: quoted evidence that appears in no cited observation is a **declared-versus-observed inconsistency under AD-32 and invalidates the run**, because a finding whose own two operands disagree is evidence the reporting path is broken, not evidence about the system under test, and silently preferring either operand would let a broken reporter score. The containment procedure over quotation remains defined for exactly one purpose — re-deriving detection from records written before identifiers were required — and a result so derived is recorded as reconstructed rather than measured, never pooled with a measured catch rate. A signature's discriminating condition must name the response channel or at least two channels, checked at corpus qualification time rather than left to authoring taste: a condition that collapses to "the evidence contains the string I sent" is satisfied by a finding that merely echoes its own input, and the real corpus contains a repetition where exactly that scored a false catch against ground-truth non-detection. A lazily authored signature is unfalsifiable in precisely the way a lazily authored oracle is, which is this product's own thesis arriving one level up.
 
-  **This AD depends on two recorded-open items and says so rather than letting an implementer discover it.** A defect that manifests only across a *pair* of observations — a write whose response is correct by design and a read-back that discriminates — cannot be signed by a single-observation condition, and pairing needs the monotonic sequence of Owed item 2 and the captured-value matcher of Owed item 3. Verified by execution: a reference mapping over the worked chain flips `caught` to `missed` under reversed observation order. Single-observation defects are fully signable today; pair defects are not, and no epic should assume otherwise.
+  **A defect that manifests only across a *pair* of observations cannot be signed by this AD's condition, and the limit is the condition's own shape.** A write whose response is correct by design and a read-back that discriminates need one condition spanning two observations. `DiscriminatingCondition` carries one selector and a predicate rooted at the single reserved step `observed`, and `src/core/score/witness.ts` resolves it against one observation at a time under a map built fresh per observation and never merged with a plan's, so single-observation defects are signable and a pair defect has no shape to be written in. The two prerequisites this AD once named, Owed item 2's monotonic sequence and Owed item 3's captured-value matcher, both shipped in epic 7; what a pair signature lacks is a pair variant of the condition, which `src/core/preflight/witness-evidence.ts` records at the constant it would invalidate. Verified by execution when the item was filed: a reference mapping over the worked chain flipped `caught` to `missed` under reversed observation order.
 
   Because the signature is authored by whoever seeds the defect and never by the contract author, it is a sealed-corpus field under AD-8 and never reaches a brief, a contract, or an evaluator. Publishing it would hand the answer key to the party being measured.
 
@@ -626,14 +626,14 @@ Deployment and environments. There is no service, no database, and no hosted com
 | VFR-4 Adaptive evaluation | caller-owned execution; the sealed brief is the whole interface | AD-2, AD-16, AD-23 |
 | VFR-5 Governed evidence | `core/emit`, `core/ingest` | AD-6, AD-17, AD-18, AD-21, AD-23, AD-24, AD-29, AD-33 |
 | VFR-6 Engine reuse | not in v0; no seam reserved | AD-2, deferred below |
-| VFR-7 Contract strength scoring | `core/score`, CorpusPort — **open; see Owed to the reference implementation** | AD-6, AD-7, AD-8, AD-9, AD-11, AD-12, AD-20, AD-27, AD-32, AD-33, AD-40 |
+| VFR-7 Contract strength scoring | `core/score`, CorpusPort | AD-6, AD-7, AD-8, AD-9, AD-11, AD-12, AD-20, AD-27, AD-32, AD-33, AD-40 |
 | VFR-7 Environment pre-flight | `core/preflight`, EnvironmentProbePort | AD-1, AD-10, AD-28, AD-35 |
 | VFR-8 Library and CLI surface | `application/` exports, `cli` | AD-13, AD-14, AD-15, AD-21, AD-34 |
 | VFR-1 Eval-relevant work detection | TEA client, outside this package | AD-15 |
 | Adoption and first-run path | `corpus/dev`, published examples, docs | AD-38 |
 | Cross-cutting build integrity | `core/schemas`, continuous integration | AD-13, AD-25, AD-27, AD-30, AD-36, AD-37 |
 
-## Calibration closure and remaining compile fixtures
+## Calibration closure and what the calibration evidence supports
 
 Gate D ran on 2026-07-30 under a pre-registered three-arm, three-repetition design. The positive
 control, prose generated from AD-3's current fields, and generation augmented with an evidence
@@ -642,111 +642,209 @@ three of three valid repetitions. The two-of-three reducer therefore selects the
 branch. **Former item 1 is closed:** no evidence-precondition dimension is added from this spike, the
 generator is the product, and `seal` joins the epic order.
 
-The production generator remains implementation work with explicit acceptance criteria, not a
-pre-epic architecture gate. AD-16 fixes what the brief carries — derived references rather than step
-identifiers and unordered negative domains — and AD-5 audits the emitted brief. `seal` must use
-non-imperative, non-sequential templates; bound enumerated probe steps under a stable AD-5 code; and
-pass a brief-diffing check that reorders contract steps and negative domains and requires byte-identical
-output. For temporal read-back pairs it must either emit a relational dependency phrase without a
-sequence or record a bounded ordering disclosure and amend AD-39 explicitly; it may not choose silently
-by template taste.
+The production generator was implementation work with explicit acceptance criteria rather than a
+pre-epic architecture gate, and epic 2 built it. AD-16 fixes what the brief carries — derived references
+rather than step identifiers and unordered negative domains — and AD-5 audits the emitted brief. `seal`
+uses non-imperative, non-sequential templates; bounds enumerated probe steps under
+`brief-exceeds-scripting-bound`; and passes a brief-diffing check that reorders contract steps and
+negative domains and requires byte-identical output. For temporal read-back pairs it took the first of
+the two branches this section offered: a relational dependency phrase carrying no sequence, so no
+ordering disclosure was recorded and AD-39 was not amended.
 
-The API-shaped transcribed calibration corpus still does not exist. That is fixture debt and a scope
-limit, and it gates no epic. The measured contracts declare MCP interfaces, and `mcp` now compiles
-and pre-flights, so those contracts can now be compiled as they are. What a transcription still
-cannot do is establish that the effect survives the interface change. Each transcription records what
-changed, and any behavior that cannot be transcribed without loss is evidence about the scope v0 compiles.
-What remains Deferred for `mcp` is the text channel, recorded under Deferred Scope.
+The API-shaped transcribed calibration corpus does not exist, and that bounds what the calibration
+evidence supports. The measured contracts declare MCP interfaces, and `mcp` compiles and pre-flights
+since epic 11, so those contracts compile as they are: the evidence establishes that this package admits
+the contracts behind the measured effect in the interface kind they were written in. It does not
+establish that the effect survives an interface change, because no contract behind it has been
+transcribed to an API shape and re-run. A transcription would add that one comparison and nothing else,
+and it would carry its own evidence with it, since each transcription records what changed and any
+behavior that cannot be transcribed without loss says something about the scope v0 compiles. What stays
+Deferred for `mcp` is the text channel, recorded under Deferred Scope.
 
 Former item 4 closed in revision 9 when the product owner selected per-operation response descriptors.
 The Gate C record reports zero blocking authoring points and fourteen of fourteen declaration-only
-predicates. The historical worked example remains unchanged until the reference reducer regenerates it.
+predicates. The historical worked example was regenerated by story 7.9 from the shipped stages, and
+Owed item 7 records what that closed.
 
 ## Owed to the reference implementation
 
-These are **open defects in the `score` half, not decisions.** Each was found by round 2, each is verified,
-and none is settled by anything written above. They are recorded here rather than smoothed into AD prose
-because the failure mode of the last three revisions was a confidently worded AD that two implementers
-could not resolve compatibly, and the failure mode of this section would be someone building against
-`score` believing it was ready. It is not. No epic touches `score` until these close.
+**All seven items are closed.** Round 2 found them against revision 4, each was verified then, and each
+was answered by shipped code between epic 4 and epic 8. The section keeps its name and its numbering
+because the codebase addresses these items by number the way it addresses an AD by number: eighty-two
+citations across `src/`, `tests/`, `schemas/`, and `scripts/` read "owed item 3" and mean this list, and
+`scripts/package-boundary.ts` records the decision to treat the phrase as architecture vocabulary at the
+point where it declined to flag it as a leaked planning path. What follows is the record of what each
+finding was and what closed it. Three of them closed with a bound on what the shipped code measures, and
+each bound is stated with its item.
 
-The rule for closing them is the one thing four review rounds agree on: implement AD-21, AD-31, AD-33, and
-AD-40 as pure reference functions with generated fixtures, run them against the worked chain plus synthetic
-records, and let the tables be output rather than promise. Every reviewer who proposed a next step for
-`score` proposed this one independently. The estimate for the AD-33 procedure alone is half a day, and it
-would have caught the inconsistency this revision's own worked example still carries.
+The closing rule is the one four review rounds agreed on: implement AD-21, AD-31, AD-33, and AD-40 as
+pure reference functions with generated fixtures, run them against the worked chain plus synthetic
+records, and let the tables be output. `check:ad21-table`, `check:ad31-table`, and `check:ad33-table` are
+those outputs, each regenerating its published table from the reference function and comparing byte for
+byte inside `npm run validate`.
 
-**1. Repeated trials have no reducer, and no stage can consume more than one run.** AD-7 computes a rate
-"across the declared trial count" without saying how several outcomes for one probe become one probe result.
-`caught, missed, missed` reads as 1/1, 0/1, or 1/3 under three readings that all fit the words, and
-dominance flips between them; one reading is pass-if-any, the retry anti-pattern AD-6 spends a paragraph
-forbidding. Verified separately that no stage signature consumes more than one run record, so the default
-three-trial minimum is unreachable, every scored run is permanently below-minimum CONCERNS with a
-non-comparable vector, and the product's central output cannot be produced as specified. The instrument
-behind the measured effect required at least two catches in three valid repetitions; the architecture cannot
-express that. Shape of the fix: `score` consumes a trial set, results reduce to one per `(probeId,
-trialIndex)`, and the aggregation is published with invalid trials and ties handled.
+The section's own rule, that no epic touches `score` until these close, describes an order the work did
+not take. Items 6 and 7 needed compile-side and generator work, epics 4, 6, and 7 did it directly, and
+epic 8 built the three score stages on the results.
 
-**2. Observation selection is ambiguous, and the temporal clause is unimplementable.** Per AD-39. Verified
-that two steps in the worked example each match two observations, so first-match and last-match scorers bind
-different evidence from one sealed record, and that nothing in the run record orders observations except
-array position — which ADR-006 forbids using. Shape of the fix: a recorded monotonic sequence and, where
-needed, causal predecessors; declared selector cardinality where zero resolves through AD-33, one binds, and
-several raise a named ambiguity condition; and the selected observation identifiers recorded on every
-outcome so a reader can see what was measured.
+**1. Repeated trials had no reducer, and no stage consumed more than one run.** AD-7 computed a rate
+"across the declared trial count" without saying how several outcomes for one probe become one probe
+result. `caught, missed, missed` read as 1/1, 0/1, or 1/3 under three readings that all fit the words,
+dominance flipped between them, and one of them is pass-if-any, the retry anti-pattern AD-6 spends a
+paragraph forbidding. No stage signature took more than one run record, so the default three-trial
+minimum was unreachable and every scored run was permanently below-minimum CONCERNS with a
+non-comparable vector. **Story 7.6 closed it and story 8.2 built the stage on it.** `ScoreStage` takes
+`readonly Trials[]` and `score` loops the set. `reduceTrialSet`, in `src/core/score/reduce-trials.ts`,
+reduces one probe's votes against the scoring policy's declared `catchThreshold` under a strict
+comparison, which puts a tie out of reach by construction. AD-6's states divide three ways: invalidating
+states leave both numerator and denominator and are reported as `invalidatedAttempts` carrying each
+excluded attempt's reason, `not-applicable` and `unreached` leave both without being reported as
+failures, and the rest vote. `buildStrengthVector` in `src/core/score/strength.ts` computes the per-class
+catch rate over them and `compareDominance` supplies AD-7's four-valued relation.
+`tests/score/reduce-trials.test.ts` pins the anti-pattern by name: one catch among a non-caught majority
+never reduces to `caught`, and a tie is unreachable for any even valid count at any threshold.
 
-**3. Cross-step resource identity and principal identity are both inexpressible.** An input binding admits
-literals, `any`, and `type-violating` only, so for a `POST` returning a server-generated identifier followed
-by a `GET` proving persistence, a literal hard-codes a resource the evaluator never created and `any` matches
-unrelated reads. That is the most common real persistence pattern there is, and the read-back rule AD-20
-added exists for it. **Round 3 widened this item.** The two critical-severity cross-user behaviours in the
-real corpus — act as user A, read as user B, must be denied or absent — need a step bound to a *principal*
-that is neither a literal, since AD-19 forbids credential values in declarations and tokens are provisioned
-at runtime, nor an earlier step's output, since accounts are test data provisioned outside the observation
-stream. AD-19's `header` channel names the channel and supplies no value binding, so the two
-highest-severity oracles in the calibration corpus stay inexpressible even after the captured-value matcher
-lands as originally scoped. Shape of the fix: a narrow cycle-free captured-value matcher referencing an
-earlier step's scalar output, **plus test-data bindings** — named principals and resources declared in
-`testData` and bound by the harness at runtime — under one set of cycle-free, type-checked rules, keeping
-the projection ban, with binding order, type equality, missing values, and multiple candidate tuples all
-specified.
+**The bound is on the reducer's input.** `runScore` and the `score` command each
+read one sealed run record and call `score` with a single-element trial set, so a run driven from this
+package completes one trial. Under any scoring policy declaring a
+`minimumTrialCount` above 1 that run resolves CONCERNS on an evidence condition and its strength vector
+is marked non-comparable. No policy artifact ships with the package and the schema declares no default,
+so the number is the caller's; the policy every published chain is scored under declares 3, and
+`scripts/worked-example-shared.ts` records that lowering it to make a chain comparable would describe a
+policy nobody ships. Running the evaluator n times
+and presenting n records sits on the caller's side of the boundary AD-2 draws for execution.
+`SealedRunRecord.trialIndex` is carried and unread: `trialSetDisagreementsOf` cross-checks `mode`,
+`evaluatorRecommendation`, and `runId` across a set and compares no indices, so two records claiming the
+same trial reduce as two trials.
 
-**4. Mode separation is incomplete.** Per AD-21. Mode is absent from the sealed run record and from AD-11's
-identity inputs, appearing first in the evidence artifact, so the same sealed run can be relabelled after
-ingest and scored under the same scoring version — and two rungs promote an ingested recommendation that the
-same AD says scoring mode must not promote. Shape of the fix: separate `ProductionAssessment` and
-`ContractAssessment` input types with their own ladders, mode fixed before ingest and entering identity, and
-cross-mode comparison rejected.
+**2. Observation selection was ambiguous, and the temporal clause was unimplementable.** Per AD-39. Two
+steps in the worked example each matched two observations, so a first-match scorer and a last-match
+scorer bound different evidence from one sealed record, and nothing in the run record ordered
+observations except array position, which ADR-006 forbids reading. **Closed across two stories.** Story
+7.2 added `Observation.sequence`, a positive integer unique within a record under the
+`observation-sequence-unique` constraint, and the declared `InteractionStep.cardinality` over
+`exactly-one`, `at-most-one`, and `any`; both are breaking `schemaVersion` bumps. Story 7.5 added the
+rung: several matches under a single-valued cardinality raise the invalidating condition
+`selector-ambiguity` and AD-6's `selector-ambiguous` rule, which resolves `infrastructure-error` and
+lands on AD-21's Invalid rung at exit code 3. Zero matches resolve `unreached` through AD-33, and one
+binds. `Outcome.selectedObservationIds` is required on every outcome and carries what the scorer read.
+Every observation read in `core/score/` and `core/ingest/` sorts by `sequence` with `observationId` as
+the tiebreak, and `tests/score/selection.test.ts` asserts the result is invariant under a permutation of
+the record's array. The temporal clause resolves on the same field: `temporalFloor` in
+`src/core/score/bindings.ts` binds the `after` anchor's `sequence` and admits only candidates above it.
 
-**5. Uncited defect findings route nowhere, and they are the product's own success metric.** AD-23 retains a
-finding citing no oracle, and then nothing consumes it: no outcome state, no rate, no verdict rung. SM-D4 is
-"at least one defect found through an evaluator-chosen action absent from the pre-canned baseline" — the
-differentiating result of the whole experiment — so an evaluator that discovers a genuine uncontemplated
-defect produces a line in an array and exit code zero. On the one run that exists, this already happened.
-Shape of the fix: a rung in each mode. In production it is at least CONCERNS; in contract-scoring it is the
-strongest available evidence of a coverage gap and should record one.
+**What the published JSON Schema carries is weaker than what Zod enforces.** Uniqueness of a nested field
+across sibling array items has no draft-2020-12 keyword, so `sequence` uniqueness is a Zod refinement,
+the constraint ledger carries it as `observation-sequence-unique`, and a consumer validating against the
+published schema alone accepts a record whose observations repeat a sequence.
 
-**6. The stage-signature table AD-24 asserts does not exist.** Round 1 accepted the correction requiring
-exact inputs, one owned output, owners, and lineage edges per stage; revision 3 says the spine fixes that
-table and contains only the assertion, with rough transformations in the Structural Seed. `score` produces
-outcome and verdict values for `emit` whose containing type is unnamed, and the source of run mode is
-absent. Shape of the fix: publish it as compiled TypeScript interface fixtures before any stage is written,
-which is cheap and is the one item here that could be done today.
+**3. Cross-step resource identity and principal identity were both inexpressible.** An input binding
+admitted literals, `any`, and `type-violating` only, so for a `POST` returning a server-generated
+identifier followed by a `GET` proving persistence, a literal hard-coded a resource the evaluator never
+created and `any` matched unrelated reads. The two critical-severity cross-user behaviours in the real
+corpus — act as user A, read as user B, must be denied or absent — needed a step bound to a *principal*
+that AD-19 forbids writing as a literal and that no earlier step's output supplies, since accounts are
+test data provisioned outside the observation stream. **Closed by story 7.3.** `BindingValue` is a
+four-member union whose third and fourth members are `{ captured }`, addressing an earlier step's
+declared scalar output, and `{ principal }`, naming a declared principal. Captured bindings are
+cycle-free at compile time: a Tarjan pass over the union of capture edges and AD-39 `after` edges fails
+any component containing a capture edge under `binding-cycle`, and at score time `bindingOrder` returns
+`cyclic` as data so a cyclic step's candidates all filter away. The projection ban holds because the
+grammar has nowhere to write a transform and a captured pointer's tail must be exactly one scalar
+segment. A declared-type mismatch between the captured and bound sides throws
+`unreachable-check-evidence` naming both types, a capture off the operation's declared response
+descriptor throws `captured-channel-undeclared`, a capture resolving absent leaves the referencing step
+selecting nothing, and several surviving candidates under a single-valued cardinality reach item 2's
+`selector-ambiguity`. `TestData.principals` declares names and no values, keeping AD-19's credential ban;
+`seal` carries the sorted names onto the brief, `Observation.principal` records the principal the harness
+acted as, and `src/core/score/bindings.ts` matches name to name.
+`tests/score/bindings.test.ts` separates two steps of one operation binding `owner` and `intruder` on the
+same header key, and `tests/score/workflow-worked-example.test.ts` resolves a capture to the identifier a
+write minted through the shipped stages.
 
-**7. The worked example is inconsistent and must be regenerated rather than patched.** Verified in three
-places: a step matching zero observations recorded as `confirmed`/`agrees` with a disposition narrating a
-rejection that appears in no observation; two steps each matching two observations; and a `for-all` over an
-empty collection certifying per-record completeness while the contract's own declared setup seeds three
-records. AD-4 now fixes the third at the grammar level. The first two are downstream of items 1 through 3
-and cannot be hand-corrected honestly — the chain must be regenerated from the reference reducer once it
-exists, with hand-filled downstream values forbidden. **Round 3 added a fourth defect and widened the
-regeneration scope:** the chain has no probe artifact at all. Its run record cites `probeId: "P-001"` and
-nothing in the repository defines P-001 — no qualification record and, now, no defect signature — so
-AD-40's signature schema has no fixture to land in and the chain demonstrates a score computed against a
-probe the reader cannot inspect. Regeneration therefore covers the probe corpus entry alongside the
-contract, brief, run record, and evidence artifact. Until then `spike-worked-example/` is evidence of what
-the architecture could not express, which is what it was built for, and its FINDINGS.md records the
-retraction.
+**Two halves of this item landed differently from the way the fix was written.** `testData.resources`
+parses and then fails compilation on any populated entry under `scoped-reference-resolves-forbidden`, and
+no `{ resource }` binding exists: AD-16's forbidden-input floor and a named resource declaration cannot
+both hold, so cross-step resource identity is carried by `{ captured }` alone. Provisioning a principal's
+credential at runtime belongs to the harness; the only producer of `Observation.principal` inside this
+package is pre-flight, which writes `null`.
+
+**4. Mode separation was incomplete.** Per AD-21. Mode was absent from the sealed run record and from
+AD-11's identity inputs, appearing first in the evidence artifact, so one sealed run could be relabelled
+after ingest and scored under the same scoring version, and two rungs promoted an ingested recommendation
+that the same AD says scoring mode must not promote. **Closed by stories 7.1 and 7.7.**
+`SealedRunRecord.mode` is required over the two-member `RUN_MODES`, a breaking bump, and a record
+presenting no mode fails to parse rather than defaulting, because a defaulted mode is the relabelling the
+field exists to stop; ingest restates it and never re-derives it. `mode` is the sixth field of
+`ScoringVersionInputs` and enters the digest `emit` computes, so two modes cannot share a scoring
+version. `ProductionAssessment` and `ContractAssessment` are separate input types with a total ladder
+each, the two evaluator-recommendation rows are spliced into the production ladder alone, and
+`tests/score/ladder.test.ts` asserts that split structurally rather than by example. Two trials of one
+set disagreeing on mode fire `trial-set-field-disagreement` at the Invalid rung, and a record
+disagreeing with the artifact it is emitted into is refused in `emit`.
+
+**The separation reaches identity and stops short of the strength comparator.** `compareDominance` gates
+on `comparabilityKey`, which is digested over the scoring policy digest and the covered probe identifiers
+and carries neither mode nor scoring version, so two artifacts in different modes over one policy and one
+probe set compare component-wise. Nothing in `src/` calls `compareDominance`; its only caller is
+`tests/score/strength.test.ts`.
+
+**5. Uncited defect findings routed nowhere, and they are the product's own success metric.** AD-23
+retained a finding citing no oracle and then nothing consumed it: no outcome state, no rate, no verdict
+rung. SM-D4 is "at least one defect found through an evaluator-chosen action absent from the pre-canned
+baseline", the differentiating result of the whole experiment, so an evaluator that discovered a genuine
+uncontemplated defect produced a line in an array. **Closed by story 7.8.** The ladder row
+`uncited-defect-finding` resolves CONCERNS under the guard "an ingested defect finding citing no oracle",
+and it sits in the shared CONCERNS rows both ladders splice, so it fires in either mode and appears in
+both generated decision tables. It carries no severity-floor gate and is not an evidence condition, so
+`--strict` promotes it to exit 1 while a bare CONCERNS still exits 0 under AD-21's own exit-code table.
+Contract-scoring mode also writes the record: `uncitedFindingGaps` is required on that branch and refused
+on the production branch, one entry per finding carrying its observation identifiers, its quoted
+evidence, and its severity.
+
+**6. The stage-signature table AD-24 asserted did not exist.** Round 1 accepted the correction requiring
+exact inputs, one owned output, owners, and lineage edges per stage; revision 3 said the spine fixes that
+table and then carried only the assertion, with rough transformations in the Structural Seed. `score`
+produced outcome and verdict values for `emit` whose containing type was unnamed, and the source of run
+mode was absent. **Closed by stories 4.4, 6.4, and 7.1.** `src/core/lineage/stage-table.ts` publishes
+`STAGE_SIGNATURES` for all six stages with their artifact inputs, their non-artifact value inputs, their
+one owned output, the lineage edge each writes over `mints`, `carries-through`, and `none`, and their
+module, alongside `ARTIFACT_PRODUCERS` naming one producer for each of the twelve interchange artifacts.
+The table is load-bearing: `check:lineage` derives its writer allowlist from `module`, and
+`tests/lineage/stage-table.test.ts` pins the six stage keys, a distinct owned output per stage, a
+producer for every interchange artifact, and that `mode` is named on ingest and on no other stage.
+Score's product is named `ScoredOutcomesAndVerdict`. The separate `src/core/stage-contracts.ts`, from
+story 4.4, holds the stage *shapes* TypeScript checks each implementation against. Five stages import
+their own; `seal` is pinned by an assignment in `tests/seal/seal.test.ts` instead, and since the
+typecheck covers `tests`, a signature drift in any of the six fails `npm run typecheck`.
+
+**The sequencing the item asked for did not hold.** It called for the table before any stage was written;
+the shapes landed in epic 4 with the plan-and-reduce pairs, the table itself in epic 6 with lineage
+enforcement, and the run-mode column in epic 7, by which point `compile`, `seal`, and `preflight` were
+already built. The artifact it asked for exists and the order it proposed does not describe how it
+arrived.
+
+**7. The worked example was inconsistent and had to be regenerated rather than patched.** Three defects
+were verified: a step matching zero observations recorded as `confirmed`/`agrees` with a disposition
+narrating a rejection that appeared in no observation; two steps each matching two observations; and a
+`for-all` over an empty collection certifying per-record completeness while the contract's own declared
+setup seeded three records. AD-4 fixed the third at the grammar level. Round 3 added a fourth and widened
+the regeneration scope: the chain cited `probeId: "P-001"` and nothing in the repository defined P-001,
+so AD-40's signature schema had no fixture to land in and the chain demonstrated a score computed against
+a probe the reader could not inspect. **Closed by stories 7.9 and 8.5.** The five JSON files in
+`spike-worked-example/` are generated by `npm run generate:worked-example`, which calls the shipped
+`ingest`, `score`, and `emit` for real, and `check:worked-example` rebuilds them in memory and
+byte-compares inside `npm run validate` without ever rewriting them. `probe.json` defines P-001 with an
+AD-9 qualification record and an AD-40 defect signature, and the generator fails the build if the
+qualification gate rejects it. `FINDINGS.md` keeps the revision-4 retraction and adds a per-defect
+walkthrough of how each closed, and `tests/score/worked-example.test.ts` carries one case per retracted
+defect. The regenerated chain resolves FAIL, computed rather than asserted, which is why the directory is
+still titled as a demonstration and not as a conforming example. The pre-regeneration transcriptions stay
+pinned in `tests/schemas/fixtures/worked-example-artifacts.ts` as the record of what failed.
+
+**The dev corpus is a separate publication target and carries no qualified probe.** `corpus/dev/`'s own
+gate requires no probe dimension, so the qualification record and defect signature a reader can inspect
+are the worked chain's, and `corpus/dev/README.md` states that where the dimension would be.
 
 ## Deferred
 

@@ -319,7 +319,7 @@ function trialSetDisagreementsOf(
  * it sees one trial at a time, and nothing checks whether two DIFFERENT trials
  * of one set reuse an observation, finding, or oracle-disposition identifier.
  * That asymmetry looks like a gap beside `trial-set-field-disagreement`, which
- * does compare `mode` and `evaluatorRecommendation` across trials.
+ * does compare `mode`, `evaluatorRecommendation`, and `runId` across trials.
  *
  * It is not one. A trial set is n independent evaluator runs of one contract,
  * each producing its own record, and a harness that names its first observation
