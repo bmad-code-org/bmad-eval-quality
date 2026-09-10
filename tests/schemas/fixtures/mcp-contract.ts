@@ -144,17 +144,17 @@ export const mcpContract = {
 			direction: {
 				evidenceTargets: [
 					'/interactions/create/call-inputs/arguments/title',
-					'/interactions/read-back/response-body/titles',
+					'/interactions/read-back/response-body/topMatch/title',
 				],
-				relation: 'containment',
+				relation: 'equality',
 				polarity: 'expects-hold',
 				scope: 'One creation followed by one search for what it filed.',
 				negativeDomain: 'A creation the later search cannot find.',
 			},
 			check: {
-				op: 'containment',
+				op: 'equality',
 				operands: [
-					{ pointer: '/interactions/read-back/response-body/titles' },
+					{ pointer: '/interactions/read-back/response-body/topMatch/title' },
 					{ pointer: '/interactions/create/call-inputs/arguments/title' },
 				],
 			},
@@ -269,19 +269,21 @@ export const mcpContract = {
 					// what the tool said about its own work.
 					responseDescriptor: {
 						requiredKeys: ['ok', 'matches'],
-						permittedKeys: ['ok', 'matches', 'totalCount', 'titles'],
-						// `matches` holds objects keyed by `noteId`, which is what
-						// the quantifier over it reads. `titles` holds the bare
-						// strings, because AD-20 rule 7's satisfaction predicate
-						// needs one node holding both sides of the read-back and
-						// `containment` over an array compares whole elements: a
-						// containment over `matches` would be false against any
-						// server the quantifier is true of.
+						permittedKeys: ['ok', 'matches', 'totalCount', 'topMatch'],
+						// `topMatch` is the single best hit, which is what the
+						// read-back reads. AD-20 rule 7's satisfaction predicate
+						// needs one node holding both sides of the relation, and a
+						// quantifier node carries its collection rather than its
+						// operands, so the read-back has to be a flat comparison
+						// against something scalar. A containment over `matches`
+						// would be the other spelling and it compares whole
+						// elements, so it would resolve false against any server
+						// the quantifier over `matches` is true of.
 						types: {
 							ok: 'boolean',
 							matches: 'array',
 							totalCount: 'number',
-							titles: 'array',
+							topMatch: 'object',
 						},
 						successIndicator: '/ok',
 						channelRoles: {
