@@ -108,8 +108,8 @@ describe('the fourteen predicates over a workflow contract', () => {
 				each.descriptorRoot,
 			]),
 		).toEqual([
-			['create-thing', 'api', '/response-body'],
 			['get-thing', 'api', '/response-body'],
+			['create-thing', 'api', '/response-body'],
 			['reset-things', 'api', '/response-body'],
 		])
 	})

@@ -16,12 +16,12 @@
 // one call, restore it with another, and read the same answer either side.
 //
 // The volatile identifier is the part worth reading twice. `create-thing`
-// declares `/id` volatile, so the pre-flight projection prunes it and two writes
-// of the same name digest alike. The capture addresses that same field and
-// resolves it, because `resolveCapturedValue` walks the raw observation rather
-// than the projection. A server-minted identifier is what a capture exists for
-// and what a fixture comparison has to ignore, and one contract holding both is
-// the clearest place to show it.
+// declares `/id` volatile, so the pre-flight projection drops it and the fixture
+// digest is over a body carrying no counter. The capture addresses that same
+// field and resolves it, because `resolveCapturedValue` walks the raw
+// observation rather than the projection. A server-minted identifier is what a
+// capture exists for and what a fixture digest has to ignore, and one contract
+// holding both is the clearest place to show it.
 
 import type { EvalContract } from '../../../src/core/schemas/eval-contract.ts'
 
@@ -381,123 +381,16 @@ export const workflowContract = {
 			kind: 'api',
 			operations: [
 				{
-					operationId: 'create-thing',
-					method: 'POST',
-					pathTemplate: '/things',
-					stateChangeMarker: true,
-					requestShape: {
-						path: { requiredKeys: [], permittedKeys: [], types: {} },
-						query: { requiredKeys: [], permittedKeys: [], types: {} },
-						header: { requiredKeys: [], permittedKeys: [], types: {} },
-						body: {
-							// `id` is permitted and never required, which is what
-							// lets a fixture file a record under an identifier it
-							// chose while the run's own write omits it and takes
-							// whatever the service mints. Both halves are needed:
-							// `testData.setup` names the identifier it files under,
-							// and the interaction plan's `create` step binds `name`
-							// alone. That is what leaves the identifier to the
-							// service, which is why `/id` is volatile and why the
-							// read-back has a value only a capture can reach.
-							requiredKeys: ['name'],
-							permittedKeys: ['name', 'id'],
-							types: { name: 'string', id: 'string' },
-						},
-					},
-					responseDescriptor: {
-						// The success shape. Nothing enforces `requiredKeys` against
-						// an observation at run time, and the type-violating steps
-						// this plan declares are answered with `{ ok: false, error }`
-						// and no `thing`, which is the failure shape the same
-						// descriptor's `permittedKeys` and `channelRoles` cover.
-						requiredKeys: ['ok', 'id'],
-						permittedKeys: ['ok', 'id', 'name', 'error'],
-						types: {
-							ok: 'boolean',
-							id: 'string',
-							name: 'string',
-							error: 'string',
-						},
-						successIndicator: '/ok',
-						channelRoles: {
-							'/ok': 'success-indicator',
-							'/id': 'payload',
-							'/name': 'payload',
-							'/error': 'diagnostic',
-						},
-						collectionLocations: [],
-					},
-					// The identifier the service mints differs on every run, so a
-					// witness relation reading it would certify the service
-					// sensitive to its own counter. Declared volatile so the
-					// pre-flight projection prunes it, which leaves the echoed
-					// `name` carrying the difference the relation reads. The
-					// capture addresses that same field and resolves it anyway,
-					// because `resolveCapturedValue` walks the raw observation.
-					volatilePointers: ['/id'],
-					sensitivityWitness: {
-						witnessId: 'creation-follows-the-name',
-						// AD-10 gives a marker-true api operation the body channel:
-						// a write carries its subject in the body where a read
-						// carries it in the URL.
-						channel: 'body',
-						// Both legs supply the seeded identifier and differ only in
-						// the name, which is the single-variable differential AD-10
-						// asks for. Supplying it also decides what the control
-						// branch is worth: `selectControl` gives the control-mutate
-						// leg the first leg's inputs, so a write that files under
-						// its own minted identifier would leave the record the
-						// control-observe legs read untouched and `state-reset`
-						// would compare two reads of a fixture nothing had
-						// disturbed.
-						legs: [
-							{
-								legId: 'create-witness-a',
-								inputs: {
-									path: {},
-									query: {},
-									header: {},
-									body: {
-										kind: 'json',
-										value: { name: 'gamma', id: 't-1' },
-									},
-								},
-							},
-							{
-								legId: 'create-witness-b',
-								inputs: {
-									path: {},
-									query: {},
-									header: {},
-									body: {
-										kind: 'json',
-										value: { name: 'beta', id: 't-1' },
-									},
-								},
-							},
-						],
-						// The whole body, which the projection has already pruned
-						// `/id` out of. The echoed `name` is what carries the
-						// difference the relation reads, which is why the descriptor
-						// permits the service to return it.
-						relation: {
-							op: 'not',
-							operands: [
-								{
-									op: 'deep-equality',
-									operands: [
-										{ pointer: '/interactions/create-witness-a/response-body' },
-										{ pointer: '/interactions/create-witness-b/response-body' },
-									],
-								},
-							],
-						},
-					},
-				},
-				{
 					// The read the capture feeds, and the first marker-false
 					// operation this contract declares, so `selectControl` takes
 					// both control-observe legs from it.
+					//
+					// Declared first for a second reason. `planPreflight` emits
+					// sensitivity legs in operation declaration order, and the two
+					// write witnesses below both file the seeded record, so a read
+					// witness planned after them would have to answer for a store
+					// those writes had already changed. Declared here, it answers
+					// for the state `testData.setup` declares.
 					operationId: 'get-thing',
 					method: 'GET',
 					pathTemplate: '/things/{id}',
@@ -556,6 +449,126 @@ export const workflowContract = {
 									operands: [
 										{ pointer: '/interactions/read-witness-a/response-body' },
 										{ pointer: '/interactions/read-witness-b/response-body' },
+									],
+								},
+							],
+						},
+					},
+				},
+				{
+					operationId: 'create-thing',
+					method: 'POST',
+					pathTemplate: '/things',
+					stateChangeMarker: true,
+					requestShape: {
+						path: { requiredKeys: [], permittedKeys: [], types: {} },
+						query: { requiredKeys: [], permittedKeys: [], types: {} },
+						header: { requiredKeys: [], permittedKeys: [], types: {} },
+						body: {
+							// `id` is permitted and never required, which is what
+							// lets a fixture file a record under an identifier it
+							// chose while the run's own write omits it and takes
+							// whatever the service mints. Both halves are needed:
+							// `testData.setup` names the identifier it files under,
+							// and the interaction plan's `create` step binds `name`
+							// alone. That is what leaves the identifier to the
+							// service, which is why `/id` is volatile and why the
+							// read-back has a value only a capture can reach.
+							requiredKeys: ['name'],
+							permittedKeys: ['name', 'id'],
+							types: { name: 'string', id: 'string' },
+						},
+					},
+					responseDescriptor: {
+						// The success shape. Nothing enforces `requiredKeys` against
+						// an observation at run time, and the type-violating steps
+						// this plan declares are answered with `{ ok: false, error }`
+						// and no `thing`, which is the failure shape the same
+						// descriptor's `permittedKeys` and `channelRoles` cover.
+						requiredKeys: ['ok', 'id'],
+						permittedKeys: ['ok', 'id', 'name', 'error'],
+						types: {
+							ok: 'boolean',
+							id: 'string',
+							name: 'string',
+							error: 'string',
+						},
+						successIndicator: '/ok',
+						channelRoles: {
+							'/ok': 'success-indicator',
+							'/id': 'payload',
+							'/name': 'payload',
+							'/error': 'diagnostic',
+						},
+						collectionLocations: [],
+					},
+					// The identifier differs on every run wherever the caller does
+					// not supply one, which is what the interaction plan's own
+					// `create` step does. The pre-flight projection is what
+					// `fixtureDigest` is computed over, so declaring the field
+					// volatile is what makes two runs of one fixture digest alike
+					// rather than differ on a counter.
+					//
+					// It buys nothing for the two witness legs below, which both
+					// supply the identifier and are told apart by the name they
+					// echo. And it does not reach the capture at all:
+					// `resolveCapturedValue` walks the raw observation, so the
+					// read-back resolves the field the projection prunes, which is
+					// the pair of readings this contract exists to show.
+					volatilePointers: ['/id'],
+					sensitivityWitness: {
+						witnessId: 'creation-follows-the-name',
+						// AD-10 gives a marker-true api operation the body channel:
+						// a write carries its subject in the body where a read
+						// carries it in the URL.
+						channel: 'body',
+						// Both legs supply the seeded identifier and differ only in
+						// the name, which is the single-variable differential AD-10
+						// asks for. Supplying it also decides what the control
+						// branch is worth: `selectControl` gives the control-mutate
+						// leg the first leg's inputs, so a write that files under
+						// its own minted identifier would leave the record the
+						// control-observe legs read untouched and `state-reset`
+						// would compare two reads of a fixture nothing had
+						// disturbed.
+						legs: [
+							{
+								legId: 'create-witness-a',
+								inputs: {
+									path: {},
+									query: {},
+									header: {},
+									body: {
+										kind: 'json',
+										value: { name: 'gamma', id: 't-1' },
+									},
+								},
+							},
+							{
+								legId: 'create-witness-b',
+								inputs: {
+									path: {},
+									query: {},
+									header: {},
+									body: {
+										kind: 'json',
+										value: { name: 'beta', id: 't-1' },
+									},
+								},
+							},
+						],
+						// The whole body, which the projection has already pruned
+						// `/id` out of. The echoed `name` is what carries the
+						// difference the relation reads, which is why the descriptor
+						// permits the service to return it.
+						relation: {
+							op: 'not',
+							operands: [
+								{
+									op: 'deep-equality',
+									operands: [
+										{ pointer: '/interactions/create-witness-a/response-body' },
+										{ pointer: '/interactions/create-witness-b/response-body' },
 									],
 								},
 							],

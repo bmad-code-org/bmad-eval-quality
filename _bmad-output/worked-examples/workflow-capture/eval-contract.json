@@ -550,6 +550,112 @@
       "logicalId": "thing-service",
       "operations": [
         {
+          "method": "GET",
+          "operationId": "get-thing",
+          "pathTemplate": "/things/{id}",
+          "requestShape": {
+            "body": {
+              "permittedKeys": [],
+              "requiredKeys": [],
+              "types": {}
+            },
+            "header": {
+              "permittedKeys": [],
+              "requiredKeys": [],
+              "types": {}
+            },
+            "path": {
+              "permittedKeys": [
+                "id"
+              ],
+              "requiredKeys": [
+                "id"
+              ],
+              "types": {
+                "id": "string"
+              }
+            },
+            "query": {
+              "permittedKeys": [],
+              "requiredKeys": [],
+              "types": {}
+            }
+          },
+          "responseDescriptor": {
+            "channelRoles": {
+              "/error": "diagnostic",
+              "/ok": "success-indicator",
+              "/thing": "payload"
+            },
+            "collectionLocations": [],
+            "permittedKeys": [
+              "ok",
+              "thing",
+              "error"
+            ],
+            "requiredKeys": [
+              "ok",
+              "thing"
+            ],
+            "successIndicator": "/ok",
+            "types": {
+              "error": "string",
+              "ok": "boolean",
+              "thing": "object"
+            }
+          },
+          "sensitivityWitness": {
+            "channel": "path",
+            "legs": [
+              {
+                "inputs": {
+                  "body": {
+                    "kind": "absent"
+                  },
+                  "header": {},
+                  "path": {
+                    "id": "t-1"
+                  },
+                  "query": {}
+                },
+                "legId": "read-witness-a"
+              },
+              {
+                "inputs": {
+                  "body": {
+                    "kind": "absent"
+                  },
+                  "header": {},
+                  "path": {
+                    "id": "t-2"
+                  },
+                  "query": {}
+                },
+                "legId": "read-witness-b"
+              }
+            ],
+            "relation": {
+              "op": "not",
+              "operands": [
+                {
+                  "op": "deep-equality",
+                  "operands": [
+                    {
+                      "pointer": "/interactions/read-witness-a/response-body"
+                    },
+                    {
+                      "pointer": "/interactions/read-witness-b/response-body"
+                    }
+                  ]
+                }
+              ]
+            },
+            "witnessId": "the-read-follows-the-identifier"
+          },
+          "stateChangeMarker": false,
+          "volatilePointers": []
+        },
+        {
           "method": "POST",
           "operationId": "create-thing",
           "pathTemplate": "/things",
@@ -665,112 +771,6 @@
           "volatilePointers": [
             "/id"
           ]
-        },
-        {
-          "method": "GET",
-          "operationId": "get-thing",
-          "pathTemplate": "/things/{id}",
-          "requestShape": {
-            "body": {
-              "permittedKeys": [],
-              "requiredKeys": [],
-              "types": {}
-            },
-            "header": {
-              "permittedKeys": [],
-              "requiredKeys": [],
-              "types": {}
-            },
-            "path": {
-              "permittedKeys": [
-                "id"
-              ],
-              "requiredKeys": [
-                "id"
-              ],
-              "types": {
-                "id": "string"
-              }
-            },
-            "query": {
-              "permittedKeys": [],
-              "requiredKeys": [],
-              "types": {}
-            }
-          },
-          "responseDescriptor": {
-            "channelRoles": {
-              "/error": "diagnostic",
-              "/ok": "success-indicator",
-              "/thing": "payload"
-            },
-            "collectionLocations": [],
-            "permittedKeys": [
-              "ok",
-              "thing",
-              "error"
-            ],
-            "requiredKeys": [
-              "ok",
-              "thing"
-            ],
-            "successIndicator": "/ok",
-            "types": {
-              "error": "string",
-              "ok": "boolean",
-              "thing": "object"
-            }
-          },
-          "sensitivityWitness": {
-            "channel": "path",
-            "legs": [
-              {
-                "inputs": {
-                  "body": {
-                    "kind": "absent"
-                  },
-                  "header": {},
-                  "path": {
-                    "id": "t-1"
-                  },
-                  "query": {}
-                },
-                "legId": "read-witness-a"
-              },
-              {
-                "inputs": {
-                  "body": {
-                    "kind": "absent"
-                  },
-                  "header": {},
-                  "path": {
-                    "id": "t-2"
-                  },
-                  "query": {}
-                },
-                "legId": "read-witness-b"
-              }
-            ],
-            "relation": {
-              "op": "not",
-              "operands": [
-                {
-                  "op": "deep-equality",
-                  "operands": [
-                    {
-                      "pointer": "/interactions/read-witness-a/response-body"
-                    },
-                    {
-                      "pointer": "/interactions/read-witness-b/response-body"
-                    }
-                  ]
-                }
-              ]
-            },
-            "witnessId": "the-read-follows-the-identifier"
-          },
-          "stateChangeMarker": false,
-          "volatilePointers": []
         },
         {
           "method": "POST",

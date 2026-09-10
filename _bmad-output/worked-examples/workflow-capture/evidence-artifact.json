@@ -218,12 +218,12 @@
   "revisionCount": 0,
   "runId": "workflow-capture-run-0001",
   "schemaVersion": 3,
-  "scoringVersion": "sha256:58d69ef17c113307ca29d11f5d8ba273a1a36859c8425ab6847fa45bdf5262c0",
+  "scoringVersion": "sha256:02a3a7be35f5c467831122a760354f4e6a596a3d2e508f2ce3e376b4f0f48c54",
   "scoringVersionInputs": {
     "contractSchemaVersion": 5,
     "corpusDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000025",
-    "evaluatorConfigurationDigest": "sha256:c62dee4fa65fa47dde27063aa29f3fbbacf4986b1a60865d9160903098339495",
-    "fixtureDigest": "sha256:e442f4522d794424e4d693a5a696986acade91076afdc8dd2dfc7e5533151a3e",
+    "evaluatorConfigurationDigest": "sha256:a0c06e862c6a72a41db9e59e72b687da2cce7b3575d96b9749c40186cb2d84e7",
+    "fixtureDigest": "sha256:7fcaf73a7de73d9af99050ae5c79f9a9bc620c3cd9f2e3db82ae802e107abb30",
     "mode": "contract-scoring",
     "scoringPolicyDigest": "sha256:cc9e09a64f2ed19a6a204f72244e43e51b742f078fab859329601146fdf47bb7"
   },

@@ -335,12 +335,15 @@ const REPLY_FOR: Record<
 		status: 201,
 		body: { ok: true, id: SEEDED_ID, name: 'beta' },
 	},
-	// The read runs after both create legs, so it answers with what the second
-	// of them left. Authoring `alpha` here would describe a store that ignored
-	// the two writes above it.
+	// The read witnesses are planned before either write, because `get-thing` is
+	// declared first, so this leg answers for the state `testData.setup`
+	// declares. Planned after the writes it could not: both of them file the
+	// seeded record, and under the seeded fault the store would hold the
+	// placeholder, which is a value no clean leg may answer with without firing
+	// the manifestation relation.
 	'read-witness-a': {
 		status: 200,
-		body: { ok: true, thing: thing(SEEDED_ID, 'beta') },
+		body: { ok: true, thing: thing(SEEDED_ID, SEEDED_NAME) },
 	},
 	// A read of an identifier `testData.setup` leaves unfiled. The relation over
 	// the two read legs is `not(deep-equality)` of their bodies, so a truthful

@@ -133,7 +133,7 @@
     "maxToolCalls": 20,
     "maxWallClockMinutes": 5
   },
-  "contractDigest": "sha256:a8d2e49742d97b32b9d0a53525ebdd97659e9c5bdcaa70464399c02f146d1d0b",
+  "contractDigest": "sha256:dae134fc04896ddc008ff3dbdac9cc7eeb32120a7f4a0a42e54a4df1523728e4",
   "directions": [
     {
       "oracleId": "O-001",

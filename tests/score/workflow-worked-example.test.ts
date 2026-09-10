@@ -164,10 +164,10 @@ describe('the workflow chain, as the shipped stages computed it', () => {
 		// differing on the name they echo rather than on a counter. The capture
 		// reads the raw observation and resolves the same field anyway. The two
 		// readings of one field are the reason this contract holds both.
-		const [declared] = contract.permittedInterfaces
-		const write0 = declared?.operations[0]
-		expect(write0?.operationId).toBe('create-thing')
-		expect(write0?.volatilePointers).toEqual(['/id'])
+		const write = contract.permittedInterfaces[0]?.operations.find(
+			(operation) => operation.operationId === 'create-thing',
+		)
+		expect(write?.volatilePointers).toEqual(['/id'])
 	})
 
 	it('resolves the signature home to the read rather than to the write', () => {

@@ -401,10 +401,12 @@ infers `{ id?: undefined }` and the array literal stops being assignable to `rea
 
 ## Review Findings
 
-Three peer-review rounds against a sibling Claude Code session in this worktree, twenty-one findings,
+Four peer-review rounds against a sibling Claude Code session in this worktree, twenty-three findings,
 all addressed. Round one returned thirteen and is recorded in Decision 19; round two returned six
-against the fixes, three of them problems the fixes themselves introduced; round three returned two,
-neither above medium.
+against the fixes, three of them problems the fixes themselves introduced; round three returned two;
+round four returned two more, both consequences of round three's own fix. Each round after the first
+found something the round before had created, which is the argument for running them until a round
+returns nothing structural rather than until the first one is answered.
 
 The one worth carrying forward is the first-round finding that the exemplar's authored evidence
 contradicted its own `testData.setup`, and the second-round finding that the repair had moved the
@@ -439,7 +441,25 @@ puts it back; the builder answers the two observe legs from two entries rather t
 second entry now fails the build with "the projections of ... differ", which is what makes the
 committed row evidence rather than an artifact of how the replies were written.
 
-Three of the twenty-one were assertions that pinned nothing, each found by deleting the assertion and
+Round four returned one medium and one low, both consequences of round three's fix rather than errors
+in it. Making the control mutation reach the seeded record meant both write witnesses now file that
+record, and `planPreflight` emits sensitivity legs in operation declaration order, so the read witness
+planned after them had to answer for a store those writes had already changed. Under the seeded fault
+the truthful answer there is the placeholder, and a clean leg answering with it fires the
+manifestation relation and fails `seeded-faults-scoped`, so the honest value and the green value were
+different values. `get-thing` is now declared before `create-thing`, which puts the read witnesses
+ahead of any write and lets the first of them answer for the state `testData.setup` declares. Nothing
+else moves: `selectControl` still takes the observed leg from the first marker-false operation and the
+mutating leg from the first marker-true one on the reset's interface, and the control legs, the
+`state-reset` pair and the scoping check's clean legs are unchanged.
+
+The low finding was that `/id`'s volatility had become inert for the witness relation, since both
+write legs now supply the identifier and are told apart by the name they echo. The declaration stays,
+because the interaction plan's own `create` step supplies no identifier and the projection is what
+`fixtureDigest` is computed over; the two comments that gave it the witness-relation job now give it
+that one.
+
+Three of the twenty-three were assertions that pinned nothing, each found by deleting the assertion and
 then applying the mutation it was supposed to catch. Deleting an assertion from a passing suite proves
 nothing on its own, and that method is the reason the count is three rather than zero.
 
