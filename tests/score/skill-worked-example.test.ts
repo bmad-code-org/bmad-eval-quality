@@ -65,6 +65,10 @@ describe('the skill chain, as the shipped stages computed it', () => {
 	})
 
 	it('emits a pre-flight verdict its own reducer computed', () => {
+		// The builder aborts on a failed verdict, so this line catches nothing
+		// the build does not. It stays because it is the acceptance criterion
+		// stated literally and it reads as the boundary between the two halves
+		// of the chain; the check list below it is what actually pins the plan.
 		expect(preflightVerdict.passed).toBe(true)
 		// Every planned leg reached a resolved check. `seeded-fault-fired` is the
 		// row that fails when a defect declares no manifestation witness, and it
@@ -89,30 +93,45 @@ describe('the skill chain, as the shipped stages computed it', () => {
 	})
 
 	it('partitions the candidates rather than only finding one that fits', () => {
+		// Duplicates a builder guard, kept for the reason the pre-flight line
+		// above is kept.
 		expect(witness.result).toBe('matched')
-		expect(witness.basis).toBe('measured')
 		// The refuting member is what says the condition discriminates: the
 		// evaluator ran the same operation on the other declared case, the
 		// selection carried no excluded item, and the condition resolved false
 		// over it. A partition holding only satisfying members is consistent
 		// with a condition true of everything the selector admits.
+		//
+		// This is the whole of what the partition can say here. `basis` is typed
+		// to one literal, and `witnessObservationIds` and
+		// `unwitnessedFindingIds` are both entailed by `matched` over this
+		// partition, so asserting them would read as three more checks and be
+		// none.
 		expect(witness.partition).toEqual({
 			satisfying: ['obs-002'],
 			refuting: ['obs-001'],
 			inconclusive: [],
 		})
-		expect(witness.witnessObservationIds).toEqual(['obs-002'])
-		expect(witness.unwitnessedFindingIds).toEqual([])
 	})
 
 	it('reads the two oracles apart', () => {
 		// The inclusion half holds over the same reply the exclusion half
 		// rejects, which is the whole reason a skill contract carries both.
+		//
+		// `corroboration` is the field that moves when the record contradicts
+		// what the check resolved, and it is the only one that does: an
+		// authored disposition of `violated` on an oracle whose check resolves
+		// `true` leaves `state` at `confirmed` and every other assertion here
+		// green. Both oracles read it, and both read their disposition, so the
+		// pair is symmetric.
 		expect(outcomeOf('O-001')?.state).toBe('confirmed')
 		expect(outcomeOf('O-001')?.checkResolution?.resolution).toBe('true')
+		expect(outcomeOf('O-001')?.disposition).toBe('held')
+		expect(outcomeOf('O-001')?.corroboration).toBe('agrees')
 		expect(outcomeOf('O-002')?.state).toBe('caught')
 		expect(outcomeOf('O-002')?.checkResolution?.resolution).toBe('false')
 		expect(outcomeOf('O-002')?.disposition).toBe('violated')
+		expect(outcomeOf('O-002')?.corroboration).toBe('agrees')
 	})
 
 	it('puts a number where the skill guide reported null', () => {
@@ -123,7 +142,6 @@ describe('the skill chain, as the shipped stages computed it', () => {
 		})
 		expect(artifact.strength.vector.gameability).toBeNull()
 		expect(artifact.strength.vector['zero-action']).toBeNull()
-		expect(artifact.strength.basis).toBe('measured')
 	})
 
 	it('marks the vector non-comparable and says why', () => {

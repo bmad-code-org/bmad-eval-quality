@@ -271,8 +271,12 @@ describe('the development corpus', () => {
 		// line break with `\s+`.
 		const absences: readonly [string, RegExp][] = [
 			[
-				'the qualified-probe dimensions are absent',
-				/qualified-probe\s+dimensions\s+are\s+absent/,
+				// Anchored on the bold marker the paragraph opens with, which is
+				// what makes this entry able to fail on its own. Without it the
+				// regex is a strict prefix of the next one and no README can
+				// falsify it while satisfying that one, so it certified nothing.
+				'the qualified-probe dimensions are absent, as its own heading',
+				/\*\*The\s+qualified-probe\s+dimensions\s+are\s+absent\.\*\*/,
 			],
 			[
 				'the trial reducer and the score stage are both shipped, so the corpus gate is the remaining gap',

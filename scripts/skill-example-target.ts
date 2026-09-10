@@ -343,9 +343,10 @@ function authoredObservations(
 					: fail(
 							`leg "${leg.legId}" (${leg.purpose}) has no authored reply; the plan and SELECTION_FOR disagree`,
 						)
-		if (leg.request.kind !== 'cli') {
-			fail(`leg "${leg.legId}" planned a ${leg.request.kind} request`)
-		}
+		// The reply is spelled `cli` because the contract declares one interface
+		// and it is `cli`. A second interface of another kind would make
+		// `reducePreflight` throw `port-contract-violation` naming both kinds,
+		// which says more than a guard here could.
 		return observationFor(
 			leg.legId,
 			leg.request.interfaceId,
@@ -677,14 +678,13 @@ export function buildSkillExampleChain(): SkillExampleChain {
 	}
 
 	// AD-40's witness match, published on `SkillExampleChain` so a reader can
-	// check the partition the outcome rests on. Split so each failure names its
-	// own reason. The cast is what TypeScript still needs after them: narrowing
-	// `probe.defectSignature` refines the property for reads and leaves the
-	// object's own declared type alone.
-	if (probe.expectedClean) fail(`${probe.probeId} is a clean control`)
-	if (probe.defectSignature === null) {
-		fail(`${probe.probeId} carries no defect signature to match against`)
-	}
+	// check the partition the outcome rests on.
+	//
+	// The cast carries the narrowing on its own, and the two guards the spike
+	// chain writes ahead of it are not repeated: `expectedClean: true` with a
+	// declared defect is refused by `Probe.parse` above, and a null signature is
+	// refused by the `sealProbeSet` guard under `signature-absent`. Both fail
+	// before this line, so a guard here would read as a check and be none.
 	const signedProbe = probe as SignedProbe
 	const witness = matchProbeWitness(
 		signedProbe,

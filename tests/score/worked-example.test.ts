@@ -13,7 +13,6 @@
  */
 import { describe, expect, it } from 'vitest'
 import {
-	buildSkillExample,
 	SKILL_EXAMPLE_FILES,
 	SKILL_EXAMPLE_LABEL,
 } from '../../scripts/skill-example-target.ts'
@@ -283,7 +282,13 @@ describe('the emitted file set', () => {
 // The registry `generate:worked-example` and `check:worked-example` both call.
 // It belongs to neither chain, so it is asserted here once: a builder dropped
 // from it leaves its chain's committed files unowned and permanently stale,
-// which the drift check cannot report because it iterates this same map.
+// which the drift check cannot report because it iterates this same map. Drop
+// `buildSkillExample` from it and `check:worked-example` reports five files
+// matching byte for byte and exits 0 while six committed files go unowned.
+//
+// The key set is the whole assertion. The registry copies each builder's
+// entries and fails on a collision, so the only way a value can differ is a
+// missing key, which the key set already reads.
 describe('the union every committed chain reaches disk through', () => {
 	it('holds every key both builders emit and nothing else', () => {
 		expect([...buildWorkedExample().keys()].sort()).toEqual(
@@ -294,14 +299,5 @@ describe('the union every committed chain reaches disk through', () => {
 				...SKILL_EXAMPLE_FILES.map((name) => `${SKILL_EXAMPLE_LABEL}/${name}`),
 			].sort(),
 		)
-	})
-
-	it("renders each chain's bytes unchanged by the union", () => {
-		for (const [path, text] of buildSpikeExample()) {
-			expect(buildWorkedExample().get(path), path).toBe(text)
-		}
-		for (const [path, text] of buildSkillExample()) {
-			expect(buildWorkedExample().get(path), path).toBe(text)
-		}
 	})
 })

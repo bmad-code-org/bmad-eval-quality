@@ -74,7 +74,7 @@ An eval contract describes a system through a declared interface. Three interfac
 | Your system | Guide | State |
 | --- | --- | --- |
 | An agent you invoke from the command line | [Agent behavior](/how-to/evaluate-agent-behavior/) | Proven. Nine probes catch a seeded defect in a real corpus. |
-| A skill an agent loads and acts on | [Skill behavior](/how-to/evaluate-skill-behavior/) | Proven. A seeded defect is caught and scored against a shipped skill contract, on a chain regenerated and byte-checked every build, one trial, marked non-comparable. |
+| A skill an agent loads and acts on | [Skill behavior](/how-to/evaluate-skill-behavior/) | Proven. A seeded defect is caught and scored against a shipped skill contract, on an authored chain regenerated and byte-checked every build, one trial, marked non-comparable. |
 | Several steps that have to happen in order | [Workflow behavior](/how-to/evaluate-workflow-behavior/) | Declarable and compiling. Step binding is unit-tested, with no shipped end-to-end run. |
 | An AI feature behind an HTTP surface | [AI feature behavior](/how-to/evaluate-ai-feature-behavior/) | Proven end to end against a loopback fixture the suite starts: a real probe observes a seeded defect over HTTP and the chain scores it, one trial, marked non-comparable. No third-party AI feature has been evaluated; pointing this at yours is the adapter and the two arms you write. |
 | An MCP server answering tool calls | [Tool-use behavior](/how-to/evaluate-tool-use-behavior/) | Compiles, scores a probe, and runs a pre-flight against a real stdio tool server. No live server has been scored end to end yet. |
