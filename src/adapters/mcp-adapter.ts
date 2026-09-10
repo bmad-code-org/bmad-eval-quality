@@ -361,6 +361,14 @@ async function callToolOverStdio(
 				`the server refused the initialize handshake: ${JSON.stringify(refusal)}`,
 			)
 		}
+		// JSON-RPC requires exactly one of `result` and `error`. A frame with
+		// neither says nothing about whether the session opened, and reading it
+		// as consent is the same failure as reading a refusal that way.
+		if (handshake.result === undefined) {
+			throw new Error(
+				'the server answered the initialize handshake with neither a result nor an error',
+			)
+		}
 		session.notify('notifications/initialized', {})
 		const response = await session.request(CALL_TOOL_ID, 'tools/call', {
 			name: request.toolName,

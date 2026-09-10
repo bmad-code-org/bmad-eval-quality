@@ -125,13 +125,12 @@ const PROBE_ASSERTIONS: readonly ProbeAssertion[] = [
 		// A subject that throws on 5xx fails here and nowhere else, and it makes
 		// AD-10's seeded-fault check unimplementable.
 		//
-		// The non-`api` arm of the detail below names the kind it observed and
-		// is unreachable through this runner: `echoMismatch` compares `kind`
-		// among the four echoed fields and short-circuits before `check` runs,
-		// so an answer of another mechanism is already reported as a
-		// correlation failure. It is spelled truthfully anyway, because the
-		// alternative resolves a binary ternary and calls a tool result "a
-		// command observation".
+		// The non-`api` arm of the detail below names the kind it observed. It
+		// is reached when the subject declares a `faultingRequest` of another
+		// kind and answers it correlated, which `ProbeSubject` admits because
+		// the field is typed over the whole request union. Substituting only
+		// the observation's kind does not reach it: `echoMismatch` compares
+		// `kind` among the four echoed fields and short-circuits first.
 		id: 'probe/observe-anomalous-status',
 		title: 'a 500 from an authorized target is an observation, not a fault',
 		request: (subject) => subject.faultingRequest,
@@ -460,10 +459,11 @@ const COMMAND_ASSERTIONS: readonly CommandAssertion[] = [
 		expectation: { kind: 'resolves' },
 	},
 	{
-		// The non-`cli` arm of the detail below is unreachable for the reason
-		// the `api` arm's is: `echoMismatch` catches an answer of another
-		// mechanism first. It names the observed kind rather than calling every
-		// one of them "an api observation".
+		// The non-`cli` arm of the detail below is reached the same way the
+		// `api` arm's is: `nonZeroExitRequest` is typed over the whole request
+		// union, so a subject may declare another kind there and answer it
+		// correlated. It names the observed kind; the binary ternary it
+		// replaced called every one of them "an api observation".
 		id: 'command/observe-nonzero-exit',
 		title:
 			'a non-zero exit from an authorized command is an observation, not a fault',

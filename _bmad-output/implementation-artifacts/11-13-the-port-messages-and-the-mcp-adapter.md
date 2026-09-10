@@ -148,7 +148,7 @@ half of the window Story 11.5 opened and finishes what Story 11.6 began.
 
 - `src/core/preflight/projection.ts:35-44` -- `ProjectedObservation`, whose comment at `:23-34` opens
   "The five fields and no others". `:110-133` is `projectObservation`, reading
-  `observation.kind === 'api'` at `:120`, `:129`, and `:130`. Decision 6 settles the sixth field.
+  `observation.kind === 'api'` at `:120`, `:129`, and `:130`. Decision 6 settles the tool-error field.
 - `src/core/preflight/witness-evidence.ts:101-150` -- `evidenceOf`, seven `observation.kind === 'api'`
   tests at `:133-146`, writing the sealed `Observation`'s channels. `:135` is `responseStatus`, which
   Decision 6 fills for an `mcp` observation. `callInputsOf` in the same file is Story 11.6's and is
@@ -382,7 +382,7 @@ is fixed in this diff, which is 11.9's rule that a sentence moves with the chang
 - Given every existing `api` and `cli` fixture and the worked chain, when the whole suite runs, then
   every outcome and every emitted byte is unchanged and no published schema document moves, with one
   disclosed exception: `PreflightVerdict.fixtureDigest` and the `scoringVersion` derived from it take
-  new values on every kind, because Decision 6's sixth projection field is inside the digest. The
+  new values on every kind, because Decision 6's tool-error projection field is inside the digest. The
   `CHANGELOG.md` entry names it as a caller-facing break and Decision 11 records why the field is
   worth that.
 - Given `CHANGELOG.md`'s `[Unreleased]`, when read, then it names the widened observation union as a
@@ -490,7 +490,7 @@ JSON-RPC message all throw `port-failure`, and an elapsed cap during any of that
 adapter threw on the one refusal the probe was written to catch.
 
 **Decision 6: `result` carries the structured tool result, `responseStatus` carries `isError` as 0 or
-1, and `ProjectedObservation` gains a sixth field for the flag.**
+1, and `ProjectedObservation` gains a field for the flag.**
 Story 11.3's Decision 1 restricted the kind's first version to tools returning structured content, so
 the descriptor is declared over the structured result and `descriptorChannelOf` answers `response-body`
 for an `mcp` operation. Story 11.5's Decision 2 refuses `response-headers` at
@@ -744,22 +744,27 @@ server whose only open handle was its input; the fixture takes a `--linger` flag
 open, and with it the group kill is the only thing that ends the grandchild. Reverting to
 `child.kill('SIGKILL')` turns the case red.
 
-**Decision 21: the two conformance details this story corrected are unreachable through their own
-runners, and the source records that rather than a test pretending otherwise.**
+**Decision 21: the two conformance details this story corrected are reachable, and each has a test
+that turns red on the string it replaced.**
 Decision 12 records correcting the `api` arm's anomalous-status detail and the `cli` arm's
-non-zero-exit detail so each names the kind it observed. Trying to write a test for either found that
-neither non-matching arm can be reached: `checkProbeResolved` and its command-side twin call
-`echoMismatch` first and return on a mismatch, and `echoMismatch` compares `kind` among the four
-echoed fields, so an answer of another mechanism is already reported as a correlation failure before
-the status or exit comparison runs.
+non-zero-exit detail so each names the kind it observed. The first attempt to test them concluded
+both arms were unreachable, on the ground that `checkProbeResolved` calls `echoMismatch` first and
+`echoMismatch` compares `kind`. That reasoning holds only for the mutation it was written against,
+which substitutes the OBSERVATION's kind while the request stays `api`.
 
-Both arms are kept and both are commented as unreachable through the shipped runner, on
-`plan-index.ts`'s own precedent for a branch the type system needs and the data cannot reach. They
-are spelled truthfully because the alternative is what was there: a binary ternary calling a tool
-result "a command observation". What is reachable is asserted instead: a case answers the faulting
-request with a `cli` and then an `mcp` observation and asserts the correlation failure both times,
-with the detail naming the observed kind, so the ordering claim in the source comment has a test
-behind it.
+The peer's re-verify supplied the case it missed. `ProbeSubject.faultingRequest` and
+`CommandProbeSubject.nonZeroExitRequest` are both typed `ProbeRequest`, the whole three-member union,
+so a subject may declare a tool call there and answer it correlated. `echoMismatch` then passes,
+`check` runs, and the non-matching arm fires with the kind it observed. Two cases exercise exactly
+that, one per arm, and reverting either literal to the string it replaced turns its case red.
+
+Both mutations are recorded rather than only the conclusion: substituting the observation's kind is
+reported as a correlation failure and has its own pair of cases, and substituting the request's kind
+reaches the status and exit comparisons. The source comment at each arm says which is which, so the
+next reader is not told a reachable branch is dead. Tightening the two fields to their own kind would
+make the earlier claim true by construction, and it is turned down here: both are published surface
+an outside subject author implements, so narrowing them is a caller-facing break, and Story 11.7 is
+the story that owns the conformance surface and can weigh it with the third arm in hand.
 
 **Decision 22: one authorization per `interfaceId`, and the evaluator consults only the first.**
 The first pass filtered every authorization naming the interface and took the first that named the
@@ -822,6 +827,36 @@ mechanism that starts a process. Rules 1 and 2 now state the obligation once and
 process-launching specifics under it, rule 3 says "a failure to reach the system at all" where it
 said "a transport failure", and rule 4 names a non-zero exit and a tool error beside a 4xx. No rule
 changed what it requires; each one now says it for every mechanism the port has.
+
+**Decision 26: a test that starts a process cleans it up on its failure path, and the fixture bounds
+its own lifetime.**
+The teardown case records a launched server's pid and asserts it is dead. Its failing run is by
+definition the run where that server is still alive, and it had no cleanup, so a failed assertion
+leaked a process. The `--linger` flag made that permanent: it held an interval open, and an interval
+never elapses. The peer found two orphaned servers on the machine, one of them twelve minutes old and
+from this session's own mutation check.
+
+Two changes, and both are needed. The fixture's `--linger` is a `setTimeout` that exits, so any leak
+is bounded at sixty seconds whatever the harness does. The test file kills every pid it recorded in
+an `afterAll`, whatever the assertions did, and the pid files live in a directory minted per run with
+`mkdtempSync` rather than at a fixed path, so a watch run beside a CI run cannot read the other's pid
+and assert against the wrong process.
+
+**Decision 27: a handshake frame carrying neither a result nor an error is a refusal.**
+Decision 18 reads the handshake's `error` and throws. JSON-RPC requires exactly one of `result` and
+`error`, so a frame with neither is malformed and says nothing about whether the session opened;
+accepting it is the same failure as accepting an explicit refusal, one step quieter. The handshake
+now also requires a `result`, the fixture takes an `--empty-initialize` flag, and a case asserts the
+`port-failure` and its message. Rule 4 in the file header claims the session must be established, and
+this is the second half of what establishing it means.
+
+**Decision 28: the abort path proves the group teardown too.**
+Decision 20's case drives teardown through the elapsed cap. The abort path reaches `close()`
+differently: the spawn's own signal handling kills the direct child with `SIGTERM` first, and
+`killProcessGroup` runs afterwards from the mechanism's `finally`. A process group outlives its
+leader while any member is alive, so the negative pid still reaches the grandchild, and a second case
+against a launcher with the full elapsed budget asserts it rather than leaving the reasoning
+unchecked.
 
 ## Design Notes
 
@@ -921,7 +956,7 @@ rejected itself. Nothing was deferred.
 
 | Finding | Fix |
 |---|---|
-| The sixth projection field moves `fixtureDigest` and `scoringVersion` for every existing api and cli run, and the CHANGELOG discloses nothing | `CHANGELOG.md` entry naming both fields as a caller-facing break, the acceptance criterion corrected, Decision 11 rewritten to separate committed artifacts from artifacts callers hold |
+| The new projection field moves `fixtureDigest` and `scoringVersion` for every existing api and cli run, and the CHANGELOG discloses nothing | `CHANGELOG.md` entry naming both fields as a caller-facing break, the acceptance criterion corrected, Decision 11 rewritten to separate committed artifacts from artifacts callers hold |
 | A refused `initialize` is treated as an established session | Decision 18: the handshake's error is read and throws `port-failure` |
 | The handshake has no verification at all, and one test's title claims it does | Decision 18: the fixture refuses `tools/call` before `initialize`, so deleting the handshake now turns ten cases red |
 | `serverEnvironment` and `cwd` have zero coverage on the field AD-18 designates for credentials | Decision 19: an `env_tool`, a declared token and working directory, and a host-only marker asserted absent |
@@ -960,3 +995,26 @@ The reviewer also confirmed the two supersessions against the tree, found no soc
 cap evasion in the session, and confirmed the `buildPlanIndex` refactor is semantics-preserving in
 both duplicate modes. Its four self-rejected findings are not chased, except the observation-reader
 one, which Decision 24 settles as a recorded decision.
+
+**Re-verify round: six follow-ups, all addressed.**
+
+The peer's narrowed re-verify reproduced both of this pass's mutations independently, put the
+handshake mutation's blast radius at sixteen failing cases across four directories rather than the
+ten counted in one file, traced the `fixtureDigest` disclosure to `EvidenceArtifact`'s
+`scoringVersionInputs` and confirmed `comparabilityKey` and the state-reset comparison are unmoved,
+and agreed with Decisions 22 and 24 as written. It returned two findings that were still wrong and
+four smaller ones.
+
+| Finding | Fix |
+|---|---|
+| The unreachability claim in Decision 21 and in two source comments is false: both `faultingRequest` and `nonZeroExitRequest` are typed over the whole request union, so a subject may declare another kind there and reach the arm | Decision 21 rewritten, both comments corrected, and one case per arm added; reverting either literal turns its case red |
+| The teardown case leaks a process permanently on its failure path, and it already had, twice on this machine | Decision 26 |
+| The launcher pid file is a fixed path two runs would share | Decision 26: a per-run directory from `mkdtempSync` |
+| A handshake frame carrying neither a result nor an error is read as consent | Decision 27 |
+| `CHANGELOG.md` calls `toolError` a sixth field on a projection carrying seven keys | The ordinal is deleted, in five places, on Decision 11's own argument that the census is the half that rots |
+| The abort path and the launcher are never combined, so the group kill after a `SIGTERM` is unproven | Decision 28 |
+
+The reviewer's one optional strengthening, denying inside `evaluateMcpTarget` when more than one
+authorization names an interface, is not taken: `McpTargetPolicy`'s refine states the rule where the
+shape is declared, and a second copy in the evaluator would be the transcription Story 11.5's
+Decision 1 spent itself removing.

@@ -14,7 +14,8 @@
 //   --exit-at-launch      exit before answering anything (session never opens)
 //   --garbage             write a line on stdout that is not a JSON-RPC message
 //   --refuse-initialize   answer initialize with a JSON-RPC error
-//   --linger              hold a timer open so the process outlives its stdin
+//   --empty-initialize    answer initialize with neither a result nor an error
+//   --linger              outlive stdin for 60 seconds, then exit on its own
 //
 // Tools:
 //   search_notes    structured result, no error; its matches follow the query
@@ -45,8 +46,10 @@ if (flags.includes('--garbage')) {
 
 // A server behind a launcher receives the client's stdin through the
 // launcher's inherited pipe, so closing that pipe would end it on its own and
-// a teardown test could not tell a process-group kill from an stdin close.
-if (flags.includes('--linger')) setInterval(() => {}, 60000)
+// a teardown test could not tell a process-group kill from an stdin close. The
+// timer exits rather than repeating: a test whose teardown assertion fails is
+// exactly the run that leaked a server, so the leak has to be bounded here.
+if (flags.includes('--linger')) setTimeout(() => process.exit(0), 60000)
 
 let initialized = false
 
@@ -177,6 +180,10 @@ createInterface({ input: process.stdin }).on('line', (line) => {
 	// A notification carries no id and wants no answer.
 	if (message.id === undefined) return
 	if (message.method === 'initialize') {
+		if (flags.includes('--empty-initialize')) {
+			send({ jsonrpc: '2.0', id: message.id })
+			return
+		}
 		if (flags.includes('--refuse-initialize')) {
 			send({
 				jsonrpc: '2.0',

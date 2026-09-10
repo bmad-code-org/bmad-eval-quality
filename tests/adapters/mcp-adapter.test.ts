@@ -10,11 +10,11 @@
  * not need the entry, so they are discharged here.
  */
 import { spawn } from 'node:child_process'
-import { readFileSync, realpathSync, rmSync } from 'node:fs'
+import { mkdtempSync, readFileSync, realpathSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { describe, expect, it } from 'vitest'
+import { afterAll, describe, expect, it } from 'vitest'
 import {
 	createMcpAdapter,
 	type McpCallToolResult,
@@ -50,8 +50,28 @@ const LAUNCHER_PATH = fileURLToPath(
 	new URL('./fixtures/mcp-launcher-fixture.mjs', import.meta.url),
 )
 
-/** Where the launcher records the pid of the server it started. */
-const GRANDCHILD_PID_FILE = join(tmpdir(), 'eval-quality-mcp-grandchild.pid')
+/**
+ * Where each launcher records the pid of the server it started. A fresh
+ * directory per run, so two checkouts or a watch beside a CI run cannot read
+ * each other's pid and assert against the wrong process.
+ */
+const PID_DIR = mkdtempSync(join(tmpdir(), 'eval-quality-mcp-'))
+const CAPPED_PID_FILE = join(PID_DIR, 'capped.pid')
+const ABORTED_PID_FILE = join(PID_DIR, 'aborted.pid')
+
+/** Every grandchild any case in this file started, killed after the run whatever the assertions did. */
+const startedGrandchildren = [CAPPED_PID_FILE, ABORTED_PID_FILE]
+
+afterAll(() => {
+	for (const file of startedGrandchildren) {
+		try {
+			process.kill(Number(readFileSync(file, 'utf8')), 'SIGKILL')
+		} catch {
+			// Already gone, or never started: both are the wanted end state.
+		}
+	}
+	rmSync(PID_DIR, { recursive: true, force: true })
+})
 
 const MAX_ELAPSED_MS = 5000
 const MAX_OUTPUT_BYTES = 8192
@@ -121,12 +141,20 @@ const policy: McpTargetPolicy = {
 			tools: ['search_notes'],
 		}),
 		serverAt('launching-server', {
-			targetArgs: [LAUNCHER_PATH, GRANDCHILD_PID_FILE, '--linger'],
+			targetArgs: [LAUNCHER_PATH, CAPPED_PID_FILE, '--linger'],
 			tools: ['hanging_tool'],
 			maxElapsedMs: TIGHT_ELAPSED_MS,
 		}),
+		serverAt('launching-slow-server', {
+			targetArgs: [LAUNCHER_PATH, ABORTED_PID_FILE, '--linger'],
+			tools: ['hanging_tool'],
+		}),
 		serverAt('refusing-server', {
 			targetArgs: [FIXTURE_PATH, '--refuse-initialize'],
+			tools: ['search_notes'],
+		}),
+		serverAt('mute-server', {
+			targetArgs: [FIXTURE_PATH, '--empty-initialize'],
 			tools: ['search_notes'],
 		}),
 		// The one entry whose environment and working directory are declared
@@ -394,6 +422,19 @@ describe('a session that never opens', () => {
 		expect(causeMessage(fault)).toContain('refused the initialize handshake')
 		expect(causeMessage(fault)).toContain('unsupported protocol version')
 	})
+
+	// JSON-RPC requires exactly one of `result` and `error`, so a frame with
+	// neither is malformed. Reading it as consent would open a session on a
+	// server that said nothing about whether it accepted one.
+	it('reports an initialize answer carrying neither a result nor an error as a port failure', async () => {
+		const fault = await faultOf(() =>
+			probeFor({ probeId: 'mute', interfaceId: 'mute-server' }),
+		)
+		expect(fault.code).toBe('port-failure')
+		expect(causeMessage(fault)).toBe(
+			'the server answered the initialize handshake with neither a result nor an error',
+		)
+	})
 })
 
 describe('the policy, applied before a server process starts', () => {
@@ -563,7 +604,7 @@ describe('the caps and the session failures, which are never conflated', () => {
 	// child alone would leave the server running after the cap fired, which is
 	// the state this adapter's one-session rule exists to prevent.
 	it('tears down a server the authorized target only launched', async () => {
-		rmSync(GRANDCHILD_PID_FILE, { force: true })
+		rmSync(CAPPED_PID_FILE, { force: true })
 		const fault = await faultOf(() =>
 			probeFor({
 				probeId: 'launched',
@@ -572,7 +613,32 @@ describe('the caps and the session failures, which are never conflated', () => {
 			}),
 		)
 		expect(fault.code).toBe('budget-exhausted')
-		const grandchild = Number(readFileSync(GRANDCHILD_PID_FILE, 'utf8'))
+		const grandchild = Number(readFileSync(CAPPED_PID_FILE, 'utf8'))
+		expect(Number.isInteger(grandchild)).toBe(true)
+		expect(await isDeadWithin(grandchild, 2000)).toBe(true)
+	})
+
+	// The same teardown down the abort path, which reaches `close()` from the
+	// mechanism's `finally` after the signal has already killed the direct
+	// child. A process group outlives its leader while any member is alive, so
+	// the negative pid still reaches the grandchild; this is what proves it.
+	it('tears down a launched server when the caller aborts instead', async () => {
+		rmSync(ABORTED_PID_FILE, { force: true })
+		const controller = new AbortController()
+		const pending = port.probe(
+			request({
+				probeId: 'aborted-launch',
+				interfaceId: 'launching-slow-server',
+				toolName: 'hanging_tool',
+			}),
+			controller.signal,
+		)
+		setTimeout(() => {
+			controller.abort()
+		}, 200)
+		const fault = await faultOf(() => pending)
+		expect(fault.code).toBe('aborted')
+		const grandchild = Number(readFileSync(ABORTED_PID_FILE, 'utf8'))
 		expect(Number.isInteger(grandchild)).toBe(true)
 		expect(await isDeadWithin(grandchild, 2000)).toBe(true)
 	})
