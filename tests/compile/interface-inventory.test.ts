@@ -66,10 +66,16 @@ describe('checkInterfaceKind: unsupported-interface-kind', () => {
 		).not.toThrow()
 	})
 
-	it('names every supported kind in the detail, rendered from the tuple', () => {
+	// The whole diagnostic, byte for byte. `toContain` per kind would stay green
+	// against a message that named the kinds and lost the code, the path, or the
+	// AD reference, and this string is what a caller reads off stderr.
+	it('reports the whole diagnostic, rendered from the tuple', () => {
 		const contract = structuredClone(populatedContract) as any
 		contract.permittedInterfaces[0].kind = 'web'
 		const failure = structuralFailureOf(() => checkInterfaceKind(contract))
+		expect(failure.message).toBe(
+			'unsupported-interface-kind in EvalContract.permittedInterfaces[logicalId=thing-api].kind: "web" is not supported; "api", "cli" and "mcp" are (AD-10)',
+		)
 		for (const kind of SUPPORTED_INTERFACE_KINDS) {
 			expect(failure.message).toContain(`"${kind}"`)
 		}

@@ -107,7 +107,7 @@ That ninth key lands with the sealed run record's own breaking version bump; unt
 The port carries one half of the exchange.
 `ProbeRequest` has an `mcp` member now, `McpProbeRequest`, carrying the correlation triple, the tool name, and the arguments channel (`src/core/schemas/port-messages.ts`), so a pre-flight plan over an `mcp` contract mints real requests.
 `ProbeObservation` still has an `api` member and a `cli` member and no third, so there is nothing an adapter could return.
-A leg answered with an observation of another mechanism is a `port-contract-violation`, which is what stops a tool call from being scored off an HTTP answer.
+An adapter that answered a tool-call leg with an observation of another mechanism gets a `port-contract-violation` from the reducer, which is what stops a tool call from being scored off an HTTP answer.
 
 ## What you need
 
@@ -273,7 +273,7 @@ node dist/cli/main.js score --record sealed-run-record.json \
   --corpus-digest <digest> --out evidence-artifact.json
 ```
 
-Neither reaches a tool call today. A planned mcp leg is issued to whatever port is wired, and the answer has no shape to come back in, so the reduce step reports a `port-contract-violation`.
+Neither reaches a tool call today. A planned mcp leg is issued to whatever port is wired, and there is no shape for the answer to come back in, so how it fails is the adapter's. The shipped command-line adapter throws `forbidden-target` on any request that is not `cli`, before it builds anything (`src/adapters/command-line-adapter.ts`). An adapter that answered with an api or cli observation instead reaches the reducer, which reports `port-contract-violation`.
 
 What an adapter behind the port would have to do.
 `EnvironmentProbePort` has one method, `probe`, taking a `ProbeRequest` and an `AbortSignal` and returning a `ProbeObservation` (`src/ports/environment-probe-port.ts`).
@@ -285,7 +285,7 @@ The mapping from a logical identifier to a running server is the adapter's, from
 
 ## Where this stands
 
-**Compiles, and plans a pre-flight.** The kind, its own operation inventory over a published tool name, a parse that succeeds, and both contract-side gates open. A contract over an MCP tool server compiles under every discipline rule and plans a pre-flight whose legs are tool-call requests. That pre-flight cannot complete: no observation shape exists for a tool call, so every answer reduces to a `port-contract-violation`.
+**Compiles, and plans a pre-flight.** The kind, its own operation inventory over a published tool name, a parse that succeeds, and both contract-side gates open. A contract over an MCP tool server compiles under every discipline rule and plans a pre-flight whose legs are tool-call requests. That pre-flight cannot complete: no observation shape exists for a tool call, so no adapter can answer a leg. The shipped command-line adapter denies the request with `forbidden-target`, and an adapter that answered with another mechanism's observation gets `port-contract-violation`.
 
 **Blocked.** The probe qualification gate rejects a defect signature naming `mcp`, because the signature declares a method and a path template a tool call cannot render. One coded rejection, no silent failures.
 
