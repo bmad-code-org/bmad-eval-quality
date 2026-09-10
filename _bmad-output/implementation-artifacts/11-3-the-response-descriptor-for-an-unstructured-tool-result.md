@@ -2,7 +2,7 @@
 title: 'The response descriptor for an unstructured tool result'
 type: 'chore'
 created: '2026-09-09'
-status: 'in-review'
+status: 'done'
 route: 'dispatch'
 review_loop_iteration: 0
 baseline_commit: '5b351b65ba6c150c378b9b5a0bd3de2fa4f87bc7'
