@@ -898,7 +898,7 @@ describe('the probe suite: AD-35 default-deny and the four caps (fixtures 59-72)
 			)
 			expect(outcome?.passed).toBe(false)
 			expect(outcome?.detail).toBe(
-				`observed kind "${substituted}" for a request carrying "${'api'}", so the answer does not correlate with the question`,
+				`observed kind "${substituted}" for a request carrying "api", so the answer does not correlate with the question`,
 			)
 			expect(report.passed).toBe(false)
 		},
