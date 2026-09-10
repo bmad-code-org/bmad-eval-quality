@@ -10,6 +10,8 @@ body.
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-09-10
+
 ### Added
 
 - **A command authorization bounds the environment keys a call may carry.**
