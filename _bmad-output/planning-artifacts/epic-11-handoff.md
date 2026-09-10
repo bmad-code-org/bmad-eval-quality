@@ -50,7 +50,8 @@ State this in the epic so it does not grow.
   AI feature has been evaluated. Those are evidence gaps rather than feature gaps, the library
   supports all three today, and they belong in their own epic.
 - **The held-out probe corpus** and **the second experiment round**, both already recorded on the
-  What Ships page as things the project owes itself.
+  What Ships page, under *How far a strength number carries*, as limits on what a strength number
+  means.
 
 ## One category that needs nothing, confirmed
 

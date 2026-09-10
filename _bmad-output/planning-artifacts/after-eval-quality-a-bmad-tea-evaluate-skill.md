@@ -58,6 +58,8 @@ them.
   design.
 - Whether the skill seals its own run records, which makes it responsible for AD-16's isolation
   manifest and the seven forbidden inputs.
-- What it does about the two things eval-quality still owes itself, the held-out probe corpus and the
-  second experiment round, since a harness that hides those makes a weaker claim look like a
-  stronger one.
+- What it does about the two limits the What Ships page records under *How far a strength number
+  carries*: a strength number measured against `corpus/dev/` says the contract catches probes its
+  author could read while writing it, and the rule deciding whether a finding detected its probe's
+  seeded defect was derived from and exercised on the records in `experiments/hypothesis-validation/`.
+  A harness that hides either makes a weaker claim look like a stronger one.
