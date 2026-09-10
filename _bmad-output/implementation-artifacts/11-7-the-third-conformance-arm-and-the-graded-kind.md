@@ -594,11 +594,77 @@ part"). Each is the third arm's twin of a title the `api` or `cli` arm already s
 are concrete states of the same call. Consistency across the three arms is worth more here than
 rewriting two shipped titles.
 
-`malformed-input` is the one AD-31 rule with no relevance mutant in `mcp-coverage.test.ts`.
-Emptying the `arguments` shape on both operations takes the interaction plan's bindings, both
-sensitivity witnesses, the parameter sibling group, both type-violating steps and the read-back with
-it, which is a different contract rather than this one with a declaration removed. The file says so
-where the mutants are, and the rule's satisfaction side is covered by two oracle-removal rows.
+`malformed-input` is the one AD-31 rule with no relevance mutant in `mcp-coverage.test.ts`, and the
+re-verify round sharpened the reason into something a reader can rerun. The mutant exists and the
+predicate is reachable: emptying `requestShape.arguments` to
+`{ requiredKeys: [], permittedKeys: [], types: {} }` on both operations does flip the rule to
+irrelevant and moves nothing else, and `malformedInputRelevance` reads only
+`requestChannels[].shape.{requiredKeys, permittedKeys, types}`, which is exactly what that mutation
+empties. What blocks it is one step later, at the gate `gradeOf` runs before any predicate does:
+
+```
+unreachable-check-evidence in EvalContract.oracles[id=O-004].check.operands[1]:
+"/interactions/create/call-inputs/arguments/title" addresses call-inputs arguments field "title",
+which operation "create-note" declares in neither requiredKeys nor permittedKeys
+```
+
+So the mutant is a contract the compiler rejects, and Decision 3 is why `gradeOf` compiles first: a
+table grading a contract the compiler would reject cannot be mistaken for coverage. Reaching the
+predicate would mean deleting the oracles, bindings, witnesses and sibling group that address those
+arguments, which is a second contract rather than this one with a declaration removed. The file
+records this where the mutants are, and the rule's satisfaction side is covered by two
+oracle-removal rows.
+
+**Decision 20: the re-verify round found four clauses with no mutant, which is the same shape as the
+finding that opened the first round, and all four are closed.**
+
+*Six of the `api` arm's eight call-count clauses were still deletable.* The first round's
+`denyAfterContact` named three of the seven denials. Removing the `expectedCalls` clause from
+`probe/deny-private`, `probe/deny-link-local`, `probe/deny-metadata`,
+`probe/deny-unauthorized-scheme`, `probe/deny-on-redirect` and `probe/cap-redirects` in one patch
+left the whole conformance set green. The last two are the sharpest: `cap-redirects`'s own comment
+says "Every hop is authorized, so only the count can refuse it", so its clause is the entire
+assertion, and `deny-on-redirect`'s pin of 1 is the only thing proving the authorized first hop
+happened. Neither could be reached by an existing mutant, because both existing ones resolve and red
+on the code check first. `denyAfterContact` now names all seven denials, a
+`refuseRedirectBeforeFirstHop` mutant refuses correctly without making the first hop, and a
+`capRedirectsAtWrongCount` mutant caps with the right code after the wrong number of hops. Verified
+by deleting all six clauses again: six tests red, one each.
+
+*Nine of the ten complaints the new policy reads emit had no test.* Decision 16 gave five denial
+assertions a read of the subject's own policy, and only one of the branches those reads can take was
+covered. Replacing four of the five reads with a bare `() => 0` left the conformance set green, which
+is the clause that catches a mis-wired subject being itself uncaught. Ten rows now cover every
+complaint across both arms, each substituting one request on an otherwise conforming subject so the
+port still refuses it and only the read reds. Verified by stripping all five reads at once: ten tests
+red.
+
+*The fix for one finding introduced an inconsistency.* `commandAuthorizationFor` returned `undefined`
+for a non-`cli` request, so `command/deny-unmapped-executable` silently reported 0 for a malformed
+subject while its neighbour `command/deny-unauthorized-subcommand` complained explicitly about the
+same thing. The helper now takes the narrowed request type, so each caller has to state what it does
+about another kind, and the executable case carries the same explicit complaint. `mcpAuthorizationFor`
+keeps the wide parameter, because it reads `interfaceId`, which every member of the request union
+carries; the difference is principled and its comment says so.
+
+*The fix for the second high finding could misattribute.* `mcp/observe-error-result`'s new
+absent-result rule blamed the adapter for dropping a payload, and the reference adapter derives the
+result body from `structuredContent` alone, so a tool reporting a failure through a prose `content`
+array with no structured content produces the same absent channel. The two are indistinguishable from
+inside the assertion. The rule stands, since a subject author chooses the tool their
+`errorResultRequest` names and `what-ships.md` already scopes text-only results out of the kind's
+first version, but the detail now names the subject's obligation rather than asserting the adapter
+dropped something.
+
+**Decision 21: a published type erases, so `package-exports.test.ts` cannot guard one.**
+Case 147b imports the built barrel and asserts every runner is a function, which closed the value
+half of the export gap. `McpProbeSubject`, `CommandProbeSubject` and `ProbeSubject` are named in
+`CHANGELOG.md` as shipping on `eval-quality/conformance` and have no runtime existence, so deleting
+one from `src/testing/index.ts` stays invisible to every runtime gate. The gate for those is `tsc`:
+`tests/conformance/outside-clock-adapter.test.ts` already imports only from the published specifier
+under AD-37's own restriction, and it now names five published types in that import. Verified by
+deleting `McpProbeSubject` from the barrel, which fails the typecheck with
+`TS2724: '"eval-quality/conformance"' has no exported member named 'McpProbeSubject'`.
 
 ## Design Notes
 
@@ -730,7 +796,12 @@ written. Three detail strings read `a "api"`; all five sites across the three ar
 negation-then-correction shape the repository's writing rule bans. `sprint-status.yaml` read
 `backlog` while the work was in flight.
 
-**Re-verify.** A narrowed brief went back to the same session over the fixes.
+**Re-verify.** A narrowed brief went back to the same session. It confirmed the relevance mutant
+family, the two previously-dead result-channel arms, the barrel case against a rename as well as a
+deletion, that nothing the deleted local subject covered went uncovered, and all three Decision 19
+notes, one with a stronger reason now folded into it. It found four more clauses with no mutant, two
+of them introduced by the first round's own fixes; those are Decision 20 and Decision 21, and all
+four are closed with the deletion checks recorded there.
 
 ## Completion Notes
 

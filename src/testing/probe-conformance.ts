@@ -487,15 +487,19 @@ export type CommandProbeSubject = PortSubject<ProbeRequest> & {
  * The authorization the subject's own command policy resolves this request to.
  * Keyed by the pair, since `CommandTargetAuthorization` is.
  *
- * The three denial assertions read it for the reason `mcpAuthorizationFor`
- * exists: a subject whose "unmapped" request is in fact mapped passes its own
- * denial for the wrong reason.
+ * The two denial assertions that call it read it for the reason
+ * `mcpAuthorizationFor` exists: a subject whose "unmapped" request is in fact
+ * mapped passes its own denial for the wrong reason.
+ *
+ * It takes the narrowed request, so each caller states what it does about a
+ * subject that declared another kind there rather than inheriting a silent
+ * `undefined` from here. `mcpAuthorizationFor` needs no such narrowing because
+ * it reads `interfaceId`, which every member of the request union carries.
  */
 function commandAuthorizationFor(
 	subject: CommandProbeSubject,
-	request: ProbeRequest,
+	request: Extract<ProbeRequest, { kind: 'cli' }>,
 ): CommandTargetAuthorization | undefined {
-	if (request.kind !== 'cli') return undefined
 	return subject.policy.authorizations.find(
 		(each: CommandTargetAuthorization) =>
 			each.interfaceId === request.interfaceId &&
@@ -548,11 +552,15 @@ const COMMAND_ASSERTIONS: readonly ArmAssertion<CommandProbeSubject>[] = [
 			'an executable the interface is never paired with is refused before a process spawns',
 		request: (subject) => subject.unmappedExecutableRequest,
 		expectation: { kind: 'rejects', code: DENIED },
-		expectedCalls: (subject) =>
-			commandAuthorizationFor(subject, subject.unmappedExecutableRequest) ===
-			undefined
+		expectedCalls: (subject) => {
+			const request = subject.unmappedExecutableRequest
+			if (request.kind !== 'cli') {
+				return `unmappedExecutableRequest declares a "${request.kind}" request, which names no executable for the policy to refuse`
+			}
+			return commandAuthorizationFor(subject, request) === undefined
 				? 0
-				: "the subject's policy pairs unmappedExecutableRequest's interface with its executable, so the pair it presents as unmapped is mapped",
+				: "the subject's policy pairs unmappedExecutableRequest's interface with its executable, so the pair it presents as unmapped is mapped"
+		},
 	},
 	{
 		id: 'command/deny-unauthorized-subcommand',
@@ -751,11 +759,15 @@ const MCP_ASSERTIONS: readonly ArmAssertion<McpProbeSubject>[] = [
 				// The flag alone is half the rule. An adapter that reads the
 				// envelope and drops what the tool said about the failure passes a
 				// flag-only check, and the seeded-fault oracle downstream then has
-				// the error announced and nothing to assert on. The subject owes a
-				// tool that answers with content here, which `errorResultRequest`
-				// says.
+				// the error announced and nothing to assert on.
+				//
+				// The detail names the subject's obligation rather than accusing
+				// the adapter, because the two are indistinguishable from here: a
+				// tool reporting a failure through a prose `content` array and no
+				// structured content produces the same absent channel, and the
+				// kind's first version describes structured results only.
 				return observation.result.kind === 'absent'
-					? 'the error was reported with an absent result channel, so what the tool said about the failure did not survive the adapter'
+					? 'the error came back on an absent result channel; errorResultRequest has to name a tool whose failure carries structured content, since a tool that publishes none looks the same here as an adapter that dropped it'
 					: undefined
 			},
 		},

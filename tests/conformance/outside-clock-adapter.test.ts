@@ -14,8 +14,13 @@ import {
 	type ClockPort,
 	type ClockReadRequest,
 	CONFORMANCE_OUTCOME_COUNTS,
+	type CommandProbeSubject,
+	type ConformancePort,
+	type ConformanceReport,
 	formatConformanceReport,
+	type McpProbeSubject,
 	type PortSubject,
+	type ProbeSubject,
 	type RuntimeFaultCode,
 	runClockPortConformance,
 	type ScenarioKind,
@@ -125,6 +130,25 @@ const importSpecifiersOf = (source: string): string[] =>
 		([, specifier]) => specifier ?? '',
 	)
 
+/**
+ * The type half of the published subpath, asserted where a typecheck can see
+ * it. `package-exports.test.ts` case 147b imports the built barrel and checks
+ * every runner is a function, which a type cannot be: `McpProbeSubject` and its
+ * two siblings erase at runtime, so deleting one from `src/testing/index.ts` is
+ * invisible to every runtime gate while `CHANGELOG.md` says it ships here. The
+ * import above is what makes `tsc` the gate, and this tuple is what keeps the
+ * import from being pruned as unused.
+ */
+type PublishedSubjectTypes = readonly [
+	ProbeSubject,
+	CommandProbeSubject,
+	McpProbeSubject,
+	ConformanceReport,
+	ConformancePort,
+]
+
+const PUBLISHED_SUBJECT_TYPE_COUNT: PublishedSubjectTypes['length'] = 5
+
 describe('an outside adapter driven through the published conformance suite', () => {
 	it('case 180: the clock adapter satisfies every published clock outcome', async () => {
 		const report = await runClockPortConformance(subject)
@@ -140,6 +164,13 @@ describe('an outside adapter driven through the published conformance suite', ()
 			rendered,
 		).toEqual([])
 		expect(report.passed, rendered).toBe(true)
+	})
+
+	it('case 180b: every type an adapter author implements is on the published subpath', () => {
+		// The value is incidental. What this pins is the import above, which
+		// names five published types by their own names and fails the typecheck
+		// when the barrel stops exporting one.
+		expect(PUBLISHED_SUBJECT_TYPE_COUNT).toBe(5)
 	})
 
 	it('case 181: this file imports only the published subpath, node builtins, and vitest', async () => {

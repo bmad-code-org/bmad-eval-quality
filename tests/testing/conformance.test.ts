@@ -488,7 +488,18 @@ type ProbeKnobs = {
 	 * spawns a server with the operator's own credentials, and only then
 	 * consults its mapping.
 	 */
-	readonly denyAfterContact?: 'unmapped' | 'denied-loopback' | 'denied-method'
+	readonly denyAfterContact?:
+		| 'unmapped'
+		| 'denied-loopback'
+		| 'denied-private'
+		| 'denied-link-local'
+		| 'denied-metadata'
+		| 'denied-method'
+		| 'denied-scheme'
+	/** Refuse the redirect at its new target correctly, without making the first hop. The pin of 1 is the only thing proving the authorized first hop happened, and every other redirect mutant resolves, so the pin has no other mutant that can reach it. */
+	readonly refuseRedirectBeforeFirstHop?: boolean
+	/** Cap the redirect chain with the right code after the wrong number of hops. `cap-redirects`'s own comment says only the count can refuse this case, and that clause is what the count pins. */
+	readonly capRedirectsAtWrongCount?: boolean
 }
 
 const MAX_REDIRECTS = 2
@@ -725,7 +736,7 @@ function syntheticProbeSubject(knobs: ProbeKnobs = {}): ProbeSubject {
 							)
 				}
 				if (operation === 'redirecting') {
-					hops++
+					if (!knobs.refuseRedirectBeforeFirstHop) hops++
 					if (knobs.followDeniedRedirect) {
 						hops++
 						return observation(request, 200)
@@ -737,7 +748,9 @@ function syntheticProbeSubject(knobs: ProbeKnobs = {}): ProbeSubject {
 						hops += MAX_REDIRECTS + 2
 						return observation(request, 200)
 					}
-					hops += MAX_REDIRECTS + 1
+					hops += knobs.capRedirectsAtWrongCount
+						? MAX_REDIRECTS + 2
+						: MAX_REDIRECTS + 1
 					throw capped(`more than ${MAX_REDIRECTS} redirects were followed`)
 				}
 				if (operation === 'oversize') {
@@ -875,7 +888,11 @@ describe('the probe suite: AD-35 default-deny and the four caps (fixtures 59-72)
 	it.each([
 		['unmapped', 'probe/deny-unmapped-interface'],
 		['denied-loopback', 'probe/deny-unauthorized-loopback'],
+		['denied-private', 'probe/deny-private'],
+		['denied-link-local', 'probe/deny-link-local'],
+		['denied-metadata', 'probe/deny-metadata'],
 		['denied-method', 'probe/deny-unauthorized-method'],
+		['denied-scheme', 'probe/deny-unauthorized-scheme'],
 	] as const)(
 		'refusing %s only after a packet leaves flips only %s',
 		async (operation, expected) => {
@@ -884,6 +901,23 @@ describe('the probe suite: AD-35 default-deny and the four caps (fixtures 59-72)
 			])
 		},
 	)
+
+	// The two redirect pins, which no resolving mutant can reach: both of those
+	// red on the code check first. `deny-on-redirect` pins one call because the
+	// first hop is authorized and happens, and `cap-redirects` pins the whole
+	// chain because every hop in it is authorized, so its own comment says the
+	// count is the only thing that can refuse the case.
+	it('refusing the redirect without making the authorized first hop flips only probe/deny-on-redirect', async () => {
+		expect(await probeFailures({ refuseRedirectBeforeFirstHop: true })).toEqual(
+			['probe/deny-on-redirect'],
+		)
+	})
+
+	it('capping the redirect chain after the wrong number of hops flips only probe/cap-redirects', async () => {
+		expect(await probeFailures({ capRedirectsAtWrongCount: true })).toEqual([
+			'probe/cap-redirects',
+		])
+	})
 
 	it.each([
 		['kind', 'answering a request with an observation of the other mechanism'],
@@ -1230,6 +1264,76 @@ describe('the command arm: one mutant per assertion flips exactly its own id', (
 	})
 
 	it.each([
+		[
+			'an unmapped interface the policy does name',
+			{ unmappedInterfaceRequest: commandRequest('unmapped-interface') },
+			'command/deny-unmapped-interface',
+			'names an authorization for unmappedInterfaceRequest.interfaceId',
+		],
+		[
+			'an unmapped executable the policy does pair',
+			{ unmappedExecutableRequest: commandRequest('unmapped-executable') },
+			'command/deny-unmapped-executable',
+			"pairs unmappedExecutableRequest's interface with its executable",
+		],
+		[
+			'an unmapped executable declared as a tool call',
+			{
+				unmappedExecutableRequest: mcpProbeRequest(
+					'devtools',
+					'unmapped-executable',
+				),
+			},
+			'command/deny-unmapped-executable',
+			'unmappedExecutableRequest declares a "mcp" request',
+		],
+		[
+			'an unauthorized subcommand declared as a tool call',
+			{
+				unauthorizedSubcommandRequest: mcpProbeRequest(
+					'devtools',
+					'unauthorized-subcommand',
+				),
+			},
+			'command/deny-unauthorized-subcommand',
+			'unauthorizedSubcommandRequest declares a "mcp" request',
+		],
+		[
+			'an unauthorized subcommand on a pair the policy never names',
+			{
+				unauthorizedSubcommandRequest: commandRequest(
+					'unauthorized-subcommand',
+					{ interfaceId: 'unmapped', subcommandPath: ['danger'] },
+				),
+			},
+			'command/deny-unauthorized-subcommand',
+			'cannot tell an unmapped pair from an unauthorized subcommand',
+		],
+		[
+			'an unauthorized subcommand path the policy does permit',
+			{
+				unauthorizedSubcommandRequest: commandRequest(
+					'unauthorized-subcommand',
+				),
+			},
+			'command/deny-unauthorized-subcommand',
+			'permits subcommand path []',
+		],
+	] as const)(
+		'reports a subject declaring %s',
+		async (_what, override, id, expected) => {
+			const report = await runCommandLineProbeConformance({
+				...syntheticCommandSubject(),
+				...override,
+			})
+			const outcome = report.outcomes.find((each) => each.id === id)
+			expect(outcome?.passed).toBe(false)
+			expect(outcome?.detail).toContain(expected)
+			expect(failedIds(report)).toEqual([id])
+		},
+	)
+
+	it.each([
 		['unmapped-interface', 'command/deny-unmapped-interface'],
 		['unmapped-executable', 'command/deny-unmapped-executable'],
 		['unauthorized-subcommand', 'command/deny-unauthorized-subcommand'],
@@ -1513,24 +1617,67 @@ describe('the mcp arm: one mutant per assertion flips exactly its own id', () =>
 		expect(outcome?.detail).toBe('underlyingCalls() was 1, expected 0')
 	})
 
-	it('reports a subject whose unauthorized tool is in fact authorized', async () => {
-		const subject = syntheticMcpSubject()
-		const report = await runMcpProbeConformance({
-			...subject,
-			unauthorizedToolRequest: mcpProbeRequest(
-				'notes',
-				'unauthorized-tool',
-				'search_notes',
-			),
-		})
-		const outcome = report.outcomes.find(
-			(each) => each.id === 'mcp/deny-unauthorized-tool',
-		)
-		expect(outcome?.passed).toBe(false)
-		expect(outcome?.detail).toContain(
-			'the subject\'s policy permits tool "search_notes"',
-		)
-	})
+	// Every complaint the arm's own policy reads can emit. Each row substitutes
+	// one request on an otherwise conforming subject, so the port still refuses
+	// it and the code check still passes; the only thing that reds is the read
+	// saying the subject contradicts its own mapping. Without these the clause
+	// that catches a mis-wired subject is itself uncaught, which is the shape
+	// of the finding that opened this round.
+	it.each([
+		[
+			'an unmapped interface the policy does name',
+			{
+				unmappedInterfaceRequest: mcpProbeRequest(
+					'notes',
+					'unmapped-interface',
+				),
+			},
+			'mcp/deny-unmapped-interface',
+			'names an authorization for unmappedInterfaceRequest.interfaceId',
+		],
+		[
+			'an unauthorized tool declared as an HTTP call',
+			{ unauthorizedToolRequest: probeRequest('notes', 'unauthorized-tool') },
+			'mcp/deny-unauthorized-tool',
+			'unauthorizedToolRequest declares a "api" request',
+		],
+		[
+			'an unauthorized tool on an interface the policy never names',
+			{
+				unauthorizedToolRequest: mcpProbeRequest(
+					'unmapped',
+					'unauthorized-tool',
+					'env_tool',
+				),
+			},
+			'mcp/deny-unauthorized-tool',
+			'cannot tell an unmapped interface from an unauthorized tool',
+		],
+		[
+			'an unauthorized tool the allowlist does permit',
+			{
+				unauthorizedToolRequest: mcpProbeRequest(
+					'notes',
+					'unauthorized-tool',
+					'search_notes',
+				),
+			},
+			'mcp/deny-unauthorized-tool',
+			'permits tool "search_notes"',
+		],
+	] as const)(
+		'reports a subject declaring %s',
+		async (_what, override, id, expected) => {
+			const report = await runMcpProbeConformance({
+				...syntheticMcpSubject(),
+				...override,
+			})
+			const outcome = report.outcomes.find((each) => each.id === id)
+			expect(outcome?.passed).toBe(false)
+			expect(outcome?.detail).toContain(expected)
+			expect(failedIds(report)).toEqual([id])
+		},
+	)
 
 	// Two assertions on the detail string, which is what an adapter author reads.
 	it('names the declared literal and what arrived when an argument is mangled', async () => {
