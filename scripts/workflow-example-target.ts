@@ -12,10 +12,13 @@
 // was backed by a schema, three compile checks, and unit tests, and the four-leg
 // control branch a `fixtureReset` plans was backed by `tests/preflight/plan.ts`
 // cases and by nothing a reader could open. This chain is the artifact: one
-// `api` contract declaring both, one seeded persistence defect scored against
-// the oracle that reads the capture's own step, and a pre-flight verdict that
-// records `control-observe`, `control-mutate`, `control-reset`,
-// `control-observe` in order because the shipped planner planned them.
+// `api` contract declaring both, one seeded write defect scored against the
+// oracle that reads the capture's own step, and a pre-flight verdict carrying
+// `state-reset` and `clean-control`, the two checks `planPreflight` emits only
+// when it could plan the four control legs at all. The verdict records no leg
+// list; `PreflightVerdict` carries checks and a fixture digest and nothing
+// else, and the legs and their order are asserted off the plan in
+// `tests/score/workflow-worked-example.test.ts`.
 //
 // Two things are derived here that the spike chain hand-authors. The contract is
 // the published corpus contract itself, imported from the fixture the corpus
@@ -58,9 +61,10 @@ import {
 	type SignedProbe,
 } from '../src/core/score/witness.ts'
 import {
+	FILED_ID,
 	SEEDED_ID,
 	SEEDED_NAME,
-	STALE_NAME,
+	SUBSTITUTED_NAME,
 	WRITTEN_NAME,
 	workflowContract,
 } from '../tests/schemas/fixtures/workflow-contract.ts'
@@ -76,9 +80,10 @@ export const WORKFLOW_EXAMPLE_LABEL =
 	'_bmad-output/worked-examples/workflow-capture'
 
 /**
- * The six files this builder owns. Six where the spike chain has five: this
- * chain computes its pre-flight verdict rather than authoring one, so the
- * verdict is an emitted artifact like every other stage result here.
+ * The six files this builder owns. The spike chain has five, because it is
+ * handed an authored verdict and never calls a pre-flight stage; this chain and
+ * the skill chain each call one, so the verdict is an emitted artifact like
+ * every other stage result.
  */
 export const WORKFLOW_EXAMPLE_FILES = [
 	'eval-contract.json',
@@ -122,11 +127,11 @@ const workflowEvidence = (ordinal: number, label: string) => ({
 
 /**
  * AD-40's signature, homed on the read rather than on the write. The write's
- * own response is indistinguishable from a correct one: it reports success and
- * returns the identifier it claims to have filed under, so no condition over a
- * single create observation separates the seeded fault from correct behaviour.
- * The defect manifests on the read the capture feeds, which is the observation
- * the evaluator's own defect finding cites.
+ * own response is indistinguishable from a correct one: it reports success,
+ * returns the identifier it filed under, and echoes back the name it was sent,
+ * so no condition over a single create observation separates the seeded fault
+ * from correct behaviour. The defect manifests on the read the capture feeds,
+ * which is the observation the evaluator's own defect finding cites.
  *
  * The selector binds `id` with a matcher rather than a literal, because the
  * identifier the read carries is one the service minted during the run. A
@@ -135,8 +140,8 @@ const workflowEvidence = (ordinal: number, label: string) => ({
  *
  * The `response-status` conjunct separates the seeded defect from a failed
  * read. A read that answered 404 or 500 told the truth about not having the
- * record; the defect seeded here is a clean 200 carrying the name the store
- * held before the write. It is also a scalar published beside the record rather
+ * record; the defect seeded here is a clean 200 carrying a record the write
+ * filed under a name nobody sent. It is also a scalar published beside the record rather
  * than a quantifier: AD-4 resolves a quantifier over an empty collection to
  * `insufficient-evidence`, so a condition made only of one can be examined and
  * decide nothing.
@@ -174,7 +179,7 @@ const SEEDED_SIGNATURE: DefectSignature = {
 					op: 'equality',
 					operands: [
 						{ pointer: '/interactions/observed/response-body/thing/name' },
-						{ literal: STALE_NAME },
+						{ literal: SUBSTITUTED_NAME },
 					],
 				},
 			],
@@ -197,6 +202,13 @@ const SEEDED_SIGNATURE: DefectSignature = {
  * pre-flight ask the two different questions it asks: does the relation fire on
  * the fault leg, and does it stay quiet on every clean leg of the same
  * operation.
+ *
+ * The leg reads the record `testData.setup` files through the write under test,
+ * rather than the one it seeds directly. A pre-flight leg is one call with fixed
+ * inputs and cannot write and then read back, so a fault in the write is
+ * observable here only on a record the write itself filed. Reading the directly
+ * seeded record would make the relation true of every clean leg as well, and
+ * `seeded-faults-scoped` would fail.
  */
 const MANIFESTATION_LEG_ID = 'workflow-defect-leg'
 
@@ -205,7 +217,7 @@ const MANIFESTATION_WITNESS: ManifestationWitness = {
 	interfaceId: 'thing-service',
 	operationId: 'get-thing',
 	inputs: {
-		path: { id: SEEDED_ID },
+		path: { id: FILED_ID },
 		query: {},
 		header: {},
 		body: { kind: 'absent' },
@@ -216,7 +228,7 @@ const MANIFESTATION_WITNESS: ManifestationWitness = {
 			{
 				pointer: `/interactions/${MANIFESTATION_LEG_ID}/response-body/thing/name`,
 			},
-			{ literal: STALE_NAME },
+			{ literal: SUBSTITUTED_NAME },
 		],
 	},
 }
@@ -242,15 +254,15 @@ const AUTHORED_PROBE = {
 	artifactDigest: digestPlaceholder(28),
 	commitDigest: digestPlaceholder(29),
 	rationale:
-		'A controlled mutation of the write handler: it validates, answers with the identifier it would have filed under, and never reaches the store. Only an independent read at that identifier shows the name the store already held.',
+		'A controlled mutation of the write handler: the name it was sent is dropped on the way to the store, which files the record under its own placeholder. The handler answers from the request it was given, so its response carries the name that never reached the store. Only an independent read at the identifier it returned shows the placeholder.',
 	qualification: {
 		route: 'controlled-mutation',
 		mutationSource:
-			'the write handler of the toy thing service written for this chain, with the store write removed',
-		mutationOperator: 'store-write-deletion',
+			'the write handler of the toy thing service written for this chain, with the name dropped from the record it hands the store',
+		mutationOperator: 'field-drop',
 		targetArtifact: workflowEvidence(30, 'thing-service-write-handler'),
 		expectedObservableFailure:
-			'a read at the identifier the write returned answers 200 with the name the store held before the write',
+			'a read at the identifier the write returned answers 200 with the placeholder name the store fills in',
 		baselinePassEvidence: workflowEvidence(31, 'thing-service-baseline'),
 		mutatedFailEvidence: workflowEvidence(32, 'thing-service-mutated'),
 		rollbackVerified: true,
@@ -261,7 +273,7 @@ const AUTHORED_PROBE = {
 			defectId: 'D-001',
 			behaviorId: 'B-002',
 			summary:
-				'The write reports success and returns an identifier, and a read at that identifier answers with the name the store already held.',
+				'The write reports success and echoes the name it was sent, and a read at the identifier it returned answers with the placeholder the store filled in.',
 			severity: 'critical',
 			oracleEvidence: [workflowEvidence(33, 'thing-service-defect')],
 			source: 'controlled-mutation',
@@ -322,9 +334,15 @@ const REPLY_FOR: Record<
 		status: 200,
 		body: { ok: true, thing: thing(SEEDED_ID, SEEDED_NAME) },
 	},
+	// A read of an identifier `testData.setup` leaves unfiled. The relation over
+	// the two read legs is `not(deep-equality)` of their bodies, so a truthful
+	// miss separates the pair as well as a second record would, and it does so
+	// without asking the fixture to hold something the setup does not declare. A
+	// 404 is not an anomaly under `anomalyOf`, which flags status 500 and above,
+	// and this is a sensitivity leg rather than a control leg in any case.
 	'read-witness-b': {
-		status: 200,
-		body: { ok: true, thing: thing('t-2', 'beta') },
+		status: 404,
+		body: { ok: false, error: 'no thing is filed under that identifier' },
 	},
 	'reset-witness-a': {
 		status: 200,
@@ -344,12 +362,13 @@ const REPLY_FOR: Record<
 		status: 200,
 		body: { ok: true, seededName: SEEDED_NAME },
 	},
-	// The fault leg. Same request as the first read witness and a different
-	// answer, which is what keeps it out of `seeded-faults-scoped`'s dropped
-	// set and leaves every clean leg of the operation examined.
+	// The fault leg, reading the record the setup files through the write under
+	// test. Its request and its answer both differ from every other read leg's,
+	// so none of them is dropped from `seeded-faults-scoped`'s examined set and
+	// the check has clean legs to establish scoping over.
 	[MANIFESTATION_LEG_ID]: {
 		status: 200,
-		body: { ok: true, thing: thing(SEEDED_ID, STALE_NAME) },
+		body: { ok: true, thing: thing(FILED_ID, SUBSTITUTED_NAME) },
 	},
 }
 
@@ -407,6 +426,7 @@ function authoredObservations(
 // authored input 3: the sealed run record
 // ---------------------------------------------------------------------------
 
+/** An api observation's nine input channels, with the two this contract binds. */
 const callInputs = (
 	channels: Partial<{
 		path: Record<string, JsonValue>
@@ -476,16 +496,17 @@ const authoredRecord = (
 			note: 'The read at the identifier the write returned answered with the name the store already held.',
 		},
 		{
-			// The honest record of a step that witnessed nothing. All three
-			// type-violating steps are `at-most-one` and the run made none of
-			// them, so the evaluator narrates what it knows and cites no
-			// observation. `unsupported-disposition` is what reads this, and the
-			// emitted artifact carries the flag rather than the claim being
-			// believed.
+			// One disposition over three observations, because the oracle is one
+			// check over three steps. Each of the three calls carried a parameter
+			// of the wrong JSON type and each was refused.
 			oracleId: 'O-003',
 			disposition: 'held',
-			observationIds: [],
-			note: 'No call was made with a parameter of the wrong JSON type, so nothing here bears on the requirement.',
+			observationIds: [
+				'obs-malformed-create',
+				'obs-malformed-read',
+				'obs-malformed-reset',
+			],
+			note: 'Each of the three operations refused a parameter of the wrong JSON type and reported success false.',
 		},
 		{
 			oracleId: 'O-004',
@@ -521,7 +542,7 @@ const authoredRecord = (
 			behaviorId: 'B-002',
 			severity: 'critical',
 			confidence: 0.95,
-			summary: `The write returned ${MINTED_ID} with ok true, and a read at ${MINTED_ID} answered 200 with the name the store held before the write. The write response was not backed by a store write.`,
+			summary: `The write returned ${MINTED_ID} with ok true and echoed the name it was sent, and a read at ${MINTED_ID} answered 200 with the placeholder the store filled in. The name the write reported never reached the store.`,
 			observationIds: ['obs-create', 'obs-read-back'],
 			quotedEvidence: [
 				{
@@ -530,7 +551,7 @@ const authoredRecord = (
 					artifactId: null,
 				},
 				{
-					quote: `"name":"${STALE_NAME}"`,
+					quote: `"name":"${SUBSTITUTED_NAME}"`,
 					channel: 'response-body',
 					artifactId: null,
 				},
@@ -615,9 +636,59 @@ const authoredRecord = (
 			provenance: 'evaluator-chosen',
 			principal: null,
 			callInputs: callInputs({ path: { id: MINTED_ID } }),
-			responseBody: { ok: true, thing: thing(MINTED_ID, STALE_NAME) },
+			responseBody: { ok: true, thing: thing(MINTED_ID, SUBSTITUTED_NAME) },
 			responseHeaders: JSON_HEADERS,
 			responseStatus: 200,
+			stdout: { kind: 'absent' },
+			stderr: { kind: 'absent' },
+			exitCode: null,
+			artifacts: {},
+		},
+		// One call per type-violating step, each carrying a value whose JSON type
+		// differs from the one the operation declares for that key. They are the
+		// reason `create` binds its name by literal: under `{ matcher: 'any' }`
+		// the create step would select the malformed call as well and
+		// `selectWithBindings` would report `several` under `exactly-one`.
+		{
+			observationId: 'obs-malformed-create',
+			sequence: 5,
+			operationId: 'create-thing',
+			provenance: 'evaluator-chosen',
+			principal: null,
+			callInputs: callInputs({ body: { name: 17 } }),
+			responseBody: { ok: false, error: 'name must be a string' },
+			responseHeaders: JSON_HEADERS,
+			responseStatus: 400,
+			stdout: { kind: 'absent' },
+			stderr: { kind: 'absent' },
+			exitCode: null,
+			artifacts: {},
+		},
+		{
+			observationId: 'obs-malformed-read',
+			sequence: 6,
+			operationId: 'get-thing',
+			provenance: 'evaluator-chosen',
+			principal: null,
+			callInputs: callInputs({ path: { id: 17 } }),
+			responseBody: { ok: false, error: 'id must be a string' },
+			responseHeaders: JSON_HEADERS,
+			responseStatus: 400,
+			stdout: { kind: 'absent' },
+			stderr: { kind: 'absent' },
+			exitCode: null,
+			artifacts: {},
+		},
+		{
+			observationId: 'obs-malformed-reset',
+			sequence: 7,
+			operationId: 'reset-things',
+			provenance: 'evaluator-chosen',
+			principal: null,
+			callInputs: callInputs({ body: { seedName: 17 } }),
+			responseBody: { ok: false, error: 'seedName must be a string' },
+			responseHeaders: JSON_HEADERS,
+			responseStatus: 400,
 			stdout: { kind: 'absent' },
 			stderr: { kind: 'absent' },
 			exitCode: null,
@@ -628,7 +699,7 @@ const authoredRecord = (
 	actionsArtifact: workflowEvidence(34, 'thing-service-actions'),
 	isolationManifestArtifact: workflowEvidence(35, 'thing-service-manifest'),
 	resourceUse: {
-		toolCalls: 4,
+		toolCalls: 7,
 		inputTokens: 3100,
 		outputTokens: 480,
 		wallClockSeconds: 12.5,
@@ -699,7 +770,7 @@ const authoredIsolationManifest = (
 		maxCostUsd: '1.00',
 	},
 	actualResourceUse: {
-		toolCalls: 4,
+		toolCalls: 7,
 		inputTokens: 3100,
 		outputTokens: 480,
 		wallClockSeconds: 12.5,
@@ -793,8 +864,9 @@ export function buildWorkflowExampleChain(): WorkflowExampleChain {
 	// The pre-flight stage, run rather than authored. `preflightFromObservations`
 	// plans the same legs `authoredObservations` walked, reduces over the
 	// replies, and returns the verdict; `score` then reads `passed` and
-	// `fixtureDigest` off that result rather than off a literal. The four
-	// control legs are in the emitted bytes because this call put them there.
+	// `fixtureDigest` off that result rather than off a literal. What the four
+	// control legs leave in the emitted bytes is `state-reset` and
+	// `clean-control`, plus their share of the fixture digest.
 	const preflightVerdict = preflightFromObservations({
 		contract: AUTHORED_CONTRACT,
 		probes: [probe],

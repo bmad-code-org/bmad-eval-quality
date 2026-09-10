@@ -16,12 +16,12 @@
 // one call, restore it with another, and read the same answer either side.
 //
 // The volatile identifier is the part worth reading twice. `create-thing`
-// declares `/id` volatile, so the pre-flight projection prunes it and two reads
-// of a store that minted a new identifier in between still compare equal. The
-// capture addresses the same field and resolves, because `resolveCapturedValue`
-// walks the raw observation rather than the projection. A server-minted
-// identifier is what a capture exists for and what a fixture-state comparison
-// has to ignore, and one contract holding both is the clearest place to show it.
+// declares `/id` volatile, so the pre-flight projection prunes it and two writes
+// of the same name digest alike. The capture addresses that same field and
+// resolves it, because `resolveCapturedValue` walks the raw observation rather
+// than the projection. A server-minted identifier is what a capture exists for
+// and what a fixture comparison has to ignore, and one contract holding both is
+// the clearest place to show it.
 
 import type { EvalContract } from '../../../src/core/schemas/eval-contract.ts'
 
@@ -31,11 +31,17 @@ export const SEEDED_NAME = 'alpha'
 /** The identifier the seeded fixture holds, quoted by the committed chain. */
 export const SEEDED_ID = 't-1'
 
+/** The identifier of the thing `testData.setup` files through the write itself. */
+export const FILED_ID = 't-8'
+
 /** The name the committed chain's write sends. */
 export const WRITTEN_NAME = 'a thing the run created'
 
-/** What a service that reported success and stored nothing reads back as. */
-export const STALE_NAME = 'the name the store held before the write'
+/**
+ * What a service that files a record and drops the name it was sent reads back
+ * as. The committed chain seeds that fault, and this is the value that shows it.
+ */
+export const SUBSTITUTED_NAME = 'untitled'
 
 export const workflowContract = {
 	schemaVersion: 5,
@@ -410,8 +416,10 @@ export const workflowContract = {
 					// The identifier the service mints differs on every run, so a
 					// witness relation reading it would certify the service
 					// sensitive to its own counter. Declared volatile so the
-					// pre-flight projection prunes it, which is also what lets the
-					// two control-observe legs compare equal across a create.
+					// pre-flight projection prunes it, which leaves the echoed
+					// `name` carrying the difference the relation reads. The
+					// capture addresses that same field and resolves it anyway,
+					// because `resolveCapturedValue` walks the raw observation.
 					volatilePointers: ['/id'],
 					sensitivityWitness: {
 						witnessId: 'creation-follows-the-name',
@@ -609,6 +617,12 @@ export const workflowContract = {
 	},
 	interactionPlan: [
 		{
+			// Bound by literal rather than by `{ matcher: 'any' }`. The plan also
+			// declares a step binding this key with the type-violating matcher,
+			// and `any` binds whatever was sent, so both steps would select both
+			// calls: `selectWithBindings` would return `several` under
+			// `exactly-one` and the outcome would be an infrastructure error
+			// rather than a verdict about the contract.
 			stepId: 'create',
 			operationId: 'create-thing',
 			after: null,
@@ -617,7 +631,7 @@ export const workflowContract = {
 				path: null,
 				query: null,
 				header: null,
-				body: { name: { matcher: 'any' } },
+				body: { name: { literal: 'a thing the run created' } },
 			},
 		},
 		{
@@ -711,14 +725,23 @@ export const workflowContract = {
 		'human-labels',
 	],
 	testData: {
-		setup: 'Seed exactly one thing, with identifier t-1 and name alpha.',
+		// Two things, and one of them is filed through the write under test
+		// rather than placed directly. That is what gives a read something to
+		// answer for whose name depends on the build: a manifestation witness
+		// probes one operation with fixed inputs, so a fault in the write is
+		// observable at pre-flight only on a record the write itself filed.
+		// Nothing is filed under t-2, which is what the second read witness
+		// reads.
+		setup:
+			'Seed one thing directly, with identifier t-1 and name alpha. File a second through the write under test, under identifier t-8. Leave t-2 unfiled.',
 		cleanup: 'Reset the store to the seeded state.',
 		principals: null,
 		resources: null,
 	},
 	// Twenty, matching the sibling contracts: the plan is seven steps, pre-flight
-	// plans six witness legs and four control legs beside them, and a bound that
-	// stopped short of the read-back would make the capture unobservable.
+	// plans eleven legs beside them, six sensitivity, four control and one for
+	// the seeded fault, and a bound that stopped short of the read-back would
+	// make the capture unobservable.
 	budgets: { maxToolCalls: 20, maxWallClockMinutes: 5, maxCostUsd: '1.00' },
 	safetyLimits: [
 		'No request to any host other than the mapped thing-service target.',

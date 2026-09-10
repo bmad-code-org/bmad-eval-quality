@@ -166,7 +166,7 @@
       "inputBinding": {
         "body": {
           "name": {
-            "matcher": "any"
+            "literal": "a thing the run created"
           }
         },
         "header": null,
@@ -910,7 +910,7 @@
     "cleanup": "Reset the store to the seeded state.",
     "principals": null,
     "resources": null,
-    "setup": "Seed exactly one thing, with identifier t-1 and name alpha."
+    "setup": "Seed one thing directly, with identifier t-1 and name alpha. File a second through the write under test, under identifier t-8. Leave t-2 unfiled."
   },
   "waivers": []
 }

@@ -6,8 +6,8 @@
     "storage": "private"
   },
   "conditionArm": "independent",
-  "contractDigest": "sha256:0131fcd785937d78b2041842fb5efa2f58bf9ccbf213204eae0c86f4ba8729e4",
-  "evaluatorConfigurationDigest": "sha256:314c459b8f906cbeec23b17ae3509bc9da1d39e27349b73a38f436361e145985",
+  "contractDigest": "sha256:e04a988ae3da77df2e9c4d0b027bf2398bcb6bcb8e2587bc3f705e07627cc9f3",
+  "evaluatorConfigurationDigest": "sha256:3e82a83d547f897b6e0a2e64a90ec4f547922eab3288f6355daf6d227f39148e",
   "evaluatorRecommendation": "FAIL",
   "evidenceDisclosure": {
     "reportedIncomplete": false,
@@ -42,11 +42,11 @@
         {
           "artifactId": null,
           "channel": "response-body",
-          "quote": "\"name\":\"the name the store held before the write\""
+          "quote": "\"name\":\"untitled\""
         }
       ],
       "severity": "critical",
-      "summary": "The write returned t-7 with ok true, and a read at t-7 answered 200 with the name the store held before the write. The write response was not backed by a store write."
+      "summary": "The write returned t-7 with ok true and echoed the name it was sent, and a read at t-7 answered 200 with the placeholder the store filled in. The name the write reported never reached the store."
     },
     {
       "behaviorId": "B-006",
@@ -210,7 +210,7 @@
         "ok": true,
         "thing": {
           "id": "t-7",
-          "name": "the name the store held before the write"
+          "name": "untitled"
         }
       },
       "responseHeaders": {
@@ -218,6 +218,114 @@
       },
       "responseStatus": 200,
       "sequence": 4,
+      "stderr": {
+        "kind": "absent"
+      },
+      "stdout": {
+        "kind": "absent"
+      }
+    },
+    {
+      "artifacts": {},
+      "callInputs": {
+        "argument": null,
+        "arguments": null,
+        "body": {
+          "name": 17
+        },
+        "environment": null,
+        "header": null,
+        "option": null,
+        "path": null,
+        "query": null,
+        "stdin": null
+      },
+      "exitCode": null,
+      "observationId": "obs-malformed-create",
+      "operationId": "create-thing",
+      "principal": null,
+      "provenance": "evaluator-chosen",
+      "responseBody": {
+        "error": "name must be a string",
+        "ok": false
+      },
+      "responseHeaders": {
+        "content-type": "application/json"
+      },
+      "responseStatus": 400,
+      "sequence": 5,
+      "stderr": {
+        "kind": "absent"
+      },
+      "stdout": {
+        "kind": "absent"
+      }
+    },
+    {
+      "artifacts": {},
+      "callInputs": {
+        "argument": null,
+        "arguments": null,
+        "body": null,
+        "environment": null,
+        "header": null,
+        "option": null,
+        "path": {
+          "id": 17
+        },
+        "query": null,
+        "stdin": null
+      },
+      "exitCode": null,
+      "observationId": "obs-malformed-read",
+      "operationId": "get-thing",
+      "principal": null,
+      "provenance": "evaluator-chosen",
+      "responseBody": {
+        "error": "id must be a string",
+        "ok": false
+      },
+      "responseHeaders": {
+        "content-type": "application/json"
+      },
+      "responseStatus": 400,
+      "sequence": 6,
+      "stderr": {
+        "kind": "absent"
+      },
+      "stdout": {
+        "kind": "absent"
+      }
+    },
+    {
+      "artifacts": {},
+      "callInputs": {
+        "argument": null,
+        "arguments": null,
+        "body": {
+          "seedName": 17
+        },
+        "environment": null,
+        "header": null,
+        "option": null,
+        "path": null,
+        "query": null,
+        "stdin": null
+      },
+      "exitCode": null,
+      "observationId": "obs-malformed-reset",
+      "operationId": "reset-things",
+      "principal": null,
+      "provenance": "evaluator-chosen",
+      "responseBody": {
+        "error": "seedName must be a string",
+        "ok": false
+      },
+      "responseHeaders": {
+        "content-type": "application/json"
+      },
+      "responseStatus": 400,
+      "sequence": 7,
       "stderr": {
         "kind": "absent"
       },
@@ -245,8 +353,12 @@
     },
     {
       "disposition": "held",
-      "note": "No call was made with a parameter of the wrong JSON type, so nothing here bears on the requirement.",
-      "observationIds": [],
+      "note": "Each of the three operations refused a parameter of the wrong JSON type and reported success false.",
+      "observationIds": [
+        "obs-malformed-create",
+        "obs-malformed-read",
+        "obs-malformed-reset"
+      ],
       "oracleId": "O-003"
     },
     {
@@ -288,12 +400,12 @@
     "costUsd": "0.01",
     "inputTokens": 3100,
     "outputTokens": 480,
-    "toolCalls": 4,
+    "toolCalls": 7,
     "wallClockSeconds": 12.5
   },
   "revisionCount": 0,
   "runId": "workflow-capture-run-0001",
   "schemaVersion": 5,
-  "sealedBriefDigest": "sha256:f8283ecaf31c1974228ad7ab335b7f2ef6f3d74f70eb4cbc45423402597d2e83",
+  "sealedBriefDigest": "sha256:5cfc371c10770c9482bc8e1fa5498e46327ebf34c248488ea217de75f05b5798",
   "trialIndex": 1
 }

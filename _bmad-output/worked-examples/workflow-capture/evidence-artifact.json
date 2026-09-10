@@ -59,7 +59,8 @@
       "selectedObservationIds": [
         "obs-create",
         "obs-read-back",
-        "obs-reset-read-back"
+        "obs-reset-read-back",
+        "obs-malformed-read"
       ],
       "severity": "critical",
       "state": "caught"
@@ -70,30 +71,34 @@
           {
             "children": [],
             "introductionCondition": null,
-            "resolution": "false"
+            "resolution": "true"
           },
           {
             "children": [],
             "introductionCondition": null,
-            "resolution": "false"
+            "resolution": "true"
           },
           {
             "children": [],
             "introductionCondition": null,
-            "resolution": "false"
+            "resolution": "true"
           }
         ],
         "introductionCondition": null,
-        "resolution": "false"
+        "resolution": "true"
       },
-      "corroboration": "disagrees",
+      "corroboration": "agrees",
       "disposition": "held",
       "oracleId": "O-003",
       "probeId": "P-001",
       "resolvedFrom": null,
-      "selectedObservationIds": [],
+      "selectedObservationIds": [
+        "obs-malformed-create",
+        "obs-malformed-read",
+        "obs-malformed-reset"
+      ],
       "severity": "material",
-      "state": "unreached"
+      "state": "confirmed"
     },
     {
       "checkResolution": {
@@ -213,12 +218,12 @@
   "revisionCount": 0,
   "runId": "workflow-capture-run-0001",
   "schemaVersion": 3,
-  "scoringVersion": "sha256:e89256a8fa10cac8e62df82985ecb197f2afa14034b719430f065139ddd8a52e",
+  "scoringVersion": "sha256:45339e079e611651a831a599e5f5a84b695733752119c5342814d58468419c7c",
   "scoringVersionInputs": {
     "contractSchemaVersion": 5,
     "corpusDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000025",
-    "evaluatorConfigurationDigest": "sha256:314c459b8f906cbeec23b17ae3509bc9da1d39e27349b73a38f436361e145985",
-    "fixtureDigest": "sha256:7ae039318d88bb5e71507431b0a01e9b2cd0cf174dbcf0860abba8d304dd538a",
+    "evaluatorConfigurationDigest": "sha256:3e82a83d547f897b6e0a2e64a90ec4f547922eab3288f6355daf6d227f39148e",
+    "fixtureDigest": "sha256:90cb59d3270db62edec2054188f3d7414675a953456fc79c1538554adc7f29e5",
     "mode": "contract-scoring",
     "scoringPolicyDigest": "sha256:cc9e09a64f2ed19a6a204f72244e43e51b742f078fab859329601146fdf47bb7"
   },
@@ -226,7 +231,7 @@
     "basis": "measured",
     "comparable": false,
     "denominator": "unique qualified probe identifiers exercised per class, across 1 completed trial",
-    "note": "1 admitted probe over 1 completed trial. Below the declared minimum of 3. O-003 resolved unreached. The vector is reported and marked non-comparable.",
+    "note": "1 admitted probe over 1 completed trial. Below the declared minimum of 3. The vector is reported and marked non-comparable.",
     "vector": {
       "defect": {
         "caught": 1,
@@ -247,7 +252,6 @@
   "uncitedFindingGaps": [],
   "uncitedFindings": [],
   "verdictBasis": [
-    "1 completed trials below the declared minimum of 3",
-    "oracle O-003 resolved unreached"
+    "1 completed trials below the declared minimum of 3"
   ]
 }

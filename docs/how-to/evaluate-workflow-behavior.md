@@ -45,7 +45,7 @@ Every step carries five fields, and all five are required: `InteractionStep` is 
     "after": null,
     "cardinality": "exactly-one",
     "inputBinding": {
-      "body": { "name": { "matcher": "any" } },
+      "body": { "name": { "literal": "a thing the run created" } },
       "header": null,
       "path": null,
       "query": null
@@ -218,19 +218,21 @@ The temporal half is proven end to end by an artifact this repository commits.
 Its O-001 compares `/interactions/read-back/response-body/note/title` with `/interactions/write/call-inputs/body/title`, resolves `caught` against the seeded defect, and the defect rate comes out 1 over 1 exercised probe.
 That is a workflow contract catching a persistence defect that a single-response check cannot see.
 
-The capture half is proven by a second committed chain.
+The capture half is proven by a committed chain.
 `corpus/dev/contracts/captured-read-back.json` is the contract the plan printed above comes from, and `_bmad-output/worked-examples/workflow-capture/` is the chain that carries it through `compile`, `seal`, pre-flight, `ingest`, `score`, and `emit`.
-Its seeded defect is a write that reports success and never reaches the store, and the read that catches it is reached through the identifier the write returned, so the capture is what puts the evaluator in front of the record at all.
+Its seeded defect is a write that files the record and drops the name it was sent, answering from the request it was given, so its own response is indistinguishable from a correct one.
+The read that catches it is reached through the identifier the write returned, so the capture is what puts the evaluator in front of the record at all.
 `sealed-run-record.json` in that directory carries the read's `call-inputs`, and the identifier there is the one the create response minted.
 The defect rate comes out 1 over 1 exercised probe, on one completed trial against the policy's `minimumTrialCount` of 3, so `strength.comparable` reads `false` and the note in `evidence-artifact.json` says why.
-Two shipped contracts use a `{ captured }` binding, and between them they cover one value on each of its two axes: `captured-read-back.json` binds into the `path` input channel and `notes-tool-server.json` binds into `arguments`, and both capture from `response-body`, which is the source channel the three compile checks above are about.
+Two contracts in `corpus/dev/contracts/` use a `{ captured }` binding, and between them they cover one value on each of its two axes: `captured-read-back.json` binds into the `path` input channel and `notes-tool-server.json` binds into `arguments`, and both capture from `response-body`, which is the source channel the three compile checks above are about.
 A capture from `stdout` or from the `artifact` channel is shipped nowhere, so what backs those is the schema, those three compile checks, and the unit tests in `tests/compile/bindings.test.ts`, `tests/score/bindings.test.ts`, and `tests/score/binding-order.test.ts`.
 
 The four-leg control branch is proven by the same chain.
-Two shipped contracts declare a `fixtureReset`, and `captured-read-back.json` is the one whose pre-flight is run rather than authored: `preflight-control-observe`, `preflight-control-mutate` against `create-thing`, the contract's own `reset-the-store` against `reset-things`, and `preflight-control-observe-2`, in that order.
+Two contracts in `corpus/dev/contracts/` declare a `fixtureReset`, and `captured-read-back.json` is the one whose verdict is committed as bytes you can open.
+Its pre-flight plans `preflight-control-observe`, `preflight-control-mutate` against `create-thing`, the contract's own `reset-the-store` against `reset-things`, and `preflight-control-observe-2`, in that order.
 `preflight-verdict.json` in that directory is the return value of `preflightFromObservations` over those legs.
 It records no leg list, because `PreflightVerdict` carries checks and a fixture digest and nothing else; what it records is `state-reset` satisfied over the first and fourth control legs and `clean-control` satisfied over all four, and the planner emits neither check unless the four legs were planned.
-`notes-tool-server.json` declares the other reset, and its four legs are exercised by `tests/application/mcp-end-to-end.test.ts` rather than by a committed chain.
+`notes-tool-server.json` declares the other reset and its pre-flight runs too, in `tests/application/mcp-end-to-end.test.ts`, which asserts the verdict passed; `tests/application/preflight.test.ts` case 113 is what pins that contract's leg count and check list.
 `tests/preflight/plan.test.ts` is what covers the shapes neither contract declares.
 
 ## In BMAD terms

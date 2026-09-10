@@ -26,7 +26,7 @@ import { resolveHomeOperation } from '../../src/core/score/qualification.ts'
 import { buildPlanIndex } from '../../src/core/seal/plan-index.ts'
 import {
 	SEEDED_ID,
-	STALE_NAME,
+	SUBSTITUTED_NAME,
 	WRITTEN_NAME,
 	workflowContract,
 } from '../schemas/fixtures/workflow-contract.ts'
@@ -159,10 +159,10 @@ describe('the workflow chain, as the shipped stages computed it', () => {
 		// The value the capture read is the one the write's own response carried,
 		// stated against the record rather than against the literal above.
 		expect(bodyOf(observationNamed('obs-create')).id).toBe('t-7')
-		// And it is a field the contract declares volatile. The pre-flight
-		// projection prunes `/id`, which is what lets the two control-observe
-		// legs compare equal across a write that minted a new identifier; the
-		// capture reads the raw observation and resolves it anyway. The two
+		// And it is a field the contract declares volatile, so the pre-flight
+		// projection prunes it and the write's two sensitivity legs are left
+		// differing on the name they echo rather than on a counter. The capture
+		// reads the raw observation and resolves the same field anyway. The two
 		// readings of one field are the reason this contract holds both.
 		const [declared] = contract.permittedInterfaces
 		const write0 = declared?.operations[0]
@@ -194,7 +194,7 @@ describe('the workflow chain, as the shipped stages computed it', () => {
 		// condition true of everything the selector admits.
 		expect(witness.partition).toEqual({
 			satisfying: ['obs-read-back'],
-			refuting: ['obs-reset-read-back'],
+			refuting: ['obs-reset-read-back', 'obs-malformed-read'],
 			inconclusive: [],
 		})
 	})
@@ -216,17 +216,28 @@ describe('the workflow chain, as the shipped stages computed it', () => {
 		expect(outcomeOf('O-007')?.corroboration).toBe('agrees')
 	})
 
-	it('flags the oracle whose step the run never exercised', () => {
-		// All three type-violating steps are `at-most-one` and the run made none
-		// of them, so O-003's check resolves against no observation and the
-		// evaluator's `held` has nothing behind it. The artifact says both
-		// things: the outcome is `unreached` and the corroboration disagrees.
-		// This is the one row here that is about the record being honest rather
-		// than about the contract being strong, and it is asserted so a later
-		// change that quietly gave the step an observation has to say so.
-		expect(outcomeOf('O-003')?.state).toBe('unreached')
-		expect(outcomeOf('O-003')?.disposition).toBe('held')
-		expect(outcomeOf('O-003')?.corroboration).toBe('disagrees')
+	it('reaches every oracle the contract declares', () => {
+		// Seven oracles, seven outcomes, and no `unreached` among them. The
+		// three type-violating steps are `at-most-one`, so a record that skipped
+		// them would still score: O-003 would resolve against no observation,
+		// come back `unreached`, and put itself in the verdict basis. The run
+		// makes all three calls, which is what keeps the published exemplar's
+		// own chain from shipping with three of its seven steps unexercised.
+		expect(
+			artifact.outcomes.map((outcome) => [
+				outcome.oracleId,
+				outcome.state,
+				outcome.corroboration,
+			]),
+		).toEqual([
+			['O-001', 'confirmed', 'agrees'],
+			['O-002', 'caught', 'agrees'],
+			['O-003', 'confirmed', 'agrees'],
+			['O-004', 'confirmed', 'agrees'],
+			['O-005', 'confirmed', 'agrees'],
+			['O-006', 'confirmed', 'agrees'],
+			['O-007', 'confirmed', 'agrees'],
+		])
 	})
 
 	it('puts a number where the workflow guide reported none', () => {
@@ -254,11 +265,12 @@ describe('the workflow chain, as the shipped stages computed it', () => {
 		if (artifact.mode !== 'contract-scoring') return
 		expect(artifact.contractVerdict).toBe('CONCERNS')
 		expect(artifact.exitCode).toBe(0)
-		// No coverage gap in the basis, unlike the skill chain's: this contract
-		// satisfies every discipline rule its declarations make relevant.
+		// One entry, and it is the trial count. The skill chain's basis also
+		// names two coverage gaps; this contract satisfies every discipline rule
+		// its declarations make relevant, and every oracle it declares is
+		// reached, so the trial-set shortfall is all that is left.
 		expect(artifact.verdictBasis).toEqual([
 			'1 completed trials below the declared minimum of 3',
-			'oracle O-003 resolved unreached',
 		])
 	})
 
@@ -284,12 +296,16 @@ describe('the workflow chain, as the shipped stages computed it', () => {
 	it('quotes the two names the defect is the difference between', () => {
 		// The record's own evidence, so the prose in the finding and the bytes in
 		// the observations cannot drift apart. The read answered at the seeded
-		// identifier with the name the reset gave it and at the minted one with
-		// the name the store held before the write.
+		// identifier with the name the reset gave it, and at the minted one with
+		// the placeholder the store filled in where the write's own name should
+		// have gone.
 		const readBack = observationNamed('obs-read-back')
 		const seededRead = observationNamed('obs-reset-read-back')
 		const write = observationNamed('obs-create')
-		expect(bodyOf(readBack).thing).toEqual({ id: 't-7', name: STALE_NAME })
+		expect(bodyOf(readBack).thing).toEqual({
+			id: 't-7',
+			name: SUBSTITUTED_NAME,
+		})
 		expect(bodyOf(seededRead).thing).toEqual({
 			id: SEEDED_ID,
 			name: 'alpha',

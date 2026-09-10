@@ -163,9 +163,12 @@ describe('each rule is satisfied by a named oracle, and goes red without it', ()
 		},
 	)
 
-	it('leaves every rule satisfied with no oracle removed', () => {
-		expect(unsatisfiedIn(workflowContract)).toEqual([])
-	})
+	// No "with nothing removed" control here or in the block below. The whole
+	// verdict table above pins all seven rows in both columns for the unmutated
+	// contract, so a control would restate it and no mutation could redden one
+	// without reddening the other. The collection positive control at the foot
+	// of the next block is a different case: it asserts a table this file never
+	// otherwise grades.
 })
 
 /** Every operation on the contract's one interface, rebuilt by `change`. A relevance predicate answers on the first operation that satisfies it, so a mutant has to reach all three. */
@@ -286,13 +289,6 @@ describe('each rule reads a declaration, and goes irrelevant without it', () => 
 			expect(irrelevantIn(mutated)).toEqual([...expected])
 		},
 	)
-
-	it('leaves the two collection rules irrelevant and the rest relevant with nothing dropped', () => {
-		expect(irrelevantIn(workflowContract)).toEqual([
-			'per-record',
-			'omission-and-completeness',
-		])
-	})
 
 	// The positive control for the two rows above. Both rules are irrelevant on
 	// this contract, and an assertion that a rule is irrelevant is satisfied by

@@ -25,7 +25,7 @@
                 "pointer": "/interactions/observed/response-body/thing/name"
               },
               {
-                "literal": "the name the store held before the write"
+                "literal": "untitled"
               }
             ]
           }
@@ -65,7 +65,7 @@
           },
           "header": {},
           "path": {
-            "id": "t-1"
+            "id": "t-8"
           },
           "query": {}
         },
@@ -79,7 +79,7 @@
               "pointer": "/interactions/workflow-defect-leg/response-body/thing/name"
             },
             {
-              "literal": "the name the store held before the write"
+              "literal": "untitled"
             }
           ]
         }
@@ -94,7 +94,7 @@
       ],
       "severity": "critical",
       "source": "controlled-mutation",
-      "summary": "The write reports success and returns an identifier, and a read at that identifier answers with the name the store already held."
+      "summary": "The write reports success and echoes the name it was sent, and a read at the identifier it returned answers with the placeholder the store filled in."
     }
   ],
   "expectedClean": false,
@@ -109,15 +109,15 @@
       "privateRef": "opaque:thing-service-baseline",
       "storage": "private"
     },
-    "expectedObservableFailure": "a read at the identifier the write returned answers 200 with the name the store held before the write",
+    "expectedObservableFailure": "a read at the identifier the write returned answers 200 with the placeholder name the store fills in",
     "mutatedFailEvidence": {
       "digest": "sha256:0000000000000000000000000000000000000000000000000000000000000020",
       "path": null,
       "privateRef": "opaque:thing-service-mutated",
       "storage": "private"
     },
-    "mutationOperator": "store-write-deletion",
-    "mutationSource": "the write handler of the toy thing service written for this chain, with the store write removed",
+    "mutationOperator": "field-drop",
+    "mutationSource": "the write handler of the toy thing service written for this chain, with the name dropped from the record it hands the store",
     "rollbackVerified": true,
     "route": "controlled-mutation",
     "targetArtifact": {
@@ -127,7 +127,7 @@
       "storage": "private"
     }
   },
-  "rationale": "A controlled mutation of the write handler: it validates, answers with the identifier it would have filed under, and never reaches the store. Only an independent read at that identifier shows the name the store already held.",
+  "rationale": "A controlled mutation of the write handler: the name it was sent is dropped on the way to the store, which files the record under its own placeholder. The handler answers from the request it was given, so its response carries the name that never reached the store. Only an independent read at the identifier it returned shows the placeholder.",
   "revisionCount": 0,
   "schemaVersion": 5,
   "systemId": "thing-service"

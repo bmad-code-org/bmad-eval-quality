@@ -31,7 +31,12 @@ import {
 	DEV_CORPUS_CONTRACTS,
 } from '../tests/coverage/fixtures/corpus.ts'
 import { CORPUS_INDEX, CORPUS_LABEL } from './dev-corpus-target.ts'
-import { buildWorkedExample } from './worked-example-target.ts'
+import { SKILL_EXAMPLE_LABEL } from './skill-example-target.ts'
+import {
+	buildWorkedExample,
+	WORKED_EXAMPLE_LABEL,
+} from './worked-example-target.ts'
+import { WORKFLOW_EXAMPLE_LABEL } from './workflow-example-target.ts'
 
 const repoRoot = new URL('../', import.meta.url)
 
@@ -202,17 +207,33 @@ const resetting = published.filter(
 ).length
 
 /**
- * How many end-to-end chains this repository commits, read off the registry
- * every chain joins rather than off a list of labels kept here. A chain added
- * to that registry and left out of a label list would leave these three
- * sentences stale with nothing to notice, which is the drift this gate exists
- * to stop.
+ * How many end-to-end chains this repository commits.
+ *
+ * The count is the label list, and the registry is what proves the list is
+ * complete: every key `buildWorkedExample` emits has to sit under one of the
+ * labels below, so a chain added to that registry and left out of here fails
+ * this gate rather than leaving four sentences stale with nothing to notice.
+ * Counting distinct parent directories of the keys instead would be one line
+ * shorter and would inflate on the first chain that emitted a file into a
+ * subdirectory of its own.
  */
-const committedChains = new Set(
-	[...buildWorkedExample().keys()].map((path) =>
-		path.slice(0, path.lastIndexOf('/')),
-	),
-).size
+const CHAIN_LABELS = [
+	WORKED_EXAMPLE_LABEL,
+	SKILL_EXAMPLE_LABEL,
+	WORKFLOW_EXAMPLE_LABEL,
+] as const
+
+const unlabelled = [...buildWorkedExample().keys()].filter(
+	(path) => !CHAIN_LABELS.some((label) => path.startsWith(`${label}/`)),
+)
+if (unlabelled.length > 0) {
+	console.error(
+		'check-doc-counts: the committed-chain registry emits file(s) under no ' +
+			`known chain label, so the chain count is wrong: ${unlabelled.join(', ')}`,
+	)
+	process.exit(1)
+}
+const committedChains = CHAIN_LABELS.length
 
 const referenceAdapters = Object.keys(adapters).filter((name) =>
 	/^create[A-Za-z]*Adapter$/.test(name),
@@ -356,6 +377,22 @@ const ENTRIES: readonly Entry[] = [
 		claim: 'the `cli`-declaring contract count',
 		pattern: /ships ([a-z-]+) contracts describing a system behind a command/,
 		expected: [declaringKind('cli')],
+		rendering: 'word',
+	},
+	{
+		file: 'docs/how-to/evaluate-workflow-behavior.md',
+		claim: 'the contract count carrying a captured binding',
+		pattern:
+			/([A-Za-z-]+) contracts in `corpus\/dev\/contracts\/` use a `\{ captured \}` binding/,
+		expected: [capturing],
+		rendering: 'word',
+	},
+	{
+		file: 'docs/how-to/evaluate-workflow-behavior.md',
+		claim: 'the contract count declaring a fixture reset',
+		pattern:
+			/([A-Za-z-]+) contracts in `corpus\/dev\/contracts\/` declare a `fixtureReset`/,
+		expected: [resetting],
 		rendering: 'word',
 	},
 	{
