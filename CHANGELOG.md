@@ -10,6 +10,8 @@ body.
 
 ## [Unreleased]
 
+## [3.0.0] - 2026-09-10
+
 ### Changed
 
 - **A probe's `schemaVersion` has a reader.** AD-11 says a reader "accepts an equal `schemaVersion`
