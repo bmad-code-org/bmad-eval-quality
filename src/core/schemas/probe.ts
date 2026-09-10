@@ -23,7 +23,7 @@ export const PROBE_CLASSES = [
 
 export const ProbeClass = z.enum(PROBE_CLASSES)
 
-/** the prior art's six-field seeded defect, carried unchanged. */
+/** AD-9's seeded defect: the prior art's six fields, plus the nullable `manifestationWitness` a six-field defect round-trips through. */
 export const Defect = z.strictObject({
 	defectId: DefectId,
 	behaviorId: BehaviorId.describe(

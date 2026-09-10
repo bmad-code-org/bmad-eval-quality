@@ -1,8 +1,9 @@
 /**
  * The four shapes the binary writes, and the exit-code table two documents
- * share. Every line the CLI emits is produced here, so a format change is one
- * file. Five renderers over the four shapes: a qualification failure and an
- * error both print `<code>: <artifactPath>: <detail>`.
+ * share. Every line the CLI emits is produced here apart from the stack
+ * `main.ts` writes for a rethrown defect, so a format change is one file. Five
+ * renderers over the four shapes: a qualification failure and an error both
+ * print `<code>: <artifactPath>: <detail>`.
  */
 import { z } from 'zod'
 import {
@@ -112,10 +113,15 @@ export function renderQualificationFailure(
 }
 
 /**
- * AD-21's seven exit codes, one line each. The `--help` output and the README
- * table are this text, so the two cannot drift.
+ * The seven codes the binary can take, one line each: AD-21's six, plus
+ * `EX_USAGE`, which `exit-codes.ts` records as sitting outside AD-21.
+ *
+ * The `--help` output is this text, and `docs/reference/cli-commands.md`
+ * transcribes it. `tests/cli/render.test.ts` holds the README's markdown table
+ * against these rows, and `check:doc-claims` holds the transcription against
+ * this string, so neither copy can drift.
  */
-export const EXIT_CODE_TABLE = `Exit codes (AD-21):
+export const EXIT_CODE_TABLE = `Exit codes (AD-21's six, plus 64 from sysexits.h):
   0   success, and every verdict other than FAIL or a promoted CONCERNS
   1   CONCERNS promoted by --strict
   2   FAIL

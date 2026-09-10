@@ -31,7 +31,7 @@ An evaluation that caught the planted defect is sensitive to that failure. One t
 The contract is the test: the evaluator's instructions for how to expose a failure and what evidence counts as finding it. The long name is Behavioral Evaluation Contract; the docs shorten it to eval contract. It is a JSON document that declares:
 
 - the behavior being evaluated;
-- the probes the evaluator should perform;
+- the interfaces a probe may touch, and the plan of steps over them;
 - the evidence it should inspect;
 - the negative behavior it must rule out;
 - the oracle that decides pass or fail.

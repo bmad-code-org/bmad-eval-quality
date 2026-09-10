@@ -586,7 +586,7 @@ mutated system  → evaluation → should degrade
 <p>The contract is the test: the evaluator&#39;s instructions for how to expose a failure and what evidence counts as finding it. The long name is Behavioral Evaluation Contract; the docs shorten it to eval contract. It is a JSON document that declares:</p>
 <ul>
 <li>the behavior being evaluated;</li>
-<li>the probes the evaluator should perform;</li>
+<li>the interfaces a probe may touch, and the plan of steps over them;</li>
 <li>the evidence it should inspect;</li>
 <li>the negative behavior it must rule out;</li>
 <li>the oracle that decides pass or fail.</li>

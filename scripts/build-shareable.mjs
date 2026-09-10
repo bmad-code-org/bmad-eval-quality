@@ -287,7 +287,7 @@ const buildRenderer = (headings, sourceDir, repoOnlyLinks) => {
 	renderer.heading = ({ tokens, depth }) => {
 		const text = marked.parseInline(tokens.map((t) => t.raw).join(''))
 		const plain = stripInline(tokens.map((t) => t.raw).join(''))
-		// The document title is the h1; only h2/h3 are worth a table-of-contents entry.
+		// The document title is the h1, and the table of contents leaves it out.
 		if (depth === 1) return `<h1>${text}</h1>\n`
 		const id = slugify(plain)
 		// h4 carries the VFR requirements in the PRD, so it earns a table-of-contents entry.
