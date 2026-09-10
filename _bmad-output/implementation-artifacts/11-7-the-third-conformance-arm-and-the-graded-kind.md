@@ -2,7 +2,7 @@
 title: 'The third conformance arm and the graded kind'
 type: 'feature'
 created: '2026-09-09'
-status: 'draft'
+status: 'in-review'
 review_loop_iteration: 0
 context:
   - _bmad-output/implementation-artifacts/epic-11-context.md
@@ -164,59 +164,59 @@ unchanged.
 
 **Execution:**
 
-- [ ] `src/testing/conformance.ts` -- add `'mcp-probe'` to `ConformancePort` (`:32-37`) and
+- [x] `src/testing/conformance.ts` -- add `'mcp-probe'` to `ConformancePort` (`:32-37`) and
   `'mcp-probe': 14` to `CONFORMANCE_OUTCOME_COUNTS` (`:40-46`) -- a new entry leaves every published
   count where it is.
-- [ ] `src/testing/probe-conformance.ts` -- add `McpProbeSubject`, `MCP_ASSERTIONS`,
+- [x] `src/testing/probe-conformance.ts` -- add `McpProbeSubject`, `MCP_ASSERTIONS`,
   `checkMcpResolved`, `checkMcpCalls`, `runMcpProbeAssertion`, and `runMcpProbeConformance` returning
   `reportOf(subject.name, 'mcp-probe', ...)` -- the arm is what a future MCP adapter author has to
   satisfy, so it is written after both existing arms are read.
-- [ ] `src/testing/probe-conformance.ts` -- rewrite the header at `:1-22` to describe three arms and
+- [x] `src/testing/probe-conformance.ts` -- rewrite the header at `:1-22` to describe three arms and
   cut the sentences the third makes redundant -- the header is the file's own map and it currently
   reads as an exhaustive two-arm list.
-- [ ] `src/testing/index.ts` -- export `runMcpProbeConformance` and `McpProbeSubject` beside the two
+- [x] `src/testing/index.ts` -- export `runMcpProbeConformance` and `McpProbeSubject` beside the two
   at `:62-65` -- the `./conformance` subpath is where AD-37 puts the definition an adapter author reads.
-- [ ] `tests/adapters/mcp-probe-subject.ts` -- the in-repository `mcp` subject over Story 11.13's
+- [x] `tests/adapters/mcp-probe-subject.ts` -- the in-repository `mcp` subject over Story 11.13's
   shipped adapter and a real fixture server, on the shape `tests/adapters/command-probe-subject.ts:1-9`
   set -- a synthetic mechanism would prove nothing about the thing the adapter exists to get right.
-- [ ] `tests/adapters/fixtures/mcp-probe-fixture.mjs` -- the fixture the subject drives, scripting
+- [x] `tests/adapters/fixtures/mcp-probe-fixture.mjs` -- the fixture the subject drives, scripting
   the error result, the argument echo, the declared result channel, and both overruns.
-- [ ] `tests/adapters/mcp-probe-subject.test.ts` -- run `runMcpProbeConformance` against it and
+- [x] `tests/adapters/mcp-probe-subject.test.ts` -- run `runMcpProbeConformance` against it and
   assert fourteen of fourteen with an empty failure list, as
   `tests/adapters/command-probe-subject.test.ts:27-34` does.
-- [ ] `tests/testing/conformance.test.ts` -- move the declared-literals assertion at `:423-431` to
+- [x] `tests/testing/conformance.test.ts` -- move the declared-literals assertion at `:423-431` to
   include `'mcp-probe': 14`; add a synthetic `mcp` subject with one knob per assertion and eight
   mutant fixtures; add a synthetic `cli` subject and nine mutant fixtures -- Decision 5.
-- [ ] `tests/coverage/mcp-coverage.test.ts` -- grade the fourteen predicates over the `mcp` accept
+- [x] `tests/coverage/mcp-coverage.test.ts` -- grade the fourteen predicates over the `mcp` accept
   fixture, asserting the whole verdict table per contract and the `descriptorRoot` directly, as
   `tests/coverage/command-coverage.test.ts:40-90` does.
-- [ ] `src/core/coverage/` -- repair any predicate the grading finds answering wrongly for `mcp`, at
+- [x] `src/core/coverage/` -- repair any predicate the grading finds answering wrongly for `mcp`, at
   its source, in this diff.
-- [ ] `tests/adapters/probe-subject.test.ts` -- delete the duplicated guard at `:123`.
-- [ ] `docs/reference/cli-commands.md` -- `:227` becomes "There is one runner per port, and
+- [x] `tests/adapters/probe-subject.test.ts` -- delete the duplicated guard at `:123`.
+- [x] `docs/reference/cli-commands.md` -- `:227` becomes "There is one runner per port, and
   `EnvironmentProbePort` has one arm per mechanism:", with `runMcpProbeConformance` (the `mcp` arm)
   appended to the runner list; `:229`'s count list gains "`mcp-probe` 14".
-- [ ] `docs/how-to/evaluate-tool-use-behavior.md` -- `:226` names `runMcpProbeConformance` as the arm
+- [x] `docs/how-to/evaluate-tool-use-behavior.md` -- `:226` names `runMcpProbeConformance` as the arm
   an MCP adapter certifies against, and the sentence is deleted outright if Story 11.13 already
   removed its two port-message clauses; `:234` loses its "a conformance arm" item, and the
   "**Missing.**" line is deleted if that empties it.
-- [ ] `_bmad-output/implementation-artifacts/deferred-work.md:3-17` -- close the open item, which
+- [x] `_bmad-output/implementation-artifacts/deferred-work.md:3-17` -- close the open item, which
   Epic 10 satisfied and which now reads as false in two places.
-- [ ] `CHANGELOG.md` `[Unreleased]` -- one `### Added` bullet naming `runMcpProbeConformance` and
+- [x] `CHANGELOG.md` `[Unreleased]` -- one `### Added` bullet naming `runMcpProbeConformance` and
   `McpProbeSubject` on `eval-quality/conformance`, and `CONFORMANCE_OUTCOME_COUNTS` gaining
   `'mcp-probe': 14` with every existing count unchanged, stated so the silence is not read as an
   oversight. It also names the `ConformancePort` widening, which breaks an exhaustive switch an
   adapter author wrote over the five members.
-- [ ] The five pairs -- walk them against the tree at this story's start and record the result in the
+- [x] The five pairs -- walk them against the tree at this story's start and record the result in the
   story: three third files written here, one written by Story 11.13, and
   `tests/preflight/mcp-plan.test.ts` either landed by Story 11.5 or written here under the fallback
   the Design Notes names.
-- [ ] `_bmad-output/project-knowledge/learning-path-step-by-step.md` -- add the next unused step,
+- [x] `_bmad-output/project-knowledge/learning-path-step-by-step.md` -- add the next unused step,
   tagged `(epic11-story7)`, plus its row in the step table, following
   `learning-path-template.md`. The `In plain terms` hook is that a whole interface kind went
   ungraded once while the test suite stayed green, and three checks answered confidently and wrongly
   for a full release.
-- [ ] Every file this story edits -- grep for `, not `, `rather than`, `instead of`, `as opposed to`,
+- [x] Every file this story edits -- grep for `, not `, `rather than`, `instead of`, `as opposed to`,
   `, never `, and `no longer`, and confirm each surviving hit is a before/after where both halves
   carry a fact.
 
@@ -578,3 +578,55 @@ reading as an ordinary unsatisfied verdict.
   `release:prepare` owns every dated section.
 - Read the new step in `learning-path-step-by-step.md` against `learning-path-template.md`: the
   heading order, no repository vocabulary in `In plain terms`, no bullet longer than two lines.
+
+
+## Completion Notes
+
+**Gate.** `npm run validate` exit 0 over 124 test files and 4063 tests, coverage 97.03% statements
+and 92.23% branches against `vitest.config.ts`'s 90/90 floor. `npm run build` exit 0. `npx biome
+check src tests scripts` reports no fixes over 325 files.
+
+**The arm, measured.** `npx vitest run tests/testing tests/adapters tests/coverage` is 409 tests
+green. `runMcpProbeConformance` reports fourteen outcomes in report order, the six shared under
+`probe/` then the eight under `mcp/`, and the in-repository subject over the shipped adapter and a
+real stdio server passes all fourteen with an empty failure list.
+
+**What the assertions actually see.** Each of the eight was checked against the real observation
+before the arm was trusted, since a green suite is the thing this story exists to distrust.
+`failing_tool` answers with `isError: true` and a structured reason. The metacharacter argument
+`$(echo pwned); rm -rf / #` comes back on `echo` byte for byte, with `matches` mangled by the
+fixture's own slug function, which is why the assertion reads the scalar. `search_notes` carries all
+four declared result keys. Both denials throw `forbidden-target` with the interface or the tool named,
+before any process starts. `hanging_tool` throws `budget-exhausted` naming `maxElapsedMs (300ms)` and
+`oversize_tool` throws it naming `maxOutputBytes (8192)` on stdout, so the cap and the denial stay
+distinguishable in the message as well as in the code.
+
+**The mutants.** Seventeen, eight for the `mcp` arm and nine backfilled for the `cli` arm, each
+asserting exactly one outcome id goes red. Every knob is keyed to its own `operationId`, which is
+what keeps the two result-reading `mcp` assertions disjoint: a mutant that emptied the result for
+every request would flip both and neither would be measuring what its id says. Two further cases
+assert the failure detail rather than the flip, and one asserts the non-matching arm of
+`observe-error-result` names the kind it observed.
+
+**The grading, and why its table of fourteen `true`s is not vacuous.** Six oracle-removal cases,
+covering all seven rules: O-001 and O-003 each carry `success-indicator-separation` and `whole-body`
+for their own operation, O-002 carries `per-record` and `omission-and-completeness`, O-006 with
+O-007 carries `malformed-input`, O-005 carries `sibling-cross-check`, and O-004 carries
+`state-change-read-back`. Every mutant still compiles under `strict`, so the predicates run on all of
+them. Both operations' descriptor roots are asserted directly at `/response-body`, which is the
+prefix `/interactions/search/response-body/matches` starts with; the command grading found that root
+wrong at `/artifact`, and it is the same failure this assertion forecloses for the kind.
+
+**What moved outside `src/testing/`.** `tests/adapters/probe-subject.test.ts` loses its duplicated
+guard. `tests/preflight/mcp-plan.test.ts`'s header loses a claim Story 11.13 falsified.
+`_bmad-output/project-knowledge/learning-path-step-by-step.md` gains step 52 and step 51's closing
+Watch out is corrected. `docs/reference/cli-commands.md` gains the third runner and the sixth count;
+`docs/how-to/evaluate-tool-use-behavior.md` loses the sentence saying the arm is owed and loses the
+conformance-arm item from its Missing list. `CHANGELOG.md` gains one `### Added` bullet under
+`[Unreleased]` with the `ConformancePort` widening as its BREAKING sub-bullet. Nothing below
+`[Unreleased]` is touched.
+
+**What did not move, and why the silence is deliberate.** No schema document, census constant,
+generated table, corpus member or contract fixture. `check:schemas`, `check:ad31-table`,
+`check:corpus` and `check:worked-example` are green with nothing regenerated, which is the mechanical
+proof. Story 11.8 owns every count this story could otherwise have moved.
