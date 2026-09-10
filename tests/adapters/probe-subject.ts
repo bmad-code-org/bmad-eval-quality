@@ -197,7 +197,10 @@ export const nodeHttpMechanism: ProbeMechanism = (hop) =>
 			// A 101 no probe asked for. The response callback never runs, so
 			// every handler above is out of reach, and with no listener here Node
 			// leaves the request open: the call would run to the adapter's
-			// elapsed cap. Fixture 98 pins it.
+			// elapsed cap. Node also detaches an upgraded socket from the agent
+			// and from its own close and error listeners before emitting, so this
+			// destroy is the only thing left that can close it. Fixture 98 pins
+			// both halves.
 			socket.destroy()
 			reject(new Error('the server switched protocols'))
 		})
@@ -474,9 +477,12 @@ export function startFixtureServer(): Promise<{
 	readonly port: number
 	readonly address: string
 	readonly close: () => Promise<void>
+	/** Settles when the socket `/switch-protocols` last answered on closes. Node hands an upgraded socket to the client and stops tracking it, so this side is the only place the client's cleanup shows. */
+	readonly upgradedSocketClose: () => Promise<void>
 }> {
 	return new Promise((resolveServer) => {
 		const sockets = new Set<Socket>()
+		let upgradedSocketClose: Promise<void> | undefined
 		const server = createServer((incoming, response) => {
 			const path = (incoming.url ?? '/').split('?')[0] ?? '/'
 			const port = (server.address() as { port: number }).port
@@ -572,9 +578,14 @@ export function startFixtureServer(): Promise<{
 			}
 			if (path === '/switch-protocols') {
 				// A 101 the request never asked for, written to the socket
-				// because `ServerResponse` will not send one. Fixture 98 drives
-				// it.
-				response.socket?.write(
+				// because a `writeHead(101)` is accepted and then never reaches
+				// the client. Fixture 98 drives it, and reads the promise below
+				// to see the client destroy this socket.
+				const upgraded = response.socket
+				upgradedSocketClose = new Promise((resolveClosed) => {
+					upgraded?.once('close', () => resolveClosed())
+				})
+				upgraded?.write(
 					'HTTP/1.1 101 Switching Protocols\r\nupgrade: websocket\r\nconnection: upgrade\r\n\r\n',
 				)
 				return
@@ -599,6 +610,11 @@ export function startFixtureServer(): Promise<{
 						for (const socket of sockets) socket.destroy()
 						server.close(() => resolveClose())
 					}),
+				upgradedSocketClose: () =>
+					upgradedSocketClose ??
+					Promise.reject(
+						new Error('/switch-protocols has not answered on this server'),
+					),
 			})
 		})
 	})

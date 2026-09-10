@@ -185,11 +185,14 @@ describe('the in-repository probe subject (fixtures 85-88)', () => {
 		})
 	})
 
-	it('fixture 98: an unrequested protocol switch rejects', async () => {
+	it('fixture 98: an unrequested protocol switch rejects and closes the socket it left behind', async () => {
 		// A 101 leaves the response callback unrun, so every handler inside it
 		// is out of reach, and Node holds the request open when nothing listens
-		// for `upgrade`. Delete that listener and this reddens on the timeout,
-		// which is the shape a real call would take to the elapsed cap.
+		// for `upgrade`. Two mutants, two mechanisms: delete the listener and
+		// the timeout catches it, since nothing rejects at all; change what it
+		// rejects with and the message below catches that. The server-side
+		// promise is the third, and it is what pins the `socket.destroy()`,
+		// which Node leaves as the only way an upgraded socket ever closes.
 		const thrown = await nodeHttpMechanism({
 			address: '127.0.0.1',
 			port: server.port,
@@ -207,6 +210,7 @@ describe('the in-repository probe subject (fixtures 85-88)', () => {
 		expect((thrown as Error | undefined)?.message).toBe(
 			'the server switched protocols',
 		)
+		await server.upgradedSocketClose()
 	})
 
 	it('fixture 92: a request past maxRequestBytes is capped before any hop', async () => {
