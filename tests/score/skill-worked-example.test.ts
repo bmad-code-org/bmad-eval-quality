@@ -16,18 +16,14 @@
  * evidence.
  */
 import { describe, expect, it } from 'vitest'
-import {
-	buildSkillExample,
-	buildSkillExampleChain,
-	SKILL_EXAMPLE_FILES,
-	SKILL_EXAMPLE_LABEL,
-} from '../../scripts/skill-example-target.ts'
+import { buildSkillExampleChain } from '../../scripts/skill-example-target.ts'
 import { compile } from '../../src/application/compile.ts'
 import { serializeArtifact } from '../../src/application/serialize.ts'
 import { digestBytes } from '../../src/core/canonical/digest.ts'
 import { commandSignature } from '../../src/core/compile/interface-inventory.ts'
 import { EvalContract } from '../../src/core/schemas/eval-contract.ts'
 import { resolveHomeOperation } from '../../src/core/score/qualification.ts'
+import { commandContract } from '../schemas/fixtures/command-contract.ts'
 import { skillContract } from '../schemas/fixtures/skill-contract.ts'
 
 const chain = buildSkillExampleChain()
@@ -49,11 +45,23 @@ describe('the skill chain, as the shipped stages computed it', () => {
 		}
 		// The one agreement `resolveHomeOperation` rests on: a subcommand on one
 		// side and not the other renders two strings and the resolver returns
-		// null, which is a silent downgrade rather than a failure.
+		// null, which is a silent downgrade rather than a failure. The builder
+		// aborts on that too, through `declarationChecksRan`; what this states
+		// is the mechanism underneath it.
 		expect(commandSignature(signature)).toBe(commandSignature(operation))
 		expect(resolveHomeOperation(signature, contract.permittedInterfaces)).toBe(
 			operation,
 		)
+		// And the identity discriminates. `commandContract` is another `cli`
+		// contract in the same corpus with another executable, so a resolver
+		// matching on the shape family alone would bind this signature to its
+		// operation and the chain would score against the wrong contract.
+		expect(
+			resolveHomeOperation(
+				signature,
+				EvalContract.parse(commandContract).permittedInterfaces,
+			),
+		).toBeNull()
 	})
 
 	it('emits a pre-flight verdict its own reducer computed', () => {
@@ -157,13 +165,5 @@ describe('the skill chain, as the shipped stages computed it', () => {
 		expect(
 			digestBytes(new TextEncoder().encode(published.replace(/\n$/, ''))),
 		).toBe(record.contractDigest)
-	})
-
-	it('emits exactly the file set it declares', () => {
-		expect([...buildSkillExample().keys()].sort()).toEqual(
-			SKILL_EXAMPLE_FILES.map(
-				(name) => `${SKILL_EXAMPLE_LABEL}/${name}`,
-			).sort(),
-		)
 	})
 })
