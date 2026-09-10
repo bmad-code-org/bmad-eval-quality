@@ -151,6 +151,31 @@ describe('the in-repository probe subject (fixtures 85-88)', () => {
 		expect(observed.status).toBe(200)
 	})
 
+	it('fixture 97: a body the server cuts short rejects, and the response error is what settles it', async () => {
+		// The mechanism carries no `close`-based rescue for this case: Node
+		// destroys the response with `ECONNRESET` before `close`, so `error` is
+		// what rejects. Pinning the code here is what catches Node changing
+		// that. Delete `response.on('error', reject)` and this reddens, because
+		// the emission is gated on that listener existing and the promise then
+		// hangs.
+		const thrown = await nodeHttpMechanism({
+			address: '127.0.0.1',
+			port: server.port,
+			path: '/premature-close',
+			method: 'GET',
+			host: SUBJECT_HOSTS.authorized,
+			headers: {},
+			body: undefined,
+			maxResponseBytes: 1024,
+			signal: new AbortController().signal,
+		}).then(
+			() => undefined,
+			(error: unknown) => error,
+		)
+		expect(thrown).toBeInstanceOf(Error)
+		expect((thrown as NodeJS.ErrnoException).code).toBe('ECONNRESET')
+	})
+
 	it('fixture 92: a request past maxRequestBytes is capped before any hop', async () => {
 		const hops: Hop[] = []
 		const port = createProbeSubjectAdapter({

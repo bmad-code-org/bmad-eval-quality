@@ -45,6 +45,8 @@ const OVERSIZE_BYTES = 2048
 /** Two bytes each in UTF-8, one code unit each in UTF-16. Chosen so the body is under `MAX_RESPONSE_BYTES` by code units and over it by bytes. */
 const UTF8_FILLER = Math.floor(MAX_RESPONSE_BYTES * 0.75)
 const SLOW_ANSWER_MS = MAX_ELAPSED_MS + 350
+/** What `/premature-close` declares before sending less than it promised. Below `MAX_RESPONSE_BYTES`, so the byte cap stays out of the way. */
+const PREMATURE_CLOSE_DECLARED_BYTES = 64
 
 /** Eight interfaces, one reachable target. Seven are absent from the policy or break one of its fields, which is what makes each denial reachable. */
 export const SUBJECT_HOSTS = {
@@ -173,18 +175,18 @@ export const nodeHttpMechanism: ProbeMechanism = (hop) =>
 					}
 				})
 				response.on('end', settle)
+				// Only the cap path arrives here unsettled: destroying the
+				// response for truncation stops `end` from firing. A body the
+				// server cuts short settles through `error` below, since Node
+				// destroys the response with `ECONNRESET` before `close`
+				// (`socketCloseListener`, unchanged across Node 22, 24 and 26).
+				// That emission is gated on an `error` listener already being
+				// registered (`_http_incoming.js` `onError`, kept for backward
+				// compatibility), so the two handlers below are one mechanism:
+				// drop the `error` one and a cut-short body hangs until the
+				// elapsed cap. Fixture 97 pins it.
 				response.on('close', () => {
-					if (truncated) {
-						settle()
-						return
-					}
-					// A server that sends headers and part of a body and then
-					// destroys the socket emits neither `end` nor `error`, so
-					// without this the promise never settles and only the elapsed
-					// cap rescues it.
-					if (!response.complete) {
-						reject(new Error('the connection closed before the response ended'))
-					}
+					if (truncated) settle()
 				})
 				response.on('error', reject)
 			},
@@ -544,6 +546,17 @@ export function startFixtureServer(): Promise<{
 					response.writeHead(200, { 'content-type': 'application/json' })
 					response.end(JSON.stringify({ ok: true }))
 				}, SLOW_ANSWER_MS)
+				return
+			}
+			if (path === '/premature-close') {
+				// Declares more body than it sends and then destroys the socket,
+				// so the client's parser never completes the message. Fixture 97
+				// drives it.
+				response.writeHead(200, {
+					'content-type': 'application/json',
+					'content-length': String(PREMATURE_CLOSE_DECLARED_BYTES),
+				})
+				response.write('{"partial":', () => response.socket?.destroy())
 				return
 			}
 			if (path === '/hang') return // never answers
