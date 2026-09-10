@@ -5,7 +5,7 @@ purpose: build-substrate
 altitude: feature
 paradigm: artifact-typed pipeline inside a hexagonal boundary (pure core, ports at every impure edge, one orchestration layer)
 scope: eval-quality v0 — Eval Contract compiler, contract strength scoring, environment pre-flight, evidence emission, and the library plus CLI surface
-status: `compile` is epic-ready; `score` remains owed to a reference implementation
+status: `compile` shipped through epic 6; `score` shipped through epics 7 and 8
 created: '2026-07-29'
 updated: '2026-07-29'
 revision: 9
@@ -43,9 +43,9 @@ denominating coverage by the permitted keys of one interface-wide union — was 
 export-API authoring test showed the ordinary multi-shape case: operations returning a job resource, a
 page of rows, and an error share no required key, so the rule would be satisfied by reading nothing.
 This closes Owed-to-calibration item 4, makes all fourteen AD-31 predicates declaration-only, and
-intentionally invalidates the response shape carried by the historical worked example. That example
-remains deliberately inconsistent until the reference reducer regenerates it; it is not hand-edited
-into apparent conformance.
+intentionally invalidated the response shape carried by the historical worked example. Story 7.9
+regenerated that example from the shipped stages rather than hand-editing it into conformance, and
+`check:worked-example` rebuilds it byte for byte inside `npm run validate`.
 
 **Gate D closes calibration item 1 in revision 9.** Against the reconstructed mut2 system, the
 hand-written positive control, prose generated from AD-3's current fields, and the same generation
@@ -670,7 +670,7 @@ Owed item 7 records what that closed.
 
 **All seven items are closed.** Round 2 found them against revision 4, each was verified then, and each
 was answered by shipped code between epic 4 and epic 8. The section keeps its name and its numbering
-because the codebase addresses these items by number the way it addresses an AD by number: some seventy
+because the codebase addresses these items by number the way it addresses an AD by number: eighty-two
 citations across `src/`, `tests/`, `schemas/`, and `scripts/` read "owed item 3" and mean this list, and
 `scripts/package-boundary.ts` records the decision to treat the phrase as architecture vocabulary at the
 point where it declined to flag it as a leaked planning path. What follows is the record of what each
@@ -704,12 +704,14 @@ catch rate over them and `compareDominance` supplies AD-7's four-valued relation
 `tests/score/reduce-trials.test.ts` pins the anti-pattern by name: one catch among a non-caught majority
 never reduces to `caught`, and a tie is unreachable for any even valid count at any threshold.
 
-**The bound is the reducer's input rather than the reducer.** `runScore` and the `score` command each
+**The bound is on the reducer's input.** `runScore` and the `score` command each
 read one sealed run record and call `score` with a single-element trial set, so a run driven from this
-package completes one trial. Under the shipped default policy's `minimumTrialCount` of 3 that run
-resolves CONCERNS on an evidence condition and its strength vector is marked non-comparable, which is
-what `scripts/worked-example-shared.ts` states where every published chain is scored, and lowering the
-minimum to make a chain comparable would describe a policy nobody ships. Running the evaluator n times
+package completes one trial. Under any scoring policy declaring a
+`minimumTrialCount` above 1 that run resolves CONCERNS on an evidence condition and its strength vector
+is marked non-comparable. No policy artifact ships with the package and the schema declares no default,
+so the number is the caller's; the policy every published chain is scored under declares 3, and
+`scripts/worked-example-shared.ts` records that lowering it to make a chain comparable would describe a
+policy nobody ships. Running the evaluator n times
 and presenting n records sits on the caller's side of the boundary AD-2 draws for execution.
 `SealedRunRecord.trialIndex` is carried and unread: `trialSetDisagreementsOf` cross-checks `mode`,
 `evaluatorRecommendation`, and `runId` across a set and compares no indices, so two records claiming the
@@ -812,8 +814,9 @@ The table is load-bearing: `check:lineage` derives its writer allowlist from `mo
 `tests/lineage/stage-table.test.ts` pins the six stage keys, a distinct owned output per stage, a
 producer for every interchange artifact, and that `mode` is named on ingest and on no other stage.
 Score's product is named `ScoredOutcomesAndVerdict`. The separate `src/core/stage-contracts.ts`, from
-story 4.4, holds the stage *shapes* TypeScript checks each implementation against, and every stage
-imports its own, so a signature drift fails `npm run typecheck`.
+story 4.4, holds the stage *shapes* TypeScript checks each implementation against. Five stages import
+their own; `seal` is pinned by an assignment in `tests/seal/seal.test.ts` instead, and since the
+typecheck covers `tests`, a signature drift in any of the six fails `npm run typecheck`.
 
 **The sequencing the item asked for did not hold.** It called for the table before any stage was written;
 the shapes landed in epic 4 with the plan-and-reduce pairs, the table itself in epic 6 with lineage

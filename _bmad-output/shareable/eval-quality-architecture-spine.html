@@ -558,7 +558,7 @@ tbody tr:hover {
         <h1>Architecture Spine: eval-quality</h1>
         <p class="lede">Forty invariants that keep independently built units from diverging, and the record of what four review rounds found against them and how each finding closed.</p>
         <div class="metadata">
-          <span class="pill status">`compile` is epic-ready; `score` remains owed to a reference implementation</span>
+          <span class="pill status">`compile` shipped through epic 6; `score` shipped through epics 7 and 8</span>
           <span class="pill">Updated 2026-07-29</span>
           <span class="pill">Owner: Murat Ozcan</span>
         </div>
@@ -577,9 +577,9 @@ denominating coverage by the permitted keys of one interface-wide union — was 
 export-API authoring test showed the ordinary multi-shape case: operations returning a job resource, a
 page of rows, and an error share no required key, so the rule would be satisfied by reading nothing.
 This closes Owed-to-calibration item 4, makes all fourteen AD-31 predicates declaration-only, and
-intentionally invalidates the response shape carried by the historical worked example. That example
-remains deliberately inconsistent until the reference reducer regenerates it; it is not hand-edited
-into apparent conformance.</p>
+intentionally invalidated the response shape carried by the historical worked example. Story 7.9
+regenerated that example from the shipped stages rather than hand-editing it into conformance, and
+<code>check:worked-example</code> rebuilds it byte for byte inside <code>npm run validate</code>.</p>
 <p><strong>Gate D closes calibration item 1 in revision 9.</strong> Against the reconstructed mut2 system, the
 hand-written positive control, prose generated from AD-3&#39;s current fields, and the same generation
 augmented with an evidence precondition each issued composed-filter probes and detected the seeded
@@ -1441,7 +1441,7 @@ Owed item 7 records what that closed.</p>
 <h2 id="owed-to-the-reference-implementation">Owed to the reference implementation<a class="heading-anchor" href="#owed-to-the-reference-implementation" aria-label="Link to Owed to the reference implementation">#</a></h2>
 <p><strong>All seven items are closed.</strong> Round 2 found them against revision 4, each was verified then, and each
 was answered by shipped code between epic 4 and epic 8. The section keeps its name and its numbering
-because the codebase addresses these items by number the way it addresses an AD by number: some seventy
+because the codebase addresses these items by number the way it addresses an AD by number: eighty-two
 citations across <code>src/</code>, <code>tests/</code>, <code>schemas/</code>, and <code>scripts/</code> read &quot;owed item 3&quot; and mean this list, and
 <code>scripts/package-boundary.ts</code> records the decision to treat the phrase as architecture vocabulary at the
 point where it declined to flag it as a leaked planning path. What follows is the record of what each
@@ -1471,12 +1471,14 @@ failures, and the rest vote. <code>buildStrengthVector</code> in <code>src/core/
 catch rate over them and <code>compareDominance</code> supplies AD-7&#39;s four-valued relation.
 <code>tests/score/reduce-trials.test.ts</code> pins the anti-pattern by name: one catch among a non-caught majority
 never reduces to <code>caught</code>, and a tie is unreachable for any even valid count at any threshold.</p>
-<p><strong>The bound is the reducer&#39;s input rather than the reducer.</strong> <code>runScore</code> and the <code>score</code> command each
+<p><strong>The bound is on the reducer&#39;s input.</strong> <code>runScore</code> and the <code>score</code> command each
 read one sealed run record and call <code>score</code> with a single-element trial set, so a run driven from this
-package completes one trial. Under the shipped default policy&#39;s <code>minimumTrialCount</code> of 3 that run
-resolves CONCERNS on an evidence condition and its strength vector is marked non-comparable, which is
-what <code>scripts/worked-example-shared.ts</code> states where every published chain is scored, and lowering the
-minimum to make a chain comparable would describe a policy nobody ships. Running the evaluator n times
+package completes one trial. Under any scoring policy declaring a
+<code>minimumTrialCount</code> above 1 that run resolves CONCERNS on an evidence condition and its strength vector
+is marked non-comparable. No policy artifact ships with the package and the schema declares no default,
+so the number is the caller&#39;s; the policy every published chain is scored under declares 3, and
+<code>scripts/worked-example-shared.ts</code> records that lowering it to make a chain comparable would describe a
+policy nobody ships. Running the evaluator n times
 and presenting n records sits on the caller&#39;s side of the boundary AD-2 draws for execution.
 <code>SealedRunRecord.trialIndex</code> is carried and unread: <code>trialSetDisagreementsOf</code> cross-checks <code>mode</code>,
 <code>evaluatorRecommendation</code>, and <code>runId</code> across a set and compares no indices, so two records claiming the
@@ -1571,8 +1573,9 @@ The table is load-bearing: <code>check:lineage</code> derives its writer allowli
 <code>tests/lineage/stage-table.test.ts</code> pins the six stage keys, a distinct owned output per stage, a
 producer for every interchange artifact, and that <code>mode</code> is named on ingest and on no other stage.
 Score&#39;s product is named <code>ScoredOutcomesAndVerdict</code>. The separate <code>src/core/stage-contracts.ts</code>, from
-story 4.4, holds the stage <em>shapes</em> TypeScript checks each implementation against, and every stage
-imports its own, so a signature drift fails <code>npm run typecheck</code>.</p>
+story 4.4, holds the stage <em>shapes</em> TypeScript checks each implementation against. Five stages import
+their own; <code>seal</code> is pinned by an assignment in <code>tests/seal/seal.test.ts</code> instead, and since the
+typecheck covers <code>tests</code>, a signature drift in any of the six fails <code>npm run typecheck</code>.</p>
 <p><strong>The sequencing the item asked for did not hold.</strong> It called for the table before any stage was written;
 the shapes landed in epic 4 with the plan-and-reduce pairs, the table itself in epic 6 with lineage
 enforcement, and the run-mode column in epic 7, by which point <code>compile</code>, <code>seal</code>, and <code>preflight</code> were
