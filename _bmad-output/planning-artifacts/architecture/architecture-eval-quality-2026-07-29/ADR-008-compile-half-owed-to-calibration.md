@@ -3,6 +3,7 @@ id: ADR-008
 title: The compile half is owed to a calibration re-run; no half is epic-ready
 status: closed
 date: 2026-07-29
+updated: 2026-09-10
 closed: 2026-09-10
 amends: ADR-003, ADR-005, ADR-006, ADR-007
 ---

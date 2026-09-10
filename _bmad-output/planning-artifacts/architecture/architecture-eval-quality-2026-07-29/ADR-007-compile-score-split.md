@@ -3,6 +3,7 @@ id: ADR-007
 title: The compile half is a build substrate; the score half is owed to a reference implementation
 status: closed
 date: 2026-07-29
+updated: 2026-09-10
 closed: 2026-09-10
 amends: ADR-003, ADR-005
 ---

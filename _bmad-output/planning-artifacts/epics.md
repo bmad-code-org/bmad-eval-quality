@@ -62,7 +62,7 @@ NFR10 (standing constraint): the spine linter (`npm run lint:spine`) runs in CI 
 - `schemas/` and `corpus/` are excluded from the formatter so lint and drift cannot fight (AD-13).
 - Three Gate C authoring coin flips are settled by construction in the first schema story and recorded: oracle polarity declared once or twice, `set-membership` literal-array operand spelling, and requirement/risk linkage location (per behaviour vs. contract-level array).
 - The TypeScript 7.0.2 migration changes four compiler behaviors across `tsconfig.json` and `tsconfig-build.json` (baseUrl removal, empty `types` default, `noUncheckedSideEffectImports`, `rootDir` default) and forbids disabling `esModuleInterop`, `allowSyntheticDefaultImports`, `alwaysStrict`.
-- The API-shaped transcribed calibration corpus does not exist. That bounds what the calibration evidence supports: it establishes that the contracts behind the measured effect compile in the interface kind they were written in, and leaves unmeasured whether the effect survives an interface change. `mcp` interface support shipped in epic 11, so those contracts compile as they are.
+- The API-shaped transcribed calibration corpus does not exist. The measured contracts declare MCP interfaces, and `mcp` compiles and pre-flights since epic 11, so the calibration evidence establishes that this package admits the contracts behind the measured effect in the interface kind they were written in, and leaves unmeasured whether the effect survives an interface change. What stays deferred for `mcp` is the text channel, per AD-19.
 
 ### UX Design Requirements
 
