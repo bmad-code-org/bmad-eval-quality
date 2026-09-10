@@ -402,25 +402,32 @@ describe('createCommandLineAdapter, real spawn', () => {
 			),
 			mechanism,
 		)
-		await expect(
-			adapter.probe(
-				request({
-					channels: {
-						argument: {},
-						option: {},
-						environment: {
-							PROBE_MODE: 'fine',
-							// A near-twin of the permitted `PROBE_RUN_ID`, so a blocklist
-							// on credential-shaped names, or a `PROBE_` prefix rule, fails
-							// here where `AWS_SECRET_ACCESS_KEY` would have let both pass.
-							PROBE_RUN_ID_2: 'smuggled',
+		// Two smuggled spellings, each a near-twin of a permitted key by a
+		// different route. `PROBE_RUN_ID_2` extends one, so a lookup comparing
+		// by prefix or by substring over-permits it; `probe_mode` differs only
+		// by case, so a case-insensitive lookup does, and those are two
+		// different variables to a process. A key like `AWS_SECRET_ACCESS_KEY`
+		// would let a blocklist on credential-shaped names pass this test while
+		// reading no allowlist at all.
+		//
+		// The limit of a two-request fixture: any two distinct strings differ
+		// somehow, so a contrived predicate can always separate them. These
+		// cover the over-permissive lookups somebody would actually write.
+		for (const smuggled of ['PROBE_RUN_ID_2', 'probe_mode']) {
+			await expect(
+				adapter.probe(
+					request({
+						channels: {
+							argument: {},
+							option: {},
+							environment: { PROBE_MODE: 'fine', [smuggled]: 'smuggled' },
+							stdin: { kind: 'absent' },
 						},
-						stdin: { kind: 'absent' },
-					},
-				}),
-				new AbortController().signal,
-			),
-		).rejects.toMatchObject({ code: 'forbidden-target' })
+					}),
+					new AbortController().signal,
+				),
+			).rejects.toMatchObject({ code: 'forbidden-target' })
+		}
 		expect(calls).toBe(0)
 	})
 
