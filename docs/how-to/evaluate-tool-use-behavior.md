@@ -247,7 +247,7 @@ A tool returning prose does not, and the text channel it would need stays deferr
 
 The descriptor in the declaration above describes the MCP envelope, `content` beside `isError`, and declares `collectionLocations: []`.
 Both of those are shapes AD-19 rules out for the kind's first version, and they are here because the api-shaped operation offers nowhere else to put them.
-An envelope descriptor makes every coverage rule report about the envelope and none about the tool: `requiredKeys` is `content` for every MCP tool that will ever be written, so whole-body coverage is one oracle.
+An envelope descriptor makes every coverage rule report about the envelope and none about the tool: the declaration above requires `content` and `isError`, so whole-body coverage is satisfied by two oracles addressing the transport framing, and neither says anything about what the tool returned.
 `collectionLocations: []` makes the per-record and completeness rules irrelevant, so a contract scores clean over a result nobody checked.
 Copy the declaration to see what the kind gives you today; do not copy it as the shape a tool-server contract should have.
 
