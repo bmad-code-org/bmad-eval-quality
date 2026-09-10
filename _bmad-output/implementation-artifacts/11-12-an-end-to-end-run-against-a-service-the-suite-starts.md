@@ -408,6 +408,30 @@ moves no oracle. So it is the only assertion in the file that notices a socket-d
 the observations at all, and a story adding a second live run inherits that as the shape worth
 copying.
 
+**Decision 19: CodeRabbit's two findings, one real defect and one duplication.**
+
+*The real one.* `JSON.parse` returns any JSON value, and the fixture's `PATCH` handler cast the
+result to an object and handed it straight to `tagsViolateType`, whose `in` test throws a
+`TypeError` on a scalar and on `null`. Inside an `async` handler nothing awaits, that is a rejected
+promise and a request that never gets an answer, so the caller waits out its elapsed cap for a bug
+in the fixture. The body channel carries any JSON value, so it is reachable rather than theoretical.
+Closed with an object test ahead of the type check, answering `400 malformed-body` for a scalar, a
+null and an array, plus three assertions. Verified by deleting the guard: the scalar and the null
+each hang for the full five-second cap and log the `TypeError`, and the array quietly answers 200.
+
+*The one turned down, with its reason.* The second finding asks this file for cancellation during a
+pending response, the elapsed cap, a connection closed after a partial body, and prompt socket
+cleanup in each. Every one of those is already asserted against this exact adapter.
+`tests/adapters/probe-subject.test.ts` runs the published nineteen-outcome suite over
+`createProbeSubjectAdapter` on a live loopback server, and that suite carries `prompt-abort` from
+`SHARED_ASSERTION_IDS` (`src/testing/conformance.ts`), driven against a route that never answers,
+plus `probe/cap-elapsed`, `probe/cap-response-bytes` and `probe/cap-redirects`
+(`src/testing/probe-conformance.ts`). The partial-body close has its own branch and its own comment
+in `nodeHttpMechanism`. Writing those cases here would ship a second copy of AD-37's own suite
+against the same subject, which is the duplication the conformance suite exists to prevent. This
+story's Boundaries also put a second HTTP client out of scope, and the transport is not what the run
+swaps: the swapped input is the response bytes.
+
 ## Design Notes
 
 The organising idea is the one Story 8.5 established and Story 9.5 restated: evidence is a chain that calls the shipped functions, and anything else is a parallel derivation. The authored chain proved everything from the observations forward. This story proves the one hop before them, and it does so by swapping exactly one input: the same compiled contract, the same signed probe, the same defect signature, with observations that a socket produced. That is why the acceptance is an equality against the authored chain: a fresh set of expected values would prove only that the test author could predict the fixture. If the live verdict and the authored verdict agree, the authored observations were a faithful description of what a real Notes API does, and the worked example stops being a self-consistent fiction. If they disagree, the disagreement is the finding.

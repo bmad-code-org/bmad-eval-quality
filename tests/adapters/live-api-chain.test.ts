@@ -691,10 +691,8 @@ describe('the behaviour the five legs never reach', () => {
 	// observations, which is why O-005 scores `unreached`. Issued here through
 	// the same port and outside the arms, so the fixture's refusal is evidence
 	// rather than an unreached branch carrying a comment that claims coverage.
-	it('refuses a body whose tags violate their declared type', async () => {
-		const service = await startService('clean')
-		const port = portFor(service)
-		const observed = await port.probe(
+	const writeBody = async (value: JsonValue) => {
+		const observed = await portFor(await startService('clean')).probe(
 			{
 				probeId: 'malformed-write',
 				interfaceId: NOTES_INTERFACE_ID,
@@ -706,16 +704,39 @@ describe('the behaviour the five legs never reach', () => {
 					path: { id: 'n-1' },
 					query: {},
 					header: {},
-					body: { kind: 'json', value: { tags: 'not-an-array' } },
+					body: { kind: 'json', value },
 				},
 			},
 			new AbortController().signal,
 		)
 		if (observed.kind !== 'api') throw new Error('answered off the wire')
+		return observed
+	}
+
+	it('refuses a body whose tags violate their declared type', async () => {
+		const observed = await writeBody({ tags: 'not-an-array' })
 		expect(observed.status).toBe(400)
 		expect(observed.body).toEqual({
 			kind: 'json',
 			value: { ok: false, error: 'invalid-tags' },
+		})
+	})
+
+	// The body channel carries any JSON value, so a scalar, a null and an array
+	// all reach the service. Each gets an answer: refusing them after the object
+	// test would put the request into a handler that throws a TypeError nothing
+	// awaits, and the caller would wait out its elapsed cap for a bug in the
+	// fixture.
+	it.each([
+		['a scalar', 42 as JsonValue],
+		['a null', null as JsonValue],
+		['an array', ['a'] as JsonValue],
+	])('refuses %s body without hanging the request', async (_label, value) => {
+		const observed = await writeBody(value)
+		expect(observed.status).toBe(400)
+		expect(observed.body).toEqual({
+			kind: 'json',
+			value: { ok: false, error: 'malformed-body' },
 		})
 	})
 })

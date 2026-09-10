@@ -211,18 +211,31 @@ export function startNotesService(build: NotesBuild): Promise<NotesService> {
 			}
 
 			const raw = await readBody(incoming)
-			let patch: Record<string, unknown>
+			let parsed: unknown
 			try {
-				patch =
-					raw.length === 0 ? {} : (JSON.parse(raw) as Record<string, unknown>)
+				parsed = raw.length === 0 ? {} : JSON.parse(raw)
 			} catch {
-				// Another guard the run cannot reach: the port serialises the body
-				// channel, so every request arriving here is valid JSON. Kept because
-				// a handler whose only answer to a bad body is a thrown promise
-				// leaves the request hanging.
+				// The port serialises the body channel, so bytes arriving here are
+				// always valid JSON and this branch is a guard. Kept because a
+				// handler whose only answer to a bad body is a thrown promise leaves
+				// the request hanging until a cap fires.
 				json(response, 400, { ok: false, error: 'malformed-body' })
 				return
 			}
+			// Valid JSON is not necessarily an object: the body channel carries any
+			// JSON value, so `null`, a scalar and an array all reach here. Refused
+			// before `tagsViolateType`, whose `in` test throws a TypeError on the
+			// first two, which inside this handler is a rejected promise nothing
+			// awaits and a request that never gets an answer.
+			if (
+				typeof parsed !== 'object' ||
+				parsed === null ||
+				Array.isArray(parsed)
+			) {
+				json(response, 400, { ok: false, error: 'malformed-body' })
+				return
+			}
+			const patch = parsed as Record<string, unknown>
 			if (tagsViolateType(patch)) {
 				json(response, 400, { ok: false, error: 'invalid-tags' })
 				return
