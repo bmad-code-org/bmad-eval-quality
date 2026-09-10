@@ -59,6 +59,12 @@ describe('the in-repository probe subject (fixtures 85-88)', () => {
 				})
 				expect(hop.status).toBe(200)
 			}
+			// The second server has answered no upgrade, which is the other side
+			// of what fixture 98 awaits: the promise is per-server and a caller
+			// asking before the route ran gets told so.
+			await expect(second.upgradedSocketClose()).rejects.toThrow(
+				'/switch-protocols has not answered on this server',
+			)
 		} finally {
 			await second.close()
 		}
@@ -188,11 +194,11 @@ describe('the in-repository probe subject (fixtures 85-88)', () => {
 	it('fixture 98: an unrequested protocol switch rejects and closes the socket it left behind', async () => {
 		// A 101 leaves the response callback unrun, so every handler inside it
 		// is out of reach, and Node holds the request open when nothing listens
-		// for `upgrade`. Two mutants, two mechanisms: delete the listener and
-		// the timeout catches it, since nothing rejects at all; change what it
-		// rejects with and the message below catches that. The server-side
-		// promise is the third, and it is what pins the `socket.destroy()`,
-		// which Node leaves as the only way an upgraded socket ever closes.
+		// for `upgrade`. Three mutants, three mechanisms: delete the listener
+		// and the timeout catches it, since nothing rejects at all; change what
+		// it rejects with and the message below catches that; drop the
+		// `socket.destroy()` and the server-side promise catches that, which is
+		// the only way an upgraded socket ever closes once Node detaches it.
 		const thrown = await nodeHttpMechanism({
 			address: '127.0.0.1',
 			port: server.port,
