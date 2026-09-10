@@ -250,7 +250,7 @@ export const Observation = z.strictObject({
 		.min(0)
 		.nullable()
 		.describe(
-			'Deliberately not bounded to a protocol range. A negative status is meaningless and excluded, but the upper end is left open: AD-19 declares four interface kinds and v0 rejects three of them at compile time under `unsupported-interface-kind`, so bounding this to HTTP would encode a protocol assumption the artifact outlives. `null` where the channel does not apply.',
+			'Deliberately not bounded to a protocol range. A negative status is meaningless and excluded, but the upper end is left open: AD-19 declares four interface kinds and not all of them speak HTTP, so bounding this to HTTP would encode a protocol assumption the artifact outlives. `null` where the channel does not apply.',
 		),
 	stdout: ProbeObservedBody.describe(
 		'AD-26\'s `stdout` channel, tagged rather than a bare string. An operation may nominate standard output as the channel its response descriptor describes, in which case a pointer descends into it, and an untagged string could not tell output that was JSON from output that was only ever text. `{ "kind": "absent" }` is the channel a run did not observe.',
