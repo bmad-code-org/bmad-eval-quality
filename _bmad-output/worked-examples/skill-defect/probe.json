@@ -1,0 +1,161 @@
+{
+  "artifactDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000011",
+  "behaviorId": "B-002",
+  "commitDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000012",
+  "defectSignature": {
+    "condition": {
+      "predicate": {
+        "op": "all",
+        "operands": [
+          {
+            "op": "equality",
+            "operands": [
+              {
+                "pointer": "/interactions/observed/exit-code"
+              },
+              {
+                "literal": 0
+              }
+            ]
+          },
+          {
+            "collection": {
+              "pointer": "/interactions/observed/stdout/selected"
+            },
+            "op": "for-any",
+            "predicate": {
+              "op": "set-membership",
+              "operands": [
+                {
+                  "pointer": "@/"
+                },
+                {
+                  "literal": [
+                    "mobile-rules",
+                    "contract-rules"
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "selector": {
+        "inputBinding": {
+          "argument": null,
+          "arguments": null,
+          "body": null,
+          "environment": null,
+          "header": null,
+          "option": {
+            "skill": {
+              "literal": "checklist-selection"
+            }
+          },
+          "path": null,
+          "query": null,
+          "stdin": {
+            "prompt": {
+              "matcher": "any"
+            }
+          }
+        }
+      }
+    },
+    "interfaceKind": "cli",
+    "invocation": {
+      "executable": "skill-runner",
+      "subcommandPath": []
+    },
+    "observableChannel": "stdout"
+  },
+  "defects": [
+    {
+      "behaviorId": "B-002",
+      "defectId": "D-001",
+      "manifestationWitness": {
+        "inputs": {
+          "argument": {},
+          "environment": {},
+          "option": {
+            "skill": "checklist-selection"
+          },
+          "stdin": {
+            "kind": "json",
+            "value": {
+              "prompt": "the mutated rules, then a frontend case"
+            }
+          }
+        },
+        "interfaceId": "skill-runner",
+        "legId": "skill-defect-leg",
+        "operationId": "run-skill",
+        "relation": {
+          "collection": {
+            "pointer": "/interactions/skill-defect-leg/stdout/selected"
+          },
+          "op": "for-any",
+          "predicate": {
+            "op": "set-membership",
+            "operands": [
+              {
+                "pointer": "@/"
+              },
+              {
+                "literal": [
+                  "mobile-rules",
+                  "contract-rules"
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "oracleEvidence": [
+        {
+          "digest": "sha256:0000000000000000000000000000000000000000000000000000000000000016",
+          "path": null,
+          "privateRef": "opaque:checklist-selection-defect",
+          "storage": "private"
+        }
+      ],
+      "severity": "material",
+      "source": "controlled-mutation",
+      "summary": "The selection for the frontend case names an item the rules exclude for it, and the run exits 0."
+    }
+  ],
+  "expectedClean": false,
+  "implementationDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000010",
+  "parentDigest": null,
+  "probeClass": "defect",
+  "probeId": "P-001",
+  "qualification": {
+    "baselinePassEvidence": {
+      "digest": "sha256:0000000000000000000000000000000000000000000000000000000000000014",
+      "path": null,
+      "privateRef": "opaque:checklist-selection-baseline",
+      "storage": "private"
+    },
+    "expectedObservableFailure": "a selection for the frontend case exits 0 and names an item the rules exclude",
+    "mutatedFailEvidence": {
+      "digest": "sha256:0000000000000000000000000000000000000000000000000000000000000015",
+      "path": null,
+      "privateRef": "opaque:checklist-selection-mutated",
+      "storage": "private"
+    },
+    "mutationOperator": "clause-deletion",
+    "mutationSource": "the rules the skill states, with the exclusion clause for the frontend case removed",
+    "rollbackVerified": true,
+    "route": "controlled-mutation",
+    "targetArtifact": {
+      "digest": "sha256:0000000000000000000000000000000000000000000000000000000000000013",
+      "path": null,
+      "privateRef": "opaque:checklist-selection-rules",
+      "storage": "private"
+    }
+  },
+  "rationale": "A controlled mutation of the rules the skill states: the clause excluding an item for the frontend case is deleted, so a run exits clean and names it anyway. The inclusion oracle still holds over the reply, which is what makes the exclusion oracle the only one that can catch this.",
+  "revisionCount": 0,
+  "schemaVersion": 5,
+  "systemId": "checklist-selection-skill"
+}

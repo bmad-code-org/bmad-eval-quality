@@ -96,6 +96,7 @@ flowchart TD
 |   52 | epic11-story7 | The suite can certify a tool-server adapter, the thoroughness checks grade the kind, and every question in both is proved able to fail. |
 |   53 | epic11-story12 | The worked example's evidence was typed by hand. A real service now answers the same five questions and the score comes out identical. |
 |   54 | epic11-story8 | The tool server joins the published example set, the pages that count it are held by a checker that counts for itself, and the kind runs end to end for the first time. |
+|   55 | epic11-story10 | A skill is caught cheating for the first time on the record: a planted fault, a real run, and a catch rate where the guide used to print nothing. |
 
 Adding a step: follow `learning-path-template.md`.
 
@@ -4146,3 +4147,61 @@ The four-stage run earns its place the same way: with that one file removed, the
 - Deleting an assertion from a passing suite proves nothing. To find out whether an assertion holds anything up, break the code it watches, then delete it, then see whether anything else still fails.
 
 **Watch out:** two ways of writing the same requirement both work and mean opposite things about the check body. Say "the refusal happened" and mark it expected-to-hold; or say "the tool answered anyway" and mark it expected-to-be-violated. Getting the pair crossed makes a correct system report disagreement, and the example set now ships one of each so the difference is readable side by side.
+
+## Step 55 (epic11-story10): the claim nobody had ever run
+
+**In plain terms:** this project has said for a while that it can hold a set of written rules responsible when an assistant follows them badly.
+Half of that was proven and half was a promise.
+The proven half is catching a lazy answer: the assistant names everything on the list, and a check that says "name nothing forbidden" catches it.
+The promised half is catching a real mistake: break a rule on purpose, run it, and see whether the check notices.
+This step plants that mistake, runs it, and writes down the score.
+
+**What:** a new set of rules joins the published example set, and a second full worked run scores a planted fault against that exact set. The catch rate comes out one caught out of one tried, where the guide printed nothing before.
+
+**Why:** the guide said plainly that nobody had done this. Everything needed for it already existed: the shape parses, the gate lets it through, a sample of it passes the gate. What was missing was one file on disk holding the answer.
+A claim with nothing behind it looks the same as a claim with everything behind it, right up until someone tries it.
+
+**The shape:**
+
+```mermaid
+flowchart LR
+  FIX["skill-contract.ts<br/>the rules, as a fixture"]
+  CORPUS["dev-corpus-target.ts<br/>writes the published copy"]
+  CHAIN["skill-example-target.ts<br/>the run"]
+  SHARED["worked-example-shared.ts<br/>bytes, abort, policy"]
+  SPIKE["worked-example-target.ts<br/>the first run, and the list of runs"]
+  DISK["worked-examples/skill-defect/<br/>six files"]
+
+  FIX --> CORPUS
+  FIX --> CHAIN
+  SHARED --> CHAIN
+  SHARED --> SPIKE
+  CHAIN --> SPIKE
+  SPIKE --> DISK
+```
+
+**Read in this order:**
+
+1. `tests/schemas/fixtures/skill-contract.ts`: the rules. One command, one list it prints, and two claims about that list: it names everything required, and it names nothing forbidden.
+2. `scripts/worked-example-shared.ts`: the four things every committed run needs. How bytes are written, how a stand-in hash is spelled, how a build gives up, and the settings a run is scored under.
+3. `scripts/skill-example-target.ts`: the run. The planted fault, what the harness saw, and the four stages called for real.
+4. `scripts/worked-example-target.ts`: the first run, unchanged, plus the short list at the bottom naming every run that reaches disk.
+5. `tests/score/skill-worked-example.test.ts`: what the run came back with, read value by value.
+
+**Story:** `_bmad-output/implementation-artifacts/11-10-a-seeded-defect-scored-against-a-skill-contract.md`
+
+### Reference
+
+**Rules:**
+
+- The run scores the same copy of the rules that ships to readers. Hash the published file with its last newline removed and you get the hash written inside the run.
+- Two claims, two sections, one check each. A section with two checks has no single check to pair a planted fault with, so nothing can be scored against it.
+- Plant the fault where the command already prints its answer. A fault inside a file the command writes cannot be described at all, whatever kind of fault it is.
+- Say more than "the list contains something forbidden". A list that came back empty makes that check give up rather than answer, so pair it with something that always has a value, like the exit code.
+- A planted fault needs a way to be seen firing. Leave that out and the pre-flight stage fails the check that asks whether it fired.
+- Run the same command on a case that behaves as well. Without one, nothing shows the check can tell the two apart.
+- One file per run, one shared file for what several runs need, and one short list naming them all. A run reaching into another run's file makes a change for one of them arrive in all of them.
+- The two scripts that write and check the runs know no run by name. Adding a run is one line in the list.
+- One score reads one run record, so the count of tries is one against a required three. The result carries both numbers and marks itself not comparable.
+
+**Watch out:** the two runs on disk are written the same way and hash differently on purpose. Both are re-indented for reading, so hashing either directory's contract file does not give you the hash inside it. The second run gets around that by scoring the published copy instead, which is written without the re-indent.

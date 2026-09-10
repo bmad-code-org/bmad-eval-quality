@@ -88,6 +88,21 @@ body.
     describe the same fixture and carry different digests. `comparabilityKey` is unaffected, since it
     digests the scoring policy and the probe identifiers alone.
 
+- **A second end-to-end chain is committed, and it scores a seeded defect against a skill
+  contract.** `_bmad-output/worked-examples/skill-defect/` holds six files, the compiled contract,
+  the sealed brief, the probe, the pre-flight verdict, the sealed run record and the evidence
+  artifact, each produced by running the shipped stages over authored inputs. It is built by
+  `npm run generate:worked-example` and compared byte for byte by `npm run check:worked-example`,
+  the same two scripts the first chain rides, so neither `package.json` nor `validate`'s step count
+  moved. The contract it scores is `checklist-selection`, the same object the tarball publishes at
+  `corpus/dev/contracts/checklist-selection.json`, so hashing the published bytes with the trailing
+  newline stripped reproduces the `contractDigest` the run record carries. `strength.vector.defect`
+  reads `{"caught": 1, "exercised": 1, "rate": 1}`, which is a number the published skill-behavior
+  guide reported as `null`; the vector covers one completed trial against a declared minimum of 3,
+  so `strength.comparable` is `false` and the note names the shortfall. The chain calls
+  `preflightFromObservations`, so its verdict is that stage's own return value rather than an
+  authored literal. No artifact `schemaVersion` moved for this change.
+
 ### Changed
 
 - **BREAKING** The eval contract's `schemaVersion` is 5. The `mcp` branch of `permittedInterfaces`

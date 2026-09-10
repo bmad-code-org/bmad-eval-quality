@@ -292,7 +292,7 @@ A probe rejected by the qualification gate lands the run on the Invalid rung, ex
 ## Where this stands
 
 Proven.
-The `cli` interface kind compiles, and `corpus/dev/contracts/` ships two contracts describing a system behind a command.
+The `cli` interface kind compiles, and `corpus/dev/contracts/` ships three contracts describing a system behind a command.
 Pre-flight plans and reduces command legs, including sensitivity witnesses, manifestation witnesses, and the fixture reset.
 `createCommandLineAdapter` runs a real child process with `shell: false`, an enforced elapsed cap, an output cap per stream and per artifact, and an artifact map read back tagged.
 The whole chain has been run end to end against a real agent CLI, and the numbers are below.

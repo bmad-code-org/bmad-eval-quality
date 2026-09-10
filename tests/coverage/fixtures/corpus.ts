@@ -18,6 +18,7 @@ import {
 	commandContract,
 } from '../../schemas/fixtures/command-contract.ts'
 import { mcpContract } from '../../schemas/fixtures/mcp-contract.ts'
+import { skillContract } from '../../schemas/fixtures/skill-contract.ts'
 import { satisfiedContract } from './satisfaction-contracts.ts'
 
 // The seed goes through the schema first. `satisfiedContract` is `satisfies
@@ -535,24 +536,31 @@ export const CORPUS_CONTRACTS: readonly EvalContract[] = [
 ]
 
 /**
- * What the published dev corpus ships: the coverage contracts above, plus the
- * three whose reason for shipping is the interface kind rather than a coverage
- * cell.
+ * What the published dev corpus ships: the coverage contracts above, plus four
+ * whose reason for shipping is a shape an adopter needs a worked example of.
  *
  * `CORPUS_CONTRACTS` stays exactly the cell contracts, in cell order, so the
  * ordering check that proves it derived rather than hand-listed keeps working.
- * The two command contracts and the tool-server contract are not
+ * The three command contracts and the tool-server contract are not
  * declaration-state exemplars and so do not belong in a matrix of declaration
  * states; they are here because a published corpus that could not show a kind
  * would leave an adopter with no worked example of the shape this version
- * opened. Each kind the language admits earns a member here on that rule, which
- * is why a third one lands with the third kind and no cell moves.
+ * opened. Each kind the language admits earns a member here on that rule.
+ *
+ * A kind can also earn a second member, and the skill contract is the case:
+ * `checklist-selection` declares the same `cli` kind the two `fragment-*`
+ * contracts do, and what it adds is the shape a seeded defect can be scored
+ * against. Its two behaviors declare one oracle each, which is what
+ * `designatedOracleIdOf` requires before a probe pairs with an oracle, and it
+ * is the contract the committed chain under `_bmad-output/worked-examples/`
+ * scores. That chain imports this object, so the bytes the corpus publishes
+ * and the bytes the evidence was produced from have one digest.
  *
  * They are graded, and by their own coverage files rather than by the AD-31
  * table this file feeds. The table reads the cells, so for one release nothing
  * ran the fourteen predicates over a command contract at all and three of them
  * answered confidently and wrongly while the suite stayed green.
- * `tests/coverage/command-coverage.test.ts` grades the two command contracts
+ * `tests/coverage/command-coverage.test.ts` grades the three command contracts
  * and `tests/coverage/mcp-coverage.test.ts` grades the tool server, each
  * asserting the whole verdict table rather than the rules that happen to be
  * interesting.
@@ -561,6 +569,7 @@ export const DEV_CORPUS_CONTRACTS: readonly EvalContract[] = [
 	...CORPUS_CONTRACTS,
 	commandContract,
 	artifactCommandContract,
+	skillContract,
 	// Parsed for the reason the header gives for the seed: its two operations
 	// declare different argument keys, so the literal `types` widens past
 	// `Record<string, KeyType>`. The command contracts declare one shape each.

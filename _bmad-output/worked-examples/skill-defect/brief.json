@@ -1,0 +1,75 @@
+{
+  "behaviors": [
+    {
+      "description": "A selection for a case names every item the rules mandate for it.",
+      "id": "B-001",
+      "observableSuccessCriterion": "The selection contains each mandated item for the case it was given.",
+      "oracles": [
+        "O-001"
+      ],
+      "requirementLinks": [
+        {
+          "id": "REQ-1",
+          "scheme": "local"
+        }
+      ],
+      "riskLinks": [
+        {
+          "id": "RISK-1",
+          "scheme": "local-risk"
+        }
+      ],
+      "severity": "material"
+    },
+    {
+      "description": "A selection for a case names no item the rules exclude for it.",
+      "id": "B-002",
+      "observableSuccessCriterion": "No item the rules exclude for the case appears in the selection.",
+      "oracles": [
+        "O-002"
+      ],
+      "requirementLinks": [
+        {
+          "id": "REQ-2",
+          "scheme": "local"
+        }
+      ],
+      "riskLinks": [
+        {
+          "id": "RISK-2",
+          "scheme": "local-risk"
+        }
+      ],
+      "severity": "material"
+    }
+  ],
+  "budgets": {
+    "maxCostUsd": "1.00",
+    "maxToolCalls": 20,
+    "maxWallClockMinutes": 5
+  },
+  "contractDigest": "sha256:db47672fee36bd18d5b7d42ac24cc11dc3d5c46ed0a7be86617676f2ebb9841c",
+  "directions": [
+    {
+      "oracleId": "O-001",
+      "text": "The selected field of its standard output from the run skill command (with the supplied option skill and the supplied stdin prompt) is asserted to contain the declared member. The declared polarity expects this relation to hold. One selection call for the frontend case. A selection missing a mandated item is treated as a defect."
+    },
+    {
+      "oracleId": "O-002",
+      "text": "The selected field of its standard output from the run skill command (with the supplied option skill and the supplied stdin prompt) is asserted to fail the declared condition, not to satisfy it. The declared polarity expects this relation to hold. Every item returned for the frontend case, searched for any the rules exclude. A selection carrying an item the rules exclude for the case is treated as a defect."
+    }
+  ],
+  "parentDigest": null,
+  "permittedInterfaces": [
+    {
+      "kind": "cli",
+      "logicalId": "skill-runner"
+    }
+  ],
+  "principals": [],
+  "probeStepBound": null,
+  "revisionCount": 0,
+  "safetyLimits": [],
+  "schemaVersion": 2,
+  "scopedResources": []
+}

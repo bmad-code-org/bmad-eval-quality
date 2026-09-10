@@ -1,0 +1,46 @@
+{
+  "checks": [
+    {
+      "kind": "interface-present",
+      "note": null,
+      "operationId": "run-skill",
+      "outcome": "satisfied"
+    },
+    {
+      "kind": "input-sensitivity",
+      "note": null,
+      "operationId": "run-skill",
+      "outcome": "satisfied"
+    },
+    {
+      "kind": "state-reset",
+      "note": null,
+      "operationId": null,
+      "outcome": "satisfied"
+    },
+    {
+      "kind": "clean-control",
+      "note": null,
+      "operationId": null,
+      "outcome": "satisfied"
+    },
+    {
+      "kind": "seeded-faults-scoped",
+      "note": "D-001",
+      "operationId": "run-skill",
+      "outcome": "satisfied"
+    },
+    {
+      "kind": "seeded-fault-fired",
+      "note": "D-001",
+      "operationId": "run-skill",
+      "outcome": "satisfied"
+    }
+  ],
+  "fixtureDigest": "sha256:c3428cb77cfdac9f6bb0a35f5ea72b7d569d79c1f90a6de786664acb24796f59",
+  "parentDigest": null,
+  "passed": true,
+  "revisionCount": 0,
+  "runId": "skill-defect-run-0001",
+  "schemaVersion": 1
+}

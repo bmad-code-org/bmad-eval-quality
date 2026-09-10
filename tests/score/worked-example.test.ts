@@ -13,6 +13,11 @@
  */
 import { describe, expect, it } from 'vitest'
 import {
+	SKILL_EXAMPLE_FILES,
+	SKILL_EXAMPLE_LABEL,
+} from '../../scripts/skill-example-target.ts'
+import {
+	buildSpikeExample,
 	buildWorkedExample,
 	buildWorkedExampleChain,
 	WORKED_EXAMPLE_FILES,
@@ -248,7 +253,7 @@ describe('the headline result the prose is built on', () => {
 // checked against the chain value it should equal, not just against valid
 // JSON.
 describe('the emitted file set', () => {
-	const files = buildWorkedExample()
+	const files = buildSpikeExample()
 
 	it('emits exactly the five declared keys', () => {
 		expect([...files.keys()].sort()).toEqual(
@@ -271,5 +276,28 @@ describe('the emitted file set', () => {
 			const name = path.slice(`${WORKED_EXAMPLE_LABEL}/`.length)
 			expect(JSON.parse(text), path).toEqual(expectedByName[name])
 		}
+	})
+})
+
+// The registry `generate:worked-example` and `check:worked-example` both call.
+// It belongs to neither chain, so it is asserted here once: a builder dropped
+// from it leaves its chain's committed files unowned and permanently stale,
+// which the drift check cannot report because it iterates this same map. Drop
+// `buildSkillExample` from it and `check:worked-example` reports five files
+// matching byte for byte and exits 0 while six committed files go unowned.
+//
+// The key set is the whole assertion. The registry copies each builder's
+// entries and fails on a collision, so the only way a value can differ is a
+// missing key, which the key set already reads.
+describe('the union every committed chain reaches disk through', () => {
+	it('holds every key both builders emit and nothing else', () => {
+		expect([...buildWorkedExample().keys()].sort()).toEqual(
+			[
+				...WORKED_EXAMPLE_FILES.map(
+					(name) => `${WORKED_EXAMPLE_LABEL}/${name}`,
+				),
+				...SKILL_EXAMPLE_FILES.map((name) => `${SKILL_EXAMPLE_LABEL}/${name}`),
+			].sort(),
+		)
 	})
 })
