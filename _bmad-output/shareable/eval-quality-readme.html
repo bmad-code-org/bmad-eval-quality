@@ -779,7 +779,7 @@ npx eval-quality score --record record.json --contract contract.json \
 <p><strong>The library</strong> exports the same stages as functions, plus the artifact types, the canonical digest, the lineage validator, and the failure-code and verdict registries. The schemas are published as JSON Schema under <code>eval-quality/schemas/*</code>, which is what lets a coding agent author contracts correctly by default:</p>
 <pre><code class="language-ts">import spec from &#39;eval-quality/schemas/eval-contract.schema.json&#39; with { type: &#39;json&#39; }
 </code></pre>
-<p>The import attribute is required: ESM on Node 22 and 24 both throw <code>ERR_IMPORT_ATTRIBUTE_MISSING</code> without it. The development corpus ships the same way, at <code>eval-quality/corpus/dev/</code>, so you can read twenty-three real contracts and one compiled-and-sealed pair without cloning this repository.</p>
+<p>The import attribute is required: ESM on Node 22 and 24 both throw <code>ERR_IMPORT_ATTRIBUTE_MISSING</code> without it. The development corpus ships the same way, at <code>eval-quality/corpus/dev/</code>, so you can read twenty-four real contracts and one compiled-and-sealed pair without cloning this repository.</p>
 <p>Version 1.0 is out and the published surface is stable: a breaking change to a command, an export, or a schema is a major version bump. <code>compile</code> refuses a contract whose <code>schemaVersion</code> differs from the one this build reads, so check the stamp on anything you did not author against this version. <code>CHANGELOG.md</code> records what each release breaks.</p>
 <h2 id="relationship-with-bmad-and-tea">Relationship with BMad and TEA<a class="heading-anchor" href="#relationship-with-bmad-and-tea" aria-label="Link to Relationship with BMad and TEA">#</a></h2>
 <p>TEA is the BMad Test Architect. The dependency runs one way: TEA uses <code>eval-quality</code>, and <code>eval-quality</code> knows nothing about TEA.</p>
@@ -847,7 +847,7 @@ npm run test:conformance    # run the published port conformance suite over the 
 <td><code>npm run check:ad33-table</code></td>
 </tr>
 <tr>
-<td>the two committed worked chains</td>
+<td>the three committed worked chains</td>
 <td><code>npm run generate:worked-example</code></td>
 <td><code>npm run check:worked-example</code></td>
 </tr>

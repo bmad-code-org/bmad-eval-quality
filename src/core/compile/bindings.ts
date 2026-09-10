@@ -37,20 +37,6 @@ import {
 } from '../seal/plan-index.ts'
 import { evaluatePointerReachability } from './reachability.ts'
 
-/**
- * The one channel a captured pointer may name: whichever channel the
- * referenced operation's own response descriptor describes.
- *
- * `ResponseDescriptor` declares `requiredKeys`, `permittedKeys`, `types`,
- * `successIndicator`, `channelRoles`, and `collectionLocations`, and every one
- * of them is about the channel the operation nominates. Off an interface that
- * speaks HTTP that is the response body; off a command it is the stream the
- * operation names. `response-headers` and `response-status` are never it,
- * because `Observation.responseHeaders` admits objects, arrays, numbers, and
- * `null`, so a header capture compiled as a `string` could resolve to an
- * object at score time.
- */
-
 /** One `{ captured }` binding, resolved to the pointer target it addresses. */
 export type CapturedBinding = {
 	readonly inputChannel: InputChannelName
@@ -219,9 +205,12 @@ function stronglyConnectedComponents(
  * Every other channel is refused for a reason that does not depend on the
  * kind: `call-inputs` addresses a step's own request, and `response-headers`,
  * `response-status`, and `exit-code` have no declared structure to give a
- * captured value a type. On the `artifact` channel the identifier is compared
- * too, so a capture from a file the operation writes but does not describe is
- * refused alongside one from a file it never writes.
+ * captured value a type. `response-headers` is the sharpest of the three,
+ * because `Observation.responseHeaders` admits objects, arrays, numbers, and
+ * `null`, so a header capture compiled as a `string` could resolve to an object
+ * at score time. On the `artifact` channel the identifier is compared too, so a
+ * capture from a file the operation writes but does not describe is refused
+ * alongside one from a file it never writes.
  */
 export function checkCapturedChannel(contract: EvalContract): void {
 	let index: PlanIndex | undefined

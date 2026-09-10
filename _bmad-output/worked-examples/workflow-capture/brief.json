@@ -1,0 +1,182 @@
+{
+  "behaviors": [
+    {
+      "description": "A create reports the identifier it filed the thing under.",
+      "id": "B-001",
+      "observableSuccessCriterion": "A create call answers with an identifier and reports no error.",
+      "oracles": [
+        "O-001"
+      ],
+      "requirementLinks": [
+        {
+          "id": "REQ-1",
+          "scheme": "local"
+        }
+      ],
+      "riskLinks": [
+        {
+          "id": "RISK-1",
+          "scheme": "local-risk"
+        }
+      ],
+      "severity": "material"
+    },
+    {
+      "description": "A thing read back at the identifier the create returned carries the name the create sent.",
+      "id": "B-002",
+      "observableSuccessCriterion": "A read at the returned identifier answers with the name the create call sent.",
+      "oracles": [
+        "O-002"
+      ],
+      "requirementLinks": [
+        {
+          "id": "REQ-2",
+          "scheme": "local"
+        }
+      ],
+      "riskLinks": [
+        {
+          "id": "RISK-2",
+          "scheme": "local-risk"
+        }
+      ],
+      "severity": "critical"
+    },
+    {
+      "description": "A call whose parameter violates its declared type is refused.",
+      "id": "B-003",
+      "observableSuccessCriterion": "Each of the three operations answers success false over a parameter of the wrong JSON type.",
+      "oracles": [
+        "O-003"
+      ],
+      "requirementLinks": [
+        {
+          "id": "REQ-3",
+          "scheme": "local"
+        }
+      ],
+      "riskLinks": [
+        {
+          "id": "RISK-3",
+          "scheme": "local-risk"
+        }
+      ],
+      "severity": "material"
+    },
+    {
+      "description": "Both declared sibling parameters reach the service.",
+      "id": "B-004",
+      "observableSuccessCriterion": "The write carries the name and the read carries the identifier.",
+      "oracles": [
+        "O-004"
+      ],
+      "requirementLinks": [
+        {
+          "id": "REQ-4",
+          "scheme": "local"
+        }
+      ],
+      "riskLinks": [
+        {
+          "id": "RISK-4",
+          "scheme": "local-risk"
+        }
+      ],
+      "severity": "low"
+    },
+    {
+      "description": "A read answers with the thing the store holds.",
+      "id": "B-005",
+      "observableSuccessCriterion": "A read reports success and returns the record beside it.",
+      "oracles": [
+        "O-005"
+      ],
+      "requirementLinks": [
+        {
+          "id": "REQ-5",
+          "scheme": "local"
+        }
+      ],
+      "riskLinks": [
+        {
+          "id": "RISK-5",
+          "scheme": "local-risk"
+        }
+      ],
+      "severity": "material"
+    },
+    {
+      "description": "A reset seeds the store with the name it was given.",
+      "id": "B-006",
+      "observableSuccessCriterion": "A reset reports the name it seeded, and a later read answers with it.",
+      "oracles": [
+        "O-006",
+        "O-007"
+      ],
+      "requirementLinks": [
+        {
+          "id": "REQ-6",
+          "scheme": "local"
+        }
+      ],
+      "riskLinks": [
+        {
+          "id": "RISK-6",
+          "scheme": "local-risk"
+        }
+      ],
+      "severity": "material"
+    }
+  ],
+  "budgets": {
+    "maxCostUsd": "1.00",
+    "maxToolCalls": 20,
+    "maxWallClockMinutes": 5
+  },
+  "contractDigest": "sha256:0131fcd785937d78b2041842fb5efa2f58bf9ccbf213204eae0c86f4ba8729e4",
+  "directions": [
+    {
+      "oracleId": "O-001",
+      "text": "The create thing endpoint (with the supplied body name): its error field, its id field, and its ok field is asserted to satisfy every declared condition together. The declared polarity expects this relation to hold. One create call for one thing. A create reporting success with no identifier, or with a diagnostic beside it is treated as a defect."
+    },
+    {
+      "oracleId": "O-002",
+      "text": "The body name value you sent to the create thing endpoint (with the supplied body name), compared with its thing.name field from the get thing endpoint (with the supplied path id) is asserted to be equal. The declared polarity expects this relation to hold. One create followed by one read at the identifier it returned. A create whose later read answers with the name the store already held is treated as a defect."
+    },
+    {
+      "oracleId": "O-003",
+      "text": "Its ok field from the create thing endpoint (with a malformed body name value), its ok field from the get thing endpoint (with a malformed path id value), and its ok field from the reset things endpoint (with a malformed body seedName value) is asserted to satisfy every declared condition together. The declared polarity expects this relation to hold. One call per operation whose parameter carries the wrong JSON type, with the check stating the requirement. An operation answering success over a type-violating parameter is treated as a defect."
+    },
+    {
+      "oracleId": "O-004",
+      "text": "The body name value you sent to the create thing endpoint (with the supplied body name), compared with the path id value you sent to the get thing endpoint (with the supplied path id) is asserted to satisfy every declared condition together. The declared polarity expects this relation to hold. The two parameters the sibling group names. A call sending one of the pair and not the other is treated as a defect."
+    },
+    {
+      "oracleId": "O-005",
+      "text": "The get thing endpoint (with the supplied path id): its ok field and its thing field is asserted to satisfy every declared condition together. The declared polarity expects this relation to hold. One read at a known identifier. A read reporting success and returning no record is treated as a defect."
+    },
+    {
+      "oracleId": "O-006",
+      "text": "The reset things endpoint (with the supplied body seedName): its ok field and its seededName field is asserted to satisfy every declared condition together. The declared polarity expects this relation to hold. One reset call. A reset reporting success and naming nothing it seeded is treated as a defect."
+    },
+    {
+      "oracleId": "O-007",
+      "text": "The body seedName value you sent to the reset things endpoint (with the supplied body seedName), compared with its thing.name field from the get thing endpoint (with the supplied path id) is asserted to be equal. The declared polarity expects this relation to hold. One reset followed by one read of the record it seeded. A reset reporting success over a store it left as it found it is treated as a defect."
+    }
+  ],
+  "parentDigest": null,
+  "permittedInterfaces": [
+    {
+      "kind": "api",
+      "logicalId": "thing-service"
+    }
+  ],
+  "principals": [],
+  "probeStepBound": null,
+  "revisionCount": 0,
+  "safetyLimits": [
+    "No request to any host other than the mapped thing-service target."
+  ],
+  "schemaVersion": 2,
+  "scopedResources": []
+}

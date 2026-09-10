@@ -1,0 +1,299 @@
+{
+  "actionsArtifact": {
+    "digest": "sha256:0000000000000000000000000000000000000000000000000000000000000022",
+    "path": null,
+    "privateRef": "opaque:thing-service-actions",
+    "storage": "private"
+  },
+  "conditionArm": "independent",
+  "contractDigest": "sha256:0131fcd785937d78b2041842fb5efa2f58bf9ccbf213204eae0c86f4ba8729e4",
+  "evaluatorConfigurationDigest": "sha256:314c459b8f906cbeec23b17ae3509bc9da1d39e27349b73a38f436361e145985",
+  "evaluatorRecommendation": "FAIL",
+  "evidenceDisclosure": {
+    "reportedIncomplete": false,
+    "truncationBound": null
+  },
+  "findings": [
+    {
+      "behaviorId": "B-002",
+      "confidence": 0.95,
+      "evidenceArtifacts": [
+        {
+          "digest": "sha256:0000000000000000000000000000000000000000000000000000000000000022",
+          "path": null,
+          "privateRef": "opaque:thing-service-actions",
+          "storage": "private"
+        }
+      ],
+      "findingId": "F-001",
+      "findingType": "defect",
+      "observationIds": [
+        "obs-create",
+        "obs-read-back"
+      ],
+      "oracleId": "O-002",
+      "probeId": "P-001",
+      "quotedEvidence": [
+        {
+          "artifactId": null,
+          "channel": "response-body",
+          "quote": "\"name\":\"a thing the run created\""
+        },
+        {
+          "artifactId": null,
+          "channel": "response-body",
+          "quote": "\"name\":\"the name the store held before the write\""
+        }
+      ],
+      "severity": "critical",
+      "summary": "The write returned t-7 with ok true, and a read at t-7 answered 200 with the name the store held before the write. The write response was not backed by a store write."
+    },
+    {
+      "behaviorId": "B-006",
+      "confidence": 0.9,
+      "evidenceArtifacts": [],
+      "findingId": "F-002",
+      "findingType": "confirmation",
+      "observationIds": [
+        "obs-reset",
+        "obs-reset-read-back"
+      ],
+      "oracleId": "O-007",
+      "probeId": "P-001",
+      "severity": "material",
+      "summary": "The read after the reset carried the name the reset was given, so the same read-back relation held for the other write in the run."
+    }
+  ],
+  "invalidReason": null,
+  "isolationManifestArtifact": {
+    "digest": "sha256:0000000000000000000000000000000000000000000000000000000000000023",
+    "path": null,
+    "privateRef": "opaque:thing-service-manifest",
+    "storage": "private"
+  },
+  "judgeResults": [],
+  "mode": "contract-scoring",
+  "observations": [
+    {
+      "artifacts": {},
+      "callInputs": {
+        "argument": null,
+        "arguments": null,
+        "body": {
+          "seedName": "alpha"
+        },
+        "environment": null,
+        "header": null,
+        "option": null,
+        "path": null,
+        "query": null,
+        "stdin": null
+      },
+      "exitCode": null,
+      "observationId": "obs-reset",
+      "operationId": "reset-things",
+      "principal": null,
+      "provenance": "evaluator-chosen",
+      "responseBody": {
+        "ok": true,
+        "seededName": "alpha"
+      },
+      "responseHeaders": {
+        "content-type": "application/json"
+      },
+      "responseStatus": 200,
+      "sequence": 1,
+      "stderr": {
+        "kind": "absent"
+      },
+      "stdout": {
+        "kind": "absent"
+      }
+    },
+    {
+      "artifacts": {},
+      "callInputs": {
+        "argument": null,
+        "arguments": null,
+        "body": null,
+        "environment": null,
+        "header": null,
+        "option": null,
+        "path": {
+          "id": "t-1"
+        },
+        "query": null,
+        "stdin": null
+      },
+      "exitCode": null,
+      "observationId": "obs-reset-read-back",
+      "operationId": "get-thing",
+      "principal": null,
+      "provenance": "evaluator-chosen",
+      "responseBody": {
+        "ok": true,
+        "thing": {
+          "id": "t-1",
+          "name": "alpha"
+        }
+      },
+      "responseHeaders": {
+        "content-type": "application/json"
+      },
+      "responseStatus": 200,
+      "sequence": 2,
+      "stderr": {
+        "kind": "absent"
+      },
+      "stdout": {
+        "kind": "absent"
+      }
+    },
+    {
+      "artifacts": {},
+      "callInputs": {
+        "argument": null,
+        "arguments": null,
+        "body": {
+          "name": "a thing the run created"
+        },
+        "environment": null,
+        "header": null,
+        "option": null,
+        "path": null,
+        "query": null,
+        "stdin": null
+      },
+      "exitCode": null,
+      "observationId": "obs-create",
+      "operationId": "create-thing",
+      "principal": null,
+      "provenance": "evaluator-chosen",
+      "responseBody": {
+        "id": "t-7",
+        "name": "a thing the run created",
+        "ok": true
+      },
+      "responseHeaders": {
+        "content-type": "application/json"
+      },
+      "responseStatus": 201,
+      "sequence": 3,
+      "stderr": {
+        "kind": "absent"
+      },
+      "stdout": {
+        "kind": "absent"
+      }
+    },
+    {
+      "artifacts": {},
+      "callInputs": {
+        "argument": null,
+        "arguments": null,
+        "body": null,
+        "environment": null,
+        "header": null,
+        "option": null,
+        "path": {
+          "id": "t-7"
+        },
+        "query": null,
+        "stdin": null
+      },
+      "exitCode": null,
+      "observationId": "obs-read-back",
+      "operationId": "get-thing",
+      "principal": null,
+      "provenance": "evaluator-chosen",
+      "responseBody": {
+        "ok": true,
+        "thing": {
+          "id": "t-7",
+          "name": "the name the store held before the write"
+        }
+      },
+      "responseHeaders": {
+        "content-type": "application/json"
+      },
+      "responseStatus": 200,
+      "sequence": 4,
+      "stderr": {
+        "kind": "absent"
+      },
+      "stdout": {
+        "kind": "absent"
+      }
+    }
+  ],
+  "oracleDispositions": [
+    {
+      "disposition": "held",
+      "note": "The write reported success and answered with an identifier and no diagnostic.",
+      "observationIds": [
+        "obs-create"
+      ],
+      "oracleId": "O-001"
+    },
+    {
+      "disposition": "violated",
+      "note": "The read at the identifier the write returned answered with the name the store already held.",
+      "observationIds": [
+        "obs-read-back"
+      ],
+      "oracleId": "O-002"
+    },
+    {
+      "disposition": "held",
+      "note": "No call was made with a parameter of the wrong JSON type, so nothing here bears on the requirement.",
+      "observationIds": [],
+      "oracleId": "O-003"
+    },
+    {
+      "disposition": "held",
+      "note": "The write carried the name and the read carried the identifier it captured from the write.",
+      "observationIds": [
+        "obs-create",
+        "obs-read-back"
+      ],
+      "oracleId": "O-004"
+    },
+    {
+      "disposition": "held",
+      "note": "The read reported success and returned a record beside it, which is why the write looked correct.",
+      "observationIds": [
+        "obs-read-back"
+      ],
+      "oracleId": "O-005"
+    },
+    {
+      "disposition": "held",
+      "note": "The reset reported success and named what it seeded.",
+      "observationIds": [
+        "obs-reset"
+      ],
+      "oracleId": "O-006"
+    },
+    {
+      "disposition": "held",
+      "note": "The read after the reset answered with the name the reset was given.",
+      "observationIds": [
+        "obs-reset-read-back"
+      ],
+      "oracleId": "O-007"
+    }
+  ],
+  "parentDigest": null,
+  "resourceUse": {
+    "costUsd": "0.01",
+    "inputTokens": 3100,
+    "outputTokens": 480,
+    "toolCalls": 4,
+    "wallClockSeconds": 12.5
+  },
+  "revisionCount": 0,
+  "runId": "workflow-capture-run-0001",
+  "schemaVersion": 5,
+  "sealedBriefDigest": "sha256:f8283ecaf31c1974228ad7ab335b7f2ef6f3d74f70eb4cbc45423402597d2e83",
+  "trialIndex": 1
+}

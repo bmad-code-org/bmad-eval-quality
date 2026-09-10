@@ -69,11 +69,11 @@ Every step carries five fields, and all five are required: `InteractionStep` is 
 ```
 
 That plan compiles clean, exit `0`, against a contract declaring `create-thing` as a `POST` whose response descriptor types `id` as `string`, and `get-thing` as a `GET` whose `path` channel types `id` as `string`.
-It is `corpus/dev/contracts/satisfied-declarations.json` with one operation and one step added.
+It is the first two steps of `corpus/dev/contracts/captured-read-back.json`, which the corpus publishes whole.
 
 - `stepId` is what the rest of the contract addresses the step by, and an evidence pointer spells it `/interactions/{stepId}/...`.
 - `operationId` names an operation on a permitted interface, and the interface's kind decides which binding shape is legal. `compile` accepts `api`, `cli`, and `mcp`, and rejects a contract declaring `web` with `unsupported-interface-kind`.
-- `inputBinding` is `ApiInputBinding` over `path`, `query`, `header`, and `body`, or `CommandInputBinding` over `argument`, `option`, `environment`, and `stdin`.
+- `inputBinding` is `ApiInputBinding` over `path`, `query`, `header`, and `body`, `CommandInputBinding` over `argument`, `option`, `environment`, and `stdin`, or `McpInputBinding` over `arguments`.
 - `after` is the temporal clause described above.
 - `cardinality` is one of `exactly-one`, `at-most-one`, and `any`, listed as `SELECTOR_CARDINALITIES`.
 
@@ -111,10 +111,10 @@ eval-quality: captured-channel-undeclared: EvalContract.interactionPlan[stepId=r
 
 **The type.**
 The pointer's tail is exactly one segment, the declared type at that key is scalar, and it equals the declared type of the bound parameter.
-Capturing the string `id` into the `list` step's `limit`, declared `number`, exits `4`:
+Capturing the boolean `ok` into `read-back`'s own `id`, declared `string`, exits `4`:
 
 ```text
-eval-quality: unreachable-check-evidence: EvalContract.interactionPlan[stepId=list].inputBinding.query["limit"]: captured pointer "/interactions/create/response-body/id" resolves to a declared "string", which is not the "number" the bound query parameter "limit" is declared as
+eval-quality: unreachable-check-evidence: EvalContract.interactionPlan[stepId=read-back].inputBinding.path["id"]: captured pointer "/interactions/create/response-body/ok" resolves to a declared "boolean", which is not the "string" the bound path parameter "id" is declared as
 ```
 
 **The cycle.**
@@ -122,7 +122,7 @@ eval-quality: unreachable-check-evidence: EvalContract.interactionPlan[stepId=li
 Making `create` capture from `read-back` while `read-back.after` is `create` exits `4`:
 
 ```text
-eval-quality: binding-cycle: EvalContract.interactionPlan[stepId=create].inputBinding.body["name"]: captured pointer "/interactions/create/response-body/name" closes a cycle over the capture and temporal-clause edges; a captured value has no earlier step to resolve from (AD-39)
+eval-quality: binding-cycle: EvalContract.interactionPlan[stepId=create].inputBinding.body["name"]: captured pointer "/interactions/read-back/response-body/error" closes a cycle over the capture and temporal-clause edges; a captured value has no earlier step to resolve from (AD-39)
 ```
 
 A captured pointer resolves to a declared scalar with no transform applied, so AD-4's ban on arithmetic, projection, and user-defined functions holds by construction: the grammar has nowhere to write one.
@@ -218,16 +218,20 @@ The temporal half is proven end to end by an artifact this repository commits.
 Its O-001 compares `/interactions/read-back/response-body/note/title` with `/interactions/write/call-inputs/body/title`, resolves `caught` against the seeded defect, and the defect rate comes out 1 over 1 exercised probe.
 That is a workflow contract catching a persistence defect that a single-response check cannot see.
 
-The capture half has narrower evidence.
-One shipped contract uses a `{ captured }` binding: `corpus/dev/contracts/notes-tool-server.json` binds its `read-back` step's `query` argument to the identifier its creation call returned.
-A capture has two axes and that exemplar covers one value on each: it binds into the `arguments` input channel, and it captures from `response-body`, which is the source channel the three compile checks above are about.
-No committed chain carries a capture: `spike-worked-example/`, the chain named above, orders its steps with `after` and compares the two responses by pointer, which is the temporal half of the shape without the capture half.
+The capture half is proven by a second committed chain.
+`corpus/dev/contracts/captured-read-back.json` is the contract the plan printed above comes from, and `_bmad-output/worked-examples/workflow-capture/` is the chain that carries it through `compile`, `seal`, pre-flight, `ingest`, `score`, and `emit`.
+Its seeded defect is a write that reports success and never reaches the store, and the read that catches it is reached through the identifier the write returned, so the capture is what puts the evaluator in front of the record at all.
+`sealed-run-record.json` in that directory carries the read's `call-inputs`, and the identifier there is the one the create response minted.
+The defect rate comes out 1 over 1 exercised probe, on one completed trial against the policy's `minimumTrialCount` of 3, so `strength.comparable` reads `false` and the note in `evidence-artifact.json` says why.
+Two shipped contracts use a `{ captured }` binding, and between them they cover one value on each of its two axes: `captured-read-back.json` binds into the `path` input channel and `notes-tool-server.json` binds into `arguments`, and both capture from `response-body`, which is the source channel the three compile checks above are about.
 A capture from `stdout` or from the `artifact` channel is shipped nowhere, so what backs those is the schema, those three compile checks, and the unit tests in `tests/compile/bindings.test.ts`, `tests/score/bindings.test.ts`, and `tests/score/binding-order.test.ts`.
-The worked example in this guide was compiled for this page and is not shipped in the corpus.
 
-The four-leg control branch has the same one exemplar.
-`corpus/dev/contracts/notes-tool-server.json` declares a `fixtureReset`, so its pre-flight plans the four-leg branch: `preflight-control-observe`, `preflight-control-mutate`, the contract's own `reset-notes`, and `preflight-control-observe-2`.
-`tests/preflight/plan.test.ts` is what covers the shapes that contract does not declare.
+The four-leg control branch is proven by the same chain.
+Two shipped contracts declare a `fixtureReset`, and `captured-read-back.json` is the one whose pre-flight is run rather than authored: `preflight-control-observe`, `preflight-control-mutate` against `create-thing`, the contract's own `reset-the-store` against `reset-things`, and `preflight-control-observe-2`, in that order.
+`preflight-verdict.json` in that directory is the return value of `preflightFromObservations` over those legs.
+It records no leg list, because `PreflightVerdict` carries checks and a fixture digest and nothing else; what it records is `state-reset` satisfied over the first and fourth control legs and `clean-control` satisfied over all four, and the planner emits neither check unless the four legs were planned.
+`notes-tool-server.json` declares the other reset, and its four legs are exercised by `tests/application/mcp-end-to-end.test.ts` rather than by a committed chain.
+`tests/preflight/plan.test.ts` is what covers the shapes neither contract declares.
 
 ## In BMAD terms
 

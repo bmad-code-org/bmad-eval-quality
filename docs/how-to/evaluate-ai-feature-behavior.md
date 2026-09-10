@@ -240,7 +240,7 @@ Pointing this at your own feature means an `EnvironmentProbePort` you write, plu
 What is proven downstream of the evidence is unchanged, and it is proven twice over now.
 The chain's selections, check resolutions, witness match, outcome states, verdict, and strength vector are the return values of the shipped functions, called for real, and `npm run check:worked-example` rebuilds the authored chain on every validate.
 The empty-collection rule is exercised in that chain and lands a `FAIL`.
-Eighteen of the twenty-three contracts in `corpus/dev/contracts/` declare an `api` interface, so the compile-side rules for this shape are covered by readable examples.
+Nineteen of the twenty-four contracts in `corpus/dev/contracts/` declare an `api` interface, so the compile-side rules for this shape are covered by readable examples.
 
 Two things the project owes itself here.
 A held-out probe corpus, since measuring a contract against probes its author can read is a weaker claim than measuring it against probes they cannot.

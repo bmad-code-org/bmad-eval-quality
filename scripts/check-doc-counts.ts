@@ -31,6 +31,7 @@ import {
 	DEV_CORPUS_CONTRACTS,
 } from '../tests/coverage/fixtures/corpus.ts'
 import { CORPUS_INDEX, CORPUS_LABEL } from './dev-corpus-target.ts'
+import { buildWorkedExample } from './worked-example-target.ts'
 
 const repoRoot = new URL('../', import.meta.url)
 
@@ -145,22 +146,73 @@ if (publishedContracts.length !== DEV_CORPUS_CONTRACTS.length) {
 	process.exit(1)
 }
 
-// The per-kind split reads the published JSON rather than the fixture array,
-// so the total, the compiling count and the split all come off the same bytes.
-// Off the fixtures, an interface edited without regeneration would keep these
-// green against a corpus that does not carry it.
-const declared: readonly (readonly string[])[] = await Promise.all(
+/**
+ * The per-contract facts the sentences below count, read out of the published
+ * JSON rather than out of the fixture array. Off the fixtures, an interface or
+ * a plan edited without regeneration would keep these green against a corpus
+ * that does not carry the edit.
+ */
+type PublishedFacts = {
+	readonly kinds: readonly string[]
+	readonly capturesAValue: boolean
+	readonly declaresAFixtureReset: boolean
+}
+
+const published: readonly PublishedFacts[] = await Promise.all(
 	publishedContracts.map(async (entry) => {
 		const text = await readFile(new URL(entry.path, repoRoot), 'utf8')
 		const contract = JSON.parse(text) as {
 			permittedInterfaces: readonly { kind: string }[]
+			interactionPlan: readonly {
+				inputBinding: Record<string, unknown>
+			}[]
+			fixtureReset: unknown
 		}
-		return contract.permittedInterfaces.map((iface) => iface.kind)
+		return {
+			kinds: contract.permittedInterfaces.map((iface) => iface.kind),
+			// A `{ captured }` binding, on any input channel of any step. An
+			// unbound channel is `null` and a bound one is a map of key to
+			// binding value, so the shape is walked rather than pattern-matched
+			// against the JSON text: a contract whose oracle commentary happened
+			// to spell the word would otherwise be counted.
+			capturesAValue: contract.interactionPlan.some((step) =>
+				Object.values(step.inputBinding).some(
+					(channel) =>
+						channel !== null &&
+						typeof channel === 'object' &&
+						Object.values(channel as Record<string, unknown>).some(
+							(value) =>
+								value !== null &&
+								typeof value === 'object' &&
+								'captured' in value,
+						),
+				),
+			),
+			declaresAFixtureReset: contract.fixtureReset !== null,
+		}
 	}),
 )
 
 const declaringKind = (kind: string): number =>
-	declared.filter((kinds) => kinds.includes(kind)).length
+	published.filter((facts) => facts.kinds.includes(kind)).length
+
+const capturing = published.filter((facts) => facts.capturesAValue).length
+const resetting = published.filter(
+	(facts) => facts.declaresAFixtureReset,
+).length
+
+/**
+ * How many end-to-end chains this repository commits, read off the registry
+ * every chain joins rather than off a list of labels kept here. A chain added
+ * to that registry and left out of a label list would leave these three
+ * sentences stale with nothing to notice, which is the drift this gate exists
+ * to stop.
+ */
+const committedChains = new Set(
+	[...buildWorkedExample().keys()].map((path) =>
+		path.slice(0, path.lastIndexOf('/')),
+	),
+).size
 
 const referenceAdapters = Object.keys(adapters).filter((name) =>
 	/^create[A-Za-z]*Adapter$/.test(name),
@@ -306,6 +358,20 @@ const ENTRIES: readonly Entry[] = [
 		expected: [declaringKind('cli')],
 		rendering: 'word',
 	},
+	{
+		file: 'README.md',
+		claim: 'the committed end-to-end chain count',
+		pattern: /\| the ([a-z-]+) committed worked chains \|/,
+		expected: [committedChains],
+		rendering: 'word',
+	},
+	{
+		file: 'docs/how-to/author-behavioral-contracts.md',
+		claim: 'the committed end-to-end chain count',
+		pattern: /The repository commits ([a-z-]+) complete chains/,
+		expected: [committedChains],
+		rendering: 'word',
+	},
 	// The corpus README is generated from a template literal in
 	// `scripts/dev-corpus-target.ts`, and `check:corpus` proves the bytes match
 	// that template without ever reading what the words say. So the same drift
@@ -368,6 +434,53 @@ const ENTRIES: readonly Entry[] = [
 		claim: 'the `mcp`-declaring contract count',
 		pattern: wrapped('([a-z-]+)', 'describes', 'a', 'tool', 'server'),
 		expected: [declaringKind('mcp')],
+		rendering: 'word',
+	},
+	{
+		file: 'corpus/dev/README.md',
+		claim: 'the contract count carrying a captured binding',
+		pattern: wrapped(
+			'([A-Za-z-]+)',
+			'of',
+			'the',
+			'contracts',
+			'bind',
+			'a',
+			'step',
+			'to',
+			'a',
+			'value',
+		),
+		expected: [capturing],
+		rendering: 'word',
+	},
+	{
+		file: 'corpus/dev/README.md',
+		claim: 'the contract count declaring a fixture reset',
+		pattern: wrapped('the', 'same', '([a-z-]+)', 'declare', 'a', 'fixture'),
+		expected: [resetting],
+		rendering: 'word',
+	},
+	{
+		file: 'corpus/dev/README.md',
+		claim: 'the committed end-to-end chain count in "What is here"',
+		pattern: wrapped(
+			'one',
+			'of',
+			'the',
+			'([a-z-]+)',
+			'committed',
+			'end-to-end',
+			'chains',
+		),
+		expected: [committedChains],
+		rendering: 'word',
+	},
+	{
+		file: 'corpus/dev/README.md',
+		claim: 'the committed end-to-end chain count in "What is absent"',
+		pattern: wrapped('([A-Za-z-]+)', 'chains', 'are', 'committed'),
+		expected: [committedChains],
 		rendering: 'word',
 	},
 	{

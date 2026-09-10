@@ -1,0 +1,134 @@
+{
+  "artifactDigest": "sha256:000000000000000000000000000000000000000000000000000000000000001c",
+  "behaviorId": "B-002",
+  "commitDigest": "sha256:000000000000000000000000000000000000000000000000000000000000001d",
+  "defectSignature": {
+    "condition": {
+      "predicate": {
+        "op": "all",
+        "operands": [
+          {
+            "op": "equality",
+            "operands": [
+              {
+                "pointer": "/interactions/observed/response-status"
+              },
+              {
+                "literal": 200
+              }
+            ]
+          },
+          {
+            "op": "equality",
+            "operands": [
+              {
+                "pointer": "/interactions/observed/response-body/thing/name"
+              },
+              {
+                "literal": "the name the store held before the write"
+              }
+            ]
+          }
+        ]
+      },
+      "selector": {
+        "inputBinding": {
+          "argument": null,
+          "arguments": null,
+          "body": null,
+          "environment": null,
+          "header": null,
+          "option": null,
+          "path": {
+            "id": {
+              "matcher": "any"
+            }
+          },
+          "query": null,
+          "stdin": null
+        }
+      }
+    },
+    "interfaceKind": "api",
+    "method": "GET",
+    "observableChannel": "response-body",
+    "pathTemplate": "/things/{id}"
+  },
+  "defects": [
+    {
+      "behaviorId": "B-002",
+      "defectId": "D-001",
+      "manifestationWitness": {
+        "inputs": {
+          "body": {
+            "kind": "absent"
+          },
+          "header": {},
+          "path": {
+            "id": "t-1"
+          },
+          "query": {}
+        },
+        "interfaceId": "thing-service",
+        "legId": "workflow-defect-leg",
+        "operationId": "get-thing",
+        "relation": {
+          "op": "equality",
+          "operands": [
+            {
+              "pointer": "/interactions/workflow-defect-leg/response-body/thing/name"
+            },
+            {
+              "literal": "the name the store held before the write"
+            }
+          ]
+        }
+      },
+      "oracleEvidence": [
+        {
+          "digest": "sha256:0000000000000000000000000000000000000000000000000000000000000021",
+          "path": null,
+          "privateRef": "opaque:thing-service-defect",
+          "storage": "private"
+        }
+      ],
+      "severity": "critical",
+      "source": "controlled-mutation",
+      "summary": "The write reports success and returns an identifier, and a read at that identifier answers with the name the store already held."
+    }
+  ],
+  "expectedClean": false,
+  "implementationDigest": "sha256:000000000000000000000000000000000000000000000000000000000000001b",
+  "parentDigest": null,
+  "probeClass": "defect",
+  "probeId": "P-001",
+  "qualification": {
+    "baselinePassEvidence": {
+      "digest": "sha256:000000000000000000000000000000000000000000000000000000000000001f",
+      "path": null,
+      "privateRef": "opaque:thing-service-baseline",
+      "storage": "private"
+    },
+    "expectedObservableFailure": "a read at the identifier the write returned answers 200 with the name the store held before the write",
+    "mutatedFailEvidence": {
+      "digest": "sha256:0000000000000000000000000000000000000000000000000000000000000020",
+      "path": null,
+      "privateRef": "opaque:thing-service-mutated",
+      "storage": "private"
+    },
+    "mutationOperator": "store-write-deletion",
+    "mutationSource": "the write handler of the toy thing service written for this chain, with the store write removed",
+    "rollbackVerified": true,
+    "route": "controlled-mutation",
+    "targetArtifact": {
+      "digest": "sha256:000000000000000000000000000000000000000000000000000000000000001e",
+      "path": null,
+      "privateRef": "opaque:thing-service-write-handler",
+      "storage": "private"
+    }
+  },
+  "rationale": "A controlled mutation of the write handler: it validates, answers with the identifier it would have filed under, and never reaches the store. Only an independent read at that identifier shows the name the store already held.",
+  "revisionCount": 0,
+  "schemaVersion": 5,
+  "systemId": "thing-service"
+}

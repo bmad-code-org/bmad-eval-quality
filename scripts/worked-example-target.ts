@@ -60,6 +60,7 @@ import {
 	POLICY,
 	renderJson,
 } from './worked-example-shared.ts'
+import { buildWorkflowExample } from './workflow-example-target.ts'
 
 /** Repository-relative, for the emitted keys and for violation messages. */
 export const WORKED_EXAMPLE_LABEL =
@@ -1324,7 +1325,11 @@ export function buildSpikeExample(): Map<string, string> {
  */
 export function buildWorkedExample(): Map<string, string> {
 	const files = new Map<string, string>()
-	for (const build of [buildSpikeExample, buildSkillExample]) {
+	for (const build of [
+		buildSpikeExample,
+		buildSkillExample,
+		buildWorkflowExample,
+	]) {
 		for (const [path, text] of build()) {
 			if (files.has(path)) fail(`two chains both emit "${path}"`)
 			files.set(path, text)
