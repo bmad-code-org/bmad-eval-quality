@@ -24,13 +24,13 @@ describe('the in-repository command-probe subject', () => {
 		rmSync(scratchDir, { recursive: true, force: true })
 	})
 
-	it('passes the published command-probe conformance suite, fifteen outcomes, over a real process', async () => {
+	it('passes the published command-probe conformance suite, sixteen outcomes, over a real process', async () => {
 		const report = await runCommandLineProbeConformance(
 			createCommandProbeSubject(scratchDir),
 		)
 		const failures = report.outcomes.filter((outcome) => !outcome.passed)
 		expect(failures).toEqual([])
-		expect(report.outcomes).toHaveLength(15)
+		expect(report.outcomes).toHaveLength(16)
 		expect(report.passed).toBe(true)
 	}, 20000)
 })

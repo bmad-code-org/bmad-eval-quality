@@ -97,6 +97,7 @@ flowchart TD
 |   53 | epic11-story12 | The worked example's evidence was typed by hand. A real service now answers the same five questions and the score comes out identical. |
 |   54 | epic11-story8 | The tool server joins the published example set, the pages that count it are held by a checker that counts for itself, and the kind runs end to end for the first time. |
 |   55 | epic11-story10 | A skill is caught cheating for the first time on the record: a planted fault, a real run, and a catch rate where the guide used to print nothing. |
+|   56 | epic11-tail | The operator could say which command may run but not which environment keys it carries. Now they can, and the one key that would pick the binary is refused outright. |
 
 Adding a step: follow `learning-path-template.md`.
 
@@ -4205,3 +4206,39 @@ flowchart LR
 - One score reads one run record, so the count of tries is one against a required three. The result carries both numbers and marks itself not comparable.
 
 **Watch out:** the two runs on disk are written the same way and hash differently on purpose. Both are re-indented for reading, so hashing either directory's contract file does not give you the hash inside it. The second run gets around that by scoring the published copy instead, which is written without the re-indent.
+
+## Step 56 (epic11-tail): the one channel the operator could not close
+
+**In plain terms:** the workshop already lets the operator say which machine may run, which buttons may be pressed, and which finished files may be read back.
+It never let them say which labelled envelopes get handed to the machine along with the job.
+Whoever wrote the job sheet decided that alone, and the operator had no say.
+This step gives the operator a list of allowed envelope labels, and anything else is refused before the machine starts.
+
+**What:** `CommandTargetAuthorization` gains `permittedEnvironmentKeys`, `command-line-adapter.ts` refuses a key the mapping does not name before it spawns anything, and the published `cli` conformance arm gains a tenth assertion, `command/deny-unauthorized-environment-key`, moving the published count from fifteen to sixteen.
+
+**Why:** every other command channel was already default-deny, and this one was default-allow.
+The direction matters: the operator's mapping says which executable may run, while the contract author says what environment the call carries, so a channel with no allowlist is one the operator cannot bound at all.
+
+**Read in this order:**
+
+1. `src/core/schemas/probe-policy.ts`: the new field, next to `permittedSubcommandPaths`, which plays the same role for a subcommand.
+2. `src/adapters/command-line-adapter.ts`: `buildEnv`, and the line above the spawn that calls it.
+3. `src/testing/probe-conformance.ts`: the tenth `cli` assertion, and the `expectedCalls` clause that pins the refusal at zero spawns.
+4. `tests/testing/conformance.test.ts`: the mutant that refuses correctly but only after spawning, which is the one that assertion exists to catch.
+
+**Closes:** the last open entry in `_bmad-output/implementation-artifacts/deferred-work.md`. That file now opens with "Nothing is open."
+
+### Reference
+
+**Rules:**
+
+- An adapter denies by default on every channel it carries, and a channel the operator's mapping cannot name is a channel with no bound at all.
+- The allowlist belongs on the authorization, because the contract author declares what a call carries and the operator declares what may reach the process.
+- A required field with no default is what stops an omitted allowlist from reading as "permit everything".
+- `PATH` cannot be permitted at all. The machine may be named by a bare word that the environment itself resolves, so a permitted `PATH` would let the job sheet choose which machine runs. The adapter's own `PATH` still reaches the child, from the process the mapping started.
+- A key that becomes a real environment variable gets a real charset. Plain text lets `A=B` through as a key, which arrives as a variable `A` carrying a second assignment nobody reading the mapping can see.
+- A denial assertion earns its keep only against a refusal that arrives too late. Write the mutant that refuses correctly after the work has already happened, and if nothing reddens, the assertion pins nothing.
+- The allowed case and the refused case have to be alike in every way but the one under test. When the allowed request declared one key and the refused one declared two, an adapter that counted keys and never read the allowlist passed the whole suite; when the refused key was `AWS_SECRET_ACCESS_KEY`, one that blocked credential-shaped names passed it too. The refused key is now a near-twin of a permitted one.
+- A rule written into a shape nobody reads is not enforced. The list of allowed labels refuses the dangerous one, and nothing in this package reads that list back: callers hand it over as a plain object. The refusal has to sit where the work happens, and the shape keeps its copy as the earlier warning for whoever does read it.
+
+**Watch out:** the `mcp` mechanism looks like it has the same gap and does not. `McpProbeRequest` declares no environment channel, and `McpTargetAuthorization.serverEnvironment` is the environment the adapter launches its own server with, which is authorization material the mapping supplies.

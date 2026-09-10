@@ -7,11 +7,12 @@
  * every scenario HTTP (an authorized target reached, an anomalous status read
  * as an observation, an unmapped interface, four denied address classes, a
  * method, a scheme, a redirect revalidated and refused, and three caps).
- * `runCommandLineProbeConformance` is the `cli` arm: nine, over an authorized
+ * `runCommandLineProbeConformance` is the `cli` arm: ten, over an authorized
  * invocation, a non-zero exit read as an observation, an unmapped interface, an
- * unmapped executable, an unauthorized subcommand path, a shell-metacharacter
- * argument proven to reach the process as one literal token rather than a shell
- * expansion, a declared artifact captured, and both caps.
+ * unmapped executable, an unauthorized subcommand path, an unpermitted
+ * environment key, a shell-metacharacter argument proven to reach the process
+ * as one literal token rather than a shell expansion, a declared artifact
+ * captured, and both caps.
  * `runMcpProbeConformance` is the `mcp` arm: eight, over an authorized tool
  * call, a tool-reported error read as an observation, an unmapped interface, an
  * unauthorized tool, a declared argument proven to cross the JSON-RPC frame
@@ -21,8 +22,8 @@
  * Every field an authorization scopes owes a denial, which is the largest term
  * in the three counts: an HTTP authorization scopes the interface, four
  * address classes, the method and the scheme; a command authorization the
- * interface, the executable and the subcommand path; a tool-server
- * authorization the interface and the tool. Each arm then adds the caps its
+ * interface, the executable, the subcommand path and the permitted environment
+ * keys; a tool-server authorization the interface and the tool. Each arm then adds the caps its
  * mechanism can be made to exceed and the answers it has to read as
  * observations.
  *
@@ -467,6 +468,8 @@ export type CommandProbeSubject = PortSubject<ProbeRequest> & {
 	readonly unmappedExecutableRequest: ProbeRequest
 	/** an interface-executable pair the policy names, with a subcommandPath no authorization for it permits. */
 	readonly unauthorizedSubcommandRequest: ProbeRequest
+	/** authorized in every other respect, declaring one environment key its authorization's permittedEnvironmentKeys omits. */
+	readonly unauthorizedEnvironmentKeyRequest: ProbeRequest
 	/** authorized, and answered by the fixture exiting non-zero. */
 	readonly nonZeroExitRequest: ProbeRequest
 	/** authorized, carrying a shell-metacharacter value on one argument channel key. */
@@ -590,6 +593,36 @@ const COMMAND_ASSERTIONS: readonly ArmAssertion<CommandProbeSubject>[] = [
 		},
 	},
 	{
+		// The environment channel is the one a contract author declares and an
+		// operator has to bound. This is the assertion that holds an adapter to
+		// bounding it: without `permittedEnvironmentKeys` enforced, any key the
+		// contract names reaches the process.
+		id: 'command/deny-unauthorized-environment-key',
+		title:
+			'an environment key the authorization does not permit is refused before a process spawns',
+		request: (subject) => subject.unauthorizedEnvironmentKeyRequest,
+		expectation: { kind: 'rejects', code: DENIED },
+		expectedCalls: (subject) => {
+			const request = subject.unauthorizedEnvironmentKeyRequest
+			if (request.kind !== 'cli') {
+				return `unauthorizedEnvironmentKeyRequest declares a "${request.kind}" request, which carries no environment channel for the policy to refuse`
+			}
+			const authorization = commandAuthorizationFor(subject, request)
+			if (authorization === undefined) {
+				return "the subject's policy names no authorization for unauthorizedEnvironmentKeyRequest's interface and executable, so this case cannot tell an unmapped pair from an unauthorized environment key"
+			}
+			const declared = Object.keys(request.channels.environment)
+			if (declared.length === 0) {
+				return 'unauthorizedEnvironmentKeyRequest declares no environment key, so nothing about the allowlist is exercised'
+			}
+			return declared.every((key) =>
+				authorization.permittedEnvironmentKeys.includes(key),
+			)
+				? `the subject's policy permits every environment key unauthorizedEnvironmentKeyRequest declares (${JSON.stringify(declared)}), so the request it presents as unauthorized is authorized`
+				: 0
+		},
+	},
+	{
 		// The strongest available proof that no shell ever reads a channel value:
 		// an argument built to look like a command substitution, checked to reach
 		// the process as the one, unmodified literal token it was declared as.
@@ -647,7 +680,7 @@ const COMMAND_ASSERTIONS: readonly ArmAssertion<CommandProbeSubject>[] = [
 ]
 
 /**
- * Fifteen outcomes: the six shared assertions plus the nine above. Unlike the
+ * Sixteen outcomes: the six shared assertions plus the ten above. Unlike the
  * `api` arm, every cap here has an assertion: a command subject's fixture
  * script can be told to overrun a byte cap directly, with no oversize-request
  * problem to work around.

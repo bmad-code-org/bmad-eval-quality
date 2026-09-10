@@ -33,6 +33,7 @@ function authorization(
 		executable: 'probe-cli',
 		target: FIXTURE_PATH,
 		permittedSubcommandPaths: [[]],
+		permittedEnvironmentKeys: [],
 		cwd: tmpdir(),
 		artifacts: {},
 		maxElapsedMs: 2000,
@@ -343,8 +344,10 @@ describe('createCommandLineAdapter, real spawn', () => {
 		expect((payload as { stdin: string }).stdin).toBe('piped-in')
 	})
 
-	it('passes the declared environment channel through to the process', async () => {
-		const adapter = createCommandLineAdapter(policyOf(authorization()))
+	it('passes a permitted environment key through to the process', async () => {
+		const adapter = createCommandLineAdapter(
+			policyOf(authorization({ permittedEnvironmentKeys: ['PROBE_TEST_VAR'] })),
+		)
 		const observation = await adapter.probe(
 			request({
 				channels: {
@@ -363,6 +366,46 @@ describe('createCommandLineAdapter, real spawn', () => {
 		expect(
 			(payload as { env: Record<string, string> }).env.PROBE_TEST_VAR,
 		).toBe('from-contract')
+	})
+
+	it('never calls the mechanism when an environment key is not permitted', async () => {
+		// The one command channel that used to reach the process unbounded. The
+		// contract author declares the key; this authorization is where the
+		// operator says which keys may travel, and a key it omits is refused
+		// before anything spawns.
+		let calls = 0
+		const mechanism: CommandMechanism = {
+			run: async () => {
+				calls++
+				throw new Error('should not run')
+			},
+			readArtifact: async () => ({
+				present: false,
+				text: '',
+				truncated: false,
+			}),
+		}
+		const adapter = createCommandLineAdapter(
+			policyOf(authorization({ permittedEnvironmentKeys: ['PROBE_MODE'] })),
+			mechanism,
+		)
+		await expect(
+			adapter.probe(
+				request({
+					channels: {
+						argument: {},
+						option: {},
+						environment: {
+							PROBE_MODE: 'fine',
+							AWS_SECRET_ACCESS_KEY: 'smuggled',
+						},
+						stdin: { kind: 'absent' },
+					},
+				}),
+				new AbortController().signal,
+			),
+		).rejects.toMatchObject({ code: 'forbidden-target' })
+		expect(calls).toBe(0)
 	})
 
 	it('captures a declared artifact the process wrote, and reports absent for one it did not', async () => {

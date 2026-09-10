@@ -12,6 +12,30 @@ body.
 
 ### Added
 
+- **A command authorization bounds the environment keys a call may carry.**
+  `CommandTargetAuthorization` gains `permittedEnvironmentKeys`, and
+  `createCommandLineAdapter` refuses a request declaring a key the authorization does not name,
+  throwing `forbidden-target` before any process spawns. Every other command channel was already
+  default-deny under AD-35: the executable against `target`, the subcommand path against
+  `permittedSubcommandPaths`, the artifact identifiers against `artifacts`. The environment channel
+  was default-allow, which meant the contract author decided alone what the process carried while
+  the operator's mapping had no say. An empty array permits no declared key. The adapter's own
+  `PATH` is unaffected, since it is launch material the mapping supplies under AD-18. The `mcp`
+  mechanism has nothing equivalent: `McpProbeRequest` declares no environment channel, and
+  `McpTargetAuthorization.serverEnvironment` is the environment the adapter launches its server
+  with, which is authorization material.
+  - **BREAKING for a caller that builds a `CommandTargetPolicy`.** `permittedEnvironmentKeys` is
+    required, like every other field on the authorization, so an existing mapping fails the
+    typecheck and, at runtime, `CommandTargetPolicy.parse`. Add the field naming the keys your
+    contracts declare, or `[]` to carry none. A required field with no default is what keeps an
+    omitted allowlist from reading as "permit everything", which is the failure this change closes.
+  - **BREAKING for a published conformance count.** `CONFORMANCE_OUTCOME_COUNTS['command-probe']`
+    moves from 15 to 16, and the `cli` arm gains a tenth assertion,
+    `command/deny-unauthorized-environment-key`, which pins that the refusal happens with zero
+    underlying calls. A subject presenting for the `cli` arm now supplies
+    `unauthorizedEnvironmentKeyRequest`: a request authorized in every other respect, declaring one
+    key its authorization omits. A `CommandProbeSubject` without it fails the typecheck.
+
 - **`compile` and `preflight` accept a third interface kind.** A contract declaring `mcp` compiles
   under every discipline rule and plans a pre-flight whose legs are tool-call requests, where 1.4.2
   refused it at both gates. The code no longer fires for that kind, so a caller who branched on
@@ -36,10 +60,10 @@ body.
   before a server process starts), a tool-reported error read as an observation rather than a fault,
   a declared argument proven to reach the tool byte for byte across the JSON-RPC frame, the
   structured result carried on the channel the operation's descriptor describes, and both caps.
-  `CONFORMANCE_OUTCOME_COUNTS` gains `'mcp-probe': 14`. The five counts already published are
-  unchanged and are restated here so a reader can check rather than assume: `corpus` 6, `clock` 6,
-  `file-system` 12, `environment-probe` 19, `command-probe` 15. A new arm adds an entry and moves no
-  other.
+  `CONFORMANCE_OUTCOME_COUNTS` gains `'mcp-probe': 14`. A new arm adds an entry and moves no other;
+  the `command-probe` count moved in this same block for its own reason, and the environment-key
+  entry below carries it. The four counts this block leaves alone are restated so a reader can check
+  rather than assume: `corpus` 6, `clock` 6, `file-system` 12, `environment-probe` 19.
   - **BREAKING for a caller that enumerates the ports.** `ConformancePort` gains `'mcp-probe'` as a
     sixth member, so a `switch` or a `Record<ConformancePort, ...>` written over the five is no
     longer total and fails the typecheck. Nothing else about the type moved, and no report a caller

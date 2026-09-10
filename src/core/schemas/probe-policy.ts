@@ -76,6 +76,11 @@ export const CommandTargetAuthorization = z.strictObject({
 		.describe(
 			'The exact subcommand paths this authorization allows, compared literally the way AD-40 compares them. An empty inner array authorizes invoking target with no subcommand. A path the request declares that matches none of these is denied before target is ever spawned, the same role methods plays on the HTTP side.',
 		),
+	permittedEnvironmentKeys: z
+		.array(KeyName)
+		.describe(
+			"The environment keys a request may carry into the process. `CommandProbeRequest.channels.environment` is declared by the contract author, and this is where the operator bounds it: a key absent from this list is denied before target is ever spawned, the same role permittedSubcommandPaths plays for a subcommand. An empty array is legal and permits no declared key, which is the default-deny base case. The adapter's own PATH is not named here, since it is launch material the mapping supplies under AD-18 rather than a channel the contract declares.",
+		),
 	cwd: z
 		.string()
 		.min(1)

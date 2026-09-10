@@ -17,6 +17,7 @@ function authorization(
 		executable: 'git',
 		target: '/usr/bin/git',
 		permittedSubcommandPaths: [['status']],
+		permittedEnvironmentKeys: [],
 		cwd: '/tmp/devtools',
 		artifacts: {},
 		maxElapsedMs: 1000,

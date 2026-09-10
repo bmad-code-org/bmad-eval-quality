@@ -131,9 +131,31 @@ export function buildArgv(channels: CommandProbeRequest['channels']): string[] {
 	return [...optionTokens, ...argumentTokens]
 }
 
+/**
+ * AD-35's default-deny rule over the one command channel that had no bound.
+ * The contract author declares `channels.environment`; the operator's mapping
+ * declares which keys of it may reach the process, and a key the mapping does
+ * not name is refused here, before anything spawns. Every other command
+ * channel already worked this way: the executable against `target`, the
+ * subcommand path against `permittedSubcommandPaths`, the artifact identifiers
+ * against `artifacts`.
+ *
+ * `PATH` is the adapter's own, supplied by the process the mapping launched
+ * under AD-18, so the allowlist has no say over it. A declared `PATH` still
+ * has to be permitted, and being permitted it overrides the base, which is
+ * what an operator naming it in the mapping is asking for.
+ */
 function buildEnv(
 	declared: Readonly<Record<string, string>>,
+	permitted: readonly string[],
 ): Record<string, string> {
+	for (const key of Object.keys(declared)) {
+		if (!permitted.includes(key)) {
+			throw forbidden(
+				`environment key "${key}" is not permitted by this authorization`,
+			)
+		}
+	}
 	const base: Record<string, string> = {}
 	if (process.env.PATH !== undefined) base.PATH = process.env.PATH
 	return { ...base, ...declared }
@@ -371,12 +393,19 @@ export function createCommandLineAdapter(
 					if (!decision.allowed) throw forbidden(decision.detail)
 					const { authorization } = decision
 
+					// Built before the spawn: a denial that arrives after the process
+					// ran has already carried the key it refused.
+					const env = buildEnv(
+						parsed.channels.environment,
+						authorization.permittedEnvironmentKeys,
+					)
+
 					const runResult = await mechanism.run(
 						{
 							target: authorization.target,
 							subcommandPath: parsed.subcommandPath,
 							argv: buildArgv(parsed.channels),
-							env: buildEnv(parsed.channels.environment),
+							env,
 							stdin: buildStdin(parsed.channels.stdin),
 							cwd: authorization.cwd,
 							maxElapsedMs: authorization.maxElapsedMs,

@@ -183,7 +183,7 @@ describe('the published package surface', () => {
 			clock: 6,
 			'file-system': 12,
 			'environment-probe': 19,
-			'command-probe': 15,
+			'command-probe': 16,
 			'mcp-probe': 14,
 		})
 	})
