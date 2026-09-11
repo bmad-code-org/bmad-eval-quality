@@ -987,6 +987,8 @@ So that I read all three from the package instead of copying them or being unabl
 
 ### Story 12.2: A comment that claims a verification names the case that performs it
 
+**The argument for this story is this story's own record.** It was written on 10 September on the premise that nothing in `validate` reads source prose. Four hours later Story 12.3, by the same author in the same working session, gated three numerals inside a `src/` docblock and corrected the three sentences that motivated one of the criteria below, and the premise was false. Nobody noticed from the record; it was caught because a reader went back to check it. That is the case people assume cannot happen to them: the falsifying change and the false claim with one author, inside one session, on the subject of claims that quietly stop being true.
+
 As a reader checking a claim a source comment makes about this repository,
 I want the comment to name the test case it is pointing at,
 So that the claim is one I can run rather than one I have to take on trust.
@@ -1008,6 +1010,10 @@ So that the claim is one I can run rather than one I have to take on trust.
 **Given** part of this story's premise moved under it in Story 12.3 and the record is corrected here rather than left for the next reader, which is this story's own subject applied to itself: `check:doc-counts` now holds three arm totals inside `src/testing/probe-conformance.ts`'s docblock against `CONFORMANCE_OUTCOME_COUNTS`, so a numeral in source prose is no longer held by nothing, and the three ambiguous sentences that motivated this criterion were themselves corrected there,
 **When** this story's scope is stated,
 **Then** it claims only what is still open. A count in source prose with a computable source is `check:doc-counts` territory and is covered where an entry exists for it. What remains uncovered, and what this story is for, is a comment asserting that a verification exists without naming the case that performs it, which no gate reads, and the general case of a numeral in source prose that no entry holds.
+
+**Given** "covered where an entry exists" is itself the shape of a gate that holds what somebody remembered to register,
+**When** the second half of that scope is worked,
+**Then** the question the story answers is what makes an entry required rather than optional. `check:doc-claims` already faces this and answers it for its own inventory classes with triggers: a sentence matching a trigger must carry a registration or the gate fails, which is what turns an optional list into a required one. Whether the same construction is available for a numeral in source prose, and what its trigger would be, is decided here with the false-positive measurement the heuristic criterion below already requires.
 
 **Given** the three instances above as they stood before Story 12.3 corrected them, where every number was correct because each was the arm's own count beside the six shared and the sentence reconciling them sat four hundred lines away,
 **When** the gate's reach is settled,
