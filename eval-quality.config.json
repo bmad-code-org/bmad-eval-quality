@@ -35,5 +35,239 @@
 				}
 			}
 		]
+	},
+	"dependency-direction": {
+		"roots": [{ "path": "src", "extensions": [".ts"] }],
+		"layers": [
+			{
+				"name": "root",
+				"match": "exact",
+				"path": "src/index.ts",
+				"label": "src/index.ts",
+				"imports": ["application", "core-schemas"]
+			},
+			{
+				"name": "core-schemas",
+				"match": "prefix",
+				"path": "src/core/schemas/",
+				"label": "core/schemas",
+				"imports": ["core-schemas", "core"],
+				"externals": {
+					"policy": "allow",
+					"modules": ["zod"],
+					"rule": "core/schemas may import the external module \"zod\" only"
+				}
+			},
+			{
+				"name": "core",
+				"match": "prefix",
+				"path": "src/core/",
+				"label": "core/ (excluding core/schemas)",
+				"imports": ["core", "core-schemas"],
+				"externals": {
+					"policy": "deny",
+					"rule": "core/ (excluding core/schemas) may not import an external module or Node builtin"
+				}
+			},
+			{
+				"name": "ports",
+				"match": "prefix",
+				"path": "src/ports/",
+				"label": "ports/",
+				"imports": ["ports", "core-schemas"],
+				"externals": {
+					"policy": "deny",
+					"rule": "ports/ may import core/schemas only; it declares shapes and may not import an external module or Node builtin"
+				}
+			},
+			{
+				"name": "application",
+				"match": "prefix",
+				"path": "src/application/",
+				"label": "application/",
+				"imports": ["application", "core", "core-schemas", "ports"]
+			},
+			{
+				"name": "adapters",
+				"match": "prefix",
+				"path": "src/adapters/",
+				"label": "adapters/",
+				"imports": ["adapters", "ports", "core-schemas"]
+			},
+			{
+				"name": "testing",
+				"match": "prefix",
+				"path": "src/testing/",
+				"label": "testing/",
+				"imports": ["testing", "ports", "core-schemas"],
+				"externals": {
+					"policy": "deny",
+					"rule": "testing/ may import ports/ and core/schemas only; the published conformance suite may not import a test framework, an external module, or a Node builtin"
+				}
+			},
+			{
+				"name": "cli",
+				"match": "prefix",
+				"path": "src/cli/",
+				"label": "cli/",
+				"imports": ["cli", "application", "adapters"]
+			}
+		],
+		"exemptions": [
+			{
+				"file": "src/core/canonical/digest.ts",
+				"module": "node:crypto",
+				"binding": "createHash",
+				"rule": "src/core/canonical/digest.ts may import only the named binding \"createHash\" from node:crypto"
+			}
+		],
+		"purity": {
+			"layers": ["core", "core-schemas"],
+			"awaitRule": "no AwaitExpression under core/; application/ is the only layer that awaits a port",
+			"asyncFunctionRule": "no async function under core/; core stages are synchronous",
+			"newDateRule": "no clock read under core/ (AD-1): new Date() is impurity",
+			"members": [
+				{
+					"member": "Date.now",
+					"rule": "no clock read under core/ (AD-1): Date.now is impurity"
+				},
+				{
+					"member": "performance.now",
+					"rule": "no clock read under core/ (AD-1): performance.now is impurity"
+				},
+				{
+					"member": "performance.timeOrigin",
+					"rule": "no clock read under core/ (AD-1): performance.timeOrigin is impurity"
+				},
+				{
+					"member": "Math.random",
+					"rule": "no randomness under core/ (AD-1): Math.random is impurity"
+				},
+				{
+					"member": "crypto.randomUUID",
+					"rule": "no randomness under core/ (AD-1): crypto.randomUUID is impurity"
+				},
+				{
+					"member": "crypto.getRandomValues",
+					"rule": "no randomness under core/ (AD-1): crypto.getRandomValues is impurity"
+				},
+				{
+					"member": "crypto.randomBytes",
+					"rule": "no randomness under core/ (AD-1): crypto.randomBytes is impurity"
+				},
+				{
+					"member": "crypto.randomInt",
+					"rule": "no randomness under core/ (AD-1): crypto.randomInt is impurity"
+				},
+				{
+					"member": "crypto.randomFillSync",
+					"rule": "no randomness under core/ (AD-1): crypto.randomFillSync is impurity"
+				},
+				{
+					"member": "crypto.randomFill",
+					"rule": "no randomness under core/ (AD-1): crypto.randomFill is impurity"
+				},
+				{
+					"member": "crypto.webcrypto",
+					"rule": "no randomness under core/ (AD-1): crypto.webcrypto is impurity"
+				},
+				{
+					"member": "crypto.subtle",
+					"rule": "no randomness under core/ (AD-1): crypto.subtle is impurity"
+				}
+			]
+		},
+		"commonjs": "forbid",
+		"reportOnly": false
+	},
+	"package-boundary": {
+		"paths": [
+			{ "path": "src", "extensions": [".ts"] },
+			{ "path": "schemas", "extensions": [".json"] },
+			{ "path": "corpus" }
+		],
+		"manifest": {
+			"file": "package.json",
+			"fields": ["description", "keywords", "scripts"]
+		},
+		"patterns": [
+			{
+				"name": "_bmad-output",
+				"match": "_bmad-output",
+				"reason": "a planning-artifact path"
+			},
+			{
+				"name": "planning-artifact",
+				"match": "planning[- ]artifact",
+				"reason": "a planning-artifact path"
+			},
+			{
+				"name": "implementation-artifact",
+				"match": "implementation[- ]artifact",
+				"reason": "a planning-artifact path"
+			},
+			{
+				"name": "sprint-status",
+				"match": "sprint[- ]status",
+				"reason": "the epic-and-story format's tracking file"
+			},
+			{
+				"name": "ARCHITECTURE-SPINE.md",
+				"match": "ARCHITECTURE-SPINE\\.md",
+				"reason": "a planning-artifact path the tarball does not carry"
+			},
+			{
+				"name": "bmad",
+				"match": "bmad",
+				"flags": "i",
+				"reason": "no module references BMad"
+			},
+			{
+				"name": "TEA",
+				"match": "\\bTEA\\b",
+				"reason": "no module references TEA"
+			},
+			{
+				"name": "story",
+				"match": "\\bstor(y|ies)\\b",
+				"flags": "i",
+				"reason": "an epic or story format"
+			},
+			{
+				"name": "epic",
+				"match": "\\bepics?\\b",
+				"flags": "i",
+				"reason": "an epic or story format"
+			},
+			{
+				"name": "AC n",
+				"match": "\\bACs?[- ]\\d",
+				"flags": "i",
+				"reason": "an acceptance-criterion reference"
+			},
+			{
+				"name": "Task n",
+				"match": "\\bTasks?[- ]\\d",
+				"flags": "i",
+				"reason": "the same format's task numbering"
+			},
+			{
+				"name": "Decision n",
+				"match": "(?<!ADR-\\d{3} )\\bDecisions?[- ]\\d",
+				"flags": "i",
+				"reason": "a story-local decision number with no stable identity"
+			}
+		]
+	},
+	"field-ownership": {
+		"paths": [{ "path": "src", "extensions": [".ts"] }],
+		"fields": ["parentDigest", "revisionCount"],
+		"declarations": ["src/core/schemas/", "src/core/lineage/"],
+		"writers": [
+			"src/core/seal/seal.ts",
+			"src/core/preflight/reduce.ts",
+			"src/core/emit/emit.ts"
+		],
+		"helpers": ["reviseArtifact"]
 	}
 }

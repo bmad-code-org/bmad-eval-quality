@@ -31,8 +31,10 @@ import {
 	CORPUS_CONTRACTS,
 	DEV_CORPUS_CONTRACTS,
 } from '../tests/coverage/fixtures/corpus.ts'
+import { ORDERING_WITNESS_VIOLATIONS } from './check-dependency-direction.ts'
 import { CORPUS_INDEX, CORPUS_LABEL } from './dev-corpus-target.ts'
 import { GATE_NAMES, LOCKFILE_WINDOW_DAYS_DEFAULT } from './gate-config.ts'
+import { MAX_SCANNED_LINE } from './package-boundary.ts'
 import { SKILL_EXAMPLE_LABEL } from './skill-example-target.ts'
 import {
 	buildWorkedExample,
@@ -774,6 +776,26 @@ const ENTRIES: readonly Entry[] = [
 		expected: [LOCKFILE_WINDOW_DAYS_DEFAULT],
 		rendering: 'word',
 	},
+	{
+		file: 'docs/how-to/run-the-gates-on-your-repository.md',
+		claim: "the boundary gate's scanned-line bound",
+		pattern: /A logical line longer than (\d+) characters is reported/,
+		expected: [MAX_SCANNED_LINE],
+		rendering: 'digits',
+	},
+	// The ordering witness. The page states the cost of swapping the two nesting
+	// layer rows as a measured number, and the same number is what
+	// `dependency-direction.test.ts` asserts against this repository's own tree.
+	// Held here so the prose and the assertion cannot drift apart: a tree that
+	// changes the count moves the constant, fails the test, and fails this entry
+	// until the sentence moves with it.
+	{
+		file: 'docs/how-to/run-the-gates-on-your-repository.md',
+		claim: "the direction gate's ordering witness",
+		pattern: /swapping those two rows reports (\d+) violations/,
+		expected: [ORDERING_WITNESS_VIOLATIONS],
+		rendering: 'digits',
+	},
 ]
 
 const lineOf = (text: string, offset: number): number =>
@@ -781,10 +803,10 @@ const lineOf = (text: string, offset: number): number =>
 
 const failures: string[] = []
 let numerals = 0
-let conformanceDigits = 0
+let digits = 0
 
 for (const entry of ENTRIES) {
-	if (entry.rendering === 'digits') conformanceDigits += entry.expected.length
+	if (entry.rendering === 'digits') digits += entry.expected.length
 	else numerals += entry.expected.length
 	let text: string
 	try {
@@ -854,5 +876,5 @@ if (failures.length > 0) {
 const files = new Set(ENTRIES.map((entry) => entry.file)).size
 console.log(
 	`check-doc-counts: ${numerals} numerals across ${files} files agree with ` +
-		`their source, plus ${conformanceDigits} per-port conformance counts`,
+		`their source, plus ${digits} counts written as digits`,
 )

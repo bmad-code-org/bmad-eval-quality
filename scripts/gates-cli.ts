@@ -5,8 +5,8 @@
  *
  * It is the only file in the gate surface that reads `process.argv` or writes to
  * a stream, so its whole body is turning a configuration section into a report
- * and a report into `process.exitCode`. The gates themselves stay pure over a
- * parsed lockfile and the data the consumer supplied.
+ * and a report into `process.exitCode`. A gate returns its report or raises a
+ * coded error; the stream and the exit code are this file's alone.
  *
  * `process.exit` is called nowhere, for the reason `src/cli/main.ts` records:
  * exiting truncates a pending stdout write, and a gate over a large lockfile
@@ -28,6 +28,8 @@ import {
 	auditLockfileAge,
 	LOCKFILE_SHAPE_ERROR,
 } from './audit-lockfile-age.mjs'
+import type { DependencyDirectionConfig } from './check-dependency-direction.ts'
+import { runDependencyDirection } from './check-dependency-direction.ts'
 import { checkLicenses } from './check-licenses.mjs'
 import type {
 	GateName,
@@ -37,9 +39,23 @@ import type {
 import {
 	DEFAULT_CONFIG_FILE,
 	GATE_NAMES,
+	loadDependencyDirectionConfig,
+	loadFieldOwnershipConfig,
 	loadLicencesConfig,
 	loadLockfileAgeConfig,
+	loadPackageBoundaryConfig,
 } from './gate-config.ts'
+import type { FieldOwnershipConfig } from './lineage-ownership.ts'
+import {
+	runFieldOwnership,
+	TYPESCRIPT_UNAVAILABLE,
+} from './lineage-ownership.ts'
+import type { PackageBoundaryConfig } from './package-boundary.ts'
+import {
+	runPackageBoundary,
+	SCAN_PATH_ERROR,
+	SCAN_UNREADABLE,
+} from './package-boundary.ts'
 
 const EXIT_OK = 0
 /** The gate ran and found what it exists to find. */
@@ -63,10 +79,19 @@ const GATE_SUMMARY: Readonly<Record<GateName, string>> = {
 		"every locked entry's registry publication age, against a window you declare",
 	licences:
 		"every locked entry's licence, against an allowlist of identifiers you declare",
+	'dependency-direction':
+		'every import in the trees you name, against a layer graph you declare',
+	'package-boundary':
+		'every line your package would publish, against the patterns you forbid',
+	'field-ownership':
+		'every write to a field you own, against the modules you let write it',
 }
 
+/** The widest gate name, plus the two spaces that separate it from its summary. */
+const GATE_COLUMN = Math.max(...GATE_NAMES.map((gate) => gate.length)) + 2
+
 const GATE_LINES = GATE_NAMES.map(
-	(gate) => `  ${gate.padEnd(14)}${GATE_SUMMARY[gate]}`,
+	(gate) => `  ${gate.padEnd(GATE_COLUMN)}${GATE_SUMMARY[gate]}`,
 ).join('\n')
 
 const USAGE = `Usage:
@@ -80,6 +105,10 @@ ${GATE_LINES}
 Each gate reads its own section of that file, and configuring a gate is what
 opts into it. A gate invoked with no section refuses by name and falls back to
 nothing. Every path a section names is relative to the configuration file.
+
+dependency-direction and field-ownership read your source with the TypeScript
+scanner, so those two need the optional peer dependency "typescript". Install it
+only if you run one of them; each refuses by name when it is absent.
 
 Exit codes: ${EXIT_OK} the gate passed, ${EXIT_GATE_FAILED} the gate failed, ${EXIT_USAGE} a usage or configuration error.`
 
@@ -374,6 +403,89 @@ async function runLicences(
 	return passed
 }
 
+/** The order every violation report prints in, so two runs read the same. */
+const byFileThenLine = <
+	Violation extends { readonly file: string; readonly line: number },
+>(
+	violations: readonly Violation[],
+): Violation[] =>
+	[...violations].sort((a, b) =>
+		a.file === b.file ? a.line - b.line : a.file < b.file ? -1 : 1,
+	)
+
+/**
+ * The direction gate writes to no stream and hands back what to print, so this
+ * is the whole mapping. `summary` is written on every outcome, including a clean
+ * one and a report-only one, which is what stops a report-only run being silent:
+ * a green run that printed nothing is the vacuous pass report-only mode exists
+ * to prevent.
+ *
+ * The violation lines go to stdout under report-only and to stderr otherwise.
+ * Report-only output is the thing the run was for, and a caller that redirects
+ * stderr away should still get it.
+ */
+async function runDirection(
+	configPath: string,
+	root: string,
+	section: DependencyDirectionConfig,
+): Promise<number> {
+	const outcome = await runDependencyDirection({ section, root, configPath })
+	if (outcome.kind === 'refused') {
+		writeDiagnostic(`${BINARY}: ${outcome.message}`)
+		return EXIT_USAGE
+	}
+	writeOut(outcome.summary)
+	const write = outcome.reportOnly ? writeOut : writeDiagnostic
+	for (const line of outcome.lines) write(line)
+	return outcome.failed ? EXIT_GATE_FAILED : EXIT_OK
+}
+
+async function runBoundary(
+	root: string,
+	section: PackageBoundaryConfig,
+): Promise<number> {
+	const report = await runPackageBoundary(root, section, 'package-boundary')
+	if (report.violations.length === 0) {
+		const where = report.counts
+			.map((count) => `${count.files} from ${count.path}`)
+			.join(', ')
+		writeOut(
+			`package-boundary: ${report.scanned} entr(ies) scanned, 0 violations (${where})`,
+		)
+		return EXIT_OK
+	}
+	writeDiagnostic(
+		`\npackage-boundary: ${report.violations.length} violation(s) across ${report.scanned} scanned entr(ies):`,
+	)
+	for (const violation of byFileThenLine(report.violations)) {
+		writeDiagnostic(
+			`  ${violation.file}:${violation.line} [${violation.pattern}] ${violation.text}`,
+		)
+		writeDiagnostic(`    ${violation.reason}`)
+	}
+	return EXIT_GATE_FAILED
+}
+
+async function runOwnership(
+	root: string,
+	section: FieldOwnershipConfig,
+): Promise<number> {
+	const report = await runFieldOwnership(root, section, 'field-ownership')
+	if (report.violations.length === 0) {
+		writeOut(`field-ownership: ${report.scanned} file(s) scanned, 0 violations`)
+		return EXIT_OK
+	}
+	writeDiagnostic(
+		`\nfield-ownership: ${report.violations.length} violation(s) across ${report.scanned} scanned file(s):`,
+	)
+	for (const violation of byFileThenLine(report.violations)) {
+		writeDiagnostic(
+			`  ${violation.file}:${violation.line} ${violation.subject}: ${violation.rule}`,
+		)
+	}
+	return EXIT_GATE_FAILED
+}
+
 async function run(invocation: Invocation): Promise<number> {
 	if (invocation.kind === 'help') {
 		writeOut(USAGE)
@@ -391,26 +503,71 @@ async function run(invocation: Invocation): Promise<number> {
 		return EXIT_USAGE
 	}
 
-	if (invocation.gate === 'lockfile-age') {
-		const loaded = await loadLockfileAgeConfig(options)
-		if (loaded.kind === 'refused') return refused(loaded.message)
-		const passed = await runLockfileAge(
-			loaded.path,
-			dirname(loaded.path),
-			loaded.section,
-		)
-		return passed ? EXIT_OK : EXIT_GATE_FAILED
+	switch (invocation.gate) {
+		case 'lockfile-age': {
+			const loaded = await loadLockfileAgeConfig(options)
+			if (loaded.kind === 'refused') return refused(loaded.message)
+			const passed = await runLockfileAge(
+				loaded.path,
+				dirname(loaded.path),
+				loaded.section,
+			)
+			return passed ? EXIT_OK : EXIT_GATE_FAILED
+		}
+		case 'licences': {
+			const loaded = await loadLicencesConfig(options)
+			if (loaded.kind === 'refused') return refused(loaded.message)
+			const passed = await runLicences(
+				loaded.path,
+				dirname(loaded.path),
+				loaded.section,
+			)
+			return passed ? EXIT_OK : EXIT_GATE_FAILED
+		}
+		case 'dependency-direction': {
+			const loaded = await loadDependencyDirectionConfig(options)
+			if (loaded.kind === 'refused') return refused(loaded.message)
+			return runDirection(loaded.path, dirname(loaded.path), loaded.section)
+		}
+		case 'package-boundary': {
+			const loaded = await loadPackageBoundaryConfig(options)
+			if (loaded.kind === 'refused') return refused(loaded.message)
+			return runBoundary(dirname(loaded.path), loaded.section)
+		}
+		case 'field-ownership': {
+			const loaded = await loadFieldOwnershipConfig(options)
+			if (loaded.kind === 'refused') return refused(loaded.message)
+			return runOwnership(dirname(loaded.path), loaded.section)
+		}
 	}
 
-	const loaded = await loadLicencesConfig(options)
-	if (loaded.kind === 'refused') return refused(loaded.message)
-	const passed = await runLicences(
-		loaded.path,
-		dirname(loaded.path),
-		loaded.section,
-	)
-	return passed ? EXIT_OK : EXIT_GATE_FAILED
+	// Exhaustive over `GateName`: a gate added to `GATE_NAMES` with no arm above
+	// is a type error here rather than a binary that names it in its usage text
+	// and does nothing when invoked.
+	const unhandled: never = invocation.gate
+	throw new Error(`no dispatch arm for the gate "${String(unhandled)}"`)
 }
+
+/**
+ * The refusals a gate raises as a coded error rather than as a return value,
+ * and the exit each takes.
+ *
+ * A lockfile or a path the configuration named and the tree does not have is a
+ * configuration error, so it takes the usage code: the repair is in the file.
+ * So is an absent optional peer dependency. A tree the scan could not read to
+ * the end takes the gate's own failure code instead, because that gate ran and
+ * refused rather than being misinvoked.
+ *
+ * Sharing one code across the two would let "scanned nothing" and "found
+ * nothing" answer a caller the same way, which is the pass these refusals exist
+ * to stop.
+ */
+const CODED_EXITS: ReadonlyMap<string, number> = new Map([
+	[LOCKFILE_SHAPE_ERROR, EXIT_USAGE],
+	[SCAN_PATH_ERROR, EXIT_USAGE],
+	[TYPESCRIPT_UNAVAILABLE, EXIT_USAGE],
+	[SCAN_UNREADABLE, EXIT_GATE_FAILED],
+])
 
 async function main(argv: readonly string[]): Promise<void> {
 	try {
@@ -421,17 +578,14 @@ async function main(argv: readonly string[]): Promise<void> {
 			process.exitCode = EXIT_USAGE
 			return
 		}
-		// A lockfile this gate cannot read is a configuration error, so it takes
-		// the usage code. Sharing an exit code with a real violation would let
-		// "scanned nothing" and "found nothing" answer a caller the same way,
-		// which is the pass this refusal exists to stop.
-		if (
-			error !== null &&
-			typeof error === 'object' &&
-			(error as { code?: unknown }).code === LOCKFILE_SHAPE_ERROR
-		) {
+		const code =
+			error !== null && typeof error === 'object'
+				? (error as { code?: unknown }).code
+				: undefined
+		const mapped = typeof code === 'string' ? CODED_EXITS.get(code) : undefined
+		if (mapped !== undefined) {
 			writeDiagnostic(`${BINARY}: ${(error as Error).message}`)
-			process.exitCode = EXIT_USAGE
+			process.exitCode = mapped
 			return
 		}
 		writeDiagnostic(

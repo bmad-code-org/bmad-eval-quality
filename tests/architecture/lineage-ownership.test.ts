@@ -1,19 +1,44 @@
 /**
- * AD-29's ownership scanner (Story 6.4, AC 11 cases 41 through 51). Synthetic
- * source maps for the rules, one real-tree scan at the end, the same shape
- * `dependency-direction.test.ts` uses.
+ * The field-ownership scanner, now a published gate whose fields, declaration
+ * prefixes, writer list and helper names are all consumer data. Cases 41
+ * through 51 are the rules, ported from when those four were literals; the
+ * cases added here hold the schema, the dependency refusal, the drift between
+ * this repository's configured writer list and the table it is derived from,
+ * and the two consumer fixtures.
  */
+import { readFile } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
-import { discoverSourceFiles } from '../../scripts/discover-source-files.ts'
-import { scanLineageWrites } from '../../scripts/lineage-ownership.ts'
+import {
+	FieldOwnershipSection,
+	loadTokenScanner,
+	rulesOf,
+	runFieldOwnership,
+	scanFieldOwnership,
+	TYPESCRIPT_UNAVAILABLE,
+} from '../../scripts/lineage-ownership.ts'
+import { LINEAGE_WRITER_MODULES } from '../../src/core/lineage/stage-table.ts'
+
+const repoRoot = fileURLToPath(new URL('../../', import.meta.url))
+const fixtures = fileURLToPath(
+	new URL('../../scripts/fixtures/consumer/', import.meta.url),
+)
+
+const sectionAt = async (root: string) => {
+	const document = JSON.parse(
+		await readFile(`${root}eval-quality.config.json`, 'utf8'),
+	) as Record<string, unknown>
+	return FieldOwnershipSection.parse(document['field-ownership'])
+}
+
+const ours = await sectionAt(repoRoot)
+const ourRules = rulesOf(ours)
+const scanner = await loadTokenScanner('field-ownership')
 
 const SEAL = 'src/core/seal/seal.ts'
 const REDUCE = 'src/core/preflight/reduce.ts'
 const EMIT = 'src/core/emit/emit.ts'
-// A synthetic, never-allowlisted path standing in for "anywhere else". Not
-// `src/core/emit/emit.ts`: that module became a real named writer in Story
-// 8.3, so a fixture standing in for "not a writer" cannot use its path.
+// A synthetic, never-declared path standing in for "anywhere else".
 const OTHER = 'src/core/emit/not-a-writer.ts'
 
 /** both fields written as object-literal properties, the form the tree uses. */
@@ -21,16 +46,18 @@ const BOTH_WRITES =
 	'const a = {\n\tparentDigest: null,\n\trevisionCount: 0,\n}\n'
 
 const synthetic = (files: Record<string, string>) =>
-	scanLineageWrites(new Map(Object.entries(files)), { wholeTree: false })
+	scanFieldOwnership(new Map(Object.entries(files)), ourRules, scanner, {
+		wholeTree: false,
+	})
 
 const subjects = (files: Record<string, string>) =>
 	synthetic(files)
 		.map((each) => each.subject)
 		.sort()
 
-describe('the lineage-ownership scanner', () => {
+describe('the field-ownership scanner', () => {
 	// 41
-	it('permits a write in core/schemas, in core/lineage, and in a named writer', () => {
+	it('permits a write in a declared path and in a declared writer', () => {
 		expect(
 			synthetic({
 				'src/core/schemas/lineage.ts': BOTH_WRITES,
@@ -53,7 +80,7 @@ describe('the lineage-ownership scanner', () => {
 	})
 
 	// 43
-	it('reports a named writer that writes one field, or neither', () => {
+	it('reports a declared writer that writes one field, or neither', () => {
 		const one = synthetic({ [SEAL]: 'const a = { parentDigest: null }\n' })
 		expect(one).toHaveLength(1)
 		expect(one[0]?.subject).toBe('revisionCount')
@@ -62,7 +89,7 @@ describe('the lineage-ownership scanner', () => {
 		expect(none).toHaveLength(2)
 
 		// Four shapes that name both fields and mint neither, so none of them
-		// stands in for the write the table says this module owes.
+		// stands in for the write the configuration says this module owes.
 		const owed = (source: string) =>
 			synthetic({ [SEAL]: source })
 				.filter((each) => each.rule.includes('writes none'))
@@ -87,8 +114,8 @@ describe('the lineage-ownership scanner', () => {
 				'function g<T extends { parentDigest: string, revisionCount: number }>(x: T) {}\n',
 			),
 		).toEqual(both)
-		// The same four under names no denylist of type keywords would catch,
-		// and under this repository's own parameter wrapping.
+		// The same four under names no denylist of type keywords would catch, and
+		// under this repository's own parameter wrapping.
 		expect(
 			owed(
 				'function f(x: Array<{ parentDigest: null, revisionCount: 0 }>) {}\n',
@@ -107,23 +134,26 @@ describe('the lineage-ownership scanner', () => {
 	})
 
 	// 44
-	it('reports an allowlist entry with no file, on a whole-tree scan only', () => {
+	it('reports a writer entry with no file, on a whole-tree scan only', () => {
 		// `EMIT` supplies a file so only `REDUCE` is genuinely missing from the
-		// three-member allowlist.
+		// three-member writer list.
 		const files = new Map([
 			[SEAL, BOTH_WRITES],
 			[EMIT, BOTH_WRITES],
 		])
-		expect(scanLineageWrites(files, { wholeTree: false })).toEqual([])
-		const whole = scanLineageWrites(files, { wholeTree: true })
+		const options = { wholeTree: false }
+		expect(scanFieldOwnership(files, ourRules, scanner, options)).toEqual([])
+		const whole = scanFieldOwnership(files, ourRules, scanner, {
+			wholeTree: true,
+		})
 		expect(whole).toHaveLength(1)
 		expect(whole[0]?.file).toBe(REDUCE)
-		expect(whole[0]?.rule).toContain('no such file exists')
+		expect(whole[0]?.rule).toContain('no such file was scanned')
 	})
 
 	// 45. Without this rule the one supported way to set the fields is the one
 	// way the scanner cannot see.
-	it('reports reviseArtifact whether it is called, imported, or aliased', () => {
+	it('reports a declared helper whether it is called, imported, or aliased', () => {
 		expect(
 			subjects({ [OTHER]: 'const n = reviseArtifact(p, b, x)\n' }),
 		).toEqual(['reviseArtifact'])
@@ -154,7 +184,7 @@ describe('the lineage-ownership scanner', () => {
 	// 47. A computed key, a bracket assignment, `Object.defineProperty`, and
 	// `Reflect.set` all reach the field through a string and are one shape here.
 	// A backtick-quoted key is the same route.
-	it('reports a lineage field named as a string', () => {
+	it('reports an owned field named as a string', () => {
 		expect(
 			subjects({ [OTHER]: 'const o = { ["parentDigest"]: d }\n' }),
 		).toEqual(['parentDigest'])
@@ -182,8 +212,6 @@ describe('the lineage-ownership scanner', () => {
 					'const n = parent.revisionCount + 1\nconst o = { a: parent.parentDigest }\nconst { parentDigest, revisionCount } = artifact\nfunction f(parentDigest: string) {}\n',
 			}),
 		).toEqual([])
-		// A name bound by a destructuring and used later, which is how `emit`
-		// will read the two fields to serialize them.
 		expect(
 			subjects({
 				[OTHER]:
@@ -196,8 +224,6 @@ describe('the lineage-ownership scanner', () => {
 		expect(
 			subjects({ [OTHER]: 'type Row = { revisionCount: number }\n' }),
 		).toEqual(['revisionCount'])
-		// The formats this repository's own formatter writes: members separated
-		// by a line break, often behind `readonly`.
 		expect(
 			subjects({
 				[OTHER]:
@@ -210,15 +236,11 @@ describe('the lineage-ownership scanner', () => {
 					'interface Row {\n\tparentDigest: string | null\n\trevisionCount: number\n}\n',
 			}),
 		).toEqual(['parentDigest', 'revisionCount'])
-		// A variable's own annotation is a type position, and the name before
-		// its colon is a binding rather than a member.
 		expect(
 			synthetic({ [OTHER]: 'const a: { parentDigest: string } = x\n' }).map(
 				(each) => each.rule.includes('type position'),
 			),
 		).toEqual([true])
-		// A destructured parameter carries no marker separating it from an
-		// object literal argument, so it stays reported.
 		expect(
 			subjects({
 				[OTHER]: 'const f = ({ parentDigest }: L) => parentDigest\n',
@@ -226,9 +248,7 @@ describe('the lineage-ownership scanner', () => {
 		).toEqual(['parentDigest'])
 	})
 
-	// 50. A `{` after a colon is a type annotation, unless the name before that
-	// colon is itself a member. Without the second half a writer module nesting
-	// its two fields under a sub-object would fail its own gate.
+	// 50
 	it('reads a nested value literal as a value', () => {
 		const nested =
 			'const brief = {\n\tlineage: { parentDigest: null, revisionCount: 0 },\n}\n'
@@ -242,8 +262,6 @@ describe('the lineage-ownership scanner', () => {
 				[REDUCE]: 'const b = { parentDigest: null, revisionCount: 0 }\n',
 			}),
 		).toEqual([])
-		// A ternary's middle arm also sits before a colon, and its right arm is
-		// a value.
 		for (const ternary of [
 			'const brief = flag ? base : { parentDigest: null, revisionCount: 0 }\n',
 			'const brief = flag\n\t? base\n\t: { parentDigest: null, revisionCount: 0 }\n',
@@ -274,9 +292,127 @@ describe('the lineage-ownership scanner', () => {
 	})
 
 	// 49
-	it('finds nothing in the real tree', async () => {
-		const repoRoot = fileURLToPath(new URL('../../', import.meta.url))
-		const files = await discoverSourceFiles(repoRoot)
-		expect(scanLineageWrites(files, { wholeTree: true })).toEqual([])
+	it('finds nothing in the real tree, through the published entry point', async () => {
+		const report = await runFieldOwnership(repoRoot, ours)
+		expect(report.violations).toEqual([])
+		expect(report.scanned).toBeGreaterThanOrEqual(90)
+	}, 30_000)
+})
+
+describe('the writer list this repository declares', () => {
+	// JSON is data and the derivation is a computation over a TypeScript table,
+	// so a consumer-facing configuration cannot call it. The list is transcribed
+	// and this is the gate the drift fails at: a stage that starts minting, or
+	// one that stops, moves `LINEAGE_WRITER_MODULES` and fails here until the
+	// configuration moves with it.
+	it('matches the stage table it is transcribed from', () => {
+		expect([...ours.writers].sort()).toEqual([...LINEAGE_WRITER_MODULES].sort())
+	})
+})
+
+describe('the dependency this gate needs', () => {
+	const notFound = () =>
+		Promise.reject(
+			Object.assign(new Error("Cannot find package 'typescript'"), {
+				code: 'ERR_MODULE_NOT_FOUND',
+			}),
+		)
+
+	it('refuses by name, naming the dependency and the gate', async () => {
+		const failure = await loadTokenScanner('field-ownership', notFound).then(
+			() => null,
+			(error: unknown) => error as Error & { code?: string },
+		)
+		expect(failure?.code).toBe(TYPESCRIPT_UNAVAILABLE)
+		expect(failure?.message).toContain('typescript')
+		expect(failure?.message).toContain('field-ownership')
+	})
+
+	// A bug inside the tokenizer is not a missing dependency, and swallowing one
+	// as the other would report an install problem for a crash.
+	it('rethrows anything that is not a resolution failure', async () => {
+		const boom = new Error('the tokenizer threw')
+		await expect(
+			loadTokenScanner('field-ownership', () => Promise.reject(boom)),
+		).rejects.toBe(boom)
+	})
+})
+
+describe('the consumer fixtures', () => {
+	it('passes the compliant tree', async () => {
+		const dir = `${fixtures}lineage-compliant/`
+		const report = await runFieldOwnership(dir, await sectionAt(dir))
+		expect(report.violations).toEqual([])
+		expect(report.scanned).toBe(4)
+	})
+
+	it('fails the seeded tree on the helper its configuration names', async () => {
+		const dir = `${fixtures}lineage-seeded/`
+		const report = await runFieldOwnership(dir, await sectionAt(dir))
+		expect(report.violations.map((each) => each.subject)).toEqual([
+			'bumpOwner',
+			'bumpOwner',
+		])
+		expect(report.violations.map((each) => each.file)).toEqual([
+			'src/pipeline/publish.ts',
+			'src/pipeline/publish.ts',
+		])
+		expect(report.violations.map((each) => each.line)).toEqual([1, 10])
+	})
+
+	// The recall test, and the reason the seed was worded the way it was. The
+	// seeded defect is a write that is not an assignment: `publish.ts` names no
+	// owned field, spells none as a string and assigns nothing, and both fields
+	// move through a helper one directory away in a declared path. Every one of
+	// the scanner's triggers is a name somebody wrote down, so a second helper is
+	// a write with no word in the vocabulary until the configuration gains the
+	// word. Drop `bumpOwner` from the helper list and the tree reports clean with
+	// the defect still in it.
+	it('scans the seeded tree clean once the helper is out of the vocabulary', async () => {
+		const dir = `${fixtures}lineage-seeded/`
+		const seeded = await sectionAt(dir)
+		const report = await runFieldOwnership(dir, {
+			...seeded,
+			helpers: seeded.helpers.filter((each) => each !== 'bumpOwner'),
+		})
+		expect(report.violations).toEqual([])
+	})
+})
+
+describe('the shape of a field-ownership section', () => {
+	const base = {
+		paths: [{ path: 'src', extensions: ['.ts'] }],
+		fields: ['ownerId'],
+		writers: ['src/mint.ts'],
+	}
+
+	it('defaults the two optional lists to empty', () => {
+		const parsed = FieldOwnershipSection.parse(base)
+		expect(parsed.declarations).toEqual([])
+		expect(parsed.helpers).toEqual([])
+	})
+
+	it('refuses a name that is both a field and a helper', () => {
+		const result = FieldOwnershipSection.safeParse({
+			...base,
+			helpers: ['ownerId'],
+		})
+		expect(result.success).toBe(false)
+	})
+
+	it('refuses a field name the tokenizer could not match as one token', () => {
+		expect(
+			FieldOwnershipSection.safeParse({ ...base, fields: ['a.b'] }).success,
+		).toBe(false)
+		expect(
+			FieldOwnershipSection.safeParse({ ...base, fields: ['"ownerId"'] })
+				.success,
+		).toBe(false)
+	})
+
+	it('refuses an empty writer list', () => {
+		expect(
+			FieldOwnershipSection.safeParse({ ...base, writers: [] }).success,
+		).toBe(false)
 	})
 })

@@ -24,12 +24,31 @@
 import { readFile } from 'node:fs/promises'
 import { isAbsolute, resolve } from 'node:path'
 import { z } from 'zod'
+import type { DependencyDirectionConfig } from './check-dependency-direction.ts'
+import { DependencyDirectionSection } from './check-dependency-direction.ts'
+import type { FieldOwnershipConfig } from './lineage-ownership.ts'
+import { FieldOwnershipSection } from './lineage-ownership.ts'
+import type { PackageBoundaryConfig } from './package-boundary.ts'
+import { PackageBoundarySection } from './package-boundary.ts'
 
 /** The file a consumer writes, resolved against the directory the gate runs in. */
 export const DEFAULT_CONFIG_FILE = 'eval-quality.config.json'
 
-/** The gates this build publishes, in the order the usage text lists them. */
-export const GATE_NAMES = ['lockfile-age', 'licences'] as const
+/**
+ * The gates this build publishes, in the order the usage text lists them.
+ *
+ * Three of the five keep their schema in the gate module rather than here, so
+ * that a module reachable only after `typescript` has been probed still declares
+ * its own section. Importing those schemas is safe on any load path: each of the
+ * three reaches `typescript` through a dynamic import and nothing else.
+ */
+export const GATE_NAMES = [
+	'lockfile-age',
+	'licences',
+	'dependency-direction',
+	'package-boundary',
+	'field-ownership',
+] as const
 
 export type GateName = (typeof GATE_NAMES)[number]
 
@@ -198,6 +217,9 @@ export const GateConfiguration = z
 	.object({
 		'lockfile-age': LockfileAgeSection.optional(),
 		licences: LicencesSection.optional(),
+		'dependency-direction': DependencyDirectionSection.optional(),
+		'package-boundary': PackageBoundarySection.optional(),
+		'field-ownership': FieldOwnershipSection.optional(),
 	})
 	.describe(
 		"The gates this repository has chosen to run, keyed by gate name. Incremental adoption is structural: the file carries only the gates you have adopted, and configuring a gate is what opts into it. A gate you invoke with no section here refuses by name; it falls back to nobody else's values.",
@@ -343,3 +365,18 @@ export const loadLicencesConfig = (
 	options: GateConfigOptions = {},
 ): Promise<GateConfigResult<LicencesConfig>> =>
 	loadSection('licences', LicencesSection, options)
+
+export const loadDependencyDirectionConfig = (
+	options: GateConfigOptions = {},
+): Promise<GateConfigResult<DependencyDirectionConfig>> =>
+	loadSection('dependency-direction', DependencyDirectionSection, options)
+
+export const loadPackageBoundaryConfig = (
+	options: GateConfigOptions = {},
+): Promise<GateConfigResult<PackageBoundaryConfig>> =>
+	loadSection('package-boundary', PackageBoundarySection, options)
+
+export const loadFieldOwnershipConfig = (
+	options: GateConfigOptions = {},
+): Promise<GateConfigResult<FieldOwnershipConfig>> =>
+	loadSection('field-ownership', FieldOwnershipSection, options)

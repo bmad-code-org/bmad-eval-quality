@@ -1,0 +1,26 @@
+{
+	"package-boundary": {
+		"paths": [{ "path": "src", "extensions": [".ts"] }],
+		"manifest": {
+			"file": "manifest.json",
+			"fields": ["description", "keywords", "scripts"]
+		},
+		"patterns": [
+			{
+				"name": "unpublished-path",
+				"match": "\\b(?:scripts|tests|tooling|\\.github)/",
+				"reason": "a directory the published file list does not carry, so a reader of the installed package cannot open what the sentence points at"
+			},
+			{
+				"name": "build-machine-path",
+				"match": "(?:/Users/|/home/|/root/)",
+				"reason": "an absolute path from the machine that built the package"
+			},
+			{
+				"name": "internal-tracker",
+				"match": "(?:JIRA-|INTERNAL-)\\d",
+				"reason": "an issue identifier only this team can resolve"
+			}
+		]
+	}
+}

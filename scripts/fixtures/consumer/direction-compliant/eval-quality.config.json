@@ -1,0 +1,59 @@
+{
+	"dependency-direction": {
+		"roots": [{ "path": "lib", "extensions": [".ts"] }],
+		"layers": [
+			{
+				"name": "entry",
+				"match": "exact",
+				"path": "lib/index.ts",
+				"label": "lib/index.ts",
+				"imports": ["service", "model-schema"]
+			},
+			{
+				"name": "model-schema",
+				"match": "prefix",
+				"path": "lib/model/schema/",
+				"label": "model/schema/",
+				"imports": ["model-schema"],
+				"externals": {
+					"policy": "deny",
+					"rule": "model/schema/ declares shapes and imports nothing outside this tree"
+				}
+			},
+			{
+				"name": "model",
+				"match": "prefix",
+				"path": "lib/model/",
+				"label": "model/",
+				"imports": ["model", "model-schema"],
+				"externals": {
+					"policy": "deny",
+					"rule": "model/ is pure and imports nothing outside this tree"
+				}
+			},
+			{
+				"name": "service",
+				"match": "prefix",
+				"path": "lib/service/",
+				"label": "service/",
+				"imports": ["service", "model", "model-schema"]
+			}
+		],
+		"purity": {
+			"layers": ["model", "model-schema"],
+			"awaitRule": "no await under model/; service/ is where I/O happens",
+			"asyncFunctionRule": "no async function under model/; model functions are synchronous",
+			"newDateRule": "no clock read under model/: new Date() is impurity",
+			"members": [
+				{
+					"member": "Date.now",
+					"rule": "no clock read under model/: Date.now is impurity"
+				},
+				{
+					"member": "Math.random",
+					"rule": "no randomness under model/: Math.random is impurity"
+				}
+			]
+		}
+	}
+}

@@ -1,0 +1,10 @@
+{
+	"name": "reading-reducer",
+	"private": true,
+	"description": "Folds readings into one total. The rounding rule is in README.md.",
+	"keywords": ["readings", "reduce"],
+	"scripts": {
+		"build": "tsc -p tsconfig.json",
+		"test": "vitest run"
+	}
+}

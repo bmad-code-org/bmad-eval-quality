@@ -95,6 +95,7 @@ import { InteractionStep } from '../src/core/schemas/plan.ts'
 import { PROBE_SCHEMA_VERSION } from '../src/core/schemas/probe.ts'
 import { ManifestationWitness } from '../src/core/schemas/sensitivity-witness.ts'
 import { QUALIFICATION_FAILURES } from '../src/core/score/qualification.ts'
+import { ORDERING_WITNESS_VIOLATIONS } from './check-dependency-direction.ts'
 import { GateConfiguration } from './gate-config.ts'
 
 const repoRoot = new URL('../', import.meta.url)
@@ -442,6 +443,11 @@ const FOREIGN_IDENTIFIERS: readonly {
 		token: 'windowDays',
 		reason:
 			'a setting in the consumer gate configuration, declared by the schema in scripts/gate-config.ts and so outside src/',
+	},
+	{
+		token: 'reportOnly',
+		reason:
+			"a setting in the dependency-direction gate's section, declared by the schema in scripts/check-dependency-direction.ts and so outside src/",
 	},
 ]
 
@@ -944,6 +950,29 @@ const REGEX_STEP_BUDGET = 1_000_000
 
 const TOOL_USE_ROUTE_KEY = 'was run end to end against the built CLI at'
 
+const ORDERING_WITNESS_KEY = 'swapping those two rows reports'
+
+/**
+ * The direction gate's ordering witness, stated on its page as a measurement of
+ * this repository's own tree and so read as a dated claim.
+ *
+ * It is settled by the constant rather than by a reading:
+ * `dependency-direction.test.ts` swaps the two nesting layer rows against the
+ * real tree and asserts `ORDERING_WITNESS_VIOLATIONS`, and `check-doc-counts`
+ * holds the page's numeral against the same constant. What is left for this gate
+ * is the sentence's own shape, so a rewrite that drops the numeral fails here
+ * instead of leaving the count entry dead.
+ */
+const orderingWitnessIsStated = (file: string): boolean => {
+	const line =
+		(pageText.get(file) ?? []).find((each) =>
+			each.includes(ORDERING_WITNESS_KEY),
+		) ?? ''
+	return line.includes(
+		`${ORDERING_WITNESS_KEY} ${ORDERING_WITNESS_VIOLATIONS} violations`,
+	)
+}
+
 /** The record the tool-use route's reading is written down in. */
 const toolUseRouteRecord = await readFile(
 	pathOf(
@@ -953,6 +982,16 @@ const toolUseRouteRecord = await readFile(
 )
 
 const DATED_CLAIMS: readonly DatedClaim[] = [
+	{
+		file: 'docs/how-to/run-the-gates-on-your-repository.md',
+		key: ORDERING_WITNESS_KEY,
+		settles: () =>
+			orderingWitnessIsStated(
+				'docs/how-to/run-the-gates-on-your-repository.md',
+			),
+		reason:
+			"the number is `ORDERING_WITNESS_VIOLATIONS`, which `dependency-direction.test.ts` measures against this repository's own tree and `check-doc-counts` holds the page against",
+	},
 	{
 		file: 'docs/index.md',
 		key: 'Three interface kinds compile today',
@@ -1326,7 +1365,8 @@ const FENCES: readonly FenceEntry[] = [
 	{
 		file: 'docs/how-to/run-the-gates-on-your-repository.md',
 		claim: 'the worked gate configuration',
-		intro: /A file configuring both gates parses against the published schema:/,
+		intro:
+			/A file configuring all five gates parses against the published schema:/,
 		schema: GateConfiguration,
 		shape: 'one',
 	},
