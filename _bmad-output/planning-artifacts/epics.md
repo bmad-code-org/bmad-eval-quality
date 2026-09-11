@@ -1209,6 +1209,10 @@ The split is by dependency rather than by size, which is the only basis on which
 **When** the fixtures are built,
 **Then** each shipped gate has a compliant fixture it passes and a seeded fixture it fails, and at least one seed per gate is worded deliberately from outside the trigger vocabulary, so the seed tests recall rather than confirming the pattern already written. This is the story's weight-bearing criterion and the fixtures are the story rather than its verification.
 
+**Given** the strongest instance of that criterion found so far, where both supply-chain gates pinned a lockfile entry's `resolved` to the registry host and passed a substitution that kept the host and changed the path, while the seeded fixture exercised a foreign host and so could not describe it,
+**When** each remaining gate is published,
+**Then** the question is asked of it explicitly and answered in the story: name a real defect of this gate's class that the gate's own vocabulary has no word for, and seed that one. A gate's vocabulary is what its author was thinking about, so the defect it cannot describe is the one its seeds will not reach. `check-doc-claims` missed a release announcement for two major versions for the same reason, because its verbs were a verification's and a release is announced with none of them.
+
 **Given** `check-package-boundary.ts` scans `package.json`'s `scripts` against twelve forbidden patterns,
 **When** scripts are added for the published gates,
 **Then** their names avoid those patterns, and the exit convention is normalized across the set, since two gates set `process.exitCode` and six call `process.exit`, which truncates a pending stdout write.

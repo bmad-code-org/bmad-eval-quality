@@ -1,0 +1,9 @@
+{
+	"lockfile-age": {
+		"lockfiles": ["package-lock.json"]
+	},
+	"licences": {
+		"lockfiles": ["package-lock.json"],
+		"allowlist": ["MIT", "Apache-2.0", "ISC", "BSD-3-Clause"]
+	}
+}

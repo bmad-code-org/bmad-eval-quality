@@ -24,7 +24,10 @@
 import { readFile } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
 import process from 'node:process'
-import { auditLockfileAge } from './audit-lockfile-age.mjs'
+import {
+	auditLockfileAge,
+	LOCKFILE_SHAPE_ERROR,
+} from './audit-lockfile-age.mjs'
 import { checkLicenses } from './check-licenses.mjs'
 import type {
 	GateName,
@@ -253,6 +256,7 @@ async function runLockfileAge(
 			lockfile,
 			now,
 			windowDays: section.windowDays,
+			source: relative,
 		})) as unknown as AgeReport
 
 		if (
@@ -339,6 +343,7 @@ async function runLicences(
 			allowlist,
 			label,
 			tolerances: applicable,
+			source: relative,
 		}) as unknown as LicenceReport
 
 		if (report.violations.length === 0) {
@@ -413,6 +418,19 @@ async function main(argv: readonly string[]): Promise<void> {
 	} catch (error) {
 		if (error instanceof ConfigurationError) {
 			writeDiagnostic(`${BINARY}: ${error.message}`)
+			process.exitCode = EXIT_USAGE
+			return
+		}
+		// A lockfile this gate cannot read is a configuration error, so it takes
+		// the usage code. Sharing an exit code with a real violation would let
+		// "scanned nothing" and "found nothing" answer a caller the same way,
+		// which is the pass this refusal exists to stop.
+		if (
+			error !== null &&
+			typeof error === 'object' &&
+			(error as { code?: unknown }).code === LOCKFILE_SHAPE_ERROR
+		) {
+			writeDiagnostic(`${BINARY}: ${(error as Error).message}`)
 			process.exitCode = EXIT_USAGE
 			return
 		}

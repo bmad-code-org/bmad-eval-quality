@@ -4431,7 +4431,7 @@ Three were bare integers typed into the code that writes the artifact. Five were
 
 **Rules:**
 
-- Hold a constant against the parser, never against a second copy of itself. A fixture built at the constant must parse and one built at the constant minus one must not, and both are built from the constant.
+- Hold a constant against the parser. A fixture built at the constant must parse and one built at the constant minus one must not, and both are built from the constant.
 - Key the per-version builders by integer literals. Reading the constant into the key makes the current case exist by construction, and then a bump with no shape behind it passes.
 - A number that lives only in prose is a number every caller transcribes. Prose cannot be imported and cannot be compared.
 - Bound a source walk at the literal's own closing brace. A fixed window ran past three literals that spread a base and carry no stamp, and reported the next artifact's stamp as theirs.
@@ -4446,7 +4446,7 @@ Three were bare integers typed into the code that writes the artifact. Five were
 
 **What:** a second binary, `eval-quality-gates`, emitted into `dist/gates/` by its own tsconfig, dispatching on `argv[2]` over the gates that are published. The first two are the lockfile-age audit and the licence scan. Each reads its rules from one JSON file in the consumer's repository, validated by a Zod schema the package ships. This repository's own allowlist, its website policy and its one scoped exception moved into its own `eval-quality.config.json`, so `npm run validate` runs both gates through the published path.
 
-**Why:** a gate whose rules are one repository's decisions expressed as code cannot be published. Publishing it means turning those rules into data the consumer supplies, and then the gate is a mechanism rather than a policy.
+**Why:** a gate whose rules are one repository's decisions expressed as code cannot be published. Publishing it means turning those rules into data the consumer supplies, and then the gate is a mechanism.
 
 **Read in this order:**
 
@@ -4460,12 +4460,14 @@ Three were bare integers typed into the code that writes the artifact. Five were
 
 **Rules:**
 
-- Widen a build by adding a second tsconfig, never by widening the first. Moving `rootDir` shifts every emitted path and breaks `main`, `types`, `bin` and every `exports` target at once.
+- Widen a build by adding a second tsconfig. Moving the first one's `rootDir` shifts every emitted path and breaks `main`, `types`, `bin` and every `exports` target at once.
 - A gate with no configuration refuses by name. A fallback to the publisher's own values is a gate that passes for a reason the consumer never chose.
 - Validate one named section per call. Parsing the whole document blocks the gate you are running on a gate you are not.
 - Let a setting carry its own reason. A policy that widens an allowlist and an exception that tolerates a licence both state why in the file that declares them.
 - Make an exception name the condition that makes it sound. A marker naming a file and the text in it withdraws the exception on the day that text goes.
 - Resolve every path in a configuration against the configuration file. A file that means one thing from the repository root and another from a subdirectory is a file nobody can test.
 - Write one seed per gate from outside its trigger vocabulary. A seed sharing an author and an afternoon with the rule it trips confirms the rule and measures no recall.
+- Declare a default once and let every path inherit it. A configuration restating the schema's default, and a CI assertion spelling the number, are copies somebody has to keep in step.
+- Run at least one gate through the built binary inside `validate`. A gate invoked from source holds the code and says nothing about the artifact a consumer installs.
 
-**Watch out:** a gate that runs before `npm ci` may import nothing from `node_modules`, so the two flag-driven `.mjs` entry points stay free of the Zod-backed loader and the window default is declared twice with a case holding the two equal.
+**Watch out:** a gate that runs before `npm ci` may import nothing from `node_modules`, so the two `.mjs` gate modules stay free of the Zod-backed loader and the window default is declared twice with a case holding the two equal.

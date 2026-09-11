@@ -47,14 +47,15 @@ export const LOCKFILE_WINDOW_DAYS_DEFAULT = 7
 const NonEmpty = z.string().min(1)
 
 /**
- * An SPDX short identifier. The charset admits `MIT`, `Apache-2.0`, `0BSD` and
+ * An SPDX short identifier, for the allowlist and for a tolerance's one added
+ * identifier. The charset admits `MIT`, `Apache-2.0`, `0BSD` and
  * `LGPL-3.0-or-later`, and refuses `@` and `/`, so a `name@version` pin cannot
- * be written here. An allowlist entry names a licence; a version pin would be a
- * value a hand maintains in step with the dependency graph.
+ * be written here. Both settings name a licence; a version pin would be a value
+ * a hand maintains in step with the dependency graph.
  */
 const SpdxIdentifier = NonEmpty.regex(
 	/^[A-Za-z0-9][A-Za-z0-9.+-]*$/,
-	'is not an SPDX short identifier: the allowlist takes identifiers such as MIT or Apache-2.0, and a package-and-version pin is not one',
+	'is not an SPDX short identifier: this setting takes identifiers such as MIT or Apache-2.0, and a package-and-version pin is not one',
 )
 
 const LockfileAgeSection = z
@@ -67,14 +68,14 @@ const LockfileAgeSection = z
 			),
 		windowDays: z
 			.int()
-			.min(0)
+			.min(1)
 			.default(LOCKFILE_WINDOW_DAYS_DEFAULT)
 			.describe(
-				'How old an entry has to be, in days. A duration, so nothing here goes stale as time passes.',
+				'How old an entry has to be, in days, and at least 1. A duration, so nothing here goes stale as time passes. Zero puts the cutoff at the instant of the run, admits a package published that same instant, and still reports that every entry was published before the cutoff.',
 			),
 	})
 	.describe(
-		'Fails on a locked entry published inside the window, on metadata that could not be fetched, and on an entry that does not resolve to the npm registry at all.',
+		"Fails on a locked entry published inside the window, on metadata that could not be fetched, and on an entry whose resolved URL is not that entry's own tarball on the npm registry.",
 	)
 
 /**
@@ -96,9 +97,10 @@ const LicencePolicy = z.strictObject({
 })
 
 /**
- * A scoped exception, and it is not an allowlist entry: it names a family of
- * packages by prefix, the licence text tolerated inside them, and the condition
- * under which the exception holds at all.
+ * A scoped exception: a family of packages named by prefix, the one identifier
+ * the allowlist gains inside that family, and the condition under which the
+ * exception holds at all. It is narrower than an allowlist entry, which applies
+ * to every package in the lockfile and carries no condition.
  */
 const LicenceTolerance = z.strictObject({
 	reason: NonEmpty.describe(
@@ -111,8 +113,8 @@ const LicenceTolerance = z.strictObject({
 	prefix: NonEmpty.describe(
 		'The package-name prefix the exception covers. A prefix, so no version is pinned here.',
 	),
-	license: NonEmpty.describe(
-		"The licence text the exception tolerates, matched as a substring of the entry's licence expression.",
+	license: SpdxIdentifier.describe(
+		'The one identifier this exception adds to the allowlist, for this family of packages alone. The expression is then read by the rule every other entry is read by, so an AND still needs every operand covered and a WITH compound still has to be listed exactly.',
 	),
 	optional: z
 		.boolean()
@@ -153,14 +155,40 @@ const LicencesSection = z
 			.optional()
 			.describe('Scoped exceptions, each carrying its own reason.'),
 	})
+	// `policies` is keyed by lockfile path and every tolerance names the lockfiles
+	// it applies to, both by the same string `lockfiles` names them by. A value
+	// matching no declared lockfile loads clean and applies to nothing, so a typo
+	// like "pacakge-lock.json" reads as a policy that was written and never runs.
+	// Keeping those three lists in step by hand is the class of setting this format
+	// does not have, so a name matching nothing is refused here.
+	.superRefine((section, ctx) => {
+		const declared = new Set(section.lockfiles)
+		const requireDeclared = (named: string, path: PropertyKey[]): void => {
+			if (declared.has(named)) return
+			ctx.addIssue({
+				code: 'custom',
+				path,
+				message: `names "${named}", which is not one of the lockfiles this section declares: ${section.lockfiles.join(', ')}`,
+			})
+		}
+		for (const key of Object.keys(section.policies ?? {})) {
+			requireDeclared(key, ['policies', key])
+		}
+		section.tolerances?.forEach((tolerance, index) => {
+			tolerance.lockfiles.forEach((named, position) => {
+				requireDeclared(named, ['tolerances', index, 'lockfiles', position])
+			})
+		})
+	})
 	.describe(
-		"Holds every locked entry's licence expression against an allowlist of SPDX identifiers, and fails on an entry that does not resolve to the npm registry.",
+		"Holds every locked entry's licence expression against an allowlist of SPDX identifiers, and fails on an entry whose resolved URL is not that entry's own tarball on the npm registry.",
 	)
 
 /**
  * The whole document, as one schema. It is where the format states its own
- * incremental-adoption property, and `check-doc-claims.ts` parses the
- * documented example through it so the page a consumer copies is held.
+ * incremental-adoption property, and its one consumer is `check-doc-claims.ts`,
+ * which parses the documented example through it so the page a consumer copies
+ * is held to the format it describes.
  *
  * The loader never uses it. Validating the document whole would block a gate
  * the caller is running on a gate it is not, which is the opposite of the

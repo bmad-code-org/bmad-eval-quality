@@ -51,10 +51,10 @@ body.
   your repository root, or any path you give to `--config`, keyed by gate name and validated by a
   published Zod schema. It carries only the gates you have adopted: configuring a gate is what opts
   into it, and a gate you invoke with no section for it refuses by name with no fallback to this
-  package's own values. Nothing in it is a value a hand maintains in step with something else: the
-  age threshold is a duration and the allowlist takes licence identifiers whose charset refuses a
-  package-and-version pin. Every path a section names is relative to the configuration file.
-  `docs/how-to/run-the-gates-on-your-repository.md` is the page for it.
+  package's own values. Two of its settings stay out of the class a hand maintains in step with
+  something else: the age threshold is a duration, and the allowlist takes licence identifiers
+  whose charset refuses a package-and-version pin. Every path a section names is relative to the
+  configuration file. `docs/how-to/run-the-gates-on-your-repository.md` is the page for it.
 
 ## [3.0.0] - 2026-09-10
 

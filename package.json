@@ -103,7 +103,7 @@
     "check:worked-example": "node scripts/check-worked-example.ts",
     "generate:version": "node scripts/generate-version.ts",
     "check:version": "node scripts/check-version.ts",
-    "check:lockfile-age": "node scripts/gates-cli.ts lockfile-age",
+    "check:lockfile-age": "node dist/gates/gates-cli.js lockfile-age",
     "check:licences": "node scripts/gates-cli.ts licences",
     "check:shareable": "node scripts/check-shareable.mjs",
     "bench:digest": "node scripts/bench-digest.ts",

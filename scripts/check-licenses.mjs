@@ -1,6 +1,6 @@
 // Holds every entry in a resolved lockfile against an allowlist of SPDX
-// identifiers, and fails closed on an entry that does not resolve to the npm
-// registry.
+// identifiers, and fails closed on an entry whose `resolved` is not the registry
+// tarball for that entry's own name and version.
 //
 // Reads `package-lock.json` directly rather than walking `node_modules`: the
 // lockfile records a `license` field for every entry, including optional
@@ -16,6 +16,31 @@
 // hold.
 
 const REGISTRY_PREFIX = 'https://registry.npmjs.org/'
+
+/**
+ * `error.code` on the refusal a caller repairs by pointing the gate at a real
+ * lockfile. `audit-lockfile-age.mjs` exports the same string and
+ * `tests/architecture/published-gates.test.ts` holds the two equal: neither gate
+ * may import from `node_modules` and there is no module between them, so the
+ * constant is declared twice for the reason `WINDOW_DAYS_DEFAULT` is.
+ */
+export const LOCKFILE_SHAPE_ERROR = 'EVAL_QUALITY_LOCKFILE_SHAPE'
+
+function refuseLockfileShape(message) {
+	const error = new Error(message)
+	error.code = LOCKFILE_SHAPE_ERROR
+	return error
+}
+
+// The one URL the public registry serves `name@version` from. A scoped name's
+// tarball basename is the segment after the slash, so `@scope/pkg` at 1.0.0 is
+// `https://registry.npmjs.org/@scope/pkg/-/pkg-1.0.0.tgz`.
+function registryTarballUrl(name, version) {
+	const basename = name.startsWith('@')
+		? name.slice(name.indexOf('/') + 1)
+		: name
+	return `${REGISTRY_PREFIX}${name}/-/${basename}-${version}.tgz`
+}
 
 // Strips a single layer of balanced outer parentheses at a time, e.g. "(MIT OR Apache-2.0)" ->
 // "MIT OR Apache-2.0". Only strips when the opening paren's match is the expression's final
@@ -94,14 +119,19 @@ function licenseStringOf(meta) {
 }
 
 // One scoped exception, applied to one entry. `prefix` names a family of
-// packages and `license` is matched as a substring, because the shapes this
-// covers are platform binaries whose licence expression carries the copyleft
-// term among others. The caller has already decided this exception applies to
-// this lockfile and that its marker still holds.
-function isTolerated(tolerance, meta, name, license) {
+// packages and `license` is the single identifier the exception adds to the
+// allowlist for that family; the expression is then read by the rule every other
+// entry is read by. So an AND still needs every operand covered and a WITH
+// compound still has to sit in the list exactly: `Apache-2.0 AND
+// LGPL-3.0-or-later` is tolerated where the exception names the LGPL term and
+// the allowlist carries Apache-2.0, and `LGPL-3.0-or-later AND AGPL-3.0-only` is
+// not. A substring test here kept tolerating a family the day its expression
+// widened to carry a term nobody agreed to. The caller has already decided this
+// exception applies to this lockfile and that its marker still holds.
+function isTolerated(tolerance, meta, name, license, allowlist) {
 	if (!name.startsWith(tolerance.prefix)) return false
 	if (tolerance.optional !== false && meta.optional !== true) return false
-	return typeof license === 'string' && license.includes(tolerance.license)
+	return isAllowed(license, new Set([...allowlist, tolerance.license]))
 }
 
 // Resolves how npm's hoisting algorithm would look up dependency `name` starting from the package
@@ -193,6 +223,9 @@ function findDependencyPath(packages, edges, targetPath) {
  * `options.allowlist` is required and has no default. An absent allowlist either
  * fails every entry or silently permits every entry, and a gate that picks one
  * of those on the caller's behalf is the fallback this package does not have.
+ *
+ * `options.source` is the path this lockfile was read from, named in the refusal
+ * a document without a `packages` object earns.
  */
 export function checkLicenses(lockfile, options = {}) {
 	const allowed = options.allowlist
@@ -204,8 +237,24 @@ export function checkLicenses(lockfile, options = {}) {
 	const allowlist = new Set(allowed)
 	const label = typeof options.label === 'string' ? options.label : 'allowlist'
 	const tolerances = options.tolerances ?? []
+	const source =
+		typeof options.source === 'string' ? options.source : 'the lockfile'
 
-	const packages = lockfile.packages ?? {}
+	// Every entry is read from `packages`, which npm writes from lockfileVersion 2
+	// onward. Defaulting it to {} turned an npm 6 lockfile, or a path naming
+	// something that is not a lockfile at all, into a run that reported success
+	// over zero entries: a gate that scanned nothing, in the words of a gate that
+	// passed.
+	const packages = lockfile?.packages
+	if (
+		packages === null ||
+		typeof packages !== 'object' ||
+		Array.isArray(packages)
+	) {
+		throw refuseLockfileShape(
+			`check-licenses: ${source} carries no "packages" object (lockfileVersion ${JSON.stringify(lockfile?.lockfileVersion ?? null)}); every entry is read from there, so this run would have passed over nothing. npm writes "packages" from lockfileVersion 2 onward.`,
+		)
+	}
 	// A `link: true` entry is a workspace symlink, not an installed artifact with its own licence -
 	// audit-lockfile-age.mjs already excludes these; this script should agree instead of flagging a
 	// symlink for a `license` field it was never going to have.
@@ -220,22 +269,22 @@ export function checkLicenses(lockfile, options = {}) {
 		const name = meta.name ?? pkgPath.split('node_modules/').pop()
 		const version = meta.version ?? '(unknown)'
 
-		// A lockfile edit could relabel a package's `license` field while `resolved` (or `npm ci`
-		// itself) still pulls the tarball from somewhere else entirely. Validating the self-reported
-		// licence string without also pinning `resolved` to the real registry would validate the
-		// wrong artifact and pass a substituted package.
-		if (
-			!(
-				typeof meta.resolved === 'string' &&
-				meta.resolved.startsWith(REGISTRY_PREFIX)
-			)
-		) {
+		// `resolved` is the URL `npm ci` fetches, and `integrity` is checked against
+		// whatever that URL returns, so an entry can declare one package and install
+		// another. Pinning the host alone left that open: an entry naming
+		// `lodash@4.17.21` and resolving to `attacker-pkg-9.9.9.tgz` on
+		// registry.npmjs.org passed, and the licence being read was never the licence
+		// of the artifact being installed. Requiring `resolved` to be the one tarball
+		// URL the registry has for this entry's own name and version is what ties the
+		// two together.
+		const expected = registryTarballUrl(name, version)
+		if (meta.resolved !== expected) {
 			violations.push({
 				path: pkgPath,
 				name,
 				version,
 				license: meta.license ?? null,
-				reason: `resolved=${JSON.stringify(meta.resolved)} is not the npm registry`,
+				reason: `resolved=${JSON.stringify(meta.resolved ?? null)} is not ${name}@${version}'s registry tarball ${expected}`,
 			})
 			continue
 		}
@@ -243,7 +292,7 @@ export function checkLicenses(lockfile, options = {}) {
 		const license = licenseStringOf(meta)
 		if (isAllowed(license, allowlist)) continue
 		const tolerance = tolerances.find((candidate) =>
-			isTolerated(candidate, meta, name, license),
+			isTolerated(candidate, meta, name, license, allowlist),
 		)
 		if (tolerance !== undefined) {
 			tolerated.push(`${name}@${version}`)

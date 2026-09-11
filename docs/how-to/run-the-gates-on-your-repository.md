@@ -45,7 +45,19 @@ A file configuring both gates parses against the published schema:
         "reason": "the site is private, ships as static HTML, and redistributes none of the covered files",
         "also": ["MPL-2.0"]
       }
-    }
+    },
+    "tolerances": [
+      {
+        "reason": "the image binaries are optional, the site selects a passthrough image service, and they are never loaded",
+        "lockfiles": ["site/package-lock.json"],
+        "prefix": "@img/sharp-",
+        "license": "LGPL-3.0-or-later",
+        "marker": {
+          "file": "site/astro.config.mjs",
+          "contains": "passthroughImageService"
+        }
+      }
+    ]
   }
 }
 ```
@@ -89,8 +101,10 @@ That last rule is what makes `Apache-2.0 WITH LLVM-exception` fail against an al
 `policies` is keyed by lockfile path, and each entry gives a label, a reason, and the identifiers that one lockfile allows on top of the allowlist.
 The additions extend the allowlist, so one list and one delta is all there is to keep in step.
 
-`tolerances` is for the exception that is not an allowlist entry: a family of packages named by prefix, the licence text tolerated inside them, and the reason it is sound.
-A tolerance may carry a marker naming a file and the text that has to be in it.
+`tolerances` holds the scoped exceptions, and every entry names four things: the `lockfiles` it applies to, the package-name prefix that marks the family, the licence text tolerated inside it, and the reason the exception is sound.
+All four are required, so a tolerance written without `lockfiles` is refused at exit `64`.
+`optional` limits the exception to entries npm recorded as optional and defaults to true, so a family that is installed unconditionally needs `"optional": false` written in.
+A tolerance may also carry a marker naming a file and the text that has to be in it.
 The exception holds only while that marker holds, so the condition that made it sound is read on every run and the gate fails again the day that condition goes.
 
 When a violation is found the gate prints the shortest chain of require-names from your root package to the offending entry, so the report names which dependency brought it in.

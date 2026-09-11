@@ -10,22 +10,35 @@
  * has to fail anyway, and the age fixture carries no young package at all, only
  * a wholesome-looking entry resolved somewhere other than the npm registry.
  *
+ * Two further fixtures state defects neither of those can reach.
+ * `substituted-package` carries an ordinary MIT entry at an ordinary version
+ * whose `resolved` names a different package on registry.npmjs.org itself, which
+ * a host-prefix test passes and both gates have to fail. `lockfile-version-1` is
+ * an npm 6 lockfile carrying a real dependency and no `packages` key, which both
+ * gates once reported as having passed over zero entries.
+ *
  * The age gate's one effect is a registry fetch, so its compliant case supplies
  * the registry's answers through `readTimeMap` rather than reaching the network:
  * a test that needs the network fails when the network does, and says nothing
- * about the gate when it passes. Its seeded case needs no such thing, because an
- * off-registry entry is refused before any fetch is attempted.
+ * about the gate when it passes. Its seeded cases need no such thing, because an
+ * entry that does not resolve to its own registry tarball is refused before any
+ * fetch is attempted.
  */
 import { spawnSync } from 'node:child_process'
 import { existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
+import { pathToFileURL } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import {
+	LOCKFILE_SHAPE_ERROR as AGE_LOCKFILE_SHAPE_ERROR,
 	auditLockfileAge,
 	WINDOW_DAYS_DEFAULT,
 } from '../../scripts/audit-lockfile-age.mjs'
-import { checkLicenses } from '../../scripts/check-licenses.mjs'
+import {
+	checkLicenses,
+	LOCKFILE_SHAPE_ERROR as LICENCE_LOCKFILE_SHAPE_ERROR,
+} from '../../scripts/check-licenses.mjs'
 import {
 	DEFAULT_CONFIG_FILE,
 	GATE_NAMES,
@@ -70,6 +83,32 @@ const compliantTimeMaps: Readonly<Record<string, Record<string, string>>> = {
 	'@fixture-scope/toolkit': { '1.0.0': ANCIENT },
 	'fixture-dual': { '2.0.0': ANCIENT },
 }
+
+/** This repository's own `@img/sharp-` exception, as the loader hands it over. */
+const SHARP_TOLERANCE = {
+	reason: 'never loaded',
+	prefix: '@img/sharp-',
+	license: 'LGPL-3.0-or-later',
+	optional: true,
+}
+
+/** Optional platform binaries under that prefix, each at its canonical registry URL. */
+const sharpLockfile = (
+	entries: readonly (readonly [string, string, string])[],
+): unknown => ({
+	packages: Object.fromEntries([
+		['', { name: 'tolerance-fixture' }],
+		...entries.map(([name, version, license]) => [
+			`node_modules/@img/${name}`,
+			{
+				version,
+				resolved: `https://registry.npmjs.org/@img/${name}/-/${name}-${version}.tgz`,
+				license,
+				optional: true,
+			},
+		]),
+	]),
+})
 
 describe('the gate configuration loader', () => {
 	it('refuses an absent file, naming the file and the gate', async () => {
@@ -160,6 +199,97 @@ describe('the gate configuration loader', () => {
 		expect(licences.kind).toBe('section')
 	})
 
+	it('refuses a window of zero days', async () => {
+		const path = temporaryConfig(
+			JSON.stringify({
+				'lockfile-age': { lockfiles: ['package-lock.json'], windowDays: 0 },
+			}),
+		)
+		const result = await loadLockfileAgeConfig({ configPath: path })
+		expect(result.kind).toBe('refused')
+		if (result.kind !== 'refused') return
+		expect(result.message).toContain('windowDays:')
+	})
+
+	it('refuses a policies key naming a lockfile the section does not', async () => {
+		const path = temporaryConfig(
+			JSON.stringify({
+				licences: {
+					lockfiles: ['package-lock.json'],
+					allowlist: ['MIT'],
+					policies: {
+						'webiste/package-lock.json': {
+							label: 'a policy that runs on nothing',
+							reason: 'the key is a typo, so it matches no lockfile at all',
+							also: ['MPL-2.0'],
+						},
+					},
+				},
+			}),
+		)
+		const result = await loadLicencesConfig({ configPath: path })
+		expect(result.kind).toBe('refused')
+		if (result.kind !== 'refused') return
+		expect(result.message).toContain('policies.webiste/package-lock.json')
+		expect(result.message).toContain(
+			'not one of the lockfiles this section declares: package-lock.json',
+		)
+	})
+
+	it('refuses a tolerance naming a lockfile the section does not', async () => {
+		const path = temporaryConfig(
+			JSON.stringify({
+				licences: {
+					lockfiles: ['package-lock.json'],
+					allowlist: ['MIT'],
+					tolerances: [
+						{
+							reason: 'an exception that applies to nothing at all',
+							lockfiles: ['pacakge-lock.json'],
+							prefix: '@img/sharp-',
+							license: 'LGPL-3.0-or-later',
+						},
+					],
+				},
+			}),
+		)
+		const result = await loadLicencesConfig({ configPath: path })
+		expect(result.kind).toBe('refused')
+		if (result.kind !== 'refused') return
+		expect(result.message).toContain('tolerances.0.lockfiles.0')
+		expect(result.message).toContain('pacakge-lock.json')
+	})
+
+	it('refuses a tolerance whose licence is a whole expression', async () => {
+		const path = temporaryConfig(
+			JSON.stringify({
+				licences: {
+					lockfiles: ['package-lock.json'],
+					allowlist: ['MIT'],
+					tolerances: [
+						{
+							reason: 'the family declares two terms at once',
+							lockfiles: ['package-lock.json'],
+							prefix: '@img/sharp-',
+							license: 'Apache-2.0 AND LGPL-3.0-or-later',
+						},
+					],
+				},
+			}),
+		)
+		const result = await loadLicencesConfig({ configPath: path })
+		expect(result.kind).toBe('refused')
+		if (result.kind !== 'refused') return
+		expect(result.message).toContain('tolerances.0.license')
+		expect(result.message).toContain('SPDX short identifier')
+	})
+
+	it("loads this repository's own configuration", async () => {
+		const configPath = resolve('eval-quality.config.json')
+		expect((await loadLicencesConfig({ configPath })).kind).toBe('section')
+		expect((await loadLockfileAgeConfig({ configPath })).kind).toBe('section')
+	})
+
 	it('applies the window default when a section names none', async () => {
 		const result = await loadLockfileAgeConfig({
 			configPath: configOf('compliant'),
@@ -231,6 +361,37 @@ describe('the licences gate', () => {
 		)
 	})
 
+	it('fails an entry resolved to another package on the registry itself', () => {
+		const run = runGates(
+			'licences',
+			'--config',
+			configOf('substituted-package'),
+		)
+		expect(run.status).toBe(1)
+		expect(run.output).toContain('fixture-dual@2.0.0')
+		expect(run.output).toContain('fixture-substitute-9.9.9.tgz')
+		expect(run.output).toContain(
+			'https://registry.npmjs.org/fixture-dual/-/fixture-dual-2.0.0.tgz',
+		)
+	})
+
+	it('refuses a lockfile carrying no packages object, naming its version', () => {
+		expect(() =>
+			checkLicenses(lockfileOf('lockfile-version-1'), {
+				allowlist: ['MIT'],
+				source: 'package-lock.json',
+			}),
+		).toThrow(/package-lock\.json carries no "packages" object/)
+	})
+
+	it('does not report a lockfile it read nothing out of as passing', () => {
+		const run = runGates('licences', '--config', configOf('lockfile-version-1'))
+		expect(run.status).not.toBe(0)
+		expect(run.output).toContain('carries no "packages" object')
+		expect(run.output).toContain('lockfileVersion 1')
+		expect(run.output).not.toContain('0 entrie(s)')
+	})
+
 	it('refuses to run with no allowlist rather than choosing one', () => {
 		expect(() => checkLicenses(lockfileOf('compliant'), {})).toThrow(
 			/no allowlist was supplied/,
@@ -297,6 +458,59 @@ describe('the licences gate', () => {
 		)
 		expect(report.violations).toHaveLength(1)
 	})
+
+	it('withdraws that exception when an AND operand is outside the allowlist', () => {
+		const report = checkLicenses(
+			sharpLockfile([
+				['sharp-linux-x64', '1.0.0', 'LGPL-3.0-or-later AND AGPL-3.0-only'],
+			]),
+			{
+				allowlist: ['MIT', 'Apache-2.0'],
+				label: 'the allowlist',
+				tolerances: [SHARP_TOLERANCE],
+			},
+		)
+		expect(report.tolerated).toEqual([])
+		expect(report.violations).toHaveLength(1)
+	})
+
+	it('withdraws that exception from a WITH compound of the tolerated identifier', () => {
+		const report = checkLicenses(
+			sharpLockfile([
+				['sharp-linux-x64', '1.0.0', 'LGPL-3.0-or-later WITH some-exception'],
+			]),
+			{
+				allowlist: ['MIT', 'Apache-2.0'],
+				label: 'the allowlist',
+				tolerances: [SHARP_TOLERANCE],
+			},
+		)
+		expect(report.tolerated).toEqual([])
+		expect(report.violations).toHaveLength(1)
+	})
+
+	// The two compound shapes this repository's own website lockfile carries: the
+	// win32 and wasm32 binaries bundle libvips and declare it alongside terms the
+	// allowlist already holds. They are why the exception adds an identifier to the
+	// allowlist; holding the whole expression equal to it would fail all four.
+	it('keeps tolerating a compound whose other operands are allowlisted', () => {
+		const report = checkLicenses(
+			sharpLockfile([
+				['sharp-win32-x64', '0.35.4', 'Apache-2.0 AND LGPL-3.0-or-later'],
+				['sharp-wasm32', '0.35.4', 'Apache-2.0 AND LGPL-3.0-or-later AND MIT'],
+			]),
+			{
+				allowlist: ['MIT', 'Apache-2.0'],
+				label: 'the allowlist',
+				tolerances: [SHARP_TOLERANCE],
+			},
+		)
+		expect(report.violations).toEqual([])
+		expect(report.tolerated).toEqual([
+			'@img/sharp-wasm32@0.35.4',
+			'@img/sharp-win32-x64@0.35.4',
+		])
+	})
 })
 
 describe('the lockfile-age gate', () => {
@@ -336,6 +550,82 @@ describe('the lockfile-age gate', () => {
 		expect(run.status).toBe(1)
 		expect(run.output).toContain('do not resolve to the npm registry')
 		expect(run.output).toContain('fixture-mirror@1.4.2')
+	})
+
+	it('fails an entry resolved to another package on the registry itself', async () => {
+		const report = await auditLockfileAge({
+			lockfile: lockfileOf('substituted-package'),
+			now: new Date(),
+			windowDays: LOCKFILE_WINDOW_DAYS_DEFAULT,
+			// Ancient, so the resolved URL is the only thing left that can fail it.
+			readTimeMap: async () => ({ '2.0.0': ANCIENT }),
+		})
+		expect(report.youngEntries).toEqual([])
+		expect(report.unfetchableEntries).toEqual([])
+		expect(report.offRegistryEntries).toHaveLength(1)
+		expect(report.offRegistryEntries[0]?.name).toBe('fixture-dual')
+	})
+
+	it('refuses a lockfile carrying no packages object, naming its version', async () => {
+		await expect(
+			auditLockfileAge({
+				lockfile: lockfileOf('lockfile-version-1'),
+				now: new Date(),
+				windowDays: LOCKFILE_WINDOW_DAYS_DEFAULT,
+				source: 'package-lock.json',
+			}),
+		).rejects.toThrow(/package-lock\.json carries no "packages" object/)
+	})
+
+	it('does not report a lockfile it read nothing out of as passing', () => {
+		const run = runGates(
+			'lockfile-age',
+			'--config',
+			configOf('lockfile-version-1'),
+		)
+		expect(run.status).not.toBe(0)
+		expect(run.output).toContain('carries no "packages" object')
+		expect(run.output).toContain('lockfileVersion 1')
+		expect(run.output).not.toContain('0 entrie(s)')
+	})
+
+	it('marks both gates lockfile refusals with one code', () => {
+		expect(AGE_LOCKFILE_SHAPE_ERROR).toBe(LICENCE_LOCKFILE_SHAPE_ERROR)
+	})
+
+	it('refuses a window of zero days on the flag path too', async () => {
+		await expect(
+			auditLockfileAge({
+				lockfile: lockfileOf('compliant'),
+				now: new Date(),
+				windowDays: 0,
+				readTimeMap: async (name: string) => compliantTimeMaps[name] ?? {},
+			}),
+		).rejects.toThrow(/windowDays must be at least 1/)
+	})
+
+	// Anything without a script path (`node -e`, `--input-type=module`, the REPL)
+	// leaves process.argv[1] undefined, and pathToFileURL threw ERR_INVALID_ARG_TYPE
+	// on it at import time. The module ships in `dist/gates/`, so a consumer hits
+	// it, and so does `canary-age` in pr-checks.yml, which reads the window default
+	// out of this module with this exact spelling.
+	it('imports where there is no script path at all', () => {
+		const moduleUrl = pathToFileURL(
+			resolve('scripts/audit-lockfile-age.mjs'),
+		).href
+		const result = spawnSync(
+			process.execPath,
+			[
+				'-e',
+				`import(${JSON.stringify(moduleUrl)}).then((gate) => console.log(gate.WINDOW_DAYS_DEFAULT))`,
+			],
+			{ encoding: 'utf8' },
+		)
+		expect(`${result.stdout}${result.stderr}`).not.toContain(
+			'ERR_INVALID_ARG_TYPE',
+		)
+		expect(result.stdout.trim()).toBe(String(WINDOW_DAYS_DEFAULT))
+		expect(result.status).toBe(0)
 	})
 
 	it('names the lockfile a configuration points at and the filesystem has not', () => {

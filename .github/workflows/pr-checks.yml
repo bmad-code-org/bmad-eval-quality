@@ -43,9 +43,8 @@ jobs:
       - name: Licence scan (every lockfile the gate configuration names)
         run: npm run check:licences
 
-      # Named so a red build says which gate failed; `npm run validate` runs
-      # them again inside the validate step, which is deliberate redundancy
-      # rather than the only wiring.
+      # Named so a red build says which gate failed. `npm run validate` runs
+      # them again inside the validate step, and that redundancy is deliberate.
       - name: Published schema drift check (byte-exact against schemas/)
         run: npm run check:schemas
 
@@ -77,24 +76,18 @@ jobs:
       - name: Port conformance suite (every shipped adapter plus the in-repository probe subject)
         run: npm run test:conformance
 
-      # The documentation site's lockfile is a second resolved graph, and
-      # `npm --prefix website ci` reads no project `.npmrc` from the root, so
-      # AD-25 and the age policy have to be applied to it explicitly. Both
-      # lockfiles are named in `eval-quality.config.json`, so one invocation
-      # covers them; the composite action above audits the root lockfile again
-      # before `npm ci`, where the audit has to run with nothing installed.
-      - name: Lockfile publication age (every lockfile the gate configuration names)
-        run: npm run check:lockfile-age
-
       # Every command line the documentation shows is executed. Exit 64 means
       # the documented command or flag does not exist.
       - name: Documented CLI invocations
         run: npm run check:doc-invocations
 
       # CI only, and deliberately outside `npm run validate`: this is the one
-      # check that queries the npm advisory database, and `validate` has to
-      # stay runnable with no network. Both lockfiles are audited because the
-      # documentation site resolves its own graph. `--omit=dev` would exempt
+      # check that queries the npm advisory database, whose verdict moves on
+      # somebody else's disclosure with nothing in this tree changing. The one
+      # network call inside `validate` is the age gate's publication-date
+      # lookup, which a package's fixed publish timestamp answers the same way
+      # on every run. Both lockfiles are audited because the documentation site
+      # resolves its own graph. `--omit=dev` would exempt
       # almost everything here, since every root dependency but `zod` is a dev
       # dependency, so the level is the filter and the scope is everything.
       # The advisory database is a live service, so its 503 lands on whichever
@@ -143,6 +136,20 @@ jobs:
       # silent skip inside a green gate.
       - name: Build
         run: npm run build
+
+      # After the build, because `check:lockfile-age` runs `dist/gates/gates-cli.js`.
+      # The emitted binary is what a consumer installs, so this repository is held
+      # by the artifact it ships. `check:licences` stays on the source entry point,
+      # which is what keeps the type-stripped path covered on the floor job below.
+      #
+      # The documentation site's lockfile is a second resolved graph, and
+      # `npm --prefix website ci` reads no project `.npmrc` from the root, so
+      # AD-25 and the age policy have to be applied to it explicitly. Both
+      # lockfiles are named in `eval-quality.config.json`, so one invocation
+      # covers them; the composite action above audits the root lockfile again
+      # before `npm ci`, where the audit has to run with nothing installed.
+      - name: Lockfile publication age (every lockfile the gate configuration names)
+        run: npm run check:lockfile-age
 
       # `npm run validate` ends in `test:coverage`, so the AD-30/NFR7 floor is
       # already enforced here. A separate coverage step beside this one would
@@ -203,6 +210,15 @@ jobs:
       - name: Worked-example chain drift check (byte-exact against the regenerated chain)
         run: npm run check:worked-example
 
+      # The gate binary's two type-stripped modules, `gates-cli.ts` and
+      # `gate-config.ts`, are loaded by both published gates, so running the
+      # offline one here proves the pair on the declared floor. The age gate is
+      # the other entry and it runs `dist/gates/gates-cli.js`, which tsc emitted
+      # and Node's stripper never reads, so this is the only step that reaches
+      # them.
+      - name: Licence scan (every lockfile the gate configuration names)
+        run: npm run check:licences
+
       - name: Build
         run: npm run build
 
@@ -238,6 +254,15 @@ jobs:
       - name: Assert the audit fails, naming the fixture's young entry
         run: |
           set +e
+          # The window the audit runs at, read from the constant the script
+          # exports. Spelling the number here would be a second copy of it, in a
+          # file nothing holds against the first: the audit below passes no
+          # --window-days, so it runs at WINDOW_DAYS_DEFAULT whatever that is.
+          window_days="$(node -e 'import("./scripts/audit-lockfile-age.mjs").then((m) => console.log(m.WINDOW_DAYS_DEFAULT))')"
+          if [ -z "$window_days" ]; then
+            echo "could not read WINDOW_DAYS_DEFAULT out of scripts/audit-lockfile-age.mjs" >&2
+            exit 1
+          fi
           published="$(npm view zod@4.4.3 time --json | node -e '
             let raw = "";
             process.stdin.on("data", (c) => { raw += c })
@@ -260,7 +285,7 @@ jobs:
           # Match the age-specific line, not a bare "zod@4.4.3" substring: the unfetchable-metadata
           # branch (a registry outage, say) prints the byte-identical "zod@4.4.3 (node_modules/zod)"
           # shape and would otherwise pass this canary for the wrong reason.
-          echo "$output" | grep -q "published inside the 7-day window" || { echo "audit failed for the wrong reason (no age-window violation reported)" >&2; exit 1; }
+          echo "$output" | grep -q "published inside the ${window_days}-day window" || { echo "audit failed for the wrong reason (no age-window violation reported)" >&2; exit 1; }
           echo "$output" | grep -q "zod@4.4.3 published" || { echo "audit failed for the wrong reason (did not name zod@4.4.3 as published/young)" >&2; exit 1; }
           echo "canary passed: audit correctly failed naming zod@4.4.3 as published inside the age window"
 

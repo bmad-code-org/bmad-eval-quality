@@ -1,7 +1,6 @@
 {
 	"lockfile-age": {
-		"lockfiles": ["package-lock.json", "website/package-lock.json"],
-		"windowDays": 7
+		"lockfiles": ["package-lock.json", "website/package-lock.json"]
 	},
 	"licences": {
 		"lockfiles": ["package-lock.json", "website/package-lock.json"],
