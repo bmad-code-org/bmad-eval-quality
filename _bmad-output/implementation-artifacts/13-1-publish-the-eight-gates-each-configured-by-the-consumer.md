@@ -150,6 +150,22 @@ No filler and no hedging. Code comments and JSDoc stay lean: say why, once, and 
 
 ## Design Notes
 
+### The network call on every `validate`, decided rather than inherited
+
+Publishing the lockfile-age gate and running this repository through it doubled the gate's network surface: `validate` now reaches the registry for both lockfiles where it previously did the website one only. A gate that fetches on every run will eventually be flaky, and flakiness in this repository is a defect to fix on sight rather than a cost to tolerate, so the question is answered here instead of the first time CI goes red on a blip.
+
+Fail-closed does not require a live call, and the reason is that the gate's two inputs are both immutable or monotone.
+
+A package's publication time is fixed the moment it is published, so a reading of `name@version` taken once is correct forever. And the predicate is monotone in time: the gate fails an entry that is younger than the window, so an entry that passes today passes every day after. Neither input can change in a direction that turns a pass into a failure.
+
+So a cache keyed on `name@version` holding the publication timestamp is sound with no staleness bound at all, which is a stronger property than the staleness-bounded cache the obvious design reaches for. The only entries needing a live fetch are the ones absent from the cache, which are exactly the dependencies a change added. Fail-closed holds unchanged: an uncached entry whose fetch fails still fails the gate, because nothing has established its age.
+
+The cache ships in pull request 3 of this story rather than here, because pull request 1 is the configuration format and the build target and adding a cache layer to it would mix two subjects. It is inside this story rather than deferred to a new one, on the same rule that makes all three pull requests the story.
+
+What is decided, so pull request 3 implements rather than rediscovers: the cache is keyed on `name@version`, it carries no staleness bound, an absent entry is a live fetch, and a failed fetch for an absent entry fails the gate.
+
+
+
 **The build target: a second tsconfig emitting into `dist/gates/`.** Recorded above under "Why a second tsconfig". The decision outlives this story: pull requests 2 and 3 add their gate sources to `tsconfig-gates.json`'s `include` and nothing else about the build moves.
 
 **`allowJs: true` in the base tsconfig is what lets a `.ts` gate import a `.mjs` one.** The alternative was converting the two `.mjs` gates to TypeScript, which is a better end state and a larger diff than this pull request should carry: it moves five CI call sites and annotates about twenty-seven functions. `allowJs` is one flag, reversible, and `checkJs` stays off so the two files are read for their shapes and never type-checked. `tsconfig-build.json` sets `allowJs: false` so the library build cannot pick up a JavaScript file by accident. A later pull request may convert them; nothing here depends on their extension.
