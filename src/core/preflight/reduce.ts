@@ -12,9 +12,10 @@ import { declaresNoRequestKeys } from '../declared-inputs.ts'
 import { freezeArtifact } from '../lineage/freeze.ts'
 import { RuntimeFault } from '../schemas/faults.ts'
 import type { ProbeObservation } from '../schemas/port-messages.ts'
-import type {
-	PreflightCheck,
-	PreflightVerdict,
+import {
+	PREFLIGHT_VERDICT_SCHEMA_VERSION,
+	type PreflightCheck,
+	type PreflightVerdict,
 } from '../schemas/preflight-verdict.ts'
 import type { Observation } from '../schemas/sealed-run-record.ts'
 import type { ManifestationWitness } from '../schemas/sensitivity-witness.ts'
@@ -471,8 +472,10 @@ export const reducePreflight: ReduceStage<
 	const projections = [...states.values()].map((state) => state.projected)
 	return freezeArtifact({
 		// A pre-flight verdict is an origin artifact, so AD-29's lineage fields
-		// carry their origin values.
-		schemaVersion: 1,
+		// carry their origin values. The version is read from the verdict
+		// schema's own constant, so a bump is one edit beside the shape that
+		// moved.
+		schemaVersion: PREFLIGHT_VERDICT_SCHEMA_VERSION,
 		parentDigest: null,
 		revisionCount: 0,
 		runId: plan.runId,

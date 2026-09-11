@@ -187,7 +187,7 @@ const cleanTrial = (
 })
 
 const policy: ScoringPolicy = {
-	schemaVersion: 1,
+	schemaVersion: 2,
 	parentDigest: null,
 	revisionCount: 0,
 	policyId: 'policy-1',

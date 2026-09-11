@@ -1005,6 +1005,18 @@ So that the claim is one I can run rather than one I have to take on trust.
 **When** the identifier the gate matches on is chosen,
 **Then** the choice is settled with evidence about how stable each candidate is, starting from the quoted case title that Story 12.1's interim gate already matches on; if titles prove no more stable than numbers, the story's content becomes giving cases a durable identifier at all, and that is decided here rather than halfway through.
 
+**Given** a second instance found on 11 September, `src/testing/probe-conformance.ts:6` reading "the `api` arm: thirteen assertions" while the published `CONFORMANCE_OUTCOME_COUNTS['environment-probe']` declares 19, where both numbers are correct because thirteen is the arm's own and nineteen is the arm's total, and the sentence reconciling them sits at `:444`,
+**When** the gate's reach is settled,
+**Then** the story states plainly what a source-comment gate can and cannot hold. It can hold a claim naming something the repository resolves: a test case, a symbol, a failure code, a count with a source. A claim whose defect is ambiguity rather than falsity is outside any pattern worth writing, because the number agrees with something and only the missing unit makes it misread. Saying so is the deliverable; a gate that appears to cover it is worse than one that declares the boundary.
+
+**Given** the ambiguity class is stated as out of reach, and one crude heuristic might still reach part of it, a numeral in a docblock with no noun naming what it counts within a short window, which would have flagged `probe-conformance.ts:6`,
+**When** the boundary is written,
+**Then** that heuristic is trialled against the tree and its false-positive count measured before it is adopted or dropped, the way Story 12.1 measured `RELEASE_STATE`'s blast radius at zero before widening a trigger. A short look decides it; a wall of false positives means it is dropped and the boundary statement stands alone, and that outcome is recorded rather than left as an untried idea.
+
+**Given** the trigger-recall lesson Story 12.1 earned on `check:doc-claims`, where a verification verb vocabulary could not reach a release announcement and a three-component version pattern could not reach a two-component version,
+**When** this gate's triggers are written,
+**Then** they are tested for recall rather than for confirmation: for each trigger, name an instance of the defect the vocabulary cannot reach, and seed at least one fixture whose wording is drawn from outside it. The two instances on record are a claim about a verification (`release-prepare.mjs`) and a claim about a number (`probe-conformance.ts`), and a gate written against either alone misses the other.
+
 **Given** a gate that cannot fire looks exactly like one that can,
 **When** the gate ships,
 **Then** its failure is proven by removing a named case and watching the gate fail, and the proof is recorded in the story.
@@ -1012,3 +1024,46 @@ So that the claim is one I can run rather than one I have to take on trust.
 **Given** the gate is new,
 **When** `npm run validate` runs,
 **Then** it is green with the gate wired into the chain and into the validate step name in `.github/workflows/pr-checks.yml`.
+
+### Story 12.3: Name the three versions the package stamps, and publish the four it only reads
+
+As a maintainer of `eval-quality`,
+I want each artifact version this package writes or validates against to be a named, exported constant,
+So that the number cannot disagree with itself between the writer and the reader, and a consumer stops transcribing it.
+
+Originates in TEA's Story 2.2 and requirements FR11 and FR13.
+It blocks TEA's Story 2.6, which replaces a five-entry `SCHEMA_VERSIONS` table with reads of these exports; TEA hand-corrected `sealedRunRecord` from 3 to 6 on 10 September because it was emitting records no stage could read, and that correction stays a literal until this ships.
+
+**Acceptance Criteria:**
+
+**Given** the package stamps exactly three artifacts with a bare literal, `sealed-evaluator-brief` at `src/core/seal/seal.ts:98`, `evidence-artifact` at `src/core/emit/emit.ts:110`, and `preflight-verdict` at `src/core/preflight/reduce.ts:475`, and each writing module already imports the schema module its artifact is declared in, which `scripts/dependency-direction.ts:79-81` permits as a `core -> core-schemas` edge,
+**When** each literal is replaced by a named constant declared beside the schema it stamps,
+**Then** the writer reads the constant, a search for a bare `schemaVersion: <integer>` assignment under `src/` returns nothing, and the dependency matrix is unamended.
+
+**Given** `sealed-run-record`, `isolation-manifest`, `evaluator-configuration`, `scoring-policy` and `private-artifact-manifest` are caller-produced, validated at `src/application/score.ts:99`, `:108`, `:117`, `:141` and `:150`, and carry their versions in no value under `src/`,
+**When** the version a caller must write is published for each,
+**Then** all five constants are exported from the root barrel on the `root -> core-schemas` edge beside the two Story 12.1 shipped, each declared as the literal integer.
+
+**Given** `src/core/schemas/lineage.ts:20-25` keeps `schemaVersion` a plain `z.int().min(1)` so a stale artifact raises AD-28's `schema-version-mismatch` rather than an anonymous parse failure, and every published document declares the field as a bare integer with no `const`, `enum` or default, so no accepted version is readable from any schema object,
+**When** the constants are held against something other than a second transcription,
+**Then** each constant whose artifact has a predecessor shape is held by parse behaviour: a record built at the constant parses and one built at the constant minus one does not, with both fixtures built from the constant so a shape change that forgets the constant fails. Where the artifact is at version 1 there is no predecessor and the question is vacuous, which is recorded per artifact rather than papered over.
+
+**Given** `tests/schemas/eval-contract-version.test.ts` already pins one constant, walks emitted corpus and chain bytes, and source-walks `src`, `tests` and `scripts` for a stale stamp in an authored literal,
+**When** that treatment is generalised,
+**Then** every new constant is covered the same way, and the file's two stale items are corrected: it declares its own local copy of `EVAL_CONTRACT_SCHEMA_VERSION` rather than importing the one Story 12.1 exported, and its docblock still asserts that no reader declares an expected version constant, which `src/core/compile/compile.ts:102-104` falsifies.
+
+**Given** `scripts/check-doc-claims.ts:537-583` and `:663-669` require every `src/` file performing version equality to be named in `VERSION_READER_BY_FILE`, with a `tokenShape` of `/^(?:compile|preflight|score)$/` and a matching sentence in `docs/explanation/what-ships.md`,
+**When** this story changes which files carry a version,
+**Then** that registry, that pattern and that sentence move together, and `docs/explanation/what-ships.md:58`'s "The remaining artifacts have no such reader" is corrected, since this story publishes versions for five of them.
+
+**Given** `schemas/artifact-reference.schema.json` deliberately carries no `schemaVersion`, asserted against the registry's `carriesLineage` flag by `tests/schemas/artifact-registry.test.ts:125-131` and `:146-157`,
+**When** this story runs,
+**Then** that artifact is left alone and both assertions still pass.
+
+**Given** the caller-produced artifacts carry their versions in authored fixtures and generators,
+**When** this story runs,
+**Then** `rubric` stays out of scope with its reason recorded, because the package never parses it and the eval contract embeds `RubricBody` rather than the versioned artifact.
+
+**Given** the whole change,
+**When** `npm run validate` runs,
+**Then** it is green, and `tests/architecture/package-exports.test.ts` asserts each new name on the built barrel with its literal declared type.

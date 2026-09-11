@@ -80,6 +80,15 @@ export const ForbiddenInputAccountingMap = z.strictObject(accountingShape)
  */
 const NonEmptyLabel = z.string().min(1)
 
+/**
+ * The manifest version this build accepts. No stage writes one, so a caller
+ * assembling a manifest had no value to read and transcribed the number.
+ *
+ * `1`: this artifact has never moved, so it has no predecessor shape and a
+ * parse-behaviour case over one would be vacuous.
+ */
+export const ISOLATION_MANIFEST_SCHEMA_VERSION = 1
+
 export const IsolationManifest = z
 	.strictObject({
 		...lineageFields,

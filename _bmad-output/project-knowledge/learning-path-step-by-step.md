@@ -4409,3 +4409,33 @@ The same shape sat one level up: the version the package publishes about itself 
 - A gate's trigger set is its own object, and watching it fire proves it catches the instance you thought of. `check:doc-claims` refused a stale verification claim on demand and let "Version 1.0 is out" ride two published pages into 3.0.0, because its verbs were a verification's and its version pattern wanted three components where the sentence wrote two. Ask what a real instance could look like that the vocabulary cannot reach, then seed that one.
 
 **Watch out:** the generator refuses when the declaration is absent, because minting one would undo a deliberate removal. The release script calls the generator, so the substitution string is spelled in one place.
+
+## Step 61 (epic12-story3): the number that lived in prose
+
+**In plain terms:** the previous step published the two version numbers the package compares against. Eight more existed and were reachable from nowhere.
+Three were bare integers typed into the code that writes the artifact. Five were not values at all: they appeared in `src/` only as a sentence inside a schema description, so a caller assembling a record read the prose and typed the number in. One consumer read that prose as 3 where the reader accepts 6 and emitted records no stage could parse.
+
+**What:** every artifact this package stamps or validates against declares its version as a named constant beside its schema and exports it from the barrel. Ten of the twelve artifacts carry one. `seal`, `emit` and `preflight` read theirs instead of stamping a literal, and a search for a bare `schemaVersion: <integer>` under `src/` returns nothing.
+
+**Why:** `lineage.ts` keeps `schemaVersion` a plain integer on purpose, so a stale artifact fails as a named `schema-version-mismatch` rather than an anonymous parse error. That decision puts the comparison on the reader, and it also means the accepted version is readable from no schema object and no published document. Declaring the constant is the reader obligation seen from the caller's side.
+
+**Read in this order:**
+
+1. `src/core/schemas/sealed-run-record.ts`: the constant beside the schema, and the six bumps its description records.
+2. `src/core/preflight/reduce.ts`: a writer reading its constant, so a bump is one edit beside the shape that moved.
+3. `tests/schemas/artifact-version.test.ts`: the source walk, the emitted-bytes walk, and the parse-behaviour cases.
+
+**Story:** `_bmad-output/implementation-artifacts/12-3-name-the-three-versions-the-package-stamps-and-publish-the-four-it-only-reads.md`
+
+### Reference
+
+**Rules:**
+
+- Hold a constant against the parser, never against a second copy of itself. A fixture built at the constant must parse and one built at the constant minus one must not, and both are built from the constant.
+- Key the per-version builders by integer literals. Reading the constant into the key makes the current case exist by construction, and then a bump with no shape behind it passes.
+- A number that lives only in prose is a number every caller transcribes. Prose cannot be imported and cannot be compared.
+- Bound a source walk at the literal's own closing brace. A fixed window ran past three literals that spread a base and carry no stamp, and reported the next artifact's stamp as theirs.
+- Give a walk a floor per artifact, not one over the whole walk. A pattern that stops matching one artifact takes its coverage to zero and leaves the total looking healthy.
+- The gate that catches a transcription can hold a transcription. This one declared its own copy of a constant that had been exported from the barrel hours earlier.
+
+**Watch out:** a breaking shape change that edits the builder's case for N to the new shape and does not bump N passes every gate here. Nothing outside that change knows what the version ought to be, and no gate reading only behaviour can. That is the limit of the method and the argument a proposal to pin `schemaVersion` with a `const` will reach for.

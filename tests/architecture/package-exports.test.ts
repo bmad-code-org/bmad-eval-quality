@@ -350,6 +350,54 @@ describe('the published package surface', () => {
 			barrel.EVAL_CONTRACT_SCHEMA_VERSION,
 		])
 
+		// The eight the package stamps or validates against, on the same edge
+		// and held the same way: the runtime value off the built barrel, and the
+		// literal declared type off `dist/index.d.ts`.
+		expect(barrel.SEALED_EVALUATOR_BRIEF_SCHEMA_VERSION).toBe(2)
+		expect(barrel.EVIDENCE_ARTIFACT_SCHEMA_VERSION).toBe(3)
+		expect(barrel.PREFLIGHT_VERDICT_SCHEMA_VERSION).toBe(1)
+		expect(barrel.SEALED_RUN_RECORD_SCHEMA_VERSION).toBe(6)
+		expect(barrel.ISOLATION_MANIFEST_SCHEMA_VERSION).toBe(1)
+		expect(barrel.EVALUATOR_CONFIGURATION_SCHEMA_VERSION).toBe(1)
+		expect(barrel.SCORING_POLICY_SCHEMA_VERSION).toBe(2)
+		expect(barrel.PRIVATE_ARTIFACT_MANIFEST_SCHEMA_VERSION).toBe(1)
+
+		const brief: typeof import('eval-quality').SEALED_EVALUATOR_BRIEF_SCHEMA_VERSION = 2
+		const evidence: typeof import('eval-quality').EVIDENCE_ARTIFACT_SCHEMA_VERSION = 3
+		const verdict: typeof import('eval-quality').PREFLIGHT_VERDICT_SCHEMA_VERSION = 1
+		const record: typeof import('eval-quality').SEALED_RUN_RECORD_SCHEMA_VERSION = 6
+		const manifest: typeof import('eval-quality').ISOLATION_MANIFEST_SCHEMA_VERSION = 1
+		const configuration: typeof import('eval-quality').EVALUATOR_CONFIGURATION_SCHEMA_VERSION = 1
+		const policy: typeof import('eval-quality').SCORING_POLICY_SCHEMA_VERSION = 2
+		const privateManifest: typeof import('eval-quality').PRIVATE_ARTIFACT_MANIFEST_SCHEMA_VERSION = 1
+		const briefLiteral: 2 = brief
+		const evidenceLiteral: 3 = evidence
+		const verdictLiteral: 1 = verdict
+		const recordLiteral: 6 = record
+		const manifestLiteral: 1 = manifest
+		const configurationLiteral: 1 = configuration
+		const policyLiteral: 2 = policy
+		const privateManifestLiteral: 1 = privateManifest
+		expect([
+			briefLiteral,
+			evidenceLiteral,
+			verdictLiteral,
+			recordLiteral,
+			manifestLiteral,
+			configurationLiteral,
+			policyLiteral,
+			privateManifestLiteral,
+		]).toEqual([
+			barrel.SEALED_EVALUATOR_BRIEF_SCHEMA_VERSION,
+			barrel.EVIDENCE_ARTIFACT_SCHEMA_VERSION,
+			barrel.PREFLIGHT_VERDICT_SCHEMA_VERSION,
+			barrel.SEALED_RUN_RECORD_SCHEMA_VERSION,
+			barrel.ISOLATION_MANIFEST_SCHEMA_VERSION,
+			barrel.EVALUATOR_CONFIGURATION_SCHEMA_VERSION,
+			barrel.SCORING_POLICY_SCHEMA_VERSION,
+			barrel.PRIVATE_ARTIFACT_MANIFEST_SCHEMA_VERSION,
+		])
+
 		// Each union ships with the `as const` array it is derived from, the way
 		// `QUALIFICATION_FAILURES` already does.
 		expect(barrel.DOMINANCE_RELATIONS).toEqual([

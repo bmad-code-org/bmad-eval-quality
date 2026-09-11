@@ -128,5 +128,6 @@ development_status:
   11-9-the-documentation-says-what-is-true: done
 
   epic-12: in-progress
-  12-1-the-schema-version-constants-the-dominance-comparison-and-a-version-that-cannot-drift: review
+  12-1-the-schema-version-constants-the-dominance-comparison-and-a-version-that-cannot-drift: done
   12-2-a-comment-that-claims-a-verification-names-the-case-that-performs-it: backlog
+  12-3-name-the-three-versions-the-package-stamps-and-publish-the-four-it-only-reads: review

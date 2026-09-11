@@ -366,6 +366,16 @@ const evidenceCommonFields = {
 }
 
 /**
+ * The evidence version `emit` stamps, and the single place that number is
+ * written. It was a literal inside `emit`'s own assembly, so the value a
+ * consumer needed sat in a stage rather than beside the shape it names.
+ *
+ * `3` on two recorded bumps: `mode` made it 2 and `uncitedFindingGaps` made
+ * it 3, each in the field's own description above.
+ */
+export const EVIDENCE_ARTIFACT_SCHEMA_VERSION = 3
+
+/**
  * A discriminated union, because AD-21 requires that no shape hold a
  * production verdict and a contract verdict at once, with neither mode able
  * to read a field as the other's.

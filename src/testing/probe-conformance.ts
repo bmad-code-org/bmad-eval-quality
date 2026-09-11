@@ -3,10 +3,12 @@
  * mechanism. The subject supplies its policy and one request per denial,
  * since only it knows how its own interface-to-target mapping is wired.
  *
- * `runEnvironmentProbePortConformance` is the `api` arm: thirteen assertions,
- * every scenario HTTP (an authorized target reached, an anomalous status read
- * as an observation, an unmapped interface, four denied address classes, a
- * method, a scheme, a redirect revalidated and refused, and three caps).
+ * `runEnvironmentProbePortConformance` is the `api` arm: thirteen of its own
+ * beside the six shared, which is the nineteen `CONFORMANCE_OUTCOME_COUNTS`
+ * declares for `environment-probe`. Every scenario is HTTP: an authorized
+ * target reached, an anomalous status read as an observation, an unmapped
+ * interface, four denied address classes, a method, a scheme, a redirect
+ * revalidated and refused, and three caps.
  * `runCommandLineProbeConformance` is the `cli` arm: ten, over an authorized
  * invocation, a non-zero exit read as an observation, an unmapped interface, an
  * unmapped executable, an unauthorized subcommand path, an unpermitted

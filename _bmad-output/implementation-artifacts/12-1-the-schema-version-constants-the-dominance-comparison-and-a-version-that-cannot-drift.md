@@ -2,7 +2,7 @@
 title: 'The schema-version constants, the dominance comparison, and a version that cannot drift'
 type: 'feature'
 created: '2026-09-10'
-status: 'review'
+status: 'done'
 route: 'dispatch'
 review_loop_iteration: 1
 baseline_commit: '15ee57998505893667bfd5be402b2bfa7889382b'

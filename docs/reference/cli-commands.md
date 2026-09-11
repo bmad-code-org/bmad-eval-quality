@@ -201,13 +201,15 @@ The published tarball carries `dist`, `schemas`, `corpus`, `README.md`, and `LIC
 - **Lineage**: `validateLineageChain`
 - **Errors**: `StructuralFailure`, `RuntimeFault`
 - **Enumerations**: `FAILURE_CODES`, `RUNTIME_FAULT_CODES`, `VERDICTS`, `EVALUATOR_RECOMMENDATIONS`, `INTERCHANGE_ARTIFACT_KEYS`, `QUALIFICATION_FAILURES`, `SEVERITY_LEVELS`, `DOMINANCE_RELATIONS`
-- **Schema versions**: `PROBE_SCHEMA_VERSION`, `EVAL_CONTRACT_SCHEMA_VERSION`
+- **Schema versions**: `PROBE_SCHEMA_VERSION`, `EVAL_CONTRACT_SCHEMA_VERSION`, `SEALED_EVALUATOR_BRIEF_SCHEMA_VERSION`, `EVIDENCE_ARTIFACT_SCHEMA_VERSION`, `PREFLIGHT_VERDICT_SCHEMA_VERSION`, `SEALED_RUN_RECORD_SCHEMA_VERSION`, `ISOLATION_MANIFEST_SCHEMA_VERSION`, `EVALUATOR_CONFIGURATION_SCHEMA_VERSION`, `SCORING_POLICY_SCHEMA_VERSION`, `PRIVATE_ARTIFACT_MANIFEST_SCHEMA_VERSION`
 - **Comparison**: `compareDominance`
 - **Version**: `VERSION`
 
 Every artifact type ships alongside them as a type-only export, with the option and result types of the three entry points that declare them: `RunPreflightOptions`, `PreflightFromObservationsOptions`, `RunScoreOptions`, and `RunScoreResult`. `compile` and `seal` take an inline `{ strict?: boolean }` and export no options type.
 
-Both schema versions are declared as the literal integer they hold, so a caller comparing an artifact's `schemaVersion` against one narrows on it. AD-11 puts the equality comparison on whoever reads the artifact, and a stamp this build does not read becomes a `schema-version-mismatch` runtime fault at exit `5`. Importing the number is how a caller states the version this build reads.
+Every schema version is declared as the literal integer it holds, so a caller comparing an artifact's `schemaVersion` against one narrows on it. AD-11 puts the equality comparison on whoever reads the artifact, and a stamp this build does not read becomes a `schema-version-mismatch` runtime fault at exit `5`. Importing the number is how a caller states the version this build reads.
+
+Ten of the twelve artifacts carry one. Two have an in-package reader that performs the equality: `compile` over an eval contract, `preflight` and `score` over a probe. Three are stamped by this package: `seal` writes the brief, `emit` writes the evidence artifact, and `preflight` writes the verdict, each from its own constant. Five are assembled by the caller and validated by `score`: the sealed run record, the isolation manifest, the evaluator configuration, the scoring policy, and the private artifact manifest. `artifact-reference` carries no lineage fields and `rubric` is reached only through the contract that declares it, so neither has a version a caller states.
 
 `compareDominance` is AD-7's four-valued relation over two scored results. It takes two `ComparableResult` values and a `Severity` floor and answers one of `DOMINANCE_RELATIONS`: `a-dominates-b`, `b-dominates-a`, `equivalent`, or `incomparable`. `ComparableResult`, `DominanceRelationValue`, and `Severity` ship as type-only exports beside it. The comparison re-derives no vector and reads no port, corpus, or clock.
 

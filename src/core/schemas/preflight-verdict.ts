@@ -34,6 +34,16 @@ export const PreflightCheck = z.strictObject({
 
 export type PreflightCheck = z.infer<typeof PreflightCheck>
 
+/**
+ * The verdict version `preflight`'s reducer stamps, and the single place that
+ * number is written. It was a literal inside `reduce.ts`, so the value a
+ * consumer needed sat in a stage rather than beside the shape it names.
+ *
+ * `1`: this artifact has never moved, so it has no predecessor shape and a
+ * parse-behaviour case over one would be vacuous.
+ */
+export const PREFLIGHT_VERDICT_SCHEMA_VERSION = 1
+
 export const PreflightVerdict = z
 	.strictObject({
 		...lineageFields,

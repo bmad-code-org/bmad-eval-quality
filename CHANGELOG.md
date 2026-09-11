@@ -22,6 +22,17 @@ body.
   and the types `ComparableResult`, `DominanceRelationValue` and `Severity`. AD-7's four-valued
   relation over two scored results was implemented and tested and reachable from no entry point.
   `Severity` ships as a type-only export, so no Zod schema becomes reachable from the barrel.
+- **Eight more schema versions import from `eval-quality`**, each declared as the literal integer:
+  `SEALED_EVALUATOR_BRIEF_SCHEMA_VERSION`, `EVIDENCE_ARTIFACT_SCHEMA_VERSION` and
+  `PREFLIGHT_VERDICT_SCHEMA_VERSION` for the three artifacts this package stamps, and
+  `SEALED_RUN_RECORD_SCHEMA_VERSION`, `ISOLATION_MANIFEST_SCHEMA_VERSION`,
+  `EVALUATOR_CONFIGURATION_SCHEMA_VERSION`, `SCORING_POLICY_SCHEMA_VERSION` and
+  `PRIVATE_ARTIFACT_MANIFEST_SCHEMA_VERSION` for the five you assemble and `score` validates. The
+  three stamped versions were bare integers inside `seal`, `emit` and `preflight`, and the five
+  caller-produced ones existed in `src/` only as prose in a schema description, so a caller
+  assembling a record transcribed the number and one transcribed it wrong. Ten of the twelve
+  artifacts now carry a version constant; `artifact-reference` carries no lineage and `rubric` is
+  reached only through the contract that declares it.
 - **`npm run check:version`**, a gate inside `npm run validate` that fails when `VERSION` in
   `src/index.ts` and `version` in `package.json` disagree. It reads the two source files, so it needs
   no build; the case that held this before reads `dist/` and skips when none has run.
