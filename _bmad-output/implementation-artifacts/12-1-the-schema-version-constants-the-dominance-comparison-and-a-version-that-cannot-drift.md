@@ -164,6 +164,18 @@ Grepping for the claim found it at `docs/explanation/what-ships.md:10` as well, 
 Both are fixed, and both by removing the release number rather than by moving it to 3.0.0.
 A sentence carrying a specific released version goes stale at every major and nothing in `validate` holds it; the surrounding claim, that a breaking change to a command, an export, or a schema is a major version bump, is what the paragraph is for and it is true at every version.
 
+### Why `check:doc-claims` did not catch it, and the hole is closed here
+
+The question is worth answering precisely, because the two answers lead to different places: a claim outside the gate's declared classes is a gap for Story 12.2 to consider, and a claim inside them that did not fire is a hole in a shipped gate.
+
+It is the second. Class 4 covers a sentence whose truth depends on when it was written, and `TIME_SENSITIVE` is the trigger set that forces such a sentence to carry a `DATED_CLAIMS` registration. "Version 1.0 is out" is squarely that kind of sentence and it matched no trigger, so the gate never asked for a registration and stayed green across two major releases.
+
+Two things hid it, and both are in the patterns. `VERSION_CLAIM`'s verb vocabulary is the vocabulary of a verification, `run`, `verified`, `measured`, `reproduced`, `built`, and a release is announced with none of them. `VERSION_PIN` and `VERSION_CLAIM` both require `\d+\.\d+\.\d+`, and the sentence wrote a two-component `1.0`.
+
+`RELEASE_STATE` closes it: a version of any length with the release vocabulary, `is out`, `was released`, `has been shipped`, `was published`. It was watched failing. Reintroducing the sentence at `docs/explanation/what-ships.md:10` gives `docs/explanation/what-ships.md:10: this sentence claims something is true as of now, or not yet true, and no DATED_CLAIMS entry holds it; register it with how it is settled` and exit 1, and removing it again returns the gate to green with no new registration anywhere. Widening the trigger cost zero registrations, because the only two sentences in the tree that matched are the two this change deleted.
+
+So Story 12.2 does not grow a clause for this. The gate's scope was right and its trigger set had a hole, which is a different defect from the one 12.2 exists to fix.
+
 ### The release-path guard is the finding that mattered most
 
 `publish.yml` runs `release-prepare.mjs --on-main` with no `validate` in front of it and pushes the release commit with `[skip ci]`, so `check:version` runs nowhere else on that path.
