@@ -1,7 +1,6 @@
 /**
- * AC 17 cases 145 through 158: the published package surface. What `exports`
- * resolves to, what the barrel carries, and what `npm pack` puts in the
- * tarball.
+ * AC 17: the published package surface. What `exports` resolves to, what the
+ * barrel carries, and what `npm pack` puts in the tarball.
  *
  * The subpath cases resolve through `createRequire(import.meta.url).resolve`
  * against this package by self-reference, which Node grants because
@@ -11,13 +10,13 @@
  * nothing about what shipped. `createRequire(...).resolve` honours the same
  * map and throws `MODULE_NOT_FOUND` on a target that is not on disk.
  *
- * Cases 145 through 147, 152, 153, and 155 through 157 read `dist/`, so
- * `npm run build` is their precondition and each skips with a clear message
- * when it has not run, the way `tests/cli/main.test.ts` does. Every CI job
- * that runs the suite builds first, so the skip is a local-convenience path
- * and never a silent hole in the gate. Case 157 passes `--ignore-scripts`
- * because `prepack` is `npm run clean && npm run build` and would delete
- * `dist/` out from under the neighbouring cases.
+ * The `BUILT` constant drives the skip: every case that reads `dist/` guards on
+ * it and skips with a clear message when no build has run, the way
+ * `tests/cli/main.test.ts` does. Every CI job that runs the suite builds first,
+ * so the skip is a local-convenience path and never a silent hole in the gate.
+ * Case 157 passes `--ignore-scripts` because `prepack` is
+ * `npm run clean && npm run build` and would delete `dist/` out from under the
+ * neighbouring cases.
  */
 import { execFileSync } from 'node:child_process'
 import { existsSync, readFileSync } from 'node:fs'
@@ -25,9 +24,12 @@ import { createRequire } from 'node:module'
 import { join } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import type {
+	ComparableResult,
+	DominanceRelationValue,
 	QualificationFailure,
 	QualificationFailureCode,
 	QualificationResult,
+	Severity,
 } from 'eval-quality'
 import { describe, expect, it } from 'vitest'
 import { INTERCHANGE_ARTIFACT_KEYS } from '../../src/core/schemas/artifact.ts'
@@ -328,6 +330,87 @@ describe('the published package surface', () => {
 			declarationChecksRan: true,
 		}
 		expect(carried.failures[0]?.code).toBe('signature-absent')
+	})
+
+	it('the barrel carries the schema versions and the dominance comparison', async (ctx) => {
+		if (!BUILT) return ctx.skip(NEEDS_BUILD)
+		const barrel = await publishedBarrel()
+		expect(barrel.PROBE_SCHEMA_VERSION).toBe(5)
+		expect(barrel.EVAL_CONTRACT_SCHEMA_VERSION).toBe(5)
+
+		// Each version keeps its literal declared type through
+		// `dist/index.d.ts`, so a consumer comparing against one narrows on it.
+		// A widened `number` passes the first assignment and fails the second.
+		const probeVersion: typeof import('eval-quality').PROBE_SCHEMA_VERSION = 5
+		const contractVersion: typeof import('eval-quality').EVAL_CONTRACT_SCHEMA_VERSION = 5
+		const probeLiteral: 5 = probeVersion
+		const contractLiteral: 5 = contractVersion
+		expect([probeLiteral, contractLiteral]).toEqual([
+			barrel.PROBE_SCHEMA_VERSION,
+			barrel.EVAL_CONTRACT_SCHEMA_VERSION,
+		])
+
+		// Each union ships with the `as const` array it is derived from, the way
+		// `QUALIFICATION_FAILURES` already does.
+		expect(barrel.DOMINANCE_RELATIONS).toEqual([
+			'a-dominates-b',
+			'b-dominates-a',
+			'equivalent',
+			'incomparable',
+		])
+		expect(barrel.SEVERITY_LEVELS).toEqual(['low', 'material', 'critical'])
+		const layerTypes = exportedTypeNames(layerBarrelSource)
+		for (const name of [
+			'ComparableResult',
+			'DominanceRelationValue',
+			'Severity',
+		]) {
+			expect(layerTypes).toContain(name)
+		}
+
+		// A cast says nothing about what `dist/index.d.ts` declares, so the
+		// signature is held by an exactness test first. Mutual assignability
+		// leaves a hole: function assignability ignores a trailing optional
+		// parameter in both directions, so a declaration carrying an extra
+		// `tieBreak?: unknown` typechecked green against the shape below. The
+		// conditional-identity form refuses that, and refuses any parameter or
+		// return type that stops matching the three types published beside it.
+		type Declared = typeof import('eval-quality').compareDominance
+		type Expected = (
+			a: ComparableResult,
+			b: ComparableResult,
+			severityFloor: Severity,
+		) => DominanceRelationValue
+		type Exact<A, B> =
+			(<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2
+				? true
+				: false
+		const signatureIsExact: Exact<Declared, Expected> = true
+		expect(signatureIsExact).toBe(true)
+
+		// `compareDominance` off the built barrel, called through that signature.
+		// The two sides share a comparability key and carry no outcome, so the
+		// severity-floor override has nothing to withdraw and the raw component
+		// comparison is the answer.
+		const compare = barrel.compareDominance as Expected
+		const side = (caught: number): ComparableResult => ({
+			outcomes: [],
+			strength: {
+				denominator: 'unique qualified probe identifiers exercised',
+				basis: 'measured',
+				vector: {
+					defect: { caught, exercised: 4, rate: caught / 4 },
+					gameability: null,
+					'zero-action': null,
+				},
+				comparable: true,
+				note: null,
+			},
+			comparabilityKey: 'one shared probe set',
+		})
+		const relation = compare(side(4), side(2), 'material')
+		expect(barrel.DOMINANCE_RELATIONS).toContain(relation)
+		expect(relation).toBe('a-dominates-b')
 	})
 
 	it('case 158: the corpus README resolves and a missing schema does not', () => {

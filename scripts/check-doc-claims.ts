@@ -12,7 +12,7 @@
 // saying a thing is not yet true fell through all three.
 //
 // Not every prose claim is mechanically decidable, and this script does not
-// pretend otherwise. Seven classes, each resolving against an artifact in this
+// pretend otherwise. Eight classes, each resolving against an artifact in this
 // repository:
 //
 //   1. Citations. A `path.ts:N` reference resolves to a file, the line is in
@@ -760,10 +760,27 @@ const VERSION_CLAIM =
 	/\b(?:run|ran|re-run|verified|checked|measured|reproduced|observed|transcribed|exercised|built|holds?|stands?)\b[^.]{0,90}?\b\d+\.\d+\.\d+\b|\b\d+\.\d+\.\d+\b[^.]{0,90}?\b(?:was|were) (?:run|verified|checked|measured|observed|built)\b/i
 
 /**
- * The shapes a claim takes when its truth depends on when it was written. Three
+ * A page naming the version the package is at. Both patterns above read a
+ * version a reading was taken at, and this reads a version the package is
+ * claimed to be on, which is a different sentence with the same failure: it is
+ * true when written and stale at the next bump.
+ *
+ * `README.md` and `docs/explanation/what-ships.md` both carried "Version 1.0 is
+ * out" into 3.0.0, and every gate stayed green. Two things hid it. The verb is
+ * outside `VERSION_CLAIM`'s vocabulary, which reads the verbs of a verification
+ * rather than of a release, and both version patterns require three components
+ * while the sentence wrote two. So this takes a version of any length and the
+ * release vocabulary.
+ */
+const RELEASE_STATE =
+	/\bversion \d+(?:\.\d+)+ (?:is|was|has been) (?:out|released|shipped|published)\b/i
+
+/**
+ * The shapes a claim takes when its truth depends on when it was written. Four
  * families: a sentence saying a thing has not happened, a sentence saying
- * something is true as of now, and a sentence pinning a reading to a released
- * version, which `VERSION_PIN` above carries. All three are exactly the
+ * something is true as of now, a sentence pinning a reading to a released
+ * version, which `VERSION_PIN` above carries, and a sentence naming the version
+ * the package is on, which `RELEASE_STATE` carries. All four are exactly the
  * sentences that go stale when the code moves under them and none is decidable
  * from the words alone, so the pattern's job is to find candidates and the
  * registry's job is to say how each one is settled.
@@ -772,6 +789,7 @@ const TIME_SENSITIVE = new RegExp(
 	[
 		VERSION_PIN.source,
 		VERSION_CLAIM.source,
+		RELEASE_STATE.source,
 		'\\bno [a-z-]+ (?:has|have)\\b',
 		'\\bno live\\b',
 		'\\bno committed\\b',

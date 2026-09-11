@@ -126,3 +126,7 @@ development_status:
   11-11-a-shipped-workflow-contract-with-a-captured-binding-and-a-fixture-reset: done
   11-12-an-end-to-end-run-against-a-service-the-suite-starts: done
   11-9-the-documentation-says-what-is-true: done
+
+  epic-12: in-progress
+  12-1-the-schema-version-constants-the-dominance-comparison-and-a-version-that-cannot-drift: review
+  12-2-a-comment-that-claims-a-verification-names-the-case-that-performs-it: backlog

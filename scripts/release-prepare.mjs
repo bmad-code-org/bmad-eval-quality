@@ -12,7 +12,9 @@
 // main carries no ruleset and no branch protection. `[skip ci]` keeps the push from starting
 // push-triggered workflows on a commit the release run already owns.
 //
-// Every check runs before anything is written, so a refusal leaves the tree exactly as found.
+// Every check runs in preflight, before the first write, so a refused check leaves the tree exactly
+// as found. Past preflight, a failure in the stamping steps leaves the bumped manifest behind and a
+// rejected push leaves the local commit behind, both with origin untouched.
 //
 // Usage:
 //   npm run release:prepare -- patch|minor|major [--no-pr]
@@ -21,7 +23,7 @@
 // --no-pr pushes the branch and prints the `gh pr create` command instead of running it.
 
 import { execFileSync, spawnSync } from 'node:child_process'
-import { readFileSync, writeFileSync } from 'node:fs'
+import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -110,10 +112,40 @@ function parseNpmJson(text) {
 	}
 }
 
+const BARREL = 'src/index.ts'
+
+// Resolved by absolute path for the reason `STAMP_CHANGELOG` and `GENERATE_VERSION` are: the script
+// runs against whichever repository it is cutting, and that repository need not carry a `scripts/`.
+const CHECK_VERSION = fileURLToPath(
+	new URL('./check-version.ts', import.meta.url),
+)
+
+/**
+ * The barrel has to agree with the manifest before the bump. The generator overwrites whatever the
+ * barrel declares, so a run that starts from a disagreement would silently carry a hand-edited
+ * `VERSION` away; publish.yml calls this script with no `validate` in front of it and pushes with
+ * `[skip ci]`, so `check:version` runs nowhere else on the release path. The manifest still declares
+ * the pre-bump version here, which makes a green check the agreement the release is built on.
+ */
+function checkBarrelVersion() {
+	const result = spawnSync(process.execPath, [CHECK_VERSION], {
+		stdio: 'inherit',
+	})
+	if (result.status === 0) return
+	fail(
+		[
+			`check-version refused ${BARREL} above, and nothing has been written.`,
+			`Run \`npm run generate:version\` and commit the result; where ${BARREL} declares no \`VERSION\`, restore the declaration by hand first.`,
+			'Then cut the release again.',
+		].join('\n'),
+	)
+}
+
 function preflight({ bump, onMain }) {
 	const branch = git('rev-parse', '--abbrev-ref', 'HEAD')
 	if (branch !== 'main') fail(`must run from main, currently on ${branch}`)
 	if (git('status', '--porcelain') !== '') fail('working tree is not clean')
+	checkBarrelVersion()
 
 	git('fetch', '--quiet', 'origin', 'main')
 	const head = git('rev-parse', 'HEAD')
@@ -143,27 +175,39 @@ function preflight({ bump, onMain }) {
 	return { current, version, tag, releaseBranch, head }
 }
 
-const BARREL = 'src/index.ts'
 const STAMP_CHANGELOG = fileURLToPath(
 	new URL('./stamp-changelog.mjs', import.meta.url),
 )
 
 /**
  * `src/index.ts` publishes the version as a constant, so bumping the manifest
- * alone ships a `VERSION` one release behind. A test asserts the two agree,
- * which catches it after the release branch exists; stamping it here means
- * there is nothing to catch.
+ * alone ships a `VERSION` one release behind. `scripts/generate-version.ts`
+ * writes it from `package.json`, so the two agree the moment this step
+ * returns, and the substitution is spelled in one place.
+ *
+ * Three gates hold that agreement afterwards. `npm run check:version` reads the
+ * two source files and needs no build; `npm run validate` runs it, and so does
+ * `checkBarrelVersion` above. `tests/index.test.ts` compares the source
+ * barrel's `VERSION` against `package.json`, which is the case a bare
+ * `npm test` runs. `tests/architecture/package-exports.test.ts` case 156,
+ * "`VERSION` equals the manifest version", reads `dist/index.js` and skips when
+ * no build has run, so it holds what was actually built and published.
  */
-function stampBarrelVersion(current, version) {
-	const source = readFileSync(BARREL, 'utf8')
-	const previous = `export const VERSION = '${current}'`
-	if (!source.includes(previous)) {
-		fail(`${BARREL} does not declare VERSION as '${current}'; bump it by hand`)
+const GENERATE_VERSION = fileURLToPath(
+	new URL('./generate-version.ts', import.meta.url),
+)
+
+/**
+ * The generator words its own refusal and exits non-zero. Catching it here
+ * keeps that refusal as the last thing on stderr, where `run` would otherwise
+ * follow it with a Node stack.
+ */
+function generateBarrelVersion() {
+	try {
+		run(process.execPath, [GENERATE_VERSION])
+	} catch {
+		process.exit(1)
 	}
-	writeFileSync(
-		BARREL,
-		source.replace(previous, `export const VERSION = '${version}'`),
-	)
 }
 
 function pushMain(tag) {
@@ -188,7 +232,7 @@ function main() {
 	console.log(`release-prepare: ${current} -> ${version} on ${target}`)
 
 	run('npm', ['version', version, '--no-git-tag-version'])
-	stampBarrelVersion(current, version)
+	generateBarrelVersion()
 	run(process.execPath, [STAMP_CHANGELOG])
 
 	if (!args.onMain) git('checkout', '-b', releaseBranch)

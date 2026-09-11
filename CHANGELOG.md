@@ -10,6 +10,24 @@ body.
 
 ## [Unreleased]
 
+### Added
+
+- **The schema versions and the dominance comparison are on the barrel.** `PROBE_SCHEMA_VERSION` and
+  `EVAL_CONTRACT_SCHEMA_VERSION` import from `eval-quality`, each declared as the literal integer, so
+  a caller comparing an artifact's `schemaVersion` narrows on it and states the version this build
+  reads by importing the number. AD-11 puts the equality comparison on whoever reads the artifact and
+  `exports` carries no wildcard, so until now satisfying that rule meant copying the number into your
+  own source.
+- **`compareDominance` imports from `eval-quality`**, with `DOMINANCE_RELATIONS`, `SEVERITY_LEVELS`,
+  and the types `ComparableResult`, `DominanceRelationValue` and `Severity`. AD-7's four-valued
+  relation over two scored results was implemented and tested and reachable from no entry point.
+  `Severity` ships as a type-only export, so no Zod schema becomes reachable from the barrel.
+- **`npm run check:version`**, a gate inside `npm run validate` that fails when `VERSION` in
+  `src/index.ts` and `version` in `package.json` disagree. It reads the two source files, so it needs
+  no build; the case that held this before reads `dist/` and skips when none has run.
+  `npm run generate:version` writes the number from the manifest, and `scripts/release-prepare.mjs`
+  calls it, so the substitution is spelled in one place.
+
 ## [3.0.0] - 2026-09-10
 
 ### Changed

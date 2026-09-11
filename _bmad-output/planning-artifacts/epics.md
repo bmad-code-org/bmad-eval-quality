@@ -950,3 +950,65 @@ So that the promise the site makes is one the schema keeps.
 **Given** Story 11.2's live doc-invocation gate, which is what makes this story provable rather than asserted, and the pages that carry the claim, `docs/index.md:72` reading "Two interface kinds compile today", `:80` carrying the tool-use verdict "Declared and refused at compile", and `:84` reading "Two kinds parse and stop at compilation under `unsupported-interface-kind`"; `docs/explanation/what-ships.md:36-42`, whose tool-use section describes a refused kind and names the response descriptor as the open design question; `docs/how-to/evaluate-tool-use-behavior.md`, written as what a first adopter would have to build, including the accepted-kinds table at `:61-65` and the invocation at `:137-143`; `docs/reference/cli-commands.md:223` reading "ships four reference adapters", `:227` describing "a second arm for `EnvironmentProbePort`'s two mechanisms", `:229` pinning the per-port outcome counts, and `:233` carrying the corpus counts; `docs/how-to/author-behavioral-contracts.md:148` reading "`kind` says which sort of interface it came from, `api` or `cli`"; `docs/how-to/evaluate-ai-feature-behavior.md:234` reading "Eighteen of the twenty-one contracts"; and `docs/reference/glossary.md:91` and `:106`, which list which kinds compile and which the vocabulary names,
 **When** every one of those is corrected against the code that now ships,
 **Then** the index says three kinds compile and its routing table gives tool-use a verdict describing a shipped kind; the What Ships tool-use section describes what ships and its blocker list is gone; the tool-use guide is rewritten into one a reader can follow, with its accepted-kinds transcription current and its invocation already correct because Stories 11.4 and 11.5 moved it under Story 11.2's armed gate, which is the change that would have shipped silently without that story; the adapter count, the conformance-arm count and outcome counts, and the corpus counts in the CLI reference all move; the observation-`kind` sentence in the authoring guide gains its third value while the six `{"kind":"api"}` example lines at `:153-158` stay correct as examples; the glossary's two entries move; the generated tables `docs/ad21-*`, `ad31-*`, and `ad33-*.generated.md` are confirmed to contain no kind enumeration and are left alone; and the acceptance is that grepping the documentation for `unsupported-interface-kind` and for "refused at compile" leaves every surviving hit about `web` alone, with the epic's three deliberate omissions restated at the end of the story so the next reader does not read them as misses: `web` stays refused with `unsupported-interface-kind` fireability narrowed to that one kind, a scored run completes one trial so every strength vector comes out marked non-comparable, the package still executes nothing under evaluation so pointing it at a third-party service is the caller's adapter, and the held-out probe corpus and the second experiment round stay owed.
+
+## Epic 12: the exports a downstream consumer reads
+
+Implements AD-11's reader obligation from the caller's side and AD-7's dominance relation as a published comparison. Epic 8 shipped the score stage and Epic 11 shipped the fifth interface kind. This epic makes the values those stages enforce reachable from a published entry point, so a consumer states them once by importing them.
+
+**Why this epic exists.** 3.0.0 made a stale probe stamp a `schema-version-mismatch` runtime fault at exit `5` in both `preflight` and `score`, and `PROBE_SCHEMA_VERSION` (`src/core/schemas/probe.ts:90`) and `EVAL_CONTRACT_SCHEMA_VERSION` (`src/core/schemas/eval-contract.ts:161`) are reachable from none of the four barrels. The exports map carries no wildcard, so a deep import is refused with `ERR_PACKAGE_PATH_NOT_EXPORTED`. A consumer therefore has to copy the number into its own source to satisfy a rule this package enforces, which is the drift the constants were introduced to end. `compareDominance` (`src/core/score/strength.ts:254`) is in the same position: AD-7's four-valued relation is implemented, tested, and unreachable.
+
+**Definition of done.** A consumer on a released version reads both schema versions and runs the dominance comparison through `import ... from 'eval-quality'`, with no deep import and no copied literal. `VERSION` is written from `package.json` by a generator rather than by hand, and a gate that needs no build fails when the two disagree. A source comment claiming a verification names the case that performs it, and a gate holds that convention.
+
+**What this epic may not do.** No artifact `schemaVersion` moves, no published JSON Schema document changes, and no stage behavior changes. The package boundary holds: `src/index.ts` keeps its two edges, `root -> application` and `root -> core-schemas`, so a name from `core/score` reaches the root barrel through `src/application/index.ts` and nothing amends the dependency matrix.
+
+### Story 12.1: The schema-version constants, the dominance comparison, and a version that cannot drift
+
+As a consumer of `eval-quality`,
+I want the package to export the versions it enforces, the comparison it defines, and a version string that matches the release,
+So that I read all three from the package instead of copying them or being unable to reach them at all.
+
+**Acceptance Criteria:**
+
+**Given** `PROBE_SCHEMA_VERSION` and `EVAL_CONTRACT_SCHEMA_VERSION` are reachable from none of the four barrels,
+**When** each is exported from the root barrel on its `root -> core-schemas` edge,
+**Then** both resolve from `eval-quality` and each is declared as the literal integer, so a consumer comparing against one narrows on it.
+
+**Given** `compareDominance` is absent from the root barrel and cannot be deep-imported,
+**When** it is re-exported through `src/application/index.ts`, which is the one path `core/score` has to the root barrel,
+**Then** it resolves from `eval-quality` along with `ComparableResult`, `DominanceRelationValue` and `Severity`, each union type accompanied by the `as const` array it is derived from, the way `FAILURE_CODES`, `RUNTIME_FAULT_CODES`, `VERDICTS`, `EVALUATOR_RECOMMENDATIONS` and `QUALIFICATION_FAILURES` already ship.
+
+**Given** `VERSION` is a hand-written literal in `src/index.ts` that `scripts/release-prepare.mjs` rewrites by string substitution, and the case that asserts it matches the manifest reads `dist/` and skips when no build has run,
+**When** the number is written by `npm run generate:version` from `package.json` and checked by `npm run check:version` inside `validate`,
+**Then** the gate fails on a disagreement without needing a build, and `release-prepare` calls the generator rather than carrying its own copy of the substitution.
+
+**Given** the new exports exist,
+**When** `npm run validate` runs,
+**Then** `tests/architecture/package-exports.test.ts` asserts each new name is present on the built barrel, the published-surface section of `docs/reference/cli-commands.md` lists them, and `CHANGELOG.md`'s `[Unreleased]` records what a consumer gains.
+
+### Story 12.2: A comment that claims a verification names the case that performs it
+
+As a reader checking a claim a source comment makes about this repository,
+I want the comment to name the test case it is pointing at,
+So that the claim is one I can run rather than one I have to take on trust.
+
+**Acceptance Criteria:**
+
+**Given** `scripts/release-prepare.mjs:153` read "A test asserts the two agree" while naming no test, and the case it meant, `tests/architecture/package-exports.test.ts:269`, reads `dist/` and skips when no build has run, so a reader running `npm test` saw the claim pass without the assertion executing,
+**When** the convention Story 12.1 established is made enforceable,
+**Then** a gate reads every comment under `src/` and `scripts/` that asserts a verification exists, requires each to name a test case identifier, and fails when the named case is absent from the suite.
+
+**Given** `check:doc-claims` resolves eight classes of published-page claim against an artifact and its own header scopes it to `docs/`,
+**When** the new gate is written,
+**Then** it follows the same shape, resolving each matched comment against the suite, and `check:doc-claims` stays scoped to `docs/` with no change.
+
+**Given** case numbering is hand-maintained and already irregular, with `case 147b` alongside two unnumbered cases sitting between 157 and 158, so a gate matching on a case number inherits that fragility and eventually fails for the wrong reason or passes for the wrong reason,
+**When** the identifier the gate matches on is chosen,
+**Then** the choice is settled with evidence about how stable each candidate is, starting from the quoted case title that Story 12.1's interim gate already matches on; if titles prove no more stable than numbers, the story's content becomes giving cases a durable identifier at all, and that is decided here rather than halfway through.
+
+**Given** a gate that cannot fire looks exactly like one that can,
+**When** the gate ships,
+**Then** its failure is proven by removing a named case and watching the gate fail, and the proof is recorded in the story.
+
+**Given** the gate is new,
+**When** `npm run validate` runs,
+**Then** it is green with the gate wired into the chain and into the validate step name in `.github/workflows/pr-checks.yml`.

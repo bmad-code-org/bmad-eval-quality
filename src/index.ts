@@ -18,10 +18,15 @@
 // second edge. The port vocabulary stays at the `eval-quality/conformance`
 // subpath, where AD-37 puts the conformance definition an adapter author
 // reads; the reference adapters stay at `eval-quality/adapters`.
+//
+// The two schema versions ride that second edge beside the artifact types they
+// stamp, so a consumer satisfying AD-11's equality rule imports the number this
+// build reads.
 
 export * from './application/index.ts'
 export type { ArtifactReference } from './core/schemas/artifact-reference.ts'
 export type { EvalContract } from './core/schemas/eval-contract.ts'
+export { EVAL_CONTRACT_SCHEMA_VERSION } from './core/schemas/eval-contract.ts'
 export type { EvaluatorConfiguration } from './core/schemas/evaluator-configuration.ts'
 export type { EvidenceArtifact } from './core/schemas/evidence-artifact.ts'
 export type { IsolationManifest } from './core/schemas/isolation-manifest.ts'
@@ -31,6 +36,7 @@ export type {
 } from './core/schemas/preflight-verdict.ts'
 export type { PrivateArtifactManifest } from './core/schemas/private-artifact-manifest.ts'
 export type { Probe } from './core/schemas/probe.ts'
+export { PROBE_SCHEMA_VERSION } from './core/schemas/probe.ts'
 export type { Rubric } from './core/schemas/rubric.ts'
 export type { ScoringPolicy } from './core/schemas/scoring-policy.ts'
 export type { SealedEvaluatorBrief } from './core/schemas/sealed-evaluator-brief.ts'

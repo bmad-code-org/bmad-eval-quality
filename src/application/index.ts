@@ -18,6 +18,11 @@ export type {
 } from '../core/lineage/chain.ts'
 export { validateLineageChain } from '../core/lineage/chain.ts'
 export { INTERCHANGE_ARTIFACT_KEYS } from '../core/schemas/artifact.ts'
+// Type-only: `eval-contract.ts` declares a Zod schema under the name
+// `Severity` beside the union type, and a live schema on the barrel is what
+// `tests/architecture/package-exports.test.ts` case 152 refuses.
+export type { Severity } from '../core/schemas/eval-contract.ts'
+export { SEVERITY_LEVELS } from '../core/schemas/eval-contract.ts'
 export type { RuntimeFaultCode } from '../core/schemas/faults.ts'
 export { RUNTIME_FAULT_CODES, RuntimeFault } from '../core/schemas/faults.ts'
 export type {
@@ -34,6 +39,14 @@ export type {
 	QualificationResult,
 } from '../core/score/qualification.ts'
 export { QUALIFICATION_FAILURES } from '../core/score/qualification.ts'
+export type {
+	ComparableResult,
+	DominanceRelationValue,
+} from '../core/score/strength.ts'
+export {
+	compareDominance,
+	DOMINANCE_RELATIONS,
+} from '../core/score/strength.ts'
 export { compile } from './compile.ts'
 export type { Diagnostic, DiagnosticSink } from './diagnostics.ts'
 export type {
