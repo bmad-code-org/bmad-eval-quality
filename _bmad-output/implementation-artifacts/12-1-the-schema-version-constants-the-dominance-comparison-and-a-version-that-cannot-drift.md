@@ -154,6 +154,16 @@ Deleting `&& npm run check:version` from the `validate` chain and deleting `chec
 Renumbering and renaming case 156 each gave ``package-exports.test.ts declares no it('case 156: `VERSION` equals the manifest version'``, on both scripts that quote it.
 Removing `checkBarrelVersion()` from `release-prepare`'s `preflight()` let the disagreement case complete the release and carry a hand-edited `VERSION` away, which is the regression the restored guard exists to stop.
 
+### CodeRabbit, one finding, valid, and the same claim was in a second place
+
+CodeRabbit reviewed up to `b08a4a9`, which is the branch head, so the verdict covers both commits.
+It raised one actionable finding: `README.md:182` read "Version 1.0 is out" while the manifest declares 3.0.0.
+Verified against the current file and correct.
+
+Grepping for the claim found it at `docs/explanation/what-ships.md:10` as well, which CodeRabbit did not flag.
+Both are fixed, and both by removing the release number rather than by moving it to 3.0.0.
+A sentence carrying a specific released version goes stale at every major and nothing in `validate` holds it; the surrounding claim, that a breaking change to a command, an export, or a schema is a major version bump, is what the paragraph is for and it is true at every version.
+
 ### The release-path guard is the finding that mattered most
 
 `publish.yml` runs `release-prepare.mjs --on-main` with no `validate` in front of it and pushes the release commit with `[skip ci]`, so `check:version` runs nowhere else on that path.

@@ -7,7 +7,7 @@ sidebar:
 
 # What Ships
 
-Version 1.0 is out. All four commands ship, and the published surface is stable: a breaking change to a command, an export, or a schema is a major version bump from here.
+All four commands ship, and the published surface is stable: a breaking change to a command, an export, or a schema is a major version bump from here.
 
 ## The four commands
 
