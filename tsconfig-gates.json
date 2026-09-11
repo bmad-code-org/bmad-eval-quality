@@ -1,0 +1,17 @@
+{
+	"extends": "./tsconfig.json",
+	"files": [
+		"scripts/gates-cli.ts",
+		"scripts/gate-config.ts",
+		"scripts/audit-lockfile-age.mjs",
+		"scripts/check-licenses.mjs"
+	],
+	"include": [],
+	"compilerOptions": {
+		"noEmit": false,
+		"allowImportingTsExtensions": false,
+		"rewriteRelativeImportExtensions": true,
+		"outDir": "dist/gates",
+		"rootDir": "scripts"
+	}
+}

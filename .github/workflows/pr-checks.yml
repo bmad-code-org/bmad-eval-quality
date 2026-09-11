@@ -37,8 +37,11 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Licence scan
-        run: node scripts/check-licenses.mjs
+      # Both lockfiles, from one invocation: `eval-quality.config.json`'s
+      # `licences` section names them, carries the allowlist, and carries the
+      # website graph's own policy and its one scoped exception.
+      - name: Licence scan (every lockfile the gate configuration names)
+        run: npm run check:licences
 
       # Named so a red build says which gate failed; `npm run validate` runs
       # them again inside the validate step, which is deliberate redundancy
@@ -76,9 +79,12 @@ jobs:
 
       # The documentation site's lockfile is a second resolved graph, and
       # `npm --prefix website ci` reads no project `.npmrc` from the root, so
-      # AD-25 and the age policy have to be applied to it explicitly.
-      - name: Website dependency audit (lockfile age and AD-25 licences)
-        run: npm run check:website-deps
+      # AD-25 and the age policy have to be applied to it explicitly. Both
+      # lockfiles are named in `eval-quality.config.json`, so one invocation
+      # covers them; the composite action above audits the root lockfile again
+      # before `npm ci`, where the audit has to run with nothing installed.
+      - name: Lockfile publication age (every lockfile the gate configuration names)
+        run: npm run check:lockfile-age
 
       # Every command line the documentation shows is executed. Exit 64 means
       # the documented command or flag does not exist.
@@ -141,7 +147,7 @@ jobs:
       # `npm run validate` ends in `test:coverage`, so the AD-30/NFR7 floor is
       # already enforced here. A separate coverage step beside this one would
       # run the whole suite twice in one job for nothing.
-      - name: Validate (typecheck, lint, check:docs, check:doc-invocations, check:shareable, lint:spine, check:vectors, check:schemas, check:ad5-registry, check:ad28-registry, check:ad31-table, check:ad33-table, check:ad21-table, check:layers, check:lineage, check:boundary, check:corpus, check:doc-counts, check:doc-claims, check:worked-example, check:version, check:website-deps, and the AD-30/NFR7 coverage floor via test:coverage)
+      - name: Validate (typecheck, lint, check:docs, check:doc-invocations, check:shareable, lint:spine, check:vectors, check:schemas, check:ad5-registry, check:ad28-registry, check:ad31-table, check:ad33-table, check:ad21-table, check:layers, check:lineage, check:boundary, check:corpus, check:doc-counts, check:doc-claims, check:worked-example, check:version, check:lockfile-age, check:licences, and the AD-30/NFR7 coverage floor via test:coverage)
         run: npm run validate
 
   floor:
@@ -356,11 +362,21 @@ jobs:
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version-file: ".nvmrc"
+          cache: "npm"
+
+      - uses: ./.github/actions/assert-npm-version
+        with:
+          version: ${{ env.NPM_VERSION }}
+
+      # The gate reads its configuration through a published Zod schema, so this
+      # job installs where it used to run against a bare checkout.
+      - name: Install dependencies
+        run: npm ci
 
       - name: Assert the scan fails, naming the disallowed licence and the exact dependency path
         run: |
           set +e
-          output="$(node scripts/check-licenses.mjs --lockfile scripts/fixtures/licence-canary/package-lock.json 2>&1)"
+          output="$(node scripts/gates-cli.ts licences --config scripts/fixtures/licence-canary/eval-quality.config.json 2>&1)"
           exit_status=$?
           set -e
           echo "$output"

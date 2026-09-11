@@ -1,0 +1,40 @@
+{
+	"lockfile-age": {
+		"lockfiles": ["package-lock.json", "website/package-lock.json"],
+		"windowDays": 7
+	},
+	"licences": {
+		"lockfiles": ["package-lock.json", "website/package-lock.json"],
+		"allowlist": [
+			"MIT",
+			"Apache-2.0",
+			"ISC",
+			"BSD-2-Clause",
+			"BSD-3-Clause",
+			"0BSD",
+			"BlueOak-1.0.0",
+			"CC0-1.0",
+			"Python-2.0"
+		],
+		"policies": {
+			"website/package-lock.json": {
+				"label": "workspace policy: package allowlist + MPL-2.0",
+				"reason": "website/package.json is private, website/ appears in no files entry, and npm pack carries none of it, so nothing in that graph is ever distributed. MPL-2.0 is file-level copyleft on the covered files themselves and binds a redistributor of those files; the documentation site ships as static HTML built from these tools.",
+				"also": ["MPL-2.0"]
+			}
+		},
+		"tolerances": [
+			{
+				"reason": "astro declares sharp in optionalDependencies, npm records an optional dependency in the lockfile whatever --omit says, and the site selects passthroughImageService, so the binaries are never loaded. Selecting the default image service again withdraws this and the gate fails.",
+				"lockfiles": ["website/package-lock.json"],
+				"prefix": "@img/sharp-",
+				"license": "LGPL-3.0-or-later",
+				"optional": true,
+				"marker": {
+					"file": "website/astro.config.mjs",
+					"contains": "passthroughImageService"
+				}
+			}
+		]
+	}
+}

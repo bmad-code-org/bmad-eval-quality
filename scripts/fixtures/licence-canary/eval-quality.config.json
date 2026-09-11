@@ -1,0 +1,6 @@
+{
+	"licences": {
+		"lockfiles": ["package-lock.json"],
+		"allowlist": ["MIT", "Apache-2.0", "ISC"]
+	}
+}

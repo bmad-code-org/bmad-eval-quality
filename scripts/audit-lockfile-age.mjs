@@ -8,6 +8,11 @@
 // could not be fetched after retries, or on an entry that does not resolve to the npm registry at all
 // (a relabelled lockfile entry pointing `resolved` somewhere else would otherwise sail through).
 //
+// These flags are the pre-install path: `.github/actions/audit-lockfile-age`
+// runs this before `npm ci`, so nothing here may import from `node_modules`. A
+// consumer runs the same audit through `eval-quality-gates lockfile-age`, which
+// reads its lockfiles and its window out of a configuration file.
+//
 // Usage:
 //   node scripts/audit-lockfile-age.mjs [--lockfile <path>] [--window-days <n>] [--now <RFC3339>]
 //
@@ -17,7 +22,13 @@
 import { readFile } from 'node:fs/promises'
 import { pathToFileURL } from 'node:url'
 
-const WINDOW_DAYS_DEFAULT = 7
+// The window this script's own flags default to. `gate-config.ts` declares the
+// same default for the configured path as `LOCKFILE_WINDOW_DAYS_DEFAULT`, and
+// `tests/architecture/published-gates.test.ts` holds the two equal. The number
+// is declared twice because this file runs before `npm ci` in CI and so may
+// import nothing from `node_modules`, where the schema that carries the other
+// one lives.
+export const WINDOW_DAYS_DEFAULT = 7
 const CONCURRENCY = 8
 const MAX_RETRIES = 3
 const RETRY_BASE_MS = 300
@@ -123,7 +134,18 @@ function collectLockedEntries(lockfile) {
 		}))
 }
 
-export async function auditLockfileAge({ lockfile, now, windowDays }) {
+/**
+ * `readTimeMap` is the one effect this function performs, named so a caller can
+ * supply the registry's answers itself. It defaults to the real fetch, so a
+ * caller that wants the registry gets it by saying nothing, and a case that
+ * wants a fixed answer runs offline.
+ */
+export async function auditLockfileAge({
+	lockfile,
+	now,
+	windowDays,
+	readTimeMap = fetchTimeMap,
+}) {
 	if (!Number.isFinite(windowDays) || windowDays < 0) {
 		throw new Error(
 			`windowDays must be a non-negative number, got: ${windowDays}`,
@@ -156,7 +178,7 @@ export async function auditLockfileAge({ lockfile, now, windowDays }) {
 	const fetchFailures = new Set()
 	await mapWithConcurrency(uniqueNames, CONCURRENCY, async (name) => {
 		try {
-			timeMaps.set(name, await fetchTimeMap(name))
+			timeMaps.set(name, await readTimeMap(name))
 		} catch {
 			fetchFailures.add(name)
 		}

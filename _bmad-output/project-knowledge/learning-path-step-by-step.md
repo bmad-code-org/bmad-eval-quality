@@ -4439,3 +4439,33 @@ Three were bare integers typed into the code that writes the artifact. Five were
 - The gate that catches a transcription can hold a transcription. This one declared its own copy of a constant that had been exported from the barrel hours earlier.
 
 **Watch out:** a breaking shape change that edits the builder's case for N to the new shape and does not bump N passes every gate here. Nothing outside that change knows what the version ought to be, and no gate reading only behaviour can. That is the limit of the method and the argument a proposal to pin `schemaVersion` with a `const` will reach for.
+
+## Step 62 (epic13-story1): the checks a consumer could only copy
+
+**In plain terms:** eight gates lived under `scripts/` and reached nobody. `files` carries `dist`, and nothing under `scripts/` is emitted there, so a repository wanting any of them copied the file. A copy drifts from the day it is made.
+
+**What:** a second binary, `eval-quality-gates`, emitted into `dist/gates/` by its own tsconfig, dispatching on `argv[2]` over the gates that are published. The first two are the lockfile-age audit and the licence scan. Each reads its rules from one JSON file in the consumer's repository, validated by a Zod schema the package ships. This repository's own allowlist, its website policy and its one scoped exception moved into its own `eval-quality.config.json`, so `npm run validate` runs both gates through the published path.
+
+**Why:** a gate whose rules are one repository's decisions expressed as code cannot be published. Publishing it means turning those rules into data the consumer supplies, and then the gate is a mechanism rather than a policy.
+
+**Read in this order:**
+
+1. `scripts/gate-config.ts`: the schema, the four refusals, and the one section loaded per call.
+2. `scripts/gates-cli.ts`: the multiplexer, and the boundary where a `.mjs` gate's result shape is stated.
+3. `scripts/fixtures/consumer/`: the compliant fixture and the two seeded ones.
+
+**Story:** `_bmad-output/implementation-artifacts/13-1-publish-the-eight-gates-each-configured-by-the-consumer.md`
+
+### Reference
+
+**Rules:**
+
+- Widen a build by adding a second tsconfig, never by widening the first. Moving `rootDir` shifts every emitted path and breaks `main`, `types`, `bin` and every `exports` target at once.
+- A gate with no configuration refuses by name. A fallback to the publisher's own values is a gate that passes for a reason the consumer never chose.
+- Validate one named section per call. Parsing the whole document blocks the gate you are running on a gate you are not.
+- Let a setting carry its own reason. A policy that widens an allowlist and an exception that tolerates a licence both state why in the file that declares them.
+- Make an exception name the condition that makes it sound. A marker naming a file and the text in it withdraws the exception on the day that text goes.
+- Resolve every path in a configuration against the configuration file. A file that means one thing from the repository root and another from a subdirectory is a file nobody can test.
+- Write one seed per gate from outside its trigger vocabulary. A seed sharing an author and an afternoon with the rule it trips confirms the rule and measures no recall.
+
+**Watch out:** a gate that runs before `npm ci` may import nothing from `node_modules`, so the two flag-driven `.mjs` entry points stay free of the Zod-backed loader and the window default is declared twice with a case holding the two equal.

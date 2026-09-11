@@ -39,6 +39,22 @@ body.
   no build; the case that held this before reads `dist/` and skips when none has run.
   `npm run generate:version` writes the number from the manifest, and `scripts/release-prepare.mjs`
   calls it, so the substitution is spelled in one place.
+- **A second binary, `eval-quality-gates`, runs the package's repository gates against your own
+  trees.** Two gates ship with it. `lockfile-age` audits every entry of every lockfile you name
+  against its real publication timestamp on the npm registry, and fails on an entry published inside
+  your window, on metadata it could not fetch, and on an entry that does not resolve to the npm
+  registry at all. `licences` holds every locked entry's licence expression against an allowlist of
+  identifiers you declare, evaluating `OR`, `AND` and parentheses, and reports the shortest chain of
+  require-names to any entry outside it. Both were internal to this repository and reached no
+  consumer, because `files` carries `dist` and the gates were emitted nowhere.
+- **The gates are configured by one JSON file in your repository.** `eval-quality.config.json` at
+  your repository root, or any path you give to `--config`, keyed by gate name and validated by a
+  published Zod schema. It carries only the gates you have adopted: configuring a gate is what opts
+  into it, and a gate you invoke with no section for it refuses by name with no fallback to this
+  package's own values. Nothing in it is a value a hand maintains in step with something else: the
+  age threshold is a duration and the allowlist takes licence identifiers whose charset refuses a
+  package-and-version pin. Every path a section names is relative to the configuration file.
+  `docs/how-to/run-the-gates-on-your-repository.md` is the page for it.
 
 ## [3.0.0] - 2026-09-10
 

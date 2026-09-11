@@ -6,10 +6,10 @@
  * code, and a file left at the clone root could stand in for the page's own
  * heredoc.
  *
- * Black-box through the CLI, following `stamp-changelog.test.ts`: a `.mjs`
- * import from a `.ts` test has no declaration under `strict`, and `--root`
- * exists so a fixture page can be driven through the same path the shipped
- * documentation takes.
+ * Black-box through the CLI, following `stamp-changelog.test.ts`: what this
+ * gate promises is an exit code and a report, so the cases read those, and
+ * `--root` exists so a fixture page can be driven through the same path the
+ * shipped documentation takes.
  *
  * Every case asserts the scanned count as well as the verdict. A case that
  * asserts only `0 failures` passes just as happily when the fixture's command

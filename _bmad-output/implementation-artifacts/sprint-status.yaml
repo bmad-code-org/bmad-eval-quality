@@ -133,3 +133,6 @@ development_status:
   12-3-name-the-three-versions-the-package-stamps-and-publish-the-five-it-only-reads: review
   12-4-the-isolation-manifests-undeclared-breaking-change: backlog
   12-5-the-file-system-mechanism-a-consumer-cannot-wrap: backlog
+
+  epic-13: in-progress
+  13-1-publish-the-eight-gates-each-configured-by-the-consumer: in-progress

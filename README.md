@@ -179,6 +179,8 @@ import spec from 'eval-quality/schemas/eval-contract.schema.json' with { type: '
 
 The import attribute is required: ESM on Node 22 and 24 both throw `ERR_IMPORT_ATTRIBUTE_MISSING` without it. The development corpus ships the same way, at `eval-quality/corpus/dev/`, so you can read twenty-four real contracts and one compiled-and-sealed pair without cloning this repository.
 
+**The repository gates** are a second binary, `eval-quality-gates`, which holds your own trees to rules you declare in one JSON file at your repository root. `lockfile-age` audits every entry of every lockfile you name against its real publication timestamp on the npm registry. `licences` holds every locked entry's licence expression against an allowlist of identifiers you declare. The file carries only the gates you have adopted, and a gate you invoke with no section for it refuses by name with no fallback to this package's own values. [Run the gates on your repository](https://bmad-code-org.github.io/bmad-eval-quality/how-to/run-the-gates-on-your-repository/) is the page for it.
+
 The published surface is stable: a breaking change to a command, an export, or a schema is a major version bump. `compile` refuses a contract whose `schemaVersion` differs from the one this build reads, and `preflight` and `score` refuse a probe the same way, so check the stamp on anything you did not author against this version. The library exports both numbers, `EVAL_CONTRACT_SCHEMA_VERSION` and `PROBE_SCHEMA_VERSION`, so the version to check against comes from the package. `CHANGELOG.md` records what each release breaks.
 
 ## Relationship with BMad and TEA
