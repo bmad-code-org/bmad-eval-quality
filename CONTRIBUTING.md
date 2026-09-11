@@ -27,7 +27,7 @@ npm run docs:dev    # the documentation site, live
 ## What the gate checks
 
 `npm run validate` is what CI runs on every pull request.
-Beyond typecheck, lint, and tests with coverage, it holds a set of byte-exact drift checks: the published JSON Schemas against the Zod source, the development corpus, the three generated decision tables under `docs/`, the worked example chain, and the shareable HTML export.
+Beyond typecheck, lint, and tests with coverage, it holds a set of byte-exact drift checks: the published JSON Schemas against the Zod source, the development corpus, the three generated decision tables under `docs/`, the worked example chain, the shareable HTML export, and the barrel's `VERSION` against the manifest.
 Every one has a `generate:*` or `build:*` twin; the README's Development section lists them.
 A hand edit to a generated file fails the check, so regenerate.
 
@@ -82,7 +82,8 @@ This dispatches `publish.yml` on `main` with the matching `bump` input. The run:
 1. fails at the AD-18 guard unless the repository variable `PUBLICATION_UNBLOCKED` is `true`;
 2. checks out `main`, then `node scripts/release-prepare.mjs <bump>
    --on-main`: bumps `package.json` and `package-lock.json` (`npm version --no-git-tag-version`),
-   stamps `VERSION` in `src/index.ts`, moves `[Unreleased]` in `CHANGELOG.md` into a dated
+   writes the manifest version into `VERSION` in `src/index.ts` (`scripts/generate-version.ts`),
+   moves `[Unreleased]` in `CHANGELOG.md` into a dated
    `[X.Y.Z]` section (`scripts/stamp-changelog.mjs`), and commits `chore: release vX.Y.Z [skip ci]`
    straight onto `main`. `[skip ci]` keeps that push from starting `pr-checks.yml` and the other
    push-triggered workflows on a commit this run already validated and owns. The commit identity is

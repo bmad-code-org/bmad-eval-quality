@@ -141,7 +141,7 @@ jobs:
       # `npm run validate` ends in `test:coverage`, so the AD-30/NFR7 floor is
       # already enforced here. A separate coverage step beside this one would
       # run the whole suite twice in one job for nothing.
-      - name: Validate (typecheck, lint, check:docs, check:doc-invocations, check:shareable, lint:spine, check:vectors, check:schemas, check:ad5-registry, check:ad28-registry, check:ad31-table, check:ad33-table, check:ad21-table, check:layers, check:lineage, check:boundary, check:corpus, check:worked-example, check:website-deps, and the AD-30/NFR7 coverage floor via test:coverage)
+      - name: Validate (typecheck, lint, check:docs, check:doc-invocations, check:shareable, lint:spine, check:vectors, check:schemas, check:ad5-registry, check:ad28-registry, check:ad31-table, check:ad33-table, check:ad21-table, check:layers, check:lineage, check:boundary, check:corpus, check:doc-counts, check:doc-claims, check:worked-example, check:version, check:website-deps, and the AD-30/NFR7 coverage floor via test:coverage)
         run: npm run validate
 
   floor:

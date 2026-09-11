@@ -25,9 +25,12 @@ import { createRequire } from 'node:module'
 import { join } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import type {
+	ComparableResult,
+	DominanceRelationValue,
 	QualificationFailure,
 	QualificationFailureCode,
 	QualificationResult,
+	Severity,
 } from 'eval-quality'
 import { describe, expect, it } from 'vitest'
 import { INTERCHANGE_ARTIFACT_KEYS } from '../../src/core/schemas/artifact.ts'
@@ -328,6 +331,84 @@ describe('the published package surface', () => {
 			declarationChecksRan: true,
 		}
 		expect(carried.failures[0]?.code).toBe('signature-absent')
+	})
+
+	it('the barrel carries the schema versions and the dominance comparison', async (ctx) => {
+		if (!BUILT) return ctx.skip(NEEDS_BUILD)
+		const barrel = await publishedBarrel()
+		expect(barrel.PROBE_SCHEMA_VERSION).toBe(5)
+		expect(barrel.EVAL_CONTRACT_SCHEMA_VERSION).toBe(5)
+
+		// Each version keeps its literal declared type through
+		// `dist/index.d.ts`, so a consumer comparing against one narrows on it.
+		// A widened `number` passes the first assignment and fails the second.
+		const probeVersion: typeof import('eval-quality').PROBE_SCHEMA_VERSION = 5
+		const contractVersion: typeof import('eval-quality').EVAL_CONTRACT_SCHEMA_VERSION = 5
+		const probeLiteral: 5 = probeVersion
+		const contractLiteral: 5 = contractVersion
+		expect([probeLiteral, contractLiteral]).toEqual([
+			barrel.PROBE_SCHEMA_VERSION,
+			barrel.EVAL_CONTRACT_SCHEMA_VERSION,
+		])
+
+		// Each union ships with the `as const` array it is derived from, the way
+		// `QUALIFICATION_FAILURES` already does.
+		expect(barrel.DOMINANCE_RELATIONS).toEqual([
+			'a-dominates-b',
+			'b-dominates-a',
+			'equivalent',
+			'incomparable',
+		])
+		expect(barrel.SEVERITY_LEVELS).toEqual(['low', 'material', 'critical'])
+		const layerTypes = exportedTypeNames(layerBarrelSource)
+		for (const name of [
+			'ComparableResult',
+			'DominanceRelationValue',
+			'Severity',
+		]) {
+			expect(layerTypes).toContain(name)
+		}
+
+		// A cast says nothing about what `dist/index.d.ts` declares, so the
+		// signature is held by mutual assignability first: the declared type and
+		// the shape below have to accept each other, which fails if a parameter
+		// or the return type stops matching the three types published beside it.
+		type Declared = typeof import('eval-quality').compareDominance
+		type Expected = (
+			a: ComparableResult,
+			b: ComparableResult,
+			severityFloor: Severity,
+		) => DominanceRelationValue
+		const signatureHolds: Declared extends Expected
+			? Expected extends Declared
+				? true
+				: false
+			: false = true
+		expect(signatureHolds).toBe(true)
+
+		// `compareDominance` off the built barrel, called through that signature.
+		// The two sides share a comparability key and carry no outcome, so the
+		// severity-floor override has nothing to withdraw and the raw component
+		// comparison is the answer.
+		const compare = barrel.compareDominance as Expected
+		const side = (caught: number): ComparableResult => ({
+			outcomes: [],
+			strength: {
+				denominator: 'unique qualified probe identifiers exercised',
+				basis: 'measured',
+				vector: {
+					defect: { caught, exercised: 4, rate: caught / 4 },
+					gameability: null,
+					'zero-action': null,
+				},
+				comparable: true,
+				note: null,
+			},
+			comparabilityKey: 'one shared probe set',
+		})
+		const relation = compare(side(4), side(2), 'material')
+		expect(barrel.DOMINANCE_RELATIONS).toContain(relation)
+		expect(relation).toBe('a-dominates-b')
 	})
 
 	it('case 158: the corpus README resolves and a missing schema does not', () => {

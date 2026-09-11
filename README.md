@@ -238,6 +238,7 @@ Several files are generated from the code and guarded byte for byte, so a hand e
 | `docs/ad31-coverage-predicates.generated.md`, the coverage predicates | `npm run generate:ad31-table` | `npm run check:ad31-table` |
 | `docs/ad33-outcome-decision.generated.md`, the outcome decision procedure | `npm run generate:ad33-table` | `npm run check:ad33-table` |
 | the three committed worked chains | `npm run generate:worked-example` | `npm run check:worked-example` |
+| `VERSION` in `src/index.ts`, from `package.json` | `npm run generate:version` | `npm run check:version` |
 | `_bmad-output/shareable/`, this README, CONTRIBUTING, and the planning artifacts as standalone HTML | `npm run build:shareable` | `npm run check:shareable` |
 
 Every artifact the library hands back is deep-frozen. A revision is a new artifact carrying its parent's digest and a revision count one greater, and `npm run check:lineage` fails the build when a lineage field is written outside the modules that own it. `npm run check:boundary` fails it when anything the tarball carries references the planning system that produced it.

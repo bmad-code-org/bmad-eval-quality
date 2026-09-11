@@ -584,7 +584,7 @@ npm run docs:dev    # the documentation site, live
 </code></pre>
 <h2 id="what-the-gate-checks">What the gate checks<a class="heading-anchor" href="#what-the-gate-checks" aria-label="Link to What the gate checks">#</a></h2>
 <p><code>npm run validate</code> is what CI runs on every pull request.
-Beyond typecheck, lint, and tests with coverage, it holds a set of byte-exact drift checks: the published JSON Schemas against the Zod source, the development corpus, the three generated decision tables under <code>docs/</code>, the worked example chain, and the shareable HTML export.
+Beyond typecheck, lint, and tests with coverage, it holds a set of byte-exact drift checks: the published JSON Schemas against the Zod source, the development corpus, the three generated decision tables under <code>docs/</code>, the worked example chain, the shareable HTML export, and the barrel&#39;s <code>VERSION</code> against the manifest.
 Every one has a <code>generate:*</code> or <code>build:*</code> twin; the README&#39;s Development section lists them.
 A hand edit to a generated file fails the check, so regenerate.</p>
 <p>Three more guards are structural.
@@ -627,7 +627,8 @@ commit through an ordinary pull request, and is the fallback when the direct pus
 <ol>
 <li>fails at the AD-18 guard unless the repository variable <code>PUBLICATION_UNBLOCKED</code> is <code>true</code>;</li>
 <li>checks out <code>main</code>, then <code>node scripts/release-prepare.mjs &lt;bump&gt; --on-main</code>: bumps <code>package.json</code> and <code>package-lock.json</code> (<code>npm version --no-git-tag-version</code>),
-stamps <code>VERSION</code> in <code>src/index.ts</code>, moves <code>[Unreleased]</code> in <code>CHANGELOG.md</code> into a dated
+writes the manifest version into <code>VERSION</code> in <code>src/index.ts</code> (<code>scripts/generate-version.ts</code>),
+moves <code>[Unreleased]</code> in <code>CHANGELOG.md</code> into a dated
 <code>[X.Y.Z]</code> section (<code>scripts/stamp-changelog.mjs</code>), and commits <code>chore: release vX.Y.Z [skip ci]</code>
 straight onto <code>main</code>. <code>[skip ci]</code> keeps that push from starting <code>pr-checks.yml</code> and the other
 push-triggered workflows on a commit this run already validated and owns. The commit identity is

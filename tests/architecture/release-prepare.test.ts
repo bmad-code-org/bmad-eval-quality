@@ -366,6 +366,33 @@ describe('release-prepare refusals leave origin and the tree untouched', () => {
 		)
 	})
 
+	/**
+	 * `untouched` does not apply here: this refusal comes from
+	 * `scripts/generate-version.ts`, which runs after `npm version` has already
+	 * bumped the manifest, so the tree is dirty by design and origin is what has
+	 * to be clean. The generator mints no declaration, because writing one back
+	 * would undo a deliberate removal.
+	 */
+	it('refuses when the barrel declares no VERSION, naming the file and the shape', async () => {
+		const fx = fixture()
+		writeFileSync(
+			join(fx.work, 'src/index.ts'),
+			'export const RELEASE = undefined\n',
+		)
+		git(fx.work, fx.env, 'commit', '--quiet', '-am', 'drop VERSION')
+		git(fx.work, fx.env, 'push', '--quiet', 'origin', 'main')
+		const before = inspect(fx)
+		const { status, stderr } = await run(fx, 'patch', '--on-main')
+		expect(status).toBe(1)
+		expect(stderr).toContain(
+			"src/index.ts: declares no `export const VERSION = '<version>'`",
+		)
+		const after = inspect(fx)
+		expect(after.originMain).toBe(before.originMain)
+		expect(after.head).toBe(before.head)
+		expect(after.barrel).toBe(before.barrel)
+	})
+
 	it('reports a rejected push without leaving anything on origin', async () => {
 		const fx = fixture()
 		// A pre-receive hook standing in for a rule on main.

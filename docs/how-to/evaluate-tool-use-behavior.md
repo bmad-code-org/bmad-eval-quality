@@ -329,7 +329,7 @@ The transport is stdio and nothing else. A server reached over Streamable HTTP s
 
 **The first reading runs today, and here is what that cost.** For the first reading, TEA's own move stays workable and stays cheaper than writing an adapter: put the tool-calling agent behind a command, declare a `cli` interface, and evaluate the run through its arguments, its streams, and the files it writes.
 
-That route was run end to end against the built CLI at 2.0.0.
+That route was run end to end against the built CLI at 3.0.0.
 A contract whose one operation declares the tool-call log in `artifacts` and nominates it with `descriptorChannel` compiles and seals at exit `0`, an oracle quantifies over the calls inside the log, and pre-flight resolves at exit `0` with all six checks satisfied, including a sensitivity witness and a manifestation witness whose legs both address the file.
 Carrying those files forward from 1.4.2 costs two stamps and one key: the contract is `schemaVersion` 5, the probe is 5, and the defect signature's input binding declares `"arguments": null`.
 

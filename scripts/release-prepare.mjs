@@ -21,7 +21,7 @@
 // --no-pr pushes the branch and prints the `gh pr create` command instead of running it.
 
 import { execFileSync, spawnSync } from 'node:child_process'
-import { readFileSync, writeFileSync } from 'node:fs'
+import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -150,20 +150,31 @@ const STAMP_CHANGELOG = fileURLToPath(
 
 /**
  * `src/index.ts` publishes the version as a constant, so bumping the manifest
- * alone ships a `VERSION` one release behind. A test asserts the two agree,
- * which catches it after the release branch exists; stamping it here means
- * there is nothing to catch.
+ * alone ships a `VERSION` one release behind. `scripts/generate-version.ts`
+ * writes it from `package.json`, so the two agree the moment this step
+ * returns, and the substitution is spelled in one place.
+ *
+ * Two gates hold that agreement afterwards. `npm run check:version` reads the
+ * two source files, needs no build, and runs inside `npm run validate`.
+ * `tests/architecture/package-exports.test.ts` case 156, "`VERSION` equals the
+ * manifest version", reads `dist/index.js` and skips when no build has run, so
+ * it holds what was actually built and published.
  */
-function stampBarrelVersion(current, version) {
-	const source = readFileSync(BARREL, 'utf8')
-	const previous = `export const VERSION = '${current}'`
-	if (!source.includes(previous)) {
-		fail(`${BARREL} does not declare VERSION as '${current}'; bump it by hand`)
+const GENERATE_VERSION = fileURLToPath(
+	new URL('./generate-version.ts', import.meta.url),
+)
+
+/**
+ * The generator words its own refusal and exits non-zero. Catching it here
+ * keeps that refusal as the last thing on stderr, where `run` would otherwise
+ * follow it with a Node stack.
+ */
+function generateBarrelVersion() {
+	try {
+		run(process.execPath, [GENERATE_VERSION])
+	} catch {
+		process.exit(1)
 	}
-	writeFileSync(
-		BARREL,
-		source.replace(previous, `export const VERSION = '${version}'`),
-	)
 }
 
 function pushMain(tag) {
@@ -188,7 +199,7 @@ function main() {
 	console.log(`release-prepare: ${current} -> ${version} on ${target}`)
 
 	run('npm', ['version', version, '--no-git-tag-version'])
-	stampBarrelVersion(current, version)
+	generateBarrelVersion()
 	run(process.execPath, [STAMP_CHANGELOG])
 
 	if (!args.onMain) git('checkout', '-b', releaseBranch)

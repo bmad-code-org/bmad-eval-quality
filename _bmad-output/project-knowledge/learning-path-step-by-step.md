@@ -4377,3 +4377,34 @@ flowchart LR
 - The person who wrote the fix is the worst reader of it. Two corrections in this change were themselves false and an independent reader found both.
 
 **Watch out:** the check reads the published pages and not `src/`. Source comments go stale the same way, and the count was measured rather than guessed: ten comment blocks name two or more interface kinds, eight state a structural relationship a new kind would not falsify, and the one that stated the accepted set was rewritten here. The one that remains sits two lines above the tuples it describes and names the test that asserts them.
+
+## Step 60 (epic12-story1): the number you had to copy to obey the rule
+
+**In plain terms:** a library can enforce a rule and still leave you guessing what the rule is.
+This one refused any artifact stamped with the wrong schema version, and the number it compared against was exported from nowhere, so obeying it meant typing that number into your own code and hoping nobody moved it.
+The same shape sat one level up: the version the package publishes about itself was typed by hand into a source file, and the only thing holding it needed a build that most runs never did.
+
+**What:** `PROBE_SCHEMA_VERSION`, `EVAL_CONTRACT_SCHEMA_VERSION`, `compareDominance`, `DOMINANCE_RELATIONS`, `SEVERITY_LEVELS`, and the types `ComparableResult`, `DominanceRelationValue` and `Severity` all import from `eval-quality`. `VERSION` is written from `package.json` by `npm run generate:version`, and `npm run check:version` fails on a disagreement with no build in front of it.
+
+**Why:** AD-11 puts the schema-version comparison on whoever reads the artifact, and the previous release made a stale probe stamp a runtime fault in two more stages. The `exports` map carries no wildcard, so a deep import is refused and the number had to be copied. AD-7's dominance relation was in the same position: implemented, tested, and reachable from no entry point.
+
+**Read in this order:**
+
+1. `src/index.ts`: the two schema versions ride the `root -> core-schemas` edge, beside the artifact types they stamp.
+2. `src/application/index.ts`: everything from `core/score` reaches the root barrel through here, and `Severity` is a type-only clause because a Zod schema shares its name.
+3. `scripts/version-target.ts`: the declaration pattern and the two file paths, spelled once so the writer and the check cannot address different things.
+4. `scripts/check-version.ts`: the build-free half, next to the case it stands in for.
+
+**Story:** `_bmad-output/implementation-artifacts/12-1-the-schema-version-constants-the-dominance-comparison-and-a-version-that-cannot-drift.md`
+
+### Reference
+
+**Rules:**
+
+- A value the package enforces against belongs on a published entry point. A rule a consumer cannot import is a rule a consumer has to copy, and a copy is drift waiting for the next bump.
+- Ship each union type with the `as const` array it is derived from, so a consumer can write a table over the values and have the compiler check it is total.
+- Re-export with an explicit named clause and reach for `export type` when a name carries both a type and a value meaning. `export *` takes both, and here the value is a live Zod schema the barrel refuses to carry.
+- A number authored in one file and repeated in another gets a generator and a check, and the check reads the source files, so it holds on a tree nobody has built.
+- A comment claiming a verification names the case that performs it. "A test asserts the two agree" is unreachable prose, and the case it meant skipped whenever `dist/` was absent.
+
+**Watch out:** the generator refuses when the declaration is absent, because minting one would undo a deliberate removal. The release script calls the generator, so the substitution string is spelled in one place.

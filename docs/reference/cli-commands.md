@@ -200,10 +200,16 @@ The published tarball carries `dist`, `schemas`, `corpus`, `README.md`, and `LIC
 - **Serialization and digests**: `serializeArtifact`, `digestArtifact`, `digestBytes`, `digestComposite`
 - **Lineage**: `validateLineageChain`
 - **Errors**: `StructuralFailure`, `RuntimeFault`
-- **Enumerations**: `FAILURE_CODES`, `RUNTIME_FAULT_CODES`, `VERDICTS`, `EVALUATOR_RECOMMENDATIONS`, `INTERCHANGE_ARTIFACT_KEYS`, `QUALIFICATION_FAILURES`
+- **Enumerations**: `FAILURE_CODES`, `RUNTIME_FAULT_CODES`, `VERDICTS`, `EVALUATOR_RECOMMENDATIONS`, `INTERCHANGE_ARTIFACT_KEYS`, `QUALIFICATION_FAILURES`, `SEVERITY_LEVELS`, `DOMINANCE_RELATIONS`
+- **Schema versions**: `PROBE_SCHEMA_VERSION`, `EVAL_CONTRACT_SCHEMA_VERSION`
+- **Comparison**: `compareDominance`
 - **Version**: `VERSION`
 
 Every artifact type ships alongside them as a type-only export, with the option and result types of the three entry points that declare them: `RunPreflightOptions`, `PreflightFromObservationsOptions`, `RunScoreOptions`, and `RunScoreResult`. `compile` and `seal` take an inline `{ strict?: boolean }` and export no options type.
+
+Both schema versions are declared as the literal integer they hold, so a caller comparing an artifact's `schemaVersion` against one narrows on it. AD-11 puts the equality comparison on whoever reads the artifact, and a stamp this build does not read becomes a `schema-version-mismatch` runtime fault at exit `5`. Importing the number is how a caller states the version this build reads.
+
+`compareDominance` is AD-7's four-valued relation over two scored results. It takes two `ComparableResult` values and a `Severity` floor and answers one of `DOMINANCE_RELATIONS`: `a-dominates-b`, `b-dominates-a`, `equivalent`, or `incomparable`. `ComparableResult`, `DominanceRelationValue`, and `Severity` ship as type-only exports beside it. The comparison re-derives no vector and reads no port, corpus, or clock.
 
 `runScore` returns the probe's own qualification result next to the artifact and the ladder. `qualification.failures` carries AD-9's closed reason codes for a probe the gate rejected, typed as `QualificationFailure` and `QualificationFailureCode`, and `qualification.declarationChecksRan` says whether the three checks that read the home operation's declared shapes ran.
 
