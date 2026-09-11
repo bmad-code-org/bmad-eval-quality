@@ -367,6 +367,40 @@ describe('dependency-direction: external module and Node builtin allowlist under
 		expect(scanSources(files)).toEqual([])
 	})
 
+	// The exemption reaches an import declaration and nothing else, because the
+	// clause tokens are threaded from that path alone and are `undefined` at the
+	// dynamic-import and re-export call sites. That was an emergent property of
+	// the plumbing rather than a stated rule, and nothing said so, which meant a
+	// refactor threading the tokens everywhere would have widened a
+	// security-adjacent exemption silently. These two cases make it a decision.
+	// Each asserts the exemption's own rule string. A count alone would pass on
+	// any violation, and the awaited form of the dynamic import raises the
+	// purity ban as well, so a count would have let that case pass for the
+	// wrong reason.
+	const EXEMPTION_RULE =
+		'src/core/canonical/digest.ts may import only the named binding "createHash" from node:crypto'
+
+	it('digest.ts may not reach the createHash exemption through a re-export', () => {
+		const files = new Map([
+			[
+				'src/core/canonical/digest.ts',
+				"export { createHash } from 'node:crypto'\n",
+			],
+		])
+		expect(scanSources(files).map((entry) => entry.rule)).toEqual([
+			EXEMPTION_RULE,
+		])
+	})
+
+	it('digest.ts may not reach the createHash exemption through a dynamic import', () => {
+		const files = new Map([
+			['src/core/canonical/digest.ts', "const p = import('node:crypto')\n"],
+		])
+		expect(scanSources(files).map((entry) => entry.rule)).toEqual([
+			EXEMPTION_RULE,
+		])
+	})
+
 	it('digest.ts importing createHash alongside another binding is rejected — the clause must be createHash alone', () => {
 		const files = new Map([
 			[

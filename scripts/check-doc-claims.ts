@@ -95,6 +95,7 @@ import { InteractionStep } from '../src/core/schemas/plan.ts'
 import { PROBE_SCHEMA_VERSION } from '../src/core/schemas/probe.ts'
 import { ManifestationWitness } from '../src/core/schemas/sensitivity-witness.ts'
 import { QUALIFICATION_FAILURES } from '../src/core/score/qualification.ts'
+import { GateConfiguration } from './gate-config.ts'
 
 const repoRoot = new URL('../', import.meta.url)
 const pathOf = (relative: string): string =>
@@ -436,6 +437,11 @@ const FOREIGN_IDENTIFIERS: readonly {
 		token: 'searchNotes',
 		reason:
 			'a tool name in a worked example, showing what the identifier charset admits',
+	},
+	{
+		token: 'windowDays',
+		reason:
+			'a setting in the consumer gate configuration, declared by the schema in scripts/gate-config.ts and so outside src/',
 	},
 ]
 
@@ -1316,6 +1322,13 @@ const FENCES: readonly FenceEntry[] = [
 		intro: /an absent field and an unrecognized field both fail the parse\./,
 		schema: InteractionStep,
 		shape: 'each',
+	},
+	{
+		file: 'docs/how-to/run-the-gates-on-your-repository.md',
+		claim: 'the worked gate configuration',
+		intro: /A file configuring both gates parses against the published schema:/,
+		schema: GateConfiguration,
+		shape: 'one',
 	},
 ]
 

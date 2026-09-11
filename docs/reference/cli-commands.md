@@ -7,7 +7,7 @@ sidebar:
 
 # CLI Reference
 
-The package publishes one binary, `eval-quality`, declared in `package.json` under `bin`. Inside a clone it is `node dist/cli/main.js` after `npm run build`.
+`package.json` declares two binaries under `bin`. `eval-quality` is the contract pipeline and is what this page documents; inside a clone it is `node dist/cli/main.js` after `npm run build`. `eval-quality-gates` runs the repository gates the package publishes, each configured by the consumer, and [Run the gates on your repository](/how-to/run-the-gates-on-your-repository/) is its page.
 
 There are four commands. `--help`, `-h`, and `help` all print usage, and `help <command>` prints one command's block. `--version` and `-V` print the package version. The four blocks below are what `eval-quality help <command>` prints, minus the exit-code table it appends.
 
@@ -189,6 +189,8 @@ Everything on stderr carries the `eval-quality` prefix.
 | `eval-quality/package.json` | the manifest |
 
 The published tarball carries `dist`, `schemas`, `corpus`, `README.md`, and `LICENSE`.
+
+The tarball carries two `bin` targets: `eval-quality` at `dist/cli/main.js`, and `eval-quality-gates` at `dist/gates/gates-cli.js`. The gates build is a second compilation of the gate sources into `dist/gates/`, so the library's own emitted paths are untouched by it. The gates binary takes a gate name and reads that gate's section of `eval-quality.config.json` in your repository; [Run the gates on your repository](/how-to/run-the-gates-on-your-repository/) is the page for it.
 
 `eval-quality/schemas/*` resolves to `.json` files, so an ESM import of one needs `with { type: 'json' }`. Node 22 and Node 24 both throw `ERR_IMPORT_ATTRIBUTE_MISSING` without it.
 

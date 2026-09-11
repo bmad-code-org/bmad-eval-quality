@@ -9,7 +9,8 @@
   "module": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": {
-    "eval-quality": "dist/cli/main.js"
+    "eval-quality": "dist/cli/main.js",
+    "eval-quality-gates": "dist/gates/gates-cli.js"
   },
   "type": "module",
   "keywords": [
@@ -65,7 +66,7 @@
   },
   "scripts": {
     "hooks:install": "husky",
-    "build": "tsc -p tsconfig-build.json",
+    "build": "tsc -p tsconfig-build.json && tsc -p tsconfig-gates.json",
     "clean": "rm -rf dist",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "lint": "biome check .",
@@ -102,7 +103,8 @@
     "check:worked-example": "node scripts/check-worked-example.ts",
     "generate:version": "node scripts/generate-version.ts",
     "check:version": "node scripts/check-version.ts",
-    "check:website-deps": "node scripts/audit-lockfile-age.mjs --lockfile website/package-lock.json && node scripts/check-licenses.mjs --lockfile website/package-lock.json",
+    "check:lockfile-age": "node dist/gates/gates-cli.js lockfile-age",
+    "check:licences": "node scripts/gates-cli.ts licences",
     "check:shareable": "node scripts/check-shareable.mjs",
     "bench:digest": "node scripts/bench-digest.ts",
     "docs:dev": "npm --prefix website run dev",
@@ -114,7 +116,7 @@
     "release:major": "gh workflow run publish.yml --ref main -f bump=major",
     "release:prepare": "node scripts/release-prepare.mjs",
     "release:publish": "gh workflow run publish.yml --ref main -f bump=none",
-    "validate": "npm run build && npm run typecheck && npm run lint && npm run check:docs && npm run check:doc-invocations && npm run check:shareable && npm run lint:spine && npm run check:vectors && npm run check:schemas && npm run check:ad5-registry && npm run check:ad28-registry && npm run check:ad31-table && npm run check:ad33-table && npm run check:ad21-table && npm run check:layers && npm run check:lineage && npm run check:boundary && npm run check:corpus && npm run check:doc-counts && npm run check:doc-claims && npm run check:worked-example && npm run check:version && npm run check:website-deps && npm run test:coverage",
+    "validate": "npm run build && npm run typecheck && npm run lint && npm run check:docs && npm run check:doc-invocations && npm run check:shareable && npm run lint:spine && npm run check:vectors && npm run check:schemas && npm run check:ad5-registry && npm run check:ad28-registry && npm run check:ad31-table && npm run check:ad33-table && npm run check:ad21-table && npm run check:layers && npm run check:lineage && npm run check:boundary && npm run check:corpus && npm run check:doc-counts && npm run check:doc-claims && npm run check:worked-example && npm run check:version && npm run check:lockfile-age && npm run check:licences && npm run test:coverage",
     "prepack": "npm run clean && npm run build",
     "prepublishOnly": "node scripts/assert-publish-authorized.mjs"
   },

@@ -62,6 +62,9 @@ Author a contract, run all four commands over it, and read a scored run down to 
 ### [Pick your system shape](/how-to/evaluate-agent-behavior/)
 Five guides, one per kind of system people point this at. Start with the one that matches yours.
 
+### [Run the gates](/how-to/run-the-gates-on-your-repository/)
+A second binary holds your own lockfiles to a publication-age window and a licence allowlist you declare.
+
 ### [Reference](/reference/cli-commands/)
 Every command, every flag, every exit code, and the glossary.
 

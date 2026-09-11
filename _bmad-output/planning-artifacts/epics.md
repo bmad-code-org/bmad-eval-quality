@@ -1145,3 +1145,94 @@ Originates in TEA's Story 3.4, where tea-s61 certified `createNodeFileSystemAdap
 **Given** the new export,
 **When** `npm run validate` runs,
 **Then** it is green, `tests/architecture/package-exports.test.ts` asserts the name on the built adapters barrel, and `docs/reference/cli-commands.md` lists it beside the two already there.
+
+## Epic 13: the gates a consumer can run
+
+Epic 12 published the values a consumer reads. This epic publishes the checks it runs, so a repository depending on `eval-quality` holds its pages, its commands, its lockfiles, its layering, its boundary and its lineage with the same mechanism rather than with copies it keeps in sync.
+
+**Why this epic exists.** Eight gates live under `scripts/` and reach no consumer, because `files` is `["dist","schemas","corpus","README.md","LICENSE"]`. A consumer that wants any of them copies it, and a copy drifts from the day it is made. TEA is the first consumer to ask, and its Stories 4.6 and 4.7 are blocked on five of the eight.
+
+**What this epic may not do.** It may not ship an architecture. A gate whose rules are eval-quality's own decisions expressed as code is not published until those decisions are data the consumer supplies. Seven gates a consumer can configure is a better outcome than eight where one imposes a foreign layer graph.
+
+### Story 13.1: Publish the eight gates, each configured by the consumer
+
+As a maintainer of a repository that depends on `eval-quality`,
+I want to run the package's gates against my own repository,
+So that my own trees are held by the same mechanism rather than by copies I maintain.
+
+Originates in TEA's Story 2.5 and blocks TEA's Stories 4.6 and 4.7.
+
+**The per-gate verdict, decided by reading before anything was designed.** Publishability is not uniform and the story says so per gate rather than averaging it.
+
+- `audit-lockfile-age.mjs` is generic. No fact about this repository appears in it; its `--lockfile` and window flags are already its whole configuration. It needs no configuration file.
+- `check-licenses.mjs` is generic in mechanism, and its three local policies, the SPDX allowlist, the two-policy split, and the `@img/sharp-*` tolerance, are already data-shaped.
+- `check-doc-invocations.mjs` is generic in mechanism and binds to this repository through three settings that derive from a package name plus one path. It is also the only one of the eight that already runs against `dist/`.
+- `check-package-boundary.ts` carries its rules as an exported data array. Its scanned-set composition is code and encodes this repository's `files` list plus an implicit README and LICENSE exemption.
+- `check-lineage-ownership.ts` carries its rule as data and its writer allowlist is derived at runtime from this package's own AD-24 stage table. Parameterized it becomes a field-ownership check, which is a real and generic thing, and a different product from the one shipped here. The story decides whether that product is what ships.
+- `check-doc-counts.ts` has a generic mechanism whose table is the gate. The corpus-manifest shape, the adapter-naming regex and the `schemaVersion:` stamp convention above the table are this repository's.
+- `check-doc-claims.ts` resolves eight classes and exactly three, citations, symbols and named codes, survive a move to another repository unmodified. The other five are this package's own exported constants wearing a table.
+- `check-dependency-direction.ts` holds its layer graph in code, in two places: `classifyLayer` is a chain of literal prefix tests returning a member of a closed union, and `isAllowedEdge` is a `switch` per source layer. Three further decisions are hard-coded as special cases. This is the largest single piece of work in the set, and it is the gate TEA's Story 4.7 most needs.
+
+**This story ships in three pull requests, and all three are the story.** None is optional and the story is not done until the third lands. If the run ends before all three land, what remains is unfinished work rather than a completed story with extensions. They stay contiguous: no other story is taken between them.
+
+The split is by dependency rather than by size, which is the only basis on which it was taken. The first pull request establishes the configuration format and the build target, and the second and third cannot be written until those are settled; a build change that shifts every emitted path in `dist/` is not one to get wrong three times. The order is the two gates TEA's Story 4.6 needs, then the three its Story 4.7 needs, then the three documentation gates, because 4.6 unblocks soonest on the smallest surgery and the documentation answer is the least certain.
+
+**Two structural blockers, both verified, and the first is a shipped-surface defect rather than a task.**
+
+`check-dependency-direction.ts` and `check-lineage-ownership.ts` import `typescript/unstable/ast` as a runtime value while `typescript` is a devDependency and `zod` is the only runtime dependency. **Those two gates cannot be published as they stand**: they resolve in this repository and fail in every consumer install. Nothing in this repository's own CI could have surfaced it, because this CI always has the devDependency present. It was found by asking what a consumer would experience, which is the same question Story 12.1 asked about a number a consumer had to transcribe.
+
+`tsconfig-build.json` is `include: ["src"]` with `rootDir: "src"`, so nothing under `scripts/` reaches `dist/`. Widening `rootDir` shifts every emitted path and breaks `main`, `types`, `bin` and all six `exports` targets at once, so the gates need their own build target or their sources move under `src/`. The story decides which and records the reasoning, because that decision outlives this story.
+
+**Acceptance Criteria:**
+
+**Given** the eight gates reach no consumer because `files` does not carry them,
+**When** they are published,
+**Then** a consumer that has only installed the package invokes each against its own repository, and the story records for each gate whether it shipped, shipped with its rules as consumer data, or did not ship with the reason. Where a gate ships with a narrowed class set, the story names which classes did not survive the move and why, so a consumer learns it from the documentation rather than by discovering that three of `check-doc-claims`'s eight classes are all that transfer.
+
+**Given** a consumer adopting one gate should not have to understand or configure the other seven,
+**When** the configuration format is defined,
+**Then** incremental adoption is a stated property of the format: the file carries only the gates the consumer has chosen to run, and configuring a gate is what opts into it. This is written into the format's definition rather than left to fall out of the by-name failure below.
+
+**Given** a consumer supplies no configuration for a gate it invokes,
+**When** that gate runs,
+**Then** it fails naming the missing configuration, with no fallback to `eval-quality`'s own. The existing flag conventions are the precedent: `--lockfile` and `--root` both fail closed on a malformed or absent value, and `--root` refuses a root that encloses the repository.
+
+**Given** TEA's Story 4.6 needs the age threshold and the SPDX allowlist named explicitly in its own configuration, over two lockfiles, with no version literal a hand would have to maintain,
+**When** those two gates are configured,
+**Then** the threshold is a duration and the allowlist is a set of SPDX identifiers, so nothing in the configuration pins a version.
+
+**Given** TEA's Story 4.7 needs the direction gate over `cli/`, `tools/`, `test/` and `src/**/*.cjs` with its own declared edges, and needs it to report without failing on the first run so the size of the fix is known before it starts,
+**When** the direction gate is published,
+**Then** the trees are the consumer's, the layer graph is data the consumer supplies, and report-only is a declared mode. An exit code a caller can ignore gives a consumer a green build and no report, which is the vacuous pass arriving in the one feature whose purpose is showing a consumer the size of the problem before committing to it, and it would make Story 4.7's first criterion unsatisfiable in a way nobody would notice.
+
+**Given** this repository's own layer graph exists today as eight literal prefix tests in `classifyLayer`, a `switch` per source layer in `isAllowedEdge`, and three hard-coded special cases, so turning it into configuration writes it down for the first time,
+**When** the graph is transcribed, which is the first thing done in that pull request and before anything is built on it,
+**Then** the transcribed graph is run against this repository's own tree and its verdict compared against the code's. A difference means the code has been enforcing something nobody ever stated, which is a finding rather than a transcription error and is reported before the publication continues. Agreement is recorded too, with what was compared, because a graph that transcribes with no verdict change is a measured negative worth having: it says the eight prefix tests, the per-layer switch and the three special cases together express exactly what the table expresses. Recording only the dirty outcome would leave a reader unable to tell whether the check ran.
+
+**Given** the transcription came back clean on this repository's own tree and exposed two edges the `switch` hid, and that `ARCHITECTURE-SPINE.md:150` states "`core/` imports `core/schemas` and nothing else outside itself" while `:593` repeats it as "core/ # pure; imports core/schemas only", so the spine grants `core -> core-schemas` and states nothing granting the reverse, which `isAllowedEdge`'s `case 'core-schemas': case 'core':` fall-through grants anyway and which no file exercises,
+**When** the graph is written down as data,
+**Then** the reverse edge is recorded as what it is: enforcement wider than the architecture it enforces, granted by the shape of a `switch` rather than by any sentence. The table narrows it to the spine's reading, which changes no verdict today because nothing exercises it, and the narrowing is recorded with the spine citation so it reads as a correction rather than as a new rule. This is the class the whole epic is about, found in the enforcement mechanism itself: a rule nobody stated, held by nothing, discoverable only by writing the rule down.
+
+**Given** `src/cli/render.ts:9` imports the external `zod` while the graph denies `cli -> core-schemas`, so the command line may reach Zod and may not reach this package's own Zod boundary,
+**When** the graph is written down,
+**Then** that asymmetry is transcribed as it stands and put to the repository owner with the evidence, because it is a deliberate-looking decision that the `switch` never made legible and changing it is his call rather than this story's.
+
+**Given** `check-dependency-direction.ts` and `check-lineage-ownership.ts` reach `typescript/unstable/ast` at runtime while `typescript` is a devDependency,
+**When** those two are published,
+**Then** `typescript` is an optional peer dependency and each of those gates refuses by name when it is absent, naming the missing dependency and the gate that needs it. That matches the format's incremental-adoption property, so a consumer installs it only if it runs those two, and a consumer who adopted the other six is never left wondering why one refuses.
+
+**Given** a seeded fixture proves a gate fires on the instance its author thought of, and the seed and the trigger vocabulary come from the same author on the same afternoon,
+**When** the fixtures are built,
+**Then** each shipped gate has a compliant fixture it passes and a seeded fixture it fails, and at least one seed per gate is worded deliberately from outside the trigger vocabulary, so the seed tests recall rather than confirming the pattern already written. This is the story's weight-bearing criterion and the fixtures are the story rather than its verification.
+
+**Given** the strongest instance of that criterion found so far, where both supply-chain gates pinned a lockfile entry's `resolved` to the registry host and passed a substitution that kept the host and changed the path, while the seeded fixture exercised a foreign host and so could not describe it,
+**When** each remaining gate is published,
+**Then** the question is asked of it explicitly and answered in the story: name a real defect of this gate's class that the gate's own vocabulary has no word for, and seed that one. A gate's vocabulary is what its author was thinking about, so the defect it cannot describe is the one its seeds will not reach. `check-doc-claims` missed a release announcement for two major versions for the same reason, because its verbs were a verification's and a release is announced with none of them.
+
+**Given** `check-package-boundary.ts` scans `package.json`'s `scripts` against twelve forbidden patterns,
+**When** scripts are added for the published gates,
+**Then** their names avoid those patterns, and the exit convention is normalized across the set, since two gates set `process.exitCode` and six call `process.exit`, which truncates a pending stdout write.
+
+**Given** the whole change,
+**When** `npm run validate` runs,
+**Then** it is green, and every gate this repository runs on itself runs through the published path, so the package is held by the mechanism it ships rather than by a second copy.

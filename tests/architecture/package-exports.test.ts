@@ -262,10 +262,20 @@ describe('the published package surface', () => {
 		expect(uncovered).toEqual([])
 	})
 
-	it('case 155: the `bin` target exists after a build', (ctx) => {
+	it('case 155: every `bin` target exists after a build', (ctx) => {
 		if (!BUILT) return ctx.skip(NEEDS_BUILD)
-		const target = manifest.bin['eval-quality'] as string
-		expect(existsSync(join(repoRoot, target))).toBe(true)
+		// Both binaries, and the names, because a `bin` entry that stopped being
+		// emitted resolves to nothing on an adopter's PATH and this repository's
+		// own runs would not notice: they invoke the sources.
+		expect(Object.keys(manifest.bin).sort()).toEqual([
+			'eval-quality',
+			'eval-quality-gates',
+		])
+		for (const target of Object.values(manifest.bin)) {
+			expect(existsSync(join(repoRoot, target)), `${target} is absent`).toBe(
+				true,
+			)
+		}
 	})
 
 	it('case 156: `VERSION` equals the manifest version', async (ctx) => {

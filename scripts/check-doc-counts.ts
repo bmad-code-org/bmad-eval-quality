@@ -32,6 +32,7 @@ import {
 	DEV_CORPUS_CONTRACTS,
 } from '../tests/coverage/fixtures/corpus.ts'
 import { CORPUS_INDEX, CORPUS_LABEL } from './dev-corpus-target.ts'
+import { GATE_NAMES, LOCKFILE_WINDOW_DAYS_DEFAULT } from './gate-config.ts'
 import { SKILL_EXAMPLE_LABEL } from './skill-example-target.ts'
 import {
 	buildWorkedExample,
@@ -258,6 +259,13 @@ const readSourceTree = async (directory: URL): Promise<string> => {
 
 const sourceTree = await readSourceTree(new URL('src/', repoRoot))
 const barrelSource = await readFile(new URL('src/index.ts', repoRoot), 'utf8')
+
+const packageManifest = JSON.parse(
+	await readFile(new URL('package.json', repoRoot), 'utf8'),
+) as { bin: Record<string, string> }
+
+/** The binaries the tarball carries, so a documented count is the manifest's own. */
+const publishedBinaries = Object.keys(packageManifest.bin).length
 
 /**
  * The schema versions the barrel publishes, split into the three groups two
@@ -729,6 +737,41 @@ const ENTRIES: readonly Entry[] = [
 		claim: "the corpus contract total in `EXAMPLE_SEED_ID`'s docblock",
 		pattern: wrapped('because [a-z-]+ of the ([a-z-]+) do not', 'compile'),
 		expected: [publishedContracts.length],
+		rendering: 'word',
+	},
+	{
+		file: 'docs/reference/cli-commands.md',
+		claim: 'the binary count',
+		pattern: /declares ([a-z-]+) binaries under `bin`/,
+		expected: [publishedBinaries],
+		rendering: 'word',
+	},
+	{
+		file: 'docs/reference/cli-commands.md',
+		claim: 'the `bin` target count in the tarball',
+		pattern: /tarball carries ([a-z-]+) `bin` targets/,
+		expected: [publishedBinaries],
+		rendering: 'word',
+	},
+	{
+		file: 'docs/how-to/run-the-gates-on-your-repository.md',
+		claim: 'the binary count',
+		pattern: /The package publishes ([a-z-]+) binaries/,
+		expected: [publishedBinaries],
+		rendering: 'word',
+	},
+	{
+		file: 'docs/how-to/run-the-gates-on-your-repository.md',
+		claim: 'the published gate count',
+		pattern: /The gates binary carries ([a-z-]+) gates/,
+		expected: [GATE_NAMES.length],
+		rendering: 'word',
+	},
+	{
+		file: 'docs/how-to/run-the-gates-on-your-repository.md',
+		claim: "the lockfile-age gate's default window",
+		pattern: /the gate holds entries to ([a-z-]+) days/,
+		expected: [LOCKFILE_WINDOW_DAYS_DEFAULT],
 		rendering: 'word',
 	},
 ]

@@ -4,9 +4,15 @@
 // .npmrc's `min-release-age=7` only filters *resolution*: a young package already sitting in a
 // committed lockfile installs cleanly under `npm ci` regardless of that setting (a verified fail-open
 // in this repo's history, see ARCHITECTURE-SPINE.md#Stack). This script re-checks every locked
-// version's real registry publish timestamp and fails closed - on a young entry, on metadata that
-// could not be fetched after retries, or on an entry that does not resolve to the npm registry at all
-// (a relabelled lockfile entry pointing `resolved` somewhere else would otherwise sail through).
+// version's real registry publish timestamp and fails closed: on a young entry, on metadata that
+// could not be fetched after retries, or on an entry whose `resolved` is not the registry tarball for
+// that entry's own name and version (a relabelled lockfile entry pointing `resolved` at a mirror, or
+// at another package on the registry itself, would otherwise sail through).
+//
+// These flags are the pre-install path: `.github/actions/audit-lockfile-age`
+// runs this before `npm ci`, so nothing here may import from `node_modules`. A
+// consumer runs the same audit through `eval-quality-gates lockfile-age`, which
+// reads its lockfiles and its window out of a configuration file.
 //
 // Usage:
 //   node scripts/audit-lockfile-age.mjs [--lockfile <path>] [--window-days <n>] [--now <RFC3339>]
@@ -17,12 +23,42 @@
 import { readFile } from 'node:fs/promises'
 import { pathToFileURL } from 'node:url'
 
-const WINDOW_DAYS_DEFAULT = 7
+// The window this script's own flags default to. `gate-config.ts` declares the
+// same default for the configured path as `LOCKFILE_WINDOW_DAYS_DEFAULT`, and
+// `tests/architecture/published-gates.test.ts` holds the two equal. The number
+// is declared twice because this file runs before `npm ci` in CI and so may
+// import nothing from `node_modules`, where the schema that carries the other
+// one lives.
+export const WINDOW_DAYS_DEFAULT = 7
 const CONCURRENCY = 8
 const MAX_RETRIES = 3
 const RETRY_BASE_MS = 300
 const FETCH_TIMEOUT_MS = 15_000
 const REGISTRY_PREFIX = 'https://registry.npmjs.org/'
+
+/**
+ * `error.code` on the refusal a caller repairs by pointing the gate at a real
+ * lockfile. `check-licenses.mjs` exports the same string and
+ * `tests/architecture/published-gates.test.ts` holds the two equal, for the
+ * reason `WINDOW_DAYS_DEFAULT` is declared twice.
+ */
+export const LOCKFILE_SHAPE_ERROR = 'EVAL_QUALITY_LOCKFILE_SHAPE'
+
+function refuseLockfileShape(message) {
+	const error = new Error(message)
+	error.code = LOCKFILE_SHAPE_ERROR
+	return error
+}
+
+// The one URL the public registry serves `name@version` from. A scoped name's
+// tarball basename is the segment after the slash, so `@scope/pkg` at 1.0.0 is
+// `https://registry.npmjs.org/@scope/pkg/-/pkg-1.0.0.tgz`.
+function registryTarballUrl(name, version) {
+	const basename = name.startsWith('@')
+		? name.slice(name.indexOf('/') + 1)
+		: name
+	return `${REGISTRY_PREFIX}${name}/-/${basename}-${version}.tgz`
+}
 
 function parseArgs(argv) {
 	const args = {
@@ -107,8 +143,21 @@ async function mapWithConcurrency(items, limit, fn) {
 	return results
 }
 
-function collectLockedEntries(lockfile) {
-	const packages = lockfile.packages ?? {}
+function collectLockedEntries(lockfile, source) {
+	// Every entry is read from `packages`, which npm writes from lockfileVersion 2 onward. Defaulting
+	// it to {} turned an npm 6 lockfile, or a path naming something that is not a lockfile at all, into
+	// a run that reported success over zero entries: a gate that scanned nothing, in the words of a
+	// gate that passed.
+	const packages = lockfile?.packages
+	if (
+		packages === null ||
+		typeof packages !== 'object' ||
+		Array.isArray(packages)
+	) {
+		throw refuseLockfileShape(
+			`audit-lockfile-age: ${source} carries no "packages" object (lockfileVersion ${JSON.stringify(lockfile?.lockfileVersion ?? null)}); every entry is read from there, so this run would have passed over nothing. npm writes "packages" from lockfileVersion 2 onward.`,
+		)
+	}
 	return Object.entries(packages)
 		.filter(([pkgPath, meta]) => pkgPath !== '' && meta.version && !meta.link)
 		.map(([pkgPath, meta]) => ({
@@ -123,27 +172,41 @@ function collectLockedEntries(lockfile) {
 		}))
 }
 
-export async function auditLockfileAge({ lockfile, now, windowDays }) {
-	if (!Number.isFinite(windowDays) || windowDays < 0) {
+/**
+ * `readTimeMap` is the one effect this function performs, named so a caller can
+ * supply the registry's answers itself. It defaults to the real fetch, so a
+ * caller that wants the registry gets it by saying nothing, and a case that
+ * wants a fixed answer runs offline.
+ *
+ * `source` is the path this lockfile was read from, named in the refusal a
+ * document without a `packages` object earns.
+ */
+export async function auditLockfileAge({
+	lockfile,
+	now,
+	windowDays,
+	source = 'the lockfile',
+	readTimeMap = fetchTimeMap,
+}) {
+	if (!Number.isFinite(windowDays) || windowDays < 1) {
 		throw new Error(
-			`windowDays must be a non-negative number, got: ${windowDays}`,
+			`windowDays must be at least 1, got: ${windowDays}; a window of zero admits a package published this instant and still reports that every entry was published before the cutoff`,
 		)
 	}
 
 	const cutoff = new Date(now.getTime() - windowDays * 24 * 60 * 60 * 1000)
-	const entries = collectLockedEntries(lockfile)
+	const entries = collectLockedEntries(lockfile, source)
 
-	// An entry whose `resolved` field is not the npm registry did not come from where a licence or
-	// age check against npmjs.org would assume: a lockfile edit could relabel a package's metadata
-	// while `npm ci` actually pulls the tarball from elsewhere. Fail closed on that mismatch instead
-	// of quietly validating the wrong artifact.
+	// An entry whose `resolved` is not the registry tarball for its own name and version did not come
+	// from where an age check against npmjs.org assumes. A lockfile edit can point `resolved` at a
+	// mirror, or at another package on the registry itself, while the name and version this gate reads
+	// still name the harmless one; `npm ci` fetches `resolved` and checks `integrity` against whatever
+	// comes back, so the substituted tarball installs. Pinning the host alone left that second shape
+	// open. Fail closed on the mismatch: the age of a package the install never fetches establishes nothing.
 	const offRegistryEntries = []
 	const registryEntries = []
 	for (const entry of entries) {
-		if (
-			typeof entry.resolved === 'string' &&
-			entry.resolved.startsWith(REGISTRY_PREFIX)
-		) {
+		if (entry.resolved === registryTarballUrl(entry.name, entry.version)) {
 			registryEntries.push(entry)
 		} else {
 			offRegistryEntries.push(entry)
@@ -156,7 +219,7 @@ export async function auditLockfileAge({ lockfile, now, windowDays }) {
 	const fetchFailures = new Set()
 	await mapWithConcurrency(uniqueNames, CONCURRENCY, async (name) => {
 		try {
-			timeMaps.set(name, await fetchTimeMap(name))
+			timeMaps.set(name, await readTimeMap(name))
 		} catch {
 			fetchFailures.add(name)
 		}
@@ -216,6 +279,7 @@ async function main() {
 		lockfile,
 		now,
 		windowDays: args.windowDays,
+		source: args.lockfile,
 	})
 
 	if (
@@ -231,11 +295,11 @@ async function main() {
 
 	if (offRegistryEntries.length > 0) {
 		console.error(
-			`\nFailed closed: ${offRegistryEntries.length} entrie(s) do not resolve to the npm registry:`,
+			`\nFailed closed: ${offRegistryEntries.length} entrie(s) do not resolve to their own registry tarball:`,
 		)
 		for (const entry of offRegistryEntries) {
 			console.error(
-				`  - ${entry.name}@${entry.version} resolved=${JSON.stringify(entry.resolved ?? null)} (${entry.path})`,
+				`  - ${entry.name}@${entry.version} resolved=${JSON.stringify(entry.resolved ?? null)}, expected ${registryTarballUrl(entry.name, entry.version)} (${entry.path})`,
 			)
 		}
 	}
@@ -265,10 +329,25 @@ async function main() {
 
 // pathToFileURL percent-encodes the same way import.meta.url does (spaces, non-ASCII, etc.); a raw
 // `file://${process.argv[1]}` template comparison silently mismatches on such paths, so main() never
-// runs and the script exits 0 with no output - a gate switched off, not merely idle.
-if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+// runs and the script exits 0 with no output: a gate switched off while looking idle.
+//
+// process.argv[1] is undefined where there is no script path at all, which is every `node -e`, every
+// `--input-type=module` evaluation, and the REPL. pathToFileURL throws ERR_INVALID_ARG_TYPE on
+// undefined, so without this guard the module cannot be imported from any of them, and it ships in
+// `dist/gates/` where a consumer does exactly that.
+const entryPoint = process.argv[1]
+if (
+	entryPoint !== undefined &&
+	import.meta.url === pathToFileURL(entryPoint).href
+) {
 	main().catch((err) => {
-		console.error(err.stack ?? String(err))
+		// A refusal the caller repairs by pointing the gate at a real lockfile says so in one line; a
+		// stack trace for it is noise.
+		const detail =
+			err.code === LOCKFILE_SHAPE_ERROR
+				? err.message
+				: (err.stack ?? String(err))
+		console.error(detail)
 		process.exitCode = 1
 	})
 }
