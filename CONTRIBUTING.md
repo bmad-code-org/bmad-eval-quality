@@ -81,7 +81,10 @@ This dispatches `publish.yml` on `main` with the matching `bump` input. The run:
 
 1. fails at the AD-18 guard unless the repository variable `PUBLICATION_UNBLOCKED` is `true`;
 2. checks out `main`, then `node scripts/release-prepare.mjs <bump>
-   --on-main`: bumps `package.json` and `package-lock.json` (`npm version --no-git-tag-version`),
+   --on-main`: refuses in preflight when `VERSION` in `src/index.ts` disagrees with the manifest it is
+   about to bump (`npm run check:version`, which runs nowhere else on this path because the release
+   commit pushes with `[skip ci]`), bumps `package.json` and `package-lock.json`
+   (`npm version --no-git-tag-version`),
    writes the manifest version into `VERSION` in `src/index.ts` (`scripts/generate-version.ts`),
    moves `[Unreleased]` in `CHANGELOG.md` into a dated
    `[X.Y.Z]` section (`scripts/stamp-changelog.mjs`), and commits `chore: release vX.Y.Z [skip ci]`
@@ -147,8 +150,9 @@ npm run release:prepare -- patch    # or minor, major
 The script bumps `package.json` and `package-lock.json` (`npm version --no-git-tag-version`), moves
 the `[Unreleased]` notes in `CHANGELOG.md` into a dated `[X.Y.Z]` section
 (`scripts/stamp-changelog.mjs`), commits `chore: release vX.Y.Z` on `release/vX.Y.Z`, pushes, and
-opens the PR against `main`. It refuses on a dirty tree, off `main`, when local `main` differs from
-`origin/main`, and when the tag, the branch, or the npm version already exists. Pass `--no-pr` to
+opens the PR against `main`. It refuses on a dirty tree, off `main`, when `VERSION` in `src/index.ts` disagrees with the
+manifest, when local `main` differs from `origin/main`, and when the tag, the branch, or the npm
+version already exists. Pass `--no-pr` to
 push without opening the PR.
 
 Review the PR, wait for `gate`, merge it by squash, so the release commit on `main` is the squash

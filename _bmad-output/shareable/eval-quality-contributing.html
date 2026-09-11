@@ -626,7 +626,10 @@ commit through an ordinary pull request, and is the fallback when the direct pus
 <p>This dispatches <code>publish.yml</code> on <code>main</code> with the matching <code>bump</code> input. The run:</p>
 <ol>
 <li>fails at the AD-18 guard unless the repository variable <code>PUBLICATION_UNBLOCKED</code> is <code>true</code>;</li>
-<li>checks out <code>main</code>, then <code>node scripts/release-prepare.mjs &lt;bump&gt; --on-main</code>: bumps <code>package.json</code> and <code>package-lock.json</code> (<code>npm version --no-git-tag-version</code>),
+<li>checks out <code>main</code>, then <code>node scripts/release-prepare.mjs &lt;bump&gt; --on-main</code>: refuses in preflight when <code>VERSION</code> in <code>src/index.ts</code> disagrees with the manifest it is
+about to bump (<code>npm run check:version</code>, which runs nowhere else on this path because the release
+commit pushes with <code>[skip ci]</code>), bumps <code>package.json</code> and <code>package-lock.json</code>
+(<code>npm version --no-git-tag-version</code>),
 writes the manifest version into <code>VERSION</code> in <code>src/index.ts</code> (<code>scripts/generate-version.ts</code>),
 moves <code>[Unreleased]</code> in <code>CHANGELOG.md</code> into a dated
 <code>[X.Y.Z]</code> section (<code>scripts/stamp-changelog.mjs</code>), and commits <code>chore: release vX.Y.Z [skip ci]</code>
@@ -676,8 +679,9 @@ merged pull request.</p>
 <p>The script bumps <code>package.json</code> and <code>package-lock.json</code> (<code>npm version --no-git-tag-version</code>), moves
 the <code>[Unreleased]</code> notes in <code>CHANGELOG.md</code> into a dated <code>[X.Y.Z]</code> section
 (<code>scripts/stamp-changelog.mjs</code>), commits <code>chore: release vX.Y.Z</code> on <code>release/vX.Y.Z</code>, pushes, and
-opens the PR against <code>main</code>. It refuses on a dirty tree, off <code>main</code>, when local <code>main</code> differs from
-<code>origin/main</code>, and when the tag, the branch, or the npm version already exists. Pass <code>--no-pr</code> to
+opens the PR against <code>main</code>. It refuses on a dirty tree, off <code>main</code>, when <code>VERSION</code> in <code>src/index.ts</code> disagrees with the
+manifest, when local <code>main</code> differs from <code>origin/main</code>, and when the tag, the branch, or the npm
+version already exists. Pass <code>--no-pr</code> to
 push without opening the PR.</p>
 <p>Review the PR, wait for <code>gate</code>, merge it by squash, so the release commit on <code>main</code> is the squash
 commit that gets tagged.</p>

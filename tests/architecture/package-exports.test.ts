@@ -1,7 +1,6 @@
 /**
- * AC 17 cases 145 through 158: the published package surface. What `exports`
- * resolves to, what the barrel carries, and what `npm pack` puts in the
- * tarball.
+ * AC 17: the published package surface. What `exports` resolves to, what the
+ * barrel carries, and what `npm pack` puts in the tarball.
  *
  * The subpath cases resolve through `createRequire(import.meta.url).resolve`
  * against this package by self-reference, which Node grants because
@@ -11,13 +10,13 @@
  * nothing about what shipped. `createRequire(...).resolve` honours the same
  * map and throws `MODULE_NOT_FOUND` on a target that is not on disk.
  *
- * Cases 145 through 147, 152, 153, and 155 through 157 read `dist/`, so
- * `npm run build` is their precondition and each skips with a clear message
- * when it has not run, the way `tests/cli/main.test.ts` does. Every CI job
- * that runs the suite builds first, so the skip is a local-convenience path
- * and never a silent hole in the gate. Case 157 passes `--ignore-scripts`
- * because `prepack` is `npm run clean && npm run build` and would delete
- * `dist/` out from under the neighbouring cases.
+ * The `BUILT` constant drives the skip: every case that reads `dist/` guards on
+ * it and skips with a clear message when no build has run, the way
+ * `tests/cli/main.test.ts` does. Every CI job that runs the suite builds first,
+ * so the skip is a local-convenience path and never a silent hole in the gate.
+ * Case 157 passes `--ignore-scripts` because `prepack` is
+ * `npm run clean && npm run build` and would delete `dist/` out from under the
+ * neighbouring cases.
  */
 import { execFileSync } from 'node:child_process'
 import { existsSync, readFileSync } from 'node:fs'
@@ -370,21 +369,24 @@ describe('the published package surface', () => {
 		}
 
 		// A cast says nothing about what `dist/index.d.ts` declares, so the
-		// signature is held by mutual assignability first: the declared type and
-		// the shape below have to accept each other, which fails if a parameter
-		// or the return type stops matching the three types published beside it.
+		// signature is held by an exactness test first. Mutual assignability
+		// leaves a hole: function assignability ignores a trailing optional
+		// parameter in both directions, so a declaration carrying an extra
+		// `tieBreak?: unknown` typechecked green against the shape below. The
+		// conditional-identity form refuses that, and refuses any parameter or
+		// return type that stops matching the three types published beside it.
 		type Declared = typeof import('eval-quality').compareDominance
 		type Expected = (
 			a: ComparableResult,
 			b: ComparableResult,
 			severityFloor: Severity,
 		) => DominanceRelationValue
-		const signatureHolds: Declared extends Expected
-			? Expected extends Declared
+		type Exact<A, B> =
+			(<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2
 				? true
 				: false
-			: false = true
-		expect(signatureHolds).toBe(true)
+		const signatureIsExact: Exact<Declared, Expected> = true
+		expect(signatureIsExact).toBe(true)
 
 		// `compareDominance` off the built barrel, called through that signature.
 		// The two sides share a comparability key and carry no outcome, so the

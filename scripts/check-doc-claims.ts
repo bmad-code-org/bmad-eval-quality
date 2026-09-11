@@ -12,7 +12,7 @@
 // saying a thing is not yet true fell through all three.
 //
 // Not every prose claim is mechanically decidable, and this script does not
-// pretend otherwise. Seven classes, each resolving against an artifact in this
+// pretend otherwise. Eight classes, each resolving against an artifact in this
 // repository:
 //
 //   1. Citations. A `path.ts:N` reference resolves to a file, the line is in

@@ -2,11 +2,11 @@
 title: 'The schema-version constants, the dominance comparison, and a version that cannot drift'
 type: 'feature'
 created: '2026-09-10'
-status: 'in-progress'
+status: 'review'
 route: 'dispatch'
-review_loop_iteration: 0
+review_loop_iteration: 1
 baseline_commit: '15ee57998505893667bfd5be402b2bfa7889382b'
-context: []
+context: ['{project-root}/_bmad-output/implementation-artifacts/epic-12-context.md']
 ---
 
 <frozen-after-approval reason="human-owned intent — do not modify unless human renegotiates">
@@ -97,7 +97,7 @@ check-version: src/index.ts declares VERSION '3.0.0' and package.json declares v
 exit=1
 ```
 
-The other three rows of the matrix were watched in the same copy.
+Two more of the matrix's five rows were watched in the same copy, which is every row a `package.json` plus `src/` plus `scripts/` copy can reach; the two consumer-import rows need a build and a resolvable package and are held by the barrel case instead.
 `npm run generate:version` answered `generate-version: src/index.ts 3.0.0 -> 3.0.1` and `npm run check:version` then exited 0 with `check-version: src/index.ts and package.json both declare 3.0.1`.
 With the declaration line deleted from `src/index.ts`, both scripts exited 1 with ``src/index.ts: declares no `export const VERSION = '<version>'` on a line of its own``.
 
@@ -143,9 +143,62 @@ The reading is written into that record as `## Re-verified at 3.0.0, 10 Septembe
 
 `npm run validate` is green: 129 test files, 4210 tests, statements 97.1%, branches 92.32%.
 
+### Every gate this round added was watched failing
+
+The peer review's first finding was that `check:version` had no test and that blinding it was invisible, so the repairs are held to the standard the finding names.
+With `if (false)` substituted for `check-version.ts`'s comparison, the pre-round suite ran 129 files and 4210 tests all green on a disagreeing tree, which is the claim made concrete.
+
+Nine mutations were applied in a scratch mirror outside the worktree, each reverted after the run: the comparison blinded, the comparison inverted, the two-declaration refusal dropped, the absent-declaration throw replaced by a fabricated reading, the semver refusal dropped, the generator's no-op branch removed, the generator writing its input unchanged, `withVersion` returned to a replacement string, and the replacement dropping the captured carriage return.
+Each reddened the case that exists to catch it.
+Deleting `&& npm run check:version` from the `validate` chain and deleting `check:version` from the `pr-checks.yml` step name each gave `expected [ 'check:version' ] to deeply equal []`.
+Renumbering and renaming case 156 each gave ``package-exports.test.ts declares no it('case 156: `VERSION` equals the manifest version'``, on both scripts that quote it.
+Removing `checkBarrelVersion()` from `release-prepare`'s `preflight()` let the disagreement case complete the release and carry a hand-edited `VERSION` away, which is the regression the restored guard exists to stop.
+
+### The release-path guard is the finding that mattered most
+
+`publish.yml` runs `release-prepare.mjs --on-main` with no `validate` in front of it and pushes the release commit with `[skip ci]`, so `check:version` runs nowhere else on that path.
+The generator overwrites whatever the barrel declares, so a run starting from a disagreement would have carried a hand-edited `VERSION` into a published release.
+`preflight()` now spawns `check:version` before the fetch and before `npm version`, where the manifest still declares the pre-bump version, which makes a green check exactly the agreement `stampBarrelVersion` used to require.
+`CONTRIBUTING.md` states the refusal on both release paths.
+
 ## Spec Change Log
 
 ## Review Triage Log
+
+Peer review, round 1, run as `/bmad-code-review` in a separate session against `15ee579..94a40fc` with all four lenses.
+Sixteen findings, every one verified at its cited line before triage.
+All sixteen are addressed here.
+Finding 6 is closed in two halves: the specific claim gains a case in this story and the general class is Story 12.2, which carries its own number and criteria.
+
+| # | Verdict | Finding | Disposition |
+|---|---|---|---|
+| 1 | high | `check:version` has no test and blinding it is invisible; `coverage.include` is `['src/core/**']`, so `scripts/` is measured by nothing | Fixed. `tests/architecture/check-version.test.ts` spawns the script on temp fixtures in the idiom of `tests/architecture/stamp-changelog.test.ts` |
+| 2 | high | Nothing pins `check:version` into the `validate` chain; deleting it fails no assertion | Fixed. A case collects every `check:*` key and asserts each appears in `validate` and in the `pr-checks.yml` step name |
+| 3 | high | `scripts/release-prepare.mjs:15`'s "Every check runs before anything is written" is false, and this change commits the proof | Fixed by finding 7's repair: the version check moves into `preflight()`, so the sentence holds again |
+| 4 | medium | `scripts/check-version.ts:7` reads as if the new gate closes the bare `npm test` hole; `npm test` is `vitest run` and `check:version` lives in `validate` | Fixed. The comment says what holds, and finding 5's case is what closes `npm test` |
+| 5 | medium | `tests/index.test.ts:6` still asserts only `typeof VERSION === 'string'` while `epic-12-context.md` names it as why the drift survived | Fixed. It compares `VERSION` against `package.json`, which needs no build and runs inside `npm test` |
+| 6 | medium | The rewritten docblock can drift the same way the sentence it replaced did; nothing reads a source comment | Partly fixed, deliberately. A case holds the quoted case title against `package-exports.test.ts`, and Story 12.2 is the general gate |
+| 7 | high | `release-prepare` dropped `stampBarrelVersion`'s refusal when the barrel disagrees with the pre-bump manifest, on the one path where `check:version` never runs | Fixed. `preflight()` runs `check:version` before `npm version`, which is the same guard through the gate this story built |
+| 8 | high | `withVersion` passes a replacement string, so `$&` and `$1` in a manifest version get expanded | Fixed. A replacer function, and `read()` refuses a manifest version that is not semver-shaped |
+| 9 | medium | The new `release-prepare` case sits in the untouched-tree block with a docblock explaining why that name does not hold, and never asserts the state it calls dirty | Fixed. Finding 7 moves the refusal before any write, so the case belongs in that block and asserts the manifest and lockfile are untouched |
+| 10 | low | `package-exports.test.ts`'s header enumerates cases 145 through 158 and omits both unnumbered cases | Fixed. The header states the `BUILT` constant drives the skip |
+| 11 | medium | `README.md:182`, `docs/explanation/what-ships.md:58` and `docs/how-to/author-behavioral-contracts.md:354` state the problem this change closes and do not name the new exports | Fixed. All three name them |
+| 12 | low | `generate-version.ts`'s write is bare, so an unwritable barrel exits with a raw Node stack | Fixed. The write carries the same worded refusal the read does |
+| 13 | medium | The recorded evidence is real and "The other three rows of the matrix were watched" is wrong: the matrix has five rows and two others are reachable in that copy | Fixed. The count is corrected below, and the two-declaration refusal gains a case |
+| 14 | low | `scripts/check-doc-claims.ts:15` says "Seven classes" above eight numbered classes | Fixed. Pre-existing, found while standing in the file |
+| 15 | low, mechanism corrected | `version-target.ts`'s pattern is LF-only, so a CRLF barrel refuses with the wrong reason | Fixed, and the stated cause does not reproduce. JavaScript's `$` under `/m` matches before `\r`, so the declaration is still found; the live failure is the replacement dropping the captured carriage return, and that is what the case holds |
+| 16 | medium, hole corrected | The assignability case pins each parameter and the return type, with one hole: making `severityFloor` optional passes both directions | Fixed, and the stated hole does not reproduce. An optional parameter's type includes `undefined` and parameters are contravariant under `strictNullChecks`, so mutual `extends` already refused it. The hole that does reproduce is an extra trailing optional parameter, which mutual `extends` accepts and the conditional-identity `Exact` test refuses |
+
+Two observations the reviewer raised outside the findings are also taken.
+The frontmatter and `sprint-status.yaml` move to `review` when this round lands.
+`context:` names `epic-12-context.md`, which ships in this same diff, the way stories 11.1 and 11.9 populate that field.
+
+The reviewer's one finding-shaped note left standing: `version-target.ts`'s undefined guard on `matches[0]` is unreachable at runtime and is what makes `noUncheckedIndexedAccess` readable there, which its own comment says. Correct as written.
+
+The I/O matrix in the frozen block has five rows and the code also refuses a barrel declaring `VERSION` twice.
+That refusal is deliberate, its reason is in `version-target.ts`'s own comment, and it now carries a case.
+The matrix row is absent because the block is frozen after approval and this story does not reopen it.
+
 
 ## Design Notes
 

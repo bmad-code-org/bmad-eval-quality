@@ -2,10 +2,16 @@
 // declaration in `src/index.ts` against `version` in `package.json` and
 // refuses a disagreement.
 //
+// It reads the two source files, so it needs no build. `npm run validate` runs
+// it, and `scripts/release-prepare.mjs` runs it in preflight, where a green
+// result means the barrel agrees with the manifest the release is about to
+// bump.
+//
+// Two test cases hold the same agreement elsewhere.
 // `tests/architecture/package-exports.test.ts` case 156, "`VERSION` equals the
-// manifest version", holds the same agreement on the built barrel and skips
-// when `dist/` is absent, so a bare `npm test` held nothing. This reads the two
-// source files, so it fails the same way before and after a build.
+// manifest version", reads the built barrel and skips when `dist/` is absent.
+// `tests/index.test.ts` compares the source barrel's `VERSION` against
+// `package.json`, which is the case that holds under a bare `npm test`.
 //
 // It never rewrites what it checks, per `check-schemas.ts:6-9`: a check that
 // can repair what it checks is not a gate. Regeneration is

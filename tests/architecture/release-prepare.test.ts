@@ -295,6 +295,7 @@ describe('release-prepare refusals leave origin and the tree untouched', () => {
 		expect(after.originMain).toBe(before.originMain)
 		expect(after.head).toBe(before.head)
 		expect(after.version).toBe(CURRENT)
+		expect(after.lockVersion).toBe(CURRENT)
 		expect(after.barrel).toBe(before.barrel)
 		expect(after.changelog).toBe(before.changelog)
 		expect(after.releaseBranch).toBeNull()
@@ -367,11 +368,10 @@ describe('release-prepare refusals leave origin and the tree untouched', () => {
 	})
 
 	/**
-	 * `untouched` does not apply here: this refusal comes from
-	 * `scripts/generate-version.ts`, which runs after `npm version` has already
-	 * bumped the manifest, so the tree is dirty by design and origin is what has
-	 * to be clean. The generator mints no declaration, because writing one back
-	 * would undo a deliberate removal.
+	 * `check-version` runs inside `preflight()`, before the fetch and before
+	 * `npm version`, so this refusal lands with the manifest and the lockfile
+	 * still at the pre-bump version and `untouched` applies. The generator mints
+	 * no declaration, because writing one back would undo a deliberate removal.
 	 */
 	it('refuses when the barrel declares no VERSION, naming the file and the shape', async () => {
 		const fx = fixture()
@@ -387,10 +387,33 @@ describe('release-prepare refusals leave origin and the tree untouched', () => {
 		expect(stderr).toContain(
 			"src/index.ts: declares no `export const VERSION = '<version>'`",
 		)
-		const after = inspect(fx)
-		expect(after.originMain).toBe(before.originMain)
-		expect(after.head).toBe(before.head)
-		expect(after.barrel).toBe(before.barrel)
+		expect(stderr).toContain('nothing has been written')
+		untouched(fx, before)
+	})
+
+	/**
+	 * The guard `stampBarrelVersion` carried: a hand-edited barrel that disagrees
+	 * with the pre-bump manifest is refused before the bump. The generator
+	 * overwrites whatever the barrel declares, so a run starting from a
+	 * disagreement would carry the hand-edit away silently, and publish.yml calls
+	 * this script with no `validate` in front of it.
+	 */
+	it('refuses when the barrel disagrees with the pre-bump manifest', async () => {
+		const fx = fixture()
+		writeFileSync(
+			join(fx.work, 'src/index.ts'),
+			"export const VERSION = '9.9.9'\n",
+		)
+		git(fx.work, fx.env, 'commit', '--quiet', '-am', 'hand-edit VERSION')
+		git(fx.work, fx.env, 'push', '--quiet', 'origin', 'main')
+		const before = inspect(fx)
+		const { status, stderr } = await run(fx, 'patch', '--on-main')
+		expect(status).toBe(1)
+		expect(stderr).toContain(
+			`src/index.ts declares VERSION '9.9.9' and package.json declares version '${CURRENT}'`,
+		)
+		expect(stderr).toContain('nothing has been written')
+		untouched(fx, before)
 	})
 
 	it('reports a rejected push without leaving anything on origin', async () => {

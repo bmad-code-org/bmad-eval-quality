@@ -1001,6 +1001,10 @@ So that the claim is one I can run rather than one I have to take on trust.
 **When** the new gate is written,
 **Then** it follows the same shape, resolving each matched comment against the suite, and `check:doc-claims` stays scoped to `docs/` with no change.
 
+**Given** case numbering is hand-maintained and already irregular, with `case 147b` alongside two unnumbered cases sitting between 157 and 158, so a gate matching on a case number inherits that fragility and eventually fails for the wrong reason or passes for the wrong reason,
+**When** the identifier the gate matches on is chosen,
+**Then** the choice is settled with evidence about how stable each candidate is, starting from the quoted case title that Story 12.1's interim gate already matches on; if titles prove no more stable than numbers, the story's content becomes giving cases a durable identifier at all, and that is decided here rather than halfway through.
+
 **Given** a gate that cannot fire looks exactly like one that can,
 **When** the gate ships,
 **Then** its failure is proven by removing a named case and watching the gate fail, and the proof is recorded in the story.

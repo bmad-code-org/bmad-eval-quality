@@ -55,6 +55,6 @@ The rule that decides whether a finding detected the defect its probe seeded run
 
 A probe is refused the same way and with the same fault. The stages that perform that comparison are `compile` over an eval contract, and `preflight` and `score` over a probe. A probe whose stamp differs stops at `preflight` before a leg is planned, and at `score` before it is sealed, because the stamp says which shapes it was authored against: the qualification record on every probe, and the witness legs and the defect signature grammar on a seeded one.
 
-The remaining artifacts have no such reader. A sealed run record or a rubric written against an older version fails to parse where a required field moved, and is read as written where it did not. Check the stamp on anything you did not produce with this build.
+The remaining artifacts have no such reader. A sealed run record or a rubric written against an older version fails to parse where a required field moved, and is read as written where it did not. Check the stamp on anything you did not produce with this build. The `eval-quality` barrel exports `EVAL_CONTRACT_SCHEMA_VERSION` and `PROBE_SCHEMA_VERSION`, the two versions this build reads.
 
 `CHANGELOG.md` in the repository carries every breaking change artifact by artifact.

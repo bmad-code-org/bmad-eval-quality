@@ -23,9 +23,18 @@ export const DECLARATION_SHAPE = "export const VERSION = '<version>'"
 /**
  * Anchored to a whole line, so a mention of the declaration inside a comment
  * or a string is never the text that gets rewritten. Global, because two
- * declarations are drift of their own and the reading refuses them.
+ * declarations are drift of their own and the reading refuses them. The second
+ * group carries a CRLF file's carriage return, so a checkout with CRLF endings
+ * matches here and keeps its line ending through a rewrite.
  */
-const DECLARATION = /^export const VERSION = '([^']+)'$/gm
+const DECLARATION = /^export const VERSION = '([^']+)'(\r?)$/gm
+
+/**
+ * The manifest version is interpolated into a single-quoted declaration, so a
+ * value carrying a quote, a backslash, or a newline would write a line that
+ * does not parse. Plain semver is the whole of what npm puts there.
+ */
+const SEMVER = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/
 
 export type Reading = {
 	/** `package.json`'s `version`, the one place the number is authored. */
@@ -57,6 +66,11 @@ export function read(): Reading {
 	if (typeof manifestVersion !== 'string' || manifestVersion === '') {
 		throw new Error(`${MANIFEST_FILE}: declares no string \`version\``)
 	}
+	if (!SEMVER.test(manifestVersion)) {
+		throw new Error(
+			`${MANIFEST_FILE}: \`version\` is ${JSON.stringify(manifestVersion)}, which is not semver`,
+		)
+	}
 
 	let barrelSource: string
 	try {
@@ -87,6 +101,14 @@ export function read(): Reading {
 	return { manifestVersion, barrelSource, barrelVersion }
 }
 
-/** The barrel's text with its one `VERSION` declaration set to `version`. */
+/**
+ * The barrel's text with its one `VERSION` declaration set to `version`. The
+ * replacement is a function, so a `$` sequence in the version is written
+ * literally.
+ */
 export const withVersion = (barrelSource: string, version: string): string =>
-	barrelSource.replace(DECLARATION, `export const VERSION = '${version}'`)
+	barrelSource.replace(
+		DECLARATION,
+		(_match, _current, carriageReturn: string) =>
+			`export const VERSION = '${version}'${carriageReturn}`,
+	)

@@ -32,10 +32,17 @@ if (reading.barrelVersion === reading.manifestVersion) {
 		`generate-version: ${BARREL_FILE} already declares ${reading.manifestVersion}`,
 	)
 } else {
-	writeFileSync(
-		resolve(BARREL_FILE),
-		withVersion(reading.barrelSource, reading.manifestVersion),
-	)
+	try {
+		writeFileSync(
+			resolve(BARREL_FILE),
+			withVersion(reading.barrelSource, reading.manifestVersion),
+		)
+	} catch (error) {
+		console.error(
+			`generate-version: ${BARREL_FILE}: unwritable (${error instanceof Error ? error.message : String(error)})`,
+		)
+		process.exit(1)
+	}
 	console.log(
 		`generate-version: ${BARREL_FILE} ${reading.barrelVersion} -> ${reading.manifestVersion}`,
 	)
