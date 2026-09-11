@@ -31,8 +31,9 @@ body.
   three stamped versions were bare integers inside `seal`, `emit` and `preflight`, and the five
   caller-produced ones existed in `src/` only as prose in a schema description, so a caller
   assembling a record transcribed the number and one transcribed it wrong. Ten of the twelve
-  artifacts now carry a version constant; `artifact-reference` carries no lineage and `rubric` is
-  reached only through the contract that declares it.
+  artifacts now carry a version constant. `artifact-reference` carries no lineage at all, and a
+  rubric carries a `schemaVersion` that no constant here states: this package never parses a
+  standalone rubric, and the eval contract embeds `RubricBody`, the body without lineage.
 - **`npm run check:version`**, a gate inside `npm run validate` that fails when `VERSION` in
   `src/index.ts` and `version` in `package.json` disagree. It reads the two source files, so it needs
   no build; the case that held this before reads `dist/` and skips when none has run.

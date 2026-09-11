@@ -5,6 +5,7 @@
 // enumeration is asserted complete instead.
 
 import type { ArtifactReference } from '../../../src/core/schemas/artifact-reference.ts'
+import { EVAL_CONTRACT_SCHEMA_VERSION } from '../../../src/core/schemas/eval-contract.ts'
 import type { EvaluatorConfiguration } from '../../../src/core/schemas/evaluator-configuration.ts'
 import type { EvidenceArtifact } from '../../../src/core/schemas/evidence-artifact.ts'
 import type { IsolationManifest } from '../../../src/core/schemas/isolation-manifest.ts'
@@ -986,7 +987,11 @@ const evidenceCommon = {
 	runId: 'spike-run-0001',
 	scoringVersion: digestOf(18),
 	scoringVersionInputs: {
-		contractSchemaVersion: 1,
+		// The scored contract's own stamp, one of AD-11's six identity inputs. It
+		// read 1 while the contract schema stood at 5. The source walk keys on
+		// `schemaVersion` and this field is named for the artifact it describes, so
+		// nothing was holding it and the constant is read here.
+		contractSchemaVersion: EVAL_CONTRACT_SCHEMA_VERSION,
 		corpusDigest: digestOf(19),
 		fixtureDigest: digestOf(17),
 		evaluatorConfigurationDigest: EVALUATOR_CONFIGURATION_DIGEST,

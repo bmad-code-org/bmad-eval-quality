@@ -360,7 +360,7 @@ export const RunMode = z.enum(RUN_MODES)
  * description below, and a caller assembling a record transcribed it. One
  * consumer transcribed it as 3 and emitted records no stage could read.
  *
- * `6` on six recorded bumps, the last of which drops `invalidReason`: a
+ * `6` on five recorded bumps, the last of which drops `invalidReason`: a
  * version-5 record carrying that key fails `strictObject`, which is the
  * predecessor shape the parse-behaviour case is built on.
  */

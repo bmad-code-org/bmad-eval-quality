@@ -23,8 +23,10 @@
 // stamp, so a consumer satisfying AD-11's equality rule imports the number this
 // build reads. Ten of the twelve artifacts carry one: the two with an in-package
 // reader, the three this package stamps, and the five a caller assembles and
-// `score` validates. `artifact-reference` carries no lineage and `rubric` is
-// reached only through a contract, so neither has a version a caller states.
+// `score` validates. `artifact-reference` carries no lineage at all. A rubric
+// does carry a `schemaVersion`, and no constant here states it: this package
+// never parses a standalone rubric, and the eval contract embeds `RubricBody`,
+// the body without lineage.
 
 export * from './application/index.ts'
 export type { ArtifactReference } from './core/schemas/artifact-reference.ts'

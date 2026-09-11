@@ -16,8 +16,7 @@
  * Neither structural check over those files can catch it. `check:corpus` and
  * `check:worked-example` both rebuild through the same literal they compare the
  * commit against, so a wrong stamp and its check agree with each other. This
- * file is the check that does not, because the expected value is written here
- * and nowhere else.
+ * file is the check that does not.
  *
  * The expected value is `eval-contract.ts`'s own `EVAL_CONTRACT_SCHEMA_VERSION`,
  * imported. This file declared a local copy of it for as long as the constant

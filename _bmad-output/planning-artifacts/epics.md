@@ -1005,7 +1005,7 @@ So that the claim is one I can run rather than one I have to take on trust.
 **When** the identifier the gate matches on is chosen,
 **Then** the choice is settled with evidence about how stable each candidate is, starting from the quoted case title that Story 12.1's interim gate already matches on; if titles prove no more stable than numbers, the story's content becomes giving cases a durable identifier at all, and that is decided here rather than halfway through.
 
-**Given** a second instance found on 11 September, `src/testing/probe-conformance.ts:6` reading "the `api` arm: thirteen assertions" while the published `CONFORMANCE_OUTCOME_COUNTS['environment-probe']` declares 19, where both numbers are correct because thirteen is the arm's own and nineteen is the arm's total, and the sentence reconciling them sits at `:444`,
+**Given** three more instances in one docblock, `src/testing/probe-conformance.ts` reading "the `api` arm: thirteen assertions" against a published `CONFORMANCE_OUTCOME_COUNTS['environment-probe']` of 19, "the `cli` arm: ten" against a `command-probe` of 16, and "the `mcp` arm: eight" against an `mcp-probe` of 14, where every number is correct because each is the arm's own count beside the six shared, and the sentence reconciling them sits four hundred lines away at `:444`,
 **When** the gate's reach is settled,
 **Then** the story states plainly what a source-comment gate can and cannot hold. It can hold a claim naming something the repository resolves: a test case, a symbol, a failure code, a count with a source. A claim whose defect is ambiguity rather than falsity is outside any pattern worth writing, because the number agrees with something and only the missing unit makes it misread. Saying so is the deliverable; a gate that appears to cover it is worse than one that declares the boundary.
 
@@ -1025,7 +1025,7 @@ So that the claim is one I can run rather than one I have to take on trust.
 **When** `npm run validate` runs,
 **Then** it is green with the gate wired into the chain and into the validate step name in `.github/workflows/pr-checks.yml`.
 
-### Story 12.3: Name the three versions the package stamps, and publish the four it only reads
+### Story 12.3: Name the three versions the package stamps, and publish the five it only reads
 
 As a maintainer of `eval-quality`,
 I want each artifact version this package writes or validates against to be a named, exported constant,
@@ -1067,3 +1067,71 @@ It blocks TEA's Story 2.6, which replaces a five-entry `SCHEMA_VERSIONS` table w
 **Given** the whole change,
 **When** `npm run validate` runs,
 **Then** it is green, and `tests/architecture/package-exports.test.ts` asserts each new name on the built barrel with its literal declared type.
+
+### Story 12.4: The isolation manifest's undeclared breaking change
+
+As the maintainer of a published package,
+I want the decision about an artifact whose shape broke without a version bump made deliberately and recorded,
+So that a consumer's version check against it means what the consumer thinks it means.
+
+**This story carries a decision the repository owner makes. It is written so that decision can be taken from the story alone.**
+
+**The evidence, verified in the tree.** At `cb1cae8` (PR #74, "describe a system under test that runs behind a command") six fields on `IsolationManifest` narrowed from `z.array(z.string())` to `z.array(NonEmptyLabel)`: `allowedMounts`, `observedMounts`, `networkAllowlist`, `observedNetworkTargets`, `toolAllowlist` and `observedToolCalls`. `violation` gained `.min(1)` in the same commit. That commit is contained in v0.3.0 and every release since. AD-11's rule is that "adding an optional field is a `schemaVersion` bump recorded in the field's own description; removing or retyping is breaking", so this is a breaking retype. A manifest carrying `allowedMounts: ['']` parsed before v0.3.0 and fails now, and `ISOLATION_MANIFEST_SCHEMA_VERSION` reads 1 on both sides of that break.
+
+The same commit bumped the eval contract from 3 to 4, the sealed run record from 3 to 4 and the probe from 2 to 3. So the omission is specific to this artifact rather than a period when the rule was not being followed.
+
+**The second-order effect, which is easy to miss.** Because the number never moved, there is no version-N-minus-one to build a predecessor from. Story 12.3's parse-behaviour method holds a constant by asserting that a record at the constant parses and one at the constant minus one does not; this artifact has a shape history that method cannot reach at all, and it is the one version-1 artifact where the question is not vacuous.
+
+**The decision, with both options and what each costs.**
+
+*Retro-bump the manifest to 2.* The number then tells the truth about the shape, and a consumer comparing against `ISOLATION_MANIFEST_SCHEMA_VERSION` learns something real. The cost lands on every existing writer: a caller emitting a version-1 manifest is emitting a stamp this build would then refuse, and every such caller has to move in step with the release. The break is already in the code, so the bump declares an existing break rather than creating one; what it creates is a new refusal for artifacts that parse today.
+
+*Leave the number at 1 and document the undeclared break.* Nothing a consumer has written stops working, and the CHANGELOG carries the break against the version it actually shipped in. The cost is that the version number stays silent about a shape change AD-11 says it should carry, and a future reader comparing v0.2.x and v0.3.0 manifests finds two different shapes under one number with only prose to separate them.
+
+**One question that narrows the cost, unconfirmed and to be answered before the decision is taken.** What writes an isolation manifest today, and is any of it outside this machine? The reading offered by the session that raised this, explicitly unverified: the only current consumer of `eval-quality` is TEA, and the planned adoption order after it is BMad's `evaluate` skill, then `seontechnologies/seon-claude-marketplace`, then the SEON MCP server, then the Internal AI Assistant much later, none of which has started. If that holds, a retro-bump breaks one known writer that is being actively worked on rather than an unknown population, which changes the cost materially. Confirm it by reading the npm dependents and by checking whether anything in TEA writes a manifest. It is a question here rather than an answer, because a wrong reassurance is worse than none.
+
+**Acceptance Criteria:**
+
+**Given** the decision is the repository owner's,
+**When** this story runs,
+**Then** it starts by putting both options above in front of him and proceeds on his answer, and the answer is recorded in the story with its reasoning.
+
+**Given** whichever option is chosen,
+**When** it is applied,
+**Then** `CHANGELOG.md` records the break against `v0.3.0` where it actually shipped, naming the six fields and `violation`, so the record is complete whether or not the number moves.
+
+**Given** Story 12.3 corrected `ISOLATION_MANIFEST_SCHEMA_VERSION`'s docblock to say the shape has moved once under a released retype with no bump,
+**When** this story closes,
+**Then** that docblock says what was decided and why, and the parse-behaviour consequence is stated: with a bump the artifact joins `SHAPES` with a version-1 predecessor built on `allowedMounts: ['']`; without one it stays outside the method with the reason recorded.
+
+**Given** this artifact is the one that was missed,
+**When** the story runs,
+**Then** every other artifact's history is swept the same way, by reading each schema's commit history for a retype or a removal against the version it carried at the time, so a second instance is found here rather than by a consumer. The sweep runs in both directions: a version that moved where nothing breaking changed is the same defect, a number that does not mean what it claims, and it costs nothing extra to look for while the history is open.
+
+### Story 12.5: The file-system mechanism a consumer cannot wrap
+
+As a consumer certifying an adapter against the published conformance suite,
+I want the default mechanism each reference adapter wraps to be published too,
+So that what I certify is the thing this package ships rather than my reconstruction of it.
+
+Originates in TEA's Story 3.4, where tea-s61 certified `createNodeFileSystemAdapter`.
+
+**Why this exists.** `eval-quality/adapters` exports `nodeCommandMechanism` and `nodeStdioMcpMechanism` and no file-system equivalent. `runFileSystemPortConformance` requires each `PortSubject` to supply `build(scenario)` returning `{ port, underlyingCalls }`, where `underlyingCalls` counts, so the mechanism has to be one the test supplies. For the command arm a consumer wraps the published mechanism and counts through the wrapper, so the thing certified is the mechanism the package ships. For the file-system arm there is nothing to wrap, so the consumer writes the `node:fs/promises` calls it believes the default makes and counts those. What that leaves uncertified is whether the default is the pair of calls the consumer believes it is, and six of the twelve assertions rest on that belief. The consumer stated the limit in its own header rather than leaving it implicit, which is why nothing downstream is blocked.
+
+**Acceptance Criteria:**
+
+**Given** `nodeCommandMechanism` and `nodeStdioMcpMechanism` ship from `eval-quality/adapters`,
+**When** the file-system default is published,
+**Then** `nodeFileSystemMechanism` ships from the same entry point in the same shape, and a consumer wrapping it counts the calls the shipped adapter actually makes.
+
+**Given** the asymmetry was found one port at a time,
+**When** this story runs,
+**Then** every port is checked for the same shape rather than assumed clean: whether `ClockPort` and `CorpusPort` have a comparable default a consumer would otherwise reconstruct, and the answer is recorded per port. The version-history sweep in Story 12.4 is the precedent; finding the next instance here costs less than a consumer finding it.
+
+**Given** this package runs its own conformance suite,
+**When** its own subjects are read,
+**Then** the story says whether any of them wraps a real default that a consumer cannot reach. A package holding itself to a standard its consumers cannot reach is the shape Story 2.5 exists to close for the gates, and it is worth knowing whether it repeats here.
+
+**Given** the new export,
+**When** `npm run validate` runs,
+**Then** it is green, `tests/architecture/package-exports.test.ts` asserts the name on the built adapters barrel, and `docs/reference/cli-commands.md` lists it beside the two already there.

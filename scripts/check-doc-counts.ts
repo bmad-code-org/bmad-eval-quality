@@ -23,8 +23,9 @@
 // Run by `node` directly: type stripping erases types only, so no TypeScript
 // enum, namespace, parameter property, or non-type re-export may appear here
 // or in anything it imports.
-import { readFile } from 'node:fs/promises'
+import { readdir, readFile } from 'node:fs/promises'
 import * as adapters from '../src/adapters/index.ts'
+import { INTERCHANGE_ARTIFACT_KEYS } from '../src/core/schemas/artifact.ts'
 import { CONFORMANCE_OUTCOME_COUNTS } from '../src/testing/conformance.ts'
 import {
 	CORPUS_CONTRACTS,
@@ -239,8 +240,85 @@ const referenceAdapters = Object.keys(adapters).filter((name) =>
 	/^create[A-Za-z]*Adapter$/.test(name),
 ).length
 
+/** Every `.ts` file under `src/`, as one string. */
+const readSourceTree = async (directory: URL): Promise<string> => {
+	const entries = await readdir(directory, { withFileTypes: true })
+	const bodies = await Promise.all(
+		entries.map((entry) => {
+			if (entry.isDirectory()) {
+				return readSourceTree(new URL(`${entry.name}/`, directory))
+			}
+			return entry.name.endsWith('.ts')
+				? readFile(new URL(entry.name, directory), 'utf8')
+				: Promise.resolve('')
+		}),
+	)
+	return bodies.join('\n')
+}
+
+const sourceTree = await readSourceTree(new URL('src/', repoRoot))
+const barrelSource = await readFile(new URL('src/index.ts', repoRoot), 'utf8')
+
+/**
+ * The schema versions the barrel publishes, split into the three groups two
+ * pages count. Read off the source text the way
+ * `tests/schemas/artifact-version.test.ts` reads the barrel, so this needs no
+ * build.
+ *
+ * A writer stamps `schemaVersion: <CONSTANT>` and a reader compares
+ * `accepted: <CONSTANT>`, which are the two forms every stamp and every
+ * equality under `src/` is written in. What is left on the barrel is what a
+ * caller assembles, so the third group is a set difference over the other two.
+ *
+ * A version reader written some third way would land in the caller-assembled
+ * group. `check:doc-claims` is what catches one: it walks `src/` for the
+ * comparison itself and names the file that performs it.
+ */
+const publishedVersions = [
+	...barrelSource.matchAll(/export \{ ([A-Z0-9_]+_SCHEMA_VERSION) \}/g),
+].map((match) => match[1] as string)
+
+const versionNamesIn = (pattern: RegExp): readonly string[] => [
+	...new Set(
+		[...sourceTree.matchAll(pattern)].map((match) => match[1] as string),
+	),
+]
+
+const stampedVersions = versionNamesIn(
+	/\bschemaVersion: ([A-Z0-9_]+_SCHEMA_VERSION)\b/g,
+)
+const comparedVersions = versionNamesIn(
+	/\baccepted: ([A-Z0-9_]+_SCHEMA_VERSION)\b/g,
+)
+const callerProducedVersions = publishedVersions.filter(
+	(name) => !stampedVersions.includes(name) && !comparedVersions.includes(name),
+)
+
+if (publishedVersions.length === 0) {
+	console.error(
+		'check-doc-counts: src/index.ts exports no `<NAME>_SCHEMA_VERSION`, so every sentence ' +
+			'counting them would be held against zero',
+	)
+	process.exit(1)
+}
+
+const unpublishedVersions = [...stampedVersions, ...comparedVersions].filter(
+	(name) => !publishedVersions.includes(name),
+)
+if (unpublishedVersions.length > 0) {
+	console.error(
+		`check-doc-counts: ${unpublishedVersions.join(', ')} is stamped or compared under src/ ` +
+			'and the barrel does not export it, so the three groups below do not partition the ' +
+			'published set',
+	)
+	process.exit(1)
+}
+
 type Entry = {
-	/** Repository-relative. Two entries are source files rather than pages. */
+	/**
+	 * Repository-relative: a published page, or a source file whose docblock
+	 * carries a numeral.
+	 */
 	readonly file: string
 	/** What the sentence claims, for the failure message. */
 	readonly claim: string
@@ -276,6 +354,62 @@ const ENTRIES: readonly Entry[] = [
 		claim: 'the reference adapter count',
 		pattern: /([a-z-]+) reference adapters at `eval-quality\/adapters`/,
 		expected: [referenceAdapters],
+		rendering: 'word',
+	},
+	{
+		file: 'docs/explanation/what-ships.md',
+		claim: 'the schema version count on the barrel',
+		pattern: /barrel exports ([a-z-]+) schema versions/,
+		expected: [publishedVersions.length],
+		rendering: 'word',
+	},
+	{
+		file: 'docs/explanation/what-ships.md',
+		claim: 'the count of artifacts with an in-package version reader',
+		pattern: /for the ([a-z-]+) with a reader/,
+		expected: [comparedVersions.length],
+		rendering: 'word',
+	},
+	{
+		file: 'docs/explanation/what-ships.md',
+		claim: 'the count of artifacts this package stamps',
+		pattern: /for the ([a-z-]+) this package stamps/,
+		expected: [stampedVersions.length],
+		rendering: 'word',
+	},
+	{
+		file: 'docs/explanation/what-ships.md',
+		claim: 'the count of caller-assembled artifacts',
+		pattern: /for the ([a-z-]+) you assemble/,
+		expected: [callerProducedVersions.length],
+		rendering: 'word',
+	},
+	{
+		file: 'docs/reference/cli-commands.md',
+		claim: 'the schema version count and the interchange artifact total',
+		pattern: /([A-Za-z-]+) of the ([a-z-]+) artifacts carry one/,
+		expected: [publishedVersions.length, INTERCHANGE_ARTIFACT_KEYS.length],
+		rendering: 'word',
+	},
+	{
+		file: 'docs/reference/cli-commands.md',
+		claim: 'the count of artifacts with an in-package version reader',
+		pattern: /([A-Za-z-]+) have an in-package reader/,
+		expected: [comparedVersions.length],
+		rendering: 'word',
+	},
+	{
+		file: 'docs/reference/cli-commands.md',
+		claim: 'the count of artifacts this package stamps',
+		pattern: /([A-Za-z-]+) are stamped by this package/,
+		expected: [stampedVersions.length],
+		rendering: 'word',
+	},
+	{
+		file: 'docs/reference/cli-commands.md',
+		claim: 'the count of caller-assembled artifacts',
+		pattern: /([A-Za-z-]+) are assembled by the caller/,
+		expected: [callerProducedVersions.length],
 		rendering: 'word',
 	},
 	{
@@ -549,6 +683,36 @@ const ENTRIES: readonly Entry[] = [
 			'design',
 		),
 		expected: [failingByDesign],
+		rendering: 'word',
+	},
+	// The three arm totals ship in `dist/*.d.ts`, where an adapter author reads
+	// them beside `CONFORMANCE_OUTCOME_COUNTS` itself. The `api` one drifted
+	// from its constant and a reader hit the mismatch, so each is held against
+	// the constant it restates. The arm's own count in the same sentence is
+	// held by nothing here: the assertion lists are module-private, and
+	// exporting them to count them would widen the published surface for a
+	// gate.
+	{
+		file: 'src/testing/probe-conformance.ts',
+		claim: "the `api` arm's outcome total",
+		pattern: /([A-Za-z-]+) outcomes: the six shared assertions plus AD-35's/,
+		expected: [CONFORMANCE_OUTCOME_COUNTS['environment-probe']],
+		rendering: 'word',
+	},
+	{
+		file: 'src/testing/probe-conformance.ts',
+		claim: "the `cli` arm's outcome total",
+		pattern:
+			/([A-Za-z-]+) outcomes: the six shared assertions plus the ten above/,
+		expected: [CONFORMANCE_OUTCOME_COUNTS['command-probe']],
+		rendering: 'word',
+	},
+	{
+		file: 'src/testing/probe-conformance.ts',
+		claim: "the `mcp` arm's outcome total",
+		pattern:
+			/([A-Za-z-]+) outcomes: the six shared assertions plus the eight above/,
+		expected: [CONFORMANCE_OUTCOME_COUNTS['mcp-probe']],
 		rendering: 'word',
 	},
 	// `EXAMPLE_SEED_ID`'s docblock is the one corpus numeral outside the README

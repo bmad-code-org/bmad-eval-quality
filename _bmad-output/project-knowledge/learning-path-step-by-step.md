@@ -4421,7 +4421,7 @@ Three were bare integers typed into the code that writes the artifact. Five were
 
 **Read in this order:**
 
-1. `src/core/schemas/sealed-run-record.ts`: the constant beside the schema, and the six bumps its description records.
+1. `src/core/schemas/sealed-run-record.ts`: the constant beside the schema, and the five bumps its description records.
 2. `src/core/preflight/reduce.ts`: a writer reading its constant, so a bump is one edit beside the shape that moved.
 3. `tests/schemas/artifact-version.test.ts`: the source walk, the emitted-bytes walk, and the parse-behaviour cases.
 

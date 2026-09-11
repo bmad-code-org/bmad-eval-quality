@@ -1,7 +1,7 @@
 ---
-title: 'Name the three versions the package stamps, and publish the four it only reads'
+title: 'Name the three versions the package stamps, and publish the five it only reads'
 type: 'feature'
-created: '2026-09-11'
+created: '2026-09-10'
 status: 'review'
 route: 'dispatch'
 review_loop_iteration: 0
@@ -56,7 +56,7 @@ Every citation below was verified by reading at `4f4836f`.
 
 Their authored literals live at `tests/schemas/fixtures/artifact-fixtures.ts:156`, `:311`, `:360`, `:969`, `:54`, and in the three generators `scripts/worked-example-target.ts`, `scripts/skill-example-target.ts`, `scripts/workflow-example-target.ts`.
 
-**Why no constant can be derived.** `src/core/schemas/lineage.ts:20-25` declares `schemaVersion` as `z.int().min(1)` and its description states why a `z.literal` is refused: the literal exports as `{"type":"number","const":1}`, losing `integer` for a non-TypeScript consumer, and it would turn a version-2 artifact into an anonymous parse failure instead of AD-28's dedicated fault. All twelve published documents declare the field as a bare integer with no `const`, `enum` or default, and every `.meta()` call carries only `id` and `description`. So no accepted version is readable from any schema object.
+**Why no constant can be derived.** `src/core/schemas/lineage.ts:20-25` declares `schemaVersion` as `z.int().min(1)` and its description states why a `z.literal` is refused: the literal exports as `{"type":"number","const":1}`, losing `integer` for a non-TypeScript consumer, and it would turn a version-2 artifact into an anonymous parse failure instead of AD-28's dedicated fault. Eleven of the twelve published documents declare the field as a bare integer with no `const`, `enum` or default, and `schemas/artifact-reference.schema.json` carries no `schemaVersion` at all, and every `.meta()` call carries only `id` and `description`. So no accepted version is readable from any schema object.
 
 **The model to generalise.** `tests/schemas/eval-contract-version.test.ts` pins one constant, walks emitted corpus and chain bytes at `:96-118`, and source-walks `src`, `tests` and `scripts` at `:126-174` for any `: EvalContract = {` or `} satisfies EvalContract` literal carrying a stale stamp. Two stale items in it: `:60` declares its own `const EVAL_CONTRACT_SCHEMA_VERSION = 5` rather than importing the one Story 12.1 exported, and its docblock at `:22-27` still asserts that no reader declares an expected version constant, which `src/core/compile/compile.ts:102-104` falsifies.
 
@@ -106,13 +106,19 @@ A search for a bare `schemaVersion: <integer>` assignment under `src/` returns n
 
 `tests/schemas/artifact-version.test.ts` holds all ten constants, the eight here plus the two Story 12.1 exported, two ways and neither is a copy of the number.
 The source walk reads every authored artifact literal under `src`, `tests` and `scripts` and holds its stamp against the constant.
-The parse-behaviour cases hold four constants against the parser, for the four artifacts with a predecessor shape: sealed-run-record, sealed-evaluator-brief, evidence-artifact and scoring-policy.
+The parse-behaviour cases hold six constants against the parser, for the six artifacts with a predecessor shape: sealed-run-record, sealed-evaluator-brief, evidence-artifact, scoring-policy, probe and eval contract.
 The four artifacts at version 1 have no predecessor and the method has nothing to say about them, which each constant's own docblock records rather than implying a coverage it does not have.
 
 ### The walk found a real stale stamp before any gate was watched failing
 
 `tests/score/score.test.ts` carried a scoring policy stamped `1` while declaring the version-2 shape.
 That is the drift this story exists to stop, sitting in the tree, found by the walk on its first run.
+
+### The frozen-literal fix was watched working, in the exact scenario that defeated the first version
+
+A required field added to `SealedRunRecord`, every authored record literal updated the way ordinary work updates them, and the constant left at 6.
+Before the literals were frozen this was green.
+It now gives `sealed-run-record: the shape built at 6 does not parse, so the schema moved and the constant did not`.
 
 ### Three mutations watched failing
 
@@ -160,6 +166,11 @@ Two placement defects were also found by reading the diff: the new scoring-polic
 
 ## Spec Change Log
 
+Peer review round 1 returned twenty findings. The one that changed the design rather than the text is recorded in Design Notes above: the parse-behaviour builders spread type-annotated fixtures, so the typechecker forced the fixture to move with the schema and the case passed green. Each version's shape is a frozen literal now.
+
+Four other findings widened the story's scope inside its own subject. `Probe` and `EvalContract` were in the constant map and in neither the predecessor list nor the version-1 list, with no structural link to catch the next one; both now have predecessor cases and a case asserts the map's keys equal the union of the two lists. The source walk could not see a `Type.parse({ ... })` literal and one lives in `scripts/worked-example-shared.ts`; that form is walked now. Two hand-transcribed lists of the ten constant names in the published documentation were held by nothing, which is this story's own class landing in its own documentation; `check:doc-claims` holds both against the barrel's source text and `check:doc-counts` holds the numerals beside them. And `src/core/schemas/isolation-manifest.ts`'s docblock claimed the artifact had never moved, which is false and is now Story 12.4.
+
+
 ## Review Triage Log
 
 ## Design Notes
@@ -168,11 +179,15 @@ Two placement defects were also found by reading the diff: the new scoring-polic
 
 **Holding a constant against a second transcription is what fixture 58 does.** `CONFORMANCE_OUTCOME_COUNTS` is compared to a copy of itself in `tests/testing/conformance.test.ts:436`, and two of its six entries drifted from their runners because nothing linked them. A declared constant plus a gate comparing it to another declaration repeats that shape.
 
-**So the constant is held against the parser, and the fixtures are built from the constant.** A record built at `SEALED_RUN_RECORD_SCHEMA_VERSION` must parse and one built at `SEALED_RUN_RECORD_SCHEMA_VERSION - 1` must not. Two parse assertions alone would pin the shape boundary and say nothing about its name, because `schemaVersion` is an unvalidated integer and a constant reading 6 against a parser that had moved to 7 would satisfy both. Building the fixtures from the constant is what closes that: a shape change that forgets the constant leaves the fixture the constant names unparseable, and a bump that moves the constant without adding the predecessor's shape leaves the builder with no case for the new N-1.
+**So the constant is held against the parser, and the shape at each version is a frozen literal.** A record built at `SEALED_RUN_RECORD_SCHEMA_VERSION` must parse and one built at `SEALED_RUN_RECORD_SCHEMA_VERSION - 1` must not. Two parse assertions alone would pin the shape boundary and say nothing about its name, because `schemaVersion` is an unvalidated integer and a constant reading 6 against a parser that had moved to 7 would satisfy both. Building the fixtures from the constant is what closes that: a shape change that forgets the constant leaves the fixture the constant names unparseable, and a bump that moves the constant without adding the predecessor's shape leaves the builder with no case for the new N-1.
 
-**The residual, stated because it is the limit of the method.** A breaking shape change that edits the builder's case for N to the new shape in the same commit and does not bump N passes everything. At that point nothing outside the change knows what the version ought to be, and no gate that reads only behaviour can. This is the argument a future proposal to pin `schemaVersion` with a `const` will reach for, and it is recorded here so that proposal starts from an understood limit. The failure requires a deliberate edit to the builder in the same change, which is a different risk class from the silent drift the rest of this story closes.
+**Why the shape literals are frozen, which is the whole of what makes this work.** The first version of these builders spread the live fixtures from `artifact-fixtures.ts`, every one of which carries an explicit schema-derived type annotation. `npm run typecheck` runs inside `validate`, so a type-visible shape change forced the fixture to move in the same commit as ordinary mechanical work, and once it moved the version-N case built from the updated fixture and parsed. The method fired only on a runtime-only constraint the typechecker cannot see, such as adding `.min(1)`. It was reported as holding "a shape change that forgets the constant" and held a far narrower class than that.
 
-**Where a version-1 artifact is concerned the question is vacuous**, since nothing was released before version 1 and there is no predecessor shape to fail on. Three of the five caller-produced artifacts are at version 1. For those the source walk and the emitted-bytes walk are the whole holding, and the story says so per artifact rather than implying a coverage it does not have.
+Each version's shape is now a frozen literal typed `Readonly<Record<string, unknown>>`, declared in the test file and built from the schema text rather than copied from a fixture. Nothing drags it along when the schema moves, which is what makes the case an independent witness. Refactoring these back into a fixture spread as a tidy-up takes the method with it.
+
+**The residual, stated because it is the limit of the method.** A breaking shape change that edits the frozen literal for N to the new shape in the same commit and does not bump N passes everything. At that point nothing outside the change knows what the version ought to be, and no gate that reads only behaviour can. That escape is now a deliberate edit to a literal whose docblock says why it is frozen, which is a different risk class from the drift this story closes; before the literals were frozen the escape was the ordinary path, which is what the first version of this note got wrong. This is the argument a future proposal to pin `schemaVersion` with a `const` will reach for, and it is recorded here so that proposal starts from an understood limit.
+
+**Where a version-1 artifact is concerned the question is vacuous**, since nothing was released before version 1 and there is no predecessor shape to fail on. Three of the five caller-produced artifacts are at version 1. For those the source walk is the whole holding. The emitted-bytes walk reaches the brief, the record, the evidence artifact, the probe, the contract and the spike chain's verdict, and the chain builders expose no isolation manifest, evaluator configuration, private artifact manifest or scoring policy, so it reaches three of the four. The story says so per artifact rather than implying a coverage it does not have.
 
 ### Writing style for every line of prose this change lands
 
