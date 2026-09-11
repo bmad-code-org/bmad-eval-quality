@@ -389,7 +389,10 @@ export async function probeTypeScript(
 	try {
 		await load()
 		return { ok: true }
-	} catch {
+	} catch (error) {
+		if ((error as NodeJS.ErrnoException).code !== 'ERR_MODULE_NOT_FOUND') {
+			throw error
+		}
 		return {
 			ok: false,
 			message: `the ${DEPENDENCY_DIRECTION_GATE} gate reads your source with the TypeScript scanner, and the optional peer dependency "typescript" is not installed here. Install it (npm install --save-dev typescript), or drop the "${DEPENDENCY_DIRECTION_GATE}" section from your configuration to stop invoking this gate. No other gate needs it.`,

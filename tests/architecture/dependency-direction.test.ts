@@ -1171,14 +1171,22 @@ describe('dependency-direction: the layer list is ordered and the schema holds i
 
 describe('dependency-direction: the typescript peer dependency is refused by name', () => {
 	it('names the missing dependency and the gate that wanted it', async () => {
-		const result = await probeTypeScript(() =>
-			Promise.reject(new Error('ERR_MODULE_NOT_FOUND')),
-		)
+		const missing = Object.assign(new Error('typescript is missing'), {
+			code: 'ERR_MODULE_NOT_FOUND',
+		})
+		const result = await probeTypeScript(() => Promise.reject(missing))
 		expect(result.ok).toBe(false)
 		if (result.ok) return
 		expect(result.message).toContain('"typescript"')
 		expect(result.message).toContain('dependency-direction')
 		expect(result.message).toContain('No other gate needs it')
+	})
+
+	it('rethrows unrelated loader failures', async () => {
+		const failure = new Error('scanner crashed')
+		await expect(probeTypeScript(() => Promise.reject(failure))).rejects.toBe(
+			failure,
+		)
 	})
 
 	it('resolves here, where typescript is installed', async () => {

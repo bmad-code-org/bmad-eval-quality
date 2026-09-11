@@ -357,6 +357,7 @@ describe('the consumer fixtures', () => {
 			'src/pipeline/publish.ts',
 			'src/pipeline/publish.ts',
 		])
+		expect(report.violations.map((each) => each.line)).toEqual([1, 10])
 	})
 
 	// The recall test, and the reason the seed was worded the way it was. The

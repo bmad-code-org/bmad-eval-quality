@@ -303,6 +303,27 @@ describe('the bounds on a pattern somebody else wrote', () => {
 		).toBe(false)
 	})
 
+	it('accepts 200 pattern characters and refuses 201', () => {
+		expect(
+			withPatterns([{ name: 'x', match: 'a'.repeat(200), reason: 'why' }])
+				.success,
+		).toBe(true)
+		expect(
+			withPatterns([{ name: 'x', match: 'a'.repeat(201), reason: 'why' }])
+				.success,
+		).toBe(false)
+	})
+
+	it('accepts 64 patterns and refuses 65', () => {
+		const patterns = Array.from({ length: 65 }, (_, index) => ({
+			name: `pattern-${index}`,
+			match: 'a',
+			reason: 'why',
+		}))
+		expect(withPatterns(patterns.slice(0, 64)).success).toBe(true)
+		expect(withPatterns(patterns).success).toBe(false)
+	})
+
 	it('refuses a repeated name and the reserved one', () => {
 		const repeated = withPatterns([
 			{ name: 'x', match: 'a', reason: 'why' },
