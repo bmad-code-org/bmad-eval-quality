@@ -354,6 +354,18 @@ export type RunModeValue = (typeof RUN_MODES)[number]
 
 export const RunMode = z.enum(RUN_MODES)
 
+/**
+ * The record version this build accepts. No stage writes a sealed run record,
+ * so before this constant the number existed in `src/` only as prose in the
+ * description below, and a caller assembling a record transcribed it. One
+ * consumer transcribed it as 3 and emitted records no stage could read.
+ *
+ * `6` on five recorded bumps, the last of which drops `invalidReason`: a
+ * version-5 record carrying that key fails `strictObject`, which is the
+ * predecessor shape the parse-behaviour case is built on.
+ */
+export const SEALED_RUN_RECORD_SCHEMA_VERSION = 6
+
 export const SealedRunRecord = z
 	.strictObject({
 		// A record carries lineage fields and nothing here ever puts one in a

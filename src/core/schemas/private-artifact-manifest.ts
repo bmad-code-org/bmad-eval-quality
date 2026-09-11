@@ -50,6 +50,17 @@ export const PrivateArtifactEntry = z.strictObject({
 		),
 })
 
+/**
+ * The manifest version this build accepts. No stage writes one, so a caller
+ * publishing a manifest had no value to read and transcribed the number.
+ *
+ * `1`: this artifact has never moved, so it has no predecessor shape and a
+ * parse-behaviour case over one would be vacuous. The prior art's
+ * `manifestVersion: const 1` became AD-11's plain integer, so the number is
+ * not readable off the published document either.
+ */
+export const PRIVATE_ARTIFACT_MANIFEST_SCHEMA_VERSION = 1
+
 export const PrivateArtifactManifest = z
 	.strictObject({
 		...lineageFields,

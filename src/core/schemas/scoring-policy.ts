@@ -5,6 +5,18 @@ import { lineageFields } from './lineage.ts'
 import { Identifier } from './primitives.ts'
 
 /**
+ * The policy version this build accepts. No stage writes one, so a caller
+ * publishing a policy document had no value to read and transcribed the
+ * number.
+ *
+ * `2` because `catchThreshold` became required with no default, which the
+ * field's own description below records; a version-1 document omits it and
+ * fails to parse, which is the predecessor shape the parse-behaviour case is
+ * built on.
+ */
+export const SCORING_POLICY_SCHEMA_VERSION = 2
+
+/**
  * A published artifact rather than constants, per the Consistency
  * Conventions, so "the default" has an identity a no-op edit cannot move.
  * No `.default()` anywhere: it would diverge the input- and output-mode

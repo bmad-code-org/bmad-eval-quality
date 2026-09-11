@@ -987,6 +987,8 @@ So that I read all three from the package instead of copying them or being unabl
 
 ### Story 12.2: A comment that claims a verification names the case that performs it
 
+**The argument for this story is this story's own record.** It was written on 10 September on the premise that nothing in `validate` reads source prose. Four hours later Story 12.3, by the same author in the same working session, gated three numerals inside a `src/` docblock and corrected the three sentences that motivated one of the criteria below, and the premise was false. Nobody noticed from the record; it was caught because a reader went back to check it. That is the case people assume cannot happen to them: the falsifying change and the false claim with one author, inside one session, on the subject of claims that quietly stop being true.
+
 As a reader checking a claim a source comment makes about this repository,
 I want the comment to name the test case it is pointing at,
 So that the claim is one I can run rather than one I have to take on trust.
@@ -1005,6 +1007,26 @@ So that the claim is one I can run rather than one I have to take on trust.
 **When** the identifier the gate matches on is chosen,
 **Then** the choice is settled with evidence about how stable each candidate is, starting from the quoted case title that Story 12.1's interim gate already matches on; if titles prove no more stable than numbers, the story's content becomes giving cases a durable identifier at all, and that is decided here rather than halfway through.
 
+**Given** part of this story's premise moved under it in Story 12.3 and the record is corrected here rather than left for the next reader, which is this story's own subject applied to itself: `check:doc-counts` now holds three arm totals inside `src/testing/probe-conformance.ts`'s docblock against `CONFORMANCE_OUTCOME_COUNTS`, so a numeral in source prose is no longer held by nothing, and the three ambiguous sentences that motivated this criterion were themselves corrected there,
+**When** this story's scope is stated,
+**Then** it claims only what is still open. A count in source prose with a computable source is `check:doc-counts` territory and is covered where an entry exists for it. What remains uncovered, and what this story is for, is a comment asserting that a verification exists without naming the case that performs it, which no gate reads, and the general case of a numeral in source prose that no entry holds.
+
+**Given** "covered where an entry exists" is itself the shape of a gate that holds what somebody remembered to register,
+**When** the second half of that scope is worked,
+**Then** the question the story answers is what makes an entry required rather than optional. `check:doc-claims` already faces this and answers it for its own inventory classes with triggers: a sentence matching a trigger must carry a registration or the gate fails, which is what turns an optional list into a required one. Whether the same construction is available for a numeral in source prose, and what its trigger would be, is decided here with the false-positive measurement the heuristic criterion below already requires.
+
+**Given** the three instances above as they stood before Story 12.3 corrected them, where every number was correct because each was the arm's own count beside the six shared and the sentence reconciling them sat four hundred lines away,
+**When** the gate's reach is settled,
+**Then** the story states plainly what a source-comment gate can and cannot hold. It can hold a claim naming something the repository resolves: a test case, a symbol, a failure code, a count with a source. A claim whose defect is ambiguity rather than falsity is outside any pattern worth writing, because the number agrees with something and only the missing unit makes it misread. Saying so is the deliverable; a gate that appears to cover it is worse than one that declares the boundary.
+
+**Given** the ambiguity class is stated as out of reach, and one crude heuristic might still reach part of it, a numeral in a docblock with no noun naming what it counts within a short window, which would have flagged `probe-conformance.ts:6` before Story 12.3 corrected it,
+**When** the boundary is written,
+**Then** that heuristic is trialled against the tree and its false-positive count measured before it is adopted or dropped, the way Story 12.1 measured `RELEASE_STATE`'s blast radius at zero before widening a trigger. A short look decides it; a wall of false positives means it is dropped and the boundary statement stands alone, and that outcome is recorded rather than left as an untried idea.
+
+**Given** the trigger-recall lesson Story 12.1 earned on `check:doc-claims`, where a verification verb vocabulary could not reach a release announcement and a three-component version pattern could not reach a two-component version,
+**When** this gate's triggers are written,
+**Then** they are tested for recall rather than for confirmation: for each trigger, name an instance of the defect the vocabulary cannot reach, and seed at least one fixture whose wording is drawn from outside it. The two instances on record are a claim about a verification (`release-prepare.mjs`) and a claim about a number (`probe-conformance.ts`), and a gate written against either alone misses the other.
+
 **Given** a gate that cannot fire looks exactly like one that can,
 **When** the gate ships,
 **Then** its failure is proven by removing a named case and watching the gate fail, and the proof is recorded in the story.
@@ -1012,3 +1034,114 @@ So that the claim is one I can run rather than one I have to take on trust.
 **Given** the gate is new,
 **When** `npm run validate` runs,
 **Then** it is green with the gate wired into the chain and into the validate step name in `.github/workflows/pr-checks.yml`.
+
+### Story 12.3: Name the three versions the package stamps, and publish the five it only reads
+
+As a maintainer of `eval-quality`,
+I want each artifact version this package writes or validates against to be a named, exported constant,
+So that the number cannot disagree with itself between the writer and the reader, and a consumer stops transcribing it.
+
+Originates in TEA's Story 2.2 and requirements FR11 and FR13.
+It blocks TEA's Story 2.6, which replaces a five-entry `SCHEMA_VERSIONS` table with reads of these exports; TEA hand-corrected `sealedRunRecord` from 3 to 6 on 10 September because it was emitting records no stage could read, and that correction stays a literal until this ships.
+
+**Acceptance Criteria:**
+
+**Given** the package stamps exactly three artifacts with a bare literal, `sealed-evaluator-brief` at `src/core/seal/seal.ts:98`, `evidence-artifact` at `src/core/emit/emit.ts:110`, and `preflight-verdict` at `src/core/preflight/reduce.ts:475`, and each writing module already imports the schema module its artifact is declared in, which `scripts/dependency-direction.ts:79-81` permits as a `core -> core-schemas` edge,
+**When** each literal is replaced by a named constant declared beside the schema it stamps,
+**Then** the writer reads the constant, a search for a bare `schemaVersion: <integer>` assignment under `src/` returns nothing, and the dependency matrix is unamended.
+
+**Given** `sealed-run-record`, `isolation-manifest`, `evaluator-configuration`, `scoring-policy` and `private-artifact-manifest` are caller-produced, validated at `src/application/score.ts:99`, `:108`, `:117`, `:141` and `:150`, and carry their versions in no value under `src/`,
+**When** the version a caller must write is published for each,
+**Then** all five constants are exported from the root barrel on the `root -> core-schemas` edge beside the two Story 12.1 shipped, each declared as the literal integer.
+
+**Given** `src/core/schemas/lineage.ts:20-25` keeps `schemaVersion` a plain `z.int().min(1)` so a stale artifact raises AD-28's `schema-version-mismatch` rather than an anonymous parse failure, and every published document declares the field as a bare integer with no `const`, `enum` or default, so no accepted version is readable from any schema object,
+**When** the constants are held against something other than a second transcription,
+**Then** each constant whose artifact has a predecessor shape is held by parse behaviour: a record built at the constant parses and one built at the constant minus one does not, with both fixtures built from the constant so a shape change that forgets the constant fails. Where the artifact is at version 1 there is no predecessor and the question is vacuous, which is recorded per artifact rather than papered over.
+
+**Given** `tests/schemas/eval-contract-version.test.ts` already pins one constant, walks emitted corpus and chain bytes, and source-walks `src`, `tests` and `scripts` for a stale stamp in an authored literal,
+**When** that treatment is generalised,
+**Then** every new constant is covered the same way, and the file's two stale items are corrected: it declares its own local copy of `EVAL_CONTRACT_SCHEMA_VERSION` rather than importing the one Story 12.1 exported, and its docblock still asserts that no reader declares an expected version constant, which `src/core/compile/compile.ts:102-104` falsifies.
+
+**Given** `scripts/check-doc-claims.ts:537-583` and `:663-669` require every `src/` file performing version equality to be named in `VERSION_READER_BY_FILE`, with a `tokenShape` of `/^(?:compile|preflight|score)$/` and a matching sentence in `docs/explanation/what-ships.md`,
+**When** this story changes which files carry a version,
+**Then** that registry, that pattern and that sentence move together, and `docs/explanation/what-ships.md:58`'s "The remaining artifacts have no such reader" is corrected, since this story publishes versions for five of them.
+
+**Given** `schemas/artifact-reference.schema.json` deliberately carries no `schemaVersion`, asserted against the registry's `carriesLineage` flag by `tests/schemas/artifact-registry.test.ts:125-131` and `:146-157`,
+**When** this story runs,
+**Then** that artifact is left alone and both assertions still pass.
+
+**Given** the caller-produced artifacts carry their versions in authored fixtures and generators,
+**When** this story runs,
+**Then** `rubric` stays out of scope with its reason recorded, because the package never parses it and the eval contract embeds `RubricBody` rather than the versioned artifact.
+
+**Given** the whole change,
+**When** `npm run validate` runs,
+**Then** it is green, and `tests/architecture/package-exports.test.ts` asserts each new name on the built barrel with its literal declared type.
+
+### Story 12.4: The isolation manifest's undeclared breaking change
+
+As the maintainer of a published package,
+I want the decision about an artifact whose shape broke without a version bump made deliberately and recorded,
+So that a consumer's version check against it means what the consumer thinks it means.
+
+**This story carries a decision the repository owner makes. It is written so that decision can be taken from the story alone.**
+
+**The evidence, verified in the tree.** At `cb1cae8` (PR #74, "describe a system under test that runs behind a command") six fields on `IsolationManifest` narrowed from `z.array(z.string())` to `z.array(NonEmptyLabel)`: `allowedMounts`, `observedMounts`, `networkAllowlist`, `observedNetworkTargets`, `toolAllowlist` and `observedToolCalls`. `violation` gained `.min(1)` in the same commit. That commit is contained in v0.3.0 and every release since. AD-11's rule is that "adding an optional field is a `schemaVersion` bump recorded in the field's own description; removing or retyping is breaking", so this is a breaking retype. A manifest carrying `allowedMounts: ['']` parsed before v0.3.0 and fails now, and `ISOLATION_MANIFEST_SCHEMA_VERSION` reads 1 on both sides of that break.
+
+The same commit bumped the eval contract from 3 to 4, the sealed run record from 3 to 4 and the probe from 2 to 3. So the omission is specific to this artifact rather than a period when the rule was not being followed.
+
+**The second-order effect, which is easy to miss.** Because the number never moved, there is no version-N-minus-one to build a predecessor from. Story 12.3's parse-behaviour method holds a constant by asserting that a record at the constant parses and one at the constant minus one does not; this artifact has a shape history that method cannot reach at all, and it is the one version-1 artifact where the question is not vacuous.
+
+**The decision, with both options and what each costs.**
+
+*Retro-bump the manifest to 2.* The number then tells the truth about the shape, and a consumer comparing against `ISOLATION_MANIFEST_SCHEMA_VERSION` learns something real. The cost lands on every existing writer: a caller emitting a version-1 manifest is emitting a stamp this build would then refuse, and every such caller has to move in step with the release. The break is already in the code, so the bump declares an existing break rather than creating one; what it creates is a new refusal for artifacts that parse today.
+
+*Leave the number at 1 and document the undeclared break.* Nothing a consumer has written stops working, and the CHANGELOG carries the break against the version it actually shipped in. The cost is that the version number stays silent about a shape change AD-11 says it should carry, and a future reader comparing v0.2.x and v0.3.0 manifests finds two different shapes under one number with only prose to separate them.
+
+**One question that narrows the cost, unconfirmed and to be answered before the decision is taken.** What writes an isolation manifest today, and is any of it outside this machine? The reading offered by the session that raised this, explicitly unverified: the only current consumer of `eval-quality` is TEA, and the planned adoption order after it is BMad's `evaluate` skill, then `seontechnologies/seon-claude-marketplace`, then the SEON MCP server, then the Internal AI Assistant much later, none of which has started. If that holds, a retro-bump breaks one known writer that is being actively worked on rather than an unknown population, which changes the cost materially. Confirm it by reading the npm dependents and by checking whether anything in TEA writes a manifest. It is a question here rather than an answer, because a wrong reassurance is worse than none.
+
+**Acceptance Criteria:**
+
+**Given** the decision is the repository owner's,
+**When** this story runs,
+**Then** it starts by putting both options above in front of him and proceeds on his answer, and the answer is recorded in the story with its reasoning.
+
+**Given** whichever option is chosen,
+**When** it is applied,
+**Then** `CHANGELOG.md` records the break against `v0.3.0` where it actually shipped, naming the six fields and `violation`, so the record is complete whether or not the number moves.
+
+**Given** Story 12.3 corrected `ISOLATION_MANIFEST_SCHEMA_VERSION`'s docblock to say the shape has moved once under a released retype with no bump,
+**When** this story closes,
+**Then** that docblock says what was decided and why, and the parse-behaviour consequence is stated: with a bump the artifact joins `SHAPES` with a version-1 predecessor built on `allowedMounts: ['']`; without one it stays outside the method with the reason recorded.
+
+**Given** this artifact is the one that was missed,
+**When** the story runs,
+**Then** every other artifact's history is swept the same way, by reading each schema's commit history for a retype or a removal against the version it carried at the time, so a second instance is found here rather than by a consumer. The sweep runs in both directions: a version that moved where nothing breaking changed is the same defect, a number that does not mean what it claims, and it costs nothing extra to look for while the history is open.
+
+### Story 12.5: The file-system mechanism a consumer cannot wrap
+
+As a consumer certifying an adapter against the published conformance suite,
+I want the default mechanism each reference adapter wraps to be published too,
+So that what I certify is the thing this package ships rather than my reconstruction of it.
+
+Originates in TEA's Story 3.4, where tea-s61 certified `createNodeFileSystemAdapter`.
+
+**Why this exists.** `eval-quality/adapters` exports `nodeCommandMechanism` and `nodeStdioMcpMechanism` and no file-system equivalent. `runFileSystemPortConformance` requires each `PortSubject` to supply `build(scenario)` returning `{ port, underlyingCalls }`, where `underlyingCalls` counts, so the mechanism has to be one the test supplies. For the command arm a consumer wraps the published mechanism and counts through the wrapper, so the thing certified is the mechanism the package ships. For the file-system arm there is nothing to wrap, so the consumer writes the `node:fs/promises` calls it believes the default makes and counts those. What that leaves uncertified is whether the default is the pair of calls the consumer believes it is, and six of the twelve assertions rest on that belief. The consumer stated the limit in its own header rather than leaving it implicit, which is why nothing downstream is blocked.
+
+**Acceptance Criteria:**
+
+**Given** `nodeCommandMechanism` and `nodeStdioMcpMechanism` ship from `eval-quality/adapters`,
+**When** the file-system default is published,
+**Then** `nodeFileSystemMechanism` ships from the same entry point in the same shape, and a consumer wrapping it counts the calls the shipped adapter actually makes.
+
+**Given** the asymmetry was found one port at a time,
+**When** this story runs,
+**Then** every port is checked for the same shape rather than assumed clean: whether `ClockPort` and `CorpusPort` have a comparable default a consumer would otherwise reconstruct, and the answer is recorded per port. The version-history sweep in Story 12.4 is the precedent; finding the next instance here costs less than a consumer finding it.
+
+**Given** this package runs its own conformance suite,
+**When** its own subjects are read,
+**Then** the story says whether any of them wraps a real default that a consumer cannot reach. A package holding itself to a standard its consumers cannot reach is the shape Story 2.5 exists to close for the gates, and it is worth knowing whether it repeats here.
+
+**Given** the new export,
+**When** `npm run validate` runs,
+**Then** it is green, `tests/architecture/package-exports.test.ts` asserts the name on the built adapters barrel, and `docs/reference/cli-commands.md` lists it beside the two already there.

@@ -11,7 +11,10 @@
 import { digestArtifact } from '../canonical/digest.ts'
 import { freezeArtifact } from '../lineage/freeze.ts'
 import type { EvalContract } from '../schemas/eval-contract.ts'
-import { SealedEvaluatorBrief } from '../schemas/sealed-evaluator-brief.ts'
+import {
+	SEALED_EVALUATOR_BRIEF_SCHEMA_VERSION,
+	SealedEvaluatorBrief,
+} from '../schemas/sealed-evaluator-brief.ts'
 import { renderDirectionText } from './direction-prose.ts'
 import { buildPlanIndex } from './plan-index.ts'
 
@@ -92,10 +95,9 @@ export function seal(contract: EvalContract): SealedEvaluatorBrief {
 		// and stateless with no "prior brief" argument (AD-12), so the only
 		// honest artifact is a lineage root: `parentDigest` null,
 		// `revisionCount` 0, independent of the contract's own lineage.
-		// `schemaVersion` is the brief schema's current version; 2 since owed
-		// item 3 added `principals` as a required field, which AD-11 counts as
-		// a breaking change.
-		schemaVersion: 2,
+		// `schemaVersion` is read from the brief schema's own constant, so a
+		// bump is one edit beside the shape that moved.
+		schemaVersion: SEALED_EVALUATOR_BRIEF_SCHEMA_VERSION,
 		parentDigest: null,
 		revisionCount: 0,
 		// A plain digest of the literal input: two differently-ordered

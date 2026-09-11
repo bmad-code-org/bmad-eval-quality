@@ -498,6 +498,28 @@ const conformanceRunners = [
 	.map((match) => match[1] as string)
 	.sort()
 
+/**
+ * The schema versions the barrel publishes, read off its own source text the
+ * way `tests/schemas/artifact-version.test.ts` reads them, so this needs no
+ * build.
+ *
+ * Two pages spell all ten names in a sentence and nothing held either copy.
+ * That is the transcription class Story 12.3 closed under `src/`, sitting in
+ * the documentation.
+ */
+const barrelSchemaVersions = [
+	...(srcBodies.get('src/index.ts') ?? '').matchAll(
+		/export \{ ([A-Z0-9_]+_SCHEMA_VERSION) \}/g,
+	),
+].map((match) => match[1] as string)
+
+if (barrelSchemaVersions.length === 0) {
+	fail(
+		'src/index.ts: no `export { <NAME>_SCHEMA_VERSION }` line, so the two pages spelling ' +
+			'the constants would be compared against an empty set',
+	)
+}
+
 type ListEntry = {
 	readonly file: string
 	readonly claim: string
@@ -666,6 +688,33 @@ const LISTS: readonly ListEntry[] = [
 		pattern: /The stages that perform that comparison are ([^.]*?)\./,
 		tokenShape: /^(?:compile|preflight|score)$/,
 		expected: versionReaders,
+	},
+	{
+		// The same set, on the page that spells the readers a second time. With
+		// the entry above alone, a fourth reader added to VERSION_READER_BY_FILE
+		// fires the gate on one page and lets this one drift.
+		file: 'docs/reference/cli-commands.md',
+		claim: "the stages performing AD-11's version equality",
+		pattern: /in-package reader that performs the equality: ([^.]*?)\./,
+		tokenShape: /^(?:compile|preflight|score)$/,
+		expected: versionReaders,
+	},
+	{
+		file: 'docs/explanation/what-ships.md',
+		claim: 'the schema versions the barrel exports',
+		pattern: /barrel exports [a-z-]+ schema versions: ([^.]*?)\./,
+		tokenShape: /^[A-Z0-9_]+_SCHEMA_VERSION$/,
+		expected: barrelSchemaVersions,
+	},
+	{
+		// Bounded to its own line. The list is a bullet, and an unbounded capture
+		// under the `s` flag runs past it to the next full stop three bullets
+		// down, taking `compareDominance` and `VERSION` with it.
+		file: 'docs/reference/cli-commands.md',
+		claim: 'the schema versions the barrel exports',
+		pattern: /\*\*Schema versions\*\*: ([^\n]+)/,
+		tokenShape: /^[A-Z0-9_]+_SCHEMA_VERSION$/,
+		expected: barrelSchemaVersions,
 	},
 	{
 		file: 'docs/reference/cli-commands.md',

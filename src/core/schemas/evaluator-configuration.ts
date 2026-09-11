@@ -19,6 +19,16 @@ export const JudgeConfiguration = z.strictObject({
 	),
 })
 
+/**
+ * The configuration version this build accepts. No stage writes one, so a
+ * caller assembling a configuration had no value to read and transcribed the
+ * number.
+ *
+ * `1`: this artifact has never moved, so it has no predecessor shape and a
+ * parse-behaviour case over one would be vacuous.
+ */
+export const EVALUATOR_CONFIGURATION_SCHEMA_VERSION = 1
+
 export const EvaluatorConfiguration = z
 	.strictObject({
 		...lineageFields,

@@ -19,28 +19,41 @@
 // subpath, where AD-37 puts the conformance definition an adapter author
 // reads; the reference adapters stay at `eval-quality/adapters`.
 //
-// The two schema versions ride that second edge beside the artifact types they
+// The schema versions ride that second edge beside the artifact types they
 // stamp, so a consumer satisfying AD-11's equality rule imports the number this
-// build reads.
+// build reads. Ten of the twelve artifacts carry one: the two with an in-package
+// reader, the three this package stamps, and the five a caller assembles and
+// `score` validates. `artifact-reference` carries no lineage at all. A rubric
+// does carry a `schemaVersion`, and no constant here states it: this package
+// never parses a standalone rubric, and the eval contract embeds `RubricBody`,
+// the body without lineage.
 
 export * from './application/index.ts'
 export type { ArtifactReference } from './core/schemas/artifact-reference.ts'
 export type { EvalContract } from './core/schemas/eval-contract.ts'
 export { EVAL_CONTRACT_SCHEMA_VERSION } from './core/schemas/eval-contract.ts'
 export type { EvaluatorConfiguration } from './core/schemas/evaluator-configuration.ts'
+export { EVALUATOR_CONFIGURATION_SCHEMA_VERSION } from './core/schemas/evaluator-configuration.ts'
 export type { EvidenceArtifact } from './core/schemas/evidence-artifact.ts'
+export { EVIDENCE_ARTIFACT_SCHEMA_VERSION } from './core/schemas/evidence-artifact.ts'
 export type { IsolationManifest } from './core/schemas/isolation-manifest.ts'
+export { ISOLATION_MANIFEST_SCHEMA_VERSION } from './core/schemas/isolation-manifest.ts'
 export type {
 	PreflightCheck,
 	PreflightVerdict,
 } from './core/schemas/preflight-verdict.ts'
+export { PREFLIGHT_VERDICT_SCHEMA_VERSION } from './core/schemas/preflight-verdict.ts'
 export type { PrivateArtifactManifest } from './core/schemas/private-artifact-manifest.ts'
+export { PRIVATE_ARTIFACT_MANIFEST_SCHEMA_VERSION } from './core/schemas/private-artifact-manifest.ts'
 export type { Probe } from './core/schemas/probe.ts'
 export { PROBE_SCHEMA_VERSION } from './core/schemas/probe.ts'
 export type { Rubric } from './core/schemas/rubric.ts'
 export type { ScoringPolicy } from './core/schemas/scoring-policy.ts'
+export { SCORING_POLICY_SCHEMA_VERSION } from './core/schemas/scoring-policy.ts'
 export type { SealedEvaluatorBrief } from './core/schemas/sealed-evaluator-brief.ts'
+export { SEALED_EVALUATOR_BRIEF_SCHEMA_VERSION } from './core/schemas/sealed-evaluator-brief.ts'
 export type { SealedRunRecord } from './core/schemas/sealed-run-record.ts'
+export { SEALED_RUN_RECORD_SCHEMA_VERSION } from './core/schemas/sealed-run-record.ts'
 export type {
 	FixtureReset,
 	ManifestationWitness,

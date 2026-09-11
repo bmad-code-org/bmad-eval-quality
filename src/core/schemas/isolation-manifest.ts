@@ -80,6 +80,25 @@ export const ForbiddenInputAccountingMap = z.strictObject(accountingShape)
  */
 const NonEmptyLabel = z.string().min(1)
 
+/**
+ * The manifest version this build accepts. No stage writes one, so a caller
+ * assembling a manifest had no value to read and transcribed the number.
+ *
+ * `1`, on one shape move the number never marked. `cb1cae8` retyped the six
+ * label arrays below from `z.array(z.string())` to `z.array(NonEmptyLabel)`
+ * and gave `violation` a `.min(1)`, which AD-11 counts as breaking, and the
+ * same commit took the eval contract to 4, the sealed run record to 4 and the
+ * probe to 3 while leaving this at 1. A manifest carrying
+ * `allowedMounts: ['']` parsed before that commit and fails after it, under
+ * the same version, in every release since.
+ *
+ * So the parse-behaviour method has nothing to compare here. It builds one
+ * fixture at the constant and one at the constant minus one, and 1 has no
+ * predecessor to build: the one break this shape has taken is inside the
+ * version it is still stamped with.
+ */
+export const ISOLATION_MANIFEST_SCHEMA_VERSION = 1
+
 export const IsolationManifest = z
 	.strictObject({
 		...lineageFields,

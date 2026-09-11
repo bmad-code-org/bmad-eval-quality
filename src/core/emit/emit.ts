@@ -12,6 +12,7 @@
 import { digestArtifact } from '../canonical/digest.ts'
 import { freezeArtifact } from '../lineage/freeze.ts'
 import {
+	EVIDENCE_ARTIFACT_SCHEMA_VERSION,
 	EvidenceArtifact,
 	type SCORING_VERSION_INPUT_NAMES,
 } from '../schemas/evidence-artifact.ts'
@@ -107,7 +108,9 @@ export const emit: EmitStage<ScoredOutcomesAndVerdict> = (
 	const verdict = scored.ladder.verdict as Verdict
 
 	const commonFields = {
-		schemaVersion: 3,
+		// Read from the evidence schema's own constant, so a bump is one edit
+		// beside the shape that moved.
+		schemaVersion: EVIDENCE_ARTIFACT_SCHEMA_VERSION,
 		parentDigest: null,
 		// v0 mints no revision path for an evidence artifact: every `emit`
 		// call is a lineage root, matching `seal.ts`'s own root-artifact

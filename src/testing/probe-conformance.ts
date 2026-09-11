@@ -3,29 +3,34 @@
  * mechanism. The subject supplies its policy and one request per denial,
  * since only it knows how its own interface-to-target mapping is wired.
  *
- * `runEnvironmentProbePortConformance` is the `api` arm: thirteen assertions,
- * every scenario HTTP (an authorized target reached, an anomalous status read
- * as an observation, an unmapped interface, four denied address classes, a
- * method, a scheme, a redirect revalidated and refused, and three caps).
- * `runCommandLineProbeConformance` is the `cli` arm: ten, over an authorized
- * invocation, a non-zero exit read as an observation, an unmapped interface, an
- * unmapped executable, an unauthorized subcommand path, an unpermitted
- * environment key, a shell-metacharacter argument proven to reach the process
- * as one literal token rather than a shell expansion, a declared artifact
- * captured, and both caps.
- * `runMcpProbeConformance` is the `mcp` arm: eight, over an authorized tool
- * call, a tool-reported error read as an observation, an unmapped interface, an
- * unauthorized tool, a declared argument proven to cross the JSON-RPC frame
- * unchanged, the structured result the operation's descriptor describes, and
- * both caps.
+ * `runEnvironmentProbePortConformance` is the `api` arm: thirteen of its own
+ * beside the six shared, which is what `CONFORMANCE_OUTCOME_COUNTS` declares
+ * for `environment-probe`. Every scenario is HTTP: an authorized target
+ * reached, an anomalous status read as an observation, an unmapped interface,
+ * four denied address classes, a method, a scheme, a redirect revalidated and
+ * refused, and three caps.
+ * `runCommandLineProbeConformance` is the `cli` arm: ten of its own beside
+ * the six shared, which is what `CONFORMANCE_OUTCOME_COUNTS` declares for
+ * `command-probe`. They run over an authorized invocation, a non-zero exit
+ * read as an observation, an unmapped interface, an unmapped executable, an
+ * unauthorized subcommand path, an unpermitted environment key, a
+ * shell-metacharacter argument proven to reach the process as one literal
+ * token rather than a shell expansion, a declared artifact captured, and both
+ * caps.
+ * `runMcpProbeConformance` is the `mcp` arm: eight of its own beside the six
+ * shared, which is what `CONFORMANCE_OUTCOME_COUNTS` declares for
+ * `mcp-probe`. They run over an authorized tool call, a tool-reported error
+ * read as an observation, an unmapped interface, an unauthorized tool, a
+ * declared argument proven to cross the JSON-RPC frame unchanged, the
+ * structured result the operation's descriptor describes, and both caps.
  *
  * Every field an authorization scopes owes a denial, which is the largest term
  * in the three counts: an HTTP authorization scopes the interface, four
  * address classes, the method and the scheme; a command authorization the
  * interface, the executable, the subcommand path and the permitted environment
- * keys; a tool-server authorization the interface and the tool. Each arm then adds the caps its
- * mechanism can be made to exceed and the answers it has to read as
- * observations.
+ * keys; a tool-server authorization the interface and the tool. Each arm then
+ * adds the caps its mechanism can be made to exceed and the answers it has to
+ * read as observations.
  *
  * The arms are separate functions rather than one, because their subjects need
  * disjoint fixtures (an HTTP redirect chain has no command analogue, and a

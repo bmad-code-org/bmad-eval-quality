@@ -38,6 +38,19 @@ export const BriefInterface = z.strictObject({
 	kind: InterfaceKind,
 })
 
+/**
+ * The brief version `seal` stamps, and the single place that number is
+ * written. `seal` read it as a literal in its own module, so a bump meant
+ * editing a number in a file that declares no schema, and the value a
+ * consumer needed lived in a stage rather than beside the shape it names.
+ *
+ * `2` because `principals` is required, which AD-11 counts as breaking; the
+ * field's own description below records the bump. No `z.literal` on
+ * `schemaVersion` itself: `lineage.ts` states why, and this constant is the
+ * reader-side half of that decision seen from the caller.
+ */
+export const SEALED_EVALUATOR_BRIEF_SCHEMA_VERSION = 2
+
 export const SealedEvaluatorBrief = z
 	.strictObject({
 		...lineageFields,
