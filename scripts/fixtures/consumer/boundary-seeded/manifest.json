@@ -1,0 +1,10 @@
+{
+	"name": "reading-reducer",
+	"private": true,
+	"description": "Folds readings into one total. Rounding is tracked in JIRA-4417.",
+	"keywords": ["readings", "reduce"],
+	"scripts": {
+		"build": "tsc -p tsconfig.json",
+		"regenerate": "node tooling/regenerate.ts"
+	}
+}

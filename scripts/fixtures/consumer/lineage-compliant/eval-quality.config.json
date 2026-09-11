@@ -1,0 +1,9 @@
+{
+	"field-ownership": {
+		"paths": [{ "path": "src", "extensions": [".ts"] }],
+		"fields": ["ownerId", "sealedAt"],
+		"declarations": ["src/model/"],
+		"writers": ["src/pipeline/mint.ts"],
+		"helpers": ["stampOwner"]
+	}
+}

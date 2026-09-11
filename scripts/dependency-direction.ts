@@ -1,31 +1,25 @@
-// Layer-rule evaluator for AC 6: mechanically enforced dependency direction.
-// Pure and synchronous, with no filesystem I/O
-// (`check-dependency-direction.ts` reads the repository);
-// `dependency-direction.test.ts` calls `scanSources` against both synthetic
-// and real source maps, so one function backs both.
+// The layer-rule evaluator, over a graph the caller supplies. Pure and
+// synchronous, with no filesystem I/O: `check-dependency-direction.ts` reads the
+// trees and `dependency-direction.test.ts` calls `scanSources` against both
+// synthetic and real source maps, so one function backs both.
 //
-// Tokenizing is `token-scan.ts`'s job. Every construct AC 6 names is a short,
-// fixed token shape over that stream, and an unresolved shape is reported
-// (fail-closed).
+// This module is reached through a dynamic import, after the optional peer
+// `typescript` has been probed by name. Nothing else may import it statically:
+// `typescript/unstable/ast` below is the runtime value that makes a static
+// import fail at load in a consumer that installed only the other gates.
+//
+// Tokenizing is `token-scan.ts`'s job. Every construct is a short, fixed token
+// shape over that stream, and an unresolved shape is reported (fail-closed).
 
 import { posix } from 'node:path'
 import { SyntaxKind } from 'typescript/unstable/ast'
+import type { DependencyDirectionConfig } from './check-dependency-direction.ts'
 import {
 	computeLineStarts,
 	lineOf,
 	scanTokens,
 	type Token,
 } from './token-scan.ts'
-
-export type Layer =
-	| 'core-schemas'
-	| 'core'
-	| 'ports'
-	| 'application'
-	| 'adapters'
-	| 'testing'
-	| 'cli'
-	| 'root'
 
 export type Violation = {
 	readonly file: string
@@ -34,87 +28,131 @@ export type Violation = {
 	readonly rule: string
 }
 
-const LAYER_LABELS: Record<Layer, string> = {
-	'core-schemas': 'core/schemas',
-	core: 'core/ (excluding core/schemas)',
-	ports: 'ports/',
-	application: 'application/',
-	adapters: 'adapters/',
-	testing: 'testing/',
-	cli: 'cli/',
-	root: 'src/index.ts',
+type ExternalPolicy = DependencyDirectionConfig['layers'][number]['externals']
+
+export type CompiledLayer = {
+	readonly name: string
+	readonly label: string
+	readonly match: 'exact' | 'prefix'
+	readonly path: string
+	readonly imports: ReadonlySet<string>
+	readonly externals: ExternalPolicy
+	readonly pure: boolean
 }
 
-/** Classifies a repo-relative path (POSIX, e.g. `src/core/compile/compile.ts`) into its architecture layer, or `undefined` for anything outside the declared graph. */
-export function classifyLayer(file: string): Layer | undefined {
-	if (file === 'src/index.ts') return 'root'
-	if (file.startsWith('src/core/schemas/')) return 'core-schemas'
-	if (file.startsWith('src/core/')) return 'core'
-	if (file.startsWith('src/ports/')) return 'ports'
-	if (file.startsWith('src/application/')) return 'application'
-	if (file.startsWith('src/adapters/')) return 'adapters'
-	if (file.startsWith('src/testing/')) return 'testing'
-	if (file.startsWith('src/cli/')) return 'cli'
-	return undefined
+type CompiledExemption = {
+	readonly module: string
+	readonly binding: string
+	readonly rule: string
+}
+
+type CompiledPurity = {
+	readonly awaitRule: string
+	readonly asyncFunctionRule: string
+	readonly newDateRule: string
+	readonly members: ReadonlyMap<string, string>
+}
+
+export type DirectionGraph = {
+	/** In declared order. The first match wins, which is why this is a list. */
+	readonly layers: readonly CompiledLayer[]
+	readonly rootPaths: readonly string[]
+	/** Every extension any root declares, used to resolve a specifier that omits one. */
+	readonly extensions: readonly string[]
+	readonly exemptions: ReadonlyMap<string, readonly CompiledExemption[]>
+	readonly purity: CompiledPurity | undefined
+	readonly commonjs: 'forbid' | 'check'
 }
 
 /**
- * The dependency-direction graph (Structural Seed, AC 1 item 7). Every layer
- * in the spine's diagram is one node, and an import between two files inside
- * one node is an intra-node dependency, never an arrow. The spine states that
- * reading for `core/` ("a same-layer dependency ... stays permitted exactly as
- * the single-node diagram already draws it"), and its per-layer sentences
- * bound what each layer may import *outside itself*. `ports/` grew a second
- * file in Story 6.1 and `testing/` was born with three, so the rule is stated
- * once here. Absence of a cross-layer edge is still a prohibition, which is
- * how "nothing may import cli/" and "nothing may import testing/" both fall
- * out with no special case.
+ * Turns a validated configuration section into the form the scan reads. It
+ * preserves `layers` order exactly and sorts nothing: the order is the graph,
+ * and the section's schema refuses a row an earlier row already matches in full.
  */
-function isAllowedEdge(from: Layer, to: Layer): boolean {
-	// `root` is a single file, so its self-edge is unconstructible and the
-	// specification's transcribed map does not grant one. Excluding it keeps the
-	// two in step on the one cell the generated matrix skips.
-	if (from === to) return from !== 'root'
-	switch (from) {
-		case 'core-schemas':
-		case 'core':
-			return to === 'core' || to === 'core-schemas'
-		case 'ports':
-			return to === 'core-schemas'
-		case 'application':
-			return to === 'core' || to === 'core-schemas' || to === 'ports'
-		case 'adapters':
-			return to === 'ports' || to === 'core-schemas'
-		case 'testing':
-			return to === 'ports' || to === 'core-schemas'
-		case 'cli':
-			return to === 'application' || to === 'adapters'
-		case 'root':
-			return to === 'application' || to === 'core-schemas'
-		default:
-			return false
+export function compileGraph(
+	section: DependencyDirectionConfig,
+): DirectionGraph {
+	const pure = new Set(section.purity?.layers ?? [])
+	const exemptions = new Map<string, CompiledExemption[]>()
+	for (const exemption of section.exemptions) {
+		const existing = exemptions.get(exemption.file) ?? []
+		existing.push({
+			module: exemption.module,
+			binding: exemption.binding,
+			rule: exemption.rule,
+		})
+		exemptions.set(exemption.file, existing)
+	}
+	return {
+		layers: section.layers.map((layer) => ({
+			name: layer.name,
+			label: layer.label ?? layer.name,
+			match: layer.match,
+			path: layer.path,
+			imports: new Set(layer.imports),
+			externals: layer.externals,
+			pure: pure.has(layer.name),
+		})),
+		rootPaths: section.roots.map((root) => root.path),
+		extensions: [...new Set(section.roots.flatMap((root) => root.extensions))],
+		exemptions,
+		purity:
+			section.purity === undefined
+				? undefined
+				: {
+						awaitRule: section.purity.awaitRule,
+						asyncFunctionRule: section.purity.asyncFunctionRule,
+						newDateRule: section.purity.newDateRule,
+						members: new Map(
+							section.purity.members.map((entry) => [entry.member, entry.rule]),
+						),
+					},
+		commonjs: section.commonjs,
 	}
 }
 
+/** The first layer in declared order that matches this repository-relative POSIX path, or `undefined` for a file the graph does not place. */
+export function classifyLayer(
+	file: string,
+	layers: readonly CompiledLayer[],
+): CompiledLayer | undefined {
+	return layers.find((layer) =>
+		layer.match === 'exact' ? file === layer.path : file.startsWith(layer.path),
+	)
+}
+
+const isAllowedEdge = (from: CompiledLayer, to: CompiledLayer): boolean =>
+	from.imports.has(to.name)
+
+const underARoot = (path: string, rootPaths: readonly string[]): boolean =>
+	rootPaths.some((root) => path === root || path.startsWith(`${root}/`))
+
 type Resolution =
 	| { readonly ok: true; readonly resolved: string }
-	| { readonly ok: false; readonly error: 'escapes-src' | 'unresolved' }
+	| { readonly ok: false; readonly error: 'escapes-roots' | 'unresolved' }
 
-/** Resolves a literal relative specifier against its containing file, including the `.ts`-extension and `index.ts` rules this repository's imports use. Fails closed: an import escaping `src/`, or one that cannot be resolved to an actual source file in `files`, is an error rather than a best-effort guess. */
+/** Resolves a literal relative specifier against its containing file, trying the declared extensions and their `index` files. Fails closed: a specifier leaving the declared roots, or one that resolves to no scanned file, is an error rather than a best-effort guess. */
 function resolveRelative(
 	fromFile: string,
 	specifier: string,
 	files: ReadonlySet<string>,
+	graph: DirectionGraph,
 ): Resolution {
 	const fromDir = posix.dirname(fromFile)
 	const joined = posix.normalize(posix.join(fromDir, specifier))
-	if (joined !== 'src' && !joined.startsWith('src/')) {
-		return { ok: false, error: 'escapes-src' }
+	if (!underARoot(joined, graph.rootPaths)) {
+		return { ok: false, error: 'escapes-roots' }
 	}
 	if (files.has(joined)) return { ok: true, resolved: joined }
-	if (files.has(`${joined}.ts`)) return { ok: true, resolved: `${joined}.ts` }
-	if (files.has(`${joined}/index.ts`)) {
-		return { ok: true, resolved: `${joined}/index.ts` }
+	for (const extension of graph.extensions) {
+		if (files.has(`${joined}${extension}`)) {
+			return { ok: true, resolved: `${joined}${extension}` }
+		}
+	}
+	for (const extension of graph.extensions) {
+		if (files.has(`${joined}/index${extension}`)) {
+			return { ok: true, resolved: `${joined}/index${extension}` }
+		}
 	}
 	return { ok: false, error: 'unresolved' }
 }
@@ -133,11 +171,19 @@ const DECLARATION_STARTERS = new Set<number>([
 
 const MAX_LOOKAHEAD = 300
 
-function isCreateHashOnlyClause(clauseTokens: readonly Token[]): boolean {
-	// Exactly `{ createHash }` or `{ createHash as X }`, optionally type-only.
-	// The whole clause must be that brace group: a default or namespace
-	// binding beside it (`import crypto, { createHash } from 'node:crypto'`)
-	// pulls in the rest of the module and is therefore not the exception.
+/**
+ * Whether an import clause binds exactly `binding`, as `{ binding }` or
+ * `{ binding as other }`, optionally type-only.
+ *
+ * This predicate is the gate's own and is not configurable: the binding name is
+ * data, the token shape it has to hold is the thing being enforced. A default or
+ * namespace binding beside the brace group pulls in the rest of the module, so
+ * the whole clause has to be that group.
+ */
+function isSoleBindingClause(
+	clauseTokens: readonly Token[],
+	binding: string,
+): boolean {
 	const clause =
 		clauseTokens[0]?.kind === SyntaxKind.TypeKeyword
 			? clauseTokens.slice(1)
@@ -146,15 +192,12 @@ function isCreateHashOnlyClause(clauseTokens: readonly Token[]): boolean {
 	if (clause[clause.length - 1]?.kind !== SyntaxKind.CloseBraceToken) {
 		return false
 	}
-	// Commas are punctuation, so a formatter's trailing comma never changes
-	// what the clause binds.
+	// Commas are punctuation, so a formatter's trailing comma never changes what
+	// the clause binds.
 	const inner = clause
 		.slice(1, -1)
 		.filter((token) => token.kind !== SyntaxKind.CommaToken)
-	if (
-		inner[0]?.kind !== SyntaxKind.Identifier ||
-		inner[0].text !== 'createHash'
-	) {
+	if (inner[0]?.kind !== SyntaxKind.Identifier || inner[0].text !== binding) {
 		return false
 	}
 	if (inner.length === 1) return true
@@ -165,124 +208,144 @@ function isCreateHashOnlyClause(clauseTokens: readonly Token[]): boolean {
 	)
 }
 
-/**
- * Applies the external-module allowlist. AC 6 scopes its allowlist to
- * `core/`; `ports/` generalizes AC 5's "no Zod in ports/" to every external
- * module, since it holds declared shapes only and has no legitimate need for
- * a runtime library or Node builtin. `testing/` is restricted the same way,
- * for a different reason: AD-37's conformance suite is published to adapter
- * authors, so an imported test framework would either promote a devDependency
- * to a runtime one or fail to load for every adopter who uses a different
- * runner. `adapters/` and `cli/` are deliberately unrestricted: an adapter's
- * whole purpose is reaching the I/O mechanism its port describes.
- */
+/** How a dependency was written. A reference directive is a dependency with no import statement, so it reads differently in the report. */
+type Via = 'import' | 'reference'
+
 function checkExternalSpecifier(
 	file: string,
-	layer: Layer,
+	layer: CompiledLayer,
 	specifier: string,
 	line: number,
 	clauseTokens: readonly Token[] | undefined,
+	via: Via,
+	graph: DirectionGraph,
 	violations: Violation[],
 ): void {
-	if (layer === 'core-schemas') {
-		if (specifier === 'zod') return
+	if (layer.externals.policy === 'unrestricted') return
+
+	const suffix =
+		via === 'reference'
+			? '; reached through a triple-slash reference directive rather than an import'
+			: ''
+
+	const exemption = graph.exemptions
+		.get(file)
+		?.find((entry) => entry.module === specifier)
+	if (exemption !== undefined) {
+		// The exemption reaches a static import declaration and nothing else. A
+		// re-export, a dynamic import and a reference directive all arrive with no
+		// clause tokens, and none of them can be held to a binding list.
+		if (
+			via === 'import' &&
+			clauseTokens !== undefined &&
+			isSoleBindingClause(clauseTokens, exemption.binding)
+		) {
+			return
+		}
 		violations.push({
 			file,
 			line,
 			specifier,
-			rule: 'core/schemas may import the external module "zod" only',
+			rule: `${exemption.rule}${suffix}`,
 		})
 		return
 	}
-	if (layer === 'ports') {
-		violations.push({
-			file,
-			line,
-			specifier,
-			rule: 'ports/ may import core/schemas only; it declares shapes and may not import an external module or Node builtin',
-		})
-		return
-	}
-	if (layer === 'testing') {
-		violations.push({
-			file,
-			line,
-			specifier,
-			rule: 'testing/ may import ports/ and core/schemas only; the published conformance suite may not import a test framework, an external module, or a Node builtin',
-		})
-		return
-	}
-	if (layer !== 'core') return // application/adapters/cli/root: unrestricted by this AC
+
 	if (
-		file === 'src/core/canonical/digest.ts' &&
-		specifier === 'node:crypto' &&
-		clauseTokens !== undefined &&
-		isCreateHashOnlyClause(clauseTokens)
+		layer.externals.policy === 'allow' &&
+		layer.externals.modules.includes(specifier)
 	) {
 		return
 	}
-	if (file === 'src/core/canonical/digest.ts' && specifier === 'node:crypto') {
-		violations.push({
-			file,
-			line,
-			specifier,
-			rule: 'src/core/canonical/digest.ts may import only the named binding "createHash" from node:crypto',
-		})
-		return
-	}
+
 	violations.push({
 		file,
 		line,
 		specifier,
-		rule: 'core/ (excluding core/schemas) may not import an external module or Node builtin',
+		rule: `${layer.externals.rule}${suffix}`,
+	})
+}
+
+function handleRelative(
+	file: string,
+	layer: CompiledLayer,
+	specifier: string,
+	line: number,
+	files: ReadonlySet<string>,
+	via: Via,
+	graph: DirectionGraph,
+	violations: Violation[],
+): void {
+	const resolution = resolveRelative(file, specifier, files, graph)
+	if (!resolution.ok) {
+		const subject =
+			via === 'reference' ? 'triple-slash reference path' : 'relative import'
+		violations.push({
+			file,
+			line,
+			specifier,
+			rule:
+				resolution.error === 'escapes-roots'
+					? `${subject} escapes the declared scan roots`
+					: `${subject} does not resolve to a scanned source file`,
+		})
+		return
+	}
+	const target = classifyLayer(resolution.resolved, graph.layers)
+	if (target !== undefined && isAllowedEdge(layer, target)) return
+	const toLabel = target === undefined ? resolution.resolved : target.label
+	violations.push({
+		file,
+		line,
+		specifier,
+		rule:
+			via === 'reference'
+				? `${layer.label} may not depend on ${toLabel}; a triple-slash reference directive is a dependency with no import statement`
+				: `${layer.label} may not import ${toLabel}`,
 	})
 }
 
 function handleSpecifier(
 	file: string,
-	layer: Layer,
+	layer: CompiledLayer,
 	specifier: string,
 	line: number,
 	files: ReadonlySet<string>,
 	clauseTokens: readonly Token[] | undefined,
+	graph: DirectionGraph,
 	violations: Violation[],
 ): void {
 	if (specifier.startsWith('.')) {
-		const resolution = resolveRelative(file, specifier, files)
-		if (!resolution.ok) {
-			violations.push({
-				file,
-				line,
-				specifier,
-				rule:
-					resolution.error === 'escapes-src'
-						? 'relative import escapes src/'
-						: 'relative import does not resolve to a source file under src/',
-			})
-			return
-		}
-		const toLayer = classifyLayer(resolution.resolved)
-		if (toLayer === undefined || !isAllowedEdge(layer, toLayer)) {
-			const toLabel =
-				toLayer === undefined ? resolution.resolved : LAYER_LABELS[toLayer]
-			violations.push({
-				file,
-				line,
-				specifier,
-				rule: `${LAYER_LABELS[layer]} may not import ${toLabel}`,
-			})
-		}
+		handleRelative(
+			file,
+			layer,
+			specifier,
+			line,
+			files,
+			'import',
+			graph,
+			violations,
+		)
 		return
 	}
-	checkExternalSpecifier(file, layer, specifier, line, clauseTokens, violations)
+	checkExternalSpecifier(
+		file,
+		layer,
+		specifier,
+		line,
+		clauseTokens,
+		'import',
+		graph,
+		violations,
+	)
 }
 
 /**
  * The outcome of looking for an import/re-export statement's specifier.
  * `none` means the statement has no specifier to check (a local re-export, a
  * plain declaration export, `import.meta`). `indeterminate` means the
- * statement should have had one and the bounded token scan could not find
- * it, which AC 6's fail-closed rule reports rather than skips.
+ * statement should have had one and the bounded token scan could not find it,
+ * which the fail-closed rule reports rather than skips.
  */
 type SpecifierLookup =
 	| {
@@ -404,7 +467,7 @@ function findExportSpecifier(
 	return NONE
 }
 
-/** True when `AsyncKeyword` at `tokens[index]` structurally opens an async function declaration/expression, async method (named, quoted, computed, or generator), or async arrow, not a bare use of "async" as an identifier, parameter, or property name. TypeScript emits `AsyncKeyword` for the text "async" unconditionally, since it's only a contextual keyword; this structural check is what keeps `const async = 5` from false-positiving. */
+/** True when `AsyncKeyword` at `tokens[index]` structurally opens an async function declaration/expression, async method (named, quoted, computed, or generator), or async arrow. TypeScript emits `AsyncKeyword` for the text "async" unconditionally, since it's only a contextual keyword, so a bare use as an identifier, parameter or property name reaches here too. This structural check is what keeps `const async = 5` from false-positiving, and it stays the gate's own: no table of banned words could express it. */
 function isAsyncFunctionStart(
 	tokens: readonly Token[],
 	index: number,
@@ -451,48 +514,116 @@ function isAsyncFunctionStart(
 }
 
 /**
- * Ambient `object.member` reads that break AD-1's purity rule under `core/`.
- * `crypto` and `performance` are globals in Node and need no import, so the
- * import-boundary rules above never see them; only this table does.
+ * A triple-slash reference directive, which TypeScript honours only in a file's
+ * leading trivia. It is a dependency written as a comment, so the tokenizer,
+ * which skips trivia by construction, can never see one: an edge declared this
+ * way crossed every layer boundary in this gate's first shipped form without
+ * producing a single token to check. The leading trivia is scanned as text for
+ * that reason, which is where TypeScript itself reads these.
  */
-const IMPURE_MEMBERS: ReadonlyMap<string, string> = new Map([
-	['Date.now', 'clock read'],
-	['performance.now', 'clock read'],
-	['performance.timeOrigin', 'clock read'],
-	['Math.random', 'randomness'],
-	['crypto.randomUUID', 'randomness'],
-	['crypto.getRandomValues', 'randomness'],
-	['crypto.randomBytes', 'randomness'],
-	['crypto.randomInt', 'randomness'],
-	['crypto.randomFillSync', 'randomness'],
-	['crypto.randomFill', 'randomness'],
-	['crypto.webcrypto', 'randomness'],
-	['crypto.subtle', 'randomness'],
-])
+const REFERENCE_DIRECTIVE = /^[ \t]*\/\/\/[ \t]*<reference\b([^\n>]*)>/gm
+
+const attributeOf = (attributes: string, name: string): string | undefined =>
+	new RegExp(`\\b${name}\\s*=\\s*["']([^"']*)["']`).exec(attributes)?.[1]
+
+function scanReferenceDirectives(
+	file: string,
+	leading: string,
+	lineStarts: readonly number[],
+	layer: CompiledLayer,
+	files: ReadonlySet<string>,
+	graph: DirectionGraph,
+	violations: Violation[],
+): void {
+	for (const match of leading.matchAll(REFERENCE_DIRECTIVE)) {
+		const attributes = match[1] ?? ''
+		const line = lineOf(lineStarts, match.index ?? 0)
+
+		const path = attributeOf(attributes, 'path')
+		if (path !== undefined) {
+			// A reference path is always resolved against the containing file,
+			// with or without a leading "./", so it never takes the bare-specifier
+			// branch an import would.
+			handleRelative(
+				file,
+				layer,
+				path,
+				line,
+				files,
+				'reference',
+				graph,
+				violations,
+			)
+			continue
+		}
+
+		const types = attributeOf(attributes, 'types')
+		if (types !== undefined) {
+			checkExternalSpecifier(
+				file,
+				layer,
+				types,
+				line,
+				undefined,
+				'reference',
+				graph,
+				violations,
+			)
+			continue
+		}
+
+		// `lib` and `no-default-lib` name a TypeScript library file, so neither is
+		// an edge in any graph a consumer declares.
+		if (
+			attributeOf(attributes, 'lib') !== undefined ||
+			/\bno-default-lib\s*=/.test(attributes)
+		) {
+			continue
+		}
+
+		violations.push({
+			file,
+			line,
+			specifier: match[0].trim(),
+			rule: 'could not read this triple-slash reference directive; it declares a dependency and the layer rules could not be applied to it',
+		})
+	}
+}
 
 /** Scans one file's token stream, appending every violation it finds. */
 function scanFile(
 	file: string,
 	source: string,
 	files: ReadonlySet<string>,
+	graph: DirectionGraph,
 	violations: Violation[],
 ): void {
-	const layer = classifyLayer(file)
+	const layer = classifyLayer(file, graph.layers)
 	if (layer === undefined) {
-		// Fails closed: a `.ts` file under `src/` that sits in no declared layer
-		// would otherwise be scanned for nothing at all, so every rule below
+		// Fails closed: a file under a declared scan root that sits in no declared
+		// layer would otherwise be scanned for nothing at all, so every rule below
 		// would silently pass over it.
 		violations.push({
 			file,
 			line: 1,
 			specifier: file,
-			rule: 'file sits under src/ but in no declared architecture layer; add it to a layer directory or declare the layer',
+			rule: 'file sits under a declared scan root but in no declared layer; move it into a layer, or declare the layer',
 		})
 		return
 	}
 	const tokens = scanTokens(source)
 	const lineStarts = computeLineStarts(source)
-	const purityScoped = layer === 'core' || layer === 'core-schemas'
+	const purity = layer.pure ? graph.purity : undefined
+
+	scanReferenceDirectives(
+		file,
+		source.slice(0, tokens[0]?.start ?? source.length),
+		lineStarts,
+		layer,
+		files,
+		graph,
+		violations,
+	)
 
 	for (let i = 0; i < tokens.length; i++) {
 		const token = tokens[i]
@@ -519,6 +650,7 @@ function scanFile(
 						lineOf(lineStarts, arg.start),
 						files,
 						undefined,
+						graph,
 						violations,
 					)
 				} else {
@@ -539,12 +671,17 @@ function scanFile(
 				tokens[identIndex]?.kind === SyntaxKind.Identifier &&
 				tokens[equalsIndex]?.kind === SyntaxKind.EqualsToken
 			) {
-				violations.push({
-					file,
-					line,
-					specifier: tokens[identIndex]?.text ?? '',
-					rule: 'import-equals declarations are prohibited under src/',
-				})
+				// Under `commonjs: "check"` the `require` token that follows is what
+				// carries the specifier, and the branch below checks its edge, so
+				// reporting here as well would count one dependency twice.
+				if (graph.commonjs === 'forbid') {
+					violations.push({
+						file,
+						line,
+						specifier: tokens[identIndex]?.text ?? '',
+						rule: 'import-equals declarations are prohibited in the scanned trees',
+					})
+				}
 				continue
 			}
 			const found = findImportSpecifier(tokens, i)
@@ -556,6 +693,7 @@ function scanFile(
 					lineOf(lineStarts, found.specifierToken.start),
 					files,
 					found.clauseTokens,
+					graph,
 					violations,
 				)
 			} else if (found.kind === 'indeterminate') {
@@ -579,6 +717,7 @@ function scanFile(
 					lineOf(lineStarts, found.specifierToken.start),
 					files,
 					undefined,
+					graph,
 					violations,
 				)
 			} else if (found.kind === 'indeterminate') {
@@ -593,29 +732,52 @@ function scanFile(
 		}
 
 		if (token.kind === SyntaxKind.RequireKeyword) {
-			const callToken =
-				tokens[i + 1]?.kind === SyntaxKind.QuestionDotToken
-					? tokens[i + 2]
-					: tokens[i + 1]
-			if (callToken?.kind === SyntaxKind.OpenParenToken) {
+			const openIndex =
+				tokens[i + 1]?.kind === SyntaxKind.QuestionDotToken ? i + 2 : i + 1
+			if (tokens[openIndex]?.kind !== SyntaxKind.OpenParenToken) continue
+			if (graph.commonjs === 'forbid') {
 				violations.push({
 					file,
 					line,
 					specifier: 'require',
-					rule: 'CommonJS require is prohibited under src/; this ESM package needs neither',
+					rule: 'CommonJS require is prohibited in the scanned trees; set "commonjs" to "check" to have require() edges read and held to the layer rules instead',
+				})
+				continue
+			}
+			const arg = tokens[openIndex + 1]
+			if (
+				arg?.kind === SyntaxKind.StringLiteral &&
+				tokens[openIndex + 2]?.kind === SyntaxKind.CloseParenToken
+			) {
+				handleSpecifier(
+					file,
+					layer,
+					arg.value,
+					lineOf(lineStarts, arg.start),
+					files,
+					undefined,
+					graph,
+					violations,
+				)
+			} else {
+				violations.push({
+					file,
+					line,
+					specifier: arg?.text ?? '',
+					rule: 'require() argument must be a string literal',
 				})
 			}
 			continue
 		}
 
-		if (!purityScoped) continue
+		if (purity === undefined) continue
 
 		if (token.kind === SyntaxKind.AwaitKeyword) {
 			violations.push({
 				file,
 				line,
 				specifier: 'await',
-				rule: 'no AwaitExpression under core/ — application/ is the only layer that awaits a port',
+				rule: purity.awaitRule,
 			})
 			continue
 		}
@@ -628,7 +790,7 @@ function scanFile(
 				file,
 				line,
 				specifier: 'async',
-				rule: 'no async function under core/ — core stages are synchronous',
+				rule: purity.asyncFunctionRule,
 			})
 			continue
 		}
@@ -642,7 +804,7 @@ function scanFile(
 				file,
 				line,
 				specifier: 'new Date',
-				rule: 'no clock read under core/ (AD-1): new Date() is impurity',
+				rule: purity.newDateRule,
 			})
 			continue
 		}
@@ -653,30 +815,27 @@ function scanFile(
 			tokens[i + 2]?.kind === SyntaxKind.Identifier
 		) {
 			const member = `${token.text}.${tokens[i + 2]?.text}`
-			const category = IMPURE_MEMBERS.get(member)
-			if (category !== undefined) {
-				violations.push({
-					file,
-					line,
-					specifier: member,
-					rule: `no ${category} under core/ (AD-1): ${member} is impurity`,
-				})
+			const rule = purity.members.get(member)
+			if (rule !== undefined) {
+				violations.push({ file, line, specifier: member, rule })
 			}
 		}
 	}
 }
 
 /**
- * Scans every source file in `files` (repo-relative POSIX path -> source
- * text) and returns every violation found, in no particular cross-file
- * order. Used both by the real repository scan (`scripts/
- * check-dependency-direction.ts`) and by in-memory synthetic test snippets.
+ * Scans every source file in `files` (repo-relative POSIX path -> source text)
+ * against `graph` and returns every violation found, in no particular cross-file
+ * order.
  */
-export function scanSources(files: ReadonlyMap<string, string>): Violation[] {
+export function scanSources(
+	files: ReadonlyMap<string, string>,
+	graph: DirectionGraph,
+): Violation[] {
 	const fileSet = new Set(files.keys())
 	const violations: Violation[] = []
 	for (const [file, source] of files) {
-		scanFile(file, source, fileSet, violations)
+		scanFile(file, source, fileSet, graph, violations)
 	}
 	return violations
 }

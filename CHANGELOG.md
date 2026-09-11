@@ -40,7 +40,8 @@ body.
   `npm run generate:version` writes the number from the manifest, and `scripts/release-prepare.mjs`
   calls it, so the substitution is spelled in one place.
 - **A second binary, `eval-quality-gates`, runs the package's repository gates against your own
-  trees.** Two gates ship with it. `lockfile-age` audits every entry of every lockfile you name
+  trees.** Five gates ship with it, and the three that read a source tree have their own entries
+  below. `lockfile-age` audits every entry of every lockfile you name
   against its real publication timestamp on the npm registry, and fails on an entry published inside
   your window, on metadata it could not fetch, and on an entry that does not resolve to the npm
   registry at all. `licences` holds every locked entry's licence expression against an allowlist of
@@ -55,6 +56,40 @@ body.
   something else: the age threshold is a duration, and the allowlist takes licence identifiers
   whose charset refuses a package-and-version pin. Every path a section names is relative to the
   configuration file. `docs/how-to/run-the-gates-on-your-repository.md` is the page for it.
+- **`dependency-direction` holds every import in the trees you name against a layer graph you
+  declare.** Imports, re-exports, dynamic imports and triple-slash reference directives are all
+  edges. You declare the roots to walk, an ordered list of layers with what each may import, what
+  each may reach outside your trees, per-file exemptions naming one module and one binding, and the
+  layers that have to stay pure, where `await`, an async function, `new Date` and the ambient reads
+  you list are refused. `reportOnly` prints the violations and exits `0`, so a repository can learn
+  the size of the fix before committing to it; the run still prints its count and still refuses at
+  `64` when a declared root yielded no files, so a green report-only run always carries a number.
+  This repository's own layer graph lived in code as eight literal prefix tests, a `switch` per
+  source layer and three hard-coded special cases; it is now this repository's own section of
+  `eval-quality.config.json`, read the way any consumer's is.
+- **`package-boundary` holds every line your package would publish against patterns you declare.**
+  The scanned set is yours: directories to walk or single files to read, each with its own extension
+  filter, plus the manifest fields a registry publishes verbatim. What you leave out is exempt, and
+  omission is the only exemption there is. The patterns are an ordered array of named regular
+  expressions carrying a reason apiece, and the first one to match a logical line is the one the line
+  is reported under. A run of consecutive comment lines is matched as one line, in both the
+  space-joined and the tight join, so a reference wrapped at a hyphen is still caught.
+- **`field-ownership` fails on a write to a field you own from a module you did not declare, and on
+  a declared module that writes none of the fields it is named for.** You declare the fields, the
+  path prefixes where declaring them is always allowed, the modules permitted to write them, and the
+  helper identifiers that write them on a caller's behalf. The gate knows nothing about what the
+  fields mean, so an identifier only a factory may assign, a timestamp one repository layer owns and
+  a tenant marker written only where a request was authorized are all the same rule; a repository
+  with no provenance concept at all is the ordinary case for it.
+- **`typescript` is an optional peer dependency.** `dependency-direction` and `field-ownership` read
+  your source through the TypeScript package's own scanner. Neither reaches it on any load path:
+  each probes it by name and refuses at exit `64` naming the dependency and itself, so a repository
+  that adopted only the other three installs nothing and is never left wondering which of its gates
+  is complaining.
+- **This repository runs its own layer, boundary and field-ownership gates through the published
+  binary.** `npm run check:layers`, `npm run check:boundary` and `npm run check:lineage` invoke
+  `eval-quality-gates` over this repository's own `eval-quality.config.json`, so the package is held
+  by the mechanism it ships rather than by a second copy of it.
 
 ## [3.0.0] - 2026-09-10
 

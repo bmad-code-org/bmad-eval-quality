@@ -19,7 +19,11 @@ import {
 	CORPUS_PACKAGE_ROOT,
 	EXAMPLE_SEED_ID,
 } from '../../scripts/dev-corpus-target.ts'
-import { scanPackageBoundary } from '../../scripts/package-boundary.ts'
+import {
+	compileBoundaryPatterns,
+	PackageBoundarySection,
+	scanPackageBoundary,
+} from '../../scripts/package-boundary.ts'
 import { compile } from '../../src/application/compile.ts'
 import { seal } from '../../src/application/seal.ts'
 import { serializeArtifact } from '../../src/application/serialize.ts'
@@ -338,8 +342,19 @@ describe('the development corpus', () => {
 		).toHaveLength(3)
 	})
 
-	it('case 166: the corpus carries no AD-15 reference and no AD-18 content', () => {
-		expect(scanPackageBoundary(corpus)).toEqual([])
+	it('case 166: the corpus carries no AD-15 reference and no AD-18 content', async () => {
+		// This repository's own patterns, read from the configuration the way a
+		// consumer's are read, since the gate no longer carries them.
+		const declared = PackageBoundarySection.parse(
+			(
+				JSON.parse(
+					await readFile(join(repoRoot, 'eval-quality.config.json'), 'utf8'),
+				) as Record<string, unknown>
+			)['package-boundary'],
+		)
+		expect(
+			scanPackageBoundary(corpus, compileBoundaryPatterns(declared.patterns)),
+		).toEqual([])
 
 		expect(new Set(AD18_PATTERNS.map((entry) => entry.category)).size).toBe(
 			AD18_CATEGORIES.length,

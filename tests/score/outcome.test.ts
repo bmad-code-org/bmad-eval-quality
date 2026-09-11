@@ -1519,7 +1519,11 @@ const expectedNamingFilesFor = (state: string): readonly string[] =>
 describe('the boundary the procedure holds', () => {
 	it('names an AD-6 state only from the exact per-state module set, and resolveOutcome remains the only assigner', () => {
 		const repoRoot = fileURLToPath(new URL('../../', import.meta.url))
-		return discoverSourceFiles(repoRoot).then((files) => {
+		// The walk takes its roots from the caller now that the layer graph is
+		// consumer data, so this scan names the one tree it cares about.
+		return discoverSourceFiles(repoRoot, [
+			{ path: 'src', extensions: ['.ts'] },
+		]).then((files) => {
 			for (const state of OUTCOME_STATES) {
 				const naming = [...files]
 					.filter(([, source]) => source.includes(`'${state}'`))

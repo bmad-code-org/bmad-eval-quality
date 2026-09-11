@@ -2,7 +2,7 @@
 title: 'Name the three versions the package stamps, and publish the five it only reads'
 type: 'feature'
 created: '2026-09-10'
-status: 'review'
+status: 'done'
 route: 'dispatch'
 review_loop_iteration: 0
 baseline_commit: '4f4836f1790b9a1fe2dffe7cae3118166276df9d'

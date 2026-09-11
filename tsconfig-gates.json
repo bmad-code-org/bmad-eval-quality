@@ -4,7 +4,13 @@
 		"scripts/gates-cli.ts",
 		"scripts/gate-config.ts",
 		"scripts/audit-lockfile-age.mjs",
-		"scripts/check-licenses.mjs"
+		"scripts/check-licenses.mjs",
+		"scripts/check-dependency-direction.ts",
+		"scripts/dependency-direction.ts",
+		"scripts/discover-source-files.ts",
+		"scripts/token-scan.ts",
+		"scripts/package-boundary.ts",
+		"scripts/lineage-ownership.ts"
 	],
 	"include": [],
 	"compilerOptions": {

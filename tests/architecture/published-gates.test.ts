@@ -17,6 +17,17 @@
  * an npm 6 lockfile carrying a real dependency and no `packages` key, which both
  * gates once reported as having passed over zero entries.
  *
+ * The three scanning gates carry a fixture pair apiece, and each pair is a tree
+ * rather than a lockfile: a compliant one the gate passes, and a seeded one
+ * carrying the defect its own rules were not written for. The seeds and the
+ * rules they trip are held in the gate modules' own test files; what is asserted
+ * here is the binary, which is the surface a consumer actually invokes.
+ *
+ * The direction gate's report-only case is the one the story names. A mode whose
+ * whole purpose is showing the size of a fix before committing to it fails
+ * silently if it can exit 0 with nothing to read, so the case pins both halves:
+ * exit 0, and a count in the output.
+ *
  * The age gate's one effect is a registry fetch, so its compliant case supplies
  * the registry's answers through `readTimeMap` rather than reaching the network:
  * a test that needs the network fails when the network does, and says nothing
@@ -25,7 +36,13 @@
  * fetch is attempted.
  */
 import { spawnSync } from 'node:child_process'
-import { existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
+import {
+	cpSync,
+	existsSync,
+	mkdtempSync,
+	readFileSync,
+	writeFileSync,
+} from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
@@ -43,8 +60,11 @@ import {
 	DEFAULT_CONFIG_FILE,
 	GATE_NAMES,
 	LOCKFILE_WINDOW_DAYS_DEFAULT,
+	loadDependencyDirectionConfig,
+	loadFieldOwnershipConfig,
 	loadLicencesConfig,
 	loadLockfileAgeConfig,
+	loadPackageBoundaryConfig,
 } from '../../scripts/gate-config.ts'
 import { EXIT_USAGE } from '../../src/cli/exit-codes.ts'
 
@@ -284,10 +304,19 @@ describe('the gate configuration loader', () => {
 		expect(result.message).toContain('SPDX short identifier')
 	})
 
-	it("loads this repository's own configuration", async () => {
+	it("loads this repository's own configuration, through every gate's loader", async () => {
 		const configPath = resolve('eval-quality.config.json')
 		expect((await loadLicencesConfig({ configPath })).kind).toBe('section')
 		expect((await loadLockfileAgeConfig({ configPath })).kind).toBe('section')
+		expect((await loadDependencyDirectionConfig({ configPath })).kind).toBe(
+			'section',
+		)
+		expect((await loadPackageBoundaryConfig({ configPath })).kind).toBe(
+			'section',
+		)
+		expect((await loadFieldOwnershipConfig({ configPath })).kind).toBe(
+			'section',
+		)
 	})
 
 	it('applies the window default when a section names none', async () => {
@@ -639,6 +668,121 @@ describe('the lockfile-age gate', () => {
 	})
 })
 
+describe('the dependency-direction gate', () => {
+	it('passes on the compliant fixture', () => {
+		const run = runGates(
+			'dependency-direction',
+			'--config',
+			configOf('direction-compliant'),
+		)
+		expect(run.status).toBe(0)
+		expect(run.output).toContain('dependency-direction: passed')
+		expect(run.output).toContain('0 violations')
+	})
+
+	it('fails on the seeded fixture, naming the edge and the rule', () => {
+		const run = runGates(
+			'dependency-direction',
+			'--config',
+			configOf('direction-seeded'),
+		)
+		expect(run.status).toBe(1)
+		expect(run.output).toContain('1 violation(s) across 4 scanned file(s)')
+		expect(run.output).toContain('lib/model/normalise.ts')
+		expect(run.output).toContain('model/ may not depend on service/')
+	})
+
+	/**
+	 * The criterion the story calls out. Report-only exists so a repository can
+	 * learn the size of the fix before committing to it, and a report-only run
+	 * that exits 0 with no number in its output would hand a consumer a green
+	 * build and nothing to read, which is the vacuous pass in the one mode whose
+	 * whole purpose is the count.
+	 *
+	 * The fixture is copied out and its one flag flipped, rather than a second
+	 * configuration being committed beside it: every path a section names is
+	 * relative to the configuration file, so a configuration in a temporary
+	 * directory has to bring the tree with it. AD-30 keeps the writes there.
+	 */
+	it('prints a non-zero count and still exits zero under report-only', () => {
+		const root = mkdtempSync(join(tmpdir(), 'gate-report-only-'))
+		cpSync(join(FIXTURES, 'direction-seeded'), root, { recursive: true })
+		const path = join(root, DEFAULT_CONFIG_FILE)
+		const document = JSON.parse(readFileSync(path, 'utf8')) as {
+			'dependency-direction': Record<string, unknown>
+		}
+		document['dependency-direction'].reportOnly = true
+		writeFileSync(path, JSON.stringify(document, null, '\t'), 'utf8')
+
+		const run = runGates('dependency-direction', '--config', path)
+		expect(run.status).toBe(0)
+		expect(run.output).toContain('report-only')
+		expect(run.output).toContain('1 violation(s) across 4 scanned file(s)')
+		expect(run.output).toContain('this run did not fail')
+		// The violation itself, not only the count: a report nobody can act on is
+		// the same dead end as a report with no number in it.
+		expect(run.output).toContain('lib/model/normalise.ts')
+	})
+})
+
+describe('the package-boundary gate', () => {
+	it('passes on the compliant fixture', () => {
+		const run = runGates(
+			'package-boundary',
+			'--config',
+			configOf('boundary-compliant'),
+		)
+		expect(run.status).toBe(0)
+		expect(run.output).toContain('package-boundary: 6 entr(ies) scanned')
+		expect(run.output).toContain('0 violations')
+	})
+
+	it('fails on the seeded fixture, over source and over the manifest', () => {
+		const run = runGates(
+			'package-boundary',
+			'--config',
+			configOf('boundary-seeded'),
+		)
+		expect(run.status).toBe(1)
+		expect(run.output).toContain('4 violation(s) across 6 scanned entr(ies)')
+		expect(run.output).toContain('src/reduce.ts:1 [build-machine-path]')
+		expect(run.output).toContain('src/index.ts:1 [unpublished-path]')
+		// A manifest field has no line of its own, so it reports at line 1 under
+		// the synthetic key. This is the half a source-only scan never reaches.
+		expect(run.output).toContain(
+			'manifest.json#description:1 [internal-tracker]',
+		)
+		expect(run.output).toContain(
+			'manifest.json#scripts.regenerate:1 [unpublished-path]',
+		)
+	})
+})
+
+describe('the field-ownership gate', () => {
+	it('passes on the compliant fixture', () => {
+		const run = runGates(
+			'field-ownership',
+			'--config',
+			configOf('lineage-compliant'),
+		)
+		expect(run.status).toBe(0)
+		expect(run.output).toContain('field-ownership: 4 file(s) scanned')
+		expect(run.output).toContain('0 violations')
+	})
+
+	it('fails on the seeded fixture, naming the helper and not the field', () => {
+		const run = runGates(
+			'field-ownership',
+			'--config',
+			configOf('lineage-seeded'),
+		)
+		expect(run.status).toBe(1)
+		expect(run.output).toContain('2 violation(s) across 6 scanned file(s)')
+		expect(run.output).toContain('src/pipeline/publish.ts:1 bumpOwner')
+		expect(run.output).toContain('the same write one line further out')
+	})
+})
+
 describe('the built gates binary', () => {
 	const BUILT = existsSync(resolve('dist/gates/gates-cli.js'))
 	const NEEDS_BUILD =
@@ -651,6 +795,14 @@ describe('the built gates binary', () => {
 			'dist/gates/gate-config.js',
 			'dist/gates/audit-lockfile-age.mjs',
 			'dist/gates/check-licenses.mjs',
+			'dist/gates/check-dependency-direction.js',
+			// Reached only through a dynamic import, after `typescript` has been
+			// probed, so nothing in the binary's static load graph names it.
+			'dist/gates/dependency-direction.js',
+			'dist/gates/discover-source-files.js',
+			'dist/gates/token-scan.js',
+			'dist/gates/package-boundary.js',
+			'dist/gates/lineage-ownership.js',
 		]) {
 			expect(existsSync(resolve(emitted)), `${emitted} was not emitted`).toBe(
 				true,

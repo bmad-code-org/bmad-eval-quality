@@ -4471,3 +4471,33 @@ Three were bare integers typed into the code that writes the artifact. Five were
 - Run at least one gate through the built binary inside `validate`. A gate invoked from source holds the code and says nothing about the artifact a consumer installs.
 
 **Watch out:** a gate that runs before `npm ci` may import nothing from `node_modules`, so the two `.mjs` gate modules stay free of the Zod-backed loader and the window default is declared twice with a case holding the two equal.
+
+## Step 63 (epic13-story1): three checks that lived on code nobody wrote down
+
+**In plain terms:** three more gates enforced a rule this repository never stated in a form anyone could read. The import direction between layers lived in a `switch`, what a published tarball may say lived in a scanned-set composition hard-coded to this repository's own paths, and who may write two fields lived in a stage table. Publishing each meant writing the rule down for the first time, and writing one of them down found a permission nobody had granted.
+
+**What:** three more gates on `eval-quality-gates`: `dependency-direction`, `package-boundary`, `field-ownership`. Each takes its whole rule as consumer data, an ordered layer graph with import edges, an ordered pattern list with a scanned-path list, and a field-and-writer table. `dependency-direction` and `field-ownership` need `typescript` as an optional peer, refusing by name when it is absent rather than failing to resolve.
+
+**Why:** a rule enforced only by code is unfalsifiable. Turning it into data made three things checkable that were not: the layer graph agreed with the code on every file in this repository's own tree, an unordered version of the same graph disagreed on 78 imports it should not have, and one edge the code had always granted turned out to have no sentence in the architecture actually granting it.
+
+**Read in this order:**
+
+1. `scripts/package-boundary.ts`: the twelve patterns and the scanned-set composition, both now consumer data, and the line-length bound sized against this repository's own longest line rather than against a threat model nobody measured.
+2. `scripts/dependency-direction.ts`: the layer graph as an ordered array, and why the order is not incidental.
+3. `scripts/lineage-ownership.ts`: a field-ownership check derived at runtime for this repository and transcribed everywhere else, with the drift gated rather than left unheld.
+
+**Story:** `_bmad-output/implementation-artifacts/13-1-publish-the-eight-gates-each-configured-by-the-consumer.md`
+
+### Reference
+
+**Rules:**
+
+- Before turning code into data, run the data against the tree the code already holds and compare verdicts. Agreement is worth recording with what was compared; disagreement means the code enforced something nobody wrote down.
+- Where order decides the answer, make the schema an ordered array and refuse a row a later row would shadow. An unordered map, or one a formatter sorts, silently re-layers a graph nobody meant to change.
+- A rule found emergent from the plumbing, reachable by one code path and not by two others nobody decided against, gets pinned by a case naming the two paths it must not reach, before the code that would let it drift is written.
+- When a transcription exposes a permission the source of truth does not obviously grant, and nothing exercises it, transcribe it as the code has it and hand the question to whoever owns the source of truth. Narrowing on a contested reading is a decision, not a correction.
+- A protective bound sized against an abstract threat, and never run against the tree it will actually scan, is a bound sized wrong. Run it first.
+- Report-only belongs in the configuration file, not behind a flag. A flag is invisible to a reviewer; a committed line is not.
+- A script that stops executing on load, because a refactor turned it from a program into a module, still exits 0. Nothing distinguishes "ran and found nothing" from "ran nothing" until the npm script that names it is checked by hand.
+
+**Watch out:** a gate one session finishes and another wires together can leave a stale entry point standing: the file that used to run the gate against this repository's own tree, orphaned the moment the multiplexer takes over, with nothing failing because nothing calls it. Grep for the file's own name across the tree before deciding it is still load-bearing.
