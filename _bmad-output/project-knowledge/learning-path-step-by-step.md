@@ -4406,5 +4406,6 @@ The same shape sat one level up: the version the package publishes about itself 
 - Re-export with an explicit named clause and reach for `export type` when a name carries both a type and a value meaning. `export *` takes both, and here the value is a live Zod schema the barrel refuses to carry.
 - A number authored in one file and repeated in another gets a generator and a check, and the check reads the source files, so it holds on a tree nobody has built.
 - A comment claiming a verification names the case that performs it. "A test asserts the two agree" is unreachable prose, and the case it meant skipped whenever `dist/` was absent.
+- A gate's trigger set is its own object, and watching it fire proves it catches the instance you thought of. `check:doc-claims` refused a stale verification claim on demand and let "Version 1.0 is out" ride two published pages into 3.0.0, because its verbs were a verification's and its version pattern wanted three components where the sentence wrote two. Ask what a real instance could look like that the vocabulary cannot reach, then seed that one.
 
 **Watch out:** the generator refuses when the declaration is absent, because minting one would undo a deliberate removal. The release script calls the generator, so the substitution string is spelled in one place.
