@@ -1203,7 +1203,15 @@ The split is by dependency rather than by size, which is the only basis on which
 
 **Given** TEA's Story 4.7 needs the direction gate over `cli/`, `tools/`, `test/` and `src/**/*.cjs` with its own declared edges, and needs it to report without failing on the first run so the size of the fix is known before it starts,
 **When** the direction gate is published,
-**Then** the trees are the consumer's, the layer graph is data the consumer supplies, and a report-only mode is a first-class mode rather than an exit code a caller ignores.
+**Then** the trees are the consumer's, the layer graph is data the consumer supplies, and report-only is a declared mode. An exit code a caller can ignore gives a consumer a green build and no report, which is the vacuous pass arriving in the one feature whose purpose is showing a consumer the size of the problem before committing to it, and it would make Story 4.7's first criterion unsatisfiable in a way nobody would notice.
+
+**Given** this repository's own layer graph exists today as eight literal prefix tests in `classifyLayer`, a `switch` per source layer in `isAllowedEdge`, and three hard-coded special cases, so turning it into configuration writes it down for the first time,
+**When** the graph is transcribed, which is the first thing done in that pull request and before anything is built on it,
+**Then** the transcribed graph is run against this repository's own tree and its verdict compared against the code's. A difference means the code has been enforcing something nobody ever stated, which is a finding rather than a transcription error and is reported before the publication continues. Agreement is recorded too, with what was compared, because a graph that transcribes with no verdict change is a measured negative worth having: it says the eight prefix tests, the per-layer switch and the three special cases together express exactly what the table expresses. Recording only the dirty outcome would leave a reader unable to tell whether the check ran.
+
+**Given** `check-dependency-direction.ts` and `check-lineage-ownership.ts` reach `typescript/unstable/ast` at runtime while `typescript` is a devDependency,
+**When** those two are published,
+**Then** `typescript` is an optional peer dependency and each of those gates refuses by name when it is absent, naming the missing dependency and the gate that needs it. That matches the format's incremental-adoption property, so a consumer installs it only if it runs those two, and a consumer who adopted the other six is never left wondering why one refuses.
 
 **Given** a seeded fixture proves a gate fires on the instance its author thought of, and the seed and the trigger vocabulary come from the same author on the same afternoon,
 **When** the fixtures are built,
