@@ -63,4 +63,4 @@ export type {
 	WitnessInputs,
 } from './core/schemas/sensitivity-witness.ts'
 
-export const VERSION = '3.0.0'
+export const VERSION = '3.1.0'

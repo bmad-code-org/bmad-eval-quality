@@ -10,6 +10,8 @@ body.
 
 ## [Unreleased]
 
+## [3.1.0] - 2026-09-15
+
 ### Added
 
 - **The schema versions and the dominance comparison are on the barrel.** `PROBE_SCHEMA_VERSION` and
