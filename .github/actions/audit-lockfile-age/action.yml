@@ -22,16 +22,21 @@ runs:
   steps:
     - name: Audit lockfile publication age
       shell: bash
+      # Inputs arrive through `env:` rather than `${{ }}` inside the script body,
+      # and the command is an argument array rather than a string one flag was
+      # spliced into: both inputs are literal paths this workflow itself writes
+      # today, but nothing about the action's shape should depend on that
+      # staying true, and a path can carry a space either way.
+      env:
+        LOCKFILE: ${{ inputs.lockfile }}
+        CACHE: ${{ inputs.cache }}
       run: |
         set +e
-        cache_flag=""
-        if [ -n "${{ inputs.cache }}" ]; then
-          cache_flag="--cache ${{ inputs.cache }}"
+        args=(--lockfile "$LOCKFILE")
+        if [ -n "$CACHE" ]; then
+          args+=(--cache "$CACHE")
         fi
-        # Unquoted on purpose: empty means no flag at all, and the value is a
-        # repository-relative path this workflow writes.
-        # shellcheck disable=SC2086
-        output="$(node scripts/audit-lockfile-age.mjs --lockfile "${{ inputs.lockfile }}" $cache_flag)"
+        output="$(node scripts/audit-lockfile-age.mjs "${args[@]}")"
         exit_status=$?
         set -e
         echo "$output"

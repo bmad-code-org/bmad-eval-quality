@@ -1267,6 +1267,9 @@ describe('the built gates binary', () => {
 	 * `doc-counts`; these two cover the other pair, so a compile-only defect in
 	 * either can't ship holding only the source path green.
 	 */
+	// This one gate spawns a child process per documented invocation, 32 of them
+	// against this repository's own pages, so the default per-test timeout is
+	// too tight on a loaded runner: vitest's own budget, not this gate's.
 	it('runs the doc-invocations gate from the published path', (ctx) => {
 		if (!BUILT) return ctx.skip(NEEDS_BUILD)
 		const result = spawnSync(
@@ -1278,7 +1281,7 @@ describe('the built gates binary', () => {
 			'invocation(s) scanned',
 		)
 		expect(result.status).toBe(0)
-	})
+	}, 60_000)
 
 	it('runs the doc-claims gate from the published path', (ctx) => {
 		if (!BUILT) return ctx.skip(NEEDS_BUILD)
