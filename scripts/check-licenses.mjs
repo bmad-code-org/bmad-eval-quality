@@ -224,6 +224,13 @@ function findDependencyPath(packages, edges, targetPath) {
  * fails every entry or silently permits every entry, and a gate that picks one
  * of those on the caller's behalf is the fallback this package does not have.
  *
+ * `options.undeclared` is the rows for entries whose manifest declares no
+ * licence, each a `prefix`, the one identifier the entry is read as under
+ * `readAs`, the `evidence` for that reading and a `reason`. The caller has
+ * already decided which rows apply to this lockfile. A row that reached no
+ * undeclared entry comes back by prefix in `unusedUndeclared`, so the caller
+ * can refuse a reading nothing is holding.
+ *
  * `options.source` is the path this lockfile was read from, named in the refusal
  * a document without a `packages` object earns.
  */
@@ -237,6 +244,7 @@ export function checkLicenses(lockfile, options = {}) {
 	const allowlist = new Set(allowed)
 	const label = typeof options.label === 'string' ? options.label : 'allowlist'
 	const tolerances = options.tolerances ?? []
+	const undeclared = options.undeclared ?? []
 	const source =
 		typeof options.source === 'string' ? options.source : 'the lockfile'
 
@@ -264,6 +272,8 @@ export function checkLicenses(lockfile, options = {}) {
 
 	const violations = []
 	const tolerated = []
+	const readByEvidence = []
+	const usedPrefixes = new Set()
 	const reasons = new Set()
 	for (const [pkgPath, meta] of entries) {
 		const name = meta.name ?? pkgPath.split('node_modules/').pop()
@@ -277,6 +287,22 @@ export function checkLicenses(lockfile, options = {}) {
 		// of the artifact being installed. Requiring `resolved` to be the one tarball
 		// URL the registry has for this entry's own name and version is what ties the
 		// two together.
+		// "Declares nothing" is an absent, null or blank field. A field present in
+		// a shape `licenseStringOf` does not read, an array or an object with no
+		// `type`, declares something and fails below as it always has, rather than
+		// reading as nothing and taking a row's evidence.
+		const declaresNothing =
+			meta.license === undefined ||
+			meta.license === null ||
+			(typeof meta.license === 'string' && meta.license.trim() === '')
+		const matching = declaresNothing
+			? undeclared.filter((candidate) => name.startsWith(candidate.prefix))
+			: []
+		// A row is held to have reached an entry before the resolved-URL check
+		// below, so a tampered entry the row documents reports the tampering and
+		// never a row that reaches nothing.
+		for (const row of matching) usedPrefixes.add(row.prefix)
+
 		const expected = registryTarballUrl(name, version)
 		if (meta.resolved !== expected) {
 			violations.push({
@@ -290,6 +316,52 @@ export function checkLicenses(lockfile, options = {}) {
 		}
 
 		const license = licenseStringOf(meta)
+
+		// A manifest with no licence field declares nothing, so there is no
+		// expression to widen and no tolerance is consulted. A row under
+		// `undeclared` supplies the reading and its evidence, and the identifier is
+		// then held by `isAllowed` like a declared one, so a row cannot admit what
+		// the allowlist refuses.
+		if (declaresNothing) {
+			const blank = typeof meta.license === 'string'
+			const undeclaredAs = blank
+				? 'declares no licence, the field is blank'
+				: 'declares no licence'
+			if (matching.length === 0) {
+				violations.push({
+					path: pkgPath,
+					name,
+					version,
+					license: meta.license ?? null,
+					reason: undeclaredAs,
+				})
+				continue
+			}
+			// The first row whose reading the allowlist admits, as a tolerance is
+			// the first that holds; the failure names every reading that was tried.
+			const row = matching.find((candidate) =>
+				isAllowed(candidate.readAs, allowlist),
+			)
+			if (row === undefined) {
+				const tried = [...new Set(matching.map((c) => c.readAs))].join(' or ')
+				violations.push({
+					path: pkgPath,
+					name,
+					version,
+					license: meta.license ?? null,
+					reason: `read by evidence as ${tried}, which is outside ${label}`,
+				})
+				continue
+			}
+			readByEvidence.push({
+				entry: `${name}@${version}`,
+				readAs: row.readAs,
+				evidence: row.evidence,
+				reason: row.reason,
+			})
+			continue
+		}
+
 		if (isAllowed(license, allowlist)) continue
 		const tolerance = tolerances.find((candidate) =>
 			isTolerated(candidate, meta, name, license, allowlist),
@@ -299,20 +371,32 @@ export function checkLicenses(lockfile, options = {}) {
 			reasons.add(tolerance.reason)
 			continue
 		}
-		violations.push({ path: pkgPath, name, version, license })
+		// The raw field when the reader made nothing of it, so `["MIT"]` prints as
+		// what it is and never as the null that means "declares nothing".
+		violations.push({
+			path: pkgPath,
+			name,
+			version,
+			license: license ?? meta.license,
+		})
 	}
 
 	tolerated.sort()
-	const toleranceReasons = [...reasons].sort()
-
-	if (violations.length === 0)
-		return {
-			violations: [],
-			entryCount: entries.length,
-			tolerated,
-			toleranceReasons,
-			policy: label,
-		}
+	readByEvidence.sort((a, b) =>
+		a.entry < b.entry ? -1 : a.entry > b.entry ? 1 : 0,
+	)
+	const report = {
+		violations,
+		entryCount: entries.length,
+		tolerated,
+		toleranceReasons: [...reasons].sort(),
+		readByEvidence,
+		unusedUndeclared: undeclared
+			.map((row) => row.prefix)
+			.filter((prefix) => !usedPrefixes.has(prefix)),
+		policy: label,
+	}
+	if (violations.length === 0) return report
 
 	const edges = buildEdges(packages)
 	for (const violation of violations) {
@@ -322,11 +406,5 @@ export function checkLicenses(lockfile, options = {}) {
 			violation.path,
 		)
 	}
-	return {
-		violations,
-		entryCount: entries.length,
-		tolerated,
-		toleranceReasons,
-		policy: label,
-	}
+	return report
 }

@@ -142,6 +142,7 @@ const writeDiagnostic = (line: string): void => {
 class ConfigurationError extends Error {}
 
 type Tolerance = NonNullable<LicencesConfig['tolerances']>[number]
+type Undeclared = NonNullable<LicencesConfig['undeclared']>[number]
 
 /**
  * What the three `.mjs` gate modules return. They carry no declaration file, so
@@ -163,6 +164,7 @@ type AgeReport = {
 	readonly youngEntries: readonly AgeEntry[]
 	readonly unfetchableEntries: readonly AgeEntry[]
 	readonly offRegistryEntries: readonly AgeEntry[]
+	readonly excludedEntries: readonly AgeEntry[]
 }
 
 type LicenceViolation = {
@@ -173,11 +175,21 @@ type LicenceViolation = {
 	readonly dependencyPath?: string
 }
 
+/** An undeclared entry the gate admitted, with the row's evidence and reason. */
+type EvidenceReading = {
+	readonly entry: string
+	readonly readAs: string
+	readonly evidence: string
+	readonly reason: string
+}
+
 type LicenceReport = {
 	readonly violations: readonly LicenceViolation[]
 	readonly entryCount: number
 	readonly tolerated: readonly string[]
 	readonly toleranceReasons: readonly string[]
+	readonly readByEvidence: readonly EvidenceReading[]
+	readonly unusedUndeclared: readonly string[]
 }
 
 type InvocationFailure = {
@@ -331,11 +343,46 @@ async function readCache(
 	}
 }
 
+/**
+ * Which (row, lockfile) pairs a run has not yet seen reach an entry. A row
+ * naming two lockfiles is held in each: a scope where it never reaches anything
+ * is a value nobody is holding, whatever it reaches in the other.
+ *
+ * The refusal comes after every lockfile has reported, and it never outranks a
+ * gate failure: a run that found a violation exits 1 and prints the stale rows
+ * as a diagnostic, because a caller branching on the code must see the finding
+ * first. The usage code is for the run that would otherwise have passed.
+ */
+class UnreachedRows<Row extends { readonly lockfiles: readonly string[] }> {
+	private readonly pending = new Map<Row, Set<string>>()
+
+	constructor(rows: readonly Row[]) {
+		for (const row of rows) this.pending.set(row, new Set(row.lockfiles))
+	}
+
+	reached(row: Row, lockfile: string): void {
+		this.pending.get(row)?.delete(lockfile)
+	}
+
+	/** Each stale row with the lockfiles it reached nothing in, or nothing. */
+	remaining(): readonly { readonly row: Row; readonly lockfiles: string[] }[] {
+		return [...this.pending]
+			.filter(([, lockfiles]) => lockfiles.size > 0)
+			.map(([row, lockfiles]) => ({ row, lockfiles: [...lockfiles] }))
+	}
+}
+
+function exitAfter(passed: boolean, stale: string | null): number {
+	if (stale !== null) writeDiagnostic(`\n${BINARY}: ${stale}`)
+	if (!passed) return EXIT_GATE_FAILED
+	return stale === null ? EXIT_OK : EXIT_USAGE
+}
+
 async function runLockfileAge(
 	configFile: string,
 	root: string,
 	section: LockfileAgeConfig,
-): Promise<boolean> {
+): Promise<number> {
 	const cache = await readCache(configFile, root, section.cache)
 	const now = new Date()
 	// The line `.github/actions/audit-lockfile-age/action.yml` greps for: a
@@ -349,6 +396,7 @@ async function runLockfileAge(
 	}
 
 	let passed = true
+	const unreached = new UnreachedRows(section.exclude ?? [])
 	for (const relative of section.lockfiles) {
 		const lockfile = await readLockfile(
 			root,
@@ -356,26 +404,56 @@ async function runLockfileAge(
 			configFile,
 			'lockfile-age',
 		)
+		const exclusions = (section.exclude ?? []).filter((row) =>
+			row.lockfiles.includes(relative),
+		)
 		const report = (await auditLockfileAge({
 			lockfile,
 			now,
 			windowDays: section.windowDays,
+			exclude: exclusions.map((row) => row.name),
 			source: relative,
 			cache,
 		})) as unknown as AgeReport
+
+		// The exclusions are part of what the run did, on a failing run as on a
+		// passing one, so they print on both with the scanned total beside them,
+		// each with the reason its row gave.
+		const excluded = report.excludedEntries
+		const writeExcluded = (): void => {
+			for (const entry of excluded) {
+				const row = exclusions.find(
+					(candidate) => candidate.name === entry.name,
+				)
+				if (row !== undefined) unreached.reached(row, relative)
+				writeOut(`  excluded: ${entry.name}@${entry.version} (${entry.path})`)
+				if (row !== undefined) writeOut(`    because: ${row.reason}`)
+			}
+		}
 
 		if (
 			report.youngEntries.length === 0 &&
 			report.unfetchableEntries.length === 0 &&
 			report.offRegistryEntries.length === 0
 		) {
+			const cutoff = report.cutoff.toISOString()
+			const scanned = report.entries.length
 			writeOut(
-				`lockfile-age ${relative}: passed, ${report.entries.length} entrie(s), all published before ${report.cutoff.toISOString()}.`,
+				excluded.length === 0
+					? `lockfile-age ${relative}: passed, ${scanned} entrie(s), all published before ${cutoff}.`
+					: `lockfile-age ${relative}: passed, ${scanned} entrie(s), ${scanned - excluded.length} published before ${cutoff} and ${excluded.length} excluded by name.`,
 			)
+			writeExcluded()
 			continue
 		}
 
 		passed = false
+		if (excluded.length > 0) {
+			writeOut(
+				`lockfile-age ${relative}: ${report.entries.length} entrie(s), ${excluded.length} excluded by name.`,
+			)
+			writeExcluded()
+		}
 		if (report.offRegistryEntries.length > 0) {
 			writeDiagnostic(
 				`\nlockfile-age ${relative}: failed closed, ${report.offRegistryEntries.length} entrie(s) do not resolve to the npm registry:`,
@@ -405,7 +483,19 @@ async function runLockfileAge(
 			}
 		}
 	}
-	return passed
+	const stale = unreached.remaining()
+	return exitAfter(
+		passed,
+		stale.length === 0
+			? null
+			: `${configFile}'s "lockfile-age" section excludes ${stale
+					.map(
+						({ row, lockfiles }) => `"${row.name}" in ${lockfiles.join(', ')}`,
+					)
+					.join(
+						'; ',
+					)}, and no entry there carries that name; the package left the lockfile or the name is mistyped, so remove the row or narrow its lockfiles`,
+	)
 }
 
 /** A tolerance holds only while its marker does, so the file is read on every run. */
@@ -426,8 +516,9 @@ async function runLicences(
 	configFile: string,
 	root: string,
 	section: LicencesConfig,
-): Promise<boolean> {
+): Promise<number> {
 	let passed = true
+	const unreached = new UnreachedRows(section.undeclared ?? [])
 	for (const relative of section.lockfiles) {
 		const lockfile = await readLockfile(root, relative, configFile, 'licences')
 		const policy = section.policies?.[relative]
@@ -443,29 +534,53 @@ async function runLicences(
 			if (!(await markerHolds(root, tolerance.marker))) continue
 			applicable.push(tolerance)
 		}
+		const undeclared: Undeclared[] = (section.undeclared ?? []).filter((row) =>
+			row.lockfiles.includes(relative),
+		)
 
 		const report = checkLicenses(lockfile, {
 			allowlist,
 			label,
 			tolerances: applicable,
+			undeclared,
 			source: relative,
 		}) as unknown as LicenceReport
 
-		if (report.violations.length === 0) {
-			writeOut(
-				`licences ${relative}: passed against ${label}, ${report.entryCount} entrie(s), all allowlisted.`,
-			)
-			if (policy !== undefined) writeOut(`  ${label}: ${policy.reason}`)
+		for (const row of undeclared) {
+			if (!report.unusedUndeclared.includes(row.prefix)) {
+				unreached.reached(row, relative)
+			}
+		}
+
+		// An entry read by evidence is printed on every run that used the row,
+		// and apart from the tolerated: a tolerance widens the allowlist for a
+		// licence the entry declares, and this row supplies one the entry does not.
+		// Both print on a failing run too, since both are part of what the run did.
+		const writeExceptions = (): void => {
+			for (const reading of report.readByEvidence) {
+				writeOut(`  read by evidence: ${reading.entry} as ${reading.readAs}`)
+				writeOut(`    evidence: ${reading.evidence}`)
+				writeOut(`    because: ${reading.reason}`)
+			}
 			if (report.tolerated.length > 0) {
 				writeOut(`  tolerated: ${report.tolerated.join(', ')}`)
 				for (const reason of report.toleranceReasons) {
 					writeOut(`  because: ${reason}`)
 				}
 			}
+		}
+
+		if (report.violations.length === 0) {
+			writeOut(
+				`licences ${relative}: passed against ${label}, ${report.entryCount} entrie(s), all allowlisted.`,
+			)
+			if (policy !== undefined) writeOut(`  ${label}: ${policy.reason}`)
+			writeExceptions()
 			continue
 		}
 
 		passed = false
+		writeExceptions()
 		writeDiagnostic(
 			`\nlicences ${relative}: ${report.violations.length} entrie(s) outside ${label}:`,
 		)
@@ -476,7 +591,20 @@ async function runLicences(
 			writeDiagnostic(`    dependency path: ${violation.dependencyPath}`)
 		}
 	}
-	return passed
+	const stale = unreached.remaining()
+	return exitAfter(
+		passed,
+		stale.length === 0
+			? null
+			: `${configFile}'s "licences" section reads ${stale
+					.map(
+						({ row, lockfiles }) =>
+							`"${row.prefix}" in ${lockfiles.join(', ')}`,
+					)
+					.join(
+						'; ',
+					)} by evidence, and no entry there under that prefix declares no licence; the package now declares one or the prefix is mistyped, so remove the row or narrow its lockfiles`,
+	)
 }
 
 /** The order every violation report prints in, so two runs read the same. */
@@ -652,22 +780,12 @@ async function run(invocation: Invocation): Promise<number> {
 		case 'lockfile-age': {
 			const loaded = await loadLockfileAgeConfig(options)
 			if (loaded.kind === 'refused') return refused(loaded.message)
-			const passed = await runLockfileAge(
-				loaded.path,
-				dirname(loaded.path),
-				loaded.section,
-			)
-			return passed ? EXIT_OK : EXIT_GATE_FAILED
+			return runLockfileAge(loaded.path, dirname(loaded.path), loaded.section)
 		}
 		case 'licences': {
 			const loaded = await loadLicencesConfig(options)
 			if (loaded.kind === 'refused') return refused(loaded.message)
-			const passed = await runLicences(
-				loaded.path,
-				dirname(loaded.path),
-				loaded.section,
-			)
-			return passed ? EXIT_OK : EXIT_GATE_FAILED
+			return runLicences(loaded.path, dirname(loaded.path), loaded.section)
 		}
 		case 'dependency-direction': {
 			const loaded = await loadDependencyDirectionConfig(options)

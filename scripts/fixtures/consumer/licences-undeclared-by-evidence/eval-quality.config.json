@@ -1,0 +1,15 @@
+{
+	"licences": {
+		"lockfiles": ["package-lock.json"],
+		"allowlist": ["MIT", "Apache-2.0", "ISC", "BSD-3-Clause"],
+		"undeclared": [
+			{
+				"reason": "the tarball omits the field",
+				"lockfiles": ["package-lock.json"],
+				"prefix": "fixture-unlicensed",
+				"readAs": "MIT",
+				"evidence": "the registry packument for fixture-unlicensed@1.0.0 declares MIT"
+			}
+		]
+	}
+}

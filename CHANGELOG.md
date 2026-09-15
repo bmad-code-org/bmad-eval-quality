@@ -34,6 +34,28 @@ body.
   it now reports every entry it could not cache and why. Running this repository's own two lockfiles
   now takes no network call at all.
 
+- **The lockfile-age gate takes exclusions by name.** `exclude` in the `lockfile-age` section is the
+  counterpart of npm's `min-release-age-exclude`, for a package you pin exactly and adopt on release
+  day: one row per package exempt from the window and from the registry fetch. A row names the
+  package, the lockfiles it is exempt in, and a reason, which is printed beside the entry. The name
+  is held to npm's charset, so a version literal is refused at exit 64, and a row that reaches no
+  entry in a lockfile it names is refused the same way once the run would otherwise have passed. An
+  excluded entry is still held to the resolved-URL check, the one that requires an entry's `resolved`
+  to be its own tarball on the npm registry; it is printed as excluded on every run, and it still
+  counts among the entries scanned.
+- **The licences gate reads an undeclared licence by evidence.** `undeclared` in the `licences`
+  section takes rows for entries whose manifest carries no licence field, so the lockfile records
+  none: each names the package prefix, the one identifier the entry is read as, the evidence for that
+  reading, and the reason the field is missing. The identifier is held against the allowlist by the
+  rule every declared one is held by, so a row cannot admit what the allowlist refuses, and a row
+  reaches only an entry that declares nothing. An entry admitted this way is printed as read by
+  evidence, with its evidence and its reason, and an undeclared entry with no row fails, saying it
+  declares no licence. A row that reaches no undeclared entry in a lockfile it names is refused at
+  exit 64 once the run would otherwise have passed, so a reading outlives its need by one run.
+  `zod-to-ts@1.2.0`, transitive through Astro 5, is the case: its `package.json` carries no
+  `license` field while the same tarball ships an MIT `LICENSE` beside it, and no allowlist, policy
+  or tolerance could admit it.
+
 ### Changed
 
 - **`check:doc-invocations`, `check:doc-counts` and `check:doc-claims` run through the published

@@ -1,0 +1,16 @@
+{
+	"lockfile-age": {
+		"lockfiles": [
+			"package-lock.json"
+		],
+		"exclude": [
+			{
+				"name": "fixture-pinned",
+				"reason": "pinned exactly and adopted on release day",
+				"lockfiles": [
+					"package-lock.json"
+				]
+			}
+		]
+	}
+}

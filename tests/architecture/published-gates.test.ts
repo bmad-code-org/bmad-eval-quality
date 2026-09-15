@@ -17,6 +17,14 @@
  * an npm 6 lockfile carrying a real dependency and no `packages` key, which both
  * gates once reported as having passed over zero entries.
  *
+ * Two more pairs carry the settings a consumer declares for what the rules
+ * above cannot admit. `licences-undeclared-*` share a lockfile with one entry
+ * that declares no licence at all, which no allowlist can reach; the seeded
+ * configuration carries no row for it and the other reads it as MIT by
+ * evidence. `lockfile-age-excluded-*` share an excluded name; the compliant one
+ * resolves it to the registry and passes with no fetch, and the seeded one
+ * resolves it to a mirror, which an exclusion never exempts.
+ *
  * The three scanning gates carry a fixture pair apiece, and each pair is a tree
  * rather than a lockfile: a compliant one the gate passes, and a seeded one
  * carrying the defect its own rules were not written for. The seeds and the
@@ -47,7 +55,7 @@ import {
 	writeFileSync,
 } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join, resolve } from 'node:path'
+import { dirname, join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import {
@@ -103,6 +111,42 @@ const temporaryConfig = (body: string): string => {
 	return path
 }
 
+/**
+ * A configuration and the lockfiles it names, written together. One lockfile
+ * lands at `package-lock.json`; a map lands each at its own relative path.
+ */
+const temporaryLockfileFixture = (
+	config: unknown,
+	lockfiles: unknown | Readonly<Record<string, unknown>>,
+	paths?: readonly string[],
+): string => {
+	const root = mkdtempSync(join(tmpdir(), 'gate-lockfile-case-'))
+	const files: Readonly<Record<string, unknown>> =
+		paths === undefined
+			? { 'package-lock.json': lockfiles }
+			: (lockfiles as Readonly<Record<string, unknown>>)
+	for (const [relative, lockfile] of Object.entries(files)) {
+		mkdirSync(join(root, dirname(relative)), { recursive: true })
+		writeFileSync(join(root, relative), JSON.stringify(lockfile), 'utf8')
+	}
+	const path = join(root, DEFAULT_CONFIG_FILE)
+	writeFileSync(path, JSON.stringify(config), 'utf8')
+	return path
+}
+
+/** An age exclusion row for one name, in the shape the loader hands over. */
+const exclusionOf = (name: string, lockfiles = ['package-lock.json']) => ({
+	name,
+	reason: 'pinned exactly and adopted on release day',
+	lockfiles,
+})
+
+/** One registry entry with no `license` field, at its canonical URL. */
+const undeclaredEntry = (name: string, version: string) => ({
+	version,
+	resolved: `${REGISTRY}/${name}/-/${name.split('/').pop()}-${version}.tgz`,
+})
+
 const ANCIENT = '2020-01-01T00:00:00.000Z'
 
 const compliantTimeMaps: Readonly<Record<string, Record<string, string>>> = {
@@ -117,6 +161,16 @@ const SHARP_TOLERANCE = {
 	license: 'LGPL-3.0-or-later',
 	optional: true,
 }
+
+/** The reading the tolerated undeclared fixture carries, as the loader hands it over. */
+const UNLICENSED_ROW = {
+	reason: 'the tarball omits the field',
+	prefix: 'fixture-unlicensed',
+	readAs: 'MIT',
+	evidence: 'the registry packument for fixture-unlicensed@1.0.0 declares MIT',
+}
+
+const REGISTRY = 'https://registry.npmjs.org'
 
 /** Optional platform binaries under that prefix, each at its canonical registry URL. */
 const sharpLockfile = (
@@ -308,6 +362,120 @@ describe('the gate configuration loader', () => {
 		if (result.kind !== 'refused') return
 		expect(result.message).toContain('tolerances.0.license')
 		expect(result.message).toContain('SPDX short identifier')
+	})
+
+	it('refuses an undeclared row naming a lockfile the section does not', async () => {
+		const path = temporaryConfig(
+			JSON.stringify({
+				licences: {
+					lockfiles: ['package-lock.json'],
+					allowlist: ['MIT'],
+					undeclared: [{ ...UNLICENSED_ROW, lockfiles: ['nope.json'] }],
+				},
+			}),
+		)
+		const result = await loadLicencesConfig({ configPath: path })
+		expect(result.kind).toBe('refused')
+		if (result.kind !== 'refused') return
+		expect(result.message).toContain('undeclared.0.lockfiles.0')
+		expect(result.message).toContain(
+			'names "nope.json", which is not one of the lockfiles this section declares: package-lock.json',
+		)
+	})
+
+	it('refuses a version pin and an expression where the read-as identifier belongs', async () => {
+		for (const readAs of ['left-pad@1.3.0', '(MIT OR ISC)']) {
+			const path = temporaryConfig(
+				JSON.stringify({
+					licences: {
+						lockfiles: ['package-lock.json'],
+						allowlist: ['MIT'],
+						undeclared: [
+							{ ...UNLICENSED_ROW, lockfiles: ['package-lock.json'], readAs },
+						],
+					},
+				}),
+			)
+			const result = await loadLicencesConfig({ configPath: path })
+			expect(result.kind, readAs).toBe('refused')
+			if (result.kind !== 'refused') return
+			expect(result.message).toContain('undeclared.0.readAs')
+			expect(result.message).toContain('SPDX short identifier')
+		}
+	})
+
+	// A marker and an optional flag mean nothing for an entry that declares no
+	// licence, so the row is strict and neither may be written on it.
+	it('refuses a marker or an optional flag on an undeclared row', async () => {
+		for (const extra of [
+			{ optional: true },
+			{ marker: { file: 'a', contains: 'b' } },
+		]) {
+			const path = temporaryConfig(
+				JSON.stringify({
+					licences: {
+						lockfiles: ['package-lock.json'],
+						allowlist: ['MIT'],
+						undeclared: [
+							{ ...UNLICENSED_ROW, lockfiles: ['package-lock.json'], ...extra },
+						],
+					},
+				}),
+			)
+			const result = await loadLicencesConfig({ configPath: path })
+			expect(result.kind, JSON.stringify(extra)).toBe('refused')
+		}
+	})
+
+	it('refuses a version literal and a bare scope where the age exclusion takes a name', () => {
+		for (const name of ['fixture-pinned@4.2.0', '@fixture-scope']) {
+			const path = temporaryConfig(
+				JSON.stringify({
+					'lockfile-age': {
+						lockfiles: ['package-lock.json'],
+						exclude: [exclusionOf(name)],
+					},
+				}),
+			)
+			const run = runGates('lockfile-age', '--config', path)
+			expect(run.status, name).toBe(EXIT_USAGE)
+			expect(run.output).toContain('exclude.0.name: is not a package name')
+		}
+	})
+
+	it('refuses an exclusion naming a lockfile the section does not', async () => {
+		const path = temporaryConfig(
+			JSON.stringify({
+				'lockfile-age': {
+					lockfiles: ['package-lock.json'],
+					exclude: [exclusionOf('fixture-pinned', ['nope.json'])],
+				},
+			}),
+		)
+		const result = await loadLockfileAgeConfig({ configPath: path })
+		expect(result.kind).toBe('refused')
+		if (result.kind !== 'refused') return
+		expect(result.message).toContain('exclude.0.lockfiles.0')
+		expect(result.message).toContain(
+			'names "nope.json", which is not one of the lockfiles this section declares: package-lock.json',
+		)
+	})
+
+	it('refuses an exclusion with no reason', async () => {
+		const path = temporaryConfig(
+			JSON.stringify({
+				'lockfile-age': {
+					lockfiles: ['package-lock.json'],
+					exclude: [
+						{ name: 'fixture-pinned', lockfiles: ['package-lock.json'] },
+					],
+				},
+			}),
+		)
+		const result = await loadLockfileAgeConfig({ configPath: path })
+		expect(result.kind).toBe('refused')
+		if (result.kind !== 'refused') return
+		expect(result.message).toContain('exclude.0.reason')
 	})
 
 	it("loads this repository's own configuration, through every gate's loader", async () => {
@@ -551,6 +719,386 @@ describe('the licences gate', () => {
 			'@img/sharp-win32-x64@0.35.4',
 		])
 	})
+
+	it('fails an entry that declares no licence, and says so', () => {
+		const run = runGates(
+			'licences',
+			'--config',
+			configOf('licences-undeclared-seeded'),
+		)
+		expect(run.status).toBe(1)
+		expect(run.output).toContain(
+			'fixture-unlicensed@1.0.0: license=null (declares no licence)',
+		)
+		expect(run.output).toContain(
+			'dependency path: consumer-undeclared-fixture > @fixture-scope/toolkit > fixture-unlicensed',
+		)
+	})
+
+	it('reads an undeclared entry by evidence, apart from the tolerated', () => {
+		const run = runGates(
+			'licences',
+			'--config',
+			configOf('licences-undeclared-by-evidence'),
+		)
+		expect(run.status).toBe(0)
+		expect(run.output).toContain(
+			'licences package-lock.json: passed against the allowlist, 3 entrie(s)',
+		)
+		expect(run.output).toContain(
+			'read by evidence: fixture-unlicensed@1.0.0 as MIT',
+		)
+		expect(run.output).toContain(
+			'evidence: the registry packument for fixture-unlicensed@1.0.0 declares MIT',
+		)
+		expect(run.output).toContain('because: the tarball omits the field')
+		expect(run.output).not.toContain('tolerated:')
+	})
+
+	it('fails a reading outside the allowlist, saying it was read by evidence', () => {
+		const report = checkLicenses(lockfileOf('licences-undeclared-seeded'), {
+			allowlist: ['MIT', 'Apache-2.0'],
+			label: 'the allowlist',
+			undeclared: [{ ...UNLICENSED_ROW, readAs: 'GPL-3.0-only' }],
+		})
+		expect(report.readByEvidence).toEqual([])
+		expect(report.violations).toHaveLength(1)
+		expect(report.violations[0]?.reason).toBe(
+			'read by evidence as GPL-3.0-only, which is outside the allowlist',
+		)
+	})
+
+	it('holds a declared entry under the prefix to its declaration', () => {
+		const report = checkLicenses(
+			{
+				packages: {
+					'': { name: 'undeclared-fixture' },
+					'node_modules/fixture-unlicensed': {
+						version: '1.0.0',
+						resolved: `${REGISTRY}/fixture-unlicensed/-/fixture-unlicensed-1.0.0.tgz`,
+						license: 'GPL-3.0-only',
+					},
+				},
+			},
+			{
+				allowlist: ['MIT'],
+				label: 'the allowlist',
+				undeclared: [UNLICENSED_ROW],
+			},
+		)
+		expect(report.readByEvidence).toEqual([])
+		expect(report.violations).toHaveLength(1)
+		expect(report.violations[0]?.license).toBe('GPL-3.0-only')
+		expect(report.violations[0]?.reason).toBeUndefined()
+	})
+
+	it('consults no tolerance for an entry that declares nothing', () => {
+		const report = checkLicenses(lockfileOf('licences-undeclared-seeded'), {
+			allowlist: ['MIT', 'Apache-2.0'],
+			label: 'the allowlist',
+			tolerances: [
+				{
+					reason: 'a tolerance for the same family',
+					prefix: 'fixture-unlicensed',
+					license: 'MIT',
+					optional: false,
+				},
+			],
+		})
+		expect(report.tolerated).toEqual([])
+		expect(report.violations).toHaveLength(1)
+		expect(report.violations[0]?.reason).toBe('declares no licence')
+	})
+
+	// `licenseStringOf` returns null for an absent field and for a shape it does
+	// not read. Only the first declares nothing; a row written for it must not
+	// admit the second.
+	it('leaves a licence in an unread shape to fail as declared', () => {
+		for (const license of [['MIT'], [{ type: 'GPL-3.0-only' }], { url: 'x' }]) {
+			const report = checkLicenses(
+				{
+					packages: {
+						'': { name: 'undeclared-fixture' },
+						'node_modules/fixture-unlicensed': {
+							...undeclaredEntry('fixture-unlicensed', '1.0.0'),
+							license,
+						},
+					},
+				},
+				{
+					allowlist: ['MIT'],
+					label: 'the allowlist',
+					undeclared: [UNLICENSED_ROW],
+				},
+			)
+			expect(report.readByEvidence, JSON.stringify(license)).toEqual([])
+			expect(report.violations).toHaveLength(1)
+			expect(report.violations[0]?.license).toEqual(license)
+			expect(report.violations[0]?.reason).toBeUndefined()
+			expect(report.unusedUndeclared).toEqual(['fixture-unlicensed'])
+		}
+	})
+
+	it('reads an empty or blank licence field as undeclared', () => {
+		const lockfileWith = (license: string): unknown => ({
+			packages: {
+				'': { name: 'undeclared-fixture' },
+				'node_modules/fixture-unlicensed': {
+					...undeclaredEntry('fixture-unlicensed', '1.0.0'),
+					license,
+				},
+			},
+		})
+		const admitted = checkLicenses(lockfileWith(''), {
+			allowlist: ['MIT'],
+			label: 'the allowlist',
+			undeclared: [UNLICENSED_ROW],
+		})
+		expect(admitted.violations).toEqual([])
+		expect(admitted.readByEvidence.map((r) => r.entry)).toEqual([
+			'fixture-unlicensed@1.0.0',
+		])
+		const refused = checkLicenses(lockfileWith('   '), {
+			allowlist: ['MIT'],
+			label: 'the allowlist',
+		})
+		expect(refused.violations).toHaveLength(1)
+		expect(refused.violations[0]?.reason).toBe(
+			'declares no licence, the field is blank',
+		)
+	})
+
+	// The prefix rule is a tolerance's: a plain string prefix with no boundary.
+	// Pinned so the docs sentence that says so stays true.
+	it('reaches every undeclared name under the prefix, with no boundary', () => {
+		const report = checkLicenses(
+			{
+				packages: {
+					'': { name: 'undeclared-fixture' },
+					'node_modules/fixture-unlicensed': undeclaredEntry(
+						'fixture-unlicensed',
+						'1.0.0',
+					),
+					'node_modules/fixture-unlicensed-extra': undeclaredEntry(
+						'fixture-unlicensed-extra',
+						'2.0.0',
+					),
+				},
+			},
+			{
+				allowlist: ['MIT'],
+				label: 'the allowlist',
+				undeclared: [UNLICENSED_ROW],
+			},
+		)
+		expect(report.violations).toEqual([])
+		expect(report.readByEvidence.map((r) => r.entry)).toEqual([
+			'fixture-unlicensed-extra@2.0.0',
+			'fixture-unlicensed@1.0.0',
+		])
+		expect(report.unusedUndeclared).toEqual([])
+	})
+
+	it('takes the first matching row the allowlist admits, as a tolerance does', () => {
+		const report = checkLicenses(lockfileOf('licences-undeclared-seeded'), {
+			allowlist: ['MIT'],
+			label: 'the allowlist',
+			undeclared: [
+				{ ...UNLICENSED_ROW, readAs: 'GPL-3.0-only' },
+				{ ...UNLICENSED_ROW, prefix: 'fixture-unlicensed', readAs: 'MIT' },
+			],
+		})
+		expect(report.violations).toEqual([])
+		expect(report.readByEvidence[0]?.readAs).toBe('MIT')
+	})
+
+	it('prints the reading and the tolerated on a failing run too', () => {
+		const path = temporaryLockfileFixture(
+			{
+				licences: {
+					lockfiles: ['package-lock.json'],
+					allowlist: ['MIT'],
+					tolerances: [
+						{
+							reason: 'never loaded',
+							lockfiles: ['package-lock.json'],
+							prefix: '@img/sharp-',
+							license: 'LGPL-3.0-or-later',
+						},
+					],
+					undeclared: [{ ...UNLICENSED_ROW, lockfiles: ['package-lock.json'] }],
+				},
+			},
+			{
+				packages: {
+					'': { name: 'undeclared-fixture' },
+					'node_modules/fixture-unlicensed': undeclaredEntry(
+						'fixture-unlicensed',
+						'1.0.0',
+					),
+					'node_modules/fixture-nameless': undeclaredEntry(
+						'fixture-nameless',
+						'0.3.0',
+					),
+					'node_modules/@img/sharp-linux-x64': {
+						...undeclaredEntry('@img/sharp-linux-x64', '1.0.0'),
+						license: 'LGPL-3.0-or-later',
+						optional: true,
+					},
+				},
+			},
+		)
+		const run = runGates('licences', '--config', path)
+		expect(run.status).toBe(1)
+		expect(run.output).toContain(
+			'read by evidence: fixture-unlicensed@1.0.0 as MIT',
+		)
+		expect(run.output).toContain('tolerated: @img/sharp-linux-x64@1.0.0')
+		expect(run.output).toContain(
+			'fixture-nameless@0.3.0: license=null (declares no licence)',
+		)
+	})
+
+	it('holds a row to the lockfiles it names and no others', () => {
+		const lockfile = lockfileOf('licences-undeclared-seeded')
+		const path = temporaryLockfileFixture(
+			{
+				licences: {
+					lockfiles: ['a/package-lock.json', 'b/package-lock.json'],
+					allowlist: ['MIT', 'Apache-2.0'],
+					undeclared: [
+						{ ...UNLICENSED_ROW, lockfiles: ['a/package-lock.json'] },
+					],
+				},
+			},
+			{ 'a/package-lock.json': lockfile, 'b/package-lock.json': lockfile },
+			['a/package-lock.json', 'b/package-lock.json'],
+		)
+		const run = runGates('licences', '--config', path)
+		expect(run.status).toBe(1)
+		expect(run.output).toContain('licences a/package-lock.json: passed')
+		expect(run.output).toContain(
+			'licences b/package-lock.json: 1 entrie(s) outside the allowlist',
+		)
+		expect(run.output).toContain('(declares no licence)')
+	})
+
+	it('refuses a row that reaches no undeclared entry, at the usage code', () => {
+		const path = temporaryLockfileFixture(
+			{
+				licences: {
+					lockfiles: ['package-lock.json'],
+					allowlist: ['MIT', 'Apache-2.0', 'ISC', 'BSD-3-Clause'],
+					undeclared: [{ ...UNLICENSED_ROW, lockfiles: ['package-lock.json'] }],
+				},
+			},
+			lockfileOf('compliant'),
+		)
+		const run = runGates('licences', '--config', path)
+		expect(run.status).toBe(EXIT_USAGE)
+		expect(run.output).toContain('licences package-lock.json: passed')
+		expect(run.output).toContain(
+			'reads "fixture-unlicensed" in package-lock.json by evidence, and no entry there under that prefix declares no licence',
+		)
+	})
+
+	it('exits 1, and prints the stale row, when a violation and a stale row share a run', () => {
+		const run = runGates(
+			'licences',
+			'--config',
+			temporaryLockfileFixture(
+				{
+					licences: {
+						lockfiles: ['package-lock.json'],
+						allowlist: ['MIT', 'Apache-2.0', 'ISC', 'BSD-3-Clause'],
+						undeclared: [
+							{ ...UNLICENSED_ROW, lockfiles: ['package-lock.json'] },
+						],
+					},
+				},
+				lockfileOf('licences-seeded'),
+			),
+		)
+		expect(run.status).toBe(1)
+		expect(run.output).toContain('Apache-2.0 WITH LLVM-exception')
+		expect(run.output).toContain(
+			'reads "fixture-unlicensed" in package-lock.json by evidence',
+		)
+	})
+
+	// A row reaches the entry it documents before the resolved-URL check runs, so
+	// a tampered entry reports the tampering and never a row reaching nothing.
+	it('credits a row for a documented entry that fails the resolved-URL check', () => {
+		const run = runGates(
+			'licences',
+			'--config',
+			temporaryLockfileFixture(
+				{
+					licences: {
+						lockfiles: ['package-lock.json'],
+						allowlist: ['MIT'],
+						undeclared: [
+							{ ...UNLICENSED_ROW, lockfiles: ['package-lock.json'] },
+						],
+					},
+				},
+				{
+					packages: {
+						'': { name: 'undeclared-fixture' },
+						'node_modules/fixture-unlicensed': {
+							version: '1.0.0',
+							resolved:
+								'https://npm.internal.example.com/fixture-unlicensed/-/fixture-unlicensed-1.0.0.tgz',
+						},
+					},
+				},
+			),
+		)
+		expect(run.status).toBe(1)
+		expect(run.output).toContain(
+			"is not fixture-unlicensed@1.0.0's registry tarball",
+		)
+		expect(run.output).not.toContain('by evidence, and no entry there')
+	})
+
+	it('refuses two rows reading one prefix in one lockfile', async () => {
+		const path = temporaryConfig(
+			JSON.stringify({
+				licences: {
+					lockfiles: ['package-lock.json'],
+					allowlist: ['MIT'],
+					undeclared: [
+						{ ...UNLICENSED_ROW, lockfiles: ['package-lock.json'] },
+						{
+							...UNLICENSED_ROW,
+							lockfiles: ['package-lock.json'],
+							readAs: 'ISC',
+						},
+					],
+				},
+			}),
+		)
+		const result = await loadLicencesConfig({ configPath: path })
+		expect(result.kind).toBe('refused')
+		if (result.kind !== 'refused') return
+		expect(result.message).toContain(
+			'undeclared.1: reads "fixture-unlicensed" in package-lock.json, which an earlier row already reads',
+		)
+	})
+
+	it('names every reading it tried when overlapping rows are all refused', () => {
+		const report = checkLicenses(lockfileOf('licences-undeclared-seeded'), {
+			allowlist: ['MIT'],
+			label: 'the allowlist',
+			undeclared: [
+				{ ...UNLICENSED_ROW, prefix: 'fixture-unl', readAs: 'GPL-3.0-only' },
+				{ ...UNLICENSED_ROW, readAs: 'AGPL-3.0-only' },
+			],
+		})
+		expect(report.violations[0]?.reason).toBe(
+			'read by evidence as GPL-3.0-only or AGPL-3.0-only, which is outside the allowlist',
+		)
+	})
 })
 
 describe('the lockfile-age gate', () => {
@@ -717,6 +1265,299 @@ describe('the lockfile-age gate', () => {
 		expect(run.output).toContain('absent-cache.json')
 		expect(run.output).toContain('does not exist')
 		expect(run.output).toContain('names it under cache')
+	})
+
+	it('exempts an excluded name from the window and from the fetch', async () => {
+		const now = new Date()
+		const fetched: string[] = []
+		const report = await auditLockfileAge({
+			lockfile: lockfileOf('lockfile-age-excluded'),
+			now,
+			windowDays: LOCKFILE_WINDOW_DAYS_DEFAULT,
+			exclude: ['fixture-pinned'],
+			readTimeMap: async (name: string) => {
+				fetched.push(name)
+				return { '4.2.0': now.toISOString() }
+			},
+		})
+		expect(fetched).toEqual([])
+		expect(report.entries).toHaveLength(1)
+		expect(report.youngEntries).toEqual([])
+		expect(report.excludedEntries.map((entry) => entry.name)).toEqual([
+			'fixture-pinned',
+		])
+	})
+
+	it('prints the exclusion and the scanned count through the binary', () => {
+		const run = runGates(
+			'lockfile-age',
+			'--config',
+			configOf('lockfile-age-excluded'),
+		)
+		expect(run.status).toBe(0)
+		expect(run.output).toContain(
+			'lockfile-age package-lock.json: passed, 1 entrie(s), 0 published before',
+		)
+		expect(run.output).toContain('and 1 excluded by name.')
+		expect(run.output).toContain(
+			'excluded: fixture-pinned@4.2.0 (node_modules/fixture-pinned)',
+		)
+		expect(run.output).toContain(
+			'because: pinned exactly and adopted on release day',
+		)
+	})
+
+	it('excludes a scoped name end to end, and refuses one no entry carries', () => {
+		const lockfile = {
+			packages: {
+				'': { name: 'exclusion-fixture' },
+				'node_modules/@fixture-scope/pinned': undeclaredEntry(
+					'@fixture-scope/pinned',
+					'4.2.0',
+				),
+			},
+		}
+		const passing = runGates(
+			'lockfile-age',
+			'--config',
+			temporaryLockfileFixture(
+				{
+					'lockfile-age': {
+						lockfiles: ['package-lock.json'],
+						exclude: [exclusionOf('@fixture-scope/pinned')],
+					},
+				},
+				lockfile,
+			),
+		)
+		expect(passing.status).toBe(0)
+		expect(passing.output).toContain(
+			'excluded: @fixture-scope/pinned@4.2.0 (node_modules/@fixture-scope/pinned)',
+		)
+
+		const stale = runGates(
+			'lockfile-age',
+			'--config',
+			temporaryLockfileFixture(
+				{
+					'lockfile-age': {
+						lockfiles: ['package-lock.json'],
+						exclude: [
+							exclusionOf('@fixture-scope/pinned'),
+							exclusionOf('fixture-pined'),
+						],
+					},
+				},
+				lockfile,
+			),
+		)
+		expect(stale.status).toBe(EXIT_USAGE)
+		expect(stale.output).toContain('excluded: @fixture-scope/pinned@4.2.0')
+		expect(stale.output).toContain(
+			'excludes "fixture-pined" in package-lock.json, and no entry there carries that name',
+		)
+	})
+
+	it('still fails an unexcluded young entry beside an excluded one', async () => {
+		const now = new Date()
+		const report = await auditLockfileAge({
+			lockfile: {
+				packages: {
+					'': { name: 'exclusion-fixture' },
+					'node_modules/fixture-pinned': {
+						version: '4.2.0',
+						resolved: `${REGISTRY}/fixture-pinned/-/fixture-pinned-4.2.0.tgz`,
+					},
+					'node_modules/fixture-fresh': {
+						version: '0.1.0',
+						resolved: `${REGISTRY}/fixture-fresh/-/fixture-fresh-0.1.0.tgz`,
+					},
+				},
+			},
+			now,
+			windowDays: LOCKFILE_WINDOW_DAYS_DEFAULT,
+			exclude: ['fixture-pinned'],
+			readTimeMap: async () => ({
+				'0.1.0': now.toISOString(),
+				'4.2.0': now.toISOString(),
+			}),
+		})
+		expect(report.entries).toHaveLength(2)
+		expect(report.youngEntries.map((entry) => entry.name)).toEqual([
+			'fixture-fresh',
+		])
+		expect(report.excludedEntries.map((entry) => entry.name)).toEqual([
+			'fixture-pinned',
+		])
+	})
+
+	it('prints the exclusion on a failing run too', () => {
+		const path = temporaryLockfileFixture(
+			{
+				'lockfile-age': {
+					lockfiles: ['package-lock.json'],
+					exclude: [exclusionOf('fixture-pinned')],
+				},
+			},
+			{
+				packages: {
+					'': { name: 'exclusion-fixture' },
+					'node_modules/fixture-pinned': {
+						version: '4.2.0',
+						resolved: `${REGISTRY}/fixture-pinned/-/fixture-pinned-4.2.0.tgz`,
+					},
+					'node_modules/fixture-mirror': {
+						version: '1.4.2',
+						resolved:
+							'https://npm.internal.example.com/fixture-mirror/-/fixture-mirror-1.4.2.tgz',
+					},
+				},
+			},
+		)
+		const run = runGates('lockfile-age', '--config', path)
+		expect(run.status).toBe(1)
+		expect(run.output).toContain(
+			'lockfile-age package-lock.json: 2 entrie(s), 1 excluded by name.',
+		)
+		expect(run.output).toContain(
+			'excluded: fixture-pinned@4.2.0 (node_modules/fixture-pinned)',
+		)
+		expect(run.output).toContain('fixture-mirror@1.4.2')
+		expect(run.output).toContain('do not resolve to the npm registry')
+	})
+
+	// The exclusion never reached the resolved-URL check, so the entry is printed
+	// as excluded and fails anyway: both halves of what the run did.
+	it('fails closed on an excluded name resolved off the registry, and still prints it', () => {
+		const run = runGates(
+			'lockfile-age',
+			'--config',
+			configOf('lockfile-age-excluded-seeded'),
+		)
+		expect(run.status).toBe(1)
+		expect(run.output).toContain('do not resolve to the npm registry')
+		expect(run.output).toContain(
+			'excluded: fixture-pinned@4.2.0 (node_modules/fixture-pinned)',
+		)
+		expect(run.output).toContain('fixture-pinned@4.2.0 resolved=')
+	})
+
+	// The peer pass's shared blind spot: every stale-row case above pairs the
+	// row with a clean lockfile. A run that found a violation exits 1 and prints
+	// the stale row as a diagnostic; the usage code is for the run that would
+	// otherwise have passed.
+	it('exits 1, and prints the stale row, when a violation and a stale row share a run', () => {
+		const run = runGates(
+			'lockfile-age',
+			'--config',
+			temporaryLockfileFixture(
+				{
+					'lockfile-age': {
+						lockfiles: ['package-lock.json'],
+						exclude: [exclusionOf('fixture-pined')],
+					},
+				},
+				lockfileOf('lockfile-age-seeded'),
+			),
+		)
+		expect(run.status).toBe(1)
+		expect(run.output).toContain('do not resolve to the npm registry')
+		expect(run.output).toContain(
+			'excludes "fixture-pined" in package-lock.json',
+		)
+	})
+
+	it('holds a row to each lockfile it names, and refuses the scope it reaches nothing in', () => {
+		const pinned = {
+			packages: {
+				'': { name: 'exclusion-fixture' },
+				'node_modules/fixture-pinned': undeclaredEntry(
+					'fixture-pinned',
+					'4.2.0',
+				),
+			},
+		}
+		const run = runGates(
+			'lockfile-age',
+			'--config',
+			temporaryLockfileFixture(
+				{
+					'lockfile-age': {
+						lockfiles: ['a/package-lock.json', 'b/package-lock.json'],
+						exclude: [
+							exclusionOf('fixture-pinned', [
+								'a/package-lock.json',
+								'b/package-lock.json',
+							]),
+						],
+					},
+				},
+				{
+					'a/package-lock.json': pinned,
+					'b/package-lock.json': {
+						packages: { '': { name: 'empty-fixture' } },
+					},
+				},
+				['a/package-lock.json', 'b/package-lock.json'],
+			),
+		)
+		expect(run.status).toBe(EXIT_USAGE)
+		expect(run.output).toContain('excluded: fixture-pinned@4.2.0')
+		expect(run.output).toContain(
+			'excludes "fixture-pinned" in b/package-lock.json',
+		)
+		expect(run.output).not.toContain('in a/package-lock.json')
+	})
+
+	it('refuses two rows excluding one name in one lockfile', async () => {
+		const path = temporaryConfig(
+			JSON.stringify({
+				'lockfile-age': {
+					lockfiles: ['package-lock.json'],
+					exclude: [
+						exclusionOf('fixture-pinned'),
+						exclusionOf('fixture-pinned'),
+					],
+				},
+			}),
+		)
+		const result = await loadLockfileAgeConfig({ configPath: path })
+		expect(result.kind).toBe('refused')
+		if (result.kind !== 'refused') return
+		expect(result.message).toContain(
+			'exclude.1: excludes "fixture-pinned" in package-lock.json, which an earlier row already excludes',
+		)
+	})
+
+	// Name-based, as npm's own setting is: every entry under the name is exempt,
+	// a nested duplicate at another version included, and each one is printed.
+	it('exempts every entry under an excluded name, nested duplicates included', async () => {
+		const report = await auditLockfileAge({
+			lockfile: {
+				packages: {
+					'': { name: 'exclusion-fixture' },
+					'node_modules/fixture-pinned': undeclaredEntry(
+						'fixture-pinned',
+						'4.2.0',
+					),
+					'node_modules/holder/node_modules/fixture-pinned': undeclaredEntry(
+						'fixture-pinned',
+						'1.0.0',
+					),
+				},
+			},
+			now: new Date(),
+			windowDays: LOCKFILE_WINDOW_DAYS_DEFAULT,
+			exclude: ['fixture-pinned'],
+			readTimeMap: async () => {
+				throw new Error('no fetch expected')
+			},
+		})
+		expect(report.excludedEntries.map((e) => e.version).sort()).toEqual([
+			'1.0.0',
+			'4.2.0',
+		])
+		expect(report.unfetchableEntries).toEqual([])
 	})
 })
 

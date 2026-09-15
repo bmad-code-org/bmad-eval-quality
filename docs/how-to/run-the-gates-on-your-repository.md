@@ -34,7 +34,14 @@ A file configuring all eight gates parses against the published schema:
 {
   "lockfile-age": {
     "lockfiles": ["package-lock.json", "site/package-lock.json"],
-    "windowDays": 7
+    "windowDays": 7,
+    "exclude": [
+      {
+        "name": "@acme/design-tokens",
+        "reason": "pinned exactly and adopted on release day; the release is ours",
+        "lockfiles": ["package-lock.json"]
+      }
+    ]
   },
   "licences": {
     "lockfiles": ["package-lock.json", "site/package-lock.json"],
@@ -56,6 +63,15 @@ A file configuring all eight gates parses against the published schema:
           "file": "site/astro.config.mjs",
           "contains": "passthroughImageService"
         }
+      }
+    ],
+    "undeclared": [
+      {
+        "reason": "the 1.2.0 tarball's package.json carries no license field, so the lockfile records none",
+        "lockfiles": ["site/package-lock.json"],
+        "prefix": "zod-to-ts",
+        "readAs": "MIT",
+        "evidence": "the same tarball ships an MIT LICENSE file beside that package.json, and the repository carries the same file"
       }
     ]
   },
@@ -245,6 +261,7 @@ Leave it out and the gate holds entries to seven days.
 An entry published inside the window fails.
 An entry whose publish metadata could not be fetched fails, because metadata that could not be read has answered nothing.
 An entry that does not resolve to the npm registry fails, because a lockfile edit can relabel an entry's metadata while the tarball is pulled from somewhere else entirely.
+That is the resolved-URL check: an entry's `resolved` has to be its own tarball on the npm registry, and both this gate and the licences gate apply it before anything else.
 
 A registry install-delay setting filters resolution and leaves a young entry that already sits in a committed lockfile alone.
 This gate re-checks the committed lockfile, which is where that gap lives.
@@ -258,6 +275,18 @@ The gate only reads the file. Write it with a generator of your own and commit i
 The cache is trusted the way the rest of your configuration is trusted.
 A back-dated entry in it makes a young package look old, exactly as a wider `windowDays` or a longer `allowlist` would weaken the gates beside it.
 All of those are committed files, and a diff to any of them is the place that decision is visible.
+
+`exclude` holds the packages exempt from the window, one row each.
+It is the counterpart of npm's `min-release-age-exclude`, for a package you pin exactly and adopt on release day.
+A row names three things: the package under `name`, the `lockfiles` it is exempt in, and the `reason`, which is printed beside the entry on every run.
+`name` takes a package name, so a version literal such as `left-pad@1.3.0` is refused at exit `64`.
+It is the name of the installed package, so for an `npm:` alias you write the aliased package and never the folder it installs into.
+Every entry under that name is exempt, a nested duplicate at another version included, and each one is printed.
+An excluded entry is neither aged nor fetched, and it is still held to the resolved-URL check: an exclusion says a package's young releases are accepted, and says nothing about which tarball the install fetches.
+Every excluded entry is printed as excluded on every run, passing or failing, and the count line still carries every entry scanned.
+A row is held in each lockfile it names: one whose name no entry carries in one of them is refused at exit `64`, naming that lockfile, because the package left it or the name is mistyped, and either way nothing there is holding the row.
+A run that also found a violation exits `1` and prints the stale row as a diagnostic, so a caller branching on the exit code sees the finding first.
+Two rows excluding one name in one lockfile are refused, since one exemption carries one reason.
 
 ## The licences gate
 
@@ -279,6 +308,17 @@ All four are required, so a tolerance written without `lockfiles` is refused at 
 `optional` limits the exception to entries npm recorded as optional and defaults to true, so a family that is installed unconditionally needs `"optional": false` written in.
 A tolerance may also carry a marker naming a file and the text that has to be in it.
 The exception holds only while that marker holds, so the condition that made it sound is read on every run and the gate fails again the day that condition goes.
+
+`undeclared` is for an entry whose manifest carries no licence field, so the lockfile records none and no allowlist, policy or tolerance can reach it.
+Each row names five things: the `lockfiles` it applies to, the package-name `prefix`, the one identifier the entry is read as under `readAs`, the `evidence` for that reading, and the `reason` the field is missing.
+`readAs` is one SPDX identifier, held against the allowlist by the rule every declared identifier is held by, so a row cannot admit what the allowlist refuses, and a policy's additions still apply.
+`prefix` is a plain string prefix with no boundary, as it is on a tolerance: `zod-to-ts` also reaches `zod-to-ts-plugin` the day one appears undeclared, so a whole name is the tightest prefix there is and the evidence you write should hold for the family it names.
+A row reaches only an entry that declares nothing, which is an absent, null or empty `license` field; an entry under the same prefix that declares a licence is held to its declaration, and a field present in a shape the gate does not read, an array or an object with no `type`, fails as it always has.
+An undeclared entry with no row fails, and the line says it declares no licence.
+An entry admitted this way is printed as read by evidence, with its evidence and its reason, on every run that uses the row, passing or failing, under a line of its own apart from `tolerated:`.
+A row is held in each lockfile it names: one that reaches no undeclared entry in one of them is refused at exit `64`, naming that lockfile, because the package now declares a licence there and the reading is no longer needed, or the prefix is mistyped.
+A run that also found a violation exits `1` and prints the stale row as a diagnostic, so a caller branching on the exit code sees the finding first.
+Two rows reading one prefix in one lockfile are refused, since one package is read as one licence.
 
 When a violation is found the gate prints the shortest chain of require-names from your root package to the offending entry, so the report names which dependency brought it in.
 
