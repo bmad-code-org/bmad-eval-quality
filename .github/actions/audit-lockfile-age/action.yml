@@ -9,6 +9,13 @@ inputs:
     description: 'Path to the package-lock.json to audit.'
     required: false
     default: 'package-lock.json'
+  cache:
+    description: >
+      Path to a committed publication cache, mapping "name@version" to a publication timestamp. An
+      entry it carries is used with no request; an entry it does not is fetched. Left empty the audit
+      fetches everything, and a path that is not there is a refusal rather than a silent full fetch.
+    required: false
+    default: ''
 
 runs:
   using: 'composite'
@@ -17,7 +24,14 @@ runs:
       shell: bash
       run: |
         set +e
-        output="$(node scripts/audit-lockfile-age.mjs --lockfile "${{ inputs.lockfile }}")"
+        cache_flag=""
+        if [ -n "${{ inputs.cache }}" ]; then
+          cache_flag="--cache ${{ inputs.cache }}"
+        fi
+        # Unquoted on purpose: empty means no flag at all, and the value is a
+        # repository-relative path this workflow writes.
+        # shellcheck disable=SC2086
+        output="$(node scripts/audit-lockfile-age.mjs --lockfile "${{ inputs.lockfile }}" $cache_flag)"
         exit_status=$?
         set -e
         echo "$output"

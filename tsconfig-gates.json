@@ -3,6 +3,9 @@
 	"files": [
 		"scripts/gates-cli.ts",
 		"scripts/gate-config.ts",
+		"scripts/consumer-pattern.ts",
+		"scripts/scanned-paths.ts",
+		"scripts/module-value.ts",
 		"scripts/audit-lockfile-age.mjs",
 		"scripts/check-licenses.mjs",
 		"scripts/check-dependency-direction.ts",
@@ -10,7 +13,10 @@
 		"scripts/discover-source-files.ts",
 		"scripts/token-scan.ts",
 		"scripts/package-boundary.ts",
-		"scripts/lineage-ownership.ts"
+		"scripts/lineage-ownership.ts",
+		"scripts/check-doc-invocations.mjs",
+		"scripts/check-doc-counts.ts",
+		"scripts/check-doc-claims.ts"
 	],
 	"include": [],
 	"compilerOptions": {

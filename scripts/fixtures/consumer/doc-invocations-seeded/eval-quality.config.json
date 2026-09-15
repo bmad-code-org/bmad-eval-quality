@@ -1,0 +1,10 @@
+{
+	"doc-invocations": {
+		"pages": ["docs"],
+		"binary": {
+			"entry": "bin/tool.mjs",
+			"spellings": ["tool"]
+		},
+		"sampleInput": "bin/tool.mjs"
+	}
+}

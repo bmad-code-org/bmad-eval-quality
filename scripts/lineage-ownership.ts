@@ -36,7 +36,7 @@ import {
 	RelativePath,
 	RelativePrefix,
 	ScannedPathList,
-} from './package-boundary.ts'
+} from './scanned-paths.ts'
 import type { Token } from './token-scan.ts'
 
 /** The gate needs `typescript` and could not resolve it. */

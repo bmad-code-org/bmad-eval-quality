@@ -1,30 +1,40 @@
 /**
- * `scripts/check-doc-invocations.mjs` is the gate that keeps a documented
- * command honest, and until these cases existed it was the one check in
- * `validate` with nothing checking it. Both properties below were holes it
- * shipped with: a page could name the wrong failure code beside the right exit
- * code, and a file left at the clone root could stand in for the page's own
- * heredoc.
+ * The `doc-invocations` gate is what keeps a documented command honest, and
+ * until these cases existed it was the one check in `validate` with nothing
+ * checking it. Both properties below were holes it shipped with: a page could
+ * name the wrong failure code beside the right exit code, and a file left at the
+ * clone root could stand in for the page's own heredoc.
  *
- * Black-box through the CLI, following `stamp-changelog.test.ts`: what this
- * gate promises is an exit code and a report, so the cases read those, and
- * `--root` exists so a fixture page can be driven through the same path the
- * shipped documentation takes.
+ * Black-box through the published binary: what this gate promises is an exit
+ * code and a report, so the cases read those.
+ *
+ * Every case drives a fixture page through a configuration in a temporary
+ * directory, per AD-30. A section's paths resolve against the configuration
+ * file, so the fixture root carries links to `dist/` and `corpus/`: that is what
+ * lets a page name a contract this repository really ships and have the run be
+ * judged as the page's own claim.
  *
  * Every case asserts the scanned count as well as the verdict. A case that
- * asserts only `0 failures` passes just as happily when the fixture's command
+ * asserts only `0 failure(s)` passes just as happily when the fixture's command
  * stopped being extracted at all.
  */
 
 import { spawnSync } from 'node:child_process'
-import { existsSync, mkdtempSync, symlinkSync, writeFileSync } from 'node:fs'
+import {
+	existsSync,
+	mkdirSync,
+	mkdtempSync,
+	symlinkSync,
+	writeFileSync,
+} from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { DEFAULT_CONFIG_FILE } from '../../scripts/gate-config.ts'
 
-const SCRIPT = resolve('scripts/check-doc-invocations.mjs')
+const CLI = resolve('scripts/gates-cli.ts')
 
-/** A build is a precondition: the check runs the built binary or skips. */
+/** A build is a precondition: the gate runs the built binary or refuses. */
 const BUILT = existsSync(resolve('dist/cli/main.js'))
 const NEEDS_BUILD =
 	'dist/cli/main.js is absent. Run `npm run build` first: this case runs the built CLI.'
@@ -41,18 +51,59 @@ const UNREACHABLE =
 
 type Run = { readonly status: number; readonly output: string }
 
-/** Writes one fixture page and runs the check over the directory holding it. */
-const check = (page: string): Run => {
-	const root = mkdtempSync(join(tmpdir(), 'doc-invocations-case-'))
-	writeFileSync(join(root, 'page.md'), page, 'utf8')
-	const result = spawnSync(process.execPath, [SCRIPT, '--root', root], {
-		encoding: 'utf8',
-	})
+const runGate = (configPath: string): Run => {
+	const result = spawnSync(
+		process.execPath,
+		[CLI, 'doc-invocations', '--config', configPath],
+		{ encoding: 'utf8' },
+	)
 	return {
 		status: result.status ?? -1,
 		output: `${result.stdout}${result.stderr}`,
 	}
 }
+
+/**
+ * A fixture root carrying one page, a configuration, and links to the two trees
+ * a documented command names: the built binary it runs, and the corpus a page's
+ * inputs live in. `pages` is overridable so a case can point the gate somewhere
+ * the guard has to refuse.
+ */
+const fixtureRoot = (
+	page: string | null,
+	pages: readonly string[] = ['docs'],
+): string => {
+	const root = mkdtempSync(join(tmpdir(), 'doc-invocations-case-'))
+	symlinkSync(resolve('dist'), join(root, 'dist'))
+	symlinkSync(resolve('corpus'), join(root, 'corpus'))
+	if (page !== null) {
+		mkdirSync(join(root, 'docs'))
+		writeFileSync(join(root, 'docs/page.md'), page, 'utf8')
+	}
+	writeFileSync(
+		join(root, DEFAULT_CONFIG_FILE),
+		JSON.stringify(
+			{
+				'doc-invocations': {
+					pages,
+					binary: {
+						entry: 'dist/cli/main.js',
+						spellings: ['eval-quality', 'node dist/cli/main.js'],
+					},
+					sampleInput: SHIPPED_CONTRACT,
+				},
+			},
+			null,
+			'\t',
+		),
+		'utf8',
+	)
+	return root
+}
+
+/** Writes one fixture page and runs the gate over the root holding it. */
+const check = (page: string): Run =>
+	runGate(join(fixtureRoot(page), DEFAULT_CONFIG_FILE))
 
 const fence = (...lines: readonly string[]): string => lines.join('\n')
 
@@ -71,12 +122,12 @@ const rejectionPage = (...block: readonly string[]): string =>
 		'',
 	)
 
-describe('check-doc-invocations, the transcribed diagnostic', () => {
+describe('the doc-invocations gate, the transcribed diagnostic', () => {
 	it('passes when the block beside the command is what the run wrote', (ctx) => {
 		if (!BUILT) return ctx.skip(NEEDS_BUILD)
 		const run = check(rejectionPage('```text', UNREACHABLE, '```'))
 		expect(run.output).toContain('1 invocation(s) scanned')
-		expect(run.output).toContain('1 with their output compared, 0 failures')
+		expect(run.output).toContain('1 with their output compared, 0 failure(s)')
 		expect(run.status).toBe(0)
 	})
 
@@ -144,7 +195,7 @@ describe('check-doc-invocations, the transcribed diagnostic', () => {
 			),
 		)
 		expect(run.output).toContain('1 invocation(s) scanned')
-		expect(run.output).toContain('1 with their output compared, 0 failures')
+		expect(run.output).toContain('1 with their output compared, 0 failure(s)')
 		expect(run.status).toBe(0)
 	})
 
@@ -174,7 +225,7 @@ describe('check-doc-invocations, the transcribed diagnostic', () => {
 			),
 		)
 		expect(run.output).toContain('1 invocation(s) scanned')
-		expect(run.output).toContain('0 with their output compared, 0 failures')
+		expect(run.output).toContain('0 with their output compared, 0 failure(s)')
 		expect(run.status).toBe(0)
 	})
 
@@ -190,7 +241,7 @@ describe('check-doc-invocations, the transcribed diagnostic', () => {
 			),
 		)
 		expect(run.output).toContain('1 invocation(s) scanned')
-		expect(run.output).toContain('0 with their output compared, 0 failures')
+		expect(run.output).toContain('0 with their output compared, 0 failure(s)')
 		expect(run.status).toBe(0)
 	})
 
@@ -208,7 +259,7 @@ describe('check-doc-invocations, the transcribed diagnostic', () => {
 			),
 		)
 		expect(run.output).toContain('1 invocation(s) scanned')
-		expect(run.output).toContain('0 with their output compared, 0 failures')
+		expect(run.output).toContain('0 with their output compared, 0 failure(s)')
 		expect(run.status).toBe(0)
 	})
 
@@ -234,7 +285,7 @@ describe('check-doc-invocations, the transcribed diagnostic', () => {
 			),
 		)
 		expect(run.output).toContain('2 invocation(s) scanned')
-		expect(run.output).toContain('0 with their output compared, 0 failures')
+		expect(run.output).toContain('0 with their output compared, 0 failure(s)')
 		expect(run.status).toBe(0)
 	})
 
@@ -265,7 +316,7 @@ describe('check-doc-invocations, the transcribed diagnostic', () => {
 				'',
 			),
 		)
-		expect(run.output).toContain('1 with their output compared, 0 failures')
+		expect(run.output).toContain('1 with their output compared, 0 failure(s)')
 		expect(run.status).toBe(0)
 	})
 
@@ -338,7 +389,7 @@ describe('check-doc-invocations, the transcribed diagnostic', () => {
 				'',
 			),
 		)
-		expect(run.output).toContain('1 with their output compared, 0 failures')
+		expect(run.output).toContain('1 with their output compared, 0 failure(s)')
 		expect(run.status).toBe(0)
 	})
 
@@ -358,12 +409,12 @@ describe('check-doc-invocations, the transcribed diagnostic', () => {
 		if (!BUILT) return ctx.skip(NEEDS_BUILD)
 		const run = check(rejectionPage('```text', '```'))
 		expect(run.output).toContain('1 invocation(s) scanned')
-		expect(run.output).toContain('0 with their output compared, 0 failures')
+		expect(run.output).toContain('0 with their output compared, 0 failure(s)')
 		expect(run.status).toBe(0)
 	})
 })
 
-describe('check-doc-invocations, the page owns the paths it writes', () => {
+describe('the doc-invocations gate, the page owns the paths it writes', () => {
 	it("reads the page's heredoc over a real file at the same path", (ctx) => {
 		if (!BUILT) return ctx.skip(NEEDS_BUILD)
 		// The documented path is a contract this repository really ships and
@@ -393,7 +444,7 @@ describe('check-doc-invocations, the page owns the paths it writes', () => {
 			),
 		)
 		expect(run.output).toContain('1 invocation(s) scanned')
-		expect(run.output).toContain('1 with their output compared, 0 failures')
+		expect(run.output).toContain('1 with their output compared, 0 failure(s)')
 		expect(run.status).toBe(0)
 	})
 
@@ -418,7 +469,7 @@ describe('check-doc-invocations, the page owns the paths it writes', () => {
 		)
 		expect(run.output).toContain('1 invocation(s) scanned')
 		expect(run.output).toContain('1 run faithfully over real inputs, ')
-		expect(run.output).toContain('0 failures')
+		expect(run.output).toContain('0 failure(s)')
 		expect(run.status).toBe(0)
 	})
 
@@ -443,68 +494,91 @@ describe('check-doc-invocations, the page owns the paths it writes', () => {
 			),
 		)
 		expect(run.output).toContain('1 invocation(s) scanned')
-		expect(run.output).toContain('0 failures')
+		expect(run.output).toContain('0 failure(s)')
 		expect(run.status).toBe(0)
 	})
 })
 
-describe('check-doc-invocations, a misdriven run is an error', () => {
-	const drive = (...args: readonly string[]): Run => {
-		const result = spawnSync(process.execPath, [SCRIPT, ...args], {
-			encoding: 'utf8',
-		})
-		return {
-			status: result.status ?? -1,
-			output: `${result.stdout}${result.stderr}`,
-		}
-	}
-
-	it('fails on a root holding no markdown', (ctx) => {
+describe('the doc-invocations gate, a misdriven run is an error', () => {
+	it('fails on a pages root holding no markdown', (ctx) => {
 		if (!BUILT) return ctx.skip(NEEDS_BUILD)
-		const run = drive('--root', mkdtempSync(join(tmpdir(), 'empty-root-')))
-		expect(run.status).toBe(1)
+		const root = fixtureRoot(null)
+		mkdirSync(join(root, 'docs'))
+		const run = runGate(join(root, DEFAULT_CONFIG_FILE))
+		expect(run.status).toBe(64)
 		expect(run.output).toContain('no markdown under')
 	})
 
-	it('fails on --root with no path', (ctx) => {
+	it('refuses a pages root that encloses the configuration', (ctx) => {
 		if (!BUILT) return ctx.skip(NEEDS_BUILD)
-		const run = drive('--root')
-		expect(run.status).toBe(1)
-		expect(run.output).toContain('--root takes a path')
-	})
-
-	it('fails on a root that encloses the repository', (ctx) => {
-		if (!BUILT) return ctx.skip(NEEDS_BUILD)
-		// `--root .` reaches every page in the tree and every fenced command
+		// A root like `.` reaches every page in the tree and every fenced command
 		// inside them, planning material and dependencies included.
-		for (const root of ['.', '', '..']) {
-			const run = drive('--root', root)
-			expect(run.status).toBe(1)
-			expect(run.output).toContain('encloses the repository')
-		}
+		const root = fixtureRoot('# A page\n', ['.'])
+		const run = runGate(join(root, DEFAULT_CONFIG_FILE))
+		expect(run.status).toBe(64)
+		expect(run.output).toContain('encloses the directory the configuration')
 	})
 
-	it('fails on a symlink pointing at the repository', (ctx) => {
+	it('refuses a symlink pointing at the configuration directory', (ctx) => {
 		if (!BUILT) return ctx.skip(NEEDS_BUILD)
 		// `resolve` follows no symlink, so the guard canonicalizes first.
-		const link = join(mkdtempSync(join(tmpdir(), 'root-link-')), 'repo')
-		symlinkSync(resolve('.'), link)
-		const run = drive('--root', link)
-		expect(run.status).toBe(1)
-		expect(run.output).toContain('encloses the repository')
+		const root = fixtureRoot('# A page\n', ['self'])
+		symlinkSync(root, join(root, 'self'))
+		const run = runGate(join(root, DEFAULT_CONFIG_FILE))
+		expect(run.status).toBe(64)
+		expect(run.output).toContain('encloses the directory the configuration')
 	})
 
 	it('reaches no page when handed a skipped directory outright', (ctx) => {
 		if (!BUILT) return ctx.skip(NEEDS_BUILD)
-		const run = drive('--root', 'node_modules')
-		expect(run.status).toBe(1)
+		const root = fixtureRoot(null, ['node_modules'])
+		mkdirSync(join(root, 'node_modules'))
+		writeFileSync(join(root, 'node_modules/page.md'), '# A page\n', 'utf8')
+		const run = runGate(join(root, DEFAULT_CONFIG_FILE))
+		expect(run.status).toBe(64)
 		expect(run.output).toContain('no markdown under')
 	})
 
-	it('fails on an argument it does not know', (ctx) => {
+	/**
+	 * A mistyped spelling reads every page, skips every fence, and reports a clean
+	 * pass over no commands at all. The pages are there and the binary is there,
+	 * so nothing else in the gate notices.
+	 */
+	it('refuses a run that matched no spelling at all', (ctx) => {
 		if (!BUILT) return ctx.skip(NEEDS_BUILD)
-		const run = drive('--roots', 'docs')
-		expect(run.status).toBe(1)
-		expect(run.output).toContain('unrecognized argument')
+		const root = fixtureRoot(
+			fence(
+				'# A page',
+				'',
+				'```bash',
+				`eval-qualityy compile --in ${SHIPPED_CONTRACT}`,
+				'```',
+				'',
+			),
+		)
+		const run = runGate(join(root, DEFAULT_CONFIG_FILE))
+		expect(run.status).toBe(64)
+		expect(run.output).toContain('matched any spelling')
+	})
+
+	it('refuses a built entry the configuration names and the tree lacks', (ctx) => {
+		if (!BUILT) return ctx.skip(NEEDS_BUILD)
+		const root = mkdtempSync(join(tmpdir(), 'doc-invocations-unbuilt-'))
+		mkdirSync(join(root, 'docs'))
+		writeFileSync(join(root, 'docs/page.md'), '# A page\n', 'utf8')
+		writeFileSync(
+			join(root, DEFAULT_CONFIG_FILE),
+			JSON.stringify({
+				'doc-invocations': {
+					pages: ['docs'],
+					binary: { entry: 'dist/cli/main.js', spellings: ['eval-quality'] },
+					sampleInput: 'docs/page.md',
+				},
+			}),
+			'utf8',
+		)
+		const run = runGate(join(root, DEFAULT_CONFIG_FILE))
+		expect(run.status).toBe(64)
+		expect(run.output).toContain('build it before the gate runs')
 	})
 })

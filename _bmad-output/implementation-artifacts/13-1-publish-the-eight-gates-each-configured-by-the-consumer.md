@@ -2,7 +2,7 @@
 title: 'Publish the eight gates, each configured by the consumer'
 type: 'feature'
 created: '2026-09-10'
-status: 'in-progress'
+status: 'done'
 route: 'dispatch'
 review_loop_iteration: 0
 baseline_commit: '85758ceaeddf2a626f982c8e06c862de09988559'
@@ -119,6 +119,42 @@ Do not change: `tsconfig-build.json`'s `include` and `rootDir`, `package.json`'s
 - Given a seeded fixture worded from outside each gate's trigger vocabulary, when the gate runs, then it fails on it, and the compliant fixture passes clean.
 - Given the whole change, when `npm run validate` runs, then it is green and all five gates run through the published path.
 
+**Execution, pull request 3:**
+
+- [x] `scripts/consumer-pattern.ts` (new) -- the bounded consumer regular expression, lifted out of `package-boundary.ts`'s `ForbiddenPattern` so all four gates that take one share a length bound, a flag set, a backreference refusal and a compile check. `package-boundary.ts` composes it and keeps its own `name`, `reason` and reserved-name rule.
+- [x] `scripts/module-value.ts` (new) -- the one way a configuration names a value it cannot spell in JSON: a module path, an export name, an optional property path, and what to take (`value`, `length`, `keys`). It is a dynamic import of the consumer's own module, so the refusals name the module, the export, and what was found instead.
+- [x] `scripts/check-doc-invocations.mjs` -- the repository facts become parameters: the doc roots, the built entry point, the invocation spellings, the installed-package prefix, the stand-in input, the usage exit code, the per-invocation timeout, and the elision limit. The `--root` flag and the `repoRoot` constant are removed; `runDocInvocations` takes a root and a section and returns a report.
+- [x] `scripts/check-doc-counts.ts` -- becomes the gate module: `DocCountsSection` (Zod), `runDocCounts`, and the word table. Every `expected` value it used to compute is now a named source in the configuration; the module imports nothing from `src/`, `tests/` or the other gates.
+- [x] `scripts/doc-count-sources.ts` (new) -- this repository's own derived counts, as exports the configuration names: the corpus totals and their agreement check, the three schema-version groups and their partition check, the per-kind contract counts, the committed-chain count and its registry check.
+- [x] `scripts/check-doc-claims.ts` -- becomes the gate module: `DocClaimsSection` (Zod), `runDocClaims`, and the eight classes. Each class is driven by an optional block, and a section declaring no block at all is refused rather than reporting a pass over nothing.
+- [x] `scripts/doc-claim-sources.ts` (new) -- this repository's own class-4 predicates, its derived list sets, and its two computed transcriptions, as exports the configuration names.
+- [x] `scripts/gate-config.ts` -- `DocInvocationsSection` declared here, because its gate is `.mjs` and carries no schema of its own; `DocCountsSection` and `DocClaimsSection` imported from their gate modules. `GATE_NAMES` grows from five to eight.
+- [x] `scripts/gates-cli.ts` -- three more gates dispatched, each with its own summary line, and the module-resolution refusal mapped to exit 64.
+- [x] `scripts/audit-lockfile-age.mjs` -- `readTimeMap` gains the committed cache as its first source: an entry present is used with no fetch, an entry absent is fetched, and a failed fetch for an absent entry still fails the gate.
+- [x] `scripts/generate-lockfile-age-cache.ts` (new) and `npm run generate:lockfile-age-cache` -- the only writer of the cache. The gate reads it and never writes it, on the rule that a check able to repair what it reads is not a gate.
+- [x] `eval-quality.config.json` -- this repository's own `doc-invocations`, `doc-counts` and `doc-claims` sections, and the `cache` path on `lockfile-age`.
+- [x] `lockfile-age-cache.json` (new, generated) -- `name@version` to publication timestamp, for both lockfiles this repository audits.
+- [x] `package.json` -- `check:doc-invocations`, `check:doc-counts` and `check:doc-claims` all point at the gates binary, matching `check:licences`; `generate:lockfile-age-cache` added.
+- [x] `tsconfig-gates.json` -- the new gate sources added to `files`.
+- [x] `scripts/fixtures/consumer/doc-invocations-*`, `doc-counts-*`, `doc-claims-*` (new) -- a compliant and a seeded fixture per gate, each seed worded from outside its gate's trigger vocabulary.
+- [x] `tests/architecture/published-gates.test.ts` -- a case per new gate over its compliant and its seeded fixture, the eight-gate usage text, and the three new refusals.
+- [x] `tests/architecture/doc-gates.test.ts` (new) -- the engines' own rules: the count renderings, the wrap gap, the pattern bounds, the module-value refusals, and the cache's three behaviours.
+- [x] `tests/architecture/doc-invocations.test.ts` -- rewritten to drive the gate through a fixture configuration instead of the removed `--root` flag.
+- [x] `docs/how-to/run-the-gates-on-your-repository.md` -- sections for the three documentation gates, and what it costs a consumer that these gates import modules the configuration names.
+- [x] `docs/reference/cli-commands.md` -- read and left unchanged. It counts binaries and `bin` targets, both still two, and states no gate count; the eight-gate sentence lives on the gates page.
+- [x] `CHANGELOG.md` `[Unreleased]` and `_bmad-output/project-knowledge/learning-path-step-by-step.md` Step 64.
+
+**Acceptance Criteria, pull request 3:**
+
+- Given a consumer that has only installed the package, when it runs `eval-quality-gates doc-counts` in its own repository with a `doc-counts` section, then the gate holds that repository's pages against that repository's own sources.
+- Given each of the three gates invoked with no section for it, when it runs, then it refuses naming the file and the gate, and reaches none of this package's values.
+- Given a `doc-claims` section declaring no class block, when the gate runs, then it refuses rather than reporting a pass over zero claims.
+- Given `doc-invocations` with a built entry point that is absent, when the gate runs, then it refuses naming the entry rather than exiting 0 having executed nothing.
+- Given a source naming a module export that is absent or of the wrong shape, when the gate runs, then it refuses naming the module, the export, and what it found.
+- Given a seeded fixture worded from outside each gate's trigger vocabulary, when the gate runs, then it fails on it, and the compliant fixture passes clean.
+- Given a lockfile entry the cache carries, when the age gate runs, then no request is made for it; given an entry the cache does not carry, then it is fetched, and a fetch that fails still fails the gate.
+- Given the whole change, when `npm run validate` runs, then it is green and all eight gates run through the published path.
+
 ## Implementation Notes
 
 ### The per-gate verdict, for the two this pull request publishes
@@ -210,7 +246,101 @@ No construction whose only job is to reject a half, including "not X but Y", "X 
 One sentence per line in markdown source, except on pages that already run one paragraph per line, where the page's own convention wins.
 No filler and no hedging. Code comments and JSDoc stay lean: say why, once, and stop.
 
+### What a documentation gate cannot take as data, and the one setting that closes it
+
+The first two pull requests turned rules into data and the rules went in whole: an SPDX allowlist, a layer graph, a pattern list. A documentation gate cannot do that, because most of what it compares is derived. `check-doc-counts.ts` held forty sentences against numbers computed from a corpus manifest, a barrel's export list, a conformance table and a chain registry. None of those is a value anybody typed, and writing the answer into `eval-quality.config.json` would create exactly the setting this format exists to remove: a number a hand keeps in step with the code beside it.
+
+So the format grew one setting, `module-value.ts`: a module path, an export name, an optional property path, and what to take. The gate imports the consumer's own module and reads the value out of it. The derivation stays in code, where it can be tested and where a reviewer sees it change; the configuration names it.
+
+That is the whole reason this repository's own sections are short while the tree gained two new modules. `doc-count-sources.ts` and `doc-claim-sources.ts` are this repository's answers, and they are as much this repository's own decisions as `eval-quality.config.json` is.
+
+### The five classes that became registries, and the three that stayed classes
+
+`check-doc-claims.ts` carried eight classes, and the split between them decided how each one had to be published.
+
+Classes 1, 2 and 5, citations, symbols and named codes, hold every sentence on every page, and what a consumer supplies is only where the tree is: doc roots, source roots, an identifier shape, a code-claim pattern, and the registries a code may come from. Those became blocks with defaults.
+
+Classes 3, 4, 6 and 8, transcribed lists, dated claims, worked JSON and transcriptions, hold the sentences somebody enumerated. Each became an array of entries, and every entry's expected side is a `ModuleValue`. What the gate guarantees for them is unchanged: a listed sentence cannot be rewritten or drift out from under its entry without failing.
+
+Class 7 was the interesting one. It reads `SUPPORTED_INTERFACE_KINDS` and `UNSUPPORTED_INTERFACE_KINDS` and classifies a token by the verb governing it, which is a class rather than a list. Generalized, the vocabulary and the two sets are `ModuleValue`s and the verb lists are settings with defaults. A consumer with an accepted-and-refused vocabulary of their own gets the whole class; a consumer with none omits the block.
+
+Every block is optional, and a section declaring none is refused. A gate whose every class is off would report a pass over zero claims, which is the vacuous pass this story has refused three times now.
+
+### `tokenShape` takes a module, because a vocabulary in the configuration is a second copy of itself
+
+A list entry needs to know which backticked tokens inside a captured stretch are members, so a parenthetical the sentence carries for the reader is not read as one. The obvious setting is a pattern, and for a set whose members share a shape, `^create[A-Za-z]*Adapter$` or `^[A-Z0-9_]+_SCHEMA_VERSION$`, a pattern is exactly right.
+
+The interface kinds share no shape. Writing `^(?:api|web|mcp|cli)$` into the configuration would transcribe `INTERFACE_KINDS` into a file that a hand maintains, which is the class of setting this story's own constraints forbid. So `tokenShape` takes a pattern or a `ModuleValue` naming the vocabulary, and this repository's four kind entries name the export.
+
+### A wrap gap, rather than a pattern long enough to spell one
+
+Twelve entries hold sentences in the corpus README, which wraps at about a hundred columns. The previous script had a helper that joined the words of a sentence with a gap matching whitespace that may cross one newline and never a blank line, and the blank-line half is load-bearing: `\s+` in front of a capture group takes a word out of the paragraph above and the gate then compares a number that sentence never states.
+
+As data, that was either twelve patterns with the gap spelled out at every space, each running past four hundred characters, or one boolean. `wrap` is the boolean: a literal space in the pattern also matches a line break. Spaces inside a bracket expression are left alone, because a space there is a member of a character set.
+
+### The invocation gate shipped a vacuous pass, and the build order hid it
+
+`check-doc-invocations.mjs` opened by testing for `dist/cli/main.js` and, when it was absent, printing a line and exiting 0. In this repository that branch is unreachable, because `validate` runs `build` first and the CI job runs the conformance suite, which builds, before it. So the skip never fired here and would have fired in every consumer that ran the gate before building.
+
+It is now a refusal at 64 naming the entry. This is the third vacuous pass this story has found, after `check:layers` executing nothing and a report-only run printing nothing, and the shape is the same each time: a gate that can answer "nothing to do" in the same voice it answers "nothing wrong".
+
+### The cache is sound with no staleness bound, and the generator is its only writer
+
+Recorded in Design Notes at pull request 1 and implemented here unchanged: keyed on `name@version`, no staleness bound, an absent entry is a live fetch, a failed fetch for an absent entry fails the gate.
+
+What this pull request had to decide is who writes it. The gate does not, on the rule that a check able to repair what it checks is not a gate, and on the narrower practical point that a gate writing a file during CI produces a diff nobody asked for. `npm run generate:lockfile-age-cache` is the only writer, and a cache that was never regenerated costs correctness nothing: the entries a change added are absent, so they are fetched.
+
+The measured effect on this repository: `check:lockfile-age` over both lockfiles went from roughly six hundred registry requests to none, and from tens of seconds to 0.16s.
+
+### The interface-kind vocabulary lost a verb, and a parity run is what found it
+
+Generalizing class 7 turned a closed verb list in the code into a setting with a default, and the default was transcribed by hand from the old regular expression. It lost `stops at compilation`, a multi-word refusal verb, and the gate still passed: two sentences simply stopped being classified.
+
+Nothing in the suite would have caught it. What caught it was running the previous script and the new gate over the same tree and comparing every number in the two report lines: 30 interface-kind mentions became 28. The verb went back and the count returned to 30.
+
+That is the check worth keeping from this pull request. When an engine is generalized, the old implementation is a reference implementation, and a report line full of counts is a cheap way to compare the two.
+### A second review round, run over the staged diff rather than the working tree
+
+A peer session ran `/bmad-review` adversarially against the staged diff, its four lenses covering the questions above plus a structure-and-prose pass over the published page. Findings worked, one at a time:
+
+**Fixed.** `readPublishCache` accepted any string `new Date` could parse, so `"12"` read as the year 2001; it now requires an RFC3339 date-time, which is the shape the registry's own `time` map and this repository's generator both write. The generator, `generate-lockfile-age-cache.ts`, had no test coverage at all: its core is now the exported `buildCache`, taking the same `readTimeMap` seam `auditLockfileAge` does, and it reports every entry it could not cache and why, rather than writing the ones it could and staying silent about the rest. Two ordering properties that held by code order alone now have cases pinning them: a cache entry never launders an off-registry resolved entry past the check that exists to catch it, and a missing configured cache path is refused at exit 64. `dist/gates/gates-cli.js` now has a case per documentation gate, not only `doc-counts`; a compile-only defect in `doc-invocations` or `doc-claims` could otherwise ship holding the source path green and the published path broken. The one coded exit `check-doc-counts.ts` raises at run time, a `json` source whose path walks off the document it named, had no test reaching it and now does. And the published page gained a floor test: each of this repository's own eight `doc-claims` class counts, and its `doc-counts` numeral and digit totals, are now pinned against the real tree, which is the standing version of the manual comparison that caught the interface-kind verb loss two review rounds ago.
+
+**Fixed, in the published page.** Six sentences used the "X rather than Y" construction the story's own writing-style rule forbids; each is rewritten to state the affirmative. Two sentences, carried over from before this pull request added three more gates, still counted "the other three" and "those three" gates that need no `typescript` peer; both now read six. The worked `doc-claims` configuration example showed five of the eight classes; it now shows all eight. The sentence introducing why `doc-counts` and `doc-claims` import a consumer's own modules said only "which runs them"; it now says what that means: the module's top level and everything it transitively imports, in this gate's own process, with this process's own permissions and environment.
+
+**Skipped, with the reason recorded.** The publication cache is a committed file a consumer's hand can edit, the same as `windowDays` or the licence allowlist, and a back-dated entry weakens the gate the same way a widened window or a longer allowlist would; the published page already states this trade-off in those terms, and building a diff-against-base-branch verification pipeline for a committed configuration file is a different feature than this story's own. `doc-invocations-seeded`'s one-word transcript edit is, on a narrow reading, inside the gate's own transcript-compare vocabulary rather than outside it; kept as is, because the transcript-compare mechanism exists precisely to catch a drift the exit code alone would miss, and the seed demonstrates exactly that gap. Moving the module-import note earlier in the page, ahead of the class descriptions that motivate it, was considered and left where it is: the note is introduced once every class that uses `ModuleValue` has been read, which is where a reader needs it.
+
+A second pass over the review's own account of what it found reported a vacuous-pass finding against citations, symbols, codes and vocabulary classes examining zero and passing; live-testing each against the tree at the time of the finding showed all four already refuse. The finding was against a frozen snapshot taken before this pull request's first review round's fixes landed, not against the code the finding was filed on.
+
+### Review found four gates that could pass having examined nothing, and one constraint the change crossed
+
+The layered review over this pull request's own diff turned up the same failure mode this story has been chasing since pull request 1, four more times, and one of them is the class the doc-claims gate exists for.
+
+`doc-claims`'s citations, symbols, codes and vocabulary classes scan rather than enumerate, so each could report a count of zero and exit 0. The vocabulary class is the sharpest: its pattern and its token sets now live in a configuration file rather than in source, so a typo in either switches off the one class that catches a sentence saying a kind is refused after it stopped being. All four now refuse when they examined nothing, and a case pins the vocabulary one.
+
+`doc-invocations` had a fifth: a mistyped spelling reads every page, extracts no command, and reports a clean pass. It refuses now, naming the spellings it was given.
+
+The constraint the change crossed is one `package-boundary.ts` wrote down itself: the scanned-path declaration sits there "because this is the gate whose headline is the scanned set; a third gate that needs it is the point at which it earns a module of its own." The two documentation gates and `module-value.ts` made three, four and five, and the first draft imported them from the boundary gate and left the note saying "shared with the field-ownership gate" in place. `scripts/scanned-paths.ts` is that module, and it carries the relative-path shapes, the scanned-path schema, the two scan refusal codes, and the fail-closed walk.
+
+Three more the review is owed: the registry read the cache now skips is covered by cases that stub `fetch` rather than by the runs that used to reach it; the `matches` count source and its `distinct` option are exercised by the fixture pair rather than shipping unrun; and the participle rule that the class-7 generalization widened from a closed list to a spelling is now a setting a consumer can state, because the spelling is wrong for a base form ending in `-ed`.
+
 ## Spec Change Log
+
+**Pull request 3 diverged from the task list in six places, each settled in the code.**
+
+`scripts/doc-claim-predicates.ts` is `scripts/doc-claim-sources.ts`. It carries the derived list sets and the computed transcriptions as well as the predicates, and naming it for one of the three would have read as a file that had outgrown its name.
+
+`consumer-pattern.ts` gained a second bound, `MAX_PROSE_PATTERN_LENGTH`, recorded in Design Notes above.
+
+`doc-counts` entries gained a `wrap` setting, recorded in Implementation Notes above. The task list said the count entries carry a pattern and said nothing about a wrapped sentence, and twelve of this repository's own entries need one.
+
+`tokenShape` on a `doc-claims` list entry takes a `ModuleValue` as well as a pattern, recorded in Implementation Notes above.
+
+`audit-lockfile-age.mjs`'s pre-install flag path gained `--cache`, and the composite action gained a `cache` input. The task list put the cache on the gate alone. The composite action runs the same audit before `npm ci` on every workflow, so leaving it out would have kept the network call the cache exists to remove.
+
+`tests/architecture/doc-invocations.test.ts` was rewritten rather than left alone. It drove the removed `--root` flag, and its thirty cases are the only thing holding the transcript-comparison rules, so they moved to a fixture configuration instead of being deleted.
+
+**The implementation ran in this session rather than in a dispatched subagent.** The three gates, the two shared modules, the multiplexer, the schema and the configuration are one change across shared files, and two agents editing `gate-config.ts` and `gates-cli.ts` in parallel would have spent more on reconciliation than the parallelism returned.
+
 
 ## Review Triage Log
 
@@ -250,6 +380,25 @@ What is decided, so pull request 3 implements rather than rediscovers: the cache
 
 **`check:doc-invocations` does not execute the documented gate commands.** Its three spellings match the `eval-quality` binary, and `eval-quality-gates` matches none of them, so the new page's fences are not run. Extending the checker would mean giving its sandbox a consumer repository to run against, which is a larger change than this pull request should carry. What holds the page instead: its worked configuration parses against the published schema through `check:doc-claims`, and its three numerals are computed through `check:doc-counts`.
 
+### Importing a consumer's module is the cost of a derived count, and the page says so
+
+`doc-counts` and `doc-claims` import modules the configuration names, which runs them. That is a real thing to hand a consumer and it is not hidden: the usage text says it, the published page has its own section saying it, and `module-value.ts`'s own header says it.
+
+The alternative designs were worse. A restricted expression language over JSON would be a second programming language nobody asked for, with its own bugs and no test framework. A generated file the consumer commits would be a value a hand maintains, which is the setting this format does not have. Importing a module is the same trust a lint plugin or a test setup file already has in any repository that runs one.
+
+### The invocation gate's `--root` flag is gone, and the two knobs it held apart are now one
+
+The flag let a test drive a fixture page while shipped inputs still resolved against the repository. Under a configuration both resolve against the configuration file, which is right for a consumer, whose pages and tree share a root, and awkward for a test.
+
+The test harness closed it by building a fixture root that carries links to `dist/` and `corpus/`. That is more faithful than the flag was: the fixture now looks like a consumer's repository rather than like a page with a back door into this one.
+
+The enclosure guard the flag carried survives unchanged, canonicalized paths included. A `pages` root that encloses the configuration directory is refused, and a symlink pointing at it is refused, because `resolve` follows no symlink.
+
+### `MAX_PROSE_PATTERN_LENGTH` is a second bound, and the reason is legibility
+
+The boundary gate bounds a consumer pattern at two hundred characters. A pattern that names a construct never needs more. A pattern that describes a sentence does: it carries the words either side of what it captures, and those words are what stop it matching a different sentence on the same page.
+
+Holding documentation patterns to the shorter bound would push consumers towards loose patterns, which is the failure mode these gates exist to close. Length is the weaker half of the bound in both cases; the backreference refusal and the size of the subject are what the work actually rests on, and both are unchanged.
 ### Field ownership is a different product from lineage enforcement, and the documentation says so
 
 `lineage-ownership.ts` carried one repository's own concept: which two fields AD-29 reserves, which two paths may declare a schema carrying them, which modules AD-24's stage table names as writers. Parameterized, what is left is a generic thing, a check that a set of fields is written only by a declared set of modules, in a declared set of ways. That is a real capability and it is not the same claim as "your lineage is correct", so the published documentation names it as field ownership and states plainly what a consumer with no lineage concept gets from it: a way to keep a small set of fields, api keys, feature flags, anything with exactly one place it should be set, out of a second call site nobody meant to add.
@@ -273,4 +422,17 @@ What is decided, so pull request 3 implements rather than rediscovers: the cache
 - A scratch configuration with the two `core-schemas`/`core` rows swapped -- expected: refused at 64, naming the row and the reason.
 - Each seeded fixture (`direction-seeded`, `boundary-seeded`, `lineage-seeded`) -- expected: exit 1, naming exactly the injected defect.
 - A report-only configuration over the seeded fixture -- expected: exit 0, with the violation count and the violation line both printed.
+- `npm run validate` -- expected: green.
+
+**Commands, pull request 3:**
+
+- `npm run build` -- expected: `dist/gates/` carries all eight gates' compiled or copied output, `check-doc-invocations.mjs` included.
+- `node dist/gates/gates-cli.js --help` -- expected: eight gates listed, exit 0.
+- `node dist/gates/gates-cli.js doc-invocations` -- expected: `32 invocation(s) scanned across 18 page(s) ... 0 failure(s)`, exit 0.
+- `node dist/gates/gates-cli.js doc-counts` -- expected: `48 numeral(s) across 12 file(s) ... 0 disagreement(s)`, exit 0.
+- `node dist/gates/gates-cli.js doc-claims` -- expected: the eight-class summary, `30 vocabulary mentions`, exit 0.
+- The three previous scripts, run from `HEAD` beside the three gates -- expected: every number in the report lines equal. This is what found the lost refusal verb.
+- Each compliant fixture (`doc-invocations-compliant`, `doc-counts-compliant`, `doc-claims-compliant`) -- expected: exit 0.
+- Each seeded fixture -- expected: exit 1, naming the drifted transcript line, the duplicated sentence, and the undeclared symbol respectively.
+- `npm run check:lockfile-age` -- expected: `661 publication time(s) read from lockfile-age-cache.json`, no registry request, under a second.
 - `npm run validate` -- expected: green.

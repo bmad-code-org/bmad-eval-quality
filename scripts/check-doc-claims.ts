@@ -1,176 +1,471 @@
-// The gate over hand-written prose claims in the published documentation: the
-// class of sentence that is neither a number nor a fenced command, and that
-// nothing in `npm run validate` read until this script.
+// A published gate: the hand-written prose claims in the pages a consumer
+// names, held against the tree those pages describe. This is the class of
+// sentence that is neither a number nor a fenced command, and that nothing in a
+// normal build reads.
 //
-// It exists because Epic 11 opened an interface kind and every page that had
-// described the kind as refused went stale at once. Four of those sentences
-// were found by a person reading, and Story 11.7's Decision 18 recorded that
-// nothing mechanical would have caught them. `check:docs` reads frontmatter and
-// whitespace and never opens `docs/`; `check:doc-invocations` judges fenced
-// commands against their declared exit codes; `check:doc-counts` holds numerals.
-// A sentence naming a symbol, transcribing a source list, citing a line, or
+// It exists because opening one interface kind in this repository made every
+// page describing that kind as refused stale at once, and four of those
+// sentences were found by a person reading. A frontmatter check reads
+// whitespace and never opens a page body; an invocation check judges fenced
+// commands against their declared exit codes; a count check holds numerals. A
+// sentence naming a symbol, transcribing a source list, citing a line, or
 // saying a thing is not yet true fell through all three.
 //
-// Not every prose claim is mechanically decidable, and this script does not
-// pretend otherwise. Eight classes, each resolving against an artifact in this
-// repository:
+// Not every prose claim is mechanically decidable, and this gate does not
+// pretend otherwise. Eight classes, each resolving against an artifact in the
+// consumer's own tree, and each driven by its own block in the configuration:
 //
 //   1. Citations. A `path.ts:N` reference resolves to a file, the line is in
 //      range, and a symbol the sentence names and the cited file declares sits
 //      inside the cited window.
-//   2. Symbols. An identifier a page spells in backticks is declared under
-//      `src/`. A mention in a comment does not save a name that was renamed.
-//   3. Transcribed lists. A list a page spells out equals the set the source
-//      exports.
+//   2. Symbols. An identifier a page spells in backticks is declared in the
+//      source roots. A mention in a comment does not save a name that was
+//      renamed.
+//   3. Transcribed lists. A list a page spells out equals the set a module of
+//      yours exports.
 //   4. Time-sensitive claims. A sentence saying a thing is not yet true, is
-//      true "today", or pins a reading to a released version, is registered with
-//      how it is settled: by a predicate this script runs, or by a recorded
-//      human reading with the reason no artifact can decide it.
+//      true "today", or pins a reading to a released version, is registered
+//      with how it is settled: by a predicate of yours, or by a recorded human
+//      reading with the reason no artifact can decide it.
 //   5. Named codes. A code a page says is raised exists in a registry.
 //   6. Worked JSON. A published example block parses against the schema the
 //      prose names.
-//   7. Interface kinds. A kind a sentence says is accepted is in
-//      `SUPPORTED_INTERFACE_KINDS`, and one it says is refused is in
-//      `UNSUPPORTED_INTERFACE_KINDS`.
-//   8. Transcriptions. A page reprinting a string the binary emits carries the
+//   7. Vocabulary. A token a sentence says is accepted is in your accepted set,
+//      and one it says is refused is in your refused set.
+//   8. Transcriptions. A page reprinting a string your code emits carries the
 //      same bytes.
 //
 // Six of the eight are classes and two are inventories, and the difference
-// decides what this gate promises. Classes 1, 2, 5, 6 and 7 hold every sentence
+// decides what the gate promises. Classes 1, 2, 5, 6 and 7 hold every sentence
 // on every page, including one written tomorrow. Classes 3, 4 and 8 hold the
 // sentences somebody enumerated, and what they guarantee is that a listed
 // sentence cannot be rewritten or drift out from under its entry without
-// failing. Class 7 exists because the first version of this script had only the
-// inventory for the epic's own defect: a new sentence saying `mcp` is refused
-// would have passed every other class, since it invents no symbol, cites no
-// line, names a code that exists, and carries no dated vocabulary.
+// failing.
 //
 // Class 4 is the one that needs explaining. The truth of "no live server has
-// been scored end to end" is not in this repository, so no check can decide it.
-// What a check can decide is that the sentence exists and is registered, which
-// turns an invisible claim into an enumerated one: a new unproven claim fails
-// this gate until somebody writes down who holds it and why, and a registered
-// claim whose sentence was rewritten fails as a dead entry. That is weaker than
-// deciding the claim and stronger than the nothing that preceded it.
+// been scored end to end" is not in any tree, so no check can decide it. What a
+// check can decide is that the sentence exists and is registered, which turns
+// an invisible claim into an enumerated one: a new unproven claim fails until
+// somebody writes down who holds it and why, and a registered claim whose
+// sentence was rewritten fails as a dead entry. That is weaker than deciding
+// the claim and stronger than the nothing that precedes it.
 //
-// What stays outside all eight, and therefore outside this gate: editorial
-// judgment ("worth knowing before you fund any of it"), design rationale,
-// anything about the world beyond the tree, any claim about runtime behaviour
-// that only executing the code would settle, and whether a code a page names is
-// the one that surface actually raises, which class 5 does not ask. The report
-// line prints what review holds so the remainder is visible.
+// What stays outside all eight: editorial judgment, design rationale, anything
+// about the world beyond the tree, any claim about runtime behaviour that only
+// executing the code would settle, and whether a code a page names is the one
+// that surface actually raises, which class 5 does not ask. The report line
+// prints what review holds, so the remainder is visible.
 //
-// A script rather than a Vitest test, for the reason `check-doc-counts.ts:11-14`
-// gives: AD-30 forbids test filesystem I/O outside a temporary directory, and
-// this reads committed markdown. It never rewrites a page, on the same rule.
+// The gate never rewrites a page, on the rule that a check able to repair what
+// it checks is not a gate.
 //
-// Usage:
-//   npm run check:doc-claims
-
-// Run by `node` directly: type stripping erases types only, so no TypeScript
-// enum, namespace, parameter property, or non-type re-export may appear here
-// or in anything it imports.
-import { readdir, readFile, stat } from 'node:fs/promises'
-import { join } from 'node:path'
-import type { z } from 'zod'
-import * as adapters from '../src/adapters/index.ts'
-import { EXIT_CODE_TABLE } from '../src/cli/render.ts'
+// Run by `node` directly: Node's type stripping erases types only, so no
+// TypeScript enum, namespace, parameter property, or non-type re-export may
+// appear in this file or anything it imports.
+import { realpathSync } from 'node:fs'
+import { lstat, readdir, readFile } from 'node:fs/promises'
+import { resolve, sep } from 'node:path'
+import { z } from 'zod'
 import {
-	SUPPORTED_INTERFACE_KINDS,
-	UNSUPPORTED_INTERFACE_KINDS,
-} from '../src/core/compile/interface-inventory.ts'
-import { resolveCheck } from '../src/core/evaluate/resolution.ts'
-import { FAILURE_CODES } from '../src/core/failure-codes.ts'
-import { DefectSignature } from '../src/core/schemas/defect-signature.ts'
-import { EVAL_CONTRACT_SCHEMA_VERSION } from '../src/core/schemas/eval-contract.ts'
-import { Expression } from '../src/core/schemas/expression.ts'
-import { RUNTIME_FAULT_CODES } from '../src/core/schemas/faults.ts'
+	compileGlobalPattern,
+	compilePattern,
+	ProsePattern,
+} from './consumer-pattern.ts'
 import {
-	INTERFACE_KINDS,
-	McpDescriptorChannel,
-	PermittedInterface,
-} from '../src/core/schemas/interface.ts'
-import { Oracle } from '../src/core/schemas/oracle.ts'
-import { InteractionStep } from '../src/core/schemas/plan.ts'
-import { PROBE_SCHEMA_VERSION } from '../src/core/schemas/probe.ts'
-import { ManifestationWitness } from '../src/core/schemas/sensitivity-witness.ts'
-import { QUALIFICATION_FAILURES } from '../src/core/score/qualification.ts'
-import { ORDERING_WITNESS_VIOLATIONS } from './check-dependency-direction.ts'
-import { GateConfiguration } from './gate-config.ts'
+	ModuleValue,
+	type ModuleValueConfig,
+	nameOf,
+	readModuleParser,
+	readModuleStrings,
+	readModuleText,
+	readModuleVerdict,
+} from './module-value.ts'
+import {
+	discoverEntries,
+	RelativePath,
+	ScannedPathList,
+} from './scanned-paths.ts'
 
-const repoRoot = new URL('../', import.meta.url)
-const pathOf = (relative: string): string =>
-	new URL(relative, repoRoot).pathname
+/** A path the configuration named that the gate could not read. */
+export const DOC_CLAIM_PATH = 'EVAL_QUALITY_DOC_CLAIM_PATH'
 
-/** The published pages, the same two roots `check-doc-invocations.mjs:73` reads. */
-const PAGE_ROOTS = ['README.md', 'docs']
+const codedError = (code: string, message: string): Error =>
+	Object.assign(new Error(message), { code })
 
-const walk = async (target: string): Promise<readonly string[]> => {
-	const info = await stat(pathOf(target)).catch(() => null)
-	if (info === null) return []
-	if (info.isFile()) return target.endsWith('.md') ? [target] : []
-	const entries = await readdir(pathOf(target))
-	const nested = await Promise.all(
-		entries.map((entry) => walk(`${target}/${entry}`)),
+const NonEmpty = z.string().min(1)
+
+const Extension = z
+	.string()
+	.regex(
+		/^\.[A-Za-z0-9][A-Za-z0-9.]*$/,
+		'is not a file extension; write it with its leading dot, as ".ts"',
 	)
-	return nested.flat()
-}
-
-const sourceFiles = async (root: string): Promise<readonly string[]> => {
-	const info = await stat(pathOf(root)).catch(() => null)
-	if (info === null) return []
-	if (info.isFile()) return [root]
-	const entries = await readdir(pathOf(root))
-	const nested = await Promise.all(
-		entries.map((entry) => sourceFiles(join(root, entry))),
-	)
-	return nested.flat()
-}
-
-const failures: string[] = []
-const fail = (message: string): void => {
-	failures.push(message)
-}
-
-const pages = (await Promise.all(PAGE_ROOTS.map(walk))).flat().sort()
 
 /**
- * The pages a person writes. `docs/*.generated.md` come from
- * `scripts/generate-ad*-table.ts` and are held byte-exact by their own checks,
- * so the vocabulary they carry is the source's own and a registry of
- * time-sensitive claims over them would be a registry of generator output.
- * Classes 1 and 2 still read them, because a generator can name a symbol that
- * moved and no byte comparison would notice.
+ * The identifier shapes a page backticks and the tree ought to declare:
+ * camelCase, PascalCase with an inner capital, SCREAMING_SNAKE, and a single
+ * PascalCase word, which is what covers a published type name a page names with
+ * no citation to hold it.
+ *
+ * Deliberately narrower than "any backticked word", because a page also
+ * backticks value names, channel names, failure codes and file paths, and none
+ * of those is a symbol the tree declares. A consumer whose vocabulary differs
+ * replaces it.
  */
-const authoredPages = pages.filter((page) => !page.endsWith('.generated.md'))
-const pageText = new Map<string, readonly string[]>()
-for (const page of pages) {
-	pageText.set(page, (await readFile(pathOf(page), 'utf8')).split('\n'))
+const DEFAULT_IDENTIFIER_SHAPE = {
+	match:
+		'^(?:[a-z]+[A-Z]|[A-Z][a-z]+[A-Z]|[A-Z][A-Z0-9_]{3,}$|[A-Z][a-z]{3,}$)',
+	flags: '',
 }
 
-const srcPaths = (await sourceFiles('src')).filter((file) =>
-	file.endsWith('.ts'),
-)
-const srcBodies = new Map<string, string>()
-for (const file of srcPaths) {
-	srcBodies.set(file, await readFile(pathOf(file), 'utf8'))
-}
-const allSource = [...srcBodies.values()].join('\n')
+const CitationsBlock = z
+	.strictObject({
+		extensions: z
+			.array(Extension)
+			.min(1)
+			.default(['.ts', '.mjs', '.json'])
+			.describe('What a citation may point at.'),
+		window: z
+			.int()
+			.min(0)
+			.default(4)
+			.describe(
+				'How far a citation may drift before it reads as stale. Four lines absorbs a reformat or an inserted comment; a moved declaration is further than that.',
+			),
+		unanchored: z
+			.array(
+				z.strictObject({
+					file: RelativePath,
+					citation: NonEmpty.describe(
+						'The cited `path:line`, as the page spells it.',
+					),
+					reason: NonEmpty.describe(
+						'Why the sentence names no symbol the cited file declares. The fix is prose, and the entry is what keeps the remainder counted.',
+					),
+				}),
+			)
+			.default([])
+			.describe(
+				'Citations held by review. An entry matching no citation fails, so a fixed sentence cannot leave a stale exemption behind.',
+			),
+	})
+	.describe(
+		'Every `path:line` a page cites resolves, is in range, and sits within the window of a symbol the sentence names.',
+	)
+
+const SymbolsBlock = z
+	.strictObject({
+		shape: ProsePattern.default(DEFAULT_IDENTIFIER_SHAPE).describe(
+			'Which backticked tokens read as identifiers the tree should declare.',
+		),
+		foreign: z
+			.array(
+				z.strictObject({
+					token: NonEmpty,
+					reason: NonEmpty.describe(
+						'Why the page is right to name something the tree does not declare.',
+					),
+				}),
+			)
+			.default([])
+			.describe(
+				'Identifiers no source root declares and the page is right to name. An entry no page spells fails, so a rename cannot leave one behind.',
+			),
+	})
+	.describe(
+		'Every backticked identifier on a page is declared in the source roots.',
+	)
+
+const ListEntry = z.strictObject({
+	file: RelativePath,
+	claim: NonEmpty.describe('What the sentence lists, for the failure message.'),
+	pattern: ProsePattern.describe(
+		'The sentence, with one capture group holding the stretch of prose that spells the list.',
+	),
+	tokenShape: z
+		.union([ProsePattern, ModuleValue])
+		.describe(
+			'Which backticked tokens inside that stretch are members: a pattern their spelling matches, or a module export holding the whole vocabulary they come from. Without it a parenthetical the sentence carries for the reader reads as a member and the compare fails on prose.',
+		),
+	expected: ModuleValue.describe('The set the source owns.'),
+})
+
+const CodesBlock = z
+	.strictObject({
+		pattern: ProsePattern.describe(
+			'Where a page says a code is raised, with one capture group holding the code.',
+		),
+		registries: z
+			.array(ModuleValue)
+			.min(1)
+			.describe('The lists of codes that exist.'),
+		literalInSources: z
+			.boolean()
+			.default(true)
+			.describe(
+				'Whether a code spelled as a string literal anywhere in the source roots also counts, which is what covers a code no registry names.',
+			),
+	})
+	.describe('Every code a page says is raised exists.')
+
+const FenceEntry = z.strictObject({
+	file: RelativePath,
+	claim: NonEmpty,
+	intro: ProsePattern.describe(
+		'The sentence before the fence. The next json block after it is parsed, so the entry survives a paragraph moving.',
+	),
+	schema: ModuleValue.describe('The schema the block parses against.'),
+	shape: z
+		.enum(['one', 'each'])
+		.default('one')
+		.describe(
+			'Whether the block is one value, or a top-level array whose every member parses.',
+		),
+	lookahead: z
+		.int()
+		.min(1)
+		.default(3)
+		.describe(
+			'How far below its own sentence a fence may sit. Unbounded, an entry binds to whatever json block comes next, so an unrelated example inserted between silently retargets the check.',
+		),
+})
+
+const VERBS_THAT_ACCEPT = [
+	'accepts',
+	'accept',
+	'accepted',
+	'admits',
+	'admit',
+	'admitted',
+	'supports',
+	'support',
+	'supported',
+	'compiles',
+	'compile',
+	'compiled',
+]
+
+const VERBS_THAT_REFUSE = [
+	'rejects',
+	'reject',
+	'rejected',
+	'refuses',
+	'refuse',
+	'refused',
+	'stops at compilation',
+]
+
+const VocabularyBlock = z
+	.strictObject({
+		tokens: ModuleValue.describe('The whole vocabulary a sentence may name.'),
+		accepted: ModuleValue.describe('The members a sentence may call accepted.'),
+		refused: ModuleValue.describe('The members a sentence may call refused.'),
+		verbs: z
+			.strictObject({
+				accepts: z.array(NonEmpty).min(1).default(VERBS_THAT_ACCEPT),
+				refuses: z.array(NonEmpty).min(1).default(VERBS_THAT_REFUSE),
+				participles: z
+					.array(NonEmpty)
+					.optional()
+					.describe(
+						'Which of your verbs are participles, so a bare one reads as past tense and the same form after a present "be" reads as the passive present. Left out, every verb ending in "-ed" is one, which is wrong for a base form spelled that way, "exceed" or "succeed".',
+					),
+			})
+			.default({ accepts: VERBS_THAT_ACCEPT, refuses: VERBS_THAT_REFUSE })
+			.describe(
+				'The verbs that classify a token. The vocabulary carries as much of the guarantee as the logic does: a verb missing from both lists leaves its sentence undecided.',
+			),
+	})
+	.superRefine((block, ctx) => {
+		// A verb in both lists is read as a refusal, because the refusal set is
+		// what the classifier tests. Every sentence using it would then be judged
+		// backwards, and nothing else in the gate would notice.
+		const shared = block.verbs.accepts.filter((verb) =>
+			block.verbs.refuses.includes(verb),
+		)
+		if (shared.length > 0) {
+			ctx.addIssue({
+				code: 'custom',
+				path: ['verbs'],
+				message: `carries ${shared.join(', ')} in both lists, and a verb in both is read as a refusal`,
+			})
+		}
+		const all = [...block.verbs.accepts, ...block.verbs.refuses]
+		const stray = (block.verbs.participles ?? []).filter(
+			(verb) => !all.includes(verb),
+		)
+		if (stray.length === 0) return
+		ctx.addIssue({
+			code: 'custom',
+			path: ['verbs', 'participles'],
+			message: `names ${stray.join(', ')}, which neither verb list carries, so nothing would ever be tested against it`,
+		})
+	})
+	.describe(
+		'Every sentence saying a member of your vocabulary is accepted or refused agrees with the two sets.',
+	)
+
+const DatedBlock = z
+	.strictObject({
+		triggers: z
+			.array(ProsePattern)
+			.min(1)
+			.describe(
+				'The shapes a claim takes when its truth depends on when it was written. A sentence matching one has to be registered below.',
+			),
+		headings: ProsePattern.optional().describe(
+			'A heading that says its section is about what has not happened, so every bullet under one is dated whatever words it uses.',
+		),
+		claims: z
+			.array(
+				z.strictObject({
+					file: RelativePath,
+					key: NonEmpty.describe(
+						'A distinctive stretch of the sentence, matched literally. It names one sentence: a key short enough to match two lets a new and false claim ride in on an existing registration.',
+					),
+					settles: z
+						.union([z.literal('read'), ModuleValue])
+						.describe(
+							'How the claim is settled. A predicate is run and a false answer fails the gate. "read" records that no artifact decides it.',
+						),
+					reason: NonEmpty.describe(
+						'What the predicate reads, or why nothing in the tree can decide it.',
+					),
+				}),
+			)
+			.min(1),
+	})
+	.describe(
+		'Every sentence whose truth depends on when it was written is registered with how it is settled.',
+	)
+
+const TranscriptionEntry = z.strictObject({
+	file: RelativePath,
+	claim: NonEmpty,
+	text: ModuleValue.describe(
+		'The bytes the page reprints: a string export, or a function returning one.',
+	),
+})
 
 /**
- * A backticked token that reads as a code identifier: camelCase, PascalCase
- * with an inner capital, SCREAMING_SNAKE, or a single PascalCase word. The last
- * of those covers `Rubric`, `Probe`, `Observation` and `Expression`, which are
- * published type names a page names without any citation to hold them. Deliberately narrower than "any
- * backticked word", because a page also backticks kind names (`api`), channel
- * names (`arguments`), failure codes (`binding-cycle`) and file paths, and none
- * of those is a symbol the tree declares.
+ * How many capture groups a pattern has. A `lists` entry reads its first group
+ * and a `codes` block reads the code out of its own, so a pattern with none
+ * reaches an `undefined` at run time and throws a stack instead of a refusal.
+ *
+ * The alternation with an empty branch makes the pattern match the empty string,
+ * so the result carries one slot per group whatever the subject is.
  */
-const IDENTIFIER_SHAPE =
-	/^(?:[a-z]+[A-Z]|[A-Z][a-z]+[A-Z]|[A-Z][A-Z0-9_]{3,}$|[A-Z][a-z]{3,}$)/
-const BACKTICKED = /`([A-Za-z_][A-Za-z0-9_]*)`/g
+const captureGroups = (pattern: Pattern): number => {
+	const probe = new RegExp(`${pattern.match}|`, pattern.flags)
+	return (probe.exec('')?.length ?? 1) - 1
+}
 
-const isIdentifier = (token: string): boolean => IDENTIFIER_SHAPE.test(token)
+type RefineContext = {
+	addIssue(issue: {
+		code: 'custom'
+		path: PropertyKey[]
+		message: string
+	}): void
+}
+
+const requireOneGroup = (
+	pattern: Pattern,
+	ctx: RefineContext,
+	path: PropertyKey[],
+	reads: string,
+): void => {
+	if (captureGroups(pattern) > 0) return
+	ctx.addIssue({
+		code: 'custom',
+		path,
+		message: `has no capture group, and ${reads} is read out of the first one`,
+	})
+}
+
+export const DocClaimsSection = z
+	.strictObject({
+		pages: z
+			.array(RelativePath)
+			.min(1)
+			.describe('The published pages, as files or directories to walk.'),
+		generated: z
+			.array(NonEmpty)
+			.default([])
+			.describe(
+				'Filename suffixes marking a generated page. A generator writes its own vocabulary, so the enumerated classes skip those pages while the derived classes still read them.',
+			),
+		sources: ScannedPathList.optional().describe(
+			'The code the pages describe. Citations resolve into it, symbols are declared in it, and a literal code is looked up in it. Required by those three classes and by nothing else, so a section adopting only the enumerated ones leaves it out.',
+		),
+		citations: CitationsBlock.optional(),
+		symbols: SymbolsBlock.optional(),
+		lists: z.array(ListEntry).min(1).optional(),
+		codes: CodesBlock.optional(),
+		fences: z.array(FenceEntry).min(1).optional(),
+		vocabulary: VocabularyBlock.optional(),
+		dated: DatedBlock.optional(),
+		transcriptions: z.array(TranscriptionEntry).min(1).optional(),
+	})
+	.superRefine((section, ctx) => {
+		// Three classes read the source roots and five do not, so requiring the
+		// declaration outright would make a section adopting only transcriptions
+		// name and walk a tree nothing looks at.
+		const readsSources = [
+			section.citations !== undefined && 'citations',
+			section.symbols !== undefined && 'symbols',
+			section.codes !== undefined && 'codes',
+		].filter((name): name is string => name !== false)
+		if (section.sources === undefined && readsSources.length > 0) {
+			ctx.addIssue({
+				code: 'custom',
+				path: ['sources'],
+				message: `is absent, and ${readsSources.join(', ')} resolve against it`,
+			})
+		}
+		section.lists?.forEach((entry, index) => {
+			requireOneGroup(
+				entry.pattern,
+				ctx,
+				['lists', index, 'pattern', 'match'],
+				'the stretch of prose that spells the list',
+			)
+		})
+		if (section.codes !== undefined) {
+			requireOneGroup(
+				section.codes.pattern,
+				ctx,
+				['codes', 'pattern', 'match'],
+				'the code the page names',
+			)
+		}
+		const classes = [
+			section.citations,
+			section.symbols,
+			section.lists,
+			section.codes,
+			section.fences,
+			section.vocabulary,
+			section.dated,
+			section.transcriptions,
+		]
+		if (classes.some((block) => block !== undefined)) return
+		ctx.addIssue({
+			code: 'custom',
+			path: [],
+			message:
+				'declares no class of claim, so the gate would report a pass over nothing; add at least one of citations, symbols, lists, codes, fences, vocabulary, dated or transcriptions',
+		})
+	})
+	.describe(
+		'Holds the prose claims in your documentation against your own tree. Each class is a block you opt into, and a section declaring none is refused rather than passing over nothing.',
+	)
+
+export type DocClaimsConfig = z.infer<typeof DocClaimsSection>
+
+type Pattern = { readonly match: string; readonly flags: string }
+
+const escapeForPattern = (text: string): string =>
+	text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 
 /**
  * A `Set` key over two strings. `JSON.stringify` rather than a separator
@@ -180,26 +475,14 @@ const isIdentifier = (token: string): boolean => IDENTIFIER_SHAPE.test(token)
 const compositeKey = (...parts: readonly string[]): string =>
 	JSON.stringify(parts)
 
-// ---------------------------------------------------------------------------
-// Class 1: citations
-// ---------------------------------------------------------------------------
-
-const CITATION =
-	/`?((?:[A-Za-z0-9._-]+\/)*[A-Za-z0-9._-]+\.(?:ts|mjs|json)):(\d+)(?:-(\d+))?`?/g
-
-/**
- * How far a citation may drift before the anchor check calls it stale. Four
- * lines absorbs a reformat or an inserted comment; a moved declaration is
- * further than that.
- */
-const CITATION_WINDOW = 4
+const BACKTICKED = /`([A-Za-z_][A-Za-z0-9_]*)`/g
 
 /**
  * Matches a declaration. A mention in a comment or a string does not count.
  *
  * The anchor check only demands a citation point at symbols the cited file
- * defines: a sentence naming `search_notes`, a value in an example, has no line
- * for the citation to be wrong about.
+ * defines: a sentence naming a value in an example has no line for the citation
+ * to be wrong about.
  */
 const declarationPattern = (identifier: string): RegExp =>
 	new RegExp(
@@ -211,58 +494,12 @@ const declarationPattern = (identifier: string): RegExp =>
 const declaresIdentifier = (body: string, identifier: string): boolean =>
 	declarationPattern(identifier).test(body)
 
-/** Where a declaration sits, 1-based, for a failure that has to say where the code went. */
+/** Where a declaration sits, 1-based, for a failure that says where the code went. */
 const declarationLine = (body: string, identifier: string): number | null => {
 	const found = declarationPattern(identifier).exec(body)
 	if (found === null) return null
 	return body.slice(0, found.index).split('\n').length
 }
-
-/**
- * The citations whose sentence names no symbol the cited file declares, so the
- * anchor check has nothing to hold them by. Each is a sentence that could name
- * one and does not; the fix is prose, and the entry is here so the remainder
- * is counted. An entry matching
- * no citation fails, so a fixed sentence cannot leave a stale exemption behind.
- */
-const UNANCHORED_CITATIONS: readonly {
-	readonly file: string
-	readonly citation: string
-	readonly reason: string
-}[] = [
-	{
-		file: 'docs/how-to/evaluate-tool-use-behavior.md',
-		citation: 'src/core/schemas/primitives.ts:28',
-		reason:
-			'the sentence names `search_notes` and `searchNotes`, which are example values rather than declarations',
-	},
-	{
-		file: 'docs/how-to/evaluate-tool-use-behavior.md',
-		citation: 'src/core/compile/sensitivity-witness.ts:394',
-		reason:
-			'the sentence names the channel `arguments`; the declaration at the cited line is `legalChannels`, which the sentence does not name',
-	},
-	{
-		file: 'docs/how-to/evaluate-tool-use-behavior.md',
-		citation: 'src/core/score/qualification.ts:832',
-		reason: 'the sentence names no backticked identifier at all',
-	},
-	{
-		file: 'docs/how-to/evaluate-tool-use-behavior.md',
-		citation: 'src/core/schemas/sealed-run-record.ts:255',
-		reason: 'the sentence names no backticked identifier at all',
-	},
-	{
-		file: 'docs/how-to/evaluate-tool-use-behavior.md',
-		citation: 'src/core/compile/reachability.ts:581',
-		reason:
-			'the sentence names the contract field `artifacts`, which the cited file does not declare',
-	},
-]
-
-const unanchoredSeen = new Set<string>()
-let citationsChecked = 0
-let citationsAnchored = 0
 
 /** The sentence around an offset: the enclosing table cell, or the enclosing sentence. */
 const sentenceAround = (line: string, offset: number): string => {
@@ -274,1502 +511,852 @@ const sentenceAround = (line: string, offset: number): string => {
 	return line.slice(start, end)
 }
 
-for (const page of pages) {
-	const lines = pageText.get(page) as readonly string[]
-	// A bare `plan.ts` means the file a fully-qualified citation named earlier on
-	// the same page. Two files are called `plan.ts`, so without this the short
-	// form is ambiguous and the check would refuse a citation a reader resolves
-	// without effort.
-	const qualified = new Map<string, string>()
-	lines.forEach((line, index) => {
-		for (const match of line.matchAll(CITATION)) {
-			const cited = match[1] as string
-			const first = Number(match[2])
-			const last = Number(match[3] ?? match[2])
-			const at = `${page}:${index + 1}`
-			const basename = cited.split('/').pop() as string
+/**
+ * Which backticked tokens in a captured stretch count as list members. A
+ * spelling rule covers a set whose members share a shape; a module export covers
+ * one whose members do not, and naming the export is what keeps the vocabulary
+ * out of the configuration as a second copy of itself.
+ */
+async function memberTest(
+	root: string,
+	shape: Pattern | ModuleValueConfig,
+): Promise<(token: string) => boolean> {
+	if ('match' in shape) {
+		const pattern = compilePattern(shape)
+		return (token: string): boolean => pattern.test(token)
+	}
+	const vocabulary = new Set(await readModuleStrings(root, shape))
+	return (token: string): boolean => vocabulary.has(token)
+}
 
-			let resolved: string | undefined
-			if (srcBodies.has(cited)) resolved = cited
-			else if (qualified.has(basename)) resolved = qualified.get(basename)
-			else {
-				const candidates = srcPaths.filter((file) => file.endsWith(`/${cited}`))
-				if (candidates.length === 1) resolved = candidates[0]
-				else {
-					fail(
-						`${at}: the citation \`${cited}\` resolves to ${candidates.length} files under src/; ` +
-							'spell the path from the repository root',
-					)
-					continue
-				}
-			}
-			const target = resolved as string
-			qualified.set(basename, target)
-			citationsChecked += 1
+/**
+ * A directory this walk never descends into. A dependency tree and a tool's own
+ * directory carry pages nobody here wrote.
+ */
+const isSkipped = (name: string): boolean =>
+	name === 'node_modules' || name.startsWith('.')
 
-			const body = srcBodies.get(target) as string
-			const targetLines = body.split('\n')
-			if (targetLines.length < last) {
-				fail(
-					`${at}: the citation \`${cited}:${last}\` is past the end of ${target}, ` +
-						`which has ${targetLines.length} lines`,
-				)
-				continue
-			}
+/**
+ * The markdown under one declared root. `lstat` rather than `stat`, and a link
+ * is refused rather than followed: a directory link pointing at an ancestor
+ * recurses until the stack goes, and one pointing outside the tree reads pages
+ * the configuration never named.
+ */
+const walkPages = async (
+	root: string,
+	target: string,
+): Promise<readonly string[]> => {
+	const info = await lstat(resolve(root, target)).catch(() => null)
+	if (info === null) return []
+	if (info.isSymbolicLink()) {
+		throw codedError(
+			DOC_CLAIM_PATH,
+			`${target} is a symbolic link, and this walk does not follow links; name the directory itself under pages`,
+		)
+	}
+	if (info.isFile()) return target.endsWith('.md') ? [target] : []
+	const entries = await readdir(resolve(root, target))
+	const nested = await Promise.all(
+		entries
+			.filter((entry) => !isSkipped(entry))
+			.map((entry) => walkPages(root, `${target}/${entry}`)),
+	)
+	return nested.flat()
+}
 
-			const sentence = sentenceAround(line, match.index ?? 0)
-			const named = [...sentence.matchAll(BACKTICKED)]
-				.map((found) => found[1] as string)
-				.filter((token) => declaresIdentifier(body, token))
-			const spanned = `${target}:${match[2]}${match[3] ? `-${match[3]}` : ''}`
-			if (named.length === 0) {
-				const exemption = UNANCHORED_CITATIONS.find(
-					(entry) => entry.file === page && spanned.endsWith(entry.citation),
-				)
-				if (exemption === undefined) {
-					fail(
-						`${at}: the citation \`${cited}:${first}\` sits in a sentence naming no symbol ` +
-							`${target} declares, so nothing holds the line number; name one, or register it ` +
-							'in UNANCHORED_CITATIONS with the reason',
-					)
-					continue
-				}
-				unanchoredSeen.add(compositeKey(exemption.file, exemption.citation))
-				continue
-			}
+export type DocClaimsReport = {
+	readonly failures: readonly string[]
+	readonly summary: string
+}
 
-			const window = targetLines
-				.slice(Math.max(0, first - 1 - CITATION_WINDOW), last + CITATION_WINDOW)
-				.join('\n')
-			const anchored = named.filter((identifier) =>
-				new RegExp(`\\b${identifier}\\b`).test(window),
+export async function runDocClaims(
+	root: string,
+	section: DocClaimsConfig,
+): Promise<DocClaimsReport> {
+	const failures: string[] = []
+	const fail = (message: string): void => {
+		failures.push(message)
+	}
+
+	// Canonical paths, because `resolve` follows no symlink: a link pointing at
+	// the configuration's own directory would otherwise walk straight past this.
+	const canonical = (target: string): string => {
+		try {
+			return realpathSync(target)
+		} catch {
+			return target
+		}
+	}
+	const configRoot = canonical(resolve(root))
+	const found: string[] = []
+	for (const page of section.pages) {
+		const named = canonical(resolve(root, page))
+		const enclosing = named.endsWith(sep) ? named : `${named}${sep}`
+		if (
+			`${configRoot}${configRoot.endsWith(sep) ? '' : sep}`.startsWith(
+				enclosing,
 			)
-			if (anchored.length === 0) {
-				const moved = named
-					.map((identifier) => ({
-						identifier,
-						line: declarationLine(body, identifier),
-					}))
-					.filter((each) => each.line !== null)
-					.map((each) => `\`${each.identifier}\` is at ${target}:${each.line}`)
-					.join(', ')
-				fail(
-					`${at}: the citation \`${cited}:${first}\` names ${named.map((each) => `\`${each}\``).join(', ')} ` +
-						`and none of them is within ${CITATION_WINDOW} lines of ${target}:${first}; ${moved}`,
-				)
-				continue
-			}
-			citationsAnchored += 1
+		) {
+			throw codedError(
+				DOC_CLAIM_PATH,
+				`the "doc-claims" section names "${page}" under pages, and that encloses the directory the configuration sits in; name a page or a directory inside it`,
+			)
 		}
-	})
-}
-
-for (const entry of UNANCHORED_CITATIONS) {
-	if (unanchoredSeen.has(compositeKey(entry.file, entry.citation))) continue
-	fail(
-		`${entry.file}: UNANCHORED_CITATIONS names \`${entry.citation}\`, which the page no longer ` +
-			'carries unanchored; drop the entry',
-	)
-}
-
-// ---------------------------------------------------------------------------
-// Class 2: symbols
-// ---------------------------------------------------------------------------
-
-/**
- * Backticked identifiers that no file under `src/` declares. Each is a real
- * thing the page is right to name: a Node global, an HTTP method, an
- * environment variable, a shipped filename, or a value in a worked example.
- *
- * The test is declaration and not mention, which is the stronger of the two and
- * costs five more entries than the weaker one. A symbol deleted in a rename
- * commonly survives in a comment that mentions it, so a gate reading mentions
- * would keep passing a page that names something the tree no longer has.
- */
-const FOREIGN_IDENTIFIERS: readonly {
-	readonly token: string
-	readonly reason: string
-}[] = [
-	{
-		token: 'ERR_IMPORT_ATTRIBUTE_MISSING',
-		reason: "Node's own error code for a JSON import with no import attribute",
-	},
-	{ token: 'LICENSE', reason: 'a file the published tarball carries' },
-	{
-		token: 'updatedAt',
-		reason:
-			'a field of an example response body, which no shipped schema declares',
-	},
-	{
-		token: 'AbortSignal',
-		reason: "the platform's own type, declared by node's lib",
-	},
-	{
-		token: 'PATH',
-		reason: 'the environment variable the command-line adapter passes through',
-	},
-	{
-		token: 'POST',
-		reason: 'an `HttpMethod` value, which the enum spells as a string literal',
-	},
-	{
-		token: 'PATCH',
-		reason: 'an `HttpMethod` value, which the enum spells as a string literal',
-	},
-	{
-		token: 'CHAIN',
-		reason: 'a shell variable the walkthrough sets before its own commands',
-	},
-	{
-		token: 'HOME',
-		reason:
-			'an environment variable an example contract declares, spelled as the process sees it',
-	},
-	{
-		token: 'Original',
-		reason:
-			"a note title in the worked example's observation, quoted as a value",
-	},
-	{
-		token: 'Revised',
-		reason: "the title the worked example's write reported, quoted as a value",
-	},
-	{
-		token: 'searchNotes',
-		reason:
-			'a tool name in a worked example, showing what the identifier charset admits',
-	},
-	{
-		token: 'windowDays',
-		reason:
-			'a setting in the consumer gate configuration, declared by the schema in scripts/gate-config.ts and so outside src/',
-	},
-	{
-		token: 'reportOnly',
-		reason:
-			"a setting in the dependency-direction gate's section, declared by the schema in scripts/check-dependency-direction.ts and so outside src/",
-	},
-]
-
-const foreignSeen = new Set<string>()
-const unknownSymbols = new Map<string, string>()
-let symbolsChecked = 0
-
-for (const page of pages) {
-	const lines = pageText.get(page) as readonly string[]
-	lines.forEach((line, index) => {
-		for (const match of line.matchAll(BACKTICKED)) {
-			const token = match[1] as string
-			if (!isIdentifier(token)) continue
-			symbolsChecked += 1
-			const foreign = FOREIGN_IDENTIFIERS.find((entry) => entry.token === token)
-			if (foreign !== undefined) {
-				foreignSeen.add(token)
-				continue
-			}
-			if (declaresIdentifier(allSource, token)) continue
-			if (!unknownSymbols.has(token)) {
-				unknownSymbols.set(token, `${page}:${index + 1}`)
-			}
+		const reached = await walkPages(root, page)
+		// Per root rather than over the whole list: one mistyped entry among
+		// several drops its pages silently while the others keep the gate green.
+		if (reached.length === 0) {
+			throw codedError(
+				DOC_CLAIM_PATH,
+				`"${page}" holds no markdown, and the "doc-claims" section names it under pages; a root that reaches no page is coverage the gate reports as clean`,
+			)
 		}
-	})
-}
+		found.push(...reached)
+	}
+	const pages = [...found].sort()
 
-for (const [token, at] of unknownSymbols) {
-	fail(
-		`${at}: the page spells \`${token}\`, which nothing under src/ declares; ` +
-			'it was renamed, removed, or mistyped, or it belongs in FOREIGN_IDENTIFIERS with its reason',
-	)
-}
-for (const entry of FOREIGN_IDENTIFIERS) {
-	if (foreignSeen.has(entry.token)) continue
-	fail(
-		`FOREIGN_IDENTIFIERS names \`${entry.token}\`, which no published page spells; drop the entry`,
-	)
-}
+	const pageText = new Map<string, readonly string[]>()
+	for (const page of pages) {
+		pageText.set(
+			page,
+			(await readFile(resolve(root, page), 'utf8')).split('\n'),
+		)
+	}
 
-// ---------------------------------------------------------------------------
-// Class 3: transcribed lists
-// ---------------------------------------------------------------------------
-
-const referenceAdapters = Object.keys(adapters)
-	.filter((name) => /^create[A-Za-z]*Adapter$/.test(name))
-	.sort()
-
-/**
- * The conformance runners, read off their own definitions rather than off a
- * published constant, because no constant names them: `src/testing/index.ts`
- * re-exports them one by one and `cli-commands.md` spells all six in a
- * sentence. This is the shape Story 11.7's Decision 18 named as derivable.
- */
-const conformanceRunners = [
-	...allSource.matchAll(
-		/export\s+async\s+function\s+(run[A-Za-z]*Conformance)/g,
-	),
-]
-	.map((match) => match[1] as string)
-	.sort()
-
-/**
- * The schema versions the barrel publishes, read off its own source text the
- * way `tests/schemas/artifact-version.test.ts` reads them, so this needs no
- * build.
- *
- * Two pages spell all ten names in a sentence and nothing held either copy.
- * That is the transcription class Story 12.3 closed under `src/`, sitting in
- * the documentation.
- */
-const barrelSchemaVersions = [
-	...(srcBodies.get('src/index.ts') ?? '').matchAll(
-		/export \{ ([A-Z0-9_]+_SCHEMA_VERSION) \}/g,
-	),
-].map((match) => match[1] as string)
-
-if (barrelSchemaVersions.length === 0) {
-	fail(
-		'src/index.ts: no `export { <NAME>_SCHEMA_VERSION }` line, so the two pages spelling ' +
-			'the constants would be compared against an empty set',
-	)
-}
-
-type ListEntry = {
-	readonly file: string
-	readonly claim: string
-	/** One capture group, holding the stretch of prose that spells the list. */
-	readonly pattern: RegExp
 	/**
-	 * Which backticked tokens inside that stretch are members. Without it a
-	 * parenthetical the sentence carries for the reader's benefit, such as
-	 * "(the `api` arm)", reads as a list member and the compare fails on prose.
+	 * The pages a person writes. A generated page carries its generator's own
+	 * vocabulary, so a registry of time-sensitive claims over one would be a
+	 * registry of generator output. The derived classes still read them, because
+	 * a generator can name a symbol that moved and no byte comparison notices.
 	 */
-	readonly tokenShape: RegExp
-	readonly expected: readonly string[]
-}
-
-/**
- * The stages that perform AD-11's version equality, read off the tree rather
- * than off a list somebody kept. The map says which stage a file is; membership
- * is derived, so a file that starts performing the comparison and is absent
- * from the map fails here and the published sentence has to move with it.
- *
- * Two ways a file performs it, because the helper is not the only route.
- * `checkSchemaVersion` is one, and `chain.ts` is the standing proof of the
- * other: it compares against `acceptedSchemaVersion` and constructs the fault
- * directly, calling no helper, so a reader written that way would have been
- * invisible to a helper-only derivation. Both are matched.
- *
- * The helper match reads the import of the symbol rather than any call
- * spelling. A spelling match catches the three call sites written today and
- * misses a fourth passing a prebuilt object, which the throw form would miss
- * too, since the throw lives inside the helper. An import is every call form at
- * once and carries no comment ambiguity: a docblock naming the function does
- * not import it. The fault match reads the throw form for the same reason the
- * helper match avoids the bare name, since the bare code string appears in nine
- * descriptions and module comments across the schemas and `faults.ts`, none of
- * which raises anything.
- */
-const VERSION_READER_BY_FILE: Readonly<Record<string, string>> = {
-	'src/core/compile/compile.ts': 'compile',
-	'src/core/preflight/plan.ts': 'preflight',
-	'src/core/score/score.ts': 'score',
-}
-
-/**
- * Files that perform the comparison and are no stage on this page. One entry:
- * `chain.ts` reads a presented lineage chain, has no caller inside this package,
- * and words the fault its own way, so it is a reader for somebody else's code
- * and the sentence about this pipeline's stages is right to leave it out.
- */
-const VERSION_READERS_OUTSIDE_THE_PIPELINE: Readonly<Record<string, string>> = {
-	'src/core/lineage/chain.ts':
-		'reads a presented chain for a caller outside this package, with no in-package call site',
-}
-
-const IMPORTS_VERSION_CHECK =
-	/import\s*\{[^}]*\bcheckSchemaVersion\b[^}]*\}\s*from\s*'[^']*schema-version\.ts'/
-const RAISES_VERSION_FAULT = /new RuntimeFault\(\s*'schema-version-mismatch'/
-
-const performsVersionEquality = (body: string): boolean =>
-	IMPORTS_VERSION_CHECK.test(body) || RAISES_VERSION_FAULT.test(body)
-
-const versionReaders = [
-	...new Set(
-		srcPaths
-			.filter((file) => !file.endsWith('compile/schema-version.ts'))
-			.filter((file) => performsVersionEquality(srcBodies.get(file) as string))
-			.map((file) => {
-				const named = VERSION_READER_BY_FILE[file]
-				if (named !== undefined) return named
-				if (VERSION_READERS_OUTSIDE_THE_PIPELINE[file] !== undefined)
-					return null
-				fail(
-					`${file}: performs AD-11's version equality and neither VERSION_READER_BY_FILE nor ` +
-						'VERSION_READERS_OUTSIDE_THE_PIPELINE names it; a new version reader means the ' +
-						'published sentence naming them has to move too',
-				)
-				return null
-			})
-			.filter((name): name is string => name !== null),
-	),
-].sort()
-
-for (const [file, reason] of Object.entries(
-	VERSION_READERS_OUTSIDE_THE_PIPELINE,
-)) {
-	const body = srcBodies.get(file)
-	if (body === undefined) {
-		fail(
-			`${file}: exempted as a version reader, and no such file is under src/`,
-		)
-		continue
-	}
-	if (performsVersionEquality(body)) continue
-	fail(
-		`${file}: exempted as a version reader (${reason}), and it performs no version ` +
-			'equality any more; drop the entry',
+	const authoredPages = pages.filter(
+		(page) => !section.generated.some((suffix) => page.endsWith(suffix)),
 	)
-}
-
-/** The kind vocabulary, so a kind list is compared over kinds and nothing else. */
-const KIND_TOKEN = new RegExp(`^(?:${INTERFACE_KINDS.join('|')})$`)
-
-/**
- * One entry per sentence that spells a set the source owns. The expected side
- * is always computed above; this table adds a pattern and asserts nothing on
- * its own authority. A pattern matching nothing is a dead entry and fails, on
- * `check-doc-counts.ts`'s rule: a rewritten sentence cannot escape its own gate
- * by drifting out from under the pattern.
- */
-const LISTS: readonly ListEntry[] = [
-	{
-		file: 'docs/how-to/evaluate-skill-behavior.md',
-		claim: 'the kinds `compile` accepts',
-		pattern: /`compile` accepts ([^.]*?), and rejects a contract declaring/,
-		tokenShape: KIND_TOKEN,
-		expected: [...SUPPORTED_INTERFACE_KINDS],
-	},
-	{
-		file: 'docs/how-to/evaluate-workflow-behavior.md',
-		claim: 'the kinds `compile` accepts',
-		pattern: /`compile` accepts ([^.]*?), and rejects a contract declaring/,
-		tokenShape: KIND_TOKEN,
-		expected: [...SUPPORTED_INTERFACE_KINDS],
-	},
-	{
-		file: 'docs/how-to/evaluate-ai-feature-behavior.md',
-		claim: 'the kinds `compile` accepts',
-		pattern: /`compile` supports three of the four, ([^.]*?), and rejects/,
-		tokenShape: KIND_TOKEN,
-		expected: [...SUPPORTED_INTERFACE_KINDS],
-	},
-	{
-		file: 'docs/reference/glossary.md',
-		claim: 'the kinds `compile` accepts',
-		pattern: /`compile` accepts (.*?)\. The vocabulary also names/,
-		tokenShape: KIND_TOKEN,
-		expected: [...SUPPORTED_INTERFACE_KINDS],
-	},
-	{
-		file: 'docs/how-to/evaluate-ai-feature-behavior.md',
-		claim: 'the interface vocabulary',
-		pattern: /four interface kinds in `INTERFACE_KINDS`: ([^.]*?)\./,
-		tokenShape: KIND_TOKEN,
-		expected: [...INTERFACE_KINDS],
-	},
-	{
-		file: 'docs/index.md',
-		claim: 'the kinds refused at compile',
-		pattern:
-			/kind[s]? parse[s]? and stops? at compilation under `unsupported-interface-kind`: ([^,]*),/,
-		tokenShape: KIND_TOKEN,
-		expected: [...UNSUPPORTED_INTERFACE_KINDS],
-	},
-	{
-		file: 'docs/explanation/what-ships.md',
-		claim: 'the kinds refused at compile',
-		// Anchored on the backticked kind itself: an unanchored leading capture
-		// runs from the top of the file under the `s` flag and swallows the page.
-		pattern:
-			/(`[a-z]+`) is the one kind `compile` still refuses under `unsupported-interface-kind`/,
-		tokenShape: KIND_TOKEN,
-		expected: [...UNSUPPORTED_INTERFACE_KINDS],
-	},
-	{
-		file: 'docs/explanation/what-ships.md',
-		claim: "the stages performing AD-11's version equality",
-		pattern: /The stages that perform that comparison are ([^.]*?)\./,
-		tokenShape: /^(?:compile|preflight|score)$/,
-		expected: versionReaders,
-	},
-	{
-		// The same set, on the page that spells the readers a second time. With
-		// the entry above alone, a fourth reader added to VERSION_READER_BY_FILE
-		// fires the gate on one page and lets this one drift.
-		file: 'docs/reference/cli-commands.md',
-		claim: "the stages performing AD-11's version equality",
-		pattern: /in-package reader that performs the equality: ([^.]*?)\./,
-		tokenShape: /^(?:compile|preflight|score)$/,
-		expected: versionReaders,
-	},
-	{
-		file: 'docs/explanation/what-ships.md',
-		claim: 'the schema versions the barrel exports',
-		pattern: /barrel exports [a-z-]+ schema versions: ([^.]*?)\./,
-		tokenShape: /^[A-Z0-9_]+_SCHEMA_VERSION$/,
-		expected: barrelSchemaVersions,
-	},
-	{
-		// Bounded to its own line. The list is a bullet, and an unbounded capture
-		// under the `s` flag runs past it to the next full stop three bullets
-		// down, taking `compareDominance` and `VERSION` with it.
-		file: 'docs/reference/cli-commands.md',
-		claim: 'the schema versions the barrel exports',
-		pattern: /\*\*Schema versions\*\*: ([^\n]+)/,
-		tokenShape: /^[A-Z0-9_]+_SCHEMA_VERSION$/,
-		expected: barrelSchemaVersions,
-	},
-	{
-		file: 'docs/reference/cli-commands.md',
-		claim: 'the reference adapter list',
-		pattern: /ships [a-z-]+ reference adapters, ([^.]*?), each a factory/,
-		tokenShape: /^create[A-Za-z]*Adapter$/,
-		expected: referenceAdapters,
-	},
-	{
-		file: 'docs/reference/cli-commands.md',
-		claim: 'the conformance runner list',
-		pattern: /one arm per mechanism: ([^.]*?)\. A report carries/,
-		tokenShape: /^run[A-Za-z]*Conformance$/,
-		expected: conformanceRunners,
-	},
-]
-
-for (const entry of LISTS) {
-	const lines = pageText.get(entry.file)
-	if (lines === undefined) {
-		fail(`${entry.file}: missing, but a list entry names it`)
-		continue
-	}
-	const text = lines.join('\n')
-	// The entry's own flags are carried over, so an entry written `/.../i` does
-	// not silently lose its `i` and fail as dead for a reason nobody finds.
-	const listFlags = [...new Set([...entry.pattern.flags, 'g', 's'])].join('')
-	const found = [...text.matchAll(new RegExp(entry.pattern.source, listFlags))]
-	if (found.length !== 1) {
-		fail(
-			`${entry.file}: ${found.length} sentences match the pattern for ${entry.claim}; ` +
-				'a list entry names exactly one, so either the sentence or the entry has to move',
+	// A suffix broad enough to match every page, `.md` say, turns the dated,
+	// codes and vocabulary classes into checks over nothing while the gate reports
+	// each of them as clean.
+	if (authoredPages.length === 0) {
+		throw codedError(
+			DOC_CLAIM_PATH,
+			`every one of the ${pages.length} page(s) matches a suffix under generated (${section.generated.join(', ')}); the classes that read authored pages would hold nothing`,
 		)
-		continue
 	}
-	const match = found[0] as RegExpExecArray
-	const line = text.slice(0, match.index ?? 0).split('\n').length
-	const spelled = [...(match[1] as string).matchAll(/`([^`]+)`/g)]
-		.map((each) => each[1] as string)
-		.filter((each) => entry.tokenShape.test(each))
-		.sort()
-	const owed = [...entry.expected].sort()
-	const extra = spelled.filter((each) => !owed.includes(each))
-	const absent = owed.filter((each) => !spelled.includes(each))
-	if (extra.length === 0 && absent.length === 0) continue
+
+	// Walked only when a class reads it. The schema is what guarantees the
+	// declaration is there whenever one does.
+	const srcBodies =
+		section.sources === undefined
+			? new Map<string, string>()
+			: (await discoverEntries(root, section.sources, 'doc-claims')).entries
+	const srcPaths = [...srcBodies.keys()]
+	const allSource = [...srcBodies.values()].join('\n')
+
 	const parts: string[] = []
-	if (absent.length > 0) parts.push(`omits ${absent.join(', ')}`)
-	if (extra.length > 0) parts.push(`adds ${extra.join(', ')}`)
-	fail(
-		`${entry.file}:${line}: ${entry.claim} ${parts.join(' and ')}; the source has ` +
-			`${owed.join(', ')}`,
-	)
-}
 
-// ---------------------------------------------------------------------------
-// Class 4: time-sensitive claims
-// ---------------------------------------------------------------------------
+	// -----------------------------------------------------------------------
+	// Class 1: citations
+	// -----------------------------------------------------------------------
 
-/**
- * A version a sentence pins a reading to. Two prepositions, which are the ones
- * this repository's pages use when they say a claim was checked at a release,
- * plus the bare `as of` that carries the same thing with no verb at all:
- * "run end to end against the built CLI at 2.0.0". A version named with `in`,
- * `from` or `under`, or standing as a sentence's subject, is release history to
- * this pattern, and `VERSION_CLAIM` below is what reads those.
- *
- * The claim it catches is the one nothing else here could: a verification
- * sentence carries no dated vocabulary, names no symbol that could be renamed,
- * and transcribes no list, so it ages in silence while every gate stays green.
- * `docs/how-to/evaluate-tool-use-behavior.md` carried one across a major release
- * that shipped twelve breaking changes.
- */
-const VERSION_PIN =
-	/\b(?:at|against|as of) (?:eval-quality )?(\d+\.\d+\.\d+)\b/i
-
-/**
- * The same claim written any other way. `VERSION_PIN` reads a preposition, and
- * the preposition is the wrong half of the sentence to read: "the bug was fixed
- * in 1.4.0" is history and "this was verified in 1.4.0" is a pin, and the two
- * share the word. The verb is what separates them, so this alternative anchors
- * on the verb and takes the version at whatever distance it sits, in either
- * order. Six spellings a preposition rule misses are caught here, "run end to
- * end on 2.0.0" and "reproduced under 2.0.0" among them. `built` is in the
- * vocabulary because "against the built CLI" is how this repository already
- * writes the claim, so "a binary built from 2.1.0" is how the next one gets
- * written.
- *
- * Both forms stay in the trigger. This one catches more, and the preposition
- * form catches a pin whose verb sits in a neighbouring sentence.
- */
-const VERSION_CLAIM =
-	/\b(?:run|ran|re-run|verified|checked|measured|reproduced|observed|transcribed|exercised|built|holds?|stands?)\b[^.]{0,90}?\b\d+\.\d+\.\d+\b|\b\d+\.\d+\.\d+\b[^.]{0,90}?\b(?:was|were) (?:run|verified|checked|measured|observed|built)\b/i
-
-/**
- * A page naming the version the package is at. Both patterns above read a
- * version a reading was taken at, and this reads a version the package is
- * claimed to be on, which is a different sentence with the same failure: it is
- * true when written and stale at the next bump.
- *
- * `README.md` and `docs/explanation/what-ships.md` both carried "Version 1.0 is
- * out" into 3.0.0, and every gate stayed green. Two things hid it. The verb is
- * outside `VERSION_CLAIM`'s vocabulary, which reads the verbs of a verification
- * rather than of a release, and both version patterns require three components
- * while the sentence wrote two. So this takes a version of any length and the
- * release vocabulary.
- */
-const RELEASE_STATE =
-	/\bversion \d+(?:\.\d+)+ (?:is|was|has been) (?:out|released|shipped|published)\b/i
-
-/**
- * The shapes a claim takes when its truth depends on when it was written. Four
- * families: a sentence saying a thing has not happened, a sentence saying
- * something is true as of now, a sentence pinning a reading to a released
- * version, which `VERSION_PIN` above carries, and a sentence naming the version
- * the package is on, which `RELEASE_STATE` carries. All four are exactly the
- * sentences that go stale when the code moves under them and none is decidable
- * from the words alone, so the pattern's job is to find candidates and the
- * registry's job is to say how each one is settled.
- */
-const TIME_SENSITIVE = new RegExp(
-	[
-		VERSION_PIN.source,
-		VERSION_CLAIM.source,
-		RELEASE_STATE.source,
-		'\\bno [a-z-]+ (?:has|have)\\b',
-		'\\bno live\\b',
-		'\\bno committed\\b',
-		'\\bno contract in `corpus',
-		'\\bno [a-z-]+ yet\\b',
-		'\\bnot yet\\b',
-		'\\byet to be\\b',
-		'\\bnobody has\\b',
-		'\\bnot proven\\b',
-		'\\bunproven\\b',
-		'\\bdoes not yet\\b',
-		'\\bcannot yet\\b',
-		'\\bstill (?:owed|owes|refuses?|needs?|cannot)\\b',
-		'\\bstays deferred\\b',
-		'\\bhas had no\\b',
-		'\\bis owed\\b',
-		'\\bDeferred until\\b',
-		'\\btoday\\b',
-		'\\bcurrently\\b',
-		'\\bfor now\\b',
-		'\\*\\*(?:Missing|Blocked|Unproven|Owed)\\.?\\*\\*',
-	].join('|'),
-	'i',
-)
-
-/**
- * A heading that says the section is about what has not happened. Every bullet
- * under one is a dated claim whatever words it uses, which is how
- * `what-ships.md`'s "Two things the project still owes itself" gets held: its
- * bullets carry the claim in the heading rather than in themselves, so a
- * sentence-level trigger reads them as ordinary prose.
- */
-const OWED_HEADING = /\b(owes?|owed|deferred|unproven|not yet|still)\b/i
-
-type DatedClaim = {
-	readonly file: string
-	/** A distinctive stretch of the sentence, matched literally. */
-	readonly key: string
-	/**
-	 * How the claim is settled. A predicate is run and a false result fails the
-	 * gate. `'read'` records that no artifact in this repository decides it, and
-	 * `reason` says why.
-	 */
-	readonly settles: 'read' | (() => Promise<boolean> | boolean)
-	readonly reason: string
-}
-
-/** The manifest the release workflow stamps, and the engine floor it declares. */
-const manifest = JSON.parse(await readFile(pathOf('package.json'), 'utf8')) as {
-	version: string
-	engines: { node: string }
-}
-const publishedMajor = manifest.version.split('.')[0] as string
-
-/**
- * How far a version-pinned reading can be settled from inside the tree: the
- * version the sentence names is in the published major line, and the record
- * that reading was written down in names the same version.
- *
- * The first half decides currency and never the reading. Whether the route a
- * sentence describes still runs is settled by running it, which no check here
- * does. What this holds is the one thing semantic versioning makes mechanical:
- * a release that breaks the reading moves the major, so a sentence left behind
- * by one fails this gate and somebody re-runs the route. A minor or a patch
- * leaves the pin standing, which is the promise the version number itself
- * makes.
- *
- * The second half closes the cheapest way of passing the first, which is to
- * type the new numeral over the old one. A version in the page has to be a
- * version in the record too, so passing this gate means somebody opened the
- * record and wrote down what they saw.
- *
- * The match is read from the key forward. Scanning the whole line would take
- * whichever pin came first on it, which is the wrong one on any line carrying
- * two.
- */
-const pinnedVersionIsCurrentMajor = (
-	file: string,
-	key: string,
-	record: string,
-): boolean => {
-	const line =
-		(pageText.get(file) ?? []).find((each) => each.includes(key)) ?? ''
-	const at = line.indexOf(key)
-	const pinned = at === -1 ? null : VERSION_PIN.exec(line.slice(at))
-	if (pinned === null) return false
-	const version = pinned[1] as string
-	if (version.split('.')[0] !== publishedMajor) return false
-	return record.includes(version)
-}
-
-/**
- * A budget large enough that no check registered here can exhaust it. The
- * parameter exists for a regex operator's step count; nothing above uses one.
- */
-const REGEX_STEP_BUDGET = 1_000_000
-
-const TOOL_USE_ROUTE_KEY = 'was run end to end against the built CLI at'
-
-const ORDERING_WITNESS_KEY = 'swapping those two rows reports'
-
-/**
- * The direction gate's ordering witness, stated on its page as a measurement of
- * this repository's own tree and so read as a dated claim.
- *
- * It is settled by the constant rather than by a reading:
- * `dependency-direction.test.ts` swaps the two nesting layer rows against the
- * real tree and asserts `ORDERING_WITNESS_VIOLATIONS`, and `check-doc-counts`
- * holds the page's numeral against the same constant. What is left for this gate
- * is the sentence's own shape, so a rewrite that drops the numeral fails here
- * instead of leaving the count entry dead.
- */
-const orderingWitnessIsStated = (file: string): boolean => {
-	const line =
-		(pageText.get(file) ?? []).find((each) =>
-			each.includes(ORDERING_WITNESS_KEY),
-		) ?? ''
-	return line.includes(
-		`${ORDERING_WITNESS_KEY} ${ORDERING_WITNESS_VIOLATIONS} violations`,
-	)
-}
-
-/** The record the tool-use route's reading is written down in. */
-const toolUseRouteRecord = await readFile(
-	pathOf(
-		'_bmad-output/implementation-artifacts/11-1-whether-tool-use-evaluation-is-one-gap-or-two.md',
-	),
-	'utf8',
-)
-
-const DATED_CLAIMS: readonly DatedClaim[] = [
-	{
-		file: 'docs/how-to/run-the-gates-on-your-repository.md',
-		key: ORDERING_WITNESS_KEY,
-		settles: () =>
-			orderingWitnessIsStated(
-				'docs/how-to/run-the-gates-on-your-repository.md',
-			),
-		reason:
-			"the number is `ORDERING_WITNESS_VIOLATIONS`, which `dependency-direction.test.ts` measures against this repository's own tree and `check-doc-counts` holds the page against",
-	},
-	{
-		file: 'docs/index.md',
-		key: 'Three interface kinds compile today',
-		settles: () => SUPPORTED_INTERFACE_KINDS.length === 3,
-		reason: 'counts `SUPPORTED_INTERFACE_KINDS`',
-	},
-	{
-		file: 'docs/index.md',
-		key: 'no live server stands behind it',
-		settles: 'read',
-		reason:
-			'a live MCP server is outside this repository, so no artifact in the tree records whether one was scored; the sentence states how far the fixture carries rather than what is owed',
-	},
-	{
-		file: 'docs/explanation/what-ships.md',
-		key: 'is the one kind `compile` still refuses',
-		settles: () => UNSUPPORTED_INTERFACE_KINDS.length === 1,
-		reason: 'counts `UNSUPPORTED_INTERFACE_KINDS`',
-	},
-	{
-		file: 'docs/how-to/evaluate-workflow-behavior.md',
-		key: 'the suite currently has open findings',
-		settles: 'read',
-		reason: "the suite is TEA's, in another repository",
-	},
-	{
-		file: 'docs/how-to/evaluate-tool-use-behavior.md',
-		key: 'which the shipped cli kind answers today',
-		settles: () => SUPPORTED_INTERFACE_KINDS.includes('cli'),
-		reason: 'holds while `cli` is in `SUPPORTED_INTERFACE_KINDS`',
-	},
-	{
-		file: 'docs/how-to/evaluate-tool-use-behavior.md',
-		key: 'compiles, seals, and pre-flights today',
-		settles: () => SUPPORTED_INTERFACE_KINDS.includes('cli'),
-		reason: 'holds while `cli` is in `SUPPORTED_INTERFACE_KINDS`',
-	},
-	{
-		file: 'docs/how-to/evaluate-tool-use-behavior.md',
-		key: 'Reading one answers the same three today',
-		settles: () => SUPPORTED_INTERFACE_KINDS.includes('mcp'),
-		reason: 'holds while `mcp` is in `SUPPORTED_INTERFACE_KINDS`',
-	},
-	{
-		file: 'docs/how-to/evaluate-tool-use-behavior.md',
-		key: 'is the one kind all three still refuse',
-		settles: () => UNSUPPORTED_INTERFACE_KINDS.length === 1,
-		reason: 'counts `UNSUPPORTED_INTERFACE_KINDS`',
-	},
-	{
-		file: 'docs/how-to/evaluate-tool-use-behavior.md',
-		key: '**Missing.**',
-		settles: () => McpDescriptorChannel.options.length === 1,
-		reason:
-			'counts the members of `McpDescriptorChannel`, whose one member is `structured-result`; a second member would be the channel model the sentence says is missing',
-	},
-	{
-		file: 'docs/how-to/evaluate-tool-use-behavior.md',
-		key: 'Both sides of the exchange accommodate the kind today',
-		settles: () => SUPPORTED_INTERFACE_KINDS.includes('mcp'),
-		reason: 'holds while `mcp` is in `SUPPORTED_INTERFACE_KINDS`',
-	},
-	{
-		file: 'docs/how-to/evaluate-tool-use-behavior.md',
-		key: '**Unproven, and this is the uncomfortable part.**',
-		settles: 'read',
-		reason:
-			'the calibration record is in the architecture history, and whether it was re-measured against the shipped kind is not recorded anywhere in this tree',
-	},
-	{
-		file: 'docs/how-to/evaluate-tool-use-behavior.md',
-		key: 'The first reading runs today',
-		settles: 'read',
-		reason: "TEA's own move is a fact about another repository's contracts",
-	},
-	{
-		file: 'docs/how-to/evaluate-ai-feature-behavior.md',
-		key: 'is declared `kind: "api"` today',
-		settles: () => UNSUPPORTED_INTERFACE_KINDS.includes('web'),
-		reason: 'holds while `web` is refused and `api` is accepted',
-	},
-	{
-		file: 'docs/how-to/evaluate-agent-behavior.md',
-		key: 'Not proven, and worth knowing before you plan a corpus',
-		settles: 'read',
-		reason:
-			'introduces the unproven block below it; the claim itself is the block',
-	},
-	{
-		file: 'docs/how-to/evaluate-agent-behavior.md',
-		key: 'has no scoring-side signature today',
-		settles: () =>
-			(QUALIFICATION_FAILURES as readonly string[]).includes(
-				'condition-artifact-channel-contract-local',
-			),
-		reason:
-			'reads whether the qualification gate still publishes the code it refuses an `artifact`-channel signature with; the day a signature may address a written file, that code stops being the reason',
-	},
-	{
-		file: 'docs/how-to/evaluate-tool-use-behavior.md',
-		key: TOOL_USE_ROUTE_KEY,
-		settles: () =>
-			pinnedVersionIsCurrentMajor(
-				'docs/how-to/evaluate-tool-use-behavior.md',
-				TOOL_USE_ROUTE_KEY,
-				toolUseRouteRecord,
-			),
-		reason:
-			'compares the version the sentence pins the route to against the published major, and against the record that transcribes the run; the route itself is settled by running it, which no check here does',
-	},
-	{
-		file: 'docs/how-to/evaluate-agent-behavior.md',
-		key: 'resolves `true` from eval-quality 1.4.0',
-		settles: () =>
-			resolveCheck(
-				{
-					op: 'count-tolerance',
-					operands: [{ pointer: '/interactions/observed/response-body/items' }],
-					expected: 0,
-					tolerance: 0,
-					relative: false,
-				},
-				() => [],
-				(pointer) => pointer.endsWith('/items'),
-				{},
-				REGEX_STEP_BUDGET,
-				'check-doc-claims',
-			).resolution === 'true',
-		reason:
-			'resolves a `count-tolerance` check over a collection-typed pointer answered present and empty, which is the path the sentence is about: `countTolerance` alone answers `true` for any empty array under any wiring, and what the sentence reports is `resolution.ts` marking the operand total rather than needing a member',
-	},
-	{
-		file: 'docs/how-to/evaluate-agent-behavior.md',
-		key: 'all nine defect probes are exercised and caught',
-		settles: 'read',
-		reason:
-			"the numbers are TEA's, recorded in that repository's `test/probes/expected-strength.json`, so nothing here can re-run them; the sentence names the eval-quality version they were read at, which is what tells a reader how far back the reading is",
-	},
-	{
-		file: 'docs/reference/cli-commands.md',
-		key: '| Port | What it does | Wired today |',
-		settles: 'read',
-		reason:
-			'which ports the CLI awaits is a fact about the command implementation, which this gate does not execute',
-	},
-]
-
-const datedSeen = new Set<string>()
-let datedRead = 0
-let datedDerived = 0
-
-for (const page of authoredPages) {
-	const lines = pageText.get(page) as readonly string[]
-	let owedSection = false
-	for (const [index, line] of lines.entries()) {
-		if (line.startsWith('#')) {
-			// A heading names the section rather than making the claim, so it is
-			// what turns the section on and never a registration of its own.
-			owedSection = OWED_HEADING.test(line)
-			continue
-		}
-		const dated =
-			TIME_SENSITIVE.test(line) || (owedSection && line.startsWith('- '))
-		if (!dated) continue
-		const entry = DATED_CLAIMS.find(
-			(each) => each.file === page && line.includes(each.key),
+	if (section.citations !== undefined) {
+		const block = section.citations
+		const citation = new RegExp(
+			`\`?((?:[A-Za-z0-9._-]+\\/)*[A-Za-z0-9._-]+\\.(?:${block.extensions
+				.map((extension) => escapeForPattern(extension.slice(1)))
+				.join('|')})):(\\d+)(?:-(\\d+))?\`?`,
+			'g',
 		)
-		if (entry === undefined) {
+		const unanchoredSeen = new Set<string>()
+		let checked = 0
+		let anchored = 0
+
+		for (const page of pages) {
+			const lines = pageText.get(page) as readonly string[]
+			// A bare `plan.ts` means the file a fully-qualified citation named
+			// earlier on the same page. Two files may share a basename, so without
+			// this the short form is ambiguous and the check would refuse a citation
+			// a reader resolves without effort.
+			const qualified = new Map<string, string>()
+			lines.forEach((line, index) => {
+				for (const match of line.matchAll(citation)) {
+					const cited = match[1] as string
+					const first = Number(match[2])
+					const last = Number(match[3] ?? match[2])
+					const at = `${page}:${index + 1}`
+					const basename = cited.split('/').pop() as string
+
+					let resolved: string | undefined
+					if (srcBodies.has(cited)) resolved = cited
+					else if (qualified.has(basename)) resolved = qualified.get(basename)
+					else {
+						const candidates = srcPaths.filter((file) =>
+							file.endsWith(`/${cited}`),
+						)
+						if (candidates.length === 1) resolved = candidates[0]
+						else {
+							fail(
+								`${at}: the citation \`${cited}\` resolves to ${candidates.length} files in the source roots; ` +
+									'spell the path from the repository root',
+							)
+							continue
+						}
+					}
+					const target = resolved as string
+					qualified.set(basename, target)
+					checked += 1
+
+					const body = srcBodies.get(target) as string
+					const targetLines = body.split('\n')
+					if (targetLines.length < last) {
+						fail(
+							`${at}: the citation \`${cited}:${last}\` is past the end of ${target}, ` +
+								`which has ${targetLines.length} lines`,
+						)
+						continue
+					}
+
+					const sentence = sentenceAround(line, match.index ?? 0)
+					const named = [...sentence.matchAll(BACKTICKED)]
+						.map((found) => found[1] as string)
+						.filter((token) => declaresIdentifier(body, token))
+					const spanned = `${target}:${match[2]}${match[3] ? `-${match[3]}` : ''}`
+					if (named.length === 0) {
+						const exemption = block.unanchored.find(
+							(entry) =>
+								entry.file === page && spanned.endsWith(entry.citation),
+						)
+						if (exemption === undefined) {
+							fail(
+								`${at}: the citation \`${cited}:${first}\` sits in a sentence naming no symbol ` +
+									`${target} declares, so nothing holds the line number; name one, or register it ` +
+									'under citations.unanchored with the reason',
+							)
+							continue
+						}
+						unanchoredSeen.add(compositeKey(exemption.file, exemption.citation))
+						continue
+					}
+
+					const window = targetLines
+						.slice(Math.max(0, first - 1 - block.window), last + block.window)
+						.join('\n')
+					const held = named.filter((identifier) =>
+						new RegExp(`\\b${identifier}\\b`).test(window),
+					)
+					if (held.length === 0) {
+						const moved = named
+							.map((identifier) => ({
+								identifier,
+								line: declarationLine(body, identifier),
+							}))
+							.filter((each) => each.line !== null)
+							.map(
+								(each) => `\`${each.identifier}\` is at ${target}:${each.line}`,
+							)
+							.join(', ')
+						fail(
+							`${at}: the citation \`${cited}:${first}\` names ${named.map((each) => `\`${each}\``).join(', ')} ` +
+								`and none of them is within ${block.window} lines of ${target}:${first}; ${moved}`,
+						)
+						continue
+					}
+					anchored += 1
+				}
+			})
+		}
+
+		for (const entry of block.unanchored) {
+			if (unanchoredSeen.has(compositeKey(entry.file, entry.citation))) continue
 			fail(
-				`${page}:${index + 1}: this sentence claims something is true as of now, or not yet ` +
-					'true, and no DATED_CLAIMS entry holds it; register it with how it is settled',
+				`${entry.file}: citations.unanchored names \`${entry.citation}\`, which the page no longer ` +
+					'carries unanchored; drop the entry',
 			)
-			continue
 		}
-		datedSeen.add(compositeKey(entry.file, entry.key))
-	}
-}
-
-for (const entry of DATED_CLAIMS) {
-	// A key names one sentence. Without this an entry keyed on something short,
-	// `**Missing.**` say, registers every later line carrying the same words, so
-	// a new and false dated claim rides in on an existing registration. Class 3
-	// applies the same rule to a list pattern.
-	const lines = pageText.get(entry.file) ?? []
-	const carrying = lines.filter((line) => line.includes(entry.key)).length
-	if (carrying === 0) {
-		fail(
-			`${entry.file}: DATED_CLAIMS holds "${entry.key}", which the page no longer carries; ` +
-				'the sentence was rewritten, so re-read the claim and move the entry',
+		if (checked === 0) {
+			throw codedError(
+				DOC_CLAIM_PATH,
+				'the citations class examined no citation at all; adopt it only on pages that cite source, or the class reports a pass over nothing',
+			)
+		}
+		parts.push(
+			`${checked} citations resolve (${anchored} anchored on a symbol, ${block.unanchored.length} held by review)`,
 		)
-		continue
 	}
-	if (carrying > 1) {
-		fail(
-			`${entry.file}: ${carrying} sentences carry "${entry.key}"; a DATED_CLAIMS entry names ` +
-				'one, so either the new sentence needs its own entry or the key needs to be longer',
-		)
-		continue
+
+	// -----------------------------------------------------------------------
+	// Class 2: symbols
+	// -----------------------------------------------------------------------
+
+	if (section.symbols !== undefined) {
+		const block = section.symbols
+		const shape = compilePattern(block.shape)
+		const foreignSeen = new Set<string>()
+		const unknown = new Map<string, string>()
+		let checked = 0
+
+		for (const page of pages) {
+			const lines = pageText.get(page) as readonly string[]
+			lines.forEach((line, index) => {
+				for (const match of line.matchAll(BACKTICKED)) {
+					const token = match[1] as string
+					if (!shape.test(token)) continue
+					checked += 1
+					const foreign = block.foreign.find((entry) => entry.token === token)
+					if (foreign !== undefined) {
+						foreignSeen.add(token)
+						continue
+					}
+					if (declaresIdentifier(allSource, token)) continue
+					if (!unknown.has(token)) unknown.set(token, `${page}:${index + 1}`)
+				}
+			})
+		}
+
+		for (const [token, at] of unknown) {
+			fail(
+				`${at}: the page spells \`${token}\`, which nothing in the source roots declares; ` +
+					'it was renamed, removed, or mistyped, or it belongs under symbols.foreign with its reason',
+			)
+		}
+		for (const entry of block.foreign) {
+			if (foreignSeen.has(entry.token)) continue
+			fail(
+				`symbols.foreign names \`${entry.token}\`, which no page spells; drop the entry`,
+			)
+		}
+		if (checked === 0) {
+			throw codedError(
+				DOC_CLAIM_PATH,
+				`the symbols class examined no backticked identifier at all; its shape is ${block.shape.match}, and a shape matching nothing switches the class off`,
+			)
+		}
+		parts.push(`${checked} backticked identifiers are declared`)
 	}
-	if (!datedSeen.has(compositeKey(entry.file, entry.key))) {
-		fail(
-			`${entry.file}: DATED_CLAIMS holds "${entry.key}", and the sentence carrying it no longer ` +
-				'reads as a dated claim; re-read it and move the entry',
-		)
-		continue
+
+	// -----------------------------------------------------------------------
+	// Class 3: transcribed lists
+	// -----------------------------------------------------------------------
+
+	if (section.lists !== undefined) {
+		for (const entry of section.lists) {
+			const lines = pageText.get(entry.file)
+			if (lines === undefined) {
+				fail(`${entry.file}: missing, but a list entry names it`)
+				continue
+			}
+			const text = lines.join('\n')
+			// The entry's own flags are carried over, so an entry written with `i`
+			// does not silently lose it and fail as dead for a reason nobody finds.
+			const flags = [...new Set([...entry.pattern.flags, 'g', 's'])].join('')
+			const found = [...text.matchAll(new RegExp(entry.pattern.match, flags))]
+			if (found.length !== 1) {
+				fail(
+					`${entry.file}: ${found.length} sentences match the pattern for ${entry.claim}; ` +
+						'a list entry names exactly one, so either the sentence or the entry has to move',
+				)
+				continue
+			}
+			const match = found[0] as RegExpExecArray
+			const line = text.slice(0, match.index ?? 0).split('\n').length
+			const isMember = await memberTest(root, entry.tokenShape)
+			const spelled = [...(match[1] as string).matchAll(/`([^`]+)`/g)]
+				.map((each) => each[1] as string)
+				.filter(isMember)
+				.sort()
+			const owed = [...(await readModuleStrings(root, entry.expected))].sort()
+			const extra = spelled.filter((each) => !owed.includes(each))
+			const absent = owed.filter((each) => !spelled.includes(each))
+			if (extra.length === 0 && absent.length === 0) continue
+			const said: string[] = []
+			if (absent.length > 0) said.push(`omits ${absent.join(', ')}`)
+			if (extra.length > 0) said.push(`adds ${extra.join(', ')}`)
+			fail(
+				`${entry.file}:${line}: ${entry.claim} ${said.join(' and ')}; ${nameOf(entry.expected)} has ` +
+					`${owed.join(', ')}`,
+			)
+		}
+		parts.push(`${section.lists.length} transcribed lists match their source`)
 	}
-	if (entry.settles === 'read') {
-		datedRead += 1
-		continue
-	}
-	datedDerived += 1
-	if (await entry.settles()) continue
-	fail(
-		`${entry.file}: "${entry.key}" is no longer true; the check that settles it ` +
-			`(${entry.reason}) now answers no`,
-	)
-}
 
-// ---------------------------------------------------------------------------
+	// -----------------------------------------------------------------------
+	// Class 4: time-sensitive claims
+	// -----------------------------------------------------------------------
 
-// ---------------------------------------------------------------------------
-// Class 5: named codes
-// ---------------------------------------------------------------------------
+	if (section.dated !== undefined) {
+		const block = section.dated
+		const triggers = block.triggers.map(compilePattern)
+		const heading =
+			block.headings === undefined ? null : compilePattern(block.headings)
+		const seen = new Set<string>()
+		let read = 0
+		let derived = 0
 
-/**
- * A page saying a contract "is rejected with `unsupported-interface-kind`" is
- * transcribing a registry entry, and the entry either exists or it does not.
- *
- * The trigger is the verb, not the token's shape. A kebab token on its own is
- * as likely to be an example step id (`manifest-ac-2`), a runner in another
- * repository (`tea-trace-runner`), or a phrase a page coined, and none of those
- * is a claim about this tree. So the check fires only where a page says a code
- * is raised, thrown, reported, or refused under, and then that code has to be
- * in one of the two registries or spelled as a string literal under `src/`.
- *
- * What this leaves: a second code named later in the same sentence, past its
- * verb, goes unchecked. Widening the trigger to the whole sentence readmits the
- * example ids, so the boundary sits here and the remainder is review's.
- */
-const knownCodes = new Set<string>([...FAILURE_CODES, ...RUNTIME_FAULT_CODES])
-const CODE_CLAIM =
-	/(?:raises?|throws?|rejected with|refuses? .{0,40}?under|refused .{0,40}?under|fails? with|reports? (?:it )?as|exits? with|answers?|the code|stops? at compilation under|under)\s+`([a-z][a-z0-9]*(?:-[a-z0-9]+)+)`/g
-
-const unknownCodes = new Map<string, string>()
-let codesChecked = 0
-
-for (const page of authoredPages) {
-	const lines = pageText.get(page) as readonly string[]
-	lines.forEach((line, index) => {
-		for (const match of line.matchAll(CODE_CLAIM)) {
-			const token = match[1] as string
-			codesChecked += 1
-			if (knownCodes.has(token)) continue
-			if (allSource.includes(`'${token}'`)) continue
-			if (!unknownCodes.has(token)) {
-				unknownCodes.set(token, `${page}:${index + 1}`)
+		for (const page of authoredPages) {
+			const lines = pageText.get(page) as readonly string[]
+			let owedSection = false
+			for (const [index, line] of lines.entries()) {
+				if (line.startsWith('#')) {
+					// A heading names the section rather than making the claim, so it
+					// turns the section on and is never a registration of its own.
+					owedSection = heading?.test(line) ?? false
+					continue
+				}
+				const dated =
+					triggers.some((trigger) => trigger.test(line)) ||
+					(owedSection && line.startsWith('- '))
+				if (!dated) continue
+				const entry = block.claims.find(
+					(each) => each.file === page && line.includes(each.key),
+				)
+				if (entry === undefined) {
+					fail(
+						`${page}:${index + 1}: this sentence claims something is true as of now, or not yet ` +
+							'true, and no dated.claims entry holds it; register it with how it is settled',
+					)
+					continue
+				}
+				seen.add(compositeKey(entry.file, entry.key))
 			}
 		}
-	})
+
+		for (const entry of block.claims) {
+			// A key names one sentence. Without this an entry keyed on something
+			// short registers every later line carrying the same words, so a new and
+			// false dated claim rides in on an existing registration.
+			const lines = pageText.get(entry.file) ?? []
+			const carrying = lines.filter((line) => line.includes(entry.key)).length
+			if (carrying === 0) {
+				fail(
+					`${entry.file}: dated.claims holds "${entry.key}", which the page no longer carries; ` +
+						'the sentence was rewritten, so re-read the claim and move the entry',
+				)
+				continue
+			}
+			if (carrying > 1) {
+				fail(
+					`${entry.file}: ${carrying} sentences carry "${entry.key}"; a dated.claims entry names ` +
+						'one, so either the new sentence needs its own entry or the key needs to be longer',
+				)
+				continue
+			}
+			if (!seen.has(compositeKey(entry.file, entry.key))) {
+				fail(
+					`${entry.file}: dated.claims holds "${entry.key}", and the sentence carrying it no longer ` +
+						'reads as a dated claim; re-read it and move the entry',
+				)
+				continue
+			}
+			if (entry.settles === 'read') {
+				read += 1
+				continue
+			}
+			derived += 1
+			if (await readModuleVerdict(root, entry.settles)) continue
+			fail(
+				`${entry.file}: "${entry.key}" is no longer true; the check that settles it ` +
+					`(${entry.reason}) now answers no`,
+			)
+		}
+		parts.push(
+			`${derived + read} time-sensitive claims registered (${derived} settled by a predicate, ${read} by review)`,
+		)
+	}
+
+	// -----------------------------------------------------------------------
+	// Class 5: named codes
+	// -----------------------------------------------------------------------
+
+	if (section.codes !== undefined) {
+		const block = section.codes
+		const claim = compileGlobalPattern(block.pattern)
+		const known = new Set<string>()
+		for (const registry of block.registries) {
+			for (const code of await readModuleStrings(root, registry)) {
+				known.add(code)
+			}
+		}
+		const unknown = new Map<string, string>()
+		let checked = 0
+
+		for (const page of authoredPages) {
+			const lines = pageText.get(page) as readonly string[]
+			lines.forEach((line, index) => {
+				for (const match of line.matchAll(claim)) {
+					const token = match[1] as string
+					checked += 1
+					if (known.has(token)) continue
+					if (block.literalInSources && allSource.includes(`'${token}'`)) {
+						continue
+					}
+					if (!unknown.has(token)) unknown.set(token, `${page}:${index + 1}`)
+				}
+			})
+		}
+
+		for (const [token, at] of unknown) {
+			fail(
+				`${at}: the page says \`${token}\` is raised, and no registry this section names carries it` +
+					`${block.literalInSources ? ' and nothing in the source roots spells it as a string literal' : ''}; ` +
+					'it was renamed, removed, or mistyped',
+			)
+		}
+		// The pattern lives in a configuration file now rather than in source, so a
+		// typo in it turns the class off with every gate staying green.
+		if (checked === 0) {
+			throw codedError(
+				DOC_CLAIM_PATH,
+				`the codes class examined no code at all; nothing on ${authoredPages.length} page(s) matched ${block.pattern.match}`,
+			)
+		}
+		parts.push(`${checked} named codes exist`)
+	}
+
+	// -----------------------------------------------------------------------
+	// Class 6: worked JSON
+	// -----------------------------------------------------------------------
+
+	if (section.fences !== undefined) {
+		for (const entry of section.fences) {
+			const lines = pageText.get(entry.file)
+			if (lines === undefined) {
+				fail(`${entry.file}: missing, but a fence entry names it`)
+				continue
+			}
+			const intro = compilePattern(entry.intro)
+			const introAt = lines.findIndex((line) => intro.test(line))
+			if (introAt === -1) {
+				fail(
+					`${entry.file}: no sentence introduces ${entry.claim}; the entry is dead and either ` +
+						'the sentence or the entry has to move',
+				)
+				continue
+			}
+			const open = lines.findIndex(
+				(line, index) =>
+					index > introAt &&
+					index <= introAt + entry.lookahead &&
+					line.trim() === '```json',
+			)
+			if (open === -1) {
+				fail(
+					`${entry.file}:${introAt + 1}: ${entry.claim} is introduced with no json fence after it`,
+				)
+				continue
+			}
+			const close = lines.findIndex(
+				(line, index) => index > open && line.trim() === '```',
+			)
+			if (close === -1) {
+				fail(
+					`${entry.file}:${open + 1}: the json fence for ${entry.claim} is never closed`,
+				)
+				continue
+			}
+			const body = lines.slice(open + 1, close).join('\n')
+			let value: unknown
+			try {
+				value = JSON.parse(body)
+			} catch (error) {
+				fail(
+					`${entry.file}:${open + 2}: ${entry.claim} is not valid JSON (${(error as Error).message})`,
+				)
+				continue
+			}
+			if (entry.shape === 'each' && !Array.isArray(value)) {
+				fail(
+					`${entry.file}:${open + 2}: ${entry.claim} is declared as an array and is not one`,
+				)
+				continue
+			}
+			const parser = await readModuleParser(root, entry.schema)
+			const values =
+				entry.shape === 'each' ? (value as readonly unknown[]) : [value]
+			values.forEach((member, index) => {
+				const parsed = parser.safeParse(member)
+				if (parsed.success) return
+				const where = entry.shape === 'each' ? ` member ${index}` : ''
+				const reported = flatten(parsed.error?.issues ?? [])
+					.slice(0, 3)
+					.map(
+						(issue) => `${issue.path.join('.') || '<root>'}: ${issue.message}`,
+					)
+					.join('; ')
+				// A parser that refuses and reports nothing still has to say so: an
+				// empty parenthesis reads as a gate that found no reason.
+				const issues =
+					reported === ''
+						? 'the schema refused it and reported no issue'
+						: reported
+				fail(
+					`${entry.file}:${open + 2}: ${entry.claim}${where} does not parse against ${nameOf(entry.schema)} ` +
+						`(${issues})`,
+				)
+			})
+		}
+		parts.push(
+			`${section.fences.length} worked JSON blocks parse against their schema`,
+		)
+	}
+
+	// -----------------------------------------------------------------------
+	// Class 7: the accepted and refused vocabulary
+	// -----------------------------------------------------------------------
+
+	if (section.vocabulary !== undefined) {
+		const block = section.vocabulary
+		const tokens = await readModuleStrings(root, block.tokens)
+		// An empty vocabulary compiles to a pattern matching the empty string, so
+		// the class would classify nothing and report a pass.
+		if (tokens.length === 0) {
+			throw codedError(
+				DOC_CLAIM_PATH,
+				`${nameOf(block.tokens)} is empty, so the vocabulary class would hold no sentence at all`,
+			)
+		}
+		const accepted = await readModuleStrings(root, block.accepted)
+		const refused = await readModuleStrings(root, block.refused)
+		const mentions = holdVocabulary(
+			authoredPages,
+			pageText,
+			{ tokens, accepted, refused, verbs: block.verbs },
+			{ accepted: nameOf(block.accepted), refused: nameOf(block.refused) },
+			fail,
+		)
+		// The class the module header exists for: a sentence saying a member is
+		// refused passes every other class. A vocabulary that matches nothing on any
+		// page takes that guarantee away silently.
+		if (mentions === 0) {
+			throw codedError(
+				DOC_CLAIM_PATH,
+				`the vocabulary class classified no mention at all; ${nameOf(block.tokens)} is ${tokens.join(', ')}, and no page spells any of them beside a verb the section names`,
+			)
+		}
+		parts.push(`${mentions} vocabulary mentions agree with the two sets`)
+	}
+
+	// -----------------------------------------------------------------------
+	// Class 8: transcriptions
+	// -----------------------------------------------------------------------
+
+	if (section.transcriptions !== undefined) {
+		for (const entry of section.transcriptions) {
+			const lines = pageText.get(entry.file)
+			if (lines === undefined) {
+				fail(`${entry.file}: missing, but a transcription entry names it`)
+				continue
+			}
+			const text = await readModuleText(root, entry.text)
+			// `includes('')` is true of every page, so an empty source is an entry
+			// that passes whatever the page carries.
+			if (text === '') {
+				throw codedError(
+					DOC_CLAIM_PATH,
+					`${nameOf(entry.text)} is empty, and a transcription of nothing matches every page`,
+				)
+			}
+			if (lines.join('\n').includes(text)) continue
+			const head = text.split('\n')[0] as string
+			const at = lines.indexOf(head)
+			fail(
+				`${entry.file}${at === -1 ? '' : `:${at + 1}`}: ${entry.claim} no longer matches ${nameOf(entry.text)}; ` +
+					'a transcription and the thing it reprints have to be the same bytes',
+			)
+		}
+		parts.push(
+			`${section.transcriptions.length} transcriptions match their source byte for byte`,
+		)
+	}
+
+	// The failure count rides on the summary line. Without it a failing run opens
+	// with "13 transcribed lists match their source" directly above the failures
+	// saying they do not.
+	parts.push(`${failures.length} disagreement(s)`)
+	return { failures, summary: parts.join(', ') }
 }
 
-for (const [token, at] of unknownCodes) {
-	fail(
-		`${at}: the page says \`${token}\` is raised, which is in neither failure registry and which ` +
-			'nothing under src/ spells as a string literal; it was renamed, removed, or mistyped',
-	)
-}
-
-// ---------------------------------------------------------------------------
-// Class 6: worked JSON
-// ---------------------------------------------------------------------------
-
-/**
- * A page that prints a JSON block and says it parses is making the strongest
- * claim on the page, because a reader copies it. The block either parses
- * against the schema the prose names or it does not, so this class decides
- * rather than registers.
- *
- * It is the class the epic's own premise is about. `evaluate-agent-behavior.md`
- * shipped a defect signature that stopped parsing when the probe's input
- * binding gained a ninth channel, and no gate in the tree read it: the doc
- * invocation checker runs fenced commands and never opens a fence a command
- * does not consume.
- *
- * Blocks are found by the sentence that introduces them, not by line number, so
- * the entry survives a paragraph moving. A sentence matching nothing is a dead
- * entry and fails.
- */
-type FenceEntry = {
-	readonly file: string
-	readonly claim: string
-	/** The sentence before the fence. The next ```json block after it is parsed. */
-	readonly intro: RegExp
-	readonly schema: z.ZodType
-	/** `each` parses every member of a top-level array against the schema. */
-	readonly shape: 'one' | 'each'
-}
-
-const FENCES: readonly FenceEntry[] = [
-	{
-		file: 'docs/how-to/evaluate-ai-feature-behavior.md',
-		claim: "the worked example's api interface",
-		intro: /It parses as a `PermittedInterface`:/,
-		schema: PermittedInterface,
-		shape: 'one',
-	},
-	{
-		file: 'docs/how-to/evaluate-ai-feature-behavior.md',
-		claim: "oracle O-001's read-back check",
-		intro: /it is O-001 in the worked example:/,
-		schema: Expression,
-		shape: 'one',
-	},
-	{
-		file: 'docs/how-to/evaluate-agent-behavior.md',
-		claim: "the agent guide's cli interface",
-		intro: /This block parses against `PermittedInterface`:/,
-		schema: PermittedInterface,
-		shape: 'one',
-	},
-	{
-		file: 'docs/how-to/evaluate-agent-behavior.md',
-		claim: 'the manifestation witness',
-		intro: /is caught before it is scored\./,
-		schema: ManifestationWitness,
-		shape: 'one',
-	},
-	{
-		file: 'docs/how-to/evaluate-agent-behavior.md',
-		claim: "the command defect signature's condition",
-		intro: /for this defect it rides on the exit code:/,
-		schema: DefectSignature,
-		shape: 'one',
-	},
-	{
-		file: 'docs/how-to/evaluate-tool-use-behavior.md',
-		claim: "the tool-call defect signature's condition",
-		intro: /its selector filters on the `arguments` channel\./,
-		schema: DefectSignature,
-		shape: 'one',
-	},
-	{
-		file: 'docs/how-to/evaluate-skill-behavior.md',
-		claim: "the skill guide's cli interface",
-		intro: /This interface parses against the published `EvalContract` schema/,
-		schema: PermittedInterface,
-		shape: 'one',
-	},
-	{
-		file: 'docs/how-to/evaluate-skill-behavior.md',
-		claim: 'the inclusion half of the selection oracle',
-		intro:
-			/The inclusion half says the run named everything the rules mandate:/,
-		schema: Expression,
-		shape: 'one',
-	},
-	{
-		file: 'docs/how-to/evaluate-skill-behavior.md',
-		claim: 'the exclusion oracle',
-		intro: /The exclusion half is what rejects it:/,
-		schema: Oracle,
-		shape: 'one',
-	},
-	{
-		file: 'docs/how-to/evaluate-workflow-behavior.md',
-		claim: "the workflow guide's interaction plan",
-		intro: /an absent field and an unrecognized field both fail the parse\./,
-		schema: InteractionStep,
-		shape: 'each',
-	},
-	{
-		file: 'docs/how-to/run-the-gates-on-your-repository.md',
-		claim: 'the worked gate configuration',
-		intro:
-			/A file configuring all five gates parses against the published schema:/,
-		schema: GateConfiguration,
-		shape: 'one',
-	},
-]
-
-/**
- * A union reports one opaque "Invalid input" at the root and hides which branch
- * came closest, so the branch errors are pulled up. Without this the failure
- * message names the block and nothing inside it, which is the difference
- * between a gate a reader can act on and one they have to re-derive.
- */
 type Issue = { readonly path: readonly PropertyKey[]; readonly message: string }
-const flatten = (issues: readonly Issue[]): readonly Issue[] =>
-	issues.flatMap((issue) => {
+
+/**
+ * A union reports one opaque message at the root and hides which branch came
+ * closest, so the branch errors are pulled up. Without this the failure names
+ * the block and nothing inside it, which is the difference between a gate a
+ * reader can act on and one they have to re-derive.
+ */
+function flatten(issues: readonly Issue[]): readonly Issue[] {
+	return issues.flatMap((issue) => {
 		const nested = (issue as { errors?: readonly (readonly Issue[])[] }).errors
 		// A discriminated union whose tag is wrong reports `errors: []` and puts
-		// the whole message on the issue itself ("Invalid discriminator value.
-		// Expected 'api' | 'web' | 'mcp' | 'cli'"). Recursing into the empty list
-		// discards it and the failure prints an empty parenthesis, which is the
-		// shape a doc block declaring a retired `kind` produces.
+		// the whole message on the issue itself. Recursing into the empty list
+		// discards it and the failure prints an empty parenthesis.
 		if (nested === undefined || nested.length === 0) return [issue]
 		const branches = nested
 			.map((branch) => flatten(branch))
 			.filter((branch) => branch.length > 0)
 		if (branches.length === 0) return [issue]
 		// Deepest path wins. The branch with the fewest issues is the shallowest
-		// one, which reports "expected array to have >=2 items" over the member
-		// that is actually malformed.
+		// one, which reports a container's own complaint over the member that is
+		// actually malformed.
 		const reach = (branch: readonly Issue[]): number =>
 			Math.max(...branch.map((each) => each.path.length))
 		return [...branches].sort(
 			(a, b) => reach(b) - reach(a),
 		)[0] as readonly Issue[]
 	})
-
-const FENCE_OPEN = '```json'
-/** How far below its own sentence a fence may sit. A blank line, and a little slack. */
-const FENCE_LOOKAHEAD = 3
-const FENCE_CLOSE = '```'
-
-for (const entry of FENCES) {
-	const lines = pageText.get(entry.file)
-	if (lines === undefined) {
-		fail(`${entry.file}: missing, but a fence entry names it`)
-		continue
-	}
-	const introAt = lines.findIndex((line) => entry.intro.test(line))
-	if (introAt === -1) {
-		fail(
-			`${entry.file}: no sentence introduces ${entry.claim}; the entry is dead and either ` +
-				'the sentence or the entry has to move',
-		)
-		continue
-	}
-	// Bounded: an unbounded search binds the entry to whatever json block comes
-	// next, so inserting an unrelated example between an intro and its block
-	// silently retargets the check and it passes while reading the wrong thing.
-	const open = lines.findIndex(
-		(line, index) =>
-			index > introAt &&
-			index <= introAt + FENCE_LOOKAHEAD &&
-			line.trim() === FENCE_OPEN,
-	)
-	if (open === -1) {
-		fail(
-			`${entry.file}:${introAt + 1}: ${entry.claim} is introduced with no json fence after it`,
-		)
-		continue
-	}
-	const close = lines.findIndex(
-		(line, index) => index > open && line.trim() === FENCE_CLOSE,
-	)
-	if (close === -1) {
-		fail(
-			`${entry.file}:${open + 1}: the json fence for ${entry.claim} is never closed`,
-		)
-		continue
-	}
-	const body = lines.slice(open + 1, close).join('\n')
-	let value: unknown
-	try {
-		value = JSON.parse(body)
-	} catch (error) {
-		fail(
-			`${entry.file}:${open + 2}: ${entry.claim} is not valid JSON (${(error as Error).message})`,
-		)
-		continue
-	}
-	const values =
-		entry.shape === 'each' && Array.isArray(value) ? value : [value]
-	if (entry.shape === 'each' && !Array.isArray(value)) {
-		fail(
-			`${entry.file}:${open + 2}: ${entry.claim} is declared as an array and is not one`,
-		)
-		continue
-	}
-	values.forEach((member, index) => {
-		const parsed = entry.schema.safeParse(member)
-		if (parsed.success) return
-		const where = entry.shape === 'each' ? ` member ${index}` : ''
-		const issues = flatten(parsed.error.issues)
-			.slice(0, 3)
-			.map((issue) => `${issue.path.join('.') || '<root>'}: ${issue.message}`)
-			.join('; ')
-		fail(
-			`${entry.file}:${open + 2}: ${entry.claim}${where} does not parse against its schema ` +
-				`(${issues})`,
-		)
-	})
 }
 
-// ---------------------------------------------------------------------------
-// Class 7: which kinds are accepted and which are refused
-// ---------------------------------------------------------------------------
+type Vocabulary = {
+	readonly tokens: readonly string[]
+	readonly accepted: readonly string[]
+	readonly refused: readonly string[]
+	readonly verbs: {
+		readonly accepts: readonly string[]
+		readonly refuses: readonly string[]
+		readonly participles?: readonly string[]
+	}
+}
 
 /**
  * The epic's own defect, as a class rather than as a list of sentences.
  *
- * Every page describing `mcp` as refused went stale the day `compile` accepted
- * it, and four of those sentences were found by a person reading. Class 3 holds
- * the nine sentences somebody enumerated; this holds the shape, so a sentence
- * written tomorrow on a page no entry covers is checked the same way. It reads
- * `SUPPORTED_INTERFACE_KINDS` and `UNSUPPORTED_INTERFACE_KINDS` and has nothing
- * to register.
- *
- * A kind is classified by the nearest verb before it in its own sentence, and
+ * A token is classified by the nearest verb before it in its own sentence, and
  * by a refusal verb after it when nothing precedes it, which is what carries "a
  * contract declaring `web` is rejected". Sentence boundaries stop a verb
- * reaching across a full stop, and `used to reject` is skipped because the
- * tense makes it a statement about the past.
+ * reaching across a full stop, and a negated or past verb is skipped because
+ * the tense makes it a statement about something other than the rule today.
  *
- * What it does not decide, and every one of these passes rather than failing:
- * a kind named with no verb near it; a kind governed by a verb the vocabulary
- * below does not carry, which is where two of the three defeats this check
- * survived came from, so the vocabulary carries as much of the guarantee as the
- * logic does; a kind whose verb the sentence negates or puts in the past, which
- * is skipped, so "`compile` does not accept `mcp`" is false about the tree and
- * passes green, and this is the only one of the four where that happens rather
- * than the class having nothing to go on; and whether the code a refusal names
- * is the one that surface actually raises, since class 5 answers only that a
- * named code exists.
+ * What it does not decide, and every one of these passes rather than failing: a
+ * token named with no verb near it; a token governed by a verb neither list
+ * carries; and a token whose verb the sentence negates or puts in the past, so
+ * "`compile` does not accept `mcp`" is false about the tree and passes green.
  *
  * One shape it decides wrongly, recorded rather than chased: a list used as the
- * subject with its verb after it, "`web` is rejected and `api`, `cli`, and
- * `mcp` compile", puts the governing verb past the intervening kinds and no
- * span rule reaches it, so the first two members read as refused. It fails a
- * true sentence rather than passing a false one, and no page in `docs/` writes
- * a kind list that way.
+ * subject with its verb after it puts the governing verb past the intervening
+ * tokens and no span rule reaches it, so the leading members read as refused. It
+ * fails a true sentence rather than passing a false one.
  */
-const KIND_TOKEN_IN_PROSE = new RegExp(
-	`\`(${INTERFACE_KINDS.join('|')})\``,
-	'g',
-)
-const KIND_VERB =
-	/\b(accepts?|accepted|admits?|admitted|supports?|supported|compiles?|compiled|rejects?|rejected|refuses?|refused|stops at compilation)\b/gi
-const REFUSAL_VERB =
-	/^(?:rejects?|rejected|refuses?|refused|stops at compilation)$/i
-
-/**
- * A verb the sentence negates or puts in the past decides nothing. "`compile`
- * does not accept `mcp`" is false and would pass a reader of the verb alone,
- * and "a contract declaring `mcp` is no longer rejected" is true and would
- * fail. Skipping both leaves them undecided, which the header already says is
- * where the boundary is.
- */
-const NEGATED_OR_PAST =
-	/\b(?:not|never|no longer|cannot|used to|nor)\b[^.]{0,24}$/i
-
-/**
- * A bare `-ed` form is past tense; the same form after a present `be` is the
- * passive present a page uses for a live rule. Both sides of the vocabulary
- * carry their participles: without `accepted`, "a contract declaring `web` is
- * accepted" holds no verb at all and passes as undecided, which guards refusal
- * and leaves acceptance open. "Before Epic 11, `compile`
- * rejected `mcp`" is a page narrating its own history, and `was` and `were` are
- * past too, so only the present forms count.
- */
-const PAST_PARTICIPLE =
-	/^(?:rejected|refused|accepted|admitted|supported|compiled)$/i
-/**
- * The `be` may be a word or two away. `still` is this repository's own phrasing,
- * as `what-ships.md:42` uses it, and an adverb between the auxiliary and the
- * participle does not make the sentence past. The tense case this guards
- * against, "`compile` rejected `mcp`", carries no `be` at any distance.
- */
-const PRESENT_BE =
-	/\b(?:is|are|be|been|being)\s+(?:(?:[a-z]+ly|still|now|also|already|then)\s+){0,2}$/i
-
-/** Only whitespace and auxiliaries, so the kind is the subject of what follows. */
-const SUBJECT_GAP =
-	/^\s*(?:(?:is|are|be|been|being|still|now|also|then|already)\s+)*$/i
-
-let kindMentions = 0
-
-for (const page of authoredPages) {
-	const lines = pageText.get(page) as readonly string[]
-	lines.forEach((line, index) => {
-		for (const sentence of line.split(/(?<=\.)\s+/)) {
-			const verbs = [...sentence.matchAll(KIND_VERB)]
-				.map((match) => ({
-					at: match.index ?? 0,
-					verb: match[1] as string,
-					refuses: REFUSAL_VERB.test(match[1] as string),
-				}))
-				// `compile` in backticks is the command's name. Read as a verb it
-				// governs the kind beside it, so "`web` is the one kind `compile`
-				// still refuses" reads as acceptance.
-				.filter(
-					(verb) =>
-						!(
-							sentence[verb.at - 1] === '`' &&
-							sentence[verb.at + verb.verb.length] === '`'
-						),
-				)
-				.filter((verb) => !NEGATED_OR_PAST.test(sentence.slice(0, verb.at)))
-				.filter(
-					(verb) =>
-						!PAST_PARTICIPLE.test(verb.verb) ||
-						PRESENT_BE.test(sentence.slice(0, verb.at)),
-				)
-			for (const found of sentence.matchAll(KIND_TOKEN_IN_PROSE)) {
-				const at = found.index ?? 0
-				const before = verbs.filter((verb) => verb.at < at).at(-1)
-				const after = verbs.find((verb) => verb.at > at)
-				// A verb governs the whole enumeration it opens, so a preceding verb
-				// with another kind between it and this one wins whatever follows:
-				// "`compile` accepts `api`, `cli`, and `mcp`, and rejects `web`".
-				// With nothing between, the nearer verb wins, which is what separates
-				// "`web` is rejected, and `mcp` compiles" from the enumeration.
-				const enumerated =
-					before !== undefined &&
-					KIND_TOKEN_IN_PROSE.test(sentence.slice(before.at, at))
-				KIND_TOKEN_IN_PROSE.lastIndex = 0
-				// An enumerated kind is an object of the verb that opened the list,
-				// unless the verb after it is its own. What separates the two is the
-				// span on the far side: a list member is followed by punctuation
-				// ("`, and "), and a subject is followed by an auxiliary (" is ").
-				const subjectOfAfter =
-					after !== undefined &&
-					SUBJECT_GAP.test(sentence.slice(at + found[0].length, after.at))
-				const nearer =
-					before === undefined
-						? after
-						: after === undefined || at - before.at <= after.at - at
-							? before
-							: after
-				const governing = enumerated && !subjectOfAfter ? before : nearer
-				if (governing === undefined) continue
-				kindMentions += 1
-				const kind = found[1] as string
-				const owed = governing.refuses
-					? UNSUPPORTED_INTERFACE_KINDS
-					: SUPPORTED_INTERFACE_KINDS
-				if ((owed as readonly string[]).includes(kind)) continue
-				fail(
-					`${page}:${index + 1}: the sentence has "${governing.verb}" governing \`${kind}\`, and ` +
-						`${governing.refuses ? 'UNSUPPORTED_INTERFACE_KINDS' : 'SUPPORTED_INTERFACE_KINDS'} ` +
-						`is ${owed.join(', ')}`,
-				)
-			}
-		}
-	})
-}
-
-// ---------------------------------------------------------------------------
-// Class 8: transcriptions
-// ---------------------------------------------------------------------------
-
-/**
- * A page that reprints a string the binary emits is claiming the two are the
- * same bytes. `render.ts`'s docblock said the `--help` output and the README
- * "cannot drift", and nothing compared them: `tests/cli/render.test.ts` holds
- * the README's markdown rows, and the verbatim copy in
- * `docs/reference/cli-commands.md` was held by nobody. Changing `runtime fault`
- * to `runtime failure` on that page left every gate green.
- *
- * A substring compare rather than a fence walk, because the claim is that the
- * page carries these bytes and the fence around them is presentation.
- */
-/**
- * The engine floor as the two pages spell it, from the range `package.json`
- * declares. A range this cannot render, `^22` say, is a failure of its own
- * rather than a crash: the pages spell one version, so a range that is not a
- * floor is not the thing they are transcribing, and the entries drop out rather
- * than comparing against nothing while every other class still reports.
- */
-const declaredNodeRange = manifest.engines.node
-const nodeFloorVersion = /^>=\s*(\d+\.\d+\.\d+)$/.exec(declaredNodeRange)
-if (nodeFloorVersion === null) {
-	fail(
-		`package.json: engines.node is "${declaredNodeRange}", which is not a floor; ` +
-			'README.md and docs/tutorials/getting-started.md each spell one version, so nothing ' +
-			'here can hold them',
+function holdVocabulary(
+	authoredPages: readonly string[],
+	pageText: ReadonlyMap<string, readonly string[]>,
+	vocabulary: Vocabulary,
+	labels: { readonly accepted: string; readonly refused: string },
+	fail: (message: string) => void,
+): number {
+	const tokenInProse = new RegExp(
+		`\`(${vocabulary.tokens.map(escapeForPattern).join('|')})\``,
+		'g',
 	)
-}
-const nodeFloor =
-	nodeFloorVersion === null
-		? null
-		: `Node.js ${nodeFloorVersion[1] as string} or newer`
+	// Longest first, so a multi-word verb and a longer inflection are tried before
+	// the shorter spelling they contain.
+	const allVerbs = [...vocabulary.verbs.accepts, ...vocabulary.verbs.refuses]
+		.slice()
+		.sort((a, b) => b.length - a.length)
+	const verbPattern = new RegExp(
+		`\\b(${allVerbs.map(escapeForPattern).join('|')})\\b`,
+		'gi',
+	)
+	const refuses = new Set(
+		vocabulary.verbs.refuses.map((verb) => verb.toLowerCase()),
+	)
 
-/** The pages that spell the floor. Both carry the same sentence. */
-const NODE_FLOOR_PAGES = ['README.md', 'docs/tutorials/getting-started.md']
+	/**
+	 * A verb the sentence negates or puts in the past decides nothing, and
+	 * skipping both leaves them undecided.
+	 */
+	const negatedOrPast =
+		/\b(?:not|never|no longer|cannot|used to|nor)\b[^.]{0,24}$/i
+	/**
+	 * Which verbs are participles: past tense on their own, and the passive
+	 * present a page uses for a live rule when a present `be` precedes them.
+	 *
+	 * The configuration may name them, because the spelling rule the default uses
+	 * is wrong for a base form ending in `-ed`, "exceed" or "succeed". A consumer
+	 * with one of those in its vocabulary lists its real participles instead.
+	 */
+	const declared = vocabulary.verbs.participles
+	const participles =
+		declared === undefined
+			? null
+			: new Set(declared.map((verb) => verb.toLowerCase()))
+	const isParticiple = (verb: string): boolean =>
+		participles === null
+			? /^(?:[a-z]+ed)$/i.test(verb)
+			: participles.has(verb.toLowerCase())
+	/**
+	 * The `be` may be a word or two away, and an adverb between the auxiliary and
+	 * the participle does not make the sentence past.
+	 */
+	const presentBe =
+		/\b(?:is|are|be|been|being)\s+(?:(?:[a-z]+ly|still|now|also|already|then)\s+){0,2}$/i
+	/** Only whitespace and auxiliaries, so the token is the subject of what follows. */
+	const subjectGap =
+		/^\s*(?:(?:is|are|be|been|being|still|now|also|then|already)\s+)*$/i
 
-const TRANSCRIPTIONS: readonly {
-	readonly file: string
-	readonly claim: string
-	/** A literal, or a reader for a value the tree carries in an artifact. */
-	readonly text: string | (() => Promise<string>)
-}[] = [
-	{
-		file: 'docs/reference/cli-commands.md',
-		claim: "the CLI's exit-code table",
-		text: EXIT_CODE_TABLE,
-	},
-	{
-		// A sentence naming the stamps an author has to carry forward is a live
-		// claim about the tree, and every other class reads past it: it names no
-		// symbol, cites no line, transcribes no exported list, and carries no
-		// dated vocabulary.
-		//
-		// Both halves read a build constant. Reading the probe's stamp off a
-		// committed worked-example chain would have compared a hand-typed literal
-		// against a copy of itself: `check:worked-example` rebuilds that chain
-		// from `worked-example-target.ts`, which used to spell the stamp as a
-		// literal. So a bump would have left the literal, the chain, and this
-		// page agreeing on a stale number, with the version equality AD-11 asks
-		// for performed nowhere. `PROBE_SCHEMA_VERSION` is where it is written
-		// now, and the chain builds from it.
-		file: 'docs/how-to/evaluate-tool-use-behavior.md',
-		claim:
-			'the schema stamps the tool-use route carries, from `EVAL_CONTRACT_SCHEMA_VERSION` and `PROBE_SCHEMA_VERSION`',
-		text:
-			`the contract is \`schemaVersion\` ${EVAL_CONTRACT_SCHEMA_VERSION}, ` +
-			`the probe is ${PROBE_SCHEMA_VERSION}`,
-	},
-	// Two pages state the engine floor and `package.json` declares it. The three
-	// agreed with nothing comparing them, so an edit to one page left the other
-	// and the manifest behind with every gate green.
-	...(nodeFloor === null
-		? []
-		: NODE_FLOOR_PAGES.map((file) => ({
-				file,
-				claim: "the Node.js floor, from `package.json`'s `engines.node`",
-				text: nodeFloor,
-			}))),
-	{
-		// Story 11.10 asked for this to settle by predicate rather than by a
-		// reading. It is a transcription rather than a dated claim: the sentence
-		// reprints three numbers out of a committed artifact, and `check:worked-
-		// example` proves the artifact matches its builder without reading what
-		// the guide says about it.
-		file: 'docs/how-to/evaluate-skill-behavior.md',
-		claim: "the skill chain's defect strength vector",
-		text: async () => {
-			const artifact = JSON.parse(
-				await readFile(
-					pathOf(
-						'_bmad-output/worked-examples/skill-defect/evidence-artifact.json',
-					),
-					'utf8',
-				),
-			) as { strength: { vector: { defect: Record<string, number> } } }
-			const { caught, exercised, rate } = artifact.strength.vector.defect as {
-				caught: number
-				exercised: number
-				rate: number
+	let mentions = 0
+	for (const page of authoredPages) {
+		const lines = pageText.get(page) as readonly string[]
+		lines.forEach((line, index) => {
+			for (const sentence of line.split(/(?<=\.)\s+/)) {
+				const verbs = [...sentence.matchAll(verbPattern)]
+					.map((match) => ({
+						at: match.index ?? 0,
+						verb: match[1] as string,
+						refuses: refuses.has((match[1] as string).toLowerCase()),
+					}))
+					// A backticked verb is a command's name. Read as a verb it governs
+					// the token beside it, so "`web` is the one kind `compile` still
+					// refuses" would read as acceptance.
+					.filter(
+						(verb) =>
+							!(
+								sentence[verb.at - 1] === '`' &&
+								sentence[verb.at + verb.verb.length] === '`'
+							),
+					)
+					.filter((verb) => !negatedOrPast.test(sentence.slice(0, verb.at)))
+					.filter(
+						(verb) =>
+							!isParticiple(verb.verb) ||
+							presentBe.test(sentence.slice(0, verb.at)),
+					)
+				for (const found of sentence.matchAll(tokenInProse)) {
+					const at = found.index ?? 0
+					const before = verbs.filter((verb) => verb.at < at).at(-1)
+					const after = verbs.find((verb) => verb.at > at)
+					// A verb governs the whole enumeration it opens, so a preceding verb
+					// with another token between it and this one wins whatever follows.
+					// With nothing between, the nearer verb wins.
+					const enumerated =
+						before !== undefined &&
+						tokenInProse.test(sentence.slice(before.at, at))
+					tokenInProse.lastIndex = 0
+					// An enumerated token is an object of the verb that opened the list,
+					// unless the verb after it is its own. What separates the two is the
+					// span on the far side: a list member is followed by punctuation and
+					// a subject is followed by an auxiliary.
+					const subjectOfAfter =
+						after !== undefined &&
+						subjectGap.test(sentence.slice(at + found[0].length, after.at))
+					const nearer =
+						before === undefined
+							? after
+							: after === undefined || at - before.at <= after.at - at
+								? before
+								: after
+					const governing = enumerated && !subjectOfAfter ? before : nearer
+					if (governing === undefined) continue
+					mentions += 1
+					const token = found[1] as string
+					const owed = governing.refuses
+						? vocabulary.refused
+						: vocabulary.accepted
+					if (owed.includes(token)) continue
+					fail(
+						`${page}:${index + 1}: the sentence has "${governing.verb}" governing \`${token}\`, and ` +
+							`${governing.refuses ? labels.refused : labels.accepted} ` +
+							`is ${owed.join(', ')}`,
+					)
+				}
 			}
-			return `{"caught": ${caught}, "exercised": ${exercised}, "rate": ${rate}}`
-		},
-	},
-]
-
-for (const entry of TRANSCRIPTIONS) {
-	const lines = pageText.get(entry.file)
-	if (lines === undefined) {
-		fail(`${entry.file}: missing, but a transcription entry names it`)
-		continue
+		})
 	}
-	const text = typeof entry.text === 'string' ? entry.text : await entry.text()
-	if (lines.join('\n').includes(text)) continue
-	const head = text.split('\n')[0] as string
-	const at = lines.indexOf(head)
-	fail(
-		`${entry.file}${at === -1 ? '' : `:${at + 1}`}: ${entry.claim} no longer matches its source; ` +
-			'a transcription and the thing it reprints have to be the same bytes',
-	)
+	return mentions
 }
-
-if (failures.length > 0) {
-	for (const failure of failures) console.error(failure)
-	console.error(
-		`check-doc-claims: ${failures.length} prose claim(s) disagree with the tree`,
-	)
-	process.exit(1)
-}
-
-console.log(
-	`check-doc-claims: ${citationsChecked} citations resolve (${citationsAnchored} anchored on a ` +
-		`symbol, ${UNANCHORED_CITATIONS.length} held by review), ${symbolsChecked} backticked ` +
-		`identifiers are declared under src/, ${LISTS.length} transcribed lists match their source, ` +
-		`${codesChecked} named codes exist, ${TRANSCRIPTIONS.length} transcriptions match their source ` +
-		`byte for byte, ${kindMentions} interface-kind mentions agree with the ` +
-		`accepted and refused tuples, ${FENCES.length} worked JSON blocks parse against their ` +
-		`schema, ${datedDerived + datedRead} time-sensitive claims ` +
-		`registered (${datedDerived} settled by a predicate here, ${datedRead} by review)`,
-)
