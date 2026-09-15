@@ -26,10 +26,15 @@ import { isAbsolute, resolve } from 'node:path'
 import { z } from 'zod'
 import type { DependencyDirectionConfig } from './check-dependency-direction.ts'
 import { DependencyDirectionSection } from './check-dependency-direction.ts'
+import type { DocClaimsConfig } from './check-doc-claims.ts'
+import { DocClaimsSection } from './check-doc-claims.ts'
+import type { DocCountsConfig } from './check-doc-counts.ts'
+import { DocCountsSection } from './check-doc-counts.ts'
 import type { FieldOwnershipConfig } from './lineage-ownership.ts'
 import { FieldOwnershipSection } from './lineage-ownership.ts'
 import type { PackageBoundaryConfig } from './package-boundary.ts'
 import { PackageBoundarySection } from './package-boundary.ts'
+import { RelativePath } from './scanned-paths.ts'
 
 /** The file a consumer writes, resolved against the directory the gate runs in. */
 export const DEFAULT_CONFIG_FILE = 'eval-quality.config.json'
@@ -37,10 +42,16 @@ export const DEFAULT_CONFIG_FILE = 'eval-quality.config.json'
 /**
  * The gates this build publishes, in the order the usage text lists them.
  *
- * Three of the five keep their schema in the gate module rather than here, so
- * that a module reachable only after `typescript` has been probed still declares
- * its own section. Importing those schemas is safe on any load path: each of the
- * three reaches `typescript` through a dynamic import and nothing else.
+ * Five of the eight keep their schema in the gate module rather than here. Three
+ * do so because they are reachable only after `typescript` has been probed and
+ * still have to declare their own section, and two because their schemas are
+ * large enough that carrying them here would make this file the place every gate
+ * is described. Importing any of those schemas is safe on any load path: each
+ * reaches `typescript` through a dynamic import and nothing else.
+ *
+ * The two `.mjs` gates and the invocation gate keep their schemas here, because
+ * a `.mjs` module cannot import `zod` without breaking the pre-install path PR 1
+ * records.
  */
 export const GATE_NAMES = [
 	'lockfile-age',
@@ -48,6 +59,9 @@ export const GATE_NAMES = [
 	'dependency-direction',
 	'package-boundary',
 	'field-ownership',
+	'doc-invocations',
+	'doc-counts',
+	'doc-claims',
 ] as const
 
 export type GateName = (typeof GATE_NAMES)[number]
@@ -92,6 +106,9 @@ const LockfileAgeSection = z
 			.describe(
 				'How old an entry has to be, in days, and at least 1. A duration, so nothing here goes stale as time passes. Zero puts the cutoff at the instant of the run, admits a package published that same instant, and still reports that every entry was published before the cutoff.',
 			),
+		cache: RelativePath.optional().describe(
+			'A JSON file mapping "name@version" to a publication timestamp. A publication time is fixed the moment it happens, so a reading taken once is correct forever and this cache carries no staleness bound. An entry it holds is used with no request; an entry it does not is fetched, and a fetch that fails still fails the gate. The gate only reads it.',
+		),
 	})
 	.describe(
 		"Fails on a locked entry published inside the window, on metadata that could not be fetched, and on an entry whose resolved URL is not that entry's own tarball on the npm registry.",
@@ -204,10 +221,70 @@ const LicencesSection = z
 	)
 
 /**
+ * The invocation gate's section. It sits here rather than in its gate module,
+ * because that gate is `.mjs` and stays free of every import from
+ * `node_modules`, which is what keeps the pre-install path open for the two
+ * gates that run before `npm ci`.
+ */
+const DocInvocationsSection = z
+	.strictObject({
+		pages: z
+			.array(RelativePath)
+			.min(1)
+			.describe(
+				"The pages whose fenced commands are run, as files or directories to walk. Naming the configuration's own directory is refused: every fenced command in a whole repository is more than this gate should run.",
+			),
+		binary: z
+			.strictObject({
+				entry: RelativePath.describe(
+					'The built entry point every documented command is run against. It is a precondition: a gate that skipped when it was absent would exit 0 having executed nothing.',
+				),
+				spellings: z
+					.array(NonEmpty)
+					.min(1)
+					.describe(
+						'How your documentation writes the command, as the literal text a reader types. Each is matched at the start of a fenced line, with whitespace or end of line after it, so a sample of your own diagnostic output is left alone.',
+					),
+				installedPrefix: NonEmpty.optional().describe(
+					'The path prefix a page uses for a file inside the installed package, such as "node_modules/your-package/". Mapping it away is what lets those examples be checked against real bytes.',
+				),
+			})
+			.describe('What a documented command line runs.'),
+		sampleInput: RelativePath.describe(
+			'A file that stands in for an input only a reader has, such as `<path>`. A run that needed one is judged for usage errors and crashes and no more.',
+		),
+		usageExit: z
+			.int()
+			.min(1)
+			.max(255)
+			.default(64)
+			.describe(
+				'The code your command line returns when a command or a flag does not exist. Every documented invocation exiting with it fails, whatever inputs it named. 64 is sysexits.h EX_USAGE.',
+			),
+		timeoutMs: z
+			.int()
+			.min(1000)
+			.default(30_000)
+			.describe('How long one documented invocation may run.'),
+		elisionLimit: z
+			.int()
+			.min(0)
+			.default(3)
+			.describe(
+				'How many "..." elisions one transcribed output line may carry. Matching them is polynomial in the count, so a line carrying many over a long repetitive diagnostic can run for minutes.',
+			),
+	})
+	.describe(
+		'Runs every fenced command in your documentation against your built binary and compares the exit code with what the page claims. A page that declares its exit may transcribe the diagnostic beside it, and that block is compared line for line.',
+	)
+
+/**
  * The whole document, as one schema. It is where the format states its own
- * incremental-adoption property, and its one consumer is `check-doc-claims.ts`,
+ * incremental-adoption property, and its one consumer is the `doc-claims` gate,
  * which parses the documented example through it so the page a consumer copies
- * is held to the format it describes.
+ * is held to the format it describes. The relation runs through the
+ * configuration rather than through an import: `eval-quality.config.json` names
+ * this export as the schema for that fence, and the gate imports it at run time.
  *
  * The loader never uses it. Validating the document whole would block a gate
  * the caller is running on a gate it is not, which is the opposite of the
@@ -220,6 +297,9 @@ export const GateConfiguration = z
 		'dependency-direction': DependencyDirectionSection.optional(),
 		'package-boundary': PackageBoundarySection.optional(),
 		'field-ownership': FieldOwnershipSection.optional(),
+		'doc-invocations': DocInvocationsSection.optional(),
+		'doc-counts': DocCountsSection.optional(),
+		'doc-claims': DocClaimsSection.optional(),
 	})
 	.describe(
 		"The gates this repository has chosen to run, keyed by gate name. Incremental adoption is structural: the file carries only the gates you have adopted, and configuring a gate is what opts into it. A gate you invoke with no section here refuses by name; it falls back to nobody else's values.",
@@ -227,6 +307,7 @@ export const GateConfiguration = z
 
 export type LockfileAgeConfig = z.infer<typeof LockfileAgeSection>
 export type LicencesConfig = z.infer<typeof LicencesSection>
+export type DocInvocationsConfig = z.infer<typeof DocInvocationsSection>
 
 export type GateConfigResult<Section> =
 	| {
@@ -380,3 +461,18 @@ export const loadFieldOwnershipConfig = (
 	options: GateConfigOptions = {},
 ): Promise<GateConfigResult<FieldOwnershipConfig>> =>
 	loadSection('field-ownership', FieldOwnershipSection, options)
+
+export const loadDocInvocationsConfig = (
+	options: GateConfigOptions = {},
+): Promise<GateConfigResult<DocInvocationsConfig>> =>
+	loadSection('doc-invocations', DocInvocationsSection, options)
+
+export const loadDocCountsConfig = (
+	options: GateConfigOptions = {},
+): Promise<GateConfigResult<DocCountsConfig>> =>
+	loadSection('doc-counts', DocCountsSection, options)
+
+export const loadDocClaimsConfig = (
+	options: GateConfigOptions = {},
+): Promise<GateConfigResult<DocClaimsConfig>> =>
+	loadSection('doc-claims', DocClaimsSection, options)

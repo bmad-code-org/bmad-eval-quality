@@ -10,6 +10,48 @@ body.
 
 ## [Unreleased]
 
+### Added
+
+- **The three documentation gates are published**, which completes `eval-quality-gates` at eight.
+  `doc-invocations` runs every fenced command in the pages you name against the binary you name and
+  compares the exit code with what the page claims, including the diagnostic a page transcribes
+  beside a declared-exit fence. `doc-counts` computes every hand-written count from the thing it
+  counts and compares it against the numeral, as a word or as digits. `doc-claims` holds the prose
+  claims that are neither a number nor a command: citations that resolve and stay anchored, backticked
+  identifiers your tree declares, transcribed lists, named codes, worked JSON blocks, an accepted and
+  refused vocabulary, time-sensitive claims registered with how each is settled, and transcriptions
+  that stay byte-exact.
+- **A configuration can name a value it cannot spell.** A source is a module path, an export name, an
+  optional property path, and what to take from it. The gate imports the module and reads the value,
+  which keeps a derived count a computation in code you can test instead of a number in a
+  configuration file that a hand keeps in step. Reading a module means running it, and the published
+  page says so.
+- **`lockfile-age` reads a publication cache.** `cache` names a JSON file mapping `name@version` to a
+  publication timestamp, an RFC3339 date-time; a looser string is refused. A publication time is
+  fixed the moment it happens and the gate's predicate is monotone in time, so the cache carries no
+  staleness bound: an entry it holds is used with no request, an entry it does not is fetched, and a
+  fetch that fails still fails the gate. `npm run generate:lockfile-age-cache` is the only writer, and
+  it now reports every entry it could not cache and why. Running this repository's own two lockfiles
+  now takes no network call at all.
+
+### Changed
+
+- **`check:doc-invocations`, `check:doc-counts` and `check:doc-claims` run through the published
+  binary**, the way `check:licences` and the three scanner gates already did, so this repository is
+  held by the artifact it ships.
+- **The invocation gate refuses an absent build rather than skipping it.** It used to print a line and
+  exit 0 when `dist/` was not there, which is a pass over nothing; it now exits 64 naming the entry. A
+  run that matched no spelling at all refuses for the same reason, because a mistyped spelling reads
+  every page, extracts no command, and reports a clean pass.
+- **A documentation class that examined nothing is a failure.** `doc-claims`'s citations, symbols,
+  codes and vocabulary classes scan rather than enumerate, so each could have reported a count of zero
+  and exited 0. A typo in the configured pattern or an export that stopped matching now refuses by
+  name instead of switching the class off quietly.
+- **The scanned-path declaration and its walk moved to `scripts/scanned-paths.ts`**, from
+  `scripts/package-boundary.ts`, which had recorded that a third gate needing them was the point at
+  which they earned a module of their own. Nothing about the `package-boundary` or `field-ownership`
+  sections changes.
+
 ## [3.1.0] - 2026-09-15
 
 ### Added

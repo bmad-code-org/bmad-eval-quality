@@ -1,0 +1,99 @@
+{
+	"doc-counts": {
+		"sources": {
+			"rules": {
+				"kind": "module",
+				"from": {
+					"module": "src/rules.ts",
+					"export": "RULES",
+					"take": "length"
+				}
+			},
+			"pages": {
+				"kind": "files",
+				"paths": [
+					{
+						"path": "docs",
+						"recursive": false,
+						"extensions": [
+							".md"
+						]
+					}
+				]
+			},
+			"ruleMentions": {
+				"kind": "matches",
+				"paths": [
+					{
+						"path": "src",
+						"recursive": false,
+						"extensions": [
+							".ts"
+						]
+					}
+				],
+				"pattern": {
+					"match": "'no-[a-z]+'"
+				}
+			},
+			"ruleFamilies": {
+				"kind": "matches",
+				"paths": [
+					{
+						"path": "src",
+						"recursive": false,
+						"extensions": [
+							".ts"
+						]
+					}
+				],
+				"pattern": {
+					"match": "'(no)-[a-z]+'"
+				},
+				"distinct": true
+			}
+		},
+		"entries": [
+			{
+				"file": "docs/guide.md",
+				"claim": "the rule count",
+				"pattern": {
+					"match": "ships ([a-z-]+) rules"
+				},
+				"counts": [
+					"rules"
+				]
+			},
+			{
+				"file": "docs/guide.md",
+				"claim": "the page count",
+				"pattern": {
+					"match": "documented on ([a-z-]+) page"
+				},
+				"counts": [
+					"pages"
+				]
+			},
+			{
+				"file": "docs/guide.md",
+				"claim": "the rule mention count in the source",
+				"pattern": {
+					"match": "spelled ([a-z-]+) times in the source"
+				},
+				"counts": [
+					"ruleMentions"
+				]
+			},
+			{
+				"file": "docs/guide.md",
+				"claim": "the rule family count",
+				"pattern": {
+					"match": "all in ([a-z-]+) family"
+				},
+				"counts": [
+					"ruleFamilies"
+				]
+			}
+		]
+	}
+}

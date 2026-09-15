@@ -1,48 +1,283 @@
-// The gate over hand-written counts in the published documentation: computes
-// each number from the thing it counts, renders it the way the page spells it,
-// and compares against the numeral the page carries.
+// A published gate: every hand-written count in the pages a consumer names is
+// computed from the thing it counts, rendered the way the page spells it, and
+// compared against the numeral the page carries.
 //
-// It exists because these sentences were held by story discipline alone and
-// two epics of drift is what that bought. `check:docs` reads frontmatter and
-// whitespace and never reads a page body; `check:doc-invocations` judges fenced
-// commands rather than prose. So a page could state a contract count no
-// generator owned and nothing would notice.
+// It exists because these sentences were held by story discipline alone, and
+// two epics of drift is what that bought. A frontmatter check reads whitespace
+// and never reads a page body, and an invocation check judges fenced commands
+// rather than prose. So a page could state a count no generator owned and
+// nothing would notice.
 //
-// A script rather than a Vitest test, for the reason `check-schemas.ts:6-9`
-// gives: AD-30 forbids test filesystem I/O outside a temporary directory, and
-// this reads committed markdown. It never rewrites a page, on the same rule:
-// a check that can repair what it checks is not a gate.
+// Both halves are the consumer's. A source says where a number comes from: an
+// export of a module, a value in a JSON file, a count of files under a path, or
+// a count of matches in a tree. An entry says which sentence carries it, in
+// which file, and whether the page spells it as a word or as digits.
 //
 // A pattern that matches nothing is a failure, and so is one that matches
-// twice. A rewritten sentence therefore cannot silence the check by drifting
-// out from under its own pattern.
+// twice. A rewritten sentence therefore cannot silence the gate by drifting out
+// from under its own pattern. A declared source no entry uses fails for the
+// same reason.
 //
-// Usage:
-//   npm run check:doc-counts
-
-// Run by `node` directly: type stripping erases types only, so no TypeScript
-// enum, namespace, parameter property, or non-type re-export may appear here
-// or in anything it imports.
-import { readdir, readFile } from 'node:fs/promises'
-import * as adapters from '../src/adapters/index.ts'
-import { INTERCHANGE_ARTIFACT_KEYS } from '../src/core/schemas/artifact.ts'
-import { CONFORMANCE_OUTCOME_COUNTS } from '../src/testing/conformance.ts'
+// The gate never rewrites a page. A check that can repair what it checks is not
+// a gate, and the same rule keeps it out of every file it reads.
+//
+// Run by `node` directly: Node's type stripping erases types only, so no
+// TypeScript enum, namespace, parameter property, or non-type re-export may
+// appear in this file or anything it imports.
+import { readFile } from 'node:fs/promises'
+import { resolve } from 'node:path'
+import { z } from 'zod'
+import { ConsumerPattern, ProsePattern } from './consumer-pattern.ts'
 import {
-	CORPUS_CONTRACTS,
-	DEV_CORPUS_CONTRACTS,
-} from '../tests/coverage/fixtures/corpus.ts'
-import { ORDERING_WITNESS_VIOLATIONS } from './check-dependency-direction.ts'
-import { CORPUS_INDEX, CORPUS_LABEL } from './dev-corpus-target.ts'
-import { GATE_NAMES, LOCKFILE_WINDOW_DAYS_DEFAULT } from './gate-config.ts'
-import { MAX_SCANNED_LINE } from './package-boundary.ts'
-import { SKILL_EXAMPLE_LABEL } from './skill-example-target.ts'
+	ModuleValue,
+	readModuleCount,
+	Take,
+	takeCount,
+} from './module-value.ts'
 import {
-	buildWorkedExample,
-	WORKED_EXAMPLE_LABEL,
-} from './worked-example-target.ts'
-import { WORKFLOW_EXAMPLE_LABEL } from './workflow-example-target.ts'
+	discoverEntries,
+	RelativePath,
+	ScannedPathList,
+} from './scanned-paths.ts'
 
-const repoRoot = new URL('../', import.meta.url)
+/** A source the configuration declared and the tree could not answer. */
+export const DOC_COUNT_SOURCE = 'EVAL_QUALITY_DOC_COUNT_SOURCE'
+
+const codedError = (code: string, message: string): Error =>
+	Object.assign(new Error(message), { code })
+
+const detail = (error: unknown): string =>
+	error instanceof Error ? error.message : String(error)
+
+const NonEmpty = z.string().min(1)
+
+const SourceName = NonEmpty.regex(
+	/^[A-Za-z][A-Za-z0-9-]*$/,
+	'is not a source name: letters, digits and hyphens, opening with a letter',
+)
+
+const ModuleSource = z.strictObject({
+	kind: z.literal('module'),
+	from: ModuleValue,
+})
+
+const JsonSource = z.strictObject({
+	kind: z.literal('json'),
+	file: RelativePath.describe('The JSON file to read.'),
+	path: z
+		.array(NonEmpty)
+		.optional()
+		.describe('Keys to walk from the top of the document.'),
+	take: Take.default('value').describe(
+		'What to take once the walk arrives: the number itself, its length, or the number of its keys.',
+	),
+})
+
+const FilesSource = z.strictObject({
+	kind: z.literal('files'),
+	paths: ScannedPathList.describe('The trees whose files are counted.'),
+})
+
+const MatchesSource = z.strictObject({
+	kind: z.literal('matches'),
+	paths: ScannedPathList.describe('The trees whose text is searched.'),
+	pattern: ConsumerPattern.describe(
+		'What is counted. Every occurrence across every file, in one number.',
+	),
+	distinct: z
+		.boolean()
+		.default(false)
+		.describe(
+			"Whether to count distinct values of the pattern's first capture group instead of occurrences, which is what a set spelled across many files needs.",
+		),
+})
+
+const CountSource = z
+	.discriminatedUnion('kind', [
+		ModuleSource,
+		JsonSource,
+		FilesSource,
+		MatchesSource,
+	])
+	.describe('Where one number comes from.')
+
+export type CountSourceConfig = z.infer<typeof CountSource>
+
+const CountEntry = z.strictObject({
+	file: RelativePath.describe('The page or source file carrying the sentence.'),
+	claim: NonEmpty.describe(
+		'What the sentence claims, for the failure message. It is what a reader is told to go and fix.',
+	),
+	pattern: ProsePattern.describe(
+		'The sentence, with one capture group per number it carries.',
+	),
+	wrap: z
+		.boolean()
+		.default(false)
+		.describe(
+			'Whether a literal space in the pattern also matches a line wrap. It never matches a blank line, so a sentence cannot capture a word from the paragraph above it. Spaces inside a bracket expression are left alone.',
+		),
+	counts: z
+		.array(SourceName)
+		.min(1)
+		.describe(
+			'The sources behind the capture groups, in the order the sentence carries them.',
+		),
+	rendering: z
+		.enum(['word', 'digits'])
+		.default('word')
+		.describe(
+			'How the page spells the number. Words are rendered from a closed table covering zero to ninety-nine, and the comparison follows the case the page used.',
+		),
+})
+
+export type CountEntryConfig = z.infer<typeof CountEntry>
+
+/**
+ * A gap inside one paragraph: whitespace that may wrap a line and never crosses
+ * a blank one.
+ *
+ * `\s+` is the obvious spelling and it is wrong in front of a capture group: a
+ * blank line is whitespace, so the captured word can sit in the paragraph above
+ * the sentence being read, and the gate then compares a number that sentence
+ * never states.
+ */
+const WRAP = '(?:[^\\S\\n]|\\n(?![ \\t]*\\n))+'
+
+/** What may follow a literal space and change what widening it would mean. */
+const QUANTIFIER = new Set(['?', '*', '+', '{'])
+
+/**
+ * The pattern with its literal spaces widened into wrap gaps. A bracket
+ * expression is copied through untouched, because a space inside one is a
+ * member of a character set rather than a gap between words.
+ */
+export function widenSpaces(source: string): string {
+	let out = ''
+	let inClass = false
+	for (let index = 0; index < source.length; index += 1) {
+		const char = source[index] as string
+		if (char === '\\') {
+			out += char + (source[index + 1] ?? '')
+			index += 1
+			continue
+		}
+		if (char === '[' && !inClass) inClass = true
+		else if (char === ']' && inClass) inClass = false
+		if (char === ' ' && !inClass) {
+			while (source[index + 1] === ' ') index += 1
+			// `' ?'` would become `WRAP?`, which makes the whole gap optional and
+			// turns a sentence pattern into one that matches the words run together.
+			// Refused rather than quietly widened, because the entry would read as
+			// dead and the reason would be invisible.
+			if (QUANTIFIER.has(source[index + 1] ?? '')) {
+				throw new Error(
+					`a space followed by "${source[index + 1]}" cannot be widened into a wrap gap; write it as \\s* or drop wrap`,
+				)
+			}
+			out += WRAP
+			continue
+		}
+		out += char
+	}
+	return out
+}
+
+const sourceOf = (entry: CountEntryConfig): string =>
+	entry.wrap ? widenSpaces(entry.pattern.match) : entry.pattern.match
+
+/**
+ * How many capture groups a pattern has, so an entry whose sentence carries
+ * fewer numbers than it names sources is refused at load rather than reading
+ * `undefined` off a match.
+ *
+ * The alternation with an empty branch makes the pattern match the empty string,
+ * so the result carries one slot per group whatever the subject is.
+ */
+const captureGroups = (source: string, flags: string): number => {
+	const probe = new RegExp(`${source}|`, flags.replace(/[gy]/g, ''))
+	return (probe.exec('')?.length ?? 1) - 1
+}
+
+export const DocCountsSection = z
+	.strictObject({
+		sources: z
+			.record(SourceName, CountSource)
+			.describe(
+				'Every number this configuration can hold a page against, by name.',
+			),
+		entries: z
+			.array(CountEntry)
+			.min(1)
+			.describe('Every sentence held, one entry apiece.'),
+	})
+	.superRefine((section, ctx) => {
+		const declared = Object.keys(section.sources)
+		if (declared.length === 0) {
+			ctx.addIssue({
+				code: 'custom',
+				path: ['sources'],
+				message:
+					'declares no source, so every entry would be held against nothing',
+			})
+		}
+		const used = new Set<string>()
+		section.entries.forEach((entry, index) => {
+			entry.counts.forEach((name, position) => {
+				used.add(name)
+				if (declared.includes(name)) return
+				ctx.addIssue({
+					code: 'custom',
+					path: ['entries', index, 'counts', position],
+					message: `names "${name}", which this section declares no source for; it declares ${declared.join(', ')}`,
+				})
+			})
+			let groups: number
+			try {
+				groups = captureGroups(sourceOf(entry), entry.pattern.flags)
+			} catch (error) {
+				ctx.addIssue({
+					code: 'custom',
+					path: ['entries', index, 'pattern', 'match'],
+					message: `does not compile once its spaces are widened: ${detail(error)}`,
+				})
+				return
+			}
+			if (groups === entry.counts.length) return
+			ctx.addIssue({
+				code: 'custom',
+				path: ['entries', index, 'pattern', 'match'],
+				message: `has ${groups} capture group(s) and the entry names ${entry.counts.length} count(s); one group holds one number`,
+			})
+		})
+		for (const name of declared) {
+			if (!used.has(name)) {
+				ctx.addIssue({
+					code: 'custom',
+					path: ['sources', name],
+					message:
+						'is declared and no entry uses it; a source nothing reads is a count nobody holds',
+				})
+			}
+			const source = section.sources[name]
+			if (source?.kind !== 'matches' || !source.distinct) continue
+			// Refused here rather than at the first file read, where the failure is
+			// one file's problem rather than the setting's.
+			if (captureGroups(source.pattern.match, source.pattern.flags) > 0)
+				continue
+			ctx.addIssue({
+				code: 'custom',
+				path: ['sources', name, 'pattern', 'match'],
+				message:
+					'counts distinct values and has no capture group; the first group is what the distinct values are read from',
+			})
+		}
+	})
+	.describe(
+		'Holds every hand-written count in your documentation against the thing it counts. A source says where a number comes from and an entry says which sentence carries it; a sentence that drifts out from under its own pattern fails as a dead entry.',
+	)
+
+export type DocCountsConfig = z.infer<typeof DocCountsSection>
 
 const ONES = [
 	'zero',
@@ -81,14 +316,11 @@ const TENS = [
 ]
 
 /**
- * The closed word table, because the tree holds no numeral-to-word renderer:
- * the corpus README is a template literal with no interpolation, so its words
- * are hand-typed, and `src/core/coverage/table.ts:69` only replaces hyphens in
- * a state name. Zero to ninety-nine is the range the pages use, and a value
- * past it returns `null` so the report carries it beside every other failure
- * rather than aborting the run with a stack trace at the first one.
+ * The closed word table. Zero to ninety-nine is the range documentation prose
+ * uses, and a value past it returns `null` so the report carries it beside every
+ * other failure rather than aborting the run at the first one.
  */
-function inWords(value: number): string | null {
+export function inWords(value: number): string | null {
 	if (!Number.isInteger(value) || value < 0 || value > 99) return null
 	const ones = ONES[value]
 	if (ones !== undefined) return ones
@@ -97,784 +329,183 @@ function inWords(value: number): string | null {
 	return tail === 0 ? tens : `${tens}-${ONES[tail]}`
 }
 
-/** The pages spell the same count with either case, so the compare is case-free. */
-const matchCaseOf = (carried: string, owed: string): string =>
+/** A page may spell the same count either way, so the compare is case-free. */
+export const matchCaseOf = (carried: string, owed: string): string =>
 	carried.charAt(0) === carried.charAt(0).toUpperCase()
 		? owed.charAt(0).toUpperCase() + owed.slice(1)
 		: owed
 
-/**
- * A gap inside one paragraph: whitespace that may wrap a line and never
- * crosses a blank one.
- *
- * `\s+` is the spelling `tests/architecture/dev-corpus.test.ts:270-272` uses
- * over this same file, and it is wrong in front of a capture group: a blank
- * line is whitespace, so the captured word can sit in the paragraph above the
- * sentence being read and the gate compares a number that sentence never
- * states. The corpus README wraps at about a hundred columns, so the gap still
- * has to admit one newline.
- */
-const WRAP = '(?:[^\\S\\n]|\\n(?![ \\t]*\\n))+'
-
-/** One gated sentence over the wrapped README, its words joined by `WRAP`. */
-const wrapped = (...words: readonly string[]): RegExp =>
-	new RegExp(words.join(WRAP), 'm')
-
-type ManifestEntry = {
-	readonly path: string
-	readonly kind: string
-	readonly structuralFailure?: string
-}
-
-const manifest = JSON.parse(await readFile(CORPUS_INDEX, 'utf8')) as {
-	entries: readonly ManifestEntry[]
-}
-
-// The manifest is byte-gated by `check:corpus`, so these read a value another
-// gate already proved against the bytes on disk.
-const publishedContracts = manifest.entries.filter(
-	(entry) =>
-		entry.kind === 'contract' &&
-		entry.path.startsWith(`${CORPUS_LABEL}/contracts/`),
-)
-const failingByDesign = publishedContracts.filter(
-	(entry) => entry.structuralFailure !== undefined,
-).length
-const compiling = publishedContracts.length - failingByDesign
-
-// The corpus total has two sources that must agree: the fixture array the
-// generator reads, and the contracts it wrote. Disagreement means the tree was
-// not regenerated, which is `check:corpus`'s job to say, so this states it
-// plainly rather than picking one.
-if (publishedContracts.length !== DEV_CORPUS_CONTRACTS.length) {
-	console.error(
-		`check-doc-counts: DEV_CORPUS_CONTRACTS holds ${DEV_CORPUS_CONTRACTS.length} ` +
-			`contracts and ${CORPUS_LABEL}/contracts/ holds ${publishedContracts.length}; ` +
-			'run `npm run generate:dev-corpus`',
-	)
-	process.exit(1)
-}
-
-/**
- * The per-contract facts the sentences below count, read out of the published
- * JSON rather than out of the fixture array. Off the fixtures, an interface or
- * a plan edited without regeneration would keep these green against a corpus
- * that does not carry the edit.
- */
-type PublishedFacts = {
-	readonly kinds: readonly string[]
-	readonly capturesAValue: boolean
-	readonly declaresAFixtureReset: boolean
-}
-
-const published: readonly PublishedFacts[] = await Promise.all(
-	publishedContracts.map(async (entry) => {
-		const text = await readFile(new URL(entry.path, repoRoot), 'utf8')
-		const contract = JSON.parse(text) as {
-			permittedInterfaces: readonly { kind: string }[]
-			interactionPlan: readonly {
-				inputBinding: Record<string, unknown>
-			}[]
-			fixtureReset: unknown
+const walkJson = (
+	document: unknown,
+	path: readonly string[],
+	where: string,
+): unknown => {
+	let value = document
+	for (const key of path) {
+		if (value === null || typeof value !== 'object') {
+			throw codedError(
+				DOC_COUNT_SOURCE,
+				`${where}: "${key}" was reached on a value with no properties`,
+			)
 		}
-		return {
-			kinds: contract.permittedInterfaces.map((iface) => iface.kind),
-			// A `{ captured }` binding, on any input channel of any step. An
-			// unbound channel is `null` and a bound one is a map of key to
-			// binding value, so the shape is walked rather than pattern-matched
-			// against the JSON text: a contract whose oracle commentary happened
-			// to spell the word would otherwise be counted.
-			capturesAValue: contract.interactionPlan.some((step) =>
-				Object.values(step.inputBinding).some(
-					(channel) =>
-						channel !== null &&
-						typeof channel === 'object' &&
-						Object.values(channel as Record<string, unknown>).some(
-							(value) =>
-								value !== null &&
-								typeof value === 'object' &&
-								'captured' in value,
-						),
-				),
-			),
-			declaresAFixtureReset: contract.fixtureReset !== null,
+		const holder = value as Record<string, unknown>
+		if (!(key in holder)) {
+			throw codedError(
+				DOC_COUNT_SOURCE,
+				`${where}: "${key}" is absent; the keys there are ${Object.keys(holder).sort().join(', ')}`,
+			)
 		}
-	}),
-)
-
-const declaringKind = (kind: string): number =>
-	published.filter((facts) => facts.kinds.includes(kind)).length
-
-const capturing = published.filter((facts) => facts.capturesAValue).length
-const resetting = published.filter(
-	(facts) => facts.declaresAFixtureReset,
-).length
-
-/**
- * How many end-to-end chains this repository commits.
- *
- * The count is the label list, and the registry is what proves the list is
- * complete: every key `buildWorkedExample` emits has to sit under one of the
- * labels below, so a chain added to that registry and left out of here fails
- * this gate rather than leaving four sentences stale with nothing to notice.
- * Counting distinct parent directories of the keys instead would be one line
- * shorter and would inflate on the first chain that emitted a file into a
- * subdirectory of its own.
- */
-const CHAIN_LABELS = [
-	WORKED_EXAMPLE_LABEL,
-	SKILL_EXAMPLE_LABEL,
-	WORKFLOW_EXAMPLE_LABEL,
-] as const
-
-const unlabelled = [...buildWorkedExample().keys()].filter(
-	(path) => !CHAIN_LABELS.some((label) => path.startsWith(`${label}/`)),
-)
-if (unlabelled.length > 0) {
-	console.error(
-		'check-doc-counts: the committed-chain registry emits file(s) under no ' +
-			`known chain label, so the chain count is wrong: ${unlabelled.join(', ')}`,
-	)
-	process.exit(1)
-}
-const committedChains = CHAIN_LABELS.length
-
-const referenceAdapters = Object.keys(adapters).filter((name) =>
-	/^create[A-Za-z]*Adapter$/.test(name),
-).length
-
-/** Every `.ts` file under `src/`, as one string. */
-const readSourceTree = async (directory: URL): Promise<string> => {
-	const entries = await readdir(directory, { withFileTypes: true })
-	const bodies = await Promise.all(
-		entries.map((entry) => {
-			if (entry.isDirectory()) {
-				return readSourceTree(new URL(`${entry.name}/`, directory))
-			}
-			return entry.name.endsWith('.ts')
-				? readFile(new URL(entry.name, directory), 'utf8')
-				: Promise.resolve('')
-		}),
-	)
-	return bodies.join('\n')
+		value = holder[key]
+	}
+	return value
 }
 
-const sourceTree = await readSourceTree(new URL('src/', repoRoot))
-const barrelSource = await readFile(new URL('src/index.ts', repoRoot), 'utf8')
-
-const packageManifest = JSON.parse(
-	await readFile(new URL('package.json', repoRoot), 'utf8'),
-) as { bin: Record<string, string> }
-
-/** The binaries the tarball carries, so a documented count is the manifest's own. */
-const publishedBinaries = Object.keys(packageManifest.bin).length
-
-/**
- * The schema versions the barrel publishes, split into the three groups two
- * pages count. Read off the source text the way
- * `tests/schemas/artifact-version.test.ts` reads the barrel, so this needs no
- * build.
- *
- * A writer stamps `schemaVersion: <CONSTANT>` and a reader compares
- * `accepted: <CONSTANT>`, which are the two forms every stamp and every
- * equality under `src/` is written in. What is left on the barrel is what a
- * caller assembles, so the third group is a set difference over the other two.
- *
- * A version reader written some third way would land in the caller-assembled
- * group. `check:doc-claims` is what catches one: it walks `src/` for the
- * comparison itself and names the file that performs it.
- */
-const publishedVersions = [
-	...barrelSource.matchAll(/export \{ ([A-Z0-9_]+_SCHEMA_VERSION) \}/g),
-].map((match) => match[1] as string)
-
-const versionNamesIn = (pattern: RegExp): readonly string[] => [
-	...new Set(
-		[...sourceTree.matchAll(pattern)].map((match) => match[1] as string),
-	),
-]
-
-const stampedVersions = versionNamesIn(
-	/\bschemaVersion: ([A-Z0-9_]+_SCHEMA_VERSION)\b/g,
-)
-const comparedVersions = versionNamesIn(
-	/\baccepted: ([A-Z0-9_]+_SCHEMA_VERSION)\b/g,
-)
-const callerProducedVersions = publishedVersions.filter(
-	(name) => !stampedVersions.includes(name) && !comparedVersions.includes(name),
-)
-
-if (publishedVersions.length === 0) {
-	console.error(
-		'check-doc-counts: src/index.ts exports no `<NAME>_SCHEMA_VERSION`, so every sentence ' +
-			'counting them would be held against zero',
-	)
-	process.exit(1)
+/** The number behind one named source. */
+async function resolveSource(
+	root: string,
+	name: string,
+	source: CountSourceConfig,
+): Promise<number> {
+	if (source.kind === 'module') {
+		return readModuleCount(root, source.from)
+	}
+	if (source.kind === 'json') {
+		const where = `the source "${name}": ${source.file}`
+		let document: unknown
+		try {
+			document = JSON.parse(await readFile(resolve(root, source.file), 'utf8'))
+		} catch (error) {
+			throw codedError(
+				DOC_COUNT_SOURCE,
+				`${where} could not be read as JSON: ${detail(error)}`,
+			)
+		}
+		return takeCount(
+			walkJson(document, source.path ?? [], where),
+			source.take,
+			where,
+		)
+	}
+	const discovered = await discoverEntries(root, source.paths, 'doc-counts')
+	if (source.kind === 'files') return discovered.entries.size
+	const pattern = new RegExp(source.pattern.match, `${source.pattern.flags}g`)
+	if (!source.distinct) {
+		let total = 0
+		for (const body of discovered.entries.values()) {
+			total += [...body.matchAll(pattern)].length
+		}
+		return total
+	}
+	const seen = new Set<string>()
+	for (const body of discovered.entries.values()) {
+		for (const match of body.matchAll(pattern)) {
+			// The capture group is guaranteed by the schema; an alternation branch
+			// that did not reach it contributes nothing rather than an empty name.
+			const captured = match[1]
+			if (captured !== undefined) seen.add(captured)
+		}
+	}
+	return seen.size
 }
 
-const unpublishedVersions = [...stampedVersions, ...comparedVersions].filter(
-	(name) => !publishedVersions.includes(name),
-)
-if (unpublishedVersions.length > 0) {
-	console.error(
-		`check-doc-counts: ${unpublishedVersions.join(', ')} is stamped or compared under src/ ` +
-			'and the barrel does not export it, so the three groups below do not partition the ' +
-			'published set',
-	)
-	process.exit(1)
+export type DocCountsReport = {
+	readonly failures: readonly string[]
+	readonly numerals: number
+	readonly digits: number
+	readonly files: number
 }
-
-type Entry = {
-	/**
-	 * Repository-relative: a published page, or a source file whose docblock
-	 * carries a numeral.
-	 */
-	readonly file: string
-	/** What the sentence claims, for the failure message. */
-	readonly claim: string
-	/** One capture group per expected value. */
-	readonly pattern: RegExp
-	readonly expected: readonly number[]
-	readonly rendering: 'word' | 'digits'
-}
-
-/**
- * One entry per gated sentence. Every expected value is computed above from a
- * source another gate already holds, so this table adds a rendering and a
- * pattern and asserts nothing on its own authority.
- */
-const ENTRIES: readonly Entry[] = [
-	{
-		file: 'README.md',
-		claim: 'the corpus contract total',
-		pattern:
-			/you can read ([a-z-]+) real contracts and one compiled-and-sealed pair/,
-		expected: [DEV_CORPUS_CONTRACTS.length],
-		rendering: 'word',
-	},
-	{
-		file: 'docs/explanation/what-ships.md',
-		claim: 'the corpus contract total',
-		pattern: /a ([a-z-]+)-contract development corpus/,
-		expected: [DEV_CORPUS_CONTRACTS.length],
-		rendering: 'word',
-	},
-	{
-		file: 'docs/explanation/what-ships.md',
-		claim: 'the reference adapter count',
-		pattern: /([a-z-]+) reference adapters at `eval-quality\/adapters`/,
-		expected: [referenceAdapters],
-		rendering: 'word',
-	},
-	{
-		file: 'docs/explanation/what-ships.md',
-		claim: 'the schema version count on the barrel',
-		pattern: /barrel exports ([a-z-]+) schema versions/,
-		expected: [publishedVersions.length],
-		rendering: 'word',
-	},
-	{
-		file: 'docs/explanation/what-ships.md',
-		claim: 'the count of artifacts with an in-package version reader',
-		pattern: /for the ([a-z-]+) with a reader/,
-		expected: [comparedVersions.length],
-		rendering: 'word',
-	},
-	{
-		file: 'docs/explanation/what-ships.md',
-		claim: 'the count of artifacts this package stamps',
-		pattern: /for the ([a-z-]+) this package stamps/,
-		expected: [stampedVersions.length],
-		rendering: 'word',
-	},
-	{
-		file: 'docs/explanation/what-ships.md',
-		claim: 'the count of caller-assembled artifacts',
-		pattern: /for the ([a-z-]+) you assemble/,
-		expected: [callerProducedVersions.length],
-		rendering: 'word',
-	},
-	{
-		file: 'docs/reference/cli-commands.md',
-		claim: 'the schema version count and the interchange artifact total',
-		pattern: /([A-Za-z-]+) of the ([a-z-]+) artifacts carry one/,
-		expected: [publishedVersions.length, INTERCHANGE_ARTIFACT_KEYS.length],
-		rendering: 'word',
-	},
-	{
-		file: 'docs/reference/cli-commands.md',
-		claim: 'the count of artifacts with an in-package version reader',
-		pattern: /([A-Za-z-]+) have an in-package reader/,
-		expected: [comparedVersions.length],
-		rendering: 'word',
-	},
-	{
-		file: 'docs/reference/cli-commands.md',
-		claim: 'the count of artifacts this package stamps',
-		pattern: /([A-Za-z-]+) are stamped by this package/,
-		expected: [stampedVersions.length],
-		rendering: 'word',
-	},
-	{
-		file: 'docs/reference/cli-commands.md',
-		claim: 'the count of caller-assembled artifacts',
-		pattern: /([A-Za-z-]+) are assembled by the caller/,
-		expected: [callerProducedVersions.length],
-		rendering: 'word',
-	},
-	{
-		file: 'docs/reference/cli-commands.md',
-		claim: 'the reference adapter count',
-		pattern: /ships ([a-z-]+) reference adapters/,
-		expected: [referenceAdapters],
-		rendering: 'word',
-	},
-	{
-		file: 'docs/reference/cli-commands.md',
-		claim: 'the corpus contract total',
-		pattern: /`corpus\/dev\/` ships ([a-z-]+) contracts under `contracts\/`/,
-		expected: [DEV_CORPUS_CONTRACTS.length],
-		rendering: 'word',
-	},
-	{
-		file: 'docs/reference/cli-commands.md',
-		claim: 'the compiling contract count',
-		// Anchored: unanchored, a rewrite to "All nineteen of the contracts
-		// compile." still matches and captures "the", so the failure names the
-		// wrong token.
-		pattern: /(?:^|(?<=[.]\s))([A-Za-z-]+) contracts compile\./,
-		expected: [compiling],
-		rendering: 'word',
-	},
-	{
-		file: 'docs/reference/cli-commands.md',
-		claim: 'the failing-by-design contract count',
-		pattern: /(?<=[.]\s)([A-Za-z-]+) fail by design:/,
-		expected: [failingByDesign],
-		rendering: 'word',
-	},
-	{
-		file: 'docs/reference/cli-commands.md',
-		claim: 'the per-port conformance outcome counts',
-		pattern:
-			/`corpus` (\d+), `clock` (\d+), `file-system` (\d+), `environment-probe` (\d+), `command-probe` (\d+), `mcp-probe` (\d+)/,
-		expected: [
-			CONFORMANCE_OUTCOME_COUNTS.corpus,
-			CONFORMANCE_OUTCOME_COUNTS.clock,
-			CONFORMANCE_OUTCOME_COUNTS['file-system'],
-			CONFORMANCE_OUTCOME_COUNTS['environment-probe'],
-			CONFORMANCE_OUTCOME_COUNTS['command-probe'],
-			CONFORMANCE_OUTCOME_COUNTS['mcp-probe'],
-		],
-		rendering: 'digits',
-	},
-	{
-		file: 'docs/how-to/author-behavioral-contracts.md',
-		claim: 'the corpus contract total',
-		pattern: /`corpus\/dev\/contracts\/` holds ([a-z-]+) contracts:/,
-		expected: [DEV_CORPUS_CONTRACTS.length],
-		rendering: 'word',
-	},
-	{
-		file: 'docs/how-to/author-behavioral-contracts.md',
-		claim: 'the compiling contract count',
-		pattern:
-			/(?:^|(?<=[.]\s))([A-Za-z-]+) compile, and [a-z-]+ fail by design\./,
-		expected: [compiling],
-		rendering: 'word',
-	},
-	{
-		file: 'docs/how-to/author-behavioral-contracts.md',
-		claim: 'the failing-by-design contract count',
-		pattern: /compile, and ([a-z-]+) fail by design\./,
-		expected: [failingByDesign],
-		rendering: 'word',
-	},
-	{
-		file: 'docs/how-to/evaluate-ai-feature-behavior.md',
-		claim: 'the `api`-declaring contract count',
-		pattern:
-			/([A-Za-z-]+) of the [a-z-]+ contracts in `corpus\/dev\/contracts\/` declare an `api` interface/,
-		expected: [declaringKind('api')],
-		rendering: 'word',
-	},
-	{
-		file: 'docs/how-to/evaluate-ai-feature-behavior.md',
-		claim: 'the corpus contract total',
-		pattern:
-			/of the ([a-z-]+) contracts in `corpus\/dev\/contracts\/` declare an `api` interface/,
-		expected: [DEV_CORPUS_CONTRACTS.length],
-		rendering: 'word',
-	},
-	{
-		file: 'docs/tutorials/getting-started.md',
-		claim: 'the corpus contract total',
-		pattern: /The package ships ([a-z-]+) of them/,
-		expected: [DEV_CORPUS_CONTRACTS.length],
-		rendering: 'word',
-	},
-	{
-		// Entered ahead of the move it has to catch. This reads `two` today and
-		// the next shipped command contract takes it to three, so the gate rather
-		// than the author is what notices.
-		file: 'docs/how-to/evaluate-agent-behavior.md',
-		claim: 'the `cli`-declaring contract count',
-		pattern: /ships ([a-z-]+) contracts describing a system behind a command/,
-		expected: [declaringKind('cli')],
-		rendering: 'word',
-	},
-	{
-		file: 'docs/how-to/evaluate-workflow-behavior.md',
-		claim: 'the contract count carrying a captured binding',
-		pattern:
-			/([A-Za-z-]+) contracts in `corpus\/dev\/contracts\/` use a `\{ captured \}` binding/,
-		expected: [capturing],
-		rendering: 'word',
-	},
-	{
-		file: 'docs/how-to/evaluate-workflow-behavior.md',
-		claim: 'the contract count declaring a fixture reset',
-		pattern:
-			/([A-Za-z-]+) contracts in `corpus\/dev\/contracts\/` declare a `fixtureReset`/,
-		expected: [resetting],
-		rendering: 'word',
-	},
-	{
-		file: 'README.md',
-		claim: 'the committed end-to-end chain count',
-		pattern: /\| the ([a-z-]+) committed worked chains \|/,
-		expected: [committedChains],
-		rendering: 'word',
-	},
-	{
-		file: 'docs/how-to/author-behavioral-contracts.md',
-		claim: 'the committed end-to-end chain count',
-		pattern: /The repository commits ([a-z-]+) complete chains/,
-		expected: [committedChains],
-		rendering: 'word',
-	},
-	// The corpus README is generated from a template literal in
-	// `scripts/dev-corpus-target.ts`, and `check:corpus` proves the bytes match
-	// that template without ever reading what the words say. So the same drift
-	// the six published pages carried for two epics is available here, and these
-	// entries read the generated output: a stale template word reaches disk and
-	// fails at the file an adopter actually opens.
-	{
-		file: 'corpus/dev/README.md',
-		claim: 'the corpus contract total in the opening line',
-		pattern: wrapped(
-			'^([A-Za-z-]+)',
-			'contracts',
-			'and',
-			'one',
-			'compiled-and-sealed',
-			'pair',
-		),
-		expected: [publishedContracts.length],
-		rendering: 'word',
-	},
-	{
-		file: 'corpus/dev/README.md',
-		claim: 'the corpus contract total in "What is here"',
-		pattern: wrapped(
-			'`contracts/<contractId>\\.json`:',
-			'([a-z-]+)',
-			'contracts\\.',
-		),
-		expected: [publishedContracts.length],
-		rendering: 'word',
-	},
-	{
-		file: 'corpus/dev/README.md',
-		claim: 'the discipline-rule cell contract count',
-		pattern: wrapped('([A-Za-z-]+)', 'are', 'one', 'per', 'discipline', 'rule'),
-		expected: [CORPUS_CONTRACTS.length],
-		rendering: 'word',
-	},
-	{
-		file: 'corpus/dev/README.md',
-		claim: 'the `cli`-declaring contract count',
-		pattern: wrapped(
-			'([a-z-]+)',
-			'describe',
-			'a',
-			'system',
-			'under',
-			'test',
-			'that',
-			'runs',
-			'behind',
-			'a',
-			'command',
-		),
-		expected: [declaringKind('cli')],
-		rendering: 'word',
-	},
-	{
-		file: 'corpus/dev/README.md',
-		claim: 'the `mcp`-declaring contract count',
-		pattern: wrapped('([a-z-]+)', 'describes', 'a', 'tool', 'server'),
-		expected: [declaringKind('mcp')],
-		rendering: 'word',
-	},
-	{
-		file: 'corpus/dev/README.md',
-		claim: 'the contract count carrying a captured binding',
-		pattern: wrapped(
-			'([A-Za-z-]+)',
-			'of',
-			'the',
-			'contracts',
-			'bind',
-			'a',
-			'step',
-			'to',
-			'a',
-			'value',
-		),
-		expected: [capturing],
-		rendering: 'word',
-	},
-	{
-		file: 'corpus/dev/README.md',
-		claim: 'the contract count declaring a fixture reset',
-		pattern: wrapped('the', 'same', '([a-z-]+)', 'declare', 'a', 'fixture'),
-		expected: [resetting],
-		rendering: 'word',
-	},
-	{
-		file: 'corpus/dev/README.md',
-		claim: 'the committed end-to-end chain count in "What is here"',
-		pattern: wrapped(
-			'one',
-			'of',
-			'the',
-			'([a-z-]+)',
-			'committed',
-			'end-to-end',
-			'chains',
-		),
-		expected: [committedChains],
-		rendering: 'word',
-	},
-	{
-		file: 'corpus/dev/README.md',
-		claim: 'the committed end-to-end chain count in "What is absent"',
-		pattern: wrapped('([A-Za-z-]+)', 'chains', 'are', 'committed'),
-		expected: [committedChains],
-		rendering: 'word',
-	},
-	{
-		file: 'corpus/dev/README.md',
-		claim: 'the compiling contract count',
-		pattern: wrapped(
-			'The',
-			'other',
-			'([a-z-]+)',
-			'are',
-			'published',
-			'only',
-			'after',
-		),
-		expected: [compiling],
-		rendering: 'word',
-	},
-	{
-		file: 'corpus/dev/README.md',
-		claim: 'the failing-by-design contract count',
-		// Anchored on the end of the sentence before it rather than on a line
-		// start, so reflowing the paragraph cannot turn the entry dead.
-		pattern: wrapped(
-			'(?<=[.;])',
-			'([A-Za-z-]+)',
-			'fail',
-			'compilation',
-			'by',
-			'design',
-		),
-		expected: [failingByDesign],
-		rendering: 'word',
-	},
-	// The three arm totals ship in `dist/*.d.ts`, where an adapter author reads
-	// them beside `CONFORMANCE_OUTCOME_COUNTS` itself. The `api` one drifted
-	// from its constant and a reader hit the mismatch, so each is held against
-	// the constant it restates. The arm's own count in the same sentence is
-	// held by nothing here: the assertion lists are module-private, and
-	// exporting them to count them would widen the published surface for a
-	// gate.
-	{
-		file: 'src/testing/probe-conformance.ts',
-		claim: "the `api` arm's outcome total",
-		pattern: /([A-Za-z-]+) outcomes: the six shared assertions plus AD-35's/,
-		expected: [CONFORMANCE_OUTCOME_COUNTS['environment-probe']],
-		rendering: 'word',
-	},
-	{
-		file: 'src/testing/probe-conformance.ts',
-		claim: "the `cli` arm's outcome total",
-		pattern:
-			/([A-Za-z-]+) outcomes: the six shared assertions plus the ten above/,
-		expected: [CONFORMANCE_OUTCOME_COUNTS['command-probe']],
-		rendering: 'word',
-	},
-	{
-		file: 'src/testing/probe-conformance.ts',
-		claim: "the `mcp` arm's outcome total",
-		pattern:
-			/([A-Za-z-]+) outcomes: the six shared assertions plus the eight above/,
-		expected: [CONFORMANCE_OUTCOME_COUNTS['mcp-probe']],
-		rendering: 'word',
-	},
-	// `EXAMPLE_SEED_ID`'s docblock is the one corpus numeral outside the README
-	// template, so it reaches no generated byte and no other gate.
-	{
-		file: 'scripts/dev-corpus-target.ts',
-		claim: "the failing-by-design count in `EXAMPLE_SEED_ID`'s docblock",
-		pattern: wrapped('because ([a-z-]+) of the [a-z-]+ do not', 'compile'),
-		expected: [failingByDesign],
-		rendering: 'word',
-	},
-	{
-		file: 'scripts/dev-corpus-target.ts',
-		claim: "the corpus contract total in `EXAMPLE_SEED_ID`'s docblock",
-		pattern: wrapped('because [a-z-]+ of the ([a-z-]+) do not', 'compile'),
-		expected: [publishedContracts.length],
-		rendering: 'word',
-	},
-	{
-		file: 'docs/reference/cli-commands.md',
-		claim: 'the binary count',
-		pattern: /declares ([a-z-]+) binaries under `bin`/,
-		expected: [publishedBinaries],
-		rendering: 'word',
-	},
-	{
-		file: 'docs/reference/cli-commands.md',
-		claim: 'the `bin` target count in the tarball',
-		pattern: /tarball carries ([a-z-]+) `bin` targets/,
-		expected: [publishedBinaries],
-		rendering: 'word',
-	},
-	{
-		file: 'docs/how-to/run-the-gates-on-your-repository.md',
-		claim: 'the binary count',
-		pattern: /The package publishes ([a-z-]+) binaries/,
-		expected: [publishedBinaries],
-		rendering: 'word',
-	},
-	{
-		file: 'docs/how-to/run-the-gates-on-your-repository.md',
-		claim: 'the published gate count',
-		pattern: /The gates binary carries ([a-z-]+) gates/,
-		expected: [GATE_NAMES.length],
-		rendering: 'word',
-	},
-	{
-		file: 'docs/how-to/run-the-gates-on-your-repository.md',
-		claim: "the lockfile-age gate's default window",
-		pattern: /the gate holds entries to ([a-z-]+) days/,
-		expected: [LOCKFILE_WINDOW_DAYS_DEFAULT],
-		rendering: 'word',
-	},
-	{
-		file: 'docs/how-to/run-the-gates-on-your-repository.md',
-		claim: "the boundary gate's scanned-line bound",
-		pattern: /A logical line longer than (\d+) characters is reported/,
-		expected: [MAX_SCANNED_LINE],
-		rendering: 'digits',
-	},
-	// The ordering witness. The page states the cost of swapping the two nesting
-	// layer rows as a measured number, and the same number is what
-	// `dependency-direction.test.ts` asserts against this repository's own tree.
-	// Held here so the prose and the assertion cannot drift apart: a tree that
-	// changes the count moves the constant, fails the test, and fails this entry
-	// until the sentence moves with it.
-	{
-		file: 'docs/how-to/run-the-gates-on-your-repository.md',
-		claim: "the direction gate's ordering witness",
-		pattern: /swapping those two rows reports (\d+) violations/,
-		expected: [ORDERING_WITNESS_VIOLATIONS],
-		rendering: 'digits',
-	},
-]
 
 const lineOf = (text: string, offset: number): number =>
 	text.slice(0, offset).split('\n').length
 
-const failures: string[] = []
-let numerals = 0
-let digits = 0
-
-for (const entry of ENTRIES) {
-	if (entry.rendering === 'digits') digits += entry.expected.length
-	else numerals += entry.expected.length
-	let text: string
-	try {
-		text = await readFile(new URL(entry.file, repoRoot), 'utf8')
-	} catch {
-		failures.push(`${entry.file}: missing, but a count entry names it`)
-		continue
+export async function runDocCounts(
+	root: string,
+	section: DocCountsConfig,
+): Promise<DocCountsReport> {
+	const resolved = new Map<string, number>()
+	for (const [name, source] of Object.entries(section.sources)) {
+		resolved.set(name, await resolveSource(root, name, source))
 	}
 
-	// The entry's own flags are carried over: `new RegExp(pattern, 'g')`
-	// replaces them, which silently dropped `m` and made an anchored pattern
-	// dead.
-	const flags = entry.pattern.flags.includes('g')
-		? entry.pattern.flags
-		: `${entry.pattern.flags}g`
-	const found = [...text.matchAll(new RegExp(entry.pattern.source, flags))]
-	if (found.length === 0) {
-		failures.push(
-			`${entry.file}: no sentence matches the pattern for ${entry.claim}; ` +
-				'the entry is dead and either the sentence or the entry has to move',
-		)
-		continue
-	}
-	if (found.length > 1) {
-		const lines = found
-			.map((match) => lineOf(text, match.index ?? 0))
-			.join(', ')
-		failures.push(
-			`${entry.file}: ${found.length} sentences match the pattern for ` +
-				`${entry.claim} (lines ${lines}); a count entry names one sentence`,
-		)
-		continue
-	}
+	const failures: string[] = []
+	let numerals = 0
+	let digits = 0
 
-	const match = found[0] as RegExpExecArray
-	const line = lineOf(text, match.index ?? 0)
-	entry.expected.forEach((value, index) => {
-		const carried = match[index + 1] as string
-		let owed: string
-		if (entry.rendering === 'digits') owed = String(value)
-		else {
-			const word = inWords(value)
-			if (word === null) {
+	for (const entry of section.entries) {
+		if (entry.rendering === 'digits') digits += entry.counts.length
+		else numerals += entry.counts.length
+
+		let text: string
+		try {
+			text = await readFile(resolve(root, entry.file), 'utf8')
+		} catch {
+			failures.push(`${entry.file}: missing, but a count entry names it`)
+			continue
+		}
+
+		// The entry's own flags are carried over. Replacing them drops an `m` or
+		// an `i` the entry was written with and turns an anchored pattern dead.
+		// `g` is never among them, because the schema excludes it.
+		const found = [
+			...text.matchAll(new RegExp(sourceOf(entry), `${entry.pattern.flags}g`)),
+		]
+		if (found.length === 0) {
+			failures.push(
+				`${entry.file}: no sentence matches the pattern for ${entry.claim}; ` +
+					'the entry is dead and either the sentence or the entry has to move',
+			)
+			continue
+		}
+		if (found.length > 1) {
+			const lines = found
+				.map((match) => lineOf(text, match.index ?? 0))
+				.join(', ')
+			failures.push(
+				`${entry.file}: ${found.length} sentences match the pattern for ` +
+					`${entry.claim} (lines ${lines}); a count entry names one sentence`,
+			)
+			continue
+		}
+
+		const match = found[0] as RegExpExecArray
+		const line = lineOf(text, match.index ?? 0)
+		entry.counts.forEach((name, index) => {
+			const value = resolved.get(name) as number
+			const carried = match[index + 1]
+			// An optional group, or one in an alternation branch the match did not
+			// take, leaves the slot empty. The entry is then holding a sentence it
+			// cannot read a number out of, which is a dead entry wearing a match.
+			if (carried === undefined) {
 				failures.push(
-					`${entry.file}:${line}: ${entry.claim} is ${value}, outside the ` +
-						"word table's range (0-99); extend the table",
+					`${entry.file}:${line}: ${entry.claim} matched, and capture group ${index + 1} took no text; ` +
+						'a group a match can skip holds no number',
 				)
 				return
 			}
-			owed = matchCaseOf(carried, word)
-		}
-		if (carried === owed) return
-		failures.push(
-			`${entry.file}:${line}: ${entry.claim} reads "${carried}" and is ${owed} (${value})`,
-		)
-	})
-}
+			let owed: string
+			if (entry.rendering === 'digits') owed = String(value)
+			else {
+				const word = inWords(value)
+				if (word === null) {
+					failures.push(
+						`${entry.file}:${line}: ${entry.claim} is ${value}, outside the ` +
+							"word table's range (0-99); write this one as digits",
+					)
+					return
+				}
+				owed = matchCaseOf(carried, word)
+			}
+			if (carried === owed) return
+			failures.push(
+				`${entry.file}:${line}: ${entry.claim} reads "${carried}" and is ${owed} (${value})`,
+			)
+		})
+	}
 
-if (failures.length > 0) {
-	for (const failure of failures) console.error(failure)
-	console.error(
-		`check-doc-counts: ${failures.length} count(s) disagree with their source`,
-	)
-	process.exit(1)
+	return {
+		failures,
+		numerals,
+		digits,
+		files: new Set(section.entries.map((entry) => entry.file)).size,
+	}
 }
-
-const files = new Set(ENTRIES.map((entry) => entry.file)).size
-console.log(
-	`check-doc-counts: ${numerals} numerals across ${files} files agree with ` +
-		`their source, plus ${digits} counts written as digits`,
-)

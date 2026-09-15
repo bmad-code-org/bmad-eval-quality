@@ -39,8 +39,11 @@ import { spawnSync } from 'node:child_process'
 import {
 	cpSync,
 	existsSync,
+	mkdirSync,
 	mkdtempSync,
 	readFileSync,
+	rmSync,
+	symlinkSync,
 	writeFileSync,
 } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -61,6 +64,9 @@ import {
 	GATE_NAMES,
 	LOCKFILE_WINDOW_DAYS_DEFAULT,
 	loadDependencyDirectionConfig,
+	loadDocClaimsConfig,
+	loadDocCountsConfig,
+	loadDocInvocationsConfig,
 	loadFieldOwnershipConfig,
 	loadLicencesConfig,
 	loadLockfileAgeConfig,
@@ -317,6 +323,11 @@ describe('the gate configuration loader', () => {
 		expect((await loadFieldOwnershipConfig({ configPath })).kind).toBe(
 			'section',
 		)
+		expect((await loadDocInvocationsConfig({ configPath })).kind).toBe(
+			'section',
+		)
+		expect((await loadDocCountsConfig({ configPath })).kind).toBe('section')
+		expect((await loadDocClaimsConfig({ configPath })).kind).toBe('section')
 	})
 
 	it('applies the window default when a section names none', async () => {
@@ -595,6 +606,30 @@ describe('the lockfile-age gate', () => {
 		expect(report.offRegistryEntries[0]?.name).toBe('fixture-dual')
 	})
 
+	/**
+	 * The off-registry split has to run before the cache lookup, and this pins
+	 * the order rather than trusting it to hold by accident. A cache entry for
+	 * the substituted name@version supplies an ancient, wholesome-looking
+	 * timestamp; if the cache were consulted first, that timestamp would launder
+	 * the entry straight past the check it exists to fail.
+	 */
+	it('does not let a cached timestamp launder an off-registry entry', async () => {
+		const report = await auditLockfileAge({
+			lockfile: lockfileOf('substituted-package'),
+			now: new Date(),
+			windowDays: LOCKFILE_WINDOW_DAYS_DEFAULT,
+			cache: { 'fixture-dual@2.0.0': ANCIENT },
+			readTimeMap: () => {
+				throw new Error(
+					'the cache should have answered this; no fetch belongs here',
+				)
+			},
+		})
+		expect(report.offRegistryEntries).toHaveLength(1)
+		expect(report.offRegistryEntries[0]?.name).toBe('fixture-dual')
+		expect(report.youngEntries).toEqual([])
+	})
+
 	it('refuses a lockfile carrying no packages object, naming its version', async () => {
 		await expect(
 			auditLockfileAge({
@@ -665,6 +700,23 @@ describe('the lockfile-age gate', () => {
 		expect(run.status).toBe(EXIT_USAGE)
 		expect(run.output).toContain('absent-lock.json does not exist')
 		expect(run.output).toContain('names it under lockfiles')
+	})
+
+	it('names a cache the section points at and the filesystem has not', () => {
+		const root = mkdtempSync(join(tmpdir(), 'gate-cache-absent-'))
+		cpSync(join(FIXTURES, 'compliant'), root, { recursive: true })
+		const path = join(root, DEFAULT_CONFIG_FILE)
+		const document = JSON.parse(readFileSync(path, 'utf8')) as {
+			'lockfile-age': Record<string, unknown>
+		}
+		document['lockfile-age'].cache = 'absent-cache.json'
+		writeFileSync(path, JSON.stringify(document, null, '\t'), 'utf8')
+
+		const run = runGates('lockfile-age', '--config', path)
+		expect(run.status).toBe(EXIT_USAGE)
+		expect(run.output).toContain('absent-cache.json')
+		expect(run.output).toContain('does not exist')
+		expect(run.output).toContain('names it under cache')
 	})
 })
 
@@ -783,6 +835,379 @@ describe('the field-ownership gate', () => {
 	})
 })
 
+describe('the doc-invocations gate', () => {
+	it('passes on the compliant fixture', () => {
+		const run = runGates(
+			'doc-invocations',
+			'--config',
+			configOf('doc-invocations-compliant'),
+		)
+		expect(run.status).toBe(0)
+		expect(run.output).toContain('2 invocation(s) scanned across 1 page(s)')
+		expect(run.output).toContain('0 failure(s)')
+	})
+
+	/**
+	 * The seed is worded from outside the gate's trigger vocabulary. The gate
+	 * exists to catch a documented flag that stopped existing, which shows up as
+	 * a usage exit; this page's command and flags all exist and the run exits
+	 * exactly the code the page declares. What drifted is one word of the
+	 * transcribed diagnostic beside it, which the exit code cannot see.
+	 */
+	it('fails on a transcript that drifted while the exit code agreed', () => {
+		const run = runGates(
+			'doc-invocations',
+			'--config',
+			configOf('doc-invocations-seeded'),
+		)
+		expect(run.status).toBe(1)
+		expect(run.output).toContain('1 failure(s)')
+		expect(run.output).toContain('tool: run `tool verify` first')
+		expect(run.output).toContain('as line 2 of the output')
+	})
+
+	it('refuses a built entry that is absent rather than passing over nothing', () => {
+		const root = mkdtempSync(join(tmpdir(), 'gate-doc-entry-'))
+		cpSync(join(FIXTURES, 'doc-invocations-compliant'), root, {
+			recursive: true,
+		})
+		rmSync(join(root, 'bin/tool.mjs'))
+
+		const run = runGates(
+			'doc-invocations',
+			'--config',
+			join(root, DEFAULT_CONFIG_FILE),
+		)
+		expect(run.status).toBe(EXIT_USAGE)
+		expect(run.output).toContain('bin/tool.mjs')
+		expect(run.output).toContain('build it before the gate runs')
+	})
+
+	it('refuses a pages root that is the configuration directory itself', () => {
+		const root = mkdtempSync(join(tmpdir(), 'gate-doc-root-'))
+		cpSync(join(FIXTURES, 'doc-invocations-compliant'), root, {
+			recursive: true,
+		})
+		const path = join(root, DEFAULT_CONFIG_FILE)
+		const document = JSON.parse(readFileSync(path, 'utf8')) as {
+			'doc-invocations': Record<string, unknown>
+		}
+		document['doc-invocations'].pages = ['.']
+		writeFileSync(path, JSON.stringify(document, null, '\t'), 'utf8')
+
+		const run = runGates('doc-invocations', '--config', path)
+		expect(run.status).toBe(EXIT_USAGE)
+		expect(run.output).toContain('the directory the configuration sits in')
+	})
+})
+
+describe('the doc-counts gate', () => {
+	it('passes on the compliant fixture', () => {
+		const run = runGates(
+			'doc-counts',
+			'--config',
+			configOf('doc-counts-compliant'),
+		)
+		expect(run.status).toBe(0)
+		expect(run.output).toContain('0 disagreement(s)')
+	})
+
+	/**
+	 * The seed is worded from outside the gate's trigger vocabulary. The gate
+	 * exists to catch a numeral that disagrees with what it counts, and this
+	 * page's numeral is right. What went wrong is that the sentence was
+	 * duplicated, so the entry names two sentences and no longer holds either
+	 * one: the next edit to the second copy would go unheld.
+	 */
+	it('fails on a sentence its entry now matches twice', () => {
+		const run = runGates(
+			'doc-counts',
+			'--config',
+			configOf('doc-counts-seeded'),
+		)
+		expect(run.status).toBe(1)
+		expect(run.output).toContain('2 sentences match the pattern')
+		expect(run.output).toContain('(lines 3, 8)')
+	})
+
+	it('refuses a source no entry reads', () => {
+		const run = runGates(
+			'doc-counts',
+			'--config',
+			temporaryConfig(
+				JSON.stringify({
+					'doc-counts': {
+						sources: {
+							used: {
+								kind: 'files',
+								paths: [{ path: 'nowhere', optional: true }],
+							},
+							spare: {
+								kind: 'files',
+								paths: [{ path: 'nowhere', optional: true }],
+							},
+						},
+						entries: [
+							{
+								file: 'page.md',
+								claim: 'a count',
+								pattern: { match: 'ships ([a-z-]+) rules' },
+								counts: ['used'],
+							},
+						],
+					},
+				}),
+			),
+		)
+		expect(run.status).toBe(EXIT_USAGE)
+		expect(run.output).toContain('a source nothing reads')
+	})
+
+	it('refuses an entry whose pattern carries the wrong number of groups', () => {
+		const run = runGates(
+			'doc-counts',
+			'--config',
+			temporaryConfig(
+				JSON.stringify({
+					'doc-counts': {
+						sources: {
+							rules: {
+								kind: 'files',
+								paths: [{ path: 'nowhere', optional: true }],
+							},
+						},
+						entries: [
+							{
+								file: 'page.md',
+								claim: 'a count',
+								pattern: { match: 'ships some rules' },
+								counts: ['rules'],
+							},
+						],
+					},
+				}),
+			),
+		)
+		expect(run.status).toBe(EXIT_USAGE)
+		expect(run.output).toContain('has 0 capture group(s)')
+	})
+
+	/**
+	 * `DOC_COUNT_SOURCE`, the one coded exit `check-doc-counts.ts` raises at run
+	 * time rather than at load: a `json` source whose path walks off the
+	 * document it named. The Zod refinements catch every load-time shape; this
+	 * is the one refusal that can only happen once the file is actually read.
+	 */
+	it('refuses a json source whose path is absent from the document', () => {
+		const root = mkdtempSync(join(tmpdir(), 'gate-doc-count-json-'))
+		writeFileSync(join(root, 'manifest.json'), JSON.stringify({ bin: {} }))
+		writeFileSync(join(root, 'page.md'), 'ships zero binaries')
+		writeFileSync(
+			join(root, DEFAULT_CONFIG_FILE),
+			JSON.stringify({
+				'doc-counts': {
+					sources: {
+						count: {
+							kind: 'json',
+							file: 'manifest.json',
+							path: ['bin', 'missing'],
+							take: 'keys',
+						},
+					},
+					entries: [
+						{
+							file: 'page.md',
+							claim: 'a count',
+							pattern: { match: 'ships ([a-z]+) binaries' },
+							counts: ['count'],
+						},
+					],
+				},
+			}),
+			'utf8',
+		)
+
+		const run = runGates(
+			'doc-counts',
+			'--config',
+			join(root, DEFAULT_CONFIG_FILE),
+		)
+		expect(run.status).toBe(EXIT_USAGE)
+		expect(run.output).toContain('"missing" is absent')
+	})
+})
+
+describe('the doc-claims gate', () => {
+	it('passes on the compliant fixture', () => {
+		const run = runGates(
+			'doc-claims',
+			'--config',
+			configOf('doc-claims-compliant'),
+		)
+		expect(run.status).toBe(0)
+		expect(run.output).toContain('1 backticked identifiers are declared')
+	})
+
+	/**
+	 * The seed is worded from outside the gate's trigger vocabulary. A renamed
+	 * symbol commonly survives in a comment, and the page names exactly such a
+	 * name: a check reading mentions finds it and passes. This gate reads
+	 * declarations, which is the stronger of the two and the reason the seed
+	 * fails.
+	 */
+	it('fails on a name the source mentions and no longer declares', () => {
+		const run = runGates(
+			'doc-claims',
+			'--config',
+			configOf('doc-claims-seeded'),
+		)
+		expect(run.status).toBe(1)
+		expect(run.output).toContain('`readReport`')
+		expect(run.output).toContain('nothing in the source roots declares')
+	})
+
+	it('refuses a section that declares no class of claim', () => {
+		const run = runGates(
+			'doc-claims',
+			'--config',
+			temporaryConfig(
+				JSON.stringify({
+					'doc-claims': {
+						pages: ['docs'],
+						sources: [{ path: 'src', extensions: ['.ts'] }],
+					},
+				}),
+			),
+		)
+		expect(run.status).toBe(EXIT_USAGE)
+		expect(run.output).toContain('declares no class of claim')
+	})
+
+	/**
+	 * The page walk, held to the same rule the invocation gate's is. Both gates
+	 * promise the same thing about which pages a root reaches, and the two walks
+	 * were written in one change.
+	 */
+	it('refuses a pages root that encloses the configuration, symlinked or not', () => {
+		const root = mkdtempSync(join(tmpdir(), 'gate-claims-root-'))
+		cpSync(join(FIXTURES, 'doc-claims-compliant'), root, { recursive: true })
+		symlinkSync(root, join(root, 'self'))
+		const path = join(root, DEFAULT_CONFIG_FILE)
+		const document = JSON.parse(readFileSync(path, 'utf8')) as {
+			'doc-claims': Record<string, unknown>
+		}
+		document['doc-claims'].pages = ['self']
+		writeFileSync(path, JSON.stringify(document, null, '\t'), 'utf8')
+
+		const run = runGates('doc-claims', '--config', path)
+		expect(run.status).toBe(EXIT_USAGE)
+		expect(run.output).toContain('encloses the directory the configuration')
+	})
+
+	it('reads no page out of an installed tree under a page root', () => {
+		const root = mkdtempSync(join(tmpdir(), 'gate-claims-skip-'))
+		cpSync(join(FIXTURES, 'doc-claims-compliant'), root, { recursive: true })
+		mkdirSync(join(root, 'docs/node_modules/dep'), { recursive: true })
+		writeFileSync(
+			join(root, 'docs/node_modules/dep/README.md'),
+			'# Dep\n\nCall `someDependencyThing` on it.\n',
+			'utf8',
+		)
+
+		// A dependency's own prose names symbols this tree never declares, so a
+		// walk that read it would fail the gate on somebody else's page.
+		const run = runGates(
+			'doc-claims',
+			'--config',
+			join(root, DEFAULT_CONFIG_FILE),
+		)
+		expect(run.status).toBe(0)
+		expect(run.output).not.toContain('someDependencyThing')
+	})
+
+	it('refuses one page root that reaches nothing among several that do', () => {
+		const root = mkdtempSync(join(tmpdir(), 'gate-claims-empty-'))
+		cpSync(join(FIXTURES, 'doc-claims-compliant'), root, { recursive: true })
+		mkdirSync(join(root, 'guides'))
+		const path = join(root, DEFAULT_CONFIG_FILE)
+		const document = JSON.parse(readFileSync(path, 'utf8')) as {
+			'doc-claims': Record<string, unknown>
+		}
+		document['doc-claims'].pages = ['docs', 'guides']
+		writeFileSync(path, JSON.stringify(document, null, '\t'), 'utf8')
+
+		const run = runGates('doc-claims', '--config', path)
+		expect(run.status).toBe(EXIT_USAGE)
+		expect(run.output).toContain('"guides" holds no markdown')
+	})
+
+	/**
+	 * The class the gate's own header exists for. Its pattern and its token sets
+	 * now live in a configuration file, so a typo switches the class off, and the
+	 * summary would report a clean pass over zero classified sentences.
+	 */
+	it('refuses a vocabulary that classified nothing', () => {
+		const root = mkdtempSync(join(tmpdir(), 'gate-claims-vocab-'))
+		cpSync(join(FIXTURES, 'doc-claims-compliant'), root, { recursive: true })
+		writeFileSync(
+			join(root, 'docs/guide.md'),
+			'# Guide\n\nCall `parseReport` on the text you read.\n',
+			'utf8',
+		)
+
+		const run = runGates(
+			'doc-claims',
+			'--config',
+			join(root, DEFAULT_CONFIG_FILE),
+		)
+		expect(run.status).toBe(EXIT_USAGE)
+		expect(run.output).toContain('classified no mention at all')
+	})
+
+	it('holds a vocabulary sentence against the two sets', () => {
+		const root = mkdtempSync(join(tmpdir(), 'gate-claims-governed-'))
+		cpSync(join(FIXTURES, 'doc-claims-compliant'), root, { recursive: true })
+		writeFileSync(
+			join(root, 'docs/guide.md'),
+			'# Guide\n\nCall `parseReport` on the text you read.\n\n' +
+				'The reader accepts `json` and `toml`, and rejects `yaml`.\n',
+			'utf8',
+		)
+
+		const run = runGates(
+			'doc-claims',
+			'--config',
+			join(root, DEFAULT_CONFIG_FILE),
+		)
+		expect(run.status).toBe(1)
+		expect(run.output).toContain('"accepts" governing `toml`')
+		expect(run.output).toContain('"rejects" governing `yaml`')
+	})
+
+	it('refuses a source naming an export the module does not have', () => {
+		const root = mkdtempSync(join(tmpdir(), 'gate-doc-export-'))
+		cpSync(join(FIXTURES, 'doc-claims-compliant'), root, { recursive: true })
+		const path = join(root, DEFAULT_CONFIG_FILE)
+		const document = JSON.parse(readFileSync(path, 'utf8')) as {
+			'doc-claims': Record<string, unknown>
+		}
+		document['doc-claims'].transcriptions = [
+			{
+				file: 'docs/guide.md',
+				claim: 'a transcription',
+				text: { module: 'src/lib.ts', export: 'RENDERED' },
+			},
+		]
+		writeFileSync(path, JSON.stringify(document, null, '\t'), 'utf8')
+
+		const run = runGates('doc-claims', '--config', path)
+		expect(run.status).toBe(EXIT_USAGE)
+		expect(run.output).toContain('src/lib.ts exports no "RENDERED"')
+		expect(run.output).toContain('it exports ACCEPTED_KINDS')
+		expect(run.output).toContain('parseReport')
+	})
+})
+
 describe('the built gates binary', () => {
 	const BUILT = existsSync(resolve('dist/gates/gates-cli.js'))
 	const NEEDS_BUILD =
@@ -803,11 +1228,70 @@ describe('the built gates binary', () => {
 			'dist/gates/token-scan.js',
 			'dist/gates/package-boundary.js',
 			'dist/gates/lineage-ownership.js',
+			'dist/gates/consumer-pattern.js',
+			'dist/gates/module-value.js',
+			'dist/gates/check-doc-invocations.mjs',
+			'dist/gates/check-doc-counts.js',
+			'dist/gates/check-doc-claims.js',
 		]) {
 			expect(existsSync(resolve(emitted)), `${emitted} was not emitted`).toBe(
 				true,
 			)
 		}
+	})
+
+	/**
+	 * A documentation gate from the published path reaches further than the
+	 * licence one: it imports modules the configuration names, which is the
+	 * mechanism a consumer's own derived counts arrive through. A compiled binary
+	 * that could not import a `.ts` module out of the consumer's tree would fail
+	 * only there, and this repository would never see it.
+	 */
+	it('imports a configured module from the published path', (ctx) => {
+		if (!BUILT) return ctx.skip(NEEDS_BUILD)
+		const result = spawnSync(
+			process.execPath,
+			[resolve('dist/gates/gates-cli.js'), 'doc-counts'],
+			{ encoding: 'utf8' },
+		)
+		expect(`${result.stdout}${result.stderr}`).toContain(
+			'held against their source',
+		)
+		expect(result.status).toBe(0)
+	})
+
+	/**
+	 * `check:doc-invocations`, `check:doc-counts` and `check:doc-claims` all run
+	 * `scripts/gates-cli.ts` locally, the same as every gate but `lockfile-age`;
+	 * the built binary is what a consumer runs. The case above covers
+	 * `doc-counts`; these two cover the other pair, so a compile-only defect in
+	 * either can't ship holding only the source path green.
+	 */
+	// This one gate spawns a child process per documented invocation, 32 of them
+	// against this repository's own pages, so the default per-test timeout is
+	// too tight on a loaded runner: vitest's own budget, not this gate's.
+	it('runs the doc-invocations gate from the published path', (ctx) => {
+		if (!BUILT) return ctx.skip(NEEDS_BUILD)
+		const result = spawnSync(
+			process.execPath,
+			[resolve('dist/gates/gates-cli.js'), 'doc-invocations'],
+			{ encoding: 'utf8' },
+		)
+		expect(`${result.stdout}${result.stderr}`).toContain(
+			'invocation(s) scanned',
+		)
+		expect(result.status).toBe(0)
+	}, 60_000)
+
+	it('runs the doc-claims gate from the published path', (ctx) => {
+		if (!BUILT) return ctx.skip(NEEDS_BUILD)
+		const result = spawnSync(
+			process.execPath,
+			[resolve('dist/gates/gates-cli.js'), 'doc-claims'],
+			{ encoding: 'utf8' },
+		)
+		expect(`${result.stdout}${result.stderr}`).toContain('citations resolve')
+		expect(result.status).toBe(0)
 	})
 
 	it('runs a gate end to end from the published path', (ctx) => {

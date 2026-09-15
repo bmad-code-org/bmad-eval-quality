@@ -58,6 +58,8 @@ jobs:
           version: ${{ env.NPM_VERSION }}
 
       - uses: ./.github/actions/audit-lockfile-age
+        with:
+          cache: lockfile-age-cache.json
 
       - name: Install dependencies
         run: |

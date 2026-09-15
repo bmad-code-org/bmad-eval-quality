@@ -14,7 +14,7 @@ The package publishes two binaries.
 Every gate reads its rules out of one JSON file you write.
 This package's own trees, names, and policies stay in this package; your run sees the values you declared and nothing else.
 
-The gates binary carries five gates.
+The gates binary carries eight gates.
 
 ## The configuration file
 
@@ -28,7 +28,7 @@ There is no fallback to this package's own values.
 
 Every path a section names is relative to the configuration file, so a configuration file is self-contained wherever you keep it.
 
-A file configuring all five gates parses against the published schema:
+A file configuring all eight gates parses against the published schema:
 
 ```json
 {
@@ -132,6 +132,95 @@ A file configuring all five gates parses against the published schema:
     "declarations": ["src/model/schema/"],
     "writers": ["src/app/authorize.ts"],
     "helpers": ["withTenant"]
+  },
+  "doc-invocations": {
+    "pages": ["README.md", "docs"],
+    "binary": {
+      "entry": "dist/cli.js",
+      "spellings": ["npx your-tool", "your-tool"],
+      "installedPrefix": "node_modules/your-tool/"
+    },
+    "sampleInput": "examples/report.json"
+  },
+  "doc-counts": {
+    "sources": {
+      "rules": {
+        "kind": "module",
+        "from": { "module": "src/rules/index.ts", "export": "RULES", "take": "length" }
+      },
+      "examples": {
+        "kind": "files",
+        "paths": [{ "path": "examples", "recursive": false, "extensions": [".json"] }]
+      }
+    },
+    "entries": [
+      {
+        "file": "README.md",
+        "claim": "the rule count",
+        "pattern": { "match": "ships ([a-z-]+) rules" },
+        "counts": ["rules"]
+      },
+      {
+        "file": "docs/examples.md",
+        "claim": "the worked example count",
+        "pattern": { "match": "([a-z-]+) worked examples" },
+        "counts": ["examples"]
+      }
+    ]
+  },
+  "doc-claims": {
+    "pages": ["README.md", "docs"],
+    "sources": [{ "path": "src", "extensions": [".ts"] }],
+    "citations": { "window": 4 },
+    "symbols": {
+      "foreign": [
+        { "token": "AbortSignal", "reason": "the platform's own type, declared by node's lib" }
+      ]
+    },
+    "lists": [
+      {
+        "file": "docs/rules.md",
+        "claim": "the rule list",
+        "pattern": { "match": "the rules are ([^.]*?)\\." },
+        "tokenShape": { "module": "src/rules/index.ts", "export": "RULE_NAMES" },
+        "expected": { "module": "src/rules/index.ts", "export": "RULE_NAMES" }
+      }
+    ],
+    "codes": {
+      "pattern": { "match": "raises `([a-z][a-z0-9]*(?:-[a-z0-9]+)+)`" },
+      "registries": [{ "module": "src/errors.ts", "export": "ERROR_CODES" }]
+    },
+    "fences": [
+      {
+        "file": "docs/rules.md",
+        "claim": "the worked rule object",
+        "intro": { "match": "It parses as a `Rule`:" },
+        "schema": { "module": "src/rules/schema.ts", "export": "Rule" }
+      }
+    ],
+    "vocabulary": {
+      "tokens": { "module": "src/formats.ts", "export": "FORMAT_KINDS" },
+      "accepted": { "module": "src/formats.ts", "export": "SUPPORTED_FORMAT_KINDS" },
+      "refused": { "module": "src/formats.ts", "export": "UNSUPPORTED_FORMAT_KINDS" }
+    },
+    "dated": {
+      "triggers": [{ "match": "\\bnot yet\\b|\\btoday\\b", "flags": "i" }],
+      "claims": [
+        {
+          "file": "README.md",
+          "key": "no production deployment has run it yet",
+          "settles": "read",
+          "reason": "a deployment is outside this repository, so no artifact here records one"
+        }
+      ]
+    },
+    "transcriptions": [
+      {
+        "file": "docs/cli.md",
+        "claim": "the exit-code table",
+        "text": { "module": "src/cli/render.ts", "export": "EXIT_CODE_TABLE" }
+      }
+    ]
   }
 }
 ```
@@ -159,6 +248,16 @@ An entry that does not resolve to the npm registry fails, because a lockfile edi
 
 A registry install-delay setting filters resolution and leaves a young entry that already sits in a committed lockfile alone.
 This gate re-checks the committed lockfile, which is where that gap lives.
+
+`cache` names a JSON file mapping `name@version` to a publication timestamp, and it is what keeps a gate that runs on every build off the network.
+Both of this audit's inputs make it sound with no staleness bound: a package's publication time is fixed the moment it is published, so a reading taken once is correct forever, and the predicate is monotone in time, so an entry that passes once passes on every later run.
+An entry the cache carries is used with no request, an entry it does not is fetched, and a fetch that fails still fails the gate.
+
+The gate only reads the file. Write it with a generator of your own and commit it, and a run you never make costs you nothing but requests.
+
+The cache is trusted the way the rest of your configuration is trusted.
+A back-dated entry in it makes a young package look old, exactly as a wider `windowDays` or a longer `allowlist` would weaken the gates beside it.
+All of those are committed files, and a diff to any of them is the place that decision is visible.
 
 ## The licences gate
 
@@ -189,7 +288,7 @@ It reads every import, re-export, dynamic import and triple-slash reference dire
 
 This gate needs one thing installed: `typescript`, which the package declares as an optional peer dependency.
 Install it only if you run this gate or the field-ownership gate, which are the two that read your source.
-Invoke it without it and the gate refuses at exit `64`, naming the missing dependency and the gate that wanted it, so a repository that adopted the other three is never left wondering which of its gates is complaining.
+Invoke it without it and the gate refuses at exit `64`, naming the missing dependency and the gate that wanted it, so a repository that adopted the other six is never left wondering which of its gates is complaining.
 
 ### Roots
 
@@ -372,9 +471,99 @@ Read the helper list when you read the writer list.
 
 This gate reads your source through the typescript package's own scanner, which is an optional peer dependency of this package.
 Install `typescript` to run it.
-The dependency-direction gate is the only other one that needs it; the remaining three need nothing beyond this package, and a gate you have not configured is a gate you never invoke, so a repository that adopted only those three never installs it.
+The dependency-direction gate is the only other one that needs it; the remaining six need nothing beyond this package, and a gate you have not configured is a gate you never invoke, so a repository that adopted only those six never installs it.
 
 Invoked without it, this gate refuses at exit `64` naming the missing dependency and itself.
+
+## The doc-invocations gate
+
+It runs every fenced command in the pages you name against the binary you name, and compares the exit code with what the page claims.
+
+`binary.entry` is the built entry point, and it is a precondition.
+A gate that skipped when it was absent would exit `0` having executed nothing, so an absent entry is a refusal at exit `64` naming the path.
+
+`binary.spellings` is how your pages write the command, as the literal text a reader types.
+Each is matched at the start of a fenced line with whitespace or end of line after it, so a transcript of your own diagnostic output is left alone.
+Write every spelling your pages use: `npx your-tool`, the bare name, and whatever `node dist/...` form your contributor documentation carries.
+
+`sampleInput` stands in for a file only the reader has, such as `<path>`.
+A run that needed one is judged for usage errors and crashes and nothing more, because its exit code is not the page's own claim.
+
+A run whose every input resolved to real bytes is the page's claim, so it has to exit `0`.
+A page that deliberately shows a failure declares the code it expects in an HTML comment on the line before the fence:
+
+```text
+<!-- expect-exit: 4 -->
+```
+
+Declaring a code the run does not produce fails too: a documented rejection that stopped rejecting is as stale as a flag that stopped existing.
+
+A page may transcribe the diagnostic beside a declared-exit fence, in a `text` fence separated from the command by blank lines only, and that block is compared to stderr line for line.
+`...` inside a line elides a run of characters there, and a line that is exactly `...` matches any one line.
+Stderr may run past the block, and the block may never run past stderr, so a page transcribing the first lines of a longer diagnostic is making a claim about those lines and no others.
+
+The gate replays each page in its own temporary directory, in document order.
+A `cat > path <<'EOF'` heredoc, an `echo ... > path` redirect and a `mkdir -p` all take effect there, so a page that writes a file and then reads it is checked against the file it wrote.
+Every path is rebased under that directory first, so the gate writes nothing into your repository.
+
+## The doc-counts gate
+
+It computes every hand-written count in the pages you name from the thing it counts, renders it the way the page spells it, and compares.
+
+A section has two halves.
+`sources` names where each number comes from, and `entries` names which sentence carries it.
+
+A source is one of four kinds.
+`module` imports a module of yours and reads an export, which is what covers a number your own code derives.
+`json` walks a JSON file, which is what covers a count the manifest already holds.
+`files` counts the files under the paths you name.
+`matches` counts occurrences of a pattern across the trees you name, or the distinct values of its first capture group.
+
+An entry names a file, a pattern with one capture group per number, and whether the page spells it as a word or as digits.
+Words are rendered from a closed table covering zero to ninety-nine, and the comparison follows the case the page used.
+Set `wrap` when the sentence may wrap across lines: a literal space in the pattern then also matches a line break, and never a blank line, so a capture cannot reach into the paragraph above.
+
+A pattern that matches nothing fails, and so does one that matches twice.
+A rewritten sentence therefore cannot escape its own entry by drifting out from under the pattern, and a source no entry uses fails for the same reason.
+
+## The doc-claims gate
+
+It holds the prose claims in your pages against the tree those pages describe: the class of sentence that is neither a number nor a fenced command.
+
+Eight classes, each its own block. A section declaring none of them is refused: the alternative is a pass over nothing.
+
+`citations` resolves every source citation a page carries, the file-and-line-number form, checks the line is in range, and checks that a symbol the sentence names is declared within a few lines of it.
+A citation whose sentence names no such symbol is registered under `unanchored` with the reason, and an entry matching no citation fails, so a fixed sentence leaves no stale exemption behind.
+
+`symbols` holds every backticked identifier against the declarations in your source roots.
+The test is declaration, which catches what a mention-based test would miss: a symbol deleted in a rename commonly survives in a comment, and a gate reading mentions would keep passing the page that names it.
+A token your tree is right not to declare goes under `foreign` with its reason.
+
+`lists` holds a sentence that spells out a set against the set a module of yours exports.
+`tokenShape` says which backticked tokens inside the captured stretch are members, either as a pattern or as a module export naming the whole vocabulary.
+
+`codes` holds every code a page says is raised against the registries you name.
+The trigger is the verb: a kebab-case token on its own is as likely to be an example identifier as a claim about your tree.
+
+`fences` parses a published JSON block against the schema the prose names.
+The block is found by the sentence that introduces it, so the entry survives a paragraph moving, and a sentence matching nothing fails as a dead entry.
+
+`vocabulary` holds every sentence saying a member of your vocabulary is accepted or refused against your two sets, including one written tomorrow on a page no entry covers.
+A token is classified by the nearest governing verb, and a verb the sentence negates or puts in the past leaves it undecided.
+
+`dated` is the one class that only registers a claim; deciding it is not this gate's job.
+Whether a route still works months after it was last exercised is not written anywhere in your tree, so no check can settle it.
+What a check can settle is that the sentence exists and is registered: a claim of that kind fails until somebody writes down who holds it and why, and a registered claim whose sentence was rewritten fails as a dead entry.
+Each entry says how it is settled, by a predicate of yours or by `"read"` with the reason nothing mechanical reaches it.
+
+`transcriptions` holds a page that reprints bytes your code emits against the bytes themselves.
+
+### These two gates import your modules
+
+`doc-counts` and `doc-claims` read values out of modules your configuration names.
+Reading a value means importing the module that exports it, and importing runs that module's top level and everything it transitively imports, in this gate's own process, with this process's own permissions and environment.
+That is the same trust a lint plugin or a test setup file has, and it is what lets a count stay a computation in code you can test: the configuration only names it.
+Point them at modules whose top level, and whose imports, you are happy to run on every build.
 
 ## Related pages
 

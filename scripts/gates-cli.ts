@@ -27,11 +27,18 @@ import process from 'node:process'
 import {
 	auditLockfileAge,
 	LOCKFILE_SHAPE_ERROR,
+	readPublishCache,
 } from './audit-lockfile-age.mjs'
 import type { DependencyDirectionConfig } from './check-dependency-direction.ts'
 import { runDependencyDirection } from './check-dependency-direction.ts'
+import type { DocClaimsConfig } from './check-doc-claims.ts'
+import { DOC_CLAIM_PATH, runDocClaims } from './check-doc-claims.ts'
+import type { DocCountsConfig } from './check-doc-counts.ts'
+import { DOC_COUNT_SOURCE, runDocCounts } from './check-doc-counts.ts'
+import { DOC_PATH_ERROR, runDocInvocations } from './check-doc-invocations.mjs'
 import { checkLicenses } from './check-licenses.mjs'
 import type {
+	DocInvocationsConfig,
 	GateName,
 	LicencesConfig,
 	LockfileAgeConfig,
@@ -40,6 +47,9 @@ import {
 	DEFAULT_CONFIG_FILE,
 	GATE_NAMES,
 	loadDependencyDirectionConfig,
+	loadDocClaimsConfig,
+	loadDocCountsConfig,
+	loadDocInvocationsConfig,
 	loadFieldOwnershipConfig,
 	loadLicencesConfig,
 	loadLockfileAgeConfig,
@@ -50,12 +60,10 @@ import {
 	runFieldOwnership,
 	TYPESCRIPT_UNAVAILABLE,
 } from './lineage-ownership.ts'
+import { MODULE_VALUE_ERROR } from './module-value.ts'
 import type { PackageBoundaryConfig } from './package-boundary.ts'
-import {
-	runPackageBoundary,
-	SCAN_PATH_ERROR,
-	SCAN_UNREADABLE,
-} from './package-boundary.ts'
+import { runPackageBoundary } from './package-boundary.ts'
+import { SCAN_PATH_ERROR, SCAN_UNREADABLE } from './scanned-paths.ts'
 
 const EXIT_OK = 0
 /** The gate ran and found what it exists to find. */
@@ -85,6 +93,12 @@ const GATE_SUMMARY: Readonly<Record<GateName, string>> = {
 		'every line your package would publish, against the patterns you forbid',
 	'field-ownership':
 		'every write to a field you own, against the modules you let write it',
+	'doc-invocations':
+		'every fenced command in your pages, against the exit code the page claims',
+	'doc-counts':
+		'every hand-written count in your pages, against the thing it counts',
+	'doc-claims':
+		'every prose claim in your pages, against the tree those pages describe',
 }
 
 /** The widest gate name, plus the two spaces that separate it from its summary. */
@@ -110,6 +124,10 @@ dependency-direction and field-ownership read your source with the TypeScript
 scanner, so those two need the optional peer dependency "typescript". Install it
 only if you run one of them; each refuses by name when it is absent.
 
+doc-counts and doc-claims read values out of modules your configuration names,
+which means importing them, which runs them. doc-invocations runs the commands
+your pages document, each inside a temporary directory it owns.
+
 Exit codes: ${EXIT_OK} the gate passed, ${EXIT_GATE_FAILED} the gate failed, ${EXIT_USAGE} a usage or configuration error.`
 
 const writeOut = (line: string): void => {
@@ -126,7 +144,7 @@ class ConfigurationError extends Error {}
 type Tolerance = NonNullable<LicencesConfig['tolerances']>[number]
 
 /**
- * What the two gate modules return. They are `.mjs` with no declaration file, so
+ * What the three `.mjs` gate modules return. They carry no declaration file, so
  * the shape this binary depends on is stated here, at the boundary. Inferring it
  * would tie the binary's types to whatever an unchecked module happened to
  * return on the day it was read.
@@ -160,6 +178,22 @@ type LicenceReport = {
 	readonly entryCount: number
 	readonly tolerated: readonly string[]
 	readonly toleranceReasons: readonly string[]
+}
+
+type InvocationFailure = {
+	readonly file: string
+	readonly line: number
+	readonly invocation: string
+	readonly reason: string
+	readonly stderr: string
+}
+
+type InvocationReport = {
+	readonly failures: readonly InvocationFailure[]
+	readonly scanned: number
+	readonly judged: number
+	readonly compared: number
+	readonly pages: number
 }
 
 type Invocation =
@@ -262,16 +296,57 @@ async function readLockfile(
 	}
 }
 
+/**
+ * The committed publication cache, if the section names one. A path that is not
+ * there is a configuration error rather than a silent full-fetch run: a mistyped
+ * path would read as a cache answering nothing, which is the shape that turns a
+ * gate into one that passes for the wrong reason.
+ */
+async function readCache(
+	configFile: string,
+	root: string,
+	named: string | undefined,
+): Promise<Record<string, string>> {
+	if (named === undefined) return {}
+	const path = resolve(root, named)
+	let text: string
+	try {
+		text = await readFile(path, 'utf8')
+	} catch (error) {
+		const code = (error as NodeJS.ErrnoException).code
+		const detail =
+			code === 'ENOENT'
+				? 'does not exist'
+				: `could not be read: ${error instanceof Error ? error.message : String(error)}`
+		throw new ConfigurationError(
+			`${path} ${detail}; ${configFile}'s "lockfile-age" section names it under cache`,
+		)
+	}
+	try {
+		return readPublishCache(JSON.parse(text), path) as Record<string, string>
+	} catch (error) {
+		throw new ConfigurationError(
+			error instanceof Error ? error.message : String(error),
+		)
+	}
+}
+
 async function runLockfileAge(
 	configFile: string,
 	root: string,
 	section: LockfileAgeConfig,
 ): Promise<boolean> {
+	const cache = await readCache(configFile, root, section.cache)
 	const now = new Date()
 	// The line `.github/actions/audit-lockfile-age/action.yml` greps for: a
 	// clock-parsing bug that made every entry look permanently old would
 	// otherwise be invisible.
 	writeOut(`Effective clock: ${now.toISOString()}`)
+	if (section.cache !== undefined) {
+		writeOut(
+			`lockfile-age: ${Object.keys(cache).length} publication time(s) read from ${section.cache}; only an entry absent from it is fetched.`,
+		)
+	}
 
 	let passed = true
 	for (const relative of section.lockfiles) {
@@ -286,6 +361,7 @@ async function runLockfileAge(
 			now,
 			windowDays: section.windowDays,
 			source: relative,
+			cache,
 		})) as unknown as AgeReport
 
 		if (
@@ -486,6 +562,75 @@ async function runOwnership(
 	return EXIT_GATE_FAILED
 }
 
+/**
+ * The three documentation gates share a report shape: a summary line that is
+ * written whatever the outcome, and a list of failures. The summary on a clean
+ * run is what stops a gate reading as green because it scanned nothing.
+ */
+function reportDocFailures(
+	gate: string,
+	failures: readonly string[],
+	noun: string,
+): number {
+	if (failures.length === 0) return EXIT_OK
+	writeDiagnostic(`\n${gate}: ${failures.length} ${noun}:`)
+	for (const failure of failures) writeDiagnostic(`  ${failure}`)
+	return EXIT_GATE_FAILED
+}
+
+function runInvocations(root: string, section: DocInvocationsConfig): number {
+	const report = runDocInvocations(root, section) as unknown as InvocationReport
+	writeOut(
+		`doc-invocations: ${report.scanned} invocation(s) scanned across ${report.pages} page(s), ` +
+			`${report.judged} run faithfully over real inputs, ${report.compared} with their output compared, ` +
+			`${report.failures.length} failure(s)`,
+	)
+	if (report.failures.length === 0) return EXIT_OK
+	writeDiagnostic(
+		`\ndoc-invocations: ${report.failures.length} failing invocation(s):`,
+	)
+	for (const failure of [...report.failures].sort((a, b) =>
+		a.file === b.file ? a.line - b.line : a.file < b.file ? -1 : 1,
+	)) {
+		writeDiagnostic(
+			`  ${failure.file}:${failure.line} [${failure.reason}] ${failure.invocation}`,
+		)
+		for (const line of failure.stderr.split('\n')) {
+			if (line !== '') writeDiagnostic(`    ${line}`)
+		}
+	}
+	return EXIT_GATE_FAILED
+}
+
+async function runCounts(
+	root: string,
+	section: DocCountsConfig,
+): Promise<number> {
+	const report = await runDocCounts(root, section)
+	writeOut(
+		`doc-counts: ${report.numerals} numeral(s) across ${report.files} file(s) held against their source, ` +
+			`plus ${report.digits} count(s) written as digits, ${report.failures.length} disagreement(s)`,
+	)
+	return reportDocFailures(
+		'doc-counts',
+		report.failures,
+		'count(s) disagree with their source',
+	)
+}
+
+async function runClaims(
+	root: string,
+	section: DocClaimsConfig,
+): Promise<number> {
+	const report = await runDocClaims(root, section)
+	writeOut(`doc-claims: ${report.summary}`)
+	return reportDocFailures(
+		'doc-claims',
+		report.failures,
+		'prose claim(s) disagree with the tree',
+	)
+}
+
 async function run(invocation: Invocation): Promise<number> {
 	if (invocation.kind === 'help') {
 		writeOut(USAGE)
@@ -539,6 +684,21 @@ async function run(invocation: Invocation): Promise<number> {
 			if (loaded.kind === 'refused') return refused(loaded.message)
 			return runOwnership(dirname(loaded.path), loaded.section)
 		}
+		case 'doc-invocations': {
+			const loaded = await loadDocInvocationsConfig(options)
+			if (loaded.kind === 'refused') return refused(loaded.message)
+			return runInvocations(dirname(loaded.path), loaded.section)
+		}
+		case 'doc-counts': {
+			const loaded = await loadDocCountsConfig(options)
+			if (loaded.kind === 'refused') return refused(loaded.message)
+			return runCounts(dirname(loaded.path), loaded.section)
+		}
+		case 'doc-claims': {
+			const loaded = await loadDocClaimsConfig(options)
+			if (loaded.kind === 'refused') return refused(loaded.message)
+			return runClaims(dirname(loaded.path), loaded.section)
+		}
 	}
 
 	// Exhaustive over `GateName`: a gate added to `GATE_NAMES` with no arm above
@@ -552,11 +712,12 @@ async function run(invocation: Invocation): Promise<number> {
  * The refusals a gate raises as a coded error rather than as a return value,
  * and the exit each takes.
  *
- * A lockfile or a path the configuration named and the tree does not have is a
- * configuration error, so it takes the usage code: the repair is in the file.
- * So is an absent optional peer dependency. A tree the scan could not read to
- * the end takes the gate's own failure code instead, because that gate ran and
- * refused rather than being misinvoked.
+ * A lockfile, a page root, a built entry point, or a module export the
+ * configuration named and the tree does not have is a configuration error, so it
+ * takes the usage code: the repair is in the file. So is an absent optional peer
+ * dependency. A tree the scan could not read to the end takes the gate's own
+ * failure code instead, because that gate ran and refused rather than being
+ * misinvoked.
  *
  * Sharing one code across the two would let "scanned nothing" and "found
  * nothing" answer a caller the same way, which is the pass these refusals exist
@@ -566,6 +727,10 @@ const CODED_EXITS: ReadonlyMap<string, number> = new Map([
 	[LOCKFILE_SHAPE_ERROR, EXIT_USAGE],
 	[SCAN_PATH_ERROR, EXIT_USAGE],
 	[TYPESCRIPT_UNAVAILABLE, EXIT_USAGE],
+	[DOC_PATH_ERROR, EXIT_USAGE],
+	[DOC_CLAIM_PATH, EXIT_USAGE],
+	[DOC_COUNT_SOURCE, EXIT_USAGE],
+	[MODULE_VALUE_ERROR, EXIT_USAGE],
 	[SCAN_UNREADABLE, EXIT_GATE_FAILED],
 ])
 

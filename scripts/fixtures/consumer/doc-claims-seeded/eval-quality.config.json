@@ -1,0 +1,30 @@
+{
+	"doc-claims": {
+		"pages": [
+			"docs"
+		],
+		"sources": [
+			{
+				"path": "src",
+				"extensions": [
+					".ts"
+				]
+			}
+		],
+		"symbols": {},
+		"vocabulary": {
+			"tokens": {
+				"module": "src/lib.ts",
+				"export": "REPORT_KINDS"
+			},
+			"accepted": {
+				"module": "src/lib.ts",
+				"export": "ACCEPTED_KINDS"
+			},
+			"refused": {
+				"module": "src/lib.ts",
+				"export": "REFUSED_KINDS"
+			}
+		}
+	}
+}

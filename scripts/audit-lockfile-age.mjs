@@ -65,12 +65,14 @@ function parseArgs(argv) {
 		lockfile: 'package-lock.json',
 		windowDays: WINDOW_DAYS_DEFAULT,
 		now: null,
+		cache: null,
 	}
 	for (let i = 0; i < argv.length; i++) {
 		const arg = argv[i]
 		if (arg === '--lockfile') args.lockfile = argv[++i]
 		else if (arg === '--window-days') args.windowDays = Number(argv[++i])
 		else if (arg === '--now') args.now = argv[++i]
+		else if (arg === '--cache') args.cache = argv[++i]
 		else throw new Error(`Unknown argument: ${arg}`)
 	}
 	return args
@@ -122,8 +124,9 @@ async function fetchWithRetry(url, attempts = MAX_RETRIES) {
 
 // One registry request per unique package NAME (not per lockfile entry): the response carries a
 // `time` map covering every published version, so every locked version of that package is checked
-// from a single fetch.
-async function fetchTimeMap(name) {
+// from a single fetch. Exported so the cache generator reads the registry the same way the gate
+// does, rather than carrying a second copy of the retry and URL rules.
+export async function fetchTimeMap(name) {
 	const meta = await fetchWithRetry(registryUrlForName(name))
 	return meta.time ?? {}
 }
@@ -178,6 +181,15 @@ function collectLockedEntries(lockfile, source) {
  * caller that wants the registry gets it by saying nothing, and a case that
  * wants a fixed answer runs offline.
  *
+ * `cache` is a map from "name@version" to a publication timestamp, and it is
+ * what keeps a gate that runs on every build off the network. Both of this
+ * audit's inputs make it sound with no staleness bound: a package's publication
+ * time is fixed the moment it is published, so a reading taken once is correct
+ * forever, and the predicate is monotone in time, so an entry that passes today
+ * passes every day after. The entries needing a live fetch are the ones the
+ * cache does not carry, which are exactly the dependencies a change added, and
+ * fail-closed holds unchanged for them.
+ *
  * `source` is the path this lockfile was read from, named in the refusal a
  * document without a `packages` object earns.
  */
@@ -187,6 +199,7 @@ export async function auditLockfileAge({
 	windowDays,
 	source = 'the lockfile',
 	readTimeMap = fetchTimeMap,
+	cache = {},
 }) {
 	if (!Number.isFinite(windowDays) || windowDays < 1) {
 		throw new Error(
@@ -213,7 +226,18 @@ export async function auditLockfileAge({
 		}
 	}
 
-	const uniqueNames = [...new Set(registryEntries.map((e) => e.name))]
+	const cachedAt = (entry) => cache[`${entry.name}@${entry.version}`]
+
+	// One request per unique package name, and only for a name carrying at least
+	// one version the cache does not answer. A name whose every locked version is
+	// cached is never asked for.
+	const uniqueNames = [
+		...new Set(
+			registryEntries
+				.filter((entry) => cachedAt(entry) === undefined)
+				.map((entry) => entry.name),
+		),
+	]
 
 	const timeMaps = new Map()
 	const fetchFailures = new Set()
@@ -229,11 +253,12 @@ export async function auditLockfileAge({
 	const unfetchableEntries = []
 
 	for (const entry of registryEntries) {
-		if (fetchFailures.has(entry.name)) {
+		const fromCache = cachedAt(entry)
+		if (fromCache === undefined && fetchFailures.has(entry.name)) {
 			unfetchableEntries.push(entry)
 			continue
 		}
-		const publishedAt = timeMaps.get(entry.name)?.[entry.version]
+		const publishedAt = fromCache ?? timeMaps.get(entry.name)?.[entry.version]
 		if (!publishedAt) {
 			unfetchableEntries.push(entry)
 			continue
@@ -260,6 +285,67 @@ export async function auditLockfileAge({
 	}
 }
 
+/**
+ * The cache document, checked before a single timestamp is trusted. A malformed
+ * one is a refusal: a cache whose values are not timestamps would answer every
+ * lookup with something the audit reads as unparseable, and every entry would
+ * land in `unfetchableEntries` with no explanation of why.
+ */
+// `new Date(value)` alone accepts strings no publication record is ever written
+// in, "12" parses as the year 2001, so the shape is checked first: an RFC3339
+// date-time, which is what the npm registry's own `time` map writes and what
+// `fetchTimeMap` reads back into the cache.
+const RFC3339 =
+	/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/
+
+export function readPublishCache(document, source) {
+	if (
+		document === null ||
+		typeof document !== 'object' ||
+		Array.isArray(document)
+	) {
+		throw refuseLockfileShape(
+			`${source} is not a JSON object; a publication cache maps "name@version" to a timestamp`,
+		)
+	}
+	for (const [key, value] of Object.entries(document)) {
+		if (
+			typeof value !== 'string' ||
+			!RFC3339.test(value) ||
+			Number.isNaN(new Date(value).getTime())
+		) {
+			throw refuseLockfileShape(
+				`${source} holds ${JSON.stringify(value)} for "${key}", which is not an RFC3339 timestamp`,
+			)
+		}
+		if (!key.includes('@', 1)) {
+			throw refuseLockfileShape(
+				`${source} holds the key "${key}", which is not a "name@version"`,
+			)
+		}
+	}
+	return document
+}
+
+/** The cache file, with the two ways reading it fails named rather than thrown raw. */
+async function readCacheFile(path) {
+	let text
+	try {
+		text = await readFile(path, 'utf8')
+	} catch (error) {
+		throw refuseLockfileShape(
+			`${path} could not be read: ${error.message}; --cache names it`,
+		)
+	}
+	let document
+	try {
+		document = JSON.parse(text)
+	} catch (error) {
+		throw refuseLockfileShape(`${path} is not valid JSON: ${error.message}`)
+	}
+	return readPublishCache(document, path)
+}
+
 async function main() {
 	const args = parseArgs(process.argv.slice(2))
 	const now = args.now ? new Date(args.now) : new Date()
@@ -269,6 +355,10 @@ async function main() {
 	console.log(`Effective clock: ${now.toISOString()}`)
 
 	const lockfile = JSON.parse(await readFile(args.lockfile, 'utf8'))
+	// A cache the caller named and the tree does not have is a refusal rather
+	// than a silent full-fetch run: a mistyped path would read as a cache that
+	// happens to answer nothing, which is the shape a gate must never pass over.
+	const cache = args.cache === null ? {} : await readCacheFile(args.cache)
 	const {
 		cutoff,
 		entries,
@@ -280,6 +370,7 @@ async function main() {
 		now,
 		windowDays: args.windowDays,
 		source: args.lockfile,
+		cache,
 	})
 
 	if (

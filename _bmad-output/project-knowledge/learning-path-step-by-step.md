@@ -4501,3 +4501,32 @@ Three were bare integers typed into the code that writes the artifact. Five were
 - A script that stops executing on load, because a refactor turned it from a program into a module, still exits 0. Nothing distinguishes "ran and found nothing" from "ran nothing" until the npm script that names it is checked by hand.
 
 **Watch out:** a gate one session finishes and another wires together can leave a stale entry point standing: the file that used to run the gate against this repository's own tree, orphaned the moment the multiplexer takes over, with nothing failing because nothing calls it. Grep for the file's own name across the tree before deciding it is still load-bearing.
+
+## Step 64 (epic13-story1): publishing a check whose rules are computed, not written
+
+**In plain terms:** the last three gates hold documentation against the tree, and most of what they compare is a number or a list the repository derives rather than a value anyone typed. A configuration file cannot hold a derivation, so the format grew one setting that names a module and an export, and the gate imports it.
+
+**What:** `doc-invocations`, `doc-counts` and `doc-claims` on `eval-quality-gates`, taking the doc roots, the binary spellings, the count sources, the claim registries and the class blocks as consumer data. Plus a publication cache on `lockfile-age`, keyed `name@version` with no staleness bound, which takes this repository's own run off the network.
+
+**Why:** the alternative to naming a module is writing the derived number into the configuration, which is the one thing the format exists to avoid. A count a hand maintains beside the code it counts is the drift the gate was built to catch.
+
+**Read in this order:**
+
+1. `scripts/module-value.ts`: the one way a configuration names a value it cannot spell, and every refusal it can answer with.
+2. `scripts/check-doc-counts.ts`: four source kinds, and why a dead entry and a duplicated sentence both fail.
+3. `scripts/doc-claim-sources.ts`: this repository's own predicates, each settling one dated claim, and the three the tree cannot settle at all.
+
+**Story:** `_bmad-output/implementation-artifacts/13-1-publish-the-eight-gates-each-configured-by-the-consumer.md`
+
+### Reference
+
+**Rules:**
+
+- A configuration that cannot express a derivation should name the code that performs it, never carry its result.
+- A cache is sound with no staleness bound when its input is immutable and its predicate is monotone; say which of the two you are relying on.
+- A gate that skips when its precondition is absent is a gate that passes over nothing. Refuse instead, and name what to build.
+- A seeded fixture is worth having only when the defect it carries is outside the vocabulary of the rule it trips.
+- Before publishing a check, run the new engine and the old script side by side over the same tree and compare the reported counts. A number that moved is a behaviour change you have not decided on yet.
+- A manual comparison that catches a regression once is worth turning into a floor test, or the next regression ships unnoticed the same way the last one almost did.
+
+**Watch out:** generalizing a check turns its closed vocabulary into a parameter, and a list transcribed in one place while the engine is generalized loses entries silently. The interface-kind check lost a multi-word refusal verb that way, and only a count compared against the previous script's output showed it.

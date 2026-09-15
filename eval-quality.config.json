@@ -1,6 +1,7 @@
 {
 	"lockfile-age": {
-		"lockfiles": ["package-lock.json", "website/package-lock.json"]
+		"lockfiles": ["package-lock.json", "website/package-lock.json"],
+		"cache": "lockfile-age-cache.json"
 	},
 	"licences": {
 		"lockfiles": ["package-lock.json", "website/package-lock.json"],
@@ -37,7 +38,12 @@
 		]
 	},
 	"dependency-direction": {
-		"roots": [{ "path": "src", "extensions": [".ts"] }],
+		"roots": [
+			{
+				"path": "src",
+				"extensions": [".ts"]
+			}
+		],
 		"layers": [
 			{
 				"name": "root",
@@ -182,9 +188,17 @@
 	},
 	"package-boundary": {
 		"paths": [
-			{ "path": "src", "extensions": [".ts"] },
-			{ "path": "schemas", "extensions": [".json"] },
-			{ "path": "corpus" }
+			{
+				"path": "src",
+				"extensions": [".ts"]
+			},
+			{
+				"path": "schemas",
+				"extensions": [".json"]
+			},
+			{
+				"path": "corpus"
+			}
 		],
 		"manifest": {
 			"file": "package.json",
@@ -260,7 +274,12 @@
 		]
 	},
 	"field-ownership": {
-		"paths": [{ "path": "src", "extensions": [".ts"] }],
+		"paths": [
+			{
+				"path": "src",
+				"extensions": [".ts"]
+			}
+		],
 		"fields": ["parentDigest", "revisionCount"],
 		"declarations": ["src/core/schemas/", "src/core/lineage/"],
 		"writers": [
@@ -269,5 +288,1345 @@
 			"src/core/emit/emit.ts"
 		],
 		"helpers": ["reviseArtifact"]
+	},
+	"doc-invocations": {
+		"pages": ["README.md", "docs"],
+		"binary": {
+			"entry": "dist/cli/main.js",
+			"spellings": [
+				"npx -y eval-quality",
+				"npx eval-quality",
+				"eval-quality",
+				"node dist/cli/main.js"
+			],
+			"installedPrefix": "node_modules/eval-quality/"
+		},
+		"sampleInput": "corpus/dev/compile-seal-example/contract.json"
+	},
+	"doc-counts": {
+		"sources": {
+			"corpusContracts": {
+				"kind": "module",
+				"from": {
+					"module": "scripts/doc-count-sources.ts",
+					"export": "PUBLISHED_CONTRACTS"
+				}
+			},
+			"disciplineRuleContracts": {
+				"kind": "module",
+				"from": {
+					"module": "scripts/doc-count-sources.ts",
+					"export": "DISCIPLINE_RULE_CONTRACTS"
+				}
+			},
+			"compilingContracts": {
+				"kind": "module",
+				"from": {
+					"module": "scripts/doc-count-sources.ts",
+					"export": "COMPILING_CONTRACTS"
+				}
+			},
+			"failingByDesign": {
+				"kind": "module",
+				"from": {
+					"module": "scripts/doc-count-sources.ts",
+					"export": "FAILING_BY_DESIGN"
+				}
+			},
+			"capturingContracts": {
+				"kind": "module",
+				"from": {
+					"module": "scripts/doc-count-sources.ts",
+					"export": "CAPTURING_CONTRACTS"
+				}
+			},
+			"resettingContracts": {
+				"kind": "module",
+				"from": {
+					"module": "scripts/doc-count-sources.ts",
+					"export": "RESETTING_CONTRACTS"
+				}
+			},
+			"apiContracts": {
+				"kind": "module",
+				"from": {
+					"module": "scripts/doc-count-sources.ts",
+					"export": "API_CONTRACTS"
+				}
+			},
+			"cliContracts": {
+				"kind": "module",
+				"from": {
+					"module": "scripts/doc-count-sources.ts",
+					"export": "CLI_CONTRACTS"
+				}
+			},
+			"mcpContracts": {
+				"kind": "module",
+				"from": {
+					"module": "scripts/doc-count-sources.ts",
+					"export": "MCP_CONTRACTS"
+				}
+			},
+			"committedChains": {
+				"kind": "module",
+				"from": {
+					"module": "scripts/doc-count-sources.ts",
+					"export": "COMMITTED_CHAINS"
+				}
+			},
+			"referenceAdapters": {
+				"kind": "module",
+				"from": {
+					"module": "scripts/doc-count-sources.ts",
+					"export": "REFERENCE_ADAPTERS",
+					"take": "length"
+				}
+			},
+			"barrelSchemaVersions": {
+				"kind": "module",
+				"from": {
+					"module": "scripts/doc-count-sources.ts",
+					"export": "BARREL_SCHEMA_VERSIONS",
+					"take": "length"
+				}
+			},
+			"stampedVersions": {
+				"kind": "module",
+				"from": {
+					"module": "scripts/doc-count-sources.ts",
+					"export": "STAMPED_VERSIONS",
+					"take": "length"
+				}
+			},
+			"comparedVersions": {
+				"kind": "module",
+				"from": {
+					"module": "scripts/doc-count-sources.ts",
+					"export": "COMPARED_VERSIONS",
+					"take": "length"
+				}
+			},
+			"callerAssembledVersions": {
+				"kind": "module",
+				"from": {
+					"module": "scripts/doc-count-sources.ts",
+					"export": "CALLER_ASSEMBLED_VERSIONS",
+					"take": "length"
+				}
+			},
+			"interchangeArtifacts": {
+				"kind": "module",
+				"from": {
+					"module": "src/core/schemas/artifact.ts",
+					"export": "INTERCHANGE_ARTIFACT_KEYS",
+					"take": "length"
+				}
+			},
+			"publishedGates": {
+				"kind": "module",
+				"from": {
+					"module": "scripts/gate-config.ts",
+					"export": "GATE_NAMES",
+					"take": "length"
+				}
+			},
+			"lockfileWindowDays": {
+				"kind": "module",
+				"from": {
+					"module": "scripts/gate-config.ts",
+					"export": "LOCKFILE_WINDOW_DAYS_DEFAULT"
+				}
+			},
+			"scannedLineBound": {
+				"kind": "module",
+				"from": {
+					"module": "scripts/package-boundary.ts",
+					"export": "MAX_SCANNED_LINE"
+				}
+			},
+			"orderingWitness": {
+				"kind": "module",
+				"from": {
+					"module": "scripts/check-dependency-direction.ts",
+					"export": "ORDERING_WITNESS_VIOLATIONS"
+				}
+			},
+			"publishedBinaries": {
+				"kind": "json",
+				"file": "package.json",
+				"path": ["bin"],
+				"take": "keys"
+			},
+			"conformanceCorpus": {
+				"kind": "module",
+				"from": {
+					"module": "src/testing/conformance.ts",
+					"export": "CONFORMANCE_OUTCOME_COUNTS",
+					"path": ["corpus"]
+				}
+			},
+			"conformanceClock": {
+				"kind": "module",
+				"from": {
+					"module": "src/testing/conformance.ts",
+					"export": "CONFORMANCE_OUTCOME_COUNTS",
+					"path": ["clock"]
+				}
+			},
+			"conformanceFileSystem": {
+				"kind": "module",
+				"from": {
+					"module": "src/testing/conformance.ts",
+					"export": "CONFORMANCE_OUTCOME_COUNTS",
+					"path": ["file-system"]
+				}
+			},
+			"conformanceEnvironmentProbe": {
+				"kind": "module",
+				"from": {
+					"module": "src/testing/conformance.ts",
+					"export": "CONFORMANCE_OUTCOME_COUNTS",
+					"path": ["environment-probe"]
+				}
+			},
+			"conformanceCommandProbe": {
+				"kind": "module",
+				"from": {
+					"module": "src/testing/conformance.ts",
+					"export": "CONFORMANCE_OUTCOME_COUNTS",
+					"path": ["command-probe"]
+				}
+			},
+			"conformanceMcpProbe": {
+				"kind": "module",
+				"from": {
+					"module": "src/testing/conformance.ts",
+					"export": "CONFORMANCE_OUTCOME_COUNTS",
+					"path": ["mcp-probe"]
+				}
+			}
+		},
+		"entries": [
+			{
+				"file": "README.md",
+				"claim": "the corpus contract total",
+				"pattern": {
+					"match": "you can read ([a-z-]+) real contracts and one compiled-and-sealed pair"
+				},
+				"counts": ["corpusContracts"]
+			},
+			{
+				"file": "docs/explanation/what-ships.md",
+				"claim": "the corpus contract total",
+				"pattern": {
+					"match": "a ([a-z-]+)-contract development corpus"
+				},
+				"counts": ["corpusContracts"]
+			},
+			{
+				"file": "docs/explanation/what-ships.md",
+				"claim": "the reference adapter count",
+				"pattern": {
+					"match": "([a-z-]+) reference adapters at `eval-quality/adapters`"
+				},
+				"counts": ["referenceAdapters"]
+			},
+			{
+				"file": "docs/explanation/what-ships.md",
+				"claim": "the schema version count on the barrel",
+				"pattern": {
+					"match": "barrel exports ([a-z-]+) schema versions"
+				},
+				"counts": ["barrelSchemaVersions"]
+			},
+			{
+				"file": "docs/explanation/what-ships.md",
+				"claim": "the count of artifacts with an in-package version reader",
+				"pattern": {
+					"match": "for the ([a-z-]+) with a reader"
+				},
+				"counts": ["comparedVersions"]
+			},
+			{
+				"file": "docs/explanation/what-ships.md",
+				"claim": "the count of artifacts this package stamps",
+				"pattern": {
+					"match": "for the ([a-z-]+) this package stamps"
+				},
+				"counts": ["stampedVersions"]
+			},
+			{
+				"file": "docs/explanation/what-ships.md",
+				"claim": "the count of caller-assembled artifacts",
+				"pattern": {
+					"match": "for the ([a-z-]+) you assemble"
+				},
+				"counts": ["callerAssembledVersions"]
+			},
+			{
+				"file": "docs/reference/cli-commands.md",
+				"claim": "the schema version count and the interchange artifact total",
+				"pattern": {
+					"match": "([A-Za-z-]+) of the ([a-z-]+) artifacts carry one"
+				},
+				"counts": ["barrelSchemaVersions", "interchangeArtifacts"]
+			},
+			{
+				"file": "docs/reference/cli-commands.md",
+				"claim": "the count of artifacts with an in-package version reader",
+				"pattern": {
+					"match": "([A-Za-z-]+) have an in-package reader"
+				},
+				"counts": ["comparedVersions"]
+			},
+			{
+				"file": "docs/reference/cli-commands.md",
+				"claim": "the count of artifacts this package stamps",
+				"pattern": {
+					"match": "([A-Za-z-]+) are stamped by this package"
+				},
+				"counts": ["stampedVersions"]
+			},
+			{
+				"file": "docs/reference/cli-commands.md",
+				"claim": "the count of caller-assembled artifacts",
+				"pattern": {
+					"match": "([A-Za-z-]+) are assembled by the caller"
+				},
+				"counts": ["callerAssembledVersions"]
+			},
+			{
+				"file": "docs/reference/cli-commands.md",
+				"claim": "the reference adapter count",
+				"pattern": {
+					"match": "ships ([a-z-]+) reference adapters"
+				},
+				"counts": ["referenceAdapters"]
+			},
+			{
+				"file": "docs/reference/cli-commands.md",
+				"claim": "the corpus contract total",
+				"pattern": {
+					"match": "`corpus/dev/` ships ([a-z-]+) contracts under `contracts/`"
+				},
+				"counts": ["corpusContracts"]
+			},
+			{
+				"file": "docs/reference/cli-commands.md",
+				"claim": "the compiling contract count",
+				"pattern": {
+					"match": "(?:^|(?<=[.]\\s))([A-Za-z-]+) contracts compile\\."
+				},
+				"counts": ["compilingContracts"]
+			},
+			{
+				"file": "docs/reference/cli-commands.md",
+				"claim": "the failing-by-design contract count",
+				"pattern": {
+					"match": "(?<=[.]\\s)([A-Za-z-]+) fail by design:"
+				},
+				"counts": ["failingByDesign"]
+			},
+			{
+				"file": "docs/reference/cli-commands.md",
+				"claim": "the per-port conformance outcome counts",
+				"pattern": {
+					"match": "`corpus` (\\d+), `clock` (\\d+), `file-system` (\\d+), `environment-probe` (\\d+), `command-probe` (\\d+), `mcp-probe` (\\d+)"
+				},
+				"counts": [
+					"conformanceCorpus",
+					"conformanceClock",
+					"conformanceFileSystem",
+					"conformanceEnvironmentProbe",
+					"conformanceCommandProbe",
+					"conformanceMcpProbe"
+				],
+				"rendering": "digits"
+			},
+			{
+				"file": "docs/how-to/author-behavioral-contracts.md",
+				"claim": "the corpus contract total",
+				"pattern": {
+					"match": "`corpus/dev/contracts/` holds ([a-z-]+) contracts:"
+				},
+				"counts": ["corpusContracts"]
+			},
+			{
+				"file": "docs/how-to/author-behavioral-contracts.md",
+				"claim": "the compiling contract count",
+				"pattern": {
+					"match": "(?:^|(?<=[.]\\s))([A-Za-z-]+) compile, and [a-z-]+ fail by design\\."
+				},
+				"counts": ["compilingContracts"]
+			},
+			{
+				"file": "docs/how-to/author-behavioral-contracts.md",
+				"claim": "the failing-by-design contract count",
+				"pattern": {
+					"match": "compile, and ([a-z-]+) fail by design\\."
+				},
+				"counts": ["failingByDesign"]
+			},
+			{
+				"file": "docs/how-to/evaluate-ai-feature-behavior.md",
+				"claim": "the `api`-declaring contract count",
+				"pattern": {
+					"match": "([A-Za-z-]+) of the [a-z-]+ contracts in `corpus/dev/contracts/` declare an `api` interface"
+				},
+				"counts": ["apiContracts"]
+			},
+			{
+				"file": "docs/how-to/evaluate-ai-feature-behavior.md",
+				"claim": "the corpus contract total",
+				"pattern": {
+					"match": "of the ([a-z-]+) contracts in `corpus/dev/contracts/` declare an `api` interface"
+				},
+				"counts": ["corpusContracts"]
+			},
+			{
+				"file": "docs/tutorials/getting-started.md",
+				"claim": "the corpus contract total",
+				"pattern": {
+					"match": "The package ships ([a-z-]+) of them"
+				},
+				"counts": ["corpusContracts"]
+			},
+			{
+				"file": "docs/how-to/evaluate-agent-behavior.md",
+				"claim": "the `cli`-declaring contract count",
+				"pattern": {
+					"match": "ships ([a-z-]+) contracts describing a system behind a command"
+				},
+				"counts": ["cliContracts"]
+			},
+			{
+				"file": "docs/how-to/evaluate-workflow-behavior.md",
+				"claim": "the contract count carrying a captured binding",
+				"pattern": {
+					"match": "([A-Za-z-]+) contracts in `corpus/dev/contracts/` use a `\\{ captured \\}` binding"
+				},
+				"counts": ["capturingContracts"]
+			},
+			{
+				"file": "docs/how-to/evaluate-workflow-behavior.md",
+				"claim": "the contract count declaring a fixture reset",
+				"pattern": {
+					"match": "([A-Za-z-]+) contracts in `corpus/dev/contracts/` declare a `fixtureReset`"
+				},
+				"counts": ["resettingContracts"]
+			},
+			{
+				"file": "README.md",
+				"claim": "the committed end-to-end chain count",
+				"pattern": {
+					"match": "\\| the ([a-z-]+) committed worked chains \\|"
+				},
+				"counts": ["committedChains"]
+			},
+			{
+				"file": "docs/how-to/author-behavioral-contracts.md",
+				"claim": "the committed end-to-end chain count",
+				"pattern": {
+					"match": "The repository commits ([a-z-]+) complete chains"
+				},
+				"counts": ["committedChains"]
+			},
+			{
+				"file": "corpus/dev/README.md",
+				"claim": "the corpus contract total in the opening line",
+				"pattern": {
+					"match": "^([A-Za-z-]+) contracts and one compiled-and-sealed pair",
+					"flags": "m"
+				},
+				"wrap": true,
+				"counts": ["corpusContracts"]
+			},
+			{
+				"file": "corpus/dev/README.md",
+				"claim": "the corpus contract total in \"What is here\"",
+				"pattern": {
+					"match": "`contracts/<contractId>\\.json`: ([a-z-]+) contracts\\.",
+					"flags": "m"
+				},
+				"wrap": true,
+				"counts": ["corpusContracts"]
+			},
+			{
+				"file": "corpus/dev/README.md",
+				"claim": "the discipline-rule cell contract count",
+				"pattern": {
+					"match": "([A-Za-z-]+) are one per discipline rule",
+					"flags": "m"
+				},
+				"wrap": true,
+				"counts": ["disciplineRuleContracts"]
+			},
+			{
+				"file": "corpus/dev/README.md",
+				"claim": "the `cli`-declaring contract count",
+				"pattern": {
+					"match": "([a-z-]+) describe a system under test that runs behind a command",
+					"flags": "m"
+				},
+				"wrap": true,
+				"counts": ["cliContracts"]
+			},
+			{
+				"file": "corpus/dev/README.md",
+				"claim": "the `mcp`-declaring contract count",
+				"pattern": {
+					"match": "([a-z-]+) describes a tool server",
+					"flags": "m"
+				},
+				"wrap": true,
+				"counts": ["mcpContracts"]
+			},
+			{
+				"file": "corpus/dev/README.md",
+				"claim": "the contract count carrying a captured binding",
+				"pattern": {
+					"match": "([A-Za-z-]+) of the contracts bind a step to a value",
+					"flags": "m"
+				},
+				"wrap": true,
+				"counts": ["capturingContracts"]
+			},
+			{
+				"file": "corpus/dev/README.md",
+				"claim": "the contract count declaring a fixture reset",
+				"pattern": {
+					"match": "the same ([a-z-]+) declare a fixture",
+					"flags": "m"
+				},
+				"wrap": true,
+				"counts": ["resettingContracts"]
+			},
+			{
+				"file": "corpus/dev/README.md",
+				"claim": "the committed end-to-end chain count in \"What is here\"",
+				"pattern": {
+					"match": "one of the ([a-z-]+) committed end-to-end chains",
+					"flags": "m"
+				},
+				"wrap": true,
+				"counts": ["committedChains"]
+			},
+			{
+				"file": "corpus/dev/README.md",
+				"claim": "the committed end-to-end chain count in \"What is absent\"",
+				"pattern": {
+					"match": "([A-Za-z-]+) chains are committed",
+					"flags": "m"
+				},
+				"wrap": true,
+				"counts": ["committedChains"]
+			},
+			{
+				"file": "corpus/dev/README.md",
+				"claim": "the compiling contract count",
+				"pattern": {
+					"match": "The other ([a-z-]+) are published only after",
+					"flags": "m"
+				},
+				"wrap": true,
+				"counts": ["compilingContracts"]
+			},
+			{
+				"file": "corpus/dev/README.md",
+				"claim": "the failing-by-design contract count",
+				"pattern": {
+					"match": "(?<=[.;]) ([A-Za-z-]+) fail compilation by design",
+					"flags": "m"
+				},
+				"wrap": true,
+				"counts": ["failingByDesign"]
+			},
+			{
+				"file": "src/testing/probe-conformance.ts",
+				"claim": "the `api` arm's outcome total",
+				"pattern": {
+					"match": "([A-Za-z-]+) outcomes: the six shared assertions plus AD-35's"
+				},
+				"counts": ["conformanceEnvironmentProbe"]
+			},
+			{
+				"file": "src/testing/probe-conformance.ts",
+				"claim": "the `cli` arm's outcome total",
+				"pattern": {
+					"match": "([A-Za-z-]+) outcomes: the six shared assertions plus the ten above"
+				},
+				"counts": ["conformanceCommandProbe"]
+			},
+			{
+				"file": "src/testing/probe-conformance.ts",
+				"claim": "the `mcp` arm's outcome total",
+				"pattern": {
+					"match": "([A-Za-z-]+) outcomes: the six shared assertions plus the eight above"
+				},
+				"counts": ["conformanceMcpProbe"]
+			},
+			{
+				"file": "scripts/dev-corpus-target.ts",
+				"claim": "the failing-by-design count in `EXAMPLE_SEED_ID`'s docblock",
+				"pattern": {
+					"match": "because ([a-z-]+) of the [a-z-]+ do not compile",
+					"flags": "m"
+				},
+				"wrap": true,
+				"counts": ["failingByDesign"]
+			},
+			{
+				"file": "scripts/dev-corpus-target.ts",
+				"claim": "the corpus contract total in `EXAMPLE_SEED_ID`'s docblock",
+				"pattern": {
+					"match": "because [a-z-]+ of the ([a-z-]+) do not compile",
+					"flags": "m"
+				},
+				"wrap": true,
+				"counts": ["corpusContracts"]
+			},
+			{
+				"file": "docs/reference/cli-commands.md",
+				"claim": "the binary count",
+				"pattern": {
+					"match": "declares ([a-z-]+) binaries under `bin`"
+				},
+				"counts": ["publishedBinaries"]
+			},
+			{
+				"file": "docs/reference/cli-commands.md",
+				"claim": "the `bin` target count in the tarball",
+				"pattern": {
+					"match": "tarball carries ([a-z-]+) `bin` targets"
+				},
+				"counts": ["publishedBinaries"]
+			},
+			{
+				"file": "docs/how-to/run-the-gates-on-your-repository.md",
+				"claim": "the binary count",
+				"pattern": {
+					"match": "The package publishes ([a-z-]+) binaries"
+				},
+				"counts": ["publishedBinaries"]
+			},
+			{
+				"file": "docs/how-to/run-the-gates-on-your-repository.md",
+				"claim": "the published gate count",
+				"pattern": {
+					"match": "The gates binary carries ([a-z-]+) gates"
+				},
+				"counts": ["publishedGates"]
+			},
+			{
+				"file": "docs/how-to/run-the-gates-on-your-repository.md",
+				"claim": "the lockfile-age gate's default window",
+				"pattern": {
+					"match": "the gate holds entries to ([a-z-]+) days"
+				},
+				"counts": ["lockfileWindowDays"]
+			},
+			{
+				"file": "docs/how-to/run-the-gates-on-your-repository.md",
+				"claim": "the boundary gate's scanned-line bound",
+				"pattern": {
+					"match": "A logical line longer than (\\d+) characters is reported"
+				},
+				"counts": ["scannedLineBound"],
+				"rendering": "digits"
+			},
+			{
+				"file": "docs/how-to/run-the-gates-on-your-repository.md",
+				"claim": "the direction gate's ordering witness",
+				"pattern": {
+					"match": "swapping those two rows reports (\\d+) violations"
+				},
+				"counts": ["orderingWitness"],
+				"rendering": "digits"
+			}
+		]
+	},
+	"doc-claims": {
+		"pages": ["README.md", "docs"],
+		"generated": [".generated.md"],
+		"sources": [
+			{
+				"path": "src",
+				"extensions": [".ts"]
+			}
+		],
+		"citations": {
+			"window": 4,
+			"unanchored": [
+				{
+					"file": "docs/how-to/evaluate-tool-use-behavior.md",
+					"citation": "src/core/schemas/primitives.ts:28",
+					"reason": "the sentence names `search_notes` and `searchNotes`, which are example values rather than declarations"
+				},
+				{
+					"file": "docs/how-to/evaluate-tool-use-behavior.md",
+					"citation": "src/core/compile/sensitivity-witness.ts:394",
+					"reason": "the sentence names the channel `arguments`; the declaration at the cited line is `legalChannels`, which the sentence does not name"
+				},
+				{
+					"file": "docs/how-to/evaluate-tool-use-behavior.md",
+					"citation": "src/core/score/qualification.ts:832",
+					"reason": "the sentence names no backticked identifier at all"
+				},
+				{
+					"file": "docs/how-to/evaluate-tool-use-behavior.md",
+					"citation": "src/core/schemas/sealed-run-record.ts:255",
+					"reason": "the sentence names no backticked identifier at all"
+				},
+				{
+					"file": "docs/how-to/evaluate-tool-use-behavior.md",
+					"citation": "src/core/compile/reachability.ts:581",
+					"reason": "the sentence names the contract field `artifacts`, which the cited file does not declare"
+				}
+			]
+		},
+		"symbols": {
+			"foreign": [
+				{
+					"token": "ERR_IMPORT_ATTRIBUTE_MISSING",
+					"reason": "Node's own error code for a JSON import with no import attribute"
+				},
+				{
+					"token": "LICENSE",
+					"reason": "a file the published tarball carries"
+				},
+				{
+					"token": "updatedAt",
+					"reason": "a field of an example response body, which no shipped schema declares"
+				},
+				{
+					"token": "AbortSignal",
+					"reason": "the platform's own type, declared by node's lib"
+				},
+				{
+					"token": "PATH",
+					"reason": "the environment variable the command-line adapter passes through"
+				},
+				{
+					"token": "POST",
+					"reason": "an `HttpMethod` value, which the enum spells as a string literal"
+				},
+				{
+					"token": "PATCH",
+					"reason": "an `HttpMethod` value, which the enum spells as a string literal"
+				},
+				{
+					"token": "CHAIN",
+					"reason": "a shell variable the walkthrough sets before its own commands"
+				},
+				{
+					"token": "HOME",
+					"reason": "an environment variable an example contract declares, spelled as the process sees it"
+				},
+				{
+					"token": "Original",
+					"reason": "a note title in the worked example's observation, quoted as a value"
+				},
+				{
+					"token": "Revised",
+					"reason": "the title the worked example's write reported, quoted as a value"
+				},
+				{
+					"token": "searchNotes",
+					"reason": "a tool name in a worked example, showing what the identifier charset admits"
+				},
+				{
+					"token": "windowDays",
+					"reason": "a setting in the consumer gate configuration, declared by the schema in scripts/gate-config.ts and so outside src/"
+				},
+				{
+					"token": "reportOnly",
+					"reason": "a setting in the dependency-direction gate's section, declared by the schema in scripts/check-dependency-direction.ts and so outside src/"
+				},
+				{
+					"token": "sampleInput",
+					"reason": "a setting in the doc-invocations gate's section, declared by the schema in scripts/gate-config.ts and so outside src/"
+				},
+				{
+					"token": "tokenShape",
+					"reason": "a setting in the doc-claims gate's list entries, declared by the schema in scripts/check-doc-claims.ts and so outside src/"
+				},
+				{
+					"token": "Rule",
+					"reason": "an illustrative Zod schema name in the worked doc-claims example, naming no real export"
+				}
+			]
+		},
+		"lists": [
+			{
+				"file": "docs/how-to/evaluate-skill-behavior.md",
+				"claim": "the kinds `compile` accepts",
+				"pattern": {
+					"match": "`compile` accepts ([^.]*?), and rejects a contract declaring"
+				},
+				"tokenShape": {
+					"module": "src/core/schemas/interface.ts",
+					"export": "INTERFACE_KINDS"
+				},
+				"expected": {
+					"module": "src/core/compile/interface-inventory.ts",
+					"export": "SUPPORTED_INTERFACE_KINDS"
+				}
+			},
+			{
+				"file": "docs/how-to/evaluate-workflow-behavior.md",
+				"claim": "the kinds `compile` accepts",
+				"pattern": {
+					"match": "`compile` accepts ([^.]*?), and rejects a contract declaring"
+				},
+				"tokenShape": {
+					"module": "src/core/schemas/interface.ts",
+					"export": "INTERFACE_KINDS"
+				},
+				"expected": {
+					"module": "src/core/compile/interface-inventory.ts",
+					"export": "SUPPORTED_INTERFACE_KINDS"
+				}
+			},
+			{
+				"file": "docs/how-to/evaluate-ai-feature-behavior.md",
+				"claim": "the kinds `compile` accepts",
+				"pattern": {
+					"match": "`compile` supports three of the four, ([^.]*?), and rejects"
+				},
+				"tokenShape": {
+					"module": "src/core/schemas/interface.ts",
+					"export": "INTERFACE_KINDS"
+				},
+				"expected": {
+					"module": "src/core/compile/interface-inventory.ts",
+					"export": "SUPPORTED_INTERFACE_KINDS"
+				}
+			},
+			{
+				"file": "docs/reference/glossary.md",
+				"claim": "the kinds `compile` accepts",
+				"pattern": {
+					"match": "`compile` accepts (.*?)\\. The vocabulary also names"
+				},
+				"tokenShape": {
+					"module": "src/core/schemas/interface.ts",
+					"export": "INTERFACE_KINDS"
+				},
+				"expected": {
+					"module": "src/core/compile/interface-inventory.ts",
+					"export": "SUPPORTED_INTERFACE_KINDS"
+				}
+			},
+			{
+				"file": "docs/how-to/evaluate-ai-feature-behavior.md",
+				"claim": "the interface vocabulary",
+				"pattern": {
+					"match": "four interface kinds in `INTERFACE_KINDS`: ([^.]*?)\\."
+				},
+				"tokenShape": {
+					"module": "src/core/schemas/interface.ts",
+					"export": "INTERFACE_KINDS"
+				},
+				"expected": {
+					"module": "src/core/schemas/interface.ts",
+					"export": "INTERFACE_KINDS"
+				}
+			},
+			{
+				"file": "docs/index.md",
+				"claim": "the kinds refused at compile",
+				"pattern": {
+					"match": "kind[s]? parse[s]? and stops? at compilation under `unsupported-interface-kind`: ([^,]*),"
+				},
+				"tokenShape": {
+					"module": "src/core/schemas/interface.ts",
+					"export": "INTERFACE_KINDS"
+				},
+				"expected": {
+					"module": "src/core/compile/interface-inventory.ts",
+					"export": "UNSUPPORTED_INTERFACE_KINDS"
+				}
+			},
+			{
+				"file": "docs/explanation/what-ships.md",
+				"claim": "the kinds refused at compile",
+				"pattern": {
+					"match": "(`[a-z]+`) is the one kind `compile` still refuses under `unsupported-interface-kind`"
+				},
+				"tokenShape": {
+					"module": "src/core/schemas/interface.ts",
+					"export": "INTERFACE_KINDS"
+				},
+				"expected": {
+					"module": "src/core/compile/interface-inventory.ts",
+					"export": "UNSUPPORTED_INTERFACE_KINDS"
+				}
+			},
+			{
+				"file": "docs/explanation/what-ships.md",
+				"claim": "the stages performing AD-11's version equality",
+				"pattern": {
+					"match": "The stages that perform that comparison are ([^.]*?)\\."
+				},
+				"tokenShape": {
+					"match": "^[a-z]+$"
+				},
+				"expected": {
+					"module": "scripts/doc-claim-sources.ts",
+					"export": "VERSION_READERS"
+				}
+			},
+			{
+				"file": "docs/reference/cli-commands.md",
+				"claim": "the stages performing AD-11's version equality",
+				"pattern": {
+					"match": "in-package reader that performs the equality: ([^.]*?)\\."
+				},
+				"tokenShape": {
+					"match": "^[a-z]+$"
+				},
+				"expected": {
+					"module": "scripts/doc-claim-sources.ts",
+					"export": "VERSION_READERS"
+				}
+			},
+			{
+				"file": "docs/explanation/what-ships.md",
+				"claim": "the schema versions the barrel exports",
+				"pattern": {
+					"match": "barrel exports [a-z-]+ schema versions: ([^.]*?)\\."
+				},
+				"tokenShape": {
+					"match": "^[A-Z0-9_]+_SCHEMA_VERSION$"
+				},
+				"expected": {
+					"module": "scripts/doc-count-sources.ts",
+					"export": "BARREL_SCHEMA_VERSIONS"
+				}
+			},
+			{
+				"file": "docs/reference/cli-commands.md",
+				"claim": "the schema versions the barrel exports",
+				"pattern": {
+					"match": "\\*\\*Schema versions\\*\\*: ([^\\n]+)"
+				},
+				"tokenShape": {
+					"match": "^[A-Z0-9_]+_SCHEMA_VERSION$"
+				},
+				"expected": {
+					"module": "scripts/doc-count-sources.ts",
+					"export": "BARREL_SCHEMA_VERSIONS"
+				}
+			},
+			{
+				"file": "docs/reference/cli-commands.md",
+				"claim": "the reference adapter list",
+				"pattern": {
+					"match": "ships [a-z-]+ reference adapters, ([^.]*?), each a factory"
+				},
+				"tokenShape": {
+					"match": "^create[A-Za-z]*Adapter$"
+				},
+				"expected": {
+					"module": "scripts/doc-count-sources.ts",
+					"export": "REFERENCE_ADAPTERS"
+				}
+			},
+			{
+				"file": "docs/reference/cli-commands.md",
+				"claim": "the conformance runner list",
+				"pattern": {
+					"match": "one arm per mechanism: ([^.]*?)\\. A report carries"
+				},
+				"tokenShape": {
+					"match": "^run[A-Za-z]*Conformance$"
+				},
+				"expected": {
+					"module": "scripts/doc-claim-sources.ts",
+					"export": "CONFORMANCE_RUNNERS"
+				}
+			}
+		],
+		"codes": {
+			"pattern": {
+				"match": "(?:raises?|throws?|rejected with|refuses? .{0,40}?under|refused .{0,40}?under|fails? with|reports? (?:it )?as|exits? with|answers?|the code|stops? at compilation under|under)\\s+`([a-z][a-z0-9]*(?:-[a-z0-9]+)+)`"
+			},
+			"registries": [
+				{
+					"module": "src/core/failure-codes.ts",
+					"export": "FAILURE_CODES"
+				},
+				{
+					"module": "src/core/schemas/faults.ts",
+					"export": "RUNTIME_FAULT_CODES"
+				}
+			]
+		},
+		"fences": [
+			{
+				"file": "docs/how-to/evaluate-ai-feature-behavior.md",
+				"claim": "the worked example's api interface",
+				"intro": {
+					"match": "It parses as a `PermittedInterface`:"
+				},
+				"schema": {
+					"module": "src/core/schemas/interface.ts",
+					"export": "PermittedInterface"
+				}
+			},
+			{
+				"file": "docs/how-to/evaluate-ai-feature-behavior.md",
+				"claim": "oracle O-001's read-back check",
+				"intro": {
+					"match": "it is O-001 in the worked example:"
+				},
+				"schema": {
+					"module": "src/core/schemas/expression.ts",
+					"export": "Expression"
+				}
+			},
+			{
+				"file": "docs/how-to/evaluate-agent-behavior.md",
+				"claim": "the agent guide's cli interface",
+				"intro": {
+					"match": "This block parses against `PermittedInterface`:"
+				},
+				"schema": {
+					"module": "src/core/schemas/interface.ts",
+					"export": "PermittedInterface"
+				}
+			},
+			{
+				"file": "docs/how-to/evaluate-agent-behavior.md",
+				"claim": "the manifestation witness",
+				"intro": {
+					"match": "is caught before it is scored\\."
+				},
+				"schema": {
+					"module": "src/core/schemas/sensitivity-witness.ts",
+					"export": "ManifestationWitness"
+				}
+			},
+			{
+				"file": "docs/how-to/evaluate-agent-behavior.md",
+				"claim": "the command defect signature's condition",
+				"intro": {
+					"match": "for this defect it rides on the exit code:"
+				},
+				"schema": {
+					"module": "src/core/schemas/defect-signature.ts",
+					"export": "DefectSignature"
+				}
+			},
+			{
+				"file": "docs/how-to/evaluate-tool-use-behavior.md",
+				"claim": "the tool-call defect signature's condition",
+				"intro": {
+					"match": "its selector filters on the `arguments` channel\\."
+				},
+				"schema": {
+					"module": "src/core/schemas/defect-signature.ts",
+					"export": "DefectSignature"
+				}
+			},
+			{
+				"file": "docs/how-to/evaluate-skill-behavior.md",
+				"claim": "the skill guide's cli interface",
+				"intro": {
+					"match": "This interface parses against the published `EvalContract` schema"
+				},
+				"schema": {
+					"module": "src/core/schemas/interface.ts",
+					"export": "PermittedInterface"
+				}
+			},
+			{
+				"file": "docs/how-to/evaluate-skill-behavior.md",
+				"claim": "the inclusion half of the selection oracle",
+				"intro": {
+					"match": "The inclusion half says the run named everything the rules mandate:"
+				},
+				"schema": {
+					"module": "src/core/schemas/expression.ts",
+					"export": "Expression"
+				}
+			},
+			{
+				"file": "docs/how-to/evaluate-skill-behavior.md",
+				"claim": "the exclusion oracle",
+				"intro": {
+					"match": "The exclusion half is what rejects it:"
+				},
+				"schema": {
+					"module": "src/core/schemas/oracle.ts",
+					"export": "Oracle"
+				}
+			},
+			{
+				"file": "docs/how-to/evaluate-workflow-behavior.md",
+				"claim": "the workflow guide's interaction plan",
+				"intro": {
+					"match": "an absent field and an unrecognized field both fail the parse\\."
+				},
+				"schema": {
+					"module": "src/core/schemas/plan.ts",
+					"export": "InteractionStep"
+				},
+				"shape": "each"
+			},
+			{
+				"file": "docs/how-to/run-the-gates-on-your-repository.md",
+				"claim": "the worked gate configuration",
+				"intro": {
+					"match": "A file configuring all eight gates parses against the published schema:"
+				},
+				"schema": {
+					"module": "scripts/gate-config.ts",
+					"export": "GateConfiguration"
+				}
+			}
+		],
+		"vocabulary": {
+			"tokens": {
+				"module": "src/core/schemas/interface.ts",
+				"export": "INTERFACE_KINDS"
+			},
+			"accepted": {
+				"module": "src/core/compile/interface-inventory.ts",
+				"export": "SUPPORTED_INTERFACE_KINDS"
+			},
+			"refused": {
+				"module": "src/core/compile/interface-inventory.ts",
+				"export": "UNSUPPORTED_INTERFACE_KINDS"
+			}
+		},
+		"dated": {
+			"triggers": [
+				{
+					"match": "\\b(?:at|against|as of) (?:eval-quality )?(\\d+\\.\\d+\\.\\d+)\\b",
+					"flags": "i"
+				},
+				{
+					"match": "\\b(?:run|ran|re-run|verified|checked|measured|reproduced|observed|transcribed|exercised|built|holds?|stands?)\\b[^.]{0,90}?\\b\\d+\\.\\d+\\.\\d+\\b|\\b\\d+\\.\\d+\\.\\d+\\b[^.]{0,90}?\\b(?:was|were) (?:run|verified|checked|measured|observed|built)\\b",
+					"flags": "i"
+				},
+				{
+					"match": "\\bversion \\d+(?:\\.\\d+)+ (?:is|was|has been) (?:out|released|shipped|published)\\b",
+					"flags": "i"
+				},
+				{
+					"match": "\\bno [a-z-]+ (?:has|have)\\b|\\bno live\\b|\\bno committed\\b|\\bno contract in `corpus|\\bno [a-z-]+ yet\\b|\\bnot yet\\b|\\byet to be\\b|\\bnobody has\\b|\\bnot proven\\b|\\bunproven\\b|\\bdoes not yet\\b|\\bcannot yet\\b|\\bstill (?:owed|owes|refuses?|needs?|cannot)\\b|\\bstays deferred\\b|\\bhas had no\\b|\\bis owed\\b|\\bDeferred until\\b|\\btoday\\b|\\bcurrently\\b|\\bfor now\\b|\\*\\*(?:Missing|Blocked|Unproven|Owed)\\.?\\*\\*",
+					"flags": "i"
+				}
+			],
+			"headings": {
+				"match": "\\b(owes?|owed|deferred|unproven|not yet|still)\\b",
+				"flags": "i"
+			},
+			"claims": [
+				{
+					"file": "docs/how-to/run-the-gates-on-your-repository.md",
+					"key": "swapping those two rows reports",
+					"settles": {
+						"module": "scripts/doc-claim-sources.ts",
+						"export": "orderingWitnessIsStated"
+					},
+					"reason": "the number is `ORDERING_WITNESS_VIOLATIONS`, which `dependency-direction.test.ts` measures against this repository's own tree and the doc-counts gate holds the page against"
+				},
+				{
+					"file": "docs/index.md",
+					"key": "Three interface kinds compile today",
+					"settles": {
+						"module": "scripts/doc-claim-sources.ts",
+						"export": "threeKindsCompile"
+					},
+					"reason": "counts `SUPPORTED_INTERFACE_KINDS`"
+				},
+				{
+					"file": "docs/index.md",
+					"key": "no live server stands behind it",
+					"settles": "read",
+					"reason": "a live MCP server is outside this repository, so no artifact in the tree records whether one was scored; the sentence states how far the fixture carries rather than what is owed"
+				},
+				{
+					"file": "docs/explanation/what-ships.md",
+					"key": "is the one kind `compile` still refuses",
+					"settles": {
+						"module": "scripts/doc-claim-sources.ts",
+						"export": "oneKindIsRefused"
+					},
+					"reason": "counts `UNSUPPORTED_INTERFACE_KINDS`"
+				},
+				{
+					"file": "docs/how-to/evaluate-workflow-behavior.md",
+					"key": "the suite currently has open findings",
+					"settles": "read",
+					"reason": "the suite is TEA's, in another repository"
+				},
+				{
+					"file": "docs/how-to/evaluate-tool-use-behavior.md",
+					"key": "which the shipped cli kind answers today",
+					"settles": {
+						"module": "scripts/doc-claim-sources.ts",
+						"export": "cliCompiles"
+					},
+					"reason": "holds while `cli` is in `SUPPORTED_INTERFACE_KINDS`"
+				},
+				{
+					"file": "docs/how-to/evaluate-tool-use-behavior.md",
+					"key": "compiles, seals, and pre-flights today",
+					"settles": {
+						"module": "scripts/doc-claim-sources.ts",
+						"export": "cliCompiles"
+					},
+					"reason": "holds while `cli` is in `SUPPORTED_INTERFACE_KINDS`"
+				},
+				{
+					"file": "docs/how-to/evaluate-tool-use-behavior.md",
+					"key": "Reading one answers the same three today",
+					"settles": {
+						"module": "scripts/doc-claim-sources.ts",
+						"export": "mcpCompiles"
+					},
+					"reason": "holds while `mcp` is in `SUPPORTED_INTERFACE_KINDS`"
+				},
+				{
+					"file": "docs/how-to/evaluate-tool-use-behavior.md",
+					"key": "is the one kind all three still refuse",
+					"settles": {
+						"module": "scripts/doc-claim-sources.ts",
+						"export": "oneKindIsRefused"
+					},
+					"reason": "counts `UNSUPPORTED_INTERFACE_KINDS`"
+				},
+				{
+					"file": "docs/how-to/evaluate-tool-use-behavior.md",
+					"key": "**Missing.**",
+					"settles": {
+						"module": "scripts/doc-claim-sources.ts",
+						"export": "mcpDescriptorHasOneChannel"
+					},
+					"reason": "counts the members of `McpDescriptorChannel`, whose one member is `structured-result`; a second member would be the channel model the sentence says is missing"
+				},
+				{
+					"file": "docs/how-to/evaluate-tool-use-behavior.md",
+					"key": "Both sides of the exchange accommodate the kind today",
+					"settles": {
+						"module": "scripts/doc-claim-sources.ts",
+						"export": "mcpCompiles"
+					},
+					"reason": "holds while `mcp` is in `SUPPORTED_INTERFACE_KINDS`"
+				},
+				{
+					"file": "docs/how-to/evaluate-tool-use-behavior.md",
+					"key": "**Unproven, and this is the uncomfortable part.**",
+					"settles": "read",
+					"reason": "the calibration record is in the architecture history, and whether it was re-measured against the shipped kind is not recorded anywhere in this tree"
+				},
+				{
+					"file": "docs/how-to/evaluate-tool-use-behavior.md",
+					"key": "The first reading runs today",
+					"settles": "read",
+					"reason": "TEA's own move is a fact about another repository's contracts"
+				},
+				{
+					"file": "docs/how-to/evaluate-ai-feature-behavior.md",
+					"key": "is declared `kind: \"api\"` today",
+					"settles": {
+						"module": "scripts/doc-claim-sources.ts",
+						"export": "webIsRefused"
+					},
+					"reason": "holds while `web` is refused and `api` is accepted"
+				},
+				{
+					"file": "docs/how-to/evaluate-agent-behavior.md",
+					"key": "Not proven, and worth knowing before you plan a corpus",
+					"settles": "read",
+					"reason": "introduces the unproven block below it; the claim itself is the block"
+				},
+				{
+					"file": "docs/how-to/evaluate-agent-behavior.md",
+					"key": "has no scoring-side signature today",
+					"settles": {
+						"module": "scripts/doc-claim-sources.ts",
+						"export": "artifactChannelHasNoSignature"
+					},
+					"reason": "reads whether the qualification gate still publishes the code it refuses an `artifact`-channel signature with; the day a signature may address a written file, that code stops being the reason"
+				},
+				{
+					"file": "docs/how-to/evaluate-tool-use-behavior.md",
+					"key": "was run end to end against the built CLI at",
+					"settles": {
+						"module": "scripts/doc-claim-sources.ts",
+						"export": "toolUseRoutePinIsCurrent"
+					},
+					"reason": "compares the version the sentence pins the route to against the published major, and against the record that transcribes the run; the route itself is settled by running it, which no check here does"
+				},
+				{
+					"file": "docs/how-to/evaluate-agent-behavior.md",
+					"key": "resolves `true` from eval-quality 1.4.0",
+					"settles": {
+						"module": "scripts/doc-claim-sources.ts",
+						"export": "countToleranceResolvesTrue"
+					},
+					"reason": "resolves a `count-tolerance` check over a collection-typed pointer answered present and empty, which is the path the sentence is about"
+				},
+				{
+					"file": "docs/how-to/evaluate-agent-behavior.md",
+					"key": "all nine defect probes are exercised and caught",
+					"settles": "read",
+					"reason": "the numbers are TEA's, recorded in that repository's `test/probes/expected-strength.json`, so nothing here can re-run them; the sentence names the eval-quality version they were read at, which is what tells a reader how far back the reading is"
+				},
+				{
+					"file": "docs/reference/cli-commands.md",
+					"key": "| Port | What it does | Wired today |",
+					"settles": "read",
+					"reason": "which ports the CLI awaits is a fact about the command implementation, which this gate does not execute"
+				}
+			]
+		},
+		"transcriptions": [
+			{
+				"file": "docs/reference/cli-commands.md",
+				"claim": "the CLI's exit-code table",
+				"text": {
+					"module": "src/cli/render.ts",
+					"export": "EXIT_CODE_TABLE"
+				}
+			},
+			{
+				"file": "docs/how-to/evaluate-tool-use-behavior.md",
+				"claim": "the schema stamps the tool-use route carries",
+				"text": {
+					"module": "scripts/doc-claim-sources.ts",
+					"export": "SCHEMA_STAMP_SENTENCE"
+				}
+			},
+			{
+				"file": "README.md",
+				"claim": "the Node.js floor, from `package.json`'s `engines.node`",
+				"text": {
+					"module": "scripts/doc-claim-sources.ts",
+					"export": "NODE_FLOOR_SENTENCE"
+				}
+			},
+			{
+				"file": "docs/tutorials/getting-started.md",
+				"claim": "the Node.js floor, from `package.json`'s `engines.node`",
+				"text": {
+					"module": "scripts/doc-claim-sources.ts",
+					"export": "NODE_FLOOR_SENTENCE"
+				}
+			},
+			{
+				"file": "docs/how-to/evaluate-skill-behavior.md",
+				"claim": "the skill chain's defect strength vector",
+				"text": {
+					"module": "scripts/doc-claim-sources.ts",
+					"export": "skillDefectVector"
+				}
+			}
+		]
 	}
 }
