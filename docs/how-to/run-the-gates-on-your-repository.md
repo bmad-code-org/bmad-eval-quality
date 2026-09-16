@@ -63,6 +63,10 @@ The case it exists for is a shipped file pointing at a path the installed packag
 Build a package with exactly that problem.
 
 ```bash
+rm -rf /tmp/eval-quality-gates-lab/package-boundary
+```
+
+```bash
 mkdir -p /tmp/eval-quality-gates-lab/package-boundary/src
 ```
 
@@ -158,6 +162,10 @@ That loop is every gate on this page: declare the rule, run it, read the finding
 `licences` reads each lockfile directly, so it needs no install and it sees the optional platform binaries this machine never installed.
 
 ```bash
+rm -rf /tmp/eval-quality-gates-lab/licences
+```
+
+```bash
 mkdir -p /tmp/eval-quality-gates-lab/licences
 ```
 
@@ -239,6 +247,10 @@ The other three settings on this gate exist for the cases the allowlist cannot r
 It is the gate against a supply-chain attack that publishes a malicious version and waits for the next install to pick it up.
 
 **The prerequisite.** An entry the `cache` file carries is used with no request. Every other entry is fetched from the npm registry, and a fetch that fails fails the gate rather than skipping the entry. So this lab is fully offline only because the cache below carries every entry in the lockfile.
+
+```bash
+rm -rf /tmp/eval-quality-gates-lab/lockfile-age
+```
 
 ```bash
 mkdir -p /tmp/eval-quality-gates-lab/lockfile-age
@@ -330,6 +342,10 @@ The cache is a committed file, and a diff to it is where that decision is visibl
 **The prerequisite, before you run anything.** This gate reads your source through the TypeScript scanner, and `typescript` is an optional peer dependency of this package. Run it inside this clone and it is already there. Run it in a repository that does not have it and the gate refuses at exit `64`, naming the missing dependency and itself. `field-ownership` in lab 5 is the only other gate that needs it, and the remaining six need nothing beyond this package.
 
 Two layers, and one import going the wrong way.
+
+```bash
+rm -rf /tmp/eval-quality-gates-lab/dependency-direction
+```
 
 ```bash
 mkdir -p /tmp/eval-quality-gates-lab/dependency-direction/src/model
@@ -424,6 +440,10 @@ dependency-direction: passed, 2 file(s) scanned across 1 root(s), 0 violations.
 Same prerequisite as lab 4: this gate needs `typescript`.
 
 One field that carries a claim, one module allowed to set it, and one write from somewhere else.
+
+```bash
+rm -rf /tmp/eval-quality-gates-lab/field-ownership
+```
 
 ```bash
 mkdir -p /tmp/eval-quality-gates-lab/field-ownership/src/app

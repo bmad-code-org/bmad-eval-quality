@@ -40,9 +40,11 @@ All three compile, and all three plan a pre-flight.
 
 ## What the package does not do
 
-It executes nothing.
+It starts nothing on its own.
 No agent, no judge, and no system under test runs inside it, and it ships no network adapter.
 Both arms of the twin run, the evaluator itself, and the sealing of what the evaluator produced into a run record are yours.
+
+Two shipped adapters do launch a process, and only where you wire one up and tell it what it may reach: `createCommandLineAdapter` runs a command, and `createMcpAdapter` runs a tool server over MCP's stdio transport. Each takes a target policy you write, mapping a logical name in the contract to something real, so what runs is what you authorized.
 
 Also outside the package, by decision: a new eval engine, a hosted service, a dashboard or GUI, multimodal evaluators, automatic prompt repair, and a generic judge-calibration platform.
 

@@ -41,12 +41,28 @@ const BUILT = existsSync(join(REPO, 'dist/index.js'))
 const NEEDS_BUILD =
 	'dist/ is absent. Run `npm run build` first: this case runs the tutorial helper, which imports the built package.'
 
-const runHelper = (extra: readonly string[], out: string) =>
-	spawnSync(
+/**
+ * The adapter bounds each MCP session and kills its server's process group, and
+ * that bounds nothing outside a tool call. A helper that hung between calls
+ * would keep this synchronous spawn blocked past the case's own timeout, and
+ * vitest reports that as the suite hanging rather than as this case failing. The
+ * bound here is well under that timeout so the failure lands on the right case.
+ */
+const HELPER_TIMEOUT_MS = 45_000
+
+const runHelper = (extra: readonly string[], out: string) => {
+	const result = spawnSync(
 		process.execPath,
 		[HELPER, '--contract', CONTRACT, '--out', out, ...extra],
-		{ cwd: REPO, encoding: 'utf8' },
+		{ cwd: REPO, encoding: 'utf8', timeout: HELPER_TIMEOUT_MS },
 	)
+	if (result.error !== undefined) {
+		throw new Error(
+			`the tutorial helper did not run to a verdict within ${HELPER_TIMEOUT_MS}ms: ${result.error.message}`,
+		)
+	}
+	return result
+}
 
 describe('the tool-use tutorial helper reproduces its committed evidence', () => {
 	it('drives the pre-flight legs against a real tool server', (ctx) => {

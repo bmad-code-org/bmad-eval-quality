@@ -99,7 +99,7 @@ An eval contract describes a system through a declared interface. Three interfac
 | An AI feature behind an HTTP surface | [AI feature behavior](/how-to/evaluate-ai-feature-behavior/) | A relational oracle that survives a varying answer, and an empty collection that abstains rather than passing. |
 | An MCP server answering tool calls | [Tool-use behavior](/how-to/evaluate-tool-use-behavior/) | Real tool calls against a stdio tool server the guide spawns, where the write answers identically in both arms and the read-back separates them. The fixture is the one this repository ships, and no live server stands behind it. |
 
-Every command in those guides runs from a fresh checkout, and CI executes them on every build. Each guide also says plainly what is proven and what is not.
+Every command those guides present as runnable runs from a fresh checkout, and CI executes them on every build. Where a fence is grammar rather than a step, the page says so above it. Each guide also says plainly what is proven and what is not.
 
 One kind parses and stops at compilation under `unsupported-interface-kind`: `web`, whose probe semantics are undeclared. [What Ships](/explanation/what-ships/) states the limits of the tool-use kind and how far a strength number carries.
 
