@@ -10,6 +10,32 @@ body.
 
 ## [Unreleased]
 
+### Added
+
+- **The evaluator is on the public barrel.** `resolveCheck`, `makeResolveOperand`,
+  `makePointerDenotesCollection`, `referenceSetKeysOf` and the `ABSENT` sentinel export from
+  `eval-quality`, reachable by `require('eval-quality')` as well as by import, so a consumer that
+  resolves a check itself no longer has to reach into `dist/core/`. `ResolveOperand`,
+  `PointerDenotesCollection`, `ReferenceSetKeys`, `ResolvedValue` and `PlanIndex` ship as type-only
+  exports beside them, and `Expression`, `Operand`, `CheckResolutionValue`, `Observation` and
+  `JsonValue` ship type-only off `core/schemas` directly.
+
+### Fixed
+
+- **`dependency-direction` no longer flags a `require` method or a member call as a CommonJS
+  require site.** The method shorthand `{ require(name) { ... } }` and a member call such as
+  `sandbox.require('fs')` or `mock?.require('fs')` pass under `commonjs: "forbid"`; a real
+  `require('x')` call, including one inside a condition or a ternary, still violates.
+
+### Changed
+
+- **The two source-scanning gates now refuse by name when the installed TypeScript cannot run
+  them**, instead of rethrowing a raw `ERR_PACKAGE_PATH_NOT_EXPORTED` stack. `dependency-direction`
+  and `field-ownership` read TypeScript's scanner at `typescript/unstable/ast`, a subpath TypeScript
+  7 ships and TypeScript 5 does not; both gates now name the installed version and the version the
+  scanner ships from when the subpath is missing, and name the specific `SyntaxKind` member when the
+  subpath is present but a member either gate reads is not. The optional peer range stays `>=5.7.0`.
+
 ## [3.2.0] - 2026-09-16
 
 ### Added

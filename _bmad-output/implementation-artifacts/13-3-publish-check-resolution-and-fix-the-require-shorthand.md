@@ -2,7 +2,7 @@
 title: 'Publish check resolution, and fix the require shorthand'
 type: 'feature'
 created: '2026-09-16'
-status: 'in-progress'
+status: 'done'
 route: 'dispatch'
 review_loop_iteration: 0
 baseline_commit: '3f12244cac4405afddbaa91dc710b8c1f2961662'
@@ -64,7 +64,7 @@ Verified at `3f12244`, the 3.2.0 release.
 - [x] `scripts/fixtures/consumer/direction-compliant/lib/service/sandbox.ts` and unit cases -- shorthand, member call, and a real call in a condition.
 - [x] `scripts/typescript-scanner.ts` -- `loadTypeScriptScanner(gate, load?, readVersion?)`, `REQUIRED_SYNTAX_KINDS`, `TYPESCRIPT_UNAVAILABLE`; `check-dependency-direction.ts` and `lineage-ownership.ts` route through it; `tsconfig-gates.json` and the emitted-module list name it.
 - [x] `tests/architecture/published-gates.test.ts` or a new `typescript-scanner.test.ts` -- the four refusal rows, and the required list held equal to the `SyntaxKind.` names in `token-scan.ts`, `dependency-direction.ts` and `lineage-ownership.ts`.
-- [ ] `docs/reference/cli-commands.md`, `docs/how-to/run-the-gates-on-your-repository.md`, `CHANGELOG.md`, learning path Step 66.
+- [x] `docs/reference/cli-commands.md`, `docs/how-to/run-the-gates-on-your-repository.md`, `CHANGELOG.md`, learning path Step 66.
 
 **Acceptance Criteria:**
 
@@ -74,7 +74,7 @@ Verified at `3f12244`, the 3.2.0 release.
 ## Implementation Notes
 
 - Handed over at `cb85b20` with the code, fixtures and tests in and the docs, changelog, learning path, review layers, validate and pull request remaining; `handover-check-resolution-and-require-shorthand.md` beside this file carries the state and the item 3 reasoning.
-- The ordering witness moved from 78 to 82: `src/index.ts` gained four type imports from `core/schemas`, and under the swapped rows each is an edge root may not take. `ORDERING_WITNESS_VIOLATIONS` and the docs sentence moved together.
+- The ordering witness moved from 78 to 80: `src/index.ts` gained two new source files' worth of type imports from `core/schemas` (`expression.ts`, `primitives.ts`), and under the swapped rows each newly-imported specifier is an edge root may not take. `ORDERING_WITNESS_VIOLATIONS` and the docs sentence moved together. The handover recorded this as 82; that number was never verified against the running test (confirmed by running the same test on the handover commit before this session's rebase) and the real count is 80.
 - The `:` after a `require(...)` list is told apart from a ternary by scanning backward for a `?` at depth zero; a walk forward through the return type was written first and dropped, because an object type literal and a body both open with `{`.
 - The loader's required-member list is 73 names; the first draft of the fix used five more `SyntaxKind` members and the derived-list test caught the drift before the list did.
 

@@ -889,7 +889,12 @@ It reads every import, re-export, dynamic import and triple-slash reference dire
 
 This gate needs one thing installed: `typescript`, which the package declares as an optional peer dependency.
 Install it only if you run this gate or the field-ownership gate, which are the two that read your source.
-Invoke it without it and the gate refuses at exit `64`, naming the missing dependency and the gate that wanted it, so a repository that adopted the other six is never left wondering which of its gates is complaining.
+
+The scanner both gates read lives at `typescript/unstable/ast`, a subpath TypeScript 7 ships and TypeScript 5 does not.
+Invoke either gate without `typescript` installed at all and it refuses at exit `64`, naming the missing dependency and the gate that wanted it.
+Invoke either gate with a TypeScript 5.x install and it refuses at exit `64` the same way, naming the installed version and that the scanner ships from TypeScript 7.
+A TypeScript 7 install that is missing a syntax-kind member the scanner reads (a future release renaming or dropping one) refuses at exit `64` by that member's own name, rather than silently switching the rule it guards off.
+So a repository that adopted the other six gates is never left wondering which of its gates is complaining, or why.
 
 ### Roots
 
@@ -904,7 +909,7 @@ A root that holds no matching file fails the run at exit `64`: a scan of nothing
 
 Order is the whole of it.
 Every file under `src/core/schemas/` also sits under `src/core/`, so the narrower prefix has to be listed first or those files are held to the wider layer's rules.
-In this package's own configuration, swapping those two rows reports 82 violations where there are none today.
+In this package's own configuration, swapping those two rows reports 80 violations where there are none today.
 That is why `layers` is a list and not an object keyed by layer name: a map carries no order, and normalising this into one, or sorting it, rewrites the graph it describes without changing a word of it.
 A row that an earlier row already matches in full is refused outright, so making that mistake costs you a configuration error and never a silent re-layering.
 
@@ -1074,7 +1079,10 @@ This gate reads your source through the typescript package's own scanner, which 
 Install `typescript` to run it.
 The dependency-direction gate is the only other one that needs it; the remaining six need nothing beyond this package, and a gate you have not configured is a gate you never invoke, so a repository that adopted only those six never installs it.
 
-Invoked without it, this gate refuses at exit `64` naming the missing dependency and itself.
+The scanner lives at `typescript/unstable/ast`, a subpath TypeScript 7 ships and TypeScript 5 does not, so install TypeScript 7 to run this gate.
+Invoked with `typescript` absent, this gate refuses at exit `64` naming the missing dependency and itself.
+Invoked against a TypeScript 5.x install, it refuses at exit `64` naming the installed version and that the scanner ships from TypeScript 7.
+Invoked against a TypeScript 7 install missing a syntax-kind member the scanner reads, it refuses at exit `64` by that member's name, rather than switching the rule it guards off with the gate reporting green.
 
 ## The doc-invocations gate
 
