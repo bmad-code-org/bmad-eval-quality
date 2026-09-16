@@ -15,7 +15,13 @@
  * decision, and a counting `readTimeMap` is what shows them without a network.
  */
 import { spawnSync } from 'node:child_process'
-import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
+import {
+	mkdirSync,
+	mkdtempSync,
+	readFileSync,
+	symlinkSync,
+	writeFileSync,
+} from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
@@ -588,9 +594,95 @@ describe('a `read` claim pinned with `asOf`', () => {
 		const report = await runDocClaims(scratch, section as never)
 		expect(
 			report.failures.some(
-				(line) =>
-					line.includes('missing.json') && line.includes('does not exist'),
+				(line) => line.includes('missing.json') && line.includes('ENOENT'),
 			),
+		).toBe(true)
+	})
+
+	it('reports the real error code rather than "does not exist" for a directory subject', async () => {
+		const scratch = scratchWith(`# A page\n\n${SENTENCE}\n`)
+		mkdirSync(join(scratch, 'a-directory'))
+		const section = datedSection({
+			subject: 'a-directory',
+			hash: '0'.repeat(64),
+		})
+		const report = await runDocClaims(scratch, section as never)
+		expect(
+			report.failures.some(
+				(line) => line.includes('a-directory') && line.includes('EISDIR'),
+			),
+		).toBe(true)
+	})
+
+	it('refuses a symlinked subject rather than following it outside the tree', async () => {
+		const scratch = scratchWith(`# A page\n\n${SENTENCE}\n`)
+		const outside = mkdtempSync(join(tmpdir(), 'doc-claims-asof-outside-'))
+		writeFileSync(join(outside, 'evidence.json'), '{"open":3}\n')
+		symlinkSync(
+			join(outside, 'evidence.json'),
+			join(scratch, 'evidence-link.json'),
+		)
+		const section = datedSection({
+			subject: 'evidence-link.json',
+			hash: hashOfSubject(readFileSync(join(outside, 'evidence.json'), 'utf8')),
+		})
+		const report = await runDocClaims(scratch, section as never)
+		expect(
+			report.failures.some(
+				(line) =>
+					line.includes('evidence-link.json') && line.includes('symbolic link'),
+			),
+		).toBe(true)
+	})
+
+	it('is insensitive to CRLF line endings inside a fenced block', async () => {
+		const lf = `# A page\n\n${SENTENCE}\n\n\`\`\`yaml\na:\n  b: 1\n\`\`\`\n`
+		const crlf = lf.replace(/\n/g, '\r\n')
+		const scratch = scratchWith(lf)
+		const hash = hashOfSubject(readFileSync(join(scratch, 'page.md'), 'utf8'))
+		writeFileSync(join(scratch, 'page.md'), crlf)
+		const report = await runDocClaims(scratch, datedSection({ hash }) as never)
+		expect(report.failures).toEqual([])
+	})
+
+	it('hashes a tilde-fenced code block byte-exact, same as a backtick fence', async () => {
+		const fence = (indent: string) =>
+			`# A page\n\n${SENTENCE}\n\n~~~yaml\na:\n${indent}b: 1\n~~~\n`
+		const scratch = scratchWith(fence('  '))
+		const hash = hashOfSubject(readFileSync(join(scratch, 'page.md'), 'utf8'))
+		writeFileSync(join(scratch, 'page.md'), fence('    '))
+		const report = await runDocClaims(scratch, datedSection({ hash }) as never)
+		expect(
+			report.failures.some((line) => line.includes('different content hash')),
+		).toBe(true)
+	})
+
+	it('keeps a shorter nested fence-like line inside an open fence as protected content', async () => {
+		const page = (indent: string) =>
+			`# A page\n\n${SENTENCE}\n\n` +
+			'````markdown\n' +
+			'```yaml\n' +
+			`a:\n${indent}b: 1\n` +
+			'```\n' +
+			'````\n'
+		const scratch = scratchWith(page('  '))
+		const hash = hashOfSubject(readFileSync(join(scratch, 'page.md'), 'utf8'))
+		writeFileSync(join(scratch, 'page.md'), page('      '))
+		const report = await runDocClaims(scratch, datedSection({ hash }) as never)
+		expect(
+			report.failures.some((line) => line.includes('different content hash')),
+		).toBe(true)
+	})
+
+	it('keeps nested-list indentation significant outside a fence', async () => {
+		const nested = `# A page\n\n${SENTENCE}\n\n- a\n  - b\n`
+		const flattened = `# A page\n\n${SENTENCE}\n\n- a\n- b\n`
+		const scratch = scratchWith(nested)
+		const hash = hashOfSubject(readFileSync(join(scratch, 'page.md'), 'utf8'))
+		writeFileSync(join(scratch, 'page.md'), flattened)
+		const report = await runDocClaims(scratch, datedSection({ hash }) as never)
+		expect(
+			report.failures.some((line) => line.includes('different content hash')),
 		).toBe(true)
 	})
 })
@@ -691,6 +783,7 @@ describe("this repository's own doc-claims classes, held to a floor", () => {
 		expect(
 			numeral('transcriptions match their source byte for byte'),
 		).toBeGreaterThanOrEqual(5)
+		expect(numeral('pinned to a content hash')).toBeGreaterThanOrEqual(3)
 	})
 })
 

@@ -1177,10 +1177,23 @@ Each entry says how it is settled, by a predicate of yours or by `"read"` with t
 
 A `"read"` claim may also carry `asOf`, which pins it to the content a human actually read.
 `asOf.hash` is the sha256 of `asOf.subject`'s content, taken the moment the claim was confirmed true; `subject` defaults to the claim's own `file` and only needs setting when the judgment is about a different file.
-`npm run hash:doc-claim-subject -- <path>` prints the digest to paste in.
+`npm run hash:doc-claim-subject -- <path>` prints the digest to paste in; a failing entry's own message also names the exact command and shows the stored digest beside the one it computed.
 On every run the gate recomputes the hash and fails the entry the moment it disagrees, so a `"read"` claim stops being a confirmation that ages silently and starts being one that is checked against the thing it was read from.
-The hash is taken over normalized content: each line trimmed, runs of inner whitespace and of blank lines collapsed to one, so a formatter pass does not read as drift.
-A fenced code block is the one exception, hashed byte-exact, because indentation inside one is meaning a formatter is not free to move and a normalized hash would let a broken example pass unnoticed.
+
+`asOf` only works for a subject inside your own tree.
+It is a content hash, so the artifact has to be something this run can read; a fact about another repository, a live server, or anything else outside the tree it can never settle, and pinning the page that states such a fact only proves the page has not been edited, not that the fact still holds.
+Leave `asOf` off a claim like that, and say why in `reason`.
+When the judgment is really about a different file than the one carrying the sentence, and that file is in this tree, name it under `subject`: a table of ports a CLI awaits, say, is a fact about the source that wires them, not about the reference page transcribing it, and pinning the page instead would fire on every unrelated edit to that page and stay silent on every rewiring.
+Two entries with the same `file` and `key` are allowed, so a claim resting on more than one source file gets one entry per file.
+
+Subject content is read the way every other path this gate reads is read: a symbolic link is refused rather than followed, and any other read failure (missing, a directory, unreadable) is reported with its real cause rather than folded into one message.
+
+The hash is taken over normalized content: each line's leading indentation is kept and everything after it has its trailing whitespace trimmed and its inner whitespace runs collapsed to one space, and a run of blank lines collapses to one, so a formatter rewrapping prose or trimming trailing whitespace does not read as drift.
+Line endings are also normalized, so a checkout with different line endings hashes the same.
+A fenced code block, opened with backticks or tildes and closed by a matching-or-longer run of the same character, is the one exception: it is hashed byte-exact, because indentation inside one is meaning a formatter is not free to move and a normalized hash would let a broken example pass unnoticed.
+Leading indentation stays significant outside a fence too, for the same reason: it is what carries a nested list's depth and an indented code block's own content, and collapsing it would hide either changing.
+What this normalization does not catch, because catching it needs real markdown parsing rather than a text pass, runs in both directions. A real content change that stays invisible: a list marker's character (`*`/`+`/`-`), a heading's style (setext vs ATX), or a hard line break's trailing two spaces can each change without changing the hash. A cosmetic-only change that still trips the pin: a table's delimiter-row padding (`|---|---|` vs `| --- | --- |`) and a prose line rewrapped to a different width both change the hash with nothing about what the page says having changed. If your formatter rewraps prose, its own `proseWrap: "preserve"` setting (or equivalent) avoids that source of churn; this gate has no setting of its own for it.
+
 `asOf` is refused on a claim `settles` a predicate, since the predicate already re-runs on every check and a content pin beside it would be a second, uncoordinated staleness rule.
 
 `transcriptions` holds a page that reprints bytes your code emits against the bytes themselves.

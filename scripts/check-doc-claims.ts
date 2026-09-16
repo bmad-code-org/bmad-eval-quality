@@ -59,6 +59,13 @@
 // still current." A `settles` predicate needs none of this, because it already
 // re-runs every check.
 //
+// The pin only works for a subject this run can read, so it is worth nothing
+// against a fact about another repository or a live system; naming a subject
+// in this tree that is not the actual evidence, such as the page merely
+// stating the fact, buys a false sense of protection rather than none. Naming
+// the real evidence file under `subject`, in-tree, is what makes the pin mean
+// something.
+//
 // What stays outside all eight: editorial judgment, design rationale, anything
 // about the world beyond the tree, any claim about runtime behaviour that only
 // executing the code would settle, and whether a code a page names is the one
@@ -330,14 +337,14 @@ const Sha256Hex = z
 const DatedClaimAsOf = z
 	.strictObject({
 		subject: RelativePath.optional().describe(
-			"Which file the hash pins the claim to, when the judgment is about a file other than the one carrying the sentence. Defaults to the claim's own `file`.",
+			"Which file the hash pins the claim to, when the judgment is about a file other than the one carrying the sentence. Defaults to the claim's own `file`. Has to be in this tree: a fact about another repository or a live system cannot be pinned, and naming the page that merely states such a fact is worse than naming nothing, since it reads as protected when it is not.",
 		),
 		hash: Sha256Hex.describe(
 			"The subject's normalized-content sha256, taken the moment a human confirmed this claim true against it.",
 		),
 	})
 	.describe(
-		'Pins a `read` claim to the content a human read it against, so an edit to that content fails the gate instead of a stale confirmation passing forever.',
+		'Pins a `read` claim to the content a human read it against, so an edit to that content fails the gate instead of a stale confirmation passing forever. Two entries may share a `file` and `key`, one per subject, when a claim rests on more than one file.',
 	)
 
 const DatedClaimEntry = z
@@ -559,47 +566,133 @@ const sentenceAround = (line: string, offset: number): string => {
 }
 
 /**
- * What an `asOf` hash is taken over: every line outside a fenced code block is
- * trimmed and its internal whitespace collapsed to one space, and a run of
- * blank lines collapses to one, so a formatter pass does not read as drift. A
- * fenced block is left byte-exact, because indentation inside one is meaning a
+ * A fenced code block's opening delimiter: three or more backticks or tildes,
+ * CommonMark's own two fence characters. Captured so the close can require the
+ * same character and at least as many repeats, the way CommonMark itself does:
+ * a shorter or differently-charactered run inside the fence is content, not a
+ * close.
+ */
+const FENCE_OPEN = /^(`{3,}|~{3,})/
+
+const closesFence = (trimmedStart: string, marker: string): boolean =>
+	new RegExp(`^${marker[0] === '`' ? '`' : '~'}{${marker.length},}\\s*$`).test(
+		trimmedStart,
+	)
+
+/**
+ * What an `asOf` hash is taken over. Outside a fenced code block, each line's
+ * leading indentation is kept and everything after it is trimmed of trailing
+ * whitespace and has its internal whitespace runs collapsed to one space, and
+ * a run of blank lines collapses to one: a formatter pass rewrapping prose or
+ * trimming trailing whitespace does not read as drift, but indentation stays
+ * significant, because it is what carries a nested list's depth and an
+ * indented code block's own content. A fenced block is left byte-exact
+ * (line-ending normalized), because indentation inside one is meaning a
  * formatter is not free to move, and collapsing it would let a broken code
- * sample hide behind a passing gate.
+ * sample hide behind a passing gate. A stray shorter or wrongly-charactered
+ * fence-like line inside an open fence does not close it, so a nested example
+ * fence stays part of the outer block's protected content.
+ *
+ * What this does not do, deliberately, because catching it needs real
+ * markdown parsing rather than a text pass. Two directions, and both are
+ * real: a list marker's character (`*`/`+`/`-`), a heading's style (setext vs
+ * ATX), or a hard line break's trailing two spaces can each change without
+ * changing the hash, so a formatter rewriting those reads as no drift even
+ * though the source changed; and a table's delimiter-row padding
+ * (`|---|---|` vs `| --- | --- |`) or a prose line rewrapped to a different
+ * width changes the hash even though nothing about what the page says
+ * changed, so a formatter doing either still trips the pin it was meant to
+ * spare. A consumer whose formatter rewraps prose can avoid that one with its
+ * own `proseWrap: "preserve"` setting; this gate has no equivalent knob.
  */
 const normalizeForHash = (text: string): string => {
 	const lines: string[] = []
 	let fenced = false
+	let fenceMarker = ''
 	let blank = false
-	for (const raw of text.split('\n')) {
-		if (raw.trimStart().startsWith('```')) {
-			fenced = !fenced
-			lines.push(raw.trim())
-			blank = false
-			continue
-		}
+	for (const withCr of text.split('\n')) {
+		const raw = withCr.endsWith('\r') ? withCr.slice(0, -1) : withCr
+		const trimmedStart = raw.trimStart()
 		if (fenced) {
+			if (closesFence(trimmedStart, fenceMarker)) {
+				fenced = false
+				lines.push(trimmedStart.trimEnd())
+				blank = false
+				continue
+			}
 			lines.push(raw)
 			blank = false
 			continue
 		}
-		const collapsed = raw.trim().replace(/\s+/g, ' ')
-		if (collapsed === '') {
+		const opened = FENCE_OPEN.exec(trimmedStart)
+		if (opened !== null) {
+			fenced = true
+			fenceMarker = opened[1] as string
+			lines.push(trimmedStart.trimEnd())
+			blank = false
+			continue
+		}
+		const indent = raw.length - trimmedStart.length
+		const content = trimmedStart.replace(/\s+$/, '').replace(/[ \t]+/g, ' ')
+		if (content === '') {
 			if (blank) continue
 			blank = true
 			lines.push('')
 			continue
 		}
 		blank = false
-		lines.push(collapsed)
+		lines.push(`${raw.slice(0, indent)}${content}`)
 	}
-	while (lines.length > 0 && lines[0] === '') lines.shift()
-	while (lines.length > 0 && lines[lines.length - 1] === '') lines.pop()
+	// A document that ends without closing its last fence is malformed, and the
+	// trailing bytes inside that open fence are exactly the content the fenced
+	// branch above promises to keep byte-exact; trimming into them here would
+	// break that promise for the one shape that never legitimately arises in a
+	// well-formed page.
+	if (!fenced) {
+		while (lines.length > 0 && lines[0] === '') lines.shift()
+		while (lines.length > 0 && lines[lines.length - 1] === '') lines.pop()
+	}
 	return lines.join('\n')
 }
 
 /** What `dated.claims[].asOf.hash` holds: exported so a human confirming a claim can compute it. */
 export const hashOfSubject = (text: string): string =>
 	createHash('sha256').update(normalizeForHash(text)).digest('hex')
+
+type SubjectRead =
+	| { readonly kind: 'ok'; readonly body: string }
+	| { readonly kind: 'symlink' }
+	| { readonly kind: 'error'; readonly code: string }
+
+/**
+ * An `asOf.subject`'s content, read the way every other path this gate reads
+ * is read: a symbolic link is refused rather than followed, the same rule
+ * `walkPages` applies to a page and for the same reason, so a pin cannot be
+ * moved to point outside the tree the configuration names. A subject that is
+ * also a walked page is read from `pageText` rather than the disk a second
+ * time, which is both cheaper and, for that case, already covered by
+ * `walkPages`'s own symlink refusal.
+ */
+const readSubject = async (
+	root: string,
+	subject: string,
+	pageText: ReadonlyMap<string, readonly string[]>,
+): Promise<SubjectRead> => {
+	const cached = pageText.get(subject)
+	if (cached !== undefined) return { kind: 'ok', body: cached.join('\n') }
+	const target = resolve(root, subject)
+	const info = await lstat(target).catch(() => null)
+	if (info === null) return { kind: 'error', code: 'ENOENT' }
+	if (info.isSymbolicLink()) return { kind: 'symlink' }
+	try {
+		return { kind: 'ok', body: await readFile(target, 'utf8') }
+	} catch (error) {
+		return {
+			kind: 'error',
+			code: (error as NodeJS.ErrnoException).code ?? 'EUNKNOWN',
+		}
+	}
+}
 
 /**
  * Which backticked tokens in a captured stretch count as list members. A
@@ -1054,20 +1147,28 @@ export async function runDocClaims(
 				if (entry.asOf !== undefined) {
 					pinned += 1
 					const subject = entry.asOf.subject ?? entry.file
-					const body = await readFile(resolve(root, subject), 'utf8').catch(
-						() => null,
-					)
-					if (body === null) {
+					const read = await readSubject(root, subject, pageText)
+					if (read.kind === 'symlink') {
 						fail(
 							`${entry.file}: dated.claims holds "${entry.key}" with asOf.subject "${subject}", ` +
-								'which does not exist; the entry names no artifact it can be pinned against',
+								'which is a symbolic link; name the file it resolves to, so the pin cannot be ' +
+								'moved to point outside the tree the configuration names',
 						)
-					} else if (hashOfSubject(body) !== entry.asOf.hash) {
+					} else if (read.kind === 'error') {
 						fail(
-							`${entry.file}: "${entry.key}" was last confirmed against ${subject} at a different ` +
-								'content hash; that file has changed since, so re-read the claim and either ' +
-								'update the hash or fix/remove the entry',
+							`${entry.file}: dated.claims holds "${entry.key}" with asOf.subject "${subject}", ` +
+								`which could not be read (${read.code})`,
 						)
+					} else {
+						const computed = hashOfSubject(read.body)
+						if (computed !== entry.asOf.hash) {
+							fail(
+								`${entry.file}: "${entry.key}" was last confirmed against ${subject} at a ` +
+									`different content hash (stored ${entry.asOf.hash}, computed ${computed}); ` +
+									`run \`node scripts/hash-doc-claim-subject.ts ${subject}\` and update asOf.hash, ` +
+									'or fix/remove the entry',
+							)
+						}
 					}
 				}
 				continue
