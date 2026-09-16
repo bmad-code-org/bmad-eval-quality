@@ -259,6 +259,15 @@ export const webIsRefused = (): boolean =>
  *
  * A "No" row is settled by absence, which a content hash of an existing file
  * could never detect, so this is a predicate rather than an `asOf` pin.
+ *
+ * Two assumptions this leans on rather than checks. A namespace import
+ * (`import * as Clock from '../ports/clock-port.ts'`) would wire a port this
+ * cannot see, since it never names the type in a destructured brace list;
+ * none exists under `src/application/` today. And a re-export of a port type
+ * added to `src/ports/port.ts` would let the application layer import it
+ * from there instead, past the module path this matches; none exists there
+ * today either. Neither shape appears anywhere in this tree, so this reads
+ * the shape that is actually used rather than the shape that could be.
  */
 export const portsTableIsCurrent = (): boolean => {
 	const applicationSource = srcPaths
