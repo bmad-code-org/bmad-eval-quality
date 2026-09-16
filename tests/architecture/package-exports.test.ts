@@ -24,11 +24,17 @@ import { createRequire } from 'node:module'
 import { join } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import type {
+	CheckResolutionValue,
 	ComparableResult,
 	DominanceRelationValue,
+	Expression,
+	PointerDenotesCollection,
 	QualificationFailure,
 	QualificationFailureCode,
 	QualificationResult,
+	ReferenceSetKeys,
+	ResolvedValue,
+	ResolveOperand,
 	Severity,
 } from 'eval-quality'
 import { describe, expect, it } from 'vitest'
@@ -469,6 +475,128 @@ describe('the published package surface', () => {
 		const relation = compare(side(4), side(2), 'material')
 		expect(barrel.DOMINANCE_RELATIONS).toContain(relation)
 		expect(relation).toBe('a-dominates-b')
+	})
+
+	// The evaluator a consumer resolves a check with. TEA reached these four by
+	// dynamic-importing `dist/core/evaluate/...` through `pathToFileURL`, which
+	// its own direction gate then flagged; the barrel is the public path.
+	it('case 156: the barrel exports the evaluator, and its resolver keeps its signature', async (ctx) => {
+		if (!BUILT) return ctx.skip(NEEDS_BUILD)
+		const barrel = await publishedBarrel()
+		for (const name of [
+			'resolveCheck',
+			'makeResolveOperand',
+			'makePointerDenotesCollection',
+			'referenceSetKeysOf',
+		]) {
+			expect(typeof barrel[name], `${name} is missing from the barrel`).toBe(
+				'function',
+			)
+		}
+		// A `ResolveOperand` a consumer writes has to return the sentinel the
+		// type names, so the sentinel ships as a value beside the type.
+		expect(typeof barrel.ABSENT).toBe('symbol')
+		const layerTypes = exportedTypeNames(layerBarrelSource)
+		for (const name of [
+			'ResolveOperand',
+			'PointerDenotesCollection',
+			'ReferenceSetKeys',
+			'ResolvedValue',
+			'PlanIndex',
+		]) {
+			expect(layerTypes).toContain(name)
+		}
+		const rootTypes = exportedTypeNames(barrelSource)
+		for (const name of [
+			'Expression',
+			'Operand',
+			'CheckResolutionValue',
+			'Observation',
+			'JsonValue',
+		]) {
+			expect(rootTypes).toContain(name)
+		}
+
+		type Declared = typeof import('eval-quality').resolveCheck
+		type Expected = (
+			expression: Expression,
+			resolveOperand: ResolveOperand,
+			pointerDenotesCollection: PointerDenotesCollection,
+			referenceSetKeys: ReferenceSetKeys,
+			regexMatchStepBudget: number,
+			artifactPath: string,
+		) => CheckResolutionValue
+		type Exact<A, B> =
+			(<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2
+				? true
+				: false
+		const signatureIsExact: Exact<Declared, Expected> = true
+		expect(signatureIsExact).toBe(true)
+
+		// Called through that signature: a literal operand compared to itself.
+		const resolve = barrel.resolveCheck as Expected
+		const value = resolve(
+			{
+				op: 'equality',
+				operands: [{ literal: 1 }, { literal: 1 }],
+			} as Expression,
+			(operand) =>
+				('literal' in operand
+					? operand.literal
+					: barrel.ABSENT) as ResolvedValue,
+			() => false,
+			{},
+			1_000,
+			'/checks/0',
+		)
+		expect(value.resolution).toBe('true')
+	})
+
+	// TEA's scripts are CommonJS. Node 22 loads an ES module through `require`
+	// when nothing in it awaits at the top level, and the barrel is that module.
+	it("case 157: `require('eval-quality')` reaches the evaluator from CommonJS", (ctx) => {
+		if (!BUILT) return ctx.skip(NEEDS_BUILD)
+		const required = createRequire(import.meta.url)(
+			resolveSubpath('eval-quality'),
+		) as {
+			resolveCheck: unknown
+			makeResolveOperand: (
+				stepObservations: Readonly<Record<string, unknown>>,
+				referenceSets: Readonly<Record<string, unknown[]>>,
+			) => unknown
+			makePointerDenotesCollection: unknown
+			referenceSetKeysOf: unknown
+			ABSENT: unknown
+		}
+		expect(typeof required.resolveCheck).toBe('function')
+		expect(typeof required.makeResolveOperand).toBe('function')
+		expect(typeof required.makePointerDenotesCollection).toBe('function')
+		expect(typeof required.referenceSetKeysOf).toBe('function')
+
+		// Called through the object `require` handed back, not the ESM import
+		// case 156 already exercised: proof that Node's CJS interop hands back a
+		// live, callable binding and not a present-but-inert one.
+		const resolveCheck = required.resolveCheck as (
+			expression: Expression,
+			resolveOperand: ResolveOperand,
+			pointerDenotesCollection: PointerDenotesCollection,
+			referenceSetKeys: ReferenceSetKeys,
+			regexMatchStepBudget: number,
+			artifactPath: string,
+		) => CheckResolutionValue
+		const resolveOperand = required.makeResolveOperand({}, {})
+		const value = resolveCheck(
+			{
+				op: 'equality',
+				operands: [{ literal: 1 }, { literal: 1 }],
+			} as Expression,
+			resolveOperand as ResolveOperand,
+			() => false,
+			{},
+			1_000,
+			'/checks/0',
+		)
+		expect(value.resolution).toBe('true')
 	})
 
 	it('case 158: the corpus README resolves and a missing schema does not', () => {

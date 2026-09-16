@@ -12,6 +12,7 @@
 		"scripts/dependency-direction.ts",
 		"scripts/discover-source-files.ts",
 		"scripts/token-scan.ts",
+		"scripts/typescript-scanner.ts",
 		"scripts/package-boundary.ts",
 		"scripts/lineage-ownership.ts",
 		"scripts/check-doc-invocations.mjs",

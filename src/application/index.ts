@@ -10,6 +10,24 @@ export {
 	digestBytes,
 	digestComposite,
 } from '../core/canonical/digest.ts'
+// The evaluator, for a consumer that resolves a check itself: the resolver,
+// the two factories that build its operand and collection predicates from a
+// contract and its observations, and the reference-set keys. `ABSENT` ships
+// beside them because a `ResolveOperand` a consumer writes has to return it,
+// and a sentinel the type names and the barrel withholds cannot be returned.
+export {
+	makePointerDenotesCollection,
+	makeResolveOperand,
+	referenceSetKeysOf,
+} from '../core/evaluate/evidence-resolution.ts'
+export type {
+	PointerDenotesCollection,
+	ReferenceSetKeys,
+	ResolveOperand,
+} from '../core/evaluate/resolution.ts'
+export { resolveCheck } from '../core/evaluate/resolution.ts'
+export type { ResolvedValue } from '../core/evaluate/resolved-value.ts'
+export { ABSENT } from '../core/evaluate/resolved-value.ts'
 export type { FailureCode } from '../core/failure-codes.ts'
 export { FAILURE_CODES, StructuralFailure } from '../core/failure-codes.ts'
 export type {
@@ -47,6 +65,7 @@ export {
 	compareDominance,
 	DOMINANCE_RELATIONS,
 } from '../core/score/strength.ts'
+export type { PlanIndex } from '../core/seal/plan-index.ts'
 export { compile } from './compile.ts'
 export type { Diagnostic, DiagnosticSink } from './diagnostics.ts'
 export type {

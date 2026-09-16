@@ -4562,3 +4562,31 @@ Three were bare integers typed into the code that writes the artifact. Five were
 - A configuration refusal never outranks a gate finding in the exit code. A run that found a violation and a stale row exits with the finding and prints the refusal as a diagnostic; a caller branching on the code must see the finding first.
 
 **Watch out:** where a partition sits decides what gets printed. An exclusion split placed after the resolved-URL split left an excluded, off-registry entry unprinted while three sentences said it was printed on every run; reading the exclusion over every entry, and crediting an undeclared row before the URL check, is what made both sentences true.
+
+## Step 66 (epic13-story3): publishing the check-resolution surface, and fixing the require shorthand
+
+**In plain terms:** a consumer building its own evaluation path had no way to reach `resolveCheck` except a private dynamic import of a compiled file, and a mock's `require` method or a member call named `require` tripped the CommonJS gate meant for an actual `require('x')` call. A third gate reached a TypeScript subpath that only exists in TypeScript 7, and failed with a raw resolver stack on TypeScript 5.
+
+**What:** four functions and a sentinel exported off the application-layer barrel, so `require('eval-quality')` reaches them the same way an ESM import does. A look-around in the `require` scanner that tells a method or a member call apart from a call site by what follows the identifier and its parenthesised list. One shared loader both source-scanning gates route through, refusing by name on an absent package, a subpath TypeScript 5 lacks, or a required `SyntaxKind` member a future TypeScript drops or renames.
+
+**Why:** exporting through the one layer barrel the dependency matrix already grants keeps the matrix unchanged; a private reach into `dist/core/` is the alternative a consumer takes only because the surface withholds it. A rename-based fix to the shorthand problem teaches a consumer to dodge the gate by naming things differently; a look-around at the call shape does not. A version pin on the optional peer breaks `npm install` for a consumer with TypeScript 5 who never runs the two scanner gates; a shape check refuses at the one moment the fact matters, and by name, so a renamed member cannot switch a rule off with the gate reporting green.
+
+**Read in this order:**
+
+1. `src/application/index.ts`: the four exports and the sentinel, and the comment on why it ships.
+2. `scripts/dependency-direction.ts`: the `RequireKeyword` arm, and `isMethodDefinition`.
+3. `scripts/typescript-scanner.ts`: `loadTypeScriptScanner`, the three refusals, and `REQUIRED_SYNTAX_KINDS`.
+
+**Story:** `_bmad-output/implementation-artifacts/13-3-publish-check-resolution-and-fix-the-require-shorthand.md`
+
+### Reference
+
+**Rules:**
+
+- Export through the layer barrel the dependency matrix already grants, never around it. A private reach into a compiled path is a surface gap, not a consumer's mistake.
+- Tell a method or a member call apart from a call site by what follows the identifier, not by the identifier's name. A rename-based rule teaches a consumer to dodge it.
+- Guard an unstable subpath with a shape check that names what is missing, not a version pin. A pin alone still lets a renamed member switch a rule off silently.
+- Derive a required-member list from the sources that read it, in a test, so a maintainer adding a read cannot leave the guard behind.
+- State a peer dependency's true range only at the moment a consumer needs it to be true. A range npm enforces at install time breaks installs for consumers who never touch the feature it guards.
+
+**Watch out:** an ordering-witness count stated in a comment and a doc sentence is a fact about the tree at the moment someone wrote it down, not a derivation; it has to be re-run, not assumed, whenever the tree it measures changes.

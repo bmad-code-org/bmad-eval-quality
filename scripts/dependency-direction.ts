@@ -735,6 +735,22 @@ function scanFile(
 			const openIndex =
 				tokens[i + 1]?.kind === SyntaxKind.QuestionDotToken ? i + 2 : i + 1
 			if (tokens[openIndex]?.kind !== SyntaxKind.OpenParenToken) continue
+			// The site this arm exists for is the free identifier `require` called
+			// with a specifier. Two shapes share its tokens and are ordinary
+			// JavaScript: a member call, `sandbox.require('fs')`, where the token
+			// before is `.` or `?.`, and a method named require, `require(name) {`
+			// in an object literal or a class, where the token after the matching
+			// `)` is `{`. A call's own `)` is never followed by `{`, so
+			// `if (require('x')) {` still reads as the call it is. A consumer
+			// renaming a mock to get past this arm is a gate teaching the wrong lesson.
+			const before = tokens[i - 1]?.kind
+			if (
+				before === SyntaxKind.DotToken ||
+				before === SyntaxKind.QuestionDotToken ||
+				isMethodDefinition(tokens, i, openIndex)
+			) {
+				continue
+			}
 			if (graph.commonjs === 'forbid') {
 				violations.push({
 					file,
@@ -828,6 +844,131 @@ function scanFile(
  * against `graph` and returns every violation found, in no particular cross-file
  * order.
  */
+
+/**
+ * A modifier or generator marker that can sit between a declaration boundary
+ * and the member name it modifies: `async`, `static`, `get`, `set`,
+ * `readonly`, an access modifier, or `*`. Skipped when walking backward from
+ * `require` to find what actually introduces it.
+ */
+const MEMBER_MODIFIERS: ReadonlySet<number> = new Set([
+	SyntaxKind.AsyncKeyword,
+	SyntaxKind.StaticKeyword,
+	SyntaxKind.GetKeyword,
+	SyntaxKind.SetKeyword,
+	SyntaxKind.ReadonlyKeyword,
+	SyntaxKind.PrivateKeyword,
+	SyntaxKind.PublicKeyword,
+	SyntaxKind.ProtectedKeyword,
+	SyntaxKind.AsteriskToken,
+])
+
+/**
+ * Whether `require`, immediately followed by a parameter list and then `{`,
+ * actually sits where a name is declared rather than where a call's result is
+ * followed by an unrelated block statement: `const mod = require('x')` and a
+ * stray `{` on the next line tokenize exactly like a method body, and only
+ * what precedes `require` tells them apart. Skips the modifiers above, then
+ * requires the next token to be the opening brace of the object, class or
+ * interface `require` is the first member of, a `,` or `;` separating it from
+ * a prior member, a `case`/`default` label, `function` for a function
+ * declaration, or the start of the file. Anything else -- `=`, `return`, or
+ * any other token an expression puts before a call -- means this is a call.
+ *
+ * A `;` or `}` immediately before `require` stays undecidable this way: both
+ * a prior class member and a prior unrelated statement end on one, and
+ * telling them apart needs knowing what kind of block `require` sits in,
+ * which a token stream does not carry. Rare enough, and specific enough to
+ * write on purpose, that it is left as the one shape this arm still misses.
+ */
+function isDeclarationPosition(
+	tokens: readonly Token[],
+	requireIndex: number,
+): boolean {
+	let j = requireIndex - 1
+	while (j >= 0 && MEMBER_MODIFIERS.has(tokens[j]?.kind as number)) j -= 1
+	if (j < 0) return true
+	const kind = tokens[j]?.kind
+	return (
+		kind === SyntaxKind.OpenBraceToken ||
+		kind === SyntaxKind.CommaToken ||
+		kind === SyntaxKind.SemicolonToken ||
+		kind === SyntaxKind.CaseKeyword ||
+		kind === SyntaxKind.DefaultKeyword ||
+		kind === SyntaxKind.FunctionKeyword
+	)
+}
+
+/**
+ * Whether the parenthesised list opening at `openIndex` is a parameter list,
+ * which is to say `require` here is a method or a signature and never a call.
+ * A `{` straight after the matching `)` defers to `isDeclarationPosition`. A
+ * `:` after it is either a return-type annotation, a ternary's else, or a
+ * `case`/`default` label, and the three are told apart by looking back from
+ * `require` at bracket depth zero: a ternary has its `?` before the call and
+ * inside the same expression, a `case`/`default` label has the keyword
+ * immediately before the call and nothing between them, and a member
+ * declaration has none of those before its own `{`, `,` or `;` -- or before
+ * reaching an enclosing `(`, `[` or `{` with nothing still open inside it,
+ * which is the same boundary one level up. An unclosed list reads as a call,
+ * which is what this arm already did with a stream it could not place.
+ */
+function isMethodDefinition(
+	tokens: readonly Token[],
+	requireIndex: number,
+	openIndex: number,
+): boolean {
+	let depth = 0
+	let closeIndex = -1
+	for (let j = openIndex; j < tokens.length; j++) {
+		const kind = tokens[j]?.kind
+		if (kind === SyntaxKind.OpenParenToken) depth += 1
+		else if (kind === SyntaxKind.CloseParenToken) {
+			depth -= 1
+			if (depth === 0) {
+				closeIndex = j
+				break
+			}
+		}
+	}
+	if (closeIndex === -1) return false
+	const after = tokens[closeIndex + 1]?.kind
+	if (after === SyntaxKind.OpenBraceToken) {
+		return isDeclarationPosition(tokens, requireIndex)
+	}
+	if (after !== SyntaxKind.ColonToken) return false
+	depth = 0
+	for (let j = requireIndex - 1; j >= 0; j--) {
+		const kind = tokens[j]?.kind
+		if (
+			kind === SyntaxKind.CloseParenToken ||
+			kind === SyntaxKind.CloseBracketToken ||
+			kind === SyntaxKind.CloseBraceToken
+		) {
+			depth += 1
+			continue
+		}
+		if (
+			kind === SyntaxKind.OpenParenToken ||
+			kind === SyntaxKind.OpenBracketToken ||
+			kind === SyntaxKind.OpenBraceToken
+		) {
+			if (depth === 0) return true
+			depth -= 1
+			continue
+		}
+		if (depth > 0) continue
+		if (kind === SyntaxKind.QuestionToken) return false
+		if (kind === SyntaxKind.CaseKeyword || kind === SyntaxKind.DefaultKeyword) {
+			return false
+		}
+		if (kind === SyntaxKind.SemicolonToken || kind === SyntaxKind.CommaToken) {
+			return true
+		}
+	}
+	return true
+}
+
 export function scanSources(
 	files: ReadonlyMap<string, string>,
 	graph: DirectionGraph,
