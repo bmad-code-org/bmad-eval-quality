@@ -242,6 +242,62 @@ export const webIsRefused = (): boolean =>
 	(UNSUPPORTED_INTERFACE_KINDS as readonly string[]).includes('web')
 
 /**
+ * The CLI reference's ports table: which of the four ports the application
+ * layer wires and which it does not. AD-34 makes `application/` the only
+ * layer that awaits a port, so a port's type is destructured out of its own
+ * module somewhere under `src/application/` if, and only if, something there
+ * threads it through to `invokePort`; that is what the table's "Wired today"
+ * column reads off.
+ *
+ * Matched on the type name appearing inside an `import { ... } from` clause
+ * naming the port's own module, not on the type name alone and not on the
+ * module path alone. The type name alone reads a comment merely mentioning
+ * the port, such as a header note or a docstring an unthreading left behind,
+ * as wiring; the module path alone reads a module still imported for an
+ * unrelated export, with the port type itself already dropped from the
+ * braces, as wiring too. Requiring both closes both.
+ *
+ * A "No" row is settled by absence, which a content hash of an existing file
+ * could never detect, so this is a predicate rather than an `asOf` pin.
+ *
+ * Two assumptions this leans on rather than checks. A namespace import
+ * (`import * as Clock from '../ports/clock-port.ts'`) would wire a port this
+ * cannot see, since it never names the type in a destructured brace list;
+ * none exists under `src/application/` today. And a re-export of a port type
+ * added to `src/ports/port.ts` would let the application layer import it
+ * from there instead, past the module path this matches; none exists there
+ * today either. Neither shape appears anywhere in this tree, so this reads
+ * the shape that is actually used rather than the shape that could be.
+ */
+export const portsTableIsCurrent = (): boolean => {
+	const applicationSource = srcPaths
+		.filter((file) => file.startsWith('src/application/'))
+		.map((file) => srcBodies.get(file) as string)
+		.join('\n')
+	const imports = (typeName: string, portModule: string): boolean => {
+		// `[^}]*` rather than `[\s\S]*?`: an import's own brace list never
+		// contains a literal `}`, so stopping at the first one keeps this
+		// import's braces from swallowing every import statement between it
+		// and the next one that happens to name this port's module.
+		const statement = new RegExp(
+			`import\\s+(?:type\\s+)?\\{([^}]*)\\}\\s*from\\s*['"][^'"]*ports/${portModule}\\.ts['"]`,
+			'g',
+		)
+		for (const match of applicationSource.matchAll(statement)) {
+			const braces = match[1] as string
+			if (new RegExp(`\\b${typeName}\\b`).test(braces)) return true
+		}
+		return false
+	}
+	return (
+		imports('EnvironmentProbePort', 'environment-probe-port') &&
+		imports('CorpusPort', 'corpus-port') &&
+		!imports('ClockPort', 'clock-port') &&
+		!imports('FileSystemPort', 'file-system-port')
+	)
+}
+
+/**
  * The tool-use guide says a channel model is missing. `McpDescriptorChannel`'s
  * one member is `structured-result`; a second member would be the model the
  * sentence says is absent.

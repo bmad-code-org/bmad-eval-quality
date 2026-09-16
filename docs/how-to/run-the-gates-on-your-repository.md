@@ -788,7 +788,10 @@ A file configuring all eight gates parses against the published schema:
           "file": "README.md",
           "key": "no production deployment has run it yet",
           "settles": "read",
-          "reason": "a deployment is outside this repository, so no artifact here records one"
+          "reason": "a deployment is outside this repository, so no artifact here records one",
+          "asOf": {
+            "hash": "89f8b8ea0ff30c6934b32a463d0dc18d210600518974117d7763eb48ac58b984"
+          }
         }
       ]
     },
@@ -1171,6 +1174,29 @@ A token is classified by the nearest governing verb, and a verb the sentence neg
 Whether a route still works months after it was last exercised is not written anywhere in your tree, so no check can settle it.
 What a check can settle is that the sentence exists and is registered: a claim of that kind fails until somebody writes down who holds it and why, and a registered claim whose sentence was rewritten fails as a dead entry.
 Each entry says how it is settled, by a predicate of yours or by `"read"` with the reason nothing mechanical reaches it.
+
+A `"read"` claim may also carry `asOf`, which pins it to the content a human actually read.
+`asOf.hash` is the sha256 of `asOf.subject`'s content, taken the moment the claim was confirmed true; `subject` defaults to the claim's own `file` and only needs setting when the judgment is about a different file.
+`npm run hash:doc-claim-subject -- <path>` prints the digest to paste in; a failing entry's own message also names the exact command and shows the stored digest beside the one it computed.
+On every run the gate recomputes the hash and fails the entry the moment it disagrees, so a `"read"` claim stops being a confirmation that ages silently and starts being one that is checked against the thing it was read from.
+
+`asOf` only works for a subject inside your own tree.
+It is a content hash, so the artifact has to be something this run can read; a fact about another repository, a live server, or anything else outside the tree it can never settle, and pinning the page that states such a fact only proves the page has not been edited, not that the fact still holds.
+Leave `asOf` off a claim like that, and say why in `reason`.
+When the judgment is really about a different file than the one carrying the sentence, and that file is in this tree, name it under `subject`: a claim that a source wires a port, say, is a fact about the source, not about the reference page transcribing it, and pinning the page instead would fire on every unrelated edit to that page and stay silent on every rewiring.
+A claim resting on more than one subject, or on the absence of something rather than its presence, is out of reach for `asOf` altogether: a hash proves a file's content, and neither a set of files nor a negative is one file's content. Give a claim like that a predicate under `settles` instead; a `dated.claims` entry names one entry per sentence, never two for the same one.
+
+Subject content is read the way every other path this gate reads is read: a symbolic link is refused rather than followed, and any other read failure (missing, a directory, unreadable) is reported with its real cause rather than folded into one message.
+
+The hash is taken over normalized content: each line has its trailing whitespace trimmed and its inner whitespace runs collapsed to one space, and a run of blank lines collapses to one, so a formatter rewrapping prose or trimming trailing whitespace does not read as drift.
+Line endings are also normalized, so a checkout with different line endings hashes the same.
+A fenced code block, opened with backticks or tildes and closed by a matching-or-longer run of the same character, is the one exception: it is hashed byte-exact, because indentation inside one is meaning a formatter is not free to move and a normalized hash would let a broken example pass unnoticed.
+
+Leading indentation outside a fence is read as a nesting depth rather than kept at its own width, tracked with a stack the way an indentation-block language's own lexer tracks one: a deeper indent than the current top pushes a level, a shallower one pops back to it, and the line is rewritten with a canonical two spaces per level rather than its original width. Depth, not width, is what a nested list actually carries, so a formatter that reindents an existing structure two spaces to four does not read as drift, while un-nesting a list item, or nesting one that was flat, changes the depth and still fails.
+
+What this normalization does not catch runs in both directions. Two real content changes stay invisible: a hard line break's trailing two spaces can be removed, since a hard break is whitespace and normalization only touches whitespace; and content outside a fence reindented without crossing a depth boundary, such as a non-fenced indented code sample's own internal width, changes without changing the hash either, since depth tracking sees only where a line sits relative to its neighbors, not what further indentation inside it means. Every other markdown-syntax change (a list marker's character, a heading's style) is a change to a non-whitespace byte and always shows. A cosmetic-only change that still trips the pin, because catching it needs real markdown parsing rather than a text pass: a table's delimiter-row padding (`|---|---|` vs `| --- | --- |`) and a prose line rewrapped to a different width both change the hash with nothing about what the page says having changed. If your formatter rewraps prose, its own `proseWrap: "preserve"` setting (or equivalent) avoids that source of churn; this gate has no setting of its own for it.
+
+`asOf` is refused on a claim `settles` a predicate, since the predicate already re-runs on every check and a content pin beside it would be a second, uncoordinated staleness rule.
 
 `transcriptions` holds a page that reprints bytes your code emits against the bytes themselves.
 

@@ -1048,6 +1048,10 @@
 					"reason": "a setting in the doc-claims gate's list entries, declared by the schema in scripts/check-doc-claims.ts and so outside src/"
 				},
 				{
+					"token": "asOf",
+					"reason": "a setting on the doc-claims gate's dated claims, declared by the schema in scripts/check-doc-claims.ts and so outside src/"
+				},
+				{
 					"token": "Rule",
 					"reason": "an illustrative Zod schema name in the worked doc-claims example, naming no real export"
 				}
@@ -1415,7 +1419,7 @@
 					"file": "docs/index.md",
 					"key": "no live server stands behind it",
 					"settles": "read",
-					"reason": "a live MCP server is outside this repository, so no artifact in the tree records whether one was scored; the sentence states how far the fixture carries rather than what is owed"
+					"reason": "a live MCP server is outside this repository, so no artifact in the tree records whether one was scored; the sentence states how far the fixture carries rather than what is owed; unpinned because nothing in any tree could ever settle it, in-tree or out"
 				},
 				{
 					"file": "docs/explanation/what-ships.md",
@@ -1430,7 +1434,7 @@
 					"file": "docs/how-to/evaluate-workflow-behavior.md",
 					"key": "the suite currently has open findings",
 					"settles": "read",
-					"reason": "the suite is TEA's, in another repository"
+					"reason": "the suite is TEA's, in another repository; unpinned for the same reason"
 				},
 				{
 					"file": "docs/how-to/evaluate-tool-use-behavior.md",
@@ -1490,13 +1494,13 @@
 					"file": "docs/how-to/evaluate-tool-use-behavior.md",
 					"key": "**Unproven, and this is the uncomfortable part.**",
 					"settles": "read",
-					"reason": "the calibration record is in the architecture history, and whether it was re-measured against the shipped kind is not recorded anywhere in this tree"
+					"reason": "the calibration record is in the architecture history, and whether it was re-measured against the shipped kind is not recorded anywhere in this tree; unpinned because the record spans several architecture documents rather than one canonical file, and pinning an arbitrary one of them would claim protection this reading does not have"
 				},
 				{
 					"file": "docs/how-to/evaluate-tool-use-behavior.md",
 					"key": "The first reading runs today",
 					"settles": "read",
-					"reason": "TEA's own move is a fact about another repository's contracts"
+					"reason": "TEA's own move is a fact about another repository's contracts; unpinned for the same reason"
 				},
 				{
 					"file": "docs/how-to/evaluate-ai-feature-behavior.md",
@@ -1511,7 +1515,10 @@
 					"file": "docs/how-to/evaluate-agent-behavior.md",
 					"key": "Not proven, and worth knowing before you plan a corpus",
 					"settles": "read",
-					"reason": "introduces the unproven block below it; the claim itself is the block"
+					"reason": "introduces the unproven block below it; the claim itself is the block",
+					"asOf": {
+						"hash": "a39cbdaea5482b5ebc007ba52e3c82b38e8f3bc7ccf69d3f870e7deedc68db9a"
+					}
 				},
 				{
 					"file": "docs/how-to/evaluate-agent-behavior.md",
@@ -1544,13 +1551,16 @@
 					"file": "docs/how-to/evaluate-agent-behavior.md",
 					"key": "all nine defect probes are exercised and caught",
 					"settles": "read",
-					"reason": "the numbers are TEA's, recorded in that repository's `test/probes/expected-strength.json`, so nothing here can re-run them; the sentence names the eval-quality version they were read at, which is what tells a reader how far back the reading is"
+					"reason": "the numbers are TEA's, recorded in that repository's `test/probes/expected-strength.json`, so nothing here can re-run them; the sentence names the eval-quality version they were read at, which is what tells a reader how far back the reading is; unpinned because the evidence is in another repository, so no hash taken in this tree can detect it drifting"
 				},
 				{
 					"file": "docs/reference/cli-commands.md",
 					"key": "| Port | What it does | Wired today |",
-					"settles": "read",
-					"reason": "which ports the CLI awaits is a fact about the command implementation, which this gate does not execute"
+					"settles": {
+						"module": "scripts/doc-claim-sources.ts",
+						"export": "portsTableIsCurrent"
+					},
+					"reason": "reads whether EnvironmentProbePort and CorpusPort are threaded under src/application/, and ClockPort and FileSystemPort are not; a content hash of an existing file could not settle the table's two \"No\" rows, which are claims of absence"
 				}
 			]
 		},
