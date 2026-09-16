@@ -558,11 +558,45 @@ describe('the published package surface', () => {
 		if (!BUILT) return ctx.skip(NEEDS_BUILD)
 		const required = createRequire(import.meta.url)(
 			resolveSubpath('eval-quality'),
-		) as Record<string, unknown>
+		) as {
+			resolveCheck: unknown
+			makeResolveOperand: (
+				stepObservations: Readonly<Record<string, unknown>>,
+				referenceSets: Readonly<Record<string, unknown[]>>,
+			) => unknown
+			makePointerDenotesCollection: unknown
+			referenceSetKeysOf: unknown
+			ABSENT: unknown
+		}
 		expect(typeof required.resolveCheck).toBe('function')
 		expect(typeof required.makeResolveOperand).toBe('function')
 		expect(typeof required.makePointerDenotesCollection).toBe('function')
 		expect(typeof required.referenceSetKeysOf).toBe('function')
+
+		// Called through the object `require` handed back, not the ESM import
+		// case 156 already exercised: proof that Node's CJS interop hands back a
+		// live, callable binding and not a present-but-inert one.
+		const resolveCheck = required.resolveCheck as (
+			expression: Expression,
+			resolveOperand: ResolveOperand,
+			pointerDenotesCollection: PointerDenotesCollection,
+			referenceSetKeys: ReferenceSetKeys,
+			regexMatchStepBudget: number,
+			artifactPath: string,
+		) => CheckResolutionValue
+		const resolveOperand = required.makeResolveOperand({}, {})
+		const value = resolveCheck(
+			{
+				op: 'equality',
+				operands: [{ literal: 1 }, { literal: 1 }],
+			} as Expression,
+			resolveOperand as ResolveOperand,
+			() => false,
+			{},
+			1_000,
+			'/checks/0',
+		)
+		expect(value.resolution).toBe('true')
 	})
 
 	it('case 158: the corpus README resolves and a missing schema does not', () => {

@@ -12,7 +12,7 @@ Branch `feat/publish-check-resolution-and-fix-require-shorthand`, off `origin/ma
 
 `tests/architecture/package-exports.test.ts` case 156 holds the four functions and the sentinel on the built barrel, holds `resolveCheck`'s declared signature by the same exactness test `compareDominance` has, and calls it once; case 157 reaches the four through `createRequire`, which is TEA's path.
 
-One consequence to know: the ordering witness moved. Swapping the two nesting layer rows over this repository's own tree now reports 82 violations, four more than the 78 the docs page and `ORDERING_WITNESS_VIOLATIONS` stated, because `src/index.ts` gained four imports from `core/schemas`. Both are updated to 82; `check:doc-counts` holds them equal.
+One consequence to know: the ordering witness moved, because `src/index.ts` gained new imports from `core/schemas`. **Correction, recorded during review:** this section originally said the new count was 82; that number was never run against the test, and the real count on this tree is 80. The story file's own Implementation Notes and `ORDERING_WITNESS_VIOLATIONS` carry the corrected figure; trust those over the paragraph above.
 
 ### 2. The require shorthand. Code, fixture and tests done.
 

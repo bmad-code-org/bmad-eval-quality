@@ -29,6 +29,7 @@ import {
 	scanSources,
 } from '../../scripts/dependency-direction.ts'
 import { discoverSourceFiles } from '../../scripts/discover-source-files.ts'
+import { TYPESCRIPT_UNAVAILABLE } from '../../scripts/typescript-scanner.ts'
 
 const repoRoot = fileURLToPath(new URL('../../', import.meta.url))
 
@@ -474,9 +475,28 @@ describe('dependency-direction: import-equals and require under commonjs "forbid
 			'export const sandbox = {\n\tasync require(name: string) {\n\t\treturn name\n\t},\n}\n',
 			'export class Sandbox {\n\trequire(name: string): unknown {\n\t\treturn name\n\t}\n}\n',
 			'export function require(name: string): unknown {\n\treturn name\n}\n',
+			'export function require(name: string) {\n\treturn name\n}\n',
+			'export const sandbox = {\n\tother: 1,\n\trequire(name) {\n\t\treturn name\n\t},\n}\n',
 		]) {
 			const files = new Map([['src/application/alpha.ts', source]])
 			expect(scan(files), source).toEqual([])
+		}
+	})
+
+	// A real call's own `)` can be followed by `{` too, whenever an unrelated
+	// block statement sits on the next line with no semicolon between: nothing
+	// but what precedes `require` tells this apart from a method body, and
+	// `=` or `return` -- an expression's own context -- is neither the boundary
+	// nor the modifier a declaration would have there.
+	it('a require() call followed by an unrelated block is still rejected', () => {
+		for (const source of [
+			"declare const require: (id: string) => unknown\nexport const y = require('./alpha.ts')\n{\n\tconst z = 1\n}\n",
+			"declare const require: (id: string) => unknown\nfunction f() {\n\treturn require('./alpha.ts')\n}\n{\n\tconst z = 1\n}\n",
+		]) {
+			const files = new Map([['src/application/alpha.ts', source]])
+			const violations = scan(files)
+			expect(violations, source).toHaveLength(1)
+			expect(violations[0]?.rule).toContain('CommonJS require')
 		}
 	})
 
@@ -497,6 +517,22 @@ describe('dependency-direction: import-equals and require under commonjs "forbid
 			"declare const require: (id: string) => unknown\nif (require('./alpha.ts')) {\n}\n",
 			"declare const require: (id: string) => unknown\ndeclare const flag: boolean\nexport const mod = flag ? require('./alpha.ts') : null\n",
 			"declare const require: (id: string) => unknown\ndeclare const flag: boolean\nexport const mod = flag ? null : require('./alpha.ts')\n",
+		]) {
+			const files = new Map([['src/application/alpha.ts', source]])
+			const violations = scan(files)
+			expect(violations, source).toHaveLength(1)
+			expect(violations[0]?.rule).toContain('CommonJS require')
+		}
+	})
+
+	// The call's own `)` is followed by `:` here too, the same token the
+	// return-type and ternary-else shapes produce; `case`/`default` immediately
+	// before the call, with nothing between, is what tells this apart from
+	// those two and keeps it reading as a call.
+	it('a require() call as a switch case or default label is still rejected', () => {
+		for (const source of [
+			"declare const require: (id: string) => unknown\ndeclare const mod: number\nswitch (mod) {\n\tcase require('./alpha.ts'):\n\t\tbreak\n}\n",
+			"declare const require: (id: string) => unknown\ndeclare const mod: number\nswitch (mod) {\n\tdefault:\n\tcase require('./alpha.ts'):\n\t\tbreak\n}\n",
 		]) {
 			const files = new Map([['src/application/alpha.ts', source]])
 			const violations = scan(files)
@@ -1224,10 +1260,17 @@ describe('dependency-direction: the layer list is ordered and the schema holds i
 })
 
 describe('dependency-direction: the typescript peer dependency is refused by name', () => {
+	// `loadTypeScriptScanner` is the one place a raw resolver error becomes this
+	// shape; by the time `probeTypeScript` sees it, it already carries
+	// `TYPESCRIPT_UNAVAILABLE` and the finished sentence, which is what this
+	// test's injected `load` reproduces rather than a raw resolver code.
 	it('names the missing dependency and the gate that wanted it', async () => {
-		const missing = Object.assign(new Error('typescript is missing'), {
-			code: 'ERR_MODULE_NOT_FOUND',
-		})
+		const missing = Object.assign(
+			new Error(
+				'the dependency-direction gate reads your source with the TypeScript scanner, and the optional peer dependency "typescript" is not installed here. Install it (npm install --save-dev typescript), or drop the "dependency-direction" section from your configuration to stop invoking this gate. Only the dependency-direction and field-ownership gates need it.',
+			),
+			{ code: TYPESCRIPT_UNAVAILABLE },
+		)
 		const result = await probeTypeScript(() => Promise.reject(missing))
 		expect(result.ok).toBe(false)
 		if (result.ok) return

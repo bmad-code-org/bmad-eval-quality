@@ -20,7 +20,7 @@ import { z } from 'zod'
 import type { DirectionGraph, Violation } from './dependency-direction.ts'
 import { discoverSourceFiles } from './discover-source-files.ts'
 import {
-	absentMessage,
+	isCode,
 	loadTypeScriptScanner,
 	TYPESCRIPT_UNAVAILABLE,
 } from './typescript-scanner.ts'
@@ -381,11 +381,12 @@ const refuse = (code: string, message: string): DirectionOutcome => ({
  * The scanner needs `typescript/unstable/ast`, and `typescript` is an optional
  * peer dependency so that a consumer running the other gates installs nothing.
  * `typescript-scanner.ts` is what turns a resolver stack trace into a sentence
- * naming the dependency, the installed version and the gate that wanted it.
+ * naming the dependency, the installed version and the gate that wanted it; a
+ * failure of any other shape is a bug in the scanner, not a missing peer, and
+ * is rethrown unchanged.
  *
  * `load` is injectable so a test can exercise the refusal without uninstalling
- * the package the test runner itself needs; a load that rejects with the
- * resolver's own code is read the way the loader reads it.
+ * the package the test runner itself needs.
  */
 export async function probeTypeScript(
 	load: () => Promise<unknown> = () =>
@@ -397,12 +398,8 @@ export async function probeTypeScript(
 		await load()
 		return { ok: true }
 	} catch (error) {
-		const code = (error as NodeJS.ErrnoException).code
-		if (code === TYPESCRIPT_UNAVAILABLE) {
+		if (isCode(error, TYPESCRIPT_UNAVAILABLE)) {
 			return { ok: false, message: (error as Error).message }
-		}
-		if (code === 'ERR_MODULE_NOT_FOUND') {
-			return { ok: false, message: absentMessage(DEPENDENCY_DIRECTION_GATE) }
 		}
 		throw error
 	}

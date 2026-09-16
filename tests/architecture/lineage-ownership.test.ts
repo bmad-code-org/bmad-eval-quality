@@ -311,11 +311,18 @@ describe('the writer list this repository declares', () => {
 })
 
 describe('the dependency this gate needs', () => {
+	// `loadTypeScriptScanner` is the one place a raw resolver error becomes this
+	// shape; by the time `loadTokenScanner` sees it, it already carries
+	// `TYPESCRIPT_UNAVAILABLE` and the finished sentence, which is what this
+	// test's injected `load` reproduces rather than a raw resolver code.
 	const notFound = () =>
 		Promise.reject(
-			Object.assign(new Error("Cannot find package 'typescript'"), {
-				code: 'ERR_MODULE_NOT_FOUND',
-			}),
+			Object.assign(
+				new Error(
+					'the field-ownership gate reads your source with the TypeScript scanner, and the optional peer dependency "typescript" is not installed here.',
+				),
+				{ code: TYPESCRIPT_UNAVAILABLE },
+			),
 		)
 
 	it('refuses by name, naming the dependency and the gate', async () => {

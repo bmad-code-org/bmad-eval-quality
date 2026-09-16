@@ -41,6 +41,7 @@ export const REQUIRED_SYNTAX_KINDS = [
 	'BigIntKeyword',
 	'BigIntLiteral',
 	'BooleanKeyword',
+	'CaseKeyword',
 	'CatchKeyword',
 	'ClassKeyword',
 	'CloseBraceToken',
@@ -49,6 +50,7 @@ export const REQUIRED_SYNTAX_KINDS = [
 	'ColonToken',
 	'CommaToken',
 	'ConstKeyword',
+	'DefaultKeyword',
 	'DotToken',
 	'EndOfFile',
 	'EqualsGreaterThanToken',
@@ -61,6 +63,7 @@ export const REQUIRED_SYNTAX_KINDS = [
 	'ForKeyword',
 	'FromKeyword',
 	'FunctionKeyword',
+	'GetKeyword',
 	'Identifier',
 	'IfKeyword',
 	'ImportKeyword',
@@ -80,6 +83,9 @@ export const REQUIRED_SYNTAX_KINDS = [
 	'OpenBracketToken',
 	'OpenParenToken',
 	'PlusPlusToken',
+	'PrivateKeyword',
+	'ProtectedKeyword',
+	'PublicKeyword',
 	'QuestionDotToken',
 	'QuestionToken',
 	'ReadonlyKeyword',
@@ -87,8 +93,10 @@ export const REQUIRED_SYNTAX_KINDS = [
 	'RequireKeyword',
 	'ReturnKeyword',
 	'SemicolonToken',
+	'SetKeyword',
 	'SlashEqualsToken',
 	'SlashToken',
+	'StaticKeyword',
 	'StringKeyword',
 	'StringLiteral',
 	'SuperKeyword',
@@ -139,7 +147,8 @@ const defaultVersion: VersionRead = async () => {
 export const absentMessage = (gate: string): string =>
 	`the ${gate} gate reads your source with the TypeScript scanner, and the optional peer dependency "typescript" is not installed here. Install it (npm install --save-dev typescript), or drop the "${gate}" section from your configuration to stop invoking this gate. Only the dependency-direction and field-ownership gates need it.`
 
-const isCode = (error: unknown, code: string): boolean =>
+/** Whether `error` carries `code` as a `NodeJS.ErrnoException` would, without assuming `error` is an object at all. */
+export const isCode = (error: unknown, code: string): boolean =>
 	error !== null &&
 	typeof error === 'object' &&
 	(error as { code?: unknown }).code === code
@@ -165,7 +174,8 @@ export async function loadTypeScriptScanner(
 			throw codedError(absentMessage(gate))
 		}
 		if (isCode(error, 'ERR_PACKAGE_PATH_NOT_EXPORTED')) {
-			const version = (await readVersion()) ?? 'an unknown version'
+			const version =
+				(await readVersion().catch(() => null)) ?? 'an unknown version'
 			throw codedError(
 				`the ${gate} gate reads your source with the TypeScript scanner at ${SCANNER_SUBPATH}, and typescript ${version} carries no such subpath; TypeScript ships it from ${SCANNER_SHIPS_FROM}. Install typescript 7 to run this gate, or drop the "${gate}" section from your configuration to stop invoking it.`,
 			)
@@ -188,7 +198,8 @@ export async function loadTypeScriptScanner(
 		}
 	}
 	if (missing.length > 0) {
-		const version = (await readVersion()) ?? 'an unknown version'
+		const version =
+			(await readVersion().catch(() => null)) ?? 'an unknown version'
 		throw codedError(
 			`the ${gate} gate reads ${missing.join(', ')} from ${SCANNER_SUBPATH}, and typescript ${version} ships it without ${missing.length === 1 ? 'that name' : 'those names'}; a member this gate cannot find would switch a rule off silently, so it refuses instead. This build reads the scanner TypeScript 7 ships.`,
 		)

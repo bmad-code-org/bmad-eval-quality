@@ -34,8 +34,9 @@ export type { EvalContract } from './core/schemas/eval-contract.ts'
 export { EVAL_CONTRACT_SCHEMA_VERSION } from './core/schemas/eval-contract.ts'
 export type { EvaluatorConfiguration } from './core/schemas/evaluator-configuration.ts'
 export { EVALUATOR_CONFIGURATION_SCHEMA_VERSION } from './core/schemas/evaluator-configuration.ts'
-// The types `resolveCheck` and its two factories name, type-only: `Observation`
-// and `Expression` share their names with Zod schemas the barrel withholds.
+// The types `resolveCheck` and its two factories name, type-only: `Observation`,
+// `Expression` and `JsonValue` each share their name with a Zod schema the
+// barrel withholds.
 export type {
 	CheckResolutionValue,
 	EvidenceArtifact,

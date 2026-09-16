@@ -39,16 +39,12 @@ import {
 } from './scanned-paths.ts'
 import type { Token } from './token-scan.ts'
 import {
-	absentMessage,
 	loadTypeScriptScanner,
 	TYPESCRIPT_UNAVAILABLE,
 } from './typescript-scanner.ts'
 
 /** The gate needs `typescript` and could not resolve it. */
 export { TYPESCRIPT_UNAVAILABLE }
-
-const codedError = (code: string, message: string): Error =>
-	Object.assign(new Error(message), { code })
 
 /** Type-only, so no value from `typescript` reaches this module's load path. */
 type Syntax = typeof import('typescript/unstable/ast').SyntaxKind
@@ -74,27 +70,27 @@ const importTokenScanner =
 			scanTokens: scan.scanTokens,
 			computeLineStarts: scan.computeLineStarts,
 			lineOf: scan.lineOf,
+			// `loadTypeScriptScanner` types `SyntaxKind` as a generic
+			// `Readonly<Record<string, number>>`, since its own shape check indexes
+			// it by whichever member name each of the three scanner modules reads.
+			// That check has already run and passed by the time this line executes,
+			// so every member this file reads off `Syntax` is verified present; the
+			// double cast is regaining the precise type the runtime check earned.
 			syntax: ast.SyntaxKind as unknown as Syntax,
 		}
 	}
 
 /**
- * The tokenizer, or a refusal naming the dependency and the gate that needs it.
- * `load` is injectable so the refusal has a test that does not require
- * uninstalling anything.
+ * The tokenizer, or the refusal `loadTypeScriptScanner` throws naming the
+ * dependency and the gate that needs it. `load` is injectable so a test can
+ * exercise that refusal without uninstalling anything the test runner itself
+ * needs.
  */
 export async function loadTokenScanner(
 	gate: string,
 	load: ScannerImport = importTokenScanner(gate),
 ): Promise<TokenScanner> {
-	try {
-		return await load()
-	} catch (error) {
-		if ((error as NodeJS.ErrnoException).code !== 'ERR_MODULE_NOT_FOUND') {
-			throw error
-		}
-		throw codedError(TYPESCRIPT_UNAVAILABLE, absentMessage(gate))
-	}
+	return load()
 }
 
 const Identifier = z

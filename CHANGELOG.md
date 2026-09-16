@@ -25,7 +25,8 @@ body.
 - **`dependency-direction` no longer flags a `require` method or a member call as a CommonJS
   require site.** The method shorthand `{ require(name) { ... } }` and a member call such as
   `sandbox.require('fs')` or `mock?.require('fs')` pass under `commonjs: "forbid"`; a real
-  `require('x')` call, including one inside a condition or a ternary, still violates.
+  `require('x')` call, including one inside a condition, a ternary, or a `switch` `case`/`default`
+  label, still violates.
 
 ### Changed
 
