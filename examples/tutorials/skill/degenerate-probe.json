@@ -1,0 +1,98 @@
+{
+  "artifactDigest": "sha256:d3a4a2d7dbda3c28ae573767f331fcbe8bef9670fc4efbe0fbd9d5843ec9e613",
+  "behaviorId": "B-002",
+  "commitDigest": "sha256:d3a4a2d7dbda3c28ae573767f331fcbe8bef9670fc4efbe0fbd9d5843ec9e613",
+  "defectSignature": {
+    "condition": {
+      "predicate": {
+        "op": "all",
+        "operands": [
+          {
+            "op": "equality",
+            "operands": [
+              {
+                "pointer": "/interactions/observed/exit-code"
+              },
+              {
+                "literal": 0
+              }
+            ]
+          },
+          {
+            "collection": {
+              "pointer": "/interactions/observed/stdout/selected"
+            },
+            "op": "for-any",
+            "predicate": {
+              "op": "set-membership",
+              "operands": [
+                {
+                  "pointer": "@/"
+                },
+                {
+                  "literal": [
+                    "mobile-rules",
+                    "contract-rules"
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "selector": {
+        "inputBinding": {
+          "argument": null,
+          "arguments": null,
+          "body": null,
+          "environment": null,
+          "header": null,
+          "option": {
+            "skill": {
+              "literal": "checklist-selection"
+            }
+          },
+          "path": null,
+          "query": null,
+          "stdin": {
+            "prompt": {
+              "matcher": "any"
+            }
+          }
+        }
+      }
+    },
+    "interfaceKind": "cli",
+    "invocation": {
+      "executable": "skill-runner",
+      "subcommandPath": []
+    },
+    "observableChannel": "stdout"
+  },
+  "defects": [],
+  "expectedClean": false,
+  "implementationDigest": "sha256:d3a4a2d7dbda3c28ae573767f331fcbe8bef9670fc4efbe0fbd9d5843ec9e613",
+  "parentDigest": null,
+  "probeClass": "gameability",
+  "probeId": "P-002",
+  "qualification": {
+    "degenerateResponse": "A selection naming every item in the index, so it contains every item the rules mandate for the case and every item they exclude.",
+    "disciplinedOracleRejectedEvidence": {
+      "digest": "sha256:1e4d0f3d0b13bf1004004d13f3051aafbd42569addcef2bdd80f9c7207430f15",
+      "path": "examples/tutorials/skill/degenerate-actions.jsonl",
+      "privateRef": null,
+      "storage": "public"
+    },
+    "naiveOracleSatisfiedEvidence": {
+      "digest": "sha256:1e4d0f3d0b13bf1004004d13f3051aafbd42569addcef2bdd80f9c7207430f15",
+      "path": "examples/tutorials/skill/degenerate-actions.jsonl",
+      "privateRef": null,
+      "storage": "public"
+    },
+    "route": "gameability"
+  },
+  "rationale": "The degenerate strategy: name every item in the index. It satisfies the inclusion oracle because every mandated item is in the list, and the exclusion oracle is the only half that rejects it.",
+  "revisionCount": 0,
+  "schemaVersion": 5,
+  "systemId": "checklist-selection-skill"
+}

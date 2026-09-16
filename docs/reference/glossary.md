@@ -17,7 +17,7 @@ eval contract → probe → observation → preflight → evidence → oracle �
 
 | Term | What it is |
 | --- | --- |
-| **Eval contract** | What we want to measure. A JSON document declaring the behaviors, the checks, the interfaces a probe may touch, and the bounds a run stays inside. `compile` turns an authored one into a checked `EvalContract`. The long name is Behavioral Evaluation Contract. |
+| **Eval contract** | What we want to measure. A JSON document declaring the behaviors, the checks, the interfaces a probe may touch, and the bounds a run stays inside. The long name is Behavioral Evaluation Contract, abbreviated BEC. You author it, and `compile` validates it. |
 | **Probe** | How to poke the system to produce evidence: a test case, a call, a step. In scoring, a probe is also the artifact that names the defect it seeded, so a finding can be matched against it. |
 | **Observation** | What actually happened when the system was poked. For an api interface, the recorded status, headers, and body of one call; for a command, the exit code, the two streams, and the files it wrote. |
 | **Preflight** | Whether the environment and the observations are fit for meaningful measurement. It plans the legs a contract implies, reduces the observations handed to it, and mints a `PreflightVerdict`. |
@@ -30,9 +30,23 @@ eval contract → probe → observation → preflight → evidence → oracle �
 
 Every artifact that crosses the package boundary has a published JSON Schema under `schemas/` and exactly one producer. Four are minted by a stage, seven come from the caller, and one is embedded inside others.
 
+The eval contract is the one people misread, so it is worth stating plainly. The JSON you author is already an `EvalContract`. `compile` validates it against the schema and the discipline rules, then emits the checked contract if it passes:
+
+```text
+authored EvalContract
+        ↓
+     compile
+        ↓
+valid EvalContract
+        OR
+    rejection
+```
+
+Canonical serialization may change byte formatting and key order along the way. Semantically it is the same contract.
+
 | Artifact | Produced by | What it is |
 | --- | --- | --- |
-| **`EvalContract`** | `compile` | The compiled contract. |
+| **`EvalContract`** | caller, checked by `compile` | The Behavioral Evaluation Contract. `compile` validates it and rejects an invalid or structurally weak one. |
 | **`SealedEvaluatorBrief`** | `seal` | What an evaluator is allowed to see. Twelve top-level fields: the behaviors, the permitted interfaces narrowed to `logicalId` and `kind`, the scoped resources, the declared principal names, the budgets and limits, the probe step bound, one direction per oracle, `contractDigest`, and the lineage and version fields. The oracle checks, the interaction plan, the reference sets, and the rest of the test data have no place in that shape, so they never reach the evaluator. |
 | **`PreflightVerdict`** | `preflight` | The environment-validity result: `passed`, the list of checks with each one's outcome, and `fixtureDigest`. `score` reads `passed` off it, and a failed preflight is an Invalid rung. |
 | **`EvidenceArtifact`** | `emit`, inside `score` | The output side of scoring: the outcome per oracle, the verdict with every condition that fired, the strength vector, the coverage gaps, the trial count, the scoring version, and the exit code. |

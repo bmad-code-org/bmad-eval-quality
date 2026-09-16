@@ -17,6 +17,7 @@
 			"!.agent",
 			"!.agents",
 			"!docs",
+			"!examples",
 			"!experiments",
 			"!scripts/fixtures",
 			"!schemas",

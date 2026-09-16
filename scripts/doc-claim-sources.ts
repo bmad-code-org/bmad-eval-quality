@@ -346,3 +346,29 @@ export const skillDefectVector = async (): Promise<string> => {
 	}
 	return `{"caught": ${caught}, "exercised": ${exercised}, "rate": ${rate}}`
 }
+
+/**
+ * A tutorial chain's caller-attested corpus digest, read out of the chain's own
+ * committed file. A page teaching a runnable `score` has to print the literal,
+ * because a shell substitution is not something the invocation gate can
+ * execute, and a literal nothing holds is the placeholder this whole rework
+ * exists to remove. Editing a chain's probes moves the digest and the page that
+ * prints the old one fails here.
+ */
+const corpusDigestOf = async (chain: string): Promise<string> =>
+	(
+		await readFile(
+			pathOf(`examples/tutorials/${chain}/corpus-digest.txt`),
+			'utf8',
+		)
+	).trim()
+
+export const walkthroughCorpusDigest = (): Promise<string> =>
+	corpusDigestOf('walkthrough')
+
+export const agentCorpusDigest = (): Promise<string> => corpusDigestOf('agent')
+
+export const skillCorpusDigest = (): Promise<string> => corpusDigestOf('skill')
+
+export const workflowCorpusDigest = (): Promise<string> =>
+	corpusDigestOf('workflow')

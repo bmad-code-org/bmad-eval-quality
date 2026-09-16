@@ -1,0 +1,140 @@
+[
+  {
+    "body": {
+      "kind": "json",
+      "value": {
+        "note": {
+          "id": "n-1",
+          "title": "Alpha"
+        },
+        "ok": true
+      }
+    },
+    "headers": {},
+    "interfaceId": "notes-api",
+    "kind": "api",
+    "operationId": "update-note",
+    "probeId": "update-witness-a",
+    "status": 200
+  },
+  {
+    "body": {
+      "kind": "json",
+      "value": {
+        "note": {
+          "id": "n-1",
+          "title": "Beta"
+        },
+        "ok": true
+      }
+    },
+    "headers": {},
+    "interfaceId": "notes-api",
+    "kind": "api",
+    "operationId": "update-note",
+    "probeId": "update-witness-b",
+    "status": 200
+  },
+  {
+    "body": {
+      "kind": "json",
+      "value": {
+        "note": {
+          "id": "n-1",
+          "title": "Original"
+        },
+        "ok": true
+      }
+    },
+    "headers": {},
+    "interfaceId": "notes-api",
+    "kind": "api",
+    "operationId": "read-note",
+    "probeId": "read-witness-a",
+    "status": 200
+  },
+  {
+    "body": {
+      "kind": "json",
+      "value": {
+        "error": "no note with that identifier",
+        "ok": false
+      }
+    },
+    "headers": {},
+    "interfaceId": "notes-api",
+    "kind": "api",
+    "operationId": "read-note",
+    "probeId": "read-witness-b",
+    "status": 404
+  },
+  {
+    "body": {
+      "kind": "json",
+      "value": {
+        "notes": [
+          {
+            "id": "n-1",
+            "title": "Original"
+          }
+        ]
+      }
+    },
+    "headers": {},
+    "interfaceId": "notes-api",
+    "kind": "api",
+    "operationId": "list-notes",
+    "probeId": "list-witness-a",
+    "status": 200
+  },
+  {
+    "body": {
+      "kind": "json",
+      "value": {
+        "notes": []
+      }
+    },
+    "headers": {},
+    "interfaceId": "notes-api",
+    "kind": "api",
+    "operationId": "list-notes",
+    "probeId": "list-witness-b",
+    "status": 200
+  },
+  {
+    "body": {
+      "kind": "json",
+      "value": {
+        "note": {
+          "id": "n-1",
+          "title": "Original"
+        },
+        "ok": true
+      }
+    },
+    "headers": {},
+    "interfaceId": "notes-api",
+    "kind": "api",
+    "operationId": "read-note",
+    "probeId": "preflight-control-observe",
+    "status": 200
+  },
+  {
+    "body": {
+      "kind": "json",
+      "value": {
+        "note": {
+          "id": "n-1",
+          "title": "Original"
+        },
+        "ok": true
+      }
+    },
+    "headers": {},
+    "interfaceId": "notes-api",
+    "kind": "api",
+    "operationId": "read-note",
+    "probeId": "preflight-control-observe-2",
+    "status": 200
+  }
+]

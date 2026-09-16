@@ -1,42 +1,95 @@
 ---
 title: "How It Works"
-description: "The twin run, what an eval contract declares, and why compile rejects what it rejects."
+description: "Where the system, the evaluation, the contract and this tool each sit, and why compile rejects a contract that parses."
 sidebar:
   order: 1
 ---
 
 # How It Works
 
-## The layer this sits on
+## Four things, and the boundaries between them
 
-Traditional testing runs a system through tests and gets pass or fail. AI evaluation runs a feature through an evaluation and gets a score with evidence.
+Most confusion about this tool comes from collapsing four separate things into one.
+They stack, and each one is answerable on its own.
 
 ```text
-  traditional testing    system      →  tests       →  pass / fail
-  AI evaluation          AI feature  →  evaluation  →  score / evidence
-                                          ↑
-                            this layer is what eval-quality evaluates
+system under test
+        ↓
+evaluation
+runs the system
+collects evidence
+makes judgments
+        ↓
+Behavioral Evaluation Contract (BEC)
+defines what behavior matters
+defines what evidence counts
+defines how success and failure are resolved
+        ↓
+eval-quality
+checks whether the contract is sane
+checks whether the evidence supports it
+scores whether the evaluation actually catches defects
 ```
 
-`eval-quality` sits one level up and evaluates the evaluation.
+The **system under test** is the thing you built: an AI feature, an agent, a skill, a workflow, or a tool server.
 
-"Evaluation" here means whatever mechanism runs your AI feature and judges its behavior: an eval framework, your own harness, a skill-specific evaluator, custom code you wrote. The question this tool asks is how to make that mechanism strong enough to trust.
+The **evaluation** is the mechanism that runs or observes it and produces evidence plus judgments.
+An eval framework, your own harness, a skill-specific evaluator, custom code you wrote: all of them are evaluations.
+
+The **Behavioral Evaluation Contract** declares what must be proven.
+The rest of these pages call it an eval contract, which is the same object under a shorter name, and the CLI reads it as a file.
+
+**`eval-quality`** checks the contract and the evidence, then scores the evaluation.
+It runs one level up from your evaluation, and the evaluation is its subject.
+
+## The shape this exists to replace
+
+The evaluation nobody writes down looks like this.
+
+```text
+prompt → model → "looks good to me" → PASS
+```
+
+Something plausible came back, a person or a judge nodded at it, and the run went green.
+Nothing in that chain says which behavior was under test, what would have counted as failure, or where anyone looked.
+
+The shape `eval-quality` moves you toward is longer on purpose.
+
+```text
+behavior
+→ observable criterion
+→ oracle
+→ evidence path
+→ probe
+→ clean control / seeded defect
+→ scored result
+```
+
+Each arrow is a question the first chain never asks.
+Which behavior is this about, how would you see it, what relation has to hold, which recorded bytes does that relation read, what poke produces them, what does the same evaluation say when the system is knowingly broken, and what did all of that score.
 
 ## The problem
 
-**An evaluation can pass and prove nothing.** It sends one request, sees something plausible come back, and reports success while the failure it was written to catch sits right next to the thing it looked at. That is a blind spot, and nothing inside a green run reveals it.
+**An evaluation can pass and prove nothing.**
+It sends one request, sees something plausible come back, and reports success while the failure it was written to catch sits right next to the thing it looked at.
+That is a blind spot, and nothing inside a green run reveals it.
 
 Two common evaluation styles make blind spots easy to acquire.
 
 String matching and regular expressions break the moment the agent reformats its output, so they get loosened until they stop discriminating.
 
-An LLM judge tolerates rewording, costs money on every run, and returns a different answer to the same input. A green result carries no guarantee the next one repeats it.
+An LLM judge tolerates rewording, costs money on every run, and returns a different answer to the same input.
+A green result carries no guarantee the next one repeats it.
 
-An eval contract takes a third route. It declares the checkable structure ahead of the run, so every check resolves over declared shapes and stays deterministic and cheap. That is what makes it affordable to plant a defect and run the whole thing twice.
+An eval contract takes a third route.
+It declares the checkable structure ahead of the run, so every check resolves over declared shapes and stays deterministic and cheap.
+That is what makes it affordable to plant a defect and run the whole thing twice.
 
 ## The twin run
 
-The way to find a blind spot is to plant one. You are the one who plants it: `eval-quality` performs no mutation, so you edit the artifact by hand, run the evaluation against both versions of the system, and declare in the probe what you changed. Hold the evaluation fixed and change the system under test:
+The way to find a blind spot is to plant one.
+You are the one who plants it: `eval-quality` performs no mutation, so you edit the artifact by hand, run the evaluation against both versions of the system, and declare in the probe what you changed.
+Hold the evaluation fixed and change the system under test:
 
 ```text
         eval contract + probes + oracles + rubrics + scoring policy
@@ -62,17 +115,28 @@ The way to find a blind spot is to plant one. You are the one who plants it: `ev
                        did the evaluation catch it?
 ```
 
-The rows marked `[eval-quality]` are the ones the package performs. Planting the defect, executing the two systems, running the evaluator, and collecting what it produced belong to you.
+The rows marked `[eval-quality]` are the ones the package performs.
+Planting the defect, executing the two systems, running the evaluator, and collecting what it produced belong to you.
 
-The mutation is one deliberate change that should make behavior worse, and you know in advance which failure it is supposed to create. Weaken the prompt, remove required context, drop a validation step, alter a tool's results, change the agent configuration.
+The mutation is one deliberate change that should make behavior worse, and you know in advance which failure it is supposed to create.
+Weaken the prompt, remove required context, drop a validation step, alter a tool's results, change the agent configuration.
 
-Each of those edits an artifact you hold, which is what a probe has to declare. The `controlled-mutation` qualification route names a `targetArtifact` for what changed and carries `rollbackVerified` for putting it back, so a planted defect is something you can point at and restore. A prompt file is the ordinary case, and a prompt mutation counts as a planted defect whenever its effect shows up in what came back. A vendor's model weights fill neither field, so switching models is outside what a probe can declare.
+Each of those edits an artifact you hold, which is what a probe has to declare.
+The `controlled-mutation` qualification route names a `targetArtifact` for what changed and carries `rollbackVerified` for putting it back, so a planted defect is something you can point at and restore.
+A prompt file is the ordinary case, and a prompt mutation counts as a planted defect whenever its effect shows up in what came back.
+A vendor's model weights fill neither field, so switching models is outside what a probe can declare.
 
-Preflight has to pass on **both** arms. A mutated run that fails preflight tells you the environment was unfit, which is a different finding from the evaluation catching the defect. Mixing the two makes the comparison meaningless.
+Preflight has to pass on **both** arms.
+A mutated run that fails preflight tells you the environment was unfit, which is a different finding from the evaluation catching the defect.
+Mixing the two makes the comparison meaningless.
 
-`seal` is what keeps the two arms comparable. It reduces the contract to a brief the evaluator can be handed: the behaviors, the interfaces by name and kind, the bounds, one prose direction per oracle, and a digest of the contract it came from. The checks themselves and the test data have no place in a brief, so an evaluator reading one cannot read the answers off the contract. Comparing the digest across the two arms proves both ran the same contract.
+`seal` is what keeps the two arms comparable.
+It reduces the contract to a brief the evaluator can be handed: the behaviors, the interfaces by name and kind, the bounds, one prose direction per oracle, and a digest of the contract it came from.
+The checks themselves and the test data have no place in a brief, so an evaluator reading one cannot read the answers off the contract.
+Comparing the digest across the two arms proves both ran the same contract.
 
-The digest says nothing about the probes, the scoring policy, the evaluator configuration, the harness, or the model settings. Holding those fixed across the two arms is your job.
+The digest says nothing about the probes, the scoring policy, the evaluator configuration, the harness, or the model settings.
+Holding those fixed across the two arms is your job.
 
 ### A worked example
 
@@ -83,39 +147,81 @@ Planted defect: the correct error is returned, and the record is created anyway.
 - A **weak** evaluation checks only the response. It sees the error, and it passes. The defect ships.
 - A **strong** evaluation checks the response and the resulting state. It finds the record, and it fails.
 
-Run the same evaluation against the fixed implementation and it passes again. A trustworthy evaluation has to prove both directions: planted defect present, evaluation fails; clean implementation, evaluation passes. The question is whether the evaluation reliably tells bad behavior from good, whether that behavior belongs to an agent, a skill, a tool-use path, a workflow, or an end-to-end AI feature.
+Run the same evaluation against the fixed implementation and it passes again.
+A trustworthy evaluation has to prove both directions: planted defect present, evaluation fails; clean implementation, evaluation passes.
+The question is whether the evaluation reliably tells bad behavior from good, whether that behavior belongs to an agent, a skill, a tool-use path, a workflow, or an end-to-end AI feature.
 
-## What an eval contract declares
+## What a Behavioral Evaluation Contract declares
 
-A contract names the behaviors the system owes, each with a severity and an observable success criterion, and the oracles that check them, written as relations over JSON pointers into recorded interactions. It also declares which interfaces a probe may call, the reference data a check reads, and the bounds a run has to stay inside.
+A contract declares six things.
 
-One part is worth pausing on, because it is the twin run applied to a single operation.
+- what behavior matters
+- how success is observed
+- what evidence the evaluator may use
+- what interfaces it may touch
+- what checks decide outcomes
+- what limits the run must respect
 
-**Sensitivity witnesses** are two calls that differ in one input, and a statement of how the two responses have to differ. If both come back the same, nothing in the run shows the operation ever read that input. A check over that operation would pass while the input was ignored entirely.
+One part is worth pausing on, because it is the twin run applied to a single input.
 
-`schemas/eval-contract.schema.json` is the normative shape, and [the walkthrough](/how-to/author-behavioral-contracts/) lists every field.
+A **sensitivity witness** proves an input actually matters.
+Change one input, keep everything else the same, and the output should change in the declared way.
+Otherwise an evaluation may appear to check an input while the system ignores it.
 
-## Why compile rejects contracts
+`schemas/eval-contract.schema.json` is the normative shape, and [the walkthrough](/how-to/author-behavioral-contracts/) lists every field and runs a real contract through all four commands.
 
-**Compile is type checking for your eval design.** A contract can be valid JSON, parse cleanly against the schema, and still be incapable of proving anything. Compile catches the recognized cases of that before you spend a run on one, the same way a linter catches known defect patterns.
+## Why `compile` rejects contracts
 
-What it rejects is declaration defects it has a rule for: checks whose evidence path cannot exist, and operations that take an input without declaring the witness that would show the input matters. Whether a live operation actually responds to that witness is preflight's question.
+`compile` acts like a linter or a type checker for evaluation design.
 
-Two examples, both shipped in the corpus:
+It rejects contracts that are structurally valid JSON and cannot prove what they claim.
 
-- **A request key with no sensitivity witness.** The contract lets an operation take an input and never establishes that the operation reads it. A check over that operation passes while the input is ignored entirely, so the pass is worth nothing. The failure code is `undeclared-mandatory-input`.
-- **An oracle addressing a request field the operation never declares.** The pointer resolves to nothing, so the assertion checks evidence that cannot exist. It can never fire, which makes it decoration. The failure code is `unreachable-check-evidence`.
+Two examples, both shipped in the corpus.
 
-Both are the blind-spot problem in miniature: an evaluation that reports success without having looked.
+1. **The contract claims an input matters and never proves the system reads it.** `compile` refuses it under `undeclared-mandatory-input`.
+2. **An oracle points at evidence that can never exist.** The pointer resolves to nothing, so the assertion can never fire, and `compile` refuses it under `unreachable-check-evidence`.
+
+Both are the same class of problem:
+
+> **The evaluation can say PASS without actually looking at the behavior it claims to validate.**
+
+That is the core idea.
+Whether a live operation really responds to a declared witness is preflight's question, and the [CLI reference](/reference/cli-commands/) carries the rest of the rules.
 
 ## Three ways to get a wrong answer
 
-`score` is the comparison step at the bottom of the twin run. It reads the sealed run record your harness produced, resolves each oracle over the observations the record carries, and mints a verdict. Three things decide whether that verdict means anything.
+`score` is the comparison step at the bottom of the twin run.
+It reads the sealed run record your harness produced, resolves each oracle over the observations the record carries, and mints a verdict.
+Three things decide whether that verdict means anything.
 
-**A caught defect is decided by evidence.** A finding counts as detection only when the probe's declared defect signature matches an observation that finding cites. An evaluator that reports a catch without citing the observation that shows it gets no credit.
+### 1. A defect only counts as caught when evidence proves it
 
-**A run has a mode, and the two modes never compare.** In `production` the subject is the system and the verdict says whether it ships. In `contract-scoring` the subject is the contract, the probe is knowingly defective, and a caught defect means the contract succeeded. Both arms of a twin run are `contract-scoring`, so that is the mode to declare.
+The evaluator gets no credit for claiming "I found the defect".
+The observation a finding cites has to match the defect signature the probe declared.
 
-**The package holds nothing steady beyond its own transforms.** Compile, seal, the preflight reduction, and the score chain are pure transformations over JSON, so they are deterministic. Everything past that edge is yours to control: model sampling, evaluator behavior, fixture state, trial policy, and configuration. Whatever you leave uncontrolled is what the comparison measures.
+```text
+claim + matching evidence = caught
+claim without matching evidence = no credit
+```
 
-[What Ships](/explanation/what-ships/) covers version 1.0, the trial-set limit, and what is deliberately out of scope.
+### 2. Know what is being scored
+
+There are two modes.
+
+- `production`: is this system safe or good enough to ship?
+- `contract-scoring`: is this evaluation contract good enough to catch known defects?
+
+Both arms of a twin run use `contract-scoring`.
+A mutated system failing while the evaluation catches the mutation is a success for the evaluation contract, and the two modes never compare.
+
+### 3. Keep the experiment controlled
+
+`eval-quality`'s own transformations are deterministic.
+Compile, seal, the preflight reduction, and the score chain are pure functions over JSON.
+
+The model, the evaluator, the fixtures, sampling, configuration, the trial count, and the rest of the execution details are external.
+If those change between arms, the comparison becomes noisy, and whatever you left uncontrolled is what the comparison measures.
+
+> **Evidence must prove the catch. Use the correct scoring mode. Keep the experiment controlled.**
+
+[What Ships](/explanation/what-ships/) says what you get when you install the package.

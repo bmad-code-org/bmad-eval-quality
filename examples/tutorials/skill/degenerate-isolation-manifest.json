@@ -1,0 +1,64 @@
+{
+  "actualResourceUse": {
+    "costUsd": "0.01",
+    "inputTokens": 900,
+    "outputTokens": 60,
+    "toolCalls": 1,
+    "wallClockSeconds": 2
+  },
+  "allowedMounts": [],
+  "conditionArm": "degenerate",
+  "contractDigest": "sha256:db47672fee36bd18d5b7d42ac24cc11dc3d5c46ed0a7be86617676f2ebb9841c",
+  "contractId": "checklist-selection",
+  "evaluatorConfigurationDigest": "sha256:af8fbb61753c5a4dba7dbb28f500fa9b11e2448fe7ed0693cbb56ea1a9a5bc6e",
+  "forbiddenInputAccounting": {
+    "builder-transcript": {
+      "note": null,
+      "withheld": true
+    },
+    "comparator-results": {
+      "note": null,
+      "withheld": true
+    },
+    "human-labels": {
+      "note": null,
+      "withheld": true
+    },
+    "implementation-logs": {
+      "note": null,
+      "withheld": true
+    },
+    "original-spec": {
+      "note": null,
+      "withheld": true
+    },
+    "repository": {
+      "note": null,
+      "withheld": true
+    },
+    "source-code": {
+      "note": null,
+      "withheld": true
+    }
+  },
+  "modelSnapshot": "tutorial-deterministic-evaluator",
+  "networkAllowlist": [],
+  "observedMounts": [],
+  "observedNetworkTargets": [],
+  "observedToolCalls": [],
+  "parentDigest": null,
+  "resourceCeilings": {
+    "maxCostUsd": "1.00",
+    "maxInputTokens": 100000,
+    "maxOutputTokens": 100000,
+    "maxToolCalls": 20,
+    "maxWallClockMinutes": 5
+  },
+  "revisionCount": 0,
+  "runId": "skill-degenerate-1",
+  "schemaVersion": 1,
+  "systemPromptDigest": "sha256:e2623f778b36d098c63a4b21afdc3f796234b23b62c8ddfdb34a356286862956",
+  "toolAllowlist": [],
+  "violation": null,
+  "workspaceIdentity": "tutorial-workspace"
+}

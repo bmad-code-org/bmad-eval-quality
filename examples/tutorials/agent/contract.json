@@ -1,0 +1,567 @@
+{
+  "behaviors": [
+    {
+      "description": "A changelog the agent cannot parse is refused.",
+      "id": "B-001",
+      "observableSuccessCriterion": "A run over a changelog carrying an unrecognised line exits non-zero.",
+      "oracles": [
+        "O-001"
+      ],
+      "requirementLinks": [
+        {
+          "id": "REQ-1",
+          "scheme": "local"
+        }
+      ],
+      "riskLinks": [
+        {
+          "id": "RISK-1",
+          "scheme": "local-risk"
+        }
+      ],
+      "severity": "critical"
+    },
+    {
+      "description": "A summarized changelog is readable back.",
+      "id": "B-002",
+      "observableSuccessCriterion": "Showing the notes file written by a run returns the changelog that run was given, with one entry per line.",
+      "oracles": [
+        "O-002",
+        "O-003",
+        "O-004",
+        "O-005"
+      ],
+      "requirementLinks": [
+        {
+          "id": "REQ-2",
+          "scheme": "local"
+        }
+      ],
+      "riskLinks": [],
+      "severity": "material"
+    }
+  ],
+  "budgets": {
+    "maxCostUsd": "0.10",
+    "maxToolCalls": 10,
+    "maxWallClockMinutes": 2
+  },
+  "contractId": "tutorial-release-notes-agent",
+  "fixtureReset": null,
+  "forbiddenInputs": [
+    "original-spec",
+    "source-code",
+    "repository",
+    "builder-transcript",
+    "implementation-logs",
+    "comparator-results",
+    "human-labels"
+  ],
+  "interactionPlan": [
+    {
+      "after": null,
+      "cardinality": "exactly-one",
+      "inputBinding": {
+        "argument": null,
+        "environment": null,
+        "option": {
+          "input": {
+            "literal": "alpha.changelog"
+          },
+          "out": {
+            "literal": "notes.json"
+          }
+        },
+        "stdin": null
+      },
+      "operationId": "summarize-changes",
+      "stepId": "summarize"
+    },
+    {
+      "after": "summarize",
+      "cardinality": "exactly-one",
+      "inputBinding": {
+        "argument": null,
+        "environment": null,
+        "option": {
+          "notes": {
+            "literal": "notes.json"
+          }
+        },
+        "stdin": null
+      },
+      "operationId": "show-notes",
+      "stepId": "show"
+    },
+    {
+      "after": null,
+      "cardinality": "exactly-one",
+      "inputBinding": {
+        "argument": null,
+        "environment": null,
+        "option": {
+          "input": {
+            "literal": "broken.changelog"
+          },
+          "out": {
+            "literal": "broken-notes.json"
+          }
+        },
+        "stdin": null
+      },
+      "operationId": "summarize-changes",
+      "stepId": "refuse"
+    }
+  ],
+  "oracles": [
+    {
+      "check": {
+        "op": "not",
+        "operands": [
+          {
+            "op": "equality",
+            "operands": [
+              {
+                "pointer": "/interactions/refuse/exit-code"
+              },
+              {
+                "literal": 0
+              }
+            ]
+          }
+        ]
+      },
+      "commentary": "The one oracle B-001 declares, so it is the oracle a probe naming B-001 is matched against.",
+      "direction": {
+        "evidenceTargets": [
+          "/interactions/refuse/exit-code"
+        ],
+        "negativeDomain": "A run over that changelog exiting zero.",
+        "polarity": "expects-hold",
+        "relation": "not",
+        "scope": "The run given the changelog with an unrecognised line."
+      },
+      "id": "O-001",
+      "polarity": "expects-hold"
+    },
+    {
+      "check": {
+        "op": "equality",
+        "operands": [
+          {
+            "pointer": "/interactions/show/stdout/source"
+          },
+          {
+            "pointer": "/interactions/summarize/call-inputs/option/input"
+          }
+        ]
+      },
+      "commentary": "Relates what the write was given to what an independent later read returned.",
+      "direction": {
+        "evidenceTargets": [
+          "/interactions/show/stdout/source",
+          "/interactions/summarize/call-inputs/option/input"
+        ],
+        "negativeDomain": "A show reporting a changelog other than the one the summarize was given.",
+        "polarity": "expects-hold",
+        "relation": "equality",
+        "scope": "One summarize followed by a show of the file it wrote."
+      },
+      "id": "O-002",
+      "polarity": "expects-hold"
+    },
+    {
+      "check": {
+        "collection": {
+          "pointer": "/interactions/show/stdout/entries"
+        },
+        "op": "for-all",
+        "predicate": {
+          "op": "existence",
+          "operands": [
+            {
+              "pointer": "@/description"
+            }
+          ]
+        }
+      },
+      "commentary": null,
+      "direction": {
+        "evidenceTargets": [
+          "/interactions/show/stdout/entries"
+        ],
+        "negativeDomain": "An entry carrying no description.",
+        "polarity": "expects-hold",
+        "relation": "for-all",
+        "scope": "Every entry the show returned."
+      },
+      "id": "O-003",
+      "polarity": "expects-hold"
+    },
+    {
+      "check": {
+        "op": "all",
+        "operands": [
+          {
+            "op": "existence",
+            "operands": [
+              {
+                "pointer": "/interactions/show/stdout/summary"
+              }
+            ]
+          },
+          {
+            "op": "existence",
+            "operands": [
+              {
+                "pointer": "/interactions/show/stdout/entries"
+              }
+            ]
+          },
+          {
+            "op": "existence",
+            "operands": [
+              {
+                "pointer": "/interactions/show/stdout/source"
+              }
+            ]
+          }
+        ]
+      },
+      "commentary": "Reads the read's whole declared body at one step, which is what the whole-body and success-indicator-separation rules ask for.",
+      "direction": {
+        "evidenceTargets": [
+          "/interactions/show/stdout/summary",
+          "/interactions/show/stdout/entries",
+          "/interactions/show/stdout/source"
+        ],
+        "negativeDomain": "A show omitting the summary, the entries, or the source.",
+        "polarity": "expects-hold",
+        "relation": "all",
+        "scope": "The whole body the show returned."
+      },
+      "id": "O-004",
+      "polarity": "expects-hold"
+    },
+    {
+      "check": {
+        "op": "all",
+        "operands": [
+          {
+            "op": "existence",
+            "operands": [
+              {
+                "pointer": "/interactions/summarize/artifact/notes/summary"
+              }
+            ]
+          },
+          {
+            "op": "existence",
+            "operands": [
+              {
+                "pointer": "/interactions/summarize/artifact/notes/entries"
+              }
+            ]
+          },
+          {
+            "op": "existence",
+            "operands": [
+              {
+                "pointer": "/interactions/summarize/artifact/notes/source"
+              }
+            ]
+          }
+        ]
+      },
+      "commentary": "The same whole-body reading against the file the write produced, since the two operations declare their own descriptors.",
+      "direction": {
+        "evidenceTargets": [
+          "/interactions/summarize/artifact/notes/summary",
+          "/interactions/summarize/artifact/notes/entries",
+          "/interactions/summarize/artifact/notes/source"
+        ],
+        "negativeDomain": "A notes file omitting the summary, the entries, or the source.",
+        "polarity": "expects-hold",
+        "relation": "all",
+        "scope": "The whole notes file the summarize wrote."
+      },
+      "id": "O-005",
+      "polarity": "expects-hold"
+    }
+  ],
+  "parentDigest": null,
+  "permittedInterfaces": [
+    {
+      "kind": "cli",
+      "logicalId": "release-notes-agent",
+      "operations": [
+        {
+          "artifacts": [
+            "notes"
+          ],
+          "descriptorChannel": {
+            "artifactId": "notes",
+            "kind": "artifact"
+          },
+          "invocation": {
+            "executable": "release-notes-agent",
+            "subcommandPath": [
+              "summarize"
+            ]
+          },
+          "operationId": "summarize-changes",
+          "requestShape": {
+            "argument": {
+              "permittedKeys": [],
+              "requiredKeys": [],
+              "types": {}
+            },
+            "environment": {
+              "permittedKeys": [],
+              "requiredKeys": [],
+              "types": {}
+            },
+            "option": {
+              "permittedKeys": [],
+              "requiredKeys": [
+                "input",
+                "out"
+              ],
+              "types": {
+                "input": "string",
+                "out": "string"
+              }
+            },
+            "stdin": {
+              "permittedKeys": [],
+              "requiredKeys": [],
+              "types": {}
+            }
+          },
+          "responseDescriptor": {
+            "channelRoles": {
+              "/entries": "collection",
+              "/source": "payload",
+              "/summary": "success-indicator"
+            },
+            "collectionLocations": [
+              {
+                "expectedCardinality": {
+                  "max": 50,
+                  "mode": "at-most"
+                },
+                "pointer": "/entries",
+                "referenceSet": null
+              }
+            ],
+            "permittedKeys": [
+              "source"
+            ],
+            "requiredKeys": [
+              "summary",
+              "entries"
+            ],
+            "successIndicator": "/summary",
+            "types": {
+              "entries": "array",
+              "source": "string",
+              "summary": "string"
+            }
+          },
+          "sensitivityWitness": {
+            "channel": "option",
+            "legs": [
+              {
+                "inputs": {
+                  "argument": {},
+                  "environment": {},
+                  "option": {
+                    "input": "alpha.changelog",
+                    "out": "notes.json"
+                  },
+                  "stdin": {
+                    "kind": "absent"
+                  }
+                },
+                "legId": "summarize-witness-alpha"
+              },
+              {
+                "inputs": {
+                  "argument": {},
+                  "environment": {},
+                  "option": {
+                    "input": "beta.changelog",
+                    "out": "notes.json"
+                  },
+                  "stdin": {
+                    "kind": "absent"
+                  }
+                },
+                "legId": "summarize-witness-beta"
+              }
+            ],
+            "relation": {
+              "op": "not",
+              "operands": [
+                {
+                  "op": "deep-equality",
+                  "operands": [
+                    {
+                      "pointer": "/interactions/summarize-witness-alpha/artifact/notes/entries"
+                    },
+                    {
+                      "pointer": "/interactions/summarize-witness-beta/artifact/notes/entries"
+                    }
+                  ]
+                }
+              ]
+            },
+            "witnessId": "summary-follows-the-changelog"
+          },
+          "stateChangeMarker": true,
+          "volatilePointers": []
+        },
+        {
+          "artifacts": [],
+          "descriptorChannel": {
+            "channel": "stdout",
+            "kind": "stream"
+          },
+          "invocation": {
+            "executable": "release-notes-agent",
+            "subcommandPath": [
+              "show"
+            ]
+          },
+          "operationId": "show-notes",
+          "requestShape": {
+            "argument": {
+              "permittedKeys": [],
+              "requiredKeys": [],
+              "types": {}
+            },
+            "environment": {
+              "permittedKeys": [],
+              "requiredKeys": [],
+              "types": {}
+            },
+            "option": {
+              "permittedKeys": [],
+              "requiredKeys": [
+                "notes"
+              ],
+              "types": {
+                "notes": "string"
+              }
+            },
+            "stdin": {
+              "permittedKeys": [],
+              "requiredKeys": [],
+              "types": {}
+            }
+          },
+          "responseDescriptor": {
+            "channelRoles": {
+              "/entries": "collection",
+              "/source": "payload",
+              "/summary": "success-indicator"
+            },
+            "collectionLocations": [
+              {
+                "expectedCardinality": {
+                  "max": 50,
+                  "mode": "at-most"
+                },
+                "pointer": "/entries",
+                "referenceSet": null
+              }
+            ],
+            "permittedKeys": [],
+            "requiredKeys": [
+              "summary",
+              "entries",
+              "source"
+            ],
+            "successIndicator": "/summary",
+            "types": {
+              "entries": "array",
+              "source": "string",
+              "summary": "string"
+            }
+          },
+          "sensitivityWitness": {
+            "channel": "option",
+            "legs": [
+              {
+                "inputs": {
+                  "argument": {},
+                  "environment": {},
+                  "option": {
+                    "notes": "alpha-notes.json"
+                  },
+                  "stdin": {
+                    "kind": "absent"
+                  }
+                },
+                "legId": "show-witness-alpha"
+              },
+              {
+                "inputs": {
+                  "argument": {},
+                  "environment": {},
+                  "option": {
+                    "notes": "beta-notes.json"
+                  },
+                  "stdin": {
+                    "kind": "absent"
+                  }
+                },
+                "legId": "show-witness-beta"
+              }
+            ],
+            "relation": {
+              "op": "not",
+              "operands": [
+                {
+                  "op": "deep-equality",
+                  "operands": [
+                    {
+                      "pointer": "/interactions/show-witness-alpha/stdout/entries"
+                    },
+                    {
+                      "pointer": "/interactions/show-witness-beta/stdout/entries"
+                    }
+                  ]
+                }
+              ]
+            },
+            "witnessId": "show-follows-the-file"
+          },
+          "stateChangeMarker": false,
+          "volatilePointers": []
+        }
+      ]
+    }
+  ],
+  "probeStepBound": 6,
+  "referenceSets": null,
+  "requiredEvidence": [
+    "Exit code, both streams, and every declared artifact for each run."
+  ],
+  "revisionCount": 0,
+  "rubrics": [],
+  "safetyLimits": [
+    "No process other than the mapped release-notes-agent target."
+  ],
+  "schemaVersion": 5,
+  "scopedResources": null,
+  "siblingGroups": null,
+  "sourceSpecDigest": null,
+  "testData": {
+    "cleanup": "Delete every notes file the run wrote.",
+    "principals": null,
+    "resources": null,
+    "setup": "Place alpha.changelog, beta.changelog and broken.changelog in the working directory the agent runs in."
+  },
+  "waivers": []
+}

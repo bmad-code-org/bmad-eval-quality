@@ -1,0 +1,502 @@
+{
+  "behaviors": [
+    {
+      "description": "A creation that reports success has filed the note under the title it was sent.",
+      "id": "B-001",
+      "observableSuccessCriterion": "An independent search for the identifier the creation returned names the title the creation was sent.",
+      "oracles": [
+        "O-001"
+      ],
+      "requirementLinks": [
+        {
+          "id": "REQ-1",
+          "scheme": "local"
+        }
+      ],
+      "riskLinks": [
+        {
+          "id": "RISK-1",
+          "scheme": "local-risk"
+        }
+      ],
+      "severity": "critical"
+    },
+    {
+      "description": "A search reports the list it searched and its size.",
+      "id": "B-002",
+      "observableSuccessCriterion": "A successful search carries both the match list and the count of it.",
+      "oracles": [
+        "O-002"
+      ],
+      "requirementLinks": [
+        {
+          "id": "REQ-2",
+          "scheme": "local"
+        }
+      ],
+      "riskLinks": [],
+      "severity": "material"
+    },
+    {
+      "description": "A creation answers with the identifier it filed the note under.",
+      "id": "B-003",
+      "observableSuccessCriterion": "A successful creation carries an identifier.",
+      "oracles": [
+        "O-003"
+      ],
+      "requirementLinks": [
+        {
+          "id": "REQ-3",
+          "scheme": "local"
+        }
+      ],
+      "riskLinks": [],
+      "severity": "material"
+    },
+    {
+      "description": "A tool given an argument of the wrong type refuses the call.",
+      "id": "B-004",
+      "observableSuccessCriterion": "A creation sent a non-string title reports failure.",
+      "oracles": [
+        "O-004"
+      ],
+      "requirementLinks": [
+        {
+          "id": "REQ-4",
+          "scheme": "local"
+        }
+      ],
+      "riskLinks": [],
+      "severity": "material"
+    }
+  ],
+  "budgets": {
+    "maxCostUsd": "0.25",
+    "maxToolCalls": 20,
+    "maxWallClockMinutes": 5
+  },
+  "contractId": "tutorial-notes-tool-server",
+  "fixtureReset": {
+    "inputs": {
+      "arguments": {
+        "title": "the clean fixture"
+      }
+    },
+    "interfaceId": "notes-tool-server",
+    "legId": "reset-notes",
+    "operationId": "create-note"
+  },
+  "forbiddenInputs": [
+    "original-spec",
+    "source-code",
+    "repository",
+    "builder-transcript",
+    "implementation-logs",
+    "comparator-results",
+    "human-labels"
+  ],
+  "interactionPlan": [
+    {
+      "after": null,
+      "cardinality": "exactly-one",
+      "inputBinding": {
+        "arguments": {
+          "query": {
+            "literal": "alpha"
+          }
+        }
+      },
+      "operationId": "search-notes",
+      "stepId": "search"
+    },
+    {
+      "after": null,
+      "cardinality": "exactly-one",
+      "inputBinding": {
+        "arguments": {
+          "title": {
+            "literal": "a new note"
+          }
+        }
+      },
+      "operationId": "create-note",
+      "stepId": "create"
+    },
+    {
+      "after": null,
+      "cardinality": "at-most-one",
+      "inputBinding": {
+        "arguments": {
+          "query": {
+            "matcher": "type-violating"
+          }
+        }
+      },
+      "operationId": "search-notes",
+      "stepId": "malformed-search"
+    },
+    {
+      "after": null,
+      "cardinality": "at-most-one",
+      "inputBinding": {
+        "arguments": {
+          "title": {
+            "matcher": "type-violating"
+          }
+        }
+      },
+      "operationId": "create-note",
+      "stepId": "malformed-create"
+    },
+    {
+      "after": "create",
+      "cardinality": "exactly-one",
+      "inputBinding": {
+        "arguments": {
+          "query": {
+            "captured": "/interactions/create/response-body/noteId"
+          }
+        }
+      },
+      "operationId": "search-notes",
+      "stepId": "read-back"
+    }
+  ],
+  "oracles": [
+    {
+      "check": {
+        "op": "equality",
+        "operands": [
+          {
+            "pointer": "/interactions/read-back/response-body/topMatch/title"
+          },
+          {
+            "pointer": "/interactions/create/call-inputs/arguments/title"
+          }
+        ]
+      },
+      "commentary": "The only check here that can tell a filed note from a reported one.",
+      "direction": {
+        "evidenceTargets": [
+          "/interactions/read-back/response-body/topMatch/title",
+          "/interactions/create/call-inputs/arguments/title"
+        ],
+        "negativeDomain": "A creation reporting success while the note it filed carries another title.",
+        "polarity": "expects-hold",
+        "relation": "equality",
+        "scope": "One creation followed by an independent search for the identifier it returned."
+      },
+      "id": "O-001",
+      "polarity": "expects-hold"
+    },
+    {
+      "check": {
+        "op": "all",
+        "operands": [
+          {
+            "op": "equality",
+            "operands": [
+              {
+                "pointer": "/interactions/search/response-body/ok"
+              },
+              {
+                "literal": true
+              }
+            ]
+          },
+          {
+            "op": "existence",
+            "operands": [
+              {
+                "pointer": "/interactions/search/response-body/matches"
+              }
+            ]
+          },
+          {
+            "op": "existence",
+            "operands": [
+              {
+                "pointer": "/interactions/search/response-body/totalCount"
+              }
+            ]
+          }
+        ]
+      },
+      "commentary": null,
+      "direction": {
+        "evidenceTargets": [
+          "/interactions/search/response-body/ok",
+          "/interactions/search/response-body/matches",
+          "/interactions/search/response-body/totalCount"
+        ],
+        "negativeDomain": "A search reporting success and carrying no list or no count.",
+        "polarity": "expects-hold",
+        "relation": "all",
+        "scope": "One search call for one query."
+      },
+      "id": "O-002",
+      "polarity": "expects-hold"
+    },
+    {
+      "check": {
+        "op": "all",
+        "operands": [
+          {
+            "op": "equality",
+            "operands": [
+              {
+                "pointer": "/interactions/create/response-body/ok"
+              },
+              {
+                "literal": true
+              }
+            ]
+          },
+          {
+            "op": "existence",
+            "operands": [
+              {
+                "pointer": "/interactions/create/response-body/noteId"
+              }
+            ]
+          }
+        ]
+      },
+      "commentary": null,
+      "direction": {
+        "evidenceTargets": [
+          "/interactions/create/response-body/ok",
+          "/interactions/create/response-body/noteId"
+        ],
+        "negativeDomain": "A creation reporting success with no identifier.",
+        "polarity": "expects-hold",
+        "relation": "all",
+        "scope": "One creation call."
+      },
+      "id": "O-003",
+      "polarity": "expects-hold"
+    },
+    {
+      "check": {
+        "op": "equality",
+        "operands": [
+          {
+            "pointer": "/interactions/malformed-create/response-body/ok"
+          },
+          {
+            "literal": false
+          }
+        ]
+      },
+      "commentary": null,
+      "direction": {
+        "evidenceTargets": [
+          "/interactions/malformed-create/response-body/ok"
+        ],
+        "negativeDomain": "A creation accepting a non-string title.",
+        "polarity": "expects-hold",
+        "relation": "equality",
+        "scope": "One creation sent a title of the wrong JSON type."
+      },
+      "id": "O-004",
+      "polarity": "expects-hold"
+    }
+  ],
+  "parentDigest": null,
+  "permittedInterfaces": [
+    {
+      "kind": "mcp",
+      "logicalId": "notes-tool-server",
+      "operations": [
+        {
+          "descriptorChannel": {
+            "kind": "structured-result"
+          },
+          "operationId": "search-notes",
+          "requestShape": {
+            "arguments": {
+              "permittedKeys": [],
+              "requiredKeys": [
+                "query"
+              ],
+              "types": {
+                "query": "string"
+              }
+            }
+          },
+          "responseDescriptor": {
+            "channelRoles": {
+              "/matches": "collection",
+              "/ok": "success-indicator",
+              "/topMatch": "payload",
+              "/totalCount": "payload"
+            },
+            "collectionLocations": [
+              {
+                "expectedCardinality": {
+                  "max": 20,
+                  "mode": "at-most"
+                },
+                "pointer": "/matches",
+                "referenceSet": null
+              }
+            ],
+            "permittedKeys": [
+              "topMatch"
+            ],
+            "requiredKeys": [
+              "ok",
+              "matches",
+              "totalCount"
+            ],
+            "successIndicator": "/ok",
+            "types": {
+              "matches": "array",
+              "ok": "boolean",
+              "topMatch": "object",
+              "totalCount": "number"
+            }
+          },
+          "sensitivityWitness": {
+            "channel": "arguments",
+            "legs": [
+              {
+                "inputs": {
+                  "arguments": {
+                    "query": "alpha"
+                  }
+                },
+                "legId": "leg-first-query"
+              },
+              {
+                "inputs": {
+                  "arguments": {
+                    "query": "beta"
+                  }
+                },
+                "legId": "leg-second-query"
+              }
+            ],
+            "relation": {
+              "op": "not",
+              "operands": [
+                {
+                  "op": "deep-equality",
+                  "operands": [
+                    {
+                      "pointer": "/interactions/leg-first-query/response-body/matches"
+                    },
+                    {
+                      "pointer": "/interactions/leg-second-query/response-body/matches"
+                    }
+                  ]
+                }
+              ]
+            },
+            "witnessId": "search-follows-the-query"
+          },
+          "stateChangeMarker": false,
+          "toolName": "search_notes",
+          "volatilePointers": []
+        },
+        {
+          "descriptorChannel": {
+            "kind": "structured-result"
+          },
+          "operationId": "create-note",
+          "requestShape": {
+            "arguments": {
+              "permittedKeys": [],
+              "requiredKeys": [
+                "title"
+              ],
+              "types": {
+                "title": "string"
+              }
+            }
+          },
+          "responseDescriptor": {
+            "channelRoles": {
+              "/noteId": "payload",
+              "/ok": "success-indicator"
+            },
+            "collectionLocations": [],
+            "permittedKeys": [
+              "noteId"
+            ],
+            "requiredKeys": [
+              "ok"
+            ],
+            "successIndicator": "/ok",
+            "types": {
+              "noteId": "string",
+              "ok": "boolean"
+            }
+          },
+          "sensitivityWitness": {
+            "channel": "arguments",
+            "legs": [
+              {
+                "inputs": {
+                  "arguments": {
+                    "title": "the first note"
+                  }
+                },
+                "legId": "leg-first-title"
+              },
+              {
+                "inputs": {
+                  "arguments": {
+                    "title": "the second note"
+                  }
+                },
+                "legId": "leg-second-title"
+              }
+            ],
+            "relation": {
+              "op": "not",
+              "operands": [
+                {
+                  "op": "deep-equality",
+                  "operands": [
+                    {
+                      "pointer": "/interactions/leg-first-title/response-body/noteId"
+                    },
+                    {
+                      "pointer": "/interactions/leg-second-title/response-body/noteId"
+                    }
+                  ]
+                }
+              ]
+            },
+            "witnessId": "creation-follows-the-title"
+          },
+          "stateChangeMarker": true,
+          "toolName": "create_note",
+          "volatilePointers": []
+        }
+      ]
+    }
+  ],
+  "probeStepBound": 8,
+  "referenceSets": null,
+  "requiredEvidence": [
+    "The arguments and the structured result of every call."
+  ],
+  "revisionCount": 0,
+  "rubrics": [],
+  "safetyLimits": [
+    "No tool beyond the two the authorization names may be called."
+  ],
+  "schemaVersion": 5,
+  "scopedResources": null,
+  "siblingGroups": null,
+  "sourceSpecDigest": null,
+  "testData": {
+    "cleanup": "Delete the store file the run wrote.",
+    "principals": null,
+    "resources": null,
+    "setup": "The server starts from its seeded notes, n-1 and n-2."
+  },
+  "waivers": []
+}

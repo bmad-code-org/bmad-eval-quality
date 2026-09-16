@@ -1,60 +1,64 @@
 ---
 title: "What Ships"
-description: "What version 1.0 covers, the trial-set limit, and what is deliberately out of scope."
+description: "What you actually get when you install the package: four commands, three interface kinds, and the artifacts around them."
 sidebar:
   order: 2
 ---
 
 # What Ships
 
-All four commands ship, and the published surface is stable: a breaking change to a command, an export, or a schema is a major version bump from here.
+The question this page answers is what you get when you install this thing.
 
-## The four commands
+## Four commands
 
-`compile`, `seal`, `preflight`, and `score`. Every flag each one takes is on the [CLI reference](/reference/cli-commands/), and [the walkthrough](/how-to/author-behavioral-contracts/) runs them end to end.
+| Command | What it does |
+| --- | --- |
+| `compile` | Validates an evaluation contract and rejects one that could never prove anything. |
+| `seal` | Creates an evaluator-safe brief from that contract. |
+| `preflight` | Verifies the environment can produce meaningful evidence. |
+| `score` | Validates the evidence and produces a verdict plus a contract-strength result. |
 
-`score` is the largest of the four. Behind it sit three stages, `ingest`, `score`, and `emit`, reached by one command and one library call, `runScore`. It resolves every oracle to one of twelve outcome states, decides whether a finding really detected the defect its probe seeded, reduces repeated trials to one result per probe, and reports contract strength as a vector two contracts can be compared on.
+Every flag each one takes is on the [CLI reference](/reference/cli-commands/), and [the walkthrough](/how-to/author-behavioral-contracts/) runs all four end to end over files this repository commits.
 
-A contract can describe a system behind an HTTP API, one behind a command line, or one behind an MCP tool server. All three compile, and all three plan a pre-flight. `cli` and `mcp` each have a shipped adapter that runs that pre-flight end to end; `api` has none, because probing a live HTTP environment is the part only a caller can write.
+## Three interface kinds
 
-Also published: twelve JSON Schema documents under `eval-quality/schemas/*`, a twenty-four-contract development corpus under `eval-quality/corpus/dev/`, five reference adapters at `eval-quality/adapters`, and a port conformance suite at `eval-quality/conformance`.
+A contract describes its system under test through a declared interface, and the kinds are `api`, `cli`, and `mcp`.
 
-## The trial-set limit
+All three compile, and all three plan a pre-flight.
+`cli` and `mcp` each have a shipped adapter that runs that pre-flight against a real process.
+`api` has none, because probing a live HTTP environment is the part only a caller can write.
 
-The `score` stage is built for a trial set: several runs of the same probes, reduced to one result per probe before any rate is computed. The command and `runScore` hand it one record per call. So a run scored from the published surface completes one trial, and whenever your scoring policy asks for more than one, the strength vector comes out reported and marked non-comparable.
+`web` is the one kind `compile` still refuses under `unsupported-interface-kind`, and its probe semantics are undeclared.
 
-The number is still real and still worth reading. It cannot be compared against another run's until the policy's trial minimum is met.
+## What else is in the package
 
-## What this package does not do
+- twelve JSON Schema documents under `eval-quality/schemas/*`
+- five reference adapters at `eval-quality/adapters`
+- a twenty-four-contract development corpus under `eval-quality/corpus/dev/`
+- a port conformance suite at `eval-quality/conformance`
+- a second binary, `eval-quality-gates`, carrying the repository gates on [their own page](/how-to/run-the-gates-on-your-repository/)
 
-It executes nothing. No agent, no judge, and no system under test runs inside it, and it ships no network adapter. Both arms of the twin run, the evaluator itself, and the sealing of what the evaluator produced into a run record are yours.
+## What the package does not do
+
+It executes nothing.
+No agent, no judge, and no system under test runs inside it, and it ships no network adapter.
+Both arms of the twin run, the evaluator itself, and the sealing of what the evaluator produced into a run record are yours.
 
 Also outside the package, by decision: a new eval engine, a hosted service, a dashboard or GUI, multimodal evaluators, automatic prompt repair, and a generic judge-calibration platform.
 
-Also outside the package: claim-to-evidence lineage, semantic checkpoint scoring, process and outcome separation, and first material error attribution. Each needs a contract layer in real use before its shape is decidable, and that is where the brief left them.
+## One limitation to know before you plan a run
 
-## Tool-use evaluation
+A CLI `score` invocation accepts one run record.
 
-`compile` accepts `mcp`, the pre-flight plan mints the calls a probe would make, and `createMcpAdapter` runs them against a tool server it launches over MCP's stdio transport. A server reached over HTTP needs your own adapter, since this package opens no socket. [Evaluate tool-use behavior](/how-to/evaluate-tool-use-behavior/) covers the whole picture, down to the port messages and the conformance arm that certifies an adapter for the kind.
+The underlying scoring model is built for a trial set: several runs of the same probes, reduced to one result per probe before any rate is computed.
+The command and `runScore` hand that model one record per call, so a run scored from the published surface completes one trial.
+Whenever your scoring policy asks for more than one, the strength vector comes out reported and marked non-comparable.
 
-The response descriptor question the kind turned on is settled. The kind's first version describes a tool's structured result, which is what an MCP tool returns when it has a result with structure at all, and typically what it returns when it declares an output schema. A tool that answers with a markdown `content` array is outside that version, since prose gives AD-4's quantifiers no collection to range over. The text channel such a tool needs is undesigned, so a tool that returns prose is outside what the kind describes.
+The number is real and worth reading.
+It can be compared against another run's once the policy's trial minimum is met.
 
-`web` is the one kind `compile` still refuses under `unsupported-interface-kind`, and it has had no design pass at all.
+## Related pages
 
-## How far a strength number carries
-
-Two properties of the measurement decide how to read a contract's strength, and both are visible in what ships.
-
-`corpus/dev/` is diagnostic: every contract in it is published to be read. A strength number measured against it says the contract catches probes its author could read while writing it. That is a claim about the contract and the probe set together, and it is a weaker claim than the same number measured against probes the author never saw. The probe schema carries the qualification record and the defect signature either probe set needs, so what separates them is the probes rather than the shape.
-
-The rule that decides whether a finding detected the defect its probe seeded runs on every score. It was derived from the experiment records in `experiments/hypothesis-validation/` and it has been exercised on those. A number it produces is a measurement over records of that kind.
-
-## Version compatibility
-
-`compile` refuses an eval contract whose `schemaVersion` differs from the one this build reads, with the `schema-version-mismatch` fault. A contract whose shape moved between versions fails the schema gate first; one that still parses and carries another stamp stops at compilation with that fault. Either way it never reaches scoring, where a stale stamp would travel into the scoring version and quietly make the result incomparable with everything else.
-
-A probe is refused the same way and with the same fault. The stages that perform that comparison are `compile` over an eval contract, and `preflight` and `score` over a probe. A probe whose stamp differs stops at `preflight` before a leg is planned, and at `score` before it is sealed, because the stamp says which shapes it was authored against: the qualification record on every probe, and the witness legs and the defect signature grammar on a seeded one.
-
-The remaining artifacts have no such reader. The barrel names a version for all of them but a rubric and an artifact reference, so the number you compare against is a value you import. A sealed run record written against an older version fails to parse where a required field moved, and is read as written where it did not, so checking the stamp on anything you did not produce with this build is the caller's job. The `eval-quality` barrel exports ten schema versions: `EVAL_CONTRACT_SCHEMA_VERSION` and `PROBE_SCHEMA_VERSION` for the two with a reader, `SEALED_EVALUATOR_BRIEF_SCHEMA_VERSION`, `EVIDENCE_ARTIFACT_SCHEMA_VERSION` and `PREFLIGHT_VERDICT_SCHEMA_VERSION` for the three this package stamps, and `SEALED_RUN_RECORD_SCHEMA_VERSION`, `ISOLATION_MANIFEST_SCHEMA_VERSION`, `EVALUATOR_CONFIGURATION_SCHEMA_VERSION`, `SCORING_POLICY_SCHEMA_VERSION` and `PRIVATE_ARTIFACT_MANIFEST_SCHEMA_VERSION` for the five you assemble and `score` validates. An artifact reference carries no lineage at all. A rubric does carry a `schemaVersion` of its own, and no constant here states it: this package never parses a standalone rubric, and the eval contract embeds `RubricBody`, the body without lineage.
-
-`CHANGELOG.md` in the repository carries every breaking change artifact by artifact.
+- [How far a strength number carries](/explanation/contract-strength/): what a strength measurement claims, and what it does not
+- [Evaluate tool-use behavior](/how-to/evaluate-tool-use-behavior/): what the `mcp` kind describes and where its boundary sits
+- [CLI reference](/reference/cli-commands/): flags, exit codes, exports, and artifact version compatibility

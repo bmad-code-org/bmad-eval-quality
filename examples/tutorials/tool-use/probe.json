@@ -1,0 +1,92 @@
+{
+  "artifactDigest": "sha256:be7f61b9ea56503ddf9ce7f377e382812c7ab02c495906f95d35af9c137fa190",
+  "behaviorId": "B-001",
+  "commitDigest": "sha256:be7f61b9ea56503ddf9ce7f377e382812c7ab02c495906f95d35af9c137fa190",
+  "defectSignature": {
+    "condition": {
+      "predicate": {
+        "op": "equality",
+        "operands": [
+          {
+            "pointer": "/interactions/observed/response-body/topMatch/title"
+          },
+          {
+            "literal": "(untitled)"
+          }
+        ]
+      },
+      "selector": {
+        "inputBinding": {
+          "argument": null,
+          "arguments": {
+            "query": {
+              "matcher": "any"
+            }
+          },
+          "body": null,
+          "environment": null,
+          "header": null,
+          "option": null,
+          "path": null,
+          "query": null,
+          "stdin": null
+        }
+      }
+    },
+    "interfaceKind": "mcp",
+    "observableChannel": "response-body",
+    "toolName": "search_notes"
+  },
+  "defects": [
+    {
+      "behaviorId": "B-001",
+      "defectId": "D-001",
+      "manifestationWitness": null,
+      "oracleEvidence": [
+        {
+          "digest": "sha256:384a650ecad4cc828289c7d325d8a2916dcd19fbfe5a81b45ae3652e22d65fbe",
+          "path": "examples/tutorials/tool-use/seeded-steps.json",
+          "privateRef": null,
+          "storage": "public"
+        }
+      ],
+      "severity": "critical",
+      "source": "controlled-mutation",
+      "summary": "The creation reports success and files another title."
+    }
+  ],
+  "expectedClean": false,
+  "implementationDigest": "sha256:be7f61b9ea56503ddf9ce7f377e382812c7ab02c495906f95d35af9c137fa190",
+  "parentDigest": null,
+  "probeClass": "defect",
+  "probeId": "P-001",
+  "qualification": {
+    "baselinePassEvidence": {
+      "digest": "sha256:d07ceb9881e3f56f6f85d6b2839194d8850f7b5a16fda74e07f76f6c0951e845",
+      "path": "examples/tutorials/tool-use/baseline-steps.json",
+      "privateRef": null,
+      "storage": "public"
+    },
+    "expectedObservableFailure": "an independent search for the identifier the creation returned names another title",
+    "mutatedFailEvidence": {
+      "digest": "sha256:384a650ecad4cc828289c7d325d8a2916dcd19fbfe5a81b45ae3652e22d65fbe",
+      "path": "examples/tutorials/tool-use/seeded-steps.json",
+      "privateRef": null,
+      "storage": "public"
+    },
+    "mutationOperator": "stored-field-substitution",
+    "mutationSource": "the --seed-defect launch flag on the tutorial tool server",
+    "rollbackVerified": true,
+    "route": "controlled-mutation",
+    "targetArtifact": {
+      "digest": "sha256:be7f61b9ea56503ddf9ce7f377e382812c7ab02c495906f95d35af9c137fa190",
+      "path": "examples/tutorials/tool-use/system-under-test.md",
+      "privateRef": null,
+      "storage": "public"
+    }
+  },
+  "rationale": "A controlled mutation filing a created note under a placeholder title.",
+  "revisionCount": 0,
+  "schemaVersion": 5,
+  "systemId": "notes-tool-server"
+}

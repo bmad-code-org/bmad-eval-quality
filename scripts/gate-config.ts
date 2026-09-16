@@ -350,6 +350,23 @@ const LicencesSection = z
  * `node_modules`, which is what keeps the pre-install path open for the two
  * gates that run before `npm ci`.
  */
+const DocumentedBinary = z
+	.strictObject({
+		entry: RelativePath.describe(
+			'The built entry point every documented command is run against. It is a precondition: a gate that skipped when it was absent would exit 0 having executed nothing.',
+		),
+		spellings: z
+			.array(NonEmpty)
+			.min(1)
+			.describe(
+				'How your documentation writes the command, as the literal text a reader types. Each is matched at the start of a fenced line, with whitespace or end of line after it, so a sample of your own diagnostic output is left alone.',
+			),
+		installedPrefix: NonEmpty.optional().describe(
+			'The path prefix a page uses for a file inside the installed package, such as "node_modules/your-package/". Mapping it away is what lets those examples be checked against real bytes.',
+		),
+	})
+	.describe('One binary a documented command line runs.')
+
 const DocInvocationsSection = z
 	.strictObject({
 		pages: z
@@ -359,21 +376,10 @@ const DocInvocationsSection = z
 				"The pages whose fenced commands are run, as files or directories to walk. Naming the configuration's own directory is refused: every fenced command in a whole repository is more than this gate should run.",
 			),
 		binary: z
-			.strictObject({
-				entry: RelativePath.describe(
-					'The built entry point every documented command is run against. It is a precondition: a gate that skipped when it was absent would exit 0 having executed nothing.',
-				),
-				spellings: z
-					.array(NonEmpty)
-					.min(1)
-					.describe(
-						'How your documentation writes the command, as the literal text a reader types. Each is matched at the start of a fenced line, with whitespace or end of line after it, so a sample of your own diagnostic output is left alone.',
-					),
-				installedPrefix: NonEmpty.optional().describe(
-					'The path prefix a page uses for a file inside the installed package, such as "node_modules/your-package/". Mapping it away is what lets those examples be checked against real bytes.',
-				),
-			})
-			.describe('What a documented command line runs.'),
+			.union([DocumentedBinary, z.array(DocumentedBinary).min(1)])
+			.describe(
+				"What a documented command line runs. One object for a package that publishes one binary, or an array for a package that publishes several, each carrying its own entry, spellings and installedPrefix. Every spelling across every binary is matched against the same page and the longest one wins, so a short spelling belonging to one binary never claims a line that opens with a longer spelling belonging to another. Each binary's entry is its own precondition and the refusal names which one is missing. An empty array is refused, since a gate with no spelling to match extracts nothing and reports a pass over nothing.",
+			),
 		sampleInput: RelativePath.describe(
 			'A file that stands in for an input only a reader has, such as `<path>`. A run that needed one is judged for usage errors and crashes and no more.',
 		),

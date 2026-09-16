@@ -15,7 +15,7 @@
  * decision, and a counting `readTimeMap` is what shows them without a network.
  */
 import { spawnSync } from 'node:child_process'
-import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
@@ -31,6 +31,7 @@ import {
 	runDocCounts,
 	widenSpaces,
 } from '../../scripts/check-doc-counts.ts'
+import { runDocInvocations } from '../../scripts/check-doc-invocations.mjs'
 import {
 	MAX_PATTERN_LENGTH,
 	MAX_PROSE_PATTERN_LENGTH,
@@ -40,6 +41,7 @@ import {
 	LOCKFILE_WINDOW_DAYS_DEFAULT,
 	loadDocClaimsConfig,
 	loadDocCountsConfig,
+	loadDocInvocationsConfig,
 } from '../../scripts/gate-config.ts'
 import { buildCache } from '../../scripts/generate-lockfile-age-cache.ts'
 import {
@@ -427,6 +429,54 @@ describe("this repository's committed publication cache", () => {
  * citation or a legitimate new symbol on a future page is not a regression;
  * a class examining fewer sentences than it does today is.
  */
+describe('a citation-shaped path inside a fenced block', () => {
+	/**
+	 * A page that transcribes a command's diagnostic carries the file and line
+	 * of whatever tree that command ran over, which for a tutorial is a fixture
+	 * the page created moments earlier. Read as a citation it resolves to
+	 * nothing in the source roots and the class fails on a page that is right.
+	 * The prose case beside it is what keeps the skip from swallowing a real
+	 * citation.
+	 */
+	const claimsOver = async (...body: readonly string[]) => {
+		const scratch = mkdtempSync(join(tmpdir(), 'doc-claims-fence-'))
+		mkdirSync(join(scratch, 'src'))
+		writeFileSync(join(scratch, 'src/rules.ts'), 'export const RULES = 1\n')
+		// One resolvable citation in prose, so the class has something to examine
+		// and refuses nothing for being empty.
+		writeFileSync(
+			join(scratch, 'page.md'),
+			['# A page', '', '`RULES` lives at src/rules.ts:1.', '', ...body].join(
+				'\n',
+			),
+		)
+		return runDocClaims(scratch, {
+			pages: ['page.md'],
+			generated: [],
+			sources: [{ path: 'src', extensions: ['.ts'] }],
+			citations: { extensions: ['.ts'], window: 4, unanchored: [] },
+		} as never)
+	}
+
+	it('is left alone', async () => {
+		const report = await claimsOver(
+			'```text',
+			'src/model/price.ts:1 no such file here',
+			'```',
+			'',
+		)
+		expect(report.failures).toEqual([])
+	})
+
+	it('still fails in prose, where it is a claim about the tree', async () => {
+		const report = await claimsOver(
+			'The rule also lives at src/model/price.ts:1.',
+			'',
+		)
+		expect(report.failures.length).toBeGreaterThan(0)
+	})
+})
+
 describe("this repository's own doc-claims classes, held to a floor", () => {
 	it('classifies at least as many sentences per class as it does today', async () => {
 		const configPath = resolve('eval-quality.config.json')
@@ -441,13 +491,32 @@ describe("this repository's own doc-claims classes, held to a floor", () => {
 			expect(match, `"${label}" in: ${report.summary}`).not.toBeNull()
 			return Number(match?.[1])
 		}
+		// Two of these floors came down with the documentation rework, and a
+		// floor lowered to meet reality reads from the outside exactly like a
+		// floor lowered to hide a regression, so each drop is accounted for here.
+		//
+		// The list floor came down by two, which is the two entries deleted from
+		// `docs/explanation/what-ships.md`: the AD-11 version readers and the
+		// barrel's schema versions. Both restated a set that
+		// `docs/reference/cli-commands.md` holds under its own entry against the
+		// same export, so each expected set still has a holder and the entries
+		// were deleted rather than relaxed to fit the new wording.
+		//
+		// The symbol floor came down because the explanation pages are shorter
+		// and because prose that named identifiers became fenced commands, which
+		// this class does not scan. No page stopped being examined: the two
+		// largest drops are what-ships, whose version-compatibility paragraph
+		// moved to the CLI reference and is scanned there, and the walkthrough,
+		// whose step 6 and step 7 prose became invocations the doc-invocations
+		// gate executes and compares. The floor below that one is what holds the
+		// coverage those commands moved to.
 		expect(numeral('citations resolve')).toBeGreaterThanOrEqual(21)
 		expect(
 			numeral('backticked identifiers are declared'),
-		).toBeGreaterThanOrEqual(446)
+		).toBeGreaterThanOrEqual(420)
 		expect(
 			numeral('transcribed lists match their source'),
-		).toBeGreaterThanOrEqual(13)
+		).toBeGreaterThanOrEqual(11)
 		expect(numeral('named codes exist')).toBeGreaterThanOrEqual(21)
 		expect(
 			numeral('worked JSON blocks parse against their schema'),
@@ -461,9 +530,45 @@ describe("this repository's own doc-claims classes, held to a floor", () => {
 	})
 })
 
-/** The same floor, for doc-counts: a class that stops holding a numeral is a
+/**
+ * The same floor, for the invocation gate, and it holds the property the
+ * documentation rework exists to establish.
+ *
+ * The gate reports how many documented invocations ran faithfully, which is how
+ * many named only inputs this repository really has and were therefore judged
+ * on their exit code. A page that replaces a runnable command with command
+ * grammar, or names a file only a reader has, drops that number while the gate
+ * still exits 0, because an unfaithful run is excused rather than failed. The
+ * number was 11 before the rework and the floor is what stops it drifting back.
+ */
+describe("this repository's own documented invocations, held to a floor", () => {
+	it('judges at least as many faithful invocations as it does today', async () => {
+		const configPath = resolve('eval-quality.config.json')
+		const loaded = await loadDocInvocationsConfig({ configPath })
+		expect(loaded.kind).toBe('section')
+		if (loaded.kind !== 'section') return
+		const report = runDocInvocations(dirname(loaded.path), loaded.section)
+		expect(report.failures).toEqual([])
+		expect(report.judged).toBeGreaterThanOrEqual(54)
+		expect(report.compared).toBeGreaterThanOrEqual(14)
+	}, 600_000)
+})
+
+/**
+ * The same floor, for doc-counts: a class that stops holding a numeral is a
  * regression the fixture pair cannot show, because the fixture pair is small
- * by design. */
+ * by design.
+ *
+ * This floor came down by four with the documentation rework, and the four are
+ * the entries deleted from `docs/explanation/what-ships.md`: the barrel's
+ * schema version count, and the counts of artifacts with a reader, artifacts
+ * this package stamps, and artifacts the caller assembles. That page answered
+ * what you get on install and had grown a version-compatibility section
+ * restating what `docs/reference/cli-commands.md` already carries. Each of the
+ * four sources still has an entry holding it on the reference page, so no
+ * number lost its only holder, and the entries were deleted rather than
+ * relaxed to match new wording.
+ */
 describe("this repository's own doc-counts entries, held to a floor", () => {
 	it('holds at least as many numerals as it does today', async () => {
 		const configPath = resolve('eval-quality.config.json')
@@ -472,7 +577,7 @@ describe("this repository's own doc-counts entries, held to a floor", () => {
 		if (loaded.kind !== 'section') return
 		const report = await runDocCounts(dirname(loaded.path), loaded.section)
 		expect(report.failures).toEqual([])
-		expect(report.numerals).toBeGreaterThanOrEqual(48)
+		expect(report.numerals).toBeGreaterThanOrEqual(44)
 		expect(report.digits).toBeGreaterThanOrEqual(8)
 		expect(report.files).toBeGreaterThanOrEqual(12)
 	})

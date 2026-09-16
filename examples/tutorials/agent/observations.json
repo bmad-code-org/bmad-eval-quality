@@ -1,0 +1,209 @@
+[
+  {
+    "artifacts": {
+      "notes": {
+        "kind": "json",
+        "value": {
+          "entries": [
+            {
+              "description": "a second changelog fixture",
+              "type": "added"
+            },
+            {
+              "description": "the summary counted blank lines",
+              "type": "fixed"
+            },
+            {
+              "description": "entries carry their own type",
+              "type": "changed"
+            }
+          ],
+          "source": "alpha.changelog",
+          "summary": "3 change(s)"
+        }
+      }
+    },
+    "exitCode": 0,
+    "interfaceId": "release-notes-agent",
+    "kind": "cli",
+    "operationId": "summarize-changes",
+    "probeId": "summarize-witness-alpha",
+    "stderr": {
+      "kind": "absent"
+    },
+    "stdout": {
+      "kind": "absent"
+    }
+  },
+  {
+    "artifacts": {
+      "notes": {
+        "kind": "json",
+        "value": {
+          "entries": [
+            {
+              "description": "one entry and nothing else",
+              "type": "added"
+            }
+          ],
+          "source": "beta.changelog",
+          "summary": "1 change(s)"
+        }
+      }
+    },
+    "exitCode": 0,
+    "interfaceId": "release-notes-agent",
+    "kind": "cli",
+    "operationId": "summarize-changes",
+    "probeId": "summarize-witness-beta",
+    "stderr": {
+      "kind": "absent"
+    },
+    "stdout": {
+      "kind": "absent"
+    }
+  },
+  {
+    "artifacts": {},
+    "exitCode": 0,
+    "interfaceId": "release-notes-agent",
+    "kind": "cli",
+    "operationId": "show-notes",
+    "probeId": "show-witness-alpha",
+    "stderr": {
+      "kind": "absent"
+    },
+    "stdout": {
+      "kind": "json",
+      "value": {
+        "entries": [
+          {
+            "description": "a second changelog fixture",
+            "type": "added"
+          },
+          {
+            "description": "the summary counted blank lines",
+            "type": "fixed"
+          },
+          {
+            "description": "entries carry their own type",
+            "type": "changed"
+          }
+        ],
+        "source": "alpha.changelog",
+        "summary": "3 change(s)"
+      }
+    }
+  },
+  {
+    "artifacts": {},
+    "exitCode": 0,
+    "interfaceId": "release-notes-agent",
+    "kind": "cli",
+    "operationId": "show-notes",
+    "probeId": "show-witness-beta",
+    "stderr": {
+      "kind": "absent"
+    },
+    "stdout": {
+      "kind": "json",
+      "value": {
+        "entries": [
+          {
+            "description": "one entry and nothing else",
+            "type": "added"
+          }
+        ],
+        "source": "beta.changelog",
+        "summary": "1 change(s)"
+      }
+    }
+  },
+  {
+    "artifacts": {},
+    "exitCode": 0,
+    "interfaceId": "release-notes-agent",
+    "kind": "cli",
+    "operationId": "show-notes",
+    "probeId": "preflight-control-observe",
+    "stderr": {
+      "kind": "absent"
+    },
+    "stdout": {
+      "kind": "json",
+      "value": {
+        "entries": [
+          {
+            "description": "a second changelog fixture",
+            "type": "added"
+          },
+          {
+            "description": "the summary counted blank lines",
+            "type": "fixed"
+          },
+          {
+            "description": "entries carry their own type",
+            "type": "changed"
+          }
+        ],
+        "source": "alpha.changelog",
+        "summary": "3 change(s)"
+      }
+    }
+  },
+  {
+    "artifacts": {},
+    "exitCode": 0,
+    "interfaceId": "release-notes-agent",
+    "kind": "cli",
+    "operationId": "show-notes",
+    "probeId": "preflight-control-observe-2",
+    "stderr": {
+      "kind": "absent"
+    },
+    "stdout": {
+      "kind": "json",
+      "value": {
+        "entries": [
+          {
+            "description": "a second changelog fixture",
+            "type": "added"
+          },
+          {
+            "description": "the summary counted blank lines",
+            "type": "fixed"
+          },
+          {
+            "description": "entries carry their own type",
+            "type": "changed"
+          }
+        ],
+        "source": "alpha.changelog",
+        "summary": "3 change(s)"
+      }
+    }
+  },
+  {
+    "artifacts": {
+      "notes": {
+        "kind": "json",
+        "value": {
+          "entries": [],
+          "source": "broken.changelog",
+          "summary": ""
+        }
+      }
+    },
+    "exitCode": 0,
+    "interfaceId": "release-notes-agent",
+    "kind": "cli",
+    "operationId": "summarize-changes",
+    "probeId": "manifest-empty-on-broken",
+    "stderr": {
+      "kind": "absent"
+    },
+    "stdout": {
+      "kind": "absent"
+    }
+  }
+]

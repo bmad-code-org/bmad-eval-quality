@@ -1,0 +1,134 @@
+[
+  {
+    "interfaceId": "notes-tool-server",
+    "isError": false,
+    "kind": "mcp",
+    "operationId": "search-notes",
+    "probeId": "leg-first-query",
+    "result": {
+      "kind": "json",
+      "value": {
+        "matches": [
+          {
+            "noteId": "n-1"
+          }
+        ],
+        "ok": true,
+        "totalCount": 1
+      }
+    }
+  },
+  {
+    "interfaceId": "notes-tool-server",
+    "isError": false,
+    "kind": "mcp",
+    "operationId": "search-notes",
+    "probeId": "leg-second-query",
+    "result": {
+      "kind": "json",
+      "value": {
+        "matches": [
+          {
+            "noteId": "n-2"
+          }
+        ],
+        "ok": true,
+        "totalCount": 1
+      }
+    }
+  },
+  {
+    "interfaceId": "notes-tool-server",
+    "isError": false,
+    "kind": "mcp",
+    "operationId": "create-note",
+    "probeId": "leg-first-title",
+    "result": {
+      "kind": "json",
+      "value": {
+        "noteId": "note-the-first-note",
+        "ok": true
+      }
+    }
+  },
+  {
+    "interfaceId": "notes-tool-server",
+    "isError": false,
+    "kind": "mcp",
+    "operationId": "create-note",
+    "probeId": "leg-second-title",
+    "result": {
+      "kind": "json",
+      "value": {
+        "noteId": "note-the-second-note",
+        "ok": true
+      }
+    }
+  },
+  {
+    "interfaceId": "notes-tool-server",
+    "isError": false,
+    "kind": "mcp",
+    "operationId": "search-notes",
+    "probeId": "preflight-control-observe",
+    "result": {
+      "kind": "json",
+      "value": {
+        "matches": [
+          {
+            "noteId": "n-1"
+          }
+        ],
+        "ok": true,
+        "totalCount": 1
+      }
+    }
+  },
+  {
+    "interfaceId": "notes-tool-server",
+    "isError": false,
+    "kind": "mcp",
+    "operationId": "create-note",
+    "probeId": "preflight-control-mutate",
+    "result": {
+      "kind": "json",
+      "value": {
+        "noteId": "note-the-first-note",
+        "ok": true
+      }
+    }
+  },
+  {
+    "interfaceId": "notes-tool-server",
+    "isError": false,
+    "kind": "mcp",
+    "operationId": "create-note",
+    "probeId": "reset-notes",
+    "result": {
+      "kind": "json",
+      "value": {
+        "noteId": "note-the-clean-fixture",
+        "ok": true
+      }
+    }
+  },
+  {
+    "interfaceId": "notes-tool-server",
+    "isError": false,
+    "kind": "mcp",
+    "operationId": "search-notes",
+    "probeId": "preflight-control-observe-2",
+    "result": {
+      "kind": "json",
+      "value": {
+        "matches": [
+          {
+            "noteId": "n-1"
+          }
+        ],
+        "ok": true,
+        "totalCount": 1
+      }
+    }
+  }
+]

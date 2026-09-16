@@ -1,6 +1,6 @@
 ---
 title: "Evaluate Agent Behavior"
-description: "Contract an agent you invoke from the command line: what it writes, what it exits with, and how to prove your checks catch a defect you planted."
+description: "Contract an agent you invoke from the command line, and watch a contract catch a defect that leaves the exit code looking clean."
 sidebar:
   order: 2
 ---
@@ -11,19 +11,210 @@ An agent, here, is a program you invoke from the command line.
 It reads options and environment variables, does its work, writes one or more files, prints something, and exits.
 That system shape maps to the `cli` interface kind, and each operation on it is a `CommandOperation` in `src/core/schemas/interface.ts`.
 
-This page covers the parts specific to that shape.
-For what a contract declares in general, how to read a compile rejection, and how to seal a brief, read [the full walkthrough](/how-to/author-behavioral-contracts/) first.
+Agent behavior is what the agent did, read off what it left behind: the exit code, the two streams, and the files it declares.
 
-## What you are evaluating
+This page runs one small agent end to end.
+For what a contract declares in general and how the four commands chain, read [the full walkthrough](/how-to/author-behavioral-contracts/) first.
 
-Agent behavior is what the agent did, read off what it left behind.
-A contract declares the operation the agent exposes, the checks over its output, and a sensitivity witness proving the agent actually reads the inputs it accepts.
+## The mini-lab
 
-`eval-quality` runs nothing under evaluation on its own.
-`compile`, `seal`, the pre-flight reduction, and the score chain are transformations over JSON.
-Two components start a process, and a caller wires each up deliberately: `createCommandLineAdapter` in `src/adapters/command-line-adapter.ts`, supplying a `CommandTargetPolicy` that maps a logical executable name to a real file, and `createMcpAdapter` in `src/adapters/mcp-adapter.ts`, supplying an `McpTargetPolicy` that maps a logical interface identifier to a tool server it launches over MCP's stdio transport.
+Work from a clone with the binary built:
 
-Three things this cannot see.
+```bash
+git clone https://github.com/bmad-code-org/bmad-eval-quality.git
+cd bmad-eval-quality
+npm ci
+npm run build
+```
+
+```bash
+mkdir -p /tmp/eval-quality-agent
+```
+
+### 1. Run the agent
+
+`examples/tutorials/agent/release-notes-agent.mjs` reads a changelog and writes structured release notes.
+It is a few dozen lines, it needs no model and no credentials, and it is a stand-in for whatever agent you would really put here.
+
+<!-- expect-exit: 0 -->
+
+```bash
+node examples/tutorials/agent/release-notes-agent.mjs summarize --input examples/tutorials/agent/alpha.changelog --out /tmp/eval-quality-agent/notes.json
+```
+
+It writes the file and prints nothing. Read it back through the agent's other operation:
+
+<!-- expect-exit: 0 -->
+
+```bash
+node examples/tutorials/agent/release-notes-agent.mjs show --notes /tmp/eval-quality-agent/notes.json
+```
+
+```text
+{
+  "summary": "3 change(s)",
+  "entries": [
+    {
+      "type": "added",
+      "description": "a second changelog fixture"
+    },
+    {
+      "type": "fixed",
+      "description": "the summary counted blank lines"
+    },
+    {
+      "type": "changed",
+      "description": "entries carry their own type"
+    }
+  ],
+  "source": "alpha.changelog"
+}
+```
+
+### 2. Watch it refuse a changelog it cannot parse
+
+`examples/tutorials/agent/broken.changelog` has a line with no type in front of it. A correct agent refuses it:
+
+<!-- expect-exit: 1 -->
+
+```bash
+node examples/tutorials/agent/release-notes-agent.mjs summarize --input examples/tutorials/agent/broken.changelog --out /tmp/eval-quality-agent/broken-notes.json
+```
+
+```text
+release-notes-agent: cannot parse line 2 of broken.changelog
+```
+
+Exit `1`, and the reason is on stderr.
+
+### 3. Plant the defect
+
+Now the same input against the agent with a defect in it. In a real twin run you make this edit by hand and put it back afterwards; the fixture carries a `--defective` flag so you can see it without editing anything.
+
+<!-- expect-exit: 0 -->
+
+```bash
+node examples/tutorials/agent/release-notes-agent.mjs summarize --input examples/tutorials/agent/broken.changelog --out /tmp/eval-quality-agent/defective-notes.json --defective
+```
+
+Exit `0`, and nothing on stderr.
+Read what it wrote:
+
+<!-- expect-exit: 0 -->
+
+```bash
+node examples/tutorials/agent/release-notes-agent.mjs show --notes /tmp/eval-quality-agent/defective-notes.json
+```
+
+```text
+{
+  "summary": "",
+  "entries": [],
+  "source": "broken.changelog"
+}
+```
+
+**This is the defect worth contracting against.** The agent swallowed an input it could not parse, wrote an empty notes file, and exited `0`. A check over the exit code alone reports success. A pipeline downstream of it publishes empty release notes.
+
+### 4. Compile the contract
+
+```bash
+node dist/cli/main.js compile --in examples/tutorials/agent/contract.json --out /tmp/eval-quality-agent/eval-contract.json
+```
+
+Exit `0`.
+
+The contract declares two operations, and the split between them is the point.
+`summarize-changes` nominates the written file as its descriptor channel, so an oracle and the manifestation witness can read inside it.
+`show-notes` nominates `stdout`, and it changes no state, which is what gives the plan an operation to observe with.
+
+### 5. Preflight
+
+```bash
+node dist/cli/main.js preflight \
+  --contract examples/tutorials/agent/contract.json \
+  --probes examples/tutorials/agent/probes.json \
+  --observations examples/tutorials/agent/observations.json \
+  --run-id agent-run-1 \
+  --out /tmp/eval-quality-agent/preflight-verdict.json
+```
+
+```bash
+node -e "const v=require('/tmp/eval-quality-agent/preflight-verdict.json');console.log('passed:',v.passed);for(const c of v.checks)console.log(c.kind,c.operationId,c.outcome)"
+```
+
+```text
+passed: true
+interface-present summarize-changes satisfied
+interface-present show-notes satisfied
+input-sensitivity summarize-changes satisfied
+input-sensitivity show-notes satisfied
+state-reset null satisfied
+clean-control null satisfied
+seeded-faults-scoped summarize-changes satisfied
+seeded-fault-fired summarize-changes satisfied
+```
+
+The last two are the pair this shape turns on.
+
+`seeded-fault-fired` resolves the manifestation witness against the fault leg's own observation, and that witness reads inside the written file: it counts the entries and asserts there are none. It passes, which is pre-flight confirming that the defect you planted can actually be seen.
+
+`seeded-faults-scoped` resolves the same relation against the operation's other legs and fails if it fires on one, since a defect that shows everywhere is not scoped to what you planted.
+
+### 6. Score it
+
+```bash
+node dist/cli/main.js score \
+  --record examples/tutorials/agent/sealed-run-record.json \
+  --contract /tmp/eval-quality-agent/eval-contract.json \
+  --probe examples/tutorials/agent/probe.json \
+  --preflight-verdict /tmp/eval-quality-agent/preflight-verdict.json \
+  --policy examples/tutorials/agent/scoring-policy.json \
+  --isolation-manifest examples/tutorials/agent/isolation-manifest.json \
+  --evaluator-configuration examples/tutorials/agent/evaluator-configuration.json \
+  --corpus-digest sha256:30e5785d5779258ef9f2edc81f8f14e1749a2a932110278cff32ff8ca10d613f \
+  --out /tmp/eval-quality-agent/evidence-artifact.json
+```
+
+```bash
+node -e "const e=require('/tmp/eval-quality-agent/evidence-artifact.json');for(const o of e.outcomes)console.log(o.oracleId,o.state,o.disposition,o.corroboration);console.log(e.mode,e.contractVerdict,'exit',e.exitCode);console.log(JSON.stringify(e.strength.vector))"
+```
+
+```text
+O-001 caught violated agrees
+O-002 confirmed held agrees
+O-003 confirmed held agrees
+O-004 confirmed held agrees
+O-005 confirmed held agrees
+contract-scoring CONCERNS exit 0
+{"defect":{"caught":1,"exercised":1,"rate":1},"gameability":null,"zero-action":null}
+```
+
+### 7. The lesson
+
+**The witness and the signature live on different channels, and that is a rule rather than a style choice.**
+
+The manifestation witness read the written file, because pre-flight is bound to one contract and one leg and an artifact identifier means something there.
+The defect signature rides the exit code, because a signature carrying an artifact identifier is refused under `condition-artifact-channel-contract-local`: that identifier is minted per contract and would resolve against exactly one contract while looking portable.
+
+You just watched both halves work on the same defect. The section below explains why the restriction exists.
+
+**The contract caught its defect and still came back CONCERNS.** The verdict basis names three unsatisfied coverage rules alongside the trial-set shortfall:
+
+```text
+coverage gap malformed-input unsatisfied at or above the severity floor
+coverage gap per-record unsatisfied at or above the severity floor
+coverage gap sibling-cross-check unsatisfied at or above the severity floor
+1 completed trials below the declared minimum of 3
+```
+
+Those are findings about the contract, which is what scoring a contract is for. A defect rate of `1` beside a CONCERNS verdict is the ordinary shape of a real result, and [contract strength](/explanation/contract-strength/) says how to read the pair.
+
+---
+
+The rest of this page is the reference behind that lab.
+
+## Three things this cannot see
 
 **The agent's reasoning.**
 An observation is one invocation and what came back from it.
@@ -36,6 +227,10 @@ A state-corruption defect that only shows on a second invocation has to be expre
 
 **Anything the agent did not write down.**
 If a behavior leaves no mark in the exit code, in stdout, in stderr, or in a file the operation declares, no oracle can address it and `compile` says so with `unreachable-check-evidence`.
+
+`eval-quality` runs nothing under evaluation on its own.
+`compile`, `seal`, the pre-flight reduction, and the score chain are transformations over JSON.
+Two components start a process, and a caller wires each up deliberately: `createCommandLineAdapter` in `src/adapters/command-line-adapter.ts`, supplying a `CommandTargetPolicy` that maps a logical executable name to a real file, and `createMcpAdapter` in `src/adapters/mcp-adapter.ts`, supplying an `McpTargetPolicy` that maps a logical interface identifier to a tool server it launches over MCP's stdio transport.
 
 ## What the agent has to give you
 
@@ -59,7 +254,7 @@ Structure comes from the operation's one `responseDescriptor`, and it applies to
 Another declared artifact is addressable as `/interactions/{stepId}/artifact/{id}` to assert it exists; a pointer into its contents is unreachable, because nothing declares its shape.
 A pointer naming an identifier absent from `artifacts` fails compilation under `unresolved-artifact-reference`.
 
-One descriptor per operation is the rule, so an operation whose stream and whose written file both need declared structure is two operations.
+One descriptor per operation is the rule, so an operation whose stream and whose written file both need declared structure is two operations. The lab's contract splits exactly that way.
 
 The adapter reads each declared artifact back after the process exits and tags it `json`, `text`, or `absent`.
 A file past `maxOutputBytes` raises `budget-exhausted`, so a run that resolves carries whole output.
@@ -88,7 +283,7 @@ Otherwise `qualifyProbe` returns `condition-channels-underspecified`, which exis
 
 ## Declaring the interface
 
-One agent, one operation, in `permittedInterfaces`.
+One agent, one operation per thing it does, in `permittedInterfaces`.
 This block parses against `PermittedInterface`:
 
 ```json
@@ -166,6 +361,7 @@ What each part is doing.
 `executable` is a logical name (AD-35).
 Its `Identifier` charset admits no slash, dot, or colon, so `./bin/agent` and `/usr/local/bin/agent` are parse errors.
 The mapping to a real file, the working directory, the artifact paths, the environment keys a call may carry, and the two budgets all live in a `CommandTargetPolicy` the caller supplies, outside the contract.
+That is also why the lab's committed record carries bare file names: a harness invokes the agent in a working directory holding the changelogs, and the policy is what says where that is.
 
 `subcommandPath` is a list of segments, so two implementations never have to agree on a separator no field declares.
 
@@ -185,13 +381,9 @@ The relation is declared, because inequality on its own decides nothing: two dis
 
 `volatilePointers` names the fields that legitimately change between two runs, and the pre-flight comparisons project them out before comparing.
 
-## Seeding a defect and proving the contract catches it
+## The two artifacts behind the seeded defect
 
-The twin run needs a defect you planted and know the shape of.
-You plant it by editing the agent yourself; `eval-quality` mutates nothing and reads only what the probe declares about the edit.
-Take this one: given a diff it cannot parse, the agent writes an empty notes file and exits 0, where a correct agent exits non-zero and says why on stderr.
-
-A probe carries that defect, and each defect carries a **manifestation witness**: which operation to run, with what inputs, and the relation that is true exactly when the seeded fault has fired.
+A probe carries the defect, and each defect carries a **manifestation witness**: which operation to run, with what inputs, and the relation that is true exactly when the seeded fault has fired.
 It never enters a score.
 Its job is to make "every declared seeded fault was observed to fire" decidable at pre-flight, so a probe that seeds a defect nothing can see is caught before it is scored.
 
@@ -220,7 +412,7 @@ Pre-flight plans one leg and two checks per seeded defect.
 **`seeded-fault-fired`** resolves the relation against the fault leg's own observation and fails when it comes back anything but `true`.
 A defect declaring a `null` witness fails this check; there is no exemption.
 
-**`seeded-faults-scoped`** resolves the same relation against the operation's other legs and fails if it fires on one, since a defect that shows everywhere is not scoped to what you planted.
+**`seeded-faults-scoped`** resolves the same relation against the operation's other legs and fails if it fires on one.
 
 That second check changed in 1.4.0, and the change matters when your witness reuses inputs the contract already declares.
 A clean leg is now dropped from the comparison when it issued the fault leg's request and received the fault leg's answer.
@@ -259,49 +451,16 @@ The probe's `defectSignature` is what the witness match compares a finding again
 Every pointer in a signature is rooted at the reserved step identifier `observed`, which is a fixed word so no contract-local step name reaches the corpus.
 The selector's keys are checked against the home operation's declared request shape, and a key the operation declares nowhere is `condition-selector-key-undeclared`, because a typo there matches no observation and turns into a silently passing run.
 
-## Running it
-
-Compile the contract first, then the two commands that carry a run.
-Pre-flight answers whether the environment is fit to be measured:
-
-```bash
-eval-quality preflight \
-  --contract run/eval-contract.json \
-  --probes probes.json \
-  --observations observations.json \
-  --run-id agent-mutated-1 \
-  --out run/preflight-verdict.json
-```
-
-It issues no requests of its own.
-Either your harness produces the observations, or the library's `runPreflight` drives them through an `EnvironmentProbePort`, which is where `createCommandLineAdapter` goes.
-Each observation echoes its leg id back as `probeId` and carries `kind: "cli"`, an `exitCode`, `stdout`, `stderr`, and an `artifacts` map.
-
-Then score the sealed run record your evaluator produced:
-
-```bash
-eval-quality score \
-  --record sealed-run-record.json \
-  --contract run/eval-contract.json \
-  --probe probe.json \
-  --preflight-verdict run/preflight-verdict.json \
-  --policy scoring-policy.json \
-  --isolation-manifest isolation-manifest.json \
-  --evaluator-configuration evaluator-configuration.json \
-  --corpus-digest <digest> \
-  --out run/evidence-artifact.json
-```
-
 A probe rejected by the qualification gate lands the run on the Invalid rung, exit `3`, and the command writes one line per reason to stderr as `eval-quality: <code>: <artifactPath>: <detail>`.
 `QUALIFICATION_FAILURES` publishes the closed set of codes those lines draw from, so a rejection is something you can branch on.
 
 ## Where this stands
 
-Proven.
+Proven, and re-runnable by you.
 The `cli` interface kind compiles, and `corpus/dev/contracts/` ships three contracts describing a system behind a command.
 Pre-flight plans and reduces command legs, including sensitivity witnesses, manifestation witnesses, and the fixture reset.
 `createCommandLineAdapter` runs a real child process with `shell: false`, an enforced elapsed cap, an output cap per stream and per artifact, and an artifact map read back tagged.
-The whole chain has been run end to end against a real agent CLI, and the numbers are below.
+The chain above is committed and regenerated on every build, and the whole route has also been run end to end against a real agent CLI, with the numbers below.
 
 Not proven, and worth knowing before you plan a corpus.
 A defect signature still cannot address a written file, so a defect whose only observable is file content has no scoring-side signature today.
@@ -327,6 +486,6 @@ Its signature quantifies over `/interactions/observed/artifact/verdict/findings`
 TEA records that refusal rather than swapping in an exit-code signature that would qualify and discriminate nothing.
 
 The nine caught probes still come back `CONCERNS` rather than `PASS`, on three unsatisfied coverage rules: `malformed-input`, `state-change-read-back`, and `whole-body`.
-Those are findings about the contract, which is the point of scoring a contract at all.
+Those are findings about the contract, which is the point of scoring a contract at all, and the lab above lands the same way for the same reason.
 
 For bringing this to another BMAD module in sequence, read TEA's own adoption guide at `docs/explanation/eval-quality-adoption-guide.md` in the test-architecture repository.

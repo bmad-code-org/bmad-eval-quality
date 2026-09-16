@@ -134,7 +134,7 @@ Node.js 22.20.0 or newer. `zod` is the only production dependency.
 npm install eval-quality
 ```
 
-Every command runs through `npx`:
+Every command runs through `npx`. The four below are the grammar rather than a sequence to copy: they name files your own harness produces. [The full walkthrough](https://bmad-code-org.github.io/bmad-eval-quality/how-to/author-behavioral-contracts/) runs the same four end to end over files this repository commits, with no placeholder in the path.
 
 ```bash
 npx eval-quality compile --in contract.json --out ./eval-out

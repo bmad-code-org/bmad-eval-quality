@@ -1,6 +1,6 @@
 ---
 title: "Evaluate Workflow Behavior"
-description: "Declare a multi-step workflow as an interaction plan, bind a step to a value an earlier step produced, and read what the ordering guarantees."
+description: "Bind a later step to a value an earlier step produced, prove the read happened after the write, and score a persistence defect the write's own response hides."
 sidebar:
   order: 4
 ---
@@ -8,10 +8,168 @@ sidebar:
 # Evaluate workflow behavior
 
 A workflow is several steps that have to happen in order, where a later step depends on something an earlier step produced.
+
 The smallest honest example is a write followed by an independent read-back.
 The read proves the write persisted, and it proves that only when it happened after the write and addressed the record the write created.
-`eval-quality` declares that shape as `interactionPlan`, an array of `InteractionStep` defined in `src/core/schemas/plan.ts`.
-The ordering machinery around that array is the subject of this page, and it is what separates a workflow contract from a contract over one invocation.
+
+That is the shape this page runs end to end.
+For what a contract declares in general and how the four commands chain, read [the full walkthrough](/how-to/author-behavioral-contracts/) first.
+
+## The mini-lab
+
+Work from a clone with the binary built:
+
+```bash
+git clone https://github.com/bmad-code-org/bmad-eval-quality.git
+cd bmad-eval-quality
+npm ci
+npm run build
+```
+
+```bash
+mkdir -p /tmp/eval-quality-workflow
+```
+
+The contract is `corpus/dev/contracts/captured-read-back.json`, which the package publishes.
+It declares a thing service with three operations, and a plan whose second step is bound to the identifier the first step's response minted.
+
+### 1. Compile it
+
+```bash
+node dist/cli/main.js compile --in corpus/dev/contracts/captured-read-back.json --out /tmp/eval-quality-workflow/eval-contract.json
+```
+
+Exit `0`.
+
+### 2. Watch the capture rules reject two plans
+
+The capture rules are where a workflow author actually gets stuck, so meet them before you meet a green run.
+Both files below are committed beside the tutorial's other fixtures, and each is the same contract with one field changed.
+
+**The wrong type.** A captured pointer's tail is one segment, the declared type at that key is scalar, and it has to equal the declared type of the parameter it is bound to. Capturing the boolean `ok` into a `path` parameter declared `string`:
+
+<!-- expect-exit: 4 -->
+
+```bash
+node dist/cli/main.js compile --in examples/tutorials/workflow/broken-captured-type.json
+```
+
+```text
+eval-quality: unreachable-check-evidence: EvalContract.interactionPlan[stepId=read-back].inputBinding.path["id"]: captured pointer "/interactions/create/response-body/ok" resolves to a declared "boolean", which is not the "string" the bound path parameter "id" is declared as
+```
+
+**The cycle.** `checkBindingCycle` builds one graph over the capture edges and the `after` edges together, and rejects any cycle containing a capture edge. Making `create` capture from `read-back` while `read-back.after` is `create`:
+
+<!-- expect-exit: 4 -->
+
+```bash
+node dist/cli/main.js compile --in examples/tutorials/workflow/broken-binding-cycle.json
+```
+
+```text
+eval-quality: binding-cycle: EvalContract.interactionPlan[stepId=create].inputBinding.body["name"]: captured pointer "/interactions/read-back/response-body/error" closes a cycle over the capture and temporal-clause edges; a captured value has no earlier step to resolve from (AD-39)
+```
+
+Both exit `4`, and both name the exact binding that broke the rule.
+
+### 3. Preflight the environment
+
+```bash
+node dist/cli/main.js preflight \
+  --contract corpus/dev/contracts/captured-read-back.json \
+  --probes examples/tutorials/workflow/probes.json \
+  --observations examples/tutorials/workflow/observations.json \
+  --run-id workflow-run-1 \
+  --out /tmp/eval-quality-workflow/preflight-verdict.json
+```
+
+Exit `0`, over eleven planned legs.
+Read the verdict back:
+
+```bash
+node -e "const v=require('/tmp/eval-quality-workflow/preflight-verdict.json');console.log('passed:',v.passed);for(const c of v.checks)console.log(c.kind,c.operationId,c.outcome)"
+```
+
+```text
+passed: true
+interface-present get-thing satisfied
+interface-present create-thing satisfied
+interface-present reset-things satisfied
+input-sensitivity get-thing satisfied
+input-sensitivity create-thing satisfied
+input-sensitivity reset-things satisfied
+state-reset null satisfied
+clean-control null satisfied
+seeded-faults-scoped get-thing satisfied
+seeded-fault-fired get-thing satisfied
+```
+
+Two of those are specific to this shape and worth pausing on.
+
+`state-reset` is satisfied because this contract declares a `fixtureReset`, and the planner therefore issues four control legs in a fixed order: observe, mutate, reset, observe again. A workflow that leaves state behind between legs measures the leg before it rather than the leg it names.
+
+`seeded-fault-fired` and `seeded-faults-scoped` exist because this chain's probe declares a manifestation witness. The first says the planted fault was observed to fire on its own leg. The second says the same relation did not fire on a clean leg of the same operation, because a defect that shows everywhere is not scoped to what you planted.
+
+### 4. Score the seeded defect
+
+```bash
+node dist/cli/main.js score \
+  --record examples/tutorials/workflow/sealed-run-record.json \
+  --contract /tmp/eval-quality-workflow/eval-contract.json \
+  --probe examples/tutorials/workflow/probe.json \
+  --preflight-verdict /tmp/eval-quality-workflow/preflight-verdict.json \
+  --policy examples/tutorials/workflow/scoring-policy.json \
+  --isolation-manifest examples/tutorials/workflow/isolation-manifest.json \
+  --evaluator-configuration examples/tutorials/workflow/evaluator-configuration.json \
+  --corpus-digest sha256:fee971bb300c3757836c091ff0ec63de59db56a267bacbfdefd9fc406060e5f2 \
+  --out /tmp/eval-quality-workflow/evidence-artifact.json
+```
+
+Exit `0`.
+
+```bash
+node -e "const e=require('/tmp/eval-quality-workflow/evidence-artifact.json');for(const o of e.outcomes)console.log(o.oracleId,o.state,o.disposition,o.corroboration);console.log(e.mode,e.contractVerdict,'exit',e.exitCode);console.log(JSON.stringify(e.verdictBasis));console.log(JSON.stringify(e.strength.vector))"
+```
+
+```text
+O-001 confirmed held agrees
+O-002 caught violated agrees
+O-003 confirmed held agrees
+O-004 confirmed held agrees
+O-005 confirmed held agrees
+O-006 confirmed held agrees
+O-007 confirmed held agrees
+contract-scoring CONCERNS exit 0
+[ '1 completed trials below the declared minimum of 3' ]
+{"defect":{"caught":1,"exercised":1,"rate":1},"gameability":null,"zero-action":null}
+```
+
+### 5. What the capture bought you
+
+Read the record the score just ran over:
+
+```bash
+node -e "const r=require('./examples/tutorials/workflow/sealed-run-record.json');for(const o of r.observations)console.log(o.sequence,o.operationId,'in',JSON.stringify(o.callInputs.path||o.callInputs.body),'->',JSON.stringify(o.responseBody))"
+```
+
+Three rows carry the lesson:
+
+```text
+3 create-thing in {"name":"a thing the run created"} -> {"id":"t-7","name":"a thing the run created","ok":true}
+4 get-thing in {"id":"t-7"} -> {"ok":true,"thing":{"id":"t-7","name":"untitled"}}
+```
+
+The write answered `ok: true` and echoed back the name it was sent. Its own response is indistinguishable from a correct one.
+The read at `t-7` returned `untitled`, so the service filed the record and dropped the name.
+O-002 is the oracle that compares those two, and it came out `caught`.
+
+**The identifier is the point.** Nothing in the contract could have named `t-7`, because the service minted it. A literal would have hard-coded a resource the evaluator never created, and `{ matcher: "any" }` would have matched unrelated reads. The `{ captured }` binding is what put the evaluator in front of the record the write actually created.
+
+**The verdict is CONCERNS on one basis, and that basis is the scoring limitation itself.** `coverageGaps` is empty and every other oracle held, so the only thing standing between this run and a clean result is that one `score` invocation completes one trial while the policy asks for three. You met that limit as a number you produced rather than as a warning on a page. [What Ships](/explanation/what-ships/) states it in full.
+
+---
+
+The rest of this page is the reference behind that lab.
 
 ## What you are evaluating
 
@@ -68,8 +226,7 @@ Every step carries five fields, and all five are required: `InteractionStep` is 
 ]
 ```
 
-That plan compiles clean, exit `0`, against a contract declaring `create-thing` as a `POST` whose response descriptor types `id` as `string`, and `get-thing` as a `GET` whose `path` channel types `id` as `string`.
-It is the first two steps of `corpus/dev/contracts/captured-read-back.json`, which the corpus publishes whole.
+Those are the first two steps of the contract the lab compiled.
 
 - `stepId` is what the rest of the contract addresses the step by, and an evidence pointer spells it `/interactions/{stepId}/...`.
 - `operationId` names an operation on a permitted interface, and the interface's kind decides which binding shape is legal. `compile` accepts `api`, `cli`, and `mcp`, and rejects a contract declaring `web` with `unsupported-interface-kind`.
@@ -94,37 +251,11 @@ The step-count message says what the bound is defending: "an exhaustive operatio
 
 The tags exist because the untagged spelling let `{ "title": "type-violating" }` mean the matcher to one implementation and the literal string to another, which flipped a witness match between `caught` and `missed` on one record.
 
-Step binding is the third form.
-In the plan above, `read-back` binds its `path` parameter `id` to `/interactions/create/response-body/id`, which is the `id` key `create-thing`'s response descriptor declares.
-The `create` step sends no identifier, so the service mints one, and a `GET` proving persistence is then unwritable with a literal, which would hard-code a resource the evaluator never created, and unwritable with `any`, which matches unrelated reads.
-A plan whose write supplied the identifier could name it on both sides and skip the capture, and it would prove less: a write that chooses its own identifier says nothing about what the service filed under it.
+Three compile-time checks read every capture, all in `src/core/compile/bindings.ts`, and the lab exercised two of them.
+The third is the channel:
 
-Three compile-time checks read every capture, all in `src/core/compile/bindings.ts`.
-Each message below is the real output of `node dist/cli/main.js compile` on the plan above with one field changed.
-
-**The channel.**
 A captured pointer names the channel the referenced operation's response descriptor describes, which is `response-body` off an interface that speaks HTTP and the nominated output channel off one that runs behind a command.
-Pointing it at `/interactions/create/response-status` exits `4`:
-
-```text
-eval-quality: captured-channel-undeclared: EvalContract.interactionPlan[stepId=read-back].inputBinding.path["id"]: captured pointer "/interactions/create/response-status" names the response-status channel, which the referenced operation's response descriptor does not declare (AD-26)
-```
-
-**The type.**
-The pointer's tail is exactly one segment, the declared type at that key is scalar, and it equals the declared type of the bound parameter.
-Capturing the boolean `ok` into `read-back`'s own `id`, declared `string`, exits `4`:
-
-```text
-eval-quality: unreachable-check-evidence: EvalContract.interactionPlan[stepId=read-back].inputBinding.path["id"]: captured pointer "/interactions/create/response-body/ok" resolves to a declared "boolean", which is not the "string" the bound path parameter "id" is declared as
-```
-
-**The cycle.**
-`checkBindingCycle` builds one graph over the capture edges and the `after` edges together, and rejects any cycle containing a capture edge.
-Making `create` capture from `read-back` while `read-back.after` is `create` exits `4`:
-
-```text
-eval-quality: binding-cycle: EvalContract.interactionPlan[stepId=create].inputBinding.body["name"]: captured pointer "/interactions/read-back/response-body/error" closes a cycle over the capture and temporal-clause edges; a captured value has no earlier step to resolve from (AD-39)
-```
+Pointing it at `/interactions/create/response-status` exits `4` under `captured-channel-undeclared`, because the response descriptor declares no such channel.
 
 A captured pointer resolves to a declared scalar with no transform applied, so AD-4's ban on arithmetic, projection, and user-defined functions holds by construction: the grammar has nowhere to write one.
 
@@ -138,7 +269,7 @@ The CLI defaults to `--strict-inputs`.
 `selectWithBindings` then filters those matches in a fixed order: the temporal clause, the capture ordering, then the binding predicates.
 The temporal floor is the `sequence` of the observation the `after` anchor selects.
 The capture floor is the highest `sequence` any of the step's captured bindings resolved from.
-A candidate survives only when its `sequence` is strictly greater than both, so a record whose `GET` sits at `sequence` 2 and whose `POST` sits at `sequence` 9 fails the persistence claim it would otherwise satisfy.
+A candidate survives only when its `sequence` is strictly greater than both, so a record whose read sits at `sequence` 2 and whose write sits at `sequence` 9 fails the persistence claim it would otherwise satisfy.
 `bindingOrder` resolves the plan in Kahn tiers over the same union graph `checkBindingCycle` builds, so every step's captured values are already resolved when a later tier reads them.
 
 **What the plan leaves undecided.**
@@ -165,7 +296,7 @@ The plan contributes its step identifiers to `declaredLegIds`, which is the set 
 
 You seed the fault in the workflow by hand, and the probe is where you declare it.
 A defect declares a `manifestationWitness` naming a `legId`, an `interfaceId`, an `operationId`, the inputs to send, and the relation that has to fire.
-`planPreflight` adds that leg with purpose `seeded-fault` and emits two checks for it: `seeded-faults-scoped` and `seeded-fault-fired`.
+`planPreflight` adds that leg with purpose `seeded-fault` and emits the two checks the lab saw satisfied.
 
 A clean leg is every leg already registered for the same interface and operation, collected before the fault leg joins the group, so the fault leg is never in its own clean set.
 When steps change state, those clean legs and the fault leg can be the same probe under two labels, and 1.4.0 fixed what the reducer does about it.
@@ -186,55 +317,20 @@ D-001: the operation has no leg besides the fault leg, so nothing here establish
 D-001: every other leg of the operation issued the fault leg's own request and received its answer ("create-witness-a"), so nothing here establishes that the defect is scoped to it
 ```
 
-## Running it
-
-Pre-flight first, over the contract, the probes, and the observations your harness collected:
-
-```bash
-node dist/cli/main.js preflight --contract run/eval-contract.json \
-  --probes probes.json --observations observations.json \
-  --run-id workflow-1 --out run/preflight-verdict.json
-```
-
-A failed pre-flight exits `3`, and scoring a workflow over an unfit environment establishes nothing, so stop there.
-
-Then score the sealed run record against the same contract:
-
-```bash
-node dist/cli/main.js score --record record.json \
-  --contract run/eval-contract.json --probe probe.json \
-  --preflight-verdict run/preflight-verdict.json --policy scoring-policy.json \
-  --isolation-manifest isolation-manifest.json \
-  --evaluator-configuration evaluator-configuration.json \
-  --corpus-digest <digest> --out run/evidence-artifact.json
-```
-
-`score` reads `passed` and `fixtureDigest` off the verdict, so the pre-flight it is handed has to be the one for this run.
-Every flag above is listed in [the CLI reference](/reference/cli-commands/).
-
 ## Where this stands
 
-The temporal half is proven end to end by an artifact this repository commits.
-`_bmad-output/planning-artifacts/architecture/architecture-eval-quality-2026-07-29/spike-worked-example/` holds a complete chain whose plan declares `write` on `patch-note` and `read-back` on `get-note` with `after: "write"`.
-Its O-001 compares `/interactions/read-back/response-body/note/title` with `/interactions/write/call-inputs/body/title`, resolves `caught` against the seeded defect, and the defect rate comes out 1 over 1 exercised probe.
-That is a workflow contract catching a persistence defect that a single-response check cannot see.
+The capture half and the temporal half are both proven by the chain this page runs, and you can re-run it yourself, which is the strongest claim on any page here.
 
-The capture half is proven by a committed chain.
-`corpus/dev/contracts/captured-read-back.json` is the contract the plan printed above comes from, and `_bmad-output/worked-examples/workflow-capture/` is the chain that carries it through `compile`, `seal`, pre-flight, `ingest`, `score`, and `emit`.
-Its seeded defect is a write that files the record and drops the name it was sent, answering from the request it was given, so its own response is indistinguishable from a correct one.
-The read that catches it is reached through the identifier the write returned, so the capture is what puts the evaluator in front of the record at all.
-`sealed-run-record.json` in that directory carries the read's `call-inputs`, and the identifier there is the one the create response minted.
-The defect rate comes out 1 over 1 exercised probe, on one completed trial against the policy's `minimumTrialCount` of 3, so `strength.comparable` reads `false` and the note in `evidence-artifact.json` says why.
+The contract is published bytes: `corpus/dev/contracts/captured-read-back.json`, so its digest is reproducible. Strip the file's trailing newline before hashing it, because `serializeArtifact` writes one and the digest is over the canonical bytes without it.
+
 Two contracts in `corpus/dev/contracts/` use a `{ captured }` binding, and between them they cover one value on each of its two axes: `captured-read-back.json` binds into the `path` input channel and `notes-tool-server.json` binds into `arguments`, and both capture from `response-body`, which is the source channel the three compile checks above are about.
 A capture from `stdout` or from the `artifact` channel is shipped nowhere, so what backs those is the schema, those three compile checks, and the unit tests in `tests/compile/bindings.test.ts`, `tests/score/bindings.test.ts`, and `tests/score/binding-order.test.ts`.
 
-The four-leg control branch is proven by the same chain.
-Two contracts in `corpus/dev/contracts/` declare a `fixtureReset`, and `captured-read-back.json` is the one whose verdict is committed as bytes you can open.
-Its pre-flight plans `preflight-control-observe`, `preflight-control-mutate` against `create-thing`, the contract's own `reset-the-store` against `reset-things`, and `preflight-control-observe-2`, in that order.
-`preflight-verdict.json` in that directory is the return value of `preflightFromObservations` over those legs.
-It records no leg list, because `PreflightVerdict` carries checks and a fixture digest and nothing else; what it records is `state-reset` satisfied over the first and fourth control legs and `clean-control` satisfied over all four, and the planner emits neither check unless the four legs were planned.
-`notes-tool-server.json` declares the other reset and its pre-flight runs too, in `tests/application/mcp-end-to-end.test.ts`, which asserts the verdict passed; `tests/application/preflight.test.ts` case 113 is what pins that contract's leg count and check list.
-`tests/preflight/plan.test.ts` is what covers the shapes neither contract declares.
+Two contracts in `corpus/dev/contracts/` declare a `fixtureReset`, and `captured-read-back.json` is the one the lab pre-flighted.
+Its four control legs are `preflight-control-observe`, `preflight-control-mutate` against `create-thing`, the contract's own `reset-the-store` against `reset-things`, and `preflight-control-observe-2`, in that order.
+`notes-tool-server.json` declares the other reset and its pre-flight runs too, in `tests/application/mcp-end-to-end.test.ts`, which asserts the verdict passed.
+
+One `score` invocation is a trial set of one, so the strength vector this lab produced is marked non-comparable. That limit is the command's; the library's `score` takes a trial set of any size.
 
 ## In BMAD terms
 

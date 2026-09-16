@@ -1,0 +1,93 @@
+{
+  "artifactDigest": "sha256:8c072d4c2d09215fbbbfc08bc2c7762bb8c54b0bfd409848355beae6b833a658",
+  "behaviorId": "B-001",
+  "commitDigest": "sha256:8c072d4c2d09215fbbbfc08bc2c7762bb8c54b0bfd409848355beae6b833a658",
+  "defectSignature": {
+    "condition": {
+      "predicate": {
+        "op": "equality",
+        "operands": [
+          {
+            "pointer": "/interactions/observed/response-body/note/title"
+          },
+          {
+            "literal": "Original"
+          }
+        ]
+      },
+      "selector": {
+        "inputBinding": {
+          "argument": null,
+          "arguments": null,
+          "body": null,
+          "environment": null,
+          "header": null,
+          "option": null,
+          "path": {
+            "noteId": {
+              "literal": "n-1"
+            }
+          },
+          "query": null,
+          "stdin": null
+        }
+      }
+    },
+    "interfaceKind": "api",
+    "method": "GET",
+    "observableChannel": "response-body",
+    "pathTemplate": "/notes/{noteId}"
+  },
+  "defects": [
+    {
+      "behaviorId": "B-001",
+      "defectId": "D-001",
+      "manifestationWitness": null,
+      "oracleEvidence": [
+        {
+          "digest": "sha256:e3dea465a39d7a646706d6b2057ff5c9cac2596d814a40789217992ee2323ecc",
+          "path": "examples/tutorials/walkthrough/actions.jsonl",
+          "privateRef": null,
+          "storage": "public"
+        }
+      ],
+      "severity": "critical",
+      "source": "controlled-mutation",
+      "summary": "The write reports success and stores nothing."
+    }
+  ],
+  "expectedClean": false,
+  "implementationDigest": "sha256:8c072d4c2d09215fbbbfc08bc2c7762bb8c54b0bfd409848355beae6b833a658",
+  "parentDigest": null,
+  "probeClass": "defect",
+  "probeId": "P-001",
+  "qualification": {
+    "baselinePassEvidence": {
+      "digest": "sha256:690563f2a98a1e05bac436a89e14822d89ab9c1b8ec2dc7a346ebcc9dee9da90",
+      "path": "examples/tutorials/walkthrough/baseline-actions.jsonl",
+      "privateRef": null,
+      "storage": "public"
+    },
+    "expectedObservableFailure": "a later read of the same note returns the title the write replaced",
+    "mutatedFailEvidence": {
+      "digest": "sha256:e3dea465a39d7a646706d6b2057ff5c9cac2596d814a40789217992ee2323ecc",
+      "path": "examples/tutorials/walkthrough/actions.jsonl",
+      "privateRef": null,
+      "storage": "public"
+    },
+    "mutationOperator": "guard-deletion",
+    "mutationSource": "hand-authored mutation of the update handler",
+    "rollbackVerified": true,
+    "route": "controlled-mutation",
+    "targetArtifact": {
+      "digest": "sha256:8c072d4c2d09215fbbbfc08bc2c7762bb8c54b0bfd409848355beae6b833a658",
+      "path": "examples/tutorials/walkthrough/system-under-test.md",
+      "privateRef": null,
+      "storage": "public"
+    }
+  },
+  "rationale": "A controlled mutation removing the store call from the write handler.",
+  "revisionCount": 0,
+  "schemaVersion": 5,
+  "systemId": "notes-api"
+}

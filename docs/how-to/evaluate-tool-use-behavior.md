@@ -21,7 +21,155 @@ The system under test is the MCP server: the tool call is the request, the tool 
 `PermittedInterface` declares four interface kinds and one of them is `mcp` (`src/core/schemas/interface.ts:365`), and `compile` accepts it.
 Everything from [What an `mcp` operation declares](#what-an-mcp-operation-declares) down is about this question.
 
-This repository now ships an adapter that runs a tool call. `createMcpAdapter` speaks MCP's stdio transport, and a pre-flight over an `mcp` contract runs end to end against a real tool server. Nothing in TEA has been scored against an `mcp` interface yet. This page is the first writing that takes the kind seriously.
+This repository ships an adapter that runs a tool call. `createMcpAdapter` speaks MCP's stdio transport, and the mini-lab below drives a real tool server through it, from `compile` to a scored defect. Nothing in TEA has been scored against an `mcp` interface yet.
+
+## The mini-lab
+
+This runs a real tool server. Work from a clone with the binary built:
+
+```bash
+git clone https://github.com/bmad-code-org/bmad-eval-quality.git
+cd bmad-eval-quality
+npm ci
+npm run build
+```
+
+```bash
+mkdir -p /tmp/eval-quality-tool-use
+```
+
+Three files under `examples/tutorials/tool-use/` make this possible.
+`tool-server.mjs` is a small MCP server speaking the stdio transport, publishing two tools: `search_notes` and `create_note`.
+`notes-store.mjs` is the logic behind them.
+`run-tool-calls.mjs` is the caller-side helper: it wires `createMcpAdapter` with an `McpTargetPolicy` mapping the contract's logical interface to that server, drives the calls, and writes what came back.
+
+That third file is the boundary made concrete. This package launches nothing on its own, and the helper is the caller that does.
+
+### 1. Compile the contract
+
+```bash
+node dist/cli/main.js compile --in examples/tutorials/tool-use/contract.json --out /tmp/eval-quality-tool-use/eval-contract.json
+```
+
+Exit `0`.
+
+### 2. Issue the pre-flight legs against a real server
+
+```bash
+node examples/tutorials/tool-use/run-tool-calls.mjs --contract /tmp/eval-quality-tool-use/eval-contract.json --run-id tool-run-1 --mode legs --out /tmp/eval-quality-tool-use/observations.json
+```
+
+The helper spawns the server, performs the MCP handshake, makes each planned call, and prints the arguments it sent beside the structured result it received:
+
+```text
+leg leg-first-query  search_notes({"query":"alpha"})
+  -> {"ok":true,"matches":[{"noteId":"n-1"}],"totalCount":1}
+leg leg-second-query  search_notes({"query":"beta"})
+  -> {"ok":true,"matches":[{"noteId":"n-2"}],"totalCount":1}
+leg leg-first-title  create_note({"title":"the first note"})
+  -> {"ok":true,"noteId":"note-the-first-note"}
+leg leg-second-title  create_note({"title":"the second note"})
+  -> {"ok":true,"noteId":"note-the-second-note"}
+```
+
+The first two legs are `search_notes`'s sensitivity witness: two calls differing in one argument, answering differently, which is what establishes that the tool reads what you send it. The next two are the same for `create_note`. Four more control legs follow, and the helper prints the reduced verdict at the end.
+
+These are real tool calls. One detail is worth knowing before you write your own adapter: the shipped adapter opens **one session per tool call**, so the server is launched, handshaken, called once and torn down every time. A server holding its notes in memory would forget every write before the read-back that should find it, which is why this fixture keeps its store in a file the policy names.
+
+### 3. Watch the two arms diverge
+
+The plan's own steps, first against the clean server:
+
+```bash
+node examples/tutorials/tool-use/run-tool-calls.mjs --contract /tmp/eval-quality-tool-use/eval-contract.json --mode steps --out /tmp/eval-quality-tool-use/clean-steps.json
+```
+
+Then with the defect seeded, which is the fixture's stand-in for an edit you would make by hand:
+
+```bash
+node examples/tutorials/tool-use/run-tool-calls.mjs --contract /tmp/eval-quality-tool-use/eval-contract.json --mode steps --seed-defect --out /tmp/eval-quality-tool-use/seeded-steps.json
+```
+
+Two lines out of those two runs carry the whole lesson:
+
+```text
+step create     create_note({"title":"a new note"})
+  clean  -> {"ok":true,"noteId":"note-a-new-note"}
+  seeded -> {"ok":true,"noteId":"note-a-new-note"}
+
+step read-back  search_notes({"query":"note-a-new-note"})
+  clean  -> {"matches":[{"noteId":"note-a-new-note"}],"totalCount":1,"topMatch":{"title":"a new note"}}
+  seeded -> {"matches":[{"noteId":"note-a-new-note"}],"totalCount":1,"topMatch":{"title":"(untitled)"}}
+```
+
+**The creation answers identically in both arms.** Same `ok`, same identifier. A check over the write's own result passes against a server that discarded the title.
+The independent read-back is the only thing that separates them, and that is why a tool reporting success is weaker evidence than checking the state it left.
+
+### 4. Preflight and score
+
+```bash
+node dist/cli/main.js preflight \
+  --contract /tmp/eval-quality-tool-use/eval-contract.json \
+  --probes examples/tutorials/tool-use/probes.json \
+  --observations examples/tutorials/tool-use/observations.json \
+  --run-id tool-run-1 \
+  --out /tmp/eval-quality-tool-use/preflight-verdict.json
+```
+
+```bash
+node -e "const v=require('/tmp/eval-quality-tool-use/preflight-verdict.json');console.log('passed:',v.passed);for(const c of v.checks)console.log(c.kind,c.operationId,c.outcome)"
+```
+
+```text
+passed: true
+interface-present search-notes satisfied
+interface-present create-note satisfied
+input-sensitivity search-notes satisfied
+input-sensitivity create-note satisfied
+state-reset null satisfied
+clean-control null satisfied
+```
+
+```bash
+node dist/cli/main.js score \
+  --record examples/tutorials/tool-use/sealed-run-record.json \
+  --contract /tmp/eval-quality-tool-use/eval-contract.json \
+  --probe examples/tutorials/tool-use/probe.json \
+  --preflight-verdict /tmp/eval-quality-tool-use/preflight-verdict.json \
+  --policy examples/tutorials/tool-use/scoring-policy.json \
+  --isolation-manifest examples/tutorials/tool-use/isolation-manifest.json \
+  --evaluator-configuration examples/tutorials/tool-use/evaluator-configuration.json \
+  --corpus-digest sha256:74259e881b443bf6d063bc7d626cf9d666127475410ec69d7410d7c3801fe2f2 \
+  --out /tmp/eval-quality-tool-use/evidence-artifact.json
+```
+
+```bash
+node -e "const e=require('/tmp/eval-quality-tool-use/evidence-artifact.json');for(const o of e.outcomes)console.log(o.oracleId,o.state,o.disposition,o.corroboration);console.log(e.mode,e.contractVerdict,'exit',e.exitCode);console.log(JSON.stringify(e.strength.vector))"
+```
+
+```text
+O-001 caught violated agrees
+O-002 confirmed held agrees
+O-003 confirmed held agrees
+O-004 confirmed held agrees
+contract-scoring CONCERNS exit 0
+{"defect":{"caught":1,"exercised":1,"rate":1},"gameability":null,"zero-action":null}
+```
+
+O-001 is the read-back oracle, and it came out `caught`.
+
+### 5. Two things the lab decided for you
+
+**The contract is authored rather than reused, and the reason is the one-oracle rule.**
+`corpus/dev/contracts/notes-tool-server.json` compiles, seals and pre-flights against this same server unchanged, and it can never show a caught defect: its two behaviors declare four oracles and three, and `designatedOracleIdOf` resolves an oracle only for a behavior declaring exactly one.
+A defect probe naming either behavior has no designated oracle, so the witness match has nothing to attach a detection to.
+The tutorial's contract declares four behaviors with one oracle each. That is the same discipline the [skill guide](/how-to/evaluate-skill-behavior/) turns on, and here it is the difference between a contract that can score a catch and one that cannot.
+
+**The observations are measured rather than authored.** The committed `observations.json` is byte-identical to what the helper writes when you run step 2 against the real spawned server, and `tests/application/tool-use-tutorial.test.ts` runs that comparison on every build. The chain builder replays the calls against `notes-store.mjs`, the same module the server imports, so there is one definition of what the tools answer.
+
+---
+
+The rest of this page is the reference behind that lab.
 
 ## What you are evaluating
 
@@ -284,25 +432,12 @@ A tool call that reports success and changed nothing is the tool-use version of 
 Write it as two steps and one `deep-equality` under a `not`: bind the write step's argument, bind a later read step with `after` naming the write, and compare what was sent against what came back on the read.
 An oracle over the write step's own response passes on a tool that silently discarded the call.
 
-## Running it
+## Running it against your own server
 
-The commands are the two on the [CLI reference](/reference/cli-commands/), and they are the same for every interface kind.
-Both fences below are command grammar: they name files this page never writes, so copying them verbatim reports a missing file.
+The mini-lab above is the runnable version of this section, against the fixture server this repository ships. Pointing the same commands at a server of your own changes two things and nothing else.
 
-```bash
-node dist/cli/main.js preflight --contract eval-contract.json \
-  --probes probes.json --observations observations.json \
-  --run-id tool-run-1 --out preflight-verdict.json
-```
-
-```bash
-node dist/cli/main.js score --record sealed-run-record.json \
-  --contract eval-contract.json --probe probe.json \
-  --preflight-verdict preflight-verdict.json --policy scoring-policy.json \
-  --isolation-manifest isolation-manifest.json \
-  --evaluator-configuration evaluator-configuration.json \
-  --corpus-digest <digest> --out evidence-artifact.json
-```
+The contract's `logicalId` maps to your server through an `McpTargetPolicy` you write, the way `run-tool-calls.mjs` maps the fixture's.
+The observations then come from your run rather than from the committed file.
 
 A planned mcp leg is issued to whatever port is wired, and `createMcpAdapter` is the one this package ships for it (`src/adapters/mcp-adapter.ts`). Wire another kind's adapter and how it fails is that adapter's: the shipped command-line adapter throws `forbidden-target` on any request that is not `cli`, before it builds anything, and an adapter that answered with an api or cli observation instead reaches the reducer, which reports `port-contract-violation`.
 
@@ -315,9 +450,9 @@ The transport is stdio and nothing else. A server reached over Streamable HTTP s
 
 ## Where this stands
 
-**Compiles, and runs a pre-flight.** The kind, its own operation inventory over a published tool name, a parse that succeeds, and both contract-side gates open. A contract over an MCP tool server compiles under every discipline rule, plans a pre-flight whose legs are tool-call requests, and completes that pre-flight against `createMcpAdapter` over a real stdio tool server. Wire an adapter of another mechanism and the shipped command-line adapter denies the request with `forbidden-target`, while an adapter answering with another mechanism's observation gets `port-contract-violation`.
+**Runs end to end, and you can re-run it.** The mini-lab compiles an `mcp` contract under every discipline rule, plans a pre-flight whose legs are tool-call requests, completes that pre-flight against `createMcpAdapter` over a real stdio tool server, and scores a seeded tool-use defect to `caught`. The observations it scores are the bytes a live run produces, compared on every build. Wire an adapter of another mechanism and the shipped command-line adapter denies the request with `forbidden-target`, while an adapter answering with another mechanism's observation gets `port-contract-violation`.
 
-**Scores a probe.** A defect signature declares the tool name, the qualification gate admits the kind, and a recorded tool call's arguments are addressable, so a seeded tool-use defect can be qualified and matched against a sealed run record.
+**Scores a probe.** A defect signature declares the tool name, the qualification gate admits the kind, and a recorded tool call's arguments are addressable, so a seeded tool-use defect is qualified and matched against a sealed run record.
 
 **Missing.** A channel model for a text-shaped tool result.
 

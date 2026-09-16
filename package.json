@@ -101,6 +101,8 @@
     "check:corpus": "node scripts/check-dev-corpus.ts",
     "generate:worked-example": "node scripts/generate-worked-example.ts",
     "check:worked-example": "node scripts/check-worked-example.ts",
+    "generate:tutorials": "node scripts/generate-tutorials.ts",
+    "check:tutorials": "node scripts/check-tutorials.ts",
     "generate:version": "node scripts/generate-version.ts",
     "check:version": "node scripts/check-version.ts",
     "generate:lockfile-age-cache": "node scripts/generate-lockfile-age-cache.ts",
@@ -117,7 +119,7 @@
     "release:major": "gh workflow run publish.yml --ref main -f bump=major",
     "release:prepare": "node scripts/release-prepare.mjs",
     "release:publish": "gh workflow run publish.yml --ref main -f bump=none",
-    "validate": "npm run build && npm run typecheck && npm run lint && npm run check:docs && npm run check:doc-invocations && npm run check:shareable && npm run lint:spine && npm run check:vectors && npm run check:schemas && npm run check:ad5-registry && npm run check:ad28-registry && npm run check:ad31-table && npm run check:ad33-table && npm run check:ad21-table && npm run check:layers && npm run check:lineage && npm run check:boundary && npm run check:corpus && npm run check:doc-counts && npm run check:doc-claims && npm run check:worked-example && npm run check:version && npm run check:lockfile-age && npm run check:licences && npm run test:coverage",
+    "validate": "npm run build && npm run typecheck && npm run lint && npm run check:docs && npm run check:doc-invocations && npm run check:shareable && npm run lint:spine && npm run check:vectors && npm run check:schemas && npm run check:ad5-registry && npm run check:ad28-registry && npm run check:ad31-table && npm run check:ad33-table && npm run check:ad21-table && npm run check:layers && npm run check:lineage && npm run check:boundary && npm run check:corpus && npm run check:doc-counts && npm run check:doc-claims && npm run check:worked-example && npm run check:tutorials && npm run check:version && npm run check:lockfile-age && npm run check:licences && npm run test:coverage",
     "prepack": "npm run clean && npm run build",
     "prepublishOnly": "node scripts/assert-publish-authorized.mjs"
   },

@@ -1,0 +1,204 @@
+[
+  {
+    "body": {
+      "kind": "json",
+      "value": {
+        "ok": true,
+        "thing": {
+          "id": "t-1",
+          "name": "alpha"
+        }
+      }
+    },
+    "headers": {
+      "content-type": "application/json"
+    },
+    "interfaceId": "thing-service",
+    "kind": "api",
+    "operationId": "get-thing",
+    "probeId": "read-witness-a",
+    "status": 200
+  },
+  {
+    "body": {
+      "kind": "json",
+      "value": {
+        "error": "no thing is filed under that identifier",
+        "ok": false
+      }
+    },
+    "headers": {
+      "content-type": "application/json"
+    },
+    "interfaceId": "thing-service",
+    "kind": "api",
+    "operationId": "get-thing",
+    "probeId": "read-witness-b",
+    "status": 404
+  },
+  {
+    "body": {
+      "kind": "json",
+      "value": {
+        "id": "t-1",
+        "name": "gamma",
+        "ok": true
+      }
+    },
+    "headers": {
+      "content-type": "application/json"
+    },
+    "interfaceId": "thing-service",
+    "kind": "api",
+    "operationId": "create-thing",
+    "probeId": "create-witness-a",
+    "status": 201
+  },
+  {
+    "body": {
+      "kind": "json",
+      "value": {
+        "id": "t-1",
+        "name": "beta",
+        "ok": true
+      }
+    },
+    "headers": {
+      "content-type": "application/json"
+    },
+    "interfaceId": "thing-service",
+    "kind": "api",
+    "operationId": "create-thing",
+    "probeId": "create-witness-b",
+    "status": 201
+  },
+  {
+    "body": {
+      "kind": "json",
+      "value": {
+        "ok": true,
+        "seededName": "gamma"
+      }
+    },
+    "headers": {
+      "content-type": "application/json"
+    },
+    "interfaceId": "thing-service",
+    "kind": "api",
+    "operationId": "reset-things",
+    "probeId": "reset-witness-a",
+    "status": 200
+  },
+  {
+    "body": {
+      "kind": "json",
+      "value": {
+        "ok": true,
+        "seededName": "alpha"
+      }
+    },
+    "headers": {
+      "content-type": "application/json"
+    },
+    "interfaceId": "thing-service",
+    "kind": "api",
+    "operationId": "reset-things",
+    "probeId": "reset-witness-b",
+    "status": 200
+  },
+  {
+    "body": {
+      "kind": "json",
+      "value": {
+        "ok": true,
+        "thing": {
+          "id": "t-1",
+          "name": "alpha"
+        }
+      }
+    },
+    "headers": {
+      "content-type": "application/json"
+    },
+    "interfaceId": "thing-service",
+    "kind": "api",
+    "operationId": "get-thing",
+    "probeId": "preflight-control-observe",
+    "status": 200
+  },
+  {
+    "body": {
+      "kind": "json",
+      "value": {
+        "id": "t-1",
+        "name": "gamma",
+        "ok": true
+      }
+    },
+    "headers": {
+      "content-type": "application/json"
+    },
+    "interfaceId": "thing-service",
+    "kind": "api",
+    "operationId": "create-thing",
+    "probeId": "preflight-control-mutate",
+    "status": 201
+  },
+  {
+    "body": {
+      "kind": "json",
+      "value": {
+        "ok": true,
+        "seededName": "alpha"
+      }
+    },
+    "headers": {
+      "content-type": "application/json"
+    },
+    "interfaceId": "thing-service",
+    "kind": "api",
+    "operationId": "reset-things",
+    "probeId": "reset-the-store",
+    "status": 200
+  },
+  {
+    "body": {
+      "kind": "json",
+      "value": {
+        "ok": true,
+        "thing": {
+          "id": "t-1",
+          "name": "alpha"
+        }
+      }
+    },
+    "headers": {
+      "content-type": "application/json"
+    },
+    "interfaceId": "thing-service",
+    "kind": "api",
+    "operationId": "get-thing",
+    "probeId": "preflight-control-observe-2",
+    "status": 200
+  },
+  {
+    "body": {
+      "kind": "json",
+      "value": {
+        "ok": true,
+        "thing": {
+          "id": "t-8",
+          "name": "untitled"
+        }
+      }
+    },
+    "headers": {
+      "content-type": "application/json"
+    },
+    "interfaceId": "thing-service",
+    "kind": "api",
+    "operationId": "get-thing",
+    "probeId": "workflow-defect-leg",
+    "status": 200
+  }
+]

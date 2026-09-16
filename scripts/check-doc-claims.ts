@@ -676,7 +676,20 @@ export async function runDocClaims(
 			// this the short form is ambiguous and the check would refuse a citation
 			// a reader resolves without effort.
 			const qualified = new Map<string, string>()
+			// A fenced block is output rather than prose, and a diagnostic a page
+			// transcribes carries the file and line of whatever tree the command
+			// ran over, which is commonly a fixture the page itself created. Read
+			// as a citation that path resolves to nothing here and the class fails
+			// on a page that is correct. The invocation check already holds a
+			// transcribed block against the bytes the run really wrote, so the
+			// claim is held either way.
+			let fenced = false
 			lines.forEach((line, index) => {
+				if (line.trimStart().startsWith('```')) {
+					fenced = !fenced
+					return
+				}
+				if (fenced) return
 				for (const match of line.matchAll(citation)) {
 					const cited = match[1] as string
 					const first = Number(match[2])

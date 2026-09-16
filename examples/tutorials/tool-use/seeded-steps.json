@@ -1,0 +1,185 @@
+[
+  {
+    "artifacts": {},
+    "callInputs": {
+      "argument": null,
+      "arguments": {
+        "query": "alpha"
+      },
+      "body": null,
+      "environment": null,
+      "header": null,
+      "option": null,
+      "path": null,
+      "query": null,
+      "stdin": null
+    },
+    "exitCode": null,
+    "observationId": "obs-search",
+    "operationId": "search-notes",
+    "principal": null,
+    "provenance": "evaluator-chosen",
+    "responseBody": {
+      "matches": [
+        {
+          "noteId": "n-1"
+        }
+      ],
+      "ok": true,
+      "totalCount": 1
+    },
+    "responseHeaders": null,
+    "responseStatus": 0,
+    "sequence": 1,
+    "stderr": {
+      "kind": "absent"
+    },
+    "stdout": {
+      "kind": "absent"
+    }
+  },
+  {
+    "artifacts": {},
+    "callInputs": {
+      "argument": null,
+      "arguments": {
+        "title": "a new note"
+      },
+      "body": null,
+      "environment": null,
+      "header": null,
+      "option": null,
+      "path": null,
+      "query": null,
+      "stdin": null
+    },
+    "exitCode": null,
+    "observationId": "obs-create",
+    "operationId": "create-note",
+    "principal": null,
+    "provenance": "evaluator-chosen",
+    "responseBody": {
+      "noteId": "note-a-new-note",
+      "ok": true
+    },
+    "responseHeaders": null,
+    "responseStatus": 0,
+    "sequence": 2,
+    "stderr": {
+      "kind": "absent"
+    },
+    "stdout": {
+      "kind": "absent"
+    }
+  },
+  {
+    "artifacts": {},
+    "callInputs": {
+      "argument": null,
+      "arguments": {
+        "query": 42
+      },
+      "body": null,
+      "environment": null,
+      "header": null,
+      "option": null,
+      "path": null,
+      "query": null,
+      "stdin": null
+    },
+    "exitCode": null,
+    "observationId": "obs-malformed-search",
+    "operationId": "search-notes",
+    "principal": null,
+    "provenance": "evaluator-chosen",
+    "responseBody": {
+      "matches": [],
+      "ok": false,
+      "totalCount": 0
+    },
+    "responseHeaders": null,
+    "responseStatus": 1,
+    "sequence": 3,
+    "stderr": {
+      "kind": "absent"
+    },
+    "stdout": {
+      "kind": "absent"
+    }
+  },
+  {
+    "artifacts": {},
+    "callInputs": {
+      "argument": null,
+      "arguments": {
+        "title": 42
+      },
+      "body": null,
+      "environment": null,
+      "header": null,
+      "option": null,
+      "path": null,
+      "query": null,
+      "stdin": null
+    },
+    "exitCode": null,
+    "observationId": "obs-malformed-create",
+    "operationId": "create-note",
+    "principal": null,
+    "provenance": "evaluator-chosen",
+    "responseBody": {
+      "ok": false
+    },
+    "responseHeaders": null,
+    "responseStatus": 1,
+    "sequence": 4,
+    "stderr": {
+      "kind": "absent"
+    },
+    "stdout": {
+      "kind": "absent"
+    }
+  },
+  {
+    "artifacts": {},
+    "callInputs": {
+      "argument": null,
+      "arguments": {
+        "query": "note-a-new-note"
+      },
+      "body": null,
+      "environment": null,
+      "header": null,
+      "option": null,
+      "path": null,
+      "query": null,
+      "stdin": null
+    },
+    "exitCode": null,
+    "observationId": "obs-read-back",
+    "operationId": "search-notes",
+    "principal": null,
+    "provenance": "evaluator-chosen",
+    "responseBody": {
+      "matches": [
+        {
+          "noteId": "note-a-new-note"
+        }
+      ],
+      "ok": true,
+      "topMatch": {
+        "title": "(untitled)"
+      },
+      "totalCount": 1
+    },
+    "responseHeaders": null,
+    "responseStatus": 0,
+    "sequence": 5,
+    "stderr": {
+      "kind": "absent"
+    },
+    "stdout": {
+      "kind": "absent"
+    }
+  }
+]

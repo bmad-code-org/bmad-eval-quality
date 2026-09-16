@@ -1,0 +1,555 @@
+{
+  "behaviors": [
+    {
+      "description": "A write that reports success has stored the change.",
+      "id": "B-001",
+      "observableSuccessCriterion": "An independent read of the same note after a successful write returns the title the write sent.",
+      "oracles": [
+        "O-001",
+        "O-002",
+        "O-003",
+        "O-004"
+      ],
+      "requirementLinks": [
+        {
+          "id": "REQ-1",
+          "scheme": "local"
+        }
+      ],
+      "riskLinks": [
+        {
+          "id": "RISK-1",
+          "scheme": "local-risk"
+        }
+      ],
+      "severity": "critical"
+    }
+  ],
+  "budgets": {
+    "maxCostUsd": "0.25",
+    "maxToolCalls": 20,
+    "maxWallClockMinutes": 5
+  },
+  "contractId": "tutorial-notes-api",
+  "fixtureReset": null,
+  "forbiddenInputs": [
+    "original-spec",
+    "source-code",
+    "repository",
+    "builder-transcript",
+    "implementation-logs",
+    "comparator-results",
+    "human-labels"
+  ],
+  "interactionPlan": [
+    {
+      "after": null,
+      "cardinality": "exactly-one",
+      "inputBinding": {
+        "body": {
+          "title": {
+            "matcher": "any"
+          }
+        },
+        "header": null,
+        "path": {
+          "noteId": {
+            "literal": "n-1"
+          }
+        },
+        "query": null
+      },
+      "operationId": "update-note",
+      "stepId": "write"
+    },
+    {
+      "after": "write",
+      "cardinality": "exactly-one",
+      "inputBinding": {
+        "body": null,
+        "header": null,
+        "path": {
+          "noteId": {
+            "literal": "n-1"
+          }
+        },
+        "query": null
+      },
+      "operationId": "read-note",
+      "stepId": "read-back"
+    },
+    {
+      "after": "write",
+      "cardinality": "exactly-one",
+      "inputBinding": {
+        "body": null,
+        "header": null,
+        "path": null,
+        "query": {
+          "title": {
+            "literal": "Revised"
+          }
+        }
+      },
+      "operationId": "list-notes",
+      "stepId": "list"
+    }
+  ],
+  "oracles": [
+    {
+      "check": {
+        "op": "equality",
+        "operands": [
+          {
+            "pointer": "/interactions/write/call-inputs/body/title"
+          },
+          {
+            "pointer": "/interactions/read-back/response-body/note/title"
+          }
+        ]
+      },
+      "commentary": "The only check here that can tell a stored write from a reported one.",
+      "direction": {
+        "evidenceTargets": [
+          "/interactions/write/call-inputs/body/title",
+          "/interactions/read-back/response-body/note/title"
+        ],
+        "negativeDomain": "A write reporting success while a later read returns the old title.",
+        "polarity": "expects-hold",
+        "relation": "equality",
+        "scope": "One write followed by an independent read of the same note."
+      },
+      "id": "O-001",
+      "polarity": "expects-hold"
+    },
+    {
+      "check": {
+        "op": "all",
+        "operands": [
+          {
+            "op": "existence",
+            "operands": [
+              {
+                "pointer": "/interactions/write/response-body/ok"
+              }
+            ]
+          },
+          {
+            "op": "absence",
+            "operands": [
+              {
+                "pointer": "/interactions/write/response-body/error"
+              }
+            ]
+          }
+        ]
+      },
+      "commentary": null,
+      "direction": {
+        "evidenceTargets": [
+          "/interactions/write/response-body/ok",
+          "/interactions/write/response-body/error"
+        ],
+        "negativeDomain": "A write reporting success with a diagnostic beside it.",
+        "polarity": "expects-hold",
+        "relation": "all",
+        "scope": "The whole write response."
+      },
+      "id": "O-002",
+      "polarity": "expects-hold"
+    },
+    {
+      "check": {
+        "op": "existence",
+        "operands": [
+          {
+            "pointer": "/interactions/read-back/response-body/note"
+          }
+        ]
+      },
+      "commentary": null,
+      "direction": {
+        "evidenceTargets": [
+          "/interactions/read-back/response-body/note"
+        ],
+        "negativeDomain": "A read of a seeded note carrying no note at all.",
+        "polarity": "expects-hold",
+        "relation": "existence",
+        "scope": "The read-back response."
+      },
+      "id": "O-003",
+      "polarity": "expects-hold"
+    },
+    {
+      "check": {
+        "collection": {
+          "pointer": "/interactions/list/response-body/notes"
+        },
+        "op": "for-all",
+        "predicate": {
+          "op": "existence",
+          "operands": [
+            {
+              "pointer": "@/id"
+            }
+          ]
+        }
+      },
+      "commentary": "Ranges over the notes carrying the new title, so it certifies nothing while there are none.",
+      "direction": {
+        "evidenceTargets": [
+          "/interactions/list/response-body/notes"
+        ],
+        "negativeDomain": "A listed note carrying no identifier.",
+        "polarity": "expects-hold",
+        "relation": "for-all",
+        "scope": "Every note the filtered list returns."
+      },
+      "id": "O-004",
+      "polarity": "expects-hold"
+    }
+  ],
+  "parentDigest": null,
+  "permittedInterfaces": [
+    {
+      "kind": "api",
+      "logicalId": "notes-api",
+      "operations": [
+        {
+          "method": "PATCH",
+          "operationId": "update-note",
+          "pathTemplate": "/notes/{noteId}",
+          "requestShape": {
+            "body": {
+              "permittedKeys": [],
+              "requiredKeys": [
+                "title"
+              ],
+              "types": {
+                "title": "string"
+              }
+            },
+            "header": {
+              "permittedKeys": [],
+              "requiredKeys": [],
+              "types": {}
+            },
+            "path": {
+              "permittedKeys": [],
+              "requiredKeys": [
+                "noteId"
+              ],
+              "types": {
+                "noteId": "string"
+              }
+            },
+            "query": {
+              "permittedKeys": [],
+              "requiredKeys": [],
+              "types": {}
+            }
+          },
+          "responseDescriptor": {
+            "channelRoles": {
+              "/error": "diagnostic",
+              "/note": "payload",
+              "/ok": "success-indicator"
+            },
+            "collectionLocations": [],
+            "permittedKeys": [
+              "note",
+              "error"
+            ],
+            "requiredKeys": [
+              "ok"
+            ],
+            "successIndicator": "/ok",
+            "types": {
+              "error": "string",
+              "note": "object",
+              "ok": "boolean"
+            }
+          },
+          "sensitivityWitness": {
+            "channel": "body",
+            "legs": [
+              {
+                "inputs": {
+                  "body": {
+                    "kind": "json",
+                    "value": {
+                      "title": "Alpha"
+                    }
+                  },
+                  "header": {},
+                  "path": {
+                    "noteId": "n-1"
+                  },
+                  "query": {}
+                },
+                "legId": "update-witness-a"
+              },
+              {
+                "inputs": {
+                  "body": {
+                    "kind": "json",
+                    "value": {
+                      "title": "Beta"
+                    }
+                  },
+                  "header": {},
+                  "path": {
+                    "noteId": "n-1"
+                  },
+                  "query": {}
+                },
+                "legId": "update-witness-b"
+              }
+            ],
+            "relation": {
+              "op": "not",
+              "operands": [
+                {
+                  "op": "deep-equality",
+                  "operands": [
+                    {
+                      "pointer": "/interactions/update-witness-a/response-body"
+                    },
+                    {
+                      "pointer": "/interactions/update-witness-b/response-body"
+                    }
+                  ]
+                }
+              ]
+            },
+            "witnessId": "update-note-sensitivity"
+          },
+          "stateChangeMarker": true,
+          "volatilePointers": []
+        },
+        {
+          "method": "GET",
+          "operationId": "read-note",
+          "pathTemplate": "/notes/{noteId}",
+          "requestShape": {
+            "body": {
+              "permittedKeys": [],
+              "requiredKeys": [],
+              "types": {}
+            },
+            "header": {
+              "permittedKeys": [],
+              "requiredKeys": [],
+              "types": {}
+            },
+            "path": {
+              "permittedKeys": [],
+              "requiredKeys": [
+                "noteId"
+              ],
+              "types": {
+                "noteId": "string"
+              }
+            },
+            "query": {
+              "permittedKeys": [],
+              "requiredKeys": [],
+              "types": {}
+            }
+          },
+          "responseDescriptor": {
+            "channelRoles": {
+              "/error": "diagnostic",
+              "/note": "payload",
+              "/ok": "success-indicator"
+            },
+            "collectionLocations": [],
+            "permittedKeys": [
+              "note",
+              "error"
+            ],
+            "requiredKeys": [
+              "ok"
+            ],
+            "successIndicator": "/ok",
+            "types": {
+              "error": "string",
+              "note": "object",
+              "ok": "boolean"
+            }
+          },
+          "sensitivityWitness": {
+            "channel": "path",
+            "legs": [
+              {
+                "inputs": {
+                  "body": {
+                    "kind": "absent"
+                  },
+                  "header": {},
+                  "path": {
+                    "noteId": "n-1"
+                  },
+                  "query": {}
+                },
+                "legId": "read-witness-a"
+              },
+              {
+                "inputs": {
+                  "body": {
+                    "kind": "absent"
+                  },
+                  "header": {},
+                  "path": {
+                    "noteId": "n-2"
+                  },
+                  "query": {}
+                },
+                "legId": "read-witness-b"
+              }
+            ],
+            "relation": {
+              "op": "not",
+              "operands": [
+                {
+                  "op": "deep-equality",
+                  "operands": [
+                    {
+                      "pointer": "/interactions/read-witness-a/response-body"
+                    },
+                    {
+                      "pointer": "/interactions/read-witness-b/response-body"
+                    }
+                  ]
+                }
+              ]
+            },
+            "witnessId": "read-note-sensitivity"
+          },
+          "stateChangeMarker": false,
+          "volatilePointers": []
+        },
+        {
+          "method": "GET",
+          "operationId": "list-notes",
+          "pathTemplate": "/notes",
+          "requestShape": {
+            "body": {
+              "permittedKeys": [],
+              "requiredKeys": [],
+              "types": {}
+            },
+            "header": {
+              "permittedKeys": [],
+              "requiredKeys": [],
+              "types": {}
+            },
+            "path": {
+              "permittedKeys": [],
+              "requiredKeys": [],
+              "types": {}
+            },
+            "query": {
+              "permittedKeys": [],
+              "requiredKeys": [
+                "title"
+              ],
+              "types": {
+                "title": "string"
+              }
+            }
+          },
+          "responseDescriptor": {
+            "channelRoles": {
+              "/error": "diagnostic",
+              "/notes": "collection"
+            },
+            "collectionLocations": [],
+            "permittedKeys": [
+              "error"
+            ],
+            "requiredKeys": [
+              "notes"
+            ],
+            "successIndicator": "/notes",
+            "types": {
+              "error": "string",
+              "notes": "array"
+            }
+          },
+          "sensitivityWitness": {
+            "channel": "query",
+            "legs": [
+              {
+                "inputs": {
+                  "body": {
+                    "kind": "absent"
+                  },
+                  "header": {},
+                  "path": {},
+                  "query": {
+                    "title": "Original"
+                  }
+                },
+                "legId": "list-witness-a"
+              },
+              {
+                "inputs": {
+                  "body": {
+                    "kind": "absent"
+                  },
+                  "header": {},
+                  "path": {},
+                  "query": {
+                    "title": "Absent"
+                  }
+                },
+                "legId": "list-witness-b"
+              }
+            ],
+            "relation": {
+              "op": "not",
+              "operands": [
+                {
+                  "op": "deep-equality",
+                  "operands": [
+                    {
+                      "pointer": "/interactions/list-witness-a/response-body"
+                    },
+                    {
+                      "pointer": "/interactions/list-witness-b/response-body"
+                    }
+                  ]
+                }
+              ]
+            },
+            "witnessId": "list-notes-sensitivity"
+          },
+          "stateChangeMarker": false,
+          "volatilePointers": []
+        }
+      ]
+    }
+  ],
+  "probeStepBound": 8,
+  "referenceSets": null,
+  "requiredEvidence": [
+    "Request and response pair for every call, in order."
+  ],
+  "revisionCount": 0,
+  "rubrics": [],
+  "safetyLimits": [
+    "No request to any host other than the mapped notes-api target."
+  ],
+  "schemaVersion": 5,
+  "scopedResources": null,
+  "siblingGroups": null,
+  "sourceSpecDigest": null,
+  "testData": {
+    "cleanup": "Delete every note the run created or changed.",
+    "principals": null,
+    "resources": null,
+    "setup": "Seed exactly one note with identifier n-1 and title \"Original\"."
+  },
+  "waivers": []
+}

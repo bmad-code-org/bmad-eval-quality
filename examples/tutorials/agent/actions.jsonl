@@ -1,0 +1,3 @@
+{"action":"run","step":"summarize","subcommand":"summarize","sent":{"input":"alpha.changelog","out":"notes.json"},"exitCode":0}
+{"action":"run","step":"show","subcommand":"show","sent":{"notes":"notes.json"},"exitCode":0}
+{"action":"run","step":"refuse","subcommand":"summarize","sent":{"input":"broken.changelog","out":"broken-notes.json"},"exitCode":0}

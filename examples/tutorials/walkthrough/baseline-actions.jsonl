@@ -1,0 +1,3 @@
+{"action":"call","step":"write","operation":"update-note","sent":{"title":"Revised"},"received":{"ok":true,"title":"Revised"}}
+{"action":"call","step":"read-back","operation":"read-note","sent":{"noteId":"n-1"},"received":{"ok":true,"title":"Revised"}}
+{"action":"call","step":"list","operation":"list-notes","sent":{"title":"Revised"},"received":{"notes":[{"id":"n-1","title":"Revised"}]}}
