@@ -344,7 +344,7 @@ const DatedClaimAsOf = z
 		),
 	})
 	.describe(
-		'Pins a `read` claim to the content a human read it against, so an edit to that content fails the gate instead of a stale confirmation passing forever. Two entries may share a `file` and `key`, one per subject, when a claim rests on more than one file.',
+		'Pins a `read` claim to the content a human read it against, so an edit to that content fails the gate instead of a stale confirmation passing forever. A claim resting on more than one subject wants a predicate over the set, not several pins under one key.',
 	)
 
 const DatedClaimEntry = z
@@ -387,7 +387,27 @@ const DatedBlock = z
 		headings: ProsePattern.optional().describe(
 			'A heading that says its section is about what has not happened, so every bullet under one is dated whatever words it uses.',
 		),
-		claims: z.array(DatedClaimEntry).min(1),
+		claims: z
+			.array(DatedClaimEntry)
+			.min(1)
+			.superRefine((claims, ctx) => {
+				// One entry per sentence. Two entries sharing a `file` and `key` both
+				// pass the "seen" check below, since it is keyed on the same two
+				// values, so a duplicate is not caught there; left unrefused, it
+				// double-counts one sentence as two registered claims.
+				const seen = new Set<string>()
+				claims.forEach((claim, index) => {
+					const key = compositeKey(claim.file, claim.key)
+					if (seen.has(key)) {
+						ctx.addIssue({
+							code: 'custom',
+							path: [index, 'key'],
+							message: `repeats the file and key of an earlier entry (${claim.file}: "${claim.key}"), and a dated claim is registered once; give the sentence one entry`,
+						})
+					}
+					seen.add(key)
+				})
+			}),
 	})
 	.describe(
 		'Every sentence whose truth depends on when it was written is registered with how it is settled.',
@@ -593,17 +613,18 @@ const closesFence = (trimmedStart: string, marker: string): boolean =>
  * fence-like line inside an open fence does not close it, so a nested example
  * fence stays part of the outer block's protected content.
  *
- * What this does not do, deliberately, because catching it needs real
- * markdown parsing rather than a text pass. Two directions, and both are
- * real: a list marker's character (`*`/`+`/`-`), a heading's style (setext vs
- * ATX), or a hard line break's trailing two spaces can each change without
- * changing the hash, so a formatter rewriting those reads as no drift even
- * though the source changed; and a table's delimiter-row padding
- * (`|---|---|` vs `| --- | --- |`) or a prose line rewrapped to a different
- * width changes the hash even though nothing about what the page says
- * changed, so a formatter doing either still trips the pin it was meant to
- * spare. A consumer whose formatter rewraps prose can avoid that one with its
- * own `proseWrap: "preserve"` setting; this gate has no equivalent knob.
+ * What this does not do runs in both directions. Normalization only touches
+ * whitespace, so a hard line break's trailing two spaces can be removed
+ * without changing the hash, and a formatter doing that reads as no drift
+ * even though the source changed; every other markdown-syntax change is a
+ * non-whitespace byte and always shows, which is why catching a hard break
+ * needs real markdown parsing and nothing else here does. In the other
+ * direction, a table's delimiter-row padding (`|---|---|` vs `| --- | --- |`)
+ * or a prose line rewrapped to a different width changes the hash even
+ * though nothing about what the page says changed, so a formatter doing
+ * either still trips the pin it was meant to spare. A consumer whose
+ * formatter rewraps prose can avoid that one with its own
+ * `proseWrap: "preserve"` setting; this gate has no equivalent knob.
  */
 const normalizeForHash = (text: string): string => {
 	const lines: string[] = []

@@ -242,6 +242,30 @@ export const webIsRefused = (): boolean =>
 	(UNSUPPORTED_INTERFACE_KINDS as readonly string[]).includes('web')
 
 /**
+ * The CLI reference's ports table: which of the four ports the application
+ * layer wires and which it does not. AD-34 makes `application/` the only
+ * layer that awaits a port, so a port's own name appears somewhere under
+ * `src/application/` if, and only if, something there threads it through to
+ * `invokePort`; that is what the table's "Wired today" column reads off. A
+ * "No" row is settled by absence, which a content hash of an existing file
+ * could never detect, so this is a predicate rather than an `asOf` pin.
+ */
+export const portsTableIsCurrent = (): boolean => {
+	const applicationSource = srcPaths
+		.filter((file) => file.startsWith('src/application/'))
+		.map((file) => srcBodies.get(file) as string)
+		.join('\n')
+	const wires = (port: string): boolean =>
+		new RegExp(`\\b${port}\\b`).test(applicationSource)
+	return (
+		wires('EnvironmentProbePort') &&
+		wires('CorpusPort') &&
+		!wires('ClockPort') &&
+		!wires('FileSystemPort')
+	)
+}
+
+/**
  * The tool-use guide says a channel model is missing. `McpDescriptorChannel`'s
  * one member is `structured-result`; a second member would be the model the
  * sentence says is absent.

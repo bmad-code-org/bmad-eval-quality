@@ -731,6 +731,38 @@ describe('the `asOf` schema refine', () => {
 		})
 		expect(result.success).toBe(false)
 	})
+
+	it('refuses two entries sharing the same file and key', () => {
+		const result = DocClaimsSection.safeParse({
+			pages: ['docs'],
+			dated: {
+				triggers: [{ match: 'x' }],
+				claims: [
+					{
+						file: 'docs/page.md',
+						key: 'x',
+						settles: 'read',
+						reason: 'first subject',
+						asOf: { subject: 'a.ts', hash: '0'.repeat(64) },
+					},
+					{
+						file: 'docs/page.md',
+						key: 'x',
+						settles: 'read',
+						reason: 'second subject',
+						asOf: { subject: 'b.ts', hash: '1'.repeat(64) },
+					},
+				],
+			},
+		})
+		expect(result.success).toBe(false)
+		expect(
+			!result.success &&
+				JSON.stringify(result.error.issues).includes(
+					'repeats the file and key of an earlier entry',
+				),
+		).toBe(true)
+	})
 })
 
 describe("this repository's own doc-claims classes, held to a floor", () => {
@@ -783,7 +815,7 @@ describe("this repository's own doc-claims classes, held to a floor", () => {
 		expect(
 			numeral('transcriptions match their source byte for byte'),
 		).toBeGreaterThanOrEqual(5)
-		expect(numeral('pinned to a content hash')).toBeGreaterThanOrEqual(3)
+		expect(numeral('pinned to a content hash')).toBeGreaterThanOrEqual(1)
 	})
 })
 

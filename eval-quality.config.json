@@ -1556,22 +1556,11 @@
 				{
 					"file": "docs/reference/cli-commands.md",
 					"key": "| Port | What it does | Wired today |",
-					"settles": "read",
-					"reason": "which ports the CLI awaits is a fact about the command implementation, which this gate does not execute; pinned to src/application/preflight.ts, which wires EnvironmentProbePort",
-					"asOf": {
-						"subject": "src/application/preflight.ts",
-						"hash": "e218a98733d3cba2ff487bd3b47780ef6b9784c2cff93c719645595c2935abec"
-					}
-				},
-				{
-					"file": "docs/reference/cli-commands.md",
-					"key": "| Port | What it does | Wired today |",
-					"settles": "read",
-					"reason": "which ports the CLI awaits is a fact about the command implementation, which this gate does not execute; pinned to src/application/score.ts, which wires CorpusPort",
-					"asOf": {
-						"subject": "src/application/score.ts",
-						"hash": "c9e60864bb35ffaf3d3a8a239c48f5616596337bb53ec1d7c622224f612db252"
-					}
+					"settles": {
+						"module": "scripts/doc-claim-sources.ts",
+						"export": "portsTableIsCurrent"
+					},
+					"reason": "reads whether EnvironmentProbePort and CorpusPort are threaded under src/application/, and ClockPort and FileSystemPort are not; a content hash of an existing file could not settle the table's two \"No\" rows, which are claims of absence"
 				}
 			]
 		},
