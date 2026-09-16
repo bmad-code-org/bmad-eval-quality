@@ -10,6 +10,8 @@ body.
 
 ## [Unreleased]
 
+## [3.2.0] - 2026-09-16
+
 ### Added
 
 - **The three documentation gates are published**, which completes `eval-quality-gates` at eight.
