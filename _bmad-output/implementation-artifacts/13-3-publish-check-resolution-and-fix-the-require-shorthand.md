@@ -58,12 +58,12 @@ Verified at `3f12244`, the 3.2.0 release.
 
 **Execution:**
 
-- [ ] `src/application/index.ts`, `src/index.ts` -- the exports above, with a comment on why the sentinel ships.
-- [ ] `tests/architecture/package-exports.test.ts` -- the four functions and `ABSENT` on the built barrel, the `resolveCheck` exactness test, and a `createRequire` case.
-- [ ] `scripts/dependency-direction.ts` -- the two look-arounds, with the reason in a comment.
-- [ ] `scripts/fixtures/consumer/direction-compliant/lib/service/sandbox.ts` and unit cases -- shorthand, member call, and a real call in a condition.
-- [ ] `scripts/typescript-scanner.ts` -- `loadTypeScriptScanner(gate, load?, readVersion?)`, `REQUIRED_SYNTAX_KINDS`, `TYPESCRIPT_UNAVAILABLE`; `check-dependency-direction.ts` and `lineage-ownership.ts` route through it; `tsconfig-gates.json` and the emitted-module list name it.
-- [ ] `tests/architecture/published-gates.test.ts` or a new `typescript-scanner.test.ts` -- the four refusal rows, and the required list held equal to the `SyntaxKind.` names in `token-scan.ts`, `dependency-direction.ts` and `lineage-ownership.ts`.
+- [x] `src/application/index.ts`, `src/index.ts` -- the exports above, with a comment on why the sentinel ships.
+- [x] `tests/architecture/package-exports.test.ts` -- the four functions and `ABSENT` on the built barrel, the `resolveCheck` exactness test, and a `createRequire` case.
+- [x] `scripts/dependency-direction.ts` -- the two look-arounds, with the reason in a comment.
+- [x] `scripts/fixtures/consumer/direction-compliant/lib/service/sandbox.ts` and unit cases -- shorthand, member call, and a real call in a condition.
+- [x] `scripts/typescript-scanner.ts` -- `loadTypeScriptScanner(gate, load?, readVersion?)`, `REQUIRED_SYNTAX_KINDS`, `TYPESCRIPT_UNAVAILABLE`; `check-dependency-direction.ts` and `lineage-ownership.ts` route through it; `tsconfig-gates.json` and the emitted-module list name it.
+- [x] `tests/architecture/published-gates.test.ts` or a new `typescript-scanner.test.ts` -- the four refusal rows, and the required list held equal to the `SyntaxKind.` names in `token-scan.ts`, `dependency-direction.ts` and `lineage-ownership.ts`.
 - [ ] `docs/reference/cli-commands.md`, `docs/how-to/run-the-gates-on-your-repository.md`, `CHANGELOG.md`, learning path Step 66.
 
 **Acceptance Criteria:**
@@ -72,6 +72,11 @@ Verified at `3f12244`, the 3.2.0 release.
 - Given `npm run validate`, then it is green, and `npm run check:layers` holds this repository's own tree with the new exports.
 
 ## Implementation Notes
+
+- Handed over at `cb85b20` with the code, fixtures and tests in and the docs, changelog, learning path, review layers, validate and pull request remaining; `handover-check-resolution-and-require-shorthand.md` beside this file carries the state and the item 3 reasoning.
+- The ordering witness moved from 78 to 82: `src/index.ts` gained four type imports from `core/schemas`, and under the swapped rows each is an edge root may not take. `ORDERING_WITNESS_VIOLATIONS` and the docs sentence moved together.
+- The `:` after a `require(...)` list is told apart from a ternary by scanning backward for a `?` at depth zero; a walk forward through the return type was written first and dropped, because an object type literal and a body both open with `{`.
+- The loader's required-member list is 73 names; the first draft of the fix used five more `SyntaxKind` members and the derived-list test caught the drift before the list did.
 
 ## Spec Change Log
 
