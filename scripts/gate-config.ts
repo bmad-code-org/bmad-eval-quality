@@ -91,6 +91,40 @@ const SpdxIdentifier = NonEmpty.regex(
 	'is not an SPDX short identifier: this setting takes identifiers such as MIT or Apache-2.0, and a package-and-version pin is not one',
 )
 
+/**
+ * An npm package name, for an age exclusion: an optional `@scope/` and then the
+ * name, in the URL-safe charset npm admits. A second `@` is refused anywhere, so
+ * `left-pad@1.3.0` cannot be written here. Uppercase is admitted because a
+ * lockfile can carry a legacy name that has it, and this setting names what the
+ * lockfile has. The setting mirrors `.npmrc`'s `min-release-age-exclude`, which
+ * takes names for the reason the allowlist takes identifiers: a version here
+ * would be a value a hand maintains in step with the dependency graph.
+ */
+const PackageName = NonEmpty.regex(
+	/^(?:@[A-Za-z0-9._~!*'()-]+\/)?[A-Za-z0-9._~!*'()-]+$/,
+	'is not a package name: this setting takes names such as left-pad or @scope/name, and a package-and-version pin is not one',
+)
+
+/**
+ * One exemption from the age window. It names the package, the lockfiles it
+ * holds in, and why, so the run prints the reason beside the entry the way a
+ * policy and a tolerance do. A row that reaches no entry in any lockfile it
+ * names is refused at run time: the package left the lockfile, or the name is
+ * mistyped, and either way the row is a value nobody is holding.
+ */
+const AgeExclusion = z.strictObject({
+	name: PackageName.describe(
+		'The package the exemption covers, as the lockfile names the installed package, and every entry under that name in the lockfile, a nested duplicate at another version included. For an npm: alias that is the aliased package, so an entry installed at node_modules/foo from npm:bar@x is excluded by writing bar.',
+	),
+	reason: NonEmpty.describe(
+		'Why this package may be adopted inside the window. It is printed on every run that uses it.',
+	),
+	lockfiles: z
+		.array(NonEmpty)
+		.min(1)
+		.describe('The lockfiles this exemption applies to, and no others.'),
+})
+
 const LockfileAgeSection = z
 	.strictObject({
 		lockfiles: z
@@ -109,6 +143,42 @@ const LockfileAgeSection = z
 		cache: RelativePath.optional().describe(
 			'A JSON file mapping "name@version" to a publication timestamp. A publication time is fixed the moment it happens, so a reading taken once is correct forever and this cache carries no staleness bound. An entry it holds is used with no request; an entry it does not is fetched, and a fetch that fails still fails the gate. The gate only reads it.',
 		),
+		exclude: z
+			.array(AgeExclusion)
+			.optional()
+			.describe(
+				"Packages exempt from the window and from the registry fetch, and never from the resolved-URL check, each row carrying its reason. The counterpart of .npmrc's min-release-age-exclude: names, so no version is pinned here. Every excluded entry is printed on every run, passing or failing.",
+			),
+	})
+	// A row naming a lockfile the section does not declare would load clean and
+	// apply to nothing, for the reason the licences section refuses the same
+	// under `tolerances` and `undeclared`. Two rows exempting one name in one
+	// lockfile are one exemption written twice with two reasons, so the second
+	// is refused.
+	.superRefine((section, ctx) => {
+		const declared = new Set(section.lockfiles)
+		const seen = new Set<string>()
+		section.exclude?.forEach((row, index) => {
+			row.lockfiles.forEach((named, position) => {
+				if (!declared.has(named)) {
+					ctx.addIssue({
+						code: 'custom',
+						path: ['exclude', index, 'lockfiles', position],
+						message: `names "${named}", which is not one of the lockfiles this section declares: ${section.lockfiles.join(', ')}`,
+					})
+					return
+				}
+				const key = `${row.name}\u0000${named}`
+				if (seen.has(key)) {
+					ctx.addIssue({
+						code: 'custom',
+						path: ['exclude', index],
+						message: `excludes "${row.name}" in ${named}, which an earlier row already excludes; one exemption carries one reason`,
+					})
+				}
+				seen.add(key)
+			})
+		})
 	})
 	.describe(
 		"Fails on a locked entry published inside the window, on metadata that could not be fetched, and on an entry whose resolved URL is not that entry's own tarball on the npm registry.",
@@ -166,6 +236,36 @@ const LicenceTolerance = z.strictObject({
 		),
 })
 
+/**
+ * A reading for an entry whose manifest declares no licence. A tolerance widens
+ * the allowlist for a family that declares one, under a condition the gate can
+ * re-read; an undeclared entry declares nothing, so there is no expression to
+ * widen. The row supplies what the manifest would have said and the evidence
+ * for it, and the identifier is then held by the rule every other entry is held
+ * by, so a row cannot admit what the allowlist refuses. "Declares no licence"
+ * is an absent, null or blank `license` field: a field present in a shape the
+ * gate does not read, an array or an object with no `type`, declares something
+ * and fails as it always has.
+ */
+const UndeclaredLicence = z.strictObject({
+	reason: NonEmpty.describe(
+		'Why the manifest carries no licence field. It is printed on every run that uses it.',
+	),
+	lockfiles: z
+		.array(NonEmpty)
+		.min(1)
+		.describe('The lockfiles this reading applies to, and no others.'),
+	prefix: NonEmpty.describe(
+		'The package-name prefix the reading covers, matched as a plain string prefix with no boundary, so a whole name is the tightest prefix and zod-to-ts also reaches zod-to-ts-plugin the day one appears undeclared. A prefix, so no version is pinned here. It reaches only an entry that declares no licence; an entry under it that declares one is held to its declaration, and a row that reaches no such entry in any lockfile it names is refused at run time.',
+	),
+	readAs: SpdxIdentifier.describe(
+		'The one identifier the entry is read as, held against the allowlist like any declared identifier. One identifier only: an expression, a marker or an optional flag has no meaning for an entry that declares nothing.',
+	),
+	evidence: NonEmpty.describe(
+		'Where the reading comes from, such as the registry packument or a LICENSE file in the repository. It is printed on every run that uses it.',
+	),
+})
+
 const LicencesSection = z
 	.strictObject({
 		lockfiles: z
@@ -190,13 +290,20 @@ const LicencesSection = z
 			.array(LicenceTolerance)
 			.optional()
 			.describe('Scoped exceptions, each carrying its own reason.'),
+		undeclared: z
+			.array(UndeclaredLicence)
+			.optional()
+			.describe(
+				'Readings for entries whose manifest declares no licence, each carrying its evidence and its reason.',
+			),
 	})
-	// `policies` is keyed by lockfile path and every tolerance names the lockfiles
-	// it applies to, both by the same string `lockfiles` names them by. A value
-	// matching no declared lockfile loads clean and applies to nothing, so a typo
-	// like "pacakge-lock.json" reads as a policy that was written and never runs.
-	// Keeping those three lists in step by hand is the class of setting this format
-	// does not have, so a name matching nothing is refused here.
+	// `policies` is keyed by lockfile path, and every tolerance and every
+	// undeclared row names the lockfiles it applies to, all by the same string
+	// `lockfiles` names them by. A value matching no declared lockfile loads clean
+	// and applies to nothing, so a typo like "pacakge-lock.json" reads as a policy
+	// that was written and never runs. Keeping those lists in step by hand is the
+	// class of setting this format does not have, so a name matching nothing is
+	// refused here.
 	.superRefine((section, ctx) => {
 		const declared = new Set(section.lockfiles)
 		const requireDeclared = (named: string, path: PropertyKey[]): void => {
@@ -213,6 +320,23 @@ const LicencesSection = z
 		section.tolerances?.forEach((tolerance, index) => {
 			tolerance.lockfiles.forEach((named, position) => {
 				requireDeclared(named, ['tolerances', index, 'lockfiles', position])
+			})
+		})
+		// Two rows reading one prefix in one lockfile would read one package as
+		// two licences, so the second is refused.
+		const seen = new Set<string>()
+		section.undeclared?.forEach((row, index) => {
+			row.lockfiles.forEach((named, position) => {
+				requireDeclared(named, ['undeclared', index, 'lockfiles', position])
+				const key = `${row.prefix}\u0000${named}`
+				if (declared.has(named) && seen.has(key)) {
+					ctx.addIssue({
+						code: 'custom',
+						path: ['undeclared', index],
+						message: `reads "${row.prefix}" in ${named}, which an earlier row already reads; one package is read as one licence`,
+					})
+				}
+				seen.add(key)
 			})
 		})
 	})

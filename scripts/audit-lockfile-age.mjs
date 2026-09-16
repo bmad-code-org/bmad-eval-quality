@@ -12,7 +12,8 @@
 // These flags are the pre-install path: `.github/actions/audit-lockfile-age`
 // runs this before `npm ci`, so nothing here may import from `node_modules`. A
 // consumer runs the same audit through `eval-quality-gates lockfile-age`, which
-// reads its lockfiles and its window out of a configuration file.
+// reads its lockfiles, its window and its exclusions out of a configuration
+// file.
 //
 // Usage:
 //   node scripts/audit-lockfile-age.mjs [--lockfile <path>] [--window-days <n>] [--now <RFC3339>]
@@ -190,6 +191,12 @@ function collectLockedEntries(lockfile, source) {
  * cache does not carry, which are exactly the dependencies a change added, and
  * fail-closed holds unchanged for them.
  *
+ * `exclude` is the package names exempt from the window and from the fetch,
+ * the counterpart of `.npmrc`'s `min-release-age-exclude`. Every entry under
+ * one of those names comes back in `excludedEntries` and still counts among
+ * `entries`; one that also fails the resolved-URL check comes back in both
+ * lists, because the exclusion never reached that check.
+ *
  * `source` is the path this lockfile was read from, named in the refusal a
  * document without a `packages` object earns.
  */
@@ -197,6 +204,8 @@ export async function auditLockfileAge({
 	lockfile,
 	now,
 	windowDays,
+	// The cast is for the TypeScript caller: a bare `[]` default reads as never[].
+	exclude = /** @type {readonly string[]} */ ([]),
 	source = 'the lockfile',
 	readTimeMap = fetchTimeMap,
 	cache = {},
@@ -204,6 +213,12 @@ export async function auditLockfileAge({
 	if (!Number.isFinite(windowDays) || windowDays < 1) {
 		throw new Error(
 			`windowDays must be at least 1, got: ${windowDays}; a window of zero admits a package published this instant and still reports that every entry was published before the cutoff`,
+		)
+	}
+	// `new Set('left-pad')` is a set of eight characters that excludes nothing.
+	if (!Array.isArray(exclude) || exclude.some((n) => typeof n !== 'string')) {
+		throw new Error(
+			`exclude must be an array of package names, got: ${JSON.stringify(exclude)}`,
 		)
 	}
 
@@ -228,12 +243,26 @@ export async function auditLockfileAge({
 
 	const cachedAt = (entry) => cache[`${entry.name}@${entry.version}`]
 
+	// An exclusion exempts a name from the window and from the fetch, and from
+	// nothing else. `min-release-age-exclude` says a package's young releases are
+	// accepted and says nothing about which tarball the install fetches, so an
+	// excluded entry is still held by the resolved-URL check above: a substituted
+	// `resolved` under an excluded name is the defect that check exists for. The
+	// exclusion is read over every entry, so a run prints it beside that failure.
+	const excludedNames = new Set(exclude)
+	const excludedEntries = entries.filter((entry) =>
+		excludedNames.has(entry.name),
+	)
+	const auditedEntries = registryEntries.filter(
+		(entry) => !excludedNames.has(entry.name),
+	)
+
 	// One request per unique package name, and only for a name carrying at least
 	// one version the cache does not answer. A name whose every locked version is
-	// cached is never asked for.
+	// cached, or excluded, is never asked for.
 	const uniqueNames = [
 		...new Set(
-			registryEntries
+			auditedEntries
 				.filter((entry) => cachedAt(entry) === undefined)
 				.map((entry) => entry.name),
 		),
@@ -252,7 +281,7 @@ export async function auditLockfileAge({
 	const youngEntries = []
 	const unfetchableEntries = []
 
-	for (const entry of registryEntries) {
+	for (const entry of auditedEntries) {
 		const fromCache = cachedAt(entry)
 		if (fromCache === undefined && fetchFailures.has(entry.name)) {
 			unfetchableEntries.push(entry)
@@ -282,6 +311,7 @@ export async function auditLockfileAge({
 		youngEntries,
 		unfetchableEntries,
 		offRegistryEntries,
+		excludedEntries,
 	}
 }
 

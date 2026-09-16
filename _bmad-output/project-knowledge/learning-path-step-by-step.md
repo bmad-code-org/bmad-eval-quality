@@ -4530,3 +4530,35 @@ Three were bare integers typed into the code that writes the artifact. Five were
 - A manual comparison that catches a regression once is worth turning into a floor test, or the next regression ships unnoticed the same way the last one almost did.
 
 **Watch out:** generalizing a check turns its closed vocabulary into a parameter, and a list transcribed in one place while the engine is generalized loses entries silently. The interface-kind check lost a multi-word refusal verb that way, and only a count compared against the previous script's output showed it.
+
+## Step 65 (epic13-story2): a licence read by evidence, and an age exclusion by name
+
+**In plain terms:** the first consumer of the gates hit two walls. One transitive package ships a tarball with no licence field, so the lockfile records none and nothing in the configuration could admit it, while the registry and the repository both say MIT. And a package the consumer pins exactly and adopts on release day trips the seven-day window on every release, where npm itself has `min-release-age-exclude` and the gate had no counterpart.
+
+**What:** two settings. `licences.undeclared` is a row per undeclared family: the prefix, the one identifier it is read as, the evidence, and the reason. `lockfile-age.exclude` is a row per package exempt from the window and from the fetch: the name, the lockfiles, and the reason. Both print on every run that uses them, and a row that reaches no entry is refused.
+
+**Why:** an undeclared entry declares nothing, so there is no expression to widen and a tolerance has nothing to attach to; the row supplies the reading, and the identifier is then held by the ordinary rule. An exclusion says a package's young releases are accepted and says nothing about which tarball the install fetches, so the resolved-URL check still applies to it.
+
+**Read in this order:**
+
+1. `scripts/gate-config.ts`: `AgeExclusion` and `PackageName` beside `SpdxIdentifier`, then `UndeclaredLicence` beside `LicenceTolerance`.
+2. `scripts/audit-lockfile-age.mjs`: the exclusion, read over every entry and subtracted from the fetch, with the check that an entry's `resolved` is its own registry tarball left standing.
+3. `scripts/check-licenses.mjs`: the undeclared branch in the scan loop, taken before any tolerance.
+4. `scripts/fixtures/consumer/`: the two new pairs.
+
+**Story:** `_bmad-output/implementation-artifacts/13-2-a-licence-read-by-evidence-and-an-age-exclusion-by-name.md`
+
+### Reference
+
+**Rules:**
+
+- Give a new class of exception its own list. A discriminator on the existing one lets settings that mean nothing for the new class sit on its rows.
+- Hold a supplied value by the rule the read value is held by. A row that names an identifier goes through the allowlist, so a row cannot widen it.
+- An exemption exempts one check. Name which, and keep the rest.
+- Refuse a version literal by charset where a name belongs. A pin is a value a hand maintains in step with the dependency graph.
+- Print an exemption on every run that uses it, passing or failing, and keep the scanned count whole.
+- Refuse an exemption nothing is holding. A row whose package left the lockfile, or whose prefix now matches an entry that declares a licence, is a value a hand forgot, and the format has no such class.
+- Take the branch on what the field is, and never on what a reader made of it. A reader that returns null for an absent field and for an array it does not parse folds "declares nothing" into "declares something unread", and a row written for the first admits the second.
+- A configuration refusal never outranks a gate finding in the exit code. A run that found a violation and a stale row exits with the finding and prints the refusal as a diagnostic; a caller branching on the code must see the finding first.
+
+**Watch out:** where a partition sits decides what gets printed. An exclusion split placed after the resolved-URL split left an excluded, off-registry entry unprinted while three sentences said it was printed on every run; reading the exclusion over every entry, and crediting an undeclared row before the URL check, is what made both sentences true.

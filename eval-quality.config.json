@@ -1044,6 +1044,10 @@
 					"reason": "a setting in the dependency-direction gate's section, declared by the schema in scripts/check-dependency-direction.ts and so outside src/"
 				},
 				{
+					"token": "readAs",
+					"reason": "a setting on an undeclared row in the licences gate's section, declared by the schema in scripts/gate-config.ts and so outside src/"
+				},
+				{
 					"token": "sampleInput",
 					"reason": "a setting in the doc-invocations gate's section, declared by the schema in scripts/gate-config.ts and so outside src/"
 				},
