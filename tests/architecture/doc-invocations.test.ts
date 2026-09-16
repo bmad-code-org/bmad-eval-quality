@@ -35,9 +35,14 @@ import { DEFAULT_CONFIG_FILE } from '../../scripts/gate-config.ts'
 const CLI = resolve('scripts/gates-cli.ts')
 
 /** A build is a precondition: the gate runs the built binary or refuses. */
-const BUILT = existsSync(resolve('dist/cli/main.js'))
+const BUILT =
+	existsSync(resolve('dist/cli/main.js')) &&
+	existsSync(resolve('dist/gates/gates-cli.js'))
 const NEEDS_BUILD =
-	'dist/cli/main.js is absent. Run `npm run build` first: this case runs the built CLI.'
+	'dist/cli/main.js or dist/gates/gates-cli.js is absent. Run `npm run build` first: these cases run the built binaries.'
+
+/** The second published binary, which the multi-binary cases run. */
+const GATES_ENTRY = 'dist/gates/gates-cli.js'
 
 /** A contract this repository ships that compiles cleanly. */
 const SHIPPED_CONTRACT = 'corpus/dev/compile-seal-example/contract.json'
@@ -105,7 +110,48 @@ const fixtureRoot = (
 const check = (page: string): Run =>
 	runGate(join(fixtureRoot(page), DEFAULT_CONFIG_FILE))
 
+/**
+ * The same tree with the `binary` field opened up, so a case can declare one
+ * object, several, or something the schema has to refuse. `fixtureRoot` above
+ * stays the one-binary spelling every other case in this file uses, which is
+ * what keeps those cases evidence that the single-object form is unchanged.
+ */
+const binaryFixtureRoot = (page: string, binary: unknown): string => {
+	const root = mkdtempSync(join(tmpdir(), 'doc-invocations-binaries-'))
+	symlinkSync(resolve('dist'), join(root, 'dist'))
+	symlinkSync(resolve('corpus'), join(root, 'corpus'))
+	mkdirSync(join(root, 'docs'))
+	writeFileSync(join(root, 'docs/page.md'), page, 'utf8')
+	writeFileSync(
+		join(root, DEFAULT_CONFIG_FILE),
+		JSON.stringify(
+			{
+				'doc-invocations': {
+					pages: ['docs'],
+					binary,
+					sampleInput: SHIPPED_CONTRACT,
+				},
+			},
+			null,
+			'\t',
+		),
+		'utf8',
+	)
+	return root
+}
+
+const checkBinaries = (page: string, binary: unknown): Run =>
+	runGate(join(binaryFixtureRoot(page, binary), DEFAULT_CONFIG_FILE))
+
 const fence = (...lines: readonly string[]): string => lines.join('\n')
+
+/** A page whose fences hold one command each, none declaring an exit. */
+const commandPage = (...commands: readonly string[]): string =>
+	fence(
+		'# A page',
+		'',
+		...commands.flatMap((command) => ['```bash', command, '```', '']),
+	)
 
 /** A page whose one declared-exit command is followed by `block`. */
 const rejectionPage = (...block: readonly string[]): string =>
@@ -496,6 +542,221 @@ describe('the doc-invocations gate, the page owns the paths it writes', () => {
 		expect(run.output).toContain('1 invocation(s) scanned')
 		expect(run.output).toContain('0 failure(s)')
 		expect(run.status).toBe(0)
+	})
+})
+
+/**
+ * A package that publishes two commands documents both, so one section carries
+ * a list of binaries. Every case here asserts the scanned and faithful counts
+ * beside the verdict: a run that stopped extracting one of the two binaries
+ * still exits 0, and only the counts say which binary ran.
+ */
+describe('the doc-invocations gate, a section naming several binaries', () => {
+	it('runs a page naming one binary as an object, as before', (ctx) => {
+		if (!BUILT) return ctx.skip(NEEDS_BUILD)
+		const run = checkBinaries(
+			commandPage(`node dist/cli/main.js compile --in ${SHIPPED_CONTRACT}`),
+			{ entry: 'dist/cli/main.js', spellings: ['node dist/cli/main.js'] },
+		)
+		expect(run.output).toContain('1 invocation(s) scanned')
+		expect(run.output).toContain('1 run faithfully over real inputs')
+		expect(run.output).toContain('0 failure(s)')
+		expect(run.status).toBe(0)
+	})
+
+	it('runs a page that invokes both binaries', (ctx) => {
+		if (!BUILT) return ctx.skip(NEEDS_BUILD)
+		const run = checkBinaries(
+			commandPage(
+				`node dist/cli/main.js compile --in ${SHIPPED_CONTRACT}`,
+				'eval-quality-gates --help',
+			),
+			[
+				{ entry: 'dist/cli/main.js', spellings: ['node dist/cli/main.js'] },
+				{ entry: GATES_ENTRY, spellings: ['eval-quality-gates'] },
+			],
+		)
+		expect(run.output).toContain('2 invocation(s) scanned')
+		expect(run.output).toContain('2 run faithfully over real inputs')
+		expect(run.output).toContain('0 failure(s)')
+		expect(run.status).toBe(0)
+	})
+
+	it('lets the longer spelling win over a shorter one declared first', (ctx) => {
+		if (!BUILT) return ctx.skip(NEEDS_BUILD)
+		// "run" is declared first and is a prefix of "run gates". Matching in
+		// declaration order would send this line to the contract CLI, which has
+		// no "gates" command.
+		const run = checkBinaries(commandPage('run gates --help'), [
+			{ entry: 'dist/cli/main.js', spellings: ['run'] },
+			{ entry: GATES_ENTRY, spellings: ['run gates'] },
+		])
+		expect(run.output).toContain('1 invocation(s) scanned')
+		expect(run.output).toContain('1 run faithfully over real inputs')
+		expect(run.output).toContain('0 failure(s)')
+		expect(run.status).toBe(0)
+	})
+
+	it('shows what the shorter spelling alone would have done', (ctx) => {
+		if (!BUILT) return ctx.skip(NEEDS_BUILD)
+		// The companion of the case above, which is what makes the sort
+		// evidence: with only the short spelling declared, the same line runs
+		// against the wrong binary and the gate reports a usage error.
+		const run = checkBinaries(commandPage('run gates --help'), [
+			{ entry: 'dist/cli/main.js', spellings: ['run'] },
+		])
+		expect(run.status).toBe(1)
+		expect(run.output).toContain('1 failing invocation(s)')
+		expect(run.output).toContain('usage error')
+	})
+
+	it('compares a declared block against stdout when the run wrote no stderr', (ctx) => {
+		if (!BUILT) return ctx.skip(NEEDS_BUILD)
+		// A page documenting a command that worked is quoting the answer, and the
+		// answer is on stdout. Comparing an empty stderr against it would fail
+		// every such block, so a page could only ever transcribe failures.
+		const run = check(
+			fence(
+				'# A page',
+				'',
+				'<!-- expect-exit: 0 -->',
+				'',
+				'```bash',
+				`node dist/cli/main.js compile --in ${SHIPPED_CONTRACT}`,
+				'```',
+				'',
+				'```text',
+				'{"behaviors":...',
+				'```',
+				'',
+			),
+		)
+		expect(run.output).toContain('1 with their output compared, 0 failure(s)')
+		expect(run.status).toBe(0)
+	})
+
+	it('fails a stdout block that does not describe what the run wrote', (ctx) => {
+		if (!BUILT) return ctx.skip(NEEDS_BUILD)
+		const run = check(
+			fence(
+				'# A page',
+				'',
+				'<!-- expect-exit: 0 -->',
+				'',
+				'```bash',
+				`node dist/cli/main.js compile --in ${SHIPPED_CONTRACT}`,
+				'```',
+				'',
+				'```text',
+				'{"somethingElse":...',
+				'```',
+				'',
+			),
+		)
+		expect(run.status).toBe(1)
+		expect(run.output).toContain('the run wrote something else')
+	})
+
+	it('admits the usage exit where the page declares it', (ctx) => {
+		if (!BUILT) return ctx.skip(NEEDS_BUILD)
+		// A gates binary spends the usage exit on a configuration it would not
+		// read, and a page teaching a reader to recognise that refusal is making
+		// a claim about it. The declaration is what separates that from a flag
+		// the parser lost, and the case below it is what keeps the separation
+		// evidence rather than an assertion.
+		const run = checkBinaries(
+			fence(
+				'# A page',
+				'',
+				'<!-- expect-exit: 64 -->',
+				'',
+				'```bash',
+				`node ${GATES_ENTRY} licences --config ${SHIPPED_CONTRACT}`,
+				'```',
+				'',
+			),
+			[{ entry: GATES_ENTRY, spellings: [`node ${GATES_ENTRY}`] }],
+		)
+		expect(run.output).toContain('1 run faithfully over real inputs')
+		expect(run.output).toContain('0 failure(s)')
+		expect(run.status).toBe(0)
+	})
+
+	it('still fails a usage exit the page did not declare', (ctx) => {
+		if (!BUILT) return ctx.skip(NEEDS_BUILD)
+		// The same invocation without the declaration. A rule that admitted the
+		// usage exit outright would take a flag that stopped existing for a pass,
+		// which is the failure the whole check was written for.
+		const run = checkBinaries(
+			fence(
+				'# A page',
+				'',
+				'```bash',
+				`node ${GATES_ENTRY} licences --config ${SHIPPED_CONTRACT}`,
+				'```',
+				'',
+			),
+			[{ entry: GATES_ENTRY, spellings: [`node ${GATES_ENTRY}`] }],
+		)
+		expect(run.status).toBe(1)
+		expect(run.output).toContain('usage error')
+	})
+
+	it('resolves an installed prefix against the binary that matched', (ctx) => {
+		if (!BUILT) return ctx.skip(NEEDS_BUILD)
+		// Both lines name the same installed path and only the second binary
+		// declares the prefix that maps it away. One prefix shared across the
+		// section would make both runs faithful, so the faithful count is what
+		// separates the two readings.
+		const installed = `node_modules/eval-quality/${SHIPPED_CONTRACT}`
+		const run = checkBinaries(
+			commandPage(
+				`eval-quality compile --in ${installed}`,
+				`npx eval-quality compile --in ${installed}`,
+			),
+			[
+				{ entry: 'dist/cli/main.js', spellings: ['eval-quality'] },
+				{
+					entry: 'dist/cli/main.js',
+					spellings: ['npx eval-quality'],
+					installedPrefix: 'node_modules/eval-quality/',
+				},
+			],
+		)
+		expect(run.output).toContain('2 invocation(s) scanned')
+		expect(run.output).toContain('1 run faithfully over real inputs')
+		expect(run.output).toContain('0 failure(s)')
+		expect(run.status).toBe(0)
+	})
+
+	it('refuses a missing entry and names which binary owns it', (ctx) => {
+		if (!BUILT) return ctx.skip(NEEDS_BUILD)
+		const run = checkBinaries(commandPage('eval-quality-gates --help'), [
+			{ entry: 'dist/cli/main.js', spellings: ['eval-quality'] },
+			{ entry: 'dist/gates/absent.js', spellings: ['eval-quality-gates'] },
+		])
+		expect(run.status).toBe(64)
+		expect(run.output).toContain('binary[1].entry')
+		expect(run.output).toContain('build it before the gate runs')
+	})
+
+	it('reports every spelling across every binary when none matched', (ctx) => {
+		if (!BUILT) return ctx.skip(NEEDS_BUILD)
+		const run = checkBinaries(commandPage('some-other-tool --help'), [
+			{ entry: 'dist/cli/main.js', spellings: ['eval-quality'] },
+			{ entry: GATES_ENTRY, spellings: ['eval-quality-gates'] },
+		])
+		expect(run.status).toBe(64)
+		expect(run.output).toContain('matched any spelling')
+		// Longest first, which is the order they are matched in, so the message
+		// reads as the precedence a page is held to.
+		expect(run.output).toContain('(eval-quality-gates, eval-quality)')
+	})
+
+	it('refuses an empty list of binaries', (ctx) => {
+		if (!BUILT) return ctx.skip(NEEDS_BUILD)
+		const run = checkBinaries(commandPage('eval-quality --version'), [])
+		expect(run.status).toBe(64)
 	})
 })
 

@@ -1,0 +1,123 @@
+{
+  "artifactDigest": "sha256:19c9f5f015431fa6f0b78ccb278b43ea08e206ca62cb33398ef281edd7147754",
+  "behaviorId": "B-001",
+  "commitDigest": "sha256:19c9f5f015431fa6f0b78ccb278b43ea08e206ca62cb33398ef281edd7147754",
+  "defectSignature": {
+    "condition": {
+      "predicate": {
+        "op": "equality",
+        "operands": [
+          {
+            "pointer": "/interactions/observed/exit-code"
+          },
+          {
+            "literal": 0
+          }
+        ]
+      },
+      "selector": {
+        "inputBinding": {
+          "argument": null,
+          "arguments": null,
+          "body": null,
+          "environment": null,
+          "header": null,
+          "option": {
+            "input": {
+              "literal": "broken.changelog"
+            }
+          },
+          "path": null,
+          "query": null,
+          "stdin": null
+        }
+      }
+    },
+    "interfaceKind": "cli",
+    "invocation": {
+      "executable": "release-notes-agent",
+      "subcommandPath": [
+        "summarize"
+      ]
+    },
+    "observableChannel": "exit-code"
+  },
+  "defects": [
+    {
+      "behaviorId": "B-001",
+      "defectId": "D-001",
+      "manifestationWitness": {
+        "inputs": {
+          "argument": {},
+          "environment": {},
+          "option": {
+            "input": "broken.changelog",
+            "out": "broken-notes.json"
+          },
+          "stdin": {
+            "kind": "absent"
+          }
+        },
+        "interfaceId": "release-notes-agent",
+        "legId": "manifest-empty-on-broken",
+        "operationId": "summarize-changes",
+        "relation": {
+          "expected": 0,
+          "op": "count-tolerance",
+          "operands": [
+            {
+              "pointer": "/interactions/manifest-empty-on-broken/artifact/notes/entries"
+            }
+          ],
+          "relative": false,
+          "tolerance": 0
+        }
+      },
+      "oracleEvidence": [
+        {
+          "digest": "sha256:f00b6da2ff4fda282d1783629c01af4032df1471e0476b6d737aab254031e8b0",
+          "path": "examples/tutorials/agent/actions.jsonl",
+          "privateRef": null,
+          "storage": "public"
+        }
+      ],
+      "severity": "critical",
+      "source": "controlled-mutation",
+      "summary": "The agent swallows a parse failure and reports success over an empty notes file."
+    }
+  ],
+  "expectedClean": false,
+  "implementationDigest": "sha256:19c9f5f015431fa6f0b78ccb278b43ea08e206ca62cb33398ef281edd7147754",
+  "parentDigest": null,
+  "probeClass": "defect",
+  "probeId": "P-001",
+  "qualification": {
+    "baselinePassEvidence": {
+      "digest": "sha256:a6be82f6073d27ad2c4185875bde304e09fc241317b537aa7d9855216bc43e2d",
+      "path": "examples/tutorials/agent/baseline-actions.jsonl",
+      "privateRef": null,
+      "storage": "public"
+    },
+    "expectedObservableFailure": "a run over the unparseable changelog writes an empty notes file and exits zero",
+    "mutatedFailEvidence": {
+      "digest": "sha256:f00b6da2ff4fda282d1783629c01af4032df1471e0476b6d737aab254031e8b0",
+      "path": "examples/tutorials/agent/actions.jsonl",
+      "privateRef": null,
+      "storage": "public"
+    },
+    "mutationOperator": "refusal-deletion",
+    "mutationSource": "the --defective branch of the summarize handler",
+    "rollbackVerified": true,
+    "route": "controlled-mutation",
+    "targetArtifact": {
+      "digest": "sha256:19c9f5f015431fa6f0b78ccb278b43ea08e206ca62cb33398ef281edd7147754",
+      "path": "examples/tutorials/agent/release-notes-agent.mjs",
+      "privateRef": null,
+      "storage": "public"
+    }
+  },
+  "rationale": "A controlled mutation that swallows the parse failure, writes an empty notes file, and reports success.",
+  "revisionCount": 0,
+  "schemaVersion": 5,
+  "systemId": "release-notes-agent"
+}

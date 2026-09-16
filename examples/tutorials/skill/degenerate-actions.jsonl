@@ -1,0 +1,3 @@
+{"action":"call","step":"frontend-case","operation":"run-skill","sent":{"case":"frontend","degenerate":true},"received":{"selected":["interaction-rules","timing-rules","quality-rules","api-rules","data-rules","mobile-rules","contract-rules"]},"exitCode":0}
+{"action":"oracle","oracleId":"O-001","relation":"containment","resolved":true,"note":"every mandated item is present, so the inclusion half is satisfied"}
+{"action":"oracle","oracleId":"O-002","relation":"not(for-any)","resolved":false,"note":"an excluded item is present, so the exclusion half rejects it"}

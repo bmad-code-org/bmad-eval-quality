@@ -1,0 +1,213 @@
+{
+  "actionsArtifact": {
+    "digest": "sha256:e3dea465a39d7a646706d6b2057ff5c9cac2596d814a40789217992ee2323ecc",
+    "path": "examples/tutorials/walkthrough/actions.jsonl",
+    "privateRef": null,
+    "storage": "public"
+  },
+  "conditionArm": "mutated",
+  "contractDigest": "sha256:75beb5827b0e61e01fc90d0d6d96c9fc5b954772295cd602148d87be11d1143a",
+  "evaluatorConfigurationDigest": "sha256:b26cbe4fe3e8aa9b63fea17df4d5b326827a1e343be902fc3641a2d252a50c93",
+  "evaluatorRecommendation": "FAIL",
+  "evidenceDisclosure": {
+    "reportedIncomplete": false,
+    "truncationBound": null
+  },
+  "findings": [
+    {
+      "behaviorId": "B-001",
+      "confidence": 0.95,
+      "evidenceArtifacts": [
+        {
+          "digest": "sha256:e3dea465a39d7a646706d6b2057ff5c9cac2596d814a40789217992ee2323ecc",
+          "path": "examples/tutorials/walkthrough/actions.jsonl",
+          "privateRef": null,
+          "storage": "public"
+        }
+      ],
+      "findingId": "F-001",
+      "findingType": "defect",
+      "observationIds": [
+        "obs-002"
+      ],
+      "oracleId": "O-001",
+      "probeId": "P-001",
+      "quotedEvidence": [
+        {
+          "artifactId": null,
+          "channel": "response-body",
+          "quote": "Original"
+        }
+      ],
+      "severity": "critical",
+      "summary": "The write reported success and the note kept its old title."
+    }
+  ],
+  "isolationManifestArtifact": {
+    "digest": "sha256:ef698e90720cd07527ccef0a954488bfd188a5ea19e5bc34c0e621f5699221bf",
+    "path": "examples/tutorials/walkthrough/isolation-manifest.json",
+    "privateRef": null,
+    "storage": "public"
+  },
+  "judgeResults": [],
+  "mode": "contract-scoring",
+  "observations": [
+    {
+      "artifacts": {},
+      "callInputs": {
+        "argument": null,
+        "arguments": null,
+        "body": {
+          "title": "Revised"
+        },
+        "environment": null,
+        "header": null,
+        "option": null,
+        "path": {
+          "noteId": "n-1"
+        },
+        "query": null,
+        "stdin": null
+      },
+      "exitCode": null,
+      "observationId": "obs-001",
+      "operationId": "update-note",
+      "principal": null,
+      "provenance": "evaluator-chosen",
+      "responseBody": {
+        "note": {
+          "id": "n-1",
+          "title": "Revised"
+        },
+        "ok": true
+      },
+      "responseHeaders": null,
+      "responseStatus": 200,
+      "sequence": 1,
+      "stderr": {
+        "kind": "absent"
+      },
+      "stdout": {
+        "kind": "absent"
+      }
+    },
+    {
+      "artifacts": {},
+      "callInputs": {
+        "argument": null,
+        "arguments": null,
+        "body": null,
+        "environment": null,
+        "header": null,
+        "option": null,
+        "path": {
+          "noteId": "n-1"
+        },
+        "query": null,
+        "stdin": null
+      },
+      "exitCode": null,
+      "observationId": "obs-002",
+      "operationId": "read-note",
+      "principal": null,
+      "provenance": "evaluator-chosen",
+      "responseBody": {
+        "note": {
+          "id": "n-1",
+          "title": "Original"
+        },
+        "ok": true
+      },
+      "responseHeaders": null,
+      "responseStatus": 200,
+      "sequence": 2,
+      "stderr": {
+        "kind": "absent"
+      },
+      "stdout": {
+        "kind": "absent"
+      }
+    },
+    {
+      "artifacts": {},
+      "callInputs": {
+        "argument": null,
+        "arguments": null,
+        "body": null,
+        "environment": null,
+        "header": null,
+        "option": null,
+        "path": null,
+        "query": {
+          "title": "Revised"
+        },
+        "stdin": null
+      },
+      "exitCode": null,
+      "observationId": "obs-003",
+      "operationId": "list-notes",
+      "principal": null,
+      "provenance": "evaluator-chosen",
+      "responseBody": {
+        "notes": []
+      },
+      "responseHeaders": null,
+      "responseStatus": 200,
+      "sequence": 3,
+      "stderr": {
+        "kind": "absent"
+      },
+      "stdout": {
+        "kind": "absent"
+      }
+    }
+  ],
+  "oracleDispositions": [
+    {
+      "disposition": "violated",
+      "note": "The read after the write returned the title the write replaced.",
+      "observationIds": [
+        "obs-001",
+        "obs-002"
+      ],
+      "oracleId": "O-001"
+    },
+    {
+      "disposition": "held",
+      "note": "The write reported success and carried no diagnostic.",
+      "observationIds": [
+        "obs-001"
+      ],
+      "oracleId": "O-002"
+    },
+    {
+      "disposition": "held",
+      "note": "The read returned a note.",
+      "observationIds": [
+        "obs-002"
+      ],
+      "oracleId": "O-003"
+    },
+    {
+      "disposition": "held",
+      "note": "No listed note lacked an identifier.",
+      "observationIds": [
+        "obs-003"
+      ],
+      "oracleId": "O-004"
+    }
+  ],
+  "parentDigest": null,
+  "resourceUse": {
+    "costUsd": "0.01",
+    "inputTokens": 1200,
+    "outputTokens": 200,
+    "toolCalls": 3,
+    "wallClockSeconds": 4
+  },
+  "revisionCount": 0,
+  "runId": "notes-run-1",
+  "schemaVersion": 6,
+  "sealedBriefDigest": "sha256:20908549841119f0bf583cb0b2ddb8cfe62fb00beff39455da9b79d607df8b49",
+  "trialIndex": 1
+}

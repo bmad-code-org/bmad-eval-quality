@@ -1,0 +1,1 @@
+{"action":"call","step":"frontend-case","operation":"run-skill","sent":{"case":"frontend"},"received":{"selected":["interaction-rules","timing-rules","quality-rules"]},"exitCode":0}

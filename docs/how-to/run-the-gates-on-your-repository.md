@@ -16,6 +16,561 @@ This package's own trees, names, and policies stay in this package; your run see
 
 The gates binary carries eight gates.
 
+The first half of this page is five short labs you run.
+The second half is the reference for every setting each gate takes.
+Work through a lab before you read the reference for its gate, because the settings read very differently once you have watched the gate fail.
+
+## Before you start
+
+The commands below are `node dist/gates/gates-cli.js`, which is the gates binary inside a clone:
+
+```bash
+git clone https://github.com/bmad-code-org/bmad-eval-quality.git
+cd bmad-eval-quality
+npm ci
+npm run build
+```
+
+Installed from the registry, the same binary is on `PATH` as `eval-quality-gates`, and every command below works with that name in place of the `node dist/...` form.
+
+Each lab builds a tiny repository under `/tmp` so your own checkout stays clean.
+The labs are deliberately smaller than anything you would really gate, because the point is to feel the gate behave.
+
+## The exit contract
+
+Every gate answers with one of three codes, and a lab below produces each one.
+
+```text
+0   the gate passed
+1   the gate found the thing it exists to find
+64  the invocation or the configuration was wrong
+```
+
+The split matters when you wire a gate into CI.
+`1` is a finding about your repository and belongs in the build log next to the diagnostic.
+`64` says the gate never got as far as looking, so treating it as a finding would report a clean scan of nothing.
+
+One more thing decides what you see.
+A passing run prints its summary on standard output, and a failing run prints its diagnostic on standard error.
+
+## Lab 1: one gate, one failure, one fix
+
+`package-boundary` is the gate to meet first, because it needs nothing installed and nothing from the network.
+
+It reads every file your package would publish and fails on a line matching a pattern you declared.
+The case it exists for is a shipped file pointing at a path the installed package does not carry: a comment in published source that sends a reader to a test directory that npm never packed.
+
+Build a package with exactly that problem.
+
+```bash
+rm -rf /tmp/eval-quality-gates-lab/package-boundary
+```
+
+```bash
+mkdir -p /tmp/eval-quality-gates-lab/package-boundary/src
+```
+
+```bash
+cat > /tmp/eval-quality-gates-lab/package-boundary/src/greet.js <<'EOF'
+// The greeting the package exports.
+// See tests/greet.test.js for the cases this covers.
+export const greet = (name) => `hello, ${name}`
+EOF
+```
+
+```bash
+cat > /tmp/eval-quality-gates-lab/package-boundary/package.json <<'EOF'
+{
+  "name": "greeter",
+  "version": "1.0.0",
+  "description": "A greeting.",
+  "files": ["src"]
+}
+EOF
+```
+
+`files` carries `src` alone, so an installer receives `src/greet.js` and never receives `tests/`.
+The comment on the second line points somewhere the reader does not have.
+
+Now declare the rule:
+
+```bash
+cat > /tmp/eval-quality-gates-lab/package-boundary/eval-quality.config.json <<'EOF'
+{
+  "package-boundary": {
+    "paths": [{ "path": "src", "extensions": [".js"] }],
+    "manifest": { "file": "package.json", "fields": ["description"] },
+    "patterns": [
+      {
+        "name": "unpublished-path",
+        "match": "\\btests/",
+        "reason": "the published file list carries src only, so a reader of the installed package cannot open what the sentence points at"
+      }
+    ]
+  }
+}
+EOF
+```
+
+Run it:
+
+<!-- expect-exit: 1 -->
+
+```bash
+node dist/gates/gates-cli.js package-boundary --config /tmp/eval-quality-gates-lab/package-boundary/eval-quality.config.json
+```
+
+```text
+...
+package-boundary: 1 violation(s) across 2 scanned entr(ies):
+  src/greet.js:1 [unpublished-path] The greeting the package exports. See tests/greet.test.js for the cases this covers.
+    the published file list carries src only, so a reader of the installed package cannot open what the sentence points at
+```
+
+Exit `1`, and three things in that diagnostic are worth reading.
+
+The reason you wrote is printed under the finding, so the person who hits this months from now reads your sentence rather than a rule name.
+
+Both comment lines were joined into one logical line and reported at line 1, which is the start of the run. A reference that wraps across two lines is the ordinary shape, so the gate matches the run rather than each physical line.
+
+The scan counted two entries: one file under `src`, and one manifest field.
+
+Fix it by cutting the reference:
+
+```bash
+cat > /tmp/eval-quality-gates-lab/package-boundary/src/greet.js <<'EOF'
+// The greeting the package exports.
+export const greet = (name) => `hello, ${name}`
+EOF
+```
+
+```bash
+node dist/gates/gates-cli.js package-boundary --config /tmp/eval-quality-gates-lab/package-boundary/eval-quality.config.json
+```
+
+```text
+package-boundary: 2 entr(ies) scanned, 0 violations (1 from src, 1 from package.json)
+```
+
+Exit `0`, and the count is in the passing line on purpose.
+A gate that passed over nothing and a gate that passed over your whole tree print different numbers, so the green line still carries evidence.
+
+That loop is every gate on this page: declare the rule, run it, read the finding, fix the thing, run it again.
+
+## Lab 2: licences
+
+`licences` reads each lockfile directly, so it needs no install and it sees the optional platform binaries this machine never installed.
+
+```bash
+rm -rf /tmp/eval-quality-gates-lab/licences
+```
+
+```bash
+mkdir -p /tmp/eval-quality-gates-lab/licences
+```
+
+```bash
+cat > /tmp/eval-quality-gates-lab/licences/package-lock.json <<'EOF'
+{
+  "name": "greeter",
+  "version": "1.0.0",
+  "lockfileVersion": 3,
+  "packages": {
+    "": { "name": "greeter", "version": "1.0.0", "dependencies": { "pad-left": "1.3.0", "tiny-parse": "2.0.0" } },
+    "node_modules/pad-left": {
+      "version": "1.3.0",
+      "resolved": "https://registry.npmjs.org/pad-left/-/pad-left-1.3.0.tgz",
+      "license": "BSD-2-Clause"
+    },
+    "node_modules/tiny-parse": {
+      "version": "2.0.0",
+      "resolved": "https://registry.npmjs.org/tiny-parse/-/tiny-parse-2.0.0.tgz",
+      "license": "MIT"
+    }
+  }
+}
+EOF
+```
+
+```bash
+cat > /tmp/eval-quality-gates-lab/licences/eval-quality.config.json <<'EOF'
+{
+  "licences": {
+    "lockfiles": ["package-lock.json"],
+    "allowlist": ["MIT", "Apache-2.0", "ISC"]
+  }
+}
+EOF
+```
+
+<!-- expect-exit: 1 -->
+
+```bash
+node dist/gates/gates-cli.js licences --config /tmp/eval-quality-gates-lab/licences/eval-quality.config.json
+```
+
+```text
+...
+licences package-lock.json: 1 entrie(s) outside the allowlist:
+  - pad-left@1.3.0: license="BSD-2-Clause"
+    dependency path: greeter > pad-left
+```
+
+The dependency path is the shortest chain of require-names from your root package to the offending entry, so the report names which of your dependencies brought it in.
+
+The honest fix here is to allow the licence, since `BSD-2-Clause` is one a permissive policy normally accepts and the decision belongs in the allowlist where a reviewer sees it in a diff:
+
+```bash
+cat > /tmp/eval-quality-gates-lab/licences/eval-quality.config.json <<'EOF'
+{
+  "licences": {
+    "lockfiles": ["package-lock.json"],
+    "allowlist": ["MIT", "Apache-2.0", "ISC", "BSD-2-Clause"]
+  }
+}
+EOF
+```
+
+```bash
+node dist/gates/gates-cli.js licences --config /tmp/eval-quality-gates-lab/licences/eval-quality.config.json
+```
+
+```text
+licences package-lock.json: passed against the allowlist, 2 entrie(s), all allowlisted.
+```
+
+The other three settings on this gate exist for the cases the allowlist cannot reach, and the reference below covers each: `policies` for one lockfile that may carry more, `tolerances` for a family that is installed and never loaded, and `undeclared` for an entry whose manifest carries no licence field at all.
+
+## Lab 3: lockfile-age, and the one lab with a network prerequisite
+
+`lockfile-age` audits every lockfile entry against that entry's real publication timestamp on the npm registry.
+It is the gate against a supply-chain attack that publishes a malicious version and waits for the next install to pick it up.
+
+**The prerequisite.** An entry the `cache` file carries is used with no request. Every other entry is fetched from the npm registry, and a fetch that fails fails the gate rather than skipping the entry. So this lab is fully offline only because the cache below carries every entry in the lockfile.
+
+```bash
+rm -rf /tmp/eval-quality-gates-lab/lockfile-age
+```
+
+```bash
+mkdir -p /tmp/eval-quality-gates-lab/lockfile-age
+```
+
+```bash
+cat > /tmp/eval-quality-gates-lab/lockfile-age/package-lock.json <<'EOF'
+{
+  "name": "greeter",
+  "version": "1.0.0",
+  "lockfileVersion": 3,
+  "packages": {
+    "": { "name": "greeter", "version": "1.0.0", "dependencies": { "settled-dep": "1.0.0", "fresh-dep": "2.0.0" } },
+    "node_modules/settled-dep": {
+      "version": "1.0.0",
+      "resolved": "https://registry.npmjs.org/settled-dep/-/settled-dep-1.0.0.tgz",
+      "license": "MIT"
+    },
+    "node_modules/fresh-dep": {
+      "version": "2.0.0",
+      "resolved": "https://registry.npmjs.org/fresh-dep/-/fresh-dep-2.0.0.tgz",
+      "license": "MIT"
+    }
+  }
+}
+EOF
+```
+
+```bash
+cat > /tmp/eval-quality-gates-lab/lockfile-age/lockfile-age-cache.json <<'EOF'
+{
+  "settled-dep@1.0.0": "2020-03-02T00:00:00.000Z",
+  "fresh-dep@2.0.0": "2099-01-15T00:00:00.000Z"
+}
+EOF
+```
+
+`fresh-dep` is dated in 2099 so this lab keeps failing whenever you run it.
+A recent real date would read more naturally and would go stale, and a lab that quietly stops failing teaches the wrong thing.
+
+```bash
+cat > /tmp/eval-quality-gates-lab/lockfile-age/eval-quality.config.json <<'EOF'
+{
+  "lockfile-age": {
+    "lockfiles": ["package-lock.json"],
+    "cache": "lockfile-age-cache.json"
+  }
+}
+EOF
+```
+
+<!-- expect-exit: 1 -->
+
+```bash
+node dist/gates/gates-cli.js lockfile-age --config /tmp/eval-quality-gates-lab/lockfile-age/eval-quality.config.json
+```
+
+```text
+...
+lockfile-age package-lock.json: 1 entrie(s) published inside the ...-day window (cutoff ...):
+  - fresh-dep@2.0.0 published 2099-01-15T00:00:00.000Z (node_modules/fresh-dep)
+```
+
+The window and the cutoff are elided above because both move with the clock.
+That is the gate's design rather than an accident: `windowDays` is a duration, so nothing you write goes stale as time passes.
+
+Age the entry and it passes:
+
+```bash
+cat > /tmp/eval-quality-gates-lab/lockfile-age/lockfile-age-cache.json <<'EOF'
+{
+  "settled-dep@1.0.0": "2020-03-02T00:00:00.000Z",
+  "fresh-dep@2.0.0": "2020-03-02T00:00:00.000Z"
+}
+EOF
+```
+
+```bash
+node dist/gates/gates-cli.js lockfile-age --config /tmp/eval-quality-gates-lab/lockfile-age/eval-quality.config.json
+```
+
+The run prints the effective clock, then how many timestamps it read from the cache, then a passing line naming the cutoff it held every entry to.
+
+Editing that cache to make a package look old is a real weakening of the gate, and it is meant to be.
+The cache is a committed file, and a diff to it is where that decision is visible, exactly as a wider `windowDays` or a longer `allowlist` would be.
+
+## Lab 4: dependency-direction
+
+**The prerequisite, before you run anything.** This gate reads your source through the TypeScript scanner, and `typescript` is an optional peer dependency of this package. Run it inside this clone and it is already there. Run it in a repository that does not have it and the gate refuses at exit `64`, naming the missing dependency and itself. `field-ownership` in lab 5 is the only other gate that needs it, and the remaining six need nothing beyond this package.
+
+Two layers, and one import going the wrong way.
+
+```bash
+rm -rf /tmp/eval-quality-gates-lab/dependency-direction
+```
+
+```bash
+mkdir -p /tmp/eval-quality-gates-lab/dependency-direction/src/model
+```
+
+```bash
+mkdir -p /tmp/eval-quality-gates-lab/dependency-direction/src/app
+```
+
+```bash
+cat > /tmp/eval-quality-gates-lab/dependency-direction/src/app/config.ts <<'EOF'
+export const currency = 'EUR'
+EOF
+```
+
+```bash
+cat > /tmp/eval-quality-gates-lab/dependency-direction/src/model/price.ts <<'EOF'
+import { currency } from '../app/config.ts'
+
+export const format = (amount: number) => `${amount} ${currency}`
+EOF
+```
+
+```bash
+cat > /tmp/eval-quality-gates-lab/dependency-direction/eval-quality.config.json <<'EOF'
+{
+  "dependency-direction": {
+    "roots": [{ "path": "src", "extensions": [".ts"] }],
+    "layers": [
+      {
+        "name": "model",
+        "match": "prefix",
+        "path": "src/model/",
+        "imports": ["model"]
+      },
+      {
+        "name": "app",
+        "match": "prefix",
+        "path": "src/app/",
+        "imports": ["app", "model"]
+      }
+    ]
+  }
+}
+EOF
+```
+
+<!-- expect-exit: 1 -->
+
+```bash
+node dist/gates/gates-cli.js dependency-direction --config /tmp/eval-quality-gates-lab/dependency-direction/eval-quality.config.json
+```
+
+Exit `1`. This gate splits its report across the two streams, so the count arrives on standard output and the violation itself on standard error:
+
+```text
+dependency-direction: 1 violation(s) across 2 scanned file(s):
+  src/model/price.ts:1 "../app/config.ts": model may not import app
+```
+
+`model` names only itself under `imports`, and a layer it does not name is denied.
+That is the whole rule: permission is what you wrote down, and there is no implicit edge anywhere.
+
+The fix is the one the layering was asking for. Take the value as a parameter, so the dependency points the other way:
+
+```bash
+cat > /tmp/eval-quality-gates-lab/dependency-direction/src/model/price.ts <<'EOF'
+export const format = (amount: number, currency: string) =>
+	`${amount} ${currency}`
+EOF
+```
+
+```bash
+cat > /tmp/eval-quality-gates-lab/dependency-direction/src/app/config.ts <<'EOF'
+import { format } from '../model/price.ts'
+
+export const currency = 'EUR'
+export const show = (amount: number) => format(amount, currency)
+EOF
+```
+
+```bash
+node dist/gates/gates-cli.js dependency-direction --config /tmp/eval-quality-gates-lab/dependency-direction/eval-quality.config.json
+```
+
+```text
+dependency-direction: passed, 2 file(s) scanned across 1 root(s), 0 violations.
+```
+
+## Lab 5: field-ownership
+
+Same prerequisite as lab 4: this gate needs `typescript`.
+
+One field that carries a claim, one module allowed to set it, and one write from somewhere else.
+
+```bash
+rm -rf /tmp/eval-quality-gates-lab/field-ownership
+```
+
+```bash
+mkdir -p /tmp/eval-quality-gates-lab/field-ownership/src/app
+```
+
+```bash
+cat > /tmp/eval-quality-gates-lab/field-ownership/src/app/authorize.ts <<'EOF'
+export const authorize = (request: { user: string }) => ({
+	user: request.user,
+	tenantId: 'acme',
+})
+EOF
+```
+
+```bash
+cat > /tmp/eval-quality-gates-lab/field-ownership/src/app/report.ts <<'EOF'
+export const anonymise = (row: { user: string }) => ({
+	user: row.user,
+	tenantId: 'unknown',
+})
+EOF
+```
+
+```bash
+cat > /tmp/eval-quality-gates-lab/field-ownership/eval-quality.config.json <<'EOF'
+{
+  "field-ownership": {
+    "paths": [{ "path": "src", "extensions": [".ts"] }],
+    "fields": ["tenantId"],
+    "declarations": [],
+    "writers": ["src/app/authorize.ts"],
+    "helpers": []
+  }
+}
+EOF
+```
+
+<!-- expect-exit: 1 -->
+
+```bash
+node dist/gates/gates-cli.js field-ownership --config /tmp/eval-quality-gates-lab/field-ownership/eval-quality.config.json
+```
+
+```text
+...
+field-ownership: 1 violation(s) across 2 scanned file(s):
+  src/app/report.ts:3 tenantId: only a declared path or a declared writer may set this field; this is a literal position
+```
+
+There is a tempting wrong fix here, and it is worth knowing before you reach for it.
+Adding `anonymise` to `helpers` makes this worse rather than better: a listed helper is read as the same write one line further out, so naming it there reports the same violation at every call site instead of clearing it.
+
+The fix is to move the write to the module that owns it:
+
+```bash
+cat > /tmp/eval-quality-gates-lab/field-ownership/src/app/authorize.ts <<'EOF'
+export const authorize = (request: { user: string }) => ({
+	user: request.user,
+	tenantId: 'acme',
+})
+
+export const anonymise = (row: { user: string }) => ({
+	user: row.user,
+	tenantId: 'unknown',
+})
+EOF
+```
+
+```bash
+cat > /tmp/eval-quality-gates-lab/field-ownership/src/app/report.ts <<'EOF'
+import { anonymise } from './authorize.ts'
+
+export const report = (rows: readonly { user: string }[]) => rows.map(anonymise)
+EOF
+```
+
+```bash
+node dist/gates/gates-cli.js field-ownership --config /tmp/eval-quality-gates-lab/field-ownership/eval-quality.config.json
+```
+
+```text
+field-ownership: 2 file(s) scanned, 0 violations
+```
+
+## Seeing exit 64
+
+The third code is the one you meet while adopting a gate rather than while running it.
+
+A gate you invoke with no section for it refuses by name, because configuring a gate is what opts into it and there is no fallback to anyone else's values:
+
+<!-- expect-exit: 64 -->
+
+```bash
+node dist/gates/gates-cli.js package-boundary --config /tmp/eval-quality-gates-lab/licences/eval-quality.config.json
+```
+
+A configuration file that does not exist refuses the same way, naming the path, the gate that wanted it, and the flag that would point somewhere else.
+
+A section the gate cannot parse refuses with the JSON path of the offending setting and the reasoning behind the rule it broke:
+
+```bash
+cat > /tmp/eval-quality-gates-lab/malformed.json <<'EOF'
+{
+  "package-boundary": {
+    "paths": [{ "path": "src", "extensions": [".js"] }],
+    "manifest": { "file": "package.json", "fields": ["description"] },
+    "patterns": [
+      { "name": "anything", "match": "tests/", "flags": "g", "reason": "a pattern that carries a match position between calls" }
+    ]
+  }
+}
+EOF
+```
+
+<!-- expect-exit: 64 -->
+
+```bash
+node dist/gates/gates-cli.js package-boundary --config /tmp/eval-quality-gates-lab/malformed.json
+```
+
+That last one reports that `flags` admits only `i`, `m`, `s`, `u` and `v`, and says why a `g` or a `y` is refused: either one carries a match position between calls, so a pattern holding one would match every second thing it should have matched.
+
+## Where to go next
+
+The rest of this page is reference.
+Read the section for a gate when you adopt it, and read `dependency-direction` and `package-boundary` in full before you adopt either, because both have rules about ordering that are easy to get wrong and quiet when you do.
+
 ## The configuration file
 
 `eval-quality.config.json` at your repository root, or any path you give to `--config`.
@@ -151,11 +706,18 @@ A file configuring all eight gates parses against the published schema:
   },
   "doc-invocations": {
     "pages": ["README.md", "docs"],
-    "binary": {
-      "entry": "dist/cli.js",
-      "spellings": ["npx your-tool", "your-tool"],
-      "installedPrefix": "node_modules/your-tool/"
-    },
+    "binary": [
+      {
+        "entry": "dist/cli.js",
+        "spellings": ["npx your-tool", "your-tool"],
+        "installedPrefix": "node_modules/your-tool/"
+      },
+      {
+        "entry": "dist/gates.js",
+        "spellings": ["npx your-tool-gates", "your-tool-gates"],
+        "installedPrefix": "node_modules/your-tool/"
+      }
+    ],
     "sampleInput": "examples/report.json"
   },
   "doc-counts": {
@@ -247,8 +809,7 @@ A file configuring all eight gates parses against the published schema:
 eval-quality-gates <gate> [--config <path>]
 ```
 
-`--help` prints the gate list and the flags.
-Exit `0` means the gate passed, exit `1` means it found what it exists to find, and exit `64` means the invocation or the configuration was wrong.
+`--help` prints the gate list and the flags, and [the exit contract](#the-exit-contract) above is what each code means.
 
 ## The lockfile-age gate
 
@@ -526,6 +1087,10 @@ A gate that skipped when it was absent would exit `0` having executed nothing, s
 Each is matched at the start of a fenced line with whitespace or end of line after it, so a transcript of your own diagnostic output is left alone.
 Write every spelling your pages use: `npx your-tool`, the bare name, and whatever `node dist/...` form your contributor documentation carries.
 
+`binary` takes a list where a package publishes more than one.
+Every spelling across every binary is matched against the same page, longest first, so a short name never claims a line that opens with a longer one, and each entry carries its own `installedPrefix` and its own precondition.
+The per-page sandbox is shared, which is what lets one binary read a file an earlier command from the other one wrote.
+
 `sampleInput` stands in for a file only the reader has, such as `<path>`.
 A run that needed one is judged for usage errors and crashes and nothing more, because its exit code is not the page's own claim.
 
@@ -537,6 +1102,9 @@ A page that deliberately shows a failure declares the code it expects in an HTML
 ```
 
 Declaring a code the run does not produce fails too: a documented rejection that stopped rejecting is as stale as a flag that stopped existing.
+
+`usageExit` is the code your command line returns when a command or a flag does not exist, and an invocation that returns it fails whatever inputs it named.
+Declaring that same code for a faithful invocation is what admits it, which is what a binary that spends the code on a configuration it would not read needs, and an undeclared usage exit still fails every time.
 
 A page may transcribe the diagnostic beside a declared-exit fence, in a `text` fence separated from the command by blank lines only, and that block is compared to stderr line for line.
 `...` inside a line elides a run of characters there, and a line that is exactly `...` matches any one line.

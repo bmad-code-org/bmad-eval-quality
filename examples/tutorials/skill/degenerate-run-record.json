@@ -1,0 +1,137 @@
+{
+  "actionsArtifact": {
+    "digest": "sha256:1e4d0f3d0b13bf1004004d13f3051aafbd42569addcef2bdd80f9c7207430f15",
+    "path": "examples/tutorials/skill/degenerate-actions.jsonl",
+    "privateRef": null,
+    "storage": "public"
+  },
+  "conditionArm": "degenerate",
+  "contractDigest": "sha256:db47672fee36bd18d5b7d42ac24cc11dc3d5c46ed0a7be86617676f2ebb9841c",
+  "evaluatorConfigurationDigest": "sha256:af8fbb61753c5a4dba7dbb28f500fa9b11e2448fe7ed0693cbb56ea1a9a5bc6e",
+  "evaluatorRecommendation": "FAIL",
+  "evidenceDisclosure": {
+    "reportedIncomplete": false,
+    "truncationBound": null
+  },
+  "findings": [
+    {
+      "behaviorId": "B-002",
+      "confidence": 0.95,
+      "evidenceArtifacts": [
+        {
+          "digest": "sha256:1e4d0f3d0b13bf1004004d13f3051aafbd42569addcef2bdd80f9c7207430f15",
+          "path": "examples/tutorials/skill/degenerate-actions.jsonl",
+          "privateRef": null,
+          "storage": "public"
+        }
+      ],
+      "findingId": "F-001",
+      "findingType": "defect",
+      "observationIds": [
+        "obs-001"
+      ],
+      "oracleId": "O-002",
+      "probeId": "P-002",
+      "quotedEvidence": [
+        {
+          "artifactId": null,
+          "channel": "stdout",
+          "quote": "\"mobile-rules\""
+        },
+        {
+          "artifactId": null,
+          "channel": "exit-code",
+          "quote": "0"
+        }
+      ],
+      "severity": "material",
+      "summary": "The selection named every item in the index, so it carried both excluded items while the run exited 0."
+    }
+  ],
+  "isolationManifestArtifact": {
+    "digest": "sha256:74e9477b59623f58f2dac43cc92edbcebb3dd5004f933c62268ef366f29aba4c",
+    "path": "examples/tutorials/skill/degenerate-isolation-manifest.json",
+    "privateRef": null,
+    "storage": "public"
+  },
+  "judgeResults": [],
+  "mode": "contract-scoring",
+  "observations": [
+    {
+      "artifacts": {},
+      "callInputs": {
+        "argument": null,
+        "arguments": null,
+        "body": null,
+        "environment": null,
+        "header": null,
+        "option": {
+          "skill": "checklist-selection"
+        },
+        "path": null,
+        "query": null,
+        "stdin": {
+          "prompt": "the rules, then a frontend case"
+        }
+      },
+      "exitCode": 0,
+      "observationId": "obs-001",
+      "operationId": "run-skill",
+      "principal": null,
+      "provenance": "evaluator-chosen",
+      "responseBody": null,
+      "responseHeaders": null,
+      "responseStatus": null,
+      "sequence": 1,
+      "stderr": {
+        "kind": "text",
+        "value": ""
+      },
+      "stdout": {
+        "kind": "json",
+        "value": {
+          "selected": [
+            "interaction-rules",
+            "timing-rules",
+            "quality-rules",
+            "api-rules",
+            "data-rules",
+            "mobile-rules",
+            "contract-rules"
+          ]
+        }
+      }
+    }
+  ],
+  "oracleDispositions": [
+    {
+      "disposition": "held",
+      "note": "The selection named every item the rules mandate, because it named everything.",
+      "observationIds": [
+        "obs-001"
+      ],
+      "oracleId": "O-001"
+    },
+    {
+      "disposition": "violated",
+      "note": "The selection named items the rules exclude for the case.",
+      "observationIds": [
+        "obs-001"
+      ],
+      "oracleId": "O-002"
+    }
+  ],
+  "parentDigest": null,
+  "resourceUse": {
+    "costUsd": "0.01",
+    "inputTokens": 900,
+    "outputTokens": 80,
+    "toolCalls": 1,
+    "wallClockSeconds": 2
+  },
+  "revisionCount": 0,
+  "runId": "skill-degenerate-1",
+  "schemaVersion": 6,
+  "sealedBriefDigest": "sha256:dc6ed0b8043d06c27520d4a0eb0f9803c01e20d03be50c565b9e3733870510bd",
+  "trialIndex": 1
+}

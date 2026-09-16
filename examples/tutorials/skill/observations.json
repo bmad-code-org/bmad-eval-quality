@@ -1,0 +1,89 @@
+[
+  {
+    "artifacts": {},
+    "exitCode": 0,
+    "interfaceId": "skill-runner",
+    "kind": "cli",
+    "operationId": "run-skill",
+    "probeId": "witness-frontend",
+    "stderr": {
+      "kind": "text",
+      "value": ""
+    },
+    "stdout": {
+      "kind": "json",
+      "value": {
+        "selected": [
+          "interaction-rules",
+          "timing-rules",
+          "quality-rules"
+        ]
+      }
+    }
+  },
+  {
+    "artifacts": {},
+    "exitCode": 0,
+    "interfaceId": "skill-runner",
+    "kind": "cli",
+    "operationId": "run-skill",
+    "probeId": "witness-backend",
+    "stderr": {
+      "kind": "text",
+      "value": ""
+    },
+    "stdout": {
+      "kind": "json",
+      "value": {
+        "selected": [
+          "api-rules",
+          "data-rules"
+        ]
+      }
+    }
+  },
+  {
+    "artifacts": {},
+    "exitCode": 0,
+    "interfaceId": "skill-runner",
+    "kind": "cli",
+    "operationId": "run-skill",
+    "probeId": "preflight-control-observe",
+    "stderr": {
+      "kind": "text",
+      "value": ""
+    },
+    "stdout": {
+      "kind": "json",
+      "value": {
+        "selected": [
+          "interaction-rules",
+          "timing-rules",
+          "quality-rules"
+        ]
+      }
+    }
+  },
+  {
+    "artifacts": {},
+    "exitCode": 0,
+    "interfaceId": "skill-runner",
+    "kind": "cli",
+    "operationId": "run-skill",
+    "probeId": "preflight-control-observe-2",
+    "stderr": {
+      "kind": "text",
+      "value": ""
+    },
+    "stdout": {
+      "kind": "json",
+      "value": {
+        "selected": [
+          "interaction-rules",
+          "timing-rules",
+          "quality-rules"
+        ]
+      }
+    }
+  }
+]

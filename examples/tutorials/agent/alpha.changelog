@@ -1,0 +1,3 @@
+added: a second changelog fixture
+fixed: the summary counted blank lines
+changed: entries carry their own type

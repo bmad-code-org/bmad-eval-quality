@@ -1,0 +1,13 @@
+{
+  "catchThreshold": 0.5,
+  "confidenceThreshold": 0.7,
+  "minimumTrialCount": 3,
+  "parentDigest": null,
+  "policyId": "default-policy",
+  "reExecutionCap": 2,
+  "regexMatchStepBudget": 1000000,
+  "remediationCap": 3,
+  "revisionCount": 0,
+  "schemaVersion": 2,
+  "severityFloor": "material"
+}

@@ -1,0 +1,68 @@
+{
+  "actualResourceUse": {
+    "costUsd": "0.01",
+    "inputTokens": 3100,
+    "outputTokens": 480,
+    "toolCalls": 7,
+    "wallClockSeconds": 12.5
+  },
+  "allowedMounts": [],
+  "conditionArm": "mutated",
+  "contractDigest": "sha256:dae134fc04896ddc008ff3dbdac9cc7eeb32120a7f4a0a42e54a4df1523728e4",
+  "contractId": "captured-read-back",
+  "evaluatorConfigurationDigest": "sha256:9f5f1a79045cab9d517e764b00033ed364c3ac4c745a5b203dda3de389132b12",
+  "forbiddenInputAccounting": {
+    "builder-transcript": {
+      "note": null,
+      "withheld": true
+    },
+    "comparator-results": {
+      "note": null,
+      "withheld": true
+    },
+    "human-labels": {
+      "note": null,
+      "withheld": true
+    },
+    "implementation-logs": {
+      "note": null,
+      "withheld": true
+    },
+    "original-spec": {
+      "note": null,
+      "withheld": true
+    },
+    "repository": {
+      "note": null,
+      "withheld": true
+    },
+    "source-code": {
+      "note": null,
+      "withheld": true
+    }
+  },
+  "modelSnapshot": "tutorial-deterministic-evaluator",
+  "networkAllowlist": [
+    "thing-service"
+  ],
+  "observedMounts": [],
+  "observedNetworkTargets": [
+    "thing-service"
+  ],
+  "observedToolCalls": [],
+  "parentDigest": null,
+  "resourceCeilings": {
+    "maxCostUsd": "1.00",
+    "maxInputTokens": 100000,
+    "maxOutputTokens": 25000,
+    "maxToolCalls": 20,
+    "maxWallClockMinutes": 10
+  },
+  "revisionCount": 0,
+  "runId": "workflow-run-1",
+  "schemaVersion": 1,
+  "systemPromptDigest": "sha256:e2623f778b36d098c63a4b21afdc3f796234b23b62c8ddfdb34a356286862956",
+  "toolAllowlist": [],
+  "violation": null,
+  "workspaceIdentity": "thing-service-workspace"
+}

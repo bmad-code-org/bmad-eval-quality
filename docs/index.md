@@ -31,6 +31,20 @@ An evaluation that caught the planted defect is sensitive to that failure. One t
 
 That is mutation testing, pointed at evaluations. You plant the defect and run both arms; `eval-quality` is what makes each arm's result worth comparing.
 
+## Four things, and which one this is
+
+```text
+│ system under test │  the AI feature, agent, skill, workflow, or tool server
+          ↓
+│ evaluation        │  runs it, collects evidence, makes judgments
+          ↓
+│ eval contract     │  declares what must be proven and what evidence counts
+          ↓
+│ eval-quality      │  checks the contract, checks the evidence, scores the evaluation
+```
+
+The evaluation is what most people mean when they say "our evals". This tool is the layer above it, and the evaluation is its subject. [How it works](/explanation/behavioral-evaluation-contracts/) walks each boundary.
+
 ## What the tool does
 
 `eval-quality` is a Node package and a command line binary, both published under the name `eval-quality`. It gives you four commands.
@@ -56,6 +70,9 @@ Install the binary and compile a real eval contract, in about five minutes.
 ### [How it works](/explanation/behavioral-evaluation-contracts/)
 The twin run, what an eval contract declares, and why `compile` rejects the contracts it rejects.
 
+### [Contract strength](/explanation/contract-strength/)
+What a strength number claims, and why a caught defect does not make a contract trustworthy.
+
 ### [The full walkthrough](/how-to/author-behavioral-contracts/)
 Author a contract, run all four commands over it, and read a scored run down to its verdict.
 
@@ -74,15 +91,15 @@ Every command, every flag, every exit code, and the glossary.
 
 An eval contract describes a system through a declared interface. Three interface kinds compile today, `api`, `cli`, and `mcp`, and a guide below covers each shape people put in front of them.
 
-| Your system | Guide | State |
+| Your system | Guide | What you run |
 | --- | --- | --- |
-| An agent you invoke from the command line | [Agent behavior](/how-to/evaluate-agent-behavior/) | Proven. Nine probes catch a seeded defect in a real corpus. |
-| A skill an agent loads and acts on | [Skill behavior](/how-to/evaluate-skill-behavior/) | Proven. A seeded defect is caught and scored against a shipped skill contract, on an authored chain regenerated and byte-checked every build, one trial, marked non-comparable. |
-| Several steps that have to happen in order | [Workflow behavior](/how-to/evaluate-workflow-behavior/) | Proven. A shipped contract binds a step to a value captured from an earlier response and declares a fixture reset, on an authored chain regenerated and byte-checked every build, one trial, marked non-comparable. |
-| An AI feature behind an HTTP surface | [AI feature behavior](/how-to/evaluate-ai-feature-behavior/) | Proven end to end against a loopback fixture the suite starts: a real probe observes a seeded defect over HTTP and the chain scores it, one trial, marked non-comparable. No third-party AI feature has been evaluated; pointing this at yours is the adapter and the two arms you write. |
-| An MCP server answering tool calls | [Tool-use behavior](/how-to/evaluate-tool-use-behavior/) | Compiles, scores a probe, and runs a pre-flight against a real stdio tool server. The evidence is the suite's own fixture; no live server stands behind it. |
+| An agent you invoke from the command line | [Agent behavior](/how-to/evaluate-agent-behavior/) | A tiny agent that swallows a malformed input and exits `0`, caught by a contract that reads what it wrote. |
+| A skill an agent loads and acts on | [Skill behavior](/how-to/evaluate-skill-behavior/) | A selection skill answering honestly and then degenerately, with the exclusion oracle catching the degenerate reply. |
+| Several steps that have to happen in order | [Workflow behavior](/how-to/evaluate-workflow-behavior/) | A write bound to a read-back at the identifier the write minted, catching a service that filed the record and dropped the name. |
+| An AI feature behind an HTTP surface | [AI feature behavior](/how-to/evaluate-ai-feature-behavior/) | A relational oracle that survives a varying answer, and an empty collection that abstains rather than passing. |
+| An MCP server answering tool calls | [Tool-use behavior](/how-to/evaluate-tool-use-behavior/) | Real tool calls against a stdio tool server the guide spawns, where the write answers identically in both arms and the read-back separates them. The fixture is the one this repository ships, and no live server stands behind it. |
 
-Each guide says plainly what is proven and what is not, so a "state" column entry is the guide's own verdict about evidence that exists.
+Every command those guides present as runnable runs from a fresh checkout, and CI executes them on every build. Where a fence is grammar rather than a step, the page says so above it. Each guide also says plainly what is proven and what is not.
 
 One kind parses and stops at compilation under `unsupported-interface-kind`: `web`, whose probe semantics are undeclared. [What Ships](/explanation/what-ships/) states the limits of the tool-use kind and how far a strength number carries.
 

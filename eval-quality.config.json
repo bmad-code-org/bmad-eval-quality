@@ -291,16 +291,40 @@
 	},
 	"doc-invocations": {
 		"pages": ["README.md", "docs"],
-		"binary": {
-			"entry": "dist/cli/main.js",
-			"spellings": [
-				"npx -y eval-quality",
-				"npx eval-quality",
-				"eval-quality",
-				"node dist/cli/main.js"
-			],
-			"installedPrefix": "node_modules/eval-quality/"
-		},
+		"binary": [
+			{
+				"entry": "dist/cli/main.js",
+				"spellings": [
+					"npx -y eval-quality",
+					"npx eval-quality",
+					"eval-quality",
+					"node dist/cli/main.js"
+				],
+				"installedPrefix": "node_modules/eval-quality/"
+			},
+			{
+				"entry": "dist/gates/gates-cli.js",
+				"spellings": [
+					"npx -y eval-quality-gates",
+					"npx eval-quality-gates",
+					"eval-quality-gates",
+					"node dist/gates/gates-cli.js"
+				],
+				"installedPrefix": "node_modules/eval-quality/"
+			},
+			{
+				"entry": "examples/tutorials/agent/release-notes-agent.mjs",
+				"spellings": ["node examples/tutorials/agent/release-notes-agent.mjs"]
+			},
+			{
+				"entry": "examples/tutorials/skill/skill-runner.mjs",
+				"spellings": ["node examples/tutorials/skill/skill-runner.mjs"]
+			},
+			{
+				"entry": "examples/tutorials/tool-use/run-tool-calls.mjs",
+				"spellings": ["node examples/tutorials/tool-use/run-tool-calls.mjs"]
+			}
+		],
 		"sampleInput": "corpus/dev/compile-seal-example/contract.json"
 	},
 	"doc-counts": {
@@ -531,38 +555,6 @@
 					"match": "([a-z-]+) reference adapters at `eval-quality/adapters`"
 				},
 				"counts": ["referenceAdapters"]
-			},
-			{
-				"file": "docs/explanation/what-ships.md",
-				"claim": "the schema version count on the barrel",
-				"pattern": {
-					"match": "barrel exports ([a-z-]+) schema versions"
-				},
-				"counts": ["barrelSchemaVersions"]
-			},
-			{
-				"file": "docs/explanation/what-ships.md",
-				"claim": "the count of artifacts with an in-package version reader",
-				"pattern": {
-					"match": "for the ([a-z-]+) with a reader"
-				},
-				"counts": ["comparedVersions"]
-			},
-			{
-				"file": "docs/explanation/what-ships.md",
-				"claim": "the count of artifacts this package stamps",
-				"pattern": {
-					"match": "for the ([a-z-]+) this package stamps"
-				},
-				"counts": ["stampedVersions"]
-			},
-			{
-				"file": "docs/explanation/what-ships.md",
-				"claim": "the count of caller-assembled artifacts",
-				"pattern": {
-					"match": "for the ([a-z-]+) you assemble"
-				},
-				"counts": ["callerAssembledVersions"]
 			},
 			{
 				"file": "docs/reference/cli-commands.md",
@@ -1008,16 +1000,8 @@
 					"reason": "the environment variable the command-line adapter passes through"
 				},
 				{
-					"token": "POST",
-					"reason": "an `HttpMethod` value, which the enum spells as a string literal"
-				},
-				{
 					"token": "PATCH",
 					"reason": "an `HttpMethod` value, which the enum spells as a string literal"
-				},
-				{
-					"token": "CHAIN",
-					"reason": "a shell variable the walkthrough sets before its own commands"
 				},
 				{
 					"token": "HOME",
@@ -1049,6 +1033,14 @@
 				},
 				{
 					"token": "sampleInput",
+					"reason": "a setting in the doc-invocations gate's section, declared by the schema in scripts/gate-config.ts and so outside src/"
+				},
+				{
+					"token": "installedPrefix",
+					"reason": "a setting on a binary entry in the doc-invocations gate's section, declared by the schema in scripts/gate-config.ts and so outside src/"
+				},
+				{
+					"token": "usageExit",
 					"reason": "a setting in the doc-invocations gate's section, declared by the schema in scripts/gate-config.ts and so outside src/"
 				},
 				{
@@ -1168,20 +1160,6 @@
 				}
 			},
 			{
-				"file": "docs/explanation/what-ships.md",
-				"claim": "the stages performing AD-11's version equality",
-				"pattern": {
-					"match": "The stages that perform that comparison are ([^.]*?)\\."
-				},
-				"tokenShape": {
-					"match": "^[a-z]+$"
-				},
-				"expected": {
-					"module": "scripts/doc-claim-sources.ts",
-					"export": "VERSION_READERS"
-				}
-			},
-			{
 				"file": "docs/reference/cli-commands.md",
 				"claim": "the stages performing AD-11's version equality",
 				"pattern": {
@@ -1193,20 +1171,6 @@
 				"expected": {
 					"module": "scripts/doc-claim-sources.ts",
 					"export": "VERSION_READERS"
-				}
-			},
-			{
-				"file": "docs/explanation/what-ships.md",
-				"claim": "the schema versions the barrel exports",
-				"pattern": {
-					"match": "barrel exports [a-z-]+ schema versions: ([^.]*?)\\."
-				},
-				"tokenShape": {
-					"match": "^[A-Z0-9_]+_SCHEMA_VERSION$"
-				},
-				"expected": {
-					"module": "scripts/doc-count-sources.ts",
-					"export": "BARREL_SCHEMA_VERSIONS"
 				}
 			},
 			{
@@ -1629,6 +1593,14 @@
 				"text": {
 					"module": "scripts/doc-claim-sources.ts",
 					"export": "skillDefectVector"
+				}
+			},
+			{
+				"file": "docs/how-to/author-behavioral-contracts.md",
+				"claim": "the walkthrough chain's caller-attested corpus digest",
+				"text": {
+					"module": "scripts/doc-claim-sources.ts",
+					"export": "walkthroughCorpusDigest"
 				}
 			}
 		]

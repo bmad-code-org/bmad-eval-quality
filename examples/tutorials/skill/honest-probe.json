@@ -1,0 +1,26 @@
+{
+  "artifactDigest": "sha256:d3a4a2d7dbda3c28ae573767f331fcbe8bef9670fc4efbe0fbd9d5843ec9e613",
+  "behaviorId": "B-002",
+  "commitDigest": "sha256:d3a4a2d7dbda3c28ae573767f331fcbe8bef9670fc4efbe0fbd9d5843ec9e613",
+  "defects": [],
+  "expectedClean": true,
+  "implementationDigest": "sha256:d3a4a2d7dbda3c28ae573767f331fcbe8bef9670fc4efbe0fbd9d5843ec9e613",
+  "parentDigest": null,
+  "probeClass": "zero-action",
+  "probeId": "P-001",
+  "qualification": {
+    "baselinePassEvidence": {
+      "digest": "sha256:0ce868aa3e322a4c4117dda38995632af4ddba27391bff1073545c0d55e27934",
+      "path": "examples/tutorials/skill/honest-actions.jsonl",
+      "privateRef": null,
+      "storage": "public"
+    },
+    "noKnownDefectStatement": "The runner is deterministic and its rules are the ones the contract states, so no defect is known in the selection it produces for the declared case.",
+    "revisionCommitDigest": "sha256:d3a4a2d7dbda3c28ae573767f331fcbe8bef9670fc4efbe0fbd9d5843ec9e613",
+    "route": "clean-control"
+  },
+  "rationale": "The clean control: the runner applies the rules as written, so the reply names what the case mandates and nothing the case excludes.",
+  "revisionCount": 0,
+  "schemaVersion": 5,
+  "systemId": "checklist-selection-skill"
+}

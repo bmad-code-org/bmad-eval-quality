@@ -168,7 +168,7 @@ jobs:
       # `npm run validate` ends in `test:coverage`, so the AD-30/NFR7 floor is
       # already enforced here. A separate coverage step beside this one would
       # run the whole suite twice in one job for nothing.
-      - name: Validate (typecheck, lint, check:docs, check:doc-invocations, check:shareable, lint:spine, check:vectors, check:schemas, check:ad5-registry, check:ad28-registry, check:ad31-table, check:ad33-table, check:ad21-table, check:layers, check:lineage, check:boundary, check:corpus, check:doc-counts, check:doc-claims, check:worked-example, check:version, check:lockfile-age, check:licences, and the AD-30/NFR7 coverage floor via test:coverage)
+      - name: Validate (typecheck, lint, check:docs, check:doc-invocations, check:shareable, lint:spine, check:vectors, check:schemas, check:ad5-registry, check:ad28-registry, check:ad31-table, check:ad33-table, check:ad21-table, check:layers, check:lineage, check:boundary, check:corpus, check:doc-counts, check:doc-claims, check:worked-example, check:tutorials, check:version, check:lockfile-age, check:licences, and the AD-30/NFR7 coverage floor via test:coverage)
         run: npm run validate
 
   floor:
@@ -1251,6 +1251,101 @@ jobs:
           [ -z "$(git status --porcelain -- "$dir")" ] || { echo "generate:worked-example left $dir dirty; the writer and the check are out of step, the generator did not rewrite the deleted probe.json, or it touched a hand-authored file" >&2; git status --porcelain -- "$dir" >&2; exit 1; }
           npm run --silent check:worked-example
           echo "canary passed: generate:worked-example rewrites a deleted file to the committed bytes exactly and leaves the prose files alone"
+
+  canary-tutorials:
+    name: "Canary: the tutorial check fails on a mutated byte, a changed seed and an orphan"
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version-file: ".nvmrc"
+          cache: "npm"
+
+      - uses: ./.github/actions/assert-npm-version
+        with:
+          version: ${{ env.NPM_VERSION }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      # The documentation pages name these files and the invocation gate runs
+      # commands over them, so a chain that drifted from its builder would let a
+      # page document a run nobody can reproduce. That makes this check the one
+      # holding the whole rework up, and a check nobody has watched fail is a
+      # check nobody should trust.
+      - name: Assert the tutorial check fails on a single mutated byte
+        run: |
+          set +e
+          target="examples/tutorials/walkthrough/sealed-run-record.json"
+          printf 'x' >> "$target"
+          output="$(npm run --silent check:tutorials 2>&1)"
+          exit_status=$?
+          set -e
+          git checkout -- "$target"
+          echo "$output"
+          if [ $exit_status -eq 0 ]; then
+            echo "expected the tutorial check to fail on a mutated byte, but it passed" >&2
+            exit 1
+          fi
+          echo "$output" | grep -q "sealed-run-record.json: drift at byte offset" || { echo "check failed for the wrong reason (no byte-offset drift reported)" >&2; exit 1; }
+          echo "canary passed: tutorial check correctly failed naming the differing byte offset"
+
+      # The chains are emitted rather than kept beside the code, so changing an
+      # authored input has to move the committed bytes.
+      - name: Assert the check fails when an authored seed changes
+        run: |
+          set +e
+          sed -i "s|notes-run-1|notes-run-2|" scripts/tutorials/walkthrough.ts
+          git diff --quiet -- scripts/tutorials/walkthrough.ts && { echo "the seed edit was a no-op" >&2; exit 1; }
+          output="$(npm run --silent check:tutorials 2>&1)"
+          exit_status=$?
+          set -e
+          git checkout -- scripts/tutorials/walkthrough.ts
+          echo "$output"
+          if [ $exit_status -eq 0 ]; then
+            echo "expected the tutorial check to fail on a changed seed, but it passed" >&2
+            exit 1
+          fi
+          echo "$output" | grep -q "drift at byte offset" || { echo "check failed for the wrong reason (no byte-offset drift reported)" >&2; exit 1; }
+          echo "canary passed: the committed chains move with the authored inputs that emit them"
+
+      # Nothing under examples/tutorials/ is hand-authored beyond the declared
+      # fixture programs, so a file no builder emits is a leftover a reader
+      # would open and no check would hold. This is the half check-worked-example
+      # does not have, so it is the half most worth proving.
+      - name: Assert the check fails on an orphan
+        run: |
+          set +e
+          echo '{}' > examples/tutorials/walkthrough/left-behind.json
+          output="$(npm run --silent check:tutorials 2>&1)"
+          exit_status=$?
+          set -e
+          rm -f examples/tutorials/walkthrough/left-behind.json
+          echo "$output"
+          if [ $exit_status -eq 0 ]; then
+            echo "expected the tutorial check to fail on an orphan, but it passed" >&2
+            exit 1
+          fi
+          echo "$output" | grep -q "left-behind.json" || { echo "check failed for the wrong reason (the orphan was not named)" >&2; exit 1; }
+          echo "canary passed: tutorial check correctly named the file no builder emits"
+
+      # Regeneration is the repair every message above names, so the repair is
+      # proven to be a fixed point rather than assumed to be one. The delete is
+      # what makes the generate call load-bearing: on an already-clean tree the
+      # assertion would hold for a generator that wrote nothing at all.
+      - name: Assert generate then check is a fixed point
+        run: |
+          set -e
+          rm examples/tutorials/walkthrough/probe.json
+          npm run --silent generate:tutorials > /dev/null
+          [ -z "$(git status --porcelain -- examples/tutorials/)" ] || { echo "generate:tutorials left examples/tutorials/ dirty; the writer and the check are out of step, the generator did not rewrite the deleted probe.json, or it touched a declared fixture program" >&2; git status --porcelain -- examples/tutorials/ >&2; exit 1; }
+          npm run --silent check:tutorials
+          echo "canary passed: generate:tutorials rewrites a deleted file to the committed bytes exactly and leaves the fixture programs alone"
 
   canary-shareable:
     name: "Canary: shareable check fails on a stale export and on a legacy URL"

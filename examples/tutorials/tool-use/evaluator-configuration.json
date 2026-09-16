@@ -1,0 +1,24 @@
+{
+  "budgets": {
+    "maxCostUsd": "0.25",
+    "maxToolCalls": 20,
+    "maxWallClockMinutes": 5
+  },
+  "decodingParameters": {
+    "temperature": 0
+  },
+  "evaluatorIdentity": "opaque:tutorial-evaluator",
+  "judgeConfiguration": null,
+  "modelSnapshot": "tutorial-deterministic-evaluator",
+  "parentDigest": null,
+  "permissionInventory": [],
+  "revisionCount": 0,
+  "schemaVersion": 1,
+  "sealedBriefDigest": "sha256:932c4adae4c573dfd87fee363acf005f3fe33482d2054ad3624b87e7ed9157d4",
+  "seed": 1,
+  "systemPromptDigest": "sha256:e2623f778b36d098c63a4b21afdc3f796234b23b62c8ddfdb34a356286862956",
+  "toolInventory": [
+    "search_notes",
+    "create_note"
+  ]
+}

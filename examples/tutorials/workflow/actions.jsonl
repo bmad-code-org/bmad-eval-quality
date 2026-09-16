@@ -1,0 +1,4 @@
+{"action":"call","step":"reset","operation":"reset-things","sent":{"seedName":"alpha"},"received":{"ok":true,"seededName":"alpha"}}
+{"action":"call","step":"reset-read-back","operation":"get-thing","sent":{"id":"t-1"},"received":{"ok":true,"name":"alpha"}}
+{"action":"call","step":"create","operation":"create-thing","sent":{"name":"a thing the run created"},"received":{"ok":true,"id":"t-7","name":"a thing the run created"}}
+{"action":"call","step":"read-back","operation":"get-thing","sent":{"id":"t-7"},"received":{"ok":true,"name":"untitled"}}

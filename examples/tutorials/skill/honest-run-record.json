@@ -1,0 +1,99 @@
+{
+  "actionsArtifact": {
+    "digest": "sha256:0ce868aa3e322a4c4117dda38995632af4ddba27391bff1073545c0d55e27934",
+    "path": "examples/tutorials/skill/honest-actions.jsonl",
+    "privateRef": null,
+    "storage": "public"
+  },
+  "conditionArm": "clean",
+  "contractDigest": "sha256:db47672fee36bd18d5b7d42ac24cc11dc3d5c46ed0a7be86617676f2ebb9841c",
+  "evaluatorConfigurationDigest": "sha256:af8fbb61753c5a4dba7dbb28f500fa9b11e2448fe7ed0693cbb56ea1a9a5bc6e",
+  "evaluatorRecommendation": "PASS",
+  "evidenceDisclosure": {
+    "reportedIncomplete": false,
+    "truncationBound": null
+  },
+  "findings": [],
+  "isolationManifestArtifact": {
+    "digest": "sha256:1a25581d2310e9daf02d82553f12d5d139ca1ecd1a990f21a3062b101d926235",
+    "path": "examples/tutorials/skill/honest-isolation-manifest.json",
+    "privateRef": null,
+    "storage": "public"
+  },
+  "judgeResults": [],
+  "mode": "contract-scoring",
+  "observations": [
+    {
+      "artifacts": {},
+      "callInputs": {
+        "argument": null,
+        "arguments": null,
+        "body": null,
+        "environment": null,
+        "header": null,
+        "option": {
+          "skill": "checklist-selection"
+        },
+        "path": null,
+        "query": null,
+        "stdin": {
+          "prompt": "the rules, then a frontend case"
+        }
+      },
+      "exitCode": 0,
+      "observationId": "obs-001",
+      "operationId": "run-skill",
+      "principal": null,
+      "provenance": "evaluator-chosen",
+      "responseBody": null,
+      "responseHeaders": null,
+      "responseStatus": null,
+      "sequence": 1,
+      "stderr": {
+        "kind": "text",
+        "value": ""
+      },
+      "stdout": {
+        "kind": "json",
+        "value": {
+          "selected": [
+            "interaction-rules",
+            "timing-rules",
+            "quality-rules"
+          ]
+        }
+      }
+    }
+  ],
+  "oracleDispositions": [
+    {
+      "disposition": "held",
+      "note": "The selection named every item the rules mandate for the case.",
+      "observationIds": [
+        "obs-001"
+      ],
+      "oracleId": "O-001"
+    },
+    {
+      "disposition": "held",
+      "note": "The selection named no item the rules exclude for the case.",
+      "observationIds": [
+        "obs-001"
+      ],
+      "oracleId": "O-002"
+    }
+  ],
+  "parentDigest": null,
+  "resourceUse": {
+    "costUsd": "0.01",
+    "inputTokens": 900,
+    "outputTokens": 60,
+    "toolCalls": 1,
+    "wallClockSeconds": 2
+  },
+  "revisionCount": 0,
+  "runId": "skill-honest-1",
+  "schemaVersion": 6,
+  "sealedBriefDigest": "sha256:dc6ed0b8043d06c27520d4a0eb0f9803c01e20d03be50c565b9e3733870510bd",
+  "trialIndex": 1
+}

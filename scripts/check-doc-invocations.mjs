@@ -1,6 +1,13 @@
 // A published gate: every fenced command-line invocation in the pages a
-// consumer names is run against the binary they name, and the exit code is
-// compared with what the page claims.
+// consumer names is run against the binary whose spelling opens the line, and
+// the exit code is compared with what the page claims.
+//
+// A section names one binary, or several. A package that publishes two
+// commands documents both, and each one carries its own built entry, its own
+// spellings and its own installed-path prefix. Every spelling is matched
+// against the same page and the longest one wins, because two published names
+// commonly share a prefix and declaration order says nothing about which of
+// them a line belongs to.
 //
 // The check exists because the documentation once described a product this
 // repository does not contain. A usage exit is what a command line returns when
@@ -14,8 +21,12 @@
 // reported no problems. So the exit code is judged too, wherever judging it
 // means anything:
 //
-//   * A usage error and a crash always fail, for every invocation. Both are
-//     about the command line alone, so a stand-in input cannot excuse them.
+//   * A crash always fails, for every invocation, and so does a usage error the
+//     page did not declare. Both are about the command line alone, so a
+//     stand-in input cannot excuse them. A page that declares the usage exit
+//     for a faithful invocation is claiming that refusal on purpose, which is
+//     what a binary spending that code on a configuration it would not read
+//     needs.
 //   * An invocation is FAITHFUL when every input it names resolved to real
 //     bytes: a file the repository ships, a file the same page told the reader
 //     to create, or an artifact an earlier command on the page wrote. A
@@ -35,9 +46,11 @@
 // The exit code alone is a weak claim, because it is shared. One code commonly
 // covers a whole family of failures, so a page can name one failure while the
 // binary reports another and the codes still agree. A page that declares its
-// exit code may therefore transcribe the diagnostic beside it, and that block is
-// compared line for line against what the run wrote to stderr. Four rules shape
-// which block gets compared:
+// exit code may therefore transcribe the output beside it, and that block is
+// compared line for line against what the run wrote: stderr when the run wrote
+// any, and stdout otherwise, since a page documenting a command that worked is
+// quoting the answer rather than a diagnostic. Four rules shape which block gets
+// compared:
 //
 //   * The block is a `text` fence separated from the command's fence by blank
 //     lines only. Prose between them detaches it, and a fence carrying any
@@ -344,11 +357,15 @@ function describesLine(documented, actual) {
  * fence or the next unindented line.
  *
  * A `text` fence separated from a declared-exit invocation by nothing but blank
- * lines is that invocation's transcribed diagnostic, and it travels on the run
- * as `expectStderr`. Only a declared-exit invocation collects one: a page that
- * shows the output of a command that succeeded is showing stdout, and every
- * page that documents a failure prints it on stderr. The fence has to have
+ * lines is that invocation's transcribed output, and it travels on the run as
+ * `expectStderr`. Only a declared-exit invocation collects one, so a page opts
+ * in to the comparison by declaring what the run returns. The fence has to have
  * pushed exactly one such invocation, since both would carry its declaration.
+ *
+ * `spellings` is every spelling across every declared binary, already sorted
+ * longest first, and each one carries the index of the binary it belongs to.
+ * That index travels on the run, so the caller knows which entry to execute and
+ * whose installed-path prefix to resolve the arguments against.
  */
 function extractActions(file, source, spellings) {
 	const lines = source.split('\n')
@@ -461,9 +478,11 @@ function extractActions(file, source, spellings) {
 			text = `${text.slice(0, -1).trim()} ${lines[index].trim()}`
 		}
 
-		const match = spellings.map((pattern) => text.match(pattern)).find(Boolean)
-		if (!match) continue
-		const tail = (match[1] ?? '').trim()
+		const matched = spellings
+			.map((spelling) => ({ spelling, match: text.match(spelling.pattern) }))
+			.find((candidate) => candidate.match !== null)
+		if (matched === undefined) continue
+		const tail = (matched.match[1] ?? '').trim()
 		if (tail === '') continue
 		const first = tokenize(tail)[0]
 		if (first !== undefined && isMetavariable(first)) continue
@@ -474,6 +493,7 @@ function extractActions(file, source, spellings) {
 			line: startLine,
 			invocation: text,
 			tail,
+			binary: matched.spelling.binary,
 			expectExit,
 			expectStderr: null,
 		}
@@ -491,14 +511,27 @@ function extractActions(file, source, spellings) {
  * section names resolves against it.
  */
 export function runDocInvocations(root, section) {
-	const entry = resolve(root, section.binary.entry)
+	// One binary is the ordinary case and stays spelled as one object. The list
+	// is built once here, so everything below reads the same shape.
+	const declared = Array.isArray(section.binary)
+		? section.binary
+		: [section.binary]
+	const binaries = declared.map((binary) => ({
+		entry: resolve(root, binary.entry),
+		installedPrefix: binary.installedPrefix,
+	}))
+
 	// A build is a precondition rather than an excuse. Skipping here would let
 	// the gate exit 0 having executed nothing, which is the vacuous pass the
-	// whole check exists to prevent.
-	if (!existsSync(entry)) {
+	// whole check exists to prevent. The refusal names which binary is missing,
+	// since a reader with two of them has two build steps to choose between.
+	for (const [index, binary] of binaries.entries()) {
+		if (existsSync(binary.entry)) continue
+		const field =
+			declared.length === 1 ? 'binary.entry' : `binary[${index}].entry`
 		throw codedError(
 			DOC_PATH_ERROR,
-			`${entry} does not exist; the "doc-invocations" section names it under binary.entry, so build it before the gate runs`,
+			`${binary.entry} does not exist; the "doc-invocations" section names it under ${field}, so build it before the gate runs`,
 		)
 	}
 
@@ -539,12 +572,29 @@ export function runDocInvocations(root, section) {
 		}
 	}
 
-	const spellings = section.binary.spellings.map(spellingPattern)
-	const context = {
-		repoRoot: resolve(root),
+	// Longest first, and the first match wins. Two published names commonly
+	// share a prefix, so matching in declaration order would let a short
+	// spelling belonging to one binary claim a line that opens with a longer
+	// spelling belonging to another, and the line would then run against the
+	// wrong entry and be judged against the wrong installed-path prefix.
+	const spellings = declared
+		.flatMap((binary, index) =>
+			binary.spellings.map((spelling) => ({
+				text: spelling.trim(),
+				pattern: spellingPattern(spelling),
+				binary: index,
+			})),
+		)
+		.sort((a, b) => b.text.length - a.text.length)
+
+	const repoRoot = resolve(root)
+	// One context per binary, because `installedPrefix` belongs to the binary a
+	// line matched. Two binaries on one page can map different installed paths.
+	const contexts = binaries.map((binary) => ({
+		repoRoot,
 		sampleInput,
-		installedPrefix: section.binary.installedPrefix,
-	}
+		installedPrefix: binary.installedPrefix,
+	}))
 
 	const files = section.pages
 		.flatMap((page) => collectMarkdown(resolve(root, page)))
@@ -566,8 +616,8 @@ export function runDocInvocations(root, section) {
 
 	try {
 		for (const [index, absolute] of files.entries()) {
-			const file = absolute.startsWith(context.repoRoot)
-				? absolute.slice(context.repoRoot.length + 1)
+			const file = absolute.startsWith(repoRoot)
+				? absolute.slice(repoRoot.length + 1)
 				: absolute
 			const sandbox = createPageSandbox(workDir, index)
 
@@ -589,17 +639,21 @@ export function runDocInvocations(root, section) {
 				const { tokens, faithful } = realizeArguments(
 					action.tail,
 					sandbox,
-					context,
+					contexts[action.binary],
 				)
 				// The sandbox root is the working directory and stdin is closed: a
 				// relative write lands inside the sandbox, and a command that reads
 				// stdin sees an empty stream and returns at once.
-				const result = spawnSync(process.execPath, [entry, ...tokens], {
-					cwd: sandbox.root,
-					encoding: 'utf8',
-					input: '',
-					timeout: section.timeoutMs,
-				})
+				const result = spawnSync(
+					process.execPath,
+					[binaries[action.binary].entry, ...tokens],
+					{
+						cwd: sandbox.root,
+						encoding: 'utf8',
+						input: '',
+						timeout: section.timeoutMs,
+					},
+				)
 				// A run that never started carries no streams, so the report reads
 				// them defensively rather than dying while writing a failure.
 				const record = (reason) =>
@@ -633,7 +687,16 @@ export function runDocInvocations(root, section) {
 					record('the binary crashed')
 					continue
 				}
-				if (result.status === section.usageExit) {
+				// A usage exit is a mistyped command or a flag that stopped existing,
+				// except where the page declares it. One binary can spend the same
+				// code on a configuration it refused to read, and a page teaching a
+				// reader to recognise that refusal is making a claim about it like
+				// any other. The declaration is what separates the two, so an
+				// undeclared usage exit still fails every invocation.
+				if (
+					result.status === section.usageExit &&
+					action.expectExit !== section.usageExit
+				) {
 					record('usage error: the documented command or flag does not exist')
 					continue
 				}
@@ -662,7 +725,15 @@ export function runDocInvocations(root, section) {
 				// the page claims, and it is compared line for line.
 				if (action.expectStderr === null) continue
 				compared += 1
-				const written = result.stderr.split('\n')
+				// A page documenting a rejection quotes stderr, and a page
+				// documenting a command that worked quotes stdout. A run that wrote
+				// nothing to stderr is the second case, so the block is compared
+				// against what the run actually said rather than against an empty
+				// stream. Declaring the exit code is still what attaches a block at
+				// all, so no page acquires a comparison it did not ask for.
+				const written = (
+					result.stderr.trim() === '' ? result.stdout : result.stderr
+				).split('\n')
 				const documented = action.expectStderr
 				const overElided = documented.findIndex(
 					(line) => line.split(ELISION).length - 1 > section.elisionLimit,
@@ -705,7 +776,7 @@ export function runDocInvocations(root, section) {
 	if (scanned === 0) {
 		throw codedError(
 			DOC_PATH_ERROR,
-			`no fenced command in ${files.length} page(s) matched any spelling the "doc-invocations" section declares (${section.binary.spellings.join(', ')}); a gate that extracted nothing reports a pass over nothing`,
+			`no fenced command in ${files.length} page(s) matched any spelling the "doc-invocations" section declares (${spellings.map((spelling) => spelling.text).join(', ')}); a gate that extracted nothing reports a pass over nothing`,
 		)
 	}
 
