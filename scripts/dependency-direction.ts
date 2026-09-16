@@ -735,6 +735,22 @@ function scanFile(
 			const openIndex =
 				tokens[i + 1]?.kind === SyntaxKind.QuestionDotToken ? i + 2 : i + 1
 			if (tokens[openIndex]?.kind !== SyntaxKind.OpenParenToken) continue
+			// The site this arm exists for is the free identifier `require` called
+			// with a specifier. Two shapes share its tokens and are ordinary
+			// JavaScript: a member call, `sandbox.require('fs')`, where the token
+			// before is `.` or `?.`, and a method named require, `require(name) {`
+			// in an object literal or a class, where the token after the matching
+			// `)` is `{`. A call's own `)` is never followed by `{`, so
+			// `if (require('x')) {` still reads as the call it is. A consumer
+			// renaming a mock to get past this arm is a gate teaching the wrong lesson.
+			const before = tokens[i - 1]?.kind
+			if (
+				before === SyntaxKind.DotToken ||
+				before === SyntaxKind.QuestionDotToken ||
+				isMethodDefinition(tokens, i, openIndex)
+			) {
+				continue
+			}
 			if (graph.commonjs === 'forbid') {
 				violations.push({
 					file,
@@ -828,6 +844,67 @@ function scanFile(
  * against `graph` and returns every violation found, in no particular cross-file
  * order.
  */
+/**
+ * Whether the parenthesised list opening at `openIndex` is a parameter list,
+ * which is to say `require` here is a method or a signature and never a call.
+ * A `{` straight after the matching `)` is a body. A `:` after it is either a
+ * return-type annotation or a ternary's else, and the two are told apart by
+ * looking back from `require` at bracket depth zero: a ternary has its `?`
+ * before the call and inside the same expression, a member declaration has
+ * none before its own `{`, `,` or `;`. An unclosed list reads as a call, which
+ * is what this arm already did with a stream it could not place.
+ */
+function isMethodDefinition(
+	tokens: readonly Token[],
+	requireIndex: number,
+	openIndex: number,
+): boolean {
+	let depth = 0
+	let closeIndex = -1
+	for (let j = openIndex; j < tokens.length; j++) {
+		const kind = tokens[j]?.kind
+		if (kind === SyntaxKind.OpenParenToken) depth += 1
+		else if (kind === SyntaxKind.CloseParenToken) {
+			depth -= 1
+			if (depth === 0) {
+				closeIndex = j
+				break
+			}
+		}
+	}
+	if (closeIndex === -1) return false
+	const after = tokens[closeIndex + 1]?.kind
+	if (after === SyntaxKind.OpenBraceToken) return true
+	if (after !== SyntaxKind.ColonToken) return false
+	depth = 0
+	for (let j = requireIndex - 1; j >= 0; j--) {
+		const kind = tokens[j]?.kind
+		if (
+			kind === SyntaxKind.CloseParenToken ||
+			kind === SyntaxKind.CloseBracketToken ||
+			kind === SyntaxKind.CloseBraceToken
+		) {
+			depth += 1
+			continue
+		}
+		if (
+			kind === SyntaxKind.OpenParenToken ||
+			kind === SyntaxKind.OpenBracketToken ||
+			kind === SyntaxKind.OpenBraceToken
+		) {
+			if (depth === 0) return true
+			depth -= 1
+			continue
+		}
+		if (depth > 0) continue
+		if (kind === SyntaxKind.QuestionToken) return false
+		if (kind === SyntaxKind.SemicolonToken || kind === SyntaxKind.CommaToken) {
+			return true
+		}
+	}
+	return true
+}
+
 export function scanSources(
 	files: ReadonlyMap<string, string>,
 	graph: DirectionGraph,

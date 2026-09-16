@@ -34,8 +34,14 @@ export type { EvalContract } from './core/schemas/eval-contract.ts'
 export { EVAL_CONTRACT_SCHEMA_VERSION } from './core/schemas/eval-contract.ts'
 export type { EvaluatorConfiguration } from './core/schemas/evaluator-configuration.ts'
 export { EVALUATOR_CONFIGURATION_SCHEMA_VERSION } from './core/schemas/evaluator-configuration.ts'
-export type { EvidenceArtifact } from './core/schemas/evidence-artifact.ts'
+// The types `resolveCheck` and its two factories name, type-only: `Observation`
+// and `Expression` share their names with Zod schemas the barrel withholds.
+export type {
+	CheckResolutionValue,
+	EvidenceArtifact,
+} from './core/schemas/evidence-artifact.ts'
 export { EVIDENCE_ARTIFACT_SCHEMA_VERSION } from './core/schemas/evidence-artifact.ts'
+export type { Expression, Operand } from './core/schemas/expression.ts'
 export type { IsolationManifest } from './core/schemas/isolation-manifest.ts'
 export { ISOLATION_MANIFEST_SCHEMA_VERSION } from './core/schemas/isolation-manifest.ts'
 export type {
@@ -43,6 +49,7 @@ export type {
 	PreflightVerdict,
 } from './core/schemas/preflight-verdict.ts'
 export { PREFLIGHT_VERDICT_SCHEMA_VERSION } from './core/schemas/preflight-verdict.ts'
+export type { JsonValue } from './core/schemas/primitives.ts'
 export type { PrivateArtifactManifest } from './core/schemas/private-artifact-manifest.ts'
 export { PRIVATE_ARTIFACT_MANIFEST_SCHEMA_VERSION } from './core/schemas/private-artifact-manifest.ts'
 export type { Probe } from './core/schemas/probe.ts'
@@ -52,7 +59,10 @@ export type { ScoringPolicy } from './core/schemas/scoring-policy.ts'
 export { SCORING_POLICY_SCHEMA_VERSION } from './core/schemas/scoring-policy.ts'
 export type { SealedEvaluatorBrief } from './core/schemas/sealed-evaluator-brief.ts'
 export { SEALED_EVALUATOR_BRIEF_SCHEMA_VERSION } from './core/schemas/sealed-evaluator-brief.ts'
-export type { SealedRunRecord } from './core/schemas/sealed-run-record.ts'
+export type {
+	Observation,
+	SealedRunRecord,
+} from './core/schemas/sealed-run-record.ts'
 export { SEALED_RUN_RECORD_SCHEMA_VERSION } from './core/schemas/sealed-run-record.ts'
 export type {
 	FixtureReset,

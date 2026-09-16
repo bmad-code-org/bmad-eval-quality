@@ -461,6 +461,49 @@ describe('dependency-direction: import-equals and require under commonjs "forbid
 		expect(violations).toHaveLength(1)
 		expect(violations[0]?.rule).toContain('CommonJS require')
 	})
+
+	// A method named `require` and a member call of one are ordinary
+	// JavaScript, and the common shape of a mock a test hands to a sandbox. The
+	// gate read both as CommonJS sites, so a consumer renamed the mock to pass.
+	it('a method shorthand named require is not a require site', () => {
+		for (const source of [
+			'export const sandbox = {\n\trequire(name) {\n\t\treturn name\n\t},\n}\n',
+			'export const sandbox = {\n\trequire(name: string): unknown {\n\t\treturn name\n\t},\n}\n',
+			'export const sandbox = {\n\trequire(name: string): { hit: boolean } {\n\t\treturn { hit: name === "fs" }\n\t},\n}\n',
+			'export const sandbox = {\n\trequire(name: string): Promise<{ hit: boolean }> {\n\t\treturn Promise.resolve({ hit: name === "fs" })\n\t},\n}\n',
+			'export const sandbox = {\n\tasync require(name: string) {\n\t\treturn name\n\t},\n}\n',
+			'export class Sandbox {\n\trequire(name: string): unknown {\n\t\treturn name\n\t}\n}\n',
+			'export function require(name: string): unknown {\n\treturn name\n}\n',
+		]) {
+			const files = new Map([['src/application/alpha.ts', source]])
+			expect(scan(files), source).toEqual([])
+		}
+	})
+
+	it('a member call named require is not a require site', () => {
+		for (const source of [
+			"declare const sandbox: { require(name: string): unknown }\nexport const fs = sandbox.require('fs')\n",
+			"declare const sandbox: { require(name: string): unknown } | undefined\nexport const fs = sandbox?.require('fs')\n",
+		]) {
+			const files = new Map([['src/application/alpha.ts', source]])
+			expect(scan(files), source).toEqual([])
+		}
+	})
+
+	// The call's own `)` is followed by `)` or `:`, never by `{`, so a
+	// condition and a ternary keep reading as the calls they are.
+	it('a require() call inside a condition or a ternary is still rejected', () => {
+		for (const source of [
+			"declare const require: (id: string) => unknown\nif (require('./alpha.ts')) {\n}\n",
+			"declare const require: (id: string) => unknown\ndeclare const flag: boolean\nexport const mod = flag ? require('./alpha.ts') : null\n",
+			"declare const require: (id: string) => unknown\ndeclare const flag: boolean\nexport const mod = flag ? null : require('./alpha.ts')\n",
+		]) {
+			const files = new Map([['src/application/alpha.ts', source]])
+			const violations = scan(files)
+			expect(violations, source).toHaveLength(1)
+			expect(violations[0]?.rule).toContain('CommonJS require')
+		}
+	})
 })
 
 describe('dependency-direction: commonjs "check" reads require() as an edge', () => {
@@ -493,6 +536,17 @@ describe('dependency-direction: commonjs "check" reads require() as an edge', ()
 		const files = new Map([
 			['lib/outer/a.cjs', "const inner = require('../inner/b.cjs')\n"],
 			['lib/inner/b.cjs', 'module.exports = 1\n'],
+		])
+		expect(scan(files, CJS)).toEqual([])
+	})
+
+	it('a method shorthand and a member call named require are not edges', () => {
+		const files = new Map([
+			[
+				'lib/inner/a.cjs',
+				"const sandbox = { require(name) { return name } }\nmodule.exports = sandbox.require('../outer/b.cjs')\n",
+			],
+			['lib/outer/b.cjs', 'module.exports = 1\n'],
 		])
 		expect(scan(files, CJS)).toEqual([])
 	})
@@ -1179,7 +1233,9 @@ describe('dependency-direction: the typescript peer dependency is refused by nam
 		if (result.ok) return
 		expect(result.message).toContain('"typescript"')
 		expect(result.message).toContain('dependency-direction')
-		expect(result.message).toContain('No other gate needs it')
+		expect(result.message).toContain(
+			'Only the dependency-direction and field-ownership gates need it',
+		)
 	})
 
 	it('rethrows unrelated loader failures', async () => {

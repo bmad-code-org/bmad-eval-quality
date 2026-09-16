@@ -38,9 +38,14 @@ import {
 	ScannedPathList,
 } from './scanned-paths.ts'
 import type { Token } from './token-scan.ts'
+import {
+	absentMessage,
+	loadTypeScriptScanner,
+	TYPESCRIPT_UNAVAILABLE,
+} from './typescript-scanner.ts'
 
 /** The gate needs `typescript` and could not resolve it. */
-export const TYPESCRIPT_UNAVAILABLE = 'EVAL_QUALITY_TYPESCRIPT_UNAVAILABLE'
+export { TYPESCRIPT_UNAVAILABLE }
 
 const codedError = (code: string, message: string): Error =>
 	Object.assign(new Error(message), { code })
@@ -57,21 +62,21 @@ export type TokenScanner = {
 
 type ScannerImport = () => Promise<TokenScanner>
 
-const importTokenScanner: ScannerImport = async () => {
-	// `token-scan.ts` imports `typescript/unstable/ast` at its own top level, so
-	// this is the one place the dependency is reached and the one place its
-	// absence can be turned into a sentence.
-	const [ast, scan] = await Promise.all([
-		import('typescript/unstable/ast'),
-		import('./token-scan.ts'),
-	])
-	return {
-		scanTokens: scan.scanTokens,
-		computeLineStarts: scan.computeLineStarts,
-		lineOf: scan.lineOf,
-		syntax: ast.SyntaxKind,
+const importTokenScanner =
+	(gate: string): ScannerImport =>
+	async () => {
+		// `token-scan.ts` imports `typescript/unstable/ast` at its own top level, so
+		// the loader runs first and its refusal is the one a consumer reads; the
+		// import of `token-scan.ts` follows only once the scanner is known to be there.
+		const ast = await loadTypeScriptScanner(gate)
+		const scan = await import('./token-scan.ts')
+		return {
+			scanTokens: scan.scanTokens,
+			computeLineStarts: scan.computeLineStarts,
+			lineOf: scan.lineOf,
+			syntax: ast.SyntaxKind as unknown as Syntax,
+		}
 	}
-}
 
 /**
  * The tokenizer, or a refusal naming the dependency and the gate that needs it.
@@ -80,7 +85,7 @@ const importTokenScanner: ScannerImport = async () => {
  */
 export async function loadTokenScanner(
 	gate: string,
-	load: ScannerImport = importTokenScanner,
+	load: ScannerImport = importTokenScanner(gate),
 ): Promise<TokenScanner> {
 	try {
 		return await load()
@@ -88,10 +93,7 @@ export async function loadTokenScanner(
 		if ((error as NodeJS.ErrnoException).code !== 'ERR_MODULE_NOT_FOUND') {
 			throw error
 		}
-		throw codedError(
-			TYPESCRIPT_UNAVAILABLE,
-			`the ${gate} gate reads your source through the typescript package's own scanner, and typescript did not resolve. Install typescript to run this gate; every other gate needs nothing beyond this package.`,
-		)
+		throw codedError(TYPESCRIPT_UNAVAILABLE, absentMessage(gate))
 	}
 }
 

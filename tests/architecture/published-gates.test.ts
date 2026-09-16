@@ -2067,6 +2067,7 @@ describe('the built gates binary', () => {
 			'dist/gates/dependency-direction.js',
 			'dist/gates/discover-source-files.js',
 			'dist/gates/token-scan.js',
+			'dist/gates/typescript-scanner.js',
 			'dist/gates/package-boundary.js',
 			'dist/gates/lineage-ownership.js',
 			'dist/gates/consumer-pattern.js',

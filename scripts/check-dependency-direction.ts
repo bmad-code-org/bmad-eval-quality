@@ -19,6 +19,11 @@
 import { z } from 'zod'
 import type { DirectionGraph, Violation } from './dependency-direction.ts'
 import { discoverSourceFiles } from './discover-source-files.ts'
+import {
+	absentMessage,
+	loadTypeScriptScanner,
+	TYPESCRIPT_UNAVAILABLE,
+} from './typescript-scanner.ts'
 
 /** The gate's key in the configuration file, and the token the binary dispatches on. */
 export const DEPENDENCY_DIRECTION_GATE = 'dependency-direction'
@@ -29,7 +34,7 @@ export const DEPENDENCY_DIRECTION_GATE = 'dependency-direction'
  * description and asserted by `tests/architecture/dependency-direction.test.ts`,
  * so the ordering property below is a measured fact rather than a warning.
  */
-export const ORDERING_WITNESS_VIOLATIONS = 78
+export const ORDERING_WITNESS_VIOLATIONS = 82
 
 /** The optional peer is absent. The consumer repairs it by installing it, so it takes the usage code. */
 export const TYPESCRIPT_PEER_MISSING = 'EVAL_QUALITY_TYPESCRIPT_PEER_MISSING'
@@ -375,14 +380,16 @@ const refuse = (code: string, message: string): DirectionOutcome => ({
 /**
  * The scanner needs `typescript/unstable/ast`, and `typescript` is an optional
  * peer dependency so that a consumer running the other gates installs nothing.
- * Probing it by name is what turns a resolver stack trace into a sentence naming
- * the dependency and the gate that wanted it.
+ * `typescript-scanner.ts` is what turns a resolver stack trace into a sentence
+ * naming the dependency, the installed version and the gate that wanted it.
  *
  * `load` is injectable so a test can exercise the refusal without uninstalling
- * the package the test runner itself needs.
+ * the package the test runner itself needs; a load that rejects with the
+ * resolver's own code is read the way the loader reads it.
  */
 export async function probeTypeScript(
-	load: () => Promise<unknown> = () => import('typescript/unstable/ast'),
+	load: () => Promise<unknown> = () =>
+		loadTypeScriptScanner(DEPENDENCY_DIRECTION_GATE),
 ): Promise<
 	{ readonly ok: true } | { readonly ok: false; readonly message: string }
 > {
@@ -390,13 +397,14 @@ export async function probeTypeScript(
 		await load()
 		return { ok: true }
 	} catch (error) {
-		if ((error as NodeJS.ErrnoException).code !== 'ERR_MODULE_NOT_FOUND') {
-			throw error
+		const code = (error as NodeJS.ErrnoException).code
+		if (code === TYPESCRIPT_UNAVAILABLE) {
+			return { ok: false, message: (error as Error).message }
 		}
-		return {
-			ok: false,
-			message: `the ${DEPENDENCY_DIRECTION_GATE} gate reads your source with the TypeScript scanner, and the optional peer dependency "typescript" is not installed here. Install it (npm install --save-dev typescript), or drop the "${DEPENDENCY_DIRECTION_GATE}" section from your configuration to stop invoking this gate. No other gate needs it.`,
+		if (code === 'ERR_MODULE_NOT_FOUND') {
+			return { ok: false, message: absentMessage(DEPENDENCY_DIRECTION_GATE) }
 		}
+		throw error
 	}
 }
 
