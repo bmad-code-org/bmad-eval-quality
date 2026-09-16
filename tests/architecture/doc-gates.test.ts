@@ -674,7 +674,7 @@ describe('a `read` claim pinned with `asOf`', () => {
 		).toBe(true)
 	})
 
-	it('keeps nested-list indentation significant outside a fence', async () => {
+	it('keeps nested-list indentation significant outside a fence: un-nesting fails', async () => {
 		const nested = `# A page\n\n${SENTENCE}\n\n- a\n  - b\n`
 		const flattened = `# A page\n\n${SENTENCE}\n\n- a\n- b\n`
 		const scratch = scratchWith(nested)
@@ -684,6 +684,28 @@ describe('a `read` claim pinned with `asOf`', () => {
 		expect(
 			report.failures.some((line) => line.includes('different content hash')),
 		).toBe(true)
+	})
+
+	it('keeps nested-list indentation significant outside a fence: nesting a flat item fails', async () => {
+		const flat = `# A page\n\n${SENTENCE}\n\n- a\n- b\n`
+		const nested = `# A page\n\n${SENTENCE}\n\n- a\n  - b\n`
+		const scratch = scratchWith(flat)
+		const hash = hashOfSubject(readFileSync(join(scratch, 'page.md'), 'utf8'))
+		writeFileSync(join(scratch, 'page.md'), nested)
+		const report = await runDocClaims(scratch, datedSection({ hash }) as never)
+		expect(
+			report.failures.some((line) => line.includes('different content hash')),
+		).toBe(true)
+	})
+
+	it('reads indentation as depth, not width: a prettier-style reindent does not fail', async () => {
+		const twoSpace = `# A page\n\n${SENTENCE}\n\n- a\n  - b\n    - c\n`
+		const fourSpace = `# A page\n\n${SENTENCE}\n\n- a\n    - b\n        - c\n`
+		const scratch = scratchWith(twoSpace)
+		const hash = hashOfSubject(readFileSync(join(scratch, 'page.md'), 'utf8'))
+		writeFileSync(join(scratch, 'page.md'), fourSpace)
+		const report = await runDocClaims(scratch, datedSection({ hash }) as never)
+		expect(report.failures).toEqual([])
 	})
 })
 

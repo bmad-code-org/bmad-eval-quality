@@ -601,36 +601,51 @@ const closesFence = (trimmedStart: string, marker: string): boolean =>
 
 /**
  * What an `asOf` hash is taken over. Outside a fenced code block, each line's
- * leading indentation is kept and everything after it is trimmed of trailing
- * whitespace and has its internal whitespace runs collapsed to one space, and
- * a run of blank lines collapses to one: a formatter pass rewrapping prose or
- * trimming trailing whitespace does not read as drift, but indentation stays
- * significant, because it is what carries a nested list's depth and an
- * indented code block's own content. A fenced block is left byte-exact
- * (line-ending normalized), because indentation inside one is meaning a
- * formatter is not free to move, and collapsing it would let a broken code
- * sample hide behind a passing gate. A stray shorter or wrongly-charactered
- * fence-like line inside an open fence does not close it, so a nested example
- * fence stays part of the outer block's protected content.
+ * leading indentation is read as a nesting depth rather than kept byte-exact,
+ * and everything after it is trimmed of trailing whitespace and has its
+ * internal whitespace runs collapsed to one space; a run of blank lines
+ * collapses to one. Depth, not width, is what a nested list or an indented
+ * block actually carries: a formatter that reindents an existing structure
+ * two spaces to four, say, does not change what the page says and must not
+ * trip the pin, but un-nesting a list item, or nesting a new one, is a real
+ * structural change and has to. Comparing raw indentation width cannot tell
+ * these apart, so depth is tracked with a stack the way an indentation-block
+ * language is: a deeper indent than the current top pushes a new level, a
+ * shallower one pops back to it, and the line is rewritten with a canonical
+ * two-space unit per level of depth rather than its own original width. A
+ * fenced block is left byte-exact (line-ending normalized), because
+ * indentation inside one is meaning a formatter is not free to move, and
+ * either collapsing or renormalizing it would let a broken code sample hide
+ * behind a passing gate. A stray shorter or wrongly-charactered fence-like
+ * line inside an open fence does not close it, so a nested example fence
+ * stays part of the outer block's protected content.
  *
  * What this does not do runs in both directions. Normalization only touches
- * whitespace, so a hard line break's trailing two spaces can be removed
- * without changing the hash, and a formatter doing that reads as no drift
- * even though the source changed; every other markdown-syntax change is a
- * non-whitespace byte and always shows, which is why catching a hard break
- * needs real markdown parsing and nothing else here does. In the other
- * direction, a table's delimiter-row padding (`|---|---|` vs `| --- | --- |`)
- * or a prose line rewrapped to a different width changes the hash even
- * though nothing about what the page says changed, so a formatter doing
- * either still trips the pin it was meant to spare. A consumer whose
- * formatter rewraps prose can avoid that one with its own
- * `proseWrap: "preserve"` setting; this gate has no equivalent knob.
+ * whitespace, so two shapes of real change stay invisible: a hard line
+ * break's trailing two spaces can be removed, and content outside a fence
+ * that is reindented without crossing a depth boundary, such as a non-fenced
+ * indented code sample's own internal width, changes without changing the
+ * hash either, since depth tracking only sees where a line sits relative to
+ * its neighbors and not what its own further indentation means. Every other
+ * markdown-syntax change is a non-whitespace byte and always shows, which is
+ * why catching either of those needs real markdown parsing and nothing else
+ * here does. In the other direction, a table's delimiter-row padding
+ * (`|---|---|` vs `| --- | --- |`) or a prose line rewrapped to a different
+ * width changes the hash even though nothing about what the page says
+ * changed, so a formatter doing either still trips the pin it was meant to
+ * spare. A consumer whose formatter rewraps prose can avoid that one with
+ * its own `proseWrap: "preserve"` setting; this gate has no equivalent knob.
  */
 const normalizeForHash = (text: string): string => {
 	const lines: string[] = []
 	let fenced = false
 	let fenceMarker = ''
 	let blank = false
+	// A stack of indentation widths seen on the path to the current line, the
+	// same technique an indentation-block language's own lexer uses: its
+	// length, not the raw column number on top of it, is the depth a
+	// formatter cannot change just by picking a different unit width.
+	const indentStack: number[] = [0]
 	for (const withCr of text.split('\n')) {
 		const raw = withCr.endsWith('\r') ? withCr.slice(0, -1) : withCr
 		const trimmedStart = raw.trimStart()
@@ -653,7 +668,6 @@ const normalizeForHash = (text: string): string => {
 			blank = false
 			continue
 		}
-		const indent = raw.length - trimmedStart.length
 		const content = trimmedStart.replace(/\s+$/, '').replace(/[ \t]+/g, ' ')
 		if (content === '') {
 			if (blank) continue
@@ -662,7 +676,18 @@ const normalizeForHash = (text: string): string => {
 			continue
 		}
 		blank = false
-		lines.push(`${raw.slice(0, indent)}${content}`)
+		const indent = raw.length - trimmedStart.length
+		while (
+			indentStack.length > 1 &&
+			indent < (indentStack[indentStack.length - 1] as number)
+		) {
+			indentStack.pop()
+		}
+		if (indent > (indentStack[indentStack.length - 1] as number)) {
+			indentStack.push(indent)
+		}
+		const depth = indentStack.length - 1
+		lines.push(`${'  '.repeat(depth)}${content}`)
 	}
 	// A document that ends without closing its last fence is malformed, and the
 	// trailing bytes inside that open fence are exactly the content the fenced
