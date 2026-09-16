@@ -1048,6 +1048,10 @@
 					"reason": "a setting in the doc-claims gate's list entries, declared by the schema in scripts/check-doc-claims.ts and so outside src/"
 				},
 				{
+					"token": "asOf",
+					"reason": "a setting on the doc-claims gate's dated claims, declared by the schema in scripts/check-doc-claims.ts and so outside src/"
+				},
+				{
 					"token": "Rule",
 					"reason": "an illustrative Zod schema name in the worked doc-claims example, naming no real export"
 				}
@@ -1415,7 +1419,10 @@
 					"file": "docs/index.md",
 					"key": "no live server stands behind it",
 					"settles": "read",
-					"reason": "a live MCP server is outside this repository, so no artifact in the tree records whether one was scored; the sentence states how far the fixture carries rather than what is owed"
+					"reason": "a live MCP server is outside this repository, so no artifact in the tree records whether one was scored; the sentence states how far the fixture carries rather than what is owed",
+					"asOf": {
+						"hash": "be03f4e06808494bf729cddbd70ad70d5dc4b44f704e099f2b0f91e328f6f6e6"
+					}
 				},
 				{
 					"file": "docs/explanation/what-ships.md",
@@ -1430,7 +1437,10 @@
 					"file": "docs/how-to/evaluate-workflow-behavior.md",
 					"key": "the suite currently has open findings",
 					"settles": "read",
-					"reason": "the suite is TEA's, in another repository"
+					"reason": "the suite is TEA's, in another repository",
+					"asOf": {
+						"hash": "e9331013d5c4f61f63193f9bb88657e9e4d6e47deaafea875002e68b9a7ca054"
+					}
 				},
 				{
 					"file": "docs/how-to/evaluate-tool-use-behavior.md",
@@ -1490,13 +1500,19 @@
 					"file": "docs/how-to/evaluate-tool-use-behavior.md",
 					"key": "**Unproven, and this is the uncomfortable part.**",
 					"settles": "read",
-					"reason": "the calibration record is in the architecture history, and whether it was re-measured against the shipped kind is not recorded anywhere in this tree"
+					"reason": "the calibration record is in the architecture history, and whether it was re-measured against the shipped kind is not recorded anywhere in this tree",
+					"asOf": {
+						"hash": "bd8db79557cebb80eaf19d59990e846a49badd309e8940d19f2276957be4b80b"
+					}
 				},
 				{
 					"file": "docs/how-to/evaluate-tool-use-behavior.md",
 					"key": "The first reading runs today",
 					"settles": "read",
-					"reason": "TEA's own move is a fact about another repository's contracts"
+					"reason": "TEA's own move is a fact about another repository's contracts",
+					"asOf": {
+						"hash": "bd8db79557cebb80eaf19d59990e846a49badd309e8940d19f2276957be4b80b"
+					}
 				},
 				{
 					"file": "docs/how-to/evaluate-ai-feature-behavior.md",
@@ -1511,7 +1527,10 @@
 					"file": "docs/how-to/evaluate-agent-behavior.md",
 					"key": "Not proven, and worth knowing before you plan a corpus",
 					"settles": "read",
-					"reason": "introduces the unproven block below it; the claim itself is the block"
+					"reason": "introduces the unproven block below it; the claim itself is the block",
+					"asOf": {
+						"hash": "e6201243a5d8ee99ec0faa1f6bbf71ee66c38c7c4a825d941f390fac41518d0f"
+					}
 				},
 				{
 					"file": "docs/how-to/evaluate-agent-behavior.md",
@@ -1544,13 +1563,19 @@
 					"file": "docs/how-to/evaluate-agent-behavior.md",
 					"key": "all nine defect probes are exercised and caught",
 					"settles": "read",
-					"reason": "the numbers are TEA's, recorded in that repository's `test/probes/expected-strength.json`, so nothing here can re-run them; the sentence names the eval-quality version they were read at, which is what tells a reader how far back the reading is"
+					"reason": "the numbers are TEA's, recorded in that repository's `test/probes/expected-strength.json`, so nothing here can re-run them; the sentence names the eval-quality version they were read at, which is what tells a reader how far back the reading is",
+					"asOf": {
+						"hash": "e6201243a5d8ee99ec0faa1f6bbf71ee66c38c7c4a825d941f390fac41518d0f"
+					}
 				},
 				{
 					"file": "docs/reference/cli-commands.md",
 					"key": "| Port | What it does | Wired today |",
 					"settles": "read",
-					"reason": "which ports the CLI awaits is a fact about the command implementation, which this gate does not execute"
+					"reason": "which ports the CLI awaits is a fact about the command implementation, which this gate does not execute",
+					"asOf": {
+						"hash": "2c371ca3d5f073a217f3c262e15260b689454f787580a02526ad72ec40fe8e04"
+					}
 				}
 			]
 		},

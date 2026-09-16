@@ -788,7 +788,10 @@ A file configuring all eight gates parses against the published schema:
           "file": "README.md",
           "key": "no production deployment has run it yet",
           "settles": "read",
-          "reason": "a deployment is outside this repository, so no artifact here records one"
+          "reason": "a deployment is outside this repository, so no artifact here records one",
+          "asOf": {
+            "hash": "89f8b8ea0ff30c6934b32a463d0dc18d210600518974117d7763eb48ac58b984"
+          }
         }
       ]
     },
@@ -1171,6 +1174,14 @@ A token is classified by the nearest governing verb, and a verb the sentence neg
 Whether a route still works months after it was last exercised is not written anywhere in your tree, so no check can settle it.
 What a check can settle is that the sentence exists and is registered: a claim of that kind fails until somebody writes down who holds it and why, and a registered claim whose sentence was rewritten fails as a dead entry.
 Each entry says how it is settled, by a predicate of yours or by `"read"` with the reason nothing mechanical reaches it.
+
+A `"read"` claim may also carry `asOf`, which pins it to the content a human actually read.
+`asOf.hash` is the sha256 of `asOf.subject`'s content, taken the moment the claim was confirmed true; `subject` defaults to the claim's own `file` and only needs setting when the judgment is about a different file.
+`npm run hash:doc-claim-subject -- <path>` prints the digest to paste in.
+On every run the gate recomputes the hash and fails the entry the moment it disagrees, so a `"read"` claim stops being a confirmation that ages silently and starts being one that is checked against the thing it was read from.
+The hash is taken over normalized content: each line trimmed, runs of inner whitespace and of blank lines collapsed to one, so a formatter pass does not read as drift.
+A fenced code block is the one exception, hashed byte-exact, because indentation inside one is meaning a formatter is not free to move and a normalized hash would let a broken example pass unnoticed.
+`asOf` is refused on a claim `settles` a predicate, since the predicate already re-runs on every check and a content pin beside it would be a second, uncoordinated staleness rule.
 
 `transcriptions` holds a page that reprints bytes your code emits against the bytes themselves.
 

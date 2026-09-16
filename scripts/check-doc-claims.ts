@@ -50,6 +50,15 @@
 // sentence was rewritten fails as a dead entry. That is weaker than deciding
 // the claim and stronger than the nothing that precedes it.
 //
+// A "read" claim by itself proves only that the sentence was once registered,
+// and nothing re-checks the reading afterward: the artifact it was read from
+// can drift for years and the entry stays green. A claim may carry an `asOf`
+// pin against that: a normalized-content sha256 of the file the human actually
+// read, defaulting to the claim's own page. An edit to that file changes the
+// hash and fails the entry, which is what turns "read once" into "read, and
+// still current." A `settles` predicate needs none of this, because it already
+// re-runs every check.
+//
 // What stays outside all eight: editorial judgment, design rationale, anything
 // about the world beyond the tree, any claim about runtime behaviour that only
 // executing the code would settle, and whether a code a page names is the one
@@ -62,6 +71,7 @@
 // Run by `node` directly: Node's type stripping erases types only, so no
 // TypeScript enum, namespace, parameter property, or non-type re-export may
 // appear in this file or anything it imports.
+import { createHash } from 'node:crypto'
 import { realpathSync } from 'node:fs'
 import { lstat, readdir, readFile } from 'node:fs/promises'
 import { resolve, sep } from 'node:path'
@@ -305,6 +315,60 @@ const VocabularyBlock = z
 		'Every sentence saying a member of your vocabulary is accepted or refused agrees with the two sets.',
 	)
 
+/**
+ * The 64-character lowercase-hex shape a sha256 digest prints as, so a
+ * truncated or upper-cased paste is refused at configuration load rather than
+ * comparing unequal to every subject forever.
+ */
+const Sha256Hex = z
+	.string()
+	.regex(
+		/^[0-9a-f]{64}$/,
+		'is not a sha256 hex digest: 64 lowercase hex characters',
+	)
+
+const DatedClaimAsOf = z
+	.strictObject({
+		subject: RelativePath.optional().describe(
+			"Which file the hash pins the claim to, when the judgment is about a file other than the one carrying the sentence. Defaults to the claim's own `file`.",
+		),
+		hash: Sha256Hex.describe(
+			"The subject's normalized-content sha256, taken the moment a human confirmed this claim true against it.",
+		),
+	})
+	.describe(
+		'Pins a `read` claim to the content a human read it against, so an edit to that content fails the gate instead of a stale confirmation passing forever.',
+	)
+
+const DatedClaimEntry = z
+	.strictObject({
+		file: RelativePath,
+		key: NonEmpty.describe(
+			'A distinctive stretch of the sentence, matched literally. It names one sentence: a key short enough to match two lets a new and false claim ride in on an existing registration.',
+		),
+		settles: z
+			.union([z.literal('read'), ModuleValue])
+			.describe(
+				'How the claim is settled. A predicate is run and a false answer fails the gate. "read" records that no artifact decides it.',
+			),
+		reason: NonEmpty.describe(
+			'What the predicate reads, or why nothing in the tree can decide it.',
+		),
+		asOf: DatedClaimAsOf.optional(),
+	})
+	.superRefine((entry, ctx) => {
+		// A predicate already re-runs every check; a content pin beside it would be
+		// a second staleness rule racing the first, and the two can disagree.
+		if (entry.asOf !== undefined && entry.settles !== 'read') {
+			ctx.addIssue({
+				code: 'custom',
+				path: ['asOf'],
+				message:
+					'is set, and settles is a predicate rather than "read"; a predicate is re-checked every run, so pinning a content hash beside it is redundant at best and contradictory at worst',
+			})
+		}
+	})
+
 const DatedBlock = z
 	.strictObject({
 		triggers: z
@@ -316,24 +380,7 @@ const DatedBlock = z
 		headings: ProsePattern.optional().describe(
 			'A heading that says its section is about what has not happened, so every bullet under one is dated whatever words it uses.',
 		),
-		claims: z
-			.array(
-				z.strictObject({
-					file: RelativePath,
-					key: NonEmpty.describe(
-						'A distinctive stretch of the sentence, matched literally. It names one sentence: a key short enough to match two lets a new and false claim ride in on an existing registration.',
-					),
-					settles: z
-						.union([z.literal('read'), ModuleValue])
-						.describe(
-							'How the claim is settled. A predicate is run and a false answer fails the gate. "read" records that no artifact decides it.',
-						),
-					reason: NonEmpty.describe(
-						'What the predicate reads, or why nothing in the tree can decide it.',
-					),
-				}),
-			)
-			.min(1),
+		claims: z.array(DatedClaimEntry).min(1),
 	})
 	.describe(
 		'Every sentence whose truth depends on when it was written is registered with how it is settled.',
@@ -510,6 +557,49 @@ const sentenceAround = (line: string, offset: number): string => {
 	const end = stop === -1 ? line.length : offset + stop + 1
 	return line.slice(start, end)
 }
+
+/**
+ * What an `asOf` hash is taken over: every line outside a fenced code block is
+ * trimmed and its internal whitespace collapsed to one space, and a run of
+ * blank lines collapses to one, so a formatter pass does not read as drift. A
+ * fenced block is left byte-exact, because indentation inside one is meaning a
+ * formatter is not free to move, and collapsing it would let a broken code
+ * sample hide behind a passing gate.
+ */
+const normalizeForHash = (text: string): string => {
+	const lines: string[] = []
+	let fenced = false
+	let blank = false
+	for (const raw of text.split('\n')) {
+		if (raw.trimStart().startsWith('```')) {
+			fenced = !fenced
+			lines.push(raw.trim())
+			blank = false
+			continue
+		}
+		if (fenced) {
+			lines.push(raw)
+			blank = false
+			continue
+		}
+		const collapsed = raw.trim().replace(/\s+/g, ' ')
+		if (collapsed === '') {
+			if (blank) continue
+			blank = true
+			lines.push('')
+			continue
+		}
+		blank = false
+		lines.push(collapsed)
+	}
+	while (lines.length > 0 && lines[0] === '') lines.shift()
+	while (lines.length > 0 && lines[lines.length - 1] === '') lines.pop()
+	return lines.join('\n')
+}
+
+/** What `dated.claims[].asOf.hash` holds: exported so a human confirming a claim can compute it. */
+export const hashOfSubject = (text: string): string =>
+	createHash('sha256').update(normalizeForHash(text)).digest('hex')
 
 /**
  * Which backticked tokens in a captured stretch count as list members. A
@@ -902,6 +992,7 @@ export async function runDocClaims(
 		const seen = new Set<string>()
 		let read = 0
 		let derived = 0
+		let pinned = 0
 
 		for (const page of authoredPages) {
 			const lines = pageText.get(page) as readonly string[]
@@ -960,6 +1051,25 @@ export async function runDocClaims(
 			}
 			if (entry.settles === 'read') {
 				read += 1
+				if (entry.asOf !== undefined) {
+					pinned += 1
+					const subject = entry.asOf.subject ?? entry.file
+					const body = await readFile(resolve(root, subject), 'utf8').catch(
+						() => null,
+					)
+					if (body === null) {
+						fail(
+							`${entry.file}: dated.claims holds "${entry.key}" with asOf.subject "${subject}", ` +
+								'which does not exist; the entry names no artifact it can be pinned against',
+						)
+					} else if (hashOfSubject(body) !== entry.asOf.hash) {
+						fail(
+							`${entry.file}: "${entry.key}" was last confirmed against ${subject} at a different ` +
+								'content hash; that file has changed since, so re-read the claim and either ' +
+								'update the hash or fix/remove the entry',
+						)
+					}
+				}
 				continue
 			}
 			derived += 1
@@ -970,7 +1080,7 @@ export async function runDocClaims(
 			)
 		}
 		parts.push(
-			`${derived + read} time-sensitive claims registered (${derived} settled by a predicate, ${read} by review)`,
+			`${derived + read} time-sensitive claims registered (${derived} settled by a predicate, ${read} by review, ${pinned} pinned to a content hash)`,
 		)
 	}
 

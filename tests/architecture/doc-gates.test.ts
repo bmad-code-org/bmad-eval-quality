@@ -24,7 +24,11 @@ import {
 	fetchTimeMap,
 	readPublishCache,
 } from '../../scripts/audit-lockfile-age.mjs'
-import { runDocClaims } from '../../scripts/check-doc-claims.ts'
+import {
+	DocClaimsSection,
+	hashOfSubject,
+	runDocClaims,
+} from '../../scripts/check-doc-claims.ts'
 import {
 	inWords,
 	matchCaseOf,
@@ -474,6 +478,166 @@ describe('a citation-shaped path inside a fenced block', () => {
 			'',
 		)
 		expect(report.failures.length).toBeGreaterThan(0)
+	})
+})
+
+describe('a `read` claim pinned with `asOf`', () => {
+	const SENTENCE = 'The cache stands today with no eviction policy.'
+	const KEY = 'stands today with no eviction policy'
+
+	const scratchWith = (pageBody: string): string => {
+		const scratch = mkdtempSync(join(tmpdir(), 'doc-claims-asof-'))
+		writeFileSync(join(scratch, 'page.md'), pageBody)
+		return scratch
+	}
+
+	const datedSection = (asOf: Record<string, unknown>) => ({
+		pages: ['page.md'],
+		generated: [],
+		dated: {
+			triggers: [{ match: '\\bstands today\\b', flags: 'i' }],
+			claims: [
+				{
+					file: 'page.md',
+					key: KEY,
+					settles: 'read',
+					reason: 'test fixture',
+					asOf,
+				},
+			],
+		},
+	})
+
+	it('passes when the subject still hashes to the pin', async () => {
+		const scratch = scratchWith(`# A page\n\n${SENTENCE}\n`)
+		const hash = hashOfSubject(readFileSync(join(scratch, 'page.md'), 'utf8'))
+		const report = await runDocClaims(scratch, datedSection({ hash }) as never)
+		expect(report.failures).toEqual([])
+		expect(report.summary).toContain('1 pinned to a content hash')
+	})
+
+	it('fails when the page content drifts under the pin', async () => {
+		const scratch = scratchWith(`# A page\n\n${SENTENCE}\n`)
+		const hash = hashOfSubject(readFileSync(join(scratch, 'page.md'), 'utf8'))
+		writeFileSync(
+			join(scratch, 'page.md'),
+			`# A page\n\n${SENTENCE}\n\nA new paragraph appeared.\n`,
+		)
+		const report = await runDocClaims(scratch, datedSection({ hash }) as never)
+		expect(
+			report.failures.some(
+				(line) =>
+					line.includes('was last confirmed against') &&
+					line.includes('different content hash'),
+			),
+		).toBe(true)
+	})
+
+	it('is left alone by a reformat: trimmed lines, collapsed inner spaces, collapsed blank runs', async () => {
+		// The sentence's own bytes stay put, because the dated-claim `key` is
+		// matched literally against the raw line; only the surrounding whitespace
+		// a formatter would touch changes.
+		const scratch = scratchWith(
+			`# A page\n\nSome  context   first.\n\n${SENTENCE}\n`,
+		)
+		const hash = hashOfSubject(readFileSync(join(scratch, 'page.md'), 'utf8'))
+		writeFileSync(
+			join(scratch, 'page.md'),
+			`# A page   \n\nSome context first.  \n\n\n\n${SENTENCE}\n\n\n`,
+		)
+		const report = await runDocClaims(scratch, datedSection({ hash }) as never)
+		expect(report.failures).toEqual([])
+	})
+
+	it('hashes a fenced code block byte-exact, so indentation drift inside one is caught', async () => {
+		const fence = (indent: string) =>
+			`# A page\n\n${SENTENCE}\n\n\`\`\`yaml\na:\n${indent}b: 1\n\`\`\`\n`
+		const scratch = scratchWith(fence('  '))
+		const hash = hashOfSubject(readFileSync(join(scratch, 'page.md'), 'utf8'))
+		writeFileSync(join(scratch, 'page.md'), fence('    '))
+		const report = await runDocClaims(scratch, datedSection({ hash }) as never)
+		expect(
+			report.failures.some((line) => line.includes('different content hash')),
+		).toBe(true)
+	})
+
+	it('pins asOf.subject to a file other than the one carrying the sentence', async () => {
+		const scratch = scratchWith(`# A page\n\n${SENTENCE}\n`)
+		writeFileSync(join(scratch, 'evidence.json'), '{"open":3}\n')
+		const hash = hashOfSubject(
+			readFileSync(join(scratch, 'evidence.json'), 'utf8'),
+		)
+		const section = datedSection({ subject: 'evidence.json', hash })
+
+		const passing = await runDocClaims(scratch, section as never)
+		expect(passing.failures).toEqual([])
+
+		writeFileSync(join(scratch, 'evidence.json'), '{"open":4}\n')
+		const failing = await runDocClaims(scratch, section as never)
+		expect(
+			failing.failures.some((line) => line.includes('evidence.json')),
+		).toBe(true)
+	})
+
+	it('fails clearly when asOf.subject names a path that does not exist', async () => {
+		const scratch = scratchWith(`# A page\n\n${SENTENCE}\n`)
+		const section = datedSection({
+			subject: 'missing.json',
+			hash: '0'.repeat(64),
+		})
+		const report = await runDocClaims(scratch, section as never)
+		expect(
+			report.failures.some(
+				(line) =>
+					line.includes('missing.json') && line.includes('does not exist'),
+			),
+		).toBe(true)
+	})
+})
+
+describe('the `asOf` schema refine', () => {
+	it('forbids asOf on a claim settled by a predicate', () => {
+		const result = DocClaimsSection.safeParse({
+			pages: ['docs'],
+			dated: {
+				triggers: [{ match: 'x' }],
+				claims: [
+					{
+						file: 'docs/page.md',
+						key: 'x',
+						settles: { module: 'src/x.ts', export: 'X' },
+						reason: 'x',
+						asOf: { hash: '0'.repeat(64) },
+					},
+				],
+			},
+		})
+		expect(result.success).toBe(false)
+		expect(
+			!result.success &&
+				JSON.stringify(result.error.issues).includes(
+					'is set, and settles is a predicate',
+				),
+		).toBe(true)
+	})
+
+	it('rejects a hash that is not 64 lowercase hex characters', () => {
+		const result = DocClaimsSection.safeParse({
+			pages: ['docs'],
+			dated: {
+				triggers: [{ match: 'x' }],
+				claims: [
+					{
+						file: 'docs/page.md',
+						key: 'x',
+						settles: 'read',
+						reason: 'x',
+						asOf: { hash: 'not-a-hash' },
+					},
+				],
+			},
+		})
+		expect(result.success).toBe(false)
 	})
 })
 
