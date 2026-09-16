@@ -10,6 +10,8 @@ body.
 
 ## [Unreleased]
 
+## [3.3.0] - 2026-09-16
+
 ### Added
 
 - **The evaluator is on the public barrel.** `resolveCheck`, `makeResolveOperand`,
