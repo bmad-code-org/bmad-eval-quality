@@ -516,8 +516,9 @@ export const workedExampleEvidenceArtifact: unknown = {
 }
 
 /**
- * Its twenty-six issues. `mode`, `contractVerdict`, `verdictBasis`, `trials`, and
- * `callerAttestedInputs` parse unchanged. What fails: absent lineage; the
+ * Its twenty-eight issues. `mode`, `contractVerdict`, `verdictBasis`, and
+ * `callerAttestedInputs` parse unchanged. What fails: absent lineage; no
+ * independently retained scored probe or completed-attempt identities; the
  * scoring version as a bare digest missing AD-11's five named inputs; no
  * `excludedProbeIds`; outcomes missing `selectedObservationIds`,
  * `checkResolution`, and `trialIndex`; no `reducedProbeOutcomes`; `strength`
@@ -529,8 +530,10 @@ export const workedExampleEvidenceArtifact: unknown = {
 export const WORKED_EXAMPLE_EVIDENCE_ISSUES: readonly WorkedExampleIssue[] = [
 	{ path: ['parentDigest'], code: 'invalid_type' },
 	{ path: ['revisionCount'], code: 'invalid_type' },
+	{ path: ['scoredProbeId'], code: 'invalid_type' },
 	{ path: ['scoringVersionInputs'], code: 'invalid_type' },
 	{ path: ['excludedProbeIds'], code: 'invalid_type' },
+	{ path: ['trials', 'completedAttempts'], code: 'invalid_type' },
 	{ path: ['outcomes', 0, 'selectedObservationIds'], code: 'invalid_type' },
 	{ path: ['outcomes', 0, 'checkResolution'], code: 'invalid_type' },
 	{ path: ['outcomes', 0, 'trialIndex'], code: 'invalid_type' },

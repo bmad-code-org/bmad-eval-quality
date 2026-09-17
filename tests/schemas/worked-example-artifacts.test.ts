@@ -26,11 +26,11 @@ describe('the spike worked example, re-checked and not repaired', () => {
 		expect(WORKED_EXAMPLE_RECORD_ISSUES).toHaveLength(97)
 	})
 
-	it('fails the Evidence Artifact in exactly the twenty-six recorded ways', () => {
+	it('fails the Evidence Artifact in exactly the twenty-eight recorded ways', () => {
 		const result = EvidenceArtifact.safeParse(workedExampleEvidenceArtifact)
 		expect(result.success).toBe(false)
 		expect(issuesOf(result)).toEqual(WORKED_EXAMPLE_EVIDENCE_ISSUES)
-		expect(WORKED_EXAMPLE_EVIDENCE_ISSUES).toHaveLength(26)
+		expect(WORKED_EXAMPLE_EVIDENCE_ISSUES).toHaveLength(28)
 	})
 
 	// The half of the record worth keeping: the evidence artifact's mode union,
@@ -45,7 +45,6 @@ describe('the spike worked example, re-checked and not repaired', () => {
 			'contractVerdict',
 			'systemRecommendationRecorded',
 			'verdictBasis',
-			'trials',
 			'callerAttestedInputs',
 			'uncitedFindings',
 			'coverageGaps',
