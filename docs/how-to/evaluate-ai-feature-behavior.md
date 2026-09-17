@@ -289,7 +289,7 @@ Be clear about what this page proves.
 **The shape runs end to end against a loopback fixture.**
 The test suite starts the toy Notes API on loopback in two builds, seeds the persistence defect into one of them, probes both over real HTTP through a port implementation that passes the published conformance suite, and scores the run record the seeded arm's observations produce.
 The observations are measured, and the evidence artifact that run emits equals the committed one byte for byte.
-One record is one trial, so the strength vector comes out reported and marked non-comparable.
+This committed chain supplies one record, so its strength vector reports one completed trial and remains non-comparable under the three-trial policy. A complete run repeats `--record` with two more independently sealed trials.
 `npm run validate` runs it.
 
 **No third-party AI feature has been evaluated with this library.**

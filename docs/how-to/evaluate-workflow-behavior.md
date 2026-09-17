@@ -165,7 +165,7 @@ O-002 is the oracle that compares those two, and it came out `caught`.
 
 **The identifier is the point.** Nothing in the contract could have named `t-7`, because the service minted it. A literal would have hard-coded a resource the evaluator never created, and `{ matcher: "any" }` would have matched unrelated reads. The `{ captured }` binding is what put the evaluator in front of the record the write actually created.
 
-**The verdict is CONCERNS on one basis, and that basis is the scoring limitation itself.** `coverageGaps` is empty and every other oracle held, so the only thing standing between this run and a clean result is that one `score` invocation completes one trial while the policy asks for three. You met that limit as a number you produced rather than as a warning on a page. [What Ships](/explanation/what-ships/) states it in full.
+**The verdict is CONCERNS on one basis, and that basis is this demonstrated invocation's trial count.** `coverageGaps` is empty and every other oracle held. The command above supplies one `--record`, so it completes one trial while the policy asks for three. The artifact reports that shortfall directly. [What Ships](/explanation/what-ships/) explains how repeated `--record` flags supply a complete trial set.
 
 ---
 
@@ -330,7 +330,7 @@ Two contracts in `corpus/dev/contracts/` declare a `fixtureReset`, and `captured
 Its four control legs are `preflight-control-observe`, `preflight-control-mutate` against `create-thing`, the contract's own `reset-the-store` against `reset-things`, and `preflight-control-observe-2`, in that order.
 `notes-tool-server.json` declares the other reset and its pre-flight runs too, in `tests/application/mcp-end-to-end.test.ts`, which asserts the verdict passed.
 
-One `score` invocation is a trial set of one, so the strength vector this lab produced is marked non-comparable. That limit is the command's; the library's `score` takes a trial set of any size.
+The score command in this lab supplies one record, so its strength vector reports one completed trial. Repeat `--record` with records carrying distinct `trialIndex` values to meet the policy minimum and make the vector comparable.
 
 ## In BMAD terms
 

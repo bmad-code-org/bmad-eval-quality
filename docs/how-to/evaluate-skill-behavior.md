@@ -396,9 +396,9 @@ A seeded defect against the same contract is a second committed chain, at `_bmad
 Its probe seeds a run that exits `0` and names an item the rules exclude for the case, and `strength.vector.defect` reads `{"caught": 1, "exercised": 1, "rate": 1}`.
 Its contract is the same object `corpus/dev/contracts/checklist-selection.json` publishes, so an adopter can hash the published bytes and get the `contractDigest` the chain's `sealed-run-record.json` carries. Strip the file's trailing newline first: `serializeArtifact` writes one and the digest is over the canonical bytes without it.
 
-Two limits are structural, and the lab reports both.
-One `score` invocation reads one sealed run record, a trial set of one, so a policy declaring a minimum above one produces a strength vector marked non-comparable. That limit is the command's; the library's `score` takes a trial set of any size.
-A skill whose only deliverable is a written file cannot carry a qualifying defect signature, for the artifact-channel reason above. Plan the signature on `exit-code` or on the stream the descriptor nominates, which is what this contract does.
+The lab reports one structural limit: a skill whose only deliverable is a written file cannot carry a qualifying defect signature, for the artifact-channel reason above. Plan the signature on `exit-code` or on the stream the descriptor nominates, which is what this contract does.
+
+Each runnable score command above supplies one record, so each strength vector reports one completed trial. Repeat `--record` with records carrying distinct `trialIndex` values to meet the policy minimum.
 
 ## In BMAD terms
 

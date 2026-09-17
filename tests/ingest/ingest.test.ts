@@ -226,6 +226,22 @@ describe('the ingest stage', () => {
 		)
 	})
 
+	it('restates trial identity fields exactly as the record carries them', () => {
+		const record: SealedRunRecord = {
+			...cleanRecord,
+			trialIndex: 41,
+			contractDigest: cleanRecord.evaluatorConfigurationDigest,
+			evaluatorConfigurationDigest: cleanRecord.contractDigest,
+		}
+		const result = ingest(record, cleanManifest, configuration)
+
+		expect(result.trialIndex).toBe(41)
+		expect(result.contractDigest).toBe(record.contractDigest)
+		expect(result.evaluatorConfigurationDigest).toBe(
+			record.evaluatorConfigurationDigest,
+		)
+	})
+
 	// Ascending `sequence`, then `observationId`, matching `selectObservations`.
 	// The record here is deliberately one that could not parse: `sequence` is
 	// refined unique per record, so the tie-break is unreachable on real input and

@@ -1471,18 +1471,15 @@ failures, and the rest vote. <code>buildStrengthVector</code> in <code>src/core/
 catch rate over them and <code>compareDominance</code> supplies AD-7&#39;s four-valued relation.
 <code>tests/score/reduce-trials.test.ts</code> pins the anti-pattern by name: one catch among a non-caught majority
 never reduces to <code>caught</code>, and a tie is unreachable for any even valid count at any threshold.</p>
-<p><strong>The bound is on the reducer&#39;s input.</strong> <code>runScore</code> and the <code>score</code> command each
-read one sealed run record and call <code>score</code> with a single-element trial set, so a run driven from this
-package completes one trial. Under any scoring policy declaring a
-<code>minimumTrialCount</code> above 1 that run resolves CONCERNS on an evidence condition and its strength vector
-is marked non-comparable. No policy artifact ships with the package and the schema declares no default,
-so the number is the caller&#39;s; the policy every published chain is scored under declares 3, and
-<code>scripts/worked-example-shared.ts</code> records that lowering it to make a chain comparable would describe a
-policy nobody ships. Running the evaluator n times
-and presenting n records sits on the caller&#39;s side of the boundary AD-2 draws for execution.
-<code>SealedRunRecord.trialIndex</code> is carried and unread: <code>trialSetDisagreementsOf</code> cross-checks <code>mode</code>,
-<code>evaluatorRecommendation</code>, and <code>runId</code> across a set and compares no indices, so two records claiming the
-same trial reduce as two trials.</p>
+<p><strong>The published boundary now admits the reducer&#39;s full input.</strong> <code>runScore</code> accepts one sealed record for
+compatibility or a nonempty record list, and the <code>score</code> command collects repeated <code>--record</code> flags into
+that list. Each record is ingested and its private isolation reference is verified before one call to
+<code>score</code> receives the complete set. The application orders records by their one-based <code>trialIndex</code>.
+<code>trialSetDisagreementsOf</code> rejects a repeated index and cross-checks contract digest, evaluator
+configuration digest, mode, evaluator recommendation, and run identifier across the set. The published
+default policy&#39;s three-trial minimum is reachable from both entry points, and a complete set produces a
+comparable strength vector. Running the evaluator remains on the caller&#39;s side of the boundary AD-2
+draws for execution.</p>
 <p><strong>2. Observation selection was ambiguous, and the temporal clause was unimplementable.</strong> Per AD-39. Two
 steps in the worked example each matched two observations, so a first-match scorer and a last-match
 scorer bound different evidence from one sealed record, and nothing in the run record ordered

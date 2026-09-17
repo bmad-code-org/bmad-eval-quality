@@ -715,7 +715,7 @@ Verify that no record was created.</p>
 <p>Canary probes and clean controls are run too, and never enter the strength vector.</p>
 <p>Every required oracle check resolves to exactly one of twelve states, and the state travels with the result: <code>caught</code>, <code>confirmed</code>, <code>missed</code>, <code>passed-clean-control</code>, <code>false-positive</code>, <code>abstained</code>, <code>bypassed</code>, <code>unreached</code>, <code>oracle-error</code>, <code>judge-error</code>, <code>infrastructure-error</code>, or <code>not-applicable</code>. A required oracle that missed, abstained, errored, or is absent prevents PASS, and a high overall score never overrides it. An infrastructure error or a failed pre-flight invalidates the run; run it again.</p>
 <p>A caught defect is decided by evidence. A finding counts as detection only when the probe&#39;s declared defect signature matches an observation the finding cites; the evaluator&#39;s own claim does not settle it.</p>
-<p>Repeated runs of one probe are trials, reduced to one result per probe before any rate is computed. The <code>score</code> command and <code>runScore</code> hand the stage one sealed run record per call, so against a policy that asks for more than one trial the strength vector is reported and marked non-comparable.</p>
+<p>Repeated runs of one probe are trials, reduced to one result per probe before any rate is computed. Pass the full trial set to <code>runScore</code>, or repeat <code>--record</code> on the <code>score</code> command. Every record declares its own <code>trialIndex</code> and agrees with the set on contract digest, evaluator configuration digest, and mode. A set meeting the policy minimum produces a comparable strength vector.</p>
 <p><a href="https://bmad-code-org.github.io/bmad-eval-quality/how-to/author-behavioral-contracts/">The full walkthrough</a> reads a scored run field by field, down to its verdict and exit code.</p>
 <h2 id="using-it">Using it<a class="heading-anchor" href="#using-it" aria-label="Link to Using it">#</a></h2>
 <p>Node.js 22.20.0 or newer. <code>zod</code> is the only production dependency.</p>
@@ -730,7 +730,8 @@ npx eval-quality preflight --contract contract.json \
   --probes probes.json --observations observations.json \
   --run-id 2026-08-28-a --out ./eval-out
 
-npx eval-quality score --record record.json --contract contract.json \
+npx eval-quality score --record trial-1.json --record trial-2.json \
+  --record trial-3.json --contract contract.json \
   --probe probe.json --preflight-verdict preflight-verdict.json \
   --policy policy.json --corpus-digest &lt;digest&gt; \
   --out ./eval-out

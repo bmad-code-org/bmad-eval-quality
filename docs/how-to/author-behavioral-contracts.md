@@ -254,13 +254,13 @@ A planned leg with no matching observation is what a failed pre-flight looks lik
 
 ## 6. Score it
 
-`score` chains `ingest`, `score`, and `emit` over one sealed run record and mints an evidence artifact carrying the verdict.
+`score` chains `ingest`, `score`, and `emit` over a trial set and mints an evidence artifact carrying the verdict. This walkthrough supplies one record, so its result records one completed trial. Repeat `--record` with independently sealed records to meet a multi-trial policy minimum.
 
 Six inputs are required, and every one of them is a real file here.
 
 | Flag | What it is |
 | --- | --- |
-| `--record` | The sealed run record: what the evaluator produced, sealed. Its observations in `sequence` order, its findings, one disposition per oracle, and the run mode. |
+| `--record` | One sealed trial record: what the evaluator produced, sealed. Repeat the flag for each trial. Each record carries its own `trialIndex`. |
 | `--contract` | The compiled contract from step 1. |
 | `--probe` | The probe the record was run against, carrying the defect signature the witness match reads. |
 | `--preflight-verdict` | The verdict from step 5, which has to have passed. |
@@ -360,7 +360,7 @@ false | 1 admitted probe over 1 completed trial. Below the declared minimum of 3
 
 One defect probe ran, it was caught, so the defect rate is `1`.
 The other two probe classes were not exercised.
-The policy asked for three trials and one `score` invocation completes one, so `comparable` is `false`: this number may be reported and may not be compared with another run's.
+The policy asked for three trials and the demonstrated `score` command supplies one `--record`, so `comparable` is `false`: this number may be reported and may not be compared with another run's. Repeat `--record` with two more independently sealed trials to meet the minimum.
 
 ### The lesson
 

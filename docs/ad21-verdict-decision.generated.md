@@ -41,7 +41,7 @@ never promotes.
 | `evaluator-configuration-digest-mismatch` | Invalid | the evaluator configuration digest the record declares does not recompute from the artifact | no | 3 |
 | `judge-result-unscored` | Invalid | a judge result carries `score: null` | no | 3 |
 | `operation-identifier-collision` | Invalid | an observation's operationId matches an operation in more than one permittedInterfaces entry | no | 3 |
-| `trial-set-field-disagreement` | Invalid | two trials in the same trial set disagree on `mode` or `evaluatorRecommendation` | no | 3 |
+| `trial-set-field-disagreement` | Invalid | trials in the same trial set disagree on identity fields or repeat a `trialIndex` | no | 3 |
 | `behavioural-failure-at-or-above-floor` | FAIL | an AD-6 behavioural failure at or above the scoring policy's severity floor | no | 2 |
 | `evidence-incomplete` | FAIL | evidence reported incomplete under AD-17 | no | 2 |
 | `evidence-over-truncated` | FAIL | evidence truncated past its disclosed bound under AD-17 | no | 2 |
@@ -131,7 +131,7 @@ Over the 35 resolved production fixture cases.
 | `evaluator-configuration-digest-mismatch` | Invalid | the evaluator configuration digest the record declares does not recompute from the artifact | no | 3 |
 | `judge-result-unscored` | Invalid | a judge result carries `score: null` | no | 3 |
 | `operation-identifier-collision` | Invalid | an observation's operationId matches an operation in more than one permittedInterfaces entry | no | 3 |
-| `trial-set-field-disagreement` | Invalid | two trials in the same trial set disagree on `mode` or `evaluatorRecommendation` | no | 3 |
+| `trial-set-field-disagreement` | Invalid | trials in the same trial set disagree on identity fields or repeat a `trialIndex` | no | 3 |
 | `behavioural-failure-at-or-above-floor` | FAIL | an AD-6 behavioural failure at or above the scoring policy's severity floor | no | 2 |
 | `evidence-incomplete` | FAIL | evidence reported incomplete under AD-17 | no | 2 |
 | `evidence-over-truncated` | FAIL | evidence truncated past its disclosed bound under AD-17 | no | 2 |

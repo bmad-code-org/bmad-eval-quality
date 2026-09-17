@@ -265,22 +265,22 @@ function operationIdentifierCollisionsOf(
 		}
 	}
 	const collisions: string[] = []
-	trials.forEach((trial, trialIndex) => {
+	for (const trial of trials) {
 		for (const observation of trial.observations) {
 			const interfaces =
 				interfacesByOperationId.get(observation.operationId) ?? []
 			if (interfaces.length <= 1) continue
 			collisions.push(
-				`trial ${trialIndex + 1} observation ${observation.observationId}: operationId "${observation.operationId}" matches operations in ${interfaces.length} permittedInterfaces entries (${interfaces.join(', ')})`,
+				`trial ${trial.trialIndex} observation ${observation.observationId}: operationId "${observation.operationId}" matches operations in ${interfaces.length} permittedInterfaces entries (${interfaces.join(', ')})`,
 			)
 		}
-	})
+	}
 	return collisions
 }
 
 /**
  * The tenth new Invalid condition: a caller assembling a trial set from
- * records that disagree on `mode`, `evaluatorRecommendation`, or `runId`.
+ * records that disagree on their set identity fields or repeat a trial index.
  * Every trial is compared against the first: a trial set is not a genuine
  * set once one trial's own value is picked as authoritative, regardless of
  * which one, so basis lines name every disagreeing pair. `runId` joined the
@@ -297,22 +297,41 @@ function trialSetDisagreementsOf(
 	const disagreements: string[] = []
 	trials.forEach((trial, index) => {
 		if (index === 0) return
+		if (trial.contractDigest !== first.contractDigest) {
+			disagreements.push(
+				`contractDigest: trial ${first.trialIndex} = "${first.contractDigest}", trial ${trial.trialIndex} = "${trial.contractDigest}"`,
+			)
+		}
+		if (
+			trial.evaluatorConfigurationDigest !== first.evaluatorConfigurationDigest
+		) {
+			disagreements.push(
+				`evaluatorConfigurationDigest: trial ${first.trialIndex} = "${first.evaluatorConfigurationDigest}", trial ${trial.trialIndex} = "${trial.evaluatorConfigurationDigest}"`,
+			)
+		}
 		if (trial.mode !== first.mode) {
 			disagreements.push(
-				`mode: trial 1 = "${first.mode}", trial ${index + 1} = "${trial.mode}"`,
+				`mode: trial ${first.trialIndex} = "${first.mode}", trial ${trial.trialIndex} = "${trial.mode}"`,
 			)
 		}
 		if (trial.evaluatorRecommendation !== first.evaluatorRecommendation) {
 			disagreements.push(
-				`evaluatorRecommendation: trial 1 = "${first.evaluatorRecommendation}", trial ${index + 1} = "${trial.evaluatorRecommendation}"`,
+				`evaluatorRecommendation: trial ${first.trialIndex} = "${first.evaluatorRecommendation}", trial ${trial.trialIndex} = "${trial.evaluatorRecommendation}"`,
 			)
 		}
 		if (trial.runId !== first.runId) {
 			disagreements.push(
-				`runId: trial 1 = "${first.runId}", trial ${index + 1} = "${trial.runId}"`,
+				`runId: trial ${first.trialIndex} = "${first.runId}", trial ${trial.trialIndex} = "${trial.runId}"`,
 			)
 		}
 	})
+	const seenTrialIndices = new Set<number>()
+	for (const trial of trials) {
+		if (seenTrialIndices.has(trial.trialIndex)) {
+			disagreements.push(`trialIndex: duplicate value ${trial.trialIndex}`)
+		}
+		seenTrialIndices.add(trial.trialIndex)
+	}
 	return disagreements
 }
 
@@ -324,7 +343,7 @@ function trialSetDisagreementsOf(
  * it sees one trial at a time, and nothing checks whether two DIFFERENT trials
  * of one set reuse an observation, finding, or oracle-disposition identifier.
  * That asymmetry looks like a gap beside `trial-set-field-disagreement`, which
- * does compare `mode`, `evaluatorRecommendation`, and `runId` across trials.
+ * compares the fields that identify the set across trials.
  *
  * It is not one. A trial set is n independent evaluator runs of one contract,
  * each producing its own record, and a harness that names its first observation
@@ -714,7 +733,10 @@ export const score: ScoreStage<
 		// contributes no vote rather than a fabricated one.
 		const voteState = designatedState ?? firstInvalidatingState ?? firstState
 		if (voteState !== undefined) {
-			votes.push({ state: voteState as TrialVote['state'] })
+			votes.push({
+				trialIndex: trial.trialIndex,
+				state: voteState as TrialVote['state'],
+			})
 		}
 	}
 
@@ -797,8 +819,8 @@ export const score: ScoreStage<
 		trialSetDisagreements,
 	}
 
-	// Every trial in the set is asserted to agree with the
-	// first on `mode` and `evaluatorRecommendation`; a disagreement is
+	// Every trial in the set is asserted to agree with the first on its shared
+	// identity inputs and evaluator recommendation; a disagreement is
 	// `trial-set-field-disagreement` above, never a throw. The first
 	// trial's own values build the one assessment TypeScript's
 	// discriminated union still requires -- non-silence comes from the

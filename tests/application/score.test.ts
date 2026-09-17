@@ -5,6 +5,7 @@
  * row, mutated one field at a time -- see `fixtures/score-fixtures.ts`.
  */
 import { describe, expect, it, vi } from 'vitest'
+import { POLICY } from '../../scripts/worked-example-shared.ts'
 import { runScore } from '../../src/application/score.ts'
 import * as emitModule from '../../src/core/emit/emit.ts'
 import * as ingestModule from '../../src/core/ingest/index.ts'
@@ -83,6 +84,22 @@ describe('runScore: the boundary parses every declared input', () => {
 		expect(fault.artifactPath).toBe('SealedRunRecord')
 	})
 
+	it('rejects an empty trial set and names the record list', async () => {
+		const fault = await faultOf(() => run({ record: [] }))
+		expect(fault.code).toBe('schema-parse-failure')
+		expect(fault.artifactPath).toBe('SealedRunRecord[]')
+	})
+
+	it('parses every record in a trial set', async () => {
+		const fault = await faultOf(() =>
+			run({
+				record: [sealedRunRecordFixtureForScore, { not: 'a record' } as never],
+			}),
+		)
+		expect(fault.code).toBe('schema-parse-failure')
+		expect(fault.artifactPath).toBe('SealedRunRecord[]')
+	})
+
 	it('throws schema-parse-failure naming EvalContract on an unparseable contract', async () => {
 		const fault = await faultOf(() =>
 			run({ contract: { not: 'a contract' } as never }),
@@ -149,6 +166,28 @@ describe('runScore: the full chain over the I/O & Edge-Case Matrix', () => {
 		expect(
 			result.artifact?.scoringVersionInputs.evaluatorConfigurationDigest,
 		).toBe(sealedRunRecordFixtureForScore.evaluatorConfigurationDigest)
+	})
+
+	it('three trials satisfy the default policy minimum and produce a comparable strength vector', async () => {
+		const result = await run({
+			record: [
+				sealedRunRecordFixtureForScore,
+				{ ...sealedRunRecordFixtureForScore, trialIndex: 2 },
+				{ ...sealedRunRecordFixtureForScore, trialIndex: 3 },
+			],
+			policy: POLICY,
+		})
+		expect(result.ladder.verdict).toBe('PASS')
+		expect(result.artifact?.trials).toEqual({
+			completed: 3,
+			declaredMinimum: 3,
+			invalidatedAttempts: [],
+		})
+		expect(result.artifact?.strength.comparable).toBe(true)
+		expect(result.artifact?.strength.note).toContain('3 completed trials')
+		expect(result.artifact?.verdictBasis).not.toContain(
+			'3 completed trials below the declared minimum of 3',
+		)
 	})
 
 	it('FAIL verdict: an ingested FAIL recommendation resolves exit 2', async () => {
@@ -226,6 +265,28 @@ describe('runScore: the two digest-verification obligations', () => {
 		expect(fault.artifactPath).toBe('SealedRunRecord.isolationManifestArtifact')
 	})
 
+	it('checks a later trial private reference and identifies its trialIndex', async () => {
+		const fault = await faultOf(() =>
+			run({
+				record: [
+					sealedRunRecordFixtureForScore,
+					{
+						...sealedRunRecordFixtureForScore,
+						trialIndex: 7,
+						isolationManifestArtifact: {
+							...sealedRunRecordFixtureForScore.isolationManifestArtifact,
+							digest: corpusDigestFixture,
+						},
+					},
+				],
+			}),
+		)
+		expect(fault.code).toBe('digest-mismatch')
+		expect(fault.artifactPath).toBe(
+			'SealedRunRecord[trialIndex=7].isolationManifestArtifact',
+		)
+	})
+
 	it('a public-storage isolationManifestArtifact needs no port at all (Decision 3)', async () => {
 		const result = await run({
 			record: {
@@ -288,6 +349,23 @@ describe('runScore: the orchestration order and the two hardcoded value paramete
 			const emitOrder = emitSpy.mock.invocationCallOrder[0] as number
 			expect(ingestOrder).toBeLessThan(scoreOrder)
 			expect(scoreOrder).toBeLessThan(emitOrder)
+		} finally {
+			vi.restoreAllMocks()
+		}
+	})
+
+	it('orders a presented record list by each record trialIndex before scoring', async () => {
+		const scoreSpy = vi.spyOn(scoreModule, 'score')
+		try {
+			await run({
+				record: [
+					{ ...sealedRunRecordFixtureForScore, trialIndex: 3 },
+					sealedRunRecordFixtureForScore,
+					{ ...sealedRunRecordFixtureForScore, trialIndex: 2 },
+				],
+			})
+			const trials = scoreSpy.mock.calls[0]?.[1]
+			expect(trials?.map((trial) => trial.trialIndex)).toEqual([1, 2, 3])
 		} finally {
 			vi.restoreAllMocks()
 		}

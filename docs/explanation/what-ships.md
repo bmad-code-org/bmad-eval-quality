@@ -48,16 +48,15 @@ Two shipped adapters do launch a process, and only where you wire one up and tel
 
 Also outside the package, by decision: a new eval engine, a hosted service, a dashboard or GUI, multimodal evaluators, automatic prompt repair, and a generic judge-calibration platform.
 
-## One limitation to know before you plan a run
+## Plan a trial set
 
-A CLI `score` invocation accepts one run record.
+The scoring model reduces several runs of the same probe to one result before any rate is computed.
 
-The underlying scoring model is built for a trial set: several runs of the same probes, reduced to one result per probe before any rate is computed.
-The command and `runScore` hand that model one record per call, so a run scored from the published surface completes one trial.
-Whenever your scoring policy asks for more than one, the strength vector comes out reported and marked non-comparable.
+Repeat `--record` once per trial on the `score` command, or pass the complete list to `runScore`.
+Each sealed record carries its own `trialIndex`.
+All records in the set must agree on contract digest, evaluator configuration digest, and mode.
 
-The number is real and worth reading.
-It can be compared against another run's once the policy's trial minimum is met.
+The strength vector becomes comparable when the completed set meets the policy's declared minimum.
 
 ## Related pages
 

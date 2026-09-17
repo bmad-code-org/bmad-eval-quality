@@ -122,7 +122,7 @@ Every required oracle check resolves to exactly one of twelve states, and the st
 
 A caught defect is decided by evidence. A finding counts as detection only when the probe's declared defect signature matches an observation the finding cites; the evaluator's own claim does not settle it.
 
-Repeated runs of one probe are trials, reduced to one result per probe before any rate is computed. The `score` command and `runScore` hand the stage one sealed run record per call, so against a policy that asks for more than one trial the strength vector is reported and marked non-comparable.
+Repeated runs of one probe are trials, reduced to one result per probe before any rate is computed. Pass the full trial set to `runScore`, or repeat `--record` on the `score` command. Every record declares its own `trialIndex` and agrees with the set on contract digest, evaluator configuration digest, and mode. A set meeting the policy minimum produces a comparable strength vector.
 
 [The full walkthrough](https://bmad-code-org.github.io/bmad-eval-quality/how-to/author-behavioral-contracts/) reads a scored run field by field, down to its verdict and exit code.
 
@@ -145,7 +145,8 @@ npx eval-quality preflight --contract contract.json \
   --probes probes.json --observations observations.json \
   --run-id 2026-08-28-a --out ./eval-out
 
-npx eval-quality score --record record.json --contract contract.json \
+npx eval-quality score --record trial-1.json --record trial-2.json \
+  --record trial-3.json --contract contract.json \
   --probe probe.json --preflight-verdict preflight-verdict.json \
   --policy policy.json --corpus-digest <digest> \
   --out ./eval-out

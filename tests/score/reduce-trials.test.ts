@@ -11,7 +11,6 @@ import {
 import {
 	ALL_INVALIDATING_VOTES,
 	EVERY_VOTED_STATE_VOTES,
-	INVALIDATED_TRIAL_MIDDLE_VOTES,
 	INVALIDATED_TRIAL_VOTES,
 	MAJORITY_CAUGHT_VOTES,
 	MIXED_GROUP_VOTES,
@@ -135,13 +134,13 @@ describe('an invalidated trial is excluded from both the vote and the valid-tria
 		])
 	})
 
-	it('numbers the attempt by position, not by filtered order', () => {
+	it('uses the record trialIndex rather than its array position', () => {
 		const result = reduceTrialSet(
-			INVALIDATED_TRIAL_MIDDLE_VOTES,
+			[voteOf('caught', 4), voteOf('judge-error', 9), voteOf('confirmed', 12)],
 			DEFAULT_THRESHOLD,
 		)
 		expect(result.invalidatedAttempts).toEqual([
-			{ attempt: 2, reason: 'judge-error' },
+			{ attempt: 9, reason: 'judge-error' },
 		])
 		expect(result.validCount).toBe(2)
 		expect(result.caughtCount).toBe(1)
@@ -221,19 +220,19 @@ describe('catchThreshold is read as a bare fraction, not a special-cased floor o
 describe('an out-of-domain vote state throws instead of silently counting as voted', () => {
 	it('throws on a state outside the closed twelve, bypassing the type at a boundary', () => {
 		const bypassed = [
-			{ state: 'not-a-real-state' },
+			{ state: 'not-a-real-state', trialIndex: 7 },
 		] as unknown as readonly TrialVote[]
 		expect(() => reduceTrialSet(bypassed, DEFAULT_THRESHOLD)).toThrow(
 			/out-of-domain state/,
 		)
 	})
 
-	it('names the offending vote by its attempt position, not by array index of the filtered result', () => {
+	it('names the offending vote by its declared trial index', () => {
 		const bypassed = [
 			voteOf('confirmed'),
-			{ state: 'still-not-real' },
+			{ state: 'still-not-real', trialIndex: 7 },
 		] as unknown as readonly TrialVote[]
-		expect(() => reduceTrialSet(bypassed, DEFAULT_THRESHOLD)).toThrow(/vote 2/)
+		expect(() => reduceTrialSet(bypassed, DEFAULT_THRESHOLD)).toThrow(/trial 7/)
 	})
 
 	// `TRIAL_VOTE_STATE_OF` is a plain object built by `Object.fromEntries`, so
@@ -246,7 +245,9 @@ describe('an out-of-domain vote state throws instead of silently counting as vot
 	it.each(['toString', 'constructor', 'hasOwnProperty', 'valueOf'])(
 		'throws rather than resolving an inherited Object.prototype member for state %j',
 		(state) => {
-			const bypassed = [{ state }] as unknown as readonly TrialVote[]
+			const bypassed = [
+				{ state, trialIndex: 7 },
+			] as unknown as readonly TrialVote[]
 			expect(() => reduceTrialSet(bypassed, DEFAULT_THRESHOLD)).toThrow(
 				/out-of-domain state/,
 			)
@@ -282,7 +283,7 @@ describe('catchThreshold is rejected outside its declared 0..1 domain', () => {
 		// threshold. Either fault alone throws; both together still throws
 		// exactly once, from the threshold check that runs first.
 		const bypassed = [
-			{ state: 'unreachable' },
+			{ state: 'unreachable', trialIndex: 7 },
 		] as unknown as readonly TrialVote[]
 		expect(() => reduceTrialSet(bypassed, 2)).toThrow(/catchThreshold/)
 	})

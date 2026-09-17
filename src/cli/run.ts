@@ -84,7 +84,8 @@ type Probes = PreflightFromObservationsOptions['probes']
 type Observations = PreflightFromObservationsOptions['observations']
 type SealedEvaluatorBrief = ReturnType<typeof seal>
 type PreflightVerdict = ReturnType<typeof preflightFromObservations>
-type SealedRunRecordInput = RunScoreOptions['record']
+type ArrayElementOrSelf<T> = T extends readonly (infer Element)[] ? Element : T
+type SealedRunRecordInput = ArrayElementOrSelf<RunScoreOptions['record']>
 type IsolationManifestInput = NonNullable<RunScoreOptions['manifest']>
 type EvaluatorConfigurationInput = NonNullable<RunScoreOptions['configuration']>
 type ProbeInput = RunScoreOptions['probe']
@@ -131,7 +132,7 @@ const USAGE = `Usage:
                                 [--strict-inputs | --no-strict-inputs] [--strict]
   eval-quality preflight         --contract <path> --probes <path> --observations <path>
                                  --run-id <id> [--out <target>] [--strict]
-  eval-quality score             --record <path> --contract <path> --probe <path>
+  eval-quality score             --record <path> [--record <path> ...] --contract <path> --probe <path>
                                   --preflight-verdict <path> --policy <path>
                                   --corpus-digest <digest>
                                   [--isolation-manifest <path>] [--evaluator-configuration <path>]
@@ -170,14 +171,14 @@ const COMMAND_USAGE: Readonly<Record<Command, string>> = {
   --out <target>           a .json file path, or a directory taking preflight-verdict.json
   --strict                 promote CONCERNS to exit 1`,
 	score: `Usage:
-  eval-quality score             --record <path> --contract <path> --probe <path>
+  eval-quality score             --record <path> [--record <path> ...] --contract <path> --probe <path>
                                   --preflight-verdict <path> --policy <path>
                                   --corpus-digest <digest>
                                   [--isolation-manifest <path>] [--evaluator-configuration <path>]
                                   [--private-manifest <path>] [--corpus-root <dir>]
                                   [--out <target>] [--strict]
 
-  --record <path>                   the sealed run record to ingest
+  --record <path>                   a sealed trial record to ingest; repeat for each trial
   --contract <path>                 the compiled contract to score against
   --probe <path>                    the probe the record was run against
   --preflight-verdict <path>        the pre-flight verdict, also the source of the AD-11 fixture digest
@@ -199,7 +200,7 @@ const IO_RULES = `Inputs and outputs:
   one input may be "-" per invocation. compile and seal each take one input;
   preflight takes three, all required; score takes eight, three of them
   optional (--isolation-manifest, --evaluator-configuration, and
-  --private-manifest). Without --out the artifact goes to stdout. An --out
+  --private-manifest), and --record may repeat. Without --out the artifact goes to stdout. An --out
   ending in .json is a file path; anything else is a directory taking
   <target>/<kind>.json. Diagnostics and errors go to stderr.`
 
@@ -258,17 +259,20 @@ function outputPath(
 async function collides(
 	environment: RunEnvironment,
 	target: string,
-	inputs: Readonly<Partial<Record<InputKey, string>>>,
+	inputs: Extract<ParsedInvocation, { kind: 'run' }>['inputs'],
 ): Promise<string | null> {
 	const resolvedTarget = environment.resolvePath(target)
-	for (const [key, value] of Object.entries(inputs)) {
-		if (value === undefined || value === '-') continue
-		const resolvedInput = environment.resolvePath(value)
-		if (
-			resolvedInput === resolvedTarget ||
-			(await environment.sameFile(resolvedInput, resolvedTarget))
-		) {
-			return `--out resolves to "${resolvedTarget}", which is also --${key} "${value}"`
+	for (const [key, input] of Object.entries(inputs)) {
+		const values = Array.isArray(input) ? input : [input]
+		for (const value of values) {
+			if (value === undefined || value === '-') continue
+			const resolvedInput = environment.resolvePath(value)
+			if (
+				resolvedInput === resolvedTarget ||
+				(await environment.sameFile(resolvedInput, resolvedTarget))
+			) {
+				return `--out resolves to "${resolvedTarget}", which is also --${key} "${value}"`
+			}
 		}
 	}
 	return null
@@ -434,13 +438,18 @@ async function readOptionalJson(
  * own real parse, which raises the accurate `schema-parse-failure` rather
  * than this pre-check inventing one.
  */
-function needsCorpusPort(record: unknown, privateManifest: unknown): boolean {
+function needsCorpusPort(
+	records: readonly unknown[],
+	privateManifest: unknown,
+): boolean {
 	const manifest = privateManifest as { entries?: readonly unknown[] } | null
 	if (manifest !== null && (manifest.entries?.length ?? 0) > 0) return true
-	const typedRecord = record as {
-		isolationManifestArtifact?: { storage?: unknown }
-	}
-	return typedRecord?.isolationManifestArtifact?.storage === 'private'
+	return records.some((record) => {
+		const typedRecord = record as {
+			isolationManifestArtifact?: { storage?: unknown }
+		}
+		return typedRecord?.isolationManifestArtifact?.storage === 'private'
+	})
 }
 
 /** `CommandOutcome`'s `'verdict'` kind, read straight off `LadderResolution`: no inversion, no recomputation. */
@@ -460,11 +469,12 @@ async function runScoreCommand(
 	target: string | null,
 ): Promise<RunResult> {
 	const { inputs, corpusDigest, corpusRoot } = invocation
-	const record = (await readJson(
-		environment,
-		'record',
-		inputs.record,
-	)) as SealedRunRecordInput
+	const records = await Promise.all(
+		(inputs.record ?? []).map(
+			async (source) =>
+				(await readJson(environment, 'record', source)) as SealedRunRecordInput,
+		),
+	)
 	const manifest = (await readOptionalJson(
 		environment,
 		'isolation-manifest',
@@ -505,7 +515,7 @@ async function runScoreCommand(
 	// usage error naming the missing flag, not a silently skipped check.
 	// `application.runScore` never returns `usage-error` itself (that
 	// vocabulary is `cli/`'s alone), so this is checked here, before the call.
-	if (corpusRoot === null && needsCorpusPort(record, privateManifest)) {
+	if (corpusRoot === null && needsCorpusPort(records, privateManifest)) {
 		environment.writeDiagnostic(
 			renderUsage(
 				'--corpus-root is required to resolve a --private-manifest entry or a private-storage isolationManifestArtifact reference',
@@ -515,7 +525,7 @@ async function runScoreCommand(
 	}
 
 	const result = await application.runScore({
-		record,
+		record: records,
 		manifest,
 		configuration,
 		contract,

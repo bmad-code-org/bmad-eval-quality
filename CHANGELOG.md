@@ -10,6 +10,14 @@ body.
 
 ## [Unreleased]
 
+### Changed
+
+- **`score` and `runScore` accept complete trial sets.** Repeat `--record` for each sealed trial on
+  the command line, or pass a record list through the existing `runScore` option. Records retain
+  their own `trialIndex` and must agree on contract digest, evaluator configuration digest, and
+  mode. A three-trial set scored under the published default policy now produces a comparable
+  strength vector. Passing one record to `runScore` remains supported.
+
 ## [3.3.0] - 2026-09-16
 
 ### Added
@@ -1158,4 +1166,3 @@ before publishing, so the 0.4.0 changes below shipped in this version.
 
 - The pre-flight reducer throws `port-contract-violation` on a repeated `probeId` instead of
   silently taking the last observation.
-

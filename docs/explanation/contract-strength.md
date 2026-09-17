@@ -34,10 +34,12 @@ A hidden probe set is something you assemble, and nothing in the artifacts marks
 A rate over one trial is a rate over one trial.
 
 The scoring model reduces a trial set to one result per probe before computing any rate, because a pass-if-any reading across retries is the retry anti-pattern with a score attached.
-A CLI invocation hands it one record, so a run scored from the command line completes one trial.
-When the scoring policy declares a higher minimum, the vector comes back with `comparable` set to `false` and a note naming the shortfall, which is the artifact saying out loud that this number may be reported and may not be compared.
+Repeat `--record` on one CLI invocation to supply the set, or pass the record list to `runScore`.
+Each record carries its own `trialIndex`, and the set agrees on contract digest, evaluator configuration digest, and mode.
+When the completed set meets the scoring policy's minimum, the vector carries `comparable: true`.
+Below that minimum, the vector carries `comparable: false` and a note naming the shortfall.
 
-[What Ships](/explanation/what-ships/) states that limit in full.
+[What Ships](/explanation/what-ships/) states the trial-set contract in full.
 
 ## The verdict and the vector disagree on purpose
 

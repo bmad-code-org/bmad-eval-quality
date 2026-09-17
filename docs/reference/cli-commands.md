@@ -66,20 +66,20 @@ All four of `--contract`, `--probes`, `--observations`, and `--run-id` are requi
 
 ## `score`
 
-Chains `ingest`, `score`, and `emit`: validates a sealed run record against its isolation manifest and evaluator configuration, scores it against the compiled contract, and mints an `EvidenceArtifact` carrying the verdict.
+Chains `ingest`, `score`, and `emit`: validates each sealed run record against its isolation manifest and evaluator configuration, scores the trial set against the compiled contract, and mints an `EvidenceArtifact` carrying the verdict.
 
 ```text
 Usage:
-  eval-quality score             --record <path> --contract <path> --probe <path>
+  eval-quality score             --record <path> [--record <path> ...] --contract <path> --probe <path>
                                   --preflight-verdict <path> --policy <path>
                                   --corpus-digest <digest>
                                   [--isolation-manifest <path>] [--evaluator-configuration <path>]
                                   [--private-manifest <path>] [--corpus-root <dir>]
                                   [--out <target>] [--strict]
 
-  --record <path>                   the sealed run record to ingest
+  --record <path>                   a sealed trial record to ingest; repeat for each trial
   --contract <path>                 the compiled contract to score against
-  --probe <path>                    the probe the record was run against
+  --probe <path>                    the probe the records were run against
   --preflight-verdict <path>        the pre-flight verdict, also the source of the AD-11 fixture digest
   --policy <path>                   the scoring policy
   --corpus-digest <digest>          AD-11's caller-attested corpus digest; no artifact carries it
@@ -93,13 +93,13 @@ Usage:
   --strict                          promote CONCERNS to exit 1
 ```
 
-`--record`, `--contract`, `--probe`, `--preflight-verdict`, `--policy`, and `--corpus-digest` are required. `--corpus-root` is optional at the argument-parsing level; it becomes required, with a usage error naming it, the moment a private reference actually needs a byte resolved through it.
+At least one `--record` is required, along with `--contract`, `--probe`, `--preflight-verdict`, `--policy`, and `--corpus-digest`. Repeat `--record` once per trial. Every record carries its own `trialIndex`; scoring orders the set by that field, requires distinct indices, and requires agreement on contract digest, evaluator configuration digest, and mode. `--corpus-root` is optional at the argument-parsing level; it becomes required, with a usage error naming it, the moment a private reference actually needs a byte resolved through it.
 
 On the Invalid rung the command exits `3` and writes no artifact: no legal `EvidenceArtifact` carries a null verdict. Diagnostics still go to stderr on that rung. On every other rung the artifact's own `exitCode` field carries the number the command returns, except a CONCERNS that `--strict` promotes: the artifact still records `0` and the command exits `1`.
 
 A probe that fails AD-9's qualification gate resolves an oracle to `infrastructure-error` wherever no higher-precedence condition already resolved that oracle: an evaluation fault and a malformed judge both outrank it. Each of those three states lands the run on the Invalid rung, and a contract declaring no oracles resolves none of them and stays off it. The command writes one line per reason to stderr on every rung, in the `eval-quality: <code>: <artifactPath>: <detail>` shape, so the failure names the field it fired on. `QUALIFICATION_FAILURES` publishes the closed set of codes those lines draw from.
 
-One invocation scores one sealed run record, a trial set of one. That is a limit of the published surface, so whenever the policy's declared minimum exceeds one, the strength vector comes out reported and marked non-comparable.
+One invocation scores the complete set named by its `--record` flags. A set meeting the policy's declared minimum produces a comparable strength vector. A smaller set remains valid input and produces a reported vector marked non-comparable.
 
 A flag a command does not accept exits `64` as an unknown flag, so `--strict-inputs` on `preflight` and `--contract` on `compile` are both usage errors.
 
