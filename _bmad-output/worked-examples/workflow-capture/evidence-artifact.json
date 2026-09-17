@@ -42,8 +42,9 @@
       "selectedObservationIds": [
         "obs-create"
       ],
-      "severity": "material",
-      "state": "confirmed"
+      "severity": "critical",
+      "state": "confirmed",
+      "trialIndex": 1
     },
     {
       "checkResolution": {
@@ -63,7 +64,8 @@
         "obs-malformed-read"
       ],
       "severity": "critical",
-      "state": "caught"
+      "state": "caught",
+      "trialIndex": 1
     },
     {
       "checkResolution": {
@@ -97,8 +99,9 @@
         "obs-malformed-read",
         "obs-malformed-reset"
       ],
-      "severity": "material",
-      "state": "confirmed"
+      "severity": "critical",
+      "state": "confirmed",
+      "trialIndex": 1
     },
     {
       "checkResolution": {
@@ -126,8 +129,9 @@
         "obs-create",
         "obs-read-back"
       ],
-      "severity": "low",
-      "state": "confirmed"
+      "severity": "critical",
+      "state": "confirmed",
+      "trialIndex": 1
     },
     {
       "checkResolution": {
@@ -154,8 +158,9 @@
       "selectedObservationIds": [
         "obs-read-back"
       ],
-      "severity": "material",
-      "state": "confirmed"
+      "severity": "critical",
+      "state": "confirmed",
+      "trialIndex": 1
     },
     {
       "checkResolution": {
@@ -182,8 +187,9 @@
       "selectedObservationIds": [
         "obs-reset"
       ],
-      "severity": "material",
-      "state": "confirmed"
+      "severity": "critical",
+      "state": "confirmed",
+      "trialIndex": 1
     },
     {
       "checkResolution": {
@@ -200,11 +206,30 @@
         "obs-reset",
         "obs-reset-read-back"
       ],
-      "severity": "material",
-      "state": "confirmed"
+      "severity": "critical",
+      "state": "confirmed",
+      "trialIndex": 1
     }
   ],
   "parentDigest": null,
+  "reducedProbeOutcomes": [
+    {
+      "catchThreshold": 0.5,
+      "caught": true,
+      "caughtCount": 1,
+      "exercised": true,
+      "invalidatedAttempts": [],
+      "probeId": "P-001",
+      "severity": "critical",
+      "trialVotes": [
+        {
+          "state": "caught",
+          "trialIndex": 1
+        }
+      ],
+      "validCount": 1
+    }
+  ],
   "remediation": {
     "cap": 3,
     "capSource": "caller-attested",
@@ -217,7 +242,8 @@
   },
   "revisionCount": 0,
   "runId": "workflow-capture-run-0001",
-  "schemaVersion": 3,
+  "schemaVersion": 4,
+  "scoredProbeId": "P-001",
   "scoringVersion": "sha256:02a3a7be35f5c467831122a760354f4e6a596a3d2e508f2ce3e376b4f0f48c54",
   "scoringVersionInputs": {
     "contractSchemaVersion": 5,
@@ -246,6 +272,9 @@
   "systemRecommendationRecorded": "FAIL",
   "trials": {
     "completed": 1,
+    "completedAttempts": [
+      1
+    ],
     "declaredMinimum": 3,
     "invalidatedAttempts": []
   },

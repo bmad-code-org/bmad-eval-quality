@@ -18,6 +18,7 @@ import {
 } from '../schemas/evidence-artifact.ts'
 import type { Verdict } from '../schemas/verdict.ts'
 import { checkModeAgreement } from '../score/mode-agreement.ts'
+import { reductionConsistencyIssuesOf } from '../score/reduction-consistency.ts'
 import type { ScoredOutcomesAndVerdict } from '../score/score.ts'
 import { buildStrengthVector } from '../score/strength.ts'
 import type { EmitStage } from '../stage-contracts.ts'
@@ -118,6 +119,7 @@ export const emit: EmitStage<ScoredOutcomesAndVerdict> = (
 		// module.
 		revisionCount: 0,
 		runId: scored.runId,
+		scoredProbeId: scored.probe.probeId,
 		comparabilityKey,
 		excludedProbeIds,
 		exitCode: scored.ladder.exitCode,
@@ -125,6 +127,7 @@ export const emit: EmitStage<ScoredOutcomesAndVerdict> = (
 		callerAttestedInputs: [...CALLER_ATTESTED_INPUTS],
 		trials,
 		outcomes: [...scored.outcomes],
+		reducedProbeOutcomes: [...scored.reducedProbeOutcomes],
 		uncitedFindings: [...scored.uncitedFindings],
 		coverageGaps: [...scored.assessment.coverageGaps],
 		strength: {
@@ -178,7 +181,7 @@ export const emit: EmitStage<ScoredOutcomesAndVerdict> = (
 				`emit(): assembled an artifact whose mode ("${agreement.artifactMode}") disagrees with the assessment mode ("${agreement.recordMode}") it was built from`,
 			)
 		}
-		return freezeArtifact(validateAssembledArtifact(artifact))
+		return freezeArtifact(validateAssembledArtifact(artifact, scored))
 	}
 
 	if (scored.assessment.mode === 'production') {
@@ -240,9 +243,33 @@ export const emit: EmitStage<ScoredOutcomesAndVerdict> = (
  */
 function validateAssembledArtifact(
 	artifact: EvidenceArtifact,
+	scored: ScoredOutcomesAndVerdict,
 ): EvidenceArtifact {
 	const result = EvidenceArtifact.safeParse(artifact)
-	if (result.success) return result.data
+	if (result.success) {
+		const reductionIssues = reductionConsistencyIssuesOf(result.data)
+		const reduced = result.data.reducedProbeOutcomes.find(
+			(outcome) => outcome.probeId === scored.probe.probeId,
+		)
+		const expected = scored.trialSetResult
+		const agreesWithScoredReduction =
+			reduced !== undefined &&
+			reduced.catchThreshold === scored.policy.catchThreshold &&
+			reduced.exercised === expected.exercised &&
+			reduced.caught === expected.caught &&
+			reduced.validCount === expected.validCount &&
+			reduced.caughtCount === expected.caughtCount &&
+			JSON.stringify(reduced.invalidatedAttempts) ===
+				JSON.stringify(expected.invalidatedAttempts)
+		if (reductionIssues.length === 0 && agreesWithScoredReduction) {
+			return result.data
+		}
+		const first = reductionIssues[0]
+		const firstPath = first ? dotPath(first.path) : 'reducedProbeOutcomes'
+		throw new TypeError(
+			`emit(): assembled an artifact whose trial reduction is inconsistent, first at "${firstPath}"`,
+		)
+	}
 	const issueCount = result.error.issues.length
 	const firstIssue = result.error.issues[0]
 	const firstPath = firstIssue ? dotPath(firstIssue.path) : ''

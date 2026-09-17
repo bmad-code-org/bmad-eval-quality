@@ -21,6 +21,10 @@ export type InputKey =
 	| 'policy'
 	| 'private-manifest'
 
+export type ParsedInputs = Readonly<{
+	[K in InputKey]?: K extends 'record' ? readonly string[] : string
+}>
+
 export type ParsedInvocation =
 	| { readonly kind: 'help'; readonly command: Command | null }
 	| { readonly kind: 'version' }
@@ -28,7 +32,7 @@ export type ParsedInvocation =
 	| {
 			readonly kind: 'run'
 			readonly command: Command
-			readonly inputs: Readonly<Partial<Record<InputKey, string>>>
+			readonly inputs: ParsedInputs
 			readonly out: string | null
 			readonly runId: string | null
 			/** `score`'s AD-11 caller-attested scoring-version input; `null` for every other command. */
@@ -166,7 +170,8 @@ function parseCommand(
 	}
 	if (TAKES_CORPUS_ROOT[command]) valueFlags.set('--corpus-root', 'corpus-root')
 
-	const inputs: Partial<Record<InputKey, string>> = {}
+	const inputs: Partial<Record<Exclude<InputKey, 'record'>, string>> = {}
+	const records: string[] = []
 	const seen = new Map<string, string>()
 	let out: string | null = null
 	let runId: string | null = null
@@ -215,6 +220,11 @@ function parseCommand(
 		if (target !== undefined) {
 			const taken = takeValue(flag, inline, index)
 			if ('kind' in taken) return taken
+			if (target === 'record') {
+				records.push(taken.value)
+				index = taken.next
+				continue
+			}
 			const previous = seen.get(flag)
 			if (previous !== undefined && previous !== taken.value) {
 				return usageError(
@@ -252,7 +262,11 @@ function parseCommand(
 	}
 
 	const missing = INPUT_KEYS[command]
-		.filter((key) => !OPTIONAL_INPUT_KEYS.has(key) && inputs[key] === undefined)
+		.filter(
+			(key) =>
+				!OPTIONAL_INPUT_KEYS.has(key) &&
+				(key === 'record' ? records.length === 0 : inputs[key] === undefined),
+		)
 		.map((key) => `--${key}`)
 	if (TAKES_RUN_ID[command] && runId === null) missing.push('--run-id')
 	if (TAKES_CORPUS_DIGEST[command] && corpusDigest === null) {
@@ -270,7 +284,12 @@ function parseCommand(
 	}
 
 	// One stdin cannot serve two readers, so at most one input may be `-`.
-	const fromStdin = INPUT_KEYS[command].filter((key) => inputs[key] === STDIN)
+	const fromStdin = INPUT_KEYS[command].flatMap((key) => {
+		if (key === 'record') {
+			return records.filter((record) => record === STDIN).map(() => key)
+		}
+		return inputs[key] === STDIN ? [key] : []
+	})
 	if (fromStdin.length > 1) {
 		const flags = fromStdin.map((key) => `--${key}`)
 		const named =
@@ -283,7 +302,7 @@ function parseCommand(
 	return {
 		kind: 'run',
 		command,
-		inputs,
+		inputs: records.length === 0 ? inputs : { ...inputs, record: [...records] },
 		out,
 		runId,
 		corpusDigest,

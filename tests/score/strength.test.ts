@@ -6,9 +6,10 @@ import { describe, expect, it } from 'vitest'
 import type { Severity } from '../../src/core/schemas/eval-contract.ts'
 import {
 	ClassStrength,
-	type Outcome,
+	type ReducedProbeOutcome,
 	type Strength,
 	StrengthVector,
+	type TrialOutcome,
 } from '../../src/core/schemas/evidence-artifact.ts'
 import type { Probe } from '../../src/core/schemas/probe.ts'
 import type {
@@ -188,19 +189,19 @@ const strengthOf = (vector: StrengthVector, comparable = true): Strength => ({
 })
 
 const outcomeOf = (
-	probeId: string | null,
-	state: Outcome['state'],
+	probeId: string,
+	state: 'caught' | 'missed',
 	severity: Severity = 'material',
-): Outcome => ({
-	oracleId: 'oracle-1',
+): ReducedProbeOutcome => ({
 	probeId,
-	state,
 	severity,
-	disposition: 'not-attempted',
-	resolvedFrom: null,
-	corroboration: 'not-evaluable',
-	selectedObservationIds: [],
-	checkResolution: null,
+	exercised: true,
+	caught: state === 'caught',
+	catchThreshold: 0.5,
+	trialVotes: [{ trialIndex: 1, state }],
+	validCount: 1,
+	caughtCount: state === 'caught' ? 1 : 0,
+	invalidatedAttempts: [],
 })
 
 const KEY = digestOf(1)
@@ -208,14 +209,42 @@ const OTHER_KEY = digestOf(2)
 
 const comparableOf = (
 	vector: StrengthVector,
-	outcomes: readonly Outcome[] = [],
+	reducedProbeOutcomes: readonly ReducedProbeOutcome[] = [],
 	comparabilityKey = KEY,
 	comparable = true,
-): ComparableResult => ({
-	outcomes,
-	strength: strengthOf(vector, comparable),
-	comparabilityKey,
-})
+): ComparableResult => {
+	const outcomes: TrialOutcome[] = reducedProbeOutcomes.flatMap((reduced) =>
+		reduced.trialVotes.map((vote, index) => ({
+			oracleId: `O-${String(index + 1).padStart(3, '0')}`,
+			probeId: reduced.probeId,
+			trialIndex: vote.trialIndex,
+			state: vote.state,
+			severity: reduced.severity,
+			disposition: 'violated' as const,
+			resolvedFrom: null,
+			corroboration: 'agrees' as const,
+			selectedObservationIds: [],
+			checkResolution: null,
+		})),
+	)
+	return {
+		scoredProbeId: reducedProbeOutcomes[0]?.probeId ?? null,
+		reducedProbeOutcomes,
+		outcomes,
+		trials: {
+			declaredMinimum: 1,
+			completed: outcomes.length,
+			completedAttempts: [
+				...new Set(outcomes.map((outcome) => outcome.trialIndex)),
+			],
+			invalidatedAttempts: reducedProbeOutcomes.flatMap(
+				(outcome) => outcome.invalidatedAttempts,
+			),
+		},
+		strength: strengthOf(vector, comparable),
+		comparabilityKey,
+	}
+}
 
 const NULL_VECTOR: StrengthVector = {
 	defect: null,
@@ -422,7 +451,7 @@ describe('compareDominance', () => {
 		expect(relation).toBe('incomparable')
 	})
 
-	it('skips an outcome with a null probeId when applying the severity-floor override', () => {
+	it('treats a missing reduced probe result as a miss for the severity-floor override', () => {
 		const vector = {
 			...NULL_VECTOR,
 			defect: { caught: 3, exercised: 4, rate: 0.75 },
@@ -431,19 +460,12 @@ describe('compareDominance', () => {
 			...NULL_VECTOR,
 			defect: { caught: 1, exercised: 4, rate: 0.25 },
 		}
-		const a = comparableOf(vector, [outcomeOf(null, 'missed', 'critical')])
-		const b = comparableOf(other, [outcomeOf(null, 'caught', 'critical')])
-		expect(compareDominance(a, b, 'material')).toBe('a-dominates-b')
+		const a = comparableOf(vector)
+		const b = comparableOf(other, [outcomeOf('P-shared', 'caught', 'critical')])
+		expect(compareDominance(a, b, 'material')).toBe('incomparable')
 	})
 
-	// `outcomesByProbeId` keeps the first entry sharing a `probeId`, never the
-	// last. Here `other`'s own list carries two `P-shared` entries -- `caught`
-	// first, `missed` second -- so a last-write-wins map would read `missed`
-	// for the override check, skip it (the guard only fires on `caught`), and
-	// leave `a-dominates-b` standing uncorrected. First-write-wins reads
-	// `caught`, finds `favored` missed the same probe, and downgrades to
-	// `incomparable`.
-	it('reads the first Outcome sharing a probeId, not the last, when applying the severity-floor override', () => {
+	it('fails closed when reduced outcomes repeat a probeId', () => {
 		const vector = {
 			...NULL_VECTOR,
 			defect: { caught: 3, exercised: 4, rate: 0.75 },
@@ -452,14 +474,308 @@ describe('compareDominance', () => {
 			...NULL_VECTOR,
 			defect: { caught: 1, exercised: 4, rate: 0.25 },
 		}
-		const a = comparableOf(vector, [
-			outcomeOf('P-shared', 'missed', 'critical'),
-		])
-		const b = comparableOf(other, [
+		const a = comparableOf(vector, [outcomeOf('P-shared', 'missed')])
+		const duplicates = [
 			outcomeOf('P-shared', 'caught', 'critical'),
 			outcomeOf('P-shared', 'missed', 'critical'),
-		])
-		expect(compareDominance(a, b, 'material')).toBe('incomparable')
+		]
+		expect(
+			compareDominance(a, comparableOf(other, duplicates), 'material'),
+		).toBe('incomparable')
+		expect(
+			compareDominance(
+				a,
+				comparableOf(other, [...duplicates].reverse()),
+				'material',
+			),
+		).toBe('incomparable')
+	})
+
+	it('fails closed when a reduced catch contradicts its detailed trial outcome', () => {
+		const stronger = comparableOf(
+			{
+				...NULL_VECTOR,
+				defect: { caught: 3, exercised: 4, rate: 0.75 },
+			},
+			[outcomeOf('P-shared', 'caught', 'critical')],
+		)
+		const contradictory: ComparableResult = {
+			...stronger,
+			outcomes: stronger.outcomes.map((outcome) => ({
+				...outcome,
+				state: 'missed' as const,
+			})),
+		}
+		const weaker = comparableOf(
+			{
+				...NULL_VECTOR,
+				defect: { caught: 1, exercised: 4, rate: 0.25 },
+			},
+			[outcomeOf('P-shared', 'missed', 'critical')],
+		)
+
+		expect(compareDominance(stronger, weaker, 'material')).toBe('a-dominates-b')
+		expect(compareDominance(contradictory, weaker, 'material')).toBe(
+			'incomparable',
+		)
+	})
+
+	it('fails closed when a reduced caught flag contradicts its counts and threshold', () => {
+		const stronger = comparableOf(
+			{
+				...NULL_VECTOR,
+				defect: { caught: 3, exercised: 4, rate: 0.75 },
+			},
+			[outcomeOf('P-shared', 'caught', 'critical')],
+		)
+		const contradictory: ComparableResult = {
+			...stronger,
+			reducedProbeOutcomes: stronger.reducedProbeOutcomes.map((outcome) => ({
+				...outcome,
+				caught: false,
+			})),
+		}
+		const weaker = comparableOf(
+			{
+				...NULL_VECTOR,
+				defect: { caught: 1, exercised: 4, rate: 0.25 },
+			},
+			[outcomeOf('P-shared', 'missed', 'critical')],
+		)
+
+		expect(compareDominance(contradictory, weaker, 'material')).toBe(
+			'incomparable',
+		)
+	})
+
+	it('fails closed when reduced counts underreport selected trial votes', () => {
+		const complete: ReducedProbeOutcome = {
+			...outcomeOf('P-shared', 'caught', 'critical'),
+			trialVotes: [
+				{ trialIndex: 1, state: 'caught' },
+				{ trialIndex: 2, state: 'caught' },
+			],
+			validCount: 2,
+			caughtCount: 2,
+		}
+		const stronger = comparableOf(
+			{
+				...NULL_VECTOR,
+				defect: { caught: 3, exercised: 4, rate: 0.75 },
+			},
+			[complete],
+		)
+		const underreported: ComparableResult = {
+			...stronger,
+			reducedProbeOutcomes: stronger.reducedProbeOutcomes.map((outcome) => ({
+				...outcome,
+				validCount: 1,
+				caughtCount: 1,
+			})),
+		}
+		const weaker = comparableOf(
+			{
+				...NULL_VECTOR,
+				defect: { caught: 1, exercised: 4, rate: 0.25 },
+			},
+			[outcomeOf('P-shared', 'missed', 'critical')],
+		)
+
+		expect(compareDominance(underreported, weaker, 'material')).toBe(
+			'incomparable',
+		)
+	})
+
+	it('fails closed when an invalidating selected vote is omitted from invalidatedAttempts', () => {
+		const omitted: ReducedProbeOutcome = {
+			...outcomeOf('P-shared', 'caught', 'critical'),
+			trialVotes: [
+				{ trialIndex: 1, state: 'caught' },
+				{ trialIndex: 2, state: 'oracle-error' },
+			],
+			invalidatedAttempts: [],
+		}
+		const contradictory = comparableOf(
+			{
+				...NULL_VECTOR,
+				defect: { caught: 3, exercised: 4, rate: 0.75 },
+			},
+			[omitted],
+		)
+		const weaker = comparableOf(
+			{
+				...NULL_VECTOR,
+				defect: { caught: 1, exercised: 4, rate: 0.25 },
+			},
+			[outcomeOf('P-shared', 'missed', 'critical')],
+		)
+
+		expect(compareDominance(contradictory, weaker, 'material')).toBe(
+			'incomparable',
+		)
+	})
+
+	it('fails closed when selected votes and details omit the first completed attempt', () => {
+		const reduction: ReducedProbeOutcome = {
+			...outcomeOf('P-shared', 'caught', 'critical'),
+			trialVotes: [
+				{ trialIndex: 2, state: 'caught' },
+				{ trialIndex: 3, state: 'caught' },
+			],
+			validCount: 2,
+			caughtCount: 2,
+		}
+		const shifted = comparableOf(
+			{
+				...NULL_VECTOR,
+				defect: { caught: 3, exercised: 4, rate: 0.75 },
+			},
+			[reduction],
+		)
+		const contradictory: ComparableResult = {
+			...shifted,
+			trials: {
+				...shifted.trials,
+				completed: 3,
+				completedAttempts: [1, 2, 3],
+			},
+		}
+		const weaker = comparableOf(
+			{
+				...NULL_VECTOR,
+				defect: { caught: 1, exercised: 4, rate: 0.25 },
+			},
+			[outcomeOf('P-shared', 'missed', 'critical')],
+		)
+
+		expect(compareDominance(contradictory, weaker, 'material')).toBe(
+			'incomparable',
+		)
+	})
+
+	it('fails closed when selected votes and details add an uncompleted last attempt', () => {
+		const reduction: ReducedProbeOutcome = {
+			...outcomeOf('P-shared', 'caught', 'critical'),
+			trialVotes: [
+				{ trialIndex: 1, state: 'caught' },
+				{ trialIndex: 2, state: 'caught' },
+				{ trialIndex: 3, state: 'caught' },
+				{ trialIndex: 4, state: 'caught' },
+			],
+			validCount: 4,
+			caughtCount: 4,
+		}
+		const extended = comparableOf(
+			{
+				...NULL_VECTOR,
+				defect: { caught: 3, exercised: 4, rate: 0.75 },
+			},
+			[reduction],
+		)
+		const contradictory: ComparableResult = {
+			...extended,
+			trials: {
+				...extended.trials,
+				completed: 3,
+				completedAttempts: [1, 2, 3],
+			},
+		}
+		const weaker = comparableOf(
+			{
+				...NULL_VECTOR,
+				defect: { caught: 1, exercised: 4, rate: 0.25 },
+			},
+			[outcomeOf('P-shared', 'missed', 'critical')],
+		)
+
+		expect(compareDominance(contradictory, weaker, 'material')).toBe(
+			'incomparable',
+		)
+	})
+
+	it('fails closed for a lone reduced row without retained probe identity', () => {
+		const ghost: ReducedProbeOutcome = {
+			...outcomeOf('P-ghost', 'missed', 'critical'),
+			exercised: false,
+			trialVotes: [],
+			validCount: 0,
+			caughtCount: 0,
+		}
+		const unbound: ComparableResult = {
+			...comparableOf(
+				{
+					...NULL_VECTOR,
+					defect: { caught: 3, exercised: 4, rate: 0.75 },
+				},
+				[ghost],
+			),
+			scoredProbeId: null,
+		}
+		const weaker = comparableOf({
+			...NULL_VECTOR,
+			defect: { caught: 1, exercised: 4, rate: 0.25 },
+		})
+
+		expect(compareDominance(unbound, weaker, 'material')).toBe('incomparable')
+	})
+
+	it('accepts an empty no-oracle reduction bound to its retained probe identity', () => {
+		const empty: ReducedProbeOutcome = {
+			...outcomeOf('P-no-oracle', 'missed', 'critical'),
+			exercised: false,
+			trialVotes: [],
+			validCount: 0,
+			caughtCount: 0,
+		}
+		const stronger: ComparableResult = {
+			...comparableOf(
+				{
+					...NULL_VECTOR,
+					defect: { caught: 3, exercised: 4, rate: 0.75 },
+				},
+				[empty],
+			),
+			trials: {
+				declaredMinimum: 3,
+				completed: 3,
+				completedAttempts: [1, 2, 3],
+				invalidatedAttempts: [],
+			},
+		}
+		const weaker = comparableOf({
+			...NULL_VECTOR,
+			defect: { caught: 1, exercised: 4, rate: 0.25 },
+		})
+
+		expect(compareDominance(stronger, weaker, 'material')).toBe('a-dominates-b')
+	})
+
+	it('fails closed when reduced severity understates corresponding details', () => {
+		const stronger = comparableOf(
+			{
+				...NULL_VECTOR,
+				defect: { caught: 3, exercised: 4, rate: 0.75 },
+			},
+			[outcomeOf('P-shared', 'caught', 'critical')],
+		)
+		const understated: ComparableResult = {
+			...stronger,
+			reducedProbeOutcomes: stronger.reducedProbeOutcomes.map((outcome) => ({
+				...outcome,
+				severity: 'low',
+			})),
+		}
+		const weaker = comparableOf(
+			{
+				...NULL_VECTOR,
+				defect: { caught: 1, exercised: 4, rate: 0.25 },
+			},
+			[outcomeOf('P-shared', 'missed', 'critical')],
+		)
+
+		expect(compareDominance(understated, weaker, 'material')).toBe(
+			'incomparable',
+		)
 	})
 })
 

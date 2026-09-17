@@ -7,6 +7,7 @@
 // so there is no upstream `ingest()` call to route through.
 
 import { describe, expect, it } from 'vitest'
+import { digestArtifact } from '../../src/core/canonical/digest.ts'
 import type { ValidatedObservations } from '../../src/core/ingest/ingest.ts'
 import type { EvalContract } from '../../src/core/schemas/eval-contract.ts'
 import type { Expression } from '../../src/core/schemas/expression.ts'
@@ -168,6 +169,9 @@ const cleanTrial = (
 	overrides: Partial<ValidatedObservations> = {},
 ): ValidatedObservations => ({
 	runId: 'run-1',
+	trialIndex: 1,
+	contractDigest: digestArtifact(baseContract, 'EvalContract'),
+	evaluatorConfigurationDigest: digestOf(61),
 	mode: 'production',
 	evaluatorRecommendation: 'PASS',
 	observations: [cleanObservation('obs-1', 1)],
@@ -185,6 +189,15 @@ const cleanTrial = (
 	isolationViolation: [],
 	...overrides,
 })
+
+const cleanTrialFor = (
+	contract: EvalContract,
+	overrides: Partial<ValidatedObservations> = {},
+): ValidatedObservations =>
+	cleanTrial({
+		...overrides,
+		contractDigest: digestArtifact(contract, 'EvalContract'),
+	})
 
 const policy: ScoringPolicy = {
 	schemaVersion: 2,
@@ -221,7 +234,10 @@ const scoreOf = (
 
 describe('score: the I/O & Edge-Case Matrix', () => {
 	it('Matrix row 1: a clean trial set resolves PASS with an empty basis', () => {
-		const result = scoreOf(baseContract, [cleanTrial(), cleanTrial()])
+		const result = scoreOf(baseContract, [
+			cleanTrial(),
+			cleanTrial({ trialIndex: 2 }),
+		])
 		expect(result.ladder).toEqual({
 			verdict: 'PASS',
 			exitCode: 0,
@@ -323,7 +339,7 @@ describe('score: the I/O & Edge-Case Matrix', () => {
 	// `judge-result-unscored` row.
 	it('Matrix row 3: a judge-result-unscored condition under a real rubric makes every oracle judge-error', () => {
 		const result = scoreOf(contractWithRubric, [
-			cleanTrial({
+			cleanTrialFor(contractWithRubric, {
 				conditions: [
 					{
 						kind: 'judge-result-unscored',
@@ -369,7 +385,9 @@ describe('score: the I/O & Edge-Case Matrix', () => {
 	// Matrix row 5: an observation's operationId resolving against two
 	// permittedInterfaces entries.
 	it('Matrix row 5: an operationId ambiguous across permittedInterfaces fires operation-identifier-collision', () => {
-		const result = scoreOf(twoInterfaceContract, [cleanTrial()])
+		const result = scoreOf(twoInterfaceContract, [
+			cleanTrialFor(twoInterfaceContract),
+		])
 		expect(result.ladder.verdict).toBeNull()
 		expect(result.ladder.basis).toHaveLength(1)
 		expect(result.ladder.basis[0]).toContain('operation identifier collision')
@@ -427,7 +445,7 @@ describe('score: the I/O & Edge-Case Matrix', () => {
 		expect(() =>
 			scoreOf(
 				baseContract,
-				[cleanTrial(), cleanTrial()],
+				[cleanTrial(), cleanTrial({ trialIndex: 2 })],
 				qualifiedProbe,
 				passingPreflight,
 				{
@@ -453,7 +471,7 @@ describe('score: the I/O & Edge-Case Matrix', () => {
 	it('Matrix row 11: trials disagreeing on mode fire trial-set-field-disagreement naming both values', () => {
 		const result = scoreOf(baseContract, [
 			cleanTrial({ mode: 'production' }),
-			cleanTrial({ mode: 'contract-scoring' }),
+			cleanTrial({ mode: 'contract-scoring', trialIndex: 2 }),
 		])
 		expect(result.ladder.verdict).toBeNull()
 		expect(result.ladder.basis).toEqual([
@@ -494,7 +512,7 @@ describe('score: the I/O & Edge-Case Matrix', () => {
 	it('trials disagreeing on evaluatorRecommendation fire trial-set-field-disagreement naming both values', () => {
 		const result = scoreOf(baseContract, [
 			cleanTrial({ evaluatorRecommendation: 'PASS' }),
-			cleanTrial({ evaluatorRecommendation: 'FAIL' }),
+			cleanTrial({ evaluatorRecommendation: 'FAIL', trialIndex: 2 }),
 		])
 		expect(result.ladder.verdict).toBeNull()
 		expect(result.ladder.basis).toEqual([
@@ -509,7 +527,7 @@ describe('score: the I/O & Edge-Case Matrix', () => {
 	it('trials disagreeing on runId fire trial-set-field-disagreement naming both values', () => {
 		const result = scoreOf(baseContract, [
 			cleanTrial({ runId: 'run-1' }),
-			cleanTrial({ runId: 'run-2' }),
+			cleanTrial({ runId: 'run-2', trialIndex: 2 }),
 		])
 		expect(result.ladder.verdict).toBeNull()
 		expect(result.ladder.basis).toEqual([
@@ -518,6 +536,56 @@ describe('score: the I/O & Edge-Case Matrix', () => {
 		// The first trial's own runId still builds the one assessment a
 		// discriminated union requires.
 		expect(result.runId).toBe('run-1')
+	})
+
+	it('trials disagreeing on contractDigest fire trial-set-field-disagreement', () => {
+		const result = scoreOf(baseContract, [
+			cleanTrial(),
+			cleanTrial({ contractDigest: digestOf(62), trialIndex: 2 }),
+		])
+		expect(result.ladder.verdict).toBeNull()
+		expect(result.ladder.basis).toEqual([
+			expect.stringContaining('contractDigest: trial 2'),
+		])
+	})
+
+	it('records sharing an equal stale contractDigest are bound to the supplied contract', () => {
+		const staleDigest = digestOf(62)
+		const result = scoreOf(baseContract, [
+			cleanTrial({ contractDigest: staleDigest }),
+			cleanTrial({ contractDigest: staleDigest, trialIndex: 2 }),
+		])
+		expect(result.ladder.verdict).toBeNull()
+		expect(result.ladder.basis).toEqual([
+			expect.stringContaining(
+				`contractDigest: trial 1 = "${staleDigest}", supplied EvalContract =`,
+			),
+			expect.stringContaining(
+				`contractDigest: trial 2 = "${staleDigest}", supplied EvalContract =`,
+			),
+		])
+	})
+
+	it('trials disagreeing on evaluatorConfigurationDigest fire trial-set-field-disagreement', () => {
+		const result = scoreOf(baseContract, [
+			cleanTrial(),
+			cleanTrial({
+				evaluatorConfigurationDigest: digestOf(63),
+				trialIndex: 2,
+			}),
+		])
+		expect(result.ladder.verdict).toBeNull()
+		expect(result.ladder.basis).toEqual([
+			expect.stringContaining('evaluatorConfigurationDigest: trial 1'),
+		])
+	})
+
+	it('duplicate trialIndex values invalidate the trial set', () => {
+		const result = scoreOf(baseContract, [cleanTrial(), cleanTrial()])
+		expect(result.ladder.verdict).toBeNull()
+		expect(result.ladder.basis).toEqual([
+			'trial-set field disagreement: trialIndex: duplicate value 1',
+		])
 	})
 })
 
@@ -561,7 +629,9 @@ describe('score: regressions and documented fallbacks beyond the frozen I/O Matr
 				},
 			],
 		}
-		const result = scoreOf(contractWithNullCheck, [cleanTrial()])
+		const result = scoreOf(contractWithNullCheck, [
+			cleanTrialFor(contractWithNullCheck),
+		])
 		expect(result.ladder.verdict).toBeNull()
 		expect(result.ladder.basis).toEqual([
 			'oracle O-001 is required and its check never resolved',
@@ -569,16 +639,24 @@ describe('score: regressions and documented fallbacks beyond the frozen I/O Matr
 	})
 
 	// `contract.oracles` declared empty: the per-trial loop's oracle loop
-	// never runs, so neither trial contributes a vote, and `Trials.completed`
-	// reads `0` even though two trials were presented -- the same
-	// below-minimum-trial-count CONCERNS a genuinely empty trial set produces
-	// below, and not a crash.
+	// never runs, so neither trial contributes a vote. `Trials` still retains
+	// both presented attempt identities, which keeps the no-oracle reduction
+	// distinguishable from a ghost row while satisfying this fixture's
+	// one-trial minimum.
 	it('an empty contract.oracles list contributes no vote per trial, no throw', () => {
 		const contractWithNoOracles: EvalContract = { ...baseContract, oracles: [] }
-		const result = scoreOf(contractWithNoOracles, [cleanTrial(), cleanTrial()])
+		const result = scoreOf(contractWithNoOracles, [
+			cleanTrialFor(contractWithNoOracles),
+			cleanTrialFor(contractWithNoOracles, { trialIndex: 2 }),
+		])
 		expect(result.assessment.outcomeState.outcomes).toEqual([])
-		expect(result.assessment.outcomeState.trials.completed).toBe(0)
-		expect(result.ladder.verdict).toBe('CONCERNS')
+		expect(result.assessment.outcomeState.trials).toEqual({
+			declaredMinimum: 1,
+			completed: 2,
+			completedAttempts: [1, 2],
+			invalidatedAttempts: [],
+		})
+		expect(result.ladder.verdict).toBe('PASS')
 	})
 
 	// Decision 8's fallback: a caller supplying zero trials has no first
@@ -611,7 +689,9 @@ describe('score: regressions and documented fallbacks beyond the frozen I/O Matr
 				oracles: [],
 			})),
 		}
-		const result = scoreOf(contractZeroOraclesForBehavior, [cleanTrial()])
+		const result = scoreOf(contractZeroOraclesForBehavior, [
+			cleanTrialFor(contractZeroOraclesForBehavior),
+		])
 		expect(result.ladder).toEqual({
 			verdict: 'PASS',
 			exitCode: 0,
@@ -628,7 +708,9 @@ describe('score: regressions and documented fallbacks beyond the frozen I/O Matr
 				oracles: ['O-001', 'O-002'],
 			})),
 		}
-		const result = scoreOf(contractTwoOraclesForBehavior, [cleanTrial()])
+		const result = scoreOf(contractTwoOraclesForBehavior, [
+			cleanTrialFor(contractTwoOraclesForBehavior),
+		])
 		expect(result.ladder).toEqual({
 			verdict: 'PASS',
 			exitCode: 0,
@@ -649,7 +731,10 @@ describe('score: regressions and documented fallbacks beyond the frozen I/O Matr
 			revisionCount: 1,
 			parentDigest: digestOf(99),
 		}
-		const result = scoreOf(revisedContract, [cleanTrial(), cleanTrial()])
+		const result = scoreOf(revisedContract, [
+			cleanTrialFor(revisedContract),
+			cleanTrialFor(revisedContract, { trialIndex: 2 }),
+		])
 		expect(result.ladder).toEqual({
 			verdict: 'PASS',
 			exitCode: 0,

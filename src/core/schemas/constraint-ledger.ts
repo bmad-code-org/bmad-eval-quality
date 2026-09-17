@@ -248,6 +248,19 @@ export const CONSTRAINT_LEDGER: readonly ConstraintLedgerEntry[] = [
 		},
 	},
 	{
+		id: 'evidence-reduction-consistency',
+		location: { kind: 'root', artifact: 'evidence-artifact' },
+		branch: null,
+		field: 'reducedProbeOutcomes',
+		statement:
+			'A reduced probe outcome agrees with the independently retained probe and completed-attempt identities, its counts, catch threshold, severity, invalidated attempts, and the detailed trial outcomes that support it.',
+		disposition: {
+			kind: 'not-expressible',
+			reason:
+				'The rule compares sibling fields arithmetically and reconciles entries across three arrays. Draft 2020-12 has no keyword for either operation. A Zod refinement would disappear from the published document and create a TypeScript/Ajv disagreement, so `core/score/reduction-consistency.ts` enforces the rule before emit and dominance comparison.',
+		},
+	},
+	{
 		id: 'defect-signature-required',
 		location: { kind: 'root', artifact: 'probe' },
 		branch: null,

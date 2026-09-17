@@ -38,7 +38,11 @@ import { type CorpusPort, corpusResolveParsers } from '../ports/corpus-port.ts'
 import { invokePort } from './invoke-port.ts'
 
 export type RunScoreOptions = {
-	readonly record: SealedRunRecord
+	/**
+	 * One trial record for compatibility with the original surface, or the
+	 * complete trial set. A list must contain at least one record.
+	 */
+	readonly record: SealedRunRecord | readonly SealedRunRecord[]
 	readonly manifest: IsolationManifest | null
 	readonly configuration: EvaluatorConfiguration | null
 	readonly contract: EvalContract
@@ -99,6 +103,19 @@ function parseRecord(input: SealedRunRecord): SealedRunRecord {
 	const parsed = SealedRunRecord.safeParse(input)
 	if (!parsed.success) throw parseFault('SealedRunRecord', parsed.error)
 	return parsed.data
+}
+
+function parseRecords(
+	input: SealedRunRecord | readonly SealedRunRecord[],
+): readonly [SealedRunRecord, ...SealedRunRecord[]] {
+	if (!Array.isArray(input)) return [parseRecord(input as SealedRunRecord)]
+	const parsed = SealedRunRecord.array().min(1).safeParse(input)
+	if (!parsed.success) throw parseFault('SealedRunRecord[]', parsed.error)
+	const sorted = [...parsed.data].sort(
+		(left, right) => left.trialIndex - right.trialIndex,
+	)
+	// Zod's `.min(1)` proves the tuple head that its array inference omits.
+	return sorted as [SealedRunRecord, ...SealedRunRecord[]]
 }
 
 function parseManifest(
@@ -228,13 +245,11 @@ async function checkIsolationManifestArtifact(
 	record: SealedRunRecord,
 	port: CorpusPort | undefined,
 	signal: AbortSignal,
+	artifactPath = 'SealedRunRecord.isolationManifestArtifact',
 ): Promise<void> {
 	const reference = record.isolationManifestArtifact
 	if (reference.storage !== 'private') return
-	const resolvedPort = requirePort(
-		port,
-		'SealedRunRecord.isolationManifestArtifact',
-	)
+	const resolvedPort = requirePort(port, artifactPath)
 	const resolved = await resolvedDigestOf(
 		reference.privateRef,
 		resolvedPort,
@@ -243,7 +258,7 @@ async function checkIsolationManifestArtifact(
 	if (resolved !== reference.digest) {
 		throw new RuntimeFault(
 			'digest-mismatch',
-			'SealedRunRecord.isolationManifestArtifact',
+			artifactPath,
 			`declares digest "${reference.digest}", but the resolved bytes digest to "${resolved}"`,
 		)
 	}
@@ -252,7 +267,7 @@ async function checkIsolationManifestArtifact(
 export async function runScore(
 	options: RunScoreOptions,
 ): Promise<RunScoreResult> {
-	const record = parseRecord(options.record)
+	const records = parseRecords(options.record)
 	const manifest = parseManifest(options.manifest)
 	const configuration = parseConfiguration(options.configuration)
 	const contract = parseContract(options.contract)
@@ -266,12 +281,23 @@ export async function runScore(
 	if (privateManifest !== null) {
 		await checkPrivateManifestEntries(privateManifest, port, signal)
 	}
-	await checkIsolationManifestArtifact(record, port, signal)
+	for (const record of records) {
+		await checkIsolationManifestArtifact(
+			record,
+			port,
+			signal,
+			records.length === 1
+				? undefined
+				: `SealedRunRecord[trialIndex=${record.trialIndex}].isolationManifestArtifact`,
+		)
+	}
 
-	const validated = ingest(record, manifest, configuration)
+	const validated = records.map((record) =>
+		ingest(record, manifest, configuration),
+	)
 	const scored = score(
 		contract,
-		[validated],
+		validated,
 		probe,
 		preflightVerdict,
 		policy,
@@ -297,7 +323,7 @@ export async function runScore(
 		// AD-11 names the same fixture digest `PreflightVerdict.fixtureDigest`
 		// already carries: restated, never re-derived.
 		preflightVerdict.fixtureDigest,
-		record.evaluatorConfigurationDigest,
+		records[0].evaluatorConfigurationDigest,
 	)
 	return {
 		artifact,

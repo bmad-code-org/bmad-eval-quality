@@ -5,12 +5,19 @@
  * row, mutated one field at a time -- see `fixtures/score-fixtures.ts`.
  */
 import { describe, expect, it, vi } from 'vitest'
+import { POLICY } from '../../scripts/worked-example-shared.ts'
 import { runScore } from '../../src/application/score.ts'
 import * as emitModule from '../../src/core/emit/emit.ts'
 import * as ingestModule from '../../src/core/ingest/index.ts'
 import { RuntimeFault } from '../../src/core/schemas/faults.ts'
 import * as scoreModule from '../../src/core/score/score.ts'
+import { compareDominance } from '../../src/core/score/strength.ts'
 import type { CorpusPort } from '../../src/ports/corpus-port.ts'
+import {
+	canary,
+	defectFinding,
+	defectFired,
+} from '../score/fixtures/probe-witness.ts'
 import {
 	corpusDigestFixture,
 	evaluatorConfigurationFixture,
@@ -63,6 +70,26 @@ const run = (overrides: Partial<Parameters<typeof runScore>[0]> = {}) =>
 		...overrides,
 	})
 
+const defectTrial = (trialIndex: number, caught: boolean) => ({
+	...sealedRunRecordFixtureForScore,
+	trialIndex,
+	oracleDispositions: [
+		{
+			oracleId: 'O-001',
+			disposition: 'violated' as const,
+			observationIds: ['obs-2'],
+			note: null,
+		},
+	],
+	findings: caught
+		? [defectFinding(['obs-2'], { probeId: scoreProbeFixture.probeId })]
+		: [],
+	observations: [defectFired],
+})
+
+const scoreTrials = (records: ReturnType<typeof defectTrial>[]) =>
+	run({ record: records, policy: POLICY })
+
 const faultOf = async (act: () => Promise<unknown>): Promise<RuntimeFault> => {
 	let thrown: unknown
 	try {
@@ -81,6 +108,22 @@ describe('runScore: the boundary parses every declared input', () => {
 		)
 		expect(fault.code).toBe('schema-parse-failure')
 		expect(fault.artifactPath).toBe('SealedRunRecord')
+	})
+
+	it('rejects an empty trial set and names the record list', async () => {
+		const fault = await faultOf(() => run({ record: [] }))
+		expect(fault.code).toBe('schema-parse-failure')
+		expect(fault.artifactPath).toBe('SealedRunRecord[]')
+	})
+
+	it('parses every record in a trial set', async () => {
+		const fault = await faultOf(() =>
+			run({
+				record: [sealedRunRecordFixtureForScore, { not: 'a record' } as never],
+			}),
+		)
+		expect(fault.code).toBe('schema-parse-failure')
+		expect(fault.artifactPath).toBe('SealedRunRecord[]')
 	})
 
 	it('throws schema-parse-failure naming EvalContract on an unparseable contract', async () => {
@@ -149,6 +192,147 @@ describe('runScore: the full chain over the I/O & Edge-Case Matrix', () => {
 		expect(
 			result.artifact?.scoringVersionInputs.evaluatorConfigurationDigest,
 		).toBe(sealedRunRecordFixtureForScore.evaluatorConfigurationDigest)
+	})
+
+	it('three trials satisfy the default policy minimum and produce a comparable strength vector', async () => {
+		const result = await run({
+			record: [
+				sealedRunRecordFixtureForScore,
+				{ ...sealedRunRecordFixtureForScore, trialIndex: 2 },
+				{ ...sealedRunRecordFixtureForScore, trialIndex: 3 },
+			],
+			policy: POLICY,
+		})
+		expect(result.ladder.verdict).toBe('PASS')
+		expect(result.artifact?.trials).toEqual({
+			completed: 3,
+			completedAttempts: [1, 2, 3],
+			declaredMinimum: 3,
+			invalidatedAttempts: [],
+		})
+		expect(result.artifact?.strength.comparable).toBe(true)
+		expect(result.artifact?.strength.note).toContain('3 completed trials')
+		expect(result.artifact?.verdictBasis).not.toContain(
+			'3 completed trials below the declared minimum of 3',
+		)
+	})
+
+	it('compares the reduced majority for mixed trial states', async () => {
+		const caughtMajority = await scoreTrials([
+			defectTrial(1, true),
+			defectTrial(2, true),
+			defectTrial(3, false),
+		])
+		const missedMajority = await scoreTrials([
+			defectTrial(1, true),
+			defectTrial(2, false),
+			defectTrial(3, false),
+		])
+		const a = caughtMajority.artifact
+		const b = missedMajority.artifact
+		expect(a?.reducedProbeOutcomes).toEqual([
+			{
+				probeId: 'P-001',
+				severity: 'low',
+				exercised: true,
+				caught: true,
+				catchThreshold: 0.5,
+				trialVotes: [
+					{ trialIndex: 1, state: 'caught' },
+					{ trialIndex: 2, state: 'caught' },
+					{ trialIndex: 3, state: 'missed' },
+				],
+				validCount: 3,
+				caughtCount: 2,
+				invalidatedAttempts: [],
+			},
+		])
+		expect(b?.reducedProbeOutcomes[0]).toMatchObject({
+			exercised: true,
+			caught: false,
+			validCount: 3,
+			caughtCount: 1,
+		})
+		expect(a).not.toBeNull()
+		expect(b).not.toBeNull()
+		expect(compareDominance(a!, b!, 'low')).toBe('a-dominates-b')
+	})
+
+	it('emits probe severity when a selected finding has a different severity', async () => {
+		const probe = { ...canary, probeId: 'P-002' }
+		const result = await run({
+			probe,
+			record: {
+				...sealedRunRecordFixtureForScore,
+				oracleDispositions: [
+					{
+						oracleId: 'O-001',
+						disposition: 'violated',
+						observationIds: ['obs-1'],
+						note: null,
+					},
+				],
+				findings: [
+					defectFinding(['obs-1'], {
+						probeId: probe.probeId,
+						quote: '200',
+					}),
+				],
+			},
+		})
+
+		expect(result.artifact).not.toBeNull()
+		expect(result.artifact?.outcomes[0]?.severity).toBe('low')
+		expect(result.artifact?.reducedProbeOutcomes[0]?.severity).toBe('low')
+	})
+
+	it('keeps dominance stable when caught and missed states trade trialIndex values', async () => {
+		const caughtFirst = await scoreTrials([
+			defectTrial(1, true),
+			defectTrial(2, true),
+			defectTrial(3, false),
+		])
+		const missedFirst = await scoreTrials([
+			defectTrial(1, false),
+			defectTrial(2, true),
+			defectTrial(3, true),
+		])
+		const other = await scoreTrials([
+			defectTrial(1, true),
+			defectTrial(2, false),
+			defectTrial(3, false),
+		])
+		const a = caughtFirst.artifact
+		const permutedA = missedFirst.artifact
+		const b = other.artifact
+		expect(a?.reducedProbeOutcomes[0]).toEqual(
+			expect.objectContaining({
+				exercised: true,
+				caught: true,
+				validCount: 3,
+				caughtCount: 2,
+			}),
+		)
+		expect(permutedA?.reducedProbeOutcomes[0]).toEqual(
+			expect.objectContaining({
+				exercised: true,
+				caught: true,
+				validCount: 3,
+				caughtCount: 2,
+			}),
+		)
+		expect(
+			permutedA?.outcomes.map(({ trialIndex, state }) => [trialIndex, state]),
+		).toEqual([
+			[1, 'missed'],
+			[2, 'caught'],
+			[3, 'caught'],
+		])
+		expect(a).not.toBeNull()
+		expect(permutedA).not.toBeNull()
+		expect(b).not.toBeNull()
+		expect(compareDominance(a!, b!, 'low')).toBe('a-dominates-b')
+		expect(compareDominance(permutedA!, b!, 'low')).toBe('a-dominates-b')
 	})
 
 	it('FAIL verdict: an ingested FAIL recommendation resolves exit 2', async () => {
@@ -226,6 +410,28 @@ describe('runScore: the two digest-verification obligations', () => {
 		expect(fault.artifactPath).toBe('SealedRunRecord.isolationManifestArtifact')
 	})
 
+	it('checks a later trial private reference and identifies its trialIndex', async () => {
+		const fault = await faultOf(() =>
+			run({
+				record: [
+					sealedRunRecordFixtureForScore,
+					{
+						...sealedRunRecordFixtureForScore,
+						trialIndex: 7,
+						isolationManifestArtifact: {
+							...sealedRunRecordFixtureForScore.isolationManifestArtifact,
+							digest: corpusDigestFixture,
+						},
+					},
+				],
+			}),
+		)
+		expect(fault.code).toBe('digest-mismatch')
+		expect(fault.artifactPath).toBe(
+			'SealedRunRecord[trialIndex=7].isolationManifestArtifact',
+		)
+	})
+
 	it('a public-storage isolationManifestArtifact needs no port at all (Decision 3)', async () => {
 		const result = await run({
 			record: {
@@ -271,6 +477,29 @@ describe('runScore: the two digest-verification obligations', () => {
 	it('a private reference with no CorpusPort supplied throws a bypass-only TypeError, never a RuntimeFault', async () => {
 		await expect(run({ port: undefined })).rejects.toThrow(TypeError)
 	})
+
+	it('a later trial missing its CorpusPort is identified by trialIndex', async () => {
+		const publicReference = {
+			storage: 'public' as const,
+			path: 'evidence/manifest.json',
+			privateRef: null,
+			digest: isolationManifestBytesDigest,
+		}
+		await expect(
+			run({
+				record: [
+					{
+						...sealedRunRecordFixtureForScore,
+						isolationManifestArtifact: publicReference,
+					},
+					{ ...sealedRunRecordFixtureForScore, trialIndex: 7 },
+				],
+				port: undefined,
+			}),
+		).rejects.toThrow(
+			'runScore(): SealedRunRecord[trialIndex=7].isolationManifestArtifact names a private reference, but no CorpusPort was supplied',
+		)
+	})
 })
 
 describe('runScore: the orchestration order and the two hardcoded value parameters', () => {
@@ -288,6 +517,23 @@ describe('runScore: the orchestration order and the two hardcoded value paramete
 			const emitOrder = emitSpy.mock.invocationCallOrder[0] as number
 			expect(ingestOrder).toBeLessThan(scoreOrder)
 			expect(scoreOrder).toBeLessThan(emitOrder)
+		} finally {
+			vi.restoreAllMocks()
+		}
+	})
+
+	it('orders a presented record list by each record trialIndex before scoring', async () => {
+		const scoreSpy = vi.spyOn(scoreModule, 'score')
+		try {
+			await run({
+				record: [
+					{ ...sealedRunRecordFixtureForScore, trialIndex: 3 },
+					sealedRunRecordFixtureForScore,
+					{ ...sealedRunRecordFixtureForScore, trialIndex: 2 },
+				],
+			})
+			const trials = scoreSpy.mock.calls[0]?.[1]
+			expect(trials?.map((trial) => trial.trialIndex)).toEqual([1, 2, 3])
 		} finally {
 			vi.restoreAllMocks()
 		}

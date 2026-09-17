@@ -34,6 +34,11 @@
           "type": "string",
           "minLength": 1
         },
+        "scoredProbeId": {
+          "type": "string",
+          "pattern": "^P-[0-9]{3,}$",
+          "description": "The probe this artifact scored. Retained independently of reducedProbeOutcomes so a no-oracle probe still has a verifiable reduction identity."
+        },
         "scoringVersion": {
           "type": "string",
           "pattern": "^sha256:[0-9a-f]{64}$",
@@ -138,6 +143,15 @@
               "minimum": 0,
               "maximum": 9007199254740991
             },
+            "completedAttempts": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991
+              },
+              "description": "The trial identifiers retained from the scored records. Cross-field validation requires this set to agree exactly with completed and with every detailed outcome and selected vote when oracle evidence exists."
+            },
             "invalidatedAttempts": {
               "type": "array",
               "items": {
@@ -165,6 +179,7 @@
           "required": [
             "declaredMinimum",
             "completed",
+            "completedAttempts",
             "invalidatedAttempts"
           ],
           "additionalProperties": false
@@ -213,7 +228,8 @@
                   "low",
                   "material",
                   "critical"
-                ]
+                ],
+                "description": "The scored probe behavior's declared severity. The internal ladder may use a uniquely resolved finding's severity for its own verdict, while dominance compares the probe severity retained here and on ReducedProbeOutcome."
               },
               "disposition": {
                 "type": "string",
@@ -264,6 +280,12 @@
                   }
                 ],
                 "description": "The oracle's `check` tree as it resolved, per AD-4. `null` for an oracle whose check never ran, which is the `not-evaluable` corroboration case; the two fields are read together and neither substitutes for the other."
+              },
+              "trialIndex": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991,
+                "description": "The one-based trial that produced this oracle outcome. Required because a trial set may resolve the same oracle and probe differently across attempts."
               }
             },
             "required": [
@@ -275,10 +297,127 @@
               "resolvedFrom",
               "corroboration",
               "selectedObservationIds",
-              "checkResolution"
+              "checkResolution",
+              "trialIndex"
             ],
             "additionalProperties": false
-          }
+          },
+          "description": "Detailed oracle outcomes for every trial. Each entry carries its trialIndex; several entries may share a probeId because aggregation belongs to reducedProbeOutcomes. The trialIndex is required, which is one half of the EvidenceArtifact schemaVersion 3 -> 4 BREAKING bump."
+        },
+        "reducedProbeOutcomes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "probeId": {
+                "type": "string",
+                "pattern": "^P-[0-9]{3,}$"
+              },
+              "severity": {
+                "type": "string",
+                "enum": [
+                  "low",
+                  "material",
+                  "critical"
+                ],
+                "description": "The severity of the probe's declared behaviour, used by AD-7's severity-floor override."
+              },
+              "exercised": {
+                "type": "boolean"
+              },
+              "caught": {
+                "type": "boolean"
+              },
+              "catchThreshold": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1,
+                "description": "The scoring-policy threshold used to derive caught from caughtCount / validCount. Recorded with the reduction so a consumer can verify the policy-dependent result without resolving the policy digest."
+              },
+              "trialVotes": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "trialIndex": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 9007199254740991
+                    },
+                    "state": {
+                      "type": "string",
+                      "enum": [
+                        "caught",
+                        "confirmed",
+                        "missed",
+                        "passed-clean-control",
+                        "false-positive",
+                        "abstained",
+                        "bypassed",
+                        "unreached",
+                        "oracle-error",
+                        "judge-error",
+                        "infrastructure-error",
+                        "not-applicable"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "trialIndex",
+                    "state"
+                  ],
+                  "additionalProperties": false
+                },
+                "description": "The selected one-vote-per-trial input to the reducer. Retained so every aggregate field and invalidated attempt can be recomputed exactly."
+              },
+              "validCount": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "caughtCount": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "invalidatedAttempts": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "attempt": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 9007199254740991
+                    },
+                    "reason": {
+                      "type": "string",
+                      "minLength": 1,
+                      "description": "AD-6 requires each attempt's reason. Non-empty: a reason that says nothing is not a reason, no AD-5 code names the condition, and the schema is therefore the enforcement point."
+                    }
+                  },
+                  "required": [
+                    "attempt",
+                    "reason"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "probeId",
+              "severity",
+              "exercised",
+              "caught",
+              "catchThreshold",
+              "trialVotes",
+              "validCount",
+              "caughtCount",
+              "invalidatedAttempts"
+            ],
+            "additionalProperties": false
+          },
+          "description": "One trial-set reduction per probe. AD-7 dominance reads this field, while outcomes retains the per-trial evidence that produced it. This field is required, which is the other half of the EvidenceArtifact schemaVersion 3 -> 4 BREAKING bump; a version-3 artifact cannot silently expose its first trial as the aggregate result."
         },
         "uncitedFindings": {
           "type": "array",
@@ -563,6 +702,7 @@
         "parentDigest",
         "revisionCount",
         "runId",
+        "scoredProbeId",
         "scoringVersion",
         "scoringVersionInputs",
         "comparabilityKey",
@@ -572,6 +712,7 @@
         "callerAttestedInputs",
         "trials",
         "outcomes",
+        "reducedProbeOutcomes",
         "uncitedFindings",
         "coverageGaps",
         "strength",
@@ -613,6 +754,11 @@
         "runId": {
           "type": "string",
           "minLength": 1
+        },
+        "scoredProbeId": {
+          "type": "string",
+          "pattern": "^P-[0-9]{3,}$",
+          "description": "The probe this artifact scored. Retained independently of reducedProbeOutcomes so a no-oracle probe still has a verifiable reduction identity."
         },
         "scoringVersion": {
           "type": "string",
@@ -718,6 +864,15 @@
               "minimum": 0,
               "maximum": 9007199254740991
             },
+            "completedAttempts": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991
+              },
+              "description": "The trial identifiers retained from the scored records. Cross-field validation requires this set to agree exactly with completed and with every detailed outcome and selected vote when oracle evidence exists."
+            },
             "invalidatedAttempts": {
               "type": "array",
               "items": {
@@ -745,6 +900,7 @@
           "required": [
             "declaredMinimum",
             "completed",
+            "completedAttempts",
             "invalidatedAttempts"
           ],
           "additionalProperties": false
@@ -793,7 +949,8 @@
                   "low",
                   "material",
                   "critical"
-                ]
+                ],
+                "description": "The scored probe behavior's declared severity. The internal ladder may use a uniquely resolved finding's severity for its own verdict, while dominance compares the probe severity retained here and on ReducedProbeOutcome."
               },
               "disposition": {
                 "type": "string",
@@ -844,6 +1001,12 @@
                   }
                 ],
                 "description": "The oracle's `check` tree as it resolved, per AD-4. `null` for an oracle whose check never ran, which is the `not-evaluable` corroboration case; the two fields are read together and neither substitutes for the other."
+              },
+              "trialIndex": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991,
+                "description": "The one-based trial that produced this oracle outcome. Required because a trial set may resolve the same oracle and probe differently across attempts."
               }
             },
             "required": [
@@ -855,10 +1018,127 @@
               "resolvedFrom",
               "corroboration",
               "selectedObservationIds",
-              "checkResolution"
+              "checkResolution",
+              "trialIndex"
             ],
             "additionalProperties": false
-          }
+          },
+          "description": "Detailed oracle outcomes for every trial. Each entry carries its trialIndex; several entries may share a probeId because aggregation belongs to reducedProbeOutcomes. The trialIndex is required, which is one half of the EvidenceArtifact schemaVersion 3 -> 4 BREAKING bump."
+        },
+        "reducedProbeOutcomes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "probeId": {
+                "type": "string",
+                "pattern": "^P-[0-9]{3,}$"
+              },
+              "severity": {
+                "type": "string",
+                "enum": [
+                  "low",
+                  "material",
+                  "critical"
+                ],
+                "description": "The severity of the probe's declared behaviour, used by AD-7's severity-floor override."
+              },
+              "exercised": {
+                "type": "boolean"
+              },
+              "caught": {
+                "type": "boolean"
+              },
+              "catchThreshold": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1,
+                "description": "The scoring-policy threshold used to derive caught from caughtCount / validCount. Recorded with the reduction so a consumer can verify the policy-dependent result without resolving the policy digest."
+              },
+              "trialVotes": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "trialIndex": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 9007199254740991
+                    },
+                    "state": {
+                      "type": "string",
+                      "enum": [
+                        "caught",
+                        "confirmed",
+                        "missed",
+                        "passed-clean-control",
+                        "false-positive",
+                        "abstained",
+                        "bypassed",
+                        "unreached",
+                        "oracle-error",
+                        "judge-error",
+                        "infrastructure-error",
+                        "not-applicable"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "trialIndex",
+                    "state"
+                  ],
+                  "additionalProperties": false
+                },
+                "description": "The selected one-vote-per-trial input to the reducer. Retained so every aggregate field and invalidated attempt can be recomputed exactly."
+              },
+              "validCount": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "caughtCount": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "invalidatedAttempts": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "attempt": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 9007199254740991
+                    },
+                    "reason": {
+                      "type": "string",
+                      "minLength": 1,
+                      "description": "AD-6 requires each attempt's reason. Non-empty: a reason that says nothing is not a reason, no AD-5 code names the condition, and the schema is therefore the enforcement point."
+                    }
+                  },
+                  "required": [
+                    "attempt",
+                    "reason"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "probeId",
+              "severity",
+              "exercised",
+              "caught",
+              "catchThreshold",
+              "trialVotes",
+              "validCount",
+              "caughtCount",
+              "invalidatedAttempts"
+            ],
+            "additionalProperties": false
+          },
+          "description": "One trial-set reduction per probe. AD-7 dominance reads this field, while outcomes retains the per-trial evidence that produced it. This field is required, which is the other half of the EvidenceArtifact schemaVersion 3 -> 4 BREAKING bump; a version-3 artifact cannot silently expose its first trial as the aggregate result."
         },
         "uncitedFindings": {
           "type": "array",
@@ -1259,6 +1539,7 @@
         "parentDigest",
         "revisionCount",
         "runId",
+        "scoredProbeId",
         "scoringVersion",
         "scoringVersionInputs",
         "comparabilityKey",
@@ -1268,6 +1549,7 @@
         "callerAttestedInputs",
         "trials",
         "outcomes",
+        "reducedProbeOutcomes",
         "uncitedFindings",
         "coverageGaps",
         "strength",

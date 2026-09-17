@@ -395,7 +395,7 @@ describe('cli arguments: score (Story 8.4)', () => {
 			kind: 'run',
 			command: 'score',
 			inputs: {
-				record: 'record.json',
+				record: ['record.json'],
 				contract: 'contract.json',
 				probe: 'probe.json',
 				'preflight-verdict': 'preflight-verdict.json',
@@ -427,7 +427,7 @@ describe('cli arguments: score (Story 8.4)', () => {
 	it('isolation-manifest, evaluator-configuration, and private-manifest are each optional', () => {
 		const parsed = parseRun(['score', ...SCORE_REQUIRED])
 		expect(parsed.inputs).toEqual({
-			record: 'record.json',
+			record: ['record.json'],
 			contract: 'contract.json',
 			probe: 'probe.json',
 			'preflight-verdict': 'preflight-verdict.json',
@@ -452,6 +452,34 @@ describe('cli arguments: score (Story 8.4)', () => {
 			'policy.json',
 		])
 		expect(message).toContain('--corpus-digest')
+	})
+
+	it('collects every --record occurrence in presentation order', () => {
+		const parsed = parseRun([
+			'score',
+			...SCORE_REQUIRED,
+			'--record',
+			'trial-2.json',
+			'--record=trial-3.json',
+		])
+		expect(parsed.inputs.record).toEqual([
+			'record.json',
+			'trial-2.json',
+			'trial-3.json',
+		])
+	})
+
+	it('rejects two repeated --record flags that both name stdin', () => {
+		const { message } = parseUsageError([
+			'score',
+			...SCORE_REQUIRED,
+			'--record',
+			'-',
+			'--record',
+			'-',
+		])
+		expect(message).toContain('--record')
+		expect(message).toContain('stdin')
 	})
 
 	it('a missing required input names the flag that is absent', () => {

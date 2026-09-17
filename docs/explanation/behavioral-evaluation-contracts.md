@@ -191,7 +191,7 @@ Whether a live operation really responds to a declared witness is preflight's qu
 ## Three ways to get a wrong answer
 
 `score` is the comparison step at the bottom of the twin run.
-It reads the sealed run record your harness produced, resolves each oracle over the observations the record carries, and mints a verdict.
+It reads the sealed run records your harness produced, resolves each oracle over the observations each record carries, and mints a verdict.
 Three things decide whether that verdict means anything.
 
 ### 1. A defect only counts as caught when evidence proves it

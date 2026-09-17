@@ -29,6 +29,7 @@
  * rather than a new one.
  */
 
+import { digestArtifact } from '../canonical/digest.ts'
 import { walkExpression } from '../compile/expression-legality.ts'
 import { checkSchemaVersion } from '../compile/schema-version.ts'
 import { evaluateCoverage } from '../coverage/coverage.ts'
@@ -44,7 +45,10 @@ import {
 	SEVERITY_LEVELS,
 	type Severity,
 } from '../schemas/eval-contract.ts'
-import type { Outcome } from '../schemas/evidence-artifact.ts'
+import type {
+	ReducedProbeOutcome,
+	TrialOutcome,
+} from '../schemas/evidence-artifact.ts'
 import type { Expression, Operand, SetOperand } from '../schemas/expression.ts'
 import type { AnyOperation } from '../schemas/interface.ts'
 import {
@@ -123,7 +127,9 @@ export type ScoredOutcomesAndVerdict = {
 	/** this probe's own AD-7 trial-set fold, keyed by `emit` under `probe.probeId` to build the strength vector. */
 	readonly trialSetResult: TrialSetResult
 	/** the full `EvidenceArtifact.outcomes` shape, a parallel array to `ScoredOutcome[]` above: `ScoredOutcome` carries `resolution` but not `disposition` or the raw `CheckResolution` tree this shape needs, so the two are not reconstructible from one another. */
-	readonly outcomes: readonly Outcome[]
+	readonly outcomes: readonly TrialOutcome[]
+	/** the one reduced result dominance compares for this probe. */
+	readonly reducedProbeOutcomes: readonly ReducedProbeOutcome[]
 	/** every finding across every trial citing no oracle, per `outcome.ts`'s `uncitedFindingIds`. */
 	readonly uncitedFindings: readonly string[]
 }
@@ -265,54 +271,75 @@ function operationIdentifierCollisionsOf(
 		}
 	}
 	const collisions: string[] = []
-	trials.forEach((trial, trialIndex) => {
+	for (const trial of trials) {
 		for (const observation of trial.observations) {
 			const interfaces =
 				interfacesByOperationId.get(observation.operationId) ?? []
 			if (interfaces.length <= 1) continue
 			collisions.push(
-				`trial ${trialIndex + 1} observation ${observation.observationId}: operationId "${observation.operationId}" matches operations in ${interfaces.length} permittedInterfaces entries (${interfaces.join(', ')})`,
+				`trial ${trial.trialIndex} observation ${observation.observationId}: operationId "${observation.operationId}" matches operations in ${interfaces.length} permittedInterfaces entries (${interfaces.join(', ')})`,
 			)
 		}
-	})
+	}
 	return collisions
 }
 
 /**
  * The tenth new Invalid condition: a caller assembling a trial set from
- * records that disagree on `mode`, `evaluatorRecommendation`, or `runId`.
- * Every trial is compared against the first: a trial set is not a genuine
- * set once one trial's own value is picked as authoritative, regardless of
- * which one, so basis lines name every disagreeing pair. `runId` joined the
- * other two once `ValidatedObservations` carried it: batching trials from
- * two different runs into one trial set is the single most important
- * cross-trial mixup this check exists to catch, and it read the same
- * fallback posture as the other two without being compared like them.
+ * records that disagree on their set identity fields or repeat a trial index.
+ * Every trial's contract digest is compared with the supplied contract's
+ * canonical digest. The remaining shared fields are compared against the
+ * first trial: a trial set is not genuine once one trial's value is picked
+ * as authoritative, so basis lines name every disagreeing pair. `runId`
+ * joined the other fields once `ValidatedObservations` carried it: batching
+ * trials from two different runs into one set is the most important
+ * cross-trial mixup this check exists to catch.
  */
 function trialSetDisagreementsOf(
+	contract: EvalContract,
 	trials: readonly ValidatedObservations[],
 ): readonly string[] {
 	const first = trials[0]
 	if (first === undefined) return []
 	const disagreements: string[] = []
+	const computedContractDigest = digestArtifact(contract, 'EvalContract')
 	trials.forEach((trial, index) => {
+		if (trial.contractDigest !== computedContractDigest) {
+			disagreements.push(
+				`contractDigest: trial ${trial.trialIndex} = "${trial.contractDigest}", supplied EvalContract = "${computedContractDigest}"`,
+			)
+		}
 		if (index === 0) return
+		if (
+			trial.evaluatorConfigurationDigest !== first.evaluatorConfigurationDigest
+		) {
+			disagreements.push(
+				`evaluatorConfigurationDigest: trial ${first.trialIndex} = "${first.evaluatorConfigurationDigest}", trial ${trial.trialIndex} = "${trial.evaluatorConfigurationDigest}"`,
+			)
+		}
 		if (trial.mode !== first.mode) {
 			disagreements.push(
-				`mode: trial 1 = "${first.mode}", trial ${index + 1} = "${trial.mode}"`,
+				`mode: trial ${first.trialIndex} = "${first.mode}", trial ${trial.trialIndex} = "${trial.mode}"`,
 			)
 		}
 		if (trial.evaluatorRecommendation !== first.evaluatorRecommendation) {
 			disagreements.push(
-				`evaluatorRecommendation: trial 1 = "${first.evaluatorRecommendation}", trial ${index + 1} = "${trial.evaluatorRecommendation}"`,
+				`evaluatorRecommendation: trial ${first.trialIndex} = "${first.evaluatorRecommendation}", trial ${trial.trialIndex} = "${trial.evaluatorRecommendation}"`,
 			)
 		}
 		if (trial.runId !== first.runId) {
 			disagreements.push(
-				`runId: trial 1 = "${first.runId}", trial ${index + 1} = "${trial.runId}"`,
+				`runId: trial ${first.trialIndex} = "${first.runId}", trial ${trial.trialIndex} = "${trial.runId}"`,
 			)
 		}
 	})
+	const seenTrialIndices = new Set<number>()
+	for (const trial of trials) {
+		if (seenTrialIndices.has(trial.trialIndex)) {
+			disagreements.push(`trialIndex: duplicate value ${trial.trialIndex}`)
+		}
+		seenTrialIndices.add(trial.trialIndex)
+	}
 	return disagreements
 }
 
@@ -324,7 +351,7 @@ function trialSetDisagreementsOf(
  * it sees one trial at a time, and nothing checks whether two DIFFERENT trials
  * of one set reuse an observation, finding, or oracle-disposition identifier.
  * That asymmetry looks like a gap beside `trial-set-field-disagreement`, which
- * does compare `mode`, `evaluatorRecommendation`, and `runId` across trials.
+ * compares the fields that identify the set across trials.
  *
  * It is not one. A trial set is n independent evaluator runs of one contract,
  * each producing its own record, and a harness that names its first observation
@@ -436,6 +463,9 @@ export const score: ScoreStage<
 	const signedProbe = signedProbeOf(probe)
 	const designatedOracleId = designatedOracleIdOf(probe, contract)
 	const probeSigned = !probe.expectedClean && probe.defectSignature !== null
+	const probeSeverity =
+		contract.behaviors.find((behavior) => behavior.id === probe.behaviorId)
+			?.severity ?? 'low'
 
 	// Plan indexing and the resolvers built from it: contract-only, so built
 	// once and reused across every trial. `resolveCapturedBindings` walks
@@ -473,7 +503,7 @@ export const score: ScoreStage<
 	// above in the same loop rather than derived from it after the fact: the
 	// two carry different fields from the same per-oracle locals and neither
 	// is reconstructible from the other.
-	const outcomes: Outcome[] = []
+	const outcomes: TrialOutcome[] = []
 	const votes: TrialVote[] = []
 
 	for (const trial of trials) {
@@ -662,11 +692,12 @@ export const score: ScoreStage<
 			})
 			outcomes.push({
 				oracleId: oracle.id,
+				trialIndex: trial.trialIndex,
 				// Constant across every entry: one `score()` call scores exactly
 				// one probe.
 				probeId: probe.probeId,
 				state: resolution.state,
-				severity,
+				severity: probeSeverity,
 				// `ORACLE_DISPOSITIONS`' third member, `'not-attempted'`, on a
 				// `null` local `disposition`: no disposition was recorded for
 				// this oracle, or the ambiguity guard above fired. Both mean
@@ -701,9 +732,8 @@ export const score: ScoreStage<
 			}
 		}
 
-		// One vote per trial, ordinarily: the trial set's own cardinality
-		// (`Trials.completed`) is `votes.length`, so a trial still
-		// contributes a vote when the probe has no designated oracle (a
+		// One vote per trial, ordinarily. A trial still contributes a vote
+		// when the probe has no designated oracle (a
 		// clean control, a canary, or a malformed defect chain) -- the
 		// fallback order is the first invalidating state this trial's
 		// oracles produced, else the first oracle's state. Every candidate
@@ -714,14 +744,31 @@ export const score: ScoreStage<
 		// contributes no vote rather than a fabricated one.
 		const voteState = designatedState ?? firstInvalidatingState ?? firstState
 		if (voteState !== undefined) {
-			votes.push({ state: voteState as TrialVote['state'] })
+			votes.push({
+				trialIndex: trial.trialIndex,
+				state: voteState as TrialVote['state'],
+			})
 		}
 	}
 
 	const reduced = reduceTrialSet(votes, policy.catchThreshold)
+	const reducedProbeOutcomes: ReducedProbeOutcome[] = [
+		{
+			probeId: probe.probeId,
+			severity: probeSeverity,
+			exercised: reduced.exercised,
+			caught: reduced.caught,
+			catchThreshold: policy.catchThreshold,
+			trialVotes: votes.map((vote) => ({ ...vote })),
+			validCount: reduced.validCount,
+			caughtCount: reduced.caughtCount,
+			invalidatedAttempts: [...reduced.invalidatedAttempts],
+		},
+	]
 	const trialsField: OutcomeStateInputs['trials'] = {
 		declaredMinimum: policy.minimumTrialCount,
-		completed: votes.length,
+		completed: trials.length,
+		completedAttempts: trials.map((trial) => trial.trialIndex),
 		invalidatedAttempts: [...reduced.invalidatedAttempts],
 	}
 
@@ -752,7 +799,7 @@ export const score: ScoreStage<
 		contract,
 		trials,
 	)
-	const trialSetDisagreements = trialSetDisagreementsOf(trials)
+	const trialSetDisagreements = trialSetDisagreementsOf(contract, trials)
 
 	const evidenceIntegrity: EvidenceIntegrityInputs = {
 		// Declared, not derived: no declared input or caller-supplied
@@ -797,8 +844,8 @@ export const score: ScoreStage<
 		trialSetDisagreements,
 	}
 
-	// Every trial in the set is asserted to agree with the
-	// first on `mode` and `evaluatorRecommendation`; a disagreement is
+	// Every trial in the set is asserted to agree with the first on its shared
+	// identity inputs and evaluator recommendation; a disagreement is
 	// `trial-set-field-disagreement` above, never a throw. The first
 	// trial's own values build the one assessment TypeScript's
 	// discriminated union still requires -- non-silence comes from the
@@ -867,6 +914,7 @@ export const score: ScoreStage<
 			probeQualification,
 			trialSetResult: reduced,
 			outcomes,
+			reducedProbeOutcomes,
 			uncitedFindings,
 		}
 	}
@@ -890,6 +938,7 @@ export const score: ScoreStage<
 		probeQualification,
 		trialSetResult: reduced,
 		outcomes,
+		reducedProbeOutcomes,
 		uncitedFindings,
 	}
 }

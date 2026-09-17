@@ -704,18 +704,15 @@ catch rate over them and `compareDominance` supplies AD-7's four-valued relation
 `tests/score/reduce-trials.test.ts` pins the anti-pattern by name: one catch among a non-caught majority
 never reduces to `caught`, and a tie is unreachable for any even valid count at any threshold.
 
-**The bound is on the reducer's input.** `runScore` and the `score` command each
-read one sealed run record and call `score` with a single-element trial set, so a run driven from this
-package completes one trial. Under any scoring policy declaring a
-`minimumTrialCount` above 1 that run resolves CONCERNS on an evidence condition and its strength vector
-is marked non-comparable. No policy artifact ships with the package and the schema declares no default,
-so the number is the caller's; the policy every published chain is scored under declares 3, and
-`scripts/worked-example-shared.ts` records that lowering it to make a chain comparable would describe a
-policy nobody ships. Running the evaluator n times
-and presenting n records sits on the caller's side of the boundary AD-2 draws for execution.
-`SealedRunRecord.trialIndex` is carried and unread: `trialSetDisagreementsOf` cross-checks `mode`,
-`evaluatorRecommendation`, and `runId` across a set and compares no indices, so two records claiming the
-same trial reduce as two trials.
+**The published boundary now admits the reducer's full input.** `runScore` accepts one sealed record for
+compatibility or a nonempty record list, and the `score` command collects repeated `--record` flags into
+that list. Each record is ingested and its private isolation reference is verified before one call to
+`score` receives the complete set. The application orders records by their one-based `trialIndex`.
+`trialSetDisagreementsOf` rejects a repeated index and cross-checks contract digest, evaluator
+configuration digest, mode, evaluator recommendation, and run identifier across the set. The published
+default policy's three-trial minimum is reachable from both entry points, and a complete set produces a
+comparable strength vector. Running the evaluator remains on the caller's side of the boundary AD-2
+draws for execution.
 
 **2. Observation selection was ambiguous, and the temporal clause was unimplementable.** Per AD-39. Two
 steps in the worked example each matched two observations, so a first-match scorer and a last-match

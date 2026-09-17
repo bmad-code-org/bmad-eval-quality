@@ -1471,10 +1471,9 @@ describe('the conjuncts the fixture set cannot reach', () => {
 })
 
 // The trial-set reducer groups all twelve states into three vote categories,
-// so it legitimately names every one of them. The dominance comparator's
-// severity-floor override reads exactly one state literal, `'caught'`, and
-// names no other member of the closed twelve. The AD-21 ladder classifies its
-// two behavioural-failure and invalidating-state groups plus the `unreached`
+// so it legitimately names every one of them. The dominance comparator reads
+// the reducer's boolean `caught` result. The AD-21 ladder classifies its two
+// behavioural-failure and invalidating-state groups plus the `unreached`
 // evidence condition, eight of the twelve. `emit.ts` reads that same
 // `unreached` evidence condition, per Story 8.3's own Boundaries, to mark
 // `strength.comparable` false -- the identical "classify, never assign"
@@ -1486,8 +1485,6 @@ const ALWAYS_NAMED = [
 	'src/core/score/outcome.ts',
 	'src/core/score/reduce-trials.ts',
 ]
-
-const STRENGTH_NAMED_STATES = ['caught']
 
 const LADDER_NAMED_STATES = [
 	'missed',
@@ -1505,9 +1502,6 @@ const EMIT_NAMED_STATES = ['unreached']
 const expectedNamingFilesFor = (state: string): readonly string[] =>
 	[
 		...ALWAYS_NAMED,
-		...(STRENGTH_NAMED_STATES.includes(state)
-			? ['src/core/score/strength.ts']
-			: []),
 		...(LADDER_NAMED_STATES.includes(state)
 			? ['src/core/score/ladder.ts']
 			: []),

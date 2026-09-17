@@ -523,7 +523,7 @@ const INVALID_ROWS: readonly LadderConditionRow[] = [
 		id: 'trial-set-field-disagreement',
 		rung: 'invalid',
 		guard:
-			'two trials in the same trial set disagree on `mode` or `evaluatorRecommendation`',
+			'trials in the same trial set disagree on identity fields or repeat a `trialIndex`',
 		evidenceCondition: false,
 		reasons: (inputs) =>
 			inputs.evidenceIntegrity.trialSetDisagreements.map(

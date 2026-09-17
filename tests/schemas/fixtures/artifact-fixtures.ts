@@ -981,10 +981,11 @@ export const scoringPolicyFixture: ScoringPolicy = {
 }
 
 const evidenceCommon = {
-	schemaVersion: 3,
+	schemaVersion: 4,
 	parentDigest: null,
 	revisionCount: 0,
 	runId: 'spike-run-0001',
+	scoredProbeId: 'P-001',
 	scoringVersion: digestOf(18),
 	scoringVersionInputs: {
 		// The scored contract's own stamp, one of AD-11's six identity inputs. It
@@ -1019,11 +1020,13 @@ const evidenceCommon = {
 	trials: {
 		declaredMinimum: 3,
 		completed: 3,
-		invalidatedAttempts: [{ attempt: 2, reason: 'port fault during probing' }],
+		completedAttempts: [1, 2, 3],
+		invalidatedAttempts: [{ attempt: 2, reason: 'oracle-error' }],
 	},
 	outcomes: [
 		{
 			oracleId: 'O-001',
+			trialIndex: 1,
 			probeId: 'P-001',
 			state: 'caught',
 			severity: 'critical',
@@ -1045,9 +1048,38 @@ const evidenceCommon = {
 			},
 		},
 		{
+			oracleId: 'O-001',
+			trialIndex: 2,
+			probeId: 'P-001',
+			state: 'oracle-error',
+			severity: 'critical',
+			disposition: 'not-attempted',
+			resolvedFrom: null,
+			corroboration: 'not-evaluable',
+			selectedObservationIds: [],
+			checkResolution: null,
+		},
+		{
+			oracleId: 'O-001',
+			trialIndex: 3,
+			probeId: 'P-001',
+			state: 'caught',
+			severity: 'critical',
+			disposition: 'violated',
+			resolvedFrom: 'F-001',
+			corroboration: 'agrees',
+			selectedObservationIds: ['obs-003'],
+			checkResolution: {
+				resolution: 'false',
+				introductionCondition: null,
+				children: [],
+			},
+		},
+		{
 			// The `not-evaluable` corroboration case: the expression never ran, which
 			// AD-33 keeps distinct from AD-4's `insufficient-evidence`.
 			oracleId: 'O-003',
+			trialIndex: 3,
 			probeId: null,
 			state: 'unreached',
 			severity: 'material',
@@ -1056,6 +1088,23 @@ const evidenceCommon = {
 			corroboration: 'not-evaluable',
 			selectedObservationIds: [],
 			checkResolution: null,
+		},
+	],
+	reducedProbeOutcomes: [
+		{
+			probeId: 'P-001',
+			severity: 'critical',
+			exercised: true,
+			caught: true,
+			catchThreshold: 0.5,
+			trialVotes: [
+				{ trialIndex: 1, state: 'caught' },
+				{ trialIndex: 2, state: 'oracle-error' },
+				{ trialIndex: 3, state: 'caught' },
+			],
+			validCount: 2,
+			caughtCount: 2,
+			invalidatedAttempts: [{ attempt: 2, reason: 'oracle-error' }],
 		},
 	],
 	// F-004 is the synthetic uncited defect finding `uncitedFindingGaps` below

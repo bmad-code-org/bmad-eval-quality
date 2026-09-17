@@ -160,6 +160,11 @@ export type InvalidatedAttempt = z.infer<typeof InvalidatedAttempt>
 export const Trials = z.strictObject({
 	declaredMinimum: z.int().min(1),
 	completed: z.int().min(0),
+	completedAttempts: z
+		.array(z.int().min(1))
+		.describe(
+			'The trial identifiers retained from the scored records. Cross-field validation requires this set to agree exactly with completed and with every detailed outcome and selected vote when oracle evidence exists.',
+		),
 	invalidatedAttempts: z.array(InvalidatedAttempt),
 })
 
@@ -192,8 +197,63 @@ export const Outcome = z.strictObject({
 	),
 })
 
-/** exported so the dominance comparator names this shape without importing Zod. */
+/** exported so score can retain the per-oracle evidence shape without importing Zod. */
 export type Outcome = z.infer<typeof Outcome>
+
+export const TrialOutcome = Outcome.extend({
+	trialIndex: z
+		.int()
+		.min(1)
+		.describe(
+			'The one-based trial that produced this oracle outcome. Required because a trial set may resolve the same oracle and probe differently across attempts.',
+		),
+	severity: Severity.describe(
+		"The scored probe behavior's declared severity. The internal ladder may use a uniquely resolved finding's severity for its own verdict, while dominance compares the probe severity retained here and on ReducedProbeOutcome.",
+	),
+})
+
+/** One detailed oracle outcome tied to the trial that produced it. */
+export type TrialOutcome = z.infer<typeof TrialOutcome>
+
+export const SelectedTrialVote = z.strictObject({
+	trialIndex: z.int().min(1),
+	state: OutcomeState,
+})
+
+/** The one outcome state selected to represent a probe in one trial. */
+export type SelectedTrialVote = z.infer<typeof SelectedTrialVote>
+
+/**
+ * AD-7's per-probe fold. This stays separate from `TrialOutcome`: disposition,
+ * corroboration, citations, and check trees have no honest aggregate value
+ * across trials, while the trial-set reducer has an exact aggregate result.
+ */
+export const ReducedProbeOutcome = z.strictObject({
+	probeId: ProbeId,
+	severity: Severity.describe(
+		"The severity of the probe's declared behaviour, used by AD-7's severity-floor override.",
+	),
+	exercised: z.boolean(),
+	caught: z.boolean(),
+	catchThreshold: z
+		.number()
+		.min(0)
+		.max(1)
+		.describe(
+			'The scoring-policy threshold used to derive caught from caughtCount / validCount. Recorded with the reduction so a consumer can verify the policy-dependent result without resolving the policy digest.',
+		),
+	trialVotes: z
+		.array(SelectedTrialVote)
+		.describe(
+			'The selected one-vote-per-trial input to the reducer. Retained so every aggregate field and invalidated attempt can be recomputed exactly.',
+		),
+	validCount: z.int().min(0),
+	caughtCount: z.int().min(0),
+	invalidatedAttempts: z.array(InvalidatedAttempt),
+})
+
+/** exported so the dominance comparator reads the reducer's public product. */
+export type ReducedProbeOutcome = z.infer<typeof ReducedProbeOutcome>
 
 export const CoverageGap = z.strictObject({
 	rule: z
@@ -326,6 +386,9 @@ export const Remediation = z.strictObject({
 const evidenceCommonFields = {
 	...lineageFields,
 	runId: z.string().min(1),
+	scoredProbeId: ProbeId.describe(
+		'The probe this artifact scored. Retained independently of reducedProbeOutcomes so a no-oracle probe still has a verifiable reduction identity.',
+	),
 	scoringVersion: Digest.describe(
 		'AD-11: computed by the scorer over the six named inputs below and never caller-supplied.',
 	),
@@ -354,7 +417,16 @@ const evidenceCommonFields = {
 			'Which of the six scoring-version inputs were caller-attested rather than computed by this package. An enum over the six key names rather than free strings, because AD-32 requires the artifact to state *which* inputs were attested and an unconstrained string cannot be checked against anything. AD-11 names three of the six as caller-attested; the enum admits any subset so a stricter or looser integration stays representable. `mode` is the one member that is not a choice: `ScoringVersionInputs.mode` is read from the sealed run record and never re-derived, so a list omitting it is a misdeclaration rather than a stricter integration. The schema admits that shape and the constraint ledger records why; `core/emit` always names it.',
 		),
 	trials: Trials,
-	outcomes: z.array(Outcome),
+	outcomes: z
+		.array(TrialOutcome)
+		.describe(
+			'Detailed oracle outcomes for every trial. Each entry carries its trialIndex; several entries may share a probeId because aggregation belongs to reducedProbeOutcomes. The trialIndex is required, which is one half of the EvidenceArtifact schemaVersion 3 -> 4 BREAKING bump.',
+		),
+	reducedProbeOutcomes: z
+		.array(ReducedProbeOutcome)
+		.describe(
+			'One trial-set reduction per probe. AD-7 dominance reads this field, while outcomes retains the per-trial evidence that produced it. This field is required, which is the other half of the EvidenceArtifact schemaVersion 3 -> 4 BREAKING bump; a version-3 artifact cannot silently expose its first trial as the aggregate result.',
+		),
 	uncitedFindings: z
 		.array(FindingId)
 		.describe(
@@ -370,10 +442,12 @@ const evidenceCommonFields = {
  * written. It was a literal inside `emit`'s own assembly, so the value a
  * consumer needed sat in a stage rather than beside the shape it names.
  *
- * `3` on two recorded bumps: `mode` made it 2 and `uncitedFindingGaps` made
- * it 3, each in the field's own description above.
+ * `4` on three recorded bumps: `mode` made it 2, `uncitedFindingGaps` made
+ * it 3, and the required per-trial and reduced per-probe outcome split made
+ * it 4. Version 3 outcomes carried no trial identity and exposed several
+ * entries for one probe to a comparator that needs one reduced result.
  */
-export const EVIDENCE_ARTIFACT_SCHEMA_VERSION = 3
+export const EVIDENCE_ARTIFACT_SCHEMA_VERSION = 4
 
 /**
  * A discriminated union, because AD-21 requires that no shape hold a

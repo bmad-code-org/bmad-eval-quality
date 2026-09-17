@@ -68,6 +68,12 @@ import { AGREEMENT_FIELDS, type IngestCondition } from './conditions.ts'
 export type ValidatedObservations = {
 	/** `record.runId`, restated for the same reason `mode` is: `score.ts` reads it off the first trial to build `emit`'s own `runId` field, and no later stage may re-derive or default it. */
 	readonly runId: string
+	/** The record's one-based trial identity, carried into reduction and disagreement checks. */
+	readonly trialIndex: number
+	/** Trial-set identity input. Every record in one set must agree on it. */
+	readonly contractDigest: string
+	/** Trial-set identity input. Every record in one set must agree on it. */
+	readonly evaluatorConfigurationDigest: string
 	readonly mode: RunModeValue
 	/**
 	 * `AssessmentCommon.evaluatorRecommendation` (`score/ladder.ts:107`) is
@@ -402,6 +408,9 @@ export const ingest: IngestStage<ValidatedObservations> = (
 		// Read off the record and restated, never derived, recomputed, or
 		// defaulted, the same posture `mode` below takes.
 		runId: record.runId,
+		trialIndex: record.trialIndex,
+		contractDigest: record.contractDigest,
+		evaluatorConfigurationDigest: record.evaluatorConfigurationDigest,
 		// Read off the record and restated, never derived, recomputed, or
 		// defaulted: AD-21 fixes mode before ingest and there is no fourth
 		// parameter for a caller to disagree with it through.

@@ -84,11 +84,9 @@ export const digestPlaceholder = (ordinal: number): string =>
  * budget are read from one declared artifact rather than from scattered
  * literals.
  *
- * `minimumTrialCount` is 3, which is above what one `score` invocation can
- * complete: the command reads one sealed run record, so a chain built on it
- * completes one trial and its strength vector comes back marked
- * non-comparable. Lowering it to make a chain comparable would describe a
- * policy nobody ships.
+ * `minimumTrialCount` is 3. A chain that supplies one sealed record completes
+ * one trial and records the shortfall. A complete run supplies three records
+ * through repeated `--record` flags or the `runScore` record list.
  */
 export const POLICY = ScoringPolicy.parse({
 	schemaVersion: 2,

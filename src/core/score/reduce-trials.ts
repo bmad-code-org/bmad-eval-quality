@@ -24,6 +24,7 @@ type OutcomeStateValue = (typeof OUTCOME_STATES)[number]
  * resolved-from finding, or a corroboration value.
  */
 export type TrialVote = {
+	readonly trialIndex: number
 	readonly state: OutcomeStateValue
 }
 
@@ -81,9 +82,8 @@ export type TrialSetResult = {
 }
 
 /**
- * Folds one probe's trial votes to one result. `votes[i]`'s position is the
- * attempt number `i + 1`, since stage one has already reduced each trial's
- * outcome resolutions to one vote per `(probeId, trialIndex)`.
+ * Folds one probe's trial votes to one result. Each vote retains its record's
+ * one-based `trialIndex`, which becomes an invalidated attempt's identity.
  *
  * A probe with zero voted trials is `exercised: false` and contributes
  * nothing to `ClassStrength`; `caught` is `false` in that case too, since a
@@ -126,20 +126,23 @@ export function reduceTrialSet(
 	}
 	const invalidatedAttempts: InvalidatedAttempt[] = []
 	const votedStates: OutcomeStateValue[] = []
-	votes.forEach((vote, index) => {
+	for (const vote of votes) {
 		if (!Object.hasOwn(TRIAL_VOTE_STATE_OF, vote.state)) {
 			throw new TypeError(
-				`reduceTrialSet: vote ${index + 1} carries an out-of-domain state "${vote.state}"`,
+				`reduceTrialSet: trial ${vote.trialIndex} carries an out-of-domain state "${vote.state}"`,
 			)
 		}
 		const group = TRIAL_VOTE_STATE_OF[vote.state]
 		if (group === 'invalidating') {
-			invalidatedAttempts.push({ attempt: index + 1, reason: vote.state })
-			return
+			invalidatedAttempts.push({
+				attempt: vote.trialIndex,
+				reason: vote.state,
+			})
+			continue
 		}
-		if (group === 'unvoted') return
+		if (group === 'unvoted') continue
 		votedStates.push(vote.state)
-	})
+	}
 	const validCount = votedStates.length
 	const caughtCount = votedStates.filter((state) => state === 'caught').length
 	const exercised = validCount > 0

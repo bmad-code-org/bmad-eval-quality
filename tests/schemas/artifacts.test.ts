@@ -585,6 +585,22 @@ describe("the evidence artifact's vocabularies", () => {
 		).toBe(true)
 	})
 
+	it('requires trialIndex on every detailed oracle outcome', () => {
+		const artifact = clone(productionEvidenceArtifact) as any
+		delete artifact.outcomes[0].trialIndex
+		const issue = firstIssue(EvidenceArtifact.safeParse(artifact))
+		expect(issue?.code).toBe('invalid_type')
+		expect(issue?.path).toEqual(['outcomes', 0, 'trialIndex'])
+	})
+
+	it('requires the reduced per-probe outcomes used by dominance', () => {
+		const artifact = clone(productionEvidenceArtifact) as any
+		delete artifact.reducedProbeOutcomes
+		const issue = firstIssue(EvidenceArtifact.safeParse(artifact))
+		expect(issue?.code).toBe('invalid_type')
+		expect(issue?.path).toEqual(['reducedProbeOutcomes'])
+	})
+
 	// AD-7: "Canary probes and clean controls never enter the vector", so the
 	// fourth class has no key at all and its absence is structural.
 	it('keys the strength vector by three classes and not four', () => {

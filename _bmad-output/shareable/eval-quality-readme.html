@@ -658,7 +658,7 @@ Verify that no record was created.</p>
 <td><code>FAIL</code>, exit code 2.</td>
 </tr>
 </tbody></table>
-</div><p>The word evidence is used twice on purpose. The evidence in the flow is what the evaluator produced, and it reaches <code>score</code> inside a sealed run record. The evidence artifact is what <code>score</code> mints at the end: the outcomes, the verdict, the strength vector, and the exit code.</p>
+</div><p>The word evidence is used twice on purpose. The evidence in the flow is what the evaluator produced, and it reaches <code>score</code> inside one or more sealed run records. The evidence artifact is what <code>score</code> mints at the end: the outcomes, the verdict, the strength vector, and the exit code.</p>
 <h2 id="what-the-tool-does">What the tool does<a class="heading-anchor" href="#what-the-tool-does" aria-label="Link to What the tool does">#</a></h2>
 <p><code>eval-quality</code> is a Node package and a command line binary. It gives you four commands, which sit on the flow like this:</p>
 <div class="table-wrap"><table>
@@ -686,11 +686,11 @@ Verify that no record was created.</p>
 </tr>
 <tr>
 <td><code>score</code></td>
-<td>a sealed run record, the contract, a probe, the preflight verdict, a scoring policy, a caller-attested corpus digest, and the isolation manifest and evaluator configuration the record was produced under</td>
+<td>one or more sealed run records, the contract, a probe, the preflight verdict, a scoring policy, a caller-attested corpus digest, and the isolation manifest and evaluator configuration the records were produced under</td>
 <td><code>evidence-artifact.json</code>, and the verdict&#39;s own exit code</td>
 </tr>
 </tbody></table>
-</div><p>It executes nothing. No agent, no judge, and no system under test runs inside it. You run the agent or harness, the repeated trials, and the live system with its environment probe, and you hand over a sealed run record. <code>eval-quality</code> compiles, seals, preflights, and scores.</p>
+</div><p>It executes nothing. No agent, no judge, and no system under test runs inside it. You run the agent or harness, the repeated trials, and the live system with its environment probe, and you hand over the sealed run records. <code>eval-quality</code> compiles, seals, preflights, and scores.</p>
 <h2 id="who-it-is-for">Who it is for<a class="heading-anchor" href="#who-it-is-for" aria-label="Link to Who it is for">#</a></h2>
 <p>Teams shipping AI agents, coding skills, review bots, MCP-based assistants, or automated test-generation systems, and teams that let agents ship with little or no human review.</p>
 <p>Use <code>eval-quality</code> when all three are true:</p>
@@ -715,7 +715,7 @@ Verify that no record was created.</p>
 <p>Canary probes and clean controls are run too, and never enter the strength vector.</p>
 <p>Every required oracle check resolves to exactly one of twelve states, and the state travels with the result: <code>caught</code>, <code>confirmed</code>, <code>missed</code>, <code>passed-clean-control</code>, <code>false-positive</code>, <code>abstained</code>, <code>bypassed</code>, <code>unreached</code>, <code>oracle-error</code>, <code>judge-error</code>, <code>infrastructure-error</code>, or <code>not-applicable</code>. A required oracle that missed, abstained, errored, or is absent prevents PASS, and a high overall score never overrides it. An infrastructure error or a failed pre-flight invalidates the run; run it again.</p>
 <p>A caught defect is decided by evidence. A finding counts as detection only when the probe&#39;s declared defect signature matches an observation the finding cites; the evaluator&#39;s own claim does not settle it.</p>
-<p>Repeated runs of one probe are trials, reduced to one result per probe before any rate is computed. The <code>score</code> command and <code>runScore</code> hand the stage one sealed run record per call, so against a policy that asks for more than one trial the strength vector is reported and marked non-comparable.</p>
+<p>Repeated runs of one probe are trials, reduced to one result per probe before any rate is computed. Pass the full trial set to <code>runScore</code>, or repeat <code>--record</code> on the <code>score</code> command. Every record declares its own <code>trialIndex</code> and agrees with the set on <code>contractDigest</code>, <code>evaluatorConfigurationDigest</code>, <code>mode</code>, <code>evaluatorRecommendation</code>, and <code>runId</code>. A set meeting the policy minimum produces a comparable strength vector.</p>
 <p><a href="https://bmad-code-org.github.io/bmad-eval-quality/how-to/author-behavioral-contracts/">The full walkthrough</a> reads a scored run field by field, down to its verdict and exit code.</p>
 <h2 id="using-it">Using it<a class="heading-anchor" href="#using-it" aria-label="Link to Using it">#</a></h2>
 <p>Node.js 22.20.0 or newer. <code>zod</code> is the only production dependency.</p>
@@ -730,7 +730,8 @@ npx eval-quality preflight --contract contract.json \
   --probes probes.json --observations observations.json \
   --run-id 2026-08-28-a --out ./eval-out
 
-npx eval-quality score --record record.json --contract contract.json \
+npx eval-quality score --record trial-1.json --record trial-2.json \
+  --record trial-3.json --contract contract.json \
   --probe probe.json --preflight-verdict preflight-verdict.json \
   --policy policy.json --corpus-digest &lt;digest&gt; \
   --out ./eval-out

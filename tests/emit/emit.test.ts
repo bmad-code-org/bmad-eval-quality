@@ -14,7 +14,7 @@ import type { EvalContract } from '../../src/core/schemas/eval-contract.ts'
 import {
 	type CoverageGap,
 	EvidenceArtifact,
-	type Outcome,
+	type TrialOutcome,
 	type UncitedFindingGap,
 } from '../../src/core/schemas/evidence-artifact.ts'
 import type { ScoringPolicy } from '../../src/core/schemas/scoring-policy.ts'
@@ -142,8 +142,9 @@ const cleanTrialSetResult: TrialSetResult = {
 	invalidatedAttempts: [],
 }
 
-const baseOutcome: Outcome = {
+const baseOutcome: TrialOutcome = {
 	oracleId: 'O-001',
+	trialIndex: 1,
 	probeId: probe.probeId,
 	state: 'caught',
 	severity: 'critical',
@@ -153,6 +154,12 @@ const baseOutcome: Outcome = {
 	selectedObservationIds: ['obs-1'],
 	checkResolution: null,
 }
+
+const cleanTrialOutcomes: readonly TrialOutcome[] = [
+	baseOutcome,
+	{ ...baseOutcome, trialIndex: 2 },
+	{ ...baseOutcome, trialIndex: 3, state: 'missed' },
+]
 
 const scoredOutcome: ScoredOutcome = {
 	oracleId: 'O-001',
@@ -195,7 +202,12 @@ const cleanOutcomeState = (
 ): OutcomeStateInputs => ({
 	outcomes: [scoredOutcome],
 	unwitnessedQuotations: [],
-	trials: { declaredMinimum: 3, completed: 3, invalidatedAttempts: [] },
+	trials: {
+		declaredMinimum: 3,
+		completed: 3,
+		completedAttempts: [1, 2, 3],
+		invalidatedAttempts: [],
+	},
 	reExecutionCap: 2,
 	...overrides,
 })
@@ -265,7 +277,24 @@ const scoredOf = (
 		sealedProbes,
 		probeQualification: qualificationOf(sealedProbes),
 		trialSetResult: cleanTrialSetResult,
-		outcomes: [baseOutcome],
+		outcomes: cleanTrialOutcomes,
+		reducedProbeOutcomes: [
+			{
+				probeId: probe.probeId,
+				severity: 'critical',
+				exercised: cleanTrialSetResult.exercised,
+				caught: cleanTrialSetResult.caught,
+				catchThreshold: policy.catchThreshold,
+				trialVotes: [
+					{ trialIndex: 1, state: 'caught' },
+					{ trialIndex: 2, state: 'caught' },
+					{ trialIndex: 3, state: 'missed' },
+				],
+				validCount: cleanTrialSetResult.validCount,
+				caughtCount: cleanTrialSetResult.caughtCount,
+				invalidatedAttempts: [...cleanTrialSetResult.invalidatedAttempts],
+			},
+		],
 		uncitedFindings: [],
 		...overrides,
 	}
@@ -354,12 +383,13 @@ describe('emit: the I/O & Edge-Case Matrix', () => {
 	})
 
 	it("Matrix row 4: an outcome carrying disposition 'not-attempted' (score.ts's ambiguity-guard default) passes through unchanged", () => {
-		const notAttemptedOutcome: Outcome = {
+		const notAttemptedOutcome: TrialOutcome = {
 			...baseOutcome,
 			disposition: 'not-attempted',
 		}
-		const result = emitOf({ outcomes: [notAttemptedOutcome] })
-		expect(result.outcomes).toEqual([notAttemptedOutcome])
+		const outcomes = [notAttemptedOutcome, ...cleanTrialOutcomes.slice(1)]
+		const result = emitOf({ outcomes })
+		expect(result.outcomes).toEqual(outcomes)
 	})
 
 	it('Matrix row 5: an unreached outcome marks strength.comparable false, the vector still reported', () => {
@@ -382,9 +412,35 @@ describe('emit: the I/O & Edge-Case Matrix', () => {
 
 	it('Matrix row 6: completed trials below the declared minimum marks strength.comparable false', () => {
 		const result = emitOf({
+			outcomes: [baseOutcome],
+			trialSetResult: {
+				exercised: true,
+				caught: true,
+				validCount: 1,
+				caughtCount: 1,
+				invalidatedAttempts: [],
+			},
+			reducedProbeOutcomes: [
+				{
+					probeId: probe.probeId,
+					severity: 'critical',
+					exercised: true,
+					caught: true,
+					catchThreshold: policy.catchThreshold,
+					trialVotes: [{ trialIndex: 1, state: 'caught' }],
+					validCount: 1,
+					caughtCount: 1,
+					invalidatedAttempts: [],
+				},
+			],
 			assessment: contractAssessment({
 				outcomeState: cleanOutcomeState({
-					trials: { declaredMinimum: 3, completed: 1, invalidatedAttempts: [] },
+					trials: {
+						declaredMinimum: 3,
+						completed: 1,
+						completedAttempts: [1],
+						invalidatedAttempts: [],
+					},
 				}),
 			}),
 		})
@@ -432,10 +488,45 @@ describe('emit: the I/O & Edge-Case Matrix', () => {
 	// `tests/seal/seal.test.ts`'s own "names a nested failing field" test for
 	// the identical formatter, duplicated here rather than shared.
 	it('names a nested failing field with the array index bracketed and the object key dotted', () => {
-		const invalidOutcome: Outcome = { ...baseOutcome, oracleId: 'not-an-id' }
+		const invalidOutcome = {
+			...baseOutcome,
+			oracleId: 'not-an-id',
+		} as TrialOutcome
 		expect(() => emitOf({ outcomes: [invalidOutcome] })).toThrow(
 			/first at "outcomes\[0\]\.oracleId"/,
 		)
+	})
+
+	it('refuses a reduction whose caught decision contradicts its counts and threshold', () => {
+		const scored = scoredOf()
+		const inconsistent = {
+			...scored,
+			reducedProbeOutcomes: scored.reducedProbeOutcomes.map((outcome) => ({
+				...outcome,
+				caught: false,
+			})),
+		}
+
+		expect(() =>
+			emit(inconsistent, digestOf(200), digestOf(201), digestOf(202)),
+		).toThrow(
+			/trial reduction is inconsistent.*reducedProbeOutcomes\[0\]\.caught/,
+		)
+	})
+
+	it('refuses a reduced caught count unsupported by detailed trial outcomes', () => {
+		const scored = scoredOf()
+		const inconsistent = {
+			...scored,
+			outcomes: scored.outcomes.map((outcome) => ({
+				...outcome,
+				state: 'missed' as const,
+			})),
+		}
+
+		expect(() =>
+			emit(inconsistent, digestOf(200), digestOf(201), digestOf(202)),
+		).toThrow(/trial reduction is inconsistent.*trialVotes\[0\]/)
 	})
 })
 
@@ -444,7 +535,7 @@ describe('emit: production-mode and contract-scoring-mode shape', () => {
 		const scored = scoredOf({ assessment: productionAssessment() })
 		const result = emit(scored, digestOf(200), digestOf(201), digestOf(202))
 		const parsed = EvidenceArtifact.parse(result)
-		expect(parsed.schemaVersion).toBe(3)
+		expect(parsed.schemaVersion).toBe(4)
 		expect(parsed.parentDigest).toBeNull()
 		expect(parsed.revisionCount).toBe(0)
 		expect(parsed.runId).toBe(scored.runId)

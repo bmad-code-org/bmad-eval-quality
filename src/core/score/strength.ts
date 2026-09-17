@@ -13,12 +13,15 @@
 import { SEVERITY_LEVELS, type Severity } from '../schemas/eval-contract.ts'
 import type {
 	ClassStrength,
-	Outcome,
+	ReducedProbeOutcome,
 	Strength,
 	StrengthVector,
+	TrialOutcome,
+	Trials,
 } from '../schemas/evidence-artifact.ts'
 import type { QualifiedProbe } from './qualification.ts'
 import type { TrialSetResult } from './reduce-trials.ts'
+import { reductionConsistencyIssuesOf } from './reduction-consistency.ts'
 
 export const DOMINANCE_RELATIONS = [
 	'a-dominates-b',
@@ -31,16 +34,22 @@ export type DominanceRelationValue = (typeof DOMINANCE_RELATIONS)[number]
 
 /**
  * The slice the dominance comparator reads: the aggregate `Strength` plus the
- * per-probe `outcomes` array the severity-floor override needs, since that
- * identity is lost once probes are aggregated into `ClassStrength` counts,
+ * per-probe reductions the severity-floor override needs, since probe
+ * identity is lost once results are aggregated into `ClassStrength` counts,
  * and the `comparabilityKey` the comparator checks before comparing anything
  * else. Every field already lives on `EvidenceArtifact`; this is the read
  * projection the comparator needs from it, not a new artifact shape.
  */
 export type ComparableResult = {
-	readonly outcomes: readonly Outcome[]
+	/** Independently retained identity for the probe whose reduction is present. */
+	readonly scoredProbeId: string | null
+	readonly reducedProbeOutcomes: readonly ReducedProbeOutcome[]
 	readonly strength: Strength
 	readonly comparabilityKey: string
+	/** Detailed evidence used to verify the reduced result before comparison. */
+	readonly outcomes: readonly TrialOutcome[]
+	/** Trial metadata used to verify invalidated attempts before comparison. */
+	readonly trials: Trials
 }
 
 const STRENGTH_VECTOR_CLASSES = [
@@ -188,22 +197,29 @@ const atOrAboveFloor = (severity: Severity, floor: Severity): boolean => {
 }
 
 /**
- * Keyed by the first outcome carrying each `probeId`, not the last: two
- * `Outcome` entries sharing one `probeId` is itself a defect somewhere
- * upstream (this map has no way to tell which entry is the real one), and a
- * silent last-write-wins overwrite would drop the earlier entry from the
- * severity-floor scan below with no trace it was ever there.
+ * A reduced result must be unique by probe identifier. Duplicate aggregate
+ * entries are ambiguous, so the comparator returns `incomparable`.
  */
-const outcomesByProbeId = (
-	outcomes: readonly Outcome[],
-): ReadonlyMap<string, Outcome> => {
-	const byProbeId = new Map<string, Outcome>()
+const reducedOutcomesByProbeId = (
+	outcomes: readonly ReducedProbeOutcome[],
+): ReadonlyMap<string, ReducedProbeOutcome> | null => {
+	const byProbeId = new Map<string, ReducedProbeOutcome>()
 	for (const outcome of outcomes) {
-		if (outcome.probeId === null) continue
-		if (byProbeId.has(outcome.probeId)) continue
+		if (byProbeId.has(outcome.probeId)) return null
 		byProbeId.set(outcome.probeId, outcome)
 	}
 	return byProbeId
+}
+
+const reductionDetailsAgree = (result: ComparableResult): boolean => {
+	return (
+		reductionConsistencyIssuesOf({
+			outcomes: result.outcomes,
+			reducedProbeOutcomes: result.reducedProbeOutcomes,
+			trials: result.trials,
+			scoredProbeId: result.scoredProbeId,
+		}).length === 0
+	)
 }
 
 /**
@@ -211,21 +227,19 @@ const outcomesByProbeId = (
  * `severityFloor`: the condition that disqualifies `favored` from dominating,
  * per AD-7's "a contract that missed a behaviour at or above the scoring
  * policy's severity floor never dominates one that caught it, regardless of
- * the rest of the vector". An outcome with `probeId: null` is not tied to any
- * probe and is outside the vector entirely, so both sides skip it.
+ * the rest of the vector". A missing aggregate on the favored side counts as
+ * a miss once the other side records a catch for that probe.
  */
 function favoredMissesWhatOtherCaught(
-	favored: ComparableResult,
-	other: ComparableResult,
+	favoredByProbeId: ReadonlyMap<string, ReducedProbeOutcome>,
+	otherByProbeId: ReadonlyMap<string, ReducedProbeOutcome>,
 	severityFloor: Severity,
 ): boolean {
-	const favoredByProbeId = outcomesByProbeId(favored.outcomes)
-	const otherByProbeId = outcomesByProbeId(other.outcomes)
 	for (const [probeId, otherOutcome] of otherByProbeId) {
-		if (otherOutcome.state !== 'caught') continue
+		if (!otherOutcome.caught) continue
 		if (!atOrAboveFloor(otherOutcome.severity, severityFloor)) continue
 		const favoredOutcome = favoredByProbeId.get(probeId)
-		if (favoredOutcome === undefined || favoredOutcome.state !== 'caught') {
+		if (favoredOutcome === undefined || !favoredOutcome.caught) {
 			return true
 		}
 	}
@@ -258,16 +272,22 @@ export function compareDominance(
 ): DominanceRelationValue {
 	if (a.comparabilityKey !== b.comparabilityKey) return 'incomparable'
 	if (!a.strength.comparable || !b.strength.comparable) return 'incomparable'
+	if (!reductionDetailsAgree(a) || !reductionDetailsAgree(b)) {
+		return 'incomparable'
+	}
+	const aByProbeId = reducedOutcomesByProbeId(a.reducedProbeOutcomes)
+	const bByProbeId = reducedOutcomesByProbeId(b.reducedProbeOutcomes)
+	if (aByProbeId === null || bByProbeId === null) return 'incomparable'
 	const raw = componentComparison(a.strength.vector, b.strength.vector)
 	if (
 		raw === 'a-dominates-b' &&
-		favoredMissesWhatOtherCaught(a, b, severityFloor)
+		favoredMissesWhatOtherCaught(aByProbeId, bByProbeId, severityFloor)
 	) {
 		return 'incomparable'
 	}
 	if (
 		raw === 'b-dominates-a' &&
-		favoredMissesWhatOtherCaught(b, a, severityFloor)
+		favoredMissesWhatOtherCaught(bByProbeId, aByProbeId, severityFloor)
 	) {
 		return 'incomparable'
 	}

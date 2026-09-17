@@ -21,7 +21,7 @@ export const CENSUS_BY_DOCUMENT: Readonly<Record<string, number>> = {
 	'artifact-reference': 21,
 	'eval-contract': 1304,
 	'evaluator-configuration': 69,
-	'evidence-artifact': 448,
+	'evidence-artifact': 548,
 	'isolation-manifest': 141,
 	'preflight-verdict': 34,
 	'private-artifact-manifest': 31,
@@ -34,25 +34,25 @@ export const CENSUS_BY_DOCUMENT: Readonly<Record<string, number>> = {
 
 /** The same occurrences counted by keyword instead of by document. */
 export const CENSUS_BY_KEYWORD: Readonly<Record<string, number>> = {
-	additionalProperties: 339,
+	additionalProperties: 345,
 	anyOf: 161,
 	const: 110,
-	enum: 77,
+	enum: 81,
 	exclusiveMinimum: 2,
 	format: 1,
-	items: 159,
+	items: 167,
 	maxItems: 4,
-	maximum: 108,
+	maximum: 122,
 	minItems: 43,
-	minLength: 139,
+	minLength: 141,
 	minProperties: 2,
-	minimum: 109,
+	minimum: 123,
 	oneOf: 27,
-	pattern: 194,
+	pattern: 198,
 	prefixItems: 24,
 	propertyNames: 69,
-	required: 270,
-	type: 1414,
+	required: 276,
+	type: 1456,
 }
 
 /**
@@ -61,7 +61,7 @@ export const CENSUS_BY_KEYWORD: Readonly<Record<string, number>> = {
  * keyword's descent being removed, and the total catches an arithmetic slip in
  * either.
  */
-export const CENSUS_TOTAL = 3252
+export const CENSUS_TOTAL = 3352
 
 /** Named `$defs` keys per published document. */
 export const DEFS_BY_DOCUMENT: Readonly<Record<string, number>> = {
@@ -116,6 +116,6 @@ export const ACCEPT_FIXTURE_TOTAL =
 /** The constraint ledger's two dispositions, and the lineage carriers it derives from. */
 export const LEDGER_COUNTS = {
 	inject: 26,
-	notExpressible: 18,
+	notExpressible: 19,
 	lineageCarriers: 11,
 } as const

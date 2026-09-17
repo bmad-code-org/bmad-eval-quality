@@ -1014,6 +1014,88 @@ describe('run: the score command (Story 8.4)', () => {
 		expect(environment.corpusRoots).toEqual(['/corpus'])
 	})
 
+	it('reads repeated --record flags as one comparable three-trial score', async () => {
+		const environment = environmentOf(
+			scoreFiles({
+				'trial-2.json': JSON.stringify({
+					...sealedRunRecordFixtureForScore,
+					trialIndex: 2,
+				}),
+				'trial-3.json': JSON.stringify({
+					...sealedRunRecordFixtureForScore,
+					trialIndex: 3,
+				}),
+				'policy.json': JSON.stringify({
+					...scoringPolicyFixtureForScore,
+					minimumTrialCount: 3,
+				}),
+			}),
+			'',
+			[],
+			SCORE_CORPUS_FILES,
+		)
+		const facade = facadeOf()
+		const { exit } = await invoke(
+			[...SCORE_ARGV, '--record', 'trial-2.json', '--record', 'trial-3.json'],
+			environment,
+			facade,
+		)
+		expect(exit).toBe(EXIT_OK)
+		expect(facade.runScore).toHaveBeenCalledTimes(1)
+		expect(facade.runScore).toHaveBeenCalledWith(
+			expect.objectContaining({
+				record: [
+					sealedRunRecordFixtureForScore,
+					{ ...sealedRunRecordFixtureForScore, trialIndex: 2 },
+					{ ...sealedRunRecordFixtureForScore, trialIndex: 3 },
+				],
+			}),
+		)
+		const artifact = JSON.parse(environment.out[0] ?? '{}') as {
+			readonly strength: { readonly comparable: boolean }
+			readonly trials: { readonly completed: number }
+		}
+		expect(artifact.trials.completed).toBe(3)
+		expect(artifact.strength.comparable).toBe(true)
+		expect(environment.reads).toEqual(
+			expect.arrayContaining(['record.json', 'trial-2.json', 'trial-3.json']),
+		)
+	})
+
+	it('identifies the malformed source among repeated --record flags', async () => {
+		const environment = environmentOf(
+			scoreFiles({
+				'trial-2.json': '{ "trialIndex": ',
+			}),
+		)
+		const { outcome, exit } = await invoke(
+			[...SCORE_ARGV, '--record', 'trial-2.json'],
+			environment,
+		)
+
+		expect(outcome).toEqual({ kind: 'fault' })
+		expect(exit).toBe(EXIT_FAULT)
+		expect(environment.diagnostics[0]).toMatch(
+			/^eval-quality: schema-parse-failure: SealedRunRecord: --record "trial-2\.json" is not JSON: /,
+		)
+		expect(environment.out).toEqual([])
+		expect(environment.writes).toEqual([])
+	})
+
+	it('refuses an output path that collides with any repeated record path', async () => {
+		const environment = environmentOf()
+		const { outcome, exit } = await invoke(
+			[...SCORE_ARGV, '--record', 'trial-2.json', '--out', 'trial-2.json'],
+			environment,
+		)
+		expect(outcome).toEqual({ kind: 'usage-error' })
+		expect(exit).toBe(EXIT_USAGE)
+		expect(environment.diagnostics).toEqual([
+			'eval-quality: usage: --out resolves to "trial-2.json", which is also --record "trial-2.json"',
+		])
+		expect(environment.reads).toEqual([])
+	})
+
 	it('exits 3 on the Invalid rung and writes nothing at all', async () => {
 		const environment = environmentOf(
 			scoreFiles({
@@ -1129,6 +1211,50 @@ describe('run: the score command (Story 8.4)', () => {
 		expect(exit).toBe(EXIT_USAGE)
 		expect(environment.diagnostics[0]).toContain('--corpus-root')
 		expect(environment.writes).toEqual([])
+	})
+
+	it('a private reference on a later record still requires --corpus-root', async () => {
+		const publicRecord = {
+			...sealedRunRecordFixtureForScore,
+			isolationManifestArtifact: {
+				...sealedRunRecordFixtureForScore.isolationManifestArtifact,
+				storage: 'public' as const,
+				path: 'manifest.json',
+				privateRef: null,
+			},
+		}
+		const environment = environmentOf(
+			scoreFiles({
+				'record.json': JSON.stringify(publicRecord),
+				'trial-2.json': JSON.stringify({
+					...sealedRunRecordFixtureForScore,
+					trialIndex: 2,
+				}),
+			}),
+		)
+		const { outcome, exit } = await invoke(
+			[
+				'score',
+				'--record',
+				'record.json',
+				'--record',
+				'trial-2.json',
+				'--contract',
+				'contract.json',
+				'--probe',
+				'probe.json',
+				'--preflight-verdict',
+				'preflight-verdict.json',
+				'--policy',
+				'policy.json',
+				'--corpus-digest',
+				corpusDigestFixture,
+			],
+			environment,
+		)
+		expect(outcome).toEqual({ kind: 'usage-error' })
+		expect(exit).toBe(EXIT_USAGE)
+		expect(environment.diagnostics[0]).toContain('--corpus-root')
 	})
 
 	it('a private-storage isolationManifestArtifact digest mismatch is a fault, exit 5', async () => {

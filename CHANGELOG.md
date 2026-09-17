@@ -10,6 +10,22 @@ body.
 
 ## [Unreleased]
 
+### Changed
+
+- **`score` and `runScore` accept complete trial sets.** Repeat `--record` for each sealed trial on
+  the command line, or pass a record list through the existing `runScore` option. Records retain
+  their own `trialIndex` and must agree on `contractDigest`, `evaluatorConfigurationDigest`, `mode`,
+  `evaluatorRecommendation`, and `runId`. A three-trial set scored under the published default
+  policy now produces a comparable strength vector. Passing one record to `runScore` remains
+  supported.
+- **BREAKING: `EvidenceArtifact` schema version 4 separates trial evidence from reduction.**
+  Detailed oracle outcomes retain their `trialIndex`. A required `reducedProbeOutcomes` field
+  publishes the per-probe trial-set result used by contract strength and dominance, including the
+  selected `trialVotes` and `catchThreshold` needed to recompute and verify the complete reduction.
+  `trials.completedAttempts` retains the exact attempt identities, and `scoredProbeId` independently
+  binds a reduction when a probe has no oracle outcomes. Detailed and reduced outcomes both retain
+  the scored probe behavior's declared severity for severity-floor comparison.
+
 ## [3.3.0] - 2026-09-16
 
 ### Added
@@ -1158,4 +1174,3 @@ before publishing, so the 0.4.0 changes below shipped in this version.
 
 - The pre-flight reducer throws `port-contract-violation` on a repeated `probeId` instead of
   silently taking the last observation.
-

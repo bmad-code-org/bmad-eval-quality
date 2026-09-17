@@ -550,6 +550,7 @@ const EVIDENCE_ARTIFACT_AT_3: Readonly<Record<string, unknown>> = {
 	parentDigest: null,
 	revisionCount: 0,
 	runId: 'version-witness-run',
+	scoredProbeId: 'P-001',
 	scoringVersion: DIGEST,
 	scoringVersionInputs: {
 		// The contract's stamp, which this schema takes as any positive integer.
@@ -567,7 +568,12 @@ const EVIDENCE_ARTIFACT_AT_3: Readonly<Record<string, unknown>> = {
 	exitCode: 0,
 	verdictBasis: [],
 	callerAttestedInputs: [],
-	trials: { declaredMinimum: 1, completed: 0, invalidatedAttempts: [] },
+	trials: {
+		declaredMinimum: 1,
+		completed: 0,
+		completedAttempts: [],
+		invalidatedAttempts: [],
+	},
 	outcomes: [],
 	uncitedFindings: [],
 	coverageGaps: [],
@@ -593,6 +599,12 @@ const EVIDENCE_ARTIFACT_AT_3: Readonly<Record<string, unknown>> = {
 	uncitedFindingGaps: [],
 	systemRecommendationRecorded: 'FAIL',
 	systemRecommendationNote: null,
+}
+
+const EVIDENCE_ARTIFACT_AT_4: Readonly<Record<string, unknown>> = {
+	...EVIDENCE_ARTIFACT_AT_3,
+	schemaVersion: 4,
+	reducedProbeOutcomes: [],
 }
 
 const SCORING_POLICY_AT_2: Readonly<Record<string, unknown>> = {
@@ -814,15 +826,15 @@ const SHAPES: readonly {
 		current: EVIDENCE_ARTIFACT_SCHEMA_VERSION,
 		parse: (value) => EvidenceArtifact.safeParse(value),
 		predecessor:
-			'declares no `uncitedFindingGaps` on the contract-scoring branch',
+			'declares no reduced per-probe outcomes and no trialIndex on detailed outcomes',
 		shapeByVersion: {
-			3: (stamp) => ({ ...EVIDENCE_ARTIFACT_AT_3, schemaVersion: stamp }),
-			2: (stamp) => {
+			4: (stamp) => ({ ...EVIDENCE_ARTIFACT_AT_4, schemaVersion: stamp }),
+			3: (stamp) => {
 				const artifact: Record<string, unknown> = {
-					...EVIDENCE_ARTIFACT_AT_3,
+					...EVIDENCE_ARTIFACT_AT_4,
 					schemaVersion: stamp,
 				}
-				delete artifact.uncitedFindingGaps
+				delete artifact.reducedProbeOutcomes
 				return artifact
 			},
 		},
