@@ -23,7 +23,8 @@ body.
   publishes the per-probe trial-set result used by contract strength and dominance, including the
   selected `trialVotes` and `catchThreshold` needed to recompute and verify the complete reduction.
   `trials.completedAttempts` retains the exact attempt identities, and `scoredProbeId` independently
-  binds a reduction when a probe has no oracle outcomes.
+  binds a reduction when a probe has no oracle outcomes. Detailed and reduced outcomes both retain
+  the scored probe behavior's declared severity for severity-floor comparison.
 
 ## [3.3.0] - 2026-09-16
 

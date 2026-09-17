@@ -114,16 +114,7 @@ export function reductionConsistencyIssuesOf(
 					'reduced probe must match the independently retained scored probe',
 			})
 		}
-		const selectedDetails = details.filter((outcome) =>
-			reduced.trialVotes.some(
-				(vote) =>
-					vote.trialIndex === outcome.trialIndex &&
-					vote.state === outcome.state,
-			),
-		)
-		if (
-			selectedDetails.some((outcome) => outcome.severity !== reduced.severity)
-		) {
+		if (details.some((outcome) => outcome.severity !== reduced.severity)) {
 			issues.push({
 				path: [...base, 'severity'],
 				message:

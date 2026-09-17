@@ -207,6 +207,9 @@ export const TrialOutcome = Outcome.extend({
 		.describe(
 			'The one-based trial that produced this oracle outcome. Required because a trial set may resolve the same oracle and probe differently across attempts.',
 		),
+	severity: Severity.describe(
+		"The scored probe behavior's declared severity. The internal ladder may use a uniquely resolved finding's severity for its own verdict, while dominance compares the probe severity retained here and on ReducedProbeOutcome.",
+	),
 })
 
 /** One detailed oracle outcome tied to the trial that produced it. */

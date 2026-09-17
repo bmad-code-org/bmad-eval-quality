@@ -13,7 +13,11 @@ import { RuntimeFault } from '../../src/core/schemas/faults.ts'
 import * as scoreModule from '../../src/core/score/score.ts'
 import { compareDominance } from '../../src/core/score/strength.ts'
 import type { CorpusPort } from '../../src/ports/corpus-port.ts'
-import { defectFinding, defectFired } from '../score/fixtures/probe-witness.ts'
+import {
+	canary,
+	defectFinding,
+	defectFired,
+} from '../score/fixtures/probe-witness.ts'
 import {
 	corpusDigestFixture,
 	evaluatorConfigurationFixture,
@@ -252,6 +256,34 @@ describe('runScore: the full chain over the I/O & Edge-Case Matrix', () => {
 		expect(a).not.toBeNull()
 		expect(b).not.toBeNull()
 		expect(compareDominance(a!, b!, 'low')).toBe('a-dominates-b')
+	})
+
+	it('emits probe severity when a selected finding has a different severity', async () => {
+		const probe = { ...canary, probeId: 'P-002' }
+		const result = await run({
+			probe,
+			record: {
+				...sealedRunRecordFixtureForScore,
+				oracleDispositions: [
+					{
+						oracleId: 'O-001',
+						disposition: 'violated',
+						observationIds: ['obs-1'],
+						note: null,
+					},
+				],
+				findings: [
+					defectFinding(['obs-1'], {
+						probeId: probe.probeId,
+						quote: '200',
+					}),
+				],
+			},
+		})
+
+		expect(result.artifact).not.toBeNull()
+		expect(result.artifact?.outcomes[0]?.severity).toBe('low')
+		expect(result.artifact?.reducedProbeOutcomes[0]?.severity).toBe('low')
 	})
 
 	it('keeps dominance stable when caught and missed states trade trialIndex values', async () => {

@@ -56,7 +56,7 @@ Repeat `--record` once per trial on the `score` command, or pass the complete li
 Each sealed record carries its own `trialIndex`.
 All records in the set must agree on `contractDigest`, `evaluatorConfigurationDigest`, `mode`, `evaluatorRecommendation`, and `runId`.
 
-The evidence artifact keeps each detailed oracle outcome with its `trialIndex` and publishes the reduced per-probe outcome separately. `trials.completedAttempts` retains the exact trial identities, and `scoredProbeId` binds an empty reduction for a legitimate no-oracle probe. Each reduction retains the selected `trialVotes` and the policy's `catchThreshold`, so its counts, invalidations, severity, and caught decision can be verified exactly. Contract strength and dominance use the reduced result after checking it against the detailed trial evidence.
+The evidence artifact keeps each detailed oracle outcome with its `trialIndex` and publishes the reduced per-probe outcome separately. `trials.completedAttempts` retains the exact trial identities, and `scoredProbeId` binds an empty reduction for a legitimate no-oracle probe. Detailed and reduced outcomes carry the scored probe behavior's declared severity. Each reduction retains the selected `trialVotes` and the policy's `catchThreshold`, so its counts, invalidations, severity, and caught decision can be verified exactly. Contract strength and dominance use the reduced result after checking it against the detailed trial evidence.
 
 The strength vector becomes comparable when the completed set meets the policy's declared minimum.
 

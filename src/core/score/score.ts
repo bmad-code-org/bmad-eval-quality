@@ -463,6 +463,9 @@ export const score: ScoreStage<
 	const signedProbe = signedProbeOf(probe)
 	const designatedOracleId = designatedOracleIdOf(probe, contract)
 	const probeSigned = !probe.expectedClean && probe.defectSignature !== null
+	const probeSeverity =
+		contract.behaviors.find((behavior) => behavior.id === probe.behaviorId)
+			?.severity ?? 'low'
 
 	// Plan indexing and the resolvers built from it: contract-only, so built
 	// once and reused across every trial. `resolveCapturedBindings` walks
@@ -694,7 +697,7 @@ export const score: ScoreStage<
 				// one probe.
 				probeId: probe.probeId,
 				state: resolution.state,
-				severity,
+				severity: probeSeverity,
 				// `ORACLE_DISPOSITIONS`' third member, `'not-attempted'`, on a
 				// `null` local `disposition`: no disposition was recorded for
 				// this oracle, or the ambiguity guard above fired. Both mean
@@ -749,9 +752,6 @@ export const score: ScoreStage<
 	}
 
 	const reduced = reduceTrialSet(votes, policy.catchThreshold)
-	const probeSeverity =
-		contract.behaviors.find((behavior) => behavior.id === probe.behaviorId)
-			?.severity ?? 'low'
 	const reducedProbeOutcomes: ReducedProbeOutcome[] = [
 		{
 			probeId: probe.probeId,

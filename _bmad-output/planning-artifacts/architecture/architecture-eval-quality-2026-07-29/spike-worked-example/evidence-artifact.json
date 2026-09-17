@@ -78,7 +78,7 @@
       "selectedObservationIds": [
         "obs-003"
       ],
-      "severity": "material",
+      "severity": "critical",
       "state": "confirmed",
       "trialIndex": 1
     },
@@ -107,7 +107,7 @@
       "selectedObservationIds": [
         "obs-003"
       ],
-      "severity": "material",
+      "severity": "critical",
       "state": "confirmed",
       "trialIndex": 1
     },
@@ -125,7 +125,7 @@
       "selectedObservationIds": [
         "obs-002"
       ],
-      "severity": "material",
+      "severity": "critical",
       "state": "abstained",
       "trialIndex": 1
     },
@@ -152,7 +152,7 @@
       "probeId": "P-001",
       "resolvedFrom": null,
       "selectedObservationIds": [],
-      "severity": "low",
+      "severity": "critical",
       "state": "unreached",
       "trialIndex": 1
     }

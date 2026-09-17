@@ -228,7 +228,8 @@
                   "low",
                   "material",
                   "critical"
-                ]
+                ],
+                "description": "The scored probe behavior's declared severity. The internal ladder may use a uniquely resolved finding's severity for its own verdict, while dominance compares the probe severity retained here and on ReducedProbeOutcome."
               },
               "disposition": {
                 "type": "string",
@@ -948,7 +949,8 @@
                   "low",
                   "material",
                   "critical"
-                ]
+                ],
+                "description": "The scored probe behavior's declared severity. The internal ladder may use a uniquely resolved finding's severity for its own verdict, while dominance compares the probe severity retained here and on ReducedProbeOutcome."
               },
               "disposition": {
                 "type": "string",
