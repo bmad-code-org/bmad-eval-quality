@@ -137,8 +137,8 @@ const qualificationOf = (sealed: SealedProbeSet): QualificationResult => {
 const cleanTrialSetResult: TrialSetResult = {
 	exercised: true,
 	caught: true,
-	validCount: 3,
-	caughtCount: 2,
+	validCount: 1,
+	caughtCount: 1,
 	invalidatedAttempts: [],
 }
 
@@ -273,6 +273,7 @@ const scoredOf = (
 				severity: 'critical',
 				exercised: cleanTrialSetResult.exercised,
 				caught: cleanTrialSetResult.caught,
+				catchThreshold: policy.catchThreshold,
 				validCount: cleanTrialSetResult.validCount,
 				caughtCount: cleanTrialSetResult.caughtCount,
 				invalidatedAttempts: [...cleanTrialSetResult.invalidatedAttempts],
@@ -450,6 +451,40 @@ describe('emit: the I/O & Edge-Case Matrix', () => {
 		} as TrialOutcome
 		expect(() => emitOf({ outcomes: [invalidOutcome] })).toThrow(
 			/first at "outcomes\[0\]\.oracleId"/,
+		)
+	})
+
+	it('refuses a reduction whose caught decision contradicts its counts and threshold', () => {
+		const scored = scoredOf()
+		const inconsistent = {
+			...scored,
+			reducedProbeOutcomes: scored.reducedProbeOutcomes.map((outcome) => ({
+				...outcome,
+				caught: false,
+			})),
+		}
+
+		expect(() =>
+			emit(inconsistent, digestOf(200), digestOf(201), digestOf(202)),
+		).toThrow(
+			/trial reduction is inconsistent.*reducedProbeOutcomes\[0\]\.caught/,
+		)
+	})
+
+	it('refuses a reduced caught count unsupported by detailed trial outcomes', () => {
+		const scored = scoredOf()
+		const inconsistent = {
+			...scored,
+			outcomes: scored.outcomes.map((outcome) => ({
+				...outcome,
+				state: 'missed' as const,
+			})),
+		}
+
+		expect(() =>
+			emit(inconsistent, digestOf(200), digestOf(201), digestOf(202)),
+		).toThrow(
+			/trial reduction is inconsistent.*reducedProbeOutcomes\[0\]\.caughtCount/,
 		)
 	})
 })

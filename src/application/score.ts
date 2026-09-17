@@ -249,10 +249,7 @@ async function checkIsolationManifestArtifact(
 ): Promise<void> {
 	const reference = record.isolationManifestArtifact
 	if (reference.storage !== 'private') return
-	const resolvedPort = requirePort(
-		port,
-		'SealedRunRecord.isolationManifestArtifact',
-	)
+	const resolvedPort = requirePort(port, artifactPath)
 	const resolved = await resolvedDigestOf(
 		reference.privateRef,
 		resolvedPort,

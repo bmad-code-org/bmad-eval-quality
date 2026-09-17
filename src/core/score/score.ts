@@ -29,6 +29,7 @@
  * rather than a new one.
  */
 
+import { digestArtifact } from '../canonical/digest.ts'
 import { walkExpression } from '../compile/expression-legality.ts'
 import { checkSchemaVersion } from '../compile/schema-version.ts'
 import { evaluateCoverage } from '../coverage/coverage.ts'
@@ -286,27 +287,29 @@ function operationIdentifierCollisionsOf(
 /**
  * The tenth new Invalid condition: a caller assembling a trial set from
  * records that disagree on their set identity fields or repeat a trial index.
- * Every trial is compared against the first: a trial set is not a genuine
- * set once one trial's own value is picked as authoritative, regardless of
- * which one, so basis lines name every disagreeing pair. `runId` joined the
- * other two once `ValidatedObservations` carried it: batching trials from
- * two different runs into one trial set is the single most important
- * cross-trial mixup this check exists to catch, and it read the same
- * fallback posture as the other two without being compared like them.
+ * Every trial's contract digest is compared with the supplied contract's
+ * canonical digest. The remaining shared fields are compared against the
+ * first trial: a trial set is not genuine once one trial's value is picked
+ * as authoritative, so basis lines name every disagreeing pair. `runId`
+ * joined the other fields once `ValidatedObservations` carried it: batching
+ * trials from two different runs into one set is the most important
+ * cross-trial mixup this check exists to catch.
  */
 function trialSetDisagreementsOf(
+	contract: EvalContract,
 	trials: readonly ValidatedObservations[],
 ): readonly string[] {
 	const first = trials[0]
 	if (first === undefined) return []
 	const disagreements: string[] = []
+	const computedContractDigest = digestArtifact(contract, 'EvalContract')
 	trials.forEach((trial, index) => {
-		if (index === 0) return
-		if (trial.contractDigest !== first.contractDigest) {
+		if (trial.contractDigest !== computedContractDigest) {
 			disagreements.push(
-				`contractDigest: trial ${first.trialIndex} = "${first.contractDigest}", trial ${trial.trialIndex} = "${trial.contractDigest}"`,
+				`contractDigest: trial ${trial.trialIndex} = "${trial.contractDigest}", supplied EvalContract = "${computedContractDigest}"`,
 			)
 		}
+		if (index === 0) return
 		if (
 			trial.evaluatorConfigurationDigest !== first.evaluatorConfigurationDigest
 		) {
@@ -756,6 +759,7 @@ export const score: ScoreStage<
 			severity: probeSeverity,
 			exercised: reduced.exercised,
 			caught: reduced.caught,
+			catchThreshold: policy.catchThreshold,
 			validCount: reduced.validCount,
 			caughtCount: reduced.caughtCount,
 			invalidatedAttempts: [...reduced.invalidatedAttempts],
@@ -794,7 +798,7 @@ export const score: ScoreStage<
 		contract,
 		trials,
 	)
-	const trialSetDisagreements = trialSetDisagreementsOf(trials)
+	const trialSetDisagreements = trialSetDisagreementsOf(contract, trials)
 
 	const evidenceIntegrity: EvidenceIntegrityInputs = {
 		// Declared, not derived: no declared input or caller-supplied

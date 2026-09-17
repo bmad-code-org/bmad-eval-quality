@@ -195,7 +195,7 @@ describe('the exact serialisation (AC 3), asserted independently of the drift ch
 describe('the ledger drives the injection, by stated address (AC 2)', () => {
 	// The split itself lives in `published-census.ts`, which every file that
 	// asserts on it reads, so a ledger change moves one number.
-	it('has twenty-six inject entries to act on, and seventeen not-expressible left alone', () => {
+	it('has twenty-six inject entries to act on, and nineteen not-expressible left alone', () => {
 		expect(INJECT_ENTRIES).toHaveLength(LEDGER_COUNTS.inject)
 		expect(CONSTRAINT_LEDGER.length - INJECT_ENTRIES.length).toBe(
 			LEDGER_COUNTS.notExpressible,

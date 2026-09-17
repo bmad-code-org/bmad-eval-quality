@@ -160,6 +160,7 @@
   "parentDigest": null,
   "reducedProbeOutcomes": [
     {
+      "catchThreshold": 0.5,
       "caught": true,
       "caughtCount": 1,
       "exercised": true,

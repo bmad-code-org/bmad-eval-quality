@@ -231,6 +231,7 @@ describe('runScore: the full chain over the I/O & Edge-Case Matrix', () => {
 				severity: 'low',
 				exercised: true,
 				caught: true,
+				catchThreshold: 0.5,
 				validCount: 3,
 				caughtCount: 2,
 				invalidatedAttempts: [],
@@ -422,6 +423,29 @@ describe('runScore: the two digest-verification obligations', () => {
 
 	it('a private reference with no CorpusPort supplied throws a bypass-only TypeError, never a RuntimeFault', async () => {
 		await expect(run({ port: undefined })).rejects.toThrow(TypeError)
+	})
+
+	it('a later trial missing its CorpusPort is identified by trialIndex', async () => {
+		const publicReference = {
+			storage: 'public' as const,
+			path: 'evidence/manifest.json',
+			privateRef: null,
+			digest: isolationManifestBytesDigest,
+		}
+		await expect(
+			run({
+				record: [
+					{
+						...sealedRunRecordFixtureForScore,
+						isolationManifestArtifact: publicReference,
+					},
+					{ ...sealedRunRecordFixtureForScore, trialIndex: 7 },
+				],
+				port: undefined,
+			}),
+		).rejects.toThrow(
+			'runScore(): SealedRunRecord[trialIndex=7].isolationManifestArtifact names a private reference, but no CorpusPort was supplied',
+		)
 	})
 })
 

@@ -398,7 +398,7 @@ Its contract is the same object `corpus/dev/contracts/checklist-selection.json` 
 
 The lab reports one structural limit: a skill whose only deliverable is a written file cannot carry a qualifying defect signature, for the artifact-channel reason above. Plan the signature on `exit-code` or on the stream the descriptor nominates, which is what this contract does.
 
-Each runnable score command above supplies one record, so each strength vector reports one completed trial. Repeat `--record` with records carrying distinct `trialIndex` values to meet the policy minimum.
+Each runnable score command above supplies one record, so each strength vector reports one completed trial. Repeat `--record` to meet the policy minimum. Every record carries a distinct `trialIndex`; every record agrees on `contractDigest`, `evaluatorConfigurationDigest`, `mode`, `evaluatorRecommendation`, and `runId`.
 
 ## In BMAD terms
 

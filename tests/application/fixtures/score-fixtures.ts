@@ -138,8 +138,10 @@ export const evaluatorConfigurationDigestFixture = digestArtifact(
 	'EvaluatorConfiguration',
 )
 
-const scoreContractDigestFixture =
-	'sha256:0000000000000000000000000000000000000000000000000000000000000020'
+const scoreContractDigestFixture = digestArtifact(
+	scoreContractFixture,
+	'EvalContract',
+)
 
 /** The withheld shape for every one of AD-16's seven forbidden inputs. */
 const withheld = { withheld: true, note: null }

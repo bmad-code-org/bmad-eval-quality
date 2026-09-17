@@ -219,6 +219,13 @@ export const ReducedProbeOutcome = z.strictObject({
 	),
 	exercised: z.boolean(),
 	caught: z.boolean(),
+	catchThreshold: z
+		.number()
+		.min(0)
+		.max(1)
+		.describe(
+			'The scoring-policy threshold used to derive caught from caughtCount / validCount. Recorded with the reduction so a consumer can verify the policy-dependent result without resolving the policy digest.',
+		),
 	validCount: z.int().min(0),
 	caughtCount: z.int().min(0),
 	invalidatedAttempts: z.array(InvalidatedAttempt),

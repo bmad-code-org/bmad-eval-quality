@@ -1062,6 +1062,26 @@ describe('run: the score command (Story 8.4)', () => {
 		)
 	})
 
+	it('identifies the malformed source among repeated --record flags', async () => {
+		const environment = environmentOf(
+			scoreFiles({
+				'trial-2.json': '{ "trialIndex": ',
+			}),
+		)
+		const { outcome, exit } = await invoke(
+			[...SCORE_ARGV, '--record', 'trial-2.json'],
+			environment,
+		)
+
+		expect(outcome).toEqual({ kind: 'fault' })
+		expect(exit).toBe(EXIT_FAULT)
+		expect(environment.diagnostics[0]).toMatch(
+			/^eval-quality: schema-parse-failure: SealedRunRecord: --record "trial-2\.json" is not JSON: /,
+		)
+		expect(environment.out).toEqual([])
+		expect(environment.writes).toEqual([])
+	})
+
 	it('refuses an output path that collides with any repeated record path', async () => {
 		const environment = environmentOf()
 		const { outcome, exit } = await invoke(

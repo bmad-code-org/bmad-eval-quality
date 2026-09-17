@@ -116,6 +116,6 @@ export const ACCEPT_FIXTURE_TOTAL =
 /** The constraint ledger's two dispositions, and the lineage carriers it derives from. */
 export const LEDGER_COUNTS = {
 	inject: 26,
-	notExpressible: 18,
+	notExpressible: 19,
 	lineageCarriers: 11,
 } as const

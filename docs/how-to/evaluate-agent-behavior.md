@@ -467,7 +467,7 @@ A defect signature still cannot address a written file, so a defect whose only o
 There is no multi-turn or transcript surface, so an agent whose interesting behavior is a conversation is out of shape for this.
 The interface vocabulary also names `web`, and a contract declaring it is rejected with `unsupported-interface-kind`.
 
-The runnable chain above supplies one `--record`, so its strength vector reports one completed trial. Repeat the flag with records carrying distinct `trialIndex` values to meet the policy minimum and make the vector comparable.
+The runnable chain above supplies one `--record`, so its strength vector reports one completed trial. Repeat the flag to meet the policy minimum and make the vector comparable. Every record carries a distinct `trialIndex`; every record agrees on `contractDigest`, `evaluatorConfigurationDigest`, `mode`, `evaluatorRecommendation`, and `runId`.
 
 ## In BMAD terms
 

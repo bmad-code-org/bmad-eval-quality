@@ -459,6 +459,12 @@ describe('the published package surface', () => {
 		const compare = barrel.compareDominance as Expected
 		const side = (caught: number): ComparableResult => ({
 			reducedProbeOutcomes: [],
+			outcomes: [],
+			trials: {
+				declaredMinimum: 1,
+				completed: 0,
+				invalidatedAttempts: [],
+			},
 			strength: {
 				denominator: 'unique qualified probe identifiers exercised',
 				basis: 'measured',

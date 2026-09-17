@@ -82,14 +82,14 @@ describe('the constraint ledger', () => {
 		}
 	})
 
-	// Seven entry classes: arity, a binding-channel minimum on each of the two
+	// The entry classes cover arity, a binding-channel minimum on each of the two
 	// artifacts that declare one, the AD-36 numeric domain, the operand-type
 	// declaration, one lineage biconditional per lineage-bearing artifact plus
 	// AD-18's two secrets prohibitions, the observation-sequence uniqueness gap
-	// (owed item 2), and AD-40's signature-required rule, which the gate rather
-	// than the schema enforces. A ledger much larger than this is a signal the
-	// schema over-refined.
-	it('holds one arity entry per tuple-carrying form per expression-bearing document, one lineage entry per carrier, and six besides', () => {
+	// (owed item 2), AD-40's signature-required rule, and the evidence artifact's
+	// caller-attested mode and reduction-consistency rules. A ledger much larger
+	// than this is a signal the schema over-refined.
+	it('holds one arity entry per tuple-carrying form per expression-bearing document, one lineage entry per carrier, and eight besides', () => {
 		const arityEntries = CONSTRAINT_LEDGER.filter((entry) =>
 			entry.id.startsWith('operator-arity-'),
 		)
@@ -107,13 +107,13 @@ describe('the constraint ledger', () => {
 			(artifact) => artifact.carriesLineage,
 		)
 		expect(lineageCarriers).toHaveLength(LEDGER_COUNTS.lineageCarriers)
-		// The literal 7 is the group that is neither arity, nor lineage, nor
+		// The literal 8 is the group that is neither arity, nor lineage, nor
 		// AD-18's two: the two binding-channel minimums, the numeric domain, the
 		// operand-type declaration, the observation-sequence gap, AD-40's
-		// signature-required rule, and the evidence artifact's caller-attested
-		// `mode`. The trailing 2 stays AD-18's pair.
+		// signature-required rule, plus the evidence artifact's caller-attested
+		// `mode` and reduction-consistency rule. The trailing 2 stays AD-18's pair.
 		expect(CONSTRAINT_LEDGER).toHaveLength(
-			arityEntries.length + 7 + lineageCarriers.length + 2,
+			arityEntries.length + 8 + lineageCarriers.length + 2,
 		)
 	})
 
@@ -202,6 +202,7 @@ describe('the constraint ledger', () => {
 		'secrets-prohibition-private-artifact-manifest',
 		'secrets-prohibition-evaluator-configuration',
 		'observation-sequence-unique',
+		'evidence-reduction-consistency',
 		'defect-signature-required',
 	])('marks %s not-expressible with a reason', (id) => {
 		const entry = constraintLedgerEntry(id)

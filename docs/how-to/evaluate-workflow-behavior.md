@@ -330,7 +330,7 @@ Two contracts in `corpus/dev/contracts/` declare a `fixtureReset`, and `captured
 Its four control legs are `preflight-control-observe`, `preflight-control-mutate` against `create-thing`, the contract's own `reset-the-store` against `reset-things`, and `preflight-control-observe-2`, in that order.
 `notes-tool-server.json` declares the other reset and its pre-flight runs too, in `tests/application/mcp-end-to-end.test.ts`, which asserts the verdict passed.
 
-The score command in this lab supplies one record, so its strength vector reports one completed trial. Repeat `--record` with records carrying distinct `trialIndex` values to meet the policy minimum and make the vector comparable.
+The score command in this lab supplies one record, so its strength vector reports one completed trial. Repeat `--record` to meet the policy minimum and make the vector comparable. Every record carries a distinct `trialIndex`; every record agrees on `contractDigest`, `evaluatorConfigurationDigest`, `mode`, `evaluatorRecommendation`, and `runId`.
 
 ## In BMAD terms
 

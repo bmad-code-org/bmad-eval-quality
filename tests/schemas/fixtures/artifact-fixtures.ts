@@ -1046,6 +1046,18 @@ const evidenceCommon = {
 			},
 		},
 		{
+			oracleId: 'O-001',
+			trialIndex: 2,
+			probeId: 'P-001',
+			state: 'oracle-error',
+			severity: 'critical',
+			disposition: 'not-attempted',
+			resolvedFrom: null,
+			corroboration: 'not-evaluable',
+			selectedObservationIds: [],
+			checkResolution: null,
+		},
+		{
 			// The `not-evaluable` corroboration case: the expression never ran, which
 			// AD-33 keeps distinct from AD-4's `insufficient-evidence`.
 			oracleId: 'O-003',
@@ -1066,8 +1078,9 @@ const evidenceCommon = {
 			severity: 'critical',
 			exercised: true,
 			caught: true,
-			validCount: 2,
-			caughtCount: 2,
+			catchThreshold: 0.5,
+			validCount: 1,
+			caughtCount: 1,
 			invalidatedAttempts: [
 				{ attempt: 2, reason: 'port fault during probing' },
 			],

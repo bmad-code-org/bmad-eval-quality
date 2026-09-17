@@ -312,6 +312,12 @@
               "caught": {
                 "type": "boolean"
               },
+              "catchThreshold": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1,
+                "description": "The scoring-policy threshold used to derive caught from caughtCount / validCount. Recorded with the reduction so a consumer can verify the policy-dependent result without resolving the policy digest."
+              },
               "validCount": {
                 "type": "integer",
                 "minimum": 0,
@@ -351,6 +357,7 @@
               "severity",
               "exercised",
               "caught",
+              "catchThreshold",
               "validCount",
               "caughtCount",
               "invalidatedAttempts"
@@ -972,6 +979,12 @@
               "caught": {
                 "type": "boolean"
               },
+              "catchThreshold": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1,
+                "description": "The scoring-policy threshold used to derive caught from caughtCount / validCount. Recorded with the reduction so a consumer can verify the policy-dependent result without resolving the policy digest."
+              },
               "validCount": {
                 "type": "integer",
                 "minimum": 0,
@@ -1011,6 +1024,7 @@
               "severity",
               "exercised",
               "caught",
+              "catchThreshold",
               "validCount",
               "caughtCount",
               "invalidatedAttempts"

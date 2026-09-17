@@ -20,7 +20,8 @@ body.
   supported.
 - **BREAKING: `EvidenceArtifact` schema version 4 separates trial evidence from reduction.**
   Detailed oracle outcomes retain their `trialIndex`. A required `reducedProbeOutcomes` field
-  publishes the per-probe trial-set result used by contract strength and dominance.
+  publishes the per-probe trial-set result used by contract strength and dominance, including the
+  `catchThreshold` used to verify its caught decision.
 
 ## [3.3.0] - 2026-09-16
 

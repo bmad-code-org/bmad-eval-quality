@@ -9,6 +9,7 @@ import {
 	type ReducedProbeOutcome,
 	type Strength,
 	StrengthVector,
+	type TrialOutcome,
 } from '../../src/core/schemas/evidence-artifact.ts'
 import type { Probe } from '../../src/core/schemas/probe.ts'
 import type {
@@ -196,6 +197,7 @@ const outcomeOf = (
 	severity,
 	exercised: true,
 	caught: state === 'caught',
+	catchThreshold: 0.5,
 	validCount: 1,
 	caughtCount: state === 'caught' ? 1 : 0,
 	invalidatedAttempts: [],
@@ -209,11 +211,36 @@ const comparableOf = (
 	reducedProbeOutcomes: readonly ReducedProbeOutcome[] = [],
 	comparabilityKey = KEY,
 	comparable = true,
-): ComparableResult => ({
-	reducedProbeOutcomes,
-	strength: strengthOf(vector, comparable),
-	comparabilityKey,
-})
+): ComparableResult => {
+	const outcomes: TrialOutcome[] = reducedProbeOutcomes.flatMap((reduced) =>
+		Array.from({ length: reduced.validCount }, (_, index) => ({
+			oracleId: `O-${String(index + 1).padStart(3, '0')}`,
+			probeId: reduced.probeId,
+			trialIndex: index + 1,
+			state:
+				index < reduced.caughtCount ? ('caught' as const) : ('missed' as const),
+			severity: reduced.severity,
+			disposition: 'violated' as const,
+			resolvedFrom: null,
+			corroboration: 'agrees' as const,
+			selectedObservationIds: [],
+			checkResolution: null,
+		})),
+	)
+	return {
+		reducedProbeOutcomes,
+		outcomes,
+		trials: {
+			declaredMinimum: 1,
+			completed: outcomes.length,
+			invalidatedAttempts: reducedProbeOutcomes.flatMap(
+				(outcome) => outcome.invalidatedAttempts,
+			),
+		},
+		strength: strengthOf(vector, comparable),
+		comparabilityKey,
+	}
+}
 
 const NULL_VECTOR: StrengthVector = {
 	defect: null,
@@ -458,6 +485,63 @@ describe('compareDominance', () => {
 				'material',
 			),
 		).toBe('incomparable')
+	})
+
+	it('fails closed when a reduced catch contradicts its detailed trial outcome', () => {
+		const stronger = comparableOf(
+			{
+				...NULL_VECTOR,
+				defect: { caught: 3, exercised: 4, rate: 0.75 },
+			},
+			[outcomeOf('P-shared', 'caught', 'critical')],
+		)
+		const contradictory: ComparableResult = {
+			...stronger,
+			outcomes: stronger.outcomes.map((outcome) => ({
+				...outcome,
+				state: 'missed' as const,
+			})),
+		}
+		const weaker = comparableOf(
+			{
+				...NULL_VECTOR,
+				defect: { caught: 1, exercised: 4, rate: 0.25 },
+			},
+			[outcomeOf('P-shared', 'missed', 'critical')],
+		)
+
+		expect(compareDominance(stronger, weaker, 'material')).toBe('a-dominates-b')
+		expect(compareDominance(contradictory, weaker, 'material')).toBe(
+			'incomparable',
+		)
+	})
+
+	it('fails closed when a reduced caught flag contradicts its counts and threshold', () => {
+		const stronger = comparableOf(
+			{
+				...NULL_VECTOR,
+				defect: { caught: 3, exercised: 4, rate: 0.75 },
+			},
+			[outcomeOf('P-shared', 'caught', 'critical')],
+		)
+		const contradictory: ComparableResult = {
+			...stronger,
+			reducedProbeOutcomes: stronger.reducedProbeOutcomes.map((outcome) => ({
+				...outcome,
+				caught: false,
+			})),
+		}
+		const weaker = comparableOf(
+			{
+				...NULL_VECTOR,
+				defect: { caught: 1, exercised: 4, rate: 0.25 },
+			},
+			[outcomeOf('P-shared', 'missed', 'critical')],
+		)
+
+		expect(compareDominance(contradictory, weaker, 'material')).toBe(
+			'incomparable',
+		)
 	})
 })
 

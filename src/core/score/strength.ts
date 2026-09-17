@@ -16,9 +16,12 @@ import type {
 	ReducedProbeOutcome,
 	Strength,
 	StrengthVector,
+	TrialOutcome,
+	Trials,
 } from '../schemas/evidence-artifact.ts'
 import type { QualifiedProbe } from './qualification.ts'
 import type { TrialSetResult } from './reduce-trials.ts'
+import { reductionConsistencyIssuesOf } from './reduction-consistency.ts'
 
 export const DOMINANCE_RELATIONS = [
 	'a-dominates-b',
@@ -41,6 +44,10 @@ export type ComparableResult = {
 	readonly reducedProbeOutcomes: readonly ReducedProbeOutcome[]
 	readonly strength: Strength
 	readonly comparabilityKey: string
+	/** Detailed evidence used to verify the reduced result before comparison. */
+	readonly outcomes: readonly TrialOutcome[]
+	/** Trial metadata used to verify invalidated attempts before comparison. */
+	readonly trials: Trials
 }
 
 const STRENGTH_VECTOR_CLASSES = [
@@ -202,6 +209,16 @@ const reducedOutcomesByProbeId = (
 	return byProbeId
 }
 
+const reductionDetailsAgree = (result: ComparableResult): boolean => {
+	return (
+		reductionConsistencyIssuesOf({
+			outcomes: result.outcomes,
+			reducedProbeOutcomes: result.reducedProbeOutcomes,
+			trials: result.trials,
+		}).length === 0
+	)
+}
+
 /**
  * Whether `favored` failed to catch a probe that `other` caught at or above
  * `severityFloor`: the condition that disqualifies `favored` from dominating,
@@ -252,6 +269,9 @@ export function compareDominance(
 ): DominanceRelationValue {
 	if (a.comparabilityKey !== b.comparabilityKey) return 'incomparable'
 	if (!a.strength.comparable || !b.strength.comparable) return 'incomparable'
+	if (!reductionDetailsAgree(a) || !reductionDetailsAgree(b)) {
+		return 'incomparable'
+	}
 	const aByProbeId = reducedOutcomesByProbeId(a.reducedProbeOutcomes)
 	const bByProbeId = reducedOutcomesByProbeId(b.reducedProbeOutcomes)
 	if (aByProbeId === null || bByProbeId === null) return 'incomparable'

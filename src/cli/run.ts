@@ -226,10 +226,12 @@ async function readJson(
 	} catch (error) {
 		// AD-28's `schema-parse-failure` covers an artifact that does not parse,
 		// and the CLI is the boundary that deserializes.
+		const recordSource =
+			key === 'record' && value !== undefined ? ` ${JSON.stringify(value)}` : ''
 		throw new RuntimeFault(
 			'schema-parse-failure',
 			INPUT_ARTIFACT_PATH[key],
-			`--${key} is not JSON: ${error instanceof Error ? error.message : String(error)}`,
+			`--${key}${recordSource} is not JSON: ${error instanceof Error ? error.message : String(error)}`,
 			{ cause: error },
 		)
 	}
