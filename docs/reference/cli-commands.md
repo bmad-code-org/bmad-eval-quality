@@ -99,7 +99,7 @@ On the Invalid rung the command exits `3` and writes no artifact: no legal `Evid
 
 A probe that fails AD-9's qualification gate resolves an oracle to `infrastructure-error` wherever no higher-precedence condition already resolved that oracle: an evaluation fault and a malformed judge both outrank it. Each of those three states lands the run on the Invalid rung, and a contract declaring no oracles resolves none of them and stays off it. The command writes one line per reason to stderr on every rung, in the `eval-quality: <code>: <artifactPath>: <detail>` shape, so the failure names the field it fired on. `QUALIFICATION_FAILURES` publishes the closed set of codes those lines draw from.
 
-One invocation scores the complete set named by its `--record` flags. A set meeting the policy's declared minimum produces a comparable strength vector. A smaller set remains valid input and produces a reported vector marked non-comparable.
+One invocation scores the complete set named by its `--record` flags. A set meeting the policy's declared minimum with no unreached oracles produces a comparable strength vector. A smaller set or a set with any unreached oracle remains valid input and produces a reported vector marked non-comparable.
 
 A flag a command does not accept exits `64` as an unknown flag, so `--strict-inputs` on `preflight` and `--contract` on `compile` are both usage errors.
 
