@@ -245,6 +245,7 @@ describe('the headline result the prose is built on', () => {
 		expect(chain.artifact.trials).toEqual({
 			declaredMinimum: 3,
 			completed: 1,
+			completedAttempts: [1],
 			invalidatedAttempts: [],
 		})
 		expect(chain.artifact.strength.comparable).toBe(false)

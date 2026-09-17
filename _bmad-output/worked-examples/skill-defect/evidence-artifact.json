@@ -124,6 +124,7 @@
   "revisionCount": 0,
   "runId": "skill-defect-run-0001",
   "schemaVersion": 4,
+  "scoredProbeId": "P-001",
   "scoringVersion": "sha256:ab0a90d254ce234ce287dfe13c86b48166ff8601eb522561cce52a33e3ca7428",
   "scoringVersionInputs": {
     "contractSchemaVersion": 5,
@@ -152,6 +153,9 @@
   "systemRecommendationRecorded": "FAIL",
   "trials": {
     "completed": 1,
+    "completedAttempts": [
+      1
+    ],
     "declaredMinimum": 3,
     "invalidatedAttempts": []
   },

@@ -790,6 +790,7 @@ describe('the live record, scored through the shipped stages', () => {
 		expect(liveOut().artifact.trials).toEqual({
 			declaredMinimum: 3,
 			completed: 1,
+			completedAttempts: [1],
 			invalidatedAttempts: [],
 		})
 	})

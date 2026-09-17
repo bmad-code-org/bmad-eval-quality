@@ -119,6 +119,7 @@ export const emit: EmitStage<ScoredOutcomesAndVerdict> = (
 		// module.
 		revisionCount: 0,
 		runId: scored.runId,
+		scoredProbeId: scored.probe.probeId,
 		comparabilityKey,
 		excludedProbeIds,
 		exitCode: scored.ladder.exitCode,

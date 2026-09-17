@@ -34,6 +34,11 @@
           "type": "string",
           "minLength": 1
         },
+        "scoredProbeId": {
+          "type": "string",
+          "pattern": "^P-[0-9]{3,}$",
+          "description": "The probe this artifact scored. Retained independently of reducedProbeOutcomes so a no-oracle probe still has a verifiable reduction identity."
+        },
         "scoringVersion": {
           "type": "string",
           "pattern": "^sha256:[0-9a-f]{64}$",
@@ -138,6 +143,15 @@
               "minimum": 0,
               "maximum": 9007199254740991
             },
+            "completedAttempts": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991
+              },
+              "description": "The trial identifiers retained from the scored records. Cross-field validation requires this set to agree exactly with completed and with every detailed outcome and selected vote when oracle evidence exists."
+            },
             "invalidatedAttempts": {
               "type": "array",
               "items": {
@@ -165,6 +179,7 @@
           "required": [
             "declaredMinimum",
             "completed",
+            "completedAttempts",
             "invalidatedAttempts"
           ],
           "additionalProperties": false
@@ -686,6 +701,7 @@
         "parentDigest",
         "revisionCount",
         "runId",
+        "scoredProbeId",
         "scoringVersion",
         "scoringVersionInputs",
         "comparabilityKey",
@@ -737,6 +753,11 @@
         "runId": {
           "type": "string",
           "minLength": 1
+        },
+        "scoredProbeId": {
+          "type": "string",
+          "pattern": "^P-[0-9]{3,}$",
+          "description": "The probe this artifact scored. Retained independently of reducedProbeOutcomes so a no-oracle probe still has a verifiable reduction identity."
         },
         "scoringVersion": {
           "type": "string",
@@ -842,6 +863,15 @@
               "minimum": 0,
               "maximum": 9007199254740991
             },
+            "completedAttempts": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991
+              },
+              "description": "The trial identifiers retained from the scored records. Cross-field validation requires this set to agree exactly with completed and with every detailed outcome and selected vote when oracle evidence exists."
+            },
             "invalidatedAttempts": {
               "type": "array",
               "items": {
@@ -869,6 +899,7 @@
           "required": [
             "declaredMinimum",
             "completed",
+            "completedAttempts",
             "invalidatedAttempts"
           ],
           "additionalProperties": false
@@ -1506,6 +1537,7 @@
         "parentDigest",
         "revisionCount",
         "runId",
+        "scoredProbeId",
         "scoringVersion",
         "scoringVersionInputs",
         "comparabilityKey",

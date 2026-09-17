@@ -202,6 +202,7 @@ describe('runScore: the full chain over the I/O & Edge-Case Matrix', () => {
 		expect(result.ladder.verdict).toBe('PASS')
 		expect(result.artifact?.trials).toEqual({
 			completed: 3,
+			completedAttempts: [1, 2, 3],
 			declaredMinimum: 3,
 			invalidatedAttempts: [],
 		})

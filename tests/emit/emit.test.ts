@@ -202,7 +202,12 @@ const cleanOutcomeState = (
 ): OutcomeStateInputs => ({
 	outcomes: [scoredOutcome],
 	unwitnessedQuotations: [],
-	trials: { declaredMinimum: 3, completed: 3, invalidatedAttempts: [] },
+	trials: {
+		declaredMinimum: 3,
+		completed: 3,
+		completedAttempts: [1, 2, 3],
+		invalidatedAttempts: [],
+	},
 	reExecutionCap: 2,
 	...overrides,
 })
@@ -430,7 +435,12 @@ describe('emit: the I/O & Edge-Case Matrix', () => {
 			],
 			assessment: contractAssessment({
 				outcomeState: cleanOutcomeState({
-					trials: { declaredMinimum: 3, completed: 1, invalidatedAttempts: [] },
+					trials: {
+						declaredMinimum: 3,
+						completed: 1,
+						completedAttempts: [1],
+						invalidatedAttempts: [],
+					},
 				}),
 			}),
 		})

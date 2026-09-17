@@ -729,9 +729,8 @@ export const score: ScoreStage<
 			}
 		}
 
-		// One vote per trial, ordinarily: the trial set's own cardinality
-		// (`Trials.completed`) is `votes.length`, so a trial still
-		// contributes a vote when the probe has no designated oracle (a
+		// One vote per trial, ordinarily. A trial still contributes a vote
+		// when the probe has no designated oracle (a
 		// clean control, a canary, or a malformed defect chain) -- the
 		// fallback order is the first invalidating state this trial's
 		// oracles produced, else the first oracle's state. Every candidate
@@ -768,7 +767,8 @@ export const score: ScoreStage<
 	]
 	const trialsField: OutcomeStateInputs['trials'] = {
 		declaredMinimum: policy.minimumTrialCount,
-		completed: votes.length,
+		completed: trials.length,
+		completedAttempts: trials.map((trial) => trial.trialIndex),
 		invalidatedAttempts: [...reduced.invalidatedAttempts],
 	}
 

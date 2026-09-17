@@ -985,6 +985,7 @@ const evidenceCommon = {
 	parentDigest: null,
 	revisionCount: 0,
 	runId: 'spike-run-0001',
+	scoredProbeId: 'P-001',
 	scoringVersion: digestOf(18),
 	scoringVersionInputs: {
 		// The scored contract's own stamp, one of AD-11's six identity inputs. It
@@ -1019,6 +1020,7 @@ const evidenceCommon = {
 	trials: {
 		declaredMinimum: 3,
 		completed: 3,
+		completedAttempts: [1, 2, 3],
 		invalidatedAttempts: [{ attempt: 2, reason: 'oracle-error' }],
 	},
 	outcomes: [

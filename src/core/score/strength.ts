@@ -41,6 +41,8 @@ export type DominanceRelationValue = (typeof DOMINANCE_RELATIONS)[number]
  * projection the comparator needs from it, not a new artifact shape.
  */
 export type ComparableResult = {
+	/** Independently retained identity for the probe whose reduction is present. */
+	readonly scoredProbeId: string | null
 	readonly reducedProbeOutcomes: readonly ReducedProbeOutcome[]
 	readonly strength: Strength
 	readonly comparabilityKey: string
@@ -215,6 +217,7 @@ const reductionDetailsAgree = (result: ComparableResult): boolean => {
 			outcomes: result.outcomes,
 			reducedProbeOutcomes: result.reducedProbeOutcomes,
 			trials: result.trials,
+			scoredProbeId: result.scoredProbeId,
 		}).length === 0
 	)
 }

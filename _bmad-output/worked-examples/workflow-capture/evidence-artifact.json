@@ -243,6 +243,7 @@
   "revisionCount": 0,
   "runId": "workflow-capture-run-0001",
   "schemaVersion": 4,
+  "scoredProbeId": "P-001",
   "scoringVersion": "sha256:02a3a7be35f5c467831122a760354f4e6a596a3d2e508f2ce3e376b4f0f48c54",
   "scoringVersionInputs": {
     "contractSchemaVersion": 5,
@@ -271,6 +272,9 @@
   "systemRecommendationRecorded": "FAIL",
   "trials": {
     "completed": 1,
+    "completedAttempts": [
+      1
+    ],
     "declaredMinimum": 3,
     "invalidatedAttempts": []
   },

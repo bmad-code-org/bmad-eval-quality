@@ -160,6 +160,11 @@ export type InvalidatedAttempt = z.infer<typeof InvalidatedAttempt>
 export const Trials = z.strictObject({
 	declaredMinimum: z.int().min(1),
 	completed: z.int().min(0),
+	completedAttempts: z
+		.array(z.int().min(1))
+		.describe(
+			'The trial identifiers retained from the scored records. Cross-field validation requires this set to agree exactly with completed and with every detailed outcome and selected vote when oracle evidence exists.',
+		),
 	invalidatedAttempts: z.array(InvalidatedAttempt),
 })
 
@@ -378,6 +383,9 @@ export const Remediation = z.strictObject({
 const evidenceCommonFields = {
 	...lineageFields,
 	runId: z.string().min(1),
+	scoredProbeId: ProbeId.describe(
+		'The probe this artifact scored. Retained independently of reducedProbeOutcomes so a no-oracle probe still has a verifiable reduction identity.',
+	),
 	scoringVersion: Digest.describe(
 		'AD-11: computed by the scorer over the six named inputs below and never caller-supplied.',
 	),

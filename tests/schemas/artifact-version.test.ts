@@ -550,6 +550,7 @@ const EVIDENCE_ARTIFACT_AT_3: Readonly<Record<string, unknown>> = {
 	parentDigest: null,
 	revisionCount: 0,
 	runId: 'version-witness-run',
+	scoredProbeId: 'P-001',
 	scoringVersion: DIGEST,
 	scoringVersionInputs: {
 		// The contract's stamp, which this schema takes as any positive integer.
@@ -567,7 +568,12 @@ const EVIDENCE_ARTIFACT_AT_3: Readonly<Record<string, unknown>> = {
 	exitCode: 0,
 	verdictBasis: [],
 	callerAttestedInputs: [],
-	trials: { declaredMinimum: 1, completed: 0, invalidatedAttempts: [] },
+	trials: {
+		declaredMinimum: 1,
+		completed: 0,
+		completedAttempts: [],
+		invalidatedAttempts: [],
+	},
 	outcomes: [],
 	uncitedFindings: [],
 	coverageGaps: [],

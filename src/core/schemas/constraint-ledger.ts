@@ -253,7 +253,7 @@ export const CONSTRAINT_LEDGER: readonly ConstraintLedgerEntry[] = [
 		branch: null,
 		field: 'reducedProbeOutcomes',
 		statement:
-			'A reduced probe outcome agrees with its counts, catch threshold, invalidated attempts, and the detailed trial outcomes that support it.',
+			'A reduced probe outcome agrees with the independently retained probe and completed-attempt identities, its counts, catch threshold, severity, invalidated attempts, and the detailed trial outcomes that support it.',
 		disposition: {
 			kind: 'not-expressible',
 			reason:

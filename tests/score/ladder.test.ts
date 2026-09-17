@@ -468,7 +468,12 @@ describe('resolveProductionVerdict / resolveContractVerdict', () => {
 			...baseline(),
 			outcomeState: {
 				...baseline().outcomeState,
-				trials: { declaredMinimum: 3, completed: 2, invalidatedAttempts: [] },
+				trials: {
+					declaredMinimum: 3,
+					completed: 2,
+					completedAttempts: [1, 2],
+					invalidatedAttempts: [],
+				},
 			},
 		}
 		const resolution = resolveProductionVerdict(productionOf(body))
@@ -510,7 +515,12 @@ describe('resolveProductionVerdict / resolveContractVerdict', () => {
 			...baseline(),
 			outcomeState: {
 				...baseline().outcomeState,
-				trials: { declaredMinimum: 3, completed: 2, invalidatedAttempts: [] },
+				trials: {
+					declaredMinimum: 3,
+					completed: 2,
+					completedAttempts: [1, 2],
+					invalidatedAttempts: [],
+				},
 			},
 			coverageGaps: [
 				{
@@ -601,6 +611,7 @@ describe('resolveProductionVerdict / resolveContractVerdict', () => {
 				trials: {
 					declaredMinimum: 3,
 					completed: 3,
+					completedAttempts: [1, 2, 3],
 					invalidatedAttempts: [
 						{ attempt: 1, reason: 'port fault' },
 						{ attempt: 2, reason: 'timeout' },
@@ -622,7 +633,12 @@ describe('resolveProductionVerdict / resolveContractVerdict', () => {
 			...baseline(),
 			outcomeState: {
 				...baseline().outcomeState,
-				trials: { declaredMinimum: 3, completed: 3, invalidatedAttempts: [] },
+				trials: {
+					declaredMinimum: 3,
+					completed: 3,
+					completedAttempts: [1, 2, 3],
+					invalidatedAttempts: [],
+				},
 			},
 		}
 		expect(resolveProductionVerdict(productionOf(body))).toEqual({

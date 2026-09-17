@@ -79,7 +79,12 @@ export const baseline = (): AssessmentBody => ({
 	outcomeState: {
 		outcomes: [neutralOutcome()],
 		unwitnessedQuotations: [],
-		trials: { declaredMinimum: 3, completed: 3, invalidatedAttempts: [] },
+		trials: {
+			declaredMinimum: 3,
+			completed: 3,
+			completedAttempts: [1, 2, 3],
+			invalidatedAttempts: [],
+		},
 		reExecutionCap: 2,
 	},
 	evidenceIntegrity: {
@@ -178,6 +183,7 @@ const SHARED_OVERRIDES: readonly SharedOverride[] = [
 				trials: {
 					declaredMinimum: 3,
 					completed: 3,
+					completedAttempts: [1, 2, 3],
 					invalidatedAttempts: [
 						{ attempt: 1, reason: 'port fault' },
 						{ attempt: 2, reason: 'timeout' },
@@ -533,7 +539,12 @@ const SHARED_OVERRIDES: readonly SharedOverride[] = [
 			...baseline(),
 			outcomeState: {
 				...baseline().outcomeState,
-				trials: { declaredMinimum: 3, completed: 2, invalidatedAttempts: [] },
+				trials: {
+					declaredMinimum: 3,
+					completed: 2,
+					completedAttempts: [1, 2],
+					invalidatedAttempts: [],
+				},
 			},
 		}),
 	},

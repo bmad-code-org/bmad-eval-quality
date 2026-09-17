@@ -639,10 +639,10 @@ describe('score: regressions and documented fallbacks beyond the frozen I/O Matr
 	})
 
 	// `contract.oracles` declared empty: the per-trial loop's oracle loop
-	// never runs, so neither trial contributes a vote, and `Trials.completed`
-	// reads `0` even though two trials were presented -- the same
-	// below-minimum-trial-count CONCERNS a genuinely empty trial set produces
-	// below, and not a crash.
+	// never runs, so neither trial contributes a vote. `Trials` still retains
+	// both presented attempt identities, which keeps the no-oracle reduction
+	// distinguishable from a ghost row while satisfying this fixture's
+	// one-trial minimum.
 	it('an empty contract.oracles list contributes no vote per trial, no throw', () => {
 		const contractWithNoOracles: EvalContract = { ...baseContract, oracles: [] }
 		const result = scoreOf(contractWithNoOracles, [
@@ -650,8 +650,13 @@ describe('score: regressions and documented fallbacks beyond the frozen I/O Matr
 			cleanTrialFor(contractWithNoOracles, { trialIndex: 2 }),
 		])
 		expect(result.assessment.outcomeState.outcomes).toEqual([])
-		expect(result.assessment.outcomeState.trials.completed).toBe(0)
-		expect(result.ladder.verdict).toBe('CONCERNS')
+		expect(result.assessment.outcomeState.trials).toEqual({
+			declaredMinimum: 1,
+			completed: 2,
+			completedAttempts: [1, 2],
+			invalidatedAttempts: [],
+		})
+		expect(result.ladder.verdict).toBe('PASS')
 	})
 
 	// Decision 8's fallback: a caller supplying zero trials has no first

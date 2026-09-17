@@ -7,6 +7,7 @@ import type {
 import { reduceTrialSet } from './reduce-trials.ts'
 
 export type ReductionConsistencyInput = {
+	readonly scoredProbeId: string | null
 	readonly outcomes: readonly TrialOutcome[]
 	readonly reducedProbeOutcomes: readonly ReducedProbeOutcome[]
 	readonly trials: Trials
@@ -42,12 +43,57 @@ export function reductionConsistencyIssuesOf(
 ): readonly ReductionConsistencyIssue[] {
 	const issues: ReductionConsistencyIssue[] = []
 	const reducedIds = new Set<string>()
+	const completedAttempts = new Set(artifact.trials.completedAttempts)
 	const detailProbeIds = new Set(
 		artifact.outcomes.flatMap((outcome) =>
 			outcome.probeId === null ? [] : [outcome.probeId],
 		),
 	)
 	const recomputedInvalidated: InvalidatedAttempt[] = []
+
+	if (
+		completedAttempts.size !== artifact.trials.completedAttempts.length ||
+		artifact.trials.completedAttempts.length !== artifact.trials.completed
+	) {
+		issues.push({
+			path: ['trials', 'completedAttempts'],
+			message:
+				'completedAttempts must contain one unique identity per completed trial',
+		})
+	}
+	const detailedAttempts = new Set(
+		artifact.outcomes.map((outcome) => outcome.trialIndex),
+	)
+	if (
+		artifact.outcomes.length > 0 &&
+		(detailedAttempts.size !== completedAttempts.size ||
+			[...completedAttempts].some(
+				(trialIndex) => !detailedAttempts.has(trialIndex),
+			))
+	) {
+		issues.push({
+			path: ['outcomes'],
+			message: 'detailed outcomes must cover every completed attempt exactly',
+		})
+	}
+	if (artifact.scoredProbeId === null) {
+		if (artifact.reducedProbeOutcomes.length > 0) {
+			issues.push({
+				path: ['reducedProbeOutcomes'],
+				message:
+					'reduced outcomes require an independently retained probe identity',
+			})
+		}
+	} else if (
+		artifact.reducedProbeOutcomes.length !== 1 ||
+		artifact.reducedProbeOutcomes[0]?.probeId !== artifact.scoredProbeId
+	) {
+		issues.push({
+			path: ['reducedProbeOutcomes'],
+			message:
+				'reduced outcomes must contain exactly the independently retained scored probe',
+		})
+	}
 
 	for (const [index, reduced] of artifact.reducedProbeOutcomes.entries()) {
 		const base = ['reducedProbeOutcomes', index] as const
@@ -61,13 +107,27 @@ export function reductionConsistencyIssuesOf(
 		const details = artifact.outcomes.filter(
 			(outcome) => outcome.probeId === reduced.probeId,
 		)
-		if (
-			details.length === 0 &&
-			(detailProbeIds.size > 0 || artifact.reducedProbeOutcomes.length > 1)
-		) {
+		if (reduced.probeId !== artifact.scoredProbeId) {
 			issues.push({
 				path: [...base, 'probeId'],
-				message: 'reduced outcome has no detailed outcomes for its probe',
+				message:
+					'reduced probe must match the independently retained scored probe',
+			})
+		}
+		const selectedDetails = details.filter((outcome) =>
+			reduced.trialVotes.some(
+				(vote) =>
+					vote.trialIndex === outcome.trialIndex &&
+					vote.state === outcome.state,
+			),
+		)
+		if (
+			selectedDetails.some((outcome) => outcome.severity !== reduced.severity)
+		) {
+			issues.push({
+				path: [...base, 'severity'],
+				message:
+					'reduced severity must match every corresponding detailed outcome',
 			})
 		}
 
@@ -94,21 +154,23 @@ export function reductionConsistencyIssuesOf(
 				})
 			}
 		}
-		const detailTrials = new Set(details.map((outcome) => outcome.trialIndex))
 		if (
-			voteTrials.size !== detailTrials.size ||
-			[...detailTrials].some((trialIndex) => !voteTrials.has(trialIndex))
+			artifact.outcomes.length > 0 &&
+			(voteTrials.size !== completedAttempts.size ||
+				[...completedAttempts].some(
+					(trialIndex) => !voteTrials.has(trialIndex),
+				))
 		) {
 			issues.push({
 				path: [...base, 'trialVotes'],
 				message:
-					'selected trial votes must cover every detailed trial exactly once',
+					'selected trial votes must cover every completed attempt exactly',
 			})
 		}
-		if (reduced.trialVotes.length !== artifact.trials.completed) {
+		if (artifact.outcomes.length === 0 && reduced.trialVotes.length > 0) {
 			issues.push({
 				path: [...base, 'trialVotes'],
-				message: 'selected trial vote count must equal trials.completed',
+				message: 'selected trial votes require corresponding detailed evidence',
 			})
 		}
 

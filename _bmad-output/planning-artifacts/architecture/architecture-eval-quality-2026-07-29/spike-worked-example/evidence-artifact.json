@@ -189,6 +189,7 @@
   "revisionCount": 0,
   "runId": "spike-run-0001",
   "schemaVersion": 4,
+  "scoredProbeId": "P-001",
   "scoringVersion": "sha256:d6b5eb7035a3c1cc83a92d3938f21d9b8d5a836c84f1e6daf081552e54093eb2",
   "scoringVersionInputs": {
     "contractSchemaVersion": 5,
@@ -217,6 +218,9 @@
   "systemRecommendationRecorded": "FAIL",
   "trials": {
     "completed": 1,
+    "completedAttempts": [
+      1
+    ],
     "declaredMinimum": 3,
     "invalidatedAttempts": []
   },

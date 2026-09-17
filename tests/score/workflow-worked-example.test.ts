@@ -258,6 +258,7 @@ describe('the workflow chain, as the shipped stages computed it', () => {
 		expect(artifact.trials).toEqual({
 			declaredMinimum: 3,
 			completed: 1,
+			completedAttempts: [1],
 			invalidatedAttempts: [],
 		})
 		expect(artifact.strength.comparable).toBe(false)
