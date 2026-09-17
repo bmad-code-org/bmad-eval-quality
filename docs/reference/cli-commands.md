@@ -93,7 +93,7 @@ Usage:
   --strict                          promote CONCERNS to exit 1
 ```
 
-At least one `--record` is required, along with `--contract`, `--probe`, `--preflight-verdict`, `--policy`, and `--corpus-digest`. Repeat `--record` once per trial. Every record carries its own `trialIndex`; scoring orders the set by that field, requires distinct indices, and requires agreement on contract digest, evaluator configuration digest, and mode. `--corpus-root` is optional at the argument-parsing level; it becomes required, with a usage error naming it, the moment a private reference actually needs a byte resolved through it.
+At least one `--record` is required, along with `--contract`, `--probe`, `--preflight-verdict`, `--policy`, and `--corpus-digest`. Repeat `--record` once per trial. Every record carries its own `trialIndex`; scoring orders the set by that field, requires distinct indices, and requires agreement on `contractDigest`, `evaluatorConfigurationDigest`, `mode`, `evaluatorRecommendation`, and `runId`. `--corpus-root` is optional at the argument-parsing level; it becomes required, with a usage error naming it, the moment a private reference actually needs a byte resolved through it.
 
 On the Invalid rung the command exits `3` and writes no artifact: no legal `EvidenceArtifact` carries a null verdict. Diagnostics still go to stderr on that rung. On every other rung the artifact's own `exitCode` field carries the number the command returns, except a CONCERNS that `--strict` promotes: the artifact still records `0` and the command exits `1`.
 
@@ -140,7 +140,7 @@ Artifacts are written as one line of RFC 8785 canonical JSON with sorted keys. T
 - `--flag=value` splits on the first `=`, so a value may contain one. Only flags that take a value accept this form: `--strict-inputs=true` exits `64` as an unknown flag.
 - An empty value exits `64`, in both the `--in=` and the `--in ""` form.
 - In the space form, a next token longer than one character that begins with `-` is read as the next flag, so the command reports a missing value and points at the `=` form. A bare `-` stays legal, since it names stdin.
-- A flag repeated with the same value is accepted. Repeated with different values it exits `64`.
+- `--record` collects every occurrence as a trial record. Every other value flag accepts an identical repeat and exits `64` when repeated with different values.
 - `--` at the end of the line is ignored. A positional argument exits `64`, because no command takes one.
 - `--help` or `-h` anywhere a flag is expected prints that command's help and exits `0`. Where a value is expected it is read as that value and exits `64`, so `compile --in --help` is a usage error.
 
@@ -214,7 +214,7 @@ Every schema version is declared as the literal integer it holds, so a caller co
 
 Ten of the twelve artifacts carry one. Two have an in-package reader that performs the equality: `compile` over an eval contract, `preflight` and `score` over a probe. Three are stamped by this package: `seal` writes the brief, `emit` writes the evidence artifact, and `preflight` writes the verdict, each from its own constant. Five are assembled by the caller and validated by `score`: the sealed run record, the isolation manifest, the evaluator configuration, the scoring policy, and the private artifact manifest. `artifact-reference` carries no lineage fields at all. A rubric does carry a `schemaVersion`, and no constant here states it: this package never parses a standalone rubric, and the eval contract embeds `RubricBody`, the body without lineage.
 
-`compareDominance` is AD-7's four-valued relation over two scored results. It takes two `ComparableResult` values and a `Severity` floor and answers one of `DOMINANCE_RELATIONS`: `a-dominates-b`, `b-dominates-a`, `equivalent`, or `incomparable`. `ComparableResult`, `DominanceRelationValue`, and `Severity` ship as type-only exports beside it. The comparison re-derives no vector and reads no port, corpus, or clock.
+`compareDominance` is AD-7's four-valued relation over two scored results. It takes two `ComparableResult` values and a `Severity` floor and answers one of `DOMINANCE_RELATIONS`: `a-dominates-b`, `b-dominates-a`, `equivalent`, or `incomparable`. `ComparableResult`, `DominanceRelationValue`, and `Severity` ship as type-only exports beside it. The comparison reads `reducedProbeOutcomes`, re-derives no vector, and reads no port, corpus, or clock.
 
 `runScore` returns the probe's own qualification result next to the artifact and the ladder. `qualification.failures` carries AD-9's closed reason codes for a probe the gate rejected, typed as `QualificationFailure` and `QualificationFailureCode`, and `qualification.declarationChecksRan` says whether the three checks that read the home operation's declared shapes ran.
 

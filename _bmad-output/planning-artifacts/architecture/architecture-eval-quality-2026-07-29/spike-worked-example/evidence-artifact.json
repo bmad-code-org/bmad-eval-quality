@@ -50,7 +50,8 @@
         "obs-004"
       ],
       "severity": "critical",
-      "state": "caught"
+      "state": "caught",
+      "trialIndex": 1
     },
     {
       "checkResolution": {
@@ -78,7 +79,8 @@
         "obs-003"
       ],
       "severity": "material",
-      "state": "confirmed"
+      "state": "confirmed",
+      "trialIndex": 1
     },
     {
       "checkResolution": {
@@ -106,7 +108,8 @@
         "obs-003"
       ],
       "severity": "material",
-      "state": "confirmed"
+      "state": "confirmed",
+      "trialIndex": 1
     },
     {
       "checkResolution": {
@@ -123,7 +126,8 @@
         "obs-002"
       ],
       "severity": "material",
-      "state": "abstained"
+      "state": "abstained",
+      "trialIndex": 1
     },
     {
       "checkResolution": {
@@ -149,10 +153,22 @@
       "resolvedFrom": null,
       "selectedObservationIds": [],
       "severity": "low",
-      "state": "unreached"
+      "state": "unreached",
+      "trialIndex": 1
     }
   ],
   "parentDigest": null,
+  "reducedProbeOutcomes": [
+    {
+      "caught": true,
+      "caughtCount": 1,
+      "exercised": true,
+      "invalidatedAttempts": [],
+      "probeId": "P-001",
+      "severity": "critical",
+      "validCount": 1
+    }
+  ],
   "remediation": {
     "cap": 3,
     "capSource": "caller-attested",
@@ -165,7 +181,7 @@
   },
   "revisionCount": 0,
   "runId": "spike-run-0001",
-  "schemaVersion": 3,
+  "schemaVersion": 4,
   "scoringVersion": "sha256:d6b5eb7035a3c1cc83a92d3938f21d9b8d5a836c84f1e6daf081552e54093eb2",
   "scoringVersionInputs": {
     "contractSchemaVersion": 5,

@@ -71,7 +71,7 @@ evaluation contract → probe → observation → preflight → evidence → ora
 | **Rubric** | The grading guide for judgment-heavy quality, with anchored criteria a judge scores against. The judge runs outside the package and its scores arrive in the sealed run record. | Present only when a contract declares one. |
 | **Score / verdict** | The combined result: did the evaluation catch the planted defect? `PASS`, `WAIVED`, `CONCERNS`, or `FAIL`, or Invalid when the run produced no verdict. | `FAIL`, exit code 2. |
 
-The word evidence is used twice on purpose. The evidence in the flow is what the evaluator produced, and it reaches `score` inside a sealed run record. The evidence artifact is what `score` mints at the end: the outcomes, the verdict, the strength vector, and the exit code.
+The word evidence is used twice on purpose. The evidence in the flow is what the evaluator produced, and it reaches `score` inside one or more sealed run records. The evidence artifact is what `score` mints at the end: the outcomes, the verdict, the strength vector, and the exit code.
 
 ## What the tool does
 
@@ -82,9 +82,9 @@ The word evidence is used twice on purpose. The evidence in the flow is what the
 | `compile` | an authored contract | `eval-contract.json`, checked against the schema and the discipline rules |
 | `seal` | a contract | `sealed-evaluator-brief.json`, the contract minus everything that would give the answer away |
 | `preflight` | a contract, a probe list, observations | `preflight-verdict.json`, fit or unfit to measure |
-| `score` | a sealed run record, the contract, a probe, the preflight verdict, a scoring policy, a caller-attested corpus digest, and the isolation manifest and evaluator configuration the record was produced under | `evidence-artifact.json`, and the verdict's own exit code |
+| `score` | one or more sealed run records, the contract, a probe, the preflight verdict, a scoring policy, a caller-attested corpus digest, and the isolation manifest and evaluator configuration the records were produced under | `evidence-artifact.json`, and the verdict's own exit code |
 
-It executes nothing. No agent, no judge, and no system under test runs inside it. You run the agent or harness, the repeated trials, and the live system with its environment probe, and you hand over a sealed run record. `eval-quality` compiles, seals, preflights, and scores.
+It executes nothing. No agent, no judge, and no system under test runs inside it. You run the agent or harness, the repeated trials, and the live system with its environment probe, and you hand over the sealed run records. `eval-quality` compiles, seals, preflights, and scores.
 
 ## Who it is for
 
@@ -122,7 +122,7 @@ Every required oracle check resolves to exactly one of twelve states, and the st
 
 A caught defect is decided by evidence. A finding counts as detection only when the probe's declared defect signature matches an observation the finding cites; the evaluator's own claim does not settle it.
 
-Repeated runs of one probe are trials, reduced to one result per probe before any rate is computed. Pass the full trial set to `runScore`, or repeat `--record` on the `score` command. Every record declares its own `trialIndex` and agrees with the set on contract digest, evaluator configuration digest, and mode. A set meeting the policy minimum produces a comparable strength vector.
+Repeated runs of one probe are trials, reduced to one result per probe before any rate is computed. Pass the full trial set to `runScore`, or repeat `--record` on the `score` command. Every record declares its own `trialIndex` and agrees with the set on `contractDigest`, `evaluatorConfigurationDigest`, `mode`, `evaluatorRecommendation`, and `runId`. A set meeting the policy minimum produces a comparable strength vector.
 
 [The full walkthrough](https://bmad-code-org.github.io/bmad-eval-quality/how-to/author-behavioral-contracts/) reads a scored run field by field, down to its verdict and exit code.
 

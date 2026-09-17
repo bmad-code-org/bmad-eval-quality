@@ -35,7 +35,7 @@ A rate over one trial is a rate over one trial.
 
 The scoring model reduces a trial set to one result per probe before computing any rate, because a pass-if-any reading across retries is the retry anti-pattern with a score attached.
 Repeat `--record` on one CLI invocation to supply the set, or pass the record list to `runScore`.
-Each record carries its own `trialIndex`, and the set agrees on contract digest, evaluator configuration digest, and mode.
+Each record carries its own `trialIndex`, and the set agrees on `contractDigest`, `evaluatorConfigurationDigest`, `mode`, `evaluatorRecommendation`, and `runId`.
 When the completed set meets the scoring policy's minimum, the vector carries `comparable: true`.
 Below that minimum, the vector carries `comparable: false` and a note naming the shortfall.
 
@@ -56,7 +56,7 @@ The [full walkthrough](/how-to/author-behavioral-contracts/) ends on a scored ru
 ## Comparing two contracts
 
 `compareDominance` is the four-valued comparison over two scored results: one dominates the other, the reverse, equivalent, or incomparable.
-A contract that missed a behavior at or above the severity floor never dominates one that caught it.
+A contract that missed a behavior at or above the severity floor never dominates one that caught it. The comparison reads the artifact's reduced per-probe outcomes, so a mixed trial set contributes its majority result once and trial numbering cannot select the answer.
 
 It gates on `comparabilityKey`, which is a digest of the scoring policy digest and the sorted admitted probe ids, together with each side's `strength.comparable`.
 It reads no scoring version and no model field, so two artifacts agreeing on the key will compare even when their contract schema version, corpus digest, fixture digest, evaluator configuration, or mode differ.

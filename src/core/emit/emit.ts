@@ -125,6 +125,7 @@ export const emit: EmitStage<ScoredOutcomesAndVerdict> = (
 		callerAttestedInputs: [...CALLER_ATTESTED_INPUTS],
 		trials,
 		outcomes: [...scored.outcomes],
+		reducedProbeOutcomes: [...scored.reducedProbeOutcomes],
 		uncitedFindings: [...scored.uncitedFindings],
 		coverageGaps: [...scored.assessment.coverageGaps],
 		strength: {

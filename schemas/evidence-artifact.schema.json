@@ -264,6 +264,12 @@
                   }
                 ],
                 "description": "The oracle's `check` tree as it resolved, per AD-4. `null` for an oracle whose check never ran, which is the `not-evaluable` corroboration case; the two fields are read together and neither substitutes for the other."
+              },
+              "trialIndex": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991,
+                "description": "The one-based trial that produced this oracle outcome. Required because a trial set may resolve the same oracle and probe differently across attempts."
               }
             },
             "required": [
@@ -275,10 +281,83 @@
               "resolvedFrom",
               "corroboration",
               "selectedObservationIds",
-              "checkResolution"
+              "checkResolution",
+              "trialIndex"
             ],
             "additionalProperties": false
-          }
+          },
+          "description": "Detailed oracle outcomes for every trial. Each entry carries its trialIndex; several entries may share a probeId because aggregation belongs to reducedProbeOutcomes. The trialIndex is required, which is one half of the EvidenceArtifact schemaVersion 3 -> 4 BREAKING bump."
+        },
+        "reducedProbeOutcomes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "probeId": {
+                "type": "string",
+                "pattern": "^P-[0-9]{3,}$"
+              },
+              "severity": {
+                "type": "string",
+                "enum": [
+                  "low",
+                  "material",
+                  "critical"
+                ],
+                "description": "The severity of the probe's declared behaviour, used by AD-7's severity-floor override."
+              },
+              "exercised": {
+                "type": "boolean"
+              },
+              "caught": {
+                "type": "boolean"
+              },
+              "validCount": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "caughtCount": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "invalidatedAttempts": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "attempt": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 9007199254740991
+                    },
+                    "reason": {
+                      "type": "string",
+                      "minLength": 1,
+                      "description": "AD-6 requires each attempt's reason. Non-empty: a reason that says nothing is not a reason, no AD-5 code names the condition, and the schema is therefore the enforcement point."
+                    }
+                  },
+                  "required": [
+                    "attempt",
+                    "reason"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "probeId",
+              "severity",
+              "exercised",
+              "caught",
+              "validCount",
+              "caughtCount",
+              "invalidatedAttempts"
+            ],
+            "additionalProperties": false
+          },
+          "description": "One trial-set reduction per probe. AD-7 dominance reads this field, while outcomes retains the per-trial evidence that produced it. This field is required, which is the other half of the EvidenceArtifact schemaVersion 3 -> 4 BREAKING bump; a version-3 artifact cannot silently expose its first trial as the aggregate result."
         },
         "uncitedFindings": {
           "type": "array",
@@ -572,6 +651,7 @@
         "callerAttestedInputs",
         "trials",
         "outcomes",
+        "reducedProbeOutcomes",
         "uncitedFindings",
         "coverageGaps",
         "strength",
@@ -844,6 +924,12 @@
                   }
                 ],
                 "description": "The oracle's `check` tree as it resolved, per AD-4. `null` for an oracle whose check never ran, which is the `not-evaluable` corroboration case; the two fields are read together and neither substitutes for the other."
+              },
+              "trialIndex": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991,
+                "description": "The one-based trial that produced this oracle outcome. Required because a trial set may resolve the same oracle and probe differently across attempts."
               }
             },
             "required": [
@@ -855,10 +941,83 @@
               "resolvedFrom",
               "corroboration",
               "selectedObservationIds",
-              "checkResolution"
+              "checkResolution",
+              "trialIndex"
             ],
             "additionalProperties": false
-          }
+          },
+          "description": "Detailed oracle outcomes for every trial. Each entry carries its trialIndex; several entries may share a probeId because aggregation belongs to reducedProbeOutcomes. The trialIndex is required, which is one half of the EvidenceArtifact schemaVersion 3 -> 4 BREAKING bump."
+        },
+        "reducedProbeOutcomes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "probeId": {
+                "type": "string",
+                "pattern": "^P-[0-9]{3,}$"
+              },
+              "severity": {
+                "type": "string",
+                "enum": [
+                  "low",
+                  "material",
+                  "critical"
+                ],
+                "description": "The severity of the probe's declared behaviour, used by AD-7's severity-floor override."
+              },
+              "exercised": {
+                "type": "boolean"
+              },
+              "caught": {
+                "type": "boolean"
+              },
+              "validCount": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "caughtCount": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "invalidatedAttempts": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "attempt": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 9007199254740991
+                    },
+                    "reason": {
+                      "type": "string",
+                      "minLength": 1,
+                      "description": "AD-6 requires each attempt's reason. Non-empty: a reason that says nothing is not a reason, no AD-5 code names the condition, and the schema is therefore the enforcement point."
+                    }
+                  },
+                  "required": [
+                    "attempt",
+                    "reason"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "probeId",
+              "severity",
+              "exercised",
+              "caught",
+              "validCount",
+              "caughtCount",
+              "invalidatedAttempts"
+            ],
+            "additionalProperties": false
+          },
+          "description": "One trial-set reduction per probe. AD-7 dominance reads this field, while outcomes retains the per-trial evidence that produced it. This field is required, which is the other half of the EvidenceArtifact schemaVersion 3 -> 4 BREAKING bump; a version-3 artifact cannot silently expose its first trial as the aggregate result."
         },
         "uncitedFindings": {
           "type": "array",
@@ -1268,6 +1427,7 @@
         "callerAttestedInputs",
         "trials",
         "outcomes",
+        "reducedProbeOutcomes",
         "uncitedFindings",
         "coverageGaps",
         "strength",

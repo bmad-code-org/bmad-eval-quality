@@ -42,7 +42,8 @@
         "obs-002"
       ],
       "severity": "material",
-      "state": "confirmed"
+      "state": "confirmed",
+      "trialIndex": 1
     },
     {
       "checkResolution": {
@@ -87,10 +88,22 @@
         "obs-001"
       ],
       "severity": "material",
-      "state": "caught"
+      "state": "caught",
+      "trialIndex": 1
     }
   ],
   "parentDigest": null,
+  "reducedProbeOutcomes": [
+    {
+      "caught": true,
+      "caughtCount": 1,
+      "exercised": true,
+      "invalidatedAttempts": [],
+      "probeId": "P-001",
+      "severity": "material",
+      "validCount": 1
+    }
+  ],
   "remediation": {
     "cap": 3,
     "capSource": "caller-attested",
@@ -103,7 +116,7 @@
   },
   "revisionCount": 0,
   "runId": "skill-defect-run-0001",
-  "schemaVersion": 3,
+  "schemaVersion": 4,
   "scoringVersion": "sha256:ab0a90d254ce234ce287dfe13c86b48166ff8601eb522561cce52a33e3ca7428",
   "scoringVersionInputs": {
     "contractSchemaVersion": 5,

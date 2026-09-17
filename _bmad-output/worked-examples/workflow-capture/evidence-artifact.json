@@ -43,7 +43,8 @@
         "obs-create"
       ],
       "severity": "material",
-      "state": "confirmed"
+      "state": "confirmed",
+      "trialIndex": 1
     },
     {
       "checkResolution": {
@@ -63,7 +64,8 @@
         "obs-malformed-read"
       ],
       "severity": "critical",
-      "state": "caught"
+      "state": "caught",
+      "trialIndex": 1
     },
     {
       "checkResolution": {
@@ -98,7 +100,8 @@
         "obs-malformed-reset"
       ],
       "severity": "material",
-      "state": "confirmed"
+      "state": "confirmed",
+      "trialIndex": 1
     },
     {
       "checkResolution": {
@@ -127,7 +130,8 @@
         "obs-read-back"
       ],
       "severity": "low",
-      "state": "confirmed"
+      "state": "confirmed",
+      "trialIndex": 1
     },
     {
       "checkResolution": {
@@ -155,7 +159,8 @@
         "obs-read-back"
       ],
       "severity": "material",
-      "state": "confirmed"
+      "state": "confirmed",
+      "trialIndex": 1
     },
     {
       "checkResolution": {
@@ -183,7 +188,8 @@
         "obs-reset"
       ],
       "severity": "material",
-      "state": "confirmed"
+      "state": "confirmed",
+      "trialIndex": 1
     },
     {
       "checkResolution": {
@@ -201,10 +207,22 @@
         "obs-reset-read-back"
       ],
       "severity": "material",
-      "state": "confirmed"
+      "state": "confirmed",
+      "trialIndex": 1
     }
   ],
   "parentDigest": null,
+  "reducedProbeOutcomes": [
+    {
+      "caught": true,
+      "caughtCount": 1,
+      "exercised": true,
+      "invalidatedAttempts": [],
+      "probeId": "P-001",
+      "severity": "critical",
+      "validCount": 1
+    }
+  ],
   "remediation": {
     "cap": 3,
     "capSource": "caller-attested",
@@ -217,7 +235,7 @@
   },
   "revisionCount": 0,
   "runId": "workflow-capture-run-0001",
-  "schemaVersion": 3,
+  "schemaVersion": 4,
   "scoringVersion": "sha256:02a3a7be35f5c467831122a760354f4e6a596a3d2e508f2ce3e376b4f0f48c54",
   "scoringVersionInputs": {
     "contractSchemaVersion": 5,

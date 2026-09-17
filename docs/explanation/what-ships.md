@@ -54,7 +54,9 @@ The scoring model reduces several runs of the same probe to one result before an
 
 Repeat `--record` once per trial on the `score` command, or pass the complete list to `runScore`.
 Each sealed record carries its own `trialIndex`.
-All records in the set must agree on contract digest, evaluator configuration digest, and mode.
+All records in the set must agree on `contractDigest`, `evaluatorConfigurationDigest`, `mode`, `evaluatorRecommendation`, and `runId`.
+
+The evidence artifact keeps each detailed oracle outcome with its `trialIndex` and publishes the reduced per-probe outcome separately. Contract strength and dominance use the reduced result.
 
 The strength vector becomes comparable when the completed set meets the policy's declared minimum.
 

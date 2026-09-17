@@ -44,7 +44,10 @@ import {
 	SEVERITY_LEVELS,
 	type Severity,
 } from '../schemas/eval-contract.ts'
-import type { Outcome } from '../schemas/evidence-artifact.ts'
+import type {
+	ReducedProbeOutcome,
+	TrialOutcome,
+} from '../schemas/evidence-artifact.ts'
 import type { Expression, Operand, SetOperand } from '../schemas/expression.ts'
 import type { AnyOperation } from '../schemas/interface.ts'
 import {
@@ -123,7 +126,9 @@ export type ScoredOutcomesAndVerdict = {
 	/** this probe's own AD-7 trial-set fold, keyed by `emit` under `probe.probeId` to build the strength vector. */
 	readonly trialSetResult: TrialSetResult
 	/** the full `EvidenceArtifact.outcomes` shape, a parallel array to `ScoredOutcome[]` above: `ScoredOutcome` carries `resolution` but not `disposition` or the raw `CheckResolution` tree this shape needs, so the two are not reconstructible from one another. */
-	readonly outcomes: readonly Outcome[]
+	readonly outcomes: readonly TrialOutcome[]
+	/** the one reduced result dominance compares for this probe. */
+	readonly reducedProbeOutcomes: readonly ReducedProbeOutcome[]
 	/** every finding across every trial citing no oracle, per `outcome.ts`'s `uncitedFindingIds`. */
 	readonly uncitedFindings: readonly string[]
 }
@@ -492,7 +497,7 @@ export const score: ScoreStage<
 	// above in the same loop rather than derived from it after the fact: the
 	// two carry different fields from the same per-oracle locals and neither
 	// is reconstructible from the other.
-	const outcomes: Outcome[] = []
+	const outcomes: TrialOutcome[] = []
 	const votes: TrialVote[] = []
 
 	for (const trial of trials) {
@@ -681,6 +686,7 @@ export const score: ScoreStage<
 			})
 			outcomes.push({
 				oracleId: oracle.id,
+				trialIndex: trial.trialIndex,
 				// Constant across every entry: one `score()` call scores exactly
 				// one probe.
 				probeId: probe.probeId,
@@ -741,6 +747,20 @@ export const score: ScoreStage<
 	}
 
 	const reduced = reduceTrialSet(votes, policy.catchThreshold)
+	const probeSeverity =
+		contract.behaviors.find((behavior) => behavior.id === probe.behaviorId)
+			?.severity ?? 'low'
+	const reducedProbeOutcomes: ReducedProbeOutcome[] = [
+		{
+			probeId: probe.probeId,
+			severity: probeSeverity,
+			exercised: reduced.exercised,
+			caught: reduced.caught,
+			validCount: reduced.validCount,
+			caughtCount: reduced.caughtCount,
+			invalidatedAttempts: [...reduced.invalidatedAttempts],
+		},
+	]
 	const trialsField: OutcomeStateInputs['trials'] = {
 		declaredMinimum: policy.minimumTrialCount,
 		completed: votes.length,
@@ -889,6 +909,7 @@ export const score: ScoreStage<
 			probeQualification,
 			trialSetResult: reduced,
 			outcomes,
+			reducedProbeOutcomes,
 			uncitedFindings,
 		}
 	}
@@ -912,6 +933,7 @@ export const score: ScoreStage<
 		probeQualification,
 		trialSetResult: reduced,
 		outcomes,
+		reducedProbeOutcomes,
 		uncitedFindings,
 	}
 }

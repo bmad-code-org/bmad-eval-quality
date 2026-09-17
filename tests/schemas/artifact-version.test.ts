@@ -595,6 +595,12 @@ const EVIDENCE_ARTIFACT_AT_3: Readonly<Record<string, unknown>> = {
 	systemRecommendationNote: null,
 }
 
+const EVIDENCE_ARTIFACT_AT_4: Readonly<Record<string, unknown>> = {
+	...EVIDENCE_ARTIFACT_AT_3,
+	schemaVersion: 4,
+	reducedProbeOutcomes: [],
+}
+
 const SCORING_POLICY_AT_2: Readonly<Record<string, unknown>> = {
 	schemaVersion: 2,
 	parentDigest: null,
@@ -814,15 +820,15 @@ const SHAPES: readonly {
 		current: EVIDENCE_ARTIFACT_SCHEMA_VERSION,
 		parse: (value) => EvidenceArtifact.safeParse(value),
 		predecessor:
-			'declares no `uncitedFindingGaps` on the contract-scoring branch',
+			'declares no reduced per-probe outcomes and no trialIndex on detailed outcomes',
 		shapeByVersion: {
-			3: (stamp) => ({ ...EVIDENCE_ARTIFACT_AT_3, schemaVersion: stamp }),
-			2: (stamp) => {
+			4: (stamp) => ({ ...EVIDENCE_ARTIFACT_AT_4, schemaVersion: stamp }),
+			3: (stamp) => {
 				const artifact: Record<string, unknown> = {
-					...EVIDENCE_ARTIFACT_AT_3,
+					...EVIDENCE_ARTIFACT_AT_4,
 					schemaVersion: stamp,
 				}
-				delete artifact.uncitedFindingGaps
+				delete artifact.reducedProbeOutcomes
 				return artifact
 			},
 		},

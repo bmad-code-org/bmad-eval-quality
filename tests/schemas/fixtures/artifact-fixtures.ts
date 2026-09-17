@@ -981,7 +981,7 @@ export const scoringPolicyFixture: ScoringPolicy = {
 }
 
 const evidenceCommon = {
-	schemaVersion: 3,
+	schemaVersion: 4,
 	parentDigest: null,
 	revisionCount: 0,
 	runId: 'spike-run-0001',
@@ -1024,6 +1024,7 @@ const evidenceCommon = {
 	outcomes: [
 		{
 			oracleId: 'O-001',
+			trialIndex: 1,
 			probeId: 'P-001',
 			state: 'caught',
 			severity: 'critical',
@@ -1048,6 +1049,7 @@ const evidenceCommon = {
 			// The `not-evaluable` corroboration case: the expression never ran, which
 			// AD-33 keeps distinct from AD-4's `insufficient-evidence`.
 			oracleId: 'O-003',
+			trialIndex: 3,
 			probeId: null,
 			state: 'unreached',
 			severity: 'material',
@@ -1056,6 +1058,19 @@ const evidenceCommon = {
 			corroboration: 'not-evaluable',
 			selectedObservationIds: [],
 			checkResolution: null,
+		},
+	],
+	reducedProbeOutcomes: [
+		{
+			probeId: 'P-001',
+			severity: 'critical',
+			exercised: true,
+			caught: true,
+			validCount: 2,
+			caughtCount: 2,
+			invalidatedAttempts: [
+				{ attempt: 2, reason: 'port fault during probing' },
+			],
 		},
 	],
 	// F-004 is the synthetic uncited defect finding `uncitedFindingGaps` below

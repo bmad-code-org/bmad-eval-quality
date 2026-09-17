@@ -14,9 +14,13 @@ body.
 
 - **`score` and `runScore` accept complete trial sets.** Repeat `--record` for each sealed trial on
   the command line, or pass a record list through the existing `runScore` option. Records retain
-  their own `trialIndex` and must agree on contract digest, evaluator configuration digest, and
-  mode. A three-trial set scored under the published default policy now produces a comparable
-  strength vector. Passing one record to `runScore` remains supported.
+  their own `trialIndex` and must agree on `contractDigest`, `evaluatorConfigurationDigest`, `mode`,
+  `evaluatorRecommendation`, and `runId`. A three-trial set scored under the published default
+  policy now produces a comparable strength vector. Passing one record to `runScore` remains
+  supported.
+- **BREAKING: `EvidenceArtifact` schema version 4 separates trial evidence from reduction.**
+  Detailed oracle outcomes retain their `trialIndex`. A required `reducedProbeOutcomes` field
+  publishes the per-probe trial-set result used by contract strength and dominance.
 
 ## [3.3.0] - 2026-09-16
 

@@ -14,7 +14,7 @@ import type { EvalContract } from '../../src/core/schemas/eval-contract.ts'
 import {
 	type CoverageGap,
 	EvidenceArtifact,
-	type Outcome,
+	type TrialOutcome,
 	type UncitedFindingGap,
 } from '../../src/core/schemas/evidence-artifact.ts'
 import type { ScoringPolicy } from '../../src/core/schemas/scoring-policy.ts'
@@ -142,8 +142,9 @@ const cleanTrialSetResult: TrialSetResult = {
 	invalidatedAttempts: [],
 }
 
-const baseOutcome: Outcome = {
+const baseOutcome: TrialOutcome = {
 	oracleId: 'O-001',
+	trialIndex: 1,
 	probeId: probe.probeId,
 	state: 'caught',
 	severity: 'critical',
@@ -266,6 +267,17 @@ const scoredOf = (
 		probeQualification: qualificationOf(sealedProbes),
 		trialSetResult: cleanTrialSetResult,
 		outcomes: [baseOutcome],
+		reducedProbeOutcomes: [
+			{
+				probeId: probe.probeId,
+				severity: 'critical',
+				exercised: cleanTrialSetResult.exercised,
+				caught: cleanTrialSetResult.caught,
+				validCount: cleanTrialSetResult.validCount,
+				caughtCount: cleanTrialSetResult.caughtCount,
+				invalidatedAttempts: [...cleanTrialSetResult.invalidatedAttempts],
+			},
+		],
 		uncitedFindings: [],
 		...overrides,
 	}
@@ -354,7 +366,7 @@ describe('emit: the I/O & Edge-Case Matrix', () => {
 	})
 
 	it("Matrix row 4: an outcome carrying disposition 'not-attempted' (score.ts's ambiguity-guard default) passes through unchanged", () => {
-		const notAttemptedOutcome: Outcome = {
+		const notAttemptedOutcome: TrialOutcome = {
 			...baseOutcome,
 			disposition: 'not-attempted',
 		}
@@ -432,7 +444,10 @@ describe('emit: the I/O & Edge-Case Matrix', () => {
 	// `tests/seal/seal.test.ts`'s own "names a nested failing field" test for
 	// the identical formatter, duplicated here rather than shared.
 	it('names a nested failing field with the array index bracketed and the object key dotted', () => {
-		const invalidOutcome: Outcome = { ...baseOutcome, oracleId: 'not-an-id' }
+		const invalidOutcome = {
+			...baseOutcome,
+			oracleId: 'not-an-id',
+		} as TrialOutcome
 		expect(() => emitOf({ outcomes: [invalidOutcome] })).toThrow(
 			/first at "outcomes\[0\]\.oracleId"/,
 		)
@@ -444,7 +459,7 @@ describe('emit: production-mode and contract-scoring-mode shape', () => {
 		const scored = scoredOf({ assessment: productionAssessment() })
 		const result = emit(scored, digestOf(200), digestOf(201), digestOf(202))
 		const parsed = EvidenceArtifact.parse(result)
-		expect(parsed.schemaVersion).toBe(3)
+		expect(parsed.schemaVersion).toBe(4)
 		expect(parsed.parentDigest).toBeNull()
 		expect(parsed.revisionCount).toBe(0)
 		expect(parsed.runId).toBe(scored.runId)

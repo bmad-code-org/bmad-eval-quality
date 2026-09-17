@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest'
 import type { Severity } from '../../src/core/schemas/eval-contract.ts'
 import {
 	ClassStrength,
-	type Outcome,
+	type ReducedProbeOutcome,
 	type Strength,
 	StrengthVector,
 } from '../../src/core/schemas/evidence-artifact.ts'
@@ -188,19 +188,17 @@ const strengthOf = (vector: StrengthVector, comparable = true): Strength => ({
 })
 
 const outcomeOf = (
-	probeId: string | null,
-	state: Outcome['state'],
+	probeId: string,
+	state: 'caught' | 'missed',
 	severity: Severity = 'material',
-): Outcome => ({
-	oracleId: 'oracle-1',
+): ReducedProbeOutcome => ({
 	probeId,
-	state,
 	severity,
-	disposition: 'not-attempted',
-	resolvedFrom: null,
-	corroboration: 'not-evaluable',
-	selectedObservationIds: [],
-	checkResolution: null,
+	exercised: true,
+	caught: state === 'caught',
+	validCount: 1,
+	caughtCount: state === 'caught' ? 1 : 0,
+	invalidatedAttempts: [],
 })
 
 const KEY = digestOf(1)
@@ -208,11 +206,11 @@ const OTHER_KEY = digestOf(2)
 
 const comparableOf = (
 	vector: StrengthVector,
-	outcomes: readonly Outcome[] = [],
+	reducedProbeOutcomes: readonly ReducedProbeOutcome[] = [],
 	comparabilityKey = KEY,
 	comparable = true,
 ): ComparableResult => ({
-	outcomes,
+	reducedProbeOutcomes,
 	strength: strengthOf(vector, comparable),
 	comparabilityKey,
 })
@@ -422,7 +420,7 @@ describe('compareDominance', () => {
 		expect(relation).toBe('incomparable')
 	})
 
-	it('skips an outcome with a null probeId when applying the severity-floor override', () => {
+	it('treats a missing reduced probe result as a miss for the severity-floor override', () => {
 		const vector = {
 			...NULL_VECTOR,
 			defect: { caught: 3, exercised: 4, rate: 0.75 },
@@ -431,19 +429,12 @@ describe('compareDominance', () => {
 			...NULL_VECTOR,
 			defect: { caught: 1, exercised: 4, rate: 0.25 },
 		}
-		const a = comparableOf(vector, [outcomeOf(null, 'missed', 'critical')])
-		const b = comparableOf(other, [outcomeOf(null, 'caught', 'critical')])
-		expect(compareDominance(a, b, 'material')).toBe('a-dominates-b')
+		const a = comparableOf(vector)
+		const b = comparableOf(other, [outcomeOf('P-shared', 'caught', 'critical')])
+		expect(compareDominance(a, b, 'material')).toBe('incomparable')
 	})
 
-	// `outcomesByProbeId` keeps the first entry sharing a `probeId`, never the
-	// last. Here `other`'s own list carries two `P-shared` entries -- `caught`
-	// first, `missed` second -- so a last-write-wins map would read `missed`
-	// for the override check, skip it (the guard only fires on `caught`), and
-	// leave `a-dominates-b` standing uncorrected. First-write-wins reads
-	// `caught`, finds `favored` missed the same probe, and downgrades to
-	// `incomparable`.
-	it('reads the first Outcome sharing a probeId, not the last, when applying the severity-floor override', () => {
+	it('fails closed when reduced outcomes repeat a probeId', () => {
 		const vector = {
 			...NULL_VECTOR,
 			defect: { caught: 3, exercised: 4, rate: 0.75 },
@@ -452,14 +443,21 @@ describe('compareDominance', () => {
 			...NULL_VECTOR,
 			defect: { caught: 1, exercised: 4, rate: 0.25 },
 		}
-		const a = comparableOf(vector, [
-			outcomeOf('P-shared', 'missed', 'critical'),
-		])
-		const b = comparableOf(other, [
+		const a = comparableOf(vector, [outcomeOf('P-shared', 'missed')])
+		const duplicates = [
 			outcomeOf('P-shared', 'caught', 'critical'),
 			outcomeOf('P-shared', 'missed', 'critical'),
-		])
-		expect(compareDominance(a, b, 'material')).toBe('incomparable')
+		]
+		expect(
+			compareDominance(a, comparableOf(other, duplicates), 'material'),
+		).toBe('incomparable')
+		expect(
+			compareDominance(
+				a,
+				comparableOf(other, [...duplicates].reverse()),
+				'material',
+			),
+		).toBe('incomparable')
 	})
 })
 

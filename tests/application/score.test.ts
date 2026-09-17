@@ -11,7 +11,9 @@ import * as emitModule from '../../src/core/emit/emit.ts'
 import * as ingestModule from '../../src/core/ingest/index.ts'
 import { RuntimeFault } from '../../src/core/schemas/faults.ts'
 import * as scoreModule from '../../src/core/score/score.ts'
+import { compareDominance } from '../../src/core/score/strength.ts'
 import type { CorpusPort } from '../../src/ports/corpus-port.ts'
+import { defectFinding, defectFired } from '../score/fixtures/probe-witness.ts'
 import {
 	corpusDigestFixture,
 	evaluatorConfigurationFixture,
@@ -63,6 +65,26 @@ const run = (overrides: Partial<Parameters<typeof runScore>[0]> = {}) =>
 		signal: new AbortController().signal,
 		...overrides,
 	})
+
+const defectTrial = (trialIndex: number, caught: boolean) => ({
+	...sealedRunRecordFixtureForScore,
+	trialIndex,
+	oracleDispositions: [
+		{
+			oracleId: 'O-001',
+			disposition: 'violated' as const,
+			observationIds: ['obs-2'],
+			note: null,
+		},
+	],
+	findings: caught
+		? [defectFinding(['obs-2'], { probeId: scoreProbeFixture.probeId })]
+		: [],
+	observations: [defectFired],
+})
+
+const scoreTrials = (records: ReturnType<typeof defectTrial>[]) =>
+	run({ record: records, policy: POLICY })
 
 const faultOf = async (act: () => Promise<unknown>): Promise<RuntimeFault> => {
 	let thrown: unknown
@@ -188,6 +210,75 @@ describe('runScore: the full chain over the I/O & Edge-Case Matrix', () => {
 		expect(result.artifact?.verdictBasis).not.toContain(
 			'3 completed trials below the declared minimum of 3',
 		)
+	})
+
+	it('compares the reduced majority for mixed trial states', async () => {
+		const caughtMajority = await scoreTrials([
+			defectTrial(1, true),
+			defectTrial(2, true),
+			defectTrial(3, false),
+		])
+		const missedMajority = await scoreTrials([
+			defectTrial(1, true),
+			defectTrial(2, false),
+			defectTrial(3, false),
+		])
+		const a = caughtMajority.artifact
+		const b = missedMajority.artifact
+		expect(a?.reducedProbeOutcomes).toEqual([
+			{
+				probeId: 'P-001',
+				severity: 'low',
+				exercised: true,
+				caught: true,
+				validCount: 3,
+				caughtCount: 2,
+				invalidatedAttempts: [],
+			},
+		])
+		expect(b?.reducedProbeOutcomes[0]).toMatchObject({
+			exercised: true,
+			caught: false,
+			validCount: 3,
+			caughtCount: 1,
+		})
+		expect(a).not.toBeNull()
+		expect(b).not.toBeNull()
+		expect(compareDominance(a!, b!, 'low')).toBe('a-dominates-b')
+	})
+
+	it('keeps dominance stable when caught and missed states trade trialIndex values', async () => {
+		const caughtFirst = await scoreTrials([
+			defectTrial(1, true),
+			defectTrial(2, true),
+			defectTrial(3, false),
+		])
+		const missedFirst = await scoreTrials([
+			defectTrial(1, false),
+			defectTrial(2, true),
+			defectTrial(3, true),
+		])
+		const other = await scoreTrials([
+			defectTrial(1, true),
+			defectTrial(2, false),
+			defectTrial(3, false),
+		])
+		const a = caughtFirst.artifact
+		const permutedA = missedFirst.artifact
+		const b = other.artifact
+		expect(a?.reducedProbeOutcomes).toEqual(permutedA?.reducedProbeOutcomes)
+		expect(
+			permutedA?.outcomes.map(({ trialIndex, state }) => [trialIndex, state]),
+		).toEqual([
+			[1, 'missed'],
+			[2, 'caught'],
+			[3, 'caught'],
+		])
+		expect(a).not.toBeNull()
+		expect(permutedA).not.toBeNull()
+		expect(b).not.toBeNull()
+		expect(compareDominance(a!, b!, 'low')).toBe('a-dominates-b')
+		expect(compareDominance(permutedA!, b!, 'low')).toBe('a-dominates-b')
 	})
 
 	it('FAIL verdict: an ingested FAIL recommendation resolves exit 2', async () => {

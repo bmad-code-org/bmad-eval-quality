@@ -262,7 +262,7 @@ Six inputs are required, and every one of them is a real file here.
 | --- | --- |
 | `--record` | One sealed trial record: what the evaluator produced, sealed. Repeat the flag for each trial. Each record carries its own `trialIndex`. |
 | `--contract` | The compiled contract from step 1. |
-| `--probe` | The probe the record was run against, carrying the defect signature the witness match reads. |
+| `--probe` | The probe the records were run against, carrying the defect signature the witness match reads. |
 | `--preflight-verdict` | The verdict from step 5, which has to have passed. |
 | `--policy` | The scoring policy: the severity floor, the confidence and catch thresholds, and the minimum trial count. |
 | `--corpus-digest` | The one identity input no artifact carries, so the caller attests it. |

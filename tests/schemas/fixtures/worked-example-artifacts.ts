@@ -16,7 +16,7 @@
 // `npm run generate:worked-example` from the reference functions and checked
 // byte for byte by `npm run check:worked-example`, so these literals are no
 // longer a transcription of what is on disk. They are kept, and pinned at the
-// same 97 and 20 issues, because what they record is what the pre-epic-7
+// same 97 and 26 issues, because what they record is what the pre-epic-7
 // chain failed against the shipped shapes. Regeneration is what closed those
 // failures; deleting the record of them would delete the evidence that they
 // were real.
@@ -516,11 +516,12 @@ export const workedExampleEvidenceArtifact: unknown = {
 }
 
 /**
- * Its twenty issues. `mode`, `contractVerdict`, `verdictBasis`, `trials`, and
+ * Its twenty-six issues. `mode`, `contractVerdict`, `verdictBasis`, `trials`, and
  * `callerAttestedInputs` parse unchanged. What fails: absent lineage; the
  * scoring version as a bare digest missing AD-11's five named inputs; no
- * `excludedProbeIds`; outcomes with neither `selectedObservationIds` nor
- * `checkResolution`; `strength` with no `basis` and a one-key vector;
+ * `excludedProbeIds`; outcomes missing `selectedObservationIds`,
+ * `checkResolution`, and `trialIndex`; no `reducedProbeOutcomes`; `strength`
+ * with no `basis` and a one-key vector;
  * `rawCounts` (dropped as a duplicate of the vector); remediation with no
  * `lineageChain`; and, since Story 7.8, no `uncitedFindingGaps`, the
  * required owed-item-5 record this contract-scoring artifact predates.
@@ -532,14 +533,20 @@ export const WORKED_EXAMPLE_EVIDENCE_ISSUES: readonly WorkedExampleIssue[] = [
 	{ path: ['excludedProbeIds'], code: 'invalid_type' },
 	{ path: ['outcomes', 0, 'selectedObservationIds'], code: 'invalid_type' },
 	{ path: ['outcomes', 0, 'checkResolution'], code: 'invalid_type' },
+	{ path: ['outcomes', 0, 'trialIndex'], code: 'invalid_type' },
 	{ path: ['outcomes', 1, 'selectedObservationIds'], code: 'invalid_type' },
 	{ path: ['outcomes', 1, 'checkResolution'], code: 'invalid_type' },
+	{ path: ['outcomes', 1, 'trialIndex'], code: 'invalid_type' },
 	{ path: ['outcomes', 2, 'selectedObservationIds'], code: 'invalid_type' },
 	{ path: ['outcomes', 2, 'checkResolution'], code: 'invalid_type' },
+	{ path: ['outcomes', 2, 'trialIndex'], code: 'invalid_type' },
 	{ path: ['outcomes', 3, 'selectedObservationIds'], code: 'invalid_type' },
 	{ path: ['outcomes', 3, 'checkResolution'], code: 'invalid_type' },
+	{ path: ['outcomes', 3, 'trialIndex'], code: 'invalid_type' },
 	{ path: ['outcomes', 4, 'selectedObservationIds'], code: 'invalid_type' },
 	{ path: ['outcomes', 4, 'checkResolution'], code: 'invalid_type' },
+	{ path: ['outcomes', 4, 'trialIndex'], code: 'invalid_type' },
+	{ path: ['reducedProbeOutcomes'], code: 'invalid_type' },
 	{ path: ['strength', 'basis'], code: 'invalid_value' },
 	{ path: ['strength', 'vector', 'gameability'], code: 'invalid_type' },
 	{ path: ['strength', 'vector', 'zero-action'], code: 'invalid_type' },
