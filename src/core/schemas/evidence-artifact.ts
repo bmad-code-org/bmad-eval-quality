@@ -207,6 +207,14 @@ export const TrialOutcome = Outcome.extend({
 /** One detailed oracle outcome tied to the trial that produced it. */
 export type TrialOutcome = z.infer<typeof TrialOutcome>
 
+export const SelectedTrialVote = z.strictObject({
+	trialIndex: z.int().min(1),
+	state: OutcomeState,
+})
+
+/** The one outcome state selected to represent a probe in one trial. */
+export type SelectedTrialVote = z.infer<typeof SelectedTrialVote>
+
 /**
  * AD-7's per-probe fold. This stays separate from `TrialOutcome`: disposition,
  * corroboration, citations, and check trees have no honest aggregate value
@@ -225,6 +233,11 @@ export const ReducedProbeOutcome = z.strictObject({
 		.max(1)
 		.describe(
 			'The scoring-policy threshold used to derive caught from caughtCount / validCount. Recorded with the reduction so a consumer can verify the policy-dependent result without resolving the policy digest.',
+		),
+	trialVotes: z
+		.array(SelectedTrialVote)
+		.describe(
+			'The selected one-vote-per-trial input to the reducer. Retained so every aggregate field and invalidated attempt can be recomputed exactly.',
 		),
 	validCount: z.int().min(0),
 	caughtCount: z.int().min(0),

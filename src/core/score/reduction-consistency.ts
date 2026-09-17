@@ -1,8 +1,10 @@
 import type {
+	InvalidatedAttempt,
 	ReducedProbeOutcome,
 	TrialOutcome,
 	Trials,
 } from '../schemas/evidence-artifact.ts'
+import { reduceTrialSet } from './reduce-trials.ts'
 
 export type ReductionConsistencyInput = {
 	readonly outcomes: readonly TrialOutcome[]
@@ -15,39 +17,38 @@ export type ReductionConsistencyIssue = {
 	readonly message: string
 }
 
-const INVALIDATING_STATES = new Set([
-	'oracle-error',
-	'judge-error',
-	'infrastructure-error',
-])
+const attemptKey = (attempt: InvalidatedAttempt): string =>
+	`${attempt.attempt}\u0000${attempt.reason}`
 
-const VOTED_STATES = new Set([
-	'caught',
-	'confirmed',
-	'missed',
-	'abstained',
-	'bypassed',
-	'passed-clean-control',
-	'false-positive',
-])
+const sameAttempts = (
+	left: readonly InvalidatedAttempt[],
+	right: readonly InvalidatedAttempt[],
+): boolean => {
+	const leftKeys = left.map(attemptKey).sort()
+	const rightKeys = right.map(attemptKey).sort()
+	return (
+		leftKeys.length === rightKeys.length &&
+		leftKeys.every((key, index) => key === rightKeys[index])
+	)
+}
 
 /**
- * Checks one artifact's reduction arithmetic and its policy-independent
- * agreement with detailed outcomes. Several oracle outcomes can exist for
- * one probe and trial, so detailed outcomes provide safe upper bounds. The
- * recorded threshold makes the final caught decision exactly auditable.
+ * Recomputes each reduction from its retained one-vote-per-trial inputs, then
+ * checks those selected votes against the detailed trial evidence and root
+ * invalidation record.
  */
 export function reductionConsistencyIssuesOf(
 	artifact: ReductionConsistencyInput,
 ): readonly ReductionConsistencyIssue[] {
 	const issues: ReductionConsistencyIssue[] = []
 	const reducedIds = new Set<string>()
-	const rootInvalidated = new Map(
-		artifact.trials.invalidatedAttempts.map((attempt) => [
-			attempt.attempt,
-			attempt.reason,
-		]),
+	const detailProbeIds = new Set(
+		artifact.outcomes.flatMap((outcome) =>
+			outcome.probeId === null ? [] : [outcome.probeId],
+		),
 	)
+	const recomputedInvalidated: InvalidatedAttempt[] = []
+
 	for (const [index, reduced] of artifact.reducedProbeOutcomes.entries()) {
 		const base = ['reducedProbeOutcomes', index] as const
 		if (reducedIds.has(reduced.probeId)) {
@@ -57,94 +58,115 @@ export function reductionConsistencyIssuesOf(
 			})
 		}
 		reducedIds.add(reduced.probeId)
-		if (reduced.caughtCount > reduced.validCount) {
-			issues.push({
-				path: [...base, 'caughtCount'],
-				message: 'caughtCount cannot exceed validCount',
-			})
-		}
-		if (reduced.exercised !== reduced.validCount > 0) {
-			issues.push({
-				path: [...base, 'exercised'],
-				message: 'exercised must equal validCount > 0',
-			})
-		}
-		const caught =
-			reduced.validCount > 0 &&
-			reduced.caughtCount / reduced.validCount > reduced.catchThreshold
-		if (reduced.caught !== caught) {
-			issues.push({
-				path: [...base, 'caught'],
-				message: 'caught must equal caughtCount / validCount > catchThreshold',
-			})
-		}
-
-		const invalidated = new Set<number>()
 		const details = artifact.outcomes.filter(
 			(outcome) => outcome.probeId === reduced.probeId,
 		)
-		for (const [
-			attemptIndex,
-			attempt,
-		] of reduced.invalidatedAttempts.entries()) {
-			if (invalidated.has(attempt.attempt)) {
+		if (
+			details.length === 0 &&
+			(detailProbeIds.size > 0 || artifact.reducedProbeOutcomes.length > 1)
+		) {
+			issues.push({
+				path: [...base, 'probeId'],
+				message: 'reduced outcome has no detailed outcomes for its probe',
+			})
+		}
+
+		const voteTrials = new Set<number>()
+		for (const [voteIndex, vote] of reduced.trialVotes.entries()) {
+			if (voteTrials.has(vote.trialIndex)) {
 				issues.push({
-					path: [...base, 'invalidatedAttempts', attemptIndex, 'attempt'],
-					message: 'invalidated attempt indices must be unique per probe',
+					path: [...base, 'trialVotes', voteIndex, 'trialIndex'],
+					message: 'selected trial vote indices must be unique per probe',
 				})
 			}
-			invalidated.add(attempt.attempt)
-			if (rootInvalidated.get(attempt.attempt) !== attempt.reason) {
-				issues.push({
-					path: [...base, 'invalidatedAttempts', attemptIndex],
-					message:
-						'invalidated attempt must agree with trials.invalidatedAttempts',
-				})
-			}
+			voteTrials.add(vote.trialIndex)
 			if (
 				!details.some(
 					(outcome) =>
-						outcome.trialIndex === attempt.attempt &&
-						INVALIDATING_STATES.has(outcome.state),
+						outcome.trialIndex === vote.trialIndex &&
+						outcome.state === vote.state,
 				)
 			) {
 				issues.push({
-					path: [...base, 'invalidatedAttempts', attemptIndex, 'attempt'],
+					path: [...base, 'trialVotes', voteIndex],
 					message:
-						'invalidated attempt needs a detailed invalidating outcome for this probe and trial',
+						'selected trial vote must match a detailed outcome for the same probe and trial',
 				})
 			}
 		}
+		const detailTrials = new Set(details.map((outcome) => outcome.trialIndex))
+		if (
+			voteTrials.size !== detailTrials.size ||
+			[...detailTrials].some((trialIndex) => !voteTrials.has(trialIndex))
+		) {
+			issues.push({
+				path: [...base, 'trialVotes'],
+				message:
+					'selected trial votes must cover every detailed trial exactly once',
+			})
+		}
+		if (reduced.trialVotes.length !== artifact.trials.completed) {
+			issues.push({
+				path: [...base, 'trialVotes'],
+				message: 'selected trial vote count must equal trials.completed',
+			})
+		}
 
-		const validTrials = new Set(
-			details
-				.filter(
-					(outcome) =>
-						!invalidated.has(outcome.trialIndex) &&
-						VOTED_STATES.has(outcome.state),
-				)
-				.map((outcome) => outcome.trialIndex),
+		const recomputed = reduceTrialSet(
+			reduced.trialVotes,
+			reduced.catchThreshold,
 		)
-		const caughtTrials = new Set(
-			details
-				.filter(
-					(outcome) =>
-						!invalidated.has(outcome.trialIndex) && outcome.state === 'caught',
-				)
-				.map((outcome) => outcome.trialIndex),
-		)
-		if (reduced.validCount > validTrials.size) {
+		recomputedInvalidated.push(...recomputed.invalidatedAttempts)
+		if (reduced.exercised !== recomputed.exercised) {
+			issues.push({
+				path: [...base, 'exercised'],
+				message: 'exercised must equal the selected trial-vote reduction',
+			})
+		}
+		if (reduced.caught !== recomputed.caught) {
+			issues.push({
+				path: [...base, `caught`],
+				message: 'caught must equal the selected trial-vote reduction',
+			})
+		}
+		if (reduced.validCount !== recomputed.validCount) {
 			issues.push({
 				path: [...base, 'validCount'],
-				message: 'validCount exceeds detailed non-invalidated trial outcomes',
+				message: 'validCount must equal the selected trial-vote reduction',
 			})
 		}
-		if (reduced.caughtCount > caughtTrials.size) {
+		if (reduced.caughtCount !== recomputed.caughtCount) {
 			issues.push({
 				path: [...base, 'caughtCount'],
-				message: 'caughtCount exceeds detailed non-invalidated caught outcomes',
+				message: 'caughtCount must equal the selected trial-vote reduction',
 			})
 		}
+		if (
+			!sameAttempts(reduced.invalidatedAttempts, recomputed.invalidatedAttempts)
+		) {
+			issues.push({
+				path: [...base, 'invalidatedAttempts'],
+				message:
+					'invalidatedAttempts must equal the selected trial-vote reduction',
+			})
+		}
+	}
+	for (const probeId of detailProbeIds) {
+		if (!reducedIds.has(probeId)) {
+			issues.push({
+				path: ['reducedProbeOutcomes'],
+				message: `detailed probe ${probeId} is missing its reduced outcome`,
+			})
+		}
+	}
+	if (
+		!sameAttempts(artifact.trials.invalidatedAttempts, recomputedInvalidated)
+	) {
+		issues.push({
+			path: ['trials', 'invalidatedAttempts'],
+			message:
+				'trials.invalidatedAttempts must equal the selected trial-vote reductions',
+		})
 	}
 	return issues
 }

@@ -1019,7 +1019,7 @@ const evidenceCommon = {
 	trials: {
 		declaredMinimum: 3,
 		completed: 3,
-		invalidatedAttempts: [{ attempt: 2, reason: 'port fault during probing' }],
+		invalidatedAttempts: [{ attempt: 2, reason: 'oracle-error' }],
 	},
 	outcomes: [
 		{
@@ -1058,6 +1058,22 @@ const evidenceCommon = {
 			checkResolution: null,
 		},
 		{
+			oracleId: 'O-001',
+			trialIndex: 3,
+			probeId: 'P-001',
+			state: 'caught',
+			severity: 'critical',
+			disposition: 'violated',
+			resolvedFrom: 'F-001',
+			corroboration: 'agrees',
+			selectedObservationIds: ['obs-003'],
+			checkResolution: {
+				resolution: 'false',
+				introductionCondition: null,
+				children: [],
+			},
+		},
+		{
 			// The `not-evaluable` corroboration case: the expression never ran, which
 			// AD-33 keeps distinct from AD-4's `insufficient-evidence`.
 			oracleId: 'O-003',
@@ -1079,11 +1095,14 @@ const evidenceCommon = {
 			exercised: true,
 			caught: true,
 			catchThreshold: 0.5,
-			validCount: 1,
-			caughtCount: 1,
-			invalidatedAttempts: [
-				{ attempt: 2, reason: 'port fault during probing' },
+			trialVotes: [
+				{ trialIndex: 1, state: 'caught' },
+				{ trialIndex: 2, state: 'oracle-error' },
+				{ trialIndex: 3, state: 'caught' },
 			],
+			validCount: 2,
+			caughtCount: 2,
+			invalidatedAttempts: [{ attempt: 2, reason: 'oracle-error' }],
 		},
 	],
 	// F-004 is the synthetic uncited defect finding `uncitedFindingGaps` below

@@ -137,8 +137,8 @@ const qualificationOf = (sealed: SealedProbeSet): QualificationResult => {
 const cleanTrialSetResult: TrialSetResult = {
 	exercised: true,
 	caught: true,
-	validCount: 1,
-	caughtCount: 1,
+	validCount: 3,
+	caughtCount: 2,
 	invalidatedAttempts: [],
 }
 
@@ -154,6 +154,12 @@ const baseOutcome: TrialOutcome = {
 	selectedObservationIds: ['obs-1'],
 	checkResolution: null,
 }
+
+const cleanTrialOutcomes: readonly TrialOutcome[] = [
+	baseOutcome,
+	{ ...baseOutcome, trialIndex: 2 },
+	{ ...baseOutcome, trialIndex: 3, state: 'missed' },
+]
 
 const scoredOutcome: ScoredOutcome = {
 	oracleId: 'O-001',
@@ -266,7 +272,7 @@ const scoredOf = (
 		sealedProbes,
 		probeQualification: qualificationOf(sealedProbes),
 		trialSetResult: cleanTrialSetResult,
-		outcomes: [baseOutcome],
+		outcomes: cleanTrialOutcomes,
 		reducedProbeOutcomes: [
 			{
 				probeId: probe.probeId,
@@ -274,6 +280,11 @@ const scoredOf = (
 				exercised: cleanTrialSetResult.exercised,
 				caught: cleanTrialSetResult.caught,
 				catchThreshold: policy.catchThreshold,
+				trialVotes: [
+					{ trialIndex: 1, state: 'caught' },
+					{ trialIndex: 2, state: 'caught' },
+					{ trialIndex: 3, state: 'missed' },
+				],
 				validCount: cleanTrialSetResult.validCount,
 				caughtCount: cleanTrialSetResult.caughtCount,
 				invalidatedAttempts: [...cleanTrialSetResult.invalidatedAttempts],
@@ -371,8 +382,9 @@ describe('emit: the I/O & Edge-Case Matrix', () => {
 			...baseOutcome,
 			disposition: 'not-attempted',
 		}
-		const result = emitOf({ outcomes: [notAttemptedOutcome] })
-		expect(result.outcomes).toEqual([notAttemptedOutcome])
+		const outcomes = [notAttemptedOutcome, ...cleanTrialOutcomes.slice(1)]
+		const result = emitOf({ outcomes })
+		expect(result.outcomes).toEqual(outcomes)
 	})
 
 	it('Matrix row 5: an unreached outcome marks strength.comparable false, the vector still reported', () => {
@@ -395,6 +407,27 @@ describe('emit: the I/O & Edge-Case Matrix', () => {
 
 	it('Matrix row 6: completed trials below the declared minimum marks strength.comparable false', () => {
 		const result = emitOf({
+			outcomes: [baseOutcome],
+			trialSetResult: {
+				exercised: true,
+				caught: true,
+				validCount: 1,
+				caughtCount: 1,
+				invalidatedAttempts: [],
+			},
+			reducedProbeOutcomes: [
+				{
+					probeId: probe.probeId,
+					severity: 'critical',
+					exercised: true,
+					caught: true,
+					catchThreshold: policy.catchThreshold,
+					trialVotes: [{ trialIndex: 1, state: 'caught' }],
+					validCount: 1,
+					caughtCount: 1,
+					invalidatedAttempts: [],
+				},
+			],
 			assessment: contractAssessment({
 				outcomeState: cleanOutcomeState({
 					trials: { declaredMinimum: 3, completed: 1, invalidatedAttempts: [] },
@@ -483,9 +516,7 @@ describe('emit: the I/O & Edge-Case Matrix', () => {
 
 		expect(() =>
 			emit(inconsistent, digestOf(200), digestOf(201), digestOf(202)),
-		).toThrow(
-			/trial reduction is inconsistent.*reducedProbeOutcomes\[0\]\.caughtCount/,
-		)
+		).toThrow(/trial reduction is inconsistent.*trialVotes\[0\]/)
 	})
 })
 

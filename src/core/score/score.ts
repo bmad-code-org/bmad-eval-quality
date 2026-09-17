@@ -760,6 +760,7 @@ export const score: ScoreStage<
 			exercised: reduced.exercised,
 			caught: reduced.caught,
 			catchThreshold: policy.catchThreshold,
+			trialVotes: votes.map((vote) => ({ ...vote })),
 			validCount: reduced.validCount,
 			caughtCount: reduced.caughtCount,
 			invalidatedAttempts: [...reduced.invalidatedAttempts],

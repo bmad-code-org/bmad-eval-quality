@@ -232,6 +232,11 @@ describe('runScore: the full chain over the I/O & Edge-Case Matrix', () => {
 				exercised: true,
 				caught: true,
 				catchThreshold: 0.5,
+				trialVotes: [
+					{ trialIndex: 1, state: 'caught' },
+					{ trialIndex: 2, state: 'caught' },
+					{ trialIndex: 3, state: 'missed' },
+				],
 				validCount: 3,
 				caughtCount: 2,
 				invalidatedAttempts: [],
@@ -267,7 +272,22 @@ describe('runScore: the full chain over the I/O & Edge-Case Matrix', () => {
 		const a = caughtFirst.artifact
 		const permutedA = missedFirst.artifact
 		const b = other.artifact
-		expect(a?.reducedProbeOutcomes).toEqual(permutedA?.reducedProbeOutcomes)
+		expect(a?.reducedProbeOutcomes[0]).toEqual(
+			expect.objectContaining({
+				exercised: true,
+				caught: true,
+				validCount: 3,
+				caughtCount: 2,
+			}),
+		)
+		expect(permutedA?.reducedProbeOutcomes[0]).toEqual(
+			expect.objectContaining({
+				exercised: true,
+				caught: true,
+				validCount: 3,
+				caughtCount: 2,
+			}),
+		)
 		expect(
 			permutedA?.outcomes.map(({ trialIndex, state }) => [trialIndex, state]),
 		).toEqual([

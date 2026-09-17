@@ -318,6 +318,42 @@
                 "maximum": 1,
                 "description": "The scoring-policy threshold used to derive caught from caughtCount / validCount. Recorded with the reduction so a consumer can verify the policy-dependent result without resolving the policy digest."
               },
+              "trialVotes": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "trialIndex": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 9007199254740991
+                    },
+                    "state": {
+                      "type": "string",
+                      "enum": [
+                        "caught",
+                        "confirmed",
+                        "missed",
+                        "passed-clean-control",
+                        "false-positive",
+                        "abstained",
+                        "bypassed",
+                        "unreached",
+                        "oracle-error",
+                        "judge-error",
+                        "infrastructure-error",
+                        "not-applicable"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "trialIndex",
+                    "state"
+                  ],
+                  "additionalProperties": false
+                },
+                "description": "The selected one-vote-per-trial input to the reducer. Retained so every aggregate field and invalidated attempt can be recomputed exactly."
+              },
               "validCount": {
                 "type": "integer",
                 "minimum": 0,
@@ -358,6 +394,7 @@
               "exercised",
               "caught",
               "catchThreshold",
+              "trialVotes",
               "validCount",
               "caughtCount",
               "invalidatedAttempts"
@@ -985,6 +1022,42 @@
                 "maximum": 1,
                 "description": "The scoring-policy threshold used to derive caught from caughtCount / validCount. Recorded with the reduction so a consumer can verify the policy-dependent result without resolving the policy digest."
               },
+              "trialVotes": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "trialIndex": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 9007199254740991
+                    },
+                    "state": {
+                      "type": "string",
+                      "enum": [
+                        "caught",
+                        "confirmed",
+                        "missed",
+                        "passed-clean-control",
+                        "false-positive",
+                        "abstained",
+                        "bypassed",
+                        "unreached",
+                        "oracle-error",
+                        "judge-error",
+                        "infrastructure-error",
+                        "not-applicable"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "trialIndex",
+                    "state"
+                  ],
+                  "additionalProperties": false
+                },
+                "description": "The selected one-vote-per-trial input to the reducer. Retained so every aggregate field and invalidated attempt can be recomputed exactly."
+              },
               "validCount": {
                 "type": "integer",
                 "minimum": 0,
@@ -1025,6 +1098,7 @@
               "exercised",
               "caught",
               "catchThreshold",
+              "trialVotes",
               "validCount",
               "caughtCount",
               "invalidatedAttempts"

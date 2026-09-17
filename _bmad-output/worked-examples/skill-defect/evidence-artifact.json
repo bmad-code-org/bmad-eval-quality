@@ -102,6 +102,12 @@
       "invalidatedAttempts": [],
       "probeId": "P-001",
       "severity": "material",
+      "trialVotes": [
+        {
+          "state": "caught",
+          "trialIndex": 1
+        }
+      ],
       "validCount": 1
     }
   ],
