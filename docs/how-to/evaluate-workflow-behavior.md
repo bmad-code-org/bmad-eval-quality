@@ -12,7 +12,31 @@ A workflow is several steps that have to happen in order, where a later step dep
 The smallest honest example is a write followed by an independent read-back.
 The read proves the write persisted, and it proves that only when it happened after the write and addressed the record the write created.
 
-That is the shape this page runs end to end.
+## The core problem: persistence defects hidden by writes
+
+Did a later step use the result of an earlier step, and did the earlier step actually persist the requested change?
+
+In many systems, a write endpoint validates its inputs, builds an object, generates an ID, and responds `ok: true`. To the caller, the write looks completely successful. But if the storage layer silently drops a field or fails to persist the record, only a subsequent, independent read-back of that exact entity will reveal the failure:
+
+```text
+Step 1: create-thing (name: "a thing the run created")
+        ↓ returns id: "t-7", ok: true
+Step 2: get-thing (id: captured from Step 1 -> "t-7")
+        ↓ returns id: "t-7", name: "untitled"
+
+Persistence defect caught:
+write reported success, but stored name was "untitled".
+```
+
+Evaluating a multi-step workflow requires satisfying three distinct obligations:
+1. **The right entity:** The later step must query the exact identifier minted by the earlier step. Hard-coding an ID (`t-1`) tests a pre-existing record rather than the created one; an unconstrained matcher (`{ matcher: "any" }`) can match an unrelated read. The `{ captured }` binding syntax binds the created ID directly to the subsequent read.
+2. **The right order:** The read must execute strictly after the write. Array order in a JSON file does not prove execution sequence; explicit temporal clauses (`after: "create"`) and recorded sequence timestamps enforce it.
+3. **The right resulting state:** The read-back must confirm the expected attributes persisted.
+
+This walkthrough uses committed caller-produced evidence from `examples/tutorials/workflow/` and the published contract `corpus/dev/contracts/captured-read-back.json`.
+
+> **Execution vs evaluation boundary:** `eval-quality` does not start the service, execute HTTP requests, or step through the interaction plan. Your harness or caller runs the workflow and records the observations. `eval-quality` compiles the contract, preflights environment measurability, and scores whether the recorded evidence supports the evaluator's claims.
+
 For what a contract declares in general and how the four commands chain, read [the full walkthrough](/how-to/author-behavioral-contracts/) first.
 
 ## The mini-lab
@@ -35,6 +59,8 @@ It declares a thing service with three operations, and a plan whose second step 
 
 ### 1. Compile it
 
+> **Question:** Is the workflow contract syntactically and structurally valid?
+
 ```bash
 node dist/cli/main.js compile --in corpus/dev/contracts/captured-read-back.json --out /tmp/eval-quality-workflow/eval-contract.json
 ```
@@ -43,10 +69,12 @@ Exit `0`.
 
 ### 2. Watch the capture rules reject two plans
 
+> **Question:** What mistakes do compile-time capture rules prevent?
+
 The capture rules are where a workflow author actually gets stuck, so meet them before you meet a green run.
 Both files below are committed beside the tutorial's other fixtures, and each is the same contract with one field changed.
 
-**The wrong type.** A captured pointer's tail is one segment, the declared type at that key is scalar, and it has to equal the declared type of the parameter it is bound to. Capturing the boolean `ok` into a `path` parameter declared `string`:
+**The wrong type.** A captured pointer's tail is one segment, the declared type at that key is scalar, and it has to equal the declared type of the parameter it is bound to. This prevents binding a boolean (`ok`) into a path parameter declared as a string (`id`):
 
 <!-- expect-exit: 4 -->
 
@@ -58,7 +86,7 @@ node dist/cli/main.js compile --in examples/tutorials/workflow/broken-captured-t
 eval-quality: unreachable-check-evidence: EvalContract.interactionPlan[stepId=read-back].inputBinding.path["id"]: captured pointer "/interactions/create/response-body/ok" resolves to a declared "boolean", which is not the "string" the bound path parameter "id" is declared as
 ```
 
-**The cycle.** `checkBindingCycle` builds one graph over the capture edges and the `after` edges together, and rejects any cycle containing a capture edge. Making `create` capture from `read-back` while `read-back.after` is `create`:
+**The cycle.** `checkBindingCycle` builds one graph over the capture edges and the `after` edges together, and rejects any cycle containing a capture edge. This prevents asking a step to depend on a value that does not exist earlier in the execution sequence—such as making `create` capture from `read-back` while `read-back.after` is `create`:
 
 <!-- expect-exit: 4 -->
 
@@ -73,6 +101,10 @@ eval-quality: binding-cycle: EvalContract.interactionPlan[stepId=create].inputBi
 Both exit `4`, and both name the exact binding that broke the rule.
 
 ### 3. Preflight the environment
+
+> **Question:** Can this environment isolate test legs, reset state, and observe planted faults?
+
+The preflight command evaluates the environment using committed observations:
 
 ```bash
 node dist/cli/main.js preflight \
@@ -104,13 +136,27 @@ seeded-faults-scoped get-thing satisfied
 seeded-fault-fired get-thing satisfied
 ```
 
-Two of those are specific to this shape and worth pausing on.
+#### What preflight just established
 
-`state-reset` is satisfied because this contract declares a `fixtureReset`, and the planner therefore issues four control legs in a fixed order: observe, mutate, reset, observe again. A workflow that leaves state behind between legs measures the leg before it rather than the leg it names.
+```text
+Interfaces present (get, create, reset):      YES
+Input sensitivity (all 3 operations):         YES
+State reset (4-leg sequence verified):        SATISFIED (null)
+Clean controls:                               SATISFIED (null)
+Seeded fault fired on its leg:                SATISFIED
+Seeded fault scoped away from clean legs:     SATISFIED
+Environment fit to score:                     YES
+```
 
-`seeded-fault-fired` and `seeded-faults-scoped` exist because this chain's probe declares a manifestation witness. The first says the planted fault was observed to fire on its own leg. The second says the same relation did not fire on a clean leg of the same operation, because a defect that shows everywhere is not scoped to what you planted.
+Two checks are specific to this shape and worth pausing on:
+
+* **State reset:** `state-reset` is satisfied because this contract declares a `fixtureReset`. The planner issues four control legs in sequence: observe starting state, make a change (`preflight-control-mutate`), reset the fixture (`reset-the-store`), and observe again (`preflight-control-observe-2`). A workflow that leaves residue behind between legs would measure past residue rather than the current test leg.
+  > **Reset boundary:** This check confirms that the declared reset operation returned the observed state to baseline for the checked operation; it is not a global guarantee about every conceivable side effect across the host or database.
+* **Fault firing and scoping:** `seeded-fault-fired` and `seeded-faults-scoped` verify the probe's manifestation witness. The first confirms the planted persistence defect was observed to fire on its designated leg. The second confirms the same defect relation did not fire on clean legs of the same operation, proving the defect is scoped to the intentional fault.
 
 ### 4. Score the seeded defect
+
+> **Question:** Did the evaluator catch the persistence defect, and what does the contract verdict say?
 
 ```bash
 node dist/cli/main.js score \
@@ -144,6 +190,12 @@ contract-scoring CONCERNS exit 0
 {"defect":{"caught":1,"exercised":1,"rate":1},"gameability":null,"zero-action":null}
 ```
 
+#### How to read this result: three separate conclusions
+
+1. **The seeded persistence defect was caught:** Oracle `O-002` resolved to `caught` with disposition `violated`. The defect strength vector is `{"caught": 1, "exercised": 1, "rate": 1}`.
+2. **Other reported checks held:** Oracles `O-001` and `O-003` through `O-007` resolved to `confirmed`, disposition `held`. `coverageGaps` is empty.
+3. **Trial count shortfall:** The contract verdict is `CONCERNS` (exit code `0`) solely because the demonstrated command supplies one `--record` (1 completed trial) while the scoring policy declares a minimum of 3 trials (`verdictBasis: ["1 completed trials below the declared minimum of 3"]`).
+
 ### 5. What the capture bought you
 
 Read the record the score just ran over:
@@ -152,7 +204,7 @@ Read the record the score just ran over:
 node -e "const r=require('./examples/tutorials/workflow/sealed-run-record.json');for(const o of r.observations)console.log(o.sequence,o.operationId,'in',JSON.stringify(o.callInputs.path||o.callInputs.body),'->',JSON.stringify(o.responseBody))"
 ```
 
-Three rows carry the lesson:
+Two rows carry the lesson:
 
 ```text
 3 create-thing in {"name":"a thing the run created"} -> {"id":"t-7","name":"a thing the run created","ok":true}
@@ -163,13 +215,27 @@ The write answered `ok: true` and echoed back the name it was sent. Its own resp
 The read at `t-7` returned `untitled`, so the service filed the record and dropped the name.
 O-002 is the oracle that compares those two, and it came out `caught`.
 
-**The identifier is the point.** Nothing in the contract could have named `t-7`, because the service minted it. A literal would have hard-coded a resource the evaluator never created, and `{ matcher: "any" }` would have matched unrelated reads. The `{ captured }` binding is what put the evaluator in front of the record the write actually created.
+**The identifier is the point.** Nothing in the contract could have hard-coded `t-7`, because the service minted it dynamically at runtime. A literal would have hard-coded a resource the evaluator never created, and `{ matcher: "any" }` would have matched unrelated reads. The `{ captured }` binding is what put the evaluator in front of the record the write actually created.
+
+**Temporal ordering vs captured binding:** Temporal ordering (`after: "create"`, `sequence` numbers) proves that the read occurred after the write. But temporal order alone cannot guarantee that the read inspected the right entity. Capture connects the minted output of step 1 to the input parameter of step 2.
 
 **The verdict is CONCERNS on one basis, and that basis is this demonstrated invocation's trial count.** `coverageGaps` is empty and every other oracle held. The command above supplies one `--record`, so it completes one trial while the policy asks for three. The artifact reports that shortfall directly. [What Ships](/explanation/what-ships/) explains how repeated `--record` flags supply a complete trial set.
 
+## Key takeaways
+
+* Multi-step workflows require three obligations: the right entity, the right order, and the right resulting state.
+* Independent read-back catches persistence defects that look successful at the write endpoint.
+* Dynamic entity references require `{ captured }` bindings; temporal sequence alone cannot guarantee entity identity.
+* Array order in JSON does not establish execution order; `sequence` numbers and dependency graphs do.
+* Compile rules catch type mismatches and circular capture dependencies before any evaluation runs.
+* State-reset preflight checks confirm that fixture state returns to baseline between test legs.
+* The evaluation caught the seeded defect (`rate: 1`), while the contract overall received `CONCERNS` due to the single-trial shortfall.
+
 ---
 
-The rest of this page is the reference behind that lab.
+> **You can stop here if you only wanted the hands-on tutorial.**
+>
+> Everything below is reference material for authors building workflow evaluation contracts: step declarations, capture semantics, ordering guarantees, preflight resets, and fault scoping.
 
 ## What you are evaluating
 

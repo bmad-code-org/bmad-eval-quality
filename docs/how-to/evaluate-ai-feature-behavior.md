@@ -17,6 +17,18 @@ So an AI feature behind HTTP is declared `kind: "api"` today, and a contract sta
 
 This page spends its length on the one thing that is specific to an AI feature: **the answer is different every run, and you still have to make a claim that fails when the feature breaks.**
 
+## The core problem: asserting over varying responses
+
+How can an evaluation remain useful when a model's wording changes between runs?
+
+When an AI feature emits generated text, checking for exact character matches across runs will fail as soon as the model resamples or rephrases its answer. But evaluating an AI feature does not require asserting fixed prose:
+1. **Assert stable structure:** Envelopes, required keys, status indicators, and JSON types are deterministic.
+2. **Assert within-run relationships:** Compare related observations within the *same* run. For example, compare the title or entity ID submitted in a write request against the title or entity ID returned by a subsequent read request. That relational assertion holds regardless of what title the model generated.
+
+> **Example scope:** This walkthrough uses the toy Notes API from `examples/tutorials/walkthrough/` as a deterministic stand-in to demonstrate relational assertions and empty-evidence handling. It does not demonstrate live LLM resampling or semantic evaluation of generated prose.
+>
+> **Replay vs live execution:** The commands below replay committed, caller-produced artifacts. A separate test in this repository (`tests/adapters/live-api-chain.test.ts`) spins up the Notes API on a loopback HTTP port, executes live HTTP requests, and verifies that the resulting evidence matches these committed artifacts byte for byte.
+
 ## The mini-lab
 
 The chain is the one [the full walkthrough](/how-to/author-behavioral-contracts/) builds, and this page reads two of its results rather than all of them.
@@ -33,9 +45,19 @@ npm run build
 mkdir -p /tmp/eval-quality-ai-feature
 ```
 
+### 1. Compile the contract
+
+> **Question:** Does the contract define valid HTTP API operations and relational oracles?
+
 ```bash
 node dist/cli/main.js compile --in examples/tutorials/walkthrough/contract.json --out /tmp/eval-quality-ai-feature/eval-contract.json
 ```
+
+Exit `0`.
+
+### 2. Preflight the environment
+
+> **Question:** Is the environment measurable, sensitive to inputs, and able to observe the planted defect?
 
 ```bash
 node dist/cli/main.js preflight \
@@ -45,6 +67,24 @@ node dist/cli/main.js preflight \
   --run-id notes-run-1 \
   --out /tmp/eval-quality-ai-feature/preflight-verdict.json
 ```
+
+Exit `0`.
+
+#### What preflight just established
+
+```text
+Operations present (patch, read, list):      YES
+Input sensitivity across all operations:     YES
+Clean control legs observed:                 SATISFIED (null)
+Planted defect observed to fire:             SATISFIED
+Environment fit to score:                    YES
+```
+
+### 3. Score the run record
+
+> **Question:** What happens when an evaluation catches a seeded defect but encounters empty evidence on another check?
+
+Notice that exit `2` (`FAIL`) is expected here before running the command:
 
 <!-- expect-exit: 2 -->
 
@@ -61,7 +101,7 @@ node dist/cli/main.js score \
   --out /tmp/eval-quality-ai-feature/evidence-artifact.json
 ```
 
-Exit `2`. Two rows of the result are what this page is about:
+Exit `2`. Inspect the oracle outcomes:
 
 ```bash
 node -e "const e=require('/tmp/eval-quality-ai-feature/evidence-artifact.json');for(const o of e.outcomes)console.log(o.oracleId,o.state)"
@@ -73,6 +113,23 @@ O-002 confirmed
 O-003 confirmed
 O-004 abstained
 ```
+
+Now inspect the overall contract verdict and verdict basis:
+
+```bash
+node -e "const e=require('/tmp/eval-quality-ai-feature/evidence-artifact.json');console.log('verdict:',e.contractVerdict,'exit:',e.exitCode);console.log(JSON.stringify(e.verdictBasis));console.log(JSON.stringify(e.strength.vector))"
+```
+
+```text
+verdict: FAIL exit: 2
+["oracle O-004 resolved abstained at or above the severity floor"]
+{"defect":{"caught":1,"exercised":1,"rate":1},"gameability":null,"zero-action":null}
+```
+
+Two outcomes carry the core lesson:
+* `O-001 caught`: The relational check successfully detected the planted persistence defect (`defect: { caught: 1, exercised: 1, rate: 1 }`).
+* `O-004 abstained`: An oracle over an empty collection abstained rather than passing vacuously.
+* **Overall contract verdict:** `FAIL` (exit `2`), because `O-004` (severity `critical`) abstained, meeting the policy floor for failure. The empty-collection check caused the run to fail despite the defect being caught.
 
 ### O-001: a claim that survives a varying answer
 
@@ -104,7 +161,7 @@ What does not hold is the prose.
 There is no semantic operator in this library, and no operator asks a model whether an answer is good.
 The closed set is `equality`, `deep-equality`, `containment`, `existence`, `absence`, `regex`, `set-membership`, `ordering`, `count-tolerance`, `shape`, `covers-by-key`, the connectives `all`, `any`, `not`, and the quantifiers `for-all` and `for-any` (AD-4).
 `regex` is the ECMA-262 dialect, always fully anchored, with backreferences and lookbehind rejected at compile time under `malformed-operator-expression`.
-Judgement about wording belongs in a rubric, declared in the contract's `rubrics` field, and a contract with no rubric produces no judge call at all.
+Judgement about wording belongs in a rubric, declared in the contract's `rubrics` field, and a contract with no rubric produces no judge call at all. Obtaining judgments from a model or human evaluator is the caller's responsibility; the evaluation contract scores the resulting evidence.
 
 ### O-004: the empty collection that certifies nothing
 
@@ -121,7 +178,14 @@ insufficient evidence
 A two-valued reading would have resolved that `true` and reported the check satisfied.
 **An endpoint that returns zero rows to every request would pass every check of this shape**, which is the single most common way an AI feature's evaluation proves nothing.
 
-AD-4 closes it by making resolution three-valued.
+AD-4 closes it by making resolution three-valued: `true`, `false`, and `insufficient-evidence`.
+
+| Evidence State | Quantifiers (`for-all`, `for-any`) | Presence & Cardinality (`existence`, `absence`, `count-tolerance`) | General Operators (`equality`, `deep-equality`) |
+| --- | --- | --- | --- |
+| **Present, non-empty collection** (e.g. `["note-1"]`) | Evaluates predicate over each item | Evaluates count / presence | Compares values |
+| **Present, empty collection** (`[]`) | Resolves `insufficient-evidence` (`abstained`) | Evaluates normally (`count-tolerance(coll, 0, 0)` resolves `true`) | Resolves `insufficient-evidence` (`abstained`) |
+| **Absent / missing collection** (`null` or undeclared) | Resolves `insufficient-evidence` (`abstained`) | Resolves `insufficient-evidence` (`abstained`) | Resolves `insufficient-evidence` (`abstained`) |
+
 Every node resolves to `true`, `false`, or `insufficient-evidence`, and the third has one closed introduction condition: an operand denoting a collection that is empty.
 A pointer the declared response descriptor types as a collection, which resolves `absent`, introduces the value too, which is what covers the missing page alongside the empty one.
 An absent collection is never read as a present, empty one: `operandDenotesEmptyCollection` in `src/core/evaluate/resolution.ts` answers the `absent` case without consulting the operator exemption below it, so a missing collection stays intercepted under every operator in the set.
@@ -140,15 +204,20 @@ The practical consequence is that "this collection should be empty" now has a sp
 There is still no spelling for "this collection may legitimately be empty", and AD-4 records that as deliberate.
 One disagreement is left standing, and AD-4 writes it down: `deep-equality(coll, [])` and `equality(coll, [])` abstain over the same evidence where `count-tolerance(coll, 0, 0)` resolves `true`, because one totality applies across a whole leaf's operands.
 
-### The lesson
+## Key takeaways
 
-> **You do not need deterministic prose to evaluate a nondeterministic AI feature. Assert stable structure and relationships between observations.**
-
-And the corollary the same run just demonstrated: a check that examined nothing is reported as having examined nothing, rather than as having passed.
+* You do not need deterministic prose to evaluate an AI feature; assert stable structure and within-run relationships between observations.
+* Relational assertions (e.g. sent title == read-back title) survive arbitrary model phrasing and resampling.
+* Empty collections under quantifiers resolve to `insufficient-evidence` (`abstained`) rather than vacuously passing.
+* An abstained oracle at or above the policy floor drives the overall contract verdict to `FAIL` (exit code `2`).
+* Three operators (`count-tolerance`, `existence`, `absence`) evaluate over present empty collections without abstaining; missing collections always abstain.
+* Structural and relational checks verify system integration and persistence; assessing the semantic quality or correctness of generated prose requires a separate rubric and evaluator judgment.
 
 ---
 
-The rest of this page is the reference behind that lab.
+> **You can stop here if you only wanted the hands-on tutorial.**
+>
+> Everything below is reference material for authors building AI feature evaluation contracts: interface declarations, volatile pointers, read-back discipline, and defect signatures.
 
 ## What you are evaluating
 
