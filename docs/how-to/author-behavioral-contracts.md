@@ -35,6 +35,20 @@ mkdir -p /tmp/eval-quality-run
 
 `examples/tutorials/walkthrough/` is a toy Notes API with one behavior under evaluation and one defect planted in it.
 
+The Notes API is intentionally tiny. The domain is arbitrary. It exists because persistence gives us an easy-to-understand defect where a response can look successful while the resulting state is wrong:
+
+```text
+write title = "Revised"
+        ↓
+response says "Revised"
+        ↓
+read same note
+        ↓
+still "Original"
+```
+
+A check that trusts only the write response misses the defect. Independent read-back catches it.
+
 The behavior, B-001, is `critical`: **a write that reports success has stored the change.**
 Its observable success criterion says how you would see that: an independent read of the same note after a successful write returns the title the write sent.
 
@@ -44,7 +58,81 @@ Only a later, independent read shows the old value.
 
 That directory carries the whole chain: the contract, the pre-flight inputs, the probe declaring the defect, the sealed run record an evaluator produced, and the three caller-side artifacts `score` validates against. Every digest inside it is computed from bytes this repository ships.
 
+## How this walkthrough fits together
+
+[How It Works](/explanation/behavioral-evaluation-contracts/) described the [four-layer model](/explanation/behavioral-evaluation-contracts/#four-things-and-the-boundaries-between-them) conceptually. This walkthrough runs those stages over one real contract and lets you inspect the artifact produced at each point.
+
+```text
+Behavioral Evaluation Contract
+            ↓
+         COMPILE
+   Is the design valid?
+            ↓
+          SEAL
+ Create evaluator-safe brief
+            ↓
+        PREFLIGHT
+ Is the environment measurable?
+            ↓
+       EVALUATION
+ caller/evaluator produces
+ observations + findings
+            ↓
+          SCORE
+ Does evidence support
+ the evaluator's claims?
+            ↓
+    Evidence Artifact
+ verdict + outcomes + strength
+```
+
+Be explicit about ownership:
+
+```text
+eval-quality:
+compile
+seal
+preflight reduction
+score
+
+caller / harness:
+run the SUT
+run the evaluator
+collect observations
+produce the sealed run record
+```
+
+The walkthrough uses committed caller-produced artifacts where appropriate.
+
+The full [twin-run model](/explanation/behavioral-evaluation-contracts/#the-twin-run) compares a clean system with a deliberately mutated system. This walkthrough takes you through one scored arm in detail so you can first understand `compile`, `seal`, `preflight`, and `score`. The later section shows how the same chain is repeated for both clean and mutated arms.
+
+```text
+Full twin run
+
+       Clean SUT                 Mutated SUT
+           ↓                         ↓
+       Evaluation                Evaluation
+           ↓                         ↓
+         SCORE                     SCORE
+           └──────────┬──────────────┘
+                      ↓
+          Did the evaluation discriminate?
+
+
+This walkthrough
+
+       Known defective SUT
+               ↓
+           Evaluation
+               ↓
+             SCORE
+               ↓
+       Read the evidence
+```
+
 ## 1. Compile the contract
+
+> **Question:** Is my evaluation specification structurally valid and capable of proving what it claims?
 
 `compile` reads the authored contract, checks it against the contract schema, checks it against the discipline rules, and writes the compiled artifact.
 
@@ -53,11 +141,12 @@ node dist/cli/main.js compile --in examples/tutorials/walkthrough/contract.json 
 ```
 
 Exit `0`, and the artifact is on disk.
-It is one line of RFC 8785 canonical JSON with the keys in sorted order, plus a trailing newline. The digest, a fingerprint of the artifact, is computed over that line without the newline, so two machines agree on what the contract is.
 
-An `--out` value ending in `.json` is a file path. Anything else is a directory, and the file inside it is named after the artifact kind.
+> An `--out` value ending in `.json` is a file path. Anything else is a directory, and the file inside it is named after the artifact kind. Under the hood, the artifact is written as canonical JSON (RFC 8785) with sorted keys plus a trailing newline. The artifact's digest is computed over that line without the newline, so two machines agree on what the contract is.
 
 ## 2. What a contract declares
+
+> **Question:** What behavior, evidence, interfaces, and checks did I just authorize?
 
 `schemas/eval-contract.schema.json` is the normative shape, published under `$id: urn:eval-quality:schema:eval-contract`.
 It sets `additionalProperties: false` and requires twenty-one top-level fields.
@@ -96,6 +185,8 @@ The `after` clause is what makes the read independent evidence rather than a rea
 **The sensitivity witness** on each operation is two calls differing in one input and a declared relation their responses have to satisfy. It is what establishes that the operation reads the input at all.
 
 ## 3. Read a rejection
+
+> **Question:** Can eval-quality catch a broken evaluation design before I run an expensive evaluation?
 
 Two gates run, and they fail differently.
 
@@ -140,6 +231,8 @@ When a rule is unclear, open the contract named after it and the one next to it 
 
 ## 4. Seal it
 
+> **Question:** What can I safely give the evaluator without giving it the answer key?
+
 `seal` compiles the input and reduces it to a brief the evaluator can be handed:
 
 ```bash
@@ -164,9 +257,11 @@ cmp /tmp/eval-quality-run/sealed-evaluator-brief.json /tmp/eval-quality-run/pipe
 identical
 ```
 
-`--in` left out reads stdin, which is what makes the pipe work. `-` names stdin explicitly, and at most one input per command may be `-`.
+> `--in` left out reads stdin, which is what makes the pipe work. `-` names stdin explicitly, and at most one input per command may be `-`.
 
 ## 5. Preflight the environment
+
+> **Question:** Can this environment actually produce the evidence the contract depends on?
 
 `preflight` answers one question: is the environment fit to be measured?
 
@@ -252,9 +347,38 @@ clean-control null satisfied
 
 A planned leg with no matching observation is what a failed pre-flight looks like: the affected checks report `failed`, `passed` becomes `false`, each check's `note` says why, and the command exits `3`. That is the environment gate refusing an incomplete run, and it is why `score` reads `passed` before it reads anything else.
 
+### What preflight established
+
+```text
+Required interfaces exist                 YES
+Declared inputs affect behavior           YES
+State reset works                         YES
+Clean control works                       YES
+Environment fit to score                  YES
+```
+
+Preflight has not decided whether the evaluation is good. It has established that the environment is fit enough for the resulting evidence to mean something.
+
 ## 6. Score it
 
+> **Question:** Does the recorded evidence support what the evaluator claimed?
+
 `score` chains `ingest`, `score`, and `emit` over a trial set and mints an evidence artifact carrying the verdict. This walkthrough supplies one record, so its result records one completed trial. Repeat `--record` with independently sealed records to meet a multi-trial policy minimum. Every record carries a distinct `trialIndex`; every record agrees on `contractDigest`, `evaluatorConfigurationDigest`, `mode`, `evaluatorRecommendation`, and `runId`.
+
+```text
+sealed run record
++ compiled contract
++ probe
++ passed preflight
++ scoring policy
++ isolation/config identity
+        ↓
+      SCORE
+        ↓
+ Evidence Artifact
+```
+
+The run record contains what the evaluator observed and concluded. The other inputs tell eval-quality what contract, probe, policy, and controlled environment that evidence belongs to.
 
 Six inputs are required, and every one of them is a real file here.
 
@@ -292,9 +416,22 @@ The exit code is the verdict: `0` is PASS, WAIVED, or CONCERNS, `2` is FAIL, `1`
 
 Step 7 is why this run came out FAIL, and it is the most useful thing on this page.
 
-One note before you read it. This chain's record points at its isolation manifest with a public reference, which is what lets you score it with no `--corpus-root`. A record pointing at a private reference needs that flag, and `score` then resolves the reference and checks the declared digest against the bytes it found.
+> **Isolation reference:** This chain's record points at its isolation manifest with a public reference, which is what lets you score it with no `--corpus-root`. A record pointing at a private reference needs that flag, and `score` then resolves the reference and checks the declared digest against the bytes it found.
 
 ## 7. Read the run you just produced
+
+> **Question:** What did the evaluation actually prove, and where is it still weak?
+
+### Read the result in this order
+
+```text
+1. What did the evaluator observe?
+2. Which oracles were caught / confirmed / abstained?
+3. What is the overall verdict?
+4. Why did it receive that verdict?
+5. What does the strength vector say?
+6. Is that strength comparable yet?
+```
 
 **What the evaluator saw.** Three observations, in `sequence` order:
 
@@ -364,6 +501,18 @@ The policy asked for three trials and the demonstrated `score` command supplies 
 
 ### The lesson
 
+```text
+Planted persistence defect:     CAUGHT
+Defect probes:                  1 / 1
+Overall contract verdict:       FAIL
+Reason for FAIL:                O-004 had insufficient evidence
+Completed trials:               1
+Required trials:                3
+Strength comparable:            NO
+```
+
+The evaluation successfully caught the known defect, while the evaluation contract still had a material evidence gap. Those are separate conclusions.
+
 **`score` verifies from evidence whether the evaluation really caught the defect, while also checking broader contract health. Catching one defect does not make the evaluation contract trustworthy.**
 
 This run is that sentence in one artifact. The contract caught the defect it was pointed at, with a rate of `1`, and the same run came back FAIL because a different check certified nothing.
@@ -371,11 +520,49 @@ Reading only the strength vector would have told you the contract was perfect.
 
 [Contract strength](/explanation/contract-strength/) says how far a number like that carries, and why the verdict and the vector are allowed to disagree.
 
+## Key takeaways
+
+* `compile` checks whether the BEC is structurally valid and capable of proving what it claims.
+* `seal` creates the evaluator-safe brief and removes the answer key.
+* `preflight` checks whether the environment can produce meaningful evidence.
+* The caller or harness runs the SUT and evaluator. `eval-quality` does not do that execution itself.
+* `score` checks the evaluator's claims against the recorded evidence.
+* A planted defect only counts as caught when the cited evidence matches its declared signature.
+* Catching a defect does not automatically make the whole evaluation contract trustworthy.
+* Verdict and strength answer different questions.
+* This walkthrough scored one arm. A complete twin run repeats the process for clean and mutated systems and asks whether the evaluation discriminates between them.
+
+```text
+BEC
+ ↓
+COMPILE
+ ↓
+SEAL
+ ↓
+PREFLIGHT
+ ↓
+EVALUATE
+ ↓
+SEALED RUN RECORD
+ ↓
+SCORE
+ ↓
+EVIDENCE ARTIFACT
+ ↓
+verdict + strength
+```
+
+---
+
+> **You have completed the hands-on walkthrough.**
+>
+> Everything below moves from the single-arm exercise into integration: how a real harness repeats the process for clean and mutated systems.
+
 ## Next: run a real clean and mutated experiment
 
 > **Template only. Do not run these commands verbatim. The files below are produced by your evaluation harness, and this repository does not ship them.**
 
-Everything above scored one arm. The twin run on [How It Works](/explanation/behavioral-evaluation-contracts/) is these commands run over two: a clean system and the same system with one defect you planted by hand.
+This is the two-arm version of the pipeline you just completed once. Everything above scored one arm. The twin run on [How It Works](/explanation/behavioral-evaluation-contracts/#the-twin-run) is these commands run over two: a clean system and the same system with one defect you planted by hand.
 
 The contract, the brief, the policy, and the evaluator configuration are shared. Each arm has its own probe, its own preflight, its own evaluator run, and its own record. No command here performs the mutation; you make that edit yourself.
 
