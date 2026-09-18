@@ -7,7 +7,12 @@ sidebar:
 
 # Evaluate tool-use behavior
 
-Two questions get called tool-use evaluation, and each has a different system under test.
+Two questions get called tool-use evaluation, and each has a different system under test:
+
+| Question | System Under Test | Observed Evidence | Evaluated By |
+| --- | --- | --- | --- |
+| **Did the agent use tools correctly?** | The autonomous agent | The agent's recorded calls, arguments, and written logs | `cli` interface kind ([Evaluate agent behavior](/how-to/evaluate-agent-behavior/)) |
+| **Is the tool server itself correct?** | The MCP tool server | Server responses and persistent state changes | `mcp` interface kind (this guide) |
 
 **Was the agent's tool use correct?**
 The system under test is the agent that reaches its capabilities through tools: a function-calling loop, a plugin it invokes with arguments it chose itself, an MCP client it drives.
@@ -22,6 +27,8 @@ The system under test is the MCP server: the tool call is the request, the tool 
 Everything from [What an `mcp` operation declares](#what-an-mcp-operation-declares) down is about this question.
 
 This repository ships an adapter that runs a tool call. `createMcpAdapter` speaks MCP's stdio transport, and the mini-lab below drives a real tool server through it, from `compile` to a scored defect. Nothing in TEA has been scored against an `mcp` interface yet.
+
+> **Scope boundary:** This mini-lab evaluates the second target: the MCP tool server. It verifies whether the server correctly processes tool calls and persists state. It does not evaluate whether an autonomous agent made the right reasoning choices or selected the right tools.
 
 ## The mini-lab
 
@@ -38,14 +45,16 @@ npm run build
 mkdir -p /tmp/eval-quality-tool-use
 ```
 
-Three files under `examples/tutorials/tool-use/` make this possible.
-`tool-server.mjs` is a small MCP server speaking the stdio transport, publishing two tools: `search_notes` and `create_note`.
-`notes-store.mjs` is the logic behind them.
-`run-tool-calls.mjs` is the caller-side helper: it wires `createMcpAdapter` with an `McpTargetPolicy` mapping the contract's logical interface to that server, drives the calls, and writes what came back.
+Three files under `examples/tutorials/tool-use/` make this possible:
+* `tool-server.mjs`: A small MCP server speaking the stdio transport, publishing two tools: `search_notes` and `create_note`.
+* `notes-store.mjs`: The underlying state logic and file-backed persistence.
+* `run-tool-calls.mjs`: The caller-side test harness helper. It configures `createMcpAdapter` with an `McpTargetPolicy` mapping the contract's logical interface to that server, executes the planned tool calls, and records the responses.
 
-That third file is the boundary made concrete. This package launches nothing on its own, and the helper is the caller that does.
+> **Execution ownership:** The scoring CLI (`eval-quality`) executes no servers and makes no tool calls directly. The caller-side helper (`run-tool-calls.mjs`) drives the live tool calls and records observations.
 
 ### 1. Compile the contract
+
+> **Question:** Does the contract define valid `mcp` operations and tool schemas?
 
 ```bash
 node dist/cli/main.js compile --in examples/tutorials/tool-use/contract.json --out /tmp/eval-quality-tool-use/eval-contract.json
@@ -54,6 +63,10 @@ node dist/cli/main.js compile --in examples/tutorials/tool-use/contract.json --o
 Exit `0`.
 
 ### 2. Issue the pre-flight legs against a real server
+
+> **Question:** Does the MCP server handshake, respond to calls, and demonstrate input sensitivity?
+
+<!-- expect-exit: 0 -->
 
 ```bash
 node examples/tutorials/tool-use/run-tool-calls.mjs --contract /tmp/eval-quality-tool-use/eval-contract.json --run-id tool-run-1 --mode legs --out /tmp/eval-quality-tool-use/observations.json
@@ -74,17 +87,23 @@ leg leg-second-title  create_note({"title":"the second note"})
 
 The first two legs are `search_notes`'s sensitivity witness: two calls differing in one argument, answering differently, which is what establishes that the tool reads what you send it. The next two are the same for `create_note`. Four more control legs follow, and the helper prints the reduced verdict at the end.
 
-These are real tool calls. One detail is worth knowing before you write your own adapter: the shipped adapter opens **one session per tool call**, so the server is launched, handshaken, called once and torn down every time. A server holding its notes in memory would forget every write before the read-back that should find it, which is why this fixture keeps its store in a file the policy names.
+These are real tool calls. One architectural detail is critical when building your own adapter: the shipped stdio adapter opens **one session per tool call**. The server process is launched, performs the handshake, handles one call, and tears down. A server storing state in memory would lose every write before the subsequent read-back query. The fixture avoids this by persisting notes to a file path declared in the policy.
 
 ### 3. Watch the two arms diverge
 
-The plan's own steps, first against the clean server:
+> **Question:** Did the tool store the requested value, or merely report a successful status code?
+
+Execute the clean server first:
+
+<!-- expect-exit: 0 -->
 
 ```bash
 node examples/tutorials/tool-use/run-tool-calls.mjs --contract /tmp/eval-quality-tool-use/eval-contract.json --mode steps --out /tmp/eval-quality-tool-use/clean-steps.json
 ```
 
-Then with the defect seeded, which is the fixture's stand-in for an edit you would make by hand:
+Then execute the arm with the persistence defect seeded:
+
+<!-- expect-exit: 0 -->
 
 ```bash
 node examples/tutorials/tool-use/run-tool-calls.mjs --contract /tmp/eval-quality-tool-use/eval-contract.json --mode steps --seed-defect --out /tmp/eval-quality-tool-use/seeded-steps.json
@@ -102,10 +121,14 @@ step read-back  search_notes({"query":"note-a-new-note"})
   seeded -> {"matches":[{"noteId":"note-a-new-note"}],"totalCount":1,"topMatch":{"title":"(untitled)"}}
 ```
 
-**The creation answers identically in both arms.** Same `ok`, same identifier. A check over the write's own result passes against a server that discarded the title.
-The independent read-back is the only thing that separates them, and that is why a tool reporting success is weaker evidence than checking the state it left.
+**The creation call answers identically in both arms.** Both return `ok: true` and the same note identifier. A check examining only the response of `create_note` would pass both clean and defective servers.
+Only the independent read-back via `search_notes` reveals that the seeded server stored `(untitled)`. That is why verifying tool-use behavior requires checking the resulting state rather than trusting a tool's own status response.
 
 ### 4. Preflight and score
+
+> **Question:** Did the evaluator catch the persistence defect, and how is the contract verdict interpreted?
+
+> **Evidence provenance:** The live demonstration above wrote newly generated observations to `/tmp/eval-quality-tool-use/`. The commands below evaluate preflight against the committed observation fixture (`examples/tutorials/tool-use/observations.json`) and score against the committed sealed run record (`examples/tutorials/tool-use/sealed-run-record.json`). The repository test `tests/application/tool-use-tutorial.test.ts` verifies that live runs produce observations identical to the committed fixture.
 
 ```bash
 node dist/cli/main.js preflight \
@@ -156,7 +179,19 @@ contract-scoring CONCERNS exit 0
 {"defect":{"caught":1,"exercised":1,"rate":1},"gameability":null,"zero-action":null}
 ```
 
-O-001 is the read-back oracle, and it came out `caught`.
+#### How to read this result
+
+* **Oracle outcomes:** `O-001 caught violated agrees`. The read-back oracle detected the seeded persistence defect. Oracles `O-002`, `O-003`, and `O-004` held.
+* **Defect strength:** `defect: {"caught": 1, "exercised": 1, "rate": 1}`. The seeded defect was exercised and caught.
+* **Contract verdict:** `CONCERNS` (exit code `0`).
+* **Verdict basis:** The artifact reports:
+  ```text
+  coverage gap malformed-input unsatisfied at or above the severity floor
+  coverage gap per-record unsatisfied at or above the severity floor
+  coverage gap sibling-cross-check unsatisfied at or above the severity floor
+  1 completed trials below the declared minimum of 3
+  ```
+* **Comparability:** Marked `comparable: false`. The command scored 1 trial (`--record`), falling below the policy's required 3 trials.
 
 ### 5. Two things the lab decided for you
 
@@ -167,9 +202,20 @@ The tutorial's contract declares four behaviors with one oracle each. That is th
 
 **The observations are measured rather than authored.** The committed `observations.json` is byte-identical to what the helper writes when you run step 2 against the real spawned server, and `tests/application/tool-use-tutorial.test.ts` runs that comparison on every build. The chain builder replays the calls against `notes-store.mjs`, the same module the server imports, so there is one definition of what the tools answer.
 
+## Key takeaways
+
+* Tool-use evaluation answers two different questions: agent tool-selection behavior (`cli` kind) vs tool-server implementation correctness (`mcp` kind).
+* The scoring CLI executes no servers; caller-side harnesses or adapters run tool calls and record observations.
+* The shipped MCP adapter opens one session per tool call over stdio, requiring file-backed or external state persistence across calls.
+* A tool response reporting success (`ok: true`) does not guarantee state persisted; independent read-back is required to verify changes.
+* Preflight and score in this tutorial replay committed fixtures verified against live execution by regression tests.
+* The evaluation successfully caught the seeded tool defect (`rate: 1`), while the contract received `CONCERNS` due to coverage gaps and single-trial execution.
+
 ---
 
-The rest of this page is the reference behind that lab.
+> **You can stop here if you only wanted the hands-on tutorial.**
+>
+> Everything below is reference material for authors building MCP tool evaluation contracts: operation schemas, structured results, error channels, and probe qualification.
 
 ## What you are evaluating
 
@@ -257,24 +303,12 @@ The port carries both halves of the exchange.
 `ProbeObservation` has its own third member, `McpProbeObservation`, carrying the envelope's `isError` flag and the structured result the tool returned, so an adapter has a shape to answer with.
 An adapter that answered a tool-call leg with an observation of another mechanism gets a `port-contract-violation` from the reducer, which is what stops a tool call from being scored off an HTTP answer.
 
-## What you need
+## Declaring the interface (compile-only reference example)
 
-The commands below are `node dist/cli/main.js`, the binary inside a clone, so work from one:
-
-```bash
-git clone https://github.com/bmad-code-org/bmad-eval-quality.git
-cd bmad-eval-quality
-npm ci
-npm run build
-```
-
-Installed from the registry, the same binary is on `PATH` as `eval-quality`.
-
-## Declaring the interface
+> **Reference vs. scoring contract:** The mini-lab above used `examples/tutorials/tool-use/contract.json`, which is fully populated with oracles, safety limits, and an interaction plan for execution and scoring. Below is a separate compile-only reference example designed specifically to illustrate the full schema of an `mcp` interface declaration at compile time. It declares neither oracles nor an interaction plan, because `compile` is the only stage it reaches.
 
 Here is a tool server declared as far as the schema allows, inside the smallest contract that can carry it.
-The fields above `permittedInterfaces` are the scaffolding every contract declares, at their emptiest legal values, and the interface under them is what this page is about.
-An evaluation you would run declares oracles and an interaction plan; this one declares neither, because `compile` is the only stage it reaches.
+The fields above `permittedInterfaces` are the scaffolding every contract declares, at their emptiest legal values, and the interface under them is what this section illustrates.
 Write it to a file in the directory you are working in, and delete it when you are done: a leftover copy is untracked clutter at the clone root. `npm run check:doc-invocations` replays this page's own heredoc inside a sandbox, so a copy left at the root changes nothing it reports.
 
 ```bash

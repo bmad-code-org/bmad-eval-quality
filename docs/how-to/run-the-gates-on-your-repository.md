@@ -7,14 +7,32 @@ sidebar:
 
 # Run the gates on your repository
 
-The package publishes two binaries.
-`eval-quality` compiles and scores behavioral contracts.
-`eval-quality-gates` runs checks against your own repository, and this page is about that one.
+The package publishes two binaries:
+* `eval-quality`: Measures behavioral contracts. It scores agents, skills, workflows, tools, and structured outputs against declared invariants, safety limits, and oracle assertions.
+* `eval-quality-gates`: Enforces repository policies. It audits repository structure, dependency hygiene, publication boundaries, and documentation integrity against rules you declare.
 
-Every gate reads its rules out of one JSON file you write.
+This page is about `eval-quality-gates`.
+
+Every gate reads its rules out of one JSON configuration file you write (`eval-quality.config.json`).
 This package's own trees, names, and policies stay in this package; your run sees the values you declared and nothing else.
+All file and directory paths in the configuration resolve relative to the directory containing the configuration file, rather than your shell's current working directory.
 
 The gates binary carries eight gates.
+
+### Gate selector
+
+Use this selector to identify which gate applies to your task before diving into configuration details:
+
+| Gate | Target / Purpose | Prerequisites | Covered In |
+|---|---|---|---|
+| `package-boundary` | Shipped files against forbidden strings or unpublished paths | None | Lab 1 & Reference |
+| `licences` | Lockfile dependencies against allowed SPDX licence identifiers and policies | None (reads lockfile) | Lab 2 & Reference |
+| `lockfile-age` | Lockfile dependencies against minimum registry publication age | Registry access or cache | Lab 3 & Reference |
+| `dependency-direction` | Source import graphs against declared unidirectional architectural layers | TypeScript peer dependency | Lab 4 & Reference |
+| `field-ownership` | Field writes against authorized modules and designated helpers | TypeScript peer dependency | Lab 5 & Reference |
+| `doc-invocations` | Fenced markdown commands against declared exit codes and error output | Built binary | Reference |
+| `doc-counts` | Prose counts against real code exports, manifests, and file trees | None (imports code) | Reference |
+| `doc-claims` | Prose citations, declared symbols, codes, schemas, and dated claims | None (imports code) | Reference |
 
 The first half of this page is five short labs you run.
 The second half is the reference for every setting each gate takes.
@@ -38,7 +56,7 @@ The labs are deliberately smaller than anything you would really gate, because t
 
 ## The exit contract
 
-Every gate answers with one of three codes, and a lab below produces each one.
+Every gate answers with one of three codes, and a lab below produces each one:
 
 ```text
 0   the gate passed
@@ -46,18 +64,22 @@ Every gate answers with one of three codes, and a lab below produces each one.
 64  the invocation or the configuration was wrong
 ```
 
-The split matters when you wire a gate into CI.
-`1` is a finding about your repository and belongs in the build log next to the diagnostic.
-`64` says the gate never got as far as looking, so treating it as a finding would report a clean scan of nothing.
+The split matters when you wire a gate into CI:
+* `0` (Success): The gate executed completely, scanned the repository, and verified that all checked entries satisfy your policy. Passing runs always report the count of scanned entries (for example, `2 entr(ies) scanned, 0 violations`). A scan that reached zero files does not provide assurance.
+* `1` (Policy finding): The gate executed successfully, inspected your repository, and discovered deliberate policy violations. The diagnostic printed on standard error explains the offending files and your configured rationale.
+* `64` (Invocation error): The gate never inspected your repository. It refused to run because of a command-line syntax error, a missing configuration file, an unconfigured gate section, an unparseable schema, a missing optional peer dependency like TypeScript, or a scan root that contained zero matching files. Treating code `64` as a finding or ignoring it would mistakenly treat an unexecuted check as a clean pass.
 
-One more thing decides what you see.
-A passing run prints its summary on standard output, and a failing run prints its diagnostic on standard error.
+One more thing decides what you see: a passing run prints its summary on standard output, and a failing run prints its diagnostic on standard error.
 
-## Lab 1: one gate, one failure, one fix
+## Lab 1: package-boundary (unpublished path references)
+
+> **Question:** How do we prevent published packages from pointing developers to internal repository files that npm never ships?
 
 `package-boundary` is the gate to meet first, because it needs nothing installed and nothing from the network.
 
-It reads every file your package would publish and fails on a line matching a pattern you declared.
+**The core failure:** A package publishes code to npm using `"files": ["src"]`. Inside `src/greet.js`, a developer leaves a comment: `// See tests/greet.test.js for the cases this covers.` When a user installs the package, `tests/` does not exist in the package distribution, so the comment points to a dead end.
+
+`package-boundary` reads every file your package would publish and fails on a line matching a pattern you declared.
 The case it exists for is a shipped file pointing at a path the installed package does not carry: a comment in published source that sends a reader to a test directory that npm never packed.
 
 Build a package with exactly that problem.
@@ -155,11 +177,17 @@ package-boundary: 2 entr(ies) scanned, 0 violations (1 from src, 1 from package.
 Exit `0`, and the count is in the passing line on purpose.
 A gate that passed over nothing and a gate that passed over your whole tree print different numbers, so the green line still carries evidence.
 
+> **Scope boundary:** `package-boundary` matches configured regular expression patterns against files and manifest fields. It does not perform deep semantic analysis of the codebase or parse abstract syntax trees.
+
 That loop is every gate on this page: declare the rule, run it, read the finding, fix the thing, run it again.
 
-## Lab 2: licences
+## Lab 2: licences (dependency allowlists and policy choices)
+
+> **Question:** How do we hold all direct and transitive dependencies in lockfiles to an approved licence allowlist?
 
 `licences` reads each lockfile directly, so it needs no install and it sees the optional platform binaries this machine never installed.
+
+**The core failure:** A dependency brings in an unapproved software licence. In this lab, our project allowlist permits `MIT`, `Apache-2.0`, and `ISC`. However, our dependency `pad-left@1.3.0` is licensed under `BSD-2-Clause`. The gate reads `package-lock.json` directly and catches the unallowed licence before any code is deployed.
 
 ```bash
 rm -rf /tmp/eval-quality-gates-lab/licences
@@ -218,7 +246,9 @@ licences package-lock.json: 1 entrie(s) outside the allowlist:
 
 The dependency path is the shortest chain of require-names from your root package to the offending entry, so the report names which of your dependencies brought it in.
 
-The honest fix here is to allow the licence, since `BSD-2-Clause` is one a permissive policy normally accepts and the decision belongs in the allowlist where a reviewer sees it in a diff:
+> **Policy decision note:** Expanding an allowlist in this tutorial is a toy policy choice to demonstrate gate execution. In a production codebase, altering an organizational licence allowlist requires legal or leadership approval, or replacing the offending dependency with an approved alternative. The gate prescribes no universal licence policy; it enforces the specific allowlist you declare.
+
+The fix here is to allow the licence, since `BSD-2-Clause` is one a permissive policy normally accepts:
 
 ```bash
 cat > /tmp/eval-quality-gates-lab/licences/eval-quality.config.json <<'EOF'
@@ -241,12 +271,16 @@ licences package-lock.json: passed against the allowlist, 2 entrie(s), all allow
 
 The other three settings on this gate exist for the cases the allowlist cannot reach, and the reference below covers each: `policies` for one lockfile that may carry more, `tolerances` for a family that is installed and never loaded, and `undeclared` for an entry whose manifest carries no licence field at all.
 
-## Lab 3: lockfile-age, and the one lab with a network prerequisite
+## Lab 3: lockfile-age (preventing supply-chain freshness attacks)
+
+> **Question:** How do we protect against freshly published malicious packages in committed lockfiles?
 
 `lockfile-age` audits every lockfile entry against that entry's real publication timestamp on the npm registry.
-It is the gate against a supply-chain attack that publishes a malicious version and waits for the next install to pick it up.
+It protects against supply-chain attacks where a compromised package version is published and immediately picked up by automated dependency updates.
 
-**The prerequisite.** An entry the `cache` file carries is used with no request. Every other entry is fetched from the npm registry, and a fetch that fails fails the gate rather than skipping the entry. So this lab is fully offline only because the cache below carries every entry in the lockfile.
+**The core failure:** A dependency in the lockfile was published too recently. In this lab, `fresh-dep@2.0.0` has a synthetic publication timestamp set in the future (the year 2099), failing the cutoff window.
+
+**Offline lab vs. network requirements:** Real-world execution queries the npm registry for publication metadata for any entry not present in the local cache. If registry metadata retrieval fails, the gate fails closed (exit code `1`). This lab runs completely offline because we provide a synthetic local cache file (`lockfile-age-cache.json`) containing every locked entry.
 
 ```bash
 rm -rf /tmp/eval-quality-gates-lab/lockfile-age
@@ -288,7 +322,7 @@ cat > /tmp/eval-quality-gates-lab/lockfile-age/lockfile-age-cache.json <<'EOF'
 EOF
 ```
 
-`fresh-dep` is dated in 2099 so this lab keeps failing whenever you run it.
+`fresh-dep` is dated synthetically in 2099 so this lab keeps failing whenever you run it.
 A recent real date would read more naturally and would go stale, and a lab that quietly stops failing teaches the wrong thing.
 
 ```bash
@@ -317,7 +351,9 @@ lockfile-age package-lock.json: 1 entrie(s) published inside the ...-day window 
 The window and the cutoff are elided above because both move with the clock.
 That is the gate's design rather than an accident: `windowDays` is a duration, so nothing you write goes stale as time passes.
 
-Age the entry and it passes:
+**Understanding windowDays:** `windowDays` defines how old an entry must be before it is permitted. A **larger `windowDays` is stricter** (requiring packages to be older and more established before adoption); a **smaller `windowDays` is looser** (allowing newer packages into the repository).
+
+To demonstrate how the predicate evaluates timestamps, update the synthetic cache so `fresh-dep` appears published in 2020:
 
 ```bash
 cat > /tmp/eval-quality-gates-lab/lockfile-age/lockfile-age-cache.json <<'EOF'
@@ -334,12 +370,15 @@ node dist/gates/gates-cli.js lockfile-age --config /tmp/eval-quality-gates-lab/l
 
 The run prints the effective clock, then how many timestamps it read from the cache, then a passing line naming the cutoff it held every entry to.
 
-Editing that cache to make a package look old is a real weakening of the gate, and it is meant to be.
-The cache is a committed file, and a diff to it is where that decision is visible, exactly as a wider `windowDays` or a longer `allowlist` would be.
+> **Demonstration vs. production practice:** Editing a cached timestamp in this lab is strictly a mechanism to demonstrate predicate evaluation. In production, you never backdate publication timestamps. Legitimate ways to satisfy the gate include waiting for the release to age, rolling back to an older version, or adding a documented exemption under `exclude` when an immediate release adoption is required.
 
-## Lab 4: dependency-direction
+## Lab 4: dependency-direction (enforcing unidirectional architecture)
 
-**The prerequisite, before you run anything.** This gate reads your source through the TypeScript scanner, and `typescript` is an optional peer dependency of this package. Run it inside this clone and it is already there. Run it in a repository that does not have it and the gate refuses at exit `64`, naming the missing dependency and itself. `field-ownership` in lab 5 is the only other gate that needs it, and the remaining six need nothing beyond this package.
+> **Question:** How do we enforce architectural layering and prevent lower-level domain modules from importing higher-level application code?
+
+**The core failure:** An internal domain module imports an outer application module. In layered architecture, the outer layer (`src/app/`) may depend on the domain model (`src/model/`), but domain model code must never import application configuration or drivers. In this lab, `src/model/price.ts` imports `currency` from `../app/config.ts`, violating directional layering.
+
+**The prerequisite:** This gate inspects source code using TypeScript's AST scanner (`typescript/unstable/ast`), which is an optional peer dependency of this package. Inside this repository clone, TypeScript is already available. In external repositories, running `dependency-direction` without TypeScript installed causes the gate to refuse at exit `64`, naming the missing dependency and itself. `field-ownership` in lab 5 is the only other gate that requires TypeScript; the other six gates require no extra dependencies.
 
 Two layers, and one import going the wrong way.
 
@@ -435,9 +474,15 @@ node dist/gates/gates-cli.js dependency-direction --config /tmp/eval-quality-gat
 dependency-direction: passed, 2 file(s) scanned across 1 root(s), 0 violations.
 ```
 
-## Lab 5: field-ownership
+> **Scope boundary:** `dependency-direction` reads static imports, dynamic imports with string literals, re-exports, and triple-slash reference directives file by file. It does not trace runtime dynamic module loading with computed specifiers.
 
-Same prerequisite as lab 4: this gate needs `typescript`.
+## Lab 5: field-ownership (restricting writes to sensitive fields)
+
+> **Question:** How do we ensure critical fields like tenant identifiers or provenance markers are only written by authorized modules?
+
+**The core failure:** An unauthorized module writes to a protected field. In this lab, the tenant identifier field is protected so only `src/app/authorize.ts` may set it. Inside `src/app/report.ts`, an unauthorized function `anonymise` writes a literal `tenantId: 'unknown'`.
+
+**The prerequisite:** Same as lab 4: this gate requires TypeScript as an optional peer dependency.
 
 One field that carries a claim, one module allowed to set it, and one write from somewhere else.
 
@@ -528,9 +573,12 @@ node dist/gates/gates-cli.js field-ownership --config /tmp/eval-quality-gates-la
 field-ownership: 2 file(s) scanned, 0 violations
 ```
 
+> **Scope boundary:** `field-ownership` checks object literal field assignments and calls to declared helper functions. It does not perform full dataflow tracking across unlisted helper indirection or dynamic property spreading where the field name does not appear syntactically.
+
 ## Seeing exit 64
 
 The third code is the one you meet while adopting a gate rather than while running it.
+It indicates an invocation error, a missing file, or a configuration syntax fault. The gate never reached the point of inspecting repository contents, which is why treating code `64` as a policy pass is dangerous.
 
 A gate you invoke with no section for it refuses by name, because configuring a gate is what opts into it and there is no fallback to anyone else's values:
 
@@ -582,6 +630,8 @@ A gate you invoke with no section for it refuses by name and says which section 
 There is no fallback to this package's own values.
 
 Every path a section names is relative to the configuration file, so a configuration file is self-contained wherever you keep it.
+
+> **Reference configuration note:** The example below shows a complete `eval-quality.config.json` configuring all eight gates against the schema. It serves as an architectural reference and requires adaptation to your repository's actual paths and policies. It is not a continuation of the disposable mini-labs.
 
 A file configuring all eight gates parses against the published schema:
 
@@ -818,7 +868,7 @@ eval-quality-gates <gate> [--config <path>]
 
 It audits every entry in every lockfile you name against that entry's real publication timestamp on the npm registry.
 
-`windowDays` is how old an entry has to be, in days.
+`windowDays` is how old an entry has to be, in days. A larger `windowDays` is stricter (requiring packages to be older); a smaller `windowDays` is looser.
 It is a duration, so nothing you write goes stale as time passes.
 Leave it out and the gate holds entries to seven days.
 
@@ -837,7 +887,7 @@ An entry the cache carries is used with no request, an entry it does not is fetc
 The gate only reads the file. Write it with a generator of your own and commit it, and a run you never make costs you nothing but requests.
 
 The cache is trusted the way the rest of your configuration is trusted.
-A back-dated entry in it makes a young package look old, exactly as a wider `windowDays` or a longer `allowlist` would weaken the gates beside it.
+A back-dated entry in it makes a young package look old, exactly as a smaller `windowDays` or a longer `allowlist` would loosen the gates beside it.
 All of those are committed files, and a diff to any of them is the place that decision is visible.
 
 `exclude` holds the packages exempt from the window, one row each.
@@ -1125,9 +1175,13 @@ The gate replays each page in its own temporary directory, in document order.
 A `cat > path <<'EOF'` heredoc, an `echo ... > path` redirect and a `mkdir -p` all take effect there, so a page that writes a file and then reads it is checked against the file it wrote.
 Every path is rebased under that directory first, so the gate writes nothing into your repository.
 
+> **Execution and containment:** The gate replays each page inside an isolated temporary directory in document order, rebasing paths under that sandbox. However, the commands themselves run as actual child processes on the host machine with your user permissions and environment. Only configure pages whose commands and scripts you trust to execute.
+
 ## The doc-counts gate
 
 It computes every hand-written count in the pages you name from the thing it counts, renders it the way the page spells it, and compares.
+
+> **Scope boundary:** `doc-counts` calculates counts from explicitly declared sources (`module`, `json`, `files`, `matches`) and compares them against specific regex captures in prose. It does not scan every numeral across your markdown files automatically.
 
 A section has two halves.
 `sources` names where each number comes from, and `entries` names which sentence carries it.
@@ -1148,6 +1202,8 @@ A rewritten sentence therefore cannot escape its own entry by drifting out from 
 ## The doc-claims gate
 
 It holds the prose claims in your pages against the tree those pages describe: the class of sentence that is neither a number nor a fenced command.
+
+> **Scope boundary:** `doc-claims` audits eight specific classes of assertions declared in its configuration. It does not automatically parse or prove every arbitrary claim written in freeform prose.
 
 Eight classes, each its own block. A section declaring none of them is refused: the alternative is a pass over nothing.
 
@@ -1180,6 +1236,8 @@ A `"read"` claim may also carry `asOf`, which pins it to the content a human act
 `npm run hash:doc-claim-subject -- <path>` prints the digest to paste in; a failing entry's own message also names the exact command and shows the stored digest beside the one it computed.
 On every run the gate recomputes the hash and fails the entry the moment it disagrees, so a `"read"` claim stops being a confirmation that ages silently and starts being one that is checked against the thing it was read from.
 
+> **Attestation vs. reflex:** Pinning a content hash with `asOf.hash` is an explicit human attestation that an engineer has read the underlying file and verified that the stated claim holds true. Never update a claim hash merely as a reflex to silence a red gate without reviewing the underlying source.
+
 `asOf` only works for a subject inside your own tree.
 It is a content hash, so the artifact has to be something this run can read; a fact about another repository, a live server, or anything else outside the tree it can never settle, and pinning the page that states such a fact only proves the page has not been edited, not that the fact still holds.
 Leave `asOf` off a claim like that, and say why in `reason`.
@@ -1206,6 +1264,18 @@ What this normalization does not catch runs in both directions. Two real content
 Reading a value means importing the module that exports it, and importing runs that module's top level and everything it transitively imports, in this gate's own process, with this process's own permissions and environment.
 That is the same trust a lint plugin or a test setup file has, and it is what lets a count stay a computation in code you can test: the configuration only names it.
 Point them at modules whose top level, and whose imports, you are happy to run on every build.
+
+## Key takeaways
+
+1. **Repository gates vs. behavioral contracts:** `eval-quality-gates` enforces codebase architecture, dependency hygiene, and documentation claims; `eval-quality` measures runtime AI behavior against behavioral contracts.
+2. **The 0 / 1 / 64 exit contract:** Code `0` indicates a clean scan (always reporting scanned entry counts); code `1` indicates a deliberate policy violation finding; code `64` indicates an invocation error, missing dependency, or invalid configuration that prevented the gate from running.
+3. **Config-relative paths:** All paths in `eval-quality.config.json` resolve relative to the configuration file's own directory, making policy files self-contained and portable.
+4. **Supply-chain age direction:** In `lockfile-age`, a larger `windowDays` is stricter (requiring packages to be older), while a smaller `windowDays` is looser. Real audits query the npm registry and fail closed on unresolvable metadata.
+5. **Human review and deliberate exemptions over silencing:** In `doc-claims`, updating `asOf.hash` is an attestation that an engineer reviewed specific file content; in `lockfile-age`, an `exclude` entry is a deliberate, reviewed policy exception accepting young package releases rather than an attestation of package safety or normal publication-age compliance. Neither mechanism should be treated as an automatic reflex to bypass gates.
+
+---
+
+> **Congratulations:** You have completed the walkthrough for running repository gates on your own repository. You now know how to select gates, configure rules, interpret exit codes, and enforce architectural and documentation policies across your projects.
 
 ## Related pages
 
