@@ -31,10 +31,57 @@ npm run build
 mkdir -p /tmp/eval-quality-agent
 ```
 
+> If you read the twin-run diagram in [How It Works](/explanation/behavioral-evaluation-contracts/#the-twin-run), this lab is mainly walking the right-hand arm. We start by showing the healthy behavior so you know the baseline, then plant one known defect, preflight that mutated environment, evaluate it, and score whether the evaluation caught the defect. A complete twin run would also produce and score a separate clean-arm run.
+
+```text
+Full twin run
+
+       Clean SUT                  Mutated SUT
+          ↓                           ↓
+      Evaluation                  Evaluation
+          ↓                           ↓
+        Score                       Score
+          └───────────┬──────────────┘
+                      ↓
+          Did the evaluation discriminate?
+
+
+This mini-lab
+
+       healthy behavior shown
+               ↓
+         mutation planted
+               ↓
+          Mutated Agent
+               ↓
+            Preflight
+               ↓
+           Evaluation
+               ↓
+             Score
+               ↓
+          defect caught
+```
+
+The exercise shows healthy behavior and includes clean-control evidence during preflight, but it does not produce and score a separate clean-arm Evidence Artifact. It exercises the mutated arm of that larger discipline.
+
 ### 1. Run the agent
 
 `examples/tutorials/agent/release-notes-agent.mjs` reads a changelog and writes structured release notes.
-It is a few dozen lines, it needs no model and no credentials, and it is a stand-in for whatever agent you would really put here.
+
+> The release-notes domain is arbitrary. This tiny agent exists only to demonstrate the `cli` system shape without requiring a model, credentials, or an external service. The same pattern applies to a real coding agent, review agent, orchestration agent, or other CLI-driven AI system.
+
+The core lesson is how any CLI agent maps to evaluation:
+
+```text
+CLI system
+→ inputs
+→ exit code / stdout / stderr / files
+→ observable behavior
+→ evaluation
+```
+
+It is a few dozen lines, needs no model and no credentials, and is a stand-in for whatever agent you would really put here.
 
 <!-- expect-exit: 0 -->
 
@@ -116,6 +163,27 @@ node examples/tutorials/agent/release-notes-agent.mjs show --notes /tmp/eval-qua
 
 **This is the defect worth contracting against.** The agent swallowed an input it could not parse, wrote an empty notes file, and exited `0`. A check over the exit code alone reports success. A pipeline downstream of it publishes empty release notes.
 
+Before and after the mutation:
+
+```text
+Healthy agent
+
+malformed changelog
+→ reject input
+→ stderr explains why
+→ exit 1
+
+
+Mutated agent
+
+malformed changelog
+→ silently accept input
+→ write empty release notes
+→ exit 0
+```
+
+A naive evaluation that checks only for exit `0` would accept the mutated behavior. That is why this defect is useful for the tutorial: catching it requires examining the agent's actual behavioral evidence rather than trusting exit codes alone.
+
 ### 4. Compile the contract
 
 ```bash
@@ -161,6 +229,17 @@ The last two are the pair this shape turns on.
 
 `seeded-faults-scoped` resolves the same relation against the operation's other legs and fails if it fires on one, since a defect that shows everywhere is not scoped to what you planted.
 
+#### What preflight just proved
+
+```text
+Can the operations be observed?              YES
+Do their inputs actually affect behavior?    YES
+Did the planted defect actually fire?        YES
+Was the defect scoped to the intended case?  YES
+```
+
+Preflight has not decided whether the evaluator caught the defect. It established that the experiment is valid enough to score.
+
 ### 6. Score it
 
 ```bash
@@ -192,14 +271,34 @@ contract-scoring CONCERNS exit 0
 
 ### 7. The lesson
 
-**The witness and the signature live on different channels, and that is a rule rather than a style choice.**
+#### What just happened
 
-The manifestation witness read the written file, because pre-flight is bound to one contract and one leg and an artifact identifier means something there.
-The defect signature rides the exit code, because a signature carrying an artifact identifier is refused under `condition-artifact-channel-contract-local`: that identifier is minted per contract and would resolve against exactly one contract while looking portable.
+```text
+We planted a known defect.
+        ↓
+Preflight proved the defect really appeared.
+        ↓
+The evaluator examined the mutated agent.
+        ↓
+Score checked the evaluator's claim
+against the recorded evidence.
+        ↓
+The planted defect was caught: 1 / 1.
+```
 
-You just watched both halves work on the same defect. The section below explains why the restriction exists.
+Look at the resulting verdict pair:
 
-**The contract caught its defect and still came back CONCERNS.** The verdict basis names three unsatisfied coverage rules alongside the trial-set shortfall:
+```text
+defect caught        ✅
+contract verdict     CONCERNS
+```
+
+These two results are compatible:
+
+- The **defect score** answers: *Did this evaluation detect this known defect?*
+- The **contract verdict** answers: *Is the evaluation contract strong enough overall?*
+
+This lab caught its planted defect while still exposing coverage gaps and an insufficient trial count. The verdict basis names three unsatisfied coverage rules alongside the trial-set shortfall:
 
 ```text
 coverage gap malformed-input unsatisfied at or above the severity floor
@@ -210,9 +309,52 @@ coverage gap sibling-cross-check unsatisfied at or above the severity floor
 
 Those are findings about the contract, which is what scoring a contract is for. A defect rate of `1` beside a CONCERNS verdict is the ordinary shape of a real result, and [contract strength](/explanation/contract-strength/) says how to read the pair.
 
+#### Manifestation witness vs defect signature
+
+Keep the distinction clear in your mental model:
+
+```text
+manifestation witness
+→ used by PREFLIGHT
+→ proves the planted defect actually happened
+
+defect signature
+→ used by SCORE
+→ proves the evaluator actually detected that defect
+```
+
+For this lab:
+
+```text
+manifestation witness
+→ empty generated notes artifact
+
+defect signature
+→ malformed input + exit code 0
+```
+
+**The witness and the signature live on different channels, and that is a rule rather than a style choice.**
+
+The manifestation witness read the written file, because pre-flight is bound to one contract and one leg and an artifact identifier means something there.
+The defect signature rides the exit code, because a signature carrying an artifact identifier is refused under `condition-artifact-channel-contract-local`: that identifier is minted per contract and would resolve against exactly one contract while looking portable.
+
+You just watched both halves work on the same defect. The section below explains why the restriction exists.
+
+## Key takeaways
+
+* The release-notes agent is only a deterministic stand-in for a real CLI-driven agent.
+* This lab mostly exercises the mutated arm of the clean/mutated twin-run model.
+* Preflight proves the planted defect is observable and properly scoped.
+* Score proves whether the evaluator actually caught that defect from evidence.
+* A caught defect does not imply the whole evaluation contract is strong.
+* Here the defect was caught `1/1`, while the contract still returned `CONCERNS` because of coverage gaps and the trial minimum.
+* A full twin run would separately evaluate and score the clean system and the mutated system, then compare whether the evaluation discriminated between them.
+
 ---
 
-The rest of this page is the reference behind that lab.
+> **You can stop here if you only wanted the hands-on tutorial.**
+>
+> Everything below is reference material for authors building their own `cli` evaluation contracts: response channels, artifact restrictions, interface declarations, adapters, manifestation witnesses, and defect signatures.
 
 ## Three things this cannot see
 
