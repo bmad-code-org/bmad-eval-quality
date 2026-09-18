@@ -226,7 +226,7 @@ O-002 is the oracle that compares those two, and it came out `caught`.
 * Multi-step workflows require three obligations: the right entity, the right order, and the right resulting state.
 * Independent read-back catches persistence defects that look successful at the write endpoint.
 * Dynamic entity references require `{ captured }` bindings; temporal sequence alone cannot guarantee entity identity.
-* Array order in JSON does not establish execution order; `sequence` numbers and dependency graphs do.
+* Array order in JSON does not establish execution order; score-time ordering uses temporal clauses and recorded `sequence` values, while the dependency graph constrains plan and binding resolution.
 * Compile rules catch type mismatches and circular capture dependencies before any evaluation runs.
 * State-reset preflight checks confirm that fixture state returns to baseline between test legs.
 * The evaluation caught the seeded defect (`rate: 1`), while the contract overall received `CONCERNS` due to the single-trial shortfall.

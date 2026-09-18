@@ -1271,7 +1271,7 @@ Point them at modules whose top level, and whose imports, you are happy to run o
 2. **The 0 / 1 / 64 exit contract:** Code `0` indicates a clean scan (always reporting scanned entry counts); code `1` indicates a deliberate policy violation finding; code `64` indicates an invocation error, missing dependency, or invalid configuration that prevented the gate from running.
 3. **Config-relative paths:** All paths in `eval-quality.config.json` resolve relative to the configuration file's own directory, making policy files self-contained and portable.
 4. **Supply-chain age direction:** In `lockfile-age`, a larger `windowDays` is stricter (requiring packages to be older), while a smaller `windowDays` is looser. Real audits query the npm registry and fail closed on unresolvable metadata.
-5. **Human attestation over silencing:** Updating hashes in `doc-claims` or exemptions in `lockfile-age` represents a deliberate human attestation recorded in version control, never an automatic fix to bypass checks.
+5. **Human review and deliberate exemptions over silencing:** In `doc-claims`, updating `asOf.hash` is an attestation that an engineer reviewed specific file content; in `lockfile-age`, an `exclude` entry is a deliberate, reviewed policy exception accepting young package releases rather than an attestation of package safety or normal publication-age compliance. Neither mechanism should be treated as an automatic reflex to bypass gates.
 
 ---
 
