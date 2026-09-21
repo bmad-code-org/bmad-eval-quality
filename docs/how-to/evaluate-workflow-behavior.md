@@ -400,25 +400,23 @@ The score command in this lab supplies one record, so its strength vector report
 
 ## In BMAD terms
 
-TEA proves the workflow case with its `trace` suite, and the suite currently has open findings.
+TEA proves the workflow case with its `trace` suite, whose evaluation findings have been addressed and closed.
 
 `test/contracts/trace.contract.json` declares 26 behaviors, 26 oracles, and one `cli` interface, `tea-trace-runner`, carrying one operation, `trace-fixture-set`.
 Its plan declares two steps, `trace-seeded-tenant-data-export` and `trace-clean-api-token-lifecycle`, both `cardinality: exactly-one`, both `after: null`.
 `test/probes/trace.probes.json` carries four probes: three seeded coverage gaps with manifestation witnesses `manifest-ac-2`, `manifest-ac-8`, and `manifest-ac-10`, plus one clean control.
 TEA's first live pre-flight, on 2026-09-09 against `claude`, spawned 2 legs for this suite and spent 872 seconds of model time.
 
-**Finding one: the seeded faults are not scoped.**
-`test/probes/expected-strength.json` records `P-001`, `P-002`, and `P-003` as `preflight: failed: seeded-faults-scoped`, verdict `null`, exit `3`, so the suite's defect strength is 0 exercised and 0 caught with a rate of `null`.
-The operation's sensitivity witness declares two legs, `witness-gate-evaluated` and `witness-gate-withheld`, and each plant's witness fires on the second one.
-That leg issues a different request and receives a different answer, so 1.4.0's drop rule keeps it in the examined set and the check reports a real scoping problem in the contract.
-The finding is open.
+**Finding one: the seeded faults are not scoped (closed).**
+`test/probes/expected-strength.json` originally recorded `P-001`, `P-002`, and `P-003` as `preflight: failed: seeded-faults-scoped` because both sensitivity witness legs staged the seeded set, where the defect relation fired on a leg assumed clean.
+PR #161 resolved this by assigning each fixture set its own project root (`tenant-data-export` and `api-token-lifecycle`) and redirecting both sensitivity witness legs to stage the clean set, where P0 coverage is 100%.
+All three defect probes now pass pre-flight (`preflight: passed`).
+At score time, their defect signatures inspect output artifacts rather than exit codes, so AD-9's qualification gate refuses them as `condition-artifact-channel-contract-local` (since `tea-trace-runner` exits 0 on all completed runs).
 
-**Finding two: the two plan steps cannot be told apart.**
-Both bind `option.agent` and `stdin.prompt` with `{ "matcher": "any" }`, and both name the same operation, so nothing in the plan separates them.
-The prompt is shared on purpose, because what makes a trace run the seeded set or the clean set is the staged workspace, which no request shape names.
-The consequence is measured: the clean control `P-004` passes pre-flight and scores `FAIL` at exit `2`, on the basis "oracle resolved abstained at or above the severity floor", because the seeded set's oracles resolve against a record that carries only the clean set's observation.
-`test/contracts/README.md` records the underlying limit as "a plan cannot declare that two steps must receive different inputs".
-The finding is open.
+**Finding two: the two plan steps cannot be told apart (closed).**
+Both steps previously bound `option.agent` and `stdin.prompt` with `{ "matcher": "any" }`, so both selected the clean control's single observation, causing seeded oracles to evaluate against empty collections and five oracles to abstain (`FAIL` at exit 2).
+PR #162 resolved this by binding each plan step's `stdin.prompt` to that fixture set's exact prompt literal, disambiguating the steps via `deepEquals`.
+The clean control's record now provides observations for both sets, so all 26 oracles resolve `passed-clean-control`, moving `P-004` from `FAIL` at exit 2 to `CONCERNS` at exit 0.
 
-The suite also leaves four AD-20 coverage rules unsatisfied, recorded in the same file: `malformed-input`, `state-change-read-back`, `success-indicator-separation`, and `whole-body`.
-`docs/explanation/eval-quality-command-adapter.md` in the TEA repository carries the full history of both findings.
+The suite leaves four AD-20 coverage rules unsatisfied, recorded in `expected-strength.json`: `malformed-input`, `state-change-read-back`, `success-indicator-separation`, and `whole-body`.
+`docs/explanation/eval-quality-command-adapter.md` in the TEA repository carries the full history of both resolutions.
