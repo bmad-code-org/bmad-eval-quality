@@ -1431,12 +1431,6 @@
 					"reason": "counts `UNSUPPORTED_INTERFACE_KINDS`"
 				},
 				{
-					"file": "docs/how-to/evaluate-workflow-behavior.md",
-					"key": "the suite currently has open findings",
-					"settles": "read",
-					"reason": "the suite is TEA's, in another repository; unpinned for the same reason"
-				},
-				{
 					"file": "docs/how-to/evaluate-tool-use-behavior.md",
 					"key": "which the shipped cli kind answers today",
 					"settles": {
