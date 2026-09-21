@@ -79,9 +79,6 @@ Author a contract, run all four commands over it, and read a scored run down to 
 ### [Pick your system shape](/how-to/evaluate-agent-behavior/)
 Five guides, one per kind of system people point this at. Start with the one that matches yours.
 
-### [Run the gates](/how-to/run-the-gates-on-your-repository/)
-A second binary holds your own lockfiles to a publication-age window and a licence allowlist you declare.
-
 ### [Reference](/reference/cli-commands/)
 Every command, every flag, every exit code, and the glossary.
 
@@ -102,6 +99,14 @@ An eval contract describes a system through a declared interface. Three interfac
 Every command those guides present as runnable runs from a fresh checkout, and CI executes them on every build. Where a fence is grammar rather than a step, the page says so above it. Each guide also says plainly what is proven and what is not.
 
 One kind parses and stops at compilation under `unsupported-interface-kind`: `web`, whose probe semantics are undeclared. [What Ships](/explanation/what-ships/) states the limits of the tool-use kind and how far a strength number carries.
+
+## Optional repository governance
+
+`eval-quality` also publishes `eval-quality-gates`, a separate binary for deterministic repository policies such as dependency direction, licences, package boundaries, and documentation drift.
+
+You do not need these gates to build or run behavioral evaluations.
+
+[Repository Governance Gates](/how-to/run-the-gates-on-your-repository/)
 
 :::tip[AI Documentation]
 Plain-text documentation for AI agents is available at [`/llms-full.txt`](/llms-full.txt) or indexed at [`/llms.txt`](/llms.txt).

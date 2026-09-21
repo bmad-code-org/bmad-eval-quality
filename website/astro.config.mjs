@@ -133,7 +133,42 @@ export default defineConfig({
 				{
 					label: 'Walkthrough',
 					collapsed: false,
-					items: [{ autogenerate: { directory: 'how-to' } }],
+					items: [
+						{
+							label: 'The Full Walkthrough',
+							slug: 'how-to/author-behavioral-contracts',
+						},
+						{
+							label: 'Evaluate Agent Behavior',
+							slug: 'how-to/evaluate-agent-behavior',
+						},
+						{
+							label: 'Evaluate Skill Behavior',
+							slug: 'how-to/evaluate-skill-behavior',
+						},
+						{
+							label: 'Evaluate Workflow Behavior',
+							slug: 'how-to/evaluate-workflow-behavior',
+						},
+						{
+							label: 'End-to-End AI Feature Behavior',
+							slug: 'how-to/evaluate-ai-feature-behavior',
+						},
+						{
+							label: 'Evaluate Tool-Use Behavior',
+							slug: 'how-to/evaluate-tool-use-behavior',
+						},
+					],
+				},
+				{
+					label: 'Repository Governance',
+					collapsed: false,
+					items: [
+						{
+							label: 'Repository Governance Gates',
+							slug: 'how-to/run-the-gates-on-your-repository',
+						},
+					],
 				},
 				{
 					label: 'Reference',
