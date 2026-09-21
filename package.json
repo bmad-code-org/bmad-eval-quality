@@ -125,7 +125,7 @@
     "prepublishOnly": "node scripts/assert-publish-authorized.mjs"
   },
   "dependencies": {
-    "zod": "4.4.3"
+    "zod": "4.6.5"
   },
   "peerDependencies": {
     "typescript": ">=5.7.0"
@@ -136,13 +136,13 @@
     }
   },
   "devDependencies": {
-    "@biomejs/biome": "2.5.10",
-    "@types/node": "22.20.1",
+    "@biomejs/biome": "2.5.13",
+    "@types/node": "22.20.2",
     "@vitest/coverage-v8": "4.1.11",
     "ajv": "8.20.0",
     "husky": "9.1.7",
     "lint-staged": "16.4.0",
-    "marked": "18.0.10",
+    "marked": "18.0.13",
     "typescript": "7.0.2",
     "vitest": "4.1.11"
   },
