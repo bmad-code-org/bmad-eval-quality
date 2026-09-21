@@ -1,17 +1,88 @@
 ---
-title: "Run the Gates on Your Repository"
-description: "The package ships a second binary that holds your own lockfiles to a publication-age window and a licence allowlist you declare in one configuration file."
+title: "Repository Governance Gates"
+description: "The package publishes an optional second binary that enforces deterministic repository policies such as dependency direction, licences, package boundaries, and documentation drift."
 sidebar:
-  order: 7
+  order: 1
 ---
 
-# Run the gates on your repository
+# Repository Governance Gates
 
 The package publishes two binaries:
+
+```text
+eval-quality
+Behavioral evaluation engine
+
+eval-quality-gates
+Optional repository-governance engine
+```
+
 * `eval-quality`: Measures behavioral contracts. It scores agents, skills, workflows, tools, and structured outputs against declared invariants, safety limits, and oracle assertions.
 * `eval-quality-gates`: Enforces repository policies. It audits repository structure, dependency hygiene, publication boundaries, and documentation integrity against rules you declare.
 
-This page is about `eval-quality-gates`.
+You do not need `eval-quality-gates` to author, run, or score a Behavioral Evaluation Contract.
+
+## Do I need this?
+
+| Situation | Need these gates? |
+|---|---|
+| I want to evaluate an agent, skill, workflow, AI feature, or MCP server | No |
+| I want to author or score a BEC | No |
+| I maintain `eval-quality` itself | Yes, these gates are part of repository validation |
+| I want deterministic repository-policy enforcement in my own project | Optional, use the gates that fit |
+
+## Two distinct tools for two distinct problems
+
+`eval-quality` and `eval-quality-gates` address different concerns:
+
+```text
+Behavioral quality
+    ↓
+eval-quality
+    ↓
+Is the evaluation capable of detecting meaningful behavioral failures?
+
+
+Repository integrity
+    ↓
+eval-quality-gates
+    ↓
+Does the repository still satisfy the deterministic policies its maintainers declared?
+```
+
+These two capabilities complement each other, but neither depends conceptually on the other.
+A user can use `eval-quality` for behavioral evaluation without adopting repository gates.
+A repository can also use `eval-quality-gates` without having any Behavioral Evaluation Contracts.
+
+## Who uses these gates?
+
+### Audience A: eval-quality maintainers
+
+The `eval-quality` repository uses these gates in its own `npm run validate` pipeline to hold repository invariants:
+* documentation claims (`check:doc-claims`)
+* documentation commands (`check:doc-invocations`)
+* documentation counts (`check:doc-counts`)
+* package boundaries (`check:boundary`)
+* dependency direction (`check:layers`)
+* field ownership (`check:lineage`)
+* dependency licences (`check:licences`)
+* dependency publication age (`check:lockfile-age`)
+
+This validation chain ensures that the repository's code, dependencies, package exports, and documentation stay synchronized with declared architecture and policies.
+
+### Audience B: external repository maintainers
+
+The gates are also intentionally published as a reusable binary.
+Other repositories can adopt whichever deterministic policies are useful to them by defining them in `eval-quality.config.json`.
+Examples include:
+* hold architecture layering and dependency direction
+* hold dependency licences against an approved allowlist
+* hold package publication boundaries against internal paths
+* hold documentation claims to source code
+
+These adopters use the binary for deterministic repository governance, not for performing behavioral evaluation.
+
+## How the gates run
 
 Every gate reads its rules out of one JSON configuration file you write (`eval-quality.config.json`).
 This package's own trees, names, and policies stay in this package; your run sees the values you declared and nothing else.
