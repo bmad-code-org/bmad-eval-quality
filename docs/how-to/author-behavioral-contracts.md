@@ -211,13 +211,13 @@ In `examples/tutorials/walkthrough/contract.json`, these four areas connect thro
 ```
 
 **The permitted interface** `notes-api` of kind `api` declares three operations:
-- `update-note`: a `PUT` request to `/notes/{noteId}` with a body containing `title`.
+- `update-note`: a `PATCH` request to `/notes/{noteId}` with a body containing `title`.
   It declares a state-change marker, a response descriptor, and a sensitivity witness.
   This example updates the existing note `n-1`.
   It does not demonstrate dynamically capturing a newly minted identifier.
   (See [the workflow evaluation guide](/how-to/evaluate-workflow-behavior/) for captured bindings.)
 - `read-note`: a `GET` request to `/notes/{noteId}` returning the stored note object.
-- `list-notes`: a `GET` request to `/notes` accepting an optional `title` query parameter and returning an array of notes.
+- `list-notes`: a `GET` request to `/notes` requiring a `title` query parameter and returning an array of notes.
 
 **The interaction plan** declares three steps:
 - `write` maps to `update-note`.
@@ -244,10 +244,11 @@ The separate read operation provides the independent read-back evidence.
 
 Neither operand is a literal constant.
 Both pointers address values in recorded interaction evidence.
-- **O-002** checks presence and absence: it asserts that the write response contains `ok` and contains no `error` field.
-  It checks status and field presence rather than evaluating an equality comparison on `ok === true`.
+- **O-002** checks that `ok` exists and `error` is absent in the write response.
+  Its expression contains neither an HTTP-status check nor an equality comparison on `ok === true`.
 - **O-003** asserts that the `read-back` response contains a `note` object.
-- **O-004** quantifies over the list response: it asserts that every element in the returned `notes` array matches the title submitted in the write.
+- **O-004** checks that every note in the filtered list has an identifier.
+  When the list is empty, there are no note elements to examine, so the check resolves to `insufficient-evidence`.
 
 Each oracle carries a prose `direction` that explains its purpose to the evaluator.
 
@@ -337,75 +338,13 @@ Exit `0`.
 
 ### Read the sealed brief
 
-Inspect the generated brief with a reading projection:
-
-```bash
-node -e "const b=require('/tmp/eval-quality-run/sealed-evaluator-brief.json');console.log(JSON.stringify({schemaVersion:b.schemaVersion,behaviors:b.behaviors,directions:b.directions,permittedInterfaces:b.permittedInterfaces},null,2))"
-```
-
-```json
-{
-  "schemaVersion": 2,
-  "behaviors": [
-    {
-      "description": "A write that reports success has stored the change.",
-      "id": "B-001",
-      "observableSuccessCriterion": "An independent read of the same note after a successful write returns the title the write sent.",
-      "oracles": [
-        "O-001",
-        "O-002",
-        "O-003",
-        "O-004"
-      ],
-      "requirementLinks": [
-        {
-          "id": "REQ-1",
-          "scheme": "local"
-        }
-      ],
-      "riskLinks": [
-        {
-          "id": "RISK-1",
-          "scheme": "local-risk"
-        }
-      ],
-      "severity": "critical"
-    }
-  ],
-  "directions": [
-    {
-      "oracleId": "O-001",
-      "text": "The body title value you sent to the update note endpoint (with the supplied path noteId and the supplied body title), compared with its note.title field from the read note endpoint (with the supplied path noteId) is asserted to be equal. The declared polarity expects this relation to hold. One write followed by an independent read of the same note. A write reporting success while a later read returns the old title is treated as a defect."
-    },
-    {
-      "oracleId": "O-002",
-      "text": "The update note endpoint (with the supplied path noteId and the supplied body title): its error field and its ok field is asserted to satisfy every declared condition together. The declared polarity expects this relation to hold. The whole write response. A write reporting success with a diagnostic beside it is treated as a defect."
-    },
-    {
-      "oracleId": "O-003",
-      "text": "Its note field from the read note endpoint (with the supplied path noteId) is asserted to be present. The declared polarity expects this relation to hold. The read-back response. A read of a seeded note carrying no note at all is treated as a defect."
-    },
-    {
-      "oracleId": "O-004",
-      "text": "Every element reachable through its notes field from the list notes endpoint (with the supplied query title) is asserted to meet the declared condition. The declared polarity expects this relation to hold. Every note the filtered list returns. A listed note carrying no identifier is treated as a defect."
-    }
-  ],
-  "permittedInterfaces": [
-    {
-      "kind": "api",
-      "logicalId": "notes-api"
-    }
-  ]
-}
-```
-
 Read these fields first:
-- `behaviors`: The promises carried forward to the evaluator, specifying severity and observable criteria.
-- `directions`: One generated prose direction per oracle.
-  The evaluator learns what to evaluate without receiving the raw AST, JSON pointers, or test data.
+- `behaviors`: The promises carried forward to the evaluator, specifying severity, descriptions, and criteria.
+- `directions`: One generated prose direction per oracle check.
+  The evaluator learns what to evaluate without receiving raw AST expressions, JSON pointers, or test data.
 - `permittedInterfaces`: Interfaces narrowed to `logicalId` and `kind`.
   Detailed operation schemas and endpoints are omitted.
-- `contractDigest`: The cryptographic digest connecting the brief to the authored contract.
+- `contractDigest`: The cryptographic digest connecting this brief to the authored contract.
 
 What the remaining fields do:
 - `scopedResources` and `principals` provide authorized contextual references and identity labels.
@@ -414,9 +353,42 @@ What the remaining fields do:
 
 What is excluded:
 Executable oracle checks, interaction plan details, reference sets, and test data are omitted from the brief.
-This separation prevents the evaluator from reading the answer key directly off the contract.
+This structural boundary prevents the evaluator from reading the answer key directly off the contract.
 `seal` produces `sealed-evaluator-brief.json`.
 The caller produces `sealed-run-record.json` after running the evaluation.
+
+Inspect a focused reading projection of the generated brief:
+
+```bash
+node -e "const b=require('/tmp/eval-quality-run/sealed-evaluator-brief.json');console.log(JSON.stringify({behavior:{id:b.behaviors[0].id,description:b.behaviors[0].description,severity:b.behaviors[0].severity},direction:b.directions.find(d=>d.oracleId==='O-001'),permittedInterfaces:b.permittedInterfaces,contractDigest:b.contractDigest.slice(0,15)+'...'},null,2))"
+```
+
+```json
+{
+  "behavior": {
+    "id": "B-001",
+    "description": "A write that reports success has stored the change.",
+    "severity": "critical"
+  },
+  "direction": {
+    "oracleId": "O-001",
+    "text": "The body title value you sent to the update note endpoint (with the supplied path noteId and the supplied body title), compared with its note.title field from the read note endpoint (with the supplied path noteId) is asserted to be equal. The declared polarity expects this relation to hold. One write followed by an independent read of the same note. A write reporting success while a later read returns the old title is treated as a defect."
+  },
+  "permittedInterfaces": [
+    {
+      "kind": "api",
+      "logicalId": "notes-api"
+    }
+  ],
+  "contractDigest": "sha256:75beb582..."
+}
+```
+
+To view the complete unprojected brief:
+
+```bash
+node -e "console.log(JSON.stringify(require('/tmp/eval-quality-run/sealed-evaluator-brief.json'),null,2))"
+```
 
 `seal` recompiles whatever it is given, so feeding it the compiled artifact from step 1 produces the same brief, byte for byte:
 
@@ -558,7 +530,7 @@ clean-control null satisfied
 The printed columns are check kind (`c.kind`), operation identifier (`c.operationId`), and outcome (`c.outcome`).
 
 In the row `state-reset null satisfied`, `state-reset` is the check kind and `satisfied` is the outcome.
-The `null` belongs to `operationId`, because the check evaluates system-wide state rather than a single operation.
+The `null` belongs to `operationId`, because the control check is not assigned a single operation identifier in this result.
 This contract sets `fixtureReset: null`.
 When no reset operation is declared, preflight selects a read operation and issues repeated observations (`preflight-control-observe` and `preflight-control-observe-2`).
 It checks that repeated reads without intervening writes yield consistent responses.
@@ -621,7 +593,8 @@ Before scoring, inspect the inputs that originate outside the four-stage CLI pip
 - Specifies `defectSignature`: a `GET` request to `/notes/{noteId}` with `noteId: "n-1"` returning `note.title: "Original"`.
   A defect finding must cite an observation matching this signature to earn detection credit.
 - Declares `defects[0]` with `defectId: "D-001"` and `manifestationWitness: null`.
-- Records `qualification`, where `rollbackVerified: true` certifies that qualification evidence was verified.
+- Records `qualification`, where `rollbackVerified: true` records the caller's assertion that rollback or cleanup was verified.
+  The package checks this declaration when qualifying the probe.
   The probe describes the defect and qualification evidence; it does not execute mutations or rollbacks.
 - Lineage, digest, and version fields record schema compatibility and identity.
 
@@ -643,10 +616,14 @@ score resolves and records the result
 ```
 
 **The scoring policy (`scoring-policy.json`):**
-- `severityFloor: "material"` sets the minimum oracle severity that affects the verdict.
+- `catchThreshold: 0.5` sets the trial-set reduction threshold for each probe.
+  For one probe across its valid trials, the caught-trial fraction must be strictly greater than 0.5 for that probe to count as caught.
+  Two catches in three valid trials qualify, whereas one in two does not.
+- `severityFloor: "material"` routes behavioral failures to verdict tiers.
+  Behavioral failures at or above this severity reach the FAIL tier, while failures below it can still produce CONCERNS.
+- `confidenceThreshold: 0.7` sets the minimum finding confidence required before contributing to concerns.
+  A finding with confidence below this threshold contributes a CONCERNS reason rather than entering the catch calculation.
 - `minimumTrialCount: 3` sets the required number of independent trials.
-- `catchThreshold: 0.5` sets the fraction of defect probes that must be caught within a trial.
-- `confidenceThreshold: 0.7` sets the minimum evaluator confidence required for credit.
 - `reExecutionCap`, `remediationCap`, and `regexMatchStepBudget` specify execution limits.
   These fields declare policy limits and do not launch retries or external evaluators.
 
@@ -765,8 +742,8 @@ How each oracle resolved:
   Both checks evaluated to `true`, and the evaluator disposition was `held`.
   The write response contained `ok` without an error, and the read response returned a note.
 - **O-004 is `abstained`.**
-  O-004 quantifies over every note returned by the list operation.
-  Because the filtered list returned an empty collection (`[]`), the check could not evaluate any note elements.
+  O-004 checks that every note in the filtered list has an identifier.
+  Because the filtered list returned an empty collection (`[]`), there were no note elements to examine.
   The check resolved to `insufficient-evidence`.
   On the scoring ladder, insufficient evidence assigns the state `abstained`.
   The evaluator reported disposition `held` with no defect finding citing O-004.
@@ -785,12 +762,12 @@ contract-scoring FAIL exit 2
 ```
 
 - In `mode: "contract-scoring"`, eval-quality evaluates the quality of the contract and evaluation setup rather than the production system.
-- `systemRecommendationRecorded: "fail"` captures that the evaluator correctly recommended failure for the defective system.
+- `systemRecommendationRecorded: "FAIL"` captures that the evaluator recommended failure for the defective system under test.
 - The contract verdict ladder evaluates tiers in order: Invalid, FAIL, CONCERNS, WAIVED, PASS.
-- In the FAIL tier, O-004 resolved to `abstained` at a severity of `critical`, which is at or above the policy floor of `material`.
-  This condition triggers FAIL.
-- Conditions in the CONCERNS tier also held, including a completed trial count below the policy minimum.
-  The basis displays only the highest-priority condition that determined the verdict.
+- `verdictBasis` records all firing conditions within the highest-priority tier that determines the verdict.
+- In this example, one condition in the FAIL tier fired: O-004 resolved to `abstained` at a severity of `critical`, which is at or above the policy floor of `material`.
+  This condition triggers contract FAIL.
+- Conditions in the CONCERNS tier also held, including a completed trial count below the policy minimum, but lower-priority tiers do not enter `verdictBasis` when a higher tier fires.
 
 **4. The strength vector:**
 
@@ -816,8 +793,8 @@ false | 1 admitted probe over 1 completed trial. Below the declared minimum of 3
 | Group | Fields | Purpose |
 | --- | --- | --- |
 | Identity and comparison | `runId`, `scoredProbeId`, `scoringVersion`, `scoringVersionInputs`, `comparabilityKey`, `excludedProbeIds`, `callerAttestedInputs` | Run identity, scoring versioning, comparability conditions, and caller-attested inputs. |
-| Detailed evidence and aggregation | `reducedProbeOutcomes`, `selectedObservationIds`, `trials` | Aggregated probe outcomes across trials, selected observations per check, and completed or invalidated trial attempts. |
-| Assessment and remediation | `coverageGaps`, `uncitedFindings`, `uncitedFindingGaps`, `remediation`, `systemRecommendationRecorded`, `systemRecommendationNote` | Unexercised requirements, evaluator findings not backed by oracles, remediation guidance, and recorded evaluator recommendation. |
+| Detailed evidence and aggregation | `reducedProbeOutcomes`, `outcomes[].selectedObservationIds`, `trials` | Aggregated probe outcomes across trials, observation identifiers retained for an individual outcome, and completed or invalidated trial attempts. |
+| Assessment and remediation | `coverageGaps`, `uncitedFindings`, `uncitedFindingGaps`, `remediation`, `systemRecommendationRecorded`, `systemRecommendationNote` | Coverage-discipline rules the contract does not satisfy, findings citing no oracle (which may still carry observation evidence), recorded revision count, cap, and lineage-validation results, and recorded evaluator recommendation. |
 | Compatibility and lineage | `schemaVersion`, `revisionCount`, `parentDigest` | Schema compatibility and artifact lineage. |
 
 ### The lesson
