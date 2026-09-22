@@ -111,7 +111,7 @@ Each sealed record carries its own integer `trialIndex`. Scoring sorts records b
 
 For each probe, the trial set reducer (`reduceTrialSet`) gathers the outcome state from each trial and partitions AD-6's twelve outcome states into three groups:
 
-1. **Invalidating states (`oracle-error`, `judge-error`, `infrastructure-error`):** The trial suffered a harness or execution failure. It is excluded from the valid count and recorded in `invalidatedAttempts` with its `trialIndex` and failure reason.
+1. **Invalidating states (`oracle-error`, `judge-error`, `infrastructure-error`):** The trial suffered a harness or execution failure. It is excluded from the valid count and recorded in `invalidatedAttempts` with its `attempt` number (the trial index) and failure reason.
 2. **Unvoted states (`not-applicable`, `unreached`):** The probe was not exercised in that trial. It contributes to neither the numerator nor the denominator.
 3. **Voted states (`caught`, `confirmed`, `missed`, `abstained`, `bypassed`, `passed-clean-control`, `false-positive`): Valid observations that form the `validCount`.
 
@@ -119,7 +119,7 @@ The reducer then applies a strict majority threshold:
 
 $$\text{caught} = (\text{validCount} > 0) \land \left(\frac{\text{caughtCount}}{\text{validCount}} > \text{catchThreshold}\right)$$
 
-The inequality is strict (`>`), so an exact tie never counts as caught. Under the published default scoring policy (`catchThreshold: 0.5`), a probe must resolve `caught` in at least two out of three valid trials to be credited as caught.
+The inequality is strict (`>`), so an exact tie never counts as caught. Under the published default scoring policy (`catchThreshold: 0.5`), a probe is credited as caught when it resolves `caught` in strictly more than half of valid trials (for example, at least two out of three valid trials).
 
 The resulting `EvidenceArtifact` retains both levels of detail:
 * Detailed per-trial oracle outcomes are stored in `outcomes` with their respective `trialIndex`.
