@@ -29,7 +29,7 @@ Contract strength is defined across three probe classes in `StrengthVector`:
 * **`gameability`**: Probes that return degenerate, compliant-looking, or lazy responses designed to satisfy naive checks without performing the required work.
 * **`zero-action`**: Probes where the system under test takes no action despite mandatory requirements, catching systems that swallow inputs silently.
 
-Canary probes and clean controls never enter the strength vector (AD-7). Canary probes exist to indict the fixture environment rather than the contract, and clean controls verify that unmutated runs remain unpenalized.
+Canary probes and clean controls never enter the strength vector (AD-7). Canary probes exist to indict the corpus or fixture rather than the contract, and clean controls verify that unmutated runs remain unpenalized.
 
 ### The catch rate formula
 
@@ -39,7 +39,7 @@ For each probe class, the catch rate is calculated as:
 rate = unique qualified probes resolving caught / unique qualified probes exercised
 ```
 
-A probe is **exercised** when the evaluator itself invoked the probe signature's declared home operation during execution (AD-40). Calls made during harness setup or runs that never completed do not count. A probe whose home operation was never invoked leaves both numerator and denominator; its required check resolves to `not-applicable` rather than artificially deflating the score.
+For strength reduction, a probe is **exercised** when at least one completed trial produces a valid vote (`validCount > 0`). Failure to invoke the signature's declared home operation during execution (AD-40) is one reason a trial can become unexercised/`not-applicable`; an honored waiver or an `unreached` oracle step also leaves both numerator and denominator. Probes without at least one valid vote leave the ratio entirely rather than artificially deflating the score.
 
 The `EvidenceArtifact` records the raw counts (`caught`, `exercised`) alongside the derived `rate`. In a single-probe evaluation, the exercised count for the probe's class is 1 (if exercised) or 0 (if unexercised), with `rate` recorded as 1.0, 0.0, or `null`. Classes without exercised probes record `caught: 0`, `exercised: 0`, and `rate: null` rather than zero, making unexercised classes transparent. The artifact also names the exact denominator string—including the number of completed trials—so consumers can independently verify calculations.
 
@@ -79,7 +79,7 @@ Consider three common scenarios:
 
 1. **Catch rate 1.0, verdict `FAIL`:** The contract detected the seeded defect (`caught`). However, another required oracle in the contract examined insufficient evidence and abstained at or above the policy's `severityFloor`, or evidence was incomplete. Catching a defect does not excuse a broken measurement elsewhere in the run.
 2. **Catch rate 1.0, verdict `CONCERNS`:** The contract caught the defect, but the run completed fewer trials than the policy's `minimumTrialCount`, an oracle resolved `unreached`, or an unsatisfied coverage gap exists at or above the policy's `severityFloor`. (Unsatisfied coverage gaps below the severity floor are recorded in `coverageGaps` on the artifact, but do not move the verdict.) The vector is reported, but the verdict warns that the measurement was thinner than declared policy.
-3. **Catch rate `null`, verdict `PASS`:** In a clean-control run where no defect was seeded, all oracles held, resolving `passed-clean-control`. Because clean controls never enter the strength vector, their class rate is recorded as `null` (not zero), yet the run is a valid `PASS`.
+3. **Excluded clean control, verdict `PASS`:** In a clean-control run where no defect was seeded, all oracles held, resolving `passed-clean-control`. Because canary probes and clean controls are excluded before `buildStrengthVector` runs (AD-7), vector classes with no eligible probes remain `null` entirely. If no other verdict-ladder condition fires and policy requirements are satisfied, the clean-control run can PASS while contributing no strength measurement.
 
 ## Plan a trial set and trial reduction
 
