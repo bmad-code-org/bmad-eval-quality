@@ -93,10 +93,9 @@ The numbered sections of this guide correspond to a single, continuous pipeline:
                        ┌──────────────────────────────────────────────┐
                        │ Caller / Harness Boundary: Preflight Probing │
                        │ (The SUT is not launched in this tutorial.)  │
-                       │ The preflight interactions were executed     │
-                       │ beforehand. Their responses are committed as │
-                       │ observations.json. probes.json is the        │
-                       │ committed probe-list input to planning.      │
+                       │ The tutorial builder supplies prepared       │
+                       │ observations representing harness responses. │
+                       │ probes.json is the committed planning input. │
                        └──────────────────────────────────────────────┘
                                               │
                                               ▼
@@ -107,12 +106,13 @@ The numbered sections of this guide correspond to a single, continuous pipeline:
                        ┌──────────────────────────────────────────────┐
                        │ Caller / Harness Boundary: SUT + Evaluator   │
                        │ (Neither SUT nor LLM runs in this tutorial.) │
-                       │ The defective SUT and evaluator were run in  │
-                       │ a harness to produce a sealed run record.    │
+                       │ The tutorial uses a prepared run record      │
+                       │ representing a defective-SUT/evaluator run.  │
+                       │ Neither is executed by this repository.      │
                        └──────────────────────────────────────────────┘
                                               │
                                               ▼
-                                 6. SCORE THE EVALUATION RECORD
+                                  6. SCORE THE EVALUATION RECORD
                                          [eval-quality CLI]
                                               │
                                               ▼
@@ -136,9 +136,9 @@ To follow the walkthrough without confusion, keep in mind who executes what:
 Because this tutorial focuses on learning the `eval-quality` contract and verification tools, it uses **prepared fixture files** in place of dynamic harness execution. There are two explicit execution gaps:
 
 1. **Preflight probing gap (before step 5):**
-   In this tutorial, `eval-quality preflight` does not start the Notes API service or send HTTP requests. It executes `preflightFromObservations`: it plans the legs implied by the contract and supplied probe list, then reduces the prepared observations. In production, when using the TypeScript library, `runPreflight` can actively drive a caller-supplied `EnvironmentProbePort` to send planned legs directly to a running service.
+   In this tutorial, `eval-quality preflight` does not start the Notes API service or send HTTP requests. The tutorial builder supplies prepared preflight observations representing the responses a harness would collect. It executes `preflightFromObservations`: it plans the legs implied by the contract and supplied probe list, then reduces the prepared observations. In production, when using the TypeScript library, `runPreflight` can actively drive a caller-supplied `EnvironmentProbePort` to send planned legs directly to a running service.
 2. **Evaluator and SUT execution gap (before step 6):**
-   In this tutorial, neither the defective Notes API nor an LLM evaluator runs live. In a live system, your harness executes the defective SUT, presents `sealed-evaluator-brief.json` to the evaluator, captures the resulting tool calls and responses, and seals them into `sealed-run-record.json`. Here, that work was executed in advance, and the resulting record is committed in `examples/tutorials/walkthrough/sealed-run-record.json` for replay.
+   In this tutorial, neither the defective Notes API nor an LLM evaluator runs live. In a live system, your harness executes the defective SUT, presents `sealed-evaluator-brief.json` to the evaluator, captures the resulting tool calls and responses, and seals them into `sealed-run-record.json`. Here, the tutorial uses a prepared sealed run record representing a defective-SUT/evaluator run; the SUT and evaluator are not executed by this repository. The resulting record is committed in `examples/tutorials/walkthrough/sealed-run-record.json` for deterministic replay.
 
 ### How this maps to a full twin run
 
@@ -421,7 +421,7 @@ identical
 
 Conceptually, preflight determines whether the environment is measurable before running an expensive evaluation.
 
-In this walkthrough, the target Notes API service is not launched, and the CLI command issues zero network requests. The external probe interactions were recorded beforehand into a prepared fixture. The CLI `preflight` command executes `preflightFromObservations`: it plans the probe legs the contract implies, compares them against the supplied observations, and mints a `PreflightVerdict` for a named run.
+In this walkthrough, the target Notes API service is not launched, and the CLI command issues zero network requests. The tutorial builder supplies prepared preflight observations representing the responses a harness would collect. The CLI `preflight` command executes `preflightFromObservations`: it plans the probe legs the contract implies, compares them against the supplied observations, and mints a `PreflightVerdict` for a named run.
 
 When running programmatically via the library API, `runPreflight` can actively drive a caller-supplied `EnvironmentProbePort` (such as an HTTP or CLI adapter) to probe an active service directly.
 
@@ -431,7 +431,7 @@ This reduction takes two prepared files beyond the contract:
 
 - **`probes.json`** is the probe list the plan builds from.
   This chain seeds no faults that preflight must watch fire, so the list is empty (`[]`).
-- **`observations.json`** contains what the environment answered during prior probing, one entry per planned leg.
+- **`observations.json`** contains the prepared preflight responses, one entry per planned leg, representing what a harness would collect from the environment.
 
 In contrast, the later scoring step consumes `probe.json`, which declares the seeded defect `P-001`.
 Because `probes.json` is empty in this preflight invocation, preflight evaluates sensitivity and control legs from the contract without evaluating `seeded-fault-fired` or `seeded-faults-scoped` checks for the defect.
@@ -613,7 +613,7 @@ Before scoring, inspect the inputs that originate outside the four-stage CLI pip
 - `findings`: Finding `F-001` reports that the note kept its old title, citing probe `P-001`, oracle `O-001`, and observation `obs-002`.
 - `oracleDispositions`: Evaluator judgments for each oracle (`violated` for O-001; `held` for O-002, O-003, and O-004).
 - `evaluatorRecommendation`: Records `FAIL` for the system under test.
-- This file is a prepared record from an earlier evaluation run.
+- This file is a prepared record representing a defective-SUT and evaluator run; the SUT and evaluator are not executed by this repository.
   Scoring replays this evidence and does not launch a fresh evaluator.
 
 ```text
