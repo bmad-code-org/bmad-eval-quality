@@ -252,6 +252,23 @@ contract-scoring CONCERNS exit 0
   ```
 * **Comparability:** Marked `comparable: false`. The command scored 1 trial (`--record`), falling below the policy's required 3 trials.
 
+## Key takeaways
+
+* **Distinguish the two evaluation targets:** Tool-use evaluation spans two distinct systems under test.
+  Evaluating an autonomous agent asks whether it selected the appropriate tool, avoided dangerous tools, passed correct arguments, and interpreted returned values.
+  Evaluating a tool server asks whether the tool implementation reads inputs, returns structured results, executes persistent state changes, and reports errors.
+* **Verify state changes through independent read-back:** A tool reporting success (`ok: true`, HTTP 200, or a generated identifier) is weaker evidence than observing the state it was supposed to change.
+  Verifying state-changing tool behavior requires an independent read-back query or external inspection of the affected state: `command reports success ≠ required effect actually happened`.
+* **Preserve relationships across tool calls:** When one tool returns an identifier or value that a later tool must use, capture that output and bind it into the later call.
+  Evaluate the relationship between calls, not just each call in isolation.
+* **Evaluate tool choice and trajectory directly:** For agent evaluations, verify that the agent selected the appropriate tool for the task.
+  A plausible final answer does not prove correct tool selection.
+  The observable sequence of tool calls can be primary behavioral evidence, and unnecessary or missing calls indicate incorrect behavior.
+* **Check argument correctness:** Verify the actual arguments passed to each tool call.
+  A correct tool called with the wrong identifier, scope, filter, tenant, filename, or payload is incorrect behavior.
+* **Require input sensitivity:** Evaluations must verify that changing meaningful tool arguments produces corresponding changes in behavior.
+  An evaluation must prove that the tool reads and responds to its arguments; a tool or agent that appears to work while ignoring arguments fails evaluation.
+
 ### 5. Tutorial implementation details
 
 These implementation decisions belong to this specific tutorial and its verification harness:
@@ -260,30 +277,13 @@ These implementation decisions belong to this specific tutorial and its verifica
   The caller-side harness helper (`run-tool-calls.mjs`) drives the live tool calls and records observations.
 * **Adapter session lifecycle:** The shipped MCP adapter opens one session per tool call over stdio.
   The server process launches, handshakes, handles one call, and tears down.
-  State must persist in files or external storage across invocations.
+  For multi-call stateful evaluations using this adapter lifecycle, state must persist outside the server process.
 * **Fixture replay and verification:** Preflight and scoring commands in this tutorial evaluate against committed fixtures (`observations.json` and `sealed-run-record.json`).
   The repository test `tests/application/tool-use-tutorial.test.ts` verifies that live runs produce observations identical to the committed fixture.
 * **Trial thresholds and contract verdict:** The scoring run caught the seeded defect (`rate: 1`).
   The contract received `CONCERNS` because single-trial execution falls below the policy's required 3 trials, and three declared coverage gaps remained open.
-* **Contract authoring and the one-oracle rule:** The contract was authored with four behaviors declaring one oracle each, satisfying the one-oracle rule required for `designatedOracleIdOf` to attach a detection.
-  `corpus/dev/contracts/notes-tool-server.json` declares four and three oracles for its two behaviors, so a defect probe naming either has no designated oracle to attach a detection to.
 * **Measured observations:** The committed `observations.json` is byte-identical to what the helper writes when step 2 runs against the spawned server.
   The chain builder replays the calls against `notes-store.mjs`, the module the server imports, so there is one definition of what the tools answer.
-
-## Key takeaways
-
-* **Distinguish the two evaluation targets:** Tool-use evaluation spans two distinct systems under test.
-  Evaluating an autonomous agent asks whether it selected the appropriate tool, avoided dangerous tools, passed correct arguments, and interpreted returned values.
-  Evaluating a tool server asks whether the tool implementation reads inputs, returns structured results, executes persistent state changes, and reports errors.
-* **Verify state changes through independent read-back:** A tool reporting success (`ok: true`, HTTP 200, or a generated identifier) is weaker evidence than observing the state it was supposed to change.
-  Verifying state-changing tool behavior requires an independent read-back query or external inspection of the affected state: `command reports success ≠ required effect actually happened`.
-* **Evaluate tool choice and trajectory directly:** For agent evaluations, verify that the agent selected the appropriate tool for the task.
-  A plausible final answer does not prove correct tool selection.
-  The observable sequence of tool calls is primary behavioral evidence, and unnecessary or missing calls indicate incorrect behavior.
-* **Check argument correctness:** Verify the actual arguments passed to each tool call.
-  A correct tool called with the wrong identifier, scope, filter, tenant, filename, or payload is incorrect behavior.
-* **Require input sensitivity:** Evaluations must verify that changing meaningful tool arguments produces corresponding changes in behavior.
-  An evaluation must prove that the tool reads and responds to its arguments; a tool or agent that appears to work while ignoring arguments fails evaluation.
 
 ---
 
@@ -301,7 +301,7 @@ The fourth question after them is kind-neutral and belongs to both readings.
 **Was the right tool chosen?**
 For agent evaluations, verify that the agent selected the appropriate tool for the task.
 A plausible final answer does not prove correct tool selection.
-The observable tool trajectory may itself be part of the behavior being evaluated.
+The observable tool trajectory can itself be part of the behavior being evaluated.
 An `InteractionStep` names an `operationId` and a `cardinality` (`src/core/schemas/plan.ts:170`).
 The step is a selector over observations the evaluator produced, so a step naming `search-notes` with `cardinality: "exactly-one"` declares that exactly one call to that tool is expected in the run.
 `SELECTOR_CARDINALITIES` is the closed three, `exactly-one`, `at-most-one`, and `any` (`plan.ts:153`).
@@ -547,6 +547,13 @@ Declare that scalar in the descriptor's `requiredKeys`. A server free to omit th
 A tool call that reports success and changed nothing is the tool-use version of the worked example on [How It Works](/explanation/behavioral-evaluation-contracts/).
 Write it as two steps and one `deep-equality` under a `not`: bind the write step's argument, bind a later read step with `after` naming the write, and compare what was sent against what came back on the read.
 An oracle over the write step's own response passes on a tool that silently discarded the call.
+
+**Contract-design note: the one-oracle rule.**
+When scoring defect detection, `designatedOracleIdOf` resolves an oracle only for a behavior declaring exactly one oracle.
+A behavior declaring multiple oracles has no designated oracle, so a defect probe naming it has nothing to attach a detection to.
+The tutorial contract authored four behaviors declaring one oracle each for this reason.
+`corpus/dev/contracts/notes-tool-server.json` compiles and pre-flights against the same server, but declares four and three oracles for its two behaviors, so defect probes naming either behavior cannot score a caught defect.
+The same discipline applies to contracts scored under the [skill guide](/how-to/evaluate-skill-behavior/).
 
 ## Running it against your own server
 
