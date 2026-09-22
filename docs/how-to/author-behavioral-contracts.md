@@ -65,7 +65,7 @@ Every digest inside it is computed from bytes this repository ships.
 ## How this walkthrough fits together
 
 [How It Works](/explanation/behavioral-evaluation-contracts/) describes the conceptual model connecting the System Under Test (SUT), the evaluation harness, and `eval-quality`.
-This hands-on walkthrough takes you through one complete scored evaluation arm, step by step, using the seven numbered sections below.
+This walkthrough replays one complete scored evaluation arm through the `eval-quality` stages, step by step, using the seven numbered sections below.
 
 ### The walkthrough pipeline
 
@@ -83,7 +83,7 @@ The numbered sections of this guide correspond to a single, continuous pipeline:
                                               │      [Read-only contract explanation]
                                               │
                                               ├── 3. Inspect a compile rejection
-                                              │      [Read-only discipline explanation]
+                                              │      [compile CLI demonstration]
                                               │
                                               ▼
                                         4. SEAL THE BRIEF
@@ -93,8 +93,10 @@ The numbered sections of this guide correspond to a single, continuous pipeline:
                        ┌──────────────────────────────────────────────┐
                        │ Caller / Harness Boundary: Preflight Probing │
                        │ (The SUT is not launched in this tutorial.)  │
-                       │ Preflight requests were executed beforehand  │
-                       │ to produce prepared probes + observations.   │
+                       │ The preflight interactions were executed     │
+                       │ beforehand. Their responses are committed as │
+                       │ observations.json. probes.json is the        │
+                       │ committed probe-list input to planning.      │
                        └──────────────────────────────────────────────┘
                                               │
                                               ▼
@@ -134,7 +136,7 @@ To follow the walkthrough without confusion, keep in mind who executes what:
 Because this tutorial focuses on learning the `eval-quality` contract and verification tools, it uses **prepared fixture files** in place of dynamic harness execution. There are two explicit execution gaps:
 
 1. **Preflight probing gap (before step 5):**
-   In this tutorial, `eval-quality preflight` does not start the Notes API service or send HTTP requests. It executes `preflightFromObservations`: it reads the planned probe legs from the contract and checks them against the responses recorded in `observations.json`. In production, when using the TypeScript library, `runPreflight` can actively drive a caller-supplied `EnvironmentProbePort` to send planned legs directly to a running service.
+   In this tutorial, `eval-quality preflight` does not start the Notes API service or send HTTP requests. It executes `preflightFromObservations`: it plans the legs implied by the contract and supplied probe list, then reduces the prepared observations. In production, when using the TypeScript library, `runPreflight` can actively drive a caller-supplied `EnvironmentProbePort` to send planned legs directly to a running service.
 2. **Evaluator and SUT execution gap (before step 6):**
    In this tutorial, neither the defective Notes API nor an LLM evaluator runs live. In a live system, your harness executes the defective SUT, presents `sealed-evaluator-brief.json` to the evaluator, captures the resulting tool calls and responses, and seals them into `sealed-run-record.json`. Here, that work was executed in advance, and the resulting record is committed in `examples/tutorials/walkthrough/sealed-run-record.json` for replay.
 
@@ -146,7 +148,7 @@ This walkthrough executes **one scored arm** in depth (the defective SUT arm) so
 
 ### Artifact map
 
-This walkthrough generates four new artifacts on disk while consuming committed inputs and replaying prepared harness evidence:
+This walkthrough generates four primary pipeline artifacts on disk while consuming committed inputs and replaying prepared harness evidence:
 
 | Artifact | Role in this exercise | Job |
 | --- | --- | --- |
@@ -843,7 +845,7 @@ Reading only the strength vector would provide an incomplete picture of contract
 ```text
 1. COMPILE (validate contract specification)
     ├── 2. Inspect declared behavior, interfaces, and oracles
-    └── 3. Inspect schema and discipline rule rejections
+    └── 3. Inspect a compile rejection (CLI demonstration)
 4. SEAL (mint evaluator-safe brief)
     └── [Harness records preflight interactions]
 5. REDUCE PREFLIGHT (verify environment measurability)
@@ -880,6 +882,7 @@ eval-quality seal --in contract.json --out run/sealed-evaluator-brief.json
 ```
 
 Preflight each arm.
+Before invoking the CLI, have the harness execute the planned preflight interactions for each arm and record their responses as `clean-observations.json` and `mutated-observations.json`. The commands below reduce those prepared observations into preflight verdicts.
 An arm that does not pass exits `3` and stops there, because a measurement over an unfit environment says nothing about the contract:
 
 ```text
