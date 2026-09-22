@@ -107,8 +107,8 @@ The numbered sections of this guide correspond to a single, continuous pipeline:
                        │ Caller / Harness Boundary: SUT + Evaluator   │
                        │ (Neither SUT nor LLM runs in this tutorial.) │
                        │ The tutorial uses a prepared run record      │
-                       │ representing a defective-SUT/evaluator run.  │
-                       │ Neither is executed by this repository.      │
+                       │ representing a defective-SUT/evaluator run;  │
+                       │ neither is executed live by this walkthrough.│
                        └──────────────────────────────────────────────┘
                                               │
                                               ▼
@@ -138,13 +138,13 @@ Because this tutorial focuses on learning the `eval-quality` contract and verifi
 1. **Preflight probing gap (before step 5):**
    In this tutorial, `eval-quality preflight` does not start the Notes API service or send HTTP requests. The tutorial builder supplies prepared preflight observations representing the responses a harness would collect. It executes `preflightFromObservations`: it plans the legs implied by the contract and supplied probe list, then reduces the prepared observations. In production, when using the TypeScript library, `runPreflight` can actively drive a caller-supplied `EnvironmentProbePort` to send planned legs directly to a running service.
 2. **Evaluator and SUT execution gap (before step 6):**
-   In this tutorial, neither the defective Notes API nor an LLM evaluator runs live. In a live system, your harness executes the defective SUT, presents `sealed-evaluator-brief.json` to the evaluator, captures the resulting tool calls and responses, and seals them into `sealed-run-record.json`. Here, the tutorial uses a prepared sealed run record representing a defective-SUT/evaluator run; the SUT and evaluator are not executed by this repository. The resulting record is committed in `examples/tutorials/walkthrough/sealed-run-record.json` for deterministic replay.
+   In this tutorial, neither the defective Notes API nor an LLM evaluator runs live. In a live system, your harness executes the defective SUT, presents `sealed-evaluator-brief.json` to the evaluator, captures the resulting tool calls and responses, and seals them into `sealed-run-record.json`. Here, the tutorial uses a prepared sealed run record representing a defective-SUT/evaluator run; the SUT and evaluator are not executed by the commands in this walkthrough (which replays prepared evidence; separate repository tests exercise the Notes SUT live). The resulting record is committed in `examples/tutorials/walkthrough/sealed-run-record.json` for deterministic replay.
 
 ### How this maps to a full twin run
 
 The full [twin-run model](/explanation/behavioral-evaluation-contracts/#the-twin-run) stress-tests an evaluation by comparing two conditions: a clean system and a mutated system with a seeded defect.
 
-This walkthrough executes **one scored arm** in depth (the defective SUT arm) so you can understand the artifacts and decision rules firsthand. Once you master this sequence, repeating it across both arms is straightforward: you compile and seal the contract once, run preflight reduction on each arm, and score each arm against its own probe ([Next: run a real clean and mutated experiment](#next-run-a-real-clean-and-mutated-experiment)).
+This walkthrough replays **one scored arm** in depth (the defective SUT arm) so you can understand the artifacts and decision rules firsthand. Once you master this sequence, repeating it across both arms is straightforward: you compile and seal the contract once, run preflight reduction on each arm, and score each arm against its own probe ([Next: run a real clean and mutated experiment](#next-run-a-real-clean-and-mutated-experiment)).
 
 ### Artifact map
 
@@ -613,7 +613,7 @@ Before scoring, inspect the inputs that originate outside the four-stage CLI pip
 - `findings`: Finding `F-001` reports that the note kept its old title, citing probe `P-001`, oracle `O-001`, and observation `obs-002`.
 - `oracleDispositions`: Evaluator judgments for each oracle (`violated` for O-001; `held` for O-002, O-003, and O-004).
 - `evaluatorRecommendation`: Records `FAIL` for the system under test.
-- This file is a prepared record representing a defective-SUT and evaluator run; the SUT and evaluator are not executed by this repository.
+- This file is a prepared record representing a defective-SUT and evaluator run; the SUT and evaluator are not executed by the commands in this walkthrough.
   Scoring replays this evidence and does not launch a fresh evaluator.
 
 ```text
@@ -922,9 +922,9 @@ A clean target does not guarantee an overall PASS verdict, as other contract con
 On the mutated arm, the oracle the defect targets should resolve `caught`, which in `contract-scoring` mode indicates the contract succeeded.
 An oracle that resolves `missed` on the mutated arm indicates an unaddressed blind spot.
 
-Compare `scoringVersion` across the two artifacts before comparing anything else in them.
-That comparison is yours to make, and the library makes no such check.
-[Contract strength](/explanation/contract-strength/) covers `compareDominance`, which is the comparison it does make.
+Check `comparabilityKey` and `strength.comparable` before comparing strength.
+Inspect `scoringVersion` differences to understand whether fixture, evaluator configuration, mode, or other declared experiment inputs changed.
+[Contract strength](/explanation/contract-strength/) covers `compareDominance`, which performs the component-wise dominance comparison and enforces the severity-floor override.
 
 ## Two guards
 
