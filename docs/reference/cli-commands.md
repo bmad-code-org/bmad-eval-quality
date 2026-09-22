@@ -248,5 +248,6 @@ There is one runner per port, and `EnvironmentProbePort` has one arm per mechani
 ## Related pages
 
 - [The full walkthrough](/how-to/author-behavioral-contracts/)
+- [How It Works](/explanation/behavioral-evaluation-contracts/)
+- [Contract Strength](/explanation/contract-strength/)
 - [Glossary](/reference/glossary/)
-- [What Ships](/explanation/what-ships/)

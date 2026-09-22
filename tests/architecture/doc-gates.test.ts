@@ -805,12 +805,12 @@ describe("this repository's own doc-claims classes, held to a floor", () => {
 		// floor lowered to meet reality reads from the outside exactly like a
 		// floor lowered to hide a regression, so each drop is accounted for here.
 		//
-		// The list floor came down by two, which is the two entries deleted from
-		// `docs/explanation/what-ships.md`: the AD-11 version readers and the
-		// barrel's schema versions. Both restated a set that
-		// `docs/reference/cli-commands.md` holds under its own entry against the
-		// same export, so each expected set still has a holder and the entries
-		// were deleted rather than relaxed to fit the new wording.
+		// The list floor came down by three: the two entries previously deleted from
+		// `docs/explanation/what-ships.md` (the AD-11 version readers and the
+		// barrel's schema versions) and the third when `what-ships.md` was retired
+		// entirely (the compile-refused kinds, which `docs/index.md` already holds
+		// under its own entry against the same export). Each expected set still has
+		// a holder and the entries were deleted rather than relaxed to fit the new wording.
 		//
 		// The symbol floor came down because the explanation pages are shorter
 		// and because prose that named identifiers became fenced commands, which
@@ -826,7 +826,7 @@ describe("this repository's own doc-claims classes, held to a floor", () => {
 		).toBeGreaterThanOrEqual(420)
 		expect(
 			numeral('transcribed lists match their source'),
-		).toBeGreaterThanOrEqual(11)
+		).toBeGreaterThanOrEqual(10)
 		expect(numeral('named codes exist')).toBeGreaterThanOrEqual(21)
 		expect(
 			numeral('worked JSON blocks parse against their schema'),
@@ -870,15 +870,11 @@ describe("this repository's own documented invocations, held to a floor", () => 
  * regression the fixture pair cannot show, because the fixture pair is small
  * by design.
  *
- * This floor came down by four with the documentation rework, and the four are
- * the entries deleted from `docs/explanation/what-ships.md`: the barrel's
- * schema version count, and the counts of artifacts with a reader, artifacts
- * this package stamps, and artifacts the caller assembles. That page answered
- * what you get on install and had grown a version-compatibility section
- * restating what `docs/reference/cli-commands.md` already carries. Each of the
- * four sources still has an entry holding it on the reference page, so no
- * number lost its only holder, and the entries were deleted rather than
- * relaxed to match new wording.
+ * This floor came down with the retirement of `docs/explanation/what-ships.md`:
+ * the two entries holding the corpus contract total and the reference adapter
+ * count were removed from that page, as both sources are already tracked on
+ * `docs/reference/cli-commands.md` and the homepage. No number lost its only
+ * holder, and the floor is held at 42 numerals across 11 files.
  */
 describe("this repository's own doc-counts entries, held to a floor", () => {
 	it('holds at least as many numerals as it does today', async () => {
@@ -888,9 +884,9 @@ describe("this repository's own doc-counts entries, held to a floor", () => {
 		if (loaded.kind !== 'section') return
 		const report = await runDocCounts(dirname(loaded.path), loaded.section)
 		expect(report.failures).toEqual([])
-		expect(report.numerals).toBeGreaterThanOrEqual(44)
+		expect(report.numerals).toBeGreaterThanOrEqual(42)
 		expect(report.digits).toBeGreaterThanOrEqual(8)
-		expect(report.files).toBeGreaterThanOrEqual(12)
+		expect(report.files).toBeGreaterThanOrEqual(11)
 	})
 })
 

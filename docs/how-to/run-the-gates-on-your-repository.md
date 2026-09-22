@@ -1351,4 +1351,5 @@ Point them at modules whose top level, and whose imports, you are happy to run o
 ## Related pages
 
 - [CLI Reference](/reference/cli-commands/)
-- [What Ships](/explanation/what-ships/)
+- [Overview](/)
+- [How It Works](/explanation/behavioral-evaluation-contracts/)

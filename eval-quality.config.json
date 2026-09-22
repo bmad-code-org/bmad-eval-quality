@@ -541,22 +541,6 @@
 				"counts": ["corpusContracts"]
 			},
 			{
-				"file": "docs/explanation/what-ships.md",
-				"claim": "the corpus contract total",
-				"pattern": {
-					"match": "a ([a-z-]+)-contract development corpus"
-				},
-				"counts": ["corpusContracts"]
-			},
-			{
-				"file": "docs/explanation/what-ships.md",
-				"claim": "the reference adapter count",
-				"pattern": {
-					"match": "([a-z-]+) reference adapters at `eval-quality/adapters`"
-				},
-				"counts": ["referenceAdapters"]
-			},
-			{
 				"file": "docs/reference/cli-commands.md",
 				"claim": "the schema version count and the interchange artifact total",
 				"pattern": {
@@ -1149,21 +1133,6 @@
 				}
 			},
 			{
-				"file": "docs/explanation/what-ships.md",
-				"claim": "the kinds refused at compile",
-				"pattern": {
-					"match": "(`[a-z]+`) is the one kind `compile` still refuses under `unsupported-interface-kind`"
-				},
-				"tokenShape": {
-					"module": "src/core/schemas/interface.ts",
-					"export": "INTERFACE_KINDS"
-				},
-				"expected": {
-					"module": "src/core/compile/interface-inventory.ts",
-					"export": "UNSUPPORTED_INTERFACE_KINDS"
-				}
-			},
-			{
 				"file": "docs/reference/cli-commands.md",
 				"claim": "the stages performing AD-11's version equality",
 				"pattern": {
@@ -1420,15 +1389,6 @@
 					"key": "no live server stands behind it",
 					"settles": "read",
 					"reason": "a live MCP server is outside this repository, so no artifact in the tree records whether one was scored; the sentence states how far the fixture carries rather than what is owed; unpinned because nothing in any tree could ever settle it, in-tree or out"
-				},
-				{
-					"file": "docs/explanation/what-ships.md",
-					"key": "is the one kind `compile` still refuses",
-					"settles": {
-						"module": "scripts/doc-claim-sources.ts",
-						"export": "oneKindIsRefused"
-					},
-					"reason": "counts `UNSUPPORTED_INTERFACE_KINDS`"
 				},
 				{
 					"file": "docs/how-to/evaluate-tool-use-behavior.md",

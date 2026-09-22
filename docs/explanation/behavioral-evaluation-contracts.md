@@ -224,4 +224,4 @@ If those change between arms, the comparison becomes noisy, and whatever you lef
 
 > **Evidence must prove the catch. Use the correct scoring mode. Keep the experiment controlled.**
 
-[What Ships](/explanation/what-ships/) says what you get when you install the package.
+[CLI reference](/reference/cli-commands/) documents every command, flag, and package export, and [Contract Strength](/explanation/contract-strength/) explains how scored runs are evaluated.

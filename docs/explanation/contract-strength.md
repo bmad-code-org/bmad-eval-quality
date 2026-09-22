@@ -1,69 +1,193 @@
 ---
 title: "Contract Strength"
-description: "What a contract-strength number claims, what it leaves open, and the two properties of the measurement that decide how to read it."
+description: "What a contract-strength vector measures, how trials are reduced, how dominance is evaluated, and the methodological limits of the measurement."
 sidebar:
-  order: 3
+  order: 2
 ---
 
 # Contract Strength
 
-`score` answers two questions at once, and the second is the one people misread.
+`score` answers two distinct questions at once, and the second is the one people misread.
 
-The verdict says whether this run of this contract came out PASS, CONCERNS, WAIVED, FAIL, or Invalid.
+The **verdict** answers whether a run of an evaluation contract was sound, complete, and free from evidence faults or coverage gaps.
 
-The strength vector says how good the contract is at catching defects.
-Per probe class it is a catch rate: unique qualified probes resolving `caught` over unique qualified probes exercised.
-A vector with a `defect` rate of 1 says every defect probe that ran was caught.
+The **strength vector** answers how effectively the Behavioral Evaluation Contract discriminates between correct behavior and defects.
 
-Catching one defect does not make an evaluation contract trustworthy.
-Two properties of the measurement decide how far the number carries, and both are visible in what ships.
+Per probe class, contract strength is reported as a **catch rate**: unique qualified probe identifiers resolving `caught` over unique qualified probe identifiers `exercised`. A vector reporting a `defect` rate of 1.0 indicates that every defect probe exercised during the evaluation run was detected by matching evidence.
 
-## Who could read the probes
+Catching one defect does not make an evaluation contract trustworthy or ready for release. Contract strength is a structured rate vector and a dominance relation—never a single weighted score, percentage, or scalar grade. How far a strength number carries depends on how trials are reduced, what the verdict exposed, and how the evaluation was controlled.
 
-`corpus/dev/` is diagnostic: every contract in it is published to be read.
+## What a reported strength vector means
 
-A strength number measured against a probe set the contract's author could read while writing it says the contract catches probes its author already knew about.
-That is a claim about the contract and the probe set together.
-The same number measured against probes the author never saw is a stronger claim about the contract alone.
+Contract strength is defined across three probe classes in `StrengthVector`:
 
-The probe schema carries the qualification record and the defect signature either probe set needs, so what separates them is the probes rather than the shape.
-A hidden probe set is something you assemble, and nothing in the artifacts marks which kind you used.
+* **`defect`**: Probes that introduce known regressions, state corruption, or functional failures.
+* **`gameability`**: Probes that return degenerate, compliant-looking, or lazy responses designed to satisfy naive checks without performing the required work.
+* **`zero-action`**: Probes where the system under test takes no action despite mandatory requirements, catching systems that swallow inputs silently.
 
-## How many trials the number rests on
+Canary probes and clean controls never enter the strength vector (AD-7). Canary probes exist to indict the fixture environment rather than the contract, and clean controls verify that unmutated runs remain unpenalized.
 
-A rate over one trial is a rate over one trial.
+### The catch rate formula
 
-The scoring model reduces a trial set to one result per probe before computing any rate, because a pass-if-any reading across retries is the retry anti-pattern with a score attached.
-Repeat `--record` on one CLI invocation to supply the set, or pass the record list to `runScore`.
-Each record carries its own `trialIndex`, and the set agrees on `contractDigest`, `evaluatorConfigurationDigest`, `mode`, `evaluatorRecommendation`, and `runId`.
-When the completed set meets the scoring policy's minimum, the vector carries `comparable: true`.
-Below that minimum, the vector carries `comparable: false` and a note naming the shortfall.
+For each probe class, the catch rate is calculated as:
 
-[What Ships](/explanation/what-ships/) states the trial-set contract in full.
+```text
+rate = unique qualified probes resolving caught / unique qualified probes exercised
+```
+
+A probe is **exercised** when the evaluator itself invoked the probe signature's declared home operation during execution (AD-40). Calls made during harness setup or runs that never completed do not count. A probe whose home operation was never invoked leaves both numerator and denominator; its required check resolves to `not-applicable` rather than artificially deflating the score.
+
+The `EvidenceArtifact` records the raw counts (`caught`, `exercised`) alongside the derived `rate`. When zero probes of an admitted class are exercised, `rate` is recorded as `null` rather than zero, making unexercised classes transparent. The artifact also names the exact denominator string—including the number of completed trials—so consumers can independently verify calculations.
+
+## What contract strength does not mean
+
+Contract strength is frequently conflated with conventional test metrics. It is critical to understand what it does not measure:
+
+* **It is not a system-under-test pass rate:** Contract strength does not measure whether your agent or application is reliable. It measures whether your *evaluation contract* has the acuity to detect flaws when they occur.
+* **It is not a single-number score or percentage:** Aggregating diverse defect categories into an uncalibrated weighted scalar creates false confidence and hides blind spots. AD-7 explicitly forbids scalar composites.
+* **Severity is not a weight in the vector:** Critical and low-severity behaviors receive equal weight within a probe class rate. Severity routes verdicts in AD-21 and acts as a floor override in dominance comparison; it never scales the rate vector.
+* **A perfect catch rate on known probes does not prove exhaustiveness:** Achieving a catch rate of 1.0 against a diagnostic suite proves only that the contract detects the specific failure modes its author anticipated.
 
 ## The verdict and the vector disagree on purpose
 
-A contract can catch the defect it was pointed at and still come back FAIL or CONCERNS.
+A contract can catch the defect it was pointed at and still receive a verdict of `FAIL` or `CONCERNS`.
 
-The verdict ladder reads every oracle outcome, not just the one the probe targeted.
-An oracle that abstained at or above the severity floor lands FAIL whatever the defect rate says.
-A coverage gap, an unreached oracle, or a trial count below the policy minimum lands CONCERNS.
+The defect rate tells you whether the contract caught what was planted. The verdict ladder (AD-21) reads every oracle outcome, evidence-integrity check, and coverage condition across the entire run.
 
-That is the point of scoring a contract at all.
-The defect rate tells you the contract caught what you planted; the verdict tells you what else the same run exposed about the contract.
-The [full walkthrough](/how-to/author-behavioral-contracts/) ends on a scored run where exactly that happens, and reads both numbers off the artifact.
+```text
+                 contract catches planted defect?
+                            │
+              ┌─────────────┴─────────────┐
+              ↓                           ↓
+             YES                          NO
+              │                           │
+  check all other oracles,       contract missed defect
+  evidence integrity, coverage            │
+              │                           ↓
+      ┌───────┴───────┐              FAIL / CONCERNS
+      ↓               ↓
+   no flaws      flaws present
+      ↓               ↓
+    PASS       FAIL / CONCERNS
+```
+
+Consider three common scenarios:
+
+1. **Catch rate 1.0, verdict `FAIL`:** The contract detected the seeded defect (`caught`). However, another required oracle in the contract examined insufficient evidence and abstained at or above the policy's `severityFloor`, or evidence was incomplete. Catching a defect does not excuse a broken measurement elsewhere in the run.
+2. **Catch rate 1.0, verdict `CONCERNS`:** The contract caught the defect, but the run completed fewer trials than the policy's `minimumTrialCount`, an oracle resolved `unreached`, or an unsatisfied coverage gap exists below the severity floor. The vector is reported, but the verdict warns that the measurement was thinner than declared policy.
+3. **Catch rate null or 0, verdict `PASS`:** In a clean-control run where no defect was seeded, all oracles held, resolving `passed-clean-control`. Because clean controls never enter the strength vector, the vector records no defect detections, yet the run is a valid `PASS`.
+
+## Plan a trial set and trial reduction
+
+A rate measured over a single run of a non-deterministic agent or LLM feature is an anecdote, not a measurement. Evaluating retries on a pass-if-any basis is the retry anti-pattern with a score attached.
+
+The scoring model requires evaluating probes across a **trial set** and reducing multiple runs of the same probe to a single outcome before computing rates.
+
+### Supplying a trial set
+
+Repeat `--record` on the `score` CLI command once per trial, or supply the complete array of `SealedRunRecord` objects to `runScore`:
+
+```bash
+eval-quality score \
+  --record trial-0.json \
+  --record trial-1.json \
+  --record trial-2.json \
+  --contract contract.json \
+  --probe probe.json \
+  --preflight-verdict preflight-verdict.json \
+  --policy policy.json \
+  --corpus-digest "$CORPUS_DIGEST"
+```
+
+Each sealed record carries its own integer `trialIndex`. Scoring sorts records by `trialIndex` and verifies that all records agree on:
+
+* `contractDigest`
+* `evaluatorConfigurationDigest`
+* `mode`
+* `evaluatorRecommendation`
+* `runId`
+
+### How `reduceTrialSet` folds outcomes
+
+For each probe, the trial set reducer (`reduceTrialSet`) gathers the outcome state from each trial and partitions AD-6's twelve outcome states into three groups:
+
+1. **Invalidating states (`oracle-error`, `judge-error`, `infrastructure-error`):** The trial suffered a harness or execution failure. It is excluded from the valid count and recorded in `invalidatedAttempts` with its `trialIndex` and failure reason.
+2. **Unvoted states (`not-applicable`, `unreached`):** The probe was not exercised in that trial. It contributes to neither the numerator nor the denominator.
+3. **Voted states (`caught`, `confirmed`, `missed`, `abstained`, `bypassed`, `passed-clean-control`, `false-positive`): Valid observations that form the `validCount`.
+
+The reducer then applies a strict majority threshold:
+
+$$\text{caught} = (\text{validCount} > 0) \land \left(\frac{\text{caughtCount}}{\text{validCount}} > \text{catchThreshold}\right)$$
+
+The inequality is strict (`>`), so an exact tie never counts as caught. Under the published default scoring policy (`catchThreshold: 0.5`), a probe must resolve `caught` in at least two out of three valid trials to be credited as caught.
+
+The resulting `EvidenceArtifact` retains both levels of detail:
+* Detailed per-trial oracle outcomes are stored in `outcomes` with their respective `trialIndex`.
+* Reduced per-probe outcomes are stored in `reducedProbeOutcomes`, recording `validCount`, `caughtCount`, `catchThreshold`, `trialVotes`, and `invalidatedAttempts`.
 
 ## Comparing two contracts
 
-`compareDominance` is the four-valued comparison over two scored results: one dominates the other, the reverse, equivalent, or incomparable.
-A contract that missed a behavior at or above the severity floor never dominates one that caught it. The comparison reads the artifact's reduced per-probe outcomes, so a mixed trial set contributes its majority result once and trial numbering cannot select the answer.
+`compareDominance` is AD-7's four-valued relation for comparing two scored evaluation results:
 
-It gates on `comparabilityKey`, which is a digest of the scoring policy digest and the sorted admitted probe ids, together with each side's `strength.comparable`.
-It reads no scoring version and no model field, so two artifacts agreeing on the key will compare even when their contract schema version, corpus digest, fixture digest, evaluator configuration, or mode differ.
-Each of those five is a scoring-version input for a reason, so compare `scoringVersion` yourself before you read anything else across two artifacts.
+* `a-dominates-b`
+* `b-dominates-a`
+* `equivalent`
+* `incomparable`
+
+### Comparability requirements
+
+Before any rates are compared, `compareDominance` evaluates three strict gates:
+
+1. **`comparabilityKey` match:** Both artifacts must share the exact same `comparabilityKey`. The key is a SHA-256 digest of the scoring policy digest and the sorted list of admitted probe identifiers. If the policies differ or the probe sets do not match, the results cannot be compared and the function returns `incomparable`.
+2. **`comparable: true` on both sides:** A strength vector is marked `comparable: true` if and only if:
+   * The completed trials met or exceeded the policy's declared minimum (`trials.completed >= trials.declaredMinimum`).
+   * No oracle resolved `unreached` (`unreachedOracles.length === 0`).
+   If either side fell short of the minimum trial count or left an oracle unreached, its vector carries `comparable: false` and the comparison returns `incomparable`.
+3. **Reduction consistency:** The reduced probe outcomes must agree with the detailed trial evidence and trial metadata stored in each artifact.
+
+### Component-wise comparison and severity-floor override
+
+If comparability checks pass, `compareDominance` evaluates the vectors component-wise across all probe classes where both sides have non-null rates:
+
+* If contract A strictly exceeds contract B in at least one class catch rate and is not lower in any other class, the raw comparison favors A (`a-dominates-b`).
+* If all contributing class counts (`caught` and `exercised`) are identical, the relation is `equivalent`.
+* If each contract beats the other in different classes, or if rates tie while raw counts differ, the relation is `incomparable`.
+
+Finally, the **severity-floor override** applies (AD-7):
+
+> A contract that missed a behavior at or above the scoring policy's `severityFloor` never dominates one that caught it, regardless of the rest of the vector.
+
+If raw comparison favored contract A, but contract A failed to catch a probe that contract B caught at or above `severityFloor`, dominance is denied and the result drops to `incomparable`. The override constrains dominance only; it does not alter `equivalent`.
+
+### Methodological boundary: `comparabilityKey` vs. `scoringVersion`
+
+`compareDominance` checks `comparabilityKey`, not `scoringVersion`.
+
+* `comparabilityKey` digests only the scoring policy digest and the admitted probe identifiers. It allows comparing two evaluations of the same probe set under the same policy even if they were executed in different runs or revisions.
+* `scoringVersion` (AD-11) is the complete cryptographic identity of the experiment: the contract schema version, corpus digest, fixture digest, evaluator configuration digest, scoring policy digest, and run mode.
+
+Because `compareDominance` does not inspect model snapshots, fixture versions, or run modes, callers must independently verify that `scoringVersion` aligns between artifacts to ensure that external experimental controls held constant.
+
+## Methodological limits
+
+A strength measurement is only as reliable as the probe corpus and experimental controls behind it.
+
+### Known probes versus held-out probes
+
+The contracts in `corpus/dev/` are diagnostic and visible: contract authors can inspect them while developing contracts.
+
+* **Known probes (development corpus):** Measuring a contract against probes its author could read demonstrates that the contract catches known defect patterns. That is an assertion about the author's attention as much as the contract's quality.
+* **Held-out probes (sealed corpus):** Authentic evaluation requires measuring contracts against private, held-out probe sets that contract authors cannot inspect (AD-8). The `Probe` schema supports qualification records and defect signatures for both kinds, but the artifacts do not distinguish them automatically.
+
+### Controlled experiment discipline
+
+All transformations performed by `eval-quality` (compilation, brief sealing, preflight planning, trial reduction, scoring, and emission) are pure and deterministic.
+
+The system under test, the evaluator harness, model weights, prompt templates, decoding parameters, and fixture environments are external. If those change between evaluation arms, the comparison measures environmental noise rather than contract strength.
 
 ## Related pages
 
-- [How It Works](/explanation/behavioral-evaluation-contracts/): the twin run and the three ways to get a wrong answer
-- [The full walkthrough](/how-to/author-behavioral-contracts/): a scored run read down to its verdict and its vector
-- [Glossary](/reference/glossary/): contract strength, dominance, trial set, and scoring version
+* [How It Works](/explanation/behavioral-evaluation-contracts/): The twin-run model and core evaluation boundaries
+* [The Full Walkthrough](/how-to/author-behavioral-contracts/): Step-by-step authoring, preflighting, and scoring
+* [CLI Reference](/reference/cli-commands/): Command flags, package exports, and `compareDominance` API details
+* [Glossary](/reference/glossary/): Precise definitions of all scoring and contract terms

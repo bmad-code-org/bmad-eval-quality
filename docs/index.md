@@ -98,7 +98,7 @@ An eval contract describes a system through a declared interface. Three interfac
 
 Every command those guides present as runnable runs from a fresh checkout, and CI executes them on every build. Where a fence is grammar rather than a step, the page says so above it. Each guide also says plainly what is proven and what is not.
 
-One kind parses and stops at compilation under `unsupported-interface-kind`: `web`, whose probe semantics are undeclared. [What Ships](/explanation/what-ships/) states the limits of the tool-use kind and how far a strength number carries.
+One kind parses and stops at compilation under `unsupported-interface-kind`: `web`, whose probe semantics are undeclared. [Evaluate tool-use behavior](/how-to/evaluate-tool-use-behavior/) states the boundaries of the tool-use kind, and [Contract Strength](/explanation/contract-strength/) explains how far a strength number carries.
 
 ## Optional repository governance
 
