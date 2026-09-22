@@ -7,26 +7,54 @@ sidebar:
 
 # Evaluate tool-use behavior
 
-Two questions get called tool-use evaluation, and each has a different system under test:
+Two distinct systems get called tool-use evaluation, and each has a different system under test:
 
 | Question | System Under Test | Observed Evidence | Evaluated By |
 | --- | --- | --- | --- |
 | **Did the agent use tools correctly?** | The autonomous agent | The agent's recorded calls, arguments, and written logs | `cli` interface kind ([Evaluate agent behavior](/how-to/evaluate-agent-behavior/)) |
 | **Is the tool server itself correct?** | The MCP tool server | Server responses and persistent state changes | `mcp` interface kind (this guide) |
 
-**Was the agent's tool use correct?**
-The system under test is the agent that reaches its capabilities through tools: a function-calling loop, a plugin it invokes with arguments it chose itself, an MCP client it drives.
-The calls it made are output it produced, and if it writes them down, the shipped `cli` kind already declares that file.
-`CommandOperation.artifacts` names the files an operation writes and `descriptorChannel` says which output channel the operation's one response descriptor describes (`src/core/schemas/interface.ts:240-245`).
-A contract shaped that way compiles, seals, and pre-flights today, and [Evaluate agent behavior](/how-to/evaluate-agent-behavior/) is the guide for building one.
-The last entry under [Where this stands](#where-this-stands) records the run that proved it and the one restriction that shapes it.
+These are related evaluation problems, but they evaluate different systems under test and remain conceptually distinct.
 
-**Is the tool server itself correct?**
-The system under test is the MCP server: the tool call is the request, the tool result is the response, and only the `mcp` kind can describe that.
+### 1. The agent using tools
+
+The system under test is the autonomous agent that reaches capabilities through tools: a function-calling loop, an invoked plugin, or an MCP client it drives.
+The calls the agent makes are observable output.
+Core questions include:
+* Did it choose the correct tool?
+* Did it avoid irrelevant or dangerous tools?
+* Did it provide the correct arguments?
+* Did it use outputs from previous calls correctly?
+* Did it make the necessary calls?
+* Did it make unnecessary calls?
+* Did it interpret the tool result correctly?
+* Did subsequent behavior reflect what the tool actually returned?
+
+This behavior is evaluated through an agent or CLI-shaped contract when tool calls are part of the agent's observable output.
+The calls it made are output it produced, and if it writes them down, the shipped `cli` kind declares that file.
+`CommandOperation.artifacts` names the files an operation writes and `descriptorChannel` says which output channel the operation's response descriptor describes (`src/core/schemas/interface.ts:240-245`).
+A contract shaped that way compiles, seals, and pre-flights today.
+[Evaluate agent behavior](/how-to/evaluate-agent-behavior/) is the guide for building one.
+The last entry under [Where this stands](#where-this-stands) records the run that proved it and the restriction that shapes it.
+
+### 2. The tool implementation itself
+
+The system under test is the tool server, such as an MCP server.
+The tool call is the request, the tool result is the response, and the `mcp` interface kind describes that exchange.
+Core questions include:
+* Does the tool read its arguments?
+* Does it produce the expected structured result?
+* Does a state-changing tool actually produce the promised state change?
+* Does it report errors correctly?
+* Can the effect of a write be independently verified?
+* Do multiple related tool calls preserve the intended relationship?
+
 `PermittedInterface` declares four interface kinds and one of them is `mcp` (`src/core/schemas/interface.ts:365`), and `compile` accepts it.
-Everything from [What an `mcp` operation declares](#what-an-mcp-operation-declares) down is about this question.
+Everything from [What an `mcp` operation declares](#what-an-mcp-operation-declares) down addresses this question.
 
-This repository ships an adapter that runs a tool call. `createMcpAdapter` speaks MCP's stdio transport, and the mini-lab below drives a real tool server through it, from `compile` to a scored defect. Nothing in TEA has been scored against an `mcp` interface yet.
+This repository ships an adapter that runs a tool call.
+`createMcpAdapter` speaks MCP's stdio transport, and the mini-lab below drives a real tool server through it, from `compile` to a scored defect.
+Nothing in TEA has been scored against an `mcp` interface yet.
 
 > **Scope boundary:** This mini-lab evaluates the second target: the MCP tool server. It verifies whether the server correctly processes tool calls and persists state. It does not evaluate whether an autonomous agent made the right reasoning choices or selected the right tools.
 
@@ -121,8 +149,39 @@ step read-back  search_notes({"query":"note-a-new-note"})
   seeded -> {"matches":[{"noteId":"note-a-new-note"}],"totalCount":1,"topMatch":{"title":"(untitled)"}}
 ```
 
-**The creation call answers identically in both arms.** Both return `ok: true` and the same note identifier. A check examining only the response of `create_note` would pass both clean and defective servers.
-Only the independent read-back via `search_notes` reveals that the seeded server stored `(untitled)`. That is why verifying tool-use behavior requires checking the resulting state rather than trusting a tool's own status response.
+**The creation call answers identically in both arms.**
+Both arms return `ok: true` and the expected identifier:
+
+```text
+create_note(...)
+→ ok: true
+→ expected identifier
+```
+
+A check examining only the response of `create_note` passes both clean and defective servers.
+The defect becomes visible only through a later independent read:
+
+```text
+create_note(title = "a new note")
+        ↓
+returns success
+        ↓
+search_notes(created identifier)
+        ↓
+clean:  title = "a new note"
+broken: title = "(untitled)"
+```
+
+A tool reporting success is weaker evidence than observing the state it was supposed to change.
+This is the tool-use version of the read-back discipline used throughout `eval-quality`:
+
+```text
+command reports success
+≠
+required effect actually happened
+```
+
+State-changing tool behavior must be verified through independent observable state whenever such evidence exists.
 
 ### 4. Preflight and score
 
@@ -193,23 +252,38 @@ contract-scoring CONCERNS exit 0
   ```
 * **Comparability:** Marked `comparable: false`. The command scored 1 trial (`--record`), falling below the policy's required 3 trials.
 
-### 5. Two things the lab decided for you
+### 5. Tutorial implementation details
 
-**The contract is authored rather than reused, and the reason is the one-oracle rule.**
-`corpus/dev/contracts/notes-tool-server.json` compiles, seals and pre-flights against this same server unchanged, and it can never show a caught defect: its two behaviors declare four oracles and three, and `designatedOracleIdOf` resolves an oracle only for a behavior declaring exactly one.
-A defect probe naming either behavior has no designated oracle, so the witness match has nothing to attach a detection to.
-The tutorial's contract declares four behaviors with one oracle each. That is the same discipline the [skill guide](/how-to/evaluate-skill-behavior/) turns on, and here it is the difference between a contract that can score a catch and one that cannot.
+These implementation decisions belong to this specific tutorial and its verification harness:
 
-**The observations are measured rather than authored.** The committed `observations.json` is byte-identical to what the helper writes when you run step 2 against the real spawned server, and `tests/application/tool-use-tutorial.test.ts` runs that comparison on every build. The chain builder replays the calls against `notes-store.mjs`, the same module the server imports, so there is one definition of what the tools answer.
+* **Execution ownership:** The scoring CLI (`eval-quality`) executes no servers and makes no tool calls directly.
+  The caller-side harness helper (`run-tool-calls.mjs`) drives the live tool calls and records observations.
+* **Adapter session lifecycle:** The shipped MCP adapter opens one session per tool call over stdio.
+  The server process launches, handshakes, handles one call, and tears down.
+  State must persist in files or external storage across invocations.
+* **Fixture replay and verification:** Preflight and scoring commands in this tutorial evaluate against committed fixtures (`observations.json` and `sealed-run-record.json`).
+  The repository test `tests/application/tool-use-tutorial.test.ts` verifies that live runs produce observations identical to the committed fixture.
+* **Trial thresholds and contract verdict:** The scoring run caught the seeded defect (`rate: 1`).
+  The contract received `CONCERNS` because single-trial execution falls below the policy's required 3 trials, and three declared coverage gaps remained open.
+* **Contract authoring and the one-oracle rule:** The contract was authored with four behaviors declaring one oracle each, satisfying the one-oracle rule required for `designatedOracleIdOf` to attach a detection.
+  `corpus/dev/contracts/notes-tool-server.json` declares four and three oracles for its two behaviors, so a defect probe naming either has no designated oracle to attach a detection to.
+* **Measured observations:** The committed `observations.json` is byte-identical to what the helper writes when step 2 runs against the spawned server.
+  The chain builder replays the calls against `notes-store.mjs`, the module the server imports, so there is one definition of what the tools answer.
 
 ## Key takeaways
 
-* Tool-use evaluation answers two different questions: agent tool-selection behavior (`cli` kind) vs tool-server implementation correctness (`mcp` kind).
-* The scoring CLI executes no servers; caller-side harnesses or adapters run tool calls and record observations.
-* The shipped MCP adapter opens one session per tool call over stdio, requiring file-backed or external state persistence across calls.
-* A tool response reporting success (`ok: true`) does not guarantee state persisted; independent read-back is required to verify changes.
-* Preflight and score in this tutorial replay committed fixtures verified against live execution by regression tests.
-* The evaluation successfully caught the seeded tool defect (`rate: 1`), while the contract received `CONCERNS` due to coverage gaps and single-trial execution.
+* **Distinguish the two evaluation targets:** Tool-use evaluation spans two distinct systems under test.
+  Evaluating an autonomous agent asks whether it selected the appropriate tool, avoided dangerous tools, passed correct arguments, and interpreted returned values.
+  Evaluating a tool server asks whether the tool implementation reads inputs, returns structured results, executes persistent state changes, and reports errors.
+* **Verify state changes through independent read-back:** A tool reporting success (`ok: true`, HTTP 200, or a generated identifier) is weaker evidence than observing the state it was supposed to change.
+  Verifying state-changing tool behavior requires an independent read-back query or external inspection of the affected state: `command reports success ≠ required effect actually happened`.
+* **Evaluate tool choice and trajectory directly:** For agent evaluations, verify that the agent selected the appropriate tool for the task.
+  A plausible final answer does not prove correct tool selection.
+  The observable sequence of tool calls is primary behavioral evidence, and unnecessary or missing calls indicate incorrect behavior.
+* **Check argument correctness:** Verify the actual arguments passed to each tool call.
+  A correct tool called with the wrong identifier, scope, filter, tenant, filename, or payload is incorrect behavior.
+* **Require input sensitivity:** Evaluations must verify that changing meaningful tool arguments produces corresponding changes in behavior.
+  An evaluation must prove that the tool reads and responds to its arguments; a tool or agent that appears to work while ignoring arguments fails evaluation.
 
 ---
 
@@ -225,11 +299,16 @@ Reading one answers the same three today with different declarations, given at t
 The fourth question after them is kind-neutral and belongs to both readings.
 
 **Was the right tool chosen?**
+For agent evaluations, verify that the agent selected the appropriate tool for the task.
+A plausible final answer does not prove correct tool selection.
+The observable tool trajectory may itself be part of the behavior being evaluated.
 An `InteractionStep` names an `operationId` and a `cardinality` (`src/core/schemas/plan.ts:170`).
 The step is a selector over observations the evaluator produced, so a step naming `search-notes` with `cardinality: "exactly-one"` declares that exactly one call to that tool is expected in the run.
 `SELECTOR_CARDINALITIES` is the closed three, `exactly-one`, `at-most-one`, and `any` (`plan.ts:153`).
 
 **Were the arguments right?**
+Verify the actual arguments sent to the tool.
+A correct tool called with the wrong identifier, scope, filter, tenant, filename, or payload is still incorrect behavior.
 A step's `inputBinding` binds each channel to a `BindingValue` (`plan.ts:55`), and the four tagged forms are `{ literal }`, `{ matcher }`, `{ captured }`, and `{ principal }`.
 `{ literal }` writes the argument down.
 `{ matcher: "any" }` binds whatever was sent and `{ matcher: "type-violating" }` binds an argument whose JSON type differs from the operation's declared type for that key, which is how you address a tool called with a malformed argument.
@@ -239,9 +318,12 @@ An oracle then addresses the argument directly through the `call-inputs` channel
 **Was the result used correctly?**
 The operation's `responseDescriptor` declares what the tool returns, and an oracle asserts a relation over it.
 The stronger form is a read-back: one step calls the tool, a later independent step observes the state, and the oracle compares the two.
+A tool reporting success is weaker evidence than observing the state it was supposed to change.
 That is the shape [How It Works](/explanation/behavioral-evaluation-contracts/) calls a strong evaluation, and it is what separates a tool that reported success from a tool that did the work.
 
 A fourth question sits underneath all three.
+The evaluation should establish that changing meaningful tool arguments changes relevant behavior.
+A tool that appears to work while ignoring its arguments fails evaluation.
 `sensitivityWitness` is mandatory per operation that declares any input (`interface.ts:316`), and it is what establishes that the tool reads its arguments at all.
 Two calls differing in one argument, and the relation their responses have to satisfy.
 Without it a check over the tool passes while the tool ignores everything you send.
@@ -428,7 +510,7 @@ A pointer at `response-headers`, `exit-code`, or a stream is `unreachable-check-
 `/interactions/search/response-body/ok`, `/interactions/search/response-body/matches`, and `/interactions/search/response-body/totalCount` are the three pointers the example above makes addressable.
 
 **Declaring the defect you seeded.**
-A probe's `defectSignature` names the tool rather than a verb and a URL, and its selector filters on the `arguments` channel.
+A probe's `defectSignature` names the published tool name, and its selector filters on the `arguments` channel.
 
 ```json
 {
@@ -471,7 +553,7 @@ An oracle over the write step's own response passes on a tool that silently disc
 The mini-lab above is the runnable version of this section, against the fixture server this repository ships. Pointing the same commands at a server of your own changes two things and nothing else.
 
 The contract's `logicalId` maps to your server through an `McpTargetPolicy` you write, the way `run-tool-calls.mjs` maps the fixture's.
-The observations then come from your run rather than from the committed file.
+The observations then come from your run.
 
 A planned mcp leg is issued to whatever port is wired, and `createMcpAdapter` is the one this package ships for it (`src/adapters/mcp-adapter.ts`). Wire another kind's adapter and how it fails is that adapter's: the shipped command-line adapter throws `forbidden-target` on any request that is not `cli`, before it builds anything, and an adapter that answered with an api or cli observation instead reaches the reducer, which reports `port-contract-violation`.
 
@@ -490,7 +572,7 @@ The transport is stdio and nothing else. A server reached over Streamable HTTP s
 
 **Missing.** A channel model for a text-shaped tool result.
 
-**Already works, and this is the part worth knowing before you fund any of it.** Both sides of the exchange accommodate the kind today. `Observation` in the sealed run record is not discriminated on kind (`sealed-run-record.ts:229`), so what a tool answered has somewhere to live. `foreignChannels` (`qualification.ts:187`) confines a tool-use signature to `response-body`, `response-status`, and its own `call-inputs`, which is the same answer compile-time reachability gives, a confinement the code decides. All three carry a value once the adapter runs: the structured result lands on `response-body`, the error flag on `response-status`, and the tool call's arguments on `call-inputs`. `response-headers` is not among them; `foreignChannels` hands it to a tool-use signature as foreign, so a signature naming it is refused rather than left empty. `ObservedCallInputs` (`sealed-run-record.ts:204`) carries a key per input channel, `arguments` among them.
+**Already works, and this is the part worth knowing before you fund any of it.** Both sides of the exchange accommodate the kind today. `Observation` in the sealed run record is not discriminated on kind (`sealed-run-record.ts:229`), so what a tool answered has somewhere to live. `foreignChannels` (`qualification.ts:187`) confines a tool-use signature to `response-body`, `response-status`, and its own `call-inputs`, which is the same answer compile-time reachability gives, a confinement the code decides. All three carry a value once the adapter runs: the structured result lands on `response-body`, the error flag on `response-status`, and the tool call's arguments on `call-inputs`. `response-headers` is not among them; `foreignChannels` hands it to a tool-use signature as foreign, so a signature naming it is refused. `ObservedCallInputs` (`sealed-run-record.ts:204`) carries a key per input channel, `arguments` among them.
 
 **Unproven, and this is the uncomfortable part.** The calibration record behind this project's central measurement is itself MCP-shaped. The architecture records that every contract in the phase-2 block that produced the 0.33-to-1.00 result declares an MCP tool interface, and that 22 of 25 real contracts use the kind. Those contracts were transcribed into API shape to be compiled here, and a transcription is not the measured artifact. So `mcp` is the most-used kind in the prior art and the one this package reached last.
 
