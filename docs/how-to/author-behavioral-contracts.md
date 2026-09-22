@@ -64,95 +64,104 @@ Every digest inside it is computed from bytes this repository ships.
 
 ## How this walkthrough fits together
 
-[How It Works](/explanation/behavioral-evaluation-contracts/) described the [four-layer model](/explanation/behavioral-evaluation-contracts/#four-things-and-the-boundaries-between-them) conceptually.
-This walkthrough runs those stages over one real contract and lets you inspect the artifact produced at each point.
+[How It Works](/explanation/behavioral-evaluation-contracts/) describes the conceptual model connecting the System Under Test (SUT), the evaluation harness, and `eval-quality`.
+This walkthrough replays one complete scored evaluation arm through the `eval-quality` stages, step by step, using the seven numbered sections below.
+
+### The walkthrough pipeline
+
+The numbered sections of this guide correspond to a single, continuous pipeline:
 
 ```text
-Behavioral Evaluation Contract
-            ↓
-         COMPILE
-   Is the design valid?
-            ↓
-          SEAL
- Create evaluator-safe brief
-            ↓
-        PREFLIGHT
- Is the environment measurable?
-            ↓
-       EVALUATION
- caller/evaluator produces
- observations + findings
-            ↓
-          SCORE
- Does evidence support
- the evaluator's claims?
-            ↓
-    Evidence Artifact
- verdict + outcomes + strength
+                          Authored Behavioral Evaluation Contract
+                           (examples/tutorials/walkthrough/contract.json)
+                                              │
+                                              ▼
+                                      1. COMPILE THE CONTRACT
+                                         [eval-quality CLI]
+                                              │
+                                              ├── 2. Inspect what the contract declares
+                                              │      [Read-only contract explanation]
+                                              │
+                                              ├── 3. Inspect a compile rejection
+                                              │      [compile CLI demonstration]
+                                              │
+                                              ▼
+                                        4. SEAL THE BRIEF
+                                         [eval-quality CLI]
+                                              │
+                                              ▼
+                       ┌──────────────────────────────────────────────┐
+                       │ Caller / Harness Boundary: Preflight Probing │
+                       │ (The SUT is not launched in this tutorial.)  │
+                       │ The tutorial builder supplies prepared       │
+                       │ observations representing harness responses. │
+                       │ probes.json is the committed planning input. │
+                       └──────────────────────────────────────────────┘
+                                              │
+                                              ▼
+                                5. REDUCE PREFLIGHT OBSERVATIONS
+                                         [eval-quality CLI]
+                                              │
+                                              ▼
+                       ┌──────────────────────────────────────────────┐
+                       │ Caller / Harness Boundary: SUT + Evaluator   │
+                       │ (Neither SUT nor LLM runs in this tutorial.) │
+                       │ The tutorial uses a prepared run record      │
+                       │ representing a defective-SUT/evaluator run;  │
+                       │ neither is executed live by this walkthrough.│
+                       └──────────────────────────────────────────────┘
+                                              │
+                                              ▼
+                                  6. SCORE THE EVALUATION RECORD
+                                         [eval-quality CLI]
+                                              │
+                                              ▼
+                                      Evidence Artifact
+                           (/tmp/eval-quality-run/evidence-artifact.json)
+                                              │
+                                              ▼
+                                      7. READ THE RUN YOU PRODUCED
+                                         [Read-only verdict & strength triage]
 ```
+
+### Pipeline ownership and the two skipped execution gaps
+
+To follow the walkthrough without confusion, keep in mind who executes what:
+
+* **`eval-quality` owns four deterministic offline processing stages:**
+  `compile`, `seal`, `preflight` (evidence reduction), and `score`. None of these CLI commands launch background processes, spin up servers, query AI models, or issue network calls.
+* **Your harness owns active environment and evaluator execution:**
+  Running the System Under Test (SUT), hosting services, dispatching active probe calls to verify measurability, running the evaluator model against the sealed brief, capturing interaction observations, and minting the sealed run record.
+
+Because this tutorial focuses on learning the `eval-quality` contract and verification tools, it uses **prepared fixture files** in place of dynamic harness execution. There are two explicit execution gaps:
+
+1. **Preflight probing gap (before step 5):**
+   In this tutorial, `eval-quality preflight` does not start the Notes API service or send HTTP requests. The tutorial builder supplies prepared preflight observations representing the responses a harness would collect. It executes `preflightFromObservations`: it plans the legs implied by the contract and supplied probe list, then reduces the prepared observations. In production, when using the TypeScript library, `runPreflight` can actively drive a caller-supplied `EnvironmentProbePort` to send planned legs directly to a running service.
+2. **Evaluator and SUT execution gap (before step 6):**
+   In this tutorial, neither the defective Notes API nor an LLM evaluator runs live. In a live system, your harness executes the defective SUT, presents `sealed-evaluator-brief.json` to the evaluator, captures the resulting tool calls and responses, and seals them into `sealed-run-record.json`. Here, the tutorial uses a prepared sealed run record representing a defective-SUT/evaluator run; the SUT and evaluator are not executed by the commands in this walkthrough (which replays prepared evidence; separate repository tests exercise the Notes SUT live). The resulting record is committed in `examples/tutorials/walkthrough/sealed-run-record.json` for deterministic replay.
+
+### How this maps to a full twin run
+
+The full [twin-run model](/explanation/behavioral-evaluation-contracts/#the-twin-run) stress-tests an evaluation by comparing two conditions: a clean system and a mutated system with a seeded defect.
+
+This walkthrough replays **one scored arm** in depth (the defective SUT arm) so you can understand the artifacts and decision rules firsthand. Once you master this sequence, repeating it across both arms is straightforward: you compile and seal the contract once, run preflight reduction on each arm, and score each arm against its own probe ([Next: run a real clean and mutated experiment](#next-run-a-real-clean-and-mutated-experiment)).
 
 ### Artifact map
 
-This walkthrough generates four outputs on disk while replaying prepared caller evidence and configuration files.
+This walkthrough generates four primary pipeline artifacts on disk while consuming committed inputs and replaying prepared harness evidence:
 
-| Artifact | Producer in this exercise | Job |
+| Artifact | Role in this exercise | Job |
 | --- | --- | --- |
-| `contract.json` | Committed author input | Defines behavior, interfaces, evidence relationships, and checks. |
-| `eval-contract.json` | `compile` | Validated, canonical contract consumed by later stages. |
-| `sealed-evaluator-brief.json` | `seal` | Evaluator-facing directions and permitted context. |
-| `probes.json` + `observations.json` | Committed caller inputs | Inputs for this preflight reduction. |
-| `preflight-verdict.json` | `preflight` | Records which measurability checks were satisfied. |
-| `probe.json` + `sealed-run-record.json` | Committed probe and trial inputs | Known failure description plus what the evaluator observed and reported. |
-| Policy, configuration, isolation manifest, corpus digest | Committed caller inputs and attested value | Thresholds, run context, and identity or integrity information. |
-| `evidence-artifact.json` | `score` | Scored outcomes, verdict, reasons, trials, and strength. |
+| `contract.json` | Committed authored input | Defines behavior, interfaces, evidence relationships, and checks. |
+| `eval-contract.json` | **Generated by step 1 (`compile`)** | Validated, canonical contract consumed by later stages. |
+| `sealed-evaluator-brief.json` | **Generated by step 4 (`seal`)** | Evaluator-facing directions and permitted context (withholds answer key). |
+| `probes.json` + `observations.json` | Committed prepared fixtures | Replayed inputs representing preflight probing interactions. |
+| `preflight-verdict.json` | **Generated by step 5 (`preflight`)** | Records which environment measurability checks were satisfied. |
+| `probe.json` + `sealed-run-record.json` | Committed prepared fixtures | Seeded defect description plus evaluator observations and findings. |
+| Policy, configuration, isolation manifest, corpus digest | Committed inputs and attested digest | Thresholds, run controls, and cryptographic integrity tokens. |
+| `evidence-artifact.json` | **Generated by step 6 (`score`)** | Scored outcomes, verdict, reasons, trials, and strength vector. |
 
-The separately generated `piped-brief.json` is an equivalence verification rather than an additional stage.
-
-Be explicit about ownership:
-
-```text
-eval-quality:
-compile
-seal
-preflight reduction
-score
-
-caller / harness:
-run the SUT
-run the evaluator
-collect observations
-produce the sealed run record
-```
-
-The walkthrough uses committed caller-produced artifacts where appropriate.
-
-The full [twin-run model](/explanation/behavioral-evaluation-contracts/#the-twin-run) compares a clean system with a deliberately mutated system.
-This walkthrough takes you through one scored arm in detail so you can first understand `compile`, `seal`, `preflight`, and `score`.
-The later section shows how the same chain is repeated for both clean and mutated arms.
-
-```text
-Full twin run
-
-       Clean SUT                 Mutated SUT
-           ↓                         ↓
-       Evaluation                Evaluation
-           ↓                         ↓
-         SCORE                     SCORE
-           └──────────┬──────────────┘
-                      ↓
-          Did the evaluation discriminate?
-
-
-This walkthrough
-
-       Known defective SUT
-               ↓
-           Evaluation
-               ↓
-             SCORE
-               ↓
-       Read the evidence
-```
+The separately generated `piped-brief.json` in step 4 is an equivalence check verifying that streaming through standard I/O matches file-based execution byte for byte.
 
 ## 1. Compile the contract
 
@@ -406,24 +415,23 @@ identical
 > `--in` left out reads stdin, which is what makes the pipe work.
 > `-` names stdin explicitly, and at most one input per command may be `-`.
 
-## 5. Preflight the environment
+## 5. Reduce the preflight observations
 
 > **Question:** Can this environment actually produce the evidence the contract depends on?
 
-`preflight` answers one question: is the environment fit to be measured?
+Conceptually, preflight determines whether the environment is measurable before running an expensive evaluation.
 
-It plans the probe legs the contract implies, reduces the observations you hand it, and mints a verdict for a named run.
-The command issues no requests of its own.
-The observations come from whatever system called the target.
-The library's `runPreflight` can drive a caller-supplied `EnvironmentProbePort` instead.
+In this walkthrough, the target Notes API service is not launched, and the CLI command issues zero network requests. The tutorial builder supplies prepared preflight observations representing the responses a harness would collect. The CLI `preflight` command executes `preflightFromObservations`: it plans the probe legs the contract implies, compares them against the supplied observations, and mints a `PreflightVerdict` for a named run.
+
+When running programmatically via the library API, `runPreflight` can actively drive a caller-supplied `EnvironmentProbePort` (such as an HTTP or CLI adapter) to probe an active service directly.
 
 ### Preflight inputs
 
-Preflight takes two files beyond the contract:
+This reduction takes two prepared files beyond the contract:
 
 - **`probes.json`** is the probe list the plan builds from.
   This chain seeds no faults that preflight must watch fire, so the list is empty (`[]`).
-- **`observations.json`** contains what the environment answered, one entry per planned leg.
+- **`observations.json`** contains the prepared preflight responses, one entry per planned leg, representing what a harness would collect from the environment.
 
 In contrast, the later scoring step consumes `probe.json`, which declares the seeded defect `P-001`.
 Because `probes.json` is empty in this preflight invocation, preflight evaluates sensitivity and control legs from the contract without evaluating `seeded-fault-fired` or `seeded-faults-scoped` checks for the defect.
@@ -559,11 +567,12 @@ Environment fit to score                  YES
 Preflight does not decide whether the evaluation is good.
 It establishes that the environment is fit enough for the resulting evidence to mean something.
 
-## 6. Score it
+## 6. Score the evaluation record
 
 > **Question:** Does the recorded evidence support what the evaluator claimed?
 
 `score` chains `ingest`, `score`, and `emit` over a trial set and mints an evidence artifact carrying the verdict.
+In this walkthrough, `score` evaluates the prepared evidence from `sealed-run-record.json` rather than executing the evaluator or defective SUT live.
 This walkthrough supplies one record, so its result records one completed trial.
 Repeat `--record` with independently sealed records to meet a multi-trial policy minimum.
 Every record carries a distinct `trialIndex`; every record agrees on `contractDigest`, `evaluatorConfigurationDigest`, `mode`, `evaluatorRecommendation`, and `runId`.
@@ -604,7 +613,7 @@ Before scoring, inspect the inputs that originate outside the four-stage CLI pip
 - `findings`: Finding `F-001` reports that the note kept its old title, citing probe `P-001`, oracle `O-001`, and observation `obs-002`.
 - `oracleDispositions`: Evaluator judgments for each oracle (`violated` for O-001; `held` for O-002, O-003, and O-004).
 - `evaluatorRecommendation`: Records `FAIL` for the system under test.
-- This file is a prepared record from an earlier evaluation run.
+- This file is a prepared record representing a defective-SUT and evaluator run; the SUT and evaluator are not executed by the commands in this walkthrough.
   Scoring replays this evidence and does not launch a fresh evaluator.
 
 ```text
@@ -834,23 +843,15 @@ Reading only the strength vector would provide an incomplete picture of contract
 * Verdict and strength evaluate distinct dimensions of an evaluation.
 
 ```text
-BEC
- ↓
-COMPILE
- ↓
-SEAL
- ↓
-PREFLIGHT
- ↓
-EVALUATE
- ↓
-SEALED RUN RECORD
- ↓
-SCORE
- ↓
-EVIDENCE ARTIFACT
- ↓
-verdict + strength
+1. COMPILE (validate contract specification)
+    ├── 2. Inspect declared behavior, interfaces, and oracles
+    └── 3. Inspect a compile rejection (CLI demonstration)
+4. SEAL (mint evaluator-safe brief)
+    └── [Harness records preflight interactions]
+5. REDUCE PREFLIGHT (verify environment measurability)
+    └── [Harness executes SUT + evaluator, seals run record]
+6. SCORE (evaluate empirical evidence against probe)
+7. READ RESULT (triage verdict reasons and strength vector)
 ```
 
 ---
@@ -881,6 +882,7 @@ eval-quality seal --in contract.json --out run/sealed-evaluator-brief.json
 ```
 
 Preflight each arm.
+Before invoking the CLI, have the harness execute the planned preflight interactions for each arm and record their responses as `clean-observations.json` and `mutated-observations.json`. The commands below reduce those prepared observations into preflight verdicts.
 An arm that does not pass exits `3` and stops there, because a measurement over an unfit environment says nothing about the contract:
 
 ```text
@@ -920,9 +922,9 @@ A clean target does not guarantee an overall PASS verdict, as other contract con
 On the mutated arm, the oracle the defect targets should resolve `caught`, which in `contract-scoring` mode indicates the contract succeeded.
 An oracle that resolves `missed` on the mutated arm indicates an unaddressed blind spot.
 
-Compare `scoringVersion` across the two artifacts before comparing anything else in them.
-That comparison is yours to make, and the library makes no such check.
-[Contract strength](/explanation/contract-strength/) covers `compareDominance`, which is the comparison it does make.
+Check `comparabilityKey` and `strength.comparable` before comparing strength.
+Inspect `scoringVersion` differences to understand whether fixture, evaluator configuration, mode, or other declared experiment inputs changed.
+[Contract strength](/explanation/contract-strength/) covers `compareDominance`, which performs the component-wise dominance comparison and enforces the severity-floor override.
 
 ## Two guards
 
