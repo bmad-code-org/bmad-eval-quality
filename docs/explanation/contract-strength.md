@@ -9,11 +9,15 @@ sidebar:
 
 `score` answers two distinct questions at once, and the second is the one people misread.
 
-The **verdict** answers whether a run of an evaluation contract was sound, complete, and free from evidence faults or coverage gaps.
+The **verdict** evaluates the operational outcome of an evaluation run. In `production` mode, the subject of the verdict is the **system under test** (combining the evaluator's recommendation with evidence-integrity checks to determine shippability). In `contract-scoring` mode, the subject is the **contract itself**—determining whether the run was sound, complete, and free from evidence faults or critical coverage gaps. A `PASS` verdict does not require zero coverage gaps: under AD-21, coverage gaps below the scoring policy's `severityFloor` are recorded in the artifact and do not move the verdict.
 
 The **strength vector** answers how effectively the Behavioral Evaluation Contract discriminates between correct behavior and defects.
 
-Per probe class, contract strength is reported as a **catch rate**: unique qualified probe identifiers resolving `caught` over unique qualified probe identifiers `exercised`. A vector reporting a `defect` rate of 1.0 indicates that every defect probe exercised during the evaluation run was detected by matching evidence.
+A current `score` invocation scores one `Probe` across one or more trial records. Accordingly, a single `EvidenceArtifact` normally reports strength for that scored probe's class, not an aggregate over an entire probe corpus.
+
+For that scored probe's class, contract strength is reported as a **catch rate**: unique qualified probe identifiers resolving `caught` over unique qualified probe identifiers `exercised`. For the shipped single-probe scoring path, a reported rate of 1.0 means 1/1: the single probe passed to `score` was successfully caught across its valid trials. Unexercised classes are recorded with a `rate` of `null`.
+
+The underlying vector abstraction (`buildStrengthVector`) supports aggregating rates over multiple qualified probes across an entire suite, but the shipped CLI and `runScore` pipeline evaluate and emit artifacts one probe at a time.
 
 Catching one defect does not make an evaluation contract trustworthy or ready for release. Contract strength is a structured rate vector and a dominance relation—never a single weighted score, percentage, or scalar grade. How far a strength number carries depends on how trials are reduced, what the verdict exposed, and how the evaluation was controlled.
 
@@ -37,7 +41,7 @@ rate = unique qualified probes resolving caught / unique qualified probes exerci
 
 A probe is **exercised** when the evaluator itself invoked the probe signature's declared home operation during execution (AD-40). Calls made during harness setup or runs that never completed do not count. A probe whose home operation was never invoked leaves both numerator and denominator; its required check resolves to `not-applicable` rather than artificially deflating the score.
 
-The `EvidenceArtifact` records the raw counts (`caught`, `exercised`) alongside the derived `rate`. When zero probes of an admitted class are exercised, `rate` is recorded as `null` rather than zero, making unexercised classes transparent. The artifact also names the exact denominator string—including the number of completed trials—so consumers can independently verify calculations.
+The `EvidenceArtifact` records the raw counts (`caught`, `exercised`) alongside the derived `rate`. In a single-probe evaluation, the exercised count for the probe's class is 1 (if exercised) or 0 (if unexercised), with `rate` recorded as 1.0, 0.0, or `null`. Classes without exercised probes record `caught: 0`, `exercised: 0`, and `rate: null` rather than zero, making unexercised classes transparent. The artifact also names the exact denominator string—including the number of completed trials—so consumers can independently verify calculations.
 
 ## What contract strength does not mean
 
@@ -74,8 +78,8 @@ The defect rate tells you whether the contract caught what was planted. The verd
 Consider three common scenarios:
 
 1. **Catch rate 1.0, verdict `FAIL`:** The contract detected the seeded defect (`caught`). However, another required oracle in the contract examined insufficient evidence and abstained at or above the policy's `severityFloor`, or evidence was incomplete. Catching a defect does not excuse a broken measurement elsewhere in the run.
-2. **Catch rate 1.0, verdict `CONCERNS`:** The contract caught the defect, but the run completed fewer trials than the policy's `minimumTrialCount`, an oracle resolved `unreached`, or an unsatisfied coverage gap exists below the severity floor. The vector is reported, but the verdict warns that the measurement was thinner than declared policy.
-3. **Catch rate null or 0, verdict `PASS`:** In a clean-control run where no defect was seeded, all oracles held, resolving `passed-clean-control`. Because clean controls never enter the strength vector, the vector records no defect detections, yet the run is a valid `PASS`.
+2. **Catch rate 1.0, verdict `CONCERNS`:** The contract caught the defect, but the run completed fewer trials than the policy's `minimumTrialCount`, an oracle resolved `unreached`, or an unsatisfied coverage gap exists at or above the policy's `severityFloor`. (Unsatisfied coverage gaps below the severity floor are recorded in `coverageGaps` on the artifact, but do not move the verdict.) The vector is reported, but the verdict warns that the measurement was thinner than declared policy.
+3. **Catch rate `null`, verdict `PASS`:** In a clean-control run where no defect was seeded, all oracles held, resolving `passed-clean-control`. Because clean controls never enter the strength vector, their class rate is recorded as `null` (not zero), yet the run is a valid `PASS`.
 
 ## Plan a trial set and trial reduction
 
@@ -111,15 +115,17 @@ Each sealed record carries its own integer `trialIndex`. Scoring sorts records b
 
 For each probe, the trial set reducer (`reduceTrialSet`) gathers the outcome state from each trial and partitions AD-6's twelve outcome states into three groups:
 
-1. **Invalidating states (`oracle-error`, `judge-error`, `infrastructure-error`):** The trial suffered a harness or execution failure. It is excluded from the valid count and recorded in `invalidatedAttempts` with its `attempt` number (the trial index) and failure reason.
-2. **Unvoted states (`not-applicable`, `unreached`):** The probe was not exercised in that trial. It contributes to neither the numerator nor the denominator.
+1. **Invalidating states (`oracle-error`, `judge-error`, `infrastructure-error`):** Outcome states that invalidate the trial for reduction due to an unresolvable execution, oracle, or infrastructure error. The trial is excluded from the valid count and recorded in `invalidatedAttempts` with its `attempt` number (the trial index) and failure reason.
+2. **Unvoted states (`not-applicable`, `unreached`):** States that cast no vote. `not-applicable` indicates the probe's home operation was not exercised in that trial or a documented waiver applied. `unreached` indicates an interaction or check step was unreached (an evidence condition). Neither state contributes to the numerator or denominator (`validCount`).
 3. **Voted states (`caught`, `confirmed`, `missed`, `abstained`, `bypassed`, `passed-clean-control`, `false-positive`): Valid observations that form the `validCount`.
 
-The reducer then applies a strict majority threshold:
+The reducer then evaluates the strict catch threshold:
 
-$$\text{caught} = (\text{validCount} > 0) \land \left(\frac{\text{caughtCount}}{\text{validCount}} > \text{catchThreshold}\right)$$
+```text
+caught = (validCount > 0) && (caughtCount / validCount > catchThreshold)
+```
 
-The inequality is strict (`>`), so an exact tie never counts as caught. Under the published default scoring policy (`catchThreshold: 0.5`), a probe is credited as caught when it resolves `caught` in strictly more than half of valid trials (for example, at least two out of three valid trials).
+`catchThreshold` is configurable in `ScoringPolicy` within the domain `[0.0, 1.0]`. The inequality is strict (`>`), so an exact tie never counts as caught. Under the default scoring policy (`catchThreshold: 0.5`), this condition functions as a strict majority requirement (for example, at least two out of three valid trials must resolve `caught`). Custom policies can specify higher or lower catch thresholds.
 
 The resulting `EvidenceArtifact` retains both levels of detail:
 * Detailed per-trial oracle outcomes are stored in `outcomes` with their respective `trialIndex`.
@@ -138,12 +144,12 @@ The resulting `EvidenceArtifact` retains both levels of detail:
 
 Before any rates are compared, `compareDominance` evaluates three strict gates:
 
-1. **`comparabilityKey` match:** Both artifacts must share the exact same `comparabilityKey`. The key is a SHA-256 digest of the scoring policy digest and the sorted list of admitted probe identifiers. If the policies differ or the probe sets do not match, the results cannot be compared and the function returns `incomparable`.
+1. **`comparabilityKey` match:** Both artifacts must share the exact same `comparabilityKey`. The key is a SHA-256 digest of the scoring policy digest and the sorted list of admitted probe identifiers. In a single-probe evaluation, this key binds the scoring policy to that specific admitted probe ID. If the policies differ or the probe sets do not match, the results cannot be compared and the function returns `incomparable`.
 2. **`comparable: true` on both sides:** A strength vector is marked `comparable: true` if and only if:
    * The completed trials met or exceeded the policy's declared minimum (`trials.completed >= trials.declaredMinimum`).
    * No oracle resolved `unreached` (`unreachedOracles.length === 0`).
    If either side fell short of the minimum trial count or left an oracle unreached, its vector carries `comparable: false` and the comparison returns `incomparable`.
-3. **Reduction consistency:** The reduced probe outcomes must agree with the detailed trial evidence and trial metadata stored in each artifact.
+3. **Reduction consistency:** The reduced probe outcomes must agree with the detailed trial evidence and trial metadata stored in each artifact (`reductionDetailsAgree`).
 
 ### Component-wise comparison and severity-floor override
 
@@ -161,12 +167,12 @@ If raw comparison favored contract A, but contract A failed to catch a probe tha
 
 ### Methodological boundary: `comparabilityKey` vs. `scoringVersion`
 
-`compareDominance` checks `comparabilityKey`, not `scoringVersion`.
+`compareDominance` checks `comparabilityKey`, not `scoringVersion`. This design reflects a deliberate separation of concerns:
 
-* `comparabilityKey` digests only the scoring policy digest and the admitted probe identifiers. It allows comparing two evaluations of the same probe set under the same policy even if they were executed in different runs or revisions.
-* `scoringVersion` (AD-11) is the complete cryptographic identity of the experiment: the contract schema version, corpus digest, fixture digest, evaluator configuration digest, scoring policy digest, and run mode.
+* **`comparabilityKey` enables cross-run and cross-revision comparisons:** The key binds only the scoring policy digest and the sorted admitted probe identifiers. This intentionally allows comparing two contract revisions or different evaluation setups against the same probe set under the same scoring policy. If `compareDominance` required identical `scoringVersion`, comparing an updated contract against an earlier revision or comparing across differing evaluator configurations would be impossible.
+* **`scoringVersion` tracks declared experiment configuration:** Defined in AD-11, `scoringVersion` is a SHA-256 digest over six declared inputs: `contractSchemaVersion`, `corpusDigest`, `fixtureDigest`, `evaluatorConfigurationDigest`, `scoringPolicyDigest`, and `mode`. It captures declared configuration identifiers and caller-attested tokens, not full contract content or live execution state.
 
-Because `compareDominance` does not inspect model snapshots, fixture versions, or run modes, callers must independently verify that `scoringVersion` aligns between artifacts to ensure that external experimental controls held constant.
+Because `compareDominance` intentionally permits cross-version comparisons, callers must be mindful of the interpretive boundary: when comparing artifacts with different `scoringVersion` values, observed strength differences may reflect changes in the evaluator configuration, fixtures, or environment rather than contract acuity alone. Callers seeking to attribute dominance solely to contract improvements should verify that external experimental controls held constant.
 
 ## Methodological limits
 
@@ -174,10 +180,12 @@ A strength measurement is only as reliable as the probe corpus and experimental 
 
 ### Known probes versus held-out probes
 
-The contracts in `corpus/dev/` are diagnostic and visible: contract authors can inspect them while developing contracts.
+The contracts in `corpus/dev/` provide a development corpus for compiler testing and contract authoring reference, not a benchmark of diagnostic probes.
 
-* **Known probes (development corpus):** Measuring a contract against probes its author could read demonstrates that the contract catches known defect patterns. That is an assertion about the author's attention as much as the contract's quality.
-* **Held-out probes (sealed corpus):** Authentic evaluation requires measuring contracts against private, held-out probe sets that contract authors cannot inspect (AD-8). The `Probe` schema supports qualification records and defect signatures for both kinds, but the artifacts do not distinguish them automatically.
+When evaluating behavioral evaluation contracts against probes:
+
+* **Known probes (development suites):** Measuring a contract against probes authored alongside it demonstrates that the contract detects anticipated defects. However, a high catch rate on known probes is an assertion about the author's foresight as much as the contract's quality.
+* **Held-out probes (private suites):** Authentic evaluation of contract acuity requires measuring contracts against private, held-out probe sets that contract authors cannot inspect during authoring (AD-8). The `Probe` schema supports qualification records and defect signatures for both kinds, but emitted evidence artifacts do not distinguish them automatically.
 
 ### Controlled experiment discipline
 
