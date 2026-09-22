@@ -54,7 +54,7 @@ Everything from [What an `mcp` operation declares](#what-an-mcp-operation-declar
 
 This repository ships an adapter that runs a tool call.
 `createMcpAdapter` speaks MCP's stdio transport, and the mini-lab below drives a real tool server through it, from `compile` to a scored defect.
-Nothing in TEA has been scored against an `mcp` interface yet.
+Existing TEA contracts evaluate through `cli`; this mini-lab demonstrates scoring a tool server directly through the `mcp` interface.
 
 > **Scope boundary:** This mini-lab evaluates the second target: the MCP tool server. It verifies whether the server correctly processes tool calls and persists state. It does not evaluate whether an autonomous agent made the right reasoning choices or selected the right tools.
 
