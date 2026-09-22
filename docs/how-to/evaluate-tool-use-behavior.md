@@ -354,7 +354,7 @@ Its charset is letters, digits, underscore, and hyphen (`primitives.ts:28`), whi
 
 `descriptorChannel` is a union tagged on `kind` with one member, `{ "kind": "structured-result" }` (`interface.ts:283`).
 That declaration is where the kind's first version draws its boundary: the response descriptor describes a tool's structured result, and a tool that returns only prose sits outside it.
-[What ships](/explanation/what-ships/) records the decision and what it defers.
+[CLI reference](/reference/cli-commands/#ports-and-adapters) documents the interface kinds and shipped adapters.
 
 `sensitivityWitness` varies the `arguments` channel.
 AD-10 selects a witness channel from the state-change marker off an interface that speaks HTTP, because a read carries its identifier in the URL and a write carries it in the body.

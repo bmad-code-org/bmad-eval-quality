@@ -219,7 +219,7 @@ O-002 is the oracle that compares those two, and it came out `caught`.
 
 **Temporal ordering vs captured binding:** Temporal ordering (`after: "create"`, `sequence` numbers) proves that the read occurred after the write. But temporal order alone cannot guarantee that the read inspected the right entity. Capture connects the minted output of step 1 to the input parameter of step 2.
 
-**The verdict is CONCERNS on one basis, and that basis is this demonstrated invocation's trial count.** `coverageGaps` is empty and every other oracle held. The command above supplies one `--record`, so it completes one trial while the policy asks for three. The artifact reports that shortfall directly. [What Ships](/explanation/what-ships/) explains how repeated `--record` flags supply a complete trial set.
+**The verdict is CONCERNS on one basis, and that basis is this demonstrated invocation's trial count.** `coverageGaps` is empty and every other oracle held. The command above supplies one `--record`, so it completes one trial while the policy asks for three. The artifact reports that shortfall directly. [Contract Strength](/explanation/contract-strength/#plan-a-trial-set-and-trial-reduction) explains how repeated `--record` flags supply a complete trial set.
 
 ## Key takeaways
 
