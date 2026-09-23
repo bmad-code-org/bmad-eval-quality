@@ -97,7 +97,64 @@ const AMBIENT_ENV = Object.fromEntries(
  * A bare origin and a clone on `main`, one commit in, both pushed. Git reads no user or system
  * config, so a signing key or hooks path on the machine running the suite cannot leak in.
  */
-function fixture(): Fixture {
+/**
+ * A doc-claims section the script's bumped-tree gate runs, with one dated claim settled by a
+ * predicate. `pinned` holds the page's version to the manifest's major, the rule the tool-use
+ * guide's route pin follows, so a major bump falsifies it. Unpinned, the predicate answers yes
+ * whatever the version, so a bump of any size passes.
+ */
+function writeDocClaims(work: string, pinned: boolean) {
+	mkdirSync(join(work, 'docs'))
+	writeFileSync(
+		join(work, 'docs/route.md'),
+		`That route was run end to end at ${CURRENT}.\n`,
+	)
+	writeFileSync(
+		join(work, 'route-pin.mjs'),
+		[
+			"import { readFileSync } from 'node:fs'",
+			"const read = (file) => readFileSync(new URL(file, import.meta.url), 'utf8')",
+			'export const routePinIsCurrent = () =>',
+			pinned
+				? "\t/end to end at (\\d+)\\./.exec(read('docs/route.md'))?.[1] === JSON.parse(read('package.json')).version.split('.')[0]"
+				: '\ttrue',
+			'',
+		].join('\n'),
+	)
+	writeFileSync(
+		join(work, 'eval-quality.config.json'),
+		`${JSON.stringify(
+			{
+				'doc-claims': {
+					pages: ['docs'],
+					dated: {
+						triggers: [
+							{
+								match: '\\brun end to end at \\d+\\.\\d+\\.\\d+\\b',
+								flags: 'i',
+							},
+						],
+						claims: [
+							{
+								file: 'docs/route.md',
+								key: 'was run end to end at',
+								settles: {
+									module: 'route-pin.mjs',
+									export: 'routePinIsCurrent',
+								},
+								reason: "the page's pinned major against the manifest's",
+							},
+						],
+					},
+				},
+			},
+			null,
+			2,
+		)}\n`,
+	)
+}
+
+function fixture({ pinned = true }: { pinned?: boolean } = {}): Fixture {
 	const dir = mkdtempSync(join(tmpdir(), 'release-prepare-'))
 	const origin = join(dir, 'origin.git')
 	const work = join(dir, 'work')
@@ -144,6 +201,7 @@ function fixture(): Fixture {
 		`export const VERSION = '${CURRENT}'\n`,
 	)
 	writeFileSync(join(work, 'CHANGELOG.md'), CHANGELOG)
+	writeDocClaims(work, pinned)
 	git(work, env, 'add', '.')
 	git(work, env, 'commit', '--quiet', '-m', 'init')
 	git(work, env, 'push', '--quiet', '--set-upstream', 'origin', 'main')
@@ -265,7 +323,7 @@ describe('release-prepare --on-main', () => {
 	})
 
 	it('cuts a minor or major the same way', async () => {
-		const fx = fixture()
+		const fx = fixture({ pinned: false })
 		const { status } = await run(fx, 'major', '--on-main')
 		expect(status).toBe(0)
 		const after = inspect(fx)
@@ -439,6 +497,58 @@ describe('release-prepare refusals leave origin and the tree untouched', () => {
 		expect(after.originMain).toBe(before.originMain)
 		// The local commit stays, as the message says; a rerun from a clean main is the fix.
 		expect(after.subject).toBe('chore: release v0.1.1 [skip ci]')
+	})
+})
+
+// publish.yml runs no test and pushes the release commit with `[skip ci]`, so the gates that read
+// the version run on the bumped tree before the commit. A major bump falsifies the fixture's pin.
+describe('release-prepare holds the bumped tree to the gates that read the version', () => {
+	it('on main, refuses a bump doc-claims fails, restores the stamps, and pushes nothing', async () => {
+		const fx = fixture()
+		const before = inspect(fx)
+		const { status, stderr } = await run(fx, 'major', '--on-main')
+		expect(status).toBe(1)
+		expect(stderr).toContain('"was run end to end at" is no longer true')
+		expect(stderr).toContain(
+			'doc-claims refused the tree bumped to v1.0.0 above; the stamped files are restored',
+		)
+		const after = inspect(fx)
+		expect(after.branch).toBe('main')
+		expect(after.head).toBe(before.head)
+		expect(after.originMain).toBe(before.originMain)
+		expect(after.status).toBe('')
+		expect(after.version).toBe(CURRENT)
+		expect(after.barrel).toBe(before.barrel)
+		expect(after.changelog).toBe(before.changelog)
+	})
+
+	it('on the laptop path, leaves the bumped tree uncommitted on the release branch', async () => {
+		const fx = fixture()
+		const before = inspect(fx)
+		const { status, stderr } = await run(fx, 'major', '--no-pr')
+		expect(status).toBe(1)
+		expect(stderr).toContain(
+			'The bumped tree is on release/v1.0.0, uncommitted, and nothing was pushed.',
+		)
+		const after = inspect(fx)
+		expect(after.branch).toBe('release/v1.0.0')
+		expect(after.head).toBe(before.head)
+		expect(after.originMain).toBe(before.originMain)
+		expect(after.version).toBe('1.0.0')
+		expect(
+			after.status
+				.split('\n')
+				.map((line) => line.trim().split(/\s+/).at(-1))
+				.sort(),
+		).toEqual(STAMPED_FILES)
+		expect(git(fx.origin, fx.env, 'branch', '--list', 'release/*')).toBe('')
+	})
+
+	it('cuts a bump the gates accept', async () => {
+		const fx = fixture()
+		const { status } = await run(fx, 'patch', '--on-main')
+		expect(status).toBe(0)
+		expect(inspect(fx).subject).toBe('chore: release v0.1.1 [skip ci]')
 	})
 })
 

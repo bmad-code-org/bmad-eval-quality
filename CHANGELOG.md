@@ -20,6 +20,15 @@ body.
   key included, and `PATH` in `permittedEnvironmentKeys` is refused as before. Input whose
   accessors or proxy traps throw is refused under the same code. The Zod schema stays unexported.
 
+### Fixed
+
+- **A release checks its bumped tree against the gates that read the version.** `release-prepare` runs
+  `check-version` and `doc-claims` against the bumped tree before committing. The release commit
+  pushes with `[skip ci]` and publish.yml runs no test, so the 4.0.0 major bump reached `main` with
+  the tool-use guide's route pinned to 3.0.0 and `check:doc-claims` failing. On `--on-main` a
+  refusal restores the stamped files and pushes nothing; on the laptop path the bumped tree stays
+  uncommitted on `release/vX.Y.Z` for the repair. The route was re-run at 4.0.0 and the pin moved.
+
 ## [4.0.0] - 2026-09-23
 
 ### Added
