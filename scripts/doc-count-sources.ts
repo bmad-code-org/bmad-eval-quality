@@ -8,13 +8,13 @@
 // `eval-quality.config.json` names these exports the way any other consumer
 // names its own.
 //
-// Three guards run at load, because each catches a shape where every sentence
+// Five guards run at load, because each catches a shape where every sentence
 // below would still agree with a source that had gone wrong: a corpus the
 // fixtures and the published tree disagree about, a barrel exporting no schema
-// version at all, and a version stamped or compared under `src/` that the barrel
-// does not export. Each throws rather than returning a number, so the gate
-// reports a refusal naming the module instead of holding a page against a
-// silently wrong value.
+// version at all, a version stamped or compared under `src/` that the barrel
+// does not export, a root barrel that stopped re-exporting the layer barrel,
+// and a layer barrel exporting no target-policy value. Each throws, so the
+// gate reports a refusal naming the module.
 //
 // Run by `node` directly: type stripping erases types only, so no TypeScript
 // enum, namespace, parameter property, or non-type re-export may appear here or
@@ -248,3 +248,42 @@ export const CALLER_ASSEMBLED_VERSIONS = BARREL_SCHEMA_VERSIONS.filter(
 	(name) =>
 		!STAMPED_VERSIONS.includes(name) && !COMPARED_VERSIONS.includes(name),
 )
+
+const layerBarrelSource = await readFile(
+	new URL('src/application/index.ts', repoRoot),
+	'utf8',
+)
+
+// The root barrel reaches the target policy only through `export *` of the
+// layer barrel, so the layer barrel's clauses are the root barrel's set while
+// that line stands.
+if (!/^export \* from '\.\/application\/index\.ts'$/m.test(barrelSource)) {
+	refuse(
+		'src/index.ts no longer re-exports the layer barrel wholesale, so the target-policy ' +
+			'values read off src/application/index.ts are not what the root barrel publishes',
+	)
+}
+
+/**
+ * The runtime values the root barrel re-exports from
+ * `src/core/probe/target-policy.ts`. Type clauses are left out: the page lists
+ * the values an adapter calls and names the types in prose.
+ */
+export const TARGET_POLICY_VALUES = [
+	...layerBarrelSource.matchAll(
+		/export \{([^}]*)\} from '\.\.\/core\/probe\/target-policy\.ts'/g,
+	),
+]
+	.flatMap((match) => (match[1] as string).split(','))
+	.map((specifier) => specifier.trim())
+	// An inline `type X` specifier is erased at runtime, and `a as b` publishes `b`.
+	.filter((specifier) => specifier !== '' && !/^type\s/.test(specifier))
+	.map((specifier) => specifier.split(/\s+as\s+/).pop() as string)
+	.sort()
+
+if (TARGET_POLICY_VALUES.length === 0) {
+	refuse(
+		'src/application/index.ts re-exports no value from core/probe/target-policy.ts, so the ' +
+			'target-policy list would be held against nothing',
+	)
+}

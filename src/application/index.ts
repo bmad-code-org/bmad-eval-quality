@@ -10,6 +10,10 @@ export {
 	digestBytes,
 	digestComposite,
 } from '../core/canonical/digest.ts'
+// The seven discipline-rule identifiers, the spellings a coverage gap and a
+// waiver carry in `rule`.
+export type { DisciplineRule } from '../core/coverage/rules.ts'
+export { DISCIPLINE_RULES } from '../core/coverage/rules.ts'
 // The evaluator, for a consumer that resolves a check itself: the resolver,
 // the two factories that build its operand and collection predicates from a
 // contract and its observations, and the reference-set keys. `ABSENT` ships
@@ -35,12 +39,32 @@ export type {
 	LineageFinding,
 } from '../core/lineage/chain.ts'
 export { validateLineageChain } from '../core/lineage/chain.ts'
+// AD-35's allow-or-deny decision over a resolved HTTP target. An adapter
+// author's `EnvironmentProbePort` for `api` delegates to `evaluateTarget`, so
+// address classification exists once, here.
+export type {
+	AddressClass,
+	DenialReason,
+	ParsedAddress,
+	PolicyDecision,
+	ResolvedTarget,
+} from '../core/probe/target-policy.ts'
+export {
+	ADDRESS_CLASSES,
+	classifyAddress,
+	DENIAL_REASONS,
+	evaluateTarget,
+	isSafeMethod,
+	parseAddress,
+} from '../core/probe/target-policy.ts'
 export { INTERCHANGE_ARTIFACT_KEYS } from '../core/schemas/artifact.ts'
 // Type-only: `eval-contract.ts` declares a Zod schema under the name
 // `Severity` beside the union type, and a live schema on the barrel is what
 // `tests/architecture/package-exports.test.ts` case 152 refuses.
 export type { Severity } from '../core/schemas/eval-contract.ts'
 export { SEVERITY_LEVELS } from '../core/schemas/eval-contract.ts'
+// The array only: `OutcomeState`, the Zod enum over it, stays off the barrel.
+export { OUTCOME_STATES } from '../core/schemas/evidence-artifact.ts'
 export type { RuntimeFaultCode } from '../core/schemas/faults.ts'
 export { RUNTIME_FAULT_CODES, RuntimeFault } from '../core/schemas/faults.ts'
 export type {
@@ -56,7 +80,11 @@ export type {
 	QualificationFailureCode,
 	QualificationResult,
 } from '../core/score/qualification.ts'
-export { QUALIFICATION_FAILURES } from '../core/score/qualification.ts'
+export {
+	QUALIFICATION_FAILURES,
+	qualifyProbe,
+	resolveHomeOperation,
+} from '../core/score/qualification.ts'
 export type {
 	ComparableResult,
 	DominanceRelationValue,

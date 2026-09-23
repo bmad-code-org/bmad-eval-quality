@@ -24,21 +24,33 @@ import { createRequire } from 'node:module'
 import { join } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import type {
+	AddressClass,
+	AnyOperation,
 	CheckResolutionValue,
 	ComparableResult,
+	DefectSignature,
+	DisciplineRule,
 	DominanceRelationValue,
 	Expression,
+	ParsedAddress,
+	PermittedInterface,
 	PointerDenotesCollection,
+	PolicyDecision,
+	Probe,
+	ProbeTargetAuthorization,
+	ProbeTargetPolicy,
 	QualificationFailure,
 	QualificationFailureCode,
 	QualificationResult,
 	ReferenceSetKeys,
+	ResolvedTarget,
 	ResolvedValue,
 	ResolveOperand,
 	Severity,
 } from 'eval-quality'
 import { describe, expect, it } from 'vitest'
 import { INTERCHANGE_ARTIFACT_KEYS } from '../../src/core/schemas/artifact.ts'
+import { INTERFACES, qualifiedProbe } from '../score/fixtures/probe-witness.ts'
 
 const selfRequire = createRequire(import.meta.url)
 const repoRoot = fileURLToPath(new URL('../../', import.meta.url))
@@ -114,6 +126,16 @@ function isZodSchema(value: unknown): boolean {
 	if ('_zod' in (value as object)) return true
 	return typeof (value as { safeParse?: unknown }).safeParse === 'function'
 }
+
+/**
+ * Whether two types are identical. Mutual assignability ignores a trailing
+ * optional parameter in both directions; this conditional-identity form does
+ * not.
+ */
+type Exact<A, B> =
+	(<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2
+		? true
+		: false
 
 /**
  * Every export the barrel carried before this story, as a committed snapshot
@@ -445,10 +467,6 @@ describe('the published package surface', () => {
 			b: ComparableResult,
 			severityFloor: Severity,
 		) => DominanceRelationValue
-		type Exact<A, B> =
-			(<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2
-				? true
-				: false
 		const signatureIsExact: Exact<Declared, Expected> = true
 		expect(signatureIsExact).toBe(true)
 
@@ -534,10 +552,6 @@ describe('the published package surface', () => {
 			regexMatchStepBudget: number,
 			artifactPath: string,
 		) => CheckResolutionValue
-		type Exact<A, B> =
-			(<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2
-				? true
-				: false
 		const signatureIsExact: Exact<Declared, Expected> = true
 		expect(signatureIsExact).toBe(true)
 
@@ -605,6 +619,207 @@ describe('the published package surface', () => {
 			'/checks/0',
 		)
 		expect(value.resolution).toBe('true')
+	})
+
+	// AD-35's decision for an HTTP target, off the package root. An adapter
+	// author's `api` port calls `evaluateTarget` so address classification is
+	// never copied out of this package.
+	it('the barrel carries the HTTP target-policy evaluation', async (ctx) => {
+		if (!BUILT) return ctx.skip(NEEDS_BUILD)
+		const barrel = await publishedBarrel()
+		for (const name of [
+			'evaluateTarget',
+			'classifyAddress',
+			'parseAddress',
+			'isSafeMethod',
+		]) {
+			expect(typeof barrel[name], name).toBe('function')
+		}
+		expect(barrel.ADDRESS_CLASSES).toEqual([
+			'loopback',
+			'private',
+			'link-local',
+			'metadata',
+			'public',
+			'unparseable',
+		])
+		expect(barrel.DENIAL_REASONS).toEqual([
+			'interface-not-authorized',
+			'scheme-not-authorized',
+			'host-not-authorized',
+			'port-not-authorized',
+			'address-not-authorized',
+			'address-unparseable',
+			'method-not-authorized',
+		])
+
+		const layerTypes = exportedTypeNames(layerBarrelSource)
+		for (const name of [
+			'AddressClass',
+			'DenialReason',
+			'ParsedAddress',
+			'PolicyDecision',
+			'ResolvedTarget',
+		]) {
+			expect(layerTypes).toContain(name)
+		}
+		const rootTypes = exportedTypeNames(barrelSource)
+		for (const name of [
+			'ProbeTargetAuthorization',
+			'ProbeTargetPolicy',
+			'AnyOperation',
+		]) {
+			expect(rootTypes).toContain(name)
+		}
+
+		type Declared = typeof import('eval-quality').evaluateTarget
+		type Expected = (
+			policy: ProbeTargetPolicy,
+			target: ResolvedTarget,
+		) => PolicyDecision
+		const signatureIsExact: Exact<Declared, Expected> = true
+		expect(signatureIsExact).toBe(true)
+
+		type Classify = (address: string) => AddressClass
+		type Parse = (address: string) => ParsedAddress
+		type SafeMethod = (
+			authorization: ProbeTargetAuthorization,
+			method: string,
+		) => boolean
+		const classifyIsExact: Exact<
+			typeof import('eval-quality').classifyAddress,
+			Classify
+		> = true
+		const parseIsExact: Exact<
+			typeof import('eval-quality').parseAddress,
+			Parse
+		> = true
+		const safeMethodIsExact: Exact<
+			typeof import('eval-quality').isSafeMethod,
+			SafeMethod
+		> = true
+		expect([classifyIsExact, parseIsExact, safeMethodIsExact]).toEqual([
+			true,
+			true,
+			true,
+		])
+		expect((barrel.classifyAddress as Classify)('169.254.169.254')).toBe(
+			'metadata',
+		)
+		expect((barrel.parseAddress as Parse)('::1').ok).toBe(true)
+
+		const evaluate = barrel.evaluateTarget as Expected
+		const authorization: ProbeTargetAuthorization = {
+			interfaceId: 'notes-api',
+			scheme: 'http',
+			host: 'localhost',
+			port: 8080,
+			addresses: ['127.0.0.1'],
+			methods: ['GET'],
+			safeMethods: ['GET'],
+			maxRedirects: 0,
+			maxElapsedMs: 1_000,
+			maxRequestBytes: 1_024,
+			maxResponseBytes: 1_024,
+		}
+		const policy: ProbeTargetPolicy = { authorizations: [authorization] }
+		const target: ResolvedTarget = {
+			interfaceId: 'notes-api',
+			scheme: 'http',
+			host: 'localhost',
+			port: 8080,
+			address: '127.0.0.1',
+			method: 'GET',
+		}
+
+		const allowed = evaluate(policy, target)
+		expect(allowed.allowed).toBe(true)
+		expect(allowed.addressClass).toBe('loopback')
+
+		const unlisted = evaluate(policy, { ...target, address: '10.0.0.1' })
+		expect(unlisted.allowed).toBe(false)
+		if (!unlisted.allowed) {
+			expect(unlisted.reason).toBe('address-not-authorized')
+		}
+
+		const unmapped = evaluate(policy, { ...target, interfaceId: 'other-api' })
+		expect(unmapped.allowed).toBe(false)
+		if (!unmapped.allowed) {
+			expect(unmapped.reason).toBe('interface-not-authorized')
+		}
+
+		// Marked safe and never authorized: a differential must not select it.
+		const isSafe = barrel.isSafeMethod as SafeMethod
+		expect(
+			isSafe(
+				{ ...authorization, methods: ['GET'], safeMethods: ['HEAD'] },
+				'HEAD',
+			),
+		).toBe(false)
+	})
+
+	it('the barrel carries probe qualification and the outcome and discipline vocabularies', async (ctx) => {
+		if (!BUILT) return ctx.skip(NEEDS_BUILD)
+		const barrel = await publishedBarrel()
+		expect(typeof barrel.qualifyProbe).toBe('function')
+		expect(typeof barrel.resolveHomeOperation).toBe('function')
+		expect(barrel.OUTCOME_STATES).toEqual([
+			'caught',
+			'confirmed',
+			'missed',
+			'passed-clean-control',
+			'false-positive',
+			'abstained',
+			'bypassed',
+			'unreached',
+			'oracle-error',
+			'judge-error',
+			'infrastructure-error',
+			'not-applicable',
+		])
+		expect(barrel.DISCIPLINE_RULES).toEqual([
+			'success-indicator-separation',
+			'whole-body',
+			'malformed-input',
+			'per-record',
+			'sibling-cross-check',
+			'omission-and-completeness',
+			'state-change-read-back',
+		])
+		const rootTypes = exportedTypeNames(barrelSource)
+		for (const name of ['DefectSignature', 'PermittedInterface']) {
+			expect(rootTypes).toContain(name)
+		}
+		expect(exportedTypeNames(layerBarrelSource)).toContain('DisciplineRule')
+		const rule: DisciplineRule = 'whole-body'
+		expect(barrel.DISCIPLINE_RULES).toContain(rule)
+
+		type Declared = typeof import('eval-quality').qualifyProbe
+		type Expected = (
+			probe: Probe,
+			homeOperation: AnyOperation | null,
+		) => QualificationResult
+		const signatureIsExact: Exact<Declared, Expected> = true
+		expect(signatureIsExact).toBe(true)
+
+		type Resolve = (
+			signature: DefectSignature,
+			interfaces: readonly PermittedInterface[],
+		) => AnyOperation | null
+		const resolveIsExact: Exact<
+			typeof import('eval-quality').resolveHomeOperation,
+			Resolve
+		> = true
+		expect(resolveIsExact).toBe(true)
+
+		// The home operation `resolveHomeOperation` finds is what lets
+		// `qualifyProbe` run its declaration checks.
+		const signature = qualifiedProbe.defectSignature
+		if (signature === null) throw new Error('fixture carries a signature')
+		const home = (barrel.resolveHomeOperation as Resolve)(signature, INTERFACES)
+		expect(home).not.toBeNull()
+		const result = (barrel.qualifyProbe as Expected)(qualifiedProbe, home)
+		expect(result.declarationChecksRan).toBe(true)
 	})
 
 	it('case 158: the corpus README resolves and a missing schema does not', () => {
