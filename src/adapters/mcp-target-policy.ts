@@ -82,7 +82,13 @@ export function evaluateMcpTarget(
  * `McpTargetPolicy` shape before `createMcpAdapter` receives it. Every object
  * is strict: an unknown key is refused, `__proto__` included, as is a second
  * authorization naming an `interfaceId` an earlier one names.
- * `parseTargetPolicy` states the return and the refusal.
+ *
+ * Returns Zod's own deep copy of a valid mapping. A refusal throws
+ * `RuntimeFault` with code `'schema-parse-failure'`, `artifactPath`
+ * `'McpTargetPolicy'`, and the `ZodError` carrying every issue as its `cause`;
+ * the message lists each issue as its RFC 6901 pointer and message. Input
+ * whose own accessors or proxy traps throw is refused with the same code and
+ * path, carrying the thrown value as its `cause`. No other error escapes.
  */
 export const parseMcpTargetPolicy = (value: unknown): McpTargetPolicy =>
 	parseTargetPolicy('McpTargetPolicy', safeParseMcpTargetPolicy, value)

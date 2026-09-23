@@ -20,8 +20,8 @@ function pointerOf(path: readonly PropertyKey[]): string {
 /**
  * Returns Zod's own deep copy of a valid mapping. A refusal throws
  * `RuntimeFault('schema-parse-failure', artifactPath, ...)` with the `ZodError`
- * as its `cause`, the code, path and cause every other parse boundary in this
- * package throws. The detail is this function's own addition: every issue, as
+ * as its `cause`: the code and path every other parse boundary in this package
+ * throws, with the `ZodError` cause every schema-validating boundary carries. The detail is this function's own addition: every issue, as
  * its RFC 6901 pointer and message. Input whose own accessors or proxy traps
  * throw is refused with the same code, carrying the thrown value as its
  * `cause`, and the detail is fixed text, since describing a hostile value can
