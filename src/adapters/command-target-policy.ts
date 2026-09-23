@@ -10,9 +10,11 @@
  * imported from `src/adapters/` for the same reason — no shipped `api`
  * adapter exists to call it, which is the gap this file closes for `cli`.
  */
+import { RuntimeFault } from '../core/schemas/faults.ts'
 import {
 	type CommandTargetAuthorization,
-	CommandTargetPolicy,
+	type CommandTargetPolicy,
+	safeParseCommandTargetPolicy,
 } from '../core/schemas/probe-policy.ts'
 
 /** Why a command target was denied. Thrown as the single AD-28 `forbidden-target` fault, same as the HTTP reasons. */
@@ -97,44 +99,55 @@ export function evaluateCommandTarget(
 	)
 }
 
-/** One reason a candidate `CommandTargetPolicy` was refused. */
-export type CommandTargetPolicyIssue = {
-	/** An RFC 6901 pointer to the failing value; the empty string is the root. */
-	readonly path: string
-	readonly message: string
-}
+/** Where a refused policy's fault points, the schema's own name. */
+const POLICY_PATH = 'CommandTargetPolicy'
 
-export type CommandTargetPolicyParseResult =
-	| { readonly ok: true; readonly policy: CommandTargetPolicy }
-	| {
-			readonly ok: false
-			readonly issues: readonly CommandTargetPolicyIssue[]
-	  }
+/** RFC 6901, so a location reads the way a contract addresses evidence. */
+function pointerOf(path: readonly PropertyKey[]): string {
+	return path
+		.map(
+			(segment) =>
+				`/${String(segment).replaceAll('~', '~0').replaceAll('/', '~1')}`,
+		)
+		.join('')
+}
 
 /**
  * Validates a mapping an operator loaded from disk against the published
- * `CommandTargetPolicy` shape before `createCommandLineAdapter` receives it.
- * The adapter takes the policy as a typed value and never parses it, so a
- * misspelled cap or an unknown key would otherwise reach it unnoticed. Every
- * object is strict: an unknown key is an issue, as is a PATH entry in
- * `permittedEnvironmentKeys`. Never throws on bad input; the issues come back
- * in Zod's own order.
+ * `CommandTargetPolicy` shape before `createCommandLineAdapter` receives it,
+ * and returns Zod's own deep copy of it. The adapter takes the policy as a
+ * typed value and never parses it, so a misspelled cap or an unknown key would
+ * otherwise reach it unnoticed.
+ *
+ * Every object is strict: an unknown key is refused, `__proto__` included, as
+ * is a PATH entry in `permittedEnvironmentKeys`. A refusal throws
+ * `RuntimeFault('schema-parse-failure', 'CommandTargetPolicy', ...)`, the shape
+ * every other parse boundary in this package throws, with the `ZodError`
+ * carrying every issue as its `cause` and each issue's RFC 6901 pointer and
+ * message in the detail. Input whose own accessors or proxy traps throw is
+ * refused with the same code, carrying the thrown value as its `cause`; no
+ * other error escapes.
  */
-export function parseCommandTargetPolicy(
-	value: unknown,
-): CommandTargetPolicyParseResult {
-	const parsed = CommandTargetPolicy.safeParse(value)
-	if (parsed.success) return { ok: true, policy: parsed.data }
-	return {
-		ok: false,
-		issues: parsed.error.issues.map((issue) => ({
-			path: issue.path
-				.map(
-					(segment) =>
-						`/${String(segment).replaceAll('~', '~0').replaceAll('/', '~1')}`,
-				)
-				.join(''),
-			message: issue.message,
-		})),
+export function parseCommandTargetPolicy(value: unknown): CommandTargetPolicy {
+	let parsed: ReturnType<typeof safeParseCommandTargetPolicy>
+	try {
+		parsed = safeParseCommandTargetPolicy(value)
+	} catch (error) {
+		throw new RuntimeFault(
+			'schema-parse-failure',
+			POLICY_PATH,
+			'input could not be read: reading one of its properties threw',
+			{ cause: error },
+		)
 	}
+	if (parsed.success) return parsed.data
+	const issues = parsed.error.issues
+	throw new RuntimeFault(
+		'schema-parse-failure',
+		POLICY_PATH,
+		`input does not conform to the ${POLICY_PATH} schema: ${issues
+			.map((issue) => `${pointerOf(issue.path) || '(root)'}: ${issue.message}`)
+			.join('; ')}`,
+		{ cause: parsed.error },
+	)
 }

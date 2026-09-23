@@ -16,10 +16,6 @@ export {
 // Validation for a command target-policy mapping read from disk, which the
 // adapter above takes typed and never parses. The Zod schema itself stays
 // unexported; this function is the runtime surface.
-export type {
-	CommandTargetPolicyIssue,
-	CommandTargetPolicyParseResult,
-} from './command-target-policy.ts'
 export { parseCommandTargetPolicy } from './command-target-policy.ts'
 export type { CorpusMechanism } from './local-corpus-adapter.ts'
 export { createLocalCorpusAdapter } from './local-corpus-adapter.ts'
