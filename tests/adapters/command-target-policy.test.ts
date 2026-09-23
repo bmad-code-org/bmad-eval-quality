@@ -1,16 +1,20 @@
 import { describe, expect, it } from 'vitest'
-import { z } from 'zod'
 import {
 	COMMAND_DENIAL_REASONS,
 	type CommandResolvedTarget,
 	evaluateCommandTarget,
 	parseCommandTargetPolicy,
 } from '../../src/adapters/command-target-policy.ts'
-import { RuntimeFault } from '../../src/core/schemas/faults.ts'
 import {
 	CommandTargetAuthorization,
 	type CommandTargetPolicy,
 } from '../../src/core/schemas/probe-policy.ts'
+import {
+	hostileInputs,
+	issuesOf,
+	refusal,
+	unrecognized,
+} from './fixtures/policy-refusal.ts'
 
 function authorization(
 	overrides: Partial<CommandTargetAuthorization> = {},
@@ -192,54 +196,28 @@ describe('evaluateCommandTarget', () => {
 // policy typed and never parses it, so this is the only place an unknown key
 // or a malformed cap is caught before the adapter holds it.
 describe('parseCommandTargetPolicy', () => {
-	/** The fault a refused input throws; fails the test when nothing throws. */
-	function refusal(value: unknown): RuntimeFault {
-		try {
-			parseCommandTargetPolicy(value)
-		} catch (error) {
-			expect(error).toBeInstanceOf(RuntimeFault)
-			const fault = error as RuntimeFault
-			expect(fault.code).toBe('schema-parse-failure')
-			expect(fault.artifactPath).toBe('CommandTargetPolicy')
-			return fault
-		}
-		throw new Error('parseCommandTargetPolicy accepted the input')
-	}
-
-	/** The Zod issues a refused input carries as its cause. */
-	function issuesOf(value: unknown): readonly z.core.$ZodIssue[] {
-		const cause = refusal(value).cause
-		expect(cause).toBeInstanceOf(z.ZodError)
-		return (cause as z.ZodError).issues
-	}
-
-	const unrecognized = (issues: readonly z.core.$ZodIssue[]) =>
-		issues
-			.filter((issue) => issue.code === 'unrecognized_keys')
-			.map((issue) => ({
-				path: issue.path,
-				keys: (issue as z.core.$ZodIssueUnrecognizedKeys).keys,
-			}))
+	const PATH = 'CommandTargetPolicy'
+	const parse = parseCommandTargetPolicy
+	const refused = (value: unknown) => refusal(parse, PATH, value)
+	const issues = (value: unknown) => issuesOf(parse, PATH, value)
 
 	it('returns a copy of a valid mapping, and of an empty one', () => {
 		const policy = policyOf(authorization())
-		const parsed = parseCommandTargetPolicy(policy)
+		const parsed = parse(policy)
 		expect(parsed).toEqual(policy)
 		expect(parsed).not.toBe(policy)
-		expect(parseCommandTargetPolicy({ authorizations: [] })).toEqual({
-			authorizations: [],
-		})
+		expect(parse({ authorizations: [] })).toEqual({ authorizations: [] })
 	})
 
 	it('refuses an unknown key at the root and inside an authorization', () => {
-		expect(unrecognized(issuesOf({ authorizations: [], extra: true }))).toEqual(
-			[{ path: [], keys: ['extra'] }],
-		)
+		expect(unrecognized(issues({ authorizations: [], extra: true }))).toEqual([
+			{ path: [], keys: ['extra'] },
+		])
 		const nested = { authorizations: [{ ...authorization(), maxElapsedMS: 5 }] }
-		expect(unrecognized(issuesOf(nested))).toEqual([
+		expect(unrecognized(issues(nested))).toEqual([
 			{ path: ['authorizations', 0], keys: ['maxElapsedMS'] },
 		])
-		expect(refusal(nested).message).toContain(
+		expect(refused(nested).message).toContain(
 			'/authorizations/0: Unrecognized key: "maxElapsedMS"',
 		)
 	})
@@ -256,8 +234,7 @@ describe('parseCommandTargetPolicy', () => {
 				['authorizations', 0, 'artifacts'],
 			],
 		] as const) {
-			const value: unknown = JSON.parse(text)
-			expect(unrecognized(issuesOf(value))).toEqual([
+			expect(unrecognized(issues(JSON.parse(text)))).toEqual([
 				{ path, keys: ['__proto__'] },
 			])
 		}
@@ -274,7 +251,7 @@ describe('parseCommandTargetPolicy', () => {
 			],
 		}
 		expect(
-			issuesOf(value)
+			issues(value)
 				.map((issue) => issue.path.join('/'))
 				.sort(),
 		).toEqual([
@@ -282,7 +259,7 @@ describe('parseCommandTargetPolicy', () => {
 			'authorizations/0/maxElapsedMs',
 			'authorizations/0/permittedEnvironmentKeys',
 		])
-		const message = refusal(value).message
+		const message = refused(value).message
 		for (const pointer of [
 			'/authorizations/0/artifacts/a~1b~0c:',
 			'/authorizations/0/maxElapsedMs:',
@@ -294,7 +271,7 @@ describe('parseCommandTargetPolicy', () => {
 
 	it('refuses a non-object at the root', () => {
 		for (const value of [undefined, null, 'policy', 42, []]) {
-			expect(issuesOf(value).map((issue) => issue.path)).toEqual([[]])
+			expect(issues(value).map((issue) => issue.path)).toEqual([[]])
 		}
 	})
 
@@ -302,36 +279,10 @@ describe('parseCommandTargetPolicy', () => {
 	// those into the same fault, carrying what was thrown.
 	it('refuses input whose accessors or proxy traps throw', () => {
 		const boom = new Error('boom')
-		const thrower = () => {
-			throw boom
-		}
-		const revocable = Proxy.revocable({ authorizations: [] }, {})
-		revocable.revoke()
-		const hostile: unknown[] = [
-			new Proxy({ authorizations: [] }, { get: thrower }),
-			Object.defineProperty({}, 'authorizations', {
-				enumerable: true,
-				get: thrower,
-			}),
-			{
-				authorizations: [
-					Object.defineProperty({ ...authorization() }, 'target', {
-						enumerable: true,
-						get: thrower,
-					}),
-				],
-			},
-			{
-				authorizations: new Proxy([authorization()], {
-					get: (target, key, receiver) =>
-						key === 'length' ? thrower() : Reflect.get(target, key, receiver),
-				}),
-			},
-			revocable.proxy,
-		]
+		const hostile = hostileInputs(authorization(), 'target', boom)
 		for (const value of hostile) {
-			expect(refusal(value).cause).toBeDefined()
+			expect(refused(value).cause).toBeDefined()
 		}
-		expect(refusal(hostile[0]).cause).toBe(boom)
+		expect(refused(hostile[0]).cause).toBe(boom)
 	})
 })

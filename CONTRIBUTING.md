@@ -87,8 +87,8 @@ This dispatches `publish.yml` on `main` with the matching `bump` input. The run:
    (`npm version --no-git-tag-version`),
    writes the manifest version into `VERSION` in `src/index.ts` (`scripts/generate-version.ts`),
    moves `[Unreleased]` in `CHANGELOG.md` into a dated
-   `[X.Y.Z]` section (`scripts/stamp-changelog.mjs`), runs the two gates that read the version,
-   `check-version` and `doc-claims`, against the bumped tree, and commits `chore: release vX.Y.Z [skip ci]`
+   `[X.Y.Z]` section (`scripts/stamp-changelog.mjs`), runs the `doc-claims` gate, whose
+   predicates read the version, against the bumped tree, and commits `chore: release vX.Y.Z [skip ci]`
    straight onto `main`. `[skip ci]` keeps that push from starting `pr-checks.yml` and the other
    push-triggered workflows on a commit this run already validated and owns. The commit identity is
    `github-actions[bot]`;
@@ -156,7 +156,7 @@ manifest, when local `main` differs from `origin/main`, and when the tag, the br
 version already exists. Pass `--no-pr` to
 push without opening the PR.
 
-Before committing, both paths run `check-version` and `doc-claims` against the bumped tree, since the
+Before committing, both paths run `doc-claims` against the bumped tree, since the
 release commit skips CI. A claim pinned to the published major, such as the tool-use guide's
 end-to-end route, fails every major bump until the route is run again. On `--on-main` that refusal
 restores the stamped files and pushes nothing, so a major release goes through this path: the script

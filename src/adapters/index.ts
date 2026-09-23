@@ -13,9 +13,10 @@ export {
 	createCommandLineAdapter,
 	nodeCommandMechanism,
 } from './command-line-adapter.ts'
-// Validation for a command target-policy mapping read from disk, which the
-// adapter above takes typed and never parses. The Zod schema itself stays
-// unexported; this function is the runtime surface.
+// Validation for a mapping read from disk, one per adapter that takes a target
+// policy: `createCommandLineAdapter` and `createMcpAdapter` take theirs typed
+// and never parse it. The Zod schemas stay unexported; these two functions are
+// the runtime surface.
 export { parseCommandTargetPolicy } from './command-target-policy.ts'
 export type { CorpusMechanism } from './local-corpus-adapter.ts'
 export { createLocalCorpusAdapter } from './local-corpus-adapter.ts'
@@ -25,6 +26,7 @@ export type {
 	McpMechanism,
 } from './mcp-adapter.ts'
 export { createMcpAdapter, nodeStdioMcpMechanism } from './mcp-adapter.ts'
+export { parseMcpTargetPolicy } from './mcp-target-policy.ts'
 export type { FileSystemMechanism } from './node-file-system-adapter.ts'
 export { createNodeFileSystemAdapter } from './node-file-system-adapter.ts'
 export type { ClockMechanism } from './system-clock-adapter.ts'

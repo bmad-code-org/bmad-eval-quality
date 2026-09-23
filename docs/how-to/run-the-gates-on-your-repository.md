@@ -1033,7 +1033,7 @@ A root that holds no matching file fails the run at exit `64`: a scan of nothing
 
 Order is the whole of it.
 Every file under `src/core/schemas/` also sits under `src/core/`, so the narrower prefix has to be listed first or those files are held to the wider layer's rules.
-In this package's own configuration, swapping those two rows reports 84 violations where there are none today.
+In this package's own configuration, swapping those two rows reports 85 violations where there are none today.
 That is why `layers` is a list and not an object keyed by layer name: a map carries no order, and normalising this into one, or sorting it, rewrites the graph it describes without changing a word of it.
 A row that an earlier row already matches in full is refused outright, so making that mistake costs you a configuration error and never a silent re-layering.
 

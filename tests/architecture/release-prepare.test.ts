@@ -94,10 +94,6 @@ const AMBIENT_ENV = Object.fromEntries(
 )
 
 /**
- * A bare origin and a clone on `main`, one commit in, both pushed. Git reads no user or system
- * config, so a signing key or hooks path on the machine running the suite cannot leak in.
- */
-/**
  * A doc-claims section the script's bumped-tree gate runs, with one dated claim settled by a
  * predicate. `pinned` holds the page's version to the manifest's major, the rule the tool-use
  * guide's route pin follows, so a major bump falsifies it. Unpinned, the predicate answers yes
@@ -154,6 +150,10 @@ function writeDocClaims(work: string, pinned: boolean) {
 	)
 }
 
+/**
+ * A bare origin and a clone on `main`, one commit in, both pushed. Git reads no user or system
+ * config, so a signing key or hooks path on the machine running the suite cannot leak in.
+ */
 function fixture({ pinned = true }: { pinned?: boolean } = {}): Fixture {
 	const dir = mkdtempSync(join(tmpdir(), 'release-prepare-'))
 	const origin = join(dir, 'origin.git')

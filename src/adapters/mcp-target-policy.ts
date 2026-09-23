@@ -8,10 +8,12 @@
  * adapter-owned. The declared shapes stay in `core/schemas/probe-policy.ts`
  * beside the other two, which keeps all three mappings comparable in one file.
  */
-import type {
-	McpTargetAuthorization,
-	McpTargetPolicy,
+import {
+	type McpTargetAuthorization,
+	type McpTargetPolicy,
+	safeParseMcpTargetPolicy,
 } from '../core/schemas/probe-policy.ts'
+import { parseTargetPolicy } from './parse-target-policy.ts'
 
 /** Why a tool server target was denied. Thrown as the single AD-28 `forbidden-target` fault, same as the HTTP and command reasons. */
 export const MCP_DENIAL_REASONS = [
@@ -74,3 +76,13 @@ export function evaluateMcpTarget(
 		`tool "${target.toolName}" is not among the authorized tools for interface "${target.interfaceId}"`,
 	)
 }
+
+/**
+ * Validates a mapping an operator loaded from disk against the published
+ * `McpTargetPolicy` shape before `createMcpAdapter` receives it. Every object
+ * is strict: an unknown key is refused, `__proto__` included, as is a second
+ * authorization naming an `interfaceId` an earlier one names.
+ * `parseTargetPolicy` states the return and the refusal.
+ */
+export const parseMcpTargetPolicy = (value: unknown): McpTargetPolicy =>
+	parseTargetPolicy('McpTargetPolicy', safeParseMcpTargetPolicy, value)

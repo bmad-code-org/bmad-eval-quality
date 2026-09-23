@@ -747,7 +747,8 @@ The sealed brief still stamps `schemaVersion` 2 and the pre-flight verdict still
 The added entries put `qualifyProbe` and `resolveHomeOperation` on the public barrel; `sealProbeSet` is still off it, so both scripts import from the built modules under `dist/core/`.
 
 **Every published sentence held.**
-Nothing on `docs/how-to/evaluate-tool-use-behavior.md` was contradicted by the run, so the pinned numeral is the only edit the re-verification earned, and `CHANGELOG.md` gets no entry.
+Nothing on `docs/how-to/evaluate-tool-use-behavior.md` was contradicted by the run, so the pinned numeral is the only page edit the re-verification earned.
+`CHANGELOG.md` records the re-run under `[Unreleased]`, in the `Fixed` entry for the release gate that let a major bump land with the pin stale.
 
 **What the reproduction reconstructed, for the next reader.**
 The scratch files were not committed at 3.0.0 either, so all eight were authored fresh against the current schemas from what this record pins, and the choices the 3.0.0 section lists as unpinned were made again from scratch.

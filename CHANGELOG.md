@@ -12,18 +12,19 @@ body.
 
 ### Added
 
-- **`parseCommandTargetPolicy` validates a command mapping at runtime.** `eval-quality/adapters`
-  exports it beside `createCommandLineAdapter`, which takes its `CommandTargetPolicy` typed and
-  never parses it. It returns a deep copy of a valid mapping. A refusal throws `RuntimeFault` with
-  code `schema-parse-failure` and `artifactPath` `CommandTargetPolicy`, its `cause` the `ZodError`
-  carrying every issue. Every object is strict, so an unknown key is refused, an own `__proto__`
-  key included, and `PATH` in `permittedEnvironmentKeys` is refused as before. Input whose
-  accessors or proxy traps throw is refused under the same code. The Zod schema stays unexported.
+- **`parseCommandTargetPolicy` and `parseMcpTargetPolicy` validate a target-policy mapping at
+  runtime.** `eval-quality/adapters` exports them beside `createCommandLineAdapter` and
+  `createMcpAdapter`, which take their policies typed and never parse them. Each returns a deep copy
+  of a valid mapping. A refusal throws `RuntimeFault` with code `schema-parse-failure`,
+  `artifactPath` `CommandTargetPolicy` or `McpTargetPolicy`, and the `ZodError` carrying every issue
+  as its `cause`; the message lists each issue as an RFC 6901 pointer and a message. Every object is
+  strict, so an unknown key is refused, an own `__proto__` key included. Input whose accessors or
+  proxy traps throw is refused under the same code. The Zod schemas stay unexported.
 
 ### Fixed
 
-- **A release checks its bumped tree against the gates that read the version.** `release-prepare` runs
-  `check-version` and `doc-claims` against the bumped tree before committing. The release commit
+- **A release checks its bumped tree against `doc-claims`.** `release-prepare` runs
+  `doc-claims` against the bumped tree before committing. The release commit
   pushes with `[skip ci]` and publish.yml runs no test, so the 4.0.0 major bump reached `main` with
   the tool-use guide's route pinned to 3.0.0 and `check:doc-claims` failing. On `--on-main` a
   refusal restores the stamped files and pushes nothing; on the laptop path the bumped tree stays

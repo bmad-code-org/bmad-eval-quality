@@ -129,77 +129,6 @@ export type CommandTargetAuthorization = z.infer<
 export type CommandTargetPolicy = z.infer<typeof CommandTargetPolicy>
 
 /**
- * An own `__proto__` key, which `JSON.parse` creates as an ordinary property,
- * as the unrecognized key it is. Zod 4's strict-object and record loops skip
- * that one key without an issue, so a strict schema alone would accept it.
- */
-function ownPrototypeKeyIssue(
-	value: unknown,
-	path: readonly (string | number)[],
-): z.core.$ZodIssue[] {
-	if (value === null || typeof value !== 'object' || Array.isArray(value))
-		return []
-	if (!Object.hasOwn(value, '__proto__')) return []
-	return [
-		{
-			code: 'unrecognized_keys',
-			keys: ['__proto__'],
-			path: [...path],
-			message: 'Unrecognized key: "__proto__"',
-			input: value as Record<string, unknown>,
-		},
-	]
-}
-
-/**
- * `CommandTargetPolicy.safeParse`, plus the own `__proto__` keys Zod skips at
- * the three levels that can carry one: the policy, each authorization, and each
- * authorization's `artifacts` record. Every other level is an array or a
- * scalar. Reads the input's properties, so a hostile accessor or proxy throws
- * out of here; the caller owns that boundary.
- */
-export function safeParseCommandTargetPolicy(
-	value: unknown,
-):
-	| { readonly success: true; readonly data: CommandTargetPolicy }
-	| { readonly success: false; readonly error: z.ZodError } {
-	const issues = ownPrototypeKeyIssue(value, [])
-	const authorizations =
-		value !== null &&
-		typeof value === 'object' &&
-		Object.hasOwn(value, 'authorizations')
-			? (value as { authorizations: unknown }).authorizations
-			: undefined
-	if (Array.isArray(authorizations)) {
-		authorizations.forEach((authorization: unknown, index) => {
-			const path = ['authorizations', index]
-			issues.push(...ownPrototypeKeyIssue(authorization, path))
-			if (
-				authorization !== null &&
-				typeof authorization === 'object' &&
-				Object.hasOwn(authorization, 'artifacts')
-			) {
-				issues.push(
-					...ownPrototypeKeyIssue(
-						(authorization as { artifacts: unknown }).artifacts,
-						[...path, 'artifacts'],
-					),
-				)
-			}
-		})
-	}
-	const parsed = CommandTargetPolicy.safeParse(value)
-	if (parsed.success && issues.length === 0) return parsed
-	return {
-		success: false,
-		error: new z.ZodError([
-			...issues,
-			...(parsed.success ? [] : parsed.error.issues),
-		]),
-	}
-}
-
-/**
  * One authorized tool server, AD-35's mapping for the `mcp` mechanism.
  *
  * Keyed by `interfaceId` alone. A `cli` authorization is keyed by
@@ -280,3 +209,88 @@ export const McpTargetPolicy = z.strictObject({
 
 export type McpTargetAuthorization = z.infer<typeof McpTargetAuthorization>
 export type McpTargetPolicy = z.infer<typeof McpTargetPolicy>
+
+/**
+ * An own `__proto__` key, which `JSON.parse` creates as an ordinary property,
+ * as the unrecognized key it is. Zod 4's strict-object and record loops skip
+ * that one key without an issue, so a strict schema alone would accept it.
+ */
+function ownPrototypeKeyIssue(
+	value: unknown,
+	path: readonly (string | number)[],
+): z.core.$ZodIssue[] {
+	if (value === null || typeof value !== 'object' || Array.isArray(value))
+		return []
+	if (!Object.hasOwn(value, '__proto__')) return []
+	return [
+		{
+			code: 'unrecognized_keys',
+			keys: ['__proto__'],
+			path: [...path],
+			message: 'Unrecognized key: "__proto__"',
+			input: value as Record<string, unknown>,
+		},
+	]
+}
+
+/** An own property, read only when the object has it. */
+function ownField(value: unknown, key: string): unknown {
+	return value !== null &&
+		typeof value === 'object' &&
+		Object.hasOwn(value, key)
+		? (value as Record<string, unknown>)[key]
+		: undefined
+}
+
+export type PolicyParseResult<T> =
+	| { readonly success: true; readonly data: T }
+	| { readonly success: false; readonly error: z.ZodError }
+
+/**
+ * `schema.safeParse`, plus the own `__proto__` keys Zod skips at the three
+ * levels a target policy can carry one: the policy, each authorization, and the
+ * one record each authorization declares. Every other level of either policy is
+ * an array or a scalar. Reads the input's properties, so a hostile accessor or
+ * proxy throws out of here; the caller owns that boundary.
+ */
+function safeParseTargetPolicy<T>(
+	schema: z.ZodType<T>,
+	recordField: string,
+	value: unknown,
+): PolicyParseResult<T> {
+	const issues = ownPrototypeKeyIssue(value, [])
+	const authorizations = ownField(value, 'authorizations')
+	if (Array.isArray(authorizations)) {
+		authorizations.forEach((authorization: unknown, index) => {
+			const path = ['authorizations', index]
+			issues.push(...ownPrototypeKeyIssue(authorization, path))
+			issues.push(
+				...ownPrototypeKeyIssue(ownField(authorization, recordField), [
+					...path,
+					recordField,
+				]),
+			)
+		})
+	}
+	const parsed = schema.safeParse(value)
+	if (parsed.success && issues.length === 0) return parsed
+	return {
+		success: false,
+		error: new z.ZodError([
+			...issues,
+			...(parsed.success ? [] : parsed.error.issues),
+		]),
+	}
+}
+
+/** `CommandTargetPolicy`, whose one record is each authorization's `artifacts`. */
+export const safeParseCommandTargetPolicy = (
+	value: unknown,
+): PolicyParseResult<CommandTargetPolicy> =>
+	safeParseTargetPolicy(CommandTargetPolicy, 'artifacts', value)
+
+/** `McpTargetPolicy`, whose one record is each authorization's `serverEnvironment`. */
+export const safeParseMcpTargetPolicy = (
+	value: unknown,
+): PolicyParseResult<McpTargetPolicy> =>
+	safeParseTargetPolicy(McpTargetPolicy, 'serverEnvironment', value)

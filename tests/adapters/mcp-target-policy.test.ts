@@ -3,11 +3,18 @@ import {
 	evaluateMcpTarget,
 	MCP_DENIAL_REASONS,
 	type McpResolvedTarget,
+	parseMcpTargetPolicy,
 } from '../../src/adapters/mcp-target-policy.ts'
 import {
 	McpTargetAuthorization,
 	McpTargetPolicy,
 } from '../../src/core/schemas/probe-policy.ts'
+import {
+	hostileInputs,
+	issuesOf,
+	refusal,
+	unrecognized,
+} from './fixtures/policy-refusal.ts'
 
 function authorization(
 	overrides: Partial<McpTargetAuthorization> = {},
@@ -194,5 +201,95 @@ describe('evaluateMcpTarget', () => {
 			'interface-not-authorized',
 			'tool-not-authorized',
 		])
+	})
+})
+
+// The runtime surface for a mapping loaded from disk, the same contract
+// `parseCommandTargetPolicy` holds. `createMcpAdapter` takes its policy typed
+// and never parses it.
+describe('parseMcpTargetPolicy', () => {
+	const PATH = 'McpTargetPolicy'
+	const parse = parseMcpTargetPolicy
+	const refused = (value: unknown) => refusal(parse, PATH, value)
+	const issues = (value: unknown) => issuesOf(parse, PATH, value)
+
+	it('returns a copy of a valid mapping, and of an empty one', () => {
+		const policy = policyOf(authorization())
+		const parsed = parse(policy)
+		expect(parsed).toEqual(policy)
+		expect(parsed).not.toBe(policy)
+		expect(parse({ authorizations: [] })).toEqual({ authorizations: [] })
+	})
+
+	it('refuses an unknown key at the root and inside an authorization', () => {
+		expect(unrecognized(issues({ authorizations: [], extra: true }))).toEqual([
+			{ path: [], keys: ['extra'] },
+		])
+		const nested = { authorizations: [{ ...authorization(), toolz: [] }] }
+		expect(unrecognized(issues(nested))).toEqual([
+			{ path: ['authorizations', 0], keys: ['toolz'] },
+		])
+		expect(refused(nested).message).toContain(
+			'/authorizations/0: Unrecognized key: "toolz"',
+		)
+	})
+
+	// Zod 4's strict-object and record loops skip an own `__proto__` without
+	// an issue, and `JSON.parse` creates exactly that key.
+	it('refuses an own __proto__ key at every level that can carry one', () => {
+		const valid = JSON.stringify(authorization()).slice(1, -1)
+		for (const [text, path] of [
+			[`{"authorizations":[],"__proto__":{"x":1}}`, [] as (string | number)[]],
+			[`{"authorizations":[{${valid},"__proto__":{}}]}`, ['authorizations', 0]],
+			[
+				`{"authorizations":[{${valid.replace('"serverEnvironment":{}', '"serverEnvironment":{"__proto__":"x"}')}}]}`,
+				['authorizations', 0, 'serverEnvironment'],
+			],
+		] as const) {
+			expect(unrecognized(issues(JSON.parse(text)))).toEqual([
+				{ path, keys: ['__proto__'] },
+			])
+		}
+	})
+
+	it('reports every failing field in the cause and as a pointer in the message', () => {
+		const value = {
+			authorizations: [
+				authorization({ maxElapsedMs: 0, tools: [] }),
+				authorization(),
+			],
+		}
+		expect(
+			issues(value)
+				.map((issue) => issue.path.join('/'))
+				.sort(),
+		).toEqual([
+			'authorizations',
+			'authorizations/0/maxElapsedMs',
+			'authorizations/0/tools',
+		])
+		const message = refused(value).message
+		for (const pointer of [
+			'/authorizations:',
+			'/authorizations/0/maxElapsedMs:',
+			'/authorizations/0/tools:',
+		]) {
+			expect(message).toContain(pointer)
+		}
+	})
+
+	it('refuses a non-object at the root', () => {
+		for (const value of [undefined, null, 'policy', 42, []]) {
+			expect(issues(value).map((issue) => issue.path)).toEqual([[]])
+		}
+	})
+
+	it('refuses input whose accessors or proxy traps throw', () => {
+		const boom = new Error('boom')
+		const hostile = hostileInputs(authorization(), 'target', boom)
+		for (const value of hostile) {
+			expect(refused(value).cause).toBeDefined()
+		}
+		expect(refused(hostile[0]).cause).toBe(boom)
 	})
 })
