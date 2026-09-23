@@ -48,6 +48,10 @@ import type {
 	ResolveOperand,
 	Severity,
 } from 'eval-quality'
+import type {
+	CommandTargetPolicyIssue,
+	CommandTargetPolicyParseResult,
+} from 'eval-quality/adapters'
 import { describe, expect, it } from 'vitest'
 import { INTERCHANGE_ARTIFACT_KEYS } from '../../src/core/schemas/artifact.ts'
 import { INTERFACES, qualifiedProbe } from '../score/fixtures/probe-witness.ts'
@@ -216,6 +220,44 @@ describe('the published package surface', () => {
 			'command-probe': 16,
 			'mcp-probe': 14,
 		})
+	})
+
+	// A consumer validating a command mapping loaded from disk imports this
+	// instead of deep-importing `dist/core/schemas/probe-policy.js`. The schema
+	// stays unexported on this subpath the way case 152 keeps it off the root.
+	it('case 147c: `./adapters` exports the command target-policy parser and no live schema', async (ctx) => {
+		if (!BUILT) return ctx.skip(NEEDS_BUILD)
+		const barrel = (await import(
+			pathToFileURL(resolveSubpath('eval-quality/adapters')).href
+		)) as Record<string, unknown>
+		expect(Object.values(barrel).filter(isZodSchema)).toEqual([])
+
+		const parse = barrel.parseCommandTargetPolicy as (
+			value: unknown,
+		) => CommandTargetPolicyParseResult
+		expect(typeof parse).toBe('function')
+		expect(parse({ authorizations: [] })).toEqual({
+			ok: true,
+			policy: { authorizations: [] },
+		})
+		const refused = parse({ authorizations: [], unexpected: 1 })
+		expect(refused.ok).toBe(false)
+		if (refused.ok) return
+		expect(refused.issues).toHaveLength(1)
+		expect(refused.issues[0]?.path).toBe('')
+
+		type Declared =
+			typeof import('eval-quality/adapters').parseCommandTargetPolicy
+		type Expected = (value: unknown) => CommandTargetPolicyParseResult
+		const signatureIsExact: Exact<Declared, Expected> = true
+		expect(signatureIsExact).toBe(true)
+		type Issues = Extract<
+			CommandTargetPolicyParseResult,
+			{ ok: false }
+		>['issues']
+		const issueIsExact: Exact<Issues, readonly CommandTargetPolicyIssue[]> =
+			true
+		expect(issueIsExact).toBe(true)
 	})
 
 	it('case 148: `./schemas/*` resolves a generated JSON Schema by its real filename', () => {

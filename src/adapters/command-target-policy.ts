@@ -10,8 +10,8 @@
  * imported from `src/adapters/` for the same reason — no shipped `api`
  * adapter exists to call it, which is the gap this file closes for `cli`.
  */
-import type {
-	CommandTargetAuthorization,
+import {
+	type CommandTargetAuthorization,
 	CommandTargetPolicy,
 } from '../core/schemas/probe-policy.ts'
 
@@ -95,4 +95,46 @@ export function evaluateCommandTarget(
 		'subcommand-not-authorized',
 		`subcommand path [${target.subcommandPath.join(', ')}] is not among the authorized paths for interface "${target.interfaceId}" and executable "${target.executable}"`,
 	)
+}
+
+/** One reason a candidate `CommandTargetPolicy` was refused. */
+export type CommandTargetPolicyIssue = {
+	/** An RFC 6901 pointer to the failing value; the empty string is the root. */
+	readonly path: string
+	readonly message: string
+}
+
+export type CommandTargetPolicyParseResult =
+	| { readonly ok: true; readonly policy: CommandTargetPolicy }
+	| {
+			readonly ok: false
+			readonly issues: readonly CommandTargetPolicyIssue[]
+	  }
+
+/**
+ * Validates a mapping an operator loaded from disk against the published
+ * `CommandTargetPolicy` shape before `createCommandLineAdapter` receives it.
+ * The adapter takes the policy as a typed value and never parses it, so a
+ * misspelled cap or an unknown key would otherwise reach it unnoticed. Every
+ * object is strict: an unknown key is an issue, as is a PATH entry in
+ * `permittedEnvironmentKeys`. Never throws on bad input; the issues come back
+ * in Zod's own order.
+ */
+export function parseCommandTargetPolicy(
+	value: unknown,
+): CommandTargetPolicyParseResult {
+	const parsed = CommandTargetPolicy.safeParse(value)
+	if (parsed.success) return { ok: true, policy: parsed.data }
+	return {
+		ok: false,
+		issues: parsed.error.issues.map((issue) => ({
+			path: issue.path
+				.map(
+					(segment) =>
+						`/${String(segment).replaceAll('~', '~0').replaceAll('/', '~1')}`,
+				)
+				.join(''),
+			message: issue.message,
+		})),
+	}
 }

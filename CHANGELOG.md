@@ -10,6 +10,15 @@ body.
 
 ## [Unreleased]
 
+### Added
+
+- **`parseCommandTargetPolicy` validates a command mapping at runtime.** `eval-quality/adapters`
+  exports it beside `createCommandLineAdapter`, which takes its `CommandTargetPolicy` typed and
+  never parses it. It returns `{ ok: true, policy }`, or `{ ok: false, issues }` with each issue
+  carrying an RFC 6901 `path` and a `message`. Every object is strict, so an unknown key is refused,
+  and `PATH` in `permittedEnvironmentKeys` is refused as before. `CommandTargetPolicyParseResult`
+  and `CommandTargetPolicyIssue` ship type-only beside it; the Zod schema stays unexported.
+
 ## [4.0.0] - 2026-09-23
 
 ### Added

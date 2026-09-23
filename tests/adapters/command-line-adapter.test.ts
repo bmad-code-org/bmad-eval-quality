@@ -433,7 +433,7 @@ describe('createCommandLineAdapter, real spawn', () => {
 
 	it('refuses a declared PATH even when the mapping permits it', async () => {
 		// The mapping here is a plain object, which is how every caller supplies
-		// one: nothing in this package parses `CommandTargetPolicy`, so the
+		// one: the adapter never parses `CommandTargetPolicy`, so the
 		// schema's refusal of PATH never runs on this path and the adapter has
 		// to refuse it itself. `target` may be a bare command name, and the
 		// child environment is what resolves it, so a permitted PATH would pick

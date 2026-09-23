@@ -3,6 +3,7 @@ import {
 	COMMAND_DENIAL_REASONS,
 	type CommandResolvedTarget,
 	evaluateCommandTarget,
+	parseCommandTargetPolicy,
 } from '../../src/adapters/command-target-policy.ts'
 import {
 	CommandTargetAuthorization,
@@ -181,6 +182,74 @@ describe('evaluateCommandTarget', () => {
 					authorization({ permittedEnvironmentKeys: [key] }),
 				).success,
 			).toBe(false)
+		}
+	})
+})
+
+// The runtime surface for a mapping loaded from disk. The adapter takes its
+// policy typed and never parses it, so this is the only place an unknown key
+// or a malformed cap is caught before the adapter holds it.
+describe('parseCommandTargetPolicy', () => {
+	it('returns the policy for a valid mapping, and for an empty one', () => {
+		const policy = policyOf(authorization())
+		expect(parseCommandTargetPolicy(policy)).toEqual({ ok: true, policy })
+		expect(parseCommandTargetPolicy({ authorizations: [] })).toEqual({
+			ok: true,
+			policy: { authorizations: [] },
+		})
+	})
+
+	it('refuses an unknown key at the root and inside an authorization', () => {
+		const atRoot = parseCommandTargetPolicy({
+			authorizations: [],
+			extra: true,
+		})
+		expect(atRoot.ok).toBe(false)
+		if (atRoot.ok) return
+		expect(atRoot.issues).toHaveLength(1)
+		expect(atRoot.issues[0]?.path).toBe('')
+		expect(atRoot.issues[0]?.message).toContain('extra')
+
+		const nested = parseCommandTargetPolicy({
+			authorizations: [{ ...authorization(), maxElapsedMS: 5 }],
+		})
+		expect(nested.ok).toBe(false)
+		if (nested.ok) return
+		expect(nested.issues.map((issue) => issue.path)).toEqual([
+			'/authorizations/0',
+		])
+		expect(nested.issues[0]?.message).toContain('maxElapsedMS')
+	})
+
+	it('reports every failing field as an RFC 6901 pointer', () => {
+		const result = parseCommandTargetPolicy({
+			authorizations: [
+				authorization({
+					maxElapsedMs: 0,
+					permittedEnvironmentKeys: ['PATH'],
+					artifacts: { 'a/b~c': '' },
+				}),
+			],
+		})
+		expect(result.ok).toBe(false)
+		if (result.ok) return
+		expect(result.issues.map((issue) => issue.path).sort()).toEqual([
+			'/authorizations/0/artifacts/a~1b~0c',
+			'/authorizations/0/maxElapsedMs',
+			'/authorizations/0/permittedEnvironmentKeys',
+		])
+		for (const issue of result.issues) {
+			expect(typeof issue.message).toBe('string')
+			expect(issue.message).not.toBe('')
+		}
+	})
+
+	it('refuses a non-object without throwing', () => {
+		for (const value of [undefined, null, 'policy', 42, []]) {
+			const result = parseCommandTargetPolicy(value)
+			expect(result.ok).toBe(false)
+			if (result.ok) continue
+			expect(result.issues.map((issue) => issue.path)).toEqual([''])
 		}
 	})
 })
