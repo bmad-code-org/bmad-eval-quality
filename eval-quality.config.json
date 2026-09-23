@@ -1187,6 +1187,20 @@
 					"module": "scripts/doc-claim-sources.ts",
 					"export": "CONFORMANCE_RUNNERS"
 				}
+			},
+			{
+				"file": "docs/reference/cli-commands.md",
+				"claim": "the target-policy values the barrel exports",
+				"pattern": {
+					"match": "\\*\\*Target policy\\*\\*: ([^\\n]+)"
+				},
+				"tokenShape": {
+					"match": "^[A-Za-z][A-Za-z_]*$"
+				},
+				"expected": {
+					"module": "scripts/doc-count-sources.ts",
+					"export": "TARGET_POLICY_VALUES"
+				}
 			}
 		],
 		"codes": {

@@ -10,6 +10,20 @@ body.
 
 ## [Unreleased]
 
+### Added
+
+- **The HTTP target-policy evaluation is on the public barrel.** `evaluateTarget`,
+  `classifyAddress`, `parseAddress`, `isSafeMethod`, `ADDRESS_CLASSES` and `DENIAL_REASONS` export
+  from `eval-quality`, so an `EnvironmentProbePort` written for `api` delegates AD-35's allow-or-deny
+  decision, address classification included, to the package. `ResolvedTarget`,
+  `PolicyDecision`, `AddressClass`, `DenialReason` and `ParsedAddress` ship as type-only exports
+  beside them, with `ProbeTargetPolicy` and `ProbeTargetAuthorization` type-only off `core/schemas`.
+- **Probe qualification and two vocabularies join the barrel.** `qualifyProbe` exports with
+  `resolveHomeOperation`, which finds the operation a probe's signature names so the declaration
+  checks run, and with the `AnyOperation`, `DefectSignature` and `PermittedInterface` types they
+  take. `OUTCOME_STATES` (AD-6's twelve outcome states) and `DISCIPLINE_RULES` (AD-20's seven rule
+  identifiers, typed `DisciplineRule`) export beside them.
+
 ### Changed
 
 - **`score` and `runScore` accept complete trial sets.** Repeat `--record` for each sealed trial on
@@ -25,6 +39,20 @@ body.
   `trials.completedAttempts` retains the exact attempt identities, and `scoredProbeId` independently
   binds a reduction when a probe has no oracle outcomes. Detailed and reduced outcomes both retain
   the scored probe behavior's declared severity for severity-floor comparison.
+
+## [3.4.0] - 2026-09-16
+
+### Added
+
+- **`dated.claims` entries settled by `read` can pin what was read.** A `read` claim may carry
+  one optional `asOf` object: a normalized-content sha256 of the file a person actually read, with
+  an optional `subject` naming that file when it is not the page carrying the sentence. The
+  `doc-claims` gate fails when the pinned content changes. The pin is refused on a claim a predicate
+  settles, since the predicate already re-runs, and two entries sharing a `file` and `key` are
+  refused. Outside a fenced block the hash trims trailing whitespace, collapses inner whitespace and
+  blank-line runs, and reads leading indentation as nesting depth, so a reindent does not read as
+  drift and un-nesting does. A fenced block is hashed exactly, apart from normalized line endings.
+  `npm run hash:doc-claim-subject` computes the pin (#142).
 
 ## [3.3.0] - 2026-09-16
 

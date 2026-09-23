@@ -30,6 +30,9 @@
 
 export * from './application/index.ts'
 export type { ArtifactReference } from './core/schemas/artifact-reference.ts'
+// What `resolveHomeOperation` reads to find the `AnyOperation` `qualifyProbe`
+// takes. Type-only: each name is also a Zod schema the barrel withholds.
+export type { DefectSignature } from './core/schemas/defect-signature.ts'
 export type { EvalContract } from './core/schemas/eval-contract.ts'
 export { EVAL_CONTRACT_SCHEMA_VERSION } from './core/schemas/eval-contract.ts'
 export type { EvaluatorConfiguration } from './core/schemas/evaluator-configuration.ts'
@@ -43,6 +46,12 @@ export type {
 } from './core/schemas/evidence-artifact.ts'
 export { EVIDENCE_ARTIFACT_SCHEMA_VERSION } from './core/schemas/evidence-artifact.ts'
 export type { Expression, Operand } from './core/schemas/expression.ts'
+// The operation `qualifyProbe` takes as its home operation, and the interface
+// `resolveHomeOperation` finds it in.
+export type {
+	AnyOperation,
+	PermittedInterface,
+} from './core/schemas/interface.ts'
 export type { IsolationManifest } from './core/schemas/isolation-manifest.ts'
 export { ISOLATION_MANIFEST_SCHEMA_VERSION } from './core/schemas/isolation-manifest.ts'
 export type {
@@ -55,6 +64,12 @@ export type { PrivateArtifactManifest } from './core/schemas/private-artifact-ma
 export { PRIVATE_ARTIFACT_MANIFEST_SCHEMA_VERSION } from './core/schemas/private-artifact-manifest.ts'
 export type { Probe } from './core/schemas/probe.ts'
 export { PROBE_SCHEMA_VERSION } from './core/schemas/probe.ts'
+// The HTTP target-policy mapping `evaluateTarget` and `isSafeMethod` read.
+// Type-only: each name is also a Zod schema the barrel withholds.
+export type {
+	ProbeTargetAuthorization,
+	ProbeTargetPolicy,
+} from './core/schemas/probe-policy.ts'
 export type { Rubric } from './core/schemas/rubric.ts'
 export type { ScoringPolicy } from './core/schemas/scoring-policy.ts'
 export { SCORING_POLICY_SCHEMA_VERSION } from './core/schemas/scoring-policy.ts'
