@@ -9,15 +9,25 @@
  * report was unconstructible without it.
  */
 import { spawn } from 'node:child_process'
-import { mkdtempSync, readFileSync, realpathSync, rmSync } from 'node:fs'
+import { getEventListeners } from 'node:events'
+import {
+	existsSync,
+	mkdtempSync,
+	readFileSync,
+	realpathSync,
+	rmSync,
+} from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { afterAll, describe, expect, it } from 'vitest'
 import {
 	createMcpAdapter,
+	type McpCallToolRequest,
 	type McpMechanism,
+	nodeStdioMcpMechanism,
 } from '../../src/adapters/mcp-adapter.ts'
+import { trackedProcessCount } from '../../src/adapters/process-group.ts'
 import { runPreflight } from '../../src/application/preflight.ts'
 import { compile } from '../../src/core/compile/compile.ts'
 import { EvalContract } from '../../src/core/schemas/eval-contract.ts'
@@ -716,3 +726,145 @@ describe('a pre-flight over an mcp contract, end to end', () => {
 		expect(verdict.passed).toBe(true)
 	}, 30_000)
 })
+
+/**
+ * The stdio mechanism takes abort over from spawn's own `signal` option and
+ * closes its end of the server's pipes at teardown. Driven directly, since
+ * `nodeStdioMcpMechanism` is exported and its rejection shape is part of that.
+ */
+describe.skipIf(process.platform === 'win32')(
+	'nodeStdioMcpMechanism, abort and teardown',
+	() => {
+		const callRequest = (
+			overrides: Partial<McpCallToolRequest> = {},
+		): McpCallToolRequest => ({
+			target: process.execPath,
+			targetArgs: [FIXTURE_PATH],
+			toolName: 'hanging_tool',
+			arguments: {},
+			env: { PATH: process.env.PATH ?? '' },
+			cwd: process.cwd(),
+			maxElapsedMs: MAX_ELAPSED_MS,
+			maxOutputBytes: MAX_OUTPUT_BYTES,
+			...overrides,
+		})
+
+		const abortErrorOf = async (
+			pending: Promise<unknown>,
+		): Promise<Error & { code?: unknown }> => {
+			const error = await pending.then(
+				() => undefined,
+				(thrown: unknown) => thrown,
+			)
+			expect(error).toBeInstanceOf(Error)
+			return error as Error & { code?: unknown }
+		}
+
+		it('rejects with the AbortError shape spawn produced, mid-run', async () => {
+			const controller = new AbortController()
+			const reason = new Error('caller gave up')
+			const pending = nodeStdioMcpMechanism.callTool(
+				callRequest(),
+				controller.signal,
+			)
+			setTimeout(() => controller.abort(reason), 200)
+			const error = await abortErrorOf(pending)
+			expect(error.name).toBe('AbortError')
+			expect(error.constructor.name).toBe('AbortError')
+			expect(error.code).toBe('ABORT_ERR')
+			expect(error.cause).toBe(reason)
+		})
+
+		it('rejects with the AbortError shape spawn produced, pre-aborted', async () => {
+			const controller = new AbortController()
+			const reason = new Error('aborted before the call')
+			controller.abort(reason)
+			const error = await abortErrorOf(
+				nodeStdioMcpMechanism.callTool(callRequest(), controller.signal),
+			)
+			expect(error.name).toBe('AbortError')
+			expect(error.constructor.name).toBe('AbortError')
+			expect(error.code).toBe('ABORT_ERR')
+			expect(error.cause).toBe(reason)
+		})
+
+		// Spawn's own `signal` option removes its listener only on 'exit', which
+		// a failed spawn never emits, so a reused signal collected one per call.
+		it('leaves no listener on a reused signal after a failed spawn', async () => {
+			const controller = new AbortController()
+			const missing = join(PID_DIR, 'no-such-server')
+			for (let attempt = 0; attempt < 3; attempt++) {
+				await expect(
+					nodeStdioMcpMechanism.callTool(
+						callRequest({ target: missing, targetArgs: [] }),
+						controller.signal,
+					),
+				).rejects.toMatchObject({ code: 'ENOENT' })
+			}
+			expect(getEventListeners(controller.signal, 'abort')).toHaveLength(0)
+		})
+
+		// A server in a session of its own is out of reach of the group kill and
+		// still holds the inherited stdout. Teardown closes this end, so the
+		// host exits once the call is over rather than when the server does.
+		it('lets the host exit when a server outside the group holds its stdout', async () => {
+			const pidFile = join(PID_DIR, 'escaped.pid')
+			const adapterPath = fileURLToPath(
+				new URL('../../src/adapters/mcp-adapter.ts', import.meta.url),
+			)
+			const host = `
+				import { nodeStdioMcpMechanism } from ${JSON.stringify(adapterPath)}
+				await nodeStdioMcpMechanism.callTool({
+					target: process.execPath,
+					targetArgs: [${JSON.stringify(LAUNCHER_PATH)}, ${JSON.stringify(pidFile)}, '--escape', '--linger'],
+					toolName: 'search_notes',
+					arguments: { query: 'x' },
+					env: { PATH: process.env.PATH ?? '' },
+					cwd: process.cwd(),
+					maxElapsedMs: 10000,
+					maxOutputBytes: 65536,
+				}, new AbortController().signal)
+			`
+			const started = Date.now()
+			try {
+				// Bounded, so a host the pipe keeps alive fails the assertion below
+				// and still reaches the cleanup, instead of timing the case out.
+				const exitCode = await new Promise<number | null>((settle) => {
+					const child = spawn(
+						process.execPath,
+						['--input-type=module', '-e', host],
+						{ stdio: 'ignore' },
+					)
+					const limit = setTimeout(() => child.kill('SIGKILL'), 8000)
+					child.once('close', (code) => {
+						clearTimeout(limit)
+						settle(code)
+					})
+				})
+				expect(exitCode).toBe(0)
+				expect(Date.now() - started).toBeLessThan(5000)
+			} finally {
+				// Guarded, so a host that failed before the launcher wrote the pid
+				// reports its own failure rather than this read's ENOENT.
+				if (existsSync(pidFile)) {
+					const pid = Number(readFileSync(pidFile, 'utf8'))
+					if (Number.isInteger(pid) && pid > 0) process.kill(pid, 'SIGKILL')
+				}
+			}
+		}, 20_000)
+
+		it('stops tracking a server once the session is over', async () => {
+			await expect(
+				nodeStdioMcpMechanism.callTool(
+					callRequest({ toolName: 'search_notes', arguments: { query: 'x' } }),
+					new AbortController().signal,
+				),
+			).resolves.toBeDefined()
+			const until = Date.now() + 2000
+			while (trackedProcessCount() > 0 && Date.now() < until) {
+				await new Promise((settle) => setTimeout(settle, 25))
+			}
+			expect(trackedProcessCount()).toBe(0)
+		})
+	},
+)

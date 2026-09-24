@@ -105,13 +105,13 @@ export const CommandTargetAuthorization = z.strictObject({
 		.int()
 		.min(1)
 		.describe(
-			'Wall-clock budget for one invocation. Exceeding it kills the process and throws budget-exhausted, the same fault an HTTP cap throws.',
+			'Wall-clock budget for one invocation. Exceeding it kills the process and every process in its process group (the process alone on Windows) and throws budget-exhausted, the same fault an HTTP cap throws.',
 		),
 	maxOutputBytes: z
 		.int()
 		.min(1)
 		.describe(
-			'Applies independently to stdout, to stderr, and to each artifact file read back. The first channel to cross it kills the process (for stdout/stderr, mid-run) or fails the read (for an artifact, after exit) with budget-exhausted.',
+			'Applies independently to stdout, to stderr, and to each artifact file read back. The first channel to cross it kills the process and every process in its process group, or the process alone on Windows (for stdout/stderr, mid-run) or fails the read (for an artifact, after exit) with budget-exhausted.',
 		),
 })
 
