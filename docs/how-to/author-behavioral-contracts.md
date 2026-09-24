@@ -678,7 +678,7 @@ node dist/cli/main.js score \
 
 **Exit `2`, and that is the right answer.**
 The exit code is the verdict: `0` is PASS, WAIVED, or CONCERNS, `2` is FAIL, `1` is a CONCERNS that `--strict` promoted, and `3` is the Invalid rung, on which the command writes no artifact because no legal evidence artifact carries a null verdict.
-Every other rung records its reasons in the artifact's `verdictBasis`, so on the Invalid rung the command writes them to stderr instead, one `eval-quality: invalid: <reason>` line per condition that fired.
+Every other rung records its reasons in the artifact's `verdictBasis`, so on the Invalid rung the command writes them to stderr instead, one `eval-quality: invalid: <reason>` line per reason in the Invalid basis.
 Leave out `--isolation-manifest` and the same run shows it:
 
 <!-- expect-exit: 3 -->

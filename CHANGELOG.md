@@ -14,7 +14,7 @@ body.
 
 - **`score` names the reason for an Invalid run on stderr.**
   On AD-21's Invalid rung the command exits `3` and writes no artifact, so the ladder's basis had nowhere to go and an omitted `--isolation-manifest` exited `3` with empty stdout and empty stderr.
-  The command now writes one `eval-quality: invalid: <reason>` line per condition that fired, after any qualification-failure lines, for example `eval-quality: invalid: isolation manifest violation: isolation manifest absent`.
+  The command now writes one `eval-quality: invalid: <reason>` line per reason in the Invalid basis, after any qualification-failure lines, for example `eval-quality: invalid: isolation manifest violation: isolation manifest absent`.
   Every other rung is unchanged: its basis travels in the artifact's `verdictBasis` and stderr stays as it was.
 
 ## [4.1.2] - 2026-09-24
