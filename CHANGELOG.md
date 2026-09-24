@@ -10,6 +10,8 @@ body.
 
 ## [Unreleased]
 
+## [4.1.1] - 2026-09-24
+
 ### Fixed
 
 - **`createCommandLineAdapter` kills everything its target started when a cap or an abort ends
