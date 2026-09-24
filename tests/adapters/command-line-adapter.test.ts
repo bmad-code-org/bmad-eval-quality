@@ -1156,7 +1156,10 @@ describe.skipIf(process.platform === 'win32')(
 
 		// The target leads its own group, as it did before the watchdog, so a
 		// target that signals its group reaches itself and what it started, and
-		// nothing between it and the host.
+		// nothing between it and the host. The second case names the group by the
+		// shell's own pid, which reaches it only if the shell leads the group.
+		// `kill -TERM -$$` is the spelling every /bin/sh accepts: dash, Linux's
+		// /bin/sh, refuses `--` as "Illegal number".
 		it('observes a target that signals its own process group as that signal ended it', async () => {
 			await expect(
 				runDirect({ target: '/bin/sh', argv: ['-c', 'kill -TERM 0; sleep 5'] }),
@@ -1164,7 +1167,7 @@ describe.skipIf(process.platform === 'win32')(
 			await expect(
 				runDirect({
 					target: '/bin/sh',
-					argv: ['-c', 'sleep 5 & kill -TERM -- -$$; sleep 5'],
+					argv: ['-c', 'sleep 5 & kill -TERM -$$ || exit 3; sleep 5'],
 					maxElapsedMs: 3000,
 				}),
 			).resolves.toMatchObject({ exitCode: -15 })
