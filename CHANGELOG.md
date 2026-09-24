@@ -10,6 +10,8 @@ body.
 
 ## [Unreleased]
 
+## [4.1.0] - 2026-09-24
+
 ### Added
 
 - **`parseCommandTargetPolicy` and `parseMcpTargetPolicy` validate a target-policy mapping at
