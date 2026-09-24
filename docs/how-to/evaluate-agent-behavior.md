@@ -602,6 +602,7 @@ Proven, and re-runnable by you.
 The `cli` interface kind compiles, and `corpus/dev/contracts/` ships three contracts describing a system behind a command.
 Pre-flight plans and reduces command legs, including sensitivity witnesses, manifestation witnesses, and the fixture reset.
 `createCommandLineAdapter` runs a real child process with `shell: false`, an enforced elapsed cap, an output cap per stream and per artifact, and an artifact map read back tagged.
+A cap or an abort kills the process group the child leads, so a model CLI that an agent runner started goes with it; on Windows only the direct child is killed.
 The chain above is committed and regenerated on every build, and the whole route has also been run end to end against a real agent CLI, with the numbers below.
 
 Not proven, and worth knowing before you plan a corpus.

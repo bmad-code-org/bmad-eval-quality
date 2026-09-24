@@ -54,7 +54,7 @@
  *    policy denial, a cap, an abort, or a failure to establish the session
  *    throws.
  */
-import { type ChildProcess, spawn } from 'node:child_process'
+import { spawn } from 'node:child_process'
 import { StringDecoder } from 'node:string_decoder'
 import { RuntimeFault } from '../core/schemas/faults.ts'
 import type {
@@ -69,6 +69,11 @@ import type { EnvironmentProbePort } from '../ports/environment-probe-port.ts'
 import { probeParsers } from '../ports/environment-probe-port.ts'
 import { evaluateMcpTarget } from './mcp-target-policy.ts'
 import { runPortMethod } from './port-boundary.ts'
+import {
+	killProcessGroup,
+	SPAWN_DETACHED,
+	trackProcessGroup,
+} from './process-group.ts'
 
 /** The protocol revision this client announces. A server free to answer with a different one has still opened the session; a server that answers with a JSON-RPC error has refused it, and rule 4 says what happens then. */
 const PROTOCOL_VERSION = '2025-06-18'
@@ -138,24 +143,6 @@ type StdioSession = {
 }
 
 /**
- * A detached child leads its own process group, so the negative pid reaches
- * every process it started. Windows has no process groups and throws here, so
- * the direct child is the fallback.
- */
-function killProcessGroup(child: ChildProcess): void {
-	const { pid } = child
-	if (pid === undefined) {
-		child.kill('SIGKILL')
-		return
-	}
-	try {
-		process.kill(-pid, 'SIGKILL')
-	} catch {
-		child.kill('SIGKILL')
-	}
-}
-
-/**
  * Launches the server and frames JSON-RPC over its standard streams: one
  * message per line, which is what the stdio transport specifies.
  *
@@ -174,9 +161,10 @@ function startSession(
 		env: { ...request.env },
 		shell: false,
 		signal,
-		detached: true,
+		detached: SPAWN_DETACHED,
 		stdio: ['pipe', 'pipe', 'pipe'],
 	})
+	trackProcessGroup(child)
 
 	// Keyed by the id as text: JSON-RPC admits a string id, and a server that
 	// echoes `1` back as `"1"` is correlating correctly.

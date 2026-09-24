@@ -10,6 +10,30 @@ body.
 
 ## [Unreleased]
 
+### Fixed
+
+- **`createCommandLineAdapter` kills everything its target started when a cap or an abort ends
+  the run.** Exceeding `maxElapsedMs` or `maxOutputBytes` used to `SIGKILL` the direct child
+  alone, so a target that launches the process doing the work (an agent runner starting a model
+  CLI, `npx`, a shell wrapper) left that grandchild running, and an abort sent the direct child
+  `SIGTERM` with the same result. The target now leads its own process group and a cap or an abort
+  kills the whole group, the teardown `createMcpAdapter` already had. A target that exited while
+  another process still held its stdout open used to leave the run unsettled forever; a cap now
+  closes the adapter's end of the pipes, so the run ends with `budget-exhausted` even when that
+  process escaped the group. A target that exits on its own with its streams closed is observed as
+  it exited, and nothing it left running is touched. An abort is now handled by the adapter itself,
+  so a signal reused across probes no longer keeps one listener per failed spawn.
+- **A host that exits mid-run takes the target's process group with it.** Both adapters track
+  their in-flight targets and kill each group from the host's `exit` event, which covers
+  `process.exit()` and an uncaught exception. Running in its own group, a target no longer receives
+  a terminal's Ctrl-C, and it has no controlling terminal, so a target that opens `/dev/tty` for a
+  prompt now fails there. A host that wants Ctrl-C to stop a run handles SIGINT by aborting the
+  signal it passed in, or by exiting.
+- **On Windows both adapters spawn the target attached.** `detached` there started the target with
+  no console, so every console program it launched opened a window of its own, and Windows has no
+  process group to kill. A kill reaches the direct child only, as before, and an MCP server now
+  shares the host's console, so the host's Ctrl-C reaches it.
+
 ## [4.1.0] - 2026-09-24
 
 ### Added

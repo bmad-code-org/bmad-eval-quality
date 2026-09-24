@@ -1,4 +1,12 @@
-import { chmodSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import { spawn } from 'node:child_process'
+import { getEventListeners } from 'node:events'
+import {
+	chmodSync,
+	existsSync,
+	mkdtempSync,
+	readFileSync,
+	rmSync,
+} from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -7,6 +15,7 @@ import {
 	buildArgv,
 	type CommandMechanism,
 	createCommandLineAdapter,
+	nodeCommandMechanism,
 } from '../../src/adapters/command-line-adapter.ts'
 import type {
 	CommandProbeRequest,
@@ -627,3 +636,236 @@ describe('createCommandLineAdapter, real spawn', () => {
 		await expect(call).rejects.toMatchObject({ code: 'aborted' })
 	})
 })
+
+/**
+ * A target that starts the process doing the work, the shape of an agent
+ * runner that spawns a model CLI, of `npx`, and of a shell wrapper. The
+ * fixture records its grandchild's pid, so each case can ask whether the kill
+ * reached past the direct child. A grandchild a case expects alive is killed
+ * inside that case; one expected dead is never signalled again, since its pid
+ * may already belong to another process.
+ */
+describe.skipIf(process.platform === 'win32')(
+	'createCommandLineAdapter, process group',
+	() => {
+		let pidDir: string
+
+		beforeAll(() => {
+			pidDir = mkdtempSync(join(tmpdir(), 'command-adapter-pgroup-'))
+		})
+		afterAll(() => {
+			rmSync(pidDir, { recursive: true, force: true })
+		})
+
+		const pidFileFor = (name: string): string => join(pidDir, `${name}.pid`)
+
+		const grandchildOf = (file: string): number => {
+			const pid = Number(readFileSync(file, 'utf8'))
+			// Zero or a negative number would signal a whole process group.
+			expect(Number.isInteger(pid) && pid > 0).toBe(true)
+			return pid
+		}
+
+		const alive = (pid: number): boolean => {
+			try {
+				// Signal 0 checks for existence without delivering anything.
+				process.kill(pid, 0)
+				return true
+			} catch {
+				return false
+			}
+		}
+
+		/** A killed process is reaped asynchronously, so this polls rather than reading once. */
+		const isDeadWithin = async (
+			pid: number,
+			budgetMs: number,
+		): Promise<boolean> => {
+			const until = Date.now() + budgetMs
+			while (Date.now() < until) {
+				if (!alive(pid)) return true
+				await new Promise((settle) => setTimeout(settle, 25))
+			}
+			return !alive(pid)
+		}
+
+		const pidFileWritten = async (file: string): Promise<void> => {
+			const until = Date.now() + 10_000
+			while (!existsSync(file)) {
+				if (Date.now() > until) throw new Error(`${file} was never written`)
+				await new Promise((settle) => setTimeout(settle, 25))
+			}
+		}
+
+		const probeWith = (
+			option: CommandProbeRequest['channels']['option'],
+			overrides: Partial<CommandTargetAuthorization>,
+			signal: AbortSignal = new AbortController().signal,
+		) =>
+			createCommandLineAdapter(policyOf(authorization(overrides))).probe(
+				request({
+					channels: {
+						argument: {},
+						option,
+						environment: {},
+						stdin: { kind: 'absent' },
+					},
+				}),
+				signal,
+			)
+
+		it('kills the grandchild a target started when maxElapsedMs is exceeded', async () => {
+			const pidFile = pidFileFor('elapsed')
+			await expect(
+				probeWith(
+					{ 'spawn-grandchild': pidFile, 'sleep-ms': 10_000 },
+					{ maxElapsedMs: 2000 },
+				),
+			).rejects.toMatchObject({ code: 'budget-exhausted' })
+			expect(await isDeadWithin(grandchildOf(pidFile), 2000)).toBe(true)
+		})
+
+		it('kills the grandchild a target started when maxOutputBytes is exceeded', async () => {
+			const pidFile = pidFileFor('output')
+			await expect(
+				probeWith(
+					{
+						'spawn-grandchild': pidFile,
+						'big-output': 4096,
+						'sleep-ms': 10_000,
+					},
+					{ maxOutputBytes: 64, maxElapsedMs: 10_000 },
+				),
+			).rejects.toMatchObject({ code: 'budget-exhausted' })
+			expect(await isDeadWithin(grandchildOf(pidFile), 2000)).toBe(true)
+		})
+
+		it('kills the grandchild a target started when the caller aborts', async () => {
+			const pidFile = pidFileFor('aborted')
+			const controller = new AbortController()
+			const call = probeWith(
+				{ 'spawn-grandchild': pidFile, 'sleep-ms': 10_000 },
+				{ maxElapsedMs: 10_000 },
+				controller.signal,
+			)
+			await pidFileWritten(pidFile)
+			controller.abort()
+			await expect(call).rejects.toMatchObject({ code: 'aborted' })
+			expect(await isDeadWithin(grandchildOf(pidFile), 2000)).toBe(true)
+		})
+
+		// The target exits on its own, but the grandchild inherited its stdout,
+		// so the pipe stays open and `close` never fires. Killing the direct
+		// child alone reaches nothing, since it has already exited, and the run
+		// never settles; the group kill ends it at the elapsed cap.
+		it('ends a run whose exited target left a grandchild holding stdout open', async () => {
+			const pidFile = pidFileFor('holding')
+			await expect(
+				probeWith(
+					{ 'spawn-grandchild-holding-stdout': pidFile },
+					{ maxElapsedMs: 500 },
+				),
+			).rejects.toMatchObject({ code: 'budget-exhausted' })
+			expect(await isDeadWithin(grandchildOf(pidFile), 2000)).toBe(true)
+		})
+
+		// A grandchild in a session of its own is out of reach of the group
+		// kill. The run still ends at the cap, since this end of the pipes is
+		// closed rather than waited on.
+		it('ends a run at the cap when the process holding stdout escaped the group', async () => {
+			const pidFile = pidFileFor('escaped')
+			const started = Date.now()
+			try {
+				await expect(
+					probeWith(
+						{ 'spawn-escaped-grandchild-holding-stdout': pidFile },
+						{ maxElapsedMs: 500 },
+					),
+				).rejects.toMatchObject({ code: 'budget-exhausted' })
+				expect(Date.now() - started).toBeLessThan(5000)
+			} finally {
+				process.kill(grandchildOf(pidFile), 'SIGKILL')
+			}
+		})
+
+		// Spawn's own `signal` option removes its listener only on 'exit', which
+		// a failed spawn never emits, so a signal reused across probes collected
+		// one listener per failure.
+		it('leaves no listener on a reused signal after a failed spawn', async () => {
+			const controller = new AbortController()
+			for (let attempt = 0; attempt < 3; attempt++) {
+				await expect(
+					nodeCommandMechanism.run(
+						{
+							target: join(pidDir, 'no-such-executable'),
+							subcommandPath: [],
+							argv: [],
+							env: {},
+							stdin: { kind: 'absent' },
+							cwd: tmpdir(),
+							maxElapsedMs: 5000,
+							maxOutputBytes: 4096,
+						},
+						controller.signal,
+					),
+				).rejects.toMatchObject({ code: 'ENOENT' })
+			}
+			expect(getEventListeners(controller.signal, 'abort')).toHaveLength(0)
+		})
+
+		// The target no longer shares the host's process group, so a host that
+		// exits mid-run has to take the run's group down itself.
+		it('kills the group of an in-flight run when the host process exits', async () => {
+			const pidFile = pidFileFor('host-exit')
+			const adapterPath = fileURLToPath(
+				new URL('../../src/adapters/command-line-adapter.ts', import.meta.url),
+			)
+			const host = `
+				import { nodeCommandMechanism } from ${JSON.stringify(adapterPath)}
+				import { existsSync } from 'node:fs'
+				nodeCommandMechanism.run({
+					target: ${JSON.stringify(FIXTURE_PATH)},
+					subcommandPath: [],
+					argv: ['--spawn-grandchild', ${JSON.stringify(pidFile)}, '--sleep-ms', '10000'],
+					env: { PATH: process.env.PATH ?? '' },
+					stdin: { kind: 'absent' },
+					cwd: ${JSON.stringify(tmpdir())},
+					maxElapsedMs: 20000,
+					maxOutputBytes: 4096,
+				}, new AbortController().signal).catch(() => {})
+				const poll = setInterval(() => {
+					if (existsSync(${JSON.stringify(pidFile)})) process.exit(0)
+				}, 25)
+			`
+			const exitCode = await new Promise<number | null>((settle) => {
+				const child = spawn(
+					process.execPath,
+					['--input-type=module', '-e', host],
+					{ stdio: 'ignore' },
+				)
+				child.once('close', settle)
+			})
+			expect(exitCode).toBe(0)
+			expect(await isDeadWithin(grandchildOf(pidFile), 2000)).toBe(true)
+		})
+
+		// A normal exit is observed exactly as before: the group is killed only
+		// by a cap or an abort, so a process the target deliberately left behind
+		// keeps running.
+		it('observes a normal exit and leaves what the target started alone', async () => {
+			const pidFile = pidFileFor('normal')
+			const observation = await probeWith(
+				{ 'spawn-grandchild': pidFile, 'exit-code': 2 },
+				{ maxElapsedMs: 5000 },
+			)
+			expect(observation).toMatchObject({ kind: 'cli', exitCode: 2 })
+			const grandchild = grandchildOf(pidFile)
+			try {
+				await new Promise((settle) => setTimeout(settle, 200))
+				expect(alive(grandchild)).toBe(true)
+			} finally {
+				process.kill(grandchild, 'SIGKILL')
+			}
+		})
+	},
+)

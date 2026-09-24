@@ -27,7 +27,17 @@
  *    borrowed from `AbortSignal`: exceeding either kills the process with
  *    `SIGKILL` and throws `budget-exhausted`, exactly as an HTTP cap does.
  *    `maxOutputBytes` applies independently to stdout, to stderr, and to
- *    each artifact file read back after exit.
+ *    each artifact file read back after exit. The target is spawned as the
+ *    leader of its own process group, and a cap or an abort kills that whole
+ *    group and closes this end of stdout and stderr: an agent runner that
+ *    starts a model CLI, `npx`, and a shell wrapper all leave the process
+ *    doing the work one level down, and killing the direct child alone would
+ *    leave it running. A leftover process holding the inherited stdout open
+ *    keeps `close` from firing after the target exits, so the elapsed cap is
+ *    what ends such a run. A target that exits on its own with its streams
+ *    closed is observed as it exited, and nothing it left running is
+ *    touched. `process-group.ts` holds the mechanics, what detaching costs
+ *    (no controlling terminal, no host Ctrl-C), and the Windows fallback.
  * 4. A non-zero exit is an observation, never a fault, matching AD-10's rule
  *    for an HTTP status. Only a policy denial, a cap, an abort, or a failure
  *    to start the process throws. `exitCode` is negative when a signal
@@ -50,6 +60,11 @@ import type { EnvironmentProbePort } from '../ports/environment-probe-port.ts'
 import { probeParsers } from '../ports/environment-probe-port.ts'
 import { evaluateCommandTarget } from './command-target-policy.ts'
 import { runPortMethod } from './port-boundary.ts'
+import {
+	killProcessGroup,
+	SPAWN_DETACHED,
+	trackProcessGroup,
+} from './process-group.ts'
 
 /** One process run, already reduced to what an observation needs. No truncation flag: exceeding `maxOutputBytes` rejects with `budget-exhausted` rather than resolving with a partial stream, so a resolved run's output is always the whole thing. */
 export type CommandRunResult = {
@@ -247,9 +262,10 @@ async function runChildProcess(
 				cwd: request.cwd,
 				env: request.env,
 				shell: false,
-				signal,
+				detached: SPAWN_DETACHED,
 			},
 		)
+		trackProcessGroup(child)
 
 		let stdout = ''
 		let stderr = ''
@@ -261,13 +277,40 @@ async function runChildProcess(
 			if (settled) return
 			settled = true
 			clearTimeout(timer)
+			signal.removeEventListener('abort', onAbort)
 			action()
+		}
+
+		// A process outside the group can hold the inherited stdout or stderr
+		// open (one that called `setsid`, or any grandchild on Windows), and
+		// `close` waits for both streams. Destroying this end lets `close` fire
+		// once the direct child has exited, whoever holds the other end.
+		const stop = () => {
+			killProcessGroup(child)
+			child.stdout?.destroy()
+			child.stderr?.destroy()
 		}
 
 		const timer = setTimeout(() => {
 			timedOut = true
-			child.kill('SIGKILL')
+			stop()
 		}, request.maxElapsedMs)
+
+		// Handled here rather than through spawn's own `signal` option, which
+		// sends the direct child alone `SIGTERM` and keeps its listener on the
+		// caller's signal after a failed spawn, since it removes it on 'exit'.
+		const onAbort = () => {
+			stop()
+			finish(() =>
+				rejectPromise(
+					new DOMException('The operation was aborted', 'AbortError'),
+				),
+			)
+		}
+		// Every listener below still attaches after an abort that came first,
+		// so a failed spawn's 'error' always has a handler.
+		if (signal.aborted) onAbort()
+		else signal.addEventListener('abort', onAbort, { once: true })
 
 		const capture = (
 			chunk: Buffer,
@@ -278,7 +321,7 @@ async function runChildProcess(
 			append(chunk.toString('utf8'))
 			if (currentLength() > request.maxOutputBytes) {
 				overCap = true
-				child.kill('SIGKILL')
+				stop()
 			}
 		}
 
