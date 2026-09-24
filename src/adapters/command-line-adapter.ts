@@ -61,6 +61,7 @@ import { probeParsers } from '../ports/environment-probe-port.ts'
 import { evaluateCommandTarget } from './command-target-policy.ts'
 import { runPortMethod } from './port-boundary.ts'
 import {
+	abortErrorFor,
 	killProcessGroup,
 	SPAWN_DETACHED,
 	trackProcessGroup,
@@ -301,11 +302,7 @@ async function runChildProcess(
 		// caller's signal after a failed spawn, since it removes it on 'exit'.
 		const onAbort = () => {
 			stop()
-			finish(() =>
-				rejectPromise(
-					new DOMException('The operation was aborted', 'AbortError'),
-				),
-			)
+			finish(() => rejectPromise(abortErrorFor(signal)))
 		}
 		// Every listener below still attaches after an abort that came first,
 		// so a failed spawn's 'error' always has a handler.

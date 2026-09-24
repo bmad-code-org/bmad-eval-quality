@@ -40,9 +40,13 @@ const liveChildren = new Set<ChildProcess>()
 let exitHookInstalled = false
 
 /**
- * Kills a tracked child's group if the host exits while it is still running.
- * Only an in-flight run is covered: a target that exited on its own is
- * dropped at `close`, and whatever it left running is untouched.
+ * Kills a tracked child's group if the host exits while its run is in flight.
+ * The child is dropped at `close`, which also fires for a child that never
+ * started. Dropping it at 'exit' would miss the case this module exists for:
+ * a launcher that exited while the process it started, still in the group,
+ * holds stdout open. Every teardown in both adapters destroys this end of the
+ * pipes, so `close` follows a kill promptly and nothing stays tracked past its
+ * run. Whatever a target left running after its run settled is untouched.
  */
 export function trackProcessGroup(child: ChildProcess): void {
 	liveChildren.add(child)
@@ -52,6 +56,33 @@ export function trackProcessGroup(child: ChildProcess): void {
 	process.once('exit', () => {
 		for (const live of liveChildren) killProcessGroup(live)
 	})
+}
+
+/** How many children are still tracked, for tests that check a child leaves the set. */
+export function trackedProcessCount(): number {
+	return liveChildren.size
+}
+
+/**
+ * The rejection spawn's own `signal` option produced, which both adapters
+ * handled through before they took abort over themselves: `AbortError` by
+ * name, `ABORT_ERR` by code, the signal's reason as its `cause`.
+ * `nodeCommandMechanism` and `nodeStdioMcpMechanism` are exported, so their
+ * callers see this shape.
+ */
+export function abortErrorFor(signal: AbortSignal): Error {
+	return new AbortError('The operation was aborted', { cause: signal.reason })
+}
+
+/** Node's own `AbortError` is internal, so this matches it: constructor name, `code`, then `name`. */
+class AbortError extends Error {
+	readonly code: string
+
+	constructor(message: string, options: ErrorOptions) {
+		super(message, options)
+		this.code = 'ABORT_ERR'
+		this.name = 'AbortError'
+	}
 }
 
 /**

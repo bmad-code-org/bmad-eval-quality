@@ -849,6 +849,98 @@ describe.skipIf(process.platform === 'win32')(
 			expect(await isDeadWithin(grandchildOf(pidFile), 2000)).toBe(true)
 		})
 
+		const runRequest = (argv: string[]) => ({
+			target: FIXTURE_PATH,
+			subcommandPath: [],
+			argv,
+			env: { PATH: process.env.PATH ?? '' },
+			stdin: { kind: 'absent' as const },
+			cwd: tmpdir(),
+			maxElapsedMs: 10_000,
+			maxOutputBytes: 4096,
+		})
+
+		const rejectionOf = async (
+			pending: Promise<unknown>,
+		): Promise<Error & { code?: unknown }> => {
+			const error = await pending.then(
+				() => undefined,
+				(thrown: unknown) => thrown,
+			)
+			expect(error).toBeInstanceOf(Error)
+			return error as Error & { code?: unknown }
+		}
+
+		// `nodeCommandMechanism` is exported, so the rejection spawn's own
+		// `signal` option produced is part of its contract.
+		it('rejects with the AbortError shape spawn produced, mid-run', async () => {
+			const pidFile = pidFileFor('abort-shape')
+			const controller = new AbortController()
+			const reason = new Error('caller gave up')
+			const pending = nodeCommandMechanism.run(
+				runRequest(['--spawn-grandchild', pidFile, '--sleep-ms', '10000']),
+				controller.signal,
+			)
+			await pidFileWritten(pidFile)
+			controller.abort(reason)
+			const error = await rejectionOf(pending)
+			expect(error.name).toBe('AbortError')
+			expect(error.constructor.name).toBe('AbortError')
+			expect(error.code).toBe('ABORT_ERR')
+			expect(error.cause).toBe(reason)
+			expect(await isDeadWithin(grandchildOf(pidFile), 2000)).toBe(true)
+		})
+
+		it('rejects with the AbortError shape spawn produced, pre-aborted', async () => {
+			const controller = new AbortController()
+			const reason = new Error('aborted before the call')
+			controller.abort(reason)
+			const error = await rejectionOf(
+				nodeCommandMechanism.run(runRequest([]), controller.signal),
+			)
+			expect(error.name).toBe('AbortError')
+			expect(error.constructor.name).toBe('AbortError')
+			expect(error.code).toBe('ABORT_ERR')
+			expect(error.cause).toBe(reason)
+		})
+
+		// The launcher shape again, down the host-exit path: the target has
+		// exited, the grandchild it started still holds stdout in its group, and
+		// the run is still in flight when the host exits.
+		it('kills the group of a run whose target exited when the host process exits', async () => {
+			const pidFile = pidFileFor('host-exit-holding')
+			const adapterPath = fileURLToPath(
+				new URL('../../src/adapters/command-line-adapter.ts', import.meta.url),
+			)
+			const host = `
+				import { nodeCommandMechanism } from ${JSON.stringify(adapterPath)}
+				import { existsSync } from 'node:fs'
+				nodeCommandMechanism.run({
+					target: ${JSON.stringify(FIXTURE_PATH)},
+					subcommandPath: [],
+					argv: ['--spawn-grandchild-holding-stdout', ${JSON.stringify(pidFile)}],
+					env: { PATH: process.env.PATH ?? '' },
+					stdin: { kind: 'absent' },
+					cwd: ${JSON.stringify(tmpdir())},
+					maxElapsedMs: 20000,
+					maxOutputBytes: 4096,
+				}, new AbortController().signal).catch(() => {})
+				const poll = setInterval(() => {
+					if (existsSync(${JSON.stringify(pidFile)})) setTimeout(() => process.exit(0), 500)
+				}, 25)
+			`
+			const exitCode = await new Promise<number | null>((settle) => {
+				const child = spawn(
+					process.execPath,
+					['--input-type=module', '-e', host],
+					{ stdio: 'ignore' },
+				)
+				child.once('close', settle)
+			})
+			expect(exitCode).toBe(0)
+			expect(await isDeadWithin(grandchildOf(pidFile), 2000)).toBe(true)
+		})
+
 		// A normal exit is observed exactly as before: the group is killed only
 		// by a cap or an abort, so a process the target deliberately left behind
 		// keeps running.

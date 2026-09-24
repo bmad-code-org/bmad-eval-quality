@@ -70,6 +70,7 @@ import { probeParsers } from '../ports/environment-probe-port.ts'
 import { evaluateMcpTarget } from './mcp-target-policy.ts'
 import { runPortMethod } from './port-boundary.ts'
 import {
+	abortErrorFor,
 	killProcessGroup,
 	SPAWN_DETACHED,
 	trackProcessGroup,
@@ -160,7 +161,6 @@ function startSession(
 		cwd: request.cwd,
 		env: { ...request.env },
 		shell: false,
-		signal,
 		detached: SPAWN_DETACHED,
 		stdio: ['pipe', 'pipe', 'pipe'],
 	})
@@ -185,6 +185,13 @@ function startSession(
 		broken = true
 		rejectFailure(error)
 	}
+
+	// Handled here rather than through spawn's own `signal` option, which
+	// sends the direct child alone `SIGTERM` and keeps its listener on the
+	// caller's signal after a failed spawn. `close()` kills the group.
+	const onAbort = (): void => fail(abortErrorFor(signal))
+	if (signal.aborted) onAbort()
+	else signal.addEventListener('abort', onAbort, { once: true })
 
 	const timer = setTimeout(() => {
 		fail(
@@ -308,10 +315,16 @@ function startSession(
 			// arriving after teardown cannot reject a settled session.
 			broken = true
 			clearTimeout(timer)
+			signal.removeEventListener('abort', onAbort)
 			// The stdio transport's own teardown order: close the server's input
 			// stream first, since a well-behaved server exits when it ends.
 			child.stdin?.end()
 			killProcessGroup(child)
+			// A process outside the group, one that called `setsid`, can hold the
+			// server's stdout or stderr open, and an open pipe keeps the host's
+			// event loop alive; destroying this end releases it.
+			child.stdout?.destroy()
+			child.stderr?.destroy()
 		},
 	}
 }

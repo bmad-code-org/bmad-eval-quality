@@ -16,13 +16,17 @@ body.
   the run.** Exceeding `maxElapsedMs` or `maxOutputBytes` used to `SIGKILL` the direct child
   alone, so a target that launches the process doing the work (an agent runner starting a model
   CLI, `npx`, a shell wrapper) left that grandchild running, and an abort sent the direct child
-  `SIGTERM` with the same result. The target now leads its own process group and a cap or an abort
-  kills the whole group, the teardown `createMcpAdapter` already had. A target that exited while
-  another process still held its stdout open used to leave the run unsettled forever; a cap now
+  `SIGTERM` with the same result. The target now leads its own process group, and a cap or an
+  abort sends `SIGKILL` to the whole group, the teardown `createMcpAdapter` already had; a target's
+  own `SIGTERM` cleanup no longer runs on abort. A target that exited while another process still
+  held its stdout open used to leave the run unsettled until that process exited; a cap now
   closes the adapter's end of the pipes, so the run ends with `budget-exhausted` even when that
-  process escaped the group. A target that exits on its own with its streams closed is observed as
-  it exited, and nothing it left running is touched. An abort is now handled by the adapter itself,
-  so a signal reused across probes no longer keeps one listener per failed spawn.
+  process escaped the group, and an abort in that window now rejects where it used to be ignored.
+  A target that exits on its own with its streams closed is observed as it exited, and nothing it
+  left running is touched. Both adapters now handle an abort themselves, with the same
+  `AbortError` rejection spawn produced, so a signal reused across probes no longer keeps one
+  listener per failed spawn. `createMcpAdapter` also closes its end of the server's pipes at
+  teardown, so a server that escaped the group no longer keeps the host alive.
 - **A host that exits mid-run takes the target's process group with it.** Both adapters track
   their in-flight targets and kill each group from the host's `exit` event, which covers
   `process.exit()` and an uncaught exception. Running in its own group, a target no longer receives
