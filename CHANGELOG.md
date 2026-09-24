@@ -10,6 +10,8 @@ body.
 
 ## [Unreleased]
 
+## [4.1.2] - 2026-09-24
+
 ### Fixed
 
 - **A host killed with `SIGKILL` takes the target's process group with it.** 4.1.1 started the
