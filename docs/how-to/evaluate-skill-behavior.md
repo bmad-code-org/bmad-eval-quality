@@ -506,6 +506,7 @@ The gate executes inside `score`, and `runScore` returns its `QualificationResul
 `declarationChecksRan` on that result reports whether the three declaration-dependent checks ran, since they read the home operation's declared shapes and are skipped when the caller qualifies against no inventory.
 
 A rejected probe resolves an oracle to `infrastructure-error` wherever no higher-precedence condition already resolved that oracle, and that state lands the run on the Invalid rung: exit `3`, no artifact written, and the reasons on stderr.
+Stderr carries the qualification lines first and then the Invalid basis as `eval-quality: invalid: <reason>`, including one `oracle <id> resolved infrastructure-error` reason per oracle the rejection resolved.
 
 ## Where this stands
 

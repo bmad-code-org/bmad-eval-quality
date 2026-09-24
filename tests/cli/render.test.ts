@@ -8,6 +8,7 @@ import {
 	renderArtifact,
 	renderDiagnostic,
 	renderError,
+	renderInvalidBasis,
 	renderQualificationFailure,
 	renderUsage,
 } from '../../src/cli/render.ts'
@@ -192,6 +193,18 @@ describe('renderQualificationFailure', () => {
 		}
 		expect(renderQualificationFailure(failure)).toBe(
 			'eval-quality: signature-absent: Probe[probeId=P-001].defectSignature: a defect probe declaring no signature is unscoreable',
+		)
+	})
+})
+
+describe('renderInvalidBasis', () => {
+	it('renders eval-quality: invalid: <reason>, the shape renderUsage uses', () => {
+		expect(
+			renderInvalidBasis(
+				'isolation manifest violation: isolation manifest absent',
+			),
+		).toBe(
+			'eval-quality: invalid: isolation manifest violation: isolation manifest absent',
 		)
 	})
 })

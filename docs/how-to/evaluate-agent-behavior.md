@@ -594,6 +594,7 @@ Every pointer in a signature is rooted at the reserved step identifier `observed
 The selector's keys are checked against the home operation's declared request shape, and a key the operation declares nowhere is `condition-selector-key-undeclared`, because a typo there matches no observation and turns into a silently passing run.
 
 A probe rejected by the qualification gate lands the run on the Invalid rung, exit `3`, and the command writes one line per reason to stderr as `eval-quality: <code>: <artifactPath>: <detail>`.
+The Invalid basis follows those lines as `eval-quality: invalid: <reason>`, including one `oracle <id> resolved infrastructure-error` reason per oracle the rejection resolved.
 `QUALIFICATION_FAILURES` publishes the closed set of codes those lines draw from, so a rejection is something you can branch on.
 
 ## Where this stands

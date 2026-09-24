@@ -24,6 +24,7 @@ import {
 	renderArtifact,
 	renderDiagnostic,
 	renderError,
+	renderInvalidBasis,
 	renderQualificationFailure,
 	renderUsage,
 } from './render.ts'
@@ -549,6 +550,14 @@ async function runScoreCommand(
 	// no oracles above all: the reasons are the same either way.
 	for (const failure of result.qualification.failures) {
 		environment.writeDiagnostic(renderQualificationFailure(failure))
+	}
+	// Every other rung's basis travels in the artifact's `verdictBasis`. The
+	// Invalid rung mints no artifact, so stderr is the only place its basis
+	// can reach the caller.
+	if (result.ladder.verdict === null) {
+		for (const reason of result.ladder.basis) {
+			environment.writeDiagnostic(renderInvalidBasis(reason))
+		}
 	}
 	if (result.artifact !== null) {
 		await emitArtifact(environment, result.artifact, 'score', target)

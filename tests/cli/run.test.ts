@@ -1114,6 +1114,9 @@ describe('run: the score command (Story 8.4)', () => {
 		)
 		expect(environment.writes).toEqual([])
 		expect(environment.out).toEqual([])
+		expect(environment.diagnostics).toEqual([
+			'eval-quality: invalid: pre-flight verdict did not pass',
+		])
 		expect(outcome).toEqual({
 			kind: 'verdict',
 			verdict: null,
@@ -1121,6 +1124,36 @@ describe('run: the score command (Story 8.4)', () => {
 			strictPromotable: true,
 		})
 		expect(exit).toBe(EXIT_INVALID)
+	})
+
+	it('omitting --isolation-manifest alone writes its Invalid basis to the diagnostic stream and no artifact', async () => {
+		const environment = environmentOf(scoreFiles(), '', [], SCORE_CORPUS_FILES)
+		const { outcome, exit } = await invoke(
+			[
+				...SCORE_ARGV.filter(
+					(token) =>
+						token !== '--isolation-manifest' &&
+						token !== 'isolation-manifest.json',
+				),
+				'--out',
+				'run-42',
+			],
+			environment,
+		)
+		expect(exit).toBe(EXIT_INVALID)
+		expect(outcome).toEqual({
+			kind: 'verdict',
+			verdict: null,
+			exitCode: EXIT_INVALID,
+			strictPromotable: true,
+		})
+		// The Invalid rung mints no artifact, so without these lines a caller
+		// holding exit 3 has no reason anywhere.
+		expect(environment.diagnostics).toEqual([
+			'eval-quality: invalid: isolation manifest violation: isolation manifest absent',
+		])
+		expect(environment.writes).toEqual([])
+		expect(environment.out).toEqual([])
 	})
 
 	it('omitting --isolation-manifest and --evaluator-configuration is legal syntax that still invalidates the run', async () => {
@@ -1152,6 +1185,10 @@ describe('run: the score command (Story 8.4)', () => {
 			strictPromotable: true,
 		})
 		expect(exit).toBe(EXIT_INVALID)
+		expect(environment.diagnostics).toEqual([
+			'eval-quality: invalid: isolation manifest violation: isolation manifest absent',
+			'eval-quality: invalid: evaluator configuration absent',
+		])
 	})
 
 	it('an unqualified probe writes its reason code to the diagnostic stream and exits 3', async () => {
@@ -1169,13 +1206,18 @@ describe('run: the score command (Story 8.4)', () => {
 			exitCode: EXIT_INVALID,
 			strictPromotable: true,
 		})
-		// Without this line the run reports `infrastructure-error` on every
-		// oracle and names no reason anywhere.
-		expect(environment.diagnostics).toEqual([
-			expect.stringMatching(
-				/^eval-quality: signature-absent: Probe\[probeId=P-001\]\.defectSignature: /,
+		// Without the first line the run reports `infrastructure-error` on
+		// every oracle and names no reason anywhere. The rest is the ladder's
+		// Invalid basis, one line per oracle the rejection resolved.
+		expect(environment.diagnostics[0]).toMatch(
+			/^eval-quality: signature-absent: Probe\[probeId=P-001\]\.defectSignature: /,
+		)
+		expect(environment.diagnostics.slice(1)).toEqual(
+			scoreContractFixture.oracles.map(
+				(oracle) =>
+					`eval-quality: invalid: oracle ${oracle.id} resolved infrastructure-error`,
 			),
-		])
+		)
 		expect(environment.out).toEqual([])
 	})
 
