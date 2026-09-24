@@ -10,6 +10,8 @@ body.
 
 ## [Unreleased]
 
+## [4.1.3] - 2026-09-24
+
 ### Fixed
 
 - **`score` names the reason for an Invalid run on stderr.**
