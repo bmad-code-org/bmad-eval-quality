@@ -10,6 +10,46 @@ body.
 
 ## [Unreleased]
 
+### Fixed
+
+- **A host killed with `SIGKILL` takes the target's process group with it.** 4.1.1 started the
+  target in a new session so a cap could kill everything it started, which also took it out of the
+  host's process group: a `SIGKILL` to the host's group (a cancelled CI job, `timeout -s KILL`, a
+  harness killing the group it started) no longer reached the target, and `SIGKILL` runs no exit
+  hook, so the target ran on until its own end. Both adapters now start the target through a small
+  Node watchdog in a session of its own. The watchdog starts the target as the leader of a new
+  session and group, as 4.1.1 did, and holds one end of a socket pair whose other end only the host
+  holds. The kernel closes the host's end however the host ends, and the watchdog then sends
+  `SIGKILL` to the target's group. The watchdog is in neither group, so a target that signals its
+  own group reaches what it reached before. The target's exit code, stdout, stderr, and stdin, the
+  `budget-exhausted` and `AbortError` rejections, and a spawn failure's class, message, and
+  properties are unchanged, and a target that exits on its own still leaves whatever it started
+  running. A watchdog killed on its own takes the target's group with it, and the command-line run
+  reports the target ended by `SIGKILL`. Each run starts one more Node process; `maxElapsedMs`
+  counts from the target's own start, so that time is not charged to the target, and the watchdog
+  gets 30 seconds of its own to start the target. Windows keeps the attached spawn, and a single
+  executable application, which cannot start a Node watchdog from its own binary, keeps 4.1.1's
+  detached spawn with no lifeline, so there the host's end stops the target only through
+  `process.exit()` or an uncaught exception.
+- **A cap or an abort leaves nothing of a target that is forking at the moment of the kill.** One
+  kill to a process group can miss a child caught mid-fork: with `sh -c 'while :; do sleep 30 &
+  done'` and a 150 ms cap, 4.1.1 left children running in 6 of 10 runs. The adapters and the
+  watchdog now send the group `SIGKILL` again every 5 ms until it is gone, up to 100 times, in a
+  single executable application too.
+- **`nodeCommandMechanism` rejects with the spawn error when a spawn cannot even open its pipes.**
+  With no file descriptors left, the stdin write raised a `TypeError` over the missing stream in
+  place of the `EMFILE` error.
+- **An elapsed budget past what one timer holds no longer caps a run at once.** A `maxElapsedMs`
+  above 2147483647 overflowed `setTimeout`, which then fired after 1 ms, so a generous budget became
+  an immediate `budget-exhausted`. `parseCommandTargetPolicy` now refuses such a value, as
+  `parseMcpTargetPolicy` already did, and both adapters, which take their policy typed and never
+  parse it, clamp the timer to 2147483647 ms.
+- **`createCommandLineAdapter` keeps a multi-byte character that a chunk boundary splits.** Each
+  chunk of stdout and stderr was decoded alone, so a character split across two chunks came back as
+  U+FFFD replacement characters, and the cap counted the replacements' bytes. Each stream now has
+  one decoder, flushed when the process ends, and `maxOutputBytes` counts the bytes the process
+  wrote, so a byte that is not UTF-8 no longer counts as the three bytes of its replacement.
+
 ## [4.1.1] - 2026-09-24
 
 ### Fixed

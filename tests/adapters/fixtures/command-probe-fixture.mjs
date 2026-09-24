@@ -9,6 +9,7 @@
 //   --big-output <n>     write n bytes of 'x' to stdout (output-cap cases)
 //   --exit-code <n>      exit with code n after the rest runs
 //   --write-artifact <value>  given twice, as path then text (artifact cases)
+//   --write-pid <pidFile>  write this process's own pid to pidFile
 //   --spawn-grandchild <pidFile>  start a node process that lives 30s with
 //                        its stdio ignored, write its pid to pidFile, and
 //                        leave it running (process-group cases)
@@ -58,6 +59,10 @@ for (let index = 0; index < argv.length; index++) {
 	} else if (flag === '--big-output') {
 		const bytes = Number(argv[++index])
 		process.stdout.write('x'.repeat(bytes))
+	} else if (flag === '--write-pid') {
+		const pidFile = argv[++index]
+		writeFileSync(`${pidFile}.tmp`, String(process.pid))
+		renameSync(`${pidFile}.tmp`, pidFile)
 	} else if (flag === '--spawn-grandchild') {
 		spawnGrandchild(argv[++index], 'ignore')
 	} else if (flag === '--spawn-grandchild-holding-stdout') {

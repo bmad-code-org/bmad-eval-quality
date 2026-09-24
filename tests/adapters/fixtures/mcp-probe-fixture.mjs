@@ -16,6 +16,8 @@
 //   --refuse-initialize   answer initialize with a JSON-RPC error
 //   --empty-initialize    answer initialize with neither a result nor an error
 //   --linger              outlive stdin for 60 seconds, then exit on its own
+//   --ready-file <path>   create path when a tools/call arrives, so a test
+//                         knows the session is past every write before it
 //
 // Tools:
 //   search_notes    structured result, no error; its matches follow the query
@@ -30,6 +32,7 @@
 //   crash_tool      exits mid-call without answering
 //   unframed_tool   a complete frame with no trailing newline, then exits
 //   split_tool      one frame written in two chunks that split a character
+import { writeFileSync } from 'node:fs'
 import { createInterface } from 'node:readline'
 
 const flags = process.argv.slice(2)
@@ -179,6 +182,10 @@ createInterface({ input: process.stdin }).on('line', (line) => {
 	}
 	// A notification carries no id and wants no answer.
 	if (message.id === undefined) return
+	const readyAt = flags.indexOf('--ready-file')
+	if (readyAt !== -1 && message.method === 'tools/call') {
+		writeFileSync(flags[readyAt + 1], '')
+	}
 	if (message.method === 'initialize') {
 		if (flags.includes('--empty-initialize')) {
 			send({ jsonrpc: '2.0', id: message.id })

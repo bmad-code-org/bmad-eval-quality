@@ -54,7 +54,6 @@
  *    policy denial, a cap, an abort, or a failure to establish the session
  *    throws.
  */
-import { spawn } from 'node:child_process'
 import { StringDecoder } from 'node:string_decoder'
 import { RuntimeFault } from '../core/schemas/faults.ts'
 import type {
@@ -72,7 +71,9 @@ import { runPortMethod } from './port-boundary.ts'
 import {
 	abortErrorFor,
 	killProcessGroup,
-	SPAWN_DETACHED,
+	spawnInGroup,
+	startDeadlineMs,
+	timerDelayMs,
 	trackProcessGroup,
 } from './process-group.ts'
 
@@ -157,12 +158,11 @@ function startSession(
 	request: McpCallToolRequest,
 	signal: AbortSignal,
 ): StdioSession {
-	const child = spawn(request.target, [...request.targetArgs], {
+	const child = spawnInGroup({
+		target: request.target,
+		args: request.targetArgs,
 		cwd: request.cwd,
-		env: { ...request.env },
-		shell: false,
-		detached: SPAWN_DETACHED,
-		stdio: ['pipe', 'pipe', 'pipe'],
+		env: request.env,
 	})
 	trackProcessGroup(child)
 
@@ -193,13 +193,22 @@ function startSession(
 	if (signal.aborted) onAbort()
 	else signal.addEventListener('abort', onAbort, { once: true })
 
-	const timer = setTimeout(() => {
+	const onElapsed = () => {
 		fail(
 			capped(
 				`the session exceeded maxElapsedMs (${request.maxElapsedMs}ms) during ${phase} and was torn down`,
 			),
 		)
-	}, request.maxElapsedMs)
+	}
+	// Armed now with the watchdog's start allowance, so a server that never
+	// starts is still bounded, and armed again with the budget alone when it
+	// starts, so the watchdog's own start is not charged to it.
+	let timer = setTimeout(onElapsed, startDeadlineMs(request.maxElapsedMs))
+	child.once('spawn', () => {
+		if (closed || broken) return
+		clearTimeout(timer)
+		timer = setTimeout(onElapsed, timerDelayMs(request.maxElapsedMs))
+	})
 
 	let stdoutBytes = 0
 	let stdoutBuffer = ''

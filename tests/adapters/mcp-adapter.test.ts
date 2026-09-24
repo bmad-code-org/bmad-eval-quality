@@ -636,9 +636,12 @@ describe('the caps and the session failures, which are never conflated', () => {
 			}),
 			controller.signal,
 		)
-		setTimeout(() => {
-			controller.abort()
-		}, 200)
+		// Aborted once the server is running, however long the launch took.
+		const until = Date.now() + 10_000
+		while (!existsSync(ABORTED_PID_FILE) && Date.now() < until) {
+			await new Promise((settle) => setTimeout(settle, 25))
+		}
+		controller.abort()
 		const fault = await faultOf(() => pending)
 		expect(fault.code).toBe('aborted')
 		const grandchild = Number(readFileSync(ABORTED_PID_FILE, 'utf8'))
@@ -852,6 +855,58 @@ describe.skipIf(process.platform === 'win32')(
 				}
 			}
 		}, 20_000)
+
+		// The server runs in a session of its own, which a signal to the host's
+		// group no longer reaches, and `SIGKILL` runs no exit hook. The group
+		// leader's lifeline closes however the host ends.
+		it('takes the launcher and its server down when the host is killed with SIGKILL', async () => {
+			const pidFile = join(PID_DIR, 'host-killed.pid')
+			// Created once the server holds the hanging call, so it writes nothing
+			// after the host dies: a server killed by EPIPE on a late answer would
+			// pass this case without any lifeline.
+			const readyFile = join(PID_DIR, 'host-killed.ready')
+			const adapterPath = fileURLToPath(
+				new URL('../../src/adapters/mcp-adapter.ts', import.meta.url),
+			)
+			const host = `
+				import { nodeStdioMcpMechanism } from ${JSON.stringify(adapterPath)}
+				await nodeStdioMcpMechanism.callTool({
+					target: process.execPath,
+					targetArgs: [${JSON.stringify(LAUNCHER_PATH)}, ${JSON.stringify(pidFile)}, '--linger', '--ready-file', ${JSON.stringify(readyFile)}],
+					toolName: 'hanging_tool',
+					arguments: {},
+					env: { PATH: process.env.PATH ?? '' },
+					cwd: process.cwd(),
+					maxElapsedMs: 30000,
+					maxOutputBytes: 65536,
+				}, new AbortController().signal)
+			`
+			const child = spawn(
+				process.execPath,
+				['--input-type=module', '-e', host],
+				{ stdio: 'ignore', detached: true },
+			)
+			const closed = new Promise<void>((settle) =>
+				child.once('close', () => settle()),
+			)
+			const until = Date.now() + 10_000
+			while (!existsSync(readyFile) && Date.now() < until) {
+				await new Promise((settle) => setTimeout(settle, 25))
+			}
+			const launcher = Number(readFileSync(`${pidFile}.launcher`, 'utf8'))
+			const server = Number(readFileSync(pidFile, 'utf8'))
+			expect(launcher > 0 && server > 0).toBe(true)
+			try {
+				process.kill(child.pid as number, 'SIGKILL')
+				await closed
+				expect(await isDeadWithin(launcher, 3000)).toBe(true)
+				expect(await isDeadWithin(server, 3000)).toBe(true)
+			} finally {
+				for (const pid of [launcher, server]) {
+					if (alive(pid)) process.kill(pid, 'SIGKILL')
+				}
+			}
+		})
 
 		it('stops tracking a server once the session is over', async () => {
 			await expect(
