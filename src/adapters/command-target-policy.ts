@@ -10,10 +10,12 @@
  * imported from `src/adapters/` for the same reason — no shipped `api`
  * adapter exists to call it, which is the gap this file closes for `cli`.
  */
-import type {
-	CommandTargetAuthorization,
-	CommandTargetPolicy,
+import {
+	type CommandTargetAuthorization,
+	type CommandTargetPolicy,
+	safeParseCommandTargetPolicy,
 } from '../core/schemas/probe-policy.ts'
+import { parseTargetPolicy } from './parse-target-policy.ts'
 
 /** Why a command target was denied. Thrown as the single AD-28 `forbidden-target` fault, same as the HTTP reasons. */
 export const COMMAND_DENIAL_REASONS = [
@@ -96,3 +98,19 @@ export function evaluateCommandTarget(
 		`subcommand path [${target.subcommandPath.join(', ')}] is not among the authorized paths for interface "${target.interfaceId}" and executable "${target.executable}"`,
 	)
 }
+
+/**
+ * Validates a mapping an operator loaded from disk against the published
+ * `CommandTargetPolicy` shape before `createCommandLineAdapter` receives it.
+ * Every object is strict: an unknown key is refused, `__proto__` included, as
+ * is a PATH entry in `permittedEnvironmentKeys`.
+ *
+ * Returns Zod's own deep copy of a valid mapping. A refusal throws
+ * `RuntimeFault` with code `'schema-parse-failure'`, `artifactPath`
+ * `'CommandTargetPolicy'`, and the `ZodError` carrying every issue as its `cause`;
+ * the message lists each issue as its RFC 6901 pointer and message. Input
+ * whose own accessors or proxy traps throw is refused with the same code and
+ * path, carrying the thrown value as its `cause`. No other error escapes.
+ */
+export const parseCommandTargetPolicy = (value: unknown): CommandTargetPolicy =>
+	parseTargetPolicy('CommandTargetPolicy', safeParseCommandTargetPolicy, value)

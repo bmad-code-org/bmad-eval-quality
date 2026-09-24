@@ -12,9 +12,11 @@
 // main carries no ruleset and no branch protection. `[skip ci]` keeps the push from starting
 // push-triggered workflows on a commit the release run already owns.
 //
-// Every check runs in preflight, before the first write, so a refused check leaves the tree exactly
-// as found. Past preflight, a failure in the stamping steps leaves the bumped manifest behind and a
-// rejected push leaves the local commit behind, both with origin untouched.
+// Every check that reads the tree as it stands runs in preflight, before the first write, so a
+// refused check leaves the tree exactly as found. The doc-claims gate, which reads the version, runs on the
+// bumped tree before the commit (`checkBumpedTree`). Past preflight, a failure in the stamping steps leaves
+// the bumped manifest behind and a rejected push leaves the local commit behind, both with origin
+// untouched.
 //
 // Usage:
 //   npm run release:prepare -- patch|minor|major [--no-pr]
@@ -210,6 +212,50 @@ function generateBarrelVersion() {
 	}
 }
 
+const GATES_CLI = fileURLToPath(new URL('./gates-cli.ts', import.meta.url))
+
+// The files the bump and the two stamps write, and the release commit carries.
+const STAMPED = ['package.json', 'package-lock.json', 'CHANGELOG.md', BARREL]
+
+/**
+ * The one gate whose answer depends on the manifest version and can change with the bump. publish.yml
+ * runs no test and the release commit pushes with `[skip ci]`, so without this a bump that falsifies
+ * a claim lands on main red with nothing having looked. `doc-claims` runs predicates that read the
+ * version, such as the pin the tool-use guide holds to the published major, which every major bump
+ * moves. `check-version` also reads the version, and cannot refuse here: `generateBarrelVersion`
+ * has just written the barrel from the manifest.
+ */
+const DOC_CLAIMS = [GATES_CLI, 'doc-claims']
+
+/**
+ * Runs after the stamps and before the commit. On main a refusal restores the stamped files, so the
+ * tree is left as found and nothing is committed or pushed. On the laptop path the bumped tree is
+ * moved onto the release branch uncommitted: the repair for a moved pin (re-running what the pin
+ * records) has to land in the release commit itself, because main cannot carry a pin to a version
+ * it does not declare yet.
+ */
+function checkBumpedTree({ onMain }, tag, releaseBranch) {
+	const result = spawnSync(process.execPath, DOC_CLAIMS, { stdio: 'inherit' })
+	if (result.status === 0) return
+	const which = `doc-claims refused the tree bumped to ${tag} above`
+	if (onMain) {
+		git('checkout', '--', ...STAMPED)
+		fail(
+			[
+				`${which}; the stamped files are restored, and nothing was committed or pushed.`,
+				'Cut this release through the pull-request path (CONTRIBUTING.md, Releasing): `npm run release:prepare` leaves the bumped tree on the release branch, where the repair lands in the release commit.',
+			].join('\n'),
+		)
+	}
+	git('checkout', '-b', releaseBranch)
+	fail(
+		[
+			`${which}. The bumped tree is on ${releaseBranch}, uncommitted, and nothing was pushed.`,
+			`Repair what the gate names, run \`npm run validate\`, commit everything as \`chore: release ${tag}\`, push the branch, and open the pull request against main.`,
+		].join('\n'),
+	)
+}
+
 function pushMain(tag) {
 	try {
 		run('git', ['push', 'origin', 'main'])
@@ -234,9 +280,10 @@ function main() {
 	run('npm', ['version', version, '--no-git-tag-version'])
 	generateBarrelVersion()
 	run(process.execPath, [STAMP_CHANGELOG])
+	checkBumpedTree(args, tag, releaseBranch)
 
 	if (!args.onMain) git('checkout', '-b', releaseBranch)
-	git('add', 'package.json', 'package-lock.json', 'CHANGELOG.md', BARREL)
+	git('add', ...STAMPED)
 	const subject = args.onMain
 		? `chore: release ${tag} [skip ci]`
 		: `chore: release ${tag}`

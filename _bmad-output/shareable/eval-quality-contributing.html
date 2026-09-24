@@ -632,7 +632,8 @@ commit pushes with <code>[skip ci]</code>), bumps <code>package.json</code> and 
 (<code>npm version --no-git-tag-version</code>),
 writes the manifest version into <code>VERSION</code> in <code>src/index.ts</code> (<code>scripts/generate-version.ts</code>),
 moves <code>[Unreleased]</code> in <code>CHANGELOG.md</code> into a dated
-<code>[X.Y.Z]</code> section (<code>scripts/stamp-changelog.mjs</code>), and commits <code>chore: release vX.Y.Z [skip ci]</code>
+<code>[X.Y.Z]</code> section (<code>scripts/stamp-changelog.mjs</code>), runs the <code>doc-claims</code> gate, whose
+predicates read the version, against the bumped tree, and commits <code>chore: release vX.Y.Z [skip ci]</code>
 straight onto <code>main</code>. <code>[skip ci]</code> keeps that push from starting <code>pr-checks.yml</code> and the other
 push-triggered workflows on a commit this run already validated and owns. The commit identity is
 <code>github-actions[bot]</code>;</li>
@@ -683,6 +684,12 @@ opens the PR against <code>main</code>. It refuses on a dirty tree, off <code>ma
 manifest, when local <code>main</code> differs from <code>origin/main</code>, and when the tag, the branch, or the npm
 version already exists. Pass <code>--no-pr</code> to
 push without opening the PR.</p>
+<p>Before committing, both paths run <code>doc-claims</code> against the bumped tree, since the
+release commit skips CI. A claim pinned to the published major, such as the tool-use guide&#39;s
+end-to-end route, fails every major bump until the route is run again. On <code>--on-main</code> that refusal
+restores the stamped files and pushes nothing, so a major release goes through this path: the script
+leaves the bumped tree uncommitted on <code>release/vX.Y.Z</code>, the re-verification lands in the release
+commit, and <code>gate</code> checks it on the pull request.</p>
 <p>Review the PR, wait for <code>gate</code>, merge it by squash, so the release commit on <code>main</code> is the squash
 commit that gets tagged.</p>
 <h4 id="section-2-publish-from-main">2. Publish from main<a class="heading-anchor" href="#section-2-publish-from-main" aria-label="Link to 2. Publish from main">#</a></h4>

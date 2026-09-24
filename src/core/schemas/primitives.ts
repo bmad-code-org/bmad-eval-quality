@@ -133,8 +133,9 @@ export const KeyName = z.string().min(1)
  * caller reading a mapping's allowlist assumes it is reading.
  *
  * This keys the port message, which every request crosses, and the
- * authorization allowlist, which only a caller who parses their own mapping
- * crosses: nothing in this package parses `CommandTargetPolicy`. The contract
+ * authorization allowlist, which only a mapping passed through
+ * `parseCommandTargetPolicy` crosses: the adapter never parses
+ * `CommandTargetPolicy` itself. The contract
  * side keeps `KeyName`, since AD-19's channel shapes are one grammar across
  * every channel, so a contract declaring a malformed environment key compiles
  * and fails at this boundary with `schema-parse-failure`.

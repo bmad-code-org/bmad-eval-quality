@@ -976,6 +976,10 @@
 					"reason": "a field of an example response body, which no shipped schema declares"
 				},
 				{
+					"token": "ZodError",
+					"reason": "the error class of the zod dependency, which a parse fault carries as its cause"
+				},
+				{
 					"token": "AbortSignal",
 					"reason": "the platform's own type, declared by node's lib"
 				},

@@ -10,6 +10,26 @@ body.
 
 ## [Unreleased]
 
+### Added
+
+- **`parseCommandTargetPolicy` and `parseMcpTargetPolicy` validate a target-policy mapping at
+  runtime.** `eval-quality/adapters` exports them beside `createCommandLineAdapter` and
+  `createMcpAdapter`, which take their policies typed and never parse them. Each returns a deep copy
+  of a valid mapping. A refusal throws `RuntimeFault` with code `schema-parse-failure`,
+  `artifactPath` `CommandTargetPolicy` or `McpTargetPolicy`, and the `ZodError` carrying every issue
+  as its `cause`; the message lists each issue as an RFC 6901 pointer and a message. Every object is
+  strict, so an unknown key is refused, an own `__proto__` key included. Input whose accessors or
+  proxy traps throw is refused under the same code. The Zod schemas stay unexported.
+
+### Fixed
+
+- **A release checks its bumped tree against `doc-claims`.** `release-prepare` runs
+  `doc-claims` against the bumped tree before committing. The release commit
+  pushes with `[skip ci]` and publish.yml runs no test, so the 4.0.0 major bump reached `main` with
+  the tool-use guide's route pinned to 3.0.0 and `check:doc-claims` failing. On `--on-main` a
+  refusal restores the stamped files and pushes nothing; on the laptop path the bumped tree stays
+  uncommitted on `release/vX.Y.Z` for the repair. The route was re-run at 4.0.0 and the pin moved.
+
 ## [4.0.0] - 2026-09-23
 
 ### Added

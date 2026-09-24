@@ -46,8 +46,13 @@ import type {
 	ResolvedTarget,
 	ResolvedValue,
 	ResolveOperand,
+	RuntimeFault,
 	Severity,
 } from 'eval-quality'
+import type {
+	CommandTargetPolicy,
+	McpTargetPolicy,
+} from 'eval-quality/conformance'
 import { describe, expect, it } from 'vitest'
 import { INTERCHANGE_ARTIFACT_KEYS } from '../../src/core/schemas/artifact.ts'
 import { INTERFACES, qualifiedProbe } from '../score/fixtures/probe-witness.ts'
@@ -216,6 +221,60 @@ describe('the published package surface', () => {
 			'command-probe': 16,
 			'mcp-probe': 14,
 		})
+	})
+
+	// A consumer validating a command or MCP mapping loaded from disk imports
+	// the parser from `eval-quality/adapters`. The schemas stay unexported on
+	// this subpath the way case 152 keeps them off the root, and a refusal is
+	// the same `RuntimeFault` the root barrel exports, so `instanceof` holds
+	// across the two subpaths.
+	it('case 147c: `./adapters` exports both target-policy parsers and no live schema', async (ctx) => {
+		if (!BUILT) return ctx.skip(NEEDS_BUILD)
+		const barrel = (await import(
+			pathToFileURL(resolveSubpath('eval-quality/adapters')).href
+		)) as Record<string, unknown>
+		expect(Object.values(barrel).filter(isZodSchema)).toEqual([])
+		const { RuntimeFault: PublishedFault } = (await publishedBarrel()) as {
+			RuntimeFault: typeof RuntimeFault
+		}
+
+		for (const [name, artifactPath] of [
+			['parseCommandTargetPolicy', 'CommandTargetPolicy'],
+			['parseMcpTargetPolicy', 'McpTargetPolicy'],
+		] as const) {
+			const parse = barrel[name] as (value: unknown) => unknown
+			expect(typeof parse, name).toBe('function')
+			expect(parse({ authorizations: [] })).toEqual({ authorizations: [] })
+			let thrown: unknown
+			try {
+				parse({ authorizations: [], unexpected: 1 })
+			} catch (error) {
+				thrown = error
+			}
+			expect(thrown, name).toBeInstanceOf(PublishedFault)
+			const fault = thrown as RuntimeFault
+			expect(fault.code).toBe('schema-parse-failure')
+			expect(fault.artifactPath).toBe(artifactPath)
+			expect(
+				(
+					fault.cause as {
+						issues: readonly { code: string; keys?: string[] }[]
+					}
+				).issues,
+			).toMatchObject([{ code: 'unrecognized_keys', keys: ['unexpected'] }])
+		}
+
+		type Adapters = typeof import('eval-quality/adapters')
+		const commandIsExact: Exact<
+			Adapters['parseCommandTargetPolicy'],
+			(value: unknown) => CommandTargetPolicy
+		> = true
+		const mcpIsExact: Exact<
+			Adapters['parseMcpTargetPolicy'],
+			(value: unknown) => McpTargetPolicy
+		> = true
+		expect(commandIsExact).toBe(true)
+		expect(mcpIsExact).toBe(true)
 	})
 
 	it('case 148: `./schemas/*` resolves a generated JSON Schema by its real filename', () => {

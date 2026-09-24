@@ -88,7 +88,7 @@ export const CommandTargetAuthorization = z.strictObject({
 				'PATH cannot be permitted: target may name a bare command, and a declared PATH would then choose which binary runs',
 		})
 		.describe(
-			'The environment keys a request may carry into the process. `CommandProbeRequest.channels.environment` is declared by the contract author, and this is where the operator bounds it: a key absent from this list is denied before target is ever spawned, the same role permittedSubcommandPaths plays for a subcommand. An empty array is legal and permits no declared key, which is the default-deny base case. PATH is refused outright, because target may be "a name the adapter resolves through its own PATH" and the child environment is what resolves it: permitting PATH would hand executable selection to the contract author, which is the direction AD-35 exists to prevent. That refusal is narrow and covers executable selection alone. A key such as LD_PRELOAD or NODE_OPTIONS injects into the binary the mapping already chose, and this list is what keeps such a key out: naming one here is a deliberate act. The adapter refuses PATH again at its own boundary, since nothing in this package parses this policy and a refinement leaves no trace in the TypeScript type. The adapter\'s own PATH reaches the child from the process the mapping launched, under AD-18.',
+			'The environment keys a request may carry into the process. `CommandProbeRequest.channels.environment` is declared by the contract author, and this is where the operator bounds it: a key absent from this list is denied before target is ever spawned, the same role permittedSubcommandPaths plays for a subcommand. An empty array is legal and permits no declared key, which is the default-deny base case. PATH is refused outright, because target may be "a name the adapter resolves through its own PATH" and the child environment is what resolves it: permitting PATH would hand executable selection to the contract author, which is the direction AD-35 exists to prevent. That refusal is narrow and covers executable selection alone. A key such as LD_PRELOAD or NODE_OPTIONS injects into the binary the mapping already chose, and this list is what keeps such a key out: naming one here is a deliberate act. The adapter refuses PATH again at its own boundary, since the adapter never parses this policy and a refinement leaves no trace in the TypeScript type. The adapter\'s own PATH reaches the child from the process the mapping launched, under AD-18.',
 		),
 	cwd: z
 		.string()
@@ -209,3 +209,88 @@ export const McpTargetPolicy = z.strictObject({
 
 export type McpTargetAuthorization = z.infer<typeof McpTargetAuthorization>
 export type McpTargetPolicy = z.infer<typeof McpTargetPolicy>
+
+/**
+ * An own `__proto__` key, which `JSON.parse` creates as an ordinary property,
+ * as the unrecognized key it is. Zod 4's strict-object and record loops skip
+ * that one key without an issue, so a strict schema alone would accept it.
+ */
+function ownPrototypeKeyIssue(
+	value: unknown,
+	path: readonly (string | number)[],
+): z.core.$ZodIssue[] {
+	if (value === null || typeof value !== 'object' || Array.isArray(value))
+		return []
+	if (!Object.hasOwn(value, '__proto__')) return []
+	return [
+		{
+			code: 'unrecognized_keys',
+			keys: ['__proto__'],
+			path: [...path],
+			message: 'Unrecognized key: "__proto__"',
+			input: value as Record<string, unknown>,
+		},
+	]
+}
+
+/** An own property, read only when the object has it. */
+function ownField(value: unknown, key: string): unknown {
+	return value !== null &&
+		typeof value === 'object' &&
+		Object.hasOwn(value, key)
+		? (value as Record<string, unknown>)[key]
+		: undefined
+}
+
+export type PolicyParseResult<T> =
+	| { readonly success: true; readonly data: T }
+	| { readonly success: false; readonly error: z.ZodError }
+
+/**
+ * `schema.safeParse`, plus the own `__proto__` keys Zod skips at the three
+ * levels a target policy can carry one: the policy, each authorization, and the
+ * one record each authorization declares. Every other level of either policy is
+ * an array or a scalar. Reads the input's properties, so a hostile accessor or
+ * proxy throws out of here; the caller owns that boundary.
+ */
+function safeParseTargetPolicy<T>(
+	schema: z.ZodType<T>,
+	recordField: string,
+	value: unknown,
+): PolicyParseResult<T> {
+	const issues = ownPrototypeKeyIssue(value, [])
+	const authorizations = ownField(value, 'authorizations')
+	if (Array.isArray(authorizations)) {
+		authorizations.forEach((authorization: unknown, index) => {
+			const path = ['authorizations', index]
+			issues.push(...ownPrototypeKeyIssue(authorization, path))
+			issues.push(
+				...ownPrototypeKeyIssue(ownField(authorization, recordField), [
+					...path,
+					recordField,
+				]),
+			)
+		})
+	}
+	const parsed = schema.safeParse(value)
+	if (parsed.success && issues.length === 0) return parsed
+	return {
+		success: false,
+		error: new z.ZodError([
+			...issues,
+			...(parsed.success ? [] : parsed.error.issues),
+		]),
+	}
+}
+
+/** `CommandTargetPolicy`, whose one record is each authorization's `artifacts`. */
+export const safeParseCommandTargetPolicy = (
+	value: unknown,
+): PolicyParseResult<CommandTargetPolicy> =>
+	safeParseTargetPolicy(CommandTargetPolicy, 'artifacts', value)
+
+/** `McpTargetPolicy`, whose one record is each authorization's `serverEnvironment`. */
+export const safeParseMcpTargetPolicy = (
+	value: unknown,
+): PolicyParseResult<McpTargetPolicy> =>
+	safeParseTargetPolicy(McpTargetPolicy, 'serverEnvironment', value)
