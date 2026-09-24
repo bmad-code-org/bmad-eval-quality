@@ -1,10 +1,11 @@
-import { spawn } from 'node:child_process'
+import { execFileSync, spawn, spawnSync } from 'node:child_process'
 import { getEventListeners } from 'node:events'
 import {
 	chmodSync,
 	existsSync,
 	mkdtempSync,
 	readFileSync,
+	realpathSync,
 	rmSync,
 } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -939,6 +940,284 @@ describe.skipIf(process.platform === 'win32')(
 			})
 			expect(exitCode).toBe(0)
 			expect(await isDeadWithin(grandchildOf(pidFile), 2000)).toBe(true)
+		})
+
+		/** Runs the real mechanism in a host process of its own, so a case can kill that host the way a CI cancellation or `timeout -s KILL` does. */
+		const startHost = (argv: string[]) => {
+			const adapterPath = fileURLToPath(
+				new URL('../../src/adapters/command-line-adapter.ts', import.meta.url),
+			)
+			const host = `
+				import { nodeCommandMechanism } from ${JSON.stringify(adapterPath)}
+				await nodeCommandMechanism.run({
+					target: ${JSON.stringify(FIXTURE_PATH)},
+					subcommandPath: [],
+					argv: ${JSON.stringify(argv)},
+					env: { PATH: process.env.PATH ?? '' },
+					stdin: { kind: 'absent' },
+					cwd: ${JSON.stringify(tmpdir())},
+					maxElapsedMs: 30000,
+					maxOutputBytes: 4096,
+				}, new AbortController().signal)
+			`
+			// Detached, so the host leads a group of its own that a case can
+			// kill whole without touching the test runner's.
+			const child = spawn(
+				process.execPath,
+				['--input-type=module', '-e', host],
+				{ stdio: 'ignore', detached: true },
+			)
+			const closed = new Promise<void>((settle) =>
+				child.once('close', () => settle()),
+			)
+			return { child, closed }
+		}
+
+		it.each([
+			{
+				who: 'the host alone',
+				slug: 'alone',
+				kill: (pid: number) => process.kill(pid, 'SIGKILL'),
+			},
+			{
+				who: "the host's whole process group",
+				slug: 'group',
+				kill: (pid: number) => process.kill(-pid, 'SIGKILL'),
+			},
+		])(
+			'takes the target and its grandchild down when $who is killed with SIGKILL',
+			async ({ slug, kill }) => {
+				const targetFile = pidFileFor(`host-kill-target-${slug}`)
+				const grandchildFile = pidFileFor(`host-kill-grandchild-${slug}`)
+				const { child, closed } = startHost([
+					'--write-pid',
+					targetFile,
+					'--spawn-grandchild',
+					grandchildFile,
+					'--sleep-ms',
+					'20000',
+				])
+				await pidFileWritten(grandchildFile)
+				const target = grandchildOf(targetFile)
+				const grandchild = grandchildOf(grandchildFile)
+				try {
+					kill(child.pid as number)
+					await closed
+					expect(await isDeadWithin(target, 3000)).toBe(true)
+					expect(await isDeadWithin(grandchild, 3000)).toBe(true)
+				} finally {
+					for (const pid of [target, grandchild]) {
+						if (alive(pid)) process.kill(pid, 'SIGKILL')
+					}
+				}
+			},
+		)
+
+		// The leader killed on its own leaves the target without its lifeline
+		// holder, so the host kills the group and reports the target ended by
+		// that kill.
+		it('takes the group down and reports SIGKILL when the group leader is killed alone', async () => {
+			const targetFile = pidFileFor('leader-kill-target')
+			const grandchildFile = pidFileFor('leader-kill-grandchild')
+			const pending = nodeCommandMechanism.run(
+				{
+					target: FIXTURE_PATH,
+					subcommandPath: [],
+					argv: [
+						'--write-pid',
+						targetFile,
+						'--spawn-grandchild',
+						grandchildFile,
+						'--sleep-ms',
+						'20000',
+					],
+					env: { PATH: process.env.PATH ?? '' },
+					stdin: { kind: 'absent' },
+					cwd: tmpdir(),
+					maxElapsedMs: 30000,
+					maxOutputBytes: 4096,
+				},
+				new AbortController().signal,
+			)
+			await pidFileWritten(grandchildFile)
+			const target = grandchildOf(targetFile)
+			const grandchild = grandchildOf(grandchildFile)
+			const leader = Number(
+				execFileSync('ps', ['-o', 'ppid=', '-p', String(target)], {
+					encoding: 'utf8',
+				}).trim(),
+			)
+			// Without a leader the target's parent is this test process, and the
+			// kill below would end the run instead of the case.
+			expect(leader).toBeGreaterThan(1)
+			expect(leader).not.toBe(process.pid)
+			try {
+				process.kill(leader, 'SIGKILL')
+				await expect(pending).resolves.toMatchObject({ exitCode: -9 })
+				expect(await isDeadWithin(target, 2000)).toBe(true)
+				expect(await isDeadWithin(grandchild, 2000)).toBe(true)
+			} finally {
+				for (const pid of [target, grandchild]) {
+					if (alive(pid)) process.kill(pid, 'SIGKILL')
+				}
+			}
+		})
+
+		const runDirect = (
+			overrides: Partial<Parameters<typeof nodeCommandMechanism.run>[0]>,
+		) =>
+			nodeCommandMechanism.run(
+				{
+					target: FIXTURE_PATH,
+					subcommandPath: [],
+					argv: [],
+					env: { PATH: process.env.PATH ?? '' },
+					stdin: { kind: 'absent' },
+					cwd: tmpdir(),
+					maxElapsedMs: 10_000,
+					maxOutputBytes: 4096,
+					...overrides,
+				},
+				new AbortController().signal,
+			)
+
+		// The target leads its own group, as it did before the watchdog, so a
+		// target that signals its group reaches itself and what it started, and
+		// nothing between it and the host.
+		it('observes a target that signals its own process group as that signal ended it', async () => {
+			await expect(
+				runDirect({ target: '/bin/sh', argv: ['-c', 'kill -TERM 0; sleep 5'] }),
+			).resolves.toMatchObject({ exitCode: -15 })
+			await expect(
+				runDirect({
+					target: '/bin/sh',
+					argv: ['-c', 'sleep 5 & kill -TERM -- -$$; sleep 5'],
+					maxElapsedMs: 3000,
+				}),
+			).resolves.toMatchObject({ exitCode: -15 })
+		})
+
+		// Spawn refuses these before any process starts, some by throwing and
+		// some through 'error', and the rejection is spawn's own, whichever
+		// process called spawn.
+		it('rejects with the error spawn raised for an argument holding a NUL byte', async () => {
+			const error = await runDirect({ argv: ['a\u0000b'] }).then(
+				() => undefined,
+				(thrown: unknown) => thrown,
+			)
+			expect(error).toBeInstanceOf(TypeError)
+			expect(error).toMatchObject({ code: 'ERR_INVALID_ARG_VALUE' })
+		})
+
+		it('rejects with the error spawn raised for a cwd that is a file', async () => {
+			await expect(runDirect({ cwd: FIXTURE_PATH })).rejects.toMatchObject({
+				code: 'ENOTDIR',
+				syscall: 'spawn',
+			})
+		})
+
+		it('rejects with the whole spawn error however long the arguments are', async () => {
+			const missing = join(pidDir, 'no-such-executable')
+			const long = 'a'.repeat(200_000)
+			const error = await runDirect({ target: missing, argv: [long] }).then(
+				() => undefined,
+				(thrown: unknown) => thrown,
+			)
+			expect(error).toBeInstanceOf(Error)
+			expect(Object.keys(error as object)).toEqual([
+				'errno',
+				'code',
+				'syscall',
+				'path',
+				'spawnargs',
+			])
+			expect(error).toMatchObject({
+				code: 'ENOENT',
+				path: missing,
+				spawnargs: [long],
+			})
+		})
+
+		// The watchdog's own start, a Node start of its own, is not charged to
+		// the target: a budget too small for that start still covers a target
+		// that starts and exits at once.
+		it('starts the elapsed budget when the target starts', async () => {
+			const outcomes: string[] = []
+			for (let attempt = 0; attempt < 3; attempt++) {
+				outcomes.push(
+					await runDirect({
+						target: '/bin/echo',
+						argv: ['hi'],
+						maxElapsedMs: 10,
+					}).then(
+						() => 'ok',
+						(error: { code?: string }) => String(error.code),
+					),
+				)
+			}
+			expect(outcomes).toContain('ok')
+		})
+
+		// The watchdog runs in '/', and a relative cwd still resolves against
+		// the host's own, as spawn resolved it.
+		it('resolves a relative cwd against the host process cwd', async () => {
+			const result = await runDirect({ target: '/bin/pwd', cwd: '.' })
+			expect(realpathSync(result.stdout.trim())).toBe(
+				realpathSync(process.cwd()),
+			)
+		})
+
+		// A target forking as fast as it can: one killpg can miss a child caught
+		// mid-fork, so the group is killed until it is gone.
+		it('leaves nothing of a forking target when the host is killed with SIGKILL', async () => {
+			const targetFile = pidFileFor('forking-target')
+			const adapterPath = fileURLToPath(
+				new URL('../../src/adapters/command-line-adapter.ts', import.meta.url),
+			)
+			const script = `echo $$ > ${targetFile}.tmp; mv ${targetFile}.tmp ${targetFile}; i=0; while [ $i -lt 400 ]; do sleep 30 & i=$((i+1)); done; wait`
+			const host = `
+				import { nodeCommandMechanism } from ${JSON.stringify(adapterPath)}
+				await nodeCommandMechanism.run({
+					target: '/bin/sh',
+					subcommandPath: [],
+					argv: ['-c', ${JSON.stringify(script)}],
+					env: { PATH: process.env.PATH ?? '' },
+					stdin: { kind: 'absent' },
+					cwd: ${JSON.stringify(tmpdir())},
+					maxElapsedMs: 30000,
+					maxOutputBytes: 4096,
+				}, new AbortController().signal)
+			`
+			const child = spawn(
+				process.execPath,
+				['--input-type=module', '-e', host],
+				{ stdio: 'ignore', detached: true },
+			)
+			const closed = new Promise<void>((settle) =>
+				child.once('close', () => settle()),
+			)
+			await pidFileWritten(targetFile)
+			const group = grandchildOf(targetFile)
+			const members = (): string =>
+				spawnSync('pgrep', ['-g', String(group)], {
+					encoding: 'utf8',
+				}).stdout.trim()
+			try {
+				await new Promise((settle) => setTimeout(settle, 30))
+				process.kill(child.pid as number, 'SIGKILL')
+				await closed
+				const until = Date.now() + 3000
+				while (members() !== '' && Date.now() < until) {
+					await new Promise((settle) => setTimeout(settle, 50))
+				}
+				expect(members()).toBe('')
+			} finally {
+				try {
+					process.kill(-group, 'SIGKILL')
+				} catch {
+					// Gone, which is the wanted end state.
+				}
+			}
 		})
 
 		// A normal exit is observed exactly as before: the group is killed only

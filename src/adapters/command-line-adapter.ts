@@ -36,15 +36,17 @@
  *    keeps `close` from firing after the target exits, so the elapsed cap is
  *    what ends such a run. A target that exits on its own with its streams
  *    closed is observed as it exited, and nothing it left running is
- *    touched. `process-group.ts` holds the mechanics, what detaching costs
- *    (no controlling terminal, no host Ctrl-C), and the Windows fallback.
+ *    touched. A watchdog outside the target's group kills the group when
+ *    the host ends, `SIGKILL` included, and the elapsed budget counts from
+ *    the target's own start. `process-group.ts` holds the mechanics, what
+ *    the new session costs (no controlling terminal, no host Ctrl-C), and
+ *    the Windows fallback.
  * 4. A non-zero exit is an observation, never a fault, matching AD-10's rule
  *    for an HTTP status. Only a policy denial, a cap, an abort, or a failure
  *    to start the process throws. `exitCode` is negative when a signal
  *    ended the process, the same convention `CommandProbeObservation`
  *    documents for itself.
  */
-import { spawn } from 'node:child_process'
 import { open } from 'node:fs/promises'
 import { constants as osConstants } from 'node:os'
 import { isAbsolute, resolve as resolvePath } from 'node:path'
@@ -62,8 +64,10 @@ import { evaluateCommandTarget } from './command-target-policy.ts'
 import { runPortMethod } from './port-boundary.ts'
 import {
 	abortErrorFor,
+	type GroupedChild,
 	killProcessGroup,
-	SPAWN_DETACHED,
+	spawnInGroup,
+	startDeadlineMs,
 	trackProcessGroup,
 } from './process-group.ts'
 
@@ -220,11 +224,11 @@ function forbidden(detail: string): RuntimeFault {
 }
 
 function writeStdin(
-	child: import('node:child_process').ChildProcess,
+	child: GroupedChild,
 	stdin: CommandRunRequest['stdin'],
 ): void {
 	const stream = child.stdin
-	if (stream === null) return
+	if (stream == null) return
 	// A child that exits before reading stdin closes its end of the pipe, and
 	// the pending `end()` write below then raises EPIPE on this stream, not on
 	// `child` itself. With no listener that is an unhandled 'error' and crashes
@@ -256,16 +260,12 @@ async function runChildProcess(
 	signal: AbortSignal,
 ): Promise<CommandRunResult> {
 	return new Promise((settlePromise, rejectPromise) => {
-		const child = spawn(
-			request.target,
-			[...request.subcommandPath, ...request.argv],
-			{
-				cwd: request.cwd,
-				env: request.env,
-				shell: false,
-				detached: SPAWN_DETACHED,
-			},
-		)
+		const child = spawnInGroup({
+			target: request.target,
+			args: [...request.subcommandPath, ...request.argv],
+			cwd: request.cwd,
+			env: request.env,
+		})
 		trackProcessGroup(child)
 
 		let stdout = ''
@@ -292,10 +292,19 @@ async function runChildProcess(
 			child.stderr?.destroy()
 		}
 
-		const timer = setTimeout(() => {
+		const onElapsed = () => {
 			timedOut = true
 			stop()
-		}, request.maxElapsedMs)
+		}
+		// Armed now with the watchdog's start allowance, so a target that never
+		// starts is still bounded, and armed again with the budget alone when it
+		// starts, so the watchdog's own start is not charged to it.
+		let timer = setTimeout(onElapsed, startDeadlineMs(request.maxElapsedMs))
+		child.once('spawn', () => {
+			if (settled || timedOut) return
+			clearTimeout(timer)
+			timer = setTimeout(onElapsed, request.maxElapsedMs)
+		})
 
 		// Handled here rather than through spawn's own `signal` option, which
 		// sends the direct child alone `SIGTERM` and keeps its listener on the
@@ -364,6 +373,8 @@ async function runChildProcess(
 						)
 						return
 					}
+					// The target exited on its own, so what it left running stays.
+					child.release()
 					settlePromise({
 						exitCode: exitCodeOf(code, signalName),
 						stdout,
