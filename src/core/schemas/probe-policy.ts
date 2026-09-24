@@ -111,7 +111,7 @@ export const CommandTargetAuthorization = z.strictObject({
 		.int()
 		.min(1)
 		.describe(
-			'Applies independently to stdout, to stderr, and to each artifact file read back. The first channel to cross it kills the process and every process in its process group (for stdout/stderr, mid-run) or fails the read (for an artifact, after exit) with budget-exhausted.',
+			'Applies independently to stdout, to stderr, and to each artifact file read back. The first channel to cross it kills the process and every process in its process group, or the process alone on Windows (for stdout/stderr, mid-run) or fails the read (for an artifact, after exit) with budget-exhausted.',
 		),
 })
 
