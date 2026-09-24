@@ -32,7 +32,9 @@ import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import {
+	EXIT_FAIL,
 	EXIT_FAULT,
+	EXIT_INVALID,
 	EXIT_OK,
 	EXIT_STRUCTURAL_FAILURE,
 	EXIT_USAGE,
@@ -802,6 +804,103 @@ describe('main.ts at the process boundary', () => {
 				expect(result.stderr).toBe('')
 				expect(result.status).toBe(EXIT_OK)
 				expect(result.stdout).not.toBe('')
+			} finally {
+				rmSync(scratch, { recursive: true, force: true })
+			}
+		}, 60_000)
+	})
+
+	describe('score names the reason for an Invalid run on stderr', () => {
+		const WALKTHROUGH = join(REPO, 'examples/tutorials/walkthrough')
+		const cli = (argv: readonly string[]): ReturnType<typeof spawnSync> =>
+			spawnSync(process.execPath, [BUILT_MAIN, ...argv], {
+				cwd: REPO,
+				encoding: 'utf8',
+			})
+
+		/** The walkthrough chain up to `score`: its compiled contract and its pre-flight verdict. */
+		const scoreArgv = (scratch: string): string[] => {
+			const contract = join(scratch, 'eval-contract.json')
+			const verdict = join(scratch, 'preflight-verdict.json')
+			expect(
+				cli([
+					'compile',
+					'--in',
+					join(WALKTHROUGH, 'contract.json'),
+					'--out',
+					contract,
+				]).status,
+			).toBe(EXIT_OK)
+			expect(
+				cli([
+					'preflight',
+					'--contract',
+					join(WALKTHROUGH, 'contract.json'),
+					'--probes',
+					join(WALKTHROUGH, 'probes.json'),
+					'--observations',
+					join(WALKTHROUGH, 'observations.json'),
+					'--run-id',
+					'notes-run-1',
+					'--out',
+					verdict,
+				]).status,
+			).toBe(EXIT_OK)
+			return [
+				'score',
+				'--record',
+				join(WALKTHROUGH, 'sealed-run-record.json'),
+				'--contract',
+				contract,
+				'--probe',
+				join(WALKTHROUGH, 'probe.json'),
+				'--preflight-verdict',
+				verdict,
+				'--policy',
+				join(WALKTHROUGH, 'scoring-policy.json'),
+				'--evaluator-configuration',
+				join(WALKTHROUGH, 'evaluator-configuration.json'),
+				'--corpus-digest',
+				readFileSync(join(WALKTHROUGH, 'corpus-digest.txt'), 'utf8').trim(),
+			]
+		}
+
+		it('an omitted --isolation-manifest exits 3 with its basis on stderr and writes no artifact', (ctx) => {
+			if (!BUILT) return ctx.skip(NEEDS_BUILD)
+			const scratch = mkdtempSync(join(tmpdir(), 'eval-quality-invalid-'))
+			try {
+				const out = join(scratch, 'evidence-artifact.json')
+				const result = cli([...scoreArgv(scratch), '--out', out])
+
+				expect(result.status).toBe(EXIT_INVALID)
+				expect(result.stdout).toBe('')
+				expect(result.stderr).toBe(
+					'eval-quality: invalid: isolation manifest violation: isolation manifest absent\n',
+				)
+				expect(existsSync(out)).toBe(false)
+			} finally {
+				rmSync(scratch, { recursive: true, force: true })
+			}
+		}, 60_000)
+
+		it('a FAIL run keeps stderr silent, since its basis travels in the artifact', (ctx) => {
+			if (!BUILT) return ctx.skip(NEEDS_BUILD)
+			const scratch = mkdtempSync(join(tmpdir(), 'eval-quality-invalid-'))
+			try {
+				const result = cli([
+					...scoreArgv(scratch),
+					'--isolation-manifest',
+					join(WALKTHROUGH, 'isolation-manifest.json'),
+				])
+
+				expect(result.status).toBe(EXIT_FAIL)
+				expect(result.stderr).toBe('')
+				const artifact = JSON.parse(String(result.stdout)) as {
+					readonly contractVerdict: string
+					readonly verdictBasis: readonly string[]
+				}
+				expect(artifact.contractVerdict).toBe('FAIL')
+				expect(artifact.verdictBasis.length).toBeGreaterThan(0)
 			} finally {
 				rmSync(scratch, { recursive: true, force: true })
 			}

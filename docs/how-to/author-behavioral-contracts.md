@@ -678,6 +678,25 @@ node dist/cli/main.js score \
 
 **Exit `2`, and that is the right answer.**
 The exit code is the verdict: `0` is PASS, WAIVED, or CONCERNS, `2` is FAIL, `1` is a CONCERNS that `--strict` promoted, and `3` is the Invalid rung, on which the command writes no artifact because no legal evidence artifact carries a null verdict.
+Every other rung records its reasons in the artifact's `verdictBasis`, so on the Invalid rung the command writes them to stderr instead, one `eval-quality: invalid: <reason>` line per condition that fired.
+Leave out `--isolation-manifest` and the same run shows it:
+
+<!-- expect-exit: 3 -->
+
+```bash
+node dist/cli/main.js score \
+  --record examples/tutorials/walkthrough/sealed-run-record.json \
+  --contract /tmp/eval-quality-run/eval-contract.json \
+  --probe examples/tutorials/walkthrough/probe.json \
+  --preflight-verdict /tmp/eval-quality-run/preflight-verdict.json \
+  --policy examples/tutorials/walkthrough/scoring-policy.json \
+  --evaluator-configuration examples/tutorials/walkthrough/evaluator-configuration.json \
+  --corpus-digest sha256:195dd97c3267c9d7c4d5fb6e1fd62212c8993de903b9261c484ef183d6eaaa3a
+```
+
+```text
+eval-quality: invalid: isolation manifest violation: isolation manifest absent
+```
 
 Step 7 explains why this run came out FAIL.
 

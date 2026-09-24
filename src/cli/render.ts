@@ -1,9 +1,9 @@
 /**
- * The four shapes the binary writes, and the exit-code table two documents
+ * The five shapes the binary writes, and the exit-code table two documents
  * share. Every line the CLI emits is produced here apart from what `main.ts`
  * writes for a rethrown defect, which is that error's own stack or message, so a
- * format change is one file. Five
- * renderers over the four shapes: a qualification failure and an error both
+ * format change is one file. Six
+ * renderers over the five shapes: a qualification failure and an error both
  * print `<code>: <artifactPath>: <detail>`.
  */
 import { z } from 'zod'
@@ -111,6 +111,16 @@ export function renderQualificationFailure(
 	failure: QualificationFailure,
 ): string {
 	return `${PREFIX}: ${failure.code}: ${failure.artifactPath}: ${failure.detail}`
+}
+
+/**
+ * `eval-quality: invalid: <reason>`, one line per entry of the ladder's
+ * `basis` on AD-21's Invalid rung. That rung mints no artifact, so the
+ * `verdictBasis` field every other rung records has nowhere to go, and
+ * without these lines a `score` exit 3 names no reason at all.
+ */
+export function renderInvalidBasis(reason: string): string {
+	return `${PREFIX}: invalid: ${reason}`
 }
 
 /**
