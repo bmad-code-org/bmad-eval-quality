@@ -50,6 +50,7 @@
 import { open } from 'node:fs/promises'
 import { constants as osConstants } from 'node:os'
 import { isAbsolute, resolve as resolvePath } from 'node:path'
+import { StringDecoder } from 'node:string_decoder'
 import { RuntimeFault } from '../core/schemas/faults.ts'
 import type {
 	CommandProbeObservation,
@@ -68,6 +69,7 @@ import {
 	killProcessGroup,
 	spawnInGroup,
 	startDeadlineMs,
+	timerDelayMs,
 	trackProcessGroup,
 } from './process-group.ts'
 
@@ -303,7 +305,7 @@ async function runChildProcess(
 		child.once('spawn', () => {
 			if (settled || timedOut) return
 			clearTimeout(timer)
-			timer = setTimeout(onElapsed, request.maxElapsedMs)
+			timer = setTimeout(onElapsed, timerDelayMs(request.maxElapsedMs))
 		})
 
 		// Handled here rather than through spawn's own `signal` option, which
@@ -318,37 +320,33 @@ async function runChildProcess(
 		if (signal.aborted) onAbort()
 		else signal.addEventListener('abort', onAbort, { once: true })
 
-		const capture = (
-			chunk: Buffer,
-			append: (next: string) => void,
-			currentLength: () => number,
-		) => {
-			if (currentLength() > request.maxOutputBytes) return
-			append(chunk.toString('utf8'))
-			if (currentLength() > request.maxOutputBytes) {
-				overCap = true
-				stop()
-			}
+		// One decoder per stream: a chunk boundary can fall inside a multi-byte
+		// character, and decoding each chunk alone turns the split character
+		// into U+FFFD, which then reaches the observation an oracle asserts on.
+		// The cap counts the bytes the process wrote, before any decoding.
+		const stdoutDecoder = new StringDecoder('utf8')
+		const stderrDecoder = new StringDecoder('utf8')
+		let stdoutBytes = 0
+		let stderrBytes = 0
+
+		const capAt = (bytes: number): void => {
+			if (bytes <= request.maxOutputBytes || overCap) return
+			overCap = true
+			stop()
 		}
 
-		child.stdout?.on('data', (chunk: Buffer) =>
-			capture(
-				chunk,
-				(next) => {
-					stdout += next
-				},
-				() => Buffer.byteLength(stdout, 'utf8'),
-			),
-		)
-		child.stderr?.on('data', (chunk: Buffer) =>
-			capture(
-				chunk,
-				(next) => {
-					stderr += next
-				},
-				() => Buffer.byteLength(stderr, 'utf8'),
-			),
-		)
+		child.stdout?.on('data', (chunk: Buffer) => {
+			if (stdoutBytes > request.maxOutputBytes) return
+			stdoutBytes += chunk.byteLength
+			stdout += stdoutDecoder.write(chunk)
+			capAt(stdoutBytes)
+		})
+		child.stderr?.on('data', (chunk: Buffer) => {
+			if (stderrBytes > request.maxOutputBytes) return
+			stderrBytes += chunk.byteLength
+			stderr += stderrDecoder.write(chunk)
+			capAt(stderrBytes)
+		})
 
 		child.once('error', (error: unknown) => {
 			finish(() => rejectPromise(error))
@@ -375,6 +373,8 @@ async function runChildProcess(
 					}
 					// The target exited on its own, so what it left running stays.
 					child.release()
+					stdout += stdoutDecoder.end()
+					stderr += stderrDecoder.end()
 					settlePromise({
 						exitCode: exitCodeOf(code, signalName),
 						stdout,

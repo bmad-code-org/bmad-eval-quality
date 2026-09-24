@@ -603,6 +603,7 @@ The `cli` interface kind compiles, and `corpus/dev/contracts/` ships three contr
 Pre-flight plans and reduces command legs, including sensitivity witnesses, manifestation witnesses, and the fixture reset.
 `createCommandLineAdapter` runs a real child process with `shell: false`, an enforced elapsed cap, an output cap per stream and per artifact, and an artifact map read back tagged.
 A cap, an abort, or the host's own end, SIGKILL included, kills the process group the child leads, so a model CLI that an agent runner started goes with it; on Windows a cap or an abort kills only the direct child, and a host that ends kills it only through `process.exit()` or an uncaught exception.
+A host built as a single executable application has no watchdog, so there the host's end stops the target only through `process.exit()` or an uncaught exception.
 The chain above is committed and regenerated on every build, and the whole route has also been run end to end against a real agent CLI, with the numbers below.
 
 Not proven, and worth knowing before you plan a corpus.

@@ -130,7 +130,9 @@ function killChildGroup(child: ChildProcess): void {
 		process.kill(-pid, 'SIGKILL')
 	} catch {
 		child.kill('SIGKILL')
+		return
 	}
+	killGroupUntilGone(pid)
 }
 
 /**
@@ -292,13 +294,21 @@ const WATCHDOG_START_ALLOWANCE_MS = 30_000
 
 /**
  * The first elapsed deadline, armed before the target starts: the run's own
- * budget plus the watchdog's start allowance. The adapters arm `maxElapsedMs`
- * again at 'spawn', so the target itself gets exactly its budget. A budget
- * past what a timer holds is left as it is, the same value 4.1.1 armed.
+ * budget plus the watchdog's start allowance, within what a timer holds. The
+ * adapters arm `timerDelayMs(maxElapsedMs)` again at 'spawn', so the target
+ * itself gets exactly its budget.
  */
 export function startDeadlineMs(maxElapsedMs: number): number {
-	if (maxElapsedMs > MAX_TIMER_MS) return maxElapsedMs
-	return Math.min(maxElapsedMs + WATCHDOG_START_ALLOWANCE_MS, MAX_TIMER_MS)
+	return timerDelayMs(maxElapsedMs + WATCHDOG_START_ALLOWANCE_MS)
+}
+
+/**
+ * A delay within what one timer holds. `setTimeout` turns a longer one into
+ * 1 ms, and both adapters take their policy typed and never parse it, so a
+ * budget past the schemas' bound still reaches a timer through them.
+ */
+export function timerDelayMs(ms: number): number {
+	return Math.min(ms, MAX_TIMER_MS)
 }
 
 /** `SIGKILL` to a group, repeated every 5 ms until it is gone (at most 100 times), since one killpg can miss a child caught mid-fork. */

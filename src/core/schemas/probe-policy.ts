@@ -104,8 +104,9 @@ export const CommandTargetAuthorization = z.strictObject({
 	maxElapsedMs: z
 		.int()
 		.min(1)
+		.max(2_147_483_647)
 		.describe(
-			'Wall-clock budget for one invocation. Exceeding it kills the process and every process in its process group (the process alone on Windows) and throws budget-exhausted, the same fault an HTTP cap throws.',
+			'Wall-clock budget for one invocation. Exceeding it kills the process and every process in its process group (the process alone on Windows) and throws budget-exhausted, the same fault an HTTP cap throws. Bounded above by the largest delay one timer holds, 2147483647 ms, about 24.8 days.',
 		),
 	maxOutputBytes: z
 		.int()
@@ -180,7 +181,7 @@ export const McpTargetAuthorization = z.strictObject({
 		.min(1)
 		.max(2_147_483_647)
 		.describe(
-			'Wall-clock budget for the whole port invocation: server launch, the initialize handshake, the tool call, and teardown. A handshake that never completes and a tool call that never answers are the same event to the caller, and both throw budget-exhausted. Bounded above by the largest delay a timer accepts: a larger value is silently clamped to one millisecond, which turns a generous budget into an immediate cap.',
+			'Wall-clock budget for the whole port invocation: server launch, the initialize handshake, the tool call, and teardown. A handshake that never completes and a tool call that never answers are the same event to the caller, and both throw budget-exhausted. Bounded above by the largest delay one timer holds, 2147483647 ms, about 24.8 days.',
 		),
 	maxOutputBytes: z
 		.int()

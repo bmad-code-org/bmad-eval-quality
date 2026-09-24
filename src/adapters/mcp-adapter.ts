@@ -73,6 +73,7 @@ import {
 	killProcessGroup,
 	spawnInGroup,
 	startDeadlineMs,
+	timerDelayMs,
 	trackProcessGroup,
 } from './process-group.ts'
 
@@ -206,7 +207,7 @@ function startSession(
 	child.once('spawn', () => {
 		if (closed || broken) return
 		clearTimeout(timer)
-		timer = setTimeout(onElapsed, request.maxElapsedMs)
+		timer = setTimeout(onElapsed, timerDelayMs(request.maxElapsedMs))
 	})
 
 	let stdoutBytes = 0

@@ -269,6 +269,20 @@ describe('parseCommandTargetPolicy', () => {
 		}
 	})
 
+	// A larger budget overflows setTimeout, which then fires after 1 ms and
+	// turns a generous budget into an immediate cap; the MCP schema refuses it
+	// the same way.
+	it('refuses an elapsed budget past what a timer accepts, and admits the largest one', () => {
+		expect(
+			issues(policyOf(authorization({ maxElapsedMs: 2_147_483_648 }))).map(
+				(issue) => issue.path,
+			),
+		).toEqual([['authorizations', 0, 'maxElapsedMs']])
+		expect(
+			parse(policyOf(authorization({ maxElapsedMs: 2_147_483_647 }))),
+		).toEqual(policyOf(authorization({ maxElapsedMs: 2_147_483_647 })))
+	})
+
 	it('refuses a non-object at the root', () => {
 		for (const value of [undefined, null, 'policy', 42, []]) {
 			expect(issues(value).map((issue) => issue.path)).toEqual([[]])

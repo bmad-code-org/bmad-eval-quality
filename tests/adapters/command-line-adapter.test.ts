@@ -598,6 +598,79 @@ describe('createCommandLineAdapter, real spawn', () => {
 		).rejects.toMatchObject({ code: 'budget-exhausted' })
 	})
 
+	// A chunk boundary inside a multi-byte character: the target writes the
+	// first two bytes of a euro sign, pauses so they arrive as a chunk of their
+	// own, then writes the last byte, four times over, so a runner that merges
+	// some writes still sees splits. Decoded chunk by chunk, each split
+	// character becomes U+FFFD, and the replacements' bytes count against the
+	// cap.
+	const splitWriter = (stream: 'stdout' | 'stderr') =>
+		`{ const out = process.${stream}
+		let left = 4
+		const next = () => {
+			if (left-- === 0) return
+			out.write(Buffer.from([0xe2, 0x82]))
+			setTimeout(() => { out.write(Buffer.from([0xac])); setTimeout(next, 40) }, 40)
+		}
+		next() }`
+
+	const runNode = (source: string, maxOutputBytes: number) =>
+		nodeCommandMechanism.run(
+			{
+				target: process.execPath,
+				subcommandPath: [],
+				argv: ['-e', source],
+				env: {},
+				stdin: { kind: 'absent' },
+				cwd: tmpdir(),
+				maxElapsedMs: 10_000,
+				maxOutputBytes,
+			},
+			new AbortController().signal,
+		)
+
+	it('reassembles output split inside a multi-byte character, on both streams', async () => {
+		await expect(
+			runNode(`${splitWriter('stdout')}\n${splitWriter('stderr')}`, 4096),
+		).resolves.toEqual({ exitCode: 0, stdout: '€€€€', stderr: '€€€€' })
+	})
+
+	it.each(['stdout', 'stderr'] as const)(
+		'counts the bytes the process wrote on %s against maxOutputBytes, before decoding',
+		async (stream) => {
+			const result = await runNode(splitWriter(stream), 12)
+			expect(result[stream]).toBe('€€€€')
+		},
+	)
+
+	// The decoder holds an incomplete sequence back; the end of the stream
+	// flushes it as one replacement, the same text the whole-output decode gave.
+	it('keeps a trailing incomplete character as one replacement', async () => {
+		await expect(
+			runNode('process.stdout.write(Buffer.from([0x61, 0xe2, 0x82]))', 4096),
+		).resolves.toMatchObject({ stdout: 'a\uFFFD' })
+	})
+
+	// Budgets past what one timer holds reach a timer through a typed policy,
+	// which no adapter parses; `setTimeout` would turn them into 1 ms.
+	it('keeps an elapsed budget past what one timer holds from capping at once', async () => {
+		await expect(
+			nodeCommandMechanism.run(
+				{
+					target: '/bin/sleep',
+					subcommandPath: [],
+					argv: ['0.3'],
+					env: {},
+					stdin: { kind: 'absent' },
+					cwd: tmpdir(),
+					maxElapsedMs: 2_147_483_648,
+					maxOutputBytes: 4096,
+				},
+				new AbortController().signal,
+			),
+		).resolves.toMatchObject({ exitCode: 0 })
+	})
+
 	it('caps output bytes and throws budget-exhausted, killing the process', async () => {
 		const adapter = createCommandLineAdapter(
 			policyOf(authorization({ maxOutputBytes: 64 })),
