@@ -104,8 +104,8 @@ const callInputsOf = (inputs: WitnessInputs): ObservedCallInputs => {
  * One leg as the `Observation` `makeResolveOperand` takes. The relation reads the
  * **projected** body, which is AD-10's "evaluated over that operation's response
  * descriptor after excluding the volatile pointers", and the raw headers, which
- * the projection does not carry. `provenance` is `baseline`: a pre-flight leg is
- * pre-canned by definition.
+ * the projection does not carry. `provenance` is `baseline`: this package issues
+ * a pre-flight leg before any evaluation runs, so the evaluation performed none.
  */
 export function evidenceOf(
 	projected: ProjectedObservation,

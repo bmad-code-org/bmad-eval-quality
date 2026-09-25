@@ -149,7 +149,7 @@
               "baseline",
               "evaluator-chosen"
             ],
-            "description": "AD-23: `baseline` for a pre-canned or deterministic test, `evaluator-chosen` for an action the evaluator selected. The distinction is the one the product's central finding rests on: what a sealed evaluator detects beyond the pre-canned baseline. It lives on the observation, never on the finding."
+            "description": "AD-23, defined by the observation's role in the run. `evaluator-chosen` is an action the evaluation itself performed on the probed interface, whether an agent selected it or a scripted plan did, so a deterministic interaction plan that is the evaluation's own action records every step as `evaluator-chosen`. `baseline` is a harness baseline or a fixture set-up call the evaluation did not perform, and AD-40's witness match excludes it: only `evaluator-chosen` observations can exercise or witness a probe. The distinction is the one the product's central finding rests on: what a sealed evaluator detects beyond the pre-canned baseline. It is a field of the observation, and a finding carries no provenance of its own."
           },
           "principal": {
             "anyOf": [
