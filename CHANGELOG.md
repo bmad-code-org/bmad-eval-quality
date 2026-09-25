@@ -10,6 +10,8 @@ body.
 
 ## [Unreleased]
 
+## [4.2.0] - 2026-09-25
+
 ### Added
 
 - **A `forbidden-target` fault says which rule refused the target.**
