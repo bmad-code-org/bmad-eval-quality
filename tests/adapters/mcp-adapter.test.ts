@@ -446,6 +446,7 @@ describe('the policy, applied before a server process starts', () => {
 			probeFor({ probeId: 'unmapped-interface', interfaceId: 'other-server' }),
 		)
 		expect(fault.code).toBe('forbidden-target')
+		expect(fault.reason).toBe('interface-not-authorized')
 		expect(fault.message).toContain('other-server')
 	})
 
@@ -454,6 +455,7 @@ describe('the policy, applied before a server process starts', () => {
 			probeFor({ probeId: 'unmapped-tool', toolName: 'delete_everything' }),
 		)
 		expect(fault.code).toBe('forbidden-target')
+		expect(fault.reason).toBe('tool-not-authorized')
 		expect(fault.message).toContain('delete_everything')
 	})
 
@@ -520,6 +522,8 @@ describe('the policy, applied before a server process starts', () => {
 				port.probe(other, new AbortController().signal),
 			)
 			expect(fault.code).toBe('forbidden-target')
+			// The same denial an unmapped interfaceId meets, so the same reason.
+			expect(fault.reason).toBe('interface-not-authorized')
 			expect(fault.message).toContain(`no ${kind} target is ever authorized`)
 		},
 	)

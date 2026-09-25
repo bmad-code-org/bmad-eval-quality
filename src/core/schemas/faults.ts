@@ -23,19 +23,66 @@ export const RUNTIME_FAULT_CODES = [
 
 export type RuntimeFaultCode = (typeof RUNTIME_FAULT_CODES)[number]
 
+/**
+ * Why a target was refused, carried as `reason` on a `forbidden-target` fault.
+ * The union of every mechanism's denial vocabulary: `DENIAL_REASONS` for
+ * `api` (`core/probe/target-policy.ts`), `COMMAND_DENIAL_REASONS` for `cli`,
+ * and `MCP_DENIAL_REASONS` for `mcp` (both under `adapters/`). It lives here
+ * beside `RuntimeFault` because `adapters/` may import `core/schemas` and
+ * never `core/`, and each of those tuples `satisfies` this one, so a new
+ * mechanism reason fails the typecheck until it is added here too.
+ */
+export const FORBIDDEN_TARGET_REASONS = [
+	'interface-not-authorized',
+	'scheme-not-authorized',
+	'host-not-authorized',
+	'port-not-authorized',
+	'address-not-authorized',
+	'address-unparseable',
+	'method-not-authorized',
+	'executable-not-authorized',
+	'subcommand-not-authorized',
+	'environment-key-not-authorized',
+	'tool-not-authorized',
+] as const
+
+export type ForbiddenTargetReason = (typeof FORBIDDEN_TARGET_REASONS)[number]
+
 export class RuntimeFault extends Error {
 	readonly code: RuntimeFaultCode
 	readonly artifactPath: string
+	/**
+	 * Which rule refused the target, on a `forbidden-target` fault a policy
+	 * denial threw, so a caller records the denial without parsing the message.
+	 * `undefined` on every other fault: only the `forbidden-target` constructor
+	 * signature accepts it, so no other code can carry one.
+	 */
+	readonly reason: ForbiddenTargetReason | undefined
 
+	constructor(
+		code: 'forbidden-target',
+		artifactPath: string,
+		detail: string,
+		options?: { cause?: unknown; reason?: ForbiddenTargetReason },
+	)
 	constructor(
 		code: RuntimeFaultCode,
 		artifactPath: string,
 		detail: string,
 		options?: { cause?: unknown },
+	)
+	constructor(
+		code: RuntimeFaultCode,
+		artifactPath: string,
+		detail: string,
+		options?: { cause?: unknown; reason?: ForbiddenTargetReason },
 	) {
 		super(`${code} in ${artifactPath}: ${detail}`, options)
 		this.name = 'RuntimeFault'
 		this.code = code
 		this.artifactPath = artifactPath
+		// Guarded at run time too: an options variable holding a reason passes the
+		// general signature, since excess-property checks apply to literals only.
+		this.reason = code === 'forbidden-target' ? options?.reason : undefined
 	}
 }

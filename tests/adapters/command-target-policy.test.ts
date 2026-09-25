@@ -151,11 +151,14 @@ describe('evaluateCommandTarget', () => {
 		})
 	})
 
-	it('declares exactly three denial reasons', () => {
+	// The fourth is the adapter's, decided against `permittedEnvironmentKeys`
+	// once a target is allowed; `evaluateCommandTarget` returns the first three.
+	it('declares exactly four denial reasons', () => {
 		expect(COMMAND_DENIAL_REASONS).toEqual([
 			'interface-not-authorized',
 			'executable-not-authorized',
 			'subcommand-not-authorized',
+			'environment-key-not-authorized',
 		])
 	})
 

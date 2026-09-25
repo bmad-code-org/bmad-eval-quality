@@ -10,6 +10,16 @@ body.
 
 ## [Unreleased]
 
+### Added
+
+- **A `forbidden-target` fault says which rule refused the target.**
+  `RuntimeFault` gains a readonly `reason`, set on a `forbidden-target` fault a policy denial threw and `undefined` on every other fault, typed `ForbiddenTargetReason` and enumerated as `FORBIDDEN_TARGET_REASONS` on the root barrel and on `eval-quality/conformance`.
+  `createCommandLineAdapter` and `createMcpAdapter` used to drop the policy decision's reason and throw only the code and a message, so a caller recording why a probe was denied had to parse prose.
+  The command adapter now sets `interface-not-authorized`, `executable-not-authorized`, `subcommand-not-authorized`, or the new `environment-key-not-authorized`, which covers a declared environment key the authorization does not permit and a declared `PATH`.
+  The MCP adapter sets `interface-not-authorized` or `tool-not-authorized`.
+  A request of a kind the adapter does not run gets `interface-not-authorized`, the same denial as an interface no authorization names.
+  The constructor takes the reason in its options object, `{ reason }` beside `cause`, and only with code `forbidden-target`; every existing call compiles unchanged, and the message and code of every fault are as before.
+
 ## [4.1.4] - 2026-09-25
 
 ### Changed

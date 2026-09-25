@@ -1,4 +1,5 @@
 /** AD-35's default-deny decision over a resolved target, as a pure function. */
+import type { ForbiddenTargetReason } from '../schemas/faults.ts'
 import type {
 	ProbeTargetAuthorization,
 	ProbeTargetPolicy,
@@ -23,7 +24,8 @@ export type AddressClass = (typeof ADDRESS_CLASSES)[number]
 /**
  * Why a target was denied. Detail carried in the message; every one is thrown
  * as the single AD-28 `forbidden-target` fault, so `check:ad28-registry`
- * stays at ten.
+ * stays at ten, and a port passes the decision's reason as the fault's
+ * `reason`.
  */
 export const DENIAL_REASONS = [
 	'interface-not-authorized',
@@ -33,7 +35,7 @@ export const DENIAL_REASONS = [
 	'address-not-authorized',
 	'address-unparseable',
 	'method-not-authorized',
-] as const
+] as const satisfies readonly ForbiddenTargetReason[]
 
 export type DenialReason = (typeof DENIAL_REASONS)[number]
 
