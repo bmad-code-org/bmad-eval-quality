@@ -10,6 +10,13 @@ body.
 
 ## [Unreleased]
 
+### Changed
+
+- **Observation `provenance` is described by role.**
+  The `SealedRunRecord` observation's `provenance` description in `schemas/sealed-run-record.schema.json` said `baseline` meant "a pre-canned or deterministic test", which told an evaluation running a scripted plan to label every step `baseline`, and the witness match counts only `evaluator-chosen` observations, so no probe could then be exercised or witnessed.
+  The description now defines `evaluator-chosen` as an action the evaluation itself performed on the probed interface, whether an agent selected it or a scripted plan did, and `baseline` as a harness baseline or a fixture set-up call the evaluation did not perform, which the witness match excludes.
+  This matches what the scorer and every tutorial already do; validation and scoring are unchanged.
+
 ## [4.1.3] - 2026-09-24
 
 ### Fixed
