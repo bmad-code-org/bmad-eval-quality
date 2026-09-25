@@ -10,6 +10,8 @@ body.
 
 ## [Unreleased]
 
+## [4.1.4] - 2026-09-25
+
 ### Changed
 
 - **Observation `provenance` is described by role.**
