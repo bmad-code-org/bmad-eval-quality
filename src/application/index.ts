@@ -65,8 +65,15 @@ export type { Severity } from '../core/schemas/eval-contract.ts'
 export { SEVERITY_LEVELS } from '../core/schemas/eval-contract.ts'
 // The array only: `OutcomeState`, the Zod enum over it, stays off the barrel.
 export { OUTCOME_STATES } from '../core/schemas/evidence-artifact.ts'
-export type { RuntimeFaultCode } from '../core/schemas/faults.ts'
-export { RUNTIME_FAULT_CODES, RuntimeFault } from '../core/schemas/faults.ts'
+export type {
+	ForbiddenTargetReason,
+	RuntimeFaultCode,
+} from '../core/schemas/faults.ts'
+export {
+	FORBIDDEN_TARGET_REASONS,
+	RUNTIME_FAULT_CODES,
+	RuntimeFault,
+} from '../core/schemas/faults.ts'
 export type {
 	EvaluatorRecommendation,
 	Verdict,

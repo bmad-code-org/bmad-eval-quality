@@ -24,7 +24,11 @@
  *    metacharacter, and pass only the environment the mapping declares.
  * 3. A policy denial throws `forbidden-target`; a cap throws
  *    `budget-exhausted`; an abort throws `aborted`; a failure to reach the
- *    system at all throws `port-failure`.
+ *    system at all throws `port-failure`. Both shipped adapters also set a
+ *    denial's `reason` to the rule that refused the target, one of
+ *    `FORBIDDEN_TARGET_REASONS`. A port written for `api` can pass on the
+ *    reason `evaluateTarget` returned; the conformance suite asserts the code
+ *    alone.
  * 4. Every answer the system returns is an observation, whatever it says. A
  *    4xx or 5xx, a non-zero exit, and a tool result flagged as an error all
  *    resolve to a schema-valid `ProbeObservation`, since AD-10's "every

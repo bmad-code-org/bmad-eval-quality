@@ -34,7 +34,7 @@ export const DEPENDENCY_DIRECTION_GATE = 'dependency-direction'
  * description and asserted by `tests/architecture/dependency-direction.test.ts`,
  * so the ordering property below is a measured fact rather than a warning.
  */
-export const ORDERING_WITNESS_VIOLATIONS = 85
+export const ORDERING_WITNESS_VIOLATIONS = 87
 
 /** The optional peer is absent. The consumer repairs it by installing it, so it takes the usage code. */
 export const TYPESCRIPT_PEER_MISSING = 'EVAL_QUALITY_TYPESCRIPT_PEER_MISSING'

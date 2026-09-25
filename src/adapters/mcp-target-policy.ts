@@ -8,6 +8,7 @@
  * adapter-owned. The declared shapes stay in `core/schemas/probe-policy.ts`
  * beside the other two, which keeps all three mappings comparable in one file.
  */
+import type { ForbiddenTargetReason } from '../core/schemas/faults.ts'
 import {
 	type McpTargetAuthorization,
 	type McpTargetPolicy,
@@ -15,11 +16,11 @@ import {
 } from '../core/schemas/probe-policy.ts'
 import { parseTargetPolicy } from './parse-target-policy.ts'
 
-/** Why a tool server target was denied. Thrown as the single AD-28 `forbidden-target` fault, same as the HTTP and command reasons. */
+/** Why a tool server target was denied. Thrown as the single AD-28 `forbidden-target` fault, same as the HTTP and command reasons, with the reason as the fault's `reason`. */
 export const MCP_DENIAL_REASONS = [
 	'interface-not-authorized',
 	'tool-not-authorized',
-] as const
+] as const satisfies readonly ForbiddenTargetReason[]
 
 export type McpDenialReason = (typeof MCP_DENIAL_REASONS)[number]
 

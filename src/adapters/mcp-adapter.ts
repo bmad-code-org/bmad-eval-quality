@@ -66,7 +66,7 @@ import type { ProbeObservedBody } from '../core/schemas/probe-body.ts'
 import type { McpTargetPolicy } from '../core/schemas/probe-policy.ts'
 import type { EnvironmentProbePort } from '../ports/environment-probe-port.ts'
 import { probeParsers } from '../ports/environment-probe-port.ts'
-import { evaluateMcpTarget } from './mcp-target-policy.ts'
+import { evaluateMcpTarget, type McpDenialReason } from './mcp-target-policy.ts'
 import { runPortMethod } from './port-boundary.ts'
 import {
 	abortErrorFor,
@@ -113,8 +113,10 @@ function capped(detail: string): RuntimeFault {
 	return new RuntimeFault('budget-exhausted', 'McpProbeRequest', detail)
 }
 
-function forbidden(detail: string): RuntimeFault {
-	return new RuntimeFault('forbidden-target', 'ProbeRequest', detail)
+function forbidden(reason: McpDenialReason, detail: string): RuntimeFault {
+	return new RuntimeFault('forbidden-target', 'ProbeRequest', detail, {
+		reason,
+	})
 }
 
 function buildEnv(
@@ -427,6 +429,7 @@ export function createMcpAdapter(
 						// message names the kind that arrived, because the request union
 						// carries more than one kind this adapter refuses.
 						throw forbidden(
+							'interface-not-authorized',
 							`this adapter runs mcp requests only; no ${parsed.kind} target is ever authorized`,
 						)
 					}
@@ -434,7 +437,8 @@ export function createMcpAdapter(
 						interfaceId: parsed.interfaceId,
 						toolName: parsed.toolName,
 					})
-					if (!decision.allowed) throw forbidden(decision.detail)
+					if (!decision.allowed)
+						throw forbidden(decision.reason, decision.detail)
 					const { authorization } = decision
 
 					const callResult = await mechanism.callTool(

@@ -101,7 +101,39 @@ describe('createCommandLineAdapter, policy denial', () => {
 				request({ interfaceId: 'unmapped' }),
 				new AbortController().signal,
 			),
-		).rejects.toMatchObject({ code: 'forbidden-target' })
+		).rejects.toMatchObject({
+			code: 'forbidden-target',
+			reason: 'interface-not-authorized',
+		})
+		expect(calls).toBe(0)
+	})
+
+	it('never calls the mechanism when the executable is not authorized for a mapped interface', async () => {
+		let calls = 0
+		const mechanism: CommandMechanism = {
+			run: async () => {
+				calls++
+				throw new Error('should not run')
+			},
+			readArtifact: async () => ({
+				present: false,
+				text: '',
+				truncated: false,
+			}),
+		}
+		const adapter = createCommandLineAdapter(
+			policyOf(authorization()),
+			mechanism,
+		)
+		await expect(
+			adapter.probe(
+				request({ executable: 'other-cli' }),
+				new AbortController().signal,
+			),
+		).rejects.toMatchObject({
+			code: 'forbidden-target',
+			reason: 'executable-not-authorized',
+		})
 		expect(calls).toBe(0)
 	})
 
@@ -127,10 +159,14 @@ describe('createCommandLineAdapter, policy denial', () => {
 				request({ subcommandPath: ['push'] }),
 				new AbortController().signal,
 			),
-		).rejects.toMatchObject({ code: 'forbidden-target' })
+		).rejects.toMatchObject({
+			code: 'forbidden-target',
+			reason: 'subcommand-not-authorized',
+		})
 		expect(calls).toBe(0)
 	})
 
+	// The same denial an unmapped interfaceId meets, so the same reason.
 	it('denies an api request the same way: no target is ever authorized', async () => {
 		let calls = 0
 		const mechanism: CommandMechanism = {
@@ -159,7 +195,10 @@ describe('createCommandLineAdapter, policy denial', () => {
 		}
 		await expect(
 			adapter.probe(apiRequest, new AbortController().signal),
-		).rejects.toMatchObject({ code: 'forbidden-target' })
+		).rejects.toMatchObject({
+			code: 'forbidden-target',
+			reason: 'interface-not-authorized',
+		})
 		expect(calls).toBe(0)
 	})
 
@@ -196,6 +235,7 @@ describe('createCommandLineAdapter, policy denial', () => {
 			adapter.probe(mcpRequest, new AbortController().signal),
 		).rejects.toMatchObject({
 			code: 'forbidden-target',
+			reason: 'interface-not-authorized',
 			message: expect.stringContaining('no mcp target is ever authorized'),
 		})
 		expect(calls).toBe(0)
@@ -436,7 +476,10 @@ describe('createCommandLineAdapter, real spawn', () => {
 					}),
 					new AbortController().signal,
 				),
-			).rejects.toMatchObject({ code: 'forbidden-target' })
+			).rejects.toMatchObject({
+				code: 'forbidden-target',
+				reason: 'environment-key-not-authorized',
+			})
 		}
 		expect(calls).toBe(0)
 	})
@@ -477,7 +520,10 @@ describe('createCommandLineAdapter, real spawn', () => {
 					}),
 					new AbortController().signal,
 				),
-			).rejects.toMatchObject({ code: 'forbidden-target' })
+			).rejects.toMatchObject({
+				code: 'forbidden-target',
+				reason: 'environment-key-not-authorized',
+			})
 		}
 		expect(calls).toBe(0)
 	})

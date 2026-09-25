@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
+import { COMMAND_DENIAL_REASONS } from '../../src/adapters/command-target-policy.ts'
+import { MCP_DENIAL_REASONS } from '../../src/adapters/mcp-target-policy.ts'
+import { DENIAL_REASONS } from '../../src/core/probe/target-policy.ts'
 import {
+	FORBIDDEN_TARGET_REASONS,
 	RUNTIME_FAULT_CODES,
 	RuntimeFault,
 } from '../../src/core/schemas/faults.ts'
@@ -65,5 +69,56 @@ describe('RuntimeFault', () => {
 			{ cause },
 		)
 		expect(fault.cause).toBe(cause)
+	})
+
+	it('carries a denial reason on forbidden-target, so a caller need not parse the message', () => {
+		const fault = new RuntimeFault(
+			'forbidden-target',
+			'ProbeRequest',
+			'tool "delete_everything" is not among the authorized tools',
+			{ reason: 'tool-not-authorized' },
+		)
+		expect(fault.code).toBe('forbidden-target')
+		expect(fault.reason).toBe('tool-not-authorized')
+		expect(fault.message).not.toContain('tool-not-authorized')
+	})
+
+	it('carries no reason unless one is passed', () => {
+		const fault = new RuntimeFault(
+			'forbidden-target',
+			'ProbeRequest',
+			'no authorization names interface "x"',
+		)
+		expect(fault.reason).toBeUndefined()
+		expect(
+			new RuntimeFault('port-failure', 'ProbeRequest', 'spawn failed').reason,
+		).toBeUndefined()
+	})
+
+	// A type-level check, which `npm run typecheck` enforces: the directive fails
+	// the typecheck as unused if the other signatures ever accept a reason.
+	it('refuses a reason on any code other than forbidden-target, at compile time', () => {
+		const fault = new RuntimeFault('port-failure', 'ProbeRequest', 'x', {
+			// @ts-expect-error: only the forbidden-target signature takes a reason
+			reason: 'tool-not-authorized',
+		})
+		expect(fault.code).toBe('port-failure')
+	})
+})
+
+// Every mechanism's tuple `satisfies` the fault's union, which catches a reason
+// missing from the union. This catches the other direction: a reason in the
+// union that no mechanism can produce.
+describe('FORBIDDEN_TARGET_REASONS', () => {
+	it('is exactly the union of the api, cli, and mcp denial reasons', () => {
+		const union = new Set<string>([
+			...DENIAL_REASONS,
+			...COMMAND_DENIAL_REASONS,
+			...MCP_DENIAL_REASONS,
+		])
+		expect(new Set(FORBIDDEN_TARGET_REASONS)).toEqual(union)
+		expect(new Set(FORBIDDEN_TARGET_REASONS).size).toBe(
+			FORBIDDEN_TARGET_REASONS.length,
+		)
 	})
 })

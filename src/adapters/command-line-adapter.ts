@@ -61,7 +61,10 @@ import type { ProbeObservedBody } from '../core/schemas/probe-body.ts'
 import type { CommandTargetPolicy } from '../core/schemas/probe-policy.ts'
 import type { EnvironmentProbePort } from '../ports/environment-probe-port.ts'
 import { probeParsers } from '../ports/environment-probe-port.ts'
-import { evaluateCommandTarget } from './command-target-policy.ts'
+import {
+	type CommandDenialReason,
+	evaluateCommandTarget,
+} from './command-target-policy.ts'
 import { runPortMethod } from './port-boundary.ts'
 import {
 	abortErrorFor,
@@ -185,11 +188,13 @@ function buildEnv(
 	for (const key of Object.keys(declared)) {
 		if (key.toUpperCase() === 'PATH') {
 			throw forbidden(
+				'environment-key-not-authorized',
 				'environment key "PATH" is never permitted: it would choose which binary runs',
 			)
 		}
 		if (!permitted.includes(key)) {
 			throw forbidden(
+				'environment-key-not-authorized',
 				`environment key "${key}" is not permitted by this authorization`,
 			)
 		}
@@ -221,8 +226,10 @@ function capped(detail: string): RuntimeFault {
 	return new RuntimeFault('budget-exhausted', 'CommandProbeRequest', detail)
 }
 
-function forbidden(detail: string): RuntimeFault {
-	return new RuntimeFault('forbidden-target', 'ProbeRequest', detail)
+function forbidden(reason: CommandDenialReason, detail: string): RuntimeFault {
+	return new RuntimeFault('forbidden-target', 'ProbeRequest', detail, {
+		reason,
+	})
 }
 
 function writeStdin(
@@ -449,6 +456,7 @@ export function createCommandLineAdapter(
 						// message names the kind that arrived, because the request union
 						// carries more than one kind this adapter refuses.
 						throw forbidden(
+							'interface-not-authorized',
 							`this adapter runs cli requests only; no ${parsed.kind} target is ever authorized`,
 						)
 					}
@@ -457,7 +465,8 @@ export function createCommandLineAdapter(
 						executable: parsed.executable,
 						subcommandPath: parsed.subcommandPath,
 					})
-					if (!decision.allowed) throw forbidden(decision.detail)
+					if (!decision.allowed)
+						throw forbidden(decision.reason, decision.detail)
 					const { authorization } = decision
 
 					// Built before the spawn: a denial that arrives after the process

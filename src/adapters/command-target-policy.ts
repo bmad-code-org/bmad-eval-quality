@@ -10,6 +10,7 @@
  * imported from `src/adapters/` for the same reason — no shipped `api`
  * adapter exists to call it, which is the gap this file closes for `cli`.
  */
+import type { ForbiddenTargetReason } from '../core/schemas/faults.ts'
 import {
 	type CommandTargetAuthorization,
 	type CommandTargetPolicy,
@@ -17,14 +18,29 @@ import {
 } from '../core/schemas/probe-policy.ts'
 import { parseTargetPolicy } from './parse-target-policy.ts'
 
-/** Why a command target was denied. Thrown as the single AD-28 `forbidden-target` fault, same as the HTTP reasons. */
+/**
+ * Why a command request was denied. Thrown as the single AD-28
+ * `forbidden-target` fault, same as the HTTP reasons, with the reason as the
+ * fault's `reason`. `evaluateCommandTarget` decides the first three from the
+ * resolved target. The adapter decides `environment-key-not-authorized` once a
+ * target is allowed, against the matched authorization's
+ * `permittedEnvironmentKeys`, and a declared `PATH` gets it too, since no
+ * authorization can permit that key.
+ */
 export const COMMAND_DENIAL_REASONS = [
 	'interface-not-authorized',
 	'executable-not-authorized',
 	'subcommand-not-authorized',
-] as const
+	'environment-key-not-authorized',
+] as const satisfies readonly ForbiddenTargetReason[]
 
 export type CommandDenialReason = (typeof COMMAND_DENIAL_REASONS)[number]
+
+/** The reasons `evaluateCommandTarget` itself can return. */
+export type CommandTargetDenialReason = Exclude<
+	CommandDenialReason,
+	'environment-key-not-authorized'
+>
 
 export type CommandResolvedTarget = {
 	readonly interfaceId: string
@@ -39,7 +55,7 @@ export type CommandPolicyDecision =
 	  }
 	| {
 			readonly allowed: false
-			readonly reason: CommandDenialReason
+			readonly reason: CommandTargetDenialReason
 			readonly detail: string
 	  }
 
@@ -53,7 +69,7 @@ function subcommandPathsMatch(
 }
 
 function deny(
-	reason: CommandDenialReason,
+	reason: CommandTargetDenialReason,
 	detail: string,
 ): CommandPolicyDecision {
 	return { allowed: false, reason, detail }
