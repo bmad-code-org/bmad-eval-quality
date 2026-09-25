@@ -104,6 +104,16 @@ describe('RuntimeFault', () => {
 		})
 		expect(fault.code).toBe('port-failure')
 	})
+
+	it('drops a reason an options variable carries onto any code other than forbidden-target', () => {
+		const options = {
+			cause: new Error('spawn'),
+			reason: 'tool-not-authorized' as const,
+		}
+		const fault = new RuntimeFault('port-failure', 'ProbeRequest', 'x', options)
+		expect(fault.reason).toBeUndefined()
+		expect(fault.cause).toBe(options.cause)
+	})
 })
 
 // Every mechanism's tuple `satisfies` the fault's union, which catches a reason

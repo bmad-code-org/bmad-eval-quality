@@ -81,6 +81,8 @@ export class RuntimeFault extends Error {
 		this.name = 'RuntimeFault'
 		this.code = code
 		this.artifactPath = artifactPath
-		this.reason = options?.reason
+		// Guarded at run time too: an options variable holding a reason passes the
+		// general signature, since excess-property checks apply to literals only.
+		this.reason = code === 'forbidden-target' ? options?.reason : undefined
 	}
 }
