@@ -691,6 +691,7 @@ describe('the published package surface', () => {
 			'classifyAddress',
 			'parseAddress',
 			'isSafeMethod',
+			'staysOnHost',
 		]) {
 			expect(typeof barrel[name], name).toBe('function')
 		}
@@ -757,15 +758,23 @@ describe('the published package surface', () => {
 			typeof import('eval-quality').isSafeMethod,
 			SafeMethod
 		> = true
-		expect([classifyIsExact, parseIsExact, safeMethodIsExact]).toEqual([
-			true,
-			true,
-			true,
-		])
+		type StaysOnHost = (address: string) => boolean
+		const staysOnHostIsExact: Exact<
+			typeof import('eval-quality').staysOnHost,
+			StaysOnHost
+		> = true
+		expect([
+			classifyIsExact,
+			parseIsExact,
+			safeMethodIsExact,
+			staysOnHostIsExact,
+		]).toEqual([true, true, true, true])
 		expect((barrel.classifyAddress as Classify)('169.254.169.254')).toBe(
 			'metadata',
 		)
 		expect((barrel.parseAddress as Parse)('::1').ok).toBe(true)
+		expect((barrel.staysOnHost as StaysOnHost)('64:ff9b::7f00:1')).toBe(false)
+		expect((barrel.staysOnHost as StaysOnHost)('::1')).toBe(true)
 
 		const evaluate = barrel.evaluateTarget as Expected
 		const authorization: ProbeTargetAuthorization = {

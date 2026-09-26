@@ -12,6 +12,7 @@ import {
 	isSafeMethod,
 	parseAddress,
 	type ResolvedTarget,
+	staysOnHost,
 } from '../../src/core/probe/target-policy.ts'
 import type {
 	ProbeTargetAuthorization,
@@ -224,6 +225,67 @@ describe('parseAddress and classifyAddress: the classes AD-35 names (fixtures 1-
 		expect(compressed.ok && compressed.canonical).toBe(
 			expanded.ok ? expanded.canonical : 'unparsed',
 		)
+	})
+})
+
+describe('staysOnHost: whether a connection to the address leaves the machine', () => {
+	it.each([
+		['127.0.0.1', 'IPv4 loopback'],
+		['127.255.255.254', 'the top of 127.0.0.0/8'],
+		['0.0.0.0', 'the IPv4 unspecified address'],
+		['::1', 'IPv6 loopback'],
+		['[::1]', 'IPv6 loopback in URL brackets'],
+		['0:0:0:0:0:0:0:1', 'IPv6 loopback fully spelled'],
+		['::', 'the IPv6 unspecified address'],
+		['::ffff:127.0.0.1', 'the IPv4-mapped loopback'],
+		['[::ffff:7f00:1]', 'the IPv4-mapped loopback in hex and brackets'],
+		['::ffff:0.0.0.0', 'the IPv4-mapped unspecified address'],
+	])('%s stays on the host (%s)', (address) => {
+		expect(staysOnHost(address)).toBe(true)
+	})
+
+	// Each is classed `loopback` by its embedded IPv4 address, and each goes
+	// through a translator, so `classifyAddress` alone gives the wrong answer.
+	it.each([
+		['64:ff9b::7f00:1', 'NAT64 over 127.0.0.1'],
+		['64:ff9b::127.0.0.1', 'NAT64 over 127.0.0.1, dotted'],
+		['[64:ff9b::7f00:1]', 'NAT64 over 127.0.0.1, bracketed'],
+		['64:ff9b::0.0.0.0', 'NAT64 over the unspecified address'],
+		['::127.0.0.1', 'IPv4-compatible 127.0.0.1'],
+		['::7f00:1', 'IPv4-compatible 127.0.0.1 in hex'],
+	])('%s leaves the host (%s)', (address) => {
+		expect(classifyAddress(address)).toBe('loopback')
+		expect(staysOnHost(address)).toBe(false)
+	})
+
+	it.each([
+		['10.0.0.1', 'private'],
+		['192.168.1.1', 'private'],
+		['169.254.169.254', 'metadata'],
+		['169.254.0.1', 'link-local'],
+		['fe80::1', 'link-local'],
+		['fc00::1', 'private'],
+		['93.184.216.34', 'public'],
+		['2001:db8::1', 'public'],
+		['128.0.0.1', 'public'],
+		['::2', 'public'],
+	])('%s leaves the host (class %s)', (address, addressClass) => {
+		expect(classifyAddress(address)).toBe(addressClass)
+		expect(staysOnHost(address)).toBe(false)
+	})
+
+	it.each([
+		'',
+		'localhost',
+		'127.0.0.1%eth0',
+		'::1%lo0',
+		'[::1',
+		'127.0.0.256',
+		'0127.0.0.1',
+		'::1::',
+	])('%j is unparseable and never stays on the host', (address) => {
+		expect(classifyAddress(address)).toBe('unparseable')
+		expect(staysOnHost(address)).toBe(false)
 	})
 })
 

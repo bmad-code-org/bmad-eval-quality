@@ -41,7 +41,8 @@ export type {
 export { validateLineageChain } from '../core/lineage/chain.ts'
 // AD-35's allow-or-deny decision over a resolved HTTP target. An adapter
 // author's `EnvironmentProbePort` for `api` delegates to `evaluateTarget`, so
-// address classification exists once, here.
+// address classification exists once, here. `staysOnHost` answers the one
+// question classification cannot: whether a connection leaves the machine.
 export type {
 	AddressClass,
 	DenialReason,
@@ -56,6 +57,7 @@ export {
 	evaluateTarget,
 	isSafeMethod,
 	parseAddress,
+	staysOnHost,
 } from '../core/probe/target-policy.ts'
 export { INTERCHANGE_ARTIFACT_KEYS } from '../core/schemas/artifact.ts'
 // Type-only: `eval-contract.ts` declares a Zod schema under the name

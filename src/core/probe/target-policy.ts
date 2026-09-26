@@ -297,6 +297,35 @@ export function classifyAddress(address: string): AddressClass {
 	return parsed.ok ? parsed.addressClass : 'unparseable'
 }
 
+/** `::1` and `::` fully expanded, the two IPv6 addresses that stay on the host. */
+const IPV6_LOOPBACK = '0000:0000:0000:0000:0000:0000:0000:0001'
+const IPV6_UNSPECIFIED = '0000:0000:0000:0000:0000:0000:0000:0000'
+
+/**
+ * Whether a connection to a literal address stays on the local host: IPv4
+ * `127.0.0.0/8`, IPv6 `::1`, the `::ffff:` spelling of a `127.0.0.0/8`
+ * address, and the unspecified addresses `0.0.0.0` and `::`, which
+ * `classifyAddress` already counts as loopback because they route to local on
+ * every stack this package runs on. `false` for every other address and for
+ * one `parseAddress` cannot read.
+ *
+ * Narrower than `classifyAddress(address) === 'loopback'`. `classifyAddress`
+ * reads the NAT64 form (`64:ff9b::7f00:1`) and the IPv4-compatible form
+ * (`::127.0.0.1`) as their embedded IPv4 address, the right answer for a
+ * denial. A connection to either goes through a translator first, so it
+ * leaves the host whatever address it carries.
+ */
+export function staysOnHost(address: string): boolean {
+	const parsed = parseAddress(address)
+	if (!parsed.ok || parsed.addressClass !== 'loopback') return false
+	// `::ffff:` spellings were rewritten to IPv4 by `parseAddress`, so an IPv6
+	// canonical form classed loopback is `::1`, `::`, or a translated form.
+	if (parsed.family === 4) return true
+	return (
+		parsed.canonical === IPV6_LOOPBACK || parsed.canonical === IPV6_UNSPECIFIED
+	)
+}
+
 // DNS is case-insensitive and `example.test.` and `example.test` are one name,
 // so a mixed-case or dot-suffixed redirect target would otherwise walk past
 // the host check. One trailing dot only: `example.test..` spells nothing.
