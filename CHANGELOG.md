@@ -10,6 +10,14 @@ body.
 
 ## [Unreleased]
 
+### Added
+
+- **`staysOnHost` says whether a connection to an address stays on the local host.**
+  It exports from `eval-quality` beside `classifyAddress`, typed `(address: string) => boolean`.
+  It answers `true` for IPv4 `127.0.0.0/8`, IPv6 `::1`, the `::ffff:` spelling of a `127.0.0.0/8` address, and the unspecified addresses `0.0.0.0` and `::`, and `false` for every other address and for one `parseAddress` cannot read.
+  `classifyAddress` classes the NAT64 form `64:ff9b::7f00:1` and the IPv4-compatible form `::127.0.0.1` as `loopback` by their embedded address, which is right for a denial; a connection to either goes through a translator and leaves the host, so a caller asking `classifyAddress(address) === 'loopback'` whether a credential stays on the machine got the wrong answer for both.
+  `classifyAddress` and every other export behave as before.
+
 ## [4.2.0] - 2026-09-25
 
 ### Added
