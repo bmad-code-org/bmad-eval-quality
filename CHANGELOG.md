@@ -10,6 +10,8 @@ body.
 
 ## [Unreleased]
 
+## [4.3.0] - 2026-09-26
+
 ### Added
 
 - **`staysOnHost` says whether a connection to an address stays on the local host.**

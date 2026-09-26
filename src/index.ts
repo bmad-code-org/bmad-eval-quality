@@ -89,4 +89,4 @@ export type {
 	WitnessInputs,
 } from './core/schemas/sensitivity-witness.ts'
 
-export const VERSION = '4.2.0'
+export const VERSION = '4.3.0'
