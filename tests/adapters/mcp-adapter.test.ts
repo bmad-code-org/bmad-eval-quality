@@ -8,7 +8,7 @@
  * `reportOf` computes `passed` from `CONFORMANCE_OUTCOME_COUNTS[port]` and a
  * report was unconstructible without it.
  */
-import { spawn } from 'node:child_process'
+import { execFileSync, spawn } from 'node:child_process'
 import { getEventListeners } from 'node:events'
 import {
 	existsSync,
@@ -21,6 +21,10 @@ import { constants as osConstants, tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { afterAll, describe, expect, it } from 'vitest'
+import type {
+	McpAnsweredCall,
+	McpEndedSession,
+} from '../../src/adapters/index.ts'
 import {
 	createMcpAdapter,
 	type McpCallToolRequest,
@@ -32,11 +36,11 @@ import { runPreflight } from '../../src/application/preflight.ts'
 import { compile } from '../../src/core/compile/compile.ts'
 import { EvalContract } from '../../src/core/schemas/eval-contract.ts'
 import { RuntimeFault } from '../../src/core/schemas/faults.ts'
-import type {
-	McpProbeObservation,
-	McpProbeRequest,
+import {
+	type McpProbeObservation,
+	type McpProbeRequest,
 	ProbeObservation,
-	ProbeRequest,
+	type ProbeRequest,
 } from '../../src/core/schemas/port-messages.ts'
 import type { JsonValue } from '../../src/core/schemas/primitives.ts'
 import type { McpTargetPolicy } from '../../src/core/schemas/probe-policy.ts'
@@ -93,6 +97,9 @@ const TOOLS = [
 	'signal_tool',
 	'farewell_tool',
 	'garbage_tool',
+	'log_line_tool',
+	'chatty_tool',
+	'relayed_tool',
 	'unframed_tool',
 	'split_tool',
 ]
@@ -457,23 +464,34 @@ describe('a session the server ends before it answers the tool call', () => {
 
 	// The server exiting right after answering has answered, and reading its
 	// exit as the end of the session would report a crash that did not happen.
-	// Repeated because the answer and the exit reach the host as two events
-	// whose order is the thing under test.
 	it('keeps a server that answers and then exits an answered call with no exit code', async () => {
-		for (let attempt = 0; attempt < 8; attempt++) {
-			const observed = mcpObservation(
-				await probeFor({
-					probeId: `farewell-${attempt}`,
-					toolName: 'farewell_tool',
-				}),
-			)
-			expect(observed.isError).toBe(false)
-			expect(observed.result).toEqual({
-				kind: 'json',
-				value: { ok: true, farewell: true },
-			})
-			expect('exitCode' in observed).toBe(false)
-		}
+		const observed = mcpObservation(
+			await probeFor({ probeId: 'farewell', toolName: 'farewell_tool' }),
+		)
+		expect(observed.isError).toBe(false)
+		expect(observed.result).toEqual({
+			kind: 'json',
+			value: { ok: true, farewell: true },
+		})
+		expect('exitCode' in observed).toBe(false)
+	})
+
+	// A launcher exits while the process it started, holding the same stdout,
+	// goes on to write the answer. The session ends when the pipes close and not
+	// when the direct process exits, so this is an answered call. Listening for
+	// `exit` instead of `close` reads the launcher's status as a crash.
+	it('keeps an answer written by a process the server started, after the server exited, an answered call', async () => {
+		const observed = mcpObservation(
+			await probeFor({ probeId: 'relayed', toolName: 'relayed_tool' }),
+		)
+		expect(observed).toStrictEqual({
+			kind: 'mcp',
+			probeId: 'relayed',
+			interfaceId: 'notes-tool-server',
+			operationId: 'relayed',
+			isError: false,
+			result: { kind: 'json', value: { ok: true, relayed: true } },
+		})
 	})
 
 	it('keeps a complete frame with no trailing newline followed by an exit an answered call', async () => {
@@ -532,11 +550,41 @@ describe('a session the server ends before it answers the tool call', () => {
 		).toBe(false)
 	})
 
+	// An exit code marks a session the server ended before answering, which is
+	// an error with nothing returned. The union enforces it, so a scripted
+	// mechanism or a hand-written observation cannot say otherwise.
+	it('rejects an exit code beside an answered call or a returned result', () => {
+		const ended = {
+			kind: 'mcp',
+			probeId: 'p',
+			interfaceId: 'notes-tool-server',
+			operationId: 'p',
+			isError: true,
+			result: { kind: 'absent' },
+			exitCode: 3,
+		}
+		for (const contradicting of [
+			{ ...ended, isError: false },
+			{ ...ended, result: { kind: 'json', value: { ok: true } } },
+			{ ...ended, isError: false, result: { kind: 'json', value: null } },
+		]) {
+			for (const parser of [probeParsers.response, ProbeObservation]) {
+				const parsed = parser.safeParse(contradicting)
+				expect(parsed.success).toBe(false)
+				expect(parsed.error?.issues[0]?.path).toEqual(['exitCode'])
+			}
+		}
+		expect(ProbeObservation.safeParse(ended).success).toBe(true)
+	})
+
 	// The mechanism is swappable, so the conformance subject and any other
 	// scripted mechanism can report the ended session without a process.
 	it('turns a scripted ended-session result into the same observation', async () => {
+		// Both result types are named on the subpath a consumer imports.
+		const endedSession: McpEndedSession = { isError: true, exitCode: 7 }
+		const answeredCall: McpAnsweredCall = { isError: false }
 		const scripted = createMcpAdapter(policy, {
-			callTool: () => Promise.resolve({ isError: true, exitCode: 7 }),
+			callTool: () => Promise.resolve(endedSession),
 		})
 		const observed = mcpObservation(
 			await scripted.probe(
@@ -550,7 +598,7 @@ describe('a session the server ends before it answers the tool call', () => {
 			exitCode: 7,
 		})
 		const answering = createMcpAdapter(policy, {
-			callTool: () => Promise.resolve({ isError: false }),
+			callTool: () => Promise.resolve(answeredCall),
 		})
 		expect(
 			'exitCode' in
@@ -770,6 +818,45 @@ describe('the caps and the session failures, which are never conflated', () => {
 		)
 		expect(fault.code).toBe('port-failure')
 		expect(causeMessage(fault)).toContain('not a JSON-RPC message')
+	})
+
+	// A line that parses as JSON is still no JSON-RPC message unless it is an
+	// object carrying `jsonrpc: '2.0'`. A server that logs a JSON line on stdout
+	// and then exits has ended its session on a malformed frame, exactly as one
+	// that logs plain text has.
+	it.each([
+		['a structured log line', '{"level":30,"msg":"about to crash"}'],
+		['an array', '[1,2,3]'],
+		['a string', '"about to crash"'],
+		['a number', '42'],
+		['null', 'null'],
+		['an object naming another protocol version', '{"jsonrpc":"1.0","id":2}'],
+	])(
+		'reports %s on stdout as a port failure even when the server then exits',
+		async (_label, line) => {
+			const fault = await faultOf(() =>
+				probeFor({
+					probeId: 'json-log-mid-call',
+					toolName: 'log_line_tool',
+					arguments: { line },
+				}),
+			)
+			expect(fault.code).toBe('port-failure')
+			expect(causeMessage(fault)).toContain('not a JSON-RPC message')
+		},
+	)
+
+	// Requests and notifications the server makes carry `jsonrpc: '2.0'`. They
+	// are legal, answer nothing the client asked, and are ignored.
+	it('ignores a notification and a request the server makes, and reads the answer after them', async () => {
+		const observed = mcpObservation(
+			await probeFor({ probeId: 'chatty', toolName: 'chatty_tool' }),
+		)
+		expect(observed.isError).toBe(false)
+		expect(observed.result).toEqual({
+			kind: 'json',
+			value: { ok: true, chatty: true },
+		})
 	})
 
 	// Teardown kills the process group, so a launcher's grandchild goes with it.
@@ -1113,17 +1200,64 @@ describe.skipIf(process.platform === 'win32')(
 			})
 		})
 
-		// `close()` kills the server it is tearing down, and that exit is the
-		// adapter's own doing. A call that answered and was then torn down has
-		// to come back as the answer.
-		it('does not read its own teardown as an ended session', async () => {
-			const answered = await nodeStdioMcpMechanism.callTool(
-				callRequest({ toolName: 'search_notes', arguments: { query: 'x' } }),
-				new AbortController().signal,
+		// The watchdog is the harness's own process. When something kills it while
+		// the server runs, the group goes down with it, and reporting that as the
+		// server ending with SIGKILL would record a harness-side kill as the server
+		// crashing. Nothing observed the server, so the run is a fault.
+		it('reports a watchdog killed while the server runs as a fault, never as the server ending the session', async () => {
+			const pidFile = join(PID_DIR, 'watchdog-killed.pid')
+			const readyFile = join(PID_DIR, 'watchdog-killed.ready')
+			rmSync(readyFile, { force: true })
+			const pending = nodeStdioMcpMechanism
+				.callTool(
+					callRequest({
+						target: process.execPath,
+						targetArgs: [
+							LAUNCHER_PATH,
+							pidFile,
+							'--linger',
+							'--ready-file',
+							readyFile,
+						],
+						toolName: 'hanging_tool',
+						maxElapsedMs: 30_000,
+					}),
+					new AbortController().signal,
+				)
+				.then(
+					(observed) => ({ observed }),
+					(thrown: unknown) => ({ thrown }),
+				)
+			const until = Date.now() + 10_000
+			while (!existsSync(readyFile) && Date.now() < until) {
+				await new Promise((settle) => setTimeout(settle, 25))
+			}
+			const launcher = Number(readFileSync(`${pidFile}.launcher`, 'utf8'))
+			const server = Number(readFileSync(pidFile, 'utf8'))
+			// The launcher is the group leader the watchdog started, so its parent is
+			// the watchdog.
+			const watchdog = Number(
+				execFileSync('ps', ['-o', 'ppid=', '-p', String(launcher)], {
+					encoding: 'utf8',
+				}).trim(),
 			)
-			expect(answered.isError).toBe(false)
-			expect(answered.exitCode).toBeUndefined()
-		})
+			expect(watchdog).toBeGreaterThan(1)
+			expect(watchdog).not.toBe(process.pid)
+			try {
+				process.kill(watchdog, 'SIGKILL')
+				const outcome = await pending
+				expect(outcome).not.toHaveProperty('observed')
+				const { thrown } = outcome as { thrown: unknown }
+				expect(thrown).toBeInstanceOf(Error)
+				expect((thrown as Error).message).toContain('watchdog')
+				expect(await isDeadWithin(launcher, 3000)).toBe(true)
+				expect(await isDeadWithin(server, 3000)).toBe(true)
+			} finally {
+				for (const pid of [launcher, server, watchdog]) {
+					if (alive(pid)) process.kill(pid, 'SIGKILL')
+				}
+			}
+		}, 20_000)
 
 		it('keeps every ceiling and refusal a rejection when the session would otherwise have ended', async () => {
 			const capped = await nodeStdioMcpMechanism

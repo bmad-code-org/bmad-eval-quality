@@ -163,6 +163,12 @@ export interface GroupedChild extends EventEmitter {
 	killGroup(): void
 	/** Lets the watchdog exit without killing the group: for a run that settled on the target's own exit. */
 	release(): void
+	/**
+	 * True once the watchdog died on its own while the target ran, so the group
+	 * was killed by the harness's own machinery and the reported `SIGKILL` says
+	 * nothing about the target. Absent where there is no watchdog.
+	 */
+	readonly watchdogLost?: boolean
 }
 
 export type GroupedSpawn = {
@@ -360,6 +366,7 @@ class WatchedChild extends EventEmitter implements GroupedChild {
 	} | null = null
 	#failed = false
 	#killed = false
+	#watchdogLost = false
 	#openStreams = 0
 	#closed = false
 
@@ -427,7 +434,9 @@ class WatchedChild extends EventEmitter implements GroupedChild {
 			}
 			// The watchdog was killed on its own. The target is left without its
 			// lifeline, so the group goes, and the target is reported as that
-			// kill ended it.
+			// kill ended it. `watchdogLost` says the kill was the harness's, for a
+			// caller that must not read it as how the target ended.
+			this.#watchdogLost = true
 			this.killGroup()
 			this.#end(null, 'SIGKILL')
 		})
@@ -441,6 +450,10 @@ class WatchedChild extends EventEmitter implements GroupedChild {
 				env: spec.env,
 			})}\n`,
 		)
+	}
+
+	get watchdogLost(): boolean {
+		return this.#watchdogLost
 	}
 
 	killGroup(): void {

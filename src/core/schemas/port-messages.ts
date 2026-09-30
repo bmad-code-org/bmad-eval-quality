@@ -232,8 +232,9 @@ export const CommandProbeObservation = z.strictObject({
  * completed and before it answered `tools/call` is an observation on the same
  * terms, the tool-call twin of a command that crashes: `exitCode` is present,
  * `isError` is `true`, and `result` is absent, since nothing was returned.
- * The code is signed on `CommandProbeObservation.exitCode`'s convention, a
- * process ended by a signal being a negative code. An answered call carries no
+ * The code is the launched target's exit status, signed on
+ * `CommandProbeObservation.exitCode`'s convention, a process ended by a signal
+ * being a negative code. An answered call carries no
  * `exitCode`, and a server that answers and then exits is an answered call.
  *
  * Only a policy denial, a cap, an abort, or a failure to establish the session
@@ -246,22 +247,33 @@ export const CommandProbeObservation = z.strictObject({
  * `result` is the structured content the tool returned, which is the channel
  * the operation's response descriptor describes.
  */
-export const McpProbeObservation = z.strictObject({
-	...probeCorrelation,
-	kind: z.literal('mcp'),
-	isError: z
-		.boolean()
-		.describe(
-			"The MCP envelope's own error flag, true when the tool reported the call failed, and true on a session the server's process ended before it answered. Sealed evidence carries it as `responseStatus` 1 for true and 0 for false, since a tool call has no transport status of its own.",
-		),
-	result: ProbeObservedBody,
-	exitCode: z
-		.int()
-		.optional()
-		.describe(
-			"Present only when the server's process ended the session after the `initialize` handshake completed and before it answered `tools/call`. Signed as `CommandProbeObservation.exitCode` is: a process ended by a signal is a negative code. Sealed evidence carries it on the `exit-code` channel, `null` on an answered call.",
-		),
-})
+export const McpProbeObservation = z
+	.strictObject({
+		...probeCorrelation,
+		kind: z.literal('mcp'),
+		isError: z
+			.boolean()
+			.describe(
+				"The MCP envelope's own error flag, true when the tool reported the call failed, and true on a session the server's process ended before it answered. Sealed evidence carries it as `responseStatus` 1 for true and 0 for false, since a tool call has no transport status of its own.",
+			),
+		result: ProbeObservedBody,
+		exitCode: z
+			.int()
+			.optional()
+			.describe(
+				"Present only when the server's process ended the session after the `initialize` handshake completed and before it answered `tools/call`. It is the exit status of the launched target, the process-group leader, so a server a launcher started as a grandchild records the launcher's status. Signed as `CommandProbeObservation.exitCode` is: a process ended by a signal is a negative code. Sealed evidence carries it on the `exit-code` channel, `null` on an answered call.",
+			),
+	})
+	.refine(
+		(observation) =>
+			observation.exitCode === undefined ||
+			(observation.isError && observation.result.kind === 'absent'),
+		{
+			message:
+				'An `exitCode` marks a session the server ended before it answered, so `isError` must be true and `result` absent.',
+			path: ['exitCode'],
+		},
+	)
 
 export const ProbeObservation = z.discriminatedUnion('kind', [
 	ApiProbeObservation,

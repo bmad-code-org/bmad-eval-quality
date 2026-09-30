@@ -36,8 +36,14 @@
 //   signal_tool     ends itself with SIGTERM mid-call without answering
 //   farewell_tool   answers with a complete frame, then exits with code 3
 //   garbage_tool    writes a line that is no JSON-RPC message, then exits with code 3
+//   log_line_tool   writes args.line on stdout as it is, then exits with code 3
+//   relayed_tool    the way a launcher relays: a grandchild holding the same
+//                   stdout writes a complete answer 300ms later, and this
+//                   process exits with code 3 as soon as it has started
+//   chatty_tool     a server-to-client notification and request, then an answer
 //   unframed_tool   a complete frame with no trailing newline, then exits
 //   split_tool      one frame written in two chunks that split a character
+import { spawn } from 'node:child_process'
 import { writeFileSync } from 'node:fs'
 import { createInterface } from 'node:readline'
 
@@ -166,6 +172,41 @@ const answerToolCall = (id, params) => {
 			process.stdout.write('this line is not a JSON-RPC message\n', () =>
 				process.exit(3),
 			)
+			return
+		case 'log_line_tool':
+			process.stdout.write(`${String(args.line)}\n`, () => process.exit(3))
+			return
+		case 'relayed_tool': {
+			const answer = JSON.stringify({
+				jsonrpc: '2.0',
+				id,
+				result: {
+					content: [],
+					structuredContent: { ok: true, relayed: true },
+				},
+			})
+			const relay = spawn(
+				process.execPath,
+				[
+					'-e',
+					'setTimeout(() => process.stdout.write(process.argv[1] + "\\n"), 300)',
+					answer,
+				],
+				{ stdio: ['ignore', 'inherit', 'inherit'] },
+			)
+			relay.once('spawn', () => process.exit(3))
+			return
+		}
+		case 'chatty_tool':
+			// Both carry `jsonrpc: '2.0'`, so both are legal JSON-RPC that is no
+			// answer to the client's request.
+			send({
+				jsonrpc: '2.0',
+				method: 'notifications/message',
+				params: { level: 'info', data: 'working' },
+			})
+			send({ jsonrpc: '2.0', id: 99, method: 'ping' })
+			result({ ok: true, chatty: true })
 			return
 		case 'unframed_tool':
 			process.stdout.write(

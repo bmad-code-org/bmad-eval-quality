@@ -59,10 +59,12 @@
  *    session never opened, so nothing observed the system, and that throws
  *    `port-failure` alongside a failure to start, a server that ends or errors
  *    before or during the handshake, and a line on stdout that is no JSON-RPC
- *    message. That last one throws at every phase: the observation records how
- *    the process ended the session, and a server that wrote garbage and kept
- *    running has ended nothing. Only a policy denial, a cap, an abort, or a
- *    failure to establish the session throws.
+ *    message, whether or not it parses as JSON. That last one throws at every
+ *    phase: the observation records how the process ended the session, and a
+ *    server that wrote garbage and kept running has ended nothing. The same
+ *    holds for a watchdog that died while the server ran: its group was killed
+ *    by the harness, so nothing observed how the server ended. Only a policy
+ *    denial, a cap, an abort, or a failure to establish the session throws.
  */
 import { StringDecoder } from 'node:string_decoder'
 import { RuntimeFault } from '../core/schemas/faults.ts'
@@ -103,7 +105,7 @@ export type McpAnsweredCall = {
 	readonly exitCode?: undefined
 }
 
-/** A session the server's own process ended after the handshake completed and before it answered `tools/call`. `exitCode` is signed on `CommandProbeObservation.exitCode`'s convention. The observation it becomes is an error with an absent body. */
+/** A session the server's own process ended after the handshake completed and before it answered `tools/call`. `exitCode` is the launched target's exit status, signed on `CommandProbeObservation.exitCode`'s convention. The observation it becomes is an error with an absent body. */
 export type McpEndedSession = {
 	readonly isError: true
 	readonly exitCode: number
@@ -262,18 +264,27 @@ function startSession(
 	const decoder = new StringDecoder('utf8')
 
 	const handleLine = (line: string): void => {
-		let message: unknown
-		try {
-			message = JSON.parse(line)
-		} catch {
+		const notJsonRpc = (): void =>
 			fail(
 				new Error(
 					`the server wrote bytes on stdout that are not a JSON-RPC message: ${line.slice(0, 200)}`,
 				),
 			)
+		let message: unknown
+		try {
+			message = JSON.parse(line)
+		} catch {
+			notJsonRpc()
 			return
 		}
-		if (!isJsonObject(message)) return
+		// A line that parses is still no message unless it is an object carrying
+		// `jsonrpc: '2.0'`; a server's structured log line is valid JSON and is not
+		// one. A request or a notification the server makes carries it too, and is
+		// ignored below.
+		if (!isJsonObject(message) || message.jsonrpc !== '2.0') {
+			notJsonRpc()
+			return
+		}
 		const { id } = message
 		if (typeof id !== 'number' && typeof id !== 'string') return
 		if (message.method !== undefined) return
@@ -340,9 +351,19 @@ function startSession(
 	child.once(
 		'close',
 		(code: number | null, signalName: NodeJS.Signals | null) => {
-			// `close()` sets `closed` before it kills the group, so the exit this
-			// teardown causes is never read as the server ending the session.
-			if (closed) return
+			// `close()` sets `broken` before it kills the group, so `fail` does
+			// nothing for the exit that teardown causes. The outcome was decided
+			// before then.
+			// A watchdog that died took the group with it, so the `SIGKILL` this
+			// close reports is the harness's own and observed nothing of the server.
+			if (child.watchdogLost === true) {
+				fail(
+					new Error(
+						`the process-group watchdog for the server was killed during ${phase}, so how the server ended was never observed`,
+					),
+				)
+				return
+			}
 			fail(new SessionEnded(phase, exitCodeOf(code, signalName)))
 		},
 	)
