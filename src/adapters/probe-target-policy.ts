@@ -20,7 +20,10 @@ import { parseTargetPolicy } from './parse-target-policy.ts'
  * Every object is strict: an unknown key is refused, `__proto__` included.
  * Each authorization needs a `scheme` of `http` or `https`, a `port` from 1 to
  * 65535, at least one address and one method, a non-negative `maxRedirects`,
- * and ceilings of at least 1. An empty `authorizations` array is valid and
+ * and ceilings of at least 1. Every `addresses` entry must be an address
+ * literal `parseAddress` reads, since an entry it cannot read never matches and
+ * so authorizes nothing. Several authorizations may name one `interfaceId`:
+ * `evaluateTarget` tries them in declaration order. An empty `authorizations` array is valid and
  * authorizes nothing.
  *
  * Returns Zod's own deep copy of a valid mapping. A refusal throws

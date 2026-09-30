@@ -10,7 +10,7 @@ import {
 	McpTargetPolicy,
 } from '../../src/core/schemas/probe-policy.ts'
 import {
-	hostileInputs,
+	expectUnreadableRefusals,
 	issuesOf,
 	refusal,
 	unrecognized,
@@ -285,11 +285,6 @@ describe('parseMcpTargetPolicy', () => {
 	})
 
 	it('refuses input whose accessors or proxy traps throw', () => {
-		const boom = new Error('boom')
-		const hostile = hostileInputs(authorization(), 'target', boom)
-		for (const value of hostile) {
-			expect(refused(value).cause).toBeDefined()
-		}
-		expect(refused(hostile[0]).cause).toBe(boom)
+		expectUnreadableRefusals(parse, PATH, authorization(), 'target')
 	})
 })

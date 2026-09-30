@@ -10,7 +10,7 @@ import {
 	type CommandTargetPolicy,
 } from '../../src/core/schemas/probe-policy.ts'
 import {
-	hostileInputs,
+	expectUnreadableRefusals,
 	issuesOf,
 	refusal,
 	unrecognized,
@@ -295,11 +295,6 @@ describe('parseCommandTargetPolicy', () => {
 	// A hostile input throws out of Zod itself; the boundary turns every one of
 	// those into the same fault, carrying what was thrown.
 	it('refuses input whose accessors or proxy traps throw', () => {
-		const boom = new Error('boom')
-		const hostile = hostileInputs(authorization(), 'target', boom)
-		for (const value of hostile) {
-			expect(refused(value).cause).toBeDefined()
-		}
-		expect(refused(hostile[0]).cause).toBe(boom)
+		expectUnreadableRefusals(parse, PATH, authorization(), 'target')
 	})
 })

@@ -1,8 +1,10 @@
 /**
- * The runtime boundary a target-policy mapping read from disk crosses before a
- * reference adapter receives it. Both adapters that take a mapping,
- * `createCommandLineAdapter` and `createMcpAdapter`, take it typed and never
- * parse it, so this is where an unknown key or a malformed cap is caught.
+ * The runtime boundary a target-policy mapping read from disk crosses before it
+ * is used. The command and MCP adapters, `createCommandLineAdapter` and
+ * `createMcpAdapter`, take their mapping typed and never parse it, and so does
+ * `evaluateTarget` with the HTTP mapping. `parseCommandTargetPolicy`,
+ * `parseMcpTargetPolicy`, and `parseProbeTargetPolicy` are where an unknown key
+ * or a malformed cap is caught for all three.
  */
 import { RuntimeFault } from '../core/schemas/faults.ts'
 import type { PolicyParseResult } from '../core/schemas/probe-policy.ts'
