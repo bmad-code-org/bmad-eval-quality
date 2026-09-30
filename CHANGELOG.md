@@ -10,6 +10,8 @@ body.
 
 ## [Unreleased]
 
+## [4.4.0] - 2026-09-30
+
 ### Added
 
 - **A tool server that ends the session mid-call is an observation an oracle can judge.**
