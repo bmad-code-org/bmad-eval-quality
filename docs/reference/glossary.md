@@ -19,7 +19,7 @@ eval contract → probe → observation → preflight → evidence → oracle �
 | --- | --- |
 | **Eval contract** | What we want to measure. A JSON document declaring the behaviors, the checks, the interfaces a probe may touch, and the bounds a run stays inside. The long name is Behavioral Evaluation Contract, abbreviated BEC. You author it, and `compile` validates it. |
 | **Probe** | How to poke the system to produce evidence: a test case, a call, a step. In scoring, a probe is also the artifact that names the defect it seeded, so a finding can be matched against it. |
-| **Observation** | What actually happened when the system was poked. For an api interface, the recorded status, headers, and body of one call; for a command, the exit code, the two streams, and the files it wrote. |
+| **Observation** | What actually happened when the system was poked. For an api interface, the recorded status, headers, and body of one call; for a command, the exit code, the two streams, and the files it wrote; for a tool call, the error flag and the structured result, plus the exit code when the server's process ended the session before it answered. |
 | **Preflight** | Whether the environment and the observations are fit for meaningful measurement. It plans the legs a contract implies, reduces the observations handed to it, and mints a `PreflightVerdict`. |
 | **Evidence** | The recorded output, trajectory, and artifacts from the evaluation run: what the oracles resolve against. It reaches `score` inside one or more **sealed run records**. The **evidence artifact** is the output side, the thing `score` mints, and it is a different artifact. |
 | **Oracle** | The assertion. It states the relation that has to hold over the evidence. |

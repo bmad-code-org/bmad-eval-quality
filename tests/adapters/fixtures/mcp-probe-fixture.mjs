@@ -15,6 +15,9 @@
 //   --garbage             write a line on stdout that is not a JSON-RPC message
 //   --refuse-initialize   answer initialize with a JSON-RPC error
 //   --empty-initialize    answer initialize with neither a result nor an error
+//   --crash-on-initialize exit with code 3 on receiving initialize, unanswered
+//   --exit-after-initialize answer initialize, then exit with code 3 before
+//                         any tools/call arrives
 //   --linger              outlive stdin for 60 seconds, then exit on its own
 //   --ready-file <path>   create path when a tools/call arrives, so a test
 //                         knows the session is past every write before it
@@ -29,7 +32,10 @@
 //   noisy_tool      args.bytes on its own stderr, and never an answer
 //   hanging_tool    never answers
 //   silent_tool     a result with no structuredContent at all
-//   crash_tool      exits mid-call without answering
+//   crash_tool      exits with code 3 mid-call without answering
+//   signal_tool     ends itself with SIGTERM mid-call without answering
+//   farewell_tool   answers with a complete frame, then exits with code 3
+//   garbage_tool    writes a line that is no JSON-RPC message, then exits with code 3
 //   unframed_tool   a complete frame with no trailing newline, then exits
 //   split_tool      one frame written in two chunks that split a character
 import { writeFileSync } from 'node:fs'
@@ -140,6 +146,27 @@ const answerToolCall = (id, params) => {
 		case 'crash_tool':
 			process.exit(3)
 			return
+		case 'signal_tool':
+			process.kill(process.pid, 'SIGTERM')
+			return
+		case 'farewell_tool':
+			process.stdout.write(
+				`${JSON.stringify({
+					jsonrpc: '2.0',
+					id,
+					result: {
+						content: [],
+						structuredContent: { ok: true, farewell: true },
+					},
+				})}\n`,
+				() => process.exit(3),
+			)
+			return
+		case 'garbage_tool':
+			process.stdout.write('this line is not a JSON-RPC message\n', () =>
+				process.exit(3),
+			)
+			return
 		case 'unframed_tool':
 			process.stdout.write(
 				JSON.stringify({
@@ -187,6 +214,7 @@ createInterface({ input: process.stdin }).on('line', (line) => {
 		writeFileSync(flags[readyAt + 1], '')
 	}
 	if (message.method === 'initialize') {
+		if (flags.includes('--crash-on-initialize')) process.exit(3)
 		if (flags.includes('--empty-initialize')) {
 			send({ jsonrpc: '2.0', id: message.id })
 			return
@@ -204,7 +232,7 @@ createInterface({ input: process.stdin }).on('line', (line) => {
 			return
 		}
 		initialized = true
-		send({
+		const answer = {
 			jsonrpc: '2.0',
 			id: message.id,
 			result: {
@@ -212,7 +240,12 @@ createInterface({ input: process.stdin }).on('line', (line) => {
 				capabilities: { tools: {} },
 				serverInfo: { name: 'probe-notes', version: '0' },
 			},
-		})
+		}
+		if (flags.includes('--exit-after-initialize')) {
+			process.stdout.write(`${JSON.stringify(answer)}\n`, () => process.exit(3))
+			return
+		}
+		send(answer)
 		return
 	}
 	if (message.method === 'tools/call') {

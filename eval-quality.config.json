@@ -956,7 +956,7 @@
 				},
 				{
 					"file": "docs/how-to/evaluate-tool-use-behavior.md",
-					"citation": "src/core/compile/reachability.ts:581",
+					"citation": "src/core/compile/reachability.ts:582",
 					"reason": "the sentence names the contract field `artifacts`, which the cited file does not declare"
 				}
 			]

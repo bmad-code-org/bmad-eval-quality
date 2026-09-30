@@ -57,6 +57,7 @@
  */
 import { type ChildProcess, spawn } from 'node:child_process'
 import { EventEmitter } from 'node:events'
+import { constants as osConstants } from 'node:os'
 import { resolve as resolvePath } from 'node:path'
 import { isSea } from 'node:sea'
 import type { Duplex, Readable, Writable } from 'node:stream'
@@ -112,6 +113,17 @@ class AbortError extends Error {
 		this.code = 'ABORT_ERR'
 		this.name = 'AbortError'
 	}
+}
+
+/** `-signalNumber` when a signal ended the process, else the exit code, or `-1` for an end that named neither. The one convention both adapters record a process's end in, so a command's `exitCode` and a tool server's read the same. */
+export function exitCodeOf(
+	code: number | null,
+	signalName: NodeJS.Signals | null,
+): number {
+	if (code !== null) return code
+	if (signalName === null) return -1
+	const numeric = (osConstants.signals as Record<string, number>)[signalName]
+	return numeric === undefined ? -1 : -numeric
 }
 
 /** `SIGKILL` to the child's whole process group, or to the child alone where there is no group. */

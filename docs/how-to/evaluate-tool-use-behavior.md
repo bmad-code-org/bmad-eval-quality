@@ -383,6 +383,7 @@ That key arrived with the record's own breaking version bump, from 4 to 5.
 The port carries both halves of the exchange.
 `ProbeRequest` has an `mcp` member, `McpProbeRequest`, carrying the correlation triple, the tool name, and the arguments channel (`src/core/schemas/port-messages.ts`), so a pre-flight plan over an `mcp` contract mints real requests.
 `ProbeObservation` has its own third member, `McpProbeObservation`, carrying the envelope's `isError` flag and the structured result the tool returned, so an adapter has a shape to answer with.
+When the server's process ends the session after the handshake and before it answers, the observation carries a signed `exitCode` as well, with `isError` true and an absent result.
 An adapter that answered a tool-call leg with an observation of another mechanism gets a `port-contract-violation` from the reducer, which is what stops a tool call from being scored off an HTTP answer.
 
 ## Declaring the interface (compile-only reference example)
@@ -505,8 +506,9 @@ Assertions worth writing: the argument equals a literal the behavior requires, t
 `compile` rejects a pointer at a key the operation's `requestShape` declares in neither `requiredKeys` nor `permittedKeys`, under `unreachable-check-evidence`, so an oracle over an argument that does not exist never ships.
 
 **About the response.**
-A tool call carries its structured result on `response-body` and its error flag on `response-status`, and fills no other response channel.
-A pointer at `response-headers`, `exit-code`, or a stream is `unreachable-check-evidence` at compile (`src/core/compile/reachability.ts:581`), and a pointer at a written file is `unresolved-artifact-reference`, since a tool call declares no `artifacts` list for an identifier to resolve against.
+A tool call carries its structured result on `response-body`, its error flag on `response-status`, and the exit code of a server that ended the session on `exit-code`, and fills no other response channel.
+`/interactions/search/exit-code` is `null` on every answered call and the signed code on a call the server's process ended before answering, so an oracle asserting that the server did not crash, and a probe whose defect is a crash, both address that channel.
+A pointer at `response-headers` or a stream is `unreachable-check-evidence` at compile (`src/core/compile/reachability.ts:582`), and a pointer at a written file is `unresolved-artifact-reference`, since a tool call declares no `artifacts` list for an identifier to resolve against.
 `/interactions/search/response-body/ok`, `/interactions/search/response-body/matches`, and `/interactions/search/response-body/totalCount` are the three pointers the example above makes addressable.
 
 **Declaring the defect you seeded.**
@@ -568,6 +570,8 @@ What the shipped adapter does.
 `EnvironmentProbePort` has one method, `probe`, taking a `ProbeRequest` and an `AbortSignal` and returning a `ProbeObservation` (`src/ports/environment-probe-port.ts`).
 An `McpTargetPolicy` maps the contract's logical interface identifier to a server the adapter launches, and lists the tools that server may be asked for; a request naming either an interface or a tool the mapping omits is refused with `forbidden-target` before a process starts, and the fault's `reason` says which: `interface-not-authorized` or `tool-not-authorized`. One session per invocation covers launch, `initialize`, `tools/call`, and teardown, bounded by `maxElapsedMs`, and `maxOutputBytes` caps the server's stdout and its stderr on their own.
 A tool result carrying `isError: true` resolves, and so does a JSON-RPC error answering `tools/call`, with the error object as the result. That is the rule a tool-use adapter would break first: an MCP error result is the payload the seeded-fault check reads, and an adapter that throws on it makes the whole pre-flight vacuous.
+A server whose process ends the session after the `initialize` handshake and before it answers `tools/call`, by exiting or by a signal, resolves too: `isError` is true, the result is absent, and `exitCode` is the code it ended with, negative when a signal ended it, on the convention a command's exit code uses. A crash mutation on a tool server is caught through that observation, the same way a command that crashes is. A server that answers and then exits has answered, and its observation carries no `exitCode`.
+A server that cannot start, that ends or errors before or during the handshake, or that refuses the handshake never opened a session, so those still throw `port-failure`. So does a line on stdout that is no JSON-RPC message, at every phase: the observation records how the process ended the session, and a server that wrote garbage and kept running has ended nothing. The two ceilings, `maxElapsedMs` and `maxOutputBytes`, and an abort stay `budget-exhausted` and the abort error.
 
 The transport is stdio and nothing else. A server reached over Streamable HTTP speaks the same JSON-RPC across a socket, and this package performs no network I/O at all, so that server needs your own `EnvironmentProbePort` behind the same mapping rule (AD-35). `eval-quality/conformance` is what proves one: the six shared assertions run against any subject, and `runMcpProbeConformance` adds eight more, over an authorized tool call reaching its server, the two denials AD-35 asks a tool-server mapping for, a tool-reported error read as an observation, a declared argument that has to arrive byte for byte, the structured result the descriptor describes, and both caps.
 

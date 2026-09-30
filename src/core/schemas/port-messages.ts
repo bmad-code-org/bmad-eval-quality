@@ -219,14 +219,29 @@ export const CommandProbeObservation = z.strictObject({
 
 /**
  * What the adapter observed of one tool call: the envelope's error flag and the
- * structured result.
+ * structured result, or how the server's process ended the session when it did
+ * before answering.
  *
  * `isError` is the tool's own report that the call did not go through, and it
  * is an observation exactly as a 500 and a non-zero exit are. A JSON-RPC error
  * answering `tools/call` lands here too, with the error object as `result`: the
  * server answered, and a server refusing a tool the contract declares is
- * precisely the defect an oracle should be able to assert on. Only a policy
- * denial, a cap, an abort, or a failure to establish the session throws.
+ * precisely the defect an oracle should be able to assert on.
+ *
+ * A server whose process ended the session after the `initialize` handshake
+ * completed and before it answered `tools/call` is an observation on the same
+ * terms, the tool-call twin of a command that crashes: `exitCode` is present,
+ * `isError` is `true`, and `result` is absent, since nothing was returned.
+ * The code is signed on `CommandProbeObservation.exitCode`'s convention, a
+ * process ended by a signal being a negative code. An answered call carries no
+ * `exitCode`, and a server that answers and then exits is an answered call.
+ *
+ * Only a policy denial, a cap, an abort, or a failure to establish the session
+ * throws. A session is not established when the server cannot start, ends or
+ * errors before or during the handshake, or refuses it. A line on stdout that
+ * is no JSON-RPC message throws at every phase: the observation records how the
+ * process ended the session, and a server that wrote garbage and kept running
+ * has ended nothing.
  *
  * `result` is the structured content the tool returned, which is the channel
  * the operation's response descriptor describes.
@@ -237,9 +252,15 @@ export const McpProbeObservation = z.strictObject({
 	isError: z
 		.boolean()
 		.describe(
-			"The MCP envelope's own error flag, true when the tool reported the call failed. Sealed evidence carries it as `responseStatus` 1 for true and 0 for false, since a tool call has no transport status of its own.",
+			"The MCP envelope's own error flag, true when the tool reported the call failed, and true on a session the server's process ended before it answered. Sealed evidence carries it as `responseStatus` 1 for true and 0 for false, since a tool call has no transport status of its own.",
 		),
 	result: ProbeObservedBody,
+	exitCode: z
+		.int()
+		.optional()
+		.describe(
+			"Present only when the server's process ended the session after the `initialize` handshake completed and before it answered `tools/call`. Signed as `CommandProbeObservation.exitCode` is: a process ended by a signal is a negative code. Sealed evidence carries it on the `exit-code` channel, `null` on an answered call.",
+		),
 })
 
 export const ProbeObservation = z.discriminatedUnion('kind', [

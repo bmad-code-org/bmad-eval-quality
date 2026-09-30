@@ -176,11 +176,12 @@ const RESPONSE_SIDE: ReadonlySet<string> = new Set(RESPONSE_SIDE_CHANNELS)
 /**
  * The channels a signature of this kind can never manifest in.
  *
- * Three arms rather than two. A tool call produces neither the command response
- * channels nor `response-headers`: it carries its structured result on
- * `response-body` and its error flag on `response-status`, which is the same
- * answer `checkExpressionLegChannel` and `evaluateReachabilityAgainstOperation`
- * give at compile. A two-way ternary put `mcp` on the api arm and left
+ * Three arms rather than two. A tool call produces neither `stdout`, `stderr`
+ * or `artifact` nor `response-headers`: it carries its structured result on
+ * `response-body`, its error flag on `response-status` and the exit code of a
+ * server that ended the session on `exit-code`, which is the same answer
+ * `checkExpressionLegChannel` and `evaluateReachabilityAgainstOperation` give
+ * at compile. A two-way ternary put `mcp` on the api arm and left
  * `response-headers` admitted here while compile refused it, which is two
  * sources of truth about what a tool call produces.
  */
@@ -189,7 +190,12 @@ const foreignChannels = (kind: InterfaceKindName): ReadonlySet<string> => {
 		case 'cli':
 			return new Set<string>(API_RESPONSE_CHANNELS)
 		case 'mcp':
-			return new Set<string>([...COMMAND_RESPONSE_CHANNELS, 'response-headers'])
+			return new Set<string>([
+				...COMMAND_RESPONSE_CHANNELS.filter(
+					(channel) => channel !== 'exit-code',
+				),
+				'response-headers',
+			])
 		case 'api':
 		case 'web':
 			return new Set<string>(COMMAND_RESPONSE_CHANNELS)
@@ -499,8 +505,8 @@ function checkSelectorKeys(
  * unchecked would make an unchecked field load-bearing. On an `api` signature
  * the three text channels are rejected for the same reason a pointer into one
  * is: an api interface never produces them, which is the same rule the pointer
- * walk applies, read on the declaration too. A tool call rejects those three and
- * `response-headers`, since it produces neither.
+ * walk applies, read on the declaration too. A tool call rejects `stdout`,
+ * `stderr`, `artifact` and `response-headers`, since it produces none of them.
  */
 function checkObservableChannel(
 	probe: Probe,

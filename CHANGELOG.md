@@ -10,6 +10,27 @@ body.
 
 ## [Unreleased]
 
+### Added
+
+- **A tool server that ends the session mid-call is an observation an oracle can judge.**
+  `McpProbeObservation` gains an optional `exitCode`, signed on `CommandProbeObservation.exitCode`'s convention: a process a signal ended is a negative code.
+  It is present only when the server's process ended the session after the `initialize` handshake and before it answered `tools/call`, and that observation carries `isError: true` and an absent `result`.
+  An answered call carries no `exitCode`, and a server that answers and then exits is an answered call.
+  `McpCallToolResult` on the swappable `McpMechanism` becomes `McpAnsweredCall | McpEndedSession`, so a scripted mechanism can report an ended session, and `nodeStdioMcpMechanism.callTool` returns one when the server's process closes between the handshake and the answer.
+  The field is optional, so it needs no `schemaVersion` bump, and no published JSON Schema changes.
+- **`exit-code` is a channel of an `mcp` operation.**
+  `/interactions/<step>/exit-code` on a tool call compiles, a sensitivity witness leg carries it, and a defect signature may name it as its `observableChannel`.
+  It resolves to `null` on an answered call and to the signed code on an ended session, so a crash mutation on a tool server can be caught the way a command that crashes is.
+  A pointer at `response-headers`, `stdout`, `stderr`, or a written file on a tool call is still `unreachable-check-evidence`.
+  In pre-flight, a control leg whose server ended the session fails the clean-control check with a note naming the exit code.
+
+### Changed
+
+- **`createMcpAdapter` no longer throws `port-failure` when the server exits or is ended by a signal after the handshake and before it answers `tools/call`.**
+  It resolves the observation described above.
+  `port-failure` stays for a server that cannot start, that ends or errors before or during the handshake, or that refuses the handshake, and for a line on stdout that is no JSON-RPC message at any phase.
+  `budget-exhausted` for `maxElapsedMs` and `maxOutputBytes`, and the abort error, are unchanged.
+
 ## [4.3.0] - 2026-09-26
 
 ### Added
