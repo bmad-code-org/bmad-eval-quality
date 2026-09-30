@@ -34,6 +34,12 @@ body.
   `port-failure` stays for a server that cannot start, that ends or errors before or during the handshake, or that refuses the handshake, for a process-group watchdog killed while the server runs, and for a line on stdout that is no JSON-RPC message at any phase, valid JSON such as a structured log line included.
   `budget-exhausted` for `maxElapsedMs` and `maxOutputBytes`, and the abort error, are unchanged.
 
+### Fixed
+
+- **The documentation site's lockfile no longer resolves `fast-uri` and `undici` versions with high-severity advisories.**
+  `website/package-lock.json` moves `fast-uri` 3.1.6 to 3.1.8 and `undici` 8.10.0 to 8.11.0, which clears the `Known-vulnerability audit` step for the website graph.
+  No `package.json` range changes.
+
 ## [4.3.0] - 2026-09-26
 
 ### Added
