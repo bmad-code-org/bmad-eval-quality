@@ -248,15 +248,17 @@ export type PolicyParseResult<T> =
 	| { readonly success: false; readonly error: z.ZodError }
 
 /**
- * `schema.safeParse`, plus the own `__proto__` keys Zod skips at the three
- * levels a target policy can carry one: the policy, each authorization, and the
- * one record each authorization declares. Every other level of either policy is
- * an array or a scalar. Reads the input's properties, so a hostile accessor or
- * proxy throws out of here; the caller owns that boundary.
+ * `schema.safeParse`, plus the own `__proto__` keys Zod skips at the levels a
+ * target policy can carry one: the policy, each authorization, and the one
+ * record each authorization declares, when it declares one. `recordField` is
+ * `undefined` for a policy whose authorizations hold no record. Every other
+ * level of every policy is an array or a scalar. Reads the input's properties,
+ * so a hostile accessor or proxy throws out of here; the caller owns that
+ * boundary.
  */
 function safeParseTargetPolicy<T>(
 	schema: z.ZodType<T>,
-	recordField: string,
+	recordField: string | undefined,
 	value: unknown,
 ): PolicyParseResult<T> {
 	const issues = ownPrototypeKeyIssue(value, [])
@@ -265,6 +267,7 @@ function safeParseTargetPolicy<T>(
 		authorizations.forEach((authorization: unknown, index) => {
 			const path = ['authorizations', index]
 			issues.push(...ownPrototypeKeyIssue(authorization, path))
+			if (recordField === undefined) return
 			issues.push(
 				...ownPrototypeKeyIssue(ownField(authorization, recordField), [
 					...path,
@@ -283,6 +286,12 @@ function safeParseTargetPolicy<T>(
 		]),
 	}
 }
+
+/** `ProbeTargetPolicy`, whose authorizations carry only arrays and scalars, so no record level exists. */
+export const safeParseProbeTargetPolicy = (
+	value: unknown,
+): PolicyParseResult<ProbeTargetPolicy> =>
+	safeParseTargetPolicy(ProbeTargetPolicy, undefined, value)
 
 /** `CommandTargetPolicy`, whose one record is each authorization's `artifacts`. */
 export const safeParseCommandTargetPolicy = (

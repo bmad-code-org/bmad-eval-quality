@@ -10,6 +10,17 @@ body.
 
 ## [Unreleased]
 
+### Added
+
+- **`parseProbeTargetPolicy` validates an HTTP target-policy mapping at runtime.**
+  `eval-quality/adapters` exports it beside `parseCommandTargetPolicy` and `parseMcpTargetPolicy`, so a consumer holds its HTTP registry to the engine's own reading instead of copying the field rules.
+  It returns a deep copy typed `ProbeTargetPolicy`, the policy `evaluateTarget` takes.
+  A refusal throws `RuntimeFault` with code `schema-parse-failure`, `artifactPath` `ProbeTargetPolicy`, and the `ZodError` carrying every issue as its `cause`; the message lists each issue as an RFC 6901 pointer and a message.
+  It refuses a `scheme` outside `http` and `https`, a `port` outside 1 to 65535, an empty `addresses` or `methods`, a negative `maxRedirects`, a ceiling below 1, and an unknown key.
+  An own `__proto__` key is refused at the policy and at each authorization, and input whose accessors or proxy traps throw is refused under the same code.
+  An empty `authorizations` array is valid and authorizes nothing.
+  The Zod schema stays unexported, and `evaluateTarget` is unchanged.
+
 ## [4.4.0] - 2026-09-30
 
 ### Added

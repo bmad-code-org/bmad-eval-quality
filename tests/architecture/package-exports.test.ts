@@ -223,12 +223,12 @@ describe('the published package surface', () => {
 		})
 	})
 
-	// A consumer validating a command or MCP mapping loaded from disk imports
+	// A consumer validating a command, MCP, or HTTP mapping loaded from disk imports
 	// the parser from `eval-quality/adapters`. The schemas stay unexported on
 	// this subpath the way case 152 keeps them off the root, and a refusal is
 	// the same `RuntimeFault` the root barrel exports, so `instanceof` holds
 	// across the two subpaths.
-	it('case 147c: `./adapters` exports both target-policy parsers and no live schema', async (ctx) => {
+	it('case 147c: `./adapters` exports the three target-policy parsers and no live schema', async (ctx) => {
 		if (!BUILT) return ctx.skip(NEEDS_BUILD)
 		const barrel = (await import(
 			pathToFileURL(resolveSubpath('eval-quality/adapters')).href
@@ -241,6 +241,7 @@ describe('the published package surface', () => {
 		for (const [name, artifactPath] of [
 			['parseCommandTargetPolicy', 'CommandTargetPolicy'],
 			['parseMcpTargetPolicy', 'McpTargetPolicy'],
+			['parseProbeTargetPolicy', 'ProbeTargetPolicy'],
 		] as const) {
 			const parse = barrel[name] as (value: unknown) => unknown
 			expect(typeof parse, name).toBe('function')
@@ -273,8 +274,13 @@ describe('the published package surface', () => {
 			Adapters['parseMcpTargetPolicy'],
 			(value: unknown) => McpTargetPolicy
 		> = true
+		const probeIsExact: Exact<
+			Adapters['parseProbeTargetPolicy'],
+			(value: unknown) => ProbeTargetPolicy
+		> = true
 		expect(commandIsExact).toBe(true)
 		expect(mcpIsExact).toBe(true)
+		expect(probeIsExact).toBe(true)
 	})
 
 	it('case 148: `./schemas/*` resolves a generated JSON Schema by its real filename', () => {
