@@ -10,6 +10,8 @@ body.
 
 ## [Unreleased]
 
+## [4.5.0] - 2026-09-30
+
 ### Added
 
 - **`parseProbeTargetPolicy` validates an HTTP target-policy mapping at runtime.**
