@@ -1,7 +1,7 @@
 /**
  * What a refused target-policy mapping throws, read the way a consumer reads
  * it: a `RuntimeFault` whose `cause` is the `ZodError` carrying every issue.
- * Shared by the command and MCP parser suites, which hold one contract.
+ * Shared by the command, MCP, and HTTP parser suites, which hold one contract.
  */
 import { expect } from 'vitest'
 import { z } from 'zod'
@@ -47,42 +47,102 @@ export const unrecognized = (issues: readonly z.core.$ZodIssue[]) =>
 			keys: (issue as z.core.$ZodIssueUnrecognizedKeys).keys,
 		}))
 
+/** A value a hostile input throws, and the thrown-value shapes a boundary must carry whole. */
+const THROWN: readonly unknown[] = [
+	new Error('boom'),
+	'a thrown string',
+	undefined,
+]
+
+export type HostileInput = {
+	readonly label: string
+	readonly value: unknown
+	/** Holds when the fault's `cause` is exactly what this input makes Zod's read throw. */
+	readonly expectCause: (cause: unknown) => void
+}
+
 /**
  * Inputs whose reads throw out of Zod itself: a proxy whose `get` throws, a
- * throwing enumerable accessor at the root and on an authorization field, an
- * `authorizations` array whose `length` throws, and a revoked proxy. The first
- * throws `boom`, so a suite can check the cause is what was thrown.
+ * throwing enumerable accessor at the root and on an authorization field, and
+ * an `authorizations` array whose `length` throws, each throwing an `Error`, a
+ * string, and `undefined`, so a boundary that rethrows or drops anything but an
+ * `Error` fails. A revoked proxy throws the engine's own `TypeError`. Each
+ * input carries the check that its refusal's `cause` is exactly what was thrown.
  */
 export function hostileInputs(
 	validAuthorization: Record<string, unknown>,
 	field: string,
-	boom: Error,
-): unknown[] {
-	const thrower = () => {
-		throw boom
-	}
-	const revocable = Proxy.revocable({ authorizations: [] }, {})
-	revocable.revoke()
-	return [
-		new Proxy({ authorizations: [] }, { get: thrower }),
-		Object.defineProperty({}, 'authorizations', {
-			enumerable: true,
-			get: thrower,
-		}),
-		{
-			authorizations: [
-				Object.defineProperty({ ...validAuthorization }, field, {
+): HostileInput[] {
+	const inputs: HostileInput[] = []
+	for (const thrown of THROWN) {
+		const thrower = () => {
+			throw thrown
+		}
+		const name = thrown instanceof Error ? 'an Error' : String(thrown)
+		const expectCause = (cause: unknown) => expect(cause).toBe(thrown)
+		inputs.push(
+			{
+				label: `a proxy whose get throws ${name}`,
+				value: new Proxy({ authorizations: [] }, { get: thrower }),
+				expectCause,
+			},
+			{
+				label: `a root accessor that throws ${name}`,
+				value: Object.defineProperty({}, 'authorizations', {
 					enumerable: true,
 					get: thrower,
 				}),
-			],
-		},
-		{
-			authorizations: new Proxy([validAuthorization], {
-				get: (target, key, receiver) =>
-					key === 'length' ? thrower() : Reflect.get(target, key, receiver),
-			}),
-		},
-		revocable.proxy,
-	]
+				expectCause,
+			},
+			{
+				label: `an authorization accessor that throws ${name}`,
+				value: {
+					authorizations: [
+						Object.defineProperty({ ...validAuthorization }, field, {
+							enumerable: true,
+							get: thrower,
+						}),
+					],
+				},
+				expectCause,
+			},
+			{
+				label: `an array whose length throws ${name}`,
+				value: {
+					authorizations: new Proxy([validAuthorization], {
+						get: (target, key, receiver) =>
+							key === 'length' ? thrower() : Reflect.get(target, key, receiver),
+					}),
+				},
+				expectCause,
+			},
+		)
+	}
+	const revocable = Proxy.revocable({ authorizations: [] }, {})
+	revocable.revoke()
+	inputs.push({
+		label: 'a revoked proxy',
+		value: revocable.proxy,
+		expectCause: (cause) => expect(cause).toBeInstanceOf(TypeError),
+	})
+	return inputs
+}
+
+/**
+ * Every hostile input is refused as `schema-parse-failure` whose message says
+ * the input could not be read, with exactly the thrown value as its `cause`:
+ * no other error escapes, and a thrown non-`Error` is carried, not replaced.
+ */
+export function expectUnreadableRefusals(
+	parse: PolicyParser,
+	artifactPath: string,
+	validAuthorization: Record<string, unknown>,
+	field: string,
+): void {
+	for (const input of hostileInputs(validAuthorization, field)) {
+		const fault = refusal(parse, artifactPath, input.value)
+		expect(fault.message, input.label).toContain('input could not be read')
+		expect(Object.hasOwn(fault, 'cause'), input.label).toBe(true)
+		input.expectCause(fault.cause)
+	}
 }

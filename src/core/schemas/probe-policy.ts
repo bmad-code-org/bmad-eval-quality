@@ -7,6 +7,7 @@ import {
 	KeyName,
 	ToolName,
 } from './primitives.ts'
+import { parseAddress } from './probe-address.ts'
 
 /**
  * One authorized target. AD-35: "An adapter denies by default and permits only
@@ -22,10 +23,18 @@ export const ProbeTargetAuthorization = z.strictObject({
 	host: z.string().min(1),
 	port: z.int().min(1).max(65535),
 	addresses: z
-		.array(z.string().min(1))
+		.array(
+			z
+				.string()
+				.min(1, { abort: true })
+				.refine((address) => parseAddress(address).ok, {
+					message:
+						'is not an IPv4 or IPv6 address literal, so it could never match a resolved address; a hostname belongs in host',
+				}),
+		)
 		.min(1)
 		.describe(
-			'The exact resolved addresses this authorization permits, compared after parsing rather than as strings. AD-35 requires every resolved address and every redirect to be revalidated, and requires a loopback, private, link-local, or metadata address to be authorized explicitly rather than by class, so the authorization names addresses rather than a range.',
+			'The exact resolved addresses this authorization permits, compared after parsing rather than as strings. Every entry must be an address literal the grammar reads, so an entry that could never match is refused when the mapping is parsed. AD-35 requires every resolved address and every redirect to be revalidated, and requires a loopback, private, link-local, or metadata address to be authorized explicitly rather than by class, so the authorization names addresses rather than a range.',
 		),
 	methods: z.array(HttpMethod).min(1),
 	safeMethods: z
@@ -215,6 +224,10 @@ export type McpTargetPolicy = z.infer<typeof McpTargetPolicy>
  * An own `__proto__` key, which `JSON.parse` creates as an ordinary property,
  * as the unrecognized key it is. Zod 4's strict-object and record loops skip
  * that one key without an issue, so a strict schema alone would accept it.
+ * The issue carries no `input`, as no issue Zod's own parse reports does: the
+ * `ZodError` is the refusal's `cause`, and an `input` would hold a live
+ * reference to the caller's object there, which also makes the `ZodError`
+ * constructor throw on a circular one.
  */
 function ownPrototypeKeyIssue(
 	value: unknown,
@@ -229,7 +242,6 @@ function ownPrototypeKeyIssue(
 			keys: ['__proto__'],
 			path: [...path],
 			message: 'Unrecognized key: "__proto__"',
-			input: value as Record<string, unknown>,
 		},
 	]
 }
@@ -248,15 +260,17 @@ export type PolicyParseResult<T> =
 	| { readonly success: false; readonly error: z.ZodError }
 
 /**
- * `schema.safeParse`, plus the own `__proto__` keys Zod skips at the three
- * levels a target policy can carry one: the policy, each authorization, and the
- * one record each authorization declares. Every other level of either policy is
- * an array or a scalar. Reads the input's properties, so a hostile accessor or
- * proxy throws out of here; the caller owns that boundary.
+ * `schema.safeParse`, plus the own `__proto__` keys Zod skips at the levels a
+ * target policy can carry one: the policy, each authorization, and the one
+ * record each authorization declares, when it declares one. `recordField` is
+ * `undefined` for a policy whose authorizations hold no record. Every other
+ * level of every policy is an array or a scalar. Reads the input's properties,
+ * so a hostile accessor or proxy throws out of here; the caller owns that
+ * boundary.
  */
 function safeParseTargetPolicy<T>(
 	schema: z.ZodType<T>,
-	recordField: string,
+	recordField: string | undefined,
 	value: unknown,
 ): PolicyParseResult<T> {
 	const issues = ownPrototypeKeyIssue(value, [])
@@ -265,6 +279,7 @@ function safeParseTargetPolicy<T>(
 		authorizations.forEach((authorization: unknown, index) => {
 			const path = ['authorizations', index]
 			issues.push(...ownPrototypeKeyIssue(authorization, path))
+			if (recordField === undefined) return
 			issues.push(
 				...ownPrototypeKeyIssue(ownField(authorization, recordField), [
 					...path,
@@ -283,6 +298,12 @@ function safeParseTargetPolicy<T>(
 		]),
 	}
 }
+
+/** `ProbeTargetPolicy`, whose authorizations carry only arrays and scalars, so no record level exists. */
+export const safeParseProbeTargetPolicy = (
+	value: unknown,
+): PolicyParseResult<ProbeTargetPolicy> =>
+	safeParseTargetPolicy(ProbeTargetPolicy, undefined, value)
 
 /** `CommandTargetPolicy`, whose one record is each authorization's `artifacts`. */
 export const safeParseCommandTargetPolicy = (
