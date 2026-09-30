@@ -47,12 +47,24 @@
  * 4. A tool result carrying `isError: true` is an observation, and so is a
  *    JSON-RPC error answering `tools/call`. The server answered, and a server
  *    refusing a tool the contract declares is precisely the defect an oracle
- *    should be able to assert on; throwing would make it invisible. A server
- *    that refuses the `initialize` handshake answered a different question:
- *    the session never opened, so nothing observed the system, and that throws
- *    `port-failure` alongside a failure to start and a malformed frame. Only a
- *    policy denial, a cap, an abort, or a failure to establish the session
- *    throws.
+ *    should be able to assert on; throwing would make it invisible. So is a
+ *    server whose process ends the session after the handshake and before it
+ *    answers `tools/call`: the tool-call twin of a command that crashes, which
+ *    its oracles judge, and a crash mutation on a tool server is caught only if
+ *    that end is visible. It resolves as `isError: true`, an absent `result`
+ *    and the `exitCode` the process ended with, a signal reading as a negative
+ *    code as it does for a command. A server that answers and then exits has
+ *    answered, and that is an answered call with no `exitCode`. A server that
+ *    refuses the `initialize` handshake answered a different question: the
+ *    session never opened, so nothing observed the system, and that throws
+ *    `port-failure` alongside a failure to start, a server that ends or errors
+ *    before or during the handshake, and a line on stdout that is no JSON-RPC
+ *    message, whether or not it parses as JSON. That last one throws at every
+ *    phase: the observation records how the process ended the session, and a
+ *    server that wrote garbage and kept running has ended nothing. The same
+ *    holds for a watchdog that died while the server ran: its group was killed
+ *    by the harness, so nothing observed how the server ended. Only a policy
+ *    denial, a cap, an abort, or a failure to establish the session throws.
  */
 import { StringDecoder } from 'node:string_decoder'
 import { RuntimeFault } from '../core/schemas/faults.ts'
@@ -70,6 +82,7 @@ import { evaluateMcpTarget, type McpDenialReason } from './mcp-target-policy.ts'
 import { runPortMethod } from './port-boundary.ts'
 import {
 	abortErrorFor,
+	exitCodeOf,
 	killProcessGroup,
 	spawnInGroup,
 	startDeadlineMs,
@@ -83,12 +96,24 @@ const PROTOCOL_VERSION = '2025-06-18'
 const INITIALIZE_ID = 1
 const CALL_TOOL_ID = 2
 
-/** One tool call, already reduced to what an observation needs. No truncation flag: exceeding `maxOutputBytes` rejects with `budget-exhausted` rather than resolving with a partial frame. */
-export type McpCallToolResult = {
+/** One tool call that got an answer, already reduced to what an observation needs. No truncation flag: exceeding `maxOutputBytes` rejects with `budget-exhausted` rather than resolving with a partial frame. */
+export type McpAnsweredCall = {
 	readonly isError: boolean
 	/** The tool's structured result, or the JSON-RPC error object when the server answered `tools/call` with one. Absent when the call published no structured content at all, which the observation records as an absent body; a `null` here is a structured result the server really returned. */
 	readonly structuredResult?: JsonValue
+	/** Absent: an answered call never carries the code of a process that ended the session. */
+	readonly exitCode?: undefined
 }
+
+/** A session the server's own process ended after the handshake completed and before it answered `tools/call`. `exitCode` is the launched target's exit status, signed on `CommandProbeObservation.exitCode`'s convention. The observation it becomes is an error with an absent body. */
+export type McpEndedSession = {
+	readonly isError: true
+	readonly exitCode: number
+	readonly structuredResult?: undefined
+}
+
+/** What one port invocation's session came to: an answer, or the process ending before it. */
+export type McpCallToolResult = McpAnsweredCall | McpEndedSession
 
 export type McpCallToolRequest = {
 	readonly target: string
@@ -136,6 +161,22 @@ type JsonRpcResponse = {
 	readonly error?: JsonValue
 }
 
+/**
+ * How the server's process ended the session. A distinct class so the caller
+ * can tell an end it may report as an observation (after the handshake) from
+ * the same event where the session never opened (before it), and so an abort or
+ * a cap that rejected first is never mistaken for one.
+ */
+class SessionEnded extends Error {
+	readonly exitCode: number
+
+	constructor(phase: string, exitCode: number) {
+		super(`the server exited during ${phase}`)
+		this.name = 'SessionEnded'
+		this.exitCode = exitCode
+	}
+}
+
 type StdioSession = {
 	readonly request: (
 		id: number,
@@ -153,7 +194,8 @@ type StdioSession = {
  * Every way the session can die reaches the caller through one rejected
  * `failure` promise that each request races against, so a cap, a malformed
  * frame, a spawn failure, and an early exit all surface at the await that was
- * waiting on the server. A listener that rejected nothing would leave the call
+ * waiting on the server. The process ending is a `SessionEnded`, which carries
+ * how it ended. A listener that rejected nothing would leave the call
  * to run out its elapsed budget for a fault already known.
  */
 function startSession(
@@ -222,18 +264,27 @@ function startSession(
 	const decoder = new StringDecoder('utf8')
 
 	const handleLine = (line: string): void => {
-		let message: unknown
-		try {
-			message = JSON.parse(line)
-		} catch {
+		const notJsonRpc = (): void =>
 			fail(
 				new Error(
 					`the server wrote bytes on stdout that are not a JSON-RPC message: ${line.slice(0, 200)}`,
 				),
 			)
+		let message: unknown
+		try {
+			message = JSON.parse(line)
+		} catch {
+			notJsonRpc()
 			return
 		}
-		if (!isJsonObject(message)) return
+		// A line that parses is still no message unless it is an object carrying
+		// `jsonrpc: '2.0'`; a server's structured log line is valid JSON and is not
+		// one. A request or a notification the server makes carries it too, and is
+		// ignored below.
+		if (!isJsonObject(message) || message.jsonrpc !== '2.0') {
+			notJsonRpc()
+			return
+		}
 		const { id } = message
 		if (typeof id !== 'number' && typeof id !== 'string') return
 		if (message.method !== undefined) return
@@ -297,10 +348,25 @@ function startSession(
 	child.once('error', (error: unknown) => {
 		fail(error)
 	})
-	child.once('close', () => {
-		if (closed) return
-		fail(new Error(`the server exited during ${phase}`))
-	})
+	child.once(
+		'close',
+		(code: number | null, signalName: NodeJS.Signals | null) => {
+			// `close()` sets `broken` before it kills the group, so `fail` does
+			// nothing for the exit that teardown causes. The outcome was decided
+			// before then.
+			// A watchdog that died took the group with it, so the `SIGKILL` this
+			// close reports is the harness's own and observed nothing of the server.
+			if (child.watchdogLost === true) {
+				fail(
+					new Error(
+						`the process-group watchdog for the server was killed during ${phase}, so how the server ended was never observed`,
+					),
+				)
+				return
+			}
+			fail(new SessionEnded(phase, exitCodeOf(code, signalName)))
+		},
+	)
 
 	const send = (message: Record<string, JsonValue>): void => {
 		child.stdin?.write(`${JSON.stringify(message)}\n`)
@@ -347,7 +413,7 @@ const errorOf = (response: JsonRpcResponse): JsonValue | undefined =>
 		: response.error
 
 /** The result the tool published, or the error object the server answered with. */
-function resultOf(response: JsonRpcResponse): McpCallToolResult {
+function resultOf(response: JsonRpcResponse): McpAnsweredCall {
 	const error = errorOf(response)
 	if (error !== undefined) return { isError: true, structuredResult: error }
 	if (!isJsonObject(response.result)) return { isError: false }
@@ -361,6 +427,7 @@ async function callToolOverStdio(
 	signal: AbortSignal,
 ): Promise<McpCallToolResult> {
 	const session = startSession(request, signal)
+	let handshaken = false
 	try {
 		const handshake = await session.request(INITIALIZE_ID, 'initialize', {
 			protocolVersion: PROTOCOL_VERSION,
@@ -381,12 +448,21 @@ async function callToolOverStdio(
 				'the server answered the initialize handshake with neither a result nor an error',
 			)
 		}
+		handshaken = true
 		session.notify('notifications/initialized', {})
 		const response = await session.request(CALL_TOOL_ID, 'tools/call', {
 			name: request.toolName,
 			arguments: { ...request.arguments },
 		})
 		return resultOf(response)
+	} catch (error) {
+		// The process ending is an observation once the session was open, and a
+		// failure to establish it before that. Every other rejection (a cap, an
+		// abort, a malformed frame, a refusal) is the same fault in both phases.
+		if (handshaken && error instanceof SessionEnded) {
+			return { isError: true, exitCode: error.exitCode }
+		}
+		throw error
 	} finally {
 		session.close()
 	}
@@ -469,6 +545,11 @@ export function createMcpAdapter(
 						operationId: parsed.operationId,
 						isError: callResult.isError,
 						result: bodyOf(callResult.structuredResult),
+						// Present only on a session the server's process ended, so an
+						// answered call carries no key at all.
+						...(callResult.exitCode === undefined
+							? {}
+							: { exitCode: callResult.exitCode }),
 					}
 					return observation
 				},

@@ -48,7 +48,6 @@
  *    documents for itself.
  */
 import { open } from 'node:fs/promises'
-import { constants as osConstants } from 'node:os'
 import { isAbsolute, resolve as resolvePath } from 'node:path'
 import { StringDecoder } from 'node:string_decoder'
 import { RuntimeFault } from '../core/schemas/faults.ts'
@@ -68,6 +67,7 @@ import {
 import { runPortMethod } from './port-boundary.ts'
 import {
 	abortErrorFor,
+	exitCodeOf,
 	type GroupedChild,
 	killProcessGroup,
 	spawnInGroup,
@@ -251,17 +251,6 @@ function writeStdin(
 	stream.end(
 		stdin.kind === 'json' ? JSON.stringify(stdin.value) : String(stdin.value),
 	)
-}
-
-/** `-signalNumber` when a signal ended the process, matching `CommandProbeObservation.exitCode`'s own documented convention. */
-function exitCodeOf(
-	code: number | null,
-	signalName: NodeJS.Signals | null,
-): number {
-	if (code !== null) return code
-	if (signalName === null) return -1
-	const numeric = (osConstants.signals as Record<string, number>)[signalName]
-	return numeric === undefined ? -1 : -numeric
 }
 
 async function runChildProcess(

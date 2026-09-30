@@ -301,12 +301,36 @@ describe('the signature requirement, and the one class exempt from it', () => {
 		expect(result.declarationChecksRan).toBe(true)
 	})
 
-	// A tool call carries its result on `response-body` and its error flag on
-	// `response-status`, and fills nothing else. These four are the whole of what
-	// `foreignChannels` hands an mcp signature: the three command response
-	// channels plus `response-headers`, which compile-time reachability refuses
-	// on the same operation.
-	it.each(['stdout', 'stderr', 'exit-code', 'response-headers'] as const)(
+	// The crash a tool server can suffer mid-call is manifested in the exit code
+	// its ended session carries, so a signature naming that channel is the one a
+	// crash mutation needs.
+	it('admits a tool-call signature whose observable channel is exit-code', () => {
+		const probe = {
+			...toolCallSignedWith({
+				op: 'equality',
+				operands: [
+					{ pointer: '/interactions/observed/exit-code' },
+					{ literal: 3 },
+				],
+			}),
+		} as Extract<Probe, { expectedClean: false }>
+		const declared = {
+			...probe,
+			defectSignature: {
+				...probe.defectSignature,
+				observableChannel: 'exit-code',
+			},
+		} as Probe
+		expect(qualifyProbe(declared, searchNotesOperation()).failures).toEqual([])
+	})
+
+	// A tool call carries its result on `response-body`, its error flag on
+	// `response-status` and the exit code of a server that ended the session on
+	// `exit-code`, and fills nothing else. These three are the whole of what
+	// `foreignChannels` hands an mcp signature: the command response channels
+	// but `exit-code`, plus `response-headers`, which compile-time reachability
+	// refuses on the same operation.
+	it.each(['stdout', 'stderr', 'response-headers'] as const)(
 		'refuses a tool-call signature addressing %s',
 		(channel) => {
 			const codes = qualifyProbe(

@@ -922,15 +922,20 @@ const MCP_ASSERTIONS: readonly ArmAssertion<McpProbeSubject>[] = [
  * that server, so the interface identifier is the server identity and the tool
  * allowlist is the only thing left to deny on.
  *
- * Two rules the reference adapter follows are outside what a green run
+ * Three rules the reference adapter follows are outside what a green run
  * certifies, and an author reading this should know which. A JSON-RPC error
  * answering `tools/call` is an observation on the same terms a tool-reported
  * error is, and the byte cap applies to the server's own stderr as well as its
  * stdout. Neither has an assertion here, because the derivation above gives
  * each arm one denial per authorization-scoped field and one assertion per cap
  * the suite can make a subject exceed, and both of these are a second spelling
- * of an assertion the arm already carries. The reference adapter's own tests
- * cover both.
+ * of an assertion the arm already carries. The third is a server process
+ * ending the session mid-call, which the reference adapter reports as an
+ * observation carrying the process's `exitCode`. It has no assertion because
+ * it applies only to a subject that launches a server process; a subject that
+ * reaches its server another way has no process whose end it could observe,
+ * and requiring a scenario from it would fail an adapter for having no
+ * process. The reference adapter's own tests cover all three.
  */
 export async function runMcpProbeConformance(
 	subject: McpProbeSubject,

@@ -281,7 +281,7 @@ describe('a witness leg carries what the tool call produces and no more', () => 
 		// channels a leg is built from tells the two apart, and the api list
 		// carries `response-headers`.
 		expect(failure.message).toContain(
-			'pre-flight builds each leg from response-body, response-status, call-inputs alone',
+			'pre-flight builds each leg from response-body, response-status, exit-code, call-inputs alone',
 		)
 	})
 
@@ -292,6 +292,28 @@ describe('a witness leg carries what the tool call produces and no more', () => 
 			),
 		).not.toThrow()
 	})
+
+	// `evidenceOf` writes the exit code of a server that ended the session on
+	// the leg, so a relation over it reads something.
+	it('admits a relation addressing exit-code, where the code of an ended session lands', () => {
+		expect(() =>
+			checkWitnessLegality(
+				witnessOver('/interactions/leg-first-query/exit-code'),
+			),
+		).not.toThrow()
+	})
+
+	it.each(['stdout', 'stderr'])(
+		'refuses a relation addressing %s, which a tool call never produces',
+		(channel) => {
+			const failure = failureOf(() =>
+				checkWitnessLegality(
+					witnessOver(`/interactions/leg-first-query/${channel}`),
+				),
+			)
+			expect(failure.code).toBe('unreachable-check-evidence')
+		},
+	)
 })
 
 describe('what a tool call can be asked about', () => {
@@ -334,7 +356,6 @@ describe('what a tool call can be asked about', () => {
 
 	it.each([
 		'/interactions/search/response-headers/etag',
-		'/interactions/search/exit-code',
 		'/interactions/search/stdout',
 		'/interactions/search/stderr',
 	])('refuses %s, a channel a tool call never fills', (pointer) => {
@@ -360,6 +381,20 @@ describe('what a tool call can be asked about', () => {
 			checkEvidenceReachability(
 				oracleOver('/interactions/search/response-status'),
 			),
+		).not.toThrow()
+	})
+
+	// The exit code of a server whose process ended the session before it
+	// answered. A crash oracle over it has to compile.
+	it('admits exit-code, where the code of an ended session lands', () => {
+		expect(() =>
+			checkEvidenceReachability(oracleOver('/interactions/search/exit-code')),
+		).not.toThrow()
+	})
+
+	it('compiles an oracle asserting the exit code under strict mode', () => {
+		expect(() =>
+			compile(oracleOver('/interactions/search/exit-code'), { strict: true }),
 		).not.toThrow()
 	})
 })

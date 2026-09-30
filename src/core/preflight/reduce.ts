@@ -43,9 +43,9 @@ const ANOMALOUS_STATUS = 400
 /**
  * What makes a control leg anomalous, in the vocabulary of the kind it ran
  * against, or `null` when nothing does. A command's analogue of a 4xx is a
- * non-zero exit and a tool call's is the envelope's error flag: all three are
- * the system saying the call did not go through, and AD-10's clean-control
- * check is about exactly that.
+ * non-zero exit and a tool call's is the envelope's error flag, or its server
+ * ending the session: all three are the system saying the call did not go
+ * through, and AD-10's clean-control check is about exactly that.
  */
 function anomalyOf(observation: ProbeObservation): string | null {
 	if (observation.kind === 'api') {
@@ -54,6 +54,9 @@ function anomalyOf(observation: ProbeObservation): string | null {
 			: null
 	}
 	if (observation.kind === 'mcp') {
+		if (observation.exitCode !== undefined) {
+			return `the server exited with code ${observation.exitCode} before answering`
+		}
 		return observation.isError ? 'a reported tool error' : null
 	}
 	return observation.exitCode === 0 ? null : `exit code ${observation.exitCode}`

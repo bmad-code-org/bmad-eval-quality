@@ -21,8 +21,10 @@ export { parseCommandTargetPolicy } from './command-target-policy.ts'
 export type { CorpusMechanism } from './local-corpus-adapter.ts'
 export { createLocalCorpusAdapter } from './local-corpus-adapter.ts'
 export type {
+	McpAnsweredCall,
 	McpCallToolRequest,
 	McpCallToolResult,
+	McpEndedSession,
 	McpMechanism,
 } from './mcp-adapter.ts'
 export { createMcpAdapter, nodeStdioMcpMechanism } from './mcp-adapter.ts'

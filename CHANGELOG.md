@@ -10,6 +10,36 @@ body.
 
 ## [Unreleased]
 
+### Added
+
+- **A tool server that ends the session mid-call is an observation an oracle can judge.**
+  `McpProbeObservation` gains an optional `exitCode`, signed on `CommandProbeObservation.exitCode`'s convention: a process a signal ended is a negative code.
+  It is present only when the server's process ended the session after the `initialize` handshake and before it answered `tools/call`, and that observation carries `isError: true` and an absent `result`; the schema refuses an `exitCode` beside any other `isError` or `result`.
+  `exitCode` is the launched target's exit status, the process-group leader's.
+  A server a launcher started as a grandchild and that dies mid-call records the launcher's status, so a signature over a negative code reads the server's death only when the launcher is the server.
+  An answered call carries no `exitCode`, and a server that answers and then exits is an answered call.
+  `McpCallToolResult` on the swappable `McpMechanism` becomes `McpAnsweredCall | McpEndedSession`, so a scripted mechanism can report an ended session, and `nodeStdioMcpMechanism.callTool` returns one when the server's process closes between the handshake and the answer.
+  Both types export from `eval-quality/adapters`.
+  The field is optional, so it needs no `schemaVersion` bump, and no published JSON Schema changes.
+- **`exit-code` is a channel of an `mcp` operation.**
+  `/interactions/<step>/exit-code` on a tool call compiles, a sensitivity witness leg carries it, and a defect signature may name it as its `observableChannel`.
+  It resolves to `null` on an answered call and to the signed code on an ended session, so a crash mutation on a tool server can be caught the way a command that crashes is.
+  A pointer at `response-headers`, `stdout` or `stderr` on a tool call is still `unreachable-check-evidence`, and one at a written file is still `unresolved-artifact-reference`.
+  In pre-flight, a control leg whose server ended the session fails the clean-control check with a note naming the exit code.
+
+### Changed
+
+- **`createMcpAdapter` no longer throws `port-failure` when the server exits or is ended by a signal after the handshake and before it answers `tools/call`.**
+  It resolves the observation described above.
+  `port-failure` stays for a server that cannot start, that ends or errors before or during the handshake, or that refuses the handshake, for a process-group watchdog killed while the server runs, and for a line on stdout that is no JSON-RPC message at any phase, valid JSON such as a structured log line included.
+  `budget-exhausted` for `maxElapsedMs` and `maxOutputBytes`, and the abort error, are unchanged.
+
+### Fixed
+
+- **The documentation site's lockfile no longer resolves `fast-uri` and `undici` versions with high-severity advisories.**
+  `website/package-lock.json` moves `fast-uri` 3.1.6 to 3.1.8 and `undici` 8.10.0 to 8.11.0, which clears the `Known-vulnerability audit` step for the website graph.
+  No `package.json` range changes.
+
 ## [4.3.0] - 2026-09-26
 
 ### Added

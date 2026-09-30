@@ -32,10 +32,12 @@ export const PREFLIGHT_ARTIFACT_PATH = 'PreflightVerdict'
  * projection cannot see. The projection says what the fixture is; a relation
  * addressing a header is the author asserting that header is stable.
  *
- * `status`, `exitCode` and `toolError` are one family, one per kind, each
- * `null` off its own kind. All three answer whether the call went through, and
- * the projection's test for membership is whether a declaration can prune the
- * field: none of the three can be. A projection blind to the tool error flag
+ * `status`, `exitCode` and `toolError` are one family, each `null` off its
+ * own kind. `exitCode` belongs to a command and to a tool call whose server
+ * ended the session before it answered, and is `null` on every answered tool
+ * call. All three answer whether the call went through, and the projection's
+ * test for membership is whether a declaration can prune the field: none of
+ * the three can be. A projection blind to the tool error flag
  * would digest two legs identical when one errored and one did not, which is
  * the state-reset check reporting a reset that never happened.
  */
@@ -45,7 +47,7 @@ export type ProjectedObservation = {
 	readonly operationId: string
 	/** the transport status, or `null` off an interface that speaks HTTP. */
 	readonly status: number | null
-	/** the process exit code, or `null` on an interface that does. */
+	/** the process exit code of a command, or of a tool server that ended the session before it answered; `null` otherwise. */
 	readonly exitCode: number | null
 	/** the tool call's error flag, or `null` off an interface that calls one. */
 	readonly toolError: boolean | null
@@ -136,10 +138,16 @@ export function projectObservation(
 		legId: observation.probeId,
 		interfaceId: observation.interfaceId,
 		operationId: observation.operationId,
-		// Each of the three reads `null` off its own kind. Every reader of these
-		// fields already asks about `null`.
+		// Each of the three reads `null` off its own kind, and `exitCode` on an
+		// answered tool call. Every reader of these fields already asks about
+		// `null`.
 		status: observation.kind === 'api' ? observation.status : null,
-		exitCode: observation.kind === 'cli' ? observation.exitCode : null,
+		exitCode:
+			observation.kind === 'cli'
+				? observation.exitCode
+				: observation.kind === 'mcp'
+					? (observation.exitCode ?? null)
+					: null,
 		toolError: observation.kind === 'mcp' ? observation.isError : null,
 		body: pruneVolatile(observed, operation.volatilePointers, artifactPath),
 	}

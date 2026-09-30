@@ -126,9 +126,11 @@ export const IDENTIFIER_ROOTED_CHANNEL =
 /**
  * The response-side channels an interface that speaks HTTP produces and the
  * ones a command produces, and neither produces the other's. A tool call fills
- * a strict subset of the first. Declared here rather than rebuilt from a
- * description, so a channel added to the vocabulary has to be assigned to a
- * side and a test can assert the two partition the response side exactly.
+ * a subset of the first (`response-status`, for its error flag) and one channel
+ * of the second (`exit-code`, when its server ended the session before
+ * answering). Declared here rather than rebuilt from a description, so a
+ * channel added to the vocabulary has to be assigned to a side and a test can
+ * assert the two partition the response side exactly.
  *
  * `call-inputs` belongs to neither: it carries what was sent rather than what
  * came back, and every kind has it.

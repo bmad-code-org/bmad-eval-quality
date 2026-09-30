@@ -11,6 +11,7 @@
 import { describe, expect, it } from 'vitest'
 import { compile } from '../../src/core/compile/compile.ts'
 import { isMcpOperation } from '../../src/core/declared-inputs.ts'
+import { channelRoot } from '../../src/core/evaluate/evidence-resolution.ts'
 import { planPreflight } from '../../src/core/preflight/plan.ts'
 import {
 	fixtureDigest,
@@ -31,10 +32,13 @@ import type {
 	ProbeObservedBody,
 } from '../../src/core/schemas/port-messages.ts'
 import type { McpWitnessInputs } from '../../src/core/schemas/sensitivity-witness.ts'
+import { parseEvidenceTarget } from '../../src/core/seal/plan-index.ts'
 import { mcpContract } from '../schemas/fixtures/mcp-contract.ts'
 import { jsonBody, mcpObservationsFor } from './fixtures/observations.ts'
 
 const RUN_ID = 'mcp-run-0001'
+
+const absentResult: ProbeObservedBody = { kind: 'absent' }
 
 const contract = compile(EvalContract.parse(mcpContract), { strict: true })
 
@@ -71,20 +75,26 @@ const observation = (
 	result,
 })
 
+/** A session the server's own process ended before it answered: an error with nothing returned and the code the process ended with. */
+const endedObservation = (exitCode: number): McpProbeObservation => ({
+	...observation(true, { kind: 'absent' }),
+	exitCode,
+})
+
 const TOOL_CALL_INPUTS: McpWitnessInputs = { arguments: { query: 'alpha' } }
 
 const evidenceFor = (
 	isError: boolean,
 	result: ProbeObservedBody = SEARCH_RESULT,
-) => {
-	const raw = observation(isError, result)
-	return evidenceOf(
+) => evidenceOfObservation(observation(isError, result))
+
+const evidenceOfObservation = (raw: McpProbeObservation) =>
+	evidenceOf(
 		projectObservation(raw, searchNotes, PREFLIGHT_ARTIFACT_PATH),
 		raw,
 		TOOL_CALL_INPUTS,
 		searchNotes,
 	)
-}
 
 describe('projectObservation over a tool call', () => {
 	it('projects the structured result as the body, since it is the kind’s one descriptor channel', () => {
@@ -99,9 +109,10 @@ describe('projectObservation over a tool call', () => {
 		expect(projected.operationId).toBe('search-notes')
 	})
 
-	// One field per kind, each null off its own kind. A tool call has neither a
-	// transport status nor a process exit code.
-	it('reads the tool error flag and leaves status and exitCode null', () => {
+	// One field per kind, each null off its own kind. A tool call has no
+	// transport status, and carries an exit code only when its server ended the
+	// session before answering.
+	it('reads the tool error flag and leaves status and exitCode null on an answered call', () => {
 		expect(
 			projectObservation(
 				observation(true),
@@ -116,6 +127,37 @@ describe('projectObservation over a tool call', () => {
 				PREFLIGHT_ARTIFACT_PATH,
 			),
 		).toMatchObject({ status: null, exitCode: null, toolError: false })
+	})
+
+	it("carries the exit code of a session the server's process ended, signed", () => {
+		for (const exitCode of [3, 0, -9]) {
+			expect(
+				projectObservation(
+					endedObservation(exitCode),
+					searchNotes,
+					PREFLIGHT_ARTIFACT_PATH,
+				),
+			).toMatchObject({
+				status: null,
+				exitCode,
+				toolError: true,
+				body: { kind: 'absent' },
+			})
+		}
+	})
+
+	it('digests two ended sessions differently when the processes ended differently, and differently from an answered error', () => {
+		const digestOfObservation = (raw: McpProbeObservation) =>
+			fixtureDigest(
+				[projectObservation(raw, searchNotes, PREFLIGHT_ARTIFACT_PATH)],
+				PREFLIGHT_ARTIFACT_PATH,
+			)
+		const exited = digestOfObservation(endedObservation(3))
+		expect(digestOfObservation(endedObservation(-9))).not.toBe(exited)
+		expect(digestOfObservation(endedObservation(3))).toBe(exited)
+		expect(exited).not.toBe(
+			digestOfObservation(observation(true, { kind: 'absent' })),
+		)
 	})
 
 	// The reason the flag is in the projection at all. Without it two legs that
@@ -168,6 +210,19 @@ describe('evidenceOf over a tool call', () => {
 		expect(evidenceFor(false).responseStatus).toBe(0)
 	})
 
+	// The channel a crash oracle reads. An answered call has no exit code, so
+	// the channel is null there and the signed code where the server's process
+	// ended the session.
+	it('writes exitCode as null for an answered call and as the signed code for an ended session', () => {
+		expect(evidenceFor(true).exitCode).toBeNull()
+		const exited = evidenceOfObservation(endedObservation(3))
+		expect(exited.exitCode).toBe(3)
+		expect(exited.responseStatus).toBe(1)
+		expect(exited.responseBody).toBeNull()
+		expect(evidenceOfObservation(endedObservation(-9)).exitCode).toBe(-9)
+		expect(evidenceOfObservation(endedObservation(0)).exitCode).toBe(0)
+	})
+
 	it('fills the ninth call-inputs channel with the arguments the leg sent', () => {
 		expect(evidenceFor(false).callInputs.arguments).toEqual({ query: 'alpha' })
 	})
@@ -210,6 +265,42 @@ describe('an oracle over the tool error flag', () => {
 	})
 })
 
+describe('an oracle over the exit-code channel of a tool call', () => {
+	const exitsWith = (literal: number): Expression => ({
+		op: 'equality',
+		operands: [{ pointer: '/interactions/search/exit-code' }, { literal }],
+	})
+
+	const resolve = (raw: McpProbeObservation, literal: number) =>
+		resolveWitnessRelation(
+			exitsWith(literal),
+			{ search: evidenceOfObservation(raw) },
+			searchNotes,
+			{},
+			{},
+			PREFLIGHT_ARTIFACT_PATH,
+		).resolution
+
+	it('resolves to null on an answered call and to the signed code on an ended session', () => {
+		const target = parseEvidenceTarget('/interactions/search/exit-code')
+		expect(channelRoot(evidenceFor(false), target)).toBeNull()
+		expect(channelRoot(evidenceFor(true), target)).toBeNull()
+		expect(
+			channelRoot(evidenceOfObservation(endedObservation(3)), target),
+		).toBe(3)
+		expect(
+			channelRoot(evidenceOfObservation(endedObservation(-9)), target),
+		).toBe(-9)
+	})
+
+	it('asserts the crash: true against the ended session and false against an answered call', () => {
+		expect(resolve(endedObservation(3), 3)).toBe('true')
+		expect(resolve(endedObservation(-9), -9)).toBe('true')
+		expect(resolve(endedObservation(3), 0)).toBe('false')
+		expect(resolve(observation(false), 0)).toBe('false')
+	})
+})
+
 describe('anomalyOf over a tool call', () => {
 	const planOf = () => planPreflight({ contract, probes: [], runId: RUN_ID })
 
@@ -235,6 +326,29 @@ describe('anomalyOf over a tool call', () => {
 		expect(failed.some((check) => check.note?.includes('tool error'))).toBe(
 			true,
 		)
+	})
+
+	// A control leg whose server died before answering is the system saying the
+	// call did not go through, and the note says how it ended.
+	it('fails the clean-control check on a control leg whose server ended the session, naming the exit code', () => {
+		const plan = planOf()
+		const verdict = reducePreflight(plan, {
+			observations: mcpObservationsFor(plan.legs, {}).map((each) =>
+				each.kind === 'mcp'
+					? { ...each, isError: true, result: absentResult, exitCode: 3 }
+					: each,
+			),
+		})
+		const failed = verdict.checks.filter(
+			(check) => check.kind === 'clean-control',
+		)
+		expect(failed.length).toBeGreaterThan(0)
+		for (const check of failed) expect(check.outcome).toBe('failed')
+		expect(
+			failed.some((check) =>
+				check.note?.includes('the server exited with code 3 before answering'),
+			),
+		).toBe(true)
 	})
 
 	it('satisfies it when the tool reported none', () => {

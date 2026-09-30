@@ -57,6 +57,7 @@
  */
 import { type ChildProcess, spawn } from 'node:child_process'
 import { EventEmitter } from 'node:events'
+import { constants as osConstants } from 'node:os'
 import { resolve as resolvePath } from 'node:path'
 import { isSea } from 'node:sea'
 import type { Duplex, Readable, Writable } from 'node:stream'
@@ -114,6 +115,17 @@ class AbortError extends Error {
 	}
 }
 
+/** `-signalNumber` when a signal ended the process, else the exit code, or `-1` for an end that named neither. The one convention both adapters record a process's end in, so a command's `exitCode` and a tool server's read the same. */
+export function exitCodeOf(
+	code: number | null,
+	signalName: NodeJS.Signals | null,
+): number {
+	if (code !== null) return code
+	if (signalName === null) return -1
+	const numeric = (osConstants.signals as Record<string, number>)[signalName]
+	return numeric === undefined ? -1 : -numeric
+}
+
 /** `SIGKILL` to the child's whole process group, or to the child alone where there is no group. */
 export function killProcessGroup(child: GroupedChild): void {
 	child.killGroup()
@@ -151,6 +163,12 @@ export interface GroupedChild extends EventEmitter {
 	killGroup(): void
 	/** Lets the watchdog exit without killing the group: for a run that settled on the target's own exit. */
 	release(): void
+	/**
+	 * True once the watchdog died on its own while the target ran, so the group
+	 * was killed by the harness's own machinery and the reported `SIGKILL` says
+	 * nothing about the target. Absent where there is no watchdog.
+	 */
+	readonly watchdogLost?: boolean
 }
 
 export type GroupedSpawn = {
@@ -348,6 +366,7 @@ class WatchedChild extends EventEmitter implements GroupedChild {
 	} | null = null
 	#failed = false
 	#killed = false
+	#watchdogLost = false
 	#openStreams = 0
 	#closed = false
 
@@ -415,7 +434,9 @@ class WatchedChild extends EventEmitter implements GroupedChild {
 			}
 			// The watchdog was killed on its own. The target is left without its
 			// lifeline, so the group goes, and the target is reported as that
-			// kill ended it.
+			// kill ended it. `watchdogLost` says the kill was the harness's, for a
+			// caller that must not read it as how the target ended.
+			this.#watchdogLost = true
 			this.killGroup()
 			this.#end(null, 'SIGKILL')
 		})
@@ -429,6 +450,10 @@ class WatchedChild extends EventEmitter implements GroupedChild {
 				env: spec.env,
 			})}\n`,
 		)
+	}
+
+	get watchdogLost(): boolean {
+		return this.#watchdogLost
 	}
 
 	killGroup(): void {

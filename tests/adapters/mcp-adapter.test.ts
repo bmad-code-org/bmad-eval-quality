@@ -8,7 +8,7 @@
  * `reportOf` computes `passed` from `CONFORMANCE_OUTCOME_COUNTS[port]` and a
  * report was unconstructible without it.
  */
-import { spawn } from 'node:child_process'
+import { execFileSync, spawn } from 'node:child_process'
 import { getEventListeners } from 'node:events'
 import {
 	existsSync,
@@ -17,10 +17,14 @@ import {
 	realpathSync,
 	rmSync,
 } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { constants as osConstants, tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { afterAll, describe, expect, it } from 'vitest'
+import type {
+	McpAnsweredCall,
+	McpEndedSession,
+} from '../../src/adapters/index.ts'
 import {
 	createMcpAdapter,
 	type McpCallToolRequest,
@@ -32,11 +36,11 @@ import { runPreflight } from '../../src/application/preflight.ts'
 import { compile } from '../../src/core/compile/compile.ts'
 import { EvalContract } from '../../src/core/schemas/eval-contract.ts'
 import { RuntimeFault } from '../../src/core/schemas/faults.ts'
-import type {
-	McpProbeObservation,
-	McpProbeRequest,
+import {
+	type McpProbeObservation,
+	type McpProbeRequest,
 	ProbeObservation,
-	ProbeRequest,
+	type ProbeRequest,
 } from '../../src/core/schemas/port-messages.ts'
 import type { JsonValue } from '../../src/core/schemas/primitives.ts'
 import type { McpTargetPolicy } from '../../src/core/schemas/probe-policy.ts'
@@ -90,6 +94,12 @@ const TOOLS = [
 	'noisy_tool',
 	'silent_tool',
 	'crash_tool',
+	'signal_tool',
+	'farewell_tool',
+	'garbage_tool',
+	'log_line_tool',
+	'chatty_tool',
+	'relayed_tool',
 	'unframed_tool',
 	'split_tool',
 ]
@@ -133,6 +143,14 @@ const policy: McpTargetPolicy = {
 		serverAt('slow-server', { tools: ['hanging_tool'] }),
 		serverAt('exiting-server', {
 			targetArgs: [FIXTURE_PATH, '--exit-at-launch'],
+			tools: ['search_notes'],
+		}),
+		serverAt('crash-on-initialize-server', {
+			targetArgs: [FIXTURE_PATH, '--crash-on-initialize'],
+			tools: ['search_notes'],
+		}),
+		serverAt('exit-after-initialize-server', {
+			targetArgs: [FIXTURE_PATH, '--exit-after-initialize'],
 			tools: ['search_notes'],
 		}),
 		serverAt('garbage-server', {
@@ -412,6 +430,188 @@ describe('a server that answers with an error', () => {
 	})
 })
 
+describe('a session the server ends before it answers the tool call', () => {
+	// The tool-call twin of a command that crashes. The oracles over a command
+	// step judge its exit code, and a crash mutation on a tool server is caught
+	// only if the same is true here.
+	it("resolves a server that exits mid-call as an error observation carrying the process's exit code", async () => {
+		const observed = mcpObservation(
+			await probeFor({ probeId: 'crashing', toolName: 'crash_tool' }),
+		)
+		expect(observed).toEqual({
+			kind: 'mcp',
+			probeId: 'crashing',
+			interfaceId: 'notes-tool-server',
+			operationId: 'crashing',
+			isError: true,
+			result: { kind: 'absent' },
+			exitCode: 3,
+		})
+	})
+
+	// Negative on a command's convention: a process a signal ended reads as the
+	// negated signal number.
+	it('reads a server a signal ended as a negative exit code', async () => {
+		const observed = mcpObservation(
+			await probeFor({ probeId: 'signalled', toolName: 'signal_tool' }),
+		)
+		expect(observed).toMatchObject({
+			isError: true,
+			result: { kind: 'absent' },
+			exitCode: -osConstants.signals.SIGTERM,
+		})
+	})
+
+	// The server exiting right after answering has answered, and reading its
+	// exit as the end of the session would report a crash that did not happen.
+	it('keeps a server that answers and then exits an answered call with no exit code', async () => {
+		const observed = mcpObservation(
+			await probeFor({ probeId: 'farewell', toolName: 'farewell_tool' }),
+		)
+		expect(observed.isError).toBe(false)
+		expect(observed.result).toEqual({
+			kind: 'json',
+			value: { ok: true, farewell: true },
+		})
+		expect('exitCode' in observed).toBe(false)
+	})
+
+	// A launcher exits while the process it started, holding the same stdout,
+	// goes on to write the answer. The session ends when the pipes close and not
+	// when the direct process exits, so this is an answered call. Listening for
+	// `exit` instead of `close` reads the launcher's status as a crash.
+	it('keeps an answer written by a process the server started, after the server exited, an answered call', async () => {
+		const observed = mcpObservation(
+			await probeFor({ probeId: 'relayed', toolName: 'relayed_tool' }),
+		)
+		expect(observed).toStrictEqual({
+			kind: 'mcp',
+			probeId: 'relayed',
+			interfaceId: 'notes-tool-server',
+			operationId: 'relayed',
+			isError: false,
+			result: { kind: 'json', value: { ok: true, relayed: true } },
+		})
+	})
+
+	it('keeps a complete frame with no trailing newline followed by an exit an answered call', async () => {
+		const observed = mcpObservation(
+			await probeFor({ probeId: 'unframed-exit', toolName: 'unframed_tool' }),
+		)
+		expect(observed.isError).toBe(false)
+		expect('exitCode' in observed).toBe(false)
+	})
+
+	it('carries no exit code on an answered call, tool error or not', async () => {
+		for (const toolName of ['search_notes', 'failing_tool', 'rpc_error_tool']) {
+			const observed = mcpObservation(
+				await probeFor({
+					probeId: `answered-${toolName.replaceAll('_', '-')}`,
+					toolName,
+				}),
+			)
+			expect('exitCode' in observed).toBe(false)
+		}
+	})
+
+	// The handshake completed, so the session was open; the server then ended
+	// it before any tool call reached it.
+	it('resolves a server that exits after the handshake and before the call arrives', async () => {
+		const observed = mcpObservation(
+			await probeFor({
+				probeId: 'exit-after-initialize',
+				interfaceId: 'exit-after-initialize-server',
+			}),
+		)
+		expect(observed).toMatchObject({
+			isError: true,
+			result: { kind: 'absent' },
+			exitCode: 3,
+		})
+	})
+
+	// The observation parses against the port's own response schema, so a
+	// harness reading it through the port sees the field, and it is an integer.
+	it('is a schema-valid observation only with an integer exit code', () => {
+		const ended = {
+			kind: 'mcp',
+			probeId: 'p',
+			interfaceId: 'notes-tool-server',
+			operationId: 'p',
+			isError: true,
+			result: { kind: 'absent' },
+			exitCode: -9,
+		}
+		expect(probeParsers.response.safeParse(ended).success).toBe(true)
+		const { exitCode: _omitted, ...answered } = ended
+		expect(probeParsers.response.safeParse(answered).success).toBe(true)
+		expect(
+			probeParsers.response.safeParse({ ...ended, exitCode: 1.5 }).success,
+		).toBe(false)
+	})
+
+	// An exit code marks a session the server ended before answering, which is
+	// an error with nothing returned. The union enforces it, so a scripted
+	// mechanism or a hand-written observation cannot say otherwise.
+	it('rejects an exit code beside an answered call or a returned result', () => {
+		const ended = {
+			kind: 'mcp',
+			probeId: 'p',
+			interfaceId: 'notes-tool-server',
+			operationId: 'p',
+			isError: true,
+			result: { kind: 'absent' },
+			exitCode: 3,
+		}
+		for (const contradicting of [
+			{ ...ended, isError: false },
+			{ ...ended, result: { kind: 'json', value: { ok: true } } },
+			{ ...ended, isError: false, result: { kind: 'json', value: null } },
+		]) {
+			for (const parser of [probeParsers.response, ProbeObservation]) {
+				const parsed = parser.safeParse(contradicting)
+				expect(parsed.success).toBe(false)
+				expect(parsed.error?.issues[0]?.path).toEqual(['exitCode'])
+			}
+		}
+		expect(ProbeObservation.safeParse(ended).success).toBe(true)
+	})
+
+	// The mechanism is swappable, so the conformance subject and any other
+	// scripted mechanism can report the ended session without a process.
+	it('turns a scripted ended-session result into the same observation', async () => {
+		// Both result types are named on the subpath a consumer imports.
+		const endedSession: McpEndedSession = { isError: true, exitCode: 7 }
+		const answeredCall: McpAnsweredCall = { isError: false }
+		const scripted = createMcpAdapter(policy, {
+			callTool: () => Promise.resolve(endedSession),
+		})
+		const observed = mcpObservation(
+			await scripted.probe(
+				request({ probeId: 'scripted' }),
+				new AbortController().signal,
+			),
+		)
+		expect(observed).toMatchObject({
+			isError: true,
+			result: { kind: 'absent' },
+			exitCode: 7,
+		})
+		const answering = createMcpAdapter(policy, {
+			callTool: () => Promise.resolve(answeredCall),
+		})
+		expect(
+			'exitCode' in
+				mcpObservation(
+					await answering.probe(
+						request({ probeId: 'scripted-answer' }),
+						new AbortController().signal,
+					),
+				),
+		).toBe(false)
+	})
+})
+
 describe('a session that never opens', () => {
 	// A server answering `initialize` with a JSON-RPC error has refused the
 	// session, so nothing observed the system and the pre-flight has no answer
@@ -588,14 +788,17 @@ describe('the caps and the session failures, which are never conflated', () => {
 		expect(causeMessage(fault)).toBe('the server exited during initialize')
 	})
 
-	// The same event one phase later. Without the phase in the message a crash
-	// at launch and a crash mid-call read identically.
-	it('names the phase when a server exits during the tool call', async () => {
+	// The same event one phase earlier than a tool call: the server read
+	// `initialize` and died without answering, so the session never opened.
+	it('reports a server that exits while answering the handshake as a port failure', async () => {
 		const fault = await faultOf(() =>
-			probeFor({ probeId: 'crashing', toolName: 'crash_tool' }),
+			probeFor({
+				probeId: 'crash-on-initialize',
+				interfaceId: 'crash-on-initialize-server',
+			}),
 		)
 		expect(fault.code).toBe('port-failure')
-		expect(causeMessage(fault)).toBe('the server exited during tools/call')
+		expect(causeMessage(fault)).toBe('the server exited during initialize')
 	})
 
 	it('reports bytes on stdout that are not a JSON-RPC message as a port failure', async () => {
@@ -604,6 +807,56 @@ describe('the caps and the session failures, which are never conflated', () => {
 		)
 		expect(fault.code).toBe('port-failure')
 		expect(causeMessage(fault)).toContain('not a JSON-RPC message')
+	})
+
+	// The same line one phase later, from a server that then exits. The
+	// observation records how the process ended the session, and this session
+	// ended on a malformed frame first, so it stays a fault at every phase.
+	it('reports a malformed line during the tool call as a port failure even when the server then exits', async () => {
+		const fault = await faultOf(() =>
+			probeFor({ probeId: 'garbage-mid-call', toolName: 'garbage_tool' }),
+		)
+		expect(fault.code).toBe('port-failure')
+		expect(causeMessage(fault)).toContain('not a JSON-RPC message')
+	})
+
+	// A line that parses as JSON is still no JSON-RPC message unless it is an
+	// object carrying `jsonrpc: '2.0'`. A server that logs a JSON line on stdout
+	// and then exits has ended its session on a malformed frame, exactly as one
+	// that logs plain text has.
+	it.each([
+		['a structured log line', '{"level":30,"msg":"about to crash"}'],
+		['an array', '[1,2,3]'],
+		['a string', '"about to crash"'],
+		['a number', '42'],
+		['null', 'null'],
+		['an object naming another protocol version', '{"jsonrpc":"1.0","id":2}'],
+	])(
+		'reports %s on stdout as a port failure even when the server then exits',
+		async (_label, line) => {
+			const fault = await faultOf(() =>
+				probeFor({
+					probeId: 'json-log-mid-call',
+					toolName: 'log_line_tool',
+					arguments: { line },
+				}),
+			)
+			expect(fault.code).toBe('port-failure')
+			expect(causeMessage(fault)).toContain('not a JSON-RPC message')
+		},
+	)
+
+	// Requests and notifications the server makes carry `jsonrpc: '2.0'`. They
+	// are legal, answer nothing the client asked, and are ignored.
+	it('ignores a notification and a request the server makes, and reads the answer after them', async () => {
+		const observed = mcpObservation(
+			await probeFor({ probeId: 'chatty', toolName: 'chatty_tool' }),
+		)
+		expect(observed.isError).toBe(false)
+		expect(observed.result).toEqual({
+			kind: 'json',
+			value: { ok: true, chatty: true },
+		})
 	})
 
 	// Teardown kills the process group, so a launcher's grandchild goes with it.
@@ -924,6 +1177,109 @@ describe.skipIf(process.platform === 'win32')(
 				await new Promise((settle) => setTimeout(settle, 25))
 			}
 			expect(trackedProcessCount()).toBe(0)
+		})
+
+		// The mechanism reports the ended session itself, so a caller that is
+		// not the shipped adapter reads the same shape a scripted mechanism
+		// returns.
+		it('resolves an ended session as an error carrying the signed exit code', async () => {
+			await expect(
+				nodeStdioMcpMechanism.callTool(
+					callRequest({ toolName: 'crash_tool' }),
+					new AbortController().signal,
+				),
+			).resolves.toEqual({ isError: true, exitCode: 3 })
+			await expect(
+				nodeStdioMcpMechanism.callTool(
+					callRequest({ toolName: 'signal_tool' }),
+					new AbortController().signal,
+				),
+			).resolves.toEqual({
+				isError: true,
+				exitCode: -osConstants.signals.SIGTERM,
+			})
+		})
+
+		// The watchdog is the harness's own process. When something kills it while
+		// the server runs, the group goes down with it, and reporting that as the
+		// server ending with SIGKILL would record a harness-side kill as the server
+		// crashing. Nothing observed the server, so the run is a fault.
+		it('reports a watchdog killed while the server runs as a fault, never as the server ending the session', async () => {
+			const pidFile = join(PID_DIR, 'watchdog-killed.pid')
+			const readyFile = join(PID_DIR, 'watchdog-killed.ready')
+			rmSync(readyFile, { force: true })
+			const pending = nodeStdioMcpMechanism
+				.callTool(
+					callRequest({
+						target: process.execPath,
+						targetArgs: [
+							LAUNCHER_PATH,
+							pidFile,
+							'--linger',
+							'--ready-file',
+							readyFile,
+						],
+						toolName: 'hanging_tool',
+						maxElapsedMs: 30_000,
+					}),
+					new AbortController().signal,
+				)
+				.then(
+					(observed) => ({ observed }),
+					(thrown: unknown) => ({ thrown }),
+				)
+			const until = Date.now() + 10_000
+			while (!existsSync(readyFile) && Date.now() < until) {
+				await new Promise((settle) => setTimeout(settle, 25))
+			}
+			const launcher = Number(readFileSync(`${pidFile}.launcher`, 'utf8'))
+			const server = Number(readFileSync(pidFile, 'utf8'))
+			// The launcher is the group leader the watchdog started, so its parent is
+			// the watchdog.
+			const watchdog = Number(
+				execFileSync('ps', ['-o', 'ppid=', '-p', String(launcher)], {
+					encoding: 'utf8',
+				}).trim(),
+			)
+			expect(watchdog).toBeGreaterThan(1)
+			expect(watchdog).not.toBe(process.pid)
+			try {
+				process.kill(watchdog, 'SIGKILL')
+				const outcome = await pending
+				expect(outcome).not.toHaveProperty('observed')
+				const { thrown } = outcome as { thrown: unknown }
+				expect(thrown).toBeInstanceOf(Error)
+				expect((thrown as Error).message).toContain('watchdog')
+				expect(await isDeadWithin(launcher, 3000)).toBe(true)
+				expect(await isDeadWithin(server, 3000)).toBe(true)
+			} finally {
+				for (const pid of [launcher, server, watchdog]) {
+					if (alive(pid)) process.kill(pid, 'SIGKILL')
+				}
+			}
+		}, 20_000)
+
+		it('keeps every ceiling and refusal a rejection when the session would otherwise have ended', async () => {
+			const capped = await nodeStdioMcpMechanism
+				.callTool(
+					callRequest({ toolName: 'hanging_tool', maxElapsedMs: 300 }),
+					new AbortController().signal,
+				)
+				.then(
+					() => undefined,
+					(thrown: unknown) => thrown,
+				)
+			expect(capped).toBeInstanceOf(RuntimeFault)
+			expect((capped as RuntimeFault).code).toBe('budget-exhausted')
+			await expect(
+				nodeStdioMcpMechanism.callTool(
+					callRequest({
+						toolName: 'search_notes',
+						targetArgs: [FIXTURE_PATH, '--refuse-initialize'],
+					}),
+					new AbortController().signal,
+				),
+			).rejects.toThrow('refused the initialize handshake')
 		})
 	},
 )

@@ -297,10 +297,11 @@ export function checkExpressionEvidenceReachability(
  * What a leg carries is the operation's own described channel, its transport
  * inputs, and the channels its transport produces with no descriptor of their
  * own: the status and the headers off an interface that speaks HTTP, the exit
- * code off a command, the error flag alone off a tool call. `response-headers`
- * stays legal for HTTP deliberately, matching the note on `projectObservation`
- * that the projection does not carry headers and the relation reads them raw;
- * a tool call has none to read.
+ * code off a command, the error flag and the exit code of a server that ended
+ * the session off a tool call. `response-headers` stays legal for HTTP
+ * deliberately, matching the note on `projectObservation` that the projection
+ * does not carry headers and the relation reads them raw; a tool call has none
+ * to read.
  *
  * The artifact channel narrows once more. A leg carries the one artifact the
  * descriptor nominates, so a pointer at any other declared artifact is blank
@@ -316,7 +317,7 @@ export function checkExpressionLegChannel(
 	const carried: readonly EvidenceChannelName[] = isCommandOperation(operation)
 		? [described, 'exit-code', 'call-inputs']
 		: isMcpOperation(operation)
-			? [described, 'response-status', 'call-inputs']
+			? [described, 'response-status', 'exit-code', 'call-inputs']
 			: [described, 'response-headers', 'response-status', 'call-inputs']
 	visitExpression(expression, '', false, (site) => {
 		if (site.pointer.startsWith('@')) return
@@ -572,18 +573,19 @@ function evaluateReachabilityAgainstOperation(
 		)
 	}
 
-	// A tool call produces its structured result on the descriptor's channel and
-	// its error flag on `response-status`, and nothing else: no HTTP headers, no
-	// process exit code, no stream, and no written file. Placed ahead of the
-	// residue below, which answers reachable for three channels a tool call
-	// never fills.
+	// A tool call produces its structured result on the descriptor's channel, its
+	// error flag on `response-status`, and the exit code of a server that ended
+	// the session before answering on `exit-code`, and nothing else: no HTTP
+	// headers, no stream, and no written file. Placed ahead of the residue
+	// below, which answers reachable for channels a tool call never fills.
 	if (
 		isMcpOperation(operation) &&
 		target.channel !== 'response-status' &&
+		target.channel !== 'exit-code' &&
 		target.channel !== 'call-inputs'
 	) {
 		return unreachable(
-			`addresses ${target.channel} on operation "${operation.operationId}", which is a tool call and carries its result on ${descriptorChannel} and its error flag on response-status alone`,
+			`addresses ${target.channel} on operation "${operation.operationId}", which is a tool call and carries its result on ${descriptorChannel}, its error flag on response-status and, when its server ended the session, the exit code on exit-code, and nothing else`,
 		)
 	}
 

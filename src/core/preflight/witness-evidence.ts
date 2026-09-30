@@ -144,7 +144,8 @@ export function evidenceOf(
 		responseHeaders: observation.kind === 'api' ? observation.headers : null,
 		// A tool call has no transport status, so the channel AD-26 fixed as a
 		// number carries the envelope's error flag instead: 1 when the tool
-		// reported an error and 0 when it did not. The projection is spelled
+		// reported an error or its server ended the session, and 0 when it did
+		// not. The projection is spelled
 		// here because a 0 in a field typed `number | null` is otherwise
 		// indistinguishable from a transport status of zero, and an oracle
 		// asserting that a tool reported no error reads this value.
@@ -164,7 +165,15 @@ export function evidenceOf(
 			observation.kind !== 'cli' || descriptorChannel !== 'stderr'
 				? ABSENT_CHANNEL
 				: body,
-		exitCode: observation.kind === 'cli' ? observation.exitCode : null,
+		// A command's own exit code, and a tool server's when its process ended the
+		// session before it answered. An answered call has none, so the channel is
+		// `null` there and an oracle over it reads "the server did not crash".
+		exitCode:
+			observation.kind === 'cli'
+				? observation.exitCode
+				: observation.kind === 'mcp'
+					? (observation.exitCode ?? null)
+					: null,
 		artifacts:
 			observation.kind !== 'cli' || describedArtifact === null
 				? {}
