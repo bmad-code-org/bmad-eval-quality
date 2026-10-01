@@ -10,6 +10,30 @@ body.
 
 ## [Unreleased]
 
+### Added
+
+- **`eval-quality aggregate-strength` reports the run-wide strength of the qualified probes of one run.**
+  `score` covers one probe per call, so the strength vector in one evidence artifact describes that probe alone and a per-class floor could not be applied to a run.
+  The command reads every per-probe `EvidenceArtifact` (`--evidence`, repeated) and the declared floors (`--floors`, a JSON object keyed by `defect`, `gameability` and `zero-action`) and mints one `StrengthAggregate`.
+  Per class it reports the distinct qualified probe denominator (`eligible`), `exercised`, `caught`, the `rate`, `comparable`, and the decision against the declared floor with the reason for it.
+  The rate arithmetic is the function that builds each artifact's own vector, now exported from `core/score/strength.ts` as `classStrengthOver`, so a probe's vector and the class rate it feeds are one computation.
+  Clean controls and canaries stay outside every denominator. A class with no eligible probe is `null`, and a class with eligible probes and none exercised has `rate: null`.
+  A class is comparable only when every eligible probe's trial set reached `minimumTrialCount` with no oracle `unreached`, by the rule `emit` applies, which both now share as `isComparable`.
+  A floor is met only by a comparable class whose rate is at or above it. A class that is non-comparable, empty, or unexercised does not meet a declared floor.
+  The aggregate records the engine version and the digest of every artifact it read, sorts its inputs by probe, and is reproduced byte for byte by a second run over the same artifacts and floors.
+  `StrengthAggregate` is the thirteenth interchange artifact, published at `schemas/strength-aggregate.schema.json`, owned by a new `aggregate` stage, with its schema version exported as `STRENGTH_AGGREGATE_SCHEMA_VERSION`.
+  The library exports `aggregateStrength`, `AggregateStrengthOptions`, `StrengthAggregate`, `StrengthFloors`, `AggregationRefusal` and `AGGREGATION_REFUSAL_CODES`.
+  The command exits `0` whatever the floor decisions are and records them in the artifact, since `1` and `2` belong to the verdict ladder `score` runs. It never promotes under `--strict`.
+  It exits `4` and writes nothing for a set that is not one run: `strength-inputs-disagree` for artifacts that share a probe or differ in scoring version, evidence basis, minimum trial count or catch threshold, and `strength-input-inconsistent` for an artifact whose reduction, strength vector, comparability flag, scoring version or comparability key does not follow from the evidence it carries, whose class vector sits on a clean control's outcomes, or that lists its own probe as excluded.
+  An input that does not parse exits `5` with `schema-parse-failure`, and an evidence artifact stamped with another `schemaVersion` exits `5` with `schema-version-mismatch`, read before the shape so a stale artifact is named as one.
+  The command verifies consistency: each artifact with itself and the artifacts with each other. An artifact states no probe class beyond its own strength vector and no engine version, so a rewrite that stays consistent is not detectable from the artifact alone, and the recorded digests are what a caller that kept them at scoring time compares against.
+
+### Changed
+
+- **The `aggregate` stage is the third reader of AD-11's version equality and the fourth lineage writer.**
+  `PIPELINE_STAGES` and `STAGE_SIGNATURES` gain `aggregate`, and `STAGE_VALUE_INPUTS` gains `strengthFloors` and `engineVersion`.
+  The documentation counts of stamped and compared schema versions move with it.
+
 ## [4.6.0] - 2026-10-01
 
 ### Added

@@ -285,7 +285,8 @@
 		"writers": [
 			"src/core/seal/seal.ts",
 			"src/core/preflight/reduce.ts",
-			"src/core/emit/emit.ts"
+			"src/core/emit/emit.ts",
+			"src/core/aggregate/aggregate-strength.ts"
 		],
 		"helpers": ["reviseArtifact"]
 	},

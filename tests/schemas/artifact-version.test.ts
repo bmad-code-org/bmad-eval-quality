@@ -76,6 +76,7 @@ import {
 	SEALED_RUN_RECORD_SCHEMA_VERSION,
 	SealedRunRecord,
 } from '../../src/core/schemas/sealed-run-record.ts'
+import { STRENGTH_AGGREGATE_SCHEMA_VERSION } from '../../src/core/schemas/strength-aggregate.ts'
 
 const repoRoot = fileURLToPath(new URL('../..', import.meta.url))
 
@@ -96,8 +97,8 @@ type ArtifactEntry = {
 
 /**
  * Every artifact with a version constant, keyed by the type name an authored
- * literal is annotated with. The ten are the eight this story declares plus
- * the two Story 12.1 exported, so one walk covers every constant rather than
+ * literal is annotated with. The eleven are the eight this story declares plus
+ * the two Story 12.1 exported and the strength aggregate, so one walk covers every constant rather than
  * each file walking the tree for its own.
  */
 const VERSION_BY_ARTIFACT_TYPE: Readonly<Record<string, ArtifactEntry>> = {
@@ -130,6 +131,10 @@ const VERSION_BY_ARTIFACT_TYPE: Readonly<Record<string, ArtifactEntry>> = {
 	},
 	SealedRunRecord: {
 		version: SEALED_RUN_RECORD_SCHEMA_VERSION,
+		minimumLiterals: 1,
+	},
+	StrengthAggregate: {
+		version: STRENGTH_AGGREGATE_SCHEMA_VERSION,
 		minimumLiterals: 1,
 	},
 }
@@ -949,7 +954,7 @@ describe('each constant names the shape the parser accepts', () => {
 })
 
 /**
- * The four artifacts that have never moved. Nothing was released before
+ * The five artifacts that have never moved. Nothing was released before
  * version 1, so there is no predecessor shape to fail on and the
  * parse-behaviour question is vacuous; the source walk is the whole holding for
  * three of them, and the spike chain's emitted bytes hold the preflight verdict
@@ -961,6 +966,7 @@ const AT_VERSION_ONE: readonly (readonly [string, number])[] = [
 	['isolation-manifest', ISOLATION_MANIFEST_SCHEMA_VERSION],
 	['evaluator-configuration', EVALUATOR_CONFIGURATION_SCHEMA_VERSION],
 	['private-artifact-manifest', PRIVATE_ARTIFACT_MANIFEST_SCHEMA_VERSION],
+	['strength-aggregate', STRENGTH_AGGREGATE_SCHEMA_VERSION],
 ]
 
 describe('an artifact at version 1 has no predecessor shape', () => {

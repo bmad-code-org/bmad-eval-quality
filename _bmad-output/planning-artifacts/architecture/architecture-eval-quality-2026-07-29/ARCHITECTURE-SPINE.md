@@ -598,6 +598,7 @@ src/
     preflight/         # plan(contract) -> probe plan; reduce(plan, observations) -> verdict
     score/             # observations + corpus + verdict -> outcomes + gate verdict
     emit/              # outcomes -> Evidence Artifact (sole owner)
+    aggregate/         # the run's Evidence Artifacts + declared class floors -> Strength Aggregate (sole owner)
   application/         # the only layer that awaits ports; no decision logic
   ports/               # CorpusPort, EnvironmentProbePort, ClockPort, FileSystemPort
   adapters/            # LocalCorpusAdapter, NodeFileSystemAdapter, SystemClockAdapter, CommandLineAdapter, McpAdapter; no network adapter in v0 (AD-2)
@@ -607,7 +608,7 @@ schemas/               # generated JSON Schema, committed, formatter-excluded, d
 corpus/dev/            # visible development probes and the worked end-to-end example (AD-38)
 ```
 
-Current interchange artifact inventory: Eval Contract, Rubric, Sealed Evaluator Brief, Sealed Run Record, Isolation Manifest, Evaluator Configuration, Probe, Artifact Reference, Private Artifact Manifest, Pre-flight Verdict, Scoring Policy, Evidence Artifact. Prior-art correspondences, per AD-24: Eval Contract succeeds `eval-contract`, Sealed Run Record succeeds `h0-run-result`, Probe succeeds `h0-ground-truth`, Isolation Manifest succeeds `isolation-manifest`, Artifact Reference succeeds `artifact-ref`, Private Artifact Manifest succeeds `private-evidence-manifest`; Rubric, Sealed Evaluator Brief, Evaluator Configuration, Pre-flight Verdict, Scoring Policy, and Evidence Artifact have no prior art and say so.
+Current interchange artifact inventory: Eval Contract, Rubric, Sealed Evaluator Brief, Sealed Run Record, Isolation Manifest, Evaluator Configuration, Probe, Artifact Reference, Private Artifact Manifest, Pre-flight Verdict, Scoring Policy, Evidence Artifact, Strength Aggregate. Prior-art correspondences, per AD-24: Eval Contract succeeds `eval-contract`, Sealed Run Record succeeds `h0-run-result`, Probe succeeds `h0-ground-truth`, Isolation Manifest succeeds `isolation-manifest`, Artifact Reference succeeds `artifact-ref`, Private Artifact Manifest succeeds `private-evidence-manifest`; Rubric, Sealed Evaluator Brief, Evaluator Configuration, Pre-flight Verdict, Scoring Policy, Evidence Artifact, and Strength Aggregate have no prior art and say so.
 
 Runtime dependencies: Zod alone today. Adding one is a Stack change and a licence check, not a spine amendment.
 

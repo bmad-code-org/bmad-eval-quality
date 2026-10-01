@@ -1,5 +1,5 @@
 // The pure builder of the published JSON Schema export (Story 1.5, AC 1 and
-// AC 2): twelve self-contained documents, `$id` synthesised, every `inject`
+// AC 2): thirteen self-contained documents, `$id` synthesised, every `inject`
 // ledger entry applied at its stated address, and a loud failure on any
 // address that does not resolve. Every assertion is written to fail if the
 // property it names is removed.
@@ -59,10 +59,10 @@ const resolve = (
 	return copies.every((copy) => copy !== undefined) ? copies[0] : undefined
 }
 
-describe('the twelve published documents (AC 1)', () => {
+describe('the thirteen published documents (AC 1)', () => {
 	it('builds one document per registry key and no thirteenth', () => {
 		expect(Object.keys(documents)).toEqual([...INTERCHANGE_ARTIFACT_KEYS])
-		expect(INTERCHANGE_ARTIFACT_KEYS).toHaveLength(12)
+		expect(INTERCHANGE_ARTIFACT_KEYS).toHaveLength(13)
 	})
 
 	it.each(INTERCHANGE_ARTIFACT_KEYS)(

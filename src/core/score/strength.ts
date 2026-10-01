@@ -52,11 +52,18 @@ export type ComparableResult = {
 	readonly trials: Trials
 }
 
-const STRENGTH_VECTOR_CLASSES = [
+/**
+ * The three classes the vector keys, in the vector's own order. Exported so
+ * the run-wide aggregation walks the same list the per-probe vector does
+ * instead of keeping a second copy that could gain or lose a class alone.
+ */
+export const STRENGTH_VECTOR_CLASSES = [
 	'defect',
 	'gameability',
 	'zero-action',
 ] as const satisfies readonly (keyof StrengthVector)[]
+
+export type StrengthClass = (typeof STRENGTH_VECTOR_CLASSES)[number]
 
 /**
  * `admitted`, after excluding `canary` and every `expectedClean: true` probe:
@@ -72,20 +79,25 @@ const vectorEligible = (
 	)
 
 /**
- * One class's aggregate, or `null` when the eligible set admits no probe of
- * that class. A probe with no `TrialSetResult`, or one that is `exercised:
- * false`, contributes to neither `caught` nor `exercised`, matching the
- * reducer's own "zero valid trials excludes a probe entirely" rule. A class
- * with admitted probes but zero exercised ones is still a present
- * `ClassStrength` of `{ caught: 0, exercised: 0, rate: null }`, never a
- * `null` class: `rate`'s nullability exists specifically for that case, and
- * collapsing the whole class to `null` would make it unobservable.
+ * One class's aggregate, or `null` when no probe of that class is eligible. A
+ * probe with no `TrialSetResult`, or one that is `exercised: false`,
+ * contributes to neither `caught` nor `exercised`, matching the reducer's own
+ * "zero valid trials excludes a probe entirely" rule. A class with eligible
+ * probes but zero exercised ones is still a present `ClassStrength` of
+ * `{ caught: 0, exercised: 0, rate: null }`, never a `null` class: `rate`'s
+ * nullability exists specifically for that case, and collapsing the whole
+ * class to `null` would make it unobservable.
+ *
+ * The one place the rate arithmetic lives: `buildStrengthVector` calls it per
+ * class for one probe set, and the run-wide aggregation calls it per class
+ * over the probes of many single-probe evidence artifacts, so a per-probe
+ * vector and a run-wide class rate can never be computed two ways.
  */
-const classStrengthOf = (
-	probesInClass: readonly QualifiedProbe[],
+export function classStrengthOver(
+	probeIds: readonly string[],
 	results: ReadonlyMap<string, TrialSetResult>,
-): ClassStrength | null => {
-	if (probesInClass.length === 0) return null
+): ClassStrength | null {
+	if (probeIds.length === 0) return null
 	let exercised = 0
 	let caught = 0
 	// Counted once per identifier, not once per entry. AD-7's rate is over
@@ -96,10 +108,10 @@ const classStrengthOf = (
 	// result twice on both sides of the same ratio, which leaves the rate
 	// right and the raw counts wrong.
 	const counted = new Set<string>()
-	for (const { probe } of probesInClass) {
-		if (counted.has(probe.probeId)) continue
-		counted.add(probe.probeId)
-		const result = results.get(probe.probeId)
+	for (const probeId of probeIds) {
+		if (counted.has(probeId)) continue
+		counted.add(probeId)
+		const result = results.get(probeId)
 		if (result === undefined || !result.exercised) continue
 		exercised += 1
 		if (result.caught) caught += 1
@@ -109,6 +121,22 @@ const classStrengthOf = (
 		caught,
 		rate: exercised === 0 ? null : caught / exercised,
 	}
+}
+
+/**
+ * AD-21's comparability rule, written once: a trial set at or above the
+ * policy's declared minimum with no oracle that resolved `unreached`. `emit`
+ * applies it when it builds a strength block, and the run-wide aggregation
+ * applies it again to verify the block it reads, so a stamped flag and the
+ * flag the rule yields cannot be two rules.
+ */
+export function isComparable(
+	trials: Pick<Trials, 'completed' | 'declaredMinimum'>,
+	unreachedOracleCount: number,
+): boolean {
+	return (
+		trials.completed >= trials.declaredMinimum && unreachedOracleCount === 0
+	)
 }
 
 /**
@@ -125,8 +153,10 @@ export function buildStrengthVector(
 	const byClass = Object.fromEntries(
 		STRENGTH_VECTOR_CLASSES.map((probeClass) => [
 			probeClass,
-			classStrengthOf(
-				eligible.filter(({ probe }) => probe.probeClass === probeClass),
+			classStrengthOver(
+				eligible
+					.filter(({ probe }) => probe.probeClass === probeClass)
+					.map(({ probe }) => probe.probeId),
 				results,
 			),
 		]),

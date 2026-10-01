@@ -5,9 +5,14 @@
  * as given and resolved by the caller.
  */
 
-export type Command = 'compile' | 'seal' | 'preflight' | 'score'
+export type Command =
+	| 'compile'
+	| 'seal'
+	| 'preflight'
+	| 'score'
+	| 'aggregate-strength'
 
-/** Eleven input flags across four commands. Closed, so a usage error can name the flag set. */
+/** Thirteen input flags across five commands. Closed, so a usage error can name the flag set. */
 export type InputKey =
 	| 'in'
 	| 'contract'
@@ -20,9 +25,19 @@ export type InputKey =
 	| 'preflight-verdict'
 	| 'policy'
 	| 'private-manifest'
+	| 'evidence'
+	| 'floors'
+
+/** The input flags that may repeat, each occurrence one more input of the same kind. */
+export type RepeatableInputKey = 'record' | 'evidence'
+
+const REPEATABLE_INPUT_KEYS: ReadonlySet<InputKey> = new Set([
+	'record',
+	'evidence',
+])
 
 export type ParsedInputs = Readonly<{
-	[K in InputKey]?: K extends 'record' ? readonly string[] : string
+	[K in InputKey]?: K extends RepeatableInputKey ? readonly string[] : string
 }>
 
 export type ParsedInvocation =
@@ -48,6 +63,7 @@ export const COMMANDS: readonly Command[] = [
 	'seal',
 	'preflight',
 	'score',
+	'aggregate-strength',
 ]
 
 /** The input flags each command takes, and which of them it requires. */
@@ -65,6 +81,7 @@ const INPUT_KEYS: Readonly<Record<Command, readonly InputKey[]>> = {
 		'policy',
 		'private-manifest',
 	],
+	'aggregate-strength': ['evidence', 'floors'],
 }
 
 /**
@@ -87,6 +104,7 @@ const TAKES_STRICT_INPUTS: Readonly<Record<Command, boolean>> = {
 	seal: true,
 	preflight: false,
 	score: false,
+	'aggregate-strength': false,
 }
 
 /** `--run-id` names the run a verdict is minted for, which only `preflight` does: `score` reads its run identifier off `--record` instead. */
@@ -95,6 +113,7 @@ const TAKES_RUN_ID: Readonly<Record<Command, boolean>> = {
 	seal: false,
 	preflight: true,
 	score: false,
+	'aggregate-strength': false,
 }
 
 /** `--corpus-digest` supplies `score`'s one caller-attested scoring-version input with no artifact source; required whenever it applies, the same posture `--run-id` takes for `preflight`. */
@@ -103,6 +122,7 @@ const TAKES_CORPUS_DIGEST: Readonly<Record<Command, boolean>> = {
 	seal: false,
 	preflight: false,
 	score: true,
+	'aggregate-strength': false,
 }
 
 /** `--corpus-root` names the directory `score`'s corpus-port adapter resolves a private reference under; always optional at this layer, since whether one is actually needed depends on the artifacts' own content, not the argument grammar. */
@@ -111,9 +131,13 @@ const TAKES_CORPUS_ROOT: Readonly<Record<Command, boolean>> = {
 	seal: false,
 	preflight: false,
 	score: true,
+	'aggregate-strength': false,
 }
 
 const STDIN = '-'
+
+const isRepeatable = (key: InputKey): key is RepeatableInputKey =>
+	REPEATABLE_INPUT_KEYS.has(key)
 
 const isCommand = (token: string): token is Command =>
 	(COMMANDS as readonly string[]).includes(token)
@@ -170,8 +194,12 @@ function parseCommand(
 	}
 	if (TAKES_CORPUS_ROOT[command]) valueFlags.set('--corpus-root', 'corpus-root')
 
-	const inputs: Partial<Record<Exclude<InputKey, 'record'>, string>> = {}
-	const records: string[] = []
+	const inputs: Partial<Record<Exclude<InputKey, RepeatableInputKey>, string>> =
+		{}
+	const repeated: Record<RepeatableInputKey, string[]> = {
+		record: [],
+		evidence: [],
+	}
 	const seen = new Map<string, string>()
 	let out: string | null = null
 	let runId: string | null = null
@@ -220,8 +248,8 @@ function parseCommand(
 		if (target !== undefined) {
 			const taken = takeValue(flag, inline, index)
 			if ('kind' in taken) return taken
-			if (target === 'record') {
-				records.push(taken.value)
+			if (target === 'record' || target === 'evidence') {
+				repeated[target].push(taken.value)
 				index = taken.next
 				continue
 			}
@@ -265,7 +293,9 @@ function parseCommand(
 		.filter(
 			(key) =>
 				!OPTIONAL_INPUT_KEYS.has(key) &&
-				(key === 'record' ? records.length === 0 : inputs[key] === undefined),
+				(isRepeatable(key)
+					? repeated[key].length === 0
+					: inputs[key] === undefined),
 		)
 		.map((key) => `--${key}`)
 	if (TAKES_RUN_ID[command] && runId === null) missing.push('--run-id')
@@ -285,8 +315,8 @@ function parseCommand(
 
 	// One stdin cannot serve two readers, so at most one input may be `-`.
 	const fromStdin = INPUT_KEYS[command].flatMap((key) => {
-		if (key === 'record') {
-			return records.filter((record) => record === STDIN).map(() => key)
+		if (isRepeatable(key)) {
+			return repeated[key].filter((value) => value === STDIN).map(() => key)
 		}
 		return inputs[key] === STDIN ? [key] : []
 	})
@@ -302,7 +332,14 @@ function parseCommand(
 	return {
 		kind: 'run',
 		command,
-		inputs: records.length === 0 ? inputs : { ...inputs, record: [...records] },
+		inputs: {
+			...inputs,
+			...Object.fromEntries(
+				(Object.keys(repeated) as RepeatableInputKey[])
+					.filter((key) => repeated[key].length > 0)
+					.map((key) => [key, [...repeated[key]]]),
+			),
+		},
 		out,
 		runId,
 		corpusDigest,

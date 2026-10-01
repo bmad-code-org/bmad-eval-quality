@@ -17,7 +17,7 @@ A current `score` invocation scores one `Probe` across one or more trial records
 
 For that scored probe's class, contract strength is reported as a **catch rate**: unique qualified probe identifiers resolving `caught` over unique qualified probe identifiers `exercised`. For the shipped single-probe scoring path, a reported rate of 1.0 means 1/1: the single probe passed to `score` was successfully caught across its valid trials. Unexercised classes are recorded with a `rate` of `null`.
 
-The underlying vector abstraction (`buildStrengthVector`) supports aggregating rates over multiple qualified probes across an entire suite, but the shipped CLI and `runScore` pipeline evaluate and emit artifacts one probe at a time.
+The `score` pipeline evaluates and emits one probe at a time. The run-wide rate over many probes comes from the `aggregate-strength` command, described under [The run-wide class rate](#the-run-wide-class-rate).
 
 Catching one defect does not make an evaluation contract trustworthy or ready for release. Contract strength is a structured rate vector and a dominance relation—never a single weighted score, percentage, or scalar grade. How far a strength number carries depends on how trials are reduced, what the verdict exposed, and how the evaluation was controlled.
 
@@ -42,6 +42,20 @@ rate = unique qualified probes resolving caught / unique qualified probes exerci
 For strength reduction, a probe is **exercised** when at least one completed trial produces a valid vote (`validCount > 0`). Failure to invoke the signature's declared home operation during execution (AD-40) is one reason a trial can become unexercised/`not-applicable`; an honored waiver or an `unreached` oracle step also leaves both numerator and denominator. Probes without at least one valid vote leave the ratio entirely rather than artificially deflating the score.
 
 The `EvidenceArtifact` records the raw counts (`caught`, `exercised`) alongside the derived `rate`. In a single-probe evaluation, the exercised count for the probe's class is 1 (if exercised) or 0 (if unexercised), with `rate` recorded as 1.0, 0.0, or `null`. Classes without exercised probes record `caught: 0`, `exercised: 0`, and `rate: null` rather than zero, making unexercised classes transparent. The artifact also names the exact denominator string—including the number of completed trials—so consumers can independently verify calculations.
+
+## The run-wide class rate
+
+A class floor is a claim about a run: "our defect probes are caught at least three times in four". One evidence artifact cannot carry it, because each artifact scores one probe. The `aggregate-strength` command reads all of a run's artifacts and answers it, so the rate and the decision against the floor come from the engine and nobody recomputes them from per-probe files.
+
+```text
+rate = distinct qualified probes of the class resolving caught / distinct qualified probes of the class exercised
+```
+
+The arithmetic is the function that builds each artifact's own vector, applied to every probe of the class at once. Clean controls and canaries stay outside every class denominator. A class with no eligible probe is `null`, and a class with eligible probes and none exercised has `rate: null`.
+
+Comparability follows the per-artifact rule and widens it to the class: one eligible probe whose trial set fell below the policy's `minimumTrialCount`, or left an oracle `unreached`, makes the class non-comparable. A non-comparable class never meets a floor, whatever its rate, because a thin measurement is not evidence of strength. The same holds for a class with no eligible probe and for one with none exercised: a floor nothing was measured against is not a pass.
+
+The command refuses a set that is not one run. Artifacts that share a probe, or that differ in scoring version, evidence basis, minimum trial count, or catch threshold, and artifacts that contradict themselves, exit `4` and produce no aggregate. [The CLI reference](/reference/cli-commands/) lists the codes. The aggregate records the engine version and the digest of every artifact it read, so a caller can bind it to the digests it kept when it scored each probe. The check is one of consistency. An evidence artifact states no probe class beyond its own vector, so a vector moved to another class or nulled to read as a control changes the aggregate without contradicting the artifact, and a rewrite that keeps every field consistent passes like the original. Only a digest kept at scoring time exposes either, which is what the recorded digests are for.
 
 ## What contract strength does not mean
 

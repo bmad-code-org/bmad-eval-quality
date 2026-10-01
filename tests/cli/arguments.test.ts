@@ -514,7 +514,13 @@ describe('cli arguments: score (Story 8.4)', () => {
 		expect(parseRun(['score', ...SCORE_REQUIRED, '--strict']).strict).toBe(true)
 	})
 
-	it('COMMANDS names all four commands, score included', () => {
-		expect(COMMANDS).toEqual(['compile', 'seal', 'preflight', 'score'])
+	it('COMMANDS names all five commands, score and aggregate-strength included', () => {
+		expect(COMMANDS).toEqual([
+			'compile',
+			'seal',
+			'preflight',
+			'score',
+			'aggregate-strength',
+		])
 	})
 })

@@ -660,7 +660,7 @@ Verify that no record was created.</p>
 </tbody></table>
 </div><p>The word evidence is used twice on purpose. The evidence in the flow is what the evaluator produced, and it reaches <code>score</code> inside one or more sealed run records. The evidence artifact is what <code>score</code> mints at the end: the outcomes, the verdict, the strength vector, and the exit code.</p>
 <h2 id="what-the-tool-does">What the tool does<a class="heading-anchor" href="#what-the-tool-does" aria-label="Link to What the tool does">#</a></h2>
-<p><code>eval-quality</code> is a Node package and a command line binary. It gives you four commands, which sit on the flow like this:</p>
+<p><code>eval-quality</code> is a Node package and a command line binary. It gives you five commands, which sit on the flow like this:</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -689,6 +689,11 @@ Verify that no record was created.</p>
 <td>one or more sealed run records, the contract, a probe, the preflight verdict, a scoring policy, a caller-attested corpus digest, and the isolation manifest and evaluator configuration the records were produced under</td>
 <td><code>evidence-artifact.json</code>, and the verdict&#39;s own exit code</td>
 </tr>
+<tr>
+<td><code>aggregate-strength</code></td>
+<td>the per-probe evidence artifacts of one run and the declared per-class floors</td>
+<td><code>strength-aggregate.json</code>, the run-wide strength of the qualified probes per class and the decision against each floor</td>
+</tr>
 </tbody></table>
 </div><p>It executes nothing. No agent, no judge, and no system under test runs inside it. You run the agent or harness, the repeated trials, and the live system with its environment probe, and you hand over the sealed run records. <code>eval-quality</code> compiles, seals, preflights, and scores.</p>
 <h2 id="who-it-is-for">Who it is for<a class="heading-anchor" href="#who-it-is-for" aria-label="Link to Who it is for">#</a></h2>
@@ -716,12 +721,13 @@ Verify that no record was created.</p>
 <p>Every required oracle check resolves to exactly one of twelve states, and the state travels with the result: <code>caught</code>, <code>confirmed</code>, <code>missed</code>, <code>passed-clean-control</code>, <code>false-positive</code>, <code>abstained</code>, <code>bypassed</code>, <code>unreached</code>, <code>oracle-error</code>, <code>judge-error</code>, <code>infrastructure-error</code>, or <code>not-applicable</code>. A required oracle that missed, abstained, errored, or is absent prevents PASS, and a high overall score never overrides it. An infrastructure error or a failed pre-flight invalidates the run; run it again.</p>
 <p>A caught defect is decided by evidence. A finding counts as detection only when the probe&#39;s declared defect signature matches an observation the finding cites; the evaluator&#39;s own claim does not settle it.</p>
 <p>Repeated runs of one probe are trials, reduced to one result per probe before any rate is computed. Pass the full trial set to <code>runScore</code>, or repeat <code>--record</code> on the <code>score</code> command. Every record declares its own <code>trialIndex</code> and agrees with the set on <code>contractDigest</code>, <code>evaluatorConfigurationDigest</code>, <code>mode</code>, <code>evaluatorRecommendation</code>, and <code>runId</code>. A set meeting the policy minimum produces a comparable strength vector.</p>
+<p>Each <code>score</code> call covers one probe, so one evidence artifact reports that probe&#39;s class alone. <code>aggregate-strength</code> reads every artifact of a run and reports, per class, the distinct qualified probes, how many were exercised and caught, the rate, whether the class is comparable, and the decision against the floor you declared. Clean controls and canaries stay outside every denominator, and a class that is empty, unexercised, or below the minimum trial count never meets a floor.</p>
 <p><a href="https://bmad-code-org.github.io/bmad-eval-quality/how-to/author-behavioral-contracts/">The full walkthrough</a> reads a scored run field by field, down to its verdict and exit code.</p>
 <h2 id="using-it">Using it<a class="heading-anchor" href="#using-it" aria-label="Link to Using it">#</a></h2>
 <p>Node.js 22.20.0 or newer. <code>zod</code> is the only production dependency.</p>
 <pre><code class="language-bash">npm install eval-quality
 </code></pre>
-<p>Every command runs through <code>npx</code>. The four below are the grammar rather than a sequence to copy: they name files your own harness produces. <a href="https://bmad-code-org.github.io/bmad-eval-quality/how-to/author-behavioral-contracts/">The full walkthrough</a> runs the same four end to end over files this repository commits, with no placeholder in the path.</p>
+<p>Every command runs through <code>npx</code>. The five below are the grammar rather than a sequence to copy: they name files your own harness produces. <a href="https://bmad-code-org.github.io/bmad-eval-quality/how-to/author-behavioral-contracts/">The full walkthrough</a> runs the first four end to end over files this repository commits, with no placeholder in the path, and then aggregates the run.</p>
 <pre><code class="language-bash">npx eval-quality compile --in contract.json --out ./eval-out
 
 npx eval-quality seal --in contract.json --out ./eval-out
@@ -735,6 +741,9 @@ npx eval-quality score --record trial-1.json --record trial-2.json \
   --probe probe.json --preflight-verdict preflight-verdict.json \
   --policy policy.json --corpus-digest &lt;digest&gt; \
   --out ./eval-out
+
+npx eval-quality aggregate-strength --evidence evidence-p-001.json \
+  --evidence evidence-p-002.json --floors floors.json --out ./eval-out
 </code></pre>
 <p>Every command is non-interactive. Without <code>--out</code> the artifact goes to stdout, so a command composes with a pipe. An <code>--out</code> ending in <code>.json</code> is a file path; anything else is a directory, and the artifact lands at <code>&lt;target&gt;/&lt;kind&gt;.json</code>. Diagnostics and errors go to stderr, so stdout carries the artifact alone.</p>
 <p><strong>Exit codes.</strong></p>
@@ -775,6 +784,7 @@ npx eval-quality score --record trial-1.json --record trial-2.json \
 </tr>
 </tbody></table>
 </div><p><code>--strict</code> never promotes a CONCERNS whose firing conditions are all evidence conditions: those report that the measurement fell short of the policy. Codes 1 and 2 come from <code>score</code>&#39;s verdict ladder. Code 3 comes from a failed pre-flight, which <code>preflight</code> reports, or from any other invalidating condition <code>score</code> finds.</p>
+<p><code>aggregate-strength</code> exits <code>0</code> whatever a floor decides and writes the decision into its artifact, since <code>1</code> and <code>2</code> belong to the verdict ladder <code>score</code> runs. It exits <code>4</code> and writes nothing for a set of evidence artifacts that is not one coherent run, and it records the digest of every artifact it read so a caller can bind the aggregate to the artifacts <code>score</code> emitted.</p>
 <p><code>--strict</code> is accepted on every command. <code>--strict-inputs</code> and <code>--no-strict-inputs</code> are a different switch: they set the compiler&#39;s input strictness, on by default, and only <code>compile</code> and <code>seal</code> accept them.</p>
 <p>The <a href="https://bmad-code-org.github.io/bmad-eval-quality/reference/cli-commands/">CLI reference</a> has every flag, every parsing rule, and the package exports.</p>
 <p><strong>The library</strong> exports the same stages as functions, plus the artifact types, the canonical digest, the lineage validator, and the failure-code and verdict registries. The schemas are published as JSON Schema under <code>eval-quality/schemas/*</code>, which is what lets a coding agent author contracts correctly by default:</p>

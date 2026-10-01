@@ -75,7 +75,7 @@ The word evidence is used twice on purpose. The evidence in the flow is what the
 
 ## What the tool does
 
-`eval-quality` is a Node package and a command line binary. It gives you four commands, which sit on the flow like this:
+`eval-quality` is a Node package and a command line binary. It gives you five commands, which sit on the flow like this:
 
 | Command | Reads | Writes |
 | --- | --- | --- |
@@ -83,6 +83,7 @@ The word evidence is used twice on purpose. The evidence in the flow is what the
 | `seal` | a contract | `sealed-evaluator-brief.json`, the contract minus everything that would give the answer away |
 | `preflight` | a contract, a probe list, observations | `preflight-verdict.json`, fit or unfit to measure |
 | `score` | one or more sealed run records, the contract, a probe, the preflight verdict, a scoring policy, a caller-attested corpus digest, and the isolation manifest and evaluator configuration the records were produced under | `evidence-artifact.json`, and the verdict's own exit code |
+| `aggregate-strength` | the per-probe evidence artifacts of one run and the declared per-class floors | `strength-aggregate.json`, the run-wide strength of the qualified probes per class and the decision against each floor |
 
 It executes nothing. No agent, no judge, and no system under test runs inside it. You run the agent or harness, the repeated trials, and the live system with its environment probe, and you hand over the sealed run records. `eval-quality` compiles, seals, preflights, and scores.
 
@@ -124,6 +125,8 @@ A caught defect is decided by evidence. A finding counts as detection only when 
 
 Repeated runs of one probe are trials, reduced to one result per probe before any rate is computed. Pass the full trial set to `runScore`, or repeat `--record` on the `score` command. Every record declares its own `trialIndex` and agrees with the set on `contractDigest`, `evaluatorConfigurationDigest`, `mode`, `evaluatorRecommendation`, and `runId`. A set meeting the policy minimum produces a comparable strength vector.
 
+Each `score` call covers one probe, so one evidence artifact reports that probe's class alone. `aggregate-strength` reads every artifact of a run and reports, per class, the distinct qualified probes, how many were exercised and caught, the rate, whether the class is comparable, and the decision against the floor you declared. Clean controls and canaries stay outside every denominator, and a class that is empty, unexercised, or below the minimum trial count never meets a floor.
+
 [The full walkthrough](https://bmad-code-org.github.io/bmad-eval-quality/how-to/author-behavioral-contracts/) reads a scored run field by field, down to its verdict and exit code.
 
 ## Using it
@@ -134,7 +137,7 @@ Node.js 22.20.0 or newer. `zod` is the only production dependency.
 npm install eval-quality
 ```
 
-Every command runs through `npx`. The four below are the grammar rather than a sequence to copy: they name files your own harness produces. [The full walkthrough](https://bmad-code-org.github.io/bmad-eval-quality/how-to/author-behavioral-contracts/) runs the same four end to end over files this repository commits, with no placeholder in the path.
+Every command runs through `npx`. The five below are the grammar rather than a sequence to copy: they name files your own harness produces. [The full walkthrough](https://bmad-code-org.github.io/bmad-eval-quality/how-to/author-behavioral-contracts/) runs the first four end to end over files this repository commits, with no placeholder in the path, and then aggregates the run.
 
 ```bash
 npx eval-quality compile --in contract.json --out ./eval-out
@@ -150,6 +153,9 @@ npx eval-quality score --record trial-1.json --record trial-2.json \
   --probe probe.json --preflight-verdict preflight-verdict.json \
   --policy policy.json --corpus-digest <digest> \
   --out ./eval-out
+
+npx eval-quality aggregate-strength --evidence evidence-p-001.json \
+  --evidence evidence-p-002.json --floors floors.json --out ./eval-out
 ```
 
 Every command is non-interactive. Without `--out` the artifact goes to stdout, so a command composes with a pipe. An `--out` ending in `.json` is a file path; anything else is a directory, and the artifact lands at `<target>/<kind>.json`. Diagnostics and errors go to stderr, so stdout carries the artifact alone.
@@ -167,6 +173,8 @@ Every command is non-interactive. Without `--out` the artifact goes to stdout, s
 | `64` | usage error |
 
 `--strict` never promotes a CONCERNS whose firing conditions are all evidence conditions: those report that the measurement fell short of the policy. Codes 1 and 2 come from `score`'s verdict ladder. Code 3 comes from a failed pre-flight, which `preflight` reports, or from any other invalidating condition `score` finds.
+
+`aggregate-strength` exits `0` whatever a floor decides and writes the decision into its artifact, since `1` and `2` belong to the verdict ladder `score` runs. It exits `4` and writes nothing for a set of evidence artifacts that is not one coherent run, and it records the digest of every artifact it read so a caller can bind the aggregate to the artifacts `score` emitted.
 
 `--strict` is accepted on every command. `--strict-inputs` and `--no-strict-inputs` are a different switch: they set the compiler's input strictness, on by default, and only `compile` and `seal` accept them.
 

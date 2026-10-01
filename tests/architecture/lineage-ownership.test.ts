@@ -38,6 +38,7 @@ const scanner = await loadTokenScanner('field-ownership')
 const SEAL = 'src/core/seal/seal.ts'
 const REDUCE = 'src/core/preflight/reduce.ts'
 const EMIT = 'src/core/emit/emit.ts'
+const AGGREGATE = 'src/core/aggregate/aggregate-strength.ts'
 // A synthetic, never-declared path standing in for "anywhere else".
 const OTHER = 'src/core/emit/not-a-writer.ts'
 
@@ -135,11 +136,12 @@ describe('the field-ownership scanner', () => {
 
 	// 44
 	it('reports a writer entry with no file, on a whole-tree scan only', () => {
-		// `EMIT` supplies a file so only `REDUCE` is genuinely missing from the
-		// three-member writer list.
+		// `EMIT` and `AGGREGATE` supply a file so only `REDUCE` is genuinely missing
+		// from the four-member writer list.
 		const files = new Map([
 			[SEAL, BOTH_WRITES],
 			[EMIT, BOTH_WRITES],
+			[AGGREGATE, BOTH_WRITES],
 		])
 		const options = { wholeTree: false }
 		expect(scanFieldOwnership(files, ourRules, scanner, options)).toEqual([])

@@ -30,7 +30,7 @@ const interchange = new Set<string>(INTERCHANGE_ARTIFACT_KEYS)
 
 describe('the AD-24 stage-signature table', () => {
 	// 1
-	it('has exactly the six stage keys, in PIPELINE_STAGES order', () => {
+	it('has exactly the seven stage keys, in PIPELINE_STAGES order', () => {
 		expect(Object.keys(STAGE_SIGNATURES)).toEqual([...PIPELINE_STAGES])
 	})
 
@@ -106,7 +106,7 @@ describe('the AD-24 stage-signature table', () => {
 	})
 
 	// 7
-	it('exports the derived allowlist, which today is the three built minters', () => {
+	it('exports the derived allowlist, which today is the four built minters', () => {
 		expect(LINEAGE_WRITER_MODULES).toEqual(
 			deriveLineageWriterModules(STAGE_SIGNATURES),
 		)
@@ -114,6 +114,7 @@ describe('the AD-24 stage-signature table', () => {
 			'src/core/seal/seal.ts',
 			'src/core/preflight/reduce.ts',
 			'src/core/emit/emit.ts',
+			'src/core/aggregate/aggregate-strength.ts',
 		])
 	})
 
@@ -186,7 +187,15 @@ describe('the AD-24 stage-signature table', () => {
 			PIPELINE_STAGES.filter(
 				(stage) => STAGE_SIGNATURES[stage].module !== null,
 			),
-		).toEqual(['compile', 'seal', 'ingest', 'preflight', 'score', 'emit'])
+		).toEqual([
+			'compile',
+			'seal',
+			'ingest',
+			'preflight',
+			'score',
+			'emit',
+			'aggregate',
+		])
 		expect(STAGE_SIGNATURES.ingest.module).toBe('src/core/ingest/ingest.ts')
 		expect(STAGE_SIGNATURES.score.module).toBe('src/core/score/score.ts')
 		expect(STAGE_SIGNATURES.emit.module).toBe('src/core/emit/emit.ts')

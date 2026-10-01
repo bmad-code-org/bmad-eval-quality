@@ -176,8 +176,11 @@ const invoke = async (
 	return { invocation, outcome, exit: exitOf(invocation, outcome) }
 }
 
-/** The four entry points, recorded. Cases 60 through 62 count these calls. */
+/** The five entry points, recorded. Cases 60 through 62 count these calls. */
 const facadeOf = (overrides: Partial<ApplicationFacade> = {}) => ({
+	aggregateStrength: vi.fn(
+		overrides.aggregateStrength ?? APPLICATION.aggregateStrength,
+	),
 	compile: vi.fn(overrides.compile ?? APPLICATION.compile),
 	seal: vi.fn(overrides.seal ?? APPLICATION.seal),
 	preflightFromObservations: vi.fn(

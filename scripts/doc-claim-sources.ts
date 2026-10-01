@@ -93,6 +93,7 @@ export const CONFORMANCE_RUNNERS = [
  * module comments across the schemas, none of which raises anything.
  */
 const VERSION_READER_BY_FILE: Readonly<Record<string, string>> = {
+	'src/application/aggregate-strength.ts': 'aggregate',
 	'src/core/compile/compile.ts': 'compile',
 	'src/core/preflight/plan.ts': 'preflight',
 	'src/core/score/score.ts': 'score',

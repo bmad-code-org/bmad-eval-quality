@@ -1,14 +1,18 @@
 /**
- * AD-24's stage-signature table and AD-29's producer map, as data: six stages
+ * AD-24's stage-signature table and AD-29's producer map, as data: seven stages
  * with their artifact inputs, the non-artifact values they receive, their one
- * owned output, and the lineage edge each writes; twelve interchange artifacts
+ * owned output, and the lineage edge each writes; thirteen interchange artifacts
  * with one producer apiece. The `check:lineage` scanner derives its allowlist
  * from `module`, so the registry import stays type-only to keep zod off that
  * gate's load path.
  */
 import type { InterchangeArtifactKey } from '../schemas/artifact.ts'
 
-/** AD-24's six stages, in the order the Consistency Conventions list them. */
+/**
+ * AD-24's six stages, in the order the Consistency Conventions list them, then
+ * `aggregate`: the one stage that reads many evidence artifacts instead of one
+ * run, so its output speaks for the whole run's probes.
+ */
 export const PIPELINE_STAGES = [
 	'compile',
 	'seal',
@@ -16,6 +20,7 @@ export const PIPELINE_STAGES = [
 	'preflight',
 	'score',
 	'emit',
+	'aggregate',
 ] as const
 
 export type PipelineStage = (typeof PIPELINE_STAGES)[number]
@@ -51,6 +56,8 @@ export const STAGE_VALUE_INPUTS = [
 	'corpusDigest',
 	'fixtureDigest',
 	'evaluatorConfigurationDigest',
+	'strengthFloors',
+	'engineVersion',
 ] as const
 
 export type StageValueInput = (typeof STAGE_VALUE_INPUTS)[number]
@@ -150,6 +157,19 @@ export const STAGE_SIGNATURES: Record<PipelineStage, StageSignature> = {
 		lineage: 'mints',
 		module: 'src/core/emit/emit.ts',
 	},
+	aggregate: {
+		// One evidence artifact per probe of the run: `score` covers one probe
+		// per call, so only a stage reading all of them can state a class rate.
+		inputs: ['evidence-artifact'],
+		// The adopter's per-class floors are a caller's declaration and the
+		// engine version is the aggregating release's own; no artifact carries
+		// either.
+		valueInputs: ['strengthFloors', 'engineVersion'],
+		owns: 'strength-aggregate',
+		ownsInterchange: 'strength-aggregate',
+		lineage: 'mints',
+		module: 'src/core/aggregate/aggregate-strength.ts',
+	},
 }
 
 export const ARTIFACT_PRODUCERS: Record<
@@ -168,6 +188,7 @@ export const ARTIFACT_PRODUCERS: Record<
 	'preflight-verdict': 'preflight',
 	'scoring-policy': 'caller',
 	'evidence-artifact': 'emit',
+	'strength-aggregate': 'aggregate',
 }
 
 /**
