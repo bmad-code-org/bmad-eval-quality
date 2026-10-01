@@ -240,7 +240,7 @@ function launchTooLarge(error: unknown): RuntimeFault {
 		'port-failure',
 		'ProbeObservation',
 		'the operating system refused the launch for the size of its arguments and environment (E2BIG)',
-		{ cause: error, reason: 'launch-too-large' },
+		{ cause: error, portFailureReason: 'launch-too-large' },
 	)
 }
 
@@ -484,8 +484,8 @@ export function createCommandLineAdapter(
 					)
 
 					// A launch too large for the operating system is told apart from
-					// a target that could not start. Every other failure keeps the
-					// generic `port-failure` the boundary gives it.
+					// a target that could not start. Every other error the mechanism
+					// throws reaches the boundary unchanged.
 					let runResult: CommandRunResult
 					try {
 						runResult = await mechanism.run(

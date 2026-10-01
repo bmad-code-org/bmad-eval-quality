@@ -4,6 +4,7 @@ import { MCP_DENIAL_REASONS } from '../../src/adapters/mcp-target-policy.ts'
 import { DENIAL_REASONS } from '../../src/core/probe/target-policy.ts'
 import {
 	FORBIDDEN_TARGET_REASONS,
+	PORT_FAILURE_REASONS,
 	RUNTIME_FAULT_CODES,
 	RuntimeFault,
 } from '../../src/core/schemas/faults.ts'
@@ -97,67 +98,92 @@ describe('RuntimeFault', () => {
 
 	// A type-level check, which `npm run typecheck` enforces: the directive fails
 	// the typecheck as unused if the other signatures ever accept a reason.
-	it('refuses a reason on any code other than forbidden-target and port-failure, at compile time', () => {
-		const fault = new RuntimeFault('budget-exhausted', 'ProbeRequest', 'x', {
-			// @ts-expect-error: only the forbidden-target and port-failure signatures take a reason
+	it('refuses a reason on any code other than forbidden-target, at compile time', () => {
+		const fault = new RuntimeFault('port-failure', 'ProbeRequest', 'x', {
+			// @ts-expect-error: only the forbidden-target signature takes a reason
 			reason: 'tool-not-authorized',
 		})
-		expect(fault.code).toBe('budget-exhausted')
+		expect(fault.code).toBe('port-failure')
 	})
 
-	it('carries launch-too-large on port-failure beside its cause', () => {
+	it('carries launch-too-large as portFailureReason on port-failure beside its cause, and no reason', () => {
 		const cause = new Error('spawn E2BIG')
 		const fault = new RuntimeFault('port-failure', 'ProbeRequest', 'x', {
 			cause,
-			reason: 'launch-too-large',
+			portFailureReason: 'launch-too-large',
 		})
-		expect(fault.reason).toBe('launch-too-large')
+		expect(fault.portFailureReason).toBe('launch-too-large')
+		expect(fault.reason).toBeUndefined()
 		expect(fault.cause).toBe(cause)
+		expect(fault.message).not.toContain('launch-too-large')
 	})
 
-	it('refuses a forbidden-target reason on port-failure at compile time, and carries nothing at run time', () => {
-		const literal = new RuntimeFault('port-failure', 'ProbeRequest', 'x', {
-			// @ts-expect-error: port-failure takes a PortFailureReason only
-			reason: 'tool-not-authorized',
+	it('carries no portFailureReason unless one is passed', () => {
+		expect(
+			new RuntimeFault('port-failure', 'ProbeRequest', 'x').portFailureReason,
+		).toBeUndefined()
+		expect(
+			new RuntimeFault('forbidden-target', 'ProbeRequest', 'x', {
+				reason: 'tool-not-authorized',
+			}).portFailureReason,
+		).toBeUndefined()
+	})
+
+	it('refuses a portFailureReason on any code other than port-failure, at compile time', () => {
+		const fault = new RuntimeFault('forbidden-target', 'ProbeRequest', 'x', {
+			// @ts-expect-error: only the port-failure signature takes a portFailureReason
+			portFailureReason: 'launch-too-large',
 		})
-		expect(literal.reason).toBeUndefined()
+		expect(fault.portFailureReason).toBeUndefined()
+		const other = new RuntimeFault('budget-exhausted', 'ProbeRequest', 'x', {
+			// @ts-expect-error: only the port-failure signature takes a portFailureReason
+			portFailureReason: 'launch-too-large',
+		})
+		expect(other.portFailureReason).toBeUndefined()
+	})
+
+	it('drops a portFailureReason an options variable carries onto any code other than port-failure', () => {
+		const options = {
+			cause: new Error('spawn'),
+			portFailureReason: 'launch-too-large' as const,
+		}
+		for (const code of [
+			'forbidden-target',
+			'budget-exhausted',
+			'aborted',
+		] as const) {
+			const fault = new RuntimeFault(code, 'ProbeRequest', 'x', options)
+			expect(fault.portFailureReason).toBeUndefined()
+			expect(fault.cause).toBe(options.cause)
+		}
+	})
+
+	it('drops a portFailureReason outside PORT_FAILURE_REASONS at run time', () => {
+		const options = {
+			portFailureReason: 'tool-not-authorized' as unknown as 'launch-too-large',
+		}
+		expect(
+			new RuntimeFault('port-failure', 'ProbeRequest', 'x', options)
+				.portFailureReason,
+		).toBeUndefined()
+	})
+
+	it('drops a reason an options variable carries onto a port-failure', () => {
 		const options = {
 			cause: new Error('spawn'),
 			reason: 'tool-not-authorized' as const,
 		}
-		expect(
-			new RuntimeFault('port-failure', 'ProbeRequest', 'x', options).reason,
-		).toBeUndefined()
+		const fault = new RuntimeFault('port-failure', 'ProbeRequest', 'x', options)
+		expect(fault.reason).toBeUndefined()
+		expect(fault.portFailureReason).toBeUndefined()
 	})
 
-	it('refuses launch-too-large on forbidden-target at compile time, and carries nothing at run time', () => {
-		const literal = new RuntimeFault('forbidden-target', 'ProbeRequest', 'x', {
-			// @ts-expect-error: forbidden-target takes a ForbiddenTargetReason only
-			reason: 'launch-too-large',
-		})
-		expect(literal.reason).toBeUndefined()
+	it('drops a reason an options variable carries onto any code other than forbidden-target', () => {
 		const options = {
 			cause: new Error('spawn'),
-			reason: 'launch-too-large' as const,
+			reason: 'tool-not-authorized' as const,
 		}
-		expect(
-			new RuntimeFault('forbidden-target', 'ProbeRequest', 'x', options).reason,
-		).toBeUndefined()
-	})
-
-	it('still accepts a forbidden-target reason on forbidden-target', () => {
-		const options = { reason: 'executable-not-authorized' as const }
-		expect(
-			new RuntimeFault('forbidden-target', 'ProbeRequest', 'x', options).reason,
-		).toBe('executable-not-authorized')
-	})
-
-	it('drops a reason an options variable carries onto any other code', () => {
-		const options = {
-			cause: new Error('spawn'),
-			reason: 'launch-too-large' as const,
-		}
-		const fault = new RuntimeFault('aborted', 'ProbeRequest', 'x', options)
+		const fault = new RuntimeFault('port-failure', 'ProbeRequest', 'x', options)
 		expect(fault.reason).toBeUndefined()
 		expect(fault.cause).toBe(options.cause)
 	})
@@ -166,6 +192,12 @@ describe('RuntimeFault', () => {
 // Every mechanism's tuple `satisfies` the fault's union, which catches a reason
 // missing from the union. This catches the other direction: a reason in the
 // union that no mechanism can produce.
+describe('PORT_FAILURE_REASONS', () => {
+	it('is exactly launch-too-large', () => {
+		expect([...PORT_FAILURE_REASONS]).toEqual(['launch-too-large'])
+	})
+})
+
 describe('FORBIDDEN_TARGET_REASONS', () => {
 	it('is exactly the union of the api, cli, and mcp denial reasons', () => {
 		const union = new Set<string>([

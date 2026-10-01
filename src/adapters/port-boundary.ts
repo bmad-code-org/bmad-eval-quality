@@ -39,6 +39,9 @@ async function raceAbort(
 	responsePath: string,
 	call: Promise<unknown>,
 ): Promise<unknown> {
+	// Suppress unhandled late rejections if the race is won by abort, and
+	// before the aborted check below, which throws without racing the call.
+	call.catch(() => {})
 	if (signal.aborted) {
 		throw new RuntimeFault(
 			'aborted',
@@ -47,8 +50,6 @@ async function raceAbort(
 			{ cause: signal.reason },
 		)
 	}
-	// Suppress unhandled late rejections if the race is won by abort
-	call.catch(() => {})
 	let listener: (() => void) | undefined
 	try {
 		const aborted = new Promise<never>((_resolve, reject) => {

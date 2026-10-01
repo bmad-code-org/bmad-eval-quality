@@ -1415,7 +1415,7 @@ describe.skipIf(process.platform === 'win32')(
 				)
 		}
 
-		it('reports an environment value the system refuses as port-failure with reason launch-too-large', async () => {
+		it('reports an environment value the system refuses as port-failure with portFailureReason launch-too-large', async () => {
 			const adapter = createCommandLineAdapter(
 				policyOf(authorization({ permittedEnvironmentKeys: ['BIG'] })),
 			)
@@ -1423,7 +1423,7 @@ describe.skipIf(process.platform === 'win32')(
 			expect(fault).toBeInstanceOf(RuntimeFault)
 			expect(fault).toMatchObject({
 				code: 'port-failure',
-				reason: 'launch-too-large',
+				portFailureReason: 'launch-too-large',
 				artifactPath: 'ProbeObservation',
 			})
 			expect((fault as RuntimeFault).cause).toMatchObject({ code: 'E2BIG' })
@@ -1441,9 +1441,13 @@ describe.skipIf(process.platform === 'win32')(
 			})
 			expect(fault).toMatchObject({
 				code: 'port-failure',
-				reason: 'launch-too-large',
+				portFailureReason: 'launch-too-large',
 			})
 			expect((fault as RuntimeFault).cause).toMatchObject({ code: 'E2BIG' })
+			// The oversized value reaches neither the message nor the cause.
+			const { message, cause } = fault as RuntimeFault
+			expect(message).not.toContain(OVERSIZE.slice(0, 1024))
+			expect(JSON.stringify(cause).length).toBeLessThan(1024)
 		})
 
 		it('reports an E2BIG the mechanism throws synchronously', async () => {
@@ -1457,7 +1461,7 @@ describe.skipIf(process.platform === 'win32')(
 			const fault = await thrownBy(adapter)
 			expect(fault).toMatchObject({
 				code: 'port-failure',
-				reason: 'launch-too-large',
+				portFailureReason: 'launch-too-large',
 			})
 			expect((fault as RuntimeFault).cause).toBe(cause)
 		})
@@ -1473,18 +1477,19 @@ describe.skipIf(process.platform === 'win32')(
 			const fault = await thrownBy(adapter)
 			expect(fault).toMatchObject({
 				code: 'port-failure',
-				reason: 'launch-too-large',
+				portFailureReason: 'launch-too-large',
 			})
 			expect((fault as RuntimeFault).cause).toBe(cause)
 		})
 
-		it('leaves a target that cannot start as a generic port-failure with no reason', async () => {
+		it('leaves a target that cannot start as a generic port-failure with no portFailureReason', async () => {
 			const adapter = createCommandLineAdapter(
 				policyOf(authorization({ target: join(tmpdir(), 'no-such-target') })),
 			)
 			const fault = await thrownBy(adapter)
 			expect(fault).toBeInstanceOf(RuntimeFault)
 			expect(fault).toMatchObject({ code: 'port-failure' })
+			expect((fault as RuntimeFault).portFailureReason).toBeUndefined()
 			expect((fault as RuntimeFault).reason).toBeUndefined()
 			expect((fault as RuntimeFault).cause).toMatchObject({ code: 'ENOENT' })
 		})
@@ -1498,25 +1503,99 @@ describe.skipIf(process.platform === 'win32')(
 			)
 			const fault = await thrownBy(adapter)
 			expect(fault).toMatchObject({ code: 'port-failure' })
-			expect((fault as RuntimeFault).reason).toBeUndefined()
+			expect((fault as RuntimeFault).portFailureReason).toBeUndefined()
 		})
 
-		it('observes a launch that fits as before', async () => {
+		it('observes a launch that fits as before, with the value reaching the child', async () => {
+			const value = 'x'.repeat(1024)
 			const adapter = createCommandLineAdapter(
-				policyOf(authorization({ permittedEnvironmentKeys: ['BIG'] })),
+				policyOf(
+					authorization({ permittedEnvironmentKeys: ['PROBE_TEST_VAR'] }),
+				),
 			)
 			const observation = await adapter.probe(
 				request({
 					channels: {
 						argument: {},
 						option: {},
-						environment: { BIG: 'x'.repeat(1024) },
+						environment: { PROBE_TEST_VAR: value },
 						stdin: { kind: 'absent' },
 					},
 				}),
 				new AbortController().signal,
 			)
-			expect(observation).toMatchObject({ kind: 'cli', exitCode: 0 })
+			if (observation.kind !== 'cli')
+				throw new Error('expected a cli observation')
+			expect(observation.exitCode).toBe(0)
+			expect(observation.stdout).toMatchObject({
+				kind: 'json',
+				value: { env: { PROBE_TEST_VAR: value } },
+			})
+		})
+
+		it('lets an abort that came first win over an E2BIG', async () => {
+			const controller = new AbortController()
+			const adapter = createCommandLineAdapter(
+				policyOf(authorization()),
+				mechanismThat(async () => {
+					await Promise.resolve()
+					controller.abort()
+					throw e2big()
+				}),
+			)
+			const fault = await adapter.probe(request(), controller.signal).then(
+				() => undefined,
+				(thrown: unknown) => thrown,
+			)
+			expect(fault).toMatchObject({ code: 'aborted' })
+			expect((fault as RuntimeFault).portFailureReason).toBeUndefined()
+		})
+
+		it('passes a RuntimeFault the mechanism throws through unchanged', async () => {
+			const thrown = new RuntimeFault(
+				'budget-exhausted',
+				'CommandProbeRequest',
+				'exceeded maxElapsedMs',
+				{ cause: e2big() },
+			)
+			const adapter = createCommandLineAdapter(
+				policyOf(authorization()),
+				mechanismThat(async () => {
+					throw thrown
+				}),
+			)
+			const fault = await thrownBy(adapter)
+			expect(fault).toBe(thrown)
+			expect((fault as RuntimeFault).portFailureReason).toBeUndefined()
+		})
+
+		it('raises no unhandled rejection when the mechanism aborts synchronously and then rejects', async () => {
+			const unhandled: unknown[] = []
+			const record = (reason: unknown): void => {
+				unhandled.push(reason)
+			}
+			process.on('unhandledRejection', record)
+			try {
+				const controller = new AbortController()
+				const adapter = createCommandLineAdapter(
+					policyOf(authorization()),
+					mechanismThat(() => {
+						controller.abort()
+						return Promise.reject(e2big())
+					}),
+				)
+				const fault = await adapter.probe(request(), controller.signal).then(
+					() => undefined,
+					(thrown: unknown) => thrown,
+				)
+				expect(fault).toMatchObject({ code: 'aborted' })
+				// An unhandled rejection is reported after the microtask queue
+				// drains and the process tick that follows it.
+				await new Promise((settle) => setTimeout(settle, 50))
+				expect(unhandled).toEqual([])
+			} finally {
+				process.off('unhandledRejection', record)
+			}
 		})
 	},
 )
