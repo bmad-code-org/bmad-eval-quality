@@ -892,7 +892,7 @@ node -e "const a=require('/tmp/eval-quality-run/strength-aggregate.json');consol
   A caller that kept that digest when it scored the probe compares the two to confirm the aggregate describes the artifact it scored.
 
 A run with several probes passes one `--evidence` per probe.
-Clean controls and canaries stay outside every class denominator, and artifacts that are not one run, or that contradict themselves, exit `4` with nothing written.
+Clean controls and canaries stay outside every class denominator, and artifacts that disagree with each other or contradict themselves exit `4` with nothing written.
 [Contract strength](/explanation/contract-strength/#the-run-wide-class-rate) explains the rate and the decisions, and the [CLI reference](/reference/cli-commands/) lists every flag and refusal.
 
 ## Key takeaways

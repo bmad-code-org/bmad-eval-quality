@@ -83,7 +83,7 @@ The word evidence is used twice on purpose. The evidence in the flow is what the
 | `seal` | a contract | `sealed-evaluator-brief.json`, the contract minus everything that would give the answer away |
 | `preflight` | a contract, a probe list, observations | `preflight-verdict.json`, fit or unfit to measure |
 | `score` | one or more sealed run records, the contract, a probe, the preflight verdict, a scoring policy, a caller-attested corpus digest, and the isolation manifest and evaluator configuration the records were produced under | `evidence-artifact.json`, and the verdict's own exit code |
-| `aggregate-strength` | the per-probe evidence artifacts of one run and the declared per-class floors | `strength-aggregate.json`, the run-wide strength of the qualified probes per class and the decision against each floor |
+| `aggregate-strength` | the per-probe evidence artifacts of one run, the declared per-class floors, and the scoring policy the run was scored under | `strength-aggregate.json`, the run-wide strength of the qualified probes per class and the decision against each floor |
 
 It executes nothing. No agent, no judge, and no system under test runs inside it. You run the agent or harness, the repeated trials, and the live system with its environment probe, and you hand over the sealed run records. `eval-quality` compiles, seals, preflights, and scores.
 
@@ -175,7 +175,7 @@ Every command is non-interactive. Without `--out` the artifact goes to stdout, s
 
 `--strict` never promotes a CONCERNS whose firing conditions are all evidence conditions: those report that the measurement fell short of the policy. Codes 1 and 2 come from `score`'s verdict ladder. Code 3 comes from a failed pre-flight, which `preflight` reports, or from any other invalidating condition `score` finds.
 
-`aggregate-strength` exits `0` whatever a floor decides and writes the decision into its artifact, since `1` and `2` belong to the verdict ladder `score` runs. It exits `4` and writes nothing for a set of evidence artifacts that is not one coherent run, and it records the digest of every artifact it read so a caller can bind the aggregate to the artifacts `score` emitted.
+`aggregate-strength` exits `0` whatever a floor decides and writes the decision into its artifact, since `1` and `2` belong to the verdict ladder `score` runs. It exits `4` and writes nothing for a set of evidence artifacts whose artifacts disagree on scoring version, evidence basis, attested inputs, policy, minimum trial count or catch threshold, or that share a probe, and it records the digest of every artifact it read so a caller can bind the aggregate to the artifacts `score` emitted.
 
 `--strict` is accepted on every command. `--strict-inputs` and `--no-strict-inputs` are a different switch: they set the compiler's input strictness, on by default, and only `compile` and `seal` accept them.
 

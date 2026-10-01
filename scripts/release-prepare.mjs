@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-// Cuts a release: bumps the version, stamps `src/index.ts` and CHANGELOG.md, commits, pushes.
+// Cuts a release: bumps the version, stamps `VERSION` in `src/index.ts`, `ENGINE_VERSION` in
+// `src/core/version.ts` and CHANGELOG.md, commits, pushes.
 //
 // Two modes, one commit shape.
 //

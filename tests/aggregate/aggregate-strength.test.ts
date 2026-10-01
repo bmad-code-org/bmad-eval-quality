@@ -344,7 +344,7 @@ describe('clean controls and canaries', () => {
 	})
 })
 
-describe('inputs that are not one run are refused', () => {
+describe('inputs that disagree are refused', () => {
 	it('refuses two probes that share an identifier', () => {
 		const refusal = refusedWith('strength-inputs-disagree', () =>
 			aggregate([

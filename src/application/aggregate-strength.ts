@@ -102,8 +102,8 @@ function parseFloors(input: StrengthFloors): StrengthFloors {
 
 /**
  * Reads the per-probe evidence artifacts of one run and mints the run-wide
- * `StrengthAggregate`. Throws `AggregationRefusal` for inputs that are not one
- * coherent run, `RuntimeFault` for an input that does not parse or carries a
+ * `StrengthAggregate`. Throws `AggregationRefusal` for artifacts that disagree
+ * or contradict themselves, `RuntimeFault` for an input that does not parse or carries a
  * stale schema version, and nothing else for a domain input.
  */
 export function aggregateStrength(

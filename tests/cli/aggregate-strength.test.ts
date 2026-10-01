@@ -326,7 +326,7 @@ describe('aggregate-strength: the command', () => {
 		expect(exit).toBe(EXIT_OK)
 	})
 
-	it('makes exactly one orchestration call, handing it the parsed inputs and the binary version', async () => {
+	it('makes exactly one orchestration call, handing it the parsed inputs', async () => {
 		const spy = vi.fn(APPLICATION.aggregateStrength)
 		await invoke(
 			[
@@ -390,7 +390,7 @@ describe('aggregate-strength: the command', () => {
 		expect(environment.diagnostics[0]).toContain('--evidence "e3.json"')
 	})
 
-	it('exits 4 and writes nothing for a set that is not one run', async () => {
+	it('exits 4 and writes nothing for a set whose artifacts disagree', async () => {
 		const other = await scoreDefectProbe('P-006', [true, true, true], {
 			policy: { ...REAL_POLICY, policyId: 'other-policy', catchThreshold: 0.6 },
 		})

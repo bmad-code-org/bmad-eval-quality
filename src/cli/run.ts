@@ -429,7 +429,7 @@ async function runCommand(
 		}
 	} catch (error) {
 		// A refused aggregation takes the structural-failure code: the inputs
-		// cannot be read as one coherent run, and no verdict was produced.
+		// disagree or contradict themselves, and no verdict was produced.
 		if (
 			error instanceof StructuralFailure ||
 			error instanceof AggregationRefusal

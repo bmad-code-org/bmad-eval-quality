@@ -127,12 +127,13 @@ export type EmitStage<Input> = (
 ) => EvidenceArtifact
 
 /**
- * The aggregate stage: `STAGE_SIGNATURES.aggregate`'s one declared artifact
- * input, read once per probe of a run, plus the two values no artifact
- * carries: the adopter's declared per-class floors and the scoring policy the
- * run was scored under, which every input is verified against. The engine
- * version it records is the package's own constant. Everything is concrete,
- * since no cycle opens: this file already imports `EvidenceArtifact`.
+ * The aggregate stage: `STAGE_SIGNATURES.aggregate` declares two artifact
+ * inputs, the evidence artifact (read once per probe of a run) and the scoring
+ * policy the run was scored under, which every input is verified against, plus
+ * one value input: the adopter's declared per-class floors, which no artifact
+ * carries. The engine version it records is the package's own constant.
+ * Everything is concrete, since no cycle opens: this file already imports
+ * `EvidenceArtifact`.
  */
 export type AggregateStage = (
 	evidence: readonly EvidenceArtifact[],

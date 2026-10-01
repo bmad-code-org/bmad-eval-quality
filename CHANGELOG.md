@@ -25,7 +25,7 @@ body.
   `StrengthAggregate` is the thirteenth interchange artifact, published at `schemas/strength-aggregate.schema.json`, owned by a new `aggregate` stage, with its schema version exported as `STRENGTH_AGGREGATE_SCHEMA_VERSION`.
   The library exports `aggregateStrength`, `AggregateStrengthOptions`, `StrengthAggregate`, `StrengthFloors`, `AggregationRefusal` and `AGGREGATION_REFUSAL_CODES`.
   The command exits `0` whatever the floor decisions are and records them in the artifact, since `1` and `2` belong to the verdict ladder `score` runs. It never promotes under `--strict`.
-  It exits `4` and writes nothing for a set that is not one run: `strength-inputs-disagree` for artifacts that share a probe, differ in scoring version, evidence basis or attested inputs, or differ from the supplied policy in scoring policy digest, minimum trial count or catch threshold, and `strength-input-inconsistent` for an artifact whose reduction, strength vector, comparability flag, scoring version or comparability key does not follow from the evidence it carries, whose class vector sits on a clean control's outcomes, or that lists any probe as excluded.
+  It exits `4` and writes nothing for a set whose artifacts disagree on scoring version, evidence basis, attested inputs, policy, minimum trial count or catch threshold, or that share a probe: `strength-inputs-disagree` for artifacts that share a probe, differ in scoring version, evidence basis or attested inputs, or differ from the supplied policy in scoring policy digest, minimum trial count or catch threshold, and `strength-input-inconsistent` for an artifact whose reduction, strength vector, comparability flag, scoring version or comparability key does not follow from the evidence it carries, whose class vector sits on a clean control's outcomes, or that lists any probe as excluded.
   An input that does not parse exits `5` with `schema-parse-failure`, and an evidence artifact stamped with another `schemaVersion` exits `5` with `schema-version-mismatch`, read before the shape so a stale artifact is named as one.
   Artifacts must attest the same scoring-version inputs (AD-32). The aggregate carries them as `callerAttestedInputs` and names what it takes on trust in `aggregateAttestedInputs`: `probeClass`, read off each strength vector, and `evidenceSetCompleteness`.
   The command reads `--evidence`, `--floors` and `--policy` through the lexical scanner AD-36 puts in front of hashed artifacts, so a file that repeats an object key exits `5` with `non-canonicalizable-value`; `score` reads `--policy` the same way, and `scanJson` is exported.
@@ -41,6 +41,9 @@ body.
   The exit-code table in `--help`, the README, and the reference now reads "structural failure, or an aggregation refused for mixed or inconsistent evidence" for `4`.
 - **`generate:version` writes `ENGINE_VERSION` in `src/core/version.ts` beside `VERSION`.**
   Core may not import the root barrel, so a stage that records the engine's own version reads this constant, and `check:version` and `release-prepare` hold it with the barrel and the manifest.
+- **`score --policy` refuses a policy file that repeats an object key.**
+  The command exits `5` with `non-canonicalizable-value`, because `policy` is in `LEXICALLY_SCANNED_INPUTS` in `src/cli/run.ts`.
+  On `main`, `score` read the policy with `JSON.parse` alone and the last value won.
 
 ## [4.6.0] - 2026-10-01
 

@@ -227,7 +227,7 @@ function requireOne(
 		if (value !== expected) {
 			disagree(
 				input.path,
-				`${describe} ${value} (${input.probeId}) differs from ${expected} (${head.probeId}): the artifacts are not one run`,
+				`${describe} ${value} (${input.probeId}) differs from ${expected} (${head.probeId}): the artifacts disagree`,
 			)
 		}
 	}

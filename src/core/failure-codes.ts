@@ -70,10 +70,10 @@ export class StructuralFailure extends Error {
  * compilation, and the aggregation reads scored artifacts long after compile.
  * AD-21 carries their table, and `check:aggregation-registry` binds this tuple
  * to it.
- * They share the structural-failure exit code: the inputs cannot be read as one coherent whole, and no verdict was produced about any of them.
+ * They share the structural-failure exit code: the inputs disagree or contradict themselves, and no verdict was produced about any of them.
  *
  * - `strength-inputs-disagree`: the artifacts are individually readable and do
- *   not belong to one run: two share a probe, they differ in scoring
+ *   not agree: two share a probe, they differ in scoring
  *   version, evidence basis, or attested inputs, or one differs from the
  *   supplied scoring policy in its digest, minimum trial count, or catch
  *   threshold.

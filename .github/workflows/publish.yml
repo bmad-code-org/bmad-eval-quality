@@ -4,8 +4,9 @@
 # workflow from main. The `bump` input decides what happens before the publish:
 #
 #   patch | minor | major   Runs `scripts/release-prepare.mjs <bump> --on-main`: bumps
-#                           package.json and package-lock.json, stamps VERSION in src/index.ts and
-#                           the [Unreleased] notes in CHANGELOG.md, commits
+#                           package.json and package-lock.json, stamps VERSION in src/index.ts,
+#                           ENGINE_VERSION in src/core/version.ts and the [Unreleased] notes in
+#                           CHANGELOG.md, commits
 #                           `chore: release vX.Y.Z [skip ci]` on main, pushes it, then publishes
 #                           that commit.
 #   none                    Publishes the version main already declares. Use it to finish a
@@ -148,7 +149,7 @@ jobs:
       # 34260745486 died on `Cannot find package 'eval-quality/conformance'` because
       # tests/conformance imports the package through its public specifier, which resolves only
       # against built output that `npm run validate` produces and a bare `npm test` does not. The
-      # bump below changes the four stamped files only, and release-prepare refuses unless VERSION
+      # bump below changes the five stamped files only, and release-prepare refuses unless VERSION
       # already matches the manifest, so what it commits is the gated tree plus a version.
       - name: Cut the release commit on main
         if: inputs.bump != 'none'

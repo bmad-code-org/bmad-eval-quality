@@ -1314,6 +1314,27 @@ describe('run: the score command (Story 8.4)', () => {
 		)
 	})
 
+	it('score refuses a policy file that repeats an object key, a fault with exit 5', async () => {
+		// `policy` is read through the lexical scanner (AD-36), so the last value
+		// no longer wins silently.
+		const policy = JSON.stringify(scoringPolicyFixtureForScore)
+		const repeated = policy.replace(/^\{/, '{"policyId":"shadowed",')
+		expect(repeated).not.toBe(policy)
+		const environment = environmentOf(
+			scoreFiles({ 'policy.json': repeated }),
+			'',
+			[],
+			SCORE_CORPUS_FILES,
+		)
+		const { outcome, exit } = await invoke(SCORE_ARGV, environment)
+		expect(outcome).toEqual({ kind: 'fault' })
+		expect(exit).toBe(EXIT_FAULT)
+		expect(environment.diagnostics[0]).toContain(
+			'non-canonicalizable-value: ScoringPolicy: duplicate object key "policyId"',
+		)
+		expect(environment.out).toEqual([])
+	})
+
 	it('calls the facade runScore exactly once, and no other orchestration call', async () => {
 		const environment = environmentOf(scoreFiles(), '', [], SCORE_CORPUS_FILES)
 		const facade = facadeOf()
