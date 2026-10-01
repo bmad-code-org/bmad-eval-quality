@@ -10,6 +10,8 @@ body.
 
 ## [Unreleased]
 
+## [4.7.0] - 2026-10-01
+
 ### Added
 
 - **`eval-quality aggregate-strength` reports the run-wide strength of the qualified probes of one run.**
