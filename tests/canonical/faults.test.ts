@@ -97,20 +97,67 @@ describe('RuntimeFault', () => {
 
 	// A type-level check, which `npm run typecheck` enforces: the directive fails
 	// the typecheck as unused if the other signatures ever accept a reason.
-	it('refuses a reason on any code other than forbidden-target, at compile time', () => {
-		const fault = new RuntimeFault('port-failure', 'ProbeRequest', 'x', {
-			// @ts-expect-error: only the forbidden-target signature takes a reason
+	it('refuses a reason on any code other than forbidden-target and port-failure, at compile time', () => {
+		const fault = new RuntimeFault('budget-exhausted', 'ProbeRequest', 'x', {
+			// @ts-expect-error: only the forbidden-target and port-failure signatures take a reason
 			reason: 'tool-not-authorized',
 		})
-		expect(fault.code).toBe('port-failure')
+		expect(fault.code).toBe('budget-exhausted')
 	})
 
-	it('drops a reason an options variable carries onto any code other than forbidden-target', () => {
+	it('carries launch-too-large on port-failure beside its cause', () => {
+		const cause = new Error('spawn E2BIG')
+		const fault = new RuntimeFault('port-failure', 'ProbeRequest', 'x', {
+			cause,
+			reason: 'launch-too-large',
+		})
+		expect(fault.reason).toBe('launch-too-large')
+		expect(fault.cause).toBe(cause)
+	})
+
+	it('refuses a forbidden-target reason on port-failure at compile time, and carries nothing at run time', () => {
+		const literal = new RuntimeFault('port-failure', 'ProbeRequest', 'x', {
+			// @ts-expect-error: port-failure takes a PortFailureReason only
+			reason: 'tool-not-authorized',
+		})
+		expect(literal.reason).toBeUndefined()
 		const options = {
 			cause: new Error('spawn'),
 			reason: 'tool-not-authorized' as const,
 		}
-		const fault = new RuntimeFault('port-failure', 'ProbeRequest', 'x', options)
+		expect(
+			new RuntimeFault('port-failure', 'ProbeRequest', 'x', options).reason,
+		).toBeUndefined()
+	})
+
+	it('refuses launch-too-large on forbidden-target at compile time, and carries nothing at run time', () => {
+		const literal = new RuntimeFault('forbidden-target', 'ProbeRequest', 'x', {
+			// @ts-expect-error: forbidden-target takes a ForbiddenTargetReason only
+			reason: 'launch-too-large',
+		})
+		expect(literal.reason).toBeUndefined()
+		const options = {
+			cause: new Error('spawn'),
+			reason: 'launch-too-large' as const,
+		}
+		expect(
+			new RuntimeFault('forbidden-target', 'ProbeRequest', 'x', options).reason,
+		).toBeUndefined()
+	})
+
+	it('still accepts a forbidden-target reason on forbidden-target', () => {
+		const options = { reason: 'executable-not-authorized' as const }
+		expect(
+			new RuntimeFault('forbidden-target', 'ProbeRequest', 'x', options).reason,
+		).toBe('executable-not-authorized')
+	})
+
+	it('drops a reason an options variable carries onto any other code', () => {
+		const options = {
+			cause: new Error('spawn'),
+			reason: 'launch-too-large' as const,
+		}
+		const fault = new RuntimeFault('aborted', 'ProbeRequest', 'x', options)
 		expect(fault.reason).toBeUndefined()
 		expect(fault.cause).toBe(options.cause)
 	})

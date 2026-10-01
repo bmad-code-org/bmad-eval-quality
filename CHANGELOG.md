@@ -10,6 +10,15 @@ body.
 
 ## [Unreleased]
 
+### Added
+
+- **`createCommandLineAdapter` tells a launch that is too large from a target that could not start.**
+  A launch the operating system refuses for the size of its arguments and environment (Node's `E2BIG`, whether `spawn` threw it or the child emitted it) throws `RuntimeFault` with code `port-failure` and `reason` `launch-too-large`, with the spawn error kept as its `cause`.
+  Before, it was the same `port-failure` with no reason that an `ENOENT` or `EACCES` produced.
+  `RuntimeFault.reason` widens to `ForbiddenTargetReason | PortFailureReason | undefined`: a `forbidden-target` fault takes only a `ForbiddenTargetReason`, a `port-failure` fault only a `PortFailureReason`, and any other pairing or code carries `undefined`.
+  `PORT_FAILURE_REASONS` and `PortFailureReason` export beside `FORBIDDEN_TARGET_REASONS` from the root barrel and `eval-quality/conformance`.
+  Every other spawn failure keeps its generic `port-failure` with no reason, and `createMcpAdapter` is unchanged.
+
 ## [4.5.0] - 2026-09-30
 
 ### Added
