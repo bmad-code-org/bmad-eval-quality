@@ -10,6 +10,8 @@ body.
 
 ## [Unreleased]
 
+## [4.6.0] - 2026-10-01
+
 ### Added
 
 - **`createCommandLineAdapter` tells a launch that is too large from a target that could not start.**
