@@ -8,6 +8,7 @@
  */
 import { z } from 'zod'
 import {
+	AggregationRefusal,
 	type Diagnostic,
 	type QualificationFailure,
 	RuntimeFault,
@@ -82,14 +83,18 @@ export function renderDiagnostic(diagnostic: Diagnostic): string {
 }
 
 /**
- * `eval-quality: <code>: <artifactPath>: <detail>` for either error class.
+ * `eval-quality: <code>: <artifactPath>: <detail>` for each error class.
  * A fault carrying a Zod error as its cause prints that error's issues under
  * the first line, one indented `<location>: <message>` per issue.
  * Anything else falls back to `String(error)`, which is what a defect in our
  * own code looks like from outside.
  */
 export function renderError(error: unknown): string {
-	if (error instanceof StructuralFailure || error instanceof RuntimeFault) {
+	if (
+		error instanceof StructuralFailure ||
+		error instanceof AggregationRefusal ||
+		error instanceof RuntimeFault
+	) {
 		const prefix = `${error.code} in ${error.artifactPath}: `
 		const detail = error.message.startsWith(prefix)
 			? error.message.slice(prefix.length)
@@ -137,7 +142,7 @@ export const EXIT_CODE_TABLE = `Exit codes (AD-21's six, plus 64 from sysexits.h
   1   CONCERNS promoted by --strict
   2   FAIL
   3   invalid: a failed pre-flight, or any other AD-21 invalidating condition
-  4   structural failure
+  4   structural failure, or an aggregation refused for mixed or inconsistent evidence
   5   runtime fault
   64  usage error
 

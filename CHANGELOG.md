@@ -10,6 +10,41 @@ body.
 
 ## [Unreleased]
 
+### Added
+
+- **`eval-quality aggregate-strength` reports the run-wide strength of the qualified probes of one run.**
+  `score` covers one probe per call, so the strength vector in one evidence artifact describes that probe alone and a per-class floor could not be applied to a run.
+  The command reads every per-probe `EvidenceArtifact` (`--evidence`, repeated) and the declared floors (`--floors`, a JSON object keyed by `defect`, `gameability` and `zero-action`) and mints one `StrengthAggregate`.
+  The command also takes `--policy`, the scoring policy the run was scored under, and refuses an artifact whose scoring policy digest is not that policy's digest, whose `trials.declaredMinimum` is not its `minimumTrialCount`, or whose reduction used another `catchThreshold`; the aggregate takes its `minimumTrialCount` from the policy.
+  Per class it reports the distinct qualified probe denominator (`eligible`), `exercised`, `caught`, the `rate`, `comparable`, and the decision against the declared floor with the reason for it.
+  The rate arithmetic is the function that builds each artifact's own vector, now exported from `core/score/strength.ts` as `classStrengthOver`, so a probe's vector and the class rate it feeds are one computation.
+  Clean controls and canaries stay outside every denominator. A class with no eligible probe is `null`, and a class with eligible probes and none exercised has `rate: null`.
+  A class is comparable only when every eligible probe's trial set reached `minimumTrialCount` with no oracle `unreached`, by the rule `emit` applies, which both now share as `isComparable`.
+  A floor is met only by a comparable class in which every eligible probe was exercised and whose rate is at or above it. A class that is non-comparable, empty, or has any unexercised probe does not meet a declared floor, and the closed reasons are `no-eligible-probe`, `not-comparable`, `no-exercised-probe`, `unexercised-probe`, and `rate-below-floor`.
+  The aggregate records the engine version, read from a constant `generate:version` writes beside `VERSION`, and the digest of every artifact it read, sorts its inputs by probe, and is reproduced byte for byte by a second run over the same artifacts and floors.
+  `StrengthAggregate` is the thirteenth interchange artifact, published at `schemas/strength-aggregate.schema.json`, owned by a new `aggregate` stage, with its schema version exported as `STRENGTH_AGGREGATE_SCHEMA_VERSION`.
+  The library exports `aggregateStrength`, `AggregateStrengthOptions`, `StrengthAggregate`, `StrengthFloors`, `AggregationRefusal` and `AGGREGATION_REFUSAL_CODES`.
+  The command exits `0` whatever the floor decisions are and records them in the artifact, since `1` and `2` belong to the verdict ladder `score` runs. It never promotes under `--strict`.
+  It exits `4` and writes nothing for a set whose artifacts disagree on scoring version, evidence basis, attested inputs, policy, minimum trial count or catch threshold, or that share a probe: `strength-inputs-disagree` for artifacts that share a probe, differ in scoring version, evidence basis or attested inputs, or differ from the supplied policy in scoring policy digest, minimum trial count or catch threshold, and `strength-input-inconsistent` for an artifact whose reduction, strength vector, comparability flag, scoring version or comparability key does not follow from the evidence it carries, whose class vector sits on a clean control's outcomes, or that lists any probe as excluded.
+  An input that does not parse exits `5` with `schema-parse-failure`, and an evidence artifact stamped with another `schemaVersion` exits `5` with `schema-version-mismatch`, read before the shape so a stale artifact is named as one.
+  Artifacts must attest the same scoring-version inputs (AD-32). The aggregate carries them as `callerAttestedInputs` and names what it takes on trust in `aggregateAttestedInputs`: `probeClass`, read off each strength vector, and `evidenceSetCompleteness`.
+  The command reads `--evidence`, `--floors` and `--policy` through the lexical scanner AD-36 puts in front of hashed artifacts, so a file that repeats an object key exits `5` with `non-canonicalizable-value`; `score` reads `--policy` the same way, and `scanJson` is exported.
+  The command verifies consistency: each artifact with itself and the artifacts with each other. An artifact states no probe class beyond its own strength vector and no engine version, so a rewrite that stays consistent is not detectable from the artifact alone, and the recorded digests are what a caller that kept them at scoring time compares against.
+
+### Changed
+
+- **The `aggregate` stage is the third reader of AD-11's version equality and the fourth lineage writer.**
+  `PIPELINE_STAGES` and `STAGE_SIGNATURES` gain `aggregate`, and `STAGE_VALUE_INPUTS` gains `strengthFloors`.
+  The documentation counts of stamped and compared schema versions move with it.
+- **The two aggregation refusal codes have a registry of their own.**
+  AD-21 carries them in a table under its "Aggregation refusals" paragraph, disjoint from AD-5 and AD-28, and `npm run check:aggregation-registry` fails when `AGGREGATION_REFUSAL_CODES` drops, adds, or reorders one.
+  The exit-code table in `--help`, the README, and the reference now reads "structural failure, or an aggregation refused for mixed or inconsistent evidence" for `4`.
+- **`generate:version` writes `ENGINE_VERSION` in `src/core/version.ts` beside `VERSION`.**
+  Core may not import the root barrel, so a stage that records the engine's own version reads this constant, and `check:version` and `release-prepare` hold it with the barrel and the manifest.
+- **`score --policy` refuses a policy file that repeats an object key.**
+  The command exits `5` with `non-canonicalizable-value`, because `policy` is in `LEXICALLY_SCANNED_INPUTS` in `src/cli/run.ts`.
+  On `main`, `score` read the policy with `JSON.parse` alone and the last value won.
+
 ## [4.6.0] - 2026-10-01
 
 ### Added

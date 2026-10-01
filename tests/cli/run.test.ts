@@ -176,8 +176,11 @@ const invoke = async (
 	return { invocation, outcome, exit: exitOf(invocation, outcome) }
 }
 
-/** The four entry points, recorded. Cases 60 through 62 count these calls. */
+/** The five entry points, recorded. Cases 60 through 62 count these calls. */
 const facadeOf = (overrides: Partial<ApplicationFacade> = {}) => ({
+	aggregateStrength: vi.fn(
+		overrides.aggregateStrength ?? APPLICATION.aggregateStrength,
+	),
 	compile: vi.fn(overrides.compile ?? APPLICATION.compile),
 	seal: vi.fn(overrides.seal ?? APPLICATION.seal),
 	preflightFromObservations: vi.fn(
@@ -1309,6 +1312,27 @@ describe('run: the score command (Story 8.4)', () => {
 		expect(environment.diagnostics[0]).toMatch(
 			/^eval-quality: digest-mismatch: SealedRunRecord\.isolationManifestArtifact: /,
 		)
+	})
+
+	it('score refuses a policy file that repeats an object key, a fault with exit 5', async () => {
+		// `policy` is read through the lexical scanner (AD-36), so the last value
+		// no longer wins silently.
+		const policy = JSON.stringify(scoringPolicyFixtureForScore)
+		const repeated = policy.replace(/^\{/, '{"policyId":"shadowed",')
+		expect(repeated).not.toBe(policy)
+		const environment = environmentOf(
+			scoreFiles({ 'policy.json': repeated }),
+			'',
+			[],
+			SCORE_CORPUS_FILES,
+		)
+		const { outcome, exit } = await invoke(SCORE_ARGV, environment)
+		expect(outcome).toEqual({ kind: 'fault' })
+		expect(exit).toBe(EXIT_FAULT)
+		expect(environment.diagnostics[0]).toContain(
+			'non-canonicalizable-value: ScoringPolicy: duplicate object key "policyId"',
+		)
+		expect(environment.out).toEqual([])
 	})
 
 	it('calls the facade runScore exactly once, and no other orchestration call', async () => {

@@ -20,7 +20,7 @@ import type { Verdict } from '../schemas/verdict.ts'
 import { checkModeAgreement } from '../score/mode-agreement.ts'
 import { reductionConsistencyIssuesOf } from '../score/reduction-consistency.ts'
 import type { ScoredOutcomesAndVerdict } from '../score/score.ts'
-import { buildStrengthVector } from '../score/strength.ts'
+import { buildStrengthVector, isComparable } from '../score/strength.ts'
 import type { EmitStage } from '../stage-contracts.ts'
 
 const SCORING_POLICY_ARTIFACT_PATH = 'ScoringPolicy'
@@ -76,8 +76,7 @@ export const emit: EmitStage<ScoredOutcomesAndVerdict> = (
 	// AD-21: a run that resolved `unreached` or completed fewer trials than
 	// the policy's declared minimum marks the vector non-comparable rather
 	// than silently comparing it.
-	const comparable =
-		trials.completed >= trials.declaredMinimum && unreachedOracles.length === 0
+	const comparable = isComparable(trials, unreachedOracles.length)
 	const strengthNote = [
 		`${scored.sealedProbes.admitted.length} admitted probe over ${trialCount}.`,
 		trials.completed < trials.declaredMinimum

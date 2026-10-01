@@ -31,6 +31,7 @@ const STRUCTURAL_SEED_INVENTORY = [
 	'preflight-verdict',
 	'scoring-policy',
 	'evidence-artifact',
+	'strength-aggregate',
 ] as const
 
 /** the six correspondences the Structural Seed records, transcribed. */
@@ -54,9 +55,9 @@ const branchShapes = (schema: any): any[] =>
 const carriesLineageByShape = (schema: any): boolean =>
 	branchShapes(schema).every((shape) => shape.parentDigest !== undefined)
 
-describe('the interchange inventory, closed at twelve', () => {
+describe('the interchange inventory, closed at thirteen', () => {
 	it('holds exactly the Structural Seed inventory, in its order', () => {
-		expect(INTERCHANGE_ARTIFACT_KEYS).toHaveLength(12)
+		expect(INTERCHANGE_ARTIFACT_KEYS).toHaveLength(13)
 		expect(INTERCHANGE_ARTIFACT_KEYS).toEqual([...STRUCTURAL_SEED_INVENTORY])
 	})
 

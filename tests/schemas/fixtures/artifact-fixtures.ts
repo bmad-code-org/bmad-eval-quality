@@ -16,6 +16,7 @@ import type { Rubric } from '../../../src/core/schemas/rubric.ts'
 import type { ScoringPolicy } from '../../../src/core/schemas/scoring-policy.ts'
 import type { SealedEvaluatorBrief } from '../../../src/core/schemas/sealed-evaluator-brief.ts'
 import type { SealedRunRecord } from '../../../src/core/schemas/sealed-run-record.ts'
+import type { StrengthAggregate } from '../../../src/core/schemas/strength-aggregate.ts'
 import { commandContract } from './command-contract.ts'
 import { mcpContract } from './mcp-contract.ts'
 import { populatedContract } from './relevance-contracts.ts'
@@ -1189,6 +1190,101 @@ export const contractScoringEvidenceArtifact: EvidenceArtifact = {
 		'Expected in contract-scoring mode: the probe is knowingly defective, so a system-directed FAIL is an input rather than a signal about the contract.',
 }
 
+/**
+ * Four caught defect probes among five at a 0.75 floor, one caught zero-action
+ * probe, a clean control outside every class, and no gameability probe: the
+ * three states a class can be in (measured, undeclared, absent).
+ */
+export const strengthAggregateFixture: StrengthAggregate = {
+	schemaVersion: 1,
+	parentDigest: null,
+	revisionCount: 0,
+	engineVersion: '4.6.0',
+	mode: 'contract-scoring',
+	scoringVersion: digestOf(30),
+	scoringPolicyDigest: digestOf(32),
+	comparabilityKey: digestOf(31),
+	basis: 'measured',
+	minimumTrialCount: 3,
+	callerAttestedInputs: [
+		'corpusDigest',
+		'evaluatorConfigurationDigest',
+		'fixtureDigest',
+		'mode',
+	],
+	aggregateAttestedInputs: ['evidenceSetCompleteness', 'probeClass'],
+	inputs: [
+		{
+			probeId: 'P-001',
+			probeClass: 'defect',
+			runId: 'run-p-001',
+			artifactDigest: digestOf(41),
+		},
+		{
+			probeId: 'P-002',
+			probeClass: 'defect',
+			runId: 'run-p-002',
+			artifactDigest: digestOf(42),
+		},
+		{
+			probeId: 'P-003',
+			probeClass: 'defect',
+			runId: 'run-p-003',
+			artifactDigest: digestOf(43),
+		},
+		{
+			probeId: 'P-004',
+			probeClass: 'defect',
+			runId: 'run-p-004',
+			artifactDigest: digestOf(44),
+		},
+		{
+			probeId: 'P-005',
+			probeClass: 'defect',
+			runId: 'run-p-005',
+			artifactDigest: digestOf(45),
+		},
+		{
+			probeId: 'P-006',
+			probeClass: 'zero-action',
+			runId: 'run-p-006',
+			artifactDigest: digestOf(46),
+		},
+		{
+			probeId: 'P-007',
+			probeClass: null,
+			runId: 'run-p-007',
+			artifactDigest: digestOf(47),
+		},
+	],
+	classes: {
+		defect: {
+			eligible: 5,
+			exercised: 5,
+			caught: 4,
+			rate: 0.8,
+			comparable: true,
+		},
+		gameability: null,
+		'zero-action': {
+			eligible: 1,
+			exercised: 1,
+			caught: 1,
+			rate: 1,
+			comparable: true,
+		},
+	},
+	floorDecisions: {
+		defect: { floor: 0.75, decision: 'meets', basis: 'rate-meets-floor' },
+		gameability: {
+			floor: null,
+			decision: 'undeclared',
+			basis: 'no-floor-declared',
+		},
+		'zero-action': { floor: 1, decision: 'meets', basis: 'rate-meets-floor' },
+	},
+}
+
 export const sealedEvaluatorBriefFixture: SealedEvaluatorBrief = {
 	schemaVersion: 2,
 	parentDigest: null,
@@ -1268,6 +1364,7 @@ export const ARTIFACT_ACCEPT_FIXTURES = {
 	'preflight-verdict': preflightVerdictFixture,
 	'scoring-policy': scoringPolicyFixture,
 	'evidence-artifact': productionEvidenceArtifact,
+	'strength-aggregate': strengthAggregateFixture,
 } as const
 
 /**

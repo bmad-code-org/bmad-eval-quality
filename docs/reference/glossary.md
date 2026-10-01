@@ -26,9 +26,9 @@ eval contract → probe → observation → preflight → evidence → oracle �
 | **Rubric** | The grading guide for judgment-heavy quality: an anchored scale and named criteria a judge scores against. The judge runs outside this package, and its scores arrive inside the sealed run records, one integer per criterion. `compile` checks a rubric's structure and no shipped stage grades anything against one. |
 | **Score / verdict** | The combined result, and the answer to whether the evaluation caught the planted defect. Four values: `PASS`, `WAIVED`, `CONCERNS`, `FAIL`. A fifth outcome, Invalid, says the run produced no verdict. The `score` command writes it into the evidence artifact and returns it as the exit code. |
 
-## The twelve interchange artifacts
+## The thirteen interchange artifacts
 
-Every artifact that crosses the package boundary has a published JSON Schema under `schemas/` and exactly one producer. Four are minted by a stage, seven come from the caller, and one is embedded inside others.
+Every artifact that crosses the package boundary has a published JSON Schema under `schemas/` and exactly one producer. Five are minted by a stage, seven come from the caller, and one is embedded inside others.
 
 The eval contract is the one people misread, so it is worth stating plainly. The JSON you author is already an `EvalContract`. `compile` validates it against the schema and the discipline rules, then emits the checked contract if it passes:
 
@@ -50,6 +50,7 @@ Canonical serialization may change byte formatting and key order along the way. 
 | **`SealedEvaluatorBrief`** | `seal` | What an evaluator is allowed to see. Twelve top-level fields: the behaviors, the permitted interfaces narrowed to `logicalId` and `kind`, the scoped resources, the declared principal names, the budgets and limits, the probe step bound, one direction per oracle, `contractDigest`, and the lineage and version fields. The oracle checks, the interaction plan, the reference sets, and the rest of the test data have no place in that shape, so they never reach the evaluator. |
 | **`PreflightVerdict`** | `preflight` | The environment-validity result: `passed`, the list of checks with each one's outcome, and `fixtureDigest`. `score` reads `passed` off it, and a failed preflight is an Invalid rung. |
 | **`EvidenceArtifact`** | `emit`, inside `score` | The output side of scoring: the indexed outcome per oracle and trial, the reduced result per probe, the verdict with every condition that fired, the strength vector, the coverage gaps, the trial count, the scoring version, and the exit code. |
+| **`StrengthAggregate`** | `aggregate-strength` | The run-wide strength of the qualified probes of one run: per class, the distinct qualified probe denominator, the exercised and caught counts, the rate, comparability, and the decision against the declared floor, with the engine version and the digest of every evidence artifact it read. |
 | **`Probe`** | caller | One probe: its id, its class, `expectedClean`, the implementation digest, a rationale, a required qualification record, and, when `expectedClean` is false, a `defectSignature` describing where the seeded defect shows. |
 | **`SealedRunRecord`** | caller | The input side of scoring: what the evaluator's run produced, sealed. The observations in `sequence` order, the findings with the observations each cites, one disposition per oracle, the judge results, the evaluator's own recommendation, `mode`, and the digests it ran under. |
 | **`IsolationManifest`** | caller | What the evaluator was allowed and what it did: allowed and observed mounts, network targets, and tool calls, resource ceilings and actual use, and an accounting of every forbidden input as withheld. |

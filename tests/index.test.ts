@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
+import { ENGINE_VERSION } from '../src/core/version.ts'
 import { VERSION } from '../src/index.ts'
 
 /**
@@ -21,5 +22,10 @@ const manifestVersion = (
 describe('eval-quality scaffold', () => {
 	it('exports the version the manifest declares', () => {
 		expect(VERSION).toBe(manifestVersion)
+	})
+
+	it('declares the same version to core, where a stage that records the engine reads it', () => {
+		expect(ENGINE_VERSION).toBe(manifestVersion)
+		expect(ENGINE_VERSION).toBe(VERSION)
 	})
 })

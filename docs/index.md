@@ -47,7 +47,7 @@ The evaluation is what most people mean when they say "our evals". This tool is 
 
 ## What the tool does
 
-`eval-quality` is a Node package and a command line binary, both published under the name `eval-quality`. It gives you four commands.
+`eval-quality` is a Node package and a command line binary, both published under the name `eval-quality`. It gives you five commands.
 
 | Command | What it does |
 | --- | --- |
@@ -55,6 +55,7 @@ The evaluation is what most people mean when they say "our evals". This tool is 
 | `seal` | Turns the contract into a brief for the evaluator, with the answers stripped out. |
 | `preflight` | Decides whether the environment is fit to be measured at all. |
 | `score` | Reads what the evaluator produced and mints the verdict. |
+| `aggregate-strength` | Reads the per-probe scores of one run and reports the run-wide strength per class against the floors you declared. |
 
 An **eval contract** is a JSON document that says what a system is supposed to do, written so an automated check can resolve it. Every command here is built around one.
 

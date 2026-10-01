@@ -1,11 +1,13 @@
 /**
- * The four commands. Each one reads its inputs, makes exactly one call into
+ * The five commands. Each one reads its inputs, makes exactly one call into
  * `application/`, serializes what came back, and returns the outcome the exit
  * code is derived from. Every effect is a member of `RunEnvironment`, so this
  * module touches no stream, no `process`, and no Node builtin, and its tests
  * run in memory.
  */
 import {
+	AggregationRefusal,
+	aggregateStrength,
 	compile,
 	type Diagnostic,
 	type DiagnosticSink,
@@ -15,6 +17,7 @@ import {
 	RuntimeFault,
 	runScore,
 	StructuralFailure,
+	scanJson,
 	seal,
 } from '../application/index.ts'
 import type { Command, InputKey, ParsedInvocation } from './arguments.ts'
@@ -55,11 +58,12 @@ export type RunEnvironment = {
 }
 
 /**
- * The four orchestration calls, behind one object so a test can count them.
+ * The five orchestration calls, behind one object so a test can count them.
  * An input/output count says nothing about how many calls into `application/`
  * happened, which is the property AD-14 constrains.
  */
 export type ApplicationFacade = {
+	readonly aggregateStrength: typeof aggregateStrength
 	readonly compile: typeof compile
 	readonly seal: typeof seal
 	readonly preflightFromObservations: typeof preflightFromObservations
@@ -67,6 +71,7 @@ export type ApplicationFacade = {
 }
 
 export const APPLICATION: ApplicationFacade = {
+	aggregateStrength,
 	compile,
 	seal,
 	preflightFromObservations,
@@ -94,9 +99,21 @@ type ScoringPolicyInput = RunScoreOptions['policy']
 type PrivateArtifactManifestInput = NonNullable<
 	RunScoreOptions['privateManifest']
 >
+type StrengthAggregate = ReturnType<typeof aggregateStrength>
+type AggregateOptions = Parameters<typeof aggregateStrength>[0]
+type EvidenceInput = AggregateOptions['evidence'][number]
+type FloorsInput = AggregateOptions['floors']
+type AggregatePolicyInput = AggregateOptions['policy']
 type ScoreResult = Awaited<ReturnType<typeof runScore>>
 type EvidenceArtifact = NonNullable<ScoreResult['artifact']>
 type Ladder = ScoreResult['ladder']
+
+/** The inputs read through `scanJson` as well as `JSON.parse`: the three `aggregate-strength` takes. `--policy` is `score`'s input too, so `score` reads its policy the same way. */
+const LEXICALLY_SCANNED_INPUTS: ReadonlySet<InputKey> = new Set([
+	'evidence',
+	'floors',
+	'policy',
+])
 
 /** The artifact each command emits: its schema name and its file name. */
 const EMITTED: Readonly<
@@ -109,6 +126,10 @@ const EMITTED: Readonly<
 	},
 	preflight: { artifactPath: 'PreflightVerdict', kind: 'preflight-verdict' },
 	score: { artifactPath: 'EvidenceArtifact', kind: 'evidence-artifact' },
+	'aggregate-strength': {
+		artifactPath: 'StrengthAggregate',
+		kind: 'strength-aggregate',
+	},
 }
 
 /** The schema an input key deserializes into, for the parse fault's path. */
@@ -124,6 +145,8 @@ const INPUT_ARTIFACT_PATH: Readonly<Record<InputKey, string>> = {
 	'preflight-verdict': 'PreflightVerdict',
 	policy: 'ScoringPolicy',
 	'private-manifest': 'PrivateArtifactManifest',
+	evidence: 'EvidenceArtifact',
+	floors: 'StrengthFloors',
 }
 
 const USAGE = `Usage:
@@ -139,6 +162,8 @@ const USAGE = `Usage:
                                   [--isolation-manifest <path>] [--evaluator-configuration <path>]
                                   [--private-manifest <path>] [--corpus-root <dir>]
                                   [--out <target>] [--strict]
+  eval-quality aggregate-strength --evidence <path> [--evidence <path> ...] --floors <path>
+                                  --policy <path> [--out <target>] [--strict]
   eval-quality --help | -h | help [<command>]
   eval-quality --version | -V`
 
@@ -193,6 +218,17 @@ const COMMAND_USAGE: Readonly<Record<Command, string>> = {
                                      reference is present
   --out <target>                    a .json file path, or a directory taking evidence-artifact.json
   --strict                          promote CONCERNS to exit 1`,
+	'aggregate-strength': `Usage:
+  eval-quality aggregate-strength --evidence <path> [--evidence <path> ...] --floors <path>
+                                  --policy <path> [--out <target>] [--strict]
+
+  --evidence <path>        a per-probe evidence artifact of one run; repeat for each probe
+  --floors <path>          the declared catch-rate floor per class, a JSON object keyed by
+                           defect, gameability and zero-action; {} declares none
+  --policy <path>          the scoring policy the run was scored under; every evidence artifact
+                           is verified against it
+  --out <target>           a .json file path, or a directory taking strength-aggregate.json
+  --strict                 accepted on every command; this one produces no verdict, so it changes nothing`,
 }
 
 const IO_RULES = `Inputs and outputs:
@@ -201,9 +237,10 @@ const IO_RULES = `Inputs and outputs:
   one input may be "-" per invocation. compile and seal each take one input;
   preflight takes three, all required; score takes eight, three of them
   optional (--isolation-manifest, --evaluator-configuration, and
-  --private-manifest), and --record may repeat. Without --out the artifact goes to stdout. An --out
-  ending in .json is a file path; anything else is a directory taking
-  <target>/<kind>.json. Diagnostics and errors go to stderr.`
+  --private-manifest), and --record may repeat; aggregate-strength takes three,
+  all required, and --evidence may repeat. Without --out the artifact goes to
+  stdout. An --out ending in .json is a file path; anything else is a
+  directory taking <target>/<kind>.json. Diagnostics and errors go to stderr.`
 
 export function helpText(command: Command | null): string {
 	if (command === null) {
@@ -223,12 +260,22 @@ async function readJson(
 ): Promise<unknown> {
 	const text = await environment.readInput(sourceOf(value))
 	try {
-		return JSON.parse(text) as unknown
+		const parsed = JSON.parse(text) as unknown
+		// `JSON.parse` keeps the last of two equal keys, so a floor or an artifact
+		// could be edited without leaving a trace in what the command reads. The
+		// inputs `aggregate-strength` reads are scanned lexically as well (AD-36),
+		// which refuses a duplicate key with `non-canonicalizable-value`.
+		return LEXICALLY_SCANNED_INPUTS.has(key)
+			? scanJson(text, INPUT_ARTIFACT_PATH[key])
+			: parsed
 	} catch (error) {
+		if (error instanceof RuntimeFault) throw error
 		// AD-28's `schema-parse-failure` covers an artifact that does not parse,
 		// and the CLI is the boundary that deserializes.
 		const recordSource =
-			key === 'record' && value !== undefined ? ` ${JSON.stringify(value)}` : ''
+			(key === 'record' || key === 'evidence') && value !== undefined
+				? ` ${JSON.stringify(value)}`
+				: ''
 		throw new RuntimeFault(
 			'schema-parse-failure',
 			INPUT_ARTIFACT_PATH[key],
@@ -287,7 +334,8 @@ async function emitArtifact(
 		| EvalContract
 		| SealedEvaluatorBrief
 		| PreflightVerdict
-		| EvidenceArtifact,
+		| EvidenceArtifact
+		| StrengthAggregate,
 	command: Command,
 	target: string | null,
 ): Promise<void> {
@@ -335,12 +383,19 @@ async function runCommand(
 	}
 
 	try {
-		// Exhaustive over `Command`, not a fallthrough: a fifth command with no
+		// Exhaustive over `Command`, not a fallthrough: a sixth command with no
 		// case here is a compile error ("not all code paths return a value"),
 		// never a silent seal. `compile` and `seal` share one case body, and the
 		// ternary inside it is itself exhaustive over the narrowed two-member
 		// union the shared case leaves `command` as.
 		switch (command) {
+			case 'aggregate-strength':
+				return await runAggregateCommand(
+					invocation,
+					environment,
+					application,
+					target,
+				)
 			case 'preflight': {
 				const verdict = await runPreflightCommand(
 					invocation,
@@ -373,7 +428,12 @@ async function runCommand(
 			}
 		}
 	} catch (error) {
-		if (error instanceof StructuralFailure) {
+		// A refused aggregation takes the structural-failure code: the inputs
+		// disagree or contradict themselves, and no verdict was produced.
+		if (
+			error instanceof StructuralFailure ||
+			error instanceof AggregationRefusal
+		) {
 			environment.writeDiagnostic(renderError(error))
 			return { outcome: { kind: 'structural-failure' } }
 		}
@@ -385,6 +445,44 @@ async function runCommand(
 		// takes exit 5 for it.
 		throw error
 	}
+}
+
+async function runAggregateCommand(
+	invocation: Extract<ParsedInvocation, { kind: 'run' }>,
+	environment: RunEnvironment,
+	application: ApplicationFacade,
+	target: string | null,
+): Promise<RunResult> {
+	const { inputs } = invocation
+	// One at a time, so when several files are unreadable the fault names the
+	// first in the order the flags were given.
+	const evidence: EvidenceInput[] = []
+	for (const source of inputs.evidence ?? []) {
+		evidence.push(
+			(await readJson(environment, 'evidence', source)) as EvidenceInput,
+		)
+	}
+	const floors = (await readJson(
+		environment,
+		'floors',
+		inputs.floors,
+	)) as FloorsInput
+	const policy = (await readJson(
+		environment,
+		'policy',
+		inputs.policy,
+	)) as AggregatePolicyInput
+	// The aggregate records the decision against each floor and the command
+	// exits 0 whatever it is: AD-21 reserves 1 and 2 for the verdict ladder,
+	// and a floor is the adopter's policy over a measurement. A refused set
+	// exits 4.
+	const aggregate = application.aggregateStrength({
+		evidence,
+		floors,
+		policy,
+	})
+	await emitArtifact(environment, aggregate, 'aggregate-strength', target)
+	return { outcome: { kind: 'artifact' } }
 }
 
 async function runPreflightCommand(

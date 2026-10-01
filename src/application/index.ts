@@ -10,6 +10,9 @@ export {
 	digestBytes,
 	digestComposite,
 } from '../core/canonical/digest.ts'
+// The lexical reader AD-36 puts in front of every hashed artifact: it refuses
+// what `JSON.parse` hides, a duplicate object key above all.
+export { scanJson } from '../core/canonical/scan-json.ts'
 // The seven discipline-rule identifiers, the spellings a coverage gap and a
 // waiver carry in `rule`.
 export type { DisciplineRule } from '../core/coverage/rules.ts'
@@ -32,8 +35,16 @@ export type {
 export { resolveCheck } from '../core/evaluate/resolution.ts'
 export type { ResolvedValue } from '../core/evaluate/resolved-value.ts'
 export { ABSENT } from '../core/evaluate/resolved-value.ts'
-export type { FailureCode } from '../core/failure-codes.ts'
-export { FAILURE_CODES, StructuralFailure } from '../core/failure-codes.ts'
+export type {
+	AggregationRefusalCode,
+	FailureCode,
+} from '../core/failure-codes.ts'
+export {
+	AGGREGATION_REFUSAL_CODES,
+	AggregationRefusal,
+	FAILURE_CODES,
+	StructuralFailure,
+} from '../core/failure-codes.ts'
 export type {
 	LineageChainReport,
 	LineageFinding,
@@ -105,6 +116,8 @@ export {
 	DOMINANCE_RELATIONS,
 } from '../core/score/strength.ts'
 export type { PlanIndex } from '../core/seal/plan-index.ts'
+export type { AggregateStrengthOptions } from './aggregate-strength.ts'
+export { aggregateStrength } from './aggregate-strength.ts'
 export { compile } from './compile.ts'
 export type { Diagnostic, DiagnosticSink } from './diagnostics.ts'
 export type {

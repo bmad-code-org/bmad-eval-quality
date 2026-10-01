@@ -19,6 +19,10 @@ import type { Probe } from './schemas/probe.ts'
 import type { ScoringPolicy } from './schemas/scoring-policy.ts'
 import type { SealedEvaluatorBrief } from './schemas/sealed-evaluator-brief.ts'
 import type { SealedRunRecord } from './schemas/sealed-run-record.ts'
+import type {
+	StrengthAggregate,
+	StrengthFloors,
+} from './schemas/strength-aggregate.ts'
 import type { WaiverStateValue } from './score/outcome.ts'
 
 /** The core compile stage's one runtime option. Core behavior never depends on an implicit configuration source (AD-1), so this is required; `application/compile.ts` is the only caller that supplies a default. */
@@ -121,3 +125,18 @@ export type EmitStage<Input> = (
 	fixtureDigest: string,
 	evaluatorConfigurationDigest: string,
 ) => EvidenceArtifact
+
+/**
+ * The aggregate stage: `STAGE_SIGNATURES.aggregate` declares two artifact
+ * inputs, the evidence artifact (read once per probe of a run) and the scoring
+ * policy the run was scored under, which every input is verified against, plus
+ * one value input: the adopter's declared per-class floors, which no artifact
+ * carries. The engine version it records is the package's own constant.
+ * Everything is concrete, since no cycle opens: this file already imports
+ * `EvidenceArtifact`.
+ */
+export type AggregateStage = (
+	evidence: readonly EvidenceArtifact[],
+	floors: StrengthFloors,
+	policy: ScoringPolicy,
+) => StrengthAggregate

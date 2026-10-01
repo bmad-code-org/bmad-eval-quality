@@ -1477,7 +1477,8 @@ describe('the conjuncts the fixture set cannot reach', () => {
 // evidence condition, eight of the twelve. `emit.ts` reads that same
 // `unreached` evidence condition, per Story 8.3's own Boundaries, to mark
 // `strength.comparable` false -- the identical "classify, never assign"
-// reading `ladder.ts` already has for the same state. None becomes a second
+// reading `ladder.ts` already has for the same state. The strength aggregation
+// reads the same state back off a stored artifact to verify that flag. None becomes a second
 // assigner: each only classifies or compares a state `resolveOutcome`
 // already assigned.
 const ALWAYS_NAMED = [
@@ -1499,6 +1500,14 @@ const LADDER_NAMED_STATES = [
 
 const EMIT_NAMED_STATES = ['unreached']
 
+// The aggregation also names the two states only a clean control resolves, to
+// refuse a class vector on an artifact whose outcomes are a control's.
+const AGGREGATE_NAMED_STATES = [
+	'unreached',
+	'passed-clean-control',
+	'false-positive',
+]
+
 const expectedNamingFilesFor = (state: string): readonly string[] =>
 	[
 		...ALWAYS_NAMED,
@@ -1506,6 +1515,9 @@ const expectedNamingFilesFor = (state: string): readonly string[] =>
 			? ['src/core/score/ladder.ts']
 			: []),
 		...(EMIT_NAMED_STATES.includes(state) ? ['src/core/emit/emit.ts'] : []),
+		...(AGGREGATE_NAMED_STATES.includes(state)
+			? ['src/core/aggregate/aggregate-strength.ts']
+			: []),
 	]
 		.slice()
 		.sort()

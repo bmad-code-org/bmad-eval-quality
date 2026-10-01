@@ -1,0 +1,447 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:eval-quality:schema:strength-aggregate",
+  "type": "object",
+  "properties": {
+    "schemaVersion": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9007199254740991,
+      "description": "AD-11 requires an integer under this exact name. Deliberately not `z.literal(1)`: the literal exports as `{\"type\":\"number\",\"const\":1}`, losing `integer` for a non-TypeScript consumer, and it would turn a version-2 artifact into an anonymous schema-parse failure instead of AD-28's dedicated `schema-version-mismatch` fault. Version equality belongs to the reader that throws that fault."
+    },
+    "parentDigest": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "description": "AD-27 digest: \"sha256:\" plus 64 lowercase hexadecimal characters."
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "AD-29 lineage. `null` if and only if `revisionCount` is 0. That biconditional is stated here rather than refined: a refinement is silently dropped from the published schema, so a non-TypeScript consumer would never see it, and the constraint ledger records it as not expressible."
+    },
+    "revisionCount": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991,
+      "description": "AD-29: one greater than the parent artifact's."
+    },
+    "engineVersion": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The package version that read the artifacts and produced this aggregate, read from the package's own generated constant and never supplied by a caller. An evidence artifact records no engine version, so this is the one version the aggregate can bind: the release that decided every class decision below. Replaying the same artifacts, policy and floors under the same release reproduces this document byte for byte."
+    },
+    "mode": {
+      "type": "string",
+      "enum": [
+        "production",
+        "contract-scoring"
+      ],
+      "description": "The run mode every input artifact was scored under. Inputs of two modes are refused, since the mode is one of the six scoring-version inputs."
+    },
+    "scoringVersion": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "description": "The scoring version every input artifact carries. Inputs that differ in it are refused, so the aggregate speaks for one corpus digest, one fixture digest, one evaluator configuration digest, one scoring policy digest and one mode."
+    },
+    "scoringPolicyDigest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "description": "The AD-27 digest of the scoring policy the caller supplied. Every input artifact states the same digest as its own scoring policy digest, and an input scored under another policy is refused."
+    },
+    "comparabilityKey": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "description": "AD-7's key, computed the way `emit` computes it: over the scoring policy digest and the sorted identifiers of every probe aggregated, controls and canaries included. Two aggregates with equal keys covered the same probes under the same policy. It is not the key an input artifact carries, since each input covers one probe."
+    },
+    "basis": {
+      "type": "string",
+      "enum": [
+        "measured",
+        "reconstructed"
+      ],
+      "description": "The evidence basis every input carries. AD-40 forbids pooling a containment-reconstructed detection with a measured catch rate, so inputs of both bases are refused."
+    },
+    "minimumTrialCount": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9007199254740991,
+      "description": "The supplied scoring policy's `minimumTrialCount`. Every input's `trials.declaredMinimum` and every reduction's `catchThreshold` is verified against the policy, and an input that differs is refused. A class below the minimum is non-comparable."
+    },
+    "callerAttestedInputs": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "contractSchemaVersion",
+          "corpusDigest",
+          "fixtureDigest",
+          "evaluatorConfigurationDigest",
+          "scoringPolicyDigest",
+          "mode"
+        ]
+      },
+      "description": "Which of the six scoring-version inputs the caller attested, carried from the input artifacts and sorted. AD-32 requires an artifact to state which inputs were attested rather than computed by this package, and inputs that attested different sets are refused, so the one list holds for every artifact the aggregate read."
+    },
+    "aggregateAttestedInputs": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "evidenceSetCompleteness",
+          "probeClass"
+        ]
+      },
+      "description": "What the aggregation takes on trust and cannot verify, stated per AD-32. `probeClass`: an evidence artifact carries no probe class, so each input's class is read off its own strength vector, which no check authenticates. `evidenceSetCompleteness`: nothing in an artifact says which probes the run had, so the aggregate speaks for the artifacts it was handed. The recorded artifact digests are what a caller compares against what it kept at scoring time."
+    },
+    "inputs": {
+      "minItems": 1,
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "probeId": {
+            "type": "string",
+            "pattern": "^P-[0-9]{3,}$"
+          },
+          "probeClass": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "defect",
+                  "gameability",
+                  "zero-action"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The class this probe counts toward, read off the strength vector its own artifact carries, or `null` for a clean control or canary, which stays outside every class denominator."
+          },
+          "runId": {
+            "type": "string",
+            "minLength": 1,
+            "description": "The run identifier of this probe's own trial set. Each probe is scored as its own trial set, so these differ across inputs and are only recorded."
+          },
+          "artifactDigest": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$",
+            "description": "The AD-27 digest of the evidence artifact this entry read, over its canonical form. A consumer that kept each artifact's digest when it scored the probe compares them to the set recorded here, so a substituted, dropped, or added artifact changes the aggregate it is compared against."
+          }
+        },
+        "required": [
+          "probeId",
+          "probeClass",
+          "runId",
+          "artifactDigest"
+        ],
+        "additionalProperties": false
+      },
+      "description": "One entry per aggregated evidence artifact, sorted by `probeId`, so the order the artifacts were presented in never enters the bytes. Probe identifiers are unique."
+    },
+    "classes": {
+      "type": "object",
+      "properties": {
+        "defect": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "caught": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "exercised": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "rate": {
+                  "anyOf": [
+                    {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 1
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "Nullable because `exercised` may be zero and a rate over an empty denominator is undefined rather than zero. There is no separate `rawCounts` block: AD-7 wants raw counts recorded alongside the rate so a consumer can recompute, and this entry already carries both; a second copy is one more thing to disagree with itself. That `rate` equals `caught` over `exercised` is a cross-field rule with no AD-5 code and is left to the scorer."
+                },
+                "eligible": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 9007199254740991,
+                  "description": "The distinct qualified probes of this class across the aggregated artifacts: the denominator before exercise. Clean controls and canaries are not counted, whatever class they declare. A class with no eligible probe is `null` in `classes`."
+                },
+                "comparable": {
+                  "type": "boolean",
+                  "description": "True only when every eligible probe's own artifact is comparable: its trial set reached the scoring policy's `minimumTrialCount` and none of its oracles resolved `unreached`. One probe below the minimum makes the whole class non-comparable."
+                }
+              },
+              "required": [
+                "caught",
+                "exercised",
+                "rate",
+                "eligible",
+                "comparable"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "gameability": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "caught": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "exercised": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "rate": {
+                  "anyOf": [
+                    {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 1
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "Nullable because `exercised` may be zero and a rate over an empty denominator is undefined rather than zero. There is no separate `rawCounts` block: AD-7 wants raw counts recorded alongside the rate so a consumer can recompute, and this entry already carries both; a second copy is one more thing to disagree with itself. That `rate` equals `caught` over `exercised` is a cross-field rule with no AD-5 code and is left to the scorer."
+                },
+                "eligible": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 9007199254740991,
+                  "description": "The distinct qualified probes of this class across the aggregated artifacts: the denominator before exercise. Clean controls and canaries are not counted, whatever class they declare. A class with no eligible probe is `null` in `classes`."
+                },
+                "comparable": {
+                  "type": "boolean",
+                  "description": "True only when every eligible probe's own artifact is comparable: its trial set reached the scoring policy's `minimumTrialCount` and none of its oracles resolved `unreached`. One probe below the minimum makes the whole class non-comparable."
+                }
+              },
+              "required": [
+                "caught",
+                "exercised",
+                "rate",
+                "eligible",
+                "comparable"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "zero-action": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "caught": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "exercised": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "rate": {
+                  "anyOf": [
+                    {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 1
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "Nullable because `exercised` may be zero and a rate over an empty denominator is undefined rather than zero. There is no separate `rawCounts` block: AD-7 wants raw counts recorded alongside the rate so a consumer can recompute, and this entry already carries both; a second copy is one more thing to disagree with itself. That `rate` equals `caught` over `exercised` is a cross-field rule with no AD-5 code and is left to the scorer."
+                },
+                "eligible": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 9007199254740991,
+                  "description": "The distinct qualified probes of this class across the aggregated artifacts: the denominator before exercise. Clean controls and canaries are not counted, whatever class they declare. A class with no eligible probe is `null` in `classes`."
+                },
+                "comparable": {
+                  "type": "boolean",
+                  "description": "True only when every eligible probe's own artifact is comparable: its trial set reached the scoring policy's `minimumTrialCount` and none of its oracles resolved `unreached`. One probe below the minimum makes the whole class non-comparable."
+                }
+              },
+              "required": [
+                "caught",
+                "exercised",
+                "rate",
+                "eligible",
+                "comparable"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "defect",
+        "gameability",
+        "zero-action"
+      ],
+      "additionalProperties": false,
+      "description": "Per class, the distinct qualified probes (`eligible`), how many the evaluator exercised, how many of those resolved `caught`, and the rate between them, computed by the same function that builds a single artifact's strength vector. `null` when no eligible probe belongs to the class. A present entry whose `rate` is `null` has eligible probes and no exercised one. `eligible` equals the number of `inputs` whose `probeClass` is the class, and `rate` equals `caught` over `exercised`; both are cross-field rules with no published expression and are left to the producer."
+    },
+    "floorDecisions": {
+      "type": "object",
+      "properties": {
+        "defect": {
+          "$ref": "#/$defs/FloorDecision"
+        },
+        "gameability": {
+          "$ref": "#/$defs/FloorDecision"
+        },
+        "zero-action": {
+          "$ref": "#/$defs/FloorDecision"
+        }
+      },
+      "required": [
+        "defect",
+        "gameability",
+        "zero-action"
+      ],
+      "additionalProperties": false,
+      "description": "The decision against each class's declared floor. Present for every class, so a class the adopter declared no floor for reads `undeclared`."
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "parentDigest",
+    "revisionCount",
+    "engineVersion",
+    "mode",
+    "scoringVersion",
+    "scoringPolicyDigest",
+    "comparabilityKey",
+    "basis",
+    "minimumTrialCount",
+    "callerAttestedInputs",
+    "aggregateAttestedInputs",
+    "inputs",
+    "classes",
+    "floorDecisions"
+  ],
+  "additionalProperties": false,
+  "description": "The run-wide strength of the qualified probes of one run, owned by the `aggregate` stage, with no prior art. `score` covers one probe per call, so the strength vector in one evidence artifact describes that probe alone and a class floor cannot be applied to a run from those artifacts. This artifact reads every per-probe evidence artifact of the run, verifies each against itself and against the others, and reports per class the distinct qualified probe denominator, the exercised and caught counts, the rate, comparability, and the decision against the declared floor. It records the engine version and the digest of every artifact it read, so a mismatched or missing aggregate is detectable and replaying the same inputs reproduces it byte for byte. Mixed or inconsistent inputs are refused and no aggregate is minted.",
+  "$defs": {
+    "FloorDecision": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "floor": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1,
+              "description": "The floor the adopter declared for this class, copied as given."
+            },
+            "decision": {
+              "type": "string",
+              "const": "meets"
+            },
+            "basis": {
+              "type": "string",
+              "const": "rate-meets-floor"
+            }
+          },
+          "required": [
+            "floor",
+            "decision",
+            "basis"
+          ],
+          "additionalProperties": false,
+          "description": "A comparable class in which every eligible probe was exercised and whose rate is at or above the declared floor."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "floor": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1,
+              "description": "The floor the adopter declared for this class, copied as given."
+            },
+            "decision": {
+              "type": "string",
+              "const": "does-not-meet"
+            },
+            "basis": {
+              "type": "string",
+              "enum": [
+                "no-eligible-probe",
+                "not-comparable",
+                "no-exercised-probe",
+                "unexercised-probe",
+                "rate-below-floor"
+              ]
+            }
+          },
+          "required": [
+            "floor",
+            "decision",
+            "basis"
+          ],
+          "additionalProperties": false,
+          "description": "A declared floor the class misses: no eligible probe, a non-comparable class, no exercised probe, an eligible probe the evaluator never exercised, or a comparable rate below the floor. A floor nothing was measured against is never a pass."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "floor": {
+              "type": "null",
+              "description": "`null`: the adopter declared no floor for this class."
+            },
+            "decision": {
+              "type": "string",
+              "const": "undeclared"
+            },
+            "basis": {
+              "type": "string",
+              "const": "no-floor-declared"
+            }
+          },
+          "required": [
+            "floor",
+            "decision",
+            "basis"
+          ],
+          "additionalProperties": false,
+          "description": "No floor was declared; neither a pass nor a failure."
+        }
+      ],
+      "description": "The decision against one class's declared floor, with the reason for it. The decision is the engine's own: a caller copies it and never recomputes a verdict from the rate."
+    }
+  }
+}

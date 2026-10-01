@@ -121,7 +121,7 @@ const computeSweep = (
 }
 
 describe('the occurrence walk descends, so the sweep cannot pass hollow', () => {
-	it('finds the full census across the twelve documents', () => {
+	it('finds the full census across the thirteen documents', () => {
 		const byDocument: Record<string, number> = {}
 		const byKeyword: Record<string, number> = {}
 		let total = 0

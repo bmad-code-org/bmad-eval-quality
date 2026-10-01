@@ -12,6 +12,7 @@ import { Rubric } from './rubric.ts'
 import { ScoringPolicy } from './scoring-policy.ts'
 import { SealedEvaluatorBrief } from './sealed-evaluator-brief.ts'
 import { SealedRunRecord } from './sealed-run-record.ts'
+import { StrengthAggregate } from './strength-aggregate.ts'
 
 /**
  * The phrase an artifact with no predecessor uses in its own description, per
@@ -29,12 +30,12 @@ type InterchangeArtifactEntry = {
 }
 
 /**
- * The Structural Seed's inventory, closed at twelve, held as data: the
+ * The Structural Seed's inventory, thirteen artifacts, held as data: the
  * prior-art test, the constraint ledger's lineage-entry generation, and the
  * published-schema export walk all read it instead of a second hard-coded
  * list.
  *
- * Lineage fields live in `lineage.ts`, not here, because eleven of the twelve
+ * Lineage fields live in `lineage.ts`, not here, because twelve of the thirteen
  * schema modules import them (every entry but `artifact-reference`, the one
  * with `carriesLineage: false`); importing this registry back from any of
  * those would close a circular import.
@@ -89,6 +90,11 @@ export const INTERCHANGE_ARTIFACTS = {
 	},
 	'evidence-artifact': {
 		schema: EvidenceArtifact,
+		priorArt: null,
+		carriesLineage: true,
+	},
+	'strength-aggregate': {
+		schema: StrengthAggregate,
 		priorArt: null,
 		carriesLineage: true,
 	},

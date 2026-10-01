@@ -1515,6 +1515,143 @@ export const ARTIFACT_REJECT_CASES: readonly ArtifactRejectCase[] = [
 		instancePath: '/uncitedFindingGaps/0/quotedEvidence',
 	},
 
+	// ---- strength-aggregate -------------------------------------------------
+	{
+		id: 'aggregate-rate-above-one',
+		artifact: 'strength-aggregate',
+		constraint: 'a class rate is the closed unit interval or explicit null',
+		mutate: (aggregate) => {
+			aggregate.classes.defect.rate = 1.4
+		},
+		issuePath: ['classes', 'defect', 'rate'],
+		issueCode: 'too_big',
+		keyword: 'maximum',
+		instancePath: '/classes/defect/rate',
+	},
+	{
+		id: 'aggregate-eligible-zero',
+		artifact: 'strength-aggregate',
+		constraint: 'a class with no eligible probe is null',
+		mutate: (aggregate) => {
+			aggregate.classes.defect.eligible = 0
+		},
+		issuePath: ['classes', 'defect', 'eligible'],
+		issueCode: 'too_small',
+		keyword: 'minimum',
+		instancePath: '/classes/defect/eligible',
+	},
+	{
+		id: 'aggregate-floor-above-one',
+		artifact: 'strength-aggregate',
+		constraint: 'a declared floor is a rate on the closed unit interval',
+		mutate: (aggregate) => {
+			aggregate.floorDecisions.defect.floor = 1.5
+		},
+		issuePath: ['floorDecisions', 'defect', 'floor'],
+		issueCode: 'too_big',
+		keyword: 'maximum',
+		instancePath: '/floorDecisions/defect/floor',
+	},
+	{
+		id: 'aggregate-decision-outside-the-three',
+		artifact: 'strength-aggregate',
+		constraint: 'a floor decision is meets, does-not-meet, or undeclared',
+		mutate: (aggregate) => {
+			aggregate.floorDecisions.defect.decision = 'passes'
+		},
+		issuePath: ['floorDecisions', 'defect', 'decision'],
+		issueCode: 'invalid_union',
+		keyword: 'const',
+		instancePath: '/floorDecisions/defect/decision',
+	},
+	{
+		id: 'aggregate-meets-with-a-missing-reason',
+		artifact: 'strength-aggregate',
+		constraint: 'a met floor carries the one reason a floor is met',
+		mutate: (aggregate) => {
+			aggregate.floorDecisions.defect.basis = 'rate-below-floor'
+		},
+		issuePath: ['floorDecisions', 'defect', 'basis'],
+		issueCode: 'invalid_value',
+		keyword: 'const',
+		instancePath: '/floorDecisions/defect/basis',
+	},
+	{
+		id: 'aggregate-missed-floor-with-the-met-reason',
+		artifact: 'strength-aggregate',
+		constraint:
+			'a missed floor names one of the four reasons a declared floor is missed',
+		mutate: (aggregate) => {
+			aggregate.floorDecisions.defect.decision = 'does-not-meet'
+		},
+		issuePath: ['floorDecisions', 'defect', 'basis'],
+		issueCode: 'invalid_value',
+		keyword: 'enum',
+		instancePath: '/floorDecisions/defect/basis',
+	},
+	{
+		id: 'aggregate-undeclared-with-a-floor',
+		artifact: 'strength-aggregate',
+		constraint: 'an undeclared floor is null',
+		mutate: (aggregate) => {
+			aggregate.floorDecisions.gameability.floor = 0.5
+		},
+		issuePath: ['floorDecisions', 'gameability', 'floor'],
+		issueCode: 'invalid_type',
+		keyword: 'type',
+		instancePath: '/floorDecisions/gameability/floor',
+	},
+	{
+		id: 'aggregate-inputs-empty',
+		artifact: 'strength-aggregate',
+		constraint: 'an aggregate that read no artifact states nothing',
+		mutate: (aggregate) => {
+			aggregate.inputs = []
+		},
+		issuePath: ['inputs'],
+		issueCode: 'too_small',
+		keyword: 'minItems',
+		instancePath: '/inputs',
+	},
+	{
+		id: 'aggregate-input-class-outside-the-three',
+		artifact: 'strength-aggregate',
+		constraint:
+			'an input counts toward defect, gameability, zero-action, or no class: a canary is no class',
+		mutate: (aggregate) => {
+			aggregate.inputs[0].probeClass = 'canary'
+		},
+		issuePath: ['inputs', 0, 'probeClass'],
+		issueCode: 'invalid_value',
+		keyword: 'anyOf',
+		instancePath: '/inputs/0/probeClass',
+	},
+	{
+		id: 'aggregate-class-key-outside-the-three',
+		artifact: 'strength-aggregate',
+		constraint: 'the class map has no key for a canary or a clean control',
+		mutate: (aggregate) => {
+			aggregate.classes.canary = null
+		},
+		issuePath: ['classes'],
+		issueCode: 'unrecognized_keys',
+		keyword: 'additionalProperties',
+		instancePath: '/classes',
+		errorParams: { additionalProperty: 'canary' },
+	},
+	{
+		id: 'aggregate-input-digest-malformed',
+		artifact: 'strength-aggregate',
+		constraint: 'an input digest is AD-27 rendered form',
+		mutate: (aggregate) => {
+			aggregate.inputs[0].artifactDigest = 'sha1:abc'
+		},
+		issuePath: ['inputs', 0, 'artifactDigest'],
+		issueCode: 'invalid_format',
+		keyword: 'pattern',
+		instancePath: '/inputs/0/artifactDigest',
+	},
+
 	// ---- sealed-evaluator-brief --------------------------------------------
 	{
 		id: 'brief-behaviors-empty',

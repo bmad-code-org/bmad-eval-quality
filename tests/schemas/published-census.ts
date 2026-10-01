@@ -30,29 +30,30 @@ export const CENSUS_BY_DOCUMENT: Readonly<Record<string, number>> = {
 	'scoring-policy': 35,
 	'sealed-evaluator-brief': 102,
 	'sealed-run-record': 384,
+	'strength-aggregate': 147,
 }
 
 /** The same occurrences counted by keyword instead of by document. */
 export const CENSUS_BY_KEYWORD: Readonly<Record<string, number>> = {
-	additionalProperties: 345,
-	anyOf: 161,
-	const: 110,
-	enum: 81,
+	additionalProperties: 355,
+	anyOf: 169,
+	const: 115,
+	enum: 87,
 	exclusiveMinimum: 2,
 	format: 1,
-	items: 167,
+	items: 170,
 	maxItems: 4,
-	maximum: 122,
-	minItems: 43,
-	minLength: 141,
+	maximum: 139,
+	minItems: 44,
+	minLength: 143,
 	minProperties: 2,
-	minimum: 123,
-	oneOf: 27,
-	pattern: 198,
+	minimum: 140,
+	oneOf: 28,
+	pattern: 204,
 	prefixItems: 24,
 	propertyNames: 69,
-	required: 276,
-	type: 1456,
+	required: 286,
+	type: 1517,
 }
 
 /**
@@ -61,7 +62,7 @@ export const CENSUS_BY_KEYWORD: Readonly<Record<string, number>> = {
  * keyword's descent being removed, and the total catches an arithmetic slip in
  * either.
  */
-export const CENSUS_TOTAL = 3352
+export const CENSUS_TOTAL = 3499
 
 /** Named `$defs` keys per published document. */
 export const DEFS_BY_DOCUMENT: Readonly<Record<string, number>> = {
@@ -77,6 +78,7 @@ export const DEFS_BY_DOCUMENT: Readonly<Record<string, number>> = {
 	'scoring-policy': 0,
 	'sealed-evaluator-brief': 0,
 	'sealed-run-record': 4,
+	'strength-aggregate': 1,
 }
 
 /**
@@ -87,8 +89,8 @@ export const DEFS_BY_DOCUMENT: Readonly<Record<string, number>> = {
  */
 export const REJECT_CASE_COUNTS = {
 	contract: 55,
-	artifact: 111,
-	total: 166,
+	artifact: 122,
+	total: 177,
 } as const
 
 /**
@@ -98,12 +100,12 @@ export const REJECT_CASE_COUNTS = {
  * collapsing into an alias of another shows up.
  */
 export const ACCEPT_FIXTURE_COUNTS = {
-	accepts: 12,
+	accepts: 13,
 	probeClasses: 4,
 	qualificationRoutes: 5,
 	unionBranches: 11,
 	relevanceContracts: 3,
-	distinctInstances: 25,
+	distinctInstances: 26,
 } as const
 
 export const ACCEPT_FIXTURE_TOTAL =
@@ -116,6 +118,6 @@ export const ACCEPT_FIXTURE_TOTAL =
 /** The constraint ledger's two dispositions, and the lineage carriers it derives from. */
 export const LEDGER_COUNTS = {
 	inject: 26,
-	notExpressible: 19,
-	lineageCarriers: 11,
+	notExpressible: 20,
+	lineageCarriers: 12,
 } as const

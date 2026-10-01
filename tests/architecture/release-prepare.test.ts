@@ -177,7 +177,7 @@ function fixture({ pinned = true }: { pinned?: boolean } = {}): Fixture {
 	git(work, env, 'config', 'user.email', 'release-prepare@example.invalid')
 	git(work, env, 'remote', 'add', 'origin', origin)
 
-	mkdirSync(join(work, 'src'))
+	mkdirSync(join(work, 'src/core'), { recursive: true })
 	const manifest = { name: PACKAGE, version: CURRENT }
 	writeFileSync(
 		join(work, 'package.json'),
@@ -199,6 +199,10 @@ function fixture({ pinned = true }: { pinned?: boolean } = {}): Fixture {
 	writeFileSync(
 		join(work, 'src/index.ts'),
 		`export const VERSION = '${CURRENT}'\n`,
+	)
+	writeFileSync(
+		join(work, 'src/core/version.ts'),
+		`export const ENGINE_VERSION = '${CURRENT}'\n`,
 	)
 	writeFileSync(join(work, 'CHANGELOG.md'), CHANGELOG)
 	writeDocClaims(work, pinned)
@@ -286,6 +290,7 @@ const STAMPED_FILES = [
 	'CHANGELOG.md',
 	'package-lock.json',
 	'package.json',
+	'src/core/version.ts',
 	'src/index.ts',
 ]
 

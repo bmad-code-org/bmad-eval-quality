@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-// Cuts a release: bumps the version, stamps `src/index.ts` and CHANGELOG.md, commits, pushes.
+// Cuts a release: bumps the version, stamps `VERSION` in `src/index.ts`, `ENGINE_VERSION` in
+// `src/core/version.ts` and CHANGELOG.md, commits, pushes.
 //
 // Two modes, one commit shape.
 //
@@ -215,7 +216,13 @@ function generateBarrelVersion() {
 const GATES_CLI = fileURLToPath(new URL('./gates-cli.ts', import.meta.url))
 
 // The files the bump and the two stamps write, and the release commit carries.
-const STAMPED = ['package.json', 'package-lock.json', 'CHANGELOG.md', BARREL]
+const STAMPED = [
+	'package.json',
+	'package-lock.json',
+	'CHANGELOG.md',
+	BARREL,
+	'src/core/version.ts',
+]
 
 /**
  * The one gate whose answer depends on the manifest version and can change with the bump. publish.yml
