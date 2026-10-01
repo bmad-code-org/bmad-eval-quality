@@ -48,6 +48,18 @@ export const FORBIDDEN_TARGET_REASONS = [
 
 export type ForbiddenTargetReason = (typeof FORBIDDEN_TARGET_REASONS)[number]
 
+/**
+ * What kind of failure a `port-failure` was, when the adapter can say more
+ * than the generic code does, carried as `portFailureReason`. `launch-too-large`
+ * is a launch the operating system refused for the size of its arguments and
+ * environment (`E2BIG`), which a caller tells apart from a target that could
+ * not start (`ENOENT`, `EACCES`) without reading the `cause`. Every other
+ * `port-failure` carries none.
+ */
+export const PORT_FAILURE_REASONS = ['launch-too-large'] as const
+
+export type PortFailureReason = (typeof PORT_FAILURE_REASONS)[number]
+
 export class RuntimeFault extends Error {
 	readonly code: RuntimeFaultCode
 	readonly artifactPath: string
@@ -58,12 +70,25 @@ export class RuntimeFault extends Error {
 	 * signature accepts it, so no other code can carry one.
 	 */
 	readonly reason: ForbiddenTargetReason | undefined
+	/**
+	 * What kind of failure a `port-failure` was, on a fault an adapter
+	 * classified, so a caller records it without parsing the message or reading
+	 * the `cause`. `undefined` on every other fault: only the `port-failure`
+	 * constructor signature accepts it, so no other code can carry one.
+	 */
+	readonly portFailureReason: PortFailureReason | undefined
 
 	constructor(
 		code: 'forbidden-target',
 		artifactPath: string,
 		detail: string,
 		options?: { cause?: unknown; reason?: ForbiddenTargetReason },
+	)
+	constructor(
+		code: 'port-failure',
+		artifactPath: string,
+		detail: string,
+		options?: { cause?: unknown; portFailureReason?: PortFailureReason },
 	)
 	constructor(
 		code: RuntimeFaultCode,
@@ -75,7 +100,11 @@ export class RuntimeFault extends Error {
 		code: RuntimeFaultCode,
 		artifactPath: string,
 		detail: string,
-		options?: { cause?: unknown; reason?: ForbiddenTargetReason },
+		options?: {
+			cause?: unknown
+			reason?: ForbiddenTargetReason
+			portFailureReason?: PortFailureReason
+		},
 	) {
 		super(`${code} in ${artifactPath}: ${detail}`, options)
 		this.name = 'RuntimeFault'
@@ -84,5 +113,12 @@ export class RuntimeFault extends Error {
 		// Guarded at run time too: an options variable holding a reason passes the
 		// general signature, since excess-property checks apply to literals only.
 		this.reason = code === 'forbidden-target' ? options?.reason : undefined
+		const portFailureReason = options?.portFailureReason
+		this.portFailureReason =
+			code === 'port-failure' &&
+			portFailureReason !== undefined &&
+			(PORT_FAILURE_REASONS as readonly string[]).includes(portFailureReason)
+				? portFailureReason
+				: undefined
 	}
 }

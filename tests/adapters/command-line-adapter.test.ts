@@ -18,6 +18,7 @@ import {
 	createCommandLineAdapter,
 	nodeCommandMechanism,
 } from '../../src/adapters/command-line-adapter.ts'
+import { RuntimeFault } from '../../src/core/schemas/faults.ts'
 import type {
 	CommandProbeRequest,
 	ProbeRequest,
@@ -1358,6 +1359,242 @@ describe.skipIf(process.platform === 'win32')(
 				expect(alive(grandchild)).toBe(true)
 			} finally {
 				process.kill(grandchild, 'SIGKILL')
+			}
+		})
+	},
+)
+
+// A launch the operating system refuses for its size, as Node reports it:
+// `code` E2BIG. Four megabytes in one string passes neither the 1 MiB total
+// ARG_MAX of macOS nor the 128 KiB per-string MAX_ARG_STRLEN of Linux, so the
+// real cases below fail the same way on both.
+describe.skipIf(process.platform === 'win32')(
+	'createCommandLineAdapter, a launch too large for the operating system',
+	() => {
+		const OVERSIZE = 'x'.repeat(4 * 1024 * 1024)
+
+		function e2big(): NodeJS.ErrnoException {
+			return Object.assign(new Error('spawn E2BIG'), {
+				errno: -7,
+				code: 'E2BIG',
+				syscall: 'spawn',
+			})
+		}
+
+		function mechanismThat(run: CommandMechanism['run']): CommandMechanism {
+			return {
+				run,
+				readArtifact: async () => ({
+					present: false,
+					text: '',
+					truncated: false,
+				}),
+			}
+		}
+
+		function oversizeEnvironment(): Partial<CommandProbeRequest> {
+			return {
+				channels: {
+					argument: {},
+					option: {},
+					environment: { BIG: OVERSIZE },
+					stdin: { kind: 'absent' },
+				},
+			}
+		}
+
+		async function thrownBy(
+			adapter: ReturnType<typeof createCommandLineAdapter>,
+			overrides: Partial<CommandProbeRequest> = {},
+		): Promise<unknown> {
+			return adapter
+				.probe(request(overrides), new AbortController().signal)
+				.then(
+					() => undefined,
+					(thrown: unknown) => thrown,
+				)
+		}
+
+		it('reports an environment value the system refuses as port-failure with portFailureReason launch-too-large', async () => {
+			const adapter = createCommandLineAdapter(
+				policyOf(authorization({ permittedEnvironmentKeys: ['BIG'] })),
+			)
+			const fault = await thrownBy(adapter, oversizeEnvironment())
+			expect(fault).toBeInstanceOf(RuntimeFault)
+			expect(fault).toMatchObject({
+				code: 'port-failure',
+				portFailureReason: 'launch-too-large',
+				artifactPath: 'ProbeObservation',
+			})
+			expect((fault as RuntimeFault).cause).toMatchObject({ code: 'E2BIG' })
+		})
+
+		it('reports an argument the system refuses the same way', async () => {
+			const adapter = createCommandLineAdapter(policyOf(authorization()))
+			const fault = await thrownBy(adapter, {
+				channels: {
+					argument: { huge: OVERSIZE },
+					option: {},
+					environment: {},
+					stdin: { kind: 'absent' },
+				},
+			})
+			expect(fault).toMatchObject({
+				code: 'port-failure',
+				portFailureReason: 'launch-too-large',
+			})
+			expect((fault as RuntimeFault).cause).toMatchObject({ code: 'E2BIG' })
+			// The oversized value reaches neither the message nor the cause.
+			const { message, cause } = fault as RuntimeFault
+			expect(message).not.toContain(OVERSIZE.slice(0, 1024))
+			expect(JSON.stringify(cause).length).toBeLessThan(1024)
+		})
+
+		it('reports an E2BIG the mechanism throws synchronously', async () => {
+			const cause = e2big()
+			const adapter = createCommandLineAdapter(
+				policyOf(authorization()),
+				mechanismThat(() => {
+					throw cause
+				}),
+			)
+			const fault = await thrownBy(adapter)
+			expect(fault).toMatchObject({
+				code: 'port-failure',
+				portFailureReason: 'launch-too-large',
+			})
+			expect((fault as RuntimeFault).cause).toBe(cause)
+		})
+
+		it('reports an E2BIG the mechanism rejects with', async () => {
+			const cause = e2big()
+			const adapter = createCommandLineAdapter(
+				policyOf(authorization()),
+				mechanismThat(async () => {
+					throw cause
+				}),
+			)
+			const fault = await thrownBy(adapter)
+			expect(fault).toMatchObject({
+				code: 'port-failure',
+				portFailureReason: 'launch-too-large',
+			})
+			expect((fault as RuntimeFault).cause).toBe(cause)
+		})
+
+		it('leaves a target that cannot start as a generic port-failure with no portFailureReason', async () => {
+			const adapter = createCommandLineAdapter(
+				policyOf(authorization({ target: join(tmpdir(), 'no-such-target') })),
+			)
+			const fault = await thrownBy(adapter)
+			expect(fault).toBeInstanceOf(RuntimeFault)
+			expect(fault).toMatchObject({ code: 'port-failure' })
+			expect((fault as RuntimeFault).portFailureReason).toBeUndefined()
+			expect((fault as RuntimeFault).reason).toBeUndefined()
+			expect((fault as RuntimeFault).cause).toMatchObject({ code: 'ENOENT' })
+		})
+
+		it('leaves any other mechanism error generic, whatever its code', async () => {
+			const adapter = createCommandLineAdapter(
+				policyOf(authorization()),
+				mechanismThat(async () => {
+					throw Object.assign(new Error('spawn EACCES'), { code: 'EACCES' })
+				}),
+			)
+			const fault = await thrownBy(adapter)
+			expect(fault).toMatchObject({ code: 'port-failure' })
+			expect((fault as RuntimeFault).portFailureReason).toBeUndefined()
+		})
+
+		it('observes a launch that fits as before, with the value reaching the child', async () => {
+			const value = 'x'.repeat(1024)
+			const adapter = createCommandLineAdapter(
+				policyOf(
+					authorization({ permittedEnvironmentKeys: ['PROBE_TEST_VAR'] }),
+				),
+			)
+			const observation = await adapter.probe(
+				request({
+					channels: {
+						argument: {},
+						option: {},
+						environment: { PROBE_TEST_VAR: value },
+						stdin: { kind: 'absent' },
+					},
+				}),
+				new AbortController().signal,
+			)
+			if (observation.kind !== 'cli')
+				throw new Error('expected a cli observation')
+			expect(observation.exitCode).toBe(0)
+			expect(observation.stdout).toMatchObject({
+				kind: 'json',
+				value: { env: { PROBE_TEST_VAR: value } },
+			})
+		})
+
+		it('lets an abort that came first win over an E2BIG', async () => {
+			const controller = new AbortController()
+			const adapter = createCommandLineAdapter(
+				policyOf(authorization()),
+				mechanismThat(async () => {
+					await Promise.resolve()
+					controller.abort()
+					throw e2big()
+				}),
+			)
+			const fault = await adapter.probe(request(), controller.signal).then(
+				() => undefined,
+				(thrown: unknown) => thrown,
+			)
+			expect(fault).toMatchObject({ code: 'aborted' })
+			expect((fault as RuntimeFault).portFailureReason).toBeUndefined()
+		})
+
+		it('passes a RuntimeFault the mechanism throws through unchanged', async () => {
+			const thrown = new RuntimeFault(
+				'budget-exhausted',
+				'CommandProbeRequest',
+				'exceeded maxElapsedMs',
+				{ cause: e2big() },
+			)
+			const adapter = createCommandLineAdapter(
+				policyOf(authorization()),
+				mechanismThat(async () => {
+					throw thrown
+				}),
+			)
+			const fault = await thrownBy(adapter)
+			expect(fault).toBe(thrown)
+			expect((fault as RuntimeFault).portFailureReason).toBeUndefined()
+		})
+
+		it('raises no unhandled rejection when the mechanism aborts synchronously and then rejects', async () => {
+			const unhandled: unknown[] = []
+			const record = (reason: unknown): void => {
+				unhandled.push(reason)
+			}
+			process.on('unhandledRejection', record)
+			try {
+				const controller = new AbortController()
+				const adapter = createCommandLineAdapter(
+					policyOf(authorization()),
+					mechanismThat(() => {
+						controller.abort()
+						return Promise.reject(e2big())
+					}),
+				)
+				const fault = await adapter.probe(request(), controller.signal).then(
+					() => undefined,
+					(thrown: unknown) => thrown,
+				)
+				expect(fault).toMatchObject({ code: 'aborted' })
+				// An unhandled rejection is reported after the microtask queue
+				// drains and the process tick that follows it.
+				await new Promise((settle) => setTimeout(settle, 50))
+				expect(unhandled).toEqual([])
+			} finally {
+				process.off('unhandledRejection', record)
 			}
 		})
 	},

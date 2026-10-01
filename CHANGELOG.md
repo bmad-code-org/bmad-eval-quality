@@ -10,6 +10,21 @@ body.
 
 ## [Unreleased]
 
+### Added
+
+- **`createCommandLineAdapter` tells a launch that is too large from a target that could not start.**
+  A launch the operating system refuses for the size of its arguments and environment (Node's `E2BIG`, whether `spawn` threw it or the child emitted it) throws `RuntimeFault` with code `port-failure` and a new `portFailureReason` of `launch-too-large`, with the spawn error kept as its `cause`.
+  Before, it was the same `port-failure` an `ENOENT` or `EACCES` produced.
+  `RuntimeFault` gains a readonly `portFailureReason`, typed `PortFailureReason | undefined`, set only on a `port-failure` fault built with `{ portFailureReason }`; every other fault carries `undefined`, and a `reason` on a `port-failure` or a `portFailureReason` on any other code is dropped.
+  `reason` is unchanged: it stays `ForbiddenTargetReason | undefined`, set on `forbidden-target` alone.
+  `PORT_FAILURE_REASONS` and `PortFailureReason` export beside `FORBIDDEN_TARGET_REASONS` from the root barrel and `eval-quality/conformance`.
+  Every other spawn failure keeps its generic `port-failure` with no `portFailureReason`, and `createMcpAdapter` is unchanged.
+
+### Fixed
+
+- **An abort that arrives synchronously inside a mechanism no longer leaves an unhandled rejection.**
+  The shipped adapters' port boundary threw `aborted` before it attached a handler to the mechanism's pending call, so a mechanism that aborted its signal and then rejected raised an unhandled rejection. The handler is attached first.
+
 ## [4.5.0] - 2026-09-30
 
 ### Added

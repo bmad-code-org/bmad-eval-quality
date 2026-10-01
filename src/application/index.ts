@@ -69,10 +69,12 @@ export { SEVERITY_LEVELS } from '../core/schemas/eval-contract.ts'
 export { OUTCOME_STATES } from '../core/schemas/evidence-artifact.ts'
 export type {
 	ForbiddenTargetReason,
+	PortFailureReason,
 	RuntimeFaultCode,
 } from '../core/schemas/faults.ts'
 export {
 	FORBIDDEN_TARGET_REASONS,
+	PORT_FAILURE_REASONS,
 	RUNTIME_FAULT_CODES,
 	RuntimeFault,
 } from '../core/schemas/faults.ts'

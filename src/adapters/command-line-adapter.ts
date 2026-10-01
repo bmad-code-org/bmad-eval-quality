@@ -226,6 +226,24 @@ function capped(detail: string): RuntimeFault {
 	return new RuntimeFault('budget-exhausted', 'CommandProbeRequest', detail)
 }
 
+/** A launch the operating system refused for the size of its arguments and environment: Node's `E2BIG`, whether `spawn` threw it or the child emitted it. */
+function isLaunchTooLarge(error: unknown): boolean {
+	return (
+		typeof error === 'object' &&
+		error !== null &&
+		(error as NodeJS.ErrnoException).code === 'E2BIG'
+	)
+}
+
+function launchTooLarge(error: unknown): RuntimeFault {
+	return new RuntimeFault(
+		'port-failure',
+		'ProbeObservation',
+		'the operating system refused the launch for the size of its arguments and environment (E2BIG)',
+		{ cause: error, portFailureReason: 'launch-too-large' },
+	)
+}
+
 function forbidden(reason: CommandDenialReason, detail: string): RuntimeFault {
 	return new RuntimeFault('forbidden-target', 'ProbeRequest', detail, {
 		reason,
@@ -465,19 +483,27 @@ export function createCommandLineAdapter(
 						authorization.permittedEnvironmentKeys,
 					)
 
-					const runResult = await mechanism.run(
-						{
-							target: authorization.target,
-							subcommandPath: parsed.subcommandPath,
-							argv: buildArgv(parsed.channels),
-							env,
-							stdin: buildStdin(parsed.channels.stdin),
-							cwd: authorization.cwd,
-							maxElapsedMs: authorization.maxElapsedMs,
-							maxOutputBytes: authorization.maxOutputBytes,
-						},
-						innerSignal,
-					)
+					// A launch too large for the operating system is told apart from
+					// a target that could not start. Every other error the mechanism
+					// throws reaches the boundary unchanged.
+					let runResult: CommandRunResult
+					try {
+						runResult = await mechanism.run(
+							{
+								target: authorization.target,
+								subcommandPath: parsed.subcommandPath,
+								argv: buildArgv(parsed.channels),
+								env,
+								stdin: buildStdin(parsed.channels.stdin),
+								cwd: authorization.cwd,
+								maxElapsedMs: authorization.maxElapsedMs,
+								maxOutputBytes: authorization.maxOutputBytes,
+							},
+							innerSignal,
+						)
+					} catch (error) {
+						throw isLaunchTooLarge(error) ? launchTooLarge(error) : error
+					}
 
 					const artifactEntries = await Promise.all(
 						Object.entries(authorization.artifacts).map(

@@ -992,6 +992,18 @@
 					"reason": "an `HttpMethod` value, which the enum spells as a string literal"
 				},
 				{
+					"token": "E2BIG",
+					"reason": "the code Node reports for a launch the operating system refuses for the size of its arguments and environment"
+				},
+				{
+					"token": "ENOENT",
+					"reason": "the code Node reports for a target that does not exist"
+				},
+				{
+					"token": "EACCES",
+					"reason": "the code Node reports for a target the host may not execute"
+				},
+				{
 					"token": "HOME",
 					"reason": "an environment variable an example contract declares, spelled as the process sees it"
 				},

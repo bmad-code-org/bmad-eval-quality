@@ -76,6 +76,10 @@ const resolveSubpath = (specifier: string): string =>
 	selfRequire.resolve(specifier)
 
 const barrelSource = readFileSync(join(repoRoot, 'src/index.ts'), 'utf8')
+const testingBarrelSource = readFileSync(
+	join(repoRoot, 'src/testing/index.ts'),
+	'utf8',
+)
 const layerBarrelSource = readFileSync(
 	join(repoRoot, 'src/application/index.ts'),
 	'utf8',
@@ -399,6 +403,21 @@ describe('the published package surface', () => {
 			'package.json',
 			'schemas',
 		])
+	})
+
+	it('the root and the conformance barrel carry the port-failure reason vocabulary', async () => {
+		const root = await import('../../src/index.ts')
+		const testing = await import('../../src/testing/index.ts')
+		expect([...root.PORT_FAILURE_REASONS]).toEqual(['launch-too-large'])
+		expect(testing.PORT_FAILURE_REASONS).toBe(root.PORT_FAILURE_REASONS)
+		// The type is erased before runtime, so each barrel's text is read.
+		expect(exportedTypeNames(layerBarrelSource)).toContain('PortFailureReason')
+		expect(exportedTypeNames(testingBarrelSource)).toContain(
+			'PortFailureReason',
+		)
+		// And annotated off the package root, so the typecheck resolves it.
+		const reason: import('eval-quality').PortFailureReason = 'launch-too-large'
+		expect(root.PORT_FAILURE_REASONS).toContain(reason)
 	})
 
 	it('the barrel carries the probe-qualification reason vocabulary', async (ctx) => {

@@ -26,7 +26,10 @@
  *    `budget-exhausted`; an abort throws `aborted`; a failure to reach the
  *    system at all throws `port-failure`. Both shipped adapters also set a
  *    denial's `reason` to the rule that refused the target, one of
- *    `FORBIDDEN_TARGET_REASONS`. A port written for `api` can pass on the
+ *    `FORBIDDEN_TARGET_REASONS`; the command-line adapter throws
+ *    `port-failure` with `portFailureReason` `launch-too-large`, one of
+ *    `PORT_FAILURE_REASONS`, for a launch the operating system refused for
+ *    size (`E2BIG`). A port written for `api` can pass on the
  *    reason `evaluateTarget` returned; the conformance suite asserts the code
  *    alone.
  * 4. Every answer the system returns is an observation, whatever it says. A
