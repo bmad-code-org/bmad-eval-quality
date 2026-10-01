@@ -217,7 +217,7 @@ const COMMAND_USAGE: Readonly<Record<Command, string>> = {
   --floors <path>          the declared catch-rate floor per class, a JSON object keyed by
                            defect, gameability and zero-action; {} declares none
   --out <target>           a .json file path, or a directory taking strength-aggregate.json
-  --strict                 promote CONCERNS to exit 1`,
+  --strict                 accepted on every command; this one produces no verdict, so it changes nothing`,
 }
 
 const IO_RULES = `Inputs and outputs:

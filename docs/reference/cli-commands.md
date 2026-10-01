@@ -118,7 +118,7 @@ Usage:
   --floors <path>          the declared catch-rate floor per class, a JSON object keyed by
                            defect, gameability and zero-action; {} declares none
   --out <target>           a .json file path, or a directory taking strength-aggregate.json
-  --strict                 promote CONCERNS to exit 1
+  --strict                 accepted on every command; this one produces no verdict, so it changes nothing
 ```
 
 `score` covers one probe per call, so the strength vector in one evidence artifact describes that probe alone and a class floor cannot be compared against it. This command reads every artifact of the run at once. At least one `--evidence` and `--floors` are required. Pass `{}` as the floors file to declare none.

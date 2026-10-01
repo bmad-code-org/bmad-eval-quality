@@ -237,6 +237,7 @@ describe('aggregate-strength: the argument grammar', () => {
 		expect(block).toContain('--evidence <path>')
 		expect(block).toContain('--floors <path>')
 		expect(block).toContain('strength-aggregate.json')
+		expect(block).toContain('this one produces no verdict')
 		expect(helpText(null)).toContain(
 			'eval-quality aggregate-strength --evidence',
 		)
