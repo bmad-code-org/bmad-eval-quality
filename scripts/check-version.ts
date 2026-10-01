@@ -24,7 +24,12 @@
 // enum, namespace, parameter property, or non-type re-export may appear here
 // or in anything it imports.
 import type { Reading } from './version-target.ts'
-import { BARREL_FILE, MANIFEST_FILE, read } from './version-target.ts'
+import {
+	BARREL_FILE,
+	CORE_FILE,
+	MANIFEST_FILE,
+	read,
+} from './version-target.ts'
 
 let reading: Reading
 try {
@@ -45,6 +50,15 @@ if (reading.barrelVersion !== reading.manifestVersion) {
 	process.exit(1)
 }
 
+if (reading.coreVersion !== reading.manifestVersion) {
+	console.error(
+		`check-version: ${CORE_FILE} declares ENGINE_VERSION '${reading.coreVersion}' ` +
+			`and ${MANIFEST_FILE} declares version '${reading.manifestVersion}'\n` +
+			'  run `npm run generate:version` to write the manifest version into it',
+	)
+	process.exit(1)
+}
+
 console.log(
-	`check-version: ${BARREL_FILE} and ${MANIFEST_FILE} both declare ${reading.manifestVersion}`,
+	`check-version: ${BARREL_FILE}, ${CORE_FILE} and ${MANIFEST_FILE} all declare ${reading.manifestVersion}`,
 )

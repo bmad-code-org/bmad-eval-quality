@@ -454,6 +454,37 @@ describe('the published package surface', () => {
 		expect(carried.failures[0]?.code).toBe('signature-absent')
 	})
 
+	it('the built barrel carries the strength aggregation: the entry point, its refusal, and the codes', async (ctx) => {
+		if (!BUILT) return ctx.skip(NEEDS_BUILD)
+		const barrel = await publishedBarrel()
+		expect(typeof barrel.aggregateStrength).toBe('function')
+		expect(typeof barrel.AggregationRefusal).toBe('function')
+		const Refusal = barrel.AggregationRefusal as new (
+			code: string,
+			artifactPath: string,
+			detail: string,
+		) => Error & { code: string; artifactPath: string }
+		const refusal = new Refusal(
+			'strength-inputs-disagree',
+			'EvidenceArtifact[1]',
+			'x',
+		)
+		expect(refusal).toBeInstanceOf(Error)
+		expect(refusal.code).toBe('strength-inputs-disagree')
+		expect(refusal.artifactPath).toBe('EvidenceArtifact[1]')
+		expect(barrel.AGGREGATION_REFUSAL_CODES).toEqual([
+			'strength-inputs-disagree',
+			'strength-input-inconsistent',
+		])
+		const types = exportedTypeNames(barrelSource)
+		for (const name of ['StrengthAggregate', 'StrengthFloors']) {
+			expect(types).toContain(name)
+		}
+		expect(exportedTypeNames(layerBarrelSource)).toContain(
+			'AggregateStrengthOptions',
+		)
+	})
+
 	it('the barrel carries the schema versions and the dominance comparison', async (ctx) => {
 		if (!BUILT) return ctx.skip(NEEDS_BUILD)
 		const barrel = await publishedBarrel()
@@ -483,6 +514,7 @@ describe('the published package surface', () => {
 		expect(barrel.EVALUATOR_CONFIGURATION_SCHEMA_VERSION).toBe(1)
 		expect(barrel.SCORING_POLICY_SCHEMA_VERSION).toBe(2)
 		expect(barrel.PRIVATE_ARTIFACT_MANIFEST_SCHEMA_VERSION).toBe(1)
+		expect(barrel.STRENGTH_AGGREGATE_SCHEMA_VERSION).toBe(1)
 
 		const brief: typeof import('eval-quality').SEALED_EVALUATOR_BRIEF_SCHEMA_VERSION = 2
 		const evidence: typeof import('eval-quality').EVIDENCE_ARTIFACT_SCHEMA_VERSION = 4
@@ -499,7 +531,9 @@ describe('the published package surface', () => {
 		const manifestLiteral: 1 = manifest
 		const configurationLiteral: 1 = configuration
 		const policyLiteral: 2 = policy
+		const aggregate: typeof import('eval-quality').STRENGTH_AGGREGATE_SCHEMA_VERSION = 1
 		const privateManifestLiteral: 1 = privateManifest
+		const aggregateLiteral: 1 = aggregate
 		expect([
 			briefLiteral,
 			evidenceLiteral,
@@ -509,6 +543,7 @@ describe('the published package surface', () => {
 			configurationLiteral,
 			policyLiteral,
 			privateManifestLiteral,
+			aggregateLiteral,
 		]).toEqual([
 			barrel.SEALED_EVALUATOR_BRIEF_SCHEMA_VERSION,
 			barrel.EVIDENCE_ARTIFACT_SCHEMA_VERSION,
@@ -518,6 +553,7 @@ describe('the published package surface', () => {
 			barrel.EVALUATOR_CONFIGURATION_SCHEMA_VERSION,
 			barrel.SCORING_POLICY_SCHEMA_VERSION,
 			barrel.PRIVATE_ARTIFACT_MANIFEST_SCHEMA_VERSION,
+			barrel.STRENGTH_AGGREGATE_SCHEMA_VERSION,
 		])
 
 		// Each union ships with the `as const` array it is derived from, the way

@@ -57,7 +57,6 @@ export const STAGE_VALUE_INPUTS = [
 	'fixtureDigest',
 	'evaluatorConfigurationDigest',
 	'strengthFloors',
-	'engineVersion',
 ] as const
 
 export type StageValueInput = (typeof STAGE_VALUE_INPUTS)[number]
@@ -160,11 +159,10 @@ export const STAGE_SIGNATURES: Record<PipelineStage, StageSignature> = {
 	aggregate: {
 		// One evidence artifact per probe of the run: `score` covers one probe
 		// per call, so only a stage reading all of them can state a class rate.
-		inputs: ['evidence-artifact'],
-		// The adopter's per-class floors are a caller's declaration and the
-		// engine version is the aggregating release's own; no artifact carries
-		// either.
-		valueInputs: ['strengthFloors', 'engineVersion'],
+		inputs: ['evidence-artifact', 'scoring-policy'],
+		// The adopter's per-class floors are a caller's declaration that no
+		// artifact carries. The scoring policy is an artifact, so it is an input.
+		valueInputs: ['strengthFloors'],
 		owns: 'strength-aggregate',
 		ownsInterchange: 'strength-aggregate',
 		lineage: 'mints',

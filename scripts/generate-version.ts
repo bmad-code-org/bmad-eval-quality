@@ -1,5 +1,5 @@
 // Writes `package.json`'s `version` into the root barrel's `VERSION`
-// declaration, which makes the manifest the one place the number is authored.
+// declaration and the core `ENGINE_VERSION` beside it, which makes the manifest the one place the number is authored.
 // `scripts/release-prepare.mjs` runs it straight after `npm version`, the way
 // it already runs `scripts/stamp-changelog.mjs`.
 //
@@ -15,7 +15,13 @@
 import { writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import type { Reading } from './version-target.ts'
-import { BARREL_FILE, read, withVersion } from './version-target.ts'
+import {
+	BARREL_FILE,
+	CORE_FILE,
+	read,
+	withCoreVersion,
+	withVersion,
+} from './version-target.ts'
 
 let reading: Reading
 try {
@@ -27,23 +33,28 @@ try {
 	process.exit(1)
 }
 
-if (reading.barrelVersion === reading.manifestVersion) {
-	console.log(
-		`generate-version: ${BARREL_FILE} already declares ${reading.manifestVersion}`,
-	)
-} else {
+/** Writes one declaration, or says it already agrees. Refuses an unwritable file. */
+function settle(file: string, current: string, rewrite: () => string): void {
+	if (current === reading.manifestVersion) {
+		console.log(`generate-version: ${file} already declares ${current}`)
+		return
+	}
 	try {
-		writeFileSync(
-			resolve(BARREL_FILE),
-			withVersion(reading.barrelSource, reading.manifestVersion),
-		)
+		writeFileSync(resolve(file), rewrite())
 	} catch (error) {
 		console.error(
-			`generate-version: ${BARREL_FILE}: unwritable (${error instanceof Error ? error.message : String(error)})`,
+			`generate-version: ${file}: unwritable (${error instanceof Error ? error.message : String(error)})`,
 		)
 		process.exit(1)
 	}
 	console.log(
-		`generate-version: ${BARREL_FILE} ${reading.barrelVersion} -> ${reading.manifestVersion}`,
+		`generate-version: ${file} ${current} -> ${reading.manifestVersion}`,
 	)
 }
+
+settle(BARREL_FILE, reading.barrelVersion, () =>
+	withVersion(reading.barrelSource, reading.manifestVersion),
+)
+settle(CORE_FILE, reading.coreVersion, () =>
+	withCoreVersion(reading.coreSource, reading.manifestVersion),
+)

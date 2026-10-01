@@ -85,7 +85,7 @@ This dispatches `publish.yml` on `main` with the matching `bump` input. The run:
    about to bump (`npm run check:version`, which runs nowhere else on this path because the release
    commit pushes with `[skip ci]`), bumps `package.json` and `package-lock.json`
    (`npm version --no-git-tag-version`),
-   writes the manifest version into `VERSION` in `src/index.ts` (`scripts/generate-version.ts`),
+   writes the manifest version into `VERSION` in `src/index.ts` and `ENGINE_VERSION` in `src/core/version.ts` (`scripts/generate-version.ts`),
    moves `[Unreleased]` in `CHANGELOG.md` into a dated
    `[X.Y.Z]` section (`scripts/stamp-changelog.mjs`), runs the `doc-claims` gate, whose
    predicates read the version, against the bumped tree, and commits `chore: release vX.Y.Z [skip ci]`

@@ -1,7 +1,7 @@
 /**
  * The one orchestration call over the `aggregate` stage (AD-24): parse the
- * per-probe evidence artifacts and the declared floors, read the evidence
- * schema version, and hand the parsed values to the pure stage. No decision
+ * per-probe evidence artifacts, the declared floors and the scoring policy,
+ * read the evidence schema version, and hand the parsed values to the pure stage. No decision
  * logic lives here (AD-14): every branch is a parse, a version comparison, or
  * the call.
  *
@@ -14,6 +14,7 @@ import {
 	EvidenceArtifact,
 } from '../core/schemas/evidence-artifact.ts'
 import { RuntimeFault } from '../core/schemas/faults.ts'
+import { ScoringPolicy } from '../core/schemas/scoring-policy.ts'
 import {
 	type StrengthAggregate,
 	StrengthFloors,
@@ -27,8 +28,11 @@ export type AggregateStrengthOptions = {
 	readonly evidence: readonly EvidenceArtifact[]
 	/** The adopter's declared floor per class; a class with no key declares none. */
 	readonly floors: StrengthFloors
-	/** The package version doing the aggregation; the barrel's `VERSION`. */
-	readonly engineVersion: string
+	/**
+	 * The scoring policy the run was scored under. Every evidence artifact is
+	 * verified against it, and the aggregate takes its minimum trial count from it.
+	 */
+	readonly policy: ScoringPolicy
 }
 
 function parseFault(artifactPath: string, cause: unknown): RuntimeFault {
@@ -71,6 +75,12 @@ function parseEvidence(
 	return parsed.data
 }
 
+function parsePolicy(input: ScoringPolicy): ScoringPolicy {
+	const parsed = ScoringPolicy.safeParse(input)
+	if (!parsed.success) throw parseFault('ScoringPolicy', parsed.error)
+	return parsed.data
+}
+
 function parseFloors(input: StrengthFloors): StrengthFloors {
 	// `JSON.parse` makes `__proto__` an own key, and a schema that reads only
 	// the keys it names would drop it, leaving the floor it carried undeclared.
@@ -102,6 +112,6 @@ export function aggregateStrength(
 	return aggregateStage(
 		parseEvidence(options.evidence),
 		parseFloors(options.floors),
-		options.engineVersion,
+		parsePolicy(options.policy),
 	)
 }

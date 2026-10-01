@@ -1202,9 +1202,17 @@ export const strengthAggregateFixture: StrengthAggregate = {
 	engineVersion: '4.6.0',
 	mode: 'contract-scoring',
 	scoringVersion: digestOf(30),
+	scoringPolicyDigest: digestOf(32),
 	comparabilityKey: digestOf(31),
 	basis: 'measured',
 	minimumTrialCount: 3,
+	callerAttestedInputs: [
+		'corpusDigest',
+		'evaluatorConfigurationDigest',
+		'fixtureDigest',
+		'mode',
+	],
+	aggregateAttestedInputs: ['evidenceSetCompleteness', 'probeClass'],
 	inputs: [
 		{
 			probeId: 'P-001',

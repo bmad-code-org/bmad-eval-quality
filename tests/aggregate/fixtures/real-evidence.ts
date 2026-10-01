@@ -22,6 +22,7 @@ import {
 	scoreProbeFixture,
 	sealedRunRecordFixtureForScore,
 } from '../../application/fixtures/score-fixtures.ts'
+import { cleanControlProbe } from '../../schemas/fixtures/artifact-fixtures.ts'
 import {
 	defectFinding,
 	defectFired,
@@ -87,3 +88,44 @@ export async function scoreDefectProbe(
 export const ISOLATION_MANIFEST_BYTES_DIGEST = digestBytes(
 	isolationManifestBytes,
 )
+
+/**
+ * Scores one clean control, `expectedClean: true`, over `trials` clean trials
+ * and returns the artifact the engine emitted. Its oracles resolve
+ * `passed-clean-control`, and its strength vector is all null.
+ */
+export async function scoreCleanControl(
+	probeId: string,
+	trials = 3,
+): Promise<EvidenceArtifact> {
+	const probe: Probe = { ...cleanControlProbe, probeId }
+	const result = await runScore({
+		record: Array.from({ length: trials }, (_, index) => ({
+			...sealedRunRecordFixtureForScore,
+			trialIndex: index + 1,
+			runId: `run-${probeId.toLowerCase()}`,
+		})),
+		manifest: {
+			...isolationManifestFixtureForScore,
+			runId: `run-${probeId.toLowerCase()}`,
+		},
+		configuration: evaluatorConfigurationFixture,
+		contract: scoreContractFixture,
+		probe,
+		preflightVerdict: passingPreflightVerdictForScore,
+		policy: REAL_POLICY,
+		privateManifest: null,
+		corpusDigest: corpusDigestFixture,
+		port: {
+			resolve: async (request: { privateRef: string }) => ({
+				privateRef: request.privateRef,
+				bytes: isolationManifestBytes,
+			}),
+		},
+		signal: new AbortController().signal,
+	})
+	if (result.artifact === null) {
+		throw new Error(`the fixture chain scored ${probeId} to the Invalid rung`)
+	}
+	return result.artifact
+}

@@ -855,7 +855,8 @@ Reading only the strength vector would provide an incomplete picture of contract
 
 `score` covers one probe, so the strength vector above describes that probe alone.
 A class floor is a claim about every probe of a run, and `aggregate-strength` is the command that reads them all.
-Declare the floors as a JSON object keyed by class, then pass it the evidence artifact of each probe, one `--evidence` per probe.
+Declare the floors as a JSON object keyed by class, then pass it the evidence artifact of each probe, one `--evidence` per probe, and the scoring policy the run was scored under.
+Every artifact has to carry that policy's digest, so a set scored under another policy is refused.
 This run has one probe, so one artifact:
 
 ```bash
@@ -868,6 +869,7 @@ EOF
 node dist/cli/main.js aggregate-strength \
   --evidence /tmp/eval-quality-run/evidence-artifact.json \
   --floors /tmp/eval-quality-run/floors.json \
+  --policy examples/tutorials/walkthrough/scoring-policy.json \
   --out /tmp/eval-quality-run/strength-aggregate.json
 ```
 

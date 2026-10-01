@@ -630,7 +630,7 @@ commit through an ordinary pull request, and is the fallback when the direct pus
 about to bump (<code>npm run check:version</code>, which runs nowhere else on this path because the release
 commit pushes with <code>[skip ci]</code>), bumps <code>package.json</code> and <code>package-lock.json</code>
 (<code>npm version --no-git-tag-version</code>),
-writes the manifest version into <code>VERSION</code> in <code>src/index.ts</code> (<code>scripts/generate-version.ts</code>),
+writes the manifest version into <code>VERSION</code> in <code>src/index.ts</code> and <code>ENGINE_VERSION</code> in <code>src/core/version.ts</code> (<code>scripts/generate-version.ts</code>),
 moves <code>[Unreleased]</code> in <code>CHANGELOG.md</code> into a dated
 <code>[X.Y.Z]</code> section (<code>scripts/stamp-changelog.mjs</code>), runs the <code>doc-claims</code> gate, whose
 predicates read the version, against the bumped tree, and commits <code>chore: release vX.Y.Z [skip ci]</code>

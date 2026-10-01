@@ -13,7 +13,9 @@ import { digestArtifact } from '../../../src/core/canonical/digest.ts'
 import {
 	EvidenceArtifact,
 	type OUTCOME_STATES,
+	type SCORING_VERSION_INPUT_NAMES,
 } from '../../../src/core/schemas/evidence-artifact.ts'
+import type { ScoringPolicy } from '../../../src/core/schemas/scoring-policy.ts'
 import { reduceTrialSet } from '../../../src/core/score/reduce-trials.ts'
 
 type OutcomeStateValue = (typeof OUTCOME_STATES)[number]
@@ -38,12 +40,29 @@ export type EvidenceSpec = {
 	readonly mode?: 'production' | 'contract-scoring'
 	readonly basis?: 'measured' | 'reconstructed'
 	readonly runId?: string
+	/** The scoring-version inputs the caller attested; the default is the engine's four. */
+	readonly callerAttestedInputs?: readonly (typeof SCORING_VERSION_INPUT_NAMES)[number][]
 }
 
 export const digestOfOrdinal = (ordinal: number): string =>
 	`sha256:${ordinal.toString(16).padStart(64, '0')}`
 
-export const POLICY_DIGEST = digestOfOrdinal(900)
+/** The scoring policy every builder-made artifact was scored under. */
+export const TEST_POLICY: ScoringPolicy = {
+	schemaVersion: 2,
+	parentDigest: null,
+	revisionCount: 0,
+	policyId: 'aggregate-test-policy',
+	severityFloor: 'material',
+	confidenceThreshold: 0.5,
+	catchThreshold: 0.5,
+	minimumTrialCount: 3,
+	reExecutionCap: 2,
+	remediationCap: 3,
+	regexMatchStepBudget: 1_000_000,
+}
+
+export const POLICY_DIGEST = digestArtifact(TEST_POLICY, 'ScoringPolicy')
 export const CORPUS_DIGEST = digestOfOrdinal(901)
 
 /** `count` caught trials: the default way to say a probe was caught. */
@@ -77,6 +96,12 @@ export function evidenceFor(spec: EvidenceSpec): EvidenceArtifact {
 		mode = 'contract-scoring',
 		basis = 'measured',
 		runId = `run-${probeId.toLowerCase()}`,
+		callerAttestedInputs = [
+			'corpusDigest',
+			'fixtureDigest',
+			'evaluatorConfigurationDigest',
+			'mode',
+		],
 	} = spec
 	const votes = states.map((state, index) => ({ trialIndex: index + 1, state }))
 	const reduction = reduceTrialSet(votes, catchThreshold)
@@ -123,12 +148,7 @@ export function evidenceFor(spec: EvidenceSpec): EvidenceArtifact {
 		excludedProbeIds: [],
 		exitCode: 0,
 		verdictBasis: [],
-		callerAttestedInputs: [
-			'corpusDigest',
-			'fixtureDigest',
-			'evaluatorConfigurationDigest',
-			'mode',
-		],
+		callerAttestedInputs: [...callerAttestedInputs],
 		trials: {
 			declaredMinimum,
 			completed: votes.length,

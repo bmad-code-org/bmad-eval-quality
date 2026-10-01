@@ -40,7 +40,9 @@ import type {
 	EvidenceArtifact,
 	ReducedProbeOutcome,
 } from '../schemas/evidence-artifact.ts'
+import type { ScoringPolicy } from '../schemas/scoring-policy.ts'
 import {
+	AGGREGATE_ATTESTED_INPUTS,
 	type AggregatedClass,
 	type AggregatedInput,
 	type FloorDecision,
@@ -56,8 +58,10 @@ import {
 	type StrengthClass,
 } from '../score/strength.ts'
 import type { AggregateStage } from '../stage-contracts.ts'
+import { ENGINE_VERSION } from '../version.ts'
 
 const EVIDENCE_ARTIFACT_PATH = 'EvidenceArtifact'
+const SCORING_POLICY_ARTIFACT_PATH = 'ScoringPolicy'
 const SCORING_VERSION_INPUTS_ARTIFACT_PATH = 'ScoringVersionInputs'
 const COMPARABILITY_KEY_ARTIFACT_PATH = 'ComparabilityKey'
 
@@ -246,6 +250,12 @@ function decide(
 	if (aggregated.rate === null) {
 		return { floor, decision: 'does-not-meet', basis: 'no-exercised-probe' }
 	}
+	// Every eligible probe has to have been exercised. A rate over the exercised
+	// probes alone would let a probe the evaluator never reached drop out of the
+	// claim the floor makes about the class.
+	if (aggregated.exercised < aggregated.eligible) {
+		return { floor, decision: 'does-not-meet', basis: 'unexercised-probe' }
+	}
 	return aggregated.rate >= floor
 		? { floor, decision: 'meets', basis: 'rate-meets-floor' }
 		: { floor, decision: 'does-not-meet', basis: 'rate-below-floor' }
@@ -254,12 +264,39 @@ function decide(
 export const aggregateStrength: AggregateStage = (
 	evidence,
 	floors: StrengthFloors,
-	engineVersion,
+	policy: ScoringPolicy,
 ) => {
 	if (evidence.length === 0) {
 		throw new TypeError('aggregateStrength(): no evidence artifact to read')
 	}
 	const inputs = evidence.map((artifact, index) => verifyInput(artifact, index))
+
+	// The caller's scoring policy is the one the run was scored under. Each
+	// artifact states the digest of the policy it was scored under and echoes the
+	// two thresholds the aggregation reads, and all three have to be the
+	// policy's own.
+	const policyDigest = digestArtifact(policy, SCORING_POLICY_ARTIFACT_PATH)
+	for (const input of inputs) {
+		const { artifact, reduced } = input
+		if (artifact.scoringVersionInputs.scoringPolicyDigest !== policyDigest) {
+			disagree(
+				input.path,
+				`scoringPolicyDigest ${artifact.scoringVersionInputs.scoringPolicyDigest} (${input.probeId}) is not the digest ${policyDigest} of the scoring policy supplied`,
+			)
+		}
+		if (artifact.trials.declaredMinimum !== policy.minimumTrialCount) {
+			disagree(
+				input.path,
+				`trials.declaredMinimum ${artifact.trials.declaredMinimum} (${input.probeId}) is not the supplied policy's minimumTrialCount ${policy.minimumTrialCount}`,
+			)
+		}
+		if (reduced.catchThreshold !== policy.catchThreshold) {
+			disagree(
+				input.path,
+				`catchThreshold ${reduced.catchThreshold} (${input.probeId}) is not the supplied policy's catchThreshold ${policy.catchThreshold}`,
+			)
+		}
+	}
 
 	const seen = new Map<string, VerifiedInput>()
 	for (const input of inputs) {
@@ -283,14 +320,15 @@ export const aggregateStrength: AggregateStage = (
 		'strength.basis',
 		({ artifact }) => artifact.strength.basis,
 	) as 'measured' | 'reconstructed'
-	const minimumTrialCount = requireOne(
-		inputs,
-		'trials.declaredMinimum',
-		({ artifact }) => artifact.trials.declaredMinimum,
-	) as number
-	requireOne(inputs, 'catchThreshold', ({ reduced }) => reduced.catchThreshold)
+	// AD-32: the artifact states which of the six scoring-version inputs the
+	// caller attested. Two sets that attested different inputs did not run under
+	// one trust boundary.
+	requireOne(inputs, 'callerAttestedInputs', ({ artifact }) =>
+		JSON.stringify([...artifact.callerAttestedInputs].sort()),
+	)
 
 	const head = inputs[0] as VerifiedInput
+	const callerAttestedInputs = [...head.artifact.callerAttestedInputs].sort()
 	const results = new Map(inputs.map((input) => [input.probeId, input.reduced]))
 
 	const classes = Object.fromEntries(
@@ -333,19 +371,21 @@ export const aggregateStrength: AggregateStage = (
 		schemaVersion: STRENGTH_AGGREGATE_SCHEMA_VERSION,
 		parentDigest: null,
 		revisionCount: 0,
-		engineVersion,
+		engineVersion: ENGINE_VERSION,
 		mode: head.artifact.scoringVersionInputs.mode,
 		scoringVersion,
+		scoringPolicyDigest: policyDigest,
 		comparabilityKey: digestArtifact(
 			{
-				scoringPolicyDigest:
-					head.artifact.scoringVersionInputs.scoringPolicyDigest,
+				scoringPolicyDigest: policyDigest,
 				probeIds: sorted.map((input) => input.probeId),
 			},
 			COMPARABILITY_KEY_ARTIFACT_PATH,
 		),
 		basis,
-		minimumTrialCount,
+		minimumTrialCount: policy.minimumTrialCount,
+		callerAttestedInputs,
+		aggregateAttestedInputs: [...AGGREGATE_ATTESTED_INPUTS],
 		inputs: aggregatedInputs,
 		classes,
 		floorDecisions,

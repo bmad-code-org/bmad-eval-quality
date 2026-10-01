@@ -142,7 +142,7 @@ export const EXIT_CODE_TABLE = `Exit codes (AD-21's six, plus 64 from sysexits.h
   1   CONCERNS promoted by --strict
   2   FAIL
   3   invalid: a failed pre-flight, or any other AD-21 invalidating condition
-  4   structural failure
+  4   structural failure, or an aggregation refused for mixed or inconsistent evidence
   5   runtime fault
   64  usage error
 

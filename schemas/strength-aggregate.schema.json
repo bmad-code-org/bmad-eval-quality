@@ -31,7 +31,7 @@
     "engineVersion": {
       "type": "string",
       "minLength": 1,
-      "description": "The package version that read the artifacts and produced this aggregate, supplied by the caller (the command reads its own manifest). An evidence artifact records no engine version, so this is the one version the aggregate can bind: the release that decided every class decision below. Replaying the same artifacts and floors under the same release reproduces this document byte for byte."
+      "description": "The package version that read the artifacts and produced this aggregate, read from the package's own generated constant and never supplied by a caller. An evidence artifact records no engine version, so this is the one version the aggregate can bind: the release that decided every class decision below. Replaying the same artifacts, policy and floors under the same release reproduces this document byte for byte."
     },
     "mode": {
       "type": "string",
@@ -45,6 +45,11 @@
       "type": "string",
       "pattern": "^sha256:[0-9a-f]{64}$",
       "description": "The scoring version every input artifact carries. Inputs that differ in it are refused, so the aggregate speaks for one corpus digest, one fixture digest, one evaluator configuration digest, one scoring policy digest and one mode."
+    },
+    "scoringPolicyDigest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "description": "The AD-27 digest of the scoring policy the caller supplied. Every input artifact states the same digest as its own scoring policy digest, and an input scored under another policy is refused."
     },
     "comparabilityKey": {
       "type": "string",
@@ -63,7 +68,33 @@
       "type": "integer",
       "minimum": 1,
       "maximum": 9007199254740991,
-      "description": "The scoring policy's `minimumTrialCount`, read off each input's `trials.declaredMinimum` and required equal across inputs. A class below it is non-comparable."
+      "description": "The supplied scoring policy's `minimumTrialCount`. Every input's `trials.declaredMinimum` and every reduction's `catchThreshold` is verified against the policy, and an input that differs is refused. A class below the minimum is non-comparable."
+    },
+    "callerAttestedInputs": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "contractSchemaVersion",
+          "corpusDigest",
+          "fixtureDigest",
+          "evaluatorConfigurationDigest",
+          "scoringPolicyDigest",
+          "mode"
+        ]
+      },
+      "description": "Which of the six scoring-version inputs the caller attested, carried from the input artifacts and sorted. AD-32 requires an artifact to state which inputs were attested rather than computed by this package, and inputs that attested different sets are refused, so the one list holds for every artifact the aggregate read."
+    },
+    "aggregateAttestedInputs": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "evidenceSetCompleteness",
+          "probeClass"
+        ]
+      },
+      "description": "What the aggregation takes on trust and cannot verify, stated per AD-32. `probeClass`: an evidence artifact carries no probe class, so each input's class is read off its own strength vector, which no check authenticates. `evidenceSetCompleteness`: nothing in an artifact says which probes the run had, so the aggregate speaks for the artifacts it was handed. The recorded artifact digests are what a caller compares against what it kept at scoring time."
     },
     "inputs": {
       "minItems": 1,
@@ -312,9 +343,12 @@
     "engineVersion",
     "mode",
     "scoringVersion",
+    "scoringPolicyDigest",
     "comparabilityKey",
     "basis",
     "minimumTrialCount",
+    "callerAttestedInputs",
+    "aggregateAttestedInputs",
     "inputs",
     "classes",
     "floorDecisions"
@@ -348,7 +382,7 @@
             "basis"
           ],
           "additionalProperties": false,
-          "description": "A comparable class whose rate is at or above the declared floor."
+          "description": "A comparable class in which every eligible probe was exercised and whose rate is at or above the declared floor."
         },
         {
           "type": "object",
@@ -369,6 +403,7 @@
                 "no-eligible-probe",
                 "not-comparable",
                 "no-exercised-probe",
+                "unexercised-probe",
                 "rate-below-floor"
               ]
             }
@@ -379,7 +414,7 @@
             "basis"
           ],
           "additionalProperties": false,
-          "description": "A declared floor the class misses: no eligible probe, a non-comparable class, no exercised probe, or a comparable rate below the floor. A floor nothing was measured against is never a pass."
+          "description": "A declared floor the class misses: no eligible probe, a non-comparable class, no exercised probe, an eligible probe the evaluator never exercised, or a comparable rate below the floor. A floor nothing was measured against is never a pass."
         },
         {
           "type": "object",

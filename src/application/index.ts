@@ -10,6 +10,9 @@ export {
 	digestBytes,
 	digestComposite,
 } from '../core/canonical/digest.ts'
+// The lexical reader AD-36 puts in front of every hashed artifact: it refuses
+// what `JSON.parse` hides, a duplicate object key above all.
+export { scanJson } from '../core/canonical/scan-json.ts'
 // The seven discipline-rule identifiers, the spellings a coverage gap and a
 // waiver carry in `rule`.
 export type { DisciplineRule } from '../core/coverage/rules.ts'

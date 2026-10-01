@@ -34,14 +34,19 @@ const crlfBarrel = (version: string): string =>
 	['// the root barrel', `export const VERSION = '${version}'`, ''].join('\r\n')
 
 /** The two files the scripts read, in a fresh temp directory. */
-function fixture(manifestVersion: string, barrel: string): string {
+function fixture(
+	manifestVersion: string,
+	barrel: string,
+	core = `export const ENGINE_VERSION = '${manifestVersion}'\n`,
+): string {
 	const dir = mkdtempSync(join(tmpdir(), 'check-version-'))
-	mkdirSync(join(dir, 'src'))
+	mkdirSync(join(dir, 'src/core'), { recursive: true })
 	writeFileSync(
 		join(dir, 'package.json'),
 		`${JSON.stringify({ name: 'eval-quality', version: manifestVersion }, null, 2)}\n`,
 	)
 	writeFileSync(join(dir, 'src/index.ts'), barrel)
+	writeFileSync(join(dir, 'src/core/version.ts'), core)
 	return dir
 }
 
@@ -56,6 +61,7 @@ function run(script: string, dir: string) {
 		stdout: result.stdout,
 		stderr: result.stderr,
 		barrel: readFileSync(join(dir, 'src/index.ts'), 'utf8'),
+		core: readFileSync(join(dir, 'src/core/version.ts'), 'utf8'),
 	}
 }
 
@@ -63,7 +69,9 @@ describe('check-version', () => {
 	it('exits 0 and names the version both files declare', () => {
 		const { status, stdout, barrel } = run(CHECK, fixture('1.0.0', BARREL))
 		expect(status).toBe(0)
-		expect(stdout).toContain('src/index.ts and package.json both declare 1.0.0')
+		expect(stdout).toContain(
+			'src/index.ts, src/core/version.ts and package.json all declare 1.0.0',
+		)
 		// A check never rewrites what it checks.
 		expect(barrel).toBe(BARREL)
 	})
@@ -102,6 +110,56 @@ describe('check-version', () => {
 		expect(stderr).toContain(
 			'package.json: `version` is "1.0", which is not semver',
 		)
+	})
+})
+
+describe('the core ENGINE_VERSION beside VERSION', () => {
+	const STALE = "export const ENGINE_VERSION = '0.9.0'\n"
+
+	it('check-version refuses a core file one release behind, naming the file and the repair', () => {
+		const { status, stderr } = run(CHECK, fixture('1.0.0', BARREL, STALE))
+		expect(status).toBe(1)
+		expect(stderr).toContain(
+			"src/core/version.ts declares ENGINE_VERSION '0.9.0'",
+		)
+		expect(stderr).toContain('npm run generate:version')
+	})
+
+	it('check-version refuses a core file declaring no ENGINE_VERSION', () => {
+		const { status, stderr } = run(
+			CHECK,
+			fixture('1.0.0', BARREL, 'export const OTHER = 1\n'),
+		)
+		expect(status).toBe(1)
+		expect(stderr).toContain(
+			"src/core/version.ts: declares no `export const ENGINE_VERSION = '<version>'` on a line of its own",
+		)
+	})
+
+	it('check-version refuses two ENGINE_VERSION declarations', () => {
+		const { status, stderr } = run(
+			CHECK,
+			fixture('1.0.0', BARREL, `${STALE}${STALE}`),
+		)
+		expect(status).toBe(1)
+		expect(stderr).toContain('declares `ENGINE_VERSION` 2 times')
+	})
+
+	it('generate-version writes the manifest version into the core file too', () => {
+		const { status, stdout, core, barrel } = run(
+			GENERATE,
+			fixture('1.0.1', BARREL, STALE),
+		)
+		expect(status).toBe(0)
+		expect(stdout).toContain('src/core/version.ts 0.9.0 -> 1.0.1')
+		expect(core).toBe("export const ENGINE_VERSION = '1.0.1'\n")
+		expect(barrel).toBe("export const VERSION = '1.0.1'\n")
+	})
+
+	it('generate-version leaves a core file that already agrees alone', () => {
+		const { stdout, core } = run(GENERATE, fixture('1.0.0', BARREL))
+		expect(stdout).toContain('src/core/version.ts already declares 1.0.0')
+		expect(core).toBe("export const ENGINE_VERSION = '1.0.0'\n")
 	})
 })
 

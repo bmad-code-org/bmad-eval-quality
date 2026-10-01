@@ -3,6 +3,8 @@
  * behavior it names is reverted; the revert each one answers to is exercised
  * by hand once and recorded in the pull request.
  */
+import { readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import { serializeArtifact } from '../../src/application/serialize.ts'
 import { aggregateStrength } from '../../src/core/aggregate/aggregate-strength.ts'
@@ -12,10 +14,12 @@ import {
 	type AggregationRefusalCode,
 } from '../../src/core/failure-codes.ts'
 import type { EvidenceArtifact } from '../../src/core/schemas/evidence-artifact.ts'
+import type { ScoringPolicy } from '../../src/core/schemas/scoring-policy.ts'
 import {
 	StrengthAggregate,
 	type StrengthFloors,
 } from '../../src/core/schemas/strength-aggregate.ts'
+import { ENGINE_VERSION } from '../../src/core/version.ts'
 import {
 	caught,
 	cleanControl,
@@ -23,15 +27,15 @@ import {
 	evidenceFor,
 	fourOfFiveDefects,
 	missed,
+	TEST_POLICY,
 	unexercised,
 } from './fixtures/evidence.ts'
-
-const ENGINE_VERSION = '4.6.0'
 
 const aggregate = (
 	evidence: readonly EvidenceArtifact[],
 	floors: StrengthFloors = {},
-) => aggregateStrength(evidence, floors, ENGINE_VERSION)
+	policy: ScoringPolicy = TEST_POLICY,
+) => aggregateStrength(evidence, floors, policy)
 
 const refusalOf = (run: () => unknown): AggregationRefusal => {
 	try {
@@ -190,7 +194,7 @@ describe('null, unexercised, and non-comparable classes', () => {
 		})
 	})
 
-	it('an unexercised probe stays in the eligible count and out of the rate', () => {
+	it('an unexercised probe stays in the eligible count and out of the rate, and a floor over the class is not met', () => {
 		const result = aggregate(
 			[
 				evidenceFor({ probeId: 'P-001', kind: 'defect', states: caught() }),
@@ -208,6 +212,31 @@ describe('null, unexercised, and non-comparable classes', () => {
 			caught: 1,
 			rate: 1,
 		})
+		expect(result.floorDecisions.defect).toEqual({
+			floor: 1,
+			decision: 'does-not-meet',
+			basis: 'unexercised-probe',
+		})
+	})
+
+	it('a rate above the floor over the exercised probes alone is still not met while a probe went unexercised', () => {
+		const result = aggregate(
+			[
+				...fourOfFiveDefects().slice(0, 4),
+				evidenceFor({
+					probeId: 'P-009',
+					kind: 'defect',
+					states: unexercised(),
+				}),
+			],
+			{ defect: 0.5 },
+		)
+		expect(result.classes.defect?.rate).toBe(1)
+		expect(result.floorDecisions.defect.basis).toBe('unexercised-probe')
+	})
+
+	it('meets the floor again once every eligible probe was exercised', () => {
+		const result = aggregate(fourOfFiveDefects().slice(0, 4), { defect: 1 })
 		expect(result.floorDecisions.defect.decision).toBe('meets')
 	})
 
@@ -344,7 +373,33 @@ describe('inputs that are not one run are refused', () => {
 				}),
 			]),
 		)
-		expect(refusal.message).toContain('scoringVersion')
+		expect(refusal.message).toContain('scoringPolicyDigest')
+	})
+
+	it('refuses artifacts that agree with each other and were scored under another policy than the one supplied', () => {
+		const otherPolicy = { ...TEST_POLICY, policyId: 'another-policy' }
+		const otherDigest = digestArtifact(otherPolicy, 'ScoringPolicy')
+		const evidence = [
+			evidenceFor({
+				probeId: 'P-001',
+				kind: 'defect',
+				states: caught(),
+				scoringPolicyDigest: otherDigest,
+			}),
+			evidenceFor({
+				probeId: 'P-002',
+				kind: 'defect',
+				states: caught(),
+				scoringPolicyDigest: otherDigest,
+			}),
+		]
+		const refusal = refusedWith('strength-inputs-disagree', () =>
+			aggregate(evidence),
+		)
+		expect(refusal.message).toContain(otherDigest)
+		expect(aggregate(evidence, {}, otherPolicy).classes.defect?.eligible).toBe(
+			2,
+		)
 	})
 
 	it('refuses artifacts attested against different corpora', () => {
@@ -375,7 +430,7 @@ describe('inputs that are not one run are refused', () => {
 		)
 	})
 
-	it('refuses artifacts that declare different minimum trial counts', () => {
+	it('refuses an artifact whose declared minimum is not the policy minimumTrialCount', () => {
 		const refusal = refusedWith('strength-inputs-disagree', () =>
 			aggregate([
 				evidenceFor({ probeId: 'P-001', kind: 'defect', states: caught() }),
@@ -387,10 +442,22 @@ describe('inputs that are not one run are refused', () => {
 				}),
 			]),
 		)
-		expect(refusal.message).toContain('declaredMinimum')
+		expect(refusal.artifactPath).toBe('EvidenceArtifact[1]')
+		expect(refusal.message).toContain("policy's minimumTrialCount 3")
 	})
 
-	it('refuses artifacts reduced under different catch thresholds', () => {
+	it('refuses a policy with another minimumTrialCount, whose digest the set was not scored under', () => {
+		const refusal = refusedWith('strength-inputs-disagree', () =>
+			aggregate(
+				fourOfFiveDefects(),
+				{},
+				{ ...TEST_POLICY, minimumTrialCount: 5 },
+			),
+		)
+		expect(refusal.message).toContain('scoringPolicyDigest')
+	})
+
+	it('refuses a reduction made under another catch threshold than the policy declares', () => {
 		const refusal = refusedWith('strength-inputs-disagree', () =>
 			aggregate([
 				evidenceFor({ probeId: 'P-001', kind: 'defect', states: caught() }),
@@ -402,7 +469,41 @@ describe('inputs that are not one run are refused', () => {
 				}),
 			]),
 		)
-		expect(refusal.message).toContain('catchThreshold')
+		expect(refusal.message).toContain("policy's catchThreshold 0.5")
+	})
+
+	it('takes minimumTrialCount from the policy it verified against', () => {
+		const policy = { ...TEST_POLICY, minimumTrialCount: 2 }
+		const evidence = [
+			evidenceFor({
+				probeId: 'P-001',
+				kind: 'defect',
+				states: caught(2),
+				declaredMinimum: 2,
+				scoringPolicyDigest: digestArtifact(policy, 'ScoringPolicy'),
+			}),
+		]
+		const result = aggregate(evidence, { defect: 1 }, policy)
+		expect(result.minimumTrialCount).toBe(2)
+		expect(result.scoringPolicyDigest).toBe(
+			digestArtifact(policy, 'ScoringPolicy'),
+		)
+		expect(result.classes.defect?.comparable).toBe(true)
+	})
+
+	it('refuses artifacts that attested different scoring-version inputs', () => {
+		const refusal = refusedWith('strength-inputs-disagree', () =>
+			aggregate([
+				evidenceFor({ probeId: 'P-001', kind: 'defect', states: caught() }),
+				evidenceFor({
+					probeId: 'P-002',
+					kind: 'defect',
+					states: caught(),
+					callerAttestedInputs: ['corpusDigest', 'mode'],
+				}),
+			]),
+		)
+		expect(refusal.message).toContain('callerAttestedInputs')
 	})
 
 	it('refuses a reconstructed basis beside a measured one', () => {
@@ -606,11 +707,21 @@ describe('a tampered artifact is refused', () => {
 	})
 })
 
+const manifestVersion = (
+	JSON.parse(
+		readFileSync(
+			fileURLToPath(new URL('../../package.json', import.meta.url)),
+			'utf8',
+		),
+	) as { readonly version: string }
+).version
+
 describe('lineage', () => {
 	it('records the engine version and the digest of every artifact it read', () => {
 		const evidence = fourOfFiveDefects()
 		const result = aggregate(evidence, { defect: 0.75 })
 		expect(result.engineVersion).toBe(ENGINE_VERSION)
+		expect(result.engineVersion).toBe(manifestVersion)
 		expect(result.inputs).toEqual(
 			evidence.map((artifact) => ({
 				probeId: artifact.scoredProbeId,
@@ -638,6 +749,20 @@ describe('lineage', () => {
 			before.inputs[4]?.artifactDigest,
 		)
 		expect(after.inputs.slice(0, 4)).toEqual(before.inputs.slice(0, 4))
+	})
+
+	it('carries the attested inputs the artifacts share, and names what the aggregation itself takes on trust', () => {
+		const result = aggregate(fourOfFiveDefects())
+		expect(result.callerAttestedInputs).toEqual([
+			'corpusDigest',
+			'evaluatorConfigurationDigest',
+			'fixtureDigest',
+			'mode',
+		])
+		expect(result.aggregateAttestedInputs).toEqual([
+			'evidenceSetCompleteness',
+			'probeClass',
+		])
 	})
 
 	it('binds the scoring version, the mode, and a comparability key over the probes it covered', () => {
@@ -692,11 +817,5 @@ describe('lineage', () => {
 describe('preconditions', () => {
 	it('throws a TypeError for no evidence at all', () => {
 		expect(() => aggregate([])).toThrow(TypeError)
-	})
-
-	it('throws a TypeError when the assembled aggregate would not be valid, for instance an empty engine version', () => {
-		expect(() => aggregateStrength(fourOfFiveDefects(), {}, '')).toThrow(
-			TypeError,
-		)
 	})
 })

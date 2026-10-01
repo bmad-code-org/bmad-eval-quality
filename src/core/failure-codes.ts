@@ -68,11 +68,15 @@ export class StructuralFailure extends Error {
  * The two reasons the run-wide strength aggregation refuses a set of evidence
  * artifacts. They sit outside AD-5's registry because AD-5 lists what fails
  * compilation, and the aggregation reads scored artifacts long after compile.
+ * AD-21 carries their table, and `check:aggregation-registry` binds this tuple
+ * to it.
  * They share the structural-failure exit code: the inputs cannot be read as one coherent whole, and no verdict was produced about any of them.
  *
  * - `strength-inputs-disagree`: the artifacts are individually readable and do
- *   not belong to one run: two share a probe, or they differ in scoring
- *   version, evidence basis, minimum trial count, or catch threshold.
+ *   not belong to one run: two share a probe, they differ in scoring
+ *   version, evidence basis, or attested inputs, or one differs from the
+ *   supplied scoring policy in its digest, minimum trial count, or catch
+ *   threshold.
  * - `strength-input-inconsistent`: one artifact contradicts itself: its
  *   reduction, strength vector, comparability flag, scoring version, or
  *   comparability key does not follow from the evidence it carries.

@@ -8,15 +8,17 @@
 import { describe, expect, it } from 'vitest'
 import { aggregateStrength } from '../../src/application/aggregate-strength.ts'
 import { serializeArtifact } from '../../src/application/serialize.ts'
+import { digestArtifact } from '../../src/core/canonical/digest.ts'
 import { AggregationRefusal } from '../../src/core/failure-codes.ts'
 import type { EvidenceArtifact } from '../../src/core/schemas/evidence-artifact.ts'
 import { RuntimeFault } from '../../src/core/schemas/faults.ts'
+import { ENGINE_VERSION } from '../../src/core/version.ts'
+import { VERSION } from '../../src/index.ts'
 import {
 	REAL_POLICY,
+	scoreCleanControl,
 	scoreDefectProbe,
 } from '../aggregate/fixtures/real-evidence.ts'
-
-const ENGINE_VERSION = '4.6.0'
 
 /** P-001 to P-004 caught, P-005 missed: three of three trials each. */
 const fourOfFiveFromTheEngine = async (): Promise<EvidenceArtifact[]> => [
@@ -42,7 +44,7 @@ describe('aggregateStrength over evidence from the real score chain', () => {
 		const result = aggregateStrength({
 			evidence: await fourOfFiveFromTheEngine(),
 			floors: { defect: 0.75 },
-			engineVersion: ENGINE_VERSION,
+			policy: REAL_POLICY,
 		})
 		expect(result.classes.defect).toEqual({
 			eligible: 5,
@@ -62,7 +64,7 @@ describe('aggregateStrength over evidence from the real score chain', () => {
 		const result = aggregateStrength({
 			evidence: await fourOfFiveFromTheEngine(),
 			floors: { defect: 0.9 },
-			engineVersion: ENGINE_VERSION,
+			policy: REAL_POLICY,
 		})
 		expect(result.classes.defect?.rate).toBe(0.8)
 		expect(result.floorDecisions.defect.decision).toBe('does-not-meet')
@@ -75,7 +77,7 @@ describe('aggregateStrength over evidence from the real score chain', () => {
 				await scoreDefectProbe('P-002', [true, true]),
 			],
 			floors: { defect: 0.5 },
-			engineVersion: ENGINE_VERSION,
+			policy: REAL_POLICY,
 		})
 		expect(result.classes.defect).toMatchObject({
 			eligible: 2,
@@ -101,16 +103,60 @@ describe('aggregateStrength over evidence from the real score chain', () => {
 			aggregateStrength({
 				evidence,
 				floors: {},
-				engineVersion: ENGINE_VERSION,
+				policy: REAL_POLICY,
 			}),
 		).toThrow(AggregationRefusal)
+	})
+
+	it('keeps a clean control out of every class and reproduces the defects-only result', async () => {
+		const defects = await fourOfFiveFromTheEngine()
+		const control = await scoreCleanControl('P-006')
+		const withControl = aggregateStrength({
+			evidence: [...defects, control],
+			floors: { defect: 0.75 },
+			policy: REAL_POLICY,
+		})
+		const without = aggregateStrength({
+			evidence: defects,
+			floors: { defect: 0.75 },
+			policy: REAL_POLICY,
+		})
+		expect(withControl.classes).toEqual(without.classes)
+		expect(withControl.floorDecisions).toEqual(without.floorDecisions)
+		expect(
+			withControl.inputs.find((input) => input.probeId === 'P-006'),
+		).toEqual({
+			probeId: 'P-006',
+			probeClass: null,
+			runId: control.runId,
+			artifactDigest: digestArtifact(control, 'EvidenceArtifact'),
+		})
+	})
+
+	it('leaves the classes the run has no probe for null on engine output', async () => {
+		const result = aggregateStrength({
+			evidence: [
+				...(await fourOfFiveFromTheEngine()),
+				await scoreCleanControl('P-006'),
+			],
+			floors: { gameability: 0.5, 'zero-action': 0.5 },
+			policy: REAL_POLICY,
+		})
+		expect(result.classes.gameability).toBeNull()
+		expect(result.classes['zero-action']).toBeNull()
+		expect(result.floorDecisions.gameability).toEqual({
+			floor: 0.5,
+			decision: 'does-not-meet',
+			basis: 'no-eligible-probe',
+		})
+		expect(result.floorDecisions['zero-action'].basis).toBe('no-eligible-probe')
 	})
 
 	it('is byte for byte the same through a JSON round trip, which is what a replay reads', async () => {
 		const evidence = await fourOfFiveFromTheEngine()
 		const floors = { defect: 0.75 }
 		const direct = serializeArtifact(
-			aggregateStrength({ evidence, floors, engineVersion: ENGINE_VERSION }),
+			aggregateStrength({ evidence, floors, policy: REAL_POLICY }),
 			'StrengthAggregate',
 		)
 		const replayed = serializeArtifact(
@@ -121,21 +167,21 @@ describe('aggregateStrength over evidence from the real score chain', () => {
 					)
 					.reverse(),
 				floors: JSON.parse(JSON.stringify(floors)),
-				engineVersion: ENGINE_VERSION,
+				policy: REAL_POLICY,
 			}),
 			'StrengthAggregate',
 		)
 		expect(replayed).toBe(direct)
 	})
 
-	it('binds the version it was produced by, so a replay under another release differs', async () => {
-		const evidence = await fourOfFiveFromTheEngine()
-		const under = (engineVersion: string) =>
-			serializeArtifact(
-				aggregateStrength({ evidence, floors: {}, engineVersion }),
-				'StrengthAggregate',
-			)
-		expect(under('4.6.0')).not.toBe(under('4.7.0'))
+	it('records the package version the build declares', async () => {
+		const result = aggregateStrength({
+			evidence: await fourOfFiveFromTheEngine(),
+			floors: {},
+			policy: REAL_POLICY,
+		})
+		expect(result.engineVersion).toBe(ENGINE_VERSION)
+		expect(result.engineVersion).toBe(VERSION)
 	})
 })
 
@@ -154,7 +200,7 @@ describe('the evidence schema version is read before the shape', () => {
 			aggregateStrength({
 				evidence,
 				floors: {},
-				engineVersion: ENGINE_VERSION,
+				policy: REAL_POLICY,
 			}),
 		)
 		expect(fault.code).toBe('schema-version-mismatch')
@@ -169,7 +215,7 @@ describe('the evidence schema version is read before the shape', () => {
 			aggregateStrength({
 				evidence: [older as unknown as EvidenceArtifact],
 				floors: {},
-				engineVersion: ENGINE_VERSION,
+				policy: REAL_POLICY,
 			}),
 		)
 		expect(fault.code).toBe('schema-version-mismatch')
@@ -185,7 +231,7 @@ describe('the evidence schema version is read before the shape', () => {
 			aggregateStrength({
 				evidence,
 				floors: {},
-				engineVersion: ENGINE_VERSION,
+				policy: REAL_POLICY,
 			}),
 		)
 		expect(fault.artifactPath).toBe('EvidenceArtifact[1].schemaVersion')
@@ -196,7 +242,7 @@ describe('the evidence schema version is read before the shape', () => {
 			aggregateStrength({
 				evidence: [{ schemaVersion: '4' }] as unknown as EvidenceArtifact[],
 				floors: {},
-				engineVersion: ENGINE_VERSION,
+				policy: REAL_POLICY,
 			}),
 		)
 		expect(fault.code).toBe('schema-parse-failure')
@@ -209,7 +255,7 @@ describe('the boundary parses every input', () => {
 			aggregateStrength({
 				evidence: [{ not: 'an artifact' }] as unknown as EvidenceArtifact[],
 				floors: {},
-				engineVersion: ENGINE_VERSION,
+				policy: REAL_POLICY,
 			}),
 		)
 		expect(fault.code).toBe('schema-parse-failure')
@@ -221,7 +267,7 @@ describe('the boundary parses every input', () => {
 			aggregateStrength({
 				evidence: [],
 				floors: {},
-				engineVersion: ENGINE_VERSION,
+				policy: REAL_POLICY,
 			}),
 		)
 		expect(fault.code).toBe('schema-parse-failure')
@@ -232,7 +278,7 @@ describe('the boundary parses every input', () => {
 		const evidence = [await scoreDefectProbe('P-001', [true, true, true])]
 		const floors = JSON.parse('{"__proto__":{"defect":1}}')
 		const fault = faultOf(() =>
-			aggregateStrength({ evidence, floors, engineVersion: ENGINE_VERSION }),
+			aggregateStrength({ evidence, floors, policy: REAL_POLICY }),
 		)
 		expect(fault.code).toBe('schema-parse-failure')
 		expect(fault.artifactPath).toBe('StrengthFloors')
@@ -249,7 +295,7 @@ describe('the boundary parses every input', () => {
 			aggregateStrength({
 				evidence,
 				floors: floors as never,
-				engineVersion: ENGINE_VERSION,
+				policy: REAL_POLICY,
 			}),
 		)
 		expect(fault.code).toBe('schema-parse-failure')

@@ -1,6 +1,6 @@
 /** the run-wide strength of the qualified probes of one run, owned by `aggregate`. */
 import { z } from 'zod'
-import { ClassStrength } from './evidence-artifact.ts'
+import { ClassStrength, ScoringVersionInputName } from './evidence-artifact.ts'
 import { lineageFields } from './lineage.ts'
 import { Digest, ProbeId } from './primitives.ts'
 import { RunMode } from './sealed-run-record.ts'
@@ -20,6 +20,19 @@ export const STRENGTH_CLASS_NAMES = [
 	'defect',
 	'gameability',
 	'zero-action',
+] as const
+
+/**
+ * What the aggregation takes on the presented artifacts and cannot verify
+ * (AD-32: an artifact states which of its inputs were attested). The probe
+ * class is read off each artifact's own strength vector because an artifact
+ * carries no class, and the completeness of the evidence set is whatever the
+ * caller presented, since nothing inside the artifacts says which probes the
+ * run had.
+ */
+export const AGGREGATE_ATTESTED_INPUTS = [
+	'evidenceSetCompleteness',
+	'probeClass',
 ] as const
 
 export const StrengthClassName = z.enum(STRENGTH_CLASS_NAMES)
@@ -52,14 +65,15 @@ export type StrengthFloors = z.infer<typeof StrengthFloors>
 /**
  * Why a decision came out as it did, a closed set so a consumer reads the reason and has no need to re-derive it from the counts. The precedence is the
  * order listed after the first: no declared floor decides nothing, then an
- * empty class, then a non-comparable class, then an unexercised one, then the
- * comparison itself. Each decision admits only its own bases, below.
+ * empty class, then a non-comparable class, then a class with no exercised
+ * probe, then one with some probe unexercised, then the comparison itself. Each decision admits only its own bases, below.
  */
 export const FLOOR_BASES = [
 	'no-floor-declared',
 	'no-eligible-probe',
 	'not-comparable',
 	'no-exercised-probe',
+	'unexercised-probe',
 	'rate-below-floor',
 	'rate-meets-floor',
 ] as const
@@ -100,7 +114,7 @@ export const FloorDecision = z
 				basis: z.literal('rate-meets-floor'),
 			})
 			.describe(
-				'A comparable class whose rate is at or above the declared floor.',
+				'A comparable class in which every eligible probe was exercised and whose rate is at or above the declared floor.',
 			),
 		z
 			.strictObject({
@@ -110,11 +124,12 @@ export const FloorDecision = z
 					'no-eligible-probe',
 					'not-comparable',
 					'no-exercised-probe',
+					'unexercised-probe',
 					'rate-below-floor',
 				]),
 			})
 			.describe(
-				'A declared floor the class misses: no eligible probe, a non-comparable class, no exercised probe, or a comparable rate below the floor. A floor nothing was measured against is never a pass.',
+				'A declared floor the class misses: no eligible probe, a non-comparable class, no exercised probe, an eligible probe the evaluator never exercised, or a comparable rate below the floor. A floor nothing was measured against is never a pass.',
 			),
 		z
 			.strictObject({
@@ -159,13 +174,16 @@ export const StrengthAggregate = z
 			.string()
 			.min(1)
 			.describe(
-				'The package version that read the artifacts and produced this aggregate, supplied by the caller (the command reads its own manifest). An evidence artifact records no engine version, so this is the one version the aggregate can bind: the release that decided every class decision below. Replaying the same artifacts and floors under the same release reproduces this document byte for byte.',
+				"The package version that read the artifacts and produced this aggregate, read from the package's own generated constant and never supplied by a caller. An evidence artifact records no engine version, so this is the one version the aggregate can bind: the release that decided every class decision below. Replaying the same artifacts, policy and floors under the same release reproduces this document byte for byte.",
 			),
 		mode: RunMode.describe(
 			'The run mode every input artifact was scored under. Inputs of two modes are refused, since the mode is one of the six scoring-version inputs.',
 		),
 		scoringVersion: Digest.describe(
 			'The scoring version every input artifact carries. Inputs that differ in it are refused, so the aggregate speaks for one corpus digest, one fixture digest, one evaluator configuration digest, one scoring policy digest and one mode.',
+		),
+		scoringPolicyDigest: Digest.describe(
+			'The AD-27 digest of the scoring policy the caller supplied. Every input artifact states the same digest as its own scoring policy digest, and an input scored under another policy is refused.',
 		),
 		comparabilityKey: Digest.describe(
 			"AD-7's key, computed the way `emit` computes it: over the scoring policy digest and the sorted identifiers of every probe aggregated, controls and canaries included. Two aggregates with equal keys covered the same probes under the same policy. It is not the key an input artifact carries, since each input covers one probe.",
@@ -179,7 +197,17 @@ export const StrengthAggregate = z
 			.int()
 			.min(1)
 			.describe(
-				"The scoring policy's `minimumTrialCount`, read off each input's `trials.declaredMinimum` and required equal across inputs. A class below it is non-comparable.",
+				"The supplied scoring policy's `minimumTrialCount`. Every input's `trials.declaredMinimum` and every reduction's `catchThreshold` is verified against the policy, and an input that differs is refused. A class below the minimum is non-comparable.",
+			),
+		callerAttestedInputs: z
+			.array(ScoringVersionInputName)
+			.describe(
+				'Which of the six scoring-version inputs the caller attested, carried from the input artifacts and sorted. AD-32 requires an artifact to state which inputs were attested rather than computed by this package, and inputs that attested different sets are refused, so the one list holds for every artifact the aggregate read.',
+			),
+		aggregateAttestedInputs: z
+			.array(z.enum(AGGREGATE_ATTESTED_INPUTS))
+			.describe(
+				"What the aggregation takes on trust and cannot verify, stated per AD-32. `probeClass`: an evidence artifact carries no probe class, so each input's class is read off its own strength vector, which no check authenticates. `evidenceSetCompleteness`: nothing in an artifact says which probes the run had, so the aggregate speaks for the artifacts it was handed. The recorded artifact digests are what a caller compares against what it kept at scoring time.",
 			),
 		inputs: z
 			.array(AggregatedInput)

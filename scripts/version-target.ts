@@ -16,9 +16,17 @@ import { resolve } from 'node:path'
 
 export const MANIFEST_FILE = 'package.json'
 export const BARREL_FILE = 'src/index.ts'
+/**
+ * The generated constant a core stage reads: `core/` may not import the root
+ * barrel, so a stage that records the engine's own version has this file
+ * instead. Written beside `VERSION`, from the same manifest.
+ */
+export const CORE_FILE = 'src/core/version.ts'
 
 /** The declaration shape a refusal quotes back, so the repair is copyable. */
 export const DECLARATION_SHAPE = "export const VERSION = '<version>'"
+export const CORE_DECLARATION_SHAPE =
+	"export const ENGINE_VERSION = '<version>'"
 
 /**
  * Anchored to a whole line, so a mention of the declaration inside a comment
@@ -28,6 +36,7 @@ export const DECLARATION_SHAPE = "export const VERSION = '<version>'"
  * matches here and keeps its line ending through a rewrite.
  */
 const DECLARATION = /^export const VERSION = '([^']+)'(\r?)$/gm
+const CORE_DECLARATION = /^export const ENGINE_VERSION = '([^']+)'(\r?)$/gm
 
 /**
  * The manifest version is interpolated into a single-quoted declaration, so a
@@ -43,6 +52,10 @@ export type Reading = {
 	readonly barrelSource: string
 	/** The version the barrel currently declares. */
 	readonly barrelVersion: string
+	/** The core version file's full text, which the generator rewrites. */
+	readonly coreSource: string
+	/** The version the core file currently declares. */
+	readonly coreVersion: string
 }
 
 const describe = (error: unknown): string =>
@@ -98,7 +111,40 @@ export function read(): Reading {
 			`${BARREL_FILE}: the \`VERSION\` declaration carries no version`,
 		)
 	}
-	return { manifestVersion, barrelSource, barrelVersion }
+	let coreSource: string
+	try {
+		coreSource = readFileSync(resolve(CORE_FILE), 'utf8')
+	} catch (error) {
+		throw new Error(`${CORE_FILE}: unreadable (${describe(error)})`)
+	}
+
+	const coreMatches = [...coreSource.matchAll(CORE_DECLARATION)]
+	if (coreMatches.length === 0) {
+		throw new Error(
+			`${CORE_FILE}: declares no \`${CORE_DECLARATION_SHAPE}\` on a line of its own`,
+		)
+	}
+	if (coreMatches.length > 1) {
+		throw new Error(
+			`${CORE_FILE}: declares \`ENGINE_VERSION\` ${coreMatches.length} times; the generator writes one`,
+		)
+	}
+	const coreVersion = coreMatches[0]?.[1]
+	// The pattern's only group always participates once the pattern matched;
+	// the guard is what makes that readable to the compiler.
+	if (coreVersion === undefined) {
+		throw new Error(
+			`${CORE_FILE}: the \`ENGINE_VERSION\` declaration carries no version`,
+		)
+	}
+
+	return {
+		manifestVersion,
+		barrelSource,
+		barrelVersion,
+		coreSource,
+		coreVersion,
+	}
 }
 
 /**
@@ -111,4 +157,12 @@ export const withVersion = (barrelSource: string, version: string): string =>
 		DECLARATION,
 		(_match, _current, carriageReturn: string) =>
 			`export const VERSION = '${version}'${carriageReturn}`,
+	)
+
+/** The core version file's text with its one `ENGINE_VERSION` declaration set to `version`. */
+export const withCoreVersion = (coreSource: string, version: string): string =>
+	coreSource.replace(
+		CORE_DECLARATION,
+		(_match, _current, carriageReturn: string) =>
+			`export const ENGINE_VERSION = '${version}'${carriageReturn}`,
 	)

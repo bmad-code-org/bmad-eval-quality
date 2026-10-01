@@ -112,16 +112,18 @@ Reads the per-probe evidence artifacts of one run and mints a `StrengthAggregate
 ```text
 Usage:
   eval-quality aggregate-strength --evidence <path> [--evidence <path> ...] --floors <path>
-                                  [--out <target>] [--strict]
+                                  --policy <path> [--out <target>] [--strict]
 
   --evidence <path>        a per-probe evidence artifact of one run; repeat for each probe
   --floors <path>          the declared catch-rate floor per class, a JSON object keyed by
                            defect, gameability and zero-action; {} declares none
+  --policy <path>          the scoring policy the run was scored under; every evidence artifact
+                           is verified against it
   --out <target>           a .json file path, or a directory taking strength-aggregate.json
   --strict                 accepted on every command; this one produces no verdict, so it changes nothing
 ```
 
-`score` covers one probe per call, so the strength vector in one evidence artifact describes that probe alone and a class floor cannot be compared against it. This command reads every artifact of the run at once. At least one `--evidence` and `--floors` are required. Pass `{}` as the floors file to declare none.
+`score` covers one probe per call, so the strength vector in one evidence artifact describes that probe alone and a class floor cannot be compared against it. This command reads every artifact of the run at once. At least one `--evidence`, `--floors`, and `--policy` are required. Pass `{}` as the floors file to declare none. `--policy` is the scoring policy file `score` was given. The command refuses an artifact whose scoring policy digest is not that policy's digest, whose `trials.declaredMinimum` is not the policy's `minimumTrialCount`, or whose reduction used another `catchThreshold`, and the aggregate takes its `minimumTrialCount` from the policy.
 
 The floors file is a JSON object whose keys are classes and whose values are rates from `0` to `1`: `{"defect": 0.75, "zero-action": 1}`. A class with no key declares no floor. A key outside the three classes, or a value outside the unit interval, exits `5`.
 
@@ -137,22 +139,27 @@ A class with no eligible probe is `null`. A class with eligible probes and none 
 
 | Decision | `basis` | When |
 | --- | --- | --- |
-| `meets` | `rate-meets-floor` | the class is comparable and its rate is at or above the floor |
+| `meets` | `rate-meets-floor` | the class is comparable, every eligible probe was exercised, and its rate is at or above the floor |
 | `does-not-meet` | `rate-below-floor` | the class is comparable and its rate is below the floor |
 | `does-not-meet` | `no-eligible-probe` | a floor is declared and the class has no eligible probe |
 | `does-not-meet` | `not-comparable` | a floor is declared and some eligible probe was below the minimum trial count or left an oracle unreached |
 | `does-not-meet` | `no-exercised-probe` | a floor is declared and no eligible probe was exercised |
+| `does-not-meet` | `unexercised-probe` | a floor is declared and some eligible probe, though not all, was never exercised, whatever the rate over the others |
 | `undeclared` | `no-floor-declared` | the floors file has no key for the class |
 
 A floor that nothing was measured against is never a pass. Four caught probes among five give a rate of `0.8`, which meets a `0.75` floor and does not meet a `0.9` floor.
 
-The aggregate records the engine version that produced it and, for every artifact it read, the probe, the class it counted toward, the run identifier, and the artifact's digest. A caller that kept each artifact's digest when it scored the probe compares them to the recorded set, so a substituted, dropped, or added artifact is visible. The inputs are sorted by probe, so the order of the `--evidence` flags never reaches the bytes, and a second run over the same files under the same release writes the same bytes.
+The aggregate records the engine version that produced it, read from the package's own generated constant, and, for every artifact it read, the probe, the class it counted toward, the run identifier, and the artifact's digest. A caller that kept each artifact's digest when it scored the probe compares them to the recorded set, so a substituted, dropped, or added artifact is visible. The inputs are sorted by probe, so the order of the `--evidence` flags never reaches the bytes, and a second run over the same files under the same release writes the same bytes.
+
+Under AD-32 the artifact states which scoring-version inputs the caller attested, and artifacts that attested different sets are refused. The aggregate carries the shared list as `callerAttestedInputs`. Its `aggregateAttestedInputs` names what the aggregation takes on trust and cannot verify: `probeClass`, which is read off each strength vector, and evidence set completeness, since nothing in an artifact says which probes the run had.
+
+The command reads `--evidence`, `--floors`, and `--policy` through the lexical scanner AD-36 puts in front of hashed artifacts. A file that repeats an object key, which `JSON.parse` resolves to the last value, exits `5` with `non-canonicalizable-value` naming the key. `score` reads `--policy` the same way, and `scanJson(text, artifactPath)` ships on the barrel for a caller that reads these files itself.
 
 The command exits `0` whatever the floor decisions are. The decision lives in the artifact, and the exit codes `1` and `2` stay with the verdict ladder `score` runs, since a floor is a policy over a measurement and no verdict about the system or the contract. A set the command cannot read as one run exits `4` with nothing written, and the refusal names the artifact and the reason on stderr:
 
 | Code | Refused because |
 | --- | --- |
-| `strength-inputs-disagree` | two artifacts score one probe, or they differ in scoring version (which carries the corpus digest, the fixture digest, the evaluator configuration digest, the scoring policy digest, and the mode), evidence basis, declared minimum trial count, or catch threshold |
+| `strength-inputs-disagree` | two artifacts score one probe, or they differ in scoring version (which carries the corpus digest, the fixture digest, the evaluator configuration digest, the scoring policy digest, and the mode), evidence basis, or attested inputs, or an artifact differs from the supplied policy in scoring policy digest, minimum trial count, or catch threshold |
 | `strength-input-inconsistent` | one artifact contradicts itself: its reduction does not follow from its trial votes, its strength vector from its reduction, its comparability flag from its trials and outcomes, or its scoring version or comparability key from the inputs it states. A class vector on an artifact whose outcomes are a clean control's, and an exclusion list on an artifact that scored its probe, are refused the same way |
 
 Each artifact's own `comparabilityKey` covers its one probe, so the keys of the artifacts in one run differ by design. The command checks that each key is the digest of its own scoring policy digest and probe. The aggregate carries a key of its own over every probe it covered, computed the same way. Each probe is scored as its own trial set, so the run identifiers differ and are recorded, never required equal.
@@ -180,8 +187,8 @@ Inputs and outputs:
   one input may be "-" per invocation. compile and seal each take one input;
   preflight takes three, all required; score takes eight, three of them
   optional (--isolation-manifest, --evaluator-configuration, and
-  --private-manifest), and --record may repeat; aggregate-strength takes two,
-  both required, and --evidence may repeat. Without --out the artifact goes to
+  --private-manifest), and --record may repeat; aggregate-strength takes three,
+  all required, and --evidence may repeat. Without --out the artifact goes to
   stdout. An --out ending in .json is a file path; anything else is a
   directory taking <target>/<kind>.json. Diagnostics and errors go to stderr.
 ```
@@ -209,7 +216,7 @@ Exit codes (AD-21's six, plus 64 from sysexits.h):
   1   CONCERNS promoted by --strict
   2   FAIL
   3   invalid: a failed pre-flight, or any other AD-21 invalidating condition
-  4   structural failure
+  4   structural failure, or an aggregation refused for mixed or inconsistent evidence
   5   runtime fault
   64  usage error
 
@@ -259,7 +266,7 @@ The tarball carries two `bin` targets: `eval-quality` at `dist/cli/main.js`, and
 - **Stages**: `compile`, `seal`, `runPreflight`, `preflightFromObservations`, `runScore`, `aggregateStrength`
 - **Qualification**: `qualifyProbe`, `resolveHomeOperation`
 - **Target policy**: `evaluateTarget`, `classifyAddress`, `parseAddress`, `staysOnHost`, `isSafeMethod`, `ADDRESS_CLASSES`, `DENIAL_REASONS`
-- **Serialization and digests**: `serializeArtifact`, `digestArtifact`, `digestBytes`, `digestComposite`
+- **Serialization and digests**: `serializeArtifact`, `digestArtifact`, `digestBytes`, `digestComposite`, `scanJson`
 - **Lineage**: `validateLineageChain`
 - **Errors**: `StructuralFailure`, `AggregationRefusal`, `RuntimeFault`
 - **Enumerations**: `FAILURE_CODES`, `AGGREGATION_REFUSAL_CODES`, `RUNTIME_FAULT_CODES`, `FORBIDDEN_TARGET_REASONS`, `PORT_FAILURE_REASONS`, `VERDICTS`, `EVALUATOR_RECOMMENDATIONS`, `INTERCHANGE_ARTIFACT_KEYS`, `QUALIFICATION_FAILURES`, `SEVERITY_LEVELS`, `DOMINANCE_RELATIONS`, `OUTCOME_STATES`, `DISCIPLINE_RULES`
@@ -274,7 +281,7 @@ Every schema version is declared as the literal integer it holds, so a caller co
 
 Eleven of the thirteen artifacts carry one. Three have an in-package reader that performs the equality: `compile` over an eval contract, `preflight` and `score` over a probe, and `aggregate` over an evidence artifact. Four are stamped by this package: `seal` writes the brief, `emit` writes the evidence artifact, `preflight` writes the verdict, and `aggregate` writes the strength aggregate, each from its own constant. The evidence artifact sits in both groups, since `aggregate` reads the version `emit` stamps. Five are assembled by the caller and validated by `score`: the sealed run record, the isolation manifest, the evaluator configuration, the scoring policy, and the private artifact manifest. `artifact-reference` carries no lineage fields at all. A rubric does carry a `schemaVersion`, and no constant here states it: this package never parses a standalone rubric, and the eval contract embeds `RubricBody`, the body without lineage.
 
-`aggregateStrength({ evidence, floors, engineVersion })` is the entry point the `aggregate-strength` command calls. `evidence` is the run's per-probe `EvidenceArtifact` values in any order, `floors` is a `StrengthFloors` value, and `engineVersion` is the version to record, which is `VERSION` for a caller that wants this package's own. It is synchronous and returns a `StrengthAggregate`. An input that does not parse throws `RuntimeFault` with code `schema-parse-failure` and `artifactPath` `EvidenceArtifact[]` or `StrengthFloors`, an evidence artifact stamped with another `schemaVersion` throws `schema-version-mismatch`, read before its shape so a stale artifact is named as one, and a set that is not one coherent run throws `AggregationRefusal` with one of `AGGREGATION_REFUSAL_CODES`, carrying the same `code` and `artifactPath` as `StructuralFailure` and sharing its exit code in the CLI.
+`aggregateStrength({ evidence, floors, policy })` is the entry point the `aggregate-strength` command calls. `evidence` is the run's per-probe `EvidenceArtifact` values in any order, `floors` is a `StrengthFloors` value, and `policy` is the `ScoringPolicy` the run was scored under. The version it records is the package's own, and no caller supplies one. It is synchronous and returns a `StrengthAggregate`. An input that does not parse throws `RuntimeFault` with code `schema-parse-failure` and `artifactPath` `EvidenceArtifact[]` or `StrengthFloors`, an evidence artifact stamped with another `schemaVersion` throws `schema-version-mismatch`, read before its shape so a stale artifact is named as one, and a set that is not one coherent run throws `AggregationRefusal` with one of `AGGREGATION_REFUSAL_CODES`, carrying the same `code` and `artifactPath` as `StructuralFailure` and sharing its exit code in the CLI.
 
 `compareDominance` is AD-7's four-valued relation over two scored results. It takes two `ComparableResult` values and a `Severity` floor and answers one of `DOMINANCE_RELATIONS`: `a-dominates-b`, `b-dominates-a`, `equivalent`, or `incomparable`. `ComparableResult`, `DominanceRelationValue`, and `Severity` ship as type-only exports beside it. A comparable result includes `scoredProbeId`, `outcomes`, `trials`, and `reducedProbeOutcomes`; `trials.completedAttempts` retains the exact trial identities, while each reduction retains the selected `trialVotes` and `catchThreshold` needed for exact recomputation. The comparison returns `incomparable` when the reduction contradicts its probe identity, trial identities, votes, counts, severity, invalidated attempts, or detailed trial evidence. It re-derives no strength vector and reads no port, corpus, or clock.
 

@@ -81,7 +81,7 @@ const INPUT_KEYS: Readonly<Record<Command, readonly InputKey[]>> = {
 		'policy',
 		'private-manifest',
 	],
-	'aggregate-strength': ['evidence', 'floors'],
+	'aggregate-strength': ['evidence', 'floors', 'policy'],
 }
 
 /**

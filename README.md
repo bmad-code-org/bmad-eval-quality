@@ -125,7 +125,7 @@ A caught defect is decided by evidence. A finding counts as detection only when 
 
 Repeated runs of one probe are trials, reduced to one result per probe before any rate is computed. Pass the full trial set to `runScore`, or repeat `--record` on the `score` command. Every record declares its own `trialIndex` and agrees with the set on `contractDigest`, `evaluatorConfigurationDigest`, `mode`, `evaluatorRecommendation`, and `runId`. A set meeting the policy minimum produces a comparable strength vector.
 
-Each `score` call covers one probe, so one evidence artifact reports that probe's class alone. `aggregate-strength` reads every artifact of a run and reports, per class, the distinct qualified probes, how many were exercised and caught, the rate, whether the class is comparable, and the decision against the floor you declared. Clean controls and canaries stay outside every denominator, and a class that is empty, unexercised, or below the minimum trial count never meets a floor.
+Each `score` call covers one probe, so one evidence artifact reports that probe's class alone. `aggregate-strength` reads every artifact of a run and reports, per class, the distinct qualified probes, how many were exercised and caught, the rate, whether the class is comparable, and the decision against the floor you declared. Clean controls and canaries stay outside every denominator, and a class that is empty, below the minimum trial count, or holds any unexercised probe never meets a floor. The command takes the scoring policy the run was scored under and refuses artifacts scored under another.
 
 [The full walkthrough](https://bmad-code-org.github.io/bmad-eval-quality/how-to/author-behavioral-contracts/) reads a scored run field by field, down to its verdict and exit code.
 
@@ -155,7 +155,8 @@ npx eval-quality score --record trial-1.json --record trial-2.json \
   --out ./eval-out
 
 npx eval-quality aggregate-strength --evidence evidence-p-001.json \
-  --evidence evidence-p-002.json --floors floors.json --out ./eval-out
+  --evidence evidence-p-002.json --floors floors.json \
+  --policy policy.json --out ./eval-out
 ```
 
 Every command is non-interactive. Without `--out` the artifact goes to stdout, so a command composes with a pipe. An `--out` ending in `.json` is a file path; anything else is a directory, and the artifact lands at `<target>/<kind>.json`. Diagnostics and errors go to stderr, so stdout carries the artifact alone.
@@ -168,7 +169,7 @@ Every command is non-interactive. Without `--out` the artifact goes to stdout, s
 | `1` | CONCERNS promoted by `--strict` |
 | `2` | FAIL |
 | `3` | invalid: a failed pre-flight, or any other AD-21 invalidating condition |
-| `4` | structural failure |
+| `4` | structural failure, or an aggregation refused for mixed or inconsistent evidence |
 | `5` | runtime fault |
 | `64` | usage error |
 
