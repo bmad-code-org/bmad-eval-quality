@@ -1531,8 +1531,7 @@ export const ARTIFACT_REJECT_CASES: readonly ArtifactRejectCase[] = [
 	{
 		id: 'aggregate-eligible-zero',
 		artifact: 'strength-aggregate',
-		constraint:
-			'a class with no eligible probe is null, never an entry counting zero',
+		constraint: 'a class with no eligible probe is null',
 		mutate: (aggregate) => {
 			aggregate.classes.defect.eligible = 0
 		},
@@ -1568,8 +1567,7 @@ export const ARTIFACT_REJECT_CASES: readonly ArtifactRejectCase[] = [
 	{
 		id: 'aggregate-meets-with-a-missing-reason',
 		artifact: 'strength-aggregate',
-		constraint:
-			'a met floor carries the one reason a floor is met, never one of the reasons it is missed',
+		constraint: 'a met floor carries the one reason a floor is met',
 		mutate: (aggregate) => {
 			aggregate.floorDecisions.defect.basis = 'rate-below-floor'
 		},
@@ -1594,7 +1592,7 @@ export const ARTIFACT_REJECT_CASES: readonly ArtifactRejectCase[] = [
 	{
 		id: 'aggregate-undeclared-with-a-floor',
 		artifact: 'strength-aggregate',
-		constraint: 'an undeclared floor is null, never a number',
+		constraint: 'an undeclared floor is null',
 		mutate: (aggregate) => {
 			aggregate.floorDecisions.gameability.floor = 0.5
 		},

@@ -5,9 +5,9 @@
  * detailed outcome per trial, the reduction those trials fold to, the
  * strength vector that reduction yields for the probe's class, and the two
  * digests (`scoringVersion`, `comparabilityKey`) over the inputs the artifact
- * states. The digests are spelled out here from the same formulas `emit`
- * documents, never imported from the aggregation under test, so a verification
- * that drifted from `emit` fails against these builders.
+ * states. The digests are spelled out here from the formulas `emit`
+ * documents and are not imported from the aggregation under test, so a
+ * verification that drifted from `emit` fails against these builders.
  */
 import { digestArtifact } from '../../../src/core/canonical/digest.ts'
 import {
@@ -196,8 +196,8 @@ export function evidenceFor(spec: EvidenceSpec): EvidenceArtifact {
 					systemRecommendationRecorded: 'PASS',
 					systemRecommendationNote: null,
 				}
-	// A builder that drifted from the schema fails here, loudly, instead of as a
-	// refusal in a test about something else.
+	// A builder that drifted from the schema fails here, with the schema's own
+	// issue, and the refusal tests never see it.
 	return EvidenceArtifact.parse(artifact)
 }
 

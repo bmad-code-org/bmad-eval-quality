@@ -68,8 +68,7 @@ export class StructuralFailure extends Error {
  * The two reasons the run-wide strength aggregation refuses a set of evidence
  * artifacts. They sit outside AD-5's registry because AD-5 lists what fails
  * compilation, and the aggregation reads scored artifacts long after compile.
- * They share the structural-failure exit code, which is "the inputs cannot be
- * read as one coherent whole", not a verdict about any of them.
+ * They share the structural-failure exit code: the inputs cannot be read as one coherent whole, and no verdict was produced about any of them.
  *
  * - `strength-inputs-disagree`: the artifacts are individually readable and do
  *   not belong to one run: two share a probe, or they differ in scoring
@@ -86,8 +85,8 @@ export const AGGREGATION_REFUSAL_CODES = [
 export type AggregationRefusalCode = (typeof AGGREGATION_REFUSAL_CODES)[number]
 
 /**
- * Thrown by the strength aggregation instead of minting an artifact over mixed
- * or tampered inputs. Mirrors `StructuralFailure`'s shape (`code`,
+ * Thrown by the strength aggregation when its inputs are mixed or contradict
+ * themselves; no aggregate is minted. Mirrors `StructuralFailure`'s shape (`code`,
  * `artifactPath`) and takes the same exit code in the CLI.
  */
 export class AggregationRefusal extends Error {

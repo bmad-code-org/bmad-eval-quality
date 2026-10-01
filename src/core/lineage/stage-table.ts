@@ -10,8 +10,8 @@ import type { InterchangeArtifactKey } from '../schemas/artifact.ts'
 
 /**
  * AD-24's six stages, in the order the Consistency Conventions list them, then
- * `aggregate`: the one stage that reads many evidence artifacts instead of one
- * run, so its output speaks for the whole run's probes.
+ * `aggregate`: the one stage that reads the evidence artifacts of every probe of
+ * a run, so its output speaks for the whole run.
  */
 export const PIPELINE_STAGES = [
 	'compile',

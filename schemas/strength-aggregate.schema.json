@@ -94,7 +94,7 @@
           "runId": {
             "type": "string",
             "minLength": 1,
-            "description": "The run identifier of this probe's own trial set. Each probe is scored as its own trial set, so these differ across inputs and are recorded rather than required equal."
+            "description": "The run identifier of this probe's own trial set. Each probe is scored as its own trial set, so these differ across inputs and are only recorded."
           },
           "artifactDigest": {
             "type": "string",
@@ -147,7 +147,7 @@
                   "type": "integer",
                   "minimum": 1,
                   "maximum": 9007199254740991,
-                  "description": "The distinct qualified probes of this class across the aggregated artifacts: the denominator before exercise. Clean controls and canaries are not counted, whatever class they declare. A class with no eligible probe is `null` in `classes`, never an entry with `eligible` zero."
+                  "description": "The distinct qualified probes of this class across the aggregated artifacts: the denominator before exercise. Clean controls and canaries are not counted, whatever class they declare. A class with no eligible probe is `null` in `classes`."
                 },
                 "comparable": {
                   "type": "boolean",
@@ -200,7 +200,7 @@
                   "type": "integer",
                   "minimum": 1,
                   "maximum": 9007199254740991,
-                  "description": "The distinct qualified probes of this class across the aggregated artifacts: the denominator before exercise. Clean controls and canaries are not counted, whatever class they declare. A class with no eligible probe is `null` in `classes`, never an entry with `eligible` zero."
+                  "description": "The distinct qualified probes of this class across the aggregated artifacts: the denominator before exercise. Clean controls and canaries are not counted, whatever class they declare. A class with no eligible probe is `null` in `classes`."
                 },
                 "comparable": {
                   "type": "boolean",
@@ -253,7 +253,7 @@
                   "type": "integer",
                   "minimum": 1,
                   "maximum": 9007199254740991,
-                  "description": "The distinct qualified probes of this class across the aggregated artifacts: the denominator before exercise. Clean controls and canaries are not counted, whatever class they declare. A class with no eligible probe is `null` in `classes`, never an entry with `eligible` zero."
+                  "description": "The distinct qualified probes of this class across the aggregated artifacts: the denominator before exercise. Clean controls and canaries are not counted, whatever class they declare. A class with no eligible probe is `null` in `classes`."
                 },
                 "comparable": {
                   "type": "boolean",
@@ -302,7 +302,7 @@
         "zero-action"
       ],
       "additionalProperties": false,
-      "description": "The decision against each class's declared floor. Present for every class, so a class the adopter declared no floor for reads `undeclared` rather than missing."
+      "description": "The decision against each class's declared floor. Present for every class, so a class the adopter declared no floor for reads `undeclared`."
     }
   },
   "required": [

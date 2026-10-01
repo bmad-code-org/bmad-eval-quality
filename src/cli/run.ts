@@ -450,8 +450,8 @@ async function runAggregateCommand(
 	)) as FloorsInput
 	// The aggregate records the decision against each floor and the command
 	// exits 0 whatever it is: AD-21 reserves 1 and 2 for the verdict ladder,
-	// and a floor is the adopter's policy over a measurement, not a verdict
-	// about the system or the contract. A refused set exits 4 instead.
+	// and a floor is the adopter's policy over a measurement. A refused set
+	// exits 4.
 	const aggregate = application.aggregateStrength({
 		evidence,
 		floors,

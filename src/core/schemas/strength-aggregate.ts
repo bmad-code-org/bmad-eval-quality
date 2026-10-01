@@ -39,8 +39,7 @@ const FloorValue = z
  * each class rate against. A class with no key declares no floor. Strict, so a
  * misspelled class name is a parse failure and never a silently undeclared
  * floor. Not an interchange artifact: it is a caller-authored input read the
- * way a scoring policy is, and it is echoed into the aggregate rather than
- * published as a document of its own.
+ * way a scoring policy is, and its values are echoed into the aggregate.
  */
 export const StrengthFloors = z.strictObject({
 	defect: FloorValue.optional(),
@@ -51,8 +50,7 @@ export const StrengthFloors = z.strictObject({
 export type StrengthFloors = z.infer<typeof StrengthFloors>
 
 /**
- * Why a decision came out as it did, a closed set so a consumer reads the
- * reason instead of re-deriving it from the counts. The precedence is the
+ * Why a decision came out as it did, a closed set so a consumer reads the reason and has no need to re-derive it from the counts. The precedence is the
  * order listed after the first: no declared floor decides nothing, then an
  * empty class, then a non-comparable class, then an unexercised one, then the
  * comparison itself. Each decision admits only its own bases, below.
@@ -73,7 +71,7 @@ export const AggregatedClass = ClassStrength.extend({
 		.int()
 		.min(1)
 		.describe(
-			'The distinct qualified probes of this class across the aggregated artifacts: the denominator before exercise. Clean controls and canaries are not counted, whatever class they declare. A class with no eligible probe is `null` in `classes`, never an entry with `eligible` zero.',
+			'The distinct qualified probes of this class across the aggregated artifacts: the denominator before exercise. Clean controls and canaries are not counted, whatever class they declare. A class with no eligible probe is `null` in `classes`.',
 		),
 	comparable: z
 		.boolean()
@@ -145,7 +143,7 @@ export const AggregatedInput = z.strictObject({
 		.string()
 		.min(1)
 		.describe(
-			"The run identifier of this probe's own trial set. Each probe is scored as its own trial set, so these differ across inputs and are recorded rather than required equal.",
+			"The run identifier of this probe's own trial set. Each probe is scored as its own trial set, so these differ across inputs and are only recorded.",
 		),
 	artifactDigest: Digest.describe(
 		"The AD-27 digest of the evidence artifact this entry read, over its canonical form. A consumer that kept each artifact's digest when it scored the probe compares them to the set recorded here, so a substituted, dropped, or added artifact changes the aggregate it is compared against.",
@@ -205,7 +203,7 @@ export const StrengthAggregate = z
 				'zero-action': FloorDecision,
 			})
 			.describe(
-				"The decision against each class's declared floor. Present for every class, so a class the adopter declared no floor for reads `undeclared` rather than missing.",
+				"The decision against each class's declared floor. Present for every class, so a class the adopter declared no floor for reads `undeclared`.",
 			),
 	})
 	.meta({

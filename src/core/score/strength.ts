@@ -54,8 +54,8 @@ export type ComparableResult = {
 
 /**
  * The three classes the vector keys, in the vector's own order. Exported so
- * the run-wide aggregation walks the same list the per-probe vector does
- * instead of keeping a second copy that could gain or lose a class alone.
+ * the run-wide aggregation walks the same list the per-probe vector does, and
+ * the two cannot gain or lose a class apart.
  */
 export const STRENGTH_VECTOR_CLASSES = [
 	'defect',

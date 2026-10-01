@@ -162,7 +162,7 @@ describe('the evidence schema version is read before the shape', () => {
 		expect(fault.message).toContain('this build reads 4')
 	})
 
-	it('names the stamp of an artifact whose shape is the previous version, not an opaque parse failure', async () => {
+	it('names the stamp of an artifact whose shape is the previous version', async () => {
 		const older = (await withStamp(3)) as unknown as Record<string, unknown>
 		delete older.reducedProbeOutcomes
 		const fault = faultOf(() =>
