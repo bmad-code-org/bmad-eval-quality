@@ -10,6 +10,8 @@ body.
 
 ## [Unreleased]
 
+## [5.0.0] - 2026-10-02
+
 ### Changed
 
 - **An operation is named by the pair of its interface and its `operationId`, so two interfaces of one contract may declare the same `operationId`.**
