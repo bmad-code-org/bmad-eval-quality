@@ -1,6 +1,6 @@
 {
   "actionsArtifact": {
-    "digest": "sha256:a91f2223d4b7ba22447767fd9858f76de59de9ed4ce507fde309fe968f94da31",
+    "digest": "sha256:7fe0c1c6baceff0106ce170335dba6d84f81092941fdf578b8cf7fb0700d1a3b",
     "path": "examples/tutorials/tool-use/seeded-steps.json",
     "privateRef": null,
     "storage": "public"
@@ -19,7 +19,7 @@
       "confidence": 0.95,
       "evidenceArtifacts": [
         {
-          "digest": "sha256:a91f2223d4b7ba22447767fd9858f76de59de9ed4ce507fde309fe968f94da31",
+          "digest": "sha256:7fe0c1c6baceff0106ce170335dba6d84f81092941fdf578b8cf7fb0700d1a3b",
           "path": "examples/tutorials/tool-use/seeded-steps.json",
           "privateRef": null,
           "storage": "public"
@@ -60,6 +60,7 @@
           "query": "alpha"
         },
         "body": null,
+        "bodyEncoding": null,
         "environment": null,
         "header": null,
         "option": null,
@@ -100,6 +101,7 @@
           "title": "a new note"
         },
         "body": null,
+        "bodyEncoding": null,
         "environment": null,
         "header": null,
         "option": null,
@@ -135,6 +137,7 @@
           "query": 42
         },
         "body": null,
+        "bodyEncoding": null,
         "environment": null,
         "header": null,
         "option": null,
@@ -171,6 +174,7 @@
           "title": 42
         },
         "body": null,
+        "bodyEncoding": null,
         "environment": null,
         "header": null,
         "option": null,
@@ -205,6 +209,7 @@
           "query": "note-a-new-note"
         },
         "body": null,
+        "bodyEncoding": null,
         "environment": null,
         "header": null,
         "option": null,
@@ -286,7 +291,7 @@
   },
   "revisionCount": 0,
   "runId": "tool-run-1",
-  "schemaVersion": 7,
+  "schemaVersion": 8,
   "sealedBriefDigest": "sha256:901a671fc068f96de1e69c00bcddb5813159e5f4817757855b5c15cb1a0e5e16",
   "trialIndex": 1
 }

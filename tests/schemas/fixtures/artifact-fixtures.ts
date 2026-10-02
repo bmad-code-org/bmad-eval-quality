@@ -138,6 +138,7 @@ export const FINDING_BRANCH_FIXTURES = [
 ] as const
 
 const emptyCallInputs: SealedRunRecord['observations'][number]['callInputs'] = {
+	bodyEncoding: null,
 	path: null,
 	query: null,
 	header: null,
@@ -160,7 +161,7 @@ export const sealedRunRecordFixture: SealedRunRecord = {
 	// parse. Each bump is written down
 	// here first; the three other records that stamp a version, `score-fixtures`,
 	// the `mcp` end-to-end record and the worked-example target, move with it.
-	schemaVersion: 7,
+	schemaVersion: 8,
 	parentDigest: null,
 	revisionCount: 0,
 	runId: 'spike-run-0001',

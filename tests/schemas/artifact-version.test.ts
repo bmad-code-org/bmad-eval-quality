@@ -527,6 +527,15 @@ const OBSERVATION_AT_7: Readonly<Record<string, unknown>> = {
 	artifacts: {},
 }
 
+/** Version 8 marks raw call inputs explicitly; this JSON call has no raw bytes. */
+const OBSERVATION_AT_8: Readonly<Record<string, unknown>> = {
+	...OBSERVATION_AT_7,
+	callInputs: {
+		...(OBSERVATION_AT_7.callInputs as Record<string, unknown>),
+		bodyEncoding: null,
+	},
+}
+
 /** The same observation as a version-6 record carried it, with no interface. */
 const OBSERVATION_AT_6: Readonly<Record<string, unknown>> = (() => {
 	const { interfaceId: _interfaceId, ...rest } = OBSERVATION_AT_7
@@ -559,6 +568,12 @@ const SEALED_RUN_RECORD_AT_7: Readonly<Record<string, unknown>> = {
 		costUsd: '0',
 	},
 	evidenceDisclosure: { truncationBound: null, reportedIncomplete: false },
+}
+
+const SEALED_RUN_RECORD_AT_8: Readonly<Record<string, unknown>> = {
+	...SEALED_RUN_RECORD_AT_7,
+	schemaVersion: 8,
+	observations: [OBSERVATION_AT_8],
 }
 
 const SEALED_EVALUATOR_BRIEF_AT_2: Readonly<Record<string, unknown>> = {
@@ -891,8 +906,9 @@ const SHAPES: readonly {
 		artifact: 'sealed-run-record',
 		current: SEALED_RUN_RECORD_SCHEMA_VERSION,
 		parse: (value) => SealedRunRecord.safeParse(value),
-		predecessor: 'carries observations that name no `interfaceId`',
+		predecessor: 'carries observations that name no `bodyEncoding`',
 		shapeByVersion: {
+			8: (stamp) => ({ ...SEALED_RUN_RECORD_AT_8, schemaVersion: stamp }),
 			7: (stamp) => ({ ...SEALED_RUN_RECORD_AT_7, schemaVersion: stamp }),
 			6: (stamp) => ({
 				...SEALED_RUN_RECORD_AT_7,

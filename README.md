@@ -193,7 +193,7 @@ The import attribute is required: ESM on Node 22 and 24 both throw `ERR_IMPORT_A
 
 The published surface is stable: a breaking change to a command, an export, or a schema is a major version bump. `compile`, `preflight` and `score` refuse a contract whose `schemaVersion` differs from the one this build reads, `preflight` and `score` refuse a probe the same way, and `score` refuses a sealed run record whose `schemaVersion` differs, so check the stamp on anything you did not author against this version. The library exports the three numbers, `EVAL_CONTRACT_SCHEMA_VERSION`, `PROBE_SCHEMA_VERSION` and `SEALED_RUN_RECORD_SCHEMA_VERSION`, so the version to check against comes from the package. `CHANGELOG.md` records what each release breaks.
 
-API request bodies accept `{ "kind": "json", "value": ... }`, `{ "kind": "absent" }`, and `{ "kind": "raw", "base64": "...", "contentType": "application/json" }`. The raw arm carries exact bytes through probe requests, contract steps, witness legs, and defect selectors. Its base64 must be canonical; an empty string represents a zero-byte body with the declared content type. The HTTP environment port sends the bytes and headers.
+API request bodies accept `{ "kind": "json", "value": ... }`, `{ "kind": "absent" }`, and `{ "kind": "raw", "base64": "...", "contentType": "application/json" }`. The raw arm carries exact bytes through probe requests, contract steps, witness legs, and defect selectors. Its base64 must be canonical; an empty string represents a zero-byte body with the declared content type. Consumers implement `EnvironmentProbePort` to send those bytes and the declared content type over HTTP.
 
 ## Relationship with BMad and TEA
 

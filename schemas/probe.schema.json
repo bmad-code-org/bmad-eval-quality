@@ -1005,7 +1005,7 @@
                                         },
                                         "contentType": {
                                           "type": "string",
-                                          "pattern": "^[!#$%&'*+.^_`|~0-9A-Za-z-]+\\/[!#$%&'*+.^_`|~0-9A-Za-z-]+(?:;[ \\t]*[^\\r\\n]+)?$",
+                                          "pattern": "^[!#$%&'*+.^_`|~0-9A-Za-z-]+\\/[!#$%&'*+.^_`|~0-9A-Za-z-]+(?:;[ \\t]*[!#$%&'*+.^_`|~0-9A-Za-z-]+[ \\t]*=[ \\t]*(?:[!#$%&'*+.^_`|~0-9A-Za-z-]+|\"(?:[\\x20-\\x21\\x23-\\x5B\\x5D-\\x7E]|\\\\[\\x20-\\x7E])*\"))*$",
                                           "description": "The explicit Content-Type sent with these raw bytes, including an empty body."
                                         }
                                       },
@@ -1147,7 +1147,7 @@
                                         },
                                         "contentType": {
                                           "type": "string",
-                                          "pattern": "^[!#$%&'*+.^_`|~0-9A-Za-z-]+\\/[!#$%&'*+.^_`|~0-9A-Za-z-]+(?:;[ \\t]*[^\\r\\n]+)?$",
+                                          "pattern": "^[!#$%&'*+.^_`|~0-9A-Za-z-]+\\/[!#$%&'*+.^_`|~0-9A-Za-z-]+(?:;[ \\t]*[!#$%&'*+.^_`|~0-9A-Za-z-]+[ \\t]*=[ \\t]*(?:[!#$%&'*+.^_`|~0-9A-Za-z-]+|\"(?:[\\x20-\\x21\\x23-\\x5B\\x5D-\\x7E]|\\\\[\\x20-\\x7E])*\"))*$",
                                           "description": "The explicit Content-Type sent with these raw bytes, including an empty body."
                                         }
                                       },
@@ -1269,7 +1269,7 @@
                                         },
                                         "contentType": {
                                           "type": "string",
-                                          "pattern": "^[!#$%&'*+.^_`|~0-9A-Za-z-]+\\/[!#$%&'*+.^_`|~0-9A-Za-z-]+(?:;[ \\t]*[^\\r\\n]+)?$",
+                                          "pattern": "^[!#$%&'*+.^_`|~0-9A-Za-z-]+\\/[!#$%&'*+.^_`|~0-9A-Za-z-]+(?:;[ \\t]*[!#$%&'*+.^_`|~0-9A-Za-z-]+[ \\t]*=[ \\t]*(?:[!#$%&'*+.^_`|~0-9A-Za-z-]+|\"(?:[\\x20-\\x21\\x23-\\x5B\\x5D-\\x7E]|\\\\[\\x20-\\x7E])*\"))*$",
                                           "description": "The explicit Content-Type sent with these raw bytes, including an empty body."
                                         }
                                       },
@@ -1496,7 +1496,7 @@
                 },
                 "contentType": {
                   "type": "string",
-                  "pattern": "^[!#$%&'*+.^_`|~0-9A-Za-z-]+\\/[!#$%&'*+.^_`|~0-9A-Za-z-]+(?:;[ \\t]*[^\\r\\n]+)?$",
+                  "pattern": "^[!#$%&'*+.^_`|~0-9A-Za-z-]+\\/[!#$%&'*+.^_`|~0-9A-Za-z-]+(?:;[ \\t]*[!#$%&'*+.^_`|~0-9A-Za-z-]+[ \\t]*=[ \\t]*(?:[!#$%&'*+.^_`|~0-9A-Za-z-]+|\"(?:[\\x20-\\x21\\x23-\\x5B\\x5D-\\x7E]|\\\\[\\x20-\\x7E])*\"))*$",
                   "description": "The explicit Content-Type sent with these raw bytes, including an empty body."
                 }
               },

@@ -148,6 +148,7 @@ function selectorAdmits(
 			'kind' in channelBinding &&
 			channelBinding.kind === 'raw'
 		) {
+			if (observation.callInputs.bodyEncoding !== 'raw') return false
 			if (!deepEquals(observed, channelBinding)) return false
 			continue
 		}

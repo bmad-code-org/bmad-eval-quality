@@ -22,6 +22,7 @@ function observation(overrides: Partial<Observation> = {}): Observation {
 		provenance: 'baseline',
 		principal: null,
 		callInputs: {
+			bodyEncoding: null,
 			path: null,
 			query: null,
 			header: null,
@@ -462,6 +463,7 @@ describe('parity matrix (Decision 9)', () => {
 				stepObservations: {
 					create: observation({
 						callInputs: {
+							bodyEncoding: null,
 							path: null,
 							query: null,
 							header: null,

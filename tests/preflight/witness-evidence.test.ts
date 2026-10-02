@@ -78,6 +78,7 @@ describe('evidenceOf', () => {
 			inputsOf({ body }),
 		)
 		expect(evidence.callInputs.body).toEqual(body)
+		expect(evidence.callInputs.bodyEncoding).toBe('raw')
 	})
 
 	// `create-thing` declares `/id` volatile, so the relation sees the pruned
@@ -158,11 +159,12 @@ describe('evidenceOf', () => {
 		const evidence = evidenceFor(jsonBody({ ok: true }), {}, toolCallInputs)
 		const { arguments: supplied, ...rest } = evidence.callInputs
 		expect(supplied).toEqual({ query: 'alpha' })
-		// The other eight are named, so a key disappearing from
+		// The other eight input channels and the raw marker are named, so a key disappearing from
 		// `ObservedCallInputs` fails here rather than passing vacuously.
 		expect(Object.keys(rest).sort()).toEqual([
 			'argument',
 			'body',
+			'bodyEncoding',
 			'environment',
 			'header',
 			'option',

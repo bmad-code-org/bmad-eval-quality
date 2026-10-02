@@ -365,6 +365,7 @@ const callInputs = (prompt: string) => ({
 	query: null,
 	header: null,
 	body: null,
+	bodyEncoding: null,
 	argument: null,
 	option: { skill: 'checklist-selection' },
 	environment: null,
@@ -389,7 +390,7 @@ const authoredRecord = (
 	briefDigest: string,
 	evaluatorConfigurationDigest: string,
 ): SealedRunRecord => ({
-	schemaVersion: 7,
+	schemaVersion: 8,
 	parentDigest: null,
 	revisionCount: 0,
 	runId: RUN_ID,

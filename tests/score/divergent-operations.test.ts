@@ -37,6 +37,7 @@ const malformedFormatStep = (interfaceId: string): InteractionStep => ({
 const numericFormat = (interfaceId: string) => ({
 	...commandObservation('obs-format', 1, interfaceId, {}),
 	callInputs: {
+		bodyEncoding: null,
 		path: null,
 		query: null,
 		header: null,

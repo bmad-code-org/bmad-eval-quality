@@ -81,6 +81,7 @@
         "body": {
           "seedName": "alpha"
         },
+        "bodyEncoding": null,
         "environment": null,
         "header": null,
         "option": null,
@@ -116,6 +117,7 @@
         "argument": null,
         "arguments": null,
         "body": null,
+        "bodyEncoding": null,
         "environment": null,
         "header": null,
         "option": null,
@@ -158,6 +160,7 @@
         "body": {
           "name": "a thing the run created"
         },
+        "bodyEncoding": null,
         "environment": null,
         "header": null,
         "option": null,
@@ -194,6 +197,7 @@
         "argument": null,
         "arguments": null,
         "body": null,
+        "bodyEncoding": null,
         "environment": null,
         "header": null,
         "option": null,
@@ -236,6 +240,7 @@
         "body": {
           "name": 17
         },
+        "bodyEncoding": null,
         "environment": null,
         "header": null,
         "option": null,
@@ -271,6 +276,7 @@
         "argument": null,
         "arguments": null,
         "body": null,
+        "bodyEncoding": null,
         "environment": null,
         "header": null,
         "option": null,
@@ -310,6 +316,7 @@
         "body": {
           "seedName": 17
         },
+        "bodyEncoding": null,
         "environment": null,
         "header": null,
         "option": null,
@@ -411,7 +418,7 @@
   },
   "revisionCount": 0,
   "runId": "workflow-capture-run-0001",
-  "schemaVersion": 7,
+  "schemaVersion": 8,
   "sealedBriefDigest": "sha256:47836bbabae9eba12c3a0e1cb84ccb0600056af16d3794b091ab12366054b6b4",
   "trialIndex": 1
 }

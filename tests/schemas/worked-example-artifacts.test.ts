@@ -19,11 +19,11 @@ const issuesOf = (result: {
 describe('the spike worked example, re-checked and not repaired', () => {
 	// A bare `success === false` would stay green if the shapes broke somewhere
 	// else entirely, and the recorded finding would quietly stop being true.
-	it('fails the Sealed Run Record in exactly the one hundred and two recorded ways', () => {
+	it('fails the Sealed Run Record in exactly the one hundred and seven recorded ways', () => {
 		const result = SealedRunRecord.safeParse(workedExampleSealedRunRecord)
 		expect(result.success).toBe(false)
 		expect(issuesOf(result)).toEqual(WORKED_EXAMPLE_RECORD_ISSUES)
-		expect(WORKED_EXAMPLE_RECORD_ISSUES).toHaveLength(102)
+		expect(WORKED_EXAMPLE_RECORD_ISSUES).toHaveLength(107)
 	})
 
 	it('fails the Evidence Artifact in exactly the twenty-eight recorded ways', () => {

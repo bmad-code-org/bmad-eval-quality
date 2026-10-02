@@ -253,7 +253,7 @@ export const recordObservation = (
 ): Observation => ({
 	provenance: 'evaluator-chosen',
 	principal: null,
-	callInputs: NO_CALL_INPUTS,
+	callInputs: { ...NO_CALL_INPUTS, bodyEncoding: null },
 	responseBody: null,
 	responseHeaders: null,
 	responseStatus: null,
@@ -276,7 +276,11 @@ export const commandObservation = (
 		sequence,
 		interfaceId,
 		operationId: SHARED_OPERATION_ID,
-		callInputs: { ...NO_CALL_INPUTS, stdin: { prompt: 'the first task' } },
+		callInputs: {
+			...NO_CALL_INPUTS,
+			bodyEncoding: null,
+			stdin: { prompt: 'the first task' },
+		},
 		stdout: { kind: 'json', value: printed },
 		exitCode: 0,
 	})
@@ -293,7 +297,11 @@ export const toolObservation = (
 		sequence,
 		interfaceId,
 		operationId: SHARED_TOOL_OPERATION_ID,
-		callInputs: { ...NO_CALL_INPUTS, arguments: { query: 'alpha' } },
+		callInputs: {
+			...NO_CALL_INPUTS,
+			bodyEncoding: null,
+			arguments: { query: 'alpha' },
+		},
 		responseBody: answered,
 		responseStatus: 0,
 	})
@@ -408,7 +416,7 @@ export const scoreSharedOperation = (options: {
 		'violated',
 	]
 	const record: SealedRunRecord = {
-		schemaVersion: 7,
+		schemaVersion: 8,
 		parentDigest: null,
 		revisionCount: 0,
 		runId: RUN_ID,

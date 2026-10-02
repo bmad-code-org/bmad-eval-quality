@@ -60,6 +60,7 @@
         "body": {
           "title": "Revised"
         },
+        "bodyEncoding": null,
         "environment": null,
         "header": null,
         "option": null,
@@ -98,6 +99,7 @@
         "argument": null,
         "arguments": null,
         "body": null,
+        "bodyEncoding": null,
         "environment": null,
         "header": null,
         "option": null,
@@ -136,6 +138,7 @@
         "argument": null,
         "arguments": null,
         "body": null,
+        "bodyEncoding": null,
         "environment": null,
         "header": null,
         "option": null,
@@ -210,7 +213,7 @@
   },
   "revisionCount": 0,
   "runId": "notes-run-1",
-  "schemaVersion": 7,
+  "schemaVersion": 8,
   "sealedBriefDigest": "sha256:d3a002c066914cde0be323f94de33ce9e630b56d085fbd8bde01ee5570c0b71a",
   "trialIndex": 1
 }

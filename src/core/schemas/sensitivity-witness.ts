@@ -2,7 +2,11 @@
 import { z } from 'zod'
 import { Expression } from './expression.ts'
 import { Identifier, JsonObjectValue, KeyName } from './primitives.ts'
-import { ProbeRequestBody, ProbeRequestStdin } from './probe-body.ts'
+import {
+	hasContentTypeHeader,
+	ProbeRequestBody,
+	ProbeRequestStdin,
+} from './probe-body.ts'
 
 /**
  * The four transport channels one probe leg supplies, as values. `RequestShape`
@@ -20,6 +24,15 @@ export const ApiWitnessInputs = z
 		query: JsonObjectValue,
 		header: z.record(KeyName, z.string()),
 		body: ProbeRequestBody,
+	})
+	.superRefine((inputs, context) => {
+		if (inputs.body.kind === 'raw' && hasContentTypeHeader(inputs.header)) {
+			context.addIssue({
+				code: 'custom',
+				path: ['header'],
+				message: 'A raw body declares Content-Type through body.contentType',
+			})
+		}
 	})
 	.meta({
 		id: 'WitnessInputs',

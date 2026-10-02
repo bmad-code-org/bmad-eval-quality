@@ -221,7 +221,7 @@ node dist/cli/main.js score \
   --policy examples/tutorials/tool-use/scoring-policy.json \
   --isolation-manifest examples/tutorials/tool-use/isolation-manifest.json \
   --evaluator-configuration examples/tutorials/tool-use/evaluator-configuration.json \
-  --corpus-digest sha256:bd4517f7bc3e4b4536763b56a183151ef34d9d8d3db70fc0dad62f7e9d861c1d \
+  --corpus-digest sha256:53fe40ab43f86962a3738826c0905f455587eb8db4d7e202484914334dba768d \
   --out /tmp/eval-quality-tool-use/evidence-artifact.json
 ```
 
@@ -302,9 +302,9 @@ The fourth question after them is kind-neutral and belongs to both readings.
 For agent evaluations, verify that the agent selected the appropriate tool for the task.
 A plausible final answer does not prove correct tool selection.
 The observable tool trajectory can itself be part of the behavior being evaluated.
-An `InteractionStep` names an `interfaceId`, an `operationId` and a `cardinality` (`src/core/schemas/plan.ts:180`).
+An `InteractionStep` names an `interfaceId`, an `operationId` and a `cardinality` (`src/core/schemas/plan.ts:194`).
 The step is a selector over observations the evaluator produced, so a step naming `search-notes` with `cardinality: "exactly-one"` declares that exactly one call to that tool is expected in the run.
-`SELECTOR_CARDINALITIES` is the closed three, `exactly-one`, `at-most-one`, and `any` (`plan.ts:157`).
+`SELECTOR_CARDINALITIES` is the closed three, `exactly-one`, `at-most-one`, and `any` (`plan.ts:171`).
 
 **Were the arguments right?**
 Verify the actual arguments sent to the tool.
@@ -376,7 +376,7 @@ The probe side is open too.
 The qualification gate admits the kind, reading the same tuple the compile and pre-flight gates read.
 
 Both shapes downstream carry the kind.
-`Observation` in the sealed run record is not discriminated on kind (`src/core/schemas/sealed-run-record.ts:229`): it carries all eight evidence channels flat, with `null` or `{ "kind": "absent" }` where a channel does not apply, so a tool call's result has somewhere to live.
+`Observation` in the sealed run record is not discriminated on kind (`src/core/schemas/sealed-run-record.ts:234`): it carries all eight evidence channels flat, with `null` or `{ "kind": "absent" }` where a channel does not apply, so a tool call's result has somewhere to live.
 `ObservedCallInputs` (`sealed-run-record.ts:204`) declares one key per input channel, `arguments` included, so what a tool call *sent* has somewhere to live and a pointer at `/interactions/{stepId}/call-inputs/arguments/...` resolves the recorded value.
 That key arrived with the record's own breaking version bump, from 4 to 5.
 
@@ -583,7 +583,7 @@ The transport is stdio and nothing else. A server reached over Streamable HTTP s
 
 **Missing.** A channel model for a text-shaped tool result.
 
-**Already works, and this is the part worth knowing before you fund any of it.** Both sides of the exchange accommodate the kind today. `Observation` in the sealed run record is not discriminated on kind (`sealed-run-record.ts:229`), so what a tool answered has somewhere to live. `foreignChannels` (`qualification.ts:198`) confines a tool-use signature to `response-body`, `response-status`, `exit-code`, and its own `call-inputs`, which is the same answer compile-time reachability gives, a confinement the code decides. All four carry a value once the adapter runs: the structured result lands on `response-body`, the error flag on `response-status`, the signed exit code of a server that ended the session before answering on `exit-code` (`null` on an answered call), and the tool call's arguments on `call-inputs`. `response-headers` is not among them; `foreignChannels` hands it to a tool-use signature as foreign, so a signature naming it is refused. `ObservedCallInputs` (`sealed-run-record.ts:204`) carries a key per input channel, `arguments` among them.
+**Already works, and this is the part worth knowing before you fund any of it.** Both sides of the exchange accommodate the kind today. `Observation` in the sealed run record is not discriminated on kind (`sealed-run-record.ts:234`), so what a tool answered has somewhere to live. `foreignChannels` (`qualification.ts:198`) confines a tool-use signature to `response-body`, `response-status`, `exit-code`, and its own `call-inputs`, which is the same answer compile-time reachability gives, a confinement the code decides. All four carry a value once the adapter runs: the structured result lands on `response-body`, the error flag on `response-status`, the signed exit code of a server that ended the session before answering on `exit-code` (`null` on an answered call), and the tool call's arguments on `call-inputs`. `response-headers` is not among them; `foreignChannels` hands it to a tool-use signature as foreign, so a signature naming it is refused. `ObservedCallInputs` (`sealed-run-record.ts:204`) carries a key per input channel, `arguments` among them.
 
 **Unproven, and this is the uncomfortable part.** The calibration record behind this project's central measurement is itself MCP-shaped. The architecture records that every contract in the phase-2 block that produced the 0.33-to-1.00 result declares an MCP tool interface, and that 22 of 25 real contracts use the kind. Those contracts were transcribed into API shape to be compiled here, and a transcription is not the measured artifact. So `mcp` is the most-used kind in the prior art and the one this package reached last.
 

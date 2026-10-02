@@ -176,6 +176,39 @@ describe('renderStepReference: the escalation ladder and its injectivity', () =>
 		}
 	})
 
+	it('distinguishes steps whose only difference is their raw body bytes', () => {
+		const contract = structuredClone(irreducibleCollisionPair)
+		const [stepA, stepB] = contract.interactionPlan
+		if (stepA === undefined || stepB === undefined)
+			throw new Error('fixture malformed')
+		if (!('body' in stepA.inputBinding) || !('body' in stepB.inputBinding))
+			throw new Error('fixture is not an API interaction')
+		stepA.inputBinding.body = {
+			kind: 'raw',
+			base64: 'YQ==',
+			contentType: 'application/json',
+		}
+		stepB.inputBinding.body = {
+			kind: 'raw',
+			base64: 'Yg==',
+			contentType: 'application/json',
+		}
+		const index = buildPlanIndex(
+			contract.interactionPlan,
+			contract.permittedInterfaces,
+		)
+		const operation = resolveOperation(index, {
+			interfaceId: 'ping-api',
+			operationId: 'ping-service',
+		})
+		const siblings = [stepA, stepB]
+		const phraseA = renderStepReference(stepA, operation, siblings, index)
+		const phraseB = renderStepReference(stepB, operation, siblings, index)
+		expect(phraseA).not.toBe(phraseB)
+		expect(phraseA).toContain('YQ==')
+		expect(phraseB).toContain('Yg==')
+	})
+
 	// The same fault, reported before `seal` is ever called. The fixture is a
 	// contract slice, so the one direction that references the pair is supplied
 	// here rather than carried on it.

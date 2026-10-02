@@ -29,6 +29,7 @@
         "argument": null,
         "arguments": null,
         "body": null,
+        "bodyEncoding": null,
         "environment": null,
         "header": null,
         "option": {
@@ -94,7 +95,7 @@
   },
   "revisionCount": 0,
   "runId": "skill-honest-1",
-  "schemaVersion": 7,
+  "schemaVersion": 8,
   "sealedBriefDigest": "sha256:43c013d51600453c810000c71f50b3edfdc4269f82354dbd2c4c825c4e291b63",
   "trialIndex": 1
 }

@@ -188,26 +188,29 @@ describe('runScore: the record stamp is read before the record parses', () => {
 	})
 
 	// The record a caller assembled against the previous build: its
-	// observations name an operation and no interface. Parsed first it would
+	// observations name no body encoding. Parsed first it would
 	// fail as an anonymous `schema-parse-failure`.
-	const versionSixRecord = () => ({
+	const versionSevenRecord = () => ({
 		...sealedRunRecordFixtureForScore,
-		schemaVersion: 6,
+		schemaVersion: 7,
 		observations: sealedRunRecordFixtureForScore.observations.map(
-			({ interfaceId: _interfaceId, ...rest }) => rest,
+			({ callInputs, ...rest }) => {
+				const { bodyEncoding: _bodyEncoding, ...previousInputs } = callInputs
+				return { ...rest, callInputs: previousInputs }
+			},
 		),
 	})
 
-	it('refuses a version 6 record with schema-version-mismatch naming 6 and 7, before its shape is parsed', async () => {
+	it('refuses a version 7 record with schema-version-mismatch naming 7 and 8, before its shape is parsed', async () => {
 		const fault = await faultOf(() =>
-			run({ record: [versionSixRecord()] as never }),
+			run({ record: [versionSevenRecord()] as never }),
 		)
 		expect(fault.code).toBe('schema-version-mismatch')
 		expect(fault.artifactPath).toBe(
 			`SealedRunRecord[trialIndex=${sealedRunRecordFixtureForScore.trialIndex}].schemaVersion`,
 		)
 		expect(fault.message).toContain(
-			'carries "schemaVersion" 6 where this build reads 7',
+			'carries "schemaVersion" 7 where this build reads 8',
 		)
 	})
 

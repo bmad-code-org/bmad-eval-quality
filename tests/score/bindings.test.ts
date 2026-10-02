@@ -56,6 +56,7 @@ function observation(
 			query: null,
 			header: null,
 			body: null,
+			bodyEncoding: null,
 			argument: null,
 			option: null,
 			environment: null,
@@ -373,12 +374,23 @@ describe('selectWithBindings', () => {
 		}
 		const declared = step('raw', 'create-note', { inputBinding: { body: raw } })
 		const observations = [
-			observation('matching', 1, 'create-note', { callInputs: { body: raw } }),
+			observation('matching', 1, 'create-note', {
+				callInputs: { body: raw, bodyEncoding: 'raw' },
+			}),
 			observation('changed-byte', 2, 'create-note', {
-				callInputs: { body: { ...raw, base64: 'e2JhZCI7' } },
+				callInputs: {
+					body: { ...raw, base64: 'e2JhZCI7' },
+					bodyEncoding: 'raw',
+				},
 			}),
 			observation('changed-type', 3, 'create-note', {
-				callInputs: { body: { ...raw, contentType: 'text/plain' } },
+				callInputs: {
+					body: { ...raw, contentType: 'text/plain' },
+					bodyEncoding: 'raw',
+				},
+			}),
+			observation('json-lookalike', 4, 'create-note', {
+				callInputs: { body: raw, bodyEncoding: null },
 			}),
 		]
 		expect(

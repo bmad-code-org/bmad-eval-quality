@@ -80,6 +80,7 @@
         "argument": null,
         "arguments": null,
         "body": null,
+        "bodyEncoding": null,
         "environment": null,
         "header": null,
         "option": {
@@ -113,6 +114,7 @@
         "argument": null,
         "arguments": null,
         "body": null,
+        "bodyEncoding": null,
         "environment": null,
         "header": null,
         "option": {
@@ -172,6 +174,7 @@
         "argument": null,
         "arguments": null,
         "body": null,
+        "bodyEncoding": null,
         "environment": null,
         "header": null,
         "option": {
@@ -253,7 +256,7 @@
   },
   "revisionCount": 0,
   "runId": "agent-run-1",
-  "schemaVersion": 7,
+  "schemaVersion": 8,
   "sealedBriefDigest": "sha256:7f65da4aaf29bb880a38f9868b54cd0e5faccc7f8e830af4eda2d74626fb90c7",
   "trialIndex": 1
 }

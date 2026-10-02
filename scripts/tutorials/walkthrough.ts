@@ -760,6 +760,7 @@ stipulated to have collected, and the chain exists so the four commands can be r
 				provenance: 'evaluator-chosen',
 				principal: null,
 				callInputs: {
+					bodyEncoding: null,
 					path: { noteId: 'n-1' },
 					query: null,
 					header: null,
@@ -786,6 +787,7 @@ stipulated to have collected, and the chain exists so the four commands can be r
 				provenance: 'evaluator-chosen',
 				principal: null,
 				callInputs: {
+					bodyEncoding: null,
 					path: { noteId: 'n-1' },
 					query: null,
 					header: null,
@@ -812,6 +814,7 @@ stipulated to have collected, and the chain exists so the four commands can be r
 				provenance: 'evaluator-chosen',
 				principal: null,
 				callInputs: {
+					bodyEncoding: null,
 					path: null,
 					query: { title: 'Revised' },
 					header: null,

@@ -31,6 +31,7 @@ function observation(overrides: Partial<Observation> = {}): Observation {
 		provenance: 'baseline',
 		principal: null,
 		callInputs: {
+			bodyEncoding: null,
 			path: null,
 			query: null,
 			header: null,
@@ -216,6 +217,7 @@ describe('makeResolveOperand', () => {
 			exitCode: 0,
 			artifacts: {},
 			callInputs: {
+				bodyEncoding: null,
 				path: { id: 'p1' },
 				query: { q: 'q1' },
 				header: { h: 'h1' },
@@ -275,6 +277,7 @@ describe('makeResolveOperand', () => {
 	it('fixture 17b: the arguments channel resolves what a tool call supplied', () => {
 		const step = observation({
 			callInputs: {
+				bodyEncoding: null,
 				path: null,
 				query: null,
 				header: null,
@@ -306,6 +309,7 @@ describe('makeResolveOperand', () => {
 	it('fixture 17: call-inputs selects the right transport channel; a null channel resolves ABSENT on a non-empty tail and null on an empty one', () => {
 		const step = observation({
 			callInputs: {
+				bodyEncoding: null,
 				path: { id: 'p1' },
 				query: null,
 				header: null,

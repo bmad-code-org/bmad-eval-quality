@@ -2,6 +2,11 @@
 import { z } from 'zod'
 import { JsonValue } from './primitives.ts'
 
+export const hasContentTypeHeader = (
+	header: Record<string, unknown>,
+): boolean =>
+	Object.keys(header).some((name) => name.toLowerCase() === 'content-type')
+
 // Split out of `port-messages.ts` so `sensitivity-witness.ts` can carry the
 // request body without importing that module: `port-messages.ts` reads
 // `HttpMethod` from `interface.ts`, and `interface.ts` reads the witness, so
@@ -30,7 +35,7 @@ export const RawRequestBody = z.strictObject({
 	contentType: z
 		.string()
 		.regex(
-			/^[!#$%&'*+.^_`|~0-9A-Za-z-]+\/[!#$%&'*+.^_`|~0-9A-Za-z-]+(?:;[ \t]*[^\r\n]+)?$/,
+			/^[!#$%&'*+.^_`|~0-9A-Za-z-]+\/[!#$%&'*+.^_`|~0-9A-Za-z-]+(?:;[ \t]*[!#$%&'*+.^_`|~0-9A-Za-z-]+[ \t]*=[ \t]*(?:[!#$%&'*+.^_`|~0-9A-Za-z-]+|"(?:[\x20-\x21\x23-\x5B\x5D-\x7E]|\\[\x20-\x7E])*"))*$/,
 		)
 		.describe(
 			'The explicit Content-Type sent with these raw bytes, including an empty body.',

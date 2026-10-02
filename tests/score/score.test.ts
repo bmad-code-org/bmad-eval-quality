@@ -143,6 +143,7 @@ const cleanObservation = (
 		sequence,
 		operationId: 'create-note',
 		callInputs: {
+			bodyEncoding: null,
 			path: null,
 			query: null,
 			header: null,

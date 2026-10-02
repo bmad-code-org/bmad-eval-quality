@@ -729,7 +729,7 @@ const authoredRecord = (
 	briefDigest: string,
 	evaluatorConfigurationDigest: string,
 ): SealedRunRecord => ({
-	schemaVersion: 7,
+	schemaVersion: 8,
 	parentDigest: null,
 	revisionCount: 0,
 	runId: 'spike-run-0001',
@@ -845,6 +845,7 @@ const authoredRecord = (
 			provenance: 'baseline',
 			principal: null,
 			callInputs: {
+				bodyEncoding: null,
 				path: { id: 'n-1' },
 				query: null,
 				header: null,
@@ -874,6 +875,7 @@ const authoredRecord = (
 			provenance: 'baseline',
 			principal: null,
 			callInputs: {
+				bodyEncoding: null,
 				path: null,
 				query: null,
 				header: null,
@@ -900,6 +902,7 @@ const authoredRecord = (
 			provenance: 'evaluator-chosen',
 			principal: null,
 			callInputs: {
+				bodyEncoding: null,
 				path: { id: 'n-1' },
 				query: null,
 				header: null,
@@ -929,6 +932,7 @@ const authoredRecord = (
 			provenance: 'evaluator-chosen',
 			principal: null,
 			callInputs: {
+				bodyEncoding: null,
 				path: { id: 'n-1' },
 				query: null,
 				header: null,
@@ -958,6 +962,7 @@ const authoredRecord = (
 			provenance: 'evaluator-chosen',
 			principal: null,
 			callInputs: {
+				bodyEncoding: null,
 				path: { id: 'n-2' },
 				query: null,
 				header: null,

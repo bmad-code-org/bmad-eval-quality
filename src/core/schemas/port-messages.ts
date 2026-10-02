@@ -10,6 +10,7 @@ import {
 	ToolName,
 } from './primitives.ts'
 import {
+	hasContentTypeHeader,
 	ProbeObservedBody,
 	ProbeRequestBody,
 	ProbeRequestStdin,
@@ -89,22 +90,35 @@ const probeCorrelation = {
  * two shapes cannot be confused for one another by a field that happens to be
  * absent.
  */
-export const ApiProbeRequest = z.strictObject({
-	...probeCorrelation,
-	kind: z.literal('api'),
-	method: HttpMethod,
-	pathTemplate: PathTemplate,
-	channels: z.strictObject({
-		path: z.record(KeyName, JsonValue),
-		query: z.record(KeyName, JsonValue),
-		header: z
-			.record(KeyName, z.string())
-			.describe(
-				'String-valued because a header value is a string on the wire; the other channels carry the declared JSON value.',
-			),
-		body: ProbeRequestBody,
-	}),
-})
+export const ApiProbeRequest = z
+	.strictObject({
+		...probeCorrelation,
+		kind: z.literal('api'),
+		method: HttpMethod,
+		pathTemplate: PathTemplate,
+		channels: z.strictObject({
+			path: z.record(KeyName, JsonValue),
+			query: z.record(KeyName, JsonValue),
+			header: z
+				.record(KeyName, z.string())
+				.describe(
+					'String-valued because a header value is a string on the wire; the other channels carry the declared JSON value.',
+				),
+			body: ProbeRequestBody,
+		}),
+	})
+	.superRefine((request, context) => {
+		if (
+			request.channels.body.kind === 'raw' &&
+			hasContentTypeHeader(request.channels.header)
+		) {
+			context.addIssue({
+				code: 'custom',
+				path: ['channels', 'header'],
+				message: 'A raw body declares Content-Type through body.contentType',
+			})
+		}
+	})
 
 /**
  * A request to run a command.

@@ -93,6 +93,7 @@
         "argument": null,
         "arguments": null,
         "body": null,
+        "bodyEncoding": null,
         "environment": null,
         "header": null,
         "option": null,
@@ -138,6 +139,7 @@
         "argument": null,
         "arguments": null,
         "body": null,
+        "bodyEncoding": null,
         "environment": null,
         "header": null,
         "option": null,
@@ -175,6 +177,7 @@
         "body": {
           "title": "Revised"
         },
+        "bodyEncoding": null,
         "environment": null,
         "header": null,
         "option": null,
@@ -220,6 +223,7 @@
         "argument": null,
         "arguments": null,
         "body": null,
+        "bodyEncoding": null,
         "environment": null,
         "header": null,
         "option": null,
@@ -267,6 +271,7 @@
         "body": {
           "colour": "red"
         },
+        "bodyEncoding": null,
         "environment": null,
         "header": null,
         "option": null,
@@ -357,7 +362,7 @@
   },
   "revisionCount": 0,
   "runId": "spike-run-0001",
-  "schemaVersion": 7,
+  "schemaVersion": 8,
   "sealedBriefDigest": "sha256:1f1eb9b223e5e97f38c342d3448bca1cabde39134803d32f8643ba15610d3057",
   "trialIndex": 1
 }
