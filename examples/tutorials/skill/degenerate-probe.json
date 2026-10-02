@@ -93,6 +93,6 @@
   },
   "rationale": "The degenerate strategy: name every item in the index. It satisfies the inclusion oracle because every mandated item is in the list, and the exclusion oracle is the only half that rejects it.",
   "revisionCount": 0,
-  "schemaVersion": 5,
+  "schemaVersion": 6,
   "systemId": "checklist-selection-skill"
 }

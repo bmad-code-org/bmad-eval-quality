@@ -156,6 +156,6 @@
   },
   "rationale": "A controlled mutation of the rules the skill states: the clause excluding an item for the frontend case is deleted, so a run exits clean and names it anyway. The inclusion oracle still holds over the reply, which is what makes the exclusion oracle the only one that can catch this.",
   "revisionCount": 0,
-  "schemaVersion": 5,
+  "schemaVersion": 6,
   "systemId": "checklist-selection-skill"
 }

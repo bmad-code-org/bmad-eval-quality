@@ -708,7 +708,7 @@
   "safetyLimits": [
     "No request to any host other than the mapped notes-api target."
   ],
-  "schemaVersion": 6,
+  "schemaVersion": 7,
   "scopedResources": null,
   "siblingGroups": {
     "operations": [

@@ -488,16 +488,16 @@ describe('the published package surface', () => {
 	it('the barrel carries the schema versions and the dominance comparison', async (ctx) => {
 		if (!BUILT) return ctx.skip(NEEDS_BUILD)
 		const barrel = await publishedBarrel()
-		expect(barrel.PROBE_SCHEMA_VERSION).toBe(5)
-		expect(barrel.EVAL_CONTRACT_SCHEMA_VERSION).toBe(6)
+		expect(barrel.PROBE_SCHEMA_VERSION).toBe(6)
+		expect(barrel.EVAL_CONTRACT_SCHEMA_VERSION).toBe(7)
 
 		// Each version keeps its literal declared type through
 		// `dist/index.d.ts`, so a consumer comparing against one narrows on it.
 		// A widened `number` passes the first assignment and fails the second.
-		const probeVersion: typeof import('eval-quality').PROBE_SCHEMA_VERSION = 5
-		const contractVersion: typeof import('eval-quality').EVAL_CONTRACT_SCHEMA_VERSION = 6
-		const probeLiteral: 5 = probeVersion
-		const contractLiteral: 6 = contractVersion
+		const probeVersion: typeof import('eval-quality').PROBE_SCHEMA_VERSION = 6
+		const contractVersion: typeof import('eval-quality').EVAL_CONTRACT_SCHEMA_VERSION = 7
+		const probeLiteral: 6 = probeVersion
+		const contractLiteral: 7 = contractVersion
 		expect([probeLiteral, contractLiteral]).toEqual([
 			barrel.PROBE_SCHEMA_VERSION,
 			barrel.EVAL_CONTRACT_SCHEMA_VERSION,

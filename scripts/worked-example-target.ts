@@ -132,7 +132,7 @@ const noteEnvelope = (): ResponseDescriptor => ({
  * `cardinality` and an explicit `after`.
  */
 const AUTHORED_CONTRACT = {
-	schemaVersion: 6,
+	schemaVersion: 7,
 	contractId: 'notes-api-v1',
 	parentDigest: null,
 	revisionCount: 0,

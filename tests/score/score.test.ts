@@ -58,7 +58,7 @@ const oracleCheck: Expression = {
  * what each case means to test.
  */
 const baseContract: EvalContract = {
-	schemaVersion: 6,
+	schemaVersion: 7,
 	parentDigest: null,
 	revisionCount: 0,
 	contractId: 'score-stage-contract',
@@ -852,7 +852,7 @@ describe('score, reading the probe stamp', () => {
 		expect(() => scoreOf(baseContract, [cleanTrial()])).not.toThrow()
 	})
 
-	it.each([1, 2, 3, 4, 6, 99])('refuses the stamp %i', (schemaVersion) => {
+	it.each([1, 2, 3, 4, 5, 7, 99])('refuses the stamp %i', (schemaVersion) => {
 		const run = () =>
 			scoreOf(baseContract, [cleanTrial()], stamped(schemaVersion))
 		expect(run).toThrow(RuntimeFault)
@@ -861,7 +861,7 @@ describe('score, reading the probe stamp', () => {
 
 	it('names the probe and both versions, so a reader knows which to move', () => {
 		expect(() => scoreOf(baseContract, [cleanTrial()], stamped(3))).toThrow(
-			/carries "schemaVersion" 3 where this build reads 5/,
+			/carries "schemaVersion" 3 where this build reads 6/,
 		)
 	})
 

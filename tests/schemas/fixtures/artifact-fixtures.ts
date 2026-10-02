@@ -5,7 +5,10 @@
 // enumeration is asserted complete instead.
 
 import type { ArtifactReference } from '../../../src/core/schemas/artifact-reference.ts'
-import { EVAL_CONTRACT_SCHEMA_VERSION } from '../../../src/core/schemas/eval-contract.ts'
+import {
+	EVAL_CONTRACT_SCHEMA_VERSION,
+	EvalContract,
+} from '../../../src/core/schemas/eval-contract.ts'
 import type { EvaluatorConfiguration } from '../../../src/core/schemas/evaluator-configuration.ts'
 import type { EvidenceArtifact } from '../../../src/core/schemas/evidence-artifact.ts'
 import type { IsolationManifest } from '../../../src/core/schemas/isolation-manifest.ts'
@@ -490,7 +493,7 @@ export const seededProbe: Probe = {
 	// `arguments` channel, so a version-4 probe naming `mcp` beside a method
 	// and a path template fails to parse. AD-11 calls each retype breaking and
 	// the stamp records it.
-	schemaVersion: 5,
+	schemaVersion: 6,
 	parentDigest: null,
 	revisionCount: 0,
 	probeId: 'P-001',
@@ -573,7 +576,7 @@ const fragmentSelectionSignature: Extract<
 }
 
 export const commandProbe: Probe = {
-	schemaVersion: 5,
+	schemaVersion: 6,
 	parentDigest: null,
 	revisionCount: 0,
 	probeId: 'P-003',
@@ -702,7 +705,7 @@ const searchToolSignature: Extract<
 }
 
 export const toolCallProbe: Probe = {
-	schemaVersion: 5,
+	schemaVersion: 6,
 	parentDigest: null,
 	revisionCount: 0,
 	probeId: 'P-005',
@@ -731,7 +734,7 @@ export const toolCallProbe: Probe = {
 }
 
 export const cleanControlProbe: Probe = {
-	schemaVersion: 5,
+	schemaVersion: 6,
 	parentDigest: null,
 	revisionCount: 0,
 	probeId: 'P-002',
@@ -1437,6 +1440,95 @@ export const QUALIFICATION_ROUTE_FIXTURES = [
 ] as const
 
 export const UNION_BRANCH_FIXTURES = [
+	{
+		id: 'eval-contract/raw-witness-body',
+		artifact: 'eval-contract',
+		discriminator: 'body.kind',
+		value: (() => {
+			const contract = EvalContract.parse(populatedContract)
+			const witness =
+				contract.permittedInterfaces[0]?.operations[0]?.sensitivityWitness
+			const inputs = witness?.legs[0]?.inputs
+			if (inputs === undefined || !('body' in inputs))
+				throw new Error('fixture has no API witness')
+			inputs.body = {
+				kind: 'raw',
+				base64: 'e2JhZCI6',
+				contentType: 'application/json',
+			}
+			return contract
+		})(),
+	},
+	{
+		id: 'eval-contract/raw-plan-body',
+		artifact: 'eval-contract',
+		discriminator: 'inputBinding.body.kind',
+		value: (() => {
+			const contract = EvalContract.parse(populatedContract)
+			const step = contract.interactionPlan[0]
+			if (step === undefined || !('body' in step.inputBinding))
+				throw new Error('fixture has no API step')
+			step.inputBinding.body = {
+				kind: 'raw',
+				base64: 'e2JhZCI6',
+				contentType: 'application/json',
+			}
+			return contract
+		})(),
+	},
+	{
+		id: 'probe/raw-manifestation-body',
+		artifact: 'probe',
+		discriminator: 'inputs.body.kind',
+		value: (() => {
+			const probe: Probe = structuredClone(seededProbe)
+			const witness = probe.defects[0]?.manifestationWitness
+			if (
+				witness === null ||
+				witness === undefined ||
+				!('body' in witness.inputs)
+			)
+				throw new Error('fixture has no API witness')
+			witness.inputs.body = {
+				kind: 'raw',
+				base64: 'e2JhZCI6',
+				contentType: 'application/json',
+			}
+			return probe
+		})(),
+	},
+	{
+		id: 'probe/raw-selector-body',
+		artifact: 'probe',
+		discriminator: 'defectSignature.condition.selector.inputBinding.body.kind',
+		value: (() => {
+			const probe: Probe = structuredClone(seededProbe)
+			if (probe.defectSignature === null)
+				throw new Error('fixture has no defect signature')
+			probe.defectSignature.condition.selector.inputBinding.body = {
+				kind: 'raw',
+				base64: 'e2JhZCI6',
+				contentType: 'application/json',
+			}
+			return probe
+		})(),
+	},
+	...([commandProbe, toolCallProbe] as const).map((seed) => ({
+		id: `probe/raw-selector-body/${seed.probeId}`,
+		artifact: 'probe' as const,
+		discriminator: 'defectSignature.condition.selector.inputBinding.body.kind',
+		value: (() => {
+			const probe: Probe = structuredClone(seed)
+			if (probe.defectSignature === null)
+				throw new Error('fixture has no defect signature')
+			probe.defectSignature.condition.selector.inputBinding.body = {
+				kind: 'raw',
+				base64: 'e2JhZCI6',
+				contentType: 'application/json',
+			}
+			return probe
+		})(),
+	})),
 	{
 		// The `cli` branch of `permittedInterfaces`, whose operation shape, input
 		// binding, and witness leg spelling are reachable from no other seed.

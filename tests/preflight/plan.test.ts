@@ -362,7 +362,7 @@ describe('planPreflight, reading the probe stamp', () => {
 		expect(() => planOf()).not.toThrow()
 	})
 
-	it.each([1, 2, 3, 4, 6, 99])('refuses the stamp %i', (schemaVersion) => {
+	it.each([1, 2, 3, 4, 5, 7, 99])('refuses the stamp %i', (schemaVersion) => {
 		const run = () => planOf(preflightContract, [stamped(schemaVersion)])
 		expect(run).toThrow(RuntimeFault)
 		expect(run).toThrow(/schema-version-mismatch/)
@@ -370,7 +370,7 @@ describe('planPreflight, reading the probe stamp', () => {
 
 	it('names the probe and both versions, so a reader knows which to move', () => {
 		expect(() => planOf(preflightContract, [stamped(3)])).toThrow(
-			/Probe\[probeId=P-001\]\.schemaVersion: carries "schemaVersion" 3 where this build reads 5/,
+			/Probe\[probeId=P-001\]\.schemaVersion: carries "schemaVersion" 3 where this build reads 6/,
 		)
 	})
 

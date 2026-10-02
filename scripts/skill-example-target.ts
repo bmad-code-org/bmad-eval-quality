@@ -228,7 +228,7 @@ const MANIFESTATION_WITNESS: ManifestationWitness = {
  * every code and artifact path printed.
  */
 const AUTHORED_PROBE = {
-	schemaVersion: 5,
+	schemaVersion: 6,
 	parentDigest: null,
 	revisionCount: 0,
 	probeId: 'P-001',

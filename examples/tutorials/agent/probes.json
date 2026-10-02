@@ -119,7 +119,7 @@
     },
     "rationale": "A controlled mutation that swallows the parse failure, writes an empty notes file, and reports success.",
     "revisionCount": 0,
-    "schemaVersion": 5,
+    "schemaVersion": 6,
     "systemId": "release-notes-agent"
   }
 ]

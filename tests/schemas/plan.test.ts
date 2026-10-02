@@ -32,7 +32,7 @@ describe('the tagged input binding', () => {
 		// union reports at its own root: the per-key path lives on whichever
 		// branch the value was written for.
 		const branch = ApiInputBinding.safeParse(value)
-		expect(branch.error?.issues[0]?.path).toEqual(['body', 'title'])
+		expect(branch.error?.issues[0]?.path).toEqual(['body'])
 	})
 
 	it('accepts both tagged spellings inside a channel', () => {

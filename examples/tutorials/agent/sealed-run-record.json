@@ -6,8 +6,8 @@
     "storage": "public"
   },
   "conditionArm": "mutated",
-  "contractDigest": "sha256:77d9423201de030e9feb7c5d9ea27bbb6b8e8d42948469bd483d29fc37b52167",
-  "evaluatorConfigurationDigest": "sha256:ffa39c414bde7b814c246790c13ef3bae39dab7dbaac9b9e898e44b03bf2d3f9",
+  "contractDigest": "sha256:662ddc3c5d8aeba75c70cff507eb2864b890a64738c8fef5237d12f1193ac382",
+  "evaluatorConfigurationDigest": "sha256:e3ae93e79b1a94912728a0273781274fb7826c4d9d3ebd87dcf3131e1d4c1efc",
   "evaluatorRecommendation": "FAIL",
   "evidenceDisclosure": {
     "reportedIncomplete": false,
@@ -44,7 +44,7 @@
     }
   ],
   "isolationManifestArtifact": {
-    "digest": "sha256:a0743d76882b0917db7c15977045140511cacef06ce10d11235c17d55faed8e8",
+    "digest": "sha256:8a06ca45c3019ad21ab35501114ddf03fa2cc4764d8b8677e6e638ceab5ddba9",
     "path": "examples/tutorials/agent/isolation-manifest.json",
     "privateRef": null,
     "storage": "public"
@@ -254,6 +254,6 @@
   "revisionCount": 0,
   "runId": "agent-run-1",
   "schemaVersion": 7,
-  "sealedBriefDigest": "sha256:f4d8d05965130d4b2a44016734419420e4f6eb9654f30a5417e58958079dd484",
+  "sealedBriefDigest": "sha256:7f65da4aaf29bb880a38f9868b54cd0e5faccc7f8e830af4eda2d74626fb90c7",
   "trialIndex": 1
 }

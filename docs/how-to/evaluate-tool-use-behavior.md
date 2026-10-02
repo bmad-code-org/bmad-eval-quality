@@ -221,7 +221,7 @@ node dist/cli/main.js score \
   --policy examples/tutorials/tool-use/scoring-policy.json \
   --isolation-manifest examples/tutorials/tool-use/isolation-manifest.json \
   --evaluator-configuration examples/tutorials/tool-use/evaluator-configuration.json \
-  --corpus-digest sha256:6947516870d6fba0b20d5680f47f74968e718a5a4f7d4564d6309aefca3eb757 \
+  --corpus-digest sha256:bd4517f7bc3e4b4536763b56a183151ef34d9d8d3db70fc0dad62f7e9d861c1d \
   --out /tmp/eval-quality-tool-use/evidence-artifact.json
 ```
 
@@ -302,9 +302,9 @@ The fourth question after them is kind-neutral and belongs to both readings.
 For agent evaluations, verify that the agent selected the appropriate tool for the task.
 A plausible final answer does not prove correct tool selection.
 The observable tool trajectory can itself be part of the behavior being evaluated.
-An `InteractionStep` names an `interfaceId`, an `operationId` and a `cardinality` (`src/core/schemas/plan.ts:170`).
+An `InteractionStep` names an `interfaceId`, an `operationId` and a `cardinality` (`src/core/schemas/plan.ts:180`).
 The step is a selector over observations the evaluator produced, so a step naming `search-notes` with `cardinality: "exactly-one"` declares that exactly one call to that tool is expected in the run.
-`SELECTOR_CARDINALITIES` is the closed three, `exactly-one`, `at-most-one`, and `any` (`plan.ts:153`).
+`SELECTOR_CARDINALITIES` is the closed three, `exactly-one`, `at-most-one`, and `any` (`plan.ts:157`).
 
 **Were the arguments right?**
 Verify the actual arguments sent to the tool.
@@ -397,7 +397,7 @@ Write it to a file in the directory you are working in, and delete it when you a
 ```bash
 cat > mcp-contract.json <<'EOF'
 {
-  "schemaVersion": 6,
+  "schemaVersion": 7,
   "contractId": "notes-tool-server-evaluation",
   "parentDigest": null,
   "revisionCount": 0,
@@ -593,7 +593,7 @@ The transport is stdio and nothing else. A server reached over Streamable HTTP s
 
 That route was run end to end against the built CLI at 5.0.0.
 A contract whose one operation declares the tool-call log in `artifacts` and nominates it with `descriptorChannel` compiles and seals at exit `0`, an oracle quantifies over the calls inside the log, and pre-flight resolves at exit `0` with all six checks satisfied, including a sensitivity witness and a manifestation witness whose legs both address the file.
-Carrying those files forward from 1.4.2 costs two stamps and two keys: the contract is `schemaVersion` 6, the probe is 5, the defect signature's input binding declares `"arguments": null`, and each interaction step names the interface that declares its operation in `interfaceId`.
+Carrying those files forward from 1.4.2 costs two stamps and two keys: the contract is `schemaVersion` 7, the probe is 6, the defect signature's input binding declares `"arguments": null`, and each interaction step names the interface that declares its operation in `interfaceId`.
 Each omission is refused at exit `5`: a contract stamped 5 is `schema-version-mismatch`, and a probe without the `arguments` key or a step without `interfaceId` is `schema-parse-failure`.
 
 One restriction shapes it, and it lands on the scoring side only.

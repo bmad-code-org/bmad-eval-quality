@@ -6,8 +6,8 @@
     "storage": "public"
   },
   "conditionArm": "clean",
-  "contractDigest": "sha256:c12ee9ec8073138abf24b9a29613a7613d8b042b9878a7d8c408cb3cd465264b",
-  "evaluatorConfigurationDigest": "sha256:208d69378961bae033d87c2dde36d89feac96ae55c0d9e7041e642dd7a0127b4",
+  "contractDigest": "sha256:5eb9a97ec666c68dfb12e9c512422b9cb50a57c407257a0287332d30bfcc6989",
+  "evaluatorConfigurationDigest": "sha256:7f8160adfe5c410ef8358df691ce4f2881bd4ac3253604c21363928c5fff9277",
   "evaluatorRecommendation": "PASS",
   "evidenceDisclosure": {
     "reportedIncomplete": false,
@@ -15,7 +15,7 @@
   },
   "findings": [],
   "isolationManifestArtifact": {
-    "digest": "sha256:c400d065efaf5cb581211af4cb65ca854d9cba4b6da786212ca1e3fcdc12cbf4",
+    "digest": "sha256:a2ae2cf04e1eac707081121dd07c02cfcec9aafa4d07c3b209cd2a4f8d8da27f",
     "path": "examples/tutorials/skill/honest-isolation-manifest.json",
     "privateRef": null,
     "storage": "public"
@@ -95,6 +95,6 @@
   "revisionCount": 0,
   "runId": "skill-honest-1",
   "schemaVersion": 7,
-  "sealedBriefDigest": "sha256:1fe3c718ffa2ac50b989568169ad96542faad6c0fbd63afd85f69bdcadffa5a3",
+  "sealedBriefDigest": "sha256:43c013d51600453c810000c71f50b3edfdc4269f82354dbd2c4c825c4e291b63",
   "trialIndex": 1
 }

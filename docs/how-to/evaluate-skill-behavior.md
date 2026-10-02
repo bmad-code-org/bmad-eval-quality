@@ -218,7 +218,7 @@ node dist/cli/main.js score \
   --policy examples/tutorials/skill/scoring-policy.json \
   --isolation-manifest examples/tutorials/skill/honest-isolation-manifest.json \
   --evaluator-configuration examples/tutorials/skill/evaluator-configuration.json \
-  --corpus-digest sha256:420b60b85130409fdc96a93a646ebc670ff9f4f9fc331b1e751afd4f31b48fc3 \
+  --corpus-digest sha256:53e534310ce4efb3535e54aa9e4b21a4586a7f5416fac551407d540f08ac1594 \
   --out /tmp/eval-quality-skill/honest-evidence-artifact.json
 ```
 
@@ -261,7 +261,7 @@ node dist/cli/main.js score \
   --policy examples/tutorials/skill/scoring-policy.json \
   --isolation-manifest examples/tutorials/skill/degenerate-isolation-manifest.json \
   --evaluator-configuration examples/tutorials/skill/evaluator-configuration.json \
-  --corpus-digest sha256:420b60b85130409fdc96a93a646ebc670ff9f4f9fc331b1e751afd4f31b48fc3 \
+  --corpus-digest sha256:53e534310ce4efb3535e54aa9e4b21a4586a7f5416fac551407d540f08ac1594 \
   --out /tmp/eval-quality-skill/degenerate-evidence-artifact.json
 ```
 

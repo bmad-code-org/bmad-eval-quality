@@ -40,6 +40,7 @@ import { StructuralFailure } from '../failure-codes.ts'
 import {
 	type DefectSignature,
 	OBSERVED_STEP_ID,
+	type ProbeInputBinding,
 } from '../schemas/defect-signature.ts'
 import type { Expression, Operand } from '../schemas/expression.ts'
 import type {
@@ -464,6 +465,20 @@ function checkSelectorKeys(
 	for (const channel of INPUT_CHANNELS) {
 		const binding = inputBinding[channel]
 		if (binding === null) continue
+		if (channel === 'body' && 'kind' in binding && binding.kind === 'raw') {
+			if (requestShapeOf(operation, 'body') === undefined) {
+				failures.push({
+					code: 'condition-selector-key-undeclared',
+					artifactPath: probePath(
+						probe,
+						'.defectSignature.condition.selector.inputBinding.body',
+					),
+					detail: `operation "${operation.operationId}" has no HTTP body channel for a raw selector (AD-40)`,
+				})
+			}
+			continue
+		}
+		const keyed = binding as NonNullable<ProbeInputBinding['path']>
 		const shape = requestShapeOf(operation, channel)
 		// A channel the operation does not accept input on declares no key,
 		// which is exactly the condition the first check below reports.
@@ -472,7 +487,7 @@ function checkSelectorKeys(
 			permittedKeys: [] as readonly string[],
 			types: {} as Record<string, string | null | undefined>,
 		}
-		for (const key of Object.keys(binding)) {
+		for (const key of Object.keys(keyed)) {
 			const at = probePath(
 				probe,
 				`.defectSignature.condition.selector.inputBinding.${channel}[${JSON.stringify(key)}]`,
@@ -492,7 +507,7 @@ function checkSelectorKeys(
 			// only key presence would leave that member matching nothing, which
 			// is the same silent pass through the other definition of declared.
 			// The other two members never read the type map and get no rule here.
-			const value = binding[key]
+			const value = keyed[key]
 			if (value === undefined || !('matcher' in value)) continue
 			if (value.matcher !== 'type-violating') continue
 			const declared = types[key]

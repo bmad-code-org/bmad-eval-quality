@@ -413,6 +413,48 @@ describe('ordering: array position is never read, sequence always is', () => {
 })
 
 describe('the selector follows the shipped binding filter', () => {
+	it('selects only the exact raw request body and content type', () => {
+		const body = {
+			kind: 'raw' as const,
+			base64: 'e2JhZCI6',
+			contentType: 'application/json',
+		}
+		const probe = withSignature({
+			condition: {
+				selector: {
+					inputBinding: {
+						...qualifiedProbe.defectSignature.condition.selector.inputBinding,
+						body,
+					},
+				},
+				predicate: qualifiedProbe.defectSignature.condition.predicate,
+			},
+		})
+		const matching = {
+			...defectFired,
+			callInputs: { ...defectFired.callInputs, body },
+		}
+		expect(
+			matchProbeWitness(probe, INTERFACES, recordOf([matching])).observationIds,
+		).toEqual(['obs-2'])
+		for (const changed of [
+			{ ...body, base64: 'e2JhZCI7' },
+			{ ...body, contentType: 'text/plain' },
+		]) {
+			const observation = {
+				...matching,
+				callInputs: { ...matching.callInputs, body: changed },
+			}
+			const match = matchProbeWitness(
+				probe,
+				INTERFACES,
+				recordOf([observation]),
+			)
+			expect(match.observationIds).toEqual([])
+			expect(match.result).toBe('not-triggered')
+		}
+	})
+
 	it('fails closed on a null observed channel a binding names', () => {
 		const match = matchProbeWitness(
 			qualifiedProbe,

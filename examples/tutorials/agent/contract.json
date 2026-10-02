@@ -556,7 +556,7 @@
   "safetyLimits": [
     "No process other than the mapped release-notes-agent target."
   ],
-  "schemaVersion": 6,
+  "schemaVersion": 7,
   "scopedResources": null,
   "siblingGroups": null,
   "sourceSpecDigest": null,

@@ -884,6 +884,7 @@ const SHAPES: readonly {
 	readonly current: number
 	readonly parse: (value: unknown) => { readonly success: boolean }
 	readonly predecessor: string
+	readonly predecessorCompatible?: boolean
 	readonly shapeByVersion: ShapeByVersion
 }[] = [
 	{
@@ -963,8 +964,10 @@ const SHAPES: readonly {
 		current: PROBE_SCHEMA_VERSION,
 		parse: (value) => Probe.safeParse(value),
 		predecessor:
-			"declares eight selector channels, without the ninth `arguments` one a tool call's inputs land in",
+			'uses the JSON or absent request-body union before the raw arm was added',
+		predecessorCompatible: true,
 		shapeByVersion: {
+			6: (stamp) => ({ ...PROBE_AT_5, schemaVersion: stamp }),
 			5: (stamp) => ({ ...PROBE_AT_5, schemaVersion: stamp }),
 			// Rebuilt down to the selector, which is where the one difference
 			// version 5 makes to this probe sits. A second copy of the other sixty
@@ -996,8 +999,10 @@ const SHAPES: readonly {
 		current: EVAL_CONTRACT_SCHEMA_VERSION,
 		parse: (value) => EvalContract.safeParse(value),
 		predecessor:
-			'carries steps that name an `operationId` and no `interfaceId`',
+			'uses the JSON or absent witness-body union before the raw arm was added',
+		predecessorCompatible: true,
 		shapeByVersion: {
+			7: (stamp) => ({ ...EVAL_CONTRACT_AT_6, schemaVersion: stamp }),
 			6: (stamp) => ({ ...EVAL_CONTRACT_AT_6, schemaVersion: stamp }),
 			5: (stamp) => ({
 				...EVAL_CONTRACT_AT_6,
@@ -1060,7 +1065,7 @@ describe('each constant names the shape the parser accepts', () => {
 	)
 
 	it.each(SHAPES.map((entry) => [entry.artifact, entry] as const))(
-		'%s does not parse at the constant minus one',
+		'%s predecessor has the declared parse compatibility',
 		(artifact, entry) => {
 			const predecessor = entry.current - 1
 			const build = entry.shapeByVersion[predecessor]
@@ -1074,7 +1079,7 @@ describe('each constant names the shape the parser accepts', () => {
 			expect(
 				entry.parse(built).success,
 				`${artifact}: the version-${predecessor} shape still parses, so the bump to ${entry.current} broke nothing the parser can see`,
-			).toBe(false)
+			).toBe(entry.predecessorCompatible ?? false)
 		},
 	)
 })

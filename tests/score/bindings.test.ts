@@ -365,6 +365,34 @@ describe('resolveCapturedBindings', () => {
 })
 
 describe('selectWithBindings', () => {
+	it('selects the exact raw body bytes and content type', () => {
+		const raw = {
+			kind: 'raw' as const,
+			base64: 'e2JhZCI6',
+			contentType: 'application/json',
+		}
+		const declared = step('raw', 'create-note', { inputBinding: { body: raw } })
+		const observations = [
+			observation('matching', 1, 'create-note', { callInputs: { body: raw } }),
+			observation('changed-byte', 2, 'create-note', {
+				callInputs: { body: { ...raw, base64: 'e2JhZCI7' } },
+			}),
+			observation('changed-type', 3, 'create-note', {
+				callInputs: { body: { ...raw, contentType: 'text/plain' } },
+			}),
+		]
+		expect(
+			selectWithBindings(
+				declared,
+				observations,
+				planIndex([declared]),
+				EMPTY_RESOLUTIONS,
+			),
+		).toEqual({
+			result: 'one',
+			matchedObservationIds: ['matching'],
+		})
+	})
 	// Owed item 3's worked case: a POST returning a server-generated identifier,
 	// then a GET proving persistence by binding it.
 	it('selects the one observation whose call input equals the captured value', () => {

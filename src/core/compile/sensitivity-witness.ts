@@ -257,6 +257,10 @@ export function checkInputsAgainstShape(
 		)
 	}
 	for (const { channel, shape } of requestChannelsOf(operation)) {
+		// Raw bytes deliberately bypass the JSON key inventory. The port sends
+		// them unchanged so parser failures can be observed.
+		if (channel === 'body' && 'body' in inputs && inputs.body.kind === 'raw')
+			continue
 		if (suppliesOpaquely(inputs, channel)) {
 			checkOpaqueStream(
 				shape,

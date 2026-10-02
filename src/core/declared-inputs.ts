@@ -202,7 +202,13 @@ export function boundChannelsOf(binding: InputBinding): readonly {
 }[] {
 	const present = binding as Partial<Record<InputChannelName, BindingChannel>>
 	return INPUT_CHANNELS.filter((channel) => channel in binding).map(
-		(channel) => ({ channel, bound: present[channel] ?? null }),
+		(channel) => ({
+			channel,
+			bound:
+				channel === 'body' && 'body' in binding && binding.body?.kind === 'raw'
+					? null
+					: (present[channel] ?? null),
+		}),
 	)
 }
 

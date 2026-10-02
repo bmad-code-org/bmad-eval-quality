@@ -66,6 +66,20 @@ const evidenceFor = (
 }
 
 describe('evidenceOf', () => {
+	it('records the exact raw witness body in call inputs', () => {
+		const body = {
+			kind: 'raw' as const,
+			base64: 'e2JhZCI6',
+			contentType: 'application/json',
+		}
+		const evidence = evidenceFor(
+			jsonBody({ error: 'invalid JSON' }),
+			{},
+			inputsOf({ body }),
+		)
+		expect(evidence.callInputs.body).toEqual(body)
+	})
+
 	// `create-thing` declares `/id` volatile, so the relation sees the pruned
 	// body while the raw headers pass through untouched.
 	it('82. puts the pruned body on responseBody and the raw headers on responseHeaders', () => {

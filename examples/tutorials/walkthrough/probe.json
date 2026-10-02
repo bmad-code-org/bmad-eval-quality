@@ -88,6 +88,6 @@
   },
   "rationale": "A controlled mutation removing the store call from the write handler.",
   "revisionCount": 0,
-  "schemaVersion": 5,
+  "schemaVersion": 6,
   "systemId": "notes-api"
 }

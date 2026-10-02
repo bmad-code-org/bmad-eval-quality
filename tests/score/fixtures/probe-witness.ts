@@ -126,7 +126,7 @@ export const seededSignature: ApiDefectSignature = {
 }
 
 export const qualifiedProbe: SignedProbe = {
-	schemaVersion: 5,
+	schemaVersion: 6,
 	parentDigest: null,
 	revisionCount: 0,
 	probeId: 'P-901',

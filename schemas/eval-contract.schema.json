@@ -1812,7 +1812,37 @@
                     "$ref": "#/$defs/InputBindingChannel"
                   },
                   "body": {
-                    "$ref": "#/$defs/InputBindingChannel"
+                    "anyOf": [
+                      {
+                        "$ref": "#/$defs/InputBindingChannel"
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "type": "string",
+                            "const": "raw"
+                          },
+                          "base64": {
+                            "type": "string",
+                            "pattern": "^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/][AQgw]==|[A-Za-z0-9+/]{2}[AEIMQUYcgkosw048]=)?$",
+                            "description": "Canonical RFC 4648 base64 of the exact request bytes. The empty string means a zero-byte body."
+                          },
+                          "contentType": {
+                            "type": "string",
+                            "pattern": "^[!#$%&'*+.^_`|~0-9A-Za-z-]+\\/[!#$%&'*+.^_`|~0-9A-Za-z-]+(?:;[ \\t]*[^\\r\\n]+)?$",
+                            "description": "The explicit Content-Type sent with these raw bytes, including an empty body."
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "base64",
+                          "contentType"
+                        ],
+                        "additionalProperties": false
+                      }
+                    ],
+                    "description": "A keyed JSON binding, null for absent, or canonical raw HTTP bytes with an explicit content type. A raw body is compared as one exact value during step selection."
                   }
                 },
                 "required": [
@@ -2258,7 +2288,7 @@
     "fixtureReset"
   ],
   "additionalProperties": false,
-  "description": "The Eval Contract. Succeeds the prior-art `eval-contract` schema per AD-24. It carries every declaration AD-19 requires so that AD-31's fourteen relevance and satisfaction predicates are decidable from declarations alone. AD-10's sensitivity witnesses arrived on each operation as an additive `schemaVersion` bump; version 4 opens `permittedInterfaces` to a second interface kind, so a contract may describe a system under test that runs behind a command, and widens the interaction pointer's accepted language with the four command input channels and the `artifact` channel. The widening retypes nothing on its own, since every pointer legal under version 3 is still legal; it carries the same version because it ships in the same release as the retypes. Version 5 gives the `mcp` kind its own operation shape, so a contract may describe a tool server, and widens the pointer language and a step's input binding with the `arguments` channel. Version 6 qualifies operations by interface: a step carries the `interfaceId` of the interface declaring its operation, and a sibling group's operation members are `{ interfaceId, operationId }` pairs, because an `operationId` is unique only within one interface. A version-5 contract carries bare identifiers in both places and fails to parse against version 6. Each bump is recorded in its own field's description, and `compile` compares the stamp against `EVAL_CONTRACT_SCHEMA_VERSION` and throws AD-28's `schema-version-mismatch` on anything else.",
+  "description": "The Eval Contract. Succeeds the prior-art `eval-contract` schema per AD-24. It carries every declaration AD-19 requires so that AD-31's fourteen relevance and satisfaction predicates are decidable from declarations alone. AD-10's sensitivity witnesses arrived on each operation as an additive `schemaVersion` bump; version 4 opens `permittedInterfaces` to a second interface kind, so a contract may describe a system under test that runs behind a command, and widens the interaction pointer's accepted language with the four command input channels and the `artifact` channel. The widening retypes nothing on its own, since every pointer legal under version 3 is still legal; it carries the same version because it ships in the same release as the retypes. Version 5 gives the `mcp` kind its own operation shape, so a contract may describe a tool server, and widens the pointer language and a step's input binding with the `arguments` channel. Version 6 qualifies operations by interface: a step carries the `interfaceId` of the interface declaring its operation, and a sibling group's operation members are `{ interfaceId, operationId }` pairs, because an `operationId` is unique only within one interface. A version-5 contract carries bare identifiers in both places and fails to parse against version 6. Version 7 admits canonical raw HTTP request bodies in API interaction steps and witness legs; its new union arm changes exhaustive TypeScript consumers. Each bump is recorded in its own field's description, and `compile` compares the stamp against `EVAL_CONTRACT_SCHEMA_VERSION` and throws AD-28's `schema-version-mismatch` on anything else.",
   "$defs": {
     "Expression": {
       "description": "A `check` expression tree over AD-4's closed vocabulary, discriminated on `op`. Exports as a `oneOf` of sixteen branches, each identified by its `op` const; a constraint ledger entry names a branch by that const rather than by position.",
@@ -3696,6 +3726,31 @@
               "required": [
                 "kind",
                 "value"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "const": "raw"
+                },
+                "base64": {
+                  "type": "string",
+                  "pattern": "^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/][AQgw]==|[A-Za-z0-9+/]{2}[AEIMQUYcgkosw048]=)?$",
+                  "description": "Canonical RFC 4648 base64 of the exact request bytes. The empty string means a zero-byte body."
+                },
+                "contentType": {
+                  "type": "string",
+                  "pattern": "^[!#$%&'*+.^_`|~0-9A-Za-z-]+\\/[!#$%&'*+.^_`|~0-9A-Za-z-]+(?:;[ \\t]*[^\\r\\n]+)?$",
+                  "description": "The explicit Content-Type sent with these raw bytes, including an empty body."
+                }
+              },
+              "required": [
+                "kind",
+                "base64",
+                "contentType"
               ],
               "additionalProperties": false
             },

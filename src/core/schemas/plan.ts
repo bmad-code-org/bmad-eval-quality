@@ -2,6 +2,7 @@
 import { z } from 'zod'
 import { InteractionPointer } from './pointer.ts'
 import { Identifier, JsonValue, KeyName } from './primitives.ts'
+import { RawRequestBody } from './probe-body.ts'
 
 /**
  * AD-39: input-binding values are tagged and never share a value space. The
@@ -93,7 +94,11 @@ export const ApiInputBinding = z.strictObject({
 	path: BindingChannel,
 	query: BindingChannel,
 	header: BindingChannel,
-	body: BindingChannel,
+	body: z
+		.union([BindingChannel, RawRequestBody])
+		.describe(
+			'A keyed JSON binding, null for absent, or canonical raw HTTP bytes with an explicit content type. A raw body is compared as one exact value during step selection.',
+		),
 })
 
 /** The same shape over the four channels a command-kind operation accepts. */

@@ -251,7 +251,7 @@ node dist/cli/main.js score \
   --policy examples/tutorials/agent/scoring-policy.json \
   --isolation-manifest examples/tutorials/agent/isolation-manifest.json \
   --evaluator-configuration examples/tutorials/agent/evaluator-configuration.json \
-  --corpus-digest sha256:30e5785d5779258ef9f2edc81f8f14e1749a2a932110278cff32ff8ca10d613f \
+  --corpus-digest sha256:103f4b5823f6d5500b9998c71d694aa1cfb993401e5f893c23a3db56beb2b474 \
   --out /tmp/eval-quality-agent/evidence-artifact.json
 ```
 
