@@ -17,6 +17,7 @@
  * comparison, an await, or a call into `ingest`/`score`/`emit` (AD-14).
  */
 import { digestBytes } from '../core/canonical/digest.ts'
+import { checkSchemaVersion } from '../core/compile/schema-version.ts'
 import { emit } from '../core/emit/emit.ts'
 import { checkPrivateArtifactManifestDigests } from '../core/emit/private-artifact-digest.ts'
 import { ingest } from '../core/ingest/index.ts'
@@ -30,7 +31,10 @@ import { Digest } from '../core/schemas/primitives.ts'
 import { PrivateArtifactManifest } from '../core/schemas/private-artifact-manifest.ts'
 import { Probe } from '../core/schemas/probe.ts'
 import { ScoringPolicy } from '../core/schemas/scoring-policy.ts'
-import { SealedRunRecord } from '../core/schemas/sealed-run-record.ts'
+import {
+	SEALED_RUN_RECORD_SCHEMA_VERSION,
+	SealedRunRecord,
+} from '../core/schemas/sealed-run-record.ts'
 import type { LadderResolution } from '../core/score/ladder.ts'
 import type { QualificationResult } from '../core/score/qualification.ts'
 import { score } from '../core/score/score.ts'
@@ -99,7 +103,38 @@ function parseFault(artifactPath: string, cause: unknown): RuntimeFault {
 	)
 }
 
+/**
+ * AD-11's version equality for the sealed run record, first and before the
+ * strict parse. A record stamped for another version rarely parses under this
+ * one's shape, and `schema-parse-failure` names none of that: the stamp is read
+ * off the raw value so the fault says which version this build reads. A value
+ * with no numeric stamp is left to the parse, which names the missing field.
+ */
+function checkRecordVersions(input: readonly unknown[]): void {
+	for (const [index, candidate] of input.entries()) {
+		const raw = candidate as {
+			schemaVersion?: unknown
+			trialIndex?: unknown
+		} | null
+		const stamped = raw?.schemaVersion
+		if (typeof stamped !== 'number') continue
+		const trialIndex = raw?.trialIndex
+		checkSchemaVersion({
+			stamped,
+			accepted: SEALED_RUN_RECORD_SCHEMA_VERSION,
+			artifactPath: `SealedRunRecord[${
+				typeof trialIndex === 'number'
+					? `trialIndex=${trialIndex}`
+					: `index=${index}`
+			}].schemaVersion`,
+			consequence:
+				'a record written for another version would be scored under a shape this build does not define',
+		})
+	}
+}
+
 function parseRecord(input: SealedRunRecord): SealedRunRecord {
+	checkRecordVersions([input])
 	const parsed = SealedRunRecord.safeParse(input)
 	if (!parsed.success) throw parseFault('SealedRunRecord', parsed.error)
 	return parsed.data
@@ -109,6 +144,7 @@ function parseRecords(
 	input: SealedRunRecord | readonly SealedRunRecord[],
 ): readonly [SealedRunRecord, ...SealedRunRecord[]] {
 	if (!Array.isArray(input)) return [parseRecord(input as SealedRunRecord)]
+	checkRecordVersions(input)
 	const parsed = SealedRunRecord.array().min(1).safeParse(input)
 	if (!parsed.success) throw parseFault('SealedRunRecord[]', parsed.error)
 	const sorted = [...parsed.data].sort(

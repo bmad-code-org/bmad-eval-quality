@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { compile } from '../../src/application/compile.ts'
 import { StructuralFailure } from '../../src/core/failure-codes.ts'
+import { EVAL_CONTRACT_SCHEMA_VERSION } from '../../src/core/schemas/eval-contract.ts'
 import { RuntimeFault } from '../../src/core/schemas/faults.ts'
 import { cleanPopulatedContract } from '../compile/helpers.ts'
 import { gateCContract } from '../schemas/fixtures/gate-c-contract.ts'
@@ -81,5 +82,50 @@ describe('application compile: boundary validation and delegation', () => {
 
 	it('populatedContract compiles under an explicit clean scopedResources override, proving the orchestration path end to end', () => {
 		expect(() => compile(cleanPopulatedContract())).not.toThrow()
+	})
+})
+
+describe('application compile: the contract stamp is read before the contract parses', () => {
+	const stale = EVAL_CONTRACT_SCHEMA_VERSION - 1
+	const faultOf = (input: unknown): RuntimeFault => {
+		let thrown: unknown
+		try {
+			compile(input)
+		} catch (error) {
+			thrown = error
+		}
+		expect(thrown).toBeInstanceOf(RuntimeFault)
+		return thrown as RuntimeFault
+	}
+
+	it('names a contract stamped one version below, with both versions', () => {
+		const fault = faultOf({
+			...structuredClone(gateCContract),
+			schemaVersion: stale,
+		})
+		expect(fault.code).toBe('schema-version-mismatch')
+		expect(fault.artifactPath).toBe('EvalContract.schemaVersion')
+		expect(fault.message).toContain(
+			`carries "schemaVersion" ${stale} where this build reads ${EVAL_CONTRACT_SCHEMA_VERSION}`,
+		)
+	})
+
+	it('reports the stamp of a contract whose shape is also the previous version', () => {
+		const fault = faultOf({ schemaVersion: stale, contractId: 'older-shape' })
+		expect(fault.code).toBe('schema-version-mismatch')
+	})
+
+	it('leaves a null input to the parse', () => {
+		const fault = faultOf(null)
+		expect(fault.code).toBe('schema-parse-failure')
+		expect(fault.artifactPath).toBe('EvalContract')
+	})
+
+	it('leaves a contract with no numeric stamp to the parse, which names the schema', () => {
+		const { schemaVersion: _stamp, ...unstamped } =
+			structuredClone(gateCContract)
+		const fault = faultOf(unstamped)
+		expect(fault.code).toBe('schema-parse-failure')
+		expect(fault.artifactPath).toBe('EvalContract')
 	})
 })

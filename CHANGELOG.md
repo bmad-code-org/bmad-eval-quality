@@ -10,6 +10,15 @@ body.
 
 ## [Unreleased]
 
+### Fixed
+
+- **`score` and `compile` name a stale artifact stamp before parsing the artifact.**
+  `runScore` parsed each sealed run record with `safeParse` and never compared its `schemaVersion`, so a record written for another version failed as an anonymous `schema-parse-failure` when its shape differed and scored silently when its shape happened to parse.
+  `runScore` now reads each record's raw stamp first and throws `schema-version-mismatch` at `SealedRunRecord[trialIndex=N].schemaVersion`, naming the stamp and the version this build reads; the CLI `score` exits `5`.
+  `compile` reads the eval contract's stamp ahead of `EvalContract.safeParse` the same way, so a contract stamped for another version reports `schema-version-mismatch` at `EvalContract.schemaVersion` where it used to report `schema-parse-failure` whenever its shape had moved.
+  Artifacts stamped with the current versions behave as before.
+  `docs/reference/cli-commands.md` counts four artifacts with an in-package version reader and four assembled by the caller.
+
 ## [4.7.0] - 2026-10-01
 
 ### Added

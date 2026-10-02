@@ -9,14 +9,32 @@
  * synchronous function with no plan, reducer, promise, port, or `await`.
  */
 import { compile as compileContract } from '../core/compile/compile.ts'
+import { checkSchemaVersion } from '../core/compile/schema-version.ts'
 import { freezeArtifact } from '../core/lineage/freeze.ts'
-import { EvalContract } from '../core/schemas/eval-contract.ts'
+import {
+	EVAL_CONTRACT_SCHEMA_VERSION,
+	EvalContract,
+} from '../core/schemas/eval-contract.ts'
 import { RuntimeFault } from '../core/schemas/faults.ts'
 
 export function compile(
 	input: unknown,
 	options?: { readonly strict?: boolean },
 ): EvalContract {
+	// AD-11's version equality, before the strict parse: a contract stamped for
+	// another version rarely parses under this one's shape, and
+	// `schema-parse-failure` would not say which version this build reads. A
+	// value with no numeric stamp is left to the parse, which names the field.
+	const stamped = (input as { schemaVersion?: unknown } | null)?.schemaVersion
+	if (typeof stamped === 'number') {
+		checkSchemaVersion({
+			stamped,
+			accepted: EVAL_CONTRACT_SCHEMA_VERSION,
+			artifactPath: 'EvalContract.schemaVersion',
+			consequence:
+				'since its stale version would travel into the scoring version',
+		})
+	}
 	const parsed = EvalContract.safeParse(input)
 	if (!parsed.success) {
 		throw new RuntimeFault(
