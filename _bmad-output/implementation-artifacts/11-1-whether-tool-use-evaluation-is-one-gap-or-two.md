@@ -759,6 +759,16 @@ The Route A and Route B signatures share one predicate, `all` over an `equality`
 `P-102` and `P-104` are derived inside `qualify.ts` by cloning the authored `P-101`, as at 3.0.0.
 The check on the reconstruction is the transcription: four rendered direction sentences, four qualification details, and two compile-side refusal messages came back identical to bytes this record wrote down at earlier releases.
 
+## Re-verified at 6.0.0, 2 October
+
+The release tree was bumped from `main` at `4293333147a300a7e2b4372a13c7c061d3259045` onto `release/v6.0.0`. `npm run release:prepare -- major --no-pr` stamped the five release files and stopped at `check:doc-claims` because the guide still pinned this route to 5.0.0. Nothing was pushed. The route was run against the built 6.0.0 CLI on that uncommitted tree before moving the pin.
+
+Fresh scratch inputs were reconstructed outside the repository from the 5.0.0 record and committed command and probe fixtures. `npm run build` exited 0. The eight commands in **Commands as run** above then ran in order. Both contracts compiled and sealed at exit 0, and the four rendered direction sentences matched the preceding record byte for byte. Each pre-flight reduced the same five legs, exited 0, and reported `passed: true` with six satisfied checks in a schema 2 verdict.
+
+The qualification and admission checks reproduced: `P-101` and `P-102` were refused under `condition-artifact-channel-contract-local`; the stream-based `P-103` qualified and was admitted; `P-104` reported the documented response-side and underspecified-channel failures. A tailed oracle pointer into the log and bare or tailed artifact witness pointers under a `stdout` descriptor each exited 4 with `unreachable-check-evidence`. A step without `interfaceId` and a probe without `arguments` each exited 5 with `schema-parse-failure`.
+
+The new migration stamps are contract 7 and probe 6. A contract stamped 6 exited 5 with `schema-version-mismatch: EvalContract.schemaVersion: carries "schemaVersion" 6 where this build reads 7`; a probe stamped 5 exited 5 with `schema-version-mismatch: Probe[probeId=P-101].schemaVersion: carries "schemaVersion" 5 where this build reads 6`. The older contract-stamp-5 variant also refused at exit 5. The raw API request body and sealed-run-record changes in 6.0.0 did not alter this CLI route. The guide now pins its completed run to 6.0.0 and names the immediately preceding stamps.
+
 ## Re-verified at 5.0.0, 2 October
 
 `5.0.0` moved the published major, so the pin on `docs/how-to/evaluate-tool-use-behavior.md` failed `check:doc-claims`, and the one-step release run refused before it committed anything.
