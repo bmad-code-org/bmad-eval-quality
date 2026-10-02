@@ -24,9 +24,10 @@ import type { AnyOperation } from '../schemas/interface.ts'
 import { operationsOf } from '../schemas/interface.ts'
 import type { InputChannelName } from '../schemas/pointer.ts'
 import type { KeyedShapeDescriptor } from '../schemas/primitives.ts'
-import type {
-	ProbeRequestBody,
-	ProbeRequestStdin,
+import {
+	hasContentTypeHeader,
+	type ProbeRequestBody,
+	type ProbeRequestStdin,
 } from '../schemas/probe-body.ts'
 import {
 	API_WITNESS_CHANNELS,
@@ -254,6 +255,17 @@ export function checkInputsAgainstShape(
 			'undeclared-mandatory-input',
 			artifactPath,
 			`${owner} supplies ${legKind} channels to operation "${operation.operationId}", which accepts ${operationKind} channels (AD-10, AD-19)`,
+		)
+	}
+	if (
+		isApiWitnessInputs(inputs) &&
+		inputs.body.kind === 'raw' &&
+		hasContentTypeHeader(inputs.header)
+	) {
+		throw new StructuralFailure(
+			'undeclared-mandatory-input',
+			`${artifactPath}.header`,
+			`${owner} supplies a Content-Type header alongside raw body bytes; the raw body declares its own content type (AD-4)`,
 		)
 	}
 	for (const { channel, shape } of requestChannelsOf(operation)) {

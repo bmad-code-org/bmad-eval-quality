@@ -2,7 +2,7 @@
 import { z } from 'zod'
 import { InteractionPointer } from './pointer.ts'
 import { Identifier, JsonValue, KeyName } from './primitives.ts'
-import { hasContentTypeHeader, RawRequestBody } from './probe-body.ts'
+import { RawRequestBody } from './probe-body.ts'
 
 /**
  * AD-39: input-binding values are tagged and never share a value space. The
@@ -90,30 +90,16 @@ export const BindingChannel = BindingChannelMap.nullable().meta({
  * requires every member at parse time and fails five of the Gate C fixture's
  * six steps, all of which bind a subset of the channels.
  */
-export const ApiInputBinding = z
-	.strictObject({
-		path: BindingChannel,
-		query: BindingChannel,
-		header: BindingChannel,
-		body: z
-			.union([BindingChannel, RawRequestBody])
-			.describe(
-				'A keyed JSON binding, null for absent, or canonical raw HTTP bytes with an explicit content type. A raw body is compared as one exact value during step selection.',
-			),
-	})
-	.superRefine((binding, context) => {
-		if (
-			binding.body?.kind === 'raw' &&
-			binding.header !== null &&
-			hasContentTypeHeader(binding.header)
-		) {
-			context.addIssue({
-				code: 'custom',
-				path: ['header'],
-				message: 'A raw body declares Content-Type through body.contentType',
-			})
-		}
-	})
+export const ApiInputBinding = z.strictObject({
+	path: BindingChannel,
+	query: BindingChannel,
+	header: BindingChannel,
+	body: z
+		.union([BindingChannel, RawRequestBody])
+		.describe(
+			'A keyed JSON binding, null for absent, or canonical raw HTTP bytes with an explicit content type. A raw body is compared as one exact value during step selection.',
+		),
+})
 
 /** The same shape over the four channels a command-kind operation accepts. */
 export const CommandInputBinding = z.strictObject({

@@ -302,9 +302,9 @@ The fourth question after them is kind-neutral and belongs to both readings.
 For agent evaluations, verify that the agent selected the appropriate tool for the task.
 A plausible final answer does not prove correct tool selection.
 The observable tool trajectory can itself be part of the behavior being evaluated.
-An `InteractionStep` names an `interfaceId`, an `operationId` and a `cardinality` (`src/core/schemas/plan.ts:194`).
+An `InteractionStep` names an `interfaceId`, an `operationId` and a `cardinality` (`src/core/schemas/plan.ts:180`).
 The step is a selector over observations the evaluator produced, so a step naming `search-notes` with `cardinality: "exactly-one"` declares that exactly one call to that tool is expected in the run.
-`SELECTOR_CARDINALITIES` is the closed three, `exactly-one`, `at-most-one`, and `any` (`plan.ts:171`).
+`SELECTOR_CARDINALITIES` is the closed three, `exactly-one`, `at-most-one`, and `any` (`plan.ts:158`).
 
 **Were the arguments right?**
 Verify the actual arguments sent to the tool.

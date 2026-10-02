@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { compile } from '../../src/application/compile.ts'
+import { checkInputsAgainstShape } from '../../src/core/compile/sensitivity-witness.ts'
 import { EvalContract } from '../../src/core/schemas/eval-contract.ts'
 import { Probe } from '../../src/core/schemas/probe.ts'
 import { ProbeRequestBody } from '../../src/core/schemas/probe-body.ts'
@@ -15,7 +16,7 @@ const raw = (base64: string) => ({
 })
 
 describe('canonical raw HTTP request bodies', () => {
-	it('rejects a duplicate Content-Type header alongside a raw body', () => {
+	it('rejects duplicate Content-Type before a raw request reaches the port', () => {
 		const request = {
 			probeId: 'p-001',
 			interfaceId: 'notes-api',
@@ -37,20 +38,38 @@ describe('canonical raw HTTP request bodies', () => {
 		witnessContract.permittedInterfaces[0].operations[0].sensitivityWitness.legs[0].inputs.header =
 			{ 'content-TYPE': 'text/plain' }
 		expect(publishedValidatorOf('eval-contract')(witnessContract)).toBe(true)
-		expect(EvalContract.safeParse(witnessContract).success).toBe(false)
-		expect(() => compile(witnessContract)).toThrow()
+		expect(EvalContract.safeParse(witnessContract).success).toBe(true)
+		expect(() => compile(witnessContract)).toThrow(
+			/raw body declares its own content type/,
+		)
 		const planContract = structuredClone(populatedContract) as any
 		planContract.interactionPlan[0].inputBinding.body = raw('e2JhZCI6')
 		planContract.interactionPlan[0].inputBinding.header = {
 			'Content-Type': { literal: 'text/plain' },
 		}
-		expect(EvalContract.safeParse(planContract).success).toBe(false)
+		expect(EvalContract.safeParse(planContract).success).toBe(true)
+		expect(publishedValidatorOf('eval-contract')(planContract)).toBe(true)
+		expect(() => compile(planContract)).toThrow(
+			/raw body declares its own content type/,
+		)
 		const probe = structuredClone(seededProbe) as any
 		probe.defects[0].manifestationWitness.inputs.body = raw('e2JhZCI6')
 		probe.defects[0].manifestationWitness.inputs.header = {
 			'CONTENT-TYPE': 'text/plain',
 		}
-		expect(Probe.safeParse(probe).success).toBe(false)
+		expect(Probe.safeParse(probe).success).toBe(true)
+		expect(publishedValidatorOf('probe')(probe)).toBe(true)
+		const operation =
+			EvalContract.parse(populatedContract).permittedInterfaces[0]!
+				.operations[0]!
+		expect(() =>
+			checkInputsAgainstShape(
+				probe.defects[0].manifestationWitness.inputs,
+				operation,
+				'the manifestation',
+				'Probe.manifestationWitness.inputs',
+			),
+		).toThrow(/raw body declares its own content type/)
 	})
 	it.each(['', 'e30=', 'e2JhZCI6', '/w==', 'AAE='])(
 		'accepts canonical base64 %j in Zod and published schemas',

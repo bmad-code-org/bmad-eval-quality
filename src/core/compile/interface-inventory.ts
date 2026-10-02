@@ -14,6 +14,7 @@ import { StructuralFailure } from '../failure-codes.ts'
 import type { EvalContract } from '../schemas/eval-contract.ts'
 import type { AnyOperation, InterfaceKindName } from '../schemas/interface.ts'
 import { operationsOf } from '../schemas/interface.ts'
+import { hasContentTypeHeader } from '../schemas/probe-body.ts'
 import {
 	anyOperationOf,
 	buildPlanIndex,
@@ -307,6 +308,18 @@ export function checkUndeclaredMandatoryInput(contract: EvalContract): void {
 	for (const step of contract.interactionPlan) {
 		const operation = anyOperationOf(index, step)
 		if (operation === undefined) continue
+		if (
+			'body' in step.inputBinding &&
+			step.inputBinding.body?.kind === 'raw' &&
+			step.inputBinding.header !== null &&
+			hasContentTypeHeader(step.inputBinding.header)
+		) {
+			throw new StructuralFailure(
+				'undeclared-mandatory-input',
+				`EvalContract.interactionPlan[stepId=${step.stepId}].inputBinding.header`,
+				'a Content-Type header is bound alongside raw body bytes; the raw body declares its own content type (AD-4)',
+			)
+		}
 		for (const { channel, bound: binding } of boundChannelsOf(
 			step.inputBinding,
 		)) {
