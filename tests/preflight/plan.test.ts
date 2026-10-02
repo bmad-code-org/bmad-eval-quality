@@ -30,6 +30,7 @@ import {
 	probeDraft,
 	resetContract,
 	seededProbe,
+	twoInterfaceContract,
 } from './fixtures/observations.ts'
 
 const planOf = (
@@ -320,25 +321,7 @@ describe('the plan as a whole', () => {
 	// schema description says two interfaces may declare the same one. Grouped
 	// by operation id alone, one interface's legs become another's clean legs.
 	it("123. keeps two interfaces' legs apart when they declare the same operation id", () => {
-		const draft = contractDraft()
-		const other = structuredClone(draft.permittedInterfaces[0])
-		other.logicalId = 'other-api'
-		for (const operation of other.operations) {
-			operation.pathTemplate = `/other${operation.pathTemplate}`
-			for (const leg of operation.sensitivityWitness?.legs ?? [])
-				leg.legId = `other-${leg.legId}`
-			if (operation.sensitivityWitness !== null)
-				operation.sensitivityWitness.relation = {
-					op: 'existence',
-					operands: [
-						{
-							pointer: `/interactions/${operation.sensitivityWitness.legs[0].legId}/response-body`,
-						},
-					],
-				}
-		}
-		draft.permittedInterfaces.push(other)
-		const plan = planOf(parseContract(draft))
+		const plan = planOf(twoInterfaceContract())
 		const presence = plan.checks.filter(
 			(check) => check.kind === 'interface-present',
 		)

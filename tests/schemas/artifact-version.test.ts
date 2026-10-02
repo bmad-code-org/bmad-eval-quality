@@ -61,7 +61,10 @@ import {
 	EvidenceArtifact,
 } from '../../src/core/schemas/evidence-artifact.ts'
 import { ISOLATION_MANIFEST_SCHEMA_VERSION } from '../../src/core/schemas/isolation-manifest.ts'
-import { PREFLIGHT_VERDICT_SCHEMA_VERSION } from '../../src/core/schemas/preflight-verdict.ts'
+import {
+	PREFLIGHT_VERDICT_SCHEMA_VERSION,
+	PreflightVerdict,
+} from '../../src/core/schemas/preflight-verdict.ts'
 import { PRIVATE_ARTIFACT_MANIFEST_SCHEMA_VERSION } from '../../src/core/schemas/private-artifact-manifest.ts'
 import { PROBE_SCHEMA_VERSION, Probe } from '../../src/core/schemas/probe.ts'
 import {
@@ -426,9 +429,9 @@ describe('no authored artifact literal carries a stale stamp', () => {
 // actually emit, since a builder could stamp a value on its way out. The three
 // committed chains carry the brief, the record, the evidence artifact, the
 // probe and the contract, and the spike chain alone carries a preflight
-// verdict. No chain exposes an isolation manifest, an evaluator configuration,
-// a private artifact manifest or a scoring policy, so for three of the four
-// version-1 artifacts the source walk is the whole holding.
+// verdict. No chain exposes an isolation manifest, an evaluator configuration
+// or a private artifact manifest, so for three of the four version-1 artifacts
+// the source walk is the whole holding.
 describe('every emitted artifact carries the current version', () => {
 	const chains = [
 		['spike worked example', buildWorkedExampleChain()],
@@ -778,6 +781,31 @@ const MCP_INTERFACE_AT_4 = {
 	],
 }
 
+const PREFLIGHT_VERDICT_AT_2: Readonly<Record<string, unknown>> = {
+	schemaVersion: 2,
+	parentDigest: null,
+	revisionCount: 0,
+	runId: 'preflight-run-0001',
+	fixtureDigest: DIGEST,
+	passed: true,
+	checks: [
+		{
+			kind: 'input-sensitivity',
+			interfaceId: 'notes-api',
+			operationId: 'patch-note',
+			outcome: 'satisfied',
+			note: null,
+		},
+		{
+			kind: 'state-reset',
+			interfaceId: null,
+			operationId: null,
+			outcome: 'satisfied',
+			note: null,
+		},
+	],
+}
+
 type ShapeByVersion = Readonly<
 	Record<number, (stamp: number) => Record<string, unknown>>
 >
@@ -912,6 +940,29 @@ const SHAPES: readonly {
 			}),
 		},
 	},
+	{
+		artifact: 'preflight-verdict',
+		current: PREFLIGHT_VERDICT_SCHEMA_VERSION,
+		parse: (value) => PreflightVerdict.safeParse(value),
+		predecessor:
+			'carries checks that name an operation and not the interface that declares it',
+		shapeByVersion: {
+			2: (stamp) => ({ ...PREFLIGHT_VERDICT_AT_2, schemaVersion: stamp }),
+			1: (stamp) => ({
+				...PREFLIGHT_VERDICT_AT_2,
+				schemaVersion: stamp,
+				checks: (PREFLIGHT_VERDICT_AT_2.checks as readonly unknown[]).map(
+					(entry) => {
+						const check: Record<string, unknown> = {
+							...(entry as Record<string, unknown>),
+						}
+						delete check.interfaceId
+						return check
+					},
+				),
+			}),
+		},
+	},
 ]
 
 describe('each constant names the shape the parser accepts', () => {
@@ -954,15 +1005,13 @@ describe('each constant names the shape the parser accepts', () => {
 })
 
 /**
- * The five artifacts that have never moved. Nothing was released before
+ * The four artifacts that have never moved. Nothing was released before
  * version 1, so there is no predecessor shape to fail on and the
  * parse-behaviour question is vacuous; the source walk is the whole holding for
- * three of them, and the spike chain's emitted bytes hold the preflight verdict
- * as well. The assertion is what keeps that record honest: the first bump fails
- * here and the artifact has to join `SHAPES` with a predecessor case.
+ * three of them. The assertion is what keeps that record honest: the first
+ * bump fails here and the artifact has to join `SHAPES` with a predecessor case.
  */
 const AT_VERSION_ONE: readonly (readonly [string, number])[] = [
-	['preflight-verdict', PREFLIGHT_VERDICT_SCHEMA_VERSION],
 	['isolation-manifest', ISOLATION_MANIFEST_SCHEMA_VERSION],
 	['evaluator-configuration', EVALUATOR_CONFIGURATION_SCHEMA_VERSION],
 	['private-artifact-manifest', PRIVATE_ARTIFACT_MANIFEST_SCHEMA_VERSION],

@@ -90,10 +90,11 @@ function kindMismatch(
 
 const check = (
 	kind: PreflightCheck['kind'],
+	interfaceId: string | null,
 	operationId: string | null,
 	outcome: PreflightCheck['outcome'],
 	note: string | null,
-): PreflightCheck => ({ kind, operationId, outcome, note })
+): PreflightCheck => ({ kind, interfaceId, operationId, outcome, note })
 
 /**
  * Two projections describe the same fixture state. `legId` is excluded because
@@ -264,6 +265,7 @@ export const reducePreflight: ReduceStage<
 					if (state === undefined)
 						return check(
 							planned.kind,
+							planned.interfaceId,
 							planned.operationId,
 							'failed',
 							`leg "${legId}" produced no observation`,
@@ -277,18 +279,26 @@ export const reducePreflight: ReduceStage<
 					)
 						return check(
 							planned.kind,
+							planned.interfaceId,
 							planned.operationId,
 							'failed',
 							`leg "${legId}" echoed an identifier the request did not carry`,
 						)
 				}
-				return check(planned.kind, planned.operationId, 'satisfied', null)
+				return check(
+					planned.kind,
+					planned.interfaceId,
+					planned.operationId,
+					'satisfied',
+					null,
+				)
 			}
 			case 'input-sensitivity': {
 				const { witness, operation } = planned
 				if (witness === null)
 					return check(
 						planned.kind,
+						planned.interfaceId,
 						planned.operationId,
 						declaresNoRequestKeys(operation) ? 'exempt' : 'failed',
 						declaresNoRequestKeys(operation)
@@ -301,6 +311,7 @@ export const reducePreflight: ReduceStage<
 					if (state === undefined)
 						return check(
 							planned.kind,
+							planned.interfaceId,
 							planned.operationId,
 							'failed',
 							`witness leg "${leg.legId}" produced no observation`,
@@ -321,12 +332,14 @@ export const reducePreflight: ReduceStage<
 				if (resolution === 'insufficient-evidence')
 					return check(
 						planned.kind,
+						planned.interfaceId,
 						planned.operationId,
 						'failed',
 						'The witness relation resolved insufficient-evidence.',
 					)
 				return check(
 					planned.kind,
+					planned.interfaceId,
 					planned.operationId,
 					resolution === 'true' ? 'satisfied' : 'failed',
 					resolution === 'true' ? null : 'The witness relation resolved false.',
@@ -340,13 +353,15 @@ export const reducePreflight: ReduceStage<
 					return check(
 						planned.kind,
 						null,
+						null,
 						'failed',
 						'a control-observe leg produced no observation',
 					)
 				return sameFixtureState(first.projected, last.projected)
-					? check(planned.kind, null, 'satisfied', null)
+					? check(planned.kind, null, null, 'satisfied', null)
 					: check(
 							planned.kind,
+							null,
 							null,
 							'failed',
 							`the projections of "${firstId}" and "${lastId}" differ`,
@@ -359,6 +374,7 @@ export const reducePreflight: ReduceStage<
 						return check(
 							planned.kind,
 							null,
+							null,
 							'failed',
 							`control leg "${legId}" produced no observation`,
 						)
@@ -367,11 +383,12 @@ export const reducePreflight: ReduceStage<
 						return check(
 							planned.kind,
 							null,
+							null,
 							'failed',
 							`control leg "${legId}" observed ${anomaly}`,
 						)
 				}
-				return check(planned.kind, null, 'satisfied', null)
+				return check(planned.kind, null, null, 'satisfied', null)
 			}
 			case 'seeded-faults-scoped': {
 				const { witness, defectId } = planned
@@ -404,6 +421,7 @@ export const reducePreflight: ReduceStage<
 					const named = dropped.map((legId) => `"${legId}"`).join(', ')
 					return check(
 						planned.kind,
+						witness.interfaceId,
 						witness.operationId,
 						'failed',
 						dropped.length === 0
@@ -421,18 +439,26 @@ export const reducePreflight: ReduceStage<
 					if (resolved === 'true')
 						return check(
 							planned.kind,
+							witness.interfaceId,
 							witness.operationId,
 							'failed',
 							`${defectId}: the manifestation witness fires on clean leg "${legId}"`,
 						)
 				}
-				return check(planned.kind, witness.operationId, 'satisfied', defectId)
+				return check(
+					planned.kind,
+					witness.interfaceId,
+					witness.operationId,
+					'satisfied',
+					defectId,
+				)
 			}
 			case 'seeded-fault-fired': {
 				const { witness, defectId } = planned
 				if (witness === null)
 					return check(
 						planned.kind,
+						null,
 						null,
 						'failed',
 						`${defectId}: the defect declares no manifestation witness, so it cannot be observed to fire`,
@@ -444,9 +470,16 @@ export const reducePreflight: ReduceStage<
 					PREFLIGHT_ARTIFACT_PATH,
 				)
 				if (resolved === 'true')
-					return check(planned.kind, witness.operationId, 'satisfied', defectId)
+					return check(
+						planned.kind,
+						witness.interfaceId,
+						witness.operationId,
+						'satisfied',
+						defectId,
+					)
 				return check(
 					planned.kind,
+					witness.interfaceId,
 					witness.operationId,
 					'failed',
 					resolved === null

@@ -343,6 +343,33 @@ export const contractDraft = (): any => structuredClone(contractLiteral)
 export const parseContract = (draft: unknown): EvalContract =>
 	EvalContract.parse(draft)
 
+/**
+ * The contract with a second interface, `other-api`, declaring every operation
+ * `thing-api` declares under the same identifiers. Paths and leg ids are
+ * prefixed so the two interfaces share no signature and no leg id.
+ */
+export const twoInterfaceContract = (): EvalContract => {
+	const draft = contractDraft()
+	const other = structuredClone(draft.permittedInterfaces[0])
+	other.logicalId = 'other-api'
+	for (const operation of other.operations) {
+		operation.pathTemplate = `/other${operation.pathTemplate}`
+		for (const leg of operation.sensitivityWitness?.legs ?? [])
+			leg.legId = `other-${leg.legId}`
+		if (operation.sensitivityWitness !== null)
+			operation.sensitivityWitness.relation = {
+				op: 'existence',
+				operands: [
+					{
+						pointer: `/interactions/${operation.sensitivityWitness.legs[0].legId}/response-body`,
+					},
+				],
+			}
+	}
+	draft.permittedInterfaces.push(other)
+	return parseContract(draft)
+}
+
 export const operationNamed = (
 	contract: EvalContract,
 	operationId: string,

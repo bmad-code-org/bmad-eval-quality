@@ -10,6 +10,14 @@ body.
 
 ## [Unreleased]
 
+### Changed
+
+- **BREAKING: every preflight check names the interface that declares its operation.**
+  `PreflightCheck` gains a required `interfaceId`, and `PREFLIGHT_VERDICT_SCHEMA_VERSION` moves from `1` to `2`.
+  An operation identifier is unique only within its interface, so two `interface-present` or `input-sensitivity` checks for one operation on two interfaces were indistinguishable in the verdict, although the plan already kept them apart.
+  `interfaceId` is `null` exactly where `operationId` is `null`: `state-reset`, `clean-control`, and a `seeded-fault-fired` check whose defect declares no manifestation witness.
+  The published `schemas/preflight-verdict.schema.json` carries the new required key, and a version 1 verdict no longer parses.
+
 ## [4.7.0] - 2026-10-01
 
 ### Added

@@ -31,6 +31,7 @@ import {
 	resetContract,
 	satisfiedPatches,
 	seededProbe,
+	twoInterfaceContract,
 } from './fixtures/observations.ts'
 
 type Run = {
@@ -598,9 +599,9 @@ describe('the verdict itself', () => {
 		expect(verdictOf({ patches: faultSilentPatch() }).passed).toBe(false)
 	})
 
-	it('67. is an origin artifact: schemaVersion 1, no parent, revision 0', () => {
+	it('67. is an origin artifact: schemaVersion 2, no parent, revision 0', () => {
 		const verdict = verdictOf()
-		expect(verdict.schemaVersion).toBe(1)
+		expect(verdict.schemaVersion).toBe(2)
 		expect(verdict.parentDigest).toBeNull()
 		expect(verdict.revisionCount).toBe(0)
 		expect(verdict.runId).toBe('run-1')
@@ -683,6 +684,38 @@ describe('the verdict itself', () => {
 				'read-thing',
 			),
 		).toBe('failed')
+	})
+
+	// An operation identifier is unique only within its interface, so a check
+	// that names an operation names the interface too, and a check that names no
+	// operation names no interface.
+	it('134. writes the declaring interface on every per-operation check and null on the rest', () => {
+		const { checks } = verdictOf()
+		const named = checks.filter((check) => check.operationId !== null)
+		expect(named.length).toBeGreaterThan(0)
+		for (const check of named)
+			expect(check.interfaceId, `${check.kind}/${check.operationId}`).toBe(
+				'thing-api',
+			)
+		for (const check of checks.filter((entry) => entry.operationId === null))
+			expect(check.interfaceId, check.kind).toBeNull()
+		expect(checkFor(checks, 'state-reset').interfaceId).toBeNull()
+		expect(checkFor(checks, 'clean-control').interfaceId).toBeNull()
+	})
+
+	it('135. tells two interfaces apart when both declare the same operation id', () => {
+		const { checks } = verdictOf({ contract: twoInterfaceContract() })
+		for (const kind of ['interface-present', 'input-sensitivity'] as const) {
+			const sameOperation = checks.filter(
+				(check) => check.kind === kind && check.operationId === 'read-thing',
+			)
+			expect(
+				sameOperation.map((check) => check.interfaceId).sort(),
+				kind,
+			).toEqual(['other-api', 'thing-api'])
+		}
+		const fired = checkFor(checks, 'seeded-fault-fired', 'list-things')
+		expect(fired.interfaceId).toBe('thing-api')
 	})
 
 	it('68. emits no seeded-fault check at all for a contract with no seeded faults', () => {

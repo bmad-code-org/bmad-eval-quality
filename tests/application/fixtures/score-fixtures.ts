@@ -280,7 +280,7 @@ export const scoringPolicyFixtureForScore: ScoringPolicy = {
 }
 
 export const passingPreflightVerdictForScore: PreflightVerdict = {
-	schemaVersion: 1,
+	schemaVersion: 2,
 	parentDigest: null,
 	revisionCount: 0,
 	runId: 'run-1',

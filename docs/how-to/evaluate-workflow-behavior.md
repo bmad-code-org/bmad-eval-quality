@@ -119,21 +119,21 @@ Exit `0`, over eleven planned legs.
 Read the verdict back:
 
 ```bash
-node -e "const v=require('/tmp/eval-quality-workflow/preflight-verdict.json');console.log('passed:',v.passed);for(const c of v.checks)console.log(c.kind,c.operationId,c.outcome)"
+node -e "const v=require('/tmp/eval-quality-workflow/preflight-verdict.json');console.log('passed:',v.passed);for(const c of v.checks)console.log(c.kind,c.interfaceId,c.operationId,c.outcome)"
 ```
 
 ```text
 passed: true
-interface-present get-thing satisfied
-interface-present create-thing satisfied
-interface-present reset-things satisfied
-input-sensitivity get-thing satisfied
-input-sensitivity create-thing satisfied
-input-sensitivity reset-things satisfied
-state-reset null satisfied
-clean-control null satisfied
-seeded-faults-scoped get-thing satisfied
-seeded-fault-fired get-thing satisfied
+interface-present thing-service get-thing satisfied
+interface-present thing-service create-thing satisfied
+interface-present thing-service reset-things satisfied
+input-sensitivity thing-service get-thing satisfied
+input-sensitivity thing-service create-thing satisfied
+input-sensitivity thing-service reset-things satisfied
+state-reset null null satisfied
+clean-control null null satisfied
+seeded-faults-scoped thing-service get-thing satisfied
+seeded-fault-fired thing-service get-thing satisfied
 ```
 
 #### What preflight just established

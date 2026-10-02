@@ -21,6 +21,9 @@ export const PreflightCheckKind = z.enum(PREFLIGHT_CHECK_KINDS)
 
 export const PreflightCheck = z.strictObject({
 	kind: PreflightCheckKind,
+	interfaceId: Identifier.nullable().describe(
+		'Names the interface that declares `operationId`, because an operation identifier is unique only within its interface and two checks of one kind for the same operation on two interfaces are otherwise indistinguishable. Null exactly where `operationId` is null: a check that is not per-operation names no interface either.',
+	),
 	operationId: Identifier.nullable().describe(
 		'Nullable because AD-10 scopes input sensitivity and state reset per operation and interface presence per interface, so a check that is not per-operation has nothing to name here.',
 	),
@@ -39,10 +42,12 @@ export type PreflightCheck = z.infer<typeof PreflightCheck>
  * number is written. It was a literal inside `reduce.ts`, so the value a
  * consumer needed sat in a stage rather than beside the shape it names.
  *
- * `1`: this artifact has never moved, so it has no predecessor shape and a
- * parse-behaviour case over one would be vacuous.
+ * `2`: every check gained a required `interfaceId`, the interface that
+ * declares the check's `operationId`, or null where the check names no
+ * operation. A required field is a retype under AD-11. `1`: the first shape,
+ * whose checks named an operation and not the interface that declares it.
  */
-export const PREFLIGHT_VERDICT_SCHEMA_VERSION = 1
+export const PREFLIGHT_VERDICT_SCHEMA_VERSION = 2
 
 export const PreflightVerdict = z
 	.strictObject({

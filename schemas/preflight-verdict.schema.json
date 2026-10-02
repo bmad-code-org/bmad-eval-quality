@@ -57,6 +57,19 @@
               "seeded-fault-fired"
             ]
           },
+          "interfaceId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                "description": "A kebab-case slug. Excludes \"/\" and \"~\" so an identifier can be embedded in an interaction-rooted pointer without escaping."
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Names the interface that declares `operationId`, because an operation identifier is unique only within its interface and two checks of one kind for the same operation on two interfaces are otherwise indistinguishable. Null exactly where `operationId` is null: a check that is not per-operation names no interface either."
+          },
           "operationId": {
             "anyOf": [
               {
@@ -92,6 +105,7 @@
         },
         "required": [
           "kind",
+          "interfaceId",
           "operationId",
           "outcome",
           "note"
