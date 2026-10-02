@@ -38,7 +38,9 @@ import {
 	run,
 } from '../../src/cli/run.ts'
 import { planPreflight } from '../../src/core/preflight/plan.ts'
+import { EVAL_CONTRACT_SCHEMA_VERSION } from '../../src/core/schemas/eval-contract.ts'
 import type { ProbeObservation } from '../../src/core/schemas/port-messages.ts'
+import { SEALED_RUN_RECORD_SCHEMA_VERSION } from '../../src/core/schemas/sealed-run-record.ts'
 import {
 	corpusDigestFixture,
 	evaluatorConfigurationFixture,
@@ -593,6 +595,26 @@ describe('run: the error mappings', () => {
 		expect(preflighted.diagnostics[0]).toMatch(
 			/^eval-quality: schema-parse-failure: ProbeObservation: --observations is not JSON: /,
 		)
+	})
+
+	it('a contract stamped one version below is a schema-version-mismatch fault, exit 5', async () => {
+		const stale = EVAL_CONTRACT_SCHEMA_VERSION - 1
+		const environment = environmentOf({
+			'contract.json': JSON.stringify({
+				...gateCContract,
+				schemaVersion: stale,
+			}),
+		})
+		const { outcome, exit } = await invoke(
+			['compile', '--in', 'contract.json'],
+			environment,
+		)
+		expect(outcome).toEqual({ kind: 'fault' })
+		expect(exit).toBe(EXIT_FAULT)
+		expect(environment.diagnostics[0]).toContain(
+			`schema-version-mismatch: EvalContract.schemaVersion: carries "schemaVersion" ${stale} where this build reads ${EVAL_CONTRACT_SCHEMA_VERSION}`,
+		)
+		expect(environment.out).toEqual([])
 	})
 
 	it('case 72: a StructuralFailure maps to structural-failure and exit 4', async () => {
@@ -1333,6 +1355,28 @@ describe('run: the score command (Story 8.4)', () => {
 			'non-canonicalizable-value: ScoringPolicy: duplicate object key "policyId"',
 		)
 		expect(environment.out).toEqual([])
+	})
+
+	it('a record stamped one version below is a schema-version-mismatch fault naming the stamp, exit 5', async () => {
+		const environment = environmentOf(
+			scoreFiles({
+				'record.json': JSON.stringify({
+					...sealedRunRecordFixtureForScore,
+					schemaVersion: SEALED_RUN_RECORD_SCHEMA_VERSION - 1,
+				}),
+			}),
+			'',
+			[],
+			SCORE_CORPUS_FILES,
+		)
+		const { outcome, exit } = await invoke(SCORE_ARGV, environment)
+		expect(outcome).toEqual({ kind: 'fault' })
+		expect(exit).toBe(EXIT_FAULT)
+		expect(environment.diagnostics[0]).toContain(
+			`schema-version-mismatch: SealedRunRecord[trialIndex=${sealedRunRecordFixtureForScore.trialIndex}].schemaVersion: carries "schemaVersion" ${SEALED_RUN_RECORD_SCHEMA_VERSION - 1} where this build reads ${SEALED_RUN_RECORD_SCHEMA_VERSION}`,
+		)
+		expect(environment.out).toEqual([])
+		expect(environment.writes).toEqual([])
 	})
 
 	it('calls the facade runScore exactly once, and no other orchestration call', async () => {

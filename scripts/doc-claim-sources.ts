@@ -94,6 +94,8 @@ export const CONFORMANCE_RUNNERS = [
  */
 const VERSION_READER_BY_FILE: Readonly<Record<string, string>> = {
 	'src/application/aggregate-strength.ts': 'aggregate',
+	'src/application/compile.ts': 'compile',
+	'src/application/score.ts': 'score',
 	'src/core/compile/compile.ts': 'compile',
 	'src/core/preflight/plan.ts': 'preflight',
 	'src/core/score/score.ts': 'score',
