@@ -17,8 +17,11 @@ import type { InputChannelName } from '../schemas/pointer.ts'
 import {
 	anyOperationOf,
 	type EvidenceTarget,
+	type OperationRef,
+	operationKey,
 	type PlanIndex,
 	parseEvidenceTarget,
+	resolveOperation,
 	resolveStep,
 } from './plan-index.ts'
 
@@ -39,13 +42,7 @@ function resolveEvidenceTarget(
 ): ResolvedTarget {
 	const target = parseEvidenceTarget(pointer)
 	const step = resolveStep(index, target.stepId)
-	const operation = anyOperationOf(index, step.operationId)
-	if (operation === undefined) {
-		throw new TypeError(
-			`step names an operation the permitted interfaces do not declare: ${step.operationId}`,
-		)
-	}
-	return { target, step, operation }
+	return { target, step, operation: resolveOperation(index, step) }
 }
 
 // ---- joining ---------------------------------------------------------
@@ -62,10 +59,16 @@ function joinWithAnd(items: readonly string[]): string {
 
 // ---- operation identity -----------------------------------------------
 
-// Humanizing a kebab-case operationId is injective on distinct ids, and
-// `buildPlanIndex` already rejects a duplicate `operationId` across
-// interfaces, so two resolved operations never share this phrase. The
-// transport identity is never printed here, whichever kind it is: AD-16
+// Humanizing a kebab-case operationId is injective on distinct ids. Two
+// interfaces may declare the same id, so the phrase appends the interface
+// exactly when the contract declares this id on more than one; the brief
+// already lists every `logicalId`, so that discloses nothing new. The
+// interface id is quoted, because an unquoted one could run into the words
+// around it: an interface named `command` beside an operation `x-command-of-
+// interface` would otherwise render two different steps identically. A
+// contract that shares no id renders the unqualified phrase.
+//
+// The transport identity is never printed here, whichever kind it is: AD-16
 // withholds the operation inventory from the brief, so a method and a path
 // template, an executable and a subcommand path, and a tool name are all
 // withheld from an evaluator alike.
@@ -73,11 +76,16 @@ function joinWithAnd(items: readonly string[]): string {
 // The noun follows the kind. Calling a command an endpoint told the evaluator
 // something false about what it was reading, and the word is the only thing
 // this phrase says beyond the operation's own name.
-function operationReference(operation: AnyOperation): string {
+function operationReference(
+	operation: AnyOperation,
+	interfaceId: string,
+	shared: boolean,
+): string {
 	const name = operation.operationId.split('-').join(' ')
-	if (isCommandOperation(operation)) return `the ${name} command`
-	if (isMcpOperation(operation)) return `the ${name} tool`
-	return `the ${name} endpoint`
+	const qualifier = shared ? ` of interface "${interfaceId}"` : ''
+	if (isCommandOperation(operation)) return `the ${name} command${qualifier}`
+	if (isMcpOperation(operation)) return `the ${name} tool${qualifier}`
+	return `the ${name} endpoint${qualifier}`
 }
 
 // ---- the binding clause and its escalation ----------------------------
@@ -277,8 +285,7 @@ function renderCaptureGroup(
 	const names = joinWithAnd(group.entries.map(entryName))
 	const locals = joinWithAnd(group.targets.map(localTargetPhrase))
 	const step = index.stepOf(group.stepId)
-	const operation =
-		step === undefined ? undefined : anyOperationOf(index, step.operationId)
+	const operation = step === undefined ? undefined : anyOperationOf(index, step)
 	if (step === undefined || operation === undefined) {
 		return unexpandedGroup(group)
 	}
@@ -319,7 +326,7 @@ function expandableCapture(
 	if (rendering.has(target.stepId)) return null
 	const step = index.stepOf(target.stepId)
 	if (step === undefined) return null
-	return anyOperationOf(index, step.operationId) === undefined ? null : target
+	return anyOperationOf(index, step) === undefined ? null : target
 }
 
 // Renders one entry on its own. Every captured entry that expands lands in a
@@ -418,7 +425,11 @@ function stepReferenceAtLevel(
 	rendering: ReadonlySet<string> = new Set(),
 	budget: RenderBudget = newBudget(RENDER_BUDGET_LIMITS[0]),
 ): string {
-	const base = operationReference(operation)
+	const base = operationReference(
+		operation,
+		step.interfaceId,
+		index.isOperationIdShared(step.operationId),
+	)
 	// The step being rendered joins the path before its own clause is built, so
 	// a self-capture falls back on the first hop.
 	const clause = bindingClause(
@@ -496,15 +507,19 @@ export function renderStepReference(
 	// structure does not tell apart. `checkStepReferenceReducibility` runs this
 	// same ladder at compile time so the fault is reported before seal, and
 	// this throw is what it catches.
+	const shared = index.isOperationIdShared(step.operationId)
+	const owner = shared ? ` on interface "${step.interfaceId}"` : ''
 	throw new StructuralFailure(
 		'irreducible-step-reference',
-		`EvalContract.interactionPlan[operationId=${operation.operationId}]`,
-		`two or more steps invoking operation "${operation.operationId}" that one direction references render to the same derived reference even fully escalated; the declared structure does not distinguish them (AD-16, AD-3)`,
+		shared
+			? `EvalContract.interactionPlan[interfaceId=${step.interfaceId}][operationId=${operation.operationId}]`
+			: `EvalContract.interactionPlan[operationId=${operation.operationId}]`,
+		`two or more steps invoking operation "${operation.operationId}"${owner} that one direction references render to the same derived reference even fully escalated; the declared structure does not distinguish them (AD-16, AD-3)`,
 	)
 }
 
-/** Looks up, by operationId, every step one direction's own resolved targets name. */
-type SiblingsOf = (operationId: string) => readonly InteractionStep[]
+/** Looks up, by operation pair, every step one direction's own resolved targets name. */
+type SiblingsOf = (ref: OperationRef) => readonly InteractionStep[]
 
 function siblingsByOperation(
 	resolved: readonly ResolvedTarget[],
@@ -514,8 +529,9 @@ function siblingsByOperation(
 	for (const entry of resolved) {
 		if (seenSteps.has(entry.step.stepId)) continue
 		seenSteps.add(entry.step.stepId)
-		const list = map.get(entry.operation.operationId)
-		if (list === undefined) map.set(entry.operation.operationId, [entry.step])
+		const key = operationKey(entry.step.interfaceId, entry.step.operationId)
+		const list = map.get(key)
+		if (list === undefined) map.set(key, [entry.step])
 		else list.push(entry.step)
 	}
 	return map
@@ -601,7 +617,7 @@ function fullTargetPhrase(
 	const stepRef = renderStepReference(
 		resolved.step,
 		resolved.operation,
-		siblingsOf(resolved.operation.operationId),
+		siblingsOf(resolved.step),
 		index,
 	)
 	const preposition = resolved.target.channel === 'call-inputs' ? 'to' : 'from'
@@ -646,13 +662,13 @@ function sentFirstOrder(
 	const referenceA = renderStepReference(
 		a.step,
 		a.operation,
-		siblingsOf(a.operation.operationId),
+		siblingsOf(a.step),
 		index,
 	)
 	const referenceB = renderStepReference(
 		b.step,
 		b.operation,
-		siblingsOf(b.operation.operationId),
+		siblingsOf(b.step),
 		index,
 	)
 	return referenceA <= referenceB ? [a, b] : [b, a]
@@ -779,7 +795,7 @@ function renderPhraseGroup(
 	const stepRef = renderStepReference(
 		first.step,
 		first.operation,
-		siblingsOf(first.operation.operationId),
+		siblingsOf(first.step),
 		index,
 	)
 	// Sorted, so a same-step group's field order is permutation-invariant like
@@ -811,8 +827,8 @@ export function renderEvidenceReferences(
 		resolveEvidenceTarget(pointer, index),
 	)
 	const siblings = siblingsByOperation(resolved)
-	const siblingsOf: SiblingsOf = (operationId) =>
-		siblings.get(operationId) ?? []
+	const siblingsOf: SiblingsOf = (ref) =>
+		siblings.get(operationKey(ref.interfaceId, ref.operationId)) ?? []
 	const groups = groupResolvedTargets(resolved)
 	const phrases = groups.map((group) =>
 		renderPhraseGroup(group, siblingsOf, index),

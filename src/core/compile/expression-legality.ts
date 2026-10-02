@@ -686,7 +686,7 @@ export function checkQuantifierOverNonCollection(contract: EvalContract): void {
 		}
 		const step = index.stepOf(stepId)
 		if (step === undefined) return undefined
-		return anyOperationOf(index, step.operationId)
+		return anyOperationOf(index, step)
 	}
 	forEachContractExpression(contract, (site) => {
 		checkQuantifiersAgainst(site.expression, site.artifactPath, (stepId) =>

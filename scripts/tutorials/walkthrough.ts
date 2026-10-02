@@ -364,6 +364,7 @@ const contract: EvalContract = {
 	interactionPlan: [
 		{
 			stepId: 'write',
+			interfaceId: 'notes-api',
 			operationId: 'update-note',
 			inputBinding: {
 				path: { noteId: { literal: 'n-1' } },
@@ -376,6 +377,7 @@ const contract: EvalContract = {
 		},
 		{
 			stepId: 'read-back',
+			interfaceId: 'notes-api',
 			operationId: 'read-note',
 			inputBinding: {
 				path: { noteId: { literal: 'n-1' } },
@@ -388,6 +390,7 @@ const contract: EvalContract = {
 		},
 		{
 			stepId: 'list',
+			interfaceId: 'notes-api',
 			operationId: 'list-notes',
 			inputBinding: {
 				path: null,
@@ -752,6 +755,7 @@ stipulated to have collected, and the chain exists so the four commands can be r
 			{
 				observationId: 'obs-001',
 				sequence: 1,
+				interfaceId: 'notes-api',
 				operationId: 'update-note',
 				provenance: 'evaluator-chosen',
 				principal: null,
@@ -777,6 +781,7 @@ stipulated to have collected, and the chain exists so the four commands can be r
 			{
 				observationId: 'obs-002',
 				sequence: 2,
+				interfaceId: 'notes-api',
 				operationId: 'read-note',
 				provenance: 'evaluator-chosen',
 				principal: null,
@@ -802,6 +807,7 @@ stipulated to have collected, and the chain exists so the four commands can be r
 			{
 				observationId: 'obs-003',
 				sequence: 3,
+				interfaceId: 'notes-api',
 				operationId: 'list-notes',
 				provenance: 'evaluator-chosen',
 				principal: null,

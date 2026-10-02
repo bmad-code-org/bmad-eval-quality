@@ -520,6 +520,7 @@ describe('the selector follows the shipped binding filter', () => {
 		const interfaces = EvalContract.parse(mcpContract).permittedInterfaces
 		const searched = observation({
 			observationId: 'obs-tool-1',
+			interfaceId: 'notes-tool-server',
 			operationId: 'search-notes',
 			callInputs: {
 				path: null,

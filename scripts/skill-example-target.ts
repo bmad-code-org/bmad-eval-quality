@@ -389,7 +389,7 @@ const authoredRecord = (
 	briefDigest: string,
 	evaluatorConfigurationDigest: string,
 ): SealedRunRecord => ({
-	schemaVersion: 6,
+	schemaVersion: 7,
 	parentDigest: null,
 	revisionCount: 0,
 	runId: RUN_ID,
@@ -456,6 +456,7 @@ const authoredRecord = (
 			// admits and the condition refutes.
 			observationId: 'obs-001',
 			sequence: 1,
+			interfaceId: 'skill-runner',
 			operationId: 'run-skill',
 			provenance: 'evaluator-chosen',
 			principal: null,
@@ -476,6 +477,7 @@ const authoredRecord = (
 			// literal, so this is the observation the two oracles read.
 			observationId: 'obs-002',
 			sequence: 2,
+			interfaceId: 'skill-runner',
 			operationId: 'run-skill',
 			provenance: 'evaluator-chosen',
 			principal: null,
@@ -633,10 +635,10 @@ export function buildSkillExampleChain(): SkillExampleChain {
 	const homeOperationOf = (candidate: Probe): AnyOperation | null =>
 		candidate.expectedClean || candidate.defectSignature === null
 			? null
-			: resolveHomeOperation(
+			: (resolveHomeOperation(
 					candidate.defectSignature,
 					contract.permittedInterfaces,
-				)
+				)?.operation ?? null)
 	const sealedProbes = sealProbeSet([probe], homeOperationOf)
 	if (sealedProbes.rejected.length > 0) {
 		fail(

@@ -31,8 +31,8 @@ const minimalBehavior: EvalContract['behaviors'][number] = {
 
 /** every axis in its absent state: the declaration is `null`. */
 export const absentContract = {
-	// 5, matching `populatedContract` below and the shape both literals satisfy.
-	schemaVersion: 5,
+	// 6, matching `populatedContract` below and the shape both literals satisfy.
+	schemaVersion: 6,
 	contractId: 'absent-declarations',
 	parentDigest: null,
 	revisionCount: 0,
@@ -115,7 +115,7 @@ export const explicitlyEmptyContract = {
 
 /** every axis populated, so every relevance predicate fires. */
 export const populatedContract = {
-	schemaVersion: 5,
+	schemaVersion: 6,
 	contractId: 'populated-declarations',
 	parentDigest:
 		'sha256:0000000000000000000000000000000000000000000000000000000000000abc',
@@ -340,12 +340,18 @@ export const populatedContract = {
 		},
 	},
 	siblingGroups: {
-		operations: [['create-thing', 'list-things']],
+		operations: [
+			[
+				{ interfaceId: 'thing-api', operationId: 'create-thing' },
+				{ interfaceId: 'thing-api', operationId: 'list-things' },
+			],
+		],
 		parameters: [['limit', 'name']],
 	},
 	interactionPlan: [
 		{
 			stepId: 'create',
+			interfaceId: 'thing-api',
 			operationId: 'create-thing',
 			inputBinding: {
 				path: null,
@@ -358,6 +364,7 @@ export const populatedContract = {
 		},
 		{
 			stepId: 'list',
+			interfaceId: 'thing-api',
 			operationId: 'list-things',
 			inputBinding: {
 				path: null,

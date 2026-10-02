@@ -221,7 +221,7 @@ node dist/cli/main.js score \
   --policy examples/tutorials/tool-use/scoring-policy.json \
   --isolation-manifest examples/tutorials/tool-use/isolation-manifest.json \
   --evaluator-configuration examples/tutorials/tool-use/evaluator-configuration.json \
-  --corpus-digest sha256:74259e881b443bf6d063bc7d626cf9d666127475410ec69d7410d7c3801fe2f2 \
+  --corpus-digest sha256:6947516870d6fba0b20d5680f47f74968e718a5a4f7d4564d6309aefca3eb757 \
   --out /tmp/eval-quality-tool-use/evidence-artifact.json
 ```
 
@@ -302,7 +302,7 @@ The fourth question after them is kind-neutral and belongs to both readings.
 For agent evaluations, verify that the agent selected the appropriate tool for the task.
 A plausible final answer does not prove correct tool selection.
 The observable tool trajectory can itself be part of the behavior being evaluated.
-An `InteractionStep` names an `operationId` and a `cardinality` (`src/core/schemas/plan.ts:170`).
+An `InteractionStep` names an `interfaceId`, an `operationId` and a `cardinality` (`src/core/schemas/plan.ts:170`).
 The step is a selector over observations the evaluator produced, so a step naming `search-notes` with `cardinality: "exactly-one"` declares that exactly one call to that tool is expected in the run.
 `SELECTOR_CARDINALITIES` is the closed three, `exactly-one`, `at-most-one`, and `any` (`plan.ts:153`).
 
@@ -366,7 +366,7 @@ All three gates that used to reject an `mcp` contract now admit it.
 | --- | --- | --- |
 | `compile` | Admits `mcp` | `SUPPORTED_INTERFACE_KINDS` in `src/core/compile/interface-inventory.ts` |
 | `preflight` plan | Admits it too, reading the same tuple | `src/core/preflight/plan.ts` |
-| `score` probe qualification | Admits it, reading the same tuple again | `src/core/score/qualification.ts:838` |
+| `score` probe qualification | Admits it, reading the same tuple again | `src/core/score/qualification.ts:849` |
 
 All three read one exported tuple, so what compiles, what pre-flights, and what a signature may declare against cannot disagree.
 `web` is the one kind all three still refuse, under `unsupported-interface-kind` contract-side and `signature-interface-kind-unsupported` probe-side.
@@ -397,7 +397,7 @@ Write it to a file in the directory you are working in, and delete it when you a
 ```bash
 cat > mcp-contract.json <<'EOF'
 {
-  "schemaVersion": 5,
+  "schemaVersion": 6,
   "contractId": "notes-tool-server-evaluation",
   "parentDigest": null,
   "revisionCount": 0,
@@ -491,7 +491,7 @@ It makes every coverage rule report about the envelope: `requiredKeys` becomes `
 
 **The error flag lands on `response-status`.**
 The MCP envelope's `isError` is observable there as 0 or 1, which keeps it out of `requiredKeys`, where it would satisfy a coverage rule while checking nothing.
-`Observation.responseStatus` is an integer with no HTTP reading attached (`sealed-run-record.ts:255`), and an adapter is what performs that projection.
+`Observation.responseStatus` is an integer with no HTTP reading attached (`sealed-run-record.ts:258`), and an adapter is what performs that projection.
 The `ok` field in the declaration above is a different thing: it is the tool's own field inside its own structured result, so an oracle over it checks what the tool said about its work.
 A tool whose result carries no such field declares `successIndicator: null`, which is legal and makes AD-20 rule 1 irrelevant.
 
@@ -583,7 +583,7 @@ The transport is stdio and nothing else. A server reached over Streamable HTTP s
 
 **Missing.** A channel model for a text-shaped tool result.
 
-**Already works, and this is the part worth knowing before you fund any of it.** Both sides of the exchange accommodate the kind today. `Observation` in the sealed run record is not discriminated on kind (`sealed-run-record.ts:229`), so what a tool answered has somewhere to live. `foreignChannels` (`qualification.ts:188`) confines a tool-use signature to `response-body`, `response-status`, `exit-code`, and its own `call-inputs`, which is the same answer compile-time reachability gives, a confinement the code decides. All four carry a value once the adapter runs: the structured result lands on `response-body`, the error flag on `response-status`, the signed exit code of a server that ended the session before answering on `exit-code` (`null` on an answered call), and the tool call's arguments on `call-inputs`. `response-headers` is not among them; `foreignChannels` hands it to a tool-use signature as foreign, so a signature naming it is refused. `ObservedCallInputs` (`sealed-run-record.ts:204`) carries a key per input channel, `arguments` among them.
+**Already works, and this is the part worth knowing before you fund any of it.** Both sides of the exchange accommodate the kind today. `Observation` in the sealed run record is not discriminated on kind (`sealed-run-record.ts:229`), so what a tool answered has somewhere to live. `foreignChannels` (`qualification.ts:198`) confines a tool-use signature to `response-body`, `response-status`, `exit-code`, and its own `call-inputs`, which is the same answer compile-time reachability gives, a confinement the code decides. All four carry a value once the adapter runs: the structured result lands on `response-body`, the error flag on `response-status`, the signed exit code of a server that ended the session before answering on `exit-code` (`null` on an answered call), and the tool call's arguments on `call-inputs`. `response-headers` is not among them; `foreignChannels` hands it to a tool-use signature as foreign, so a signature naming it is refused. `ObservedCallInputs` (`sealed-run-record.ts:204`) carries a key per input channel, `arguments` among them.
 
 **Unproven, and this is the uncomfortable part.** The calibration record behind this project's central measurement is itself MCP-shaped. The architecture records that every contract in the phase-2 block that produced the 0.33-to-1.00 result declares an MCP tool interface, and that 22 of 25 real contracts use the kind. Those contracts were transcribed into API shape to be compiled here, and a transcription is not the measured artifact. So `mcp` is the most-used kind in the prior art and the one this package reached last.
 
@@ -591,9 +591,9 @@ The transport is stdio and nothing else. A server reached over Streamable HTTP s
 
 **The first reading runs today, and here is what that cost.** For the first reading, TEA's own move stays workable and stays cheaper than writing an adapter: put the tool-calling agent behind a command, declare a `cli` interface, and evaluate the run through its arguments, its streams, and the files it writes.
 
-That route was run end to end against the built CLI at 4.0.0.
+That route was run end to end against the built CLI at 4.0.0, and it has not been re-run end to end since.
 A contract whose one operation declares the tool-call log in `artifacts` and nominates it with `descriptorChannel` compiles and seals at exit `0`, an oracle quantifies over the calls inside the log, and pre-flight resolves at exit `0` with all six checks satisfied, including a sensitivity witness and a manifestation witness whose legs both address the file.
-Carrying those files forward from 1.4.2 costs two stamps and one key: the contract is `schemaVersion` 5, the probe is 5, and the defect signature's input binding declares `"arguments": null`.
+Carrying those files forward from 1.4.2 costs two stamps and two keys: the contract is `schemaVersion` 6, the probe is 5, the defect signature's input binding declares `"arguments": null`, and each interaction step names the interface that declares its operation in `interfaceId`.
 
 One restriction shapes it, and it lands on the scoring side only.
 A defect signature naming the log by identifier is refused with `condition-artifact-channel-contract-local`, in both the tailed spelling `/interactions/observed/artifact/tool-calls/calls` and the bare `/interactions/observed/artifact/tool-calls`, and `sealProbeSet` then admits nothing.

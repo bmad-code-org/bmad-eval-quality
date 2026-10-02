@@ -1274,7 +1274,7 @@ describe('the home operation resolves by erased transport identity', () => {
 					pathTemplate: '/notes/{id}',
 				},
 				INTERFACES,
-			),
+			)?.operation,
 		).toBe(readNote)
 	})
 

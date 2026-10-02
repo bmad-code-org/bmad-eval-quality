@@ -22,8 +22,8 @@ import type { Operation } from '../schemas/interface.ts'
 import type { InteractionStep } from '../schemas/plan.ts'
 import { INPUT_CHANNELS } from '../schemas/pointer.ts'
 import {
-	anyOperationOf,
 	buildPlanIndex,
+	operationKey,
 	type PlanIndex,
 } from '../seal/plan-index.ts'
 import {
@@ -276,7 +276,7 @@ export function successIndicatorSeparationSatisfaction(
 			)
 			.map(([pointer]) => pointer)
 		const witnessed = index
-			.stepsUsing(operation.operationId)
+			.stepsUsing(resolved.logicalId, operation.operationId)
 			.some((step) =>
 				oracles.some(
 					(oracle) =>
@@ -329,7 +329,7 @@ export function wholeBodySatisfaction(
 		if (required.length <= 1) continue
 		sites += 1
 		const witnessed = index
-			.stepsUsing(operation.operationId)
+			.stepsUsing(resolved.logicalId, operation.operationId)
 			.some((step) =>
 				oracles.some((oracle) =>
 					required.every((key) =>
@@ -395,7 +395,7 @@ export function malformedInputSatisfaction(
 		if (!declaresRequestKey(resolved)) continue
 		sites += 1
 		const witnessed = index
-			.stepsUsing(operation.operationId)
+			.stepsUsing(resolved.logicalId, operation.operationId)
 			.some(
 				(step) =>
 					bindsTypeViolating(step) &&
@@ -445,7 +445,7 @@ export function perRecordSatisfaction(
 				`operation ${operation.operationId} declares no collection-location list, so no quantifier can range over a declared collection`,
 			)
 		}
-		const steps = index.stepsUsing(operation.operationId)
+		const steps = index.stepsUsing(resolved.logicalId, operation.operationId)
 		for (const location of collectionLocations) {
 			sites += 1
 			const witnessed = steps.some((step) => {
@@ -496,12 +496,19 @@ export function siblingCrossCheckSatisfaction(
 	let sites = 0
 	for (const group of groups.operations) {
 		sites += 1
-		const members = [...new Set(group)]
+		const members = [
+			...new Map(
+				group.map((member) => [
+					operationKey(member.interfaceId, member.operationId),
+					member,
+				]),
+			).values(),
+		]
 		const witnessed = oracles.some(
 			(oracle) =>
-				members.filter((operationId) =>
+				members.filter((member) =>
 					index
-						.stepsUsing(operationId)
+						.stepsUsing(member.interfaceId, member.operationId)
 						.some((step) => bothChannelsAddress(oracle, stepRoot(step.stepId))),
 				).length >= SIBLING_GROUP_MINIMUM,
 		)
@@ -509,7 +516,13 @@ export function siblingCrossCheckSatisfaction(
 			return verdict(
 				rule,
 				false,
-				`no oracle addresses two members of the operation sibling group ${members.join(' and ')} in both channels`,
+				`no oracle addresses two members of the operation sibling group ${members
+					.map((member) =>
+						index.isOperationIdShared(member.operationId)
+							? `${member.interfaceId}/${member.operationId}`
+							: member.operationId,
+					)
+					.join(' and ')} in both channels`,
 			)
 		}
 	}
@@ -607,7 +620,7 @@ export function omissionAndCompletenessSatisfaction(
 				`operation ${operation.operationId} declares no collection-location list, so no location can be reconciled against a reference set`,
 			)
 		}
-		const steps = index.stepsUsing(operation.operationId)
+		const steps = index.stepsUsing(resolved.logicalId, operation.operationId)
 		for (const location of collectionLocations) {
 			const referenceSet = location.referenceSet
 			if (referenceSet === null) continue
@@ -656,15 +669,19 @@ const readBackStepsFor = (
 ): readonly ReadBackStep[] =>
 	contract.interactionPlan.flatMap((step) => {
 		if (step.stepId === writeStepId || step.after !== writeStepId) return []
-		const operation = anyOperationOf(context.index, step.operationId)
-		if (operation === undefined || operation.stateChangeMarker) return []
-		// The index and the resolver both read `permittedInterfaces`, so the
-		// index answers with the very object the resolver carries. Matching on
-		// identity leaves the index's duplicate-identifier rule as the one
-		// thing deciding which operations resolve.
-		return context.operations
-			.filter((resolved) => resolved.operation === operation)
-			.map((resolved) => ({ step, resolved }))
+		// The resolver lists every declared operation with its interface, and
+		// the plan index knows which pairs it declares twice, so the duplicate
+		// rule stays the one thing deciding which operations resolve.
+		if (context.index.isOperationDuplicated(step.interfaceId, step.operationId))
+			return []
+		const resolved = context.operations.find(
+			(candidate) =>
+				candidate.logicalId === step.interfaceId &&
+				candidate.operation.operationId === step.operationId,
+		)
+		if (resolved === undefined || resolved.operation.stateChangeMarker)
+			return []
+		return [{ step, resolved }]
 	})
 
 /** One node holding a pointer into each side of the read-back relation. */
@@ -700,11 +717,11 @@ export function stateChangeReadBackSatisfaction(
 	const { operations, index, oracles } = context
 	if (operations.length === 0) return verdict(rule, false, NO_OPERATION_WITNESS)
 	let sites = 0
-	for (const { operation } of operations) {
+	for (const { operation, logicalId } of operations) {
 		if (!operation.stateChangeMarker) continue
 		sites += 1
 		const witnessed = index
-			.stepsUsing(operation.operationId)
+			.stepsUsing(logicalId, operation.operationId)
 			.some((writeStep) =>
 				readBackStepsFor(contract, context, writeStep.stepId).some((readBack) =>
 					oracles.some((oracle) =>

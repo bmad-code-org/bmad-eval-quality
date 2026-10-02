@@ -6,8 +6,8 @@
     "storage": "private"
   },
   "conditionArm": "independent",
-  "contractDigest": "sha256:dae134fc04896ddc008ff3dbdac9cc7eeb32120a7f4a0a42e54a4df1523728e4",
-  "evaluatorConfigurationDigest": "sha256:a0c06e862c6a72a41db9e59e72b687da2cce7b3575d96b9749c40186cb2d84e7",
+  "contractDigest": "sha256:7eba35f478649cc7a3c4640444fea5530d659ce6dfcde0df40f77dca15598a39",
+  "evaluatorConfigurationDigest": "sha256:5610d41967b055fc8bf0fcc074f7a501a3d37ca5231c8a74c037eb2c5071b48b",
   "evaluatorRecommendation": "FAIL",
   "evidenceDisclosure": {
     "reportedIncomplete": false,
@@ -89,6 +89,7 @@
         "stdin": null
       },
       "exitCode": null,
+      "interfaceId": "thing-service",
       "observationId": "obs-reset",
       "operationId": "reset-things",
       "principal": null,
@@ -125,6 +126,7 @@
         "stdin": null
       },
       "exitCode": null,
+      "interfaceId": "thing-service",
       "observationId": "obs-reset-read-back",
       "operationId": "get-thing",
       "principal": null,
@@ -164,6 +166,7 @@
         "stdin": null
       },
       "exitCode": null,
+      "interfaceId": "thing-service",
       "observationId": "obs-create",
       "operationId": "create-thing",
       "principal": null,
@@ -201,6 +204,7 @@
         "stdin": null
       },
       "exitCode": null,
+      "interfaceId": "thing-service",
       "observationId": "obs-read-back",
       "operationId": "get-thing",
       "principal": null,
@@ -240,6 +244,7 @@
         "stdin": null
       },
       "exitCode": null,
+      "interfaceId": "thing-service",
       "observationId": "obs-malformed-create",
       "operationId": "create-thing",
       "principal": null,
@@ -276,6 +281,7 @@
         "stdin": null
       },
       "exitCode": null,
+      "interfaceId": "thing-service",
       "observationId": "obs-malformed-read",
       "operationId": "get-thing",
       "principal": null,
@@ -312,6 +318,7 @@
         "stdin": null
       },
       "exitCode": null,
+      "interfaceId": "thing-service",
       "observationId": "obs-malformed-reset",
       "operationId": "reset-things",
       "principal": null,
@@ -404,7 +411,7 @@
   },
   "revisionCount": 0,
   "runId": "workflow-capture-run-0001",
-  "schemaVersion": 6,
-  "sealedBriefDigest": "sha256:2b9f17353270eeeea870760f7d6d9720bf7f48d5a4238e0795439cfb6037c5a9",
+  "schemaVersion": 7,
+  "sealedBriefDigest": "sha256:55914e9bb83b509184a1bb2c363c9211491cefad8dfb7999865e8fee5d594dc8",
   "trialIndex": 1
 }

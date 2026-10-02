@@ -43,7 +43,7 @@ import { qualifiedProbe } from '../score/fixtures/probe-witness.ts'
 const probe: SignedProbe = { ...qualifiedProbe, probeId: 'P-001' }
 
 const minimalContract: EvalContract = {
-	schemaVersion: 5,
+	schemaVersion: 6,
 	parentDigest: null,
 	revisionCount: 0,
 	contractId: 'emit-stage-contract',
@@ -193,7 +193,6 @@ const cleanEvidenceIntegrity: EvidenceIntegrityInputs = {
 	evaluatorConfigurationAbsent: [],
 	evaluatorConfigurationDigestMismatches: [],
 	judgeResultsUnscored: [],
-	operationIdentifierCollisions: [],
 	trialSetDisagreements: [],
 }
 

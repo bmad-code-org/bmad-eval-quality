@@ -13,6 +13,7 @@ import { structuralFailureOf } from './helpers.ts'
 function step(stepId: string, after: string | null): InteractionStep {
 	return {
 		stepId,
+		interfaceId: 'thing-api',
 		operationId: 'list-things',
 		inputBinding: { path: null, query: null, header: null, body: null },
 		after,

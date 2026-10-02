@@ -33,7 +33,9 @@ import {
 	type EvidenceTarget,
 	type PlanIndex,
 	parseEvidenceTarget,
+	resolveOperation,
 	resolveStep,
+	undeclaredOperationClause,
 } from '../seal/plan-index.ts'
 import { evaluatePointerReachability } from './reachability.ts'
 
@@ -223,9 +225,7 @@ export function checkCapturedChannel(contract: EvalContract): void {
 			)
 			const referenced = index.stepOf(capture.target.stepId)
 			const operation =
-				referenced === undefined
-					? undefined
-					: anyOperationOf(index, referenced.operationId)
+				referenced === undefined ? undefined : anyOperationOf(index, referenced)
 			// An unresolvable reference is `checkCapturedReachability`'s, at a
 			// higher rung. With nothing to ask, this check falls back to the
 			// api answer so an unresolvable off-body capture still reports.
@@ -284,13 +284,7 @@ function capturedType(target: EvidenceTarget, index: PlanIndex): TypeDecision {
 			reason: `addresses ${channel} element ${key}, which no declaration gives a type`,
 		}
 	}
-	const step = resolveStep(index, target.stepId)
-	const operation = anyOperationOf(index, step.operationId)
-	if (operation === undefined) {
-		throw new TypeError(
-			`step names an operation the permitted interfaces do not declare: ${step.operationId}`,
-		)
-	}
+	const operation = resolveOperation(index, resolveStep(index, target.stepId))
 	const declared = operation.responseDescriptor.types[key]
 	if (declared === undefined || declared === null) {
 		return {
@@ -318,7 +312,7 @@ function boundParameterType(
 	capture: CapturedBinding,
 	index: PlanIndex,
 ): TypeDecision | null {
-	const operation = anyOperationOf(index, step.operationId)
+	const operation = anyOperationOf(index, step)
 	if (operation === undefined) return null
 	const shape = requestShapeOf(operation, capture.inputChannel)
 	// A channel the operation does not accept input on declares no type for
@@ -385,12 +379,12 @@ export function checkCapturedReachability(contract: EvalContract): void {
 					`captured pointer "${capture.pointer}" names a step the interaction plan does not declare`,
 				)
 			}
-			const operation = anyOperationOf(index, referenced.operationId)
+			const operation = anyOperationOf(index, referenced)
 			if (operation === undefined) {
 				throw new StructuralFailure(
 					'unreachable-check-evidence',
 					path,
-					`captured pointer "${capture.pointer}" names step "${capture.target.stepId}", which names operation "${referenced.operationId}", not declared by any permitted interface`,
+					`captured pointer "${capture.pointer}" names step "${capture.target.stepId}", which names operation "${referenced.operationId}" ${undeclaredOperationClause(index, referenced)}`,
 				)
 			}
 			if (!targetsDescribedChannel(operation, capture.target)) continue

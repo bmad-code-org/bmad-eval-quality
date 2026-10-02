@@ -120,6 +120,7 @@ const inertObservation = (
 ): Observation => ({
 	observationId,
 	sequence,
+	interfaceId: 'notes-api',
 	operationId: 'get-note',
 	provenance: 'evaluator-chosen',
 	principal: null,

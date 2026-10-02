@@ -132,7 +132,7 @@ const noteEnvelope = (): ResponseDescriptor => ({
  * `cardinality` and an explicit `after`.
  */
 const AUTHORED_CONTRACT = {
-	schemaVersion: 5,
+	schemaVersion: 6,
 	contractId: 'notes-api-v1',
 	parentDigest: null,
 	revisionCount: 0,
@@ -501,12 +501,18 @@ const AUTHORED_CONTRACT = {
 	],
 	referenceSets: null,
 	siblingGroups: {
-		operations: [['get-note', 'list-notes']],
+		operations: [
+			[
+				{ interfaceId: 'notes-api', operationId: 'get-note' },
+				{ interfaceId: 'notes-api', operationId: 'list-notes' },
+			],
+		],
 		parameters: [['title', 'body']],
 	},
 	interactionPlan: [
 		{
 			stepId: 'baseline-read',
+			interfaceId: 'notes-api',
 			operationId: 'get-note',
 			inputBinding: {
 				path: { id: { literal: 'n-1' } },
@@ -522,6 +528,7 @@ const AUTHORED_CONTRACT = {
 		},
 		{
 			stepId: 'write',
+			interfaceId: 'notes-api',
 			operationId: 'patch-note',
 			inputBinding: {
 				path: { id: { literal: 'n-1' } },
@@ -534,6 +541,7 @@ const AUTHORED_CONTRACT = {
 		},
 		{
 			stepId: 'read-back',
+			interfaceId: 'notes-api',
 			operationId: 'get-note',
 			inputBinding: {
 				path: { id: { literal: 'n-1' } },
@@ -549,6 +557,7 @@ const AUTHORED_CONTRACT = {
 		},
 		{
 			stepId: 'collection',
+			interfaceId: 'notes-api',
 			operationId: 'list-notes',
 			inputBinding: { path: null, query: null, header: null, body: null },
 			after: null,
@@ -556,6 +565,7 @@ const AUTHORED_CONTRACT = {
 		},
 		{
 			stepId: 'malformed-write',
+			interfaceId: 'notes-api',
 			operationId: 'patch-note',
 			inputBinding: {
 				path: { id: { literal: 'n-1' } },
@@ -719,7 +729,7 @@ const authoredRecord = (
 	briefDigest: string,
 	evaluatorConfigurationDigest: string,
 ): SealedRunRecord => ({
-	schemaVersion: 6,
+	schemaVersion: 7,
 	parentDigest: null,
 	revisionCount: 0,
 	runId: 'spike-run-0001',
@@ -830,6 +840,7 @@ const authoredRecord = (
 		{
 			observationId: 'obs-001',
 			sequence: 1,
+			interfaceId: 'notes-api',
 			operationId: 'get-note',
 			provenance: 'baseline',
 			principal: null,
@@ -858,6 +869,7 @@ const authoredRecord = (
 		{
 			observationId: 'obs-002',
 			sequence: 2,
+			interfaceId: 'notes-api',
 			operationId: 'list-notes',
 			provenance: 'baseline',
 			principal: null,
@@ -883,6 +895,7 @@ const authoredRecord = (
 		{
 			observationId: 'obs-003',
 			sequence: 3,
+			interfaceId: 'notes-api',
 			operationId: 'patch-note',
 			provenance: 'evaluator-chosen',
 			principal: null,
@@ -911,6 +924,7 @@ const authoredRecord = (
 		{
 			observationId: 'obs-004',
 			sequence: 4,
+			interfaceId: 'notes-api',
 			operationId: 'get-note',
 			provenance: 'evaluator-chosen',
 			principal: null,
@@ -939,6 +953,7 @@ const authoredRecord = (
 		{
 			observationId: 'obs-005',
 			sequence: 5,
+			interfaceId: 'notes-api',
 			operationId: 'patch-note',
 			provenance: 'evaluator-chosen',
 			principal: null,
@@ -1151,10 +1166,10 @@ export function buildWorkedExampleChain(): WorkedExampleChain {
 	const homeOperationOf = (candidate: Probe): AnyOperation | null =>
 		candidate.expectedClean || candidate.defectSignature === null
 			? null
-			: resolveHomeOperation(
+			: (resolveHomeOperation(
 					candidate.defectSignature,
 					contract.permittedInterfaces,
-				)
+				)?.operation ?? null)
 	const sealedProbes = sealProbeSet([probe], homeOperationOf)
 	if (sealedProbes.rejected.length > 0) {
 		fail(

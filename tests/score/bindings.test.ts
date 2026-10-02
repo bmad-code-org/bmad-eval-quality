@@ -41,11 +41,13 @@ function observation(
 		callInputs?: Partial<ObservedCallInputs>
 		responseBody?: JsonValue
 		principal?: string | null
+		interfaceId?: string
 	} = {},
 ): Observation {
 	return {
 		observationId,
 		sequence,
+		interfaceId: fields.interfaceId ?? 'svc',
 		operationId,
 		provenance: 'evaluator-chosen',
 		principal: fields.principal ?? null,
@@ -83,6 +85,7 @@ function step(
 ): InteractionStep {
 	return {
 		stepId,
+		interfaceId: 'svc',
 		operationId,
 		inputBinding: {
 			path: null,
@@ -407,6 +410,7 @@ describe('selectWithBindings', () => {
 		const interfaces = EvalContract.parse(mcpContract).permittedInterfaces
 		const search: InteractionStep = {
 			stepId: 'search',
+			interfaceId: 'notes-tool-server',
 			operationId: 'search-notes',
 			inputBinding: { arguments: { query: { literal: 'revised' } } },
 			after: null,
@@ -415,9 +419,11 @@ describe('selectWithBindings', () => {
 		const index = buildPlanIndex([search], interfaces)
 		const observations = [
 			observation('obs-hit', 1, 'search-notes', {
+				interfaceId: 'notes-tool-server',
 				callInputs: { arguments: { query: 'revised' } },
 			}),
 			observation('obs-miss', 2, 'search-notes', {
+				interfaceId: 'notes-tool-server',
 				callInputs: { arguments: { query: 'original' } },
 			}),
 		]
@@ -823,7 +829,7 @@ describe('selectWithBindings', () => {
 			// No permitted interface declares `create-note`, so there is no declared
 			// type to compare against.
 			const index = planIndex(violatingPlan)
-			expect(index.operationOf('create-note')).toBeUndefined()
+			expect(index.operationOf('svc', 'create-note')).toBeUndefined()
 			const observations = [
 				observation('obs-any', 1, 'create-note', {
 					callInputs: { body: { title: 42 } },
@@ -1024,6 +1030,7 @@ describe('selectWithBindings', () => {
 describe('selectWithBindings over the two shipped collision pairs', () => {
 	const readWidget = (observationId: string, sequence: number, id: string) =>
 		observation(observationId, sequence, 'read-widget', {
+			interfaceId: 'widget-api',
 			callInputs: { path: { widgetId: id } },
 		})
 
@@ -1066,8 +1073,8 @@ describe('selectWithBindings over the two shipped collision pairs', () => {
 			irreducibleCollisionPair.permittedInterfaces,
 		)
 		const observations = [
-			observation('obs-1', 1, 'ping-service'),
-			observation('obs-2', 2, 'ping-service'),
+			observation('obs-1', 1, 'ping-service', { interfaceId: 'ping-api' }),
+			observation('obs-2', 2, 'ping-service', { interfaceId: 'ping-api' }),
 		]
 		const resolved = resolveCapturedBindings(
 			irreducibleCollisionPair.interactionPlan,

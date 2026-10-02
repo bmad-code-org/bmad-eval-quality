@@ -77,7 +77,7 @@ describe('renderEvidenceReferences: operation naming and no step identifiers', (
 describe('renderStepReference: the escalation ladder and its injectivity', () => {
 	it("the phrase map over gateCContract's six steps is injective when each is explicitly scoped against every step sharing its own operation (the escalation mechanism can fully disambiguate them, even though production scoping under Decision 12 is narrower, per direction)", () => {
 		const phrases = gateCInteractionPlan.map((step) => {
-			const operation = resolveOperation(gateCIndex, step.operationId)
+			const operation = resolveOperation(gateCIndex, step)
 			const siblings = gateCInteractionPlan.filter(
 				(other) => other.operationId === step.operationId,
 			)
@@ -89,7 +89,10 @@ describe('renderStepReference: the escalation ladder and its injectivity', () =>
 	it('escalates from the generic form to the discriminating binding kind when both colliding siblings are explicitly in scope (poll vs. unknown-job-read)', () => {
 		const poll = resolveStep(gateCIndex, 'poll')
 		const unknownJobRead = resolveStep(gateCIndex, 'unknown-job-read')
-		const operation = resolveOperation(gateCIndex, 'get-export')
+		const operation = resolveOperation(gateCIndex, {
+			interfaceId: 'exports-api',
+			operationId: 'get-export',
+		})
 		const siblings = [poll, unknownJobRead]
 		const pollPhrase = renderStepReference(
 			poll,
@@ -110,7 +113,10 @@ describe('renderStepReference: the escalation ladder and its injectivity', () =>
 
 	it("does not escalate when the colliding sibling is outside this call's own scope (Decision 12: distinctness is direction-scoped, not plan-wide): poll rendered alone stays at the generic level", () => {
 		const poll = resolveStep(gateCIndex, 'poll')
-		const operation = resolveOperation(gateCIndex, 'get-export')
+		const operation = resolveOperation(gateCIndex, {
+			interfaceId: 'exports-api',
+			operationId: 'get-export',
+		})
 		// This is poll's real production scope: gateCContract never references
 		// poll and unknown-job-read together in one direction, so poll alone has
 		// no collision to escalate against.
@@ -128,7 +134,10 @@ describe('renderStepReference: the escalation ladder and its injectivity', () =>
 		const [stepA, stepB] = literalCollisionPair.interactionPlan
 		if (stepA === undefined || stepB === undefined)
 			throw new Error('fixture malformed')
-		const operation = resolveOperation(index, 'read-widget')
+		const operation = resolveOperation(index, {
+			interfaceId: 'widget-api',
+			operationId: 'read-widget',
+		})
 		const siblings = [stepA, stepB]
 		const phraseA = renderStepReference(stepA, operation, siblings, index)
 		const phraseB = renderStepReference(stepB, operation, siblings, index)
@@ -148,7 +157,10 @@ describe('renderStepReference: the escalation ladder and its injectivity', () =>
 		const [stepA, stepB] = irreducibleCollisionPair.interactionPlan
 		if (stepA === undefined || stepB === undefined)
 			throw new Error('fixture malformed')
-		const operation = resolveOperation(index, 'ping-service')
+		const operation = resolveOperation(index, {
+			interfaceId: 'ping-api',
+			operationId: 'ping-service',
+		})
 		const siblings = [stepA, stepB]
 		for (const step of [stepA, stepB]) {
 			let thrown: unknown
@@ -210,7 +222,10 @@ describe('renderStepReference: the escalation ladder and its injectivity', () =>
 			unboundStep.permittedInterfaces,
 		)
 		const step = resolveStep(index, 'ping')
-		const operation = resolveOperation(index, 'ping-service')
+		const operation = resolveOperation(index, {
+			interfaceId: 'ping-api',
+			operationId: 'ping-service',
+		})
 		const phrase = renderStepReference(step, operation, [step], index)
 		expect(phrase).toBe('the ping service endpoint')
 	})
@@ -222,7 +237,10 @@ describe('renderStepReference: the escalation ladder and its injectivity', () =>
 		)
 		const owner = resolveStep(index, 'read-as-owner')
 		const auditor = resolveStep(index, 'read-as-auditor')
-		const operation = resolveOperation(index, 'read-widget')
+		const operation = resolveOperation(index, {
+			interfaceId: 'widget-api',
+			operationId: 'read-widget',
+		})
 		// The generic rung, reached by rendering one of them alone: what the two
 		// would share, and therefore what forces the escalation below.
 		expect(renderStepReference(owner, operation, [owner], index)).toBe(
@@ -244,7 +262,10 @@ describe('renderStepReference: the escalation ladder and its injectivity', () =>
 		)
 		const primary = resolveStep(index, 'probe-primary')
 		const secondary = resolveStep(index, 'probe-secondary')
-		const operation = resolveOperation(index, 'read-widget')
+		const operation = resolveOperation(index, {
+			interfaceId: 'widget-api',
+			operationId: 'read-widget',
+		})
 		const siblings = [primary, secondary]
 		const primaryPhrase = renderStepReference(
 			primary,
@@ -279,7 +300,10 @@ describe('renderStepReference: the escalation ladder and its injectivity', () =>
 		)
 		const primary = resolveStep(index, 'probe-primary')
 		const secondary = resolveStep(index, 'probe-secondary')
-		const operation = resolveOperation(index, 'read-widget')
+		const operation = resolveOperation(index, {
+			interfaceId: 'widget-api',
+			operationId: 'read-widget',
+		})
 		const siblings = [primary, secondary]
 		const phrases = siblings.map((step) =>
 			renderStepReference(step, operation, siblings, index),
@@ -302,7 +326,10 @@ describe('renderStepReference: the escalation ladder and its injectivity', () =>
 		)
 		const alpha = resolveStep(index, 'probe-alpha')
 		const beta = resolveStep(index, 'probe-beta')
-		const operation = resolveOperation(index, 'read-widget')
+		const operation = resolveOperation(index, {
+			interfaceId: 'widget-api',
+			operationId: 'read-widget',
+		})
 		const siblings = [alpha, beta]
 
 		const alphaPhrase = renderStepReference(alpha, operation, siblings, index)
@@ -360,6 +387,7 @@ describe('renderStepReference: the escalation ladder and its injectivity', () =>
 			from: string | null,
 		) => ({
 			stepId,
+			interfaceId: 'chain-api',
 			operationId,
 			inputBinding: {
 				path:
@@ -396,6 +424,7 @@ describe('renderStepReference: the escalation ladder and its injectivity', () =>
 		] as const) {
 			plan.push({
 				stepId,
+				interfaceId: 'chain-api',
 				operationId: 'probe-op',
 				inputBinding: {
 					path: {
@@ -418,7 +447,10 @@ describe('renderStepReference: the escalation ladder and its injectivity', () =>
 		])
 		const first = resolveStep(index, 'probe-first')
 		const second = resolveStep(index, 'probe-second')
-		const operation = resolveOperation(index, 'probe-op')
+		const operation = resolveOperation(index, {
+			interfaceId: 'chain-api',
+			operationId: 'probe-op',
+		})
 
 		const phrase = renderStepReference(first, operation, [first, second], index)
 		expect(phrase).not.toBe(
@@ -442,7 +474,10 @@ describe('renderStepReference: the escalation ladder and its injectivity', () =>
 		const index = buildPlanIndex(plan.interactionPlan, plan.permittedInterfaces)
 		const first = resolveStep(index, 'top-first')
 		const second = resolveStep(index, 'top-second')
-		const operation = resolveOperation(index, 'op-top')
+		const operation = resolveOperation(index, {
+			interfaceId: 'dag-api',
+			operationId: 'op-top',
+		})
 
 		const phrase = renderStepReference(first, operation, [first, second], index)
 		// The budget is charged after an expansion, so the bound is the budget
@@ -463,7 +498,10 @@ describe('renderStepReference: the escalation ladder and its injectivity', () =>
 		const index = buildPlanIndex(plan.interactionPlan, plan.permittedInterfaces)
 		const first = resolveStep(index, 'top-first')
 		const second = resolveStep(index, 'top-second')
-		const operation = resolveOperation(index, 'op-top')
+		const operation = resolveOperation(index, {
+			interfaceId: 'dag-api',
+			operationId: 'op-top',
+		})
 
 		const phrase = renderStepReference(first, operation, [first, second], index)
 		expect(phrase.length).toBeLessThan(1_100_000)
@@ -486,7 +524,10 @@ describe('renderStepReference: the escalation ladder and its injectivity', () =>
 			)
 			const first = resolveStep(index, 'read-first')
 			const second = resolveStep(index, 'read-second')
-			const operation = resolveOperation(index, 'read-op')
+			const operation = resolveOperation(index, {
+				interfaceId: 'bulk-api',
+				operationId: 'read-op',
+			})
 			return renderStepReference(first, operation, [first, second], index)
 		}
 
@@ -504,6 +545,7 @@ describe('renderStepReference: the escalation ladder and its injectivity', () =>
 		const cyclic: InteractionStep[] = [
 			{
 				stepId: 'loop-one',
+				interfaceId: 'widget-api',
 				operationId: 'read-widget',
 				inputBinding: {
 					path: {
@@ -518,6 +560,7 @@ describe('renderStepReference: the escalation ladder and its injectivity', () =>
 			},
 			{
 				stepId: 'loop-two',
+				interfaceId: 'widget-api',
 				operationId: 'read-widget',
 				inputBinding: {
 					path: {
@@ -532,6 +575,7 @@ describe('renderStepReference: the escalation ladder and its injectivity', () =>
 			},
 			{
 				stepId: 'loop-self',
+				interfaceId: 'widget-api',
 				operationId: 'read-widget',
 				inputBinding: {
 					path: {
@@ -546,7 +590,10 @@ describe('renderStepReference: the escalation ladder and its injectivity', () =>
 			},
 		]
 		const index = buildPlanIndex(cyclic, [alphaWidget])
-		const operation = resolveOperation(index, 'read-widget')
+		const operation = resolveOperation(index, {
+			interfaceId: 'widget-api',
+			operationId: 'read-widget',
+		})
 		for (const stepId of ['loop-one', 'loop-two', 'loop-self']) {
 			const step = resolveStep(index, stepId)
 			expect(renderStepReference(step, operation, [step], index)).toBe(
@@ -581,7 +628,10 @@ describe('renderStepReference: the escalation ladder and its injectivity', () =>
 		for (const index of indexes) {
 			const primary = resolveStep(index, 'probe-primary')
 			const secondary = resolveStep(index, 'probe-secondary')
-			const operation = resolveOperation(index, 'read-widget')
+			const operation = resolveOperation(index, {
+				interfaceId: 'widget-api',
+				operationId: 'read-widget',
+			})
 			const siblings = [primary, secondary]
 			expect(renderStepReference(secondary, operation, siblings, index)).toBe(
 				'the read widget endpoint (with the path widgetId you obtained earlier)',
@@ -598,7 +648,10 @@ describe('renderStepReference: the escalation ladder and its injectivity', () =>
 			outOfOrderBindingKeys.permittedInterfaces,
 		)
 		const step = resolveStep(index, 'submit-both')
-		const operation = resolveOperation(index, 'submit-multi')
+		const operation = resolveOperation(index, {
+			interfaceId: 'multi-api',
+			operationId: 'submit-multi',
+		})
 		const phrase = renderStepReference(step, operation, [step], index)
 		const appleIndex = phrase.indexOf('apple')
 		const zebraIndex = phrase.indexOf('zebra')

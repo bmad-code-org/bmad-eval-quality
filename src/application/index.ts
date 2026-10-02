@@ -98,6 +98,7 @@ export {
 	VERDICTS,
 } from '../core/schemas/verdict.ts'
 export type {
+	HomeOperation,
 	QualificationFailure,
 	QualificationFailureCode,
 	QualificationResult,

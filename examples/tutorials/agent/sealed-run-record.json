@@ -6,8 +6,8 @@
     "storage": "public"
   },
   "conditionArm": "mutated",
-  "contractDigest": "sha256:be0582f5bff542362ce778f15efbc4dfcfbb76e8f45b2107037ae02a7731f0f7",
-  "evaluatorConfigurationDigest": "sha256:57e938aac994087fcbde799e944e730409306fe907e25ca4f35493f1d20d1304",
+  "contractDigest": "sha256:77d9423201de030e9feb7c5d9ea27bbb6b8e8d42948469bd483d29fc37b52167",
+  "evaluatorConfigurationDigest": "sha256:ffa39c414bde7b814c246790c13ef3bae39dab7dbaac9b9e898e44b03bf2d3f9",
   "evaluatorRecommendation": "FAIL",
   "evidenceDisclosure": {
     "reportedIncomplete": false,
@@ -44,7 +44,7 @@
     }
   ],
   "isolationManifestArtifact": {
-    "digest": "sha256:8134d40720fa957a8770b5e45b8ac2c464cd80ba039651deaebe5c4646a130b8",
+    "digest": "sha256:a0743d76882b0917db7c15977045140511cacef06ce10d11235c17d55faed8e8",
     "path": "examples/tutorials/agent/isolation-manifest.json",
     "privateRef": null,
     "storage": "public"
@@ -91,6 +91,7 @@
         "stdin": null
       },
       "exitCode": 0,
+      "interfaceId": "release-notes-agent",
       "observationId": "obs-001",
       "operationId": "summarize-changes",
       "principal": null,
@@ -122,6 +123,7 @@
         "stdin": null
       },
       "exitCode": 0,
+      "interfaceId": "release-notes-agent",
       "observationId": "obs-002",
       "operationId": "show-notes",
       "principal": null,
@@ -181,6 +183,7 @@
         "stdin": null
       },
       "exitCode": 0,
+      "interfaceId": "release-notes-agent",
       "observationId": "obs-003",
       "operationId": "summarize-changes",
       "principal": null,
@@ -250,7 +253,7 @@
   },
   "revisionCount": 0,
   "runId": "agent-run-1",
-  "schemaVersion": 6,
-  "sealedBriefDigest": "sha256:505f5e1b74d432b7d326e7289607bac7773a328ac8565ea6fff08a28b6ce97dc",
+  "schemaVersion": 7,
+  "sealedBriefDigest": "sha256:f4d8d05965130d4b2a44016734419420e4f6eb9654f30a5417e58958079dd484",
   "trialIndex": 1
 }

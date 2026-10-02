@@ -148,7 +148,7 @@ describe('rule 5 — a non-empty sibling group over operations or parameters', (
 
 	it('rejects a group of one, which has no sibling to cross-check against', () => {
 		const result = SiblingGroups.safeParse({
-			operations: [['only-one']],
+			operations: [[{ interfaceId: 'thing-api', operationId: 'only-one' }]],
 			parameters: [],
 		})
 		expect(result.success).toBe(false)

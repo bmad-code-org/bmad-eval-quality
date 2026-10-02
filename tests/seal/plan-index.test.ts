@@ -182,22 +182,24 @@ describe('buildPlanIndex', () => {
 			stepId: 'poll',
 			operationId: 'get-export',
 		})
-		expect(index.operationOf('get-export')).toMatchObject({
+		expect(index.operationOf('exports-api', 'get-export')).toMatchObject({
 			operationId: 'get-export',
 		})
 	})
 
 	it('returns undefined for an unresolvable step or operation id', () => {
 		expect(index.stepOf('does-not-exist')).toBeUndefined()
-		expect(index.operationOf('does-not-exist')).toBeUndefined()
+		expect(index.operationOf('exports-api', 'does-not-exist')).toBeUndefined()
+		expect(index.operationOf('no-such-interface', 'get-export')).toBeUndefined()
 	})
 
 	it('groups steps sharing an operation id under stepsUsing, and returns empty for an unused operation', () => {
 		const sharingGetExport = index
-			.stepsUsing('get-export')
+			.stepsUsing('exports-api', 'get-export')
 			.map((step) => step.stepId)
 		expect(sharingGetExport.sort()).toEqual(['poll', 'unknown-job-read'])
-		expect(index.stepsUsing('does-not-exist')).toEqual([])
+		expect(index.stepsUsing('exports-api', 'does-not-exist')).toEqual([])
+		expect(index.stepsUsing('other-api', 'get-export')).toEqual([])
 	})
 
 	it('throws TypeError on a duplicate stepId', () => {
@@ -209,25 +211,44 @@ describe('buildPlanIndex', () => {
 		)
 	})
 
-	it('throws TypeError on a duplicate operationId across permitted interfaces', () => {
+	it('throws TypeError on an operation id one interface declares twice', () => {
 		const firstInterface = gateCPermittedInterfaces[0]
 		const firstOperation = firstInterface?.operations[0]
 		if (firstInterface === undefined || firstOperation === undefined)
 			throw new Error('fixture missing an interface or operation')
 		const duplicated = [...gateCPermittedInterfaces, firstInterface]
-		// The message names the id, so the throw is attributable to the
-		// collision rather than to any other precondition in the builder.
+		// The message names the interface and the id, so the throw is
+		// attributable to the duplicate rather than to any other precondition
+		// in the builder.
 		expect(() => buildPlanIndex(gateCInteractionPlan, duplicated)).toThrow(
-			`duplicate operation id across permitted interfaces: ${firstOperation.operationId}`,
+			`duplicate operation id within interface ${firstInterface.logicalId}: ${firstOperation.operationId}`,
 		)
 	})
 
-	// The duplicate bookkeeping is shared by all three kind arms, so a
-	// collision across two kinds has to clear every map. Left per-arm, a
-	// tool-call operation and an api operation sharing an id would each stay
-	// resolvable from its own accessor and `anyOperationOf` would answer with
-	// whichever map it reads first.
-	it('clears an operation id two interfaces of different kinds both declare', () => {
+	it('resolves an operation id two interfaces both declare, each to its own operation', () => {
+		const firstInterface = gateCPermittedInterfaces[0]
+		if (firstInterface === undefined) throw new Error('fixture missing')
+		const mirror = {
+			...structuredClone(firstInterface),
+			logicalId: 'exports-mirror',
+		} as PermittedInterface
+		const index = buildPlanIndex(gateCInteractionPlan, [
+			...gateCPermittedInterfaces,
+			mirror,
+		])
+		const original = index.operationOf('exports-api', 'get-export')
+		const copy = index.operationOf('exports-mirror', 'get-export')
+		expect(original).toBeDefined()
+		expect(copy).toBeDefined()
+		expect(copy).not.toBe(original)
+		expect(index.isOperationIdShared('get-export')).toBe(true)
+		expect(index.isOperationIdShared('no-such-operation')).toBe(false)
+	})
+
+	// Each kind arm stores into its own map under the pair, so an api
+	// operation and a tool call sharing an id on two interfaces both stay
+	// resolvable from their own accessor, and neither shadows the other.
+	it('keeps an operation id two interfaces of different kinds both declare resolvable on each', () => {
 		const firstInterface = gateCPermittedInterfaces[0]
 		const firstOperation = firstInterface?.operations[0]
 		if (firstInterface === undefined || firstOperation === undefined)
@@ -240,28 +261,18 @@ describe('buildPlanIndex', () => {
 			throw new Error('the mcp fixture declares a tool')
 		firstTool.operationId = firstOperation.operationId
 		const collidingTool = PermittedInterface.parse(draft)
-		const index = buildPlanIndex(
-			gateCInteractionPlan,
-			[...gateCPermittedInterfaces, collidingTool],
-			{ duplicateIds: 'unresolved' },
-		)
-		expect(index.operationOf(firstOperation.operationId)).toBeUndefined()
-		expect(index.mcpOperationOf(firstOperation.operationId)).toBeUndefined()
-		expect(index.commandOperationOf(firstOperation.operationId)).toBeUndefined()
-		expect(index.interfaceKindOf(firstOperation.operationId)).toBeUndefined()
-		// The positive control: an index that built nothing would satisfy the
-		// four assertions above.
-		const untouched = firstInterface.operations[1]
-		if (untouched === undefined)
-			throw new Error('the fixture declares a second operation')
-		expect(index.operationOf(untouched.operationId)?.operationId).toBe(
-			untouched.operationId,
-		)
-		const survivingTool = collidingTool.operations[1]
-		if (survivingTool === undefined)
-			throw new Error('the mcp fixture declares a second tool')
-		expect(index.mcpOperationOf(survivingTool.operationId)?.operationId).toBe(
-			survivingTool.operationId,
+		const index = buildPlanIndex(gateCInteractionPlan, [
+			...gateCPermittedInterfaces,
+			collidingTool,
+		])
+		const id = firstOperation.operationId
+		expect(index.operationOf(firstInterface.logicalId, id)).toBeDefined()
+		expect(index.mcpOperationOf(firstInterface.logicalId, id)).toBeUndefined()
+		expect(index.mcpOperationOf(collidingTool.logicalId, id)).toBeDefined()
+		expect(index.operationOf(collidingTool.logicalId, id)).toBeUndefined()
+		expect(index.interfaceKindOf(collidingTool.logicalId)).toBe('mcp')
+		expect(index.interfaceKindOf(firstInterface.logicalId)).toBe(
+			firstInterface.kind,
 		)
 	})
 
@@ -271,16 +282,64 @@ describe('buildPlanIndex', () => {
 		if (firstStep === undefined || firstInterface === undefined) {
 			throw new Error('fixture missing a step or interface')
 		}
+		// The same interface listed twice declares every one of its operations
+		// twice; a second interface under another name declares them once.
+		const bystander = {
+			...structuredClone(firstInterface),
+			logicalId: 'exports-bystander',
+		} as PermittedInterface
 		const index = buildPlanIndex(
 			[...gateCInteractionPlan, firstStep],
-			[...gateCPermittedInterfaces, firstInterface],
+			[...gateCPermittedInterfaces, firstInterface, bystander],
 			{ duplicateIds: 'unresolved' },
 		)
 		expect(index.stepOf(firstStep.stepId)).toBeUndefined()
-		const firstOperation = firstInterface.operations[0]
-		if (firstOperation === undefined)
-			throw new Error('fixture missing operation')
-		expect(index.operationOf(firstOperation.operationId)).toBeUndefined()
+		const [firstOperation, secondOperation] = firstInterface.operations
+		if (firstOperation === undefined || secondOperation === undefined)
+			throw new Error('fixture missing operations')
+		for (const operation of [firstOperation, secondOperation]) {
+			expect(
+				index.operationOf(firstInterface.logicalId, operation.operationId),
+			).toBeUndefined()
+			expect(
+				index.isOperationDuplicated(
+					firstInterface.logicalId,
+					operation.operationId,
+				),
+			).toBe(true)
+			// The positive control: an index that resolved nothing would pass the
+			// two lines above, and this one is declared once on another interface.
+			expect(
+				index.operationOf('exports-bystander', operation.operationId)
+					?.operationId,
+			).toBe(operation.operationId)
+		}
+	})
+
+	it('resolves nothing for a tool call an interface declares twice, and still resolves it on another interface', () => {
+		const [tools] = mcpContract.permittedInterfaces
+		if (tools === undefined) throw new Error('the mcp fixture declares none')
+		const server = PermittedInterface.parse(structuredClone(tools))
+		const other = PermittedInterface.parse({
+			...structuredClone(tools),
+			logicalId: 'other-tool-server',
+		})
+		if (server.kind !== 'mcp') throw new Error('the fixture is a tool server')
+		const [tool] = server.operations
+		if (tool === undefined) throw new Error('the fixture declares a tool')
+		server.operations.push({
+			...structuredClone(tool),
+			toolName: 'second_name',
+		})
+		const index = buildPlanIndex([], [server, other], {
+			duplicateIds: 'unresolved',
+		})
+		expect(
+			index.mcpOperationOf(server.logicalId, tool.operationId),
+		).toBeUndefined()
+		expect(
+			index.mcpOperationOf('other-tool-server', tool.operationId)?.toolName,
+		).toBe(tool.toolName)
 	})
 })
 
@@ -296,7 +355,10 @@ describe('resolveStep / resolveOperation', () => {
 	})
 
 	it('resolveOperation returns the declared operation', () => {
-		const operation = resolveOperation(index, 'get-export')
+		const operation = resolveOperation(index, {
+			interfaceId: 'exports-api',
+			operationId: 'get-export',
+		})
 		expect(isApiOperation(operation)).toBe(true)
 		if (!isApiOperation(operation)) throw new Error('fixture is api-shaped')
 		expect(operation.method).toBe('GET')
@@ -310,9 +372,12 @@ describe('resolveStep / resolveOperation', () => {
 			EvalContract.parse(commandContract).interactionPlan,
 			EvalContract.parse(commandContract).permittedInterfaces,
 		)
-		expect(resolveOperation(commandIndex, 'select-fragments').operationId).toBe(
-			'select-fragments',
-		)
+		expect(
+			resolveOperation(commandIndex, {
+				interfaceId: 'fragment-selection-runner',
+				operationId: 'select-fragments',
+			}).operationId,
+		).toBe('select-fragments')
 	})
 
 	it('resolveOperation returns a tool call rather than throwing', () => {
@@ -321,7 +386,10 @@ describe('resolveStep / resolveOperation', () => {
 			parsed.interactionPlan,
 			parsed.permittedInterfaces,
 		)
-		const operation = resolveOperation(mcpIndex, 'search-notes')
+		const operation = resolveOperation(mcpIndex, {
+			interfaceId: 'notes-tool-server',
+			operationId: 'search-notes',
+		})
 		expect(operation.operationId).toBe('search-notes')
 		expect(isMcpOperation(operation)).toBe(true)
 		if (!isMcpOperation(operation)) throw new Error('fixture is a tool call')
@@ -329,7 +397,46 @@ describe('resolveStep / resolveOperation', () => {
 	})
 
 	it('resolveOperation throws TypeError on an operation the interfaces do not declare', () => {
-		expect(() => resolveOperation(index, 'nope')).toThrow(TypeError)
+		expect(() =>
+			resolveOperation(index, {
+				interfaceId: 'exports-api',
+				operationId: 'nope',
+			}),
+		).toThrow(TypeError)
+	})
+
+	it('resolveOperation says an interface declares an operation more than once when it does', () => {
+		const firstInterface = gateCPermittedInterfaces[0]
+		const firstOperation = firstInterface?.operations[0]
+		if (firstInterface === undefined || firstOperation === undefined)
+			throw new Error('fixture missing an interface or operation')
+		const duplicated = buildPlanIndex(
+			gateCInteractionPlan,
+			[...gateCPermittedInterfaces, firstInterface],
+			{ duplicateIds: 'unresolved' },
+		)
+		expect(duplicated.isOperationDuplicated('exports-api', 'get-export')).toBe(
+			true,
+		)
+		expect(() =>
+			resolveOperation(duplicated, {
+				interfaceId: firstInterface.logicalId,
+				operationId: firstOperation.operationId,
+			}),
+		).toThrow(
+			`on interface "${firstInterface.logicalId}", which that interface declares more than once`,
+		)
+	})
+
+	it('resolveOperation names the interface when the pair is undeclared', () => {
+		expect(() =>
+			resolveOperation(index, {
+				interfaceId: 'other-api',
+				operationId: 'get-export',
+			}),
+		).toThrow(
+			'step names operation "get-export" on interface "other-api", which that interface does not declare',
+		)
 	})
 })
 

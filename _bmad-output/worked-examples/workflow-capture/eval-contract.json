@@ -173,6 +173,7 @@
         "path": null,
         "query": null
       },
+      "interfaceId": "thing-service",
       "operationId": "create-thing",
       "stepId": "create"
     },
@@ -189,6 +190,7 @@
         },
         "query": null
       },
+      "interfaceId": "thing-service",
       "operationId": "get-thing",
       "stepId": "read-back"
     },
@@ -205,6 +207,7 @@
         "path": null,
         "query": null
       },
+      "interfaceId": "thing-service",
       "operationId": "reset-things",
       "stepId": "reset"
     },
@@ -221,6 +224,7 @@
         },
         "query": null
       },
+      "interfaceId": "thing-service",
       "operationId": "get-thing",
       "stepId": "reset-read-back"
     },
@@ -237,6 +241,7 @@
         "path": null,
         "query": null
       },
+      "interfaceId": "thing-service",
       "operationId": "create-thing",
       "stepId": "malformed-create"
     },
@@ -253,6 +258,7 @@
         },
         "query": null
       },
+      "interfaceId": "thing-service",
       "operationId": "get-thing",
       "stepId": "malformed-read"
     },
@@ -269,6 +275,7 @@
         "path": null,
         "query": null
       },
+      "interfaceId": "thing-service",
       "operationId": "reset-things",
       "stepId": "malformed-reset"
     }
@@ -893,13 +900,19 @@
   "safetyLimits": [
     "No request to any host other than the mapped thing-service target."
   ],
-  "schemaVersion": 5,
+  "schemaVersion": 6,
   "scopedResources": null,
   "siblingGroups": {
     "operations": [
       [
-        "create-thing",
-        "get-thing"
+        {
+          "interfaceId": "thing-service",
+          "operationId": "create-thing"
+        },
+        {
+          "interfaceId": "thing-service",
+          "operationId": "get-thing"
+        }
       ]
     ],
     "parameters": [

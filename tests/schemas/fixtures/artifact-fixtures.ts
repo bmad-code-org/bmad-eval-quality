@@ -152,10 +152,12 @@ export const sealedRunRecordFixture: SealedRunRecord = {
 	// retyped the process channels and added the written artifacts. Version 5
 	// added the ninth `arguments` call-input channel, so a version-4 record
 	// declares eight and fails to parse. Version 6 dropped `invalidReason`, so
-	// a version-5 record carrying it fails to parse. Each bump is written down
+	// a version-5 record carrying it fails to parse. Version 7 made
+	// `Observation.interfaceId` required, so a version-6 observation fails to
+	// parse. Each bump is written down
 	// here first; the three other records that stamp a version, `score-fixtures`,
 	// the `mcp` end-to-end record and the worked-example target, move with it.
-	schemaVersion: 6,
+	schemaVersion: 7,
 	parentDigest: null,
 	revisionCount: 0,
 	runId: 'spike-run-0001',
@@ -198,6 +200,7 @@ export const sealedRunRecordFixture: SealedRunRecord = {
 		{
 			observationId: 'obs-001',
 			sequence: 1,
+			interfaceId: 'notes-api',
 			operationId: 'get-note',
 			provenance: 'baseline',
 			principal: null,
@@ -216,6 +219,7 @@ export const sealedRunRecordFixture: SealedRunRecord = {
 		{
 			observationId: 'obs-003',
 			sequence: 2,
+			interfaceId: 'notes-api',
 			operationId: 'patch-note',
 			provenance: 'evaluator-chosen',
 			principal: null,
@@ -235,6 +239,7 @@ export const sealedRunRecordFixture: SealedRunRecord = {
 		{
 			observationId: 'obs-004',
 			sequence: 3,
+			interfaceId: 'notes-api',
 			operationId: 'get-note',
 			provenance: 'evaluator-chosen',
 			principal: null,
@@ -252,6 +257,7 @@ export const sealedRunRecordFixture: SealedRunRecord = {
 			// populated instance somewhere in the corpus.
 			observationId: 'obs-005',
 			sequence: 4,
+			interfaceId: 'notes-api',
 			operationId: 'run-migration',
 			provenance: 'evaluator-chosen',
 			principal: null,
@@ -272,6 +278,7 @@ export const sealedRunRecordFixture: SealedRunRecord = {
 			// process channel stays empty.
 			observationId: 'obs-006',
 			sequence: 5,
+			interfaceId: 'notes-api',
 			operationId: 'search-notes',
 			provenance: 'evaluator-chosen',
 			principal: null,

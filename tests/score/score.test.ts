@@ -58,7 +58,7 @@ const oracleCheck: Expression = {
  * what each case means to test.
  */
 const baseContract: EvalContract = {
-	schemaVersion: 5,
+	schemaVersion: 6,
 	parentDigest: null,
 	revisionCount: 0,
 	contractId: 'score-stage-contract',
@@ -91,6 +91,7 @@ const baseContract: EvalContract = {
 	interactionPlan: [
 		{
 			stepId: 'create',
+			interfaceId: 'notes-api',
 			operationId: 'create-note',
 			inputBinding: {
 				path: null,
@@ -129,15 +130,6 @@ const contractWithRubric: EvalContract = {
 				},
 			],
 		},
-	],
-}
-
-/** Matrix row 5: a second interface declaring the same `operationId`. */
-const twoInterfaceContract: EvalContract = {
-	...baseContract,
-	permittedInterfaces: [
-		notesInterface,
-		{ ...notesInterface, logicalId: 'notes-api-mirror' },
 	],
 }
 
@@ -380,18 +372,6 @@ describe('score: the I/O & Edge-Case Matrix', () => {
 		expect(result.ladder.basis).toEqual([
 			'duplicate observation identifier "obs-1" (2 occurrences)',
 		])
-	})
-
-	// Matrix row 5: an observation's operationId resolving against two
-	// permittedInterfaces entries.
-	it('Matrix row 5: an operationId ambiguous across permittedInterfaces fires operation-identifier-collision', () => {
-		const result = scoreOf(twoInterfaceContract, [
-			cleanTrialFor(twoInterfaceContract),
-		])
-		expect(result.ladder.verdict).toBeNull()
-		expect(result.ladder.basis).toHaveLength(1)
-		expect(result.ladder.basis[0]).toContain('operation identifier collision')
-		expect(result.ladder.basis[0]).toContain('create-note')
 	})
 
 	// Matrix row 6: a rejected probe never throws; probeQualified is false

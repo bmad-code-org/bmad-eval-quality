@@ -39,7 +39,7 @@ export const privateEntryBytes = new TextEncoder().encode(
 export const privateEntryBytesDigest = digestBytes(privateEntryBytes)
 
 export const scoreContractFixture: EvalContract = {
-	schemaVersion: 5,
+	schemaVersion: 6,
 	parentDigest: null,
 	revisionCount: 0,
 	contractId: 'score-command-contract',
@@ -78,6 +78,7 @@ export const scoreContractFixture: EvalContract = {
 	interactionPlan: [
 		{
 			stepId: 'create',
+			interfaceId: 'notes-api',
 			operationId: 'create-note',
 			inputBinding: {
 				path: null,
@@ -193,7 +194,7 @@ export const isolationManifestFixtureForScore: IsolationManifest = {
 
 /** The clean record: one observation satisfying O-001's check, `held`, no findings, no conditions. */
 export const sealedRunRecordFixtureForScore: SealedRunRecord = {
-	schemaVersion: 6,
+	schemaVersion: 7,
 	parentDigest: null,
 	revisionCount: 0,
 	runId: 'run-1',
@@ -218,6 +219,7 @@ export const sealedRunRecordFixtureForScore: SealedRunRecord = {
 		{
 			observationId: 'obs-1',
 			sequence: 1,
+			interfaceId: 'notes-api',
 			operationId: 'create-note',
 			provenance: 'evaluator-chosen',
 			principal: null,

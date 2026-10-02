@@ -120,6 +120,7 @@ export const gateDReconstruction: {
 	interactionPlan: [
 		{
 			stepId: 'search',
+			interfaceId: 'capsule-api',
 			operationId: 'search-capsules',
 			inputBinding: {
 				path: null,
@@ -163,6 +164,7 @@ export const createThenReadBack: {
 	interactionPlan: [
 		{
 			stepId: 'stash',
+			interfaceId: 'widget-api',
 			operationId: 'create-widget',
 			inputBinding: {
 				path: null,
@@ -175,6 +177,7 @@ export const createThenReadBack: {
 		},
 		{
 			stepId: 'fetch',
+			interfaceId: 'widget-api',
 			operationId: 'read-widget',
 			inputBinding: {
 				path: { widgetId: { matcher: 'any' } },
@@ -270,6 +273,7 @@ export const bothFreeTextNull: {
 	interactionPlan: [
 		{
 			stepId: 'read',
+			interfaceId: 'widget-api',
 			operationId: 'read-widget',
 			inputBinding: {
 				path: { widgetId: { matcher: 'any' } },
@@ -311,6 +315,7 @@ export const unboundStep: {
 	interactionPlan: [
 		{
 			stepId: 'ping',
+			interfaceId: 'ping-api',
 			operationId: 'ping-service',
 			inputBinding: { path: null, query: null, header: null, body: null },
 			after: null,
@@ -344,6 +349,7 @@ export const literalCollisionPair: {
 	interactionPlan: [
 		{
 			stepId: 'read-a',
+			interfaceId: 'widget-api',
 			operationId: 'read-widget',
 			inputBinding: {
 				path: { widgetId: { literal: 'widget-a' } },
@@ -356,6 +362,7 @@ export const literalCollisionPair: {
 		},
 		{
 			stepId: 'read-b',
+			interfaceId: 'widget-api',
 			operationId: 'read-widget',
 			inputBinding: {
 				path: { widgetId: { literal: 'widget-b' } },
@@ -388,6 +395,7 @@ export const irreducibleCollisionPair: {
 	interactionPlan: [
 		{
 			stepId: 'ping-1',
+			interfaceId: 'ping-api',
 			operationId: 'ping-service',
 			inputBinding: { path: null, query: null, header: null, body: null },
 			after: null,
@@ -395,6 +403,7 @@ export const irreducibleCollisionPair: {
 		},
 		{
 			stepId: 'ping-2',
+			interfaceId: 'ping-api',
 			operationId: 'ping-service',
 			inputBinding: { path: null, query: null, header: null, body: null },
 			after: null,
@@ -424,6 +433,7 @@ export const sameFieldTemporalPair: {
 	interactionPlan: [
 		{
 			stepId: 'observe-a',
+			interfaceId: 'widget-api',
 			operationId: 'read-first-widget',
 			inputBinding: {
 				path: { widgetId: { matcher: 'any' } },
@@ -436,6 +446,7 @@ export const sameFieldTemporalPair: {
 		},
 		{
 			stepId: 'observe-b',
+			interfaceId: 'widget-api',
 			operationId: 'read-second-widget',
 			inputBinding: {
 				path: { widgetId: { matcher: 'any' } },
@@ -484,6 +495,7 @@ export const threeStepSharedAfter: {
 	interactionPlan: [
 		{
 			stepId: 'base',
+			interfaceId: 'shared-after-api',
 			operationId: 'create-base',
 			inputBinding: {
 				path: null,
@@ -496,6 +508,7 @@ export const threeStepSharedAfter: {
 		},
 		{
 			stepId: 'reader1',
+			interfaceId: 'shared-after-api',
 			operationId: 'read-one',
 			inputBinding: {
 				path: { id: { matcher: 'any' } },
@@ -508,6 +521,7 @@ export const threeStepSharedAfter: {
 		},
 		{
 			stepId: 'reader2',
+			interfaceId: 'shared-after-api',
 			operationId: 'read-two',
 			inputBinding: {
 				path: { id: { matcher: 'any' } },
@@ -584,6 +598,7 @@ export const linearAfterChain: {
 	interactionPlan: [
 		{
 			stepId: 'step-a',
+			interfaceId: 'chain-api',
 			operationId: 'chain-op-a',
 			inputBinding: { path: null, query: null, header: null, body: null },
 			after: null,
@@ -591,6 +606,7 @@ export const linearAfterChain: {
 		},
 		{
 			stepId: 'step-b',
+			interfaceId: 'chain-api',
 			operationId: 'chain-op-b',
 			inputBinding: { path: null, query: null, header: null, body: null },
 			after: 'step-a',
@@ -598,6 +614,7 @@ export const linearAfterChain: {
 		},
 		{
 			stepId: 'step-c',
+			interfaceId: 'chain-api',
 			operationId: 'chain-op-c',
 			inputBinding: { path: null, query: null, header: null, body: null },
 			after: 'step-b',
@@ -643,6 +660,7 @@ export const fourStepAfterChain: {
 	interactionPlan: [
 		{
 			stepId: 'step-1',
+			interfaceId: 'four-chain-api',
 			operationId: 'chain-op-1',
 			inputBinding: { path: null, query: null, header: null, body: null },
 			after: null,
@@ -650,6 +668,7 @@ export const fourStepAfterChain: {
 		},
 		{
 			stepId: 'step-2',
+			interfaceId: 'four-chain-api',
 			operationId: 'chain-op-2',
 			inputBinding: { path: null, query: null, header: null, body: null },
 			after: 'step-1',
@@ -657,6 +676,7 @@ export const fourStepAfterChain: {
 		},
 		{
 			stepId: 'step-3',
+			interfaceId: 'four-chain-api',
 			operationId: 'chain-op-3',
 			inputBinding: { path: null, query: null, header: null, body: null },
 			after: 'step-2',
@@ -664,6 +684,7 @@ export const fourStepAfterChain: {
 		},
 		{
 			stepId: 'step-4',
+			interfaceId: 'four-chain-api',
 			operationId: 'chain-op-4',
 			inputBinding: { path: null, query: null, header: null, body: null },
 			after: 'step-3',
@@ -708,9 +729,13 @@ export const fiveStepAfterChain: {
 	direction: Direction
 } = {
 	interactionPlan: [
-		...fourStepAfterChain.interactionPlan,
+		...fourStepAfterChain.interactionPlan.map((step) => ({
+			...step,
+			interfaceId: 'five-chain-api',
+		})),
 		{
 			stepId: 'step-5',
+			interfaceId: 'five-chain-api',
 			operationId: 'chain-op-5',
 			inputBinding: { path: null, query: null, header: null, body: null },
 			after: 'step-4',
@@ -757,6 +782,7 @@ export const reverseAfterPair: {
 	interactionPlan: [
 		{
 			stepId: 'observe',
+			interfaceId: 'widget-api',
 			operationId: 'read-widget',
 			inputBinding: {
 				path: { widgetId: { matcher: 'any' } },
@@ -769,6 +795,7 @@ export const reverseAfterPair: {
 		},
 		{
 			stepId: 'apply',
+			interfaceId: 'widget-api',
 			operationId: 'update-widget',
 			inputBinding: {
 				path: { widgetId: { matcher: 'any' } },
@@ -842,6 +869,7 @@ export const sharedKeyAcrossChannels: {
 	interactionPlan: [
 		{
 			stepId: 'query-and-path',
+			interfaceId: 'widget-api',
 			operationId: 'lookup-widget',
 			inputBinding: {
 				path: { id: { matcher: 'any' } },
@@ -872,6 +900,7 @@ export const outOfOrderBindingKeys: {
 	interactionPlan: [
 		{
 			stepId: 'submit-both',
+			interfaceId: 'multi-api',
 			operationId: 'submit-multi',
 			inputBinding: {
 				path: null,
@@ -964,6 +993,7 @@ export const principalCollisionPair: {
 	interactionPlan: [
 		{
 			stepId: 'read-as-owner',
+			interfaceId: 'widget-api',
 			operationId: 'read-widget',
 			inputBinding: {
 				path: { widgetId: { principal: 'owner' } },
@@ -976,6 +1006,7 @@ export const principalCollisionPair: {
 		},
 		{
 			stepId: 'read-as-auditor',
+			interfaceId: 'widget-api',
 			operationId: 'read-widget',
 			inputBinding: {
 				path: { widgetId: { principal: 'auditor' } },
@@ -1015,6 +1046,7 @@ export const capturedCollisionPair: {
 	interactionPlan: [
 		{
 			stepId: 'stash-primary',
+			interfaceId: 'widget-api',
 			operationId: 'create-alpha-widget',
 			inputBinding: {
 				path: null,
@@ -1027,6 +1059,7 @@ export const capturedCollisionPair: {
 		},
 		{
 			stepId: 'stash-secondary',
+			interfaceId: 'widget-api',
 			operationId: 'create-beta-widget',
 			inputBinding: {
 				path: null,
@@ -1039,6 +1072,7 @@ export const capturedCollisionPair: {
 		},
 		{
 			stepId: 'probe-primary',
+			interfaceId: 'widget-api',
 			operationId: 'read-widget',
 			inputBinding: {
 				path: {
@@ -1055,6 +1089,7 @@ export const capturedCollisionPair: {
 		},
 		{
 			stepId: 'probe-secondary',
+			interfaceId: 'widget-api',
 			operationId: 'read-widget',
 			inputBinding: {
 				path: {
@@ -1098,6 +1133,7 @@ export const capturedChainPair: {
 	interactionPlan: [
 		{
 			stepId: 'base-alpha',
+			interfaceId: 'widget-api',
 			operationId: 'create-alpha-widget',
 			inputBinding: {
 				path: null,
@@ -1110,6 +1146,7 @@ export const capturedChainPair: {
 		},
 		{
 			stepId: 'base-beta',
+			interfaceId: 'widget-api',
 			operationId: 'create-alpha-widget',
 			inputBinding: {
 				path: null,
@@ -1122,6 +1159,7 @@ export const capturedChainPair: {
 		},
 		{
 			stepId: 'mid-alpha',
+			interfaceId: 'widget-api',
 			operationId: 'create-beta-widget',
 			inputBinding: {
 				path: null,
@@ -1136,6 +1174,7 @@ export const capturedChainPair: {
 		},
 		{
 			stepId: 'mid-beta',
+			interfaceId: 'widget-api',
 			operationId: 'create-beta-widget',
 			inputBinding: {
 				path: null,
@@ -1150,6 +1189,7 @@ export const capturedChainPair: {
 		},
 		{
 			stepId: 'probe-alpha',
+			interfaceId: 'widget-api',
 			operationId: 'read-widget',
 			inputBinding: {
 				path: {
@@ -1164,6 +1204,7 @@ export const capturedChainPair: {
 		},
 		{
 			stepId: 'probe-beta',
+			interfaceId: 'widget-api',
 			operationId: 'read-widget',
 			inputBinding: {
 				path: {
@@ -1241,8 +1282,10 @@ const generatedStep = (
 	stepId: string,
 	operationId: string,
 	inputBinding: Partial<InteractionStep['inputBinding']>,
+	interfaceId = 'dag-api',
 ): InteractionStep => ({
 	stepId,
+	interfaceId,
 	operationId,
 	inputBinding: {
 		path: null,
@@ -1329,30 +1372,36 @@ export function unrelatedBulkPair(bulkLiteralLength: number): {
 	interactionPlan: readonly InteractionStep[]
 	permittedInterfaces: readonly PermittedInterface[]
 } {
+	const bulkStep = (
+		stepId: string,
+		operationId: string,
+		inputBinding: Partial<InteractionStep['inputBinding']>,
+	): InteractionStep =>
+		generatedStep(stepId, operationId, inputBinding, 'bulk-api')
 	const capture = (stepId: string) => ({
 		captured: `/interactions/${stepId}/response-body/k0`,
 	})
 	return {
 		interactionPlan: [
-			generatedStep('bulk', 'bulk-op', {
+			bulkStep('bulk', 'bulk-op', {
 				body: { blob: { literal: 'x'.repeat(bulkLiteralLength) } },
 			}),
-			generatedStep('deep-first', 'deep-op', {
+			bulkStep('deep-first', 'deep-op', {
 				body: { tag: { literal: 'ALPHA' } },
 			}),
-			generatedStep('deep-second', 'deep-op', {
+			bulkStep('deep-second', 'deep-op', {
 				body: { tag: { literal: 'BETA' } },
 			}),
-			generatedStep('pick-first', 'pick-op', {
+			bulkStep('pick-first', 'pick-op', {
 				path: { d: capture('deep-first') },
 			}),
-			generatedStep('pick-second', 'pick-op', {
+			bulkStep('pick-second', 'pick-op', {
 				path: { d: capture('deep-second') },
 			}),
-			generatedStep('read-first', 'read-op', {
+			bulkStep('read-first', 'read-op', {
 				path: { 'a-bulk': capture('bulk'), 'z-pick': capture('pick-first') },
 			}),
-			generatedStep('read-second', 'read-op', {
+			bulkStep('read-second', 'read-op', {
 				path: { 'a-bulk': capture('bulk'), 'z-pick': capture('pick-second') },
 			}),
 		],

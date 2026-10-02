@@ -74,6 +74,7 @@
         },
         "stdin": null
       },
+      "interfaceId": "release-notes-agent",
       "operationId": "summarize-changes",
       "stepId": "summarize"
     },
@@ -90,6 +91,7 @@
         },
         "stdin": null
       },
+      "interfaceId": "release-notes-agent",
       "operationId": "show-notes",
       "stepId": "show"
     },
@@ -109,6 +111,7 @@
         },
         "stdin": null
       },
+      "interfaceId": "release-notes-agent",
       "operationId": "summarize-changes",
       "stepId": "refuse"
     }
@@ -553,7 +556,7 @@
   "safetyLimits": [
     "No process other than the mapped release-notes-agent target."
   ],
-  "schemaVersion": 5,
+  "schemaVersion": 6,
   "scopedResources": null,
   "siblingGroups": null,
   "sourceSpecDigest": null,

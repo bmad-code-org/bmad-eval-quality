@@ -3212,6 +3212,10 @@ flowchart TD
 - `buildPlanIndex` is called with `duplicateIds: 'unresolved'`, overriding its own default `'throw'`:
   two interfaces sharing an `operationId` is the exact shape the new `operation-identifier-collision` row exists to describe,
   and the index builder cannot be allowed to crash on it first.
+  Amended after this step shipped:
+  an observation and a step name the pair `(interfaceId, operationId)`, so two interfaces sharing an `operationId` is a legal contract,
+  and the `operation-identifier-collision` row is removed.
+  The index builder still receives `'unresolved'` for the shape it must not crash on, which is one interface declaring an `operationId` twice.
 - `EvidenceIntegrityInputs.disclosure` and its three sibling booleans arrive declared:
   no declared input carries `EvidenceDisclosure`,
   and the module's own doc comment already states this posture for the other three.

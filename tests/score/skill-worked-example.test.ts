@@ -49,9 +49,9 @@ describe('the skill chain, as the shipped stages computed it', () => {
 		// aborts on that too, through `declarationChecksRan`; what this states
 		// is the mechanism underneath it.
 		expect(commandSignature(signature)).toBe(commandSignature(operation))
-		expect(resolveHomeOperation(signature, contract.permittedInterfaces)).toBe(
-			operation,
-		)
+		expect(
+			resolveHomeOperation(signature, contract.permittedInterfaces)?.operation,
+		).toBe(operation)
 		// And the identity discriminates. `commandContract` is another `cli`
 		// contract in the same corpus with another executable, so a resolver
 		// matching on the shape family alone would bind this signature to its

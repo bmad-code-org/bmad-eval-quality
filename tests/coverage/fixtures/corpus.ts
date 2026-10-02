@@ -297,6 +297,7 @@ const perKeySplitOracles = variant('per-key-split-oracles', {
 const noTypeViolatingStep = variant('no-type-violating-step', {
 	interactionPlan: withStep('malformed-create', {
 		stepId: 'malformed-create',
+		interfaceId: 'thing-api',
 		operationId: 'create-thing',
 		inputBinding: {
 			path: null,
@@ -321,7 +322,12 @@ const noCollectionQuantifier = variant('no-collection-quantifier', {
  */
 const unaddressedParameterSibling = variant('unaddressed-parameter-sibling', {
 	siblingGroups: {
-		operations: [['create-thing', 'list-things']],
+		operations: [
+			[
+				{ interfaceId: 'thing-api', operationId: 'create-thing' },
+				{ interfaceId: 'thing-api', operationId: 'list-things' },
+			],
+		],
 		parameters: [['limit', 'offset']],
 	},
 })

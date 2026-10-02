@@ -13,7 +13,10 @@ import { StructuralFailure } from '../../src/core/failure-codes.ts'
 import * as planModule from '../../src/core/preflight/plan.ts'
 import { planPreflight } from '../../src/core/preflight/plan.ts'
 import * as reduceModule from '../../src/core/preflight/reduce.ts'
-import { EvalContract } from '../../src/core/schemas/eval-contract.ts'
+import {
+	EVAL_CONTRACT_SCHEMA_VERSION,
+	EvalContract,
+} from '../../src/core/schemas/eval-contract.ts'
 import { RuntimeFault } from '../../src/core/schemas/faults.ts'
 import { PreflightVerdict } from '../../src/core/schemas/preflight-verdict.ts'
 import { Probe as ProbeSchema } from '../../src/core/schemas/probe.ts'
@@ -382,5 +385,45 @@ describe('preflightFromObservations: the verdict and the stream', () => {
 			expect(check.outcome).toBe('failed')
 			expect(check.note).toContain('tool error')
 		}
+	})
+})
+
+describe('runPreflight: the contract stamp is read before the contract parses', () => {
+	const stale = EVAL_CONTRACT_SCHEMA_VERSION - 1
+	const expectNamed = (fault: RuntimeFault) => {
+		expect(fault.code).toBe('schema-version-mismatch')
+		expect(fault.artifactPath).toBe('EvalContract.schemaVersion')
+		expect(fault.message).toContain(
+			`carries "schemaVersion" ${stale} where this build reads ${EVAL_CONTRACT_SCHEMA_VERSION}`,
+		)
+	}
+
+	it('names a contract of the previous shape, which would otherwise fail as an anonymous parse failure', async () => {
+		const previousShape = {
+			...structuredClone(preflightContract),
+			schemaVersion: stale,
+			interactionPlan: preflightContract.interactionPlan.map(
+				({ interfaceId: _interfaceId, ...rest }) => rest,
+			),
+		}
+		expectNamed(await faultOf(() => run({ contract: previousShape as never })))
+	})
+
+	it('names a contract stamped one version below in the current shape, which would otherwise pass', async () => {
+		expectNamed(
+			await faultOf(() =>
+				run({ contract: { ...preflightContract, schemaVersion: stale } }),
+			),
+		)
+	})
+
+	it('names it on the observation path too', () => {
+		expectNamed(
+			syncFaultOf(() =>
+				fromObservations({
+					contract: { ...preflightContract, schemaVersion: stale },
+				}),
+			),
+		)
 	})
 })

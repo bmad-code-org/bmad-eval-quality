@@ -6,8 +6,8 @@
     "storage": "public"
   },
   "conditionArm": "mutated",
-  "contractDigest": "sha256:75beb5827b0e61e01fc90d0d6d96c9fc5b954772295cd602148d87be11d1143a",
-  "evaluatorConfigurationDigest": "sha256:b26cbe4fe3e8aa9b63fea17df4d5b326827a1e343be902fc3641a2d252a50c93",
+  "contractDigest": "sha256:69f74e9843001c377437088a2638cbd9fc174f85daf680ec241b06e0f781c89f",
+  "evaluatorConfigurationDigest": "sha256:cfca7acaaf12e9c45d1bd44450d594c1cb43ef458e0b52009b8e50c898c65955",
   "evaluatorRecommendation": "FAIL",
   "evidenceDisclosure": {
     "reportedIncomplete": false,
@@ -44,7 +44,7 @@
     }
   ],
   "isolationManifestArtifact": {
-    "digest": "sha256:ef698e90720cd07527ccef0a954488bfd188a5ea19e5bc34c0e621f5699221bf",
+    "digest": "sha256:e5cba25e001743201adfe2913ac619059761ce3f0b00a8768a7e9a1eb86a9710",
     "path": "examples/tutorials/walkthrough/isolation-manifest.json",
     "privateRef": null,
     "storage": "public"
@@ -70,6 +70,7 @@
         "stdin": null
       },
       "exitCode": null,
+      "interfaceId": "notes-api",
       "observationId": "obs-001",
       "operationId": "update-note",
       "principal": null,
@@ -107,6 +108,7 @@
         "stdin": null
       },
       "exitCode": null,
+      "interfaceId": "notes-api",
       "observationId": "obs-002",
       "operationId": "read-note",
       "principal": null,
@@ -144,6 +146,7 @@
         "stdin": null
       },
       "exitCode": null,
+      "interfaceId": "notes-api",
       "observationId": "obs-003",
       "operationId": "list-notes",
       "principal": null,
@@ -207,7 +210,7 @@
   },
   "revisionCount": 0,
   "runId": "notes-run-1",
-  "schemaVersion": 6,
-  "sealedBriefDigest": "sha256:20908549841119f0bf583cb0b2ddb8cfe62fb00beff39455da9b79d607df8b49",
+  "schemaVersion": 7,
+  "sealedBriefDigest": "sha256:ec67e109d98bcc477cb44e94fed3d30d552f09c3db779c495a9a38d3b3cc9dd8",
   "trialIndex": 1
 }

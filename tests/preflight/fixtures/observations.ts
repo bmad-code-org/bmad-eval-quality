@@ -64,9 +64,9 @@ const probeEvidenceReference = {
 }
 
 const contractLiteral = {
-	// 5, the version this contract's shape satisfies, matching the other
+	// 6, the version this contract's shape satisfies, matching the other
 	// full-contract fixtures.
-	schemaVersion: 5,
+	schemaVersion: 6,
 	contractId: 'preflight-fixture',
 	parentDigest: null,
 	revisionCount: 0,

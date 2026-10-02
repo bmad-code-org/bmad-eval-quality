@@ -9,7 +9,7 @@
 import type { EvalContract } from '../../../src/core/schemas/eval-contract.ts'
 
 export const mcpContract = {
-	schemaVersion: 5,
+	schemaVersion: 6,
 	contractId: 'notes-tool-server',
 	parentDigest: null,
 	revisionCount: 0,
@@ -437,12 +437,18 @@ export const mcpContract = {
 		},
 	},
 	siblingGroups: {
-		operations: [['search-notes', 'create-note']],
+		operations: [
+			[
+				{ interfaceId: 'notes-tool-server', operationId: 'search-notes' },
+				{ interfaceId: 'notes-tool-server', operationId: 'create-note' },
+			],
+		],
 		parameters: [['query', 'title']],
 	},
 	interactionPlan: [
 		{
 			stepId: 'search',
+			interfaceId: 'notes-tool-server',
 			operationId: 'search-notes',
 			after: null,
 			cardinality: 'exactly-one',
@@ -450,6 +456,7 @@ export const mcpContract = {
 		},
 		{
 			stepId: 'create',
+			interfaceId: 'notes-tool-server',
 			operationId: 'create-note',
 			after: null,
 			cardinality: 'exactly-one',
@@ -460,6 +467,7 @@ export const mcpContract = {
 			// which binds a call whose JSON type differs from the one the tool
 			// declares for that key.
 			stepId: 'malformed-search',
+			interfaceId: 'notes-tool-server',
 			operationId: 'search-notes',
 			after: null,
 			cardinality: 'at-most-one',
@@ -469,6 +477,7 @@ export const mcpContract = {
 		},
 		{
 			stepId: 'malformed-create',
+			interfaceId: 'notes-tool-server',
 			operationId: 'create-note',
 			after: null,
 			cardinality: 'at-most-one',
@@ -482,6 +491,7 @@ export const mcpContract = {
 			// tool minted is what the search looks for, which a literal cannot
 			// name because the evaluator never created it.
 			stepId: 'read-back',
+			interfaceId: 'notes-tool-server',
 			operationId: 'search-notes',
 			after: 'create',
 			cardinality: 'exactly-one',

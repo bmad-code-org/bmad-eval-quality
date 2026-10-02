@@ -103,7 +103,7 @@ const emptyChannel = {
 export const gateCContract = {
 	// 5, the version this contract's shape satisfies, matching the other two
 	// full-contract fixtures (`populatedContract`, `satisfiedContract`).
-	schemaVersion: 5,
+	schemaVersion: 6,
 	contractId: 'exports-api-v1',
 	parentDigest: null,
 	revisionCount: 0,
@@ -756,12 +756,18 @@ export const gateCContract = {
 		},
 	},
 	siblingGroups: {
-		operations: [['get-export', 'list-export-rows']],
+		operations: [
+			[
+				{ interfaceId: 'exports-api', operationId: 'get-export' },
+				{ interfaceId: 'exports-api', operationId: 'list-export-rows' },
+			],
+		],
 		parameters: [['cursor', 'limit']],
 	},
 	interactionPlan: [
 		{
 			stepId: 'submit',
+			interfaceId: 'exports-api',
 			operationId: 'submit-export',
 			inputBinding: {
 				path: null,
@@ -777,6 +783,7 @@ export const gateCContract = {
 		},
 		{
 			stepId: 'poll',
+			interfaceId: 'exports-api',
 			operationId: 'get-export',
 			inputBinding: {
 				path: { jobId: { matcher: 'any' } },
@@ -789,6 +796,7 @@ export const gateCContract = {
 		},
 		{
 			stepId: 'first-page',
+			interfaceId: 'exports-api',
 			operationId: 'list-export-rows',
 			inputBinding: {
 				path: { jobId: { matcher: 'any' } },
@@ -801,6 +809,7 @@ export const gateCContract = {
 		},
 		{
 			stepId: 'malformed-submit',
+			interfaceId: 'exports-api',
 			operationId: 'submit-export',
 			inputBinding: {
 				path: null,
@@ -816,6 +825,7 @@ export const gateCContract = {
 		},
 		{
 			stepId: 'unknown-job-read',
+			interfaceId: 'exports-api',
 			operationId: 'get-export',
 			inputBinding: {
 				path: { jobId: { literal: 'job-does-not-exist' } },
@@ -828,6 +838,7 @@ export const gateCContract = {
 		},
 		{
 			stepId: 'unknown-job-rows',
+			interfaceId: 'exports-api',
 			operationId: 'list-export-rows',
 			inputBinding: {
 				path: { jobId: { literal: 'job-does-not-exist' } },

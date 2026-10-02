@@ -26,6 +26,7 @@ function observation(overrides: Partial<Observation> = {}): Observation {
 	return {
 		observationId: 'obs-1',
 		sequence: 1,
+		interfaceId: 'iface-1',
 		operationId: 'op-1',
 		provenance: 'baseline',
 		principal: null,

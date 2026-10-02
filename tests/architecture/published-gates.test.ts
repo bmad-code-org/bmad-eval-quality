@@ -2125,7 +2125,9 @@ describe('the built gates binary', () => {
 		expect(result.status).toBe(0)
 	}, 60_000)
 
-	it('runs the doc-claims gate from the published path', (ctx) => {
+	it('runs the doc-claims gate from the published path', {
+		timeout: 60_000,
+	}, (ctx) => {
 		if (!BUILT) return ctx.skip(NEEDS_BUILD)
 		const result = spawnSync(
 			process.execPath,

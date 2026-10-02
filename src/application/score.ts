@@ -39,6 +39,7 @@ import type { LadderResolution } from '../core/score/ladder.ts'
 import type { QualificationResult } from '../core/score/qualification.ts'
 import { score } from '../core/score/score.ts'
 import { type CorpusPort, corpusResolveParsers } from '../ports/corpus-port.ts'
+import { checkContractVersion } from './contract-stamp.ts'
 import { invokePort } from './invoke-port.ts'
 
 export type RunScoreOptions = {
@@ -173,6 +174,7 @@ function parseConfiguration(
 }
 
 function parseContract(input: EvalContract): EvalContract {
+	checkContractVersion(input)
 	const parsed = EvalContract.safeParse(input)
 	if (!parsed.success) throw parseFault('EvalContract', parsed.error)
 	return parsed.data

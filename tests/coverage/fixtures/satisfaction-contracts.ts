@@ -24,11 +24,11 @@ const emptyChannel = {
 }
 
 export const satisfiedContract = {
-	// 5, the version this contract's shape actually satisfies. This literal is
+	// 6, the version this contract's shape actually satisfies. This literal is
 	// the seed `corpus.ts` spreads all nineteen corpus contracts from, so the
 	// stamp here is the stamp on every contract the tarball publishes under
 	// `corpus/dev/`.
-	schemaVersion: 5,
+	schemaVersion: 6,
 	contractId: 'satisfied-declarations',
 	parentDigest: null,
 	revisionCount: 0,
@@ -416,12 +416,18 @@ export const satisfiedContract = {
 		},
 	},
 	siblingGroups: {
-		operations: [['create-thing', 'list-things']],
+		operations: [
+			[
+				{ interfaceId: 'thing-api', operationId: 'create-thing' },
+				{ interfaceId: 'thing-api', operationId: 'list-things' },
+			],
+		],
 		parameters: [['limit', 'name']],
 	},
 	interactionPlan: [
 		{
 			stepId: 'create',
+			interfaceId: 'thing-api',
 			operationId: 'create-thing',
 			inputBinding: {
 				path: null,
@@ -434,6 +440,7 @@ export const satisfiedContract = {
 		},
 		{
 			stepId: 'list',
+			interfaceId: 'thing-api',
 			operationId: 'list-things',
 			inputBinding: {
 				path: null,
@@ -446,6 +453,7 @@ export const satisfiedContract = {
 		},
 		{
 			stepId: 'malformed-create',
+			interfaceId: 'thing-api',
 			operationId: 'create-thing',
 			inputBinding: {
 				path: null,
@@ -458,6 +466,7 @@ export const satisfiedContract = {
 		},
 		{
 			stepId: 'malformed-list',
+			interfaceId: 'thing-api',
 			operationId: 'list-things',
 			inputBinding: {
 				path: null,

@@ -101,7 +101,6 @@ export const baseline = (): AssessmentBody => ({
 		evaluatorConfigurationAbsent: [],
 		evaluatorConfigurationDigestMismatches: [],
 		judgeResultsUnscored: [],
-		operationIdentifierCollisions: [],
 		trialSetDisagreements: [],
 	},
 	evaluatorRecommendation: 'PASS',
@@ -391,18 +390,6 @@ const SHARED_OVERRIDES: readonly SharedOverride[] = [
 						rubricId: 'R-001',
 						criterionId: 'RC-001',
 					},
-				],
-			},
-		}),
-	},
-	{
-		id: 'operation-identifier-collision',
-		body: () => ({
-			...baseline(),
-			evidenceIntegrity: {
-				...baseline().evidenceIntegrity,
-				operationIdentifierCollisions: [
-					'trial 1 observation obs-1: operationId "op-1" matches operations in 2 permittedInterfaces entries (iface-a, iface-b)',
 				],
 			},
 		}),

@@ -40,7 +40,6 @@ never promotes.
 | `evaluator-configuration-absent` | Invalid | the evaluator configuration artifact is absent | no | 3 |
 | `evaluator-configuration-digest-mismatch` | Invalid | the evaluator configuration digest the record declares does not recompute from the artifact | no | 3 |
 | `judge-result-unscored` | Invalid | a judge result carries `score: null` | no | 3 |
-| `operation-identifier-collision` | Invalid | an observation's operationId matches an operation in more than one permittedInterfaces entry | no | 3 |
 | `trial-set-field-disagreement` | Invalid | trials in the same trial set disagree on identity fields or repeat a `trialIndex` | no | 3 |
 | `behavioural-failure-at-or-above-floor` | FAIL | an AD-6 behavioural failure at or above the scoring policy's severity floor | no | 2 |
 | `evidence-incomplete` | FAIL | evidence reported incomplete under AD-17 | no | 2 |
@@ -60,11 +59,11 @@ never promotes.
 
 ### Production ladder census, by rung
 
-Over the 35 resolved production fixture cases.
+Over the 34 resolved production fixture cases.
 
 | Rung | Cases |
 | --- | --- |
-| `invalid` | 19 |
+| `invalid` | 18 |
 | `FAIL` | 7 |
 | `CONCERNS` | 7 |
 | `WAIVED` | 1 |
@@ -91,7 +90,6 @@ Over the 35 resolved production fixture cases.
 | `evaluator-configuration-absent` | 1 |
 | `evaluator-configuration-digest-mismatch` | 1 |
 | `judge-result-unscored` | 1 |
-| `operation-identifier-collision` | 1 |
 | `trial-set-field-disagreement` | 1 |
 | `behavioural-failure-at-or-above-floor` | 1 |
 | `evidence-incomplete` | 1 |
@@ -130,7 +128,6 @@ Over the 35 resolved production fixture cases.
 | `evaluator-configuration-absent` | Invalid | the evaluator configuration artifact is absent | no | 3 |
 | `evaluator-configuration-digest-mismatch` | Invalid | the evaluator configuration digest the record declares does not recompute from the artifact | no | 3 |
 | `judge-result-unscored` | Invalid | a judge result carries `score: null` | no | 3 |
-| `operation-identifier-collision` | Invalid | an observation's operationId matches an operation in more than one permittedInterfaces entry | no | 3 |
 | `trial-set-field-disagreement` | Invalid | trials in the same trial set disagree on identity fields or repeat a `trialIndex` | no | 3 |
 | `behavioural-failure-at-or-above-floor` | FAIL | an AD-6 behavioural failure at or above the scoring policy's severity floor | no | 2 |
 | `evidence-incomplete` | FAIL | evidence reported incomplete under AD-17 | no | 2 |
@@ -148,11 +145,11 @@ Over the 35 resolved production fixture cases.
 
 ### Contract-scoring ladder census, by rung
 
-Over the 33 resolved contract-scoring fixture cases.
+Over the 32 resolved contract-scoring fixture cases.
 
 | Rung | Cases |
 | --- | --- |
-| `invalid` | 19 |
+| `invalid` | 18 |
 | `FAIL` | 6 |
 | `CONCERNS` | 6 |
 | `WAIVED` | 1 |
@@ -179,7 +176,6 @@ Over the 33 resolved contract-scoring fixture cases.
 | `evaluator-configuration-absent` | 1 |
 | `evaluator-configuration-digest-mismatch` | 1 |
 | `judge-result-unscored` | 1 |
-| `operation-identifier-collision` | 1 |
 | `trial-set-field-disagreement` | 1 |
 | `behavioural-failure-at-or-above-floor` | 1 |
 | `evidence-incomplete` | 1 |

@@ -29,6 +29,7 @@ import {
 	decodeTail,
 	type PlanIndex,
 	parseEvidenceTarget,
+	undeclaredOperationClause,
 } from '../seal/plan-index.ts'
 
 // ---- shared tree walk ----------------------------------------------------
@@ -445,10 +446,10 @@ export function evaluatePointerReachability(
 	if (step === undefined) {
 		return unreachable('names a step the interaction plan does not declare')
 	}
-	const operation = anyOperationOf(index, step.operationId)
+	const operation = anyOperationOf(index, step)
 	if (operation === undefined) {
 		return unreachable(
-			`names step "${target.stepId}", which names operation "${step.operationId}", not declared by any permitted interface`,
+			`names step "${target.stepId}", which names operation "${step.operationId}" ${undeclaredOperationClause(index, step)}`,
 		)
 	}
 	return evaluateReachabilityAgainstOperation(pointer, operation)

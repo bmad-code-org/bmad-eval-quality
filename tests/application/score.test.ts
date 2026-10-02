@@ -9,6 +9,7 @@ import { POLICY } from '../../scripts/worked-example-shared.ts'
 import { runScore } from '../../src/application/score.ts'
 import * as emitModule from '../../src/core/emit/emit.ts'
 import * as ingestModule from '../../src/core/ingest/index.ts'
+import { EVAL_CONTRACT_SCHEMA_VERSION } from '../../src/core/schemas/eval-contract.ts'
 import { RuntimeFault } from '../../src/core/schemas/faults.ts'
 import { SEALED_RUN_RECORD_SCHEMA_VERSION } from '../../src/core/schemas/sealed-run-record.ts'
 import * as scoreModule from '../../src/core/score/score.ts'
@@ -183,6 +184,30 @@ describe('runScore: the record stamp is read before the record parses', () => {
 		)
 		expect(fault.message).toContain(
 			`carries "schemaVersion" ${stale} where this build reads ${SEALED_RUN_RECORD_SCHEMA_VERSION}`,
+		)
+	})
+
+	// The record a caller assembled against the previous build: its
+	// observations name an operation and no interface. Parsed first it would
+	// fail as an anonymous `schema-parse-failure`.
+	const versionSixRecord = () => ({
+		...sealedRunRecordFixtureForScore,
+		schemaVersion: 6,
+		observations: sealedRunRecordFixtureForScore.observations.map(
+			({ interfaceId: _interfaceId, ...rest }) => rest,
+		),
+	})
+
+	it('refuses a version 6 record with schema-version-mismatch naming 6 and 7, before its shape is parsed', async () => {
+		const fault = await faultOf(() =>
+			run({ record: [versionSixRecord()] as never }),
+		)
+		expect(fault.code).toBe('schema-version-mismatch')
+		expect(fault.artifactPath).toBe(
+			`SealedRunRecord[trialIndex=${sealedRunRecordFixtureForScore.trialIndex}].schemaVersion`,
+		)
+		expect(fault.message).toContain(
+			'carries "schemaVersion" 6 where this build reads 7',
 		)
 	})
 
@@ -669,5 +694,35 @@ describe('runScore: the probe-qualification reason reaches the caller', () => {
 			failures: [],
 			declarationChecksRan: true,
 		})
+	})
+})
+
+describe('runScore: the contract stamp is read before the contract parses', () => {
+	const stale = EVAL_CONTRACT_SCHEMA_VERSION - 1
+	const expectNamed = (fault: RuntimeFault) => {
+		expect(fault.code).toBe('schema-version-mismatch')
+		expect(fault.artifactPath).toBe('EvalContract.schemaVersion')
+		expect(fault.message).toContain(
+			`carries "schemaVersion" ${stale} where this build reads ${EVAL_CONTRACT_SCHEMA_VERSION}`,
+		)
+	}
+
+	it('names a contract of the previous shape, which would otherwise fail as an anonymous parse failure', async () => {
+		const previousShape = {
+			...structuredClone(scoreContractFixture),
+			schemaVersion: stale,
+			interactionPlan: scoreContractFixture.interactionPlan.map(
+				({ interfaceId: _interfaceId, ...rest }) => rest,
+			),
+		}
+		expectNamed(await faultOf(() => run({ contract: previousShape as never })))
+	})
+
+	it('names a contract stamped one version below in the current shape, which would otherwise pass', async () => {
+		expectNamed(
+			await faultOf(() =>
+				run({ contract: { ...scoreContractFixture, schemaVersion: stale } }),
+			),
+		)
 	})
 })

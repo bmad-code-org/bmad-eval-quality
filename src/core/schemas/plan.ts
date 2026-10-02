@@ -117,13 +117,13 @@ export const McpInputBinding = z.strictObject({
  * and passes: `null` means the step binds nothing there, and there is nothing
  * left to disagree about.
  *
- * A step names an `operationId` and nothing else; the kind of the interface
- * declaring that operation lives in a different subtree of the same document.
- * That is the cross-subtree constraint the `{ principal }` comment above
- * already records as unrepresentable in the export. Adding a `kind` field to
- * the step itself was the other option and duplicates a fact the operation
- * already carries, which makes a disagreeing step a second inconsistency to
- * check rather than one fewer.
+ * A step names an `(interfaceId, operationId)` pair and nothing else; the kind
+ * of the interface declaring that operation lives in a different subtree of
+ * the same document. That is the cross-subtree constraint the `{ principal }`
+ * comment above already records as unrepresentable in the export. Adding a
+ * `kind` field to the step itself was the other option and duplicates a fact
+ * the operation already carries, which makes a disagreeing step a second
+ * inconsistency to check rather than one fewer.
  */
 export const InputBinding = z.union([
 	ApiInputBinding,
@@ -169,6 +169,9 @@ export const SelectorCardinality = z.enum(SELECTOR_CARDINALITIES)
  */
 export const InteractionStep = z.strictObject({
 	stepId: Identifier,
+	interfaceId: Identifier.describe(
+		'The `logicalId` of the permitted interface that declares `operationId`. An `operationId` is unique only within one interface, so a step selects observations by the pair. That the interface exists and declares the operation is a cross-subtree constraint the compiler checks.',
+	),
 	operationId: Identifier,
 	inputBinding: InputBinding,
 	after: Identifier.nullable().describe(

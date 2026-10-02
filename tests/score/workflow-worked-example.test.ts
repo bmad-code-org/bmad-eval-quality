@@ -184,7 +184,7 @@ describe('the workflow chain, as the shipped stages computed it', () => {
 		// matching family lands on the expected value here. That mutation is
 		// caught in `tests/score/qualification.test.ts`, over contracts written
 		// for it.
-		expect(home?.operationId).toBe('get-thing')
+		expect(home?.operation.operationId).toBe('get-thing')
 	})
 
 	it('partitions the candidates rather than only finding one that fits', () => {

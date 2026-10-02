@@ -239,7 +239,7 @@ export function makePointerDenotesCollection(
 		const target = parseEvidenceTarget(pointer)
 		const step = getIndex().stepOf(target.stepId)
 		if (step === undefined) return false
-		const operation = anyOperationOf(getIndex(), step.operationId)
+		const operation = anyOperationOf(getIndex(), step)
 		if (operation === undefined) return false
 		// The channel has to be the one this operation's descriptor describes.
 		// Hard-coding `response-body` here left AD-4's empty-collection

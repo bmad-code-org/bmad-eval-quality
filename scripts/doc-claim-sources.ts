@@ -94,7 +94,7 @@ export const CONFORMANCE_RUNNERS = [
  */
 const VERSION_READER_BY_FILE: Readonly<Record<string, string>> = {
 	'src/application/aggregate-strength.ts': 'aggregate',
-	'src/application/compile.ts': 'compile',
+	'src/application/contract-stamp.ts': 'compile',
 	'src/application/score.ts': 'score',
 	'src/core/compile/compile.ts': 'compile',
 	'src/core/preflight/plan.ts': 'preflight',
@@ -431,3 +431,6 @@ export const skillCorpusDigest = (): Promise<string> => corpusDigestOf('skill')
 
 export const workflowCorpusDigest = (): Promise<string> =>
 	corpusDigestOf('workflow')
+
+export const toolUseCorpusDigest = (): Promise<string> =>
+	corpusDigestOf('tool-use')

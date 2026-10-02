@@ -77,6 +77,7 @@
           }
         }
       },
+      "interfaceId": "skill-runner",
       "operationId": "run-skill",
       "stepId": "frontend-case"
     }
@@ -295,7 +296,7 @@
   "revisionCount": 0,
   "rubrics": [],
   "safetyLimits": [],
-  "schemaVersion": 5,
+  "schemaVersion": 6,
   "scopedResources": null,
   "siblingGroups": null,
   "sourceSpecDigest": null,

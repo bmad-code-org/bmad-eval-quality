@@ -522,7 +522,12 @@ describe('rule 5 — sibling cross-check', () => {
 	it('40. an operation sibling group is relevant, and so are two', () => {
 		const contract = parsedMutant(absentContract, (mutant) => {
 			mutant.siblingGroups = {
-				operations: [['create-thing', 'list-things']],
+				operations: [
+					[
+						{ interfaceId: 'thing-api', operationId: 'create-thing' },
+						{ interfaceId: 'thing-api', operationId: 'list-things' },
+					],
+				],
 				parameters: [],
 			}
 		})
@@ -534,8 +539,14 @@ describe('rule 5 — sibling cross-check', () => {
 		const two = parsedMutant(absentContract, (mutant) => {
 			mutant.siblingGroups = {
 				operations: [
-					['create-thing', 'list-things'],
-					['read-thing', 'list-things'],
+					[
+						{ interfaceId: 'thing-api', operationId: 'create-thing' },
+						{ interfaceId: 'thing-api', operationId: 'list-things' },
+					],
+					[
+						{ interfaceId: 'thing-api', operationId: 'read-thing' },
+						{ interfaceId: 'thing-api', operationId: 'list-things' },
+					],
 				],
 				parameters: [],
 			}

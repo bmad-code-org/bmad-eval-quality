@@ -101,6 +101,7 @@
         },
         "query": null
       },
+      "interfaceId": "notes-api",
       "operationId": "get-note",
       "stepId": "baseline-read"
     },
@@ -121,6 +122,7 @@
         },
         "query": null
       },
+      "interfaceId": "notes-api",
       "operationId": "patch-note",
       "stepId": "write"
     },
@@ -137,6 +139,7 @@
         },
         "query": null
       },
+      "interfaceId": "notes-api",
       "operationId": "get-note",
       "stepId": "read-back"
     },
@@ -149,6 +152,7 @@
         "path": null,
         "query": null
       },
+      "interfaceId": "notes-api",
       "operationId": "list-notes",
       "stepId": "collection"
     },
@@ -169,6 +173,7 @@
         },
         "query": null
       },
+      "interfaceId": "notes-api",
       "operationId": "patch-note",
       "stepId": "malformed-write"
     }
@@ -703,13 +708,19 @@
   "safetyLimits": [
     "No request to any host other than the mapped notes-api target."
   ],
-  "schemaVersion": 5,
+  "schemaVersion": 6,
   "scopedResources": null,
   "siblingGroups": {
     "operations": [
       [
-        "get-note",
-        "list-notes"
+        {
+          "interfaceId": "notes-api",
+          "operationId": "get-note"
+        },
+        {
+          "interfaceId": "notes-api",
+          "operationId": "list-notes"
+        }
       ]
     ],
     "parameters": [

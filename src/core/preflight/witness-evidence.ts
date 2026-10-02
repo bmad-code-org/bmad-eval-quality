@@ -128,6 +128,7 @@ export function evidenceOf(
 		// across the monotonic sequence of owed item 2, so revisit this
 		// constant then.
 		sequence: 1,
+		interfaceId: projected.interfaceId,
 		operationId: projected.operationId,
 		provenance: 'baseline',
 		// A pre-flight leg is issued by this package rather than by a harness

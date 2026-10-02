@@ -303,25 +303,6 @@ describe('resolveProductionVerdict / resolveContractVerdict', () => {
 		).toBe(true)
 	})
 
-	it('resolves an operation-identifier-collision condition to Invalid', () => {
-		const body = {
-			...baseline(),
-			evidenceIntegrity: {
-				...baseline().evidenceIntegrity,
-				operationIdentifierCollisions: [
-					'observation obs-1: operationId "op-1" matches two interfaces',
-				],
-			},
-		}
-		const resolution = resolveProductionVerdict(productionOf(body))
-		expect(resolution.verdict).toBeNull()
-		expect(
-			resolution.basis.some((entry) =>
-				entry.includes('operation identifier collision'),
-			),
-		).toBe(true)
-	})
-
 	it('resolves a trial-set-field-disagreement condition to Invalid', () => {
 		const body = {
 			...baseline(),

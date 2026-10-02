@@ -241,51 +241,7 @@ function judgeConductOf(
 }
 
 /**
- * The ninth new Invalid condition: an observation whose `operationId`
- * matches an operation declared in more than one `permittedInterfaces`
- * entry. Not an `IngestCondition` -- ingest never computes it, since it has
- * no `eval-contract` input and `Observation` carries no interface
- * qualifier -- so `score.ts` renders each basis line itself.
- */
-function operationIdentifierCollisionsOf(
-	contract: EvalContract,
-	trials: readonly ValidatedObservations[],
-): readonly string[] {
-	const interfacesByOperationId = new Map<string, string[]>()
-	for (const iface of contract.permittedInterfaces) {
-		// Deduplicated per interface first: `PermittedInterface.operations`
-		// carries no uniqueness constraint, so one interface declaring the
-		// same `operationId` on two different operations must still count as
-		// one interface, not two, or this row would falsely fire a collision
-		// naming the same interface twice.
-		const operationIdsInThisInterface = new Set(
-			iface.operations.map((operation) => operation.operationId),
-		)
-		for (const operationId of operationIdsInThisInterface) {
-			const entry = interfacesByOperationId.get(operationId)
-			if (entry === undefined) {
-				interfacesByOperationId.set(operationId, [iface.logicalId])
-			} else {
-				entry.push(iface.logicalId)
-			}
-		}
-	}
-	const collisions: string[] = []
-	for (const trial of trials) {
-		for (const observation of trial.observations) {
-			const interfaces =
-				interfacesByOperationId.get(observation.operationId) ?? []
-			if (interfaces.length <= 1) continue
-			collisions.push(
-				`trial ${trial.trialIndex} observation ${observation.observationId}: operationId "${observation.operationId}" matches operations in ${interfaces.length} permittedInterfaces entries (${interfaces.join(', ')})`,
-			)
-		}
-	}
-	return collisions
-}
-
-/**
- * The tenth new Invalid condition: a caller assembling a trial set from
+ * The ninth new Invalid condition: a caller assembling a trial set from
  * records that disagree on their set identity fields or repeat a trial index.
  * Every trial's contract digest is compared with the supplied contract's
  * canonical digest. The remaining shared fields are compared against the
@@ -442,10 +398,10 @@ export const score: ScoreStage<
 	const homeOperationOf = (candidate: Probe): AnyOperation | null =>
 		candidate.expectedClean || candidate.defectSignature === null
 			? null
-			: resolveHomeOperation(
+			: (resolveHomeOperation(
 					candidate.defectSignature,
 					contract.permittedInterfaces,
-				)
+				)?.operation ?? null)
 	const sealedProbes = sealProbeSet([probe], homeOperationOf)
 	// `sealProbeSet` over a one-probe array puts that probe in exactly one
 	// bucket, so the third branch is unreachable. It re-runs the gate rather
@@ -473,11 +429,8 @@ export const score: ScoreStage<
 	// plan to "resolves as unlisted, filters every candidate away" without
 	// throwing, so this stage does not re-run that check itself.
 	// `duplicateIds: 'unresolved'` rather than `buildPlanIndex`'s own default
-	// `'throw'`: two `permittedInterfaces` entries sharing an operationId is
-	// exactly the domain input `operationIdentifierCollisionsOf` below
-	// reports as `operation-identifier-collision`, so this stage cannot let
-	// the index builder crash on the same shape its own new Invalid row
-	// exists to describe.
+	// `'throw'`: one interface declaring an operationId twice is a domain
+	// input this stage scores, so the index builder must not throw on it.
 	const index = buildPlanIndex(
 		contract.interactionPlan,
 		contract.permittedInterfaces,
@@ -795,10 +748,6 @@ export const score: ScoreStage<
 	)
 	const coverageGaps = evaluateCoverage(contract)
 
-	const operationIdentifierCollisions = operationIdentifierCollisionsOf(
-		contract,
-		trials,
-	)
 	const trialSetDisagreements = trialSetDisagreementsOf(contract, trials)
 
 	const evidenceIntegrity: EvidenceIntegrityInputs = {
@@ -840,7 +789,6 @@ export const score: ScoreStage<
 			trials,
 			'judge-result-unscored',
 		),
-		operationIdentifierCollisions,
 		trialSetDisagreements,
 	}
 

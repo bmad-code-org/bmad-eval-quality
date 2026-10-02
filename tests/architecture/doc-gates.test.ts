@@ -788,7 +788,9 @@ describe('the `asOf` schema refine', () => {
 })
 
 describe("this repository's own doc-claims classes, held to a floor", () => {
-	it('classifies at least as many sentences per class as it does today', async () => {
+	it('classifies at least as many sentences per class as it does today', {
+		timeout: 60_000,
+	}, async () => {
 		const configPath = resolve('eval-quality.config.json')
 		const loaded = await loadDocClaimsConfig({ configPath })
 		expect(loaded.kind).toBe('section')
@@ -877,7 +879,9 @@ describe("this repository's own documented invocations, held to a floor", () => 
  * holder, and the floor is held at 42 numerals across 11 files.
  */
 describe("this repository's own doc-counts entries, held to a floor", () => {
-	it('holds at least as many numerals as it does today', async () => {
+	it('holds at least as many numerals as it does today', {
+		timeout: 60_000,
+	}, async () => {
 		const configPath = resolve('eval-quality.config.json')
 		const loaded = await loadDocCountsConfig({ configPath })
 		expect(loaded.kind).toBe('section')

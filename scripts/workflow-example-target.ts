@@ -499,7 +499,7 @@ const authoredRecord = (
 	briefDigest: string,
 	evaluatorConfigurationDigest: string,
 ): SealedRunRecord => ({
-	schemaVersion: 6,
+	schemaVersion: 7,
 	parentDigest: null,
 	revisionCount: 0,
 	runId: RUN_ID,
@@ -607,6 +607,7 @@ const authoredRecord = (
 		{
 			observationId: 'obs-reset',
 			sequence: 1,
+			interfaceId: 'thing-service',
 			operationId: 'reset-things',
 			provenance: 'evaluator-chosen',
 			principal: null,
@@ -630,6 +631,7 @@ const authoredRecord = (
 			// condition true of every candidate would score identically.
 			observationId: 'obs-reset-read-back',
 			sequence: 2,
+			interfaceId: 'thing-service',
 			operationId: 'get-thing',
 			provenance: 'evaluator-chosen',
 			principal: null,
@@ -645,6 +647,7 @@ const authoredRecord = (
 		{
 			observationId: 'obs-create',
 			sequence: 3,
+			interfaceId: 'thing-service',
 			operationId: 'create-thing',
 			provenance: 'evaluator-chosen',
 			principal: null,
@@ -663,6 +666,7 @@ const authoredRecord = (
 			// binding: no literal in the contract could have named it.
 			observationId: 'obs-read-back',
 			sequence: 4,
+			interfaceId: 'thing-service',
 			operationId: 'get-thing',
 			provenance: 'evaluator-chosen',
 			principal: null,
@@ -683,6 +687,7 @@ const authoredRecord = (
 		{
 			observationId: 'obs-malformed-create',
 			sequence: 5,
+			interfaceId: 'thing-service',
 			operationId: 'create-thing',
 			provenance: 'evaluator-chosen',
 			principal: null,
@@ -698,6 +703,7 @@ const authoredRecord = (
 		{
 			observationId: 'obs-malformed-read',
 			sequence: 6,
+			interfaceId: 'thing-service',
 			operationId: 'get-thing',
 			provenance: 'evaluator-chosen',
 			principal: null,
@@ -713,6 +719,7 @@ const authoredRecord = (
 		{
 			observationId: 'obs-malformed-reset',
 			sequence: 7,
+			interfaceId: 'thing-service',
 			operationId: 'reset-things',
 			provenance: 'evaluator-chosen',
 			principal: null,
@@ -867,10 +874,10 @@ export function buildWorkflowExampleChain(): WorkflowExampleChain {
 	const homeOperationOf = (candidate: Probe): AnyOperation | null =>
 		candidate.expectedClean || candidate.defectSignature === null
 			? null
-			: resolveHomeOperation(
+			: (resolveHomeOperation(
 					candidate.defectSignature,
 					contract.permittedInterfaces,
-				)
+				)?.operation ?? null)
 	const sealedProbes = sealProbeSet([probe], homeOperationOf)
 	if (sealedProbes.rejected.length > 0) {
 		fail(
