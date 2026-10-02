@@ -244,6 +244,7 @@ describe('compile: one reused negative mutation reaches each of the 29 wired fun
 			compileClean((c) => {
 				c.interactionPlan.push({
 					stepId: 'third',
+					interfaceId: 'thing-api',
 					operationId: 'list-things',
 					inputBinding: { path: null, query: null, header: null, body: null },
 					after: 'list',
@@ -267,6 +268,7 @@ describe('compile: one reused negative mutation reaches each of the 29 wired fun
 					c.interactionPlan[1],
 					{
 						stepId: 'extra-1',
+						interfaceId: 'thing-api',
 						operationId: 'list-things',
 						inputBinding: { path: null, query: null, header: null, body: null },
 						after: 'create',
@@ -274,6 +276,7 @@ describe('compile: one reused negative mutation reaches each of the 29 wired fun
 					},
 					{
 						stepId: 'extra-2',
+						interfaceId: 'thing-api',
 						operationId: 'list-things',
 						inputBinding: { path: null, query: null, header: null, body: null },
 						after: 'create',
@@ -482,6 +485,7 @@ describe('compile: the Story 4.3 nested-chain fixture, through orchestration', (
 				// `list`, matching Story 4.3's eight-step-chain shape.
 				const rest = Array.from({ length: 6 }, (_, index) => ({
 					stepId: `chain-${index + 3}`,
+					interfaceId: 'thing-api',
 					operationId: 'list-things',
 					inputBinding: { path: null, query: null, header: null, body: null },
 					after: index === 0 ? 'list' : `chain-${index + 2}`,
@@ -501,6 +505,7 @@ describe('compile: the Story 4.3 nested-chain fixture, through orchestration', (
 		const contract = cleanPopulatedContract() as any
 		const rest = Array.from({ length: 6 }, (_, index) => ({
 			stepId: `chain-${index + 3}`,
+			interfaceId: 'thing-api',
 			operationId: 'list-things',
 			inputBinding: { path: null, query: null, header: null, body: null },
 			after: index === 0 ? 'list' : `chain-${index + 2}`,
@@ -604,6 +609,7 @@ describe('compile: Story 4.3 graph behavior remains unchanged through orchestrat
 			compileClean((c) => {
 				c.interactionPlan.push({
 					stepId: 'dangling',
+					interfaceId: 'thing-api',
 					operationId: 'list-things',
 					inputBinding: { path: null, query: null, header: null, body: null },
 					after: 'ghost-step-that-does-not-exist',
@@ -622,6 +628,7 @@ describe('compile: Story 4.3 graph behavior remains unchanged through orchestrat
 	// graph bounds.
 	const step = (stepId: string, after: string | null) => ({
 		stepId,
+		interfaceId: 'thing-api',
 		operationId: 'list-things',
 		inputBinding: { path: null, query: null, header: null, body: null },
 		after,

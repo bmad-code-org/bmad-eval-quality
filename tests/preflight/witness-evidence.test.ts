@@ -83,6 +83,28 @@ describe('evidenceOf', () => {
 		expect(evidence.exitCode).toBeNull()
 	})
 
+	// An operation id is unique only within its interface, so the evidence a leg
+	// yields names the interface the leg exercised beside the operation.
+	it('carries the interface the leg exercised, so one operation id on two interfaces stays apart', () => {
+		const evidenceOn = (interfaceId: string) => {
+			const raw: ApiProbeObservation = {
+				...observation(jsonBody({ ok: true })),
+				interfaceId,
+			}
+			return evidenceOf(
+				projectObservation(raw, createThing, PREFLIGHT_ARTIFACT_PATH),
+				raw,
+				inputsOf(),
+				createThing,
+			)
+		}
+		const first = evidenceOn('thing-api')
+		const second = evidenceOn('thing-api-mirror')
+		expect(first.interfaceId).toBe('thing-api')
+		expect(second.interfaceId).toBe('thing-api-mirror')
+		expect(first.operationId).toBe(second.operationId)
+	})
+
 	// `ObservedCallInputs.body` is `JsonObjectValue | null`, which is narrower
 	// than `WitnessInputs.body`, so an absent body and a non-object JSON body
 	// both map to `null`. Stated rather than hidden.

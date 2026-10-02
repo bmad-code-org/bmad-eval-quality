@@ -1,13 +1,13 @@
 {
   "actionsArtifact": {
-    "digest": "sha256:384a650ecad4cc828289c7d325d8a2916dcd19fbfe5a81b45ae3652e22d65fbe",
+    "digest": "sha256:a91f2223d4b7ba22447767fd9858f76de59de9ed4ce507fde309fe968f94da31",
     "path": "examples/tutorials/tool-use/seeded-steps.json",
     "privateRef": null,
     "storage": "public"
   },
   "conditionArm": "mutated",
-  "contractDigest": "sha256:26e01290546eb502a53722cf2c1736e1148a17ed6e1f7ac80316b0bfb470acba",
-  "evaluatorConfigurationDigest": "sha256:043d90d46e5b706d99df498161c0b57700fe31da93ca52662f393e636c06e869",
+  "contractDigest": "sha256:96a3790a4b9e291a3b1a73cb14789599916fe51f2abc2398ff02c40ee5213cf6",
+  "evaluatorConfigurationDigest": "sha256:939484df000ee54605693054e32e8180c8a8840673561f2e786455e21531e81d",
   "evaluatorRecommendation": "FAIL",
   "evidenceDisclosure": {
     "reportedIncomplete": false,
@@ -19,7 +19,7 @@
       "confidence": 0.95,
       "evidenceArtifacts": [
         {
-          "digest": "sha256:384a650ecad4cc828289c7d325d8a2916dcd19fbfe5a81b45ae3652e22d65fbe",
+          "digest": "sha256:a91f2223d4b7ba22447767fd9858f76de59de9ed4ce507fde309fe968f94da31",
           "path": "examples/tutorials/tool-use/seeded-steps.json",
           "privateRef": null,
           "storage": "public"
@@ -44,7 +44,7 @@
     }
   ],
   "isolationManifestArtifact": {
-    "digest": "sha256:898edef2aaf1d1863e1a9e31b9f55aadc5ddaaca65c1d6b75c802159750fd0a8",
+    "digest": "sha256:44876b114b74e9fcc2c266902e881c19c2b0a178094a5d598e6c4254b3f46fd6",
     "path": "examples/tutorials/tool-use/isolation-manifest.json",
     "privateRef": null,
     "storage": "public"
@@ -68,6 +68,7 @@
         "stdin": null
       },
       "exitCode": null,
+      "interfaceId": "notes-tool-server",
       "observationId": "obs-search",
       "operationId": "search-notes",
       "principal": null,
@@ -107,6 +108,7 @@
         "stdin": null
       },
       "exitCode": null,
+      "interfaceId": "notes-tool-server",
       "observationId": "obs-create",
       "operationId": "create-note",
       "principal": null,
@@ -141,6 +143,7 @@
         "stdin": null
       },
       "exitCode": null,
+      "interfaceId": "notes-tool-server",
       "observationId": "obs-malformed-search",
       "operationId": "search-notes",
       "principal": null,
@@ -176,6 +179,7 @@
         "stdin": null
       },
       "exitCode": null,
+      "interfaceId": "notes-tool-server",
       "observationId": "obs-malformed-create",
       "operationId": "create-note",
       "principal": null,
@@ -209,6 +213,7 @@
         "stdin": null
       },
       "exitCode": null,
+      "interfaceId": "notes-tool-server",
       "observationId": "obs-read-back",
       "operationId": "search-notes",
       "principal": null,
@@ -281,7 +286,7 @@
   },
   "revisionCount": 0,
   "runId": "tool-run-1",
-  "schemaVersion": 6,
-  "sealedBriefDigest": "sha256:932c4adae4c573dfd87fee363acf005f3fe33482d2054ad3624b87e7ed9157d4",
+  "schemaVersion": 7,
+  "sealedBriefDigest": "sha256:a5889486cc2146377472fcdc46f5ed3ed5eecaf600a6955c81ba439bb80e67cd",
   "trialIndex": 1
 }

@@ -728,7 +728,12 @@ describe('rule 5 — sibling cross-check', () => {
 
 	it('108. one operation named twice is one member', () => {
 		const contract = parsedMutant(satisfiedContract, (mutant) => {
-			mutant.siblingGroups.operations = [['create-thing', 'create-thing']]
+			mutant.siblingGroups.operations = [
+				[
+					{ interfaceId: 'thing-api', operationId: 'create-thing' },
+					{ interfaceId: 'thing-api', operationId: 'create-thing' },
+				],
+			]
 		})
 		expect(verdictFor(contract, rule)).toMatchObject({
 			satisfied: false,
@@ -1008,6 +1013,17 @@ describe('rule 7 — state change read-back', () => {
 				kind: 'api',
 				operations: [createThing],
 			})
+			// The pair names the interface, so the step and the sibling group
+			// follow the operation to its new home.
+			for (const step of mutant.interactionPlan) {
+				if (step.operationId === 'create-thing') step.interfaceId = 'other-api'
+			}
+			for (const group of mutant.siblingGroups.operations) {
+				for (const member of group) {
+					if (member.operationId === 'create-thing')
+						member.interfaceId = 'other-api'
+				}
+			}
 		})
 		// The witnessed reason is the assertion: under a `resolveOperations` that reads
 		// only the first interface, create-thing vanishes and the rule answers
@@ -1338,6 +1354,7 @@ describe('holes the implementation code review found', () => {
 			stepNamed(mutant, 'list').after = null
 			mutant.interactionPlan.push({
 				stepId: 'verify',
+				interfaceId: 'thing-api',
 				operationId: 'list-things',
 				inputBinding: {
 					path: null,
@@ -1402,20 +1419,16 @@ describe('holes the implementation code review found', () => {
 		})
 	})
 
-	it('149. a duplicated operation identifier resolves to nothing and throws nothing', () => {
+	it('149. an operation identifier one interface declares twice resolves to nothing and throws nothing', () => {
 		const contract = parsedMutant(satisfiedContract, (mutant) => {
 			const [first] = mutant.permittedInterfaces
-			mutant.permittedInterfaces.push({
-				logicalId: 'other-api',
-				kind: 'api',
-				operations: [
-					structuredClone(
-						first.operations.find(
-							(operation: any) => operation.operationId === 'list-things',
-						),
+			first.operations.push(
+				structuredClone(
+					first.operations.find(
+						(operation: any) => operation.operationId === 'list-things',
 					),
-				],
-			})
+				),
+			)
 		})
 		// Decision 13: `unresolved` removes the ambiguous identifier from lookup,
 		// so the read-back step's operation no longer resolves and rule 7 fails

@@ -633,6 +633,7 @@ export function buildWorkflowTutorial(): Map<string, string> {
 			{
 				observationId: 'obs-reset',
 				sequence: 1,
+				interfaceId: 'thing-service',
 				operationId: 'reset-things',
 				provenance: 'evaluator-chosen',
 				principal: null,
@@ -653,6 +654,7 @@ export function buildWorkflowTutorial(): Map<string, string> {
 				// of every candidate the selector admits.
 				observationId: 'obs-reset-read-back',
 				sequence: 2,
+				interfaceId: 'thing-service',
 				operationId: 'get-thing',
 				provenance: 'evaluator-chosen',
 				principal: null,
@@ -668,6 +670,7 @@ export function buildWorkflowTutorial(): Map<string, string> {
 			{
 				observationId: 'obs-create',
 				sequence: 3,
+				interfaceId: 'thing-service',
 				operationId: 'create-thing',
 				provenance: 'evaluator-chosen',
 				principal: null,
@@ -686,6 +689,7 @@ export function buildWorkflowTutorial(): Map<string, string> {
 				// binding: no literal in the contract could have named it.
 				observationId: 'obs-read-back',
 				sequence: 4,
+				interfaceId: 'thing-service',
 				operationId: 'get-thing',
 				provenance: 'evaluator-chosen',
 				principal: null,
@@ -703,6 +707,7 @@ export function buildWorkflowTutorial(): Map<string, string> {
 			{
 				observationId: 'obs-malformed-create',
 				sequence: 5,
+				interfaceId: 'thing-service',
 				operationId: 'create-thing',
 				provenance: 'evaluator-chosen',
 				principal: null,
@@ -718,6 +723,7 @@ export function buildWorkflowTutorial(): Map<string, string> {
 			{
 				observationId: 'obs-malformed-read',
 				sequence: 6,
+				interfaceId: 'thing-service',
 				operationId: 'get-thing',
 				provenance: 'evaluator-chosen',
 				principal: null,
@@ -733,6 +739,7 @@ export function buildWorkflowTutorial(): Map<string, string> {
 			{
 				observationId: 'obs-malformed-reset',
 				sequence: 7,
+				interfaceId: 'thing-service',
 				operationId: 'reset-things',
 				provenance: 'evaluator-chosen',
 				principal: null,

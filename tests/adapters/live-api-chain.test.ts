@@ -349,6 +349,7 @@ const observationFrom = (
 ): Observation => ({
 	observationId: authored.observationId,
 	sequence: authored.sequence,
+	interfaceId: observed.interfaceId,
 	operationId: observed.operationId,
 	provenance: authored.provenance,
 	principal: authored.principal,

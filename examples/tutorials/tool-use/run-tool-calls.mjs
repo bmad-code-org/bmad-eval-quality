@@ -167,6 +167,9 @@ if (mode === 'steps') {
 		observations.push({
 			observationId: `obs-${step.stepId}`,
 			sequence,
+			// The adapter echoes the interface the request named, and the record
+			// names the pair because an operation id is unique only per interface.
+			interfaceId: observation.interfaceId,
 			operationId: step.operationId,
 			provenance: 'evaluator-chosen',
 			principal: null,

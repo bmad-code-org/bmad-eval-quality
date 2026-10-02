@@ -495,8 +495,46 @@ const ARTIFACT_REFERENCE = {
 	digest: DIGEST,
 }
 
-const SEALED_RUN_RECORD_AT_6: Readonly<Record<string, unknown>> = {
-	schemaVersion: 6,
+/**
+ * One observation carrying every field version 7 requires. The record's own
+ * literal below holds it, since an empty `observations` array parses at every
+ * version and would make the predecessor case vacuous.
+ */
+const OBSERVATION_AT_7: Readonly<Record<string, unknown>> = {
+	observationId: 'obs-1',
+	sequence: 1,
+	interfaceId: 'thing-api',
+	operationId: 'read-thing',
+	provenance: 'evaluator-chosen',
+	principal: null,
+	callInputs: {
+		path: null,
+		query: null,
+		header: null,
+		body: null,
+		argument: null,
+		option: null,
+		environment: null,
+		stdin: null,
+		arguments: null,
+	},
+	responseBody: null,
+	responseHeaders: null,
+	responseStatus: 200,
+	stdout: { kind: 'absent' },
+	stderr: { kind: 'absent' },
+	exitCode: null,
+	artifacts: {},
+}
+
+/** The same observation as a version-6 record carried it, with no interface. */
+const OBSERVATION_AT_6: Readonly<Record<string, unknown>> = (() => {
+	const { interfaceId: _interfaceId, ...rest } = OBSERVATION_AT_7
+	return rest
+})()
+
+const SEALED_RUN_RECORD_AT_7: Readonly<Record<string, unknown>> = {
+	schemaVersion: 7,
 	parentDigest: null,
 	revisionCount: 0,
 	runId: 'version-witness-run',
@@ -509,7 +547,7 @@ const SEALED_RUN_RECORD_AT_6: Readonly<Record<string, unknown>> = {
 	evaluatorRecommendation: 'FAIL',
 	oracleDispositions: [],
 	findings: [],
-	observations: [],
+	observations: [OBSERVATION_AT_7],
 	judgeResults: [],
 	actionsArtifact: ARTIFACT_REFERENCE,
 	isolationManifestArtifact: ARTIFACT_REFERENCE,
@@ -693,8 +731,33 @@ const EMPTY_REQUEST_SHAPE = {
 	body: EMPTY_CHANNEL,
 }
 
-const EVAL_CONTRACT_AT_5: Readonly<Record<string, unknown>> = {
-	schemaVersion: 5,
+/**
+ * A step naming the pair version 6 requires. The contract's own literal below
+ * holds it, because an empty `interactionPlan` parses at every version and
+ * would make the predecessor case vacuous.
+ */
+const STEP_AT_6: Readonly<Record<string, unknown>> = {
+	stepId: 'read',
+	interfaceId: 'thing-api',
+	operationId: 'read-thing',
+	inputBinding: {
+		path: { id: { literal: 'a' } },
+		query: null,
+		header: null,
+		body: null,
+	},
+	after: null,
+	cardinality: 'exactly-one',
+}
+
+/** The same step as a version-5 contract carried it, naming the operation alone. */
+const STEP_AT_5: Readonly<Record<string, unknown>> = (() => {
+	const { interfaceId: _interfaceId, ...rest } = STEP_AT_6
+	return rest
+})()
+
+const EVAL_CONTRACT_AT_6: Readonly<Record<string, unknown>> = {
+	schemaVersion: 6,
 	contractId: 'version-witness-contract',
 	parentDigest: null,
 	revisionCount: 0,
@@ -740,7 +803,7 @@ const EVAL_CONTRACT_AT_5: Readonly<Record<string, unknown>> = {
 	],
 	referenceSets: null,
 	siblingGroups: null,
-	interactionPlan: [],
+	interactionPlan: [STEP_AT_6],
 	scopedResources: null,
 	forbiddenInputs: [],
 	testData: { setup: null, cleanup: null, principals: null, resources: null },
@@ -827,12 +890,18 @@ const SHAPES: readonly {
 		artifact: 'sealed-run-record',
 		current: SEALED_RUN_RECORD_SCHEMA_VERSION,
 		parse: (value) => SealedRunRecord.safeParse(value),
-		predecessor: "carries the prior art's run-level `invalidReason`",
+		predecessor: 'carries observations that name no `interfaceId`',
 		shapeByVersion: {
-			6: (stamp) => ({ ...SEALED_RUN_RECORD_AT_6, schemaVersion: stamp }),
-			5: (stamp) => ({
-				...SEALED_RUN_RECORD_AT_6,
+			7: (stamp) => ({ ...SEALED_RUN_RECORD_AT_7, schemaVersion: stamp }),
+			6: (stamp) => ({
+				...SEALED_RUN_RECORD_AT_7,
 				schemaVersion: stamp,
+				observations: [OBSERVATION_AT_6],
+			}),
+			5: (stamp) => ({
+				...SEALED_RUN_RECORD_AT_7,
+				schemaVersion: stamp,
+				observations: [OBSERVATION_AT_6],
 				invalidReason: 'the harness aborted the trial',
 			}),
 		},
@@ -927,14 +996,20 @@ const SHAPES: readonly {
 		current: EVAL_CONTRACT_SCHEMA_VERSION,
 		parse: (value) => EvalContract.safeParse(value),
 		predecessor:
-			'carries an `mcp` interface whose operation declares a method and a path template',
+			'carries steps that name an `operationId` and no `interfaceId`',
 		shapeByVersion: {
-			5: (stamp) => ({ ...EVAL_CONTRACT_AT_5, schemaVersion: stamp }),
-			4: (stamp) => ({
-				...EVAL_CONTRACT_AT_5,
+			6: (stamp) => ({ ...EVAL_CONTRACT_AT_6, schemaVersion: stamp }),
+			5: (stamp) => ({
+				...EVAL_CONTRACT_AT_6,
 				schemaVersion: stamp,
+				interactionPlan: [STEP_AT_5],
+			}),
+			4: (stamp) => ({
+				...EVAL_CONTRACT_AT_6,
+				schemaVersion: stamp,
+				interactionPlan: [STEP_AT_5],
 				permittedInterfaces: [
-					...(EVAL_CONTRACT_AT_5.permittedInterfaces as readonly unknown[]),
+					...(EVAL_CONTRACT_AT_6.permittedInterfaces as readonly unknown[]),
 					MCP_INTERFACE_AT_4,
 				],
 			}),

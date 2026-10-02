@@ -15,6 +15,7 @@ function observation(
 	return {
 		observationId,
 		sequence,
+		interfaceId: 'svc',
 		operationId,
 		provenance: 'evaluator-chosen',
 		principal: null,
@@ -47,6 +48,7 @@ function step(
 ): InteractionStep {
 	return {
 		stepId: 'under-test',
+		interfaceId: 'svc',
 		operationId,
 		inputBinding: { path: null, query: null, header: null, body: null },
 		after,

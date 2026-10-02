@@ -287,7 +287,7 @@ function satisfiesBindings(
 	index: PlanIndex,
 	resolved: ReadonlyMap<string, CapturedResolution>,
 ): boolean {
-	const operation = anyOperationOf(index, step.operationId)
+	const operation = anyOperationOf(index, step)
 	for (const { channel, bound: binding } of boundChannelsOf(
 		step.inputBinding,
 	)) {

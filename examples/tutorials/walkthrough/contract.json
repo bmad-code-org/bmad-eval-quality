@@ -59,6 +59,7 @@
         },
         "query": null
       },
+      "interfaceId": "notes-api",
       "operationId": "update-note",
       "stepId": "write"
     },
@@ -75,6 +76,7 @@
         },
         "query": null
       },
+      "interfaceId": "notes-api",
       "operationId": "read-note",
       "stepId": "read-back"
     },
@@ -91,6 +93,7 @@
           }
         }
       },
+      "interfaceId": "notes-api",
       "operationId": "list-notes",
       "stepId": "list"
     }
@@ -541,7 +544,7 @@
   "safetyLimits": [
     "No request to any host other than the mapped notes-api target."
   ],
-  "schemaVersion": 5,
+  "schemaVersion": 6,
   "scopedResources": null,
   "siblingGroups": null,
   "sourceSpecDigest": null,

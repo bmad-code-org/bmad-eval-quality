@@ -106,8 +106,19 @@ export type ForbiddenInput = (typeof FORBIDDEN_INPUT_FLOOR)[number]
  */
 export const SIBLING_GROUP_MINIMUM = 2
 
+/**
+ * A sibling-group member names one operation of one interface. A bare
+ * `operationId` is ambiguous once two interfaces declare the same one.
+ */
+export const SiblingOperation = z.strictObject({
+	interfaceId: Identifier,
+	operationId: Identifier,
+})
+
+export type SiblingOperation = z.infer<typeof SiblingOperation>
+
 export const SiblingGroups = z.strictObject({
-	operations: z.array(z.array(Identifier).min(SIBLING_GROUP_MINIMUM)),
+	operations: z.array(z.array(SiblingOperation).min(SIBLING_GROUP_MINIMUM)),
 	parameters: z.array(z.array(KeyName).min(SIBLING_GROUP_MINIMUM)),
 })
 
@@ -158,7 +169,7 @@ export const Budgets = z.strictObject({
  * `compile` is the reader that performs it. The constant lives here beside the
  * schema whose version it names, so the bump and the constant are one edit.
  */
-export const EVAL_CONTRACT_SCHEMA_VERSION = 5
+export const EVAL_CONTRACT_SCHEMA_VERSION = 6
 
 export const EvalContract = z
 	.strictObject({
@@ -235,7 +246,7 @@ export const EvalContract = z
 	.meta({
 		id: 'EvalContract',
 		description:
-			"The Eval Contract. Succeeds the prior-art `eval-contract` schema per AD-24. It carries every declaration AD-19 requires so that AD-31's fourteen relevance and satisfaction predicates are decidable from declarations alone. AD-10's sensitivity witnesses arrived on each operation as an additive `schemaVersion` bump; version 4 opens `permittedInterfaces` to a second interface kind, so a contract may describe a system under test that runs behind a command, and widens the interaction pointer's accepted language with the four command input channels and the `artifact` channel. The widening retypes nothing on its own, since every pointer legal under version 3 is still legal; it carries the same version because it ships in the same release as the retypes. Version 5 gives the `mcp` kind its own operation shape, so a contract may describe a tool server, and widens the pointer language and a step's input binding with the `arguments` channel. Each bump is recorded in its own field's description, and `compile` compares the stamp against `EVAL_CONTRACT_SCHEMA_VERSION` and throws AD-28's `schema-version-mismatch` on anything else.",
+			"The Eval Contract. Succeeds the prior-art `eval-contract` schema per AD-24. It carries every declaration AD-19 requires so that AD-31's fourteen relevance and satisfaction predicates are decidable from declarations alone. AD-10's sensitivity witnesses arrived on each operation as an additive `schemaVersion` bump; version 4 opens `permittedInterfaces` to a second interface kind, so a contract may describe a system under test that runs behind a command, and widens the interaction pointer's accepted language with the four command input channels and the `artifact` channel. The widening retypes nothing on its own, since every pointer legal under version 3 is still legal; it carries the same version because it ships in the same release as the retypes. Version 5 gives the `mcp` kind its own operation shape, so a contract may describe a tool server, and widens the pointer language and a step's input binding with the `arguments` channel. Version 6 qualifies operations by interface: a step carries the `interfaceId` of the interface declaring its operation, and a sibling group's operation members are `{ interfaceId, operationId }` pairs, because an `operationId` is unique only within one interface. A version-5 contract carries bare identifiers in both places and fails to parse against version 6. Each bump is recorded in its own field's description, and `compile` compares the stamp against `EVAL_CONTRACT_SCHEMA_VERSION` and throws AD-28's `schema-version-mismatch` on anything else.",
 	})
 
 export type EvalContract = z.infer<typeof EvalContract>

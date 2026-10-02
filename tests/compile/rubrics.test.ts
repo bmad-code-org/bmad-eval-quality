@@ -494,6 +494,7 @@ describe('compile: rubric check precedence', () => {
 			for (const stepId of ['fan-a', 'fan-b', 'fan-c']) {
 				c.interactionPlan.push({
 					stepId,
+					interfaceId: 'thing-api',
 					operationId: 'list-things',
 					inputBinding: {
 						path: null,

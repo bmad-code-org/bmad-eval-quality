@@ -261,7 +261,7 @@ Your harness runs the workflow and seals what it observed; the plan decides whic
 
 ## Declaring the steps
 
-Every step carries five fields, and all five are required: `InteractionStep` is a `z.strictObject`, so an absent field and an unrecognized field both fail the parse.
+Every step carries six fields, and all six are required: `InteractionStep` is a `z.strictObject`, so an absent field and an unrecognized field both fail the parse.
 
 ```json
 [
@@ -274,6 +274,7 @@ Every step carries five fields, and all five are required: `InteractionStep` is 
       "path": null,
       "query": null
     },
+    "interfaceId": "thing-service",
     "operationId": "create-thing",
     "stepId": "create"
   },
@@ -286,6 +287,7 @@ Every step carries five fields, and all five are required: `InteractionStep` is 
       "path": { "id": { "captured": "/interactions/create/response-body/id" } },
       "query": null
     },
+    "interfaceId": "thing-service",
     "operationId": "get-thing",
     "stepId": "read-back"
   }
@@ -295,7 +297,8 @@ Every step carries five fields, and all five are required: `InteractionStep` is 
 Those are the first two steps of the contract the lab compiled.
 
 - `stepId` is what the rest of the contract addresses the step by, and an evidence pointer spells it `/interactions/{stepId}/...`.
-- `operationId` names an operation on a permitted interface, and the interface's kind decides which binding shape is legal. `compile` accepts `api`, `cli`, and `mcp`, and rejects a contract declaring `web` with `unsupported-interface-kind`.
+- `interfaceId` is the `logicalId` of the permitted interface that declares the operation. An `operationId` is unique only within its interface, so a step names the pair.
+- `operationId` names an operation on that interface, and the interface's kind decides which binding shape is legal. `compile` accepts `api`, `cli`, and `mcp`, and rejects a contract declaring `web` with `unsupported-interface-kind`.
 - `inputBinding` is `ApiInputBinding` over `path`, `query`, `header`, and `body`, `CommandInputBinding` over `argument`, `option`, `environment`, and `stdin`, or `McpInputBinding` over `arguments`.
 - `after` is the temporal clause described above.
 - `cardinality` is one of `exactly-one`, `at-most-one`, and `any`, listed as `SELECTOR_CARDINALITIES`.
@@ -331,7 +334,7 @@ The CLI defaults to `--strict-inputs`.
 ## What ordering actually guarantees
 
 **What the plan fixes.**
-`selectObservations` matches a step against every observation carrying its `operationId`, ordered by the record's `sequence` ascending, since ADR-006 forbids reading order off array position.
+`selectObservations` matches a step against every observation carrying its `interfaceId` and `operationId`, ordered by the record's `sequence` ascending, since ADR-006 forbids reading order off array position.
 `selectWithBindings` then filters those matches in a fixed order: the temporal clause, the capture ordering, then the binding predicates.
 The temporal floor is the `sequence` of the observation the `after` anchor selects.
 The capture floor is the highest `sequence` any of the step's captured bindings resolved from.

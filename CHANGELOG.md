@@ -12,11 +12,26 @@ body.
 
 ### Changed
 
+- **An operation is named by the pair of its interface and its `operationId`, so two interfaces of one contract may declare the same `operationId`.**
+  An `operationId` is unique only within the interface that declares it. The engine used to read a second declaration on another interface as a collision: `compile` refused the contract with an `unreachable-check-evidence` message that said no interface declared the operation, `seal` threw, and `score` landed any observation of the shared id on the Invalid rung.
+  The port messages already carried both identifiers, so the identity was lost only where a port observation becomes a sealed `Observation`.
+  - **BREAKING for a sealed run record.** `Observation` gains a required `interfaceId`, the interface that declares the operation the observation exercised, and `SEALED_RUN_RECORD_SCHEMA_VERSION` moves from 6 to 7, so a version 6 record no longer parses. The value is the one the port observation already echoes. `score` now names a version 6 record as `schema-version-mismatch` before its shape is read.
+  - **BREAKING for an eval contract.** `InteractionStep` gains a required `interfaceId`, an operation member of `siblingGroups` is an `{ interfaceId, operationId }` object where it was a bare identifier, and `EVAL_CONTRACT_SCHEMA_VERSION` moves from 5 to 6, so a version 5 contract no longer parses. Add `interfaceId` to each step and write each sibling-group member as a pair.
+  - **BREAKING for the `PlanIndex` type.** Every lookup takes the pair: `operationOf`, `commandOperationOf`, `mcpOperationOf` and `stepsUsing` take `(interfaceId, operationId)`, `interfaceKindOf` takes the interface, and `anyOperationOf` and `resolveOperation` take a step. `isOperationIdShared` is a new required member that reports an id declared on more than one interface. A pair that one interface declares twice still throws from `buildPlanIndex`.
+  - **BREAKING for `resolveHomeOperation`.** It returns a `HomeOperation`, `{ interfaceId, operation }`, where it returned the operation. Pass its `operation` to `qualifyProbe`. The type is exported.
+  - Selection, the probe witness match, the finding map and coverage read the pair, so a step selects only the observations of its own interface, a probe signed on one interface is exercised only by that interface's observations, and an oracle that addresses the step of one interface does not satisfy the site of another.
+  - A step that names an interface that does not declare its operation fails `compile` with `unreachable-check-evidence`, and the message names the operation and the interface. An interface that declares the operation more than once is named as doing so.
+  - The derived reference in the sealed brief appends `of interface "<id>"` exactly when the contract declares that `operationId` on more than one interface. The brief of every other contract is unchanged apart from its `contractDigest`.
+  - Every contract, record, brief and evidence artifact that carries a contract digest or a scoring version becomes non-comparable with its predecessors, so a stored baseline has to be scored again.
 - **BREAKING: every preflight check names the interface that declares its operation.**
   `PreflightCheck` gains a required `interfaceId`, and `PREFLIGHT_VERDICT_SCHEMA_VERSION` moves from `1` to `2`.
   An operation identifier is unique only within its interface, so two `interface-present` or `input-sensitivity` checks for one operation on two interfaces were indistinguishable in the verdict, although the plan already kept them apart.
   `preflight` writes the declaring interface for a per-operation check and `null` for a check with no operation: `state-reset`, `clean-control`, and a `seeded-fault-fired` check whose defect declares no manifestation witness.
   The published `schemas/preflight-verdict.schema.json` carries the new required key, and a version 1 verdict no longer parses.
+
+### Removed
+
+- **BREAKING** The `operation-identifier-collision` row is removed from the AD-21 verdict ladder, together with `EvidenceIntegrityInputs.operationIdentifierCollisions`. Two interfaces declaring one `operationId` is no longer a condition, and the generated AD-21 table loses the row.
 
 ### Fixed
 
@@ -26,6 +41,9 @@ body.
   `compile` reads the eval contract's stamp ahead of `EvalContract.safeParse` the same way, so a contract stamped for another version reports `schema-version-mismatch` at `EvalContract.schemaVersion` where it used to report `schema-parse-failure` whenever its shape had moved.
   Artifacts stamped with the current versions behave as before.
   `docs/reference/cli-commands.md` counts four artifacts with an in-package version reader and four assembled by the caller.
+- **`preflight` and `score` name a stale eval contract stamp before parsing the contract.**
+  Both parsed the contract with `safeParse` and never compared its `schemaVersion`, so a contract written for another version failed as an anonymous `schema-parse-failure` when its shape differed, and ran silently when its shape happened to parse.
+  They now read the raw stamp first and throw `schema-version-mismatch` at `EvalContract.schemaVersion`, the same fault `compile` raises, and the CLI exits `5`.
 
 ## [4.7.0] - 2026-10-01
 

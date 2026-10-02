@@ -264,7 +264,7 @@ export function checkArtifactReferences(contract: EvalContract): void {
 				: undefined
 		const step = index.stepOf(stepId)
 		if (step === undefined) return undefined
-		return anyOperationOf(index, step.operationId)
+		return anyOperationOf(index, step)
 	}
 	forEachArtifactPointer(contract, (pointer, path, witnessScope) => {
 		const target = parseEvidenceTarget(pointer)
@@ -305,7 +305,7 @@ export function checkUndeclaredMandatoryInput(contract: EvalContract): void {
 	)
 	const principals = new Set(Object.keys(contract.testData.principals ?? {}))
 	for (const step of contract.interactionPlan) {
-		const operation = anyOperationOf(index, step.operationId)
+		const operation = anyOperationOf(index, step)
 		if (operation === undefined) continue
 		for (const { channel, bound: binding } of boundChannelsOf(
 			step.inputBinding,

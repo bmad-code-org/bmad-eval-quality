@@ -1,4 +1,9 @@
-/** resolves a pointer to its step and operation; nothing about reachability. */
+/**
+ * resolves a pointer to its step and operation; nothing about reachability.
+ * An operation is named by the pair `(interfaceId, operationId)`: an
+ * `operationId` is unique only within the interface that declares it, so every
+ * operation map keys by the pair.
+ */
 import type {
 	AnyOperation,
 	CommandOperation,
@@ -160,23 +165,54 @@ export function parseEvidenceTarget(pointer: string): EvidenceTarget {
  */
 export type PlanIndex = {
 	stepOf: (stepId: string) => InteractionStep | undefined
-	operationOf: (operationId: string) => Operation | undefined
-	commandOperationOf: (operationId: string) => CommandOperation | undefined
-	mcpOperationOf: (operationId: string) => McpOperation | undefined
-	interfaceKindOf: (operationId: string) => InterfaceKindName | undefined
-	stepsUsing: (operationId: string) => readonly InteractionStep[]
+	operationOf: (
+		interfaceId: string,
+		operationId: string,
+	) => Operation | undefined
+	commandOperationOf: (
+		interfaceId: string,
+		operationId: string,
+	) => CommandOperation | undefined
+	mcpOperationOf: (
+		interfaceId: string,
+		operationId: string,
+	) => McpOperation | undefined
+	interfaceKindOf: (interfaceId: string) => InterfaceKindName | undefined
+	stepsUsing: (
+		interfaceId: string,
+		operationId: string,
+	) => readonly InteractionStep[]
+	/** Whether more than one permitted interface declares this `operationId`. */
+	isOperationIdShared: (operationId: string) => boolean
+	/** Whether one interface declares this operation more than once, which leaves it resolving to nothing. */
+	isOperationDuplicated: (interfaceId: string, operationId: string) => boolean
 }
+
+/** The two fields of a step that name the operation it selects. */
+export type OperationRef = Pick<InteractionStep, 'interfaceId' | 'operationId'>
 
 export type PlanIndexOptions = {
 	duplicateIds?: 'throw' | 'unresolved'
 }
 
 /**
+ * The one spelling of an operation as a map key: the pair joined on U+0000,
+ * which no identifier carries. Every module that keys by operation uses this
+ * instead of spelling the join again.
+ */
+export const operationKey = (
+	interfaceId: string,
+	operationId: string,
+): string => `${interfaceId}\u0000${operationId}`
+
+/**
  * Builds the index once over the whole plan and interface set. Neither
- * schema enforces `stepId`/`operationId` uniqueness. Strict callers keep the
- * default throw instead of resolving by array order. Standalone structural
- * checks can select `unresolved`, which removes every ambiguous identifier
- * from lookup while preserving all unambiguous entries.
+ * schema enforces `stepId` uniqueness or one declaration per operation within
+ * an interface. Strict callers keep the default throw instead of resolving by
+ * array order. Standalone structural checks can select `unresolved`, which
+ * removes every ambiguous identifier from lookup while preserving all
+ * unambiguous entries. Two interfaces declaring the same `operationId` is not
+ * ambiguous: each pair resolves to its own operation.
  */
 export function buildPlanIndex(
 	interactionPlan: readonly InteractionStep[],
@@ -197,9 +233,10 @@ export function buildPlanIndex(
 		} else {
 			steps.set(step.stepId, step)
 		}
-		const group = stepsByOperation.get(step.operationId)
+		const key = operationKey(step.interfaceId, step.operationId)
+		const group = stepsByOperation.get(key)
 		if (group === undefined) {
-			stepsByOperation.set(step.operationId, [step])
+			stepsByOperation.set(key, [step])
 		} else {
 			group.push(step)
 		}
@@ -208,33 +245,42 @@ export function buildPlanIndex(
 	const commandOperations = new Map<string, CommandOperation>()
 	const mcpOperations = new Map<string, McpOperation>()
 	const kinds = new Map<string, InterfaceKindName>()
-	const duplicateOperationIds = new Set<string>()
+	const claimed = new Set<string>()
+	const interfacesByOperationId = new Map<string, Set<string>>()
+	const duplicateOperations = new Set<string>()
 	/**
-	 * Records one operation id against the kind that declared it and answers
-	 * whether the caller may store the operation. An id two permitted
-	 * interfaces both declare is removed from every map instead of being
-	 * resolved by array order, so `operationOf` and its two siblings answer
-	 * `undefined` for it. One closure serves all three arms: the bookkeeping is
-	 * the same for every kind and only the destination map differs.
+	 * Records one operation pair and answers whether the caller may store the
+	 * operation. A pair one interface declares twice is removed from every map
+	 * instead of being resolved by array order, so `operationOf` and its two
+	 * siblings answer `undefined` for it. One closure serves all three arms:
+	 * the bookkeeping is the same for every kind and only the destination map
+	 * differs.
 	 */
-	const claim = (operationId: string, kind: InterfaceKindName): boolean => {
-		if (kinds.has(operationId) || duplicateOperationIds.has(operationId)) {
+	const claim = (interfaceId: string, operationId: string): boolean => {
+		const key = operationKey(interfaceId, operationId)
+		if (claimed.has(key)) {
 			if (duplicateIds === 'throw') {
 				throw new TypeError(
-					`duplicate operation id across permitted interfaces: ${operationId}`,
+					`duplicate operation id within interface ${interfaceId}: ${operationId}`,
 				)
 			}
-			operations.delete(operationId)
-			commandOperations.delete(operationId)
-			mcpOperations.delete(operationId)
-			kinds.delete(operationId)
-			duplicateOperationIds.add(operationId)
+			operations.delete(key)
+			commandOperations.delete(key)
+			mcpOperations.delete(key)
+			duplicateOperations.add(key)
 			return false
 		}
-		kinds.set(operationId, kind)
+		claimed.add(key)
+		const declaring = interfacesByOperationId.get(operationId)
+		if (declaring === undefined) {
+			interfacesByOperationId.set(operationId, new Set([interfaceId]))
+		} else {
+			declaring.add(interfaceId)
+		}
 		return true
 	}
 	for (const iface of permittedInterfaces) {
+		kinds.set(iface.logicalId, iface.kind)
 		// Narrowed on the interface's own kind before its operations are read.
 		// Each branch of `PermittedInterface` declares its own `operations`
 		// element type, so an arm that narrowed first iterates
@@ -246,21 +292,30 @@ export function buildPlanIndex(
 		switch (iface.kind) {
 			case 'cli':
 				for (const operation of iface.operations) {
-					if (claim(operation.operationId, iface.kind))
-						commandOperations.set(operation.operationId, operation)
+					if (claim(iface.logicalId, operation.operationId))
+						commandOperations.set(
+							operationKey(iface.logicalId, operation.operationId),
+							operation,
+						)
 				}
 				continue
 			case 'mcp':
 				for (const operation of iface.operations) {
-					if (claim(operation.operationId, iface.kind))
-						mcpOperations.set(operation.operationId, operation)
+					if (claim(iface.logicalId, operation.operationId))
+						mcpOperations.set(
+							operationKey(iface.logicalId, operation.operationId),
+							operation,
+						)
 				}
 				continue
 			case 'api':
 			case 'web':
 				for (const operation of iface.operations) {
-					if (claim(operation.operationId, iface.kind))
-						operations.set(operation.operationId, operation)
+					if (claim(iface.logicalId, operation.operationId))
+						operations.set(
+							operationKey(iface.logicalId, operation.operationId),
+							operation,
+						)
 				}
 				continue
 		}
@@ -272,11 +327,19 @@ export function buildPlanIndex(
 	}
 	return {
 		stepOf: (stepId) => steps.get(stepId),
-		operationOf: (operationId) => operations.get(operationId),
-		commandOperationOf: (operationId) => commandOperations.get(operationId),
-		mcpOperationOf: (operationId) => mcpOperations.get(operationId),
-		interfaceKindOf: (operationId) => kinds.get(operationId),
-		stepsUsing: (operationId) => stepsByOperation.get(operationId) ?? [],
+		operationOf: (interfaceId, operationId) =>
+			operations.get(operationKey(interfaceId, operationId)),
+		commandOperationOf: (interfaceId, operationId) =>
+			commandOperations.get(operationKey(interfaceId, operationId)),
+		mcpOperationOf: (interfaceId, operationId) =>
+			mcpOperations.get(operationKey(interfaceId, operationId)),
+		interfaceKindOf: (interfaceId) => kinds.get(interfaceId),
+		stepsUsing: (interfaceId, operationId) =>
+			stepsByOperation.get(operationKey(interfaceId, operationId)) ?? [],
+		isOperationIdShared: (operationId) =>
+			(interfacesByOperationId.get(operationId)?.size ?? 0) > 1,
+		isOperationDuplicated: (interfaceId, operationId) =>
+			duplicateOperations.has(operationKey(interfaceId, operationId)),
 	}
 }
 
@@ -304,14 +367,29 @@ export function resolveStep(index: PlanIndex, stepId: string): InteractionStep {
  */
 export const anyOperationOf = (
 	index: PlanIndex,
-	operationId: string,
+	ref: OperationRef,
 ): AnyOperation | undefined =>
-	index.operationOf(operationId) ??
-	index.commandOperationOf(operationId) ??
-	index.mcpOperationOf(operationId)
+	index.operationOf(ref.interfaceId, ref.operationId) ??
+	index.commandOperationOf(ref.interfaceId, ref.operationId) ??
+	index.mcpOperationOf(ref.interfaceId, ref.operationId)
 
 /**
- * Resolves an operation id through the index or throws. See `resolveStep`.
+ * The clause that says why a step's pair resolves to no operation, shared by
+ * every message that reports it: the interface does not declare the operation,
+ * or declares it more than once and the index resolves neither declaration.
+ */
+export const undeclaredOperationClause = (
+	index: PlanIndex,
+	ref: OperationRef,
+): string =>
+	`on interface "${ref.interfaceId}", which that interface ${
+		index.isOperationDuplicated(ref.interfaceId, ref.operationId)
+			? 'declares more than once'
+			: 'does not declare'
+	}`
+
+/**
+ * Resolves a step's operation through the index or throws. See `resolveStep`.
  *
  * Reads all three maps. It read `operationOf` alone, so it threw for a command
  * operation and then for a tool call with the message "the permitted interfaces
@@ -321,12 +399,12 @@ export const anyOperationOf = (
  */
 export function resolveOperation(
 	index: PlanIndex,
-	operationId: string,
+	ref: OperationRef,
 ): AnyOperation {
-	const operation = anyOperationOf(index, operationId)
+	const operation = anyOperationOf(index, ref)
 	if (operation === undefined) {
 		throw new TypeError(
-			`step names an operation the permitted interfaces do not declare: ${operationId}`,
+			`step names operation "${ref.operationId}" ${undeclaredOperationClause(index, ref)}`,
 		)
 	}
 	return operation

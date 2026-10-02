@@ -635,13 +635,17 @@ describe('a transport identity is compared inside its own shape family', () => {
 				DefectSignature.parse(toolSignature('archive_notes')),
 				contract.permittedInterfaces,
 			),
-		).toMatchObject({ operationId: 'archive-notes' })
+		).toMatchObject({
+			operation: { operationId: 'archive-notes' },
+		})
 		expect(
 			resolveHomeOperation(
 				DefectSignature.parse(toolSignature('search_notes')),
 				contract.permittedInterfaces,
 			),
-		).toMatchObject({ operationId: 'search-notes' })
+		).toMatchObject({
+			operation: { operationId: 'search-notes' },
+		})
 	})
 
 	it('refuses an api-shaped signature that declares the kind', () => {
@@ -686,7 +690,7 @@ describe('a transport identity is compared inside its own shape family', () => {
 				DefectSignature.parse(toolSignature('search_notes')),
 				contract.permittedInterfaces,
 			),
-		).toBe(declared)
+		).toEqual({ interfaceId: tools!.logicalId, operation: declared })
 	})
 
 	// `commandSignature` renders an executable with an empty subcommand path as
@@ -746,20 +750,30 @@ describe('the plan index sorts a tool call into its own map', () => {
 	)
 
 	it('answers the tool-call accessor and neither of the other two', () => {
-		expect(index.mcpOperationOf('search-notes')?.toolName).toBe('search_notes')
-		expect(index.operationOf('search-notes')).toBeUndefined()
-		expect(index.commandOperationOf('search-notes')).toBeUndefined()
+		expect(
+			index.mcpOperationOf('notes-tool-server', 'search-notes')?.toolName,
+		).toBe('search_notes')
+		expect(
+			index.operationOf('notes-tool-server', 'search-notes'),
+		).toBeUndefined()
+		expect(
+			index.commandOperationOf('notes-tool-server', 'search-notes'),
+		).toBeUndefined()
 	})
 
 	it('resolves it through the kind-neutral accessor', () => {
-		const operation = anyOperationOf(index, 'search-notes')
+		const operation = anyOperationOf(index, {
+			interfaceId: 'notes-tool-server',
+			operationId: 'search-notes',
+		})
 		expect(operation).toBeDefined()
 		expect(isMcpOperation(operation!)).toBe(true)
 	})
 
 	it('names it a tool in a sealed brief, on the noun-follows-the-kind rule', () => {
 		const step = index.stepOf('search')
-		const operation = anyOperationOf(index, 'search-notes')
+		const operation =
+			step === undefined ? undefined : anyOperationOf(index, step)
 		expect(step).toBeDefined()
 		expect(operation).toBeDefined()
 		expect(renderStepReference(step!, operation!, [step!], index)).toContain(

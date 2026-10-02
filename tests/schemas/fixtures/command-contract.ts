@@ -15,7 +15,7 @@ const emptyChannel = {
 }
 
 export const commandContract = {
-	schemaVersion: 5,
+	schemaVersion: 6,
 	contractId: 'fragment-selection',
 	parentDigest: null,
 	revisionCount: 0,
@@ -146,6 +146,7 @@ export const commandContract = {
 	interactionPlan: [
 		{
 			stepId: 'select',
+			interfaceId: 'fragment-selection-runner',
 			operationId: 'select-fragments',
 			after: null,
 			cardinality: 'exactly-one',

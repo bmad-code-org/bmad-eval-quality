@@ -280,6 +280,7 @@ const observationFor = (
 const recordObservation = (selected: readonly string[]) => ({
 	observationId: 'obs-001',
 	sequence: 1,
+	interfaceId: 'skill-runner',
 	operationId: 'run-skill',
 	provenance: 'evaluator-chosen',
 	principal: null,

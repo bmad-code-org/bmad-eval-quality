@@ -113,6 +113,7 @@ describe('the declared selector cardinality', () => {
 describe('an interaction step', () => {
 	const step = {
 		stepId: 'read-back',
+		interfaceId: 'notes-api',
 		operationId: 'get-note',
 		inputBinding: { ...unbound, path: { id: { literal: 'n-1' } } },
 		after: 'write',
@@ -134,6 +135,13 @@ describe('an interaction step', () => {
 		const result = InteractionStep.safeParse(withoutClause)
 		expect(result.success).toBe(false)
 		expect(result.error?.issues[0]?.path).toEqual(['after'])
+	})
+
+	it('rejects an omitted interface: an operation identifier is unique only within its interface, so a step names the pair', () => {
+		const { interfaceId: _interfaceId, ...withoutInterface } = step
+		const result = InteractionStep.safeParse(withoutInterface)
+		expect(result.success).toBe(false)
+		expect(result.error?.issues[0]?.path).toEqual(['interfaceId'])
 	})
 
 	it('rejects a step identifier outside the shared charset', () => {

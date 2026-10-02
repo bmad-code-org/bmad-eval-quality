@@ -1732,9 +1732,24 @@
                 "minItems": 2,
                 "type": "array",
                 "items": {
-                  "type": "string",
-                  "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
-                  "description": "A kebab-case slug. Excludes \"/\" and \"~\" so an identifier can be embedded in an interaction-rooted pointer without escaping."
+                  "type": "object",
+                  "properties": {
+                    "interfaceId": {
+                      "type": "string",
+                      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                      "description": "A kebab-case slug. Excludes \"/\" and \"~\" so an identifier can be embedded in an interaction-rooted pointer without escaping."
+                    },
+                    "operationId": {
+                      "type": "string",
+                      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                      "description": "A kebab-case slug. Excludes \"/\" and \"~\" so an identifier can be embedded in an interaction-rooted pointer without escaping."
+                    }
+                  },
+                  "required": [
+                    "interfaceId",
+                    "operationId"
+                  ],
+                  "additionalProperties": false
                 }
               }
             },
@@ -1771,6 +1786,11 @@
             "type": "string",
             "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
             "description": "A kebab-case slug. Excludes \"/\" and \"~\" so an identifier can be embedded in an interaction-rooted pointer without escaping."
+          },
+          "interfaceId": {
+            "type": "string",
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+            "description": "The `logicalId` of the permitted interface that declares `operationId`. An `operationId` is unique only within one interface, so a step selects observations by the pair. That the interface exists and declares the operation is a cross-subtree constraint the compiler checks."
           },
           "operationId": {
             "type": "string",
@@ -1866,6 +1886,7 @@
         },
         "required": [
           "stepId",
+          "interfaceId",
           "operationId",
           "inputBinding",
           "after",
@@ -2237,7 +2258,7 @@
     "fixtureReset"
   ],
   "additionalProperties": false,
-  "description": "The Eval Contract. Succeeds the prior-art `eval-contract` schema per AD-24. It carries every declaration AD-19 requires so that AD-31's fourteen relevance and satisfaction predicates are decidable from declarations alone. AD-10's sensitivity witnesses arrived on each operation as an additive `schemaVersion` bump; version 4 opens `permittedInterfaces` to a second interface kind, so a contract may describe a system under test that runs behind a command, and widens the interaction pointer's accepted language with the four command input channels and the `artifact` channel. The widening retypes nothing on its own, since every pointer legal under version 3 is still legal; it carries the same version because it ships in the same release as the retypes. Version 5 gives the `mcp` kind its own operation shape, so a contract may describe a tool server, and widens the pointer language and a step's input binding with the `arguments` channel. Each bump is recorded in its own field's description, and `compile` compares the stamp against `EVAL_CONTRACT_SCHEMA_VERSION` and throws AD-28's `schema-version-mismatch` on anything else.",
+  "description": "The Eval Contract. Succeeds the prior-art `eval-contract` schema per AD-24. It carries every declaration AD-19 requires so that AD-31's fourteen relevance and satisfaction predicates are decidable from declarations alone. AD-10's sensitivity witnesses arrived on each operation as an additive `schemaVersion` bump; version 4 opens `permittedInterfaces` to a second interface kind, so a contract may describe a system under test that runs behind a command, and widens the interaction pointer's accepted language with the four command input channels and the `artifact` channel. The widening retypes nothing on its own, since every pointer legal under version 3 is still legal; it carries the same version because it ships in the same release as the retypes. Version 5 gives the `mcp` kind its own operation shape, so a contract may describe a tool server, and widens the pointer language and a step's input binding with the `arguments` channel. Version 6 qualifies operations by interface: a step carries the `interfaceId` of the interface declaring its operation, and a sibling group's operation members are `{ interfaceId, operationId }` pairs, because an `operationId` is unique only within one interface. A version-5 contract carries bare identifiers in both places and fails to parse against version 6. Each bump is recorded in its own field's description, and `compile` compares the stamp against `EVAL_CONTRACT_SCHEMA_VERSION` and throws AD-28's `schema-version-mismatch` on anything else.",
   "$defs": {
     "Expression": {
       "description": "A `check` expression tree over AD-4's closed vocabulary, discriminated on `op`. Exports as a `oneOf` of sixteen branches, each identified by its `op` const; a constraint ledger entry names a branch by that const rather than by position.",

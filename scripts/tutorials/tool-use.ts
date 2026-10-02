@@ -385,6 +385,7 @@ const contract: EvalContract = {
 	interactionPlan: [
 		{
 			stepId: 'search',
+			interfaceId: INTERFACE_ID,
 			operationId: 'search-notes',
 			inputBinding: { arguments: { query: { literal: 'alpha' } } },
 			after: null,
@@ -392,6 +393,7 @@ const contract: EvalContract = {
 		},
 		{
 			stepId: 'create',
+			interfaceId: INTERFACE_ID,
 			operationId: 'create-note',
 			inputBinding: { arguments: { title: { literal: 'a new note' } } },
 			after: null,
@@ -399,6 +401,7 @@ const contract: EvalContract = {
 		},
 		{
 			stepId: 'malformed-search',
+			interfaceId: INTERFACE_ID,
 			operationId: 'search-notes',
 			inputBinding: { arguments: { query: { matcher: 'type-violating' } } },
 			after: null,
@@ -406,6 +409,7 @@ const contract: EvalContract = {
 		},
 		{
 			stepId: 'malformed-create',
+			interfaceId: INTERFACE_ID,
 			operationId: 'create-note',
 			inputBinding: { arguments: { title: { matcher: 'type-violating' } } },
 			after: null,
@@ -413,6 +417,7 @@ const contract: EvalContract = {
 		},
 		{
 			stepId: 'read-back',
+			interfaceId: INTERFACE_ID,
 			operationId: 'search-notes',
 			inputBinding: {
 				arguments: {
@@ -492,6 +497,7 @@ const stepObservations = (seedDefect: boolean) => {
 		return {
 			observationId: `obs-${step.stepId}`,
 			sequence: index + 1,
+			interfaceId: INTERFACE_ID,
 			operationId: step.operationId,
 			provenance: 'evaluator-chosen',
 			principal: null,

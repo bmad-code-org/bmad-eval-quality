@@ -19,7 +19,7 @@
 /** Mutable keyword occurrences per published document (AC 8's census). */
 export const CENSUS_BY_DOCUMENT: Readonly<Record<string, number>> = {
 	'artifact-reference': 21,
-	'eval-contract': 1304,
+	'eval-contract': 1311,
 	'evaluator-configuration': 69,
 	'evidence-artifact': 548,
 	'isolation-manifest': 141,
@@ -29,13 +29,13 @@ export const CENSUS_BY_DOCUMENT: Readonly<Record<string, number>> = {
 	rubric: 51,
 	'scoring-policy': 35,
 	'sealed-evaluator-brief': 102,
-	'sealed-run-record': 384,
+	'sealed-run-record': 386,
 	'strength-aggregate': 147,
 }
 
 /** The same occurrences counted by keyword instead of by document. */
 export const CENSUS_BY_KEYWORD: Readonly<Record<string, number>> = {
-	additionalProperties: 355,
+	additionalProperties: 356,
 	anyOf: 170,
 	const: 115,
 	enum: 87,
@@ -49,11 +49,11 @@ export const CENSUS_BY_KEYWORD: Readonly<Record<string, number>> = {
 	minProperties: 2,
 	minimum: 140,
 	oneOf: 28,
-	pattern: 205,
+	pattern: 208,
 	prefixItems: 24,
 	propertyNames: 69,
-	required: 286,
-	type: 1519,
+	required: 287,
+	type: 1523,
 }
 
 /**
@@ -62,7 +62,7 @@ export const CENSUS_BY_KEYWORD: Readonly<Record<string, number>> = {
  * keyword's descent being removed, and the total catches an arithmetic slip in
  * either.
  */
-export const CENSUS_TOTAL = 3503
+export const CENSUS_TOTAL = 3512
 
 /** Named `$defs` keys per published document. */
 export const DEFS_BY_DOCUMENT: Readonly<Record<string, number>> = {

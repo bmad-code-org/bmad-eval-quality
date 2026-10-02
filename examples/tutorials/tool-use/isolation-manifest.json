@@ -8,9 +8,9 @@
   },
   "allowedMounts": [],
   "conditionArm": "mutated",
-  "contractDigest": "sha256:26e01290546eb502a53722cf2c1736e1148a17ed6e1f7ac80316b0bfb470acba",
+  "contractDigest": "sha256:96a3790a4b9e291a3b1a73cb14789599916fe51f2abc2398ff02c40ee5213cf6",
   "contractId": "tutorial-notes-tool-server",
-  "evaluatorConfigurationDigest": "sha256:043d90d46e5b706d99df498161c0b57700fe31da93ca52662f393e636c06e869",
+  "evaluatorConfigurationDigest": "sha256:939484df000ee54605693054e32e8180c8a8840673561f2e786455e21531e81d",
   "forbiddenInputAccounting": {
     "builder-transcript": {
       "note": null,

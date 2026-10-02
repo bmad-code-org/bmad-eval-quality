@@ -521,6 +521,7 @@ const contract: EvalContract = {
 	interactionPlan: [
 		{
 			stepId: 'summarize',
+			interfaceId: 'release-notes-agent',
 			operationId: 'summarize-changes',
 			inputBinding: {
 				argument: null,
@@ -536,6 +537,7 @@ const contract: EvalContract = {
 		},
 		{
 			stepId: 'show',
+			interfaceId: 'release-notes-agent',
 			operationId: 'show-notes',
 			inputBinding: {
 				argument: null,
@@ -548,6 +550,7 @@ const contract: EvalContract = {
 		},
 		{
 			stepId: 'refuse',
+			interfaceId: 'release-notes-agent',
 			operationId: 'summarize-changes',
 			inputBinding: {
 				argument: null,
@@ -986,6 +989,7 @@ export function buildAgentTutorial(): Map<string, string> {
 			{
 				observationId: 'obs-001',
 				sequence: 1,
+				interfaceId: 'release-notes-agent',
 				operationId: 'summarize-changes',
 				provenance: 'evaluator-chosen',
 				principal: null,
@@ -1004,6 +1008,7 @@ export function buildAgentTutorial(): Map<string, string> {
 			{
 				observationId: 'obs-002',
 				sequence: 2,
+				interfaceId: 'release-notes-agent',
 				operationId: 'show-notes',
 				provenance: 'evaluator-chosen',
 				principal: null,
@@ -1019,6 +1024,7 @@ export function buildAgentTutorial(): Map<string, string> {
 			{
 				observationId: 'obs-003',
 				sequence: 3,
+				interfaceId: 'release-notes-agent',
 				operationId: 'summarize-changes',
 				provenance: 'evaluator-chosen',
 				principal: null,

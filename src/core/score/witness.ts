@@ -38,6 +38,7 @@ import type {
 	SealedRunRecord,
 } from '../schemas/sealed-run-record.ts'
 
+import { operationKey } from '../seal/plan-index.ts'
 import { deepEquals, jsonTypeOf } from './bindings.ts'
 import { resolveHomeOperation } from './qualification.ts'
 
@@ -236,7 +237,8 @@ export function matchProbeWitness(
 			? []
 			: record.observations.filter(
 					(observation) =>
-						observation.operationId === homeOperation.operationId,
+						observation.interfaceId === homeOperation.interfaceId &&
+						observation.operationId === homeOperation.operation.operationId,
 				)
 	// AD-40's whole exclusion mechanism, and the only one available: an aborted
 	// in-flight call never becomes an observation at all, so there is no
@@ -269,7 +271,7 @@ export function matchProbeWitness(
 			selectorAdmits(
 				signature.condition.selector.inputBinding,
 				observation,
-				homeOperation,
+				homeOperation.operation,
 			),
 		)
 		.sort(bySequence)
@@ -281,7 +283,7 @@ export function matchProbeWitness(
 		const resolution = resolveCondition(
 			signature,
 			candidate,
-			homeOperation,
+			homeOperation.operation,
 			artifactPath,
 		)
 		if (resolution === 'true') satisfying.push(candidate.observationId)
@@ -398,7 +400,7 @@ export function mapFindings(
 	record: Pick<SealedRunRecord, 'observations' | 'findings'>,
 ): FindingMap {
 	const byProbeId = new Map(probes.map((probe) => [probe.probeId, probe]))
-	const operationIdOf = new Map<string, string | null>()
+	const homeKeyOf = new Map<string, string | null>()
 	const mapped: MappedFinding[] = []
 	const unmapped: MappedFinding[] = []
 	const dangling: MappedFinding[] = []
@@ -406,7 +408,7 @@ export function mapFindings(
 	const observationOperation = new Map(
 		record.observations.map((observation) => [
 			observation.observationId,
-			observation.operationId,
+			operationKey(observation.interfaceId, observation.operationId),
 		]),
 	)
 	for (const finding of record.findings) {
@@ -425,15 +427,20 @@ export function mapFindings(
 			signatureless.push(entry)
 			continue
 		}
-		if (!operationIdOf.has(probe.probeId)) {
-			const operation = resolveHomeOperation(signature, interfaces)
-			operationIdOf.set(probe.probeId, operation?.operationId ?? null)
+		if (!homeKeyOf.has(probe.probeId)) {
+			const home = resolveHomeOperation(signature, interfaces)
+			homeKeyOf.set(
+				probe.probeId,
+				home === null
+					? null
+					: operationKey(home.interfaceId, home.operation.operationId),
+			)
 		}
-		const homeOperationId = operationIdOf.get(probe.probeId) ?? null
+		const homeKey = homeKeyOf.get(probe.probeId) ?? null
 		const touchesHome =
-			homeOperationId !== null &&
+			homeKey !== null &&
 			finding.observationIds.some(
-				(id) => observationOperation.get(id) === homeOperationId,
+				(id) => observationOperation.get(id) === homeKey,
 			)
 		if (touchesHome) mapped.push(entry)
 		else unmapped.push(entry)

@@ -947,12 +947,12 @@
 				},
 				{
 					"file": "docs/how-to/evaluate-tool-use-behavior.md",
-					"citation": "src/core/score/qualification.ts:838",
+					"citation": "src/core/score/qualification.ts:849",
 					"reason": "the sentence names no backticked identifier at all"
 				},
 				{
 					"file": "docs/how-to/evaluate-tool-use-behavior.md",
-					"citation": "src/core/schemas/sealed-run-record.ts:255",
+					"citation": "src/core/schemas/sealed-run-record.ts:258",
 					"reason": "the sentence names no backticked identifier at all"
 				},
 				{
@@ -1596,6 +1596,46 @@
 				"text": {
 					"module": "scripts/doc-claim-sources.ts",
 					"export": "walkthroughCorpusDigest"
+				}
+			},
+			{
+				"file": "docs/how-to/evaluate-ai-feature-behavior.md",
+				"claim": "the walkthrough chain's caller-attested corpus digest",
+				"text": {
+					"module": "scripts/doc-claim-sources.ts",
+					"export": "walkthroughCorpusDigest"
+				}
+			},
+			{
+				"file": "docs/how-to/evaluate-agent-behavior.md",
+				"claim": "the agent chain's caller-attested corpus digest",
+				"text": {
+					"module": "scripts/doc-claim-sources.ts",
+					"export": "agentCorpusDigest"
+				}
+			},
+			{
+				"file": "docs/how-to/evaluate-skill-behavior.md",
+				"claim": "the skill chain's caller-attested corpus digest",
+				"text": {
+					"module": "scripts/doc-claim-sources.ts",
+					"export": "skillCorpusDigest"
+				}
+			},
+			{
+				"file": "docs/how-to/evaluate-workflow-behavior.md",
+				"claim": "the workflow chain's caller-attested corpus digest",
+				"text": {
+					"module": "scripts/doc-claim-sources.ts",
+					"export": "workflowCorpusDigest"
+				}
+			},
+			{
+				"file": "docs/how-to/evaluate-tool-use-behavior.md",
+				"claim": "the tool-use chain's caller-attested corpus digest",
+				"text": {
+					"module": "scripts/doc-claim-sources.ts",
+					"export": "toolUseCorpusDigest"
 				}
 			}
 		]

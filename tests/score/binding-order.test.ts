@@ -13,6 +13,7 @@ function step(
 ): InteractionStep {
 	return {
 		stepId,
+		interfaceId: 'some-api',
 		operationId: 'some-op',
 		inputBinding: {
 			path: null,

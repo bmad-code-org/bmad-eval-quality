@@ -86,6 +86,7 @@ const observation = (
 ) => ({
 	observationId,
 	sequence,
+	interfaceId: 'notes-tool-server',
 	operationId,
 	provenance: 'evaluator-chosen' as const,
 	principal: null,
@@ -117,7 +118,7 @@ const held = (oracleId: string, observationIds: readonly string[]) => ({
 })
 
 const record: SealedRunRecord = {
-	schemaVersion: 6,
+	schemaVersion: 7,
 	parentDigest: null,
 	revisionCount: 0,
 	runId: RUN_ID,

@@ -24,6 +24,7 @@ import {
 	type EnvironmentProbePort,
 	probeParsers,
 } from '../ports/environment-probe-port.ts'
+import { checkContractVersion } from './contract-stamp.ts'
 import { type DiagnosticSink, emit } from './diagnostics.ts'
 import { invokePort } from './invoke-port.ts'
 
@@ -59,6 +60,7 @@ function parseProbes(input: readonly Probe[]): Probe[] {
 }
 
 function parseContract(input: EvalContract): EvalContract {
+	checkContractVersion(input)
 	const parsed = EvalContract.safeParse(input)
 	if (!parsed.success) {
 		throw new RuntimeFault(

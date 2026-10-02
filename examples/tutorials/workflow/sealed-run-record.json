@@ -6,8 +6,8 @@
     "storage": "public"
   },
   "conditionArm": "mutated",
-  "contractDigest": "sha256:dae134fc04896ddc008ff3dbdac9cc7eeb32120a7f4a0a42e54a4df1523728e4",
-  "evaluatorConfigurationDigest": "sha256:9f5f1a79045cab9d517e764b00033ed364c3ac4c745a5b203dda3de389132b12",
+  "contractDigest": "sha256:7eba35f478649cc7a3c4640444fea5530d659ce6dfcde0df40f77dca15598a39",
+  "evaluatorConfigurationDigest": "sha256:21ff3d1a8d6622300f2ffa9836693a4f4c8462c880cfff173533f186d0f9f3bd",
   "evaluatorRecommendation": "FAIL",
   "evidenceDisclosure": {
     "reportedIncomplete": false,
@@ -65,7 +65,7 @@
     }
   ],
   "isolationManifestArtifact": {
-    "digest": "sha256:e1e0d2cde6bd83b10cbe2cc4b1c132dbb496a7e6f651b4c31176293bc40ea86a",
+    "digest": "sha256:dd4e64bdc1e6960046a024519f3cbea9da09354e72b789867600f7bab14def61",
     "path": "examples/tutorials/workflow/isolation-manifest.json",
     "privateRef": null,
     "storage": "public"
@@ -89,6 +89,7 @@
         "stdin": null
       },
       "exitCode": null,
+      "interfaceId": "thing-service",
       "observationId": "obs-reset",
       "operationId": "reset-things",
       "principal": null,
@@ -125,6 +126,7 @@
         "stdin": null
       },
       "exitCode": null,
+      "interfaceId": "thing-service",
       "observationId": "obs-reset-read-back",
       "operationId": "get-thing",
       "principal": null,
@@ -164,6 +166,7 @@
         "stdin": null
       },
       "exitCode": null,
+      "interfaceId": "thing-service",
       "observationId": "obs-create",
       "operationId": "create-thing",
       "principal": null,
@@ -201,6 +204,7 @@
         "stdin": null
       },
       "exitCode": null,
+      "interfaceId": "thing-service",
       "observationId": "obs-read-back",
       "operationId": "get-thing",
       "principal": null,
@@ -240,6 +244,7 @@
         "stdin": null
       },
       "exitCode": null,
+      "interfaceId": "thing-service",
       "observationId": "obs-malformed-create",
       "operationId": "create-thing",
       "principal": null,
@@ -276,6 +281,7 @@
         "stdin": null
       },
       "exitCode": null,
+      "interfaceId": "thing-service",
       "observationId": "obs-malformed-read",
       "operationId": "get-thing",
       "principal": null,
@@ -312,6 +318,7 @@
         "stdin": null
       },
       "exitCode": null,
+      "interfaceId": "thing-service",
       "observationId": "obs-malformed-reset",
       "operationId": "reset-things",
       "principal": null,
@@ -404,7 +411,7 @@
   },
   "revisionCount": 0,
   "runId": "workflow-run-1",
-  "schemaVersion": 6,
-  "sealedBriefDigest": "sha256:2b9f17353270eeeea870760f7d6d9720bf7f48d5a4238e0795439cfb6037c5a9",
+  "schemaVersion": 7,
+  "sealedBriefDigest": "sha256:55914e9bb83b509184a1bb2c363c9211491cefad8dfb7999865e8fee5d594dc8",
   "trialIndex": 1
 }

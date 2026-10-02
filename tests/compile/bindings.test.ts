@@ -46,6 +46,7 @@ function stepWithBindings(
 ): InteractionStep {
 	return {
 		stepId: 'probe',
+		interfaceId: 'thing-api',
 		operationId: 'create-thing',
 		inputBinding,
 		after: null,
@@ -169,6 +170,7 @@ describe('checkBindingCycle: binding-cycle', () => {
 			c.interactionPlan[0].after = 'list'
 			c.interactionPlan.unshift({
 				stepId: 'probe',
+				interfaceId: 'thing-api',
 				operationId: 'create-thing',
 				inputBinding: {
 					path: null,
@@ -204,6 +206,7 @@ describe('checkBindingCycle: binding-cycle', () => {
 			c.interactionPlan = [
 				{
 					stepId: 'u',
+					interfaceId: 'thing-api',
 					operationId: 'create-thing',
 					inputBinding: bind('/interactions/b/response-body/id'),
 					after: 'b',
@@ -211,6 +214,7 @@ describe('checkBindingCycle: binding-cycle', () => {
 				},
 				{
 					stepId: 'b',
+					interfaceId: 'thing-api',
 					operationId: 'create-thing',
 					inputBinding: bind('/interactions/x/response-body/id'),
 					after: null,
@@ -218,6 +222,7 @@ describe('checkBindingCycle: binding-cycle', () => {
 				},
 				{
 					stepId: 'x',
+					interfaceId: 'thing-api',
 					operationId: 'create-thing',
 					inputBinding: {
 						path: null,
@@ -243,6 +248,7 @@ describe('checkBindingCycle: binding-cycle', () => {
 			c.interactionPlan = [
 				{
 					stepId: 'one',
+					interfaceId: 'thing-api',
 					operationId: 'create-thing',
 					inputBinding: {
 						path: null,
@@ -255,6 +261,7 @@ describe('checkBindingCycle: binding-cycle', () => {
 				},
 				{
 					stepId: 'two',
+					interfaceId: 'thing-api',
 					operationId: 'create-thing',
 					inputBinding: {
 						path: null,
@@ -267,6 +274,7 @@ describe('checkBindingCycle: binding-cycle', () => {
 				},
 				{
 					stepId: 'three',
+					interfaceId: 'thing-api',
 					operationId: 'create-thing',
 					inputBinding: {
 						path: null,
@@ -487,6 +495,7 @@ describe('checkCapturedReachability: unreachable-check-evidence', () => {
 		const contract = contractWith((c) => {
 			c.interactionPlan.push({
 				stepId: 'create-again',
+				interfaceId: 'thing-api',
 				operationId: 'create-thing',
 				inputBinding: {
 					path: null,

@@ -138,12 +138,10 @@ export type EvidenceIntegrityInputs = {
 		{ kind: 'judge-result-unscored' }
 	>[]
 	/**
-	 * The two score-computed conditions, pre-rendered like `isolationViolation`
-	 * rather than structured: `score.ts` computes and renders both itself
-	 * (neither is an `IngestCondition`), so the ladder only needs to display
-	 * them.
+	 * The score-computed condition, pre-rendered like `isolationViolation`
+	 * rather than structured: `score.ts` computes and renders it itself (it is
+	 * not an `IngestCondition`), so the ladder only needs to display it.
 	 */
-	readonly operationIdentifierCollisions: readonly string[]
 	readonly trialSetDisagreements: readonly string[]
 }
 
@@ -279,10 +277,9 @@ type LadderConditionRow = {
  * carries the specific condition AD-21's spine prose never spelled out, not
  * only the generic state.
  *
- * Ten more rows follow: eight previously-rungless ingest conditions, each
- * newly given a rung, plus two conditions `score.ts` itself computes and no
- * `ingest` condition names -- an ambiguous `operationId` across
- * `permittedInterfaces`, and a trial set disagreeing with itself on
+ * Nine more rows follow: eight previously-rungless ingest conditions, each
+ * newly given a rung, plus one condition `score.ts` itself computes and no
+ * `ingest` condition names: a trial set disagreeing with itself on
  * `mode` or `evaluatorRecommendation`.
  */
 const INVALID_ROWS: readonly LadderConditionRow[] = [
@@ -504,21 +501,10 @@ const INVALID_ROWS: readonly LadderConditionRow[] = [
 					`judge result unscored: rubric ${condition.rubricId} criterion ${condition.criterionId}`,
 			),
 	},
-	// The two score-computed conditions. Neither is an `IngestCondition`, so
+	// The score-computed condition. It is not an `IngestCondition`, so
 	// `score.ts` renders each entry itself and this row only adds the outer
 	// category label, following `isolation-manifest-violation`'s own
 	// double-wrap precedent above.
-	{
-		id: 'operation-identifier-collision',
-		rung: 'invalid',
-		guard:
-			"an observation's operationId matches an operation in more than one permittedInterfaces entry",
-		evidenceCondition: false,
-		reasons: (inputs) =>
-			inputs.evidenceIntegrity.operationIdentifierCollisions.map(
-				(collision) => `operation identifier collision: ${collision}`,
-			),
-	},
 	{
 		id: 'trial-set-field-disagreement',
 		rung: 'invalid',

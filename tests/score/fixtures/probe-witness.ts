@@ -181,6 +181,7 @@ export const observation = (
 	overrides: Partial<Observation> & Pick<Observation, 'observationId'>,
 ): Observation => ({
 	sequence: 1,
+	interfaceId: 'notes-api',
 	operationId: 'create-note',
 	provenance: 'evaluator-chosen',
 	principal: null,

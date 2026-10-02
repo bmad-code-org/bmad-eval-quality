@@ -44,7 +44,7 @@ export const WRITTEN_NAME = 'a thing the run created'
 export const SUBSTITUTED_NAME = 'untitled'
 
 export const workflowContract = {
-	schemaVersion: 5,
+	schemaVersion: 6,
 	contractId: 'captured-read-back',
 	parentDigest: null,
 	revisionCount: 0,
@@ -666,7 +666,12 @@ export const workflowContract = {
 	],
 	referenceSets: {},
 	siblingGroups: {
-		operations: [['create-thing', 'get-thing']],
+		operations: [
+			[
+				{ interfaceId: 'thing-service', operationId: 'create-thing' },
+				{ interfaceId: 'thing-service', operationId: 'get-thing' },
+			],
+		],
 		parameters: [['name', 'id']],
 	},
 	interactionPlan: [
@@ -678,6 +683,7 @@ export const workflowContract = {
 			// `exactly-one` and the outcome would be an infrastructure error
 			// rather than a verdict about the contract.
 			stepId: 'create',
+			interfaceId: 'thing-service',
 			operationId: 'create-thing',
 			after: null,
 			cardinality: 'exactly-one',
@@ -698,6 +704,7 @@ export const workflowContract = {
 			// chooses its own identifier proves nothing about what the service
 			// filed.
 			stepId: 'read-back',
+			interfaceId: 'thing-service',
 			operationId: 'get-thing',
 			after: 'create',
 			cardinality: 'exactly-one',
@@ -710,6 +717,7 @@ export const workflowContract = {
 		},
 		{
 			stepId: 'reset',
+			interfaceId: 'thing-service',
 			operationId: 'reset-things',
 			after: null,
 			cardinality: 'exactly-one',
@@ -725,6 +733,7 @@ export const workflowContract = {
 			// holds. That one is a literal, because the seed is declared in
 			// `testData.setup` rather than minted by the run.
 			stepId: 'reset-read-back',
+			interfaceId: 'thing-service',
 			operationId: 'get-thing',
 			after: 'reset',
 			cardinality: 'exactly-one',
@@ -737,6 +746,7 @@ export const workflowContract = {
 		},
 		{
 			stepId: 'malformed-create',
+			interfaceId: 'thing-service',
 			operationId: 'create-thing',
 			after: null,
 			cardinality: 'at-most-one',
@@ -749,6 +759,7 @@ export const workflowContract = {
 		},
 		{
 			stepId: 'malformed-read',
+			interfaceId: 'thing-service',
 			operationId: 'get-thing',
 			after: null,
 			cardinality: 'at-most-one',
@@ -761,6 +772,7 @@ export const workflowContract = {
 		},
 		{
 			stepId: 'malformed-reset',
+			interfaceId: 'thing-service',
 			operationId: 'reset-things',
 			after: null,
 			cardinality: 'at-most-one',

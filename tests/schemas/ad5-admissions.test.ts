@@ -185,6 +185,7 @@ describe('AD-5 code walk — every coded shape stays representable', () => {
 		admits((contract) => {
 			contract.interactionPlan.push({
 				stepId: 'third',
+				interfaceId: 'thing-api',
 				operationId: 'list-things',
 				inputBinding: { path: null, query: null, header: null, body: null },
 				after: 'list',
@@ -198,6 +199,7 @@ describe('AD-5 code walk — every coded shape stays representable', () => {
 			contract.interactionPlan = Array.from({ length: 64 }, (_, index) => [
 				{
 					stepId: `write-${index + 1}`,
+					interfaceId: 'thing-api',
 					operationId: 'create-thing',
 					inputBinding: {
 						path: null,
@@ -210,6 +212,7 @@ describe('AD-5 code walk — every coded shape stays representable', () => {
 				},
 				{
 					stepId: `read-${index + 1}`,
+					interfaceId: 'thing-api',
 					operationId: 'list-things',
 					inputBinding: { path: null, query: null, header: null, body: null },
 					after: `write-${index + 1}`,
@@ -223,6 +226,7 @@ describe('AD-5 code walk — every coded shape stays representable', () => {
 		admits((contract) => {
 			contract.interactionPlan = Array.from({ length: 8 }, (_, index) => ({
 				stepId: `chain-${index + 1}`,
+				interfaceId: 'thing-api',
 				operationId: 'list-things',
 				inputBinding: { path: null, query: null, header: null, body: null },
 				after: index === 0 ? null : `chain-${index}`,

@@ -33,9 +33,9 @@ export type StepSelection = {
 }
 
 /**
- * Matches `step.operationId` against every observation's `operationId`,
- * ordered by `sequence` ascending. Reads no other field of `step`: whether
- * `several` is the named ambiguity condition or a legitimate `any`-cardinality
+ * Matches the step's `(interfaceId, operationId)` pair against every
+ * observation's pair, ordered by `sequence` ascending. Reads no other field of
+ * `step`: whether `several` is the named ambiguity condition or a legitimate `any`-cardinality
  * match is a fact about the step's declared cardinality, decided by whoever
  * reads this result, not by this function.
  *
@@ -66,7 +66,11 @@ export function selectObservations(
 	observations: readonly Observation[],
 ): StepSelection {
 	const matched = observations
-		.filter((observation) => observation.operationId === step.operationId)
+		.filter(
+			(observation) =>
+				observation.interfaceId === step.interfaceId &&
+				observation.operationId === step.operationId,
+		)
 		.sort(
 			(a, b) =>
 				a.sequence - b.sequence || (a.observationId < b.observationId ? -1 : 1),

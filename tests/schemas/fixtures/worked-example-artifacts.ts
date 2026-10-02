@@ -248,7 +248,9 @@ export const workedExampleSealedRunRecord: unknown = {
 	// Verbatim, including the key version 6 dropped. Repairing the spike here
 	// would hold the count at ninety-six by editing the input, where the point
 	// of this fixture is to record what the pre-epic-7 chain fails against the
-	// shipped shapes. The ninety-seventh issue is that key.
+	// shipped shapes. The ninety-seventh issue is that key. Version 7 added
+	// one more issue per observation, a missing `interfaceId`, which makes
+	// the one hundred and two the test records.
 	invalidReason: null,
 }
 
@@ -285,6 +287,7 @@ export const WORKED_EXAMPLE_RECORD_ISSUES: readonly WorkedExampleIssue[] = [
 	{ path: ['findings', 1], code: 'unrecognized_keys' },
 	{ path: ['findings', 2], code: 'unrecognized_keys' },
 	{ path: ['observations', 0, 'sequence'], code: 'invalid_type' },
+	{ path: ['observations', 0, 'interfaceId'], code: 'invalid_type' },
 	{ path: ['observations', 0, 'callInputs', 'path'], code: 'invalid_type' },
 	{ path: ['observations', 0, 'callInputs', 'query'], code: 'invalid_type' },
 	{ path: ['observations', 0, 'callInputs', 'header'], code: 'invalid_type' },
@@ -307,6 +310,7 @@ export const WORKED_EXAMPLE_RECORD_ISSUES: readonly WorkedExampleIssue[] = [
 	{ path: ['observations', 0, 'exitCode'], code: 'invalid_type' },
 	{ path: ['observations', 0, 'artifacts'], code: 'invalid_type' },
 	{ path: ['observations', 1, 'sequence'], code: 'invalid_type' },
+	{ path: ['observations', 1, 'interfaceId'], code: 'invalid_type' },
 	{ path: ['observations', 1, 'callInputs', 'path'], code: 'invalid_type' },
 	{ path: ['observations', 1, 'callInputs', 'query'], code: 'invalid_type' },
 	{ path: ['observations', 1, 'callInputs', 'header'], code: 'invalid_type' },
@@ -328,6 +332,7 @@ export const WORKED_EXAMPLE_RECORD_ISSUES: readonly WorkedExampleIssue[] = [
 	{ path: ['observations', 1, 'exitCode'], code: 'invalid_type' },
 	{ path: ['observations', 1, 'artifacts'], code: 'invalid_type' },
 	{ path: ['observations', 2, 'sequence'], code: 'invalid_type' },
+	{ path: ['observations', 2, 'interfaceId'], code: 'invalid_type' },
 	{ path: ['observations', 2, 'callInputs', 'path'], code: 'invalid_type' },
 	{ path: ['observations', 2, 'callInputs', 'query'], code: 'invalid_type' },
 	{ path: ['observations', 2, 'callInputs', 'header'], code: 'invalid_type' },
@@ -350,6 +355,7 @@ export const WORKED_EXAMPLE_RECORD_ISSUES: readonly WorkedExampleIssue[] = [
 	{ path: ['observations', 2, 'exitCode'], code: 'invalid_type' },
 	{ path: ['observations', 2, 'artifacts'], code: 'invalid_type' },
 	{ path: ['observations', 3, 'sequence'], code: 'invalid_type' },
+	{ path: ['observations', 3, 'interfaceId'], code: 'invalid_type' },
 	{ path: ['observations', 3, 'callInputs', 'path'], code: 'invalid_type' },
 	{ path: ['observations', 3, 'callInputs', 'query'], code: 'invalid_type' },
 	{ path: ['observations', 3, 'callInputs', 'header'], code: 'invalid_type' },
@@ -372,6 +378,7 @@ export const WORKED_EXAMPLE_RECORD_ISSUES: readonly WorkedExampleIssue[] = [
 	{ path: ['observations', 3, 'exitCode'], code: 'invalid_type' },
 	{ path: ['observations', 3, 'artifacts'], code: 'invalid_type' },
 	{ path: ['observations', 4, 'sequence'], code: 'invalid_type' },
+	{ path: ['observations', 4, 'interfaceId'], code: 'invalid_type' },
 	{ path: ['observations', 4, 'callInputs', 'path'], code: 'invalid_type' },
 	{ path: ['observations', 4, 'callInputs', 'query'], code: 'invalid_type' },
 	{ path: ['observations', 4, 'callInputs', 'header'], code: 'invalid_type' },

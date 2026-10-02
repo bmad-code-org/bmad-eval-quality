@@ -8,9 +8,9 @@
   },
   "allowedMounts": [],
   "conditionArm": "mutated",
-  "contractDigest": "sha256:dae134fc04896ddc008ff3dbdac9cc7eeb32120a7f4a0a42e54a4df1523728e4",
+  "contractDigest": "sha256:7eba35f478649cc7a3c4640444fea5530d659ce6dfcde0df40f77dca15598a39",
   "contractId": "captured-read-back",
-  "evaluatorConfigurationDigest": "sha256:9f5f1a79045cab9d517e764b00033ed364c3ac4c745a5b203dda3de389132b12",
+  "evaluatorConfigurationDigest": "sha256:21ff3d1a8d6622300f2ffa9836693a4f4c8462c880cfff173533f186d0f9f3bd",
   "forbiddenInputAccounting": {
     "builder-transcript": {
       "note": null,

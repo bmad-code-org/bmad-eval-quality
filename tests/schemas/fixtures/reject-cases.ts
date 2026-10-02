@@ -346,7 +346,9 @@ export const REJECT_CASES: readonly RejectCase[] = [
 		id: 'sibling-group-of-one',
 		constraint: 'a sibling group carries at least two members',
 		mutate: (contract) => {
-			contract.siblingGroups.operations = [['create-thing']]
+			contract.siblingGroups.operations = [
+				[{ interfaceId: 'thing-api', operationId: 'create-thing' }],
+			]
 		},
 		issuePath: ['siblingGroups', 'operations', 0],
 		issueCode: 'too_small',

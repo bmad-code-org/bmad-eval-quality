@@ -133,6 +133,16 @@ const declaredIdentityOf = (signature: DefectSignature): string => {
 }
 
 /**
+ * A signature's home operation with the interface that declares it. Two
+ * interfaces may declare one `operationId`, so the operation alone does not
+ * say which observations exercised it.
+ */
+export type HomeOperation = {
+	readonly interfaceId: string
+	readonly operation: AnyOperation
+}
+
+/**
  * Resolves a signature's home operation against a contract's operation
  * inventory, comparing the transport identity each renders inside its own shape
  * family. Off an interface that speaks HTTP that identity is a method plus a
@@ -145,7 +155,7 @@ const declaredIdentityOf = (signature: DefectSignature): string => {
 export function resolveHomeOperation(
 	signature: DefectSignature,
 	interfaces: readonly PermittedInterface[],
-): AnyOperation | null {
+): HomeOperation | null {
 	// The identity is compared within its own shape family. A signature
 	// declaring a method and a path template can only name an operation
 	// declaring the same pair, one declaring an invocation can only name an
@@ -157,7 +167,8 @@ export function resolveHomeOperation(
 	for (const iface of interfaces) {
 		if (signatureFamilyOf(iface.kind) !== family) continue
 		for (const operation of operationsOf(iface)) {
-			if (anyOperationSignature(operation) === wanted) return operation
+			if (anyOperationSignature(operation) === wanted)
+				return { interfaceId: iface.logicalId, operation }
 		}
 	}
 	return null

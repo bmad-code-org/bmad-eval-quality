@@ -14,7 +14,7 @@
   "permissionInventory": [],
   "revisionCount": 0,
   "schemaVersion": 1,
-  "sealedBriefDigest": "sha256:2b9f17353270eeeea870760f7d6d9720bf7f48d5a4238e0795439cfb6037c5a9",
+  "sealedBriefDigest": "sha256:55914e9bb83b509184a1bb2c363c9211491cefad8dfb7999865e8fee5d594dc8",
   "seed": 1,
   "systemPromptDigest": "sha256:e2623f778b36d098c63a4b21afdc3f796234b23b62c8ddfdb34a356286862956",
   "toolInventory": []

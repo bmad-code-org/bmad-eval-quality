@@ -264,6 +264,7 @@ describe('unresolved-artifact-reference', () => {
 		iface.operations.push(other)
 		contract.interactionPlan.push({
 			stepId: 'peek',
+			interfaceId: 'fragment-selection-runner',
 			operationId: 'peek-transcript',
 			after: null,
 			cardinality: 'exactly-one',
@@ -416,6 +417,7 @@ describe('a capture from a file the descriptor does not describe', () => {
 			contract.interactionPlan[0],
 			{
 				stepId: 'again',
+				interfaceId: 'fragment-selection-runner',
 				operationId: 'select-fragments',
 				after: null,
 				cardinality: 'exactly-one',
