@@ -37,3 +37,23 @@ describe('an oracle on the copy never satisfies the site of the original interfa
 		},
 	)
 })
+
+describe('an oracle on the original never satisfies the site of the copy interface', () => {
+	const verdicts = evaluateSatisfaction(doubled.originalOraclesOnly)
+	// The source contract's sibling group names the original interface's pairs
+	// only, so the copy has no sibling site for the original's oracles to miss.
+	const copySiteRules = DISCIPLINE_RULES.map(
+		(rule, index) => [rule, index] as const,
+	).filter(([rule]) => rule !== 'sibling-cross-check')
+
+	it.each(copySiteRules)('%s', (_rule, index) => {
+		const verdict = verdicts[index]
+		expect(verdict?.satisfied).toBe(false)
+		expect(verdict?.reason).toContain('thing')
+	})
+
+	it('sibling-cross-check stays satisfied, since no group names the copy', () => {
+		const index = DISCIPLINE_RULES.indexOf('sibling-cross-check')
+		expect(verdicts[index]?.satisfied).toBe(true)
+	})
+})

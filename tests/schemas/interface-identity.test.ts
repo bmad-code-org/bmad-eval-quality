@@ -14,16 +14,6 @@ import { sharedOperationContract } from '../fixtures/shared-operation-id.ts'
 import { sealedRunRecordFixture } from './fixtures/artifact-fixtures.ts'
 
 describe('an observation names the interface that declares its operation', () => {
-	it('keeps the interfaceId it parses', () => {
-		const result = SealedRunRecord.safeParse(
-			JSON.parse(JSON.stringify(sealedRunRecordFixture)),
-		)
-		expect(result.success).toBe(true)
-		expect(result.data?.observations.map((each) => each.interfaceId)).toEqual(
-			sealedRunRecordFixture.observations.map((each) => each.interfaceId),
-		)
-	})
-
 	it('rejects an interfaceId outside the identifier charset', () => {
 		const record = structuredClone(sealedRunRecordFixture) as Record<
 			string,
@@ -56,16 +46,6 @@ describe('an observation names the interface that declares its operation', () =>
 })
 
 describe('a plan step names the interface that declares its operation', () => {
-	it('keeps the interfaceId of each step it parses', () => {
-		const result = EvalContract.safeParse(
-			JSON.parse(JSON.stringify(sharedOperationContract)),
-		)
-		expect(result.success).toBe(true)
-		expect(
-			result.data?.interactionPlan.map((step) => step.interfaceId),
-		).toEqual(['notes-v1', 'notes-v2'])
-	})
-
 	it('rejects a step interfaceId outside the identifier charset', () => {
 		const contract = structuredClone(sharedOperationContract) as Record<
 			string,

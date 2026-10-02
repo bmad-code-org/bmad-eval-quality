@@ -1,8 +1,8 @@
 /**
- * Compile over two interfaces declaring one operation id: a step names the pair `(interfaceId,
- * operationId)`, so two interfaces may declare one operation id and a step that
- * names an interface which does not declare the operation is refused with a
- * message that names the interface.
+ * Compile over two interfaces declaring one operation id: a step names the
+ * pair `(interfaceId, operationId)`, so two interfaces may declare one
+ * operation id, and a pointer that addresses a step whose interface does not
+ * declare its operation is refused with a message that names the interface.
  */
 import { describe, expect, it } from 'vitest'
 import { compile } from '../../src/application/compile.ts'
@@ -61,6 +61,32 @@ describe('a step naming an interface that does not declare its operation', () =>
 		const failure = failureOf(() =>
 			compile(withUndeclaredPair(), { strict: true }),
 		)
+		expect(failure.code).toBe('unreachable-check-evidence')
+		expect(failure.message).toContain(
+			'names operation "write-note" on interface "notes-v1", which that interface does not declare',
+		)
+	})
+
+	it('compiles while no oracle or capture pointer addresses the step, because only a pointer reaches the operation', () => {
+		const contract = structuredClone(sharedOperationContract)
+		const [readOld] = contract.interactionPlan
+		if (readOld === undefined) throw new Error('the fixture declares no step')
+		contract.interactionPlan.push({
+			...structuredClone(readOld),
+			stepId: 'orphan',
+			interfaceId: 'notes-v1',
+			operationId: 'write-note',
+		})
+		expect(() => compile(contract, { strict: true })).not.toThrow()
+		// The same step, once an oracle addresses it, is refused and names the interface.
+		const [oracle] = contract.oracles
+		if (oracle === undefined) throw new Error('the fixture declares no oracle')
+		const pointer = '/interactions/orphan/stdout/fragments'
+		if (oracle.direction === null)
+			throw new Error('the oracle has no direction')
+		oracle.direction.evidenceTargets = [pointer]
+		oracle.check = { op: 'existence', operands: [{ pointer }] }
+		const failure = failureOf(() => compile(contract, { strict: true }))
 		expect(failure.code).toBe('unreachable-check-evidence')
 		expect(failure.message).toContain(
 			'names operation "write-note" on interface "notes-v1", which that interface does not declare',

@@ -238,7 +238,7 @@ Each step also names the interface that declares its operation through `interfac
 Two interfaces of one contract may declare the same `operationId`, for example a command line and an HTTP interface that both expose `read-note`.
 A step then names the pair, an observation in the sealed run record carries the same pair, and a step selects only the observations of its own interface.
 A sibling group names its members as `{ "interfaceId", "operationId" }` pairs for the same reason.
-A step naming an interface that does not declare the operation fails `compile` with `unreachable-check-evidence`, and the message names the interface.
+An oracle or capture pointer that addresses a step whose interface does not declare the operation fails `compile` with `unreachable-check-evidence`, and the message names the interface.
 The sealed brief tells the evaluator which interface a step reads by appending `of interface "<id>"` to the derived reference, exactly when the contract declares that `operationId` on more than one interface.
 Two interfaces that expose the same transport identity are still refused with `duplicate-operation-signature`: two MCP servers publishing one tool name, or two API interfaces declaring one method and path template, stay a collision, because a defect signature resolves against the transport identity.
 
