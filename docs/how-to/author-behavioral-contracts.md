@@ -536,10 +536,10 @@ state-reset null null satisfied
 clean-control null null satisfied
 ```
 
-The printed columns are check kind (`c.kind`), operation identifier (`c.operationId`), and outcome (`c.outcome`).
+The printed columns are check kind (`c.kind`), interface identifier (`c.interfaceId`), operation identifier (`c.operationId`), and outcome (`c.outcome`).
 
-In the row `state-reset null satisfied`, `state-reset` is the check kind and `satisfied` is the outcome.
-The `null` belongs to `operationId`, because the control check is not assigned a single operation identifier in this result.
+In the row `state-reset null null satisfied`, `state-reset` is the check kind and `satisfied` is the outcome.
+The two `null` values belong to `interfaceId` and `operationId`, because the control check is not assigned a single interface or operation in this result.
 This contract sets `fixtureReset: null`.
 When no reset operation is declared, preflight selects a read operation and issues repeated observations (`preflight-control-observe` and `preflight-control-observe-2`).
 It checks that repeated reads without intervening writes yield consistent responses.

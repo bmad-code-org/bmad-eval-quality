@@ -357,14 +357,12 @@ export const twoInterfaceContract = (): EvalContract => {
 		for (const leg of operation.sensitivityWitness?.legs ?? [])
 			leg.legId = `other-${leg.legId}`
 		if (operation.sensitivityWitness !== null)
-			operation.sensitivityWitness.relation = {
-				op: 'existence',
-				operands: [
-					{
-						pointer: `/interactions/${operation.sensitivityWitness.legs[0].legId}/response-body`,
-					},
-				],
-			}
+			operation.sensitivityWitness.relation = JSON.parse(
+				JSON.stringify(operation.sensitivityWitness.relation).replaceAll(
+					'/interactions/',
+					'/interactions/other-',
+				),
+			)
 	}
 	draft.permittedInterfaces.push(other)
 	return parseContract(draft)
@@ -654,7 +652,8 @@ export const satisfiedPatches = (
 ): Record<string, ObservationPatch> => {
 	const patches: Record<string, ObservationPatch> = {}
 	for (const leg of legs) {
-		const declared = SATISFIED_BODIES[leg.legId]
+		// A leg of the second interface answers as the leg it copies does.
+		const declared = SATISFIED_BODIES[leg.legId.replace(/^other-/, '')]
 		patches[leg.legId] = {
 			body: declared ?? CONTROL_BODY,
 		}

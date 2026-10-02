@@ -15,8 +15,17 @@ body.
 - **BREAKING: every preflight check names the interface that declares its operation.**
   `PreflightCheck` gains a required `interfaceId`, and `PREFLIGHT_VERDICT_SCHEMA_VERSION` moves from `1` to `2`.
   An operation identifier is unique only within its interface, so two `interface-present` or `input-sensitivity` checks for one operation on two interfaces were indistinguishable in the verdict, although the plan already kept them apart.
-  `interfaceId` is `null` exactly where `operationId` is `null`: `state-reset`, `clean-control`, and a `seeded-fault-fired` check whose defect declares no manifestation witness.
+  `preflight` writes the declaring interface for a per-operation check and `null` for a check with no operation: `state-reset`, `clean-control`, and a `seeded-fault-fired` check whose defect declares no manifestation witness.
   The published `schemas/preflight-verdict.schema.json` carries the new required key, and a version 1 verdict no longer parses.
+
+### Fixed
+
+- **`score` and `compile` name a stale artifact stamp before parsing the artifact.**
+  `runScore` parsed each sealed run record with `safeParse` and never compared its `schemaVersion`, so a record written for another version failed as an anonymous `schema-parse-failure` when its shape differed and scored silently when its shape happened to parse.
+  `runScore` now reads each record's raw stamp first and throws `schema-version-mismatch` at `SealedRunRecord[trialIndex=N].schemaVersion`, naming the stamp and the version this build reads; the CLI `score` exits `5`.
+  `compile` reads the eval contract's stamp ahead of `EvalContract.safeParse` the same way, so a contract stamped for another version reports `schema-version-mismatch` at `EvalContract.schemaVersion` where it used to report `schema-parse-failure` whenever its shape had moved.
+  Artifacts stamped with the current versions behave as before.
+  `docs/reference/cli-commands.md` counts four artifacts with an in-package version reader and four assembled by the caller.
 
 ## [4.7.0] - 2026-10-01
 

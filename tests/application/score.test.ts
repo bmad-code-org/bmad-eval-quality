@@ -10,6 +10,7 @@ import { runScore } from '../../src/application/score.ts'
 import * as emitModule from '../../src/core/emit/emit.ts'
 import * as ingestModule from '../../src/core/ingest/index.ts'
 import { RuntimeFault } from '../../src/core/schemas/faults.ts'
+import { SEALED_RUN_RECORD_SCHEMA_VERSION } from '../../src/core/schemas/sealed-run-record.ts'
 import * as scoreModule from '../../src/core/score/score.ts'
 import { compareDominance } from '../../src/core/score/strength.ts'
 import type { CorpusPort } from '../../src/ports/corpus-port.ts'
@@ -164,6 +165,97 @@ describe('runScore: the boundary parses every declared input', () => {
 		expect(result.artifact).toBeNull()
 		expect(result.ladder.verdict).toBeNull()
 		expect(result.ladder.exitCode).toBe(3)
+	})
+})
+
+describe('runScore: the record stamp is read before the record parses', () => {
+	const stale = SEALED_RUN_RECORD_SCHEMA_VERSION - 1
+
+	it('names a record stamped one version below, with both versions, at its trial', async () => {
+		const fault = await faultOf(() =>
+			run({
+				record: { ...sealedRunRecordFixtureForScore, schemaVersion: stale },
+			}),
+		)
+		expect(fault.code).toBe('schema-version-mismatch')
+		expect(fault.artifactPath).toBe(
+			`SealedRunRecord[trialIndex=${sealedRunRecordFixtureForScore.trialIndex}].schemaVersion`,
+		)
+		expect(fault.message).toContain(
+			`carries "schemaVersion" ${stale} where this build reads ${SEALED_RUN_RECORD_SCHEMA_VERSION}`,
+		)
+	})
+
+	it('reports the stamp of a record whose shape is also the previous version', async () => {
+		const { observations: _dropped, ...previousShape } =
+			sealedRunRecordFixtureForScore
+		const fault = await faultOf(() =>
+			run({ record: { ...previousShape, schemaVersion: stale } as never }),
+		)
+		expect(fault.code).toBe('schema-version-mismatch')
+	})
+
+	it('reports the stamp of a previous-shape record passed as a list, the way the CLI always passes it', async () => {
+		const { observations: _dropped, ...previousShape } =
+			sealedRunRecordFixtureForScore
+		const fault = await faultOf(() =>
+			run({
+				record: [{ ...previousShape, schemaVersion: stale }] as never,
+			}),
+		)
+		expect(fault.code).toBe('schema-version-mismatch')
+		expect(fault.artifactPath).toBe(
+			`SealedRunRecord[trialIndex=${sealedRunRecordFixtureForScore.trialIndex}].schemaVersion`,
+		)
+	})
+
+	it('names the trial index of the stale record among several, never its position', async () => {
+		const fault = await faultOf(() =>
+			run({
+				record: [
+					sealedRunRecordFixtureForScore,
+					{
+						...sealedRunRecordFixtureForScore,
+						trialIndex: 5,
+						schemaVersion: stale,
+					},
+				],
+			}),
+		)
+		expect(fault.code).toBe('schema-version-mismatch')
+		expect(fault.artifactPath).toBe(
+			'SealedRunRecord[trialIndex=5].schemaVersion',
+		)
+	})
+
+	it('names the position of a stale record that carries no numeric trial index', async () => {
+		const { trialIndex: _trial, ...untrialed } = sealedRunRecordFixtureForScore
+		const fault = await faultOf(() =>
+			run({
+				record: [
+					sealedRunRecordFixtureForScore,
+					{ ...untrialed, schemaVersion: stale },
+				] as never,
+			}),
+		)
+		expect(fault.code).toBe('schema-version-mismatch')
+		expect(fault.artifactPath).toBe('SealedRunRecord[index=1].schemaVersion')
+	})
+
+	it.each([
+		['a null record', null],
+		['a list holding a null record', [null]],
+	])('leaves %s to the parse', async (_name, record) => {
+		const fault = await faultOf(() => run({ record: record as never }))
+		expect(fault.code).toBe('schema-parse-failure')
+	})
+
+	it('leaves a record with no numeric stamp to the parse, which names the field', async () => {
+		const { schemaVersion: _stamp, ...unstamped } =
+			sealedRunRecordFixtureForScore
+		const fault = await faultOf(() => run({ record: unstamped as never }))
+		expect(fault.code).toBe('schema-parse-failure')
+		expect(fault.artifactPath).toBe('SealedRunRecord')
 	})
 })
 
