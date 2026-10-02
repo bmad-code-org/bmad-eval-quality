@@ -180,15 +180,15 @@ node dist/cli/main.js preflight \
 Both exit `0`, over four legs:
 
 ```bash
-node -e "const v=require('/tmp/eval-quality-skill/honest-preflight-verdict.json');console.log('passed:',v.passed);for(const c of v.checks)console.log(c.kind,c.operationId,c.outcome)"
+node -e "const v=require('/tmp/eval-quality-skill/honest-preflight-verdict.json');console.log('passed:',v.passed);for(const c of v.checks)console.log(c.kind,c.interfaceId,c.operationId,c.outcome)"
 ```
 
 ```text
 passed: true
-interface-present run-skill satisfied
-input-sensitivity run-skill satisfied
-state-reset null satisfied
-clean-control null satisfied
+interface-present skill-runner run-skill satisfied
+input-sensitivity skill-runner run-skill satisfied
+state-reset null null satisfied
+clean-control null null satisfied
 ```
 
 #### What preflight just established

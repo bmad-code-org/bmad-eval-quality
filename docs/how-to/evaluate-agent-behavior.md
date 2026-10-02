@@ -208,19 +208,19 @@ node dist/cli/main.js preflight \
 ```
 
 ```bash
-node -e "const v=require('/tmp/eval-quality-agent/preflight-verdict.json');console.log('passed:',v.passed);for(const c of v.checks)console.log(c.kind,c.operationId,c.outcome)"
+node -e "const v=require('/tmp/eval-quality-agent/preflight-verdict.json');console.log('passed:',v.passed);for(const c of v.checks)console.log(c.kind,c.interfaceId,c.operationId,c.outcome)"
 ```
 
 ```text
 passed: true
-interface-present summarize-changes satisfied
-interface-present show-notes satisfied
-input-sensitivity summarize-changes satisfied
-input-sensitivity show-notes satisfied
-state-reset null satisfied
-clean-control null satisfied
-seeded-faults-scoped summarize-changes satisfied
-seeded-fault-fired summarize-changes satisfied
+interface-present release-notes-agent summarize-changes satisfied
+interface-present release-notes-agent show-notes satisfied
+input-sensitivity release-notes-agent summarize-changes satisfied
+input-sensitivity release-notes-agent show-notes satisfied
+state-reset null null satisfied
+clean-control null null satisfied
+seeded-faults-scoped release-notes-agent summarize-changes satisfied
+seeded-fault-fired release-notes-agent summarize-changes satisfied
 ```
 
 The last two are the pair this shape turns on.

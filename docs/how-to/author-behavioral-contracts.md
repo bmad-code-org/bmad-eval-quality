@@ -521,25 +521,25 @@ eval-quality: preflight: notes-run-1: reduced 8 leg(s): passed
 Read the verdict back:
 
 ```bash
-node -e "const v=require('/tmp/eval-quality-run/preflight-verdict.json');console.log('passed:',v.passed);for(const c of v.checks)console.log(c.kind,c.operationId,c.outcome)"
+node -e "const v=require('/tmp/eval-quality-run/preflight-verdict.json');console.log('passed:',v.passed);for(const c of v.checks)console.log(c.kind,c.interfaceId,c.operationId,c.outcome)"
 ```
 
 ```text
 passed: true
-interface-present update-note satisfied
-interface-present read-note satisfied
-interface-present list-notes satisfied
-input-sensitivity update-note satisfied
-input-sensitivity read-note satisfied
-input-sensitivity list-notes satisfied
-state-reset null satisfied
-clean-control null satisfied
+interface-present notes-api update-note satisfied
+interface-present notes-api read-note satisfied
+interface-present notes-api list-notes satisfied
+input-sensitivity notes-api update-note satisfied
+input-sensitivity notes-api read-note satisfied
+input-sensitivity notes-api list-notes satisfied
+state-reset null null satisfied
+clean-control null null satisfied
 ```
 
-The printed columns are check kind (`c.kind`), operation identifier (`c.operationId`), and outcome (`c.outcome`).
+The printed columns are check kind (`c.kind`), interface identifier (`c.interfaceId`), operation identifier (`c.operationId`), and outcome (`c.outcome`).
 
-In the row `state-reset null satisfied`, `state-reset` is the check kind and `satisfied` is the outcome.
-The `null` belongs to `operationId`, because the control check is not assigned a single operation identifier in this result.
+In the row `state-reset null null satisfied`, `state-reset` is the check kind and `satisfied` is the outcome.
+The two `null` values belong to `interfaceId` and `operationId`, because the control check is not assigned a single interface or operation in this result.
 This contract sets `fixtureReset: null`.
 When no reset operation is declared, preflight selects a read operation and issues repeated observations (`preflight-control-observe` and `preflight-control-observe-2`).
 It checks that repeated reads without intervening writes yield consistent responses.
@@ -550,7 +550,7 @@ A full observe-mutate-reset-observe sequence applies when a contract declares an
 
 Read these fields first:
 - `passed`: `true` indicates that all planned preflight checks were satisfied.
-- `checks`: An array detailing each measurability condition, its target operation, its outcome (`satisfied`, `failed`, or `exempt`), and explanatory notes.
+- `checks`: An array detailing each measurability condition, the interface and operation it targets (both `null` for a check that targets no operation), its outcome (`satisfied`, `failed`, or `exempt`), and explanatory notes.
 
 What the remaining fields do:
 - `runId`: Links the verdict to the current evaluation run.

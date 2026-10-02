@@ -5,6 +5,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import { compile } from '../../src/core/compile/compile.ts'
+import type { PreflightPlan } from '../../src/core/preflight/plan.ts'
 import { planPreflight } from '../../src/core/preflight/plan.ts'
 import { reducePreflight } from '../../src/core/preflight/reduce.ts'
 import type { EvalContract } from '../../src/core/schemas/eval-contract.ts'
@@ -31,6 +32,7 @@ import {
 	resetContract,
 	satisfiedPatches,
 	seededProbe,
+	twoInterfaceContract,
 } from './fixtures/observations.ts'
 
 type Run = {
@@ -54,7 +56,38 @@ const verdictOf = (run: Run = {}) => {
 		...satisfiedPatches(answered),
 		...(run.patches ?? {}),
 	})
-	return reducePreflight(plan, { observations })
+	const verdict = reducePreflight(plan, { observations })
+	expectCheckIdentity(plan, verdict.checks)
+	return verdict
+}
+
+/**
+ * Every verdict a test builds is held to the identity rule, so a failure path
+ * cannot drop or misattribute the interface unnoticed: a check names an
+ * interface exactly when it names an operation, and the interface is the one
+ * the planned check or its manifestation witness declares.
+ */
+function expectCheckIdentity(
+	plan: PreflightPlan,
+	checks: readonly PreflightCheck[],
+): void {
+	expect(checks).toHaveLength(plan.checks.length)
+	plan.checks.forEach((planned, index) => {
+		const check = checks[index] as PreflightCheck
+		const label = `${planned.kind} #${index}`
+		expect(check.kind, label).toBe(planned.kind)
+		expect(check.interfaceId === null, `${label}: interfaceId null`).toBe(
+			check.operationId === null,
+		)
+		if (check.interfaceId === null) return
+		const declaring =
+			'interfaceId' in planned
+				? planned.interfaceId
+				: 'witness' in planned
+					? planned.witness?.interfaceId
+					: undefined
+		expect(check.interfaceId, label).toBe(declaring)
+	})
 }
 
 /** One plan per interface kind, so a mismatch can be asked in either direction. */
@@ -598,9 +631,9 @@ describe('the verdict itself', () => {
 		expect(verdictOf({ patches: faultSilentPatch() }).passed).toBe(false)
 	})
 
-	it('67. is an origin artifact: schemaVersion 1, no parent, revision 0', () => {
+	it('67. is an origin artifact: schemaVersion 2, no parent, revision 0', () => {
 		const verdict = verdictOf()
-		expect(verdict.schemaVersion).toBe(1)
+		expect(verdict.schemaVersion).toBe(2)
 		expect(verdict.parentDigest).toBeNull()
 		expect(verdict.revisionCount).toBe(0)
 		expect(verdict.runId).toBe('run-1')
@@ -683,6 +716,170 @@ describe('the verdict itself', () => {
 				'read-thing',
 			),
 		).toBe('failed')
+	})
+
+	// An operation identifier is unique only within its interface, so a check
+	// that names an operation names the interface too, and a check that names no
+	// operation names no interface.
+	it('134. writes the declaring interface on every per-operation check and null on the rest', () => {
+		const { checks } = verdictOf()
+		const named = checks.filter((check) => check.operationId !== null)
+		expect(named.length).toBeGreaterThan(0)
+		for (const check of named)
+			expect(check.interfaceId, `${check.kind}/${check.operationId}`).toBe(
+				'thing-api',
+			)
+		for (const check of checks.filter((entry) => entry.operationId === null))
+			expect(check.interfaceId, check.kind).toBeNull()
+		expect(checkFor(checks, 'state-reset').interfaceId).toBeNull()
+		expect(checkFor(checks, 'clean-control').interfaceId).toBeNull()
+	})
+
+	it('135. tells two interfaces apart when both declare the same operation id', () => {
+		const { checks } = verdictOf({ contract: twoInterfaceContract() })
+		for (const kind of ['interface-present', 'input-sensitivity'] as const) {
+			const sameOperation = checks.filter(
+				(check) => check.kind === kind && check.operationId === 'read-thing',
+			)
+			expect(
+				sameOperation.map((check) => check.interfaceId).sort(),
+				kind,
+			).toEqual(['other-api', 'thing-api'])
+		}
+		const fired = checkFor(checks, 'seeded-fault-fired', 'list-things')
+		expect(fired.interfaceId).toBe('thing-api')
+	})
+
+	it('136. names the interface the manifestation witness targets on the seeded-fault checks', () => {
+		const draft = probeDraft()
+		draft.defects[0].manifestationWitness.interfaceId = 'other-api'
+		const { checks } = verdictOf({
+			contract: twoInterfaceContract(),
+			probes: [ProbeSchema.parse(draft)],
+		})
+		for (const kind of ['seeded-faults-scoped', 'seeded-fault-fired'] as const)
+			expect(checkFor(checks, kind, 'list-things').interfaceId, kind).toBe(
+				'other-api',
+			)
+		expect(checkFor(checks, 'state-reset').interfaceId).toBeNull()
+	})
+
+	// Every failure path names the same identity the success path does. The
+	// witness sits on `other-api`, the interface the plan lists second, so a path
+	// that read the first leg's interface instead of the check's own is caught.
+	describe('on a failure path, in a contract whose second interface is the one that fails', () => {
+		const onOtherApi = (): Probe => {
+			const draft = probeDraft()
+			draft.defects[0].manifestationWitness.interfaceId = 'other-api'
+			return ProbeSchema.parse(draft)
+		}
+		const run = (extra: Omit<Run, 'contract' | 'probes'>) =>
+			verdictOf({
+				contract: twoInterfaceContract(),
+				probes: [onOtherApi()],
+				...extra,
+			}).checks
+		const otherLegs = [
+			'other-create-a',
+			'other-create-b',
+			'other-read-a',
+			'other-read-b',
+			'other-list-a',
+			'other-list-b',
+			'fault-leg',
+		]
+
+		it('137. names other-api when none of its legs was observed', () => {
+			const checks = run({ missing: otherLegs })
+			for (const [kind, operationId] of [
+				['interface-present', 'read-thing'],
+				['input-sensitivity', 'read-thing'],
+				['seeded-fault-fired', 'list-things'],
+			] as const) {
+				const failed = checks.filter(
+					(check) =>
+						check.kind === kind &&
+						check.operationId === operationId &&
+						check.outcome === 'failed',
+				)
+				expect(
+					failed.map((check) => check.interfaceId),
+					`${kind}/${operationId}`,
+				).toEqual(['other-api'])
+			}
+		})
+
+		it('138. names other-api when one of its legs echoed another interface', () => {
+			const checks = run({
+				patches: { 'other-read-b': { interfaceId: 'thing-api' } },
+			})
+			const failed = checks.filter(
+				(check) =>
+					check.kind === 'interface-present' && check.outcome === 'failed',
+			)
+			expect(
+				failed.map((check) => [check.interfaceId, check.operationId]),
+			).toEqual([['other-api', 'read-thing']])
+		})
+
+		it('139. names other-api when the fault leg does not fire and when a clean leg does', () => {
+			const silent = run({
+				patches: { 'fault-leg': jsonPatch({ items: [{ broken: false }] }) },
+			})
+			expect(
+				checkFor(silent, 'seeded-fault-fired', 'list-things'),
+			).toMatchObject({ interfaceId: 'other-api', outcome: 'failed' })
+			const firing = run({
+				patches: {
+					'other-list-b': jsonPatch({ items: [{ broken: true }] }),
+				},
+			})
+			expect(
+				checkFor(firing, 'seeded-faults-scoped', 'list-things'),
+			).toMatchObject({ interfaceId: 'other-api', outcome: 'failed' })
+		})
+
+		it('142. names other-api when its sensitivity witness resolves insufficient-evidence', () => {
+			const failed = run({
+				patches: {
+					'other-list-a': jsonPatch({ items: [] }),
+					'other-list-b': jsonPatch({ items: [] }),
+				},
+			}).filter(
+				(check) =>
+					check.kind === 'input-sensitivity' && check.outcome === 'failed',
+			)
+			expect(
+				failed.map((check) => [check.interfaceId, check.operationId]),
+			).toEqual([['other-api', 'list-things']])
+		})
+
+		it("140. names other-api when the fault leg is the operation's only leg", () => {
+			const draft = structuredClone(lonelyDefectProbe) as unknown as Record<
+				string,
+				any
+			>
+			draft.defects[0].manifestationWitness.interfaceId = 'other-api'
+			const checks = verdictOf({
+				contract: twoInterfaceContract(),
+				probes: [ProbeSchema.parse(draft)],
+			}).checks
+			expect(
+				checkFor(checks, 'seeded-faults-scoped', 'reset-things'),
+			).toMatchObject({ interfaceId: 'other-api', outcome: 'failed' })
+		})
+	})
+
+	// A path that finds no observation for a control leg has no operation to
+	// name, so it names no interface either.
+	it('141. names no interface when a control leg produced no observation', () => {
+		const { checks } = verdictOf({ missing: ['preflight-control-observe-2'] })
+		for (const kind of ['state-reset', 'clean-control'] as const)
+			expect(checkFor(checks, kind), kind).toMatchObject({
+				interfaceId: null,
+				operationId: null,
+				outcome: 'failed',
+			})
 	})
 
 	it('68. emits no seeded-fault check at all for a contract with no seeded faults', () => {

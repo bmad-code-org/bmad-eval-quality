@@ -214,7 +214,7 @@ const policy: ScoringPolicy = {
 }
 
 const passingPreflight: PreflightVerdict = {
-	schemaVersion: 1,
+	schemaVersion: 2,
 	parentDigest: null,
 	revisionCount: 0,
 	runId: 'run-1',

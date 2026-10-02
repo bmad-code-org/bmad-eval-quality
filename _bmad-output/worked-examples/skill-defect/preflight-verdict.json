@@ -1,36 +1,42 @@
 {
   "checks": [
     {
+      "interfaceId": "skill-runner",
       "kind": "interface-present",
       "note": null,
       "operationId": "run-skill",
       "outcome": "satisfied"
     },
     {
+      "interfaceId": "skill-runner",
       "kind": "input-sensitivity",
       "note": null,
       "operationId": "run-skill",
       "outcome": "satisfied"
     },
     {
+      "interfaceId": null,
       "kind": "state-reset",
       "note": null,
       "operationId": null,
       "outcome": "satisfied"
     },
     {
+      "interfaceId": null,
       "kind": "clean-control",
       "note": null,
       "operationId": null,
       "outcome": "satisfied"
     },
     {
+      "interfaceId": "skill-runner",
       "kind": "seeded-faults-scoped",
       "note": "D-001",
       "operationId": "run-skill",
       "outcome": "satisfied"
     },
     {
+      "interfaceId": "skill-runner",
       "kind": "seeded-fault-fired",
       "note": "D-001",
       "operationId": "run-skill",
@@ -42,5 +48,5 @@
   "passed": true,
   "revisionCount": 0,
   "runId": "skill-defect-run-0001",
-  "schemaVersion": 1
+  "schemaVersion": 2
 }

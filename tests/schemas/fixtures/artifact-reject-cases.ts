@@ -1173,6 +1173,20 @@ export const ARTIFACT_REJECT_CASES: readonly ArtifactRejectCase[] = [
 		errorParams: { missingProperty: 'fixtureDigest' },
 	},
 	{
+		id: 'preflight-check-interface-absent',
+		artifact: 'preflight-verdict',
+		constraint:
+			'a check names the interface that declares its operation, or null (AD-10)',
+		mutate: (verdict) => {
+			delete verdict.checks[0].interfaceId
+		},
+		issuePath: ['checks', 0, 'interfaceId'],
+		issueCode: 'invalid_type',
+		keyword: 'required',
+		instancePath: '/checks/0',
+		errorParams: { missingProperty: 'interfaceId' },
+	},
+	{
 		id: 'preflight-check-kind-outside-the-six',
 		artifact: 'preflight-verdict',
 		constraint: "the check kinds are AD-10's closed six",

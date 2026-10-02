@@ -199,17 +199,17 @@ node dist/cli/main.js preflight \
 ```
 
 ```bash
-node -e "const v=require('/tmp/eval-quality-tool-use/preflight-verdict.json');console.log('passed:',v.passed);for(const c of v.checks)console.log(c.kind,c.operationId,c.outcome)"
+node -e "const v=require('/tmp/eval-quality-tool-use/preflight-verdict.json');console.log('passed:',v.passed);for(const c of v.checks)console.log(c.kind,c.interfaceId,c.operationId,c.outcome)"
 ```
 
 ```text
 passed: true
-interface-present search-notes satisfied
-interface-present create-note satisfied
-input-sensitivity search-notes satisfied
-input-sensitivity create-note satisfied
-state-reset null satisfied
-clean-control null satisfied
+interface-present notes-tool-server search-notes satisfied
+interface-present notes-tool-server create-note satisfied
+input-sensitivity notes-tool-server search-notes satisfied
+input-sensitivity notes-tool-server create-note satisfied
+state-reset null null satisfied
+clean-control null null satisfied
 ```
 
 ```bash

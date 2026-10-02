@@ -1091,7 +1091,7 @@ const authoredIsolationManifest = (
  * move a byte.
  */
 const authoredPreflightVerdict = (): PreflightVerdict => ({
-	schemaVersion: 1,
+	schemaVersion: 2,
 	parentDigest: null,
 	revisionCount: 0,
 	runId: 'spike-run-0001',

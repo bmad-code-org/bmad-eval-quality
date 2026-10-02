@@ -204,7 +204,7 @@ const manifest = IsolationManifest.parse({
  * the bytes this file exists to swap.
  */
 const scoredUnderPreflight = PreflightVerdict.parse({
-	schemaVersion: 1,
+	schemaVersion: 2,
 	parentDigest: null,
 	revisionCount: 0,
 	runId: authoredRecord.runId,
@@ -579,6 +579,7 @@ describe('pre-flight, over a service the suite started', () => {
 		expect(failed).toEqual([
 			{
 				kind: 'seeded-fault-fired',
+				interfaceId: null,
 				operationId: null,
 				outcome: 'failed',
 				note: 'D-001: the defect declares no manifestation witness, so it cannot be observed to fire',

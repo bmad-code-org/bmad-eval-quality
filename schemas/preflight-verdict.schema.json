@@ -57,6 +57,19 @@
               "seeded-fault-fired"
             ]
           },
+          "interfaceId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                "description": "A kebab-case slug. Excludes \"/\" and \"~\" so an identifier can be embedded in an interaction-rooted pointer without escaping."
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Names the interface that declares `operationId`, because an operation identifier is unique only within its interface and two checks of one kind for the same operation on two interfaces are otherwise indistinguishable. `preflight` writes the declaring interface for a check that names an operation and null for a check that names none."
+          },
           "operationId": {
             "anyOf": [
               {
@@ -68,7 +81,7 @@
                 "type": "null"
               }
             ],
-            "description": "Nullable because AD-10 scopes input sensitivity and state reset per operation and interface presence per interface, so a check that is not per-operation has nothing to name here."
+            "description": "Nullable because `state-reset`, `clean-control` and a `seeded-fault-fired` check whose defect declares no manifestation witness are not per-operation, so they have nothing to name here. `interface-present`, `input-sensitivity`, `seeded-faults-scoped` and the other `seeded-fault-fired` checks name the operation they examined."
           },
           "outcome": {
             "type": "string",
@@ -92,6 +105,7 @@
         },
         "required": [
           "kind",
+          "interfaceId",
           "operationId",
           "outcome",
           "note"

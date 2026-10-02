@@ -891,7 +891,7 @@ export const historicalProbe: Probe = {
 }
 
 export const preflightVerdictFixture: PreflightVerdict = {
-	schemaVersion: 1,
+	schemaVersion: 2,
 	parentDigest: null,
 	revisionCount: 0,
 	runId: 'spike-run-0001',
@@ -900,42 +900,49 @@ export const preflightVerdictFixture: PreflightVerdict = {
 	checks: [
 		{
 			kind: 'interface-present',
+			interfaceId: null,
 			operationId: null,
 			outcome: 'satisfied',
 			note: null,
 		},
 		{
 			kind: 'input-sensitivity',
+			interfaceId: 'notes-api',
 			operationId: 'patch-note',
 			outcome: 'satisfied',
 			note: null,
 		},
 		{
 			kind: 'input-sensitivity',
+			interfaceId: 'notes-api',
 			operationId: 'list-notes',
 			outcome: 'exempt',
 			note: 'The operation declares no inputs in any channel.',
 		},
 		{
 			kind: 'state-reset',
-			operationId: 'patch-note',
+			interfaceId: null,
+			operationId: null,
 			outcome: 'satisfied',
 			note: null,
 		},
 		{
 			kind: 'clean-control',
+			interfaceId: null,
 			operationId: null,
 			outcome: 'satisfied',
 			note: null,
 		},
 		{
 			kind: 'seeded-faults-scoped',
+			interfaceId: null,
 			operationId: null,
 			outcome: 'satisfied',
 			note: null,
 		},
 		{
 			kind: 'seeded-fault-fired',
+			interfaceId: 'notes-api',
 			operationId: 'patch-note',
 			outcome: 'satisfied',
 			note: null,
@@ -954,12 +961,14 @@ export const failingPreflightVerdict: PreflightVerdict = {
 	checks: [
 		{
 			kind: 'seeded-fault-fired',
+			interfaceId: 'notes-api',
 			operationId: 'patch-note',
 			outcome: 'failed',
 			note: 'A declared seeded fault was never observed to fire, so the probe is vacuous.',
 		},
 		{
 			kind: 'input-sensitivity',
+			interfaceId: 'notes-api',
 			operationId: 'get-note',
 			outcome: 'failed',
 			note: 'The witness relation resolved insufficient-evidence, which fails rather than passes.',

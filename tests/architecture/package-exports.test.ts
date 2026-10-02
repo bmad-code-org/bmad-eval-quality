@@ -508,7 +508,7 @@ describe('the published package surface', () => {
 		// literal declared type off `dist/index.d.ts`.
 		expect(barrel.SEALED_EVALUATOR_BRIEF_SCHEMA_VERSION).toBe(2)
 		expect(barrel.EVIDENCE_ARTIFACT_SCHEMA_VERSION).toBe(4)
-		expect(barrel.PREFLIGHT_VERDICT_SCHEMA_VERSION).toBe(1)
+		expect(barrel.PREFLIGHT_VERDICT_SCHEMA_VERSION).toBe(2)
 		expect(barrel.SEALED_RUN_RECORD_SCHEMA_VERSION).toBe(6)
 		expect(barrel.ISOLATION_MANIFEST_SCHEMA_VERSION).toBe(1)
 		expect(barrel.EVALUATOR_CONFIGURATION_SCHEMA_VERSION).toBe(1)
@@ -518,7 +518,7 @@ describe('the published package surface', () => {
 
 		const brief: typeof import('eval-quality').SEALED_EVALUATOR_BRIEF_SCHEMA_VERSION = 2
 		const evidence: typeof import('eval-quality').EVIDENCE_ARTIFACT_SCHEMA_VERSION = 4
-		const verdict: typeof import('eval-quality').PREFLIGHT_VERDICT_SCHEMA_VERSION = 1
+		const verdict: typeof import('eval-quality').PREFLIGHT_VERDICT_SCHEMA_VERSION = 2
 		const record: typeof import('eval-quality').SEALED_RUN_RECORD_SCHEMA_VERSION = 6
 		const manifest: typeof import('eval-quality').ISOLATION_MANIFEST_SCHEMA_VERSION = 1
 		const configuration: typeof import('eval-quality').EVALUATOR_CONFIGURATION_SCHEMA_VERSION = 1
@@ -526,7 +526,7 @@ describe('the published package surface', () => {
 		const privateManifest: typeof import('eval-quality').PRIVATE_ARTIFACT_MANIFEST_SCHEMA_VERSION = 1
 		const briefLiteral: 2 = brief
 		const evidenceLiteral: 4 = evidence
-		const verdictLiteral: 1 = verdict
+		const verdictLiteral: 2 = verdict
 		const recordLiteral: 6 = record
 		const manifestLiteral: 1 = manifest
 		const configurationLiteral: 1 = configuration

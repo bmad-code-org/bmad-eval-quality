@@ -1502,7 +1502,7 @@
 					"settles": "read",
 					"reason": "introduces the unproven block below it; the claim itself is the block",
 					"asOf": {
-						"hash": "459330fd91e1336c61eaab772094db4a79d94584448032dd7af8832dc3ef3721"
+						"hash": "b83ed5fb34f60479208d3a1a4c8d7dbf70f83fd5d2ddf411f824927363be60e0"
 					}
 				},
 				{
