@@ -758,3 +758,101 @@ Route B's `O-001` negative domain is "A run that wrote no tool-call log", since 
 The Route A and Route B signatures share one predicate, `all` over an `equality` of `/interactions/observed/exit-code` to 0 and an `absence` over the log pointer, which puts the log pointer at `operands[1].operands[0]`, the path the refusal names.
 `P-102` and `P-104` are derived inside `qualify.ts` by cloning the authored `P-101`, as at 3.0.0.
 The check on the reconstruction is the transcription: four rendered direction sentences, four qualification details, and two compile-side refusal messages came back identical to bytes this record wrote down at earlier releases.
+
+## Re-verified at 5.0.0, 2 October
+
+`5.0.0` moved the published major, so the pin on `docs/how-to/evaluate-tool-use-behavior.md` failed `check:doc-claims`, and the one-step release run refused before it committed anything.
+`npm run release:prepare -- major --no-pr` bumped the tree to 5.0.0 on `release/v5.0.0`, stamped the changelog, ran `doc-claims` against the bumped tree, and left it uncommitted with the one stale claim named, as `CONTRIBUTING.md` says it will.
+The route was run again on that tree, on top of `main` at `ff4543f`, with nothing else modified.
+`npm run build` first, at exit 0, then the eight invocations the `Commands as run` block lists, in that order, against files authored in an untracked scratch directory outside this working tree.
+Every command line, its stdout, its stderr, and its exit code were captured as they ran.
+
+**Route A reproduces whole.**
+The contract carrying `artifacts: ["tool-calls"]`, `descriptorChannel` nominating that artifact, the two tailed oracles, and the sensitivity witness over tailed artifact pointers compiles at exit 0 and seals at exit 0.
+Both rendered directions came back byte for byte as this record transcribes them, `O-001`'s "The calls field of the tool-calls it wrote from the run agent command (with the supplied stdin task) is asserted to be present" included.
+Pre-flight plans the same five legs (`leg-changelog-task`, `leg-tag-task`, `preflight-control-observe`, `preflight-control-observe-2`, `tool-log-fault`), prints `reduced 5 leg(s): passed`, exits 0, and reports all six checks satisfied.
+The sensitivity witness legs and the manifestation witness both address the file, as they did at 1.4.2, 2.0.0, 3.0.0, and 4.0.0.
+
+**Route B reproduces whole.**
+The same operation with `descriptorChannel: { "kind": "stream", "channel": "stdout" }`, `artifacts` unchanged, `O-001` on the bare artifact pointer, `O-002` and both witnesses on the stream, compiles at exit 0 and seals at exit 0.
+Its two directions came back byte for byte too, including `O-001`'s "The tool-calls it wrote from the run agent command (with the supplied stdin task) is asserted to be present" and `O-002`'s "Every element reachable through the calls field of its standard output".
+Pre-flight plans the same five legs, reduces at exit 0, and reports all six checks satisfied.
+
+**The scoring-side restriction reproduces whole.**
+`qualifyProbe` returns `condition-artifact-channel-contract-local` for the tailed `/interactions/observed/artifact/tool-calls/calls` and for the bare `/interactions/observed/artifact/tool-calls`, each at `.defectSignature.condition.predicate.operands[1].operands[0]`, with the detail string this record already quotes, character for character.
+`sealProbeSet` over the Route A probe returns an empty `admitted` list and rejects `P-101` under that one code.
+With the log printed as JSON on a nominated `stdout`, the same seeded defect qualifies with an empty failure list, and `sealProbeSet` admits `P-103`.
+
+**The `call-inputs` divergence reproduces, in the order the divergence section records.**
+A probe declaring `observableChannel: "call-inputs"` and naming only `/interactions/observed/call-inputs/stdin/task` returns `signature-observable-channel-not-response-side` first, with the detail the divergence section quotes, and `condition-channels-underspecified` second.
+
+**The boundary refusals the published paragraph states reproduce, tailed and bare.**
+Under a `stdout` descriptor, a tailed oracle pointer into the log is `unreachable-check-evidence` at exit 4, with the "declares it writes but declares no structure for" message.
+A sensitivity witness leg at the bare artifact under the same descriptor is `unreachable-check-evidence` at exit 4, with `checkExpressionLegChannel`'s "pre-flight builds each leg from stdout, exit-code, call-inputs alone".
+The tailed spelling of that leg is refused under the same code with the same message.
+The oracle and bare-witness messages are byte-identical to the ones the 1.4.2 and 2.0.0 sections transcribe.
+
+**What `5.0.0` changed, and what each change cost the route.**
+`5.0.0` names an operation by the pair of its interface and its `operationId`, and it adds `interfaceId` to every pre-flight check.
+Four shapes moved, and the run read each one off the built CLI.
+
+The contract stamps `schemaVersion` 6 where it stamped 5, and each `interactionPlan` step names the interface that declares its operation.
+`EVAL_CONTRACT_SCHEMA_VERSION` reads 6 off the built barrel, and the one step of this route carries `"interfaceId": "release-agent-runner"` beside `"operationId": "run-agent"`.
+The same contract with that key deleted from the step stops at the parse, and the same contract stamped 5 stops at the stamp, which `compile` reads ahead of the parse:
+
+```
+$ node dist/cli/main.js compile --in $SCRATCH/variant-a-step-without-interface-id.json   # exit 5
+schema-parse-failure: EvalContract: input does not conform to the EvalContract schema
+  /interactionPlan/0/interfaceId: Invalid input: expected string, received undefined
+
+$ node dist/cli/main.js compile --in $SCRATCH/variant-a-stamp-5.json                     # exit 5
+schema-version-mismatch: EvalContract.schemaVersion: carries "schemaVersion" 5 where this build reads 6; an artifact written for another version is not read leniently, since its stale version would travel into the scoring version (AD-11)
+```
+
+The probe still stamps 5, and `PROBE_SCHEMA_VERSION` reads 5 off the built barrel.
+The defect signature's input binding still has to declare `"arguments": null`: the Route A probe with that key deleted is `schema-parse-failure` at exit 5, at `/0/defectSignature`.
+A probe stamped 4 is `schema-version-mismatch` at exit 5 under pre-flight.
+
+The pre-flight verdict stamps `schemaVersion` 2 where it stamped 1, and each check carries `interfaceId`.
+Route A's verdict, reduced at exit 0:
+
+```json
+{"checks":[
+ {"interfaceId":"release-agent-runner","kind":"interface-present","note":null,"operationId":"run-agent","outcome":"satisfied"},
+ {"interfaceId":"release-agent-runner","kind":"input-sensitivity","note":null,"operationId":"run-agent","outcome":"satisfied"},
+ {"interfaceId":null,"kind":"state-reset","note":null,"operationId":null,"outcome":"satisfied"},
+ {"interfaceId":null,"kind":"clean-control","note":null,"operationId":null,"outcome":"satisfied"},
+ {"interfaceId":"release-agent-runner","kind":"seeded-faults-scoped","note":"D-001","operationId":"run-agent","outcome":"satisfied"},
+ {"interfaceId":"release-agent-runner","kind":"seeded-fault-fired","note":"D-001","operationId":"run-agent","outcome":"satisfied"}],
+ "passed":true,"runId":"run-1","schemaVersion":2}
+```
+
+Route B's verdict has the same six rows.
+The per-operation checks name the declaring interface, and `state-reset` and `clean-control` carry `null` in both identifier fields.
+The sealed brief still stamps `schemaVersion` 2, and its `permittedInterfaces` entry is `{ "kind": "cli", "logicalId": "release-agent-runner" }`.
+It carries no `of interface` clause in either direction, because the contract declares `run-agent` on one interface only.
+
+Three further changes in the release cost the route nothing.
+The sealed run record moves to schema version 7, and `Observation` gains `interfaceId`; both live inside `score`, which this route does not run, per Decision 5.
+`resolveHomeOperation` now returns `{ interfaceId, operation }`; both scripts hand the contract's own operation to `qualifyProbe` and never call it.
+The contract declares no `siblingGroups`, so the pair form of a group member has nothing to touch.
+
+The migration cost carried forward from 1.4.2 was two stamps and one key at 2.0.0, and it is two stamps and two keys now.
+The stamps are contract 6 and probe 5, and the keys are `"arguments": null` on the signature's input binding and `interfaceId` on the step, which `5.0.0` added.
+
+**Every published sentence held.**
+Nothing on `docs/how-to/evaluate-tool-use-behavior.md` was contradicted by the run.
+The page already carried the contract stamp 6 and the step's `interfaceId`, written when the interface identity landed, and the run confirms both.
+The re-verification earned three edits to the page: the pin moves to 5.0.0, "and it has not been re-run end to end since" goes because the run is now current, and the migration-cost sentence gains the refusals this run observed for each omission.
+`CHANGELOG.md` gets no entry beyond what the bump stamped, as at 3.0.0.
+
+**What the reproduction reconstructed, for the next reader.**
+The scratch files were not committed at 4.0.0 either, so all of them were authored fresh against the current schemas from what this record pins, and the choices the 3.0.0 section lists as unpinned were made again from scratch.
+Pinned and reproduced unchanged: the interface and operation identifiers, the invocation, the declared artifact name, both descriptor channels, the collection at `/calls` with `{ "mode": "at-most", "max": 8 }`, the five leg identifiers, every oracle relation and pointer, every signature pointer and observable channel, and every exit code, failure code, artifact path, and detail string quoted above.
+Chosen here: the behaviour and oracle prose, which the seal then rendered into the direction sentences this record does pin; the placeholder digests on the probe; the three `stdin` task strings, "summarize the changelog entries", "tag the release candidate", and "run with the tool log fault"; and the observed bodies on all five legs, with the fault leg's log carrying no `calls` key so an `absence` relation resolves true there and false on every clean leg.
+Every observation carries `interfaceId` beside `operationId`, since a pre-flight observation names its interface.
+`O-001` and `O-002` each sit on a behavior of their own at 4.0.0; this time one behavior declares both oracles, which the seal renders the same way.
+Route B's `O-001` negative domain is "A run that wrote no tool-call log", since the bare pointer asserts the file itself.
+The Route A and Route B signatures share one predicate, `all` over an `equality` of `/interactions/observed/exit-code` to 0 and an `absence` over the log pointer, which puts the log pointer at `operands[1].operands[0]`, the path the refusal names.
+`P-102` and `P-104` are derived inside `qualify.ts` by cloning the authored `P-101`, as at 3.0.0 and 4.0.0.
+The check on the reconstruction is the transcription: four rendered direction sentences, four qualification details, and two compile-side refusal messages came back identical to bytes this record wrote down at earlier releases.
