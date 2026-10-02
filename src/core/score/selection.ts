@@ -35,9 +35,9 @@ export type StepSelection = {
 /**
  * Matches the step's `(interfaceId, operationId)` pair against every
  * observation's pair, ordered by `sequence` ascending. Reads no other field of
- * `step`: whether `several` is the named ambiguity condition or a legitimate `any`-cardinality
- * match is a fact about the step's declared cardinality, decided by whoever
- * reads this result, not by this function.
+ * `step`: whether `several` is the named ambiguity condition or a legitimate
+ * `any`-cardinality match is a fact about the step's declared cardinality,
+ * decided by whoever reads this result.
  *
  * Sorts a copy; the input `observations` array is never mutated, and its own
  * order is never read as meaning anything (NFR9: a permutation of the same

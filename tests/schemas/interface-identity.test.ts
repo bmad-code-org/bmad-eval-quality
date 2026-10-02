@@ -1,7 +1,8 @@
 /**
- * Interface identity in the published shapes: an `operationId` is unique only within its interface, so the
- * published shapes carry the interface beside it. A record observation, a plan
- * step and a sibling-group member each name the pair.
+ * Interface identity in the published shapes: an `operationId` is unique only
+ * within its interface, so the published shapes carry the interface beside it.
+ * A record observation, a plan step and a sibling-group member each name the
+ * pair.
  */
 import { describe, expect, it } from 'vitest'
 import {

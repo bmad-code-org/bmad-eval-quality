@@ -1,13 +1,16 @@
 /**
- * Seal over two interfaces declaring one operation id: the plan index keys every operation by the pair
- * `(interfaceId, operationId)`, so two interfaces may declare one
- * `operationId`, and the derived reference tells the two apart.
+ * Seal over two interfaces declaring one operation id: the plan index keys
+ * every operation by the pair `(interfaceId, operationId)`, so two interfaces
+ * may declare one `operationId`, and the derived reference tells the two apart.
  */
 import { describe, expect, it } from 'vitest'
+import type { z } from 'zod'
 import { compile } from '../../src/application/compile.ts'
 import { seal } from '../../src/application/seal.ts'
 import { StructuralFailure } from '../../src/core/failure-codes.ts'
 import type { EvalContract } from '../../src/core/schemas/eval-contract.ts'
+import type { PermittedInterface } from '../../src/core/schemas/interface.ts'
+import type { BindingValue } from '../../src/core/schemas/plan.ts'
 import { renderEvidenceReferences } from '../../src/core/seal/derived-reference.ts'
 import { buildPlanIndex } from '../../src/core/seal/plan-index.ts'
 import { satisfiedContract } from '../coverage/fixtures/satisfaction-contracts.ts'
@@ -347,6 +350,104 @@ describe('the interface qualifier follows the kind of the interface', () => {
 		expect(text).toContain('the create thing endpoint of interface "thing-api"')
 		expect(text).toContain(
 			'the create thing endpoint of interface "thing-api-v2"',
+		)
+	})
+})
+
+describe('a captured value expands by the operation of the interface that produced it', () => {
+	const [commandInterface] = sharedOperationContract.permittedInterfaces
+	if (commandInterface === undefined)
+		throw new Error('the fixture declares none')
+
+	const probe = (
+		stepId: string,
+		option: Record<string, z.infer<typeof BindingValue>>,
+	) => ({
+		stepId,
+		interfaceId: 'notes-v1',
+		operationId: 'read-note',
+		after: null,
+		cardinality: 'exactly-one' as const,
+		inputBinding: {
+			argument: null,
+			option,
+			environment: null,
+			stdin: null,
+		},
+	})
+	const apiStep = (stepId: string) => ({
+		stepId,
+		interfaceId: 'notes-api',
+		operationId: 'read-note',
+		after: null,
+		cardinality: 'exactly-one' as const,
+		inputBinding: {
+			path: { noteId: { literal: stepId } },
+			query: null,
+			header: null,
+			body: null,
+		},
+	})
+	const capturedFrom = (stepId: string) => ({
+		first: { captured: `/interactions/${stepId}/response-body/first` },
+		second: { captured: `/interactions/${stepId}/response-body/second` },
+	})
+
+	it('names an endpoint, and the api interface, for a step that notes-api declares and notes-v1 declares as a command', () => {
+		// The two probes differ only in the api step each captures from. A lookup
+		// of that step's operation by id alone finds the command `notes-v1`
+		// declares first, and the capture would read as a command.
+		const index = buildPlanIndex(
+			[
+				probe('probe-a', capturedFrom('seed-a')),
+				probe('probe-b', capturedFrom('seed-b')),
+				apiStep('seed-a'),
+				apiStep('seed-b'),
+			],
+			[commandInterface, notesInterface],
+		)
+		const text = renderEvidenceReferences(
+			[
+				'/interactions/probe-a/stdout/fragments',
+				'/interactions/probe-b/stdout/fragments',
+			],
+			index,
+		)
+		expect(text).toContain(
+			'from the read note endpoint of interface "notes-api"',
+		)
+		expect(text).not.toContain('read note command of interface "notes-api"')
+	})
+
+	it('expands nothing for a captured step whose interface does not declare its operation, though another interface does', () => {
+		// `notes-api` declares no `read-note` here, and `notes-v1` does. The probes
+		// differ only in a literal, so the escalation reaches the literal rung, where
+		// each captured key reads on its own as one the evaluator obtained earlier.
+		const [, withoutReadNote] = [commandInterface, notesInterface]
+		const apiWithoutReadNote = {
+			...structuredClone(withoutReadNote),
+			operations: withoutReadNote.operations
+				.slice(0, 1)
+				.map((operation) => ({ ...operation, operationId: 'list-notes' })),
+		} as PermittedInterface
+		const index = buildPlanIndex(
+			[
+				probe('probe-a', { ...capturedFrom('ghost-a'), tag: { literal: 'a' } }),
+				probe('probe-b', { ...capturedFrom('ghost-b'), tag: { literal: 'b' } }),
+				apiStep('ghost-a'),
+				apiStep('ghost-b'),
+			],
+			[commandInterface, apiWithoutReadNote],
+		)
+		const text = renderEvidenceReferences(
+			[
+				'/interactions/probe-a/stdout/fragments',
+				'/interactions/probe-b/stdout/fragments',
+			],
+			index,
+		)
+		expect(text).toContain(
+			'(with the option first you obtained earlier, the option second you obtained earlier, and the option tag "a")',
 		)
 	})
 })

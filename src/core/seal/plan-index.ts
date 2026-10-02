@@ -198,7 +198,7 @@ export type PlanIndexOptions = {
 /**
  * The one spelling of an operation as a map key: the pair joined on U+0000,
  * which no identifier carries. Every module that keys by operation uses this
- * instead of spelling the join again.
+ * one spelling.
  */
 export const operationKey = (
 	interfaceId: string,
@@ -208,10 +208,10 @@ export const operationKey = (
 /**
  * Builds the index once over the whole plan and interface set. Neither
  * schema enforces `stepId` uniqueness or one declaration per operation within
- * an interface. Strict callers keep the default throw instead of resolving by
- * array order. Standalone structural checks can select `unresolved`, which
- * removes every ambiguous identifier from lookup while preserving all
- * unambiguous entries. Two interfaces declaring the same `operationId` is not
+ * an interface. Strict callers keep the default throw, which refuses to pick a
+ * declaration by array order. Standalone structural checks can select
+ * `unresolved`, which removes every ambiguous identifier from lookup while
+ * preserving all unambiguous entries. Two interfaces declaring the same `operationId` is not
  * ambiguous: each pair resolves to its own operation.
  */
 export function buildPlanIndex(
@@ -250,11 +250,10 @@ export function buildPlanIndex(
 	const duplicateOperations = new Set<string>()
 	/**
 	 * Records one operation pair and answers whether the caller may store the
-	 * operation. A pair one interface declares twice is removed from every map
-	 * instead of being resolved by array order, so `operationOf` and its two
-	 * siblings answer `undefined` for it. One closure serves all three arms:
-	 * the bookkeeping is the same for every kind and only the destination map
-	 * differs.
+	 * operation. A pair one interface declares twice is removed from every map,
+	 * so `operationOf` and its two siblings answer `undefined` for it. One
+	 * closure serves all three arms: the bookkeeping is the same for every kind
+	 * and only the destination map differs.
 	 */
 	const claim = (interfaceId: string, operationId: string): boolean => {
 		const key = operationKey(interfaceId, operationId)

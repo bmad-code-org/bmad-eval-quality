@@ -10,6 +10,7 @@ import { DISCIPLINE_RULES } from '../../src/core/coverage/rules.ts'
 import { evaluateSatisfaction } from '../../src/core/coverage/satisfaction.ts'
 import { EvalContract } from '../../src/core/schemas/eval-contract.ts'
 import { sharedOperationContract } from '../fixtures/shared-operation-id.ts'
+import { satisfiedContract } from './fixtures/satisfaction-contracts.ts'
 
 const verdictFor = (
 	contract: EvalContract,
@@ -140,5 +141,105 @@ describe('rule 5 over a sibling group of two pairs', () => {
 			{ siblingGroups },
 		)
 		expect(verdictFor(contract, 'sibling-cross-check').satisfied).toBe(true)
+	})
+})
+
+describe('rule 7 where the read-back operation id is a state change on another interface', () => {
+	// `thing-api` declares `list-things` as a read. `ledger-api`, listed first,
+	// declares the same id as a state change, with a read of its own, so a
+	// lookup of the read-back step's operation by id alone reaches the ledger's
+	// declaration and discards a read that is one.
+	const ledger = () => {
+		const [thingApi] = satisfiedContract.permittedInterfaces
+		const list = thingApi?.operations.find(
+			(operation) => operation.operationId === 'list-things',
+		)
+		if (list === undefined) throw new Error('the fixture declares no list')
+		const operation = (operationId: string, stateChangeMarker: boolean) => ({
+			...structuredClone(list),
+			operationId,
+			stateChangeMarker,
+			pathTemplate: `/ledger/${operationId}`,
+			sensitivityWitness: {
+				...structuredClone(list.sensitivityWitness),
+				witnessId: `${operationId}-sensitivity`,
+			},
+		})
+		return {
+			logicalId: 'ledger-api',
+			kind: 'api' as const,
+			operations: [
+				operation('list-things', true),
+				operation('peek-things', false),
+			],
+		}
+	}
+	const step = (stepId: string, operationId: string, after: string | null) => ({
+		stepId,
+		interfaceId: 'ledger-api',
+		operationId,
+		inputBinding: {
+			path: null,
+			query: { limit: { literal: 10 } },
+			header: null,
+			body: null,
+		},
+		after,
+		cardinality: 'exactly-one' as const,
+	})
+	const reading = {
+		id: 'O-008',
+		direction: {
+			evidenceTargets: [
+				'/interactions/ledger-peek/response-body/items',
+				'/interactions/ledger-list/call-inputs/query/limit',
+			],
+			relation: 'containment',
+			polarity: 'expects-hold',
+			scope: 'The peek after the ledger list, against the limit it sent.',
+			negativeDomain: 'A ledger list whose effect a later peek does not show.',
+		},
+		check: {
+			op: 'containment',
+			operands: [
+				{ pointer: '/interactions/ledger-peek/response-body/items' },
+				{ pointer: '/interactions/ledger-list/call-inputs/query/limit' },
+			],
+		},
+		polarity: 'expects-hold',
+		commentary: null,
+	}
+
+	const contract = () => {
+		const base = structuredClone(satisfiedContract)
+		return EvalContract.parse({
+			...base,
+			behaviors: base.behaviors.map((behavior) => ({
+				...behavior,
+				oracles: [...behavior.oracles, 'O-008'],
+			})),
+			oracles: [...base.oracles, reading],
+			permittedInterfaces: [ledger(), ...base.permittedInterfaces],
+			interactionPlan: [
+				...base.interactionPlan,
+				step('ledger-list', 'list-things', null),
+				step('ledger-peek', 'peek-things', 'ledger-list'),
+			],
+		})
+	}
+
+	it('reads thing-api create back through the thing-api list, a read, and the ledger list back through its peek', () => {
+		const verdict = verdictFor(contract(), 'state-change-read-back')
+		expect(verdict.satisfied).toBe(true)
+	})
+
+	it('leaves the ledger list unread once its peek is gone, and names the operation', () => {
+		const withoutPeek = contract()
+		withoutPeek.interactionPlan = withoutPeek.interactionPlan.filter(
+			(entry) => entry.stepId !== 'ledger-peek',
+		)
+		const verdict = verdictFor(withoutPeek, 'state-change-read-back')
+		expect(verdict.satisfied).toBe(false)
+		expect(verdict.reason).toContain('list-things')
 	})
 })

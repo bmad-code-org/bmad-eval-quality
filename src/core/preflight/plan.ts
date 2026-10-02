@@ -43,6 +43,7 @@ import type {
 	SensitivityWitness,
 	WitnessInputs,
 } from '../schemas/sensitivity-witness.ts'
+import { operationKey } from '../seal/plan-index.ts'
 import type { PlanStage } from '../stage-contracts.ts'
 import { referenceSetMembers } from './witness-evidence.ts'
 
@@ -372,9 +373,10 @@ export const planPreflight: PlanStage<PreflightPlanInput, PreflightPlan> = (
 	// (its own schema description says so, and `duplicate-operation-signature`
 	// covers method plus path template only). Keyed by operation id alone, one
 	// interface's legs become another's clean legs.
-	const legIdsByOperation = new Map<string, string[]>()
-	const scopeKey = (interfaceId: string, operationId: string): string =>
-		`${interfaceId}\u0000${operationId}`
+	const legIdsByOperation = new Map<
+		string,
+		{ interfaceId: string; operationId: string; legIds: string[] }
+	>()
 	const addLeg = (
 		legId: string,
 		purpose: PlannedLegPurpose,
@@ -393,10 +395,15 @@ export const planPreflight: PlanStage<PreflightPlanInput, PreflightPlan> = (
 			},
 			artifactPath,
 		})
-		const key = scopeKey(interfaceId, operation.operationId)
+		const key = operationKey(interfaceId, operation.operationId)
 		const group = legIdsByOperation.get(key)
-		if (group === undefined) legIdsByOperation.set(key, [legId])
-		else group.push(legId)
+		if (group === undefined) {
+			legIdsByOperation.set(key, {
+				interfaceId,
+				operationId: operation.operationId,
+				legIds: [legId],
+			})
+		} else group.legIds.push(legId)
 	}
 
 	// 1. the sensitivity legs and their checks
@@ -531,8 +538,8 @@ export const planPreflight: PlanStage<PreflightPlanInput, PreflightPlan> = (
 			// of its own clean-leg set.
 			const cleanLegIds = [
 				...(legIdsByOperation.get(
-					scopeKey(witness.interfaceId, operation.operationId),
-				) ?? []),
+					operationKey(witness.interfaceId, operation.operationId),
+				)?.legIds ?? []),
 			]
 			addLeg(
 				witness.legId,
@@ -588,16 +595,13 @@ export const planPreflight: PlanStage<PreflightPlanInput, PreflightPlan> = (
 
 	// 2. one interface-present check per operation that has a leg, in
 	// declaration order, ahead of the rest
-	const presence: PlannedCheck[] = [...legIdsByOperation].map(
-		([key, legIds]) => {
-			const [interfaceId = '', operationId = ''] = key.split('\u0000')
-			return {
-				kind: 'interface-present',
-				interfaceId,
-				operationId,
-				legIds: [...legIds],
-			}
-		},
+	const presence: PlannedCheck[] = [...legIdsByOperation.values()].map(
+		({ interfaceId, operationId, legIds }) => ({
+			kind: 'interface-present',
+			interfaceId,
+			operationId,
+			legIds: [...legIds],
+		}),
 	)
 
 	return {
