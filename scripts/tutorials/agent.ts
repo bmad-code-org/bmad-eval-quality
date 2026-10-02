@@ -916,6 +916,7 @@ export function buildAgentTutorial(): Map<string, string> {
 		query: null,
 		header: null,
 		body: null,
+		bodyEncoding: null,
 		argument: null,
 		option,
 		environment: null,

@@ -126,7 +126,7 @@ export const seededSignature: ApiDefectSignature = {
 }
 
 export const qualifiedProbe: SignedProbe = {
-	schemaVersion: 5,
+	schemaVersion: 6,
 	parentDigest: null,
 	revisionCount: 0,
 	probeId: 'P-901',
@@ -186,6 +186,7 @@ export const observation = (
 	provenance: 'evaluator-chosen',
 	principal: null,
 	callInputs: {
+		bodyEncoding: null,
 		path: null,
 		query: null,
 		header: null,
@@ -211,6 +212,7 @@ export const correctRejection = observation({
 	observationId: 'obs-1',
 	sequence: 1,
 	callInputs: {
+		bodyEncoding: null,
 		path: null,
 		query: null,
 		header: null,
@@ -230,6 +232,7 @@ export const defectFired = observation({
 	observationId: 'obs-2',
 	sequence: 2,
 	callInputs: {
+		bodyEncoding: null,
 		path: null,
 		query: null,
 		header: null,

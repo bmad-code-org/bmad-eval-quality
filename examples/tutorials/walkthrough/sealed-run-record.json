@@ -6,8 +6,8 @@
     "storage": "public"
   },
   "conditionArm": "mutated",
-  "contractDigest": "sha256:69f74e9843001c377437088a2638cbd9fc174f85daf680ec241b06e0f781c89f",
-  "evaluatorConfigurationDigest": "sha256:cfca7acaaf12e9c45d1bd44450d594c1cb43ef458e0b52009b8e50c898c65955",
+  "contractDigest": "sha256:edfde75db27ba1d3a017265b9cf054f2731c1a3f046c5bbd67f61024ca3a99bd",
+  "evaluatorConfigurationDigest": "sha256:fe4f70ba3f8a346796ecccda074b587782f3239cab62513d23e64e92a5d195a5",
   "evaluatorRecommendation": "FAIL",
   "evidenceDisclosure": {
     "reportedIncomplete": false,
@@ -44,7 +44,7 @@
     }
   ],
   "isolationManifestArtifact": {
-    "digest": "sha256:e5cba25e001743201adfe2913ac619059761ce3f0b00a8768a7e9a1eb86a9710",
+    "digest": "sha256:383e733e0491f04c063c53d8e247749caf0ce7211e39c51ffc92fac15131a36f",
     "path": "examples/tutorials/walkthrough/isolation-manifest.json",
     "privateRef": null,
     "storage": "public"
@@ -60,6 +60,7 @@
         "body": {
           "title": "Revised"
         },
+        "bodyEncoding": null,
         "environment": null,
         "header": null,
         "option": null,
@@ -98,6 +99,7 @@
         "argument": null,
         "arguments": null,
         "body": null,
+        "bodyEncoding": null,
         "environment": null,
         "header": null,
         "option": null,
@@ -136,6 +138,7 @@
         "argument": null,
         "arguments": null,
         "body": null,
+        "bodyEncoding": null,
         "environment": null,
         "header": null,
         "option": null,
@@ -210,7 +213,7 @@
   },
   "revisionCount": 0,
   "runId": "notes-run-1",
-  "schemaVersion": 7,
-  "sealedBriefDigest": "sha256:ec67e109d98bcc477cb44e94fed3d30d552f09c3db779c495a9a38d3b3cc9dd8",
+  "schemaVersion": 8,
+  "sealedBriefDigest": "sha256:d3a002c066914cde0be323f94de33ce9e630b56d085fbd8bde01ee5570c0b71a",
   "trialIndex": 1
 }

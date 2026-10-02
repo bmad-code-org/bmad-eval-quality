@@ -502,6 +502,7 @@ const stepObservations = (seedDefect: boolean) => {
 			provenance: 'evaluator-chosen',
 			principal: null,
 			callInputs: {
+				bodyEncoding: null,
 				path: null,
 				query: null,
 				header: null,

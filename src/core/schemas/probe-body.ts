@@ -1,6 +1,11 @@
-/** the two tagged body shapes the probe boundary and AD-10's witnesses share. */
+/** The tagged body shapes the probe boundary and AD-10's witnesses share. */
 import { z } from 'zod'
 import { JsonValue } from './primitives.ts'
+
+export const hasContentTypeHeader = (
+	header: Record<string, unknown>,
+): boolean =>
+	Object.keys(header).some((name) => name.toLowerCase() === 'content-type')
 
 // Split out of `port-messages.ts` so `sensitivity-witness.ts` can carry the
 // request body without importing that module: `port-messages.ts` reads
@@ -14,8 +19,32 @@ import { JsonValue } from './primitives.ts'
  * response from a `text/html` one, since `JsonValue` accepts a bare string, and
  * `absent` needs its own branch because `null` is a legal JSON body.
  */
+// RFC 4648 base64 with the unused pad bits set to zero. A regex keeps this
+// constraint in the published JSON Schema as well as the Zod parser.
+const CanonicalBase64 = z
+	.string()
+	.regex(
+		/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/][AQgw]==|[A-Za-z0-9+/]{2}[AEIMQUYcgkosw048]=)?$/,
+	)
+
+export const RawRequestBody = z.strictObject({
+	kind: z.literal('raw'),
+	base64: CanonicalBase64.describe(
+		'Canonical RFC 4648 base64 of the exact request bytes. The empty string means a zero-byte body.',
+	),
+	contentType: z
+		.string()
+		.regex(
+			/^[!#$%&'*+.^_`|~0-9A-Za-z-]+\/[!#$%&'*+.^_`|~0-9A-Za-z-]+(?:;[ \t]*[!#$%&'*+.^_`|~0-9A-Za-z-]+[ \t]*=[ \t]*(?:[!#$%&'*+.^_`|~0-9A-Za-z-]+|"(?:[\x20-\x21\x23-\x5B\x5D-\x7E]|\\[\x20-\x7E])*"))*$/,
+		)
+		.describe(
+			'The explicit Content-Type sent with these raw bytes, including an empty body.',
+		),
+})
+
 export const ProbeRequestBody = z.discriminatedUnion('kind', [
 	z.strictObject({ kind: z.literal('json'), value: JsonValue }),
+	RawRequestBody,
 	z.strictObject({ kind: z.literal('absent') }),
 ])
 

@@ -143,8 +143,18 @@ function selectorAdmits(
 		if (channelBinding === null) continue
 		const observed = observation.callInputs[channel]
 		if (observed === null) return false
-		for (const key of Object.keys(channelBinding)) {
-			const value = channelBinding[key]
+		if (
+			channel === 'body' &&
+			'kind' in channelBinding &&
+			channelBinding.kind === 'raw'
+		) {
+			if (observation.callInputs.bodyEncoding !== 'raw') return false
+			if (!deepEquals(observed, channelBinding)) return false
+			continue
+		}
+		const keyed = channelBinding as NonNullable<ProbeInputBinding['path']>
+		for (const key of Object.keys(keyed)) {
+			const value = keyed[key]
 			if (value === undefined) continue
 			if (!Object.hasOwn(observed, key)) return false
 			const actual = observed[key] as JsonValue

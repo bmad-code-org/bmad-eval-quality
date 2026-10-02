@@ -23,6 +23,7 @@ import {
 	commandProbe,
 	toolCallProbe,
 } from '../schemas/fixtures/artifact-fixtures.ts'
+import { commandContract } from '../schemas/fixtures/command-contract.ts'
 import { mcpContract } from '../schemas/fixtures/mcp-contract.ts'
 import {
 	canary,
@@ -54,6 +55,56 @@ const codesOf = (probe: Probe, operation: Operation | null = createNote) =>
 	qualifyProbe(probe, operation).failures.map((failure) => failure.code)
 
 describe('the reason set is closed', () => {
+	it('qualifies an exact raw body selector against an API operation', () => {
+		const probe = withSignature({
+			condition: {
+				selector: {
+					inputBinding: {
+						...seededSignature.condition.selector.inputBinding,
+						body: {
+							kind: 'raw',
+							base64: 'e2JhZCI6',
+							contentType: 'application/json',
+						},
+					},
+				},
+				predicate: seededSignature.condition.predicate,
+			},
+		})
+		expect(qualifyProbe(probe, createNote).failures).toEqual([])
+	})
+
+	it('refuses a raw body selector against a command operation', () => {
+		const seed = commandProbe as Extract<Probe, { expectedClean: false }>
+		if (seed.defectSignature === null) throw new Error('missing signature')
+		const probe = {
+			...seed,
+			defectSignature: {
+				...seed.defectSignature,
+				condition: {
+					...seed.defectSignature.condition,
+					selector: {
+						inputBinding: {
+							...seed.defectSignature.condition.selector.inputBinding,
+							body: {
+								kind: 'raw',
+								base64: 'e2JhZCI6',
+								contentType: 'application/json',
+							},
+						},
+					},
+				},
+			},
+		} as Probe
+		const operation = EvalContract.parse(commandContract).permittedInterfaces[0]
+		if (operation === undefined) throw new Error('missing command interface')
+		expect(
+			qualifyProbe(probe, operationsOf(operation)[0]!).failures.map(
+				(failure) => failure.code,
+			),
+		).toContain('condition-selector-key-undeclared')
+	})
+
 	it('carries no duplicate code', () => {
 		expect(new Set(QUALIFICATION_FAILURES).size).toBe(
 			QUALIFICATION_FAILURES.length,

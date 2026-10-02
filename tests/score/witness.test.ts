@@ -413,6 +413,60 @@ describe('ordering: array position is never read, sequence always is', () => {
 })
 
 describe('the selector follows the shipped binding filter', () => {
+	it('selects only the exact raw request body and content type', () => {
+		const body = {
+			kind: 'raw' as const,
+			base64: 'e2JhZCI6',
+			contentType: 'application/json',
+		}
+		const probe = withSignature({
+			condition: {
+				selector: {
+					inputBinding: {
+						...qualifiedProbe.defectSignature.condition.selector.inputBinding,
+						body,
+					},
+				},
+				predicate: qualifiedProbe.defectSignature.condition.predicate,
+			},
+		})
+		const matching = {
+			...defectFired,
+			callInputs: {
+				...defectFired.callInputs,
+				body,
+				bodyEncoding: 'raw' as const,
+			},
+		}
+		expect(
+			matchProbeWitness(probe, INTERFACES, recordOf([matching])).observationIds,
+		).toEqual(['obs-2'])
+		const jsonLookalike = {
+			...matching,
+			callInputs: { ...matching.callInputs, bodyEncoding: null },
+		}
+		expect(
+			matchProbeWitness(probe, INTERFACES, recordOf([jsonLookalike]))
+				.observationIds,
+		).toEqual([])
+		for (const changed of [
+			{ ...body, base64: 'e2JhZCI7' },
+			{ ...body, contentType: 'text/plain' },
+		]) {
+			const observation = {
+				...matching,
+				callInputs: { ...matching.callInputs, body: changed },
+			}
+			const match = matchProbeWitness(
+				probe,
+				INTERFACES,
+				recordOf([observation]),
+			)
+			expect(match.observationIds).toEqual([])
+			expect(match.result).toBe('not-triggered')
+		}
+	})
+
 	it('fails closed on a null observed channel a binding names', () => {
 		const match = matchProbeWitness(
 			qualifiedProbe,
@@ -500,6 +554,7 @@ describe('the selector follows the shipped binding filter', () => {
 						query: null,
 						header: null,
 						body: { other: 42 },
+						bodyEncoding: null,
 						argument: null,
 						option: null,
 						environment: null,
@@ -527,6 +582,7 @@ describe('the selector follows the shipped binding filter', () => {
 				query: null,
 				header: null,
 				body: null,
+				bodyEncoding: null,
 				argument: null,
 				option: null,
 				environment: null,
@@ -782,6 +838,7 @@ describe('quotation audits and never governs', () => {
 				query: null,
 				header: null,
 				body: { b: 1, a: 2 },
+				bodyEncoding: null,
 				argument: null,
 				option: null,
 				environment: null,
@@ -808,7 +865,7 @@ describe('quotation audits and never governs', () => {
 			'{"content-type":"application/json"}',
 		)
 		expect(projectChannel(rich, 'call-inputs', at)).toBe(
-			'{"argument":null,"arguments":null,"body":{"a":2,"b":1},"environment":null,"header":null,"option":null,"path":null,"query":null,"stdin":null}',
+			'{"argument":null,"arguments":null,"body":{"a":2,"b":1},"bodyEncoding":null,"environment":null,"header":null,"option":null,"path":null,"query":null,"stdin":null}',
 		)
 	})
 
@@ -828,7 +885,7 @@ describe('quotation audits and never governs', () => {
 		// declares a key per input channel, so the shape is present even when
 		// every channel inside it is null.
 		expect(projectChannel(blank, 'call-inputs', 'test')).toBe(
-			'{"argument":null,"arguments":null,"body":null,"environment":null,"header":null,"option":null,"path":null,"query":null,"stdin":null}',
+			'{"argument":null,"arguments":null,"body":null,"bodyEncoding":null,"environment":null,"header":null,"option":null,"path":null,"query":null,"stdin":null}',
 		)
 	})
 

@@ -1,13 +1,13 @@
 {
   "actionsArtifact": {
-    "digest": "sha256:a91f2223d4b7ba22447767fd9858f76de59de9ed4ce507fde309fe968f94da31",
+    "digest": "sha256:7fe0c1c6baceff0106ce170335dba6d84f81092941fdf578b8cf7fb0700d1a3b",
     "path": "examples/tutorials/tool-use/seeded-steps.json",
     "privateRef": null,
     "storage": "public"
   },
   "conditionArm": "mutated",
-  "contractDigest": "sha256:96a3790a4b9e291a3b1a73cb14789599916fe51f2abc2398ff02c40ee5213cf6",
-  "evaluatorConfigurationDigest": "sha256:939484df000ee54605693054e32e8180c8a8840673561f2e786455e21531e81d",
+  "contractDigest": "sha256:39a5269b83f41eb098bb0053c279c7b1093a7ea4a30337dcd5e85cf3a4dc4962",
+  "evaluatorConfigurationDigest": "sha256:59a6a5f53f1937240a46f08a722dbccd82ed31ea670a4ab774a83575ba31376c",
   "evaluatorRecommendation": "FAIL",
   "evidenceDisclosure": {
     "reportedIncomplete": false,
@@ -19,7 +19,7 @@
       "confidence": 0.95,
       "evidenceArtifacts": [
         {
-          "digest": "sha256:a91f2223d4b7ba22447767fd9858f76de59de9ed4ce507fde309fe968f94da31",
+          "digest": "sha256:7fe0c1c6baceff0106ce170335dba6d84f81092941fdf578b8cf7fb0700d1a3b",
           "path": "examples/tutorials/tool-use/seeded-steps.json",
           "privateRef": null,
           "storage": "public"
@@ -44,7 +44,7 @@
     }
   ],
   "isolationManifestArtifact": {
-    "digest": "sha256:44876b114b74e9fcc2c266902e881c19c2b0a178094a5d598e6c4254b3f46fd6",
+    "digest": "sha256:8e7a1460327e74469a77d355d5e1162b511382a3d5ee281e4e0c86be7c078bbc",
     "path": "examples/tutorials/tool-use/isolation-manifest.json",
     "privateRef": null,
     "storage": "public"
@@ -60,6 +60,7 @@
           "query": "alpha"
         },
         "body": null,
+        "bodyEncoding": null,
         "environment": null,
         "header": null,
         "option": null,
@@ -100,6 +101,7 @@
           "title": "a new note"
         },
         "body": null,
+        "bodyEncoding": null,
         "environment": null,
         "header": null,
         "option": null,
@@ -135,6 +137,7 @@
           "query": 42
         },
         "body": null,
+        "bodyEncoding": null,
         "environment": null,
         "header": null,
         "option": null,
@@ -171,6 +174,7 @@
           "title": 42
         },
         "body": null,
+        "bodyEncoding": null,
         "environment": null,
         "header": null,
         "option": null,
@@ -205,6 +209,7 @@
           "query": "note-a-new-note"
         },
         "body": null,
+        "bodyEncoding": null,
         "environment": null,
         "header": null,
         "option": null,
@@ -286,7 +291,7 @@
   },
   "revisionCount": 0,
   "runId": "tool-run-1",
-  "schemaVersion": 7,
-  "sealedBriefDigest": "sha256:a5889486cc2146377472fcdc46f5ed3ed5eecaf600a6955c81ba439bb80e67cd",
+  "schemaVersion": 8,
+  "sealedBriefDigest": "sha256:901a671fc068f96de1e69c00bcddb5813159e5f4817757855b5c15cb1a0e5e16",
   "trialIndex": 1
 }

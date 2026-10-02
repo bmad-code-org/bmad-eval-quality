@@ -44,7 +44,7 @@
       "manifestationWitness": null,
       "oracleEvidence": [
         {
-          "digest": "sha256:a91f2223d4b7ba22447767fd9858f76de59de9ed4ce507fde309fe968f94da31",
+          "digest": "sha256:7fe0c1c6baceff0106ce170335dba6d84f81092941fdf578b8cf7fb0700d1a3b",
           "path": "examples/tutorials/tool-use/seeded-steps.json",
           "privateRef": null,
           "storage": "public"
@@ -62,14 +62,14 @@
   "probeId": "P-001",
   "qualification": {
     "baselinePassEvidence": {
-      "digest": "sha256:34ffcf044bd439a8751b973b0b17206fa2b7cf149951052ec73614b89d71cca5",
+      "digest": "sha256:6efdefb06b980cc1ded75bf7a71dd8599a12f8dd8590c63b2b3a05a9615dcd3e",
       "path": "examples/tutorials/tool-use/baseline-steps.json",
       "privateRef": null,
       "storage": "public"
     },
     "expectedObservableFailure": "an independent search for the identifier the creation returned names another title",
     "mutatedFailEvidence": {
-      "digest": "sha256:a91f2223d4b7ba22447767fd9858f76de59de9ed4ce507fde309fe968f94da31",
+      "digest": "sha256:7fe0c1c6baceff0106ce170335dba6d84f81092941fdf578b8cf7fb0700d1a3b",
       "path": "examples/tutorials/tool-use/seeded-steps.json",
       "privateRef": null,
       "storage": "public"
@@ -87,6 +87,6 @@
   },
   "rationale": "A controlled mutation filing a created note under a placeholder title.",
   "revisionCount": 0,
-  "schemaVersion": 5,
+  "schemaVersion": 6,
   "systemId": "notes-tool-server"
 }

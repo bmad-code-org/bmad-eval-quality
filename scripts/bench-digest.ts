@@ -51,6 +51,7 @@ const observation = (index: number): Record<string, unknown> => ({
 	operationId: index % 2 === 0 ? 'get-note' : 'patch-note',
 	provenance: index % 3 === 0 ? 'baseline' : 'evaluator-chosen',
 	callInputs: {
+		bodyEncoding: null,
 		path: { id: `n-${index}` },
 		query: index % 4 === 0 ? { include: 'history' } : null,
 		header: null,

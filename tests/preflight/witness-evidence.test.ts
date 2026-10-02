@@ -66,6 +66,21 @@ const evidenceFor = (
 }
 
 describe('evidenceOf', () => {
+	it('records the exact raw witness body in call inputs', () => {
+		const body = {
+			kind: 'raw' as const,
+			base64: 'e2JhZCI6',
+			contentType: 'application/json',
+		}
+		const evidence = evidenceFor(
+			jsonBody({ error: 'invalid JSON' }),
+			{},
+			inputsOf({ body }),
+		)
+		expect(evidence.callInputs.body).toEqual(body)
+		expect(evidence.callInputs.bodyEncoding).toBe('raw')
+	})
+
 	// `create-thing` declares `/id` volatile, so the relation sees the pruned
 	// body while the raw headers pass through untouched.
 	it('82. puts the pruned body on responseBody and the raw headers on responseHeaders', () => {
@@ -144,11 +159,12 @@ describe('evidenceOf', () => {
 		const evidence = evidenceFor(jsonBody({ ok: true }), {}, toolCallInputs)
 		const { arguments: supplied, ...rest } = evidence.callInputs
 		expect(supplied).toEqual({ query: 'alpha' })
-		// The other eight are named, so a key disappearing from
+		// The other eight input channels and the raw marker are named, so a key disappearing from
 		// `ObservedCallInputs` fails here rather than passing vacuously.
 		expect(Object.keys(rest).sort()).toEqual([
 			'argument',
 			'body',
+			'bodyEncoding',
 			'environment',
 			'header',
 			'option',

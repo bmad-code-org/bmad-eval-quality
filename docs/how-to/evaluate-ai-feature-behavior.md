@@ -97,7 +97,7 @@ node dist/cli/main.js score \
   --policy examples/tutorials/walkthrough/scoring-policy.json \
   --isolation-manifest examples/tutorials/walkthrough/isolation-manifest.json \
   --evaluator-configuration examples/tutorials/walkthrough/evaluator-configuration.json \
-  --corpus-digest sha256:195dd97c3267c9d7c4d5fb6e1fd62212c8993de903b9261c484ef183d6eaaa3a \
+  --corpus-digest sha256:7924e6faf83365c6e4a9c28d47be3fb57561d3bb2010615cf032bde9720730d2 \
   --out /tmp/eval-quality-ai-feature/evidence-artifact.json
 ```
 
@@ -232,6 +232,14 @@ The seeded defect is that the update validates the input, builds the updated rec
 That is a user-visible regression, and the update's own response is indistinguishable from a correct one.
 
 ## Declaring the interface
+
+A probe request, witness leg, or API interaction step's `inputBinding.body` may supply exact HTTP body bytes with
+`{"kind":"raw","base64":"eyJib2tlbiI6","contentType":"application/json"}`.
+The `base64` value is canonical RFC 4648 encoding of the bytes to send. An
+empty string sends zero bytes and remains distinct from `{"kind":"absent"}`.
+The raw arm requires its own explicit content type; JSON and absent bodies
+keep their existing behavior. The request body's encoded bytes participate in
+the request identity, so changing one byte changes its digest.
 
 Here is a real `api` interface, from the contract the lab compiled.
 It parses as a `PermittedInterface`:

@@ -67,6 +67,7 @@ const callInputsOf = (inputs: WitnessInputs): ObservedCallInputs => {
 		query: null,
 		header: null,
 		body: null,
+		bodyEncoding: null,
 		argument: null,
 		option: null,
 		environment: null,
@@ -80,7 +81,12 @@ const callInputsOf = (inputs: WitnessInputs): ObservedCallInputs => {
 			query: inputs.query,
 			header: inputs.header,
 			body:
-				inputs.body.kind === 'json' ? asJsonObject(inputs.body.value) : null,
+				inputs.body.kind === 'raw'
+					? inputs.body
+					: inputs.body.kind === 'json'
+						? asJsonObject(inputs.body.value)
+						: null,
+			...(inputs.body.kind === 'raw' ? { bodyEncoding: 'raw' as const } : {}),
 		}
 	}
 	// A tool call supplies one channel, so `arguments` carries the whole of what

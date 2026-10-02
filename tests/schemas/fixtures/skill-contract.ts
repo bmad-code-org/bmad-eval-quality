@@ -52,7 +52,7 @@ export const FRONTEND_PROMPT = 'the rules, then a frontend case'
 export const BACKEND_PROMPT = 'the same rules, then a backend case'
 
 export const skillContract = {
-	schemaVersion: 6,
+	schemaVersion: 7,
 	contractId: 'checklist-selection',
 	parentDigest: null,
 	revisionCount: 0,

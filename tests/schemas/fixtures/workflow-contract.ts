@@ -44,7 +44,7 @@ export const WRITTEN_NAME = 'a thing the run created'
 export const SUBSTITUTED_NAME = 'untitled'
 
 export const workflowContract = {
-	schemaVersion: 6,
+	schemaVersion: 7,
 	contractId: 'captured-read-back',
 	parentDigest: null,
 	revisionCount: 0,

@@ -354,6 +354,7 @@ const observationFrom = (
 	provenance: authored.provenance,
 	principal: authored.principal,
 	callInputs: {
+		bodyEncoding: null,
 		path: nullIfEmpty(request.channels.path),
 		query: nullIfEmpty(request.channels.query),
 		header: nullIfEmpty(request.channels.header),

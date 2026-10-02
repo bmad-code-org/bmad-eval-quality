@@ -242,7 +242,7 @@ const MANIFESTATION_WITNESS: ManifestationWitness = {
  * and artifact path printed.
  */
 const AUTHORED_PROBE = {
-	schemaVersion: 5,
+	schemaVersion: 6,
 	parentDigest: null,
 	revisionCount: 0,
 	probeId: 'P-001',
@@ -468,6 +468,7 @@ const callInputs = (
 	query: null,
 	header: null,
 	body: channels.body ?? null,
+	bodyEncoding: null,
 	argument: null,
 	option: null,
 	environment: null,
@@ -499,7 +500,7 @@ const authoredRecord = (
 	briefDigest: string,
 	evaluatorConfigurationDigest: string,
 ): SealedRunRecord => ({
-	schemaVersion: 7,
+	schemaVersion: 8,
 	parentDigest: null,
 	revisionCount: 0,
 	runId: RUN_ID,

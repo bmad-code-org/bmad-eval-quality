@@ -348,8 +348,8 @@ describe('the premises the ledger rests on, verified against the export', () => 
 	it('drops the binding-channel check entirely', () => {
 		const channel = exported.$defs.InputBindingChannel
 		expect(JSON.stringify(channel)).not.toContain('minProperties')
-		// Every channel of both binding spellings references the one definition,
-		// so the injection lands once rather than eight times.
+		// Keyed channels reference one definition. API body also admits the
+		// explicit raw arm, so its keyed branch carries the reference.
 		const binding =
 			exported.properties.interactionPlan.items.properties.inputBinding
 		const channels: Readonly<Record<number, readonly string[]>> = {
@@ -358,9 +358,12 @@ describe('the premises the ledger rests on, verified against the export', () => 
 		}
 		for (const [branch, names] of Object.entries(channels)) {
 			for (const name of names) {
-				expect(binding.anyOf[Number(branch)].properties[name].$ref).toBe(
-					'#/$defs/InputBindingChannel',
-				)
+				const property = binding.anyOf[Number(branch)].properties[name]
+				expect(
+					name === 'body' && branch === '0'
+						? property.anyOf[0].$ref
+						: property.$ref,
+				).toBe('#/$defs/InputBindingChannel')
 			}
 		}
 	})

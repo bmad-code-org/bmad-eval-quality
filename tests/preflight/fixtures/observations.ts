@@ -66,7 +66,7 @@ const probeEvidenceReference = {
 const contractLiteral = {
 	// 6, the version this contract's shape satisfies, matching the other
 	// full-contract fixtures.
-	schemaVersion: 6,
+	schemaVersion: 7,
 	contractId: 'preflight-fixture',
 	parentDigest: null,
 	revisionCount: 0,
@@ -388,7 +388,7 @@ const probeCommon = {
 	// Version 2: AD-9's qualification record and AD-40's defect signature both
 	// landed as required fields. Version 5 is the current stamp; the probe's
 	// own fixture file carries the bump history.
-	schemaVersion: 5,
+	schemaVersion: 6,
 	parentDigest: null,
 	revisionCount: 0,
 	probeClass: 'defect',

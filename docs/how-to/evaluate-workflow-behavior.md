@@ -167,7 +167,7 @@ node dist/cli/main.js score \
   --policy examples/tutorials/workflow/scoring-policy.json \
   --isolation-manifest examples/tutorials/workflow/isolation-manifest.json \
   --evaluator-configuration examples/tutorials/workflow/evaluator-configuration.json \
-  --corpus-digest sha256:fee971bb300c3757836c091ff0ec63de59db56a267bacbfdefd9fc406060e5f2 \
+  --corpus-digest sha256:14d59ca0dfcec7b01554e18e51df138f92b663ad60dd58cbe920d8ef55489b65 \
   --out /tmp/eval-quality-workflow/evidence-artifact.json
 ```
 

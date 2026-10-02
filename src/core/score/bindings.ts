@@ -288,6 +288,11 @@ function satisfiesBindings(
 	resolved: ReadonlyMap<string, CapturedResolution>,
 ): boolean {
 	const operation = anyOperationOf(index, step)
+	if ('body' in step.inputBinding && step.inputBinding.body?.kind === 'raw') {
+		if (observation.callInputs.bodyEncoding !== 'raw') return false
+		if (!deepEquals(observation.callInputs.body, step.inputBinding.body))
+			return false
+	}
 	for (const { channel, bound: binding } of boundChannelsOf(
 		step.inputBinding,
 	)) {

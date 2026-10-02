@@ -493,7 +493,7 @@
   "safetyLimits": [
     "No tool beyond the two the authorization names may be called."
   ],
-  "schemaVersion": 6,
+  "schemaVersion": 7,
   "scopedResources": null,
   "siblingGroups": null,
   "sourceSpecDigest": null,

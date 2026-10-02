@@ -652,7 +652,7 @@ score resolves and records the result
   Omitting either invalidates the run with exit `3`.
 
 **Corpus identity:**
-- `--corpus-digest` is an attested digest string (`sha256:195dd97c3267c9d7c4d5fb6e1fd62212c8993de903b9261c484ef183d6eaaa3a`), committed in `examples/tutorials/walkthrough/corpus-digest.txt`.
+- `--corpus-digest` is an attested digest string (`sha256:7924e6faf83365c6e4a9c28d47be3fb57561d3bb2010615cf032bde9720730d2`), committed in `examples/tutorials/walkthrough/corpus-digest.txt`.
 - It establishes corpus identity and comparability context.
   It is an attested string value rather than a file input.
 
@@ -681,7 +681,7 @@ node dist/cli/main.js score \
   --policy examples/tutorials/walkthrough/scoring-policy.json \
   --isolation-manifest examples/tutorials/walkthrough/isolation-manifest.json \
   --evaluator-configuration examples/tutorials/walkthrough/evaluator-configuration.json \
-  --corpus-digest sha256:195dd97c3267c9d7c4d5fb6e1fd62212c8993de903b9261c484ef183d6eaaa3a \
+  --corpus-digest sha256:7924e6faf83365c6e4a9c28d47be3fb57561d3bb2010615cf032bde9720730d2 \
   --out /tmp/eval-quality-run/evidence-artifact.json
 ```
 
@@ -700,7 +700,7 @@ node dist/cli/main.js score \
   --preflight-verdict /tmp/eval-quality-run/preflight-verdict.json \
   --policy examples/tutorials/walkthrough/scoring-policy.json \
   --evaluator-configuration examples/tutorials/walkthrough/evaluator-configuration.json \
-  --corpus-digest sha256:195dd97c3267c9d7c4d5fb6e1fd62212c8993de903b9261c484ef183d6eaaa3a
+  --corpus-digest sha256:7924e6faf83365c6e4a9c28d47be3fb57561d3bb2010615cf032bde9720730d2
 ```
 
 ```text

@@ -5,6 +5,7 @@ import { CommandInvocation, HttpMethod, PathTemplate } from './interface.ts'
 import { LiteralBindingValue, MatcherBindingValue } from './plan.ts'
 import { EvidenceChannel } from './pointer.ts'
 import { KeyName, ToolName } from './primitives.ts'
+import { RawRequestBody } from './probe-body.ts'
 
 /**
  * The reserved step identifier every pointer in a discriminating condition is
@@ -88,7 +89,7 @@ export const ProbeInputBinding = z
 		path: ProbeBindingChannel,
 		query: ProbeBindingChannel,
 		header: ProbeBindingChannel,
-		body: ProbeBindingChannel,
+		body: z.union([ProbeBindingChannel, RawRequestBody]),
 		argument: ProbeBindingChannel,
 		option: ProbeBindingChannel,
 		environment: ProbeBindingChannel,
@@ -96,7 +97,7 @@ export const ProbeInputBinding = z
 		arguments: ProbeBindingChannel,
 	})
 	.describe(
-		'The probe\'s `schemaVersion` 4 -> 5 BREAKING bump under AD-11, whose rule is that removing or retyping is breaking. Two retypings land under this one stamp and both are named here. This selector gained a ninth channel, `arguments`, so a signature against a tool call can filter on what the call supplied; the sealed run record\'s `ObservedCallInputs` gained the same key under its own breaking bump, since a selector naming a channel no observation records would filter against nothing. And `DefectSignature` gained an `McpDefectSignature` branch declaring a published tool name, while `ApiDefectSignature.interfaceKind` narrowed to `api` and `web`, so a version-4 probe carrying `interfaceKind: "mcp"` beside a method and a path template stops parsing. Version 4 took the witness leg shape and this stamp takes both changes above, so each retype stays independently releasable.',
+		'The probe\'s `schemaVersion` 4 -> 5 BREAKING bump under AD-11, whose rule is that removing or retyping is breaking. Two retypings land under this one stamp and both are named here. This selector gained a ninth channel, `arguments`, so a signature against a tool call can filter on what the call supplied; the sealed run record\'s `ObservedCallInputs` gained the same key under its own breaking bump, since a selector naming a channel no observation records would filter against nothing. And `DefectSignature` gained an `McpDefectSignature` branch declaring a published tool name, while `ApiDefectSignature.interfaceKind` narrowed to `api` and `web`, so a version-4 probe carrying `interfaceKind: "mcp"` beside a method and a path template stops parsing. Version 4 took the witness leg shape and this stamp takes both changes above, so each retype stays independently releasable. Version 6 admits canonical raw HTTP bytes in the body selector so a parser defect can bind the exact request that triggered it.',
 	)
 
 /**

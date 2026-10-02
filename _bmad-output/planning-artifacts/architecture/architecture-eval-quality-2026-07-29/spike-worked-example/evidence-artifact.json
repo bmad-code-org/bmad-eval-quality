@@ -190,11 +190,11 @@
   "runId": "spike-run-0001",
   "schemaVersion": 4,
   "scoredProbeId": "P-001",
-  "scoringVersion": "sha256:9be89f175eadee6b6de6e6a9f89465d80b2cde95610c363bb57110b58699bbb3",
+  "scoringVersion": "sha256:80a8517efefc04e514522264c6919b40fc77581c3ec08734ed72fe45843f1ac4",
   "scoringVersionInputs": {
-    "contractSchemaVersion": 6,
+    "contractSchemaVersion": 7,
     "corpusDigest": "sha256:000000000000000000000000000000000000000000000000000000000000000e",
-    "evaluatorConfigurationDigest": "sha256:ec902b26875eaddea48819fa7923e50e56c17ea337c19a65179a3cfedb7cf794",
+    "evaluatorConfigurationDigest": "sha256:13bf1dc3c38480d1774a64e3d3076b49e7fd2d44ba449728a997a65cd6c79870",
     "fixtureDigest": "sha256:000000000000000000000000000000000000000000000000000000000000000f",
     "mode": "contract-scoring",
     "scoringPolicyDigest": "sha256:cc9e09a64f2ed19a6a204f72244e43e51b742f078fab859329601146fdf47bb7"

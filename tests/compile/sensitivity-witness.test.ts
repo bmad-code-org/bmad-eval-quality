@@ -51,6 +51,21 @@ const witnessInputs = (body: unknown) => ({
 })
 
 describe('checkSensitivityWitnessDeclared: AD-10 mandatory per declared operation', () => {
+	it('accepts raw bytes before the target parses required JSON keys', () => {
+		expect(() =>
+			compile(
+				mutated((contract) => {
+					contract.permittedInterfaces[0].operations[0].sensitivityWitness.legs[0].inputs.body =
+						{
+							kind: 'raw',
+							base64: 'e2JhZCI6',
+							contentType: 'application/json',
+						}
+				}),
+				{ strict: true },
+			),
+		).not.toThrow()
+	})
 	it('18. fires undeclared-mandatory-input for a null witness on an input-bearing operation under strict', () => {
 		const failure = failureOf((contract) => {
 			contract.permittedInterfaces[0].operations[0].sensitivityWitness = null

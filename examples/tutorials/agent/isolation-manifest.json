@@ -8,9 +8,9 @@
   },
   "allowedMounts": [],
   "conditionArm": "mutated",
-  "contractDigest": "sha256:77d9423201de030e9feb7c5d9ea27bbb6b8e8d42948469bd483d29fc37b52167",
+  "contractDigest": "sha256:662ddc3c5d8aeba75c70cff507eb2864b890a64738c8fef5237d12f1193ac382",
   "contractId": "tutorial-release-notes-agent",
-  "evaluatorConfigurationDigest": "sha256:ffa39c414bde7b814c246790c13ef3bae39dab7dbaac9b9e898e44b03bf2d3f9",
+  "evaluatorConfigurationDigest": "sha256:e3ae93e79b1a94912728a0273781274fb7826c4d9d3ebd87dcf3131e1d4c1efc",
   "forbiddenInputAccounting": {
     "builder-transcript": {
       "note": null,

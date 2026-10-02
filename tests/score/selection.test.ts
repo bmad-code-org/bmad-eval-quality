@@ -20,6 +20,7 @@ function observation(
 		provenance: 'evaluator-chosen',
 		principal: null,
 		callInputs: {
+			bodyEncoding: null,
 			path: null,
 			query: null,
 			header: null,

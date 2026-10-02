@@ -129,6 +129,6 @@
   },
   "rationale": "A controlled mutation of the write handler: the name it was sent is dropped on the way to the store, which files the record under its own placeholder. The handler answers from the request it was given, so its response carries the name that never reached the store. Only an independent read at the identifier it returned shows the placeholder.",
   "revisionCount": 0,
-  "schemaVersion": 5,
+  "schemaVersion": 6,
   "systemId": "thing-service"
 }

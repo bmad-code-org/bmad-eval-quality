@@ -1418,14 +1418,18 @@ describe('run: the score command (Story 8.4)', () => {
 		expect(environment.out).toEqual([])
 	})
 
-	it('a version 6 record, whose observations name no interface, is a schema-version-mismatch fault naming 6 and 7, exit 5', async () => {
+	it('a version 7 record, whose observations name no body encoding, is a schema-version-mismatch fault naming 7 and 8, exit 5', async () => {
 		const environment = environmentOf(
 			scoreFiles({
 				'record.json': JSON.stringify({
 					...sealedRunRecordFixtureForScore,
-					schemaVersion: 6,
+					schemaVersion: 7,
 					observations: sealedRunRecordFixtureForScore.observations.map(
-						({ interfaceId: _interfaceId, ...rest }) => rest,
+						({ callInputs, ...rest }) => {
+							const { bodyEncoding: _bodyEncoding, ...previousInputs } =
+								callInputs
+							return { ...rest, callInputs: previousInputs }
+						},
 					),
 				}),
 			}),
@@ -1437,7 +1441,7 @@ describe('run: the score command (Story 8.4)', () => {
 		expect(outcome).toEqual({ kind: 'fault' })
 		expect(exit).toBe(EXIT_FAULT)
 		expect(environment.diagnostics[0]).toContain(
-			`schema-version-mismatch: SealedRunRecord[trialIndex=${sealedRunRecordFixtureForScore.trialIndex}].schemaVersion: carries "schemaVersion" 6 where this build reads 7`,
+			`schema-version-mismatch: SealedRunRecord[trialIndex=${sealedRunRecordFixtureForScore.trialIndex}].schemaVersion: carries "schemaVersion" 7 where this build reads 8`,
 		)
 		expect(environment.out).toEqual([])
 	})

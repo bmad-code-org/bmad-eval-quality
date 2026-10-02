@@ -125,6 +125,7 @@ const inertObservation = (
 	provenance: 'evaluator-chosen',
 	principal: null,
 	callInputs: {
+		bodyEncoding: null,
 		path: null,
 		query: null,
 		header: null,
@@ -1117,6 +1118,7 @@ describe('the ingest stage', () => {
 				{
 					...inertObservation('obs-102', 1),
 					callInputs: {
+						bodyEncoding: null,
 						path: null,
 						query: null,
 						header: null,

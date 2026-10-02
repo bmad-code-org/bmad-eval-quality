@@ -60,6 +60,7 @@ const recordedFrom = (
 			...common,
 			callInputs: {
 				...NO_CALL_INPUTS,
+				bodyEncoding: null,
 				stdin:
 					stdin.kind === 'json' &&
 					typeof stdin.value === 'object' &&
@@ -76,7 +77,11 @@ const recordedFrom = (
 	if (request.kind === 'mcp' && observed.kind === 'mcp') {
 		return recordObservation({
 			...common,
-			callInputs: { ...NO_CALL_INPUTS, arguments: request.channels.arguments },
+			callInputs: {
+				...NO_CALL_INPUTS,
+				bodyEncoding: null,
+				arguments: request.channels.arguments,
+			},
 			responseBody:
 				observed.result.kind === 'json' ? observed.result.value : null,
 			responseStatus: observed.isError ? 1 : 0,

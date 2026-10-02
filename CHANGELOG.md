@@ -10,6 +10,11 @@ body.
 
 ## [Unreleased]
 
+### Added
+
+- **BREAKING: API probe requests, witnesses, and interaction plans may carry exact raw HTTP body bytes.** `ProbeRequestBody`, `ApiInputBinding.body`, and `ProbeInputBinding.body` gain `{ kind: "raw", base64, contentType }`. The encoding must be canonical RFC 4648 base64, including zero pad bits, and the content type is required. An empty `base64` string represents a zero-byte body, distinct from an absent body. The published eval-contract and probe schemas include this arm. `EVAL_CONTRACT_SCHEMA_VERSION` moves from 6 to 7 and `PROBE_SCHEMA_VERSION` moves from 5 to 6. Exhaustive TypeScript consumers of the request-body union must handle the new arm.
+- **BREAKING: sealed run records require a body encoding marker on every observation.** `callInputs.bodyEncoding` is `"raw"` for exact raw bytes and `null` for every other call, so a JSON object with the same fields cannot satisfy a raw body selector. `SEALED_RUN_RECORD_SCHEMA_VERSION` moves from 7 to 8. A raw request uses `body.contentType` as its sole Content-Type declaration; a duplicate header is rejected. Derived references distinguish steps by their raw body bytes.
+
 ## [5.0.0] - 2026-10-02
 
 ### Changed

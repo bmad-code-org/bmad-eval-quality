@@ -63,6 +63,7 @@ const argumentsOnly = (supplied: JsonObject) => ({
 	query: null,
 	header: null,
 	body: null,
+	bodyEncoding: null,
 	argument: null,
 	option: null,
 	environment: null,
@@ -118,7 +119,7 @@ const held = (oracleId: string, observationIds: readonly string[]) => ({
 })
 
 const record: SealedRunRecord = {
-	schemaVersion: 7,
+	schemaVersion: 8,
 	parentDigest: null,
 	revisionCount: 0,
 	runId: RUN_ID,

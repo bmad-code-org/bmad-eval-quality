@@ -113,6 +113,13 @@ type InputEntry = {
 // stays permutation-invariant. `boundChannelsOf` supplies the channel order.
 function bindingEntries(step: InteractionStep): readonly InputEntry[] {
 	const entries: InputEntry[] = []
+	if ('body' in step.inputBinding && step.inputBinding.body?.kind === 'raw') {
+		entries.push({
+			inputChannel: 'body',
+			key: 'raw bytes',
+			value: { literal: step.inputBinding.body },
+		})
+	}
 	for (const { channel: inputChannel, bound: map } of boundChannelsOf(
 		step.inputBinding,
 	)) {

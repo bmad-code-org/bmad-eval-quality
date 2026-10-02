@@ -16,7 +16,7 @@
 // `npm run generate:worked-example` from the reference functions and checked
 // byte for byte by `npm run check:worked-example`, so these literals are no
 // longer a transcription of what is on disk. They are kept, and pinned at the
-// same 97 and 26 issues, because what they record is what the pre-epic-7
+// same 107 and 26 issues, because what they record is what the pre-epic-7
 // chain failed against the shipped shapes. Regeneration is what closed those
 // failures; deleting the record of them would delete the evidence that they
 // were real.
@@ -250,7 +250,7 @@ export const workedExampleSealedRunRecord: unknown = {
 	// of this fixture is to record what the pre-epic-7 chain fails against the
 	// shipped shapes. The ninety-seventh issue is that key. Version 7 added
 	// one more issue per observation, a missing `interfaceId`, which makes
-	// the one hundred and two the test records.
+	// the one hundred and seven the test records.
 	invalidReason: null,
 }
 
@@ -292,6 +292,10 @@ export const WORKED_EXAMPLE_RECORD_ISSUES: readonly WorkedExampleIssue[] = [
 	{ path: ['observations', 0, 'callInputs', 'query'], code: 'invalid_type' },
 	{ path: ['observations', 0, 'callInputs', 'header'], code: 'invalid_type' },
 	{ path: ['observations', 0, 'callInputs', 'body'], code: 'invalid_type' },
+	{
+		path: ['observations', 0, 'callInputs', 'bodyEncoding'],
+		code: 'invalid_value',
+	},
 	{ path: ['observations', 0, 'callInputs', 'argument'], code: 'invalid_type' },
 	{ path: ['observations', 0, 'callInputs', 'option'], code: 'invalid_type' },
 	{
@@ -315,6 +319,10 @@ export const WORKED_EXAMPLE_RECORD_ISSUES: readonly WorkedExampleIssue[] = [
 	{ path: ['observations', 1, 'callInputs', 'query'], code: 'invalid_type' },
 	{ path: ['observations', 1, 'callInputs', 'header'], code: 'invalid_type' },
 	{ path: ['observations', 1, 'callInputs', 'body'], code: 'invalid_type' },
+	{
+		path: ['observations', 1, 'callInputs', 'bodyEncoding'],
+		code: 'invalid_value',
+	},
 	{ path: ['observations', 1, 'callInputs', 'argument'], code: 'invalid_type' },
 	{ path: ['observations', 1, 'callInputs', 'option'], code: 'invalid_type' },
 	{
@@ -337,6 +345,10 @@ export const WORKED_EXAMPLE_RECORD_ISSUES: readonly WorkedExampleIssue[] = [
 	{ path: ['observations', 2, 'callInputs', 'query'], code: 'invalid_type' },
 	{ path: ['observations', 2, 'callInputs', 'header'], code: 'invalid_type' },
 	{ path: ['observations', 2, 'callInputs', 'body'], code: 'invalid_type' },
+	{
+		path: ['observations', 2, 'callInputs', 'bodyEncoding'],
+		code: 'invalid_value',
+	},
 	{ path: ['observations', 2, 'callInputs', 'argument'], code: 'invalid_type' },
 	{ path: ['observations', 2, 'callInputs', 'option'], code: 'invalid_type' },
 	{
@@ -360,6 +372,10 @@ export const WORKED_EXAMPLE_RECORD_ISSUES: readonly WorkedExampleIssue[] = [
 	{ path: ['observations', 3, 'callInputs', 'query'], code: 'invalid_type' },
 	{ path: ['observations', 3, 'callInputs', 'header'], code: 'invalid_type' },
 	{ path: ['observations', 3, 'callInputs', 'body'], code: 'invalid_type' },
+	{
+		path: ['observations', 3, 'callInputs', 'bodyEncoding'],
+		code: 'invalid_value',
+	},
 	{ path: ['observations', 3, 'callInputs', 'argument'], code: 'invalid_type' },
 	{ path: ['observations', 3, 'callInputs', 'option'], code: 'invalid_type' },
 	{
@@ -383,6 +399,10 @@ export const WORKED_EXAMPLE_RECORD_ISSUES: readonly WorkedExampleIssue[] = [
 	{ path: ['observations', 4, 'callInputs', 'query'], code: 'invalid_type' },
 	{ path: ['observations', 4, 'callInputs', 'header'], code: 'invalid_type' },
 	{ path: ['observations', 4, 'callInputs', 'body'], code: 'invalid_type' },
+	{
+		path: ['observations', 4, 'callInputs', 'bodyEncoding'],
+		code: 'invalid_value',
+	},
 	{ path: ['observations', 4, 'callInputs', 'argument'], code: 'invalid_type' },
 	{ path: ['observations', 4, 'callInputs', 'option'], code: 'invalid_type' },
 	{

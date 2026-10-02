@@ -21,6 +21,6 @@
   },
   "rationale": "The clean control: the runner applies the rules as written, so the reply names what the case mandates and nothing the case excludes.",
   "revisionCount": 0,
-  "schemaVersion": 5,
+  "schemaVersion": 6,
   "systemId": "checklist-selection-skill"
 }

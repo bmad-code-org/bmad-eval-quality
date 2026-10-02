@@ -9,7 +9,7 @@
 import type { EvalContract } from '../../../src/core/schemas/eval-contract.ts'
 
 export const mcpContract = {
-	schemaVersion: 6,
+	schemaVersion: 7,
 	contractId: 'notes-tool-server',
 	parentDigest: null,
 	revisionCount: 0,

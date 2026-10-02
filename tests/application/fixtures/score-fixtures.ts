@@ -39,7 +39,7 @@ export const privateEntryBytes = new TextEncoder().encode(
 export const privateEntryBytesDigest = digestBytes(privateEntryBytes)
 
 export const scoreContractFixture: EvalContract = {
-	schemaVersion: 6,
+	schemaVersion: 7,
 	parentDigest: null,
 	revisionCount: 0,
 	contractId: 'score-command-contract',
@@ -194,7 +194,7 @@ export const isolationManifestFixtureForScore: IsolationManifest = {
 
 /** The clean record: one observation satisfying O-001's check, `held`, no findings, no conditions. */
 export const sealedRunRecordFixtureForScore: SealedRunRecord = {
-	schemaVersion: 7,
+	schemaVersion: 8,
 	parentDigest: null,
 	revisionCount: 0,
 	runId: 'run-1',
@@ -224,6 +224,7 @@ export const sealedRunRecordFixtureForScore: SealedRunRecord = {
 			provenance: 'evaluator-chosen',
 			principal: null,
 			callInputs: {
+				bodyEncoding: null,
 				path: null,
 				query: null,
 				header: null,

@@ -92,6 +92,7 @@ const callInputs = (
 	query: null,
 	header: null,
 	body: channels.body ?? null,
+	bodyEncoding: null,
 	argument: null,
 	option: null,
 	environment: null,

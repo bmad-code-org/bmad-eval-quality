@@ -527,6 +527,15 @@ const OBSERVATION_AT_7: Readonly<Record<string, unknown>> = {
 	artifacts: {},
 }
 
+/** Version 8 marks raw call inputs explicitly; this JSON call has no raw bytes. */
+const OBSERVATION_AT_8: Readonly<Record<string, unknown>> = {
+	...OBSERVATION_AT_7,
+	callInputs: {
+		...(OBSERVATION_AT_7.callInputs as Record<string, unknown>),
+		bodyEncoding: null,
+	},
+}
+
 /** The same observation as a version-6 record carried it, with no interface. */
 const OBSERVATION_AT_6: Readonly<Record<string, unknown>> = (() => {
 	const { interfaceId: _interfaceId, ...rest } = OBSERVATION_AT_7
@@ -559,6 +568,12 @@ const SEALED_RUN_RECORD_AT_7: Readonly<Record<string, unknown>> = {
 		costUsd: '0',
 	},
 	evidenceDisclosure: { truncationBound: null, reportedIncomplete: false },
+}
+
+const SEALED_RUN_RECORD_AT_8: Readonly<Record<string, unknown>> = {
+	...SEALED_RUN_RECORD_AT_7,
+	schemaVersion: 8,
+	observations: [OBSERVATION_AT_8],
 }
 
 const SEALED_EVALUATOR_BRIEF_AT_2: Readonly<Record<string, unknown>> = {
@@ -884,14 +899,16 @@ const SHAPES: readonly {
 	readonly current: number
 	readonly parse: (value: unknown) => { readonly success: boolean }
 	readonly predecessor: string
+	readonly predecessorCompatible?: boolean
 	readonly shapeByVersion: ShapeByVersion
 }[] = [
 	{
 		artifact: 'sealed-run-record',
 		current: SEALED_RUN_RECORD_SCHEMA_VERSION,
 		parse: (value) => SealedRunRecord.safeParse(value),
-		predecessor: 'carries observations that name no `interfaceId`',
+		predecessor: 'carries observations that name no `bodyEncoding`',
 		shapeByVersion: {
+			8: (stamp) => ({ ...SEALED_RUN_RECORD_AT_8, schemaVersion: stamp }),
 			7: (stamp) => ({ ...SEALED_RUN_RECORD_AT_7, schemaVersion: stamp }),
 			6: (stamp) => ({
 				...SEALED_RUN_RECORD_AT_7,
@@ -963,8 +980,10 @@ const SHAPES: readonly {
 		current: PROBE_SCHEMA_VERSION,
 		parse: (value) => Probe.safeParse(value),
 		predecessor:
-			"declares eight selector channels, without the ninth `arguments` one a tool call's inputs land in",
+			'uses the JSON or absent request-body union before the raw arm was added',
+		predecessorCompatible: true,
 		shapeByVersion: {
+			6: (stamp) => ({ ...PROBE_AT_5, schemaVersion: stamp }),
 			5: (stamp) => ({ ...PROBE_AT_5, schemaVersion: stamp }),
 			// Rebuilt down to the selector, which is where the one difference
 			// version 5 makes to this probe sits. A second copy of the other sixty
@@ -996,8 +1015,10 @@ const SHAPES: readonly {
 		current: EVAL_CONTRACT_SCHEMA_VERSION,
 		parse: (value) => EvalContract.safeParse(value),
 		predecessor:
-			'carries steps that name an `operationId` and no `interfaceId`',
+			'uses the JSON or absent witness-body union before the raw arm was added',
+		predecessorCompatible: true,
 		shapeByVersion: {
+			7: (stamp) => ({ ...EVAL_CONTRACT_AT_6, schemaVersion: stamp }),
 			6: (stamp) => ({ ...EVAL_CONTRACT_AT_6, schemaVersion: stamp }),
 			5: (stamp) => ({
 				...EVAL_CONTRACT_AT_6,
@@ -1060,7 +1081,7 @@ describe('each constant names the shape the parser accepts', () => {
 	)
 
 	it.each(SHAPES.map((entry) => [entry.artifact, entry] as const))(
-		'%s does not parse at the constant minus one',
+		'%s predecessor has the declared parse compatibility',
 		(artifact, entry) => {
 			const predecessor = entry.current - 1
 			const build = entry.shapeByVersion[predecessor]
@@ -1074,7 +1095,7 @@ describe('each constant names the shape the parser accepts', () => {
 			expect(
 				entry.parse(built).success,
 				`${artifact}: the version-${predecessor} shape still parses, so the bump to ${entry.current} broke nothing the parser can see`,
-			).toBe(false)
+			).toBe(entry.predecessorCompatible ?? false)
 		},
 	)
 })

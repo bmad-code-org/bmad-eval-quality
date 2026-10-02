@@ -783,7 +783,11 @@ describe('the shared vocabularies, derived rather than rebuilt', () => {
 	it("keys an observation's call inputs by every input channel", () => {
 		const callInputs = (SealedRunRecord.shape.observations as any).element.shape
 			.callInputs
-		expect(Object.keys(callInputs.shape)).toEqual([...INPUT_CHANNELS])
+		expect(Object.keys(callInputs.shape)).toEqual([
+			...INPUT_CHANNELS.slice(0, 4),
+			'bodyEncoding',
+			...INPUT_CHANNELS.slice(4),
+		])
 	})
 
 	// The probe's selector is keyed the same way, so a selector filters recorded
