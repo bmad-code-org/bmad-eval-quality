@@ -115,6 +115,12 @@ describe('application compile: the contract stamp is read before the contract pa
 		expect(fault.code).toBe('schema-version-mismatch')
 	})
 
+	it('leaves a null input to the parse', () => {
+		const fault = faultOf(null)
+		expect(fault.code).toBe('schema-parse-failure')
+		expect(fault.artifactPath).toBe('EvalContract')
+	})
+
 	it('leaves a contract with no numeric stamp to the parse, which names the schema', () => {
 		const { schemaVersion: _stamp, ...unstamped } =
 			structuredClone(gateCContract)

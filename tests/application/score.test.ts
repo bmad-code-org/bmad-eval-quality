@@ -195,14 +195,28 @@ describe('runScore: the record stamp is read before the record parses', () => {
 		expect(fault.code).toBe('schema-version-mismatch')
 	})
 
-	it('names the trial of the stale record among several', async () => {
+	it('reports the stamp of a previous-shape record passed as a list, the way the CLI always passes it', async () => {
+		const { observations: _dropped, ...previousShape } =
+			sealedRunRecordFixtureForScore
+		const fault = await faultOf(() =>
+			run({
+				record: [{ ...previousShape, schemaVersion: stale }] as never,
+			}),
+		)
+		expect(fault.code).toBe('schema-version-mismatch')
+		expect(fault.artifactPath).toBe(
+			`SealedRunRecord[trialIndex=${sealedRunRecordFixtureForScore.trialIndex}].schemaVersion`,
+		)
+	})
+
+	it('names the trial index of the stale record among several, never its position', async () => {
 		const fault = await faultOf(() =>
 			run({
 				record: [
 					sealedRunRecordFixtureForScore,
 					{
 						...sealedRunRecordFixtureForScore,
-						trialIndex: 2,
+						trialIndex: 5,
 						schemaVersion: stale,
 					},
 				],
@@ -210,8 +224,30 @@ describe('runScore: the record stamp is read before the record parses', () => {
 		)
 		expect(fault.code).toBe('schema-version-mismatch')
 		expect(fault.artifactPath).toBe(
-			'SealedRunRecord[trialIndex=2].schemaVersion',
+			'SealedRunRecord[trialIndex=5].schemaVersion',
 		)
+	})
+
+	it('names the position of a stale record that carries no numeric trial index', async () => {
+		const { trialIndex: _trial, ...untrialed } = sealedRunRecordFixtureForScore
+		const fault = await faultOf(() =>
+			run({
+				record: [
+					sealedRunRecordFixtureForScore,
+					{ ...untrialed, schemaVersion: stale },
+				] as never,
+			}),
+		)
+		expect(fault.code).toBe('schema-version-mismatch')
+		expect(fault.artifactPath).toBe('SealedRunRecord[index=1].schemaVersion')
+	})
+
+	it.each([
+		['a null record', null],
+		['a list holding a null record', [null]],
+	])('leaves %s to the parse', async (_name, record) => {
+		const fault = await faultOf(() => run({ record: record as never }))
+		expect(fault.code).toBe('schema-parse-failure')
 	})
 
 	it('leaves a record with no numeric stamp to the parse, which names the field', async () => {

@@ -600,10 +600,9 @@ describe('run: the error mappings', () => {
 	it('a contract stamped one version below is a schema-version-mismatch fault, exit 5', async () => {
 		const stale = EVAL_CONTRACT_SCHEMA_VERSION - 1
 		const environment = environmentOf({
-			'contract.json': JSON.stringify({
-				...gateCContract,
-				schemaVersion: stale,
-			}),
+			// A shape that fails the parse too: only a stamp read ahead of the parse
+			// names the version.
+			'contract.json': JSON.stringify({ schemaVersion: stale }),
 		})
 		const { outcome, exit } = await invoke(
 			['compile', '--in', 'contract.json'],
