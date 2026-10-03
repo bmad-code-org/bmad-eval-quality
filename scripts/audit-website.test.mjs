@@ -138,6 +138,12 @@ describe('website audit exception', () => {
 		assert.doesNotMatch(result.stderr, /Service Unavailable/)
 	})
 
+	it('emits a retry marker for an actual npm transport failure', () => {
+		const result = runCli('ENOTFOUND registry.npmjs.org')
+		assert.equal(result.status, 1)
+		assert.match(result.stderr, /audit endpoint returned an error/)
+	})
+
 	it('detects the actual static Pages build and rejects inline server output', () => {
 		const config = readFileSync(
 			new URL('../website/astro.config.mjs', import.meta.url),

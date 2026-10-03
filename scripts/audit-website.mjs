@@ -155,6 +155,17 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
 	})
 	if (!result.ok) {
 		process.stderr.write(`${result.reason}\n`)
+		if (
+			[
+				'npm audit did not complete normally',
+				'npm audit returned invalid JSON',
+				'npm returned an incomplete vulnerability report',
+			].includes(result.reason) &&
+			/audit endpoint returned an error|Service Unavailable|Gateway Time-?out|Bad Gateway|ETIMEDOUT|ENOTFOUND|ECONNRESET|socket hang up/.test(
+				`${audit.stderr || ''}${audit.stdout || ''}`,
+			)
+		)
+			process.stderr.write('audit endpoint returned an error\n')
 		process.exitCode = 1
 	} else if (result.exception) {
 		process.stdout.write(
