@@ -10,6 +10,10 @@ body.
 
 ## [Unreleased]
 
+### Fixed
+
+- A scalar CLI response with no success field now satisfies `success-indicator-separation` when one affirmative oracle names the same step's exit code and whole stdout, and its check requires exit code `0` plus exact equality or deep equality of the complete stdout string. Partial, substring, alternative, split-oracle, and violation-polarity checks continue to report the gap. Structured response checks retain their existing rule.
+
 ## [6.0.0] - 2026-10-02
 
 ### Added
