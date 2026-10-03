@@ -10,7 +10,13 @@ import { runScore } from '../../src/application/score.ts'
 import * as emitModule from '../../src/core/emit/emit.ts'
 import * as ingestModule from '../../src/core/ingest/index.ts'
 import { EVAL_CONTRACT_SCHEMA_VERSION } from '../../src/core/schemas/eval-contract.ts'
+import { EVALUATOR_CONFIGURATION_SCHEMA_VERSION } from '../../src/core/schemas/evaluator-configuration.ts'
 import { RuntimeFault } from '../../src/core/schemas/faults.ts'
+import { ISOLATION_MANIFEST_SCHEMA_VERSION } from '../../src/core/schemas/isolation-manifest.ts'
+import { PREFLIGHT_VERDICT_SCHEMA_VERSION } from '../../src/core/schemas/preflight-verdict.ts'
+import { PRIVATE_ARTIFACT_MANIFEST_SCHEMA_VERSION } from '../../src/core/schemas/private-artifact-manifest.ts'
+import { PROBE_SCHEMA_VERSION } from '../../src/core/schemas/probe.ts'
+import { SCORING_POLICY_SCHEMA_VERSION } from '../../src/core/schemas/scoring-policy.ts'
 import { SEALED_RUN_RECORD_SCHEMA_VERSION } from '../../src/core/schemas/sealed-run-record.ts'
 import * as scoreModule from '../../src/core/score/score.ts'
 import { compareDominance } from '../../src/core/score/strength.ts'
@@ -727,5 +733,180 @@ describe('runScore: the contract stamp is read before the contract parses', () =
 				run({ contract: { ...scoreContractFixture, schemaVersion: stale } }),
 			),
 		)
+	})
+})
+
+type StampedInput = {
+	readonly name: string
+	readonly option:
+		| 'manifest'
+		| 'configuration'
+		| 'probe'
+		| 'preflightVerdict'
+		| 'policy'
+		| 'privateManifest'
+	readonly artifactPath: string
+	readonly version: number
+	readonly fixture: Record<string, unknown>
+	/** A field the schema requires, dropped to build the previous shape. */
+	readonly requiredField: string
+	readonly nullable: boolean
+}
+
+const STAMPED_INPUTS: readonly StampedInput[] = [
+	{
+		name: 'isolation manifest',
+		option: 'manifest',
+		artifactPath: 'IsolationManifest.schemaVersion',
+		version: ISOLATION_MANIFEST_SCHEMA_VERSION,
+		fixture: isolationManifestFixtureForScore,
+		requiredField: 'workspaceIdentity',
+		nullable: true,
+	},
+	{
+		name: 'evaluator configuration',
+		option: 'configuration',
+		artifactPath: 'EvaluatorConfiguration.schemaVersion',
+		version: EVALUATOR_CONFIGURATION_SCHEMA_VERSION,
+		fixture: evaluatorConfigurationFixture,
+		requiredField: 'modelSnapshot',
+		nullable: true,
+	},
+	{
+		name: 'probe',
+		option: 'probe',
+		artifactPath: `Probe[probeId=${scoreProbeFixture.probeId}].schemaVersion`,
+		version: PROBE_SCHEMA_VERSION,
+		fixture: scoreProbeFixture,
+		requiredField: 'qualification',
+		nullable: false,
+	},
+	{
+		name: 'preflight verdict',
+		option: 'preflightVerdict',
+		artifactPath: 'PreflightVerdict.schemaVersion',
+		version: PREFLIGHT_VERDICT_SCHEMA_VERSION,
+		fixture: passingPreflightVerdictForScore,
+		requiredField: 'checks',
+		nullable: false,
+	},
+	{
+		name: 'scoring policy',
+		option: 'policy',
+		artifactPath: 'ScoringPolicy.schemaVersion',
+		version: SCORING_POLICY_SCHEMA_VERSION,
+		fixture: scoringPolicyFixtureForScore,
+		requiredField: 'catchThreshold',
+		nullable: false,
+	},
+	{
+		name: 'private artifact manifest',
+		option: 'privateManifest',
+		artifactPath: 'PrivateArtifactManifest.schemaVersion',
+		version: PRIVATE_ARTIFACT_MANIFEST_SCHEMA_VERSION,
+		fixture: privateArtifactManifestFixtureForScore,
+		requiredField: 'entries',
+		nullable: true,
+	},
+]
+
+describe.each(STAMPED_INPUTS.map((input) => [input.name, input] as const))(
+	'runScore: the %s stamp is read before it parses',
+	(_name, input) => {
+		const stale = input.version - 1
+		const expectNamed = (fault: RuntimeFault): void => {
+			expect(fault.code).toBe('schema-version-mismatch')
+			expect(fault.artifactPath).toBe(input.artifactPath)
+			expect(fault.message).toContain(
+				`carries "schemaVersion" ${stale} where this build reads ${input.version}`,
+			)
+		}
+		const withInput = (value: unknown) =>
+			run({ [input.option]: value as never })
+
+		it('scores the version this build reads', async () => {
+			await expect(withInput(input.fixture)).resolves.toBeDefined()
+		})
+
+		it('names a stale stamp on a body that parses under the current schema, which would otherwise score', async () => {
+			expectNamed(
+				await faultOf(() =>
+					withInput({ ...input.fixture, schemaVersion: stale }),
+				),
+			)
+		})
+
+		it('names the stamp of a previous-shape body, which would otherwise fail as an anonymous parse failure', async () => {
+			const { [input.requiredField]: _dropped, ...previousShape } =
+				input.fixture
+			const parseFault = await faultOf(() => withInput(previousShape))
+			expect(parseFault.code).toBe('schema-parse-failure')
+			expectNamed(
+				await faultOf(() =>
+					withInput({ ...previousShape, schemaVersion: stale }),
+				),
+			)
+		})
+
+		it('leaves a body with no numeric stamp to the parse, which names the field', async () => {
+			const { schemaVersion: _stamp, ...unstamped } = input.fixture
+			const fault = await faultOf(() => withInput(unstamped))
+			expect(fault.code).toBe('schema-parse-failure')
+			const stringStamp = await faultOf(() =>
+				withInput({ ...input.fixture, schemaVersion: String(input.version) }),
+			)
+			expect(stringStamp.code).toBe('schema-parse-failure')
+		})
+
+		if (input.nullable) {
+			it('scores a null input as before', async () => {
+				await expect(withInput(null)).resolves.toBeDefined()
+			})
+		}
+	},
+)
+
+describe('runScore: the probe stamp without a probe id', () => {
+	it('names the stale probe without an id in its path', async () => {
+		const { probeId: _id, ...anonymous } = scoreProbeFixture
+		const fault = await faultOf(() =>
+			run({
+				probe: {
+					...anonymous,
+					schemaVersion: PROBE_SCHEMA_VERSION - 1,
+				} as never,
+			}),
+		)
+		expect(fault.code).toBe('schema-version-mismatch')
+		expect(fault.artifactPath).toBe('Probe.schemaVersion')
+	})
+
+	it('names a stale probe the qualification gate would reject, ahead of any rejection', async () => {
+		const fault = await faultOf(() =>
+			run({
+				probe: {
+					...unqualifiedProbeFixture,
+					schemaVersion: PROBE_SCHEMA_VERSION - 1,
+				},
+			}),
+		)
+		expect(fault.code).toBe('schema-version-mismatch')
+	})
+})
+
+describe('runScore: a stale private manifest is refused before any port call', () => {
+	it('resolves no private reference for it', async () => {
+		const port = fakeCorpusPort({})
+		const fault = await faultOf(() =>
+			run({
+				port,
+				privateManifest: {
+					...privateArtifactManifestFixtureForScore,
+					schemaVersion: PRIVATE_ARTIFACT_MANIFEST_SCHEMA_VERSION - 1,
+				},
+			}),
+		)
+		expect(fault.code).toBe('schema-version-mismatch')
+		expect(port.resolve).not.toHaveBeenCalled()
 	})
 })

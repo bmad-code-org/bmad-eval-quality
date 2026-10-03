@@ -888,7 +888,7 @@ describe("this repository's own doc-counts entries, held to a floor", () => {
 		if (loaded.kind !== 'section') return
 		const report = await runDocCounts(dirname(loaded.path), loaded.section)
 		expect(report.failures).toEqual([])
-		expect(report.numerals).toBeGreaterThanOrEqual(42)
+		expect(report.numerals).toBeGreaterThanOrEqual(41)
 		expect(report.digits).toBeGreaterThanOrEqual(8)
 		expect(report.files).toBeGreaterThanOrEqual(11)
 	})

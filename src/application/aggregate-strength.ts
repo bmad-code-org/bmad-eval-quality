@@ -1,7 +1,7 @@
 /**
  * The one orchestration call over the `aggregate` stage (AD-24): parse the
  * per-probe evidence artifacts, the declared floors and the scoring policy,
- * read the evidence schema version, and hand the parsed values to the pure stage. No decision
+ * read the evidence and scoring policy schema versions, and hand the parsed values to the pure stage. No decision
  * logic lives here (AD-14): every branch is a parse, a version comparison, or
  * the call.
  *
@@ -14,11 +14,18 @@ import {
 	EvidenceArtifact,
 } from '../core/schemas/evidence-artifact.ts'
 import { RuntimeFault } from '../core/schemas/faults.ts'
-import { ScoringPolicy } from '../core/schemas/scoring-policy.ts'
+import {
+	SCORING_POLICY_SCHEMA_VERSION,
+	ScoringPolicy,
+} from '../core/schemas/scoring-policy.ts'
 import {
 	type StrengthAggregate,
 	StrengthFloors,
 } from '../core/schemas/strength-aggregate.ts'
+import {
+	checkArtifactVersion,
+	SCORING_POLICY_CONSEQUENCE,
+} from './artifact-stamp.ts'
 
 export type AggregateStrengthOptions = {
 	/**
@@ -76,6 +83,11 @@ function parseEvidence(
 }
 
 function parsePolicy(input: ScoringPolicy): ScoringPolicy {
+	checkArtifactVersion(input, {
+		accepted: SCORING_POLICY_SCHEMA_VERSION,
+		artifactPath: 'ScoringPolicy.schemaVersion',
+		consequence: SCORING_POLICY_CONSEQUENCE,
+	})
 	const parsed = ScoringPolicy.safeParse(input)
 	if (!parsed.success) throw parseFault('ScoringPolicy', parsed.error)
 	return parsed.data

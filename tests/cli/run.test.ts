@@ -39,7 +39,13 @@ import {
 } from '../../src/cli/run.ts'
 import { planPreflight } from '../../src/core/preflight/plan.ts'
 import { EVAL_CONTRACT_SCHEMA_VERSION } from '../../src/core/schemas/eval-contract.ts'
+import { EVALUATOR_CONFIGURATION_SCHEMA_VERSION } from '../../src/core/schemas/evaluator-configuration.ts'
+import { ISOLATION_MANIFEST_SCHEMA_VERSION } from '../../src/core/schemas/isolation-manifest.ts'
 import type { ProbeObservation } from '../../src/core/schemas/port-messages.ts'
+import { PREFLIGHT_VERDICT_SCHEMA_VERSION } from '../../src/core/schemas/preflight-verdict.ts'
+import { PRIVATE_ARTIFACT_MANIFEST_SCHEMA_VERSION } from '../../src/core/schemas/private-artifact-manifest.ts'
+import { PROBE_SCHEMA_VERSION } from '../../src/core/schemas/probe.ts'
+import { SCORING_POLICY_SCHEMA_VERSION } from '../../src/core/schemas/scoring-policy.ts'
 import { SEALED_RUN_RECORD_SCHEMA_VERSION } from '../../src/core/schemas/sealed-run-record.ts'
 import {
 	corpusDigestFixture,
@@ -1417,6 +1423,75 @@ describe('run: the score command (Story 8.4)', () => {
 		)
 		expect(environment.out).toEqual([])
 	})
+
+	it.each([
+		{
+			name: 'an isolation manifest',
+			file: 'isolation-manifest.json',
+			fixture: isolationManifestFixtureForScore,
+			path: 'IsolationManifest',
+			version: ISOLATION_MANIFEST_SCHEMA_VERSION,
+		},
+		{
+			name: 'an evaluator configuration',
+			file: 'evaluator-configuration.json',
+			fixture: evaluatorConfigurationFixture,
+			path: 'EvaluatorConfiguration',
+			version: EVALUATOR_CONFIGURATION_SCHEMA_VERSION,
+		},
+		{
+			name: 'a scoring policy',
+			file: 'policy.json',
+			fixture: scoringPolicyFixtureForScore,
+			path: 'ScoringPolicy',
+			version: SCORING_POLICY_SCHEMA_VERSION,
+		},
+		{
+			name: 'a preflight verdict',
+			file: 'preflight-verdict.json',
+			fixture: passingPreflightVerdictForScore,
+			path: 'PreflightVerdict',
+			version: PREFLIGHT_VERDICT_SCHEMA_VERSION,
+		},
+		{
+			name: 'a private artifact manifest',
+			file: 'private-manifest.json',
+			fixture: privateArtifactManifestFixtureForScore,
+			path: 'PrivateArtifactManifest',
+			version: PRIVATE_ARTIFACT_MANIFEST_SCHEMA_VERSION,
+		},
+		{
+			name: 'a probe',
+			file: 'probe.json',
+			fixture: scoreProbeFixture,
+			path: `Probe[probeId=${scoreProbeFixture.probeId}]`,
+			version: PROBE_SCHEMA_VERSION,
+		},
+	])(
+		'$name stamped one version below is a schema-version-mismatch fault naming the stamp, exit 5',
+		async ({ file, fixture, path, version }) => {
+			const stale = version - 1
+			const environment = environmentOf(
+				scoreFiles({
+					[file]: JSON.stringify({ ...fixture, schemaVersion: stale }),
+				}),
+				'',
+				[],
+				SCORE_CORPUS_FILES,
+			)
+			const { outcome, exit } = await invoke(
+				[...SCORE_ARGV, '--private-manifest', 'private-manifest.json'],
+				environment,
+			)
+			expect(outcome).toEqual({ kind: 'fault' })
+			expect(exit).toBe(EXIT_FAULT)
+			expect(environment.diagnostics[0]).toContain(
+				`schema-version-mismatch: ${path}.schemaVersion: carries "schemaVersion" ${stale} where this build reads ${version}`,
+			)
+			expect(environment.out).toEqual([])
+			expect(environment.writes).toEqual([])
+		},
+	)
 
 	it('a version 7 record, whose observations name no body encoding, is a schema-version-mismatch fault naming 7 and 8, exit 5', async () => {
 		const environment = environmentOf(
