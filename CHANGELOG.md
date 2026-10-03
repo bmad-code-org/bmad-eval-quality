@@ -15,7 +15,7 @@ body.
 - **BREAKING: `compile` refuses a contract whose `permittedInterfaces` repeat a `logicalId`, under the new `duplicate-interface-identifier` code.**
   An interface's `logicalId` is half of an operation's identity, and `compile` never checked that it is unique.
   Two interfaces that shared one merged their operations into a single namespace for every stage that reads a compiled contract, every `permittedInterfaces[logicalId=X]` path a later check emitted addressed two interfaces, and `seal` faulted on the contract as an anonymous `schema-parse-failure` ("duplicate operation id within interface" when each interface declared one operation ID, "duplicate permittedInterfaces logicalId" otherwise).
-  The new check runs first in `compile`, right after the stamp check, and exits `4` as a structural failure at `EvalContract.permittedInterfaces[<later position>].logicalId`, naming the identifier and both positions.
+  The new check runs first in `compile`, right after the stamp check, and `preflight`, which never compiles, plans from the contract and refuses it the same way. Both exit `4` as a structural failure at `EvalContract.permittedInterfaces[<later position>].logicalId`, naming the identifier and both positions.
   With interfaces A, B, A it names positions 0 and 2.
   `FAILURE_CODES`, and the `FailureCode` type derived from it, gain `duplicate-interface-identifier` as the 27th and last member, so AD-5's table order and every existing code's rank are unchanged; a caller that switches exhaustively over `FailureCode` or matches on the registry's length handles the new member.
   A contract that compiled with a repeated identifier now fails, so a caller renames the interface it repeated.

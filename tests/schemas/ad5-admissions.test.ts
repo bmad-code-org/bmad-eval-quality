@@ -160,10 +160,6 @@ describe('AD-5 code walk — every coded shape stays representable', () => {
 		})
 	})
 
-	// The code is about a collision "after parameter-name erasure", so the two
-	// templates differ in the parameter name and agree on nothing else: erasing
-	// the names makes both `/things/{}`. Identical strings would only exercise
-	// the trivial case and leave the erasure untested in Story 4.2's fixture.
 	// The schema keeps no uniqueness constraint on `logicalId`: the compiler's
 	// `checkDuplicateInterfaceIdentifier` refuses the repeat with a coded,
 	// path-carrying structural error, where a schema refinement would raise an
@@ -175,6 +171,10 @@ describe('AD-5 code walk — every coded shape stays representable', () => {
 		})
 	})
 
+	// The code is about a collision "after parameter-name erasure", so the two
+	// templates differ in the parameter name and agree on nothing else: erasing
+	// the names makes both `/things/{}`. Identical strings would only exercise
+	// the trivial case and leave the erasure untested in Story 4.2's fixture.
 	it('duplicate-operation-signature: two operations colliding after parameter-name erasure', () => {
 		admits((contract) => {
 			const operations = contract.permittedInterfaces[0].operations

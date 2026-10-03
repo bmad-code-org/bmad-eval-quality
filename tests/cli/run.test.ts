@@ -685,6 +685,24 @@ describe('run: the error mappings', () => {
 		},
 	)
 
+	// `preflight` never compiles: it parses the contract and plans from it, so the
+	// plan is the gate a hand-assembled contract meets.
+	it('a repeated interface identifier exits 4 as duplicate-interface-identifier from preflight', async () => {
+		const environment = environmentOf({
+			...preflightFiles(),
+			'contract.json': JSON.stringify(repeatedIdentifierSharedOperation()),
+		})
+		const { outcome, exit } = await invoke(preflightArgv(), environment)
+		expect(outcome).toEqual({ kind: 'structural-failure' })
+		expect(exit).toBe(EXIT_STRUCTURAL_FAILURE)
+		expect(environment.diagnostics).toHaveLength(1)
+		expect(environment.diagnostics[0]).toMatch(
+			/^eval-quality: duplicate-interface-identifier: EvalContract\.permittedInterfaces\[1\]\.logicalId: "thing-api" is already the identifier of permittedInterfaces\[0\]/,
+		)
+		expect(environment.out).toEqual([])
+		expect(environment.writes).toEqual([])
+	})
+
 	it('case 72: a StructuralFailure maps to structural-failure and exit 4', async () => {
 		const environment = environmentOf({ 'contract.json': CONTRACT_JSON })
 		const facade = facadeOf({

@@ -9,6 +9,7 @@
  * identifier up in at reduce time.
  */
 import {
+	checkDuplicateInterfaceIdentifier,
 	isSupportedInterfaceKind,
 	SUPPORTED_KINDS_CLAUSE,
 } from '../compile/interface-inventory.ts'
@@ -352,6 +353,12 @@ export const planPreflight: PlanStage<PreflightPlanInput, PreflightPlan> = (
 			consequence: PROBE_SCHEMA_VERSION_CONSEQUENCE,
 		})
 	}
+	// Already thrown at compile, and asserted again for the same reason as the
+	// kind below. `preflight` never compiles, and the plan keys every leg by the
+	// pair of interface and operation, so a repeated identifier would merge two
+	// interfaces' legs. It is the engine's own check, so the two gates cannot
+	// disagree about what a repeat is.
+	checkDuplicateInterfaceIdentifier(contract)
 	for (const iface of contract.permittedInterfaces) {
 		// Already thrown at compile; asserted again because the plan is
 		// reachable from a caller who assembled a contract by hand. Reads the

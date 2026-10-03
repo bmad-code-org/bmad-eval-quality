@@ -91,7 +91,7 @@ export function checkDuplicateInterfaceIdentifier(
 			throw new StructuralFailure(
 				'duplicate-interface-identifier',
 				`EvalContract.permittedInterfaces[${position}].logicalId`,
-				`"${iface.logicalId}" is already the identifier of permittedInterfaces[${first}]; an interface's identifier is unique across the contract, so permittedInterfaces[${first}] and permittedInterfaces[${position}] cannot both carry it (AD-19, AD-35)`,
+				`"${iface.logicalId}" is already the identifier of permittedInterfaces[${first}]; an interface's identifier is unique across the contract, so permittedInterfaces[${first}] and permittedInterfaces[${position}] cannot both carry it (AD-19)`,
 			)
 		}
 		firstPositionOf.set(iface.logicalId, position)

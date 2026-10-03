@@ -87,6 +87,32 @@ describe('checkDuplicateInterfaceIdentifier: duplicate-interface-identifier', ()
 		)
 	})
 
+	// The identifier is unique across kinds: an operation is named by the pair of
+	// its interface and its `operationId`, and a step names the interface by
+	// `logicalId` alone, so an api interface and a command or tool-server one
+	// sharing it are as ambiguous as two of one kind.
+	it.each([
+		['mcp', mcpContract],
+		['cli', commandContract],
+	])(
+		'refuses an api interface and a %s interface sharing one identifier',
+		(_kind, other) => {
+			const contract = cleanPopulatedContract() as any
+			const twin = structuredClone(other.permittedInterfaces[0]) as any
+			twin.logicalId = 'thing-api'
+			contract.permittedInterfaces.push(twin)
+			expect(contract.permittedInterfaces.map((i: any) => i.kind)).toEqual([
+				'api',
+				twin.kind,
+			])
+			const failure = structuralFailureOf(() => check(contract))
+			expect(failure.code).toBe('duplicate-interface-identifier')
+			expect(failure.artifactPath).toBe(
+				'EvalContract.permittedInterfaces[1].logicalId',
+			)
+		},
+	)
+
 	it('names positions 0 and 2 when the interfaces are A, B, A', () => {
 		const contract = repeatedIdentifierAroundAnother()
 		expect(contract.permittedInterfaces.map((i: any) => i.logicalId)).toEqual([
@@ -99,7 +125,7 @@ describe('checkDuplicateInterfaceIdentifier: duplicate-interface-identifier', ()
 			'EvalContract.permittedInterfaces[2].logicalId',
 		)
 		expect(failure.message).toBe(
-			'duplicate-interface-identifier in EvalContract.permittedInterfaces[2].logicalId: "thing-api" is already the identifier of permittedInterfaces[0]; an interface\'s identifier is unique across the contract, so permittedInterfaces[0] and permittedInterfaces[2] cannot both carry it (AD-19, AD-35)',
+			'duplicate-interface-identifier in EvalContract.permittedInterfaces[2].logicalId: "thing-api" is already the identifier of permittedInterfaces[0]; an interface\'s identifier is unique across the contract, so permittedInterfaces[0] and permittedInterfaces[2] cannot both carry it (AD-19)',
 		)
 	})
 

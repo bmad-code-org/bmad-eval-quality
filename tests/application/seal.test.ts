@@ -57,8 +57,8 @@ describe('application seal: the compiled-then-sealed brief', () => {
 		expect(Object.isFrozen(brief.budgets)).toBe(true)
 	})
 
-	// The Zod error on `cause` is what separates this from the three cases
-	// below: those carry a `TypeError` raised inside `core/seal`.
+	// The Zod error on `cause` is what separates this from cases 100 and
+	// 102 below: those carry a `TypeError` raised inside `core/seal`.
 	it('case 97: a non-contract input throws schema-parse-failure from the compile parse', () => {
 		const fault = faultOf(() => seal({ not: 'a contract' }))
 		expect(fault.code).toBe('schema-parse-failure')

@@ -23,11 +23,10 @@
  * path a later check emits addresses an interface by its `logicalId`, so a
  * repeated one has to be named before any of them reports.
  *
- * `checkArtifactReferences` fires `unresolved-artifact-reference`, which was
- * the registry's last code before that one, but runs near the front for the reason its own call
- * site records: it names a fault that reachability can only describe the
- * consequence of, and reachability abstains on the same pointer so the two
- * never race.
+ * `checkArtifactReferences` fires `unresolved-artifact-reference` but runs
+ * near the front for the reason its own call site records: it names a fault
+ * that reachability can only describe the consequence of, and reachability
+ * abstains on the same pointer so the two never race.
  *
  * `checkStepReferenceReducibility` runs last, after every other check has had
  * its say. It is the only check that reports what a LATER stage cannot do
@@ -115,8 +114,9 @@ export function compile(
 	// interface. An operation is named by the pair of its interface and its
 	// `operationId`, and every path a later check emits reads
 	// `permittedInterfaces[logicalId=X]`, so a repeated identifier makes each of
-	// them name two interfaces and the pair lookups below answer for neither. The
-	// same reason runs `checkArtifactReferences` early.
+	// them name two interfaces and the pair lookups below answer for neither.
+	// `checkRubricIdentifiers` runs ahead of its siblings for the same reason: a
+	// duplicated id makes every `rubrics[id=...]` path address two things.
 	checkDuplicateInterfaceIdentifier(contract)
 	checkRequirementLinkage(contract)
 	checkObservableSuccessCriterion(contract)

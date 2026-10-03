@@ -50,7 +50,11 @@ describe('compile: positive whole-contract regression', () => {
 	})
 })
 
-describe('compile: one reused negative mutation reaches each of the 30 wired functions, in call order', () => {
+// 30 of the 33 checks `compile` calls. `checkArtifactReferences`,
+// `checkExcludedContent` and `checkStepReferenceReducibility` are reached from
+// their own test files. Entries 1 to 29 follow call order; entry 30 was added
+// last and runs first, so its number is a label and not a position.
+describe('compile: one reused negative mutation reaches 30 of the 33 wired checks', () => {
 	it('1 checkRequirementLinkage: missing-requirement-linkage', () => {
 		const failure = structuralFailureOf(() =>
 			compileClean((c) => {
@@ -422,8 +426,8 @@ describe('compile: a repeated interface identifier is named first of all', () =>
 	const compileRaw = (raw: unknown) =>
 		compile(EvalContract.parse(raw), { strict: true })
 
-	// Numbered by its registry rank, the 27th, though it runs first in call
-	// order: the whole census above lists the other 29 in the order they run.
+	// Labelled 30 because it was added after the 29 above, though it runs first
+	// in call order. Its registry rank is the 27th.
 	it('30 checkDuplicateInterfaceIdentifier: duplicate-interface-identifier, with distinct operation ids on the two interfaces', () => {
 		const failure = structuralFailureOf(() =>
 			compileRaw(repeatedIdentifierDistinctOperations()),
