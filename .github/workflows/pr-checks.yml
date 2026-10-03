@@ -90,13 +90,11 @@ jobs:
       # The advisory database is a live service, so its 503 lands on whichever
       # pull request happens to be running: a documentation-only change failed
       # here on 2026-09-04 with `audit endpoint returned an error`. A registry
-      # that cannot be reached has returned no verdict, which is not the same
-      # answer as "no vulnerability", so the transport failure is retried and
-      # then warned about while a real advisory hit still fails on the first
-      # attempt. A run that ends in the warning has skipped this check; the next
-      # push, and every run on main, asks again.
+      # that cannot be reached has returned no verdict, so the transport failure
+      # is retried and then fails closed. A real advisory hit fails immediately.
       - name: Known-vulnerability audit (advisory DB, CI only)
         run: |
+          node --test scripts/audit-website.test.mjs
           audit() {
             local label="$1"
             shift
@@ -114,8 +112,8 @@ jobs:
               echo "::notice::${label}: the advisory endpoint was unreachable (attempt ${attempt} of 3)."
               sleep $((attempt * 10))
             done
-            echo "::warning::${label}: skipped after three unreachable attempts. No vulnerability verdict was obtained from the advisory database."
-            return 0
+            echo "::error::${label}: no vulnerability verdict after three unreachable attempts."
+            return 1
           }
           # npm's default `fetch-timeout` is five minutes, which is how long the
           # 503 took to surface each time. The whole retry budget is capped
@@ -125,7 +123,7 @@ jobs:
           # 2026-09-04, when the audit alone consumed enough of the fifteen
           # minute budget that the coverage run was cancelled mid-flight.
           audit "root graph" npm audit --audit-level=high --fetch-timeout=30000
-          audit "website graph" npm --prefix website audit --audit-level=high --fetch-timeout=30000
+          audit "website graph" node scripts/audit-website.mjs
 
       # Before the two steps that run the suite. The published-surface cases
       # resolve `dist/` through the `exports` map and skip with a clear message

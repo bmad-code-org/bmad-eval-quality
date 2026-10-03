@@ -216,6 +216,99 @@ const bothChannelsAddress = (oracle: OracleView, root: string): boolean =>
 const definedPointers = (node: CheckNode): readonly string[] =>
 	node.operandPointers.filter((pointer): pointer is string => pointer !== null)
 
+/** Equality leaves joined only by `all` prove both scalar observations. */
+const scalarEqualities = (
+	expression: Expression,
+	exitPointer: string,
+	stdoutPointer: string,
+): { exit: boolean; stdout: boolean } => {
+	if (expression.op === 'all') {
+		return expression.operands.reduce<{ exit: boolean; stdout: boolean }>(
+			(found, child) => {
+				const next = scalarEqualities(child, exitPointer, stdoutPointer)
+				return {
+					exit: found.exit || next.exit,
+					stdout: found.stdout || next.stdout,
+				}
+			},
+			{ exit: false, stdout: false },
+		)
+	}
+	if (expression.op !== 'equality' && expression.op !== 'deep-equality')
+		return { exit: false, stdout: false }
+	const [left, right] = expression.operands
+	const matches = (pointer: string, literal: unknown): boolean =>
+		(left !== undefined &&
+			'pointer' in left &&
+			left.pointer === pointer &&
+			right !== undefined &&
+			'literal' in right &&
+			right.literal === literal) ||
+		(right !== undefined &&
+			'pointer' in right &&
+			right.pointer === pointer &&
+			left !== undefined &&
+			'literal' in left &&
+			left.literal === literal)
+	return {
+		exit: matches(exitPointer, 0),
+		stdout:
+			(left !== undefined &&
+				'pointer' in left &&
+				left.pointer === stdoutPointer &&
+				right !== undefined &&
+				'literal' in right &&
+				typeof right.literal === 'string') ||
+			(right !== undefined &&
+				'pointer' in right &&
+				right.pointer === stdoutPointer &&
+				left !== undefined &&
+				'literal' in left &&
+				typeof left.literal === 'string'),
+	}
+}
+
+const scalarCommandWitnessed = (
+	resolved: ResolvedOperation,
+	index: PlanIndex,
+	contract: EvalContract,
+): boolean => {
+	if (resolved.kind !== 'cli' || resolved.descriptorRoot !== '/stdout')
+		return false
+	const descriptor = resolved.descriptor
+	if (
+		descriptor.requiredKeys.length > 0 ||
+		descriptor.permittedKeys.length > 0 ||
+		Object.keys(descriptor.types).length > 0 ||
+		(descriptor.channelRoles !== null &&
+			Object.entries(descriptor.channelRoles).some(
+				([pointer, role]) => pointer !== '' || role !== 'payload',
+			))
+	)
+		return false
+	return index
+		.stepsUsing(resolved.logicalId, resolved.operation.operationId)
+		.some((step) => {
+			const exitPointer = `${stepRoot(step.stepId)}/exit-code`
+			const stdoutPointer = `${stepRoot(step.stepId)}/stdout`
+			return contract.oracles.some((oracle) => {
+				if (oracle.direction === null || oracle.check === null) return false
+				if (
+					oracle.polarity !== 'expects-hold' ||
+					oracle.direction.polarity !== 'expects-hold'
+				)
+					return false
+				if (
+					!oracle.direction.evidenceTargets.includes(exitPointer) ||
+					!oracle.direction.evidenceTargets.includes(stdoutPointer)
+				)
+					return false
+				const found = scalarEqualities(oracle.check, exitPointer, stdoutPointer)
+				return found.exit && found.stdout
+			})
+		})
+}
+
 /**
  * The three derived views the predicates read. `evaluateSatisfaction` builds
  * one and passes it down, so seven predicates do not each rebuild the plan
@@ -249,10 +342,16 @@ export function successIndicatorSeparationSatisfaction(
 	const { operations, index, oracles } = context
 	if (operations.length === 0) return verdict(rule, false, NO_OPERATION_WITNESS)
 	let sites = 0
+	let scalarSites = 0
 	for (const resolved of operations) {
 		const { operation, descriptor } = resolved
 		const { successIndicator, channelRoles } = descriptor
 		if (successIndicator === null) {
+			if (scalarCommandWitnessed(resolved, index, contract)) {
+				sites += 1
+				scalarSites += 1
+				continue
+			}
 			return verdict(
 				rule,
 				false,
@@ -305,7 +404,9 @@ export function successIndicatorSeparationSatisfaction(
 		true,
 		sites === 0
 			? NO_RELEVANT_SITE
-			: 'every operation the rule fires on has an oracle reading its success indicator beside another roled pointer',
+			: scalarSites > 0
+				? 'every scalar command checks exit code 0 and exact whole stdout in one oracle'
+				: 'every operation the rule fires on has an oracle reading its success indicator beside another roled pointer',
 	)
 }
 
