@@ -1487,7 +1487,7 @@ describe('run: the score command (Story 8.4)', () => {
 			version: PROBE_SCHEMA_VERSION,
 		},
 	])(
-		'$name stamped one version below is a schema-version-mismatch fault naming the stamp, exit 5',
+		'$name stamped for another version is a schema-version-mismatch fault naming the stamp, exit 5',
 		async ({ file, fixture, path, version }) => {
 			// A stamp below 1 fails the schema, so at version 1 the stale stamp is a newer one.
 			const stale = version === 1 ? version + 1 : version - 1

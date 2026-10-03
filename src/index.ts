@@ -23,10 +23,10 @@
 // stamp, so a consumer satisfying AD-11's equality rule imports the number this
 // build reads. Eleven of the thirteen artifacts carry one: the nine with an
 // in-package reader and the four this package stamps (the evidence artifact
-// and the preflight verdict are both read and stamped). `artifact-reference` carries no lineage at all. A rubric
-// does carry a `schemaVersion`, and no constant here states it: this package
-// never parses a standalone rubric, and the eval contract embeds `RubricBody`,
-// the body without lineage.
+// and the preflight verdict are both read and stamped). `artifact-reference`
+// carries no lineage at all. A rubric does carry a `schemaVersion`, and no
+// constant here states it: this package never parses a standalone rubric, and
+// the eval contract embeds `RubricBody`, the body without lineage.
 
 export * from './application/index.ts'
 export type { ArtifactReference } from './core/schemas/artifact-reference.ts'
