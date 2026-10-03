@@ -10,6 +10,8 @@ body.
 
 ## [Unreleased]
 
+## [7.0.0] - 2026-10-03
+
 ### Changed
 
 - **BREAKING: `score` names a stale stamp on every artifact it reads, before the artifact's shape is read.**
