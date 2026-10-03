@@ -12,6 +12,7 @@ import { digestArtifact } from '../../src/core/canonical/digest.ts'
 import { AggregationRefusal } from '../../src/core/failure-codes.ts'
 import type { EvidenceArtifact } from '../../src/core/schemas/evidence-artifact.ts'
 import { RuntimeFault } from '../../src/core/schemas/faults.ts'
+import { SCORING_POLICY_SCHEMA_VERSION } from '../../src/core/schemas/scoring-policy.ts'
 import { ENGINE_VERSION } from '../../src/core/version.ts'
 import { VERSION } from '../../src/index.ts'
 import {
@@ -246,6 +247,58 @@ describe('the evidence schema version is read before the shape', () => {
 			}),
 		)
 		expect(fault.code).toBe('schema-parse-failure')
+	})
+})
+
+describe('the scoring policy stamp is read before the shape', () => {
+	const stale = SCORING_POLICY_SCHEMA_VERSION - 1
+	const aggregateUnder = async (policy: unknown): Promise<RuntimeFault> => {
+		const evidence = [await scoreDefectProbe('P-001', [true, true, true])]
+		return faultOf(() =>
+			aggregateStrength({ evidence, floors: {}, policy: policy as never }),
+		)
+	}
+	const expectNamed = (fault: RuntimeFault): void => {
+		expect(fault.code).toBe('schema-version-mismatch')
+		expect(fault.artifactPath).toBe('ScoringPolicy.schemaVersion')
+		expect(fault.message).toContain(
+			`carries "schemaVersion" ${stale} where this build reads ${SCORING_POLICY_SCHEMA_VERSION}`,
+		)
+	}
+
+	it('names a stale policy whose shape parses under the current schema', async () => {
+		expectNamed(await aggregateUnder({ ...REAL_POLICY, schemaVersion: stale }))
+	})
+
+	it('names the stamp of a previous-shape policy, which would otherwise fail as an anonymous parse failure', async () => {
+		const { catchThreshold: _dropped, ...previousShape } = REAL_POLICY
+		const parseFault = await aggregateUnder(previousShape)
+		expect(parseFault.code).toBe('schema-parse-failure')
+		expectNamed(
+			await aggregateUnder({ ...previousShape, schemaVersion: stale }),
+		)
+	})
+
+	it('names the newer stamp with the version this build reads', async () => {
+		const fault = await aggregateUnder({
+			...REAL_POLICY,
+			schemaVersion: SCORING_POLICY_SCHEMA_VERSION + 1,
+		})
+		expect(fault.code).toBe('schema-version-mismatch')
+		expect(fault.artifactPath).toBe('ScoringPolicy.schemaVersion')
+	})
+
+	it('leaves a null policy to the parse, which names the artifact', async () => {
+		const fault = await aggregateUnder(null)
+		expect(fault.code).toBe('schema-parse-failure')
+		expect(fault.artifactPath).toBe('ScoringPolicy')
+	})
+
+	it('leaves a policy with no numeric stamp to the parse, which names the field', async () => {
+		const { schemaVersion: _stamp, ...unstamped } = REAL_POLICY
+		const fault = await aggregateUnder(unstamped)
+		expect(fault.code).toBe('schema-parse-failure')
+		expect(fault.artifactPath).toBe('ScoringPolicy')
 	})
 })
 

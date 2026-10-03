@@ -10,6 +10,18 @@ body.
 
 ## [Unreleased]
 
+### Changed
+
+- **BREAKING: `score` names a stale stamp on every artifact it reads, before the artifact's shape is read.**
+  `score` compared the stamp of the sealed run records and the eval contract before parsing, and parsed the isolation manifest, the evaluator configuration, the scoring policy, the preflight verdict, the private artifact manifest and the probe without comparing theirs.
+  An artifact stamped for another version whose shape still fit was scored under a shape it no longer has, and one whose shape did not fit failed as an anonymous `schema-parse-failure`.
+  Each of the six is now compared with the version this build reads, and `aggregate-strength` compares the scoring policy the same way.
+  A mismatch exits `5` as `schema-version-mismatch` at `IsolationManifest.schemaVersion`, `EvaluatorConfiguration.schemaVersion`, `ScoringPolicy.schemaVersion`, `PreflightVerdict.schemaVersion`, `PrivateArtifactManifest.schemaVersion` or `Probe[probeId=<id>].schemaVersion`, naming the stamp and the version this build reads.
+  A stale artifact that used to score now fails, so a caller restamps each artifact it assembled against an earlier build.
+  A `null` isolation manifest, evaluator configuration or private manifest, and a value with no numeric stamp, behave as before: the first has nothing to compare, and the second is named by the parse.
+  `preflight` reads each probe's stamp the same way, ahead of the probes' parse, so a previous-shape probe is named as `schema-version-mismatch` there too.
+  The probe's own comparison inside the scoring stage is gone, since `score` now reads the stamp before the stage runs and no other caller reaches it.
+
 ## [6.0.1] - 2026-10-03
 
 ### Fixed

@@ -84,9 +84,9 @@ export const CONFORMANCE_RUNNERS = [
  * invisible to a helper-only derivation. Both are matched.
  *
  * The helper match reads the import of the symbol rather than any call spelling.
- * A spelling match catches the three call sites written today and misses a
- * fourth passing a prebuilt object, which the throw form would miss too, since
- * the throw lives inside the helper. An import is every call form at once and
+ * A spelling match misses a call passing a prebuilt object, as
+ * `src/application/artifact-stamp.ts` does with a spread, and the throw form
+ * would miss it too, since the throw lives inside the helper. An import is every call form at once and
  * carries no comment ambiguity: a docblock naming the function does not import
  * it. The fault match reads the throw form for the same reason the helper match
  * avoids the bare name, since the bare code string appears in descriptions and
@@ -95,10 +95,10 @@ export const CONFORMANCE_RUNNERS = [
 const VERSION_READER_BY_FILE: Readonly<Record<string, string>> = {
 	'src/application/aggregate-strength.ts': 'aggregate',
 	'src/application/contract-stamp.ts': 'compile',
+	'src/application/artifact-stamp.ts': 'score',
 	'src/application/score.ts': 'score',
 	'src/core/compile/compile.ts': 'compile',
 	'src/core/preflight/plan.ts': 'preflight',
-	'src/core/score/score.ts': 'score',
 }
 
 /**

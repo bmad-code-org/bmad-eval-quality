@@ -432,14 +432,6 @@
 					"take": "length"
 				}
 			},
-			"callerAssembledVersions": {
-				"kind": "module",
-				"from": {
-					"module": "scripts/doc-count-sources.ts",
-					"export": "CALLER_ASSEMBLED_VERSIONS",
-					"take": "length"
-				}
-			},
 			"interchangeArtifacts": {
 				"kind": "module",
 				"from": {
@@ -564,14 +556,6 @@
 					"match": "([A-Za-z-]+) are stamped by this package"
 				},
 				"counts": ["stampedVersions"]
-			},
-			{
-				"file": "docs/reference/cli-commands.md",
-				"claim": "the count of caller-assembled artifacts",
-				"pattern": {
-					"match": "([A-Za-z-]+) are assembled by the caller"
-				},
-				"counts": ["callerAssembledVersions"]
 			},
 			{
 				"file": "docs/reference/cli-commands.md",

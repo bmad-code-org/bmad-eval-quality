@@ -22,15 +22,30 @@ import { emit } from '../core/emit/emit.ts'
 import { checkPrivateArtifactManifestDigests } from '../core/emit/private-artifact-digest.ts'
 import { ingest } from '../core/ingest/index.ts'
 import { EvalContract } from '../core/schemas/eval-contract.ts'
-import { EvaluatorConfiguration } from '../core/schemas/evaluator-configuration.ts'
+import {
+	EVALUATOR_CONFIGURATION_SCHEMA_VERSION,
+	EvaluatorConfiguration,
+} from '../core/schemas/evaluator-configuration.ts'
 import type { EvidenceArtifact } from '../core/schemas/evidence-artifact.ts'
 import { RuntimeFault } from '../core/schemas/faults.ts'
-import { IsolationManifest } from '../core/schemas/isolation-manifest.ts'
-import { PreflightVerdict } from '../core/schemas/preflight-verdict.ts'
+import {
+	ISOLATION_MANIFEST_SCHEMA_VERSION,
+	IsolationManifest,
+} from '../core/schemas/isolation-manifest.ts'
+import {
+	PREFLIGHT_VERDICT_SCHEMA_VERSION,
+	PreflightVerdict,
+} from '../core/schemas/preflight-verdict.ts'
 import { Digest } from '../core/schemas/primitives.ts'
-import { PrivateArtifactManifest } from '../core/schemas/private-artifact-manifest.ts'
+import {
+	PRIVATE_ARTIFACT_MANIFEST_SCHEMA_VERSION,
+	PrivateArtifactManifest,
+} from '../core/schemas/private-artifact-manifest.ts'
 import { Probe } from '../core/schemas/probe.ts'
-import { ScoringPolicy } from '../core/schemas/scoring-policy.ts'
+import {
+	SCORING_POLICY_SCHEMA_VERSION,
+	ScoringPolicy,
+} from '../core/schemas/scoring-policy.ts'
 import {
 	SEALED_RUN_RECORD_SCHEMA_VERSION,
 	SealedRunRecord,
@@ -39,6 +54,11 @@ import type { LadderResolution } from '../core/score/ladder.ts'
 import type { QualificationResult } from '../core/score/qualification.ts'
 import { score } from '../core/score/score.ts'
 import { type CorpusPort, corpusResolveParsers } from '../ports/corpus-port.ts'
+import {
+	checkArtifactVersion,
+	checkProbeVersion,
+	SCORING_POLICY_CONSEQUENCE,
+} from './artifact-stamp.ts'
 import { checkContractVersion } from './contract-stamp.ts'
 import { invokePort } from './invoke-port.ts'
 
@@ -159,6 +179,12 @@ function parseManifest(
 	input: IsolationManifest | null,
 ): IsolationManifest | null {
 	if (input === null) return null
+	checkArtifactVersion(input, {
+		accepted: ISOLATION_MANIFEST_SCHEMA_VERSION,
+		artifactPath: 'IsolationManifest.schemaVersion',
+		consequence:
+			'a manifest written for another version would be checked for isolation violations under a shape this build does not define',
+	})
 	const parsed = IsolationManifest.safeParse(input)
 	if (!parsed.success) throw parseFault('IsolationManifest', parsed.error)
 	return parsed.data
@@ -168,6 +194,12 @@ function parseConfiguration(
 	input: EvaluatorConfiguration | null,
 ): EvaluatorConfiguration | null {
 	if (input === null) return null
+	checkArtifactVersion(input, {
+		accepted: EVALUATOR_CONFIGURATION_SCHEMA_VERSION,
+		artifactPath: 'EvaluatorConfiguration.schemaVersion',
+		consequence:
+			'a configuration written for another version would be ingested under a shape this build does not define',
+	})
 	const parsed = EvaluatorConfiguration.safeParse(input)
 	if (!parsed.success) throw parseFault('EvaluatorConfiguration', parsed.error)
 	return parsed.data
@@ -181,18 +213,30 @@ function parseContract(input: EvalContract): EvalContract {
 }
 
 function parseProbe(input: Probe): Probe {
+	checkProbeVersion(input)
 	const parsed = Probe.safeParse(input)
 	if (!parsed.success) throw parseFault('Probe', parsed.error)
 	return parsed.data
 }
 
 function parsePreflightVerdict(input: PreflightVerdict): PreflightVerdict {
+	checkArtifactVersion(input, {
+		accepted: PREFLIGHT_VERDICT_SCHEMA_VERSION,
+		artifactPath: 'PreflightVerdict.schemaVersion',
+		consequence:
+			'a verdict written for another version would gate the run under a shape this build does not define',
+	})
 	const parsed = PreflightVerdict.safeParse(input)
 	if (!parsed.success) throw parseFault('PreflightVerdict', parsed.error)
 	return parsed.data
 }
 
 function parsePolicy(input: ScoringPolicy): ScoringPolicy {
+	checkArtifactVersion(input, {
+		accepted: SCORING_POLICY_SCHEMA_VERSION,
+		artifactPath: 'ScoringPolicy.schemaVersion',
+		consequence: SCORING_POLICY_CONSEQUENCE,
+	})
 	const parsed = ScoringPolicy.safeParse(input)
 	if (!parsed.success) throw parseFault('ScoringPolicy', parsed.error)
 	return parsed.data
@@ -202,6 +246,12 @@ function parsePrivateManifest(
 	input: PrivateArtifactManifest | null,
 ): PrivateArtifactManifest | null {
 	if (input === null) return null
+	checkArtifactVersion(input, {
+		accepted: PRIVATE_ARTIFACT_MANIFEST_SCHEMA_VERSION,
+		artifactPath: 'PrivateArtifactManifest.schemaVersion',
+		consequence:
+			'a manifest written for another version would be checked against the corpus under a shape this build does not define',
+	})
 	const parsed = PrivateArtifactManifest.safeParse(input)
 	if (!parsed.success) throw parseFault('PrivateArtifactManifest', parsed.error)
 	return parsed.data

@@ -195,19 +195,20 @@ const sourceTree = await readSourceTree(new URL('src/', repoRoot))
 const barrelSource = await readFile(new URL('src/index.ts', repoRoot), 'utf8')
 
 /**
- * The schema versions the barrel publishes, split into the three groups the
+ * The schema versions the barrel publishes, split into the two groups the
  * pages count. Read off the source text the way
  * `tests/schemas/artifact-version.test.ts` reads the barrel, so this needs no
  * build.
  *
  * A writer stamps `schemaVersion: <CONSTANT>` and a reader compares
  * `accepted: <CONSTANT>`, which are the two forms every stamp and every equality
- * under `src/` is written in. What is left on the barrel is what a caller
- * assembles, so the third group is a set difference over the other two.
+ * under `src/` is written in. Every published version is in one group or
+ * both: one that is in neither is refused below, since a version only a caller
+ * assembles has no sentence on the page.
  *
- * A version reader written some third way would land in the caller-assembled
- * group. The `doc-claims` gate is what catches one: its list entry walks `src/`
- * for the comparison itself and names the file that performs it.
+ * A version reader written some third way is invisible to the pattern above.
+ * The `doc-claims` gate is what catches one: its list entry walks `src/` for
+ * the comparison itself and names the file that performs it.
  */
 export const BARREL_SCHEMA_VERSIONS = [
 	...barrelSource.matchAll(/export \{ ([A-Z0-9_]+_SCHEMA_VERSION) \}/g),
@@ -240,14 +241,20 @@ const unpublished = [...STAMPED_VERSIONS, ...COMPARED_VERSIONS].filter(
 if (unpublished.length > 0) {
 	refuse(
 		`${unpublished.join(', ')} is stamped or compared under src/ and the barrel does not ` +
-			'export it, so the three groups do not partition the published set',
+			'export it, so the two groups do not cover the published set',
 	)
 }
 
-export const CALLER_ASSEMBLED_VERSIONS = BARREL_SCHEMA_VERSIONS.filter(
+const unreached = BARREL_SCHEMA_VERSIONS.filter(
 	(name) =>
 		!STAMPED_VERSIONS.includes(name) && !COMPARED_VERSIONS.includes(name),
 )
+if (unreached.length > 0) {
+	refuse(
+		`${unreached.join(', ')} is exported by the barrel and neither stamped nor compared under ` +
+			'src/, so a version nothing here reads or writes needs its own group and sentence on the page',
+	)
+}
 
 const layerBarrelSource = await readFile(
 	new URL('src/application/index.ts', repoRoot),
