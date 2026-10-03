@@ -97,6 +97,7 @@ jobs:
       # push, and every run on main, asks again.
       - name: Known-vulnerability audit (advisory DB, CI only)
         run: |
+          node --test scripts/audit-website.test.mjs
           audit() {
             local label="$1"
             shift
@@ -125,7 +126,7 @@ jobs:
           # 2026-09-04, when the audit alone consumed enough of the fifteen
           # minute budget that the coverage run was cancelled mid-flight.
           audit "root graph" npm audit --audit-level=high --fetch-timeout=30000
-          audit "website graph" npm --prefix website audit --audit-level=high --fetch-timeout=30000
+          audit "website graph" node scripts/audit-website.mjs
 
       # Before the two steps that run the suite. The published-surface cases
       # resolve `dist/` through the `exports` map and skip with a clear message

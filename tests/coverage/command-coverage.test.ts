@@ -101,6 +101,24 @@ describe('the fourteen predicates over a command contract', () => {
 		expect(compiledSeparation(scalarCommand())).toBe(true)
 	})
 
+	it('recognizes whole stdout declared as the scalar payload', () => {
+		const contract = scalarCommand()
+		contract.permittedInterfaces[0].operations[0].responseDescriptor.channelRoles =
+			{
+				'': 'payload',
+			}
+		expect(compiledSeparation(contract)).toBe(true)
+	})
+
+	it('does not treat a diagnostic stdout role as the substantive answer', () => {
+		const contract = scalarCommand()
+		contract.permittedInterfaces[0].operations[0].responseDescriptor.channelRoles =
+			{
+				'': 'diagnostic',
+			}
+		expect(compiledSeparation(contract)).toBe(false)
+	})
+
 	it('accepts an exact string deep-equality check through compiled coverage', () => {
 		const contract = scalarCommand()
 		contract.oracles[0].check.operands[1].op = 'deep-equality'

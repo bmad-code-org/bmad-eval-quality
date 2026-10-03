@@ -281,7 +281,9 @@ const scalarCommandWitnessed = (
 		descriptor.permittedKeys.length > 0 ||
 		Object.keys(descriptor.types).length > 0 ||
 		(descriptor.channelRoles !== null &&
-			Object.keys(descriptor.channelRoles).length > 0)
+			Object.entries(descriptor.channelRoles).some(
+				([pointer, role]) => pointer !== '' || role !== 'payload',
+			))
 	)
 		return false
 	return index
