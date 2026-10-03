@@ -24,6 +24,7 @@ import {
 	type EnvironmentProbePort,
 	probeParsers,
 } from '../ports/environment-probe-port.ts'
+import { checkProbeVersion } from './artifact-stamp.ts'
 import { checkContractVersion } from './contract-stamp.ts'
 import { type DiagnosticSink, emit } from './diagnostics.ts'
 import { invokePort } from './invoke-port.ts'
@@ -47,6 +48,9 @@ export type PreflightFromObservationsOptions = {
 
 /** Artifacts are validated in both directions (AD-28), probes included. */
 function parseProbes(input: readonly Probe[]): Probe[] {
+	if (Array.isArray(input)) {
+		for (const probe of input) checkProbeVersion(probe)
+	}
 	const parsed = Probe.array().safeParse(input)
 	if (!parsed.success) {
 		throw new RuntimeFault(

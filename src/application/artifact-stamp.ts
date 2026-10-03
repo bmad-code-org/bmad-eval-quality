@@ -8,6 +8,10 @@
  * parse, which names the field.
  */
 import { checkSchemaVersion } from '../core/compile/schema-version.ts'
+import {
+	PROBE_SCHEMA_VERSION,
+	PROBE_SCHEMA_VERSION_CONSEQUENCE,
+} from '../core/schemas/probe.ts'
 
 export type ArtifactStamp = {
 	readonly accepted: number
@@ -23,6 +27,22 @@ export function checkArtifactVersion(
 	const stamped = (input as { schemaVersion?: unknown } | null)?.schemaVersion
 	if (typeof stamped !== 'number') return
 	checkSchemaVersion({ stamped, ...artifact })
+}
+
+/**
+ * The probe's stamp, read by `score` and `preflight` ahead of their parse. The
+ * path names the probe when the raw value carries a string `probeId`, and is
+ * `Probe.schemaVersion` otherwise.
+ */
+export function checkProbeVersion(input: unknown): void {
+	const probeId = (input as { probeId?: unknown } | null)?.probeId
+	checkArtifactVersion(input, {
+		accepted: PROBE_SCHEMA_VERSION,
+		artifactPath: `Probe${
+			typeof probeId === 'string' ? `[probeId=${probeId}]` : ''
+		}.schemaVersion`,
+		consequence: PROBE_SCHEMA_VERSION_CONSEQUENCE,
+	})
 }
 
 /** Shared by `score` and `aggregate-strength`, which both read the policy. */

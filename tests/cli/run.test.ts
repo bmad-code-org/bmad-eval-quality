@@ -621,6 +621,25 @@ describe('run: the error mappings', () => {
 		expect(environment.out).toEqual([])
 	})
 
+	it('a previous-shape probe stamped one version below reaches preflight as a schema-version-mismatch fault, exit 5', async () => {
+		const stale = PROBE_SCHEMA_VERSION - 1
+		const { qualification: _dropped, ...previousShape } = seededProbe
+		const environment = environmentOf({
+			...preflightFiles(),
+			'probes.json': JSON.stringify([
+				{ ...previousShape, schemaVersion: stale },
+			]),
+		})
+		const { outcome, exit } = await invoke(preflightArgv(), environment)
+		expect(outcome).toEqual({ kind: 'fault' })
+		expect(exit).toBe(EXIT_FAULT)
+		expect(environment.diagnostics[0]).toContain(
+			`schema-version-mismatch: Probe[probeId=${seededProbe.probeId}].schemaVersion: carries "schemaVersion" ${stale} where this build reads ${PROBE_SCHEMA_VERSION}`,
+		)
+		expect(environment.out).toEqual([])
+		expect(environment.writes).toEqual([])
+	})
+
 	it('a contract stamped one version below is a schema-version-mismatch fault, exit 5', async () => {
 		const stale = EVAL_CONTRACT_SCHEMA_VERSION - 1
 		const environment = environmentOf({
@@ -1470,7 +1489,8 @@ describe('run: the score command (Story 8.4)', () => {
 	])(
 		'$name stamped one version below is a schema-version-mismatch fault naming the stamp, exit 5',
 		async ({ file, fixture, path, version }) => {
-			const stale = version - 1
+			// A stamp below 1 fails the schema, so at version 1 the stale stamp is a newer one.
+			const stale = version === 1 ? version + 1 : version - 1
 			const environment = environmentOf(
 				scoreFiles({
 					[file]: JSON.stringify({ ...fixture, schemaVersion: stale }),

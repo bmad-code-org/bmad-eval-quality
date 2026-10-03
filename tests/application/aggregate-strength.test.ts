@@ -270,13 +270,28 @@ describe('the scoring policy stamp is read before the shape', () => {
 		expectNamed(await aggregateUnder({ ...REAL_POLICY, schemaVersion: stale }))
 	})
 
-	it('names the stamp of a previous-shape policy, never a parse failure', async () => {
+	it('names the stamp of a previous-shape policy, which would otherwise fail as an anonymous parse failure', async () => {
 		const { catchThreshold: _dropped, ...previousShape } = REAL_POLICY
 		const parseFault = await aggregateUnder(previousShape)
 		expect(parseFault.code).toBe('schema-parse-failure')
 		expectNamed(
 			await aggregateUnder({ ...previousShape, schemaVersion: stale }),
 		)
+	})
+
+	it('names the newer stamp with the version this build reads', async () => {
+		const fault = await aggregateUnder({
+			...REAL_POLICY,
+			schemaVersion: SCORING_POLICY_SCHEMA_VERSION + 1,
+		})
+		expect(fault.code).toBe('schema-version-mismatch')
+		expect(fault.artifactPath).toBe('ScoringPolicy.schemaVersion')
+	})
+
+	it('leaves a null policy to the parse, which names the artifact', async () => {
+		const fault = await aggregateUnder(null)
+		expect(fault.code).toBe('schema-parse-failure')
+		expect(fault.artifactPath).toBe('ScoringPolicy')
 	})
 
 	it('leaves a policy with no numeric stamp to the parse, which names the field', async () => {

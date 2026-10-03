@@ -19,7 +19,10 @@ import {
 } from '../../src/core/schemas/eval-contract.ts'
 import { RuntimeFault } from '../../src/core/schemas/faults.ts'
 import { PreflightVerdict } from '../../src/core/schemas/preflight-verdict.ts'
-import { Probe as ProbeSchema } from '../../src/core/schemas/probe.ts'
+import {
+	PROBE_SCHEMA_VERSION,
+	Probe as ProbeSchema,
+} from '../../src/core/schemas/probe.ts'
 import {
 	contractDraft,
 	observationsFor,
@@ -425,5 +428,81 @@ describe('runPreflight: the contract stamp is read before the contract parses', 
 				}),
 			),
 		)
+	})
+})
+
+describe('runPreflight: the probe stamp is read before the probes parse', () => {
+	const stale = PROBE_SCHEMA_VERSION - 1
+	const path = `Probe[probeId=${seededProbe.probeId}].schemaVersion`
+	const expectNamed = (fault: RuntimeFault, stamp = stale): void => {
+		expect(fault.code).toBe('schema-version-mismatch')
+		expect(fault.artifactPath).toBe(path)
+		expect(fault.message).toContain(
+			`carries "schemaVersion" ${stamp} where this build reads ${PROBE_SCHEMA_VERSION}`,
+		)
+	}
+	const { qualification: _dropped, ...previousShape } = seededProbe
+
+	it('names a probe of the previous shape, which would otherwise fail as an anonymous parse failure', async () => {
+		const parseFault = await faultOf(() =>
+			run({ probes: [previousShape] as never }),
+		)
+		expect(parseFault.code).toBe('schema-parse-failure')
+		expect(parseFault.artifactPath).toBe('Probe')
+		expectNamed(
+			await faultOf(() =>
+				run({ probes: [{ ...previousShape, schemaVersion: stale }] as never }),
+			),
+		)
+	})
+
+	it('names a probe stamped one version below in the current shape', async () => {
+		expectNamed(
+			await faultOf(() =>
+				run({ probes: [{ ...seededProbe, schemaVersion: stale }] }),
+			),
+		)
+	})
+
+	it('names a newer stamp with the version this build reads', async () => {
+		expectNamed(
+			await faultOf(() =>
+				run({
+					probes: [{ ...seededProbe, schemaVersion: PROBE_SCHEMA_VERSION + 1 }],
+				}),
+			),
+			PROBE_SCHEMA_VERSION + 1,
+		)
+	})
+
+	it('names the stale probe among several by its own id', async () => {
+		const other = { ...seededProbe, probeId: 'P-002', schemaVersion: stale }
+		const fault = await faultOf(() =>
+			run({ probes: [seededProbe, other] as never }),
+		)
+		expect(fault.artifactPath).toBe('Probe[probeId=P-002].schemaVersion')
+	})
+
+	it('names it on the observation path too', () => {
+		expectNamed(
+			syncFaultOf(() =>
+				fromObservations({
+					probes: [{ ...previousShape, schemaVersion: stale }] as never,
+				}),
+			),
+		)
+	})
+
+	it('leaves a probe with no numeric stamp to the parse, which names the artifact', async () => {
+		const { schemaVersion: _stamp, ...unstamped } = seededProbe
+		const fault = await faultOf(() => run({ probes: [unstamped] as never }))
+		expect(fault.code).toBe('schema-parse-failure')
+		expect(fault.artifactPath).toBe('Probe')
+	})
+
+	it('leaves a probe list that is not an array to the parse', async () => {
+		const fault = await faultOf(() => run({ probes: null as never }))
+		expect(fault.code).toBe('schema-parse-failure')
+		expect(fault.artifactPath).toBe('Probe')
 	})
 })

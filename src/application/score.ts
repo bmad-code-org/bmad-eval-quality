@@ -41,11 +41,7 @@ import {
 	PRIVATE_ARTIFACT_MANIFEST_SCHEMA_VERSION,
 	PrivateArtifactManifest,
 } from '../core/schemas/private-artifact-manifest.ts'
-import {
-	PROBE_SCHEMA_VERSION,
-	PROBE_SCHEMA_VERSION_CONSEQUENCE,
-	Probe,
-} from '../core/schemas/probe.ts'
+import { Probe } from '../core/schemas/probe.ts'
 import {
 	SCORING_POLICY_SCHEMA_VERSION,
 	ScoringPolicy,
@@ -60,6 +56,7 @@ import { score } from '../core/score/score.ts'
 import { type CorpusPort, corpusResolveParsers } from '../ports/corpus-port.ts'
 import {
 	checkArtifactVersion,
+	checkProbeVersion,
 	SCORING_POLICY_CONSEQUENCE,
 } from './artifact-stamp.ts'
 import { checkContractVersion } from './contract-stamp.ts'
@@ -216,14 +213,7 @@ function parseContract(input: EvalContract): EvalContract {
 }
 
 function parseProbe(input: Probe): Probe {
-	const probeId = (input as { probeId?: unknown } | null)?.probeId
-	checkArtifactVersion(input, {
-		accepted: PROBE_SCHEMA_VERSION,
-		artifactPath: `Probe${
-			typeof probeId === 'string' ? `[probeId=${probeId}]` : ''
-		}.schemaVersion`,
-		consequence: PROBE_SCHEMA_VERSION_CONSEQUENCE,
-	})
+	checkProbeVersion(input)
 	const parsed = Probe.safeParse(input)
 	if (!parsed.success) throw parseFault('Probe', parsed.error)
 	return parsed.data
