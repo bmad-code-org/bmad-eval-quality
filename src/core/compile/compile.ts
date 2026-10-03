@@ -18,8 +18,13 @@
  * Grouping it with the two codes owed item 3 added, at the inserted position
  * below, would let a lower-ranked code win on a contract carrying both defects.
  *
- * `checkArtifactReferences` fires `unresolved-artifact-reference`, the
- * registry's last code, but runs near the front for the reason its own call
+ * `checkDuplicateInterfaceIdentifier` fires `duplicate-interface-identifier`,
+ * the registry's last code, and runs first of all after the stamp check. Every
+ * path a later check emits addresses an interface by its `logicalId`, so a
+ * repeated one has to be named before any of them reports.
+ *
+ * `checkArtifactReferences` fires `unresolved-artifact-reference`, which was
+ * the registry's last code before that one, but runs near the front for the reason its own call
  * site records: it names a fault that reachability can only describe the
  * consequence of, and reachability abstains on the same pointer so the two
  * never race.
@@ -63,6 +68,7 @@ import {
 } from './forbidden-inputs.ts'
 import {
 	checkArtifactReferences,
+	checkDuplicateInterfaceIdentifier,
 	checkDuplicateOperationSignature,
 	checkInterfaceKind,
 	checkUndeclaredMandatoryInput,
@@ -105,6 +111,13 @@ export function compile(
 		consequence:
 			'since its stale version would travel into the scoring version',
 	})
+	// Right after the stamp, and ahead of every check that addresses an
+	// interface. An operation is named by the pair of its interface and its
+	// `operationId`, and every path a later check emits reads
+	// `permittedInterfaces[logicalId=X]`, so a repeated identifier makes each of
+	// them name two interfaces and the pair lookups below answer for neither. The
+	// same reason runs `checkArtifactReferences` early.
+	checkDuplicateInterfaceIdentifier(contract)
 	checkRequirementLinkage(contract)
 	checkObservableSuccessCriterion(contract)
 	// Ahead of reachability, because a pointer naming an artifact nothing

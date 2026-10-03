@@ -72,6 +72,32 @@ export const kindsClause = (kinds: readonly string[]): string => {
  */
 export const SUPPORTED_KINDS_CLAUSE = kindsClause(SUPPORTED_INTERFACE_KINDS)
 
+/**
+ * `duplicate-interface-identifier`: two entries of `permittedInterfaces` share
+ * a `logicalId`. An interface's identifier is half of an operation's identity
+ * (an operation is the pair of its interface and its `operationId`), so a
+ * repeat merges two interfaces' operations into one namespace, and every
+ * `permittedInterfaces[logicalId=X]` path a later check emits would address two
+ * interfaces. Reports the first repeat in declaration order, naming both
+ * positions: the artifact path is the later entry, the detail the earlier.
+ */
+export function checkDuplicateInterfaceIdentifier(
+	contract: EvalContract,
+): void {
+	const firstPositionOf = new Map<string, number>()
+	for (const [position, iface] of contract.permittedInterfaces.entries()) {
+		const first = firstPositionOf.get(iface.logicalId)
+		if (first !== undefined) {
+			throw new StructuralFailure(
+				'duplicate-interface-identifier',
+				`EvalContract.permittedInterfaces[${position}].logicalId`,
+				`"${iface.logicalId}" is already the identifier of permittedInterfaces[${first}]; an interface's identifier is unique across the contract, so permittedInterfaces[${first}] and permittedInterfaces[${position}] cannot both carry it (AD-19, AD-35)`,
+			)
+		}
+		firstPositionOf.set(iface.logicalId, position)
+	}
+}
+
 export function checkInterfaceKind(contract: EvalContract): void {
 	for (const iface of contract.permittedInterfaces) {
 		if (!isSupportedInterfaceKind(iface.kind)) {
