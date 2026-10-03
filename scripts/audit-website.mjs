@@ -22,6 +22,12 @@ const affected = new Set([
 	'@astrojs/starlight',
 ])
 
+export const isStaticPagesSite = (config, workflow) =>
+	config.includes("outDir: '../build/site'") &&
+	!/(?:\boutput|\badapter)\s*:/.test(config) &&
+	workflow.includes('actions/upload-pages-artifact@') &&
+	workflow.includes('actions/deploy-pages@')
+
 const staticPagesSite = () => {
 	const config = readFileSync(
 		new URL('../website/astro.config.mjs', import.meta.url),
@@ -31,12 +37,7 @@ const staticPagesSite = () => {
 		new URL('../.github/workflows/docs.yaml', import.meta.url),
 		'utf8',
 	)
-	return (
-		config.includes("outDir: '../build/site'") &&
-		!/(^|\n)\s*(output|adapter)\s*:/.test(config) &&
-		workflow.includes('actions/upload-pages-artifact@') &&
-		workflow.includes('actions/deploy-pages@')
-	)
+	return isStaticPagesSite(config, workflow)
 }
 
 export function assessWebsiteAudit(report, { lock, staticSite, now }) {
@@ -153,9 +154,7 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
 		now: Date.now(),
 	})
 	if (!result.ok) {
-		process.stderr.write(
-			`${result.reason}\n${audit.stderr || audit.stdout || String(audit.error)}\n`,
-		)
+		process.stderr.write(`${result.reason}\n`)
 		process.exitCode = 1
 	} else if (result.exception) {
 		process.stdout.write(

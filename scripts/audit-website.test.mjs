@@ -1,6 +1,11 @@
 import assert from 'node:assert/strict'
+import { spawnSync } from 'node:child_process'
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { describe, it } from 'node:test'
-import { assessAuditExecution } from './audit-website.mjs'
+import { fileURLToPath } from 'node:url'
+import { assessAuditExecution, isStaticPagesSite } from './audit-website.mjs'
 
 const advisory = 'https://github.com/advisories/GHSA-ch52-4w7c-c8xp'
 const high = (name, via) => ({
@@ -40,6 +45,33 @@ const execution = (body = report()) => ({
 	error: null,
 	stdout: JSON.stringify(body),
 })
+const cli = fileURLToPath(new URL('./audit-website.mjs', import.meta.url))
+
+const runCli = (auditJson, auditStatus = 1) => {
+	const bin = mkdtempSync(join(tmpdir(), 'website-audit-test-'))
+	try {
+		if (auditJson !== null) {
+			writeFileSync(
+				join(bin, 'npm'),
+				'#!/bin/sh\nprintf "%s" "$AUDIT_JSON"\nexit "$AUDIT_STATUS"\n',
+				{
+					mode: 0o755,
+				},
+			)
+		}
+		return spawnSync(process.execPath, [cli], {
+			encoding: 'utf8',
+			env: {
+				...process.env,
+				PATH: bin,
+				AUDIT_JSON: auditJson ?? '',
+				AUDIT_STATUS: String(auditStatus),
+			},
+		})
+	} finally {
+		rmSync(bin, { recursive: true, force: true })
+	}
+}
 
 describe('website audit exception', () => {
 	it('accepts only the known static build graph before expiry', () => {
@@ -82,6 +114,52 @@ describe('website audit exception', () => {
 		delete missingEntry.vulnerabilities.astro
 		assert.equal(
 			assessAuditExecution(execution(missingEntry), context()).ok,
+			false,
+		)
+	})
+
+	it('exits nonzero when npm cannot start or returns invalid or incomplete JSON', () => {
+		assert.equal(runCli(null).status, 1)
+		assert.equal(runCli('{').status, 1)
+		const missingMetadata = report()
+		delete missingMetadata.metadata
+		assert.equal(runCli(JSON.stringify(missingMetadata)).status, 1)
+	})
+
+	it('does not print advisory text that could masquerade as a transport failure', () => {
+		const extra = report()
+		extra.vulnerabilities.other = {
+			...high('other', ['astro']),
+			via: [{ title: 'Service Unavailable in remote request handler' }],
+		}
+		extra.metadata.vulnerabilities.high = 6
+		const result = runCli(JSON.stringify(extra))
+		assert.equal(result.status, 1)
+		assert.doesNotMatch(result.stderr, /Service Unavailable/)
+	})
+
+	it('detects the actual static Pages build and rejects inline server output', () => {
+		const config = readFileSync(
+			new URL('../website/astro.config.mjs', import.meta.url),
+			'utf8',
+		)
+		const workflow = readFileSync(
+			new URL('../.github/workflows/docs.yaml', import.meta.url),
+			'utf8',
+		)
+		assert.equal(isStaticPagesSite(config, workflow), true)
+		assert.equal(
+			isStaticPagesSite(
+				config.replace('defineConfig({', "defineConfig({ output: 'server',"),
+				workflow,
+			),
+			false,
+		)
+		assert.equal(
+			isStaticPagesSite(
+				config,
+				workflow.replace('actions/deploy-pages@', 'actions/deploy-other@'),
+			),
 			false,
 		)
 	})
