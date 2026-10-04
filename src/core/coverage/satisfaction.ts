@@ -182,15 +182,26 @@ function walkCheck(
 	}
 }
 
+/**
+ * The oracles some behavior lists. An oracle no behavior references discharges
+ * nothing, so evidence it carries supports no behavior. A behavior may cite an
+ * identifier no oracle declares, and that citation links nothing.
+ */
+const behaviorLinkedOracleIds = (contract: EvalContract): ReadonlySet<string> =>
+	new Set(contract.behaviors.flatMap((behavior) => behavior.oracles))
+
 /** One oracle's two channels, flattened to what the predicates compare. */
 type OracleView = {
+	/** some behavior lists this oracle. */
+	readonly behaviorLinked: boolean
 	readonly directionTargets: readonly string[]
 	readonly nodes: readonly CheckNode[]
 	readonly checkPointers: ReadonlySet<string>
 }
 
-const oracleViewsOf = (contract: EvalContract): readonly OracleView[] =>
-	contract.oracles.map((oracle) => {
+const oracleViewsOf = (contract: EvalContract): readonly OracleView[] => {
+	const linked = behaviorLinkedOracleIds(contract)
+	return contract.oracles.map((oracle) => {
 		const nodes: CheckNode[] = []
 		if (oracle.check !== null) walkCheck(oracle.check, null, nodes)
 		const checkPointers = new Set<string>()
@@ -201,12 +212,14 @@ const oracleViewsOf = (contract: EvalContract): readonly OracleView[] =>
 			}
 		}
 		return {
+			behaviorLinked: linked.has(oracle.id),
 			directionTargets:
 				oracle.direction === null ? [] : oracle.direction.evidenceTargets,
 			nodes,
 			checkPointers,
 		}
 	})
+}
 
 /** AD-20's "in both channels": the direction names the pointer and the check reads it. */
 const bothChannelsAddress = (oracle: OracleView, root: string): boolean =>
@@ -272,6 +285,7 @@ const scalarCommandWitnessed = (
 	resolved: ResolvedOperation,
 	index: PlanIndex,
 	contract: EvalContract,
+	linked: ReadonlySet<string>,
 ): boolean => {
 	if (resolved.kind !== 'cli' || resolved.descriptorRoot !== '/stdout')
 		return false
@@ -292,6 +306,7 @@ const scalarCommandWitnessed = (
 			const exitPointer = `${stepRoot(step.stepId)}/exit-code`
 			const stdoutPointer = `${stepRoot(step.stepId)}/stdout`
 			return contract.oracles.some((oracle) => {
+				if (!linked.has(oracle.id)) return false
 				if (oracle.direction === null || oracle.check === null) return false
 				if (
 					oracle.polarity !== 'expects-hold' ||
@@ -328,11 +343,12 @@ const contextOf = (contract: EvalContract): SatisfactionContext => ({
 })
 
 /**
- * Rule 1: for every operation its relevance predicate fires on, some oracle's
- * direction and check both address that operation's success indicator and a
- * pointer whose declared role is something other than `success-indicator`,
- * read at one step. An operation whose only other roled pointers are themselves
- * indicators is a site with no witness.
+ * Rule 1: for every operation its relevance predicate fires on, some oracle a
+ * behavior lists has a direction and check that both address that operation's
+ * success indicator and a pointer whose declared role is something other than
+ * `success-indicator`, read at one step. An oracle no behavior lists supplies
+ * evidence for no behavior, so it witnesses nothing. An operation whose only
+ * other roled pointers are themselves indicators is a site with no witness.
  */
 export function successIndicatorSeparationSatisfaction(
 	contract: EvalContract,
@@ -341,13 +357,14 @@ export function successIndicatorSeparationSatisfaction(
 	const rule = 'success-indicator-separation'
 	const { operations, index, oracles } = context
 	if (operations.length === 0) return verdict(rule, false, NO_OPERATION_WITNESS)
+	const linked = behaviorLinkedOracleIds(contract)
 	let sites = 0
 	let scalarSites = 0
 	for (const resolved of operations) {
 		const { operation, descriptor } = resolved
 		const { successIndicator, channelRoles } = descriptor
 		if (successIndicator === null) {
-			if (scalarCommandWitnessed(resolved, index, contract)) {
+			if (scalarCommandWitnessed(resolved, index, contract, linked)) {
 				sites += 1
 				scalarSites += 1
 				continue
@@ -379,6 +396,7 @@ export function successIndicatorSeparationSatisfaction(
 			.some((step) =>
 				oracles.some(
 					(oracle) =>
+						oracle.behaviorLinked &&
 						bothChannelsAddress(
 							oracle,
 							bodyPointer(resolved, step.stepId, successIndicator),
@@ -395,7 +413,7 @@ export function successIndicatorSeparationSatisfaction(
 			return verdict(
 				rule,
 				false,
-				`no oracle addresses operation ${operation.operationId}'s success indicator beside another roled pointer at one step, in both channels`,
+				`no behavior-linked oracle addresses operation ${operation.operationId}'s success indicator beside another roled pointer at one step, in both channels`,
 			)
 		}
 	}
