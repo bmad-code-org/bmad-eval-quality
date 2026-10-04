@@ -251,6 +251,19 @@ describe('the fourteen predicates over a command contract', () => {
 			expect(compiledSeparation(contract)).toBe(false)
 		})
 
+		it('reports the gap when the linked weaker oracle is declared before the exact one', () => {
+			const contract = scalarCommand()
+			const exact = contract.oracles[0]
+			const weaker = structuredClone(exact)
+			weaker.id = 'O-002'
+			weaker.check = equality(EXIT, 0)
+			weaker.direction.evidenceTargets = [EXIT]
+			weaker.direction.relation = 'equality'
+			contract.oracles = [weaker, exact]
+			contract.behaviors[0].oracles = ['O-002']
+			expect(compiledSeparation(contract)).toBe(false)
+		})
+
 		it('reports the gap when the only citation names an undeclared oracle', () => {
 			const contract = scalarCommand()
 			contract.behaviors[0].oracles = ['O-404']

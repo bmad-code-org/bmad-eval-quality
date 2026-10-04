@@ -493,7 +493,7 @@ It makes every coverage rule report about the envelope: `requiredKeys` becomes `
 The MCP envelope's `isError` is observable there as 0 or 1, which keeps it out of `requiredKeys`, where it would satisfy a coverage rule while checking nothing.
 `Observation.responseStatus` is an integer with no HTTP reading attached (`sealed-run-record.ts:258`), and an adapter is what performs that projection.
 The `ok` field in the declaration above is a different thing: it is the tool's own field inside its own structured result, so an oracle over it checks what the tool said about its work.
-A tool whose result carries no such field declares `successIndicator: null`, which is legal and makes AD-20 rule 1 irrelevant.
+A tool whose result carries no such field declares `successIndicator: null`, which is legal. AD-20 rule 1 stays relevant on such an operation and reports a gap, because no oracle can separate an indicator the operation does not nominate from the rest of the body.
 
 ## Writing oracles over a tool call
 

@@ -19,7 +19,6 @@ body.
   Both branches now credit an oracle only when at least one behavior lists its identifier.
   A behavior that cites an identifier no oracle declares links nothing.
   `compile` still accepts a contract with an unlisted oracle, and coverage evaluation now reports `success-indicator-separation` as a gap for it until a behavior lists the oracle.
-  The unsatisfied reason for a structured operation reads `no behavior-linked oracle addresses operation <id>'s success indicator beside another roled pointer at one step, in both channels`, so a caller that matches the old text updates the match.
   A contract whose witnessing oracle is listed by a behavior, as every shipped example and corpus contract is, keeps its outcome.
 
 ## [7.0.1] - 2026-10-04
