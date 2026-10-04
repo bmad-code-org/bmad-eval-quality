@@ -266,7 +266,9 @@ describe('the unwitnessed cells are a different failure from the absent ones', (
 				rule,
 				'unwitnessed',
 			)
-			expect(pair.satisfactionReason).toMatch(/^no (oracle|check|step) /)
+			expect(pair.satisfactionReason).toMatch(
+				/^no (behavior-linked oracle|oracle|check|step) /,
+			)
 			expect(pair.satisfactionReason).not.toBe(NO_OPERATION_WITNESS)
 			expect(pair.satisfactionReason).not.toBe(ABSENT_REASONS[rule])
 		}
@@ -389,7 +391,7 @@ describe('the collateral each unwitnessed override does and does not move', () =
 			'unwitnessed',
 		)
 		expect(rule1.satisfactionReason).toBe(
-			"no oracle addresses operation create-thing's success indicator beside another roled pointer at one step, in both channels",
+			"no behavior-linked oracle addresses operation create-thing's success indicator beside another roled pointer at one step, in both channels",
 		)
 		expectState(contract, 'whole-body', 'unwitnessed')
 		expect(occupantOf('whole-body', 'unwitnessed')).not.toBe(

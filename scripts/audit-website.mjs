@@ -1,11 +1,14 @@
 /**
  * Audit the static documentation site's build graph.
  *
- * GHSA-ch52-4w7c-c8xp has no patched release as of 2026-10-02. Astro uses
- * http-cache-semantics while building the site, and GitHub Pages serves the
- * generated files without an Astro or Node server. This temporary exception
- * applies only to that advisory and that dependency path. All other high and
- * critical advisories fail the gate.
+ * GHSA-ch52-4w7c-c8xp had no patched release on 2026-10-02. Release 4.3.0
+ * appeared on 2026-10-04, inside the lockfile-age window, so the lockfile keeps
+ * 4.2.0 until the window passes. Astro uses http-cache-semantics while building
+ * the site, and GitHub Pages serves the generated files without an Astro or
+ * Node server. npm reports either the whole Astro chain or, once a fix exists,
+ * the cache package alone. This temporary exception applies only to that
+ * advisory and those two report shapes. All other high and critical advisories
+ * fail the gate.
  */
 import { spawnSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
@@ -75,10 +78,10 @@ export function assessWebsiteAudit(report, { lock, staticSite, now }) {
 		] !== '^4.2.0'
 	)
 		return { ok: false, reason: 'the locked Astro cache dependency changed' }
-	if (
-		high.length !== affected.size ||
-		high.some(([name]) => !affected.has(name))
-	)
+	const cacheOnly = high.length === 1 && high[0][0] === 'http-cache-semantics'
+	const wholeChain =
+		high.length === affected.size && high.every(([name]) => affected.has(name))
+	if (!cacheOnly && !wholeChain)
 		return {
 			ok: false,
 			reason: 'website graph has another high severity advisory',

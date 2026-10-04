@@ -228,6 +228,67 @@ describe('the fourteen predicates over a command contract', () => {
 		expect(compiledSeparation(contract)).toBe(false)
 	})
 
+	describe('counts a scalar oracle only when a behavior references it', () => {
+		// The fixture's one behavior lists O-001, which carries the exact
+		// exit-code and whole-stdout pair. Unlisting it leaves the same oracle
+		// declared and checkable but supplying evidence for no behavior.
+		it('reports the gap when no behavior lists the exact oracle', () => {
+			const contract = scalarCommand()
+			contract.behaviors[0].oracles = []
+			expect(compiledSeparation(contract)).toBe(false)
+		})
+
+		it('reports the gap when the exact oracle sits beside a linked oracle that checks less', () => {
+			const contract = scalarCommand()
+			const exact = contract.oracles[0]
+			const weaker = structuredClone(exact)
+			weaker.id = 'O-002'
+			weaker.check = equality(EXIT, 0)
+			weaker.direction.evidenceTargets = [EXIT]
+			weaker.direction.relation = 'equality'
+			contract.oracles = [exact, weaker]
+			contract.behaviors[0].oracles = ['O-002']
+			expect(compiledSeparation(contract)).toBe(false)
+		})
+
+		it('reports the gap when the linked weaker oracle is declared before the exact one', () => {
+			const contract = scalarCommand()
+			const exact = contract.oracles[0]
+			const weaker = structuredClone(exact)
+			weaker.id = 'O-002'
+			weaker.check = equality(EXIT, 0)
+			weaker.direction.evidenceTargets = [EXIT]
+			weaker.direction.relation = 'equality'
+			contract.oracles = [weaker, exact]
+			contract.behaviors[0].oracles = ['O-002']
+			expect(compiledSeparation(contract)).toBe(false)
+		})
+
+		it('reports the gap when the only citation names an undeclared oracle', () => {
+			const contract = scalarCommand()
+			contract.behaviors[0].oracles = ['O-404']
+			expect(compiledSeparation(contract)).toBe(false)
+		})
+
+		it('is satisfied once the behavior lists the exact oracle', () => {
+			const contract = scalarCommand()
+			contract.behaviors[0].oracles = []
+			expect(compiledSeparation(contract)).toBe(false)
+			contract.behaviors[0].oracles = ['O-001']
+			expect(compiledSeparation(contract)).toBe(true)
+		})
+
+		it('is satisfied when any one behavior lists the exact oracle', () => {
+			const contract = scalarCommand()
+			const second = structuredClone(contract.behaviors[0])
+			second.id = 'B-002'
+			second.oracles = ['O-001']
+			contract.behaviors[0].oracles = []
+			contract.behaviors.push(second)
+			expect(compiledSeparation(contract)).toBe(true)
+		})
+	})
+
 	it('retains the structured response rule', () => {
 		expect(compiledSeparation(satisfiedContract)).toBe(true)
 		const successOnly = structuredClone(satisfiedContract) as any

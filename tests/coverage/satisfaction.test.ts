@@ -6,6 +6,7 @@
 
 import { describe, expect, it } from 'vitest'
 import { compile } from '../../src/core/compile/compile.ts'
+import { evaluateCoverage } from '../../src/core/coverage/coverage.ts'
 import { evaluateRelevance } from '../../src/core/coverage/relevance.ts'
 import {
 	DISCIPLINE_RULES,
@@ -395,7 +396,7 @@ describe('rule 1 — success-indicator separation', () => {
 		expect(verdictFor(contract, rule)).toMatchObject({
 			satisfied: false,
 			reason:
-				"no oracle addresses operation create-thing's success indicator beside another roled pointer at one step, in both channels",
+				"no behavior-linked oracle addresses operation create-thing's success indicator beside another roled pointer at one step, in both channels",
 		})
 	})
 
@@ -408,7 +409,7 @@ describe('rule 1 — success-indicator separation', () => {
 		expect(verdictFor(contract, rule)).toMatchObject({
 			satisfied: false,
 			reason:
-				"no oracle addresses operation create-thing's success indicator beside another roled pointer at one step, in both channels",
+				"no behavior-linked oracle addresses operation create-thing's success indicator beside another roled pointer at one step, in both channels",
 		})
 	})
 
@@ -423,7 +424,7 @@ describe('rule 1 — success-indicator separation', () => {
 		expect(verdictFor(contract, rule)).toMatchObject({
 			satisfied: false,
 			reason:
-				"no oracle addresses operation create-thing's success indicator beside another roled pointer at one step, in both channels",
+				"no behavior-linked oracle addresses operation create-thing's success indicator beside another roled pointer at one step, in both channels",
 		})
 	})
 })
@@ -1092,7 +1093,7 @@ describe('holes the implementation code review found', () => {
 		expect(verdictFor(contract, 'success-indicator-separation')).toMatchObject({
 			satisfied: false,
 			reason:
-				"no oracle addresses operation create-thing's success indicator beside another roled pointer at one step, in both channels",
+				"no behavior-linked oracle addresses operation create-thing's success indicator beside another roled pointer at one step, in both channels",
 		})
 	})
 
@@ -1116,7 +1117,7 @@ describe('holes the implementation code review found', () => {
 		expect(verdictFor(contract, 'success-indicator-separation')).toMatchObject({
 			satisfied: false,
 			reason:
-				"no oracle addresses operation create-thing's success indicator beside another roled pointer at one step, in both channels",
+				"no behavior-linked oracle addresses operation create-thing's success indicator beside another roled pointer at one step, in both channels",
 		})
 	})
 
@@ -1147,7 +1148,7 @@ describe('holes the implementation code review found', () => {
 		expect(verdictFor(contract, 'success-indicator-separation')).toMatchObject({
 			satisfied: false,
 			reason:
-				"no oracle addresses operation create-thing's success indicator beside another roled pointer at one step, in both channels",
+				"no behavior-linked oracle addresses operation create-thing's success indicator beside another roled pointer at one step, in both channels",
 		})
 	})
 
@@ -1404,7 +1405,7 @@ describe('holes the implementation code review found', () => {
 		expect(verdictFor(contract, 'success-indicator-separation')).toMatchObject({
 			satisfied: false,
 			reason:
-				"no oracle addresses operation create-thing's success indicator beside another roled pointer at one step, in both channels",
+				"no behavior-linked oracle addresses operation create-thing's success indicator beside another roled pointer at one step, in both channels",
 		})
 	})
 
@@ -1448,12 +1449,93 @@ describe('holes the implementation code review found', () => {
 		expect(verdictFor(contract, 'success-indicator-separation')).toMatchObject({
 			satisfied: false,
 			reason:
-				"no oracle addresses operation submit-export's success indicator beside another roled pointer at one step, in both channels",
+				"no behavior-linked oracle addresses operation submit-export's success indicator beside another roled pointer at one step, in both channels",
 		})
 		expect(verdictFor(contract, 'sibling-cross-check')).toMatchObject({
 			satisfied: false,
 			reason:
 				'no oracle addresses two members of the parameter sibling group cursor and limit in both channels',
 		})
+	})
+})
+
+describe('rule 1 counts an oracle only when a behavior references it', () => {
+	const rule = 'success-indicator-separation'
+	const createGap =
+		"no behavior-linked oracle addresses operation create-thing's success indicator beside another roled pointer at one step, in both channels"
+	const listGap =
+		"no behavior-linked oracle addresses operation list-things's success indicator beside another roled pointer at one step, in both channels"
+
+	/** B-001 lists every oracle but the ones named, so each stays declared and checkable. */
+	const unlinking = (...oracleIds: string[]) =>
+		parsedMutant(satisfiedContract, (mutant) => {
+			mutant.behaviors[0].oracles = mutant.behaviors[0].oracles.filter(
+				(id: string) => !oracleIds.includes(id),
+			)
+		})
+
+	it('151. the oracle witnessing create-thing, listed by no behavior, leaves the rule unsatisfied', () => {
+		const contract = unlinking('O-002')
+		// The oracle is still declared with its direction and check intact.
+		expect(contract.oracles.map((oracle) => oracle.id)).toContain('O-002')
+		expect(verdictFor(contract, rule)).toMatchObject({
+			satisfied: false,
+			reason: createGap,
+		})
+	})
+
+	it('152. the oracle witnessing list-things, listed by no behavior, leaves the rule unsatisfied', () => {
+		expect(verdictFor(unlinking('O-003'), rule)).toMatchObject({
+			satisfied: false,
+			reason: listGap,
+		})
+	})
+
+	it('153. an unlisted oracle that witnesses no separation site changes nothing', () => {
+		expect(verdictFor(unlinking('O-001'), rule)).toMatchObject({
+			satisfied: true,
+			reason: WITNESSED[rule],
+		})
+	})
+
+	it('154. listing the oracle again from any one behavior satisfies the rule', () => {
+		const contract = parsedMutant(satisfiedContract, (mutant) => {
+			const [first] = mutant.behaviors
+			mutant.behaviors.push({
+				...structuredClone(first),
+				id: 'B-002',
+				oracles: ['O-002', 'O-003'],
+			})
+			first.oracles = first.oracles.filter(
+				(id: string) => id !== 'O-002' && id !== 'O-003',
+			)
+		})
+		expect(verdictFor(contract, rule)).toMatchObject({
+			satisfied: true,
+			reason: WITNESSED[rule],
+		})
+	})
+
+	it('155. a behavior citing an undeclared identifier links no oracle', () => {
+		const contract = parsedMutant(satisfiedContract, (mutant) => {
+			mutant.behaviors[0].oracles = ['O-404']
+		})
+		expect(verdictFor(contract, rule)).toMatchObject({
+			satisfied: false,
+			reason: createGap,
+		})
+	})
+
+	it('156. compile accepts the unlinked contract and coverage reports the gap, then drops it once linked', () => {
+		const unlinked = unlinking('O-002')
+		compile(unlinked, { strict: true })
+		expect(
+			evaluateCoverage(unlinked).some((record) => record.rule === rule),
+		).toBe(true)
+		const linked = EvalContract.parse(satisfiedContract)
+		compile(linked, { strict: true })
+		expect(
+			evaluateCoverage(linked).some((record) => record.rule === rule),
+		).toBe(false)
 	})
 })
