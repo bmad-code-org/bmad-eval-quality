@@ -10,6 +10,8 @@ body.
 
 ## [Unreleased]
 
+## [7.1.0] - 2026-10-04
+
 ### Changed
 
 - **`success-indicator-separation` counts an oracle only when a behavior lists it.**
