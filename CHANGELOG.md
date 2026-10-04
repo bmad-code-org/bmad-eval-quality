@@ -21,6 +21,13 @@ body.
   `compile` still accepts a contract with an unlisted oracle, and coverage evaluation now reports `success-indicator-separation` as a gap for it until a behavior lists the oracle.
   A contract whose witnessing oracle is listed by a behavior, as every shipped example and corpus contract is, keeps its outcome.
 
+### Fixed
+
+- **The website advisory exception accepts the report npm gives once `http-cache-semantics` has a fixed release.**
+  Release 4.3.0 of GHSA-ch52-4w7c-c8xp's package appeared on 2026-10-04.
+  `npm audit` then reported the cache package alone instead of the Astro chain above it, and the CI audit refused the changed report.
+  The exception now accepts either shape, still limited to that advisory and expiring 2026-10-17.
+
 ## [7.0.1] - 2026-10-04
 
 ### Changed

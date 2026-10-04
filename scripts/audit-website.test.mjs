@@ -81,6 +81,20 @@ describe('website audit exception', () => {
 		})
 	})
 
+	it('accepts the cache package alone once npm sees a fixed release', () => {
+		const alone = report()
+		for (const name of Object.keys(alone.vulnerabilities))
+			if (name !== 'http-cache-semantics') delete alone.vulnerabilities[name]
+		alone.metadata.vulnerabilities.high = 1
+		assert.deepEqual(assessAuditExecution(execution(alone), context()), {
+			ok: true,
+			exception: true,
+		})
+		alone.vulnerabilities['http-cache-semantics'].via[0].url =
+			'https://example.test/advisory'
+		assert.equal(assessAuditExecution(execution(alone), context()).ok, false)
+	})
+
 	it('fails closed when npm cannot run or is killed', () => {
 		assert.equal(
 			assessAuditExecution(
