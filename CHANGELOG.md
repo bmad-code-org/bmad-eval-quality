@@ -10,6 +10,8 @@ body.
 
 ## [Unreleased]
 
+## [7.0.1] - 2026-10-04
+
 ### Changed
 
 - **BREAKING: `compile` refuses a contract whose `permittedInterfaces` repeat a `logicalId`, under the new `duplicate-interface-identifier` code.**
