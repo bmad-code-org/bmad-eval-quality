@@ -61,6 +61,7 @@ import {
 	sealedRunRecordFixtureForScore,
 	unqualifiedProbeFixture,
 } from '../application/fixtures/score-fixtures.ts'
+import { repeatedIdentifierSharedOperation } from '../fixtures/duplicate-interface-identifier.ts'
 import {
 	jsonBody,
 	observationsFor,
@@ -657,6 +658,49 @@ describe('run: the error mappings', () => {
 			`schema-version-mismatch: EvalContract.schemaVersion: carries "schemaVersion" ${stale} where this build reads ${EVAL_CONTRACT_SCHEMA_VERSION}`,
 		)
 		expect(environment.out).toEqual([])
+	})
+
+	// The contract that used to compile and then fault in `seal` as an anonymous
+	// `schema-parse-failure`. The real application runs here, so the refusal is
+	// the engine's own, at the same exit as any compile-time structural error.
+	it.each(['compile', 'seal'])(
+		'a repeated interface identifier exits 4 as duplicate-interface-identifier from %s, before any seal fault',
+		async (command) => {
+			const environment = environmentOf({
+				'contract.json': JSON.stringify(repeatedIdentifierSharedOperation()),
+			})
+			const { outcome, exit } = await invoke(
+				[command, '--in', 'contract.json'],
+				environment,
+			)
+			expect(outcome).toEqual({ kind: 'structural-failure' })
+			expect(exit).toBe(EXIT_STRUCTURAL_FAILURE)
+			expect(environment.diagnostics).toHaveLength(1)
+			expect(environment.diagnostics[0]).toMatch(
+				/^eval-quality: duplicate-interface-identifier: EvalContract\.permittedInterfaces\[1\]\.logicalId: "thing-api" is already the identifier of permittedInterfaces\[0\]/,
+			)
+			expect(environment.diagnostics[0]).not.toContain('schema-parse-failure')
+			expect(environment.out).toEqual([])
+			expect(environment.writes).toEqual([])
+		},
+	)
+
+	// `preflight` never compiles: it parses the contract and plans from it, so the
+	// plan is the gate a hand-assembled contract meets.
+	it('a repeated interface identifier exits 4 as duplicate-interface-identifier from preflight', async () => {
+		const environment = environmentOf({
+			...preflightFiles(),
+			'contract.json': JSON.stringify(repeatedIdentifierSharedOperation()),
+		})
+		const { outcome, exit } = await invoke(preflightArgv(), environment)
+		expect(outcome).toEqual({ kind: 'structural-failure' })
+		expect(exit).toBe(EXIT_STRUCTURAL_FAILURE)
+		expect(environment.diagnostics).toHaveLength(1)
+		expect(environment.diagnostics[0]).toMatch(
+			/^eval-quality: duplicate-interface-identifier: EvalContract\.permittedInterfaces\[1\]\.logicalId: "thing-api" is already the identifier of permittedInterfaces\[0\]/,
+		)
+		expect(environment.out).toEqual([])
+		expect(environment.writes).toEqual([])
 	})
 
 	it('case 72: a StructuralFailure maps to structural-failure and exit 4', async () => {

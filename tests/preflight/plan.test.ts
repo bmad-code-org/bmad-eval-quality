@@ -21,6 +21,7 @@ import {
 	PROBE_SCHEMA_VERSION,
 	Probe as ProbeSchema,
 } from '../../src/core/schemas/probe.ts'
+import { repeatedIdentifierSharedOperation } from '../fixtures/duplicate-interface-identifier.ts'
 import {
 	cleanControlProbe,
 	contractDraft,
@@ -217,6 +218,18 @@ describe('the plan as a whole', () => {
 		for (const kind of SUPPORTED_INTERFACE_KINDS) {
 			expect(failure.message).toContain(`"${kind}"`)
 		}
+	})
+
+	// `preflight` never compiles, so a contract assembled by hand reaches the plan
+	// with a repeated identifier unless the plan names it itself.
+	it('103a. throws duplicate-interface-identifier for a repeated interface identifier', () => {
+		const failure = failureOf(() =>
+			planOf(parseContract(repeatedIdentifierSharedOperation())),
+		)
+		expect(failure.code).toBe('duplicate-interface-identifier')
+		expect(failure.artifactPath).toBe(
+			'EvalContract.permittedInterfaces[1].logicalId',
+		)
 	})
 
 	// Two gates asserting one fact, so an author who reaches the second by

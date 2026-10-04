@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { compile } from '../../src/core/compile/compile.ts'
 import {
+	checkDuplicateInterfaceIdentifier,
 	checkDuplicateOperationSignature,
 	checkInterfaceKind,
 	checkUndeclaredMandatoryInput,
@@ -14,6 +15,12 @@ import {
 import { StructuralFailure } from '../../src/core/failure-codes.ts'
 import { EvalContract } from '../../src/core/schemas/eval-contract.ts'
 import { INTERFACE_KINDS } from '../../src/core/schemas/interface.ts'
+import {
+	distinctIdentifiers,
+	repeatedIdentifierAroundAnother,
+	repeatedIdentifierDistinctOperations,
+	repeatedIdentifierSharedOperation,
+} from '../fixtures/duplicate-interface-identifier.ts'
 import { commandContract } from '../schemas/fixtures/command-contract.ts'
 import { gateCContract } from '../schemas/fixtures/gate-c-contract.ts'
 import { mcpContract } from '../schemas/fixtures/mcp-contract.ts'
@@ -38,6 +45,102 @@ describe('all three checks: positive whole-fixture regression', () => {
 			expect(() => checkDuplicateOperationSignature(contract)).not.toThrow()
 			expect(() => checkUndeclaredMandatoryInput(contract)).not.toThrow()
 		}
+	})
+})
+
+describe('checkDuplicateInterfaceIdentifier: duplicate-interface-identifier', () => {
+	const check = (raw: unknown) =>
+		checkDuplicateInterfaceIdentifier(EvalContract.parse(raw))
+
+	it('admits the whole-fixture contracts and a contract with three distinct identifiers', () => {
+		for (const raw of [
+			populatedContract,
+			gateCContract,
+			distinctIdentifiers(),
+		]) {
+			expect(() => check(raw)).not.toThrow()
+		}
+		expect(() => check(commandContract)).not.toThrow()
+		expect(() => check(mcpContract)).not.toThrow()
+	})
+
+	it('refuses a repeated identifier whose interfaces declare distinct operation ids, naming both positions', () => {
+		const failure = structuralFailureOf(() =>
+			check(repeatedIdentifierDistinctOperations()),
+		)
+		expect(failure.code).toBe('duplicate-interface-identifier')
+		expect(failure.artifactPath).toBe(
+			'EvalContract.permittedInterfaces[1].logicalId',
+		)
+		expect(failure.message).toContain('"thing-api"')
+		expect(failure.message).toContain('permittedInterfaces[0]')
+		expect(failure.message).toContain('permittedInterfaces[1]')
+	})
+
+	it('refuses a repeated identifier whose interfaces declare one operation id each', () => {
+		const failure = structuralFailureOf(() =>
+			check(repeatedIdentifierSharedOperation()),
+		)
+		expect(failure.code).toBe('duplicate-interface-identifier')
+		expect(failure.artifactPath).toBe(
+			'EvalContract.permittedInterfaces[1].logicalId',
+		)
+	})
+
+	// The identifier is unique across kinds: an operation is named by the pair of
+	// its interface and its `operationId`, and a step names the interface by
+	// `logicalId` alone, so an api interface and a command or tool-server one
+	// sharing it are as ambiguous as two of one kind.
+	it.each([
+		['mcp', mcpContract],
+		['cli', commandContract],
+	])(
+		'refuses an api interface and a %s interface sharing one identifier',
+		(_kind, other) => {
+			const contract = cleanPopulatedContract() as any
+			const twin = structuredClone(other.permittedInterfaces[0]) as any
+			twin.logicalId = 'thing-api'
+			contract.permittedInterfaces.push(twin)
+			expect(contract.permittedInterfaces.map((i: any) => i.kind)).toEqual([
+				'api',
+				twin.kind,
+			])
+			const failure = structuralFailureOf(() => check(contract))
+			expect(failure.code).toBe('duplicate-interface-identifier')
+			expect(failure.artifactPath).toBe(
+				'EvalContract.permittedInterfaces[1].logicalId',
+			)
+		},
+	)
+
+	it('names positions 0 and 2 when the interfaces are A, B, A', () => {
+		const contract = repeatedIdentifierAroundAnother()
+		expect(contract.permittedInterfaces.map((i: any) => i.logicalId)).toEqual([
+			'thing-api',
+			'other-api',
+			'thing-api',
+		])
+		const failure = structuralFailureOf(() => check(contract))
+		expect(failure.artifactPath).toBe(
+			'EvalContract.permittedInterfaces[2].logicalId',
+		)
+		expect(failure.message).toBe(
+			'duplicate-interface-identifier in EvalContract.permittedInterfaces[2].logicalId: "thing-api" is already the identifier of permittedInterfaces[0]; an interface\'s identifier is unique across the contract, so permittedInterfaces[0] and permittedInterfaces[2] cannot both carry it (AD-19)',
+		)
+	})
+
+	it('reports the first repeat in declaration order when two identifiers repeat', () => {
+		const contract = repeatedIdentifierAroundAnother()
+		// A, B, A, B: the repeat of A at position 2 outranks the repeat of B at 3.
+		contract.permittedInterfaces.push(
+			Object.assign(structuredClone(contract.permittedInterfaces[1]), {
+				operations: [],
+			}),
+		)
+		const failure = structuralFailureOf(() => check(contract))
+		expect(failure.artifactPath).toBe(
+			'EvalContract.permittedInterfaces[2].logicalId',
+		)
 	})
 })
 

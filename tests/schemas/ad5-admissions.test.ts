@@ -1,4 +1,4 @@
-// Walks AD-5's twenty-five codes plus AD-28's schema-version-mismatch fault.
+// Walks AD-5's codes, the twenty-seventh included, plus AD-28's schema-version-mismatch fault.
 // Rule: where AD-5 gives the compiler a literal code, the schema admits the
 // shape and Epic 4 or Epic 5 rejects it; tightening past a code would convert
 // a coded, artifact-path-carrying structural error into an anonymous
@@ -154,7 +154,20 @@ describe('AD-5 code walk — every coded shape stays representable', () => {
 
 	it('unresolved-reference-set: an operand naming an identifier the contract does not declare', () => {
 		admits((contract) => {
-			contract.oracles[0].check.operands[0] = { referenceSet: 'never-declared' }
+			contract.oracles[0].check.operands[0] = {
+				referenceSet: 'never-declared',
+			}
+		})
+	})
+
+	// The schema keeps no uniqueness constraint on `logicalId`: the compiler's
+	// `checkDuplicateInterfaceIdentifier` refuses the repeat with a coded,
+	// path-carrying structural error, where a schema refinement would raise an
+	// anonymous schema-parse-failure.
+	it('duplicate-interface-identifier: two interfaces sharing one logical identifier', () => {
+		admits((contract) => {
+			const twin = structuredClone(contract.permittedInterfaces[0])
+			contract.permittedInterfaces.push(twin)
 		})
 	})
 

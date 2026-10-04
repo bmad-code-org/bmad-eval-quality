@@ -1,8 +1,8 @@
 /**
  * `seal` (Story 6.5): the published boundary that compiles, then seals. The
- * cases below drive AC 4's precondition table one contract at a time. Two of
+ * cases below drive AC 4's precondition table one contract at a time. Three of
  * its five rows are pre-empted by a compile check and assert a
- * `StructuralFailure` reaching the caller unconverted; the other three reach
+ * `StructuralFailure` reaching the caller unconverted; the other two reach
  * `core/seal`'s `TypeError` sites and assert the boundary's conversion.
  */
 import { describe, expect, it } from 'vitest'
@@ -12,6 +12,10 @@ import { StructuralFailure } from '../../src/core/failure-codes.ts'
 import { RuntimeFault } from '../../src/core/schemas/faults.ts'
 import { seal as sealContract } from '../../src/core/seal/seal.ts'
 import { cleanPopulatedContract } from '../compile/helpers.ts'
+import {
+	repeatedIdentifierDistinctOperations,
+	repeatedIdentifierSharedOperation,
+} from '../fixtures/duplicate-interface-identifier.ts'
 import { gateCContract } from '../schemas/fixtures/gate-c-contract.ts'
 
 /** a deep copy of the sealable fixture a case may mutate before sealing it. */
@@ -53,8 +57,8 @@ describe('application seal: the compiled-then-sealed brief', () => {
 		expect(Object.isFrozen(brief.budgets)).toBe(true)
 	})
 
-	// The Zod error on `cause` is what separates this from the three cases
-	// below: those carry a `TypeError` raised inside `core/seal`.
+	// The Zod error on `cause` is what separates this from cases 100 and
+	// 102 below: those carry a `TypeError` raised inside `core/seal`.
 	it('case 97: a non-contract input throws schema-parse-failure from the compile parse', () => {
 		const fault = faultOf(() => seal({ not: 'a contract' }))
 		expect(fault.code).toBe('schema-parse-failure')
@@ -78,6 +82,28 @@ describe('application seal: the compiled-then-sealed brief', () => {
 		const failure = unconvertedFailureOf(() => seal(contract))
 		expect(failure.code).toBe('undeclared-mandatory-input')
 		expect(Object.isFrozen(seal(contract, { strict: false }))).toBe(true)
+	})
+})
+
+describe('application seal: a repeated interface identifier', () => {
+	// Before `duplicate-interface-identifier`, this contract compiled and the
+	// plan index threw on the repeated pair, which the boundary converted to a
+	// `schema-parse-failure` fault. The compile check is the one that names it.
+	it('a repeated identifier declaring one operation id on each interface fails compile as the structural code, never as the schema-parse-failure seal used to raise', () => {
+		const failure = unconvertedFailureOf(() =>
+			seal(repeatedIdentifierSharedOperation()),
+		)
+		expect(failure.code).toBe('duplicate-interface-identifier')
+		expect(failure.artifactPath).toBe(
+			'EvalContract.permittedInterfaces[1].logicalId',
+		)
+	})
+
+	it('a repeated identifier declaring distinct operation ids fails the same way', () => {
+		const failure = unconvertedFailureOf(() =>
+			seal(repeatedIdentifierDistinctOperations()),
+		)
+		expect(failure.code).toBe('duplicate-interface-identifier')
 	})
 })
 
@@ -121,21 +147,22 @@ describe("application seal: AC 4's precondition table", () => {
 		expect(fault.message).toContain('duplicate oracleId')
 	})
 
-	// A second interface declaring the same `logicalId` and no operations:
-	// the plan index stays unambiguous, so compile passes it and
-	// `seal.ts:113-117` fires.
-	it('case 101: two permittedInterfaces sharing one logicalId gives RuntimeFault schema-parse-failure', () => {
+	// A second interface declaring the same `logicalId` and no operations. Before
+	// `duplicate-interface-identifier` the plan index stayed unambiguous, compile
+	// passed it and the brief's sort raised the schema-parse-failure; compile
+	// now names the repeat first, so the row is one of the pre-empted ones.
+	it('case 101: two permittedInterfaces sharing one logicalId reach the caller as StructuralFailure duplicate-interface-identifier', () => {
 		const contract = contractDraft()
 		contract.permittedInterfaces.push({
 			logicalId: contract.permittedInterfaces[0].logicalId,
 			kind: 'api',
 			operations: [],
 		})
-		const fault = faultOf(() => seal(contract))
-		expect(fault.code).toBe('schema-parse-failure')
-		expect(fault.artifactPath).toBe('EvalContract')
-		expect(fault.cause).toBeInstanceOf(TypeError)
-		expect(fault.message).toContain('duplicate permittedInterfaces logicalId')
+		const failure = unconvertedFailureOf(() => seal(contract))
+		expect(failure.code).toBe('duplicate-interface-identifier')
+		expect(failure.artifactPath).toBe(
+			'EvalContract.permittedInterfaces[1].logicalId',
+		)
 	})
 
 	// `EvalContract.oracles` carries no minimum and

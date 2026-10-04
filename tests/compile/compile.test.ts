@@ -7,8 +7,15 @@ import { describe, expect, it } from 'vitest'
 import { canonicalize } from '../../src/core/canonical/canonicalize.ts'
 import { compile } from '../../src/core/compile/compile.ts'
 import { checkScriptingBound } from '../../src/core/compile/scripting-bound.ts'
-import { EvalContract } from '../../src/core/schemas/eval-contract.ts'
+import {
+	EVAL_CONTRACT_SCHEMA_VERSION,
+	EvalContract,
+} from '../../src/core/schemas/eval-contract.ts'
 import type { CompileStage } from '../../src/core/stage-contracts.ts'
+import {
+	repeatedIdentifierDistinctOperations,
+	repeatedIdentifierSharedOperation,
+} from '../fixtures/duplicate-interface-identifier.ts'
 import { gateCContract } from '../schemas/fixtures/gate-c-contract.ts'
 import { cleanPopulatedContract, structuralFailureOf } from './helpers.ts'
 
@@ -43,7 +50,11 @@ describe('compile: positive whole-contract regression', () => {
 	})
 })
 
-describe('compile: one reused negative mutation reaches each of the 29 wired functions, in call order', () => {
+// 30 of the 33 checks `compile` calls. `checkArtifactReferences`,
+// `checkExcludedContent` and `checkStepReferenceReducibility` are reached from
+// their own test files. Entries 1 to 29 follow call order; entry 30 was added
+// last and runs first, so its number is a label and not a position.
+describe('compile: one reused negative mutation reaches 30 of the 33 wired checks', () => {
 	it('1 checkRequirementLinkage: missing-requirement-linkage', () => {
 		const failure = structuralFailureOf(() =>
 			compileClean((c) => {
@@ -96,7 +107,10 @@ describe('compile: one reused negative mutation reaches each of the 29 wired fun
 	it('5 checkBoundElementScope: malformed-operator-expression (bound-element pointer with no enclosing quantifier)', () => {
 		const failure = structuralFailureOf(() =>
 			compileClean((c) => {
-				c.oracles[0].check = { op: 'existence', operands: [{ pointer: '@/x' }] }
+				c.oracles[0].check = {
+					op: 'existence',
+					operands: [{ pointer: '@/x' }],
+				}
 			}),
 		)
 		expect(failure.code).toBe('malformed-operator-expression')
@@ -405,6 +419,49 @@ describe('compile: one reused negative mutation reaches each of the 29 wired fun
 			}),
 		)
 		expect(failure.code).toBe('malformed-operator-expression')
+	})
+})
+
+describe('compile: a repeated interface identifier is named first of all', () => {
+	const compileRaw = (raw: unknown) =>
+		compile(EvalContract.parse(raw), { strict: true })
+
+	// Labelled 30 because it was added after the 29 above, though it runs first
+	// in call order. Its registry rank is the 27th.
+	it('30 checkDuplicateInterfaceIdentifier: duplicate-interface-identifier, with distinct operation ids on the two interfaces', () => {
+		const failure = structuralFailureOf(() =>
+			compileRaw(repeatedIdentifierDistinctOperations()),
+		)
+		expect(failure.code).toBe('duplicate-interface-identifier')
+		expect(failure.artifactPath).toBe(
+			'EvalContract.permittedInterfaces[1].logicalId',
+		)
+	})
+
+	it('names the repeated identifier for the contract that used to fail in seal as an anonymous schema-parse-failure', () => {
+		const failure = structuralFailureOf(() =>
+			compileRaw(repeatedIdentifierSharedOperation()),
+		)
+		expect(failure.code).toBe('duplicate-interface-identifier')
+	})
+
+	// Registry order puts the code last, and the call order puts it first. A
+	// contract carrying it beside the first registry code reports it, because the
+	// paths every other check emits address an interface by this identifier.
+	it('outranks the first registry code when a contract carries both', () => {
+		const contract = repeatedIdentifierDistinctOperations()
+		contract.behaviors[0].requirementLinks = []
+		contract.behaviors[0].riskLinks = []
+		const failure = structuralFailureOf(() => compileRaw(contract))
+		expect(failure.code).toBe('duplicate-interface-identifier')
+	})
+
+	it('runs after the stamp check, so a stale stamp is still named as the version mismatch', () => {
+		const contract = repeatedIdentifierDistinctOperations()
+		contract.schemaVersion = EVAL_CONTRACT_SCHEMA_VERSION - 1
+		expect(() => compile(contract as EvalContract, { strict: true })).toThrow(
+			expect.objectContaining({ code: 'schema-version-mismatch' }),
+		)
 	})
 })
 
