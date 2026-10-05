@@ -94,4 +94,4 @@ export type {
 } from './core/schemas/strength-aggregate.ts'
 export { STRENGTH_AGGREGATE_SCHEMA_VERSION } from './core/schemas/strength-aggregate.ts'
 
-export const VERSION = '7.1.0'
+export const VERSION = '7.2.0'

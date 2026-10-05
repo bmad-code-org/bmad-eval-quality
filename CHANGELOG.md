@@ -10,6 +10,8 @@ body.
 
 ## [Unreleased]
 
+## [7.2.0] - 2026-10-05
+
 ### Added
 
 - **`eval-quality score --designated-oracle <O-id>` names the oracle a probe belongs to.**
