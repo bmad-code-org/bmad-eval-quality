@@ -52,6 +52,8 @@ export type ParsedInvocation =
 			readonly runId: string | null
 			/** `score`'s AD-11 caller-attested scoring-version input; `null` for every other command. */
 			readonly corpusDigest: string | null
+			/** `score`'s optional designated oracle, the oracle the probe belongs to; `null` when absent and for every other command. */
+			readonly designatedOracle: string | null
 			/** `score`'s optional corpus-port root; `null` for every other command, and legal for `score` too when no private reference needs resolving. */
 			readonly corpusRoot: string | null
 			readonly strictInputs: boolean
@@ -134,6 +136,15 @@ const TAKES_CORPUS_ROOT: Readonly<Record<Command, boolean>> = {
 	'aggregate-strength': false,
 }
 
+/** `--designated-oracle` names the oracle `score` pairs the probe with, for a behavior that lists several; whether the oracle is legal depends on the contract and probe, which the argument grammar never sees. */
+const TAKES_DESIGNATED_ORACLE: Readonly<Record<Command, boolean>> = {
+	compile: false,
+	seal: false,
+	preflight: false,
+	score: true,
+	'aggregate-strength': false,
+}
+
 const STDIN = '-'
 
 const isRepeatable = (key: InputKey): key is RepeatableInputKey =>
@@ -184,7 +195,12 @@ function parseCommand(
 ): ParsedInvocation {
 	const valueFlags = new Map<
 		string,
-		InputKey | 'out' | 'run-id' | 'corpus-digest' | 'corpus-root'
+		| InputKey
+		| 'out'
+		| 'run-id'
+		| 'corpus-digest'
+		| 'corpus-root'
+		| 'designated-oracle'
 	>()
 	for (const key of INPUT_KEYS[command]) valueFlags.set(`--${key}`, key)
 	valueFlags.set('--out', 'out')
@@ -193,6 +209,9 @@ function parseCommand(
 		valueFlags.set('--corpus-digest', 'corpus-digest')
 	}
 	if (TAKES_CORPUS_ROOT[command]) valueFlags.set('--corpus-root', 'corpus-root')
+	if (TAKES_DESIGNATED_ORACLE[command]) {
+		valueFlags.set('--designated-oracle', 'designated-oracle')
+	}
 
 	const inputs: Partial<Record<Exclude<InputKey, RepeatableInputKey>, string>> =
 		{}
@@ -205,6 +224,7 @@ function parseCommand(
 	let runId: string | null = null
 	let corpusDigest: string | null = null
 	let corpusRoot: string | null = null
+	let designatedOracle: string | null = null
 	let strictInputs = true
 	let strict = false
 
@@ -253,6 +273,12 @@ function parseCommand(
 				index = taken.next
 				continue
 			}
+			// Unlike the path flags, a repeat is refused even when both values
+			// agree: one probe has one designated oracle, and a second mention is
+			// a script that assembled the flag twice.
+			if (target === 'designated-oracle' && designatedOracle !== null) {
+				return usageError(`${flag} given twice`)
+			}
 			const previous = seen.get(flag)
 			if (previous !== undefined && previous !== taken.value) {
 				return usageError(
@@ -264,6 +290,7 @@ function parseCommand(
 			else if (target === 'run-id') runId = taken.value
 			else if (target === 'corpus-digest') corpusDigest = taken.value
 			else if (target === 'corpus-root') corpusRoot = taken.value
+			else if (target === 'designated-oracle') designatedOracle = taken.value
 			else inputs[target] = taken.value
 			index = taken.next
 			continue
@@ -343,6 +370,7 @@ function parseCommand(
 		out,
 		runId,
 		corpusDigest,
+		designatedOracle,
 		corpusRoot,
 		strictInputs,
 		strict,

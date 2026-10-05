@@ -307,7 +307,9 @@ one attributable decision
 ```
 
 `designatedOracleIdOf` in `src/core/score/score.ts` pairs a probe with the oracle discharging the behavior the probe names, and it resolves that oracle **only** for a behavior declaring exactly one oracle, returning `null` otherwise (AD-40).
-A behavior spread across two oracles has no designated oracle, so the witness match has nothing to attach a detection to.
+A behavior spread across two oracles has no designated oracle, so the witness reaches no oracle and each trial's vote is the first invalidating state across the contract's oracles, else the state of the contract's first-declared oracle.
+A probe of that behavior is credited only through a finding that cites the contract's first-declared oracle, which may discharge a different behavior; a defect claimed against any other oracle of the behavior scores `caught: false`.
+A caller who names the oracle with `score --designated-oracle <O-id>` replaces that pairing.
 That is why inclusion and exclusion are two behaviors here rather than two operands under one `all`.
 In this implementation's attribution mechanism, this 1:1 pairing ensures detection credit is unambiguously attributed. It is an engineering requirement of eval-quality's attribution and scoring engine rather than a universal rule for all test design.
 

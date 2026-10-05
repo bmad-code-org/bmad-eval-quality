@@ -552,9 +552,11 @@ An oracle over the write step's own response passes on a tool that silently disc
 
 **Contract-design note: the one-oracle rule.**
 When scoring defect detection, `designatedOracleIdOf` resolves an oracle only for a behavior declaring exactly one oracle.
-A behavior declaring multiple oracles has no designated oracle, so a defect probe naming it has nothing to attach a detection to.
+A behavior declaring multiple oracles has no designated oracle, so the witness reaches no oracle and each trial's vote is the first invalidating state across the contract's oracles, else the state of the contract's first-declared oracle.
+A defect probe naming it is credited only through a finding that cites the contract's first-declared oracle, which may discharge a different behavior; a defect claimed against any other oracle of the behavior scores `caught: false`.
+A caller who names the oracle with `score --designated-oracle <O-id>` replaces that pairing.
 The tutorial contract authored four behaviors declaring one oracle each for this reason.
-`corpus/dev/contracts/notes-tool-server.json` compiles and pre-flights against the same server, but declares four and three oracles for its two behaviors, so defect probes naming either behavior cannot score a caught defect.
+`corpus/dev/contracts/notes-tool-server.json` compiles and pre-flights against the same server, but declares four and three oracles for its two behaviors, so a defect probe naming either behavior scores `caught: false` for a defect claimed against any oracle other than the contract's first-declared one, until the run names the oracle each probe belongs to.
 The same discipline applies to contracts scored under the [skill guide](/how-to/evaluate-skill-behavior/).
 
 ## Running it against your own server

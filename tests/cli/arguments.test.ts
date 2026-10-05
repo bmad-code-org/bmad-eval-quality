@@ -58,6 +58,7 @@ describe('cli arguments: the three accepts (cases 1-3)', () => {
 			out: 'artifacts/',
 			runId: null,
 			corpusDigest: null,
+			designatedOracle: null,
 			corpusRoot: null,
 			strictInputs: true,
 			strict: true,
@@ -82,6 +83,7 @@ describe('cli arguments: the three accepts (cases 1-3)', () => {
 			out: 'artifacts/sealed.json',
 			runId: null,
 			corpusDigest: null,
+			designatedOracle: null,
 			corpusRoot: null,
 			strictInputs: true,
 			strict: true,
@@ -108,6 +110,7 @@ describe('cli arguments: the three accepts (cases 1-3)', () => {
 			out: 'artifacts/',
 			runId: 'R-1',
 			corpusDigest: null,
+			designatedOracle: null,
 			corpusRoot: null,
 			strictInputs: true,
 			strict: true,
@@ -387,6 +390,8 @@ describe('cli arguments: score (Story 8.4)', () => {
 				'private-manifest.json',
 				'--corpus-root',
 				'/corpus',
+				'--designated-oracle',
+				'O-002',
 				'--out',
 				'artifacts/',
 				'--strict',
@@ -408,10 +413,63 @@ describe('cli arguments: score (Story 8.4)', () => {
 			runId: null,
 			corpusDigest:
 				'sha256:0000000000000000000000000000000000000000000000000000000000000001',
+			designatedOracle: 'O-002',
 			corpusRoot: '/corpus',
 			strictInputs: true,
 			strict: true,
 		})
+	})
+
+	it('--designated-oracle is optional and reads null when absent', () => {
+		expect(parseRun(['score', ...SCORE_REQUIRED]).designatedOracle).toBeNull()
+	})
+
+	it('--designated-oracle takes the space and the equals forms', () => {
+		expect(
+			parseRun(['score', ...SCORE_REQUIRED, '--designated-oracle', 'O-002'])
+				.designatedOracle,
+		).toBe('O-002')
+		expect(
+			parseRun(['score', ...SCORE_REQUIRED, '--designated-oracle=O-002'])
+				.designatedOracle,
+		).toBe('O-002')
+	})
+
+	it('--designated-oracle given twice is a usage error naming the flag, even with the same value', () => {
+		for (const second of ['O-002', 'O-001']) {
+			const { message } = parseUsageError([
+				'score',
+				...SCORE_REQUIRED,
+				'--designated-oracle',
+				'O-002',
+				`--designated-oracle=${second}`,
+			])
+			expect(message).toBe('--designated-oracle given twice')
+		}
+	})
+
+	it('--designated-oracle without a value names the flag', () => {
+		expect(
+			parseUsageError(['score', ...SCORE_REQUIRED, '--designated-oracle'])
+				.message,
+		).toBe('--designated-oracle requires a value')
+		expect(
+			parseUsageError(['score', ...SCORE_REQUIRED, '--designated-oracle='])
+				.message,
+		).toBe('--designated-oracle was given an empty value')
+	})
+
+	it('no other command takes --designated-oracle', () => {
+		for (const command of [
+			'compile',
+			'seal',
+			'preflight',
+			'aggregate-strength',
+		]) {
+			expect(
+				parseUsageError([command, '--designated-oracle', 'O-001']).message,
+			).toContain('--designated-oracle')
+		}
 	})
 
 	it('takes no --run-id: no such flag exists for score', () => {

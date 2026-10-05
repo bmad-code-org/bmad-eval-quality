@@ -10,6 +10,20 @@ body.
 
 ## [Unreleased]
 
+### Added
+
+- **`eval-quality score --designated-oracle <O-id>` names the oracle a probe belongs to.**
+  The flag is also the `designatedOracleId` option of `runScore` and an optional trailing parameter of the core `score` stage.
+  The named oracle takes the place of the pairing derived from the probe's behavior, so it receives the probe's witness match and its state is the trial vote.
+  The oracle must be listed by the probe's behavior and declared by the contract.
+  Otherwise the command exits `64`, naming the flag, the oracle, the behavior and the oracles the behavior lists, before any scoring starts and with no artifact written.
+  A value that is not an oracle identifier and a flag given twice exit `64` too.
+  Omitting the flag keeps today's rule byte for byte: a behavior that lists exactly one oracle designates it and any other count designates none.
+  Without a designation the witness reaches no oracle, and each trial's vote is the first invalidating state across the contract's oracles, else the state of the contract's first-declared oracle.
+  A probe of a multi-oracle behavior is then credited only through a finding that cites the contract's first-declared oracle, which may discharge a different behavior, and a defect claimed against any other oracle of the behavior scores `caught: false`.
+  `DesignatedOracleRefusal` is a new public export of the root barrel; `runScore` throws it for an unusable designation and the CLI maps it to exit `64`.
+  The evidence artifact gains no field and keeps its schema version; the vote the designation selects is already in `reducedProbeOutcomes[].trialVotes`.
+
 ## [7.1.0] - 2026-10-04
 
 ### Changed

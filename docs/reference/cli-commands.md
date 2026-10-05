@@ -75,6 +75,7 @@ Usage:
                                   --corpus-digest <digest>
                                   [--isolation-manifest <path>] [--evaluator-configuration <path>]
                                   [--private-manifest <path>] [--corpus-root <dir>]
+                                  [--designated-oracle <O-id>]
                                   [--out <target>] [--strict]
 
   --record <path>                   a sealed trial record to ingest; repeat for each trial
@@ -89,11 +90,25 @@ Usage:
   --corpus-root <dir>               the directory a private reference resolves under; required only
                                      when --private-manifest or a private-storage isolation-manifest
                                      reference is present
+  --designated-oracle <O-id>        the oracle this probe belongs to, for a behavior that lists several;
+                                     it must be listed by the probe's behavior and declared by the
+                                     contract, or the command exits 64; absent, a behavior listing
+                                     exactly one oracle designates it and any other count designates none
   --out <target>                    a .json file path, or a directory taking evidence-artifact.json
   --strict                          promote CONCERNS to exit 1
 ```
 
 At least one `--record` is required, along with `--contract`, `--probe`, `--preflight-verdict`, `--policy`, and `--corpus-digest`. Repeat `--record` once per trial. Every record carries its own `trialIndex`; scoring orders the set by that field, requires distinct indices, and requires agreement on `contractDigest`, `evaluatorConfigurationDigest`, `mode`, `evaluatorRecommendation`, and `runId`. `--corpus-root` is optional at the argument-parsing level; it becomes required, with a usage error naming it, the moment a private reference actually needs a byte resolved through it.
+
+`--designated-oracle` pairs the probe with one oracle for the witness match and the trial vote.
+Without it, a probe is paired with the oracle its behavior lists only when the behavior lists exactly one.
+A behavior with a development oracle and a held-out oracle designates neither, so the witness reaches no oracle and each trial's vote is the first invalidating state across the contract's oracles, else the state of the contract's first-declared oracle.
+A probe of such a behavior is credited only through a finding that cites the contract's first-declared oracle, which may discharge a different behavior; a defect claimed against any other oracle of the behavior scores `caught: false`.
+With it, the named oracle replaces that pairing.
+The flag is accepted only when the probe's behavior lists the oracle and the contract declares it; otherwise the command exits `64`, naming the flag, the oracle, the behavior and the oracles the behavior lists, before any scoring starts and with no artifact written.
+A value that is not an oracle identifier (`O-` followed by at least three digits) and a flag given twice, even with the same value, exit `64` too.
+Naming the one oracle a single-oracle behavior lists gives the same artifact as omitting the flag.
+The designation leaves no field of its own in the artifact: the vote it selects is in `reducedProbeOutcomes[].trialVotes`, and every oracle's own state stays in `outcomes`.
 
 On the Invalid rung the command exits `3` and writes no artifact: no legal `EvidenceArtifact` carries a null verdict.
 The reasons that rung would have recorded in `verdictBasis` go to stderr instead, one `eval-quality: invalid: <reason>` line per reason in the Invalid basis, so an exit `3` always names its cause.
@@ -204,7 +219,7 @@ Artifacts are written as one line of RFC 8785 canonical JSON with sorted keys. T
 - `--flag=value` splits on the first `=`, so a value may contain one. Only flags that take a value accept this form: `--strict-inputs=true` exits `64` as an unknown flag.
 - An empty value exits `64`, in both the `--in=` and the `--in ""` form.
 - In the space form, a next token longer than one character that begins with `-` is read as the next flag, so the command reports a missing value and points at the `=` form. A bare `-` stays legal, since it names stdin.
-- `--record` and `--evidence` collect every occurrence, as a trial record and as a per-probe evidence artifact. Every other value flag accepts an identical repeat and exits `64` when repeated with different values.
+- `--record` and `--evidence` collect every occurrence, as a trial record and as a per-probe evidence artifact. `--designated-oracle` exits `64` on any repeat, identical values included, because one probe has one designated oracle. Every other value flag accepts an identical repeat and exits `64` when repeated with different values.
 - `--` at the end of the line is ignored. A positional argument exits `64`, because no command takes one.
 - `--help` or `-h` anywhere a flag is expected prints that command's help and exits `0`. Where a value is expected it is read as that value and exits `64`, so `compile --in --help` is a usage error.
 
@@ -268,7 +283,7 @@ The tarball carries two `bin` targets: `eval-quality` at `dist/cli/main.js`, and
 - **Target policy**: `evaluateTarget`, `classifyAddress`, `parseAddress`, `staysOnHost`, `isSafeMethod`, `ADDRESS_CLASSES`, `DENIAL_REASONS`
 - **Serialization and digests**: `serializeArtifact`, `digestArtifact`, `digestBytes`, `digestComposite`, `scanJson`
 - **Lineage**: `validateLineageChain`
-- **Errors**: `StructuralFailure`, `AggregationRefusal`, `RuntimeFault`
+- **Errors**: `StructuralFailure`, `AggregationRefusal`, `RuntimeFault`, `DesignatedOracleRefusal`
 - **Enumerations**: `FAILURE_CODES`, `AGGREGATION_REFUSAL_CODES`, `RUNTIME_FAULT_CODES`, `FORBIDDEN_TARGET_REASONS`, `PORT_FAILURE_REASONS`, `VERDICTS`, `EVALUATOR_RECOMMENDATIONS`, `INTERCHANGE_ARTIFACT_KEYS`, `QUALIFICATION_FAILURES`, `SEVERITY_LEVELS`, `DOMINANCE_RELATIONS`, `OUTCOME_STATES`, `DISCIPLINE_RULES`
 - **Schema versions**: `PROBE_SCHEMA_VERSION`, `EVAL_CONTRACT_SCHEMA_VERSION`, `SEALED_EVALUATOR_BRIEF_SCHEMA_VERSION`, `EVIDENCE_ARTIFACT_SCHEMA_VERSION`, `PREFLIGHT_VERDICT_SCHEMA_VERSION`, `SEALED_RUN_RECORD_SCHEMA_VERSION`, `ISOLATION_MANIFEST_SCHEMA_VERSION`, `EVALUATOR_CONFIGURATION_SCHEMA_VERSION`, `SCORING_POLICY_SCHEMA_VERSION`, `PRIVATE_ARTIFACT_MANIFEST_SCHEMA_VERSION`, `STRENGTH_AGGREGATE_SCHEMA_VERSION`
 - **Comparison**: `compareDominance`
@@ -282,6 +297,8 @@ Every schema version is declared as the literal integer it holds, so a caller co
 Eleven of the thirteen artifacts carry one. Nine have an in-package reader that performs the equality: `compile` over an eval contract, `preflight` and `score` over a probe, `score` over a sealed run record, an isolation manifest, an evaluator configuration, a preflight verdict, a private artifact manifest and a scoring policy, and `aggregate` over an evidence artifact and a scoring policy. Four are stamped by this package: `seal` writes the brief, `emit` writes the evidence artifact, `preflight` writes the verdict, and `aggregate` writes the strength aggregate, each from its own constant. The evidence artifact and the verdict sit in both groups, since `aggregate` reads the version `emit` stamps and `score` reads the version `preflight` stamps. `artifact-reference` carries no lineage fields at all. A rubric does carry a `schemaVersion`, and no constant here states it: this package never parses a standalone rubric, and the eval contract embeds `RubricBody`, the body without lineage.
 
 `aggregateStrength({ evidence, floors, policy })` is the entry point the `aggregate-strength` command calls. `evidence` is the run's per-probe `EvidenceArtifact` values in any order, `floors` is a `StrengthFloors` value, and `policy` is the `ScoringPolicy` the run was scored under. The version it records is the package's own, and no caller supplies one. It is synchronous and returns a `StrengthAggregate`. An input that does not parse throws `RuntimeFault` with code `schema-parse-failure` and `artifactPath` `EvidenceArtifact[]`, `StrengthFloors`, or `ScoringPolicy`, an evidence artifact or a scoring policy stamped with another `schemaVersion` throws `schema-version-mismatch` at `EvidenceArtifact[N].schemaVersion` or `ScoringPolicy.schemaVersion`, read before its shape so a stale artifact is named as one, and a set whose artifacts disagree or contradict themselves throws `AggregationRefusal` with one of `AGGREGATION_REFUSAL_CODES`, carrying the same `code` and `artifactPath` as `StructuralFailure` and sharing its exit code in the CLI.
+
+`runScore` takes an optional `designatedOracleId`, the library form of `--designated-oracle`. An identifier the probe's behavior does not list, or the contract does not declare, makes it throw `DesignatedOracleRefusal` before any scoring starts, and the CLI maps that refusal to exit `64`.
 
 `compareDominance` is AD-7's four-valued relation over two scored results. It takes two `ComparableResult` values and a `Severity` floor and answers one of `DOMINANCE_RELATIONS`: `a-dominates-b`, `b-dominates-a`, `equivalent`, or `incomparable`. `ComparableResult`, `DominanceRelationValue`, and `Severity` ship as type-only exports beside it. A comparable result includes `scoredProbeId`, `outcomes`, `trials`, and `reducedProbeOutcomes`; `trials.completedAttempts` retains the exact trial identities, while each reduction retains the selected `trialVotes` and `catchThreshold` needed for exact recomputation. The comparison returns `incomparable` when the reduction contradicts its probe identity, trial identities, votes, counts, severity, invalidated attempts, or detailed trial evidence. It re-derives no strength vector and reads no port, corpus, or clock.
 

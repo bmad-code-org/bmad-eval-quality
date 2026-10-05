@@ -6,7 +6,8 @@
  * a domain input. Stage one, collapsing several outcome resolutions for one
  * `(probeId, trialIndex)` down to one vote, is a lookup rather than a genuine
  * multi-value fold, because AD-40's discriminating condition pairs a probe
- * with exactly one designated oracle; the caller performs that lookup and
+ * with exactly one designated oracle, named by the caller or derived from the
+ * probe's behaviour; the caller performs that lookup and
  * this module receives the resulting one-vote-per-trial sequence directly.
  * Stage two, folding across trials for one probe, is `reduceTrialSet` below.
  */

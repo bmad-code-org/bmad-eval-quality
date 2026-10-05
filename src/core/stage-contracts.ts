@@ -85,7 +85,8 @@ export type IngestStage<Product> = (
  * any declared input carries a source for (`score.ts`'s own Boundaries:
  * `waiver` mirrors `outcome.ts:58-61`'s AD-5 expiry citation, and
  * `evaluationFault` has no citation anywhere and is recorded as a genuine
- * gap this parameter closes).
+ * gap this parameter closes), plus the optional `designatedOracleId`, the
+ * caller's own pairing of the probe with one of its behavior's oracles.
  *
  * Generic over both the trial set's element type and the owned product, for
  * the same reason `IngestStage` is generic over its product: a concrete
@@ -101,6 +102,8 @@ export type ScoreStage<Trials, Product> = (
 	policy: ScoringPolicy,
 	waiver: WaiverStateValue,
 	evaluationFault: boolean,
+	/** Present, it replaces the pairing derived from the probe's behavior; absent, a behavior listing exactly one oracle designates it and any other count designates none. */
+	designatedOracleId?: string,
 ) => Product
 
 /**

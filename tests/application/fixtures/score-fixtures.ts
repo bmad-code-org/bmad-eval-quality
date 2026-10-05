@@ -22,6 +22,8 @@ import type { Probe } from '../../../src/core/schemas/probe.ts'
 import type { ScoringPolicy } from '../../../src/core/schemas/scoring-policy.ts'
 import type { SealedRunRecord } from '../../../src/core/schemas/sealed-run-record.ts'
 import {
+	defectFinding,
+	defectFired,
 	notesInterface,
 	qualifiedProbe,
 } from '../../score/fixtures/probe-witness.ts'
@@ -306,4 +308,59 @@ export const privateArtifactManifestFixtureForScore: PrivateArtifactManifest = {
 			sanitizationPolicy: null,
 		},
 	],
+}
+
+/**
+ * The same chain for a behavior that lists two oracles, the shape a run holding
+ * a development and a held-out oracle on one behavior produces. The record
+ * carries the seeded defect firing (`obs-2`, a 500) and one defect finding
+ * that cites O-002 alone, so O-002 is the oracle that catches. With no
+ * designation neither oracle receives the probe's witness and the vote falls
+ * to O-001, the first oracle, which confirms: the probe scores `caught: false`.
+ * Designating O-002 gives it the witness and the probe scores `caught: true`.
+ */
+const twoOracleBase = scoreContractFixture.oracles[0]
+if (twoOracleBase === undefined) {
+	throw new Error('scoreContractFixture declares no oracle')
+}
+export const twoOracleScoreContractFixture: EvalContract = {
+	...scoreContractFixture,
+	behaviors: scoreContractFixture.behaviors.map((behavior) => ({
+		...behavior,
+		oracles: ['O-001', 'O-002'],
+	})),
+	oracles: [twoOracleBase, { ...twoOracleBase, id: 'O-002' }],
+}
+const twoOracleContractDigest = digestArtifact(
+	twoOracleScoreContractFixture,
+	'EvalContract',
+)
+export const twoOracleIsolationManifestFixtureForScore: IsolationManifest = {
+	...isolationManifestFixtureForScore,
+	contractDigest: twoOracleContractDigest,
+}
+export const twoOracleSealedRunRecordFixtureForScore: SealedRunRecord = {
+	...sealedRunRecordFixtureForScore,
+	contractDigest: twoOracleContractDigest,
+	oracleDispositions: [
+		{
+			oracleId: 'O-001',
+			disposition: 'held',
+			observationIds: ['obs-2'],
+			note: null,
+		},
+		{
+			oracleId: 'O-002',
+			disposition: 'violated',
+			observationIds: ['obs-2'],
+			note: null,
+		},
+	],
+	findings: [
+		{
+			...defectFinding(['obs-2'], { probeId: scoreProbeFixture.probeId }),
+			oracleId: 'O-002',
+		},
+	],
+	observations: [defectFired],
 }

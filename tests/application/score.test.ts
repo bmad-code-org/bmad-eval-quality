@@ -6,7 +6,10 @@
  */
 import { describe, expect, it, vi } from 'vitest'
 import { POLICY } from '../../scripts/worked-example-shared.ts'
-import { runScore } from '../../src/application/score.ts'
+import {
+	DesignatedOracleRefusal,
+	runScore,
+} from '../../src/application/score.ts'
 import * as emitModule from '../../src/core/emit/emit.ts'
 import * as ingestModule from '../../src/core/ingest/index.ts'
 import { EVAL_CONTRACT_SCHEMA_VERSION } from '../../src/core/schemas/eval-contract.ts'
@@ -57,6 +60,9 @@ import {
 	scoreProbeFixture,
 	scoringPolicyFixtureForScore,
 	sealedRunRecordFixtureForScore,
+	twoOracleIsolationManifestFixtureForScore,
+	twoOracleScoreContractFixture,
+	twoOracleSealedRunRecordFixtureForScore,
 	unqualifiedProbeFixture,
 } from './fixtures/score-fixtures.ts'
 
@@ -971,5 +977,107 @@ describe('runScore: a stale private manifest is refused before any port call', (
 		)
 		expect(fault.code).toBe('schema-version-mismatch')
 		expect(port.resolve).not.toHaveBeenCalled()
+	})
+})
+
+describe('runScore: a caller-named designated oracle', () => {
+	const twoOracle = (overrides: Partial<Parameters<typeof runScore>[0]> = {}) =>
+		run({
+			record: twoOracleSealedRunRecordFixtureForScore,
+			manifest: twoOracleIsolationManifestFixtureForScore,
+			contract: twoOracleScoreContractFixture,
+			...overrides,
+		})
+	const caughtOf = (result: Awaited<ReturnType<typeof runScore>>) =>
+		result.artifact?.reducedProbeOutcomes[0]?.caught
+
+	it('omitting it keeps the single-oracle rule: a two-oracle behavior designates none and the probe is not caught', async () => {
+		expect(caughtOf(await twoOracle())).toBe(false)
+	})
+
+	it('naming the oracle that owns the probe makes the probe caught', async () => {
+		expect(caughtOf(await twoOracle({ designatedOracleId: 'O-002' }))).toBe(
+			true,
+		)
+	})
+
+	it('hands the designation to the score stage as its trailing parameter', async () => {
+		const scoreSpy = vi.spyOn(scoreModule, 'score')
+		try {
+			await twoOracle({ designatedOracleId: 'O-002' })
+			expect(scoreSpy.mock.calls[0]?.[7]).toBe('O-002')
+			scoreSpy.mockClear()
+			await run()
+			expect(scoreSpy.mock.calls[0]?.[7]).toBeUndefined()
+		} finally {
+			vi.restoreAllMocks()
+		}
+	})
+
+	it('does not enter the artifact: the scoring version and attested inputs match a run without it', async () => {
+		const designated = await twoOracle({ designatedOracleId: 'O-002' })
+		const omitted = await twoOracle()
+		expect(designated.artifact?.scoringVersionInputs).toEqual(
+			omitted.artifact?.scoringVersionInputs,
+		)
+		expect(designated.artifact?.callerAttestedInputs).toEqual(
+			omitted.artifact?.callerAttestedInputs,
+		)
+		expect(Object.keys(designated.artifact ?? {}).sort()).toEqual(
+			Object.keys(omitted.artifact ?? {}).sort(),
+		)
+	})
+
+	it('naming the one oracle a single-oracle behavior lists yields the artifact omission yields', async () => {
+		const designated = await run({ designatedOracleId: 'O-001' })
+		expect(JSON.stringify(designated.artifact)).toBe(
+			JSON.stringify((await run()).artifact),
+		)
+	})
+
+	it('the same inputs with the same designation give byte-identical artifacts', async () => {
+		const first = await twoOracle({ designatedOracleId: 'O-002' })
+		const second = await twoOracle({ designatedOracleId: 'O-002' })
+		expect(first.artifact).not.toBeNull()
+		expect(JSON.stringify(first.artifact)).toBe(JSON.stringify(second.artifact))
+	})
+
+	it.each([
+		['an oracle the behavior does not list', 'O-003'],
+		['a malformed identifier', 'o-002'],
+		['an empty identifier', ''],
+	])(
+		'refuses %s with a DesignatedOracleRefusal naming the flag, before any port call or score work',
+		async (_name, designatedOracleId) => {
+			const port = fakeCorpusPort({})
+			const scoreSpy = vi.spyOn(scoreModule, 'score')
+			try {
+				await expect(
+					twoOracle({ designatedOracleId, port }),
+				).rejects.toThrowError(DesignatedOracleRefusal)
+				const refusal: unknown = await twoOracle({
+					designatedOracleId,
+					port,
+				}).catch((error: unknown) => error)
+				expect((refusal as Error).name).toBe('DesignatedOracleRefusal')
+				await expect(twoOracle({ designatedOracleId, port })).rejects.toThrow(
+					/--designated-oracle/,
+				)
+				expect(port.resolve).not.toHaveBeenCalled()
+				expect(scoreSpy).not.toHaveBeenCalled()
+			} finally {
+				vi.restoreAllMocks()
+			}
+		},
+	)
+
+	it('refuses an oracle the contract does not declare', async () => {
+		const undeclared = {
+			...twoOracleScoreContractFixture,
+			oracles: twoOracleScoreContractFixture.oracles.slice(0, 1),
+		}
+		await expect(
+			twoOracle({ contract: undeclared, designatedOracleId: 'O-002' }),
+		).rejects.toThrow(/declares no oracle O-002/)
 	})
 })
