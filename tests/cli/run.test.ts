@@ -1698,6 +1698,9 @@ describe('run: score --designated-oracle', () => {
 	it('the same inputs with the same flag write byte-identical artifacts', async () => {
 		const first = await scoreWith(['--designated-oracle=O-002'])
 		const second = await scoreWith(['--designated-oracle=O-002'])
+		expect(first.exit).toBe(EXIT_OK)
+		expect(first.environment.writes).toHaveLength(1)
+		expect(caughtOf(first.environment)).toBe(true)
 		expect(first.environment.writes[0]?.body).toBe(
 			second.environment.writes[0]?.body,
 		)
@@ -1726,6 +1729,25 @@ describe('run: score --designated-oracle', () => {
 		expect(environment.diagnostics[0]).toContain('--designated-oracle')
 		expect(environment.diagnostics[0]).toContain('"oracle-two"')
 		expect(environment.writes).toEqual([])
+	})
+
+	it('a value carrying whitespace is not an oracle identifier', async () => {
+		const { environment, exit } = await scoreWith([
+			'--designated-oracle',
+			' O-002',
+		])
+		expect(exit).toBe(EXIT_USAGE)
+		expect(environment.diagnostics[0]).toContain('is not an oracle identifier')
+		expect(environment.writes).toEqual([])
+	})
+
+	it('help score lists the flag and its description', async () => {
+		const scoped = environmentOf()
+		await invoke(['help', 'score'], scoped)
+		expect(scoped.out[0]).toContain('[--designated-oracle <O-id>]')
+		expect(scoped.out[0]).toContain(
+			'--designated-oracle <O-id>        the oracle this probe belongs to, for a behavior that lists several;',
+		)
 	})
 
 	it('a repeated flag is a usage error naming the flag, calling no orchestration and writing no artifact', async () => {

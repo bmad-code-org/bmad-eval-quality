@@ -19,7 +19,9 @@ body.
   Otherwise the command exits `64`, naming the flag, the oracle, the behavior and the oracles the behavior lists, before any scoring starts and with no artifact written.
   A value that is not an oracle identifier and a flag given twice exit `64` too.
   Omitting the flag keeps today's rule byte for byte: a behavior that lists exactly one oracle designates it and any other count designates none.
-  A caller that knows which oracle belongs to a probe, such as a run that holds a development oracle and a held-out oracle on one behavior, otherwise scored every probe of that behavior `caught: false`.
+  Without a designation the witness reaches no oracle, and each trial's vote is the first invalidating state across the contract's oracles, else the state of the contract's first-declared oracle.
+  A probe of a multi-oracle behavior is then credited only through a finding that cites the contract's first-declared oracle, which may discharge a different behavior, and a defect claimed against any other oracle of the behavior scores `caught: false`.
+  `DesignatedOracleRefusal` is a new public export of the root barrel; `runScore` throws it for an unusable designation and the CLI maps it to exit `64`.
   The evidence artifact gains no field and keeps its schema version; the vote the designation selects is already in `reducedProbeOutcomes[].trialVotes`.
 
 ## [7.1.0] - 2026-10-04

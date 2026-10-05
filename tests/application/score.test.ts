@@ -1038,12 +1038,14 @@ describe('runScore: a caller-named designated oracle', () => {
 	it('the same inputs with the same designation give byte-identical artifacts', async () => {
 		const first = await twoOracle({ designatedOracleId: 'O-002' })
 		const second = await twoOracle({ designatedOracleId: 'O-002' })
+		expect(first.artifact).not.toBeNull()
 		expect(JSON.stringify(first.artifact)).toBe(JSON.stringify(second.artifact))
 	})
 
 	it.each([
 		['an oracle the behavior does not list', 'O-003'],
 		['a malformed identifier', 'o-002'],
+		['an empty identifier', ''],
 	])(
 		'refuses %s with a DesignatedOracleRefusal naming the flag, before any port call or score work',
 		async (_name, designatedOracleId) => {
@@ -1053,6 +1055,11 @@ describe('runScore: a caller-named designated oracle', () => {
 				await expect(
 					twoOracle({ designatedOracleId, port }),
 				).rejects.toThrowError(DesignatedOracleRefusal)
+				const refusal: unknown = await twoOracle({
+					designatedOracleId,
+					port,
+				}).catch((error: unknown) => error)
+				expect((refusal as Error).name).toBe('DesignatedOracleRefusal')
 				await expect(twoOracle({ designatedOracleId, port })).rejects.toThrow(
 					/--designated-oracle/,
 				)

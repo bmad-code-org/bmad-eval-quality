@@ -906,6 +906,46 @@ describe('score: a caller-named designated oracle', () => {
 		expect(omitted.reducedProbeOutcomes[0]?.trialVotes).toEqual([
 			{ trialIndex: 1, state: 'confirmed' },
 		])
+		expect(omitted.outcomes.map((o) => [o.oracleId, o.state])).toEqual([
+			['O-001', 'confirmed'],
+			['O-002', 'confirmed'],
+		])
+	})
+
+	it('the designated oracle votes even when another oracle holds an invalidating state', () => {
+		const dangling = cleanTrialFor(twoOracleContract, {
+			observations: [defectFired],
+			findings: [
+				{ ...defectFinding(['obs-2']), oracleId: 'O-002' },
+				{
+					...defectFinding(['obs-2'], {
+						findingId: 'F-009',
+						probeId: 'P-999',
+					}),
+					oracleId: 'O-001',
+				},
+			],
+			dispositions: dispositionsOf(['O-001', 'O-002']),
+		})
+		const result = withDesignation(twoOracleContract, [dangling], 'O-002')
+		expect(stateOf(result, 'O-001')).toBe('infrastructure-error')
+		expect(stateOf(result, 'O-002')).toBe('caught')
+		expect(result.reducedProbeOutcomes[0]?.trialVotes).toEqual([
+			{ trialIndex: 1, state: 'caught' },
+		])
+	})
+
+	it('a designated oracle that is not applicable votes not-applicable', () => {
+		const quiet = cleanTrialFor(twoOracleContract, {
+			observations: [],
+			dispositions: dispositionsOf(['O-001', 'O-002']),
+		})
+		const result = withDesignation(twoOracleContract, [quiet], 'O-002')
+		expect(stateOf(result, 'O-002')).toBe('not-applicable')
+		expect(stateOf(result, 'O-001')).toBe('unreached')
+		expect(result.reducedProbeOutcomes[0]?.trialVotes).toEqual([
+			{ trialIndex: 1, state: 'not-applicable' },
+		])
 	})
 
 	it('the witness match belongs to the designated oracle alone', () => {
@@ -931,14 +971,6 @@ describe('score: a caller-named designated oracle', () => {
 				withDesignation(baseContract, trials, undefined),
 			)
 		}
-	})
-
-	it('the same inputs with the same designation score byte-identically', () => {
-		const run = () =>
-			JSON.stringify(
-				withDesignation(twoOracleContract, [claimedTrial], 'O-002'),
-			)
-		expect(run()).toBe(run())
 	})
 
 	describe('checkDesignatedOracle', () => {
@@ -1009,6 +1041,12 @@ describe('score: a caller-named designated oracle', () => {
 				'lists no oracle',
 			)
 		})
+	})
+
+	it('an empty designation reaching the stage is a TypeError, never read as an omitted one', () => {
+		expect(() =>
+			withDesignation(twoOracleContract, [claimedTrial], ''),
+		).toThrow(TypeError)
 	})
 
 	it('the stage never designates an oracle the check refuses: a bypassing caller gets a TypeError naming the flag', () => {
