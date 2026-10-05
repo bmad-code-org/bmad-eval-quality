@@ -50,6 +50,7 @@ import type {
 } from '../schemas/evidence-artifact.ts'
 import type { Expression, Operand, SetOperand } from '../schemas/expression.ts'
 import type { AnyOperation } from '../schemas/interface.ts'
+import { ORACLE_ID_PATTERN } from '../schemas/primitives.ts'
 import type { Probe } from '../schemas/probe.ts'
 import type { ScoringPolicy } from '../schemas/scoring-policy.ts'
 import type { Observation } from '../schemas/sealed-run-record.ts'
@@ -181,6 +182,42 @@ function designatedOracleIdOf(
 	if (behavior === undefined) return null
 	if (behavior.oracles.length !== 1) return null
 	return behavior.oracles[0] ?? null
+}
+
+/**
+ * The refusal for a caller-named designated oracle, or `null` when the
+ * designation is usable. A behaviour listing several oracles (a development
+ * and a held-out oracle on one behaviour, say) leaves `designatedOracleIdOf`
+ * with no pairing, and the caller is the one party that knows which oracle a
+ * probe belongs to. The designation is accepted only when the probe's own
+ * behaviour lists the oracle and the contract declares it, so a name can
+ * never select an oracle that discharges some other behaviour or that does
+ * not exist. Pure: the text names `--designated-oracle` because the flag is
+ * the one surface that carries the value to a human.
+ */
+export function checkDesignatedOracle(
+	contract: EvalContract,
+	probe: Probe,
+	designatedOracleId: string,
+): string | null {
+	if (!ORACLE_ID_PATTERN.test(designatedOracleId)) {
+		return `--designated-oracle ${JSON.stringify(designatedOracleId)} is not an oracle identifier; expected O- followed by at least three digits`
+	}
+	const behavior = contract.behaviors.find(
+		(entry) => entry.id === probe.behaviorId,
+	)
+	if (behavior === undefined) {
+		return `--designated-oracle ${designatedOracleId} cannot be checked: the probe's behavior ${probe.behaviorId} is not declared by the contract`
+	}
+	const listed =
+		behavior.oracles.length === 0 ? 'no oracle' : behavior.oracles.join(', ')
+	if (!behavior.oracles.includes(designatedOracleId)) {
+		return `--designated-oracle ${designatedOracleId} is not listed by the probe's behavior ${behavior.id}, which lists ${listed}`
+	}
+	if (!contract.oracles.some((oracle) => oracle.id === designatedOracleId)) {
+		return `--designated-oracle ${designatedOracleId} is listed by the probe's behavior ${behavior.id} (which lists ${listed}), but the contract declares no oracle ${designatedOracleId}`
+	}
+	return null
 }
 
 /** A probe on the seeding branch whose signature is present, or `null` for a clean control, a canary, or a signature-less defect probe -- none of which AD-40's witness match applies to. */
@@ -347,10 +384,30 @@ const INVALIDATING_OUTCOME_STATES: ReadonlySet<string> = new Set(
 )
 
 /**
+ * The oracle this probe's witness and vote belong to: the caller's own
+ * designation when one is supplied, else AD-40's derived pairing. The
+ * application layer refuses an unusable designation before the stage runs,
+ * so one reaching this point is reachable only through a type-system bypass
+ * and takes a plain `TypeError`, `emit.ts`'s own precedent for that shape.
+ */
+function resolveDesignatedOracleId(
+	probe: Probe,
+	contract: EvalContract,
+	requested: string | undefined,
+): string | null {
+	if (requested === undefined) return designatedOracleIdOf(probe, contract)
+	const refusal = checkDesignatedOracle(contract, probe, requested)
+	if (refusal !== null) throw new TypeError(`score(): ${refusal}`)
+	return requested
+}
+
+/**
  * The stage. Signature order matches `ScoreStage`'s own: the five declared
  * artifact inputs, then `waiver` and `evaluationFault`, the two documented
  * caller-supplied parameters -- neither has a source among those five, and
- * each arrives named and explicit rather than a hardcoded literal.
+ * each arrives named and explicit rather than a hardcoded literal -- then the
+ * optional `designatedOracleId`, which replaces the derived pairing when the
+ * caller knows which oracle belongs to the probe.
  */
 export const score: ScoreStage<
 	ValidatedObservations,
@@ -363,6 +420,7 @@ export const score: ScoreStage<
 	policy,
 	waiver,
 	evaluationFault,
+	designatedOracleIdOverride,
 ) => {
 	// Probe sealing: once per run, never per trial, since qualification reads
 	// the probe and the contract's operation inventory alone. `probeQualified`
@@ -391,7 +449,11 @@ export const score: ScoreStage<
 	const probeQualified = probeQualification.qualified
 
 	const signedProbe = signedProbeOf(probe)
-	const designatedOracleId = designatedOracleIdOf(probe, contract)
+	const designatedOracleId = resolveDesignatedOracleId(
+		probe,
+		contract,
+		designatedOracleIdOverride,
+	)
 	const probeSigned = !probe.expectedClean && probe.defectSignature !== null
 	const probeSeverity =
 		contract.behaviors.find((behavior) => behavior.id === probe.behaviorId)

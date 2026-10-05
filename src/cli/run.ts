@@ -9,6 +9,7 @@ import {
 	AggregationRefusal,
 	aggregateStrength,
 	compile,
+	DesignatedOracleRefusal,
 	type Diagnostic,
 	type DiagnosticSink,
 	type PreflightFromObservationsOptions,
@@ -161,6 +162,7 @@ const USAGE = `Usage:
                                   --corpus-digest <digest>
                                   [--isolation-manifest <path>] [--evaluator-configuration <path>]
                                   [--private-manifest <path>] [--corpus-root <dir>]
+                                  [--designated-oracle <O-id>]
                                   [--out <target>] [--strict]
   eval-quality aggregate-strength --evidence <path> [--evidence <path> ...] --floors <path>
                                   --policy <path> [--out <target>] [--strict]
@@ -202,6 +204,7 @@ const COMMAND_USAGE: Readonly<Record<Command, string>> = {
                                   --corpus-digest <digest>
                                   [--isolation-manifest <path>] [--evaluator-configuration <path>]
                                   [--private-manifest <path>] [--corpus-root <dir>]
+                                  [--designated-oracle <O-id>]
                                   [--out <target>] [--strict]
 
   --record <path>                   a sealed trial record to ingest; repeat for each trial
@@ -216,6 +219,10 @@ const COMMAND_USAGE: Readonly<Record<Command, string>> = {
   --corpus-root <dir>               the directory a private reference resolves under; required only
                                      when --private-manifest or a private-storage isolation-manifest
                                      reference is present
+  --designated-oracle <O-id>        the oracle this probe belongs to, for a behavior that lists several;
+                                     it must be listed by the probe's behavior and declared by the
+                                     contract, or the command exits 64; absent, a behavior listing
+                                     exactly one oracle designates it and any other count designates none
   --out <target>                    a .json file path, or a directory taking evidence-artifact.json
   --strict                          promote CONCERNS to exit 1`,
 	'aggregate-strength': `Usage:
@@ -437,6 +444,10 @@ async function runCommand(
 			environment.writeDiagnostic(renderError(error))
 			return { outcome: { kind: 'structural-failure' } }
 		}
+		if (error instanceof DesignatedOracleRefusal) {
+			environment.writeDiagnostic(renderUsage(error.message))
+			return { outcome: { kind: 'usage-error' } }
+		}
 		if (error instanceof RuntimeFault) {
 			environment.writeDiagnostic(renderError(error))
 			return { outcome: { kind: 'fault' } }
@@ -569,7 +580,7 @@ async function runScoreCommand(
 	application: ApplicationFacade,
 	target: string | null,
 ): Promise<RunResult> {
-	const { inputs, corpusDigest, corpusRoot } = invocation
+	const { inputs, corpusDigest, corpusRoot, designatedOracle } = invocation
 	const records = await Promise.all(
 		(inputs.record ?? []).map(
 			async (source) =>
@@ -637,6 +648,9 @@ async function runScoreCommand(
 		// The parser requires `--corpus-digest` on this command, so it is
 		// never null.
 		corpusDigest: corpusDigest ?? '',
+		...(designatedOracle === null
+			? {}
+			: { designatedOracleId: designatedOracle }),
 		port: corpusRoot === null ? undefined : environment.corpusPort(corpusRoot),
 		signal: environment.signal,
 	})

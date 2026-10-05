@@ -59,6 +59,9 @@ import {
 	scoreProbeFixture,
 	scoringPolicyFixtureForScore,
 	sealedRunRecordFixtureForScore,
+	twoOracleIsolationManifestFixtureForScore,
+	twoOracleScoreContractFixture,
+	twoOracleSealedRunRecordFixtureForScore,
 	unqualifiedProbeFixture,
 } from '../application/fixtures/score-fixtures.ts'
 import { repeatedIdentifierSharedOperation } from '../fixtures/duplicate-interface-identifier.ts'
@@ -1621,6 +1624,7 @@ describe('run: the score command (Story 8.4)', () => {
 			out: null,
 			runId: null,
 			corpusDigest: null,
+			designatedOracle: null,
 			corpusRoot: null,
 			strictInputs: true,
 			strict: false,
@@ -1630,5 +1634,129 @@ describe('run: the score command (Story 8.4)', () => {
 		expect(facade.seal).not.toHaveBeenCalled()
 		expect(facade.preflightFromObservations).not.toHaveBeenCalled()
 		expect(facade.runScore).not.toHaveBeenCalled()
+	})
+})
+
+describe('run: score --designated-oracle', () => {
+	/** A behavior listing two oracles, the record claiming the defect against O-002 alone. */
+	const twoOracleFiles = (): Record<string, string> =>
+		scoreFiles({
+			'record.json': JSON.stringify(twoOracleSealedRunRecordFixtureForScore),
+			'contract.json': JSON.stringify(twoOracleScoreContractFixture),
+			'isolation-manifest.json': JSON.stringify(
+				twoOracleIsolationManifestFixtureForScore,
+			),
+		})
+	const scoreWith = async (
+		extra: readonly string[],
+		files: Record<string, string> = twoOracleFiles(),
+	) => {
+		const environment = environmentOf(files, '', [], SCORE_CORPUS_FILES)
+		const facade = facadeOf()
+		const result = await invoke(
+			[...SCORE_ARGV, '--out', 'run-42', ...extra],
+			environment,
+			facade,
+		)
+		return { ...result, environment, facade }
+	}
+	const caughtOf = (environment: TestEnvironment): boolean | undefined => {
+		const body = environment.writes[0]?.body
+		if (body === undefined) return undefined
+		const artifact = JSON.parse(body) as {
+			reducedProbeOutcomes: { caught: boolean }[]
+		}
+		return artifact.reducedProbeOutcomes[0]?.caught
+	}
+
+	it('without the flag a two-oracle behavior designates none: the probe is not caught', async () => {
+		const { environment, exit } = await scoreWith([])
+		expect(exit).toBe(EXIT_OK)
+		expect(caughtOf(environment)).toBe(false)
+	})
+
+	it('with a listed oracle the probe is caught and the exit is the verdict exit', async () => {
+		const { environment, exit, outcome, facade } = await scoreWith([
+			'--designated-oracle',
+			'O-002',
+		])
+		expect(outcome).toMatchObject({ kind: 'verdict', verdict: 'PASS' })
+		expect(exit).toBe(EXIT_OK)
+		expect(caughtOf(environment)).toBe(true)
+		expect(facade.runScore.mock.calls[0]?.[0]).toMatchObject({
+			designatedOracleId: 'O-002',
+		})
+	})
+
+	it('without the flag runScore receives no designatedOracleId key', async () => {
+		const { facade } = await scoreWith([])
+		expect(facade.runScore.mock.calls[0]?.[0]).not.toHaveProperty(
+			'designatedOracleId',
+		)
+	})
+
+	it('the same inputs with the same flag write byte-identical artifacts', async () => {
+		const first = await scoreWith(['--designated-oracle=O-002'])
+		const second = await scoreWith(['--designated-oracle=O-002'])
+		expect(first.environment.writes[0]?.body).toBe(
+			second.environment.writes[0]?.body,
+		)
+	})
+
+	it('an oracle the behavior does not list is a usage error naming the flag, the oracle, the behavior and what it lists', async () => {
+		const { environment, exit, outcome } = await scoreWith([
+			'--designated-oracle',
+			'O-003',
+		])
+		expect(outcome).toEqual({ kind: 'usage-error' })
+		expect(exit).toBe(EXIT_USAGE)
+		expect(environment.diagnostics).toEqual([
+			"eval-quality: usage: --designated-oracle O-003 is not listed by the probe's behavior B-001, which lists O-001, O-002",
+		])
+		expect(environment.writes).toEqual([])
+		expect(environment.out).toEqual([])
+	})
+
+	it('a malformed oracle identifier is a usage error naming the flag, writing no artifact', async () => {
+		const { environment, exit } = await scoreWith([
+			'--designated-oracle',
+			'oracle-two',
+		])
+		expect(exit).toBe(EXIT_USAGE)
+		expect(environment.diagnostics[0]).toContain('--designated-oracle')
+		expect(environment.diagnostics[0]).toContain('"oracle-two"')
+		expect(environment.writes).toEqual([])
+	})
+
+	it('a repeated flag is a usage error naming the flag, calling no orchestration and writing no artifact', async () => {
+		const { environment, exit, facade } = await scoreWith([
+			'--designated-oracle',
+			'O-002',
+			'--designated-oracle',
+			'O-002',
+		])
+		expect(exit).toBe(EXIT_USAGE)
+		expect(environment.diagnostics).toEqual([
+			'eval-quality: usage: --designated-oracle given twice',
+		])
+		expect(facade.runScore).not.toHaveBeenCalled()
+		expect(environment.writes).toEqual([])
+	})
+
+	it('names an oracle the contract does not declare', async () => {
+		const undeclared = {
+			...twoOracleScoreContractFixture,
+			oracles: twoOracleScoreContractFixture.oracles.slice(0, 1),
+		}
+		const { environment, exit } = await scoreWith(
+			['--designated-oracle', 'O-002'],
+			{
+				...twoOracleFiles(),
+				'contract.json': JSON.stringify(undeclared),
+			},
+		)
+		expect(exit).toBe(EXIT_USAGE)
+		expect(environment.diagnostics[0]).toContain('declares no oracle O-002')
+		expect(environment.writes).toEqual([])
 	})
 })

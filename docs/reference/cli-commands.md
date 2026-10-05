@@ -75,6 +75,7 @@ Usage:
                                   --corpus-digest <digest>
                                   [--isolation-manifest <path>] [--evaluator-configuration <path>]
                                   [--private-manifest <path>] [--corpus-root <dir>]
+                                  [--designated-oracle <O-id>]
                                   [--out <target>] [--strict]
 
   --record <path>                   a sealed trial record to ingest; repeat for each trial
@@ -89,11 +90,23 @@ Usage:
   --corpus-root <dir>               the directory a private reference resolves under; required only
                                      when --private-manifest or a private-storage isolation-manifest
                                      reference is present
+  --designated-oracle <O-id>        the oracle this probe belongs to, for a behavior that lists several;
+                                     it must be listed by the probe's behavior and declared by the
+                                     contract, or the command exits 64; absent, a behavior listing
+                                     exactly one oracle designates it and any other count designates none
   --out <target>                    a .json file path, or a directory taking evidence-artifact.json
   --strict                          promote CONCERNS to exit 1
 ```
 
 At least one `--record` is required, along with `--contract`, `--probe`, `--preflight-verdict`, `--policy`, and `--corpus-digest`. Repeat `--record` once per trial. Every record carries its own `trialIndex`; scoring orders the set by that field, requires distinct indices, and requires agreement on `contractDigest`, `evaluatorConfigurationDigest`, `mode`, `evaluatorRecommendation`, and `runId`. `--corpus-root` is optional at the argument-parsing level; it becomes required, with a usage error naming it, the moment a private reference actually needs a byte resolved through it.
+
+`--designated-oracle` pairs the probe with one oracle for the witness match and the trial vote.
+Without it, a probe is paired with the oracle its behavior lists only when the behavior lists exactly one, so a behavior with a development oracle and a held-out oracle designates neither and its probes score `caught: false`.
+With it, the named oracle replaces that pairing.
+The flag is accepted only when the probe's behavior lists the oracle and the contract declares it; otherwise the command exits `64`, naming the flag, the oracle, the behavior and the oracles the behavior lists, before any scoring starts and with no artifact written.
+A value that is not an oracle identifier (`O-` followed by at least three digits) and a flag given twice exit `64` too.
+Naming the one oracle a single-oracle behavior lists gives the same artifact as omitting the flag.
+The designation leaves no field of its own in the artifact: the vote it selects is in `reducedProbeOutcomes[].trialVotes`, and every oracle's own state stays in `outcomes`.
 
 On the Invalid rung the command exits `3` and writes no artifact: no legal `EvidenceArtifact` carries a null verdict.
 The reasons that rung would have recorded in `verdictBasis` go to stderr instead, one `eval-quality: invalid: <reason>` line per reason in the Invalid basis, so an exit `3` always names its cause.

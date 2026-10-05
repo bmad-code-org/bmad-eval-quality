@@ -10,6 +10,18 @@ body.
 
 ## [Unreleased]
 
+### Added
+
+- **`eval-quality score --designated-oracle <O-id>` names the oracle a probe belongs to.**
+  The flag is also the `designatedOracleId` option of `runScore` and an optional trailing parameter of the core `score` stage.
+  The named oracle takes the place of the pairing derived from the probe's behavior, so it receives the probe's witness match and its state is the trial vote.
+  The oracle must be listed by the probe's behavior and declared by the contract.
+  Otherwise the command exits `64`, naming the flag, the oracle, the behavior and the oracles the behavior lists, before any scoring starts and with no artifact written.
+  A value that is not an oracle identifier and a flag given twice exit `64` too.
+  Omitting the flag keeps today's rule byte for byte: a behavior that lists exactly one oracle designates it and any other count designates none.
+  A caller that knows which oracle belongs to a probe, such as a run that holds a development oracle and a held-out oracle on one behavior, otherwise scored every probe of that behavior `caught: false`.
+  The evidence artifact gains no field and keeps its schema version; the vote the designation selects is already in `reducedProbeOutcomes[].trialVotes`.
+
 ## [7.1.0] - 2026-10-04
 
 ### Changed

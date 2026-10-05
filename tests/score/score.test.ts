@@ -15,9 +15,11 @@ import type { PreflightVerdict } from '../../src/core/schemas/preflight-verdict.
 import type { Probe } from '../../src/core/schemas/probe.ts'
 import type { ScoringPolicy } from '../../src/core/schemas/scoring-policy.ts'
 import type { Observation } from '../../src/core/schemas/sealed-run-record.ts'
-import { score } from '../../src/core/score/score.ts'
+import { checkDesignatedOracle, score } from '../../src/core/score/score.ts'
 import {
 	canary,
+	defectFinding,
+	defectFired,
 	digestOf,
 	notesInterface,
 	observation,
@@ -812,6 +814,207 @@ describe('score: regressions and documented fallbacks beyond the frozen I/O Matr
 		// Neither finding's own severity (`critical`/`material`) is used;
 		// `B-001`'s declared severity (`low`, baseContract's own value) is.
 		expect(outcome?.severity).toBe('low')
+	})
+})
+
+// A behavior listing a development and a held-out oracle: the shape AD-40's
+// derived pairing leaves with no designated oracle, and the one a caller that
+// knows which oracle owns the probe names with `designatedOracleId`.
+describe('score: a caller-named designated oracle', () => {
+	const firstOracle = baseContract.oracles[0]
+	if (firstOracle === undefined) throw new Error('baseContract has no oracle')
+	const twoOracleContract: EvalContract = {
+		...baseContract,
+		behaviors: baseContract.behaviors.map((behavior) => ({
+			...behavior,
+			oracles: ['O-001', 'O-002'],
+		})),
+		oracles: [firstOracle, { ...firstOracle, id: 'O-002' }],
+	}
+	const dispositionsOf = (
+		oracleIds: readonly string[],
+	): ValidatedObservations['dispositions'] =>
+		oracleIds.map((oracleId) => ({
+			oracleId,
+			disposition: 'held' as const,
+			observationIds: ['obs-2'],
+			note: null,
+		}))
+	/** The seeded defect fires and one finding claims it against O-002 alone: the witness matches, and O-002 also catches through its own citation. */
+	const claimedTrial = cleanTrialFor(twoOracleContract, {
+		observations: [defectFired],
+		findings: [{ ...defectFinding(['obs-2']), oracleId: 'O-002' }],
+		dispositions: dispositionsOf(['O-001', 'O-002']),
+	})
+	/** The seeded defect fires and nothing claims it: the witness is `manifested-unclaimed`, which resolves `missed` for whichever oracle holds it. */
+	const unclaimedTrial = cleanTrialFor(twoOracleContract, {
+		observations: [defectFired],
+		dispositions: dispositionsOf(['O-001', 'O-002']),
+	})
+	const caughtOf = (result: ReturnType<typeof scoreOf>): boolean | undefined =>
+		result.reducedProbeOutcomes[0]?.caught
+	const stateOf = (result: ReturnType<typeof scoreOf>, oracleId: string) =>
+		result.outcomes.find((outcome) => outcome.oracleId === oracleId)?.state
+	const withDesignation = (
+		contract: EvalContract,
+		trials: readonly ValidatedObservations[],
+		designatedOracleId: string | undefined,
+	) =>
+		score(
+			contract,
+			trials,
+			qualifiedProbe,
+			passingPreflight,
+			policy,
+			'none',
+			false,
+			designatedOracleId,
+		)
+
+	it('with no designation a two-oracle behavior scores no designated oracle, so the probe is not caught', () => {
+		const result = scoreOf(twoOracleContract, [claimedTrial])
+		expect(caughtOf(result)).toBe(false)
+		expect(result.reducedProbeOutcomes[0]?.trialVotes).toEqual([
+			{ trialIndex: 1, state: 'confirmed' },
+		])
+	})
+
+	it('designating the oracle that owns the probe makes the probe caught', () => {
+		const result = withDesignation(twoOracleContract, [claimedTrial], 'O-002')
+		expect(caughtOf(result)).toBe(true)
+		expect(result.reducedProbeOutcomes[0]?.trialVotes).toEqual([
+			{ trialIndex: 1, state: 'caught' },
+		])
+	})
+
+	it('the vote follows the designated oracle: each designation selects the state of that oracle', () => {
+		const first = withDesignation(twoOracleContract, [unclaimedTrial], 'O-001')
+		expect(stateOf(first, 'O-001')).toBe('missed')
+		expect(stateOf(first, 'O-002')).toBe('confirmed')
+		expect(first.reducedProbeOutcomes[0]?.trialVotes).toEqual([
+			{ trialIndex: 1, state: 'missed' },
+		])
+		const second = withDesignation(twoOracleContract, [unclaimedTrial], 'O-002')
+		expect(stateOf(second, 'O-001')).toBe('confirmed')
+		expect(stateOf(second, 'O-002')).toBe('missed')
+		expect(second.reducedProbeOutcomes[0]?.trialVotes).toEqual([
+			{ trialIndex: 1, state: 'missed' },
+		])
+		// Today's rule: the witness reaches no oracle, so the unclaimed defect
+		// reads as the first oracle's `confirmed`.
+		const omitted = scoreOf(twoOracleContract, [unclaimedTrial])
+		expect(omitted.reducedProbeOutcomes[0]?.trialVotes).toEqual([
+			{ trialIndex: 1, state: 'confirmed' },
+		])
+	})
+
+	it('the witness match belongs to the designated oracle alone', () => {
+		const designatingFirst = withDesignation(
+			twoOracleContract,
+			[claimedTrial],
+			'O-001',
+		)
+		// O-001 holds the witness and catches although no finding cites it.
+		expect(stateOf(designatingFirst, 'O-001')).toBe('caught')
+		expect(caughtOf(designatingFirst)).toBe(true)
+		const omitted = scoreOf(twoOracleContract, [claimedTrial])
+		expect(stateOf(omitted, 'O-001')).toBe('confirmed')
+	})
+
+	it('designating the one oracle a behavior lists changes nothing', () => {
+		const single = cleanTrialFor(baseContract, {
+			observations: [defectFired],
+			dispositions: dispositionsOf(['O-001']),
+		})
+		for (const trials of [[cleanTrial()], [single]]) {
+			expect(withDesignation(baseContract, trials, 'O-001')).toStrictEqual(
+				withDesignation(baseContract, trials, undefined),
+			)
+		}
+	})
+
+	it('the same inputs with the same designation score byte-identically', () => {
+		const run = () =>
+			JSON.stringify(
+				withDesignation(twoOracleContract, [claimedTrial], 'O-002'),
+			)
+		expect(run()).toBe(run())
+	})
+
+	describe('checkDesignatedOracle', () => {
+		it('accepts an oracle the behavior lists and the contract declares', () => {
+			expect(
+				checkDesignatedOracle(twoOracleContract, qualifiedProbe, 'O-002'),
+			).toBeNull()
+		})
+
+		it('refuses an oracle the behavior does not list, naming the flag, the oracle, the behavior and what it lists', () => {
+			const foreign: EvalContract = {
+				...twoOracleContract,
+				oracles: [
+					...twoOracleContract.oracles,
+					{ ...firstOracle, id: 'O-003' },
+				],
+			}
+			const refusal = checkDesignatedOracle(foreign, qualifiedProbe, 'O-003')
+			expect(refusal).toContain('--designated-oracle')
+			expect(refusal).toContain('O-003')
+			expect(refusal).toContain('B-001')
+			expect(refusal).toContain('O-001, O-002')
+		})
+
+		it('refuses an oracle the contract does not declare, naming the flag, the oracle and the behavior', () => {
+			const undeclared: EvalContract = {
+				...twoOracleContract,
+				oracles: [firstOracle],
+			}
+			const refusal = checkDesignatedOracle(undeclared, qualifiedProbe, 'O-002')
+			expect(refusal).toContain('--designated-oracle')
+			expect(refusal).toContain('O-002')
+			expect(refusal).toContain('B-001')
+			expect(refusal).toContain('declares no oracle O-002')
+		})
+
+		it('refuses a malformed identifier, naming the flag and the value', () => {
+			for (const malformed of ['o-001', 'O-1', 'O-0001x', '']) {
+				const refusal = checkDesignatedOracle(
+					twoOracleContract,
+					qualifiedProbe,
+					malformed,
+				)
+				expect(refusal).toContain('--designated-oracle')
+				expect(refusal).toContain(JSON.stringify(malformed))
+			}
+		})
+
+		it('refuses when the probe names a behavior the contract does not declare', () => {
+			const refusal = checkDesignatedOracle(
+				twoOracleContract,
+				{ ...qualifiedProbe, behaviorId: 'B-404' },
+				'O-001',
+			)
+			expect(refusal).toContain('--designated-oracle')
+			expect(refusal).toContain('B-404')
+		})
+
+		it('reads a behavior that lists no oracle as listing none', () => {
+			const none: EvalContract = {
+				...twoOracleContract,
+				behaviors: twoOracleContract.behaviors.map((behavior) => ({
+					...behavior,
+					oracles: [],
+				})),
+			}
+			expect(checkDesignatedOracle(none, qualifiedProbe, 'O-001')).toContain(
+				'lists no oracle',
+			)
+		})
+	})
+
+	it('the stage never designates an oracle the check refuses: a bypassing caller gets a TypeError naming the flag', () => {
+		expect(() =>
+			withDesignation(twoOracleContract, [claimedTrial], 'O-003'),
+		).toThrow(/--designated-oracle O-003/)
 	})
 })
 

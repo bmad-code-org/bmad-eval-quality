@@ -127,6 +127,6 @@ export type {
 } from './preflight.ts'
 export { preflightFromObservations, runPreflight } from './preflight.ts'
 export type { RunScoreOptions, RunScoreResult } from './score.ts'
-export { runScore } from './score.ts'
+export { DesignatedOracleRefusal, runScore } from './score.ts'
 export { seal } from './seal.ts'
 export { serializeArtifact } from './serialize.ts'

@@ -52,7 +52,7 @@ import {
 } from '../core/schemas/sealed-run-record.ts'
 import type { LadderResolution } from '../core/score/ladder.ts'
 import type { QualificationResult } from '../core/score/qualification.ts'
-import { score } from '../core/score/score.ts'
+import { checkDesignatedOracle, score } from '../core/score/score.ts'
 import { type CorpusPort, corpusResolveParsers } from '../ports/corpus-port.ts'
 import {
 	checkArtifactVersion,
@@ -83,12 +83,33 @@ export type RunScoreOptions = {
 	 */
 	readonly corpusDigest: string
 	/**
+	 * The oracle the probe belongs to, for a caller that knows it. Absent, the
+	 * probe's behavior designates its oracle only when it lists exactly one.
+	 * Present, it must be listed by the probe's behavior and declared by the
+	 * contract, or `runScore` throws `DesignatedOracleRefusal` before any
+	 * score work. It enters neither the scoring version nor the attested
+	 * inputs: the vote it selects is retained in `trialVotes`.
+	 */
+	readonly designatedOracleId?: string
+	/**
 	 * Absent when neither `privateManifest` nor a private-storage
 	 * `record.isolationManifestArtifact` needs resolving: `score` then
 	 * resolves no private reference.
 	 */
 	readonly port?: CorpusPort
 	readonly signal: AbortSignal
+}
+
+/**
+ * A `designatedOracleId` the probe's behavior or the contract does not
+ * support. A caller-input refusal: the CLI maps it to its usage exit, and no
+ * score work or artifact follows it.
+ */
+export class DesignatedOracleRefusal extends Error {
+	constructor(message: string) {
+		super(message)
+		this.name = 'DesignatedOracleRefusal'
+	}
 }
 
 export type RunScoreResult = {
@@ -364,7 +385,12 @@ export async function runScore(
 	const policy = parsePolicy(options.policy)
 	const privateManifest = parsePrivateManifest(options.privateManifest)
 	const corpusDigest = parseCorpusDigest(options.corpusDigest)
-	const { port, signal } = options
+	const { designatedOracleId, port, signal } = options
+
+	if (designatedOracleId !== undefined) {
+		const refusal = checkDesignatedOracle(contract, probe, designatedOracleId)
+		if (refusal !== null) throw new DesignatedOracleRefusal(refusal)
+	}
 
 	if (privateManifest !== null) {
 		await checkPrivateManifestEntries(privateManifest, port, signal)
@@ -395,6 +421,7 @@ export async function runScore(
 		// identical gap.
 		'none',
 		false,
+		designatedOracleId,
 	)
 
 	if (scored.ladder.verdict === null) {
