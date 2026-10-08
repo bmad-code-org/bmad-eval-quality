@@ -350,6 +350,28 @@ describe('checkWitnessLegality: the channel, the relation, and the fixture reset
 		expect(failure.message).toContain('declares volatile')
 	})
 
+	// A volatile pointer longer than the relation's pointer removes something
+	// below it, never the parent the relation reads.
+	it('39b. leaves a relation pointer at the parent of a wildcard volatile pointer alone', () => {
+		expect(() =>
+			compile(
+				mutated((contract) => {
+					contract.permittedInterfaces[0].operations[0].volatilePointers = [
+						'/id/*',
+					]
+					createWitness(contract).relation = {
+						op: 'deep-equality',
+						operands: [
+							{ pointer: legPointer('create-witness-a', '/id') },
+							{ pointer: legPointer('create-witness-b', '/id') },
+						],
+					}
+				}),
+				{ strict: true },
+			),
+		).not.toThrow()
+	})
+
 	it('40a. accepts a wildcard in volatilePointers and refuses it in every other descriptor-relative position', () => {
 		expect(() =>
 			mutated((contract) => {

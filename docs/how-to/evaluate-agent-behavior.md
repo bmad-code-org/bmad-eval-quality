@@ -526,7 +526,7 @@ The relation is declared, because inequality on its own decides nothing: two dis
 A path segment of exactly `*` in a volatile pointer matches every element of an array and every key of an object at that position, so `"/findings/*/title"` projects the title out of each finding however many the run returns.
 A pointer that reaches nothing prunes nothing.
 The wildcard has no escape: a key literally named `*` is matched like any other key, so no pointer can prune that key alone.
-Every other pointer position refuses a `*` segment when the contract is parsed, so a pointer written with one cannot be mistaken for a wildcard where none exists, and a key that only contains `*`, such as `a*`, stays a plain key everywhere.
+Every other pointer position refuses a `*` segment when the contract is parsed, so a pointer written with one cannot be mistaken for a wildcard where none exists, and a key that contains `*` among other characters, such as `a*`, stays a plain key everywhere.
 The consequence is that no pointer outside `volatilePointers` can address a key named exactly `*`: a contract may still declare one, but no oracle can read it, so a rule that needs that key addressed reports a coverage gap.
 
 ## The two artifacts behind the seeded defect

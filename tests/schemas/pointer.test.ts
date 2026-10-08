@@ -203,11 +203,15 @@ describe('the wildcard segment', () => {
 		'/interactions/x/call-inputs/body/*',
 		'/interactions/x/artifact/report/*',
 	])('InteractionPointer refuses %s', (pointer) => {
-		expect(InteractionPointer.safeParse(pointer).success).toBe(false)
+		const parsed = InteractionPointer.safeParse(pointer)
+		expect(parsed.success).toBe(false)
+		expect(JSON.stringify(parsed.error?.issues)).toContain('volatilePointers')
 	})
 
 	it.each(['@/*', '@/a/*/b'])('BoundElementPointer refuses %s', (pointer) => {
-		expect(BoundElementPointer.safeParse(pointer).success).toBe(false)
+		const parsed = BoundElementPointer.safeParse(pointer)
+		expect(parsed.success).toBe(false)
+		expect(JSON.stringify(parsed.error?.issues)).toContain('volatilePointers')
 	})
 
 	// Only a segment of exactly "*" is the wildcard; a key that merely holds one
