@@ -379,18 +379,18 @@ export function checkExpressionVolatility(
 		if (target.channel !== channel) return
 		if (target.artifactId !== null && target.artifactId !== describedArtifact)
 			return
-		const pruned = volatileTails.find((tokens) =>
+		const prunedAt = volatileTails.findIndex((tokens) =>
 			tokens.every(
 				(token, index) =>
 					target.tail[index] !== undefined &&
 					(token === VOLATILE_WILDCARD || target.tail[index] === token),
 			),
 		)
-		if (pruned === undefined) return
+		if (prunedAt === -1) return
 		throw new StructuralFailure(
 			'unreachable-check-evidence',
 			`${artifactPath}${site.path}`,
-			`"${site.pointer}" addresses "${`/${pruned.join('/')}`}", which operation "${operation.operationId}" declares volatile, so the projection the relation reads has already removed it`,
+			`"${site.pointer}" addresses "${operation.volatilePointers[prunedAt]}", which operation "${operation.operationId}" declares volatile, so the projection the relation reads has already removed it`,
 		)
 	})
 }
@@ -683,18 +683,18 @@ export function checkStateResetPointers(contract: EvalContract): void {
 			pointers.forEach((pointer, position) => {
 				const path = `EvalContract.permittedInterfaces[logicalId=${iface.logicalId}].operations[operationId=${operation.operationId}].stateResetPointers[${position}]`
 				const tail = decodeTail(pointer)
-				const pruned = volatileTails.find((tokens) =>
+				const prunedAt = volatileTails.findIndex((tokens) =>
 					tokens.every(
 						(token, index) =>
 							tail[index] !== undefined &&
 							(token === VOLATILE_WILDCARD || tail[index] === token),
 					),
 				)
-				if (pruned !== undefined) {
+				if (prunedAt !== -1) {
 					throw new StructuralFailure(
 						'unreachable-check-evidence',
 						path,
-						`"${pointer}" lies under "${`/${pruned.join('/')}`}", which operation "${operation.operationId}" declares volatile, so the projection the state-reset check reads has already removed it and the pointer compares nothing`,
+						`"${pointer}" lies under "${operation.volatilePointers[prunedAt]}", which operation "${operation.operationId}" declares volatile, so the projection the state-reset check reads has already removed it and the pointer compares nothing`,
 					)
 				}
 				const result = descendThroughDescriptor(

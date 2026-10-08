@@ -52,6 +52,14 @@ describe('stateResetPointers at compile', () => {
 		expect(failure.message).toContain('declares volatile')
 	})
 
+	it('names the volatile pointer as written, including the empty one', () => {
+		const failure = failureOf((operation) => {
+			operation.volatilePointers = ['']
+			operation.stateResetPointers = [`/${keyOf(operation)}`]
+		})
+		expect(failure.message).toMatch(/lies under "", which/)
+	})
+
 	it('reads a wildcard volatile pointer as covering what lies under it', () => {
 		const failure = failureOf((operation) => {
 			const key = keyOf(operation)
