@@ -167,6 +167,23 @@ describe('parseEvidenceTarget', () => {
 		expect(() => parseEvidenceTarget(pointer)).toThrow(TypeError)
 	})
 
+	it('agrees with InteractionPointer.safeParse on the wildcard segment: both refuse it, and both accept a key that only contains one', () => {
+		for (const pointer of [
+			'/interactions/poll/response-body/*',
+			'/interactions/poll/response-body/items/*/id',
+		]) {
+			expect(InteractionPointer.safeParse(pointer).success).toBe(false)
+			expect(() => parseEvidenceTarget(pointer)).toThrow(TypeError)
+		}
+		for (const pointer of [
+			'/interactions/poll/response-body/a*',
+			'/interactions/poll/response-body/**',
+		]) {
+			expect(InteractionPointer.safeParse(pointer).success).toBe(true)
+			expect(() => parseEvidenceTarget(pointer)).not.toThrow()
+		}
+	})
+
 	it('agrees with InteractionPointer.safeParse on acceptance for a well-formed tail-bearing pointer: both accept it', () => {
 		const pointer = '/interactions/poll/response-body/state'
 		expect(InteractionPointer.safeParse(pointer).success).toBe(true)

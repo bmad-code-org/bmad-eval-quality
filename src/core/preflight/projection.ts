@@ -9,7 +9,10 @@ import {
 	descriptorChannelOf,
 } from '../declared-inputs.ts'
 import type { AnyOperation } from '../schemas/interface.ts'
-import { DESCRIPTOR_POINTER_PATTERN } from '../schemas/pointer.ts'
+import {
+	VOLATILE_POINTER_PATTERN,
+	VOLATILE_WILDCARD,
+} from '../schemas/pointer.ts'
 import type {
 	CommandProbeObservation,
 	ProbeObservation,
@@ -22,7 +25,7 @@ export const PREFLIGHT_ARTIFACT_PATH = 'PreflightVerdict'
 
 /**
  * The closed projection, and nothing outside it. Response headers are outside
- * because `volatilePointers` is a `DescriptorPointer` and the response
+ * because `volatilePointers` is a `VolatilePointer` and the response
  * descriptor is body-scoped, so no declaration can mark a header volatile, and
  * unprunable headers would fail the repeated-read immutability branch on any
  * fixture that echoes a request identifier back in one.
@@ -61,34 +64,59 @@ const isJsonObject = (
 
 const ARRAY_INDEX = /^(?:0|[1-9][0-9]*)$/
 
-/** Deletes one already-decoded pointer from a cloned body value, in place. */
-function deleteAt(root: JsonValue, tokens: readonly string[]): void {
-	let parent: JsonValue = root
-	for (const token of tokens.slice(0, -1)) {
-		if (Array.isArray(parent)) {
-			if (!ARRAY_INDEX.test(token)) return
-			const next = parent[Number(token)]
-			if (next === undefined) return
-			parent = next
-			continue
-		}
-		if (!isJsonObject(parent) || !Object.hasOwn(parent, token)) return
-		parent = parent[token] as JsonValue
+/**
+ * Deletes one already-decoded pointer from a cloned body value, in place. A
+ * `*` token fans out over every element of an array and every key of an
+ * object at its position; a pointer that resolves to nothing is a no-op.
+ */
+function deleteAt(node: JsonValue, tokens: readonly string[]): void {
+	const [token, ...rest] = tokens
+	if (token === undefined) return
+	if (rest.length === 0) {
+		deleteLeaf(node, token)
+		return
 	}
-	const last = tokens.at(-1)
-	if (last === undefined) return
+	if (token === VOLATILE_WILDCARD) {
+		if (Array.isArray(node)) {
+			for (const child of node) deleteAt(child, rest)
+		} else if (isJsonObject(node)) {
+			for (const key of Object.keys(node))
+				deleteAt(node[key] as JsonValue, rest)
+		}
+		return
+	}
+	if (Array.isArray(node)) {
+		if (!ARRAY_INDEX.test(token)) return
+		const next = node[Number(token)]
+		if (next !== undefined) deleteAt(next, rest)
+		return
+	}
+	if (!isJsonObject(node) || !Object.hasOwn(node, token)) return
+	deleteAt(node[token] as JsonValue, rest)
+}
+
+/** The last step of `deleteAt`: removes the element, key or (for the wildcard) every one. */
+function deleteLeaf(parent: JsonValue, token: string): void {
 	if (Array.isArray(parent)) {
-		if (!ARRAY_INDEX.test(last)) return
-		const index = Number(last)
+		if (token === VOLATILE_WILDCARD) {
+			parent.length = 0
+			return
+		}
+		if (!ARRAY_INDEX.test(token)) return
+		const index = Number(token)
 		if (index >= parent.length) return
 		parent.splice(index, 1)
 		return
 	}
 	if (!isJsonObject(parent)) return
+	if (token === VOLATILE_WILDCARD) {
+		for (const key of Object.keys(parent)) delete parent[key]
+		return
+	}
 	// A pointer that resolves to nothing is a no-op: a volatile field the fixture
 	// did not return this time is exactly what the declaration exists for.
-	if (!Object.hasOwn(parent, last)) return
-	delete parent[last]
+	if (!Object.hasOwn(parent, token)) return
+	delete parent[token]
 }
 
 /**
@@ -102,9 +130,9 @@ export function pruneVolatile(
 	artifactPath: string,
 ): ProbeObservedBody {
 	for (const pointer of volatilePointers) {
-		if (DESCRIPTOR_POINTER_PATTERN.test(pointer)) continue
+		if (VOLATILE_POINTER_PATTERN.test(pointer)) continue
 		throw new TypeError(
-			`${artifactPath}: "${pointer}" is not a descriptor-relative pointer`,
+			`${artifactPath}: "${pointer}" is not a volatile pointer`,
 		)
 	}
 	if (body.kind !== 'json' || volatilePointers.length === 0) return body

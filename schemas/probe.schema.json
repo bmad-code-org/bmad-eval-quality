@@ -2115,12 +2115,12 @@
               "anyOf": [
                 {
                   "type": "string",
-                  "pattern": "^\\/interactions\\/[a-z0-9]+(?:-[a-z0-9]+)*\\/(?:(?:response-body|response-headers|stdout|stderr)(?:\\/(?:[^/~]|~[01])*)*|(?:response-status|exit-code)|call-inputs\\/(?:path|query|header|body|argument|option|environment|stdin|arguments)(?:\\/(?:[^/~]|~[01])*)*|artifact\\/[a-z0-9]+(?:-[a-z0-9]+)*(?:\\/(?:[^/~]|~[01])*)*)$",
+                  "pattern": "^\\/interactions\\/[a-z0-9]+(?:-[a-z0-9]+)*\\/(?:(?:response-body|response-headers|stdout|stderr)(?:\\/(?!\\*(?:\\/|$))(?:[^/~]|~[01])*)*|(?:response-status|exit-code)|call-inputs\\/(?:path|query|header|body|argument|option|environment|stdin|arguments)(?:\\/(?!\\*(?:\\/|$))(?:[^/~]|~[01])*)*|artifact\\/[a-z0-9]+(?:-[a-z0-9]+)*(?:\\/(?!\\*(?:\\/|$))(?:[^/~]|~[01])*)*)$",
                   "description": "AD-26 interaction-rooted pointer: \"/interactions/{stepId}/\" followed by one channel of the closed vocabulary. `call-inputs` takes one input channel as its next segment, one of the four transport channels, one of the four command channels, or the `arguments` channel a tool call accepts; `artifact` takes the identifier of a file the operation declares it writes; `response-status` and `exit-code` take no tail. Syntax only: whether the step exists and whether the evidence is reachable are compile-time checks, not schema checks."
                 },
                 {
                   "type": "string",
-                  "pattern": "^@(?:\\/(?:[^/~]|~[01])*)+$",
+                  "pattern": "^@(?:\\/(?!\\*(?:\\/|$))(?:[^/~]|~[01])*)+$",
                   "description": "AD-26 bound-element pointer: \"@/\" plus an RFC 6901 tail, addressing the element a quantifier binds. Bare \"@/\" addresses the element itself. That it appears only inside a quantifier is a compile-time check, not a schema check."
                 }
               ]

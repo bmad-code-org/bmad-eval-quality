@@ -14,6 +14,7 @@ import {
 	TAIL_BEARING_CHANNELS,
 	TRANSPORT_CHANNELS,
 	TransportChannel,
+	VolatilePointer,
 } from '../../src/core/schemas/pointer.ts'
 
 describe('spelling 1 — interaction-rooted', () => {
@@ -180,4 +181,51 @@ describe('the channel vocabularies, exported once and derived by name', () => {
 			...TRANSPORT_CHANNELS,
 		])
 	})
+})
+
+describe('the wildcard segment', () => {
+	const wildcards = ['/findings/*/title', '/*', '/a/*', '/a/*/b/*']
+
+	it.each(wildcards)('VolatilePointer accepts %s', (pointer) => {
+		expect(VolatilePointer.safeParse(pointer).success).toBe(true)
+	})
+
+	it.each(wildcards)('DescriptorPointer refuses %s', (pointer) => {
+		const parsed = DescriptorPointer.safeParse(pointer)
+		expect(parsed.success).toBe(false)
+		expect(JSON.stringify(parsed.error?.issues)).toContain('volatilePointers')
+	})
+
+	it.each([
+		'/interactions/x/response-body/findings/*/title',
+		'/interactions/x/response-body/*',
+		'/interactions/x/stdout/*',
+		'/interactions/x/call-inputs/body/*',
+		'/interactions/x/artifact/report/*',
+	])('InteractionPointer refuses %s', (pointer) => {
+		const parsed = InteractionPointer.safeParse(pointer)
+		expect(parsed.success).toBe(false)
+		expect(JSON.stringify(parsed.error?.issues)).toContain('volatilePointers')
+	})
+
+	it.each(['@/*', '@/a/*/b'])('BoundElementPointer refuses %s', (pointer) => {
+		const parsed = BoundElementPointer.safeParse(pointer)
+		expect(parsed.success).toBe(false)
+		expect(JSON.stringify(parsed.error?.issues)).toContain('volatilePointers')
+	})
+
+	// Only a segment of exactly "*" is the wildcard; a key that merely holds one
+	// is a plain key everywhere.
+	it.each(['/a*', '/*a', '/**', '/a/b*c', '/~0*'])(
+		'every spelling still accepts the plain key in %s',
+		(pointer) => {
+			expect(VolatilePointer.safeParse(pointer).success).toBe(true)
+			expect(DescriptorPointer.safeParse(pointer).success).toBe(true)
+			expect(BoundElementPointer.safeParse(`@${pointer}`).success).toBe(true)
+			expect(
+				InteractionPointer.safeParse(`/interactions/x/response-body${pointer}`)
+					.success,
+			).toBe(true)
+		},
+	)
 })

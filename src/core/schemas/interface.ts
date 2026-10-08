@@ -1,6 +1,6 @@
 /** permitted interfaces and the per-operation declaration inventory. */
 import { z } from 'zod'
-import { DescriptorPointer } from './pointer.ts'
+import { DescriptorPointer, VolatilePointer } from './pointer.ts'
 import {
 	Identifier,
 	KeyedShapeDescriptor,
@@ -130,7 +130,7 @@ export const Operation = z
 			),
 		requestShape: RequestShape,
 		responseDescriptor: ResponseDescriptor,
-		volatilePointers: z.array(DescriptorPointer),
+		volatilePointers: z.array(VolatilePointer),
 		sensitivityWitness: SensitivityWitness.nullable().describe(
 			'AD-10, mandatory per declared operation rather than per interface. `null` is legal only for an operation declaring no keys in any request channel; AD-10 exempts that operation and requires the exemption to be recorded, which pre-flight does as an `exempt` check. An input-bearing operation declaring `null` fails a strict compilation under `undeclared-mandatory-input`, alongside the other declaration-completeness check that code already gates.',
 		),
@@ -244,7 +244,7 @@ export const CommandOperation = z.strictObject({
 		),
 	descriptorChannel: CommandDescriptorChannel,
 	responseDescriptor: ResponseDescriptor,
-	volatilePointers: z.array(DescriptorPointer),
+	volatilePointers: z.array(VolatilePointer),
 	sensitivityWitness: SensitivityWitness.nullable().describe(
 		"AD-10, mandatory per declared operation rather than per interface, on the api operation's own terms. `null` is legal only for an operation declaring no keys in any request channel, which for a command means no argument, no option, no environment variable, and no standard input. An input-bearing operation declaring `null` fails a strict compilation under `undeclared-mandatory-input`.",
 	),
@@ -312,7 +312,7 @@ export const McpOperation = z.strictObject({
 	requestShape: McpRequestShape,
 	descriptorChannel: McpDescriptorChannel,
 	responseDescriptor: ResponseDescriptor,
-	volatilePointers: z.array(DescriptorPointer),
+	volatilePointers: z.array(VolatilePointer),
 	sensitivityWitness: SensitivityWitness.nullable().describe(
 		"AD-10, mandatory per declared operation rather than per interface, on the api operation's own terms. `null` is legal only for an operation declaring no keys in its arguments channel. An input-bearing operation declaring `null` fails a strict compilation under `undeclared-mandatory-input`.",
 	),

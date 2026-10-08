@@ -28,7 +28,9 @@ import { IDENTIFIER_CHARSET_SOURCE } from '../schemas/primitives.ts'
 // own TOKEN/TAIL fragments private. IDENTIFIER_CHARSET_SOURCE and the channel
 // partition below are project vocabulary, so those are imported rather than
 // respelled.
-const TOKEN_SOURCE = '(?:[^/~]|~[01])*'
+// A token of exactly `*` is the volatile-pointer wildcard and is refused here, as
+// `pointer.ts` refuses it.
+const TOKEN_SOURCE = '(?!\\*(?:/|$))(?:[^/~]|~[01])*'
 const TAIL_SOURCE = `(?:/${TOKEN_SOURCE})*`
 
 const alternation = (members: readonly string[]): string => members.join('|')

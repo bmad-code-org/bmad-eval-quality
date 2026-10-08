@@ -22,6 +22,7 @@ import type { Expression, Operand } from '../schemas/expression.ts'
 import type { AnyOperation, ResponseDescriptor } from '../schemas/interface.ts'
 import { operationsOf } from '../schemas/interface.ts'
 import type { EvidenceChannelName } from '../schemas/pointer.ts'
+import { VOLATILE_WILDCARD } from '../schemas/pointer.ts'
 import { JsonTypeName } from '../schemas/primitives.ts'
 import {
 	anyOperationOf,
@@ -379,7 +380,11 @@ export function checkExpressionVolatility(
 		if (target.artifactId !== null && target.artifactId !== describedArtifact)
 			return
 		const pruned = volatileTails.find((tokens) =>
-			tokens.every((token, index) => target.tail[index] === token),
+			tokens.every(
+				(token, index) =>
+					target.tail[index] !== undefined &&
+					(token === VOLATILE_WILDCARD || target.tail[index] === token),
+			),
 		)
 		if (pruned === undefined) return
 		throw new StructuralFailure(

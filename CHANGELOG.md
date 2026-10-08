@@ -10,6 +10,22 @@ body.
 
 ## [Unreleased]
 
+### Added
+
+- **A path segment of exactly `*` in `volatilePointers` matches every element of an array and every key of an object at that position.**
+  `"/findings/*/title"` projects the title out of every finding, however many the run returns; a wildcard as the last segment empties the array or object it ends at, and a pointer that reaches nothing prunes nothing.
+  A volatile pointer written with `*` before this change compiled and pruned nothing, because the segment was read as a literal key.
+  The `compile` check that refuses a relation pointer addressing a field the operation declares volatile reads the wildcard as matching any token at its position.
+  A key literally named `*` has no escape: the wildcard matches it like any other key.
+  The published eval-contract schema describes the wildcard on the `volatilePointers` items.
+
+### Changed
+
+- **BREAKING for an artifact that wrote a `*` path segment outside `volatilePointers`.**
+  `DescriptorPointer`, `InteractionPointer` and `BoundElementPointer` refuse a segment of exactly `*`. A nominated success indicator, a channel-role key or a collection location that wrote one now fails with `schema-parse-failure` and a message naming `volatilePointers`. The same refusal applies to every interaction-rooted or bound-element pointer: oracle and relation operands, quantifier collections and predicates, containment targets, plan `captured` pointers and rubric criterion `evidence`, so the published eval-contract, probe and rubric schemas tighten. Inside an expression operand the parse failure reports the union's generic `Invalid input` for the pointer.
+  Such a pointer addressed a key literally named `*`, which a response is unlikely to carry; a segment that contains `*` among other characters, such as `a*`, is unchanged.
+  A contract may still declare a key named exactly `*`, but no pointer outside `volatilePointers` can address it, so a coverage rule that needs it reads as a gap.
+
 ## [7.2.0] - 2026-10-05
 
 ### Added
