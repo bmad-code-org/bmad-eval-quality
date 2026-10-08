@@ -131,6 +131,12 @@ export const Operation = z
 		requestShape: RequestShape,
 		responseDescriptor: ResponseDescriptor,
 		volatilePointers: z.array(VolatilePointer),
+		stateResetPointers: z
+			.array(DescriptorPointer)
+			.optional()
+			.describe(
+				"AD-10: the response pointers that describe the fixture's state, for the state-reset differential alone. When present, that check compares the transport status, the exit code, the tool error flag and the value at each listed pointer (after `volatilePointers` have pruned the body), so a response that varies elsewhere, such as the text a live model wrote, cannot fail it. A pointer that resolves to nothing compares as absent on both sides. A body that does not arrive as json is compared whole. When absent, the whole projection is compared. The sensitivity and manifestation witnesses never read it. The wildcard `*` is refused.",
+			),
 		sensitivityWitness: SensitivityWitness.nullable().describe(
 			'AD-10, mandatory per declared operation rather than per interface. `null` is legal only for an operation declaring no keys in any request channel; AD-10 exempts that operation and requires the exemption to be recorded, which pre-flight does as an `exempt` check. An input-bearing operation declaring `null` fails a strict compilation under `undeclared-mandatory-input`, alongside the other declaration-completeness check that code already gates.',
 		),
@@ -245,6 +251,12 @@ export const CommandOperation = z.strictObject({
 	descriptorChannel: CommandDescriptorChannel,
 	responseDescriptor: ResponseDescriptor,
 	volatilePointers: z.array(VolatilePointer),
+	stateResetPointers: z
+		.array(DescriptorPointer)
+		.optional()
+		.describe(
+			"AD-10: the response pointers that describe the fixture's state, for the state-reset differential alone. When present, that check compares the transport status, the exit code, the tool error flag and the value at each listed pointer (after `volatilePointers` have pruned the body), so a response that varies elsewhere, such as the text a live model wrote, cannot fail it. A pointer that resolves to nothing compares as absent on both sides. A body that does not arrive as json is compared whole. When absent, the whole projection is compared. The sensitivity and manifestation witnesses never read it. The wildcard `*` is refused.",
+		),
 	sensitivityWitness: SensitivityWitness.nullable().describe(
 		"AD-10, mandatory per declared operation rather than per interface, on the api operation's own terms. `null` is legal only for an operation declaring no keys in any request channel, which for a command means no argument, no option, no environment variable, and no standard input. An input-bearing operation declaring `null` fails a strict compilation under `undeclared-mandatory-input`.",
 	),
@@ -313,6 +325,12 @@ export const McpOperation = z.strictObject({
 	descriptorChannel: McpDescriptorChannel,
 	responseDescriptor: ResponseDescriptor,
 	volatilePointers: z.array(VolatilePointer),
+	stateResetPointers: z
+		.array(DescriptorPointer)
+		.optional()
+		.describe(
+			"AD-10: the response pointers that describe the fixture's state, for the state-reset differential alone. When present, that check compares the transport status, the exit code, the tool error flag and the value at each listed pointer (after `volatilePointers` have pruned the body), so a response that varies elsewhere, such as the text a live model wrote, cannot fail it. A pointer that resolves to nothing compares as absent on both sides. A body that does not arrive as json is compared whole. When absent, the whole projection is compared. The sensitivity and manifestation witnesses never read it. The wildcard `*` is refused.",
+		),
 	sensitivityWitness: SensitivityWitness.nullable().describe(
 		"AD-10, mandatory per declared operation rather than per interface, on the api operation's own terms. `null` is legal only for an operation declaring no keys in its arguments channel. An input-bearing operation declaring `null` fails a strict compilation under `undeclared-mandatory-input`.",
 	),

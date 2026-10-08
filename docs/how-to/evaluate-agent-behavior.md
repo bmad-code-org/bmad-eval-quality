@@ -529,6 +529,14 @@ The wildcard has no escape: a key literally named `*` is matched like any other 
 Every other pointer position refuses a `*` segment when the contract is parsed, so a pointer written with one cannot be mistaken for a wildcard where none exists, and a key that contains `*` among other characters, such as `a*`, stays a plain key everywhere.
 The consequence is that no pointer outside `volatilePointers` can address a key named exactly `*`: a contract may still declare one, but no oracle can read it, so a rule that needs that key addressed reports a coverage gap.
 
+`stateResetPointers` is an optional list of descriptor-relative pointers on an operation, read by the pre-flight state-reset check alone.
+That check observes the operation before and after the control legs and fails when the two reads differ.
+Without the field it compares the whole projection, which suits a deterministic fixture and fails a target that answers with text a live model wrote.
+With it, the check compares the status, the exit code, the tool error flag and the value at each listed pointer after `volatilePointers` have pruned the body, so `"stateResetPointers": ["/id", "/value"]` holds the fixture's state to those two fields while the findings vary.
+An empty list compares the status, exit code and tool error flag alone.
+A pointer that reaches nothing reads as absent, so absence on one side only is a difference, and a body that does not arrive as json is compared whole.
+The wildcard is refused here, and the sensitivity and manifestation witnesses never read the list.
+
 ## The two artifacts behind the seeded defect
 
 A probe carries the defect, and each defect carries a **manifestation witness**: which operation to run, with what inputs, and the relation that is true exactly when the seeded fault has fired.

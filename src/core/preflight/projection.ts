@@ -181,6 +181,58 @@ export function projectObservation(
 	}
 }
 
+/** The value at an already-decoded pointer, or `undefined` when the document holds nothing there. */
+function valueAt(
+	root: JsonValue,
+	tokens: readonly string[],
+): { readonly found: JsonValue } | undefined {
+	let node: JsonValue = root
+	for (const token of tokens) {
+		if (Array.isArray(node)) {
+			if (!ARRAY_INDEX.test(token)) return undefined
+			const next: JsonValue | undefined = node[Number(token)]
+			if (next === undefined) return undefined
+			node = next
+			continue
+		}
+		if (!isJsonObject(node) || !Object.hasOwn(node, token)) return undefined
+		node = node[token] as JsonValue
+	}
+	return { found: node }
+}
+
+/**
+ * What the state-reset differential compares for one leg, without the leg id.
+ * An operation that declares no `stateResetPointers` contributes its whole
+ * projection, as it always did. One that declares them contributes what says
+ * the call went through (status, exit code, tool error flag) and the value at
+ * each listed pointer of the pruned body, so the rest of a response that varies
+ * run to run, such as the text a live model wrote, cannot fail the check. A
+ * body that does not arrive as json has no pointers to read and is compared
+ * whole, so a declaration never hides a change it cannot see.
+ */
+export function stateResetProjection(
+	projected: ProjectedObservation,
+	operation: AnyOperation,
+): unknown {
+	const { legId: _legId, ...state } = projected
+	const pointers = operation.stateResetPointers
+	if (pointers === undefined || state.body.kind !== 'json') return state
+	const { value } = state.body
+	return {
+		...state,
+		body: {
+			kind: 'json',
+			selected: pointers.map((pointer) => {
+				const at = valueAt(value, decodeTail(pointer))
+				return at === undefined
+					? { pointer, found: false }
+					: { pointer, found: true, value: at.found }
+			}),
+		},
+	}
+}
+
 /** The observed value of whichever channel this operation's descriptor describes. */
 function describedChannelOf(
 	observation: CommandProbeObservation,

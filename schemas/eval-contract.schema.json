@@ -729,6 +729,15 @@
                         "description": "A descriptor-relative RFC 6901 pointer in which a path segment of exactly \"*\" matches every element of an array and every key of an object at that position, so \"/findings/*/title\" prunes the title of every finding. A key literally named \"*\" has no escape: the wildcard matches it like any other key. The wildcard is spelled nowhere else; every other pointer refuses it. A pointer that resolves to nothing prunes nothing."
                       }
                     },
+                    "stateResetPointers": {
+                      "description": "AD-10: the response pointers that describe the fixture's state, for the state-reset differential alone. When present, that check compares the transport status, the exit code, the tool error flag and the value at each listed pointer (after `volatilePointers` have pruned the body), so a response that varies elsewhere, such as the text a live model wrote, cannot fail it. A pointer that resolves to nothing compares as absent on both sides. A body that does not arrive as json is compared whole. When absent, the whole projection is compared. The sensitivity and manifestation witnesses never read it. The wildcard `*` is refused.",
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "pattern": "^(?:\\/(?!\\*(?:\\/|$))(?:[^/~]|~[01])*)*$",
+                        "description": "A plain RFC 6901 pointer into one operation's response descriptor. It resolves through the operation an interaction step names, never through the interaction root. A request or response shape's descriptor keys are plain key names rather than pointers, so this spelling does not apply there. The empty string is admitted and carries RFC 6901's own meaning, the whole document: as a nominated success indicator it says success is visible in the response taken as a whole rather than at any one key, and as a channel-role key it assigns a role to the whole body."
+                      }
+                    },
                     "sensitivityWitness": {
                       "anyOf": [
                         {
@@ -1454,6 +1463,15 @@
                         "type": "string",
                         "pattern": "^(?:\\/(?:[^/~]|~[01])*)*$",
                         "description": "A descriptor-relative RFC 6901 pointer in which a path segment of exactly \"*\" matches every element of an array and every key of an object at that position, so \"/findings/*/title\" prunes the title of every finding. A key literally named \"*\" has no escape: the wildcard matches it like any other key. The wildcard is spelled nowhere else; every other pointer refuses it. A pointer that resolves to nothing prunes nothing."
+                      }
+                    },
+                    "stateResetPointers": {
+                      "description": "AD-10: the response pointers that describe the fixture's state, for the state-reset differential alone. When present, that check compares the transport status, the exit code, the tool error flag and the value at each listed pointer (after `volatilePointers` have pruned the body), so a response that varies elsewhere, such as the text a live model wrote, cannot fail it. A pointer that resolves to nothing compares as absent on both sides. A body that does not arrive as json is compared whole. When absent, the whole projection is compared. The sensitivity and manifestation witnesses never read it. The wildcard `*` is refused.",
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "pattern": "^(?:\\/(?!\\*(?:\\/|$))(?:[^/~]|~[01])*)*$",
+                        "description": "A plain RFC 6901 pointer into one operation's response descriptor. It resolves through the operation an interaction step names, never through the interaction root. A request or response shape's descriptor keys are plain key names rather than pointers, so this spelling does not apply there. The empty string is admitted and carries RFC 6901's own meaning, the whole document: as a nominated success indicator it says success is visible in the response taken as a whole rather than at any one key, and as a channel-role key it assigns a role to the whole body."
                       }
                     },
                     "sensitivityWitness": {
@@ -3486,6 +3504,15 @@
             "type": "string",
             "pattern": "^(?:\\/(?:[^/~]|~[01])*)*$",
             "description": "A descriptor-relative RFC 6901 pointer in which a path segment of exactly \"*\" matches every element of an array and every key of an object at that position, so \"/findings/*/title\" prunes the title of every finding. A key literally named \"*\" has no escape: the wildcard matches it like any other key. The wildcard is spelled nowhere else; every other pointer refuses it. A pointer that resolves to nothing prunes nothing."
+          }
+        },
+        "stateResetPointers": {
+          "description": "AD-10: the response pointers that describe the fixture's state, for the state-reset differential alone. When present, that check compares the transport status, the exit code, the tool error flag and the value at each listed pointer (after `volatilePointers` have pruned the body), so a response that varies elsewhere, such as the text a live model wrote, cannot fail it. A pointer that resolves to nothing compares as absent on both sides. A body that does not arrive as json is compared whole. When absent, the whole projection is compared. The sensitivity and manifestation witnesses never read it. The wildcard `*` is refused.",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^(?:\\/(?!\\*(?:\\/|$))(?:[^/~]|~[01])*)*$",
+            "description": "A plain RFC 6901 pointer into one operation's response descriptor. It resolves through the operation an interaction step names, never through the interaction root. A request or response shape's descriptor keys are plain key names rather than pointers, so this spelling does not apply there. The empty string is admitted and carries RFC 6901's own meaning, the whole document: as a nominated success indicator it says success is visible in the response taken as a whole rather than at any one key, and as a channel-role key it assigns a role to the whole body."
           }
         },
         "sensitivityWitness": {

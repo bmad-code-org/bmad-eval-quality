@@ -49,7 +49,7 @@ Core questions include:
 * Can the effect of a write be independently verified?
 * Do multiple related tool calls preserve the intended relationship?
 
-`PermittedInterface` declares four interface kinds and one of them is `mcp` (`src/core/schemas/interface.ts:365`), and `compile` accepts it.
+`PermittedInterface` declares four interface kinds and one of them is `mcp` (`src/core/schemas/interface.ts:383`), and `compile` accepts it.
 Everything from [What an `mcp` operation declares](#what-an-mcp-operation-declares) down addresses this question.
 
 This repository ships an adapter that runs a tool call.
@@ -324,7 +324,7 @@ That is the shape [How It Works](/explanation/behavioral-evaluation-contracts/) 
 A fourth question sits underneath all three.
 The evaluation should establish that changing meaningful tool arguments changes relevant behavior.
 A tool that appears to work while ignoring its arguments fails evaluation.
-`sensitivityWitness` is mandatory per operation that declares any input (`interface.ts:316`), and it is what establishes that the tool reads its arguments at all.
+`sensitivityWitness` is mandatory per operation that declares any input (`interface.ts:334`), and it is what establishes that the tool reads its arguments at all.
 Two calls differing in one argument, and the relation their responses have to satisfy.
 Without it a check over the tool passes while the tool ignores everything you send.
 
@@ -340,7 +340,7 @@ The fourth question is unchanged by the split: `sensitivityWitness` is kind-neut
 
 ## What an `mcp` operation declares
 
-`PermittedInterface` is a union discriminated on `kind` (`interface.ts:365`), and its `mcp` branch carries `McpOperation` (`interface.ts:304`).
+`PermittedInterface` is a union discriminated on `kind` (`interface.ts:383`), and its `mcp` branch carries `McpOperation` (`interface.ts:316`).
 So an `mcp` interface has three fields, `logicalId`, `kind`, and `operations`, and each operation is one tool call.
 
 An `McpOperation` declares eight fields.
@@ -352,7 +352,7 @@ Its charset is letters, digits, underscore, and hyphen (`primitives.ts:28`), whi
 
 `requestShape` has one channel, `arguments`, keyed by the argument names the server publishes for that tool.
 
-`descriptorChannel` is a union tagged on `kind` with one member, `{ "kind": "structured-result" }` (`interface.ts:283`).
+`descriptorChannel` is a union tagged on `kind` with one member, `{ "kind": "structured-result" }` (`interface.ts:296`).
 That declaration is where the kind's first version draws its boundary: the response descriptor describes a tool's structured result, and a tool that returns only prose sits outside it.
 [CLI reference](/reference/cli-commands/#ports-and-adapters) documents the interface kinds and shipped adapters.
 
