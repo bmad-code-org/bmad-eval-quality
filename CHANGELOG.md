@@ -24,6 +24,7 @@ body.
 - **BREAKING for a contract that wrote a `*` path segment outside `volatilePointers`.**
   `DescriptorPointer`, `InteractionPointer` and `BoundElementPointer` refuse a segment of exactly `*`, so a nominated success indicator, a channel-role key, a collection location, an oracle or relation pointer or a bound-element pointer that wrote one now fails with `schema-parse-failure` naming `volatilePointers`.
   Such a pointer addressed a key literally named `*`, which a response is unlikely to carry; a segment that only contains `*`, such as `a*`, is unchanged.
+  A contract may still declare a key named exactly `*`, but no pointer outside `volatilePointers` can address it, so a coverage rule that needs it reads as a gap.
 
 ## [7.2.0] - 2026-10-05
 

@@ -25,7 +25,7 @@ export const PREFLIGHT_ARTIFACT_PATH = 'PreflightVerdict'
 
 /**
  * The closed projection, and nothing outside it. Response headers are outside
- * because `volatilePointers` is a `DescriptorPointer` and the response
+ * because `volatilePointers` is a `VolatilePointer` and the response
  * descriptor is body-scoped, so no declaration can mark a header volatile, and
  * unprunable headers would fail the repeated-read immutability branch on any
  * fixture that echoes a request identifier back in one.

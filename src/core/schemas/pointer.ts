@@ -235,8 +235,7 @@ export const BoundElementPointer = z
 
 /**
  * Spelling 3, descriptor-relative. Consumers: a nominated success indicator,
- * every channel-role key, a collection location's pointer, and volatile
- * pointers. Gate C authoring point 7 fixed this spelling's scope and never gave
+ * every channel-role key and a collection location's pointer. Gate C authoring point 7 fixed this spelling's scope and never gave
  * it a syntax; this is the syntax.
  */
 export const DescriptorPointer = z
