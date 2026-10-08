@@ -10,6 +10,21 @@ body.
 
 ## [Unreleased]
 
+### Added
+
+- **A path segment of exactly `*` in `volatilePointers` matches every element of an array and every key of an object at that position.**
+  `"/findings/*/title"` projects the title out of every finding, however many the run returns; a wildcard as the last segment empties the array or object it ends at, and a pointer that reaches nothing prunes nothing.
+  A volatile pointer written with `*` before this change compiled and pruned nothing, because the segment was read as a literal key.
+  The `compile` check that refuses a relation pointer addressing a field the operation declares volatile reads the wildcard as matching any token at its position.
+  A key literally named `*` has no escape: the wildcard matches it like any other key.
+  The new `VolatilePointer` spelling is exported from the published eval-contract schema; `volatilePointers` items use it.
+
+### Changed
+
+- **BREAKING for a contract that wrote a `*` path segment outside `volatilePointers`.**
+  `DescriptorPointer`, `InteractionPointer` and `BoundElementPointer` refuse a segment of exactly `*`, so a nominated success indicator, a channel-role key, a collection location, an oracle or relation pointer or a bound-element pointer that wrote one now fails with `schema-parse-failure` naming `volatilePointers`.
+  Such a pointer addressed a key literally named `*`, which a response is unlikely to carry; a segment that only contains `*`, such as `a*`, is unchanged.
+
 ## [7.2.0] - 2026-10-05
 
 ### Added

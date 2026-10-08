@@ -325,6 +325,21 @@ describe('checkWitnessLegality: the channel, the relation, and the fixture reset
 		expect(failure.message).toContain('declares volatile')
 	})
 
+	it('39a. reads a wildcard segment of a volatile pointer as matching any relation pointer token at its position', () => {
+		const failure = failureOf((contract) => {
+			contract.permittedInterfaces[0].operations[0].volatilePointers = ['/*']
+			createWitness(contract).relation = {
+				op: 'deep-equality',
+				operands: [
+					{ pointer: legPointer('create-witness-a', '/id') },
+					{ pointer: legPointer('create-witness-b', '/id') },
+				],
+			}
+		})
+		expect(failure.code).toBe('unreachable-check-evidence')
+		expect(failure.message).toContain('declares volatile')
+	})
+
 	// RFC 6901's empty pointer is the whole document, which is how
 	// `pruneVolatile` reads it, so the described channel carries nothing.
 	it('40. fires unreachable-check-evidence for the empty volatile pointer over any relation pointer', () => {
@@ -333,6 +348,28 @@ describe('checkWitnessLegality: the channel, the relation, and the fixture reset
 		})
 		expect(failure.code).toBe('unreachable-check-evidence')
 		expect(failure.message).toContain('declares volatile')
+	})
+
+	it('40a. accepts a wildcard in volatilePointers and refuses it in every other descriptor-relative position', () => {
+		expect(() =>
+			mutated((contract) => {
+				contract.permittedInterfaces[0].operations[0].volatilePointers = [
+					'/items/*/id',
+				]
+			}),
+		).not.toThrow()
+		expect(() =>
+			mutated((contract) => {
+				contract.permittedInterfaces[0].operations[0].responseDescriptor.successIndicator =
+					'/items/*'
+			}),
+		).toThrow(/volatilePointers/)
+		expect(() =>
+			mutated((contract) => {
+				contract.permittedInterfaces[0].operations[0].responseDescriptor.channelRoles =
+					{ '/items/*': 'content' }
+			}),
+		).toThrow(/volatilePointers/)
 	})
 
 	// The volatile declaration is about the projection a witness relation reads.

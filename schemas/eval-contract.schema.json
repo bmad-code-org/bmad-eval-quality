@@ -161,7 +161,7 @@
                     "type": "array",
                     "items": {
                       "type": "string",
-                      "pattern": "^\\/interactions\\/[a-z0-9]+(?:-[a-z0-9]+)*\\/(?:(?:response-body|response-headers|stdout|stderr)(?:\\/(?:[^/~]|~[01])*)*|(?:response-status|exit-code)|call-inputs\\/(?:path|query|header|body|argument|option|environment|stdin|arguments)(?:\\/(?:[^/~]|~[01])*)*|artifact\\/[a-z0-9]+(?:-[a-z0-9]+)*(?:\\/(?:[^/~]|~[01])*)*)$",
+                      "pattern": "^\\/interactions\\/[a-z0-9]+(?:-[a-z0-9]+)*\\/(?:(?:response-body|response-headers|stdout|stderr)(?:\\/(?!\\*(?:\\/|$))(?:[^/~]|~[01])*)*|(?:response-status|exit-code)|call-inputs\\/(?:path|query|header|body|argument|option|environment|stdin|arguments)(?:\\/(?!\\*(?:\\/|$))(?:[^/~]|~[01])*)*|artifact\\/[a-z0-9]+(?:-[a-z0-9]+)*(?:\\/(?!\\*(?:\\/|$))(?:[^/~]|~[01])*)*)$",
                       "description": "AD-26 interaction-rooted pointer: \"/interactions/{stepId}/\" followed by one channel of the closed vocabulary. `call-inputs` takes one input channel as its next segment, one of the four transport channels, one of the four command channels, or the `arguments` channel a tool call accepts; `artifact` takes the identifier of a file the operation declares it writes; `response-status` and `exit-code` take no tail. Syntax only: whether the step exists and whether the evidence is reachable are compile-time checks, not schema checks."
                     },
                     "description": "Interaction-rooted pointers only. AD-3 computes containment after quantifier substitution, so a target is always fully rooted and the bound-element spelling never appears here."
@@ -575,7 +575,7 @@
                           "anyOf": [
                             {
                               "type": "string",
-                              "pattern": "^(?:\\/(?:[^/~]|~[01])*)*$",
+                              "pattern": "^(?:\\/(?!\\*(?:\\/|$))(?:[^/~]|~[01])*)*$",
                               "description": "A plain RFC 6901 pointer into one operation's response descriptor. It resolves through the operation an interaction step names, never through the interaction root. A request or response shape's descriptor keys are plain key names rather than pointers, so this spelling does not apply there. The empty string is admitted and carries RFC 6901's own meaning, the whole document: as a nominated success indicator it says success is visible in the response taken as a whole rather than at any one key, and as a channel-role key it assigns a role to the whole body."
                             },
                             {
@@ -590,7 +590,7 @@
                               "type": "object",
                               "propertyNames": {
                                 "type": "string",
-                                "pattern": "^(?:\\/(?:[^/~]|~[01])*)*$",
+                                "pattern": "^(?:\\/(?!\\*(?:\\/|$))(?:[^/~]|~[01])*)*$",
                                 "description": "A plain RFC 6901 pointer into one operation's response descriptor. It resolves through the operation an interaction step names, never through the interaction root. A request or response shape's descriptor keys are plain key names rather than pointers, so this spelling does not apply there. The empty string is admitted and carries RFC 6901's own meaning, the whole document: as a nominated success indicator it says success is visible in the response taken as a whole rather than at any one key, and as a channel-role key it assigns a role to the whole body."
                               },
                               "additionalProperties": {
@@ -618,7 +618,7 @@
                                 "properties": {
                                   "pointer": {
                                     "type": "string",
-                                    "pattern": "^(?:\\/(?:[^/~]|~[01])*)*$",
+                                    "pattern": "^(?:\\/(?!\\*(?:\\/|$))(?:[^/~]|~[01])*)*$",
                                     "description": "A plain RFC 6901 pointer into one operation's response descriptor. It resolves through the operation an interaction step names, never through the interaction root. A request or response shape's descriptor keys are plain key names rather than pointers, so this spelling does not apply there. The empty string is admitted and carries RFC 6901's own meaning, the whole document: as a nominated success indicator it says success is visible in the response taken as a whole rather than at any one key, and as a channel-role key it assigns a role to the whole body."
                                   },
                                   "expectedCardinality": {
@@ -726,7 +726,7 @@
                       "items": {
                         "type": "string",
                         "pattern": "^(?:\\/(?:[^/~]|~[01])*)*$",
-                        "description": "A plain RFC 6901 pointer into one operation's response descriptor. It resolves through the operation an interaction step names, never through the interaction root. A request or response shape's descriptor keys are plain key names rather than pointers, so this spelling does not apply there. The empty string is admitted and carries RFC 6901's own meaning, the whole document: as a nominated success indicator it says success is visible in the response taken as a whole rather than at any one key, and as a channel-role key it assigns a role to the whole body."
+                        "description": "A descriptor-relative RFC 6901 pointer in which a path segment of exactly \"*\" matches every element of an array and every key of an object at that position, so \"/findings/*/title\" prunes the title of every finding. A key literally named \"*\" has no escape: the wildcard matches it like any other key. The wildcard is spelled nowhere else; every other pointer refuses it. A pointer that resolves to nothing prunes nothing."
                       }
                     },
                     "sensitivityWitness": {
@@ -1302,7 +1302,7 @@
                           "anyOf": [
                             {
                               "type": "string",
-                              "pattern": "^(?:\\/(?:[^/~]|~[01])*)*$",
+                              "pattern": "^(?:\\/(?!\\*(?:\\/|$))(?:[^/~]|~[01])*)*$",
                               "description": "A plain RFC 6901 pointer into one operation's response descriptor. It resolves through the operation an interaction step names, never through the interaction root. A request or response shape's descriptor keys are plain key names rather than pointers, so this spelling does not apply there. The empty string is admitted and carries RFC 6901's own meaning, the whole document: as a nominated success indicator it says success is visible in the response taken as a whole rather than at any one key, and as a channel-role key it assigns a role to the whole body."
                             },
                             {
@@ -1317,7 +1317,7 @@
                               "type": "object",
                               "propertyNames": {
                                 "type": "string",
-                                "pattern": "^(?:\\/(?:[^/~]|~[01])*)*$",
+                                "pattern": "^(?:\\/(?!\\*(?:\\/|$))(?:[^/~]|~[01])*)*$",
                                 "description": "A plain RFC 6901 pointer into one operation's response descriptor. It resolves through the operation an interaction step names, never through the interaction root. A request or response shape's descriptor keys are plain key names rather than pointers, so this spelling does not apply there. The empty string is admitted and carries RFC 6901's own meaning, the whole document: as a nominated success indicator it says success is visible in the response taken as a whole rather than at any one key, and as a channel-role key it assigns a role to the whole body."
                               },
                               "additionalProperties": {
@@ -1345,7 +1345,7 @@
                                 "properties": {
                                   "pointer": {
                                     "type": "string",
-                                    "pattern": "^(?:\\/(?:[^/~]|~[01])*)*$",
+                                    "pattern": "^(?:\\/(?!\\*(?:\\/|$))(?:[^/~]|~[01])*)*$",
                                     "description": "A plain RFC 6901 pointer into one operation's response descriptor. It resolves through the operation an interaction step names, never through the interaction root. A request or response shape's descriptor keys are plain key names rather than pointers, so this spelling does not apply there. The empty string is admitted and carries RFC 6901's own meaning, the whole document: as a nominated success indicator it says success is visible in the response taken as a whole rather than at any one key, and as a channel-role key it assigns a role to the whole body."
                                   },
                                   "expectedCardinality": {
@@ -1453,7 +1453,7 @@
                       "items": {
                         "type": "string",
                         "pattern": "^(?:\\/(?:[^/~]|~[01])*)*$",
-                        "description": "A plain RFC 6901 pointer into one operation's response descriptor. It resolves through the operation an interaction step names, never through the interaction root. A request or response shape's descriptor keys are plain key names rather than pointers, so this spelling does not apply there. The empty string is admitted and carries RFC 6901's own meaning, the whole document: as a nominated success indicator it says success is visible in the response taken as a whole rather than at any one key, and as a channel-role key it assigns a role to the whole body."
+                        "description": "A descriptor-relative RFC 6901 pointer in which a path segment of exactly \"*\" matches every element of an array and every key of an object at that position, so \"/findings/*/title\" prunes the title of every finding. A key literally named \"*\" has no escape: the wildcard matches it like any other key. The wildcard is spelled nowhere else; every other pointer refuses it. A pointer that resolves to nothing prunes nothing."
                       }
                     },
                     "sensitivityWitness": {
@@ -2841,12 +2841,12 @@
               "anyOf": [
                 {
                   "type": "string",
-                  "pattern": "^\\/interactions\\/[a-z0-9]+(?:-[a-z0-9]+)*\\/(?:(?:response-body|response-headers|stdout|stderr)(?:\\/(?:[^/~]|~[01])*)*|(?:response-status|exit-code)|call-inputs\\/(?:path|query|header|body|argument|option|environment|stdin|arguments)(?:\\/(?:[^/~]|~[01])*)*|artifact\\/[a-z0-9]+(?:-[a-z0-9]+)*(?:\\/(?:[^/~]|~[01])*)*)$",
+                  "pattern": "^\\/interactions\\/[a-z0-9]+(?:-[a-z0-9]+)*\\/(?:(?:response-body|response-headers|stdout|stderr)(?:\\/(?!\\*(?:\\/|$))(?:[^/~]|~[01])*)*|(?:response-status|exit-code)|call-inputs\\/(?:path|query|header|body|argument|option|environment|stdin|arguments)(?:\\/(?!\\*(?:\\/|$))(?:[^/~]|~[01])*)*|artifact\\/[a-z0-9]+(?:-[a-z0-9]+)*(?:\\/(?!\\*(?:\\/|$))(?:[^/~]|~[01])*)*)$",
                   "description": "AD-26 interaction-rooted pointer: \"/interactions/{stepId}/\" followed by one channel of the closed vocabulary. `call-inputs` takes one input channel as its next segment, one of the four transport channels, one of the four command channels, or the `arguments` channel a tool call accepts; `artifact` takes the identifier of a file the operation declares it writes; `response-status` and `exit-code` take no tail. Syntax only: whether the step exists and whether the evidence is reachable are compile-time checks, not schema checks."
                 },
                 {
                   "type": "string",
-                  "pattern": "^@(?:\\/(?:[^/~]|~[01])*)+$",
+                  "pattern": "^@(?:\\/(?!\\*(?:\\/|$))(?:[^/~]|~[01])*)+$",
                   "description": "AD-26 bound-element pointer: \"@/\" plus an RFC 6901 tail, addressing the element a quantifier binds. Bare \"@/\" addresses the element itself. That it appears only inside a quantifier is a compile-time check, not a schema check."
                 }
               ]
@@ -3013,7 +3013,7 @@
               },
               "evidence": {
                 "type": "string",
-                "pattern": "^\\/interactions\\/[a-z0-9]+(?:-[a-z0-9]+)*\\/(?:(?:response-body|response-headers|stdout|stderr)(?:\\/(?:[^/~]|~[01])*)*|(?:response-status|exit-code)|call-inputs\\/(?:path|query|header|body|argument|option|environment|stdin|arguments)(?:\\/(?:[^/~]|~[01])*)*|artifact\\/[a-z0-9]+(?:-[a-z0-9]+)*(?:\\/(?:[^/~]|~[01])*)*)$",
+                "pattern": "^\\/interactions\\/[a-z0-9]+(?:-[a-z0-9]+)*\\/(?:(?:response-body|response-headers|stdout|stderr)(?:\\/(?!\\*(?:\\/|$))(?:[^/~]|~[01])*)*|(?:response-status|exit-code)|call-inputs\\/(?:path|query|header|body|argument|option|environment|stdin|arguments)(?:\\/(?!\\*(?:\\/|$))(?:[^/~]|~[01])*)*|artifact\\/[a-z0-9]+(?:-[a-z0-9]+)*(?:\\/(?!\\*(?:\\/|$))(?:[^/~]|~[01])*)*)$",
                 "description": "Where the criterion is answerable from. A pointer that resolves nowhere is `rubric-evidence-unreachable`, a compile-time code, and is deliberately not a schema rejection."
               }
             },
@@ -3334,7 +3334,7 @@
               "anyOf": [
                 {
                   "type": "string",
-                  "pattern": "^(?:\\/(?:[^/~]|~[01])*)*$",
+                  "pattern": "^(?:\\/(?!\\*(?:\\/|$))(?:[^/~]|~[01])*)*$",
                   "description": "A plain RFC 6901 pointer into one operation's response descriptor. It resolves through the operation an interaction step names, never through the interaction root. A request or response shape's descriptor keys are plain key names rather than pointers, so this spelling does not apply there. The empty string is admitted and carries RFC 6901's own meaning, the whole document: as a nominated success indicator it says success is visible in the response taken as a whole rather than at any one key, and as a channel-role key it assigns a role to the whole body."
                 },
                 {
@@ -3349,7 +3349,7 @@
                   "type": "object",
                   "propertyNames": {
                     "type": "string",
-                    "pattern": "^(?:\\/(?:[^/~]|~[01])*)*$",
+                    "pattern": "^(?:\\/(?!\\*(?:\\/|$))(?:[^/~]|~[01])*)*$",
                     "description": "A plain RFC 6901 pointer into one operation's response descriptor. It resolves through the operation an interaction step names, never through the interaction root. A request or response shape's descriptor keys are plain key names rather than pointers, so this spelling does not apply there. The empty string is admitted and carries RFC 6901's own meaning, the whole document: as a nominated success indicator it says success is visible in the response taken as a whole rather than at any one key, and as a channel-role key it assigns a role to the whole body."
                   },
                   "additionalProperties": {
@@ -3377,7 +3377,7 @@
                     "properties": {
                       "pointer": {
                         "type": "string",
-                        "pattern": "^(?:\\/(?:[^/~]|~[01])*)*$",
+                        "pattern": "^(?:\\/(?!\\*(?:\\/|$))(?:[^/~]|~[01])*)*$",
                         "description": "A plain RFC 6901 pointer into one operation's response descriptor. It resolves through the operation an interaction step names, never through the interaction root. A request or response shape's descriptor keys are plain key names rather than pointers, so this spelling does not apply there. The empty string is admitted and carries RFC 6901's own meaning, the whole document: as a nominated success indicator it says success is visible in the response taken as a whole rather than at any one key, and as a channel-role key it assigns a role to the whole body."
                       },
                       "expectedCardinality": {
@@ -3485,7 +3485,7 @@
           "items": {
             "type": "string",
             "pattern": "^(?:\\/(?:[^/~]|~[01])*)*$",
-            "description": "A plain RFC 6901 pointer into one operation's response descriptor. It resolves through the operation an interaction step names, never through the interaction root. A request or response shape's descriptor keys are plain key names rather than pointers, so this spelling does not apply there. The empty string is admitted and carries RFC 6901's own meaning, the whole document: as a nominated success indicator it says success is visible in the response taken as a whole rather than at any one key, and as a channel-role key it assigns a role to the whole body."
+            "description": "A descriptor-relative RFC 6901 pointer in which a path segment of exactly \"*\" matches every element of an array and every key of an object at that position, so \"/findings/*/title\" prunes the title of every finding. A key literally named \"*\" has no escape: the wildcard matches it like any other key. The wildcard is spelled nowhere else; every other pointer refuses it. A pointer that resolves to nothing prunes nothing."
           }
         },
         "sensitivityWitness": {
@@ -3822,7 +3822,7 @@
                 "properties": {
                   "captured": {
                     "type": "string",
-                    "pattern": "^\\/interactions\\/[a-z0-9]+(?:-[a-z0-9]+)*\\/(?:(?:response-body|response-headers|stdout|stderr)(?:\\/(?:[^/~]|~[01])*)*|(?:response-status|exit-code)|call-inputs\\/(?:path|query|header|body|argument|option|environment|stdin|arguments)(?:\\/(?:[^/~]|~[01])*)*|artifact\\/[a-z0-9]+(?:-[a-z0-9]+)*(?:\\/(?:[^/~]|~[01])*)*)$",
+                    "pattern": "^\\/interactions\\/[a-z0-9]+(?:-[a-z0-9]+)*\\/(?:(?:response-body|response-headers|stdout|stderr)(?:\\/(?!\\*(?:\\/|$))(?:[^/~]|~[01])*)*|(?:response-status|exit-code)|call-inputs\\/(?:path|query|header|body|argument|option|environment|stdin|arguments)(?:\\/(?!\\*(?:\\/|$))(?:[^/~]|~[01])*)*|artifact\\/[a-z0-9]+(?:-[a-z0-9]+)*(?:\\/(?!\\*(?:\\/|$))(?:[^/~]|~[01])*)*)$",
                     "description": "AD-26 interaction-rooted pointer: \"/interactions/{stepId}/\" followed by one channel of the closed vocabulary. `call-inputs` takes one input channel as its next segment, one of the four transport channels, one of the four command channels, or the `arguments` channel a tool call accepts; `artifact` takes the identifier of a file the operation declares it writes; `response-status` and `exit-code` take no tail. Syntax only: whether the step exists and whether the evidence is reachable are compile-time checks, not schema checks."
                   }
                 },

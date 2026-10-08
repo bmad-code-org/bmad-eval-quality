@@ -523,6 +523,11 @@ The relation is declared, because inequality on its own decides nothing: two dis
 
 `volatilePointers` names the fields that legitimately change between two runs, and the pre-flight comparisons project them out before comparing.
 
+A path segment of exactly `*` in a volatile pointer matches every element of an array and every key of an object at that position, so `"/findings/*/title"` projects the title out of each finding however many the run returns.
+A pointer that reaches nothing prunes nothing.
+The wildcard has no escape: a key literally named `*` is matched like any other key, so no pointer can prune that key alone.
+Every other pointer position refuses a `*` segment when the contract is parsed, since there it would read as a literal key and resolve to nothing; a key that only contains `*`, such as `a*`, stays a plain key everywhere.
+
 ## The two artifacts behind the seeded defect
 
 A probe carries the defect, and each defect carries a **manifestation witness**: which operation to run, with what inputs, and the relation that is true exactly when the seeded fault has fired.

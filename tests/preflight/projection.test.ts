@@ -82,6 +82,67 @@ describe('pruneVolatile', () => {
 	})
 })
 
+describe('pruneVolatile wildcard', () => {
+	it('prunes a field out of every element of an array', () => {
+		expect(
+			prune(
+				jsonBody({
+					findings: [
+						{ title: 'a', line: 3 },
+						{ title: 'b', line: 9 },
+						{ title: 'c', line: 1 },
+					],
+				}),
+				['/findings/*/title'],
+			),
+		).toEqual(jsonBody({ findings: [{ line: 3 }, { line: 9 }, { line: 1 }] }))
+	})
+
+	it('matches every key of an object at a middle position', () => {
+		expect(
+			prune(
+				jsonBody({
+					rows: { a: { id: 1, keep: 'x' }, b: { id: 2, keep: 'y' } },
+				}),
+				['/rows/*/id'],
+			),
+		).toEqual(jsonBody({ rows: { a: { keep: 'x' }, b: { keep: 'y' } } }))
+	})
+
+	it('empties an array when the wildcard is the last segment, whatever its length', () => {
+		expect(prune(jsonBody({ items: ['a', 'b', 'c'] }), ['/items/*'])).toEqual(
+			jsonBody({ items: [] }),
+		)
+		expect(prune(jsonBody({ items: [] }), ['/items/*'])).toEqual(
+			jsonBody({ items: [] }),
+		)
+	})
+
+	it('removes every key of an object when the wildcard is the last segment', () => {
+		expect(
+			prune(jsonBody({ meta: { a: 1, b: 2 }, id: 'x' }), ['/meta/*']),
+		).toEqual(jsonBody({ meta: {}, id: 'x' }))
+	})
+
+	it('treats a wildcard that reaches nothing as a no-op', () => {
+		const body = jsonBody({ value: 'v', items: 'text' })
+		expect(prune(body, ['/missing/*/id', '/items/*/id', '/value/*'])).toEqual(
+			body,
+		)
+	})
+
+	it('has no escape: a key literally named "*" is matched like any other key', () => {
+		expect(prune(jsonBody({ '*': 1, other: 2 }), ['/*'])).toEqual(jsonBody({}))
+	})
+
+	it('does not mutate its input', () => {
+		const body = jsonBody({ findings: [{ title: 'a' }] })
+		const before = JSON.stringify(body)
+		prune(body, ['/findings/*/title'])
+		expect(JSON.stringify(body)).toBe(before)
+	})
+})
+
 describe('the projection', () => {
 	it('74. carries exactly seven keys and no response headers', () => {
 		const projected = projectionOf('read-a', jsonBody({ value: 'v' }), {

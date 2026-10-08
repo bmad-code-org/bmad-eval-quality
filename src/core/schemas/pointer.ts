@@ -178,7 +178,21 @@ export const RESPONSE_SIDE_CHANNELS = [
 // escapes. A token may be empty, which is RFC 6901's spelling for a key that is
 // the empty string.
 const TOKEN = '(?:[^/~]|~[01])*'
-const TAIL = `(?:/${TOKEN})*`
+// `*` as a whole token is the wildcard segment of a volatile pointer and nothing
+// else. Every other spelling refuses it, so a pointer that would read `*` as a
+// literal key fails where it is written instead of resolving to nothing. A
+// token that merely contains `*` ("a*", "**") stays a plain key.
+const PLAIN_TOKEN = `(?!\\*(?:/|$))${TOKEN}`
+const TAIL = `(?:/${PLAIN_TOKEN})*`
+/** The one path segment `volatilePointers` reads as a wildcard. */
+export const VOLATILE_WILDCARD = '*'
+
+const WILDCARD_REFUSED =
+	'a path segment of exactly "*" is the wildcard of `volatilePointers` and is refused here'
+const INTERACTION_MESSAGE = `Invalid AD-26 interaction-rooted pointer; ${WILDCARD_REFUSED}`
+const BOUND_MESSAGE = `Invalid AD-26 bound-element pointer; ${WILDCARD_REFUSED}`
+const DESCRIPTOR_MESSAGE = `Invalid descriptor-relative pointer; ${WILDCARD_REFUSED}`
+const VOLATILE_MESSAGE = 'Invalid volatile pointer'
 
 const alternation = (members: readonly string[]): string => members.join('|')
 
@@ -186,9 +200,14 @@ export const INTERACTION_POINTER_PATTERN = new RegExp(
 	`^/interactions/${IDENTIFIER_CHARSET_SOURCE}/(?:(?:${alternation(TAIL_BEARING_CHANNELS)})${TAIL}|(?:${alternation(SCALAR_CHANNELS)})|${INPUT_ROOTED_CHANNEL}/(?:${alternation(INPUT_CHANNELS)})${TAIL}|${IDENTIFIER_ROOTED_CHANNEL}/${IDENTIFIER_CHARSET_SOURCE}${TAIL})$`,
 )
 
-export const BOUND_ELEMENT_POINTER_PATTERN = new RegExp(`^@(?:/${TOKEN})+$`)
+export const BOUND_ELEMENT_POINTER_PATTERN = new RegExp(
+	`^@(?:/${PLAIN_TOKEN})+$`,
+)
 
-export const DESCRIPTOR_POINTER_PATTERN = new RegExp(`^(?:/${TOKEN})*$`)
+export const DESCRIPTOR_POINTER_PATTERN = new RegExp(`^(?:/${PLAIN_TOKEN})*$`)
+
+/** A descriptor pointer whose segments may also be the wildcard `*`. */
+export const VOLATILE_POINTER_PATTERN = new RegExp(`^(?:/${TOKEN})*$`)
 
 /**
  * Spelling 1, interaction-rooted. Consumers: `{ pointer }` operands, a
@@ -196,7 +215,7 @@ export const DESCRIPTOR_POINTER_PATTERN = new RegExp(`^(?:/${TOKEN})*$`)
  */
 export const InteractionPointer = z
 	.string()
-	.regex(INTERACTION_POINTER_PATTERN)
+	.regex(INTERACTION_POINTER_PATTERN, { message: INTERACTION_MESSAGE })
 	.describe(
 		'AD-26 interaction-rooted pointer: "/interactions/{stepId}/" followed by one channel of the closed vocabulary. `call-inputs` takes one input channel as its next segment, one of the four transport channels, one of the four command channels, or the `arguments` channel a tool call accepts; `artifact` takes the identifier of a file the operation declares it writes; `response-status` and `exit-code` take no tail. Syntax only: whether the step exists and whether the evidence is reachable are compile-time checks, not schema checks.',
 	)
@@ -209,7 +228,7 @@ export const InteractionPointer = z
  */
 export const BoundElementPointer = z
 	.string()
-	.regex(BOUND_ELEMENT_POINTER_PATTERN)
+	.regex(BOUND_ELEMENT_POINTER_PATTERN, { message: BOUND_MESSAGE })
 	.describe(
 		'AD-26 bound-element pointer: "@/" plus an RFC 6901 tail, addressing the element a quantifier binds. Bare "@/" addresses the element itself. That it appears only inside a quantifier is a compile-time check, not a schema check.',
 	)
@@ -222,9 +241,25 @@ export const BoundElementPointer = z
  */
 export const DescriptorPointer = z
 	.string()
-	.regex(DESCRIPTOR_POINTER_PATTERN)
+	.regex(DESCRIPTOR_POINTER_PATTERN, { message: DESCRIPTOR_MESSAGE })
 	.describe(
 		"A plain RFC 6901 pointer into one operation's response descriptor. It resolves through the operation an interaction step names, never through the interaction root. A request or response shape's descriptor keys are plain key names rather than pointers, so this spelling does not apply there. The empty string is admitted and carries RFC 6901's own meaning, the whole document: as a nominated success indicator it says success is visible in the response taken as a whole rather than at any one key, and as a channel-role key it assigns a role to the whole body.",
+	)
+
+/**
+ * Spelling 3 for `volatilePointers` alone. Same grammar as `DescriptorPointer`,
+ * and a segment of exactly `*` is a wildcard that matches every element of an
+ * array and every key of an object at that position, so one pointer prunes a
+ * field out of each element of a list whose length varies:
+ * `/findings/*\/title` removes `title` from every finding. There is no escape
+ * for a key literally named `*`: the wildcard matches it like any other key, so
+ * a pointer cannot name that key alone.
+ */
+export const VolatilePointer = z
+	.string()
+	.regex(VOLATILE_POINTER_PATTERN, { message: VOLATILE_MESSAGE })
+	.describe(
+		'A descriptor-relative RFC 6901 pointer in which a path segment of exactly "*" matches every element of an array and every key of an object at that position, so "/findings/*/title" prunes the title of every finding. A key literally named "*" has no escape: the wildcard matches it like any other key. The wildcard is spelled nowhere else; every other pointer refuses it. A pointer that resolves to nothing prunes nothing.',
 	)
 
 /**
