@@ -76,6 +76,7 @@ import { checkOracleAlignment, checkOracleChannel } from './oracle-alignment.ts'
 import {
 	checkBoundElementScope,
 	checkEvidenceReachability,
+	checkStateResetPointers,
 } from './reachability.ts'
 import {
 	checkRubricAnchoring,
@@ -126,6 +127,7 @@ export function compile(
 	// describes its consequence.
 	checkArtifactReferences(contract)
 	checkEvidenceReachability(contract)
+	checkStateResetPointers(contract)
 	checkCapturedReachability(contract)
 	checkBoundElementScope(contract)
 	checkOperandLegality(contract)

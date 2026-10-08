@@ -379,18 +379,18 @@ export function checkExpressionVolatility(
 		if (target.channel !== channel) return
 		if (target.artifactId !== null && target.artifactId !== describedArtifact)
 			return
-		const pruned = volatileTails.find((tokens) =>
+		const prunedAt = volatileTails.findIndex((tokens) =>
 			tokens.every(
 				(token, index) =>
 					target.tail[index] !== undefined &&
 					(token === VOLATILE_WILDCARD || target.tail[index] === token),
 			),
 		)
-		if (pruned === undefined) return
+		if (prunedAt === -1) return
 		throw new StructuralFailure(
 			'unreachable-check-evidence',
 			`${artifactPath}${site.path}`,
-			`"${site.pointer}" addresses "${`/${pruned.join('/')}`}", which operation "${operation.operationId}" declares volatile, so the projection the relation reads has already removed it`,
+			`"${site.pointer}" addresses "${operation.volatilePointers[prunedAt]}", which operation "${operation.operationId}" declares volatile, so the projection the relation reads has already removed it`,
 		)
 	})
 }
@@ -664,6 +664,55 @@ function evaluateReachabilityAgainstOperation(
 	// response-headers, response-status, and exit-code declare no shape, so
 	// a resolving operation is the entire compile-time check available.
 	return reachable()
+}
+
+/**
+ * `unreachable-check-evidence`: a `stateResetPointers` entry that would compare
+ * nothing. One that a volatile pointer covers reads absent on both legs, and one
+ * the response descriptor cannot reach does too, so the list quietly shrinks to
+ * the transport fields and a leak in the body passes. Both mistakes are refused
+ * where the pointer is written, as a witness relation's are.
+ */
+export function checkStateResetPointers(contract: EvalContract): void {
+	for (const iface of contract.permittedInterfaces) {
+		for (const operation of operationsOf(iface)) {
+			const pointers = operation.stateResetPointers
+			if (pointers === undefined) continue
+			const volatileTails = operation.volatilePointers.map(decodeTail)
+			const channel = descriptorChannelOf(operation)
+			pointers.forEach((pointer, position) => {
+				const path = `EvalContract.permittedInterfaces[logicalId=${iface.logicalId}].operations[operationId=${operation.operationId}].stateResetPointers[${position}]`
+				const tail = decodeTail(pointer)
+				const prunedAt = volatileTails.findIndex((tokens) =>
+					tokens.every(
+						(token, index) =>
+							tail[index] !== undefined &&
+							(token === VOLATILE_WILDCARD || tail[index] === token),
+					),
+				)
+				if (prunedAt !== -1) {
+					throw new StructuralFailure(
+						'unreachable-check-evidence',
+						path,
+						`"${pointer}" lies under "${operation.volatilePointers[prunedAt]}", which operation "${operation.operationId}" declares volatile, so the projection the state-reset check reads has already removed it and the pointer compares nothing`,
+					)
+				}
+				const result = descendThroughDescriptor(
+					operation.responseDescriptor,
+					{ tail },
+					operation.operationId,
+					channel,
+				)
+				if (!result.reachable) {
+					throw new StructuralFailure(
+						'unreachable-check-evidence',
+						path,
+						`"${pointer}" ${result.reason}, so the pointer reads absent on both legs and compares nothing`,
+					)
+				}
+			})
+		}
+	}
 }
 
 /** `unreachable-check-evidence`: an interaction-rooted pointer the declared interfaces cannot produce. */

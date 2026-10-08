@@ -19,7 +19,7 @@
 /** Mutable keyword occurrences per published document (AC 8's census). */
 export const CENSUS_BY_DOCUMENT: Readonly<Record<string, number>> = {
 	'artifact-reference': 21,
-	'eval-contract': 1330,
+	'eval-contract': 1342,
 	'evaluator-configuration': 69,
 	'evidence-artifact': 548,
 	'isolation-manifest': 141,
@@ -41,7 +41,7 @@ export const CENSUS_BY_KEYWORD: Readonly<Record<string, number>> = {
 	enum: 87,
 	exclusiveMinimum: 2,
 	format: 1,
-	items: 170,
+	items: 173,
 	maxItems: 4,
 	maximum: 139,
 	minItems: 44,
@@ -49,11 +49,11 @@ export const CENSUS_BY_KEYWORD: Readonly<Record<string, number>> = {
 	minProperties: 2,
 	minimum: 140,
 	oneOf: 28,
-	pattern: 220,
+	pattern: 223,
 	prefixItems: 24,
 	propertyNames: 69,
 	required: 293,
-	type: 1549,
+	type: 1555,
 }
 
 /**
@@ -62,7 +62,7 @@ export const CENSUS_BY_KEYWORD: Readonly<Record<string, number>> = {
  * keyword's descent being removed, and the total catches an arithmetic slip in
  * either.
  */
-export const CENSUS_TOTAL = 3574
+export const CENSUS_TOTAL = 3586
 
 /** Named `$defs` keys per published document. */
 export const DEFS_BY_DOCUMENT: Readonly<Record<string, number>> = {

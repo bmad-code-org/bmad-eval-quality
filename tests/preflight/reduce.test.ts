@@ -353,6 +353,194 @@ describe('state-reset', () => {
 	})
 })
 
+/**
+ * A target whose answer is written by a live model, made deterministic: the n-th
+ * review of the same repository returns a different number of findings, and a
+ * different title for each, while the fixture's own state (`id`, `value`) never
+ * moves. The lengths cycle 2, 3, 4, so the first and the last control read
+ * always differ, as a random draw would on most runs.
+ */
+const liveReview = (call: number) => ({
+	id: 't-1',
+	value: 'alpha',
+	findings: Array.from({ length: 2 + (call % 3) }, (_, index) => ({
+		title: `title ${call}-${index}`,
+	})),
+})
+
+const reviewPatches = (
+	first: Parameters<typeof jsonPatch>[0] = liveReview(0),
+	last: Parameters<typeof jsonPatch>[0] = liveReview(1),
+): Record<string, ObservationPatch> => ({
+	'preflight-control-observe': jsonPatch(first),
+	'preflight-control-observe-2': jsonPatch(last),
+})
+
+const withStateResetPointers = (pointers: string[] | undefined) => {
+	const draft = contractDraft()
+	if (pointers !== undefined)
+		draft.permittedInterfaces[0].operations[1].stateResetPointers = pointers
+	return parseContract(draft)
+}
+
+describe('state-reset with stateResetPointers', () => {
+	it('fails on a varying-length answer when no pointers are declared, as before', () => {
+		expect(
+			outcomeOf(
+				{
+					contract: withStateResetPointers(undefined),
+					patches: reviewPatches(),
+				},
+				'state-reset',
+			),
+		).toBe('failed')
+	})
+
+	it('is satisfied on that same answer once the state pointers are declared', () => {
+		expect(
+			outcomeOf(
+				{
+					contract: withStateResetPointers(['/id', '/value']),
+					patches: reviewPatches(),
+				},
+				'state-reset',
+			),
+		).toBe('satisfied')
+	})
+
+	it('still fails when a declared pointer moves', () => {
+		expect(
+			outcomeOf(
+				{
+					contract: withStateResetPointers(['/id', '/value']),
+					patches: reviewPatches(liveReview(0), {
+						...liveReview(1),
+						value: 'leaked',
+					}),
+				},
+				'state-reset',
+			),
+		).toBe('failed')
+	})
+
+	it('compares the status alone when the list is empty', () => {
+		const contract = withStateResetPointers([])
+		expect(
+			outcomeOf(
+				{
+					contract,
+					patches: reviewPatches(liveReview(0), { id: 'other', value: 'x' }),
+				},
+				'state-reset',
+			),
+		).toBe('satisfied')
+		expect(
+			outcomeOf(
+				{
+					contract,
+					patches: {
+						...reviewPatches(),
+						'preflight-control-observe-2': {
+							...jsonPatch(liveReview(1)),
+							status: 500,
+						},
+					},
+				},
+				'state-reset',
+			),
+		).toBe('failed')
+	})
+
+	// `compile` refuses a pointer the descriptor cannot reach (see
+	// `tests/compile/state-reset-pointers.test.ts`), so these two cases drive the
+	// reducer with a parsed contract to hold what it does with such a list anyway.
+	it('reads a pointer that resolves to nothing as absent, so absence on one side only is a difference', () => {
+		const contract = withStateResetPointers(['/missing'])
+		expect(
+			outcomeOf({ contract, patches: reviewPatches() }, 'state-reset'),
+		).toBe('satisfied')
+		expect(
+			outcomeOf(
+				{
+					contract: withStateResetPointers(['/findings/0/title']),
+					patches: reviewPatches(liveReview(0), {
+						id: 't-1',
+						value: 'alpha',
+					}),
+				},
+				'state-reset',
+			),
+		).toBe('failed')
+	})
+
+	it('applies volatilePointers first, so a pointer that is also volatile compares as absent (a list compile refuses)', () => {
+		const draft = contractDraft()
+		draft.permittedInterfaces[0].operations[1].volatilePointers = ['/value']
+		draft.permittedInterfaces[0].operations[1].stateResetPointers = ['/value']
+		expect(
+			outcomeOf(
+				{
+					contract: parseContract(draft),
+					patches: reviewPatches(liveReview(0), {
+						...liveReview(0),
+						value: 'beta',
+					}),
+				},
+				'state-reset',
+			),
+		).toBe('satisfied')
+	})
+
+	it('compares a body that is not json whole, so a declaration never hides a change it cannot read', () => {
+		const contract = withStateResetPointers(['/id'])
+		const text = (value: string): ObservationPatch => ({
+			body: { kind: 'text', value },
+		})
+		expect(
+			outcomeOf(
+				{
+					contract,
+					patches: {
+						'preflight-control-observe': text('one'),
+						'preflight-control-observe-2': text('two'),
+					},
+				},
+				'state-reset',
+			),
+		).toBe('failed')
+		expect(
+			outcomeOf(
+				{
+					contract,
+					patches: {
+						'preflight-control-observe': text('same'),
+						'preflight-control-observe-2': text('same'),
+					},
+				},
+				'state-reset',
+			),
+		).toBe('satisfied')
+	})
+
+	it('leaves the other checks on the same operation reading the whole projection', () => {
+		const verdict = verdictOf({
+			contract: withStateResetPointers(['/id']),
+			patches: reviewPatches(),
+		})
+		expect(checkFor(verdict.checks, 'state-reset').outcome).toBe('satisfied')
+		expect(checkFor(verdict.checks, 'clean-control').outcome).toBe('satisfied')
+		expect(
+			checkFor(verdict.checks, 'input-sensitivity', 'read-thing').outcome,
+		).toBe('satisfied')
+	})
+
+	it('refuses the wildcard in stateResetPointers', () => {
+		expect(() => withStateResetPointers(['/findings/*/title'])).toThrow(
+			/volatilePointers/,
+		)
+	})
+})
+
 describe('clean-control', () => {
 	it('53. is satisfied when every control leg observed a non-anomalous status', () => {
 		expect(outcomeOf({}, 'clean-control')).toBe('satisfied')

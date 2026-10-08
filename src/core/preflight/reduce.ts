@@ -26,6 +26,7 @@ import {
 	PREFLIGHT_ARTIFACT_PATH,
 	type ProjectedObservation,
 	projectObservation,
+	stateResetProjection,
 } from './projection.ts'
 import { evidenceOf, resolveWitnessRelation } from './witness-evidence.ts'
 
@@ -97,7 +98,7 @@ const check = (
 ): PreflightCheck => ({ kind, interfaceId, operationId, outcome, note })
 
 /**
- * Two projections describe the same fixture state. `legId` is excluded because
+ * Two legs describe the same fixture state. `legId` is excluded because
  * it is the one field that necessarily differs between the two legs compared, so
  * deep-equality over the whole projection could never be satisfied.
  *
@@ -106,17 +107,15 @@ const check = (
  * describe the same fixture, and failing there would invalidate a run over a
  * difference that is not one.
  */
-const sameFixtureState = (
-	left: ProjectedObservation,
-	right: ProjectedObservation,
-): boolean => {
-	const state = ({ legId: _legId, ...rest }: ProjectedObservation): unknown =>
-		rest
-	return (
-		digestArtifact(state(left), PREFLIGHT_ARTIFACT_PATH) ===
-		digestArtifact(state(right), PREFLIGHT_ARTIFACT_PATH)
+const sameFixtureState = (left: LegState, right: LegState): boolean =>
+	digestArtifact(
+		stateResetProjection(left.projected, left.leg.operation),
+		PREFLIGHT_ARTIFACT_PATH,
+	) ===
+	digestArtifact(
+		stateResetProjection(right.projected, right.leg.operation),
+		PREFLIGHT_ARTIFACT_PATH,
 	)
-}
 
 /**
  * The canonical digest of one value, or `null` where the value holds something
@@ -357,7 +356,7 @@ export const reducePreflight: ReduceStage<
 						'failed',
 						'a control-observe leg produced no observation',
 					)
-				return sameFixtureState(first.projected, last.projected)
+				return sameFixtureState(first, last)
 					? check(planned.kind, null, null, 'satisfied', null)
 					: check(
 							planned.kind,
