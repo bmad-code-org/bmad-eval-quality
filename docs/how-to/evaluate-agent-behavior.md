@@ -535,6 +535,7 @@ Without the field it compares the whole projection, which suits a deterministic 
 With it, the check compares the status, the exit code, the tool error flag and the value at each listed pointer after `volatilePointers` have pruned the body, so `"stateResetPointers": ["/id", "/value"]` holds the fixture's state to those two fields while the findings vary.
 An empty list compares the status, exit code and tool error flag alone.
 A pointer that reaches nothing reads as absent, so absence on one side only is a difference, and a body that does not arrive as json is compared whole.
+`compile` refuses an entry that a volatile pointer covers and one the response descriptor does not declare, since either would read absent on both legs and compare nothing.
 The wildcard is refused here, and the sensitivity and manifestation witnesses never read the list.
 
 ## The two artifacts behind the seeded defect

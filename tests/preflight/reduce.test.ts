@@ -451,6 +451,9 @@ describe('state-reset with stateResetPointers', () => {
 		).toBe('failed')
 	})
 
+	// `compile` refuses a pointer the descriptor cannot reach (see
+	// `tests/compile/state-reset-pointers.test.ts`), so these two cases drive the
+	// reducer with a parsed contract to hold what it does with such a list anyway.
 	it('reads a pointer that resolves to nothing as absent, so absence on one side only is a difference', () => {
 		const contract = withStateResetPointers(['/missing'])
 		expect(
@@ -470,7 +473,7 @@ describe('state-reset with stateResetPointers', () => {
 		).toBe('failed')
 	})
 
-	it('applies volatilePointers first, so a pointer that is also volatile compares as absent', () => {
+	it('applies volatilePointers first, so a pointer that is also volatile compares as absent (a list compile refuses)', () => {
 		const draft = contractDraft()
 		draft.permittedInterfaces[0].operations[1].volatilePointers = ['/value']
 		draft.permittedInterfaces[0].operations[1].stateResetPointers = ['/value']

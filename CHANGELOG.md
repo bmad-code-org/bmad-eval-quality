@@ -14,7 +14,8 @@ body.
 
 - **An operation may declare `stateResetPointers`, the response pointers that describe the fixture's state for the `state-reset` pre-flight check.**
   When the list is present, the check compares the status, the exit code, the tool error flag and the value at each listed pointer of the pruned body, so a target whose answer varies run to run, such as a live model's review, no longer fails the check on text that is not fixture state.
-  A pointer that reaches nothing reads as absent, a body that is not json is compared whole, an empty list compares the transport fields alone, and the wildcard `*` is refused.
+  `compile` refuses, as `unreachable-check-evidence`, an entry that a volatile pointer covers or that the response descriptor does not declare, since either would compare nothing.
+  At run time a pointer that reaches nothing reads as absent, a body that is not json is compared whole, an empty list compares the transport fields alone, and the wildcard `*` is refused.
   When the field is absent the whole projection is compared, as before, so no existing contract changes meaning.
   The key is optional in the published eval-contract schema and `EVAL_CONTRACT_SCHEMA_VERSION` stays 7.
   It is the one key the "every declared key is required" convention exempts: absence selects the strictest comparison, so a missing key can only keep a contract as strict as it was.
