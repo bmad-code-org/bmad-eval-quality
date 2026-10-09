@@ -356,16 +356,34 @@ describe('the Consistency Conventions, extended rather than restarted', () => {
 	// control objects as the strictness test above rather than only the ones that
 	// already carry `additionalProperties: false`, so a lax object cannot escape
 	// both checks by failing the first.
+	//
+	// One key is exempt, and the reason is the convention's own. The rule exists
+	// so that a missing key can never silently weaken a check. An operation's
+	// `stateResetPointers` is read by the state-reset differential alone, and an
+	// absent key means the whole-projection comparison, which is the strictest
+	// the check has: absence can only keep a contract as strict as it was before
+	// the key existed. Making it required would break every contract written
+	// against an earlier release for a default that equals the behavior they
+	// already had.
+	const OPTIONAL_KEYS: Readonly<Record<string, readonly string[]>> = {
+		'eval-contract': ['stateResetPointers'],
+	}
+
 	it.each(Object.entries(INTERCHANGE_ARTIFACTS))(
 		'%s requires every declared key, so no key is optional',
 		(key, entry) => {
 			const objects = controlObjects(documentOf(entry.schema))
 			expect(objects.length, key).toBeGreaterThan(0)
+			const exempt = OPTIONAL_KEYS[key] ?? []
 			for (const [path, object] of objects) {
 				expect(
 					[...(object.required ?? [])].sort(),
 					`${key}${path}: ${JSON.stringify(Object.keys(object.properties ?? {}))}`,
-				).toEqual(Object.keys(object.properties ?? {}).sort())
+				).toEqual(
+					Object.keys(object.properties ?? {})
+						.filter((property) => !exempt.includes(property))
+						.sort(),
+				)
 			}
 		},
 	)

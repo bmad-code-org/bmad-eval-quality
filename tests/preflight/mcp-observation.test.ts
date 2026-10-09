@@ -163,8 +163,10 @@ describe('projectObservation over a tool call', () => {
 	// The reason the flag is in the projection at all. Without it two legs that
 	// returned the same body digest identically when one errored and one did
 	// not, and the state-reset check reports a reset that never happened. The
-	// assertion is over the digest itself, since that is the value the check
-	// compares.
+	// assertion is over the fixture digest, which reads the whole projection;
+	// with `stateResetPointers` declared the check compares
+	// `stateResetProjection`, and `state-reset-projection.test.ts` holds the
+	// flag there.
 	it('digests differently for two legs whose bodies agree and whose flags do not', () => {
 		const digestFor = (isError: boolean) =>
 			fixtureDigest(
