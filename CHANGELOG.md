@@ -10,6 +10,8 @@ body.
 
 ## [Unreleased]
 
+## [8.0.0] - 2026-10-09
+
 ### Added
 
 - **An operation may declare `stateResetPointers`, the response pointers that describe the fixture's state for the `state-reset` pre-flight check.**
