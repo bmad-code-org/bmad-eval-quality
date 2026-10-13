@@ -57,6 +57,9 @@ reviews:
     # Whitelist-first: review the publishable library and its delivery surfaces.
     - ".coderabbit.yaml"
     - ".github/**"
+    - "scripts/audit-website.mjs"
+    - "scripts/audit-website.test.mjs"
+    - "website/package-lock.json"
     - ".husky/**"
     - "src/**"
     - "tests/**"
